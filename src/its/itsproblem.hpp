@@ -102,6 +102,8 @@ public:
     static void lock();
     static void unlock();
 
+    void categorize_loops() const;
+
 protected:
 
     // Main structure is the graph, where (hyper-)transitions are annotated with a RuleIdx.

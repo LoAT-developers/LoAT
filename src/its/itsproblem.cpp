@@ -17,6 +17,8 @@
 
 #include "itsproblem.hpp"
 #include "export.hpp"
+#include <eigen3/Eigen/Dense>
+#include "../util/relevantvariables.hpp"
 
 using namespace std;
 
@@ -257,4 +259,109 @@ std::set<TransIdx> ITSProblem::removeLocationAndRules(LocationIdx loc) {
 void ITSProblem::print(std::ostream &s) const {
     std::lock_guard guard(mutex);
     ITSExport::printDebug(*this, s);
+}
+
+void ITSProblem::categorize_loops() const {
+    for (auto idx: getAllTransitions()) {
+        auto t = getRule(idx);
+        if (t.isSimpleLoop()) {
+            auto guard = t.getGuard();
+            auto up = t.getUpdate(0);
+            if (!guard->isLinear()) {
+                printf("non-linear\n");
+                goto NEXT;
+            }
+            Subs all_zero;
+            auto vars = util::RelevantVariables::find(guard->vars(), t.getUpdates(), guard);
+            for (auto x: vars) {
+                if (up.contains(x) && !up.get(x).isLinear()) {
+                    printf("non-linear\n");
+                    goto NEXT;
+                }
+                all_zero.put(x, 0);
+            }
+            auto has_cst = false;
+            for (auto x: vars) {
+                if (up.contains(x) && !up.get(x).subs(all_zero).isZero()) {
+                    has_cst = true;
+                    break;
+                }
+            }
+            for (auto x: vars) {
+                if (isTempVar(x)) {
+                    printf("non-deterministic\n");
+                    goto NEXT;
+                }
+            }
+            std::vector<Var> var_vec(vars.begin(), vars.end());
+            auto n = var_vec.size();
+            if (has_cst) {
+                n++;
+            }
+            if (n == 0) {
+                printf("empty\n");
+                goto NEXT;
+            }
+            Eigen::MatrixXd A(n,n);
+            Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n,n);
+            for (unsigned int i = 0; i < var_vec.size(); ++i) {
+                auto x = var_vec[i];
+                if (up.contains(x)) {
+                    auto rhs = up.get(x);
+                    for (unsigned int j = 0; j < var_vec.size(); ++j) {
+                        A(i,j) = rhs.coeff(var_vec[j]).toNum().to_double();
+                    }
+                } else {
+                    for (unsigned int j = 0; j < var_vec.size(); ++j) {
+                        A(i,j) = 0.0;
+                    }
+                    A(i,i) = 1.0;
+                }
+            }
+            if (has_cst) {
+                for (unsigned int i = 0; i < var_vec.size(); ++i) {
+                    auto x = var_vec[i];
+                    if (up.contains(x)) {
+                        auto cst = up.get(x).subs(all_zero).toNum().to_double();
+                        A(i,n-1) = cst;
+                    } else {
+                        A(i,n-1) = 0.0;
+                    }
+                }
+                A(n-1,n-1) = 1.0;
+            }
+            Eigen::EigenSolver<Eigen::MatrixXd> es(A, false);
+            if (es.info() == Eigen::Success) {
+                auto evs = es.eigenvalues();
+                for (int i = 0; i < evs.size(); ++i) {
+                    auto ev = evs[i];
+                    if (ev.imag() == 0.0 && ev.real() == 0.0) continue;
+                    auto rank = (A - (ev * I)).jacobiSvd().rank();
+                    if (n - rank != 1) {
+                        printf("fail\n");
+                        goto NEXT;
+                    }
+                }
+                bool complex = false;
+                bool real = false;
+                for (int i = 0; i < evs.size(); ++i) {
+                    auto ev = evs[i];
+                    if (ev.imag() == 0.0) {
+                        double intpart;
+                        if (modf(ev.real(), &intpart) != 0.0) {
+                            real = true;
+                        }
+                    } else {
+                        complex = true;
+                    }
+                }
+                if (complex) printf("uniform complex\n");
+                else if (real) printf("uniform real\n");
+                else printf("uniform int\n");
+            } else {
+                printf("numerical issues");
+            }
+        }
+        NEXT: continue;
+    }
 }

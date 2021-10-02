@@ -28,6 +28,7 @@
 #include "analysis/recurrentsetfinder.hpp"
 #include "its/smt2export.hpp"
 #include "its/cintegerexport.hpp"
+#include "analysis/preprocess.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -170,6 +171,18 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Analysis::CIntExport:
         c_integer_export::doExport(its);
+        break;
+    case Config::Analysis::CheckUniformity:
+        for (auto idx: its.getAllTransitions()) {
+            auto t = its.getRule(idx);
+            if (t.isSimpleLoop()) {
+                auto newRule = Preprocess::preprocessRule(its, t);
+                if (newRule) {
+                    its.replaceRules({idx}, {newRule.get()});
+                }
+            }
+        }
+        its.categorize_loops();
         break;
     default:
         throw std::invalid_argument("unsupported mode");
