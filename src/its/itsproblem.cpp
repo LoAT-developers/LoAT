@@ -19,6 +19,7 @@
 #include "export.hpp"
 #include <eigen3/Eigen/Dense>
 #include "../util/relevantvariables.hpp"
+#include "../accelerate/recurrence/dependencyorder.hpp"
 
 using namespace std;
 
@@ -262,9 +263,11 @@ void ITSProblem::print(std::ostream &s) const {
 }
 
 void ITSProblem::categorize_loops() const {
+    cout.precision(20);
     for (auto idx: getAllTransitions()) {
         auto t = getRule(idx);
         if (t.isSimpleLoop()) {
+//            std::cout << t << std::endl;
             auto guard = t.getGuard();
             auto up = t.getUpdate(0);
             if (!guard->isLinear()) {
@@ -293,29 +296,42 @@ void ITSProblem::categorize_loops() const {
                     goto NEXT;
                 }
             }
-            std::vector<Var> var_vec(vars.begin(), vars.end());
-            auto n = var_vec.size();
-            if (has_cst) {
-                n++;
+            auto order = DependencyOrder::findOrder(up);
+            if (!order) {
+                printf("non-triangular\n");
+                goto NEXT;
             }
+            std::vector<Var> var_vec;
+            for (auto x: order.get()) {
+                if (vars.find(x) != vars.end()) {
+                    var_vec.push_back(x);
+                }
+            }
+            for (auto x: vars) {
+                if (!up.contains(x)) {
+                    var_vec.push_back(x);
+                }
+            }
+            auto n = var_vec.size() + has_cst;
             if (n == 0) {
                 printf("empty\n");
                 goto NEXT;
             }
-            Eigen::MatrixXd A(n,n);
-            Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n,n);
+            Eigen::MatrixXd A(n, n);
+            Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n, n);
             for (unsigned int i = 0; i < var_vec.size(); ++i) {
                 auto x = var_vec[i];
                 if (up.contains(x)) {
                     auto rhs = up.get(x);
                     for (unsigned int j = 0; j < var_vec.size(); ++j) {
-                        A(i,j) = rhs.coeff(var_vec[j]).toNum().to_double();
+                        auto coeff = rhs.coeff(var_vec[j]).toNum().to_double();
+                        A(i + has_cst, j + has_cst) = coeff;
                     }
                 } else {
                     for (unsigned int j = 0; j < var_vec.size(); ++j) {
-                        A(i,j) = 0.0;
+                        A(i + has_cst, j + has_cst) = 0.0;
                     }
-                    A(i,i) = 1.0;
+                    A(i + has_cst, i + has_cst) = 1.0;
                 }
             }
             if (has_cst) {
@@ -323,41 +339,37 @@ void ITSProblem::categorize_loops() const {
                     auto x = var_vec[i];
                     if (up.contains(x)) {
                         auto cst = up.get(x).subs(all_zero).toNum().to_double();
-                        A(i,n-1) = cst;
+                        A(i + 1, 0) = cst;
                     } else {
-                        A(i,n-1) = 0.0;
+                        A(i + 1, 0) = 0.0;
                     }
                 }
-                A(n-1,n-1) = 1.0;
+                for (unsigned int i = 0; i < var_vec.size(); ++i) {
+                    A(0, i + 1) = 0.0;
+                }
+                A(0, 0) = 1.0;
             }
             Eigen::EigenSolver<Eigen::MatrixXd> es(A, false);
             if (es.info() == Eigen::Success) {
-                auto evs = es.eigenvalues();
-                for (int i = 0; i < evs.size(); ++i) {
-                    auto ev = evs[i];
-                    if (ev.imag() == 0.0 && ev.real() == 0.0) continue;
+                for (unsigned int i = 0; i < n; ++i) {
+                    auto ev = A(i,i);
+                    if (ev == 0.0) continue;
                     auto rank = (A - (ev * I)).jacobiSvd().rank();
                     if (n - rank != 1) {
                         printf("fail\n");
                         goto NEXT;
                     }
                 }
-                bool complex = false;
-                bool real = false;
-                for (int i = 0; i < evs.size(); ++i) {
-                    auto ev = evs[i];
-                    if (ev.imag() == 0.0) {
-                        double intpart;
-                        if (modf(ev.real(), &intpart) != 0.0) {
-                            real = true;
+                if (order) {
+                    for (unsigned int i = 0; i < n; ++i) {
+                        auto ev = A(i,i);
+                        if (ev < 0.0) {
+                            printf("negative\n");
+                            goto NEXT;
                         }
-                    } else {
-                        complex = true;
                     }
+                    printf("uniform\n");
                 }
-                if (complex) printf("uniform complex\n");
-                else if (real) printf("uniform real\n");
-                else printf("uniform int\n");
             } else {
                 printf("numerical issues");
             }

@@ -173,6 +173,7 @@ int main(int argc, char *argv[]) {
         c_integer_export::doExport(its);
         break;
     case Config::Analysis::CheckUniformity:
+//        std::cout <<  filename << std::endl;
         for (auto idx: its.getAllTransitions()) {
             auto t = its.getRule(idx);
             if (t.isSimpleLoop()) {
