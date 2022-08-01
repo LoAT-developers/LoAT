@@ -3,6 +3,8 @@
 #include <functional>
 #include <iostream>
 #include <algorithm>
+#include <numeric>
+#include "../expr/guardtoolbox.hpp"
 #include "../parser/redlog/redlogparsevisitor.h"
 
 BoolExpression::~BoolExpression() {}
@@ -151,14 +153,86 @@ unsigned BoolLit::hash() const {
     return lit.hash();
 }
 
-BoolExpr BoolLit::simplify() const {
+option<BoolExpr> BoolLit::simplify(const VarSet &eliminate) const {
+    return evaluateTriv();
+}
+
+option<BoolExpr> BoolLit::evaluateTriv() const {
     if (lit.isTriviallyTrue()) {
         return True;
     } else if (lit.isTriviallyFalse()) {
         return False;
     } else {
-        return shared_from_this();
+        return {};
     }
+}
+
+std::pair<option<BoolExpr>, Subs> BoolLit::propagateEqualities(const VarSet &eliminate, VarMap<ExprSet> &lb, VarMap<ExprSet> &ub) const {
+    if (lit.isPoly()) {
+        if (lit.isEq()) {
+            const Expr e = lit.makeRhsZero().lhs();
+            for (const Var &x: e.vars()) {
+                if (eliminate.find(x) != eliminate.end()) {
+                    option<Expr> res = GuardToolbox::solveTermFor(e, x, GuardToolbox::SolvingLevel::ResultMapsToInt);
+                    if (res) {
+                        return {True, {x, *res}};
+                    }
+                }
+            }
+        } else if (!lit.isNeq()) {
+            const Rel normalized = lit.toG().makeRhsZero();
+            const Expr e = normalized.lhs().expand();
+            for (const Var &x: e.vars()) {
+                if (eliminate.find(x) != eliminate.end()) {
+                    option<Expr> res = GuardToolbox::solveTermFor(e, x, GuardToolbox::SolvingLevel::ResultMapsToInt);
+                    if (res) {
+                        const long coeff = e.coeff(x).toNum().to_int();
+                        assert(coeff != 0);
+                        if (coeff < 0) {
+                            // upper bound
+                            if (normalized.isStrict()) {
+                                res = *res - 1;
+                            }
+                            auto lit = lb.find(x);
+                            if (lit != lb.end()) {
+                                for (const auto &l: lit->second) {
+                                    if ((l - *res).expand().isZero()) {
+                                        return {True, {x, *res}};
+                                    }
+                                }
+                            }
+                            auto uit = ub.find(x);
+                            if (uit != ub.end()) {
+                                uit->second.insert(*res);
+                            } else {
+                                ub[x] = {*res};
+                            }
+                        } else {
+                            // lower bound
+                            if (normalized.isStrict()) {
+                                res = *res + 1;
+                            }
+                            auto uit = ub.find(x);
+                            if (uit != ub.end()) {
+                                for (const auto &u: uit->second) {
+                                    if ((u - *res).expand().isZero()) {
+                                        return {True, {x, *res}};
+                                    }
+                                }
+                            }
+                            auto lit = lb.find(x);
+                            if (lit != lb.end()) {
+                                lit->second.insert(*res);
+                            } else {
+                                lb[x] = {*res};
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return {{}, {}};
 }
 
 BoolLit::~BoolLit() {}
@@ -301,43 +375,119 @@ void BoolJunction::dnf(std::vector<Guard> &res) const {
     }
 }
 
-BoolExpr BoolJunction::simplify() const {
+option<BoolExpr> BoolJunction::simplify(const VarSet &eliminate) const {
+    BoolExpr res = shared_from_this();
+    bool propagate = true;
+    bool triv = true;
+    bool changed = false;
+    do {
+        if (triv) {
+            const option<BoolExpr> o = res->evaluateTriv();
+            if (o) {
+                res = o.get();
+                propagate = true;
+                changed = true;
+            }
+            triv = false;
+        }
+        if (propagate) {
+            VarMap<ExprSet> lb, ub;
+            const auto p = res->propagateEqualities(eliminate, lb, ub);
+            if (p.first) {
+                res = p.first.get();
+                triv = true;
+                changed = true;
+            }
+            propagate = false;
+        }
+    } while (propagate || triv);
+    return changed ? res : option<BoolExpr>{};
+}
+
+option<BoolExpr> BoolJunction::evaluateTriv() const {
     if (isAnd()) {
         BoolExprSet newChildren;
         for (const auto &c: children) {
-            const auto simp = c->simplify();
-            if (simp == False) {
+            const auto simp = c->evaluateTriv();
+            if (simp && *simp == False) {
                 return False;
-            } else if (simp != True) {
+            } else if (!simp || *simp != True) {
                 newChildren.insert(c);
             }
         }
         if (newChildren.empty()) {
             return True;
         } else if (children.size() == newChildren.size()) {
-            return shared_from_this();
+            return {};
         } else {
             return buildAnd(newChildren);
         }
     } else if (isOr()) {
         BoolExprSet newChildren;
         for (const auto &c: children) {
-            const auto simp = c->simplify();
-            if (simp == True) {
+            const auto simp = c->evaluateTriv();
+            if (simp && *simp == True) {
                 return True;
-            } else if (simp != False) {
+            } else if (!simp || *simp != False) {
                 newChildren.insert(c);
             }
         }
         if (newChildren.empty()) {
             return False;
         } else if (children.size() == newChildren.size()) {
-            return shared_from_this();
+            return {};
         } else {
             return buildOr(newChildren);
         }
     }
-    return shared_from_this();
+    return {};
+}
+
+std::pair<option<BoolExpr>, Subs> BoolJunction::propagateEqualities(const VarSet &eliminate, VarMap<ExprSet> &lb, VarMap<ExprSet> &ub) const {
+    if (isAnd()) {
+        BoolExprSet children = this->children;
+        bool changedAtAll = false;
+        bool changed = false;
+        Subs subs;
+        do {
+            changedAtAll |= changed;
+            changed = false;
+            auto it = children.begin();
+            while (it != children.end()) {
+                const BoolExpr c = (*it)->subs(subs);
+                const auto p = c->propagateEqualities(eliminate, lb, ub);
+                it = children.erase(it);
+                if (p.first) {
+                    children.insert(p.first.get());
+                    changed = true;
+                } else {
+                    children.insert(c);
+                }
+                if (!p.second.empty()) {
+                    subs = subs.compose(p.second);
+                    changed = true;
+                }
+            }
+        } while (changed);
+        option<BoolExpr> res = changedAtAll ? buildAnd(children) : option<BoolExpr>{};
+        return {res, subs};
+    } else if (isOr()) {
+        BoolExprSet newChildren;
+        bool changed = false;
+        for (const auto &c: children) {
+            VarMap<ExprSet> clb(lb);
+            VarMap<ExprSet> cub(ub);
+            const auto p = c->propagateEqualities(eliminate, clb, cub);
+            if (p.first) {
+                newChildren.insert(p.first.get());
+                changed = true;
+            } else {
+                newChildren.insert(c);
+            }
+        }
+        return {changed ? buildOr(newChildren) : option<BoolExpr>{}, {}};
+    }
+    return {{}, {}};
 }
 
 unsigned BoolJunction::hash() const {
@@ -512,12 +662,12 @@ std::pair<QuantifiedFormula, Subs> QuantifiedFormula::normalizeVariables(Variabl
     return {QuantifiedFormula(newPrefix, newMatrix), inverse};
 }
 
-QuantifiedFormula QuantifiedFormula::simplify() const {
-    BoolExpr newMatrix = matrix->simplify();
-    if (newMatrix == matrix) {
-        return *this;
+option<QuantifiedFormula> QuantifiedFormula::simplify(const VarSet &eliminate) const {
+    const option<BoolExpr> newMatrix = matrix->simplify(eliminate);
+    if (newMatrix) {
+        return QuantifiedFormula(prefix, *newMatrix);
     } else {
-        return QuantifiedFormula(prefix, newMatrix);
+        return *this;
     }
 }
 

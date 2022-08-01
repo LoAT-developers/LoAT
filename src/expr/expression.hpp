@@ -241,6 +241,8 @@ public:
      */
     int ldegree(const Var &var) const;
 
+    Expr constant() const;
+
     /**
      * @return The coefficient of the monomial where var occurs with the given degree (which defaults to 1).
      */

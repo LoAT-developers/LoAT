@@ -53,10 +53,12 @@ public:
     virtual BoolExpr replaceRels(const RelMap<BoolExpr> map) const = 0;
     virtual unsigned hash() const = 0;
     QuantifiedFormula quantify(const std::vector<Quantifier> &prefix) const;
-    virtual BoolExpr simplify() const = 0;
+    virtual option<BoolExpr> simplify(const VarSet &eliminate) const = 0;
 
 protected:
     virtual void dnf(std::vector<Guard> &res) const = 0;
+    virtual std::pair<option<BoolExpr>, Subs> propagateEqualities(const VarSet &eliminate, VarMap<ExprSet> &lb, VarMap<ExprSet> &ub) const = 0;
+    virtual option<BoolExpr> evaluateTriv() const = 0;
 };
 
 class BoolLit: public BoolExpression {
@@ -86,10 +88,12 @@ public:
     std::string toRedlog() const override;
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
     unsigned hash() const override;
-    BoolExpr simplify() const override;
+    option<BoolExpr> simplify(const VarSet &eliminate) const override;
 
 protected:
     void dnf(std::vector<Guard> &res) const override;
+    std::pair<option<BoolExpr>, Subs> propagateEqualities(const VarSet &eliminate, VarMap<ExprSet> &lb, VarMap<ExprSet> &ub) const override;
+    option<BoolExpr> evaluateTriv() const override;
 
 };
 
@@ -123,10 +127,12 @@ public:
     std::string toRedlog() const override;
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
     unsigned hash() const override;
-    BoolExpr simplify() const override;
+    option<BoolExpr> simplify(const VarSet &eliminate) const override;
 
 protected:
     void dnf(std::vector<Guard> &res) const override;
+    std::pair<option<BoolExpr>, Subs> propagateEqualities(const VarSet &eliminate, VarMap<ExprSet> &lb, VarMap<ExprSet> &ub) const override;
+    option<BoolExpr> evaluateTriv() const override;
 
 };
 
@@ -174,7 +180,7 @@ public:
     VarSet freeVars() const;
     std::string toRedlog() const;
     std::pair<QuantifiedFormula, Subs> normalizeVariables(VariableManager &varMan) const;
-    QuantifiedFormula simplify() const;
+    option<QuantifiedFormula> simplify(const VarSet &eliminate) const;
     bool isTiviallyTrue() const;
     bool isTiviallyFalse() const;
     friend std::ostream& operator<<(std::ostream &s, const QuantifiedFormula f);

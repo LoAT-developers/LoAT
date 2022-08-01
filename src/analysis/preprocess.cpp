@@ -174,6 +174,7 @@ option<Rule> Preprocess::eliminateTempVars(VarMan &varMan, const Rule &rule, boo
         oldRule = newRule.get();
         changed = true;
     }
+
     //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
     newRule = GuardToolbox::propagateEqualities(varMan, oldRule, GuardToolbox::ResultMapsToInt, isTempInUpdate);
     if (newRule) {
@@ -189,6 +190,13 @@ option<Rule> Preprocess::eliminateTempVars(VarMan &varMan, const Rule &rule, boo
     }
 
     if (!fast && !oldRule.getGuard()->isConjunction()) {
+        const option<BoolExpr> newGuard = oldRule.getGuard()->simplify(varMan.getTempVars());
+        if (newGuard) {
+            auto oldGuard = oldRule.getGuard();
+            newRule = Rule(RuleLhs(oldRule.getLhsLoc(), *newGuard), oldRule.getRhss());
+            oldRule = newRule.get();
+            changed = true;
+        }
         newRule = GuardToolbox::propagateEqualitiesBySmt(oldRule, varMan);
         if (newRule) {
             oldRule = newRule.get();
