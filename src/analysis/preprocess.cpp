@@ -190,15 +190,28 @@ option<Rule> Preprocess::eliminateTempVars(VarMan &varMan, const Rule &rule, boo
     }
 
     if (!fast && !oldRule.getGuard()->isConjunction()) {
-        const option<BoolExpr> newGuard = oldRule.getGuard()->simplify(varMan.getTempVars());
-        if (newGuard) {
-            auto oldGuard = oldRule.getGuard();
-            newRule = Rule(RuleLhs(oldRule.getLhsLoc(), *newGuard), oldRule.getRhss());
-            oldRule = newRule.get();
-            changed = true;
-        }
+//        VarSet forbiddenVars;
+//        for (const auto &up: oldRule.getUpdates()) {
+//            up.collectAllVars(forbiddenVars);
+//        }
+//        oldRule.getCost().collectVars(forbiddenVars);
+//        VarSet eliminate;
+//        for (const auto &x: oldRule.getGuard()->vars()) {
+//            if (varMan.isTempVar(x) && forbiddenVars.find(x) == forbiddenVars.end()) {
+//                eliminate.insert(x);
+//            }
+//        }
+//        const option<BoolExpr> newGuard = oldRule.getGuard()->simplify(eliminate);
+//        if (newGuard) {
+//            auto oldGuard = oldRule.getGuard();
+//            newRule = Rule(RuleLhs(oldRule.getLhsLoc(), *newGuard), oldRule.getRhss());
+//            oldRule = newRule.get();
+//            changed = true;
+//        }
         newRule = GuardToolbox::propagateEqualitiesBySmt(oldRule, varMan);
+        std::cout << oldRule << std::endl;
         if (newRule) {
+            std::cout << "got " << newRule.get() << std::endl;
             oldRule = newRule.get();
             changed = true;
         }

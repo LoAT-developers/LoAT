@@ -45,7 +45,6 @@ public:
     virtual bool isConjunction() const = 0;
     Guard conjunctionToGuard() const;
     virtual BoolExpr toG() const = 0;
-    virtual BoolExpr toLeq() const = 0;
     virtual void collectLits(RelSet &res) const = 0;
     virtual void collectVars(VarSet &res) const = 0;
     virtual std::string toRedlog() const = 0;
@@ -81,7 +80,6 @@ public:
     BoolExpr subs(const Subs &subs) const override;
     bool isConjunction() const override;
     BoolExpr toG() const override;
-    BoolExpr toLeq() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
     size_t size() const override;
@@ -120,7 +118,6 @@ public:
     BoolExpr subs(const Subs &subs) const override;
     bool isConjunction() const override;
     BoolExpr toG() const override;
-    BoolExpr toLeq() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
     size_t size() const override;
@@ -175,7 +172,6 @@ public:
     VarSet boundVars() const;
     QuantifiedFormula subs(const Subs &subs) const;
     QuantifiedFormula toG() const;
-    QuantifiedFormula toLeq() const;
     void collectLits(RelSet &res) const;
     VarSet freeVars() const;
     std::string toRedlog() const;

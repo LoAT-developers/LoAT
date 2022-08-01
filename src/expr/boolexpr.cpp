@@ -93,23 +93,6 @@ BoolExpr BoolLit::toG() const {
     }
 }
 
-BoolExpr BoolLit::toLeq() const {
-    if (lit.isIneq()) {
-        if (lit.relOp() == Rel::leq) {
-            return shared_from_this();
-        } else {
-            return buildLit(lit.toLeq());
-        }
-    } else if (lit.isEq()) {
-        std::vector<Rel> rels {lit.lhs() <= lit.rhs(), lit.rhs() <= lit.lhs()};
-        return buildAnd(rels);
-    } else {
-        assert(lit.isNeq());
-        std::vector<Rel> rels {(lit.lhs() < lit.rhs()).toLeq(), (lit.rhs() < lit.lhs()).toLeq()};
-        return buildOr(rels);
-    }
-}
-
 bool BoolLit::isConjunction() const {
     return true;
 }
@@ -298,14 +281,6 @@ BoolExpr BoolJunction::toG() const {
     BoolExprSet newChildren;
     for (const BoolExpr &c: children) {
         newChildren.insert(c->toG());
-    }
-    return isAnd() ? buildAnd(newChildren) : buildOr(newChildren);
-}
-
-BoolExpr BoolJunction::toLeq() const {
-    BoolExprSet newChildren;
-    for (const BoolExpr &c: children) {
-        newChildren.insert(c->toLeq());
     }
     return isAnd() ? buildAnd(newChildren) : buildOr(newChildren);
 }
@@ -586,10 +561,6 @@ QuantifiedFormula QuantifiedFormula::subs(const Subs &subs) const {
 
 QuantifiedFormula QuantifiedFormula::toG() const {
     return QuantifiedFormula(prefix, matrix->toG());
-}
-
-QuantifiedFormula QuantifiedFormula::toLeq() const {
-    return QuantifiedFormula(prefix, matrix->toLeq());
 }
 
 void QuantifiedFormula::collectLits(RelSet &res) const {

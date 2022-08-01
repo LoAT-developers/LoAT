@@ -40,11 +40,10 @@ BoolExpr FarkasLemma::apply(
     RelMap<Var> lambda;
     VarSet varSet(vars.begin(), vars.end());
     for (const Rel &rel : constraints) {
-        assert(rel.isLinear(varSet) && rel.isIneq());
-        assert(rel.relOp() == Rel::leq);
-
+        const Rel &normalizedRel = rel.toLeq();
+        assert(normalizedRel.isLinear(varSet) && normalizedRel.isIneq());
         Var var = varMan.getFreshUntrackedSymbol("l", Expr::Rational);
-        lambda[rel] = var;
+        lambda[normalizedRel] = var;
         res.push_back(var >= 0);
     }
 
@@ -111,7 +110,6 @@ const BoolExpr FarkasLemma::apply(
         const VarSet &vars,
         const VarSet &params,
         VariableManager &varMan) {
-    const BoolExpr normalizedPremise = premise->toLeq();
     vector<Var> varList(vars.begin(), vars.end());
     RelSet splitConclusion;
     for (const Rel &c: conclusion) {
@@ -124,7 +122,7 @@ const BoolExpr FarkasLemma::apply(
             assert(false);
         }
     }
-    return applyRec(normalizedPremise, splitConclusion, varList, params, varMan);
+    return applyRec(premise, splitConclusion, varList, params, varMan);
 }
 
 const BoolExpr FarkasLemma::applyRec(
@@ -143,7 +141,12 @@ const BoolExpr FarkasLemma::applyRec(
             Expr c0 = -c.rhs();
             RelSet lits;
             for (const Rel &lit: premise->lits()) {
-                lits.insert(lit.splitVariableAndConstantAddends(params));
+                if (lit.isEq()) {
+                    lits.insert((lit.lhs() <= lit.rhs()).splitVariableAndConstantAddends(params));
+                    lits.insert((lit.lhs() >= lit.rhs()).splitVariableAndConstantAddends(params));
+                } else {
+                    lits.insert(lit.toLeq().splitVariableAndConstantAddends(params));
+                }
             }
             res.push_back(FarkasLemma::apply(lits, vars, coefficients, c0, 0, varMan, params));
         }
