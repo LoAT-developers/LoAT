@@ -116,22 +116,17 @@ option<Expr> GuardToolbox::solveTermFor(Expr term, const Var &var, SolvingLevel 
 
 
 option<Rule> GuardToolbox::propagateEqualities(const VarMan &varMan, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
-    if (!rule.getGuard()->isConjunction()) {
-        return {};
-    }
     Subs varSubs;
-    RelSet guard = rule.getGuard()->lits();
+    RelSet guard = rule.getGuard()->universallyValidLits();
 
-    for (auto it = guard.begin(); it != guard.end();) {
-        Rel rel = it->subs(varSubs);
+    for (const auto &r: guard) {
+        Rel rel = r.subs(varSubs);
         if (!rel.isEq()) {
-            ++it;
             continue;
         }
 
         Expr target = rel.rhs() - rel.lhs();
         if (!target.isPoly()) {
-            ++it;
             continue;
         }
 
@@ -151,16 +146,12 @@ option<Rule> GuardToolbox::propagateEqualities(const VarMan &varMan, const Rule 
                 //could be unsound, as free vars can lead to unbounded complexity
                 if (!varMan.isTempVar(var) && containsTempVar(varMan, solved)) continue;
 
-                //remove current equality (ok while iterating by index)
-                it = guard.erase(it);
-
                 //extend the substitution, use compose in case var occurs on some rhs of varSubs
                 varSubs.put(var, solved);
                 varSubs = varSubs.compose(varSubs);
                 goto next;
             }
         }
-        ++it;
         next:;
     }
 
@@ -168,7 +159,7 @@ option<Rule> GuardToolbox::propagateEqualities(const VarMan &varMan, const Rule 
     if (varSubs.empty()) {
         return {};
     } else {
-        return {rule.withGuard(buildAnd(guard)).subs(varSubs)};
+        return {rule.subs(varSubs)};
     }
 }
 
@@ -240,10 +231,7 @@ abort:  ; //this symbol could not be eliminated, try the next one
 
 
 option<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
-    if (!rule.getGuard()->isConjunction()) {
-        return {};
-    }
-    const RelSet &guard = rule.getGuard()->lits();
+    const RelSet &guard = rule.getGuard()->universallyValidLits();
     vector<pair<Rel,Expr>> terms; //inequalities from the guard, with the associated index in guard
     map<Rel,pair<Rel,Expr>> matches; //maps index in guard to a second index in guard, which can be replaced by Expression
 
@@ -275,11 +263,9 @@ option<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
         if (it != matches.end()) {
             res.push_back(Rel::buildEq(it->second.second, 0));
             ignore.insert(it->second.first);
-        } else {
-            res.push_back(rel);
         }
     }
-    return {rule.withGuard(buildAnd(res))};
+    return {rule.withGuard(rule.getGuard() & buildAnd(res))};
 }
 
 option<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, VariableManager &varMan) {

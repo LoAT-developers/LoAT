@@ -40,6 +40,7 @@ public:
     virtual ~BoolExpression();
     virtual BoolExpr subs(const Subs &subs) const = 0;
     RelSet lits() const;
+    virtual RelSet universallyValidLits() const = 0;
     VarSet vars() const;
     std::vector<Guard> dnf() const;
     virtual bool isConjunction() const = 0;
@@ -52,12 +53,10 @@ public:
     virtual BoolExpr replaceRels(const RelMap<BoolExpr> map) const = 0;
     virtual unsigned hash() const = 0;
     QuantifiedFormula quantify(const std::vector<Quantifier> &prefix) const;
-    virtual option<BoolExpr> simplify(const VarSet &eliminate) const = 0;
+    virtual option<BoolExpr> simplify() const = 0;
 
 protected:
     virtual void dnf(std::vector<Guard> &res) const = 0;
-    virtual std::pair<option<BoolExpr>, Subs> propagateEqualities(const VarSet &eliminate, VarMap<ExprSet> &lb, VarMap<ExprSet> &ub) const = 0;
-    virtual option<BoolExpr> evaluateTriv() const = 0;
 };
 
 class BoolLit: public BoolExpression {
@@ -80,18 +79,17 @@ public:
     BoolExpr subs(const Subs &subs) const override;
     bool isConjunction() const override;
     BoolExpr toG() const override;
+    RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
     size_t size() const override;
     std::string toRedlog() const override;
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
     unsigned hash() const override;
-    option<BoolExpr> simplify(const VarSet &eliminate) const override;
+    option<BoolExpr> simplify() const override;
 
 protected:
     void dnf(std::vector<Guard> &res) const override;
-    std::pair<option<BoolExpr>, Subs> propagateEqualities(const VarSet &eliminate, VarMap<ExprSet> &lb, VarMap<ExprSet> &ub) const override;
-    option<BoolExpr> evaluateTriv() const override;
 
 };
 
@@ -118,18 +116,17 @@ public:
     BoolExpr subs(const Subs &subs) const override;
     bool isConjunction() const override;
     BoolExpr toG() const override;
+    RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
     size_t size() const override;
     std::string toRedlog() const override;
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
     unsigned hash() const override;
-    option<BoolExpr> simplify(const VarSet &eliminate) const override;
+    option<BoolExpr> simplify() const override;
 
 protected:
     void dnf(std::vector<Guard> &res) const override;
-    std::pair<option<BoolExpr>, Subs> propagateEqualities(const VarSet &eliminate, VarMap<ExprSet> &lb, VarMap<ExprSet> &ub) const override;
-    option<BoolExpr> evaluateTriv() const override;
 
 };
 
@@ -176,7 +173,7 @@ public:
     VarSet freeVars() const;
     std::string toRedlog() const;
     std::pair<QuantifiedFormula, Subs> normalizeVariables(VariableManager &varMan) const;
-    option<QuantifiedFormula> simplify(const VarSet &eliminate) const;
+    option<QuantifiedFormula> simplify() const;
     bool isTiviallyTrue() const;
     bool isTiviallyFalse() const;
     friend std::ostream& operator<<(std::ostream &s, const QuantifiedFormula f);

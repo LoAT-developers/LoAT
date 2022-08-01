@@ -45,7 +45,7 @@ void Redlog::exit() {
 
 option<Qelim::Result> Redlog::qe(const QuantifiedFormula &qf) {
     Proof proof;
-    const auto simplified = qf.simplify({});
+    const auto simplified = qf.simplify();
     const auto e = simplified ? *simplified : qf;
     const auto p = e.normalizeVariables(varMan);
     const QuantifiedFormula normalized = p.first;
@@ -70,7 +70,7 @@ option<Qelim::Result> Redlog::qe(const QuantifiedFormula &qf) {
                 BoolExpr res = RedlogParseVisitor::parse(str, varMan);
                 RedAns_delete(output);
                 proof.append("QE via Redlog");
-                const auto simplified = res->simplify({});
+                const auto simplified = res->simplify();
                 const auto e = simplified ? * simplified : res;
                 return Result(e->subs(denormalization), proof, false);
             } catch (const RedlogParseVisitor::ParseError &e) {

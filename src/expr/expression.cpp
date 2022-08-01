@@ -355,15 +355,6 @@ int Expr::ldegree(const Var &var) const {
     return ex.ldegree(var);
 }
 
-Expr Expr::constant() const {
-    const VarSet xs = vars();
-    Subs s;
-    for (const Var &x: xs) {
-        s.put(x, 0);
-    }
-    return subs(s);
-}
-
 Expr Expr::coeff(const Var &var, int degree) const {
     return ex.coeff(var, degree);
 }
