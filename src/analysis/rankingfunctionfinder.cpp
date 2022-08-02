@@ -10,7 +10,7 @@ void RankingFunctionFinder::run(ITSProblem &its) {
         for (auto idx: its.getSimpleLoopsAt(loc)) {
             Proof preProof;
             auto rule = its.getRule(idx);
-            const option<Rule> newRule = Preprocess::preprocessRule(its, rule);
+            const Result<Rule> newRule = Preprocess::preprocessRule(its, rule);
             if (newRule) {
                 preProof.ruleTransformationProof(rule, "preprocessing", newRule.get(), its);
                 rule = newRule.get();

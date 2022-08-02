@@ -19,7 +19,8 @@
 #define PREPROCESS_H
 
 #include "../its/rule.hpp"
-#include "../its/variablemanager.hpp"
+#include "../its/itsproblem.hpp"
+#include "../util/result.hpp"
 
 
 /**
@@ -34,12 +35,12 @@ namespace Preprocess
      * @param rule The rule to be simplified, is modified.
      * @returns true iff rule was modified
      */
-    option<Rule> preprocessRule(VarMan &varMan, const Rule &rule);
+    Result<Rule> preprocessRule(ITSProblem &its, const Rule &rule);
 
     /**
      * A simpler/cheaper version of preprocessRule without any smt queries.
      */
-    option<Rule> simplifyRule(VarMan &varMan, const Rule &rule, bool fast);
+    Result<Rule> simplifyRule(ITSProblem &its, const Rule &rule, bool fast);
 
     /**
      * Simplifies the guard by dropping trivial constraints and constraints
@@ -70,7 +71,7 @@ namespace Preprocess
      * @param rule the rule, modified
      * @return true iff rule was modified
      */
-    option<Rule> eliminateTempVars(VarMan &varMan, const Rule &rule, bool fast);
+    Result<Rule> eliminateTempVars(ITSProblem &its, const Rule &rule, bool fast);
 }
 
 #endif // PREPROCESS_H

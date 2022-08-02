@@ -10,11 +10,12 @@ void RecurrentSetFinder::run(ITSProblem &its) {
     for (auto loc: its.getLocations()) {
         for (auto idx: its.getSimpleLoopsAt(loc)) {
             Proof preProof;
-            auto rule = its.getRule(idx);
-            const option<Rule> newRule = Preprocess::preprocessRule(its, rule);
+            Rule rule = its.getRule(idx);
+            const Result<Rule> newRule = Preprocess::preprocessRule(its, rule);
             if (newRule) {
                 preProof.ruleTransformationProof(rule, "preprocessing", newRule.get(), its);
-                rule = newRule.get();
+                preProof.storeSubProof(newRule.getProof(), "preprocessing");
+                rule = *newRule;
             }
             AccelerationProblem ap = AccelerationProblem::initForRecurrentSet(rule.toLinear(), its);
             auto accelRes = ap.computeRes();

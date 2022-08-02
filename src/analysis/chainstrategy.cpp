@@ -353,10 +353,11 @@ option<Proof> Chaining::chainAcceleratedRules(ITSProblem &its, const set<TransId
                 if (optRule) {
                     // Simplify the rule (can help to eliminate temporary variables of the metering function)
                     proof.chainingProof(incomingRule, accelRule, optRule.get(), its);
-                    option<Rule> simplified = Preprocess::simplifyRule(its, optRule.get(), true);
+                    Result<Rule> simplified = Preprocess::simplifyRule(its, optRule.get(), true);
                     Rule newRule = simplified ? simplified.get() : optRule.get();
                     if (simplified) {
                         proof.ruleTransformationProof(optRule.get(), "simplification", newRule, its);
+                        proof.storeSubProof(simplified.getProof(), "simplification");
                     }
 
                     // Add the chained rule

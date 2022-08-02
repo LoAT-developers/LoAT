@@ -25,72 +25,49 @@
 using namespace std;
 
 
-option<Rule> Preprocess::preprocessRule(VarMan &varMan, const Rule &rule) {
-    bool result = false;
-    Rule oldRule = rule;
+Result<Rule> Preprocess::preprocessRule(ITSProblem &its, const Rule &rule) {
+    Result<Rule> oldRule(rule);
     option<Rule> newRule;
 
     // The other steps are repeated (might not help very often, but is probably cheap enough)
     bool changed = false;
     do {
         changed = false;
-        newRule = eliminateTempVars(varMan, oldRule, true);
+        Result<Rule> elim = eliminateTempVars(its, *oldRule, true);
+        changed = changed || elim;
+        oldRule.concat(elim);
+
+        newRule = removeTrivialUpdates(*oldRule);
         if (newRule) {
             changed = true;
-            oldRule = newRule.get();
+            oldRule = *newRule;
         }
-
-        newRule = removeTrivialUpdates(oldRule);
-        if (newRule) {
-            changed = true;
-            oldRule = newRule.get();
-        }
-
-        result = result || changed;
     } while (changed);
 
-    newRule = simplifyGuard(oldRule, varMan);
+    newRule = simplifyGuard(*oldRule, its);
     if (newRule) {
-        result = true;
-        oldRule = newRule.get();
+        oldRule = *newRule;
     }
-
-    if (result) {
-        return {oldRule};
-    } else {
-        return {};
-    }
+    return oldRule;
 }
 
-
-option<Rule> Preprocess::simplifyRule(VarMan &varMan, const Rule &rule, bool fast) {
-    bool changed = false;
-    Rule oldRule = rule;
+Result<Rule> Preprocess::simplifyRule(ITSProblem &its, const Rule &rule, bool fast) {
+    Result<Rule> oldRule = rule;
     option<Rule> newRule;
 
-    newRule = eliminateTempVars(varMan, oldRule, fast);
+    oldRule.concat(eliminateTempVars(its, *oldRule, fast));
+
+    newRule = simplifyGuard(*oldRule, its);
     if (newRule) {
-        changed = true;
-        oldRule = newRule.get();
+        oldRule = *newRule;
     }
 
-    newRule = simplifyGuard(oldRule, varMan);
+    newRule = removeTrivialUpdates(*oldRule);
     if (newRule) {
-        changed = true;
-        oldRule = newRule.get();
+        oldRule = *newRule;
     }
 
-    newRule = removeTrivialUpdates(oldRule);
-    if (newRule) {
-        changed = true;
-        oldRule = newRule.get();
-    }
-
-    if (changed) {
-        return {oldRule};
-    } else {
-        return {};
-    }
+    return oldRule;
 }
 
 
@@ -150,69 +127,56 @@ static VarSet collectVarsInUpdateRhs(const Rule &rule) {
 }
 
 
-option<Rule> Preprocess::eliminateTempVars(VarMan &varMan, const Rule &rule, bool fast) {
-    bool changed = false;
-    Rule oldRule = rule;
+Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bool fast) {
+    Result<Rule> oldRule(rule);
     option<Rule> newRule;
 
     //declare helper lambdas to filter variables, to be passed as arguments
     auto isTemp = [&](const Var &sym) {
-        return varMan.isTempVar(sym);
+        return its.isTempVar(sym);
     };
     auto isTempInUpdate = [&](const Var &sym) {
-        VarSet varsInUpdate = collectVarsInUpdateRhs(oldRule);
+        VarSet varsInUpdate = collectVarsInUpdateRhs(*oldRule);
         return isTemp(sym) && varsInUpdate.count(sym) > 0;
     };
     auto isTempOnlyInGuard = [&](const Var &sym) {
-        VarSet varsInUpdate = collectVarsInUpdateRhs(oldRule);
+        VarSet varsInUpdate = collectVarsInUpdateRhs(*oldRule);
         return isTemp(sym) && varsInUpdate.count(sym) == 0 && !rule.getCost().has(sym);
     };
 
     //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
-    newRule = GuardToolbox::makeEqualities(oldRule);
+    newRule = GuardToolbox::makeEqualities(*oldRule);
     if (newRule) {
-        oldRule = newRule.get();
+        oldRule.set(*newRule, false);
     }
 
     //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
-    newRule = GuardToolbox::propagateEqualities(varMan, oldRule, GuardToolbox::ResultMapsToInt, isTempInUpdate);
+    newRule = GuardToolbox::propagateEqualities(its, *oldRule, GuardToolbox::ResultMapsToInt, isTempInUpdate);
     if (newRule) {
-        oldRule = newRule.get();
-        changed = true;
+        oldRule = *newRule;
     }
 
     //try to remove all remaining temp variables (we do 2 steps to priorizie removing vars from the update)
-    newRule = GuardToolbox::propagateEqualities(varMan, oldRule, GuardToolbox::ResultMapsToInt, isTemp);
+    newRule = GuardToolbox::propagateEqualities(its, *oldRule, GuardToolbox::ResultMapsToInt, isTemp);
     if (newRule) {
-        oldRule = newRule.get();
-        changed = true;
+        oldRule = *newRule;
     }
 
-    if (!fast && !oldRule.getGuard()->isConjunction()) {
-        newRule = GuardToolbox::propagateEqualitiesBySmt(oldRule, varMan);
-        if (newRule) {
-            oldRule = newRule.get();
-            changed = true;
-        }
+    if (!fast && !oldRule->getGuard()->isConjunction()) {
+        oldRule.concat(GuardToolbox::propagateEqualitiesBySmt(*oldRule, its));
     }
 
-    option<BoolExpr> newGuard = oldRule.getGuard()->simplify();
+    option<BoolExpr> newGuard = oldRule->getGuard()->simplify();
     if (newGuard) {
-        oldRule = oldRule.withGuard(newGuard.get());
-        changed = true;
+        oldRule = oldRule->withGuard(newGuard.get());
     }
 
     //now eliminate a <= x and replace a <= x, x <= b by a <= b for all free variables x where this is sound
     //(not sound if x appears in update or cost, since we then need the value of x)
-    newRule = GuardToolbox::eliminateByTransitiveClosure(oldRule, true, isTempOnlyInGuard);
+    newRule = GuardToolbox::eliminateByTransitiveClosure(*oldRule, true, isTempOnlyInGuard);
     if (newRule) {
-        oldRule = newRule.get();
-        changed = true;
+        oldRule = *newRule;
     }
 
-    if (changed) {
-        return {oldRule};
-    } else {
-        return {};
-    }
+    return oldRule;
 }

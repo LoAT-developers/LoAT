@@ -36,7 +36,6 @@
 #include <numeric>
 #include "../smt/z3/z3.hpp"
 
-
 using namespace std;
 
 Accelerator::Accelerator(ITSProblem &its, LocationIdx loc, std::set<TransIdx> &resultingRules)
@@ -70,7 +69,7 @@ bool Accelerator::simplifySimpleLoops() {
     if (Config::Accel::SimplifyRulesBefore) {
         for (auto it = loops.begin(), end = loops.end(); it != end; ++it) {
             const Rule rule = its.getRule(*it);
-            option<Rule> simplified = Preprocess::simplifyRule(its, rule, false);
+            Result<Rule> simplified = Preprocess::simplifyRule(its, rule, false);
             if (simplified) {
                 this->proof.ruleTransformationProof(rule, "simplification", simplified.get(), its);
                 std::vector<TransIdx> newIdx = its.replaceRules({*it}, {simplified.get()});
@@ -110,7 +109,7 @@ void Accelerator::nestRules(const NestingCandidate &fst, const NestingCandidate 
     auto optNested = Chaining::chainRules(its, first, second);
     if (optNested) {
         // Simplify the rule again (chaining can introduce many useless constraints)
-        option<Rule> simplified = Preprocess::simplifyRule(its, optNested.get(), true);
+        Result<Rule> simplified = Preprocess::simplifyRule(its, optNested.get(), true);
         LinearRule nestedRule = simplified ? simplified.get().toLinear() : optNested.get();
 
         // Note that we do not try all heuristics or backward accel to keep nesting efficient

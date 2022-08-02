@@ -268,43 +268,41 @@ option<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
     return {rule.withGuard(rule.getGuard() & buildAnd(res))};
 }
 
-option<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, VariableManager &varMan) {
+Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem &its) {
+    Result<Rule> res(rule);
     if (!rule.getGuard()->isLinear()) {
-        return {};
+        return res;
     }
     VarSet tempVars = rule.getGuard()->vars();
     for (auto it = tempVars.begin(); it != tempVars.end();) {
-        if (varMan.isTempVar(*it)) {
+        if (its.isTempVar(*it)) {
             ++it;
         } else {
             it = tempVars.erase(it);
         }
     }
     if (tempVars.size() > 10) {
-        return {};
+        return res;
     }
 
     Templates templates;
-    std::unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::QF_NA, varMan, Config::Smt::SimpTimeout);
-    bool changed = false;
-    Rule res = rule;
+    std::unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::QF_NA, its, Config::Smt::SimpTimeout);
     for (const Var &x: tempVars) {
         solver->resetSolver();
         VarSet relevantVars = util::RelevantVariables::find({x}, std::vector<Subs>(), rule.getGuard());
         relevantVars.erase(x);
-        Templates::Template t = templates.buildTemplate(relevantVars, varMan);
+        Templates::Template t = templates.buildTemplate(relevantVars, its);
         relevantVars.insert(x);
-        const BoolExpr e = FarkasLemma::apply(rule.getGuard(), {Rel::buildEq(t.t, x)}, relevantVars, t.params, varMan);
+        const BoolExpr e = FarkasLemma::apply(rule.getGuard(), {Rel::buildEq(t.t, x)}, relevantVars, t.params, its);
         solver->add(e);
         if (solver->check() == Smt::Sat) {
             const Subs &m = solver->model().toSubs().project(t.params);
-            changed = true;
-            res = res.subs({x, t.t.subs(m)});
+            const Rule newRule = res.get().subs({x, t.t.subs(m)});
+            std::stringstream s;
+            s << "propagated equalities via SMT: " << m;
+            res.ruleTransformationProof(res.get(), s.str(), newRule, its);
+            res.set(newRule);
         }
     }
-    if (changed) {
-        return {res};
-    } else {
-        return {};
-    }
+    return res;
 }

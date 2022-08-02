@@ -127,6 +127,7 @@ add_executable(${EXECUTABLE}
         src/util/templates.hpp
         src/util/relevantvariables.cpp
         src/util/relevantvariables.hpp
+        src/util/result.hpp
         src/config.cpp
         src/config.hpp
         src/main.cpp

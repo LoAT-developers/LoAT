@@ -1,5 +1,5 @@
-#ifndef RESULT_HPP
-#define RESULT_HPP
+#ifndef ACCELERATION_RESULT_HPP
+#define ACCELERATION_RESULT_HPP
 
 #include "../util/status.hpp"
 #include "../util/proof.hpp"
@@ -15,4 +15,4 @@ struct Result {
 
 }
 
-#endif // RESULT_HPP
+#endif // ACCELERATION_RESULT_HPP

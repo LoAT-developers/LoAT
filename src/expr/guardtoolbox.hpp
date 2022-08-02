@@ -21,12 +21,10 @@
 #include "expression.hpp"
 #include "../its/variablemanager.hpp"
 #include "../util/option.hpp"
+#include "../util/result.hpp"
 
 #include <vector>
 #include <map>
-
-class Rule;
-
 
 /**
  * Namespace for several functions operating on guards (list of relational expressions) and related helpers.
@@ -109,7 +107,7 @@ namespace GuardToolbox {
      */
     option<Rule> makeEqualities(const Rule &rule);
 
-    option<Rule> propagateEqualitiesBySmt(const Rule &rule, VariableManager &varMan);
+    Result<Rule> propagateEqualitiesBySmt(const Rule &rule, ITSProblem &its);
 
 
     /**
