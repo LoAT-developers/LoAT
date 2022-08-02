@@ -44,8 +44,6 @@ public:
 
     static void setProofLevel(unsigned int proofLevel);
 
-    Proof();
-
     void append(const std::string &s);
 
     void append(const std::ostream &s);
@@ -66,7 +64,7 @@ public:
 
     void result(const std::ostream &s);
 
-    void print() const;
+    void print(unsigned level = 1) const;
 
     void ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule, const ITSProblem &its);
 
@@ -95,8 +93,6 @@ private:
     using ProofStep = std::pair<Style, std::string>;
 
     std::vector<std::variant<ProofStep, Proof>> proof;
-
-    unsigned level;
 
 };
 

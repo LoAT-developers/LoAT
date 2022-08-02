@@ -8,27 +8,32 @@ unsigned int Proof::defaultProofLevel = 1;
 unsigned int Proof::maxProofLevel = 2;
 unsigned int Proof::proofLevel = defaultProofLevel;
 
-Proof::Proof(): level(1) {}
-
-void Proof::print() const {
-    for (const auto &l: proof) {
-        if (std::holds_alternative<ProofStep>(l)) {
-            ProofStep ps = std::get<ProofStep>(l);
-            if (Config::Output::Colors) {
-                switch (ps.first) {
-                case None: std::cout << Config::Color::None;
-                    break;
-                case Result: std::cout << Config::Color::Result;
-                    break;
-                case Section: std::cout << Config::Color::Section;
-                    break;
-                case Headline: std::cout << Config::Color::Headline;
-                    break;
+void Proof::print(unsigned level) const {
+    if (level <= proofLevel) {
+        std::stringstream indentBuilder;
+        for (unsigned i = 0; i < level - 1; ++i) {
+            indentBuilder << "\t";
+        }
+        std::string indent = indentBuilder.str();
+        for (const auto &l: proof) {
+            if (std::holds_alternative<ProofStep>(l)) {
+                ProofStep ps = std::get<ProofStep>(l);
+                if (Config::Output::Colors) {
+                    switch (ps.first) {
+                    case None: std::cout << Config::Color::None;
+                        break;
+                    case Result: std::cout << Config::Color::Result;
+                        break;
+                    case Section: std::cout << Config::Color::Section;
+                        break;
+                    case Headline: std::cout << Config::Color::Headline;
+                        break;
+                    }
                 }
+                std::cout << indent << ps.second << std::endl;
+            } else {
+                std::get<Proof>(l).print(level + 1);
             }
-            std::cout << ps.second << std::endl;
-        } else {
-            std::get<Proof>(l).print();
         }
     }
 }
@@ -44,7 +49,7 @@ void Proof::append(const std::ostream &s) {
 }
 
 void Proof::append(const Style &style, std::string s) {
-    if (proofLevel >= level) {
+    if (proofLevel > 0) {
         std::vector<std::string> lines;
         boost::split(lines, s, boost::is_any_of("\n"));
         for (const std::string &l: lines) {
@@ -95,7 +100,7 @@ void Proof::setProofLevel(unsigned int proofLevel) {
 }
 
 void Proof::concat(const Proof &that) {
-    if (proofLevel >= level) {
+    if (proofLevel > 0) {
         proof.insert(proof.end(), that.proof.begin(), that.proof.end());
     }
 }
@@ -149,9 +154,8 @@ void Proof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule,
 }
 
 void Proof::storeSubProof(Proof subProof, const std::string &technique) {
-    if (proofLevel > level) {
+    if (proofLevel > 1) {
         append("Sub-proof via " + technique + ":");
-        subProof.level = level + 1;
         proof.push_back(subProof);
     }
 }
