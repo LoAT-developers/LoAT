@@ -52,28 +52,36 @@ option<unsigned int> NontermProblem::store(const Rel &rel, const RelSet &deps, c
     return res[rel].size() - 1;
 }
 
-option<NontermProblem::Entry> NontermProblem::depsWellFounded(const Rel& rel, RelSet seen) const {
-    if (seen.find(rel) != seen.end()) {
-        return {};
+bool NontermProblem::depsWellFounded(const Rel& rel) const {
+    RelMap<const NontermProblem::Entry*> entryMap;
+    return depsWellFounded(rel, entryMap);
+}
+
+bool NontermProblem::depsWellFounded(const Rel& rel, RelMap<const NontermProblem::Entry*> &entryMap, RelSet seen) const {
+    if (entryMap.find(rel) != entryMap.end()) {
+        return true;
+    } else if (seen.find(rel) != seen.end()) {
+        return false;
     }
     seen.insert(rel);
     const auto& it = res.find(rel);
     if (it == res.end()) {
-        return {};
+        return false;
     }
     for (const Entry& e: it->second) {
         bool success = true;
         for (const auto& dep: e.dependencies) {
-            if (!depsWellFounded(dep, seen)) {
+            if (!depsWellFounded(dep, entryMap, seen)) {
                 success = false;
                 break;
             }
         }
         if (success) {
-            return {e};
+            entryMap[it->first] = &e;
+            return true;
         }
     }
-    return {};
+    return false;
 }
 
 bool NontermProblem::recurrence(const Rel &rel) {
@@ -201,12 +209,10 @@ bool NontermProblem::fixpoint(const Rel &rel) {
 NontermProblem::ReplacementMap NontermProblem::computeReplacementMap() const {
     ReplacementMap res;
     res.exact = guard->isConjunction();
-    RelMap<Entry> entryMap;
+    RelMap<const Entry*> entryMap;
     for (const Rel& rel: todo) {
-        option<Entry> e = depsWellFounded(rel);
-        if (e) {
-            entryMap[rel] = e.get();
-            res.exact &= e->exact;
+        if (depsWellFounded(rel, entryMap)) {
+            res.exact &= entryMap[rel]->exact;
         } else {
             res.map[rel] = False;
             res.exact = false;
@@ -219,9 +225,9 @@ NontermProblem::ReplacementMap NontermProblem::computeReplacementMap() const {
             changed = false;
             for (auto e: entryMap) {
                 if (res.map.find(e.first) != res.map.end()) continue;
-                BoolExpr closure = e.second.formula;
+                BoolExpr closure = e.second->formula;
                 bool ready = true;
-                for (auto dep: e.second.dependencies) {
+                for (auto dep: e.second->dependencies) {
                     if (res.map.find(dep) == res.map.end()) {
                         ready = false;
                         break;
@@ -237,7 +243,7 @@ NontermProblem::ReplacementMap NontermProblem::computeReplacementMap() const {
         } while (changed);
     } else {
         for (auto e: entryMap) {
-            res.map[e.first] = e.second.formula;
+            res.map[e.first] = e.second->formula;
         }
     }
     return res;
@@ -253,6 +259,11 @@ option<NontermProblem::Result> NontermProblem::computeRes() {
         if (!res && isConjunction) return {};
     }
     ReplacementMap map = computeReplacementMap();
+    std::stringstream s;
+    proof.newline();
+    s << "replacement map: " << map.map;
+    proof.append(s.str());
+    proof.newline();
     BoolExpr newGuard = guard->replaceRels(map.map);
     if (Smt::check(newGuard, varMan) == Smt::Sat) {
         return Result(newGuard, map.exact);

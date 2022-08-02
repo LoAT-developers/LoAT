@@ -99,4 +99,17 @@ Rel operator>=(const Var &x, const Expr &y);
 Rel operator>=(const Expr &x, const Var &y);
 Rel operator>=(const Var &x, const Var &y);
 
+template<class T>
+std::ostream& operator<<(std::ostream &s, const RelMap<T> &map) {
+    s << "{";
+    for (auto it = map.begin(); it != map.end(); ++it) {
+        if (it != map.begin()) {
+            s << ", ";
+        }
+        s << it->first << " -> " << it->second;
+    }
+    s << "}";
+    return s;
+}
+
 #endif // REL_HPP

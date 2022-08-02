@@ -67,7 +67,8 @@ public:
 
 private:
 
-    option<Entry> depsWellFounded(const Rel& rel, RelSet seen = {}) const;
+    bool depsWellFounded(const Rel& rel) const;
+    bool depsWellFounded(const Rel& rel, RelMap<const NontermProblem::Entry*> &entryMap, RelSet seen = {}) const;
 
 };
 

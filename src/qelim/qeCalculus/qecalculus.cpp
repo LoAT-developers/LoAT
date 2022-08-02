@@ -43,28 +43,36 @@ RelSet QeProblem::findConsistentSubset(BoolExpr e, const Var &var) const {
     return res;
 }
 
-option<QeProblem::Entry> QeProblem::depsWellFounded(const Rel& rel, RelSet seen) const {
-    if (seen.find(rel) != seen.end()) {
-        return {};
+bool QeProblem::depsWellFounded(const Rel& rel) const {
+    RelMap<const QeProblem::Entry*> entryMap;
+    return depsWellFounded(rel, entryMap);
+}
+
+bool QeProblem::depsWellFounded(const Rel& rel, RelMap<const QeProblem::Entry*> &entryMap, RelSet seen) const {
+    if (entryMap.find(rel) != entryMap.end()) {
+        return true;
+    } else if (seen.find(rel) != seen.end()) {
+        return false;
     }
     seen.insert(rel);
     const auto& it = res.find(rel);
     if (it == res.end()) {
-        return {};
+        return false;
     }
     for (const Entry& e: it->second) {
         bool success = true;
         for (const auto& dep: e.dependencies) {
-            if (!depsWellFounded(dep, seen)) {
+            if (!depsWellFounded(dep, entryMap, seen)) {
                 success = false;
                 break;
             }
         }
         if (success) {
-            return {e};
+            entryMap[it->first] = &e;
+            return true;
         }
     }
-    return {};
+    return false;
 }
 
 option<unsigned int> QeProblem::store(const Rel &rel, const RelSet &deps, const BoolExpr formula, bool exact) {
@@ -341,12 +349,10 @@ bool QeProblem::fixpoint(const Rel &rel, const Var& n) {
 QeProblem::ReplacementMap QeProblem::computeReplacementMap() const {
     ReplacementMap res;
     res.exact = formula->isConjunction();
-    RelMap<Entry> entryMap;
+    RelMap<const Entry*> entryMap;
     for (const Rel& rel: formula->getMatrix()->lits()) {
-        option<Entry> e = depsWellFounded(rel);
-        if (e) {
-            entryMap[rel] = e.get();
-            res.exact &= e->exact;
+        if (depsWellFounded(rel, entryMap)) {
+            res.exact &= entryMap[rel]->exact;
         } else {
             res.map[rel] = False;
             res.exact = false;
@@ -359,9 +365,9 @@ QeProblem::ReplacementMap QeProblem::computeReplacementMap() const {
             changed = false;
             for (auto e: entryMap) {
                 if (res.map.find(e.first) != res.map.end()) continue;
-                BoolExpr closure = e.second.formula;
+                BoolExpr closure = e.second->formula;
                 bool ready = true;
-                for (auto dep: e.second.dependencies) {
+                for (auto dep: e.second->dependencies) {
                     if (res.map.find(dep) == res.map.end()) {
                         ready = false;
                         break;
@@ -377,7 +383,7 @@ QeProblem::ReplacementMap QeProblem::computeReplacementMap() const {
         } while (changed);
     } else {
         for (auto e: entryMap) {
-            res.map[e.first] = e.second.formula;
+            res.map[e.first] = e.second->formula;
         }
     }
     return res;

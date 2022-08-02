@@ -44,7 +44,8 @@ private:
     ReplacementMap computeReplacementMap() const;
     Quantifier getQuantifier() const;
 
-    option<Entry> depsWellFounded(const Rel& rel, RelSet seen = {}) const;
+    bool depsWellFounded(const Rel& rel) const;
+    bool depsWellFounded(const Rel& rel, RelMap<const QeProblem::Entry*> &entryMap, RelSet seen = {}) const;
 
 public:
 
