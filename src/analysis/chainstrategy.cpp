@@ -77,10 +77,11 @@ static Proof eliminateLocationByChaining(ITSProblem &its, LocationIdx loc,
                 Rule newRule = optRule.get();
                 proof.chainingProof(inRule, outRule, newRule, its);
 
-                option<Rule> simplified = Preprocess::simplifyGuard(newRule, its);
+                Result<Rule> simplified = Preprocess::simplifyGuard(newRule, its);
                 if (simplified) {
-                    proof.ruleTransformationProof(newRule, "simplification", simplified.get(), its);
-                    newRule = simplified.get();
+                    proof.ruleTransformationProof(newRule, "simplification", *simplified, its);
+                    proof.storeSubProof(simplified.getProof(), "simplification");
+                    newRule = *simplified;
                 }
 
                 its.addRule(newRule);

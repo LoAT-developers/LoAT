@@ -52,7 +52,7 @@ void Merger::merge(LocationIdx from, LocationIdx to) {
                 } while (!ruleARhss.empty() && !failed);
                 if (!failed) {
                     Rule newRule = ruleA.withGuard(ruleA.getGuard() | ruleB.getGuard());
-                    option<Rule> simplified = Preprocess::simplifyGuard(newRule, its);
+                    Result<Rule> simplified = Preprocess::simplifyGuard(newRule, its);
                     changed = true;
                     proof.section("Applied merging");
                     std::stringstream ss;

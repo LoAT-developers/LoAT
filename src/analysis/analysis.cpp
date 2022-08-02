@@ -475,14 +475,10 @@ void Analysis::getMaxRuntimeOf(const set<TransIdx> &rules, RuntimeResult &res) {
             proof.section(stringstream() << "Computing asymptotic complexity for rule " << ruleIdx);
 
             // Simplify guard to speed up asymptotic check
-            option<Rule> simplifiedRule;
-            option<Rule> tmp = {rule};
-            tmp = Preprocess::simplifyGuard(tmp.get(), its);
-            if (tmp) {
-                simplifiedRule = tmp;
-            }
+            Result<Rule> simplifiedRule = Preprocess::simplifyGuard(rule, its);
             if (simplifiedRule) {
                 proof.ruleTransformationProof(rule, "simplification", simplifiedRule.get(), its);
+                proof.storeSubProof(simplifiedRule.getProof(), "simplification");
                 rule = simplifiedRule.get();
             }
 

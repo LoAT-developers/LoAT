@@ -12,7 +12,7 @@ Proof proof;
 T res;
 
 public:
-    Result(const T &t): success(false), res(t) {}
+    Result(const T &t, bool success = false): success(success), res(t) {}
 
     void operator=(const T &t) {
         set(t);

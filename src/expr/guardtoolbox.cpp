@@ -230,7 +230,8 @@ abort:  ; //this symbol could not be eliminated, try the next one
 }
 
 
-option<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
+Result<Rule> GuardToolbox::makeEqualities(const Rule &rule, const ITSProblem &its) {
+    Result<Rule> res(rule);
     const RelSet &guard = rule.getGuard()->universallyValidLits();
     vector<pair<Rel,Expr>> terms; //inequalities from the guard, with the associated index in guard
     map<Rel,pair<Rel,Expr>> matches; //maps index in guard to a second index in guard, which can be replaced by Expression
@@ -248,12 +249,12 @@ option<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
         terms.push_back(make_pair(rel,term));
     }
 
-    if (matches.empty()) return {};
+    if (matches.empty()) return res;
 
     // Construct the new guard by keeping unmatched constraint
     // and replacing matched pairs by an equality constraint.
     // This code below mostly retains the order of the constraints.
-    Guard res;
+    Guard equalities;
     set<Rel> ignore;
     for (const Rel &rel: guard) {
         //ignore multiple equalities as well as the original second inequality
@@ -261,11 +262,16 @@ option<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
 
         auto it = matches.find(rel);
         if (it != matches.end()) {
-            res.push_back(Rel::buildEq(it->second.second, 0));
+            equalities.push_back(Rel::buildEq(it->second.second, 0));
             ignore.insert(it->second.first);
         }
     }
-    return {rule.withGuard(rule.getGuard() & buildAnd(res))};
+    if (!equalities.empty()) {
+        const Rule newRule = rule.withGuard(rule.getGuard() & buildAnd(equalities));
+        res.set(newRule);
+        res.ruleTransformationProof(rule, "made implied equalities explicit", newRule, its);
+    }
+    return res;
 }
 
 Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem &its) {

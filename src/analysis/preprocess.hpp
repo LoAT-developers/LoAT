@@ -54,13 +54,13 @@ namespace Preprocess
      *
      * @return true iff the given guard was modified (some constraints were removed)
      */
-    option<Rule> simplifyGuard(const Rule &rule, const VariableManager &varMan);
+    Result<Rule> simplifyGuard(const Rule &rule, const ITSProblem &its);
 
     /**
      * Removes trivial updates of the form x <- x.
      * @return true iff update was modified
      */
-    option<Rule> removeTrivialUpdates(const Rule &rule);
+    Result<Rule> removeTrivialUpdates(const Rule &rule, const ITSProblem &its);
 
     bool removeTrivialUpdates(Subs &subs);
 

@@ -105,7 +105,7 @@ namespace GuardToolbox {
      * @note expensive for large guards
      * @return true iff guard was changed.
      */
-    option<Rule> makeEqualities(const Rule &rule);
+    Result<Rule> makeEqualities(const Rule &rule, const ITSProblem &its);
 
     Result<Rule> propagateEqualitiesBySmt(const Rule &rule, ITSProblem &its);
 
