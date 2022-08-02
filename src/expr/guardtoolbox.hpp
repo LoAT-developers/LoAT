@@ -64,7 +64,7 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    option<Rule> propagateEqualities(const VarMan &varMan, const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
+    Result<Rule> propagateEqualities(const ITSProblem &its, const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
 
 
     /**
@@ -80,7 +80,7 @@ namespace GuardToolbox {
      *
      * @return true if any changes have been made
      */
-    option<Rule> eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow);
+    Result<Rule> eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow, const ITSProblem &its);
 
     std::pair<option<Expr>, option<Expr>> getBoundFromIneq(const Rel &rel, const Var &N);
 

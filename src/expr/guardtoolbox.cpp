@@ -23,6 +23,8 @@
 #include "../util/templates.hpp"
 #include "../smt/smtfactory.hpp"
 
+#include <variant>
+
 using namespace std;
 
 
@@ -115,8 +117,9 @@ option<Expr> GuardToolbox::solveTermFor(Expr term, const Var &var, SolvingLevel 
 }
 
 
-option<Rule> GuardToolbox::propagateEqualities(const VarMan &varMan, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
+Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
     Subs varSubs;
+    Result<std::monostate> proof{std::monostate()};
     RelSet guard = rule.getGuard()->universallyValidLits();
 
     for (const auto &r: guard) {
@@ -144,11 +147,15 @@ option<Rule> GuardToolbox::propagateEqualities(const VarMan &varMan, const Rule 
 
                 //disallow replacing non-free vars by a term containing free vars
                 //could be unsound, as free vars can lead to unbounded complexity
-                if (!varMan.isTempVar(var) && containsTempVar(varMan, solved)) continue;
+                if (!its.isTempVar(var) && containsTempVar(its, solved)) continue;
 
                 //extend the substitution, use compose in case var occurs on some rhs of varSubs
                 varSubs.put(var, solved);
                 varSubs = varSubs.compose(varSubs);
+                stringstream s;
+                s << "propagated equality " << var << " = " << solved;
+                proof.append(s.str());
+                proof.newline();
                 goto next;
             }
         }
@@ -156,17 +163,20 @@ option<Rule> GuardToolbox::propagateEqualities(const VarMan &varMan, const Rule 
     }
 
     //apply substitution to the entire rule
-    if (varSubs.empty()) {
-        return {};
-    } else {
-        return {rule.subs(varSubs)};
+    Result<Rule> res(rule);
+    if (proof) {
+        res = rule.subs(varSubs);
+        res.ruleTransformationProof(rule, "propagated equalities", res.get(), its);
+        res.storeSubProof(proof.getProof(), "propagated equalities");
     }
+    return res;
 }
 
 
-option<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow) {
+Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow, const ITSProblem &its) {
+    Result<Rule> res(rule);
     if (!rule.getGuard()->isConjunction()) {
-        return {};
+        return res;
     }
     RelSet guard = rule.getGuard()->lits();
     //get all variables that appear in an inequality
@@ -223,10 +233,10 @@ option<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool r
 abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (changed) {
-        return {rule.withGuard(buildAnd(guard))};
-    } else {
-        return {};
+        res = rule.withGuard(buildAnd(guard));
+        res.ruleTransformationProof(rule, "eliminated temporary variables via transitive closure", *res, its);
     }
+    return res;
 }
 
 
@@ -306,7 +316,10 @@ Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem
             const Rule newRule = res.get().subs({x, t.t.subs(m)});
             std::stringstream s;
             s << "propagated equalities via SMT: " << m;
-            res.ruleTransformationProof(res.get(), s.str(), newRule, its);
+            Proof subProof;
+            subProof.append(s.str());
+            res.ruleTransformationProof(res.get(), "propagated equalities via SMT", newRule, its);
+            res.storeSubProof(subProof, "propagated equalities via SMT");
             res.set(newRule);
         }
     }

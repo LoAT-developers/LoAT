@@ -113,7 +113,6 @@ static VarSet collectVarsInUpdateRhs(const Rule &rule) {
 
 Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bool fast) {
     Result<Rule> res(rule);
-    option<Rule> newRule;
 
     //declare helper lambdas to filter variables, to be passed as arguments
     auto isTemp = [&](const Var &sym) {
@@ -133,16 +132,10 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
     res.fail(); // *just* finding implied equalities does not suffice for success
 
     //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
-    newRule = GuardToolbox::propagateEqualities(its, *res, GuardToolbox::ResultMapsToInt, isTempInUpdate);
-    if (newRule) {
-        res = *newRule;
-    }
+    res.concat(GuardToolbox::propagateEqualities(its, *res, GuardToolbox::ResultMapsToInt, isTempInUpdate));
 
     //try to remove all remaining temp variables (we do 2 steps to priorizie removing vars from the update)
-    newRule = GuardToolbox::propagateEqualities(its, *res, GuardToolbox::ResultMapsToInt, isTemp);
-    if (newRule) {
-        res = *newRule;
-    }
+    res.concat(GuardToolbox::propagateEqualities(its, *res, GuardToolbox::ResultMapsToInt, isTemp));
 
     if (!fast && !res->getGuard()->isConjunction()) {
         res.concat(GuardToolbox::propagateEqualitiesBySmt(*res, its));
@@ -150,15 +143,14 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
 
     option<BoolExpr> newGuard = res->getGuard()->simplify();
     if (newGuard) {
-        res = res->withGuard(newGuard.get());
+        const Rule newRule = res->withGuard(newGuard.get());
+        res.ruleTransformationProof(res.get(), "simplified guard", newRule, its);
+        res = newRule;
     }
 
     //now eliminate a <= x and replace a <= x, x <= b by a <= b for all free variables x where this is sound
     //(not sound if x appears in update or cost, since we then need the value of x)
-    newRule = GuardToolbox::eliminateByTransitiveClosure(*res, true, isTempOnlyInGuard);
-    if (newRule) {
-        res = *newRule;
-    }
+    res.concat(GuardToolbox::eliminateByTransitiveClosure(*res, true, isTempOnlyInGuard, its));
 
     return res;
 }
