@@ -156,6 +156,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
                 s << "propagated equality " << var << " = " << solved;
                 proof.append(s.str());
                 proof.newline();
+                proof.succeed();
                 goto next;
             }
         }
@@ -277,9 +278,8 @@ Result<Rule> GuardToolbox::makeEqualities(const Rule &rule, const ITSProblem &it
         }
     }
     if (!equalities.empty()) {
-        const Rule newRule = rule.withGuard(rule.getGuard() & buildAnd(equalities));
-        res.set(newRule);
-        res.ruleTransformationProof(rule, "made implied equalities explicit", newRule, its);
+        res.set(rule.withGuard(rule.getGuard() & buildAnd(equalities)));
+        res.ruleTransformationProof(rule, "made implied equalities explicit", *res, its);
     }
     return res;
 }

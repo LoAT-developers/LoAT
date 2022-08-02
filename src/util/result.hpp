@@ -123,6 +123,10 @@ public:
         success = false;
     }
 
+    void succeed() {
+        success = true;
+    }
+
     const T& operator*() const {
         return res;
     }
