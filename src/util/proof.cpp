@@ -8,22 +8,14 @@ unsigned int Proof::defaultProofLevel = 1;
 unsigned int Proof::maxProofLevel = 2;
 unsigned int Proof::proofLevel = defaultProofLevel;
 
-void Proof::writeToFile(const std::string &file) const {
-    if (proofLevel > 0) {
-        std::ofstream myfile;
-        myfile.open(file);
-        for (const auto &l: proof) {
-            myfile << l.second << std::endl;
-        }
-        myfile.close();
-    }
-}
+Proof::Proof(): level(1) {}
 
 void Proof::print() const {
-    if (proofLevel > 0) {
-        for (const auto &l: proof) {
+    for (const auto &l: proof) {
+        if (std::holds_alternative<ProofStep>(l)) {
+            ProofStep ps = std::get<ProofStep>(l);
             if (Config::Output::Colors) {
-                switch (l.first) {
+                switch (ps.first) {
                 case None: std::cout << Config::Color::None;
                     break;
                 case Result: std::cout << Config::Color::Result;
@@ -34,7 +26,9 @@ void Proof::print() const {
                     break;
                 }
             }
-            std::cout << l.second << std::endl;
+            std::cout << ps.second << std::endl;
+        } else {
+            std::get<Proof>(l).print();
         }
     }
 }
@@ -50,11 +44,11 @@ void Proof::append(const std::ostream &s) {
 }
 
 void Proof::append(const Style &style, std::string s) {
-    if (proofLevel > 0) {
+    if (proofLevel >= level) {
         std::vector<std::string> lines;
         boost::split(lines, s, boost::is_any_of("\n"));
         for (const std::string &l: lines) {
-            proof.push_back({style, l});
+            proof.push_back(ProofStep{style, l});
         }
     }
 }
@@ -101,7 +95,7 @@ void Proof::setProofLevel(unsigned int proofLevel) {
 }
 
 void Proof::concat(const Proof &that) {
-    if (proofLevel > 0) {
+    if (proofLevel >= level) {
         proof.insert(proof.end(), that.proof.begin(), that.proof.end());
     }
 }
@@ -154,13 +148,11 @@ void Proof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule,
     append(s);
 }
 
-void Proof::storeSubProof(const Proof &subProof, const std::string &technique) {
-    switch (proofLevel) {
-        case 2: {
-            append("Sub-proof via " + technique + ":");
-            concat(subProof);
-            break;
-        }
+void Proof::storeSubProof(Proof subProof, const std::string &technique) {
+    if (proofLevel > level) {
+        append("Sub-proof via " + technique + ":");
+        subProof.level = level + 1;
+        proof.push_back(subProof);
     }
 }
 

@@ -78,7 +78,7 @@ public:
         proof.deletionProof(rules);
     }
 
-    void storeSubProof(const Proof &subProof, const std::string &technique) {
+    void storeSubProof(Proof subProof, const std::string &technique) {
         proof.storeSubProof(subProof, technique);
     }
 

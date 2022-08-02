@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
+#include <variant>
 
 #include <boost/algorithm/string.hpp>
 
@@ -42,6 +43,8 @@ public:
     };
 
     static void setProofLevel(unsigned int proofLevel);
+
+    Proof();
 
     void append(const std::string &s);
 
@@ -73,7 +76,7 @@ public:
 
     void deletionProof(const std::set<TransIdx> &rules);
 
-    void storeSubProof(const Proof &subProof, const std::string &technique);
+    void storeSubProof(Proof subProof, const std::string &technique);
 
     void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule, const ITSProblem &its);
 
@@ -89,9 +92,11 @@ private:
 
     static unsigned int proofLevel;
 
-    std::vector<std::pair<Style, std::string>> proof;
+    using ProofStep = std::pair<Style, std::string>;
 
-    void writeToFile(const std::string &file) const;
+    std::vector<std::variant<ProofStep, Proof>> proof;
+
+    unsigned level;
 
 };
 

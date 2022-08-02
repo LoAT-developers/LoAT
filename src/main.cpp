@@ -44,7 +44,7 @@ void printHelp(char *arg0) {
     cout << "Usage: " << arg0 << " [options] <file>" << endl;
     cout << "Options:" << endl;
     cout << "  --timeout <sec>                                  Timeout (in seconds), minimum: 10" << endl;
-    cout << "  --proof-level <n>                                Detail level for proof output (0-" << Proof::maxProofLevel << ", default " << proofLevel << ")" << endl;
+    cout << "  --proof-level <n>                                Detail level for proof output" << endl;
     cout << "  --plain                                          Disable colored output" << endl;
     cout << "  --limit-strategy <smt|calculus|smtAndCalculus>   Strategy for limit problems" << endl;
     cout << "  --mode <complexity|non_termination>              Analysis mode" << endl;
@@ -147,8 +147,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (proofLevel < 0 || proofLevel > 3) {
-        cerr << "Error: proof level must be between 0 and 3" << endl;
+    if (proofLevel < 0) {
+        cerr << "Error: proof level must be non-negative" << endl;
         return 1;
     }
     Proof::setProofLevel(static_cast<unsigned int>(proofLevel));
