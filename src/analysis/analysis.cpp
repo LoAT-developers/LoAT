@@ -277,7 +277,7 @@ bool Analysis::ensureProperInitialLocation() {
 }
 
 
-option<Proof> Analysis::ensureNonnegativeCosts() {
+Proof Analysis::ensureNonnegativeCosts() {
     Proof proof;
     std::vector<TransIdx> del;
     std::vector<Rule> add;
@@ -293,10 +293,7 @@ option<Proof> Analysis::ensureNonnegativeCosts() {
         }
     }
     its.replaceRules(del, add);
-
-
-
-    return proof.empty() ? option<Proof>() : option<Proof>(proof);
+    return proof;
 }
 
 
@@ -314,7 +311,7 @@ bool Analysis::removeUnsatRules() {
 }
 
 
-option<Proof> Analysis::preprocessRules() {
+Proof Analysis::preprocessRules() {
     Proof proof;
     std::vector<TransIdx> del;
     std::vector<Rule> add;
@@ -330,7 +327,7 @@ option<Proof> Analysis::preprocessRules() {
         }
     }
     its.replaceRules(del, add);
-    return proof.empty() ? option<Proof>() : option<Proof>(proof);
+    return proof;
 }
 
 

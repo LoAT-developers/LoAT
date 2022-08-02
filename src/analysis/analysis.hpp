@@ -150,7 +150,7 @@ private:
      * @note Does not check if "cost >= 0" is implied by the guard (should be covered by preprocessing)
      * @return true iff any rule was modified.
      */
-    option<Proof> ensureNonnegativeCosts();
+    Proof ensureNonnegativeCosts();
 
     /**
      * Makes sure the initial location has no incoming rules (by adding a new one, if required).
@@ -171,7 +171,7 @@ private:
      * @param eliminateCostConstraints if true, "cost >= 0" is removed from the guard if it is implied by the guard
      * @return true iff the ITS was modified
      */
-    option<Proof> preprocessRules();
+    Proof preprocessRules();
 
     /**
      * Returns true iff all all rules start from the initial state.
