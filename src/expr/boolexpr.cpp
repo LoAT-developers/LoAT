@@ -36,16 +36,7 @@ QuantifiedFormula BoolExpression::quantify(const std::vector<Quantifier> &prefix
     return QuantifiedFormula(prefix, shared_from_this());
 }
 
-Rel normalizeLit(const Rel &lit) {
-    if (lit.isEq() || lit.isNeq()) {
-        return lit.makeRhsZero();
-    } else {
-        const Rel g = lit.isPoly() ? lit.toGt() : lit.toG();
-        return g.makeRhsZero();
-    }
-}
-
-BoolLit::BoolLit(const Rel &lit): lit(normalizeLit(lit)) {}
+BoolLit::BoolLit(const Rel &lit): lit(lit.makeRhsZero()) {}
 
 bool BoolLit::isAnd() const {
     return false;
