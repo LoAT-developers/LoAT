@@ -52,7 +52,6 @@ void Merger::merge(LocationIdx from, LocationIdx to) {
                 } while (!ruleARhss.empty() && !failed);
                 if (!failed) {
                     Rule newRule = ruleA.withGuard(ruleA.getGuard() | ruleB.getGuard());
-                    Result<Rule> simplified = Preprocess::simplifyGuard(newRule, its);
                     changed = true;
                     proof.section("Applied merging");
                     std::stringstream ss;
@@ -61,9 +60,9 @@ void Merger::merge(LocationIdx from, LocationIdx to) {
                     ss << "\nsecond rule:\n";
                     ITSExport::printRule(ruleB, its, ss);
                     ss << "\nnew rule:\n";
-                    ITSExport::printRule(simplified ? simplified.get() : newRule, its, ss);
+                    ITSExport::printRule(newRule, its, ss);
                     proof.append(ss);
-                    its.replaceRules({*it1, *it2}, {simplified ? simplified.get() : newRule});
+                    its.replaceRules({*it1, *it2}, {newRule});
                 }
             }
         }

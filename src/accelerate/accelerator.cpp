@@ -439,26 +439,6 @@ option<Proof> Accelerator::run() {
     // as it would most probably result in too many rules (and would thus be expensive).
     // It can easily be added in this place in the future, if desired.
 
-    // Simplify the guards of accelerated rules.
-    // Especially backward acceleration and nesting can introduce superfluous constraints.
-    bool changed = false;
-    std::set<TransIdx> toAdd;
-    for (auto it = resultingRules.begin(); it != resultingRules.end();) {
-        const Rule r = its.getRule(*it);
-        const BoolExpr simplified = Z3::simplify(r.getGuard(), its);
-        if (r.getGuard() != simplified) {
-            const Rule &newR = r.withGuard(simplified);
-            this->proof.ruleTransformationProof(r, "simplification", newR, its);
-            std::vector<TransIdx> newIdx = its.replaceRules({*it}, {newR});
-            toAdd.insert(newIdx.begin(), newIdx.end());
-            it = resultingRules.erase(it);
-        } else {
-            ++it;
-        }
-    }
-
-    resultingRules.insert(toAdd.begin(), toAdd.end());
-
     // Keep rules for which acceleration failed (maybe these rules are in fact not loops).
     // We add them to resultingRules so they are chained just like accelerated rules.
     for (TransIdx rule : keepRules) {
@@ -473,9 +453,6 @@ option<Proof> Accelerator::run() {
         its.removeOnlyLocation(sinkLoc);
     }
 
-    if (changed) {
-        this->proof.minorProofStep("Simplified guards", its);
-    }
     return {this->proof};
 }
 

@@ -22,8 +22,6 @@ public:
 
     std::ostream& print(std::ostream& os) const;
 
-    static BoolExpr simplify(const BoolExpr expr, const VariableManager &varMan, unsigned int timeout = Config::Smt::SimpTimeout);
-
     std::pair<Result, BoolExprSet> _unsatCore(const BoolExprSet &assumptions) override;
 
 private:

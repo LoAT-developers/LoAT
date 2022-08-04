@@ -109,22 +109,3 @@ void Z3::resetSolver() {
     updateParams();
 }
 
-BoolExpr Z3::simplify(const BoolExpr expr, const VariableManager &varMan, unsigned int timeout) {
-    z3::context z3Ctx;
-    Z3Context ctx(z3Ctx);
-    z3::tactic t(z3Ctx, "ctx-solver-simplify");
-    z3::solver s = t.mk_solver();
-    z3::params params(z3Ctx);
-    params.set(":timeout", timeout);
-    s.set(params);
-    const z3::expr converted = ExprToSmt<z3::expr>::convert(expr, ctx, varMan);
-    s.add(converted);
-    s.check();
-    std::vector<BoolExpr> simplified;
-    for (const z3::expr &e: s.assertions()) {
-        option<BoolExpr> simp = SmtToExpr<z3::expr>::convert(e, ctx);
-        if (!simp) return expr;
-        simplified.push_back(simp.get());
-    }
-    return buildAnd(simplified);
-}

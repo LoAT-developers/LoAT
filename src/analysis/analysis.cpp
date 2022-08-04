@@ -474,14 +474,6 @@ void Analysis::getMaxRuntimeOf(const set<TransIdx> &rules, RuntimeResult &res) {
 
             proof.section(stringstream() << "Computing asymptotic complexity for rule " << ruleIdx);
 
-            // Simplify guard to speed up asymptotic check
-            Result<Rule> simplifiedRule = Preprocess::simplifyGuard(rule, its);
-            if (simplifiedRule) {
-                proof.ruleTransformationProof(rule, "simplification", simplifiedRule.get(), its);
-                proof.storeSubProof(simplifiedRule.getProof(), "simplification");
-                rule = simplifiedRule.get();
-            }
-
             option<AsymptoticBound::Result> checkRes;
             bool isPolynomial = rule.getCost().isPoly() && !rule.getCost().isNontermSymbol() && rule.getGuard()->isPolynomial();
             unsigned int timeout = Timeout::soft() ? Config::Smt::LimitTimeoutFinalFast : Config::Smt::LimitTimeoutFinal;

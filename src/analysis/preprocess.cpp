@@ -37,30 +37,15 @@ Result<Rule> Preprocess::preprocessRule(ITSProblem &its, const Rule &rule) {
         changed = changed || tmp;
         res.concat(tmp);
     } while (changed);
-
-    res.concat(simplifyGuard(*res, its));
     return res;
 }
 
 Result<Rule> Preprocess::simplifyRule(ITSProblem &its, const Rule &rule, bool fast) {
     Result<Rule> res(rule);
     res.concat(eliminateTempVars(its, *res, fast));
-    res.concat(simplifyGuard(*res, its));
     res.concat(removeTrivialUpdates(*res, its));
     return res;
 }
-
-
-Result<Rule> Preprocess::simplifyGuard(const Rule &rule, const ITSProblem &its) {
-    Result<Rule> res(rule);
-    const BoolExpr newGuard = Z3::simplify(rule.getGuard(), its);
-    if (rule.getGuard() != newGuard) {
-        res.set(rule.withGuard(newGuard));
-        res.ruleTransformationProof(rule, "simplified guard with Z3", *res, its);
-    }
-    return res;
-}
-
 
 Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule, const ITSProblem &its) {
     bool changed = false;
