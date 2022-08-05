@@ -15,16 +15,12 @@ private:
     option<Subs> closed;
     Expr iteratedCost;
     Var n;
-    BoolExpr guard;
-    const Subs up;
-    const Expr cost;
+    LinearRule rule;
     unsigned int validityBound;
     ITSProblem &its;
 
     AccelerationProblem(
-            const BoolExpr &guard,
-            const Subs &up,
-            const Expr &cost,
+            const LinearRule &rule,
             option<const Subs&> closed,
             const Expr &iteratedCost,
             const Var &n,

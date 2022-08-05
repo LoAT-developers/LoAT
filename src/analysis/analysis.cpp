@@ -56,10 +56,10 @@ void Analysis::simplify(RuntimeResult &res, Proof &proof) {
     proof.majorProofStep("Initial ITS", its);
 
     if (Config::Analysis::complexity()) {
-        const option<Proof> &subProof = ensureNonnegativeCosts();
+        const ResultViaSideEffects subProof = ensureNonnegativeCosts();
         if (subProof) {
-            proof.concat(subProof.get());
             proof.minorProofStep("Ensure Cost >= 0", its);
+            proof.storeSubProof(subProof.getProof());
         }
     }
 
@@ -119,17 +119,19 @@ void Analysis::simplify(RuntimeResult &res, Proof &proof) {
                 proof.majorProofStep("Removed sinks", its);
             }
 
-            if (accelerateSimpleLoops(acceleratedRules, proof)) {
+            ResultViaSideEffects accelerationProof = accelerateSimpleLoops(acceleratedRules);
+            if (accelerationProof) {
                 changed = true;
                 acceleratedOnce = true;
                 proof.majorProofStep("Accelerated simple loops", its);
+                proof.storeSubProof(accelerationProof.getProof());
             }
 
-            option<Proof> acceleratedChainingProof = Chaining::chainAcceleratedRules(its, acceleratedRules);;
+            ResultViaSideEffects acceleratedChainingProof = Chaining::chainAcceleratedRules(its, acceleratedRules);;
             if (acceleratedChainingProof) {
                 changed = true;
-                proof.concat(acceleratedChainingProof.get());
                 proof.majorProofStep("Chained accelerated rules with incoming rules", its);
+                proof.storeSubProof(acceleratedChainingProof.getProof());
             }
 
             if (Pruning::removeLeafsAndUnreachable(its)) {
@@ -137,11 +139,11 @@ void Analysis::simplify(RuntimeResult &res, Proof &proof) {
                 proof.majorProofStep("Removed unreachable locations and irrelevant leafs", its);
             }
 
-            option<Proof> linearChainingProof = Chaining::chainLinearPaths(its);
+            ResultViaSideEffects linearChainingProof = Chaining::chainLinearPaths(its);
             if (linearChainingProof) {
                 changed = true;
-                proof.concat(linearChainingProof.get());
                 proof.majorProofStep("Eliminated locations on linear paths", its);
+                proof.storeSubProof(linearChainingProof.getProof());
             }
 
             // Check if the ITS is now linear (we accelerated all nonlinear rules)
@@ -156,13 +158,15 @@ void Analysis::simplify(RuntimeResult &res, Proof &proof) {
         }
 
         // Try more involved chaining strategies if we no longer make progress
-        option<Proof> treeChainingProof = Chaining::chainTreePaths(its);
+        ResultViaSideEffects treeChainingProof = Chaining::chainTreePaths(its);
         if (treeChainingProof) {
-            proof.concat(treeChainingProof.get());
             proof.majorProofStep("Eliminated locations on tree-shaped paths", its);
+            proof.storeSubProof(treeChainingProof.getProof());
 
-        } else if (eliminateALocation(eliminatedLocation)) {
+        } else {
+            ResultViaSideEffects eliminationProof = eliminateALocation(eliminatedLocation);
             proof.majorProofStep("Eliminated location " + eliminatedLocation, its);
+            proof.storeSubProof(eliminationProof.getProof());
         }
         if (isFullySimplified()) break;
 
@@ -277,8 +281,8 @@ bool Analysis::ensureProperInitialLocation() {
 }
 
 
-Proof Analysis::ensureNonnegativeCosts() {
-    Proof proof;
+ResultViaSideEffects Analysis::ensureNonnegativeCosts() {
+    ResultViaSideEffects proof;
     std::vector<TransIdx> del;
     std::vector<Rule> add;
     for (TransIdx trans : its.getAllTransitions()) {
@@ -290,6 +294,7 @@ Proof Analysis::ensureNonnegativeCosts() {
             const Rule &r = rule.withGuard(rule.getGuard() & costConstraint);
             add.push_back(r);
             proof.ruleTransformationProof(rule, "strengthening", r, its);
+            proof.succeed();
         }
     }
     its.replaceRules(del, add);
@@ -323,7 +328,7 @@ Proof Analysis::preprocessRules() {
             del.push_back(idx);
             add.push_back(*newRule);
             proof.ruleTransformationProof(rule, "preprocessing", newRule.get(), its);
-            proof.storeSubProof(newRule.getProof(), "preprocessing");
+            proof.storeSubProof(newRule.getProof());
         }
     }
     its.replaceRules(del, add);
@@ -352,22 +357,20 @@ void Analysis::printResult(Proof &proof, RuntimeResult &res) {
 // ## Acceleration & Chaining  ##
 // ##############################
 
-bool Analysis::eliminateALocation(string &eliminatedLocation) {
+ResultViaSideEffects Analysis::eliminateALocation(string &eliminatedLocation) {
     return Chaining::eliminateALocation(its, eliminatedLocation);
 }
 
-bool Analysis::accelerateSimpleLoops(set<TransIdx> &acceleratedRules, Proof &proof) {
-    bool changed = false;
-
+ResultViaSideEffects Analysis::accelerateSimpleLoops(set<TransIdx> &acceleratedRules) {
+    ResultViaSideEffects proof;
     for (LocationIdx node : its.getLocations()) {
         option<Proof> subProof = Accelerator::accelerateSimpleLoops(its, node, acceleratedRules);
         if (subProof) {
-            proof.concat(subProof.get());
-            changed = true;
+            proof.concat(*subProof);
+            proof.succeed();
         }
     }
-
-    return changed;
+    return proof;
 }
 
 
@@ -397,10 +400,13 @@ void Analysis::checkConstantComplexity(RuntimeResult &res, Proof &proof) const {
 
         if (Smt::check(guard, its) == Smt::Sat) {
             proof.newline();
-            proof.result("The following rule witnesses the lower bound Omega(1):");
+            proof.result("Proved Omega(1)");
+            Proof subProof;
+            subProof.append("The following rule witnesses the lower bound Omega(1):");
             stringstream s;
             ITSExport::printLabeledRule(idx, its, s);
-            proof.append(s);
+            subProof.append(s);
+            proof.storeSubProof(subProof);
             res.update(rule.getGuard(), rule.getCost(), rule.getCost(), Complexity::Const);
         }
     }
@@ -487,12 +493,12 @@ void Analysis::getMaxRuntimeOf(const set<TransIdx> &rules, RuntimeResult &res) {
                             timeout);
             }
 
-            if (checkRes && checkRes.get().cpx > res.getCpx()) {
+            if (checkRes && checkRes->cpx > res.getCpx()) {
                 proof.newline();
-                proof.result(stringstream() << "Proved lower bound " << checkRes.get().cpx << ".");
-                proof.storeSubProof(checkRes.get().proof, "limit calculus");
+                proof.result(stringstream() << "Proved lower bound " << checkRes->cpx << ".");
+                proof.storeSubProof(checkRes->proof);
 
-                res.update(rule.getGuard(), rule.getCost(), checkRes.get().solvedCost, checkRes.get().cpx);
+                res.update(rule.getGuard(), rule.getCost(), checkRes->solvedCost, checkRes->cpx);
                 res.concat(proof);
 
                 if (res.getCpx() >= Complexity::Unbounded) {
@@ -515,12 +521,12 @@ void Analysis::getMaxRuntimeOf(const set<TransIdx> &rules, RuntimeResult &res) {
                                 res.getCpx(),
                                 timeout);
 
-                    if (checkRes && checkRes.get().cpx > res.getCpx()) {
+                    if (checkRes && checkRes->cpx > res.getCpx()) {
                         proof.newline();
-                        proof.result(stringstream() << "Proved lower bound " << checkRes.get().cpx << ".");
-                        proof.storeSubProof(checkRes.get().proof, "limit calculus");
+                        proof.result(stringstream() << "Proved lower bound " << checkRes->cpx << ".");
+                        proof.storeSubProof(checkRes->proof);
 
-                        res.update(rule.getGuard(), rule.getCost(), checkRes.get().solvedCost, checkRes.get().cpx);
+                        res.update(rule.getGuard(), rule.getCost(), checkRes->solvedCost, checkRes->cpx);
                         res.concat(proof);
 
                         if (res.getCpx() >= Complexity::Unbounded) {

@@ -14,7 +14,7 @@ void RecurrentSetFinder::run(ITSProblem &its) {
             const Result<Rule> newRule = Preprocess::preprocessRule(its, rule);
             if (newRule) {
                 preProof.ruleTransformationProof(rule, "preprocessing", newRule.get(), its);
-                preProof.storeSubProof(newRule.getProof(), "preprocessing");
+                preProof.storeSubProof(newRule.getProof());
                 rule = *newRule;
             }
             AccelerationProblem ap = AccelerationProblem::initForRecurrentSet(rule.toLinear(), its);

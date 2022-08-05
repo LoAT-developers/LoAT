@@ -23,8 +23,6 @@
 #include "../util/templates.hpp"
 #include "../smt/smtfactory.hpp"
 
-#include <variant>
-
 using namespace std;
 
 
@@ -119,7 +117,7 @@ option<Expr> GuardToolbox::solveTermFor(Expr term, const Var &var, SolvingLevel 
 
 Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
     Subs varSubs;
-    Result<std::monostate> proof{std::monostate()};
+    ResultViaSideEffects proof;
     RelSet guard = rule.getGuard()->universallyValidLits();
 
     for (const auto &r: guard) {
@@ -168,7 +166,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
     if (proof) {
         res = rule.subs(varSubs);
         res.ruleTransformationProof(rule, "propagated equalities", res.get(), its);
-        res.storeSubProof(proof.getProof(), "propagated equalities");
+        res.storeSubProof(proof.getProof());
     }
     return res;
 }
@@ -319,7 +317,7 @@ Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem
             Proof subProof;
             subProof.append(s.str());
             res.ruleTransformationProof(res.get(), "propagated equalities via SMT", newRule, its);
-            res.storeSubProof(subProof, "propagated equalities via SMT");
+            res.storeSubProof(subProof);
             res.set(newRule);
         }
     }

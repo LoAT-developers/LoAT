@@ -122,7 +122,6 @@ bool QeProblem::monotonicity(const Rel &rel, const Var& n) {
                             ss << " " << rel;
                         }
                     }
-                    proof.newline();
                     proof.append(ss);
                     return true;
                 }
@@ -172,7 +171,6 @@ bool QeProblem::recurrence(const Rel &rel, const Var& n) {
                             ss << " " << rel;
                         }
                     }
-                    proof.newline();
                     proof.append(ss);
                     return true;
                 }
@@ -227,7 +225,6 @@ bool QeProblem::eventualWeakDecrease(const Rel &rel, const Var& n) {
                             ss << " " << rel;
                         }
                     }
-                    proof.newline();
                     proof.append(ss);
                     return true;
                 }
@@ -283,7 +280,6 @@ bool QeProblem::eventualWeakIncrease(const Rel &rel, const Var& n) {
                                 ss << " " << rel;
                             }
                         }
-                        proof.newline();
                         proof.append(ss);
                         return true;
                     }
@@ -305,13 +301,11 @@ option<BoolExpr> QeProblem::strengthen(const Rel &rel, const Var &n) {
                 if (Smt::check(bf & (coeff < 0), varMan) == Smt::Sat && Smt::check(bf & (coeff >= 0), varMan) == Smt::Sat) {
                     std::stringstream ss;
                     ss << rel << ": strengthend formula with " << (coeff >= 0);
-                    proof.newline();
                     proof.append(ss);
                     return buildLit(coeff >= 0);
                 } else if (Smt::check(bf & (coeff > 0), varMan) == Smt::Sat && Smt::check(bf & (coeff <= 0), varMan) == Smt::Sat) {
                     std::stringstream ss;
                     ss << rel << ": strengthend formula with " << (coeff <= 0);
-                    proof.newline();
                     proof.append(ss);
                     return buildLit(coeff <= 0);
                 }
@@ -337,7 +331,6 @@ bool QeProblem::fixpoint(const Rel &rel, const Var& n) {
             if (idx) {
                 std::stringstream ss;
                 ss << rel << " [" << idx.get() << "]: fixpoint yields " << newGuard;
-                proof.newline();
                 proof.append(ss);
                 return true;
             }
@@ -392,6 +385,7 @@ QeProblem::ReplacementMap QeProblem::computeReplacementMap() const {
 option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
     formula = qf;
     proof = Proof();
+    proof.headline("QE Calculus");
     const auto quantifiers = formula->getPrefix();
     if (quantifiers.size() > 1) {
         return {};
@@ -448,7 +442,12 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
         formula = matrix->quantify({quantifier.remove(var)});
         exact &= map.exact;
     }
-    return Qelim::Result(formula->getMatrix(), proof, exact);
+    Proof fullProof;
+    fullProof.headline("Eliminated Quantifier via QE-Calculus");
+    fullProof.append(std::stringstream() << "Input Formula: " << qf);
+    fullProof.append(std::stringstream() << "Resulting Formula: " << formula->getMatrix());
+    fullProof.storeSubProof(proof);
+    return Qelim::Result(formula->getMatrix(), fullProof, exact);
 }
 
 Proof QeProblem::getProof() const {

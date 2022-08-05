@@ -22,6 +22,7 @@
 #include "../expr/expression.hpp"
 #include "../util/proof.hpp"
 #include "../its/export.hpp"
+#include "../util/result.hpp"
 
 #include <fstream>
 #include <mutex>
@@ -150,7 +151,7 @@ private:
      * @note Does not check if "cost >= 0" is implied by the guard (should be covered by preprocessing)
      * @return true iff any rule was modified.
      */
-    Proof ensureNonnegativeCosts();
+    ResultViaSideEffects ensureNonnegativeCosts();
 
     /**
      * Makes sure the initial location has no incoming rules (by adding a new one, if required).
@@ -179,8 +180,8 @@ private:
     bool isFullySimplified() const;
 
     // Wrapper methods for Chaining/Accelerator/Pruning methods (adding statistics, debug output)
-    bool eliminateALocation(std::string &eliminatedLocation);
-    bool accelerateSimpleLoops(std::set<TransIdx> &acceleratedRules, Proof &proof);
+    ResultViaSideEffects eliminateALocation(std::string &eliminatedLocation);
+    ResultViaSideEffects accelerateSimpleLoops(std::set<TransIdx> &acceleratedRules);
     bool pruneRules();
 
     /**

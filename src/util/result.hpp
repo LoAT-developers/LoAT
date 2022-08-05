@@ -2,6 +2,7 @@
 #define RESULT_HPP
 
 #include "proof.hpp"
+#include <variant>
 
 template<class T>
 class Result
@@ -78,8 +79,8 @@ public:
         proof.deletionProof(rules);
     }
 
-    void storeSubProof(Proof subProof, const std::string &technique) {
-        proof.storeSubProof(subProof, technique);
+    void storeSubProof(Proof subProof) {
+        proof.storeSubProof(subProof);
     }
 
     void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule, const ITSProblem &its) {
@@ -134,6 +135,13 @@ public:
     const T* operator->() const {
         return &res;
     }
+
+};
+
+class ResultViaSideEffects: public Result<std::monostate> {
+
+public:
+    ResultViaSideEffects(): Result(std::monostate()) {}
 
 };
 

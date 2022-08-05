@@ -4,25 +4,22 @@
 #include "../../util/relevantvariables.hpp"
 #include "../../qelim/redlog.hpp"
 #include "../../nonterm/nontermproblem.hpp"
+#include "../../its/export.hpp"
 
 AccelerationProblem::AccelerationProblem(
-        const BoolExpr &guard,
-        const Subs &up,
-        const Expr &cost,
+        const LinearRule &rule,
         option<const Subs&> closed,
         const Expr &iteratedCost,
         const Var &n,
         const unsigned int validityBound,
-        ITSProblem &its): closed(closed), iteratedCost(iteratedCost), n(n), guard(guard), up(up), cost(cost), validityBound(validityBound), its(its) {}
+        ITSProblem &its): closed(closed), iteratedCost(iteratedCost), n(n), rule(rule), validityBound(validityBound), its(its) {}
 
 option<AccelerationProblem> AccelerationProblem::init(const LinearRule &r, ITSProblem &its) {
     const Var &n = its.addFreshTemporaryVariable("n");
     const option<Recurrence::Result> &res = Recurrence::iterateRule(its, r, n);
     if (res) {
         return {AccelerationProblem(
-                        r.getGuard()->toG(),
-                        r.getUpdate(),
-                        r.getCost(),
+                        r,
                         option<const Subs&>(res->update),
                         res->cost,
                         n,
@@ -30,9 +27,7 @@ option<AccelerationProblem> AccelerationProblem::init(const LinearRule &r, ITSPr
                         its)};
     } else {
         return {AccelerationProblem(
-                        r.getGuard()->toG(),
-                        r.getUpdate(),
-                        r.getCost(),
+                        r,
                         option<const Subs&>(),
                         r.getCost(),
                         n,
@@ -43,9 +38,7 @@ option<AccelerationProblem> AccelerationProblem::init(const LinearRule &r, ITSPr
 
 AccelerationProblem AccelerationProblem::initForRecurrentSet(const LinearRule &r, ITSProblem &its) {
     return AccelerationProblem(
-                r.getGuard()->toG(),
-                r.getUpdate(),
-                r.getCost(),
+                r,
                 option<const Subs&>(),
                 r.getCost(),
                 its.addFreshTemporaryVariable("n"),
@@ -54,8 +47,8 @@ AccelerationProblem AccelerationProblem::initForRecurrentSet(const LinearRule &r
 }
 
 std::vector<AccelerationProblem::Result> AccelerationProblem::computeRes() {
-    if (!closed || !closed->isPoly() || !guard->isPolynomial()) {
-        auto nt = NontermProblem::init(guard, up, cost, its);
+    if (!closed || !closed->isPoly() || !rule.getGuard()->isPolynomial()) {
+        auto nt = NontermProblem::init(rule.getGuard(), rule.getUpdate(), rule.getCost(), its);
         const auto res = nt.computeRes();
         if (res) {
             return {Result(res->newGuard, nt.getProof(), res->exact, true)};
@@ -65,33 +58,50 @@ std::vector<AccelerationProblem::Result> AccelerationProblem::computeRes() {
         }
     }
     Var m = its.getFreshUntrackedSymbol("m", Expr::Int);
-    BoolExpr matrix = guard->subs(closed.get());
+    BoolExpr matrix = rule.getGuard()->subs(closed.get());
     auto qelim = Qelim::solver(its);
     QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {n}, {{n, 0}}, {})});
     option<Qelim::Result> res = qelim->qe(q);
     std::vector<AccelerationProblem::Result> ret;
     if (res && res->qf != False) {
         Proof proof;
-        proof.append(std::stringstream() << "proved non-termination of " << guard << " via quantifier elimination");
-        proof.append(std::stringstream() << "quantified formula: " << q);
-        proof.append(std::stringstream() << "quantifier-free formula: " << res->qf);
-        proof.append(std::stringstream() << "QE proof:");
-        proof.concat(res->proof);
+        std::stringstream headline;
+        headline << "Proved ";
+        if (res->exact) {
+            headline << "Universal ";
+        }
+        headline << "Non-Termination via Quantifier Elimination";
+        proof.headline(headline);
+        std::stringstream loop;
+        loop << "Loop: ";
+        ITSExport::printRule(rule, its, loop);
+        proof.append(loop);
+        proof.append(std::stringstream() << "Certificate of Non-Termination: " << res->qf);
+        proof.storeSubProof(res->proof);
         ret.push_back(Result(res->qf, proof, res->exact, true));
         if (res->exact) {
             return ret;
         }
     }
-    matrix = guard->subs(closed.get())->subs({n, m});
+    matrix = rule.getGuard()->subs(closed.get())->subs({n, m});
     q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, validityBound}}, {{m, n-1}})});
     res = qelim->qe(q);
     if (res && res->qf != False) {
+        const BoolExpr accelerator = res->qf & (n >= validityBound);
         Proof proof;
-        proof.append(std::stringstream() << "accelerated " << guard << " w.r.t. " << closed << " via quantifier elimination");
-        proof.append(std::stringstream() << "quantified formula: " << q);
-        proof.append(std::stringstream() << "quantifier-free formula: " << res->qf);
-        proof.concat(res->proof);
-        ret.push_back(Result(res->qf & (n >= validityBound), proof, res->exact, false));
+        std::stringstream headline;
+        if (res->exact) {
+            headline << "Exactly ";
+        }
+        headline << "Accelerated Loop via Quantifier Elimination";
+        proof.headline(headline);
+        std::stringstream loop;
+        loop << "Loop: ";
+        ITSExport::printRule(rule, its, loop);
+        proof.append(loop);
+        proof.append(std::stringstream() << "Accelerator: " << accelerator);
+        proof.storeSubProof(res->proof);
+        ret.push_back(Result(accelerator, proof, res->exact, false));
     }
     return ret;
 }

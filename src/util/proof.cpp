@@ -153,9 +153,8 @@ void Proof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule,
     append(s);
 }
 
-void Proof::storeSubProof(Proof subProof, const std::string &technique) {
+void Proof::storeSubProof(Proof subProof) {
     if (proofLevel > 1) {
-        append("Sub-proof via " + technique + ":");
         proof.push_back(subProof);
     }
 }

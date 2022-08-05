@@ -89,7 +89,7 @@ Acceleration::Result LoopAcceleration::run() {
                     }
                     res.rules.emplace_back(resultingRule.get());
                     res.proof.ruleTransformationProof(rule, "nonterm", resultingRule.get(), its);
-                    res.proof.storeSubProof(ar.proof, "acceration calculus");
+                    res.proof.storeSubProof(ar.proof);
                 } else {
                     option<Rule> resultingRule;
                     if (vb > 0) {
@@ -106,7 +106,7 @@ Acceleration::Result LoopAcceleration::run() {
                         continue;
                     }
                     res.proof.ruleTransformationProof(rule, "acceleration", resultingRule.get(), its);
-                    res.proof.storeSubProof(ar.proof, "acceration calculus");
+                    res.proof.storeSubProof(ar.proof);
                     std::vector<Rule> instantiated = replaceByUpperbounds(ap->getIterationCounter(), resultingRule.get());
                     if (instantiated.empty()) {
                         res.rules.emplace_back(resultingRule.get());
