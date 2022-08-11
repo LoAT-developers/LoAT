@@ -20,6 +20,7 @@
 #include "analysis/analysis.hpp"
 #include "parser/koatParser/itsparser.hpp"
 #include "parser/smt2Parser/parser.hpp"
+#include "parser/chc/chcparser.hpp"
 #include "parser/t2Parser/t2parser.hpp"
 #include "config.hpp"
 #include "util/timeout.hpp"
@@ -138,7 +139,11 @@ int main(int argc, char *argv[]) {
         if (boost::algorithm::ends_with(filename, ".koat")) {
             its = parser::ITSParser::loadFromFile(filename);
         } else if (boost::algorithm::ends_with(filename, ".smt2")) {
-            its = sexpressionparser::Parser::loadFromFile(filename);
+            try {
+            its = hornParser::HornParser::loadFromFile(filename);
+            } catch (const std::exception &e) {
+                its = sexpressionparser::Parser::loadFromFile(filename);
+            }
         } else if (boost::algorithm::ends_with(filename, ".t2")) {
             its = t2parser::T2Parser::loadFromFile(filename);
         }

@@ -42,8 +42,10 @@ public:
     bool isLinear() const;
 
     LocationIdx getInitialLocation() const;
+    option<LocationIdx> getSink() const;
     bool isInitialLocation(LocationIdx loc) const;
     void setInitialLocation(LocationIdx loc);
+    void setSink(LocationIdx loc);
     LocationIdx getLocationIdx(const std::string &name) const;
 
     // query the rule associated with a given transition
@@ -116,6 +118,7 @@ protected:
 
     // the initial location
     LocationIdx initialLocation = 0;
+    option<LocationIdx> sink;
 
     // the next free location index
     LocationIdx nextUnusedLocation = 0;
