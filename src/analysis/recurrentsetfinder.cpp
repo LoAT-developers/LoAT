@@ -26,7 +26,7 @@ void RecurrentSetFinder::run(ITSProblem &its) {
                 proof.majorProofStep(headline.str(), its);
                 proof.concat(preProof);
                 proof.section("Found recurrent set");
-                proof.concat(accelRes.front().proof);
+                proof.concat(ap.getProof());
                 std::cout << "NO" << std::endl;
                 proof.print();
 //                foundRecurrentSet = true;

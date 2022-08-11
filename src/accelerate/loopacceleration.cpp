@@ -27,7 +27,7 @@
 #include <purrs.hh>
 #include "../util/relevantvariables.hpp"
 #include "../analysis/chain.hpp"
-#include "accelerationCalculus/accelerationproblem.hpp"
+#include "accelerationviaqe.hpp"
 #include "iterationCounterElimination/vareliminator.hpp"
 #include "../util/status.hpp"
 #include "../its/export.hpp"
@@ -67,10 +67,10 @@ Acceleration::Result LoopAcceleration::run() {
     Acceleration::Result res;
     res.status = Failure;
     if (shouldAccelerate()) {
-        option<AccelerationProblem> ap = AccelerationProblem::init(rule, its);
+        option<AccelerationViaQE> ap = AccelerationViaQE::init(rule, its);
         if (ap) {
-            std::vector<AccelerationProblem::Result> ars = ap->computeRes();
-            for (const AccelerationProblem::Result &ar: ars) {
+            std::vector<AccelerationViaQE::Result> ars = ap->computeRes();
+            for (const AccelerationViaQE::Result &ar: ars) {
                 unsigned vb = ap->getValidityBound();
                 res.status = vb > 1 ? PartialSuccess : Success;
                 if (ar.witnessesNonterm) {

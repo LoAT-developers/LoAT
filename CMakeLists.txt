@@ -58,6 +58,8 @@ add_executable(${EXECUTABLE}
         src/accelerate/iterationCounterElimination/boundextractor.cpp
         src/accelerate/iterationCounterElimination/vareliminator.cpp
         src/accelerate/iterationCounterElimination/vareliminator.hpp
+        src/accelerate/accelerationviaqe.cpp
+        src/accelerate/accelerationviaqe.hpp
         src/accelerate/accelerationCalculus/accelerationproblem.cpp
         src/accelerate/accelerationCalculus/accelerationproblem.hpp
         src/accelerate/accelerationCalculus/rankingfunctionproblem.cpp
@@ -189,7 +191,20 @@ add_executable(${EXECUTABLE}
         src/qelim/qeCalculus/qecalculus.hpp
         src/qelim/qeCalculus/qecalculus.cpp
         src/nonterm/nontermproblem.hpp
-        src/nonterm/nontermproblem.cpp)
+        src/nonterm/nontermproblem.cpp
+        src/parser/chc/CHCParseVisitor.cpp
+        src/parser/chc/CHCParseVisitor.h
+        src/parser/chc/CHCLexer.cpp
+        src/parser/chc/CHCLexer.h
+        src/parser/chc/CHCListener.cpp
+        src/parser/chc/CHCListener.h
+        src/parser/chc/CHCParser.cpp
+        src/parser/chc/CHCParser.h
+        src/parser/chc/CHCVisitor.cpp
+        src/parser/chc/CHCVisitor.h
+        src/parser/chc/chcparser.cpp
+        src/parser/chc/chcparser.hpp
+    )
 
 message(STATUS "Searching libraries")
 find_library(Z3 z3)
