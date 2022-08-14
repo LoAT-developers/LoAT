@@ -19,14 +19,7 @@ class  CHCParseVisitor : public CHCVisitor {
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;
     std::set<std::string> vars;
-    std::vector<Var> programVars;
-    Subs sigma;
-
-    enum Mode {
-        BuildSigma, ApplySigma, Default
-    };
-
-    Mode mode;
+    unsigned long maxArity;
 
     enum UnaryOp {
         UnaryMinus

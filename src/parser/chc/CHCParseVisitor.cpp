@@ -4,6 +4,18 @@
 
 #include "CHCParseVisitor.h"
 #include <variant>
+#include <algorithm>
+
+struct FunApp {
+    const LocationIdx loc;
+    std::vector<Var> args;
+};
+
+struct Clause {
+    const FunApp lhs;
+    const FunApp rhs;
+    const BoolExpr guard;
+};
 
 antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     its.setInitialLocation(its.addNamedLocation("LoAT_init"));
@@ -11,13 +23,39 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     for (const auto &c: ctx->fun_decl()) {
         visit(c);
     }
+    std::vector<Clause> clauses;
     for (const auto &c: ctx->chc_assert()) {
-        visit(c);
+        clauses.push_back(visit(c));
     }
     for (const auto &c: ctx->chc_query()) {
-        visit(c);
+        clauses.push_back(visit(c));
     }
-    return visitChildren(ctx);
+    std::vector<Var> vars;
+    for (unsigned i = 0; i < maxArity; ++i) {
+        vars.emplace_back("x" + std::to_string(i));
+    }
+    for (const Clause &c: clauses) {
+        Subs ren;
+        for (unsigned i = 0; i < c.lhs.args.size(); ++i) {
+            ren.put(c.lhs.args[i], vars[i]);
+        }
+        VarSet cVars{c.rhs.args.begin(), c.rhs.args.end()};
+        c.guard->collectVars(cVars);
+        for (const Var &x: cVars) {
+            if (ren.find(x) == ren.end()) {
+                ren.put(x, its.addFreshTemporaryVariable(x.get_name()));
+            }
+        }
+        Subs up;
+        for (unsigned i = 0; i < c.rhs.args.size(); ++i) {
+            ren.put(vars[i], Expr(c.rhs.args[i]).subs(ren));
+        }
+        for (unsigned i = c.rhs.args.size(); i < maxArity; ++i) {
+            up.put(vars[i], its.addFreshTemporaryVariable("tmp"));
+        }
+        its.addRule(Rule(c.lhs.loc, c.guard->subs(ren), 1, c.rhs.loc, up));
+    }
+    return {};
 }
 
 void checkType(CHCParser::SortContext *ctx) {
@@ -28,12 +66,10 @@ void checkType(CHCParser::SortContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitFun_decl(CHCParser::Fun_declContext *ctx) {
-    for (unsigned long i = programVars.size(); i < ctx->sort().size(); ++i) {
-        programVars.push_back(its.addFreshVariable("x" + std::to_string(i)));
-    }
     for (const auto &s: ctx->sort()) {
         checkType(s);
     }
+    maxArity = std::max(maxArity, ctx->sort().size());
     const std::string name = ctx->symbol()->getText();
     const LocationIdx idx = its.addNamedLocation(name);
     locations[name] = idx;
@@ -41,9 +77,7 @@ antlrcpp::Any CHCParseVisitor::visitFun_decl(CHCParser::Fun_declContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert(CHCParser::Chc_assertContext *ctx) {
-    const Rule rule = visit(ctx->chc_assert_body());
-    its.addRule(rule);
-    return {};
+    return visit(ctx->chc_assert_body());
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headContext *ctx) {
@@ -51,18 +85,13 @@ antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headCo
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert_body(CHCParser::Chc_assert_bodyContext *ctx) {
-    mode = BuildSigma;
-    const std::pair<RuleLhs, Subs> lhs = visit(ctx->chc_tail());
-    sigma = lhs.second;
-    mode = ApplySigma;
-    const RuleRhs rhs = visit(ctx->chc_head());
-    mode = Default;
-    return Rule(lhs.first, rhs);
+    const std::pair<FunApp, BoolExpr> lhs = visit(ctx->chc_tail());
+    const FunApp rhs = visit(ctx->chc_head());
+    return Clause{lhs.first, rhs, lhs.second};
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_head(CHCParser::Chc_headContext *ctx) {
-    const std::pair<LocationIdx, Subs> p = visit(ctx->u_pred_atom());
-    return RuleRhs(p.first, p.second);
+    return visit(ctx->u_pred_atom());
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
@@ -73,11 +102,11 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
     const BoolExpr guard = buildAnd(guards);
     switch (ctx->u_pred_atom().size()) {
     case 0: {
-        return std::pair(RuleLhs(its.getInitialLocation(), guard), Subs());
+        return std::pair(FunApp{its.getInitialLocation(), {}}, guard);
     }
     case 1: {
-        const std::pair<LocationIdx, Subs> rhs = visit(ctx->u_pred_atom(0));
-        return std::pair(RuleLhs(rhs.first, guard), rhs.second);
+        const FunApp lhs = visit(ctx->u_pred_atom(0));
+        return std::pair(lhs, guard);
     }
     default:
         throw ParseError("non-linear clause " + ctx->getText());
@@ -85,47 +114,22 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) {
-    const std::pair<RuleLhs, Subs> p = visit(ctx->chc_tail());
-    its.addRule(Rule(p.first, RuleRhs(*its.getSink(), p.second)));
-    return {};
+    const std::pair<FunApp, BoolExpr> lhs = visit(ctx->chc_tail());
+    return Clause{lhs.first, FunApp{*its.getSink(), {}}, lhs.second};
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
     checkType(ctx->sort());
-    const std::string name = ctx->symbol()->getText();
-    switch (mode) {
-    case ApplySigma: {
-        const Var x(name);
-        const auto it = sigma.find(x);
-        if (it != sigma.end()) {
-            return it->second;
-        }
-    }
-    // fall-through intended
-    default:
-        const option<Var> opt = its.getVar(name);
-        if (opt) {
-            return *opt;
-        }
-        return its.addFreshTemporaryVariable(name);
-    }
+    return Var(ctx->symbol()->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *ctx) {
     const LocationIdx loc = visit(ctx->symbol());
-    Subs subs;
+    std::vector<Var> args;
     for (unsigned i = 0; i < ctx->var().size(); ++i) {
-        switch (mode) {
-        case BuildSigma: {
-            subs.put(visit(ctx->var(i)), programVars[i]);
-            break;
-        }
-        default:
-            subs.put(programVars[i], visit(ctx->var(i)));
-            break;
-        }
+        args.push_back(visit(ctx->var(i)));
     }
-    return std::pair(loc, subs);
+    return FunApp{loc, args};
 }
 
 antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) {
