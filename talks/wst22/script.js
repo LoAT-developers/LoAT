@@ -23,6 +23,7 @@ var gen = view("gen");
 var qe = view("qe");
 var qe_cad = view("qe-cad").set_scale(1.4);
 var future = view("future").set_scale(1.8);
+var aprove = view("aprove");
  
 var slides = [
     [
@@ -104,6 +105,14 @@ var slides = [
             "future4",
             "future5",
             "future6",
+            "aprove",
+            "aprove1",
+            "aprove2",
+            "aprove3",
+            "aprove4",
+            "aprove5",
+            "aprove6",
+            "aprove7",
         ], duration=0),
         move("meter-loop2", "meter-loop"),
         move("rf2", "rf1"),
@@ -184,6 +193,15 @@ var slides = [
     [fade_in(["future4"])],
     [fade_in(["future5"])],
     [fade_in(["future6"])],
+
+    [change_view(aprove), fade_in(["aprove"], delay=4000)],
+    [fade_in(["aprove1"])],
+    [fade_in(["aprove2"])],
+    [fade_in(["aprove3"])],
+    [fade_in(["aprove4"])],
+    [fade_in(["aprove5"])],
+    [fade_in(["aprove6"])],
+    [fade_in(["aprove7"])],
     [change_view(svg)],
 ];
 
