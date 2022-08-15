@@ -25,8 +25,6 @@
 #include "config.hpp"
 #include "util/timeout.hpp"
 #include "util/proof.hpp"
-#include "analysis/rankingfunctionfinder.hpp"
-#include "analysis/recurrentsetfinder.hpp"
 #include "its/smt2export.hpp"
 #include "its/cintegerexport.hpp"
 #include "version.hpp"
@@ -187,14 +185,8 @@ int main(int argc, char *argv[]) {
     case Config::Analysis::Reachability:
         Analysis::analyze(its);
         break;
-    case Config::Analysis::RecurrentSet:
-        RecurrentSetFinder::run(its);
-        break;
     case Config::Analysis::Smt2Export:
         smt2Export::doExport(its);
-        break;
-    case Config::Analysis::RankingFunction:
-        RankingFunctionFinder::run(its);
         break;
     case Config::Analysis::CIntExport:
         c_integer_export::doExport(its);
