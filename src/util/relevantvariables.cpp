@@ -16,7 +16,7 @@
  */
 
 #include "relevantvariables.hpp"
-#include "../its/variablemanager.hpp"
+#include "variablemanager.hpp"
 
 namespace util {
 

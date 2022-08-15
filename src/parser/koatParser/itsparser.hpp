@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-#include "../../its/itsproblem.hpp"
-#include "../../util/option.hpp"
-#include "../../util/exceptions.hpp"
+#include "itsproblem.hpp"
+#include "option.hpp"
+#include "exceptions.hpp"
 
 namespace parser {
 

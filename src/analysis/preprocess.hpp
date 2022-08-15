@@ -18,9 +18,9 @@
 #ifndef PREPROCESS_H
 #define PREPROCESS_H
 
-#include "../its/rule.hpp"
-#include "../its/itsproblem.hpp"
-#include "../util/result.hpp"
+#include "rule.hpp"
+#include "itsproblem.hpp"
+#include "result.hpp"
 
 
 /**

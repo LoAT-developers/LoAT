@@ -1,5 +1,5 @@
 #include "smt2export.hpp"
-#include "../parser/smt2Parser/sexpresso/sexpresso.hpp"
+#include "sexpresso.hpp"
 
 using namespace sexpresso;
 

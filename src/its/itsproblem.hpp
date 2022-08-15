@@ -18,7 +18,7 @@
 #ifndef ITSPROBLEM_H
 #define ITSPROBLEM_H
 
-#include "../util/option.hpp"
+#include "option.hpp"
 
 #include "rule.hpp"
 #include "variablemanager.hpp"

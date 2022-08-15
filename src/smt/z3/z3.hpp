@@ -1,9 +1,9 @@
 #ifndef Z3_HPP
 #define Z3_HPP
 
-#include "../smt.hpp"
+#include "smt.hpp"
 #include "z3context.hpp"
-#include "../../config.hpp"
+#include "config.hpp"
 
 class Z3 : public Smt {
 

@@ -1,7 +1,7 @@
 #include "merger.hpp"
-#include "../config.hpp"
-#include "../analysis/preprocess.hpp"
-#include "../its/export.hpp"
+#include "config.hpp"
+#include "preprocess.hpp"
+#include "export.hpp"
 
 #include <sstream>
 

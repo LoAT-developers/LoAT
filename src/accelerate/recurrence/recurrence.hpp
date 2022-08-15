@@ -18,9 +18,9 @@
 #ifndef RECURRENCE_H
 #define RECURRENCE_H
 
-#include "../../its/rule.hpp"
-#include "../../its/variablemanager.hpp"
-#include "../../util/option.hpp"
+#include "rule.hpp"
+#include "variablemanager.hpp"
+#include "option.hpp"
 
 
 /**

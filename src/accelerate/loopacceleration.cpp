@@ -17,20 +17,20 @@
 
 #include "loopacceleration.hpp"
 
-#include "../smt/smt.hpp"
-#include "../smt/smtfactory.hpp"
-#include "../asymptotic/asymptoticbound.hpp"
-#include "recurrence/recurrence.hpp"
-#include "meter/metertools.hpp"
-#include "../expr/guardtoolbox.hpp"
+#include "smt.hpp"
+#include "smtfactory.hpp"
+#include "asymptoticbound.hpp"
+#include "recurrence.hpp"
+#include "metertools.hpp"
+#include "guardtoolbox.hpp"
 
 #include <purrs.hh>
-#include "../util/relevantvariables.hpp"
-#include "../analysis/chain.hpp"
+#include "relevantvariables.hpp"
+#include "chain.hpp"
 #include "accelerationviaqe.hpp"
-#include "iterationCounterElimination/vareliminator.hpp"
-#include "../util/status.hpp"
-#include "../its/export.hpp"
+#include "vareliminator.hpp"
+#include "status.hpp"
+#include "export.hpp"
 
 using namespace std;
 
@@ -63,8 +63,8 @@ LinearRule LoopAcceleration::buildNontermRule(const BoolExpr guard) const {
     return LinearRule(rule.getLhsLoc(), guard, Expr::NontermSymbol, sink, {});
 }
 
-Acceleration::Result LoopAcceleration::run() {
-    Acceleration::Result res;
+AccelerationResult LoopAcceleration::run() {
+    AccelerationResult res;
     res.status = Failure;
     if (shouldAccelerate()) {
         option<AccelerationViaQE> ap = AccelerationViaQE::init(rule, its);
@@ -124,7 +124,7 @@ Acceleration::Result LoopAcceleration::run() {
 }
 
 
-Acceleration::Result LoopAcceleration::accelerate(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx) {
+AccelerationResult LoopAcceleration::accelerate(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx) {
     LoopAcceleration ba(its, rule, sink, cpx);
     return ba.run();
 }

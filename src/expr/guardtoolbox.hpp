@@ -19,9 +19,9 @@
 #define GUARDTOOLBOX_H
 
 #include "expression.hpp"
-#include "../its/variablemanager.hpp"
-#include "../util/option.hpp"
-#include "../util/result.hpp"
+#include "variablemanager.hpp"
+#include "option.hpp"
+#include "result.hpp"
 
 #include <vector>
 #include <map>

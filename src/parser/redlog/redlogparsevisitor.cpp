@@ -1,5 +1,5 @@
 #include "redlogparsevisitor.h"
-#include "../../expr/expression.hpp"
+#include "expression.hpp"
 
 #include "redlogLexer.h"
 #include "redlogParser.h"

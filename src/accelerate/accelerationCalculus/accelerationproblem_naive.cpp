@@ -1,7 +1,7 @@
 #include "accelerationproblem_naive.hpp"
-#include "../../accelerate/recurrence/recurrence.hpp"
-#include "../../smt/smtfactory.hpp"
-#include "../../util/relevantvariables.hpp"
+#include "recurrence.hpp"
+#include "smtfactory.hpp"
+#include "relevantvariables.hpp"
 
 AccelerationProblem::AccelerationProblem(
         const BoolExpr guard,

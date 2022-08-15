@@ -18,10 +18,10 @@
 #ifndef METERTOOLS_H
 #define METERTOOLS_H
 
-#include "../../expr/expression.hpp"
-#include "../../its/variablemanager.hpp"
-#include "../../its/rule.hpp"
-#include "../../its/guard.hpp"
+#include "expression.hpp"
+#include "variablemanager.hpp"
+#include "rule.hpp"
+#include "guard.hpp"
 
 #include <vector>
 #include <map>

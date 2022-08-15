@@ -18,9 +18,9 @@
 #ifndef SMTCONTEXT_H
 #define SMTCONTEXT_H
 
-#include "../util/option.hpp"
-#include "../expr/expression.hpp"
-#include "../expr/rel.hpp"
+#include "option.hpp"
+#include "expression.hpp"
+#include "rel.hpp"
 
 #include <map>
 

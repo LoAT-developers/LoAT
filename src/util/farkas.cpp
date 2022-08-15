@@ -17,7 +17,7 @@
 
 #include "farkas.hpp"
 
-#include "../its/variablemanager.hpp"
+#include "variablemanager.hpp"
 
 using namespace std;
 

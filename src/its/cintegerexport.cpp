@@ -1,5 +1,5 @@
 #include "cintegerexport.hpp"
-#include "../expr/boolexpr.hpp"
+#include "boolexpr.hpp"
 #include <boost/algorithm/string.hpp>
 
 namespace c_integer_export {

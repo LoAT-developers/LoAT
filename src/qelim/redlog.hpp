@@ -4,9 +4,9 @@
 extern "C" {
     #include <reduce.h>
 }
-#include "../expr/boolexpr.hpp"
-#include "../its/variablemanager.hpp"
-#include "../util/exceptions.hpp"
+#include "boolexpr.hpp"
+#include "variablemanager.hpp"
+#include "exceptions.hpp"
 #include "qelim.hpp"
 
 class Redlog: Qelim {

@@ -1,8 +1,8 @@
 #ifndef MERGER_HPP
 #define MERGER_HPP
 
-#include "../its/itsproblem.hpp"
-#include "../util/proof.hpp"
+#include "itsproblem.hpp"
+#include "proof.hpp"
 
 class Merger
 {

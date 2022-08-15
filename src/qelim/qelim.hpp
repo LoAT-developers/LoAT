@@ -1,10 +1,10 @@
 #ifndef QELIM_HPP
 #define QELIM_HPP
 
-#include "../expr/boolexpr.hpp"
-#include "../its/variablemanager.hpp"
-#include "../util/exceptions.hpp"
-#include "../util/proof.hpp"
+#include "boolexpr.hpp"
+#include "variablemanager.hpp"
+#include "exceptions.hpp"
+#include "proof.hpp"
 
 class Qelim {
 

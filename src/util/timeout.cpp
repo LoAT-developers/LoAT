@@ -16,7 +16,7 @@
  */
 
 #include "timeout.hpp"
-#include "../config.hpp"
+#include "config.hpp"
 
 #include <algorithm>
 #include <iostream>

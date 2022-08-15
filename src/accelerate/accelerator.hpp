@@ -18,12 +18,12 @@
 #ifndef ACCELERATE_H
 #define ACCELERATE_H
 
-#include "../its/types.hpp"
-#include "../its/itsproblem.hpp"
-#include "../expr/expression.hpp"
-#include "meter/metering.hpp"
+#include "types.hpp"
+#include "itsproblem.hpp"
+#include "expression.hpp"
+#include "metering.hpp"
 #include "recursionacceleration.hpp"
-#include "result.hpp"
+#include "accelerationresult.hpp"
 
 
 class Accelerator {
@@ -76,7 +76,7 @@ private:
      * if this fails, by backward acceleration.
      * @returns The acceleration result (including accelerated rules, if successful)
      */
-    Acceleration::Result tryAccelerate(const Rule &rule, Complexity cpx) const;
+    AccelerationResult tryAccelerate(const Rule &rule, Complexity cpx) const;
 
 
     /**
@@ -95,7 +95,7 @@ private:
      * @returns If successful, the resulting accelerated rule(s). Otherwise,
      * the acceleration result from accelerating the original rule (before shortening).
      */
-    Acceleration::Result accelerateOrShorten(const Rule &rule, Complexity cpx) const;
+    AccelerationResult accelerateOrShorten(const Rule &rule, Complexity cpx) const;
 
 
     /**
@@ -143,7 +143,7 @@ private:
     // All rules where acceleration failed, but where we want to keep the un-accelerated rule.
     std::set<TransIdx> keepRules;
 
-    const Acceleration::Result strengthenAndAccelerate(const LinearRule &rule, Complexity cpx) const;
+    const AccelerationResult strengthenAndAccelerate(const LinearRule &rule, Complexity cpx) const;
 
     Proof proof;
 

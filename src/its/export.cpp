@@ -1,6 +1,6 @@
 #include "export.hpp"
-#include "../config.hpp"
-#include "../expr/rel.hpp"
+#include "config.hpp"
+#include "rel.hpp"
 
 using namespace std;
 namespace Color = Config::Color;

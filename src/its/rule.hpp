@@ -24,9 +24,9 @@
 #include <unordered_set>
 
 #include "types.hpp"
-#include "../util/option.hpp"
-#include "../expr/boolexpr.hpp"
-#include "../config.hpp"
+#include "option.hpp"
+#include "boolexpr.hpp"
+#include "config.hpp"
 
 
 class RuleLhs {

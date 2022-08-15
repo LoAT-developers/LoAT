@@ -17,12 +17,12 @@
 
 #include "prune.hpp"
 
-#include "../config.hpp"
-#include "../its/itsproblem.hpp"
-#include "../expr/boolexpr.hpp"
-#include "../smt/smt.hpp"
-#include "../asymptotic/asymptoticbound.hpp"
-#include "../its/export.hpp"
+#include "config.hpp"
+#include "itsproblem.hpp"
+#include "boolexpr.hpp"
+#include "smt.hpp"
+#include "asymptoticbound.hpp"
+#include "export.hpp"
 
 #include <queue>
 

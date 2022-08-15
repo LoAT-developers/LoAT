@@ -17,16 +17,16 @@
 
 #include "main.hpp"
 
-#include "analysis/analysis.hpp"
-#include "parser/koatParser/itsparser.hpp"
-#include "parser/smt2Parser/parser.hpp"
-#include "parser/chc/chcparser.hpp"
-#include "parser/t2Parser/t2parser.hpp"
+#include "analysis.hpp"
+#include "itsparser.hpp"
+#include "parser.hpp"
+#include "chcparser.hpp"
+#include "t2parser.hpp"
 #include "config.hpp"
-#include "util/timeout.hpp"
-#include "util/proof.hpp"
-#include "its/smt2export.hpp"
-#include "its/cintegerexport.hpp"
+#include "timeout.hpp"
+#include "proof.hpp"
+#include "smt2export.hpp"
+#include "cintegerexport.hpp"
 #include "version.hpp"
 
 #include <iostream>

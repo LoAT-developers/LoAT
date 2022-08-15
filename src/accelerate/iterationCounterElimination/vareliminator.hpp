@@ -1,7 +1,7 @@
 #ifndef VARELIMINATOR_HPP
 #define VARELIMINATOR_HPP
 
-#include "../../its/itsproblem.hpp"
+#include "itsproblem.hpp"
 
 /**
  * Computes substitutions that are suitable to eliminate the given temporary variable from the rule by replacing it with its bounds.

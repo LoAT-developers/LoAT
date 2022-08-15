@@ -17,9 +17,9 @@
 
 #include "recursionacceleration.hpp"
 
-#include "recurrence/recurrence.hpp"
-#include "meter/metering.hpp"
-#include "../smt/smt.hpp"
+#include "recurrence.hpp"
+#include "metering.hpp"
+#include "smt.hpp"
 
 
 using namespace std;
@@ -57,9 +57,9 @@ static MeteringFinder::Result meterWithInstantiation(ITSProblem &its, const Rule
  * @param sink Used for non-terminating and nonlinear rules (since we do not know to what they evaluate).
  * otherwise it is not modified.
  */
-static Acceleration::Result meterAndIterate(ITSProblem &its, const Rule &r, LocationIdx sink) {
+static AccelerationResult meterAndIterate(ITSProblem &its, const Rule &r, LocationIdx sink) {
     using namespace RecursionAcceleration;
-    Acceleration::Result res;
+    AccelerationResult res;
 
     // We may require that the cost is at least 1 in every single iteration of the loop.
     // For linear rules, this is only required for non-termination (see special case below).
@@ -111,25 +111,25 @@ static Acceleration::Result meterAndIterate(ITSProblem &its, const Rule &r, Loca
 }
 
 
-Acceleration::Result RecursionAcceleration::accelerateFast(ITSProblem &its, const Rule &rule, LocationIdx sink) {
+AccelerationResult RecursionAcceleration::accelerateFast(ITSProblem &its, const Rule &rule, LocationIdx sink) {
     return meterAndIterate(its, rule, sink);
 }
 
 
-Acceleration::Result RecursionAcceleration::accelerate(ITSProblem &its, const Rule &rule, LocationIdx sink) {
+AccelerationResult RecursionAcceleration::accelerate(ITSProblem &its, const Rule &rule, LocationIdx sink) {
     // Try to find a metering function without any heuristics
-    Acceleration::Result accel = meterAndIterate(its, rule, sink);
+    AccelerationResult accel = meterAndIterate(its, rule, sink);
     if (accel.status != Failure) {
         return accel;
     }
 
-    Acceleration::Result res;
+    AccelerationResult res;
 
     // Guard strengthening heuristic (helps in the presence of constant updates like x := 5 or x := free).
     // Check and (possibly) apply heuristic, this modifies newRule
     option<Rule> strengthened = MeteringFinder::strengthenGuard(its, rule);
     if (strengthened) {
-        const Acceleration::Result &accel = accelerateFast(its, strengthened.get(), sink);
+        const AccelerationResult &accel = accelerateFast(its, strengthened.get(), sink);
         if (accel.status != Failure) {
             res.proof.ruleTransformationProof(rule, "strengthening", strengthened.get(), its);
             res.proof.concat(accel.proof);

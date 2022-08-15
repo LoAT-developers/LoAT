@@ -2,7 +2,7 @@
 
 #include "redlog.hpp"
 #include "../parser/redlog/redlogparsevisitor.h"
-#include "../config.hpp"
+#include "config.hpp"
 
 RedProc initRedproc() {
     std::string path = std::getenv("PATH");

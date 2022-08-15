@@ -1,6 +1,6 @@
 #include "z3.hpp"
-#include "../exprtosmt.hpp"
-#include "../smttoexpr.hpp"
+#include "exprtosmt.hpp"
+#include "smttoexpr.hpp"
 
 std::ostream& Z3::print(std::ostream& os) const {
     return os << solver;

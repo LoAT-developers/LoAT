@@ -4,7 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <numeric>
-#include "../expr/guardtoolbox.hpp"
+#include "guardtoolbox.hpp"
 #include "../parser/redlog/redlogparsevisitor.h"
 
 BoolExpression::~BoolExpression() {}

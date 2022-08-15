@@ -1,10 +1,10 @@
 #include "accelerationviaqe.hpp"
-#include "../accelerate/recurrence/recurrence.hpp"
-#include "../smt/smtfactory.hpp"
-#include "../util/relevantvariables.hpp"
-#include "../qelim/redlog.hpp"
-#include "../nonterm/nontermproblem.hpp"
-#include "../its/export.hpp"
+#include "recurrence.hpp"
+#include "smtfactory.hpp"
+#include "relevantvariables.hpp"
+#include "redlog.hpp"
+#include "nontermproblem.hpp"
+#include "export.hpp"
 
 AccelerationViaQE::AccelerationViaQE(
         const LinearRule &rule,

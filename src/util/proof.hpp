@@ -30,8 +30,8 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "../config.hpp"
-#include "../its/itsproblem.hpp"
+#include "config.hpp"
+#include "itsproblem.hpp"
 
 class Proof {
 public:

@@ -1,8 +1,8 @@
 #include "nontermproblem.hpp"
-#include "../accelerate/recurrence/recurrence.hpp"
-#include "../smt/smtfactory.hpp"
-#include "../util/relevantvariables.hpp"
-#include "../qelim/redlog.hpp"
+#include "recurrence.hpp"
+#include "smtfactory.hpp"
+#include "relevantvariables.hpp"
+#include "redlog.hpp"
 
 NontermProblem::NontermProblem(
         const BoolExpr guard,

@@ -1,9 +1,9 @@
 #ifndef SMT_H
 #define SMT_H
 
-#include "../expr/expression.hpp"
-#include "../expr/boolexpr.hpp"
-#include "../its/variablemanager.hpp"
+#include "expression.hpp"
+#include "boolexpr.hpp"
+#include "variablemanager.hpp"
 #include "model.hpp"
 
 class Smt

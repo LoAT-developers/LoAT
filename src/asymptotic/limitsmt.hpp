@@ -1,9 +1,9 @@
 #ifndef LIMITSMT_H
 #define LIMITSMT_H
 
-#include "../expr/expression.hpp"
-#include "../expr/boolexpr.hpp"
-#include "../its/variablemanager.hpp"
+#include "expression.hpp"
+#include "boolexpr.hpp"
+#include "variablemanager.hpp"
 #include "limitproblem.hpp"
 
 namespace LimitSmtEncoding {

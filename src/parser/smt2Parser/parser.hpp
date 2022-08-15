@@ -19,8 +19,8 @@
 #define LOAT_SEXPRESSION_PARSER_H
 
 
-#include "../../its/itsproblem.hpp"
-#include "sexpresso/sexpresso.hpp"
+#include "itsproblem.hpp"
+#include "sexpresso.hpp"
 
 namespace sexpressionparser {
 

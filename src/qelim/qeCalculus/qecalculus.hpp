@@ -1,9 +1,9 @@
 #ifndef QECALCULUS_HPP
 #define QECALCULUS_HPP
 
-#include "../qelim.hpp"
-#include "../../util/proof.hpp"
-#include "../../smt/smt.hpp"
+#include "qelim.hpp"
+#include "proof.hpp"
+#include "smt.hpp"
 
 class QeProblem : public Qelim
 {

@@ -18,14 +18,14 @@
 #ifndef METERING_H
 #define METERING_H
 
-#include "../../expr/expression.hpp"
-#include "../../its/variablemanager.hpp"
-#include "../../its/rule.hpp"
-#include "../../its/guard.hpp"
-#include "../../util/option.hpp"
-#include "../../expr/boolexpr.hpp"
-#include "../../util/proof.hpp"
-#include "../../smt/model.hpp"
+#include "expression.hpp"
+#include "variablemanager.hpp"
+#include "rule.hpp"
+#include "guard.hpp"
+#include "option.hpp"
+#include "boolexpr.hpp"
+#include "proof.hpp"
+#include "model.hpp"
 
 #include <vector>
 #include <map>

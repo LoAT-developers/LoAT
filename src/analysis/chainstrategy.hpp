@@ -18,11 +18,11 @@
 #ifndef CHAINSTRATEGY_H
 #define CHAINSTRATEGY_H
 
-#include "../its/types.hpp"
-#include "../its/itsproblem.hpp"
-#include "../util/option.hpp"
-#include "../util/proof.hpp"
-#include "../util/result.hpp"
+#include "types.hpp"
+#include "itsproblem.hpp"
+#include "option.hpp"
+#include "proof.hpp"
+#include "result.hpp"
 
 
 namespace Chaining {

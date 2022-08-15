@@ -18,11 +18,11 @@
 #ifndef LINEAR_H
 #define LINEAR_H
 
-#include "../its/itsproblem.hpp"
-#include "../expr/expression.hpp"
-#include "../util/proof.hpp"
-#include "../its/export.hpp"
-#include "../util/result.hpp"
+#include "itsproblem.hpp"
+#include "expression.hpp"
+#include "proof.hpp"
+#include "export.hpp"
+#include "result.hpp"
 
 #include <fstream>
 #include <mutex>

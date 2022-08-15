@@ -18,14 +18,14 @@
 #ifndef FORWARD_H
 #define FORWARD_H
 
-#include "../its/types.hpp"
-#include "../its/itsproblem.hpp"
-#include "../expr/expression.hpp"
-#include "meter/metering.hpp"
-#include "../util/status.hpp"
-#include "../util/proof.hpp"
-#include "../util/option.hpp"
-#include "result.hpp"
+#include "types.hpp"
+#include "itsproblem.hpp"
+#include "expression.hpp"
+#include "metering.hpp"
+#include "status.hpp"
+#include "proof.hpp"
+#include "option.hpp"
+#include "accelerationresult.hpp"
 
 /**
  * The classic acceleration technique by using metering functions.
@@ -42,13 +42,13 @@ namespace RecursionAcceleration {
      * If the original loop was linear, the result is still a simple loop, unless it is non-terminating.
      * If the original loop was nonlinear or found to be non-terminating, the resulting rules go to the given sink.
      */
-    Acceleration::Result accelerate(ITSProblem &its, const Rule &rule, LocationIdx sink);
+    AccelerationResult accelerate(ITSProblem &its, const Rule &rule, LocationIdx sink);
 
     /**
      * Like accelerateNonlinear, but does not invoke any heuristics (and is thus faster but less powerful).
      * The result is always a single accelerated rule (if acceleration was successful).
      */
-    Acceleration::Result accelerateFast(ITSProblem &its, const Rule &rule, LocationIdx sink);
+    AccelerationResult accelerateFast(ITSProblem &its, const Rule &rule, LocationIdx sink);
 }
 
 #endif // FORWARD_H

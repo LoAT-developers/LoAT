@@ -1,9 +1,9 @@
 #ifndef YICES_HPP
 #define YICES_HPP
 
-#include "../smt.hpp"
+#include "smt.hpp"
 #include "yicescontext.hpp"
-#include "../../config.hpp"
+#include "config.hpp"
 
 #include <mutex>
 

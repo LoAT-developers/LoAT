@@ -1,9 +1,9 @@
 #include "limitsmt.hpp"
 
-#include "../smt/smt.hpp"
-#include "../smt/smtfactory.hpp"
+#include "smt.hpp"
+#include "smtfactory.hpp"
 #include "inftyexpression.hpp"
-#include "../config.hpp"
+#include "config.hpp"
 
 using namespace std;
 

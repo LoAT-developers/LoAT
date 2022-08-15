@@ -1,7 +1,7 @@
 #include "smtfactory.hpp"
-#include "../config.hpp"
-#include "z3/z3.hpp"
-#include "yices/yices.hpp"
+#include "config.hpp"
+#include "z3.hpp"
+#include "yices.hpp"
 #include "combined_solver.hpp"
 
 std::unique_ptr<Smt> SmtFactory::solver(Smt::Logic logic, const VariableManager &varMan, unsigned int timeout) {

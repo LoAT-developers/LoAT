@@ -19,7 +19,7 @@
 #define LOAT_T2_PARSER_H
 
 
-#include "../../its/itsproblem.hpp"
+#include "itsproblem.hpp"
 
 namespace t2parser {
 

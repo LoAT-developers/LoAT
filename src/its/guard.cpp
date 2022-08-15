@@ -1,5 +1,5 @@
 #include "guard.hpp"
-#include "../expr/boolexpr.hpp"
+#include "boolexpr.hpp"
 
 void Guard::collectVariables(VarSet &res) const {
     for (const Rel &rel : *this) {

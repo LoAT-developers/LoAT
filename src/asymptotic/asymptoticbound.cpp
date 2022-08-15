@@ -5,11 +5,11 @@
 #include <algorithm>
 #include <sstream>
 
-#include "../expr/expression.hpp"
-#include "../expr/guardtoolbox.hpp"
+#include "expression.hpp"
+#include "guardtoolbox.hpp"
 
-#include "../smt/smt.hpp"
-#include "../smt/smtfactory.hpp"
+#include "smt.hpp"
+#include "smtfactory.hpp"
 
 #include "limitsmt.hpp"
 #include "inftyexpression.hpp"

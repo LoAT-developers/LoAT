@@ -4,12 +4,12 @@
 #include <string>
 #include <vector>
 
-#include "../expr/expression.hpp"
-#include "../expr/guardtoolbox.hpp"
-#include "../its/variablemanager.hpp"
+#include "expression.hpp"
+#include "guardtoolbox.hpp"
+#include "variablemanager.hpp"
 #include "inftyexpression.hpp"
 #include "limitproblem.hpp"
-#include "../util/proof.hpp"
+#include "proof.hpp"
 
 
 class AsymptoticBound {

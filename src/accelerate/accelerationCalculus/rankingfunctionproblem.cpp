@@ -1,5 +1,5 @@
 #include "rankingfunctionproblem.hpp"
-#include "../../smt/smtfactory.hpp"
+#include "smtfactory.hpp"
 
 RankingFunctionProblem::RankingFunctionProblem(
         const RelSet guard,

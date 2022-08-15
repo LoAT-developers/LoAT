@@ -1,12 +1,12 @@
 #ifndef ACCELERATION_PROBLEM_NAIVE
 #define ACCELERATION_PROBLEM_NAIVE
 
-#include "../../its/types.hpp"
-#include "../../its/rule.hpp"
-#include "../../util/option.hpp"
-#include "../../its/itsproblem.hpp"
-#include "../../util/proof.hpp"
-#include "../../smt/smt.hpp"
+#include "types.hpp"
+#include "rule.hpp"
+#include "option.hpp"
+#include "itsproblem.hpp"
+#include "proof.hpp"
+#include "smt.hpp"
 
 class AccelerationProblem {
 

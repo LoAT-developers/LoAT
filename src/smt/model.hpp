@@ -1,7 +1,7 @@
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
-#include "../expr/boolexpr.hpp"
+#include "boolexpr.hpp"
 
 class Model
 {

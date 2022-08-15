@@ -21,8 +21,8 @@
 #include <ginac/ginac.h>
 
 #include "complexity.hpp"
-#include "../util/option.hpp"
-#include "../util/exceptions.hpp"
+#include "option.hpp"
+#include "exceptions.hpp"
 
 class Expr;
 template<class Key, class Key_is_less> class KeyToExprMap;

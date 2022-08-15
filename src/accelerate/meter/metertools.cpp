@@ -17,11 +17,11 @@
 
 #include "metertools.hpp"
 
-#include "../../expr/guardtoolbox.hpp"
-#include "../../smt/smt.hpp"
-#include "../../smt/smtfactory.hpp"
-#include "../../expr/boolexpr.hpp"
-#include "../../config.hpp"
+#include "guardtoolbox.hpp"
+#include "smt.hpp"
+#include "smtfactory.hpp"
+#include "boolexpr.hpp"
+#include "config.hpp"
 
 using namespace std;
 

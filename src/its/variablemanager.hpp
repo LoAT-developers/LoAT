@@ -2,7 +2,7 @@
 #define VARIABLEMANAGER_H
 
 #include "types.hpp"
-#include "../expr/expression.hpp"
+#include "expression.hpp"
 
 #include <mutex>
 

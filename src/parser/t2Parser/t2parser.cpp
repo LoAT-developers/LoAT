@@ -16,8 +16,8 @@
  */
 
 #include "t2parser.hpp"
-#include "../../its/types.hpp"
-#include "../../its/rule.hpp"
+#include "types.hpp"
+#include "rule.hpp"
 
 #include <fstream>
 #include <boost/algorithm/string/predicate.hpp>

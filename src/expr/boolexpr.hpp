@@ -1,11 +1,11 @@
 #ifndef BOOLEXPR_HPP
 #define BOOLEXPR_HPP
 
-#include "../its/types.hpp"
-#include "../util/option.hpp"
-#include "../expr/rel.hpp"
-#include "../its/guard.hpp"
-#include "../its/variablemanager.hpp"
+#include "types.hpp"
+#include "option.hpp"
+#include "rel.hpp"
+#include "guard.hpp"
+#include "variablemanager.hpp"
 
 #include <memory>
 #include <set>

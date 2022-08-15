@@ -1,7 +1,7 @@
 #ifndef GUARD_HPP
 #define GUARD_HPP
 
-#include "../expr/rel.hpp"
+#include "rel.hpp"
 
 class Guard : public std::vector<Rel> {
 public:

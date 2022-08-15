@@ -18,9 +18,9 @@
 #ifndef PRUNE_H
 #define PRUNE_H
 
-#include "../its/types.hpp"
-#include "../its/itsproblem.hpp"
-#include "../smt/smt.hpp"
+#include "types.hpp"
+#include "itsproblem.hpp"
+#include "smt.hpp"
 
 class Rule;
 class ITSProblem;

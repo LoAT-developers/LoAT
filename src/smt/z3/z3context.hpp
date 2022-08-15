@@ -18,9 +18,9 @@
 #ifndef Z3CONTEXT_H
 #define Z3CONTEXT_H
 
-#include "../smtcontext.hpp"
-#include "../../util/option.hpp"
-#include "../../expr/expression.hpp"
+#include "smtcontext.hpp"
+#include "option.hpp"
+#include "expression.hpp"
 
 #include <z3++.h>
 #include <map>

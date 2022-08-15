@@ -18,9 +18,9 @@
 #ifndef DEPENDENCYORDER_H
 #define DEPENDENCYORDER_H
 
-#include "../../its/rule.hpp"
-#include "../../its/variablemanager.hpp"
-#include "../../util/option.hpp"
+#include "rule.hpp"
+#include "variablemanager.hpp"
+#include "option.hpp"
 
 
 /**

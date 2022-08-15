@@ -18,10 +18,10 @@
 #ifndef YICESCONTEXT_H
 #define YICESCONTEXT_H
 
-#include "../smtcontext.hpp"
-#include "../../util/option.hpp"
-#include "../../expr/expression.hpp"
-#include "../../util/exceptions.hpp"
+#include "smtcontext.hpp"
+#include "option.hpp"
+#include "expression.hpp"
+#include "exceptions.hpp"
 
 #include <gmp.h>
 #include <yices.h>

@@ -17,14 +17,14 @@
 
 #include "metering.hpp"
 
-#include "../../util/farkas.hpp"
+#include "farkas.hpp"
 #include "metertools.hpp"
 
-#include "../../expr/guardtoolbox.hpp"
-#include "../../expr/expression.hpp"
-#include "../../smt/smt.hpp"
-#include "../../smt/smtfactory.hpp"
-#include "../../expr/boolexpr.hpp"
+#include "guardtoolbox.hpp"
+#include "expression.hpp"
+#include "smt.hpp"
+#include "smtfactory.hpp"
+#include "boolexpr.hpp"
 
 #include <boost/integer/common_factor.hpp> // for lcm
 

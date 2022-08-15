@@ -2,7 +2,7 @@
 #define SMTFACTORY_HPP
 
 #include "smt.hpp"
-#include "../config.hpp"
+#include "config.hpp"
 
 class SmtFactory {
 

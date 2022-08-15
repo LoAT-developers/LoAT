@@ -18,11 +18,11 @@
 #ifndef EXPRTOSMT_H
 #define EXPRTOSMT_H
 
-#include "../util/exceptions.hpp"
+#include "exceptions.hpp"
 #include "smtcontext.hpp"
-#include "../its/itsproblem.hpp"
-#include "../config.hpp"
-#include "../expr/boolexpr.hpp"
+#include "itsproblem.hpp"
+#include "config.hpp"
+#include "boolexpr.hpp"
 
 #include <map>
 #include <sstream>

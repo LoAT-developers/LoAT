@@ -1,5 +1,5 @@
 #include "proof.hpp"
-#include "../its/export.hpp"
+#include "export.hpp"
 
 #include <iostream>
 #include <string>

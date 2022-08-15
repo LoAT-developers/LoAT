@@ -18,10 +18,10 @@
 #ifndef BACKWARDACCELERATION_H
 #define BACKWARDACCELERATION_H
 
-#include "../its/itsproblem.hpp"
-#include "../its/rule.hpp"
-#include "../util/option.hpp"
-#include "result.hpp"
+#include "itsproblem.hpp"
+#include "rule.hpp"
+#include "option.hpp"
+#include "accelerationresult.hpp"
 
 class LoopAcceleration {
 public:
@@ -31,7 +31,7 @@ public:
         const unsigned int validityBound;
     };
 
-    static Acceleration::Result accelerate(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
+    static AccelerationResult accelerate(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
 
 private:
     LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
@@ -41,7 +41,7 @@ private:
     /**
      * Main function, just calls the methods below in the correct order
      */
-    Acceleration::Result run();
+    AccelerationResult run();
 
     /**
      * Checks whether the backward acceleration technique might be applicable.

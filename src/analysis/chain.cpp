@@ -17,9 +17,9 @@
 
 #include "chain.hpp"
 
-#include "../smt/smt.hpp"
-#include "../config.hpp"
-#include "../expr/boolexpr.hpp"
+#include "smt.hpp"
+#include "config.hpp"
+#include "boolexpr.hpp"
 
 using namespace std;
 

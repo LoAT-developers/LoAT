@@ -16,12 +16,12 @@
  */
 
 #include "guardtoolbox.hpp"
-#include "../its/rule.hpp"
-#include "../expr/rel.hpp"
-#include "../util/relevantvariables.hpp"
-#include "../util/farkas.hpp"
-#include "../util/templates.hpp"
-#include "../smt/smtfactory.hpp"
+#include "rule.hpp"
+#include "rel.hpp"
+#include "relevantvariables.hpp"
+#include "farkas.hpp"
+#include "templates.hpp"
+#include "smtfactory.hpp"
 
 using namespace std;
 

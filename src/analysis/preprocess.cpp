@@ -17,10 +17,10 @@
 
 #include "preprocess.hpp"
 
-#include "../expr/guardtoolbox.hpp"
-#include "../smt/smt.hpp"
-#include "../smt/z3/z3.hpp"
-#include "../smt/smtfactory.hpp"
+#include "guardtoolbox.hpp"
+#include "smt.hpp"
+#include "z3.hpp"
+#include "smtfactory.hpp"
 
 using namespace std;
 

@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 #include <ostream>
-#include "util/option.hpp"
+#include "option.hpp"
 
 /**
  * Global settings and constants.

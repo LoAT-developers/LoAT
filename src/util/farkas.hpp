@@ -18,9 +18,9 @@
 #ifndef FARKAS_H
 #define FARKAS_H
 
-#include "../expr/expression.hpp"
-#include "../expr/boolexpr.hpp"
-#include "../its/variablemanager.hpp"
+#include "expression.hpp"
+#include "boolexpr.hpp"
+#include "variablemanager.hpp"
 #include <vector>
 
 

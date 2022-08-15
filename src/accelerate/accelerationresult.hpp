@@ -1,18 +1,14 @@
 #ifndef ACCELERATION_RESULT_HPP
 #define ACCELERATION_RESULT_HPP
 
-#include "../util/status.hpp"
-#include "../util/proof.hpp"
-#include "../its/rule.hpp"
+#include "status.hpp"
+#include "proof.hpp"
+#include "rule.hpp"
 
-namespace Acceleration {
-
-struct Result {
+struct AccelerationResult {
     std::vector<Rule> rules;
     Status status;
     Proof proof;
 };
-
-}
 
 #endif // ACCELERATION_RESULT_HPP

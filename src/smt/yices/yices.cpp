@@ -1,7 +1,7 @@
 #include "yices.hpp"
-#include "../exprtosmt.hpp"
-#include "../../util/exceptions.hpp"
-#include "../smttoexpr.hpp"
+#include "exprtosmt.hpp"
+#include "exceptions.hpp"
+#include "smttoexpr.hpp"
 
 #include <future>
 #include <chrono>

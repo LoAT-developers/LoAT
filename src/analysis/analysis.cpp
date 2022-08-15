@@ -17,19 +17,19 @@
 
 #include "analysis.hpp"
 
-#include "../smt/smt.hpp"
-#include "../asymptotic/asymptoticbound.hpp"
+#include "smt.hpp"
+#include "asymptoticbound.hpp"
 
-#include "../util/timeout.hpp"
-#include "../merging/merger.hpp"
+#include "timeout.hpp"
+#include "merger.hpp"
 #include "prune.hpp"
 #include "preprocess.hpp"
 #include "chain.hpp"
 #include "chainstrategy.hpp"
-#include "../accelerate/accelerator.hpp"
-#include "../its/export.hpp"
-#include "../smt/yices/yices.hpp"
-#include "../qelim/redlog.hpp"
+#include "accelerator.hpp"
+#include "export.hpp"
+#include "yices.hpp"
+#include "redlog.hpp"
 
 #include <future>
 

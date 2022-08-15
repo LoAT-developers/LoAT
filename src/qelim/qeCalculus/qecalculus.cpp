@@ -1,9 +1,9 @@
 #include "qecalculus.hpp"
 
-#include "../../accelerate/recurrence/recurrence.hpp"
-#include "../../smt/smtfactory.hpp"
-#include "../../util/relevantvariables.hpp"
-#include "../../qelim/redlog.hpp"
+#include "recurrence.hpp"
+#include "smtfactory.hpp"
+#include "relevantvariables.hpp"
+#include "redlog.hpp"
 
 Quantifier QeProblem::getQuantifier() const {
     return formula->getPrefix()[0];

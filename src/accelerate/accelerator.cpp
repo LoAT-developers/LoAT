@@ -17,24 +17,24 @@
 
 #include "accelerator.hpp"
 
-#include "../analysis/preprocess.hpp"
-#include "recurrence/recurrence.hpp"
-#include "meter/metering.hpp"
-#include "../smt/smt.hpp"
+#include "preprocess.hpp"
+#include "recurrence.hpp"
+#include "metering.hpp"
+#include "smt.hpp"
 
-#include "../its/rule.hpp"
-#include "../its/export.hpp"
+#include "rule.hpp"
+#include "export.hpp"
 
-#include "../analysis/chain.hpp"
-#include "../analysis/prune.hpp"
+#include "chain.hpp"
+#include "prune.hpp"
 
 #include "loopacceleration.hpp"
 
 #include <queue>
-#include "../asymptotic/asymptoticbound.hpp"
+#include "asymptoticbound.hpp"
 #include <stdexcept>
 #include <numeric>
-#include "../smt/z3/z3.hpp"
+#include "z3.hpp"
 
 using namespace std;
 
@@ -114,7 +114,7 @@ void Accelerator::nestRules(const NestingCandidate &fst, const NestingCandidate 
 
         // Note that we do not try all heuristics or backward accel to keep nesting efficient
         Complexity currentCpx = fst.cpx > snd.cpx ? fst.cpx : snd.cpx;
-        const Acceleration::Result &accel = LoopAcceleration::accelerate(its, nestedRule, sinkLoc, currentCpx);
+        const AccelerationResult &accel = LoopAcceleration::accelerate(its, nestedRule, sinkLoc, currentCpx);
         Proof proof;
         proof.chainingProof(first, second, nestedRule, its);
         proof.concat(accel.proof);
@@ -268,8 +268,8 @@ unsigned int Accelerator::numNotInUpdate(const Subs &up) const {
 // ## Acceleration  ##
 // ###################
 
-const Acceleration::Result Accelerator::strengthenAndAccelerate(const LinearRule &rule, Complexity cpx) const {
-    Acceleration::Result res;
+const AccelerationResult Accelerator::strengthenAndAccelerate(const LinearRule &rule, Complexity cpx) const {
+    AccelerationResult res;
     res.status = PartialSuccess;
     // chain rule if necessary
     const option<LinearRule> &optR = chain(rule);
@@ -280,7 +280,7 @@ const Acceleration::Result Accelerator::strengthenAndAccelerate(const LinearRule
     bool sat = Smt::check(r.getGuard(), its) == Smt::Sat;
     // only proceed if the guard is sat
     if (sat) {
-        Acceleration::Result accelRes = LoopAcceleration::accelerate(its, r, sinkLoc, cpx);
+        AccelerationResult accelRes = LoopAcceleration::accelerate(its, r, sinkLoc, cpx);
         if (!accelRes.rules.empty()) {
             res.status = accelRes.status;
             res.proof.concat(accelRes.proof);
@@ -295,7 +295,7 @@ const Acceleration::Result Accelerator::strengthenAndAccelerate(const LinearRule
     return res;
 }
 
-Acceleration::Result Accelerator::tryAccelerate(const Rule &rule, Complexity cpx) const {
+AccelerationResult Accelerator::tryAccelerate(const Rule &rule, Complexity cpx) const {
     // Forward acceleration
     if (!rule.isLinear()) {
         return RecursionAcceleration::accelerate(its, rule, sinkLoc);
@@ -306,7 +306,7 @@ Acceleration::Result Accelerator::tryAccelerate(const Rule &rule, Complexity cpx
 }
 
 
-Acceleration::Result Accelerator::accelerateOrShorten(const Rule &rule, Complexity cpx) const {
+AccelerationResult Accelerator::accelerateOrShorten(const Rule &rule, Complexity cpx) const {
     using namespace RecursionAcceleration;
 
     // Accelerate the original rule
@@ -400,7 +400,7 @@ option<Proof> Accelerator::run() {
         // Forward and backward accelerate (and partial deletion for nonlinear rules)
         const Rule r = its.getRule(loop);
         Complexity cpx = r.isLinear() ? origRules[loop].cpx : Complexity::Unknown;
-        Acceleration::Result res = accelerateOrShorten(r, cpx);
+        AccelerationResult res = accelerateOrShorten(r, cpx);
 
         if (res.status != Success) {
             keepRules.insert(loop);

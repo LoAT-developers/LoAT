@@ -24,7 +24,7 @@
 #include <set>
 #include <algorithm>
 
-#include "../its/types.hpp" // for TransIdx
+#include "types.hpp" // for TransIdx
 
 
 /**

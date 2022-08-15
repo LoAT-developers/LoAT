@@ -3,7 +3,7 @@
 #include <sstream>
 #include <utility>
 
-#include "../smt/smt.hpp"
+#include "smt.hpp"
 
 LimitProblem::LimitProblem(VariableManager &varMan)
     : variableN("n"), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {

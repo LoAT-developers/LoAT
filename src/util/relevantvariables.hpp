@@ -18,9 +18,9 @@
 #ifndef LOAT_UTIL_RELEVANT_VARIABLES_H
 #define LOAT_UTIL_RELEVANT_VARIABLES_H
 
-#include "../expr/expression.hpp"
-#include "../its/types.hpp"
-#include "../its/rule.hpp"
+#include "expression.hpp"
+#include "types.hpp"
+#include "rule.hpp"
 
 namespace util {
 
