@@ -102,6 +102,21 @@ void parseFlags(int argc, char *argv[]) {
             }
         } else if (strcmp("--version", argv[arg]) == 0) {
             cout << "Build SHA: " << Version::GIT_SHA << (Version::GIT_DIRTY == "1" ? " (dirty)" : "") << endl;
+            exit(0);
+        } else if (strcmp("--format", argv[arg]) == 0) {
+            std::string str = getNext();
+            if (boost::iequals("koat", str)) {
+                Config::Input::format = Config::Input::Koat;
+            } else if (boost::iequals("its", str)) {
+                Config::Input::format = Config::Input::Its;
+            } else if (boost::iequals("t2", str)) {
+                Config::Input::format = Config::Input::T2;
+            } else if (boost::iequals("horn", str)) {
+                Config::Input::format = Config::Input::Horn;
+            } else {
+                cout << "Error: unknown format " << str << std::endl;
+                exit(1);
+            }
         } else {
             if (!filename.empty()) {
                 cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << endl;
@@ -136,16 +151,22 @@ int main(int argc, char *argv[]) {
 
     ITSProblem its;
     try {
-        if (boost::algorithm::ends_with(filename, ".koat")) {
+        switch (Config::Input::format) {
+        case Config::Input::Koat:
             its = parser::ITSParser::loadFromFile(filename);
-        } else if (boost::algorithm::ends_with(filename, ".smt2")) {
-            try {
-            its = hornParser::HornParser::loadFromFile(filename);
-            } catch (const std::exception &e) {
-                its = sexpressionparser::Parser::loadFromFile(filename);
-            }
-        } else if (boost::algorithm::ends_with(filename, ".t2")) {
+            break;
+        case Config::Input::Its:
+            its = sexpressionparser::Parser::loadFromFile(filename);
+            break;
+        case Config::Input::T2:
             its = t2parser::T2Parser::loadFromFile(filename);
+            break;
+        case Config::Input::Horn:
+            its = hornParser::HornParser::loadFromFile(filename);
+            break;
+        default:
+            std::cout << "Error: unknown format" << std::endl;
+            exit(1);
         }
     } catch (const parser::ITSParser::FileError &err) {
         cout << "Error loading file " << filename << ": " << err.what() << endl;
@@ -163,6 +184,7 @@ int main(int argc, char *argv[]) {
     switch (Config::Analysis::mode) {
     case Config::Analysis::NonTermination:
     case Config::Analysis::Complexity:
+    case Config::Analysis::Reachability:
         Analysis::analyze(its);
         break;
     case Config::Analysis::RecurrentSet:

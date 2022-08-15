@@ -42,11 +42,6 @@ LocationIdx ITSProblem::getInitialLocation() const {
     return initialLocation;
 }
 
-option<LocationIdx> ITSProblem::getSink() const {
-    std::lock_guard guard(mutex);
-    return sink;
-}
-
 bool ITSProblem::isInitialLocation(LocationIdx loc) const {
     std::lock_guard guard(mutex);
     return loc == initialLocation;
@@ -55,11 +50,6 @@ bool ITSProblem::isInitialLocation(LocationIdx loc) const {
 void ITSProblem::setInitialLocation(LocationIdx loc) {
     std::lock_guard guard(mutex);
     initialLocation = loc;
-}
-
-void ITSProblem::setSink(LocationIdx loc) {
-    std::lock_guard guard(mutex);
-    sink = loc;
 }
 
 bool ITSProblem::hasRule(TransIdx transition) const {
@@ -220,6 +210,16 @@ option<string> ITSProblem::getLocationName(LocationIdx idx) const {
     auto it = locationNames.find(idx);
     if (it != locationNames.end()) {
         return it->second;
+    }
+    return {};
+}
+
+option<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) const {
+    std::lock_guard guard(mutex);
+    for (const auto &p: locationNames) {
+        if (p.second == name) {
+            return p.first;
+        }
     }
     return {};
 }

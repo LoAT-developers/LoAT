@@ -47,7 +47,8 @@ AccelerationViaQE AccelerationViaQE::initForRecurrentSet(const LinearRule &r, IT
 }
 
 std::vector<AccelerationViaQE::Result> AccelerationViaQE::computeRes() {
-    if (!closed || !closed->isPoly() || !rule.getGuard()->isPolynomial()) {
+    const bool tryNonterm = Config::Analysis::nonTermination() || Config::Analysis::complexity();
+    if (tryNonterm && (!closed || !closed->isPoly() || !rule.getGuard()->isPolynomial())) {
         auto nt = NontermProblem::init(rule.getGuard(), rule.getUpdate(), rule.getCost(), its);
         const auto res = nt.computeRes();
         if (res) {
@@ -58,33 +59,36 @@ std::vector<AccelerationViaQE::Result> AccelerationViaQE::computeRes() {
         }
     }
     Var m = its.getFreshUntrackedSymbol("m", Expr::Int);
-    BoolExpr matrix = rule.getGuard()->subs(closed.get());
     auto qelim = Qelim::solver(its);
-    QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {n}, {{n, 0}}, {})});
-    option<Qelim::Result> res = qelim->qe(q);
+    option<Qelim::Result> res;
     std::vector<AccelerationViaQE::Result> ret;
-    if (res && res->qf != False) {
-        Proof proof;
-        std::stringstream headline;
-        headline << "Proved ";
-        if (res->exact) {
-            headline << "Universal ";
-        }
-        headline << "Non-Termination via Quantifier Elimination";
-        proof.headline(headline);
-        std::stringstream loop;
-        loop << "Loop: ";
-        ITSExport::printRule(rule, its, loop);
-        proof.append(loop);
-        proof.append(std::stringstream() << "Certificate of Non-Termination: " << res->qf);
-        proof.storeSubProof(res->proof);
-        ret.push_back(Result(res->qf, proof, res->exact, true));
-        if (res->exact) {
-            return ret;
+    if (tryNonterm) {
+        BoolExpr matrix = rule.getGuard()->subs(closed.get());
+        QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {n}, {{n, 0}}, {})});
+        res = qelim->qe(q);
+        if (res && res->qf != False) {
+            Proof proof;
+            std::stringstream headline;
+            headline << "Proved ";
+            if (res->exact) {
+                headline << "Universal ";
+            }
+            headline << "Non-Termination via Quantifier Elimination";
+            proof.headline(headline);
+            std::stringstream loop;
+            loop << "Loop: ";
+            ITSExport::printRule(rule, its, loop);
+            proof.append(loop);
+            proof.append(std::stringstream() << "Certificate of Non-Termination: " << res->qf);
+            proof.storeSubProof(res->proof);
+            ret.push_back(Result(res->qf, proof, res->exact, true));
+            if (res->exact) {
+                return ret;
+            }
         }
     }
-    matrix = rule.getGuard()->subs(closed.get())->subs({n, m});
-    q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, validityBound}}, {{m, n-1}})});
+    BoolExpr matrix = rule.getGuard()->subs(closed.get())->subs({n, m});
+    QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, validityBound}}, {{m, n-1}})});
     res = qelim->qe(q);
     if (res && res->qf != False) {
         const BoolExpr accelerator = res->qf & (n >= validityBound);

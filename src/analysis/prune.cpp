@@ -141,14 +141,15 @@ static bool removeIrrelevantLeafs(ITSProblem &its, LocationIdx node, set<Locatio
 
                 // only remove irrelevant rules
                 const Complexity &c = rule.getCost().toComplexity();
-                if (c == Complexity::Nonterm) {
-                    continue;
-                } else if (Config::Analysis::complexity() && rule.getCost().toComplexity() > Complexity::Const) {
-                    continue;
+                bool remove;
+                if (Config::Analysis::complexity()) {
+                    remove = c == Complexity::Const;
+                } else {
+                    remove = c != Complexity::Nonterm;
                 }
 
                 // only remove rules where _all_ right-hand sides lead to leafs
-                if (rule.rhsCount() == 1 || std::all_of(rule.rhsBegin(), rule.rhsEnd(), isLeafRhs)) {
+                if (remove && (rule.rhsCount() == 1 || std::all_of(rule.rhsBegin(), rule.rhsEnd(), isLeafRhs))) {
                     its.removeRule(ruleIdx);
                     changed = true;
                 }

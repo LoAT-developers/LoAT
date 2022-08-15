@@ -39,6 +39,11 @@ namespace Config {
         extern bool Colors;
     }
 
+    namespace Input {
+        enum Format {Koat, Its, T2, Horn};
+        extern Format format;
+    }
+
     // Colors (Ansi color codes) for output
     namespace Color {
         extern const std::string Section;
@@ -133,13 +138,14 @@ namespace Config {
     // Main algorithm
     namespace Analysis {
 
-        enum Mode { Complexity, NonTermination, Acceleration, RankingFunction, RecurrentSet, Smt2Export, CIntExport };
+        enum Mode { Complexity, NonTermination, Acceleration, RankingFunction, RecurrentSet, Smt2Export, CIntExport, Reachability };
         extern std::vector<Mode> modes;
         extern bool Pruning;
         extern Mode mode;
 
         std::string modeName(const Mode mode);
         bool nonTermination();
+        bool reachability();
         bool complexity();
 
     }

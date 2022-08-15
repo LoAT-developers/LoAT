@@ -195,7 +195,7 @@ private:
     /**
      * For a fully chained ITS problem, this calculates the maximum runtime complexity (using asymptotic bounds)
      */
-    void getMaxRuntime(RuntimeResult &res);
+    void getBestResult(RuntimeResult &res);
 
     /**
      * In case of a timeout (when the ITS is not fully chained), this tries to find a good partial result.
@@ -213,6 +213,10 @@ private:
      * complexity cannot be larger than currResult are skipped to make the computation faster.
      */
     void getMaxRuntimeOf(const std::set<TransIdx> &rules, RuntimeResult &res);
+
+    void proveReachabilityOf(const std::set<TransIdx> &rules, RuntimeResult &res);
+
+    void getBestResultOf(const std::set<TransIdx> &rules, RuntimeResult &res);
 
     /**
      * This removes all subgraphs where all rules only have constant/unknown cost (this includes simple loops!).

@@ -13,10 +13,10 @@ class  CHCParser : public antlr4::Parser {
 public:
   enum {
     LOGIC = 1, ASSERT = 2, CHECK_SAT = 3, EXIT = 4, DECLARE_FUN = 5, BOOL = 6, 
-    FORALL = 7, IMPLIES = 8, FALSE = 9, PIPE = 10, PLUS = 11, MINUS = 12, 
-    TIMES = 13, MOD = 14, LPAR = 15, RPAR = 16, AND = 17, OR = 18, NOT = 19, 
-    ITE = 20, LT = 21, LEQ = 22, EQ = 23, NEQ = 24, GEQ = 25, GT = 26, SC = 27, 
-    LETTER = 28, INT = 29, WS = 30, COMMENT = 31, OTHER = 32
+    FORALL = 7, IMPLIES = 8, FALSE = 9, PLUS = 10, MINUS = 11, TIMES = 12, 
+    MOD = 13, LPAR = 14, RPAR = 15, AND = 16, OR = 17, NOT = 18, ITE = 19, 
+    LT = 20, LEQ = 21, EQ = 22, NEQ = 23, GEQ = 24, GT = 25, ID = 26, INT = 27, 
+    WS = 28, COMMENT = 29, OTHER = 30
   };
 
   enum {
@@ -24,7 +24,7 @@ public:
     RuleChc_assert_body = 4, RuleChc_tail = 5, RuleChc_head = 6, RuleChc_query = 7, 
     RuleVar_decl = 8, RuleU_pred_atom = 9, RuleI_formula = 10, RuleBoolop = 11, 
     RuleLit = 12, RuleRelop = 13, RuleExpr = 14, RuleUnaryop = 15, RuleBinaryop = 16, 
-    RuleNaryop = 17, RuleSymbol = 18, RuleSort = 19, RuleVar = 20, RuleId = 21
+    RuleNaryop = 17, RuleSymbol = 18, RuleSort = 19, RuleVar = 20
   };
 
   CHCParser(antlr4::TokenStream *input);
@@ -57,8 +57,7 @@ public:
   class NaryopContext;
   class SymbolContext;
   class SortContext;
-  class VarContext;
-  class IdContext; 
+  class VarContext; 
 
   class  MainContext : public antlr4::ParserRuleContext {
   public:
@@ -233,7 +232,7 @@ public:
     Var_declContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *LPAR();
-    SymbolContext *symbol();
+    VarContext *var();
     SortContext *sort();
     antlr4::tree::TerminalNode *RPAR();
 
@@ -417,7 +416,7 @@ public:
   public:
     SymbolContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    IdContext *id();
+    antlr4::tree::TerminalNode *ID();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -432,7 +431,7 @@ public:
   public:
     SortContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    IdContext *id();
+    antlr4::tree::TerminalNode *ID();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -447,7 +446,7 @@ public:
   public:
     VarContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    IdContext *id();
+    antlr4::tree::TerminalNode *ID();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -457,28 +456,6 @@ public:
   };
 
   VarContext* var();
-
-  class  IdContext : public antlr4::ParserRuleContext {
-  public:
-    IdContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    std::vector<antlr4::tree::TerminalNode *> SC();
-    antlr4::tree::TerminalNode* SC(size_t i);
-    std::vector<antlr4::tree::TerminalNode *> LETTER();
-    antlr4::tree::TerminalNode* LETTER(size_t i);
-    std::vector<antlr4::tree::TerminalNode *> INT();
-    antlr4::tree::TerminalNode* INT(size_t i);
-    std::vector<antlr4::tree::TerminalNode *> PIPE();
-    antlr4::tree::TerminalNode* PIPE(size_t i);
-
-    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
-    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
-
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
-  };
-
-  IdContext* id();
 
 
 private:

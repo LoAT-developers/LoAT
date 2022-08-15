@@ -84,7 +84,13 @@ static Proof eliminateLocationByChaining(ITSProblem &its, LocationIdx loc,
 
         if (keepUnchainable && !wasChainedWithAll) {
             // Only keep the rule if it might give non-trivial complexity
-            if ((Config::Analysis::nonTermination() && inRule.getCost().isNontermSymbol()) || (Config::Analysis::complexity() && inRule.getCost().toComplexity() > Complexity::Const)) {
+            bool keep;
+            if (Config::Analysis::complexity()) {
+                keep = inRule.getCost().toComplexity() > Complexity::Const;
+            } else {
+                keep = inRule.getCost().isNontermSymbol();
+            }
+            if (keep) {
                 keepRules.insert(in);
             }
         }

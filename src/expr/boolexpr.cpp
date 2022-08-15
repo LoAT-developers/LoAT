@@ -136,6 +136,8 @@ option<BoolExpr> BoolLit::simplify() const {
         return True;
     } else if (lit.isTriviallyFalse()) {
         return False;
+    } else if (lit.isNeq()) {
+        return buildLit(lit.lhs() < lit.rhs()) | (lit.lhs() > lit.rhs());
     } else {
         return {};
     }
@@ -289,15 +291,21 @@ void BoolJunction::dnf(std::vector<Guard> &res) const {
 option<BoolExpr> BoolJunction::simplify() const {
     if (isAnd()) {
         BoolExprSet newChildren;
+        bool changed = false;
         for (const auto &c: children) {
             const auto simp = c->simplify();
             if (simp && *simp == False) {
                 return False;
-            } else if (!simp || *simp != True) {
+            } else if (simp) {
+                if (*simp != True) {
+                    newChildren.insert(*simp);
+                }
+                changed = true;
+            } else {
                 newChildren.insert(c);
             }
         }
-        if (children.size() == newChildren.size()) {
+        if (!changed) {
             return {};
         } else if (newChildren.empty()) {
             return True;
@@ -306,15 +314,21 @@ option<BoolExpr> BoolJunction::simplify() const {
         }
     } else if (isOr()) {
         BoolExprSet newChildren;
+        bool changed = false;
         for (const auto &c: children) {
             const auto simp = c->simplify();
             if (simp && *simp == True) {
                 return True;
-            } else if (!simp || *simp != False) {
+            } else if (simp) {
+                if (*simp != False) {
+                    newChildren.insert(*simp);
+                }
+                changed = true;
+            } else {
                 newChildren.insert(c);
             }
         }
-        if (children.size() == newChildren.size()) {
+        if (!changed) {
             return {};
         } else if (newChildren.empty()) {
             return False;

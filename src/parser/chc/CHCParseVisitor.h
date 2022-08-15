@@ -16,10 +16,30 @@
  */
 class  CHCParseVisitor : public CHCVisitor {
 
+    struct FunApp {
+
+        const LocationIdx loc;
+        const std::vector<Var> args;
+
+        FunApp(const LocationIdx loc, const std::vector<Var> args): loc(loc), args(args) {}
+
+    };
+
+    struct Clause {
+        const FunApp lhs;
+        const FunApp rhs;
+        const BoolExpr guard;
+
+        Clause(const FunApp &lhs, const FunApp &rhs, const BoolExpr &guard): lhs(lhs), rhs(rhs), guard(guard) {}
+
+    };
+
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;
     std::set<std::string> vars;
-    unsigned long maxArity;
+    unsigned long maxArity = 0;
+    VariableManager varMan;
+    LocationIdx sink;
 
     enum UnaryOp {
         UnaryMinus
@@ -97,10 +117,6 @@ public:
     virtual antlrcpp::Any visitSort(CHCParser::SortContext *ctx) override;
 
     virtual antlrcpp::Any visitVar(CHCParser::VarContext *ctx) override;
-
-    virtual antlrcpp::Any visitId(CHCParser::IdContext *ctx) override;
-
-    ITSProblem getRes() const;
 
 };
 

@@ -36,6 +36,10 @@ namespace Config {
         bool Colors = true;
     }
 
+    namespace Input {
+        Format format = Koat;
+    }
+
     namespace Color {
         // Proof output
         const std::string Section = "\033[0;4;33m"; // underlined yellow
@@ -125,7 +129,7 @@ namespace Config {
 
     namespace Analysis {
 
-        std::vector<Mode> modes { Complexity, RankingFunction, NonTermination, Acceleration, RecurrentSet, Smt2Export, CIntExport };
+        std::vector<Mode> modes { Complexity, RankingFunction, NonTermination, Acceleration, RecurrentSet, Smt2Export, CIntExport, Reachability };
 
         // Whether to enable pruning to reduce the number of rules.
         // Pruning works by greedily keeping rules with a high complexity.
@@ -150,6 +154,8 @@ namespace Config {
                 break;
             case CIntExport: return "c_int_export";
                 break;
+            case Reachability: return "reachability";
+                break;
             default:
                 throw std::invalid_argument("unknown mode");
             }
@@ -157,6 +163,10 @@ namespace Config {
 
         bool nonTermination() {
             return mode == NonTermination;
+        }
+
+        bool reachability() {
+            return mode == Reachability;
         }
 
         bool complexity() {

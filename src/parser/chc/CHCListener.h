@@ -77,9 +77,6 @@ public:
   virtual void enterVar(CHCParser::VarContext *ctx) = 0;
   virtual void exitVar(CHCParser::VarContext *ctx) = 0;
 
-  virtual void enterId(CHCParser::IdContext *ctx) = 0;
-  virtual void exitId(CHCParser::IdContext *ctx) = 0;
-
 
 };
 

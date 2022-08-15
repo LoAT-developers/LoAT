@@ -61,8 +61,6 @@ public:
 
     virtual antlrcpp::Any visitVar(CHCParser::VarContext *context) = 0;
 
-    virtual antlrcpp::Any visitId(CHCParser::IdContext *context) = 0;
-
 
 };
 

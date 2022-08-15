@@ -1,25 +1,10 @@
-
-// Generated from CHC.g4 by ANTLR 4.7.2
-
-
 #include "CHCParseVisitor.h"
 #include <variant>
 #include <algorithm>
 
-struct FunApp {
-    const LocationIdx loc;
-    std::vector<Var> args;
-};
-
-struct Clause {
-    const FunApp lhs;
-    const FunApp rhs;
-    const BoolExpr guard;
-};
-
 antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     its.setInitialLocation(its.addNamedLocation("LoAT_init"));
-    its.setSink(its.addNamedLocation("LoAT_sink"));
+    sink = its.addNamedLocation("LoAT_sink");
     for (const auto &c: ctx->fun_decl()) {
         visit(c);
     }
@@ -48,29 +33,34 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         }
         Subs up;
         for (unsigned i = 0; i < c.rhs.args.size(); ++i) {
-            ren.put(vars[i], Expr(c.rhs.args[i]).subs(ren));
+            up.put(vars[i], Expr(c.rhs.args[i]).subs(ren));
         }
         for (unsigned i = c.rhs.args.size(); i < maxArity; ++i) {
             up.put(vars[i], its.addFreshTemporaryVariable("tmp"));
         }
-        its.addRule(Rule(c.lhs.loc, c.guard->subs(ren), 1, c.rhs.loc, up));
+        const Expr cost = c.rhs.loc == sink ? Expr::NontermSymbol : Expr(1);
+        const BoolExpr guard = c.guard->subs(ren);
+        const option<BoolExpr> simplified = guard->simplify();
+        std::cout << "guard: " << (simplified ? *simplified : guard) << std::endl;
+        its.addRule(Rule(c.lhs.loc, simplified ? *simplified : guard, cost, c.rhs.loc, up));
     }
-    return {};
+    return its;
 }
 
-void checkType(CHCParser::SortContext *ctx) {
-    const std::string txt = ctx->getText();
-    if (txt != "Int") {
-        throw CHCParseVisitor::ParseError("unknown type " + ctx->getText());
+std::string unescape(std::string name) {
+    unsigned length = name.length();
+    if (name[0] == '|' && name[length - 1] == '|') {
+        name = name.substr(1, length - 2);
     }
+    return name;
 }
 
 antlrcpp::Any CHCParseVisitor::visitFun_decl(CHCParser::Fun_declContext *ctx) {
     for (const auto &s: ctx->sort()) {
-        checkType(s);
+        visit(s);
     }
     maxArity = std::max(maxArity, ctx->sort().size());
-    const std::string name = ctx->symbol()->getText();
+    const std::string name = visit(ctx->symbol());
     const LocationIdx idx = its.addNamedLocation(name);
     locations[name] = idx;
     return idx;
@@ -87,7 +77,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headCo
 antlrcpp::Any CHCParseVisitor::visitChc_assert_body(CHCParser::Chc_assert_bodyContext *ctx) {
     const std::pair<FunApp, BoolExpr> lhs = visit(ctx->chc_tail());
     const FunApp rhs = visit(ctx->chc_head());
-    return Clause{lhs.first, rhs, lhs.second};
+    return Clause(lhs.first, rhs, lhs.second);
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_head(CHCParser::Chc_headContext *ctx) {
@@ -102,7 +92,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
     const BoolExpr guard = buildAnd(guards);
     switch (ctx->u_pred_atom().size()) {
     case 0: {
-        return std::pair(FunApp{its.getInitialLocation(), {}}, guard);
+        return std::pair(FunApp(its.getInitialLocation(), {}), guard);
     }
     case 1: {
         const FunApp lhs = visit(ctx->u_pred_atom(0));
@@ -115,21 +105,26 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) {
     const std::pair<FunApp, BoolExpr> lhs = visit(ctx->chc_tail());
-    return Clause{lhs.first, FunApp{*its.getSink(), {}}, lhs.second};
+    return Clause(lhs.first, FunApp(sink, {}), lhs.second);
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
-    checkType(ctx->sort());
-    return Var(ctx->symbol()->getText());
+    visit(ctx->sort());
+    return visit(ctx->var());
 }
 
 antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *ctx) {
-    const LocationIdx loc = visit(ctx->symbol());
-    std::vector<Var> args;
-    for (unsigned i = 0; i < ctx->var().size(); ++i) {
-        args.push_back(visit(ctx->var(i)));
+    const std::string name = visit(ctx->symbol());
+    const option<LocationIdx> loc = its.getLocationIdx(name);
+    if (!loc) {
+        throw ParseError("undeclared function symbol " + name);
     }
-    return FunApp{loc, args};
+    std::vector<Var> args;
+    for (const auto &c: ctx->var()) {
+        const Var x = visit(c);
+        args.push_back(x);
+    }
+    return FunApp(*loc, args);
 }
 
 antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) {
@@ -154,7 +149,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
             }
             return buildAnd(args) | buildAnd(negated);
         }
-        default: throw ParseError("unknown operator " + ctx->boolop()->toString());
+        default: throw ParseError("unknown operator " + ctx->boolop()->getText());
         }
     } else if (ctx->ITE()) {
         if (args.size() != 3) {
@@ -166,7 +161,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
     } else if (args.size() == 1) {
         return args[0];
     } else {
-        throw ParseError("failed to parse " + ctx->toString());
+        throw ParseError("failed to parse " + ctx->getText());
     }
 }
 
@@ -178,13 +173,13 @@ antlrcpp::Any CHCParseVisitor::visitBoolop(CHCParser::BoolopContext *ctx) {
     } else if (ctx->EQ()) {
         return Equiv;
     } else {
-        throw ParseError("failed to parse " + ctx->toString());
+        throw ParseError("failed to parse " + ctx->getText());
     }
 }
 
 antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
     if (ctx->expr().size() != 2) {
-        throw ParseError("wrong number of arguments: " + ctx->toString());
+        throw ParseError("wrong number of arguments: " + ctx->getText());
     }
     const Expr arg1 = visit(ctx->expr(0));
     const Expr arg2 = visit(ctx->expr(1));
@@ -196,7 +191,7 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
     case Lt: return arg1 < arg2;
     case Leq: return arg1 <= arg2;
     case Neq: return Rel::buildNeq(arg1, arg2);
-    default: throw ParseError("unknwon operator " + ctx->relop()->toString());
+    default: throw ParseError("unknwon operator " + ctx->relop()->getText());
     }
 }
 
@@ -207,7 +202,7 @@ antlrcpp::Any CHCParseVisitor::visitRelop(CHCParser::RelopContext *ctx) {
     if (ctx->LEQ()) return Leq;
     if (ctx->LT()) return Lt;
     if (ctx->NEQ()) return Neq;
-    throw ParseError("failed to parse operator " + ctx->toString());
+    throw ParseError("failed to parse operator " + ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
@@ -216,15 +211,15 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         args.push_back(visit(c));
     }
     if (ctx->unaryop()) {
-        if (args.size() != 1) throw ParseError("wrong number of arguments: " + ctx->toString());
+        if (args.size() != 1) throw ParseError("wrong number of arguments: " + ctx->getText());
         const UnaryOp op = visit(ctx->unaryop());
         switch (op) {
         case UnaryMinus: return -args[0];
-        default: throw ParseError("unknown operator " + ctx->toString());
+        default: throw ParseError("unknown operator " + ctx->getText());
         }
     }
     if (ctx->binaryop()) {
-        if (args.size() != 2) throw ParseError("wrong number of arguments: " + ctx->toString());
+        if (args.size() != 2) throw ParseError("wrong number of arguments: " + ctx->getText());
         const BinaryOp op = visit(ctx->binaryop());
         switch (op) {
         case Minus: return args[0] - args[1];
@@ -248,40 +243,42 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
             }
             return res;
         }
-        default: throw ParseError("unknown operator " + ctx->binaryop()->toString());
+        default: throw ParseError("unknown operator " + ctx->binaryop()->getText());
         }
     }
     if (ctx->var()) {
-        return visit(ctx->var());
+        const Var x = visit(ctx->var());
+        return Expr(x);
     }
     if (ctx->INT()) {
-        return visit(ctx->INT());
+        long l = std::stoi(ctx->getText());
+        return Expr(l);
     }
     if (args.size() == 1) {
         return args[0];
     }
-    throw ParseError("failed to parse expression " + ctx->toString());
+    throw ParseError("failed to parse expression " + ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitUnaryop(CHCParser::UnaryopContext *ctx) {
     if (ctx->MINUS()) return UnaryMinus;
-    throw ParseError("failed to parse operator " + ctx->toString());
+    throw ParseError("failed to parse operator " + ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitBinaryop(CHCParser::BinaryopContext *ctx) {
     if (ctx->MINUS()) return Minus;
     if (ctx->MOD()) return Mod;
-    throw ParseError("failed to parse operator " + ctx->toString());
+    throw ParseError("failed to parse operator " + ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitNaryop(CHCParser::NaryopContext *ctx) {
     if (ctx->PLUS()) return Plus;
     if (ctx->TIMES()) return Times;
-    throw ParseError("failed to parse operator " + ctx->toString());
+    throw ParseError("failed to parse operator " + ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitSymbol(CHCParser::SymbolContext *ctx) {
-    return loc(ctx->toString());
+    return unescape(ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
@@ -290,13 +287,8 @@ antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
-    return Var(ctx->getText());
-}
-
-antlrcpp::Any CHCParseVisitor::visitId(CHCParser::IdContext *ctx) {
-    return ctx->getText();
-}
-
-ITSProblem CHCParseVisitor::getRes() const {
-    return its;
+    const std::string name = unescape(ctx->getText());
+    const option<Var> res = varMan.getVar(name);
+    if (res) return *res;
+    return varMan.addFreshVariable(name);
 }
