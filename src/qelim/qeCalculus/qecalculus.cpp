@@ -83,7 +83,7 @@ option<unsigned int> QeProblem::store(const Rel &rel, const RelSet &deps, const 
     return res[rel].size() - 1;
 }
 
-bool QeProblem::monotonicity(const Rel &rel, const Var& n) {
+bool QeProblem::monotonicity(const Rel &rel, const Var& n, Proof &proof) {
     const auto bound = getQuantifier().upperBound(n);
     if (bound) {
         const Rel updated = rel.subs({n,n+1});
@@ -131,7 +131,7 @@ bool QeProblem::monotonicity(const Rel &rel, const Var& n) {
     return false;
 }
 
-bool QeProblem::recurrence(const Rel &rel, const Var& n) {
+bool QeProblem::recurrence(const Rel &rel, const Var& n, Proof &proof) {
     const auto bound = getQuantifier().lowerBound(n);
     if (bound) {
         const Rel updated = rel.subs({n, n+1});
@@ -180,7 +180,7 @@ bool QeProblem::recurrence(const Rel &rel, const Var& n) {
     return false;
 }
 
-bool QeProblem::eventualWeakDecrease(const Rel &rel, const Var& n) {
+bool QeProblem::eventualWeakDecrease(const Rel &rel, const Var& n, Proof &proof) {
     if (depsWellFounded(rel)) {
         return false;
     }
@@ -234,7 +234,7 @@ bool QeProblem::eventualWeakDecrease(const Rel &rel, const Var& n) {
     return false;
 }
 
-bool QeProblem::eventualWeakIncrease(const Rel &rel, const Var& n) {
+bool QeProblem::eventualWeakIncrease(const Rel &rel, const Var& n, Proof &proof) {
     if (depsWellFounded(rel)) {
         return false;
     }
@@ -290,7 +290,7 @@ bool QeProblem::eventualWeakIncrease(const Rel &rel, const Var& n) {
     return false;
 }
 
-option<BoolExpr> QeProblem::strengthen(const Rel &rel, const Var &n) {
+option<BoolExpr> QeProblem::strengthen(const Rel &rel, const Var &n, Proof &proof) {
     if (res.find(rel) == res.end() && rel.isPoly()) {
         const auto lhs = rel.lhs().expand();
         unsigned degree = lhs.degree(n);
@@ -315,7 +315,7 @@ option<BoolExpr> QeProblem::strengthen(const Rel &rel, const Var &n) {
     return {};
 }
 
-bool QeProblem::fixpoint(const Rel &rel, const Var& n) {
+bool QeProblem::fixpoint(const Rel &rel, const Var& n, Proof &proof) {
     if (res.find(rel) == res.end() && rel.isPoly()) {
         const auto lhs = rel.lhs().expand();
         unsigned degree = lhs.degree(n);
@@ -383,9 +383,10 @@ QeProblem::ReplacementMap QeProblem::computeReplacementMap() const {
 }
 
 option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
+    Proof fullProof;
+    fullProof.headline("Eliminated Quantifier via QE-Calculus");
+    fullProof.append(std::stringstream() << "Input Formula: " << qf);
     formula = qf;
-    proof = Proof();
-    proof.headline("QE Calculus");
     const auto quantifiers = formula->getPrefix();
     if (quantifiers.size() > 1) {
         return {};
@@ -399,19 +400,21 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
     const auto vars = quantifier.getVars();
     bool exact = true;
     for (const auto& var: vars) {
+        Proof proof;
+        proof.append("Eliminating " + var.get_name());
         res = {};
         solution = {};
-        todo = boundedFormula(var)->lits();
+        todo = formula->getMatrix()->lits();
         bool goOn;
         do {
             goOn = false;
             auto it = todo.begin();
             while (it != todo.end()) {
                 const Rel rel = *it;
-                bool res = recurrence(rel, var);
-                res |= monotonicity(rel, var);
-                res |= eventualWeakDecrease(rel, var);
-                res |= eventualWeakIncrease(rel, var);
+                bool res = recurrence(rel, var, proof);
+                res |= monotonicity(rel, var, proof);
+                res |= eventualWeakDecrease(rel, var, proof);
+                res |= eventualWeakIncrease(rel, var, proof);
                 if (res) {
                     it = todo.erase(it);
                 } else {
@@ -419,7 +422,7 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
                 }
             }
             for (const Rel &rel: todo) {
-                const option<BoolExpr> str = strengthen(rel, var);
+                const option<BoolExpr> str = strengthen(rel, var, proof);
                 if (str) {
                     const auto lits = (*str)->lits();
                     todo.insert(lits.begin(), lits.end());
@@ -430,7 +433,7 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
             }
             if (!goOn) {
                 for (const Rel &rel: todo) {
-                    fixpoint(rel, var);
+                    fixpoint(rel, var, proof);
                 }
             }
         } while (goOn);
@@ -441,16 +444,9 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
         }
         formula = matrix->quantify({quantifier.remove(var)});
         exact &= map.exact;
+        proof.append(std::stringstream() << "Replacement map: " << map.map);
+        fullProof.storeSubProof(proof);
     }
-    Proof fullProof;
-    fullProof.headline("Eliminated Quantifier via QE-Calculus");
-    fullProof.append(std::stringstream() << "Input Formula: " << qf);
     fullProof.append(std::stringstream() << "Resulting Formula: " << formula->getMatrix());
-    fullProof.storeSubProof(proof);
     return Qelim::Result(formula->getMatrix(), fullProof, exact);
 }
-
-Proof QeProblem::getProof() const {
-    return proof;
-}
-

@@ -23,22 +23,22 @@
 #include "recurrence.hpp"
 #include "metertools.hpp"
 #include "guardtoolbox.hpp"
-
-#include <purrs.hh>
 #include "relevantvariables.hpp"
 #include "chain.hpp"
-#include "accelerationviaqe.hpp"
+#include "accelerationfactory.hpp"
 #include "vareliminator.hpp"
 #include "status.hpp"
 #include "export.hpp"
 
+#include <purrs.hh>
+
 using namespace std;
 
 LoopAcceleration::LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx)
-        : its(its), rule(rule), sink(sink), cpx(cpx) {}
+    : its(its), rule(rule), sink(sink), cpx(cpx) {}
 
 bool LoopAcceleration::shouldAccelerate() const {
-    return !rule.getCost().isNontermSymbol() && (Config::Analysis::nonTermination() || rule.getCost().isPoly());
+    return !rule.getCost().isNontermSymbol() && (!Config::Analysis::complexity() || rule.getCost().isPoly());
 }
 
 vector<Rule> LoopAcceleration::replaceByUpperbounds(const Var &N, const Rule &rule) {
@@ -67,54 +67,50 @@ AccelerationResult LoopAcceleration::run() {
     AccelerationResult res;
     res.status = Failure;
     if (shouldAccelerate()) {
-        option<AccelerationViaQE> ap = AccelerationViaQE::init(rule, its);
-        if (ap) {
-            std::vector<AccelerationViaQE::Result> ars = ap->computeRes();
-            for (const AccelerationViaQE::Result &ar: ars) {
-                unsigned vb = ap->getValidityBound();
-                res.status = vb > 1 ? PartialSuccess : Success;
-                if (ar.witnessesNonterm) {
-                    option<Rule> resultingRule;
-                    if (vb > 0) {
-                        option<Rule> prefix = rule;
-                        for (unsigned i = 0; i < vb - 1; ++i) {
-                            prefix = Chaining::chainRules(its, rule, prefix.get(), false);
-                        }
-                        resultingRule = buildNontermRule(prefix->getGuard() & ar.newGuard);
-                        if (Smt::check(resultingRule->getGuard(), its) != Smt::Sat) {
-                            continue;
-                        }
-                    } else {
-                        resultingRule = buildNontermRule(ar.newGuard);
+        const option<Recurrence::Result> &rec = Recurrence::iterateRule(its, rule);
+        for (const auto &ar: AccelerationFactory::get(rule, rec, its)->computeRes()) {
+            res.status = rec->validityBound > 1 ? PartialSuccess : Success;
+            if (ar.witnessesNonterm) {
+                option<Rule> resultingRule;
+                if (rec->validityBound > 0) {
+                    option<Rule> prefix = rule;
+                    for (unsigned i = 0; i < rec->validityBound - 1; ++i) {
+                        prefix = Chaining::chainRules(its, rule, prefix.get(), false);
                     }
-                    res.rules.emplace_back(resultingRule.get());
-                    res.proof.ruleTransformationProof(rule, "nonterm", resultingRule.get(), its);
-                    res.proof.storeSubProof(ar.proof);
-                } else {
-                    option<Rule> resultingRule;
-                    if (vb > 0) {
-                        option<Rule> prefix = rule;
-                        for (unsigned i = 0; i < vb - 1; ++i) {
-                            prefix = Chaining::chainRules(its, rule, prefix.get(), false);
-                        }
-                        resultingRule = Rule(rule.getLhsLoc(), prefix->getGuard() & ar.newGuard, ap->getAcceleratedCost(), rule.getRhsLoc(), ap->getClosedForm().get());
-                    } else {
-                        resultingRule = Rule(rule.getLhsLoc(), ar.newGuard, ap->getAcceleratedCost(), rule.getRhsLoc(), ap->getClosedForm().get());
-                    }
-                    const BoolExpr toCheck = resultingRule->getGuard()->subs({ap->getIterationCounter(), max(2u, ap->getValidityBound())});
-                    if (Smt::check(toCheck, its) != Smt::Sat) {
+                    resultingRule = buildNontermRule(prefix->getGuard() & ar.formula);
+                    if (Smt::check(resultingRule->getGuard(), its) != Smt::Sat) {
                         continue;
                     }
-                    res.proof.ruleTransformationProof(rule, "acceleration", resultingRule.get(), its);
-                    res.proof.storeSubProof(ar.proof);
-                    std::vector<Rule> instantiated = replaceByUpperbounds(ap->getIterationCounter(), resultingRule.get());
-                    if (instantiated.empty()) {
-                        res.rules.emplace_back(resultingRule.get());
-                    } else {
-                        for (const Rule &r: instantiated) {
-                            res.proof.ruleTransformationProof(resultingRule.get(), "instantiation", r, its);
-                            res.rules.emplace_back(r);
-                        }
+                } else {
+                    resultingRule = buildNontermRule(ar.formula);
+                }
+                res.rules.emplace_back(resultingRule.get());
+                res.proof.ruleTransformationProof(rule, "nonterm", resultingRule.get(), its);
+                res.proof.storeSubProof(ar.proof);
+            } else {
+                option<Rule> resultingRule;
+                if (rec->validityBound > 0) {
+                    option<Rule> prefix = rule;
+                    for (unsigned i = 0; i < rec->validityBound - 1; ++i) {
+                        prefix = Chaining::chainRules(its, rule, prefix.get(), false);
+                    }
+                    resultingRule = Rule(rule.getLhsLoc(), prefix->getGuard() & ar.formula, rec->cost, rule.getRhsLoc(), rec->update);
+                } else {
+                    resultingRule = Rule(rule.getLhsLoc(), ar.formula, rec->cost, rule.getRhsLoc(), rec->update);
+                }
+                const BoolExpr toCheck = resultingRule->getGuard()->subs({rec->n, max(2u, rec->validityBound)});
+                if (Smt::check(toCheck, its) != Smt::Sat) {
+                    continue;
+                }
+                res.proof.ruleTransformationProof(rule, "acceleration", resultingRule.get(), its);
+                res.proof.storeSubProof(ar.proof);
+                std::vector<Rule> instantiated = replaceByUpperbounds(rec->n, resultingRule.get());
+                if (instantiated.empty()) {
+                    res.rules.emplace_back(resultingRule.get());
+                } else {
+                    for (const Rule &r: instantiated) {
+                        res.proof.ruleTransformationProof(resultingRule.get(), "instantiation", r, its);
+                        res.rules.emplace_back(r);
                     }
                 }
             }

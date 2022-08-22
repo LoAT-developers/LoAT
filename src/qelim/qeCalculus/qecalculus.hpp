@@ -21,17 +21,16 @@ private:
     Res res;
     option<RelMap<Entry>> solution;
     RelSet todo;
-    Proof proof;
     std::unique_ptr<Smt> solver;
     option<QuantifiedFormula> formula;
     VariableManager &varMan;
 
-    bool monotonicity(const Rel &rel, const Var &n);
-    bool recurrence(const Rel &rel, const Var &n);
-    bool eventualWeakDecrease(const Rel &rel, const Var &n);
-    bool eventualWeakIncrease(const Rel &rel, const Var &n);
-    option<BoolExpr> strengthen(const Rel &rel, const Var &n);
-    bool fixpoint(const Rel &rel, const Var &x);
+    bool monotonicity(const Rel &rel, const Var &n, Proof &proof);
+    bool recurrence(const Rel &rel, const Var &n, Proof &proof);
+    bool eventualWeakDecrease(const Rel &rel, const Var &n, Proof &proof);
+    bool eventualWeakIncrease(const Rel &rel, const Var &n, Proof &proof);
+    option<BoolExpr> strengthen(const Rel &rel, const Var &n, Proof &proof);
+    bool fixpoint(const Rel &rel, const Var &x, Proof &proof);
     RelSet findConsistentSubset(const BoolExpr e, const Var &var) const;
     option<unsigned int> store(const Rel &rel, const RelSet &deps, const BoolExpr formula, bool exact = true);
     BoolExpr boundedFormula(const Var &var) const;
@@ -58,11 +57,6 @@ public:
     };
 
     QeProblem(VariableManager &varMan): varMan(varMan){}
-
-    std::vector<Result> computeRes();
-    std::pair<BoolExpr, bool> buildRes(const Model &model, const std::map<Rel, std::vector<BoolExpr>> &entryVars);
-    Proof getProof() const;
-
     option<Qelim::Result> qe(const QuantifiedFormula &qf) override;
 
 };

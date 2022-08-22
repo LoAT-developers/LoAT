@@ -25,7 +25,7 @@ namespace Purrs = Parma_Recurrence_Relation_Solver;
 
 
 
-Recurrence::Recurrence(const VarMan &varMan, const std::vector<Var> &dependencyOrder)
+Recurrence::Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder)
     : varMan(varMan),
       ginacN(GiNaC::ex_to<GiNaC::symbol>(Purrs::Expr(Purrs::Recurrence::n).toGiNaC())),
       dependencyOrder(dependencyOrder)
@@ -63,8 +63,8 @@ option<Recurrence::RecurrenceSolution> Recurrence::findUpdateRecurrence(const Ex
 }
 
 
-option<Expr> Recurrence::findCostRecurrence(Expr cost) {
-    cost = cost.subs(updatePreRecurrences); //replace variables by their recurrence equations
+option<Expr> Recurrence::iterateCost(const Expr &c) {
+    Expr cost = c.subs(updatePreRecurrences); //replace variables by their recurrence equations
 
     //Example: if cost = y, the result is x(n) = x(n-1) + y(n-1), with x(0) = 0
     Purrs::Expr rhs = Purrs::x(Purrs::Recurrence::n - 1) + Purrs::Expr::fromGiNaC(cost.ex);
@@ -95,7 +95,7 @@ option<Expr> Recurrence::findCostRecurrence(Expr cost) {
 }
 
 
-option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Subs &update, const Expr &meterfunc) {
+option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Subs &update) {
     assert(dependencyOrder.size() == update.size());
     Subs newUpdate;
 
@@ -117,44 +117,34 @@ option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Sub
         updatePreRecurrences.put(target, updateRec.get().res.subs(Subs(ginacN, ginacN-1)));
 
         //calculate the final update using the loop's runtime
-        newUpdate.put(target, updateRec.get().res.subs(Subs(ginacN, meterfunc)));
+        newUpdate.put(target, updateRec.get().res);
     }
 
     return {{newUpdate, validityBound}};
 }
 
-
-option<Expr> Recurrence::iterateCost(const Expr &cost, const Expr &meterfunc) {
-    //calculate the new cost sum
-    auto costRec = findCostRecurrence(cost);
-    if (costRec) {
-        Expr res = costRec.get().subs(Subs(ginacN, meterfunc));
-        return {res};
-    }
-    return {};
-}
-
-
-option<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &cost, const Expr &metering) {
-    auto newUpdate = iterateUpdate(update, metering);
+option<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &cost) {
+    auto newUpdate = iterateUpdate(update);
     if (!newUpdate) {
         return {};
     }
 
-    auto newCost = iterateCost(cost, metering);
+    auto newCost = iterateCost(cost);
     if (!newCost) {
         return {};
     }
 
     Recurrence::Result res;
-    res.cost = newCost.get();
-    res.update = newUpdate.get().update;
+    res.n = varMan.addFreshTemporaryVariable("n");
+    Subs subs = {ginacN, res.n};
+    res.cost = newCost.get().subs(subs);
+    res.update = newUpdate.get().update.compose(subs);
     res.validityBound = newUpdate.get().validityBound;
     return {res};
 }
 
 
-option<Recurrence::Result> Recurrence::iterateRule(const VarMan &varMan, const LinearRule &rule, const Expr &metering) {
+option<Recurrence::Result> Recurrence::iterateRule(VarMan &varMan, const LinearRule &rule) {
     // This may modify the rule's guard and update
     auto order = DependencyOrder::findOrder(rule.getUpdate());
     if (!order) {
@@ -162,6 +152,6 @@ option<Recurrence::Result> Recurrence::iterateRule(const VarMan &varMan, const L
     }
 
     Recurrence rec(varMan, order.get());
-    return rec.iterate(rule.getUpdate(), rule.getCost(), metering);
+    return rec.iterate(rule.getUpdate(), rule.getCost());
 }
 

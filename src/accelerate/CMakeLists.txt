@@ -14,6 +14,12 @@ target_sources(${EXECUTABLE}
         accelerationresult.hpp
         accelerationviaqe.cpp
         accelerationviaqe.hpp
+        accelerationviacalculus.cpp
+        accelerationviacalculus.hpp
+        accelerationtechnique.hpp
+        accelerationtechnique.cpp
+        accelerationfactory.hpp
+        accelerationfactory.cpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

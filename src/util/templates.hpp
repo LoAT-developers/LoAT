@@ -20,7 +20,7 @@
 
 
 #include "rel.hpp"
-#include <boost/detail/iterator.hpp>
+#include <iterator>
 #include "variablemanager.hpp"
 
 class Templates {

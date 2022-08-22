@@ -8,7 +8,6 @@ add_subdirectory(util)
 add_subdirectory(smt)
 add_subdirectory(merging)
 add_subdirectory(qelim)
-add_subdirectory(nonterm)
 
 target_sources(${EXECUTABLE}
     PRIVATE

@@ -141,15 +141,6 @@ RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE="-march=sandybri
 RUN make -j
 RUN make install
 
-# qepcad
-# WORKDIR /src
-# RUN git clone https://github.com/ffrohn/qepcad.git
-# RUN mkdir -p /src/qepcad/build
-# WORKDIR /src/qepcad/build
-# RUN cmake ..
-# RUN make -j
-# RUN make install
-
 ARG ANTLR4_INCLUDE_PATH=/src/antlr4/runtime/Cpp/runtime/src
 ARG SHA
 ARG DIRTY
@@ -159,7 +150,8 @@ RUN mkdir -p /src/LoAT
 WORKDIR /src/LoAT
 COPY CMakeLists.txt /src/LoAT/
 COPY src /src/LoAT/src/
-COPY cmake /home/ffrohn/repos/LoAT/cmake/
+COPY --from=loat /src/LoAT/build /src/LoAT/build
+# COPY cmake /home/ffrohn/repos/LoAT/cmake/
 RUN mkdir /src/LoAT/lib
 RUN cp /src/reduce-algebra/generic/libreduce/x86_64-pc-linux-musl/libreduce.* /src/LoAT/lib
 RUN mkdir -p /src/LoAT/build/static/release

@@ -7,56 +7,14 @@
 AccelerationProblem::AccelerationProblem(
         const BoolExpr guard,
         const Subs &up,
-        option<const Subs&> closed,
+        const option<Recurrence::Result> closed,
         const Expr &cost,
-        const Expr &iteratedCost,
-        const Var &n,
-        const unsigned int validityBound,
-        ITSProblem &its): todo(guard->lits()), up(up), closed(closed), cost(cost), iteratedCost(iteratedCost), n(n), guard(guard), validityBound(validityBound), its(its) {
-    std::vector<Subs> subs = closed.map([&up](auto const &closed){return std::vector<Subs>{up, closed};}).get_value_or({up});
+        ITSProblem &its): todo(guard->lits()), up(up), closed(closed), cost(cost), guard(guard), its(its) {
+    std::vector<Subs> subs = closed.map([&up](auto const &closed){return std::vector<Subs>{up, closed.update};}).get_value_or({up});
     Smt::Logic logic = Smt::chooseLogic<RelSet, Subs>({todo}, subs);
     this->solver = SmtFactory::modelBuildingSolver(logic, its);
     this->solver->add(guard);
     this->isConjunction = guard->isConjunction();
-    this->proof.append(std::stringstream() << "accelerating " << guard << " wrt. " << up);
-}
-
-option<AccelerationProblem> AccelerationProblem::init(const LinearRule &r, ITSProblem &its) {
-    const Var &n = its.addFreshTemporaryVariable("n");
-    const option<Recurrence::Result> &res = Recurrence::iterateRule(its, r, n);
-    if (res) {
-        return {AccelerationProblem(
-                        r.getGuard()->toG(),
-                        r.getUpdate(),
-                        option<const Subs&>(res->update),
-                        r.getCost(),
-                        res->cost,
-                        n,
-                        res->validityBound,
-                        its)};
-    } else {
-        return {AccelerationProblem(
-                        r.getGuard()->toG(),
-                        r.getUpdate(),
-                        option<const Subs&>(),
-                        r.getCost(),
-                        r.getCost(),
-                        n,
-                        0,
-                        its)};
-    }
-}
-
-AccelerationProblem AccelerationProblem::initForRecurrentSet(const LinearRule &r, ITSProblem &its) {
-    return AccelerationProblem(
-                r.getGuard()->toG(),
-                r.getUpdate(),
-                option<const Subs&>(),
-                r.getCost(),
-                r.getCost(),
-                its.addFreshTemporaryVariable("n"),
-                0,
-                its);
 }
 
 RelSet AccelerationProblem::findConsistentSubset(BoolExpr e) const {
@@ -87,39 +45,47 @@ option<unsigned int> AccelerationProblem::store(const Rel &rel, const RelSet &de
     return res[rel].size() - 1;
 }
 
-option<AccelerationProblem::Entry> AccelerationProblem::depsWellFounded(const Rel& rel, bool nontermOnly, RelSet seen) const {
-    if (seen.find(rel) != seen.end()) {
-        return {};
+bool AccelerationProblem::depsWellFounded(const Rel& rel, bool nontermOnly) const {
+    RelMap<const AccelerationProblem::Entry*> entryMap;
+    return depsWellFounded(rel, entryMap, nontermOnly);
+}
+
+bool AccelerationProblem::depsWellFounded(const Rel& rel, RelMap<const AccelerationProblem::Entry*> &entryMap, bool nontermOnly, RelSet seen) const {
+    if (entryMap.find(rel) != entryMap.end()) {
+        return true;
+    } else if (seen.find(rel) != seen.end()) {
+        return false;
     }
     seen.insert(rel);
     const auto& it = res.find(rel);
     if (it == res.end()) {
-        return {};
+        return false;
     }
     for (const Entry& e: it->second) {
         if (nontermOnly && !e.nonterm) continue;
         bool success = true;
         for (const auto& dep: e.dependencies) {
-            if (!depsWellFounded(dep, nontermOnly, seen)) {
+            if (!depsWellFounded(dep, entryMap, nontermOnly, seen)) {
                 success = false;
                 break;
             }
         }
         if (success) {
-            return {e};
+            entryMap[it->first] = &e;
+            return true;
         }
     }
-    return {};
+    return false;
 }
 
-bool AccelerationProblem::monotonicity(const Rel &rel) {
+bool AccelerationProblem::monotonicity(const Rel &rel, Proof &proof) {
     if (closed) {
-        if (depsWellFounded(rel)) {
+        if (depsWellFounded(rel, false)) {
             return false;
         }
         const Rel updated = rel.subs(up);
-        const Rel newCond = rel.subs(closed.get()).subs(Subs(n, n-1));
-        RelSet premise = findConsistentSubset(guard & rel & updated & newCond & (n >= validityBound));
+        const Rel newCond = rel.subs(closed->update).subs(Subs(closed->n, closed->n-1));
+        RelSet premise = findConsistentSubset(guard & rel & updated & newCond & (closed->n >= closed->validityBound));
         if (!premise.empty()) {
             BoolExprSet assumptions;
             BoolExprSet deps;
@@ -143,7 +109,7 @@ bool AccelerationProblem::monotonicity(const Rel &rel) {
                     }
                 }
                 const BoolExpr newGuard = buildLit(newCond);
-                if (Smt::check(newGuard & (n >= validityBound), its) == Smt::Sat) {
+                if (Smt::check(newGuard & (closed->n >= closed->validityBound), its) == Smt::Sat) {
                     option<unsigned int> idx = store(rel, dependencies, newGuard);
                     if (idx) {
                         std::stringstream ss;
@@ -165,7 +131,7 @@ bool AccelerationProblem::monotonicity(const Rel &rel) {
     return false;
 }
 
-bool AccelerationProblem::recurrence(const Rel &rel) {
+bool AccelerationProblem::recurrence(const Rel &rel, Proof &proof) {
     const Rel updated = rel.subs(up);
     RelSet premise = findConsistentSubset(guard & rel & updated);
     if (!premise.empty()) {
@@ -211,16 +177,16 @@ bool AccelerationProblem::recurrence(const Rel &rel) {
     return false;
 }
 
-bool AccelerationProblem::eventualWeakDecrease(const Rel &rel) {
+bool AccelerationProblem::eventualWeakDecrease(const Rel &rel, Proof &proof) {
     if (closed) {
-        if (depsWellFounded(rel)) {
+        if (depsWellFounded(rel, false)) {
              return false;
         }
         const Expr updated = rel.lhs().subs(up);
         const Rel dec = rel.lhs() >= updated;
         const Rel inc = updated < updated.subs(up);
-        const Rel newCond = rel.subs(closed.get()).subs(Subs(n, n-1));
-        RelSet premise = findConsistentSubset(guard & dec & !inc & rel & newCond & (n >= validityBound));
+        const Rel newCond = rel.subs(closed->update).subs(Subs(closed->n, closed->n-1));
+        RelSet premise = findConsistentSubset(guard & dec & !inc & rel & newCond & (closed->n >= closed->validityBound));
         if (!premise.empty()) {
             BoolExprSet assumptions;
             BoolExprSet deps;
@@ -245,7 +211,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel) {
                     }
                 }
                 const BoolExpr newGuard = buildLit(rel) & newCond;
-                if (Smt::check(newGuard & (n >= validityBound), its) == Smt::Sat) {
+                if (Smt::check(newGuard & (closed->n >= closed->validityBound), its) == Smt::Sat) {
                     option<unsigned int> idx = store(rel, dependencies, newGuard);
                     if (idx) {
                         std::stringstream ss;
@@ -267,7 +233,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel) {
     return false;
 }
 
-bool AccelerationProblem::eventualWeakIncrease(const Rel &rel) {
+bool AccelerationProblem::eventualWeakIncrease(const Rel &rel, Proof &proof) {
     if (depsWellFounded(rel, true)) {
         return false;
     }
@@ -320,7 +286,7 @@ bool AccelerationProblem::eventualWeakIncrease(const Rel &rel) {
     return false;
 }
 
-bool AccelerationProblem::fixpoint(const Rel &rel) {
+bool AccelerationProblem::fixpoint(const Rel &rel, Proof &proof) {
     if (res.find(rel) == res.end()) {
         RelSet eqs;
         VarSet vars = util::RelevantVariables::find(rel.vars(), {up}, True);
@@ -348,13 +314,11 @@ AccelerationProblem::ReplacementMap AccelerationProblem::computeReplacementMap(b
     res.nonterm = true;
     res.acceleratedAll = true;
     res.exact = guard->isConjunction();
-    RelMap<Entry> entryMap;
+    RelMap<const Entry*> entryMap;
     for (const Rel& rel: todo) {
-        option<Entry> e = depsWellFounded(rel, nontermOnly);
-        if (e) {
-            entryMap[rel] = e.get();
-            res.nonterm &= e->nonterm;
-            res.exact &= e->exact;
+        if (depsWellFounded(rel, entryMap, nontermOnly)) {
+            res.nonterm &= entryMap[rel]->nonterm;
+            res.exact &= entryMap[rel]->exact;
         } else {
             res.acceleratedAll = false;
             res.map[rel] = False;
@@ -368,9 +332,9 @@ AccelerationProblem::ReplacementMap AccelerationProblem::computeReplacementMap(b
             changed = false;
             for (auto e: entryMap) {
                 if (res.map.find(e.first) != res.map.end()) continue;
-                BoolExpr closure = e.second.formula;
+                BoolExpr closure = e.second->formula;
                 bool ready = true;
-                for (auto dep: e.second.dependencies) {
+                for (auto dep: e.second->dependencies) {
                     if (res.map.find(dep) == res.map.end()) {
                         ready = false;
                         break;
@@ -386,20 +350,21 @@ AccelerationProblem::ReplacementMap AccelerationProblem::computeReplacementMap(b
         } while (changed);
     } else {
         for (auto e: entryMap) {
-            res.map[e.first] = e.second.formula;
+            res.map[e.first] = e.second->formula;
         }
     }
     return res;
 }
 
-std::vector<AccelerationProblem::Result> AccelerationProblem::computeRes() {
-    std::vector<AccelerationProblem::Result> ret;
+std::vector<AccelerationTechnique::Accelerator> AccelerationProblem::computeRes() {
+    std::vector<AccelerationTechnique::Accelerator> ret;
+    Proof proof;
     for (const Rel& rel: todo) {
-        bool res = recurrence(rel);
-        res |= monotonicity(rel);
-        res |= eventualWeakDecrease(rel);
-        res |= eventualWeakIncrease(rel);
-        res |= fixpoint(rel);
+        bool res = recurrence(rel, proof);
+        res |= monotonicity(rel, proof);
+        res |= eventualWeakDecrease(rel, proof);
+        res |= eventualWeakIncrease(rel, proof);
+        res |= fixpoint(rel, proof);
         if (!res && isConjunction) return ret;
     }
     ReplacementMap map = computeReplacementMap(false);
@@ -407,39 +372,23 @@ std::vector<AccelerationProblem::Result> AccelerationProblem::computeRes() {
         bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || Smt::isImplication(guard, buildLit(cost > 0), its);
         bool nt = map.nonterm && positiveCost;
         BoolExpr newGuard = guard->replaceRels(map.map);
-        if (!nt) newGuard = newGuard & (n >= 0);
+        if (!nt) newGuard = newGuard & (closed->n >= 0);
         if (Smt::check(newGuard, its) == Smt::Sat) {
-            ret.emplace_back(newGuard, map.exact, nt);
+            Proof accelProof(proof);
+            accelProof.append(std::stringstream() << "Replacement map: " << map.map);
+            ret.emplace_back(newGuard, accelProof, map.exact, nt);
         }
         if (closed && positiveCost && !map.nonterm) {
             ReplacementMap map = computeReplacementMap(true);
             if (map.acceleratedAll || !isConjunction) {
                 BoolExpr newGuard = guard->replaceRels(map.map);
                 if (Smt::check(newGuard, its) == Smt::Sat) {
-                    ret.emplace_back(newGuard, map.exact, true);
+                    Proof nontermProof(proof);
+                    nontermProof.append(std::stringstream() << "Replacement map: " << map.map);
+                    ret.emplace_back(newGuard, nontermProof, map.exact, true);
                 }
             }
         }
     }
     return ret;
-}
-
-Proof AccelerationProblem::getProof() const {
-    return proof;
-}
-
-Expr AccelerationProblem::getAcceleratedCost() const {
-    return iteratedCost;
-}
-
-option<Subs> AccelerationProblem::getClosedForm() const {
-    return closed;
-}
-
-Var AccelerationProblem::getIterationCounter() const {
-    return n;
-}
-
-unsigned int AccelerationProblem::getValidityBound() const {
-    return validityBound;
 }

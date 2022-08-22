@@ -1,5 +1,4 @@
-#ifndef ACCELERATION_VIA_QE
-#define ACCELERATION_VIA_QE
+#pragma once
 
 #include "types.hpp"
 #include "rule.hpp"
@@ -8,19 +7,16 @@
 #include "proof.hpp"
 #include "smt.hpp"
 #include "accelerationtechnique.hpp"
-#include "recurrence.hpp"
 
-class AccelerationViaQE: public AccelerationTechnique {
+class AccelerationViaCalculus: public AccelerationTechnique {
 
 public:
 
-    AccelerationViaQE(
+    AccelerationViaCalculus(
             const LinearRule &rule,
-            const Recurrence::Result closed,
+            const option<Recurrence::Result> closed,
             ITSProblem &its);
 
     std::vector<Accelerator> computeRes() override;
 
 };
-
-#endif
