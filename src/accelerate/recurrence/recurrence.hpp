@@ -20,9 +20,7 @@
 #include "rule.hpp"
 #include "variablemanager.hpp"
 #include "option.hpp"
-#include "nondetupdate.hpp"
 
-#include <variant>
 
 /**
  * This class is the interface end to the recurrence solver PURRS,
@@ -34,32 +32,30 @@ private:
 
 public:
 
-    template<class T>
     struct Result {
         Expr cost;
-        T update;
+        Subs update;
         unsigned int validityBound;
         Var n;
-        option<std::string> inexact;
     };
-
-    static option<Result<Subs>> toDeterministic(const Result<NondetUpdate> &res);
 
     /**
      * Iterates the rule's update and cost, similar to iterateUpdateCost.
      * In addition to iterateUpdateCost, an additional heuristic is used if no dependency order is found.
      * This heuristic adds new constraints to the rule's guard and is thus only used in this method.
      */
-    static option<Result<NondetUpdate>> iterateRule(VarMan &varMan, const LinearRule &rule);
-
-    static option<Result<NondetUpdate>> iterateRuleDeterministically(VarMan &varMan, const LinearRule &rule);
+    static option<Result> iterateRule(VarMan &varMan, const LinearRule &rule);
 
 private:
 
-    struct RecurrenceSystemSolution {
-        NondetUpdate update;
+    struct RecurrenceSolution {
+        Expr res;
         const unsigned int validityBound;
-        option<std::string> inexact;
+    };
+
+    struct RecurrenceSystemSolution {
+        Subs update;
+        const unsigned int validityBound;
     };
 
     Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder);
@@ -67,14 +63,14 @@ private:
     /**
      * Main implementation
      */
-    option<Result<NondetUpdate>> iterate(const NondetUpdate &update, const Expr &cost);
+    option<Result> iterate(const Subs &update, const Expr &cost);
 
     /**
      * Computes the iterated update, with meterfunc as iteration step (if possible).
      * @note dependencyOrder must be set before
      * @note sets updatePreRecurrences
      */
-    option<RecurrenceSystemSolution> iterateUpdate(const NondetUpdate &update);
+    option<RecurrenceSystemSolution> iterateUpdate(const Subs &update);
 
     /**
      * Computes the iterated cost, with meterfunc as iteration step (if possible).
@@ -87,11 +83,9 @@ private:
      * Tries to find a recurrence for the given single update.
      * Note that all variables occurring in update must have been solved before (and added to updatePreRecurrences).
      */
-    std::pair<int, option<std::string>> findUpdateRecurrence(const NondetUpdate &update, Var updateLhs, const VarMap<unsigned int> &validitybounds);
+    option<RecurrenceSolution> findUpdateRecurrence(const Expr &updateRhs, Var updateLhs, const VarMap<unsigned int> &validitybounds);
 
     static const option<RecurrenceSystemSolution> iterateUpdate(const VariableManager&, const Subs&);
-
-    option<std::pair<Subs, option<std::string>>> buildSubs(const NondetUpdate &update, const VarSet &vars, const Expr &e, std::function<option<Expr>(const Var&)> inc, std::function<option<Expr>(const Var&)> dec) const;
 
     /**
      * To query variable names/indices
@@ -113,6 +107,5 @@ private:
      * @note the recurrence equations are valid *before* the transition is taken,
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
-    NondetUpdate updatePreRecurrences;
-    NondetUpdate res;
+    Subs updatePreRecurrences;
 };

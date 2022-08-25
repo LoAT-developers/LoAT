@@ -16,7 +16,7 @@ public:
 
     AccelerationViaQE(
             const LinearRule &rule,
-            const Recurrence::Result<NondetUpdate> closed,
+            const Recurrence::Result closed,
             ITSProblem &its);
 
     std::vector<Accelerator> computeRes() override;

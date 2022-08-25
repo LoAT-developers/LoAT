@@ -5,6 +5,6 @@
 
 namespace AccelerationFactory {
 
-std::unique_ptr<AccelerationTechnique> get(const LinearRule &rule, option<Recurrence::Result<NondetUpdate>> closed, ITSProblem &its);
+std::unique_ptr<AccelerationTechnique> get(const LinearRule &rule, option<Recurrence::Result> closed, ITSProblem &its);
 
 }

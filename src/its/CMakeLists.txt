@@ -16,10 +16,6 @@ target_sources(${EXECUTABLE}
         guard.hpp
         variablemanager.cpp
         variablemanager.hpp
-        nondetupdate.hpp
-        nondetupdate.cpp
-        loopexport.cpp
-        loopexport.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

@@ -25,7 +25,7 @@ private:
     option<RelMap<Entry>> solution;
     RelSet todo;
     Subs up;
-    const option<Recurrence::Result<Subs>> closed;
+    const option<Recurrence::Result> closed;
     Expr cost;
     BoolExpr guard;
     std::unique_ptr<Smt> solver;
@@ -52,13 +52,13 @@ private:
     AccelerationProblem(
             const BoolExpr guard,
             const Subs &up,
-            const option<Recurrence::Result<Subs>> &closed,
+            const option<Recurrence::Result> &closed,
             const Expr &cost,
             ITSProblem &its);
 
 public:
 
-    static AccelerationProblem init(const LinearRule &rule, const option<Recurrence::Result<Subs>> &closed, ITSProblem &its);
+    static AccelerationProblem init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its);
 
     std::vector<AccelerationTechnique::Accelerator> computeRes();
     std::pair<BoolExpr, bool> buildRes(const Model &model, const std::map<Rel, std::vector<BoolExpr>> &entryVars);

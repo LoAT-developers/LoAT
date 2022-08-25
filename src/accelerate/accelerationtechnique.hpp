@@ -18,15 +18,15 @@ public:
 
     };
 
-    option<Recurrence::Result<NondetUpdate>> getClosed() const;
+    option<Recurrence::Result> getClosed() const;
 
 protected:
 
     LinearRule rule;
-    const option<Recurrence::Result<NondetUpdate>> closed;
+    const option<Recurrence::Result> closed;
     ITSProblem &its;
 
-    AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result<NondetUpdate>> closed, ITSProblem &its);
+    AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result> closed, ITSProblem &its);
 
 public:
 

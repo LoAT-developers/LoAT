@@ -31,7 +31,7 @@ struct PartialResult {
  * already ordered. Stops if this is no longer possible (we are either done
  * or there are conflicting variables depending on each other).
  */
-static void findOrderUntilConflicting(const NondetUpdate &update, PartialResult &res) {
+static void findOrderUntilConflicting(const Subs &update, PartialResult &res) {
     bool changed = true;
 
     while (changed && res.ordering.size() < update.size()) {
@@ -58,7 +58,7 @@ static void findOrderUntilConflicting(const NondetUpdate &update, PartialResult 
     }
 }
 
-option<vector<Var>> DependencyOrder::findOrder(const NondetUpdate &update) {
+option<vector<Var>> DependencyOrder::findOrder(const Subs &update) {
     PartialResult res;
     findOrderUntilConflicting(update, res);
 

@@ -21,7 +21,6 @@
 #include "rule.hpp"
 #include "option.hpp"
 #include "accelerationresult.hpp"
-#include "nondetupdate.hpp"
 
 class LoopAcceleration {
 public:
@@ -37,8 +36,6 @@ private:
     LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
 
     LinearRule buildNontermRule(const BoolExpr &guard) const;
-
-    LinearRule buildRule(LocationIdx lhs, BoolExpr guard, const Expr &cost, LocationIdx rhs, const NondetUpdate &up);
 
     /**
      * Main function, just calls the methods below in the correct order

@@ -7,7 +7,7 @@
 AccelerationProblem::AccelerationProblem(
         const BoolExpr guard,
         const Subs &up,
-        const option<Recurrence::Result<Subs>> &closed,
+        const option<Recurrence::Result> &closed,
         const Expr &cost,
         ITSProblem &its): todo(guard->lits()), up(up), closed(closed), cost(cost), guard(guard), its(its) {
     const std::vector<Subs> subs = closed.map([&up](auto const &closed){return std::vector<Subs>{up, closed.update};}).get_value_or({up});
@@ -17,7 +17,7 @@ AccelerationProblem::AccelerationProblem(
     this->isConjunction = guard->isConjunction();
 }
 
-AccelerationProblem AccelerationProblem::init(const LinearRule &rule, const option<Recurrence::Result<Subs>> &closed, ITSProblem &its) {
+AccelerationProblem AccelerationProblem::init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its) {
     return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, rule.getCost(), its);
 }
 

@@ -21,7 +21,6 @@
 #include "rule.hpp"
 #include "variablemanager.hpp"
 #include "option.hpp"
-#include "nondetupdate.hpp"
 
 
 /**
@@ -40,7 +39,7 @@ namespace DependencyOrder {
      * Fails if there is a nontrivial set of variables whose updates depend on each other.
      * @return list indicating the order (if successful)
      */
-    option<std::vector<Var>> findOrder(const NondetUpdate &update);
+    option<std::vector<Var>> findOrder(const Subs &update);
 
 }
 

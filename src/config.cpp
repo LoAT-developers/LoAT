@@ -129,7 +129,7 @@ namespace Config {
 
     namespace Analysis {
 
-        std::vector<Mode> modes { Complexity, NonTermination, Smt2Export, CIntExport, LoopExport, Reachability, Accel };
+        std::vector<Mode> modes { Complexity, NonTermination, Smt2Export, CIntExport, Reachability };
 
         // Whether to enable pruning to reduce the number of rules.
         // Pruning works by greedily keeping rules with a high complexity.
@@ -149,10 +149,6 @@ namespace Config {
             case CIntExport: return "c_int_export";
                 break;
             case Reachability: return "reachability";
-                break;
-            case LoopExport: return "loop_export";
-                break;
-            case Accel: return "accel";
                 break;
             default:
                 throw std::invalid_argument("unknown mode");

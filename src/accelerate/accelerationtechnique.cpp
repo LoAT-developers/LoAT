@@ -6,7 +6,7 @@ AccelerationTechnique::Accelerator::Accelerator(const BoolExpr &formula, const P
         exact(exact),
         witnessesNonterm(witnessesNonterm) {}
 
-AccelerationTechnique::AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result<NondetUpdate>> closed, ITSProblem &its):
+AccelerationTechnique::AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result> closed, ITSProblem &its):
         rule(rule),
         closed(closed),
         its(its) {}
