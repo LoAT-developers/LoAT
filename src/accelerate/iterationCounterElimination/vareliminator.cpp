@@ -1,5 +1,4 @@
 #include "vareliminator.hpp"
-#include "boundextractor.hpp"
 #include "rel.hpp"
 
 VarEliminator::VarEliminator(const BoolExpr guard, const Var &N, VariableManager &varMan): varMan(varMan), N(N) {
@@ -51,11 +50,16 @@ const std::set<std::pair<Subs, BoolExpr>> VarEliminator::eliminateDependency(con
         if (vars.find(*it) == vars.end()) {
             continue;
         }
-        BoundExtractor be(guard, *it);
+        Bounds bounds;
+        guard->getBounds(*it, bounds);
         std::set<std::pair<Subs, BoolExpr>> res;
-        for (const Expr &bound: be.getConstantBounds()) {
-            Subs newSubs(*it, bound);
-            res.insert({subs.compose(newSubs), guard->subs(newSubs)});
+        for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
+            for (const auto &b: bb) {
+                if (b.expand().isGround()) {
+                    Subs newSubs(*it, b);
+                    res.insert({subs.compose(newSubs), guard->subs(newSubs)});
+                }
+            }
         }
         if (!res.empty()) {
             return res;
@@ -83,11 +87,12 @@ void VarEliminator::eliminate() {
     for (const auto &p: todoN) {
         const Subs &subs = p.first;
         const BoolExpr guard = p.second;
-        BoundExtractor be(guard, N);
-        if (be.getEq()) {
-            res.insert(subs.compose(Subs(N, be.getEq().get())));
+        Bounds bounds;
+        guard->getBounds(N, bounds);
+        if (bounds.equality) {
+            res.insert(subs.compose(Subs(N, *bounds.equality)));
         } else {
-            for (const Expr &b: be.getUpper()) {
+            for (const Expr &b: bounds.upperBounds) {
                 res.insert(subs.compose(Subs(N, b)));
             }
         }

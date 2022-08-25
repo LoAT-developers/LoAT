@@ -203,6 +203,7 @@ public:
     // special shorthands for linear rules, overwriting the general ones
     LocationIdx getRhsLoc() const { return Rule::getRhsLoc(0); }
     const Subs& getUpdate() const { return Rule::getUpdate(0); }
+    bool isOctagon() const;
 };
 
 

@@ -8,18 +8,39 @@
 
 AccelerationViaQE::AccelerationViaQE(
         const LinearRule &rule,
-        const Recurrence::Result closed,
+        const Recurrence::Result<NondetUpdate> closed,
         ITSProblem &its): AccelerationTechnique(rule, closed, its) {}
 
-std::vector<AccelerationViaQE::Accelerator> AccelerationViaQE::computeRes() {
+std::vector<AccelerationTechnique::Accelerator> AccelerationViaQE::computeRes() {
     const bool tryNonterm = Config::Analysis::nonTermination() || Config::Analysis::complexity();
     Var m = its.getFreshUntrackedSymbol("m", Expr::Int);
     auto qelim = Qelim::solver(its);
     option<Qelim::Result> res;
-    std::vector<AccelerationViaQE::Accelerator> ret;
+    std::vector<Accelerator> ret;
+    BoolExpr matrix = rule.getGuard()->toG();
+    VarSet vars;
+    VarMap<Expr> lb, ub;
+    for (const auto &e: closed->update) {
+        if (e.second.isDeterministic()) {
+            matrix = matrix->subs({e.first, *e.second.getLower()});
+        } else if (e.second.getLower() && !e.second.getUpper()) {
+            matrix = matrix->subs({e.first, *e.second.getLower()});
+        } else if (!e.second.getLower() && e.second.getUpper()) {
+            matrix = matrix->subs({e.first, *e.second.getUpper()});
+        } else {
+            const Var var = its.getFreshUntrackedSymbol(e.first.get_name(), Expr::Int);
+            vars.insert(var);
+            if (e.second.getLower()) lb[var] = *e.second.getLower();
+            if (e.second.getUpper()) ub[var] = *e.second.getUpper();
+            matrix = matrix->subs({e.first, var});
+        }
+    }
     if (tryNonterm) {
-        BoolExpr matrix = rule.getGuard()->subs(closed->update);
-        QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {closed->n}, {{closed->n, 0}}, {})});
+        VarSet nontermVars(vars);
+        VarMap<Expr> nontermLb(lb);
+        nontermVars.insert(closed->n);
+        nontermLb[closed->n] = closed->validityBound;
+        QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, nontermVars, nontermLb, ub)});
         res = qelim->qe(q);
         if (res && res->qf != False) {
             Proof proof;
@@ -42,8 +63,11 @@ std::vector<AccelerationViaQE::Accelerator> AccelerationViaQE::computeRes() {
             }
         }
     }
-    BoolExpr matrix = rule.getGuard()->subs(closed->update)->subs({closed->n, m});
-    QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, closed->validityBound}}, {{m, closed->n-1}})});
+    matrix = matrix->subs({closed->n, m});
+    vars.insert(m);
+    lb[m] = closed->validityBound;
+    ub[m] = closed->n - 1;
+    const QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, vars, lb, ub)});
     res = qelim->qe(q);
     if (res && res->qf != False) {
         const BoolExpr accelerator = res->qf & (closed->n >= closed->validityBound);

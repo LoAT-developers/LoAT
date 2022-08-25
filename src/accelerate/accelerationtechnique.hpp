@@ -1,5 +1,4 @@
-#ifndef ACCELERATIONTECHNIQUE_HPP
-#define ACCELERATIONTECHNIQUE_HPP
+#pragma once
 
 #include "boolexpr.hpp"
 #include "proof.hpp"
@@ -19,23 +18,18 @@ public:
 
     };
 
-    option<Recurrence::Result> getClosed() const;
+    option<Recurrence::Result<NondetUpdate>> getClosed() const;
 
 protected:
 
     LinearRule rule;
-    const option<Recurrence::Result> closed;
+    const option<Recurrence::Result<NondetUpdate>> closed;
     ITSProblem &its;
 
-    AccelerationTechnique(
-            const LinearRule &rule,
-            const option<Recurrence::Result> closed,
-            ITSProblem &its);
+    AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result<NondetUpdate>> closed, ITSProblem &its);
 
 public:
 
     virtual std::vector<Accelerator> computeRes() = 0;
 
 };
-
-#endif // ACCELERATIONTECHNIQUE_HPP

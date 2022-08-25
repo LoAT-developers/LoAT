@@ -147,6 +147,10 @@ bool Rule::approxEqual(const Rule &that, bool compareRhss) const {
     return true;
 }
 
+bool LinearRule::isOctagon() const {
+    return getGuard()->isOctagon() && getUpdate().isOctagon();
+}
+
 unsigned Rule::hash() const {
     unsigned hash = 7;
     hash = hash * 31 + lhs.hash();

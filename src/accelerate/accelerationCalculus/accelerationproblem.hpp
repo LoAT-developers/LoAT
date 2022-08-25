@@ -1,5 +1,4 @@
-#ifndef ACCELERATION_PROBLEM
-#define ACCELERATION_PROBLEM
+#pragma once
 
 #include "types.hpp"
 #include "rule.hpp"
@@ -26,7 +25,7 @@ private:
     option<RelMap<Entry>> solution;
     RelSet todo;
     Subs up;
-    const option<Recurrence::Result> closed;
+    const option<Recurrence::Result<Subs>> closed;
     Expr cost;
     BoolExpr guard;
     std::unique_ptr<Smt> solver;
@@ -50,14 +49,16 @@ private:
 
     ReplacementMap computeReplacementMap(bool nontermOnly) const;
 
-public:
-
     AccelerationProblem(
             const BoolExpr guard,
             const Subs &up,
-            const option<Recurrence::Result> closed,
+            const option<Recurrence::Result<Subs>> &closed,
             const Expr &cost,
             ITSProblem &its);
+
+public:
+
+    static AccelerationProblem init(const LinearRule &rule, const option<Recurrence::Result<Subs>> &closed, ITSProblem &its);
 
     std::vector<AccelerationTechnique::Accelerator> computeRes();
     std::pair<BoolExpr, bool> buildRes(const Model &model, const std::map<Rel, std::vector<BoolExpr>> &entryVars);
@@ -68,5 +69,3 @@ private:
     bool depsWellFounded(const Rel& rel, RelMap<const AccelerationProblem::Entry*> &entryMap, bool nontermOnly, RelSet seen = {}) const;
 
 };
-
-#endif

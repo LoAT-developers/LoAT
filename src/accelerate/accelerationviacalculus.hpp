@@ -14,7 +14,7 @@ public:
 
     AccelerationViaCalculus(
             const LinearRule &rule,
-            const option<Recurrence::Result> closed,
+            const option<Recurrence::Result<NondetUpdate>> closed,
             ITSProblem &its);
 
     std::vector<Accelerator> computeRes() override;

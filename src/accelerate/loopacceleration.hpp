@@ -15,13 +15,13 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef BACKWARDACCELERATION_H
-#define BACKWARDACCELERATION_H
+#pragma once
 
 #include "itsproblem.hpp"
 #include "rule.hpp"
 #include "option.hpp"
 #include "accelerationresult.hpp"
+#include "nondetupdate.hpp"
 
 class LoopAcceleration {
 public:
@@ -36,7 +36,9 @@ public:
 private:
     LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
 
-    LinearRule buildNontermRule(const BoolExpr guard) const;
+    LinearRule buildNontermRule(const BoolExpr &guard) const;
+
+    LinearRule buildRule(LocationIdx lhs, BoolExpr guard, const Expr &cost, LocationIdx rhs, const NondetUpdate &up);
 
     /**
      * Main function, just calls the methods below in the correct order
@@ -66,5 +68,3 @@ private:
     LocationIdx sink;
     Complexity cpx;
 };
-
-#endif /* BACKWARDACCELERATION_H */

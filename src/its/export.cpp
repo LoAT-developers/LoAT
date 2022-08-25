@@ -164,8 +164,7 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
 
         //write transition in KoAT format (note that relevantVars is an ordered set)
         for (TransIdx trans : its.getTransitionsFrom(n)) {
-            const Rule &rule = its.getRule(trans);
-            if (!rule.isSimpleLoop() || rule.getGuard()->size() < 30) continue;
+            const Rule &rule = its.getRule(trans);;
             //lhs
             printNode(n);
             bool first = true;

@@ -59,16 +59,55 @@ vector<Rule> LoopAcceleration::replaceByUpperbounds(const Var &N, const Rule &ru
     return res;
 }
 
-LinearRule LoopAcceleration::buildNontermRule(const BoolExpr guard) const {
+LinearRule LoopAcceleration::buildNontermRule(const BoolExpr &guard) const {
     return LinearRule(rule.getLhsLoc(), guard, Expr::NontermSymbol, sink, {});
+}
+
+LinearRule LoopAcceleration::buildRule(LocationIdx lhs, BoolExpr guard, const Expr &cost, LocationIdx rhs, const NondetUpdate &up) {
+    Subs subs;
+    for (const auto &e: up) {
+        if (e.second.isDeterministic()) {
+            subs.put(e.first, *e.second.getLower());
+        } else {
+            const Var tmp = its.addFreshTemporaryVariable(e.first.get_name() + "_tmp");
+            Expr update = tmp;
+            if (e.second.getLower() || e.second.getUpper()) {
+                guard = guard & (tmp >= 0);
+                if (e.second.getLower()) {
+                    update = *e.second.getLower() + tmp;
+                    if (e.second.getUpper()) {
+                        guard = guard & (*e.second.getLower() + tmp <= *e.second.getUpper());
+                    }
+                } else if (e.second.getUpper()) {
+                    update = *e.second.getUpper() - tmp;
+                }
+            }
+            subs.put(e.first, update);
+        }
+    }
+    return LinearRule(lhs, guard, cost, rhs, subs);
 }
 
 AccelerationResult LoopAcceleration::run() {
     AccelerationResult res;
     res.status = Failure;
     if (shouldAccelerate()) {
-        const option<Recurrence::Result> &rec = Recurrence::iterateRule(its, rule);
-        for (const auto &ar: AccelerationFactory::get(rule, rec, its)->computeRes()) {
+        auto rec = Recurrence::iterateRule(its, rule);
+        if (!rec) rec = Recurrence::iterateRuleDeterministically(its, rule);
+        auto accel = AccelerationFactory::get(rule, rec, its);
+        if (!accel && rec && !rec->update.isDeterministic()) {
+            rec = Recurrence::iterateRuleDeterministically(its, rule);
+            if (rec) accel = AccelerationFactory::get(rule, rec, its);
+        }
+        std::vector<AccelerationTechnique::Accelerator> accelRes;
+        if (accel) accelRes = accel->computeRes();
+        std::remove_if(accelRes.begin(), accelRes.end(), [&](const auto &ar){return Smt::check(ar.formula, its) != Smt::Sat;});
+        if (accelRes.empty() && rec && !rec->update.isDeterministic()) {
+            rec = Recurrence::iterateRuleDeterministically(its, rule);
+            if (rec) accel = AccelerationFactory::get(rule, rec, its);
+            if (accel) accelRes = accel->computeRes();
+        }
+        for (const auto &ar: accelRes) {
             res.status = rec->validityBound > 1 ? PartialSuccess : Success;
             if (ar.witnessesNonterm) {
                 option<Rule> resultingRule;
@@ -94,9 +133,9 @@ AccelerationResult LoopAcceleration::run() {
                     for (unsigned i = 0; i < rec->validityBound - 1; ++i) {
                         prefix = Chaining::chainRules(its, rule, prefix.get(), false);
                     }
-                    resultingRule = Rule(rule.getLhsLoc(), prefix->getGuard() & ar.formula, rec->cost, rule.getRhsLoc(), rec->update);
+                    resultingRule = buildRule(rule.getLhsLoc(), prefix->getGuard() & ar.formula, rec->cost, rule.getRhsLoc(), rec->update);
                 } else {
-                    resultingRule = Rule(rule.getLhsLoc(), ar.formula, rec->cost, rule.getRhsLoc(), rec->update);
+                    resultingRule = buildRule(rule.getLhsLoc(), ar.formula, rec->cost, rule.getRhsLoc(), rec->update);
                 }
                 const BoolExpr toCheck = resultingRule->getGuard()->subs({rec->n, max(2u, rec->validityBound)});
                 if (Smt::check(toCheck, its) != Smt::Sat) {

@@ -136,6 +136,18 @@ bool Expr::isNaturalPow() const {
     return power.toNum() > 1;
 }
 
+bool Expr::isOctagon() const {
+    if (!isPoly()) return false;
+    const VarSet vs = vars();
+    if (vs.size() > 2) return false;
+    for (const auto &v: vs) {
+        if (degree(v) > 1) return false;
+        const Expr c = coeff(v);
+        if (!c.isInt()) return false;
+        if (std::abs(c.toNum().to_int()) > 1) return false;
+    }
+    return true;
+}
 
 int Expr::maxDegree() const {
     assert(isPoly());
@@ -609,6 +621,75 @@ option<std::string> Expr::toQepcad() const {
     return toQepcadRec(this->expand());
 }
 
+Sign::T Expr::sign() const {
+    using namespace Sign;
+    if (isRationalConstant()) {
+        const auto num = toNum();
+        if (num.is_zero()) return Zero;
+        if (num.is_positive()) return Positive;
+        return Negative;
+    } else if (isAdd()) {
+        T res = Zero;
+        for (size_t i = 0; i < arity(); ++i) {
+            T subres = op(i).sign();
+            if (subres == Unknown) return Unknown;
+            if (res != subres) {
+                if (res == Zero) res = subres;
+                else return Unknown;
+            }
+        }
+        return res;
+    } else if (isMul()) {
+        T res = Positive;
+        for (size_t i = 0; i < arity(); ++i) {
+            T subres = op(i).sign();
+            if (subres == Unknown || subres == Zero) return subres;
+            if (res == subres) {
+                if (subres == Negative) res = Positive;
+            } else {
+                res = Negative;
+            }
+        }
+        return res;
+    } else if (isNaturalPow()) {
+        T res = op(0).sign();
+        if (res != Negative) return res;
+        int pow = op(1).toNum().to_int();
+        if (pow % 2 == 0) return Positive;
+        return Negative;
+    }
+    return Unknown;
+}
+
+Monotonicity::T Expr::monotonicity(const Var &x) const {
+    using namespace Monotonicity;
+    const Expr diff = this->subs({x, Expr(x)+1}) - *this;
+    switch (diff.sign()) {
+    case Sign::Zero: return Constant;
+    case Sign::Positive: return Increasing;
+    case Sign::Negative: return Decreasing;
+    default: return Unknown;
+    }
+}
+
+namespace Monotonicity {
+
+std::ostream& operator<<(std::ostream &s, const T e) {
+    switch (e) {
+    case Increasing: s << "increasing";
+        break;
+    case Decreasing: s << "decreasing";
+        break;
+    case Constant: s << "constant";
+        break;
+    case Unknown: s << "unknown";
+        break;
+    }
+    return s;
+}
+
+}
+
 Subs::Subs(): KeyToExprMap<Var, Var_is_less>() {}
 
 Subs::Subs(const Var &key, const Expr &val) {
@@ -667,6 +748,12 @@ bool Subs::isLinear() const {
 bool Subs::isPoly() const {
     return std::all_of(begin(), end(), [](const std::pair<Var, Expr> &p) {
        return p.second.isPoly();
+    });
+}
+
+bool Subs::isOctagon() const {
+    return std::all_of(begin(), end(), [](const std::pair<Var, Expr> &p) {
+       return p.second.isOctagon();
     });
 }
 

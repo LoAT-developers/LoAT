@@ -1,7 +1,7 @@
-#ifndef REL_HPP
-#define REL_HPP
+#pragma once
 
 #include "expression.hpp"
+#include "boundedness.hpp"
 
 using RelSet = std::set<Rel>;
 template <class T> using RelMap = std::map<Rel, T>;
@@ -25,6 +25,8 @@ public:
     bool isNeq() const;
     bool isGZeroConstraint() const;
     bool isStrict() const;
+    bool isOctagon() const;
+    Boundedness::Kind getBoundedness(const Var &x) const;
 
     unsigned hash() const;
 
@@ -111,5 +113,3 @@ std::ostream& operator<<(std::ostream &s, const RelMap<T> &map) {
     s << "}";
     return s;
 }
-
-#endif // REL_HPP

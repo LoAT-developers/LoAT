@@ -151,7 +151,6 @@ WORKDIR /src/LoAT
 COPY CMakeLists.txt /src/LoAT/
 COPY src /src/LoAT/src/
 COPY --from=loat /src/LoAT/build /src/LoAT/build
-# COPY cmake /home/ffrohn/repos/LoAT/cmake/
 RUN mkdir /src/LoAT/lib
 RUN cp /src/reduce-algebra/generic/libreduce/x86_64-pc-linux-musl/libreduce.* /src/LoAT/lib
 RUN mkdir -p /src/LoAT/build/static/release

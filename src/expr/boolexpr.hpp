@@ -17,6 +17,13 @@ class Quantifier;
 class QuantifiedFormula;
 typedef std::shared_ptr<const BoolExpression> BoolExpr;
 
+struct Bounds {
+    ExprSet upperBounds;
+    ExprSet lowerBounds;
+    option<Expr> equality;
+    bool exhaustive = true;
+};
+
 struct boolexpr_compare {
     bool operator() (BoolExpr a, BoolExpr b) const;
 };
@@ -30,6 +37,7 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression> {
     friend class BoolConst;
 
 public:
+
     virtual option<Rel> getLit() const = 0;
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
@@ -53,7 +61,10 @@ public:
     virtual BoolExpr replaceRels(const RelMap<BoolExpr> map) const = 0;
     virtual unsigned hash() const = 0;
     QuantifiedFormula quantify(const std::vector<Quantifier> &prefix) const;
+    virtual void getBounds(const Var &n, Bounds &res) const = 0;
+    virtual Boundedness::Kind getBoundedness(const Var &n) const = 0;
     virtual option<BoolExpr> simplify() const = 0;
+    virtual bool isOctagon() const = 0;
 
 protected:
     virtual void dnf(std::vector<Guard> &res) const = 0;
@@ -86,7 +97,10 @@ public:
     std::string toRedlog() const override;
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
     unsigned hash() const override;
+    void getBounds(const Var &n, Bounds &res) const override;
+    Boundedness::Kind getBoundedness(const Var &n) const override;
     option<BoolExpr> simplify() const override;
+    bool isOctagon() const override;
 
 protected:
     void dnf(std::vector<Guard> &res) const override;
@@ -123,7 +137,10 @@ public:
     std::string toRedlog() const override;
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
     unsigned hash() const override;
+    void getBounds(const Var &n, Bounds &res) const override;
+    Boundedness::Kind getBoundedness(const Var &n) const override;
     option<BoolExpr> simplify() const override;
+    bool isOctagon() const override;
 
 protected:
     void dnf(std::vector<Guard> &res) const override;
@@ -176,7 +193,7 @@ public:
     option<QuantifiedFormula> simplify() const;
     bool isTiviallyTrue() const;
     bool isTiviallyFalse() const;
-    friend std::ostream& operator<<(std::ostream &s, const QuantifiedFormula f);
+    friend std::ostream& operator<<(std::ostream &s, const QuantifiedFormula &f);
     std::vector<Quantifier> getPrefix() const;
     BoolExpr getMatrix() const;
     bool isConjunction() const;

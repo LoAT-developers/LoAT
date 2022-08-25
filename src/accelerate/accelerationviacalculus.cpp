@@ -4,11 +4,11 @@
 
 AccelerationViaCalculus::AccelerationViaCalculus(
         const LinearRule &rule,
-        const option<Recurrence::Result> closed,
+        const option<Recurrence::Result<NondetUpdate>> closed,
         ITSProblem &its): AccelerationTechnique(rule, closed, its) {}
 
 
-std::vector<AccelerationViaCalculus::Accelerator> AccelerationViaCalculus::computeRes() {
-    AccelerationProblem ap(rule.getGuard(), rule.getUpdate(), closed, rule.getCost(), its);
+std::vector<AccelerationTechnique::Accelerator> AccelerationViaCalculus::computeRes() {
+    AccelerationProblem ap = AccelerationProblem::init(rule, closed.flat_map(Recurrence::toDeterministic), its);
     return ap.computeRes();
 }

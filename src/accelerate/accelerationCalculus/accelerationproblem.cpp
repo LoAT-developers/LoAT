@@ -7,14 +7,18 @@
 AccelerationProblem::AccelerationProblem(
         const BoolExpr guard,
         const Subs &up,
-        const option<Recurrence::Result> closed,
+        const option<Recurrence::Result<Subs>> &closed,
         const Expr &cost,
         ITSProblem &its): todo(guard->lits()), up(up), closed(closed), cost(cost), guard(guard), its(its) {
-    std::vector<Subs> subs = closed.map([&up](auto const &closed){return std::vector<Subs>{up, closed.update};}).get_value_or({up});
+    const std::vector<Subs> subs = closed.map([&up](auto const &closed){return std::vector<Subs>{up, closed.update};}).get_value_or({up});
     Smt::Logic logic = Smt::chooseLogic<RelSet, Subs>({todo}, subs);
     this->solver = SmtFactory::modelBuildingSolver(logic, its);
     this->solver->add(guard);
     this->isConjunction = guard->isConjunction();
+}
+
+AccelerationProblem AccelerationProblem::init(const LinearRule &rule, const option<Recurrence::Result<Subs>> &closed, ITSProblem &its) {
+    return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, rule.getCost(), its);
 }
 
 RelSet AccelerationProblem::findConsistentSubset(BoolExpr e) const {

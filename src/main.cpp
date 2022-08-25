@@ -27,7 +27,9 @@
 #include "proof.hpp"
 #include "smt2export.hpp"
 #include "cintegerexport.hpp"
+#include "loopexport.hpp"
 #include "version.hpp"
+#include "accel.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -190,6 +192,12 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Analysis::CIntExport:
         c_integer_export::doExport(its);
+        break;
+    case Config::Analysis::LoopExport:
+        LoopExport::do_export(its);
+        break;
+    case Config::Analysis::Accel:
+        Accel::do_accel(its);
         break;
     default:
         throw std::invalid_argument("unsupported mode");

@@ -1,5 +1,7 @@
 target_sources(${EXECUTABLE}
     PRIVATE
+        boundedness.hpp
+        boundedness.cpp
         complexity.cpp
         complexity.hpp
         expression.cpp

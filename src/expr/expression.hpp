@@ -15,10 +15,10 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef EXPRESSION_H
-#define EXPRESSION_H
+#pragma once
 
 #include <ginac/ginac.h>
+#include <variant>
 
 #include "complexity.hpp"
 #include "option.hpp"
@@ -30,6 +30,24 @@ class Recurrence;
 class Rel;
 class Subs;
 class ExprMap;
+
+namespace Monotonicity {
+
+enum T {
+    Increasing, Decreasing, Constant, Unknown
+};
+
+std::ostream& operator<<(std::ostream &s, const T e);
+
+}
+
+namespace Sign {
+
+enum T {
+    Positive, Negative, Zero, Unknown
+};
+
+}
 
 struct Expr_is_less {
     bool operator() (const Expr &lh, const Expr &rh) const;
@@ -144,6 +162,8 @@ public:
      * @return True iff this expression is a power where the exponent is a natural number > 1.
      */
     bool isNaturalPow() const;
+
+    bool isOctagon() const;
 
     /**
      * @return The highest degree of any variable in this expression.
@@ -351,6 +371,10 @@ public:
 
     option<std::string> toQepcad() const;
 
+    Sign::T sign() const;
+
+    Monotonicity::T monotonicity(const Var &x) const;
+
     /**
      * @brief exponentiation
      */
@@ -494,6 +518,8 @@ public:
 
     bool isPoly() const;
 
+    bool isOctagon() const;
+
     VarSet domain() const;
 
     VarSet coDomainVars() const;
@@ -528,5 +554,3 @@ private:
 };
 
 bool operator==(const Subs &m1, const Subs &m2);
-
-#endif // EXPRESSION_H

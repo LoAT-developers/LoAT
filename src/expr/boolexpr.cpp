@@ -1,11 +1,12 @@
 #include "boolexpr.hpp"
+#include "guardtoolbox.hpp"
+#include "redlogparsevisitor.h"
+
 #include <vector>
 #include <functional>
 #include <iostream>
 #include <algorithm>
 #include <numeric>
-#include "guardtoolbox.hpp"
-#include "../parser/redlog/redlogparsevisitor.h"
 
 BoolExpression::~BoolExpression() {}
 
@@ -131,6 +132,50 @@ unsigned BoolLit::hash() const {
     return lit.hash();
 }
 
+void BoolLit::getBounds(const Var &n, Bounds &res) const {
+    if (lit.has(n)) {
+        if (lit.isEq()) {
+            const option<Expr> eq = GuardToolbox::solveTermFor(lit.lhs() - lit.rhs(), n, GuardToolbox::ResultMapsToInt);
+            if (eq) {
+                res.equality = *eq;
+                res.lowerBounds.insert(*eq);
+                res.upperBounds.insert(*eq);
+            } else {
+                res.exhaustive = false;
+            }
+        } else if (lit.isIneq()) {
+            const auto p = GuardToolbox::getBoundFromIneq(lit, n);
+            res.exhaustive &= (p.first || p.second);
+            if (p.first) {
+                bool add = true;
+                for (const auto &b: res.lowerBounds) {
+                    const auto diff = b - *p.first;
+                    if (diff.isRationalConstant() && !diff.toNum().is_negative()) {
+                        add = false;
+                        break;
+                    }
+                }
+                if (add) res.lowerBounds.insert(*p.first);
+            }
+            if (p.second) {
+                bool add = true;
+                for (const auto &b: res.upperBounds) {
+                    const auto diff = b - *p.second;
+                    if (diff.isRationalConstant() && !diff.toNum().is_positive()) {
+                        add = false;
+                        break;
+                    }
+                }
+                if (add) res.upperBounds.insert(*p.second);
+            }
+        }
+    }
+}
+
+Boundedness::Kind BoolLit::getBoundedness(const Var &n) const {
+    return lit.getBoundedness(n);
+}
+
 option<BoolExpr> BoolLit::simplify() const {
     if (lit.isTriviallyTrue()) {
         return True;
@@ -141,6 +186,10 @@ option<BoolExpr> BoolLit::simplify() const {
     } else {
         return {};
     }
+}
+
+bool BoolLit::isOctagon() const {
+    return lit.isOctagon();
 }
 
 BoolLit::~BoolLit() {}
@@ -288,6 +337,70 @@ void BoolJunction::dnf(std::vector<Guard> &res) const {
     }
 }
 
+void BoolJunction::getBounds(const Var &n, Bounds &res) const {
+    if (isAnd()) {
+        for (const auto &c: children) {
+            c->getBounds(n, res);
+        }
+    } else if (isOr()) {
+        bool first = true;
+        for (const auto &c: children) {
+            if (first) {
+                c->getBounds(n, res);
+                first = false;
+            } else {
+                Bounds cres = res;
+                c->getBounds(n, cres);
+                if (res.equality && (!cres.equality || !(*res.equality - *cres.equality).isZero())) {
+                    res.equality = {};
+                    res.exhaustive = false;
+                }
+                const auto intersect = [](ExprSet fst, const ExprSet &snd) {
+                    bool changed = false;
+                    for (auto it = fst.begin(); it != fst.end();) {
+                        bool keep = false;
+                        for (const auto &l2: snd) {
+                            if ((*it - l2).isZero()) {
+                                keep = true;
+                                break;
+                            }
+                        }
+                        if (keep) {
+                            ++it;
+                        } else {
+                            changed = true;
+                            it = fst.erase(it);
+                        }
+                    }
+                    return changed;
+                };
+                if (intersect(res.lowerBounds, cres.lowerBounds)) res.exhaustive = false;
+                if (intersect(res.upperBounds, cres.upperBounds)) res.exhaustive = false;
+                if (!res.equality && res.lowerBounds.empty() && res.upperBounds.empty()) {
+                    return;
+                }
+            }
+        }
+    }
+}
+
+Boundedness::Kind BoolJunction::getBoundedness(const Var &n) const {
+    if (isAnd()) {
+        Boundedness::Kind res = Boundedness::None;
+        for (const auto &c: children) {
+            res = Boundedness::unite(res, c->getBoundedness(n));
+        }
+        return res;
+    } else if (isOr()) {
+        Boundedness::Kind res = Boundedness::Both;
+        for (const auto &c: children) {
+            res = Boundedness::intersect(res, c->getBoundedness(n));
+        }
+        return res;
+    }
+    return Boundedness::Unknown;
+}
+
 option<BoolExpr> BoolJunction::simplify() const {
     if (isAnd()) {
         BoolExprSet newChildren;
@@ -337,6 +450,18 @@ option<BoolExpr> BoolJunction::simplify() const {
         }
     }
     return {};
+}
+
+bool BoolJunction::isOctagon() const {
+    if (isAnd()) {
+        for (const auto &c: children) {
+            if (!c->isOctagon()) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 unsigned BoolJunction::hash() const {
@@ -698,7 +823,7 @@ std::ostream& operator<<(std::ostream &s, const BoolExpr e) {
     return s;
 }
 
-std::ostream& operator<<(std::ostream &s, const QuantifiedFormula f) {
+std::ostream& operator<<(std::ostream &s, const QuantifiedFormula &f) {
     for (const auto &q: f.prefix) {
         switch (q.getType()) {
         case Quantifier::Type::Exists:
@@ -725,7 +850,7 @@ std::ostream& operator<<(std::ostream &s, const QuantifiedFormula f) {
                 } else {
                     s << "oo";
                 }
-                s << "] ";
+                s << "]";
             }
         }
         s << " . ";
