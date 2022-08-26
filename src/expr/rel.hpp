@@ -39,7 +39,6 @@ public:
     void collectVariables(VarSet &res) const;
     bool has(const Expr &pattern) const;
     Rel subs(const Subs &map) const;
-    Rel replace(const ExprMap &map) const;
     void applySubs(const Subs &subs);
     std::string toString() const;
     RelOp relOp() const;

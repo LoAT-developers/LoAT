@@ -167,6 +167,10 @@ namespace Config {
             return mode == Complexity;
         }
 
+        bool tryNonterm() {
+            return nonTermination() || complexity();
+        }
+
     }
 
 }

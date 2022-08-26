@@ -71,7 +71,7 @@ AccelerationResult LoopAcceleration::run() {
         auto accel = AccelerationFactory::get(rule, rec, its);
         for (const auto &ar: accel->computeRes()) {
             res.status = rec->validityBound > 1 ? PartialSuccess : Success;
-            if (ar.witnessesNonterm) {
+            if (Config::Analysis::tryNonterm() && ar.witnessesNonterm) {
                 option<Rule> resultingRule;
                 if (rec->validityBound > 0) {
                     option<Rule> prefix = rule;

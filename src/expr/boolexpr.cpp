@@ -111,7 +111,7 @@ void BoolLit::collectVars(VarSet &res) const {
 }
 
 BoolExpr BoolLit::replaceRels(const RelMap<BoolExpr> map) const {
-    if (map.count(lit) > 0) {
+    if (map.find(lit) != map.end()) {
         return map.at(lit);
     } else {
         return shared_from_this();

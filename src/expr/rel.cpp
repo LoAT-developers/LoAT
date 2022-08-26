@@ -260,10 +260,6 @@ Rel Rel::subs(const Subs &map) const {
     return Rel(l.subs(map), op, r.subs(map));
 }
 
-Rel Rel::replace(const ExprMap &map) const {
-    return Rel(l.replace(map), op, r.replace(map));
-}
-
 void Rel::applySubs(const Subs &subs) {
     l.applySubs(subs);
     r.applySubs(subs);

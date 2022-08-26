@@ -13,10 +13,10 @@ class  CHCLexer : public antlr4::Lexer {
 public:
   enum {
     LOGIC = 1, ASSERT = 2, CHECK_SAT = 3, EXIT = 4, DECLARE_FUN = 5, BOOL = 6, 
-    FORALL = 7, IMPLIES = 8, FALSE = 9, PLUS = 10, MINUS = 11, TIMES = 12, 
-    MOD = 13, LPAR = 14, RPAR = 15, AND = 16, OR = 17, NOT = 18, ITE = 19, 
-    LT = 20, LEQ = 21, EQ = 22, NEQ = 23, GEQ = 24, GT = 25, ID = 26, INT = 27, 
-    WS = 28, COMMENT = 29, OTHER = 30
+    FORALL = 7, LET = 8, IMPLIES = 9, FALSE = 10, PLUS = 11, MINUS = 12, 
+    TIMES = 13, MOD = 14, DIV = 15, LPAR = 16, RPAR = 17, AND = 18, OR = 19, 
+    NOT = 20, ITE = 21, LT = 22, LEQ = 23, EQ = 24, NEQ = 25, GEQ = 26, 
+    GT = 27, ID = 28, INT = 29, WS = 30, COMMENT = 31, OTHER = 32
   };
 
   CHCLexer(antlr4::CharStream *input);

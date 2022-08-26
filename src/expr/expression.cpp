@@ -423,10 +423,6 @@ Expr Expr::subs(const Subs &map) const {
     return ex.subs(map.ginacMap);
 }
 
-Expr Expr::replace(const ExprMap &map) const {
-    return ex.subs(map.ginacMap, GiNaC::subs_options::algebraic);
-}
-
 void Expr::traverse(GiNaC::visitor &v) const {
     ex.traverse(v);
 }

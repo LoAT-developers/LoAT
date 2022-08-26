@@ -34,19 +34,36 @@ class  CHCParseVisitor : public CHCVisitor {
 
     };
 
+    template<class T>
+    struct Res {
+        T t;
+        BoolExpr refinement = True;
+    };
+
+    struct Context {
+        Subs arith;
+        std::map<std::string, BoolExpr> boolean;
+    };
+
+    enum Mode {
+        Default, BuildContext
+    };
+
+    std::vector<Context> context;
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;
     std::set<std::string> vars;
     unsigned long maxArity = 0;
     VariableManager varMan;
     LocationIdx sink;
+    Mode mode = Default;
 
     enum UnaryOp {
         UnaryMinus
     };
 
     enum BinaryOp {
-        Minus, Mod
+        Minus, Mod, Div
     };
 
     enum NAryOp {
@@ -97,6 +114,10 @@ public:
     virtual antlrcpp::Any visitU_pred_atom(CHCParser::U_pred_atomContext *ctx) override;
 
     virtual antlrcpp::Any visitI_formula(CHCParser::I_formulaContext *ctx) override;
+
+    virtual antlrcpp::Any visitLets(CHCParser::LetsContext *ctx) override;
+
+    virtual antlrcpp::Any visitLet(CHCParser::LetContext *ctx) override;
 
     virtual antlrcpp::Any visitBoolop(CHCParser::BoolopContext *ctx) override;
 

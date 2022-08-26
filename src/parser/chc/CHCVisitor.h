@@ -39,6 +39,10 @@ public:
 
     virtual antlrcpp::Any visitU_pred_atom(CHCParser::U_pred_atomContext *context) = 0;
 
+    virtual antlrcpp::Any visitLet(CHCParser::LetContext *context) = 0;
+
+    virtual antlrcpp::Any visitLets(CHCParser::LetsContext *context) = 0;
+
     virtual antlrcpp::Any visitI_formula(CHCParser::I_formulaContext *context) = 0;
 
     virtual antlrcpp::Any visitBoolop(CHCParser::BoolopContext *context) = 0;

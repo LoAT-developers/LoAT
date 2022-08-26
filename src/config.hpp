@@ -145,6 +145,7 @@ namespace Config {
 
         std::string modeName(const Mode mode);
         bool nonTermination();
+        bool tryNonterm();
         bool reachability();
         bool complexity();
 

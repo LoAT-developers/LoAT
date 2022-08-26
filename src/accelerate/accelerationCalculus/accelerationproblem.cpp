@@ -382,7 +382,7 @@ std::vector<AccelerationTechnique::Accelerator> AccelerationProblem::computeRes(
             accelProof.append(std::stringstream() << "Replacement map: " << map.map);
             ret.emplace_back(newGuard, accelProof, map.exact, nt);
         }
-        if (closed && positiveCost && !map.nonterm) {
+        if (Config::Analysis::tryNonterm() && closed && positiveCost && !map.nonterm) {
             ReplacementMap map = computeReplacementMap(true);
             if (map.acceleratedAll || !isConjunction) {
                 BoolExpr newGuard = guard->replaceRels(map.map);

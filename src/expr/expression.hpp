@@ -89,7 +89,7 @@ public:
     /**
      * possible types of variables
      */
-    enum Type {Int, Rational};
+    enum Type {Int, Rational, Bool};
 
     /**
      * Special variable that represents the cost of non-terminating computations.
@@ -337,8 +337,6 @@ public:
      */
     Expr subs(const Subs &map) const;
 
-    Expr replace(const ExprMap &map) const;
-
     /**
      * @brief Provides a total order for expressions.
      */
@@ -436,7 +434,7 @@ public:
     }
 
     bool contains(const Key &e) const {
-        return map.count(e) > 0;
+        return map.find(e) != map.end();
     }
 
     bool empty() const {

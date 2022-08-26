@@ -87,7 +87,8 @@ antlrcpp::Any CHCParseVisitor::visitChc_head(CHCParser::Chc_headContext *ctx) {
 antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
     std::vector<BoolExpr> guards;
     for (const auto &c: ctx->i_formula()) {
-        guards.push_back(visit(c));
+        Res<BoolExpr> r = visit(c);
+        guards.push_back(r.t & r.refinement);
     }
     const BoolExpr guard = buildAnd(guards);
     switch (ctx->u_pred_atom().size()) {
@@ -110,7 +111,8 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
     visit(ctx->sort());
-    return visit(ctx->var());
+    const std::variant<Expr, BoolExpr> res = visit(ctx->var());
+    return std::get<Expr>(res);
 }
 
 antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *ctx) {
@@ -121,33 +123,47 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
     }
     std::vector<Var> args;
     for (const auto &c: ctx->var()) {
-        const Var x = visit(c);
-        args.push_back(x);
+        const std::variant<Expr, BoolExpr> res = visit(c);
+        args.push_back(std::get<Expr>(res).someVar());
     }
     return FunApp(*loc, args);
 }
 
 antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) {
     std::vector<BoolExpr> args;
+    Res<BoolExpr> res;
+    if (ctx->lets()) {
+        res.refinement = visit(ctx->lets());
+        const Res<BoolExpr> r = visit(ctx->i_formula(0));
+        res.refinement = res.refinement & r.refinement;
+        res.t = r.t;
+        context.pop_back();
+        return res;
+    }
     for (const auto &c: ctx->i_formula()) {
-        args.push_back(visit(c));
+        const Res<BoolExpr> r = visit(c);
+        res.refinement = res.refinement & r.refinement;
+        args.push_back(r.t);
     }
     if (ctx->NOT()) {
         if (args.size() != 1) {
             throw ParseError("wrong number of arguments " + ctx->getText());
         }
-        return !args[0];
+        res.t = !args[0];
     } else if (ctx->boolop()) {
         const BoolOp op = visit(ctx->boolop());
         switch (op) {
-        case And: return buildAnd(args);
-        case Or: return buildOr(args);
+        case And: res.t = buildAnd(args);
+            break;
+        case Or: res.t = buildOr(args);
+            break;
         case Equiv: {
             std::vector<BoolExpr> negated;
             for (const auto &a: args) {
                 negated.push_back(!a);
             }
-            return buildAnd(args) | buildAnd(negated);
+            res.t = buildAnd(args) | buildAnd(negated);
+            break;
         }
         default: throw ParseError("unknown operator " + ctx->boolop()->getText());
         }
@@ -155,14 +171,46 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         if (args.size() != 3) {
             throw ParseError("wrong number of arguments " + ctx->getText());
         }
-        return (args[0] & args[1]) | ((!args[0]) & args[2]);
+        res.t = (args[0] & args[1]) | ((!args[0]) & args[2]);
     } else if (ctx->lit()) {
-        return buildLit(visit(ctx->lit()));
+        const Res<Rel> p = visit(ctx->lit());
+        res.t = buildLit(p.t);
+        res.refinement = res.refinement & p.refinement;
+    } else if (ctx->var()) {
+        const std::variant<Expr, BoolExpr> r = visit(ctx->var());
+        res.t = std::get<BoolExpr>(r);
     } else if (args.size() == 1) {
-        return args[0];
+        res.t = args[0];
     } else {
         throw ParseError("failed to parse " + ctx->getText());
     }
+    return res;
+}
+
+antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
+    if (ctx->i_formula()) {
+        const std::string name = ctx->var()->getText();
+        const Res<BoolExpr> res = visit(ctx->i_formula());
+        context[context.size() - 1].boolean[name] = res.t;
+        return res.refinement;
+    } else {
+        mode = BuildContext;
+        const std::variant<Expr, BoolExpr> var = visit(ctx->var());
+        mode = Default;
+        const Res<Expr> res = visit(ctx->expr());
+        context[context.size() - 1].arith.put(std::get<Expr>(var).someVar(),  res.t);
+        return res.refinement;
+    }
+}
+
+antlrcpp::Any CHCParseVisitor::visitLets(CHCParser::LetsContext *ctx) {
+    context.push_back(Context());
+    BoolExpr refinement = True;
+    for (const auto &c: ctx->let()) {
+        const BoolExpr r = visit(c);
+        refinement = refinement & r;
+    }
+    return refinement;
 }
 
 antlrcpp::Any CHCParseVisitor::visitBoolop(CHCParser::BoolopContext *ctx) {
@@ -181,18 +229,26 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
     if (ctx->expr().size() != 2) {
         throw ParseError("wrong number of arguments: " + ctx->getText());
     }
-    const Expr arg1 = visit(ctx->expr(0));
-    const Expr arg2 = visit(ctx->expr(1));
+    Res<Expr> p1 = visit(ctx->expr(0));
+    Res<Expr> p2 = visit(ctx->expr(1));
     const RelOp op = visit(ctx->relop());
+    option<Rel> res;
     switch (op) {
-    case Eq: return Rel::buildEq(arg1, arg2);
-    case Gt: return arg1 > arg2;
-    case Geq: return arg1 >= arg2;
-    case Lt: return arg1 < arg2;
-    case Leq: return arg1 <= arg2;
-    case Neq: return Rel::buildNeq(arg1, arg2);
+    case Eq: res = Rel::buildEq(p1.t, p2.t);
+        break;
+    case Gt: res = p1.t > p2.t;
+        break;
+    case Geq: res = p1.t >= p2.t;
+        break;
+    case Lt: res = p1.t < p2.t;
+        break;
+    case Leq: res = p1.t <= p2.t;
+        break;
+    case Neq: res = Rel::buildNeq(p1.t, p2.t);
+        break;
     default: throw ParseError("unknwon operator " + ctx->relop()->getText());
     }
+    return Res<Rel>{*res, p1.refinement & p2.refinement};
 }
 
 antlrcpp::Any CHCParseVisitor::visitRelop(CHCParser::RelopContext *ctx) {
@@ -206,58 +262,77 @@ antlrcpp::Any CHCParseVisitor::visitRelop(CHCParser::RelopContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
+    Res<Expr> res;
     std::vector<Expr> args;
+    if (ctx->lets()) {
+        res.refinement = visit(ctx->lets());
+        res.t = visit(ctx->expr(0));
+        context.pop_back();
+        return res;
+    }
     for (const auto &c: ctx->expr()) {
-        args.push_back(visit(c));
+        const Res<Expr> p = visit(c);
+        args.push_back(p.t);
+        res.refinement = res.refinement & p.refinement;
     }
     if (ctx->unaryop()) {
         if (args.size() != 1) throw ParseError("wrong number of arguments: " + ctx->getText());
         const UnaryOp op = visit(ctx->unaryop());
         switch (op) {
-        case UnaryMinus: return -args[0];
+        case UnaryMinus: res.t = -args[0];
+            break;
         default: throw ParseError("unknown operator " + ctx->getText());
         }
-    }
-    if (ctx->binaryop()) {
+    } else if (ctx->binaryop()) {
         if (args.size() != 2) throw ParseError("wrong number of arguments: " + ctx->getText());
         const BinaryOp op = visit(ctx->binaryop());
         switch (op) {
-        case Minus: return args[0] - args[1];
-        case Mod: throw new ParseError("mod is not yet supported");
+        case Minus: res.t = args[0] - args[1];
+            break;
+        case Mod:
+//            res = its.addFreshTemporaryVariable("mod");
+//            const Var div = its.addFreshTemporaryVariable("div");
+//            refinement = refinement & Rel::buildEq(args[0] - res, args[1] * div) & (0 <= res) & (res < args[1]) & Rel::buildNeq(args[1], 0);
+            throw new ParseError("mod is not yet supported");
+            break;
+        case Div:
+            throw new ParseError("div is not yet supported");
+            break;
         }
-    }
-    if (ctx->naryop()) {
+    } else if (ctx->naryop()) {
         const NAryOp op = visit(ctx->naryop());
         switch (op) {
         case Plus: {
-            Expr res = 0;
+            res.t = 0;
             for (const auto &arg: args) {
-                res = res + arg;
+                res.t = res.t + arg;
             }
-            return res;
+            break;
         }
         case Times: {
-            Expr res = 1;
+            res.t = 1;
             for (const auto &arg: args) {
-                res = res * arg;
+                res.t = res.t * arg;
             }
-            return res;
+            break;
         }
         default: throw ParseError("unknown operator " + ctx->binaryop()->getText());
         }
-    }
-    if (ctx->var()) {
-        const Var x = visit(ctx->var());
-        return Expr(x);
-    }
-    if (ctx->INT()) {
+    } else if (ctx->ITE()) {
+        const Res<BoolExpr> r = visit(ctx->i_formula());
+        const BoolExpr cond = r.t & r.refinement;
+        res.t = its.addFreshTemporaryVariable("ite");
+        res.refinement = res.refinement & ((cond & Rel::buildEq(res.t, args[0])) | ((!cond) & Rel::buildEq(res.t, args[1])));
+    } else if (ctx->var()) {
+        const std::variant<Expr, BoolExpr> x = visit(ctx->var());
+        res.t = std::get<Expr>(x);
+    } else if (ctx->INT()) {
         long l = std::stoi(ctx->getText());
-        return Expr(l);
+        res.t = l;
+    } else if (args.size() == 1) {
+        res.t = args[0];
     }
-    if (args.size() == 1) {
-        return args[0];
-    }
-    throw ParseError("failed to parse expression " + ctx->getText());
+    return res;
 }
 
 antlrcpp::Any CHCParseVisitor::visitUnaryop(CHCParser::UnaryopContext *ctx) {
@@ -268,6 +343,7 @@ antlrcpp::Any CHCParseVisitor::visitUnaryop(CHCParser::UnaryopContext *ctx) {
 antlrcpp::Any CHCParseVisitor::visitBinaryop(CHCParser::BinaryopContext *ctx) {
     if (ctx->MINUS()) return Minus;
     if (ctx->MOD()) return Mod;
+    if (ctx->DIV()) return Div;
     throw ParseError("failed to parse operator " + ctx->getText());
 }
 
@@ -288,7 +364,25 @@ antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
     const std::string name = unescape(ctx->getText());
+    if (mode == Default) {
+        for (int i = context.size() - 1; i >= 0; --i) {
+            const auto it = context[i].boolean.find(name);
+            if (it != context[i].boolean.end()) {
+                return std::variant<Expr, BoolExpr>(it->second);
+            }
+        }
+    }
     const option<Var> res = varMan.getVar(name);
-    if (res) return *res;
-    return varMan.addFreshVariable(name);
+    if (res) {
+        if (mode == Default) {
+            for (int i = context.size() - 1; i >= 0; --i) {
+                const auto it = context[i].arith.find(*res);
+                if (it != context[i].arith.end()) {
+                    return std::variant<Expr, BoolExpr>(it->second);
+                }
+            }
+        }
+        return std::variant<Expr, BoolExpr>(*res);
+    }
+    return std::variant<Expr, BoolExpr>(varMan.addFreshVariable(name));
 }

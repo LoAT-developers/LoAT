@@ -44,6 +44,12 @@ public:
   virtual void enterU_pred_atom(CHCParser::U_pred_atomContext *ctx) = 0;
   virtual void exitU_pred_atom(CHCParser::U_pred_atomContext *ctx) = 0;
 
+  virtual void enterLet(CHCParser::LetContext *ctx) = 0;
+  virtual void exitLet(CHCParser::LetContext *ctx) = 0;
+
+  virtual void enterLets(CHCParser::LetsContext *ctx) = 0;
+  virtual void exitLets(CHCParser::LetsContext *ctx) = 0;
+
   virtual void enterI_formula(CHCParser::I_formulaContext *ctx) = 0;
   virtual void exitI_formula(CHCParser::I_formulaContext *ctx) = 0;
 

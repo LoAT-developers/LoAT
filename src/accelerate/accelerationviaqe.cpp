@@ -12,13 +12,12 @@ AccelerationViaQE::AccelerationViaQE(
         ITSProblem &its): AccelerationTechnique(rule, closed, its) {}
 
 std::vector<AccelerationTechnique::Accelerator> AccelerationViaQE::computeRes() {
-    const bool tryNonterm = Config::Analysis::nonTermination() || Config::Analysis::complexity();
     Var m = its.getFreshUntrackedSymbol("m", Expr::Int);
     auto qelim = Qelim::solver(its);
     option<Qelim::Result> res;
     std::vector<Accelerator> ret;
     BoolExpr matrix = rule.getGuard()->toG()->subs(closed->update);
-    if (tryNonterm) {
+    if (Config::Analysis::tryNonterm()) {
         QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {closed->n}, {{closed->n, closed->validityBound}}, {})});
         res = qelim->qe(q);
         if (res && res->qf != False) {
