@@ -48,6 +48,7 @@ public:
     virtual ~BoolExpression();
     virtual BoolExpr subs(const Subs &subs) const = 0;
     RelSet lits() const;
+    std::set<const Rel&> litRefs() const;
     virtual RelSet universallyValidLits() const = 0;
     VarSet vars() const;
     std::vector<Guard> dnf() const;
@@ -55,6 +56,7 @@ public:
     Guard conjunctionToGuard() const;
     virtual BoolExpr toG() const = 0;
     virtual void collectLits(RelSet &res) const = 0;
+    virtual void collectLitRefs(std::set<const Rel&> &res) const = 0;
     virtual void collectVars(VarSet &res) const = 0;
     virtual std::string toRedlog() const = 0;
     virtual size_t size() const = 0;
@@ -92,6 +94,7 @@ public:
     BoolExpr toG() const override;
     RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
+    void collectLitRefs(std::set<const Rel&> &res) const override;
     void collectVars(VarSet &res) const override;
     size_t size() const override;
     std::string toRedlog() const override;
@@ -132,6 +135,7 @@ public:
     BoolExpr toG() const override;
     RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
+    void collectLitRefs(std::set<const Rel&> &res) const override;
     void collectVars(VarSet &res) const override;
     size_t size() const override;
     std::string toRedlog() const override;

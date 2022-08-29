@@ -10,6 +10,8 @@ target_sources(${EXECUTABLE}
         preprocess.hpp
         prune.cpp
         prune.hpp
+        reachability.hpp
+        reachability.cpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

@@ -52,6 +52,14 @@ void ITSProblem::setInitialLocation(LocationIdx loc) {
     initialLocation = loc;
 }
 
+option<LocationIdx> ITSProblem::getSink() const {
+    return sink;
+}
+
+void ITSProblem::setSink(LocationIdx loc) {
+    sink = loc;
+}
+
 bool ITSProblem::hasRule(TransIdx transition) const {
     std::lock_guard guard(mutex);
     return rules.find(transition) != rules.end();
@@ -261,6 +269,10 @@ std::set<TransIdx> ITSProblem::removeLocationAndRules(LocationIdx loc) {
         removeRule(t);
     }
     return removed;
+}
+
+HyperGraph::SCCs ITSProblem::sccs() const {
+    return graph.sccs();
 }
 
 void ITSProblem::print(std::ostream &s) const {

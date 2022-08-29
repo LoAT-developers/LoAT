@@ -44,6 +44,8 @@ public:
     LocationIdx getInitialLocation() const;
     bool isInitialLocation(LocationIdx loc) const;
     void setInitialLocation(LocationIdx loc);
+    option<LocationIdx> getSink() const;
+    void setSink(LocationIdx loc);
     option<LocationIdx> getLocationIdx(const std::string &name) const;
 
     // query the rule associated with a given transition
@@ -95,6 +97,8 @@ public:
     // Removes a location and all rules that visit loc
     std::set<TransIdx> removeLocationAndRules(LocationIdx loc);
 
+    HyperGraph::SCCs sccs() const;
+
     // Print the ITSProblem in a simple, but user-friendly format
     void print(std::ostream &s) const;
 
@@ -104,7 +108,7 @@ public:
 protected:
 
     // Main structure is the graph, where (hyper-)transitions are annotated with a RuleIdx.
-    HyperGraph<LocationIdx> graph;
+    HyperGraph graph;
 
     // Collection of all rules, identified by the corresponding transitions in the graph.
     // The map allows to efficiently add/delete rules.
@@ -116,6 +120,7 @@ protected:
 
     // the initial location
     LocationIdx initialLocation = 0;
+    option<LocationIdx> sink;
 
     // the next free location index
     LocationIdx nextUnusedLocation = 0;

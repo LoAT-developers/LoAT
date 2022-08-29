@@ -15,23 +15,24 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef HYPERGRAPH_H
-#define HYPERGRAPH_H
+#pragma once
 
 
 #include <vector>
+#include <stack>
 #include <map>
 #include <set>
 #include <algorithm>
 
 #include "types.hpp" // for TransIdx
+#include "option.hpp"
 
+using Node = LocationIdx;
 
 /**
  * A simple directed hypergraph, where each transition has a single source,
- * but (possibly) several targets. Templated over the type of Nodes.
+ * but (possibly) several targets.
  */
-template <typename Node>
 class HyperGraph {
 public:
     HyperGraph() : nextIdx(0) {}
@@ -243,9 +244,94 @@ public:
         transitions.erase(idx);
     }
 
+    struct SCCs {
+        std::vector<std::set<Node>> sccs;
+        std::map<Node, unsigned> sccMap;
+
+        std::set<Node> getScc(const Node loc) const {
+            return sccs[getSccIndex(loc)];
+        }
+
+        unsigned getSccIndex(const Node loc) const {
+            return sccMap.at(loc);
+        }
+
+        size_t size() const {
+            return sccs.size();
+        }
+
+    };
+
+    SCCs sccs() const {
+        return Tarjan(*this).sccs();
+    }
+
     enum CheckResult { Valid=0, InvalidNode, EmptyMapEntry, UnknownTrans, InvalidTrans, UnusedTrans, DuplicateTrans, InvalidPred, InvalidPredCount };
 
 private:
+
+    class Tarjan {
+        const HyperGraph &g;
+        SCCs res;
+        std::set<Node> nodes;
+        std::stack<Node> stack;
+        std::map<Node, unsigned> indexMap, lowlinkMap;
+        std::set<Node> onStack;
+        unsigned index = 0;
+
+    public:
+
+        Tarjan(const HyperGraph &g): g(g) {
+            for (const auto &t: g.transitions) {
+                nodes.insert(t.second.from);
+                nodes.insert(t.second.to.begin(), t.second.to.end());
+            }
+        }
+
+    private:
+
+        void strongconnect(const Node v) {
+            indexMap[v] = index;
+            lowlinkMap[v] = index;
+            index++;
+            stack.push(v);
+            onStack.insert(v);
+            for (const auto &w: g.getSuccessors(v)) {
+                if (indexMap.find(w) == indexMap.end()) {
+                    strongconnect(w);
+                    lowlinkMap[v] = std::min(lowlinkMap[v], lowlinkMap[w]);
+                } else if (onStack.find(w) != onStack.end()) {
+                    lowlinkMap[v] = std::min(lowlinkMap[v], indexMap[w]);
+                }
+            }
+            if (lowlinkMap[v] == indexMap[v]) {
+                std::set<Node> scc;
+                option<Node> w;
+                unsigned index = res.sccs.size();
+                do {
+                    w = stack.top();
+                    stack.pop();
+                    scc.insert(*w);
+                    res.sccMap[*w] = index;
+                    onStack.erase(*w);
+                } while (*w != v);
+                res.sccs.push_back(scc);
+            }
+        }
+
+    public:
+
+        SCCs sccs() {
+            for (const Node &n: nodes) {
+                if (indexMap.find(n) == indexMap.end()) {
+                    strongconnect(n);
+                }
+            }
+            return res;
+        }
+
+    };
+
     //updates outgoing, predecessor to remove given trans from it current location
     void removeTransFromGraph(TransIdx trans) {
         InternalTransition &t = transitions[trans];
@@ -331,6 +417,3 @@ private:
 
     TransIdx nextIdx;
 };
-
-
-#endif // HYPERGRAPH_H
