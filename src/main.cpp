@@ -28,6 +28,7 @@
 #include "smt2export.hpp"
 #include "cintegerexport.hpp"
 #include "version.hpp"
+#include "reachability.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -182,8 +183,10 @@ int main(int argc, char *argv[]) {
     switch (Config::Analysis::mode) {
     case Config::Analysis::NonTermination:
     case Config::Analysis::Complexity:
-    case Config::Analysis::Reachability:
         Analysis::analyze(its);
+        break;
+    case Config::Analysis::Reachability:
+        Reachability::analyze(its);
         break;
     case Config::Analysis::Smt2Export:
         smt2Export::doExport(its);

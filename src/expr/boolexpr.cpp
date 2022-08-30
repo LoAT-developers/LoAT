@@ -16,12 +16,6 @@ RelSet BoolExpression::lits() const {
     return res;
 }
 
-std::set<const Rel&> BoolExpression::litRefs() const {
-    std::set<const Rel&> res;
-    collectLitRefs(res);
-    return res;
-}
-
 Guard BoolExpression::conjunctionToGuard() const {
     const RelSet &lits = this->lits();
     return Guard(lits.begin(), lits.end());
@@ -108,10 +102,6 @@ RelSet BoolLit::universallyValidLits() const {
 }
 
 void BoolLit::collectLits(RelSet &res) const {
-    res.insert(lit);
-}
-
-void BoolLit::collectLitRefs(std::set<const Rel&> &res) const {
     res.insert(lit);
 }
 
@@ -311,12 +301,6 @@ RelSet BoolJunction::universallyValidLits() const {
 void BoolJunction::collectLits(RelSet &res) const {
     for (const BoolExpr &c: children) {
         c->collectLits(res);
-    }
-}
-
-void BoolJunction::collectLitRefs(std::set<const Rel&> &res) const {
-    for (const BoolExpr &c: children) {
-        c->collectLitRefs(res);
     }
 }
 

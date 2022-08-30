@@ -5,6 +5,7 @@
 antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     its.setInitialLocation(its.addNamedLocation("LoAT_init"));
     sink = its.addNamedLocation("LoAT_sink");
+    its.setSink(sink);
     for (const auto &c: ctx->fun_decl()) {
         visit(c);
     }
