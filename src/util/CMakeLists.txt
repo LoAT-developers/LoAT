@@ -14,6 +14,7 @@ target_sources(${EXECUTABLE}
         relevantvariables.cpp
         relevantvariables.hpp
         result.hpp
+        automaton.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")
