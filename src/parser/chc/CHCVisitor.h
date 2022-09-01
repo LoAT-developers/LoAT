@@ -43,14 +43,6 @@ public:
 
     virtual antlrcpp::Any visitLets(CHCParser::LetsContext *context) = 0;
 
-    virtual antlrcpp::Any visitI_formula(CHCParser::I_formulaContext *context) = 0;
-
-    virtual antlrcpp::Any visitBoolop(CHCParser::BoolopContext *context) = 0;
-
-    virtual antlrcpp::Any visitLit(CHCParser::LitContext *context) = 0;
-
-    virtual antlrcpp::Any visitRelop(CHCParser::RelopContext *context) = 0;
-
     virtual antlrcpp::Any visitExpr(CHCParser::ExprContext *context) = 0;
 
     virtual antlrcpp::Any visitUnaryop(CHCParser::UnaryopContext *context) = 0;
@@ -58,6 +50,14 @@ public:
     virtual antlrcpp::Any visitBinaryop(CHCParser::BinaryopContext *context) = 0;
 
     virtual antlrcpp::Any visitNaryop(CHCParser::NaryopContext *context) = 0;
+
+    virtual antlrcpp::Any visitI_formula(CHCParser::I_formulaContext *context) = 0;
+
+    virtual antlrcpp::Any visitBoolop(CHCParser::BoolopContext *context) = 0;
+
+    virtual antlrcpp::Any visitLit(CHCParser::LitContext *context) = 0;
+
+    virtual antlrcpp::Any visitRelop(CHCParser::RelopContext *context) = 0;
 
     virtual antlrcpp::Any visitSymbol(CHCParser::SymbolContext *context) = 0;
 

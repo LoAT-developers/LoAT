@@ -1,104 +1,98 @@
 #pragma once
 
-#include <vector>
-#include <map>
+#include <variant>
+#include <set>
+#include <queue>
 #include <algorithm>
 #include <ostream>
 
 template <class T>
 class Automaton {
 
-    struct Backlink {
-        unsigned src;
-        T t;
-        unsigned dst;
-
-        Backlink(const unsigned src, const T &t, const unsigned dst): src(src), t(t), dst(dst) {}
-
-    };
-
-    std::vector<T> forward;
-    std::vector<Backlink> backward;
+    using kleene = std::set<T>;
+    using Segment = std::variant<T, kleene>;
+    using Seq = std::vector<Segment>;
+    Seq t;
 
 public:
 
     Automaton<T>() {}
 
-    Automaton<T>(const std::vector<T> &forward): forward(forward) {}
+    Automaton<T>(const T &t): t({t}) {}
 
-    Automaton<T>(const std::vector<T> &forward, const std::vector<Backlink> &backward): forward(forward), backward(backward) {}
+    Automaton<T>(const kleene &t): t({t}) {}
+
+    Automaton<T>(const Segment &t): t(t) {}
 
     Automaton<T> compose(const Automaton<T> &that) const {
-        Automaton<T> res(forward, backward);
-        size_t offset = forward.size();
-        res.forward.insert(res.forward.end(), that.forward.begin(), that.forward.end());
-        for (const auto &bl: that.backward) {
-            res.backward.emplace_back(bl.src + offset, bl.t, bl.dst + offset);
-        }
-        return res;
-    }
-
-    Automaton<T> mk_cyclic(const T &t) const {
-        Automaton<T> res(forward, backward);
-        res.backward.emplace_back(forward.size() - 1, t, 0);
-        res.forward.push_back(t);
-        return res;
+        Automaton<T> res(t);
+        res.t.insert(res.t.end(), that.t.begin(), that.t.end());
     }
 
     bool is_subset_of(const Automaton<T> &that) const {
-        unsigned i1 = 0, i2 = 0;
-        std::map<unsigned, unsigned> map;
-        map[0] = 0;
-        const auto store = [&]() {
-            const auto it = map.find(i1);
-            if (it != map.end()) {
-                if (map[i1] != i2) {
-                    return false;
+        std::queue<T> definite;
+        auto it1 = t.begin();
+        auto it2 = that.t.begin();
+        while (it1 != t.end() && it2 != that.t.end()) {
+            if (std::holds_alternative<T>(*it1)) {
+                const T t1 = std::get<T>(*it1);
+                if (std::holds_alternative<T>(*it2)) {
+                    const T t2 = std::get<T>(*it2);
+                    if (t1 != t2) {
+                        if (!definite.empty() && definite.first() == t2) {
+                            definite = std::queue<T>();
+                            it2++;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        if (!definite.empty()) {
+                            if (definite.first() == t1) {
+                                definite = std::queue<T>();
+                                definite.push(t1);
+                            } else {
+                                definite = std::queue<T>();
+                            }
+                        }
+                        it1++;
+                        it2++;
+                    }
+                } else {
+                    const kleene ts = std::get<kleene>(*it2);
+                    if (ts.find(t) == ts.end()) {
+                        it2++;
+                    } else {
+                        definite.push(t);
+                        it1++;
+                    }
                 }
             } else {
-                map[i1] = i2;
-            }
-            return true;
-        };
-        for (const auto &t: forward) {
-            if (that.forward[i2] == t) {
-                i1++;
-                i2++;
-                if (!store()) {
-                    return false;
-                }
-            } else {
-                const auto it = std::find_if(that.backward.begin(), that.backward.end(), [&](const auto &bl){return bl.src == i2 && bl.t == t;});
-                if (it == that.backward.end()) {
-                    return false;
-                }
-                i1++;
-                i2 = it->dst;
-                if (!store()) {
-                    return false;
+                if (std::holds_alternative<T>(*it2)) {
+                    if (!definite.empty() && definite.first() == std::get<T>(*it2)) {
+                        definite.pop();
+                        it2++;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    const kleene k1 = std::get<kleene>(*it1);
+                    const kleene k2 = std::get<kleene>(*it2);
+                    if (std::any_of(k1.begin(), k1.end(), [&](const T &t){return k2.find(t) == k2.end();})) {
+                        it2++;
+                    } else {
+                        definite = std::queue<T>();
+                        it1++;
+                    }
                 }
             }
         }
-        assert(i1 == forward.size());
-        if (i2 != that.forward.size()) {
+        if (it1 != t.end()) {
             return false;
         }
-        // at that point, we've identified a potentially equivalent state for each state from *this
-        for (const auto &bl: backward) {
-            const unsigned src = map[bl.src];
-            const unsigned dst = map[bl.dst];
-            if (that.forward[src] == bl.t) {
-                if (dst != src + 1) {
-                    return false;
-                }
-            } else {
-                const auto it = std::find_if(that.backward.begin(), that.backward.end(), [&](const auto &o_bl){return o_bl.src == src && o_bl.t == bl.t;});
-                if (it == that.backward.end() || it->dst != dst) {
-                    return false;
-                }
-            }
+        while (it2 != that.t.end() && std::holds_alternative<kleene>(*it2)) {
+            it2++;
         }
-        return true;
+        return it2 == that.t.end();
     }
 
     friend std::ostream& operator<<(std::ostream &s, const Automaton<T> &t) {

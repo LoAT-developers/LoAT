@@ -63,6 +63,8 @@ message(STATUS "cudd: ${CUDD}")
 
 set(REDUCE ${CMAKE_CURRENT_SOURCE_DIR}/lib/libreduce.a)
 message(STATUS "reduce: ${REDUCE}")
+set(FAUDES ${CMAKE_CURRENT_SOURCE_DIR}/lib/libfaudes.a)
+message(STATUS "faudes: ${FAUDES}")
 
 if (DEFINED ENV{ANTLR4_INCLUDE_PATH})
     # ANTLR4 is available and we know where to find the headers
@@ -108,6 +110,7 @@ if (NOT ${STATIC})
 endif()
 
 target_include_directories(${EXECUTABLE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../reduce-algebra/generic/libreduce/src/")
+target_include_directories(${EXECUTABLE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_29d/include/")
 
 target_link_libraries(
     ${EXECUTABLE}
@@ -121,4 +124,5 @@ target_link_libraries(
     ${CUDD}
     ${GMP}
     ${REDUCE}
+    ${FAUDES}
     ${LINKER_OPTIONS})

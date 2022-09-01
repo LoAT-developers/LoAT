@@ -141,6 +141,15 @@ RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE="-march=sandybri
 RUN make -j
 RUN make install
 
+# faudes
+WORKDIR /src
+RUN wget https://fgdes.tf.fau.de/archive/libfaudes-2_29d.tar.gz
+RUN tar xf libfaudes-2_29d.tar.gz
+WORKDIR /src/libfaudes-2_29d
+RUN xbps-install -y bash
+RUN sed -i 's/MAINOPTS += -std=gnu++98 -D_GLIBCXX_USE_CXX11_ABI=0/MAINOPTS += -std=c++11/g' Makefile
+RUN FAUDES_LINKING=static make -j
+
 ARG ANTLR4_INCLUDE_PATH=/src/antlr4/runtime/Cpp/runtime/src
 ARG SHA
 ARG DIRTY
@@ -153,6 +162,7 @@ COPY src /src/LoAT/src/
 COPY --from=loat /src/LoAT/build /src/LoAT/build
 RUN mkdir /src/LoAT/lib
 RUN cp /src/reduce-algebra/generic/libreduce/x86_64-pc-linux-musl/libreduce.* /src/LoAT/lib
+RUN cp /src/libfaudes-2_29d/libfaudes.* /src/LoAT/lib
 RUN mkdir -p /src/LoAT/build/static/release
 WORKDIR /src/LoAT/build/static/release
 RUN cmake -DSTATIC=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE='-march=sandybridge -O3 -DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='-march=sandybridge -O3 -DNDEBUG' -DSHA=$SHA -DDIRTY=$DIRTY ../../../

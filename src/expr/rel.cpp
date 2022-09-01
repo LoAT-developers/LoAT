@@ -2,6 +2,18 @@
 
 #include <sstream>
 
+std::ostream& operator<<(std::ostream &s, const RelSet &set) {
+    s << "{";
+    for (auto it = set.begin(); it != set.end(); ++it) {
+        if (it != set.begin()) {
+            s << ", ";
+        }
+        s << *it;
+    }
+    s << "}";
+    return s;
+}
+
 Rel::Rel(const Expr &lhs, RelOp op, const Expr &rhs): l(lhs), r(rhs), op(op) { }
 
 Rel operator<(const Expr &x, const Expr &y) {

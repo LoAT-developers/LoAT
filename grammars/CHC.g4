@@ -29,20 +29,6 @@ u_pred_atom:       LPAR symbol var* RPAR
 let:               LPAR var (i_formula | expr) RPAR;
 lets:              LET LPAR let+ RPAR;
 
-i_formula:         LPAR NOT i_formula RPAR
-                 | LPAR boolop i_formula+ RPAR
-                 | LPAR ITE i_formula i_formula i_formula RPAR
-                 | lit
-                 | LPAR lets i_formula RPAR     
-                 | LPAR i_formula RPAR
-                 | var;
-boolop:            AND
-                 | OR
-                 | EQ;
-
-lit:               LPAR relop expr expr RPAR;
-relop:             LT | LEQ | EQ | GT | GEQ | NEQ;
-
 expr:              LPAR unaryop expr RPAR
                  | LPAR binaryop expr expr RPAR
                  | LPAR naryop expr+ RPAR
@@ -57,6 +43,22 @@ binaryop:          MOD
                  | MINUS;
 naryop:            TIMES
                  | PLUS;
+
+i_formula:         LPAR NOT i_formula RPAR
+                 | lit
+                 | LPAR boolop i_formula+ RPAR
+                 | LPAR ITE i_formula i_formula i_formula RPAR
+                 | LPAR lets i_formula RPAR
+                 | LPAR i_formula RPAR
+                 | TRUE
+                 | FALSE
+                 | var;
+boolop:            AND
+                 | OR
+                 | EQ;
+
+lit:               LPAR relop expr expr RPAR;
+relop:             LT | LEQ | EQ | GT | GEQ | NEQ;
 
 symbol:            ID;
 sort:              ID;
@@ -73,6 +75,7 @@ FORALL:            'forall';
 LET:               'let';
 IMPLIES:           '=>';
 FALSE:             'false';
+TRUE:              'true';
 PLUS:		   '+';
 MINUS:		   '-';
 TIMES:		   '*';

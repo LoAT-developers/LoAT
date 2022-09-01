@@ -31,6 +31,7 @@ private:
     std::unique_ptr<Smt> solver;
     ITSProblem &its;
     bool isConjunction;
+    const Rel bound;
 
     bool monotonicity(const Rel &rel, Proof &proof);
     bool recurrence(const Rel &rel, Proof &proof);

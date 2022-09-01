@@ -6,6 +6,8 @@
 using RelSet = std::set<Rel>;
 template <class T> using RelMap = std::map<Rel, T>;
 
+std::ostream& operator<<(std::ostream &s, const RelSet &set);
+
 class Rel {
 public:
 

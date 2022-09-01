@@ -45,7 +45,8 @@ std::vector<AccelerationTechnique::Accelerator> AccelerationViaQE::computeRes() 
     const QuantifiedFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, closed->validityBound}}, {{m, closed->n - 1}})});
     res = qelim->qe(q);
     if (res && res->qf != False) {
-        const BoolExpr accelerator = res->qf & (closed->n >= closed->validityBound);
+        const Rel bound = Config::Analysis::reachability() && closed->validityBound == 0 ? closed->n > 0 : closed->n >= closed->validityBound;
+        const BoolExpr accelerator = res->qf & bound;
         Proof proof;
         std::stringstream headline;
         if (res->exact) {

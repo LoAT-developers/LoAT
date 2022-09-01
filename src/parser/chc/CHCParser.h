@@ -13,18 +13,18 @@ class  CHCParser : public antlr4::Parser {
 public:
   enum {
     LOGIC = 1, ASSERT = 2, CHECK_SAT = 3, EXIT = 4, DECLARE_FUN = 5, BOOL = 6, 
-    FORALL = 7, LET = 8, IMPLIES = 9, FALSE = 10, PLUS = 11, MINUS = 12, 
-    TIMES = 13, MOD = 14, DIV = 15, LPAR = 16, RPAR = 17, AND = 18, OR = 19, 
-    NOT = 20, ITE = 21, LT = 22, LEQ = 23, EQ = 24, NEQ = 25, GEQ = 26, 
-    GT = 27, ID = 28, INT = 29, WS = 30, COMMENT = 31, OTHER = 32
+    FORALL = 7, LET = 8, IMPLIES = 9, FALSE = 10, TRUE = 11, PLUS = 12, 
+    MINUS = 13, TIMES = 14, MOD = 15, DIV = 16, LPAR = 17, RPAR = 18, AND = 19, 
+    OR = 20, NOT = 21, ITE = 22, LT = 23, LEQ = 24, EQ = 25, NEQ = 26, GEQ = 27, 
+    GT = 28, ID = 29, INT = 30, WS = 31, COMMENT = 32, OTHER = 33
   };
 
   enum {
     RuleMain = 0, RuleFun_decl = 1, RuleChc_assert = 2, RuleChc_assert_head = 3, 
     RuleChc_assert_body = 4, RuleChc_tail = 5, RuleChc_head = 6, RuleChc_query = 7, 
     RuleVar_decl = 8, RuleU_pred_atom = 9, RuleLet = 10, RuleLets = 11, 
-    RuleI_formula = 12, RuleBoolop = 13, RuleLit = 14, RuleRelop = 15, RuleExpr = 16, 
-    RuleUnaryop = 17, RuleBinaryop = 18, RuleNaryop = 19, RuleSymbol = 20, 
+    RuleExpr = 12, RuleUnaryop = 13, RuleBinaryop = 14, RuleNaryop = 15, 
+    RuleI_formula = 16, RuleBoolop = 17, RuleLit = 18, RuleRelop = 19, RuleSymbol = 20, 
     RuleSort = 21, RuleVar = 22
   };
 
@@ -50,14 +50,14 @@ public:
   class U_pred_atomContext;
   class LetContext;
   class LetsContext;
-  class I_formulaContext;
-  class BoolopContext;
-  class LitContext;
-  class RelopContext;
   class ExprContext;
   class UnaryopContext;
   class BinaryopContext;
   class NaryopContext;
+  class I_formulaContext;
+  class BoolopContext;
+  class LitContext;
+  class RelopContext;
   class SymbolContext;
   class SortContext;
   class VarContext; 
@@ -305,86 +305,6 @@ public:
 
   LetsContext* lets();
 
-  class  I_formulaContext : public antlr4::ParserRuleContext {
-  public:
-    I_formulaContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *LPAR();
-    antlr4::tree::TerminalNode *NOT();
-    std::vector<I_formulaContext *> i_formula();
-    I_formulaContext* i_formula(size_t i);
-    antlr4::tree::TerminalNode *RPAR();
-    BoolopContext *boolop();
-    antlr4::tree::TerminalNode *ITE();
-    LitContext *lit();
-    LetsContext *lets();
-    VarContext *var();
-
-    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
-    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
-
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
-  };
-
-  I_formulaContext* i_formula();
-
-  class  BoolopContext : public antlr4::ParserRuleContext {
-  public:
-    BoolopContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *AND();
-    antlr4::tree::TerminalNode *OR();
-    antlr4::tree::TerminalNode *EQ();
-
-    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
-    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
-
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
-  };
-
-  BoolopContext* boolop();
-
-  class  LitContext : public antlr4::ParserRuleContext {
-  public:
-    LitContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *LPAR();
-    RelopContext *relop();
-    std::vector<ExprContext *> expr();
-    ExprContext* expr(size_t i);
-    antlr4::tree::TerminalNode *RPAR();
-
-    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
-    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
-
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
-  };
-
-  LitContext* lit();
-
-  class  RelopContext : public antlr4::ParserRuleContext {
-  public:
-    RelopContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *LT();
-    antlr4::tree::TerminalNode *LEQ();
-    antlr4::tree::TerminalNode *EQ();
-    antlr4::tree::TerminalNode *GT();
-    antlr4::tree::TerminalNode *GEQ();
-    antlr4::tree::TerminalNode *NEQ();
-
-    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
-    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
-
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
-  };
-
-  RelopContext* relop();
-
   class  ExprContext : public antlr4::ParserRuleContext {
   public:
     ExprContext(antlr4::ParserRuleContext *parent, size_t invokingState);
@@ -458,6 +378,88 @@ public:
   };
 
   NaryopContext* naryop();
+
+  class  I_formulaContext : public antlr4::ParserRuleContext {
+  public:
+    I_formulaContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *LPAR();
+    antlr4::tree::TerminalNode *NOT();
+    std::vector<I_formulaContext *> i_formula();
+    I_formulaContext* i_formula(size_t i);
+    antlr4::tree::TerminalNode *RPAR();
+    LitContext *lit();
+    BoolopContext *boolop();
+    antlr4::tree::TerminalNode *ITE();
+    LetsContext *lets();
+    antlr4::tree::TerminalNode *TRUE();
+    antlr4::tree::TerminalNode *FALSE();
+    VarContext *var();
+
+    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
+    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
+
+    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  I_formulaContext* i_formula();
+
+  class  BoolopContext : public antlr4::ParserRuleContext {
+  public:
+    BoolopContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *AND();
+    antlr4::tree::TerminalNode *OR();
+    antlr4::tree::TerminalNode *EQ();
+
+    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
+    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
+
+    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  BoolopContext* boolop();
+
+  class  LitContext : public antlr4::ParserRuleContext {
+  public:
+    LitContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *LPAR();
+    RelopContext *relop();
+    std::vector<ExprContext *> expr();
+    ExprContext* expr(size_t i);
+    antlr4::tree::TerminalNode *RPAR();
+
+    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
+    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
+
+    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  LitContext* lit();
+
+  class  RelopContext : public antlr4::ParserRuleContext {
+  public:
+    RelopContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *LT();
+    antlr4::tree::TerminalNode *LEQ();
+    antlr4::tree::TerminalNode *EQ();
+    antlr4::tree::TerminalNode *GT();
+    antlr4::tree::TerminalNode *GEQ();
+    antlr4::tree::TerminalNode *NEQ();
+
+    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
+    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
+
+    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  RelopContext* relop();
 
   class  SymbolContext : public antlr4::ParserRuleContext {
   public:

@@ -42,6 +42,9 @@ bool LoopAcceleration::shouldAccelerate() const {
 }
 
 vector<Rule> LoopAcceleration::replaceByUpperbounds(const Var &N, const Rule &rule) {
+    if (Config::Analysis::reachability()) {
+        return {};
+    }
     // gather all upper bounds (if possible)
     VarEliminator ve(rule.getGuard(), N, its);
 
@@ -68,14 +71,15 @@ AccelerationResult LoopAcceleration::run() {
     res.status = Failure;
     if (shouldAccelerate()) {
         const auto rec = Recurrence::iterateRule(its, rule);
+        unsigned vb = rec ? rec->validityBound : 0;
         auto accel = AccelerationFactory::get(rule, rec, its);
         for (const auto &ar: accel->computeRes()) {
-            res.status = rec->validityBound > 1 ? PartialSuccess : Success;
+            res.status = vb > 1 ? PartialSuccess : Success;
             if (Config::Analysis::tryNonterm() && ar.witnessesNonterm) {
                 option<Rule> resultingRule;
-                if (rec->validityBound > 0) {
+                if (vb > 0) {
                     option<Rule> prefix = rule;
-                    for (unsigned i = 0; i < rec->validityBound - 1; ++i) {
+                    for (unsigned i = 0; i < vb - 1; ++i) {
                         prefix = Chaining::chainRules(its, rule, prefix.get(), false);
                     }
                     resultingRule = buildNontermRule(prefix->getGuard() & ar.formula);
@@ -88,11 +92,11 @@ AccelerationResult LoopAcceleration::run() {
                 res.rules.emplace_back(resultingRule.get());
                 res.proof.ruleTransformationProof(rule, "nonterm", resultingRule.get(), its);
                 res.proof.storeSubProof(ar.proof);
-            } else {
+            } else if (rec) {
                 option<Rule> resultingRule;
-                if (rec->validityBound > 0) {
+                if (vb > 0) {
                     option<Rule> prefix = rule;
-                    for (unsigned i = 0; i < rec->validityBound - 1; ++i) {
+                    for (unsigned i = 0; i < vb - 1; ++i) {
                         prefix = Chaining::chainRules(its, rule, prefix.get(), false);
                     }
                     resultingRule = Rule(rule.getLhsLoc(), prefix->getGuard() & ar.formula, rec->cost, rule.getRhsLoc(), rec->update);

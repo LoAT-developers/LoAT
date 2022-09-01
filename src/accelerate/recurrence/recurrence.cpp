@@ -138,7 +138,7 @@ option<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &c
     res.n = varMan.addFreshTemporaryVariable("n");
     Subs subs = {ginacN, res.n};
     res.cost = newCost.get().subs(subs);
-    res.update = newUpdate.get().update.compose(subs);
+    res.update = newUpdate.get().update.concat(subs);
     res.validityBound = newUpdate.get().validityBound;
     return {res};
 }

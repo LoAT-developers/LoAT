@@ -50,18 +50,6 @@ public:
   virtual void enterLets(CHCParser::LetsContext *ctx) = 0;
   virtual void exitLets(CHCParser::LetsContext *ctx) = 0;
 
-  virtual void enterI_formula(CHCParser::I_formulaContext *ctx) = 0;
-  virtual void exitI_formula(CHCParser::I_formulaContext *ctx) = 0;
-
-  virtual void enterBoolop(CHCParser::BoolopContext *ctx) = 0;
-  virtual void exitBoolop(CHCParser::BoolopContext *ctx) = 0;
-
-  virtual void enterLit(CHCParser::LitContext *ctx) = 0;
-  virtual void exitLit(CHCParser::LitContext *ctx) = 0;
-
-  virtual void enterRelop(CHCParser::RelopContext *ctx) = 0;
-  virtual void exitRelop(CHCParser::RelopContext *ctx) = 0;
-
   virtual void enterExpr(CHCParser::ExprContext *ctx) = 0;
   virtual void exitExpr(CHCParser::ExprContext *ctx) = 0;
 
@@ -73,6 +61,18 @@ public:
 
   virtual void enterNaryop(CHCParser::NaryopContext *ctx) = 0;
   virtual void exitNaryop(CHCParser::NaryopContext *ctx) = 0;
+
+  virtual void enterI_formula(CHCParser::I_formulaContext *ctx) = 0;
+  virtual void exitI_formula(CHCParser::I_formulaContext *ctx) = 0;
+
+  virtual void enterBoolop(CHCParser::BoolopContext *ctx) = 0;
+  virtual void exitBoolop(CHCParser::BoolopContext *ctx) = 0;
+
+  virtual void enterLit(CHCParser::LitContext *ctx) = 0;
+  virtual void exitLit(CHCParser::LitContext *ctx) = 0;
+
+  virtual void enterRelop(CHCParser::RelopContext *ctx) = 0;
+  virtual void exitRelop(CHCParser::RelopContext *ctx) = 0;
 
   virtual void enterSymbol(CHCParser::SymbolContext *ctx) = 0;
   virtual void exitSymbol(CHCParser::SymbolContext *ctx) = 0;

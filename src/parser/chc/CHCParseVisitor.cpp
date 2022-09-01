@@ -18,7 +18,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     }
     std::vector<Var> vars;
     for (unsigned i = 0; i < maxArity; ++i) {
-        vars.emplace_back("x" + std::to_string(i));
+        vars.emplace_back(its.addFreshVariable("x" + std::to_string(i)));
     }
     for (const Clause &c: clauses) {
         Subs ren;
@@ -39,11 +39,9 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         for (unsigned i = c.rhs.args.size(); i < maxArity; ++i) {
             up.put(vars[i], its.addFreshTemporaryVariable("tmp"));
         }
-        const Expr cost = c.rhs.loc == sink ? Expr::NontermSymbol : Expr(1);
         const BoolExpr guard = c.guard->subs(ren);
         const option<BoolExpr> simplified = guard->simplify();
-        std::cout << "guard: " << (simplified ? *simplified : guard) << std::endl;
-        its.addRule(Rule(c.lhs.loc, simplified ? *simplified : guard, cost, c.rhs.loc, up));
+        its.addRule(Rule(c.lhs.loc, simplified ? *simplified : guard, 1, c.rhs.loc, up));
     }
     return its;
 }
@@ -182,6 +180,10 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         res.t = std::get<BoolExpr>(r);
     } else if (args.size() == 1) {
         res.t = args[0];
+    } else if (ctx->TRUE()) {
+        res.t = True;
+    } else if (ctx->FALSE()) {
+        res.t = False;
     } else {
         throw ParseError("failed to parse " + ctx->getText());
     }
@@ -322,7 +324,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
     } else if (ctx->ITE()) {
         const Res<BoolExpr> r = visit(ctx->i_formula());
         const BoolExpr cond = r.t & r.refinement;
-        res.t = its.addFreshTemporaryVariable("ite");
+        res.t = its.getFreshUntrackedSymbol("ite", Expr::Int);
         res.refinement = res.refinement & ((cond & Rel::buildEq(res.t, args[0])) | ((!cond) & Rel::buildEq(res.t, args[1])));
     } else if (ctx->var()) {
         const std::variant<Expr, BoolExpr> x = visit(ctx->var());
@@ -373,7 +375,7 @@ antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
             }
         }
     }
-    const option<Var> res = varMan.getVar(name);
+    const option<Var> res = its.getVar(name);
     if (res) {
         if (mode == Default) {
             for (int i = context.size() - 1; i >= 0; --i) {
@@ -385,5 +387,5 @@ antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
         }
         return std::variant<Expr, BoolExpr>(*res);
     }
-    return std::variant<Expr, BoolExpr>(varMan.addFreshVariable(name));
+    return std::variant<Expr, BoolExpr>(its.getFreshUntrackedSymbol(name, Expr::Int));
 }
