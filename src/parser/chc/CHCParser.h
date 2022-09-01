@@ -22,10 +22,10 @@ public:
   enum {
     RuleMain = 0, RuleFun_decl = 1, RuleChc_assert = 2, RuleChc_assert_head = 3, 
     RuleChc_assert_body = 4, RuleChc_tail = 5, RuleChc_head = 6, RuleChc_query = 7, 
-    RuleVar_decl = 8, RuleU_pred_atom = 9, RuleLet = 10, RuleLets = 11, 
-    RuleExpr = 12, RuleUnaryop = 13, RuleBinaryop = 14, RuleNaryop = 15, 
-    RuleI_formula = 16, RuleBoolop = 17, RuleLit = 18, RuleRelop = 19, RuleSymbol = 20, 
-    RuleSort = 21, RuleVar = 22
+    RuleVar_decl = 8, RuleVar_or_atom = 9, RuleU_pred_atom = 10, RuleLet = 11, 
+    RuleLets = 12, RuleExpr = 13, RuleUnaryop = 14, RuleBinaryop = 15, RuleNaryop = 16, 
+    RuleI_formula = 17, RuleBoolop = 18, RuleLit = 19, RuleRelop = 20, RuleSymbol = 21, 
+    RuleSort = 22, RuleVar = 23
   };
 
   CHCParser(antlr4::TokenStream *input);
@@ -47,6 +47,7 @@ public:
   class Chc_headContext;
   class Chc_queryContext;
   class Var_declContext;
+  class Var_or_atomContext;
   class U_pred_atomContext;
   class LetContext;
   class LetsContext;
@@ -174,13 +175,14 @@ public:
   public:
     Chc_tailContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    std::vector<I_formulaContext *> i_formula();
-    I_formulaContext* i_formula(size_t i);
     antlr4::tree::TerminalNode *LPAR();
     antlr4::tree::TerminalNode *AND();
     antlr4::tree::TerminalNode *RPAR();
-    std::vector<U_pred_atomContext *> u_pred_atom();
-    U_pred_atomContext* u_pred_atom(size_t i);
+    std::vector<Var_or_atomContext *> var_or_atom();
+    Var_or_atomContext* var_or_atom(size_t i);
+    std::vector<I_formulaContext *> i_formula();
+    I_formulaContext* i_formula(size_t i);
+    U_pred_atomContext *u_pred_atom();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -247,6 +249,22 @@ public:
   };
 
   Var_declContext* var_decl();
+
+  class  Var_or_atomContext : public antlr4::ParserRuleContext {
+  public:
+    Var_or_atomContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    VarContext *var();
+    U_pred_atomContext *u_pred_atom();
+
+    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
+    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
+
+    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Var_or_atomContext* var_or_atom();
 
   class  U_pred_atomContext : public antlr4::ParserRuleContext {
   public:
@@ -481,6 +499,7 @@ public:
     SortContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *ID();
+    antlr4::tree::TerminalNode *BOOL();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;

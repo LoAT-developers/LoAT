@@ -14,14 +14,18 @@ chc_assert:        LPAR chc_assert_head chc_assert_body RPAR;
 chc_assert_head:   FORALL LPAR var_decl+ RPAR;
 chc_assert_body:   LPAR IMPLIES chc_tail chc_head RPAR
                  | chc_head;
-chc_tail:          i_formula
-                 | (LPAR AND u_pred_atom+ i_formula* RPAR)
+chc_tail:          (LPAR AND var_or_atom+ i_formula* RPAR)
+                 | var_or_atom
+                 | i_formula
                  | u_pred_atom;
 chc_head:          u_pred_atom;
 
 chc_query:         LPAR FORALL LPAR var_decl+ RPAR LPAR IMPLIES chc_tail FALSE RPAR RPAR;
 
 var_decl:          LPAR var sort RPAR;
+
+var_or_atom:       var
+                 | u_pred_atom;
 
 u_pred_atom:       LPAR symbol var* RPAR
                  | symbol;
@@ -61,7 +65,7 @@ lit:               LPAR relop expr expr RPAR;
 relop:             LT | LEQ | EQ | GT | GEQ | NEQ;
 
 symbol:            ID;
-sort:              ID;
+sort:              ID | BOOL;
 var:               ID;
 
 // lexer stuff

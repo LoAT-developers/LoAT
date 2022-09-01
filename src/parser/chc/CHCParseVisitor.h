@@ -18,8 +18,8 @@ class  CHCParseVisitor : public CHCVisitor {
 
     struct FunApp {
 
-        const LocationIdx loc;
-        const std::vector<Var> args;
+        LocationIdx loc;
+        std::vector<Var> args;
 
         FunApp(const LocationIdx loc, const std::vector<Var> args): loc(loc), args(args) {}
 
@@ -41,6 +41,7 @@ class  CHCParseVisitor : public CHCVisitor {
     };
 
     struct Context {
+        VarSet vars;
         Subs arith;
         std::map<std::string, BoolExpr> boolean;
     };
@@ -52,7 +53,6 @@ class  CHCParseVisitor : public CHCVisitor {
     std::vector<Context> context;
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;
-    std::set<std::string> vars;
     unsigned long maxArity = 0;
     LocationIdx sink;
     Mode mode = Default;
@@ -135,6 +135,8 @@ public:
     virtual antlrcpp::Any visitSymbol(CHCParser::SymbolContext *ctx) override;
 
     virtual antlrcpp::Any visitSort(CHCParser::SortContext *ctx) override;
+
+    virtual antlrcpp::Any visitVar_or_atom(CHCParser::Var_or_atomContext *context) override;
 
     virtual antlrcpp::Any visitVar(CHCParser::VarContext *ctx) override;
 

@@ -89,18 +89,18 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
         Res<BoolExpr> r = visit(c);
         guards.push_back(r.t & r.refinement);
     }
-    const BoolExpr guard = buildAnd(guards);
-    switch (ctx->u_pred_atom().size()) {
-    case 0: {
-        return std::pair(FunApp(its.getInitialLocation(), {}), guard);
+    option<FunApp> lhs;
+    for (const auto &c: ctx->var_or_atom()) {
+        const std::variant<BoolExpr, FunApp> v = visit(c);
+        if (std::holds_alternative<BoolExpr>(v)) {
+            guards.push_back(std::get<BoolExpr>(v));
+        } else if (lhs) {
+            throw ParseError("non-linear clause " + ctx->getText());
+        } else {
+            lhs = std::get<FunApp>(v);
+        }
     }
-    case 1: {
-        const FunApp lhs = visit(ctx->u_pred_atom(0));
-        return std::pair(lhs, guard);
-    }
-    default:
-        throw ParseError("non-linear clause " + ctx->getText());
-    }
+    return std::pair(lhs.get_value_or(FunApp(its.getInitialLocation(), {})), buildAnd(guards));
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) {
@@ -361,8 +361,26 @@ antlrcpp::Any CHCParseVisitor::visitSymbol(CHCParser::SymbolContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
-    if (ctx->getText() != "Int") throw ParseError("unsupported sort: " + ctx->getText());
+    if (!ctx->BOOL() && ctx->getText() != "Int") {
+        ParseError("unsupported sort: " + ctx->getText());
+    }
     return {};
+}
+
+antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *ctx) {
+    if (ctx->var()) {
+        const option<LocationIdx> loc = its.getLocationIdx(ctx->getText());
+        if (loc) {
+            return std::variant<BoolExpr, FunApp>(FunApp(*loc, {}));
+        } else {
+            const std::variant<Expr, BoolExpr> v = visit(ctx->var());
+            const BoolExpr b = std::get<BoolExpr>(v);
+            return std::variant<BoolExpr, FunApp>(b);
+        }
+    } else {
+        const FunApp f = visit(ctx->u_pred_atom());
+        return std::variant<BoolExpr, FunApp>(f);
+    }
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {

@@ -354,6 +354,11 @@ void Reachability::analyze() {
         proof.majorProofStep("chained linear paths", its);
         proof.storeSubProof(res.getProof());
     }
+    res = simplify();
+    if (res) {
+        proof.majorProofStep("simplified transitions", its);
+        proof.storeSubProof(res.getProof());
+    }
     res = unroll();
     if (res) {
         proof.majorProofStep("unrolled loops", its);

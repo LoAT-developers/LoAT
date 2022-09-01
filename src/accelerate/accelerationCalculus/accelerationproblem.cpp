@@ -15,9 +15,11 @@ AccelerationProblem::AccelerationProblem(
     closed(closed),
     cost(cost),
     guard(guard),
-    its(its),
-    bound(Config::Analysis::reachability() ? (closed->n > 0) : (closed->n >= 0))
+    its(its)
 {
+    if (closed) {
+        bound = Config::Analysis::reachability() ? (closed->n > 0) : (closed->n >= 0);
+    }
     const std::vector<Subs> subs = closed.map([&up](auto const &closed){return std::vector<Subs>{up, closed.update};}).get_value_or({up});
     Smt::Logic logic = Smt::chooseLogic<RelSet, Subs>({todo}, subs);
     this->solver = SmtFactory::modelBuildingSolver(logic, its);
@@ -97,7 +99,7 @@ bool AccelerationProblem::monotonicity(const Rel &rel, Proof &proof) {
         }
         const Rel updated = rel.subs(up);
         const Rel newCond = rel.subs(closed->update).subs(Subs(closed->n, closed->n-1));
-        RelSet premise = findConsistentSubset(guard & rel & updated & newCond & bound);
+        RelSet premise = findConsistentSubset(guard & rel & updated & newCond & *bound);
         if (!premise.empty()) {
             BoolExprSet assumptions;
             BoolExprSet deps;
@@ -121,7 +123,7 @@ bool AccelerationProblem::monotonicity(const Rel &rel, Proof &proof) {
                     }
                 }
                 const BoolExpr newGuard = buildLit(newCond);
-                if (Smt::check(newGuard & bound, its) == Smt::Sat) {
+                if (Smt::check(newGuard & *bound, its) == Smt::Sat) {
                     option<unsigned int> idx = store(rel, dependencies, newGuard);
                     if (idx) {
                         std::stringstream ss;
@@ -198,7 +200,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel, Proof &proof) {
         const Rel dec = rel.lhs() >= updated;
         const Rel inc = updated < updated.subs(up);
         const Rel newCond = rel.subs(closed->update).subs(Subs(closed->n, closed->n-1));
-        RelSet premise = findConsistentSubset(guard & dec & !inc & rel & newCond & bound);
+        RelSet premise = findConsistentSubset(guard & dec & !inc & rel & newCond & *bound);
         if (!premise.empty()) {
             BoolExprSet assumptions;
             BoolExprSet deps;
@@ -223,7 +225,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel, Proof &proof) {
                     }
                 }
                 const BoolExpr newGuard = buildLit(rel) & newCond;
-                if (Smt::check(newGuard & bound, its) == Smt::Sat) {
+                if (Smt::check(newGuard & *bound, its) == Smt::Sat) {
                     option<unsigned int> idx = store(rel, dependencies, newGuard);
                     if (idx) {
                         std::stringstream ss;
@@ -384,7 +386,7 @@ std::vector<AccelerationTechnique::Accelerator> AccelerationProblem::computeRes(
         bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || Smt::isImplication(guard, buildLit(cost > 0), its);
         bool nt = map.nonterm && positiveCost;
         BoolExpr newGuard = guard->replaceRels(map.map);
-        if (!nt) newGuard = newGuard & bound;
+        if (!nt) newGuard = newGuard & *bound;
         if (Smt::check(newGuard, its) == Smt::Sat) {
             Proof accelProof(proof);
             accelProof.append(std::stringstream() << "Replacement map: " << map.map);

@@ -41,6 +41,9 @@ public:
   virtual void enterVar_decl(CHCParser::Var_declContext *ctx) = 0;
   virtual void exitVar_decl(CHCParser::Var_declContext *ctx) = 0;
 
+  virtual void enterVar_or_atom(CHCParser::Var_or_atomContext *ctx) = 0;
+  virtual void exitVar_or_atom(CHCParser::Var_or_atomContext *ctx) = 0;
+
   virtual void enterU_pred_atom(CHCParser::U_pred_atomContext *ctx) = 0;
   virtual void exitU_pred_atom(CHCParser::U_pred_atomContext *ctx) = 0;
 

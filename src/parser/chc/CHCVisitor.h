@@ -37,6 +37,8 @@ public:
 
     virtual antlrcpp::Any visitVar_decl(CHCParser::Var_declContext *context) = 0;
 
+    virtual antlrcpp::Any visitVar_or_atom(CHCParser::Var_or_atomContext *context) = 0;
+
     virtual antlrcpp::Any visitU_pred_atom(CHCParser::U_pred_atomContext *context) = 0;
 
     virtual antlrcpp::Any visitLet(CHCParser::LetContext *context) = 0;
