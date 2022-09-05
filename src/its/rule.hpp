@@ -36,7 +36,14 @@ class RuleLhs {
 
 public:
     RuleLhs(LocationIdx loc, BoolExpr guard) : RuleLhs(loc, guard, 1) {}
-    RuleLhs(LocationIdx loc, BoolExpr guard, Expr cost) : loc(loc), guard(guard), cost(cost) {}
+    RuleLhs(LocationIdx loc, BoolExpr guard, Expr cost) :
+        loc(loc),
+        guard(guard),
+        cost(Config::Analysis::complexity()
+             ? cost
+             : (Config::Analysis::nonTermination()
+                ? (cost.isNontermSymbol() ? cost : 1)
+                : 1)) {}
 
     LocationIdx getLoc() const { return loc; }
     const BoolExpr& getGuard() const { return guard; }

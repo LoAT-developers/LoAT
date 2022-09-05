@@ -781,8 +781,10 @@ bool boolexpr_compare::operator() (BoolExpr a, BoolExpr b) const {
         if (!b->getLit()) {
             return true;
         } else {
-            return a->getLit().get() < b->getLit().get();
+            return *a->getLit() < *b->getLit();
         }
+    } else if (b->getLit()) {
+        return false;
     }
     if (a->isAnd() && !b->isAnd()) {
         return true;

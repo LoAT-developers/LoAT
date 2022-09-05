@@ -70,7 +70,7 @@ if (DEFINED ENV{ANTLR4_INCLUDE_PATH})
     # ANTLR4 is available and we know where to find the headers
     find_library(ANTLR4 antlr4-runtime)
     message(STATUS "antlr4: ${ANTLR4}")
-    target_include_directories(${EXECUTABLE} PRIVATE $ENV{ANTLR4_INCLUDE_PATH})
+    target_include_directories(${EXECUTABLE} SYSTEM PRIVATE $ENV{ANTLR4_INCLUDE_PATH})
     target_link_libraries(${EXECUTABLE} ${ANTLR4})
 else()
     # ANTLR4 is not available, build it
@@ -80,7 +80,7 @@ else()
         add_definitions(-DANTLR4CPP_STATIC)
     endif()
     include(ExternalAntlr4Cpp)
-    include_directories(${ANTLR4_INCLUDE_DIRS})
+    include_directories(SYSTEM ${ANTLR4_INCLUDE_DIRS})
     if (${STATIC})
         target_link_libraries(${EXECUTABLE} antlr4_static)
     else()
@@ -110,7 +110,7 @@ if (NOT ${STATIC})
 endif()
 
 target_include_directories(${EXECUTABLE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../reduce-algebra/generic/libreduce/src/")
-target_include_directories(${EXECUTABLE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_29d/include/")
+target_include_directories(${EXECUTABLE} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_29d/include/")
 
 target_link_libraries(
     ${EXECUTABLE}

@@ -8,7 +8,7 @@
 
 #include "libfaudes.h"
 
-using fset = RelSet;
+using Automaton = faudes::Generator;
 
 struct Step {
     const TransIdx transition;
@@ -22,6 +22,8 @@ struct Step {
 
 class Reachability {
 
+    static const bool log = true;
+
     ITSProblem &its;
     Proof proof;
     HyperGraph::SCCs sccs = its.sccs();
@@ -31,34 +33,40 @@ class Reachability {
     LocationIdx current = its.getInitialLocation();
     std::vector<Step> trace;
     std::vector<Subs> sigmas{Subs()};
-    std::vector<Subs> inv_sigmas{Subs()};
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked{{}};
-    std::vector<std::pair<faudes::Generator, BoolExpr>> covered;
+    std::vector<std::pair<Automaton, BoolExpr>> covered;
     VarSet prog_vars;
     TransIdx lastOrigRule = 0;
 
-    std::map<TransIdx, faudes::Generator> regexes;
+    std::map<TransIdx, Automaton> regexes;
 
     ResultViaSideEffects removeIrrelevantTransitions();
     ResultViaSideEffects simplify();
     ResultViaSideEffects unroll();
-    Result<Rule> chain(const Rule &r);
+    void preprocess();
+    void init();
+    void unsat();
+    option<BoolExpr> do_step(const TransIdx idx);
+    std::pair<Rule, Automaton> build_loop(const int backlink);
+    Result<Rule> preprocess_loop(const Rule &loop);
+    bool handle_loop(const int backlink);
+    Result<Rule> unroll(const Rule &r);
     Rule rename_tmp_vars(const Rule &rule);
-
-    BoolExpr satisfied(const BoolExpr &b, const Subs &model) const;
+    BoolExpr project(const BoolExpr &b, const Subs &model) const;
     bool leaves_scc(const TransIdx idx) const;
-    option<unsigned> is_loop(const TransIdx idx, const Subs &model) const;
-    bool is_redundant(const TransIdx idx, const Subs &model) const;
-    bool is_covered(const faudes::Generator &automaton, const Subs &model) const;
+    option<int> is_loop(const TransIdx idx);
+    bool is_redundant(const TransIdx idx);
+    bool is_covered(const Automaton &automaton, const Subs &model) const;
     BoolExpr handle_update(const Rule &r);
-    faudes::Generator singleton_automaton(const TransIdx idx) const;
-
-    bool covers(const BoolExpr rels, const Subs &model) const;
+    Automaton singleton_automaton(const TransIdx idx) const;
+    bool covers(const Subs &model, const BoolExpr &rels) const;
     void do_block(const TransIdx idx, const BoolExpr &sat);
     void backtrack();
+    void pop();
+    void extend_trace(const TransIdx idx, const BoolExpr &sat);
     void store(const TransIdx idx, const BoolExpr &sat);
     option<BoolExpr> search_non_redundant_model(const TransIdx idx);
-    void print_run();
+    void print_run(std::ostream &s);
 
     Reachability(ITSProblem &its);
     void analyze();

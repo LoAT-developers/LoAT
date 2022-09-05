@@ -153,6 +153,19 @@ void Proof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule,
     append(s);
 }
 
+void Proof::push() {
+    pop_stack.push(proof.size());
+}
+
+void Proof::pop() {
+    const unsigned current_size = proof.size();
+    const unsigned new_size = pop_stack.top();
+    pop_stack.pop();
+    for (unsigned i = 0; i < current_size - new_size; ++i) {
+        proof.pop_back();
+    }
+}
+
 void Proof::storeSubProof(Proof subProof) {
     if (proofLevel > 1) {
         proof.push_back(subProof);

@@ -82,6 +82,10 @@ public:
 
     bool empty() const;
 
+    void push();
+
+    void pop();
+
     static unsigned int defaultProofLevel;
 
     static unsigned int maxProofLevel;
@@ -93,6 +97,8 @@ private:
     using ProofStep = std::pair<Style, std::string>;
 
     std::vector<std::variant<ProofStep, Proof>> proof;
+
+    std::stack<unsigned> pop_stack;
 
 };
 

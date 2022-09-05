@@ -421,16 +421,16 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
                     ++it;
                 }
             }
-            for (const Rel &rel: todo) {
-                const option<BoolExpr> str = strengthen(rel, var, proof);
-                if (str) {
-                    const auto lits = (*str)->lits();
-                    todo.insert(lits.begin(), lits.end());
-                    solver->add(*str);
-                    formula = (formula->getMatrix() & *str)->quantify(quantifiers);
-                    goOn = true;
-                }
-            }
+//            for (const Rel &rel: todo) {
+//                const option<BoolExpr> str = strengthen(rel, var, proof);
+//                if (str) {
+//                    const auto lits = (*str)->lits();
+//                    todo.insert(lits.begin(), lits.end());
+//                    solver->add(*str);
+//                    formula = (formula->getMatrix() & *str)->quantify(quantifiers);
+//                    goOn = true;
+//                }
+//            }
             if (!goOn) {
                 for (const Rel &rel: todo) {
                     fixpoint(rel, var, proof);

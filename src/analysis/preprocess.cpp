@@ -102,11 +102,11 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
     };
     auto isTempInUpdate = [&](const Var &sym) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
-        return isTemp(sym) && varsInUpdate.count(sym) > 0;
+        return isTemp(sym) && varsInUpdate.find(sym) != varsInUpdate.end();
     };
     auto isTempOnlyInGuard = [&](const Var &sym) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
-        return isTemp(sym) && varsInUpdate.count(sym) == 0 && !rule.getCost().has(sym);
+        return isTemp(sym) && varsInUpdate.find(sym) == varsInUpdate.end() && (!Config::Analysis::complexity() || !rule.getCost().has(sym));
     };
 
     //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
