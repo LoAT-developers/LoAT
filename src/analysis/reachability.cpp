@@ -179,9 +179,10 @@ ResultViaSideEffects Reachability::unroll() {
     return ret;
 }
 
-BoolExpr Reachability::project(const BoolExpr &b, const Subs &model) const {
+BoolExpr Reachability::project(const TransIdx idx) {
     RelSet res;
-    for (const auto &rel: b->lits()) {
+    const Subs model = sigmas.back().compose(z3.model().toSubs());
+    for (const auto &rel: its.getRule(idx).getGuard()->lits()) {
         if (rel.subs(model).isTriviallyTrue()) {
             res.insert(rel);
         }
@@ -203,13 +204,13 @@ option<int> Reachability::is_loop(const TransIdx idx) {
     const LocationIdx dst = its.getRule(idx).getRhsLoc(0);
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step step = trace[pos];
-        if (leaves_scc(step.transition)) {
+        if (leaves_scc(step.transition) || !covers(sigmas[pos].concat(model), step.sat)) {
             return {};
         }
         if (its.getRule(step.transition).getLhsLoc() == dst) {
             bool non_simple = static_cast<unsigned>(pos) < trace.size() - 1;
             bool orig_rule = idx <= lastOrigRule;
-            if ((non_simple || orig_rule) && covers(sigmas[pos].concat(model), step.sat)) {
+            if ((non_simple || orig_rule)) {
                 return pos;
             }
         }
@@ -226,69 +227,41 @@ Automaton Reachability::singleton_automaton(const TransIdx idx) const {
 }
 
 bool Reachability::is_covered(const Automaton &automaton, const Subs &model) const {
-    const Subs m = model.project(prog_vars);
     return std::any_of(covered.begin(), covered.end(), [&](const auto &p) {
-        return faudes::LanguageInclusion(automaton, p.first) && covers(m, p.second);
+        return faudes::LanguageInclusion(automaton, p.first) && covers(model, p.second);
     });
 }
 
-bool Reachability::is_redundant(const TransIdx idx) {
-    if (leaves_scc(idx)) {
-        return false;
-    }
-    const Subs model = z3.model().toSubs();
-    const LocationIdx src = its.getRule(idx).getLhsLoc();
-    Automaton regex = regexes.at(idx);
-    Automaton concat;
-    for (int pos = trace.size() - 1; pos >= 0; --pos) {
-        const Step step = trace[pos];
-        if (leaves_scc(step.transition) || !covers(sigmas[pos + 1].concat(model), step.sat)) {
-            return false;
-        }
-        Automaton previous = regexes.at(step.transition);
-        faudes::LanguageConcatenate(previous, regex, concat);
-        regex = concat;
-        if (its.getRule(step.transition).getLhsLoc() != src) {
-            continue;
-        }
-        if (faudes::LanguageInclusion(regex, previous)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-BoolExpr Reachability::handle_update(const Rule &r) {
+void Reachability::handle_update(const TransIdx idx) {
+    const Rule &r = its.getRule(idx);
     RelSet eqs;
     const Subs &oldSigma = sigmas.back();
-    Subs newSigma, newInvSigma;
+    Subs newSigma;
     const Subs up = r.getUpdate(0);
     for (const auto &var: prog_vars) {
         const Var x = its.getFreshUntrackedSymbol(var.get_name(), Expr::Int);
-        eqs.insert(Rel::buildEq(x, Expr(var).subs(up).subs(oldSigma)));
+        z3.add(buildLit(Rel::buildEq(x, Expr(var).subs(up).subs(oldSigma))));
         newSigma.put(var, x);
-        newInvSigma.put(x, var);
     }
-    for (const auto &tmp: its.getTempVars()) {
-        const Var x = its.getFreshUntrackedSymbol(tmp.get_name(), Expr::Int);
-        newSigma.put(tmp, x);
-        newInvSigma.put(x, tmp);
+    for (const auto &var: r.vars()) {
+        if (its.isTempVar(var)) {
+            newSigma.put(var, its.getFreshUntrackedSymbol(var.get_name(), Expr::Int));
+        }
     }
     sigmas.push_back(newSigma);
-    return buildAnd(eqs);
 }
 
-void Reachability::do_block(const TransIdx idx, const BoolExpr &sat) {
-    auto block = blocked.back().find(idx);
+void Reachability::do_block(const Step &step) {
+    if (log) std::cout << "blocking " << step.transition << ", " << step.sat << std::endl;
+    auto block = blocked.back().find(step.transition);
     if (block == blocked.back().end()) {
-        blocked.back()[idx] = {sat};
+        blocked.back()[step.transition] = {step.sat};
     } else {
-        block->second.insert(sat);
+        block->second.insert(step.sat);
     }
 }
 
 void Reachability::pop() {
-    current = its.getRule(trace.back().transition).getLhsLoc();
     sigmas.pop_back();
     blocked.pop_back();
     trace.pop_back();
@@ -300,13 +273,12 @@ void Reachability::backtrack() {
     if (log) std::cout << "backtracking" << std::endl;
     const Step step = trace.back();
     pop();
-    do_block(step.transition, step.sat);
+    do_block(step);
 }
 
 void Reachability::extend_trace(const TransIdx idx, const BoolExpr &sat) {
     if (!trace.empty()) {
-        assert(current == its.getRule(trace.back().transition).getRhsLoc(0));
-        assert(current == its.getRule(idx).getLhsLoc());
+        assert(its.getRule(trace.back().transition).getRhsLoc(0) == its.getRule(idx).getLhsLoc());
     }
     trace.emplace_back(idx, sat);
     proof.push();
@@ -322,31 +294,9 @@ void Reachability::extend_trace(const TransIdx idx, const BoolExpr &sat) {
 
 void Reachability::store(const TransIdx idx, const BoolExpr &sat) {
     extend_trace(idx, sat);
-    const Rule &r = its.getRule(idx);
-    current = r.getRhsLoc(0);
     blocked.push_back({});
     z3.add(sat->subs(sigmas.back()));
-    z3.add(handle_update(r));
-}
-
-option<BoolExpr> Reachability::search_non_redundant_model(const TransIdx idx) {
-    const Subs sigma = sigmas.back();
-    const BoolExpr g = its.getRule(idx).getGuard();
-    do {
-        if (z3.check() != Smt::Sat) {
-            if (log) std::cout << "could not find a non-redundant model for " << idx << std::endl;
-            return {};
-        }
-        if (log) std::cout << "found model for " << idx << std::endl;
-        const BoolExpr sat = project(g, sigma.compose(z3.model().toSubs()));
-        if (is_redundant(idx)) {
-            if (log) std::cout << "redundant, adding blocking clause " << (!sat) << std::endl;
-            do_block(idx, sat);
-            z3.add(!sat->subs(sigma));
-        } else {
-            return sat;
-        }
-    } while(1);
+    handle_update(idx);
 }
 
 void Reachability::print_run(std::ostream &s) {
@@ -391,11 +341,14 @@ void Reachability::preprocess() {
 }
 
 void Reachability::init() {
+    Subs sigma;
     for (const auto &x: its.getVars()) {
         if (!its.isTempVar(x)) {
+            sigma.put(x, x);
             prog_vars.insert(x);
         }
     }
+    sigmas.push_back(sigma);
     for (const TransIdx idx: its.getAllTransitions()) {
         regexes[idx] = singleton_automaton(idx);
         lastOrigRule = std::max(lastOrigRule, idx);
@@ -434,7 +387,13 @@ option<BoolExpr> Reachability::do_step(const TransIdx idx) {
             z3.add(!b->subs(sigma));
         }
     }
-    return search_non_redundant_model(idx);
+    if (z3.check() == Smt::Sat) {
+        if (log) std::cout << "found model for " << idx << std::endl;
+        return project(idx);
+    } else {
+        if (log) std::cout << "could not find a model for " << idx << std::endl;
+        return {};
+    }
 }
 
 std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
@@ -495,11 +454,12 @@ bool Reachability::handle_loop(const int backlink) {
     const auto p = build_loop(backlink);
     Rule loop = p.first;
     const Automaton automaton = p.second;
-    const Subs sigma = sigmas.back();
-    if (is_covered(automaton, sigma.compose(z3.model().toSubs()))) {
+    const Subs old_model = sigmas[backlink].concat(z3.model().toSubs());
+    if (is_covered(automaton, old_model)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return false;
     }
+    covered.emplace_back(automaton, loop.getGuard());
     Proof accel_proof;
     const Result<Rule> preprocessed = preprocess_loop(loop);
     if (preprocessed) {
@@ -528,17 +488,10 @@ bool Reachability::handle_loop(const int backlink) {
         if (log) std::cout << "acceleration yielded equivalent rule" << std::endl;
         return false;
     }
-    const BoolExpr g = accel.getGuard()->subs(sigma);
     z3.push();
-    z3.add(g);
+    z3.add(accel.getGuard()->subs(sigmas.back()));
     if (z3.check() != Smt::Sat) {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
-        z3.pop();
-        return false;
-    }
-    const Subs model = sigma.compose(z3.model().toSubs());
-    if (is_covered(automaton, model)) {
-        if (log) std::cout << "accelerated rule already covered" << std::endl;
         z3.pop();
         return false;
     }
@@ -551,10 +504,8 @@ bool Reachability::handle_loop(const int backlink) {
         z3.pop();
         return false;
     }
-    const BoolExpr sat = project(accel.getGuard(), model);
     regexes[*loop_idx] = automaton;
-    covered.emplace_back(automaton, sat);
-    store(*loop_idx, sat);
+    store(*loop_idx, project(*loop_idx));
     proof.majorProofStep("accelerated loop", its);
     proof.storeSubProof(accel_proof);
     return true;
@@ -573,6 +524,7 @@ void Reachability::analyze() {
     do {
         if (log) std::cout << "trace: " << trace << std::endl;
         State state = Failed;
+        const TransIdx current = trace.empty() ? its.getInitialLocation() : its.getRule(trace.back().transition).getRhsLoc(0);
         for (const TransIdx idx: its.getTransitionsFrom(current)) {
             z3.push();
             const option<BoolExpr> sat = do_step(idx);
@@ -600,7 +552,7 @@ void Reachability::analyze() {
                 state = Successful;
             } else {
                 state = DroppedLoop;
-                do_block(step.transition, step.sat);
+                do_block(step);
             }
             break;
         }

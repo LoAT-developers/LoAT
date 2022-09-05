@@ -30,9 +30,8 @@ class Reachability {
     LocationIdx sink = *its.getSink();
     Z3 z3;
 
-    LocationIdx current = its.getInitialLocation();
     std::vector<Step> trace;
-    std::vector<Subs> sigmas{Subs()};
+    std::vector<Subs> sigmas;
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked{{}};
     std::vector<std::pair<Automaton, BoolExpr>> covered;
     VarSet prog_vars;
@@ -52,20 +51,18 @@ class Reachability {
     bool handle_loop(const int backlink);
     Result<Rule> unroll(const Rule &r);
     Rule rename_tmp_vars(const Rule &rule);
-    BoolExpr project(const BoolExpr &b, const Subs &model) const;
+    BoolExpr project(const TransIdx idx);
     bool leaves_scc(const TransIdx idx) const;
     option<int> is_loop(const TransIdx idx);
-    bool is_redundant(const TransIdx idx);
     bool is_covered(const Automaton &automaton, const Subs &model) const;
-    BoolExpr handle_update(const Rule &r);
+    void handle_update(const TransIdx idx);
     Automaton singleton_automaton(const TransIdx idx) const;
     bool covers(const Subs &model, const BoolExpr &rels) const;
-    void do_block(const TransIdx idx, const BoolExpr &sat);
+    void do_block(const Step &step);
     void backtrack();
     void pop();
     void extend_trace(const TransIdx idx, const BoolExpr &sat);
     void store(const TransIdx idx, const BoolExpr &sat);
-    option<BoolExpr> search_non_redundant_model(const TransIdx idx);
     void print_run(std::ostream &s);
 
     Reachability(ITSProblem &its);
