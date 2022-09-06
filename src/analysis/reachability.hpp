@@ -8,6 +8,8 @@
 
 #include "libfaudes.h"
 
+#include <list>
+
 using Automaton = faudes::Generator;
 
 struct Step {
@@ -22,11 +24,21 @@ struct Step {
 
 class Reachability {
 
+    enum State {
+        Successful,
+        Failed,
+        DroppedLoop
+    };
+
     static const bool log = true;
 
     ITSProblem &its;
     Proof proof;
     HyperGraph::SCCs sccs = its.sccs();
+    std::map<LocationIdx, std::vector<TransIdx>> cross_scc;
+    std::map<LocationIdx, std::vector<TransIdx>> in_scc;
+    std::map<LocationIdx, std::vector<TransIdx>> accelerated;
+    std::map<LocationIdx, std::list<TransIdx>> transitions;
     LocationIdx sink = *its.getSink();
     Z3 z3;
 
@@ -43,17 +55,19 @@ class Reachability {
     ResultViaSideEffects simplify();
     ResultViaSideEffects unroll();
     void preprocess();
+    void update_transitions(const LocationIdx loc);
     void init();
     void unsat();
     option<BoolExpr> do_step(const TransIdx idx);
+    void drop_loop(const int backlink);
     std::pair<Rule, Automaton> build_loop(const int backlink);
     Result<Rule> preprocess_loop(const Rule &loop);
-    bool handle_loop(const int backlink);
+    State handle_loop(const int backlink);
     Result<Rule> unroll(const Rule &r);
     Rule rename_tmp_vars(const Rule &rule);
     BoolExpr project(const TransIdx idx);
     bool leaves_scc(const TransIdx idx) const;
-    option<int> is_loop(const TransIdx idx);
+    int is_loop(const TransIdx idx);
     bool is_covered(const Automaton &automaton, const Subs &model) const;
     void handle_update(const TransIdx idx);
     Automaton singleton_automaton(const TransIdx idx) const;

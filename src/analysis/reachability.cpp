@@ -199,13 +199,13 @@ bool Reachability::leaves_scc(const TransIdx idx) const {
     return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc(0));
 }
 
-option<int> Reachability::is_loop(const TransIdx idx) {
+int Reachability::is_loop(const TransIdx idx) {
     const Subs model = z3.model().toSubs();
     const LocationIdx dst = its.getRule(idx).getRhsLoc(0);
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step step = trace[pos];
         if (leaves_scc(step.transition) || !covers(sigmas[pos].concat(model), step.sat)) {
-            return {};
+            return -1;
         }
         if (its.getRule(step.transition).getLhsLoc() == dst) {
             bool non_simple = static_cast<unsigned>(pos) < trace.size() - 1;
@@ -215,14 +215,15 @@ option<int> Reachability::is_loop(const TransIdx idx) {
             }
         }
     }
-    return {};
+    return -1;
 }
 
 Automaton Reachability::singleton_automaton(const TransIdx idx) const {
     Automaton res;
-    res.InsInitState(1);
-    res.InsMarkedState(2);
-    res.SetTransition(1, res.InsEvent(std::to_string(idx)), 2);
+    res.StateNamesEnabled(false);
+    faudes::EventSet events;
+    events.Insert(res.InsEvent(std::to_string(idx)));
+    faudes::AlphabetLanguage(events, res);
     return res;
 }
 
@@ -340,6 +341,23 @@ void Reachability::preprocess() {
     }
 }
 
+void Reachability::update_transitions(const LocationIdx loc) {
+    auto it = cross_scc.find(loc);
+    std::list<LocationIdx> trans;
+    if (it != cross_scc.end()) {
+        trans.insert(trans.end(), it->second.begin(), it->second.end());
+    }
+    it = accelerated.find(loc);
+    if (it != accelerated.end()) {
+        trans.insert(trans.end(), it->second.begin(), it->second.end());
+    }
+    it = in_scc.find(loc);
+    if (it != in_scc.end()) {
+        trans.insert(trans.end(), it->second.begin(), it->second.end());
+    }
+    transitions[loc] = trans;
+}
+
 void Reachability::init() {
     Subs sigma;
     for (const auto &x: its.getVars()) {
@@ -352,6 +370,17 @@ void Reachability::init() {
     for (const TransIdx idx: its.getAllTransitions()) {
         regexes[idx] = singleton_automaton(idx);
         lastOrigRule = std::max(lastOrigRule, idx);
+        const TransIdx src = its.getRule(idx).getLhsLoc();
+        auto *to_insert = leaves_scc(idx) ? &cross_scc : &in_scc;
+        const auto it = to_insert->find(src);
+        if (it == to_insert->end()) {
+            to_insert->emplace(src, std::vector<TransIdx>{idx});
+        } else {
+            it->second.push_back(idx);
+        }
+    }
+    for (const auto loc: its.getLocations()) {
+        update_transitions(loc);
     }
 }
 
@@ -396,31 +425,33 @@ option<BoolExpr> Reachability::do_step(const TransIdx idx) {
     }
 }
 
-std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
-    Automaton automaton;
-    automaton.InsInitState(1);
-    automaton.SetMarkedState(1);
-    const auto event = automaton.InsEvent(std::to_string(trace.back().transition));
-    Rule loop = its.getRule(trace.back().transition).withGuard(trace.back().sat);
-    pop();
-    Automaton concat;
+void Reachability::drop_loop(const int backlink) {
     while (trace.size() > static_cast<unsigned>(backlink)) {
-        const TransIdx t = trace.back().transition;
-        const Rule &r = its.getRule(t);
-        loop = *Chaining::chainRules(its, r.withGuard(trace.back().sat), loop, false);
-        faudes::LanguageConcatenate(regexes[t], automaton, concat);
-        automaton = concat;
         pop();
+    }
+}
+
+std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
+    Automaton automaton = regexes[trace.back().transition];
+    Rule loop = its.getRule(trace.back().transition).withGuard(trace.back().sat);
+    for (int i = trace.size() - 1; i > backlink; --i) {
+        const Step &step = trace[i];
+        const TransIdx t = step.transition;
+        const Rule &r = its.getRule(t);
+        loop = *Chaining::chainRules(its, r.withGuard(step.sat), loop, false);
+        faudes::LanguageConcatenate(regexes[t], automaton, automaton);
     }
     if (log) {
         std::cout << "found loop:" << std::endl;
         ITSExport::printRule(loop, its, std::cout);
         std::cout << std::endl;
     }
-    const auto init = automaton.InitState();
-    for (auto it = automaton.MarkedStatesBegin(); it != automaton.MarkedStatesEnd(); ++it) {
-        automaton.SetTransition(*it, event, init);
-    }
+    // this is required to bypass a bug in faudes:
+    // KleeneClosure does not work if the initial
+    // state is not marked
+    automaton.SetMarkedState(automaton.InitState());
+    faudes::KleeneClosure(automaton);
+    faudes::StateMin(automaton, automaton);
     return {loop, automaton};
 }
 
@@ -449,7 +480,7 @@ Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
     return res;
 }
 
-bool Reachability::handle_loop(const int backlink) {
+Reachability::State Reachability::handle_loop(const int backlink) {
     const Step step = trace[backlink];
     const auto p = build_loop(backlink);
     Rule loop = p.first;
@@ -457,7 +488,7 @@ bool Reachability::handle_loop(const int backlink) {
     const Subs old_model = sigmas[backlink].concat(z3.model().toSubs());
     if (is_covered(automaton, old_model)) {
         if (log) std::cout << "loop already covered" << std::endl;
-        return false;
+        return Failed;
     }
     covered.emplace_back(automaton, loop.getGuard());
     Proof accel_proof;
@@ -469,7 +500,7 @@ bool Reachability::handle_loop(const int backlink) {
     const AccelerationResult accel_res = LoopAcceleration::accelerate(its, loop.toLinear(), -1, Complexity::Const);
     if (accel_res.rules.empty()) {
         if (log) std::cout << "acceleration failed" << std::endl;
-        return false;
+        return Failed;
     }
     assert(accel_res.rules.size() == 1);
     accel_proof.storeSubProof(accel_res.proof);
@@ -486,36 +517,36 @@ bool Reachability::handle_loop(const int backlink) {
     }
     if (accel.getUpdate(0) == loop.getUpdate(0)) {
         if (log) std::cout << "acceleration yielded equivalent rule" << std::endl;
-        return false;
+        return Failed;
     }
+    const auto loop_idx = its.addRule(accel);
+    if (!loop_idx) {
+        if (log) std::cout << "adding rule failed" << std::endl;
+        return Failed;
+    }
+    drop_loop(backlink);
     z3.push();
     z3.add(accel.getGuard()->subs(sigmas.back()));
     if (z3.check() != Smt::Sat) {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
         z3.pop();
-        return false;
-    }
-    const auto loop_idx = its.addRule(accel);
-    for (const auto idx: its.getTransitionsFrom(2)) {
-        assert(its.getRule(idx).getLhsLoc() == 2);
-    }
-    if (!loop_idx) {
-        if (log) std::cout << "adding rule failed" << std::endl;
-        z3.pop();
-        return false;
+        its.removeRule(*loop_idx);
+        return DroppedLoop;
     }
     regexes[*loop_idx] = automaton;
-    store(*loop_idx, project(*loop_idx));
+    const auto src = accel.getLhsLoc();
+    auto it = accelerated.find(src);
+    if (it == accelerated.end()) {
+        accelerated.emplace(src, std::vector<TransIdx>{*loop_idx});
+    } else {
+        it->second.push_back(*loop_idx);
+    }
+    update_transitions(src);
+    store(*loop_idx, accel.getGuard());
     proof.majorProofStep("accelerated loop", its);
     proof.storeSubProof(accel_proof);
-    return true;
+    return Successful;
 }
-
-enum State {
-    Successful,
-    Failed,
-    DroppedLoop
-};
 
 void Reachability::analyze() {
     proof.majorProofStep("initial ITS", its);
@@ -525,37 +556,57 @@ void Reachability::analyze() {
         if (log) std::cout << "trace: " << trace << std::endl;
         State state = Failed;
         const TransIdx current = trace.empty() ? its.getInitialLocation() : its.getRule(trace.back().transition).getRhsLoc(0);
-        for (const TransIdx idx: its.getTransitionsFrom(current)) {
+        auto &trans = transitions[current];
+        auto it = trans.begin();
+        std::vector<TransIdx> append;
+        while (it != trans.end()) {
             z3.push();
-            const option<BoolExpr> sat = do_step(idx);
+            const option<BoolExpr> sat = do_step(*it);
             if (!sat) {
                 z3.pop();
+                append.push_back(*it);
+                it = trans.erase(it);
                 continue;
             }
-            if (its.getRule(idx).getRhsLoc(0) == sink) {
-                extend_trace(idx, *sat);
+            const Rule &r = its.getRule(*it);
+            if (r.getRhsLoc(0) == sink) {
+                extend_trace(*it, *sat);
                 unsat();
                 return;
             }
-            store(idx, *sat);
-            const option<int> backlink = is_loop(idx);
-            if (!backlink) {
+            store(*it, *sat);
+            const int backlink = is_loop(*it);
+            if (backlink < 0) {
+                if (r.isSimpleLoop()) {
+                    // this can only happen if we applied an accelerated transition, make sure that we do not apply it again straight away
+                    do_block(trace.back());
+                }
                 state = Successful;
+                ++it;
                 break;
             }
-            if (*backlink < 0) {
+            const Step step = trace[backlink];
+            bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
+            state = handle_loop(backlink);
+            switch (state) {
+            case Failed:
+                // do not increment 'it' here, just block the model that we got and hope for others
                 backtrack();
                 continue;
-            }
-            const Step step = trace[*backlink];
-            if (handle_loop(*backlink)) {
-                state = Successful;
-            } else {
-                state = DroppedLoop;
+            case Successful:
+                if (simple_loop) {
+                    do_block(step);
+                }
+                // make sure that we do not apply the accelerated transition again straight away, which is redundant
+                do_block(trace.back());
+                break;
+            case DroppedLoop:
                 do_block(step);
+                break;
             }
             break;
         }
+        trans.insert(trans.end(), append.begin(), append.end());
         if (state == Failed && !trace.empty()) {
             backtrack();
         }
