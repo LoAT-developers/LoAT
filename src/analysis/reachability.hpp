@@ -27,7 +27,8 @@ class Reachability {
     enum State {
         Successful,
         Failed,
-        DroppedLoop
+        DroppedLoop,
+        PseudoLoop
     };
 
     static const bool log = true;

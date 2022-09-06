@@ -434,13 +434,14 @@ void Reachability::drop_loop(const int backlink) {
 std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
     Automaton automaton = regexes[trace.back().transition];
     Rule loop = its.getRule(trace.back().transition).withGuard(trace.back().sat);
-    for (int i = trace.size() - 1; i > backlink; --i) {
+    for (int i = trace.size() - 2; i >= backlink; --i) {
         const Step &step = trace[i];
         const TransIdx t = step.transition;
         const Rule &r = its.getRule(t);
         loop = *Chaining::chainRules(its, r.withGuard(step.sat), loop, false);
         faudes::LanguageConcatenate(regexes[t], automaton, automaton);
     }
+    assert(loop.getLhsLoc() == loop.getRhsLoc(0));
     if (log) {
         std::cout << "found loop:" << std::endl;
         ITSExport::printRule(loop, its, std::cout);
@@ -499,8 +500,13 @@ Reachability::State Reachability::handle_loop(const int backlink) {
     }
     const AccelerationResult accel_res = LoopAcceleration::accelerate(its, loop.toLinear(), -1, Complexity::Const);
     if (accel_res.rules.empty()) {
-        if (log) std::cout << "acceleration failed" << std::endl;
-        return Failed;
+        if (Smt::check(Chaining::chainRules(its, loop, loop, false)->getGuard(), its) == Smt::Unsat) {
+            if (log) std::cout << "pseudo loop" << std::endl;
+            return PseudoLoop;
+        } else {
+            if (log) std::cout << "acceleration failed" << std::endl;
+            return Failed;
+        }
     }
     assert(accel_res.rules.size() == 1);
     accel_proof.storeSubProof(accel_res.proof);
@@ -589,6 +595,10 @@ void Reachability::analyze() {
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             state = handle_loop(backlink);
             switch (state) {
+            case PseudoLoop:
+                state = Successful;
+                ++it;
+                break;
             case Failed:
                 // do not increment 'it' here, just block the model that we got and hope for others
                 backtrack();
