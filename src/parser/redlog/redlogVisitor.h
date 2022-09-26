@@ -1,5 +1,5 @@
 
-// Generated from redlog.g4 by ANTLR 4.7.2
+// Generated from redlog.g4 by ANTLR 4.11.1
 
 #pragma once
 
@@ -19,21 +19,21 @@ public:
   /**
    * Visit parse trees produced by redlogParser.
    */
-    virtual antlrcpp::Any visitMain(redlogParser::MainContext *context) = 0;
+    virtual std::any visitMain(redlogParser::MainContext *context) = 0;
 
-    virtual antlrcpp::Any visitExpr(redlogParser::ExprContext *context) = 0;
+    virtual std::any visitExpr(redlogParser::ExprContext *context) = 0;
 
-    virtual antlrcpp::Any visitCaop(redlogParser::CaopContext *context) = 0;
+    virtual std::any visitCaop(redlogParser::CaopContext *context) = 0;
 
-    virtual antlrcpp::Any visitBinop(redlogParser::BinopContext *context) = 0;
+    virtual std::any visitBinop(redlogParser::BinopContext *context) = 0;
 
-    virtual antlrcpp::Any visitFormula(redlogParser::FormulaContext *context) = 0;
+    virtual std::any visitFormula(redlogParser::FormulaContext *context) = 0;
 
-    virtual antlrcpp::Any visitLit(redlogParser::LitContext *context) = 0;
+    virtual std::any visitLit(redlogParser::LitContext *context) = 0;
 
-    virtual antlrcpp::Any visitBoolop(redlogParser::BoolopContext *context) = 0;
+    virtual std::any visitBoolop(redlogParser::BoolopContext *context) = 0;
 
-    virtual antlrcpp::Any visitRelop(redlogParser::RelopContext *context) = 0;
+    virtual std::any visitRelop(redlogParser::RelopContext *context) = 0;
 
 
 };

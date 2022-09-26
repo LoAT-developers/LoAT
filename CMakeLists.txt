@@ -2,17 +2,21 @@ cmake_minimum_required(VERSION 3.13)
 
 project(LoAT)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # non-static build by default
 option(STATIC "static" OFF)
 option(SANITIZE "sanitize" OFF)
 
+set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+
+add_link_options(-pthread)
+
 if(${STATIC})
     message(STATUS "Configuring static build")
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     set(BUILD_SHARED_LIBS OFF)
-    add_link_options(-ldl -lpthread -static)
+    add_link_options(-ldl -static)
     set(EXECUTABLE loat-static)
 else()
     message(STATUS "Configuring non-static build")
@@ -74,7 +78,7 @@ if (DEFINED ENV{ANTLR4_INCLUDE_PATH})
     target_link_libraries(${EXECUTABLE} ${ANTLR4})
 else()
     # ANTLR4 is not available, build it
-    set(ANTLR4_TAG 4.7.2)
+    set(ANTLR4_TAG 4.11.1)
     LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
     if (${STATIC})
         add_definitions(-DANTLR4CPP_STATIC)
@@ -102,12 +106,6 @@ if (NOT Z3)
     message(STATUS "Z3 not found.")
     return()
 endif() 
-
-if (NOT ${STATIC})
-    find_library(PTHREAD pthread)
-    message(STATUS "pthread: ${PTHREAD}")
-    target_link_libraries(${EXECUTABLE} ${PTHREAD})
-endif()
 
 target_include_directories(${EXECUTABLE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../reduce-algebra/generic/libreduce/src/")
 target_include_directories(${EXECUTABLE} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_29d/include/")

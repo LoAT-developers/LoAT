@@ -1,5 +1,5 @@
 
-// Generated from Koat.g4 by ANTLR 4.7.2
+// Generated from Koat.g4 by ANTLR 4.11.1
 
 #pragma once
 
@@ -19,43 +19,43 @@ public:
   /**
    * Visit parse trees produced by KoatParser.
    */
-    virtual antlrcpp::Any visitMain(KoatParser::MainContext *context) = 0;
+    virtual std::any visitMain(KoatParser::MainContext *context) = 0;
 
-    virtual antlrcpp::Any visitFs(KoatParser::FsContext *context) = 0;
+    virtual std::any visitFs(KoatParser::FsContext *context) = 0;
 
-    virtual antlrcpp::Any visitVar(KoatParser::VarContext *context) = 0;
+    virtual std::any visitVar(KoatParser::VarContext *context) = 0;
 
-    virtual antlrcpp::Any visitGoal(KoatParser::GoalContext *context) = 0;
+    virtual std::any visitGoal(KoatParser::GoalContext *context) = 0;
 
-    virtual antlrcpp::Any visitStart(KoatParser::StartContext *context) = 0;
+    virtual std::any visitStart(KoatParser::StartContext *context) = 0;
 
-    virtual antlrcpp::Any visitVardecl(KoatParser::VardeclContext *context) = 0;
+    virtual std::any visitVardecl(KoatParser::VardeclContext *context) = 0;
 
-    virtual antlrcpp::Any visitTranss(KoatParser::TranssContext *context) = 0;
+    virtual std::any visitTranss(KoatParser::TranssContext *context) = 0;
 
-    virtual antlrcpp::Any visitTrans(KoatParser::TransContext *context) = 0;
+    virtual std::any visitTrans(KoatParser::TransContext *context) = 0;
 
-    virtual antlrcpp::Any visitLhs(KoatParser::LhsContext *context) = 0;
+    virtual std::any visitLhs(KoatParser::LhsContext *context) = 0;
 
-    virtual antlrcpp::Any visitCom(KoatParser::ComContext *context) = 0;
+    virtual std::any visitCom(KoatParser::ComContext *context) = 0;
 
-    virtual antlrcpp::Any visitRhs(KoatParser::RhsContext *context) = 0;
+    virtual std::any visitRhs(KoatParser::RhsContext *context) = 0;
 
-    virtual antlrcpp::Any visitTo(KoatParser::ToContext *context) = 0;
+    virtual std::any visitTo(KoatParser::ToContext *context) = 0;
 
-    virtual antlrcpp::Any visitLb(KoatParser::LbContext *context) = 0;
+    virtual std::any visitLb(KoatParser::LbContext *context) = 0;
 
-    virtual antlrcpp::Any visitUb(KoatParser::UbContext *context) = 0;
+    virtual std::any visitUb(KoatParser::UbContext *context) = 0;
 
-    virtual antlrcpp::Any visitCond(KoatParser::CondContext *context) = 0;
+    virtual std::any visitCond(KoatParser::CondContext *context) = 0;
 
-    virtual antlrcpp::Any visitExpr(KoatParser::ExprContext *context) = 0;
+    virtual std::any visitExpr(KoatParser::ExprContext *context) = 0;
 
-    virtual antlrcpp::Any visitFormula(KoatParser::FormulaContext *context) = 0;
+    virtual std::any visitFormula(KoatParser::FormulaContext *context) = 0;
 
-    virtual antlrcpp::Any visitLit(KoatParser::LitContext *context) = 0;
+    virtual std::any visitLit(KoatParser::LitContext *context) = 0;
 
-    virtual antlrcpp::Any visitRelop(KoatParser::RelopContext *context) = 0;
+    virtual std::any visitRelop(KoatParser::RelopContext *context) = 0;
 
 
 };

@@ -6,15 +6,16 @@
 #include "../../expr/boolexpr.hpp"
 #include "../../its/variablemanager.hpp"
 
+enum BinOp {
+    Minus, Exp
+};
+
+enum CAOp {
+    Times, Plus
+};
+
 class RedlogParseVisitor: redlogVisitor
 {
-    enum BinOp {
-        Minus, Exp
-    };
-
-    enum CAOp {
-        Times, Plus
-    };
 
     VariableManager &varMan;
 

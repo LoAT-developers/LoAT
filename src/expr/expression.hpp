@@ -24,6 +24,8 @@
 #include "option.hpp"
 #include "exceptions.hpp"
 
+#include <expr.hpp>
+
 class Expr;
 template<class Key, class Key_is_less> class KeyToExprMap;
 class Recurrence;

@@ -9,36 +9,55 @@
 #include "antlr4-runtime.h"
 #include "CHCVisitor.h"
 
+template<class T>
+struct Res {
+    T t;
+    BoolExpr refinement = True;
+};
+
+enum RelOp {
+    Gt, Geq, Lt, Leq, Eq, Neq
+};
+
+enum UnaryOp {
+    UnaryMinus
+};
+
+enum BinaryOp {
+    Minus, Mod, Div
+};
+
+enum NAryOp {
+    Plus, Times
+};
+
+enum BoolOp {
+    And, Or, Equiv
+};
+
+struct FunApp {
+
+    LocationIdx loc;
+    std::vector<Var> args;
+
+    FunApp(const LocationIdx loc, const std::vector<Var> args): loc(loc), args(args) {}
+
+};
+
+struct Clause {
+    const FunApp lhs;
+    const FunApp rhs;
+    const BoolExpr guard;
+
+    Clause(const FunApp &lhs, const FunApp &rhs, const BoolExpr &guard): lhs(lhs), rhs(rhs), guard(guard) {}
+
+};
 
 /**
  * This class provides an empty implementation of CHCVisitor, which can be
  * extended to create a visitor which only needs to handle a subset of the available methods.
  */
 class  CHCParseVisitor : public CHCVisitor {
-
-    struct FunApp {
-
-        LocationIdx loc;
-        std::vector<Var> args;
-
-        FunApp(const LocationIdx loc, const std::vector<Var> args): loc(loc), args(args) {}
-
-    };
-
-    struct Clause {
-        const FunApp lhs;
-        const FunApp rhs;
-        const BoolExpr guard;
-
-        Clause(const FunApp &lhs, const FunApp &rhs, const BoolExpr &guard): lhs(lhs), rhs(rhs), guard(guard) {}
-
-    };
-
-    template<class T>
-    struct Res {
-        T t;
-        BoolExpr refinement = True;
-    };
 
     struct Context {
         VarSet vars;
@@ -56,26 +75,6 @@ class  CHCParseVisitor : public CHCVisitor {
     unsigned long maxArity = 0;
     LocationIdx sink;
     Mode mode = Default;
-
-    enum UnaryOp {
-        UnaryMinus
-    };
-
-    enum BinaryOp {
-        Minus, Mod, Div
-    };
-
-    enum NAryOp {
-        Plus, Times
-    };
-
-    enum BoolOp {
-        And, Or, Equiv
-    };
-
-    enum RelOp {
-        Gt, Geq, Lt, Leq, Eq, Neq
-    };
 
     LocationIdx loc(const std::string &name) {
         auto it = locations.find(name);

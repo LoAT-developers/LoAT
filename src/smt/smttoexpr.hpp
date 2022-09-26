@@ -55,7 +55,7 @@ public:
     }
 
 protected:
-    SmtToExpr<EXPR>(SmtContext<EXPR> &context): context(context) {}
+    SmtToExpr(SmtContext<EXPR> &context): context(context) {}
 
     option<Expr> convert_ex(const EXPR &e){
         if (context.isNoOp(e)) {

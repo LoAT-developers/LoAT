@@ -40,6 +40,6 @@ ITSProblem HornParser::loadFromFile(const std::string &filename) {
     if (parser.getNumberOfSyntaxErrors() > 0) {
         throw FileError("parsing failed");
     } else {
-        return vis.visit(ctx);
+        return any_cast<ITSProblem>(vis.visit(ctx));
     }
 }

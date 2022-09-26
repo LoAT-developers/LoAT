@@ -39,7 +39,7 @@ public:
 
 
 protected:
-    ExprToSmt<EXPR>(SmtContext<EXPR> &context, const VariableManager &varMan):
+    ExprToSmt(SmtContext<EXPR> &context, const VariableManager &varMan):
         context(context),
         varMan(varMan) {}
 

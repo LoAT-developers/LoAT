@@ -4,6 +4,14 @@
 #include "redlogLexer.h"
 #include "redlogParser.h"
 
+using expr_type = Expr;
+using binop_type = BinOp;
+using caop_type = CAOp;
+using lit_type = Rel;
+using formula_type = BoolExpr;
+using boolop_type = ConcatOperator;
+using relop_type = Rel::RelOp;
+
 antlrcpp::Any RedlogParseVisitor::visitMain(redlogParser::MainContext *ctx) {
   return visitFormula(ctx->formula());
 }
@@ -14,18 +22,18 @@ antlrcpp::Any RedlogParseVisitor::visitExpr(redlogParser::ExprContext *ctx) {
   } else if (ctx->INT()) {
       return Expr(stoi(ctx->getText()));
   } else if (ctx->MINUS()) {
-      const Expr child = visit(ctx->expr(0));
+      const auto child = any_cast<expr_type>(visit(ctx->expr(0)));
       return -child;
   } else if (ctx->binop()) {
-      const BinOp binop = visit(ctx->binop());
-      const Expr arg1 = visit(ctx->expr(0));
-      const Expr arg2 = visit(ctx->expr(1));
+      const auto binop = any_cast<binop_type>(visit(ctx->binop()));
+      const auto arg1 = any_cast<expr_type>(visit(ctx->expr(0)));
+      const auto arg2 = any_cast<expr_type>(visit(ctx->expr(1)));
       switch (binop) {
       case Exp: return arg1 ^ arg2;
       case Minus: return arg1 - arg2;
       }
   } else if (ctx->caop()) {
-      const CAOp op = visit(ctx->caop());
+      const auto op = any_cast<caop_type>(visit(ctx->caop()));
       Expr res;
       switch (op) {
       case Times: res = 1;
@@ -35,9 +43,9 @@ antlrcpp::Any RedlogParseVisitor::visitExpr(redlogParser::ExprContext *ctx) {
       }
       for (const auto &e: ctx->expr()) {
           switch (op) {
-          case Times: res = res * visit(e);
+          case Times: res = res * any_cast<expr_type>(visit(e));
               break;
-          case Plus: res = res + visit(e);
+          case Plus: res = res + any_cast<expr_type>(visit(e));
               break;
           }
       }
@@ -60,16 +68,16 @@ antlrcpp::Any RedlogParseVisitor::visitBinop(redlogParser::BinopContext *ctx) {
 
 antlrcpp::Any RedlogParseVisitor::visitFormula(redlogParser::FormulaContext *ctx) {
   if (ctx->lit()) {
-      return buildLit(visit(ctx->lit()));
+      return buildLit(any_cast<lit_type>(visit(ctx->lit())));
   } else if (ctx->TRUE()) {
       return True;
   } else if (ctx->FALSE()) {
       return False;
   } else if (ctx->boolop()) {
-      ConcatOperator op = visit(ctx->boolop());
+      const auto op = any_cast<boolop_type>(visit(ctx->boolop()));
       std::vector<BoolExpr> args;
       for (auto const &f: ctx->formula()) {
-          args.push_back(visit(f));
+          args.push_back(any_cast<formula_type>(visit(f)));
       }
       switch (op) {
       case ConcatAnd: return buildAnd(args);
@@ -80,9 +88,9 @@ antlrcpp::Any RedlogParseVisitor::visitFormula(redlogParser::FormulaContext *ctx
 }
 
 antlrcpp::Any RedlogParseVisitor::visitLit(redlogParser::LitContext *ctx) {
-    Expr arg1 = visit(ctx->expr(0));
-    Rel::RelOp op = visit(ctx->relop());
-    Expr arg2 = visit(ctx->expr(1));
+    const auto arg1 = any_cast<expr_type>(visit(ctx->expr(0)));
+    const auto op = any_cast<relop_type>(visit(ctx->relop()));
+    const auto arg2 = any_cast<expr_type>(visit(ctx->expr(1)));
     return Rel(arg1, op, arg2);
 }
 
@@ -127,6 +135,6 @@ BoolExpr RedlogParseVisitor::parse(std::string str, VariableManager &varMan) {
     if (parser.getNumberOfSyntaxErrors() > 0) {
         throw ParseError("parsing redlog formula failed");
     } else {
-        return vis.visit(ctx);
+        return any_cast<BoolExpr>(vis.visit(ctx));
     }
 }
