@@ -24,8 +24,6 @@
 #include "option.hpp"
 #include "exceptions.hpp"
 
-#include <expr.hpp>
-
 class Expr;
 template<class Key, class Key_is_less> class KeyToExprMap;
 class Recurrence;
@@ -65,8 +63,6 @@ using VarSet = std::set<Var, Var_is_less>;
 using ExprSet = std::set<Expr, Expr_is_less>;
 template <typename T>
 using VarMap = std::map<Var, T, Var_is_less>;
-
-EXCEPTION(QepcadError, CustomException);
 
 /**
  * Class for arithmetic expressions.

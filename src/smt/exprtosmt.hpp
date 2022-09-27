@@ -20,7 +20,6 @@
 
 #include "exceptions.hpp"
 #include "smtcontext.hpp"
-#include "itsproblem.hpp"
 #include "config.hpp"
 #include "boolexpr.hpp"
 
@@ -29,8 +28,6 @@
 
 template<typename EXPR> class ExprToSmt {
 public:
-    EXCEPTION(GinacConversionError,CustomException);
-    EXCEPTION(GinacLargeConstantError,CustomException);
 
     static EXPR convert(const BoolExpr e, SmtContext<EXPR> &ctx, const VariableManager &varMan) {
         ExprToSmt<EXPR> converter(ctx, varMan);

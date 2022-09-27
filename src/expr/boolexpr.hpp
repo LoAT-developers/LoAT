@@ -1,15 +1,16 @@
-#ifndef BOOLEXPR_HPP
-#define BOOLEXPR_HPP
+#pragma once
 
 #include "option.hpp"
 #include "rel.hpp"
 #include "guard.hpp"
 #include "variablemanager.hpp"
+#include "boolvar.hpp"
 
 #include <memory>
 #include <set>
 
 class BoolLit;
+class BoolTheoryLit;
 class BoolJunction;
 class BoolExpression;
 class Quantifier;
@@ -20,7 +21,6 @@ struct Bounds {
     ExprSet upperBounds;
     ExprSet lowerBounds;
     option<Expr> equality;
-    bool exhaustive = true;
 };
 
 struct boolexpr_compare {
@@ -32,6 +32,7 @@ typedef std::set<BoolExpr, boolexpr_compare> BoolExprSet;
 class BoolExpression: public std::enable_shared_from_this<BoolExpression> {
 
     friend class BoolLit;
+    friend class BoolTheoryLit;
     friend class BoolJunction;
     friend class BoolConst;
 
@@ -61,7 +62,6 @@ public:
     virtual unsigned hash() const = 0;
     QuantifiedFormula quantify(const std::vector<Quantifier> &prefix) const;
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
-    virtual Boundedness::Kind getBoundedness(const Var &n) const = 0;
     virtual option<BoolExpr> simplify() const = 0;
     virtual bool isOctagon() const = 0;
 
@@ -69,7 +69,7 @@ protected:
     virtual void dnf(std::vector<Guard> &res) const = 0;
 };
 
-class BoolLit: public BoolExpression {
+class BoolTheoryLit: public BoolExpression {
 
 private:
 
@@ -77,7 +77,44 @@ private:
 
 public:
 
-    BoolLit(const Rel &lit);
+    BoolTheoryLit(const Rel &lit);
+    bool isAnd() const override;
+    bool isOr() const override;
+    option<Rel> getLit() const override;
+    BoolExprSet getChildren() const override;
+    const BoolExpr negation() const override;
+    bool isLinear() const override;
+    bool isPolynomial() const override;
+    ~BoolTheoryLit() override;
+    BoolExpr subs(const Subs &subs) const override;
+    bool isConjunction() const override;
+    BoolExpr toG() const override;
+    RelSet universallyValidLits() const override;
+    void collectLits(RelSet &res) const override;
+    void collectVars(VarSet &res) const override;
+    size_t size() const override;
+    std::string toRedlog() const override;
+    BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
+    unsigned hash() const override;
+    void getBounds(const Var &n, Bounds &res) const override;
+    option<BoolExpr> simplify() const override;
+    bool isOctagon() const override;
+
+protected:
+    void dnf(std::vector<Guard> &res) const override;
+
+};
+
+class BoolLit: public BoolExpression {
+
+private:
+
+    const BoolVar var;
+    bool negated;
+
+public:
+
+    BoolLit(const BoolVar &var, bool negated = false);
     bool isAnd() const override;
     bool isOr() const override;
     option<Rel> getLit() const override;
@@ -97,7 +134,6 @@ public:
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
     unsigned hash() const override;
     void getBounds(const Var &n, Bounds &res) const override;
-    Boundedness::Kind getBoundedness(const Var &n) const override;
     option<BoolExpr> simplify() const override;
     bool isOctagon() const override;
 
@@ -137,7 +173,6 @@ public:
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
     unsigned hash() const override;
     void getBounds(const Var &n, Bounds &res) const override;
-    Boundedness::Kind getBoundedness(const Var &n) const override;
     option<BoolExpr> simplify() const override;
     bool isOctagon() const override;
 
@@ -222,5 +257,3 @@ const BoolExpr operator !(const BoolExpr);
 bool operator ==(const BoolExpr a, const BoolExpr b);
 bool operator !=(const BoolExpr a, const BoolExpr b);
 std::ostream& operator<<(std::ostream &s, const BoolExpr e);
-
-#endif // BOOLEXPR_HPP

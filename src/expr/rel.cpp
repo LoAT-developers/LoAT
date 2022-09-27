@@ -163,29 +163,6 @@ bool Rel::isOctagon() const {
     return op != neq && (lhs() - rhs()).expand().isOctagon();
 }
 
-Boundedness::Kind Rel::getBoundedness(const Var &x) const {
-    if (!has(x)) return Boundedness::None;
-    if (isEq()) return Boundedness::Both;
-    if (!isPoly()) return Boundedness::Unknown;
-    const Rel normalized = toG();
-    const Expr e = (normalized.lhs() - normalized.rhs()).expand();
-    Boundedness::Kind res = Boundedness::None;
-    for (int d = 1; d <= e.degree(x); ++d) {
-        const Expr coeff = e.coeff(x, d);
-        if (!coeff.isRationalConstant()) {
-            return Boundedness::Unknown;
-        } else {
-            Boundedness::Kind expected = coeff.toNum().is_positive() ? Boundedness::Lower : Boundedness::Upper;
-            if (res == Boundedness::None) {
-                res = expected;
-            } else if (res != expected) {
-                return Boundedness::Unknown;
-            }
-        }
-    }
-    return res;
-}
-
 Rel Rel::toIntPoly() const {
     assert(isPoly());
     return Rel((l-r).toIntPoly(), op, 0);

@@ -5,8 +5,6 @@
 #include <vector>
 
 #include "itsproblem.hpp"
-#include "option.hpp"
-#include "exceptions.hpp"
 
 namespace hornParser {
 
@@ -18,7 +16,7 @@ public:
      * @return The resulting ITSProblem (a FileError is thrown if parsing fails)
      */
     static ITSProblem loadFromFile(const std::string &path);
-    EXCEPTION(FileError,CustomException);
+
 };
 
 }

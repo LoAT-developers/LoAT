@@ -1,8 +1,9 @@
 #include <future>
 
 #include "redlog.hpp"
-#include "../parser/redlog/redlogparsevisitor.h"
+#include "redlogparsevisitor.h"
 #include "config.hpp"
+#include "exceptions.hpp"
 
 RedProc initRedproc() {
     std::string path = std::getenv("PATH");
@@ -18,7 +19,7 @@ RedProc initRedproc() {
             return RedProc_new(redcsl.c_str());
         }
     }
-    throw Redlog::RedlogError("couldn't find redcsl binary");
+    throw RedlogError("couldn't find redcsl binary");
 }
 
 RedProc Redlog::process() {
@@ -73,7 +74,7 @@ option<Qelim::Result> Redlog::qe(const QuantifiedFormula &qf) {
                 const auto simplified = res->simplify();
                 const auto e = simplified ? * simplified : res;
                 return Result(e->subs(denormalization), proof, false);
-            } catch (const RedlogParseVisitor::ParseError &e) {
+            } catch (const ParseError &e) {
                 std::cerr << e.what() << std::endl;
             }
         }

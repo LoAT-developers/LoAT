@@ -2,9 +2,8 @@
 #define REDLOGPARSEVISITOR_H
 
 #include "redlogVisitor.h"
-#include "../../util/exceptions.hpp"
-#include "../../expr/boolexpr.hpp"
-#include "../../its/variablemanager.hpp"
+#include "boolexpr.hpp"
+#include "variablemanager.hpp"
 
 enum BinOp {
     Minus, Exp
@@ -31,8 +30,6 @@ class RedlogParseVisitor: redlogVisitor
     virtual antlrcpp::Any visitRelop(redlogParser::RelopContext *ctx) override;
 
 public:
-
-    EXCEPTION(ParseError, CustomException);
 
     static BoolExpr parse(std::string str, VariableManager &varMan);
 

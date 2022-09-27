@@ -6,7 +6,6 @@ extern "C" {
 }
 #include "boolexpr.hpp"
 #include "variablemanager.hpp"
-#include "exceptions.hpp"
 #include "qelim.hpp"
 
 class Redlog: Qelim {
@@ -15,8 +14,6 @@ class Redlog: Qelim {
     VariableManager &varMan;
 
 public:
-
-    EXCEPTION(RedlogError, CustomException);
 
     Redlog(VariableManager &varMan): varMan(varMan){}
 

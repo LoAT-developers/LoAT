@@ -1,7 +1,6 @@
 #pragma once
 
 #include "expression.hpp"
-#include "boundedness.hpp"
 
 using RelSet = std::set<Rel>;
 template <class T> using RelMap = std::map<Rel, T>;
@@ -28,7 +27,6 @@ public:
     bool isGZeroConstraint() const;
     bool isStrict() const;
     bool isOctagon() const;
-    Boundedness::Kind getBoundedness(const Var &x) const;
 
     unsigned hash() const;
 

@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
             std::cout << "Error: unknown format" << std::endl;
             exit(1);
         }
-    } catch (const parser::ITSParser::FileError &err) {
+    } catch (const FileError &err) {
         cout << "Error loading file " << filename << ": " << err.what() << endl;
         return 1;
     }

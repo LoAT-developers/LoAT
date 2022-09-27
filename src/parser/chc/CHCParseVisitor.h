@@ -3,10 +3,8 @@
 
 #pragma once
 
-#include "../../its/itsproblem.hpp"
-#include "../../expr/boolexpr.hpp"
-#include "../../util/exceptions.hpp"
-#include "antlr4-runtime.h"
+#include "itsproblem.hpp"
+#include "boolexpr.hpp"
 #include "CHCVisitor.h"
 
 template<class T>
@@ -88,8 +86,6 @@ class  CHCParseVisitor : public CHCVisitor {
     }
 
 public:
-
-    EXCEPTION(ParseError, CustomException);
 
     virtual antlrcpp::Any visitMain(CHCParser::MainContext *ctx) override;
 

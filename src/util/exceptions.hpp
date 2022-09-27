@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef EXCEPTIONS_H
-#define EXCEPTIONS_H
+#pragma once
 
 #include <string>
 #include <cstdarg>
@@ -49,5 +48,10 @@ public: \
     exceptionName() : exceptionName(#exceptionName) {} \
 }
 
-#endif // EXCEPTIONS_H
-
+EXCEPTION(QepcadError, CustomException);
+EXCEPTION(ParseError, CustomException);
+EXCEPTION(FileError, CustomException);
+EXCEPTION(RedlogError, CustomException);
+EXCEPTION(GinacConversionError, CustomException);
+EXCEPTION(GinacLargeConstantError, CustomException);
+EXCEPTION(UnsupportedOperationError, CustomException);

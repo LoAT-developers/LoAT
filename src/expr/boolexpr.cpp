@@ -1,6 +1,6 @@
 #include "boolexpr.hpp"
 #include "guardtoolbox.hpp"
-#include "redlogparsevisitor.h"
+#include "exceptions.hpp"
 
 #include <vector>
 #include <functional>
@@ -37,41 +37,41 @@ QuantifiedFormula BoolExpression::quantify(const std::vector<Quantifier> &prefix
     return QuantifiedFormula(prefix, shared_from_this());
 }
 
-BoolLit::BoolLit(const Rel &lit): lit(lit.makeRhsZero()) {}
+BoolTheoryLit::BoolTheoryLit(const Rel &lit): lit(lit.makeRhsZero()) {}
 
-bool BoolLit::isAnd() const {
+bool BoolTheoryLit::isAnd() const {
     return false;
 }
 
-bool BoolLit::isOr() const {
+bool BoolTheoryLit::isOr() const {
     return false;
 }
 
-option<Rel> BoolLit::getLit() const {
+option<Rel> BoolTheoryLit::getLit() const {
     return {lit};
 }
 
-BoolExprSet BoolLit::getChildren() const {
+BoolExprSet BoolTheoryLit::getChildren() const {
     return {};
 }
 
-const BoolExpr BoolLit::negation() const {
-    return BoolExpr(new BoolLit(!lit));
+const BoolExpr BoolTheoryLit::negation() const {
+    return BoolExpr(new BoolTheoryLit(!lit));
 }
 
-bool BoolLit::isLinear() const {
+bool BoolTheoryLit::isLinear() const {
     return lit.isLinear();
 }
 
-bool BoolLit::isPolynomial() const {
+bool BoolTheoryLit::isPolynomial() const {
     return lit.isPoly();
 }
 
-BoolExpr BoolLit::subs(const Subs &subs) const {
+BoolExpr BoolTheoryLit::subs(const Subs &subs) const {
     return buildLit(lit.subs(subs));
 }
 
-BoolExpr BoolLit::toG() const {
+BoolExpr BoolTheoryLit::toG() const {
     if (lit.isEq()) {
         std::vector<Rel> lits = {lit.lhs() - lit.rhs() >= 0, lit.rhs() - lit.lhs() >= 0};
         return buildAnd(lits);
@@ -85,32 +85,32 @@ BoolExpr BoolLit::toG() const {
     }
 }
 
-bool BoolLit::isConjunction() const {
+bool BoolTheoryLit::isConjunction() const {
     return true;
 }
 
-size_t BoolLit::size() const {
+size_t BoolTheoryLit::size() const {
     return 1;
 }
 
-std::string BoolLit::toRedlog() const {
+std::string BoolTheoryLit::toRedlog() const {
     return lit.toString();
 }
 
-RelSet BoolLit::universallyValidLits() const {
+RelSet BoolTheoryLit::universallyValidLits() const {
     return {lit};
 }
 
-void BoolLit::collectLits(RelSet &res) const {
+void BoolTheoryLit::collectLits(RelSet &res) const {
     res.insert(lit);
 }
 
-void BoolLit::collectVars(VarSet &res) const {
+void BoolTheoryLit::collectVars(VarSet &res) const {
     const VarSet &litVars = lit.vars();
     res.insert(litVars.begin(), litVars.end());
 }
 
-BoolExpr BoolLit::replaceRels(const RelMap<BoolExpr> map) const {
+BoolExpr BoolTheoryLit::replaceRels(const RelMap<BoolExpr> map) const {
     if (map.find(lit) != map.end()) {
         return map.at(lit);
     } else {
@@ -118,7 +118,7 @@ BoolExpr BoolLit::replaceRels(const RelMap<BoolExpr> map) const {
     }
 }
 
-void BoolLit::dnf(std::vector<Guard> &res) const {
+void BoolTheoryLit::dnf(std::vector<Guard> &res) const {
     if (res.empty()) {
         res.push_back({lit});
     } else {
@@ -128,11 +128,11 @@ void BoolLit::dnf(std::vector<Guard> &res) const {
     }
 }
 
-unsigned BoolLit::hash() const {
+unsigned BoolTheoryLit::hash() const {
     return lit.hash();
 }
 
-void BoolLit::getBounds(const Var &n, Bounds &res) const {
+void BoolTheoryLit::getBounds(const Var &n, Bounds &res) const {
     if (lit.has(n)) {
         if (lit.isEq()) {
             const option<Expr> eq = GuardToolbox::solveTermFor(lit.lhs() - lit.rhs(), n, GuardToolbox::ResultMapsToInt);
@@ -140,12 +140,9 @@ void BoolLit::getBounds(const Var &n, Bounds &res) const {
                 res.equality = *eq;
                 res.lowerBounds.insert(*eq);
                 res.upperBounds.insert(*eq);
-            } else {
-                res.exhaustive = false;
             }
         } else if (lit.isIneq()) {
             const auto p = GuardToolbox::getBoundFromIneq(lit, n);
-            res.exhaustive &= (p.first || p.second);
             if (p.first) {
                 bool add = true;
                 for (const auto &b: res.lowerBounds) {
@@ -172,11 +169,7 @@ void BoolLit::getBounds(const Var &n, Bounds &res) const {
     }
 }
 
-Boundedness::Kind BoolLit::getBoundedness(const Var &n) const {
-    return lit.getBoundedness(n);
-}
-
-option<BoolExpr> BoolLit::simplify() const {
+option<BoolExpr> BoolTheoryLit::simplify() const {
     if (lit.isTriviallyTrue()) {
         return True;
     } else if (lit.isTriviallyFalse()) {
@@ -188,8 +181,91 @@ option<BoolExpr> BoolLit::simplify() const {
     }
 }
 
-bool BoolLit::isOctagon() const {
+bool BoolTheoryLit::isOctagon() const {
     return lit.isOctagon();
+}
+
+BoolTheoryLit::~BoolTheoryLit() {}
+
+
+BoolLit::BoolLit(const BoolVar &var, bool negated): var(var), negated(negated) {}
+
+bool BoolLit::isAnd() const {
+    return false;
+}
+
+bool BoolLit::isOr() const {
+    return false;
+}
+
+option<Rel> BoolLit::getLit() const {
+    return {};
+}
+
+BoolExprSet BoolLit::getChildren() const {
+    return {};
+}
+
+const BoolExpr BoolLit::negation() const {
+    return BoolExpr(new BoolLit(var, !negated));
+}
+
+bool BoolLit::isLinear() const {
+    return false;
+}
+
+bool BoolLit::isPolynomial() const {
+    return false;
+}
+
+BoolExpr BoolLit::subs(const Subs &subs) const {
+//    return buildLit(lit.subs(subs)); TODO
+}
+
+BoolExpr BoolLit::toG() const {
+    return shared_from_this();
+}
+
+bool BoolLit::isConjunction() const {
+    return true;
+}
+
+size_t BoolLit::size() const {
+    return 1;
+}
+
+std::string BoolLit::toRedlog() const {
+    return var.toString();
+}
+
+RelSet BoolLit::universallyValidLits() const {
+    return {};
+}
+
+void BoolLit::collectLits(RelSet &res) const {}
+
+void BoolLit::collectVars(VarSet &res) const {}
+
+BoolExpr BoolLit::replaceRels(const RelMap<BoolExpr> map) const {
+    return shared_from_this();
+}
+
+void BoolLit::dnf(std::vector<Guard> &res) const {
+    throw UnsupportedOperationError();
+}
+
+unsigned BoolLit::hash() const {
+    return var.hash();
+}
+
+void BoolLit::getBounds(const Var &n, Bounds &res) const {}
+
+option<BoolExpr> BoolLit::simplify() const {
+    return {};
+}
+
+bool BoolLit::isOctagon() const {
+    return false;
 }
 
 BoolLit::~BoolLit() {}
@@ -353,52 +429,13 @@ void BoolJunction::getBounds(const Var &n, Bounds &res) const {
                 c->getBounds(n, cres);
                 if (res.equality && (!cres.equality || !(*res.equality - *cres.equality).isZero())) {
                     res.equality = {};
-                    res.exhaustive = false;
                 }
-                const auto intersect = [](ExprSet fst, const ExprSet &snd) {
-                    bool changed = false;
-                    for (auto it = fst.begin(); it != fst.end();) {
-                        bool keep = false;
-                        for (const auto &l2: snd) {
-                            if ((*it - l2).isZero()) {
-                                keep = true;
-                                break;
-                            }
-                        }
-                        if (keep) {
-                            ++it;
-                        } else {
-                            changed = true;
-                            it = fst.erase(it);
-                        }
-                    }
-                    return changed;
-                };
-                if (intersect(res.lowerBounds, cres.lowerBounds)) res.exhaustive = false;
-                if (intersect(res.upperBounds, cres.upperBounds)) res.exhaustive = false;
                 if (!res.equality && res.lowerBounds.empty() && res.upperBounds.empty()) {
                     return;
                 }
             }
         }
     }
-}
-
-Boundedness::Kind BoolJunction::getBoundedness(const Var &n) const {
-    if (isAnd()) {
-        Boundedness::Kind res = Boundedness::None;
-        for (const auto &c: children) {
-            res = Boundedness::unite(res, c->getBoundedness(n));
-        }
-        return res;
-    } else if (isOr()) {
-        Boundedness::Kind res = Boundedness::Both;
-        for (const auto &c: children) {
-            res = Boundedness::intersect(res, c->getBoundedness(n));
-        }
-        return res;
-    }
-    return Boundedness::Unknown;
 }
 
 option<BoolExpr> BoolJunction::simplify() const {
@@ -731,7 +768,7 @@ const BoolExpr buildOr(const std::vector<BoolExpr> &xs) {
 }
 
 const BoolExpr buildLit(const Rel &lit) {
-    return BoolExpr(new BoolLit(lit));
+    return BoolExpr(new BoolTheoryLit(lit));
 }
 
 const BoolExpr True = buildAnd(std::vector<BoolExpr>());

@@ -1,7 +1,6 @@
 #ifndef VARIABLEMANAGER_H
 #define VARIABLEMANAGER_H
 
-#include "types.hpp"
 #include "expression.hpp"
 
 #include <mutex>

@@ -1,19 +1,14 @@
 #pragma once
 
 
-#include "antlr4-runtime.h"
 #include "KoatVisitor.h"
-#include "../../its/itsproblem.hpp"
-#include "../../expr/boolexpr.hpp"
-#include "../../util/exceptions.hpp"
+#include "itsproblem.hpp"
 
 /**
  * This class provides an empty implementation of KoatVisitor, which can be
  * extended to create a visitor which only needs to handle a subset of the available methods.
  */
 class  KoatParseVisitor : public KoatVisitor {
-
-    EXCEPTION(ParseError, CustomException);
 
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;

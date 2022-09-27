@@ -1,7 +1,5 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-        boundedness.hpp
-        boundedness.cpp
         complexity.cpp
         complexity.hpp
         expression.cpp
@@ -12,6 +10,8 @@ target_sources(${EXECUTABLE}
         guardtoolbox.hpp
         boolexpr.cpp
         boolexpr.hpp
+        boolvar.cpp
+        boolvar.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")
