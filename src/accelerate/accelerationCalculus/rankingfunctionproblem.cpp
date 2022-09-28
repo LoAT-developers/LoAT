@@ -5,7 +5,7 @@ RankingFunctionProblem::RankingFunctionProblem(
         const RelSet guard,
         const Subs &up,
         VariableManager &varMan): todo(guard), up(up), guard(guard), varMan(varMan) {
-    Smt::Logic logic = Smt::chooseLogic<RelSet, Subs>({todo}, {up});
+    Smt::Logic logic = Smt::chooseLogic<RelSet, ExprSubs>({todo}, {up.getExprSubs()});
     this->solver = SmtFactory::modelBuildingSolver(logic, varMan);
     this->proof.append(std::stringstream() << "searching recurrent set for " << buildAnd(guard) << " wrt. " << up);
 }
@@ -21,7 +21,7 @@ RankingFunctionProblem RankingFunctionProblem::init(const LinearRule &r, Variabl
 bool RankingFunctionProblem::decrease() {
     for (auto it = todo.begin(); it != todo.end();) {
         const Rel rel = *it;
-        const Rel dec = rel.lhs() > rel.lhs().subs(up);
+        const Rel dec = rel.lhs() > rel.lhs().subs(up.getExprSubs());
         BoolExprSet assumptions;
         BoolExprSet deps;
         solver->resetSolver();
@@ -48,7 +48,7 @@ bool RankingFunctionProblem::decrease() {
 bool RankingFunctionProblem::eventualDecrease() {
     for (auto it = todo.begin(); it != todo.end();) {
         const Rel rel = *it;
-        const Expr updated = rel.lhs().subs(up);
+        const Expr updated = rel.lhs().subs(up.getExprSubs());
         const Rel dec = rel.lhs() > updated;
         BoolExprSet assumptions;
         BoolExprSet deps;
@@ -57,7 +57,7 @@ bool RankingFunctionProblem::eventualDecrease() {
             solver->add(g);
         }
         solver->add(dec);
-        solver->add(!(updated > updated.subs(up)));
+        solver->add(!(updated > updated.subs(up.getExprSubs())));
         if (solver->check() == Smt::Unsat) {
             const Rel inc = updated - rel.lhs() >= 0;
             if (done.find(inc) != done.end()) {

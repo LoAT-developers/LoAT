@@ -1,27 +1,32 @@
 #include "model.hpp"
 
-Model::Model(VarMap<GiNaC::numeric> vars, std::map<unsigned int, bool> constants): vars(vars), constants(constants) {}
+Model::Model(VarMap<Num> &vars, BoolVarMap<bool> &constants): vars(vars), constants(constants) {}
 
-GiNaC::numeric Model::get(const Var &var) const {
+Model::Model() {}
+
+Num Model::get(const Var &var) const {
     return vars.at(var);
 }
 
-bool Model::get(unsigned int id) const {
-    return constants.at(id);
+bool Model::get(const BoolVar &var) const {
+    return constants.at(var);
 }
 
 bool Model::contains(const Var &var) const {
     return vars.count(var) > 0;
 }
 
-bool Model::contains(unsigned int id) const {
-    return constants.count(id) > 0;
+bool Model::contains(const BoolVar &var) const {
+    return constants.find(var) != constants.end();
 }
 
 Subs Model::toSubs() const {
     Subs res;
     for (const auto &e: vars) {
         res.put(e.first, e.second);
+    }
+    for (const auto &e: constants) {
+        res.put(e.first, e.second ? True : False);
     }
     return res;
 }

@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef PROOFOUTPUT_H
-#define PROOFOUTPUT_H
+#pragma once
 
 #include <streambuf>
 #include <ostream>
@@ -30,7 +29,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "config.hpp"
 #include "itsproblem.hpp"
 
 class Proof {
@@ -101,5 +99,3 @@ private:
     std::stack<unsigned> pop_stack;
 
 };
-
-#endif // PROOFOUTPUT_H

@@ -27,8 +27,8 @@ z3::expr Z3Context::buildVar(const std::string &name, Expr::Type type) {
     return (type == Expr::Int) ? ctx.int_const(name.c_str()) : ctx.real_const(name.c_str());
 }
 
-z3::expr Z3Context::buildConst(unsigned int id) {
-    return ctx.bool_const(("x" + to_string(id)).c_str());
+z3::expr Z3Context::buildConst(const BoolVar &var) {
+    return ctx.bool_const(var.getName().c_str());
 }
 
 z3::expr Z3Context::getInt(long val) {

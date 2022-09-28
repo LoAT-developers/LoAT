@@ -121,7 +121,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
     RelSet guard = rule.getGuard()->universallyValidLits();
 
     for (const auto &r: guard) {
-        Rel rel = r.subs(varSubs);
+        Rel rel = varSubs(r);
         if (!rel.isEq()) {
             continue;
         }
@@ -303,15 +303,15 @@ Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem
     std::unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::QF_NA, its, Config::Smt::SimpTimeout);
     for (const Var &x: tempVars) {
         solver->resetSolver();
-        VarSet relevantVars = util::RelevantVariables::find({x}, std::vector<Subs>(), rule.getGuard());
+        VarSet relevantVars = util::RelevantVariables::find({x}, {}, rule.getGuard());
         relevantVars.erase(x);
         Templates::Template t = templates.buildTemplate(relevantVars, its);
         relevantVars.insert(x);
         const BoolExpr e = FarkasLemma::apply(rule.getGuard(), {Rel::buildEq(t.t, x)}, relevantVars, t.params, its);
         solver->add(e);
         if (solver->check() == Smt::Sat) {
-            const Subs &m = solver->model().toSubs().project(t.params);
-            const Rule newRule = res.get().subs({x, t.t.subs(m)});
+            const Subs &m = solver->model().toSubs().project(t.params, {});
+            const Rule newRule = res->subs(Subs(x, m(t.t)));
             std::stringstream s;
             s << "propagated equalities via SMT: " << m;
             Proof subProof;

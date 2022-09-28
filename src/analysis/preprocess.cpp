@@ -18,9 +18,6 @@
 #include "preprocess.hpp"
 
 #include "guardtoolbox.hpp"
-#include "smt.hpp"
-#include "z3.hpp"
-#include "smtfactory.hpp"
 
 using namespace std;
 
@@ -64,15 +61,25 @@ Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule, const ITSProblem
 
 bool Preprocess::removeTrivialUpdates(Subs &update) {
     stack<Var> remove;
-    for (auto it : update) {
+    stack<BoolVar> removeBool;
+    for (auto it : update.getExprSubs()) {
         if (it.second.equals(it.first)) {
             remove.push(it.first);
         }
     }
-    if (remove.empty()) return false;
+    for (auto it : update.getBoolSubs()) {
+        if (buildLit(it.first) == it.second) {
+            removeBool.push(it.first);
+        }
+    }
+    if (remove.empty() && removeBool.empty()) return false;
     while (!remove.empty()) {
         update.erase(remove.top());
         remove.pop();
+    }
+    while (!removeBool.empty()) {
+        update.erase(removeBool.top());
+        removeBool.pop();
     }
     return true;
 }
@@ -85,7 +92,7 @@ bool Preprocess::removeTrivialUpdates(Subs &update) {
 static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     VarSet varsInUpdate;
     for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
-        for (const auto &it : rhs->getUpdate()) {
+        for (const auto &it : rhs->getUpdate().getExprSubs()) {
             it.second.collectVars(varsInUpdate);
         }
     }

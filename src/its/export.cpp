@@ -48,7 +48,14 @@ void ITSExport::printRule(const Rule &rule, const ITSProblem &its, std::ostream 
         printLocation(it->getLoc(), its, s, colors);
         s << " : ";
 
-        for (auto upit : it->getUpdate()) {
+        for (auto upit : it->getUpdate().getExprSubs()) {
+            if (colors) printColor(s, Color::Update);
+            s << upit.first << "'";
+            s << "=" << upit.second;
+            if (colors) printColor(s, Color::None);
+            s << ", ";
+        }
+        for (auto upit : it->getUpdate().getBoolSubs()) {
             if (colors) printColor(s, Color::Update);
             s << upit.first << "'";
             s << "=" << upit.second;
@@ -190,7 +197,7 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
                 for (const Var &var : relevantVars) {
                     s << ((first) ? "(" : ",");
                     auto it = rhs->getUpdate().find(var);
-                    if (it != rhs->getUpdate().end()) {
+                    if (it != rhs->getUpdate().getExprSubs().end()) {
                         s << it->second.expand();
                     } else {
                         s << var;

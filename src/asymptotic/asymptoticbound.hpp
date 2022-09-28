@@ -5,12 +5,11 @@
 #include <vector>
 
 #include "expression.hpp"
-#include "guardtoolbox.hpp"
 #include "variablemanager.hpp"
 #include "inftyexpression.hpp"
 #include "limitproblem.hpp"
 #include "proof.hpp"
-
+#include "complexity.hpp"
 
 class AsymptoticBound {
 private:
@@ -20,7 +19,7 @@ private:
             : complexity(), upperBound(0), lowerBound(0), inftyVars(0) {
         }
 
-        Subs solution;
+        ExprSubs solution;
         Complexity complexity;
         int upperBound;
         int lowerBound;
@@ -33,9 +32,9 @@ private:
     void normalizeGuard();
     void createInitialLimitProblem(VariableManager &varMan);
     void propagateBounds();
-    Subs calcSolution(const LimitProblem &limitProblem);
-    int findUpperBoundforSolution(const LimitProblem &limitProblem, const Subs &solution);
-    int findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const Subs &solution);
+    ExprSubs calcSolution(const LimitProblem &limitProblem);
+    int findUpperBoundforSolution(const LimitProblem &limitProblem, const ExprSubs &solution);
+    int findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ExprSubs &solution);
     void removeUnsatProblems();
     bool solveViaSMT(Complexity currentRes);
     bool solveLimitProblem();
@@ -74,7 +73,7 @@ private:
     std::vector<LimitProblem> solvedLimitProblems;
     LimitProblem currentLP;
 
-    std::vector<Subs> substitutions;
+    std::vector<ExprSubs> substitutions;
 
     std::vector<LimitVector> toApply;
 

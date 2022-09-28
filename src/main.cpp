@@ -29,6 +29,7 @@
 #include "cintegerexport.hpp"
 #include "version.hpp"
 #include "reachability.hpp"
+#include "exceptions.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>

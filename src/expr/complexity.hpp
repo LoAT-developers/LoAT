@@ -15,10 +15,10 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef COMPLEXITY_H
-#define COMPLEXITY_H
+#pragma once
 
-#include <ginac/ginac.h>
+#include "expression.hpp"
+
 #include <assert.h>
 
 
@@ -31,7 +31,7 @@ public:
     bool isInteger() const { return denom == 1; }
     int asInteger() const { assert(isInteger()); return numer; }
     double toFloat() const { return numer/(double)denom; }
-    GiNaC::numeric toExpr() const { return GiNaC::numeric(numer,denom); }
+    Num toExpr() const { return Num(numer,denom); }
 
     SimpleFraction divideBy(int d) { assert(d > 0); return SimpleFraction(numer,denom*d); }
 
@@ -127,5 +127,4 @@ private:
 
 std::ostream& operator<<(std::ostream &, const Complexity &);
 
-
-#endif // COMPLEXITY_H
+Complexity toComplexity(const Expr &e);

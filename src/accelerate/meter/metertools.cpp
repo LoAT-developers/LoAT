@@ -21,16 +21,15 @@
 #include "smt.hpp"
 #include "smtfactory.hpp"
 #include "boolexpr.hpp"
-#include "config.hpp"
 
 using namespace std;
 
 
 /* ### Helpers ### */
 
-std::vector<Subs> MeteringToolbox::applySubsToUpdates(const Subs &subs, const MultiUpdate &updates) {
+std::vector<ExprSubs> MeteringToolbox::applySubsToUpdates(const ExprSubs &subs, const MultiUpdate &updates) {
     MultiUpdate res;
-    for (const Subs &update : updates) {
+    for (const auto &update : updates) {
         res.push_back(update.concat(subs));
     }
     return res;
@@ -38,7 +37,7 @@ std::vector<Subs> MeteringToolbox::applySubsToUpdates(const Subs &subs, const Mu
 
 
 bool MeteringToolbox::isUpdatedByAny(Var var, const MultiUpdate &updates) {
-    auto updatesVar = [&](const Subs &update) { return update.changes(var); };
+    auto updatesVar = [&](const auto &update) { return update.changes(var); };
     return std::any_of(updates.begin(), updates.end(), updatesVar);
 }
 
@@ -70,10 +69,9 @@ Guard MeteringToolbox::reduceGuard(VarMan &varMan, const Guard &guard, const Mul
 
     // Collect all updated variables (updated by any of the updates)
     VarSet updatedVars;
-    for (const Subs &update : updates) {
-        for (const auto &it : update) {
-            updatedVars.insert(it.first);
-        }
+    for (const auto &update : updates) {
+        const auto dom = update.domain();
+        updatedVars.insert(dom.begin(), dom.end());
     }
     auto isUpdated = [&](const Var &var){ return updatedVars.count(var) > 0; };
 
@@ -90,9 +88,9 @@ Guard MeteringToolbox::reduceGuard(VarMan &varMan, const Guard &guard, const Mul
         // and only if they are not implied after each update (so they may cause the loop to terminate)
         if (add) {
             bool implied = true;
-            for (const Subs &update : updates) {
+            for (const auto &update : updates) {
                 solver->push();
-                solver->add(!buildLit(rel.subs(update)));
+                solver->add(!buildTheoryLit(rel.subs(update)));
                 auto smtRes = solver->check();
                 solver->pop();
 
@@ -139,7 +137,7 @@ VarSet MeteringToolbox::findRelevantVariables(const Guard &guard, const MultiUpd
         VarSet next;
 
         for (Var var : todo) {
-            for (const Subs &update : updates) {
+            for (const auto &update: updates) {
                 auto it = update.find(var);
                 if (it != update.end()) {
                     VarSet rhsVars = it->second.vars();
@@ -164,7 +162,7 @@ VarSet MeteringToolbox::findRelevantVariables(const Guard &guard, const MultiUpd
 
 
 void MeteringToolbox::restrictUpdatesToVariables(MultiUpdate &updates, const VarSet &vars) {
-    for (Subs &update : updates) {
+    for (auto &update : updates) {
         VarSet toRemove;
 
         for (auto it : update) {
@@ -206,7 +204,7 @@ option<Guard> MeteringToolbox::strengthenGuard(VarMan &varMan, const Guard &guar
     VarSet relevantVars = findRelevantVariables(reducedGuard, updates);
 
     // consider each update independently of the others
-    for (const Subs &update : updates) {
+    for (const auto &update : updates) {
         // helper lambda to pass as argument
         auto isUpdated = [&](const Var &sym){ return update.changes(sym); };
 
@@ -248,10 +246,10 @@ option<Guard> MeteringToolbox::strengthenGuard(VarMan &varMan, const Guard &guar
 }
 
 
-stack<Subs> MeteringToolbox::findInstantiationsForTempVars(const VarMan &varMan, const Guard &guard) {
+stack<ExprSubs> MeteringToolbox::findInstantiationsForTempVars(const VarMan &varMan, const Guard &guard) {
     //find free variables
     const VarSet &freeVar = varMan.getTempVars();
-    if (freeVar.empty()) return stack<Subs>();
+    if (freeVar.empty()) return stack<ExprSubs>();
 
     //find all bounds for every free variable
     VarMap<ExprSet> freeBounds;
@@ -270,21 +268,21 @@ stack<Subs> MeteringToolbox::findInstantiationsForTempVars(const VarMan &varMan,
     }
 
     //check if there are any bounds at all
-    if (freeBounds.empty()) return stack<Subs>();
+    if (freeBounds.empty()) return stack<ExprSubs>();
 
     //combine all bounds in all possible ways
-    stack<Subs> allSubs;
-    allSubs.push(Subs());
+    stack<ExprSubs> allSubs;
+    allSubs.push(ExprSubs());
     for (auto const &it : freeBounds) {
         Var sym = it.first;
         for (const Expr &bound : it.second) {
-            stack<Subs> next;
+            stack<ExprSubs> next;
             while (!allSubs.empty()) {
-                Subs subs = allSubs.top();
+                ExprSubs subs = allSubs.top();
                 allSubs.pop();
                 if (subs.contains(sym)) {
                     //keep old bound, add a new substitution for the new bound
-                    Subs newsubs = subs;
+                    ExprSubs newsubs = subs;
                     newsubs.put(sym, bound);
                     next.push(subs);
                     next.push(newsubs);

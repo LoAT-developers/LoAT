@@ -16,7 +16,7 @@
  */
 
 #include "itsparser.hpp"
-
+#include "exceptions.hpp"
 #include "KoatLexer.h"
 #include "KoatParser.h"
 #include "KoatParseVisitor.h"

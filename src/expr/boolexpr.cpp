@@ -47,8 +47,12 @@ bool BoolTheoryLit::isOr() const {
     return false;
 }
 
-option<Rel> BoolTheoryLit::getLit() const {
+option<Rel> BoolTheoryLit::getTheoryLit() const {
     return {lit};
+}
+
+option<BoolLit> BoolTheoryLit::getLit() const {
+    return {};
 }
 
 BoolExprSet BoolTheoryLit::getChildren() const {
@@ -67,8 +71,8 @@ bool BoolTheoryLit::isPolynomial() const {
     return lit.isPoly();
 }
 
-BoolExpr BoolTheoryLit::subs(const Subs &subs) const {
-    return buildLit(lit.subs(subs));
+BoolExpr BoolTheoryLit::subs(const ExprSubs &subs) const {
+    return buildTheoryLit(lit.subs(subs));
 }
 
 BoolExpr BoolTheoryLit::toG() const {
@@ -81,7 +85,7 @@ BoolExpr BoolTheoryLit::toG() const {
     } else if (lit.isGZeroConstraint()) {
         return shared_from_this();
     } else {
-        return buildLit(lit.makeRhsZero().toG());
+        return buildTheoryLit(lit.makeRhsZero().toG());
     }
 }
 
@@ -109,6 +113,8 @@ void BoolTheoryLit::collectVars(VarSet &res) const {
     const VarSet &litVars = lit.vars();
     res.insert(litVars.begin(), litVars.end());
 }
+
+void BoolTheoryLit::collectBoolVars(BoolVarSet &res) const {}
 
 BoolExpr BoolTheoryLit::replaceRels(const RelMap<BoolExpr> map) const {
     if (map.find(lit) != map.end()) {
@@ -175,7 +181,7 @@ option<BoolExpr> BoolTheoryLit::simplify() const {
     } else if (lit.isTriviallyFalse()) {
         return False;
     } else if (lit.isNeq()) {
-        return buildLit(lit.lhs() < lit.rhs()) | (lit.lhs() > lit.rhs());
+        return buildTheoryLit(lit.lhs() < lit.rhs()) | (lit.lhs() > lit.rhs());
     } else {
         return {};
     }
@@ -183,6 +189,16 @@ option<BoolExpr> BoolTheoryLit::simplify() const {
 
 bool BoolTheoryLit::isOctagon() const {
     return lit.isOctagon();
+}
+
+int BoolTheoryLit::compare(const BoolExpr that) const {
+    if (that->getLit()) {
+        return 1;
+    }
+    if (!that->getTheoryLit()) {
+        return -1;
+    }
+    return lit.compare(*that->getTheoryLit());
 }
 
 BoolTheoryLit::~BoolTheoryLit() {}
@@ -198,8 +214,12 @@ bool BoolLit::isOr() const {
     return false;
 }
 
-option<Rel> BoolLit::getLit() const {
+option<Rel> BoolLit::getTheoryLit() const {
     return {};
+}
+
+option<BoolLit> BoolLit::getLit() const {
+    return *this;
 }
 
 BoolExprSet BoolLit::getChildren() const {
@@ -211,15 +231,15 @@ const BoolExpr BoolLit::negation() const {
 }
 
 bool BoolLit::isLinear() const {
-    return false;
+    return true;
+}
+
+BoolExpr BoolLit::subs(const ExprSubs &subs) const {
+    return shared_from_this();
 }
 
 bool BoolLit::isPolynomial() const {
-    return false;
-}
-
-BoolExpr BoolLit::subs(const Subs &subs) const {
-//    return buildLit(lit.subs(subs)); TODO
+    return true;
 }
 
 BoolExpr BoolLit::toG() const {
@@ -235,7 +255,7 @@ size_t BoolLit::size() const {
 }
 
 std::string BoolLit::toRedlog() const {
-    return var.toString();
+    return var.getName();
 }
 
 RelSet BoolLit::universallyValidLits() const {
@@ -245,6 +265,14 @@ RelSet BoolLit::universallyValidLits() const {
 void BoolLit::collectLits(RelSet &res) const {}
 
 void BoolLit::collectVars(VarSet &res) const {}
+
+BoolVar BoolLit::getBoolVar() const {
+    return var;
+}
+
+void BoolLit::collectBoolVars(BoolVarSet &res) const {
+    res.insert(this->getBoolVar());
+}
 
 BoolExpr BoolLit::replaceRels(const RelMap<BoolExpr> map) const {
     return shared_from_this();
@@ -268,7 +296,42 @@ bool BoolLit::isOctagon() const {
     return false;
 }
 
+bool BoolLit::isNegated() const {
+    return negated;
+}
+
+bool operator<(const BoolLit &l1, const BoolLit &l2) {
+    if (l1.isNegated() && !l2.isNegated()) {
+        return true;
+    }
+    if (l2.isNegated()) {
+        return false;
+    }
+    return l1.getBoolVar() < l2.getBoolVar();
+}
+
+int BoolLit::compare(const BoolExpr that) const {
+    if (!that->getLit()) {
+        return -1;
+    }
+    const auto lit = *that->getLit();
+    if (negated && !lit.negated) {
+        return -1;
+    }
+    if (!negated && lit.negated) {
+        return 1;
+    }
+    return var.compare(lit.var);
+}
+
 BoolLit::~BoolLit() {}
+
+std::ostream& operator<<(std::ostream &s, const BoolLit &e) {
+    if (e.isNegated()) {
+        s << "!";
+    }
+    return s << e.getBoolVar();
+}
 
 
 BoolJunction::BoolJunction(const BoolExprSet &children, ConcatOperator op): children(children), op(op) { }
@@ -281,7 +344,11 @@ bool BoolJunction::isOr() const {
     return op == ConcatOr;
 }
 
-option<Rel> BoolJunction::getLit() const {
+option<Rel> BoolJunction::getTheoryLit() const {
+    return {};
+}
+
+option<BoolLit> BoolJunction::getLit() const {
     return {};
 }
 
@@ -319,7 +386,7 @@ bool BoolJunction::isPolynomial() const {
     return true;
 }
 
-BoolExpr BoolJunction::subs(const Subs &subs) const {
+BoolExpr BoolJunction::subs(const ExprSubs &subs) const {
     BoolExprSet newChildren;
     for (const BoolExpr &c: children) {
         newChildren.insert(c->subs(subs));
@@ -365,7 +432,7 @@ RelSet BoolJunction::universallyValidLits() const {
     RelSet res;
     if (isAnd()) {
         for (const BoolExpr &c: children) {
-            const option<Rel> lit = c->getLit();
+            const option<Rel> lit = c->getTheoryLit();
             if (lit) {
                 res.insert(*lit);
             }
@@ -383,6 +450,12 @@ void BoolJunction::collectLits(RelSet &res) const {
 void BoolJunction::collectVars(VarSet &res) const {
     for (const BoolExpr &c: children) {
         c->collectVars(res);
+    }
+}
+
+void BoolJunction::collectBoolVars(BoolVarSet &res) const {
+    for (const BoolExpr &c: children) {
+        c->collectBoolVars(res);
     }
 }
 
@@ -510,6 +583,22 @@ unsigned BoolJunction::hash() const {
     return hash;
 }
 
+int BoolJunction::compare(const BoolExpr that) const {
+    if (!that->isAnd() && !that->isOr()) {
+        return 1;
+    }
+    if (isAnd() && that->isOr()) {
+        return 1;
+    }
+    if (isOr() && that->isAnd()) {
+        return -1;
+    }
+    const auto c1 = getChildren();
+    const auto c2 = that->getChildren();
+    if (c1 == c2) return 0;
+    return c1 < c2 ? -1 : 1;
+}
+
 BoolJunction::~BoolJunction() {}
 
 
@@ -589,9 +678,9 @@ VarSet QuantifiedFormula::boundVars() const {
     return res;
 }
 
-QuantifiedFormula QuantifiedFormula::subs(const Subs &subs) const {
+QuantifiedFormula QuantifiedFormula::subs(const ExprSubs &subs) const {
     auto dom = subs.domain();
-    Subs projected = subs.project(freeVars());
+    const ExprSubs projected = subs.project(freeVars());
     return QuantifiedFormula(prefix, matrix->subs(projected));
 }
 
@@ -630,10 +719,10 @@ std::string QuantifiedFormula::toRedlog() const {
     return res;
 }
 
-std::pair<QuantifiedFormula, Subs> QuantifiedFormula::normalizeVariables(VariableManager &varMan) const {
+std::pair<QuantifiedFormula, ExprSubs> QuantifiedFormula::normalizeVariables(VariableManager &varMan) const {
     VarSet vars;
     matrix->collectVars(vars);
-    Subs normalization, inverse;
+    ExprSubs normalization, inverse;
     unsigned count = 0;
     for (Var x: vars) {
         std::string varName = "x" + std::to_string(count);
@@ -726,7 +815,7 @@ BoolExpr build(BoolExprSet xs, ConcatOperator op) {
 BoolExpr build(const RelSet &xs, ConcatOperator op) {
     BoolExprSet children;
     for (const Rel &x: xs) {
-        children.insert(buildLit(x));
+        children.insert(buildTheoryLit(x));
     }
     return build(children, op);
 }
@@ -767,8 +856,12 @@ const BoolExpr buildOr(const std::vector<BoolExpr> &xs) {
     return build(BoolExprSet(xs.begin(), xs.end()), ConcatOr);
 }
 
-const BoolExpr buildLit(const Rel &lit) {
+const BoolExpr buildTheoryLit(const Rel &lit) {
     return BoolExpr(new BoolTheoryLit(lit));
+}
+
+const BoolExpr buildLit(const BoolVar &var, bool negated) {
+    return BoolExpr(new BoolLit(var, negated));
 }
 
 const BoolExpr True = buildAnd(std::vector<BoolExpr>());
@@ -780,7 +873,7 @@ const BoolExpr operator &(const BoolExpr a, const BoolExpr b) {
 }
 
 const BoolExpr operator &(const BoolExpr a, const Rel &b) {
-    return a & buildLit(b);
+    return a & buildTheoryLit(b);
 }
 
 const BoolExpr operator |(const BoolExpr a, const BoolExpr b) {
@@ -789,7 +882,7 @@ const BoolExpr operator |(const BoolExpr a, const BoolExpr b) {
 }
 
 const BoolExpr operator |(const BoolExpr a, const Rel b) {
-    return a | buildLit(b);
+    return a | buildTheoryLit(b);
 }
 
 const BoolExpr operator !(const BoolExpr a) {
@@ -797,11 +890,20 @@ const BoolExpr operator !(const BoolExpr a) {
 }
 
 bool operator ==(const BoolExpr a, const BoolExpr b) {
-    if (a->getLit() != b->getLit()) {
+    if (a->getTheoryLit() != b->getTheoryLit()) {
+        return false;
+    }
+    if (a->getTheoryLit()) {
+        return true;
+    }
+    if (a->getLit().has_value() != b->getLit().has_value()) {
         return false;
     }
     if (a->getLit()) {
-        return true;
+        if (a->getLit()->isNegated() != b->getLit()->isNegated()) {
+            return false;
+        }
+        return a->getLit()->getBoolVar().equals(b->getLit()->getBoolVar());
     }
     if (a->isAnd() != b->isAnd()) {
         return false;
@@ -813,28 +915,15 @@ bool operator !=(const BoolExpr a, const BoolExpr b) {
     return !(a==b);
 }
 
-bool boolexpr_compare::operator() (BoolExpr a, BoolExpr b) const {
-    if (a->getLit()) {
-        if (!b->getLit()) {
-            return true;
-        } else {
-            return *a->getLit() < *b->getLit();
-        }
-    } else if (b->getLit()) {
-        return false;
-    }
-    if (a->isAnd() && !b->isAnd()) {
-        return true;
-    }
-    if (!a->isAnd() && b->isAnd()) {
-        return false;
-    }
-    return a->getChildren() < b->getChildren();
+bool boolexpr_compare::operator() (const BoolExpr a, const BoolExpr b) const {
+    return a->compare(b) < 0;
 }
 
 std::ostream& operator<<(std::ostream &s, const BoolExpr e) {
-    if (e->getLit()) {
-        s << e->getLit().get();
+    if (e->getTheoryLit()) {
+        s << *e->getTheoryLit();
+    } else if (e->getLit()) {
+        s << *e->getLit();
     } else if (e->getChildren().empty()) {
         if (e->isAnd()) {
             s << "TRUE";

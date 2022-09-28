@@ -1,9 +1,6 @@
 #include "accelerationviaqe.hpp"
 #include "recurrence.hpp"
-#include "smtfactory.hpp"
-#include "relevantvariables.hpp"
-#include "accelerationproblem.hpp"
-#include "redlog.hpp"
+#include "qelim.hpp"
 #include "export.hpp"
 
 AccelerationViaQE::AccelerationViaQE(

@@ -38,11 +38,12 @@ public:
     bool isTriviallyFalse() const;
     void collectVariables(VarSet &res) const;
     bool has(const Expr &pattern) const;
-    Rel subs(const Subs &map) const;
-    void applySubs(const Subs &subs);
+    Rel subs(const ExprSubs &map) const;
+    void applySubs(const ExprSubs &subs);
     std::string toString() const;
     RelOp relOp() const;
     VarSet vars() const;
+    int compare(const Rel& that) const;
 
     template <typename P>
     bool hasVarWith(P predicate) const {

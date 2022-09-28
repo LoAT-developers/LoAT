@@ -40,7 +40,7 @@ private:
     static std::mutex mutex;
 
 
-    GiNaC::numeric getRealFromModel(model_t *model, type_t symbol);
+    Num getRealFromModel(model_t *model, type_t symbol);
 
 };
 

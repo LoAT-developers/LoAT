@@ -16,7 +16,7 @@
  */
 
 #include "chcparser.hpp"
-
+#include "exceptions.hpp"
 #include "CHCLexer.h"
 #include "CHCParser.h"
 #include "CHCParseVisitor.h"

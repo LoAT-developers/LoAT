@@ -16,7 +16,6 @@
  */
 
 #include "variablemanager.hpp"
-#include "itsproblem.hpp"
 
 using namespace std;
 
@@ -55,7 +54,6 @@ void toLower(string &str) {
 Var VariableManager::addVariable(string name) {
     std::lock_guard guard(mutex);
     toLower(name);
-    //convert to ginac
     auto sym = Var(name);
 
     // remember variable
@@ -106,7 +104,6 @@ option<Var> VariableManager::getVar(std::string name) const {
         return it->second;
     }
 }
-
 
 Expr::Type VariableManager::getType(const Var &x) const {
     std::lock_guard guard(mutex);

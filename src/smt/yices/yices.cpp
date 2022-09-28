@@ -1,7 +1,5 @@
 #include "yices.hpp"
 #include "exprtosmt.hpp"
-#include "exceptions.hpp"
-#include "smttoexpr.hpp"
 
 #include <future>
 #include <chrono>
@@ -59,14 +57,14 @@ Smt::Result Yices::check() {
 
 Model Yices::model() {
     if (ctx.getSymbolMap().empty() && ctx.getConstMap().empty()) {
-        return Model({}, {});
+        return Model();
     }
     model_t *m = yices_get_model(solver, true);
-    VarMap<GiNaC::numeric> vars;
+    VarMap<Num> vars;
     for (const auto &p: ctx.getSymbolMap()) {
         vars[p.first] = getRealFromModel(m, p.second);
     }
-    std::map<unsigned int, bool> constants;
+    BoolVarMap<bool> constants;
     for (const auto &p: ctx.getConstMap()) {
         int32_t val;
         if (yices_get_bool_value(m, p.second, &val) != 0) {
@@ -84,12 +82,12 @@ void Yices::setTimeout(unsigned int timeout) {
 
 void Yices::enableModels() { }
 
-GiNaC::numeric Yices::getRealFromModel(model_t *model, type_t symbol) {
+Num Yices::getRealFromModel(model_t *model, type_t symbol) {
     int64_t num;
     uint64_t denom;
     yices_get_rational64_value(model, symbol, &num, &denom);
     assert(denom != 0);
-    GiNaC::numeric res = num;
+    Num res = num;
     res = res / denom;
     return res;
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "types.hpp"
 #include "rule.hpp"
 #include "option.hpp"
 #include "itsproblem.hpp"
@@ -24,7 +23,7 @@ private:
     Res res;
     option<RelMap<Entry>> solution;
     RelSet todo;
-    Subs up;
+    ExprSubs up;
     const option<Recurrence::Result> closed;
     Expr cost;
     BoolExpr guard;
@@ -52,7 +51,7 @@ private:
 
     AccelerationProblem(
             const BoolExpr guard,
-            const Subs &up,
+            const ExprSubs &up,
             const option<Recurrence::Result> &closed,
             const Expr &cost,
             ITSProblem &its);

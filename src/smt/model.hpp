@@ -1,27 +1,26 @@
-#ifndef MODEL_HPP
-#define MODEL_HPP
+#pragma once
 
-#include "boolexpr.hpp"
+#include "expression.hpp"
+#include "subs.hpp"
 
 class Model
 {
 public:
 
-    Model(VarMap<GiNaC::numeric> vars, std::map<unsigned int, bool> constants);
+    Model();
+    Model(VarMap<Num> &vars, BoolVarMap<bool> &constants);
 
-    GiNaC::numeric get(const Var &var) const;
-    bool get(unsigned int id) const;
+    Num get(const Var &var) const;
+    bool get(const BoolVar &var) const;
     bool contains(const Var &var) const;
-    bool contains(unsigned int id) const;
+    bool contains(const BoolVar &var) const;
     Subs toSubs() const;
 
     friend std::ostream& operator<<(std::ostream &s, const Model &e);
 
 private:
 
-    VarMap<GiNaC::numeric> vars;
-    std::map<unsigned int, bool> constants;
+    VarMap<Num> vars;
+    BoolVarMap<bool> constants;
 
 };
-
-#endif // MODEL_HPP

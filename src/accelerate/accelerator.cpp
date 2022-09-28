@@ -18,23 +18,16 @@
 #include "accelerator.hpp"
 
 #include "preprocess.hpp"
-#include "recurrence.hpp"
-#include "metering.hpp"
+#include "recursionacceleration.hpp"
 #include "smt.hpp"
-
 #include "rule.hpp"
-#include "export.hpp"
-
 #include "chain.hpp"
-#include "prune.hpp"
-
 #include "loopacceleration.hpp"
+#include "asymptoticbound.hpp"
 
 #include <queue>
-#include "asymptoticbound.hpp"
 #include <stdexcept>
 #include <numeric>
-#include "z3.hpp"
 
 using namespace std;
 
@@ -173,7 +166,7 @@ const option<LinearRule> Accelerator::chain(const LinearRule &rule) const {
     bool chained = false;
     LinearRule res = rule;
     // chain if there are updates like x = -x + p
-    for (const auto &p: rule.getUpdate()) {
+    for (const auto &p: rule.getUpdate().getExprSubs()) {
         const Var var = p.first;
         const Expr up = p.second.expand();
         const VarSet upVars = up.vars();
@@ -190,7 +183,7 @@ const option<LinearRule> Accelerator::chain(const LinearRule &rule) const {
     }
     // chain if there are updates like x = y; y = x
     VarMap<unsigned> cycleLength;
-    auto up = res.getUpdate();
+    auto up = res.getUpdate().getExprSubs();
     for (const auto &p: up) {
         VarSet vars = p.second.vars();
         unsigned oldSize = 0;
@@ -224,7 +217,7 @@ const option<LinearRule> Accelerator::chain(const LinearRule &rule) const {
     bool changed;
     do {
         changed = false;
-        up = res.getUpdate();
+        up = res.getUpdate().getExprSubs();
         for (const auto &p: up) {
             VarSet varsOneStep = p.second.vars();
             VarSet varsTwoSteps;
@@ -254,7 +247,7 @@ const option<LinearRule> Accelerator::chain(const LinearRule &rule) const {
 
 unsigned int Accelerator::numNotInUpdate(const Subs &up) const {
     unsigned int res = 0;
-    for (auto const &p: up) {
+    for (auto const &p: up.getExprSubs()) {
         const Var &x = p.first;
         const VarSet &vars = p.second.vars();
         if (!vars.empty() && vars.find(x) == vars.end()) {

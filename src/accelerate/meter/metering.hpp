@@ -99,12 +99,12 @@ public:
     static option<Rule> strengthenGuard(VarMan &varMan, const Rule &rule);
 
 private:
-    MeteringFinder(VarMan &varMan, const Guard &guard, const std::vector<Subs> &update);
+    MeteringFinder(VarMan &varMan, const Guard &guard, const std::vector<ExprSubs> &update);
 
     /**
      * Helper for convenience, collects all updates of the given rule into a vector.
      */
-    static std::vector<Subs> getUpdateList(const Rule &rule);
+    static std::vector<ExprSubs> getUpdateList(const Rule &rule);
 
     /**
      * Simplifies guard/update by removing constraints that do not affect the metering function.
@@ -182,7 +182,7 @@ private:
     VariableManager &varMan;
 
 
-    std::vector<Subs> updates;
+    std::vector<ExprSubs> updates;
     Guard guard;
 
     /**

@@ -81,7 +81,12 @@ Rule Rule::subs(const Subs &subs) const {
     for (const RuleRhs &rhs : rhss) {
         newRhss.push_back(RuleRhs(rhs.getLoc(), rhs.getUpdate().concat(subs)));
     }
-    return Rule(RuleLhs(getLhsLoc(), getGuard()->subs(subs), getCost().subs(subs)), newRhss);
+    return Rule(RuleLhs(getLhsLoc(), subs(getGuard()), subs(getCost())), newRhss);
+}
+
+Rule Rule::subs(const ExprSubs &s) const {
+    const BoolSubs empty;
+    return subs(Subs(s, empty));
 }
 
 LinearRule Rule::replaceRhssBySink(LocationIdx sink) const {
@@ -134,10 +139,15 @@ bool Rule::approxEqual(const Rule &that, bool compareRhss) const {
             if (updateA.size() != updateB.size()) return false;
 
             // update has to be fully equal (one inclusion suffices, since the size is equal)
-            for (const auto &itA : updateA) {
+            for (const auto &itA : updateA.getExprSubs()) {
                 auto itB = updateB.find(itA.first);
-                if (itB == updateB.end()) return false;
+                if (itB == updateB.getExprSubs().end()) return false;
                 if (!itB->second.equals(itA.second)) return false;
+            }
+            for (const auto &itA : updateA.getBoolSubs()) {
+                auto itB = updateB.find(itA.first);
+                if (itB == updateB.getBoolSubs().end()) return false;
+                if (itA.second != itB->second) return false;
             }
         }
     }
@@ -148,7 +158,7 @@ bool Rule::approxEqual(const Rule &that, bool compareRhss) const {
 }
 
 bool LinearRule::isOctagon() const {
-    return getGuard()->isOctagon() && getUpdate().isOctagon();
+    return getGuard()->isOctagon() && getUpdate().getExprSubs().isOctagon() && getUpdate().getBoolSubs().empty();
 }
 
 unsigned Rule::hash() const {
@@ -183,11 +193,7 @@ ostream& operator<<(ostream &s, const Rule &rule) {
 
     for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
         s << "| " << rhs->getLoc() << " | ";
-
-        for (auto upit : rhs->getUpdate()) {
-            s << upit.first << "=" << upit.second;
-            s << ", ";
-        }
+        s << rhs->getUpdate();
     }
 
     s << ")";

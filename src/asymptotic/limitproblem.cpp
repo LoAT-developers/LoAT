@@ -149,7 +149,7 @@ void LimitProblem::applyLimitVector(const InftyExpressionSet::const_iterator &it
 void LimitProblem::removeConstant(const InftyExpressionSet::const_iterator &it) {
     assert(it->isInt());
 
-    GiNaC::numeric num = it->toNum();
+    Num num = it->toNum();
 #ifndef NDEBUG
     Direction dir = it->getDirection();
     assert((num.is_positive() && (dir == POS_CONS || dir == POS))
@@ -164,7 +164,7 @@ void LimitProblem::removeConstant(const InftyExpressionSet::const_iterator &it) 
 }
 
 
-void LimitProblem::substitute(const Subs &sub, int substitutionIndex) {
+void LimitProblem::substitute(const ExprSubs &sub, int substitutionIndex) {
 #ifndef NDEBUG
     for (auto const &s : sub) {
         assert(!s.second.has(s.first));
@@ -338,10 +338,10 @@ bool LimitProblem::isSolved() const {
 }
 
 
-Subs LimitProblem::getSolution() const {
+ExprSubs LimitProblem::getSolution() const {
     assert(isSolved());
 
-    Subs solution;
+    ExprSubs solution;
     for (const InftyExpression &ex : set) {
         assert(ex.isVar());
         switch (ex.getDirection()) {
@@ -433,7 +433,7 @@ bool LimitProblem::removeConstantIsApplicable(const InftyExpressionSet::const_it
         return false;
     }
 
-    GiNaC::numeric num = it->toNum();
+    Num num = it->toNum();
     Direction dir = it->getDirection();
 
     return (num.is_positive() && (dir == POS_CONS || dir == POS))

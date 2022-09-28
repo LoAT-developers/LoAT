@@ -2,11 +2,10 @@
 #include "recurrence.hpp"
 #include "smtfactory.hpp"
 #include "relevantvariables.hpp"
-#include "redlog.hpp"
 
 AccelerationProblem::AccelerationProblem(
         const BoolExpr guard,
-        const Subs &up,
+        const ExprSubs &up,
         const option<Recurrence::Result> &closed,
         const Expr &cost,
         ITSProblem &its):
@@ -20,15 +19,15 @@ AccelerationProblem::AccelerationProblem(
     if (closed) {
         bound = Config::Analysis::reachability() ? (closed->n > 0) : (closed->n >= 0);
     }
-    const std::vector<Subs> subs = closed.map([&up](auto const &closed){return std::vector<Subs>{up, closed.update};}).get_value_or({up});
-    Smt::Logic logic = Smt::chooseLogic<RelSet, Subs>({todo}, subs);
+    const std::vector<ExprSubs> subs = closed.map([&up](auto const &closed){return std::vector<ExprSubs>{up, closed.update};}).get_value_or({up});
+    Smt::Logic logic = Smt::chooseLogic<RelSet, ExprSubs>({todo}, subs);
     this->solver = SmtFactory::modelBuildingSolver(logic, its);
     this->solver->add(guard);
     this->isConjunction = guard->isConjunction();
 }
 
 AccelerationProblem AccelerationProblem::init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its) {
-    return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, rule.getCost(), its);
+    return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate().getExprSubs(), closed, rule.getCost(), its);
 }
 
 RelSet AccelerationProblem::findConsistentSubset(BoolExpr e) const {
@@ -42,7 +41,7 @@ RelSet AccelerationProblem::findConsistentSubset(BoolExpr e) const {
     if (sat == Smt::Sat) {
         const Subs &model = solver->model().toSubs();
         for (const Rel &rel: todo) {
-            if (rel.subs(model).isTriviallyTrue()) {
+            if (model(rel).isTriviallyTrue()) {
                 res.insert(rel);
             }
         }
@@ -98,7 +97,7 @@ bool AccelerationProblem::monotonicity(const Rel &rel, Proof &proof) {
             return false;
         }
         const Rel updated = rel.subs(up);
-        const Rel newCond = rel.subs(closed->update).subs(Subs(closed->n, closed->n-1));
+        const Rel newCond = rel.subs(closed->update).subs(ExprSubs(closed->n, closed->n-1));
         RelSet premise = findConsistentSubset(guard & rel & updated & newCond & *bound);
         if (!premise.empty()) {
             BoolExprSet assumptions;
@@ -106,12 +105,12 @@ bool AccelerationProblem::monotonicity(const Rel &rel, Proof &proof) {
             premise.erase(rel);
             premise.erase(updated);
             for (const Rel &p: premise) {
-                const BoolExpr lit = buildLit(p);
+                const BoolExpr lit = buildTheoryLit(p);
                 assumptions.insert(lit);
                 deps.insert(lit);
             }
-            assumptions.insert(buildLit(updated));
-            assumptions.insert(buildLit(!rel));
+            assumptions.insert(buildTheoryLit(updated));
+            assumptions.insert(buildTheoryLit(!rel));
             const BoolExprSet &unsatCore = Smt::unsatCore(assumptions, its);
             if (!unsatCore.empty()) {
                 RelSet dependencies;
@@ -122,7 +121,7 @@ bool AccelerationProblem::monotonicity(const Rel &rel, Proof &proof) {
                         dependencies.insert(*lit.begin());
                     }
                 }
-                const BoolExpr newGuard = buildLit(newCond);
+                const BoolExpr newGuard = buildTheoryLit(newCond);
                 if (Smt::check(newGuard & *bound, its) == Smt::Sat) {
                     option<unsigned int> idx = store(rel, dependencies, newGuard);
                     if (idx) {
@@ -154,12 +153,12 @@ bool AccelerationProblem::recurrence(const Rel &rel, Proof &proof) {
         premise.erase(rel);
         premise.erase(updated);
         for (const Rel &p: premise) {
-            const BoolExpr b = buildLit(p);
+            const BoolExpr b = buildTheoryLit(p);
             assumptions.insert(b);
             deps.insert(b);
         }
-        assumptions.insert(buildLit(rel));
-        assumptions.insert(buildLit(!updated));
+        assumptions.insert(buildTheoryLit(rel));
+        assumptions.insert(buildTheoryLit(!updated));
         BoolExprSet unsatCore = Smt::unsatCore(assumptions, its);
         if (!unsatCore.empty()) {
             RelSet dependencies;
@@ -171,7 +170,7 @@ bool AccelerationProblem::recurrence(const Rel &rel, Proof &proof) {
                 }
             }
             dependencies.erase(rel);
-            const BoolExpr newGuard = buildLit(rel);
+            const BoolExpr newGuard = buildTheoryLit(rel);
             option<unsigned int> idx = store(rel, dependencies, newGuard, true, true);
             if (idx) {
                 std::stringstream ss;
@@ -199,7 +198,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel, Proof &proof) {
         const Expr updated = rel.lhs().subs(up);
         const Rel dec = rel.lhs() >= updated;
         const Rel inc = updated < updated.subs(up);
-        const Rel newCond = rel.subs(closed->update).subs(Subs(closed->n, closed->n-1));
+        const Rel newCond = rel.subs(closed->update).subs(ExprSubs(closed->n, closed->n-1));
         RelSet premise = findConsistentSubset(guard & dec & !inc & rel & newCond & *bound);
         if (!premise.empty()) {
             BoolExprSet assumptions;
@@ -208,12 +207,12 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel, Proof &proof) {
             premise.erase(dec);
             premise.erase(!inc);
             for (const Rel &p: premise) {
-                const BoolExpr lit = buildLit(p);
+                const BoolExpr lit = buildTheoryLit(p);
                 assumptions.insert(lit);
                 deps.insert(lit);
             }
-            assumptions.insert(buildLit(dec));
-            assumptions.insert(buildLit(inc));
+            assumptions.insert(buildTheoryLit(dec));
+            assumptions.insert(buildTheoryLit(inc));
             BoolExprSet unsatCore = Smt::unsatCore(assumptions, its);
             if (!unsatCore.empty()) {
                 RelSet dependencies;
@@ -224,7 +223,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel, Proof &proof) {
                         dependencies.insert(*lit.begin());
                     }
                 }
-                const BoolExpr newGuard = buildLit(rel) & newCond;
+                const BoolExpr newGuard = buildTheoryLit(rel) & newCond;
                 if (Smt::check(newGuard & *bound, its) == Smt::Sat) {
                     option<unsigned int> idx = store(rel, dependencies, newGuard);
                     if (idx) {
@@ -262,12 +261,12 @@ bool AccelerationProblem::eventualWeakIncrease(const Rel &rel, Proof &proof) {
         premise.erase(inc);
         premise.erase(!dec);
         for (const Rel &p: premise) {
-            const BoolExpr lit = buildLit(p);
+            const BoolExpr lit = buildTheoryLit(p);
             assumptions.insert(lit);
             deps.insert(lit);
         }
-        assumptions.insert(buildLit(dec));
-        assumptions.insert(buildLit(inc));
+        assumptions.insert(buildTheoryLit(dec));
+        assumptions.insert(buildTheoryLit(inc));
         BoolExprSet unsatCore = Smt::unsatCore(assumptions, its);
         if (!unsatCore.empty()) {
             RelSet dependencies;
@@ -278,7 +277,7 @@ bool AccelerationProblem::eventualWeakIncrease(const Rel &rel, Proof &proof) {
                     dependencies.insert(*lit.begin());
                 }
             }
-            const BoolExpr newGuard = buildLit(rel) & inc;
+            const BoolExpr newGuard = buildTheoryLit(rel) & inc;
             if (Smt::check(newGuard, its) == Smt::Sat) {
                 option<unsigned int> idx = store(rel, dependencies, newGuard, false, true);
                 if (idx) {
@@ -383,7 +382,7 @@ std::vector<AccelerationTechnique::Accelerator> AccelerationProblem::computeRes(
     }
     ReplacementMap map = computeReplacementMap(false);
     if (map.acceleratedAll || !isConjunction) {
-        bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || Smt::isImplication(guard, buildLit(cost > 0), its);
+        bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || Smt::isImplication(guard, buildTheoryLit(cost > 0), its);
         bool nt = map.nonterm && positiveCost;
         BoolExpr newGuard = guard->replaceRels(map.map);
         if (!nt) newGuard = newGuard & *bound;

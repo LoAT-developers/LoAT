@@ -7,8 +7,9 @@
 #include <string>
 #include <memory>
 
+#include "variablemanager.hpp"
+#include "subs.hpp"
 #include "guard.hpp"
-#include "guardtoolbox.hpp"
 #include "inftyexpression.hpp"
 #include "limitvector.hpp"
 
@@ -86,7 +87,7 @@ public:
      * transformation rule (C)
      * @param sub must be a valid substitution
      */
-    void substitute(const Subs &sub, int substitutionIndex);
+    void substitute(const ExprSubs &sub, int substitutionIndex);
 
     /**
      * Discards all but the leading term of the given univariate polynomial.
@@ -141,7 +142,7 @@ public:
      * Returns a solution for this LimitProblem.
      * This LimitProblem must be solved and must not be marked as unsolvable.
      */
-    Subs getSolution() const;
+    ExprSubs getSolution() const;
 
     /**
      * Returns the variable that is used in the solution returned by getSolution().

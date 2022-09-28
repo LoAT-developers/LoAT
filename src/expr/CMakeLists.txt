@@ -12,6 +12,10 @@ target_sources(${EXECUTABLE}
         boolexpr.hpp
         boolvar.cpp
         boolvar.hpp
+        subs.cpp
+        subs.hpp
+        boolsubs.cpp
+        boolsubs.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

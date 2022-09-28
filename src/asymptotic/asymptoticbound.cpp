@@ -7,10 +7,8 @@
 
 #include "expression.hpp"
 #include "guardtoolbox.hpp"
-
 #include "smt.hpp"
 #include "smtfactory.hpp"
-
 #include "limitsmt.hpp"
 #include "inftyexpression.hpp"
 
@@ -108,7 +106,7 @@ void AsymptoticBound::propagateBounds() {
                 //solve target for var (result is in target)
                 auto optSolved = GuardToolbox::solveTermFor(target, var, GuardToolbox::TrivialCoeffs);
                 if (optSolved) {
-                    substitutions.push_back(Subs(var, optSolved.get()));
+                    substitutions.push_back(ExprSubs(var, optSolved.get()));
                     break;
                 }
             }
@@ -126,12 +124,12 @@ void AsymptoticBound::propagateBounds() {
     limitProblems.push_back(currentLP);
 }
 
-Subs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
+ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
     assert(limitProblem.isSolved());
 
-    Subs solution;
+    ExprSubs solution;
     for (int index : limitProblem.getSubstitutions()) {
-        const Subs &sub = substitutions[index];
+        const auto &sub = substitutions[index];
 
         solution = solution.compose(sub);
     }
@@ -143,7 +141,7 @@ Subs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
     for (const Rel &rel : guardCopy) {
         for (const Var &var : rel.vars()) {
             if (!solution.contains(var)) {
-                solution = solution.compose(Subs(var, 0));
+                solution = solution.compose(ExprSubs(var, 0));
             }
         }
     }
@@ -153,7 +151,7 @@ Subs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
 
 
 int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem,
-                                               const Subs &solution) {
+                                               const ExprSubs &solution) {
     Var n = limitProblem.getN();
     int upperBound = 0;
     for (auto const &pair : solution) {
@@ -177,7 +175,7 @@ int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem,
 
 
 int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProblem,
-                                                 const Subs &solution) {
+                                                 const ExprSubs &solution) {
 
     Expr solvedCost = cost.subs(solution);
 
@@ -400,7 +398,7 @@ bool AsymptoticBound::isAdequateSolution(const LimitProblem &limitProblem) {
         return true;
     }
 
-    if (cost.toComplexity()  > result.complexity) {
+    if (toComplexity(cost)  > result.complexity) {
         return false;
     }
 
@@ -531,7 +529,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
 
     } else if (it->isNaturalPow()) {
         Expr base = it->op(0);
-        GiNaC::numeric power = it->op(1).toNum();
+        Num power = it->op(1).toNum();
 
         if (power.is_even()) {
             l = base ^ (power / 2);
@@ -687,7 +685,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
 
         if (it->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const std::vector<Rel> &query = currentLP.getQuery();
-            std::unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Rel>, Subs>({query}, {}), varMan);
+            std::unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Rel>, ExprSubs>({query}, {}), varMan);
             solver->add(buildAnd(query));
             Smt::Result result = solver->check();
 
@@ -699,7 +697,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
                 Var var = it->someVar();
 
                 Expr rational = model.get(var);
-                substitutions.push_back(Subs(var, rational));
+                substitutions.push_back(ExprSubs(var, rational));
 
                 createBacktrackingPoint(it, POS_INF);
                 currentLP.substitute(substitutions.back(), substitutions.size() - 1);
@@ -734,7 +732,7 @@ bool AsymptoticBound::trySubstitutingVariable() {
                         || (dir == NEG_INF && dir2 == NEG_INF)) {
                         assert(!it->equals(*it2));
 
-                        Subs sub(it->toVar(), *it2);
+                        ExprSubs sub(it->toVar(), *it2);
                         substitutions.push_back(sub);
 
                         createBacktrackingPoint(it, POS_CONS);
@@ -893,8 +891,8 @@ AsymptoticBound::Result AsymptoticBound:: determineComplexityViaSMT(VarMan &varM
         return Result(Complexity::Unknown);
     }
     assert(!expandedCost.has(Expr::NontermSymbol));
-    const std::pair<Subs, Complexity> &p = LimitSmtEncoding::applyEncoding(guard, cost, varMan, currentRes, timeout);
-    const Subs &subs = p.first;
+    const std::pair<ExprSubs, Complexity> &p = LimitSmtEncoding::applyEncoding(guard, cost, varMan, currentRes, timeout);
+    const ExprSubs &subs = p.first;
     const Complexity &cpx = p.second;
     Proof proof;
     if (cpx == Complexity::Unknown) {

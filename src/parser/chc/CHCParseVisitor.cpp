@@ -1,8 +1,10 @@
 #include "CHCParseVisitor.h"
+#include "exceptions.hpp"
+
 #include <variant>
 #include <algorithm>
 
-using var_type = std::variant<Expr, BoolExpr>;
+using var_type = std::variant<std::string, Expr, BoolExpr>;
 using expr_type = Res<Expr>;
 using formula_type = Res<BoolExpr>;
 using let_type = BoolExpr;
@@ -20,6 +22,7 @@ using tail_type = std::pair<FunApp, BoolExpr>;
 using head_type = FunApp;
 using var_or_atom_type = std::variant<BoolExpr, FunApp>;
 using boolop_type = BoolOp;
+using sort_type = Sort;
 
 antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     its.setInitialLocation(its.addNamedLocation("LoAT_init"));
@@ -40,7 +43,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         vars.emplace_back(its.addFreshVariable("x" + std::to_string(i)));
     }
     for (const Clause &c: clauses) {
-        Subs ren;
+        ExprSubs ren;
         for (unsigned i = 0; i < c.lhs.args.size(); ++i) {
             ren.put(c.lhs.args[i], vars[i]);
         }
@@ -128,7 +131,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
-    visit(ctx->sort());
+    const auto sort = any_cast<sort_type>(visit(ctx->sort()));
     const auto res = any_cast<var_type>(visit(ctx->var()));
     return std::get<Expr>(res);
 }
@@ -192,7 +195,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         res.t = (args[0] & args[1]) | ((!args[0]) & args[2]);
     } else if (ctx->lit()) {
         const auto p = any_cast<lit_type>(visit(ctx->lit()));
-        res.t = buildLit(p.t);
+        res.t = buildTheoryLit(p.t);
         res.refinement = res.refinement & p.refinement;
     } else if (ctx->var()) {
         const auto r = any_cast<var_type>(visit(ctx->var()));
@@ -382,10 +385,13 @@ antlrcpp::Any CHCParseVisitor::visitSymbol(CHCParser::SymbolContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
-    if (!ctx->BOOL() && ctx->getText() != "Int") {
-        ParseError("unsupported sort: " + ctx->getText());
+    if (ctx->BOOL()) {
+        return Bool;
+    } else if (ctx->getText() != "Int") {
+        return Int;
+    } else {
+        throw ParseError("unsupported sort: " + ctx->getText());
     }
-    return {};
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *ctx) {
@@ -410,7 +416,7 @@ antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
         for (int i = context.size() - 1; i >= 0; --i) {
             const auto it = context[i].boolean.find(name);
             if (it != context[i].boolean.end()) {
-                return std::variant<Expr, BoolExpr>(it->second);
+                return var_type(it->second);
             }
         }
     }
@@ -419,12 +425,12 @@ antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
         if (mode == Default) {
             for (int i = context.size() - 1; i >= 0; --i) {
                 const auto it = context[i].arith.find(*res);
-                if (it != context[i].arith.end()) {
-                    return std::variant<Expr, BoolExpr>(it->second);
+                if (it != context[i].arith.getExprSubs().end()) {
+                    return var_type(it->second);
                 }
             }
         }
-        return std::variant<Expr, BoolExpr>(*res);
+        return var_type(*res);
     }
-    return std::variant<Expr, BoolExpr>(its.getFreshUntrackedSymbol(name, Expr::Int));
+    return var_type(name);
 }

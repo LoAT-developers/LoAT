@@ -19,9 +19,9 @@
 #define LOAT_TEMPLATES_H
 
 
-#include "rel.hpp"
 #include <iterator>
 #include "variablemanager.hpp"
+#include "subs.hpp"
 
 class Templates {
 

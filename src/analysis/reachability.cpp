@@ -79,7 +79,7 @@ Rule Reachability::rename_tmp_vars(const Rule &rule) {
 Result<Rule> Reachability::unroll(const Rule &rule) {
     Result<Rule> res(rule);
     // chain if there are updates like x = -x + p
-    for (const auto &p: rule.getUpdate(0)) {
+    for (const auto &p: rule.getUpdate(0).getExprSubs()) {
         const Var var = p.first;
         const Expr up = p.second.expand();
         const VarSet upVars = up.vars();
@@ -96,7 +96,7 @@ Result<Rule> Reachability::unroll(const Rule &rule) {
     }
     // chain if there are updates like x = y; y = x
     VarMap<unsigned> cycleLength;
-    auto up = res->getUpdate(0);
+    auto up = res->getUpdate(0).getExprSubs();
     for (const auto &p: up) {
         VarSet vars = p.second.vars();
         unsigned oldSize = 0;
@@ -130,7 +130,7 @@ Result<Rule> Reachability::unroll(const Rule &rule) {
     bool changed;
     do {
         changed = false;
-        up = res->getUpdate(0);
+        up = res->getUpdate(0).getExprSubs();
         for (const auto &p: up) {
             VarSet varsOneStep = p.second.vars();
             VarSet varsTwoSteps;
@@ -183,7 +183,7 @@ BoolExpr Reachability::project(const TransIdx idx) {
     RelSet res;
     const Subs model = sigmas.back().compose(z3.model().toSubs());
     for (const auto &rel: its.getRule(idx).getGuard()->lits()) {
-        if (rel.subs(model).isTriviallyTrue()) {
+        if (model(rel).isTriviallyTrue()) {
             res.insert(rel);
         }
     }
@@ -191,7 +191,7 @@ BoolExpr Reachability::project(const TransIdx idx) {
 }
 
 bool Reachability::covers(const Subs &model, const BoolExpr &rels) const {
-    return Smt::check(rels->subs(model), its) == Smt::Sat;
+    return Smt::check(model(rels), its) == Smt::Sat;
 }
 
 bool Reachability::leaves_scc(const TransIdx idx) const {
@@ -241,7 +241,7 @@ void Reachability::handle_update(const TransIdx idx) {
     const Subs up = r.getUpdate(0);
     for (const auto &var: prog_vars) {
         const Var x = its.getFreshUntrackedSymbol(var.get_name(), Expr::Int);
-        z3.add(buildLit(Rel::buildEq(x, Expr(var).subs(up).subs(oldSigma))));
+        z3.add(buildTheoryLit(Rel::buildEq(x, oldSigma(up(var)))));
         newSigma.put(var, x);
     }
     for (const auto &var: r.vars()) {
@@ -296,7 +296,7 @@ void Reachability::extend_trace(const TransIdx idx, const BoolExpr &sat) {
 void Reachability::store(const TransIdx idx, const BoolExpr &sat) {
     extend_trace(idx, sat);
     blocked.push_back({});
-    z3.add(sat->subs(sigmas.back()));
+    z3.add(sigmas.back()(sat));
     handle_update(idx);
 }
 
@@ -306,7 +306,7 @@ void Reachability::print_run(std::ostream &s) {
     for (const auto &step: trace) {
         s << " [";
         for (const auto &x: prog_vars) {
-            s << " " << x << "=" << Expr(x).subs(*it).subs(model);
+            s << " " << x << "=" << model((*it)(x));
         }
         ++it;
         s << " ] " << step.transition;
@@ -408,12 +408,12 @@ void Reachability::unsat() {
 option<BoolExpr> Reachability::do_step(const TransIdx idx) {
     Subs sigma = sigmas.back();
     const Rule r = its.getRule(idx);
-    BoolExpr g = r.getGuard()->subs(sigma);
+    BoolExpr g = sigma(r.getGuard());
     z3.add(g);
     const auto block = blocked.back().find(idx);
     if (block != blocked.back().end()) {
         for (const auto &b: block->second) {
-            z3.add(!b->subs(sigma));
+            z3.add(!sigma(b));
         }
     }
     if (z3.check() == Smt::Sat) {
@@ -532,7 +532,7 @@ Reachability::State Reachability::handle_loop(const int backlink) {
     }
     drop_loop(backlink);
     z3.push();
-    z3.add(accel.getGuard()->subs(sigmas.back()));
+    z3.add((sigmas.back())(accel.getGuard()));
     if (z3.check() != Smt::Sat) {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
         z3.pop();

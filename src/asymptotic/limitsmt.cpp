@@ -112,11 +112,11 @@ static map<int, Expr> getCoefficients(const Expr &ex, const Var &n) {
     return coefficients;
 }
 
-option<Subs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Expr &cost,
+option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Expr &cost,
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Rel>, Subs>({currentLP.getQuery(), {cost > 0}}, {}), varMan, timeout);
+    unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Rel>, ExprSubs>({currentLP.getQuery(), {cost > 0}}, {}), varMan, timeout);
 
     // the parameter of the desired family of solutions
     Var n = currentLP.getN();
@@ -136,7 +136,7 @@ option<Subs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, cons
     }
 
     // replace variables in the cost function with their linear templates
-    Expr templateCost = cost.subs(templateSubs).expand();
+    Expr templateCost = templateSubs(cost).expand();
 
     // if the cost function is a constant, then we are bound to fail
     Complexity maxPossibleFiniteRes = templateCost.isPoly() ?
@@ -149,7 +149,7 @@ option<Subs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, cons
     // encode every entry of the limit problem
     for (auto it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
         // replace variables with their linear templates
-        Expr ex = it->subs(templateSubs).expand();
+        Expr ex = templateSubs(*it).expand();
         map<int, Expr> coefficients = getCoefficients(ex, n);
         Direction direction = it->getDirection();
         // add the required constraints (depending on the direction-label from the limit problem)
@@ -215,7 +215,7 @@ option<Subs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, cons
     }
 
     // we found a model -- create the corresponding solution of the limit problem
-    Subs smtSubs;
+    ExprSubs smtSubs;
     Model model = solver->model();
     for (const Var &var : vars) {
         Var c0 = varCoeff0.at(var);
@@ -236,21 +236,21 @@ BoolExpr encodeBoolExpr(const BoolExpr expr, const Subs &templateSubs, const Var
     } else if (expr->isOr()) {
         return buildOr(newChildren);
     } else {
-        option<Rel> lit = expr->getLit();
+        option<Rel> lit = expr->getTheoryLit();
         assert(lit);
         assert(lit->isGZeroConstraint());
         const auto &lhs = lit->isStrict() ? lit->lhs() : lit->lhs() + 1;
-        Expr ex = lhs.subs(templateSubs).expand();
+        Expr ex = templateSubs(lhs).expand();
         map<int, Expr> coefficients = getCoefficients(ex, n);
         return posConstraint(coefficients) | posInfConstraint(coefficients);
     }
 }
 
-std::pair<Subs, Complexity> LimitSmtEncoding::applyEncoding(const BoolExpr expr, const Expr &cost,
+std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BoolExpr expr, const Expr &cost,
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, buildLit(cost > 0)}), varMan, timeout);
+    unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, buildTheoryLit(cost > 0)}), varMan, timeout);
 
     // the parameter of the desired family of solutions
     Var n = varMan.getFreshUntrackedSymbol("n", Expr::Int);
@@ -274,7 +274,7 @@ std::pair<Subs, Complexity> LimitSmtEncoding::applyEncoding(const BoolExpr expr,
     }
 
     // replace variables in the cost function with their linear templates
-    Expr templateCost = cost.subs(templateSubs).expand();
+    Expr templateCost = templateSubs(cost).expand();
 
     // if the cost function is a constant, then we are bound to fail
     Complexity maxPossibleFiniteRes = templateCost.isPoly() ?
@@ -295,7 +295,7 @@ std::pair<Subs, Complexity> LimitSmtEncoding::applyEncoding(const BoolExpr expr,
     };
 
     auto model = [&]() {
-        Subs smtSubs;
+        ExprSubs smtSubs;
         Model model = solver->model();
         for (const Var &var : vars) {
             Var c0 = varCoeff0.at(var);

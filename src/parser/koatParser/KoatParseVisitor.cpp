@@ -1,4 +1,5 @@
 #include "KoatParseVisitor.h"
+#include "exceptions.hpp"
 
 using fs_type = LocationIdx;
 using lhs_type = LocationIdx;
@@ -170,7 +171,7 @@ antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitFormula(KoatParser::FormulaContext *ctx) {
     if (ctx->lit()) {
-        return buildLit(any_cast<lit_type>(visit(ctx->lit())));
+        return buildTheoryLit(any_cast<lit_type>(visit(ctx->lit())));
     } else if (ctx->LPAR()) {
         return visit(ctx->formula(0));
     } else {

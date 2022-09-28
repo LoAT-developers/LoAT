@@ -19,7 +19,7 @@
 
 #include "itsproblem.hpp"
 #include "rule.hpp"
-#include "option.hpp"
+#include "complexity.hpp"
 #include "accelerationresult.hpp"
 
 class LoopAcceleration {

@@ -1,6 +1,5 @@
 #include "z3.hpp"
 #include "exprtosmt.hpp"
-#include "smttoexpr.hpp"
 
 std::ostream& Z3::print(std::ostream& os) const {
     return os << solver;
@@ -38,11 +37,11 @@ Smt::Result Z3::check() {
 Model Z3::model() {
     assert(models);
     const z3::model &m = solver.get_model();
-    VarMap<GiNaC::numeric> vars;
+    VarMap<Num> vars;
     for (const auto &p: ctx.getSymbolMap()) {
         vars[p.first] = getRealFromModel(m, p.second);
     }
-    std::map<unsigned int, bool> constants;
+    BoolVarMap<bool> constants;
     for (const auto &p: ctx.getConstMap()) {
         constants[p.first] = m.eval(p.second).bool_value();
     }
@@ -66,13 +65,13 @@ void Z3::updateParams() {
     solver.set(params);
 }
 
-GiNaC::numeric Z3::getRealFromModel(const z3::model &model, const z3::expr &symbol) {
+Num Z3::getRealFromModel(const z3::model &model, const z3::expr &symbol) {
     int num,denom;
     Z3_get_numeral_int(model.ctx(),Z3_get_numerator(model.ctx(),model.eval(symbol,true)),&num);
     Z3_get_numeral_int(model.ctx(),Z3_get_denominator(model.ctx(),model.eval(symbol,true)),&denom);
     assert(denom != 0);
 
-    GiNaC::numeric res = num;
+    Num res = num;
     res = res / denom;
     return res;
 }

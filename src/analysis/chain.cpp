@@ -54,10 +54,10 @@ static option<RuleLhs> chainLhss(VarMan &varMan, const RuleLhs &firstLhs, const 
                                  const RuleLhs &secondLhs, bool checkSat)
 {
     // Concatenate both guards, but apply the first rule's update to second guard
-    BoolExpr newGuard = firstLhs.getGuard() & secondLhs.getGuard()->subs(firstUpdate);
+    BoolExpr newGuard = firstLhs.getGuard() & firstUpdate(secondLhs.getGuard());
 
     // Add the costs, but apply first rule's update to second cost
-    Expr newCost = firstLhs.getCost() + secondLhs.getCost().subs(firstUpdate);
+    Expr newCost = firstLhs.getCost() + firstUpdate(secondLhs.getCost());
 
     // As a small optimization: Keep a NONTERM symbol (easier to identify NONTERM cost later on)
     if (firstLhs.getCost().isNontermSymbol() || secondLhs.getCost().isNontermSymbol()) {

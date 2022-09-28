@@ -52,6 +52,6 @@ EXCEPTION(QepcadError, CustomException);
 EXCEPTION(ParseError, CustomException);
 EXCEPTION(FileError, CustomException);
 EXCEPTION(RedlogError, CustomException);
-EXCEPTION(GinacConversionError, CustomException);
-EXCEPTION(GinacLargeConstantError, CustomException);
+EXCEPTION(ConversionError, CustomException);
+EXCEPTION(LargeConstantError, CustomException);
 EXCEPTION(UnsupportedOperationError, CustomException);

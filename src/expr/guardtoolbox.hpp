@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef GUARDTOOLBOX_H
-#define GUARDTOOLBOX_H
+#pragma once
 
 #include "expression.hpp"
 #include "variablemanager.hpp"
@@ -121,6 +120,3 @@ namespace GuardToolbox {
     }
 
 }
-
-
-#endif // GUARDTOOLBOX_H

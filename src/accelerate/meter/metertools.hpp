@@ -33,12 +33,12 @@
 namespace MeteringToolbox {
 
     // just a shorthand
-    using MultiUpdate = std::vector<Subs>;
+    using MultiUpdate = std::vector<ExprSubs>;
 
     /**
      * Helper that applies a given substitution to all right-hand sides of all given updates.
      */
-    MultiUpdate applySubsToUpdates(const Subs &subs, const MultiUpdate &update);
+    MultiUpdate applySubsToUpdates(const ExprSubs &subs, const MultiUpdate &update);
 
     /**
      * Checks if the given variable is affected by any of the given updates
@@ -114,7 +114,7 @@ namespace MeteringToolbox {
      * Creates all combinations of instantiating temporary variables by their bounds (i.e. free <= x --> set free=x)
      * @return list of all possible combinations (limited by FREEVAR_INSTANTIATE_MAXBOUNDS per variable).
      */
-    std::stack<Subs> findInstantiationsForTempVars(const VarMan &varMan, const Guard &guard);
+    std::stack<ExprSubs> findInstantiationsForTempVars(const VarMan &varMan, const Guard &guard);
 
 }
 

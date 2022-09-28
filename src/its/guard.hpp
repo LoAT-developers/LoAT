@@ -8,7 +8,7 @@ public:
     // inherit constructors of base class
     using std::vector<Rel>::vector;
     void collectVariables(VarSet &res) const;
-    Guard subs(const Subs &sigma) const;
+    Guard subs(const ExprSubs &sigma) const;
 
     /**
      * Returns true iff all guard terms are relational without the use of !=

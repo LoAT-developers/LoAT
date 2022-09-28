@@ -87,7 +87,7 @@ Rel Rel::toLeq() const {
 
     option<Rel> res;
     if (isStrict()) {
-        GiNaC::numeric lcm = GiNaC::lcm(l.denomLcm(), r.denomLcm());
+        Num lcm = GiNaC::lcm(l.denomLcm(), r.denomLcm());
         res = lcm == 1 ? *this : Rel(l * lcm, op, r * lcm);
     } else {
         res = *this;
@@ -113,7 +113,7 @@ Rel Rel::toGt() const {
 
     option<Rel> res;
     if (!isStrict()) {
-        GiNaC::numeric lcm = GiNaC::lcm(l.denomLcm(), r.denomLcm());
+        Num lcm = GiNaC::lcm(l.denomLcm(), r.denomLcm());
         res = lcm == 1 ? *this : Rel(l * lcm, op, r * lcm);
     } else {
         res = *this;
@@ -245,11 +245,11 @@ bool Rel::has(const Expr &pattern) const {
     return l.has(pattern) || r.has(pattern);
 }
 
-Rel Rel::subs(const Subs &map) const {
+Rel Rel::subs(const ExprSubs &map) const {
     return Rel(l.subs(map), op, r.subs(map));
 }
 
-void Rel::applySubs(const Subs &subs) {
+void Rel::applySubs(const ExprSubs &subs) {
     l.applySubs(subs);
     r.applySubs(subs);
 }
@@ -309,15 +309,19 @@ bool operator!=(const Rel &x, const Rel &y) {
     return !(x == y);
 }
 
-bool operator<(const Rel &x, const Rel &y) {
-    int fst = x.lhs().compare(y.lhs());
+int Rel::compare(const Rel &that) const {
+    int fst = lhs().compare(that.lhs());
     if (fst != 0) {
-        return fst < 0;
+        return fst;
     }
-    if (x.relOp() != y.relOp()) {
-        return x.relOp() < y.relOp();
+    if (relOp() != that.relOp()) {
+        return relOp() < that.relOp() ? -1 : 1;
     }
-    return x.rhs().compare(y.rhs()) < 0;
+    return rhs().compare(that.rhs());
+}
+
+bool operator<(const Rel &x, const Rel &y) {
+    return x.compare(y) < 0;
 }
 
 Rel operator<(const Var &x, const Expr &y) {

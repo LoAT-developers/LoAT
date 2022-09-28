@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef RULE_H
-#define RULE_H
+#pragma once
 
 #include <map>
 #include <vector>
@@ -27,6 +26,7 @@
 #include "option.hpp"
 #include "boolexpr.hpp"
 #include "config.hpp"
+#include "subs.hpp"
 
 
 class RuleLhs {
@@ -76,7 +76,11 @@ public:
     const Subs& getUpdate() const { return update; }
 
     void collectVars(VarSet &vars) const {
-        update.collectAllVars(vars);
+        update.collectVars(vars);
+    }
+
+    void collectVars(BoolVarSet &vars) const {
+        update.collectVars(vars);
     }
 
     unsigned hash() const {
@@ -152,6 +156,7 @@ public:
     // Note: Result may be incorrect if an updated variable is updated (which is not checked!)
     // Note: It is always safe if only temporary variables are substituted.
     Rule subs(const Subs &subs) const;
+    Rule subs(const ExprSubs &subs) const;
 
     // Creates a new rule that only leads to the given location, the updates are cleared, guard/cost are kept
     LinearRule replaceRhssBySink(LocationIdx sink) const;
@@ -218,6 +223,3 @@ public:
  * For debugging output (not very readable)
  */
 std::ostream& operator<<(std::ostream &s, const Rule &rule);
-
-
-#endif // RULE_H

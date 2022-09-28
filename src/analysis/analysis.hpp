@@ -23,6 +23,7 @@
 #include "proof.hpp"
 #include "export.hpp"
 #include "result.hpp"
+#include "complexity.hpp"
 
 #include <fstream>
 #include <mutex>

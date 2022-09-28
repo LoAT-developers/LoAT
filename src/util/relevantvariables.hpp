@@ -15,11 +15,9 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef LOAT_UTIL_RELEVANT_VARIABLES_H
-#define LOAT_UTIL_RELEVANT_VARIABLES_H
+#pragma once
 
 #include "expression.hpp"
-#include "types.hpp"
 #include "rule.hpp"
 
 namespace util {
@@ -30,12 +28,12 @@ namespace util {
 
         static const VarSet find(
                 const VarSet &varsOfInterest,
-                const std::vector<Subs> &updates,
+                const std::vector<ExprSubs> &updates,
                 const BoolExpr guard);
 
         static const VarSet find(
                 const Guard &constraints,
-                const std::vector<Subs> &updates,
+                const std::vector<ExprSubs> &updates,
                 const BoolExpr guard);
 
         static const VarSet find(
@@ -46,5 +44,3 @@ namespace util {
     };
 
 }
-
-#endif //LOAT_UTIL_RELEVANT_VARIABLES_H

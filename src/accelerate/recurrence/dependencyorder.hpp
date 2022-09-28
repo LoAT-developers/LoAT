@@ -15,13 +15,10 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef DEPENDENCYORDER_H
-#define DEPENDENCYORDER_H
+#pragma once
 
-#include "rule.hpp"
-#include "variablemanager.hpp"
 #include "option.hpp"
-
+#include "expression.hpp"
 
 /**
  * Functions to compute an ordering on updated variables,
@@ -39,8 +36,6 @@ namespace DependencyOrder {
      * Fails if there is a nontrivial set of variables whose updates depend on each other.
      * @return list indicating the order (if successful)
      */
-    option<std::vector<Var>> findOrder(const Subs &update);
+    option<std::vector<Var>> findOrder(const ExprSubs &update);
 
 }
-
-#endif // DEPENDENCYORDER_H

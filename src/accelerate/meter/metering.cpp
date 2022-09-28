@@ -32,7 +32,7 @@ using namespace std;
 namespace MT = MeteringToolbox;
 
 
-MeteringFinder::MeteringFinder(VarMan &varMan, const Guard &guard, const vector<Subs> &updates)
+MeteringFinder::MeteringFinder(VarMan &varMan, const Guard &guard, const vector<ExprSubs> &updates)
     : varMan(varMan),
       updates(updates),
       guard(guard),
@@ -42,11 +42,11 @@ MeteringFinder::MeteringFinder(VarMan &varMan, const Guard &guard, const vector<
 
 /* ### Helpers ### */
 
-vector<Subs> MeteringFinder::getUpdateList(const Rule &rule) {
-    vector<Subs> res;
+vector<ExprSubs> MeteringFinder::getUpdateList(const Rule &rule) {
+    vector<ExprSubs> res;
     res.reserve(rule.rhsCount());
     for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
-        res.push_back(rhs->getUpdate());
+        res.push_back(rhs->getUpdate().getExprSubs());
     }
     return res;
 }
@@ -85,7 +85,7 @@ void MeteringFinder::buildMeteringVariables() {
         meterVars.coeffs.push_back(varMan.getFreshUntrackedSymbol("c", Expr::Rational));
     }
 
-    for (const Subs &update : updates) {
+    for (const ExprSubs &update : updates) {
         for (const auto &it : update) {
             assert(relevantVars.count(it.first) > 0); // update should have been restricted to relevant variables
 
@@ -239,7 +239,7 @@ void MeteringFinder::ensureIntegralMetering(Result &result, const Model &model) 
     int mult = 1;
 
     for (const Var &theCoeff : meterVars.coeffs) {
-        GiNaC::numeric coeff = model.get(theCoeff);
+        Num coeff = model.get(theCoeff);
         if (coeff.denom().to_int() != 1) {
             has_reals = true;
             mult = boost::integer::lcm(mult, coeff.denom().to_int());
@@ -261,7 +261,7 @@ void MeteringFinder::ensureIntegralMetering(Result &result, const Model &model) 
 
 
 bool MeteringFinder::isLinear() const {
-    return reducedGuard.isLinear() && std::all_of(updates.begin(), updates.end(), [](const Subs &up) {
+    return reducedGuard.isLinear() && std::all_of(updates.begin(), updates.end(), [](const auto &up) {
        return up.isLinear();
     });
 }
@@ -371,15 +371,15 @@ option<pair<Rule, Proof>> MeteringFinder::instantiateTempVarsHeuristic(ITSProble
     Smt::Result smtRes = Smt::Result::Unsat; // this method should only be called if generate() fails
 
     Guard oldGuard = meter.guard;
-    vector<Subs> oldUpdates = meter.updates;
+    vector<ExprSubs> oldUpdates = meter.updates;
 
     // Now try all possible instantiations until the solver is satisfied
 
-    Subs successfulSubs;
-    stack<Subs> freeSubs = MT::findInstantiationsForTempVars(its, meter.guard);
+    ExprSubs successfulSubs;
+    stack<ExprSubs> freeSubs = MT::findInstantiationsForTempVars(its, meter.guard);
 
     while (!freeSubs.empty()) {
-        const Subs &sub = freeSubs.top();
+        const ExprSubs &sub = freeSubs.top();
 
         //apply current substitution (and forget the previous one)
         meter.guard = oldGuard; // copy

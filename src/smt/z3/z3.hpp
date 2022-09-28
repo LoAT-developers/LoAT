@@ -32,7 +32,7 @@ private:
     Z3Context ctx;
     z3::solver solver;
 
-    GiNaC::numeric getRealFromModel(const z3::model &model, const z3::expr &symbol);
+    Num getRealFromModel(const z3::model &model, const z3::expr &symbol);
     void updateParams();
 
 };

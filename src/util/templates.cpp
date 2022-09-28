@@ -44,7 +44,7 @@ bool Templates::isParametric(const Expr &e) const {
 const std::vector<Expr> Templates::subs(const Subs &sigma) const {
     std::vector<Expr> res;
     for (Expr e: templates) {
-        res.push_back(e.subs(sigma));
+        res.push_back(sigma(e));
     }
     return res;
 }

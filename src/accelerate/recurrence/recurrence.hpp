@@ -34,7 +34,7 @@ public:
 
     struct Result {
         Expr cost;
-        Subs update;
+        ExprSubs update;
         unsigned int validityBound;
         Var n;
     };
@@ -54,7 +54,7 @@ private:
     };
 
     struct RecurrenceSystemSolution {
-        Subs update;
+        ExprSubs update;
         const unsigned int validityBound;
     };
 
@@ -63,14 +63,14 @@ private:
     /**
      * Main implementation
      */
-    option<Result> iterate(const Subs &update, const Expr &cost);
+    option<Result> iterate(const ExprSubs &update, const Expr &cost);
 
     /**
      * Computes the iterated update, with meterfunc as iteration step (if possible).
      * @note dependencyOrder must be set before
      * @note sets updatePreRecurrences
      */
-    option<RecurrenceSystemSolution> iterateUpdate(const Subs &update);
+    option<RecurrenceSystemSolution> iterateUpdate(const ExprSubs &update);
 
     /**
      * Computes the iterated cost, with meterfunc as iteration step (if possible).
@@ -107,5 +107,5 @@ private:
      * @note the recurrence equations are valid *before* the transition is taken,
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
-    Subs updatePreRecurrences;
+    ExprSubs updatePreRecurrences;
 };

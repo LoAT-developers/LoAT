@@ -1,5 +1,6 @@
 #include "smt2export.hpp"
 #include "sexpresso.hpp"
+#include "exceptions.hpp"
 
 using namespace sexpresso;
 
@@ -59,7 +60,7 @@ option<Sexp> boolExprToSexp(BoolExpr e) {
         }
         return res;
     } else {
-        auto lit = e->getLit();
+        auto lit = e->getTheoryLit();
         if (lit) {
             if (lit->isEq()) {
                 return Sexp({Sexp("="), exprToSexp(lit->lhs()), exprToSexp(lit->rhs())});
@@ -181,7 +182,10 @@ void smt2Export::doExport(const ITSProblem& its) {
         Sexp dst = Sexp("l" + std::to_string(rule.getRhsLoc()));
         Sexp trans({Sexp("cfg_trans2"), Sexp("pc^0"), src, Sexp("pc^post"), dst});
         option<Sexp> cond;
-        const auto &up = rule.getUpdate();
+        if (!rule.getUpdate().getBoolSubs().empty()) {
+            throw UnsupportedOperationError();
+        }
+        const auto &up = rule.getUpdate().getExprSubs();
         for (auto var: its.getVars()) {
             auto it = up.find(var);
             if (it != up.end()) {

@@ -22,6 +22,7 @@
 #include "smtcontext.hpp"
 #include "config.hpp"
 #include "boolexpr.hpp"
+#include "variablemanager.hpp"
 
 #include <map>
 #include <sstream>
@@ -41,8 +42,8 @@ protected:
         varMan(varMan) {}
 
     EXPR convertBoolEx(const BoolExpr e) {
-        if (e->getLit()) {
-            return convertRelational(e->getLit().get());
+        if (e->getTheoryLit()) {
+            return convertRelational(e->getTheoryLit().get());
         }
         EXPR res = e->isAnd() ? context.bTrue() : context.bFalse();
         bool first = true;
@@ -76,8 +77,8 @@ protected:
         }
 
         std::stringstream ss;
-        ss << "Error: GiNaC type not implemented for term: " << e << std::endl;
-        throw GinacConversionError(ss.str());
+        ss << "Error: conversion not implemented for term: " << e << std::endl;
+        throw ConversionError(ss.str());
     }
 
     EXPR convertAdd(const Expr &e){
@@ -107,7 +108,7 @@ protected:
 
         //rewrite power as multiplication if possible, which z3 can handle much better (e.g x^3 becomes x*x*x)
         if (e.op(1).isRationalConstant()) {
-            GiNaC::numeric num = e.op(1).toNum();
+            Num num = e.op(1).toNum();
             if (num.is_integer() && num.is_positive() && num.to_long() <= Config::Smt::MaxExponentWithoutPow) {
                 int exp = num.to_int();
                 EXPR base = convertEx(e.op(0));
@@ -125,7 +126,7 @@ protected:
         return context.pow(convertEx(e.op(0)), convertEx(e.op(1)));
     }
 
-    EXPR convertNumeric(const GiNaC::numeric &num) {
+    EXPR convertNumeric(const Num &num) {
         assert(num.is_integer() || num.is_real());
 
         try {
@@ -138,7 +139,7 @@ protected:
             return context.getReal(num.numer().to_long(), num.denom().to_long());
 
         } catch (...) {
-            throw GinacLargeConstantError("Numeric constant too large, cannot convert to z3");
+            throw LargeConstantError("Numeric constant too large, cannot convert");
         }
     }
 

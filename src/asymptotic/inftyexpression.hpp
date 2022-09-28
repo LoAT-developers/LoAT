@@ -18,7 +18,7 @@ extern const char* DirectionNames[];
 class InftyExpression : public Expr {
 public:
     /**
-     * Creates a new InftyExpression from the given ginac expression and direction.
+     * Creates a new InftyExpression from the given expression and direction.
      */
     InftyExpression(const Expr &other, Direction dir);
 

@@ -33,6 +33,10 @@ enum BoolOp {
     And, Or, Equiv
 };
 
+enum Sort {
+    Int, Bool
+};
+
 struct FunApp {
 
     LocationIdx loc;

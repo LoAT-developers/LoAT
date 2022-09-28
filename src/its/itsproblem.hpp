@@ -15,11 +15,9 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef ITSPROBLEM_H
-#define ITSPROBLEM_H
+#pragma once
 
 #include "option.hpp"
-
 #include "rule.hpp"
 #include "variablemanager.hpp"
 #include "hypergraph.hpp"
@@ -129,6 +127,3 @@ protected:
     std::map<LocationIdx, std::string> locationNames;
 
 };
-
-
-#endif // ITSPROBLEM_H

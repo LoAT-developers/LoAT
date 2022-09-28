@@ -16,7 +16,7 @@
  */
 
 #include "chainstrategy.hpp"
-
+#include "complexity.hpp"
 #include "chain.hpp"
 #include "preprocess.hpp"
 
@@ -86,7 +86,7 @@ static Proof eliminateLocationByChaining(ITSProblem &its, LocationIdx loc,
             // Only keep the rule if it might give non-trivial complexity
             bool keep;
             if (Config::Analysis::complexity()) {
-                keep = inRule.getCost().toComplexity() > Complexity::Const;
+                keep = toComplexity(inRule.getCost()) > Complexity::Const;
             } else {
                 keep = inRule.getCost().isNontermSymbol();
             }

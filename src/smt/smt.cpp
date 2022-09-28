@@ -4,7 +4,7 @@
 Smt::~Smt() {}
 
 void Smt::add(const Rel &e) {
-    return this->add(buildLit(e));
+    return this->add(buildTheoryLit(e));
 }
 
 Smt::Result Smt::check(const BoolExpr e, const VariableManager &varMan) {
@@ -36,8 +36,8 @@ Smt::Logic Smt::chooseLogic(const std::vector<BoolExpr> &xs, const std::vector<S
         }
     }
     for (const Subs &u: up) {
-        if (!u.isLinear()) {
-            if (!u.isPoly()) {
+        if (!u.getExprSubs().isLinear()) {
+            if (!u.getExprSubs().isPoly()) {
                 return Smt::QF_ENA;
             }
             res = Smt::QF_NA;

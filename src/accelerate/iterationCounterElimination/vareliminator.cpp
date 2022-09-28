@@ -57,7 +57,7 @@ const std::set<std::pair<Subs, BoolExpr>> VarEliminator::eliminateDependency(con
             for (const auto &b: bb) {
                 if (b.expand().isGround()) {
                     Subs newSubs(*it, b);
-                    res.insert({subs.compose(newSubs), guard->subs(newSubs)});
+                    res.insert({subs.compose(newSubs), newSubs(guard)});
                 }
             }
         }

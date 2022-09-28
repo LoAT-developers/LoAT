@@ -18,17 +18,11 @@
 #include "loopacceleration.hpp"
 
 #include "smt.hpp"
-#include "smtfactory.hpp"
-#include "asymptoticbound.hpp"
 #include "recurrence.hpp"
-#include "metertools.hpp"
-#include "guardtoolbox.hpp"
-#include "relevantvariables.hpp"
 #include "chain.hpp"
 #include "accelerationfactory.hpp"
 #include "vareliminator.hpp"
 #include "status.hpp"
-#include "export.hpp"
 
 #include <purrs.hh>
 
@@ -94,14 +88,16 @@ AccelerationResult LoopAcceleration::run() {
                 res.proof.storeSubProof(ar.proof);
             } else if (rec) {
                 option<Rule> resultingRule;
+                BoolSubs empty;
+                Subs up(rec->update, empty);
                 if (vb > 0) {
                     option<Rule> prefix = rule;
                     for (unsigned i = 0; i < vb - 1; ++i) {
                         prefix = Chaining::chainRules(its, rule, prefix.get(), false);
                     }
-                    resultingRule = Rule(rule.getLhsLoc(), prefix->getGuard() & ar.formula, rec->cost, rule.getRhsLoc(), rec->update);
+                    resultingRule = Rule(rule.getLhsLoc(), prefix->getGuard() & ar.formula, rec->cost, rule.getRhsLoc(), up);
                 } else {
-                    resultingRule = Rule(rule.getLhsLoc(), ar.formula, rec->cost, rule.getRhsLoc(), rec->update);
+                    resultingRule = Rule(rule.getLhsLoc(), ar.formula, rec->cost, rule.getRhsLoc(), up);
                 }
                 const BoolExpr toCheck = resultingRule->getGuard()->subs({rec->n, max(2u, rec->validityBound)});
                 if (Smt::check(toCheck, its) != Smt::Sat) {

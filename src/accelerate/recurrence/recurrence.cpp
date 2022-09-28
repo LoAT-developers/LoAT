@@ -34,7 +34,7 @@ Recurrence::Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder)
 
 option<Recurrence::RecurrenceSolution> Recurrence::findUpdateRecurrence(const Expr &updateRhs, Var updateLhs, const VarMap<unsigned int> &validitybounds) {
     Expr last = Purrs::x(Purrs::Recurrence::n - 1).toGiNaC();
-    Purrs::Expr rhs = Purrs::Expr::fromGiNaC(updateRhs.subs(updatePreRecurrences).subs(Subs(updateLhs, last)).ex);
+    Purrs::Expr rhs = Purrs::Expr::fromGiNaC(updateRhs.subs(updatePreRecurrences).subs(ExprSubs(updateLhs, last)).ex);
     Purrs::Expr exact;
 
     const VarSet &vars = updateRhs.vars();
@@ -95,9 +95,9 @@ option<Expr> Recurrence::iterateCost(const Expr &c) {
 }
 
 
-option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Subs &update) {
+option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const ExprSubs &update) {
     assert(dependencyOrder.size() == update.size());
-    Subs newUpdate;
+    ExprSubs newUpdate;
 
     //in the given order try to solve the recurrence for every updated variable
     unsigned int validityBound = 0;
@@ -114,7 +114,7 @@ option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Sub
 
         //remember this recurrence to replace vi in the updates depending on vi
         //note that updates need the value at n-1, e.g. x(n) = x(n-1) + vi(n-1) for the update x=x+vi
-        updatePreRecurrences.put(target, updateRec.get().res.subs(Subs(ginacN, ginacN-1)));
+        updatePreRecurrences.put(target, updateRec.get().res.subs(ExprSubs(ginacN, ginacN-1)));
 
         //calculate the final update using the loop's runtime
         newUpdate.put(target, updateRec.get().res);
@@ -123,7 +123,7 @@ option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Sub
     return {{newUpdate, validityBound}};
 }
 
-option<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &cost) {
+option<Recurrence::Result> Recurrence::iterate(const ExprSubs &update, const Expr &cost) {
     auto newUpdate = iterateUpdate(update);
     if (!newUpdate) {
         return {};
@@ -136,7 +136,7 @@ option<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &c
 
     Recurrence::Result res;
     res.n = varMan.addFreshTemporaryVariable("n");
-    Subs subs = {ginacN, res.n};
+    ExprSubs subs = {ginacN, res.n};
     res.cost = newCost.get().subs(subs);
     res.update = newUpdate.get().update.concat(subs);
     res.validityBound = newUpdate.get().validityBound;
@@ -146,12 +146,12 @@ option<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &c
 
 option<Recurrence::Result> Recurrence::iterateRule(VarMan &varMan, const LinearRule &rule) {
     // This may modify the rule's guard and update
-    auto order = DependencyOrder::findOrder(rule.getUpdate());
+    auto order = DependencyOrder::findOrder(rule.getUpdate().getExprSubs());
     if (!order) {
         return {};
     }
 
     Recurrence rec(varMan, order.get());
-    return rec.iterate(rule.getUpdate(), rule.getCost());
+    return rec.iterate(rule.getUpdate().getExprSubs(), rule.getCost());
 }
 

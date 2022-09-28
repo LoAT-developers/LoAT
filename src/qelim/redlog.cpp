@@ -50,7 +50,7 @@ option<Qelim::Result> Redlog::qe(const QuantifiedFormula &qf) {
     const auto e = simplified ? *simplified : qf;
     const auto p = e.normalizeVariables(varMan);
     const QuantifiedFormula normalized = p.first;
-    const Subs denormalization = p.second;
+    const ExprSubs denormalization = p.second;
     if (normalized.isTiviallyTrue()) {
         proof.append("trivial");
         return Result(True, proof, true);

@@ -1,7 +1,7 @@
-#ifndef RESULT_HPP
-#define RESULT_HPP
+#pragma once
 
 #include "proof.hpp"
+
 #include <variant>
 
 template<class T>
@@ -144,5 +144,3 @@ public:
     ResultViaSideEffects(): Result(std::monostate()) {}
 
 };
-
-#endif // RESULT_HPP

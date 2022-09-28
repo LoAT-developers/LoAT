@@ -19,7 +19,6 @@
 #define Z3CONTEXT_H
 
 #include "smtcontext.hpp"
-#include "option.hpp"
 #include "expression.hpp"
 
 #include <z3++.h>
@@ -88,7 +87,7 @@ private:
     z3::context &ctx;
 
     z3::expr buildVar(const std::string &basename, Expr::Type type) override;
-    z3::expr buildConst(unsigned int id) override;
+    z3::expr buildConst(const BoolVar &var) override;
 
 };
 

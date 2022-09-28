@@ -15,12 +15,12 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef SMTCONTEXT_H
-#define SMTCONTEXT_H
+#pragma once
 
 #include "option.hpp"
 #include "expression.hpp"
 #include "rel.hpp"
+#include "boolexpr.hpp"
 
 #include <map>
 
@@ -103,24 +103,20 @@ public:
         return varMap;
     }
 
-    std::map<unsigned int, EXPR> getConstMap() const {
+    BoolVarMap<EXPR> getConstMap() const {
         return constMap;
     }
 
-    EXPR bConst(int id) {
-        bool negated = id < 0;
-        if (negated) {
-            id = -id;
-        }
-        const auto it = constMap.find(id);
+    EXPR bConst(const BoolVar &var) {
+        const auto it = constMap.find(var);
         option<EXPR> res;
         if (it == constMap.end()) {
-            res = buildConst(id);
-            constMap.emplace(id, res.get());
+            res = buildConst(var);
+            constMap.emplace(var, res.get());
         } else {
             res = it->second;
         }
-        return negated ? negate(res.get()) : res.get();
+        return *res;
     }
 
     virtual ~SmtContext() {}
@@ -149,13 +145,11 @@ protected:
     }
 
     virtual EXPR buildVar(const std::string &basename, Expr::Type type) = 0;
-    virtual EXPR buildConst(unsigned int id) = 0;
+    virtual EXPR buildConst(const BoolVar &var) = 0;
 
 protected:
     VarMap<EXPR> varMap;
     std::map<std::string, Var> nameMap;
     std::map<std::string, int> usedNames;
-    std::map<unsigned int, EXPR> constMap;
+    BoolVarMap<EXPR> constMap;
 };
-
-#endif // SMTCONTEXT_H

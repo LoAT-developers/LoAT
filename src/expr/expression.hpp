@@ -20,15 +20,13 @@
 #include <ginac/ginac.h>
 #include <variant>
 
-#include "complexity.hpp"
 #include "option.hpp"
-#include "exceptions.hpp"
 
 class Expr;
 template<class Key, class Key_is_less> class KeyToExprMap;
 class Recurrence;
 class Rel;
-class Subs;
+class ExprSubs;
 class ExprMap;
 
 namespace Monotonicity {
@@ -54,6 +52,7 @@ struct Expr_is_less {
 };
 
 using Var = GiNaC::symbol;
+using Num = GiNaC::numeric;
 
 struct Var_is_less {
     bool operator() (const Var &lh, const Var &rh) const;
@@ -79,7 +78,7 @@ class Expr {
     /*
      * An ExprMap encapsulates a GiNaC::exmap, which can directly be applied to the encapsulated GiNaC::ex.
      */
-    friend class Subs;
+    friend class ExprSubs;
     friend class ExprMap;
 
 public:
@@ -87,7 +86,7 @@ public:
     /**
      * possible types of variables
      */
-    enum Type {Int, Rational, Bool};
+    enum Type {Int, Rational};
 
     /**
      * Special variable that represents the cost of non-terminating computations.
@@ -108,7 +107,7 @@ public:
      * @brief Applies a substitution via side-effects.
      * @deprecated use subs instead
      */
-    void applySubs(const Subs &subs);
+    void applySubs(const ExprSubs &subs);
 
     /**
      * @brief Computes all matches of the given pattern.
@@ -232,13 +231,6 @@ public:
     bool isMultivariate() const;
 
     /**
-     * @return An estimate of the asymptotic complexity of this expression.
-     * @note This should be an over-approximation, but there are no guarantees.
-     * @note May return Complexity::CpxUnknown.
-     */
-    Complexity toComplexity() const;
-
-    /**
      * @return A string representation of this expression.
      */
     std::string toString() const;
@@ -333,7 +325,7 @@ public:
      * @return The result of applying the given substitution to this expression.
      * @note The second argument is deprecated.
      */
-    Expr subs(const Subs &map) const;
+    Expr subs(const ExprSubs &map) const;
 
     /**
      * @brief Provides a total order for expressions.
@@ -363,7 +355,7 @@ public:
 
     Expr toIntPoly() const;
 
-    GiNaC::numeric denomLcm() const;
+    Num denomLcm() const;
 
     option<std::string> toQepcad() const;
 
@@ -392,8 +384,6 @@ private:
 
     GiNaC::ex ex;
 
-    static Complexity toComplexity(const Expr &term);
-
     bool match(const Expr &pattern) const;
     void traverse(GiNaC::visitor & v) const;
 
@@ -402,9 +392,10 @@ private:
 template<class Key, class Key_is_less>
 class KeyToExprMap {
     friend class Expr;
-    using It = typename std::map<Key, Expr, Key_is_less>::const_iterator;
 
 public:
+
+    using const_iterator = typename std::map<Key, Expr, Key_is_less>::const_iterator;
 
     KeyToExprMap() {}
 
@@ -419,15 +410,15 @@ public:
         putGinac(key, val);
     }
 
-    It begin() const {
+    const_iterator begin() const {
         return map.begin();
     }
 
-    It end() const {
+    const_iterator end() const {
         return map.end();
     }
 
-    It find(const Key &e) const {
+    const_iterator find(const Key &e) const {
         return map.find(e);
     }
 
@@ -494,19 +485,21 @@ template<class S, class T> std::ostream& operator<<(std::ostream &s, const KeyTo
     return s << "}";
 }
 
-class Subs: public KeyToExprMap<Var, Var_is_less> {
+class ExprSubs: public KeyToExprMap<Var, Var_is_less> {
 
 public:
 
-    Subs();
+    using const_iterator = typename KeyToExprMap<Var, Var_is_less>::const_iterator;
 
-    Subs(const Var &key, const Expr &val);
+    ExprSubs();
 
-    Subs compose(const Subs &that) const;
+    ExprSubs(const Var &key, const Expr &val);
 
-    Subs concat(const Subs &that) const;
+    ExprSubs compose(const ExprSubs &that) const;
 
-    Subs project(const VarSet &vars) const;
+    ExprSubs concat(const ExprSubs &that) const;
+
+    ExprSubs project(const VarSet &vars) const;
 
     bool changes(const Var &key) const;
 
@@ -526,9 +519,11 @@ public:
 
     void collectCoDomainVars(VarSet &vars) const;
 
-    void collectAllVars(VarSet &vars) const;
+    void collectVars(VarSet &vars) const;
 
     unsigned hash() const;
+
+    int compare(const ExprSubs &that) const;
 
 private:
     void putGinac(const Var &key, const Expr &val) override;
@@ -549,4 +544,4 @@ private:
 
 };
 
-bool operator==(const Subs &m1, const Subs &m2);
+bool operator==(const ExprSubs &m1, const ExprSubs &m2);

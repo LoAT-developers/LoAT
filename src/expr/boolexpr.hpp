@@ -3,8 +3,8 @@
 #include "option.hpp"
 #include "rel.hpp"
 #include "guard.hpp"
-#include "variablemanager.hpp"
 #include "boolvar.hpp"
+#include "variablemanager.hpp"
 
 #include <memory>
 #include <set>
@@ -24,7 +24,7 @@ struct Bounds {
 };
 
 struct boolexpr_compare {
-    bool operator() (BoolExpr a, BoolExpr b) const;
+    bool operator() (const BoolExpr a, const BoolExpr b) const;
 };
 
 typedef std::set<BoolExpr, boolexpr_compare> BoolExprSet;
@@ -38,7 +38,8 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression> {
 
 public:
 
-    virtual option<Rel> getLit() const = 0;
+    virtual option<Rel> getTheoryLit() const = 0;
+    virtual option<BoolLit> getLit() const = 0;
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
     virtual BoolExprSet getChildren() const = 0;
@@ -46,7 +47,6 @@ public:
     virtual bool isLinear() const = 0;
     virtual bool isPolynomial() const = 0;
     virtual ~BoolExpression();
-    virtual BoolExpr subs(const Subs &subs) const = 0;
     RelSet lits() const;
     virtual RelSet universallyValidLits() const = 0;
     VarSet vars() const;
@@ -56,6 +56,8 @@ public:
     virtual BoolExpr toG() const = 0;
     virtual void collectLits(RelSet &res) const = 0;
     virtual void collectVars(VarSet &res) const = 0;
+    virtual void collectBoolVars(BoolVarSet &res) const = 0;
+    virtual BoolExpr subs(const ExprSubs &subs) const = 0;
     virtual std::string toRedlog() const = 0;
     virtual size_t size() const = 0;
     virtual BoolExpr replaceRels(const RelMap<BoolExpr> map) const = 0;
@@ -64,6 +66,7 @@ public:
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
     virtual option<BoolExpr> simplify() const = 0;
     virtual bool isOctagon() const = 0;
+    virtual int compare(const BoolExpr that) const = 0;
 
 protected:
     virtual void dnf(std::vector<Guard> &res) const = 0;
@@ -80,18 +83,20 @@ public:
     BoolTheoryLit(const Rel &lit);
     bool isAnd() const override;
     bool isOr() const override;
-    option<Rel> getLit() const override;
+    option<Rel> getTheoryLit() const override;
+    option<BoolLit> getLit() const override;
     BoolExprSet getChildren() const override;
     const BoolExpr negation() const override;
     bool isLinear() const override;
     bool isPolynomial() const override;
     ~BoolTheoryLit() override;
-    BoolExpr subs(const Subs &subs) const override;
     bool isConjunction() const override;
     BoolExpr toG() const override;
     RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
+    void collectBoolVars(BoolVarSet &res) const override;
+    BoolExpr subs(const ExprSubs &subs) const override;
     size_t size() const override;
     std::string toRedlog() const override;
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
@@ -99,6 +104,7 @@ public:
     void getBounds(const Var &n, Bounds &res) const override;
     option<BoolExpr> simplify() const override;
     bool isOctagon() const override;
+    int compare(const BoolExpr that) const override;
 
 protected:
     void dnf(std::vector<Guard> &res) const override;
@@ -117,18 +123,20 @@ public:
     BoolLit(const BoolVar &var, bool negated = false);
     bool isAnd() const override;
     bool isOr() const override;
-    option<Rel> getLit() const override;
+    option<Rel> getTheoryLit() const override;
+    option<BoolLit> getLit() const override;
     BoolExprSet getChildren() const override;
     const BoolExpr negation() const override;
     bool isLinear() const override;
     bool isPolynomial() const override;
     ~BoolLit() override;
-    BoolExpr subs(const Subs &subs) const override;
     bool isConjunction() const override;
     BoolExpr toG() const override;
     RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
+    void collectBoolVars(BoolVarSet &res) const override;
+    BoolExpr subs(const ExprSubs &subs) const override;
     size_t size() const override;
     std::string toRedlog() const override;
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
@@ -136,11 +144,18 @@ public:
     void getBounds(const Var &n, Bounds &res) const override;
     option<BoolExpr> simplify() const override;
     bool isOctagon() const override;
+    bool isNegated() const;
+    BoolVar getBoolVar() const;
+    int compare(const BoolExpr that) const override;
 
 protected:
     void dnf(std::vector<Guard> &res) const override;
 
 };
+
+bool operator<(const BoolLit &l1, const BoolLit &l2);
+
+std::ostream& operator<<(std::ostream &s, const BoolLit &e);
 
 enum ConcatOperator { ConcatAnd, ConcatOr };
 
@@ -156,18 +171,20 @@ public:
     BoolJunction(const BoolExprSet &children, ConcatOperator op);
     bool isAnd() const override;
     bool isOr() const override;
-    option<Rel> getLit() const override;
+    option<Rel> getTheoryLit() const override;
+    option<BoolLit> getLit() const override;
     BoolExprSet getChildren() const override;
     const BoolExpr negation() const override;
     bool isLinear() const override;
     bool isPolynomial() const override;
     ~BoolJunction() override;
-    BoolExpr subs(const Subs &subs) const override;
     bool isConjunction() const override;
     BoolExpr toG() const override;
     RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
+    void collectBoolVars(BoolVarSet &res) const override;
+    BoolExpr subs(const ExprSubs &subs) const override;
     size_t size() const override;
     std::string toRedlog() const override;
     BoolExpr replaceRels(const RelMap<BoolExpr> map) const override;
@@ -175,6 +192,7 @@ public:
     void getBounds(const Var &n, Bounds &res) const override;
     option<BoolExpr> simplify() const override;
     bool isOctagon() const override;
+    int compare(const BoolExpr that) const override;
 
 protected:
     void dnf(std::vector<Guard> &res) const override;
@@ -218,12 +236,11 @@ public:
     bool isLinear() const;
     bool isPolynomial() const;
     VarSet boundVars() const;
-    QuantifiedFormula subs(const Subs &subs) const;
     QuantifiedFormula toG() const;
     void collectLits(RelSet &res) const;
+    QuantifiedFormula subs(const ExprSubs &subs) const;
     VarSet freeVars() const;
     std::string toRedlog() const;
-    std::pair<QuantifiedFormula, Subs> normalizeVariables(VariableManager &varMan) const;
     option<QuantifiedFormula> simplify() const;
     bool isTiviallyTrue() const;
     bool isTiviallyFalse() const;
@@ -231,6 +248,7 @@ public:
     std::vector<Quantifier> getPrefix() const;
     BoolExpr getMatrix() const;
     bool isConjunction() const;
+    std::pair<QuantifiedFormula, ExprSubs> normalizeVariables(VariableManager &varMan) const;
 
 };
 
@@ -242,7 +260,8 @@ const BoolExpr buildAnd(const RelSet &xs);
 const BoolExpr buildAnd(const BoolExprSet &xs);
 const BoolExpr buildOr(const RelSet &xs);
 const BoolExpr buildOr(const BoolExprSet &xs);
-const BoolExpr buildLit(const Rel &lit);
+const BoolExpr buildTheoryLit(const Rel &lit);
+const BoolExpr buildLit(const BoolVar &var, bool negated = false);
 const BoolExpr buildConjunctiveClause(const BoolExprSet &xs);
 
 extern const BoolExpr True;

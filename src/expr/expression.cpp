@@ -16,7 +16,8 @@
  */
 
 #include "expression.hpp"
-#include "complexity.hpp"
+#include "exceptions.hpp"
+
 #include <sstream>
 
 using namespace std;
@@ -31,7 +32,7 @@ bool Var_is_less::operator()(const Var &lh, const Var &rh) const {
 
 const Var Expr::NontermSymbol = GiNaC::symbol("NONTERM");
 
-void Expr::applySubs(const Subs &subs) {
+void Expr::applySubs(const ExprSubs &subs) {
     this->ex = this->ex.subs(subs.ginacMap);
 }
 
@@ -278,77 +279,6 @@ bool Expr::isMultivariate() const {
     return visitor.result();
 }
 
-
-Complexity Expr::toComplexity(const Expr &term) {
-
-    //traverse the expression
-    if (term.isRationalConstant()) {
-        GiNaC::numeric num = term.toNum();
-        assert(num.is_integer() || num.is_real());
-        //both for positive and negative constants, as we want to over-approximate the complexity! (e.g. A-B is O(n))
-        return Complexity::Const;
-
-    } else if (term.isPow()) {
-        assert(term.arity() == 2);
-
-        // If the exponent is at least polynomial (non-constant), complexity might be exponential
-        if (toComplexity(term.op(1)) > Complexity::Const) {
-            const Expr &base = term.op(0);
-            if (base.isZero() || base.compare(1) == 0 || base.compare(-1) == 0) {
-                return Complexity::Const;
-            }
-            return Complexity::Exp;
-
-        // Otherwise the complexity is polynomial, if the exponent is nonnegative
-        } else {
-            if (!term.op(1).isRationalConstant()) {
-                return Complexity::Unknown;
-            }
-            GiNaC::numeric numexp = term.op(1).toNum();
-            if (!numexp.is_nonneg_integer()) {
-                return Complexity::Unknown;
-            }
-
-            Complexity base = toComplexity(term.op(0));
-            int exp = numexp.to_int();
-            return base ^ exp;
-        }
-
-    } else if (term.isMul()) {
-        assert(term.arity() > 0);
-        Complexity cpx = toComplexity(term.op(0));
-        for (unsigned int i=1; i < term.arity(); ++i) {
-            cpx = cpx * toComplexity(term.op(i));
-        }
-        return cpx;
-
-    } else if (term.isAdd()) {
-        assert(term.arity() > 0);
-        Complexity cpx = toComplexity(term.op(0));
-        for (unsigned int i=1; i < term.arity(); ++i) {
-            cpx = cpx + toComplexity(term.op(i));
-        }
-        return cpx;
-
-    } else if (term.isVar()) {
-        return (term.compare(Expr::NontermSymbol) == 0) ? Complexity::Nonterm : Complexity::Poly(1);
-    }
-
-    //unknown expression type (e.g. relational)
-    return Complexity::Unknown;
-}
-
-
-Complexity Expr::toComplexity() const {
-    if (isNontermSymbol()) {
-        return Complexity::Nonterm;
-    }
-
-    Expr simple = expand(); // multiply out
-    return toComplexity(simple);
-}
-
-
 string Expr::toString() const {
     stringstream ss;
     ss << *this;
@@ -419,7 +349,7 @@ size_t Expr::arity() const {
     return ex.nops();
 }
 
-Expr Expr::subs(const Subs &map) const {
+Expr Expr::subs(const ExprSubs &map) const {
     return ex.subs(map.ginacMap);
 }
 
@@ -475,7 +405,7 @@ Expr Expr::wildcard(unsigned int label) {
     return GiNaC::wild(label);
 }
 
-GiNaC::numeric Expr::denomLcm() const {
+Num Expr::denomLcm() const {
     const Expr &denom = Expr::wildcard(0);
     const Expr &num = Expr::wildcard(1);
     const Expr &pattern = denom / num;
@@ -518,7 +448,7 @@ bool Expr::isIntegral() const {
 
     while (true) {
         // substitute every variable x_i by the integer subs[i] and check if the result is an integer
-        Subs currSubs;
+        ExprSubs currSubs;
         for (unsigned int i = 0; i < degrees.size(); i++) {
             currSubs.put(vars[i], subs[i]);
         }
@@ -686,14 +616,14 @@ std::ostream& operator<<(std::ostream &s, const T e) {
 
 }
 
-Subs::Subs(): KeyToExprMap<Var, Var_is_less>() {}
+ExprSubs::ExprSubs(): KeyToExprMap<Var, Var_is_less>() {}
 
-Subs::Subs(const Var &key, const Expr &val) {
+ExprSubs::ExprSubs(const Var &key, const Expr &val) {
     put(key, val);
 }
 
-Subs Subs::compose(const Subs &that) const {
-    Subs res;
+ExprSubs ExprSubs::compose(const ExprSubs &that) const {
+    ExprSubs res;
     for (const auto &p: *this) {
         res.put(p.first, p.second.subs(that));
     }
@@ -705,96 +635,102 @@ Subs Subs::compose(const Subs &that) const {
     return res;
 }
 
-Subs Subs::concat(const Subs &that) const {
-    Subs res;
+ExprSubs ExprSubs::concat(const ExprSubs &that) const {
+    ExprSubs res;
     for (const auto &p: *this) {
         res.put(p.first, p.second.subs(that));
     }
     return res;
 }
 
-Subs Subs::project(const VarSet &vars) const {
-    Subs res;
+ExprSubs ExprSubs::project(const VarSet &vars) const {
+    ExprSubs res;
     for (const auto &p: *this) {
-        if (vars.count(p.first)) {
+        if (vars.find(p.first) != vars.end()) {
             res.put(p.first, p.second);
         }
     }
     return res;
 }
 
-void Subs::putGinac(const Var &key, const Expr &val) {
+void ExprSubs::putGinac(const Var &key, const Expr &val) {
     ginacMap[key] = val.ex;
 }
 
-void Subs::eraseGinac(const Var &key) {
+void ExprSubs::eraseGinac(const Var &key) {
     ginacMap.erase(key);
 }
 
-bool Subs::changes(const Var &key) const {
+bool ExprSubs::changes(const Var &key) const {
     return contains(key) && !get(key).equals(key);
 }
 
-bool Subs::isLinear() const {
+bool ExprSubs::isLinear() const {
     return std::all_of(begin(), end(), [](const std::pair<Var, Expr> &p) {
        return p.second.isLinear();
     });
 }
 
-bool Subs::isPoly() const {
+bool ExprSubs::isPoly() const {
     return std::all_of(begin(), end(), [](const std::pair<Var, Expr> &p) {
        return p.second.isPoly();
     });
 }
 
-bool Subs::isOctagon() const {
+bool ExprSubs::isOctagon() const {
     return std::all_of(begin(), end(), [](const std::pair<Var, Expr> &p) {
        return p.second.isOctagon();
     });
 }
 
-void Subs::collectDomain(VarSet &vars) const {
+void ExprSubs::collectDomain(VarSet &vars) const {
     for (const auto &p: *this) {
         vars.insert(p.first);
     }
 }
 
-void Subs::collectCoDomainVars(VarSet &vars) const {
+void ExprSubs::collectCoDomainVars(VarSet &vars) const {
     for (const auto &p: *this) {
         p.second.collectVars(vars);
     }
 }
 
-void Subs::collectAllVars(VarSet &vars) const {
+void ExprSubs::collectVars(VarSet &vars) const {
     collectCoDomainVars(vars);
     collectDomain(vars);
 }
 
-VarSet Subs::domain() const {
+VarSet ExprSubs::domain() const {
     VarSet res;
     collectDomain(res);
     return res;
 }
 
-VarSet Subs::coDomainVars() const {
+VarSet ExprSubs::coDomainVars() const {
     VarSet res;
     collectCoDomainVars(res);
     return res;
 }
 
-VarSet Subs::allVars() const {
+VarSet ExprSubs::allVars() const {
     VarSet res;
-    collectAllVars(res);
+    collectVars(res);
     return res;
 }
 
-unsigned Subs::hash() const {
+unsigned ExprSubs::hash() const {
     unsigned hash = 7;
     for (const auto& p: *this) {
         hash = hash * 31 + p.first.gethash();
         hash = hash * 31 + p.second.hash();
     }
     return hash;
+}
+
+int ExprSubs::compare(const ExprSubs &that) const {
+    if (*this == that) return 0;
+    else if (*this < that) return -1;
+    else return 1;
 }
 
 ExprMap::ExprMap(): KeyToExprMap<Expr, Expr_is_less>() {}
@@ -811,7 +747,7 @@ void ExprMap::eraseGinac(const Expr &key) {
     ginacMap.erase(key.ex);
 }
 
-bool operator==(const Subs &m1, const Subs &m2) {
+bool operator==(const ExprSubs &m1, const ExprSubs &m2) {
     if (m1.size() != m2.size()) {
         return false;
     }

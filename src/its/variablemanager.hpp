@@ -1,5 +1,4 @@
-#ifndef VARIABLEMANAGER_H
-#define VARIABLEMANAGER_H
+#pragma once
 
 #include "expression.hpp"
 
@@ -11,7 +10,7 @@ typedef VariableManager VarMan;
 
 
 /**
- * Manages variables, i.e., can map between variable indices, names and GiNaC symbols.
+ * Manages variables, i.e., can map between variable indices, names and symbols.
  * Also manages the set of temporary/free variables.
  *
  * This class is used as a part of an ITSProblem, but is separate since many functions
@@ -38,10 +37,10 @@ public:
     Var addFreshTemporaryVariable(std::string basename);
 
     /**
-     * Generates a fresh (unused) GiNaC symbol, but does _not_ add it to the list of variables
+     * Generates a fresh (unused) symbol, but does _not_ add it to the list of variables
      *
      * @warning The name of the created symbol is not stored, so it may be re-used by future calls!
-     * Note that two generated symbols are always different (to GiNac), even if they use the same name.
+     * Note that two generated symbols are always different, even if they use the same name.
      *
      * @return The newly created symbol (_not_ associated with a variable index!)
      */
@@ -59,13 +58,7 @@ private:
     std::string getFreshName(std::string basename);
 
 private:
-    // Data stored for each variable
-    struct Variable {
-        std::string name;
-        Var symbol;
-    };
-
-    // List of all variables (VariableIdx is an index in this list; a Variable is a name and a ginac symbol)
+    // List of all variables (VariableIdx is an index in this list; a Variable is a name and a symbol)
     // Note: Variables are never removed, so this list is appended, but otherwise not modified
     VarSet variables;
     VarMap<Expr::Type> untrackedVariables;
@@ -76,12 +69,4 @@ private:
     std::map<std::string, unsigned int> basenameCount;
     // Reverse mapping for efficiency
     std::map<std::string, Var> variableNameLookup;
-
-    unsigned int boolVarCount = 1;
 };
-
-
-
-
-
-#endif //VARIABLEMANAGER_H

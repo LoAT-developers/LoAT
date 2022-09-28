@@ -1,5 +1,7 @@
 #include "cintegerexport.hpp"
 #include "boolexpr.hpp"
+#include "exceptions.hpp"
+
 #include <boost/algorithm/string.hpp>
 
 namespace c_integer_export {
@@ -28,9 +30,12 @@ void doExport(ITSProblem its) {
     bool found_init = false;
     for (auto idx: its.getAllTransitions()) {
         const auto& rule = its.getRule(idx);
+        if (rule.getUpdates().size() > 1 || !rule.getUpdate(0).getBoolSubs().empty()) {
+            throw UnsupportedOperationError();
+        }
         if (rule.getLhsLoc() == its.getInitialLocation()) {
             if (rule.getGuard() != True) throw std::invalid_argument("guard != True");
-            for (const auto& p: rule.getUpdate(0)) {
+            for (const auto& p: rule.getUpdate(0).getExprSubs()) {
                 if (!p.second.equals(p.first)) throw std::invalid_argument("non-trivial update");
             }
             if (found_init) throw std::invalid_argument("found_init");
@@ -40,15 +45,15 @@ void doExport(ITSProblem its) {
             if (found_loop) throw std::invalid_argument("found_loop");
             found_loop = true;
             std::stringstream cond;
-            cond << rule.getGuard()->subs(pre_vars);
+            cond << pre_vars(rule.getGuard());
             std::string cond_str = cond.str();
             boost::replace_all(cond_str, "/\\", "&&");
             boost::replace_all(cond_str, "\\/", "||");
             res << "    while (" << cond_str << ") {\n";
-            for (const auto& p: rule.getUpdate(0)) {
-                res << "        " << post_vars[p.first] << " = " << p.second.subs(pre_vars) << ";\n";
+            for (const auto& p: rule.getUpdate(0).getExprSubs()) {
+                res << "        " << post_vars[p.first] << " = " << pre_vars(p.second) << ";\n";
             }
-            for (const auto& p: rule.getUpdate(0)) {
+            for (const auto& p: rule.getUpdate(0).getExprSubs()) {
                 res << "        " << pre_vars.get(p.first) << " = " << post_vars[p.first] << ";\n";
             }
             res << "    }\n";

@@ -1,6 +1,6 @@
 #include "redlogparsevisitor.h"
 #include "expression.hpp"
-
+#include "exceptions.hpp"
 #include "redlogLexer.h"
 #include "redlogParser.h"
 
@@ -68,7 +68,7 @@ antlrcpp::Any RedlogParseVisitor::visitBinop(redlogParser::BinopContext *ctx) {
 
 antlrcpp::Any RedlogParseVisitor::visitFormula(redlogParser::FormulaContext *ctx) {
   if (ctx->lit()) {
-      return buildLit(any_cast<lit_type>(visit(ctx->lit())));
+      return buildTheoryLit(any_cast<lit_type>(visit(ctx->lit())));
   } else if (ctx->TRUE()) {
       return True;
   } else if (ctx->FALSE()) {

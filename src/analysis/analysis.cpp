@@ -465,8 +465,8 @@ void Analysis::getMaxRuntimeOf(const set<TransIdx> &rules, RuntimeResult &res) {
             bool sndHasTmpVar = sndCpxExp.hasVarWith(isTempVar);
             if (fstHasTmpVar > sndHasTmpVar) return true;
             if (fstHasTmpVar < sndHasTmpVar) return false;
-            Complexity fstCpx = fstCpxExp.toComplexity();
-            Complexity sndCpx = sndCpxExp.toComplexity();
+            Complexity fstCpx = toComplexity(fstCpxExp);
+            Complexity sndCpx = toComplexity(sndCpxExp);
             if (fstCpx > sndCpx) return true;
             if (fstCpx < sndCpx) return false;
         }
@@ -486,7 +486,7 @@ void Analysis::getMaxRuntimeOf(const set<TransIdx> &rules, RuntimeResult &res) {
         const Expr &cost = rule.getCost();
         bool hasTempVar = !cost.isNontermSymbol() && cost.hasVarWith(isTempVar);
 
-        if (cost.toComplexity() <= max(res.getCpx(), Complexity::Const) && !hasTempVar) {
+        if (toComplexity(cost) <= max(res.getCpx(), Complexity::Const) && !hasTempVar) {
             continue;
         }
 
@@ -573,7 +573,7 @@ static bool removeConstantPathsImpl(ITSProblem &its, LocationIdx curr, set<Locat
         // In this case, all constant rules leading to next are not interesting and can be removed.
         if (removeConstantPathsImpl(its, next, visited)) {
             for (TransIdx rule : its.getTransitionsFromTo(curr, next)) {
-                if (its.getRule(rule).getCost().toComplexity() <= Complexity::Const) {
+                if (toComplexity(its.getRule(rule).getCost()) <= Complexity::Const) {
                     its.removeRule(rule);
                 }
             }

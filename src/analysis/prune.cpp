@@ -20,9 +20,8 @@
 #include "config.hpp"
 #include "itsproblem.hpp"
 #include "boolexpr.hpp"
-#include "smt.hpp"
+#include "complexity.hpp"
 #include "asymptoticbound.hpp"
-#include "export.hpp"
 
 #include <queue>
 
@@ -140,7 +139,7 @@ static bool removeIrrelevantLeafs(ITSProblem &its, LocationIdx node, set<Locatio
                 const Rule rule = its.getRule(ruleIdx);
 
                 // only remove irrelevant rules
-                const Complexity &c = rule.getCost().toComplexity();
+                const Complexity &c = toComplexity(rule.getCost());
                 bool remove;
                 if (Config::Analysis::complexity()) {
                     remove = c == Complexity::Const;
@@ -210,7 +209,7 @@ static bool partialDeletion(ITSProblem &its, TransIdx ruleIdx, LocationIdx loc) 
 
     // If all rhss would be deleted, we still keep the rule if it has an interesting complexity.
     if (!optRule) {
-        if (rule.getCost().toComplexity() > Complexity::Const) {
+        if (toComplexity(rule.getCost()) > Complexity::Const) {
             // Note that it is only sound to add a dummy transition to loc if loc is a sink location.
             // This should be the case when partialDeletion is called, at least for the current implementation.
             assert(!its.hasTransitionsFrom(loc));

@@ -123,3 +123,72 @@ std::ostream& operator<<(std::ostream &s, const Complexity &cpx) {
     s << cpx.toString();
     return s;
 }
+
+Complexity toComplexityRec(const Expr &term) {
+
+    //traverse the expression
+    if (term.isRationalConstant()) {
+        Num num = term.toNum();
+        assert(num.is_integer() || num.is_real());
+        //both for positive and negative constants, as we want to over-approximate the complexity! (e.g. A-B is O(n))
+        return Complexity::Const;
+
+    } else if (term.isPow()) {
+        assert(term.arity() == 2);
+
+        // If the exponent is at least polynomial (non-constant), complexity might be exponential
+        if (toComplexityRec(term.op(1)) > Complexity::Const) {
+            const Expr &base = term.op(0);
+            if (base.isZero() || base.compare(1) == 0 || base.compare(-1) == 0) {
+                return Complexity::Const;
+            }
+            return Complexity::Exp;
+
+        // Otherwise the complexity is polynomial, if the exponent is nonnegative
+        } else {
+            if (!term.op(1).isRationalConstant()) {
+                return Complexity::Unknown;
+            }
+            Num numexp = term.op(1).toNum();
+            if (!numexp.is_nonneg_integer()) {
+                return Complexity::Unknown;
+            }
+
+            Complexity base = toComplexityRec(term.op(0));
+            int exp = numexp.to_int();
+            return base ^ exp;
+        }
+
+    } else if (term.isMul()) {
+        assert(term.arity() > 0);
+        Complexity cpx = toComplexityRec(term.op(0));
+        for (unsigned int i=1; i < term.arity(); ++i) {
+            cpx = cpx * toComplexityRec(term.op(i));
+        }
+        return cpx;
+
+    } else if (term.isAdd()) {
+        assert(term.arity() > 0);
+        Complexity cpx = toComplexityRec(term.op(0));
+        for (unsigned int i=1; i < term.arity(); ++i) {
+            cpx = cpx + toComplexityRec(term.op(i));
+        }
+        return cpx;
+
+    } else if (term.isVar()) {
+        return (term.compare(Expr::NontermSymbol) == 0) ? Complexity::Nonterm : Complexity::Poly(1);
+    }
+
+    //unknown expression type (e.g. relational)
+    return Complexity::Unknown;
+}
+
+
+Complexity toComplexity(const Expr &e) {
+    if (e.isNontermSymbol()) {
+        return Complexity::Nonterm;
+    }
+
+    Expr simple = e.expand(); // multiply out
+    return toComplexityRec(simple);
+}

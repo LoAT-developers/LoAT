@@ -7,7 +7,7 @@ void Guard::collectVariables(VarSet &res) const {
     }
 }
 
-Guard Guard::subs(const Subs &sigma) const {
+Guard Guard::subs(const ExprSubs &sigma) const {
     Guard res;
     for (const Rel &rel: *this) {
         res.push_back(rel.subs(sigma));
