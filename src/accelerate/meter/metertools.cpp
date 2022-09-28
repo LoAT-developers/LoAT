@@ -15,8 +15,9 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#include "metertools.hpp"
+#include <algorithm>
 
+#include "metertools.hpp"
 #include "guardtoolbox.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
@@ -248,7 +249,15 @@ option<Guard> MeteringToolbox::strengthenGuard(VarMan &varMan, const Guard &guar
 
 stack<ExprSubs> MeteringToolbox::findInstantiationsForTempVars(const VarMan &varMan, const Guard &guard) {
     //find free variables
-    const VarSet &freeVar = varMan.getTempVars();
+    VarSet freeVar;
+    guard.collectVariables(freeVar);
+    for (auto it = freeVar.begin(); it != freeVar.end();) {
+        if (varMan.isTempVar(*it)) {
+            ++it;
+        } else {
+            it = freeVar.erase(it);
+        }
+    }
     if (freeVar.empty()) return stack<ExprSubs>();
 
     //find all bounds for every free variable

@@ -172,6 +172,53 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
 }
 
 
+Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, const Rule &rule) {
+    auto hasTempVars = [&](const auto e) {
+        for (const auto x: e->boolVars()) {
+            if (its.isTempVar(x)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    Result<Rule> res(rule);
+    auto guard = rule.getGuard();
+    auto bvars = guard->boolVars();
+    bool changed;
+    do {
+        changed = false;
+        for (auto it = bvars.begin(); it != bvars.end();) {
+            const auto var = *it;
+            if (its.isTempVar(var)) {
+                BoolExprSet consequences;
+                rule.getGuard()->findConsequences(var, consequences);
+                const auto lit = buildLit(var);
+                for (const BoolExpr &c: consequences) {
+                    if (!hasTempVars(c)) {
+                        if (Smt::isImplication(c, lit, its)) {
+                            guard = Subs(var, c)(guard);
+                            it = bvars.erase(it);
+                            changed = true;
+                            res.append(std::stringstream() << "replaced " << var << " with " << c);
+                            res.succeed();
+                        }
+                    }
+                }
+            }
+            if (changed) {
+                break;
+            } else {
+                ++it;
+            }
+        }
+    } while (changed);
+    if (res) {
+        res.set(rule.withGuard(guard));
+    }
+    return res;
+}
+
+
 Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow, const ITSProblem &its) {
     Result<Rule> res(rule);
     if (!rule.getGuard()->isConjunction()) {

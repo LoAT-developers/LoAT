@@ -32,9 +32,9 @@ term_t YicesContext::buildVar(const std::string &name, Expr::Type type) {
     return res;
 }
 
-term_t YicesContext::buildConst(const BoolVar &var) {
+term_t YicesContext::buildConst(const std::string &name) {
     term_t res = yices_new_uninterpreted_term(yices_bool_type());
-    yices_set_term_name(res, var.getName().c_str());
+    yices_set_term_name(res, name.c_str());
     return res;
 }
 

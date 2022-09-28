@@ -15,13 +15,10 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef YICESCONTEXT_H
-#define YICESCONTEXT_H
+#pragma once
 
 #include "smtcontext.hpp"
-#include "option.hpp"
 #include "expression.hpp"
-#include "exceptions.hpp"
 
 #include <gmp.h>
 #include <yices.h>
@@ -79,11 +76,9 @@ public:
 
 protected:
     term_t buildVar(const std::string &basename, Expr::Type type) override;
-    term_t buildConst(const BoolVar &var) override;
+    term_t buildConst(const std::string &name) override;
 
 private:
     std::map<term_t, std::string> varNames;
 
 };
-
-#endif // YICESCONTEXT_H

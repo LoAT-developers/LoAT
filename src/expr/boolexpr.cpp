@@ -21,9 +21,39 @@ Guard BoolExpression::conjunctionToGuard() const {
     return Guard(lits.begin(), lits.end());
 }
 
+void BoolExpression::findConsequences(const BoolVar &var, BoolExprSet &res) const {
+    const auto lit = buildLit(var, false);
+    if (isAnd()) {
+        for (const auto &c: getChildren()) {
+            c->findConsequences(var, res);
+        }
+    } else if (isOr()) {
+        BoolExprSet children = getChildren();
+        bool trivial = true;
+        for (auto it = children.begin(); it != children.end();) {
+            const BoolExpr c = *it;
+            if (c == lit || (c->isAnd() && c->getChildren().contains(lit))) {
+                it = children.erase(it);
+                trivial = false;
+            } else {
+                ++it;
+            }
+        }
+        if (!trivial) {
+            res.insert(buildOr(children));
+        }
+    }
+}
+
 VarSet BoolExpression::vars() const {
     VarSet res;
     collectVars(res);
+    return res;
+}
+
+BoolVarSet BoolExpression::boolVars() const {
+    BoolVarSet res;
+    collectBoolVars(res);
     return res;
 }
 

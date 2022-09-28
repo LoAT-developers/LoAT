@@ -42,8 +42,11 @@ protected:
         varMan(varMan) {}
 
     EXPR convertBoolEx(const BoolExpr e) {
+        if (e->getLit()) {
+            return convertLit(*e->getLit());
+        }
         if (e->getTheoryLit()) {
-            return convertRelational(e->getTheoryLit().get());
+            return convertRelational(*e->getTheoryLit());
         }
         EXPR res = e->isAnd() ? context.bTrue() : context.bFalse();
         bool first = true;
@@ -166,6 +169,14 @@ protected:
         }
 
         throw std::invalid_argument("unreachable");
+    }
+
+    EXPR convertLit(const BoolLit &lit) {
+        auto optVar = context.getConst(lit.getBoolVar());
+        if (!optVar) {
+            optVar = context.addNewConst(lit.getBoolVar());
+        }
+        return lit.isNegated() ? context.negate(*optVar) : *optVar;
     }
 
 private:

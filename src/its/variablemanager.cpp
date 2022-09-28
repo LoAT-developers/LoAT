@@ -24,7 +24,12 @@ std::recursive_mutex VariableManager::mutex;
 
 bool VariableManager::isTempVar(const Var &var) const {
     std::lock_guard guard(mutex);
-    return temporaryVariables.count(var) > 0;
+    return temporaryVariables.find(var.get_name()) != temporaryVariables.end();
+}
+
+bool VariableManager::isTempVar(const BoolVar &var) const {
+    std::lock_guard guard(mutex);
+    return temporaryVariables.find(var.getName()) != temporaryVariables.end();
 }
 
 Var VariableManager::addFreshVariable(string basename) {
@@ -32,10 +37,22 @@ Var VariableManager::addFreshVariable(string basename) {
     return addVariable(getFreshName(basename));
 }
 
+BoolVar VariableManager::addFreshBoolVariable(string basename) {
+    std::lock_guard guard(mutex);
+    return addBoolVariable(getFreshName(basename));
+}
+
 Var VariableManager::addFreshTemporaryVariable(string basename) {
     std::lock_guard guard(mutex);
     Var x = addVariable(getFreshName(basename));
-    temporaryVariables.insert(x);
+    temporaryVariables.insert(x.get_name());
+    return x;
+}
+
+BoolVar VariableManager::addFreshTemporaryBoolVariable(string basename) {
+    std::lock_guard guard(mutex);
+    BoolVar x = addBoolVariable(getFreshName(basename));
+    temporaryVariables.insert(x.getName());
     return x;
 }
 
@@ -47,6 +64,12 @@ Var VariableManager::getFreshUntrackedSymbol(string basename, Expr::Type type) {
     return res;
 }
 
+BoolVar VariableManager::getFreshUntrackedBoolSymbol(string basename) {
+    std::lock_guard guard(mutex);
+    BoolVar res(getFreshName(basename));
+    return res;
+}
+
 void toLower(string &str) {
     std::transform(str.begin(), str.end(), str.begin(), ::tolower);
 }
@@ -55,38 +78,38 @@ Var VariableManager::addVariable(string name) {
     std::lock_guard guard(mutex);
     toLower(name);
     auto sym = Var(name);
-
-    // remember variable
-    if (basenameCount.count(name) == 0) {
-        basenameCount.emplace(name, 0);
-    }
     variables.insert(sym);
     variableNameLookup.emplace(name, sym);
+    return sym;
+}
 
+BoolVar VariableManager::addBoolVariable(string name) {
+    std::lock_guard guard(mutex);
+    toLower(name);
+    auto sym = BoolVar(name);
+    boolVariables.insert(sym);
+    boolVariableNameLookup.emplace(name, sym);
     return sym;
 }
 
 string VariableManager::getFreshName(string basename) {
     std::lock_guard guard(mutex);
     toLower(basename);
-    if (basenameCount.count(basename) == 0) {
+    std::string res;
+    if (basenameCount.find(basename) == basenameCount.end()) {
         basenameCount.emplace(basename, 0);
-        return basename;
+        res = basename;
     } else {
         unsigned int count = basenameCount.at(basename);
-        std::string res = basename + to_string(count);
-        while (variableNameLookup.count(res) != 0) {
+        res = basename + to_string(count);
+        while (used.find(res) != used.end()) {
             ++count;
             res = basename + to_string(count);
         }
         basenameCount[basename] = count + 1;
-        return res;
     }
-}
-
-const VarSet &VariableManager::getTempVars() const {
-    std::lock_guard guard(mutex);
-    return temporaryVariables;
+    used.insert(res);
+    return res;
 }
 
 VarSet VariableManager::getVars() const {
@@ -94,11 +117,27 @@ VarSet VariableManager::getVars() const {
     return variables;
 }
 
+BoolVarSet VariableManager::getBoolVars() const {
+    std::lock_guard guard(mutex);
+    return boolVariables;
+}
+
 option<Var> VariableManager::getVar(std::string name) const {
     std::lock_guard guard(mutex);
     toLower(name);
     auto it = variableNameLookup.find(name);
     if (it == variableNameLookup.end()) {
+        return {};
+    } else {
+        return it->second;
+    }
+}
+
+option<BoolVar> VariableManager::getBoolVar(std::string name) const {
+    std::lock_guard guard(mutex);
+    toLower(name);
+    auto it = boolVariableNameLookup.find(name);
+    if (it == boolVariableNameLookup.end()) {
         return {};
     } else {
         return it->second;

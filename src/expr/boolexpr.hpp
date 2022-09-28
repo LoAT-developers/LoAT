@@ -49,7 +49,9 @@ public:
     virtual ~BoolExpression();
     RelSet lits() const;
     virtual RelSet universallyValidLits() const = 0;
+    void findConsequences(const BoolVar &var, BoolExprSet &res) const;
     VarSet vars() const;
+    BoolVarSet boolVars() const;
     std::vector<Guard> dnf() const;
     virtual bool isConjunction() const = 0;
     Guard conjunctionToGuard() const;

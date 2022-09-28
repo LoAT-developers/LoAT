@@ -65,6 +65,7 @@ namespace GuardToolbox {
      */
     Result<Rule> propagateEqualities(const ITSProblem &its, const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
 
+    Result<Rule> propagateBooleanEqualities(const ITSProblem &its, const Rule &rule);
 
     /**
      * Tries to replace inequalities using their transitive closure,

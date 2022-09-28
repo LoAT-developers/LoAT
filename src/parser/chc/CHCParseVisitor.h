@@ -37,12 +37,14 @@ enum Sort {
     Int, Bool
 };
 
+using some_var = std::variant<Var, BoolVar>;
+
 struct FunApp {
 
     LocationIdx loc;
-    std::vector<Var> args;
+    std::vector<some_var> args;
 
-    FunApp(const LocationIdx loc, const std::vector<Var> args): loc(loc), args(args) {}
+    FunApp(const LocationIdx loc, const std::vector<some_var> args): loc(loc), args(args) {}
 
 };
 
@@ -61,33 +63,15 @@ struct Clause {
  */
 class  CHCParseVisitor : public CHCVisitor {
 
-    struct Context {
-        VarSet vars;
-        Subs arith;
-        std::map<std::string, BoolExpr> boolean;
-    };
-
-    enum Mode {
-        Default, BuildContext
-    };
-
-    std::vector<Context> context;
+    std::vector<Subs> context;
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;
     unsigned long maxArity = 0;
     LocationIdx sink;
-    Mode mode = Default;
 
-    LocationIdx loc(const std::string &name) {
-        auto it = locations.find(name);
-        if (it == locations.end()) {
-            auto idx = its.addNamedLocation(name);
-            locations[name] = idx;
-            return idx;
-        } else {
-            return it->second;
-        }
-    }
+    LocationIdx loc(const std::string &name);
+    BoolVar boolVar(const std::string &name);
+    Var var(const std::string &name);
 
 public:
 

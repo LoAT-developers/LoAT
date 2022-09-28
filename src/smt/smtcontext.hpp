@@ -82,20 +82,35 @@ public:
         return option<EXPR>{};
     }
 
+    option<EXPR> getConst(const BoolVar &symbol) const {
+        auto it = constMap.find(symbol);
+        if (it != constMap.end()) {
+            return it->second;
+        }
+        return option<EXPR>{};
+    }
+
     option<Var> getVariable(const std::string &name) const {
         auto it = nameMap.find(name);
-        if (it != nameMap.end() && varMap.count(it->second) > 0) {
+        if (it != nameMap.end() && varMap.find(it->second) != varMap.end()) {
             return it->second;
         }
         return {};
     }
 
     EXPR addNewVariable(const Var &symbol, Expr::Type type = Expr::Int) {
-        assert(varMap.count(symbol) == 0);
-        assert(nameMap.count(symbol.get_name()) == 0);
+        assert(varMap.find(symbol) == varMap.end());
+        assert(nameMap.find(symbol.get_name()) == nameMap.end());
         EXPR res = generateFreshVar(symbol.get_name(), type);
         varMap.emplace(symbol, res);
         nameMap.emplace(symbol.get_name(), symbol);
+        return res;
+    }
+
+    EXPR addNewConst(const BoolVar &symbol) {
+        assert(constMap.find(symbol) == constMap.end());
+        EXPR res = generateFreshConst(symbol.getName());
+        constMap.emplace(symbol, res);
         return res;
     }
 
@@ -105,18 +120,6 @@ public:
 
     BoolVarMap<EXPR> getConstMap() const {
         return constMap;
-    }
-
-    EXPR bConst(const BoolVar &var) {
-        const auto it = constMap.find(var);
-        option<EXPR> res;
-        if (it == constMap.end()) {
-            res = buildConst(var);
-            constMap.emplace(var, res.get());
-        } else {
-            res = it->second;
-        }
-        return *res;
     }
 
     virtual ~SmtContext() {}
@@ -144,8 +147,12 @@ protected:
         return buildVar(generateFreshVarName(basename), type);
     }
 
-    virtual EXPR buildVar(const std::string &basename, Expr::Type type) = 0;
-    virtual EXPR buildConst(const BoolVar &var) = 0;
+    EXPR generateFreshConst(const std::string &basename) {
+        return buildConst(generateFreshVarName(basename));
+    }
+
+    virtual EXPR buildVar(const std::string &name, Expr::Type type) = 0;
+    virtual EXPR buildConst(const std::string &name) = 0;
 
 protected:
     VarMap<EXPR> varMap;

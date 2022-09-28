@@ -4,7 +4,7 @@
 #include <variant>
 #include <algorithm>
 
-using var_type = std::variant<std::string, Expr, BoolExpr>;
+using var_type = std::variant<Expr, BoolExpr>;
 using expr_type = Res<Expr>;
 using formula_type = Res<BoolExpr>;
 using let_type = BoolExpr;
@@ -24,6 +24,17 @@ using var_or_atom_type = std::variant<BoolExpr, FunApp>;
 using boolop_type = BoolOp;
 using sort_type = Sort;
 
+LocationIdx CHCParseVisitor::loc(const std::string &name) {
+    auto it = locations.find(name);
+    if (it == locations.end()) {
+        auto idx = its.addNamedLocation(name);
+        locations[name] = idx;
+        return idx;
+    } else {
+        return it->second;
+    }
+}
+
 antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     its.setInitialLocation(its.addNamedLocation("LoAT_init"));
     sink = its.addNamedLocation("LoAT_sink");
@@ -39,29 +50,53 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         clauses.push_back(any_cast<query_type>(visit(c)));
     }
     std::vector<Var> vars;
+    std::vector<BoolVar> bvars;
     for (unsigned i = 0; i < maxArity; ++i) {
         vars.emplace_back(its.addFreshVariable("x" + std::to_string(i)));
+        bvars.emplace_back(its.addFreshBoolVariable("b" + std::to_string(i)));
     }
     for (const Clause &c: clauses) {
-        ExprSubs ren;
+        Subs ren;
         for (unsigned i = 0; i < c.lhs.args.size(); ++i) {
-            ren.put(c.lhs.args[i], vars[i]);
+            if (std::holds_alternative<Var>(c.lhs.args[i])) {
+                ren.put(std::get<Var>(c.lhs.args[i]), vars[i]);
+            } else {
+                ren.put(std::get<BoolVar>(c.lhs.args[i]), buildLit(bvars[i]));
+            }
         }
-        VarSet cVars{c.rhs.args.begin(), c.rhs.args.end()};
+        VarSet cVars;
+        BoolVarSet cbVars;
+        for (const auto &var: c.rhs.args) {
+            if (std::holds_alternative<Var>(var)) {
+                cVars.insert(std::get<Var>(var));
+            } else {
+                cbVars.insert(std::get<BoolVar>(var));
+            }
+        }
         c.guard->collectVars(cVars);
-        for (const Var &x: cVars) {
-            if (ren.find(x) == ren.end()) {
+        c.guard->collectBoolVars(cbVars);
+        for (const auto &x: cVars) {
+            if (!ren.changes(x)) {
                 ren.put(x, its.addFreshTemporaryVariable(x.get_name()));
+            }
+        }
+        for (const auto &x: cbVars) {
+            if (!ren.changes(x)) {
+                ren.put(x, buildLit(its.addFreshTemporaryBoolVariable(x.getName())));
             }
         }
         Subs up;
         for (unsigned i = 0; i < c.rhs.args.size(); ++i) {
-            up.put(vars[i], Expr(c.rhs.args[i]).subs(ren));
+            if (std::holds_alternative<Var>(c.rhs.args[i])) {
+                up.put(vars[i], ren.get(std::get<Var>(c.rhs.args[i])));
+            } else {
+                up.put(bvars[i], ren.get(std::get<BoolVar>(c.rhs.args[i])));
+            }
         }
         for (unsigned i = c.rhs.args.size(); i < maxArity; ++i) {
             up.put(vars[i], its.addFreshTemporaryVariable("tmp"));
         }
-        const BoolExpr guard = c.guard->subs(ren);
+        const BoolExpr guard = ren(c.guard);
         const option<BoolExpr> simplified = guard->simplify();
         its.addRule(Rule(c.lhs.loc, simplified ? *simplified : guard, 1, c.rhs.loc, up));
     }
@@ -92,6 +127,9 @@ antlrcpp::Any CHCParseVisitor::visitChc_assert(CHCParser::Chc_assertContext *ctx
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headContext *ctx) {
+    for (const auto &c: ctx->var_decl()) {
+        visit(c);
+    }
     return {};
 }
 
@@ -126,14 +164,25 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) {
+    for (const auto &c: ctx->var_decl()) {
+        visit(c);
+    }
     const auto lhs = any_cast<tail_type>(visit(ctx->chc_tail()));
     return Clause(lhs.first, FunApp(sink, {}), lhs.second);
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
     const auto sort = any_cast<sort_type>(visit(ctx->sort()));
-    const auto res = any_cast<var_type>(visit(ctx->var()));
-    return std::get<Expr>(res);
+    const auto name = ctx->var()->getText();
+    switch (sort) {
+    case Bool:
+        boolVar(name);
+        break;
+    case Int:
+        var(name);
+        break;
+    }
+    return {};
 }
 
 antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *ctx) {
@@ -142,10 +191,14 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
     if (!loc) {
         throw ParseError("undeclared function symbol " + name);
     }
-    std::vector<Var> args;
+    std::vector<some_var> args;
     for (const auto &c: ctx->var()) {
         const auto res = any_cast<var_type>(visit(c));
-        args.push_back(std::get<Expr>(res).someVar());
+        if (std::holds_alternative<Expr>(res)) {
+            args.push_back(std::get<Expr>(res).toVar());
+        } else {
+            args.push_back(std::get<BoolExpr>(res)->getLit()->getBoolVar());
+        }
     }
     return FunApp(*loc, args);
 }
@@ -212,24 +265,37 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
     return res;
 }
 
+BoolVar CHCParseVisitor::boolVar(const std::string &name) {
+    auto var = its.getBoolVar(name);
+    if (!var) {
+        var = its.getFreshUntrackedBoolSymbol(name);
+    }
+    return *var;
+}
+
+Var CHCParseVisitor::var(const std::string &name) {
+    auto var = its.getVar(name);
+    if (!var) {
+        var = its.getFreshUntrackedSymbol(name, Expr::Int);
+    }
+    return *var;
+}
+
 antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
+    const auto name = ctx->var()->getText();
     if (ctx->i_formula()) {
-        const std::string name = ctx->var()->getText();
         const auto res = any_cast<formula_type>(visit(ctx->i_formula()));
-        context[context.size() - 1].boolean[name] = res.t;
+        context[context.size() - 1].put(boolVar(name), res.t);
         return res.refinement;
     } else {
-        mode = BuildContext;
-        const auto var = any_cast<var_type>(visit(ctx->var()));
-        mode = Default;
         const auto res = any_cast<expr_type>(visit(ctx->expr()));
-        context[context.size() - 1].arith.put(std::get<Expr>(var).someVar(),  res.t);
+        context[context.size() - 1].put(var(name),  res.t);
         return res.refinement;
     }
 }
 
 antlrcpp::Any CHCParseVisitor::visitLets(CHCParser::LetsContext *ctx) {
-    context.push_back(Context());
+    context.push_back(Subs());
     BoolExpr refinement = True;
     for (const auto &c: ctx->let()) {
         const auto r = any_cast<let_type>(visit(c));
@@ -412,25 +478,25 @@ antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *c
 
 antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
     const std::string name = unescape(ctx->getText());
-    if (mode == Default) {
+    const option<Var> theoryRes = its.getVar(name);
+    if (theoryRes) {
         for (int i = context.size() - 1; i >= 0; --i) {
-            const auto it = context[i].boolean.find(name);
-            if (it != context[i].boolean.end()) {
+            const auto it = context[i].find(*theoryRes);
+            if (it != context[i].getExprSubs().end()) {
                 return var_type(it->second);
             }
         }
+        return var_type(*theoryRes);
     }
-    const option<Var> res = its.getVar(name);
-    if (res) {
-        if (mode == Default) {
-            for (int i = context.size() - 1; i >= 0; --i) {
-                const auto it = context[i].arith.find(*res);
-                if (it != context[i].arith.getExprSubs().end()) {
-                    return var_type(it->second);
-                }
+    const option<BoolVar> boolRes = its.getBoolVar(name);
+    if (boolRes) {
+        for (int i = context.size() - 1; i >= 0; --i) {
+            const auto it = context[i].find(*boolRes);
+            if (it != context[i].getBoolSubs().end()) {
+                return var_type(it->second);
             }
         }
-        return var_type(*res);
+        return var_type(buildLit(*boolRes));
     }
-    return var_type(name);
+    throw IllegalStateError("unknown variable " + name);
 }

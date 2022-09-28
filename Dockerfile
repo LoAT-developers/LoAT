@@ -1,7 +1,7 @@
 FROM voidlinux/voidlinux-musl:latest as loat_build
 LABEL author="Florian Frohn"
 
-ARG CACHEBUST=0
+ARG CACHEBUST=1
 
 RUN xbps-install -ySu xbps
 RUN xbps-install -yS
@@ -101,11 +101,11 @@ RUN make install
 
 # ginac
 WORKDIR /src
-RUN wget https://www.ginac.de/ginac-1.8.3.tar.bz2
-RUN tar xf ginac-1.8.3.tar.bz2
-WORKDIR /src/ginac-1.8.3
+RUN wget https://www.ginac.de/ginac-1.8.4.tar.bz2
+RUN tar xf ginac-1.8.4.tar.bz2
+WORKDIR /src/ginac-1.8.4
 RUN mkdir build
-WORKDIR /src/ginac-1.8.3/build
+WORKDIR /src/ginac-1.8.4/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
@@ -135,9 +135,10 @@ RUN xbps-install -y apache-maven
 WORKDIR /src
 RUN git clone https://github.com/antlr/antlr4.git
 WORKDIR /src/antlr4
-RUN git checkout 4.7.2
+RUN git checkout 4.11.1
+RUN mkdir /src/antlr4/runtime/Cpp/build
 WORKDIR /src/antlr4/runtime/Cpp/build
-RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG"
+RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR="/usr/local/lib" -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG"
 RUN make -j
 RUN make install
 
