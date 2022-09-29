@@ -389,111 +389,35 @@ private:
 
 };
 
-template<class Key, class Key_is_less>
-class KeyToExprMap {
+class ExprSubs {
+
     friend class Expr;
 
 public:
 
-    using const_iterator = typename std::map<Key, Expr, Key_is_less>::const_iterator;
-
-    KeyToExprMap() {}
-
-    virtual ~KeyToExprMap() {}
-
-    Expr get(const Key &key) const {
-        return map.at(key);
-    }
-
-    void put(const Key &key, const Expr &val) {
-        map[key] = val;
-        putGinac(key, val);
-    }
-
-    const_iterator begin() const {
-        return map.begin();
-    }
-
-    const_iterator end() const {
-        return map.end();
-    }
-
-    const_iterator find(const Key &e) const {
-        return map.find(e);
-    }
-
-    bool contains(const Key &e) const {
-        return map.find(e) != map.end();
-    }
-
-    bool empty() const {
-        return map.empty();
-    }
-
-    unsigned int size() const {
-        return map.size();
-    }
-
-    size_t erase(const Key &key) {
-        eraseGinac(key);
-        return map.erase(key);
-    }
-
-protected:
-    std::map<GiNaC::ex, GiNaC::ex, GiNaC::ex_is_less> ginacMap;
-    void virtual putGinac(const Key &key, const Expr &val) = 0;
-    void virtual eraseGinac(const Key &key) = 0;
-
-private:
-    std::map<Key, Expr, Key_is_less> map;
-
-};
-
-template<class S, class T> bool operator<(const KeyToExprMap<S, T> &x, const KeyToExprMap<S, T> &y) {
-    auto it1 = x.begin();
-    auto it2 = y.begin();
-    while (it1 != x.end() && it2 != y.end()) {
-        int fst = it1->first.compare(it2->first);
-        if (fst != 0) {
-            return fst < 0;
-        }
-        int snd = it1->second.compare(it2->second);
-        if (snd != 0) {
-            return snd < 0;
-        }
-        ++it1;
-        ++it2;
-    }
-    return it1 == x.end() && it2 != y.end();
-}
-
-template<class S, class T> std::ostream& operator<<(std::ostream &s, const KeyToExprMap<S, T> &map) {
-    if (map.empty()) {
-        s << "{}";
-    } else {
-        s << "{";
-        bool fst = true;
-        for (const auto &p: map) {
-            if (!fst) {
-                s << ", ";
-            } else {
-                fst = false;
-            }
-            s << p.first << ": " << p.second;
-        }
-    }
-    return s << "}";
-}
-
-class ExprSubs: public KeyToExprMap<Var, Var_is_less> {
-
-public:
-
-    using const_iterator = typename KeyToExprMap<Var, Var_is_less>::const_iterator;
+    using const_iterator = typename VarMap<Expr>::const_iterator;
 
     ExprSubs();
 
     ExprSubs(const Var &key, const Expr &val);
+
+    Expr get(const Var &key) const;
+
+    void put(const Var &key, const Expr &val);
+
+    const_iterator begin() const;
+
+    const_iterator end() const;
+
+    const_iterator find(const Var &e) const;
+
+    bool contains(const Var &e) const;
+
+    bool empty() const;
+
+    unsigned int size() const;
+
+    size_t erase(const Var &key);
 
     ExprSubs compose(const ExprSubs &that) const;
 
@@ -526,22 +450,15 @@ public:
     int compare(const ExprSubs &that) const;
 
 private:
-    void putGinac(const Var &key, const Expr &val) override;
-    void eraseGinac(const Var &key) override;
-
-};
-
-class ExprMap: public KeyToExprMap<Expr, Expr_is_less> {
-
-public:
-    ExprMap();
-
-    ExprMap(const Expr &key, const Expr &val);
-
-private:
-    void putGinac(const Expr &key, const Expr &val) override;
-    void eraseGinac(const Expr &key) override;
+    void putGinac(const Var &key, const Expr &val);
+    void eraseGinac(const Var &key);
+    GiNaC::exmap ginacMap;
+    VarMap<Expr> map;
 
 };
 
 bool operator==(const ExprSubs &m1, const ExprSubs &m2);
+
+std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
+
+bool operator<(const ExprSubs &x, const ExprSubs &y);

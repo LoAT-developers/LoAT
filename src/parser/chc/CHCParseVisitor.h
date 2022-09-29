@@ -66,6 +66,8 @@ class  CHCParseVisitor : public CHCVisitor {
     std::vector<Subs> context;
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;
+    std::map<std::string, Var> vars;
+    std::map<std::string, BoolVar> bvars;
     unsigned long maxArity = 0;
     LocationIdx sink;
 

@@ -7,7 +7,6 @@ target_sources(${EXECUTABLE}
         smt.cpp
         smtcontext.hpp
         exprtosmt.hpp
-        smttoexpr.hpp
         smtfactory.cpp
         smtfactory.hpp
         model.cpp

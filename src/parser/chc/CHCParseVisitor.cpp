@@ -74,7 +74,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             }
         }
         c.guard->collectVars(cVars);
-        c.guard->collectBoolVars(cbVars);
+        c.guard->collectVars(cbVars);
         for (const auto &x: cVars) {
             if (!ren.changes(x)) {
                 ren.put(x, its.addFreshTemporaryVariable(x.get_name()));
@@ -95,6 +95,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         }
         for (unsigned i = c.rhs.args.size(); i < maxArity; ++i) {
             up.put(vars[i], its.addFreshTemporaryVariable("tmp"));
+            up.put(bvars[i], buildLit(its.addFreshTemporaryBoolVariable("tmp")));
         }
         const BoolExpr guard = ren(c.guard);
         const option<BoolExpr> simplified = guard->simplify();
@@ -123,6 +124,7 @@ antlrcpp::Any CHCParseVisitor::visitFun_decl(CHCParser::Fun_declContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert(CHCParser::Chc_assertContext *ctx) {
+    visit(ctx->chc_assert_head());
     return visit(ctx->chc_assert_body());
 }
 
@@ -266,19 +268,25 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
 }
 
 BoolVar CHCParseVisitor::boolVar(const std::string &name) {
-    auto var = its.getBoolVar(name);
-    if (!var) {
-        var = its.getFreshUntrackedBoolSymbol(name);
+    const auto it = bvars.find(name);
+    if (it == bvars.end()) {
+        const auto var = its.getFreshUntrackedBoolSymbol(name);
+        bvars.emplace(name, var);
+        return var;
+    } else {
+        return it->second;
     }
-    return *var;
 }
 
 Var CHCParseVisitor::var(const std::string &name) {
-    auto var = its.getVar(name);
-    if (!var) {
-        var = its.getFreshUntrackedSymbol(name, Expr::Int);
+    const auto it = vars.find(name);
+    if (it == vars.end()) {
+        const auto var = its.getFreshUntrackedSymbol(name, Expr::Int);
+        vars.emplace(name, var);
+        return var;
+    } else {
+        return it->second;
     }
-    return *var;
 }
 
 antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
@@ -451,9 +459,9 @@ antlrcpp::Any CHCParseVisitor::visitSymbol(CHCParser::SymbolContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
-    if (ctx->BOOL()) {
+    if (ctx->BOOL_SORT()) {
         return Bool;
-    } else if (ctx->getText() != "Int") {
+    } else if (ctx->INT_SORT()) {
         return Int;
     } else {
         throw ParseError("unsupported sort: " + ctx->getText());
@@ -478,25 +486,13 @@ antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *c
 
 antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
     const std::string name = unescape(ctx->getText());
-    const option<Var> theoryRes = its.getVar(name);
-    if (theoryRes) {
-        for (int i = context.size() - 1; i >= 0; --i) {
-            const auto it = context[i].find(*theoryRes);
-            if (it != context[i].getExprSubs().end()) {
-                return var_type(it->second);
-            }
-        }
-        return var_type(*theoryRes);
+    const auto theoryRes = vars.find(name);
+    if (theoryRes != vars.end()) {
+        return var_type(theoryRes->second);
     }
-    const option<BoolVar> boolRes = its.getBoolVar(name);
-    if (boolRes) {
-        for (int i = context.size() - 1; i >= 0; --i) {
-            const auto it = context[i].find(*boolRes);
-            if (it != context[i].getBoolSubs().end()) {
-                return var_type(it->second);
-            }
-        }
-        return var_type(buildLit(*boolRes));
+    const auto boolRes = bvars.find(name);
+    if (boolRes != bvars.end()) {
+        return var_type(buildLit(boolRes->second));
     }
     throw IllegalStateError("unknown variable " + name);
 }

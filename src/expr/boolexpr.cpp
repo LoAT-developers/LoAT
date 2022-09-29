@@ -53,7 +53,7 @@ VarSet BoolExpression::vars() const {
 
 BoolVarSet BoolExpression::boolVars() const {
     BoolVarSet res;
-    collectBoolVars(res);
+    collectVars(res);
     return res;
 }
 
@@ -144,7 +144,7 @@ void BoolTheoryLit::collectVars(VarSet &res) const {
     res.insert(litVars.begin(), litVars.end());
 }
 
-void BoolTheoryLit::collectBoolVars(BoolVarSet &res) const {}
+void BoolTheoryLit::collectVars(BoolVarSet &res) const {}
 
 BoolExpr BoolTheoryLit::replaceRels(const RelMap<BoolExpr> map) const {
     if (map.find(lit) != map.end()) {
@@ -300,7 +300,7 @@ BoolVar BoolLit::getBoolVar() const {
     return var;
 }
 
-void BoolLit::collectBoolVars(BoolVarSet &res) const {
+void BoolLit::collectVars(BoolVarSet &res) const {
     res.insert(this->getBoolVar());
 }
 
@@ -483,9 +483,9 @@ void BoolJunction::collectVars(VarSet &res) const {
     }
 }
 
-void BoolJunction::collectBoolVars(BoolVarSet &res) const {
+void BoolJunction::collectVars(BoolVarSet &res) const {
     for (const BoolExpr &c: children) {
-        c->collectBoolVars(res);
+        c->collectVars(res);
     }
 }
 

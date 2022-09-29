@@ -9,7 +9,8 @@ void BoolSubs::put(const BoolVar &key, const BoolExpr &val) {
 }
 
 BoolExpr BoolSubs::get(const BoolVar &var) const {
-    return map.at(var);
+    const auto it = map.find(var);
+    return it == map.end() ? buildLit(var) : it->second;
 }
 
 bool BoolSubs::contains(const BoolVar &var) const {
@@ -100,14 +101,14 @@ void BoolSubs::collectDomain(BoolVarSet &vars) const {
 
 void BoolSubs::collectCoDomainVars(BoolVarSet &vars) const {
     for (const auto &p: map) {
-        p.second->collectBoolVars(vars);
+        p.second->collectVars(vars);
     }
 }
 
 void BoolSubs::collectVars(BoolVarSet &vars) const {
     for (const auto &p: map) {
         vars.insert(p.first);
-        p.second->collectBoolVars(vars);
+        p.second->collectVars(vars);
     }
 }
 
@@ -159,6 +160,7 @@ std::ostream& operator<<(std::ostream &s, const BoolSubs &e) {
         return s << "{}";
     } else {
         bool first = true;
+        s << "{";
         for (const auto &p: e) {
             if (first) {
                 first = false;
@@ -167,7 +169,7 @@ std::ostream& operator<<(std::ostream &s, const BoolSubs &e) {
             }
             s << p.first << " -> " << p.second;
         }
-        return s;
+        return s << "}";
     }
 }
 

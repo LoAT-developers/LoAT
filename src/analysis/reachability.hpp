@@ -48,6 +48,7 @@ class Reachability {
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked{{}};
     std::vector<std::pair<Automaton, BoolExpr>> covered;
     VarSet prog_vars;
+    BoolVarSet bool_prog_vars;
     TransIdx lastOrigRule = 0;
 
     std::map<TransIdx, Automaton> regexes;

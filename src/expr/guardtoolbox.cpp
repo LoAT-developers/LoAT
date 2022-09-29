@@ -174,14 +174,14 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
 
 Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, const Rule &rule) {
     auto hasTempVars = [&](const auto e) {
-        for (const auto x: e->boolVars()) {
+        for (const auto &x: e->boolVars()) {
             if (its.isTempVar(x)) {
                 return true;
             }
         }
         return false;
     };
-    Result<Rule> res(rule);
+    ResultViaSideEffects proof;
     auto guard = rule.getGuard();
     auto bvars = guard->boolVars();
     bool changed;
@@ -199,8 +199,8 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
                             guard = Subs(var, c)(guard);
                             it = bvars.erase(it);
                             changed = true;
-                            res.append(std::stringstream() << "replaced " << var << " with " << c);
-                            res.succeed();
+                            proof.append(std::stringstream() << "replaced " << var << " with " << c);
+                            proof.succeed();
                         }
                     }
                 }
@@ -212,8 +212,11 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
             }
         }
     } while (changed);
-    if (res) {
-        res.set(rule.withGuard(guard));
+    Result<Rule> res(rule);
+    if (proof) {
+        res = rule.withGuard(guard);
+        res.ruleTransformationProof(rule, "propagated boolean equalities", res.get(), its);
+        res.storeSubProof(proof.getProof());
     }
     return res;
 }

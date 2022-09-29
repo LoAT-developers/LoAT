@@ -616,10 +616,49 @@ std::ostream& operator<<(std::ostream &s, const T e) {
 
 }
 
-ExprSubs::ExprSubs(): KeyToExprMap<Var, Var_is_less>() {}
+ExprSubs::ExprSubs() {}
 
 ExprSubs::ExprSubs(const Var &key, const Expr &val) {
     put(key, val);
+}
+
+Expr ExprSubs::get(const Var &key) const {
+    const auto it = map.find(key);
+    return it == map.end() ? key : it->second;
+}
+
+void ExprSubs::put(const Var &key, const Expr &val) {
+    map[key] = val;
+    putGinac(key, val);
+}
+
+ExprSubs::const_iterator ExprSubs::begin() const {
+    return map.begin();
+}
+
+ExprSubs::const_iterator ExprSubs::end() const {
+    return map.end();
+}
+
+ExprSubs::const_iterator ExprSubs::find(const Var &e) const {
+    return map.find(e);
+}
+
+bool ExprSubs::contains(const Var &e) const {
+    return map.find(e) != map.end();
+}
+
+bool ExprSubs::empty() const {
+    return map.empty();
+}
+
+unsigned int ExprSubs::size() const {
+    return map.size();
+}
+
+size_t ExprSubs::erase(const Var &key) {
+    eraseGinac(key);
+    return map.erase(key);
 }
 
 ExprSubs ExprSubs::compose(const ExprSubs &that) const {
@@ -733,20 +772,6 @@ int ExprSubs::compare(const ExprSubs &that) const {
     else return 1;
 }
 
-ExprMap::ExprMap(): KeyToExprMap<Expr, Expr_is_less>() {}
-
-ExprMap::ExprMap(const Expr &key, const Expr &val) {
-    put(key, val);
-}
-
-void ExprMap::putGinac(const Expr &key, const Expr &val) {
-    ginacMap[key.ex] = val.ex;
-}
-
-void ExprMap::eraseGinac(const Expr &key) {
-    ginacMap.erase(key.ex);
-}
-
 bool operator==(const ExprSubs &m1, const ExprSubs &m2) {
     if (m1.size() != m2.size()) {
         return false;
@@ -760,4 +785,40 @@ bool operator==(const ExprSubs &m1, const ExprSubs &m2) {
         ++it2;
     }
     return it1 == m1.end() && it2 == m2.end();
+}
+
+std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
+    if (map.empty()) {
+        s << "{}";
+    } else {
+        s << "{";
+        bool fst = true;
+        for (const auto &p: map) {
+            if (!fst) {
+                s << ", ";
+            } else {
+                fst = false;
+            }
+            s << p.first << ": " << p.second;
+        }
+    }
+    return s << "}";
+}
+
+bool operator<(const ExprSubs &x, const ExprSubs &y) {
+    auto it1 = x.begin();
+    auto it2 = y.begin();
+    while (it1 != x.end() && it2 != y.end()) {
+        int fst = it1->first.compare(it2->first);
+        if (fst != 0) {
+            return fst < 0;
+        }
+        int snd = it1->second.compare(it2->second);
+        if (snd != 0) {
+            return snd < 0;
+        }
+        ++it1;
+        ++it2;
+    }
+    return it1 == x.end() && it2 != y.end();
 }

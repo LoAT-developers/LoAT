@@ -12,11 +12,11 @@
 class  CHCParser : public antlr4::Parser {
 public:
   enum {
-    LOGIC = 1, ASSERT = 2, CHECK_SAT = 3, EXIT = 4, DECLARE_FUN = 5, BOOL = 6, 
-    FORALL = 7, LET = 8, IMPLIES = 9, FALSE = 10, TRUE = 11, PLUS = 12, 
-    MINUS = 13, TIMES = 14, MOD = 15, DIV = 16, LPAR = 17, RPAR = 18, AND = 19, 
-    OR = 20, NOT = 21, ITE = 22, LT = 23, LEQ = 24, EQ = 25, NEQ = 26, GEQ = 27, 
-    GT = 28, ID = 29, INT = 30, WS = 31, COMMENT = 32, OTHER = 33
+    LOGIC = 1, ASSERT = 2, CHECK_SAT = 3, EXIT = 4, DECLARE_FUN = 5, BOOL_SORT = 6, 
+    INT_SORT = 7, FORALL = 8, LET = 9, IMPLIES = 10, FALSE = 11, TRUE = 12, 
+    PLUS = 13, MINUS = 14, TIMES = 15, MOD = 16, DIV = 17, LPAR = 18, RPAR = 19, 
+    AND = 20, OR = 21, NOT = 22, ITE = 23, LT = 24, LEQ = 25, EQ = 26, NEQ = 27, 
+    GEQ = 28, GT = 29, ID = 30, INT = 31, WS = 32, COMMENT = 33, OTHER = 34
   };
 
   enum {
@@ -109,7 +109,7 @@ public:
     SymbolContext *symbol();
     std::vector<antlr4::tree::TerminalNode *> RPAR();
     antlr4::tree::TerminalNode* RPAR(size_t i);
-    antlr4::tree::TerminalNode *BOOL();
+    antlr4::tree::TerminalNode *BOOL_SORT();
     std::vector<SortContext *> sort();
     SortContext* sort(size_t i);
 
@@ -505,8 +505,8 @@ public:
   public:
     SortContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *ID();
-    antlr4::tree::TerminalNode *BOOL();
+    antlr4::tree::TerminalNode *INT_SORT();
+    antlr4::tree::TerminalNode *BOOL_SORT();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;

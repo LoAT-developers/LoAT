@@ -43,7 +43,13 @@ Model Z3::model() {
     }
     BoolVarMap<bool> constants;
     for (const auto &p: ctx.getConstMap()) {
-        constants[p.first] = m.eval(p.second).bool_value();
+        switch (m.eval(p.second).bool_value()) {
+        case Z3_L_FALSE: constants[p.first] = false;
+            break;
+        case Z3_L_TRUE: constants[p.first] = true;
+            break;
+        default: break;
+        }
     }
     return Model(vars, constants);
 }

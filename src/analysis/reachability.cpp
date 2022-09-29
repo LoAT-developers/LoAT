@@ -240,13 +240,25 @@ void Reachability::handle_update(const TransIdx idx) {
     Subs newSigma;
     const Subs up = r.getUpdate(0);
     for (const auto &var: prog_vars) {
-        const Var x = its.getFreshUntrackedSymbol(var.get_name(), Expr::Int);
-        z3.add(buildTheoryLit(Rel::buildEq(x, oldSigma(up(var)))));
+        const auto x = its.getFreshUntrackedSymbol(var.get_name(), Expr::Int);
+        z3.add(buildTheoryLit(Rel::buildEq(x, oldSigma(up.get(var)))));
         newSigma.put(var, x);
+    }
+    for (const auto &var: bool_prog_vars) {
+        const auto x = its.getFreshUntrackedBoolSymbol(var.getName());
+        const auto lhs = buildLit(x);
+        const auto rhs = oldSigma(up.get(var));
+        z3.add((lhs & rhs) | ((!lhs) & (!rhs)));
+        newSigma.put(var, lhs);
     }
     for (const auto &var: r.vars()) {
         if (its.isTempVar(var)) {
             newSigma.put(var, its.getFreshUntrackedSymbol(var.get_name(), Expr::Int));
+        }
+    }
+    for (const auto &var: r.bvars()) {
+        if (its.isTempVar(var)) {
+            newSigma.put(var, buildLit(its.getFreshUntrackedBoolSymbol(var.getName())));
         }
     }
     sigmas.push_back(newSigma);
@@ -304,9 +316,13 @@ void Reachability::print_run(std::ostream &s) {
     auto it = sigmas.begin();
     const Subs model = z3.model().toSubs();
     for (const auto &step: trace) {
+        std::cout << (*it) << std::endl;
         s << " [";
         for (const auto &x: prog_vars) {
-            s << " " << x << "=" << model((*it)(x));
+            s << " " << x << "=" << model(it->get(x));
+        }
+        for (const auto &x: bool_prog_vars) {
+            s << " " << x << "=" << model(it->get(x));
         }
         ++it;
         s << " ] " << step.transition;
@@ -364,6 +380,12 @@ void Reachability::init() {
         if (!its.isTempVar(x)) {
             sigma.put(x, x);
             prog_vars.insert(x);
+        }
+    }
+    for (const auto &x: its.getBoolVars()) {
+        if (!its.isTempVar(x)) {
+            sigma.put(x, buildLit(x));
+            bool_prog_vars.insert(x);
         }
     }
     sigmas.push_back(sigma);

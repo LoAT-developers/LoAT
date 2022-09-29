@@ -8,7 +8,7 @@ main:              LPAR LOGIC RPAR
                    LPAR CHECK_SAT RPAR
                    (LPAR EXIT RPAR)?;
 
-fun_decl:          LPAR DECLARE_FUN symbol LPAR sort* RPAR BOOL RPAR;
+fun_decl:          LPAR DECLARE_FUN symbol LPAR sort* RPAR BOOL_SORT RPAR;
 
 chc_assert:        LPAR chc_assert_head chc_assert_body RPAR;
 chc_assert_head:   FORALL LPAR var_decl+ RPAR;
@@ -65,7 +65,7 @@ lit:               LPAR relop expr expr RPAR;
 relop:             LT | LEQ | EQ | GT | GEQ | NEQ;
 
 symbol:            ID;
-sort:              ID | BOOL;
+sort:              INT_SORT | BOOL_SORT;
 var:               ID;
 
 // lexer stuff
@@ -74,7 +74,8 @@ ASSERT:            'assert';
 CHECK_SAT:         'check-sat';
 EXIT:              'exit';
 DECLARE_FUN:       'declare-fun';
-BOOL:              'Bool';
+BOOL_SORT:         'Bool';
+INT_SORT:          'Int';
 FORALL:            'forall';
 LET:               'let';
 IMPLIES:           '=>';

@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef EXPRTOSMT_H
-#define EXPRTOSMT_H
+#pragma once
 
 #include "exceptions.hpp"
 #include "smtcontext.hpp"
@@ -183,5 +182,3 @@ private:
     SmtContext<EXPR> &context;
     const VariableManager &varMan;
 };
-
-#endif // ExprToSmt_H

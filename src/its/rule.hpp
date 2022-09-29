@@ -54,6 +54,10 @@ public:
         cost.collectVars(vars);
     }
 
+    void collectVars(BoolVarSet &vars) const {
+        guard->collectVars(vars);
+    }
+
     unsigned hash() const {
         unsigned hash = 7;
         hash = hash * 31 + loc;
@@ -170,6 +174,9 @@ public:
 
     VarSet vars() const;
     void collectVars(VarSet &vars) const;
+
+    BoolVarSet bvars() const;
+    void collectVars(BoolVarSet &vars) const;
 
     unsigned hash() const;
     bool approxEqual(const Rule &that, bool compareRhss) const;

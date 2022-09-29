@@ -58,7 +58,7 @@ public:
     virtual BoolExpr toG() const = 0;
     virtual void collectLits(RelSet &res) const = 0;
     virtual void collectVars(VarSet &res) const = 0;
-    virtual void collectBoolVars(BoolVarSet &res) const = 0;
+    virtual void collectVars(BoolVarSet &res) const = 0;
     virtual BoolExpr subs(const ExprSubs &subs) const = 0;
     virtual std::string toRedlog() const = 0;
     virtual size_t size() const = 0;
@@ -97,7 +97,7 @@ public:
     RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
-    void collectBoolVars(BoolVarSet &res) const override;
+    void collectVars(BoolVarSet &res) const override;
     BoolExpr subs(const ExprSubs &subs) const override;
     size_t size() const override;
     std::string toRedlog() const override;
@@ -137,7 +137,7 @@ public:
     RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
-    void collectBoolVars(BoolVarSet &res) const override;
+    void collectVars(BoolVarSet &res) const override;
     BoolExpr subs(const ExprSubs &subs) const override;
     size_t size() const override;
     std::string toRedlog() const override;
@@ -185,7 +185,7 @@ public:
     RelSet universallyValidLits() const override;
     void collectLits(RelSet &res) const override;
     void collectVars(VarSet &res) const override;
-    void collectBoolVars(BoolVarSet &res) const override;
+    void collectVars(BoolVarSet &res) const override;
     BoolExpr subs(const ExprSubs &subs) const override;
     size_t size() const override;
     std::string toRedlog() const override;

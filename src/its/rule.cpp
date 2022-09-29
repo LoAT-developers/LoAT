@@ -55,6 +55,19 @@ VarSet Rule::vars() const {
     return res;
 }
 
+void Rule::collectVars(BoolVarSet &vars) const {
+    lhs.collectVars(vars);
+    for (const RuleRhs &rhs: rhss) {
+        rhs.collectVars(vars);
+    }
+}
+
+BoolVarSet Rule::bvars() const {
+    BoolVarSet res;
+    collectVars(res);
+    return res;
+}
+
 LinearRule Rule::dummyRule(LocationIdx lhsLoc, LocationIdx rhsLoc) {
     return LinearRule(lhsLoc, {}, 0, rhsLoc, {});
 }
