@@ -2,14 +2,15 @@
 
 #include "boolvar.hpp"
 #include "boolexpr.hpp"
+#include "itheory.hpp"
 
 class BoolSubs {
 
-    BoolVarMap<BoolExpr> map;
+    std::map<BoolVar, BoolExpr> map;
 
 public:
 
-    using const_iterator = typename BoolVarMap<BoolExpr>::const_iterator;
+    using const_iterator = typename std::map<BoolVar, BoolExpr>::const_iterator;
 
     BoolSubs();
 
@@ -27,21 +28,21 @@ public:
 
     BoolSubs concat(const BoolSubs &that) const;
 
-    BoolSubs project(const BoolVarSet &vars) const;
+    BoolSubs project(const std::set<BoolVar> &vars) const;
 
     bool changes(const BoolVar &key) const;
 
-    BoolVarSet domain() const;
+    std::set<BoolVar> domain() const;
 
-    BoolVarSet coDomainVars() const;
+    std::set<BoolVar> coDomainVars() const;
 
-    BoolVarSet allVars() const;
+    std::set<BoolVar> allVars() const;
 
-    void collectDomain(BoolVarSet &vars) const;
+    void collectDomain(std::set<BoolVar> &vars) const;
 
-    void collectCoDomainVars(BoolVarSet &vars) const;
+    void collectCoDomainVars(VarSet &vars) const;
 
-    void collectVars(BoolVarSet &vars) const;
+    void collectVars(std::set<BoolVar> &vars) const;
 
     unsigned hash() const;
 
@@ -60,6 +61,11 @@ public:
     int compare(const BoolSubs& that) const;
 
     friend bool operator==(const BoolSubs &s1, const BoolSubs &s2);
+
+    bool isLinear() const;
+
+    bool isPoly() const;
+
 };
 
 std::ostream& operator<<(std::ostream &s, const BoolSubs &e);

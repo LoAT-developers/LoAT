@@ -5,6 +5,12 @@
 using RelSet = std::set<Rel>;
 template <class T> using RelMap = std::map<Rel, T>;
 
+struct Bounds {
+    ExprSet upperBounds;
+    ExprSet lowerBounds;
+    option<Expr> equality;
+};
+
 std::ostream& operator<<(std::ostream &s, const RelSet &set);
 
 class Rel {
@@ -20,29 +26,31 @@ public:
     Expr rhs() const;
     Rel expand() const;
     bool isPoly() const;
-    bool isLinear(const option<VarSet> &vars = option<VarSet>()) const;
+    bool isLinear(const option<std::set<NumVar>> &vars = option<std::set<NumVar>>()) const;
     bool isIneq() const;
     bool isEq() const;
     bool isNeq() const;
     bool isGZeroConstraint() const;
     bool isStrict() const;
     bool isOctagon() const;
+    void getBounds(const NumVar &n, Bounds &res) const;
 
     unsigned hash() const;
 
     /**
      * @return Moves all addends containing variables to the lhs and all other addends to the rhs, where the given parameters are consiedered to be constants.
      */
-    Rel splitVariableAndConstantAddends(const VarSet &params = VarSet()) const;
+    Rel splitVariableAndConstantAddends(const std::set<NumVar> &params = {}) const;
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
-    void collectVariables(VarSet &res) const;
+    void collectVariables(std::set<NumVar> &res) const;
     bool has(const Expr &pattern) const;
     Rel subs(const ExprSubs &map) const;
     void applySubs(const ExprSubs &subs);
     std::string toString() const;
+    std::string toRedlog() const;
     RelOp relOp() const;
-    VarSet vars() const;
+    std::set<NumVar> vars() const;
     int compare(const Rel& that) const;
 
     template <typename P>
@@ -60,6 +68,7 @@ public:
 
     Rel toL() const;
     Rel toG() const;
+    Rel normalize() const;
 
     static Rel buildEq(const Expr &x, const Expr &y);
     static Rel buildNeq(const Expr &x, const Expr &y);
@@ -88,18 +97,17 @@ private:
 
 };
 
-Rel operator<(const Var &x, const Expr &y);
-Rel operator<(const Expr &x, const Var &y);
-Rel operator<(const Var &x, const Var &y);
-Rel operator>(const Var &x, const Expr &y);
-Rel operator>(const Expr &x, const Var &y);
-Rel operator>(const Var &x, const Var &y);
-Rel operator<=(const Var &x, const Expr &y);
-Rel operator<=(const Expr &x, const Var &y);
-Rel operator<=(const Var &x, const Var &y);
-Rel operator>=(const Var &x, const Expr &y);
-Rel operator>=(const Expr &x, const Var &y);
-Rel operator>=(const Var &x, const Var &y);
+Rel operator<(const NumVar &x, const Expr &y);
+Rel operator<(const Expr &x, const NumVar &y);
+Rel operator>(const NumVar &x, const Expr &y);
+Rel operator>(const Expr &x, const NumVar &y);
+Rel operator>(const NumVar &x, const NumVar &y);
+Rel operator<=(const NumVar &x, const Expr &y);
+Rel operator<=(const Expr &x, const NumVar &y);
+Rel operator<=(const NumVar &x, const NumVar &y);
+Rel operator>=(const NumVar &x, const Expr &y);
+Rel operator>=(const Expr &x, const NumVar &y);
+Rel operator>=(const NumVar &x, const NumVar &y);
 
 template<class T>
 std::ostream& operator<<(std::ostream &s, const RelMap<T> &map) {

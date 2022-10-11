@@ -13,20 +13,12 @@ public:
 
     BoolVar(const std::string &name);
     std::string getName() const;
+    std::string get_name() const;
     size_t hash() const;
     bool equals(const BoolVar &that) const;
     int compare(const BoolVar &that) const;
 
 };
-
-struct BoolVar_is_less {
-    bool operator() (const BoolVar &lh, const BoolVar &rh) const;
-};
-
-using BoolVarSet = std::set<BoolVar, BoolVar_is_less>;
-
-template<class T>
-using BoolVarMap = std::map<BoolVar, T, BoolVar_is_less>;
 
 bool operator ==(const BoolVar &v1, const BoolVar &v2);
 

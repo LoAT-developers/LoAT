@@ -25,7 +25,6 @@
 #include "config.hpp"
 #include "timeout.hpp"
 #include "proof.hpp"
-#include "smt2export.hpp"
 #include "cintegerexport.hpp"
 #include "version.hpp"
 #include "reachability.hpp"
@@ -188,9 +187,6 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Analysis::Reachability:
         Reachability::analyze(its);
-        break;
-    case Config::Analysis::Smt2Export:
-        smt2Export::doExport(its);
         break;
     case Config::Analysis::CIntExport:
         c_integer_export::doExport(its);

@@ -235,7 +235,7 @@ void AsymptoticBound::removeUnsatProblems() {
 
 
 bool AsymptoticBound::solveViaSMT(Complexity currentRes) {
-    if (!Config::Limit::PolyStrategy->smtEnabled() || !currentLP.isPolynomial() || !trySmtEncoding(currentRes)) {
+    if (!Config::Limit::PolyStrategy->smtEnabled() || !currentLP.isPoly() || !trySmtEncoding(currentRes)) {
         return false;
     }
 
@@ -269,7 +269,7 @@ bool AsymptoticBound::solveLimitProblem() {
         }
 
         //if the problem is polynomial, try a (max)SMT encoding
-        if (Config::Limit::PolyStrategy->smtEnabled() && currentLP.isPolynomial()) {
+        if (Config::Limit::PolyStrategy->smtEnabled() && currentLP.isPoly()) {
             if (trySmtEncoding(Complexity::Const)) {
                 goto start;
             } else if (!Config::Limit::PolyStrategy->calculusEnabled()) {
@@ -796,7 +796,7 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
 
     asymptoticBound.createInitialLimitProblem(varMan);
     // first try the SMT encoding
-    bool polynomial = cost.isPoly() && asymptoticBound.currentLP.isPolynomial();
+    bool polynomial = cost.isPoly() && asymptoticBound.currentLP.isPoly();
     bool result = polynomial && asymptoticBound.solveViaSMT(currentRes);
     if (!result && (!polynomial || Config::Limit::PolyStrategy->calculusEnabled())) {
         // Otherwise perform limit calculus

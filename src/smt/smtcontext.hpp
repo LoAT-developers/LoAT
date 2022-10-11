@@ -82,14 +82,6 @@ public:
         return option<EXPR>{};
     }
 
-    option<EXPR> getConst(const BoolVar &symbol) const {
-        auto it = constMap.find(symbol);
-        if (it != constMap.end()) {
-            return it->second;
-        }
-        return option<EXPR>{};
-    }
-
     option<Var> getVariable(const std::string &name) const {
         auto it = nameMap.find(name);
         if (it != nameMap.end() && varMap.find(it->second) != varMap.end()) {
@@ -98,28 +90,17 @@ public:
         return {};
     }
 
-    EXPR addNewVariable(const Var &symbol, Expr::Type type = Expr::Int) {
+    EXPR addNewVariable(const Var &symbol, Expr::Type type) {
         assert(varMap.find(symbol) == varMap.end());
-        assert(nameMap.find(symbol.get_name()) == nameMap.end());
-        EXPR res = generateFreshVar(symbol.get_name(), type);
+        assert(nameMap.find(Th::getName(symbol)) == nameMap.end());
+        EXPR res = generateFreshVar(Th::getName(symbol), type);
         varMap.emplace(symbol, res);
-        nameMap.emplace(symbol.get_name(), symbol);
+        nameMap.emplace(Th::getName(symbol), symbol);
         return res;
     }
 
-    EXPR addNewConst(const BoolVar &symbol) {
-        assert(constMap.find(symbol) == constMap.end());
-        EXPR res = generateFreshConst(symbol.getName());
-        constMap.emplace(symbol, res);
-        return res;
-    }
-
-    VarMap<EXPR> getSymbolMap() const {
+    std::map<Var, EXPR> getSymbolMap() const {
         return varMap;
-    }
-
-    BoolVarMap<EXPR> getConstMap() const {
-        return constMap;
     }
 
     virtual ~SmtContext() {}
@@ -128,7 +109,6 @@ public:
         varMap.clear();
         nameMap.clear();
         usedNames.clear();
-        constMap.clear();
     }
 
 protected:
@@ -155,8 +135,7 @@ protected:
     virtual EXPR buildConst(const std::string &name) = 0;
 
 protected:
-    VarMap<EXPR> varMap;
+    std::map<Var, EXPR> varMap;
     std::map<std::string, Var> nameMap;
     std::map<std::string, int> usedNames;
-    BoolVarMap<EXPR> constMap;
 };

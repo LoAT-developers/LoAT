@@ -1,8 +1,6 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-        dependencyorder.hpp
-        recurrence.cpp
-        recurrence.hpp
+        itheory.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

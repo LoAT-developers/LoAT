@@ -20,6 +20,7 @@
 #include "rule.hpp"
 #include "variablemanager.hpp"
 #include "option.hpp"
+#include "expression.hpp"
 
 
 /**
@@ -36,7 +37,7 @@ public:
         Expr cost;
         ExprSubs update;
         unsigned int validityBound;
-        Var n;
+        NumVar n;
     };
 
     /**
@@ -58,7 +59,7 @@ private:
         const unsigned int validityBound;
     };
 
-    Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder);
+    Recurrence(VarMan &varMan, const std::vector<NumVar> &dependencyOrder);
 
     /**
      * Main implementation
@@ -83,7 +84,7 @@ private:
      * Tries to find a recurrence for the given single update.
      * Note that all variables occurring in update must have been solved before (and added to updatePreRecurrences).
      */
-    option<RecurrenceSolution> findUpdateRecurrence(const Expr &updateRhs, Var updateLhs, const VarMap<unsigned int> &validitybounds);
+    option<RecurrenceSolution> findUpdateRecurrence(const Expr &updateRhs, NumVar updateLhs, const std::map<NumVar, unsigned int> &validitybounds);
 
     static const option<RecurrenceSystemSolution> iterateUpdate(const VariableManager&, const Subs&);
 
@@ -95,12 +96,12 @@ private:
     /**
      * Purrs::Recurrence::n converted to a ginac expression, for convenience only
      */
-    const Var ginacN;
+    const NumVar ginacN;
 
     /**
      * Order in which recurrences for updated variables can be computed
      */
-    std::vector<Var> dependencyOrder;
+    std::vector<NumVar> dependencyOrder;
 
     /**
      * Substitution map, mapping variables to their recurrence equations

@@ -1,14 +1,13 @@
-#ifndef GUARD_HPP
-#define GUARD_HPP
+#pragma once
 
-#include "rel.hpp"
+#include "theory.hpp"
 
-class Guard : public std::vector<Rel> {
+class Guard : public std::vector<Lit> {
 public:
     // inherit constructors of base class
-    using std::vector<Rel>::vector;
+    using std::vector<Lit>::vector;
     void collectVariables(VarSet &res) const;
-    Guard subs(const ExprSubs &sigma) const;
+    Guard subs(const ThSubs &sigma) const;
 
     /**
      * Returns true iff all guard terms are relational without the use of !=
@@ -17,10 +16,8 @@ public:
     bool isLinear() const;
 
     friend Guard operator&(const Guard &fst, const Guard &snd);
-    friend Guard operator&(const Guard &fst, const Rel &snd);
+    friend Guard operator&(const Guard &fst, const Lit &snd);
 
 };
 
 std::ostream& operator<<(std::ostream &s, const Guard &l);
-
-#endif // GUARD_HPP

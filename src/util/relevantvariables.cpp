@@ -16,53 +16,61 @@
  */
 
 #include "relevantvariables.hpp"
+#include "theory.hpp"
 
 namespace util {
 
     const VarSet RelevantVariables::find(
             const Guard &constraints,
-            const std::vector<ExprSubs> &updates,
+            const std::vector<Subs> &updates,
             const BoolExpr guard) {
         VarSet varsOfInterest;
-        for (const Rel &rel: constraints) {
-            const VarSet &relVars = rel.vars();
-            varsOfInterest.insert(relVars.begin(), relVars.end());
+        for (const Lit &rel: constraints) {
+            varsOfInterest.insertAll(Th::vars(rel));
         }
         return find(varsOfInterest, updates, guard);
     }
 
-    const VarSet RelevantVariables::find(const VarSet &varsOfInterest, const std::vector<ExprSubs> &updates, const BoolExpr guard) {
-        VarSet res;
-        for (const Var &sym : varsOfInterest) {
-            res.insert(sym);
-        }
+    const VarSet RelevantVariables::find(const VarSet &varsOfInterest, const std::vector<Subs> &updates, const BoolExpr guard) {
+        VarSet res = varsOfInterest;
         // Compute the closure of res under all updates and the guard
         VarSet todo = res;
         while (!todo.empty()) {
             VarSet next;
             for (const Var &x : todo) {
                 for (const auto &up: updates) {
-                    auto it = up.find(x);
-                    if (it != up.end()) {
-                        const VarSet &rhsVars = it->second.vars();
-                        next.insert(rhsVars.begin(), rhsVars.end());
-                    }
+                    std::visit(Overload{
+                                   [&up, &next](const BoolVar &x){
+                                       auto it = up.find(x);
+                                       if (it != up.getBoolSubs().end()) {
+                                           next.insertAll(it->second->vars());
+                                       }
+                                   },
+                                   [&up, &next](const auto &x) {
+                                       auto it = up.find(x);
+                                       if (it != up.getThSubs().end()) {
+                                           next.insertAll(Th::second(*it).vars());
+                                       }
+                                   }
+                               }, x);
                 }
-                for (const Rel &rel: guard->lits()) {
-                    const VarSet &relVars = rel.vars();
+                for (const Lit &lit: guard->lits()) {
+                    const VarSet &relVars = Th::vars(lit);
                     if (relVars.find(x) != relVars.end()) {
-                        next.insert(relVars.begin(), relVars.end());
+                        for (const auto &x: relVars) {
+                            next.insert(x);
+                        }
                     }
                 }
             }
             todo.clear();
             for (const Var &var : next) {
-                if (res.count(var) == 0) {
+                if (res.find(var) == res.end()) {
                     todo.insert(var);
                 }
             }
             // collect all variables from every iteration
-            res.insert(todo.begin(), todo.end());
+            res.insertAll(todo);
         }
         VarSet symbols;
         for (const Var &x: res) {
@@ -76,9 +84,9 @@ namespace util {
             const Guard &constraints,
             const std::vector<RuleRhs> &rhss,
             const BoolExpr guard) {
-        std::vector<ExprSubs> updates;
+        std::vector<Subs> updates;
         for (const RuleRhs &rhs: rhss) {
-            updates.push_back(rhs.getUpdate().getExprSubs());
+            updates.push_back(rhs.getUpdate());
         }
         return RelevantVariables::find(constraints, updates, guard);
     }

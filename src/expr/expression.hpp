@@ -51,17 +51,23 @@ struct Expr_is_less {
     bool operator() (const Expr &lh, const Expr &rh) const;
 };
 
-using Var = GiNaC::symbol;
+using NumVar = GiNaC::symbol;
+
+namespace GiNaC {
+
+bool operator<(const NumVar &x, const NumVar &y) {
+    return x.compare(y) < 0;
+}
+
+bool operator==(const NumVar &x, const NumVar &y) {
+    return x.is_equal(y);
+}
+
+}
+
 using Num = GiNaC::numeric;
 
-struct Var_is_less {
-    bool operator() (const Var &lh, const Var &rh) const;
-};
-
-using VarSet = std::set<Var, Var_is_less>;
 using ExprSet = std::set<Expr, Expr_is_less>;
-template <typename T>
-using VarMap = std::map<Var, T, Var_is_less>;
 
 /**
  * Class for arithmetic expressions.
@@ -91,7 +97,7 @@ public:
     /**
      * Special variable that represents the cost of non-terminating computations.
      */
-    static const Var NontermSymbol;
+    static const NumVar NontermSymbol;
 
     /**
      * @return A wildcard for constructing patterns.
@@ -118,7 +124,7 @@ public:
     /**
      * @return True iff this expression is equal (resp. evaluates) to the given variable
      */
-    bool equals(const Var &var) const;
+    bool equals(const NumVar &var) const;
 
     /**
      * @return True iff this expression is equal to NontermSymbol.
@@ -128,7 +134,7 @@ public:
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
      */
-    bool isLinear(const option<VarSet> &vars = option<VarSet>()) const;
+    bool isLinear(const option<std::set<NumVar>> &vars = option<std::set<NumVar>>()) const;
 
     /**
      * @return True iff this expression is a polynomial.
@@ -171,12 +177,12 @@ public:
     /**
      * @brief Collects all variables that occur in this expression.
      */
-    void collectVars(VarSet &res) const;
+    void collectVars(std::set<NumVar> &res) const;
 
     /**
      * @return The set of all variables that occur in this expression.
      */
-    VarSet vars() const;
+    std::set<NumVar> vars() const;
 
     /**
      * @return True iff this expression contains a variable that satisfies the given predicate.
@@ -186,7 +192,7 @@ public:
     bool hasVarWith(P predicate) const {
         struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
             SymbolVisitor(P predicate) : predicate(predicate) {}
-            void visit(const Var &sym) {
+            void visit(const NumVar &sym) {
                 if (!res && predicate(sym)) {
                     res = true;
                 }
@@ -218,7 +224,7 @@ public:
      * @return Some variable that occurs in this Expression.
      * @note Only for non-ground expressions.
      */
-    Var someVar() const;
+    NumVar someVar() const;
 
     /**
      * @return True iff this expression is ground or univariate.
@@ -244,22 +250,22 @@ public:
      * @return The degree wrt. var.
      * @note For polynomials only.
      */
-    int degree(const Var &var) const;
+    int degree(const NumVar &var) const;
 
     /**
      * @return The minimal degree of all monomials wrt. var.
      */
-    int ldegree(const Var &var) const;
+    int ldegree(const NumVar &var) const;
 
     /**
      * @return The coefficient of the monomial where var occurs with the given degree (which defaults to 1).
      */
-    Expr coeff(const Var &var, int degree = 1) const;
+    Expr coeff(const NumVar &var, int degree = 1) const;
 
     /**
      * @return The coefficient of the monomial whose degree wrt. var is ldegree(var).
      */
-    Expr lcoeff(const Var &var) const;
+    Expr lcoeff(const NumVar &var) const;
 
     /**
      * @return A normalized version of this expression up to the order of monomials.
@@ -301,7 +307,7 @@ public:
      * @return This as a variable.
      * @note For variables only.
      */
-    Var toVar() const;
+    NumVar toVar() const;
 
     /**
      * @return This as a number.
@@ -349,7 +355,7 @@ public:
     /**
      * @return True iff this is a polynomial wrt. the given variable.
      */
-    bool isPoly(const Var &n) const;
+    bool isPoly(const NumVar &n) const;
 
     bool isIntegral() const;
 
@@ -361,7 +367,7 @@ public:
 
     Sign::T sign() const;
 
-    Monotonicity::T monotonicity(const Var &x) const;
+    Monotonicity::T monotonicity(const NumVar &x) const;
 
     /**
      * @brief exponentiation
@@ -395,37 +401,37 @@ class ExprSubs {
 
 public:
 
-    using const_iterator = typename VarMap<Expr>::const_iterator;
+    using const_iterator = typename std::map<NumVar, Expr>::const_iterator;
 
     ExprSubs();
 
-    ExprSubs(const Var &key, const Expr &val);
+    ExprSubs(const NumVar &key, const Expr &val);
 
-    Expr get(const Var &key) const;
+    Expr get(const NumVar &key) const;
 
-    void put(const Var &key, const Expr &val);
+    void put(const NumVar &key, const Expr &val);
 
     const_iterator begin() const;
 
     const_iterator end() const;
 
-    const_iterator find(const Var &e) const;
+    const_iterator find(const NumVar &e) const;
 
-    bool contains(const Var &e) const;
+    bool contains(const NumVar &e) const;
 
     bool empty() const;
 
     unsigned int size() const;
 
-    size_t erase(const Var &key);
+    size_t erase(const NumVar &key);
 
     ExprSubs compose(const ExprSubs &that) const;
 
     ExprSubs concat(const ExprSubs &that) const;
 
-    ExprSubs project(const VarSet &vars) const;
+    ExprSubs project(const std::set<NumVar> &vars) const;
 
-    bool changes(const Var &key) const;
+    bool changes(const NumVar &key) const;
 
     bool isLinear() const;
 
@@ -433,27 +439,27 @@ public:
 
     bool isOctagon() const;
 
-    VarSet domain() const;
+    std::set<NumVar> domain() const;
 
-    VarSet coDomainVars() const;
+    std::set<NumVar> coDomainVars() const;
 
-    VarSet allVars() const;
+    std::set<NumVar> allVars() const;
 
-    void collectDomain(VarSet &vars) const;
+    void collectDomain(std::set<NumVar> &vars) const;
 
-    void collectCoDomainVars(VarSet &vars) const;
+    void collectCoDomainVars(std::set<NumVar> &vars) const;
 
-    void collectVars(VarSet &vars) const;
+    void collectVars(std::set<NumVar> &vars) const;
 
     unsigned hash() const;
 
     int compare(const ExprSubs &that) const;
 
 private:
-    void putGinac(const Var &key, const Expr &val);
-    void eraseGinac(const Var &key);
+    void putGinac(const NumVar &key, const Expr &val);
+    void eraseGinac(const NumVar &key);
     GiNaC::exmap ginacMap;
-    VarMap<Expr> map;
+    std::map<NumVar, Expr> map;
 
 };
 

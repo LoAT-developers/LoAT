@@ -18,13 +18,19 @@ bool BoolSubs::contains(const BoolVar &var) const {
 }
 
 BoolExpr BoolSubs::operator()(const BoolExpr e) const {
-    const auto lit = e->getLit();
+    const auto lit = e->getTheoryLit();
     if (lit) {
-        const auto it = map.find(lit->getBoolVar());
-        if (it == map.end()) {
-            return e;
+        if (std::holds_alternative<BoolLit>(*lit)) {
+            const auto &blit = std::get<BoolLit>(*lit);
+            const BoolVar var = blit.getBoolVar();
+            const auto it = find(var);
+            if (it == end()) {
+                return e;
+            } else {
+                return blit.isNegated() ? !it->second : it->second;
+            }
         } else {
-            return lit->isNegated() ? !it->second : it->second;
+            return e;
         }
     } else if (e->isAnd() || e->isOr()) {
         std::vector<BoolExpr> children;
@@ -58,7 +64,7 @@ BoolSubs BoolSubs::concat(const BoolSubs &that) const {
     return res;
 }
 
-BoolSubs BoolSubs::project(const BoolVarSet &vars) const {
+BoolSubs BoolSubs::project(const std::set<BoolVar> &vars) const {
     BoolSubs res;
     for (const auto &p: *this) {
         if (vars.find(p.first) != vars.end()) {
@@ -75,37 +81,31 @@ bool BoolSubs::changes(const BoolVar &key) const {
     return buildLit(key) != map.at(key);
 }
 
-BoolVarSet BoolSubs::domain() const {
-    BoolVarSet res;
+std::set<BoolVar> BoolSubs::domain() const {
+    std::set<BoolVar> res;
     collectDomain(res);
     return res;
 }
 
-BoolVarSet BoolSubs::coDomainVars() const {
-    BoolVarSet res;
-    collectCoDomainVars(res);
-    return res;
-}
-
-BoolVarSet BoolSubs::allVars() const {
-    BoolVarSet res;
-    collectVars(res);
-    return res;
-}
-
-void BoolSubs::collectDomain(BoolVarSet &vars) const {
-    for (const auto &p: map) {
-        vars.insert(p.first);
-    }
-}
-
-void BoolSubs::collectCoDomainVars(BoolVarSet &vars) const {
+void BoolSubs::collectCoDomainVars(VarSet &vars) const {
     for (const auto &p: map) {
         p.second->collectVars(vars);
     }
 }
 
-void BoolSubs::collectVars(BoolVarSet &vars) const {
+std::set<BoolVar> BoolSubs::allVars() const {
+    std::set<BoolVar> res;
+    collectVars(res);
+    return res;
+}
+
+void BoolSubs::collectDomain(std::set<BoolVar> &vars) const {
+    for (const auto &p: map) {
+        vars.insert(p.first);
+    }
+}
+
+void BoolSubs::collectVars(std::set<BoolVar> &vars) const {
     for (const auto &p: map) {
         vars.insert(p.first);
         p.second->collectVars(vars);
@@ -153,6 +153,14 @@ int BoolSubs::compare(const BoolSubs &that) const {
     } else {
         return 1;
     }
+}
+
+bool BoolSubs::isLinear() const {
+    return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isLinear();});
+}
+
+bool BoolSubs::isPoly() const {
+    return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isPoly();});
 }
 
 std::ostream& operator<<(std::ostream &s, const BoolSubs &e) {

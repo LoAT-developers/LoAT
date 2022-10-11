@@ -12,6 +12,8 @@ target_sources(${EXECUTABLE}
         boolexpr.hpp
         boolvar.cpp
         boolvar.hpp
+        boollit.cpp
+        boollit.hpp
         subs.cpp
         subs.hpp
         boolsubs.cpp

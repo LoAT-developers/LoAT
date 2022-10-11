@@ -61,7 +61,7 @@ bool Rel::isPoly() const {
     return l.isPoly() && r.isPoly();
 }
 
-bool Rel::isLinear(const option<VarSet> &vars) const {
+bool Rel::isLinear(const option<std::set<NumVar>> &vars) const {
     return l.isLinear(vars) && r.isLinear(vars);
 }
 
@@ -154,6 +154,10 @@ Rel Rel::toG() const {
     }
 }
 
+Rel Rel::normalize() const {
+    return toG();
+}
+
 bool Rel::isStrict() const {
     assert(isIneq());
     return op == lt || op == gt;
@@ -163,12 +167,49 @@ bool Rel::isOctagon() const {
     return op != neq && (lhs() - rhs()).expand().isOctagon();
 }
 
+void Rel::getBounds(const NumVar &n, Bounds &res) const {
+    if (has(n)) {
+        if (isEq()) {
+            const option<Expr> eq = GuardToolbox::solveTermFor(lhs() - rhs(), n, GuardToolbox::ResultMapsToInt);
+            if (eq) {
+                res.equality = *eq;
+                res.lowerBounds.insert(*eq);
+                res.upperBounds.insert(*eq);
+            }
+        } else if (isIneq()) {
+            const auto p = GuardToolbox::getBoundFromIneq(*this, n);
+            if (p.first) {
+                bool add = true;
+                for (const auto &b: res.lowerBounds) {
+                    const auto diff = b - *p.first;
+                    if (diff.isRationalConstant() && !diff.toNum().is_negative()) {
+                        add = false;
+                        break;
+                    }
+                }
+                if (add) res.lowerBounds.insert(*p.first);
+            }
+            if (p.second) {
+                bool add = true;
+                for (const auto &b: res.upperBounds) {
+                    const auto diff = b - *p.second;
+                    if (diff.isRationalConstant() && !diff.toNum().is_positive()) {
+                        add = false;
+                        break;
+                    }
+                }
+                if (add) res.upperBounds.insert(*p.second);
+            }
+        }
+    }
+}
+
 Rel Rel::toIntPoly() const {
     assert(isPoly());
     return Rel((l-r).toIntPoly(), op, 0);
 }
 
-Rel Rel::splitVariableAndConstantAddends(const VarSet &params) const {
+Rel Rel::splitVariableAndConstantAddends(const std::set<NumVar> &params) const {
     assert(isIneq());
 
     //move everything to lhs
@@ -180,8 +221,8 @@ Rel Rel::splitVariableAndConstantAddends(const VarSet &params) const {
     if (newLhs.isAdd()) {
         for (size_t i=0; i < newLhs.arity(); ++i) {
             bool isConstant = true;
-            VarSet vars = newLhs.op(i).vars();
-            for (const Var &var: vars) {
+            std::set<NumVar> vars = newLhs.op(i).vars();
+            for (const NumVar &var: vars) {
                 if (params.find(var) == params.end()) {
                     isConstant = false;
                     break;
@@ -192,9 +233,9 @@ Rel Rel::splitVariableAndConstantAddends(const VarSet &params) const {
             }
         }
     } else {
-        VarSet vars = newLhs.vars();
+        std::set<NumVar> vars = newLhs.vars();
         bool isConstant = true;
-        for (const Var &var: vars) {
+        for (const NumVar &var: vars) {
             if (params.find(var) == params.end()) {
                 isConstant = false;
                 break;
@@ -236,7 +277,7 @@ option<bool> Rel::checkTrivial() const {
     return {};
 }
 
-void Rel::collectVariables(VarSet &res) const {
+void Rel::collectVariables(std::set<NumVar> &res) const {
     l.collectVars(res);
     r.collectVars(res);
 }
@@ -260,12 +301,16 @@ std::string Rel::toString() const {
     return s.str();
 }
 
+std::string Rel::toRedlog() const {
+    return toString();
+}
+
 Rel::RelOp Rel::relOp() const {
     return op;
 }
 
-VarSet Rel::vars() const {
-    VarSet res;
+std::set<NumVar> Rel::vars() const {
+    std::set<NumVar> res;
     collectVariables(res);
     return res;
 }
@@ -324,51 +369,51 @@ bool operator<(const Rel &x, const Rel &y) {
     return x.compare(y) < 0;
 }
 
-Rel operator<(const Var &x, const Expr &y) {
+Rel operator<(const NumVar &x, const Expr &y) {
     return Expr(x) < y;
 }
 
-Rel operator<(const Expr &x, const Var &y) {
+Rel operator<(const Expr &x, const NumVar &y) {
     return x < Expr(y);
 }
 
-Rel operator<(const Var &x, const Var &y) {
+Rel operator<(const NumVar &x, const NumVar &y) {
     return Expr(x) < Expr(y);
 }
 
-Rel operator>(const Var &x, const Expr &y) {
+Rel operator>(const NumVar &x, const Expr &y) {
     return Expr(x) > y;
 }
 
-Rel operator>(const Expr &x, const Var &y) {
+Rel operator>(const Expr &x, const NumVar &y) {
     return x > Expr(y);
 }
 
-Rel operator>(const Var &x, const Var &y) {
+Rel operator>(const NumVar &x, const NumVar &y) {
     return Expr(x) > Expr(y);
 }
 
-Rel operator<=(const Var &x, const Expr &y) {
+Rel operator<=(const NumVar &x, const Expr &y) {
     return Expr(x) <= y;
 }
 
-Rel operator<=(const Expr &x, const Var &y) {
+Rel operator<=(const Expr &x, const NumVar &y) {
     return x <= Expr(y);
 }
 
-Rel operator<=(const Var &x, const Var &y) {
+Rel operator<=(const NumVar &x, const NumVar &y) {
     return Expr(x) <= Expr(y);
 }
 
-Rel operator>=(const Var &x, const Expr &y) {
+Rel operator>=(const NumVar &x, const Expr &y) {
     return Expr(x) >= y;
 }
 
-Rel operator>=(const Expr &x, const Var &y) {
+Rel operator>=(const Expr &x, const NumVar &y) {
     return x >= Expr(y);
 }
 
-Rel operator>=(const Var &x, const Var &y) {
+Rel operator>=(const NumVar &x, const NumVar &y) {
     return Expr(x) >= Expr(y);
 }
 

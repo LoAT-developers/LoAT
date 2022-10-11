@@ -1,37 +1,48 @@
 #pragma once
 
-#include "expression.hpp"
 #include "boolsubs.hpp"
 
 class Subs
 {
 
-    ExprSubs exprSubs;
+    ThSubs thSubs;
     BoolSubs boolSubs;
 
 public:
 
     Subs();
-    Subs(const Var &key, const Expr &val);
-    Subs(const BoolVar &key, const BoolExpr &val);
-    Subs(const ExprSubs &exprSubs, const BoolSubs &boolSubs);
 
-    void collectVars(BoolVarSet &vars) const;
+    template<INonBoolTheory Th>
+    Subs(const typename Th::Var &key, const typename Th::Expr &val): thSubs(key, val) {}
+
+    Subs(const BoolVar &key, const BoolExpr &val);
+    Subs(const ThSubs &thSubs, const BoolSubs &boolSubs);
+
     void collectVars(VarSet &vars) const;
     unsigned hash() const;
-    void put(const Var &var, const Expr &val);
     void put(const BoolVar &var, const BoolExpr &val);
-    Expr get(const Var &var) const;
+
+    template<INonBoolTheory Th>
+    void put(const typename Th::Var &var, const typename Th::Expression &val) {
+        thSubs.put(var, val);
+    }
+
+    ThExpr get(const Var &var) const;
     BoolExpr get(const BoolVar &var) const;
-    ExprSubs& getExprSubs();
+    ThSubs& getThSubs();
     BoolSubs& getBoolSubs();
-    const ExprSubs& getExprSubs() const;
+    const ThSubs& getThSubs() const;
     const BoolSubs& getBoolSubs() const;
-    ExprSubs::const_iterator find(const Var& v) const;
+    ThSubs::Iterator find(const ThVar& v) const;
     BoolSubs::const_iterator find(const BoolVar& v) const;
+    bool isEnd(const std::variant<ThSubs::Iterator, BoolSubs::const_iterator> &it) const;
     BoolExpr operator()(const BoolExpr &e) const;
-    Expr operator()(const Expr &e) const;
-    Rel operator()(const Rel &e) const;
+
+    template <class S>
+    S operator()(const S &e) const {
+        return thSubs.subs(e);
+    }
+
     Subs compose(const Subs& that) const;
     Subs concat(const Subs& that) const;
     bool changes(const Var &var) const;
@@ -39,9 +50,11 @@ public:
     bool empty() const;
     size_t size() const;
     int compare(const Subs &that) const;
-    Subs project(const VarSet &evars, const BoolVarSet &bvars) const;
+    Subs project(const VarSet &evars) const;
     void erase(const Var &var);
     void erase(const BoolVar &var);
+    bool isLinear() const;
+    bool isPoly() const;
 
 };
 

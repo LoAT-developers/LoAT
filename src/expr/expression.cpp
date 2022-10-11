@@ -26,11 +26,7 @@ bool Expr_is_less::operator()(const Expr &lh, const Expr &rh) const {
      return lh.compare(rh) < 0;
 }
 
-bool Var_is_less::operator()(const Var &lh, const Var &rh) const {
-     return lh.get_name().compare(rh.get_name()) < 0;
-}
-
-const Var Expr::NontermSymbol = GiNaC::symbol("NONTERM");
+const NumVar Expr::NontermSymbol = GiNaC::symbol("NONTERM");
 
 void Expr::applySubs(const ExprSubs &subs) {
     this->ex = this->ex.subs(subs.ginacMap);
@@ -54,7 +50,7 @@ bool Expr::findAll(const Expr &pattern, ExprSet &found) const {
 }
 
 
-bool Expr::equals(const Var &var) const {
+bool Expr::equals(const NumVar &var) const {
     return this->compare(var) == 0;
 }
 
@@ -64,8 +60,8 @@ bool Expr::isNontermSymbol() const {
 }
 
 
-bool Expr::isLinear(const option<VarSet> &vars) const {
-    VarSet theVars = vars ? vars.get() : this->vars();
+bool Expr::isLinear(const option<std::set<NumVar>> &vars) const {
+    std::set<NumVar> theVars = vars ? vars.get() : this->vars();
     // linear expressions are always polynomials
     if (!isPoly()) return false;
 
@@ -75,15 +71,15 @@ bool Expr::isLinear(const option<VarSet> &vars) const {
     // GiNaC does not provide an info flag for this, so we check the degree of every variable.
     // We also have to check if the coefficient contains variables,
     // e.g. y has degree 1 in x*y, but we don't consider x*y to be linear.
-    for (const Var &var : theVars) {
+    for (const NumVar &var : theVars) {
         int deg = expanded.degree(var);
         if (deg > 1 || deg < 0) {
             return false;
         }
 
         if (deg == 1) {
-            VarSet coefficientVars = expanded.coeff(var,deg).vars();
-            for (const Var &e: coefficientVars) {
+            std::set<NumVar> coefficientVars = expanded.coeff(var,deg).vars();
+            for (const NumVar &e: coefficientVars) {
                 if (theVars.find(e) != theVars.end()) {
                     return false;
                 }
@@ -98,7 +94,7 @@ bool Expr::isPoly() const {
     return ex.info(GiNaC::info_flags::polynomial);
 }
 
-bool Expr::isPoly(const Var &n) const {
+bool Expr::isPoly(const NumVar &n) const {
     return ex.is_polynomial(n);
 }
 
@@ -139,7 +135,7 @@ bool Expr::isNaturalPow() const {
 
 bool Expr::isOctagon() const {
     if (!isPoly()) return false;
-    const VarSet vs = vars();
+    const std::set<NumVar> vs = vars();
     if (vs.size() > 2) return false;
     for (const auto &v: vs) {
         if (degree(v) > 1) return false;
@@ -162,14 +158,14 @@ int Expr::maxDegree() const {
 }
 
 
-void Expr::collectVars(VarSet &res) const {
+void Expr::collectVars(std::set<NumVar> &res) const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
-        SymbolVisitor(VarSet &t) : target(t) {}
+        SymbolVisitor(std::set<NumVar> &t) : target(t) {}
         void visit(const GiNaC::symbol &sym) {
             if (sym != NontermSymbol) target.insert(sym);
         }
     private:
-        VarSet &target;
+        std::set<NumVar> &target;
     };
 
     SymbolVisitor v(res);
@@ -177,15 +173,15 @@ void Expr::collectVars(VarSet &res) const {
 }
 
 
-VarSet Expr::vars() const {
-    VarSet res;
+std::set<NumVar> Expr::vars() const {
+    std::set<NumVar> res;
     collectVars(res);
     return res;
 }
 
 
 bool Expr::isGround() const {
-    return !hasVarWith([](const Var &) { return true; });
+    return !hasVarWith([](const auto &) { return true; });
 }
 
 
@@ -214,16 +210,16 @@ bool Expr::isUnivariate() const {
 }
 
 
-Var Expr::someVar() const {
+NumVar Expr::someVar() const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
         void visit(const GiNaC::symbol &var) {
             variable = var;
         }
-        Var result() const {
+        NumVar result() const {
             return variable;
         }
     private:
-        Var variable;
+        NumVar variable;
     };
 
     SymbolVisitor visitor;
@@ -289,19 +285,19 @@ bool Expr::equals(const Expr &that) const {
     return ex.is_equal(that.ex);
 }
 
-int Expr::degree(const Var &var) const {
+int Expr::degree(const NumVar &var) const {
     return ex.degree(var);
 }
 
-int Expr::ldegree(const Var &var) const {
+int Expr::ldegree(const NumVar &var) const {
     return ex.ldegree(var);
 }
 
-Expr Expr::coeff(const Var &var, int degree) const {
+Expr Expr::coeff(const NumVar &var, int degree) const {
     return ex.coeff(var, degree);
 }
 
-Expr Expr::lcoeff(const Var &var) const {
+Expr Expr::lcoeff(const NumVar &var) const {
     return ex.lcoeff(var);
 }
 
@@ -333,7 +329,7 @@ bool Expr::isAdd() const {
     return GiNaC::is_a<GiNaC::add>(ex);
 }
 
-Var Expr::toVar() const {
+NumVar Expr::toVar() const {
     return GiNaC::ex_to<GiNaC::symbol>(ex);
 }
 
@@ -432,8 +428,8 @@ bool Expr::isIntegral() const {
     }
 
     // collect variables from e into a vector
-    vector<Var> vars;
-    for (Var sym : this->vars()) {
+    vector<NumVar> vars;
+    for (const auto &sym : this->vars()) {
         vars.push_back(sym);
     }
 
@@ -441,7 +437,7 @@ bool Expr::isIntegral() const {
     vector<int> degrees;
     vector<int> subs;
     Expr expanded = expand();
-    for (const Var &x: vars) {
+    for (const auto &x: vars) {
         degrees.push_back(expanded.degree(x));
         subs.push_back(0);
     }
@@ -587,7 +583,7 @@ Sign::T Expr::sign() const {
     return Unknown;
 }
 
-Monotonicity::T Expr::monotonicity(const Var &x) const {
+Monotonicity::T Expr::monotonicity(const NumVar &x) const {
     using namespace Monotonicity;
     const Expr diff = this->subs({x, Expr(x)+1}) - *this;
     switch (diff.sign()) {
@@ -618,16 +614,16 @@ std::ostream& operator<<(std::ostream &s, const T e) {
 
 ExprSubs::ExprSubs() {}
 
-ExprSubs::ExprSubs(const Var &key, const Expr &val) {
+ExprSubs::ExprSubs(const NumVar &key, const Expr &val) {
     put(key, val);
 }
 
-Expr ExprSubs::get(const Var &key) const {
+Expr ExprSubs::get(const NumVar &key) const {
     const auto it = map.find(key);
     return it == map.end() ? key : it->second;
 }
 
-void ExprSubs::put(const Var &key, const Expr &val) {
+void ExprSubs::put(const NumVar &key, const Expr &val) {
     map[key] = val;
     putGinac(key, val);
 }
@@ -640,11 +636,11 @@ ExprSubs::const_iterator ExprSubs::end() const {
     return map.end();
 }
 
-ExprSubs::const_iterator ExprSubs::find(const Var &e) const {
+ExprSubs::const_iterator ExprSubs::find(const NumVar &e) const {
     return map.find(e);
 }
 
-bool ExprSubs::contains(const Var &e) const {
+bool ExprSubs::contains(const NumVar &e) const {
     return map.find(e) != map.end();
 }
 
@@ -656,7 +652,7 @@ unsigned int ExprSubs::size() const {
     return map.size();
 }
 
-size_t ExprSubs::erase(const Var &key) {
+size_t ExprSubs::erase(const NumVar &key) {
     eraseGinac(key);
     return map.erase(key);
 }
@@ -682,7 +678,7 @@ ExprSubs ExprSubs::concat(const ExprSubs &that) const {
     return res;
 }
 
-ExprSubs ExprSubs::project(const VarSet &vars) const {
+ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
     ExprSubs res;
     for (const auto &p: *this) {
         if (vars.find(p.first) != vars.end()) {
@@ -692,67 +688,67 @@ ExprSubs ExprSubs::project(const VarSet &vars) const {
     return res;
 }
 
-void ExprSubs::putGinac(const Var &key, const Expr &val) {
+void ExprSubs::putGinac(const NumVar &key, const Expr &val) {
     ginacMap[key] = val.ex;
 }
 
-void ExprSubs::eraseGinac(const Var &key) {
+void ExprSubs::eraseGinac(const NumVar &key) {
     ginacMap.erase(key);
 }
 
-bool ExprSubs::changes(const Var &key) const {
+bool ExprSubs::changes(const NumVar &key) const {
     return contains(key) && !get(key).equals(key);
 }
 
 bool ExprSubs::isLinear() const {
-    return std::all_of(begin(), end(), [](const std::pair<Var, Expr> &p) {
+    return std::all_of(begin(), end(), [](const auto &p) {
        return p.second.isLinear();
     });
 }
 
 bool ExprSubs::isPoly() const {
-    return std::all_of(begin(), end(), [](const std::pair<Var, Expr> &p) {
+    return std::all_of(begin(), end(), [](const auto &p) {
        return p.second.isPoly();
     });
 }
 
 bool ExprSubs::isOctagon() const {
-    return std::all_of(begin(), end(), [](const std::pair<Var, Expr> &p) {
+    return std::all_of(begin(), end(), [](const auto &p) {
        return p.second.isOctagon();
     });
 }
 
-void ExprSubs::collectDomain(VarSet &vars) const {
+void ExprSubs::collectDomain(std::set<NumVar> &vars) const {
     for (const auto &p: *this) {
         vars.insert(p.first);
     }
 }
 
-void ExprSubs::collectCoDomainVars(VarSet &vars) const {
+void ExprSubs::collectCoDomainVars(std::set<NumVar> &vars) const {
     for (const auto &p: *this) {
         p.second.collectVars(vars);
     }
 }
 
-void ExprSubs::collectVars(VarSet &vars) const {
+void ExprSubs::collectVars(std::set<NumVar> &vars) const {
     collectCoDomainVars(vars);
     collectDomain(vars);
 }
 
-VarSet ExprSubs::domain() const {
-    VarSet res;
+std::set<NumVar> ExprSubs::domain() const {
+    std::set<NumVar> res;
     collectDomain(res);
     return res;
 }
 
-VarSet ExprSubs::coDomainVars() const {
-    VarSet res;
+std::set<NumVar> ExprSubs::coDomainVars() const {
+    std::set<NumVar> res;
     collectCoDomainVars(res);
     return res;
 }
 
-VarSet ExprSubs::allVars() const {
-    VarSet res;
+std::set<NumVar> ExprSubs::allVars() const {
+    std::set<NumVar> res;
     collectVars(res);
     return res;
 }

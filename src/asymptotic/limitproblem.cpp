@@ -383,8 +383,7 @@ InftyExpressionSet::const_iterator LimitProblem::find(const InftyExpression &ex)
 VarSet LimitProblem::getVariables() const {
     VarSet res;
     for (const InftyExpression &ex : set) {
-        VarSet exVars = ex.vars();
-        res.insert(exVars.cbegin(),exVars.cend());
+        res.insertAll(ex.vars());
     }
     return res;
 }
@@ -419,7 +418,7 @@ bool LimitProblem::isLinear() const {
     return true;
 }
 
-bool LimitProblem::isPolynomial() const {
+bool LimitProblem::isPoly() const {
     for (const InftyExpression &ex : set) {
         if (!ex.isPoly()) {
             return false;

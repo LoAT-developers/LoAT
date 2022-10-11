@@ -2,29 +2,17 @@
 #include "boolexpr.hpp"
 
 void Guard::collectVariables(VarSet &res) const {
-    for (const Rel &rel : *this) {
-        rel.collectVariables(res);
+    for (const Lit &lit : *this) {
+        res.collectVars(lit);
     }
 }
 
-Guard Guard::subs(const ExprSubs &sigma) const {
+Guard Guard::subs(const ThSubs &sigma) const {
     Guard res;
-    for (const Rel &rel: *this) {
-        res.push_back(rel.subs(sigma));
+    for (const Lit &rel: *this) {
+        res.push_back(sigma.subs(rel));
     }
     return res;
-}
-
-bool Guard::isWellformed() const {
-    return std::all_of(begin(), end(), [](const Rel &rel) {
-        return !rel.isNeq();
-    });
-}
-
-bool Guard::isLinear() const {
-    return std::all_of(begin(), end(), [](const Rel &rel) {
-        return rel.isLinear();
-    });
 }
 
 bool operator<(const Guard &m1, const Guard &m2);

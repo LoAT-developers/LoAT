@@ -29,15 +29,15 @@ Smt::Logic Smt::chooseLogic(const std::vector<BoolExpr> &xs, const std::vector<S
     Smt::Logic res = Smt::QF_LA;
     for (const BoolExpr &x: xs) {
         if (!(x->isLinear())) {
-            if (!(x->isPolynomial())) {
+            if (!(x->isPoly())) {
                 return Smt::QF_ENA;
             }
             res = Smt::QF_NA;
         }
     }
     for (const Subs &u: up) {
-        if (!u.getExprSubs().isLinear()) {
-            if (!u.getExprSubs().isPoly()) {
+        if (!u.isLinear()) {
+            if (!u.isPoly()) {
                 return Smt::QF_ENA;
             }
             res = Smt::QF_NA;
@@ -50,7 +50,7 @@ Smt::Logic Smt::chooseLogic(const BoolExprSet &xs) {
     Smt::Logic res = Smt::QF_LA;
     for (const BoolExpr &x: xs) {
         if (!(x->isLinear())) {
-            if (!(x->isPolynomial())) {
+            if (!(x->isPoly())) {
                 return Smt::QF_ENA;
             }
             res = Smt::QF_NA;

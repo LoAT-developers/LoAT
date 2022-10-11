@@ -4,8 +4,6 @@ target_sources(${EXECUTABLE}
         cintegerexport.hpp
         export.cpp
         export.hpp
-        smt2export.cpp
-        smt2export.hpp
         hypergraph.hpp
         itsproblem.cpp
         itsproblem.hpp

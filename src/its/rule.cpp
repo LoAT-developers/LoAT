@@ -16,7 +16,6 @@
  */
 
 #include "rule.hpp"
-#include "rel.hpp"
 
 using namespace std;
 
@@ -55,19 +54,6 @@ VarSet Rule::vars() const {
     return res;
 }
 
-void Rule::collectVars(BoolVarSet &vars) const {
-    lhs.collectVars(vars);
-    for (const RuleRhs &rhs: rhss) {
-        rhs.collectVars(vars);
-    }
-}
-
-BoolVarSet Rule::bvars() const {
-    BoolVarSet res;
-    collectVars(res);
-    return res;
-}
-
 LinearRule Rule::dummyRule(LocationIdx lhsLoc, LocationIdx rhsLoc) {
     return LinearRule(lhsLoc, {}, 0, rhsLoc, {});
 }
@@ -97,7 +83,7 @@ Rule Rule::subs(const Subs &subs) const {
     return Rule(RuleLhs(getLhsLoc(), subs(getGuard()), subs(getCost())), newRhss);
 }
 
-Rule Rule::subs(const ExprSubs &s) const {
+Rule Rule::subs(const ThSubs &s) const {
     const BoolSubs empty;
     return subs(Subs(s, empty));
 }
@@ -152,10 +138,10 @@ bool Rule::approxEqual(const Rule &that, bool compareRhss) const {
             if (updateA.size() != updateB.size()) return false;
 
             // update has to be fully equal (one inclusion suffices, since the size is equal)
-            for (const auto &itA : updateA.getExprSubs()) {
-                auto itB = updateB.find(itA.first);
-                if (itB == updateB.getExprSubs().end()) return false;
-                if (!itB->second.equals(itA.second)) return false;
+            for (const auto &itA : updateA.getThSubs()) {
+                auto itB = updateB.find(Th::first(itA));
+                if (itB == updateB.getThSubs().end()) return false;
+                if (!Th::second(*itB).equals(Th::second(itA))) return false;
             }
             for (const auto &itA : updateA.getBoolSubs()) {
                 auto itB = updateB.find(itA.first);
@@ -168,10 +154,6 @@ bool Rule::approxEqual(const Rule &that, bool compareRhss) const {
     // Guard has to be fully equal (including the ordering)
     if (getGuard() != that.getGuard()) return false;
     return true;
-}
-
-bool LinearRule::isOctagon() const {
-    return getGuard()->isOctagon() && getUpdate().getExprSubs().isOctagon() && getUpdate().getBoolSubs().empty();
 }
 
 unsigned Rule::hash() const {

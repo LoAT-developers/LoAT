@@ -60,11 +60,14 @@ Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule, const ITSProblem
 }
 
 bool Preprocess::removeTrivialUpdates(Subs &update) {
+    using namespace Th;
     stack<Var> remove;
     stack<BoolVar> removeBool;
-    for (auto it : update.getExprSubs()) {
-        if (it.second.equals(it.first)) {
-            remove.push(it.first);
+    for (auto it : update.getThSubs()) {
+        const auto first = Th::first(it);
+        const auto second = Th::second(it);
+        if (first == second) {
+            std::visit([&remove](const auto &first){remove.push(first);}, first);
         }
     }
     for (auto it : update.getBoolSubs()) {
@@ -92,8 +95,11 @@ bool Preprocess::removeTrivialUpdates(Subs &update) {
 static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     VarSet varsInUpdate;
     for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
-        for (const auto &it : rhs->getUpdate().getExprSubs()) {
-            it.second.collectVars(varsInUpdate);
+        for (const auto &it : rhs->getUpdate().getThSubs()) {
+            varsInUpdate.collectVars(Th::second(it));
+        }
+        for (const auto &it : rhs->getUpdate().getBoolSubs()) {
+            varsInUpdate.collectVars(it.second);
         }
     }
     return varsInUpdate;
@@ -113,7 +119,16 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
     };
     auto isTempOnlyInGuard = [&](const Var &sym) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
-        return isTemp(sym) && varsInUpdate.find(sym) == varsInUpdate.end() && (!Config::Analysis::complexity() || !rule.getCost().has(sym));
+        if (!isTemp(sym) || varsInUpdate.find(sym) != varsInUpdate.end()) {
+            return false;
+        }
+        if (!Config::Analysis::complexity()) {
+            return true;
+        }
+        return std::visit(Overload{
+                              [&rule](const NumVar &sym){return !rule.getCost().has(sym);},
+                              [](const auto &sym){return true;}
+                          }, sym);
     };
 
     res.concat(GuardToolbox::propagateBooleanEqualities(its, *res));

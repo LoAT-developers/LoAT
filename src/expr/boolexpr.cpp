@@ -1,6 +1,4 @@
 #include "boolexpr.hpp"
-#include "guardtoolbox.hpp"
-#include "exceptions.hpp"
 
 #include <vector>
 #include <functional>
@@ -10,14 +8,14 @@
 
 BoolExpression::~BoolExpression() {}
 
-RelSet BoolExpression::lits() const {
-    RelSet res;
+std::set<Lit> BoolExpression::lits() const {
+    std::set<Lit> res;
     collectLits(res);
     return res;
 }
 
 Guard BoolExpression::conjunctionToGuard() const {
-    const RelSet &lits = this->lits();
+    const std::set<Lit> &lits = this->lits();
     return Guard(lits.begin(), lits.end());
 }
 
@@ -51,10 +49,39 @@ VarSet BoolExpression::vars() const {
     return res;
 }
 
-BoolVarSet BoolExpression::boolVars() const {
-    BoolVarSet res;
-    collectVars(res);
-    return res;
+bool BoolExpression::isLinear() const {
+    return forall(Overload {
+                      [](const Rel &rel){return rel.isLinear();},
+                      [](const BoolLit &lit){return true;},
+                      [](const auto &lit){return false;}
+                  });
+}
+
+bool BoolExpression::isPoly() const {
+    return forall(Overload {
+                      [](const Rel &rel){return rel.isPoly();},
+                      [](const BoolLit &lit){return true;},
+                      [](const auto &lit){return false;}
+                  });
+}
+
+BoolExpr BoolExpression::simplify() const {
+    return map([](const Lit &lit) {
+        return std::visit(Overload{
+                          [](const Rel &lit) -> option<BoolExpr> {
+                              if (lit.isTriviallyTrue()) {
+                                  return True;
+                              } else if (lit.isTriviallyFalse()) {
+                                  return False;
+                              } else if (lit.isNeq()) {
+                                  return buildTheoryLit(lit.lhs() < lit.rhs()) | (lit.lhs() > lit.rhs());
+                              } else {
+                                  return {};
+                              }
+                          },
+                          [](const auto &lit) -> option<BoolExpr> {return {};}
+                      }, lit);
+    });
 }
 
 std::vector<Guard> BoolExpression::dnf() const {
@@ -67,7 +94,7 @@ QuantifiedFormula BoolExpression::quantify(const std::vector<Quantifier> &prefix
     return QuantifiedFormula(prefix, shared_from_this());
 }
 
-BoolTheoryLit::BoolTheoryLit(const Rel &lit): lit(lit.makeRhsZero()) {}
+BoolTheoryLit::BoolTheoryLit(const Lit &lit): lit(Th::normalize(lit)) {}
 
 bool BoolTheoryLit::isAnd() const {
     return false;
@@ -77,12 +104,8 @@ bool BoolTheoryLit::isOr() const {
     return false;
 }
 
-option<Rel> BoolTheoryLit::getTheoryLit() const {
+option<Lit> BoolTheoryLit::getTheoryLit() const {
     return {lit};
-}
-
-option<BoolLit> BoolTheoryLit::getLit() const {
-    return {};
 }
 
 BoolExprSet BoolTheoryLit::getChildren() const {
@@ -93,29 +116,20 @@ const BoolExpr BoolTheoryLit::negation() const {
     return BoolExpr(new BoolTheoryLit(!lit));
 }
 
-bool BoolTheoryLit::isLinear() const {
-    return lit.isLinear();
+bool BoolTheoryLit::forall(const std::function<bool(const Lit&)> &pred) const {
+    return pred(lit);
 }
 
-bool BoolTheoryLit::isPolynomial() const {
-    return lit.isPoly();
+BoolExpr BoolTheoryLit::subs(const ThSubs &subs) const {
+    return buildTheoryLit(subs.subs(lit));
 }
 
-BoolExpr BoolTheoryLit::subs(const ExprSubs &subs) const {
-    return buildTheoryLit(lit.subs(subs));
-}
-
-BoolExpr BoolTheoryLit::toG() const {
-    if (lit.isEq()) {
-        std::vector<Rel> lits = {lit.lhs() - lit.rhs() >= 0, lit.rhs() - lit.lhs() >= 0};
-        return buildAnd(lits);
-    } else if (lit.isNeq()) {
-        std::vector<Rel> lits = {lit.lhs() - lit.rhs() > 0, lit.rhs() - lit.lhs() > 0};
-        return buildOr(lits);
-    } else if (lit.isGZeroConstraint()) {
-        return shared_from_this();
+BoolExpr BoolTheoryLit::map(const std::function<option<BoolExpr>(const Lit&)> &f) const {
+    const auto &res = f(lit);
+    if (res) {
+        return *res;
     } else {
-        return buildTheoryLit(lit.makeRhsZero().toG());
+        return shared_from_this();
     }
 }
 
@@ -128,25 +142,28 @@ size_t BoolTheoryLit::size() const {
 }
 
 std::string BoolTheoryLit::toRedlog() const {
-    return lit.toString();
+    return Th::toRedlog(lit);
 }
 
-RelSet BoolTheoryLit::universallyValidLits() const {
+std::set<Lit> BoolTheoryLit::universallyValidLits() const {
     return {lit};
 }
 
-void BoolTheoryLit::collectLits(RelSet &res) const {
+void BoolTheoryLit::collectLits(std::set<Lit> &res) const {
     res.insert(lit);
 }
 
 void BoolTheoryLit::collectVars(VarSet &res) const {
-    const VarSet &litVars = lit.vars();
-    res.insert(litVars.begin(), litVars.end());
+    res.collectVars(lit);
 }
 
-void BoolTheoryLit::collectVars(BoolVarSet &res) const {}
+void BoolTheoryLit::collectVars(std::set<BoolVar> &res) const {
+    if (std::holds_alternative<BoolLit>(lit)) {
+        std::get<BoolLit>(lit).collectVariables(res);
+    }
+}
 
-BoolExpr BoolTheoryLit::replaceRels(const RelMap<BoolExpr> map) const {
+BoolExpr BoolTheoryLit::replaceLits(const std::map<Lit, BoolExpr> map) const {
     if (map.find(lit) != map.end()) {
         return map.at(lit);
     } else {
@@ -165,203 +182,24 @@ void BoolTheoryLit::dnf(std::vector<Guard> &res) const {
 }
 
 unsigned BoolTheoryLit::hash() const {
-    return lit.hash();
+    return Th::hash(lit);
 }
 
 void BoolTheoryLit::getBounds(const Var &n, Bounds &res) const {
-    if (lit.has(n)) {
-        if (lit.isEq()) {
-            const option<Expr> eq = GuardToolbox::solveTermFor(lit.lhs() - lit.rhs(), n, GuardToolbox::ResultMapsToInt);
-            if (eq) {
-                res.equality = *eq;
-                res.lowerBounds.insert(*eq);
-                res.upperBounds.insert(*eq);
-            }
-        } else if (lit.isIneq()) {
-            const auto p = GuardToolbox::getBoundFromIneq(lit, n);
-            if (p.first) {
-                bool add = true;
-                for (const auto &b: res.lowerBounds) {
-                    const auto diff = b - *p.first;
-                    if (diff.isRationalConstant() && !diff.toNum().is_negative()) {
-                        add = false;
-                        break;
-                    }
-                }
-                if (add) res.lowerBounds.insert(*p.first);
-            }
-            if (p.second) {
-                bool add = true;
-                for (const auto &b: res.upperBounds) {
-                    const auto diff = b - *p.second;
-                    if (diff.isRationalConstant() && !diff.toNum().is_positive()) {
-                        add = false;
-                        break;
-                    }
-                }
-                if (add) res.upperBounds.insert(*p.second);
-            }
-        }
-    }
-}
-
-option<BoolExpr> BoolTheoryLit::simplify() const {
-    if (lit.isTriviallyTrue()) {
-        return True;
-    } else if (lit.isTriviallyFalse()) {
-        return False;
-    } else if (lit.isNeq()) {
-        return buildTheoryLit(lit.lhs() < lit.rhs()) | (lit.lhs() > lit.rhs());
-    } else {
-        return {};
-    }
-}
-
-bool BoolTheoryLit::isOctagon() const {
-    return lit.isOctagon();
+    Th::getBounds(lit, n, res);
 }
 
 int BoolTheoryLit::compare(const BoolExpr that) const {
-    if (that->getLit()) {
-        return 1;
-    }
     if (!that->getTheoryLit()) {
         return -1;
     }
-    return lit.compare(*that->getTheoryLit());
+    if (lit == *that->getTheoryLit()) {
+        return 0;
+    }
+    return lit < *that->getTheoryLit() ? -1 : 1;
 }
 
 BoolTheoryLit::~BoolTheoryLit() {}
-
-
-BoolLit::BoolLit(const BoolVar &var, bool negated): var(var), negated(negated) {}
-
-bool BoolLit::isAnd() const {
-    return false;
-}
-
-bool BoolLit::isOr() const {
-    return false;
-}
-
-option<Rel> BoolLit::getTheoryLit() const {
-    return {};
-}
-
-option<BoolLit> BoolLit::getLit() const {
-    return *this;
-}
-
-BoolExprSet BoolLit::getChildren() const {
-    return {};
-}
-
-const BoolExpr BoolLit::negation() const {
-    return BoolExpr(new BoolLit(var, !negated));
-}
-
-bool BoolLit::isLinear() const {
-    return true;
-}
-
-BoolExpr BoolLit::subs(const ExprSubs &subs) const {
-    return shared_from_this();
-}
-
-bool BoolLit::isPolynomial() const {
-    return true;
-}
-
-BoolExpr BoolLit::toG() const {
-    return shared_from_this();
-}
-
-bool BoolLit::isConjunction() const {
-    return true;
-}
-
-size_t BoolLit::size() const {
-    return 1;
-}
-
-std::string BoolLit::toRedlog() const {
-    return var.getName();
-}
-
-RelSet BoolLit::universallyValidLits() const {
-    return {};
-}
-
-void BoolLit::collectLits(RelSet &res) const {}
-
-void BoolLit::collectVars(VarSet &res) const {}
-
-BoolVar BoolLit::getBoolVar() const {
-    return var;
-}
-
-void BoolLit::collectVars(BoolVarSet &res) const {
-    res.insert(this->getBoolVar());
-}
-
-BoolExpr BoolLit::replaceRels(const RelMap<BoolExpr> map) const {
-    return shared_from_this();
-}
-
-void BoolLit::dnf(std::vector<Guard> &res) const {
-    throw UnsupportedOperationError();
-}
-
-unsigned BoolLit::hash() const {
-    return var.hash();
-}
-
-void BoolLit::getBounds(const Var &n, Bounds &res) const {}
-
-option<BoolExpr> BoolLit::simplify() const {
-    return {};
-}
-
-bool BoolLit::isOctagon() const {
-    return false;
-}
-
-bool BoolLit::isNegated() const {
-    return negated;
-}
-
-bool operator<(const BoolLit &l1, const BoolLit &l2) {
-    if (l1.isNegated() && !l2.isNegated()) {
-        return true;
-    }
-    if (l2.isNegated()) {
-        return false;
-    }
-    return l1.getBoolVar() < l2.getBoolVar();
-}
-
-int BoolLit::compare(const BoolExpr that) const {
-    if (!that->getLit()) {
-        return -1;
-    }
-    const auto lit = *that->getLit();
-    if (negated && !lit.negated) {
-        return -1;
-    }
-    if (!negated && lit.negated) {
-        return 1;
-    }
-    return var.compare(lit.var);
-}
-
-BoolLit::~BoolLit() {}
-
-std::ostream& operator<<(std::ostream &s, const BoolLit &e) {
-    if (e.isNegated()) {
-        s << "!";
-    }
-    return s << e.getBoolVar();
-}
 
 
 BoolJunction::BoolJunction(const BoolExprSet &children, ConcatOperator op): children(children), op(op) { }
@@ -374,11 +212,7 @@ bool BoolJunction::isOr() const {
     return op == ConcatOr;
 }
 
-option<Rel> BoolJunction::getTheoryLit() const {
-    return {};
-}
-
-option<BoolLit> BoolJunction::getLit() const {
+option<Lit> BoolJunction::getTheoryLit() const {
     return {};
 }
 
@@ -398,25 +232,16 @@ const BoolExpr BoolJunction::negation() const {
     throw std::invalid_argument("unknown junction");
 }
 
-bool BoolJunction::isLinear() const {
+bool BoolJunction::forall(const std::function<bool(const Lit&)> &pred) const {
     for (const BoolExpr &e: children) {
-        if (!e->isLinear()) {
+        if (!e->forall(pred)) {
             return false;
         }
     }
     return true;
 }
 
-bool BoolJunction::isPolynomial() const {
-    for (const BoolExpr &e: children) {
-        if (!e->isPolynomial()) {
-            return false;
-        }
-    }
-    return true;
-}
-
-BoolExpr BoolJunction::subs(const ExprSubs &subs) const {
+BoolExpr BoolJunction::subs(const ThSubs &subs) const {
     BoolExprSet newChildren;
     for (const BoolExpr &c: children) {
         newChildren.insert(c->subs(subs));
@@ -458,11 +283,11 @@ std::string BoolJunction::toRedlog() const {
     return "(" + res + ")";
 }
 
-RelSet BoolJunction::universallyValidLits() const {
-    RelSet res;
+std::set<Lit> BoolJunction::universallyValidLits() const {
+    std::set<Lit> res;
     if (isAnd()) {
         for (const BoolExpr &c: children) {
-            const option<Rel> lit = c->getTheoryLit();
+            const option<Lit> lit = c->getTheoryLit();
             if (lit) {
                 res.insert(*lit);
             }
@@ -471,7 +296,7 @@ RelSet BoolJunction::universallyValidLits() const {
     return res;
 }
 
-void BoolJunction::collectLits(RelSet &res) const {
+void BoolJunction::collectLits(std::set<Lit> &res) const {
     for (const BoolExpr &c: children) {
         c->collectLits(res);
     }
@@ -483,16 +308,16 @@ void BoolJunction::collectVars(VarSet &res) const {
     }
 }
 
-void BoolJunction::collectVars(BoolVarSet &res) const {
+void BoolJunction::collectVars(std::set<BoolVar> &res) const {
     for (const BoolExpr &c: children) {
         c->collectVars(res);
     }
 }
 
-BoolExpr BoolJunction::replaceRels(const RelMap<BoolExpr> map) const {
+BoolExpr BoolJunction::replaceLits(const std::map<Lit, BoolExpr> map) const {
     BoolExprSet newChildren;
     for (const BoolExpr &c: children) {
-        const option<BoolExpr> &newC = c->replaceRels(map);
+        const option<BoolExpr> &newC = c->replaceLits(map);
         if (newC) {
             newChildren.insert(newC.get());
         }
@@ -541,17 +366,17 @@ void BoolJunction::getBounds(const Var &n, Bounds &res) const {
     }
 }
 
-option<BoolExpr> BoolJunction::simplify() const {
+BoolExpr BoolJunction::map(const std::function<option<BoolExpr>(const Lit&)> &f) const {
     if (isAnd()) {
         BoolExprSet newChildren;
         bool changed = false;
         for (const auto &c: children) {
-            const auto simp = c->simplify();
-            if (simp && *simp == False) {
+            const auto simp = c->map(f);
+            if (simp == False) {
                 return False;
-            } else if (simp) {
-                if (*simp != True) {
-                    newChildren.insert(*simp);
+            } else if (simp.get() != c.get()) {
+                if (simp != True) {
+                    newChildren.insert(simp);
                 }
                 changed = true;
             } else {
@@ -559,7 +384,7 @@ option<BoolExpr> BoolJunction::simplify() const {
             }
         }
         if (!changed) {
-            return {};
+            return shared_from_this();
         } else if (newChildren.empty()) {
             return True;
         } else {
@@ -569,12 +394,12 @@ option<BoolExpr> BoolJunction::simplify() const {
         BoolExprSet newChildren;
         bool changed = false;
         for (const auto &c: children) {
-            const auto simp = c->simplify();
-            if (simp && *simp == True) {
+            const auto simp = c->map(f);
+            if (simp == True) {
                 return True;
-            } else if (simp) {
-                if (*simp != False) {
-                    newChildren.insert(*simp);
+            } else if (simp.get() != c.get()) {
+                if (simp != False) {
+                    newChildren.insert(simp);
                 }
                 changed = true;
             } else {
@@ -590,18 +415,6 @@ option<BoolExpr> BoolJunction::simplify() const {
         }
     }
     return {};
-}
-
-bool BoolJunction::isOctagon() const {
-    if (isAnd()) {
-        for (const auto &c: children) {
-            if (!c->isOctagon()) {
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
 }
 
 unsigned BoolJunction::hash() const {
@@ -632,9 +445,9 @@ int BoolJunction::compare(const BoolExpr that) const {
 BoolJunction::~BoolJunction() {}
 
 
-Quantifier::Quantifier(const Type &qType, const VarSet &vars, const VarMap<Expr> &lowerBounds, const VarMap<Expr> &upperBounds): qType(qType), vars(vars), lowerBounds(lowerBounds), upperBounds(upperBounds) {}
+Quantifier::Quantifier(const Type &qType, const std::set<NumVar> &vars, const std::map<NumVar, Expr> &lowerBounds, const std::map<NumVar, Expr> &upperBounds): qType(qType), vars(vars), lowerBounds(lowerBounds), upperBounds(upperBounds) {}
 
-option<Expr> Quantifier::lowerBound(const Var &x) const {
+option<Expr> Quantifier::lowerBound(const NumVar &x) const {
     const auto it = lowerBounds.find(x);
     if (it == lowerBounds.end()) {
         return {};
@@ -643,7 +456,7 @@ option<Expr> Quantifier::lowerBound(const Var &x) const {
     }
 }
 
-option<Expr> Quantifier::upperBound(const Var &x) const {
+option<Expr> Quantifier::upperBound(const NumVar &x) const {
     const auto it = upperBounds.find(x);
     if (it == upperBounds.end()) {
         return {};
@@ -657,7 +470,7 @@ Quantifier Quantifier::negation() const {
     return Quantifier(_qType, vars, lowerBounds, upperBounds);
 }
 
-const VarSet& Quantifier::getVars() const {
+const std::set<NumVar>& Quantifier::getVars() const {
     return vars;
 }
 
@@ -674,10 +487,10 @@ std::string Quantifier::toRedlog() const {
     return res;
 }
 
-Quantifier Quantifier::remove(const Var &x) const {
-    VarSet newVars(vars);
-    VarMap<Expr> newLowerBounds(lowerBounds);
-    VarMap<Expr> newUpperBounds(upperBounds);
+Quantifier Quantifier::remove(const NumVar &x) const {
+    std::set<NumVar> newVars(vars);
+    std::map<NumVar, Expr> newLowerBounds(lowerBounds);
+    std::map<NumVar, Expr> newUpperBounds(upperBounds);
     newVars.erase(x);
     newLowerBounds.erase(x);
     newUpperBounds.erase(x);
@@ -692,25 +505,22 @@ const QuantifiedFormula QuantifiedFormula::negation() const {
     return QuantifiedFormula(_prefix, matrix->negation());
 }
 
-bool QuantifiedFormula::isLinear() const {
-    return matrix->isLinear();
+bool QuantifiedFormula::forall(const std::function<bool(const Lit&)> &pred) const {
+    return matrix->forall(pred);
 }
 
-bool QuantifiedFormula::isPolynomial() const {
-    return matrix->isPolynomial();
-}
 
-VarSet QuantifiedFormula::boundVars() const {
-    VarSet res;
+std::set<NumVar> QuantifiedFormula::boundVars() const {
+    std::set<NumVar> res;
     for (const Quantifier &q: prefix) {
         res.insert(q.getVars().begin(), q.getVars().end());
     }
     return res;
 }
 
-QuantifiedFormula QuantifiedFormula::subs(const ExprSubs &subs) const {
+QuantifiedFormula QuantifiedFormula::subs(const ThSubs &subs) const {
     auto dom = subs.domain();
-    const ExprSubs projected = subs.project(freeVars());
+    const ThSubs projected = subs.project(freeVars());
     return QuantifiedFormula(prefix, matrix->subs(projected));
 }
 
@@ -718,20 +528,18 @@ QuantifiedFormula QuantifiedFormula::toG() const {
     return QuantifiedFormula(prefix, matrix->toG());
 }
 
-void QuantifiedFormula::collectLits(RelSet &res) const {
+void QuantifiedFormula::collectLits(std::set<Lit> &res) const {
     matrix->collectLits(res);
 }
 
 VarSet QuantifiedFormula::freeVars() const {
-    VarSet vars, free;
-    VarSet bv = boundVars();
+    VarSet vars;
+    std::set<NumVar> bv = boundVars();
     matrix->collectVars(vars);
-    for (const Var& x: vars) {
-        if (bv.find(x) == bv.end()) {
-            free.insert(x);
-        }
+    for (const NumVar& x: bv) {
+        vars.erase(x);
     }
-    return free;
+    return vars;
 }
 
 std::string QuantifiedFormula::toRedlog() const {
@@ -749,53 +557,44 @@ std::string QuantifiedFormula::toRedlog() const {
     return res;
 }
 
-std::pair<QuantifiedFormula, ExprSubs> QuantifiedFormula::normalizeVariables(VariableManager &varMan) const {
-    VarSet vars;
-    matrix->collectVars(vars);
-    ExprSubs normalization, inverse;
-    unsigned count = 0;
-    for (Var x: vars) {
-        std::string varName = "x" + std::to_string(count);
-        option<Var> replacement = varMan.getVar(varName);
-        if (!replacement) replacement = varMan.addFreshTemporaryVariable(varName);
-        ++count;
-        normalization.put(x, replacement.get());
-        inverse.put(replacement.get(), x);
-    }
-    const auto newMatrix = matrix->subs(normalization);
-    std::vector<Quantifier> newPrefix;
-    for (const auto& q: prefix) {
-        VarSet newVars;
-        VarMap<Expr> newLowerBounds;
-        VarMap<Expr> newUpperBounds;
-        for (const auto& x: q.getVars()) {
-            if (vars.find(x) != vars.end()) {
-                newVars.insert(normalization.get(x).toVar());
-                auto lb = q.lowerBound(x);
-                auto ub = q.upperBound(x);
-                if (lb) {
-                    newLowerBounds[x] = lb.get();
-                }
-                if (ub) {
-                    newUpperBounds[x] = ub.get();
-                }
-            }
-        }
-        if (!newVars.empty()) {
-            newPrefix.push_back(Quantifier(q.getType(), newVars, newLowerBounds, newUpperBounds));
-        }
-    }
-    return {QuantifiedFormula(newPrefix, newMatrix), inverse};
-}
-
-option<QuantifiedFormula> QuantifiedFormula::simplify() const {
-    const option<BoolExpr> newMatrix = matrix->simplify();
-    if (newMatrix) {
-        return QuantifiedFormula(prefix, *newMatrix);
-    } else {
-        return *this;
-    }
-}
+//std::pair<QuantifiedFormula, ExprSubs> QuantifiedFormula::normalizeVariables(VariableManager &varMan) const {
+//    VarSet vars;
+//    matrix->collectVars(vars);
+//    Subs normalization, inverse;
+//    unsigned count = 0;
+//    for (const Var &x: vars) {
+//        std::string varName = "x" + std::to_string(count);
+//        option<Var> replacement = varMan.getVar(varName);
+//        if (!replacement) replacement = varMan.addFreshTemporaryVariable(varName);
+//        ++count;
+//        normalization.put(x, replacement.get());
+//        inverse.put(replacement.get(), x);
+//    }
+//    const auto newMatrix = matrix->subs(normalization);
+//    std::vector<Quantifier> newPrefix;
+//    for (const auto& q: prefix) {
+//        std::set<Var> newVars;
+//        VarMap<Expr> newLowerBounds;
+//        VarMap<Expr> newUpperBounds;
+//        for (const auto& x: q.getVars()) {
+//            if (vars.find(x) != vars.end()) {
+//                newVars.insert(normalization.get(x).toVar());
+//                auto lb = q.lowerBound(x);
+//                auto ub = q.upperBound(x);
+//                if (lb) {
+//                    newLowerBounds[x] = lb.get();
+//                }
+//                if (ub) {
+//                    newUpperBounds[x] = ub.get();
+//                }
+//            }
+//        }
+//        if (!newVars.empty()) {
+//            newPrefix.push_back(Quantifier(q.getType(), newVars, newLowerBounds, newUpperBounds));
+//        }
+//    }
+//    return {QuantifiedFormula(newPrefix, newMatrix), inverse};
+//}
 
 bool QuantifiedFormula::isTiviallyTrue() const {
     return matrix == True;
@@ -842,15 +641,15 @@ BoolExpr build(BoolExprSet xs, ConcatOperator op) {
     return BoolExpr(new BoolJunction(children, op));
 }
 
-BoolExpr build(const RelSet &xs, ConcatOperator op) {
+BoolExpr build(const std::set<Lit> &xs, ConcatOperator op) {
     BoolExprSet children;
-    for (const Rel &x: xs) {
+    for (const Lit &x: xs) {
         children.insert(buildTheoryLit(x));
     }
     return build(children, op);
 }
 
-const BoolExpr buildAnd(const RelSet &xs) {
+const BoolExpr buildAnd(const std::set<Lit> &xs) {
     return build(xs, ConcatAnd);
 }
 
@@ -862,7 +661,7 @@ const BoolExpr buildConjunctiveClause(const BoolExprSet &xs) {
     return BoolExpr(new BoolJunction(xs, ConcatAnd));
 }
 
-const BoolExpr buildOr(const RelSet &xs) {
+const BoolExpr buildOr(const std::set<Lit> &xs) {
     return build(xs, ConcatOr);
 }
 
@@ -870,28 +669,24 @@ const BoolExpr buildOr(const BoolExprSet &xs) {
     return build(xs, ConcatOr);
 }
 
-const BoolExpr buildAnd(const std::vector<Rel> &xs) {
-    return build(RelSet(xs.begin(), xs.end()), ConcatAnd);
+const BoolExpr buildAnd(const std::vector<Lit> &xs) {
+    return build(std::set<Lit>(xs.begin(), xs.end()), ConcatAnd);
 }
 
 const BoolExpr buildAnd(const std::vector<BoolExpr> &xs) {
     return build(BoolExprSet(xs.begin(), xs.end()), ConcatAnd);
 }
 
-const BoolExpr buildOr(const std::vector<Rel> &xs) {
-    return build(RelSet(xs.begin(), xs.end()), ConcatOr);
+const BoolExpr buildOr(const std::vector<Lit> &xs) {
+    return build(std::set<Lit>(xs.begin(), xs.end()), ConcatOr);
 }
 
 const BoolExpr buildOr(const std::vector<BoolExpr> &xs) {
     return build(BoolExprSet(xs.begin(), xs.end()), ConcatOr);
 }
 
-const BoolExpr buildTheoryLit(const Rel &lit) {
+const BoolExpr buildTheoryLit(const Lit &lit) {
     return BoolExpr(new BoolTheoryLit(lit));
-}
-
-const BoolExpr buildLit(const BoolVar &var, bool negated) {
-    return BoolExpr(new BoolLit(var, negated));
 }
 
 const BoolExpr True = buildAnd(std::vector<BoolExpr>());
@@ -902,7 +697,7 @@ const BoolExpr operator &(const BoolExpr a, const BoolExpr b) {
     return buildAnd(children);
 }
 
-const BoolExpr operator &(const BoolExpr a, const Rel &b) {
+const BoolExpr operator &(const BoolExpr a, const Lit &b) {
     return a & buildTheoryLit(b);
 }
 
@@ -911,7 +706,7 @@ const BoolExpr operator |(const BoolExpr a, const BoolExpr b) {
     return buildOr(children);
 }
 
-const BoolExpr operator |(const BoolExpr a, const Rel b) {
+const BoolExpr operator |(const BoolExpr a, const Lit b) {
     return a | buildTheoryLit(b);
 }
 
@@ -925,15 +720,6 @@ bool operator ==(const BoolExpr a, const BoolExpr b) {
     }
     if (a->getTheoryLit()) {
         return true;
-    }
-    if (a->getLit().has_value() != b->getLit().has_value()) {
-        return false;
-    }
-    if (a->getLit()) {
-        if (a->getLit()->isNegated() != b->getLit()->isNegated()) {
-            return false;
-        }
-        return a->getLit()->getBoolVar().equals(b->getLit()->getBoolVar());
     }
     if (a->isAnd() != b->isAnd()) {
         return false;
@@ -952,8 +738,6 @@ bool boolexpr_compare::operator() (const BoolExpr a, const BoolExpr b) const {
 std::ostream& operator<<(std::ostream &s, const BoolExpr e) {
     if (e->getTheoryLit()) {
         s << *e->getTheoryLit();
-    } else if (e->getLit()) {
-        s << *e->getLit();
     } else if (e->getChildren().empty()) {
         if (e->isAnd()) {
             s << "TRUE";

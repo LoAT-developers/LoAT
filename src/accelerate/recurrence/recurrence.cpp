@@ -17,6 +17,7 @@
 
 #include "recurrence.hpp"
 #include "dependencyorder.hpp"
+#include "inttheory.hpp"
 
 #include <purrs.hh>
 
@@ -25,22 +26,22 @@ namespace Purrs = Parma_Recurrence_Relation_Solver;
 
 
 
-Recurrence::Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder)
+Recurrence::Recurrence(VarMan &varMan, const std::vector<NumVar> &dependencyOrder)
     : varMan(varMan),
       ginacN(GiNaC::ex_to<GiNaC::symbol>(Purrs::Expr(Purrs::Recurrence::n).toGiNaC())),
       dependencyOrder(dependencyOrder)
 {}
 
 
-option<Recurrence::RecurrenceSolution> Recurrence::findUpdateRecurrence(const Expr &updateRhs, Var updateLhs, const VarMap<unsigned int> &validitybounds) {
+option<Recurrence::RecurrenceSolution> Recurrence::findUpdateRecurrence(const Expr &updateRhs, NumVar updateLhs, const std::map<NumVar, unsigned int> &validitybounds) {
     Expr last = Purrs::x(Purrs::Recurrence::n - 1).toGiNaC();
     Purrs::Expr rhs = Purrs::Expr::fromGiNaC(updateRhs.subs(updatePreRecurrences).subs(ExprSubs(updateLhs, last)).ex);
     Purrs::Expr exact;
 
-    const VarSet &vars = updateRhs.vars();
+    const std::set<NumVar> &vars = updateRhs.vars();
     if (vars.find(updateLhs) == vars.end()) {
         unsigned int validitybound = 1;
-        for (const Var &x: vars) {
+        for (const NumVar &x: vars) {
             if (validitybounds.find(x) != validitybounds.end() && validitybounds.at(x) + 1 > validitybound) {
                 validitybound = validitybounds.at(x) + 1;
             }
@@ -101,8 +102,8 @@ option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Exp
 
     //in the given order try to solve the recurrence for every updated variable
     unsigned int validityBound = 0;
-    VarMap<unsigned int> validityBounds;
-    for (Var target : dependencyOrder) {
+    std::map<NumVar, unsigned int> validityBounds;
+    for (const NumVar &target : dependencyOrder) {
         const Expr &rhs = update.get(target);
         option<Recurrence::RecurrenceSolution> updateRec = findUpdateRecurrence(rhs, target, validityBounds);
         if (!updateRec) {
@@ -135,7 +136,7 @@ option<Recurrence::Result> Recurrence::iterate(const ExprSubs &update, const Exp
     }
 
     Recurrence::Result res;
-    res.n = varMan.addFreshTemporaryVariable("n");
+    res.n = varMan.addFreshTemporaryVariable<IntTheory>("n");
     ExprSubs subs = {ginacN, res.n};
     res.cost = newCost.get().subs(subs);
     res.update = newUpdate.get().update.concat(subs);
@@ -146,7 +147,7 @@ option<Recurrence::Result> Recurrence::iterate(const ExprSubs &update, const Exp
 
 option<Recurrence::Result> Recurrence::iterateRule(VarMan &varMan, const LinearRule &rule) {
     // This may modify the rule's guard and update
-    auto order = DependencyOrder::findOrder(rule.getUpdate().getExprSubs());
+    auto order = DependencyOrder::findOrder(rule.getUpdate().getThSubs());
     if (!order) {
         return {};
     }

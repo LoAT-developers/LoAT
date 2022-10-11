@@ -187,7 +187,7 @@ public:
     /**
      * Returns true if all expressions of this limit problem are polynomial.
      */
-    bool isPolynomial() const;
+    bool isPoly() const;
 
 
     /**

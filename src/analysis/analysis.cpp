@@ -493,9 +493,9 @@ void Analysis::getMaxRuntimeOf(const set<TransIdx> &rules, RuntimeResult &res) {
         proof.section(stringstream() << "Computing asymptotic complexity for rule " << ruleIdx);
 
         option<AsymptoticBound::Result> checkRes;
-        bool isPolynomial = rule.getCost().isPoly() && !rule.getCost().isNontermSymbol() && rule.getGuard()->isPolynomial();
+        bool isPoly = rule.getCost().isPoly() && !rule.getCost().isNontermSymbol() && rule.getGuard()->isPoly();
         unsigned int timeout = Timeout::soft() ? Config::Smt::LimitTimeoutFinalFast : Config::Smt::LimitTimeoutFinal;
-        if (isPolynomial && Config::Limit::PolyStrategy->smtEnabled()) {
+        if (isPoly && Config::Limit::PolyStrategy->smtEnabled()) {
             checkRes = AsymptoticBound::determineComplexityViaSMT(
                         its,
                         rule.getGuard(),

@@ -51,11 +51,7 @@ public:
 
     void collectVars(VarSet &vars) const {
         guard->collectVars(vars);
-        cost.collectVars(vars);
-    }
-
-    void collectVars(BoolVarSet &vars) const {
-        guard->collectVars(vars);
+        vars.collectVars(cost);
     }
 
     unsigned hash() const {
@@ -80,10 +76,6 @@ public:
     const Subs& getUpdate() const { return update; }
 
     void collectVars(VarSet &vars) const {
-        update.collectVars(vars);
-    }
-
-    void collectVars(BoolVarSet &vars) const {
         update.collectVars(vars);
     }
 
@@ -160,7 +152,7 @@ public:
     // Note: Result may be incorrect if an updated variable is updated (which is not checked!)
     // Note: It is always safe if only temporary variables are substituted.
     Rule subs(const Subs &subs) const;
-    Rule subs(const ExprSubs &subs) const;
+    Rule subs(const ThSubs &subs) const;
 
     // Creates a new rule that only leads to the given location, the updates are cleared, guard/cost are kept
     LinearRule replaceRhssBySink(LocationIdx sink) const;
@@ -174,9 +166,6 @@ public:
 
     VarSet vars() const;
     void collectVars(VarSet &vars) const;
-
-    BoolVarSet bvars() const;
-    void collectVars(BoolVarSet &vars) const;
 
     unsigned hash() const;
     bool approxEqual(const Rule &that, bool compareRhss) const;
@@ -222,7 +211,6 @@ public:
     // special shorthands for linear rules, overwriting the general ones
     LocationIdx getRhsLoc() const { return Rule::getRhsLoc(0); }
     const Subs& getUpdate() const { return Rule::getUpdate(0); }
-    bool isOctagon() const;
 };
 
 
