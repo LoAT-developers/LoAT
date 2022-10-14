@@ -82,13 +82,13 @@ namespace GuardToolbox {
      */
     Result<Rule> eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow, const ITSProblem &its);
 
-    std::pair<option<Expr>, option<Expr>> getBoundFromIneq(const Rel &rel, const Var &N);
+    std::pair<option<Expr>, option<Expr>> getBoundFromIneq(const Rel &rel, const NumVar &N);
 
     /**
      * Tries to solve the equation term == 0 for the given variable, using the given level of restrictiveness
      * @return if possible, the term t such that "var == t" is equivalent to "term == 0"
      */
-    option<Expr> solveTermFor(Expr term, const Var &var, SolvingLevel level);
+    option<Expr> solveTermFor(Expr term, const NumVar &var, SolvingLevel level);
 
 
     /**
@@ -115,7 +115,7 @@ namespace GuardToolbox {
      */
     template<class T>
     bool containsTempVar(const VarMan &varMan, const T &x) {
-        return x.hasVarWith([&varMan](const Var &sym) {
+        return x.hasVarWith([&varMan](const NumVar &sym) {
             return varMan.isTempVar(sym);
         });
     }

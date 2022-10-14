@@ -8,8 +8,7 @@
 #include <memory>
 
 #include "variablemanager.hpp"
-#include "subs.hpp"
-#include "guard.hpp"
+#include "theory.hpp"
 #include "inftyexpression.hpp"
 #include "limitvector.hpp"
 
@@ -29,12 +28,12 @@ public:
      *                        of the form t > 0
      * @param cost a term
      */
-    LimitProblem(const Guard &normalizedGuard, const Expr &cost, VariableManager &varMan);
+    LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const Expr &cost, VariableManager &varMan);
 
     /**
      * Creates the initial LimitProblem without any cost term.
      */
-    LimitProblem(const Guard &normalizedGuard, VariableManager &varMan);
+    LimitProblem(const Conjunction<IntTheory> &normalizedGuard, VariableManager &varMan);
 
     // copy constructor and assignment operator
     LimitProblem(const LimitProblem &other);
@@ -147,7 +146,7 @@ public:
     /**
      * Returns the variable that is used in the solution returned by getSolution().
      */
-    Var getN() const;
+    NumVar getN() const;
 
     /**
      * Returns a reference to the vector storing the substitution identifiers.
@@ -163,14 +162,14 @@ public:
     /**
      * Returns a set of all variables appearing in this limit problem
      */
-    VarSet getVariables() const;
+    std::set<NumVar> getVariables() const;
 
     /**
      * Returns this LimitProblem as a set of relational Expressions:
      * t (+), t (+!), t(+/+!) -> t > 0
      * t (-), t (-!) -> t < 0
      */
-    std::vector<Rel> getQuery() const;
+    std::vector<typename Theory<IntTheory>::Lit> getQuery() const;
 
     /**
      * Returns true if the result of getQuery() is unsatisfiable according to z3.
@@ -225,7 +224,7 @@ public:
 
 private:
     InftyExpressionSet set;
-    Var variableN;
+    NumVar variableN;
     std::vector<int> substitutions;
     bool unsolvable;
     VariableManager &varMan;

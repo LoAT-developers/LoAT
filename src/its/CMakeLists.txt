@@ -1,7 +1,5 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-        cintegerexport.cpp
-        cintegerexport.hpp
         export.cpp
         export.hpp
         hypergraph.hpp
@@ -10,8 +8,7 @@ target_sources(${EXECUTABLE}
         rule.cpp
         rule.hpp
         types.hpp
-        guard.cpp
-        guard.hpp
+        conjunction.hpp
         variablemanager.cpp
         variablemanager.hpp
 )

@@ -11,7 +11,6 @@ target_sources(${EXECUTABLE}
         farkas.hpp
         templates.cpp
         templates.hpp
-        relevantvariables.cpp
         relevantvariables.hpp
         result.hpp
         automaton.hpp

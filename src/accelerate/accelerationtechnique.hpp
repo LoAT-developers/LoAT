@@ -4,17 +4,22 @@
 #include "proof.hpp"
 #include "recurrence.hpp"
 
+template <ITheory... Th>
 class AccelerationTechnique {
 
 public:
 
     struct Accelerator {
-        BoolExpr formula;
+        BExpr<Th...> formula;
         Proof proof;
         bool exact;
         bool witnessesNonterm;
 
-        Accelerator(const BoolExpr &formula, const Proof &proof, bool exact, bool witnessesNonterm);
+        Accelerator(const BExpr<Th...> &formula, const Proof &proof, bool exact, bool witnessesNonterm):
+            formula(formula),
+            proof(proof),
+            exact(exact),
+            witnessesNonterm(witnessesNonterm) {}
 
     };
 
@@ -26,7 +31,10 @@ protected:
     const option<Recurrence::Result> closed;
     ITSProblem &its;
 
-    AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result> closed, ITSProblem &its);
+    AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result> closed, ITSProblem &its):
+        rule(rule),
+        closed(closed),
+        its(its) {}
 
 public:
 

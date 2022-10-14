@@ -17,7 +17,7 @@
 
 #include "loopacceleration.hpp"
 
-#include "smt.hpp"
+#include "smtfactory.hpp"
 #include "recurrence.hpp"
 #include "chain.hpp"
 #include "accelerationfactory.hpp"
@@ -35,7 +35,7 @@ bool LoopAcceleration::shouldAccelerate() const {
     return !rule.getCost().isNontermSymbol() && (!Config::Analysis::complexity() || rule.getCost().isPoly());
 }
 
-vector<Rule> LoopAcceleration::replaceByUpperbounds(const Var &N, const Rule &rule) {
+vector<Rule> LoopAcceleration::replaceByUpperbounds(const NumVar &N, const Rule &rule) {
     if (Config::Analysis::reachability()) {
         return {};
     }
@@ -49,8 +49,11 @@ vector<Rule> LoopAcceleration::replaceByUpperbounds(const Var &N, const Rule &ru
 
     // create one rule for each upper bound, by instantiating N with this bound
     vector<Rule> res;
-    for (const Subs &subs : ve.getRes()) {
-        if (subs.get(N).isRationalConstant()) continue;
+    for (const auto &s : ve.getRes()) {
+        const auto esubs = s.get<IntTheory>();
+        if (esubs.get(N).isRationalConstant()) continue;
+        Subs subs;
+        subs.get<IntTheory>() = esubs;
         res.push_back(rule.subs(subs));
     }
     return res;
@@ -69,6 +72,7 @@ AccelerationResult LoopAcceleration::run() {
         auto accel = AccelerationFactory::get(rule, rec, its);
         for (const auto &ar: accel->computeRes()) {
             res.status = vb > 1 ? PartialSuccess : Success;
+            const BoolExpr formula = theory::transform(ar.formula);
             if (Config::Analysis::tryNonterm() && ar.witnessesNonterm) {
                 option<Rule> resultingRule;
                 if (vb > 0) {
@@ -76,31 +80,33 @@ AccelerationResult LoopAcceleration::run() {
                     for (unsigned i = 0; i < vb - 1; ++i) {
                         prefix = Chaining::chainRules(its, rule, prefix.get(), false);
                     }
-                    resultingRule = buildNontermRule(prefix->getGuard() & ar.formula);
-                    if (Smt::check(resultingRule->getGuard(), its) != Smt::Sat) {
+                    resultingRule = buildNontermRule(prefix->getGuard() & formula);
+                    if (SmtFactory::check(resultingRule->getGuard(), its) != Sat) {
                         continue;
                     }
                 } else {
-                    resultingRule = buildNontermRule(ar.formula);
+                    resultingRule = buildNontermRule(formula);
                 }
                 res.rules.emplace_back(resultingRule.get());
                 res.proof.ruleTransformationProof(rule, "nonterm", resultingRule.get(), its);
                 res.proof.storeSubProof(ar.proof);
             } else if (rec) {
                 option<Rule> resultingRule;
-                BoolSubs empty;
-                Subs up(rec->update, empty);
+                Subs up;
+                up.get<IntTheory>() = rec->update;
                 if (vb > 0) {
                     option<Rule> prefix = rule;
                     for (unsigned i = 0; i < vb - 1; ++i) {
                         prefix = Chaining::chainRules(its, rule, prefix.get(), false);
                     }
-                    resultingRule = Rule(rule.getLhsLoc(), prefix->getGuard() & ar.formula, rec->cost, rule.getRhsLoc(), up);
+                    resultingRule = Rule(rule.getLhsLoc(), prefix->getGuard() & formula, rec->cost, rule.getRhsLoc(), up);
                 } else {
-                    resultingRule = Rule(rule.getLhsLoc(), ar.formula, rec->cost, rule.getRhsLoc(), up);
+                    resultingRule = Rule(rule.getLhsLoc(), formula, rec->cost, rule.getRhsLoc(), up);
                 }
-                const BoolExpr toCheck = resultingRule->getGuard()->subs({rec->n, max(2u, rec->validityBound)});
-                if (Smt::check(toCheck, its) != Smt::Sat) {
+                Subs vbSubs;
+                vbSubs.get<IntTheory>() = {rec->n, max(2u, rec->validityBound)};
+                const BoolExpr toCheck = resultingRule->getGuard()->subs(vbSubs);
+                if (SmtFactory::check(toCheck, its) != Sat) {
                     continue;
                 }
                 res.proof.ruleTransformationProof(rule, "acceleration", resultingRule.get(), its);

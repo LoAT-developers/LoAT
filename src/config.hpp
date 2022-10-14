@@ -40,7 +40,7 @@ namespace Config {
     }
 
     namespace Input {
-        enum Format {Koat, Its, T2, Horn};
+        enum Format {Koat, Its, Horn};
         extern Format format;
     }
 
@@ -138,7 +138,7 @@ namespace Config {
     // Main algorithm
     namespace Analysis {
 
-        enum Mode { Complexity, NonTermination, CIntExport, Reachability };
+        enum Mode { Complexity, NonTermination, Reachability };
         extern std::vector<Mode> modes;
         extern bool Pruning;
         extern Mode mode;

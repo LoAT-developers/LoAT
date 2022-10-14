@@ -1,8 +1,6 @@
-#ifndef REDLOGPARSEVISITOR_H
-#define REDLOGPARSEVISITOR_H
+#pragma once
 
 #include "redlogVisitor.h"
-#include "boolexpr.hpp"
 #include "variablemanager.hpp"
 
 enum BinOp {
@@ -31,8 +29,6 @@ class RedlogParseVisitor: redlogVisitor
 
 public:
 
-    static BoolExpr parse(std::string str, VariableManager &varMan);
+    static BExpr<IntTheory> parse(std::string str, VariableManager &varMan);
 
 };
-
-#endif // REDLOGPARSEVISITOR_H

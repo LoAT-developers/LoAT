@@ -17,7 +17,7 @@
 
 #include "chain.hpp"
 
-#include "smt.hpp"
+#include "smtfactory.hpp"
 #include "config.hpp"
 #include "boolexpr.hpp"
 
@@ -32,11 +32,11 @@ using namespace std;
  * Helper for chainRules. Checks if the given (chained) guard is satisfiable.
  */
 static bool checkSatisfiability(const BoolExpr newGuard, VariableManager &varMan) {
-    auto smtRes = Smt::check(newGuard, varMan);
+    auto smtRes = SmtFactory::check(newGuard, varMan);
 
     // If we still get "unknown", we interpret it as "sat", so we prefer to chain if unsure.
     // This is especially needed for exponentials, since z3 cannot handle them well.
-    return smtRes != Smt::Unsat;
+    return smtRes != Unsat;
 }
 
 
@@ -54,10 +54,10 @@ static option<RuleLhs> chainLhss(VarMan &varMan, const RuleLhs &firstLhs, const 
                                  const RuleLhs &secondLhs, bool checkSat)
 {
     // Concatenate both guards, but apply the first rule's update to second guard
-    BoolExpr newGuard = firstLhs.getGuard() & firstUpdate(secondLhs.getGuard());
+    BoolExpr newGuard = firstLhs.getGuard() & secondLhs.getGuard()->subs(firstUpdate);
 
     // Add the costs, but apply first rule's update to second cost
-    Expr newCost = firstLhs.getCost() + firstUpdate(secondLhs.getCost());
+    Expr newCost = firstLhs.getCost() + secondLhs.getCost().subs(firstUpdate.get<IntTheory>());
 
     // As a small optimization: Keep a NONTERM symbol (easier to identify NONTERM cost later on)
     if (firstLhs.getCost().isNontermSymbol() || secondLhs.getCost().isNontermSymbol()) {

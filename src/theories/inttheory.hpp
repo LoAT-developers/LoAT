@@ -10,6 +10,11 @@ struct IntTheory {
     using Subs = ExprSubs;
     using Expression = Expr;
     using Val = Num;
+
+    static Expression valToExpr(const Val &val) {
+        return val;
+    }
+
 };
 
-static_assert(INonBoolTheory<IntTheory>);
+static_assert(ITheory<IntTheory>);

@@ -3,12 +3,27 @@
 #include "itheory.hpp"
 #include "boollit.hpp"
 #include "boolvar.hpp"
+#include "boolsubs.hpp"
+#include "boolexpr.hpp"
+#include "inttheory.hpp"
 
-struct BoolTheory {
+#include <memory>
+
+struct BoolBaseTheory {
     using Lit = BoolLit;
     using Var = BoolVar;
     using Val = bool;
 };
 
-static_assert(ITheory<BoolTheory>);
+struct BoolTheory: public BoolBaseTheory {
+    using Expression = std::shared_ptr<const BoolExpression<IntTheory, BoolTheory>>;
+    using Subs = BoolSubs<IntTheory, BoolTheory>;
 
+    static Expression valToExpr(const Val &val) {
+        return val ? BoolExpression<IntTheory, BoolTheory>::True : BoolExpression<IntTheory, BoolTheory>::False;
+    }
+
+};
+
+static_assert(IBaseTheory<BoolBaseTheory>);
+static_assert(ITheory<BoolTheory>);

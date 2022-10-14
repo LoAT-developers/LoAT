@@ -1,6 +1,5 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-        yices.cpp
         yices.hpp
         yicescontext.cpp
         yicescontext.hpp

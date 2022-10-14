@@ -26,11 +26,11 @@
 #include <map>
 #include <sstream>
 
-template<typename EXPR> class ExprToSmt {
+template<typename EXPR, ITheory... Th> class ExprToSmt {
 public:
 
-    static EXPR convert(const BoolExpr e, SmtContext<EXPR> &ctx, const VariableManager &varMan) {
-        ExprToSmt<EXPR> converter(ctx, varMan);
+    static EXPR convert(const BExpr<Th...> e, SmtContext<EXPR> &ctx, const VariableManager &varMan) {
+        ExprToSmt<EXPR, Th...> converter(ctx, varMan);
         return converter.convertBoolEx(e);
     }
 
@@ -40,16 +40,24 @@ protected:
         context(context),
         varMan(varMan) {}
 
-    EXPR convertBoolEx(const BoolExpr e) {
-        if (e->getLit()) {
-            return convertLit(*e->getLit());
-        }
+    EXPR convertBoolEx(const BExpr<Th...> e) {
         if (e->getTheoryLit()) {
-            return convertRelational(*e->getTheoryLit());
+            const auto lit = *e->getTheoryLit();
+            if constexpr ((std::is_same_v<Rel, Th> || ...)) {
+                if (std::holds_alternative<Rel>(lit)) {
+                    return convertRelational(std::get<Rel>(lit));
+                }
+            }
+            if constexpr ((std::is_same_v<BoolLit, Th> || ...)) {
+                if (std::holds_alternative<BoolLit>(lit)) {
+                    return convertLit(std::get<BoolLit>(lit));
+                }
+            }
+            throw std::logic_error("unsupported theory in exprtosmt");
         }
         EXPR res = e->isAnd() ? context.bTrue() : context.bFalse();
         bool first = true;
-        for (const BoolExpr &c: e->getChildren()) {
+        for (const BExpr<Th...> &c: e->getChildren()) {
             if (first) {
                 res = convertBoolEx(c);
                 first = false;
@@ -171,9 +179,9 @@ protected:
     }
 
     EXPR convertLit(const BoolLit &lit) {
-        auto optVar = context.getConst(lit.getBoolVar());
+        auto optVar = context.getVariable(lit.getBoolVar());
         if (!optVar) {
-            optVar = context.addNewConst(lit.getBoolVar());
+            optVar = context.addNewVariable(lit.getBoolVar(), Expr::Bool);
         }
         return lit.isNegated() ? context.negate(*optVar) : *optVar;
     }

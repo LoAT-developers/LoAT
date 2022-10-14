@@ -3,7 +3,6 @@
 #include "smt.hpp"
 #include "smtfactory.hpp"
 #include "inftyexpression.hpp"
-#include "config.hpp"
 
 using namespace std;
 
@@ -13,8 +12,8 @@ using namespace std;
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a positive constant
  */
-static BoolExpr posConstraint(const map<int, Expr>& coefficients) {
-    std::vector<Rel> conjunction;
+static BExpr<IntTheory> posConstraint(const map<int, Expr>& coefficients) {
+    std::vector<Theory<IntTheory>::Lit> conjunction;
     for (pair<int, Expr> p : coefficients) {
         int degree = p.first;
         Expr c = p.second;
@@ -24,7 +23,7 @@ static BoolExpr posConstraint(const map<int, Expr>& coefficients) {
             conjunction.push_back(c > 0);
         }
     }
-    return buildAnd(conjunction);
+    return buildAnd<IntTheory>(conjunction);
 }
 
 /**
@@ -32,8 +31,8 @@ static BoolExpr posConstraint(const map<int, Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a negative constant
  */
-static BoolExpr negConstraint(const map<int, Expr>& coefficients) {
-    std::vector<Rel> conjunction;
+static BExpr<IntTheory> negConstraint(const map<int, Expr>& coefficients) {
+    std::vector<Theory<IntTheory>::Lit> conjunction;
     for (pair<int, Expr> p : coefficients) {
         int degree = p.first;
         Expr c = p.second;
@@ -43,7 +42,7 @@ static BoolExpr negConstraint(const map<int, Expr>& coefficients) {
             conjunction.push_back(c < 0);
         }
     }
-    return buildAnd(conjunction);
+    return buildAnd<IntTheory>(conjunction);
 }
 
 /**
@@ -51,14 +50,14 @@ static BoolExpr negConstraint(const map<int, Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = -\infty
  */
-static BoolExpr negInfConstraint(const map<int, Expr>& coefficients) {
+static BExpr<IntTheory> negInfConstraint(const map<int, Expr>& coefficients) {
     int maxDegree = 0;
     for (pair<int, Expr> p: coefficients) {
         maxDegree = p.first > maxDegree ? p.first : maxDegree;
     }
-    std::vector<BoolExpr> disjunction;
+    std::vector<BExpr<IntTheory>> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
-        std::vector<Rel> conjunction;
+        std::vector<Theory<IntTheory>::Lit> conjunction;
         for (pair<int, Expr> p: coefficients) {
             int degree = p.first;
             Expr c = p.second;
@@ -68,7 +67,7 @@ static BoolExpr negInfConstraint(const map<int, Expr>& coefficients) {
                 conjunction.push_back(c < 0);
             }
         }
-        disjunction.push_back(buildAnd(conjunction));
+        disjunction.push_back(buildAnd<IntTheory>(conjunction));
     }
     return buildOr(disjunction);
 }
@@ -78,14 +77,14 @@ static BoolExpr negInfConstraint(const map<int, Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = \infty
  */
-static BoolExpr posInfConstraint(const map<int, Expr>& coefficients) {
+static BExpr<IntTheory> posInfConstraint(const map<int, Expr>& coefficients) {
     int maxDegree = 0;
     for (pair<int, Expr> p: coefficients) {
         maxDegree = p.first > maxDegree ? p.first : maxDegree;
     }
-    std::vector<BoolExpr> disjunction;
+    std::vector<BExpr<IntTheory>> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
-        std::vector<Rel> conjunction;
+        std::vector<Theory<IntTheory>::Lit> conjunction;
         for (pair<int, Expr> p: coefficients) {
             int degree = p.first;
             Expr c = p.second;
@@ -95,7 +94,7 @@ static BoolExpr posInfConstraint(const map<int, Expr>& coefficients) {
                 conjunction.push_back(c > 0);
             }
         }
-        disjunction.push_back(buildAnd(conjunction));
+        disjunction.push_back(buildAnd<IntTheory>(conjunction));
     }
     return buildOr(disjunction);
 }
@@ -103,7 +102,7 @@ static BoolExpr posInfConstraint(const map<int, Expr>& coefficients) {
 /**
  * @return the (abstract) coefficients of 'n' in 'ex', where the key is the degree of the respective monomial
  */
-static map<int, Expr> getCoefficients(const Expr &ex, const Var &n) {
+static map<int, Expr> getCoefficients(const Expr &ex, const NumVar &n) {
     int maxDegree = ex.degree(n);
     map<int, Expr> coefficients;
     for (int i = 0; i <= maxDegree; i++) {
@@ -116,27 +115,27 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Rel>, ExprSubs>({currentLP.getQuery(), {cost > 0}}, {}), varMan, timeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {cost > 0}}, {}), varMan, timeout);
 
     // the parameter of the desired family of solutions
-    Var n = currentLP.getN();
+    auto n = currentLP.getN();
 
     // get all relevant variables
-    VarSet vars = currentLP.getVariables();
+    std::set<NumVar> vars = currentLP.getVariables();
 
     // create linear templates for all variables
-    Subs templateSubs;
-    VarMap<Var> varCoeff, varCoeff0;
-    for (const Var &var : vars) {
-        Var c0 = varMan.getFreshUntrackedSymbol(var.get_name() + "_0", Expr::Int);
-        Var c = varMan.getFreshUntrackedSymbol(var.get_name() + "_c", Expr::Int);
+    ExprSubs templateSubs;
+    std::map<NumVar, NumVar> varCoeff, varCoeff0;
+    for (const auto &var : vars) {
+        auto c0 = varMan.getFreshUntrackedSymbol<IntTheory>(var.get_name() + "_0", Expr::Int);
+        auto c = varMan.getFreshUntrackedSymbol<IntTheory>(var.get_name() + "_c", Expr::Int);
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
         templateSubs.put(var, c0 + (n * c));
     }
 
     // replace variables in the cost function with their linear templates
-    Expr templateCost = templateSubs(cost).expand();
+    Expr templateCost = cost.subs(templateSubs).expand();
 
     // if the cost function is a constant, then we are bound to fail
     Complexity maxPossibleFiniteRes = templateCost.isPoly() ?
@@ -149,12 +148,12 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
     // encode every entry of the limit problem
     for (auto it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
         // replace variables with their linear templates
-        Expr ex = templateSubs(*it).expand();
+        Expr ex = it->subs(templateSubs).expand();
         map<int, Expr> coefficients = getCoefficients(ex, n);
         Direction direction = it->getDirection();
         // add the required constraints (depending on the direction-label from the limit problem)
         if (direction == POS) {
-            BoolExpr disjunction = posConstraint(coefficients) | posInfConstraint(coefficients);
+            BExpr<IntTheory> disjunction = posConstraint(coefficients) | posInfConstraint(coefficients);
             solver->add(disjunction);
         } else if (direction == POS_CONS) {
             solver->add(posConstraint(coefficients));
@@ -169,8 +168,8 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
 
     // auxiliary function that checks satisfiability wrt. the current state of the solver
     auto checkSolver = [&]() -> bool {
-        Smt::Result res = solver->check();
-        return res == Smt::Sat;
+        SmtResult res = solver->check();
+        return res == Sat;
     };
 
     // remember the current state for backtracking before trying several variations
@@ -178,7 +177,7 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
 
     // first fix that all program variables have to be constants
     // a model witnesses unbounded complexity
-    for (const Var &var : vars) {
+    for (const auto &var : vars) {
         if (!varMan.isTempVar(var)) {
             solver->add(Rel::buildEq(varCoeff.at(var), 0));
         }
@@ -216,19 +215,19 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
 
     // we found a model -- create the corresponding solution of the limit problem
     ExprSubs smtSubs;
-    Model model = solver->model();
-    for (const Var &var : vars) {
-        Var c0 = varCoeff0.at(var);
-        Expr c = model.get(varCoeff.at(var));
-        smtSubs.put(var, c0 == model.contains(c0) ? (model.get(c0) + c * n) : (c * n));
+    auto model = solver->model();
+    for (const auto &var : vars) {
+        auto c0 = varCoeff0.at(var);
+        auto c = model.get<IntTheory>(varCoeff.at(var));
+        smtSubs.put(var, model.contains<IntTheory>(c0) ? (model.get<IntTheory>(c0) + c * n) : (c * n));
     }
 
     return {smtSubs};
 }
 
-BoolExpr encodeBoolExpr(const BoolExpr expr, const Subs &templateSubs, const Var &n) {
-    BoolExprSet newChildren;
-    for (const BoolExpr &c: expr->getChildren()) {
+BExpr<IntTheory> encodeBoolExpr(const BExpr<IntTheory> expr, const ExprSubs &templateSubs, const NumVar &n) {
+    BoolExpressionSet<IntTheory> newChildren;
+    for (const auto &c: expr->getChildren()) {
         newChildren.insert(encodeBoolExpr(c, templateSubs, n));
     }
     if (expr->isAnd()) {
@@ -236,45 +235,46 @@ BoolExpr encodeBoolExpr(const BoolExpr expr, const Subs &templateSubs, const Var
     } else if (expr->isOr()) {
         return buildOr(newChildren);
     } else {
-        option<Rel> lit = expr->getTheoryLit();
+        auto lit = expr->getTheoryLit();
         assert(lit);
-        assert(lit->isGZeroConstraint());
-        const auto &lhs = lit->isStrict() ? lit->lhs() : lit->lhs() + 1;
-        Expr ex = templateSubs(lhs).expand();
+        auto &rel = std::get<Rel>(*lit);
+        assert(rel.isGZeroConstraint());
+        const auto &lhs = rel.isStrict() ? rel.lhs() : rel.lhs() + 1;
+        Expr ex = lhs.subs(templateSubs).expand();
         map<int, Expr> coefficients = getCoefficients(ex, n);
         return posConstraint(coefficients) | posInfConstraint(coefficients);
     }
 }
 
-std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BoolExpr expr, const Expr &cost,
+std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntTheory> expr, const Expr &cost,
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, buildTheoryLit(cost > 0)}), varMan, timeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(chooseLogic<IntTheory>(BoolExpressionSet<IntTheory>{expr, buildTheoryLit<IntTheory>(cost > 0)}), varMan, timeout);
 
     // the parameter of the desired family of solutions
-    Var n = varMan.getFreshUntrackedSymbol("n", Expr::Int);
+    NumVar n = varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int);
 
     // get all relevant variables
-    VarSet vars;
+    theory::VarSet<IntTheory> vars;
     expr->collectVars(vars);
-    cost.collectVars(vars);
+    cost.collectVars(vars.get<IntTheory>());
     bool hasTmpVars = false;
 
     // create linear templates for all variables
-    Subs templateSubs;
-    VarMap<Var> varCoeff, varCoeff0;
-    for (const Var &var : vars) {
+    ExprSubs templateSubs;
+    std::map<NumVar, NumVar> varCoeff, varCoeff0;
+    for (const auto &var : vars.get<IntTheory>()) {
         hasTmpVars |= varMan.isTempVar(var);
-        Var c0 = varMan.getFreshUntrackedSymbol(var.get_name() + "_0", Expr::Int);
-        Var c = varMan.getFreshUntrackedSymbol(var.get_name() + "_c", Expr::Int);
+        auto c0 = varMan.getFreshUntrackedSymbol<IntTheory>(var.get_name() + "_0", Expr::Int);
+        auto c = varMan.getFreshUntrackedSymbol<IntTheory>(var.get_name() + "_c", Expr::Int);
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
         templateSubs.put(var, c0 + (n * c));
     }
 
     // replace variables in the cost function with their linear templates
-    Expr templateCost = templateSubs(cost).expand();
+    Expr templateCost = cost.subs(templateSubs).expand();
 
     // if the cost function is a constant, then we are bound to fail
     Complexity maxPossibleFiniteRes = templateCost.isPoly() ?
@@ -284,23 +284,23 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BoolExpr e
         return {{}, Complexity::Unknown};
     }
 
-    const BoolExpr normalized = expr->toG();
-    const BoolExpr encoding = encodeBoolExpr(normalized, templateSubs, n);
+    auto normalized = expr->toG();
+    auto encoding = encodeBoolExpr(normalized, templateSubs, n);
     solver->add(encoding);
 
     // auxiliary function that checks satisfiability wrt. the current state of the solver
     auto checkSolver = [&]() -> bool {
-        Smt::Result res = solver->check();
-        return res == Smt::Sat;
+        SmtResult res = solver->check();
+        return res == Sat;
     };
 
     auto model = [&]() {
         ExprSubs smtSubs;
         Model model = solver->model();
-        for (const Var &var : vars) {
-            Var c0 = varCoeff0.at(var);
-            Expr c = model.get(varCoeff.at(var));
-            smtSubs.put(var, model.contains(c0) ? (model.get(c0) + c * n) : (c * n));
+        for (const auto &var : vars.get<IntTheory>()) {
+            auto c0 = varCoeff0.at(var);
+            auto c = model.get<IntTheory>(varCoeff.at(var));
+            smtSubs.put(var, model.contains<IntTheory>(c0) ? (model.get<IntTheory>(c0) + c * n) : (c * n));
         }
         return smtSubs;
     };
@@ -310,7 +310,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BoolExpr e
         solver->add(posInfConstraint(getCoefficients(templateCost, n)));
         // first fix that all program variables have to be constants
         // a model witnesses unbounded complexity
-        for (const Var &var : vars) {
+        for (const auto &var : vars.get<IntTheory>()) {
             if (!varMan.isTempVar(var)) {
                 solver->add(Rel::buildEq(varCoeff.at(var), 0));
             }

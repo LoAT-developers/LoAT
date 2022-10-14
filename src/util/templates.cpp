@@ -23,28 +23,29 @@ void Templates::add(const Templates::Template &t) {
     params_.insert(t.params.begin(), t.params.end());
 }
 
-const VarSet& Templates::params() const {
+const std::set<NumVar>& Templates::params() const {
     return params_;
 }
 
-const VarSet& Templates::vars() const {
+const std::set<NumVar>& Templates::vars() const {
     return vars_;
 }
 
 bool Templates::isParametric(const Expr &e) const {
-    VarSet relVars = e.vars();
-    for (const Var &x: params()) {
-        if (relVars.count(x) > 0) {
+    theory::VarSet<IntTheory> relVars;
+    relVars.collectVars(e);
+    for (const auto &x: params()) {
+        if (relVars.find(x) != relVars.end()) {
             return true;
         }
     }
     return false;
 }
 
-const std::vector<Expr> Templates::subs(const Subs &sigma) const {
+const std::vector<Expr> Templates::subs(const ExprSubs &sigma) const {
     std::vector<Expr> res;
-    for (Expr e: templates) {
-        res.push_back(sigma(e));
+    for (const Expr &e: templates) {
+        res.push_back(e.subs(sigma));
     }
     return res;
 }
@@ -57,13 +58,13 @@ Templates::iterator Templates::end() const {
     return templates.end();
 }
 
-const Templates::Template Templates::buildTemplate(const VarSet &vars, VariableManager &varMan) const {
-    VarSet params;
-    const Var &c0 = varMan.getFreshUntrackedSymbol("c0", Expr::Int);
+const Templates::Template Templates::buildTemplate(const std::set<NumVar> &vars, VariableManager &varMan) const {
+    std::set<NumVar> params;
+    const NumVar &c0 = varMan.getFreshUntrackedSymbol<IntTheory>("c0", Expr::Int);
     params.insert(c0);
     Expr res = c0;
-    for (const Var &x: vars) {
-        const Var &param = varMan.getFreshUntrackedSymbol("c", Expr::Int);
+    for (const auto &x: vars) {
+        const NumVar &param = varMan.getFreshUntrackedSymbol<IntTheory>("c", Expr::Int);
         params.insert(param);
         res = res + (x * param);
     }

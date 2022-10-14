@@ -4,7 +4,6 @@
 #pragma once
 
 #include "itsproblem.hpp"
-#include "boolexpr.hpp"
 #include "CHCVisitor.h"
 
 template<class T>
@@ -37,14 +36,12 @@ enum Sort {
     Int, Bool
 };
 
-using some_var = std::variant<Var, BoolVar>;
-
 struct FunApp {
 
     LocationIdx loc;
-    std::vector<some_var> args;
+    std::vector<Var> args;
 
-    FunApp(const LocationIdx loc, const std::vector<some_var> args): loc(loc), args(args) {}
+    FunApp(const LocationIdx loc, const std::vector<Var> args): loc(loc), args(args) {}
 
 };
 
@@ -66,14 +63,14 @@ class  CHCParseVisitor : public CHCVisitor {
     std::vector<Subs> context;
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;
-    std::map<std::string, Var> vars;
+    std::map<std::string, NumVar> vars;
     std::map<std::string, BoolVar> bvars;
     unsigned long maxArity = 0;
     LocationIdx sink;
 
     LocationIdx loc(const std::string &name);
     BoolVar boolVar(const std::string &name);
-    Var var(const std::string &name);
+    NumVar var(const std::string &name);
 
 public:
 

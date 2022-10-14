@@ -18,37 +18,38 @@
 #include "farkas.hpp"
 
 #include "variablemanager.hpp"
+#include "inttheory.hpp"
 
 using namespace std;
 
 
-BoolExpr FarkasLemma::apply(
+BExpr<IntTheory> FarkasLemma::apply(
         const RelSet &constraints,
-        const vector<Var> &vars,
+        const vector<NumVar> &vars,
         const vector<Expr> &coeffs,
         Expr c0,
         int delta,
         VariableManager &varMan,
-        const VarSet &params)
+        const std::set<NumVar> &params)
 {
     assert(vars.size() == coeffs.size());
 
     // List of expressions whose conjunction will be the result
-    std::vector<Rel> res;
+    std::vector<Theory<IntTheory>::Lit> res;
 
     // Create lambda variables, add the constraint "lambda >= 0"
-    RelMap<Var> lambda;
-    VarSet varSet(vars.begin(), vars.end());
+    RelMap<NumVar> lambda;
+    std::set<NumVar> varSet(vars.begin(), vars.end());
     for (const Rel &rel : constraints) {
         const Rel &normalizedRel = rel.toLeq();
         assert(normalizedRel.isLinear(varSet) && normalizedRel.isIneq());
-        Var var = varMan.getFreshUntrackedSymbol("l", Expr::Rational);
+        NumVar var = varMan.getFreshUntrackedSymbol<IntTheory>("l", Expr::Rational);
         lambda[normalizedRel] = var;
         res.push_back(var >= 0);
     }
 
     // Create mapping from every variable to its coefficient
-    VarMap<Expr> varToCoeff;
+    std::map<NumVar, Expr> varToCoeff;
     for (unsigned int i=0; i < vars.size(); ++i) {
         varToCoeff.emplace(vars[i], coeffs[i]);
     }
@@ -56,11 +57,11 @@ BoolExpr FarkasLemma::apply(
     // Search for additional variables that are not contained in vars, but appear in constraints.
     // This is neccessary, since these variables appear in the A*x part and thus also have to appear in the c*x part.
     // The coefficients of additional variables are simply set to 0 (so they won't occur in the metering function).
-    VarSet constraintSymbols;
+    std::set<NumVar> constraintSymbols;
     for (const Rel &rel : constraints) {
         rel.collectVariables(constraintSymbols);
     }
-    for (const Var &sym : constraintSymbols) {
+    for (const auto &sym : constraintSymbols) {
         if (varToCoeff.find(sym) == varToCoeff.end() && std::find(params.begin(), params.end(), sym) == params.end()) {
             varToCoeff.emplace(sym, 0);
         }
@@ -85,32 +86,32 @@ BoolExpr FarkasLemma::apply(
         sum = sum + e.second * e.first.rhs();
     }
     res.push_back(sum <= delta);
-    return buildAnd(res);
+    return buildAnd<IntTheory>(res);
 }
 
-BoolExpr FarkasLemma::apply(
+BExpr<IntTheory> FarkasLemma::apply(
         const RelSet &constraints,
-        const vector<Var> &vars,
-        const vector<Var> &coeffs,
-        Var c0,
+        const vector<NumVar> &vars,
+        const vector<NumVar> &coeffs,
+        NumVar c0,
         int delta,
         VariableManager &varMan,
-        const VarSet &params)
+        const std::set<NumVar> &params)
 {
     std::vector<Expr> theCoeffs;
-    for (const Var &x: coeffs) {
+    for (const NumVar &x: coeffs) {
         theCoeffs.push_back(x);
     }
     return apply(constraints, vars, theCoeffs, c0, delta, varMan, params);
 }
 
-const BoolExpr FarkasLemma::apply(
-        const BoolExpr premise,
+const BExpr<IntTheory> FarkasLemma::apply(
+        const BExpr<IntTheory> premise,
         const RelSet &conclusion,
-        const VarSet &vars,
-        const VarSet &params,
+        const std::set<NumVar> &vars,
+        const std::set<NumVar> &params,
         VariableManager &varMan) {
-    vector<Var> varList(vars.begin(), vars.end());
+    vector<NumVar> varList(vars.begin(), vars.end());
     RelSet splitConclusion;
     for (const Rel &c: conclusion) {
         if (c.isLinear(vars) && c.isIneq()) {
@@ -125,39 +126,44 @@ const BoolExpr FarkasLemma::apply(
     return applyRec(premise, splitConclusion, varList, params, varMan);
 }
 
-const BoolExpr FarkasLemma::applyRec(
-        const BoolExpr premise,
+const BExpr<IntTheory> FarkasLemma::applyRec(
+        const BExpr<IntTheory> premise,
         const RelSet &conclusion,
-        const std::vector<Var> &vars,
-        const VarSet &params,
+        const std::vector<NumVar> &vars,
+        const std::set<NumVar> &params,
         VariableManager &varMan) {
-    std::vector<BoolExpr> res;
+    std::vector<BExpr<IntTheory>> res;
     if (premise->isConjunction()) {
         for (const Rel &c: conclusion) {
             vector<Expr> coefficients;
-            for (const Var &x : vars) {
+            for (const auto &x : vars) {
                 coefficients.push_back(c.lhs().coeff(x, 1));
             }
             Expr c0 = -c.rhs();
             RelSet lits;
-            for (const Rel &lit: premise->lits()) {
-                if (lit.isEq()) {
-                    lits.insert((lit.lhs() <= lit.rhs()).splitVariableAndConstantAddends(params));
-                    lits.insert((lit.lhs() >= lit.rhs()).splitVariableAndConstantAddends(params));
+            for (const auto &lit: premise->lits()) {
+                if (std::holds_alternative<Rel>(lit)) {
+                    const Rel &rel = std::get<Rel>(lit);
+                    if (rel.isEq()) {
+                        lits.insert((rel.lhs() <= rel.rhs()).splitVariableAndConstantAddends(params));
+                        lits.insert((rel.lhs() >= rel.rhs()).splitVariableAndConstantAddends(params));
+                    } else {
+                        lits.insert(rel.toLeq().splitVariableAndConstantAddends(params));
+                    }
                 } else {
-                    lits.insert(lit.toLeq().splitVariableAndConstantAddends(params));
+                    throw IllegalStateError("farkas only supports integer variables");
                 }
             }
             res.push_back(FarkasLemma::apply(lits, vars, coefficients, c0, 0, varMan, params));
         }
         return buildAnd(res);
     } else {
-        BoolExprSet children;
+        BoolExpressionSet<IntTheory> children;
         if (premise->isOr()) {
             children = premise->getChildren();
         } else {
-            BoolExprSet conj;
-            for (const BoolExpr &c: premise->getChildren()) {
+            BoolExpressionSet<IntTheory> conj;
+            for (const auto &c: premise->getChildren()) {
                 if (c->isOr()) {
                     children.insert(c);
                 } else {
@@ -168,7 +174,7 @@ const BoolExpr FarkasLemma::applyRec(
                 children.insert(buildAnd(conj));
             }
         }
-        for (const BoolExpr &c: children) {
+        for (const auto &c: children) {
             res.push_back(applyRec(c, conclusion, vars, params, varMan));
         }
         return premise->isAnd() ? buildOr(res) : buildAnd(res);

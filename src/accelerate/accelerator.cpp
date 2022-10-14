@@ -19,7 +19,7 @@
 
 #include "preprocess.hpp"
 #include "recursionacceleration.hpp"
-#include "smt.hpp"
+#include "smtfactory.hpp"
 #include "rule.hpp"
 #include "chain.hpp"
 #include "loopacceleration.hpp"
@@ -166,10 +166,10 @@ const option<LinearRule> Accelerator::chain(const LinearRule &rule) const {
     bool chained = false;
     LinearRule res = rule;
     // chain if there are updates like x = -x + p
-    for (const auto &p: rule.getUpdate().getExprSubs()) {
-        const Var var = p.first;
-        const Expr up = p.second.expand();
-        const VarSet upVars = up.vars();
+    for (const auto &p: rule.getUpdate().get<IntTheory>()) {
+        const auto var = p.first;
+        const auto up = p.second.expand();
+        const auto upVars = up.vars();
         if (upVars.find(var) != upVars.end()) {
             if (up.isPoly() && up.degree(var) == 1) {
                 const Expr coeff = up.coeff(var);
@@ -182,10 +182,10 @@ const option<LinearRule> Accelerator::chain(const LinearRule &rule) const {
         }
     }
     // chain if there are updates like x = y; y = x
-    VarMap<unsigned> cycleLength;
-    auto up = res.getUpdate().getExprSubs();
+    std::map<NumVar, unsigned> cycleLength;
+    auto up = res.getUpdate().get<IntTheory>();
     for (const auto &p: up) {
-        VarSet vars = p.second.vars();
+        auto vars = p.second.vars();
         unsigned oldSize = 0;
         unsigned count = 0;
         while (oldSize != vars.size() && vars.find(p.first) == vars.end()) {
@@ -217,10 +217,10 @@ const option<LinearRule> Accelerator::chain(const LinearRule &rule) const {
     bool changed;
     do {
         changed = false;
-        up = res.getUpdate().getExprSubs();
+        up = res.getUpdate().get<IntTheory>();
         for (const auto &p: up) {
-            VarSet varsOneStep = p.second.vars();
-            VarSet varsTwoSteps;
+            auto varsOneStep = p.second.vars();
+            std::set<NumVar> varsTwoSteps;
             for (const auto &var: varsOneStep) {
                 const auto it = up.find(var);
                 if (it != up.end()) {
@@ -247,9 +247,9 @@ const option<LinearRule> Accelerator::chain(const LinearRule &rule) const {
 
 unsigned int Accelerator::numNotInUpdate(const Subs &up) const {
     unsigned int res = 0;
-    for (auto const &p: up.getExprSubs()) {
-        const Var &x = p.first;
-        const VarSet &vars = p.second.vars();
+    for (auto const &p: up.get<IntTheory>()) {
+        const auto &x = p.first;
+        const auto &vars = p.second.vars();
         if (!vars.empty() && vars.find(x) == vars.end()) {
             res++;
         }
@@ -270,7 +270,7 @@ const AccelerationResult Accelerator::strengthenAndAccelerate(const LinearRule &
         res.proof.ruleTransformationProof(rule, "unrolling", optR.get(), its);
     }
     LinearRule r = optR ? optR.get() : rule;
-    bool sat = Smt::check(r.getGuard(), its) == Smt::Sat;
+    bool sat = SmtFactory::check<IntTheory, BoolTheory>(r.getGuard(), its) == Sat;
     // only proceed if the guard is sat
     if (sat) {
         AccelerationResult accelRes = LoopAcceleration::accelerate(its, r, sinkLoc, cpx);
@@ -382,7 +382,7 @@ option<Proof> Accelerator::run() {
                         Complexity::Unknown :
                         AsymptoticBound::determineComplexityViaSMT(
                             its,
-                            r.getGuard(),
+                            r.getGuard()->transform<IntTheory>(),
                             r.getCost()).cpx;
             origRules.emplace(loop, NestingCandidate{loop, loop, cpx});
         }
@@ -412,7 +412,7 @@ option<Proof> Accelerator::run() {
                                 Complexity::Unknown :
                                 AsymptoticBound::determineComplexityViaSMT(
                                     its,
-                                    accel.getGuard(),
+                                    accel.getGuard()->transform<IntTheory>(),
                                     accel.getCost()).cpx;
                     // accel.rule is a simple loop iff the original was linear and not non-terminating.
                     nestingCandidates.push_back(NestingCandidate(loop, added.get(), cpx));

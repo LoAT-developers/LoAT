@@ -1,6 +1,5 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-        z3.cpp
         z3.hpp
         z3context.cpp
         z3context.hpp

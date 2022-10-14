@@ -14,9 +14,6 @@ target_sources(${EXECUTABLE}
         boolvar.hpp
         boollit.cpp
         boollit.hpp
-        subs.cpp
-        subs.hpp
-        boolsubs.cpp
         boolsubs.hpp
 )
 

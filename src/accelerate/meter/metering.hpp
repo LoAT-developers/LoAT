@@ -15,15 +15,13 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef METERING_H
-#define METERING_H
+#pragma once
 
 #include "expression.hpp"
 #include "variablemanager.hpp"
 #include "rule.hpp"
-#include "guard.hpp"
+#include "theory.hpp"
 #include "option.hpp"
-#include "boolexpr.hpp"
 #include "proof.hpp"
 #include "model.hpp"
 
@@ -99,7 +97,7 @@ public:
     static option<Rule> strengthenGuard(VarMan &varMan, const Rule &rule);
 
 private:
-    MeteringFinder(VarMan &varMan, const Guard &guard, const std::vector<ExprSubs> &update);
+    MeteringFinder(VarMan &varMan, const Conjunction<IntTheory> &guard, const std::vector<ExprSubs> &update);
 
     /**
      * Helper for convenience, collects all updates of the given rule into a vector.
@@ -138,29 +136,29 @@ private:
     /**
      * Helper to build the implication: "(G and U) --> f(x)-f(x') <= 1" using applyFarkas
      */
-    BoolExpr genUpdateImplications() const;
+    BExpr<IntTheory> genUpdateImplications() const;
 
     /**
      * Helper to build the implication: "(not G) --> f(x) <= 0" using multiple applyFarkas calls (which are AND-concated)
      * @note makes use of reducedGuard instead of guard
      */
-    BoolExpr genNotGuardImplication() const;
+    BExpr<IntTheory> genNotGuardImplication() const;
 
     /**
      * Helper to build the implication: "G --> f(x) > 0" using applyFarkas
      * @param strict if true, the rhs is strict, i.e. f(x) > 0 formulated as f(x) >= 1; if false f(x) >= 0 is used
      */
-    BoolExpr genGuardPositiveImplication(bool strict) const;
+    BExpr<IntTheory> genGuardPositiveImplication(bool strict) const;
 
     /**
      * Helper to build constraints to suppress trivial solutions, i.e. "OR c_i != 0" for the coefficients c_i
      */
-    BoolExpr genNonTrivial() const;
+    BExpr<IntTheory> genNonTrivial() const;
 
     /**
      * Given the z3 model, builds the corresponding linear metering function
      */
-    Expr buildResult(const Model &model) const;
+    Expr buildResult(const Model<IntTheory> &model) const;
 
     /**
      * Modifies the current result to ensure that the metering function evaluates to an integer.
@@ -169,7 +167,7 @@ private:
      *
      * Note: Only required if FARKAS_ALLOW_REAL_COEFFS is set.
      */
-    void ensureIntegralMetering(Result &result, const Model &model) const;
+    void ensureIntegralMetering(Result &result, const Model<IntTheory> &model) const;
 
 
     void dump(const std::string &msg) const;
@@ -183,20 +181,20 @@ private:
 
 
     std::vector<ExprSubs> updates;
-    Guard guard;
+    Conjunction<IntTheory> guard;
 
     /**
      * Same as guard, but only contains constraints that (might) limit the execution of the loop.
      * irrelevantGuard is the guard without the reducedGuard (so the constraints that were dropped).
      */
-    Guard reducedGuard;
-    Guard irrelevantGuard;
+    Conjunction<IntTheory> reducedGuard;
+    Conjunction<IntTheory> irrelevantGuard;
 
     /**
      * The set of variables that might occur in the metering function.
      * These variables are used to build the template for the metering function.
      */
-    VarSet relevantVars;
+    std::set<NumVar> relevantVars;
 
 
 
@@ -216,16 +214,14 @@ private:
      * primedSymbols maps updated variables to a primed version of the variable's symbol.
      */
     struct {
-        std::vector<Var> symbols;
-        std::vector<Var> coeffs;
-        VarMap<Var> primedSymbols;
+        std::vector<NumVar> symbols;
+        std::vector<NumVar> coeffs;
+        std::map<NumVar, NumVar> primedSymbols;
     } meterVars;
 
     /**
      * The absolute coefficient for the metering function template.
      */
-    Var absCoeff;
+    NumVar absCoeff;
 
 };
-
-#endif // METERING_H

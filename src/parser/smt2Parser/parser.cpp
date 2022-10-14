@@ -46,7 +46,7 @@ namespace sexpressionparser {
                     sexpresso::Sexp &scope = ex[2];
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
-                            vars[e[0].str()] = res.addFreshVariable(e[0].str());
+                            vars[e[0].str()] = res.addFreshVariable<IntTheory>(e[0].str());
                             preVars.push_back(e[0].str());
                         }
                     }
@@ -59,7 +59,7 @@ namespace sexpressionparser {
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
                             if (std::find(preVars.begin(), preVars.end(), e[0].str()) == preVars.end()) {
-                                vars[e[0].str()] = res.addFreshTemporaryVariable(e[0].str());
+                                vars[e[0].str()] = res.addFreshTemporaryVariable<IntTheory>(e[0].str());
                                 postVars.push_back(e[0].str());
                             }
                         }
@@ -78,16 +78,16 @@ namespace sexpressionparser {
                             Guard guard;
                             parseCond(ruleExp[5], guard);
                             for (unsigned int i = 0; i < preVars.size(); i++) {
-                                update.put(vars[preVars[i]], vars[postVars[i]]);
+                                update.get<IntTheory>().put(vars[preVars[i]], vars[postVars[i]]);
                             }
                             Rule rule(from, buildAnd(guard), 1, to, update);
                             // make sure that the temporary variables are unique
                             VarSet currTmpVars(tmpVars);
-                            guard.collectVariables(currTmpVars);
+                            currTmpVars.collectVars(guard);
                             Subs subs;
-                            for (const Var &var: currTmpVars) {
+                            for (const NumVar &var: currTmpVars.get<IntTheory>()) {
                                 if (res.isTempVar(var)) {
-                                    subs.put(var, res.addFreshTemporaryVariable(var.get_name()));
+                                    subs.get<IntTheory>().put(var, res.addFreshTemporaryVariable<IntTheory>(var.get_name()));
                                 }
                             }
                             res.addRule(rule.subs(subs));
@@ -116,7 +116,7 @@ namespace sexpressionparser {
             sexpresso::Sexp scope = sexp[1];
             for (sexpresso::Sexp &var: scope.arguments()) {
                 const std::string &varName = var[0].str();
-                vars[varName] = res.addFreshTemporaryVariable(varName);
+                vars[varName] = res.addFreshTemporaryVariable<IntTheory>(varName);
             }
             parseCond(sexp[2], guard);
         } else {
@@ -157,7 +157,7 @@ namespace sexpressionparser {
                 return parser(str);
             } else {
                 if (vars.find(str) == vars.end()) {
-                    vars[str] = res.addFreshTemporaryVariable(str);
+                    vars[str] = res.addFreshTemporaryVariable<IntTheory>(str);
                 }
                 return vars[str];
             }

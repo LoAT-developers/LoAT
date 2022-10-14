@@ -8,7 +8,7 @@ using com_type = std::vector<RuleRhs>;
 using cond_type = BoolExpr;
 using rhs_type = RuleRhs;
 using expr_type = Expr;
-using var_type = Var;
+using var_type = NumVar;
 using lit_type = Rel;
 using formula_type = BoolExpr;
 using relop_type = Rel::RelOp;
@@ -45,7 +45,7 @@ antlrcpp::Any KoatParseVisitor::visitVar(KoatParser::VarContext *ctx) {
     if (res) {
         return res.get();
     } else {
-        return its.addFreshTemporaryVariable(name);
+        return its.addFreshTemporaryVariable<IntTheory>(name);
     }
 }
 
@@ -63,12 +63,18 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     }
     RuleLhs lhs(lhsLoc, cond, cost);
     Rule rule(lhs, rhss);
-    VarSet vars;
-    rule.collectVars(vars);
+    auto vars = rule.vars();
     Subs varRenaming;
-    for (const Var &x: vars) {
+    for (const auto &x: vars) {
         if (its.isTempVar(x)) {
-            varRenaming.put(x, its.addFreshTemporaryVariable(x.get_name()));
+            std::visit(Overload{
+                           [&](const NumVar &x){
+                               varRenaming.put<IntTheory>(x, its.addFreshTemporaryVariable<IntTheory>(x.get_name()));
+                           },
+                           [&](const BoolVar &x){
+                               varRenaming.put<BoolTheory>(x, theory::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(x.get_name())));
+                           }
+                       }, x);
         }
     }
     its.addRule(rule.subs(varRenaming));
@@ -79,7 +85,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
     static bool initVars = true;
     if (initVars) {
         for (const auto& c: ctx->var()) {
-            programVars.push_back(its.addFreshVariable(c->getText()));
+            programVars.push_back(its.addFreshVariable<IntTheory>(c->getText()));
         }
         initVars = false;
     } else {
@@ -88,8 +94,8 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
             throw ParseError("wrong arity: " + ctx->getText());
         }
         for (unsigned i = 0; i < sz; ++i) {
-            if (programVars[i] != its.getVar(ctx->var(i)->getText())) {
-                throw ParseError("invalid arguments: expected " + programVars[i].get_name() + ", got " + ctx->var(i)->getText());
+            if (programVars[i] != *its.getVar(ctx->var(i)->getText())) {
+                throw ParseError("invalid arguments: expected " + theory::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
             }
         }
     }
@@ -111,7 +117,7 @@ antlrcpp::Any KoatParseVisitor::visitRhs(KoatParser::RhsContext *ctx) {
     for (unsigned i = 0; i < sz; ++i) {
         Expr rhs = any_cast<expr_type>(visit(expr[i]));
         if (!rhs.equals(programVars[i])) {
-            up.put(programVars[i], rhs);
+            up.put<IntTheory>(programVars[i], rhs);
         }
     }
     LocationIdx loc = any_cast<fs_type>(visit(ctx->fs()));
@@ -171,7 +177,7 @@ antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitFormula(KoatParser::FormulaContext *ctx) {
     if (ctx->lit()) {
-        return buildTheoryLit(any_cast<lit_type>(visit(ctx->lit())));
+        return buildTheoryLit<IntTheory>(any_cast<lit_type>(visit(ctx->lit())));
     } else if (ctx->LPAR()) {
         return visit(ctx->formula(0));
     } else {

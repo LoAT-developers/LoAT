@@ -5,11 +5,6 @@
 
 #include <mutex>
 
-// Abbreviation since the VariableManager is passed around quite a bit
-class VariableManager;
-typedef VariableManager VarMan;
-
-
 /**
  * Manages variables, i.e., can map between variable indices, names and symbols.
  * Also manages the set of temporary/free variables.
@@ -36,7 +31,14 @@ public:
      *
      * @return The newly created symbol (_not_ associated with a variable index!)
      */
-    Var getFreshUntrackedSymbol(std::string basename, Expr::Type type);
+    template<ITheory Th>
+    typename Th::Var getFreshUntrackedSymbol(std::string basename, Expr::Type type) {
+        std::lock_guard guard(mutex);
+        typename Th::Var res(getFreshName(basename));
+        variableNameLookup.emplace(theory::getName(res), res);
+        untrackedVariables[res] = type;
+        return res;
+    }
 
     Expr::Type getType(const Var &x) const;
 
@@ -51,7 +53,7 @@ private:
     typename Th::Var addVariable(std::string name) {
         std::lock_guard guard(mutex);
         toLower(name);
-        auto sym = Th::Var(name);
+        typename Th::Var sym(name);
         variables.insert(sym);
         variableNameLookup.emplace(name, sym);
         return sym;
@@ -68,7 +70,7 @@ public:
      * @return the VariableIdx of the newly added variable
      */
     template<ITheory Th>
-    Var addFreshVariable(std::string basename) {
+    typename Th::Var addFreshVariable(std::string basename) {
         std::lock_guard guard(mutex);
         return addVariable<Th>(getFreshName(basename));
     }
@@ -77,9 +79,12 @@ public:
     typename Th::Var addFreshTemporaryVariable(std::string basename) {
         std::lock_guard guard(mutex);
         typename Th::Var x = addVariable<Th>(getFreshName(basename));
-        temporaryVariables.insert(Th::getName(x));
+        temporaryVariables.insert(theory::getName<Th>(x));
         return x;
     }
+
+    template<ITheory... Th>
+    std::pair<QuantifiedFormula<Th...>, theory::Subs<Th...>> normalizeVariables(const QuantifiedFormula<Th...> &f);
 
 private:
     // List of all variables (VariableIdx is an index in this list; a Variable is a name and a symbol)
@@ -95,3 +100,5 @@ private:
     std::map<std::string, Var> variableNameLookup;
     std::set<std::string> used;
 };
+
+using VarMan = VariableManager;

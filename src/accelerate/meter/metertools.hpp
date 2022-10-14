@@ -20,8 +20,7 @@
 
 #include "expression.hpp"
 #include "variablemanager.hpp"
-#include "rule.hpp"
-#include "guard.hpp"
+#include "theory.hpp"
 
 #include <vector>
 #include <map>
@@ -43,7 +42,7 @@ namespace MeteringToolbox {
     /**
      * Checks if the given variable is affected by any of the given updates
      */
-    bool isUpdatedByAny(Var var, const MultiUpdate &updates);
+    bool isUpdatedByAny(NumVar var, const MultiUpdate &updates);
 
 
 
@@ -51,7 +50,7 @@ namespace MeteringToolbox {
      * Modifies guard (member) to contain only <,<=,>=,> by replacing == with <= and >=
      * @return true iff successfull, false if guard contains != which cannot be handled
      */
-    Guard replaceEqualities(const Guard &guard);
+    Conjunction<IntTheory> replaceEqualities(const Conjunction<IntTheory> &guard);
 
     /**
      * Computes a guard by only keeping those constraints that might be relevant for the metering function.
@@ -69,7 +68,7 @@ namespace MeteringToolbox {
      * Note: The result of this method is soundness critical, since removing too many constraints
      * from the guard would allow incorrect metering functions (removing too few is not a soundness issue).
      */
-    Guard reduceGuard(VarMan &varMan, const Guard &guard, const MultiUpdate &updates, Guard *irrelevantGuard = nullptr);
+    Conjunction<IntTheory> reduceGuard(VarMan &varMan, const Conjunction<IntTheory> &guard, const MultiUpdate &updates, Conjunction<IntTheory> *irrelevantGuard = nullptr);
 
     /**
      * Computes a list of variables that might occur in the metering function
@@ -82,17 +81,17 @@ namespace MeteringToolbox {
      *
      * Note: The result of this method is important to find metering functions, but does not affect soundness
      */
-    VarSet findRelevantVariables(const Guard &reducedGuard, const MultiUpdate &updates);
+    std::set<NumVar> findRelevantVariables(const Conjunction<IntTheory> &reducedGuard, const MultiUpdate &updates);
 
     /**
      * Removes updates that do not update a variable from vars.
      */
-    void restrictUpdatesToVariables(MultiUpdate &updates, const VarSet &vars);
+    void restrictUpdatesToVariables(MultiUpdate &updates, const std::set<NumVar> &vars);
 
     /**
      * Removes constraints that do not contain a variable from vars.
      */
-    void restrictGuardToVariables(Guard &guard, const VarSet &vars);
+    void restrictGuardToVariables(Conjunction<IntTheory> &guard, const std::set<NumVar> &vars);
 
 
 
@@ -108,13 +107,13 @@ namespace MeteringToolbox {
      *
      * @return true iff the guard was modified (extended).
      */
-    option<Guard> strengthenGuard(VarMan &varMan, const Guard &guard, const MultiUpdate &updates);
+    option<Conjunction<IntTheory>> strengthenGuard(VarMan &varMan, const Conjunction<IntTheory> &guard, const MultiUpdate &updates);
 
     /**
      * Creates all combinations of instantiating temporary variables by their bounds (i.e. free <= x --> set free=x)
      * @return list of all possible combinations (limited by FREEVAR_INSTANTIATE_MAXBOUNDS per variable).
      */
-    std::stack<ExprSubs> findInstantiationsForTempVars(const VarMan &varMan, const Guard &guard);
+    std::stack<ExprSubs> findInstantiationsForTempVars(const VarMan &varMan, const Conjunction<IntTheory> &guard);
 
 }
 

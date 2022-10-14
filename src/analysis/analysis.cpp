@@ -218,7 +218,7 @@ void Analysis::finalize(RuntimeResult &res) {
 }
 
 void Analysis::run() {
-    Yices::init();
+    yices::init();
     Redlog::init();
 
     Proof *proof = new Proof();
@@ -253,7 +253,7 @@ void Analysis::run() {
     delete proof;
 
     Redlog::exit();
-    Yices::exit();
+    yices::exit();
 
     bool simpDone = simp.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
     bool finalizeDone = finalize.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
@@ -310,7 +310,7 @@ bool Analysis::removeUnsatRules() {
     bool changed = false;
 
     for (TransIdx rule : its.getAllTransitions()) {
-        if (Smt::check(its.getRule(rule).getGuard(), its) == Smt::Unsat) {
+        if (SmtFactory::check<IntTheory, BoolTheory>(its.getRule(rule).getGuard(), its) == Unsat) {
             its.removeRule(rule);
             changed = true;
         }
@@ -402,7 +402,7 @@ void Analysis::checkConstantComplexity(RuntimeResult &res, Proof &proof) const {
         const Rule rule = its.getRule(idx);
         BoolExpr guard = rule.getGuard() & (rule.getCost() >= 1);
 
-        if (Smt::check(guard, its) == Smt::Sat) {
+        if (SmtFactory::check(guard, its) == Sat) {
             proof.newline();
             proof.result("Proved Omega(1)");
             Proof subProof;
@@ -427,7 +427,7 @@ void Analysis::getBestResultOf(const std::set<TransIdx> &rules, RuntimeResult &r
 void Analysis::proveReachabilityOf(const std::set<TransIdx> &rules, RuntimeResult &res) {
     for (TransIdx i: rules) {
         const Rule r = its.getRule(i);
-        if (r.getCost().isNontermSymbol() && Smt::check(r.getGuard(), its) == Smt::Sat) {
+        if (r.getCost().isNontermSymbol() && SmtFactory::check(r.getGuard(), its) == Sat) {
             res.update(r.getGuard(), Expr::NontermSymbol, Expr::NontermSymbol, Complexity::Nonterm);
             Proof proof;
             proof.result(stringstream() << "Proved reachability of sink via rule " << i << " with SMT.");
@@ -498,7 +498,7 @@ void Analysis::getMaxRuntimeOf(const set<TransIdx> &rules, RuntimeResult &res) {
         if (isPoly && Config::Limit::PolyStrategy->smtEnabled()) {
             checkRes = AsymptoticBound::determineComplexityViaSMT(
                         its,
-                        rule.getGuard(),
+                        rule.getGuard()->transform<IntTheory>(),
                         rule.getCost(),
                         true,
                         res.getCpx(),
@@ -519,12 +519,12 @@ void Analysis::getMaxRuntimeOf(const set<TransIdx> &rules, RuntimeResult &res) {
         }
 
         if ((!checkRes || checkRes->cpx == Complexity::Unknown) && Config::Limit::PolyStrategy->calculusEnabled()) {
-            std::vector<Guard> toCheck = rule.getGuard()->dnf();
+            auto toCheck = rule.getGuard()->transform<IntTheory>()->dnf();
             if (toCheck.empty()) {
                 // guard == True
                 toCheck.push_back({});
             }
-            for (const Guard &guard: toCheck) {
+            for (const auto &guard: toCheck) {
                 checkRes = AsymptoticBound::determineComplexity(
                             its,
                             guard,

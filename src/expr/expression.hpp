@@ -92,7 +92,8 @@ public:
     /**
      * possible types of variables
      */
-    enum Type {Int, Rational};
+    // TODO grep for usages
+    enum Type {Int, Rational, Bool};
 
     /**
      * Special variable that represents the cost of non-terminating computations.

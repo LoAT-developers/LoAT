@@ -24,9 +24,8 @@
 
 #include "types.hpp"
 #include "option.hpp"
-#include "boolexpr.hpp"
+#include "theory.hpp"
 #include "config.hpp"
-#include "subs.hpp"
 
 
 class RuleLhs {
@@ -50,7 +49,7 @@ public:
     const Expr& getCost() const { return cost; }
 
     void collectVars(VarSet &vars) const {
-        guard->collectVars(vars);
+        vars.collectVars(guard);
         vars.collectVars(cost);
     }
 

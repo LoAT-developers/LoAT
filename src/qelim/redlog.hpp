@@ -1,10 +1,9 @@
-#ifndef REDLOG_HPP
-#define REDLOG_HPP
+#pragma once
 
 extern "C" {
     #include <reduce.h>
 }
-#include "boolexpr.hpp"
+#include "inttheory.hpp"
 #include "variablemanager.hpp"
 #include "qelim.hpp"
 
@@ -17,10 +16,8 @@ public:
 
     Redlog(VariableManager &varMan): varMan(varMan){}
 
-    option<Qelim::Result> qe(const QuantifiedFormula &qf) override;
+    option<Qelim::Result> qe(const QuantifiedFormula<IntTheory> &qf) override;
     static void init();
     static void exit();
 
 };
-
-#endif

@@ -1,6 +1,6 @@
 #include "export.hpp"
 #include "config.hpp"
-#include "rel.hpp"
+#include "theory.hpp"
 
 using namespace std;
 namespace Color = Config::Color;
@@ -48,17 +48,10 @@ void ITSExport::printRule(const Rule &rule, const ITSProblem &its, std::ostream 
         printLocation(it->getLoc(), its, s, colors);
         s << " : ";
 
-        for (auto upit : it->getUpdate().getExprSubs()) {
+        for (auto upit : it->getUpdate()) {
             if (colors) printColor(s, Color::Update);
-            s << upit.first << "'";
-            s << "=" << upit.second;
-            if (colors) printColor(s, Color::None);
-            s << ", ";
-        }
-        for (auto upit : it->getUpdate().getBoolSubs()) {
-            if (colors) printColor(s, Color::Update);
-            s << upit.first << "'";
-            s << "=" << upit.second;
+            s << theory::first(upit) << "'";
+            s << "=" << theory::second(upit);
             if (colors) printColor(s, Color::None);
             s << ", ";
         }
@@ -119,11 +112,6 @@ void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
             s << " " << x;
         }
     }
-    for (const auto &x: its.getBoolVars()) {
-        if (!its.isTempVar(x)) {
-            s << " " << x;
-        }
-    }
     s << endl;
 
     if (its.isEmpty()) {
@@ -157,7 +145,7 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
     VarSet vars;
     for (TransIdx rule : its.getAllTransitions()) {
         VarSet rVars = its.getRule(rule).vars();
-        vars.insert(rVars.begin(), rVars.end());
+        vars.insertAll(rVars);
     }
     for (const Var &var : vars) {
         s << " " << var;
@@ -202,8 +190,8 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
                 for (const Var &var : relevantVars) {
                     s << ((first) ? "(" : ",");
                     auto it = rhs->getUpdate().find(var);
-                    if (it != rhs->getUpdate().getExprSubs().end()) {
-                        s << it->second.expand();
+                    if (it != rhs->getUpdate().end()) {
+                        s << theory::second(*it);
                     } else {
                         s << var;
                     }

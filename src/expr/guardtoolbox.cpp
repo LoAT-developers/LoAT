@@ -61,7 +61,7 @@ bool GuardToolbox::isTrivialImplication(const Rel &a, const Rel &b) {
     return false;
 }
 
-std::pair<option<Expr>, option<Expr>> GuardToolbox::getBoundFromIneq(const Rel &rel, const Var &N) {
+std::pair<option<Expr>, option<Expr>> GuardToolbox::getBoundFromIneq(const Rel &rel, const NumVar &N) {
     Rel l = rel.isPoly() ? rel.toLeq() : rel.toL();
     Expr term = (l.lhs() - l.rhs()).expand();
     if (term.degree(N) != 1) return {};
@@ -80,7 +80,7 @@ std::pair<option<Expr>, option<Expr>> GuardToolbox::getBoundFromIneq(const Rel &
     return {};
 }
 
-option<Expr> GuardToolbox::solveTermFor(Expr term, const Var &var, SolvingLevel level) {
+option<Expr> GuardToolbox::solveTermFor(Expr term, const NumVar &var, SolvingLevel level) {
     // expand is needed before using degree/coeff
     term = term.expand();
 
@@ -116,46 +116,49 @@ option<Expr> GuardToolbox::solveTermFor(Expr term, const Var &var, SolvingLevel 
 
 
 Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
-    Subs varSubs;
+    ExprSubs varSubs;
     ResultViaSideEffects proof;
-    RelSet guard = rule.getGuard()->universallyValidLits();
+    auto guard = rule.getGuard()->universallyValidLits();
 
     for (const auto &r: guard) {
-        Rel rel = varSubs(r);
-        if (!rel.isEq()) {
-            continue;
-        }
+        if (std::holds_alternative<Rel>(r)) {
+            Rel rel = std::get<Rel>(r).subs(varSubs);
+            if (!rel.isEq()) {
+                continue;
+            }
 
-        Expr target = rel.rhs() - rel.lhs();
-        if (!target.isPoly()) {
-            continue;
-        }
+            Expr target = rel.rhs() - rel.lhs();
+            if (!target.isPoly()) {
+                continue;
+            }
 
-        // Check if equation can be solved for any single variable.
-        // We prefer to solve for variables where this is easy,
-        // e.g. in x+2*y = 0 we prefer x since x has only the trivial coefficient 1.
-        for (int level=TrivialCoeffs; level <= (int)maxlevel; ++level) {
-            for (const Var &var : target.vars()) {
-                if (!allow(var)) continue;
+            // Check if equation can be solved for any single variable.
+            // We prefer to solve for variables where this is easy,
+            // e.g. in x+2*y = 0 we prefer x since x has only the trivial coefficient 1.
+            for (int level=TrivialCoeffs; level <= (int)maxlevel; ++level) {
+                for (const auto &var : target.vars()) {
+                    if (!allow(var)) continue;
 
-                //solve target for var (result is in target)
-                auto optSolved = solveTermFor(target,var,(SolvingLevel)level);
-                if (!optSolved) continue;
-                Expr solved = optSolved.get();
+                    //solve target for var (result is in target)
+                    auto optSolved = solveTermFor(target,var,(SolvingLevel)level);
+                    if (!optSolved) continue;
+                    Expr solved = optSolved.get();
 
-                //disallow replacing non-free vars by a term containing free vars
-                //could be unsound, as free vars can lead to unbounded complexity
-                if (!its.isTempVar(var) && containsTempVar(its, solved)) continue;
+                    //disallow replacing non-free vars by a term containing free vars
+                    //could be unsound, as free vars can lead to unbounded complexity
+                    if (!its.isTempVar(var) && containsTempVar(its, solved)) continue;
 
-                //extend the substitution, use compose in case var occurs on some rhs of varSubs
-                varSubs.put(var, solved);
-                varSubs = varSubs.compose(varSubs);
-                stringstream s;
-                s << "propagated equality " << var << " = " << solved;
-                proof.append(s.str());
-                proof.newline();
-                proof.succeed();
-                goto next;
+                    //extend the substitution, use compose in case var occurs on some rhs of varSubs
+                    varSubs.put(var, solved);
+                    varSubs = varSubs.compose(varSubs);
+                    stringstream s;
+                    // TODO
+//                    s << "propagated equality " << var << " = " << solved;
+                    proof.append(s.str());
+                    proof.newline();
+                    proof.succeed();
+                    goto next;
+                }
             }
         }
         next:;
@@ -164,7 +167,9 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
     //apply substitution to the entire rule
     Result<Rule> res(rule);
     if (proof) {
-        res = rule.subs(varSubs);
+        Subs subs;
+        subs.get<IntTheory>() = varSubs;
+        res = rule.subs(subs);
         res.ruleTransformationProof(rule, "propagated equalities", res.get(), its);
         res.storeSubProof(proof.getProof());
     }
@@ -174,7 +179,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
 
 Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, const Rule &rule) {
     auto hasTempVars = [&](const auto e) {
-        for (const auto &x: e->boolVars()) {
+        for (const auto &x: e->vars().template get<BoolTheory>()) {
             if (its.isTempVar(x)) {
                 return true;
             }
@@ -183,20 +188,19 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
     };
     ResultViaSideEffects proof;
     auto guard = rule.getGuard();
-    auto bvars = guard->boolVars();
+    auto bvars = guard->vars().get<BoolTheory>();
     bool changed;
     do {
         changed = false;
         for (auto it = bvars.begin(); it != bvars.end();) {
             const auto var = *it;
             if (its.isTempVar(var)) {
-                BoolExprSet consequences;
-                rule.getGuard()->findConsequences(var, consequences);
-                const auto lit = buildLit(var);
+                BoolExprSet consequences = rule.getGuard()->findConsequences(var);
+                const auto lit = buildTheoryLit<IntTheory, BoolTheory>(var);
                 for (const BoolExpr &c: consequences) {
                     if (!hasTempVars(c)) {
-                        if (Smt::isImplication(c, lit, its)) {
-                            guard = Subs(var, c)(guard);
+                        if (SmtFactory::isImplication(c, lit, its)) {
+                            guard = guard->subs(Subs::build<BoolTheory>(var, c));
                             it = bvars.erase(it);
                             changed = true;
                             proof.append(std::stringstream() << "replaced " << var << " with " << c);
@@ -227,39 +231,45 @@ Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool r
     if (!rule.getGuard()->isConjunction()) {
         return res;
     }
-    RelSet guard = rule.getGuard()->lits();
+    auto guard = rule.getGuard()->lits();
     //get all variables that appear in an inequality
-    VarSet tryVars;
-    for (const Rel &rel : guard) {
-        if (!rel.isIneq() || !rel.isPoly()) continue;
-        rel.collectVariables(tryVars);
+    std::set<NumVar> tryVars;
+    for (const auto &lit : guard) {
+        if (std::holds_alternative<Rel>(lit)) {
+            const auto &rel = std::get<Rel>(lit);
+            if (!rel.isIneq() || !rel.isPoly()) continue;
+            rel.collectVariables(tryVars);
+        }
     }
 
     //for each variable, try if we can eliminate every occurrence. Otherwise do nothing.
     bool changed = false;
-    for (const Var &var : tryVars) {
+    for (const auto &var : tryVars) {
         if (!allow(var)) continue;
 
         vector<Expr> varLessThan, varGreaterThan; //var <= expr and var >= expr
         vector<Rel> guardTerms; //indices of guard terms that can be removed if successful
 
-        for (const Rel &rel: guard) {
-            //check if this guard must be used for var
-            if (!rel.has(var)) continue;
-            if (!rel.isIneq() || !rel.isPoly()) goto abort; // contains var, but cannot be handled
+        for (const auto &lit: guard) {
+            if (std::holds_alternative<Rel>(lit)) {
+                const auto &rel = std::get<Rel>(lit);
+                //check if this guard must be used for var
+                if (!rel.has(var)) continue;
+                if (!rel.isIneq() || !rel.isPoly()) goto abort; // contains var, but cannot be handled
 
-            Expr target = rel.toLeq().makeRhsZero().lhs();
-            if (!target.has(var)) continue; // might have changed, e.h. x <= x
+                Expr target = rel.toLeq().makeRhsZero().lhs();
+                if (!target.has(var)) continue; // might have changed, e.h. x <= x
 
-            //check coefficient and direction
-            Expr c = target.expand().coeff(var);
-            if (c.compare(1) != 0 && c.compare(-1) != 0) goto abort;
-            if (c.compare(1) == 0) {
-                varLessThan.push_back( -(target-var) );
-            } else {
-                varGreaterThan.push_back( target+var );
+                //check coefficient and direction
+                Expr c = target.expand().coeff(var);
+                if (c.compare(1) != 0 && c.compare(-1) != 0) goto abort;
+                if (c.compare(1) == 0) {
+                    varLessThan.push_back( -(target-var) );
+                } else {
+                    varGreaterThan.push_back( target+var );
+                }
+                guardTerms.push_back(rel);
             }
-            guardTerms.push_back(rel);
         }
 
         // abort if no eliminations can be performed
@@ -282,7 +292,7 @@ Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool r
 abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (changed) {
-        res = rule.withGuard(buildAnd(guard));
+        res = rule.withGuard(buildAnd<IntTheory, BoolTheory>(guard));
         res.ruleTransformationProof(rule, "eliminated temporary variables via transitive closure", *res, its);
     }
     return res;
@@ -291,21 +301,24 @@ abort:  ; //this symbol could not be eliminated, try the next one
 
 Result<Rule> GuardToolbox::makeEqualities(const Rule &rule, const ITSProblem &its) {
     Result<Rule> res(rule);
-    const RelSet &guard = rule.getGuard()->universallyValidLits();
+    const auto &guard = rule.getGuard()->universallyValidLits();
     vector<pair<Rel,Expr>> terms; //inequalities from the guard, with the associated index in guard
     map<Rel,pair<Rel,Expr>> matches; //maps index in guard to a second index in guard, which can be replaced by Expression
 
     // Find matching constraints "t1 <= 0" and "t2 <= 0" such that t1+t2 is zero
-    for (const Rel &rel: guard) {
-        if (rel.isEq()) continue;
-        if (!rel.isPoly() && rel.isStrict()) continue;
-        Expr term = rel.toLeq().makeRhsZero().lhs();
-        for (const auto &prev : terms) {
-            if ((prev.second + term).isZero()) {
-                matches.emplace(prev.first, make_pair(rel,prev.second));
+    for (const auto &lit: guard) {
+        if (std::holds_alternative<Rel>(lit)) {
+            const auto &rel = std::get<Rel>(lit);
+            if (rel.isEq()) continue;
+            if (!rel.isPoly() && rel.isStrict()) continue;
+            Expr term = rel.toLeq().makeRhsZero().lhs();
+            for (const auto &prev : terms) {
+                if ((prev.second + term).isZero()) {
+                    matches.emplace(prev.first, make_pair(rel,prev.second));
+                }
             }
+            terms.push_back(make_pair(rel,term));
         }
-        terms.push_back(make_pair(rel,term));
     }
 
     if (matches.empty()) return res;
@@ -315,14 +328,17 @@ Result<Rule> GuardToolbox::makeEqualities(const Rule &rule, const ITSProblem &it
     // This code below mostly retains the order of the constraints.
     Guard equalities;
     set<Rel> ignore;
-    for (const Rel &rel: guard) {
-        //ignore multiple equalities as well as the original second inequality
-        if (ignore.count(rel) > 0) continue;
+    for (const auto &lit: guard) {
+        if (std::holds_alternative<Rel>(lit)) {
+            const auto &rel = std::get<Rel>(lit);
+            //ignore multiple equalities as well as the original second inequality
+            if (ignore.count(rel) > 0) continue;
 
-        auto it = matches.find(rel);
-        if (it != matches.end()) {
-            equalities.push_back(Rel::buildEq(it->second.second, 0));
-            ignore.insert(it->second.first);
+            auto it = matches.find(rel);
+            if (it != matches.end()) {
+                equalities.push_back(Rel::buildEq(it->second.second, 0));
+                ignore.insert(it->second.first);
+            }
         }
     }
     if (!equalities.empty()) {
@@ -334,10 +350,11 @@ Result<Rule> GuardToolbox::makeEqualities(const Rule &rule, const ITSProblem &it
 
 Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem &its) {
     Result<Rule> res(rule);
-    if (!rule.getGuard()->isLinear()) {
+    if (!rule.getGuard()->isLinear() || !rule.getGuard()->forall(Overload{[](const Rel &x){return true;}, [](const auto &x){return false;}})) {
         return res;
     }
-    VarSet tempVars = rule.getGuard()->vars();
+    const BExpr<IntTheory> guard = rule.getGuard()->transform<IntTheory>();
+    std::set<NumVar> tempVars = guard->vars().get<IntTheory>();
     for (auto it = tempVars.begin(); it != tempVars.end();) {
         if (its.isTempVar(*it)) {
             ++it;
@@ -350,18 +367,22 @@ Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem
     }
 
     Templates templates;
-    std::unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::QF_NA, its, Config::Smt::SimpTimeout);
-    for (const Var &x: tempVars) {
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(QF_NA, its, Config::Smt::SimpTimeout);
+    for (const auto &x: tempVars) {
         solver->resetSolver();
-        VarSet relevantVars = util::RelevantVariables::find({x}, {}, rule.getGuard());
+        theory::VarSet<IntTheory> varsOfInterest;
+        varsOfInterest.get<IntTheory>().insert(x);
+        auto relevantVars = util::RelevantVariables<IntTheory>::find(varsOfInterest, {}, guard).get<IntTheory>();
         relevantVars.erase(x);
         Templates::Template t = templates.buildTemplate(relevantVars, its);
         relevantVars.insert(x);
-        const BoolExpr e = FarkasLemma::apply(rule.getGuard(), {Rel::buildEq(t.t, x)}, relevantVars, t.params, its);
+        const BExpr<IntTheory> e = FarkasLemma::apply(guard, {Rel::buildEq(t.t, x)}, relevantVars, t.params, its);
         solver->add(e);
-        if (solver->check() == Smt::Sat) {
-            const Subs &m = solver->model().toSubs().project(t.params, {});
-            const Rule newRule = res->subs(Subs(x, m(t.t)));
+        if (solver->check() == Sat) {
+            const ExprSubs &m = solver->model().toSubs().get<IntTheory>().project(t.params);
+            Subs subs;
+            subs.get<IntTheory>().put(x, t.t.subs(m));
+            const Rule newRule = res->subs(subs);
             std::stringstream s;
             s << "propagated equalities via SMT: " << m;
             Proof subProof;

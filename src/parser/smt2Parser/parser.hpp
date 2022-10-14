@@ -41,7 +41,7 @@ namespace sexpressionparser {
         std::vector<std::string> preVars;
         std::vector<std::string> postVars;
         std::map<std::string, LocationIdx > locations;
-        std::map<std::string, Var> vars;
+        std::map<std::string, NumVar> vars;
         ITSProblem res;
 
     };

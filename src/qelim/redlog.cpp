@@ -4,6 +4,7 @@
 #include "redlogparsevisitor.h"
 #include "config.hpp"
 #include "exceptions.hpp"
+#include "boolexpr.hpp"
 
 RedProc initRedproc() {
     std::string path = std::getenv("PATH");
@@ -44,19 +45,19 @@ void Redlog::exit() {
     }
 }
 
-option<Qelim::Result> Redlog::qe(const QuantifiedFormula &qf) {
+option<Qelim::Result> Redlog::qe(const QuantifiedFormula<IntTheory> &qf) {
     Proof proof;
     const auto simplified = qf.simplify();
     const auto e = simplified ? *simplified : qf;
-    const auto p = e.normalizeVariables(varMan);
-    const QuantifiedFormula normalized = p.first;
-    const ExprSubs denormalization = p.second;
+    const auto p = varMan.normalizeVariables(e);
+    const auto normalized = p.first;
+    const auto denormalization = p.second;
     if (normalized.isTiviallyTrue()) {
         proof.append("trivial");
-        return Result(True, proof, true);
+        return Result(BoolExpression<IntTheory>::True, proof, true);
     } else if (normalized.isTiviallyFalse()) {
         proof.append("trivial");
-        return Result(False, proof, true);
+        return Result(BoolExpression<IntTheory>::False, proof, true);
     }
     std::string command = "rlqe(" + normalized.toRedlog() + ");";
     auto qe = std::async([command]{return RedAns_new(process(), command.c_str());});
@@ -68,11 +69,10 @@ option<Qelim::Result> Redlog::qe(const QuantifiedFormula &qf) {
         } else {
             std::string str = output->result;
             try {
-                BoolExpr res = RedlogParseVisitor::parse(str, varMan);
+                BExpr<IntTheory> res = RedlogParseVisitor::parse(str, varMan);
                 RedAns_delete(output);
                 proof.append("QE via Redlog");
-                const auto simplified = res->simplify();
-                const auto e = simplified ? * simplified : res;
+                const auto e = res->simplify();
                 return Result(e->subs(denormalization), proof, false);
             } catch (const ParseError &e) {
                 std::cerr << e.what() << std::endl;

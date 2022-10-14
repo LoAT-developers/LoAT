@@ -32,11 +32,11 @@ using namespace std;
 namespace MT = MeteringToolbox;
 
 
-MeteringFinder::MeteringFinder(VarMan &varMan, const Guard &guard, const vector<ExprSubs> &updates)
+MeteringFinder::MeteringFinder(VarMan &varMan, const Conjunction<IntTheory> &guard, const vector<ExprSubs> &updates)
     : varMan(varMan),
       updates(updates),
       guard(guard),
-      absCoeff(varMan.getFreshUntrackedSymbol("c", Expr::Rational))
+      absCoeff(varMan.getFreshUntrackedSymbol<IntTheory>("c", Expr::Rational))
 {}
 
 
@@ -46,7 +46,7 @@ vector<ExprSubs> MeteringFinder::getUpdateList(const Rule &rule) {
     vector<ExprSubs> res;
     res.reserve(rule.rhsCount());
     for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
-        res.push_back(rhs->getUpdate().getExprSubs());
+        res.push_back(rhs->getUpdate().get<IntTheory>());
     }
     return res;
 }
@@ -80,18 +80,18 @@ void MeteringFinder::buildMeteringVariables() {
     meterVars.coeffs.clear();
     meterVars.primedSymbols.clear();
 
-    for (const Var &var : relevantVars) {
+    for (const auto &var : relevantVars) {
         meterVars.symbols.push_back(var);
-        meterVars.coeffs.push_back(varMan.getFreshUntrackedSymbol("c", Expr::Rational));
+        meterVars.coeffs.push_back(varMan.getFreshUntrackedSymbol<IntTheory>("c", Expr::Rational));
     }
 
     for (const ExprSubs &update : updates) {
         for (const auto &it : update) {
-            assert(relevantVars.count(it.first) > 0); // update should have been restricted to relevant variables
+            assert(relevantVars.find(it.first) != relevantVars.end()); // update should have been restricted to relevant variables
 
             if (meterVars.primedSymbols.count(it.first) == 0) {
                 string primedName = it.first.get_name() + "'";
-                Var primed = varMan.getFreshUntrackedSymbol(primedName, Expr::Int);
+                NumVar primed = varMan.getFreshUntrackedSymbol<IntTheory>(primedName, Expr::Int);
                 meterVars.primedSymbols.emplace(it.first, primed);
             }
         }
@@ -109,7 +109,8 @@ void MeteringFinder::buildLinearConstraints() {
     linearConstraints.guardUpdate.resize(updates.size());
 
     // helper lambda to transform the given inequality into the required form
-    auto makeConstraint = [&](const Rel &rel, RelSet &s) {
+    auto makeConstraint = [&](const Theory<IntTheory>::Lit &lit, RelSet &s) {
+        const auto rel = std::get<Rel>(lit);
         assert(rel.isLinear() && rel.isIneq());
 
         Rel res = rel.toLeq().splitVariableAndConstantAddends();
@@ -118,15 +119,15 @@ void MeteringFinder::buildLinearConstraints() {
         }
     };
 
-    for (Rel rel : reducedGuard) {
+    for (const auto &rel : reducedGuard) {
         makeConstraint(rel, linearConstraints.reducedGuard);
     }
 
-    for (Rel rel : irrelevantGuard) {
+    for (const auto &rel : irrelevantGuard) {
         makeConstraint(rel, linearConstraints.irrelevantGuard);
     }
 
-    for (Rel rel : guard) {
+    for (const auto &rel : guard) {
         makeConstraint(rel, linearConstraints.guard);
 
         // all of the guardUpdate constraints need to include the guard
@@ -138,7 +139,7 @@ void MeteringFinder::buildLinearConstraints() {
     for (unsigned int i=0; i < updates.size(); ++i) {
         for (const auto &it : updates[i]) {
             assert(meterVars.primedSymbols.count(it.first) > 0);
-            Var primed = meterVars.primedSymbols.at(it.first);
+            NumVar primed = meterVars.primedSymbols.at(it.first);
 
             makeConstraint(primed <= it.second, linearConstraints.guardUpdate[i]);
             makeConstraint(primed >= it.second, linearConstraints.guardUpdate[i]);
@@ -150,8 +151,8 @@ void MeteringFinder::buildLinearConstraints() {
 
 /* ### Step 3: Construction of the final constraints for the metering function using Farkas lemma ### */
 
-BoolExpr MeteringFinder::genNotGuardImplication() const {
-    std::vector<BoolExpr> res;
+BExpr<IntTheory> MeteringFinder::genNotGuardImplication() const {
+    std::vector<BExpr<IntTheory>> res;
     RelSet lhs = linearConstraints.irrelevantGuard;
 
     // split into one implication for every guard constraint, apply Farkas for each implication
@@ -162,13 +163,13 @@ BoolExpr MeteringFinder::genNotGuardImplication() const {
         lhs.erase(conclusion);
     }
 
-    return buildAnd(res);
+    return buildAnd<IntTheory>(res);
 }
 
-BoolExpr MeteringFinder::genGuardPositiveImplication(bool strict) const {
+BExpr<IntTheory> MeteringFinder::genGuardPositiveImplication(bool strict) const {
     //G ==> f(x) > 0, which is equivalent to -f(x) < 0  ==  -f(x) <= -1 (on integers)
     vector<Expr> negCoeff;
-    for (const Var &coeff : meterVars.coeffs) {
+    for (const auto &coeff : meterVars.coeffs) {
         negCoeff.push_back(-coeff);
     }
 
@@ -176,18 +177,18 @@ BoolExpr MeteringFinder::genGuardPositiveImplication(bool strict) const {
     return FarkasLemma::apply(linearConstraints.guard, meterVars.symbols, negCoeff, -absCoeff, delta, varMan);
 }
 
-BoolExpr MeteringFinder::genUpdateImplications() const {
+BExpr<IntTheory> MeteringFinder::genUpdateImplications() const {
     // For each update, build f(x)-f(x') => x-x'
     // Note that we only include the (primed) variables actually affected by the update.
     // The other variables can be left out to simplify the z3 query (since they cancel out)
 
-    BoolExpr res = True;
+    BExpr<IntTheory> res = BoolExpression<IntTheory>::True;
     for (unsigned int updateIdx=0; updateIdx < updates.size(); ++updateIdx) {
-        vector<Var> vars;
+        vector<NumVar> vars;
         vector<Expr> coeffs;
 
         for (unsigned int i=0; i < meterVars.symbols.size(); ++i) {
-            Var var = meterVars.symbols[i];
+            NumVar var = meterVars.symbols[i];
             Expr coeff = meterVars.coeffs[i];
 
             // ignore variables not affected by the current update
@@ -195,7 +196,7 @@ BoolExpr MeteringFinder::genUpdateImplications() const {
 
             // find the primed version of sym
             assert(meterVars.primedSymbols.count(var) > 0);
-            Var primed = meterVars.primedSymbols.at(var);
+            NumVar primed = meterVars.primedSymbols.at(var);
 
             vars.push_back(var);      //x
             vars.push_back(primed);   //x'
@@ -211,35 +212,35 @@ BoolExpr MeteringFinder::genUpdateImplications() const {
     return res;
 }
 
-BoolExpr MeteringFinder::genNonTrivial() const {
-    std::vector<Rel> res;
-    for (const Var &c : meterVars.coeffs) {
+BExpr<IntTheory> MeteringFinder::genNonTrivial() const {
+    std::vector<typename Theory<IntTheory>::Lit> res;
+    for (const auto &c : meterVars.coeffs) {
         res.push_back(Rel::buildNeq(c, 0));
     }
-    return buildOr(res);
+    return buildOr<IntTheory>(res);
 }
 
 
 /* ### Step 4: Result and model interpretation ### */
 
-Expr MeteringFinder::buildResult(const Model &model) const {
+Expr MeteringFinder::buildResult(const Model<IntTheory> &model) const {
     const auto &coeffs = meterVars.coeffs;
     const auto &symbols = meterVars.symbols;
 
     // read off the coefficients of the metering function
-    Expr result = model.get(absCoeff);
+    Expr result = model.get<IntTheory>(absCoeff);
     for (unsigned int i=0; i < coeffs.size(); ++i) {
-        result = result + model.get(coeffs[i]) * symbols[i];
+        result = result + model.get<IntTheory>(coeffs[i]) * symbols[i];
     }
     return result;
 }
 
-void MeteringFinder::ensureIntegralMetering(Result &result, const Model &model) const {
+void MeteringFinder::ensureIntegralMetering(Result &result, const Model<IntTheory> &model) const {
     bool has_reals = false;
     int mult = 1;
 
-    for (const Var &theCoeff : meterVars.coeffs) {
-        Num coeff = model.get(theCoeff);
+    for (const auto &theCoeff : meterVars.coeffs) {
+        Num coeff = model.get<IntTheory>(theCoeff);
         if (coeff.denom().to_int() != 1) {
             has_reals = true;
             mult = boost::integer::lcm(mult, coeff.denom().to_int());
@@ -249,7 +250,7 @@ void MeteringFinder::ensureIntegralMetering(Result &result, const Model &model) 
     // remove reals by multiplying metering function with "mult",
     // then add a fresh variable that corresponds to the original value of the metering function
     if (has_reals) {
-        Var tempVar = varMan.addFreshTemporaryVariable("meter");
+        NumVar tempVar = varMan.addFreshTemporaryVariable<IntTheory>("meter");
 
         // create a new guard constraint relating tempVar and the metering function
         result.integralConstraint = Rel::buildEq(tempVar*mult, result.metering*mult);
@@ -273,7 +274,7 @@ MeteringFinder::Result MeteringFinder::generate(VarMan &varMan, const Rule &rule
         return result;
     }
 
-    MeteringFinder meter(varMan, rule.getGuard()->conjunctionToGuard(), getUpdateList(rule));
+    MeteringFinder meter(varMan, rule.getGuard()->transform<IntTheory>()->conjunctionToGuard(), getUpdateList(rule));
 
     // linearize and simplify the problem
     meter.preprocess();
@@ -293,14 +294,14 @@ MeteringFinder::Result MeteringFinder::generate(VarMan &varMan, const Rule &rule
     meter.buildLinearConstraints();
 
     // solve constraints for the metering function (without the "GuardPositiveImplication" for now)
-    std::unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::QF_LA, varMan, Config::Smt::MeterTimeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(QF_LA, varMan, Config::Smt::MeterTimeout);
     solver->add(meter.genNotGuardImplication());
     solver->add(meter.genUpdateImplications());
     solver->add(meter.genNonTrivial());
-    Smt::Result smtRes = solver->check();
+    SmtResult smtRes = solver->check();
 
     // the problem is already unsat (even without "GuardPositiveImplication")
-    if (smtRes == Smt::Unsat) {
+    if (smtRes == SmtResult::Unsat) {
         result.result = Unsat;
         return result;
     }
@@ -311,14 +312,14 @@ MeteringFinder::Result MeteringFinder::generate(VarMan &varMan, const Rule &rule
     smtRes = solver->check();
 
     // If we fail, try the relaxed version instead (f(x) >= 0 instead of f(x) > 0)
-    if (smtRes != Smt::Sat) {
+    if (smtRes != Sat) {
         solver->pop();
         solver->add(meter.genGuardPositiveImplication(false));
         smtRes = solver->check();
     }
 
     // If we still fail, we have to give up
-    if (smtRes != Smt::Sat) {
+    if (smtRes != Sat) {
         result.result = Unsat;
         return result;
     }
@@ -342,23 +343,32 @@ option<Rule> MeteringFinder::strengthenGuard(VarMan &varMan, const Rule &rule) {
     if (!rule.getGuard()->isConjunction()) {
         return {};
     }
-    option<Guard> guard = MT::strengthenGuard(varMan, rule.getGuard()->conjunctionToGuard(), getUpdateList(rule));
-    return guard ? option<Rule>(rule.withGuard(buildAnd(guard.get()))) : option<Rule>();
+    auto conj = MT::strengthenGuard(varMan, rule.getGuard()->transform<IntTheory>()->conjunctionToGuard(), getUpdateList(rule));
+    if (conj) {
+        std::vector<Lit> guard;
+        for (const auto &lit: *conj) {
+            guard.push_back(std::get<Rel>(lit));
+        }
+        return rule.withGuard(buildAnd(guard));
+    } else {
+        return {};
+    }
 }
 
 option<pair<Rule, Proof>> MeteringFinder::instantiateTempVarsHeuristic(ITSProblem &its, const Rule &rule) {
     if (!rule.getGuard()->isConjunction()) {
         return {};
     }
+    const auto guard = rule.getGuard()->transform<IntTheory>();
     // Quick check whether there are any bounds on temp vars we can use to instantiate them.
-    auto hasTempVar = [&](const Rel &rel) { return GuardToolbox::containsTempVar(its, rel); };
-    const RelSet &lits = rule.getGuard()->lits();
+    auto hasTempVar = [&](const auto &rel) { return GuardToolbox::containsTempVar(its, std::get<Rel>(rel)); };
+    const auto &lits = guard->lits();
     if (std::none_of(lits.begin(), lits.end(), hasTempVar)) {
         return {};
     }
 
     // We first perform the same steps as in generate()
-    MeteringFinder meter(its, rule.getGuard()->conjunctionToGuard(), getUpdateList(rule));
+    MeteringFinder meter(its, guard->conjunctionToGuard(), getUpdateList(rule));
 
     meter.preprocess();
     if (!meter.isLinear()) return {};
@@ -367,10 +377,10 @@ option<pair<Rule, Proof>> MeteringFinder::instantiateTempVarsHeuristic(ITSProble
     meter.buildMeteringVariables();
     meter.buildLinearConstraints();
 
-    std::unique_ptr<Smt> solver = SmtFactory::solver(Smt::QF_LA, its, Config::Smt::MeterTimeout);
-    Smt::Result smtRes = Smt::Result::Unsat; // this method should only be called if generate() fails
+    auto solver = SmtFactory::solver<IntTheory>(QF_LA, its, Config::Smt::MeterTimeout);
+    SmtResult smtRes = SmtResult::Unsat; // this method should only be called if generate() fails
 
-    Guard oldGuard = meter.guard;
+    Conjunction<IntTheory> oldGuard = meter.guard;
     vector<ExprSubs> oldUpdates = meter.updates;
 
     // Now try all possible instantiations until the solver is satisfied
@@ -383,7 +393,7 @@ option<pair<Rule, Proof>> MeteringFinder::instantiateTempVarsHeuristic(ITSProble
 
         //apply current substitution (and forget the previous one)
         meter.guard = oldGuard; // copy
-        for (Rel &rel : meter.guard) rel.applySubs(sub);
+        for (auto &rel : meter.guard) std::get<Rel>(rel).applySubs(sub);
 
         meter.updates = MT::applySubsToUpdates(sub, oldUpdates); // copy
 
@@ -399,7 +409,7 @@ option<pair<Rule, Proof>> MeteringFinder::instantiateTempVarsHeuristic(ITSProble
         solver->add(meter.genGuardPositiveImplication(false));
         smtRes = solver->check();
 
-        if (smtRes == Smt::Sat) {
+        if (smtRes == Sat) {
             successfulSubs = sub;
             break;
         }
@@ -408,12 +418,14 @@ option<pair<Rule, Proof>> MeteringFinder::instantiateTempVarsHeuristic(ITSProble
     }
 
     // If we found a successful instantiation, z3res is sat
-    if (smtRes != Smt::Sat) {
+    if (smtRes != Sat) {
         return {};
     }
 
     // Apply the successful instantiation to the entire rule
-    Rule instantiatedRule = rule.subs(successfulSubs);
+    Subs subs;
+    subs.get<IntTheory>() = successfulSubs;
+    Rule instantiatedRule = rule.subs(subs);
 
     // Proof output
     Proof proof;

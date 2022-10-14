@@ -60,29 +60,18 @@ Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule, const ITSProblem
 }
 
 bool Preprocess::removeTrivialUpdates(Subs &update) {
-    using namespace Th;
     stack<Var> remove;
-    stack<BoolVar> removeBool;
-    for (auto it : update.getThSubs()) {
-        const auto first = Th::first(it);
-        const auto second = Th::second(it);
+    for (const auto &it : update) {
+        const auto first = theory::first(it);
+        const auto second = theory::second(it);
         if (first == second) {
-            std::visit([&remove](const auto &first){remove.push(first);}, first);
+            remove.push(first);
         }
     }
-    for (auto it : update.getBoolSubs()) {
-        if (buildLit(it.first) == it.second) {
-            removeBool.push(it.first);
-        }
-    }
-    if (remove.empty() && removeBool.empty()) return false;
+    if (remove.empty()) return false;
     while (!remove.empty()) {
         update.erase(remove.top());
         remove.pop();
-    }
-    while (!removeBool.empty()) {
-        update.erase(removeBool.top());
-        removeBool.pop();
     }
     return true;
 }
@@ -95,11 +84,8 @@ bool Preprocess::removeTrivialUpdates(Subs &update) {
 static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     VarSet varsInUpdate;
     for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
-        for (const auto &it : rhs->getUpdate().getThSubs()) {
-            varsInUpdate.collectVars(Th::second(it));
-        }
-        for (const auto &it : rhs->getUpdate().getBoolSubs()) {
-            varsInUpdate.collectVars(it.second);
+        for (const auto &it : rhs->getUpdate()) {
+            varsInUpdate.collectVars(theory::second(it));
         }
     }
     return varsInUpdate;

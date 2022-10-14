@@ -21,11 +21,9 @@
 #include "itsparser.hpp"
 #include "parser.hpp"
 #include "chcparser.hpp"
-#include "t2parser.hpp"
 #include "config.hpp"
 #include "timeout.hpp"
 #include "proof.hpp"
-#include "cintegerexport.hpp"
 #include "version.hpp"
 #include "reachability.hpp"
 #include "exceptions.hpp"
@@ -108,8 +106,6 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Input::format = Config::Input::Koat;
             } else if (boost::iequals("its", str)) {
                 Config::Input::format = Config::Input::Its;
-            } else if (boost::iequals("t2", str)) {
-                Config::Input::format = Config::Input::T2;
             } else if (boost::iequals("horn", str)) {
                 Config::Input::format = Config::Input::Horn;
             } else {
@@ -157,9 +153,6 @@ int main(int argc, char *argv[]) {
         case Config::Input::Its:
             its = sexpressionparser::Parser::loadFromFile(filename);
             break;
-        case Config::Input::T2:
-            its = t2parser::T2Parser::loadFromFile(filename);
-            break;
         case Config::Input::Horn:
             its = hornParser::HornParser::loadFromFile(filename);
             break;
@@ -187,9 +180,6 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Analysis::Reachability:
         Reachability::analyze(its);
-        break;
-    case Config::Analysis::CIntExport:
-        c_integer_export::doExport(its);
         break;
     default:
         throw std::invalid_argument("unsupported mode");

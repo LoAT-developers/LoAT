@@ -15,13 +15,11 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef LOAT_TEMPLATES_H
-#define LOAT_TEMPLATES_H
-
+#pragma once
 
 #include <iterator>
+
 #include "variablemanager.hpp"
-#include "subs.hpp"
 
 class Templates {
 
@@ -29,12 +27,12 @@ public:
 
     struct Template {
 
-        Template(Expr t, VarSet vars, VarSet params) :
+        Template(Expr t, std::set<NumVar> vars, std::set<NumVar> params) :
                 t(std::move(t)), vars(std::move(vars)), params(std::move(params)) {}
 
         const Expr t;
-        const VarSet vars;
-        const VarSet params;
+        const std::set<NumVar> vars;
+        const std::set<NumVar> params;
 
     };
 
@@ -42,27 +40,24 @@ public:
 
     void add(const Template &t);
 
-    const VarSet& params() const;
+    const std::set<NumVar>& params() const;
 
-    const VarSet& vars() const;
+    const std::set<NumVar>& vars() const;
 
     bool isParametric(const Expr &e) const;
 
-    const std::vector<Expr> subs(const Subs &sigma) const;
+    const std::vector<Expr> subs(const ExprSubs &sigma) const;
 
     iterator begin() const;
 
     iterator end() const;
 
-    const Templates::Template buildTemplate(const VarSet &vars, VariableManager &varMan) const;
+    const Templates::Template buildTemplate(const std::set<NumVar> &vars, VariableManager &varMan) const;
 
 private:
 
     std::vector<Expr> templates;
-    VarSet params_;
-    VarSet vars_;
+    std::set<NumVar> params_;
+    std::set<NumVar> vars_;
 
 };
-
-
-#endif //LOAT_TEMPLATES_H

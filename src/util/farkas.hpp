@@ -19,7 +19,6 @@
 #define FARKAS_H
 
 #include "expression.hpp"
-#include "boolexpr.hpp"
 #include "variablemanager.hpp"
 #include <vector>
 
@@ -63,34 +62,34 @@ namespace FarkasLemma {
      *
      * @return the resulting z3 expression (without quantifiers, as all variables are existentially quantified)
      */
-    BoolExpr apply(const RelSet &constraints,
-                   const std::vector<Var> &vars,
+    BExpr<IntTheory> apply(const RelSet &constraints,
+                   const std::vector<NumVar> &vars,
                    const std::vector<Expr> &coeffs,
                    Expr c0,
                    int delta,
                    VariableManager &varMan,
-                   const VarSet &params = VarSet());
+                   const std::set<NumVar> &params = std::set<NumVar>());
 
-    BoolExpr apply(const RelSet &constraints,
-                   const std::vector<Var> &vars,
-                   const std::vector<Var> &coeffs,
-                   Var c0,
+    BExpr<IntTheory> apply(const RelSet &constraints,
+                   const std::vector<NumVar> &vars,
+                   const std::vector<NumVar> &coeffs,
+                   NumVar c0,
                    int delta,
                    VariableManager &varMan,
-                   const VarSet &params = VarSet());
+                   const std::set<NumVar> &params = std::set<NumVar>());
 
-    const BoolExpr apply(
-            const BoolExpr premise,
+    const BExpr<IntTheory> apply(
+            const BExpr<IntTheory> premise,
             const RelSet &conclusion,
-            const VarSet &vars,
-            const VarSet &params,
+            const std::set<NumVar> &vars,
+            const std::set<NumVar> &params,
             VariableManager &varMan);
 
-    const BoolExpr applyRec(
-            const BoolExpr premise,
+    const BExpr<IntTheory> applyRec(
+            const BExpr<IntTheory> premise,
             const RelSet &conclusion,
-            const std::vector<Var> &vars,
-            const VarSet &params,
+            const std::vector<NumVar> &vars,
+            const std::set<NumVar> &params,
             VariableManager &varMan);
 
 }

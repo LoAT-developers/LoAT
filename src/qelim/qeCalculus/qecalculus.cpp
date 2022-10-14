@@ -5,8 +5,8 @@ Quantifier QeProblem::getQuantifier() const {
     return formula->getPrefix()[0];
 }
 
-BoolExpr QeProblem::boundedFormula(const Var &var) const {
-    BoolExpr res = formula->getMatrix();
+BExpr<IntTheory> QeProblem::boundedFormula(const NumVar &var) const {
+    BExpr<IntTheory> res = formula->getMatrix();
     const Quantifier quantifier = getQuantifier();
     const auto lowerBound = quantifier.lowerBound(var);
     if (lowerBound) {
@@ -19,18 +19,18 @@ BoolExpr QeProblem::boundedFormula(const Var &var) const {
     return res;
 }
 
-RelSet QeProblem::findConsistentSubset(BoolExpr e, const Var &var) const {
+std::set<Theory<IntTheory>::Lit> QeProblem::findConsistentSubset(BExpr<IntTheory> e, const NumVar &var) const {
     if (formula->isConjunction()) {
         return boundedFormula(var)->lits();
     }
     solver->push();
     solver->add(e);
-    Smt::Result sat = solver->check();
-    RelSet res;
-    if (sat == Smt::Sat) {
-        const Subs &model = solver->model().toSubs();
-        for (const Rel &rel: formula->getMatrix()->lits()) {
-            if (model(rel).isTriviallyTrue()) {
+    SmtResult sat = solver->check();
+    std::set<Theory<IntTheory>::Lit> res;
+    if (sat == Sat) {
+        const auto &model = solver->model().toSubs().get<IntTheory>();
+        for (const auto &rel: formula->getMatrix()->lits()) {
+            if (std::get<Rel>(rel).subs(model).isTriviallyTrue()) {
                 res.insert(rel);
             }
         }
@@ -58,7 +58,7 @@ bool QeProblem::depsWellFounded(const Rel& rel, RelMap<const QeProblem::Entry*> 
     for (const Entry& e: it->second) {
         bool success = true;
         for (const auto& dep: e.dependencies) {
-            if (!depsWellFounded(dep, entryMap, seen)) {
+            if (!depsWellFounded(std::get<Rel>(dep), entryMap, seen)) {
                 success = false;
                 break;
             }
@@ -71,7 +71,7 @@ bool QeProblem::depsWellFounded(const Rel& rel, RelMap<const QeProblem::Entry*> 
     return false;
 }
 
-option<unsigned int> QeProblem::store(const Rel &rel, const RelSet &deps, const BoolExpr formula, bool exact) {
+option<unsigned int> QeProblem::store(const Rel &rel, const std::set<Theory<IntTheory>::Lit> &deps, const BExpr<IntTheory> formula, bool exact) {
     if (res.count(rel) == 0) {
         res[rel] = std::vector<Entry>();
     }
@@ -79,43 +79,45 @@ option<unsigned int> QeProblem::store(const Rel &rel, const RelSet &deps, const 
     return res[rel].size() - 1;
 }
 
-bool QeProblem::monotonicity(const Rel &rel, const Var& n, Proof &proof) {
+bool QeProblem::monotonicity(const Rel &rel, const NumVar& n, Proof &proof) {
     const auto bound = getQuantifier().upperBound(n);
     if (bound) {
         const Rel updated = rel.subs({n,n+1});
         const Rel newCond = rel.subs({n, bound.get()});
-        RelSet premise = findConsistentSubset(boundedFormula(n) & rel & updated & newCond, n);
+        auto premise = findConsistentSubset(boundedFormula(n) & rel & updated & newCond, n);
         if (!premise.empty()) {
-            BoolExprSet assumptions;
-            BoolExprSet deps;
+            BoolExpressionSet<IntTheory> assumptions;
+            BoolExpressionSet<IntTheory> deps;
             premise.erase(rel);
             premise.erase(updated);
-            for (const Rel &p: premise) {
-                const BoolExpr lit = buildTheoryLit(p);
+            for (const auto &p: premise) {
+                const auto lit = buildTheoryLit<IntTheory>(p);
                 assumptions.insert(lit);
                 deps.insert(lit);
             }
-            assumptions.insert(buildTheoryLit(updated));
-            assumptions.insert(buildTheoryLit(!rel));
-            const BoolExprSet &unsatCore = Smt::unsatCore(assumptions, varMan);
+            assumptions.insert(buildTheoryLit<IntTheory>(updated));
+            assumptions.insert(buildTheoryLit<IntTheory>(!rel));
+            const auto unsatCore = SmtFactory::unsatCore<IntTheory>(assumptions, varMan);
             if (!unsatCore.empty()) {
-                RelSet dependencies;
-                for (const BoolExpr &e: unsatCore) {
-                    if (deps.count(e) > 0) {
-                        const RelSet &lit = e->lits();
+                std::set<Theory<IntTheory>::Lit> dependencies;
+                for (const auto &e: unsatCore) {
+                    if (deps.find(e) != deps.end()) {
+                        const auto &lit = e->lits();
                         assert(lit.size() == 1);
                         dependencies.insert(*lit.begin());
                     }
                 }
-                const BoolExpr newGuard = buildTheoryLit(newCond);
+                const auto newGuard = buildTheoryLit<IntTheory>(newCond);
                 option<unsigned int> idx = store(rel, dependencies, newGuard);
                 if (idx) {
                     std::stringstream ss;
-                    ss << rel << " [" << idx.get() << "]: montonic decrease yields " << newGuard;
+                    // TODO
+//                    ss << rel << " [" << idx.get() << "]: montonic decrease yields " << newGuard;
                     if (!dependencies.empty()) {
                         ss << ", dependencies:";
-                        for (const Rel &rel: dependencies) {
-                            ss << " " << rel;
+                        for (const auto &rel: dependencies) {
+                            // TODO
+//                            ss << " " << rel;
                         }
                     }
                     proof.append(ss);
@@ -127,44 +129,46 @@ bool QeProblem::monotonicity(const Rel &rel, const Var& n, Proof &proof) {
     return false;
 }
 
-bool QeProblem::recurrence(const Rel &rel, const Var& n, Proof &proof) {
+bool QeProblem::recurrence(const Rel &rel, const NumVar& n, Proof &proof) {
     const auto bound = getQuantifier().lowerBound(n);
     if (bound) {
         const Rel updated = rel.subs({n, n+1});
         const Rel newCond = rel.subs({n, bound.get()});
-        RelSet premise = findConsistentSubset(boundedFormula(n) & rel & updated & newCond, n);
+        auto premise = findConsistentSubset(boundedFormula(n) & rel & updated & newCond, n);
         if (!premise.empty()) {
-            BoolExprSet deps;
-            BoolExprSet assumptions;
+            BoolExpressionSet<IntTheory> deps;
+            BoolExpressionSet<IntTheory> assumptions;
             premise.erase(rel);
             premise.erase(updated);
-            for (const Rel &p: premise) {
-                const BoolExpr b = buildTheoryLit(p);
+            for (const auto &p: premise) {
+                const auto b = buildTheoryLit<IntTheory>(p);
                 assumptions.insert(b);
                 deps.insert(b);
             }
-            assumptions.insert(buildTheoryLit(rel));
-            assumptions.insert(buildTheoryLit(!updated));
-            BoolExprSet unsatCore = Smt::unsatCore(assumptions, varMan);
+            assumptions.insert(buildTheoryLit<IntTheory>(rel));
+            assumptions.insert(buildTheoryLit<IntTheory>(!updated));
+            auto unsatCore = SmtFactory::unsatCore(assumptions, varMan);
             if (!unsatCore.empty()) {
-                RelSet dependencies;
-                for (const BoolExpr &e: unsatCore) {
-                    if (deps.count(e) > 0) {
-                        const RelSet &lit = e->lits();
+                std::set<Theory<IntTheory>::Lit> dependencies;
+                for (const auto &e: unsatCore) {
+                    if (deps.find(e) != deps.end()) {
+                        const auto &lit = e->lits();
                         assert(lit.size() == 1);
                         dependencies.insert(*lit.begin());
                     }
                 }
                 dependencies.erase(rel);
-                const BoolExpr newGuard = buildTheoryLit(newCond);
+                const auto newGuard = buildTheoryLit<IntTheory>(newCond);
                 option<unsigned int> idx = store(rel, dependencies, newGuard);
                 if (idx) {
                     std::stringstream ss;
-                    ss << rel << " [" << idx.get() << "]: monotonic increase yields " << newGuard;
+                    // TODO
+//                    ss << rel << " [" << idx.get() << "]: monotonic increase yields " << newGuard;
                     if (!dependencies.empty()) {
                         ss << ", dependencies:";
-                        for (const Rel &rel: dependencies) {
-                            ss << " " << rel;
+                        for (const auto &rel: dependencies) {
+                            // TODO
+//                            ss << " " << rel;
                         }
                     }
                     proof.append(ss);
@@ -176,7 +180,7 @@ bool QeProblem::recurrence(const Rel &rel, const Var& n, Proof &proof) {
     return false;
 }
 
-bool QeProblem::eventualWeakDecrease(const Rel &rel, const Var& n, Proof &proof) {
+bool QeProblem::eventualWeakDecrease(const Rel &rel, const NumVar& n, Proof &proof) {
     if (depsWellFounded(rel)) {
         return false;
     }
@@ -186,27 +190,27 @@ bool QeProblem::eventualWeakDecrease(const Rel &rel, const Var& n, Proof &proof)
         const Expr updated = rel.lhs().subs({n, n+1});
         const Rel dec = rel.lhs() >= updated;
         const Rel inc = updated < updated.subs({n, n+1});
-        const BoolExpr newGuard = buildTheoryLit(rel.subs({n, lowerBound.get()})) & rel.subs({n, upperBound.get()});
-        RelSet premise = findConsistentSubset(boundedFormula(n) & dec & !inc & newGuard, n);
+        const auto newGuard = buildTheoryLit<IntTheory>(rel.subs({n, lowerBound.get()})) & rel.subs({n, upperBound.get()});
+        auto premise = findConsistentSubset(boundedFormula(n) & dec & !inc & newGuard, n);
         if (!premise.empty()) {
-            BoolExprSet assumptions;
-            BoolExprSet deps;
+            BoolExpressionSet<IntTheory> assumptions;
+            BoolExpressionSet<IntTheory> deps;
             premise.erase(rel);
             premise.erase(dec);
             premise.erase(!inc);
-            for (const Rel &p: premise) {
-                const BoolExpr lit = buildTheoryLit(p);
+            for (const auto &p: premise) {
+                const auto lit = buildTheoryLit<IntTheory>(p);
                 assumptions.insert(lit);
                 deps.insert(lit);
             }
-            assumptions.insert(buildTheoryLit(dec));
-            assumptions.insert(buildTheoryLit(inc));
-            BoolExprSet unsatCore = Smt::unsatCore(assumptions, varMan);
+            assumptions.insert(buildTheoryLit<IntTheory>(dec));
+            assumptions.insert(buildTheoryLit<IntTheory>(inc));
+            auto unsatCore = SmtFactory::unsatCore(assumptions, varMan);
             if (!unsatCore.empty()) {
-                RelSet dependencies;
-                for (const BoolExpr &e: unsatCore) {
-                    if (deps.count(e) > 0) {
-                        const RelSet &lit = e->lits();
+                std::set<Theory<IntTheory>::Lit> dependencies;
+                for (const auto &e: unsatCore) {
+                    if (deps.find(e) != deps.end()) {
+                        const auto &lit = e->lits();
                         assert(lit.size() == 1);
                         dependencies.insert(*lit.begin());
                     }
@@ -214,11 +218,13 @@ bool QeProblem::eventualWeakDecrease(const Rel &rel, const Var& n, Proof &proof)
                 option<unsigned int> idx = store(rel, dependencies, newGuard);
                 if (idx) {
                     std::stringstream ss;
-                    ss << rel << " [" << idx.get() << "]: eventual decrease yields " << newGuard;
+                    // TODO
+//                    ss << rel << " [" << idx.get() << "]: eventual decrease yields " << newGuard;
                     if (!dependencies.empty()) {
                         ss << ", dependencies:";
-                        for (const Rel &rel: dependencies) {
-                            ss << " " << rel;
+                        for (const auto &rel: dependencies) {
+                            // TODO
+//                            ss << " " << rel;
                         }
                     }
                     proof.append(ss);
@@ -230,7 +236,7 @@ bool QeProblem::eventualWeakDecrease(const Rel &rel, const Var& n, Proof &proof)
     return false;
 }
 
-bool QeProblem::eventualWeakIncrease(const Rel &rel, const Var& n, Proof &proof) {
+bool QeProblem::eventualWeakIncrease(const Rel &rel, const NumVar& n, Proof &proof) {
     if (depsWellFounded(rel)) {
         return false;
     }
@@ -240,40 +246,42 @@ bool QeProblem::eventualWeakIncrease(const Rel &rel, const Var& n, Proof &proof)
         const Rel inc = rel.lhs() <= updated;
         const Rel dec = updated > updated.subs({n, n+1});
         const Rel newCond = rel.subs({n, bound.get()});
-        RelSet premise = findConsistentSubset(boundedFormula(n) & inc & !dec & newCond, n);
+        auto premise = findConsistentSubset(boundedFormula(n) & inc & !dec & newCond, n);
         if (!premise.empty()) {
-            BoolExprSet assumptions;
-            BoolExprSet deps;
+            BoolExpressionSet<IntTheory> assumptions;
+            BoolExpressionSet<IntTheory> deps;
             premise.erase(rel);
             premise.erase(inc);
             premise.erase(!dec);
-            for (const Rel &p: premise) {
-                const BoolExpr lit = buildTheoryLit(p);
+            for (const auto &p: premise) {
+                const auto lit = buildTheoryLit<IntTheory>(p);
                 assumptions.insert(lit);
                 deps.insert(lit);
             }
-            assumptions.insert(buildTheoryLit(dec));
-            assumptions.insert(buildTheoryLit(inc));
-            BoolExprSet unsatCore = Smt::unsatCore(assumptions, varMan);
+            assumptions.insert(buildTheoryLit<IntTheory>(dec));
+            assumptions.insert(buildTheoryLit<IntTheory>(inc));
+            auto unsatCore = SmtFactory::unsatCore(assumptions, varMan);
             if (!unsatCore.empty()) {
-                RelSet dependencies;
-                for (const BoolExpr &e: unsatCore) {
-                    if (deps.count(e) > 0) {
-                        const RelSet &lit = e->lits();
+                std::set<Theory<IntTheory>::Lit> dependencies;
+                for (const auto &e: unsatCore) {
+                    if (deps.find(e) != deps.end()) {
+                        const auto &lit = e->lits();
                         assert(lit.size() == 1);
                         dependencies.insert(*lit.begin());
                     }
                 }
-                const BoolExpr newGuard = buildTheoryLit(newCond) & inc.subs({n, bound.get()});
-                if (Smt::check(newGuard, varMan) == Smt::Sat) {
+                const auto newGuard = buildTheoryLit<IntTheory>(newCond) & inc.subs({n, bound.get()});
+                if (SmtFactory::check(newGuard, varMan) == Sat) {
                     option<unsigned int> idx = store(rel, dependencies, newGuard, false);
                     if (idx) {
                         std::stringstream ss;
-                        ss << rel << " [" << idx.get() << "]: eventual increase yields " << newGuard;
+                        // TODO
+//                        ss << rel << " [" << idx.get() << "]: eventual increase yields " << newGuard;
                         if (!dependencies.empty()) {
                             ss << ", dependencies:";
-                            for (const Rel &rel: dependencies) {
-                                ss << " " << rel;
+                            for (const auto &rel: dependencies) {
+                                // TODO
+//                                ss << " " << rel;
                             }
                         }
                         proof.append(ss);
@@ -286,7 +294,7 @@ bool QeProblem::eventualWeakIncrease(const Rel &rel, const Var& n, Proof &proof)
     return false;
 }
 
-option<BoolExpr> QeProblem::strengthen(const Rel &rel, const Var &n, Proof &proof) {
+option<BExpr<IntTheory>> QeProblem::strengthen(const Rel &rel, const NumVar &n, Proof &proof) {
     if (res.find(rel) == res.end() && rel.isPoly()) {
         const auto lhs = rel.lhs().expand();
         unsigned degree = lhs.degree(n);
@@ -294,16 +302,16 @@ option<BoolExpr> QeProblem::strengthen(const Rel &rel, const Var &n, Proof &proo
             const Expr coeff = lhs.coeff(n, d);
             if (!coeff.isGround()) {
                 const auto bf = boundedFormula(n);
-                if (Smt::check(bf & (coeff < 0), varMan) == Smt::Sat && Smt::check(bf & (coeff >= 0), varMan) == Smt::Sat) {
+                if (SmtFactory::check(bf & (coeff < 0), varMan) == Sat && SmtFactory::check(bf & (coeff >= 0), varMan) == Sat) {
                     std::stringstream ss;
                     ss << rel << ": strengthend formula with " << (coeff >= 0);
                     proof.append(ss);
-                    return buildTheoryLit(coeff >= 0);
-                } else if (Smt::check(bf & (coeff > 0), varMan) == Smt::Sat && Smt::check(bf & (coeff <= 0), varMan) == Smt::Sat) {
+                    return buildTheoryLit<IntTheory>(coeff >= 0);
+                } else if (SmtFactory::check(bf & (coeff > 0), varMan) == Sat && SmtFactory::check(bf & (coeff <= 0), varMan) == Sat) {
                     std::stringstream ss;
                     ss << rel << ": strengthend formula with " << (coeff <= 0);
                     proof.append(ss);
-                    return buildTheoryLit(coeff <= 0);
+                    return buildTheoryLit<IntTheory>(coeff <= 0);
                 }
             }
         }
@@ -311,22 +319,23 @@ option<BoolExpr> QeProblem::strengthen(const Rel &rel, const Var &n, Proof &proo
     return {};
 }
 
-bool QeProblem::fixpoint(const Rel &rel, const Var& n, Proof &proof) {
+bool QeProblem::fixpoint(const Rel &rel, const NumVar& n, Proof &proof) {
     if (res.find(rel) == res.end() && rel.isPoly()) {
         const auto lhs = rel.lhs().expand();
         unsigned degree = lhs.degree(n);
-        BoolExpr vanish = True;
+        BExpr<IntTheory> vanish = BoolExpression<IntTheory>::True;
         Subs subs;
         for (unsigned d = 1; d <= degree; ++d) {
             vanish = vanish & (Rel::buildEq(lhs.coeff(n, d), 0));
         }
         const auto constant = lhs.subs({n, 0}) > 0;
-        if (Smt::check(boundedFormula(n) & constant & vanish, varMan) == Smt::Sat) {
-            BoolExpr newGuard = buildTheoryLit(constant) & vanish;
+        if (SmtFactory::check(boundedFormula(n) & constant & vanish, varMan) == Sat) {
+            auto newGuard = buildTheoryLit<IntTheory>(constant) & vanish;
             option<unsigned int> idx = store(rel, {}, newGuard, false);
             if (idx) {
                 std::stringstream ss;
-                ss << rel << " [" << idx.get() << "]: fixpoint yields " << newGuard;
+                // TODO
+//                ss << rel << " [" << idx.get() << "]: fixpoint yields " << newGuard;
                 proof.append(ss);
                 return true;
             }
@@ -339,11 +348,12 @@ QeProblem::ReplacementMap QeProblem::computeReplacementMap() const {
     ReplacementMap res;
     res.exact = formula->isConjunction();
     RelMap<const Entry*> entryMap;
-    for (const Rel& rel: formula->getMatrix()->lits()) {
+    for (const auto& lit: formula->getMatrix()->lits()) {
+        const Rel &rel = std::get<Rel>(lit);
         if (depsWellFounded(rel, entryMap)) {
             res.exact &= entryMap[rel]->exact;
         } else {
-            res.map[rel] = False;
+            res.map[rel] = BoolExpression<IntTheory>::False;
             res.exact = false;
             if (formula->isConjunction()) return res;
         }
@@ -354,9 +364,10 @@ QeProblem::ReplacementMap QeProblem::computeReplacementMap() const {
             changed = false;
             for (auto e: entryMap) {
                 if (res.map.find(e.first) != res.map.end()) continue;
-                BoolExpr closure = e.second->formula;
+                auto closure = e.second->formula;
                 bool ready = true;
-                for (auto dep: e.second->dependencies) {
+                for (const auto &lit: e.second->dependencies) {
+                    const Rel &dep = std::get<Rel>(lit);
                     if (res.map.find(dep) == res.map.end()) {
                         ready = false;
                         break;
@@ -378,10 +389,11 @@ QeProblem::ReplacementMap QeProblem::computeReplacementMap() const {
     return res;
 }
 
-option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
+option<Qelim::Result> QeProblem::qe(const QuantifiedFormula<IntTheory> &qf) {
     Proof fullProof;
     fullProof.headline("Eliminated Quantifier via QE-Calculus");
-    fullProof.append(std::stringstream() << "Input Formula: " << qf);
+    // TODO
+//    fullProof.append(std::stringstream() << "Input Formula: " << qf);
     formula = qf;
     const auto quantifiers = formula->getPrefix();
     if (quantifiers.size() > 1) {
@@ -391,8 +403,8 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
     if (quantifier.getType() != Quantifier::Type::Forall) {
         return {};
     }
-    Smt::Logic logic = Smt::chooseLogic<RelSet, ExprSubs>({formula->getMatrix()->lits()}, {});
-    this->solver = SmtFactory::modelBuildingSolver(logic, varMan);
+    Logic logic = chooseLogic<std::set<Theory<IntTheory>::Lit>, ExprSubs>({formula->getMatrix()->lits()}, {});
+    this->solver = SmtFactory::modelBuildingSolver<IntTheory>(logic, varMan);
     const auto vars = quantifier.getVars();
     bool exact = true;
     for (const auto& var: vars) {
@@ -406,7 +418,8 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
             goOn = false;
             auto it = todo.begin();
             while (it != todo.end()) {
-                const Rel rel = *it;
+                const auto lit = *it;
+                const auto &rel = std::get<Rel>(lit);
                 bool res = recurrence(rel, var, proof);
                 res |= monotonicity(rel, var, proof);
                 res |= eventualWeakDecrease(rel, var, proof);
@@ -428,21 +441,23 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula &qf) {
 //                }
 //            }
             if (!goOn) {
-                for (const Rel &rel: todo) {
-                    fixpoint(rel, var, proof);
+                for (const auto &rel: todo) {
+                    fixpoint(std::get<Rel>(rel), var, proof);
                 }
             }
         } while (goOn);
         ReplacementMap map = computeReplacementMap();
-        const BoolExpr matrix = formula->getMatrix()->replaceRels(map.map);
-        if (Smt::check(matrix, varMan) != Smt::Sat) {
+        const BExpr<IntTheory> matrix = formula->getMatrix()->replaceLits(map.map);
+        if (SmtFactory::check(matrix, varMan) != Sat) {
             return {};
         }
         formula = matrix->quantify({quantifier.remove(var)});
         exact &= map.exact;
-        proof.append(std::stringstream() << "Replacement map: " << map.map);
+        // TODO
+//        proof.append(std::stringstream() << "Replacement map: " << map.map);
         fullProof.storeSubProof(proof);
     }
-    fullProof.append(std::stringstream() << "Resulting Formula: " << formula->getMatrix());
+    // TODO
+//    fullProof.append(std::stringstream() << "Resulting Formula: " << formula->getMatrix());
     return Qelim::Result(formula->getMatrix(), fullProof, exact);
 }

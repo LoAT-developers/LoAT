@@ -22,6 +22,6 @@ public:
 
 bool operator<(const BoolLit &l1, const BoolLit &l2);
 bool operator==(const BoolLit &l1, const BoolLit &l2);
-BoolLit operator!(const BoolLit &);
+BoolLit operator!(const BoolLit &l);
 
 std::ostream& operator<<(std::ostream &s, const BoolLit &e);

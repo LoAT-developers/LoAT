@@ -1,14 +1,11 @@
 #pragma once
 
-#include "types.hpp"
 #include "rule.hpp"
 #include "option.hpp"
 #include "itsproblem.hpp"
-#include "proof.hpp"
-#include "smt.hpp"
 #include "accelerationtechnique.hpp"
 
-class AccelerationViaCalculus: public AccelerationTechnique {
+class AccelerationViaCalculus: public AccelerationTechnique<IntTheory> {
 
 public:
 

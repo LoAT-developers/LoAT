@@ -8,7 +8,7 @@ using expr_type = Expr;
 using binop_type = BinOp;
 using caop_type = CAOp;
 using lit_type = Rel;
-using formula_type = BoolExpr;
+using formula_type = BExpr<IntTheory>;
 using boolop_type = ConcatOperator;
 using relop_type = Rel::RelOp;
 
@@ -18,7 +18,7 @@ antlrcpp::Any RedlogParseVisitor::visitMain(redlogParser::MainContext *ctx) {
 
 antlrcpp::Any RedlogParseVisitor::visitExpr(redlogParser::ExprContext *ctx) {
   if (ctx->VAR()) {
-      return Expr(varMan.getVar(ctx->getText()).get());
+      return Expr(std::get<NumVar>(*varMan.getVar(ctx->getText())));
   } else if (ctx->INT()) {
       return Expr(stoi(ctx->getText()));
   } else if (ctx->MINUS()) {
@@ -68,14 +68,14 @@ antlrcpp::Any RedlogParseVisitor::visitBinop(redlogParser::BinopContext *ctx) {
 
 antlrcpp::Any RedlogParseVisitor::visitFormula(redlogParser::FormulaContext *ctx) {
   if (ctx->lit()) {
-      return buildTheoryLit(any_cast<lit_type>(visit(ctx->lit())));
+      return buildTheoryLit<IntTheory>(any_cast<lit_type>(visit(ctx->lit())));
   } else if (ctx->TRUE()) {
       return True;
   } else if (ctx->FALSE()) {
       return False;
   } else if (ctx->boolop()) {
       const auto op = any_cast<boolop_type>(visit(ctx->boolop()));
-      std::vector<BoolExpr> args;
+      std::vector<BExpr<IntTheory>> args;
       for (auto const &f: ctx->formula()) {
           args.push_back(any_cast<formula_type>(visit(f)));
       }
@@ -124,7 +124,7 @@ antlrcpp::Any RedlogParseVisitor::visitRelop(redlogParser::RelopContext *ctx) {
 
 RedlogParseVisitor::RedlogParseVisitor(VariableManager &varMan): varMan(varMan) {}
 
-BoolExpr RedlogParseVisitor::parse(std::string str, VariableManager &varMan) {
+BExpr<IntTheory> RedlogParseVisitor::parse(std::string str, VariableManager &varMan) {
     antlr4::ANTLRInputStream input(str);
     redlogLexer lexer(&input);
     antlr4::CommonTokenStream tokens(&lexer);
@@ -135,6 +135,6 @@ BoolExpr RedlogParseVisitor::parse(std::string str, VariableManager &varMan) {
     if (parser.getNumberOfSyntaxErrors() > 0) {
         throw ParseError("parsing redlog formula failed");
     } else {
-        return any_cast<BoolExpr>(vis.visit(ctx));
+        return any_cast<BExpr<IntTheory>>(vis.visit(ctx));
     }
 }

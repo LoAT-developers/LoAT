@@ -17,29 +17,83 @@
 
 #pragma once
 
-#include "expression.hpp"
 #include "rule.hpp"
 
 namespace util {
 
+    template <ITheory... Th>
     class RelevantVariables {
+
+        using VS = theory::VarSet<Th...>;
+        using S = theory::Subs<Th...>;
 
     public:
 
-        static const VarSet find(
-                const VarSet &varsOfInterest,
-                const std::vector<Subs> &updates,
-                const BoolExpr guard);
+        static const VS find(
+                const VS &varsOfInterest,
+                const std::vector<S> &updates,
+                const BExpr<Th...> guard) {
+            VS res = varsOfInterest;
+            // Compute the closure of res under all updates and the guard
+            VS todo = res;
+            while (!todo.empty()) {
+                VS next;
+                for (const auto &x : todo) {
+                    for (const auto &up: updates) {
+                        std::visit([&up, &next](const auto &x) {
+                            auto it = up.find(x);
+                            if (it != up.end()) {
+                                next.collectVars(theory::second<Th...>(*it));
+                            }
+                        }, x);
+                    }
+                    for (const auto &lit: guard->lits()) {
+                        VS relVars;
+                        relVars.collectVars(lit);
+                        if (relVars.find(x) != relVars.end()) {
+                            for (const auto &x: relVars) {
+                                next.insert(x);
+                            }
+                        }
+                    }
+                }
+                todo.clear();
+                for (const auto &var : next) {
+                    if (res.find(var) == res.end()) {
+                        todo.insert(var);
+                    }
+                }
+                // collect all variables from every iteration
+                res.insertAll(todo);
+            }
+            VS symbols;
+            for (const auto &x: res) {
+                symbols.insert(x);
+            }
+            return symbols;
+        }
 
-        static const VarSet find(
-                const Guard &constraints,
-                const std::vector<Subs> &updates,
-                const BoolExpr guard);
+        static const VS find(
+                const Conjunction<Th...> &constraints,
+                const std::vector<S> &updates,
+                const BExpr<Th...> guard) {
+            VS varsOfInterest;
+            for (const Lit &rel: constraints) {
+                varsOfInterest.collectVars(rel);
+            }
+            return find(varsOfInterest, updates, guard);
+        }
 
         static const VarSet find(
                 const Guard &constraints,
                 const std::vector<RuleRhs> &rhss,
-                const BoolExpr guard);
+                const BoolExpr guard) {
+            std::vector<Subs> updates;
+            for (const RuleRhs &rhs: rhss) {
+                updates.push_back(rhs.getUpdate());
+            }
+            return RelevantVariables::find(constraints, updates, guard);
+        }
 
     };
 

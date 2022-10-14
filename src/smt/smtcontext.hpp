@@ -20,7 +20,7 @@
 #include "option.hpp"
 #include "expression.hpp"
 #include "rel.hpp"
-#include "boolexpr.hpp"
+#include "theory.hpp"
 
 #include <map>
 
@@ -92,10 +92,10 @@ public:
 
     EXPR addNewVariable(const Var &symbol, Expr::Type type) {
         assert(varMap.find(symbol) == varMap.end());
-        assert(nameMap.find(Th::getName(symbol)) == nameMap.end());
-        EXPR res = generateFreshVar(Th::getName(symbol), type);
+        assert(nameMap.find(theory::getName(symbol)) == nameMap.end());
+        EXPR res = generateFreshVar(theory::getName(symbol), type);
         varMap.emplace(symbol, res);
-        nameMap.emplace(Th::getName(symbol), symbol);
+        nameMap.emplace(theory::getName(symbol), symbol);
         return res;
     }
 

@@ -1,9 +1,7 @@
-#ifndef QELIM_HPP
-#define QELIM_HPP
+#pragma once
 
-#include "boolexpr.hpp"
+#include "theory.hpp"
 #include "variablemanager.hpp"
-#include "exceptions.hpp"
 #include "proof.hpp"
 
 class Qelim {
@@ -11,17 +9,14 @@ class Qelim {
 public:
 
     struct Result {
-        BoolExpr qf;
+        BExpr<IntTheory> qf;
         Proof proof;
         bool exact;
-        Result(const BoolExpr &qf, const Proof &proof, bool exact): qf(qf), proof(proof), exact(exact) {}
+        Result(const BExpr<IntTheory> &qf, const Proof &proof, bool exact): qf(qf), proof(proof), exact(exact) {}
     };
 
-    virtual option<Result> qe(const QuantifiedFormula &qf) = 0;
+    virtual option<Result> qe(const QuantifiedFormula<IntTheory> &qf) = 0;
 
     static std::unique_ptr<Qelim> solver(VarMan& varMan);
 
 };
-
-#endif
-

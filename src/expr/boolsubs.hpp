@@ -4,7 +4,12 @@
 #include "boolexpr.hpp"
 #include "itheory.hpp"
 
+template <IBaseTheory... Th>
 class BoolSubs {
+
+    using BoolExpr = BExpr<Th...>;
+    using T = Theory<Th...>;
+    using VarSet = typename T::VarSet;
 
     std::map<BoolVar, BoolExpr> map;
 
@@ -12,62 +17,201 @@ public:
 
     using const_iterator = typename std::map<BoolVar, BoolExpr>::const_iterator;
 
-    BoolSubs();
+    BoolSubs() {}
 
-    BoolSubs(const BoolVar &key, const BoolExpr &val);
+    BoolSubs(const BoolVar &key, const BoolExpr &val): map({{key, val}}) {}
 
-    void put(const BoolVar &key, const BoolExpr &val);
+    void put(const BoolVar &key, const BoolExpr &val) {
+        map[key] = val;
+    }
 
-    BoolExpr get(const BoolVar &var) const;
+    BoolExpr get(const BoolVar &var) const {
+        const auto it = map.find(var);
+        return it == map.end() ? buildTheoryLit<Th...>(var) : it->second;
+    }
 
-    BoolExpr operator()(const BoolExpr e) const;
+    BoolExpr operator()(const BoolExpr e) const {
+        const auto lit = e->getTheoryLit();
+        if (lit) {
+            if (std::holds_alternative<BoolLit>(*lit)) {
+                const auto &blit = std::get<BoolLit>(*lit);
+                const BoolVar var = blit.getBoolVar();
+                const auto it = find(var);
+                if (it == end()) {
+                    return e;
+                } else {
+                    return blit.isNegated() ? !it->second : it->second;
+                }
+            } else {
+                return e;
+            }
+        } else if (e->isAnd() || e->isOr()) {
+            std::vector<BoolExpr> children;
+            for (const auto &c: e->getChildren()) {
+                children.push_back((*this)(c));
+            }
+            return e->isAnd() ? buildAnd(children) : buildOr(children);
+        } else {
+            return e;
+        }
+    }
 
-    bool contains(const BoolVar &var) const;
+    bool contains(const BoolVar &var) const {
+        return map.find(var) != map.end();
+    }
 
-    BoolSubs compose(const BoolSubs &that) const;
+    BoolSubs compose(const BoolSubs &that) const {
+        BoolSubs res;
+        for (const auto &p: *this) {
+            res.put(p.first, that(p.second));
+        }
+        for (const auto &p: that) {
+            if (!res.contains(p.first)) {
+                res.put(p.first, p.second);
+            }
+        }
+        return res;
+    }
 
-    BoolSubs concat(const BoolSubs &that) const;
+    BoolSubs concat(const BoolSubs &that) const {
+        BoolSubs res;
+        for (const auto &p: *this) {
+            res.put(p.first, that(p.second));
+        }
+        return res;
+    }
 
-    BoolSubs project(const std::set<BoolVar> &vars) const;
+    BoolSubs project(const std::set<BoolVar> &vars) const {
+        BoolSubs res;
+        for (const auto &p: *this) {
+            if (vars.find(p.first) != vars.end()) {
+                res.put(p.first, p.second);
+            }
+        }
+        return res;
+    }
 
-    bool changes(const BoolVar &key) const;
+    bool changes(const BoolVar &key) const {
+        if (!contains(key)) {
+            return false;
+        }
+        return buildLit<Th...>(key) != map.at(key);
+    }
 
-    std::set<BoolVar> domain() const;
+    std::set<BoolVar> domain() const {
+        std::set<BoolVar> res;
+        collectDomain(res);
+        return res;
+    }
 
     std::set<BoolVar> coDomainVars() const;
 
-    std::set<BoolVar> allVars() const;
+    std::set<BoolVar> allVars() const {
+        std::set<BoolVar> res;
+        collectVars(res);
+        return res;
+    }
 
-    void collectDomain(std::set<BoolVar> &vars) const;
+    void collectDomain(std::set<BoolVar> &vars) const {
+        for (const auto &p: map) {
+            vars.insert(p.first);
+        }
+    }
 
-    void collectCoDomainVars(VarSet &vars) const;
+    void collectCoDomainVars(VarSet &vars) const {
+        for (const auto &p: map) {
+            p.second->collectVars(vars);
+        }
+    }
 
-    void collectVars(std::set<BoolVar> &vars) const;
+    void collectVars(std::set<BoolVar> &vars) const {
+        for (const auto &p: map) {
+            vars.insert(p.first);
+            p.second->collectVars(vars);
+        }
+    }
 
-    unsigned hash() const;
+    unsigned hash() const {
+        unsigned hash = 7;
+        for (const auto& p: *this) {
+            hash = hash * 31 + p.first.hash();
+            hash = hash * 31 + p.second->hash();
+        }
+        return hash;
+    }
 
-    bool empty() const;
+    bool empty() const {
+        return map.empty();
+    }
 
-    const_iterator begin() const;
+    const_iterator begin() const {
+        return map.begin();
+    }
 
-    const_iterator end() const;
+    const_iterator end() const {
+        return map.end();
+    }
 
-    const_iterator find(const BoolVar &var) const;
+    const_iterator find(const BoolVar &var) const {
+        return map.find(var);
+    }
 
-    size_t size() const;
+    size_t size() const {
+        return map.size();
+    }
 
-    void erase(const BoolVar &var);
+    void erase(const BoolVar &var) {
+        map.erase(var);
+    }
 
-    int compare(const BoolSubs& that) const;
+    int compare(const BoolSubs& that) const {
+        if (map == that.map) {
+            return 0;
+        } else if (map < that.map) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
 
-    friend bool operator==(const BoolSubs &s1, const BoolSubs &s2);
+    template <ITheory... Th_>
+    friend bool operator==(const BoolSubs<Th_...> &s1, const BoolSubs<Th_...> &s2);
 
-    bool isLinear() const;
+    bool isLinear() const {
+        return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isLinear();});
+    }
 
-    bool isPoly() const;
+    bool isPoly() const {
+        return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isPoly();});
+    }
 
 };
 
-std::ostream& operator<<(std::ostream &s, const BoolSubs &e);
-bool operator==(const BoolSubs &s1, const BoolSubs &s2);
-bool operator<(const BoolSubs &s1, const BoolSubs &s2);
+template <ITheory... Th>
+std::ostream& operator<<(std::ostream &s, const BoolSubs<Th...> &e) {
+    if (e.empty()) {
+        return s << "{}";
+    } else {
+        bool first = true;
+        s << "{";
+        for (const auto &p: e) {
+            if (first) {
+                first = false;
+            } else {
+                s << ", ";
+            }
+            s << p.first << " -> " << p.second;
+        }
+        return s << "}";
+    }
+}
+
+template <ITheory... Th>
+bool operator==(const BoolSubs<Th...> &s1, const BoolSubs<Th...> &s2) {
+    return s1.map == s2.map;
+}
+
+template <ITheory... Th>
+bool operator<(const BoolSubs<Th...> &s1, const BoolSubs<Th...> &s2) {
+    return s1.compare(s2) < 0;
+}

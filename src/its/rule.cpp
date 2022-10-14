@@ -80,12 +80,7 @@ Rule Rule::subs(const Subs &subs) const {
     for (const RuleRhs &rhs : rhss) {
         newRhss.push_back(RuleRhs(rhs.getLoc(), rhs.getUpdate().concat(subs)));
     }
-    return Rule(RuleLhs(getLhsLoc(), subs(getGuard()), subs(getCost())), newRhss);
-}
-
-Rule Rule::subs(const ThSubs &s) const {
-    const BoolSubs empty;
-    return subs(Subs(s, empty));
+    return Rule(RuleLhs(getLhsLoc(), subs.subs(getGuard()), subs.subs(getCost())), newRhss);
 }
 
 LinearRule Rule::replaceRhssBySink(LocationIdx sink) const {
@@ -138,15 +133,10 @@ bool Rule::approxEqual(const Rule &that, bool compareRhss) const {
             if (updateA.size() != updateB.size()) return false;
 
             // update has to be fully equal (one inclusion suffices, since the size is equal)
-            for (const auto &itA : updateA.getThSubs()) {
-                auto itB = updateB.find(Th::first(itA));
-                if (itB == updateB.getThSubs().end()) return false;
-                if (!Th::second(*itB).equals(Th::second(itA))) return false;
-            }
-            for (const auto &itA : updateA.getBoolSubs()) {
-                auto itB = updateB.find(itA.first);
-                if (itB == updateB.getBoolSubs().end()) return false;
-                if (itA.second != itB->second) return false;
+            for (const auto &itA : updateA) {
+                auto itB = updateB.find(theory::first(itA));
+                if (itB == updateB.end()) return false;
+                if (theory::second(*itB) != theory::second(itA)) return false;
             }
         }
     }

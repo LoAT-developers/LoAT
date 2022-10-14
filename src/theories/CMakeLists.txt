@@ -3,6 +3,7 @@ target_sources(${EXECUTABLE}
         theory.hpp
         inttheory.hpp
         booltheory.hpp
+        theoryutils.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

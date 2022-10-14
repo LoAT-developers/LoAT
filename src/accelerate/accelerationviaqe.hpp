@@ -1,16 +1,11 @@
-#ifndef ACCELERATION_VIA_QE
-#define ACCELERATION_VIA_QE
+#pragma once
 
-#include "types.hpp"
 #include "rule.hpp"
-#include "option.hpp"
 #include "itsproblem.hpp"
-#include "proof.hpp"
-#include "smt.hpp"
 #include "accelerationtechnique.hpp"
 #include "recurrence.hpp"
 
-class AccelerationViaQE: public AccelerationTechnique {
+class AccelerationViaQE: public AccelerationTechnique<IntTheory> {
 
 public:
 
@@ -22,5 +17,3 @@ public:
     std::vector<Accelerator> computeRes() override;
 
 };
-
-#endif

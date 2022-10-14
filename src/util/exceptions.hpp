@@ -56,3 +56,4 @@ EXCEPTION(ConversionError, CustomException);
 EXCEPTION(LargeConstantError, CustomException);
 EXCEPTION(UnsupportedOperationError, CustomException);
 EXCEPTION(IllegalStateError, CustomException);
+EXCEPTION(IllegalArgumentError, CustomException);

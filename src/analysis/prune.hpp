@@ -20,7 +20,7 @@
 
 #include "types.hpp"
 #include "itsproblem.hpp"
-#include "smt.hpp"
+#include "smtfactory.hpp"
 
 class Rule;
 class ITSProblem;
@@ -74,7 +74,7 @@ namespace Pruning {
         bool changed = false;
 
         for (TransIdx rule : trans) {
-            if (Smt::check(its.getRule(rule).getGuard(), its) == Smt::Unsat) {
+            if (SmtFactory::check(its.getRule(rule).getGuard(), its) == Unsat) {
                 its.removeRule(rule);
                 changed = true;
             }

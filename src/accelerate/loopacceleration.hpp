@@ -57,7 +57,7 @@ private:
      *
      * @return A list of rules, either with N eliminated or only containing the given rule
      */
-    std::vector<Rule> replaceByUpperbounds(const Var &N, const Rule &rule);
+    std::vector<Rule> replaceByUpperbounds(const NumVar &N, const Rule &rule);
 
 private:
     ITSProblem &its;

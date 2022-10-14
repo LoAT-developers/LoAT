@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef PREPROCESS_H
-#define PREPROCESS_H
+#pragma once
 
 #include "rule.hpp"
 #include "itsproblem.hpp"
@@ -73,5 +72,3 @@ namespace Preprocess
      */
     Result<Rule> eliminateTempVars(ITSProblem &its, const Rule &rule, bool fast);
 }
-
-#endif // PREPROCESS_H

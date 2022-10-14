@@ -13,7 +13,7 @@ class  KoatParseVisitor : public KoatVisitor {
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;
     std::set<std::string> vars;
-    std::vector<Var> programVars;
+    std::vector<NumVar> programVars;
 
     enum ArithOp {
         Plus, Minus, Times, Exp

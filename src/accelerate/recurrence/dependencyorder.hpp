@@ -32,9 +32,10 @@
  */
 namespace DependencyOrder {
 
+template <ITheory Th>
 struct PartialResult {
-    std::vector<Var> ordering; // might not contain all variables (hence partial)
-    VarSet ordered; // set of all variables occurring in ordering
+    std::vector<typename Th::Var> ordering; // might not contain all variables (hence partial)
+    theory::VarSet<Th> ordered; // set of all variables occurring in ordering
 };
 
 /**
@@ -44,7 +45,7 @@ struct PartialResult {
  * or there are conflicting variables depending on each other).
  */
 template <ITheory Th>
-static void findOrderUntilConflicting(const typename Th::Subs &update, PartialResult &res) {
+static void findOrderUntilConflicting(const typename Th::Subs &update, PartialResult<Th> &res) {
     bool changed = true;
 
     while (changed && res.ordering.size() < update.size()) {
@@ -55,7 +56,7 @@ static void findOrderUntilConflicting(const typename Th::Subs &update, PartialRe
 
             //check if all variables on update rhs are already processed
             bool ready = true;
-            for (const Var var : up.second.vars()) {
+            for (const auto &var : up.second.vars()) {
                 if (var != up.first && update.contains(var) && res.ordered.find(var) == res.ordered.end()) {
                     ready = false;
                     break;
@@ -79,7 +80,7 @@ static void findOrderUntilConflicting(const typename Th::Subs &update, PartialRe
  */
 template <ITheory Th>
 option<std::vector<typename Th::Var>> findOrder(const typename Th::Subs &update) {
-    PartialResult res;
+    PartialResult<Th> res;
     findOrderUntilConflicting(update, res);
 
     if (res.ordering.size() == update.size()) {

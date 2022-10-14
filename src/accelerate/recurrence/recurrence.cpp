@@ -137,9 +137,9 @@ option<Recurrence::Result> Recurrence::iterate(const ExprSubs &update, const Exp
 
     Recurrence::Result res;
     res.n = varMan.addFreshTemporaryVariable<IntTheory>("n");
-    ExprSubs subs = {ginacN, res.n};
+    ExprSubs subs(ginacN, res.n);
     res.cost = newCost.get().subs(subs);
-    res.update = newUpdate.get().update.concat(subs);
+    res.update = newUpdate->update.concat(subs);
     res.validityBound = newUpdate.get().validityBound;
     return {res};
 }
@@ -147,12 +147,11 @@ option<Recurrence::Result> Recurrence::iterate(const ExprSubs &update, const Exp
 
 option<Recurrence::Result> Recurrence::iterateRule(VarMan &varMan, const LinearRule &rule) {
     // This may modify the rule's guard and update
-    auto order = DependencyOrder::findOrder(rule.getUpdate().getThSubs());
+    auto order = DependencyOrder::findOrder<IntTheory>(rule.getUpdate().get<IntTheory>());
     if (!order) {
         return {};
     }
 
     Recurrence rec(varMan, order.get());
-    return rec.iterate(rule.getUpdate().getExprSubs(), rule.getCost());
+    return rec.iterate(rule.getUpdate().get<IntTheory>(), rule.getCost());
 }
-

@@ -66,7 +66,7 @@ bool Pruning::pruneParallelRules(ITSProblem &its) {
                     } else {
                         const auto& res = AsymptoticBound::determineComplexityViaSMT(
                                     its,
-                                    rule.getGuard(),
+                                    rule.getGuard()->transform<IntTheory>(),
                                     rule.getCost());
                         cpx = res.cpx;
                         inftyVars = res.inftyVars;

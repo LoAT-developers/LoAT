@@ -17,7 +17,6 @@ target_sources(${EXECUTABLE}
         accelerationviacalculus.cpp
         accelerationviacalculus.hpp
         accelerationtechnique.hpp
-        accelerationtechnique.cpp
         accelerationfactory.hpp
         accelerationfactory.cpp
 )

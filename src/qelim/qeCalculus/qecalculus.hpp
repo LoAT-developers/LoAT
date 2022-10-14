@@ -1,7 +1,7 @@
-#ifndef QECALCULUS_HPP
-#define QECALCULUS_HPP
+#pragma once
 
 #include "qelim.hpp"
+#include "theory.hpp"
 #include "proof.hpp"
 #include "smt.hpp"
 
@@ -11,8 +11,8 @@ class QeProblem : public Qelim
 private:
 
     struct Entry {
-        RelSet dependencies;
-        BoolExpr formula;
+        std::set<Theory<IntTheory>::Lit> dependencies;
+        BExpr<IntTheory> formula;
         bool exact;
     };
 
@@ -20,24 +20,24 @@ private:
 
     Res res;
     option<RelMap<Entry>> solution;
-    RelSet todo;
-    std::unique_ptr<Smt> solver;
-    option<QuantifiedFormula> formula;
+    std::set<Theory<IntTheory>::Lit> todo;
+    std::unique_ptr<Smt<IntTheory>> solver;
+    option<QuantifiedFormula<IntTheory>> formula;
     VariableManager &varMan;
 
-    bool monotonicity(const Rel &rel, const Var &n, Proof &proof);
-    bool recurrence(const Rel &rel, const Var &n, Proof &proof);
-    bool eventualWeakDecrease(const Rel &rel, const Var &n, Proof &proof);
-    bool eventualWeakIncrease(const Rel &rel, const Var &n, Proof &proof);
-    option<BoolExpr> strengthen(const Rel &rel, const Var &n, Proof &proof);
-    bool fixpoint(const Rel &rel, const Var &x, Proof &proof);
-    RelSet findConsistentSubset(const BoolExpr e, const Var &var) const;
-    option<unsigned int> store(const Rel &rel, const RelSet &deps, const BoolExpr formula, bool exact = true);
-    BoolExpr boundedFormula(const Var &var) const;
+    bool monotonicity(const Rel &rel, const NumVar &n, Proof &proof);
+    bool recurrence(const Rel &rel, const NumVar &n, Proof &proof);
+    bool eventualWeakDecrease(const Rel &rel, const NumVar &n, Proof &proof);
+    bool eventualWeakIncrease(const Rel &rel, const NumVar &n, Proof &proof);
+    option<BExpr<IntTheory>> strengthen(const Rel &rel, const NumVar &n, Proof &proof);
+    bool fixpoint(const Rel &rel, const NumVar &x, Proof &proof);
+    std::set<Theory<IntTheory>::Lit> findConsistentSubset(const BExpr<IntTheory> e, const NumVar &var) const;
+    option<unsigned int> store(const Rel &rel, const std::set<Theory<IntTheory>::Lit> &deps, const BExpr<IntTheory> formula, bool exact = true);
+    BExpr<IntTheory> boundedFormula(const NumVar &var) const;
 
     struct ReplacementMap {
         bool exact;
-        RelMap<BoolExpr> map;
+        std::map<Theory<IntTheory>::Lit, BExpr<IntTheory>> map;
     };
 
     ReplacementMap computeReplacementMap() const;
@@ -57,8 +57,6 @@ public:
     };
 
     QeProblem(VariableManager &varMan): varMan(varMan){}
-    option<Qelim::Result> qe(const QuantifiedFormula &qf) override;
+    option<Qelim::Result> qe(const QuantifiedFormula<IntTheory> &qf) override;
 
 };
-
-#endif // QECALCULUS_HPP
