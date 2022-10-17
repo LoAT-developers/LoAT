@@ -23,6 +23,28 @@ class QuantifiedFormula;
 template <ITheory... Th>
 using BExpr = std::shared_ptr<const BoolExpression<Th...>>;
 
+namespace boolExpression {
+
+template<std::size_t I = 0, ITheory... Th>
+BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th...> &s) {
+    if constexpr (I < sizeof...(Th)) {
+        if (lit.index() == I) {
+            using T = typename std::tuple_element_t<I, std::tuple<Th...>>;
+            if constexpr (std::same_as<typename T::Var, BoolVar>) {
+                return s.template get<T>().subs(std::get<I>(lit));
+            } else {
+                return buildTheoryLit<Th...>(std::get<I>(lit).subs(s.template get<T>()));
+            }
+        } else {
+            return subs<I+1, Th...>(lit, s);
+        }
+    } else {
+        throw std::logic_error("unknown theory");
+    }
+}
+
+}
+
 template <ITheory... Th>
 struct BExpr_compare {
     bool operator() (const BExpr<Th...> a, const BExpr<Th...> b) const {
@@ -131,7 +153,47 @@ public:
     virtual unsigned hash() const = 0;
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
     virtual int compare(const BE that) const = 0;
-    virtual BE subs(const Subs &subs) const = 0;
+
+    template <ITheory T>
+    void collectVars(std::set<typename T::Var> &res) const {
+        VS vs;
+        vs.template get<T>() = res;
+        collectVars(vs);
+    }
+
+    template<std::size_t I = 0>
+    BE subs(const Subs &subs) const {
+        if (getTheoryLit()) {
+            return boolExpression::subs(*getTheoryLit(), subs);
+        } else {
+            BES newChildren;
+            for (const auto &c: getChildren()) {
+                newChildren.emplace(c->subs(subs));
+            }
+            if (isAnd()) {
+                return buildAnd(newChildren);
+            } else if (isOr()) {
+                return buildOr(newChildren);
+            } else {
+                throw std::logic_error("unknown junctor´");
+            }
+        }
+    }
+
+    bool isTriviallyTrue() const {
+        if (getTheoryLit()) {
+            return std::visit([](const auto &lit){return lit.isTriviallyTrue();}, *getTheoryLit());
+        } else {
+            const auto children = getChildren();
+            if (isAnd()) {
+                return std::all_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyTrue();});
+            } else if (isOr()) {
+                return std::any_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyTrue();});
+            } else {
+                throw std::logic_error("unknown junctor");
+            }
+        }
+    }
 
     template <ITheory... Th_>
     BExpr<Th_...> map(const std::function<BExpr<Th_...>(const Lit&)> &f) const {
@@ -175,7 +237,9 @@ public:
         throw IllegalStateError("unknown boolean expression");
     }
 
-    BE map(const std::function<BE(const Lit&)> &f) const;
+    BE map(const std::function<BE(const Lit&)> &f) const {
+        return map<Th...>(f);
+    }
 
     BE simplify() const {
         return map([](const Lit &lit) -> BE {
@@ -186,7 +250,7 @@ public:
                                       } else if (lit.isTriviallyFalse()) {
                                           return False;
                                       } else if (lit.isNeq()) {
-                                          return buildTheoryLit<Th...>(lit.lhs() < lit.rhs()) | (lit.lhs() > lit.rhs());
+                                          return buildTheoryLit<Th...>(Rel(lit.lhs(), Rel::lt, lit.rhs())) | (Rel(lit.lhs(), Rel::gt, lit.rhs()));
                                       } else {
                                           return buildTheoryLit<Th...>(lit);
                                       }
@@ -414,8 +478,6 @@ public:
         return lit < *that->getTheoryLit() ? -1 : 1;
     }
 
-    BE subs(const Subs &subs) const override;
-
 protected:
 
     void dnf(std::vector<C> &res) const override {
@@ -604,8 +666,6 @@ public:
         if (c1 == c2) return 0;
         return c1 < c2 ? -1 : 1;
     }
-
-    BE subs(const Subs &subs) const override;
 
 protected:
 

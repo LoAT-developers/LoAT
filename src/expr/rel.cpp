@@ -16,30 +16,6 @@ std::ostream& operator<<(std::ostream &s, const RelSet &set) {
 
 Rel::Rel(const Expr &lhs, RelOp op, const Expr &rhs): l(lhs), r(rhs), op(op) { }
 
-Rel operator<(const Expr &x, const Expr &y) {
-    return Rel(x.ex, Rel::lt, y.ex);
-}
-
-Rel operator>(const Expr &x, const Expr &y) {
-    return Rel(x.ex, Rel::gt, y.ex);
-}
-
-Rel operator<=(const Expr &x, const Expr &y) {
-    return Rel(x.ex, Rel::leq, y.ex);
-}
-
-Rel operator>=(const Expr &x, const Expr &y) {
-    return Rel(x.ex, Rel::geq, y.ex);
-}
-
-Rel Rel::buildNeq(const Expr &x, const Expr &y) {
-    return Rel(x, Rel::neq, y);
-}
-
-Rel Rel::buildEq(const Expr &x, const Expr &y) {
-    return Rel(x, Rel::eq, y);
-}
-
 std::ostream& operator<<(std::ostream &s, const Expr &e) {
     s << e.ex;
     return s;
@@ -94,13 +70,13 @@ Rel Rel::toLeq() const {
     }
     //flip > or >=
     if (res->op == Rel::gt) {
-        res = res->rhs() < res->lhs();
+        res = Rel(res->rhs(), lt, res->lhs());
     } else if (op == Rel::geq) {
-        res = res->rhs() <= res->lhs();
+        res = Rel(res->rhs(), leq, res->lhs());
     }
 
     if (res->op == Rel::lt) {
-        res = res->lhs() <= (res->rhs() - 1);
+        res = Rel(res->lhs(), leq, (res->rhs() - 1));
     }
 
     assert(res->op == Rel::leq);
@@ -119,13 +95,13 @@ Rel Rel::toGt() const {
         res = *this;
     }
     if (res->op == Rel::lt) {
-        res = res->rhs() > res->lhs();
+        res = Rel(res->rhs(), gt, res->lhs());
     } else if (op == Rel::leq) {
-        res = res->rhs() >= res->lhs();
+        res = Rel(res->rhs(), geq, res->lhs());
     }
 
     if (res->op == Rel::geq) {
-        res = res->lhs() + 1 > res->rhs();
+        res = Rel(res->lhs() + 1, gt, res->rhs());
     }
 
     assert(res->op == Rel::gt);
@@ -135,9 +111,9 @@ Rel Rel::toGt() const {
 Rel Rel::toL() const {
     assert(isIneq());
     if (op == Rel::gt) {
-        return r < l;
+        return Rel(r, lt, l);
     } else if (op == Rel::geq) {
-        return r <= l;
+        return Rel(r, leq, l);
     } else {
         return *this;
     }
@@ -146,9 +122,9 @@ Rel Rel::toL() const {
 Rel Rel::toG() const {
     assert(isIneq());
     if (op == Rel::lt) {
-        return r > l;
+        return Rel(r, gt, l);
     } else if (op == Rel::leq) {
-        return r >= l;
+        return Rel(r, geq, l);
     } else {
         return *this;
     }
@@ -167,17 +143,36 @@ bool Rel::isOctagon() const {
     return op != neq && (lhs() - rhs()).expand().isOctagon();
 }
 
+std::pair<option<Expr>, option<Expr>> Rel::getBoundFromIneq(const NumVar &N) const {
+    Rel l = isPoly() ? toLeq() : toL();
+    Expr term = (l.lhs() - l.rhs()).expand();
+    if (term.degree(N) != 1) return {};
+
+    // compute the upper bound represented by N and check that it is integral
+    auto optSolved = term.solveTermFor(N, ResultMapsToInt);
+    if (optSolved) {
+        const Expr &coeff = term.coeff(N, 1);
+        assert(coeff.isRationalConstant());
+        if (coeff.toNum().is_negative()) {
+            return {{l.isStrict() ? optSolved.get() + 1 : optSolved.get()}, {}};
+        } else {
+            return {{}, {l.isStrict() ? optSolved.get() - 1 : optSolved.get()}};
+        }
+    }
+    return {};
+}
+
 void Rel::getBounds(const NumVar &n, Bounds &res) const {
     if (has(n)) {
         if (isEq()) {
-            const option<Expr> eq = GuardToolbox::solveTermFor(lhs() - rhs(), n, GuardToolbox::ResultMapsToInt);
+            const option<Expr> eq = (lhs() - rhs()).solveTermFor(n, ResultMapsToInt);
             if (eq) {
                 res.equality = *eq;
                 res.lowerBounds.insert(*eq);
                 res.upperBounds.insert(*eq);
             }
         } else if (isIneq()) {
-            const auto p = GuardToolbox::getBoundFromIneq(*this, n);
+            const auto p = getBoundFromIneq(n);
             if (p.first) {
                 bool add = true;
                 for (const auto &b: res.lowerBounds) {
@@ -334,6 +329,34 @@ option<std::string> Rel::toQepcad() const {
     return diff.get() + " > 0";
 }
 
+bool Rel::isWellformed() const {
+    return op != neq;
+}
+
+Rel Rel::buildEq(const Expr &x, const Expr &y) {
+    return Rel(x, eq, y);
+}
+
+Rel Rel::buildNeq(const Expr &x, const Expr &y) {
+    return Rel(x, neq, y);
+}
+
+Rel Rel::buildGeq(const Expr &x, const Expr &y) {
+    return Rel(x, geq, y);
+}
+
+Rel Rel::buildLeq(const Expr &x, const Expr &y) {
+    return Rel(x, leq, y);
+}
+
+Rel Rel::buildGt(const Expr &x, const Expr &y) {
+    return Rel(x, gt, y);
+}
+
+Rel Rel::buildLt(const Expr &x, const Expr &y) {
+    return Rel(x, lt, y);
+}
+
 Rel operator!(const Rel &x) {
     switch (x.op) {
     case Rel::eq: return Rel(x.l, Rel::neq, x.r);
@@ -367,54 +390,6 @@ int Rel::compare(const Rel &that) const {
 
 bool operator<(const Rel &x, const Rel &y) {
     return x.compare(y) < 0;
-}
-
-Rel operator<(const NumVar &x, const Expr &y) {
-    return Expr(x) < y;
-}
-
-Rel operator<(const Expr &x, const NumVar &y) {
-    return x < Expr(y);
-}
-
-Rel operator<(const NumVar &x, const NumVar &y) {
-    return Expr(x) < Expr(y);
-}
-
-Rel operator>(const NumVar &x, const Expr &y) {
-    return Expr(x) > y;
-}
-
-Rel operator>(const Expr &x, const NumVar &y) {
-    return x > Expr(y);
-}
-
-Rel operator>(const NumVar &x, const NumVar &y) {
-    return Expr(x) > Expr(y);
-}
-
-Rel operator<=(const NumVar &x, const Expr &y) {
-    return Expr(x) <= y;
-}
-
-Rel operator<=(const Expr &x, const NumVar &y) {
-    return x <= Expr(y);
-}
-
-Rel operator<=(const NumVar &x, const NumVar &y) {
-    return Expr(x) <= Expr(y);
-}
-
-Rel operator>=(const NumVar &x, const Expr &y) {
-    return Expr(x) >= y;
-}
-
-Rel operator>=(const Expr &x, const NumVar &y) {
-    return x >= Expr(y);
-}
-
-Rel operator>=(const NumVar &x, const NumVar &y) {
-    return Expr(x) >= Expr(y);
 }
 
 std::ostream& operator<<(std::ostream &s, const Rel &rel) {

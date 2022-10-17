@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef LOAT_SEXPRESSION_PARSER_H
-#define LOAT_SEXPRESSION_PARSER_H
+#pragma once
 
 
 #include "itsproblem.hpp"
@@ -48,4 +47,3 @@ namespace sexpressionparser {
 
 }
 
-#endif //LOAT_SEXPRESSION_PARSER_H

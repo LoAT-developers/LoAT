@@ -79,12 +79,53 @@ public:
     typename Th::Var addFreshTemporaryVariable(std::string basename) {
         std::lock_guard guard(mutex);
         typename Th::Var x = addVariable<Th>(getFreshName(basename));
-        temporaryVariables.insert(theory::getName<Th>(x));
+        temporaryVariables.insert(x.getName());
         return x;
     }
 
-    template<ITheory... Th>
-    std::pair<QuantifiedFormula<Th...>, theory::Subs<Th...>> normalizeVariables(const QuantifiedFormula<Th...> &f);
+    std::pair<QuantifiedFormula<IntTheory>, theory::Subs<IntTheory>> normalizeVariables(const QuantifiedFormula<IntTheory> &f) {
+        {
+            std::set<NumVar> vars;
+            const auto matrix = f.getMatrix();
+            matrix->collectVars<IntTheory>(vars);
+            ExprSubs normalization, inverse;
+            unsigned count = 0;
+            for (const NumVar &x: vars) {
+                ++count;
+                std::string varName = "x" + std::to_string(count);
+                option<Var> replacement = getVar(varName);
+                if (!replacement) replacement = addFreshTemporaryVariable<IntTheory>(varName);
+                const auto &rep = std::get<NumVar>(*replacement);
+                normalization.put(x, rep);
+                inverse.put(rep, x);
+            }
+            const auto newMatrix = matrix->subs(normalization);
+            std::vector<Quantifier> newPrefix;
+            for (const auto& q: f.getPrefix()) {
+                std::set<NumVar> newVars;
+                std::map<NumVar, Expr> newLowerBounds;
+                std::map<NumVar, Expr> newUpperBounds;
+                for (const auto& x: q.getVars()) {
+                    if (vars.find(x) != vars.end()) {
+                        newVars.insert(normalization.get(x).toVar());
+                        auto lb = q.lowerBound(x);
+                        auto ub = q.upperBound(x);
+                        if (lb) {
+                            newLowerBounds[x] = lb.get();
+                        }
+                        if (ub) {
+                            newUpperBounds[x] = ub.get();
+                        }
+                    }
+                }
+                if (!newVars.empty()) {
+                    newPrefix.push_back(Quantifier(q.getType(), newVars, newLowerBounds, newUpperBounds));
+                }
+            }
+            return {QuantifiedFormula(newPrefix, newMatrix), inverse};
+        }
+
+    }
 
 private:
     // List of all variables (VariableIdx is an index in this list; a Variable is a name and a symbol)

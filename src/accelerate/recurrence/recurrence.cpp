@@ -51,7 +51,7 @@ option<Recurrence::RecurrenceSolution> Recurrence::findUpdateRecurrence(const Ex
     Purrs::Recurrence rec(rhs);
     Purrs::Recurrence::Solver_Status res = Purrs::Recurrence::Solver_Status::TOO_COMPLEX;
     try {
-        rec.set_initial_conditions({ {0, Purrs::Expr::fromGiNaC(updateLhs)} });
+        rec.set_initial_conditions({ {0, Purrs::Expr::fromGiNaC(*updateLhs)} });
         res = rec.compute_exact_solution();
     } catch (...) {
         //purrs throws a runtime exception if the recurrence is too difficult
@@ -124,6 +124,8 @@ option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Exp
     return {{newUpdate, validityBound}};
 }
 
+Recurrence::Result::Result(const NumVar &n): n(n) {}
+
 option<Recurrence::Result> Recurrence::iterate(const ExprSubs &update, const Expr &cost) {
     auto newUpdate = iterateUpdate(update);
     if (!newUpdate) {
@@ -135,8 +137,7 @@ option<Recurrence::Result> Recurrence::iterate(const ExprSubs &update, const Exp
         return {};
     }
 
-    Recurrence::Result res;
-    res.n = varMan.addFreshTemporaryVariable<IntTheory>("n");
+    Recurrence::Result res(varMan.addFreshTemporaryVariable<IntTheory>("n"));
     ExprSubs subs(ginacN, res.n);
     res.cost = newCost.get().subs(subs);
     res.update = newUpdate->update.concat(subs);

@@ -21,40 +21,26 @@ using ThVar = TheSubs::Var;
 using Theories = TheTheory::Theories;
 using ThSubs = TheSubs::Subs;
 using VarSet = theory::VarSet<IntTheory, BoolTheory>;
+using VS = VarSet;
 using Subs = theory::Subs<IntTheory, BoolTheory>;
+using S = Subs;
 
-const BoolExpr True = BoolExpression<IntTheory, BoolTheory>::True;
-const BoolExpr False = BoolExpression<IntTheory, BoolTheory>::False;
+extern TheTheory theTheory;
 
-const BoolExpr buildAnd(const std::vector<Lit> &xs) {
-    BoolExprSet lits;
-    for (const auto &lit: xs) {
-        lits.insert(buildTheoryLit<IntTheory, BoolTheory>(lit));
-    }
-    return buildAnd(lits);
-}
+extern const BoolExpr True;
+extern const BoolExpr False;
 
-const BoolExpr buildAnd(const std::vector<BoolExpr> &xs) {
-    BoolExprSet lits;
-    for (const auto &lit: xs) {
-        lits.insert(lit);
-    }
-    return buildAnd(lits);
-}
+const BoolExpr buildAnd(const std::vector<Lit> &xs);
+
+const BoolExpr buildAnd(const std::vector<BoolExpr> &xs);
 
 namespace theory {
 
-std::string getName(const Var &var) {
-    return getName<IntTheory, BoolTheory>(var);
-}
+std::string getName(const Var &var);
 
-Var first(const Subs<IntTheory, BoolTheory>::Pair &p) {
-    return first<IntTheory, BoolTheory>(p);
-}
+Var first(const Subs<IntTheory, BoolTheory>::Pair &p);
 
-ThExpr second(const Subs<IntTheory, BoolTheory>::Pair &p) {
-    return second<IntTheory, BoolTheory>(p);
-}
+ThExpr second(const Subs<IntTheory, BoolTheory>::Pair &p);
 
 template <ITheory Th>
 BoolExpr transform(const BExpr<Th> &e) {
@@ -64,39 +50,20 @@ BoolExpr transform(const BExpr<Th> &e) {
     return e->map(mapper);
 }
 
-const BoolExpr buildTheoryLit(const Lit &lit) {
-    return BoolExpr(new BoolTheoryLit<IntTheory, BoolTheory>(lit));
-}
+const BoolExpr buildTheoryLit(const Lit &lit);
+
+const VS vars(const ThExpr &e);
+
+BoolExpr subs(const Lit &lit, const S &s);
 
 }
 
-bool operator==(const ThExpr &e, const ThVar &var) {
-    return std::visit(Overload{
-                          [](const Expr &e, const NumVar &var) {return e.equals(var);},
-                          [](const BoolExpr &e1, const BoolVar &e2) {return e1 == e2;},
-                          [](const auto &e, const auto &var) {return false;},
-                      }, e, var);
-}
+bool operator==(const ThExpr &e, const ThVar &var);
 
-bool operator==(const ThExpr &e1, const ThExpr &e2) {
-    return std::visit(Overload{
-                          [](const Expr &e1, const Expr &e2) {return e1.equals(e2);},
-                          [](const BoolExpr &e1, const BoolExpr &e2) {return e1 == e2;},
-                          [](const auto &e1, const auto &e2) {return false;}
-                      }, e1, e2);
-}
+bool operator==(const ThExpr &e1, const ThExpr &e2);
 
-std::ostream& operator<<(std::ostream &s, const Lit &e) {
-    std::visit([&s](const auto &e){s << e;}, e);
-    return s;
-}
+std::ostream& operator<<(std::ostream &s, const Lit &e);
 
-std::ostream& operator<<(std::ostream &s, const Var &e) {
-    std::visit([&s](const auto &e){s << theory::getName(e);}, e);
-    return s;
-}
+std::ostream& operator<<(std::ostream &s, const Var &e);
 
-std::ostream& operator<<(std::ostream &s, const ThExpr &e) {
-    std::visit([&s](const auto &e){s << e;}, e);
-    return s;
-}
+std::ostream& operator<<(std::ostream &s, const ThExpr &e);

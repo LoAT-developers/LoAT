@@ -41,14 +41,13 @@ class Reachability {
     std::map<LocationIdx, std::vector<TransIdx>> accelerated;
     std::map<LocationIdx, std::list<TransIdx>> transitions;
     LocationIdx sink = *its.getSink();
-    Z3 z3;
+    Z3<IntTheory, BoolTheory> z3;
 
     std::vector<Step> trace;
     std::vector<Subs> sigmas;
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked{{}};
     std::vector<std::pair<Automaton, BoolExpr>> covered;
     VarSet prog_vars;
-    BoolVarSet bool_prog_vars;
     TransIdx lastOrigRule = 0;
 
     std::map<TransIdx, Automaton> regexes;

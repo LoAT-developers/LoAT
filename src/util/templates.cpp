@@ -66,7 +66,7 @@ const Templates::Template Templates::buildTemplate(const std::set<NumVar> &vars,
     for (const auto &x: vars) {
         const NumVar &param = varMan.getFreshUntrackedSymbol<IntTheory>("c", Expr::Int);
         params.insert(param);
-        res = res + (x * param);
+        res = res + (*x * *param);
     }
     return Templates::Template(res, vars, std::move(params));
 }

@@ -9,10 +9,6 @@ std::string BoolVar::getName() const {
     return name;
 }
 
-std::string BoolVar::get_name() const {
-    return name;
-}
-
 size_t BoolVar::hash() const {
     return std::hash<std::string>{}(name);
 }

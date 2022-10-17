@@ -12,11 +12,17 @@ public:
     std::string toRedlog() const;
     unsigned hash() const;
     bool isNegated() const;
+    bool isWellformed() const;
     BoolVar getBoolVar() const;
     int compare(const BoolLit &that) const;
+
     template<class VarSet>
-    void collectVariables(const VarSet &res) const;
+    void collectVariables(const VarSet &res) const {
+        res.insert(var);
+    }
+
     BoolLit normalize() const;
+    bool isTriviallyTrue() const;
 
 };
 

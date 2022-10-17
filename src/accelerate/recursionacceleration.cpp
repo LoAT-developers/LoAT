@@ -65,7 +65,7 @@ static AccelerationResult meterAndIterate(ITSProblem &its, const Rule &r, Locati
     // For linear rules, this is only required for non-termination (see special case below).
     // For nonlinear rules, we lower bound the costs by 1 for the iterated cost, so we always require this.
     // Note that we have to add this before searching for a metering function, since it has to hold in every step.
-    Rule rule = r.withGuard(r.getGuard() & (r.getCost() >= 1));
+    Rule rule = r.withGuard(r.getGuard() & Rel::buildGeq(r.getCost(), 1));
 
     // Try to find a metering function
     MeteringFinder::Result meter = meterWithInstantiation(its, rule);

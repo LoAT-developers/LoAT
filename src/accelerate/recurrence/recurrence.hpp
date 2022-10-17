@@ -38,6 +38,9 @@ public:
         ExprSubs update;
         unsigned int validityBound;
         NumVar n;
+
+        Result(const NumVar &n);
+
     };
 
     /**
@@ -96,7 +99,7 @@ private:
     /**
      * Purrs::Recurrence::n converted to a ginac expression, for convenience only
      */
-    const NumVar ginacN;
+    const GiNaC::symbol ginacN;
 
     /**
      * Order in which recurrences for updated variables can be computed

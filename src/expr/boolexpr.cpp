@@ -43,7 +43,7 @@ std::string Quantifier::toRedlog() const {
     std::string q = qType == Type::Exists ? "ex" : "all";
     std::string res;
     for (const auto& var: vars) {
-        res = q + "(" + var.get_name() + ",";
+        res = q + "(" + var.getName() + ",";
     }
     return res;
 }

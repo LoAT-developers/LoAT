@@ -69,10 +69,10 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
         if (its.isTempVar(x)) {
             std::visit(Overload{
                            [&](const NumVar &x){
-                               varRenaming.put<IntTheory>(x, its.addFreshTemporaryVariable<IntTheory>(x.get_name()));
+                               varRenaming.put<IntTheory>(x, its.addFreshTemporaryVariable<IntTheory>(x.getName()));
                            },
                            [&](const BoolVar &x){
-                               varRenaming.put<BoolTheory>(x, theory::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(x.get_name())));
+                               varRenaming.put<BoolTheory>(x, theory::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(x.getName())));
                            }
                        }, x);
         }

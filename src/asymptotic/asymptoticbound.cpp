@@ -57,8 +57,8 @@ void AsymptoticBound::normalizeGuard() {
         const Rel &rel = std::get<Rel>(lit);
         if (rel.isEq()) {
             // Split equation
-            ineqs.push_back(rel.lhs() - rel.rhs() >= 0);
-            ineqs.push_back(rel.rhs() - rel.lhs() >= 0);
+            ineqs.push_back(Rel::buildGeq(rel.lhs() - rel.rhs(), 0));
+            ineqs.push_back(Rel::buildGeq(rel.rhs() - rel.lhs(), 0));
         } else {
             ineqs.push_back(rel.toG().makeRhsZero());
         }
@@ -106,7 +106,7 @@ void AsymptoticBound::propagateBounds() {
             // check program variables first
             for (const auto &var : vars) {
                 //solve target for var (result is in target)
-                auto optSolved = GuardToolbox::solveTermFor(target, var, GuardToolbox::TrivialCoeffs);
+                auto optSolved = target.solveTermFor(var, TrivialCoeffs);
                 if (optSolved) {
                     substitutions.push_back(ExprSubs(var, optSolved.get()));
                     break;
@@ -139,7 +139,7 @@ ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
     solution = solution.compose(limitProblem.getSolution());
 
     Conjunction<IntTheory> guardCopy = guard;
-    guardCopy.push_back(cost > 0);
+    guardCopy.push_back(Rel::buildGt(cost, 0));
     for (const auto &lit : guardCopy) {
         const Rel &rel = std::get<Rel>(lit);
         for (const auto &var : rel.vars()) {
@@ -197,7 +197,7 @@ int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
         Expr expanded = solvedCost.expand();
 
         Expr powerPattern = Expr::wildcard(1) ^ Expr::wildcard(2);
-        ExprSet powers;
+        std::set<Expr> powers;
         assert(expanded.findAll(powerPattern, powers));
 
         lowerBound = 1;
@@ -560,7 +560,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
         r = 0;
 
         bool foundOneVar = false;
-        Var oneVar;
+        option<Var> oneVar;
         for (unsigned int i = 0; i < it->arity(); ++i) {
             Expr ex(it->op(i));
 
@@ -575,7 +575,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                     oneVar = ex.someVar();
                     l = ex;
 
-                } else if (oneVar == ex.someVar()) {
+                } else if (oneVar && *oneVar == ex.someVar()) {
                     l = l + ex;
 
                 } else {
@@ -596,7 +596,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
         r = 1;
 
         bool foundOneVar = false;
-        Var oneVar;
+        option<Var> oneVar;
         for (unsigned int i = 0; i < it->arity(); ++i) {
             Expr ex(it->op(i));
 
@@ -611,7 +611,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                     oneVar = ex.someVar();
                     l = ex;
 
-                } else if (oneVar == ex.someVar()) {
+                } else if (oneVar && *oneVar == ex.someVar()) {
                     l = l * ex;
 
                 } else {

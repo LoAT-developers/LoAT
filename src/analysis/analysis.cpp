@@ -292,7 +292,7 @@ ResultViaSideEffects Analysis::ensureNonnegativeCosts() {
     for (TransIdx trans : its.getAllTransitions()) {
         const Rule rule = its.getRule(trans);
         // Add the constraint unless it is trivial (e.g. if the cost is 1).
-        Rel costConstraint = rule.getCost() >= 0;
+        Rel costConstraint = Rel::buildGeq(rule.getCost(), 0);
         if (!costConstraint.isTriviallyTrue()) {
             del.push_back(trans);
             const Rule &r = rule.withGuard(rule.getGuard() & costConstraint);
@@ -400,7 +400,7 @@ void Analysis::checkConstantComplexity(RuntimeResult &res, Proof &proof) const {
 
     for (TransIdx idx : its.getTransitionsFrom(its.getInitialLocation())) {
         const Rule rule = its.getRule(idx);
-        BoolExpr guard = rule.getGuard() & (rule.getCost() >= 1);
+        BoolExpr guard = rule.getGuard() & Rel::buildGeq(rule.getCost(), 1);
 
         if (SmtFactory::check(guard, its) == Sat) {
             proof.newline();

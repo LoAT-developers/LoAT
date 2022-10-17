@@ -49,10 +49,10 @@ std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationViaQE::co
         }
     }
     matrix = matrix->subs(theory::Subs<IntTheory>::build<IntTheory>(closed->n, m));
-    const QuantifiedFormula<IntTheory> q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, closed->validityBound}}, {{m, closed->n - 1}})});
+    const QuantifiedFormula<IntTheory> q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, closed->validityBound}}, {{m, (*closed->n) - 1}})});
     res = qelim->qe(q);
     if (res && res->qf != BoolExpression<IntTheory>::False) {
-        const Rel bound = Config::Analysis::reachability() && closed->validityBound == 0 ? closed->n > 0 : closed->n >= closed->validityBound;
+        const Rel bound = Config::Analysis::reachability() && closed->validityBound == 0 ? Rel(closed->n, Rel::gt, 0) : Rel(closed->n, Rel::geq, closed->validityBound);
         const auto accelerator = res->qf & bound;
         Proof proof;
         std::stringstream headline;

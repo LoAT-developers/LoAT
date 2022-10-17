@@ -10,7 +10,7 @@ using expr_type = Res<Expr>;
 using formula_type = Res<BoolExpr>;
 using let_type = BoolExpr;
 using lets_type = BoolExpr;
-using relop_type = RelOp;
+using relop_type = Rel::RelOp;
 using unaryop_type = UnaryOp;
 using binaryop_type = BinaryOp;
 using naryop_type = NAryOp;
@@ -74,10 +74,10 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             if (!ren.changes(x)) {
                 if (std::holds_alternative<NumVar>(x)) {
                     const auto &var = std::get<NumVar>(x);
-                    ren.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.get_name()));
+                    ren.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
                 } else if (std::holds_alternative<BoolVar>(x)) {
                     const auto &var = std::get<BoolVar>(x);
-                    ren.put<BoolTheory>(var, buildTheoryLit<IntTheory, BoolTheory>(its.addFreshTemporaryVariable<BoolTheory>(var.get_name())));
+                    ren.put<BoolTheory>(var, buildTheoryLit<IntTheory, BoolTheory>(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
                 } else {
                     throw std::logic_error("unsupporte theory in CHCParseVisitor");
                 }
@@ -331,32 +331,17 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
     const auto p1 = any_cast<expr_type>(visit(ctx->expr(0)));
     const auto p2 = any_cast<expr_type>(visit(ctx->expr(1)));
     const auto op = any_cast<relop_type>(visit(ctx->relop()));
-    option<Rel> res;
-    switch (op) {
-    case Eq: res = Rel::buildEq(p1.t, p2.t);
-        break;
-    case Gt: res = p1.t > p2.t;
-        break;
-    case Geq: res = p1.t >= p2.t;
-        break;
-    case Lt: res = p1.t < p2.t;
-        break;
-    case Leq: res = p1.t <= p2.t;
-        break;
-    case Neq: res = Rel::buildNeq(p1.t, p2.t);
-        break;
-    default: throw ParseError("unknwon operator " + ctx->relop()->getText());
-    }
-    return Res<Rel>{*res, p1.refinement & p2.refinement};
+    Rel res(p1.t, op, p2.t);
+    return Res<Rel>{res, p1.refinement & p2.refinement};
 }
 
 antlrcpp::Any CHCParseVisitor::visitRelop(CHCParser::RelopContext *ctx) {
-    if (ctx->EQ()) return Eq;
-    if (ctx->GEQ()) return Geq;
-    if (ctx->GT()) return Gt;
-    if (ctx->LEQ()) return Leq;
-    if (ctx->LT()) return Lt;
-    if (ctx->NEQ()) return Neq;
+    if (ctx->EQ()) return Rel::eq;
+    if (ctx->GEQ()) return Rel::geq;
+    if (ctx->GT()) return Rel::gt;
+    if (ctx->LEQ()) return Rel::leq;
+    if (ctx->LT()) return Rel::lt;
+    if (ctx->NEQ()) return Rel::neq;
     throw ParseError("failed to parse operator " + ctx->getText());
 }
 

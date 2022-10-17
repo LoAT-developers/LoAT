@@ -30,6 +30,10 @@ public:
         return it == map.end() ? buildTheoryLit<Th...>(var) : it->second;
     }
 
+    BoolExpr subs(const BoolLit &lit) const {
+        return lit.isNegated() ? !get(lit.getBoolVar()) : get(lit.getBoolVar());
+    }
+
     BoolExpr operator()(const BoolExpr e) const {
         const auto lit = e->getTheoryLit();
         if (lit) {

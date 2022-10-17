@@ -6,8 +6,8 @@ using RelSet = std::set<Rel>;
 template <class T> using RelMap = std::map<Rel, T>;
 
 struct Bounds {
-    ExprSet upperBounds;
-    ExprSet lowerBounds;
+    std::set<Expr> upperBounds;
+    std::set<Expr> lowerBounds;
     option<Expr> equality;
 };
 
@@ -33,6 +33,7 @@ public:
     bool isGZeroConstraint() const;
     bool isStrict() const;
     bool isOctagon() const;
+    bool isWellformed() const;
     void getBounds(const NumVar &n, Bounds &res) const;
 
     unsigned hash() const;
@@ -72,6 +73,10 @@ public:
 
     static Rel buildEq(const Expr &x, const Expr &y);
     static Rel buildNeq(const Expr &x, const Expr &y);
+    static Rel buildGeq(const Expr &x, const Expr &y);
+    static Rel buildLeq(const Expr &x, const Expr &y);
+    static Rel buildGt(const Expr &x, const Expr &y);
+    static Rel buildLt(const Expr &x, const Expr &y);
 
     friend Rel operator!(const Rel &x);
     friend bool operator==(const Rel &x, const Rel &y);
@@ -80,6 +85,8 @@ public:
     friend std::ostream& operator<<(std::ostream &s, const Rel &e);
 
     option<std::string> toQepcad() const;
+
+    std::pair<option<Expr>, option<Expr>> getBoundFromIneq(const NumVar &N) const;
 
 private:
 
@@ -96,18 +103,6 @@ private:
     RelOp op;
 
 };
-
-Rel operator<(const NumVar &x, const Expr &y);
-Rel operator<(const Expr &x, const NumVar &y);
-Rel operator>(const NumVar &x, const Expr &y);
-Rel operator>(const Expr &x, const NumVar &y);
-Rel operator>(const NumVar &x, const NumVar &y);
-Rel operator<=(const NumVar &x, const Expr &y);
-Rel operator<=(const Expr &x, const NumVar &y);
-Rel operator<=(const NumVar &x, const NumVar &y);
-Rel operator>=(const NumVar &x, const Expr &y);
-Rel operator>=(const Expr &x, const NumVar &y);
-Rel operator>=(const NumVar &x, const NumVar &y);
 
 template<class T>
 std::ostream& operator<<(std::ostream &s, const RelMap<T> &map) {

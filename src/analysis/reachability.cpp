@@ -5,6 +5,7 @@
 #include "loopacceleration.hpp"
 #include "result.hpp"
 #include "yices.hpp"
+#include "smtfactory.hpp"
 #include "export.hpp"
 
 #include <numeric>
@@ -70,7 +71,13 @@ Rule Reachability::rename_tmp_vars(const Rule &rule) {
     Subs sigma;
     for (const auto &x: rule.vars()) {
         if (its.isTempVar(x)) {
-            sigma.put(x, its.addFreshTemporaryVariable(x.get_name()));
+            if (std::holds_alternative<NumVar>(x)) {
+                const auto &var = std::get<NumVar>(x);
+                sigma.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
+            } else if (std::holds_alternative<BoolVar>(x)) {
+                const auto &var = std::get<BoolVar>(x);
+                sigma.put<BoolTheory>(var, buildTheoryLit<IntTheory, BoolTheory>(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
+            }
         }
     }
     return rule.subs(sigma);
@@ -79,10 +86,10 @@ Rule Reachability::rename_tmp_vars(const Rule &rule) {
 Result<Rule> Reachability::unroll(const Rule &rule) {
     Result<Rule> res(rule);
     // chain if there are updates like x = -x + p
-    for (const auto &p: rule.getUpdate(0).getExprSubs()) {
-        const Var var = p.first;
-        const Expr up = p.second.expand();
-        const VarSet upVars = up.vars();
+    for (const auto &p: rule.getUpdate(0).get<IntTheory>()) {
+        const auto var = p.first;
+        auto up = p.second.expand();
+        const std::set<NumVar> upVars = up.vars();
         if (upVars.find(var) != upVars.end()) {
             if (up.isPoly() && up.degree(var) == 1) {
                 const Expr coeff = up.coeff(var);
@@ -95,10 +102,10 @@ Result<Rule> Reachability::unroll(const Rule &rule) {
         }
     }
     // chain if there are updates like x = y; y = x
-    VarMap<unsigned> cycleLength;
-    auto up = res->getUpdate(0).getExprSubs();
+    std::map<NumVar, unsigned> cycleLength;
+    auto up = res->getUpdate(0).get<IntTheory>();
     for (const auto &p: up) {
-        VarSet vars = p.second.vars();
+        auto vars = p.second.vars();
         unsigned oldSize = 0;
         unsigned count = 0;
         while (oldSize != vars.size() && vars.find(p.first) == vars.end()) {
@@ -130,10 +137,10 @@ Result<Rule> Reachability::unroll(const Rule &rule) {
     bool changed;
     do {
         changed = false;
-        up = res->getUpdate(0).getExprSubs();
+        up = res->getUpdate(0).get<IntTheory>();
         for (const auto &p: up) {
-            VarSet varsOneStep = p.second.vars();
-            VarSet varsTwoSteps;
+            auto varsOneStep = p.second.vars();
+            std::set<NumVar> varsTwoSteps;
             for (const auto &var: varsOneStep) {
                 const auto it = up.find(var);
                 if (it != up.end()) {
@@ -180,18 +187,18 @@ ResultViaSideEffects Reachability::unroll() {
 }
 
 BoolExpr Reachability::project(const TransIdx idx) {
-    RelSet res;
+    std::vector<Lit> res;
     const Subs model = sigmas.back().compose(z3.model().toSubs());
     for (const auto &rel: its.getRule(idx).getGuard()->lits()) {
-        if (model(rel).isTriviallyTrue()) {
-            res.insert(rel);
+        if (theory::subs(rel, model)->isTriviallyTrue()) {
+            res.push_back(rel);
         }
     }
     return buildAnd(res);
 }
 
 bool Reachability::covers(const Subs &model, const BoolExpr &rels) const {
-    return Smt::check(model(rels), its) == Smt::Sat;
+    return SmtFactory::check(rels->subs(model), its) == Sat;
 }
 
 bool Reachability::leaves_scc(const TransIdx idx) const {
@@ -239,26 +246,30 @@ void Reachability::handle_update(const TransIdx idx) {
     const Subs &oldSigma = sigmas.back();
     Subs newSigma;
     const Subs up = r.getUpdate(0);
-    for (const auto &var: prog_vars) {
-        const auto x = its.getFreshUntrackedSymbol(var.get_name(), Expr::Int);
-        z3.add(buildTheoryLit(Rel::buildEq(x, oldSigma(up.get(var)))));
-        newSigma.put(var, x);
-    }
-    for (const auto &var: bool_prog_vars) {
-        const auto x = its.getFreshUntrackedBoolSymbol(var.getName());
-        const auto lhs = buildLit(x);
-        const auto rhs = oldSigma(up.get(var));
-        z3.add((lhs & rhs) | ((!lhs) & (!rhs)));
-        newSigma.put(var, lhs);
+    for (const auto &v: prog_vars) {
+        if (std::holds_alternative<NumVar>(v)) {
+            const auto &var = std::get<NumVar>(v);
+            const auto x = its.getFreshUntrackedSymbol<IntTheory>(var.getName(), Expr::Int);
+            z3.add(theory::buildTheoryLit(Rel::buildEq(x, up.get<IntTheory>(var).subs(oldSigma.get<IntTheory>()))));
+            newSigma.put<IntTheory>(var, x);
+        } else if (std::holds_alternative<BoolVar>(v)) {
+            const auto &var = std::get<BoolVar>(v);
+            const auto x = its.getFreshUntrackedSymbol<BoolTheory>(var.getName(), Expr::Bool);
+            const auto lhs = theory::buildTheoryLit(x);
+            const auto rhs = up.get<BoolTheory>(var)->subs(oldSigma);
+            z3.add((lhs & rhs) | ((!lhs) & (!rhs)));
+            newSigma.put<BoolTheory>(var, lhs);
+        }
     }
     for (const auto &var: r.vars()) {
         if (its.isTempVar(var)) {
-            newSigma.put(var, its.getFreshUntrackedSymbol(var.get_name(), Expr::Int));
-        }
-    }
-    for (const auto &var: r.bvars()) {
-        if (its.isTempVar(var)) {
-            newSigma.put(var, buildLit(its.getFreshUntrackedBoolSymbol(var.getName())));
+            if (std::holds_alternative<NumVar>(var)) {
+                newSigma.put<IntTheory>(std::get<NumVar>(var), its.getFreshUntrackedSymbol<IntTheory>(theory::getName(var), Expr::Int));
+            } else if (std::holds_alternative<BoolVar>(var)) {
+                newSigma.put<BoolTheory>(std::get<BoolVar>(var), theory::buildTheoryLit(its.getFreshUntrackedSymbol<BoolTheory>(theory::getName(var), Expr::Bool)));
+            } else {
+                throw std::logic_error("unsupported theory");
+            }
         }
     }
     sigmas.push_back(newSigma);
@@ -308,7 +319,7 @@ void Reachability::extend_trace(const TransIdx idx, const BoolExpr &sat) {
 void Reachability::store(const TransIdx idx, const BoolExpr &sat) {
     extend_trace(idx, sat);
     blocked.push_back({});
-    z3.add(sigmas.back()(sat));
+    z3.add(sat->subs(sigmas.back()));
     handle_update(idx);
 }
 
@@ -319,10 +330,7 @@ void Reachability::print_run(std::ostream &s) {
         std::cout << (*it) << std::endl;
         s << " [";
         for (const auto &x: prog_vars) {
-            s << " " << x << "=" << model(it->get(x));
-        }
-        for (const auto &x: bool_prog_vars) {
-            s << " " << x << "=" << model(it->get(x));
+            s << " " << x << "=" << model.subs(it->get(x));
         }
         ++it;
         s << " ] " << step.transition;
@@ -378,14 +386,11 @@ void Reachability::init() {
     Subs sigma;
     for (const auto &x: its.getVars()) {
         if (!its.isTempVar(x)) {
-            sigma.put(x, x);
+            std::visit(Overload{
+                           [&sigma](const NumVar &x){sigma.put<IntTheory>(x, x);},
+                           [&sigma](const BoolVar &x){sigma.put<BoolTheory>(x, theory::buildTheoryLit(x));}
+                       }, x);
             prog_vars.insert(x);
-        }
-    }
-    for (const auto &x: its.getBoolVars()) {
-        if (!its.isTempVar(x)) {
-            sigma.put(x, buildLit(x));
-            bool_prog_vars.insert(x);
         }
     }
     sigmas.push_back(sigma);
@@ -430,15 +435,15 @@ void Reachability::unsat() {
 option<BoolExpr> Reachability::do_step(const TransIdx idx) {
     Subs sigma = sigmas.back();
     const Rule r = its.getRule(idx);
-    BoolExpr g = sigma(r.getGuard());
+    BoolExpr g = sigma.subs(r.getGuard());
     z3.add(g);
     const auto block = blocked.back().find(idx);
     if (block != blocked.back().end()) {
         for (const auto &b: block->second) {
-            z3.add(!sigma(b));
+            z3.add(!sigma.subs(b));
         }
     }
-    if (z3.check() == Smt::Sat) {
+    if (z3.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
         return project(idx);
     } else {
@@ -522,7 +527,7 @@ Reachability::State Reachability::handle_loop(const int backlink) {
     }
     const AccelerationResult accel_res = LoopAcceleration::accelerate(its, loop.toLinear(), -1, Complexity::Const);
     if (accel_res.rules.empty()) {
-        if (Smt::check(Chaining::chainRules(its, loop, loop, false)->getGuard(), its) == Smt::Unsat) {
+        if (SmtFactory::check(Chaining::chainRules(its, loop, loop, false)->getGuard(), its) == Unsat) {
             if (log) std::cout << "pseudo loop" << std::endl;
             return PseudoLoop;
         } else {
@@ -554,8 +559,8 @@ Reachability::State Reachability::handle_loop(const int backlink) {
     }
     drop_loop(backlink);
     z3.push();
-    z3.add((sigmas.back())(accel.getGuard()));
-    if (z3.check() != Smt::Sat) {
+    z3.add(sigmas.back().subs(accel.getGuard()));
+    if (z3.check() != Sat) {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
         z3.pop();
         its.removeRule(*loop_idx);
@@ -647,7 +652,7 @@ void Reachability::analyze() {
 }
 
 void Reachability::analyze(ITSProblem &its) {
-    Yices::init();
+    yices::init();
     Reachability(its).analyze();
-    Yices::exit();
+    yices::exit();
 }

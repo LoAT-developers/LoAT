@@ -19,7 +19,8 @@ AccelerationProblem::AccelerationProblem(
         todo.insert(std::get<Rel>(l));
     }
     if (closed) {
-        bound = Config::Analysis::reachability() ? (closed->n > 0) : (closed->n >= 0);
+        auto op = Config::Analysis::reachability() ? Rel::gt : Rel::geq;
+        bound =  Rel(closed->n, op, 0);
     }
     const auto &intUp = up.get<IntTheory>();
     const std::vector<ExprSubs> subs = closed.map([&intUp](auto const &closed){return std::vector<ExprSubs>{intUp, closed.update};}).get_value_or({intUp});
@@ -109,7 +110,7 @@ bool AccelerationProblem::monotonicity(const Rel &rel, Proof &proof) {
             return false;
         }
         const Rel updated = rel.subs(up.get<IntTheory>());
-        const Rel newCond = rel.subs(closed->update).subs(ExprSubs(closed->n, closed->n-1));
+        const Rel newCond = rel.subs(closed->update).subs(ExprSubs(closed->n, *closed->n-1));
         RelSet premise = findConsistentSubset(guard & rel & updated & newCond & *bound);
         if (!premise.empty()) {
             BoolExpressionSet<IntTheory> assumptions;
@@ -210,9 +211,9 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel, Proof &proof) {
              return false;
         }
         const Expr updated = rel.lhs().subs(up.get<IntTheory>());
-        const Rel dec = rel.lhs() >= updated;
-        const Rel inc = updated < updated.subs(up.get<IntTheory>());
-        const Rel newCond = rel.subs(closed->update).subs(ExprSubs(closed->n, closed->n-1));
+        const Rel dec = Rel::buildGeq(rel.lhs(), updated);
+        const Rel inc = Rel::buildLt(updated, updated.subs(up.get<IntTheory>()));
+        const Rel newCond = rel.subs(closed->update).subs(ExprSubs(closed->n, *closed->n-1));
         RelSet premise = findConsistentSubset(guard & dec & !inc & rel & newCond & *bound);
         if (!premise.empty()) {
             BoolExpressionSet<IntTheory> assumptions;
@@ -266,8 +267,8 @@ bool AccelerationProblem::eventualWeakIncrease(const Rel &rel, Proof &proof) {
         return false;
     }
     const Expr &updated = rel.lhs().subs(up.get<IntTheory>());
-    const Rel &inc = rel.lhs() <= updated;
-    const Rel &dec = updated > updated.subs(up.get<IntTheory>());
+    const Rel &inc = Rel::buildLeq(rel.lhs(), updated);
+    const Rel &dec = Rel::buildGt(updated, updated.subs(up.get<IntTheory>()));
     RelSet premise = findConsistentSubset(guard & inc & !dec & rel);
     if (!premise.empty()) {
         BoolExpressionSet<IntTheory> assumptions;
@@ -402,7 +403,7 @@ std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationProblem::
     }
     ReplacementMap map = computeReplacementMap(false);
     if (map.acceleratedAll || !isConjunction) {
-        bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || SmtFactory::isImplication(guard, buildTheoryLit<IntTheory>(cost > 0), its);
+        bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || SmtFactory::isImplication(guard, buildTheoryLit<IntTheory>(Rel::buildGt(cost, 0)), its);
         bool nt = map.nonterm && positiveCost;
         BExpr<IntTheory> newGuard = guard->replaceLits(map.map);
         if (!nt) newGuard = newGuard & *bound;

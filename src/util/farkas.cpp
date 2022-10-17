@@ -44,8 +44,8 @@ BExpr<IntTheory> FarkasLemma::apply(
         const Rel &normalizedRel = rel.toLeq();
         assert(normalizedRel.isLinear(varSet) && normalizedRel.isIneq());
         NumVar var = varMan.getFreshUntrackedSymbol<IntTheory>("l", Expr::Rational);
-        lambda[normalizedRel] = var;
-        res.push_back(var >= 0);
+        lambda.emplace(normalizedRel, var);
+        res.emplace_back(Rel(var, Rel::geq, 0));
     }
 
     // Create mapping from every variable to its coefficient
@@ -85,7 +85,7 @@ BExpr<IntTheory> FarkasLemma::apply(
     for (const auto &e: lambda) {
         sum = sum + e.second * e.first.rhs();
     }
-    res.push_back(sum <= delta);
+    res.push_back(Rel(sum, Rel::leq, delta));
     return buildAnd<IntTheory>(res);
 }
 
@@ -117,8 +117,8 @@ const BExpr<IntTheory> FarkasLemma::apply(
         if (c.isLinear(vars) && c.isIneq()) {
             splitConclusion.insert(c.toLeq().splitVariableAndConstantAddends(params));
         } else if (c.isLinear(vars) && c.isEq()) {
-            splitConclusion.insert((c.lhs() <= c.rhs()).splitVariableAndConstantAddends(params));
-            splitConclusion.insert((c.rhs() <= c.lhs()).splitVariableAndConstantAddends(params));
+            splitConclusion.insert(Rel(c.lhs(), Rel::leq, c.rhs()).splitVariableAndConstantAddends(params));
+            splitConclusion.insert(Rel(c.rhs(), Rel::leq, c.lhs()).splitVariableAndConstantAddends(params));
         } else {
             assert(false);
         }
@@ -145,8 +145,8 @@ const BExpr<IntTheory> FarkasLemma::applyRec(
                 if (std::holds_alternative<Rel>(lit)) {
                     const Rel &rel = std::get<Rel>(lit);
                     if (rel.isEq()) {
-                        lits.insert((rel.lhs() <= rel.rhs()).splitVariableAndConstantAddends(params));
-                        lits.insert((rel.lhs() >= rel.rhs()).splitVariableAndConstantAddends(params));
+                        lits.insert(Rel(rel.lhs(), Rel::leq, rel.rhs()).splitVariableAndConstantAddends(params));
+                        lits.insert(Rel(rel.lhs(), Rel::geq, rel.rhs()).splitVariableAndConstantAddends(params));
                     } else {
                         lits.insert(rel.toLeq().splitVariableAndConstantAddends(params));
                     }

@@ -20,7 +20,7 @@ static BExpr<IntTheory> posConstraint(const map<int, Expr>& coefficients) {
         if (degree > 0) {
             conjunction.push_back(Rel::buildEq(c, 0));
         } else {
-            conjunction.push_back(c > 0);
+            conjunction.push_back(Rel::buildGt(c, 0));
         }
     }
     return buildAnd<IntTheory>(conjunction);
@@ -39,7 +39,7 @@ static BExpr<IntTheory> negConstraint(const map<int, Expr>& coefficients) {
         if (degree > 0) {
             conjunction.push_back(Rel::buildEq(c, 0));
         } else {
-            conjunction.push_back(c < 0);
+            conjunction.push_back(Rel::buildLt(c, 0));
         }
     }
     return buildAnd<IntTheory>(conjunction);
@@ -64,7 +64,7 @@ static BExpr<IntTheory> negInfConstraint(const map<int, Expr>& coefficients) {
             if (degree > i) {
                 conjunction.push_back(Rel::buildEq(c, 0));
             } else if (degree == i) {
-                conjunction.push_back(c < 0);
+                conjunction.push_back(Rel::buildLt(c, 0));
             }
         }
         disjunction.push_back(buildAnd<IntTheory>(conjunction));
@@ -91,7 +91,7 @@ static BExpr<IntTheory> posInfConstraint(const map<int, Expr>& coefficients) {
             if (degree > i) {
                 conjunction.push_back(Rel::buildEq(c, 0));
             } else if (degree == i) {
-                conjunction.push_back(c > 0);
+                conjunction.push_back(Rel::buildGt(c, 0));
             }
         }
         disjunction.push_back(buildAnd<IntTheory>(conjunction));
@@ -115,7 +115,7 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {cost > 0}}, {}), varMan, timeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}), varMan, timeout);
 
     // the parameter of the desired family of solutions
     auto n = currentLP.getN();
@@ -127,11 +127,11 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
     ExprSubs templateSubs;
     std::map<NumVar, NumVar> varCoeff, varCoeff0;
     for (const auto &var : vars) {
-        auto c0 = varMan.getFreshUntrackedSymbol<IntTheory>(var.get_name() + "_0", Expr::Int);
-        auto c = varMan.getFreshUntrackedSymbol<IntTheory>(var.get_name() + "_c", Expr::Int);
+        auto c0 = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_0", Expr::Int);
+        auto c = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_c", Expr::Int);
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
-        templateSubs.put(var, c0 + (n * c));
+        templateSubs.put(var, *c0 + (*n * *c));
     }
 
     // replace variables in the cost function with their linear templates
@@ -197,7 +197,7 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
                 Expr c = coefficients.find(i)->second;
                 // remember the current state for backtracking
                 solver->push();
-                solver->add(c > 0);
+                solver->add(Rel::buildGt(c, 0));
                 if (checkSolver()) {
                     break;
                 } else if (i == 1 || Complexity::Poly(i - 1) <= currentRes) {
@@ -219,7 +219,7 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
     for (const auto &var : vars) {
         auto c0 = varCoeff0.at(var);
         auto c = model.get<IntTheory>(varCoeff.at(var));
-        smtSubs.put(var, model.contains<IntTheory>(c0) ? (model.get<IntTheory>(c0) + c * n) : (c * n));
+        smtSubs.put(var, model.contains<IntTheory>(c0) ? (model.get<IntTheory>(c0) + c * *n) : (c * *n));
     }
 
     return {smtSubs};
@@ -250,7 +250,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(chooseLogic<IntTheory>(BoolExpressionSet<IntTheory>{expr, buildTheoryLit<IntTheory>(cost > 0)}), varMan, timeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(chooseLogic<IntTheory>(BoolExpressionSet<IntTheory>{expr, buildTheoryLit<IntTheory>(Rel::buildGt(cost, 0))}), varMan, timeout);
 
     // the parameter of the desired family of solutions
     NumVar n = varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int);
@@ -266,11 +266,11 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
     std::map<NumVar, NumVar> varCoeff, varCoeff0;
     for (const auto &var : vars.get<IntTheory>()) {
         hasTmpVars |= varMan.isTempVar(var);
-        auto c0 = varMan.getFreshUntrackedSymbol<IntTheory>(var.get_name() + "_0", Expr::Int);
-        auto c = varMan.getFreshUntrackedSymbol<IntTheory>(var.get_name() + "_c", Expr::Int);
+        auto c0 = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_0", Expr::Int);
+        auto c = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_c", Expr::Int);
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
-        templateSubs.put(var, c0 + (n * c));
+        templateSubs.put(var, *c0 + (*n * *c));
     }
 
     // replace variables in the cost function with their linear templates
@@ -300,7 +300,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
         for (const auto &var : vars.get<IntTheory>()) {
             auto c0 = varCoeff0.at(var);
             auto c = model.get<IntTheory>(varCoeff.at(var));
-            smtSubs.put(var, model.contains<IntTheory>(c0) ? (model.get<IntTheory>(c0) + c * n) : (c * n));
+            smtSubs.put(var, model.contains<IntTheory>(c0) ? (model.get<IntTheory>(c0) + c * *n) : (c * *n));
         }
         return smtSubs;
     };
@@ -332,7 +332,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
             Expr c = coefficients.find(i)->second;
             // remember the current state for backtracking
             solver->push();
-            solver->add(c > 0);
+            solver->add(Rel::buildGt(c, 0));
             if (checkSolver()) {
                 return {model(), Complexity::Poly(i)};
             } else {

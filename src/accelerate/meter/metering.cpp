@@ -90,7 +90,7 @@ void MeteringFinder::buildMeteringVariables() {
             assert(relevantVars.find(it.first) != relevantVars.end()); // update should have been restricted to relevant variables
 
             if (meterVars.primedSymbols.count(it.first) == 0) {
-                string primedName = it.first.get_name() + "'";
+                string primedName = it.first.getName() + "'";
                 NumVar primed = varMan.getFreshUntrackedSymbol<IntTheory>(primedName, Expr::Int);
                 meterVars.primedSymbols.emplace(it.first, primed);
             }
@@ -141,8 +141,8 @@ void MeteringFinder::buildLinearConstraints() {
             assert(meterVars.primedSymbols.count(it.first) > 0);
             NumVar primed = meterVars.primedSymbols.at(it.first);
 
-            makeConstraint(primed <= it.second, linearConstraints.guardUpdate[i]);
-            makeConstraint(primed >= it.second, linearConstraints.guardUpdate[i]);
+            makeConstraint(Rel::buildLeq(primed, it.second), linearConstraints.guardUpdate[i]);
+            makeConstraint(Rel::buildGeq(primed, it.second), linearConstraints.guardUpdate[i]);
         }
     }
 
@@ -170,11 +170,11 @@ BExpr<IntTheory> MeteringFinder::genGuardPositiveImplication(bool strict) const 
     //G ==> f(x) > 0, which is equivalent to -f(x) < 0  ==  -f(x) <= -1 (on integers)
     vector<Expr> negCoeff;
     for (const auto &coeff : meterVars.coeffs) {
-        negCoeff.push_back(-coeff);
+        negCoeff.push_back(-*coeff);
     }
 
     int delta = strict ? -1 : -0;
-    return FarkasLemma::apply(linearConstraints.guard, meterVars.symbols, negCoeff, -absCoeff, delta, varMan);
+    return FarkasLemma::apply(linearConstraints.guard, meterVars.symbols, negCoeff, -*absCoeff, delta, varMan);
 }
 
 BExpr<IntTheory> MeteringFinder::genUpdateImplications() const {
@@ -230,7 +230,7 @@ Expr MeteringFinder::buildResult(const Model<IntTheory> &model) const {
     // read off the coefficients of the metering function
     Expr result = model.get<IntTheory>(absCoeff);
     for (unsigned int i=0; i < coeffs.size(); ++i) {
-        result = result + model.get<IntTheory>(coeffs[i]) * symbols[i];
+        result = result + model.get<IntTheory>(*coeffs[i]) * *symbols[i];
     }
     return result;
 }
@@ -253,7 +253,7 @@ void MeteringFinder::ensureIntegralMetering(Result &result, const Model<IntTheor
         NumVar tempVar = varMan.addFreshTemporaryVariable<IntTheory>("meter");
 
         // create a new guard constraint relating tempVar and the metering function
-        result.integralConstraint = Rel::buildEq(tempVar*mult, result.metering*mult);
+        result.integralConstraint = Rel::buildEq(*tempVar * mult, result.metering*mult);
 
         // replace the metering function by tempVar
         result.metering = tempVar;

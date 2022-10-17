@@ -51,8 +51,8 @@ Conjunction<IntTheory> MeteringToolbox::replaceEqualities(const Conjunction<IntT
     for (const auto &lit : guard) {
         const auto &rel = std::get<Rel>(lit);
         if (rel.isEq()) {
-            newGuard.push_back(rel.lhs() <= rel.rhs());
-            newGuard.push_back(rel.lhs() >= rel.rhs());
+            newGuard.push_back(Rel::buildLeq(rel.lhs(), rel.rhs()));
+            newGuard.push_back(Rel::buildGeq(rel.lhs(), rel.rhs()));
         } else {
             newGuard.push_back(rel);
         }
@@ -265,12 +265,12 @@ stack<ExprSubs> MeteringToolbox::findInstantiationsForTempVars(const VarMan &var
     if (freeVar.empty()) return stack<ExprSubs>();
 
     //find all bounds for every free variable
-    std::map<NumVar, ExprSet> freeBounds;
+    std::map<NumVar, std::set<Expr>> freeBounds;
     for (const auto &lit : guard) {
         const auto &rel = std::get<Rel>(lit);
         for (auto free : freeVar) {
             if (!rel.has(free)) continue;
-            std::pair<option<Expr>, option<Expr>> bounds = GuardToolbox::getBoundFromIneq(rel, free);
+            std::pair<option<Expr>, option<Expr>> bounds = rel.getBoundFromIneq(free);
             if (bounds.first) {
                 freeBounds[free].insert(bounds.first.get());
             }

@@ -31,13 +31,6 @@
  */
 namespace GuardToolbox {
 
-    // Specifies for which coefficients c we can solve "c*x == t" for x.
-    enum SolvingLevel {
-        TrivialCoeffs = 0, // only c=1 and c=-1 is allowed
-        ResultMapsToInt = 1, // c can be any rational constant, as long as x = t/c maps to int
-        ConstantCoeffs = 2, // c can be any rational constant (the result may not map to int, use with caution!)
-    };
-
     // Shorthand for lambdas that check if a given symbol is accepted/allowed (depending on the context)
     using SymbolAcceptor = std::function<bool(const Var &)>;
 

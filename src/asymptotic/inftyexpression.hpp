@@ -1,5 +1,4 @@
-#ifndef INFTYEXPRESSION_H
-#define INFTYEXPRESSION_H
+#pragma once
 
 #include <set>
 
@@ -45,6 +44,6 @@ private:
 
 std::ostream& operator<<(std::ostream &os, const InftyExpression &ie);
 
-typedef std::set<InftyExpression, Expr_is_less> InftyExpressionSet;
+bool operator<(const InftyExpression &x, const InftyExpression &y);
 
-#endif // INFTYEXPRESSION_H
+typedef std::set<InftyExpression> InftyExpressionSet;

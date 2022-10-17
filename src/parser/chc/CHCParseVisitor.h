@@ -1,6 +1,3 @@
-
-// Generated from CHC.g4 by ANTLR 4.7.2
-
 #pragma once
 
 #include "itsproblem.hpp"
@@ -10,10 +7,6 @@ template<class T>
 struct Res {
     T t;
     BoolExpr refinement = True;
-};
-
-enum RelOp {
-    Gt, Geq, Lt, Leq, Eq, Neq
 };
 
 enum UnaryOp {

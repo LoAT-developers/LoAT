@@ -10,11 +10,11 @@ BExpr<IntTheory> QeProblem::boundedFormula(const NumVar &var) const {
     const Quantifier quantifier = getQuantifier();
     const auto lowerBound = quantifier.lowerBound(var);
     if (lowerBound) {
-        res = res & (lowerBound.get() <= var);
+        res = res & Rel::buildLeq(lowerBound.get(), var);
     }
     const auto upperBound = quantifier.upperBound(var);
     if (upperBound) {
-        res = res & (var <= upperBound.get());
+        res = res & Rel::buildLeq(var, upperBound.get());
     }
     return res;
 }
@@ -82,7 +82,7 @@ option<unsigned int> QeProblem::store(const Rel &rel, const std::set<Theory<IntT
 bool QeProblem::monotonicity(const Rel &rel, const NumVar& n, Proof &proof) {
     const auto bound = getQuantifier().upperBound(n);
     if (bound) {
-        const Rel updated = rel.subs({n,n+1});
+        const Rel updated = rel.subs({n,*n + 1});
         const Rel newCond = rel.subs({n, bound.get()});
         auto premise = findConsistentSubset(boundedFormula(n) & rel & updated & newCond, n);
         if (!premise.empty()) {
@@ -132,7 +132,7 @@ bool QeProblem::monotonicity(const Rel &rel, const NumVar& n, Proof &proof) {
 bool QeProblem::recurrence(const Rel &rel, const NumVar& n, Proof &proof) {
     const auto bound = getQuantifier().lowerBound(n);
     if (bound) {
-        const Rel updated = rel.subs({n, n+1});
+        const Rel updated = rel.subs({n, *n + 1});
         const Rel newCond = rel.subs({n, bound.get()});
         auto premise = findConsistentSubset(boundedFormula(n) & rel & updated & newCond, n);
         if (!premise.empty()) {
@@ -187,9 +187,9 @@ bool QeProblem::eventualWeakDecrease(const Rel &rel, const NumVar& n, Proof &pro
     const auto lowerBound = getQuantifier().lowerBound(n);
     const auto upperBound = getQuantifier().upperBound(n);
     if (lowerBound && upperBound) {
-        const Expr updated = rel.lhs().subs({n, n+1});
-        const Rel dec = rel.lhs() >= updated;
-        const Rel inc = updated < updated.subs({n, n+1});
+        const Expr updated = rel.lhs().subs({n, *n + 1});
+        const Rel dec = Rel::buildGeq(rel.lhs(), updated);
+        const Rel inc = Rel::buildLt(updated, updated.subs({n, *n + 1}));
         const auto newGuard = buildTheoryLit<IntTheory>(rel.subs({n, lowerBound.get()})) & rel.subs({n, upperBound.get()});
         auto premise = findConsistentSubset(boundedFormula(n) & dec & !inc & newGuard, n);
         if (!premise.empty()) {
@@ -242,9 +242,9 @@ bool QeProblem::eventualWeakIncrease(const Rel &rel, const NumVar& n, Proof &pro
     }
     const auto bound = getQuantifier().lowerBound(n);
     if (bound) {
-        const Expr updated = rel.lhs().subs({n, n+1});
-        const Rel inc = rel.lhs() <= updated;
-        const Rel dec = updated > updated.subs({n, n+1});
+        const Expr updated = rel.lhs().subs({n, *n + 1});
+        const Rel inc = Rel::buildLeq(rel.lhs(), updated);
+        const Rel dec = Rel::buildGt(updated, updated.subs({n, *n + 1}));
         const Rel newCond = rel.subs({n, bound.get()});
         auto premise = findConsistentSubset(boundedFormula(n) & inc & !dec & newCond, n);
         if (!premise.empty()) {
@@ -302,16 +302,16 @@ option<BExpr<IntTheory>> QeProblem::strengthen(const Rel &rel, const NumVar &n, 
             const Expr coeff = lhs.coeff(n, d);
             if (!coeff.isGround()) {
                 const auto bf = boundedFormula(n);
-                if (SmtFactory::check(bf & (coeff < 0), varMan) == Sat && SmtFactory::check(bf & (coeff >= 0), varMan) == Sat) {
+                if (SmtFactory::check(bf & Rel::buildLt(coeff, 0), varMan) == Sat && SmtFactory::check(bf & Rel::buildGeq(coeff, 0), varMan) == Sat) {
                     std::stringstream ss;
-                    ss << rel << ": strengthend formula with " << (coeff >= 0);
+                    ss << rel << ": strengthend formula with " << Rel::buildGeq(coeff, 0);
                     proof.append(ss);
-                    return buildTheoryLit<IntTheory>(coeff >= 0);
-                } else if (SmtFactory::check(bf & (coeff > 0), varMan) == Sat && SmtFactory::check(bf & (coeff <= 0), varMan) == Sat) {
+                    return buildTheoryLit<IntTheory>(Rel::buildGeq(coeff, 0));
+                } else if (SmtFactory::check(bf & Rel::buildGt(coeff, 0), varMan) == Sat && SmtFactory::check(bf & Rel::buildLeq(coeff, 0), varMan) == Sat) {
                     std::stringstream ss;
-                    ss << rel << ": strengthend formula with " << (coeff <= 0);
+                    ss << rel << ": strengthend formula with " << Rel::buildLeq(coeff, 0);
                     proof.append(ss);
-                    return buildTheoryLit<IntTheory>(coeff <= 0);
+                    return buildTheoryLit<IntTheory>(Rel::buildLeq(coeff, 0));
                 }
             }
         }
@@ -328,7 +328,7 @@ bool QeProblem::fixpoint(const Rel &rel, const NumVar& n, Proof &proof) {
         for (unsigned d = 1; d <= degree; ++d) {
             vanish = vanish & (Rel::buildEq(lhs.coeff(n, d), 0));
         }
-        const auto constant = lhs.subs({n, 0}) > 0;
+        const auto constant = Rel::buildGt(lhs.subs({n, 0}), 0);
         if (SmtFactory::check(boundedFormula(n) & constant & vanish, varMan) == Sat) {
             auto newGuard = buildTheoryLit<IntTheory>(constant) & vanish;
             option<unsigned int> idx = store(rel, {}, newGuard, false);
@@ -409,7 +409,7 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula<IntTheory> &qf) {
     bool exact = true;
     for (const auto& var: vars) {
         Proof proof;
-        proof.append("Eliminating " + var.get_name());
+        proof.append("Eliminating " + var.getName());
         res = {};
         solution = {};
         todo = formula->getMatrix()->lits();

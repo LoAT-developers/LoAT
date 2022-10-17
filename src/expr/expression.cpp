@@ -22,17 +22,13 @@
 
 using namespace std;
 
-bool Expr_is_less::operator()(const Expr &lh, const Expr &rh) const {
-     return lh.compare(rh) < 0;
-}
-
 const NumVar Expr::NontermSymbol = GiNaC::symbol("NONTERM");
 
 void Expr::applySubs(const ExprSubs &subs) {
     this->ex = this->ex.subs(subs.ginacMap);
 }
 
-bool Expr::findAll(const Expr &pattern, ExprSet &found) const {
+bool Expr::findAll(const Expr &pattern, std::set<Expr> &found) const {
     bool anyFound = false;
 
     if (match(pattern)) {
@@ -51,7 +47,7 @@ bool Expr::findAll(const Expr &pattern, ExprSet &found) const {
 
 
 bool Expr::equals(const NumVar &var) const {
-    return this->compare(var) == 0;
+    return this->compare(*var) == 0;
 }
 
 
@@ -95,7 +91,7 @@ bool Expr::isPoly() const {
 }
 
 bool Expr::isPoly(const NumVar &n) const {
-    return ex.is_polynomial(n);
+    return ex.is_polynomial(*n);
 }
 
 
@@ -216,10 +212,10 @@ NumVar Expr::someVar() const {
             variable = var;
         }
         NumVar result() const {
-            return variable;
+            return *variable;
         }
     private:
-        NumVar variable;
+        option<NumVar> variable;
     };
 
     SymbolVisitor visitor;
@@ -286,19 +282,19 @@ bool Expr::equals(const Expr &that) const {
 }
 
 int Expr::degree(const NumVar &var) const {
-    return ex.degree(var);
+    return ex.degree(*var);
 }
 
 int Expr::ldegree(const NumVar &var) const {
-    return ex.ldegree(var);
+    return ex.ldegree(*var);
 }
 
 Expr Expr::coeff(const NumVar &var, int degree) const {
-    return ex.coeff(var, degree);
+    return ex.coeff(*var, degree);
 }
 
 Expr Expr::lcoeff(const NumVar &var) const {
-    return ex.lcoeff(var);
+    return ex.lcoeff(*var);
 }
 
 Expr Expr::expand() const {
@@ -405,7 +401,7 @@ Num Expr::denomLcm() const {
     const Expr &denom = Expr::wildcard(0);
     const Expr &num = Expr::wildcard(1);
     const Expr &pattern = denom / num;
-    ExprSet matches;
+    std::set<Expr> matches;
     GiNaC::numeric lcm = 1;
     findAll(pattern, matches);
     for (const Expr &e: matches) {
@@ -543,74 +539,46 @@ option<std::string> Expr::toQepcad() const {
     return toQepcadRec(this->expand());
 }
 
-Sign::T Expr::sign() const {
-    using namespace Sign;
-    if (isRationalConstant()) {
-        const auto num = toNum();
-        if (num.is_zero()) return Zero;
-        if (num.is_positive()) return Positive;
-        return Negative;
-    } else if (isAdd()) {
-        T res = Zero;
-        for (size_t i = 0; i < arity(); ++i) {
-            T subres = op(i).sign();
-            if (subres == Unknown) return Unknown;
-            if (res != subres) {
-                if (res == Zero) res = subres;
-                else return Unknown;
-            }
-        }
-        return res;
-    } else if (isMul()) {
-        T res = Positive;
-        for (size_t i = 0; i < arity(); ++i) {
-            T subres = op(i).sign();
-            if (subres == Unknown || subres == Zero) return subres;
-            if (res == subres) {
-                if (subres == Negative) res = Positive;
-            } else {
-                res = Negative;
-            }
-        }
-        return res;
-    } else if (isNaturalPow()) {
-        T res = op(0).sign();
-        if (res != Negative) return res;
-        int pow = op(1).toNum().to_int();
-        if (pow % 2 == 0) return Positive;
-        return Negative;
+option<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) const {
+    // expand is needed before using degree/coeff
+    Expr term = this->expand();
+
+    // we can only solve linear expressions...
+    if (term.degree(var) != 1) return {};
+
+    // ...with rational coefficients
+    Expr c = term.coeff(var);
+    if (!c.isRationalConstant()) return {};
+
+    bool trivialCoeff = (c.compare(1) == 0 || c.compare(-1) == 0);
+
+    if (level == TrivialCoeffs && !trivialCoeff) {
+        return {};
     }
-    return Unknown;
-}
 
-Monotonicity::T Expr::monotonicity(const NumVar &x) const {
-    using namespace Monotonicity;
-    const Expr diff = this->subs({x, Expr(x)+1}) - *this;
-    switch (diff.sign()) {
-    case Sign::Zero: return Constant;
-    case Sign::Positive: return Increasing;
-    case Sign::Negative: return Decreasing;
-    default: return Unknown;
+    term = (term - c*var) / (-c);
+
+    // If c is trivial, we don't have to check if the result maps to int,
+    // since we assume that all constraints in the guard map to int.
+    // So if c is trivial, we can also handle non-polynomial terms.
+    if (level == ResultMapsToInt && !trivialCoeff) {
+        if (!term.isPoly() || !term.isIntegral()) return {};
     }
-}
 
-namespace Monotonicity {
-
-std::ostream& operator<<(std::ostream &s, const T e) {
-    switch (e) {
-    case Increasing: s << "increasing";
-        break;
-    case Decreasing: s << "decreasing";
-        break;
-    case Constant: s << "constant";
-        break;
-    case Unknown: s << "unknown";
-        break;
+    // we assume that terms in the guard map to int, make sure this is the case
+    if (trivialCoeff) {
+        assert(!term.isPoly() || term.isIntegral());
     }
-    return s;
+
+    return {term};
 }
 
+bool operator<(const Expr &e1, const Expr &e2) {
+    static GiNaC::ex_is_less comp;
+    return comp(e1.ex, e2.ex);
 }
+
+
 
 ExprSubs::ExprSubs() {}
 
@@ -689,11 +657,11 @@ ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
 }
 
 void ExprSubs::putGinac(const NumVar &key, const Expr &val) {
-    ginacMap[key] = val.ex;
+    ginacMap[*key] = val.ex;
 }
 
 void ExprSubs::eraseGinac(const NumVar &key) {
-    ginacMap.erase(key);
+    ginacMap.erase(*key);
 }
 
 bool ExprSubs::changes(const NumVar &key) const {
@@ -756,7 +724,7 @@ std::set<NumVar> ExprSubs::allVars() const {
 unsigned ExprSubs::hash() const {
     unsigned hash = 7;
     for (const auto& p: *this) {
-        hash = hash * 31 + p.first.gethash();
+        hash = hash * 31 + p.first.hash();
         hash = hash * 31 + p.second.hash();
     }
     return hash;

@@ -11,20 +11,12 @@
 
 namespace yices {
 
-unsigned int running;
-std::mutex mutex;
+extern unsigned int running;
+extern std::mutex mutex;
 
-static void init() {
-    yices_init();
-}
+extern void init();
 
-static void exit() {
-    mutex.lock();
-    if (running == 0) {
-        yices_exit();
-    }
-    mutex.unlock();
-}
+extern void exit();
 
 }
 

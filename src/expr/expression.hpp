@@ -21,53 +21,24 @@
 #include <variant>
 
 #include "option.hpp"
+#include "numvar.hpp"
 
 class Expr;
-template<class Key, class Key_is_less> class KeyToExprMap;
+class NumExpr;
+class NumVar;
 class Recurrence;
 class Rel;
 class ExprSubs;
 class ExprMap;
 
-namespace Monotonicity {
-
-enum T {
-    Increasing, Decreasing, Constant, Unknown
+// Specifies for which coefficients c we can solve "c*x == t" for x.
+enum SolvingLevel {
+    TrivialCoeffs = 0, // only c=1 and c=-1 is allowed
+    ResultMapsToInt = 1, // c can be any rational constant, as long as x = t/c maps to int
+    ConstantCoeffs = 2, // c can be any rational constant (the result may not map to int, use with caution!)
 };
-
-std::ostream& operator<<(std::ostream &s, const T e);
-
-}
-
-namespace Sign {
-
-enum T {
-    Positive, Negative, Zero, Unknown
-};
-
-}
-
-struct Expr_is_less {
-    bool operator() (const Expr &lh, const Expr &rh) const;
-};
-
-using NumVar = GiNaC::symbol;
-
-namespace GiNaC {
-
-bool operator<(const NumVar &x, const NumVar &y) {
-    return x.compare(y) < 0;
-}
-
-bool operator==(const NumVar &x, const NumVar &y) {
-    return x.is_equal(y);
-}
-
-}
 
 using Num = GiNaC::numeric;
-
-using ExprSet = std::set<Expr, Expr_is_less>;
 
 /**
  * Class for arithmetic expressions.
@@ -109,6 +80,7 @@ public:
     Expr(const GiNaC::basic &other) : Expr(GiNaC::ex(other)) {}
     Expr(const GiNaC::ex &ex) : ex(ex) {}
     Expr(long i): ex(i) {}
+    Expr(const NumVar &var): ex(*var) {}
 
     /**
      * @brief Applies a substitution via side-effects.
@@ -120,7 +92,7 @@ public:
      * @brief Computes all matches of the given pattern.
      * @return True iff there was at least one match.
      */
-    bool findAll(const Expr &pattern, ExprSet &found) const;
+    bool findAll(const Expr &pattern, std::set<Expr> &found) const;
 
     /**
      * @return True iff this expression is equal (resp. evaluates) to the given variable
@@ -193,7 +165,7 @@ public:
     bool hasVarWith(P predicate) const {
         struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
             SymbolVisitor(P predicate) : predicate(predicate) {}
-            void visit(const NumVar &sym) {
+            void visit(const GiNaC::symbol &sym) {
                 if (!res && predicate(sym)) {
                     res = true;
                 }
@@ -366,9 +338,7 @@ public:
 
     option<std::string> toQepcad() const;
 
-    Sign::T sign() const;
-
-    Monotonicity::T monotonicity(const NumVar &x) const;
+    option<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
 
     /**
      * @brief exponentiation
@@ -379,13 +349,9 @@ public:
     friend Expr operator+(const Expr &x, const Expr &y);
     friend Expr operator*(const Expr &x, const Expr &y);
     friend Expr operator/(const Expr &x, const Expr &y);
-    friend Rel operator<(const Expr &x, const Expr &y);
-    friend Rel operator>(const Expr &x, const Expr &y);
-    friend Rel operator<=(const Expr &x, const Expr &y);
-    friend Rel operator>=(const Expr &x, const Expr &y);
-    friend Rel operator!=(const Expr &x, const Expr &y);
-    friend Rel operator==(const Expr &x, const Expr &y);
     friend std::ostream& operator<<(std::ostream &s, const Expr &e);
+    friend bool operator<(const Expr &x, const Expr &y);
+    friend bool operator==(const Expr &x, const Expr &y);
 
 private:
 

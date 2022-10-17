@@ -46,7 +46,7 @@ namespace sexpressionparser {
                     sexpresso::Sexp &scope = ex[2];
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
-                            vars[e[0].str()] = res.addFreshVariable<IntTheory>(e[0].str());
+                            vars.emplace(e[0].str(), res.addFreshVariable<IntTheory>(e[0].str()));
                             preVars.push_back(e[0].str());
                         }
                     }
@@ -59,7 +59,7 @@ namespace sexpressionparser {
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
                             if (std::find(preVars.begin(), preVars.end(), e[0].str()) == preVars.end()) {
-                                vars[e[0].str()] = res.addFreshTemporaryVariable<IntTheory>(e[0].str());
+                                vars.emplace(e[0].str(), res.addFreshTemporaryVariable<IntTheory>(e[0].str()));
                                 postVars.push_back(e[0].str());
                             }
                         }
@@ -68,7 +68,7 @@ namespace sexpressionparser {
                     sexpresso::Sexp ruleExps = ex[4];
                     VarSet tmpVars;
                     for (const std::string &str: postVars) {
-                        tmpVars.insert(vars[str]);
+                        tmpVars.insert(vars.at(str));
                     }
                     for (auto &ruleExp: ruleExps.arguments()) {
                         if (ruleExp[0].str() == "cfg_trans2") {
@@ -78,7 +78,7 @@ namespace sexpressionparser {
                             Guard guard;
                             parseCond(ruleExp[5], guard);
                             for (unsigned int i = 0; i < preVars.size(); i++) {
-                                update.get<IntTheory>().put(vars[preVars[i]], vars[postVars[i]]);
+                                update.get<IntTheory>().put(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
                             Rule rule(from, buildAnd(guard), 1, to, update);
                             // make sure that the temporary variables are unique
@@ -87,7 +87,7 @@ namespace sexpressionparser {
                             Subs subs;
                             for (const NumVar &var: currTmpVars.get<IntTheory>()) {
                                 if (res.isTempVar(var)) {
-                                    subs.get<IntTheory>().put(var, res.addFreshTemporaryVariable<IntTheory>(var.get_name()));
+                                    subs.get<IntTheory>().put(var, res.addFreshTemporaryVariable<IntTheory>(var.getName()));
                                 }
                             }
                             res.addRule(rule.subs(subs));
@@ -116,7 +116,7 @@ namespace sexpressionparser {
             sexpresso::Sexp scope = sexp[1];
             for (sexpresso::Sexp &var: scope.arguments()) {
                 const std::string &varName = var[0].str();
-                vars[varName] = res.addFreshTemporaryVariable<IntTheory>(varName);
+                vars.emplace(varName, res.addFreshTemporaryVariable<IntTheory>(varName));
             }
             parseCond(sexp[2], guard);
         } else {
@@ -135,13 +135,13 @@ namespace sexpressionparser {
         const Expr &fst = parseExpression(sexp[1]);
         const Expr &snd = parseExpression(sexp[2]);
         if (op == "<=") {
-            return negate ? fst > snd : fst <= snd;
+            return negate ? Rel::buildGt(fst, snd) : Rel::buildLeq(fst, snd);
         } else if (sexp[0].str() == "<") {
-            return negate ? fst >= snd : fst < snd;
+            return negate ? Rel::buildGeq(fst, snd) : Rel::buildLt(fst, snd);
         } else if (sexp[0].str() == ">=") {
-            return negate ? fst < snd : fst >= snd;
+            return negate ? Rel::buildLt(fst, snd) : Rel::buildGeq(fst, snd);
         } else if (sexp[0].str() == ">") {
-            return negate ? fst <= snd : fst > snd;
+            return negate ? Rel::buildLeq(fst, snd) : Rel::buildGt(fst, snd);
         } else if (sexp[0].str() == "=") {
             assert(!negate);
             return Rel::buildEq(fst, snd);
@@ -157,9 +157,9 @@ namespace sexpressionparser {
                 return parser(str);
             } else {
                 if (vars.find(str) == vars.end()) {
-                    vars[str] = res.addFreshTemporaryVariable<IntTheory>(str);
+                    vars.emplace(str, res.addFreshTemporaryVariable<IntTheory>(str));
                 }
-                return vars[str];
+                return vars.at(str);
             }
         }
         const std::string &op = sexp[0].str();

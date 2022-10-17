@@ -2,6 +2,8 @@ target_sources(${EXECUTABLE}
     PRIVATE
         complexity.cpp
         complexity.hpp
+        numvar.hpp
+        numvar.cpp
         expression.cpp
         expression.hpp
         rel.cpp

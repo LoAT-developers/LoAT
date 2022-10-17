@@ -33,6 +33,8 @@ concept ILit = requires(T x) {
         {x.normalize()} -> std::same_as<T>;
         {x.toRedlog()} -> std::same_as<std::string>;
         {x.hash()} -> std::same_as<unsigned>;
+        {x.isTriviallyTrue()} -> std::same_as<bool>;
+        {x.isWellformed()} -> std::same_as<bool>;
 };
 
 template <typename T>
@@ -72,6 +74,7 @@ template<ITheory... Th>
 struct Theory {
 
     using Theories = std::tuple<Th...>;
+    const Theories theories;
     using Lit = std::variant<typename Th::Lit...>;
     using Var = std::variant<typename Th::Var...>;
     using Val = std::variant<typename Th::Val...>;
@@ -767,11 +770,6 @@ bool operator<(const Subs<Th...> &fst, const Subs<Th...> &snd) {
 }
 
 template<ITheory... Th>
-std::enable_if_t<(sizeof...(Th) > 0), std::string> getName(const typename Theory<Th...>::Var &var) {
-    return std::visit([](const auto &var){return var.get_name();}, var);
-}
-
-template<ITheory... Th>
 std::enable_if_t<(sizeof...(Th) > 0), typename Theory<Th...>::Var> first(const typename Subs<Th...>::Pair &p) {
     return std::visit([](const auto &p){return typename Theory<Th...>::Var(p.first);}, p);
 }
@@ -785,6 +783,13 @@ template<ITheory... Th>
 VarSet<Th...> vars(const typename Theory<Th...>::Lit &lit) {
     VarSet<Th...> res;
     res.collectVars(lit);
+    return res;
+}
+
+template<ITheory... Th>
+VarSet<Th...> vars(const typename TheorySubs<Th...>::Expression &e) {
+    VarSet<Th...> res;
+    res.collectVars(e);
     return res;
 }
 

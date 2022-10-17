@@ -124,10 +124,10 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
     res.fail(); // *just* finding implied equalities does not suffice for success
 
     //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
-    res.concat(GuardToolbox::propagateEqualities(its, *res, GuardToolbox::ResultMapsToInt, isTempInUpdate));
+    res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTempInUpdate));
 
     //try to remove all remaining temp variables (we do 2 steps to priorizie removing vars from the update)
-    res.concat(GuardToolbox::propagateEqualities(its, *res, GuardToolbox::ResultMapsToInt, isTemp));
+    res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTemp));
 
     if (!fast && !res->getGuard()->isConjunction()) {
         res.concat(GuardToolbox::propagateEqualitiesBySmt(*res, its));

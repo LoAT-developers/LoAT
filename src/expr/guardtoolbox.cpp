@@ -37,15 +37,15 @@ bool GuardToolbox::isTrivialImplication(const Rel &a, const Rel &b) {
         return (aDiff - bDiff).expand().isZero();
     } else if (a.isIneq()) {
         if (a.isStrict() == b.isStrict()) {
-            if ((a.toG().makeRhsZero().lhs() <= b.toG().makeRhsZero().lhs()).isTriviallyTrue()) {
+            if (Rel::buildLeq(a.toG().makeRhsZero().lhs(), b.toG().makeRhsZero().lhs()).isTriviallyTrue()) {
                 return true;
             }
         } else if (!a.isStrict() && a.isPoly()) {
-            if ((a.toGt().makeRhsZero().lhs() <= b.toG().makeRhsZero().lhs()).isTriviallyTrue()) {
+            if (Rel::buildLeq(a.toGt().makeRhsZero().lhs(), b.toG().makeRhsZero().lhs()).isTriviallyTrue()) {
                 return true;
             }
         } else if (b.isPoly()) {
-            if ((a.toG().makeRhsZero().lhs() <= b.toGt().makeRhsZero().lhs()).isTriviallyTrue()) {
+            if (Rel::buildLeq(a.toG().makeRhsZero().lhs(), b.toGt().makeRhsZero().lhs()).isTriviallyTrue()) {
                 return true;
             }
         }
@@ -53,67 +53,13 @@ bool GuardToolbox::isTrivialImplication(const Rel &a, const Rel &b) {
         Expr aDiff = a.rhs() - a.lhs();
         Expr bLhs = b.toG().lhs() - b.toG().rhs();
         if (b.isStrict()) {
-            return (aDiff < bLhs).isTriviallyTrue() || ((-aDiff) < bLhs).isTriviallyTrue();
+            return Rel::buildLt(aDiff, bLhs).isTriviallyTrue() || Rel::buildLt(-aDiff, bLhs).isTriviallyTrue();
         } else {
-            return (aDiff <= bLhs).isTriviallyTrue() || ((-aDiff) <= bLhs).isTriviallyTrue();
+            return Rel::buildLeq(aDiff, bLhs).isTriviallyTrue() || Rel::buildLeq(-aDiff, bLhs).isTriviallyTrue();
         }
     }
     return false;
 }
-
-std::pair<option<Expr>, option<Expr>> GuardToolbox::getBoundFromIneq(const Rel &rel, const NumVar &N) {
-    Rel l = rel.isPoly() ? rel.toLeq() : rel.toL();
-    Expr term = (l.lhs() - l.rhs()).expand();
-    if (term.degree(N) != 1) return {};
-
-    // compute the upper bound represented by N and check that it is integral
-    auto optSolved = GuardToolbox::solveTermFor(term, N, GuardToolbox::ResultMapsToInt);
-    if (optSolved) {
-        const Expr &coeff = term.coeff(N, 1);
-        assert(coeff.isRationalConstant());
-        if (coeff.toNum().is_negative()) {
-            return {{l.isStrict() ? optSolved.get() + 1 : optSolved.get()}, {}};
-        } else {
-            return {{}, {l.isStrict() ? optSolved.get() - 1 : optSolved.get()}};
-        }
-    }
-    return {};
-}
-
-option<Expr> GuardToolbox::solveTermFor(Expr term, const NumVar &var, SolvingLevel level) {
-    // expand is needed before using degree/coeff
-    term = term.expand();
-
-    // we can only solve linear expressions...
-    if (term.degree(var) != 1) return {};
-
-    // ...with rational coefficients
-    Expr c = term.coeff(var);
-    if (!c.isRationalConstant()) return {};
-
-    bool trivialCoeff = (c.compare(1) == 0 || c.compare(-1) == 0);
-
-    if (level == TrivialCoeffs && !trivialCoeff) {
-        return {};
-    }
-
-    term = (term - c*var) / (-c);
-
-    // If c is trivial, we don't have to check if the result maps to int,
-    // since we assume that all constraints in the guard map to int.
-    // So if c is trivial, we can also handle non-polynomial terms.
-    if (level == ResultMapsToInt && !trivialCoeff) {
-        if (!term.isPoly() || !term.isIntegral()) return {};
-    }
-
-    // we assume that terms in the guard map to int, make sure this is the case
-    if (trivialCoeff) {
-        assert(!term.isPoly() || term.isIntegral());
-    }
-
-    return {term};
-}
-
 
 Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
     ExprSubs varSubs;
@@ -140,7 +86,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
                     if (!allow(var)) continue;
 
                     //solve target for var (result is in target)
-                    auto optSolved = solveTermFor(target,var,(SolvingLevel)level);
+                    auto optSolved = target.solveTermFor(var, (SolvingLevel)level);
                     if (!optSolved) continue;
                     Expr solved = optSolved.get();
 
@@ -284,7 +230,7 @@ Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool r
         //add new transitive guard terms lower <= upper
         for (const Expr &upper : varLessThan) {
             for (const Expr &lower : varGreaterThan) {
-                guard.insert(lower <= upper);
+                guard.insert(Rel::buildLeq(lower, upper));
             }
         }
         changed = true;
