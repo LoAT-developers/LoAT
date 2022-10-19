@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "variablemanager.hpp"
 #include "rule.hpp"
 #include "theory.hpp"

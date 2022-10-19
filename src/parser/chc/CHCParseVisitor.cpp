@@ -1,5 +1,4 @@
 #include "CHCParseVisitor.h"
-#include "exceptions.hpp"
 #include "boollit.hpp"
 
 #include <variant>
@@ -62,7 +61,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             if (std::holds_alternative<NumVar>(c.lhs.args[i])) {
                 ren.put<IntTheory>(std::get<NumVar>(c.lhs.args[i]), vars[i]);
             } else {
-                ren.put<BoolTheory>(std::get<BoolVar>(c.lhs.args[i]), buildTheoryLit<IntTheory, BoolTheory>(bvars[i]));
+                ren.put<BoolTheory>(std::get<BoolVar>(c.lhs.args[i]), BExpression::buildTheoryLit(bvars[i]));
             }
         }
         VarSet cVars;
@@ -77,7 +76,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
                     ren.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
                 } else if (std::holds_alternative<BoolVar>(x)) {
                     const auto &var = std::get<BoolVar>(x);
-                    ren.put<BoolTheory>(var, buildTheoryLit<IntTheory, BoolTheory>(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
+                    ren.put<BoolTheory>(var, BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
                 } else {
                     throw std::logic_error("unsupporte theory in CHCParseVisitor");
                 }
@@ -95,7 +94,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         }
         for (unsigned i = c.rhs.args.size(); i < maxArity; ++i) {
             up.put<IntTheory>(vars[i], its.addFreshTemporaryVariable<IntTheory>("tmp"));
-            up.put<BoolTheory>(bvars[i], buildTheoryLit<IntTheory, BoolTheory>(its.addFreshTemporaryVariable<BoolTheory>("tmp")));
+            up.put<BoolTheory>(bvars[i], BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>("tmp")));
         }
         const BoolExpr guard = c.guard->subs(ren);
         const option<BoolExpr> simplified = guard->simplify();
@@ -157,12 +156,12 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
         if (std::holds_alternative<BoolExpr>(v)) {
             guards.push_back(std::get<BoolExpr>(v));
         } else if (lhs) {
-            throw ParseError("non-linear clause " + ctx->getText());
+            throw std::invalid_argument("non-linear clause " + ctx->getText());
         } else {
             lhs = std::get<FunApp>(v);
         }
     }
-    return std::pair(lhs.get_value_or(FunApp(its.getInitialLocation(), {})), buildAnd(guards));
+    return std::pair(lhs.get_value_or(FunApp(its.getInitialLocation(), {})), BExpression::buildAnd(guards));
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) {
@@ -191,7 +190,7 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
     const auto name = any_cast<symbol_type>(visit(ctx->symbol()));
     const option<LocationIdx> loc = its.getLocationIdx(name);
     if (!loc) {
-        throw ParseError("undeclared function symbol " + name);
+        throw std::invalid_argument("undeclared function symbol " + name);
     }
     std::vector<Var> args;
     for (const auto &c: ctx->var()) {
@@ -223,34 +222,34 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
     }
     if (ctx->NOT()) {
         if (args.size() != 1) {
-            throw ParseError("wrong number of arguments " + ctx->getText());
+            throw std::invalid_argument("wrong number of arguments " + ctx->getText());
         }
         res.t = !args[0];
     } else if (ctx->boolop()) {
         const auto op = any_cast<boolop_type>(visit(ctx->boolop()));
         switch (op) {
-        case And: res.t = buildAnd(args);
+        case And: res.t = BExpression::buildAnd(args);
             break;
-        case Or: res.t = buildOr(args);
+        case Or: res.t = BExpression::buildOr(args);
             break;
         case Equiv: {
             std::vector<BoolExpr> negated;
             for (const auto &a: args) {
                 negated.push_back(!a);
             }
-            res.t = buildAnd(args) | buildAnd(negated);
+            res.t = BExpression::buildAnd(args) | BExpression::buildAnd(negated);
             break;
         }
-        default: throw ParseError("unknown operator " + ctx->boolop()->getText());
+        default: throw std::invalid_argument("unknown operator " + ctx->boolop()->getText());
         }
     } else if (ctx->ITE()) {
         if (args.size() != 3) {
-            throw ParseError("wrong number of arguments " + ctx->getText());
+            throw std::invalid_argument("wrong number of arguments " + ctx->getText());
         }
         res.t = (args[0] & args[1]) | ((!args[0]) & args[2]);
     } else if (ctx->lit()) {
         const auto p = any_cast<lit_type>(visit(ctx->lit()));
-        res.t = buildTheoryLit<IntTheory, BoolTheory>(p.t);
+        res.t = BExpression::buildTheoryLit(p.t);
         res.refinement = res.refinement & p.refinement;
     } else if (ctx->var()) {
         const auto r = any_cast<var_type>(visit(ctx->var()));
@@ -262,7 +261,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
     } else if (ctx->FALSE()) {
         res.t = False;
     } else {
-        throw ParseError("failed to parse " + ctx->getText());
+        throw std::invalid_argument("failed to parse " + ctx->getText());
     }
     return res;
 }
@@ -320,13 +319,13 @@ antlrcpp::Any CHCParseVisitor::visitBoolop(CHCParser::BoolopContext *ctx) {
     } else if (ctx->EQ()) {
         return Equiv;
     } else {
-        throw ParseError("failed to parse " + ctx->getText());
+        throw std::invalid_argument("failed to parse " + ctx->getText());
     }
 }
 
 antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
     if (ctx->expr().size() != 2) {
-        throw ParseError("wrong number of arguments: " + ctx->getText());
+        throw std::invalid_argument("wrong number of arguments: " + ctx->getText());
     }
     const auto p1 = any_cast<expr_type>(visit(ctx->expr(0)));
     const auto p2 = any_cast<expr_type>(visit(ctx->expr(1)));
@@ -342,7 +341,7 @@ antlrcpp::Any CHCParseVisitor::visitRelop(CHCParser::RelopContext *ctx) {
     if (ctx->LEQ()) return Rel::leq;
     if (ctx->LT()) return Rel::lt;
     if (ctx->NEQ()) return Rel::neq;
-    throw ParseError("failed to parse operator " + ctx->getText());
+    throw std::invalid_argument("failed to parse operator " + ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
@@ -362,15 +361,15 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         res.refinement = res.refinement & p.refinement;
     }
     if (ctx->unaryop()) {
-        if (args.size() != 1) throw ParseError("wrong number of arguments: " + ctx->getText());
+        if (args.size() != 1) throw std::invalid_argument("wrong number of arguments: " + ctx->getText());
         const auto op = any_cast<unaryop_type>(visit(ctx->unaryop()));
         switch (op) {
         case UnaryMinus: res.t = -args[0];
             break;
-        default: throw ParseError("unknown operator " + ctx->getText());
+        default: throw std::invalid_argument("unknown operator " + ctx->getText());
         }
     } else if (ctx->binaryop()) {
-        if (args.size() != 2) throw ParseError("wrong number of arguments: " + ctx->getText());
+        if (args.size() != 2) throw std::invalid_argument("wrong number of arguments: " + ctx->getText());
         const auto op = any_cast<binaryop_type>(visit(ctx->binaryop()));
         switch (op) {
         case Minus: res.t = args[0] - args[1];
@@ -379,10 +378,10 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
 //            res = its.addFreshTemporaryVariable("mod");
 //            const Var div = its.addFreshTemporaryVariable("div");
 //            refinement = refinement & Rel::buildEq(args[0] - res, args[1] * div) & (0 <= res) & (res < args[1]) & Rel::buildNeq(args[1], 0);
-            throw new ParseError("mod is not yet supported");
+            throw new std::invalid_argument("mod is not yet supported");
             break;
         case Div:
-            throw new ParseError("div is not yet supported");
+            throw new std::invalid_argument("div is not yet supported");
             break;
         }
     } else if (ctx->naryop()) {
@@ -402,7 +401,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
             }
             break;
         }
-        default: throw ParseError("unknown operator " + ctx->binaryop()->getText());
+        default: throw std::invalid_argument("unknown operator " + ctx->binaryop()->getText());
         }
     } else if (ctx->ITE()) {
         const auto r = any_cast<formula_type>(visit(ctx->i_formula()));
@@ -423,20 +422,20 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitUnaryop(CHCParser::UnaryopContext *ctx) {
     if (ctx->MINUS()) return UnaryMinus;
-    throw ParseError("failed to parse operator " + ctx->getText());
+    throw std::invalid_argument("failed to parse operator " + ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitBinaryop(CHCParser::BinaryopContext *ctx) {
     if (ctx->MINUS()) return Minus;
     if (ctx->MOD()) return Mod;
     if (ctx->DIV()) return Div;
-    throw ParseError("failed to parse operator " + ctx->getText());
+    throw std::invalid_argument("failed to parse operator " + ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitNaryop(CHCParser::NaryopContext *ctx) {
     if (ctx->PLUS()) return Plus;
     if (ctx->TIMES()) return Times;
-    throw ParseError("failed to parse operator " + ctx->getText());
+    throw std::invalid_argument("failed to parse operator " + ctx->getText());
 }
 
 antlrcpp::Any CHCParseVisitor::visitSymbol(CHCParser::SymbolContext *ctx) {
@@ -449,7 +448,7 @@ antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
     } else if (ctx->INT_SORT()) {
         return Int;
     } else {
-        throw ParseError("unsupported sort: " + ctx->getText());
+        throw std::invalid_argument("unsupported sort: " + ctx->getText());
     }
 }
 
@@ -477,7 +476,7 @@ antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
     }
     const auto boolRes = bvars.find(name);
     if (boolRes != bvars.end()) {
-        return var_type(buildTheoryLit<IntTheory, BoolTheory>(boolRes->second));
+        return var_type(BExpression::buildTheoryLit(boolRes->second));
     }
-    throw IllegalStateError("unknown variable " + name);
+    throw std::invalid_argument("unknown variable " + name);
 }

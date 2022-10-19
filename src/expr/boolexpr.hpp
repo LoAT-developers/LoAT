@@ -2,10 +2,11 @@
 
 #include "option.hpp"
 #include "itheory.hpp"
+#include "thset.hpp"
 #include "conjunction.hpp"
 #include "rel.hpp"
 #include "boollit.hpp"
-#include "exceptions.hpp"
+#include "literaltemplates.hpp"
 
 #include <type_traits>
 #include <memory>
@@ -23,24 +24,29 @@ class QuantifiedFormula;
 template <ITheory... Th>
 using BExpr = std::shared_ptr<const BoolExpression<Th...>>;
 
-namespace boolExpression {
+namespace literal {
 
 template<std::size_t I = 0, ITheory... Th>
-BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th...> &s) {
+inline BExpr<Th...> subsImpl(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th...> &s) {
     if constexpr (I < sizeof...(Th)) {
         if (lit.index() == I) {
             using T = typename std::tuple_element_t<I, std::tuple<Th...>>;
             if constexpr (std::same_as<typename T::Var, BoolVar>) {
                 return s.template get<T>().subs(std::get<I>(lit));
             } else {
-                return buildTheoryLit<Th...>(std::get<I>(lit).subs(s.template get<T>()));
+                return BoolExpression<Th...>::buildTheoryLit(std::get<I>(lit).subs(s.template get<T>()));
             }
         } else {
-            return subs<I+1, Th...>(lit, s);
+            return subsImpl<I+1, Th...>(lit, s);
         }
     } else {
         throw std::logic_error("unknown theory");
     }
+}
+
+template<ITheory... Th>
+BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th...> &s) {
+    return subsImpl<0, Th...>(lit, s);
 }
 
 }
@@ -57,63 +63,6 @@ using BoolExpressionSet = std::set<BExpr<Th...>, BExpr_compare<Th...>> ;
 
 enum ConcatOperator { ConcatAnd, ConcatOr };
 
-template <ITheory... Th>
-const BExpr<Th...> buildAnd(const std::vector<typename Theory<Th...>::Lit> &xs) {
-    BoolExpressionSet<Th...> lits;
-    for (const auto &lit: xs) {
-        lits.emplace(buildTheoryLit<Th...>(lit));
-    }
-    return build<Th...>(lits, ConcatAnd);
-}
-
-template <ITheory... Th>
-const BExpr<Th...> buildAnd(const std::vector<BExpr<Th...>> &xs) {
-    return build(BoolExpressionSet<Th...>(xs.begin(), xs.end()), ConcatAnd);
-}
-
-template <ITheory... Th>
-const BExpr<Th...> buildAnd(const std::set<typename Theory<Th...>::Lit> &xs) {
-    BoolExpressionSet<Th...> lits;
-    for (const auto &lit: xs) {
-        lits.emplace(buildTheoryLit<Th...>(lit));
-    }
-    return build(lits, ConcatAnd);
-}
-
-template <ITheory... Th>
-const BExpr<Th...> buildAnd(const BoolExpressionSet<Th...> &xs) {
-    return build(xs, ConcatAnd);
-}
-
-template <ITheory... Th>
-const BExpr<Th...> buildOr(const std::vector<typename Theory<Th...>::Lit> &xs) {
-    BoolExpressionSet<Th...> lits;
-    for (const auto &lit: xs) {
-        lits.emplace(buildTheoryLit<Th...>(lit));
-    }
-    return build<Th...>(lits, ConcatOr);
-}
-
-template <ITheory... Th>
-const BExpr<Th...> buildOr(const std::vector<BExpr<Th...>> &xs) {
-    return build(BoolExpressionSet<Th...>(xs.begin(), xs.end()), ConcatOr);
-}
-
-template <ITheory... Th>
-const BExpr<Th...> buildOr(const std::set<typename Theory<Th...>::Lit> &xs) {
-    return build(xs, ConcatOr);
-}
-
-template <ITheory... Th>
-const BExpr<Th...> buildOr(const BoolExpressionSet<Th...> &xs) {
-    return build(xs, ConcatOr);
-}
-
-template <ITheory... Th>
-const BExpr<Th...> buildTheoryLit(const typename Theory<Th...>::Lit &lit) {
-    return BExpr<Th...>(new BoolTheoryLit<Th...>(lit));
-}
-
 template <IBaseTheory... Th>
 class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>> {
 
@@ -126,6 +75,7 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
     using Var = typename T::Var;
     using Lit = typename T::Lit;
     using VS = theory::VarSet<Th...>;
+    using LS = theory::LitSet<Th...>;
     using G = Conjunction<Th...>;
     using BE = BExpr<Th...>;
     using BES = BoolExpressionSet<Th...>;
@@ -137,48 +87,79 @@ public:
     static const BE True;
     static const BE False;
 
+    template <class Lits>
+    static const BE buildFromLits(const Lits &lits, ConcatOperator op) {
+        BES children;
+        for (const Lit &lit: lits) {
+            children.insert(buildTheoryLit(lit));
+        }
+        return BE(new BoolJunction(children, op));
+    }
+
+    template <class Children>
+    static const BE build(const Children &lits, ConcatOperator op) {
+        std::stack<BE> todo;
+        for (const auto &lit: lits) {
+            todo.push(lit);
+        }
+        BES children;
+        while (!todo.empty()) {
+            BE current = todo.top();
+            if ((op == ConcatAnd && current->isAnd()) || (op == ConcatOr && current->isOr())) {
+                const BES &currentChildren = current->getChildren();
+                todo.pop();
+                for (const BE &c: currentChildren) {
+                    todo.push(c);
+                }
+            } else {
+                children.insert(current);
+                todo.pop();
+            }
+        }
+        if (children.size() == 1) {
+            return *children.begin();
+        }
+        return BE(new BoolJunction(children, op));
+    }
+
+    template <class Lits>
+    static const BE buildAndFromLits(const Lits &lits) {
+        return buildFromLits(lits, ConcatAnd);
+    }
+
+    template <class Children>
+    static const BE buildAnd(const Children &lits) {
+        return build(lits, ConcatAnd);
+    }
+
+    template <class Lits>
+    static const BE buildOrFromLits(const Lits &lits) {
+        return buildFromLits(lits, ConcatOr);
+    }
+
+    template <class Children>
+    static const BE buildOr(const Children &lits) {
+        return build(lits, ConcatOr);
+    }
+
+    static const BE buildTheoryLit(const Lit &lit) {
+        return BE(new BoolTheoryLit<Th...>(lit));
+    }
+
     virtual option<Lit> getTheoryLit() const = 0;
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
     virtual BES getChildren() const = 0;
     virtual const BE negation() const = 0;
     virtual bool forall(const std::function<bool(const Lit&)> &pred) const = 0;
-    virtual std::set<Lit> universallyValidLits() const = 0;
+    virtual LS universallyValidLits() const = 0;
     virtual bool isConjunction() const = 0;
-    virtual void collectLits(std::set<Lit> &res) const = 0;
-    virtual void collectVars(VS &res) const = 0;
+    virtual void collectLits(LS &res) const = 0;
     virtual std::string toRedlog() const = 0;
     virtual size_t size() const = 0;
-    virtual BE replaceLits(const std::map<Lit, BE> map) const = 0;
     virtual unsigned hash() const = 0;
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
     virtual int compare(const BE that) const = 0;
-
-    template <ITheory T>
-    void collectVars(std::set<typename T::Var> &res) const {
-        VS vs;
-        vs.template get<T>() = res;
-        collectVars(vs);
-    }
-
-    template<std::size_t I = 0>
-    BE subs(const Subs &subs) const {
-        if (getTheoryLit()) {
-            return boolExpression::subs(*getTheoryLit(), subs);
-        } else {
-            BES newChildren;
-            for (const auto &c: getChildren()) {
-                newChildren.emplace(c->subs(subs));
-            }
-            if (isAnd()) {
-                return buildAnd(newChildren);
-            } else if (isOr()) {
-                return buildOr(newChildren);
-            } else {
-                throw std::logic_error("unknown junctor´");
-            }
-        }
-    }
 
     bool isTriviallyTrue() const {
         if (getTheoryLit()) {
@@ -191,6 +172,16 @@ public:
                 return std::any_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyTrue();});
             } else {
                 throw std::logic_error("unknown junctor");
+            }
+        }
+    }
+
+    void iter(const std::function<void(const Lit&)> &f) const {
+        if (getTheoryLit()) {
+            f(*getTheoryLit());
+        } else {
+            for (const auto &c: getChildren()) {
+                c->iter(f);
             }
         }
     }
@@ -212,7 +203,7 @@ public:
             if (newChildren.empty()) {
                 return BoolExpression<Th_...>::True;
             } else {
-                return buildAnd(newChildren);
+                return BoolExpression<Th_...>::buildAnd(newChildren);
             }
         } else if (isOr()) {
             BoolExpressionSet<Th_...> newChildren;
@@ -229,16 +220,41 @@ public:
             if (newChildren.empty()) {
               return BoolExpression<Th_...>::False;
             } else {
-                return buildOr(newChildren);
+                return BoolExpression<Th_...>::buildOr(newChildren);
             }
         } else if (getTheoryLit()) {
             return f(*getTheoryLit());
         }
-        throw IllegalStateError("unknown boolean expression");
+        throw std::logic_error("unknown boolean expression");
     }
 
     BE map(const std::function<BE(const Lit&)> &f) const {
         return map<Th...>(f);
+    }
+
+    BE subs(const Subs &subs) const {
+        return map([&subs](const auto &lit) {
+            return literal::subs<Th...>(lit, subs);
+        });
+    }
+
+    void collectVars(VS &vars) const {
+        iter([&vars](const auto &lit) {
+            literal::collectVars<Th...>(lit, vars);
+        });
+    }
+
+    template <ITheory T>
+    void collectVars(std::set<typename T::Var> &vars) const {
+        VS res;
+        res.template get<typename T::Var>() = vars;
+        collectVars(res);
+    }
+
+    VS vars() const {
+        VS res;
+        collectVars(res);
+        return res;
     }
 
     BE simplify() const {
@@ -250,20 +266,37 @@ public:
                                       } else if (lit.isTriviallyFalse()) {
                                           return False;
                                       } else if (lit.isNeq()) {
-                                          return buildTheoryLit<Th...>(Rel(lit.lhs(), Rel::lt, lit.rhs())) | (Rel(lit.lhs(), Rel::gt, lit.rhs()));
+                                          return buildTheoryLit(Rel(lit.lhs(), Rel::lt, lit.rhs())) | (Rel(lit.lhs(), Rel::gt, lit.rhs()));
                                       } else {
-                                          return buildTheoryLit<Th...>(lit);
+                                          return buildTheoryLit(lit);
                                       }
                                   },
-                                  [](const auto &lit) -> BE {return buildTheoryLit<Th...>(lit);}
+                                  [](const auto &lit) -> BE {return buildTheoryLit(lit);}
                               }, lit);
         });
     }
 
+    template <ITheory T>
+    BE replaceLits(const std::map<typename T::Lit, BE> &m) const {
+        return map(Overload{
+                       [&m](const Rel &lit) -> BE {
+                           const auto it = m.find(lit);
+                           if (it == m.end()) {
+                               return buildTheoryLit(Lit(lit));
+                           } else {
+                               return it->second;
+                           }
+                       },
+                       [&m](const auto &lit) -> BE {
+                           return buildTheoryLit(Lit(lit));
+                       }
+                   });
+    }
+
     virtual ~BoolExpression() {};
 
-    std::set<Lit> lits() const {
-        std::set<Lit> res;
+    LS lits() const {
+        LS res;
         collectLits(res);
         return res;
     }
@@ -313,13 +346,7 @@ public:
 
     BES findConsequences(const Lit &lit) const {
         BES res;
-        findConsequences(buildTheoryLit<Th...>(lit), res);
-        return res;
-    }
-
-    VS vars() const {
-        VS res;
-        collectVars(res);
+        findConsequences(buildTheoryLit(lit), res);
         return res;
     }
 
@@ -330,7 +357,7 @@ public:
     }
 
     G conjunctionToGuard() const{
-        const std::set<Lit> &lits = this->lits();
+        const LS &lits = this->lits();
         return G(lits.begin(), lits.end());
     }
 
@@ -342,10 +369,10 @@ public:
         const std::function<BE(const Lit &lit)> mapper = [](const Lit &lit) {
             return std::visit(Overload{
                                   [](const Rel &lit) -> BE {
-                                      return buildTheoryLit<Th...>(lit.toG());
+                                      return buildTheoryLit(lit.toG());
                                   },
                                   [](const auto &lit) -> BE {
-                                      return buildTheoryLit<Th...>(lit);
+                                      return buildTheoryLit(lit);
                                   }
                               }, lit);};
         return map(mapper);
@@ -355,7 +382,7 @@ public:
     BExpr<T> transform() const {
         static const std::function<BExpr<T>(const Lit&)> mapper = [](const Lit &lit) {
             return std::visit(Overload{
-                                  [](const typename T::Lit &rel) -> BExpr<T> {return buildTheoryLit<T>(rel);},
+                                  [](const typename T::Lit &rel) -> BExpr<T> {return BoolExpression<T>::buildTheoryLit(rel);},
                                   [](const auto &rel) -> BExpr<T> {throw std::logic_error("transform failed");},
                               }, lit);};
         return map(mapper);
@@ -366,10 +393,10 @@ protected:
 };
 
 template <IBaseTheory... Th>
-const BExpr<Th...> BoolExpression<Th...>::True = buildAnd<Th...>(BoolExpressionSet<Th...>());
+const BExpr<Th...> BoolExpression<Th...>::True = BE(new BoolJunction(BoolExpressionSet<Th...>{}, ConcatAnd));
 
 template <IBaseTheory... Th>
-const BExpr<Th...> BoolExpression<Th...>::False = buildOr<Th...>(BoolExpressionSet<Th...>());
+const BExpr<Th...> BoolExpression<Th...>::False = BE(new BoolJunction(BoolExpressionSet<Th...>{}, ConcatOr));
 
 template <ITheory... Th>
 class BoolTheoryLit: public BoolExpression<Th...> {
@@ -380,6 +407,7 @@ class BoolTheoryLit: public BoolExpression<Th...> {
     using Var = typename T::Var;
     using Lit = typename T::Lit;
     using VS = theory::VarSet<Th...>;
+    using LS = theory::LitSet<Th...>;
     using C = Conjunction<Th...>;
     using BE = BExpr<Th...>;
     using BES = BoolExpressionSet<Th...>;
@@ -410,7 +438,7 @@ public:
     }
 
     const BE negation() const override {
-        return buildTheoryLit<Th...>(std::visit([](const auto &lit){return Lit(!lit);}, lit));
+        return BoolExpression<Th...>::buildTheoryLit(std::visit([](const auto &lit){return Lit(!lit);}, lit));
     }
 
     bool forall(const std::function<bool(const Lit&)> &pred) const override {
@@ -423,16 +451,14 @@ public:
         return true;
     }
 
-    std::set<Lit> universallyValidLits() const override {
-        return {lit};
-    }
-
-    void collectLits(std::set<Lit> &res) const override {
+    LS universallyValidLits() const override {
+        LS res;
         res.insert(lit);
+        return res;
     }
 
-    void collectVars(VS &res) const override {
-        res.collectVars(lit);
+    void collectLits(LS &res) const override {
+        res.insert(lit);
     }
 
     size_t size() const override {
@@ -443,14 +469,6 @@ public:
         return std::visit([](const auto &lit){
             return lit.toRedlog();
         }, lit);
-    }
-
-    BE replaceLits(const std::map<Lit, BE> map) const override {
-        if (map.find(lit) != map.end()) {
-            return map.at(lit);
-        } else {
-            return this->shared_from_this();
-        }
     }
 
     unsigned hash() const override {
@@ -501,6 +519,7 @@ class BoolJunction: public BoolExpression<Th...> {
     using Var = typename T::Var;
     using Lit = typename T::Lit;
     using VS = theory::VarSet<Th...>;
+    using LS = theory::LitSet<Th...>;
     using C = Conjunction<Th...>;
     using BE = BExpr<Th...>;
     using BES = BoolExpressionSet<Th...>;
@@ -538,8 +557,8 @@ public:
             newChildren.insert(c->negation());
         }
         switch (op) {
-        case ConcatOr: return buildAnd(newChildren);
-        case ConcatAnd: return buildOr(newChildren);
+        case ConcatOr: return BoolExpression<Th...>::buildAnd(newChildren);
+        case ConcatAnd: return BoolExpression<Th...>::buildOr(newChildren);
         }
         throw std::invalid_argument("unknown junction");
     }
@@ -561,8 +580,8 @@ public:
         });
     }
 
-    std::set<Lit> universallyValidLits() const override {
-        std::set<Lit> res;
+    LS universallyValidLits() const override {
+        LS res;
         if (isAnd()) {
             for (const BE &c: children) {
                 const option<Lit> lit = c->getTheoryLit();
@@ -574,15 +593,9 @@ public:
         return res;
     }
 
-    void collectLits(std::set<Lit> &res) const override {
+    void collectLits(LS &res) const override {
         for (const BE &c: children) {
             c->collectLits(res);
-        }
-    }
-
-    void collectVars(VS &res) const override {
-        for (const BE &c: children) {
-            c->collectVars(res);
         }
     }
 
@@ -604,17 +617,6 @@ public:
             res += (*it)->toRedlog();
         }
         return "(" + res + ")";
-    }
-
-    BE replaceLits(const std::map<Lit, BE> map) const override {
-        BES newChildren;
-        for (const BE &c: children) {
-            const option<BE> &newC = c->replaceLits(map);
-            if (newC) {
-                newChildren.insert(newC.get());
-            }
-        }
-        return isAnd() ? buildAnd(newChildren) : buildOr(newChildren);
     }
 
     unsigned hash() const override {
@@ -720,6 +722,7 @@ class QuantifiedFormula {
     using Var = typename T::Var;
     using Lit = typename T::Lit;
     using VS = theory::VarSet<Th...>;
+    using LS = theory::LitSet<Th...>;
     using BE = BExpr<Th...>;
     using QF = QuantifiedFormula<Th...>;
     using Subs = theory::Subs<Th...>;
@@ -731,7 +734,41 @@ class QuantifiedFormula {
     BE matrix;
 
     template <ITheory... Th_>
-    friend std::ostream& operator<<(std::ostream &s, const QuantifiedFormula<Th_...> &f);
+    friend std::ostream& operator<<(std::ostream &s, const QuantifiedFormula<Th_...> &f) {
+        for (const auto &q: f.prefix) {
+            switch (q.getType()) {
+            case Quantifier::Type::Exists:
+                s << "EX";
+                break;
+            case Quantifier::Type::Forall:
+                s << "ALL";
+                break;
+            }
+            for (const auto &x: q.getVars()) {
+                s << " " << x;
+                const auto lb = q.lowerBound(x);
+                const auto ub = q.upperBound(x);
+                if (lb || ub) {
+                    s << " in [";
+                    if (lb) {
+                        s << *lb;
+                    } else {
+                        s << "-oo";
+                    }
+                    s << ",";
+                    if (ub) {
+                        s << *ub;
+                    } else {
+                        s << "oo";
+                    }
+                    s << "]";
+                }
+            }
+            s << " . ";
+        }
+        s << f.matrix;
+        return s;
+    }
 
 public:
 
@@ -765,18 +802,8 @@ public:
         return QF(prefix, matrix->toG());
     }
 
-    void collectLits(std::set<Lit> &res) const {
+    void collectLits(LS &res) const {
         matrix->collectLits(res);
-    }
-
-    VS freeVars() const {
-        VS vars;
-        std::set<NumVar> bv = boundVars();
-        matrix->collectVars(vars);
-        for (const NumVar& x: bv) {
-            vars.erase(x);
-        }
-        return vars;
     }
 
     std::string toRedlog() const {
@@ -822,53 +849,25 @@ public:
 };
 
 template <ITheory... Th>
-BExpr<Th...> build(BoolExpressionSet<Th...> xs, ConcatOperator op) {
-    using BE = BExpr<Th...>;
-    using BES = BoolExpressionSet<Th...>;
-    std::stack<BE> todo;
-    for (const BE &x: xs) {
-        todo.push(x);
-    }
-    BES children;
-    while (!todo.empty()) {
-        BE current = todo.top();
-        if ((op == ConcatAnd && current->isAnd()) || (op == ConcatOr && current->isOr())) {
-            const BES &currentChildren = current->getChildren();
-            todo.pop();
-            for (const BE &c: currentChildren) {
-                todo.push(c);
-            }
-        } else {
-            children.insert(current);
-            todo.pop();
-        }
-    }
-    if (children.size() == 1) {
-        return *children.begin();
-    }
-    return BE(new BoolJunction(children, op));
-}
-
-template <ITheory... Th>
 const BExpr<Th...> operator &(const BExpr<Th...> a, const BExpr<Th...> b) {
-    const BoolExpressionSet<Th...> children = {a, b};
-    return buildAnd(children);
+    const BoolExpressionSet<Th...> children{a, b};
+    return BoolExpression<Th...>::buildAnd(children);
 }
 
 template <ITheory... Th>
 const BExpr<Th...> operator &(const BExpr<Th...> a, const typename Theory<Th...>::Lit &b) {
-    return a & buildTheoryLit<Th...>(b);
+    return a & BoolExpression<Th...>::buildTheoryLit(b);
 }
 
 template <ITheory... Th>
 const BExpr<Th...> operator |(const BExpr<Th...> a, const BExpr<Th...> b) {
-    const BoolExpressionSet<Th...> children = {a, b};
-    return buildOr(children);
+    const BoolExpressionSet<Th...> children{a, b};
+    return BoolExpression<Th...>::buildOr(children);
 }
 
 template <ITheory... Th>
 const BExpr<Th...> operator |(const BExpr<Th...> a, const typename Theory<Th...>::Lit b) {
-    return a | buildTheoryLit<Th...>(b);
+    return a | BoolExpression<Th...>::buildTheoryLit(b);
 }
 
 template <ITheory... Th>
@@ -896,10 +895,9 @@ bool operator !=(const BExpr<Th...> a, const BExpr<Th...> b) {
 }
 
 template <ITheory... Th>
-std::enable_if_t<(sizeof...(Th) > 0), std::ostream&> operator<<(std::ostream &s, const BExpr<Th...> e) {
-    static_assert(sizeof...(Th) > 0);
+std::ostream& operator<<(std::ostream &s, const BExpr<Th...> e) {
     if (e->getTheoryLit()) {
-        s << *e->getTheoryLit();
+        std::visit([&s](const auto &lit){s << lit;}, *e->getTheoryLit());
     } else if (e->getChildren().empty()) {
         if (e->isAnd()) {
             s << "TRUE";
@@ -924,43 +922,5 @@ std::enable_if_t<(sizeof...(Th) > 0), std::ostream&> operator<<(std::ostream &s,
         }
         s << ")";
     }
-    return s;
-}
-
-template <ITheory... Th>
-std::enable_if_t<(sizeof...(Th) > 0), std::ostream&> operator<<(std::ostream &s, const QuantifiedFormula<Th...> &f) {
-    static_assert(sizeof...(Th) > 0);
-    for (const auto &q: f.prefix) {
-        switch (q.getType()) {
-        case Quantifier::Type::Exists:
-            s << "EX";
-            break;
-        case Quantifier::Type::Forall:
-            s << "ALL";
-            break;
-        }
-        for (const auto &x: q.getVars()) {
-            s << " " << x;
-            const auto lb = q.lowerBound(x);
-            const auto ub = q.upperBound(x);
-            if (lb || ub) {
-                s << " in [";
-                if (lb) {
-                    s << *lb;
-                } else {
-                    s << "-oo";
-                }
-                s << ",";
-                if (ub) {
-                    s << *ub;
-                } else {
-                    s << "oo";
-                }
-                s << "]";
-            }
-        }
-        s << " . ";
-    }
-    s << f.matrix;
     return s;
 }

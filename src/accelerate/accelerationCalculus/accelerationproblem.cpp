@@ -24,7 +24,7 @@ AccelerationProblem::AccelerationProblem(
     }
     const auto &intUp = up.get<IntTheory>();
     const std::vector<ExprSubs> subs = closed.map([&intUp](auto const &closed){return std::vector<ExprSubs>{intUp, closed.update};}).get_value_or({intUp});
-    Logic logic = chooseLogic<std::set<Theory<IntTheory>::Lit>, ExprSubs>({guard->lits()}, subs);
+    Logic logic = chooseLogic<theory::LitSet<IntTheory>, ExprSubs>({guard->lits()}, subs);
     this->solver = SmtFactory::modelBuildingSolver<IntTheory>(logic, its);
     this->solver->add(guard);
     this->isConjunction = guard->isConjunction();
@@ -118,12 +118,12 @@ bool AccelerationProblem::monotonicity(const Rel &rel, Proof &proof) {
             premise.erase(rel);
             premise.erase(updated);
             for (const Rel &p: premise) {
-                const BExpr<IntTheory> lit = buildTheoryLit<IntTheory>(p);
+                const BExpr<IntTheory> lit = BoolExpression<IntTheory>::buildTheoryLit(p);
                 assumptions.insert(lit);
                 deps.insert(lit);
             }
-            assumptions.insert(buildTheoryLit<IntTheory>(updated));
-            assumptions.insert(buildTheoryLit<IntTheory>(!rel));
+            assumptions.insert(BoolExpression<IntTheory>::buildTheoryLit(updated));
+            assumptions.insert(BoolExpression<IntTheory>::buildTheoryLit(!rel));
             const auto &unsatCore = SmtFactory::unsatCore(assumptions, its);
             if (!unsatCore.empty()) {
                 RelSet dependencies;
@@ -134,13 +134,12 @@ bool AccelerationProblem::monotonicity(const Rel &rel, Proof &proof) {
                         dependencies.insert(std::get<Rel>(*lit.begin()));
                     }
                 }
-                const auto newGuard = buildTheoryLit<IntTheory>(newCond);
+                const auto newGuard = BoolExpression<IntTheory>::buildTheoryLit(newCond);
                 if (SmtFactory::check(newGuard & *bound, its) == Sat) {
                     option<unsigned int> idx = store(rel, dependencies, newGuard);
                     if (idx) {
                         std::stringstream ss;
-                        // TODO
-//                        ss << rel << " [" << idx.get() << "]: montonic decrease yields " << newGuard;
+                        ss << rel << " [" << idx.get() << "]: montonic decrease yields " << newGuard;
                         if (!dependencies.empty()) {
                             ss << ", dependencies:";
                             for (const Rel &rel: dependencies) {
@@ -167,12 +166,12 @@ bool AccelerationProblem::recurrence(const Rel &rel, Proof &proof) {
         premise.erase(rel);
         premise.erase(updated);
         for (const Rel &p: premise) {
-            const auto b = buildTheoryLit<IntTheory>(p);
+            const auto b = BoolExpression<IntTheory>::buildTheoryLit(p);
             assumptions.insert(b);
             deps.insert(b);
         }
-        assumptions.insert(buildTheoryLit<IntTheory>(rel));
-        assumptions.insert(buildTheoryLit<IntTheory>(!updated));
+        assumptions.insert(BoolExpression<IntTheory>::buildTheoryLit(rel));
+        assumptions.insert(BoolExpression<IntTheory>::buildTheoryLit(!updated));
         const auto unsatCore = SmtFactory::unsatCore(assumptions, its);
         if (!unsatCore.empty()) {
             RelSet dependencies;
@@ -184,12 +183,11 @@ bool AccelerationProblem::recurrence(const Rel &rel, Proof &proof) {
                 }
             }
             dependencies.erase(rel);
-            const auto newGuard = buildTheoryLit<IntTheory>(rel);
+            const auto newGuard = BoolExpression<IntTheory>::buildTheoryLit(rel);
             option<unsigned int> idx = store(rel, dependencies, newGuard, true, true);
             if (idx) {
                 std::stringstream ss;
-                // TODO
-//                ss << rel << " [" << idx.get() << "]: monotonic increase yields " << newGuard;
+                ss << rel << " [" << idx.get() << "]: monotonic increase yields " << newGuard;
                 if (!dependencies.empty()) {
                     ss << ", dependencies:";
                     for (const Rel &rel: dependencies) {
@@ -222,12 +220,12 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel, Proof &proof) {
             premise.erase(dec);
             premise.erase(!inc);
             for (const Rel &p: premise) {
-                const auto lit = buildTheoryLit<IntTheory>(p);
+                const auto lit = BoolExpression<IntTheory>::buildTheoryLit(p);
                 assumptions.insert(lit);
                 deps.insert(lit);
             }
-            assumptions.insert(buildTheoryLit<IntTheory>(dec));
-            assumptions.insert(buildTheoryLit<IntTheory>(inc));
+            assumptions.insert(BoolExpression<IntTheory>::buildTheoryLit(dec));
+            assumptions.insert(BoolExpression<IntTheory>::buildTheoryLit(inc));
             const auto unsatCore = SmtFactory::unsatCore(assumptions, its);
             if (!unsatCore.empty()) {
                 RelSet dependencies;
@@ -238,13 +236,12 @@ bool AccelerationProblem::eventualWeakDecrease(const Rel &rel, Proof &proof) {
                         dependencies.insert(std::get<Rel>(*lit.begin()));
                     }
                 }
-                const auto newGuard = buildTheoryLit<IntTheory>(rel) & newCond;
+                const auto newGuard = BoolExpression<IntTheory>::buildTheoryLit(rel) & newCond;
                 if (SmtFactory::check(newGuard & *bound, its) == Sat) {
                     option<unsigned int> idx = store(rel, dependencies, newGuard);
                     if (idx) {
                         std::stringstream ss;
-                        // TODO
-//                        ss << rel << " [" << idx.get() << "]: eventual decrease yields " << newGuard;
+                        ss << rel << " [" << idx.get() << "]: eventual decrease yields " << newGuard;
                         if (!dependencies.empty()) {
                             ss << ", dependencies:";
                             for (const Rel &rel: dependencies) {
@@ -277,12 +274,12 @@ bool AccelerationProblem::eventualWeakIncrease(const Rel &rel, Proof &proof) {
         premise.erase(inc);
         premise.erase(!dec);
         for (const Rel &p: premise) {
-            const auto lit = buildTheoryLit<IntTheory>(p);
+            const auto lit = BoolExpression<IntTheory>::buildTheoryLit(p);
             assumptions.insert(lit);
             deps.insert(lit);
         }
-        assumptions.insert(buildTheoryLit<IntTheory>(dec));
-        assumptions.insert(buildTheoryLit<IntTheory>(inc));
+        assumptions.insert(BoolExpression<IntTheory>::buildTheoryLit(dec));
+        assumptions.insert(BoolExpression<IntTheory>::buildTheoryLit(inc));
         const auto unsatCore = SmtFactory::unsatCore(assumptions, its);
         if (!unsatCore.empty()) {
             RelSet dependencies;
@@ -293,13 +290,12 @@ bool AccelerationProblem::eventualWeakIncrease(const Rel &rel, Proof &proof) {
                     dependencies.insert(std::get<Rel>(*lit.begin()));
                 }
             }
-            const auto newGuard = buildTheoryLit<IntTheory>(rel) & inc;
+            const auto newGuard = BoolExpression<IntTheory>::buildTheoryLit(rel) & inc;
             if (SmtFactory::check(newGuard, its) == Sat) {
                 option<unsigned int> idx = store(rel, dependencies, newGuard, false, true);
                 if (idx) {
                     std::stringstream ss;
-                    // TODO
-//                    ss << rel << " [" << idx.get() << "]: eventual increase yields " << newGuard;
+                    ss << rel << " [" << idx.get() << "]: eventual increase yields " << newGuard;
                     if (!dependencies.empty()) {
                         ss << ", dependencies:";
                         for (const Rel &rel: dependencies) {
@@ -320,20 +316,19 @@ bool AccelerationProblem::fixpoint(const Rel &rel, Proof &proof) {
     if (res.find(rel) == res.end()) {
         std::vector<Theory<IntTheory>::Lit> eqs;
         theory::VarSet<IntTheory> relVars;
-        relVars.collectVars(rel);
+        relVars.get<NumVar>() = rel.vars();
         const auto vars = util::RelevantVariables<IntTheory>::find(relVars, {up}, BoolExpression<IntTheory>::True);
         for (const auto& v: vars) {
             const NumVar &var = std::get<NumVar>(v);
             eqs.push_back(Rel::buildEq(var, Expr(var).subs(up.get<IntTheory>())));
         }
-        const auto allEq = buildAnd<IntTheory>(eqs);
+        const auto allEq = BoolExpression<IntTheory>::buildAndFromLits(eqs);
         if (SmtFactory::check(guard & rel & allEq, its) == Sat) {
             BExpr<IntTheory> newGuard = allEq & rel;
             option<unsigned int> idx = store(rel, {}, newGuard, false, true);
             if (idx) {
                 std::stringstream ss;
-                // TODO
-//                ss << rel << " [" << idx.get() << "]: fixpoint yields " << newGuard;
+                ss << rel << " [" << idx.get() << "]: fixpoint yields " << newGuard;
                 proof.newline();
                 proof.append(ss);
                 return true;
@@ -403,24 +398,22 @@ std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationProblem::
     }
     ReplacementMap map = computeReplacementMap(false);
     if (map.acceleratedAll || !isConjunction) {
-        bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || SmtFactory::isImplication(guard, buildTheoryLit<IntTheory>(Rel::buildGt(cost, 0)), its);
+        bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || SmtFactory::isImplication(guard, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0)), its);
         bool nt = map.nonterm && positiveCost;
-        BExpr<IntTheory> newGuard = guard->replaceLits(map.map);
+        BExpr<IntTheory> newGuard = guard->replaceLits<IntTheory>(map.map);
         if (!nt) newGuard = newGuard & *bound;
         if (SmtFactory::check(newGuard, its) == Sat) {
             Proof accelProof(proof);
-            // TODO
-//            accelProof.append(std::stringstream() << "Replacement map: " << map.map);
+            accelProof.append(std::stringstream() << "Replacement map: " << map.map);
             ret.emplace_back(newGuard, accelProof, map.exact, nt);
         }
         if (Config::Analysis::tryNonterm() && closed && positiveCost && !map.nonterm) {
             ReplacementMap map = computeReplacementMap(true);
             if (map.acceleratedAll || !isConjunction) {
-                BExpr<IntTheory> newGuard = guard->replaceLits(map.map);
+                BExpr<IntTheory> newGuard = guard->replaceLits<IntTheory>(map.map);
                 if (SmtFactory::check(newGuard, its) == Sat) {
                     Proof nontermProof(proof);
-                    // TODO
-//                    nontermProof.append(std::stringstream() << "Replacement map: " << map.map);
+                    nontermProof.append(std::stringstream() << "Replacement map: " << map.map);
                     ret.emplace_back(newGuard, nontermProof, map.exact, true);
                 }
             }

@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include "exceptions.hpp"
 #include "smtcontext.hpp"
 #include "config.hpp"
 #include "boolexpr.hpp"
@@ -88,7 +87,7 @@ protected:
 
         std::stringstream ss;
         ss << "Error: conversion not implemented for term: " << e << std::endl;
-        throw ConversionError(ss.str());
+        throw std::invalid_argument(ss.str());
     }
 
     EXPR convertAdd(const Expr &e){
@@ -149,7 +148,7 @@ protected:
             return context.getReal(num.numer().to_long(), num.denom().to_long());
 
         } catch (...) {
-            throw LargeConstantError("Numeric constant too large, cannot convert");
+            throw std::invalid_argument("Numeric constant too large, cannot convert");
         }
     }
 

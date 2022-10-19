@@ -310,7 +310,7 @@ bool Analysis::removeUnsatRules() {
     bool changed = false;
 
     for (TransIdx rule : its.getAllTransitions()) {
-        if (SmtFactory::check<IntTheory, BoolTheory>(its.getRule(rule).getGuard(), its) == Unsat) {
+        if (SmtFactory::check(its.getRule(rule).getGuard(), its) == Unsat) {
             its.removeRule(rule);
             changed = true;
         }

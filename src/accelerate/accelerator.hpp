@@ -20,7 +20,7 @@
 
 #include "types.hpp"
 #include "itsproblem.hpp"
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "complexity.hpp"
 #include "accelerationresult.hpp"
 

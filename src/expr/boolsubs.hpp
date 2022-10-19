@@ -9,7 +9,7 @@ class BoolSubs {
 
     using BoolExpr = BExpr<Th...>;
     using T = Theory<Th...>;
-    using VarSet = typename T::VarSet;
+    using VarSet = theory::VarSet<Th...>;
 
     std::map<BoolVar, BoolExpr> map;
 
@@ -27,7 +27,7 @@ public:
 
     BoolExpr get(const BoolVar &var) const {
         const auto it = map.find(var);
-        return it == map.end() ? buildTheoryLit<Th...>(var) : it->second;
+        return it == map.end() ? BoolExpression<Th...>::buildTheoryLit(var) : it->second;
     }
 
     BoolExpr subs(const BoolLit &lit) const {
@@ -54,7 +54,7 @@ public:
             for (const auto &c: e->getChildren()) {
                 children.push_back((*this)(c));
             }
-            return e->isAnd() ? buildAnd(children) : buildOr(children);
+            return e->isAnd() ? BoolExpression<Th...>::buildAnd(children) : BoolExpression<Th...>::buildOr(children);
         } else {
             return e;
         }
@@ -99,7 +99,7 @@ public:
         if (!contains(key)) {
             return false;
         }
-        return buildLit<Th...>(key) != map.at(key);
+        return BoolExpression<Th...>::buildTheoryLit(BoolLit(key)) != map.at(key);
     }
 
     std::set<BoolVar> domain() const {
@@ -128,15 +128,15 @@ public:
         }
     }
 
-    void collectVars(std::set<BoolVar> &vars) const {
+    void collectVars(VarSet &vars) const {
         for (const auto &p: map) {
             vars.insert(p.first);
             p.second->collectVars(vars);
         }
     }
 
-    unsigned hash() const {
-        unsigned hash = 7;
+    size_t hash() const {
+        size_t hash = 7;
         for (const auto& p: *this) {
             hash = hash * 31 + p.first.hash();
             hash = hash * 31 + p.second->hash();

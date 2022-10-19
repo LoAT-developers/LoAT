@@ -93,7 +93,7 @@ public:
     virtual void add(const BoolExpr e) = 0;
 
     void add(const Lit &e) {
-        return this->add(buildTheoryLit<Th...>(e));
+        return this->add(BoolExpression<Th...>::buildTheoryLit(e));
     }
 
     virtual void push() {

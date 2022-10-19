@@ -1,5 +1,6 @@
 #include "KoatParseVisitor.h"
-#include "exceptions.hpp"
+#include "boolexpression.hpp"
+#include "variable.hpp"
 
 using fs_type = LocationIdx;
 using lhs_type = LocationIdx;
@@ -72,7 +73,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
                                varRenaming.put<IntTheory>(x, its.addFreshTemporaryVariable<IntTheory>(x.getName()));
                            },
                            [&](const BoolVar &x){
-                               varRenaming.put<BoolTheory>(x, theory::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(x.getName())));
+                               varRenaming.put<BoolTheory>(x, boolExpression::build(its.addFreshTemporaryVariable<BoolTheory>(x.getName())));
                            }
                        }, x);
         }
@@ -91,11 +92,11 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
     } else {
         unsigned sz = programVars.size();
         if (sz != ctx->var().size()) {
-            throw ParseError("wrong arity: " + ctx->getText());
+            throw std::invalid_argument("wrong arity: " + ctx->getText());
         }
         for (unsigned i = 0; i < sz; ++i) {
             if (programVars[i] != *its.getVar(ctx->var(i)->getText())) {
-                throw ParseError("invalid arguments: expected " + theory::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
+                throw std::invalid_argument("invalid arguments: expected " + variable::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
             }
         }
     }
@@ -172,12 +173,12 @@ antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
             return arg1 + arg2;
         }
     }
-    throw ParseError("failed to parse expression " + ctx->getText());
+    throw std::invalid_argument("failed to parse expression " + ctx->getText());
 }
 
 antlrcpp::Any KoatParseVisitor::visitFormula(KoatParser::FormulaContext *ctx) {
     if (ctx->lit()) {
-        return buildTheoryLit<IntTheory>(any_cast<lit_type>(visit(ctx->lit())));
+        return BoolExpression<IntTheory>::buildTheoryLit(any_cast<lit_type>(visit(ctx->lit())));
     } else if (ctx->LPAR()) {
         return visit(ctx->formula(0));
     } else {
@@ -189,13 +190,13 @@ antlrcpp::Any KoatParseVisitor::visitFormula(KoatParser::FormulaContext *ctx) {
             return arg1 | arg2;
         }
     }
-    throw ParseError("failed to parse formula " + ctx->getText());
+    throw std::invalid_argument("failed to parse formula " + ctx->getText());
 }
 
 antlrcpp::Any KoatParseVisitor::visitLit(KoatParser::LitContext *ctx) {
     const auto &children = ctx->children;
     if (children.size() != 3) {
-        throw ParseError("expected relation: " + ctx->getText());
+        throw std::invalid_argument("expected relation: " + ctx->getText());
     }
     const auto arg1 = any_cast<expr_type>(visit(ctx->expr(0)));
     const auto op = any_cast<relop_type>(visit(children[1]));
@@ -217,6 +218,6 @@ antlrcpp::Any KoatParseVisitor::visitRelop(KoatParser::RelopContext *ctx) {
     } else if (ctx->NEQ()) {
         return Rel::neq;
     } else {
-        throw ParseError("unknown relation: " + ctx->getText());
+        throw std::invalid_argument("unknown relation: " + ctx->getText());
     }
 }

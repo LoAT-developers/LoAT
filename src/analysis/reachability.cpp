@@ -7,6 +7,8 @@
 #include "yices.hpp"
 #include "smtfactory.hpp"
 #include "export.hpp"
+#include "expression.hpp"
+#include "boolexpression.hpp"
 
 #include <numeric>
 
@@ -76,7 +78,7 @@ Rule Reachability::rename_tmp_vars(const Rule &rule) {
                 sigma.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
             } else if (std::holds_alternative<BoolVar>(x)) {
                 const auto &var = std::get<BoolVar>(x);
-                sigma.put<BoolTheory>(var, buildTheoryLit<IntTheory, BoolTheory>(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
+                sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
             }
         }
     }
@@ -190,11 +192,11 @@ BoolExpr Reachability::project(const TransIdx idx) {
     std::vector<Lit> res;
     const Subs model = sigmas.back().compose(z3.model().toSubs());
     for (const auto &rel: its.getRule(idx).getGuard()->lits()) {
-        if (theory::subs(rel, model)->isTriviallyTrue()) {
+        if (literal::subs(rel, model)->isTriviallyTrue()) {
             res.push_back(rel);
         }
     }
-    return buildAnd(res);
+    return BExpression::buildAndFromLits(res);
 }
 
 bool Reachability::covers(const Subs &model, const BoolExpr &rels) const {
@@ -250,12 +252,12 @@ void Reachability::handle_update(const TransIdx idx) {
         if (std::holds_alternative<NumVar>(v)) {
             const auto &var = std::get<NumVar>(v);
             const auto x = its.getFreshUntrackedSymbol<IntTheory>(var.getName(), Expr::Int);
-            z3.add(theory::buildTheoryLit(Rel::buildEq(x, up.get<IntTheory>(var).subs(oldSigma.get<IntTheory>()))));
+            z3.add(boolExpression::build(Rel::buildEq(x, up.get<IntTheory>(var).subs(oldSigma.get<IntTheory>()))));
             newSigma.put<IntTheory>(var, x);
         } else if (std::holds_alternative<BoolVar>(v)) {
             const auto &var = std::get<BoolVar>(v);
             const auto x = its.getFreshUntrackedSymbol<BoolTheory>(var.getName(), Expr::Bool);
-            const auto lhs = theory::buildTheoryLit(x);
+            const auto lhs = boolExpression::build(x);
             const auto rhs = up.get<BoolTheory>(var)->subs(oldSigma);
             z3.add((lhs & rhs) | ((!lhs) & (!rhs)));
             newSigma.put<BoolTheory>(var, lhs);
@@ -264,9 +266,9 @@ void Reachability::handle_update(const TransIdx idx) {
     for (const auto &var: r.vars()) {
         if (its.isTempVar(var)) {
             if (std::holds_alternative<NumVar>(var)) {
-                newSigma.put<IntTheory>(std::get<NumVar>(var), its.getFreshUntrackedSymbol<IntTheory>(theory::getName(var), Expr::Int));
+                newSigma.put<IntTheory>(std::get<NumVar>(var), its.getFreshUntrackedSymbol<IntTheory>(variable::getName(var), Expr::Int));
             } else if (std::holds_alternative<BoolVar>(var)) {
-                newSigma.put<BoolTheory>(std::get<BoolVar>(var), theory::buildTheoryLit(its.getFreshUntrackedSymbol<BoolTheory>(theory::getName(var), Expr::Bool)));
+                newSigma.put<BoolTheory>(std::get<BoolVar>(var), boolExpression::build(its.getFreshUntrackedSymbol<BoolTheory>(variable::getName(var), Expr::Bool)));
             } else {
                 throw std::logic_error("unsupported theory");
             }
@@ -330,7 +332,7 @@ void Reachability::print_run(std::ostream &s) {
         std::cout << (*it) << std::endl;
         s << " [";
         for (const auto &x: prog_vars) {
-            s << " " << x << "=" << model.subs(it->get(x));
+            s << " " << x << "=" << expression::subs(it->get(x), model);
         }
         ++it;
         s << " ] " << step.transition;
@@ -388,7 +390,7 @@ void Reachability::init() {
         if (!its.isTempVar(x)) {
             std::visit(Overload{
                            [&sigma](const NumVar &x){sigma.put<IntTheory>(x, x);},
-                           [&sigma](const BoolVar &x){sigma.put<BoolTheory>(x, theory::buildTheoryLit(x));}
+                           [&sigma](const BoolVar &x){sigma.put<BoolTheory>(x, boolExpression::build(x));}
                        }, x);
             prog_vars.insert(x);
         }
@@ -435,12 +437,12 @@ void Reachability::unsat() {
 option<BoolExpr> Reachability::do_step(const TransIdx idx) {
     Subs sigma = sigmas.back();
     const Rule r = its.getRule(idx);
-    BoolExpr g = sigma.subs(r.getGuard());
+    BoolExpr g = r.getGuard()->subs(sigma);
     z3.add(g);
     const auto block = blocked.back().find(idx);
     if (block != blocked.back().end()) {
         for (const auto &b: block->second) {
-            z3.add(!sigma.subs(b));
+            z3.add(!b->subs(sigma));
         }
     }
     if (z3.check() == Sat) {
@@ -559,7 +561,7 @@ Reachability::State Reachability::handle_loop(const int backlink) {
     }
     drop_loop(backlink);
     z3.push();
-    z3.add(sigmas.back().subs(accel.getGuard()));
+    z3.add(accel.getGuard()->subs(sigmas.back()));
     if (z3.check() != Sat) {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
         z3.pop();

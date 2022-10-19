@@ -26,7 +26,6 @@
 #include "proof.hpp"
 #include "version.hpp"
 #include "reachability.hpp"
-#include "exceptions.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -145,24 +144,19 @@ int main(int argc, char *argv[]) {
     }
 
     ITSProblem its;
-    try {
-        switch (Config::Input::format) {
-        case Config::Input::Koat:
-            its = parser::ITSParser::loadFromFile(filename);
-            break;
-        case Config::Input::Its:
-            its = sexpressionparser::Parser::loadFromFile(filename);
-            break;
-        case Config::Input::Horn:
-            its = hornParser::HornParser::loadFromFile(filename);
-            break;
-        default:
-            std::cout << "Error: unknown format" << std::endl;
-            exit(1);
-        }
-    } catch (const FileError &err) {
-        cout << "Error loading file " << filename << ": " << err.what() << endl;
-        return 1;
+    switch (Config::Input::format) {
+    case Config::Input::Koat:
+        its = parser::ITSParser::loadFromFile(filename);
+        break;
+    case Config::Input::Its:
+        its = sexpressionparser::Parser::loadFromFile(filename);
+        break;
+    case Config::Input::Horn:
+        its = hornParser::HornParser::loadFromFile(filename);
+        break;
+    default:
+        std::cout << "Error: unknown format" << std::endl;
+        exit(1);
     }
 
     if (proofLevel < 0) {

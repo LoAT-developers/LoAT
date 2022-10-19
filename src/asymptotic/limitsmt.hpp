@@ -1,7 +1,6 @@
-#ifndef LIMITSMT_H
-#define LIMITSMT_H
+#pragma once
 
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "boolexpr.hpp"
 #include "variablemanager.hpp"
 #include "limitproblem.hpp"
@@ -17,4 +16,3 @@ namespace LimitSmtEncoding {
     std::pair<ExprSubs, Complexity> applyEncoding(const BExpr<IntTheory> exp, const Expr &cost, VarMan &varMan, Complexity currentRes, unsigned int timeout);
 }
 
-#endif //LIMITSMT_H

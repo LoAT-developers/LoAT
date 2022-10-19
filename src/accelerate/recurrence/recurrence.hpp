@@ -20,7 +20,7 @@
 #include "rule.hpp"
 #include "variablemanager.hpp"
 #include "option.hpp"
-#include "expression.hpp"
+#include "numexpression.hpp"
 
 
 /**

@@ -21,7 +21,7 @@
 #include "metertools.hpp"
 
 #include "guardtoolbox.hpp"
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
 #include "boolexpr.hpp"
@@ -163,7 +163,7 @@ BExpr<IntTheory> MeteringFinder::genNotGuardImplication() const {
         lhs.erase(conclusion);
     }
 
-    return buildAnd<IntTheory>(res);
+    return BoolExpression<IntTheory>::buildAnd(res);
 }
 
 BExpr<IntTheory> MeteringFinder::genGuardPositiveImplication(bool strict) const {
@@ -217,7 +217,7 @@ BExpr<IntTheory> MeteringFinder::genNonTrivial() const {
     for (const auto &c : meterVars.coeffs) {
         res.push_back(Rel::buildNeq(c, 0));
     }
-    return buildOr<IntTheory>(res);
+    return BoolExpression<IntTheory>::buildOrFromLits(res);
 }
 
 
@@ -349,7 +349,7 @@ option<Rule> MeteringFinder::strengthenGuard(VarMan &varMan, const Rule &rule) {
         for (const auto &lit: *conj) {
             guard.push_back(std::get<Rel>(lit));
         }
-        return rule.withGuard(buildAnd(guard));
+        return rule.withGuard(BExpression::buildAndFromLits(guard));
     } else {
         return {};
     }

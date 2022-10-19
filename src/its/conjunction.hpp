@@ -2,6 +2,8 @@
 
 #include "itheory.hpp"
 #include "rel.hpp"
+#include "thset.hpp"
+#include "literaltemplates.hpp"
 
 #include <variant>
 #include <vector>
@@ -15,12 +17,6 @@ class Conjunction : public std::vector<std::variant<typename Th::Lit...>> {
 public:
     // inherit constructors of base class
     using std::vector<typename T::Lit>::vector;
-
-    void collectVariables(theory::VarSet<Th...> &res) const {
-        for (const Lit &lit : *this) {
-            res.collectVars(lit);
-        }
-    }
 
     /**
      * Returns true iff all guard terms are relational without the use of !=
@@ -39,6 +35,18 @@ public:
                 return lit.isLinear();
             }, lit);
         });
+    }
+
+    void collectVars(theory::VarSet<Th...> &vars) const {
+        for (const auto &lit: *this) {
+            literal::collectVars<Th...>(lit, vars);
+        }
+    }
+
+    theory::VarSet<Th...> vars() const {
+        theory::VarSet<Th...> res;
+        collectVars(res);
+        return res;
     }
 
 };

@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "expression.hpp"
+#include "numexpression.hpp"
 
 /**
  * This enum represents a direction. POS stands for POS_INF or POS_CONS.

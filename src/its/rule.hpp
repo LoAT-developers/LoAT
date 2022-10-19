@@ -26,6 +26,7 @@
 #include "option.hpp"
 #include "theory.hpp"
 #include "config.hpp"
+#include "substitution.hpp"
 
 
 class RuleLhs {
@@ -49,8 +50,8 @@ public:
     const Expr& getCost() const { return cost; }
 
     void collectVars(VarSet &vars) const {
-        vars.collectVars(guard);
-        vars.collectVars(cost);
+        guard->collectVars(vars);
+        cost.collectVars(vars.get<NumVar>());
     }
 
     unsigned hash() const {
@@ -75,11 +76,11 @@ public:
     const Subs& getUpdate() const { return update; }
 
     void collectVars(VarSet &vars) const {
-        update.collectVars(vars);
+        substitution::collectVars(update, vars);
     }
 
-    unsigned hash() const {
-        unsigned hash = 7;
+    size_t hash() const {
+        size_t hash = 7;
         hash = hash * 31 + loc;
         hash = hash * 31 + update.hash();
         return hash;
@@ -151,7 +152,6 @@ public:
     // Note: Result may be incorrect if an updated variable is updated (which is not checked!)
     // Note: It is always safe if only temporary variables are substituted.
     Rule subs(const Subs &subs) const;
-    Rule subs(const ThSubs &subs) const;
 
     // Creates a new rule that only leads to the given location, the updates are cleared, guard/cost are kept
     LinearRule replaceRhssBySink(LocationIdx sink) const;

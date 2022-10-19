@@ -18,9 +18,10 @@
 #pragma once
 
 #include "option.hpp"
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "rel.hpp"
 #include "theory.hpp"
+#include "variable.hpp"
 
 #include <map>
 
@@ -92,10 +93,10 @@ public:
 
     EXPR addNewVariable(const Var &symbol, Expr::Type type) {
         assert(varMap.find(symbol) == varMap.end());
-        assert(nameMap.find(theory::getName(symbol)) == nameMap.end());
-        EXPR res = generateFreshVar(theory::getName(symbol), type);
+        assert(nameMap.find(variable::getName(symbol)) == nameMap.end());
+        EXPR res = generateFreshVar(variable::getName(symbol), type);
         varMap.emplace(symbol, res);
-        nameMap.emplace(theory::getName(symbol), symbol);
+        nameMap.emplace(variable::getName(symbol), symbol);
         return res;
     }
 
@@ -127,12 +128,7 @@ protected:
         return buildVar(generateFreshVarName(basename), type);
     }
 
-    EXPR generateFreshConst(const std::string &basename) {
-        return buildConst(generateFreshVarName(basename));
-    }
-
     virtual EXPR buildVar(const std::string &name, Expr::Type type) = 0;
-    virtual EXPR buildConst(const std::string &name) = 0;
 
 protected:
     std::map<Var, EXPR> varMap;

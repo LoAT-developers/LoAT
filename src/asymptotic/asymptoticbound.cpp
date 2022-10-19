@@ -5,8 +5,7 @@
 #include <algorithm>
 #include <sstream>
 
-#include "expression.hpp"
-#include "guardtoolbox.hpp"
+#include "numexpression.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
 #include "limitsmt.hpp"
@@ -224,7 +223,7 @@ int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
 
 void AsymptoticBound::removeUnsatProblems() {
     for (int i = limitProblems.size() - 1; i >= 0; --i) {
-        auto result = SmtFactory::check(buildAnd<IntTheory>(limitProblems[i].getQuery()), varMan);
+        auto result = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(limitProblems[i].getQuery()), varMan);
 
         if (result == Unsat) {
             limitProblems.erase(limitProblems.begin() + i);
@@ -689,7 +688,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
         if (it->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const auto &query = currentLP.getQuery();
             auto solver = SmtFactory::modelBuildingSolver<IntTheory>(chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}), varMan);
-            solver->add(buildAnd<IntTheory>(query));
+            solver->add(BoolExpression<IntTheory>::buildAndFromLits(query));
             SmtResult result = solver->check();
 
             if (result == Unsat) {
@@ -778,7 +777,7 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
 
     // Handle nontermination. It suffices to check that the guard is satisfiable
     if (expandedCost.isNontermSymbol()) {
-        auto smtRes = SmtFactory::check(buildAnd<IntTheory>(guard), varMan);
+        auto smtRes = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(guard), varMan);
         if (smtRes == Sat) {
             Proof proof;
             proof.append("Guard is satisfiable, yielding nontermination");
@@ -844,7 +843,7 @@ AsymptoticBound::Result AsymptoticBound:: determineComplexityViaSMT(VarMan &varM
     Expr expandedCost = cost.expand();
     // Handle nontermination. It suffices to check that the guard is satisfiable
     if (expandedCost.isNontermSymbol()) {
-        auto smtRes = SmtFactory::check(buildAnd<IntTheory>(guard), varMan);
+        auto smtRes = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(guard), varMan);
         if (smtRes == Sat) {
             Proof proof;
             proof.append("proved non-termination via SMT");

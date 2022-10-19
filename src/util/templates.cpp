@@ -32,8 +32,7 @@ const std::set<NumVar>& Templates::vars() const {
 }
 
 bool Templates::isParametric(const Expr &e) const {
-    theory::VarSet<IntTheory> relVars;
-    relVars.collectVars(e);
+    std::set<NumVar> relVars = e.vars();
     for (const auto &x: params()) {
         if (relVars.find(x) != relVars.end()) {
             return true;

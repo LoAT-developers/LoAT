@@ -16,7 +16,6 @@
  */
 
 #include "itsparser.hpp"
-#include "exceptions.hpp"
 #include "KoatLexer.h"
 #include "KoatParser.h"
 #include "KoatParseVisitor.h"
@@ -28,7 +27,7 @@ using namespace parser;
 ITSProblem ITSParser::loadFromFile(const std::string &filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
-        throw FileError("Unable to open file: " + filename);
+        throw std::invalid_argument("Unable to open file: " + filename);
     }
     ANTLRInputStream input(file);
     KoatLexer lexer(&input);
@@ -38,7 +37,7 @@ ITSProblem ITSParser::loadFromFile(const std::string &filename) {
     KoatParseVisitor vis;
     auto ctx = parser.main();
     if (parser.getNumberOfSyntaxErrors() > 0) {
-        throw FileError("parsing failed");
+        throw std::invalid_argument("parsing failed");
     } else {
         return any_cast<ITSProblem>(vis.visit(ctx));
     }

@@ -5,6 +5,7 @@
 #include "z3.hpp"
 #include "config.hpp"
 #include "itheory.hpp"
+#include "theory.hpp"
 
 namespace SmtFactory {
 

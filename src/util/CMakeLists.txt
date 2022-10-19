@@ -1,6 +1,5 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-        exceptions.hpp
         option.hpp
         proof.hpp
         proof.cpp

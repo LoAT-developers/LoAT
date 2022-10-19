@@ -80,7 +80,7 @@ Rule Rule::subs(const Subs &subs) const {
     for (const RuleRhs &rhs : rhss) {
         newRhss.push_back(RuleRhs(rhs.getLoc(), rhs.getUpdate().concat(subs)));
     }
-    return Rule(RuleLhs(getLhsLoc(), subs.subs(getGuard()), subs.subs(getCost())), newRhss);
+    return Rule(RuleLhs(getLhsLoc(), getGuard()->subs(subs), getCost().subs(subs.get<IntTheory>())), newRhss);
 }
 
 LinearRule Rule::replaceRhssBySink(LocationIdx sink) const {
@@ -134,9 +134,9 @@ bool Rule::approxEqual(const Rule &that, bool compareRhss) const {
 
             // update has to be fully equal (one inclusion suffices, since the size is equal)
             for (const auto &itA : updateA) {
-                auto itB = updateB.find(theory::first(itA));
+                auto itB = updateB.find(substitution::first(itA));
                 if (itB == updateB.end()) return false;
-                if (theory::second(*itB) != theory::second(itA)) return false;
+                if (substitution::second(*itB) != substitution::second(itA)) return false;
             }
         }
     }

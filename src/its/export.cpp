@@ -1,6 +1,8 @@
 #include "export.hpp"
 #include "config.hpp"
 #include "theory.hpp"
+#include "substitution.hpp"
+#include "literal.hpp"
 
 using namespace std;
 namespace Color = Config::Color;
@@ -50,8 +52,8 @@ void ITSExport::printRule(const Rule &rule, const ITSProblem &its, std::ostream 
 
         for (auto upit : it->getUpdate()) {
             if (colors) printColor(s, Color::Update);
-            s << theory::first(upit) << "'";
-            s << "=" << theory::second(upit);
+            s << substitution::first(upit) << "'";
+            s << "=" << substitution::second(upit);
             if (colors) printColor(s, Color::None);
             s << ", ";
         }
@@ -191,7 +193,7 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
                     s << ((first) ? "(" : ",");
                     auto it = rhs->getUpdate().find(var);
                     if (it != rhs->getUpdate().end()) {
-                        s << theory::second(*it);
+                        s << substitution::second(*it);
                     } else {
                         s << var;
                     }

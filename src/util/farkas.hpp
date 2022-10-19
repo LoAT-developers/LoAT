@@ -18,7 +18,7 @@
 #ifndef FARKAS_H
 #define FARKAS_H
 
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "variablemanager.hpp"
 #include <vector>
 

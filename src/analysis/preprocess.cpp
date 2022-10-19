@@ -16,7 +16,7 @@
  */
 
 #include "preprocess.hpp"
-
+#include "substitution.hpp"
 #include "guardtoolbox.hpp"
 
 using namespace std;
@@ -62,8 +62,8 @@ Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule, const ITSProblem
 bool Preprocess::removeTrivialUpdates(Subs &update) {
     stack<Var> remove;
     for (const auto &it : update) {
-        const auto first = theory::first(it);
-        const auto second = theory::second(it);
+        const auto first = substitution::first(it);
+        const auto second = substitution::second(it);
         if (first == second) {
             remove.push(first);
         }
@@ -85,7 +85,7 @@ static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     VarSet varsInUpdate;
     for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
         for (const auto &it : rhs->getUpdate()) {
-            varsInUpdate.collectVars(theory::second(it));
+            expression::collectVars(substitution::second(it), varsInUpdate);
         }
     }
     return varsInUpdate;

@@ -1,6 +1,5 @@
 #include "redlogparsevisitor.h"
-#include "expression.hpp"
-#include "exceptions.hpp"
+#include "numexpression.hpp"
 #include "redlogLexer.h"
 #include "redlogParser.h"
 
@@ -51,24 +50,24 @@ antlrcpp::Any RedlogParseVisitor::visitExpr(redlogParser::ExprContext *ctx) {
       }
       return res;
   }
-  throw ParseError("failed to parse redlog expression: " + ctx->getText());
+  throw std::invalid_argument("failed to parse redlog expression: " + ctx->getText());
 }
 
 antlrcpp::Any RedlogParseVisitor::visitCaop(redlogParser::CaopContext *ctx) {
   if (ctx->PLUS()) return Plus;
   else if (ctx->TIMES()) return Times;
-  else throw ParseError("failed to parse redlog operator: " + ctx->getText());
+  else throw std::invalid_argument("failed to parse redlog operator: " + ctx->getText());
 }
 
 antlrcpp::Any RedlogParseVisitor::visitBinop(redlogParser::BinopContext *ctx) {
     if (ctx->EXP()) return Exp;
     else if (ctx->MINUS()) return Minus;
-    else throw ParseError("failed to parse redlog operator: " + ctx->getText());
+    else throw std::invalid_argument("failed to parse redlog operator: " + ctx->getText());
 }
 
 antlrcpp::Any RedlogParseVisitor::visitFormula(redlogParser::FormulaContext *ctx) {
   if (ctx->lit()) {
-      return buildTheoryLit<IntTheory>(any_cast<lit_type>(visit(ctx->lit())));
+      return BoolExpression<IntTheory>::buildTheoryLit(any_cast<lit_type>(visit(ctx->lit())));
   } else if (ctx->TRUE()) {
       return True;
   } else if (ctx->FALSE()) {
@@ -80,11 +79,11 @@ antlrcpp::Any RedlogParseVisitor::visitFormula(redlogParser::FormulaContext *ctx
           args.push_back(any_cast<formula_type>(visit(f)));
       }
       switch (op) {
-      case ConcatAnd: return buildAnd(args);
-      case ConcatOr: return buildOr(args);
+      case ConcatAnd: return BoolExpression<IntTheory>::buildAnd(args);
+      case ConcatOr: return BoolExpression<IntTheory>::buildOr(args);
       }
   }
-  throw ParseError("failed to parse redlog formula: " + ctx->getText());
+  throw std::invalid_argument("failed to parse redlog formula: " + ctx->getText());
 }
 
 antlrcpp::Any RedlogParseVisitor::visitLit(redlogParser::LitContext *ctx) {
@@ -100,7 +99,7 @@ antlrcpp::Any RedlogParseVisitor::visitBoolop(redlogParser::BoolopContext *ctx) 
     } else if (ctx->OR()) {
         return ConcatOr;
     } else {
-        throw ParseError("failed to parse boolean redlog operator: " + ctx->getText());
+        throw std::invalid_argument("failed to parse boolean redlog operator: " + ctx->getText());
     }
 }
 
@@ -118,7 +117,7 @@ antlrcpp::Any RedlogParseVisitor::visitRelop(redlogParser::RelopContext *ctx) {
     } else if (ctx->NEQ()) {
         return Rel::neq;
     } else {
-        throw ParseError("failed to parse redlog relation: " + ctx->getText());
+        throw std::invalid_argument("failed to parse redlog relation: " + ctx->getText());
     }
 }
 
@@ -133,7 +132,7 @@ BExpr<IntTheory> RedlogParseVisitor::parse(std::string str, VariableManager &var
     RedlogParseVisitor vis(varMan);
     auto ctx = parser.main();
     if (parser.getNumberOfSyntaxErrors() > 0) {
-        throw ParseError("parsing redlog formula failed");
+        throw std::invalid_argument("parsing redlog formula failed");
     } else {
         return any_cast<BExpr<IntTheory>>(vis.visit(ctx));
     }

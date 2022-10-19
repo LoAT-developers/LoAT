@@ -15,12 +15,7 @@ public:
     bool isWellformed() const;
     BoolVar getBoolVar() const;
     int compare(const BoolLit &that) const;
-
-    template<class VarSet>
-    void collectVariables(const VarSet &res) const {
-        res.insert(var);
-    }
-
+    void collectVars(std::set<BoolVar> &res) const;
     BoolLit normalize() const;
     bool isTriviallyTrue() const;
 

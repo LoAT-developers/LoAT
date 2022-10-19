@@ -43,13 +43,13 @@ namespace util {
                         std::visit([&up, &next](const auto &x) {
                             auto it = up.find(x);
                             if (it != up.end()) {
-                                next.collectVars(theory::second<Th...>(*it));
+                                expression::collectVars<Th...>(theory::second<Th...>(*it), next);
                             }
                         }, x);
                     }
                     for (const auto &lit: guard->lits()) {
                         VS relVars;
-                        relVars.collectVars(lit);
+                        literal::collectVars<Th...>(lit, relVars);
                         if (relVars.find(x) != relVars.end()) {
                             for (const auto &x: relVars) {
                                 next.insert(x);

@@ -23,7 +23,7 @@ static BExpr<IntTheory> posConstraint(const map<int, Expr>& coefficients) {
             conjunction.push_back(Rel::buildGt(c, 0));
         }
     }
-    return buildAnd<IntTheory>(conjunction);
+    return BoolExpression<IntTheory>::buildAndFromLits(conjunction);
 }
 
 /**
@@ -42,7 +42,7 @@ static BExpr<IntTheory> negConstraint(const map<int, Expr>& coefficients) {
             conjunction.push_back(Rel::buildLt(c, 0));
         }
     }
-    return buildAnd<IntTheory>(conjunction);
+    return BoolExpression<IntTheory>::buildAndFromLits(conjunction);
 }
 
 /**
@@ -67,9 +67,9 @@ static BExpr<IntTheory> negInfConstraint(const map<int, Expr>& coefficients) {
                 conjunction.push_back(Rel::buildLt(c, 0));
             }
         }
-        disjunction.push_back(buildAnd<IntTheory>(conjunction));
+        disjunction.push_back(BoolExpression<IntTheory>::buildAndFromLits(conjunction));
     }
-    return buildOr(disjunction);
+    return BoolExpression<IntTheory>::buildOr(disjunction);
 }
 
 /**
@@ -94,9 +94,9 @@ static BExpr<IntTheory> posInfConstraint(const map<int, Expr>& coefficients) {
                 conjunction.push_back(Rel::buildGt(c, 0));
             }
         }
-        disjunction.push_back(buildAnd<IntTheory>(conjunction));
+        disjunction.push_back(BoolExpression<IntTheory>::buildAndFromLits(conjunction));
     }
-    return buildOr(disjunction);
+    return BoolExpression<IntTheory>::buildOr(disjunction);
 }
 
 /**
@@ -231,9 +231,9 @@ BExpr<IntTheory> encodeBoolExpr(const BExpr<IntTheory> expr, const ExprSubs &tem
         newChildren.insert(encodeBoolExpr(c, templateSubs, n));
     }
     if (expr->isAnd()) {
-        return buildAnd(newChildren);
+        return BoolExpression<IntTheory>::buildAnd(newChildren);
     } else if (expr->isOr()) {
-        return buildOr(newChildren);
+        return BoolExpression<IntTheory>::buildOr(newChildren);
     } else {
         auto lit = expr->getTheoryLit();
         assert(lit);
@@ -250,21 +250,20 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(chooseLogic<IntTheory>(BoolExpressionSet<IntTheory>{expr, buildTheoryLit<IntTheory>(Rel::buildGt(cost, 0))}), varMan, timeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(chooseLogic<IntTheory>(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0))}), varMan, timeout);
 
     // the parameter of the desired family of solutions
     NumVar n = varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int);
 
     // get all relevant variables
-    theory::VarSet<IntTheory> vars;
-    expr->collectVars(vars);
-    cost.collectVars(vars.get<IntTheory>());
+    std::set<NumVar> vars = expr->vars().get<NumVar>();
+    cost.collectVars(vars);
     bool hasTmpVars = false;
 
     // create linear templates for all variables
     ExprSubs templateSubs;
     std::map<NumVar, NumVar> varCoeff, varCoeff0;
-    for (const auto &var : vars.get<IntTheory>()) {
+    for (const auto &var : vars) {
         hasTmpVars |= varMan.isTempVar(var);
         auto c0 = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_0", Expr::Int);
         auto c = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_c", Expr::Int);
@@ -297,7 +296,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
     auto model = [&]() {
         ExprSubs smtSubs;
         Model model = solver->model();
-        for (const auto &var : vars.get<IntTheory>()) {
+        for (const auto &var : vars) {
             auto c0 = varCoeff0.at(var);
             auto c = model.get<IntTheory>(varCoeff.at(var));
             smtSubs.put(var, model.contains<IntTheory>(c0) ? (model.get<IntTheory>(c0) + c * *n) : (c * *n));
@@ -310,7 +309,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
         solver->add(posInfConstraint(getCoefficients(templateCost, n)));
         // first fix that all program variables have to be constants
         // a model witnesses unbounded complexity
-        for (const auto &var : vars.get<IntTheory>()) {
+        for (const auto &var : vars) {
             if (!varMan.isTempVar(var)) {
                 solver->add(Rel::buildEq(varCoeff.at(var), 0));
             }

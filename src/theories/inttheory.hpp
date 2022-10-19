@@ -1,7 +1,7 @@
 #pragma once
 
 #include "itheory.hpp"
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "rel.hpp"
 
 struct IntTheory {

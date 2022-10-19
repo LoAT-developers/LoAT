@@ -24,11 +24,12 @@ Z3Context::Z3Context(z3::context& ctx): ctx(ctx) { }
 Z3Context::~Z3Context() { }
 
 z3::expr Z3Context::buildVar(const std::string &name, Expr::Type type) {
-    return (type == Expr::Int) ? ctx.int_const(name.c_str()) : ctx.real_const(name.c_str());
-}
-
-z3::expr Z3Context::buildConst(const std::string &name) {
-    return ctx.bool_const(name.c_str());
+    switch (type) {
+    case Expr::Int: return ctx.int_const(name.c_str());
+    case Expr::Rational: return ctx.real_const(name.c_str());
+    case Expr::Bool: return ctx.bool_const(name.c_str());
+    }
+    throw std::logic_error("unknown type");
 }
 
 z3::expr Z3Context::getInt(long val) {

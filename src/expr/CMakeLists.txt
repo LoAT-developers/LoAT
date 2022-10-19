@@ -4,8 +4,8 @@ target_sources(${EXECUTABLE}
         complexity.hpp
         numvar.hpp
         numvar.cpp
-        expression.cpp
-        expression.hpp
+        numexpression.cpp
+        numexpression.hpp
         rel.cpp
         rel.hpp
         guardtoolbox.cpp
@@ -17,6 +17,17 @@ target_sources(${EXECUTABLE}
         boollit.cpp
         boollit.hpp
         boolsubs.hpp
+        literaltemplates.hpp
+        literal.hpp
+        literal.cpp
+        expression.hpp
+        expression.cpp
+        substitution.hpp
+        substitution.cpp
+        boolexpression.hpp
+        boolexpression.cpp
+        variable.hpp
+        variable.cpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

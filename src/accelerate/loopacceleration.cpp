@@ -16,7 +16,7 @@
  */
 
 #include "loopacceleration.hpp"
-
+#include "boolexpression.hpp"
 #include "smtfactory.hpp"
 #include "recurrence.hpp"
 #include "chain.hpp"
@@ -72,7 +72,7 @@ AccelerationResult LoopAcceleration::run() {
         auto accel = AccelerationFactory::get(rule, rec, its);
         for (const auto &ar: accel->computeRes()) {
             res.status = vb > 1 ? PartialSuccess : Success;
-            const BoolExpr formula = theory::transform(ar.formula);
+            const BoolExpr formula = boolExpression::transform(ar.formula);
             if (Config::Analysis::tryNonterm() && ar.witnessesNonterm) {
                 option<Rule> resultingRule;
                 if (vb > 0) {

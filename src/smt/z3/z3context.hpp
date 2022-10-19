@@ -15,11 +15,10 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef Z3CONTEXT_H
-#define Z3CONTEXT_H
+#pragma once
 
 #include "smtcontext.hpp"
-#include "expression.hpp"
+#include "numexpression.hpp"
 
 #include <z3++.h>
 #include <map>
@@ -87,8 +86,5 @@ private:
     z3::context &ctx;
 
     z3::expr buildVar(const std::string &basename, Expr::Type type) override;
-    z3::expr buildConst(const std::string &name) override;
 
 };
-
-#endif // Z3CONTEXT_H

@@ -26,15 +26,18 @@ YicesError::YicesError() : std::exception() {
 YicesContext::~YicesContext() { }
 
 term_t YicesContext::buildVar(const std::string &name, Expr::Type type) {
-    term_t res = (type == Expr::Int) ? yices_new_uninterpreted_term(yices_int_type()) : yices_new_uninterpreted_term(yices_real_type());
+    type_t t;
+    switch (type) {
+    case Expr::Int: t = yices_int_type();
+        break;
+    case Expr::Rational: t = yices_real_type();
+        break;
+    case Expr::Bool: t = yices_bool_type();
+        break;
+    }
+    term_t res = yices_new_uninterpreted_term(t);
     yices_set_term_name(res, name.c_str());
     varNames[res] = name;
-    return res;
-}
-
-term_t YicesContext::buildConst(const std::string &name) {
-    term_t res = yices_new_uninterpreted_term(yices_bool_type());
-    yices_set_term_name(res, name.c_str());
     return res;
 }
 

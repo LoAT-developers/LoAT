@@ -59,9 +59,9 @@ const std::set<std::pair<VarEliminator::IntSubs, BoolExpr>> VarEliminator::elimi
         for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
             for (const auto &b: bb) {
                 if (b.expand().isGround()) {
-                    IntSubs::Pair p = std::pair<NumVar, Expr>(*it, b);
-                    IntSubs newSubs(p);
-                    res.insert({subs.compose(newSubs), newSubs.subs(guard)});
+                    Subs newSubs;
+                    newSubs.get<IntTheory>().put(*it, b);
+                    res.insert({subs.compose(newSubs.get<IntTheory>()), guard->subs(newSubs)});
                 }
             }
         }

@@ -4,7 +4,8 @@ target_sources(${EXECUTABLE}
         theory.cpp
         inttheory.hpp
         booltheory.hpp
-        theoryutils.hpp
+        thset.hpp
+        subs.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

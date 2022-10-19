@@ -16,6 +16,8 @@
  */
 
 #include "parser.hpp"
+#include "boolexpression.hpp"
+
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 #include <ginac/ginac.h>
@@ -66,7 +68,7 @@ namespace sexpressionparser {
                     }
                     assert(preVars.size() == postVars.size());
                     sexpresso::Sexp ruleExps = ex[4];
-                    VarSet tmpVars;
+                    std::set<NumVar> tmpVars;
                     for (const std::string &str: postVars) {
                         tmpVars.insert(vars.at(str));
                     }
@@ -75,17 +77,18 @@ namespace sexpressionparser {
                             LocationIdx from = locations[ruleExp[2].str()];
                             LocationIdx to = locations[ruleExp[4].str()];
                             Subs update;
-                            Guard guard;
+                            Conjunction<IntTheory> guard;
                             parseCond(ruleExp[5], guard);
+                            BoolExpr cond = boolExpression::transform(BoolExpression<IntTheory>::buildAndFromLits(guard));
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.get<IntTheory>().put(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            Rule rule(from, buildAnd(guard), 1, to, update);
+                            Rule rule(from, cond, 1, to, update);
                             // make sure that the temporary variables are unique
-                            VarSet currTmpVars(tmpVars);
-                            currTmpVars.collectVars(guard);
+                            std::set<NumVar> currTmpVars(tmpVars);
+                            cond->collectVars<IntTheory>(currTmpVars);
                             Subs subs;
-                            for (const NumVar &var: currTmpVars.get<IntTheory>()) {
+                            for (const NumVar &var: currTmpVars) {
                                 if (res.isTempVar(var)) {
                                     subs.get<IntTheory>().put(var, res.addFreshTemporaryVariable<IntTheory>(var.getName()));
                                 }
@@ -98,7 +101,7 @@ namespace sexpressionparser {
         }
     }
 
-    void Self::parseCond(sexpresso::Sexp &sexp, Guard &guard) {
+    void Self::parseCond(sexpresso::Sexp &sexp, Conjunction<IntTheory> &guard) {
         if (sexp.isString()) {
             if (sexp.str() == "false") {
                 guard.push_back(Rel(0, Rel::lt, 0));

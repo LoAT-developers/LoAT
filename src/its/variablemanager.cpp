@@ -16,7 +16,6 @@
  */
 
 #include "variablemanager.hpp"
-#include "exceptions.hpp"
 
 using namespace std;
 
@@ -25,7 +24,7 @@ std::recursive_mutex VariableManager::mutex;
 
 bool VariableManager::isTempVar(const Var &var) const {
     std::lock_guard guard(mutex);
-    return temporaryVariables.find(theory::getName(var)) != temporaryVariables.end();
+    return temporaryVariables.find(variable::getName(var)) != temporaryVariables.end();
 }
 
 void VariableManager::toLower(string &str) const {
@@ -73,6 +72,13 @@ Expr::Type VariableManager::getType(const Var &x) const {
     if (untrackedVariables.find(x) != untrackedVariables.end()) {
         return untrackedVariables.at(x);
     } else {
-        return Expr::Int;
+        return std::visit(Overload{
+                              [](const NumVar &x){
+                                  return Expr::Int;
+                              },
+                              [](const BoolVar &x){
+                                  return Expr::Bool;
+                              }
+                          }, x);
     }
 }

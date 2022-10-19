@@ -3,7 +3,6 @@
 #include "redlog.hpp"
 #include "redlogparsevisitor.h"
 #include "config.hpp"
-#include "exceptions.hpp"
 #include "boolexpr.hpp"
 
 RedProc initRedproc() {
@@ -20,7 +19,7 @@ RedProc initRedproc() {
             return RedProc_new(redcsl.c_str());
         }
     }
-    throw RedlogError("couldn't find redcsl binary");
+    throw std::invalid_argument("couldn't find redcsl binary");
 }
 
 RedProc Redlog::process() {
@@ -74,7 +73,7 @@ option<Qelim::Result> Redlog::qe(const QuantifiedFormula<IntTheory> &qf) {
                 proof.append("QE via Redlog");
                 const auto e = res->simplify();
                 return Result(e->subs(denormalization), proof, false);
-            } catch (const ParseError &e) {
+            } catch (const std::invalid_argument &e) {
                 std::cerr << e.what() << std::endl;
             }
         }

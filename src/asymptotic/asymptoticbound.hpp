@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "variablemanager.hpp"
 #include "inftyexpression.hpp"
 #include "limitproblem.hpp"

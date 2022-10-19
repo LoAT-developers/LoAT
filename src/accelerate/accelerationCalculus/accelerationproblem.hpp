@@ -44,7 +44,7 @@ private:
         bool acceleratedAll;
         bool nonterm;
         bool exact;
-        std::map<Theory<IntTheory>::Lit, BExpr<IntTheory>> map;
+        std::map<Rel, BExpr<IntTheory>> map;
     };
 
     ReplacementMap computeReplacementMap(bool nontermOnly) const;

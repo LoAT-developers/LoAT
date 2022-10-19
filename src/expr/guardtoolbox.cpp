@@ -98,8 +98,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
                     varSubs.put(var, solved);
                     varSubs = varSubs.compose(varSubs);
                     stringstream s;
-                    // TODO
-//                    s << "propagated equality " << var << " = " << solved;
+                    s << "propagated equality " << var << " = " << solved;
                     proof.append(s.str());
                     proof.newline();
                     proof.succeed();
@@ -125,7 +124,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
 
 Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, const Rule &rule) {
     auto hasTempVars = [&](const auto e) {
-        for (const auto &x: e->vars().template get<BoolTheory>()) {
+        for (const auto &x: expression::variables(e).template get<BoolVar>()) {
             if (its.isTempVar(x)) {
                 return true;
             }
@@ -134,7 +133,7 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
     };
     ResultViaSideEffects proof;
     auto guard = rule.getGuard();
-    auto bvars = guard->vars().get<BoolTheory>();
+    auto bvars = guard->vars().get<BoolVar>();
     bool changed;
     do {
         changed = false;
@@ -142,7 +141,7 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
             const auto var = *it;
             if (its.isTempVar(var)) {
                 BoolExprSet consequences = rule.getGuard()->findConsequences(var);
-                const auto lit = buildTheoryLit<IntTheory, BoolTheory>(var);
+                const auto lit = BExpression::buildTheoryLit(var);
                 for (const BoolExpr &c: consequences) {
                     if (!hasTempVars(c)) {
                         if (SmtFactory::isImplication(c, lit, its)) {
@@ -184,7 +183,7 @@ Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool r
         if (std::holds_alternative<Rel>(lit)) {
             const auto &rel = std::get<Rel>(lit);
             if (!rel.isIneq() || !rel.isPoly()) continue;
-            rel.collectVariables(tryVars);
+            rel.collectVars(tryVars);
         }
     }
 
@@ -238,7 +237,7 @@ Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool r
 abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (changed) {
-        res = rule.withGuard(buildAnd<IntTheory, BoolTheory>(guard));
+        res = rule.withGuard(BExpression::buildAndFromLits(guard));
         res.ruleTransformationProof(rule, "eliminated temporary variables via transitive closure", *res, its);
     }
     return res;
@@ -288,7 +287,7 @@ Result<Rule> GuardToolbox::makeEqualities(const Rule &rule, const ITSProblem &it
         }
     }
     if (!equalities.empty()) {
-        res.set(rule.withGuard(rule.getGuard() & buildAnd(equalities)));
+        res.set(rule.withGuard(rule.getGuard() & BExpression::buildAndFromLits(equalities)));
         res.ruleTransformationProof(rule, "made implied equalities explicit", *res, its);
     }
     return res;
@@ -300,7 +299,7 @@ Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem
         return res;
     }
     const BExpr<IntTheory> guard = rule.getGuard()->transform<IntTheory>();
-    std::set<NumVar> tempVars = guard->vars().get<IntTheory>();
+    auto tempVars = guard->vars().get<NumVar>();
     for (auto it = tempVars.begin(); it != tempVars.end();) {
         if (its.isTempVar(*it)) {
             ++it;
@@ -317,8 +316,8 @@ Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem
     for (const auto &x: tempVars) {
         solver->resetSolver();
         theory::VarSet<IntTheory> varsOfInterest;
-        varsOfInterest.get<IntTheory>().insert(x);
-        auto relevantVars = util::RelevantVariables<IntTheory>::find(varsOfInterest, {}, guard).get<IntTheory>();
+        varsOfInterest.get<NumVar>().insert(x);
+        auto relevantVars = util::RelevantVariables<IntTheory>::find(varsOfInterest, {}, guard).get<NumVar>();
         relevantVars.erase(x);
         Templates::Template t = templates.buildTemplate(relevantVars, its);
         relevantVars.insert(x);

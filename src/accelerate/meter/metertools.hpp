@@ -18,7 +18,7 @@
 #ifndef METERTOOLS_H
 #define METERTOOLS_H
 
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "variablemanager.hpp"
 #include "theory.hpp"
 

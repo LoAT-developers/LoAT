@@ -1,6 +1,6 @@
 #pragma once
 
-#include "expression.hpp"
+#include "numexpression.hpp"
 
 using RelSet = std::set<Rel>;
 template <class T> using RelMap = std::map<Rel, T>;
@@ -44,7 +44,7 @@ public:
     Rel splitVariableAndConstantAddends(const std::set<NumVar> &params = {}) const;
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
-    void collectVariables(std::set<NumVar> &res) const;
+    void collectVars(std::set<NumVar> &res) const;
     bool has(const Expr &pattern) const;
     Rel subs(const ExprSubs &map) const;
     void applySubs(const ExprSubs &subs);

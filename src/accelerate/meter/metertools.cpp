@@ -18,7 +18,6 @@
 #include <algorithm>
 
 #include "metertools.hpp"
-#include "guardtoolbox.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
 #include "boolexpr.hpp"
@@ -93,7 +92,7 @@ Conjunction<IntTheory> MeteringToolbox::reduceGuard(VarMan &varMan, const Conjun
             bool implied = true;
             for (const auto &update : updates) {
                 solver->push();
-                solver->add(!buildTheoryLit<IntTheory>(rel.subs(update)));
+                solver->add(!BoolExpression<IntTheory>::buildTheoryLit(rel.subs(update)));
                 auto smtRes = solver->check();
                 solver->pop();
 
@@ -127,7 +126,7 @@ std::set<NumVar> MeteringToolbox::findRelevantVariables(const Conjunction<IntThe
     // Add all variables appearing in the guard
     std::set<NumVar> guardVariables;
     for (const auto &rel : guard) {
-        std::get<Rel>(rel).collectVariables(guardVariables);
+        std::get<Rel>(rel).collectVars(guardVariables);
     }
     for (const auto &sym : guardVariables) {
         res.insert(sym);
@@ -252,9 +251,7 @@ option<Conjunction<IntTheory>> MeteringToolbox::strengthenGuard(VarMan &varMan, 
 
 stack<ExprSubs> MeteringToolbox::findInstantiationsForTempVars(const VarMan &varMan, const Conjunction<IntTheory> &guard) {
     //find free variables
-    theory::VarSet<IntTheory> fv;
-    guard.collectVariables(fv);
-    auto freeVar = fv.get<IntTheory>();
+    std::set<NumVar> freeVar = guard.vars().get<NumVar>();
     for (auto it = freeVar.begin(); it != freeVar.end();) {
         if (varMan.isTempVar(*it)) {
             ++it;

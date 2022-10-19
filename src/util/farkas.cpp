@@ -59,7 +59,7 @@ BExpr<IntTheory> FarkasLemma::apply(
     // The coefficients of additional variables are simply set to 0 (so they won't occur in the metering function).
     std::set<NumVar> constraintSymbols;
     for (const Rel &rel : constraints) {
-        rel.collectVariables(constraintSymbols);
+        rel.collectVars(constraintSymbols);
     }
     for (const auto &sym : constraintSymbols) {
         if (varToCoeff.find(sym) == varToCoeff.end() && std::find(params.begin(), params.end(), sym) == params.end()) {
@@ -86,7 +86,7 @@ BExpr<IntTheory> FarkasLemma::apply(
         sum = sum + e.second * e.first.rhs();
     }
     res.push_back(Rel(sum, Rel::leq, delta));
-    return buildAnd<IntTheory>(res);
+    return BoolExpression<IntTheory>::buildAndFromLits(res);
 }
 
 BExpr<IntTheory> FarkasLemma::apply(
@@ -151,12 +151,12 @@ const BExpr<IntTheory> FarkasLemma::applyRec(
                         lits.insert(rel.toLeq().splitVariableAndConstantAddends(params));
                     }
                 } else {
-                    throw IllegalStateError("farkas only supports integer variables");
+                    throw std::invalid_argument("farkas only supports integer variables");
                 }
             }
             res.push_back(FarkasLemma::apply(lits, vars, coefficients, c0, 0, varMan, params));
         }
-        return buildAnd(res);
+        return BoolExpression<IntTheory>::buildAnd(res);
     } else {
         BoolExpressionSet<IntTheory> children;
         if (premise->isOr()) {
@@ -171,12 +171,12 @@ const BExpr<IntTheory> FarkasLemma::applyRec(
                 }
             }
             if (!conj.empty()) {
-                children.insert(buildAnd(conj));
+                children.insert(BoolExpression<IntTheory>::buildAnd(conj));
             }
         }
         for (const auto &c: children) {
             res.push_back(applyRec(c, conclusion, vars, params, varMan));
         }
-        return premise->isAnd() ? buildOr(res) : buildAnd(res);
+        return premise->isAnd() ? BoolExpression<IntTheory>::buildOr(res) : BoolExpression<IntTheory>::buildAnd(res);
     }
 }

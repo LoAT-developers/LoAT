@@ -1,7 +1,8 @@
 #pragma once
 
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "theory.hpp"
+#include "variable.hpp"
 
 #include <mutex>
 
@@ -35,7 +36,7 @@ public:
     typename Th::Var getFreshUntrackedSymbol(std::string basename, Expr::Type type) {
         std::lock_guard guard(mutex);
         typename Th::Var res(getFreshName(basename));
-        variableNameLookup.emplace(theory::getName(res), res);
+        variableNameLookup.emplace(variable::getName(res), res);
         untrackedVariables[res] = type;
         return res;
     }
@@ -85,9 +86,8 @@ public:
 
     std::pair<QuantifiedFormula<IntTheory>, theory::Subs<IntTheory>> normalizeVariables(const QuantifiedFormula<IntTheory> &f) {
         {
-            std::set<NumVar> vars;
             const auto matrix = f.getMatrix();
-            matrix->collectVars<IntTheory>(vars);
+            std::set<NumVar> vars = matrix->vars().get<NumVar>();
             ExprSubs normalization, inverse;
             unsigned count = 0;
             for (const NumVar &x: vars) {

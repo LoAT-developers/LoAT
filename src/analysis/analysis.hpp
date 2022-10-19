@@ -19,7 +19,7 @@
 #define LINEAR_H
 
 #include "itsproblem.hpp"
-#include "expression.hpp"
+#include "numexpression.hpp"
 #include "proof.hpp"
 #include "export.hpp"
 #include "result.hpp"

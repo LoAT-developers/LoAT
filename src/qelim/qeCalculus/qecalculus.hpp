@@ -11,7 +11,7 @@ class QeProblem : public Qelim
 private:
 
     struct Entry {
-        std::set<Theory<IntTheory>::Lit> dependencies;
+        std::set<Rel> dependencies;
         BExpr<IntTheory> formula;
         bool exact;
     };
@@ -20,7 +20,7 @@ private:
 
     Res res;
     option<RelMap<Entry>> solution;
-    std::set<Theory<IntTheory>::Lit> todo;
+    std::set<Rel> todo;
     std::unique_ptr<Smt<IntTheory>> solver;
     option<QuantifiedFormula<IntTheory>> formula;
     VariableManager &varMan;
@@ -31,13 +31,13 @@ private:
     bool eventualWeakIncrease(const Rel &rel, const NumVar &n, Proof &proof);
     option<BExpr<IntTheory>> strengthen(const Rel &rel, const NumVar &n, Proof &proof);
     bool fixpoint(const Rel &rel, const NumVar &x, Proof &proof);
-    std::set<Theory<IntTheory>::Lit> findConsistentSubset(const BExpr<IntTheory> e, const NumVar &var) const;
-    option<unsigned int> store(const Rel &rel, const std::set<Theory<IntTheory>::Lit> &deps, const BExpr<IntTheory> formula, bool exact = true);
+    std::set<Rel> findConsistentSubset(const BExpr<IntTheory> e, const NumVar &var) const;
+    option<unsigned int> store(const Rel &rel, const std::set<Rel> &deps, const BExpr<IntTheory> formula, bool exact = true);
     BExpr<IntTheory> boundedFormula(const NumVar &var) const;
 
     struct ReplacementMap {
         bool exact;
-        std::map<Theory<IntTheory>::Lit, BExpr<IntTheory>> map;
+        std::map<Rel, BExpr<IntTheory>> map;
     };
 
     ReplacementMap computeReplacementMap() const;

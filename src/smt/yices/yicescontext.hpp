@@ -18,7 +18,7 @@
 #pragma once
 
 #include "smtcontext.hpp"
-#include "expression.hpp"
+#include "numexpression.hpp"
 
 #include <gmp.h>
 #include <yices.h>
@@ -76,7 +76,6 @@ public:
 
 protected:
     term_t buildVar(const std::string &basename, Expr::Type type) override;
-    term_t buildConst(const std::string &name) override;
 
 private:
     std::map<term_t, std::string> varNames;

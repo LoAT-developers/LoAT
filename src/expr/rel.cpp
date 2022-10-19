@@ -272,7 +272,7 @@ option<bool> Rel::checkTrivial() const {
     return {};
 }
 
-void Rel::collectVariables(std::set<NumVar> &res) const {
+void Rel::collectVars(std::set<NumVar> &res) const {
     l.collectVars(res);
     r.collectVars(res);
 }
@@ -306,7 +306,7 @@ Rel::RelOp Rel::relOp() const {
 
 std::set<NumVar> Rel::vars() const {
     std::set<NumVar> res;
-    collectVariables(res);
+    collectVars(res);
     return res;
 }
 

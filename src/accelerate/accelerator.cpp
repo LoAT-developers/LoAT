@@ -270,7 +270,7 @@ const AccelerationResult Accelerator::strengthenAndAccelerate(const LinearRule &
         res.proof.ruleTransformationProof(rule, "unrolling", optR.get(), its);
     }
     LinearRule r = optR ? optR.get() : rule;
-    bool sat = SmtFactory::check<IntTheory, BoolTheory>(r.getGuard(), its) == Sat;
+    bool sat = SmtFactory::check(r.getGuard(), its) == Sat;
     // only proceed if the guard is sat
     if (sat) {
         AccelerationResult accelRes = LoopAcceleration::accelerate(its, r, sinkLoc, cpx);

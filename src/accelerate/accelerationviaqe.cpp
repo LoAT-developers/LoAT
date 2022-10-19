@@ -39,8 +39,7 @@ std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationViaQE::co
             loop << "Loop: ";
             ITSExport::printRule(rule, its, loop);
             proof.append(loop);
-            // TODO
-//            proof.append(std::stringstream() << "Certificate of Non-Termination: " << res->qf);
+            proof.append(std::stringstream() << "Certificate of Non-Termination: " << res->qf);
             proof.storeSubProof(res->proof);
             ret.push_back(Accelerator(res->qf, proof, res->exact, true));
             if (res->exact) {
@@ -65,8 +64,7 @@ std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationViaQE::co
         loop << "Loop: ";
         ITSExport::printRule(rule, its, loop);
         proof.append(loop);
-        // TODO
-//        proof.append(std::stringstream() << "Accelerator: " << accelerator);
+        proof.append(std::stringstream() << "Accelerator: " << accelerator);
         proof.storeSubProof(res->proof);
         ret.push_back(Accelerator(accelerator, proof, res->exact, false));
     }
