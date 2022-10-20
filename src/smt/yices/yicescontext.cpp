@@ -34,6 +34,7 @@ term_t YicesContext::buildVar(const std::string &name, Expr::Type type) {
         break;
     case Expr::Bool: t = yices_bool_type();
         break;
+    default: throw std::invalid_argument("unknown type");
     }
     term_t res = yices_new_uninterpreted_term(t);
     yices_set_term_name(res, name.c_str());

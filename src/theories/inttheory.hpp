@@ -15,6 +15,10 @@ struct IntTheory {
         return val;
     }
 
+    static Expression varToExpr(const Var &var) {
+        return var;
+    }
+
 };
 
 static_assert(ITheory<IntTheory>);

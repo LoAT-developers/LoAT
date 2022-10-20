@@ -51,6 +51,7 @@ public:
                     NumVar var = std::get<NumVar>(p.first);
                     Num val = getRealFromModel(m, p.second);
                     res.template put<IntTheory>(var, val);
+                    continue;
                 }
             }
             if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
@@ -65,6 +66,7 @@ public:
                         break;
                     default: break;
                     }
+                    continue;
                 }
             }
             throw std::logic_error("unknown variable type");

@@ -34,14 +34,14 @@ public:
 private:
 
     template<std::size_t I = 0>
-    void _toSubs(S &subs) const {
+    inline void toSubsImpl(S &subs) const {
         if constexpr (I < std::tuple_size_v<Theories>) {
             const auto map = std::get<I>(m);
             for (const auto &p: map) {
                 using T = std::tuple_element_t<I, Theories>;
                 subs.put(typename S::Pair(std::pair(p.first, T::valToExpr(p.second))));
             }
-            _toSubs<I+1>(subs);
+            toSubsImpl<I+1>(subs);
         }
     }
 
@@ -49,7 +49,7 @@ public:
 
     S toSubs() const {
         S res;
-        _toSubs(res);
+        toSubsImpl(res);
         return res;
     }
 

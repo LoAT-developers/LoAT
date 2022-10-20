@@ -23,6 +23,10 @@ struct BoolTheory: public BoolBaseTheory {
         return val ? BoolExpression<IntTheory, BoolTheory>::True : BoolExpression<IntTheory, BoolTheory>::False;
     }
 
+    static Expression varToExpr(const Var &val) {
+        return BoolExpression<IntTheory, BoolTheory>::buildTheoryLit(Lit(val));
+    }
+
 };
 
 static_assert(IBaseTheory<BoolBaseTheory>);

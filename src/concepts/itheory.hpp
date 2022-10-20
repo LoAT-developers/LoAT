@@ -52,18 +52,21 @@ concept IBaseTheory = requires(T t) {
 };
 
 template <typename T>
-concept ITheory = requires(T t, typename T::Val val) {
+concept ITheory = requires(T t, typename T::Val val, typename T::Var var) {
         requires IBaseTheory<T>;
         typename T::Expression;
         typename T::Subs;
         {T::valToExpr(val)} -> std::same_as<typename T::Expression>;
+        {T::varToExpr(var)} -> std::same_as<typename T::Expression>;
 };
 
 template<ITheory... Th>
-struct Theory {
+class Theory {
+
+public:
 
     using Theories = std::tuple<Th...>;
-    const Theories theories;
+    static const Theories theories;
     using Lit = std::variant<typename Th::Lit...>;
     using Var = std::variant<typename Th::Var...>;
     using Val = std::variant<typename Th::Val...>;
@@ -72,6 +75,27 @@ struct Theory {
     using Expression = std::variant<typename Th::Expression...>;
     using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expression>...>;
     using Iterator = std::variant<typename Th::Subs::const_iterator...>;
+
+private:
+
+    template <size_t I = 0>
+    inline static Expression varToExprImpl(const Var &var) {
+        if constexpr (I < sizeof...(Th)) {
+            if (var.index() == I) {
+                return std::tuple_element_t<I, Theories>::varToExpr(std::get<I>(var));
+            } else {
+                return varToExprImpl<I+1>(var);
+            }
+        } else {
+            throw std::logic_error("I too large");
+        }
+    }
+
+public:
+
+    static Expression varToExpr(const Var &var) {
+        return varToExprImpl<0>(var);
+    }
 
 };
 

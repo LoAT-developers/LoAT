@@ -46,8 +46,7 @@ void Redlog::exit() {
 
 option<Qelim::Result> Redlog::qe(const QuantifiedFormula<IntTheory> &qf) {
     Proof proof;
-    const auto simplified = qf.simplify();
-    const auto e = simplified ? *simplified : qf;
+    const auto e = qf.simplify();
     const auto p = varMan.normalizeVariables(e);
     const auto normalized = p.first;
     const auto denormalization = p.second;

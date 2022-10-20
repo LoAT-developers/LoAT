@@ -51,8 +51,6 @@ VarSet variables(const ThExpr &e);
 
 }
 
-bool operator==(const ThExpr &e1, const ThExpr &e2);
-
 std::ostream& operator<<(std::ostream &s, const ThExpr &e);
 
 bool operator==(const ThExpr &e, const Var &var);

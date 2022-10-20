@@ -42,12 +42,12 @@ protected:
     EXPR convertBoolEx(const BExpr<Th...> e) {
         if (e->getTheoryLit()) {
             const auto lit = *e->getTheoryLit();
-            if constexpr ((std::is_same_v<Rel, Th> || ...)) {
+            if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
                 if (std::holds_alternative<Rel>(lit)) {
                     return convertRelational(std::get<Rel>(lit));
                 }
             }
-            if constexpr ((std::is_same_v<BoolLit, Th> || ...)) {
+            if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
                 if (std::holds_alternative<BoolLit>(lit)) {
                     return convertLit(std::get<BoolLit>(lit));
                 }

@@ -30,12 +30,38 @@ public:
 
     class Iterator {
 
+        template <size_t I = 0>
+        inline It beginImpl(size_t i) const {
+            if constexpr (I < variant_size) {
+                if (I == i) {
+                    return It(std::get<I>(subs.t).begin());;
+                } else {
+                    return beginImpl<I + 1>(i);
+                }
+            } else {
+                throw std::invalid_argument("i too large");
+            }
+        }
+
         It begin(size_t i) const {
-            return std::visit([](const auto &subs){return It(subs.begin());}, get_rt(i, subs.t));
+            return beginImpl(i);
+        }
+
+        template <size_t I = 0>
+        inline It endImpl(size_t i) const {
+            if constexpr (I < variant_size) {
+                if (I == i) {
+                    return It(std::get<I>(subs.t).end());;
+                } else {
+                    return endImpl<I + 1>(i);
+                }
+            } else {
+                throw std::invalid_argument("i too large");
+            }
         }
 
         It end(size_t i) const {
-            return std::visit([](const auto &subs){return It(subs.end());}, get_rt(i, subs.t));
+            return endImpl(i);
         }
 
         Pair get_current() const {
@@ -51,30 +77,27 @@ public:
         using pointer           = const value_type*;
         using reference         = const value_type&;
 
-        Iterator(const Subs &subs, const It &ptr) : subs(subs), ptr(ptr), current(get_current()) {}
+        Iterator(const Subs &subs, const It &ptr) : subs(subs), ptr(ptr) {}
 
-        reference operator*() const {
-            return current;
+        reference operator*() {
+            current = get_current();
+            return *current;
         }
 
         pointer operator->() {
-            return &current;
+            current = get_current();
+            return &(*current);
         }
 
         // Prefix increment
         Iterator& operator++() {
-            if (ptr == end(ptr.index())) {
-                if (ptr.index() + 1 == variant_size) {
-                    throw std::invalid_argument("out of bounds");
-                }
+            ptr = std::visit([](auto &it){
+                ++it;
+                return It(it);
+            }, ptr);
+            while (ptr.index() + 1 < variant_size && ptr == end(ptr.index())) {
                 ptr = begin(ptr.index() + 1);
-            } else {
-                ptr = std::visit([](auto &it){
-                    ++it;
-                    return It(it);
-                }, ptr);
             }
-            current = get_current();
             return *this;
         }
 
@@ -97,16 +120,34 @@ public:
 
         const Subs &subs;
         It ptr;
-        Pair current;
+        option<Pair> current;
 
     };
 
-    const Iterator begin() const {
-        return Iterator(*this, std::get<0>(t).begin());
+    Iterator end() const {
+        return Iterator(*this, std::get<variant_size - 1>(t).end());
     }
 
-    const Iterator end() const {
-        return Iterator(*this, std::get<variant_size - 1>(t).end());
+private:
+
+    template <size_t I = 0>
+    inline Iterator beginImpl() const {
+        if constexpr (I < variant_size) {
+            const auto& x = std::get<I>(t);
+            if (x.empty()) {
+                return beginImpl<I+1>();
+            } else {
+                return Iterator(*this, x.begin());
+            }
+        } else {
+            return end();
+        }
+    }
+
+public:
+
+    Iterator begin() const {
+        return beginImpl();
     }
 
 private:
@@ -173,7 +214,7 @@ private:
     inline void domainImpl(VS &res) const {
         if constexpr (I < sizeof...(Th)) {
             std::get<I>(res.t) = std::get<I>(t).domain();
-            _domainImpl<I+1>(res);
+            domainImpl<I+1>(res);
         }
     }
 
@@ -268,36 +309,36 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void composeImpl(const Subs &that) {
+    inline void composeImpl(const Subs &that, Subs &res) const {
         if constexpr (I < sizeof...(Th)) {
-            std::get<I>(t).compose(std::get<I>(that.t));
-            composeImpl<I+1>(that);
+            std::get<I>(res.t) = std::get<I>(t).compose(std::get<I>(that.t));
+            composeImpl<I+1>(that, res);
         }
     }
 
 public:
 
     Subs compose(const Subs &that) const {
-        Subs res(*this);
-        res.composeImpl(that);
+        Subs res;
+        composeImpl(that, res);
         return res;
     }
 
 private:
 
     template<std::size_t I = 0>
-    inline void concatImpl(const Subs &that) {
+    inline void concatImpl(const Subs &that, Subs &res) const {
         if constexpr (I < sizeof...(Th)) {
-            std::get<I>(t).compose(std::get<I>(that.t));
-            concatImpl<I+1>(that);
+            std::get<I>(res.t) = std::get<I>(t).concat(std::get<I>(that.t));
+            concatImpl<I+1>(that, res);
         }
     }
 
 public:
 
     Subs concat(const Subs &that) const {
-        Subs res(*this);
-        res.concatImpl(that);
+        Subs res;
+        concatImpl(that, res);
         return res;
     }
 

@@ -146,7 +146,7 @@ public:
         return BE(new BoolTheoryLit<Th...>(lit));
     }
 
-    virtual option<Lit> getTheoryLit() const = 0;
+    virtual option<const Lit&> getTheoryLit() const = 0;
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
     virtual BES getChildren() const = 0;
@@ -229,7 +229,59 @@ public:
     }
 
     BE map(const std::function<BE(const Lit&)> &f) const {
-        return map<Th...>(f);
+        if (isAnd()) {
+            bool changed = false;
+            BoolExpressionSet<Th...> newChildren;
+            for (const auto &c: getChildren()) {
+                const auto simp = c->map(f);
+                changed |= simp.get() != c.get();
+                if (simp == BoolExpression<Th...>::False) {
+                    return BoolExpression<Th...>::False;
+                } else {
+                    if (simp != BoolExpression<Th...>::True) {
+                        newChildren.insert(simp);
+                    }
+                }
+            }
+            if (newChildren.empty()) {
+                return BoolExpression<Th...>::True;
+            } else if (changed) {
+                return BoolExpression<Th...>::buildAnd(newChildren);
+            } else {
+                return this->shared_from_this();
+            }
+        } else if (isOr()) {
+            BoolExpressionSet<Th...> newChildren;
+            bool changed = false;
+            for (const auto &c: getChildren()) {
+                const auto simp = c->map(f);
+                changed |= simp.get() != c.get();
+                if (simp == BoolExpression<Th...>::True) {
+                    return BoolExpression<Th...>::True;
+                } else {
+                    if (simp != BoolExpression<Th...>::False) {
+                        newChildren.insert(simp);
+                    }
+                }
+            }
+            if (newChildren.empty()) {
+              return BoolExpression<Th...>::False;
+            } else if (changed) {
+                return BoolExpression<Th...>::buildOr(newChildren);
+            } else {
+                return this->shared_from_this();
+            }
+        } else if (getTheoryLit()) {
+            const auto &lit = *getTheoryLit();
+            const auto mapped = f(*getTheoryLit());
+            const auto mappedLit = mapped->getTheoryLit();
+            if (mappedLit && *mappedLit == lit) {
+                return this->shared_from_this();
+            } else {
+                return mapped;
+            }
+        }
+        throw std::logic_error("unknown boolean expression");
     }
 
     BE subs(const Subs &subs) const {
@@ -278,19 +330,15 @@ public:
 
     template <ITheory T>
     BE replaceLits(const std::map<typename T::Lit, BE> &m) const {
-        return map(Overload{
-                       [&m](const Rel &lit) -> BE {
-                           const auto it = m.find(lit);
-                           if (it == m.end()) {
-                               return buildTheoryLit(Lit(lit));
-                           } else {
-                               return it->second;
-                           }
-                       },
-                       [&m](const auto &lit) -> BE {
-                           return buildTheoryLit(Lit(lit));
-                       }
-                   });
+        return map([&m](const Lit &lit) {
+            if (std::holds_alternative<typename T::Lit>(lit)) {
+                const auto it = m.find(std::get<typename T::Lit>(lit));
+                if (it != m.end()) {
+                    return it->second;
+                }
+            }
+            return buildTheoryLit(lit);
+        });
     }
 
     virtual ~BoolExpression() {};
@@ -429,7 +477,7 @@ public:
         return false;
     }
 
-    option<Lit> getTheoryLit() const override {
+    option<const Lit&> getTheoryLit() const override {
         return {lit};
     }
 
@@ -543,7 +591,7 @@ public:
         return op == ConcatOr;
     }
 
-    option<Lit> getTheoryLit() const override {
+    option<const Lit&> getTheoryLit() const override {
         return {};
     }
 
@@ -584,7 +632,7 @@ public:
         LS res;
         if (isAnd()) {
             for (const BE &c: children) {
-                const option<Lit> lit = c->getTheoryLit();
+                const auto lit = c->getTheoryLit();
                 if (lit) {
                     res.insert(*lit);
                 }
@@ -786,7 +834,7 @@ public:
 
     QF map(const std::function<BE(const Lit&)> &f) const;
 
-    option<QF> simplify() const {
+    QF simplify() const {
         return matrix->simplify()->quantify(prefix);
     }
 

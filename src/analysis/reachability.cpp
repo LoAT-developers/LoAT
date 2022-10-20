@@ -585,6 +585,10 @@ Reachability::State Reachability::handle_loop(const int backlink) {
 
 void Reachability::analyze() {
     proof.majorProofStep("initial ITS", its);
+    if (log) {
+        std::cout << "initial ITS" << std::endl;
+        ITSExport::printForProof(its, std::cout);
+    }
     preprocess();
     init();
     do {

@@ -16,11 +16,6 @@ std::ostream& operator<<(std::ostream &s, const RelSet &set) {
 
 Rel::Rel(const Expr &lhs, RelOp op, const Expr &rhs): l(lhs), r(rhs), op(op) { }
 
-std::ostream& operator<<(std::ostream &s, const Expr &e) {
-    s << e.ex;
-    return s;
-}
-
 Expr Rel::lhs() const {
     return l;
 }
@@ -131,7 +126,7 @@ Rel Rel::toG() const {
 }
 
 Rel Rel::normalize() const {
-    return toG();
+    return makeRhsZero();
 }
 
 bool Rel::isStrict() const {

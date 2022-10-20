@@ -577,7 +577,14 @@ bool operator<(const Expr &e1, const Expr &e2) {
     return comp(e1.ex, e2.ex);
 }
 
+bool operator==(const Expr &e1, const Expr &e2) {
+    return e1.ex.is_equal(e2.ex);
+}
 
+std::ostream& operator<<(std::ostream &s, const Expr &e) {
+    s << e.ex;
+    return s;
+}
 
 ExprSubs::ExprSubs() {}
 

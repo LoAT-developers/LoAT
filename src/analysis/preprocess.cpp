@@ -18,6 +18,7 @@
 #include "preprocess.hpp"
 #include "substitution.hpp"
 #include "guardtoolbox.hpp"
+#include "export.hpp"
 
 using namespace std;
 
@@ -28,10 +29,9 @@ Result<Rule> Preprocess::preprocessRule(ITSProblem &its, const Rule &rule) {
     // The other steps are repeated (might not help very often, but is probably cheap enough)
     bool changed = false;
     do {
-        changed = false;
         Result<Rule> tmp = eliminateTempVars(its, *res, true);
         tmp.concat(removeTrivialUpdates(*res, its));
-        changed = changed || tmp;
+        changed = bool(tmp);
         res.concat(tmp);
     } while (changed);
     return res;
@@ -133,9 +133,10 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
         res.concat(GuardToolbox::propagateEqualitiesBySmt(*res, its));
     }
 
-    option<BoolExpr> newGuard = res->getGuard()->simplify();
-    if (newGuard) {
-        const Rule newRule = res->withGuard(newGuard.get());
+    BoolExpr guard = res->getGuard();
+    BoolExpr newGuard = guard->simplify();
+    if (newGuard.get() != guard.get()) {
+        const Rule newRule = res->withGuard(newGuard);
         res.ruleTransformationProof(res.get(), "simplified guard", newRule, its);
         res = newRule;
     }

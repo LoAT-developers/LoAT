@@ -1,6 +1,7 @@
 #pragma once
 
 #include "itheory.hpp"
+#include "option.hpp"
 
 namespace theory {
 
@@ -17,12 +18,38 @@ public:
 
     class Iterator {
 
+        template <size_t I = 0>
+        inline VSI beginImpl(size_t i) const {
+            if constexpr (I < variant_size) {
+                if (I == i) {
+                    return VSI(std::get<I>(set.t).begin());;
+                } else {
+                    return beginImpl<I + 1>(i);
+                }
+            } else {
+                throw std::invalid_argument("i too large");
+            }
+        }
+
         VSI begin(size_t i) const {
-            return std::visit([](const auto &set){return VSI(set.begin());}, get_rt(i, set.t));
+            return beginImpl(i);
+        }
+
+        template <size_t I = 0>
+        inline VSI endImpl(size_t i) const {
+            if constexpr (I < variant_size) {
+                if (I == i) {
+                    return VSI(std::get<I>(set.t).end());;
+                } else {
+                    return endImpl<I + 1>(i);
+                }
+            } else {
+                throw std::invalid_argument("i too large");
+            }
         }
 
         VSI end(size_t i) const {
-            return std::visit([](const auto &set){return VSI(set.end());}, get_rt(i, set.t));
+            return endImpl(i);
         }
 
         Var get_current() const {
@@ -37,30 +64,27 @@ public:
         using pointer           = const value_type*;
         using reference         = const value_type&;
 
-        Iterator(const Self &set, const VSI &ptr) : set(set), ptr(ptr), current(get_current()) {}
+        Iterator(const Self &set, const VSI &ptr) : set(set), ptr(ptr) {}
 
-        reference operator*() const {
-            return current;
+        reference operator*() {
+            current = get_current();
+            return *current;
         }
 
         pointer operator->() {
-            return &current;
+            current = get_current();
+            return &(*current);
         }
 
         // Prefix increment
         Iterator& operator++() {
-            if (ptr == end(ptr.index())) {
-                if (ptr.index() + 1 == variant_size) {
-                    throw std::invalid_argument("out of bounds");
-                }
+            ptr = std::visit([](auto &it){
+                ++it;
+                return VSI(it);
+            }, ptr);
+            while (ptr.index() + 1 < variant_size && ptr == end(ptr.index())) {
                 ptr = begin(ptr.index() + 1);
-            } else {
-                ptr = std::visit([](auto &it){
-                    ++it;
-                    return VSI(it);
-                }, ptr);
             }
-            current = get_current();
             return *this;
         }
 
@@ -83,39 +107,63 @@ public:
 
         const Self &set;
         VSI ptr;
-        Var current;
+        option<Var> current;
 
     };
 
+private:
+
     template<std::size_t I = 0>
-    void erase(const Var &var) {
+    inline void eraseImpl(const Var &var) {
         if constexpr (I < sizeof...(Th)) {
             if (std::holds_alternative<std::variant_alternative_t<I, Var>>(var)) {
                 std::get<I>(t).erase(std::get<I>(var));
             } else {
-                erase<I+1>(var);
+                eraseImpl<I+1>(var);
             }
         }
     }
 
+public:
+
+    void erase(const Var &var) {
+        eraseImpl(var);
+    }
+
+private:
+
     template<std::size_t I = 0>
-    void insert(const Var &var) {
+    inline void insertImpl(const Var &var) {
         if constexpr (I < sizeof...(Th)) {
             if (std::holds_alternative<std::variant_alternative_t<I, Var>>(var)) {
                 std::get<I>(t).insert(std::get<I>(var));
             } else {
-                insert<I+1>(var);
+                insertImpl<I+1>(var);
             }
         }
     }
 
+public:
+
+    void insert(const Var &var) {
+        insertImpl(var);
+    }
+
+private:
+
     template<std::size_t I = 0>
-    void insertAll(const Self &that) {
+    inline void insertAllImpl(const Self &that) {
         if constexpr (I < sizeof...(Th)) {
             const auto &s = std::get<I>(that.t);
             std::get<I>(t).insert(s.begin(), s.end());
-            insertAll<I+1>(that);
+            insertAllImpl<I+1>(that);
         }
+    }
+
+public:
+
+    void insertAll(const Self &that) {
+        insertAllImpl(that);
     }
 
     template <class V>
@@ -123,8 +171,10 @@ public:
         std::get<std::set<V>>(t).insert(that.begin(), that.end());
     }
 
+private:
+
     template<std::size_t I = 0>
-    Iterator find(const Var &var) const {
+    inline Iterator findImpl(const Var &var) const {
         if constexpr (I < sizeof...(Th)) {
             if (std::holds_alternative<std::variant_alternative_t<I, Var>>(var)) {
                 const auto &set = std::get<I>(t);
@@ -135,32 +185,51 @@ public:
                     return Iterator(*this, it);
                 }
             } else {
-                return find<I+1>(var);
+                return findImpl<I+1>(var);
             }
         } else {
             return end();
         }
     }
 
-    template <std::size_t I = 0>
+public:
+
+    Iterator find(const Var &var) const {
+        return findImpl(var);
+    }
+
     size_t size() const {
-        if constexpr (I < sizeof...(Th)) {
-            return std::get<I>(t).size() + size<I+1>();
-        } else {
-            return 0;
-        }
+        return std::apply([](const auto&... x){return (0 + ... + x.size());}, t);
     }
 
     bool empty() const {
         return std::apply([](const auto&... x){return (true && ... && x.empty());}, t);
     }
 
-    const Iterator begin() const {
-        return Iterator(*this, std::get<0>(t).begin());
+    Iterator end() const {
+        return Iterator(*this, std::get<variant_size - 1>(t).end());
     }
 
-    const Iterator end() const {
-        return Iterator(*this, std::get<variant_size - 1>(t).end());
+private:
+
+    template <size_t I = 0>
+    inline Iterator beginImpl() const {
+        if constexpr (I < variant_size) {
+            const auto& x = std::get<I>(t);
+            if (x.empty()) {
+                return beginImpl<I+1>();
+            } else {
+                return Iterator(*this, x.begin());
+            }
+        } else {
+            return end();
+        }
+    }
+
+public:
+
+    Iterator begin() const {
+        return beginImpl();
     }
 
     template <class T>
