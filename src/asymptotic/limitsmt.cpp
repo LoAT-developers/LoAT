@@ -288,12 +288,12 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
     solver->add(encoding);
 
     // auxiliary function that checks satisfiability wrt. the current state of the solver
-    auto checkSolver = [&]() -> bool {
+    auto checkSolver = [&solver] {
         SmtResult res = solver->check();
         return res == Sat;
     };
 
-    auto model = [&]() {
+    auto model = [&solver, &vars, &varCoeff0, &varCoeff, &n] {
         ExprSubs smtSubs;
         Model model = solver->model();
         for (const auto &var : vars) {

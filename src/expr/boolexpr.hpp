@@ -353,7 +353,7 @@ public:
                     return std::get<Rel>(lit).isLinear();
                 }
             }
-            if constexpr ((std::same_as<BoolLit, Th> || ...)) {
+            if constexpr ((std::same_as<BoolLit, typename Th::Lit> || ...)) {
                 if (std::holds_alternative<BoolLit>(lit)) {
                     return true;
                 }
