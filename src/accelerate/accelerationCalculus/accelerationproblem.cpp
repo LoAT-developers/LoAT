@@ -24,7 +24,7 @@ AccelerationProblem::AccelerationProblem(
     }
     const auto &intUp = up.get<IntTheory>();
     const std::vector<ExprSubs> subs = closed.map([&intUp](auto const &closed){return std::vector<ExprSubs>{intUp, closed.update};}).get_value_or({intUp});
-    Logic logic = chooseLogic<theory::LitSet<IntTheory>, ExprSubs>({guard->lits()}, subs);
+    Logic logic = Smt<IntTheory>::chooseLogic<theory::LitSet<IntTheory>, ExprSubs>({guard->lits()}, subs);
     this->solver = SmtFactory::modelBuildingSolver<IntTheory>(logic, its);
     this->solver->add(guard);
     this->isConjunction = guard->isConjunction();

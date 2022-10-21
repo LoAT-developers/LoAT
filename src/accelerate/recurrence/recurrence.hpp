@@ -53,12 +53,12 @@ public:
 private:
 
     struct RecurrenceSolution {
-        Expr res;
+        GiNaC::ex res;
         const unsigned int validityBound;
     };
 
     struct RecurrenceSystemSolution {
-        ExprSubs update;
+        GiNaC::exmap update;
         const unsigned int validityBound;
     };
 
@@ -80,7 +80,7 @@ private:
      * Computes the iterated cost, with meterfunc as iteration step (if possible).
      * @note updatePreRecurrences must be set before (so iterateUpdate() needs to be called before)
      */
-    option<Expr> iterateCost(const Expr &c);
+    option<GiNaC::ex> iterateCost(const Expr &c);
 
     /**
      * Helper for iterateUpdate.
@@ -111,5 +111,5 @@ private:
      * @note the recurrence equations are valid *before* the transition is taken,
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
-    ExprSubs updatePreRecurrences;
+    GiNaC::exmap updatePreRecurrences;
 };

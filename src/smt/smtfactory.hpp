@@ -35,14 +35,14 @@ namespace SmtFactory {
 
     template<ITheory... Th>
     static SmtResult check(const BExpr<Th...> e, const VariableManager &varMan) {
-        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(chooseLogic(BoolExpressionSet<Th...>{e}), varMan);
+        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{e}), varMan);
         s->add(e);
         return s->check();
     }
 
     template<ITheory... Th>
     bool isImplication(const BExpr<Th...> lhs, const BExpr<Th...> rhs, const VariableManager &varMan) {
-        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(chooseLogic(BoolExpressionSet<Th...>{lhs, rhs}), varMan);
+        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{lhs, rhs}), varMan);
         s->add(lhs);
         s->add(!rhs);
         return s->check() == Unsat;
@@ -50,7 +50,7 @@ namespace SmtFactory {
 
     template<ITheory... Th>
     BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan) {
-        std::unique_ptr<Smt<Th...>> solver = SmtFactory::solver<Th...>(chooseLogic(assumptions), varMan);
+        std::unique_ptr<Smt<Th...>> solver = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(assumptions), varMan);
         return solver->_unsatCore(assumptions).second;
     }
 

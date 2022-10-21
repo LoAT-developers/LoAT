@@ -4,11 +4,11 @@
 
 class NumVar {
 
-    GiNaC::symbol symbol;
+    std::string name;
+
+    static std::map<std::string, GiNaC::symbol> symbols;
 
 public:
-
-    NumVar(const GiNaC::symbol &symbol);
 
     explicit NumVar(const std::string &name);
 

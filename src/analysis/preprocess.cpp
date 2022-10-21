@@ -111,10 +111,10 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
         if (!Config::Analysis::complexity()) {
             return true;
         }
-        return std::visit(Overload{
-                              [&rule](const NumVar &sym){return !rule.getCost().has(sym);},
-                              [](const auto &sym){return true;}
-                          }, sym);
+        if (!std::holds_alternative<NumVar>(sym)) {
+            return true;
+        }
+        return !rule.getCost().has(std::get<NumVar>(sym));
     };
 
     res.concat(GuardToolbox::propagateBooleanEqualities(its, *res));

@@ -77,7 +77,7 @@ Conjunction<IntTheory> MeteringToolbox::reduceGuard(VarMan &varMan, const Conjun
     auto isUpdated = [&](const NumVar &var){ return updatedVars.find(var) != updatedVars.end(); };
 
     // create Z3 solver with the guard here to use push/pop for efficiency
-    auto solver = SmtFactory::solver<IntTheory>(chooseLogic<Conjunction<IntTheory>>({guard}, updates), varMan);
+    auto solver = SmtFactory::solver<IntTheory>(Smt<IntTheory>::chooseLogic<Conjunction<IntTheory>>({guard}, updates), varMan);
     for (const auto &rel : guard) {
         solver->add(rel);
     }

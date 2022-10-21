@@ -230,7 +230,7 @@ Expr MeteringFinder::buildResult(const Model<IntTheory> &model) const {
     // read off the coefficients of the metering function
     Expr result = model.get<IntTheory>(absCoeff);
     for (unsigned int i=0; i < coeffs.size(); ++i) {
-        result = result + model.get<IntTheory>(*coeffs[i]) * *symbols[i];
+        result = result + model.get<IntTheory>(coeffs[i]) * *symbols[i];
     }
     return result;
 }

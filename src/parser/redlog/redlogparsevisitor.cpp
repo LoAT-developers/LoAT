@@ -17,7 +17,7 @@ antlrcpp::Any RedlogParseVisitor::visitMain(redlogParser::MainContext *ctx) {
 
 antlrcpp::Any RedlogParseVisitor::visitExpr(redlogParser::ExprContext *ctx) {
   if (ctx->VAR()) {
-      return Expr(std::get<NumVar>(*varMan.getVar(ctx->getText())));
+      return Expr(NumVar(ctx->getText()));
   } else if (ctx->INT()) {
       return Expr(stoi(ctx->getText()));
   } else if (ctx->MINUS()) {
@@ -121,19 +121,18 @@ antlrcpp::Any RedlogParseVisitor::visitRelop(redlogParser::RelopContext *ctx) {
     }
 }
 
-RedlogParseVisitor::RedlogParseVisitor(VariableManager &varMan): varMan(varMan) {}
+RedlogParseVisitor::RedlogParseVisitor() {}
 
-BExpr<IntTheory> RedlogParseVisitor::parse(std::string str, VariableManager &varMan) {
+BExpr<IntTheory> RedlogParseVisitor::parse(std::string str) {
     antlr4::ANTLRInputStream input(str);
     redlogLexer lexer(&input);
     antlr4::CommonTokenStream tokens(&lexer);
     redlogParser parser(&tokens);
     parser.setBuildParseTree(true);
-    RedlogParseVisitor vis(varMan);
     auto ctx = parser.main();
     if (parser.getNumberOfSyntaxErrors() > 0) {
         throw std::invalid_argument("parsing redlog formula failed");
     } else {
-        return any_cast<BExpr<IntTheory>>(vis.visit(ctx));
+        return any_cast<BExpr<IntTheory>>(RedlogParseVisitor().visit(ctx));
     }
 }

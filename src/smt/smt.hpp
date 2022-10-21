@@ -8,70 +8,6 @@
 enum SmtResult {Sat, Unknown, Unsat};
 enum Logic {QF_LA, QF_NA, QF_ENA};
 
-template <ITheory... Th>
-static Logic chooseLogic(const std::vector<BExpr<Th...>> &xs, const std::vector<Subs> &up = {}) {
-    Logic res = QF_LA;
-    for (const auto &x: xs) {
-        if (!(x->isLinear())) {
-            if (!(x->isPoly())) {
-                return QF_ENA;
-            }
-            res = QF_NA;
-        }
-    }
-    for (const Subs &u: up) {
-        if (!u.isLinear()) {
-            if (!u.isPoly()) {
-                return QF_ENA;
-            }
-            res = QF_NA;
-        }
-    }
-    return res;
-}
-
-template <ITheory... Th>
-static Logic chooseLogic(const BoolExpressionSet<Th...> &xs) {
-    Logic res = QF_LA;
-    for (const auto &x: xs) {
-        if (!(x->isLinear())) {
-            if (!(x->isPoly())) {
-                return QF_ENA;
-            }
-            res = QF_NA;
-        }
-    }
-    return res;
-}
-
-template<class RELS, class UP> static Logic chooseLogic(const std::vector<RELS> &g, const std::vector<UP> &up) {
-    Logic res = QF_LA;
-    for (const RELS &rels: g) {
-        for (const auto &lit: rels) {
-            std::visit([&res](const auto &lit){
-                if (!lit.isLinear()) {
-                    if (!lit.isPoly()) {
-                        res = QF_ENA;
-                    }
-                    res = QF_NA;
-                }
-            }, lit);
-            if (res == QF_ENA) {
-                return res;
-            }
-        }
-    }
-    for (const UP &t: up) {
-        if (!t.isLinear()) {
-            if (!t.isPoly()) {
-                return QF_ENA;
-            }
-            res = QF_NA;
-        }
-    }
-    return res;
-}
-
 namespace SmtFactory {
 template<ITheory... Th>
 BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan);
@@ -119,6 +55,64 @@ public:
         while (pushCount > 0) {
             pop();
         }
+    }
+
+    static Logic chooseLogic(const std::vector<BExpr<Th...>> &xs, const std::vector<Subs> &up = {}) {
+        Logic res = QF_LA;
+        for (const auto &x: xs) {
+            if (!(x->isLinear())) {
+                if (!(x->isPoly())) {
+                    return QF_ENA;
+                }
+                res = QF_NA;
+            }
+        }
+        for (const Subs &u: up) {
+            if (!u.isLinear()) {
+                if (!u.isPoly()) {
+                    return QF_ENA;
+                }
+                res = QF_NA;
+            }
+        }
+        return res;
+    }
+
+    static Logic chooseLogic(const BoolExpressionSet<Th...> &xs) {
+        Logic res = QF_LA;
+        for (const auto &x: xs) {
+            if (!(x->isLinear())) {
+                if (!(x->isPoly())) {
+                    return QF_ENA;
+                }
+                res = QF_NA;
+            }
+        }
+        return res;
+    }
+
+    template<class RELS, class UP>
+    static Logic chooseLogic(const std::vector<RELS> &g, const std::vector<UP> &up) {
+        Logic res = QF_LA;
+        for (const RELS &rels: g) {
+            for (const auto &lit: rels) {
+                if (!literal::isLinear<Th...>(lit)) {
+                    if (!literal::isPoly<Th...>(lit)) {
+                        return QF_ENA;
+                    }
+                    res = QF_NA;
+                }
+            }
+        }
+        for (const UP &t: up) {
+            if (!t.isLinear()) {
+                if (!t.isPoly()) {
+                    return QF_ENA;
+                }
+                res = QF_NA;
+            }
+        }
+        return res;
     }
 
 protected:

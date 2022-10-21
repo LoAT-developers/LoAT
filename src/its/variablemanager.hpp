@@ -2,7 +2,6 @@
 
 #include "numexpression.hpp"
 #include "theory.hpp"
-#include "variable.hpp"
 
 #include <mutex>
 
@@ -19,11 +18,6 @@ public:
     // Handling of temporary variables
     bool isTempVar(const Var &var) const;
 
-    // Useful to iterate over all variables (for printing/debugging)
-    VarSet getVars() const;
-
-    option<Var> getVar(std::string name) const;
-
     /**
      * Generates a fresh (unused) symbol, but does _not_ add it to the list of variables
      *
@@ -35,8 +29,7 @@ public:
     template<ITheory Th>
     typename Th::Var getFreshUntrackedSymbol(std::string basename, Expr::Type type) {
         std::lock_guard guard(mutex);
-        typename Th::Var res(getFreshName(basename));
-        variableNameLookup.emplace(variable::getName(res), res);
+        typename Th::Var res {getFreshName(basename)};
         untrackedVariables[res] = type;
         return res;
     }
@@ -54,9 +47,7 @@ private:
     typename Th::Var addVariable(std::string name) {
         std::lock_guard guard(mutex);
         toLower(name);
-        typename Th::Var sym(name);
-        variables.insert(sym);
-        variableNameLookup.emplace(name, sym);
+        typename Th::Var sym {name};
         return sym;
     }
 
@@ -93,11 +84,9 @@ public:
             for (const NumVar &x: vars) {
                 ++count;
                 std::string varName = "x" + std::to_string(count);
-                option<Var> replacement = getVar(varName);
-                if (!replacement) replacement = addFreshTemporaryVariable<IntTheory>(varName);
-                const auto &rep = std::get<NumVar>(*replacement);
-                normalization.put(x, rep);
-                inverse.put(rep, x);
+                const NumVar replacement = NumVar(varName);
+                normalization.put(x, replacement);
+                inverse.put(replacement, x);
             }
             const auto newMatrix = matrix->subs(normalization);
             std::vector<Quantifier> newPrefix;
@@ -128,17 +117,12 @@ public:
     }
 
 private:
-    // List of all variables (VariableIdx is an index in this list; a Variable is a name and a symbol)
-    // Note: Variables are never removed, so this list is appended, but otherwise not modified
-    VarSet variables;
     std::map<Var, Expr::Type> untrackedVariables;
 
     // The set of variables (identified by their index) that are used as temporary variables (not bound by lhs)
     std::set<std::string> temporaryVariables;
 
     std::map<std::string, unsigned int> basenameCount;
-    // Reverse mapping for efficiency
-    std::map<std::string, Var> variableNameLookup;
     std::set<std::string> used;
 };
 

@@ -163,7 +163,7 @@ public:
 
     bool isTriviallyTrue() const {
         if (getTheoryLit()) {
-            return std::visit([](const auto &lit){return lit.isTriviallyTrue();}, *getTheoryLit());
+            return literal::isTriviallyTrue<Th...>(*getTheoryLit());
         } else {
             const auto children = getChildren();
             if (isAnd()) {
@@ -191,7 +191,7 @@ public:
         if (isAnd()) {
             BoolExpressionSet<Th_...> newChildren;
             for (const auto &c: getChildren()) {
-                const auto simp = c->map(f);
+                const auto simp = c->template map<Th_...>(f);
                 if (simp == BoolExpression<Th_...>::False) {
                     return BoolExpression<Th_...>::False;
                 } else {
@@ -208,7 +208,7 @@ public:
         } else if (isOr()) {
             BoolExpressionSet<Th_...> newChildren;
             for (const auto &c: getChildren()) {
-                const auto simp = c->map(f);
+                const auto simp = c->template map<Th_...>(f);
                 if (simp == BoolExpression<Th_...>::True) {
                     return BoolExpression<Th_...>::True;
                 } else {
@@ -311,20 +311,17 @@ public:
 
     BE simplify() const {
         return map([](const Lit &lit) -> BE {
-            return std::visit(Overload{
-                                  [](const Rel &lit) -> BE {
-                                      if (lit.isTriviallyTrue()) {
-                                          return True;
-                                      } else if (lit.isTriviallyFalse()) {
-                                          return False;
-                                      } else if (lit.isNeq()) {
-                                          return buildTheoryLit(Rel(lit.lhs(), Rel::lt, lit.rhs())) | (Rel(lit.lhs(), Rel::gt, lit.rhs()));
-                                      } else {
-                                          return buildTheoryLit(lit);
-                                      }
-                                  },
-                                  [](const auto &lit) -> BE {return buildTheoryLit(lit);}
-                              }, lit);
+            if (std::holds_alternative<Rel>(lit)) {
+                const auto &rel = std::get<Rel>(lit);
+                if (rel.isTriviallyTrue()) {
+                    return True;
+                } else if (rel.isTriviallyFalse()) {
+                    return False;
+                } else if (rel.isNeq()) {
+                    return buildTheoryLit(Rel(rel.lhs(), Rel::lt, rel.rhs())) | (Rel(rel.lhs(), Rel::gt, rel.rhs()));
+                }
+            }
+            return buildTheoryLit(lit);
         });
     }
 
@@ -350,19 +347,35 @@ public:
     }
 
     bool isLinear() const {
-        return forall(Overload {
-                          [](const Rel &rel){return rel.isLinear();},
-                          [](const BoolLit &lit){return true;},
-                          [](const auto &lit){return false;}
-                      });
+        return forall([](const auto &lit) {
+            if constexpr ((std::same_as<Rel, typename Th::Lit> || ...)) {
+                if (std::holds_alternative<Rel>(lit)) {
+                    return std::get<Rel>(lit).isLinear();
+                }
+            }
+            if constexpr ((std::same_as<BoolLit, Th> || ...)) {
+                if (std::holds_alternative<BoolLit>(lit)) {
+                    return true;
+                }
+            }
+            throw std::logic_error("unknown literal");
+        });
     }
 
     bool isPoly() const{
-        return forall(Overload {
-                          [](const Rel &rel){return rel.isPoly();},
-                          [](const BoolLit &lit){return true;},
-                          [](const auto &lit){return false;}
-                      });
+        return forall([](const auto &lit) {
+            if constexpr ((std::same_as<Rel, typename Th::Lit> || ...)) {
+                if (std::holds_alternative<Rel>(lit)) {
+                    return std::get<Rel>(lit).isPoly();
+                }
+            }
+            if constexpr ((std::same_as<BoolLit, typename Th::Lit> || ...)) {
+                if (std::holds_alternative<BoolLit>(lit)) {
+                    return true;
+                }
+            }
+            throw std::logic_error("unknown literal");
+        });
     }
 
 private:
@@ -414,26 +427,23 @@ public:
     }
 
     BE toG() const {
-        const std::function<BE(const Lit &lit)> mapper = [](const Lit &lit) {
-            return std::visit(Overload{
-                                  [](const Rel &lit) -> BE {
-                                      return buildTheoryLit(lit.toG());
-                                  },
-                                  [](const auto &lit) -> BE {
-                                      return buildTheoryLit(lit);
-                                  }
-                              }, lit);};
-        return map(mapper);
+        return map([](const Lit &lit) {
+            if (std::holds_alternative<Rel>(lit)) {
+                return buildTheoryLit(std::get<Rel>(lit).toG());
+            }
+            return buildTheoryLit(lit);
+        });
     }
 
     template <ITheory T>
     BExpr<T> transform() const {
-        static const std::function<BExpr<T>(const Lit&)> mapper = [](const Lit &lit) {
-            return std::visit(Overload{
-                                  [](const typename T::Lit &rel) -> BExpr<T> {return BoolExpression<T>::buildTheoryLit(rel);},
-                                  [](const auto &rel) -> BExpr<T> {throw std::logic_error("transform failed");},
-                              }, lit);};
-        return map(mapper);
+        const std::function<BExpr<T>(const Lit&)> mapper = [](const Lit &lit) {
+            if (std::holds_alternative<typename T::Lit>(lit)) {
+                return BoolExpression<T>::buildTheoryLit(typename Theory<T>::Lit(std::get<typename T::Lit>(lit)));
+            }
+            throw std::logic_error("transform failed");
+        };
+        return map<T>(mapper);
     }
 
 protected:
@@ -465,9 +475,7 @@ class BoolTheoryLit: public BoolExpression<Th...> {
 
 public:
 
-    BoolTheoryLit(const Lit &lit) : lit(std::visit([](const auto &lit){
-        return Lit(lit.normalize());
-    }, lit)) {}
+    BoolTheoryLit(const Lit &lit) : lit(literal::normalize<Th...>(lit)) {}
 
     bool isAnd() const override {
         return false;
@@ -486,7 +494,7 @@ public:
     }
 
     const BE negation() const override {
-        return BoolExpression<Th...>::buildTheoryLit(std::visit([](const auto &lit){return Lit(!lit);}, lit));
+        return BoolExpression<Th...>::buildTheoryLit(literal::negate<Th...>(lit));
     }
 
     bool forall(const std::function<bool(const Lit&)> &pred) const override {
@@ -514,24 +522,17 @@ public:
     }
 
     std::string toRedlog() const override {
-        return std::visit([](const auto &lit){
-            return lit.toRedlog();
-        }, lit);
+        return literal::toRedlog<Th...>(lit);
     }
 
     unsigned hash() const override {
-        return std::visit([](const auto &lit){
-            return lit.hash();
-        }, lit);
+        return literal::hash<Th...>(lit);
     }
 
     void getBounds(const Var &var, Bounds &res) const override {
-        std::visit(Overload{
-                       [&res](const Rel &lit, const NumVar &var){
-                           lit.getBounds(var, res);
-                       },
-                       [](const auto &lit, const auto &var){}
-                   }, lit, var);
+        if (std::holds_alternative<Rel>(lit)) {
+            std::get<Rel>(lit).getBounds(std::get<NumVar>(var), res);
+        }
     }
 
     int compare(const BE that) const override {

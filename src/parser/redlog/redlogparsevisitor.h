@@ -13,10 +13,7 @@ enum CAOp {
 
 class RedlogParseVisitor: redlogVisitor
 {
-
-    VariableManager &varMan;
-
-    RedlogParseVisitor(VariableManager &varMan);
+    RedlogParseVisitor();
 
     virtual antlrcpp::Any visitMain(redlogParser::MainContext *ctx) override;
     virtual antlrcpp::Any visitExpr(redlogParser::ExprContext *ctx) override;
@@ -29,6 +26,6 @@ class RedlogParseVisitor: redlogVisitor
 
 public:
 
-    static BExpr<IntTheory> parse(std::string str, VariableManager &varMan);
+    static BExpr<IntTheory> parse(std::string str);
 
 };

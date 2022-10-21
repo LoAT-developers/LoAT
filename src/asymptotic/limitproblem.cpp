@@ -198,7 +198,7 @@ void LimitProblem::trimPolynomial(const InftyExpressionSet::const_iterator &it) 
     Expr expanded = it->expand();
 
     if (expanded.isAdd()) {
-        Expr leadingTerm = expanded.lcoeff(var) * pow(*var, expanded.degree(*var));
+        Expr leadingTerm = expanded.lcoeff(var) * pow(*var, expanded.degree(var));
 
         if (dir == POS) {
             // Fix the direction

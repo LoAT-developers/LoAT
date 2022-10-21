@@ -43,17 +43,27 @@ public:
                 } else {
                     return endImpl<I + 1>(i);
                 }
-            } else {
-                throw std::invalid_argument("i too large");
             }
+            throw std::invalid_argument("i too large");
         }
 
         VSI end(size_t i) const {
             return endImpl(i);
         }
 
-        Var get_current() const {
-            return std::visit([](const auto &it){return Var(*it);}, ptr);
+        template <size_t I = 0>
+        inline Var getCurrentImpl() const {
+            if constexpr (I < variant_size) {
+                if (ptr.index() == I) {
+                    return Var(*std::get<I>(ptr));
+                }
+                return getCurrentImpl<I+1>();
+            }
+            throw std::invalid_argument("unknown index");
+        }
+
+        Var getCurrent() const {
+            return getCurrentImpl<0>();
         }
 
     public:
@@ -67,21 +77,35 @@ public:
         Iterator(const Self &set, const VSI &ptr) : set(set), ptr(ptr) {}
 
         reference operator*() {
-            current = get_current();
+            current = getCurrent();
             return *current;
         }
 
         pointer operator->() {
-            current = get_current();
+            current = getCurrent();
             return &(*current);
+        }
+
+        template <size_t I = 0>
+        inline void incrementImpl() {
+            if constexpr (I < variant_size) {
+                if (ptr.index() == I) {
+                    std::get<I>(ptr)++;
+                } else {
+                    incrementImpl<I+1>();
+                }
+            } else {
+                throw std::logic_error("unknown index");
+            }
+        }
+
+        void increment() {
+            incrementImpl<0>();
         }
 
         // Prefix increment
         Iterator& operator++() {
-            ptr = std::visit([](auto &it){
-                ++it;
-                return VSI(it);
-            }, ptr);
+            increment();
             while (ptr.index() + 1 < variant_size && ptr == end(ptr.index())) {
                 ptr = begin(ptr.index() + 1);
             }

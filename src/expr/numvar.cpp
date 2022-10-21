@@ -1,33 +1,39 @@
 #include "numvar.hpp"
 
-NumVar::NumVar(const GiNaC::symbol &symbol): symbol(symbol) {}
+std::map<std::string, GiNaC::symbol> NumVar::symbols;
 
-NumVar::NumVar(const std::string &name): symbol(name) {}
+NumVar::NumVar(const std::string &name): name(name) {}
 
 std::string NumVar::getName() const {
-    return symbol.get_name();
+    return name;
 }
 
 unsigned NumVar::hash() const {
-    return symbol.gethash();
+    return std::hash<std::string>()(name);
 }
 
 signed NumVar::compare(const NumVar &that) const {
-    return symbol.compare(*that);
+    return name.compare(that.name);
 }
 
 const GiNaC::symbol& NumVar::operator*() const {
-    return symbol;
+    const auto it = symbols.find(name);
+    if (it == symbols.end()) {
+        symbols.emplace(name, GiNaC::symbol(name));
+        return symbols.at(name);
+    } else {
+        return it->second;
+    }
 }
 
 bool operator==(const NumVar &x, const NumVar &y) {
-    return GiNaC::ex_is_equal()(*x, *y);
+    return x.getName() == y.getName();
 }
 
 bool operator<(const NumVar &x, const NumVar &y) {
-    return GiNaC::ex_is_less()(*x, *y);
+    return x.getName() < y.getName();
 }
 
 std::ostream& operator<<(std::ostream &s, const NumVar &x) {
-    return s << GiNaC::ex(*x);
+    return s << x.getName();
 }

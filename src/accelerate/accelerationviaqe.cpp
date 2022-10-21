@@ -10,10 +10,7 @@ AccelerationViaQE::AccelerationViaQE(
 
 std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationViaQE::computeRes() {
     const auto isIntLiteral = [](const Lit &lit){
-        return std::visit(Overload{
-                              [](const Rel &rel){return true;},
-                              [](const auto &lit){return false;}
-                          }, lit);
+        return std::holds_alternative<Rel>(lit);
     };
     if (!rule.getGuard()->forall(isIntLiteral)) {
         return {};

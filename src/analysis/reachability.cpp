@@ -329,7 +329,6 @@ void Reachability::print_run(std::ostream &s) {
     auto it = sigmas.begin();
     const Subs model = z3.model().toSubs();
     for (const auto &step: trace) {
-        std::cout << (*it) << std::endl;
         s << " [";
         for (const auto &x: prog_vars) {
             s << " " << x << "=" << expression::subs(it->get(x), model);

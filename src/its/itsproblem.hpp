@@ -88,6 +88,8 @@ public:
     option<std::string> getLocationName(LocationIdx idx) const;
     std::string getPrintableLocationName(LocationIdx idx) const; // returns "[idx]" if there is no name
 
+    VarSet getVars() const;
+
     // Removes a location, but does _not_ care about rules.
     // Rules from/to this location must be removed before calling this!
     void removeOnlyLocation(LocationIdx loc);

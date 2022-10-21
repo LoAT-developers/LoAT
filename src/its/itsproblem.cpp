@@ -241,6 +241,13 @@ string ITSProblem::getPrintableLocationName(LocationIdx idx) const {
     return "[" + to_string(idx) + "]";
 }
 
+VarSet ITSProblem::getVars() const {
+    VarSet res;
+    for (const auto &r: rules) {
+        r.second.collectVars(res);
+    }
+    return res;
+}
 
 void ITSProblem::removeOnlyLocation(LocationIdx loc) {
     std::lock_guard guard(mutex);

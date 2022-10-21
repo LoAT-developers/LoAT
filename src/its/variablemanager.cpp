@@ -16,6 +16,7 @@
  */
 
 #include "variablemanager.hpp"
+#include "variable.hpp"
 
 using namespace std;
 
@@ -49,22 +50,6 @@ string VariableManager::getFreshName(string basename) {
     }
     used.insert(res);
     return res;
-}
-
-VarSet VariableManager::getVars() const {
-    std::lock_guard guard(mutex);
-    return variables;
-}
-
-option<Var> VariableManager::getVar(std::string name) const {
-    std::lock_guard guard(mutex);
-    toLower(name);
-    auto it = variableNameLookup.find(name);
-    if (it == variableNameLookup.end()) {
-        return {};
-    } else {
-        return it->second;
-    }
 }
 
 Expr::Type VariableManager::getType(const Var &x) const {

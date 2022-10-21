@@ -67,7 +67,7 @@ option<Qelim::Result> Redlog::qe(const QuantifiedFormula<IntTheory> &qf) {
         } else {
             std::string str = output->result;
             try {
-                BExpr<IntTheory> res = RedlogParseVisitor::parse(str, varMan);
+                BExpr<IntTheory> res = RedlogParseVisitor::parse(str);
                 RedAns_delete(output);
                 proof.append("QE via Redlog");
                 const auto e = res->simplify();

@@ -29,9 +29,6 @@ antlrcpp::Any KoatParseVisitor::visitStart(KoatParser::StartContext *ctx) {
 }
 
 antlrcpp::Any KoatParseVisitor::visitVardecl(KoatParser::VardeclContext *ctx) {
-    for (const auto &c: ctx->ID()) {
-        vars.insert(c->getText());
-    }
     return {};
 }
 
@@ -42,11 +39,13 @@ antlrcpp::Any KoatParseVisitor::visitTranss(KoatParser::TranssContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitVar(KoatParser::VarContext *ctx) {
     std::string name = ctx->getText();
-    auto res = its.getVar(name);
-    if (res) {
-        return res.get();
+    auto it = vars.find(name);
+    if (it == vars.end()) {
+        return it->second;
     } else {
-        return its.addFreshTemporaryVariable<IntTheory>(name);
+        const NumVar var {its.addFreshTemporaryVariable<IntTheory>(name)};
+        vars.emplace(name, var);
+        return var;
     }
 }
 
@@ -86,7 +85,9 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
     static bool initVars = true;
     if (initVars) {
         for (const auto& c: ctx->var()) {
-            programVars.push_back(its.addFreshVariable<IntTheory>(c->getText()));
+            const NumVar var {its.addFreshVariable<IntTheory>(c->getText())};
+            programVars.push_back(var);
+            vars.emplace(ctx->getText(), var);
         }
         initVars = false;
     } else {
@@ -95,7 +96,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
             throw std::invalid_argument("wrong arity: " + ctx->getText());
         }
         for (unsigned i = 0; i < sz; ++i) {
-            if (programVars[i] != *its.getVar(ctx->var(i)->getText())) {
+            if (programVars[i].getName() != ctx->var(i)->getText()) {
                 throw std::invalid_argument("invalid arguments: expected " + variable::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
             }
         }

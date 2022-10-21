@@ -393,7 +393,7 @@ option<Qelim::Result> QeProblem::qe(const QuantifiedFormula<IntTheory> &qf) {
     if (quantifier.getType() != Quantifier::Type::Forall) {
         return {};
     }
-    Logic logic = chooseLogic<theory::LitSet<IntTheory>, ExprSubs>({formula->getMatrix()->lits()}, {});
+    Logic logic = Smt<IntTheory>::chooseLogic<theory::LitSet<IntTheory>, ExprSubs>({formula->getMatrix()->lits()}, {});
     this->solver = SmtFactory::modelBuildingSolver<IntTheory>(logic, varMan);
     const auto vars = quantifier.getVars();
     bool exact = true;

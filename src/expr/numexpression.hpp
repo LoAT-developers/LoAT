@@ -165,7 +165,7 @@ public:
         struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
             SymbolVisitor(P predicate) : predicate(predicate) {}
             void visit(const GiNaC::symbol &sym) {
-                if (!res && predicate(sym)) {
+                if (!res && predicate(NumVar(sym.get_name()))) {
                     res = true;
                 }
             }

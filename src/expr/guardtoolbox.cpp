@@ -295,7 +295,7 @@ Result<Rule> GuardToolbox::makeEqualities(const Rule &rule, const ITSProblem &it
 
 Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem &its) {
     Result<Rule> res(rule);
-    if (!rule.getGuard()->isLinear() || !rule.getGuard()->forall(Overload{[](const Rel &x){return true;}, [](const auto &x){return false;}})) {
+    if (!rule.getGuard()->isLinear() || !rule.getGuard()->forall([](const Lit &x){return std::holds_alternative<Rel>(x);})) {
         return res;
     }
     const BExpr<IntTheory> guard = rule.getGuard()->transform<IntTheory>();

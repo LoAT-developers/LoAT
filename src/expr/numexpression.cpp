@@ -21,7 +21,7 @@
 
 using namespace std;
 
-const NumVar Expr::NontermSymbol = GiNaC::symbol("NONTERM");
+const NumVar Expr::NontermSymbol("NONTERM");
 
 void Expr::applySubs(const ExprSubs &subs) {
     this->ex = this->ex.subs(subs.ginacMap);
@@ -157,7 +157,8 @@ void Expr::collectVars(std::set<NumVar> &res) const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
         SymbolVisitor(std::set<NumVar> &t) : target(t) {}
         void visit(const GiNaC::symbol &sym) {
-            if (sym != NontermSymbol) target.insert(sym);
+            const std::string name = sym.get_name();
+            if (name != NontermSymbol.getName()) target.insert(NumVar(name));
         }
     private:
         std::set<NumVar> &target;
@@ -208,7 +209,7 @@ bool Expr::isUnivariate() const {
 NumVar Expr::someVar() const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
         void visit(const GiNaC::symbol &var) {
-            variable = var;
+            variable = NumVar(var.get_name());
         }
         NumVar result() const {
             return *variable;
@@ -325,7 +326,7 @@ bool Expr::isAdd() const {
 }
 
 NumVar Expr::toVar() const {
-    return GiNaC::ex_to<GiNaC::symbol>(ex);
+    return NumVar(GiNaC::ex_to<GiNaC::symbol>(ex).get_name());
 }
 
 GiNaC::numeric Expr::toNum() const {

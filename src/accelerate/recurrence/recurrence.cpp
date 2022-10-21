@@ -35,7 +35,8 @@ Recurrence::Recurrence(VarMan &varMan, const std::vector<NumVar> &dependencyOrde
 
 option<Recurrence::RecurrenceSolution> Recurrence::findUpdateRecurrence(const Expr &updateRhs, NumVar updateLhs, const std::map<NumVar, unsigned int> &validitybounds) {
     Expr last = Purrs::x(Purrs::Recurrence::n - 1).toGiNaC();
-    Purrs::Expr rhs = Purrs::Expr::fromGiNaC(updateRhs.subs(updatePreRecurrences).subs(ExprSubs(updateLhs, last)).ex);
+    const auto updated = updateRhs.ex.subs(updatePreRecurrences);
+    Purrs::Expr rhs = Purrs::Expr::fromGiNaC(updated.subs({{*updateLhs, last.ex}}));
     Purrs::Expr exact;
 
     const std::set<NumVar> &vars = updateRhs.vars();
@@ -46,7 +47,7 @@ option<Recurrence::RecurrenceSolution> Recurrence::findUpdateRecurrence(const Ex
                 validitybound = validitybounds.at(x) + 1;
             }
         }
-        return {{updateRhs.subs(updatePreRecurrences), validitybound}};
+        return {{updated, validitybound}};
     }
     Purrs::Recurrence rec(rhs);
     Purrs::Recurrence::Solver_Status res = Purrs::Recurrence::Solver_Status::TOO_COMPLEX;
@@ -64,11 +65,11 @@ option<Recurrence::RecurrenceSolution> Recurrence::findUpdateRecurrence(const Ex
 }
 
 
-option<Expr> Recurrence::iterateCost(const Expr &c) {
-    Expr cost = c.subs(updatePreRecurrences); //replace variables by their recurrence equations
+option<GiNaC::ex> Recurrence::iterateCost(const Expr &c) {
+    const auto cost = c.ex.subs(updatePreRecurrences); //replace variables by their recurrence equations
 
     //Example: if cost = y, the result is x(n) = x(n-1) + y(n-1), with x(0) = 0
-    Purrs::Expr rhs = Purrs::x(Purrs::Recurrence::n - 1) + Purrs::Expr::fromGiNaC(cost.ex);
+    Purrs::Expr rhs = Purrs::x(Purrs::Recurrence::n - 1) + Purrs::Expr::fromGiNaC(cost);
     Purrs::Expr sol;
 
     try {
@@ -92,13 +93,13 @@ option<Expr> Recurrence::iterateCost(const Expr &c) {
         return {};
     }
 
-    return {Expr(sol.toGiNaC())};
+    return {sol.toGiNaC()};
 }
 
 
 option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const ExprSubs &update) {
     assert(dependencyOrder.size() == update.size());
-    ExprSubs newUpdate;
+    GiNaC::exmap newUpdate;
 
     //in the given order try to solve the recurrence for every updated variable
     unsigned int validityBound = 0;
@@ -115,10 +116,10 @@ option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Exp
 
         //remember this recurrence to replace vi in the updates depending on vi
         //note that updates need the value at n-1, e.g. x(n) = x(n-1) + vi(n-1) for the update x=x+vi
-        updatePreRecurrences.put(target, updateRec.get().res.subs(ExprSubs(ginacN, ginacN-1)));
+        updatePreRecurrences.emplace(*target, updateRec->res.subs({{ginacN, ginacN-1}}));
 
         //calculate the final update using the loop's runtime
-        newUpdate.put(target, updateRec.get().res);
+        newUpdate.emplace(*target, updateRec->res);
     }
 
     return {{newUpdate, validityBound}};
@@ -138,9 +139,11 @@ option<Recurrence::Result> Recurrence::iterate(const ExprSubs &update, const Exp
     }
 
     Recurrence::Result res(varMan.addFreshTemporaryVariable<IntTheory>("n"));
-    ExprSubs subs(ginacN, res.n);
-    res.cost = newCost.get().subs(subs);
-    res.update = newUpdate->update.concat(subs);
+    GiNaC::exmap subs {{ginacN, *res.n}};
+    for (const auto &p: newUpdate->update) {
+        res.update.put(NumVar(GiNaC::ex_to<GiNaC::symbol>(p.first).get_name()), p.second.subs(subs));
+    }
+    res.cost = newCost->subs(subs);
     res.validityBound = newUpdate.get().validityBound;
     return {res};
 }

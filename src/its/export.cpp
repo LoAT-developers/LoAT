@@ -3,6 +3,7 @@
 #include "theory.hpp"
 #include "substitution.hpp"
 #include "literal.hpp"
+#include "variable.hpp"
 
 using namespace std;
 namespace Color = Config::Color;
