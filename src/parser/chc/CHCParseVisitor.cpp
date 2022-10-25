@@ -4,11 +4,10 @@
 #include <variant>
 #include <algorithm>
 
-using var_type = std::variant<Expr, BoolExpr>;
 using expr_type = Res<Expr>;
 using formula_type = Res<BoolExpr>;
-using let_type = BoolExpr;
-using lets_type = BoolExpr;
+using let_type = Res<Subs>;
+using lets_type = Res<Subs>;
 using relop_type = Rel::RelOp;
 using unaryop_type = UnaryOp;
 using binaryop_type = BinaryOp;
@@ -20,9 +19,15 @@ using query_type = Clause;
 using symbol_type = std::string;
 using tail_type = std::pair<FunApp, BoolExpr>;
 using head_type = FunApp;
-using var_or_atom_type = std::variant<BoolExpr, FunApp>;
+using var_or_atom_type = std::variant<BoolVar, FunApp>;
 using boolop_type = BoolOp;
 using sort_type = Sort;
+
+template<class T>
+Res<T>::Res(const T &t): t(t) {}
+
+template<class T>
+Res<T>::Res() {}
 
 LocationIdx CHCParseVisitor::loc(const std::string &name) {
     auto it = locations.find(name);
@@ -152,8 +157,8 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
     option<FunApp> lhs;
     for (const auto &c: ctx->var_or_atom()) {
         const auto v = any_cast<var_or_atom_type>(visit(c));
-        if (std::holds_alternative<BoolExpr>(v)) {
-            guards.push_back(std::get<BoolExpr>(v));
+        if (std::holds_alternative<BoolVar>(v)) {
+            guards.push_back(BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(v))));
         } else if (lhs) {
             throw std::invalid_argument("non-linear clause " + ctx->getText());
         } else {
@@ -193,12 +198,7 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
     }
     std::vector<Var> args;
     for (const auto &c: ctx->var()) {
-        const auto res = any_cast<var_type>(visit(c));
-        if (std::holds_alternative<Expr>(res)) {
-            args.push_back(std::get<Expr>(res).toVar());
-        } else {
-            args.push_back(std::get<BoolLit>(*std::get<BoolExpr>(res)->getTheoryLit()).getBoolVar());
-        }
+        args.push_back(any_cast<Var>(visit(c)));
     }
     return FunApp(*loc, args);
 }
@@ -207,11 +207,10 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
     std::vector<BoolExpr> args;
     Res<BoolExpr> res;
     if (ctx->lets()) {
-        res.refinement = any_cast<lets_type>(visit(ctx->lets()));
-        const auto r = any_cast<formula_type>(visit(ctx->i_formula(0)));
-        res.refinement = res.refinement & r.refinement;
-        res.t = r.t;
-        context.pop_back();
+        const auto bindings = any_cast<lets_type>(visit(ctx->lets()));
+        const auto formula = any_cast<formula_type>(visit(ctx->i_formula(0)));
+        res.refinement = bindings.refinement & formula.refinement;
+        res.t = formula.t->subs(bindings.t);
         return res;
     }
     for (const auto &c: ctx->i_formula()) {
@@ -251,8 +250,8 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         res.t = BExpression::buildTheoryLit(p.t);
         res.refinement = res.refinement & p.refinement;
     } else if (ctx->var()) {
-        const auto r = any_cast<var_type>(visit(ctx->var()));
-        res.t = std::get<BoolExpr>(r);
+        const auto r = any_cast<Var>(visit(ctx->var()));
+        res.t = BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(r)));
     } else if (args.size() == 1) {
         res.t = args[0];
     } else if (ctx->TRUE()) {
@@ -289,25 +288,27 @@ NumVar CHCParseVisitor::var(const std::string &name) {
 
 antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
     const auto name = ctx->var()->getText();
+    let_type ret;
     if (ctx->i_formula()) {
         const auto res = any_cast<formula_type>(visit(ctx->i_formula()));
-        context[context.size() - 1].put<BoolTheory>(boolVar(name), res.t);
-        return res.refinement;
+        ret.t.get<BoolTheory>().put(boolVar(name), res.t);
+        ret.refinement = res.refinement;
     } else {
         const auto res = any_cast<expr_type>(visit(ctx->expr()));
-        context[context.size() - 1].put<IntTheory>(var(name),  res.t);
-        return res.refinement;
+        ret.t.get<IntTheory>().put(var(name), res.t);
+        ret.refinement = res.refinement;
     }
+    return ret;
 }
 
 antlrcpp::Any CHCParseVisitor::visitLets(CHCParser::LetsContext *ctx) {
-    context.push_back(Subs());
-    BoolExpr refinement = True;
+    Res<Subs> res;
     for (const auto &c: ctx->let()) {
         const auto r = any_cast<let_type>(visit(c));
-        refinement = refinement & r;
+        res.refinement = res.refinement & r.refinement;
+        res.t = res.t.compose(r.t); // TODO should be union
     }
-    return refinement;
+    return res;
 }
 
 antlrcpp::Any CHCParseVisitor::visitBoolop(CHCParser::BoolopContext *ctx) {
@@ -329,8 +330,9 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
     const auto p1 = any_cast<expr_type>(visit(ctx->expr(0)));
     const auto p2 = any_cast<expr_type>(visit(ctx->expr(1)));
     const auto op = any_cast<relop_type>(visit(ctx->relop()));
-    Rel res(p1.t, op, p2.t);
-    return Res<Rel>{res, p1.refinement & p2.refinement};
+    Res<Rel> res {Rel(p1.t, op, p2.t)};
+    res.refinement = p1.refinement & p2.refinement;
+    return res;
 }
 
 antlrcpp::Any CHCParseVisitor::visitRelop(CHCParser::RelopContext *ctx) {
@@ -347,11 +349,10 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
     Res<Expr> res;
     std::vector<Expr> args;
     if (ctx->lets()) {
-        res.refinement = any_cast<lets_type>(visit(ctx->lets()));
-        const auto sub_res = any_cast<expr_type>(visit(ctx->expr(0)));
-        res.refinement = res.refinement & sub_res.refinement;
-        res.t = sub_res.t;
-        context.pop_back();
+        const auto bindings = any_cast<lets_type>(visit(ctx->lets()));
+        const auto expr = any_cast<expr_type>(visit(ctx->expr(0)));
+        res.refinement = bindings.refinement & expr.refinement;
+        res.t = expr.t.subs(bindings.t.get<IntTheory>());
         return res;
     }
     for (const auto &c: ctx->expr()) {
@@ -408,8 +409,8 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         res.t = its.getFreshUntrackedSymbol<IntTheory>("ite", Expr::Int);
         res.refinement = res.refinement & ((cond & Rel::buildEq(res.t, args[0])) | ((!cond) & Rel::buildEq(res.t, args[1])));
     } else if (ctx->var()) {
-        const auto x = any_cast<var_type>(visit(ctx->var()));
-        res.t = std::get<Expr>(x);
+        const auto x = any_cast<Var>(visit(ctx->var()));
+        res.t = std::get<NumVar>(x);
     } else if (ctx->INT()) {
         long l = std::stoi(ctx->getText());
         res.t = l;
@@ -455,15 +456,13 @@ antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *c
     if (ctx->var()) {
         const option<LocationIdx> loc = its.getLocationIdx(ctx->getText());
         if (loc) {
-            return std::variant<BoolExpr, FunApp>(FunApp(*loc, {}));
+            return std::variant<BoolVar, FunApp>(FunApp(*loc, {}));
         } else {
-            const auto v = any_cast<var_type>(visit(ctx->var()));
-            const BoolExpr b = std::get<BoolExpr>(v);
-            return std::variant<BoolExpr, FunApp>(b);
+            return std::variant<BoolVar, FunApp>(std::get<BoolVar>(any_cast<Var>(visit(ctx->var()))));
         }
     } else {
         const auto f = any_cast<pred_type>(visit(ctx->u_pred_atom()));
-        return std::variant<BoolExpr, FunApp>(f);
+        return std::variant<BoolVar, FunApp>(f);
     }
 }
 
@@ -471,11 +470,11 @@ antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
     const std::string name = unescape(ctx->getText());
     const auto theoryRes = vars.find(name);
     if (theoryRes != vars.end()) {
-        return var_type(theoryRes->second);
+        return Var(theoryRes->second);
     }
     const auto boolRes = bvars.find(name);
     if (boolRes != bvars.end()) {
-        return var_type(BExpression::buildTheoryLit(boolRes->second));
+        return Var(boolRes->second);
     }
     throw std::invalid_argument("unknown variable " + name);
 }

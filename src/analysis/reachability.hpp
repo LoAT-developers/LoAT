@@ -31,8 +31,6 @@ class Reachability {
         PseudoLoop
     };
 
-    static const bool log = true;
-
     ITSProblem &its;
     Proof proof;
     HyperGraph::SCCs sccs = its.sccs();
@@ -85,6 +83,7 @@ class Reachability {
 
 public:
 
+    static bool log;
     static void analyze(ITSProblem &its);
 
 };

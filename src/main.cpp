@@ -83,7 +83,9 @@ void parseFlags(int argc, char *argv[]) {
             if (!found) {
                 cerr << "Unknown strategy " << strategy << " for limit problems, defaulting to " << Config::Limit::PolyStrategy->name() << endl;
             }
-        } else if (strcmp("--mode",argv[arg]) == 0) {
+        } else if (strcmp("--reach-log", argv[arg]) == 0) {
+            Reachability::log = true;
+        } else if (strcmp("--mode", argv[arg]) == 0) {
             bool found = false;
             std::string str = getNext();
             for (const Config::Analysis::Mode mode: Config::Analysis::modes) {

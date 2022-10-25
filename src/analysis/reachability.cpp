@@ -12,6 +12,8 @@
 
 #include <numeric>
 
+bool Reachability::log = false;
+
 Reachability::Reachability(ITSProblem &its): its(its), z3(its) {
     z3.enableModels();
 }

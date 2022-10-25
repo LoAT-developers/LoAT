@@ -7,6 +7,8 @@ template<class T>
 struct Res {
     T t;
     BoolExpr refinement = True;
+    Res(const T &t);
+    Res();
 };
 
 enum UnaryOp {
@@ -53,7 +55,6 @@ struct Clause {
  */
 class  CHCParseVisitor : public CHCVisitor {
 
-    std::vector<Subs> context;
     ITSProblem its;
     std::map<std::string, LocationIdx> locations;
     std::map<std::string, NumVar> vars;
