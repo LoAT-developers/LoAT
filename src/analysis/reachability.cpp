@@ -481,9 +481,11 @@ std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
     // KleeneClosure does not work if the initial
     // state is not marked
     automaton.SetMarkedState(automaton.InitState());
-    faudes::KleeneClosure(automaton);
-    faudes::StateMin(automaton, automaton);
-    return {loop, automaton};
+    Automaton closure;
+    faudes::KleeneClosure(automaton, closure);
+    faudes::LanguageConcatenate(automaton, closure, closure);
+    faudes::StateMin(closure, closure);
+    return {loop, closure};
 }
 
 Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
@@ -532,7 +534,7 @@ option<TransIdx> Reachability::add_accelerated_rule(const Rule &accel, const Aut
     return loop_idx;
 }
 
-Reachability::State Reachability::handle_loop(const int backlink) {
+Reachability::LoopState Reachability::handle_loop(const int backlink) {
     const Step step = trace[backlink];
     const auto p = build_loop(backlink);
     Rule loop = p.first;
@@ -569,7 +571,7 @@ Reachability::State Reachability::handle_loop(const int backlink) {
             if (static_cast<unsigned>(backlink) == trace.size() - 1) {
                 regexes[trace.back().transition] = automaton;
                 accel_proof.append("acceleration yielded equivalent rule, using original rule as accelerator");
-                return Successful;
+                return Accelerated;
             } else {
                 if (log) std::cout << "using resolvent as accelerator" << std::endl;
                 accel = loop;
@@ -581,7 +583,7 @@ Reachability::State Reachability::handle_loop(const int backlink) {
         if (static_cast<unsigned>(backlink) == trace.size() - 1) {
             regexes[trace.back().transition] = automaton;
             accel_proof.append("acceleration failed, using original rule as accelerator");
-            return Successful;
+            return Accelerated;
         } else {
             if (log) std::cout << "using resolvent as accelerator" << std::endl;
             accel = loop;
@@ -598,15 +600,15 @@ Reachability::State Reachability::handle_loop(const int backlink) {
         if (z3.check() == Sat) {
             store(*loop_idx, accel->getGuard());
             proof.append(std::stringstream() << "added " << *loop_idx << " to trace");
-            return Successful;
+            return Accelerated;
         } else {
             if (log) std::cout << "applying accelerated rule failed" << std::endl;
             z3.pop();
-            return DroppedLoop;
+            return Dropped;
         }
     } else {
         regexes[*its.getTransIdx(*accel)] = automaton;
-        return Successful;
+        return Accelerated;
     }
 }
 
@@ -620,7 +622,7 @@ void Reachability::analyze() {
     init();
     do {
         if (log) std::cout << "trace: " << trace << std::endl;
-        State state;
+        bool bt = true;
         const TransIdx current = trace.empty() ? its.getInitialLocation() : its.getRule(trace.back().transition).getRhsLoc(0);
         auto &trans = transitions[current];
         auto it = trans.begin();
@@ -647,33 +649,34 @@ void Reachability::analyze() {
                     // this can only happen if we applied an accelerated transition, make sure that we do not apply it again straight away
                     do_block(trace.back());
                 }
-                state = Successful;
+                bt = false;
                 ++it;
                 break;
             }
             const Step step = trace[backlink];
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
-            state = handle_loop(backlink);
+            LoopState state = handle_loop(backlink);
+            bt = state == Covered;
             switch (state) {
             case Covered:
                 // do not increment 'it' here, just block the model that we got and hope for others
                 backtrack();
                 continue;
-            case Successful:
+            case Accelerated:
                 if (simple_loop) {
                     do_block(step);
                 }
                 // make sure that we do not apply the accelerated transition again straight away, which is redundant
                 do_block(trace.back());
                 break;
-            case DroppedLoop:
+            case Dropped:
                 do_block(step);
                 break;
             }
             break;
         }
         trans.insert(trans.end(), append.begin(), append.end());
-        if (state == Covered && !trace.empty()) {
+        if (bt && !trace.empty()) {
             backtrack();
         }
     } while (!trace.empty());
