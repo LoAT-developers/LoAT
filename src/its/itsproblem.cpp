@@ -155,10 +155,19 @@ void ITSProblem::removeRule(TransIdx transition) {
     rules.erase(transition);
 }
 
-option<TransIdx> ITSProblem::addRule(Rule rule) {
+option<TransIdx> ITSProblem::getTransIdx(const Rule &rule) const {
     std::lock_guard guard(mutex);
     auto it = rulesBwd.find(rule);
-    if (it != rulesBwd.end()) {
+    if (it == rulesBwd.end()) {
+        return {};
+    } else {
+        return it->second;
+    }
+}
+
+option<TransIdx> ITSProblem::addRule(Rule rule) {
+    std::lock_guard guard(mutex);
+    if (getTransIdx(rule)) {
         return {};
     }
     // gather target locations

@@ -26,7 +26,7 @@ class Reachability {
 
     enum State {
         Successful,
-        Failed,
+        Covered,
         DroppedLoop
     };
 

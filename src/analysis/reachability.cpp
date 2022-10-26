@@ -540,7 +540,7 @@ Reachability::State Reachability::handle_loop(const int backlink) {
     const Subs old_model = sigmas[backlink].concat(z3.model().toSubs());
     if (is_covered(automaton, old_model)) {
         if (log) std::cout << "loop already covered" << std::endl;
-        return Failed;
+        return Covered;
     }
     covered.emplace_back(automaton, loop.getGuard());
     Proof accel_proof;
@@ -605,7 +605,8 @@ Reachability::State Reachability::handle_loop(const int backlink) {
             return DroppedLoop;
         }
     } else {
-        return Failed;
+        regexes[*its.getTransIdx(*accel)] = automaton;
+        return Successful;
     }
 }
 
@@ -619,7 +620,7 @@ void Reachability::analyze() {
     init();
     do {
         if (log) std::cout << "trace: " << trace << std::endl;
-        State state = Failed;
+        State state;
         const TransIdx current = trace.empty() ? its.getInitialLocation() : its.getRule(trace.back().transition).getRhsLoc(0);
         auto &trans = transitions[current];
         auto it = trans.begin();
@@ -654,7 +655,7 @@ void Reachability::analyze() {
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             state = handle_loop(backlink);
             switch (state) {
-            case Failed:
+            case Covered:
                 // do not increment 'it' here, just block the model that we got and hope for others
                 backtrack();
                 continue;
@@ -672,7 +673,7 @@ void Reachability::analyze() {
             break;
         }
         trans.insert(trans.end(), append.begin(), append.end());
-        if (state == Failed && !trace.empty()) {
+        if (state == Covered && !trace.empty()) {
             backtrack();
         }
     } while (!trace.empty());
