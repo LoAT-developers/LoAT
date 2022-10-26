@@ -39,10 +39,8 @@ Accelerator::Accelerator(ITSProblem &its, LocationIdx loc, std::set<TransIdx> &r
 
 
 option<TransIdx> Accelerator::addResultingRule(Rule rule) {
-    option<TransIdx> idx = its.addRule(rule);
-    if (idx) {
-        resultingRules.insert(idx.get());
-    }
+    TransIdx idx = its.addRule(rule);
+    resultingRules.insert(idx);
     return idx;
 }
 

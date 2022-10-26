@@ -148,28 +148,11 @@ std::set<LocationIdx> ITSProblem::getPredecessorLocations(LocationIdx loc) const
 void ITSProblem::removeRule(TransIdx transition) {
     std::lock_guard guard(mutex);
     graph.removeTrans(transition);
-    auto it = rules.find(transition);
-    if (it != rules.end()) {
-        rulesBwd.erase(it->second);
-    }
     rules.erase(transition);
 }
 
-option<TransIdx> ITSProblem::getTransIdx(const Rule &rule) const {
+TransIdx ITSProblem::addRule(Rule rule) {
     std::lock_guard guard(mutex);
-    auto it = rulesBwd.find(rule);
-    if (it == rulesBwd.end()) {
-        return {};
-    } else {
-        return it->second;
-    }
-}
-
-option<TransIdx> ITSProblem::addRule(Rule rule) {
-    std::lock_guard guard(mutex);
-    if (getTransIdx(rule)) {
-        return {};
-    }
     // gather target locations
     set<LocationIdx> rhsLocs;
     for (auto it = rule.rhsBegin(); it != rule.rhsEnd(); ++it) {
@@ -179,7 +162,6 @@ option<TransIdx> ITSProblem::addRule(Rule rule) {
     // add transition and store mapping to rule
     TransIdx idx = graph.addTrans(rule.getLhsLoc(), rhsLocs);
     rules.emplace(idx, rule);
-    rulesBwd.emplace(rule, idx);
     return idx;
 }
 
@@ -188,12 +170,7 @@ std::vector<TransIdx> ITSProblem::replaceRules(const std::vector<TransIdx> &toRe
     std::vector<TransIdx> keep;
     std::vector<TransIdx> result;
     for (const Rule& r: replacement) {
-        option<TransIdx> added = addRule(r);
-        if (added) {
-            result.push_back(added.get());
-        } else {
-            keep.push_back(rulesBwd.find(r)->second);
-        }
+        addRule(r);
     }
     for (TransIdx idx: toReplace) {
         if (std::find(keep.begin(), keep.end(), idx) == keep.end()) {

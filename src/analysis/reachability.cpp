@@ -229,19 +229,14 @@ int Reachability::is_loop(const TransIdx idx) {
     return -1;
 }
 
-Automaton Reachability::singleton_automaton(const TransIdx idx) const {
+Automaton Reachability::singleton_language(const TransIdx idx, const Guard &guard) {
     Automaton res;
-    res.StateNamesEnabled(false);
     faudes::EventSet events;
-    events.Insert(res.InsEvent(std::to_string(idx)));
+    events.Insert(covered.InsEvent(std::to_string(next_char)));
     faudes::AlphabetLanguage(events, res);
+    alphabet.emplace(std::pair<TransIdx, Guard>{idx, guard}, res);
+    next_char++;
     return res;
-}
-
-bool Reachability::is_covered(const Automaton &automaton, const Subs &model) const {
-    return std::any_of(covered.begin(), covered.end(), [&](const auto &p) {
-        return faudes::LanguageInclusion(automaton, p.first) && covers(model, p.second);
-    });
 }
 
 void Reachability::handle_update(const TransIdx idx) {
@@ -397,8 +392,8 @@ void Reachability::init() {
         }
     }
     sigmas.push_back(sigma);
+    faudes::EmptyLanguage({}, covered);
     for (const TransIdx idx: its.getAllTransitions()) {
-        regexes[idx] = singleton_automaton(idx);
         lastOrigRule = std::max(lastOrigRule, idx);
         const TransIdx src = its.getRule(idx).getLhsLoc();
         auto *to_insert = leaves_scc(idx) ? &cross_scc : &in_scc;
@@ -461,15 +456,29 @@ void Reachability::drop_loop(const int backlink) {
     }
 }
 
+Automaton Reachability::get_language(const Step &step) {
+    if (step.transition <= lastOrigRule) {
+        const auto g = step.sat->conjunctionToGuard();
+        const auto it = alphabet.find({step.transition, g});
+        if (it == alphabet.end()) {
+            return singleton_language(step.transition, g);
+        } else {
+            return it->second;
+        }
+    } else {
+        return regexes[step.transition];
+    }
+}
+
 std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
-    Automaton automaton = regexes[trace.back().transition];
+    Automaton automaton = get_language(trace.back());
     Rule loop = its.getRule(trace.back().transition).withGuard(trace.back().sat);
     for (int i = trace.size() - 2; i >= backlink; --i) {
         const Step &step = trace[i];
         const TransIdx t = step.transition;
         const Rule &r = its.getRule(t);
         loop = *Chaining::chainRules(its, r.withGuard(step.sat), loop, false);
-        faudes::LanguageConcatenate(regexes[t], automaton, automaton);
+        faudes::LanguageConcatenate(get_language(step), automaton, automaton);
     }
     assert(loop.getLhsLoc() == loop.getRhsLoc(0));
     if (log) {
@@ -477,10 +486,6 @@ std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
         ITSExport::printRule(loop, its, std::cout);
         std::cout << std::endl;
     }
-    // this is required to bypass a bug in faudes:
-    // KleeneClosure does not work if the initial
-    // state is not marked
-    automaton.SetMarkedState(automaton.InitState());
     Automaton closure;
     faudes::KleeneClosure(automaton, closure);
     faudes::LanguageConcatenate(automaton, closure, closure);
@@ -516,21 +521,17 @@ Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
     return res;
 }
 
-option<TransIdx> Reachability::add_accelerated_rule(const Rule &accel, const Automaton &automaton) {
+TransIdx Reachability::add_accelerated_rule(const Rule &accel, const Automaton &automaton) {
     const auto loop_idx = its.addRule(accel);
-    if (loop_idx) {
-        regexes[*loop_idx] = automaton;
-        const auto src = accel.getLhsLoc();
-        auto it = accelerated.find(src);
-        if (it == accelerated.end()) {
-            accelerated.emplace(src, std::vector<TransIdx>{*loop_idx});
-        } else {
-            it->second.push_back(*loop_idx);
-        }
-        update_transitions(src);
+    regexes[loop_idx] = automaton;
+    const auto src = accel.getLhsLoc();
+    auto it = accelerated.find(src);
+    if (it == accelerated.end()) {
+        accelerated.emplace(src, std::vector<TransIdx>{loop_idx});
     } else {
-        if (log) std::cout << "adding rule failed" << std::endl;
+        it->second.push_back(loop_idx);
     }
+    update_transitions(src);
     return loop_idx;
 }
 
@@ -540,11 +541,12 @@ Reachability::LoopState Reachability::handle_loop(const int backlink) {
     Rule loop = p.first;
     const Automaton automaton = p.second;
     const Subs old_model = sigmas[backlink].concat(z3.model().toSubs());
-    if (is_covered(automaton, old_model)) {
+    if (faudes::LanguageInclusion(automaton, covered)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return Covered;
     }
-    covered.emplace_back(automaton, loop.getGuard());
+    faudes::LanguageUnion(covered, automaton, covered);
+    faudes::StateMin(covered, covered);
     Proof accel_proof;
     const Result<Rule> preprocessed = preprocess_loop(loop);
     if (preprocessed) {
@@ -555,11 +557,9 @@ Reachability::LoopState Reachability::handle_loop(const int backlink) {
     option<Rule> accel;
     if (accel_res.rule) {
         accel = accel_res.rule;
-        accel_proof.storeSubProof(accel_res.proof);
         const auto simplified = Preprocess::simplifyRule(its, *accel, true);
         if (simplified) {
             accel = *simplified;
-            accel_proof.storeSubProof(simplified.getProof());
         }
         if (log) {
             std::cout << "accelerated rule:" << std::endl;
@@ -568,47 +568,33 @@ Reachability::LoopState Reachability::handle_loop(const int backlink) {
         }
         if (accel->getUpdate(0) == loop.getUpdate(0)) {
             if (log) std::cout << "acceleration yielded equivalent rule" << std::endl;
-            if (static_cast<unsigned>(backlink) == trace.size() - 1) {
-                regexes[trace.back().transition] = automaton;
-                accel_proof.append("acceleration yielded equivalent rule, using original rule as accelerator");
-                return Accelerated;
-            } else {
-                if (log) std::cout << "using resolvent as accelerator" << std::endl;
-                accel = loop;
-                accel_proof.append("acceleration yielded equivalent rule, using resolvent as accelerator");
+            accel = loop;
+            accel_proof.append("acceleration yielded equivalent rule, using resolvent as accelerator");
+        } else {
+            accel_proof.storeSubProof(accel_res.proof);
+            if (simplified) {
+                accel_proof.storeSubProof(simplified.getProof());
             }
         }
     } else {
         if (log) std::cout << "acceleration failed" << std::endl;
-        if (static_cast<unsigned>(backlink) == trace.size() - 1) {
-            regexes[trace.back().transition] = automaton;
-            accel_proof.append("acceleration failed, using original rule as accelerator");
-            return Accelerated;
-        } else {
-            if (log) std::cout << "using resolvent as accelerator" << std::endl;
-            accel = loop;
-            accel_proof.append("acceleration failed, using resolvent as accelerator");
-        }
+        accel = loop;
+        accel_proof.append("acceleration failed, using resolvent as accelerator");
     }
     const auto loop_idx = add_accelerated_rule(*accel, automaton);
-    if (loop_idx) {
-        drop_loop(backlink);
-        proof.majorProofStep("accelerated loop", its);
-        proof.storeSubProof(accel_proof);
-        z3.push();
-        z3.add(accel->getGuard()->subs(sigmas.back()));
-        if (z3.check() == Sat) {
-            store(*loop_idx, accel->getGuard());
-            proof.append(std::stringstream() << "added " << *loop_idx << " to trace");
-            return Accelerated;
-        } else {
-            if (log) std::cout << "applying accelerated rule failed" << std::endl;
-            z3.pop();
-            return Dropped;
-        }
-    } else {
-        regexes[*its.getTransIdx(*accel)] = automaton;
+    drop_loop(backlink);
+    proof.majorProofStep("accelerated loop", its);
+    proof.storeSubProof(accel_proof);
+    z3.push();
+    z3.add(accel->getGuard()->subs(sigmas.back()));
+    if (z3.check() == Sat) {
+        store(loop_idx, accel->getGuard());
+        proof.append(std::stringstream() << "added " << loop_idx << " to trace");
         return Accelerated;
+    } else {
+        if (log) std::cout << "applying accelerated rule failed" << std::endl;
+        z3.pop();
+        return Dropped;
     }
 }
 

@@ -77,7 +77,7 @@ public:
 
     // Mutation of Rules
     void removeRule(TransIdx transition);
-    option<TransIdx> addRule(Rule rule);
+    TransIdx addRule(Rule rule);
     std::vector<TransIdx> replaceRules(const std::vector<TransIdx> &toReplace, const std::vector<Rule> replacement);
 
     // Mutation for Locations
@@ -114,7 +114,6 @@ protected:
     // Collection of all rules, identified by the corresponding transitions in the graph.
     // The map allows to efficiently add/delete rules.
     std::map<TransIdx, Rule> rules;
-    Rule::ApproxMap<TransIdx> rulesBwd;
 
     // the set of all locations (locations are just arbitrary numbers to allow simple addition/deletion)
     std::set<LocationIdx> locations;

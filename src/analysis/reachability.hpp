@@ -43,11 +43,13 @@ class Reachability {
     std::vector<Step> trace;
     std::vector<Subs> sigmas;
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked{{}};
-    std::vector<std::pair<Automaton, BoolExpr>> covered;
     VarSet prog_vars;
     TransIdx lastOrigRule = 0;
 
+    long next_char = 0;
+    std::map<std::pair<TransIdx, Guard>, Automaton> alphabet;
     std::map<TransIdx, Automaton> regexes;
+    Automaton covered;
 
     ResultViaSideEffects removeIrrelevantTransitions();
     ResultViaSideEffects simplify();
@@ -60,16 +62,15 @@ class Reachability {
     void drop_loop(const int backlink);
     std::pair<Rule, Automaton> build_loop(const int backlink);
     Result<Rule> preprocess_loop(const Rule &loop);
-    option<TransIdx> add_accelerated_rule(const Rule &accel, const Automaton &automaton);
+    TransIdx add_accelerated_rule(const Rule &accel, const Automaton &automaton);
     LoopState handle_loop(const int backlink);
     Result<Rule> unroll(const Rule &r);
     Rule rename_tmp_vars(const Rule &rule);
     BoolExpr project(const TransIdx idx);
     bool leaves_scc(const TransIdx idx) const;
     int is_loop(const TransIdx idx);
-    bool is_covered(const Automaton &automaton, const Subs &model) const;
     void handle_update(const TransIdx idx);
-    Automaton singleton_automaton(const TransIdx idx) const;
+    Automaton singleton_language(const TransIdx idx, const Guard &guard);
     bool covers(const Subs &model, const BoolExpr &rels) const;
     void do_block(const Step &step);
     void backtrack();
@@ -77,6 +78,7 @@ class Reachability {
     void extend_trace(const TransIdx idx, const BoolExpr &sat);
     void store(const TransIdx idx, const BoolExpr &sat);
     void print_run(std::ostream &s);
+    Automaton get_language(const Step &step);
 
     Reachability(ITSProblem &its);
     void analyze();
