@@ -13,6 +13,9 @@ Proof proof;
 T res;
 
 public:
+
+    Result() {}
+
     Result(const T &t, bool success = false): success(success), res(t) {}
 
     void operator=(const T &t) {
@@ -133,6 +136,14 @@ public:
     }
 
     const T* operator->() const {
+        return &res;
+    }
+
+    T& operator*() {
+        return res;
+    }
+
+    T* operator->() {
         return &res;
     }
 

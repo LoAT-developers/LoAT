@@ -12,6 +12,7 @@ target_sources(${EXECUTABLE}
         recursionacceleration.cpp
         recursionacceleration.hpp
         accelerationresult.hpp
+        accelerationresult.cpp
         accelerationviaqe.cpp
         accelerationviaqe.hpp
         accelerationviacalculus.cpp

@@ -27,8 +27,7 @@ class Reachability {
     enum State {
         Successful,
         Failed,
-        DroppedLoop,
-        PseudoLoop
+        DroppedLoop
     };
 
     ITSProblem &its;
@@ -61,6 +60,7 @@ class Reachability {
     void drop_loop(const int backlink);
     std::pair<Rule, Automaton> build_loop(const int backlink);
     Result<Rule> preprocess_loop(const Rule &loop);
+    option<TransIdx> add_accelerated_rule(const Rule &accel, const Automaton &automaton);
     State handle_loop(const int backlink);
     Result<Rule> unroll(const Rule &r);
     Rule rename_tmp_vars(const Rule &rule);

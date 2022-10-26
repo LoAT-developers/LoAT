@@ -19,8 +19,7 @@ AccelerationProblem::AccelerationProblem(
         todo.insert(std::get<Rel>(l));
     }
     if (closed) {
-        auto op = Config::Analysis::reachability() ? Rel::gt : Rel::geq;
-        bound =  Rel(closed->n, op, 0);
+        bound =  Rel(closed->n, Rel::geq, 1);
     }
     const auto &intUp = up.get<IntTheory>();
     const std::vector<ExprSubs> subs = closed.map([&intUp](auto const &closed){return std::vector<ExprSubs>{intUp, closed.update};}).get_value_or({intUp});
@@ -385,8 +384,8 @@ AccelerationProblem::ReplacementMap AccelerationProblem::computeReplacementMap(b
     return res;
 }
 
-std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationProblem::computeRes() {
-    std::vector<AccelerationTechnique<IntTheory>::Accelerator> ret;
+AccelerationTechnique<IntTheory>::AcceleratorPair AccelerationProblem::computeRes() {
+    AccelerationTechnique<IntTheory>::AcceleratorPair ret;
     Proof proof;
     for (const Rel& rel: todo) {
         bool res = recurrence(rel, proof);
@@ -401,20 +400,23 @@ std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationProblem::
         bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || SmtFactory::isImplication(guard, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0)), its);
         bool nt = map.nonterm && positiveCost;
         BExpr<IntTheory> newGuard = guard->replaceLits<IntTheory>(map.map);
-        if (!nt) newGuard = newGuard & *bound;
+        if (!nt) {
+            newGuard = newGuard & *bound;
+        }
         if (SmtFactory::check(newGuard, its) == Sat) {
-            Proof accelProof(proof);
-            accelProof.append(std::stringstream() << "Replacement map: " << map.map);
-            ret.emplace_back(newGuard, accelProof, map.exact, nt);
+            ret.term.emplace(newGuard, proof, map.exact);
+            ret.term->proof.append(std::stringstream() << "Replacement map: " << map.map);
+            if (nt) {
+                ret.nonterm = ret.term;
+            }
         }
         if (Config::Analysis::tryNonterm() && closed && positiveCost && !map.nonterm) {
             ReplacementMap map = computeReplacementMap(true);
             if (map.acceleratedAll || !isConjunction) {
                 BExpr<IntTheory> newGuard = guard->replaceLits<IntTheory>(map.map);
                 if (SmtFactory::check(newGuard, its) == Sat) {
-                    Proof nontermProof(proof);
-                    nontermProof.append(std::stringstream() << "Replacement map: " << map.map);
-                    ret.emplace_back(newGuard, nontermProof, map.exact, true);
+                    ret.nonterm.emplace(newGuard, proof, map.exact);
+                    ret.nonterm->proof.append(std::stringstream() << "Replacement map: " << map.map);
                 }
             }
         }

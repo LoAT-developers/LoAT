@@ -15,15 +15,13 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef ACCELERATE_H
-#define ACCELERATE_H
+#pragma once
 
 #include "types.hpp"
 #include "itsproblem.hpp"
-#include "numexpression.hpp"
 #include "complexity.hpp"
 #include "accelerationresult.hpp"
-
+#include "result.hpp"
 
 class Accelerator {
 public:
@@ -64,6 +62,10 @@ private:
      */
     option<Proof> run();
 
+    Result<std::vector<Rule>> instantiate(const NumVar &n, const Rule &rule) const;
+
+    Result<std::vector<Rule>> accelerate(const LinearRule &rule, Complexity cpx) const;
+
     /**
      * Helper that calls Preprocess::simplifyRule
      * Returns true iff any rule was modified.
@@ -75,7 +77,7 @@ private:
      * if this fails, by backward acceleration.
      * @returns The acceleration result (including accelerated rules, if successful)
      */
-    AccelerationResult tryAccelerate(const Rule &rule, Complexity cpx) const;
+    Result<std::vector<Rule>> tryAccelerate(const Rule &rule, Complexity cpx) const;
 
 
     /**
@@ -94,7 +96,7 @@ private:
      * @returns If successful, the resulting accelerated rule(s). Otherwise,
      * the acceleration result from accelerating the original rule (before shortening).
      */
-    AccelerationResult accelerateOrShorten(const Rule &rule, Complexity cpx) const;
+    Result<std::vector<Rule>> accelerateOrShorten(const Rule &rule, Complexity cpx) const;
 
 
     /**
@@ -120,8 +122,6 @@ private:
      */
     void removeOldLoops(const std::vector<TransIdx> &loops);
 
-    const option<LinearRule> chain(const LinearRule &rule) const;
-
     unsigned int numNotInUpdate(const Subs &up) const;
 
 private:
@@ -139,13 +139,6 @@ private:
     // These are all accelerated rules and some rules for which acceleration failed.
     std::set<TransIdx> &resultingRules;
 
-    // All rules where acceleration failed, but where we want to keep the un-accelerated rule.
-    std::set<TransIdx> keepRules;
-
-    const AccelerationResult strengthenAndAccelerate(const LinearRule &rule, Complexity cpx) const;
-
     Proof proof;
 
 };
-
-#endif // ACCELERATE_H

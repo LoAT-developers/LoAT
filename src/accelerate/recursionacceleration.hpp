@@ -15,16 +15,10 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef FORWARD_H
-#define FORWARD_H
+#pragma once
 
 #include "types.hpp"
 #include "itsproblem.hpp"
-#include "numexpression.hpp"
-#include "metering.hpp"
-#include "status.hpp"
-#include "proof.hpp"
-#include "option.hpp"
 #include "accelerationresult.hpp"
 
 /**
@@ -50,5 +44,3 @@ namespace RecursionAcceleration {
      */
     AccelerationResult accelerateFast(ITSProblem &its, const Rule &rule, LocationIdx sink);
 }
-
-#endif // FORWARD_H

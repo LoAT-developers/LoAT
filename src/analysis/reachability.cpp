@@ -508,7 +508,28 @@ Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
             std::cout << std::endl;
         }
     }
+    if (res && SmtFactory::check(res->getGuard(), its) != Sat) {
+        res.fail();
+    }
     return res;
+}
+
+option<TransIdx> Reachability::add_accelerated_rule(const Rule &accel, const Automaton &automaton) {
+    const auto loop_idx = its.addRule(accel);
+    if (loop_idx) {
+        regexes[*loop_idx] = automaton;
+        const auto src = accel.getLhsLoc();
+        auto it = accelerated.find(src);
+        if (it == accelerated.end()) {
+            accelerated.emplace(src, std::vector<TransIdx>{*loop_idx});
+        } else {
+            it->second.push_back(*loop_idx);
+        }
+        update_transitions(src);
+    } else {
+        if (log) std::cout << "adding rule failed" << std::endl;
+    }
+    return loop_idx;
 }
 
 Reachability::State Reachability::handle_loop(const int backlink) {
@@ -528,60 +549,64 @@ Reachability::State Reachability::handle_loop(const int backlink) {
         accel_proof.concat(preprocessed.getProof());
         loop = *preprocessed;
     }
-    const AccelerationResult accel_res = LoopAcceleration::accelerate(its, loop.toLinear(), -1, Complexity::Const);
-    if (accel_res.rules.empty()) {
-        if (SmtFactory::check(Chaining::chainRules(its, loop, loop, false)->getGuard(), its) == Unsat) {
-            if (log) std::cout << "pseudo loop" << std::endl;
-            return PseudoLoop;
+    AccelerationResult accel_res = LoopAcceleration::accelerate(its, loop.toLinear(), -1, Complexity::Const);
+    option<Rule> accel;
+    if (accel_res.rule) {
+        accel = accel_res.rule;
+        accel_proof.storeSubProof(accel_res.proof);
+        const auto simplified = Preprocess::simplifyRule(its, *accel, true);
+        if (simplified) {
+            accel = *simplified;
+            accel_proof.storeSubProof(simplified.getProof());
+        }
+        if (log) {
+            std::cout << "accelerated rule:" << std::endl;
+            ITSExport::printRule(*accel, its, std::cout);
+            std::cout << std::endl;
+        }
+        if (accel->getUpdate(0) == loop.getUpdate(0)) {
+            if (log) std::cout << "acceleration yielded equivalent rule" << std::endl;
+            if (static_cast<unsigned>(backlink) == trace.size() - 1) {
+                regexes[trace.back().transition] = automaton;
+                accel_proof.append("acceleration yielded equivalent rule, using original rule as accelerator");
+                return Successful;
+            } else {
+                if (log) std::cout << "using resolvent as accelerator" << std::endl;
+                accel = loop;
+                accel_proof.append("acceleration yielded equivalent rule, using resolvent as accelerator");
+            }
+        }
+    } else {
+        if (log) std::cout << "acceleration failed" << std::endl;
+        if (static_cast<unsigned>(backlink) == trace.size() - 1) {
+            regexes[trace.back().transition] = automaton;
+            accel_proof.append("acceleration failed, using original rule as accelerator");
+            return Successful;
         } else {
-            if (log) std::cout << "acceleration failed" << std::endl;
-            return Failed;
+            if (log) std::cout << "using resolvent as accelerator" << std::endl;
+            accel = loop;
+            accel_proof.append("acceleration failed, using resolvent as accelerator");
         }
     }
-    assert(accel_res.rules.size() == 1);
-    accel_proof.storeSubProof(accel_res.proof);
-    Rule accel = accel_res.rules.front();
-    const auto simplified = Preprocess::simplifyRule(its, accel, true);
-    if (simplified) {
-        accel = *simplified;
-        accel_proof.storeSubProof(simplified.getProof());
-    }
-    if (log) {
-        std::cout << "accelerated rule:" << std::endl;
-        ITSExport::printRule(accel, its, std::cout);
-        std::cout << std::endl;
-    }
-    if (accel.getUpdate(0) == loop.getUpdate(0)) {
-        if (log) std::cout << "acceleration yielded equivalent rule" << std::endl;
-        return Failed;
-    }
-    const auto loop_idx = its.addRule(accel);
-    if (!loop_idx) {
-        if (log) std::cout << "adding rule failed" << std::endl;
-        return Failed;
-    }
-    drop_loop(backlink);
-    z3.push();
-    z3.add(accel.getGuard()->subs(sigmas.back()));
-    if (z3.check() != Sat) {
-        if (log) std::cout << "applying accelerated rule failed" << std::endl;
-        z3.pop();
-        its.removeRule(*loop_idx);
-        return DroppedLoop;
-    }
-    regexes[*loop_idx] = automaton;
-    const auto src = accel.getLhsLoc();
-    auto it = accelerated.find(src);
-    if (it == accelerated.end()) {
-        accelerated.emplace(src, std::vector<TransIdx>{*loop_idx});
+    const auto loop_idx = add_accelerated_rule(*accel, automaton);
+    if (loop_idx) {
+        drop_loop(backlink);
+        proof.majorProofStep("accelerated loop", its);
+        proof.storeSubProof(accel_proof);
+        z3.push();
+        z3.add(accel->getGuard()->subs(sigmas.back()));
+        if (z3.check() == Sat) {
+            store(*loop_idx, accel->getGuard());
+            proof.append(std::stringstream() << "added " << *loop_idx << " to trace");
+            return Successful;
+        } else {
+            if (log) std::cout << "applying accelerated rule failed" << std::endl;
+            z3.pop();
+            return DroppedLoop;
+        }
     } else {
-        it->second.push_back(*loop_idx);
+        return Failed;
     }
-    update_transitions(src);
-    store(*loop_idx, accel.getGuard());
-    proof.majorProofStep("accelerated loop", its);
-    proof.storeSubProof(accel_proof);
-    return Successful;
 }
 
 void Reachability::analyze() {
@@ -629,10 +654,6 @@ void Reachability::analyze() {
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             state = handle_loop(backlink);
             switch (state) {
-            case PseudoLoop:
-                state = Successful;
-                ++it;
-                break;
             case Failed:
                 // do not increment 'it' here, just block the model that we got and hope for others
                 backtrack();

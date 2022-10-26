@@ -35,7 +35,7 @@ public:
 private:
     LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
 
-    LinearRule buildNontermRule(const BoolExpr &guard) const;
+    const std::pair<LinearRule, unsigned> chain() const;
 
     /**
      * Main function, just calls the methods below in the correct order

@@ -60,7 +60,7 @@ public:
 
     static AccelerationProblem init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its);
 
-    std::vector<AccelerationTechnique<IntTheory>::Accelerator> computeRes();
+    AccelerationTechnique<IntTheory>::AcceleratorPair computeRes();
     std::pair<BExpr<IntTheory>, bool> buildRes(const Model<IntTheory> &model, const std::map<Rel, std::vector<BExpr<IntTheory>>> &entryVars);
 
 private:

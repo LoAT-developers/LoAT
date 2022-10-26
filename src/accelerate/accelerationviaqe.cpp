@@ -8,7 +8,7 @@ AccelerationViaQE::AccelerationViaQE(
         const Recurrence::Result closed,
         ITSProblem &its): AccelerationTechnique(rule, closed, its) {}
 
-std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationViaQE::computeRes() {
+AccelerationViaQE::AcceleratorPair AccelerationViaQE::computeRes() {
     const auto isIntLiteral = [](const Lit &lit){
         return std::holds_alternative<Rel>(lit);
     };
@@ -18,10 +18,10 @@ std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationViaQE::co
     NumVar m = its.getFreshUntrackedSymbol<IntTheory>("m", Expr::Int);
     auto qelim = Qelim::solver(its);
     option<Qelim::Result> res;
-    std::vector<Accelerator> ret;
+    AcceleratorPair ret;
     BExpr<IntTheory> matrix = rule.getGuard()->toG()->transform<IntTheory>()->subs(closed->update);
     if (Config::Analysis::tryNonterm()) {
-        QuantifiedFormula<IntTheory> q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {closed->n}, {{closed->n, closed->validityBound}}, {})});
+        QuantifiedFormula<IntTheory> q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {closed->n}, {{closed->n, 1}}, {})});
         res = qelim->qe(q);
         if (res && res->qf != BoolExpression<IntTheory>::False) {
             Proof proof;
@@ -38,18 +38,17 @@ std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationViaQE::co
             proof.append(loop);
             proof.append(std::stringstream() << "Certificate of Non-Termination: " << res->qf);
             proof.storeSubProof(res->proof);
-            ret.push_back(Accelerator(res->qf, proof, res->exact, true));
+            ret.nonterm.emplace(res->qf, proof, res->exact);
             if (res->exact) {
                 return ret;
             }
         }
     }
     matrix = matrix->subs(theory::Subs<IntTheory>::build<IntTheory>(closed->n, m));
-    const QuantifiedFormula<IntTheory> q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, closed->validityBound}}, {{m, (*closed->n) - 1}})});
+    const QuantifiedFormula<IntTheory> q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, 1}}, {{m, (*closed->n) - 1}})});
     res = qelim->qe(q);
     if (res && res->qf != BoolExpression<IntTheory>::False) {
-        const Rel bound = Config::Analysis::reachability() && closed->validityBound == 0 ? Rel(closed->n, Rel::gt, 0) : Rel(closed->n, Rel::geq, closed->validityBound);
-        const auto accelerator = res->qf & bound;
+        const auto accelerator = res->qf & Rel(closed->n, Rel::geq, 1);
         Proof proof;
         std::stringstream headline;
         if (res->exact) {
@@ -63,7 +62,7 @@ std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationViaQE::co
         proof.append(loop);
         proof.append(std::stringstream() << "Accelerator: " << accelerator);
         proof.storeSubProof(res->proof);
-        ret.push_back(Accelerator(accelerator, proof, res->exact, false));
+        ret.term.emplace(accelerator, proof, res->exact);
     }
     return ret;
 }

@@ -232,6 +232,13 @@ public:
 
     Subs(typename Th::Subs... subs): t(subs...) {}
 
+    template <ITheory T>
+    static Subs build(typename T::Subs subs) {
+        Subs res;
+        res.get<T>() = subs;
+        return res;
+    }
+
 private:
 
     template<std::size_t I = 0>

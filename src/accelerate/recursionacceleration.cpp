@@ -16,10 +16,7 @@
  */
 
 #include "recursionacceleration.hpp"
-
-#include "recurrence.hpp"
 #include "metering.hpp"
-#include "smt.hpp"
 
 
 using namespace std;
@@ -77,7 +74,6 @@ static AccelerationResult meterAndIterate(ITSProblem &its, const Rule &r, Locati
         case MeteringFinder::Nonlinear:
         case MeteringFinder::Nonterm:
         case MeteringFinder::Unsat:
-            res.status = Failure;
             return res;
 
         case MeteringFinder::Success:
@@ -100,9 +96,8 @@ static AccelerationResult meterAndIterate(ITSProblem &its, const Rule &r, Locati
             // So we have to clear the rhs (fresh sink location, update is irrelevant).
             const Rule &accelRule = newRule.replaceRhssBySink(sink);
             res.proof.ruleTransformationProof(rule, "Acceleration with metering function " + meterStr, accelRule, its);
-            res.rules.emplace_back(accelRule);
+            res.rule = accelRule;
 
-            res.status = Success;
             return res;
         }
     }
@@ -119,7 +114,7 @@ AccelerationResult RecursionAcceleration::accelerateFast(ITSProblem &its, const 
 AccelerationResult RecursionAcceleration::accelerate(ITSProblem &its, const Rule &rule, LocationIdx sink) {
     // Try to find a metering function without any heuristics
     AccelerationResult accel = meterAndIterate(its, rule, sink);
-    if (accel.status != Failure) {
+    if (accel.rule) {
         return accel;
     }
 
@@ -129,16 +124,15 @@ AccelerationResult RecursionAcceleration::accelerate(ITSProblem &its, const Rule
     // Check and (possibly) apply heuristic, this modifies newRule
     option<Rule> strengthened = MeteringFinder::strengthenGuard(its, rule);
     if (strengthened) {
+        res.strengthened = true;
         const AccelerationResult &accel = accelerateFast(its, strengthened.get(), sink);
-        if (accel.status != Failure) {
+        if (accel.rule) {
             res.proof.ruleTransformationProof(rule, "strengthening", strengthened.get(), its);
             res.proof.concat(accel.proof);
-            res.rules.insert(res.rules.end(), accel.rules.begin(), accel.rules.end());
-            res.status = PartialSuccess;
+            res.rule = accel.rule;
             return res;
         }
     }
 
-    res.status = Failure;
     return res;
 }

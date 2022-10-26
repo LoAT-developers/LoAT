@@ -13,14 +13,17 @@ public:
         BExpr<Th...> formula;
         Proof proof;
         bool exact;
-        bool witnessesNonterm;
 
-        Accelerator(const BExpr<Th...> &formula, const Proof &proof, bool exact, bool witnessesNonterm):
+        Accelerator(const BExpr<Th...> &formula, const Proof &proof, bool exact):
             formula(formula),
             proof(proof),
-            exact(exact),
-            witnessesNonterm(witnessesNonterm) {}
+            exact(exact) {}
 
+    };
+
+    struct AcceleratorPair {
+        option<Accelerator> term;
+        option<Accelerator> nonterm;
     };
 
     option<Recurrence::Result> getClosed() const;
@@ -38,6 +41,6 @@ protected:
 
 public:
 
-    virtual std::vector<Accelerator> computeRes() = 0;
+    virtual AcceleratorPair computeRes() = 0;
 
 };

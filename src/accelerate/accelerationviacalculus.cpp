@@ -8,6 +8,6 @@ AccelerationViaCalculus::AccelerationViaCalculus(
         ITSProblem &its): AccelerationTechnique(rule, closed, its) {}
 
 
-std::vector<AccelerationTechnique<IntTheory>::Accelerator> AccelerationViaCalculus::computeRes() {
+AccelerationViaCalculus::AcceleratorPair AccelerationViaCalculus::computeRes() {
     return AccelerationProblem::init(rule, closed, its).computeRes();
 }

@@ -21,10 +21,9 @@
 #include "recurrence.hpp"
 #include "chain.hpp"
 #include "accelerationfactory.hpp"
-#include "vareliminator.hpp"
-#include "status.hpp"
 
 #include <purrs.hh>
+#include <numeric>
 
 using namespace std;
 
@@ -32,95 +31,130 @@ LoopAcceleration::LoopAcceleration(ITSProblem &its, const LinearRule &rule, Loca
     : its(its), rule(rule), sink(sink), cpx(cpx) {}
 
 bool LoopAcceleration::shouldAccelerate() const {
-    return !rule.getCost().isNontermSymbol() && (!Config::Analysis::complexity() || rule.getCost().isPoly());
+    return (!Config::Analysis::tryNonterm() || !rule.getCost().isNontermSymbol()) && (!Config::Analysis::complexity() || rule.getCost().isPoly());
 }
 
-vector<Rule> LoopAcceleration::replaceByUpperbounds(const NumVar &N, const Rule &rule) {
-    if (Config::Analysis::reachability()) {
-        return {};
+const std::pair<LinearRule, unsigned> LoopAcceleration::chain() const {
+    LinearRule res = rule;
+    unsigned period = 1;
+    // chain if there are updates like x = -x + p
+    for (const auto &p: rule.getUpdate().get<IntTheory>()) {
+        const auto var = p.first;
+        const auto up = p.second.expand();
+        const auto upVars = up.vars();
+        if (upVars.find(var) != upVars.end()) {
+            if (up.isPoly() && up.degree(var) == 1) {
+                const Expr coeff = up.coeff(var);
+                if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
+                    res = Chaining::chainRules(its, res, res, false).get();
+                    period *= 2;
+                    break;
+                }
+            }
+        }
     }
-    // gather all upper bounds (if possible)
-    VarEliminator ve(rule.getGuard(), N, its);
-
-    // avoid rule explosion (by not instantiating N if there are too many bounds)
-    if (ve.getRes().empty() || ve.getRes().size() > Config::LoopAccel::MaxUpperboundsForPropagation) {
-        return {};
+    // chain if there are updates like x = y; y = x
+    std::map<NumVar, unsigned> cycleLength;
+    auto up = res.getUpdate().get<IntTheory>();
+    for (const auto &p: up) {
+        auto vars = p.second.vars();
+        unsigned oldSize = 0;
+        unsigned count = 0;
+        while (oldSize != vars.size() && vars.find(p.first) == vars.end()) {
+            oldSize = vars.size();
+            count++;
+            for (const auto& var: vars) {
+                const auto it = up.find(var);
+                if (it != up.end()) {
+                    const auto newVars = it->second.vars();
+                    vars.insert(newVars.begin(), newVars.end());
+                }
+            }
+        }
+        if (vars.find(p.first) != vars.end() && count > 0) {
+            cycleLength[p.first] = count;
+        }
     }
-
-    // create one rule for each upper bound, by instantiating N with this bound
-    vector<Rule> res;
-    for (const auto &s : ve.getRes()) {
-        const auto esubs = s.get<IntTheory>();
-        if (esubs.get(N).isRationalConstant()) continue;
-        Subs subs;
-        subs.get<IntTheory>() = esubs;
-        res.push_back(rule.subs(subs));
+    if (!cycleLength.empty()) {
+        unsigned lcm = 1;
+        for (const auto &e: cycleLength) {
+            lcm = std::lcm(lcm, e.second);
+        }
+        for (unsigned i = 0; i < lcm; ++i) {
+            res = Chaining::chainRules(its, res, res, false).get();
+            period *= 2;
+        }
     }
-    return res;
-}
-
-LinearRule LoopAcceleration::buildNontermRule(const BoolExpr &guard) const {
-    return LinearRule(rule.getLhsLoc(), guard, Expr::NontermSymbol, sink, {});
+    // chain if it eliminates variables from an update
+    bool changed;
+    do {
+        changed = false;
+        up = res.getUpdate().get<IntTheory>();
+        for (const auto &p: up) {
+            auto varsOneStep = p.second.vars();
+            std::set<NumVar> varsTwoSteps;
+            for (const auto &var: varsOneStep) {
+                const auto it = up.find(var);
+                if (it != up.end()) {
+                    const auto newVars = it->second.vars();
+                    varsTwoSteps.insert(newVars.begin(), newVars.end());
+                } else {
+                    varsTwoSteps.insert(var);
+                }
+            }
+            if (varsTwoSteps.size() < varsOneStep.size() && std::includes(varsOneStep.begin(), varsOneStep.end(), varsTwoSteps.begin(), varsTwoSteps.end())) {
+                res = Chaining::chainRules(its, res, res, false).get();
+                period *= 2;
+                changed = true;
+                break;
+            }
+        }
+    } while (changed);
+    return {res, period};
 }
 
 AccelerationResult LoopAcceleration::run() {
     AccelerationResult res;
-    res.status = Failure;
-    if (shouldAccelerate()) {
-        const auto rec = Recurrence::iterateRule(its, rule);
-        unsigned vb = rec ? rec->validityBound : 0;
-        auto accel = AccelerationFactory::get(rule, rec, its);
-        for (const auto &ar: accel->computeRes()) {
-            res.status = vb > 1 ? PartialSuccess : Success;
-            const BoolExpr formula = boolExpression::transform(ar.formula);
-            if (Config::Analysis::tryNonterm() && ar.witnessesNonterm) {
-                option<Rule> resultingRule;
-                if (vb > 0) {
-                    option<Rule> prefix = rule;
-                    for (unsigned i = 0; i < vb - 1; ++i) {
-                        prefix = Chaining::chainRules(its, rule, prefix.get(), false);
-                    }
-                    resultingRule = buildNontermRule(prefix->getGuard() & formula);
-                    if (SmtFactory::check(resultingRule->getGuard(), its) != Sat) {
-                        continue;
-                    }
-                } else {
-                    resultingRule = buildNontermRule(formula);
-                }
-                res.rules.emplace_back(resultingRule.get());
-                res.proof.ruleTransformationProof(rule, "nonterm", resultingRule.get(), its);
-                res.proof.storeSubProof(ar.proof);
-            } else if (rec) {
-                option<Rule> resultingRule;
-                Subs up;
-                up.get<IntTheory>() = rec->update;
-                if (vb > 0) {
-                    option<Rule> prefix = rule;
-                    for (unsigned i = 0; i < vb - 1; ++i) {
-                        prefix = Chaining::chainRules(its, rule, prefix.get(), false);
-                    }
-                    resultingRule = Rule(rule.getLhsLoc(), prefix->getGuard() & formula, rec->cost, rule.getRhsLoc(), up);
-                } else {
-                    resultingRule = Rule(rule.getLhsLoc(), formula, rec->cost, rule.getRhsLoc(), up);
-                }
-                Subs vbSubs;
-                vbSubs.get<IntTheory>() = {rec->n, max(2u, rec->validityBound)};
-                const BoolExpr toCheck = resultingRule->getGuard()->subs(vbSubs);
-                if (SmtFactory::check(toCheck, its) != Sat) {
-                    continue;
-                }
-                res.proof.ruleTransformationProof(rule, "acceleration", resultingRule.get(), its);
-                res.proof.storeSubProof(ar.proof);
-                std::vector<Rule> instantiated = replaceByUpperbounds(rec->n, resultingRule.get());
-                if (instantiated.empty()) {
-                    res.rules.emplace_back(resultingRule.get());
-                } else {
-                    for (const Rule &r: instantiated) {
-                        res.proof.ruleTransformationProof(resultingRule.get(), "instantiation", r, its);
-                        res.rules.emplace_back(r);
-                    }
-                }
-            }
+    if (!shouldAccelerate()) {
+        return res;
+    }
+    const auto [rule, period] = chain();
+    bool sat = SmtFactory::check(rule.getGuard(), its);
+    if (sat != Sat) {
+        return res;
+    }
+    if (period > 1) {
+        res.proof.ruleTransformationProof(this->rule, "unrolling", rule, its);
+        res.period = period;
+    }
+    const auto rec = Recurrence::iterateRule(its, rule);
+    const auto accelerationTechnique = AccelerationFactory::get(rule, rec, its);
+    const auto accelerationResult = accelerationTechnique->computeRes();
+    if (Config::Analysis::tryNonterm() && accelerationResult.nonterm) {
+        res.nontermRule = LinearRule(
+                    rule.getLhsLoc(),
+                    boolExpression::transform(accelerationResult.nonterm->formula),
+                    Expr::NontermSymbol,
+                    sink,
+                    {});
+        res.proof.ruleTransformationProof(rule, "nonterm", *res.rule, its);
+        res.proof.storeSubProof(accelerationResult.nonterm->proof);
+    }
+    if (rec && accelerationResult.term) {
+        if (rec->validityBound > 1) {
+            throw logic_error("validity bound should be at most one due to unrolling");
+        }
+        res.n = rec->n;
+        BoolExpr guard = boolExpression::transform(accelerationResult.term->formula);
+        if (SmtFactory::check(guard->subs(Subs::build<IntTheory>(rec->n, 2)), its) == Sat) {
+            res.rule = LinearRule(
+                        rule.getLhsLoc(),
+                        guard,
+                        rec->cost,
+                        rule.getRhsLoc(),
+                        Subs::build<IntTheory>(rec->update));
+            res.proof.ruleTransformationProof(rule, "acceleration", *res.rule, its);
+            res.proof.storeSubProof(accelerationResult.term->proof);
         }
     }
     return res;

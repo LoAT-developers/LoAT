@@ -14,6 +14,6 @@ public:
             const Recurrence::Result closed,
             ITSProblem &its);
 
-    std::vector<Accelerator> computeRes() override;
+    AcceleratorPair computeRes() override;
 
 };

@@ -1,14 +1,19 @@
-#ifndef ACCELERATION_RESULT_HPP
-#define ACCELERATION_RESULT_HPP
+#pragma once
 
-#include "status.hpp"
 #include "proof.hpp"
 #include "rule.hpp"
 
 struct AccelerationResult {
-    std::vector<Rule> rules;
-    Status status;
+    option<Rule> rule;
+    option<Rule> nontermRule;
+    unsigned period = 1;
+    bool strengthened = false;
     Proof proof;
-};
+    Proof nontermProof;
+    option<NumVar> n;
 
-#endif // ACCELERATION_RESULT_HPP
+    bool successful() const;
+    bool inexact() const;
+    std::vector<Rule> rules() const;
+
+};
