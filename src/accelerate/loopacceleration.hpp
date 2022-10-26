@@ -32,10 +32,10 @@ public:
 
     static AccelerationResult accelerate(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
 
+    static const std::pair<LinearRule, unsigned> chain(const LinearRule &rule, ITSProblem &its);
+
 private:
     LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
-
-    const std::pair<LinearRule, unsigned> chain() const;
 
     /**
      * Main function, just calls the methods below in the correct order
@@ -47,17 +47,7 @@ private:
      */
     bool shouldAccelerate() const;
 
-    /**
-     * If possible, replaces N by all its upper bounds from the guard of the given rule.
-     * For every upper bound, a separate rule is created.
-     *
-     * If this is not possible (i.e., there is at least one upper bound that is too difficult
-     * to compute like N^2 <= X or there are too many upper bounds), then N is not replaced
-     * and a vector consisting only of the given rule is returned.
-     *
-     * @return A list of rules, either with N eliminated or only containing the given rule
-     */
-    std::vector<Rule> replaceByUpperbounds(const NumVar &N, const Rule &rule);
+    static LinearRule renameTmpVars(const LinearRule &rule, ITSProblem &its);
 
 private:
     ITSProblem &its;

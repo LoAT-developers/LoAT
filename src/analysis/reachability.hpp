@@ -64,8 +64,6 @@ class Reachability {
     Result<Rule> preprocess_loop(const Rule &loop);
     TransIdx add_accelerated_rule(const Rule &accel, const Automaton &automaton);
     LoopState handle_loop(const int backlink);
-    Result<Rule> unroll(const Rule &r);
-    Rule rename_tmp_vars(const Rule &rule);
     BoolExpr project(const TransIdx idx);
     bool leaves_scc(const TransIdx idx) const;
     int is_loop(const TransIdx idx);

@@ -71,118 +71,21 @@ ResultViaSideEffects Reachability::simplify() {
     return ret;
 }
 
-Rule Reachability::rename_tmp_vars(const Rule &rule) {
-    Subs sigma;
-    for (const auto &x: rule.vars()) {
-        if (its.isTempVar(x)) {
-            if (std::holds_alternative<NumVar>(x)) {
-                const auto &var = std::get<NumVar>(x);
-                sigma.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
-            } else if (std::holds_alternative<BoolVar>(x)) {
-                const auto &var = std::get<BoolVar>(x);
-                sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
-            }
-        }
-    }
-    return rule.subs(sigma);
-}
-
-Result<Rule> Reachability::unroll(const Rule &rule) {
-    Result<Rule> res(rule);
-    // chain if there are updates like x = -x + p
-    for (const auto &p: rule.getUpdate(0).get<IntTheory>()) {
-        const auto var = p.first;
-        auto up = p.second.expand();
-        const std::set<NumVar> upVars = up.vars();
-        if (upVars.find(var) != upVars.end()) {
-            if (up.isPoly() && up.degree(var) == 1) {
-                const Expr coeff = up.coeff(var);
-                if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
-                    const Rule c = *Chaining::chainRules(its, *res, rename_tmp_vars(*res), false);
-                    res.set(c.toLinear());
-                    break;
-                }
-            }
-        }
-    }
-    // chain if there are updates like x = y; y = x
-    std::map<NumVar, unsigned> cycleLength;
-    auto up = res->getUpdate(0).get<IntTheory>();
-    for (const auto &p: up) {
-        auto vars = p.second.vars();
-        unsigned oldSize = 0;
-        unsigned count = 0;
-        while (oldSize != vars.size() && vars.find(p.first) == vars.end()) {
-            oldSize = vars.size();
-            count++;
-            for (const auto& var: vars) {
-                const auto it = up.find(var);
-                if (it != up.end()) {
-                    const auto newVars = it->second.vars();
-                    vars.insert(newVars.begin(), newVars.end());
-                }
-            }
-        }
-        if (vars.find(p.first) != vars.end() && count > 0) {
-            cycleLength[p.first] = count;
-        }
-    }
-    if (!cycleLength.empty()) {
-        unsigned lcm = 1;
-        for (const auto &e: cycleLength) {
-            lcm = std::lcm(lcm, e.second);
-        }
-        for (unsigned i = 0; i < lcm; ++i) {
-            const Rule c = *Chaining::chainRules(its, *res, rename_tmp_vars(*res), false);
-            res.set(c.toLinear());
-        }
-    }
-    // chain if it eliminates variables from an update
-    bool changed;
-    do {
-        changed = false;
-        up = res->getUpdate(0).get<IntTheory>();
-        for (const auto &p: up) {
-            auto varsOneStep = p.second.vars();
-            std::set<NumVar> varsTwoSteps;
-            for (const auto &var: varsOneStep) {
-                const auto it = up.find(var);
-                if (it != up.end()) {
-                    const auto newVars = it->second.vars();
-                    varsTwoSteps.insert(newVars.begin(), newVars.end());
-                } else {
-                    varsTwoSteps.insert(var);
-                }
-            }
-            if (varsTwoSteps.size() < varsOneStep.size() && std::includes(varsOneStep.begin(), varsOneStep.end(), varsTwoSteps.begin(), varsTwoSteps.end())) {
-                const Rule c = *Chaining::chainRules(its, *res, rename_tmp_vars(*res), false);
-                res.set(c.toLinear());
-                changed = true;
-                break;
-            }
-        }
-    } while (changed);
-    if (res) {
-        res.ruleTransformationProof(rule, "unrolling", *res, its);
-    }
-    return res;
-}
-
 ResultViaSideEffects Reachability::unroll() {
     ResultViaSideEffects ret;
     for (const TransIdx idx: its.getAllTransitions()) {
         const Rule &r = its.getRule(idx);
         if (r.isSimpleLoop()) {
-            const auto res = unroll(r);
-            if (res) {
-                const auto simplified = Preprocess::simplifyRule(its, *res, true);
+            const auto [res, period] = LoopAcceleration::chain(r.toLinear(), its);
+            if (period > 1) {
+                const auto simplified = Preprocess::simplifyRule(its, res, true);
                 ret.succeed();
-                ret.concat(res.getProof());
+                ret.ruleTransformationProof(r, "unrolling", res, its);
                 if (simplified) {
                     its.replaceRules({idx}, {*simplified});
                     ret.concat(simplified.getProof());
                 } else {
-                    its.replaceRules({idx}, {*res});
+                    its.replaceRules({idx}, {res});
                 }
             }
         }
@@ -504,19 +407,6 @@ Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
             ITSExport::printRule(*res, its, std::cout);
             std::cout << std::endl;
         }
-    }
-    const Result<Rule> unrolled = unroll(*res);
-    if (unrolled) {
-        res = *unrolled;
-        res.storeSubProof(unrolled.getProof());
-        if (log) {
-            std::cout << "unrolled loop:" << std::endl;
-            ITSExport::printRule(*res, its, std::cout);
-            std::cout << std::endl;
-        }
-    }
-    if (res && SmtFactory::check(res->getGuard(), its) != Sat) {
-        res.fail();
     }
     return res;
 }

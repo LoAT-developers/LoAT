@@ -34,7 +34,23 @@ bool LoopAcceleration::shouldAccelerate() const {
     return (!Config::Analysis::tryNonterm() || !rule.getCost().isNontermSymbol()) && (!Config::Analysis::complexity() || rule.getCost().isPoly());
 }
 
-const std::pair<LinearRule, unsigned> LoopAcceleration::chain() const {
+LinearRule LoopAcceleration::renameTmpVars(const LinearRule &rule, ITSProblem &its) {
+    Subs sigma;
+    for (const auto &x: rule.vars()) {
+        if (its.isTempVar(x)) {
+            if (std::holds_alternative<NumVar>(x)) {
+                const auto &var = std::get<NumVar>(x);
+                sigma.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
+            } else if (std::holds_alternative<BoolVar>(x)) {
+                const auto &var = std::get<BoolVar>(x);
+                sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
+            }
+        }
+    }
+    return rule.subs(sigma).toLinear();
+}
+
+const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &rule, ITSProblem &its) {
     LinearRule res = rule;
     unsigned period = 1;
     // chain if there are updates like x = -x + p
@@ -46,7 +62,7 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain() const {
             if (up.isPoly() && up.degree(var) == 1) {
                 const Expr coeff = up.coeff(var);
                 if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
-                    res = Chaining::chainRules(its, res, res, false).get();
+                    res = Chaining::chainRules(its, res, renameTmpVars(res, its), false).get();
                     period *= 2;
                     break;
                 }
@@ -81,7 +97,7 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain() const {
             lcm = std::lcm(lcm, e.second);
         }
         for (unsigned i = 0; i < lcm; ++i) {
-            res = Chaining::chainRules(its, res, res, false).get();
+            res = Chaining::chainRules(its, res, renameTmpVars(res, its), false).get();
             period *= 2;
         }
     }
@@ -103,7 +119,7 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain() const {
                 }
             }
             if (varsTwoSteps.size() < varsOneStep.size() && std::includes(varsOneStep.begin(), varsOneStep.end(), varsTwoSteps.begin(), varsTwoSteps.end())) {
-                res = Chaining::chainRules(its, res, res, false).get();
+                res = Chaining::chainRules(its, res, renameTmpVars(res, its), false).get();
                 period *= 2;
                 changed = true;
                 break;
@@ -118,9 +134,8 @@ AccelerationResult LoopAcceleration::run() {
     if (!shouldAccelerate()) {
         return res;
     }
-    const auto [rule, period] = chain();
-    bool sat = SmtFactory::check(rule.getGuard(), its);
-    if (sat != Sat) {
+    const auto [rule, period] = chain(this->rule, its);
+    if (SmtFactory::check(rule.getGuard(), its) != Sat) {
         return res;
     }
     if (period > 1) {

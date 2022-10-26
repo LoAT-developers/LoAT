@@ -15,13 +15,10 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef CHAINSTRATEGY_H
-#define CHAINSTRATEGY_H
+#pragma once
 
 #include "types.hpp"
 #include "itsproblem.hpp"
-#include "option.hpp"
-#include "proof.hpp"
 #include "result.hpp"
 
 
@@ -86,5 +83,3 @@ namespace Chaining {
     ResultViaSideEffects chainAcceleratedRules(ITSProblem &its, const std::set<TransIdx> &acceleratedRules);
 
 }
-
-#endif // CHAINSTRATEGY_H

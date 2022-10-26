@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef CHAIN_H
-#define CHAIN_H
+#pragma once
 
 #include "rule.hpp"
 #include "variablemanager.hpp"
@@ -37,5 +36,3 @@ namespace Chaining {
      */
     option<LinearRule> chainRules(VarMan &varMan, const LinearRule &first, const LinearRule &second, bool checkSat = true);
 }
-
-#endif // CHAIN_H
