@@ -35,7 +35,7 @@ RUN xbps-install -y file
 RUN xbps-install -y libffi-devel
 RUN xbps-install -y libltdl-devel
 WORKDIR /src
-RUN svn co http://svn.code.sf.net/p/reduce-algebra/code/trunk reduce-algebra
+RUN svn co -r 6325 http://svn.code.sf.net/p/reduce-algebra/code/trunk reduce-algebra
 WORKDIR /src/reduce-algebra
 RUN ./configure --with-csl
 RUN cp /usr/include/unistd.h /usr/include/sys/
