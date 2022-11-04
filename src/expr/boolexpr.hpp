@@ -196,13 +196,25 @@ public:
                     return BoolExpression<Th_...>::False;
                 } else {
                     if (simp != BoolExpression<Th_...>::True) {
-                        newChildren.insert(simp);
+                        if (simp->isAnd()) {
+                            const auto children = simp->getChildren();
+                            newChildren.insert(children.begin(), children.end());
+                        } else {
+                            newChildren.insert(simp);
+                        }
                     }
                 }
             }
             if (newChildren.empty()) {
                 return BoolExpression<Th_...>::True;
             } else {
+                for (const auto &c: newChildren) {
+                    if (c->getTheoryLit()) {
+                        if (newChildren.find(!c) != newChildren.end()) {
+                            return BoolExpression<Th_...>::False;
+                        }
+                    }
+                }
                 return BoolExpression<Th_...>::buildAnd(newChildren);
             }
         } else if (isOr()) {
@@ -213,13 +225,25 @@ public:
                     return BoolExpression<Th_...>::True;
                 } else {
                     if (simp != BoolExpression<Th_...>::False) {
-                        newChildren.insert(simp);
+                        if (simp->isOr()) {
+                            const auto children = simp->getChildren();
+                            newChildren.insert(children.begin(), children.end());
+                        } else {
+                            newChildren.insert(simp);
+                        }
                     }
                 }
             }
             if (newChildren.empty()) {
               return BoolExpression<Th_...>::False;
             } else {
+                for (const auto &c: newChildren) {
+                    if (c->getTheoryLit()) {
+                        if (newChildren.find(!c) != newChildren.end()) {
+                            return BoolExpression<Th_...>::True;
+                        }
+                    }
+                }
                 return BoolExpression<Th_...>::buildOr(newChildren);
             }
         } else if (getTheoryLit()) {
@@ -239,13 +263,25 @@ public:
                     return BoolExpression<Th...>::False;
                 } else {
                     if (simp != BoolExpression<Th...>::True) {
-                        newChildren.insert(simp);
+                        if (simp->isAnd()) {
+                            const auto children = simp->getChildren();
+                            newChildren.insert(children.begin(), children.end());
+                        } else {
+                            newChildren.insert(simp);
+                        }
                     }
                 }
             }
             if (newChildren.empty()) {
                 return BoolExpression<Th...>::True;
             } else if (changed) {
+                for (const auto &c: newChildren) {
+                    if (c->getTheoryLit()) {
+                        if (newChildren.find(!c) != newChildren.end()) {
+                            return BoolExpression<Th...>::False;
+                        }
+                    }
+                }
                 return BoolExpression<Th...>::buildAnd(newChildren);
             } else {
                 return this->shared_from_this();
@@ -260,13 +296,25 @@ public:
                     return BoolExpression<Th...>::True;
                 } else {
                     if (simp != BoolExpression<Th...>::False) {
-                        newChildren.insert(simp);
+                        if (simp->isOr()) {
+                            const auto children = simp->getChildren();
+                            newChildren.insert(children.begin(), children.end());
+                        } else {
+                            newChildren.insert(simp);
+                        }
                     }
                 }
             }
             if (newChildren.empty()) {
               return BoolExpression<Th...>::False;
             } else if (changed) {
+                for (const auto &c: newChildren) {
+                    if (c->getTheoryLit()) {
+                        if (newChildren.find(!c) != newChildren.end()) {
+                            return BoolExpression<Th...>::True;
+                        }
+                    }
+                }
                 return BoolExpression<Th...>::buildOr(newChildren);
             } else {
                 return this->shared_from_this();
@@ -404,7 +452,7 @@ public:
 
     BES findConsequences(const Lit &lit) const {
         BES res;
-        findConsequences(buildTheoryLit(lit), res);
+        findConsequences(buildTheoryLit(literal_t::negate<Th...>(lit)), res);
         return res;
     }
 

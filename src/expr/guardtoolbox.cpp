@@ -131,9 +131,9 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
         }
         return false;
     };
-    ResultViaSideEffects proof;
-    auto guard = rule.getGuard();
-    auto bvars = guard->vars().get<BoolVar>();
+    auto bvars = rule.getGuard()->vars().get<BoolVar>();
+    Result<Rule> res(rule);
+    Proof subproof;
     bool changed;
     do {
         changed = false;
@@ -144,12 +144,12 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
                 const auto lit = BExpression::buildTheoryLit(var);
                 for (const BoolExpr &c: consequences) {
                     if (!hasTempVars(c)) {
-                        if (SmtFactory::isImplication(c, lit, its)) {
-                            guard = guard->subs(Subs::build<BoolTheory>(var, c));
+                        if (SmtFactory::isImplication(rule.getGuard() & c, lit, its)) {
+                            res = res->subs(Subs::build<BoolTheory>(var, c));
                             it = bvars.erase(it);
                             changed = true;
-                            proof.append(std::stringstream() << "replaced " << var << " with " << c);
-                            proof.succeed();
+                            subproof.append(stringstream() << "replaced " << var << " with " << c);
+                            res.storeSubProof(subproof);
                         }
                     }
                 }
@@ -161,11 +161,9 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
             }
         }
     } while (changed);
-    Result<Rule> res(rule);
-    if (proof) {
-        res = rule.withGuard(guard);
+    if (res) {
         res.ruleTransformationProof(rule, "propagated boolean equalities", res.get(), its);
-        res.storeSubProof(proof.getProof());
+        res.storeSubProof(subproof);
     }
     return res;
 }
