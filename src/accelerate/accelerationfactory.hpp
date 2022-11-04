@@ -5,6 +5,6 @@
 
 namespace AccelerationFactory {
 
-std::unique_ptr<AccelerationTechnique<IntTheory>> get(const LinearRule &rule, option<Recurrence::Result> closed, ITSProblem &its);
+std::unique_ptr<AccelerationTechnique<IntTheory, BoolTheory>> get(const LinearRule &rule, option<Recurrence::Result> closed, ITSProblem &its);
 
 }

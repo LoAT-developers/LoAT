@@ -49,7 +49,7 @@ namespace util {
                     }
                     for (const auto &lit: guard->lits()) {
                         VS relVars;
-                        literal::collectVars<Th...>(lit, relVars);
+                        literal_t::collectVars<Th...>(lit, relVars);
                         if (relVars.find(x) != relVars.end()) {
                             for (const auto &x: relVars) {
                                 next.insert(x);

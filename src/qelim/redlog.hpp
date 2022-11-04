@@ -7,7 +7,7 @@ extern "C" {
 #include "variablemanager.hpp"
 #include "qelim.hpp"
 
-class Redlog: Qelim {
+class Redlog: Qelim<IntTheory> {
 
     static RedProc process();
     VariableManager &varMan;
@@ -16,7 +16,7 @@ public:
 
     Redlog(VariableManager &varMan): varMan(varMan){}
 
-    option<Qelim::Result> qe(const QuantifiedFormula<IntTheory> &qf) override;
+    option<typename Qelim<IntTheory>::Result> qe(const QuantifiedFormula<IntTheory> &qf) override;
     static void init();
     static void exit();
 

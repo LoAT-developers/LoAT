@@ -3,7 +3,7 @@
 #include "itheory.hpp"
 #include "thset.hpp"
 
-namespace literal {
+namespace literal_t {
 
 template<std::size_t I = 0, ITheory... Th>
 inline void collectVarsImpl(const typename Theory<Th...>::Lit &lit, theory::VarSet<Th...> &s) {

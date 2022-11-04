@@ -103,16 +103,3 @@ private:
     RelOp op;
 
 };
-
-template<class T>
-std::ostream& operator<<(std::ostream &s, const RelMap<T> &map) {
-    s << "{";
-    for (auto it = map.begin(); it != map.end(); ++it) {
-        if (it != map.begin()) {
-            s << ", ";
-        }
-        s << it->first << " -> " << it->second;
-    }
-    s << "}";
-    return s;
-}

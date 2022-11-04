@@ -1,6 +1,7 @@
 target_sources(${EXECUTABLE}
     PRIVATE
         dependencyorder.hpp
+        dependencyorder.cpp
         recurrence.cpp
         recurrence.hpp
 )

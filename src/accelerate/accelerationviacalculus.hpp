@@ -5,7 +5,7 @@
 #include "itsproblem.hpp"
 #include "accelerationtechnique.hpp"
 
-class AccelerationViaCalculus: public AccelerationTechnique<IntTheory> {
+class AccelerationViaCalculus: public AccelerationTechnique<IntTheory, BoolTheory> {
 
 public:
 

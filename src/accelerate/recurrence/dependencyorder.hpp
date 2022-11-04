@@ -19,6 +19,8 @@
 
 #include "option.hpp"
 #include "theory.hpp"
+#include "substitution.hpp"
+#include "expression.hpp"
 
 /**
  * Functions to compute an ordering on updated variables,
@@ -32,62 +34,11 @@
  */
 namespace DependencyOrder {
 
-template <ITheory Th>
-struct PartialResult {
-    std::vector<typename Th::Var> ordering; // might not contain all variables (hence partial)
-    theory::VarSet<Th> ordered; // set of all variables occurring in ordering
-};
-
-/**
- * The core implementation.
- * Successively adds variables to the ordering for which all dependencies are
- * already ordered. Stops if this is no longer possible (we are either done
- * or there are conflicting variables depending on each other).
- */
-template <ITheory Th>
-static void findOrderUntilConflicting(const typename Th::Subs &update, PartialResult<Th> &res) {
-    bool changed = true;
-
-    while (changed && res.ordering.size() < update.size()) {
-        changed = false;
-
-        for (const auto &up : update) {
-            if (res.ordered.find(up.first) != res.ordered.end()) continue;
-
-            //check if all variables on update rhs are already processed
-            bool ready = true;
-            for (const auto &var : up.second.vars()) {
-                if (var != up.first && update.contains(var) && res.ordered.find(var) == res.ordered.end()) {
-                    ready = false;
-                    break;
-                }
-            }
-
-            if (ready) {
-                res.ordered.insert(up.first);
-                res.ordering.push_back(up.first);
-                changed = true;
-            }
-        }
-    }
-}
-
-
 /**
  * Tries to find an order to calculate recurrence equations.
  * Fails if there is a nontrivial set of variables whose updates depend on each other.
  * @return list indicating the order (if successful)
  */
-template <ITheory Th>
-option<std::vector<typename Th::Var>> findOrder(const typename Th::Subs &update) {
-    PartialResult<Th> res;
-    findOrderUntilConflicting(update, res);
-
-    if (res.ordering.size() == update.size()) {
-        return res.ordering;
-    }
-
-    return {};
-}
+option<std::vector<Var>> findOrder(const Subs &update);
 
 }

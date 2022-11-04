@@ -163,7 +163,7 @@ public:
 
     bool isTriviallyTrue() const {
         if (getTheoryLit()) {
-            return literal::isTriviallyTrue<Th...>(*getTheoryLit());
+            return literal_t::isTriviallyTrue<Th...>(*getTheoryLit());
         } else {
             const auto children = getChildren();
             if (isAnd()) {
@@ -292,7 +292,7 @@ public:
 
     void collectVars(VS &vars) const {
         iter([&vars](const auto &lit) {
-            literal::collectVars<Th...>(lit, vars);
+            literal_t::collectVars<Th...>(lit, vars);
         });
     }
 
@@ -325,14 +325,11 @@ public:
         });
     }
 
-    template <ITheory T>
-    BE replaceLits(const std::map<typename T::Lit, BE> &m) const {
+    BE replaceLits(const std::map<Lit, BE> &m) const {
         return map([&m](const Lit &lit) {
-            if (std::holds_alternative<typename T::Lit>(lit)) {
-                const auto it = m.find(std::get<typename T::Lit>(lit));
-                if (it != m.end()) {
-                    return it->second;
-                }
+            const auto it = m.find(lit);
+            if (it != m.end()) {
+                return it->second;
             }
             return buildTheoryLit(lit);
         });
@@ -475,7 +472,7 @@ class BoolTheoryLit: public BoolExpression<Th...> {
 
 public:
 
-    BoolTheoryLit(const Lit &lit) : lit(literal::normalize<Th...>(lit)) {}
+    BoolTheoryLit(const Lit &lit) : lit(literal_t::normalize<Th...>(lit)) {}
 
     bool isAnd() const override {
         return false;
@@ -494,7 +491,7 @@ public:
     }
 
     const BE negation() const override {
-        return BoolExpression<Th...>::buildTheoryLit(literal::negate<Th...>(lit));
+        return BoolExpression<Th...>::buildTheoryLit(literal_t::negate<Th...>(lit));
     }
 
     bool forall(const std::function<bool(const Lit&)> &pred) const override {
@@ -522,11 +519,11 @@ public:
     }
 
     std::string toRedlog() const override {
-        return literal::toRedlog<Th...>(lit);
+        return literal_t::toRedlog<Th...>(lit);
     }
 
     unsigned hash() const override {
-        return literal::hash<Th...>(lit);
+        return literal_t::hash<Th...>(lit);
     }
 
     void getBounds(const Var &var, Bounds &res) const override {
@@ -782,43 +779,6 @@ class QuantifiedFormula {
     std::vector<Quantifier> prefix;
     BE matrix;
 
-    template <ITheory... Th_>
-    friend std::ostream& operator<<(std::ostream &s, const QuantifiedFormula<Th_...> &f) {
-        for (const auto &q: f.prefix) {
-            switch (q.getType()) {
-            case Quantifier::Type::Exists:
-                s << "EX";
-                break;
-            case Quantifier::Type::Forall:
-                s << "ALL";
-                break;
-            }
-            for (const auto &x: q.getVars()) {
-                s << " " << x;
-                const auto lb = q.lowerBound(x);
-                const auto ub = q.upperBound(x);
-                if (lb || ub) {
-                    s << " in [";
-                    if (lb) {
-                        s << *lb;
-                    } else {
-                        s << "-oo";
-                    }
-                    s << ",";
-                    if (ub) {
-                        s << *ub;
-                    } else {
-                        s << "oo";
-                    }
-                    s << "]";
-                }
-            }
-            s << " . ";
-        }
-        s << f.matrix;
-        return s;
-    }
-
 public:
 
     QuantifiedFormula(std::vector<Quantifier> prefix, const BE &matrix): prefix(prefix), matrix(matrix) {}
@@ -943,8 +903,8 @@ bool operator !=(const BExpr<Th...> a, const BExpr<Th...> b) {
     return !(a==b);
 }
 
-template <ITheory... Th>
-std::ostream& operator<<(std::ostream &s, const BExpr<Th...> e) {
+template <ITheory T, ITheory... Th>
+std::ostream& operator<<(std::ostream &s, const BExpr<T, Th...> e) {
     if (e->getTheoryLit()) {
         std::visit([&s](const auto &lit){s << lit;}, *e->getTheoryLit());
     } else if (e->getChildren().empty()) {
@@ -971,5 +931,42 @@ std::ostream& operator<<(std::ostream &s, const BExpr<Th...> e) {
         }
         s << ")";
     }
+    return s;
+}
+
+template <ITheory T, ITheory... Th>
+std::ostream& operator<<(std::ostream &s, const QuantifiedFormula<T, Th...> &f) {
+    for (const auto &q: f.getPrefix()) {
+        switch (q.getType()) {
+        case Quantifier::Type::Exists:
+            s << "EX";
+            break;
+        case Quantifier::Type::Forall:
+            s << "ALL";
+            break;
+        }
+        for (const auto &x: q.getVars()) {
+            s << " " << x;
+            const auto lb = q.lowerBound(x);
+            const auto ub = q.upperBound(x);
+            if (lb || ub) {
+                s << " in [";
+                if (lb) {
+                    s << *lb;
+                } else {
+                    s << "-oo";
+                }
+                s << ",";
+                if (ub) {
+                    s << *ub;
+                } else {
+                    s << "oo";
+                }
+                s << "]";
+            }
+        }
+        s << " . ";
+    }
+    s << f.getMatrix();
     return s;
 }

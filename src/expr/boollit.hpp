@@ -12,6 +12,8 @@ public:
     std::string toRedlog() const;
     unsigned hash() const;
     bool isNegated() const;
+    bool isPoly() const;
+    bool isLinear() const;
     bool isWellformed() const;
     BoolVar getBoolVar() const;
     int compare(const BoolLit &that) const;

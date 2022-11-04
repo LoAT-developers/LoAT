@@ -35,7 +35,7 @@ public:
 
     struct Result {
         Expr cost;
-        ExprSubs update;
+        Subs update;
         unsigned int validityBound;
         NumVar n;
 
@@ -52,29 +52,30 @@ public:
 
 private:
 
+    template <ITheory Th>
     struct RecurrenceSolution {
-        GiNaC::ex res;
+        typename Th::Expression res;
         const unsigned int validityBound;
     };
 
     struct RecurrenceSystemSolution {
-        GiNaC::exmap update;
+        Subs update;
         const unsigned int validityBound;
     };
 
-    Recurrence(VarMan &varMan, const std::vector<NumVar> &dependencyOrder);
+    Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder);
 
     /**
      * Main implementation
      */
-    option<Result> iterate(const ExprSubs &update, const Expr &cost);
+    option<Result> iterate(const Subs &update, const Expr &cost);
 
     /**
      * Computes the iterated update, with meterfunc as iteration step (if possible).
      * @note dependencyOrder must be set before
      * @note sets updatePreRecurrences
      */
-    option<RecurrenceSystemSolution> iterateUpdate(const ExprSubs &update);
+    option<RecurrenceSystemSolution> iterateUpdate(const Subs &update);
 
     /**
      * Computes the iterated cost, with meterfunc as iteration step (if possible).
@@ -87,7 +88,9 @@ private:
      * Tries to find a recurrence for the given single update.
      * Note that all variables occurring in update must have been solved before (and added to updatePreRecurrences).
      */
-    option<RecurrenceSolution> findUpdateRecurrence(const Expr &updateRhs, NumVar updateLhs, const std::map<NumVar, unsigned int> &validitybounds);
+    option<RecurrenceSolution<IntTheory>> solve(const NumVar &updateLhs, const Expr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
+
+    option<RecurrenceSolution<BoolTheory>> solve(const BoolVar &updateLhs, const BoolExpr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
 
     static const option<RecurrenceSystemSolution> iterateUpdate(const VariableManager&, const Subs&);
 
@@ -104,12 +107,12 @@ private:
     /**
      * Order in which recurrences for updated variables can be computed
      */
-    std::vector<NumVar> dependencyOrder;
+    std::vector<Var> dependencyOrder;
 
     /**
      * Substitution map, mapping variables to their recurrence equations
      * @note the recurrence equations are valid *before* the transition is taken,
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
-    GiNaC::exmap updatePreRecurrences;
+    Subs updatePreRecurrences;
 };

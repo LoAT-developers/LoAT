@@ -35,6 +35,8 @@ concept ILit = requires(T x) {
         {x.hash()} -> std::same_as<unsigned>;
         {x.isTriviallyTrue()} -> std::same_as<bool>;
         {x.isWellformed()} -> std::same_as<bool>;
+        {x.isPoly()} -> std::same_as<bool>;
+        {x.isLinear()} -> std::same_as<bool>;
 };
 
 template <typename T>

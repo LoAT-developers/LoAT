@@ -1,22 +1,19 @@
 #pragma once
 
-#include "theory.hpp"
-#include "variablemanager.hpp"
 #include "proof.hpp"
 
+template <ITheory... Th>
 class Qelim {
 
 public:
 
     struct Result {
-        BExpr<IntTheory> qf;
+        BExpr<Th...> qf;
         Proof proof;
         bool exact;
-        Result(const BExpr<IntTheory> &qf, const Proof &proof, bool exact): qf(qf), proof(proof), exact(exact) {}
+        Result(const BExpr<Th...> &qf, const Proof &proof, bool exact): qf(qf), proof(proof), exact(exact) {}
     };
 
-    virtual option<Result> qe(const QuantifiedFormula<IntTheory> &qf) = 0;
-
-    static std::unique_ptr<Qelim> solver(VarMan& varMan);
+    virtual option<Result> qe(const QuantifiedFormula<Th...> &qf) = 0;
 
 };

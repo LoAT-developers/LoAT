@@ -21,6 +21,7 @@
 #include "config.hpp"
 #include "boolexpr.hpp"
 #include "variablemanager.hpp"
+#include "numexpression.hpp"
 
 #include <map>
 #include <sstream>

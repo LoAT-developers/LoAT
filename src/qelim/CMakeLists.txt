@@ -5,7 +5,7 @@ target_sources(${EXECUTABLE}
         redlog.cpp
         redlog.hpp
         qelim.hpp
-        qelim.cpp
+        qelimfactory.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

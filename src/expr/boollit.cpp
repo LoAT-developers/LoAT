@@ -20,6 +20,14 @@ bool BoolLit::isNegated() const {
     return negated;
 }
 
+bool BoolLit::isPoly() const {
+    return true;
+}
+
+bool BoolLit::isLinear() const {
+    return true;
+}
+
 BoolVar BoolLit::getBoolVar() const {
     return var;
 }

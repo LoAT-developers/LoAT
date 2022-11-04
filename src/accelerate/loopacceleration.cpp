@@ -16,7 +16,6 @@
  */
 
 #include "loopacceleration.hpp"
-#include "boolexpression.hpp"
 #include "smtfactory.hpp"
 #include "recurrence.hpp"
 #include "chain.hpp"
@@ -148,7 +147,7 @@ AccelerationResult LoopAcceleration::run() {
     if (Config::Analysis::tryNonterm() && accelerationResult.nonterm) {
         res.nontermRule = LinearRule(
                     rule.getLhsLoc(),
-                    boolExpression::transform(accelerationResult.nonterm->formula),
+                    accelerationResult.nonterm->formula,
                     Expr::NontermSymbol,
                     sink,
                     {});
@@ -160,14 +159,14 @@ AccelerationResult LoopAcceleration::run() {
             throw logic_error("validity bound should be at most one due to unrolling");
         }
         res.n = rec->n;
-        BoolExpr guard = boolExpression::transform(accelerationResult.term->formula);
+        BoolExpr guard = accelerationResult.term->formula;
         if (SmtFactory::check(guard->subs(Subs::build<IntTheory>(rec->n, 2)), its) == Sat) {
             res.rule = LinearRule(
                         rule.getLhsLoc(),
                         guard,
                         rec->cost,
                         rule.getRhsLoc(),
-                        Subs::build<IntTheory>(rec->update));
+                        rec->update);
             res.proof.ruleTransformationProof(rule, "acceleration", *res.rule, its);
             res.proof.storeSubProof(accelerationResult.term->proof);
         }

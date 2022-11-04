@@ -18,11 +18,13 @@ public:
 
     class Iterator {
 
+        friend class ThSet<VS, VSI, Var, Th...>;
+
         template <size_t I = 0>
         inline VSI beginImpl(size_t i) const {
             if constexpr (I < variant_size) {
                 if (I == i) {
-                    return VSI(std::get<I>(set.t).begin());;
+                    return VSI(std::get<I>(set->t).begin());;
                 } else {
                     return beginImpl<I + 1>(i);
                 }
@@ -39,7 +41,7 @@ public:
         inline VSI endImpl(size_t i) const {
             if constexpr (I < variant_size) {
                 if (I == i) {
-                    return VSI(std::get<I>(set.t).end());;
+                    return VSI(std::get<I>(set->t).end());;
                 } else {
                     return endImpl<I + 1>(i);
                 }
@@ -74,7 +76,7 @@ public:
         using pointer           = const value_type*;
         using reference         = const value_type&;
 
-        Iterator(const Self &set, const VSI &ptr) : set(set), ptr(ptr) {}
+        Iterator(const Self *set, const VSI &ptr) : set(set), ptr(ptr) {}
 
         reference operator*() {
             current = getCurrent();
@@ -121,15 +123,15 @@ public:
 
         friend bool operator== (const Iterator& a, const Iterator& b) {
             return a.ptr == b.ptr;
-        };
+        }
 
         friend bool operator!= (const Iterator& a, const Iterator& b) {
             return a.ptr != b.ptr;
-        };
+        }
 
     private:
 
-        const Self &set;
+        const Self *set;
         VSI ptr;
         option<Var> current;
 
@@ -140,7 +142,7 @@ private:
     template<std::size_t I = 0>
     inline void eraseImpl(const Var &var) {
         if constexpr (I < sizeof...(Th)) {
-            if (std::holds_alternative<std::variant_alternative_t<I, Var>>(var)) {
+            if (var.index() == I) {
                 std::get<I>(t).erase(std::get<I>(var));
             } else {
                 eraseImpl<I+1>(var);
@@ -157,9 +159,29 @@ public:
 private:
 
     template<std::size_t I = 0>
+    inline Iterator eraseImpl(const Iterator &it) {
+        if constexpr (I < sizeof...(Th)) {
+            if (it.ptr.index() == I) {
+                return Iterator(this, std::get<I>(t).erase(std::get<I>(it.ptr)));
+            } else {
+                return eraseImpl<I+1>(it);
+            }
+        }
+        throw std::invalid_argument("unknown index");
+    }
+
+public:
+
+    Iterator erase(const Iterator &it) {
+        return eraseImpl(it);
+    }
+
+private:
+
+    template<std::size_t I = 0>
     inline void insertImpl(const Var &var) {
         if constexpr (I < sizeof...(Th)) {
-            if (std::holds_alternative<std::variant_alternative_t<I, Var>>(var)) {
+            if (var.index() == I) {
                 std::get<I>(t).insert(std::get<I>(var));
             } else {
                 insertImpl<I+1>(var);
@@ -200,13 +222,13 @@ private:
     template<std::size_t I = 0>
     inline Iterator findImpl(const Var &var) const {
         if constexpr (I < sizeof...(Th)) {
-            if (std::holds_alternative<std::variant_alternative_t<I, Var>>(var)) {
+            if (var.index() == I) {
                 const auto &set = std::get<I>(t);
                 const auto &it = set.find(std::get<I>(var));
                 if (it == set.end()) {
                     return end();
                 } else {
-                    return Iterator(*this, it);
+                    return Iterator(this, it);
                 }
             } else {
                 return findImpl<I+1>(var);
@@ -231,7 +253,7 @@ public:
     }
 
     Iterator end() const {
-        return Iterator(*this, std::get<variant_size - 1>(t).end());
+        return Iterator(this, std::get<variant_size - 1>(t).end());
     }
 
 private:
@@ -243,7 +265,7 @@ private:
             if (x.empty()) {
                 return beginImpl<I+1>();
             } else {
-                return Iterator(*this, x.begin());
+                return Iterator(this, x.begin());
             }
         } else {
             return end();

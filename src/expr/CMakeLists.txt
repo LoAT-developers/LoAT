@@ -18,8 +18,8 @@ target_sources(${EXECUTABLE}
         boollit.hpp
         boolsubs.hpp
         literaltemplates.hpp
-        literal.hpp
         literal.cpp
+        literal.hpp
         expression.hpp
         expression.cpp
         substitution.hpp

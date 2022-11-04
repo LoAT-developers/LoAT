@@ -20,6 +20,7 @@ using Var = TheTheory::Var;
 using ThExpr = TheTheory::Expression;
 using Theories = TheTheory::Theories;
 using VarSet = theory::VarSet<IntTheory, BoolTheory>;
+using LitSet = theory::LitSet<IntTheory, BoolTheory>;
 using Subs = theory::Subs<IntTheory, BoolTheory>;
 
 extern const BoolExpr True;

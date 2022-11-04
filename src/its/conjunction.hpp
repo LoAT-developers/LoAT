@@ -39,7 +39,7 @@ public:
 
     void collectVars(theory::VarSet<Th...> &vars) const {
         for (const auto &lit: *this) {
-            literal::collectVars<Th...>(lit, vars);
+            literal_t::collectVars<Th...>(lit, vars);
         }
     }
 

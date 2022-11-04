@@ -12,7 +12,8 @@ target_sources(${EXECUTABLE}
         templates.hpp
         relevantvariables.hpp
         result.hpp
-        automaton.hpp
+        map.hpp
+        variant.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

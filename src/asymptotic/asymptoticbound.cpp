@@ -107,7 +107,7 @@ void AsymptoticBound::propagateBounds() {
                 //solve target for var (result is in target)
                 auto optSolved = target.solveTermFor(var, TrivialCoeffs);
                 if (optSolved) {
-                    substitutions.push_back(ExprSubs(var, optSolved.get()));
+                    substitutions.push_back({{var, *optSolved}});
                     break;
                 }
             }
@@ -143,7 +143,7 @@ ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
         const Rel &rel = std::get<Rel>(lit);
         for (const auto &var : rel.vars()) {
             if (!solution.contains(var)) {
-                solution = solution.compose(ExprSubs(var, 0));
+                solution = solution.compose({{var, 0}});
             }
         }
     }
@@ -699,7 +699,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
                 auto var = it->someVar();
 
                 Expr rational = model.get<IntTheory>(var);
-                substitutions.push_back(ExprSubs(var, rational));
+                substitutions.push_back({{var, rational}});
 
                 createBacktrackingPoint(it, POS_INF);
                 currentLP.substitute(substitutions.back(), substitutions.size() - 1);
@@ -734,7 +734,7 @@ bool AsymptoticBound::trySubstitutingVariable() {
                         || (dir == NEG_INF && dir2 == NEG_INF)) {
                         assert(!it->equals(*it2));
 
-                        ExprSubs sub(it->toVar(), *it2);
+                        ExprSubs sub{{it->toVar(), *it2}};
                         substitutions.push_back(sub);
 
                         createBacktrackingPoint(it, POS_CONS);

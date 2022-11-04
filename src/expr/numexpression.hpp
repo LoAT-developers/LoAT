@@ -19,6 +19,7 @@
 
 #include <ginac/ginac.h>
 #include <variant>
+#include <initializer_list>
 
 #include "option.hpp"
 #include "numvar.hpp"
@@ -371,7 +372,7 @@ public:
 
     ExprSubs();
 
-    ExprSubs(const NumVar &key, const Expr &val);
+    ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init);
 
     Expr get(const NumVar &key) const;
 

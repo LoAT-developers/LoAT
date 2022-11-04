@@ -589,8 +589,10 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 
 ExprSubs::ExprSubs() {}
 
-ExprSubs::ExprSubs(const NumVar &key, const Expr &val) {
-    put(key, val);
+ExprSubs::ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init): map(init) {
+    for (const auto &p: init) {
+        putGinac(p.first, p.second);
+    }
 }
 
 Expr ExprSubs::get(const NumVar &key) const {
