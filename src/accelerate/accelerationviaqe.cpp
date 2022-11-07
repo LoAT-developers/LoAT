@@ -10,12 +10,6 @@ AccelerationViaQE::AccelerationViaQE(
         ITSProblem &its): AccelerationTechnique(rule, closed, its) {}
 
 AccelerationViaQE::AcceleratorPair AccelerationViaQE::computeRes() {
-    const auto isIntLiteral = [](const Lit &lit){
-        return std::holds_alternative<Rel>(lit);
-    };
-    if (!rule.getGuard()->forall(isIntLiteral)) {
-        return {};
-    }
     NumVar m = its.getFreshUntrackedSymbol<IntTheory>("m", Expr::Int);
     auto qelim = qelimfactory::solver<IntTheory, BoolTheory>(its);
     option<Qelim<IntTheory,BoolTheory>::Result> res;

@@ -474,7 +474,19 @@ public:
     BE toG() const {
         return map([](const Lit &lit) {
             if (std::holds_alternative<Rel>(lit)) {
-                return buildTheoryLit(std::get<Rel>(lit).toG());
+                const Rel &rel = std::get<Rel>(lit);
+                if (rel.isEq()) {
+                    return buildAnd(std::initializer_list<BE>{
+                                        buildTheoryLit(Rel::buildGeq(rel.lhs(), rel.rhs())),
+                                        buildTheoryLit(Rel::buildGeq(rel.rhs(), rel.lhs()))
+                                    });
+                } else if (rel.isNeq()) {
+                    return buildOr(std::initializer_list<BE>{
+                                       buildTheoryLit(Rel::buildGt(rel.lhs(), rel.rhs())),
+                                       buildTheoryLit(Rel::buildGt(rel.rhs(), rel.lhs()))
+                                   });
+                }
+                return buildTheoryLit(rel.toG());
             }
             return buildTheoryLit(lit);
         });

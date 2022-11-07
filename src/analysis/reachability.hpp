@@ -41,7 +41,7 @@ class Reachability {
     Z3<IntTheory, BoolTheory> z3;
 
     std::vector<Step> trace;
-    std::vector<Subs> sigmas;
+    std::vector<Subs> sigmas{{}};
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked{{}};
     VarSet prog_vars;
     TransIdx lastOrigRule = 0;
@@ -66,7 +66,7 @@ class Reachability {
     LoopState handle_loop(const int backlink);
     BoolExpr project(const TransIdx idx);
     bool leaves_scc(const TransIdx idx) const;
-    int is_loop(const TransIdx idx);
+    int is_loop();
     void handle_update(const TransIdx idx);
     Automaton singleton_language(const TransIdx idx, const Guard &guard);
     bool covers(const Subs &model, const BoolExpr &rels) const;

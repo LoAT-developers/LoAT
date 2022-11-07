@@ -655,6 +655,20 @@ ExprSubs ExprSubs::concat(const ExprSubs &that) const {
     return res;
 }
 
+ExprSubs ExprSubs::unite(const ExprSubs &that) const {
+    ExprSubs res;
+    for (const auto &p: *this) {
+        res.put(p.first, p.second);
+    }
+    for (const auto &p: that) {
+        if (res.find(p.first) != res.end()) {
+            throw std::invalid_argument("union of substitutions is only defined if their domain is disjoint");
+        }
+        res.put(p.first, p.second);
+    }
+    return res;
+}
+
 ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
     ExprSubs res;
     for (const auto &p: *this) {

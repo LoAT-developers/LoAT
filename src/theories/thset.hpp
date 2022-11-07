@@ -162,7 +162,12 @@ private:
     inline Iterator eraseImpl(const Iterator &it) {
         if constexpr (I < sizeof...(Th)) {
             if (it.ptr.index() == I) {
-                return Iterator(this, std::get<I>(t).erase(std::get<I>(it.ptr)));
+                const auto res = std::get<I>(t).erase(std::get<I>(it.ptr));
+                if (res == std::get<I>(t).end()) {
+                    return beginImpl<I+1>();
+                } else {
+                    return Iterator(this, res);
+                }
             } else {
                 return eraseImpl<I+1>(it);
             }

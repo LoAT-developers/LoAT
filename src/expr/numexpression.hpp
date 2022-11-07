@@ -396,6 +396,8 @@ public:
 
     ExprSubs concat(const ExprSubs &that) const;
 
+    ExprSubs unite(const ExprSubs &that) const;
+
     ExprSubs project(const std::set<NumVar> &vars) const;
 
     bool changes(const NumVar &key) const;

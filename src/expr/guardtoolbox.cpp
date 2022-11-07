@@ -124,7 +124,8 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
 
 Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, const Rule &rule) {
     auto hasTempVars = [&](const auto e) {
-        for (const auto &x: expression::variables(e).template get<BoolVar>()) {
+        const auto boolVars = expression::variables(e).template get<BoolVar>();
+        for (const auto &x: boolVars) {
             if (its.isTempVar(x)) {
                 return true;
             }

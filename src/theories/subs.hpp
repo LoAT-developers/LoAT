@@ -197,7 +197,7 @@ private:
     template<std::size_t I = 0>
     inline void putImpl(const Pair &p) {
         if constexpr (I < sizeof...(Th)) {
-            if (std::holds_alternative<std::variant_alternative_t<I, Pair>>(p)) {
+            if (p.index() == I) {
                 const auto &[x,y] = std::get<I>(p);
                 std::get<I>(t).put(x, y);
             } else {
@@ -262,7 +262,7 @@ private:
     template<std::size_t I = 0>
     inline Expr subsImpl(const Lit &s) const {
         if constexpr (I < sizeof...(Th)) {
-            if (std::holds_alternative<std::variant_alternative_t<I, Lit>>(s)) {
+            if (s.index() == I) {
                 return std::get<I>(s).subs(std::get<I>(t));
             } else {
                 return subsImpl<I+1>(s);
@@ -319,7 +319,7 @@ private:
     inline Expr getImpl(const Var &var) const {
         if constexpr (I >= sizeof...(Th)) {
             throw std::invalid_argument("variable not found");
-        } else if (std::holds_alternative<std::variant_alternative_t<I, Var>>(var)) {
+        } else if (var.index() == I) {
             return std::get<I>(t).get(std::get<I>(var));
         } else {
             return getImpl<I+1>(var);
@@ -358,6 +358,24 @@ public:
 private:
 
     template<std::size_t I = 0>
+    inline void uniteImpl(const Subs &that, Subs &res) const {
+        if constexpr (I < sizeof...(Th)) {
+            std::get<I>(res.t) = std::get<I>(t).unite(std::get<I>(that.t));
+            composeImpl<I+1>(that, res);
+        }
+    }
+
+public:
+
+    Subs unite(const Subs &that) const {
+        Subs res;
+        uniteImpl(that, res);
+        return res;
+    }
+
+private:
+
+    template<std::size_t I = 0>
     inline void concatImpl(const Subs &that, Subs &res) const {
         if constexpr (I < sizeof...(Th)) {
             std::get<I>(res.t) = std::get<I>(t).concat(std::get<I>(that.t));
@@ -378,7 +396,7 @@ private:
     template<std::size_t I = 0>
     inline bool changesImpl(const Var &x) const {
         if constexpr (I < sizeof...(Th)) {
-            if (std::holds_alternative<std::variant_alternative_t<I, Var>>(x)) {
+            if (x.index() == I) {
                 return std::get<I>(t).changes(std::get<I>(x));
             } else {
                 return changesImpl<I+1>(x);
@@ -399,7 +417,7 @@ private:
     template<std::size_t I = 0>
     inline void eraseImpl(const Var &x) {
         if constexpr (I < sizeof...(Th)) {
-            if (std::holds_alternative<std::variant_alternative_t<I, Var>>(x)) {
+            if (x.index() == I) {
                 std::get<I>(t).erase(std::get<I>(x));
             } else {
                 eraseImpl<I+1>(x);
@@ -411,6 +429,25 @@ public:
 
     void erase(const Var &x) {
         eraseImpl(x);
+    }
+
+private:
+
+    template<std::size_t I = 0>
+    inline void eraseImpl(const VarSet<Th...> &xs) {
+        if constexpr (I < sizeof...(Th)) {
+            auto &s = std::get<I>(t);
+            for (const auto &x: xs.template get<I>()) {
+                s.erase(x);
+            }
+            eraseImpl<I+1>(xs);
+        }
+    }
+
+public:
+
+    void erase(const VarSet<Th...> &xs) {
+        eraseImpl(xs);
     }
 
 private:
@@ -436,7 +473,7 @@ private:
     template<std::size_t I = 0>
     inline Iterator findImpl(const Var &var) const {
         if constexpr (I < sizeof...(Th)) {
-            if (std::holds_alternative<std::variant_alternative_t<I, Var>>(var)) {
+            if (var.index() == I) {
                 const auto &subs = std::get<I>(t);
                 const auto &it = subs.find(std::get<I>(var));
                 if (it == subs.end()) {

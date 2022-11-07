@@ -13,7 +13,7 @@ using unaryop_type = UnaryOp;
 using binaryop_type = BinaryOp;
 using naryop_type = NAryOp;
 using pred_type = FunApp;
-using lit_type = Res<Rel>;
+using lit_type = Res<BoolExpr>;
 using assert_type = Clause;
 using query_type = Clause;
 using symbol_type = std::string;
@@ -128,7 +128,9 @@ antlrcpp::Any CHCParseVisitor::visitFun_decl(CHCParser::Fun_declContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert(CHCParser::Chc_assertContext *ctx) {
     visit(ctx->chc_assert_head());
-    return visit(ctx->chc_assert_body());
+    const auto res = visit(ctx->chc_assert_body());
+    vars.clear();
+    return res;
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headContext *ctx) {
@@ -173,6 +175,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
         visit(c);
     }
     const auto lhs = any_cast<tail_type>(visit(ctx->chc_tail()));
+    vars.clear();
     return Clause(lhs.first, FunApp(sink, {}), lhs.second);
 }
 
@@ -181,10 +184,10 @@ antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
     const auto name = ctx->var()->getText();
     switch (sort) {
     case Bool:
-        boolVar(name);
+        var(name, Expr::Bool);
         break;
     case Int:
-        var(name);
+        var(name, Expr::Int);
         break;
     }
     return {};
@@ -247,7 +250,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         res.t = (args[0] & args[1]) | ((!args[0]) & args[2]);
     } else if (ctx->lit()) {
         const auto p = any_cast<lit_type>(visit(ctx->lit()));
-        res.t = BExpression::buildTheoryLit(p.t);
+        res.t = p.t;
         res.refinement = res.refinement & p.refinement;
     } else if (ctx->var()) {
         const auto r = any_cast<Var>(visit(ctx->var()));
@@ -264,23 +267,23 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
     return res;
 }
 
-BoolVar CHCParseVisitor::boolVar(const std::string &name) {
-    const auto it = bvars.find(name);
-    if (it == bvars.end()) {
-        const auto var = its.getFreshUntrackedSymbol<BoolTheory>(name, Expr::Bool);
-        bvars.emplace(name, var);
-        return var;
-    } else {
-        return it->second;
-    }
-}
-
-NumVar CHCParseVisitor::var(const std::string &name) {
+Var CHCParseVisitor::var(const std::string &name, Expr::Type type) {
     const auto it = vars.find(name);
     if (it == vars.end()) {
-        const auto var = its.getFreshUntrackedSymbol<IntTheory>(name, Expr::Int);
-        vars.emplace(name, var);
-        return var;
+        option<Var> var;
+        switch (type) {
+        case Expr::Int: {
+            var = its.getFreshUntrackedSymbol<IntTheory>(name, type);
+            break;
+        }
+        case Expr::Bool: {
+            var = its.getFreshUntrackedSymbol<BoolTheory>(name, type);
+            break;
+        }
+        default: throw std::invalid_argument("unsupported type");
+        }
+        vars.emplace(name, *var);
+        return *var;
     } else {
         return it->second;
     }
@@ -291,11 +294,11 @@ antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
     let_type ret;
     if (ctx->i_formula()) {
         const auto res = any_cast<formula_type>(visit(ctx->i_formula()));
-        ret.t.get<BoolTheory>().put(boolVar(name), res.t);
+        ret.t.get<BoolTheory>().put(std::get<BoolVar>(var(name, Expr::Bool)), res.t);
         ret.refinement = res.refinement;
     } else {
         const auto res = any_cast<expr_type>(visit(ctx->expr()));
-        ret.t.get<IntTheory>().put(var(name), res.t);
+        ret.t.get<IntTheory>().put(std::get<NumVar>(var(name, Expr::Int)), res.t);
         ret.refinement = res.refinement;
     }
     return ret;
@@ -306,7 +309,7 @@ antlrcpp::Any CHCParseVisitor::visitLets(CHCParser::LetsContext *ctx) {
     for (const auto &c: ctx->let()) {
         const auto r = any_cast<let_type>(visit(c));
         res.refinement = res.refinement & r.refinement;
-        res.t = res.t.compose(r.t); // TODO should be union
+        res.t = res.t.unite(r.t);
     }
     return res;
 }
@@ -324,13 +327,38 @@ antlrcpp::Any CHCParseVisitor::visitBoolop(CHCParser::BoolopContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
+    if (ctx->var().size() == 2) {
+        const auto p1 = any_cast<Var>(visit(ctx->var(0)));
+        const auto p2 = any_cast<Var>(visit(ctx->var(1)));
+        if (std::holds_alternative<BoolVar>(p1)) {
+            const BoolExpr x1 = BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(p1)));
+            const BoolExpr x2 = BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(p2)));
+            if (ctx->EQ()) {
+                return Res<BoolExpr>{(x1 & x2) | ((!x1) & (!x2))};
+            } else if (ctx->NEQ()) {
+                return Res<BoolExpr>{(x1 & (!x2)) | ((!x1) & x2)};
+            } else {
+                throw std::invalid_argument("unknown operator");
+            }
+        } else {
+            const NumVar x1 = std::get<NumVar>(p1);
+            const NumVar x2 = std::get<NumVar>(p2);
+            if (ctx->EQ()) {
+                return Res<BoolExpr>{BExpression::buildTheoryLit(Rel::buildEq(x1, x2))};
+            } else if (ctx->NEQ()) {
+                return Res<BoolExpr>{BExpression::buildTheoryLit(Rel::buildNeq(x1, x2))};
+            } else {
+                throw std::invalid_argument("unknown operator");
+            }
+        }
+    }
     if (ctx->expr().size() != 2) {
         throw std::invalid_argument("wrong number of arguments: " + ctx->getText());
     }
     const auto p1 = any_cast<expr_type>(visit(ctx->expr(0)));
     const auto p2 = any_cast<expr_type>(visit(ctx->expr(1)));
     const auto op = any_cast<relop_type>(visit(ctx->relop()));
-    Res<Rel> res {Rel(p1.t, op, p2.t)};
+    Res<BoolExpr> res {BExpression::buildTheoryLit(Rel(p1.t, op, p2.t))};
     res.refinement = p1.refinement & p2.refinement;
     return res;
 }
@@ -468,13 +496,9 @@ antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *c
 
 antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
     const std::string name = unescape(ctx->getText());
-    const auto theoryRes = vars.find(name);
-    if (theoryRes != vars.end()) {
-        return Var(theoryRes->second);
-    }
-    const auto boolRes = bvars.find(name);
-    if (boolRes != bvars.end()) {
-        return Var(boolRes->second);
+    const auto res = vars.find(name);
+    if (res != vars.end()) {
+        return res->second;
     }
     throw std::invalid_argument("unknown variable " + name);
 }

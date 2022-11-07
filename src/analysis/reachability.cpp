@@ -113,7 +113,11 @@ bool Reachability::leaves_scc(const TransIdx idx) const {
     return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc(0));
 }
 
-int Reachability::is_loop(const TransIdx idx) {
+int Reachability::is_loop() {
+    if (trace.empty()) {
+        return -1;
+    }
+    const TransIdx idx = trace.back().transition;
     const Subs model = z3.model().toSubs();
     const LocationIdx dst = its.getRule(idx).getRhsLoc(0);
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
@@ -284,17 +288,11 @@ void Reachability::update_transitions(const LocationIdx loc) {
 }
 
 void Reachability::init() {
-    Subs sigma;
     for (const auto &x: its.getVars()) {
         if (!its.isTempVar(x)) {
-            std::visit(Overload{
-                           [&sigma](const NumVar &x){sigma.put<IntTheory>(x, x);},
-                           [&sigma](const BoolVar &x){sigma.put<BoolTheory>(x, boolExpression::build(x));}
-                       }, x);
             prog_vars.insert(x);
         }
     }
-    sigmas.push_back(sigma);
     faudes::EmptyLanguage({}, covered);
     for (const TransIdx idx: its.getAllTransitions()) {
         lastOrigRule = std::max(lastOrigRule, idx);
@@ -378,9 +376,11 @@ std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
     Rule loop = its.getRule(trace.back().transition).withGuard(trace.back().sat);
     for (int i = trace.size() - 2; i >= backlink; --i) {
         const Step &step = trace[i];
+        auto sigma = sigmas[i+1];
+        sigma.erase(prog_vars); // rename temporary variables before chaining
         const TransIdx t = step.transition;
         const Rule &r = its.getRule(t);
-        loop = *Chaining::chainRules(its, r.withGuard(step.sat), loop, false);
+        loop = *Chaining::chainRules(its, r.withGuard(step.sat).subs(sigma), loop, false);
         faudes::LanguageConcatenate(get_language(step), automaton, automaton);
     }
     assert(loop.getLhsLoc() == loop.getRhsLoc(0));
@@ -401,6 +401,7 @@ Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
     const Result<Rule> simplified = Preprocess::simplifyRule(its, *res, true);
     if (simplified) {
         res = *simplified;
+        res = res->withGuard(res->getGuard()->toG());
         res.storeSubProof(simplified.getProof());
         if (log) {
             std::cout << "simplified loop:" << std::endl;
@@ -498,7 +499,29 @@ void Reachability::analyze() {
     init();
     do {
         if (log) std::cout << "trace: " << trace << std::endl;
-        bool bt = true;
+        for (int backlink = is_loop(); backlink >= 0; backlink = is_loop()) {
+            const Step step = trace[backlink];
+            LoopState state = handle_loop(backlink);
+            switch (state) {
+            case Covered: {
+                backtrack();
+                break;
+            }
+            case Accelerated: {
+                bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
+                if (simple_loop) {
+                    do_block(step);
+                }
+                // make sure that we do not apply the accelerated transition again straight away, which is redundant
+                do_block(trace.back());
+                break;
+            }
+            case Dropped: {
+                do_block(step);
+                break;
+            }
+            }
+        }
         const TransIdx current = trace.empty() ? its.getInitialLocation() : its.getRule(trace.back().transition).getRhsLoc(0);
         auto &trans = transitions[current];
         auto it = trans.begin();
@@ -510,49 +533,23 @@ void Reachability::analyze() {
                 z3.pop();
                 append.push_back(*it);
                 it = trans.erase(it);
-                continue;
-            }
-            const Rule &r = its.getRule(*it);
-            if (r.getRhsLoc(0) == sink) {
-                extend_trace(*it, *sat);
-                unsat();
-                return;
-            }
-            store(*it, *sat);
-            const int backlink = is_loop(*it);
-            if (backlink < 0) {
-                if (r.isSimpleLoop()) {
-                    // this can only happen if we applied an accelerated transition, make sure that we do not apply it again straight away
+            } else {
+                const Rule &r = its.getRule(*it);
+                if (r.getRhsLoc(0) == sink) {
+                    extend_trace(*it, *sat);
+                    unsat();
+                    return;
+                }
+                // TODO Is this needed?
+                if (*it > lastOrigRule && r.isSimpleLoop()) {
                     do_block(trace.back());
                 }
-                bt = false;
-                ++it;
+                store(*it, *sat);
                 break;
             }
-            const Step step = trace[backlink];
-            bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
-            LoopState state = handle_loop(backlink);
-            bt = state == Covered;
-            switch (state) {
-            case Covered:
-                // do not increment 'it' here, just block the model that we got and hope for others
-                backtrack();
-                continue;
-            case Accelerated:
-                if (simple_loop) {
-                    do_block(step);
-                }
-                // make sure that we do not apply the accelerated transition again straight away, which is redundant
-                do_block(trace.back());
-                break;
-            case Dropped:
-                do_block(step);
-                break;
-            }
-            break;
         }
         trans.insert(trans.end(), append.begin(), append.end());
-        if (bt && !trace.empty()) {
+        if (it == trans.end() && !trace.empty()) {
             backtrack();
         }
     } while (!trace.empty());

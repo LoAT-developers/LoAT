@@ -59,9 +59,15 @@ i_formula:         LPAR NOT i_formula RPAR
                  | var;
 boolop:            AND
                  | OR
-                 | EQ;
+                 | EQ
+                 | NEQ;
 
-lit:               LPAR relop expr expr RPAR;
+lit:               LPAR (
+                       EQ var var
+                     | NEQ var var
+                     | relop expr expr
+                   ) RPAR;
+
 relop:             LT | LEQ | EQ | GT | GEQ | NEQ;
 
 symbol:            ID;
