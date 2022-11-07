@@ -69,7 +69,6 @@ class Reachability {
     int is_loop();
     void handle_update(const TransIdx idx);
     Automaton singleton_language(const TransIdx idx, const Guard &guard);
-    bool covers(const Subs &model, const BoolExpr &rels) const;
     void do_block(const Step &step);
     void backtrack();
     void pop();

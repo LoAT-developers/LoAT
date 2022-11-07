@@ -104,10 +104,6 @@ BoolExpr Reachability::project(const TransIdx idx) {
     return BExpression::buildAndFromLits(res);
 }
 
-bool Reachability::covers(const Subs &model, const BoolExpr &rels) const {
-    return SmtFactory::check(rels->subs(model), its) == Sat;
-}
-
 bool Reachability::leaves_scc(const TransIdx idx) const {
     const Rule &r = its.getRule(idx);
     return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc(0));
@@ -118,11 +114,10 @@ int Reachability::is_loop() {
         return -1;
     }
     const TransIdx idx = trace.back().transition;
-    const Subs model = z3.model().toSubs();
     const LocationIdx dst = its.getRule(idx).getRhsLoc(0);
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step step = trace[pos];
-        if (leaves_scc(step.transition) || !covers(sigmas[pos].concat(model), step.sat)) {
+        if (leaves_scc(step.transition)) {
             return -1;
         }
         if (its.getRule(step.transition).getLhsLoc() == dst) {
@@ -501,6 +496,7 @@ void Reachability::analyze() {
         if (log) std::cout << "trace: " << trace << std::endl;
         for (int backlink = is_loop(); backlink >= 0; backlink = is_loop()) {
             const Step step = trace[backlink];
+            bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             LoopState state = handle_loop(backlink);
             switch (state) {
             case Covered: {
@@ -508,7 +504,6 @@ void Reachability::analyze() {
                 break;
             }
             case Accelerated: {
-                bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
                 if (simple_loop) {
                     do_block(step);
                 }
