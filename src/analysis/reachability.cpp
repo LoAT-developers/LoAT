@@ -291,8 +291,14 @@ void Reachability::init() {
     faudes::EmptyLanguage({}, covered);
     for (const TransIdx idx: its.getAllTransitions()) {
         lastOrigRule = std::max(lastOrigRule, idx);
-        const TransIdx src = its.getRule(idx).getLhsLoc();
-        auto *to_insert = leaves_scc(idx) ? &cross_scc : &in_scc;
+        const auto rule = its.getRule(idx);
+        const TransIdx src = rule.getLhsLoc();
+        std::map<LocationIdx, std::vector<TransIdx>> *to_insert;
+        if (rule.getRhsLoc(0) == its.getSink()) {
+            to_insert = &queries;
+        } else {
+            to_insert = leaves_scc(idx) ? &cross_scc : &in_scc;
+        }
         const auto it = to_insert->find(src);
         if (it == to_insert->end()) {
             to_insert->emplace(src, std::vector<TransIdx>{idx});
@@ -484,6 +490,24 @@ Reachability::LoopState Reachability::handle_loop(const int backlink) {
     }
 }
 
+LocationIdx Reachability::get_current_location() const {
+    return trace.empty() ? its.getInitialLocation() : its.getRule(trace.back().transition).getRhsLoc(0);
+}
+
+bool Reachability::try_queries() {
+    for (const auto &q: queries[get_current_location()]) {
+        z3.push();
+        const option<BoolExpr> sat = do_step(q);
+        if (sat) {
+            extend_trace(q, *sat);
+            unsat();
+            return true;
+        }
+        z3.pop();
+    }
+    return false;
+}
+
 void Reachability::analyze() {
     proof.majorProofStep("initial ITS", its);
     if (log) {
@@ -509,6 +533,10 @@ void Reachability::analyze() {
                 }
                 // make sure that we do not apply the accelerated transition again straight away, which is redundant
                 do_block(trace.back());
+                // try to apply a query before doing another step
+                if (try_queries()) {
+                    return;
+                }
                 break;
             }
             case Dropped: {
@@ -517,8 +545,7 @@ void Reachability::analyze() {
             }
             }
         }
-        const TransIdx current = trace.empty() ? its.getInitialLocation() : its.getRule(trace.back().transition).getRhsLoc(0);
-        auto &trans = transitions[current];
+        auto &trans = transitions[get_current_location()];
         auto it = trans.begin();
         std::vector<TransIdx> append;
         while (it != trans.end()) {
@@ -544,8 +571,16 @@ void Reachability::analyze() {
             }
         }
         trans.insert(trans.end(), append.begin(), append.end());
-        if (it == trans.end() && !trace.empty()) {
-            backtrack();
+        if (!trace.empty()) {
+            if (it == trans.end()) {
+                backtrack();
+            } else {
+                // check whether a query is applicable after every step and,
+                // importantly, before acceleration (which might approximate)
+                if (try_queries()) {
+                    return;
+                }
+            }
         }
     } while (!trace.empty());
     std::cout << "unknown" << std::endl << std::endl;

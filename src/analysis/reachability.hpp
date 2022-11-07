@@ -37,6 +37,7 @@ class Reachability {
     std::map<LocationIdx, std::vector<TransIdx>> in_scc;
     std::map<LocationIdx, std::vector<TransIdx>> accelerated;
     std::map<LocationIdx, std::list<TransIdx>> transitions;
+    std::map<LocationIdx, std::vector<TransIdx>> queries;
     LocationIdx sink = *its.getSink();
     Z3<IntTheory, BoolTheory> z3;
 
@@ -75,6 +76,8 @@ class Reachability {
     void extend_trace(const TransIdx idx, const BoolExpr &sat);
     void store(const TransIdx idx, const BoolExpr &sat);
     void print_run(std::ostream &s);
+    LocationIdx get_current_location() const;
+    bool try_queries();
     Automaton get_language(const Step &step);
 
     Reachability(ITSProblem &its);
