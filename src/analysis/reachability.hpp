@@ -16,7 +16,6 @@ class Automaton {
 
     faudes::Generator t;
     std::string str;
-    option<std::vector<long>> representative;
 
 public:
 
@@ -102,8 +101,6 @@ class Reachability {
     std::map<LocationIdx, std::list<TransIdx>> transitions;
     std::map<LocationIdx, std::vector<TransIdx>> queries;
     std::vector<TransIdx> conditional_empty_clauses;
-    std::map<LocationIdx, std::vector<TransIdx>> deterministic_recursive_clauses;
-    std::map<LocationIdx, std::map<std::vector<long>, TransIdx>> representative_to_transition;
     LocationIdx sink = *its.getSink();
     Z3<IntTheory, BoolTheory> z3;
 
@@ -132,7 +129,6 @@ class Reachability {
     TransIdx add_accelerated_rule(const Rule &accel, const Automaton &automaton);
     std::unique_ptr<LoopState> learn_clause(const Rule &rule, const Automaton &automaton);
     std::unique_ptr<LoopState> handle_loop(const int backlink);
-    void learn_suffixes(const TransIdx idx);
     bool leaves_scc(const TransIdx idx) const;
     int is_loop();
     void handle_update(const TransIdx idx);
@@ -148,8 +144,6 @@ class Reachability {
     bool try_queries();
     bool try_conditional_empty_clauses();
     Automaton get_language(const Step &step);
-    void update_deterministic_recursive_clauses(const Rule &rule, TransIdx idx);
-    bool redundant(const Rule &rule);
 
     Reachability(ITSProblem &its);
     void analyze();

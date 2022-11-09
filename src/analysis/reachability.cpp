@@ -9,7 +9,6 @@
 #include "export.hpp"
 #include "expression.hpp"
 #include "boolexpression.hpp"
-#include "literal.hpp"
 
 #include <numeric>
 
@@ -23,7 +22,6 @@ Automaton Automaton::singleton() {
     Automaton res;
     res.t.StateNamesEnabled(false);
     faudes::EventSet events;
-    res.representative = {{next_char}};
     res.str = std::to_string(next_char);
     events.Insert(covered.t.InsEvent(std::to_string(next_char)));
     faudes::AlphabetLanguage(events, res.t);
@@ -42,10 +40,6 @@ Automaton Automaton::concat(const Automaton &that) const {
     res.t.StateNamesEnabled(false);
     faudes::LanguageConcatenate(t, that.t, res.t);
     res.str = str + "." + that.str;
-    if (representative && that.representative) {
-        res.representative = {{*representative}};
-        res.representative->insert(res.representative->end(), that.representative->begin(), that.representative->end());
-    }
     return res;
 }
 
@@ -74,7 +68,6 @@ Automaton Automaton::kleene_plus() const {
     faudes::LanguageConcatenate(t, res.t, res.t);
     faudes::StateMin(res.t, res.t);
     res.str = "(" + str + ")+";
-    res.representative = representative;
     return res;
 }
 
@@ -84,10 +77,6 @@ bool Automaton::subset(const Automaton &that) const {
 
 bool Automaton::empty() const {
     return faudes::IsEmptyLanguage(t);
-}
-
-option<std::vector<long>> Automaton::get_representative() const {
-    return representative;
 }
 
 std::ostream& operator<<(std::ostream &s, const Automaton &a) {
@@ -430,9 +419,6 @@ void Reachability::init() {
             } else {
                 it->second.push_back(idx);
             }
-            if (src == dst) {
-                update_deterministic_recursive_clauses(rule, idx);
-            }
         }
     }
     for (const auto loc: its.getLocations()) {
@@ -545,19 +531,6 @@ Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
     return res;
 }
 
-void Reachability::update_deterministic_recursive_clauses(const Rule &rule, TransIdx idx) {
-    const auto vars = rule.vars();
-    if (std::all_of(vars.begin(), vars.end(), [this](const auto &x){return !its.isTempVar(x);})) {
-        const auto loc = rule.getLhsLoc();
-        auto it = deterministic_recursive_clauses.find(loc);
-        if (it == deterministic_recursive_clauses.end()) {
-            deterministic_recursive_clauses[loc] = {idx};
-        } else {
-            it->second.push_back(idx);
-        }
-    }
-}
-
 TransIdx Reachability::add_accelerated_rule(const Rule &accel, const Automaton &automaton) {
     const auto loop_idx = its.addRule(accel);
     regexes[loop_idx] = automaton;
@@ -569,93 +542,7 @@ TransIdx Reachability::add_accelerated_rule(const Rule &accel, const Automaton &
         acc_it->second.push_back(loop_idx);
     }
     update_transitions(src);
-    update_deterministic_recursive_clauses(accel, loop_idx);
-    auto rep_it = representative_to_transition.find(src);
-    if (rep_it == representative_to_transition.end()) {
-        representative_to_transition.emplace(src, std::map<std::vector<long>, TransIdx>{{*automaton.get_representative(), loop_idx}});
-    } else {
-        rep_it->second.emplace(*automaton.get_representative(), loop_idx);
-    }
     return loop_idx;
-}
-
-/*
- * Phi is redundant if there is some psi without temporary variables such that !cond(psi) /\ cond(phi) is unsat.
- * We go one step further by cojoining !cond(psi) for /all/ such clauses psi. Hence, this function may return
- * true for clauses that are not redundant w.r.t. the redundancy criterion from our paper. For unsat, that's not
- * a problem.
- * Catches some cases where the language-based redundancy check fails.
- * Only considers clauses psi without temporary variables since they would have to be universally
- * qunantified in the formula above.
- */
-bool Reachability::redundant(const Rule &phi) {
-    const auto old_clauses = deterministic_recursive_clauses.find(phi.getLhsLoc());
-    if (old_clauses == deterministic_recursive_clauses.end()) {
-        return false;
-    }
-    const auto new_up = phi.getUpdate(0);
-    std::vector<BoolExpr> conj;
-    for (const auto &pair: new_up) {
-        conj.push_back(literal::mkEq(post_vars.at(substitution::first(pair)), substitution::second(pair)));
-    }
-    conj.push_back(phi.getGuard());
-    bool found_one = false;
-    for (const auto &idx: old_clauses->second) {
-        const auto clause = its.getLinearRule(idx);
-        const auto old_up = clause.getUpdate();
-        if (old_up.domain() == new_up.domain()) {
-            found_one = true;
-            std::vector<BoolExpr> disj;
-            for (const auto &pair: old_up) {
-                disj.push_back(!literal::mkEq(post_vars.at(substitution::first(pair)), substitution::second(pair)));
-            }
-            disj.push_back(!clause.getGuard());
-            conj.push_back(BExpression::buildOr(disj));
-        }
-    }
-    return found_one && SmtFactory::check(BExpression::buildAnd(conj), its) == Unsat;
-}
-
-void Reachability::learn_suffixes(const TransIdx idx) {
-    const auto rep = *regexes.at(idx).get_representative();
-    if (rep.size() <= 2) {
-        return;
-    }
-    auto it = representative_to_transition.find(its.getRule(idx).getLhsLoc());
-    if (it == representative_to_transition.end()) {
-        return;
-    }
-    bool changed;
-    std::vector<TransIdx> transitions;
-    auto rep_it = rep.begin();
-    do {
-        changed = false;
-        for (const auto &p: it->second) {
-            if (p.second == idx) {
-                continue;
-            }
-            const auto other_rep = p.first;
-            auto res = std::mismatch(other_rep.begin(), other_rep.end(), rep_it);
-            if (res.first == other_rep.end()) {
-                transitions.push_back(p.second);
-                for (size_t i = 0; i < other_rep.size(); ++i) {
-                    ++rep_it;
-                }
-                changed = true;
-            }
-        }
-    } while (changed && rep_it != rep.end());
-    if (rep_it == rep.end()) {
-        for (size_t i = transitions.size() - 2; i > 0; --i) {
-            auto automaton = regexes.at(transitions[i]);
-            auto rule = its.getRule(transitions[i]);
-            for (size_t j = i + 1; j < transitions.size(); ++j) {
-                automaton = automaton.concat(regexes.at(transitions[j]));
-                rule = *Chaining::chainRules(its, rule, its.getRule(transitions[j]), false);
-            }
-            learn_clause(rule, automaton);
-        }
-    }
 }
 
 std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Automaton &automaton) {
@@ -698,10 +585,6 @@ std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Au
         Automaton::covered = Automaton::covered.unite(automaton);
         return std::make_unique<Failed>(Failed());
     }
-    if (redundant(*res)) {
-        if (log) std::cout << "learned clause is redundant" << std::endl;
-        return std::make_unique<Covered>(Covered());
-    }
     return std::make_unique<Accelerated>(Accelerated(res.map<TransIdx>([this, &automaton](const auto &x){
         return add_accelerated_rule(x, automaton);
     })));
@@ -720,13 +603,6 @@ std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
     const auto idx = **accel_state;
     const auto subproof = accel_state->getProof();
     const auto accel = its.getRule(idx);
-    bool do_learn_suffixes = true;
-    for (size_t i = backlink; i < trace.size(); ++i) {
-        if (trace[i].transition <= lastOrigRule) {
-            do_learn_suffixes = false;
-            break;
-        }
-    }
     drop_loop(backlink);
     proof.majorProofStep("accelerated loop", its);
     proof.storeSubProof(subproof);
@@ -735,9 +611,6 @@ std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
     if (z3.check() == Sat) {
         store(idx, accel.getGuard());
         proof.append(std::stringstream() << "added " << idx << " to trace");
-        if (do_learn_suffixes) {
-//            learn_suffixes(*res);
-        }
         return state;
     } else {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
