@@ -13,6 +13,7 @@ target_sources(${EXECUTABLE}
         relevantvariables.hpp
         result.hpp
         map.hpp
+        vector.hpp
         variant.hpp
 )
 

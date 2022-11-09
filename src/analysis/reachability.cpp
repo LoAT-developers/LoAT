@@ -9,79 +9,11 @@
 #include "export.hpp"
 #include "expression.hpp"
 #include "boolexpression.hpp"
+#include "vector.hpp"
 
 #include <numeric>
 
 bool Reachability::log = false;
-
-long Automaton::next_char = 0;
-
-Automaton Automaton::covered;
-
-Automaton Automaton::singleton() {
-    Automaton res;
-    res.t.StateNamesEnabled(false);
-    faudes::EventSet events;
-    res.str = std::to_string(next_char);
-    events.Insert(covered.t.InsEvent(std::to_string(next_char)));
-    faudes::AlphabetLanguage(events, res.t);
-    next_char++;
-    return res;
-}
-
-Automaton Automaton::concat(const Automaton &that) const {
-    if (this->empty()) {
-        return *this;
-    }
-    if (that.empty()) {
-        return that;
-    }
-    Automaton res;
-    res.t.StateNamesEnabled(false);
-    faudes::LanguageConcatenate(t, that.t, res.t);
-    res.str = str + "." + that.str;
-    return res;
-}
-
-Automaton Automaton::unite(const Automaton &that) const {
-    if (this->empty()) {
-        return that;
-    }
-    if (that.empty()) {
-        return *this;
-    }
-    Automaton res;
-    res.t.StateNamesEnabled(false);
-    faudes::LanguageUnion(t, that.t, res.t);
-    faudes::StateMin(res.t, res.t);
-    res.str = "(" + str + ") u (" + that.str + ")";
-    return res;
-}
-
-Automaton Automaton::kleene_plus() const {
-    if (this->empty()) {
-        return *this;
-    }
-    Automaton res;
-    res.t.StateNamesEnabled(false);
-    faudes::KleeneClosure(t, res.t);
-    faudes::LanguageConcatenate(t, res.t, res.t);
-    faudes::StateMin(res.t, res.t);
-    res.str = "(" + str + ")+";
-    return res;
-}
-
-bool Automaton::subset(const Automaton &that) const {
-    return faudes::LanguageInclusion(t, that.t);
-}
-
-bool Automaton::empty() const {
-    return faudes::IsEmptyLanguage(t);
-}
-
-std::ostream& operator<<(std::ostream &s, const Automaton &a) {
-    return s << a.str;
-}
 
 LoopState::LoopState() {}
 
@@ -238,8 +170,9 @@ int Reachability::is_loop() {
     return -1;
 }
 
-Automaton Reachability::singleton_language(const TransIdx idx, const Guard &guard) {
-    Automaton res = Automaton::singleton();
+long Reachability::singleton_language(const TransIdx idx, const Guard &guard) {
+    long res = next_char;
+    ++next_char;
     alphabet.emplace(std::pair<TransIdx, Guard>{idx, guard}, res);
     return res;
 }
@@ -480,22 +413,45 @@ void Reachability::drop_loop(const int backlink) {
     }
 }
 
-Automaton Reachability::get_language(const Step &step) {
+std::vector<long> Reachability::get_language(const Step &step) {
     if (step.transition <= lastOrigRule) {
         const auto g = step.sat->conjunctionToGuard();
         const auto it = alphabet.find({step.transition, g});
         if (it == alphabet.end()) {
-            return singleton_language(step.transition, g);
+            return {singleton_language(step.transition, g)};
         } else {
-            return it->second;
+            return {it->second};
         }
     } else {
         return regexes[step.transition];
     }
 }
 
-std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
-    Automaton automaton = get_language(trace.back());
+void remove_squares(std::vector<long> &v) {
+    START:
+    auto next_end_it = v.begin();
+    ++next_end_it;
+    for (size_t len = 1; len <= v.size() / 2; ++len, ++next_end_it) {
+        auto start_it = v.begin();
+        auto end_it = next_end_it;
+        for (size_t start = 0; start < v.size() - len; ++start, ++start_it, ++end_it) {
+            bool is_square = true;
+            for (size_t i = 0; i < len; ++i) {
+                if (v[i] != v[i+len]) {
+                    is_square = false;
+                    break;
+                }
+            }
+            if (is_square) {
+                v.erase(start_it, end_it);
+                goto START;
+            }
+        }
+    }
+}
+
+std::pair<Rule, std::vector<long>> Reachability::build_loop(const int backlink) {
+    std::vector<long> automaton = get_language(trace.back());
     Rule loop = its.getRule(trace.back().transition).withGuard(trace.back().sat);
     for (int i = trace.size() - 2; i >= backlink; --i) {
         const Step &step = trace[i];
@@ -504,7 +460,8 @@ std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
         const TransIdx t = step.transition;
         const Rule &r = its.getRule(t);
         loop = *Chaining::chainRules(its, r.withGuard(step.sat).subs(sigma), loop, false);
-        automaton = get_language(step).concat(automaton);
+        const auto ins = get_language(step);
+        automaton.insert(automaton.end(), ins.begin(), ins.end());
     }
     assert(loop.getLhsLoc() == loop.getRhsLoc(0));
     if (log) {
@@ -512,7 +469,8 @@ std::pair<Rule, Automaton> Reachability::build_loop(const int backlink) {
         ITSExport::printRule(loop, its, std::cout);
         std::cout << std::endl;
     }
-    return {loop, automaton.kleene_plus()};
+    remove_squares(automaton);
+    return {loop, automaton};
 }
 
 Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
@@ -531,7 +489,7 @@ Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
     return res;
 }
 
-TransIdx Reachability::add_accelerated_rule(const Rule &accel, const Automaton &automaton) {
+TransIdx Reachability::add_accelerated_rule(const Rule &accel, const std::vector<long> &automaton) {
     const auto loop_idx = its.addRule(accel);
     regexes[loop_idx] = automaton;
     const auto src = accel.getLhsLoc();
@@ -545,15 +503,15 @@ TransIdx Reachability::add_accelerated_rule(const Rule &accel, const Automaton &
     return loop_idx;
 }
 
-std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Automaton &automaton) {
-    if (automaton.subset(Automaton::covered)) {
+std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const std::vector<long> &automaton) {
+    if (covered.contains(automaton)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
     } else if (log) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << automaton << std::endl;
     }
-    Automaton::covered = Automaton::covered.unite(automaton);
+    covered.insert(automaton);
     Result<Rule> res {rule};
     res.concat(preprocess_loop(*res));
     AccelerationResult accel_res = LoopAcceleration::accelerate(its, res->toLinear(), -1, Complexity::Const);
@@ -571,7 +529,6 @@ std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Au
         }
         if (accel->getUpdate(0) == res->getUpdate(0)) {
             if (log) std::cout << "acceleration yielded equivalent rule" << std::endl;
-            Automaton::covered = Automaton::covered.unite(automaton);
             return std::make_unique<Failed>();
         } else {
             res = *accel;
@@ -582,7 +539,6 @@ std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Au
         }
     } else {
         if (log) std::cout << "acceleration failed" << std::endl;
-        Automaton::covered = Automaton::covered.unite(automaton);
         return std::make_unique<Failed>();
     }
     return std::make_unique<Accelerated>(res.map<TransIdx>([this, &automaton](const auto &x){
@@ -592,9 +548,7 @@ std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Au
 
 std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
     const Step step = trace[backlink];
-    const auto p = build_loop(backlink);
-    Rule loop = p.first;
-    const Automaton automaton = p.second;
+    const auto [loop, automaton] = build_loop(backlink);
     auto state = learn_clause(loop, automaton);
     if (!state->accelerated()) {
         return state;

@@ -6,35 +6,7 @@
 #include "proof.hpp"
 #include "result.hpp"
 
-#include "libfaudes.h"
-
 #include <list>
-
-class Automaton {
-
-    static long next_char;
-
-    faudes::Generator t;
-    std::string str;
-
-public:
-
-    static Automaton covered;
-
-    static Automaton singleton();
-
-    Automaton concat(const Automaton &that) const;
-    Automaton kleene_plus() const;
-    Automaton unite(const Automaton &that) const;
-
-    bool subset(const Automaton &that) const;
-    bool empty() const;
-
-    option<std::vector<long>> get_representative() const;
-
-    friend std::ostream& operator<<(std::ostream &s, const Automaton &a);
-
-};
 
 struct Step {
     const TransIdx transition;
@@ -112,8 +84,10 @@ class Reachability {
     std::map<Var, Var> post_vars;
     TransIdx lastOrigRule = 0;
 
-    std::map<std::pair<TransIdx, Guard>, Automaton> alphabet;
-    std::map<TransIdx, Automaton> regexes;
+    std::map<std::pair<TransIdx, Guard>, long> alphabet;
+    std::map<TransIdx, std::vector<long>> regexes;
+    std::set<std::vector<long>> covered;
+    long next_char = 0;
 
     ResultViaSideEffects removeIrrelevantTransitions();
     ResultViaSideEffects simplify();
@@ -124,15 +98,15 @@ class Reachability {
     void unsat();
     option<BoolExpr> do_step(const TransIdx idx);
     void drop_loop(const int backlink);
-    std::pair<Rule, Automaton> build_loop(const int backlink);
+    std::pair<Rule, std::vector<long>> build_loop(const int backlink);
     Result<Rule> preprocess_loop(const Rule &loop);
-    TransIdx add_accelerated_rule(const Rule &accel, const Automaton &automaton);
-    std::unique_ptr<LoopState> learn_clause(const Rule &rule, const Automaton &automaton);
+    TransIdx add_accelerated_rule(const Rule &accel, const std::vector<long> &automaton);
+    std::unique_ptr<LoopState> learn_clause(const Rule &rule, const std::vector<long> &automaton);
     std::unique_ptr<LoopState> handle_loop(const int backlink);
     bool leaves_scc(const TransIdx idx) const;
     int is_loop();
     void handle_update(const TransIdx idx);
-    Automaton singleton_language(const TransIdx idx, const Guard &guard);
+    long singleton_language(const TransIdx idx, const Guard &guard);
     void do_block(const Step &step);
     void backtrack();
     void pop();
@@ -143,7 +117,7 @@ class Reachability {
     bool try_queries(const std::vector<TransIdx> &queries);
     bool try_queries();
     bool try_conditional_empty_clauses();
-    Automaton get_language(const Step &step);
+    std::vector<long> get_language(const Step &step);
 
     Reachability(ITSProblem &its);
     void analyze();
