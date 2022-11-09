@@ -5,7 +5,7 @@
 #include "loopacceleration.hpp"
 #include "result.hpp"
 #include "yices.hpp"
-#include "smtfactory.hpp"
+#include "smt.hpp"
 #include "export.hpp"
 #include "expression.hpp"
 #include "boolexpression.hpp"
