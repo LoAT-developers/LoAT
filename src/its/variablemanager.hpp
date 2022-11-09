@@ -2,6 +2,7 @@
 
 #include "numexpression.hpp"
 #include "theory.hpp"
+#include "variable.hpp"
 
 #include <mutex>
 
@@ -72,6 +73,22 @@ public:
         std::lock_guard guard(mutex);
         typename Th::Var x = addVariable<Th>(getFreshName(basename));
         temporaryVariables.insert(x.getName());
+        return x;
+    }
+
+    Var addFreshTemporaryVariable(const Var &var) {
+        std::lock_guard guard(mutex);
+        const auto name = getFreshName(variable::getName(var));
+        Var x = std::visit(
+                    Overload{
+                        [this, &name](const NumVar &var) {
+                            return Var(addVariable<IntTheory>(name));
+                        },
+                        [this, &name](const BoolVar &var) {
+                            return Var(addVariable<BoolTheory>(name));
+                        }
+                    }, var);
+        temporaryVariables.insert(name);
         return x;
     }
 

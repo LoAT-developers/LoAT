@@ -151,6 +151,7 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
                             changed = true;
                             subproof.append(stringstream() << "replaced " << var << " with " << c);
                             res.storeSubProof(subproof);
+                            break;
                         }
                     }
                 }

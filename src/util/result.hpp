@@ -14,7 +14,7 @@ T res;
 
 public:
 
-    Result() {}
+    Result(): success(false) {}
 
     Result(const T &t, bool success = false): success(success), res(t) {}
 
@@ -129,6 +129,17 @@ public:
 
     void succeed() {
         success = true;
+    }
+
+    template<class S>
+    Result<S> map(const std::function<S(const T&)> &mapper) const {
+        Result<S> res;
+        res.concat(proof);
+        res = mapper(this->res);
+        if (!success) {
+            res.fail();
+        }
+        return res;
     }
 
     const T& operator*() const {

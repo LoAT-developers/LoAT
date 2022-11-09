@@ -283,6 +283,27 @@ public:
         return beginImpl();
     }
 
+private:
+
+    template <size_t I = 0>
+    inline bool equalsImpl(const Self &that) const {
+        if constexpr (I < variant_size) {
+            if (std::get<I>(t) != std::get<I>(that.t)) {
+                return false;
+            } else {
+                return equalsImpl<I+1>(that);
+            }
+        } else {
+            return true;
+        }
+    }
+
+public:
+
+    bool equals(const Self &that) const {
+        return equalsImpl(that);
+    }
+
     template <class T>
     std::set<T>& get() {
         return std::get<std::set<T>>(t);
@@ -308,6 +329,11 @@ public:
     }
 
 };
+
+template <class VS, class VSI, class Var, ITheory... Th>
+bool operator==(const ThSet<VS, VSI, Var, Th...> &fst, const ThSet<VS, VSI, Var, Th...> &snd) {
+    return fst.equals(snd);
+}
 
 template<ITheory... Th>
 using VarSet = ThSet<std::tuple<std::set<typename Th::Var>...>, std::variant<typename std::set<typename Th::Var>::iterator...>, typename Theory<Th...>::Var, Th...>;

@@ -12,6 +12,8 @@ bool isTriviallyTrue(const Lit &lit);
 
 Lit negate(const Lit &lit);
 
+BoolExpr mkEq(const Var &x, const ThExpr &e);
+
 }
 
 std::ostream& operator<<(std::ostream &s, const Lit &e);

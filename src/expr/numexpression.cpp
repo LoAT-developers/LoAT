@@ -776,7 +776,7 @@ bool operator==(const ExprSubs &m1, const ExprSubs &m2) {
 
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
     if (map.empty()) {
-        s << "{}";
+        return s << "{}";
     } else {
         s << "{";
         bool fst = true;
@@ -788,8 +788,8 @@ std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
             }
             s << p.first << ": " << p.second;
         }
+        return s << "}";
     }
-    return s << "}";
 }
 
 bool operator<(const ExprSubs &x, const ExprSubs &y) {

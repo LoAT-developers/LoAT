@@ -1,13 +1,15 @@
 #pragma once
 
+#include <poly/algebraic_number.h>
+#include <yices.h>
+#include <mutex>
+#include <future>
+#include <stdexcept>
+
 #include "smt.hpp"
 #include "yicescontext.hpp"
 #include "config.hpp"
 #include "exprtosmt.hpp"
-
-#include <mutex>
-#include <future>
-#include <stdexcept>
 
 namespace yices {
 
@@ -30,8 +32,23 @@ class Yices : public Smt<Th...> {
 
 public:
     Yices(const VariableManager &varMan, Logic logic): ctx(YicesContext()), varMan(varMan), config(yices_new_config()) {
-        if (logic == QF_NA) {
-            yices_set_config(config, "solver-type", "mcsat");
+        std::string l;
+        switch (logic) {
+        case QF_LA:
+            l = "QF_LIA";
+            break;
+        case QF_NA:
+            if (!yices_has_mcsat()) {
+                throw std::runtime_error("mcsat missing");
+            }
+            l = "QF_NIA";
+            break;
+        default:
+            throw std::invalid_argument("unsupported logic");
+        }
+        if (yices_default_config_for_logic(config, l.c_str()) == -1) {
+            std::cout << yices_error_string() << std::endl;
+            throw std::logic_error("error from yices");
         }
         solver = yices_new_context(config);
         yices::mutex.lock();
@@ -63,6 +80,10 @@ public:
                 return Sat;
             case STATUS_UNSAT:
                 return Unsat;
+            case STATUS_ERROR: {
+                std::cerr << yices_error_string() << std::endl;
+                throw std::logic_error("error from yices");
+            }
             default:
                 return Unknown;
             }
@@ -83,8 +104,7 @@ public:
                 if (std::holds_alternative<NumVar>(p.first)) {
                     res.template put<IntTheory>(std::get<NumVar>(p.first), getRealFromModel(m, p.second));
                 }
-            }
-            if constexpr ((std::same_as<BoolTheory, Th> || ...)) {
+            } else if constexpr ((std::same_as<BoolTheory, Th> || ...)) {
                 if (std::holds_alternative<BoolVar>(p.first)) {
                     int32_t val;
                     if (yices_get_bool_value(m, p.second, &val) != 0) {
@@ -92,8 +112,9 @@ public:
                     }
                     res.template put<BoolTheory>(std::get<BoolVar>(p.first), val);
                 }
+            } else {
+                throw std::logic_error("unknown variable type");
             }
-            throw std::logic_error("unknown variable type");
         }
         yices_free_model(m);
         return res;
@@ -129,7 +150,8 @@ public:
         }
         auto future = std::async(yices_check_context_with_assumptions, solver, nullptr, as.size(), &as[0]);
         if (future.wait_for(std::chrono::milliseconds(timeout)) != std::future_status::timeout) {
-            switch (future.get()) {
+            auto status = future.get();
+            switch (status) {
             case STATUS_SAT:
                 return {Sat, {}};
             case STATUS_UNSAT: {
@@ -141,6 +163,10 @@ public:
                     res.insert(map[core.data[i]]);
                 }
                 return {Unsat, res};
+            }
+            case STATUS_ERROR: {
+                std::cerr << yices_error_string() << std::endl;
+                throw std::logic_error("error from yices");
             }
             default:
                 return {Unknown, {}};

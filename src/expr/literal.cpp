@@ -1,5 +1,6 @@
 #include "literal.hpp"
 #include "literaltemplates.hpp"
+#include "substitution.hpp"
 
 namespace literal {
 
@@ -17,6 +18,20 @@ bool isTriviallyTrue(const Lit &lit) {
 
 Lit negate(const Lit &lit) {
     return literal_t::negate<IntTheory, BoolTheory>(lit);
+}
+
+BoolExpr mkEq(const Var &x, const ThExpr &e) {
+    return std::visit(
+                Overload{
+                    [&e](const NumVar &x){
+                        return BExpression::buildTheoryLit(Rel::buildEq(x, std::get<Expr>(e)));
+                    },
+                    [&e](const BoolVar &x){
+                        const auto lhs = BExpression::buildTheoryLit(BoolLit(x));
+                        const auto rhs = std::get<BoolExpr>(e);
+                        return (lhs & rhs) | ((!lhs) & (!rhs));
+                    }
+                }, x);
 }
 
 }

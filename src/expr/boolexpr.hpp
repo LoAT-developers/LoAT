@@ -176,6 +176,59 @@ public:
         }
     }
 
+private:
+
+    bool implicant(const Subs &subs, LS &res) const {
+       if (isOr()) {
+           option<LS> best_res;
+           for (const auto &c: getChildren()) {
+               LS current_res;
+               if (c->implicant(subs, current_res)) {
+                   if (!best_res) {
+                       best_res = current_res;
+                   } else if (current_res.size() < best_res->size()) {
+                       best_res = current_res;
+                   }
+               }
+           }
+           if (best_res) {
+               res.insertAll(*best_res);
+           }
+           return best_res.has_value();
+       } else if (isAnd()) {
+           for (const auto &c: getChildren()) {
+               if (!c->implicant(subs, res)) {
+                   res.clear();
+                   return false;
+               }
+           }
+           return true;
+       } else {
+           const auto lit = getTheoryLit();
+           if (lit) {
+               if (literal::subs(*lit, subs)->isTriviallyTrue()) {
+                   res.insert(*lit);
+                   return true;
+               } else {
+                   return false;
+               }
+           } else {
+               throw std::invalid_argument("unknown kind of BoolExpr");
+           }
+       }
+    }
+
+public:
+
+    option<LS> implicant(const Subs &subs) const {
+        LS res;
+        if (implicant(subs, res)) {
+            return res;
+        } else {
+            return {};
+        }
+    }
+
     void iter(const std::function<void(const Lit&)> &f) const {
         if (getTheoryLit()) {
             f(*getTheoryLit());
@@ -445,6 +498,10 @@ private:
             if (!trivial) {
                 res.insert(buildOr(children));
             }
+        } else if (this->shared_from_this() == lit) {
+            res.insert(BoolExpression<Th...>::False);
+        } else if (this->shared_from_this() == !lit) {
+            res.insert(BoolExpression<Th...>::True);
         }
     }
 

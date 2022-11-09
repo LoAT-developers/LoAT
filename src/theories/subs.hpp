@@ -244,7 +244,7 @@ private:
     template<std::size_t I = 0>
     inline void domainImpl(VS &res) const {
         if constexpr (I < sizeof...(Th)) {
-            std::get<I>(res.t) = std::get<I>(t).domain();
+            res.template get<I>() = std::get<I>(t).domain();
             domainImpl<I+1>(res);
         }
     }

@@ -10,7 +10,32 @@
 
 #include <list>
 
-using Automaton = faudes::Generator;
+class Automaton {
+
+    static long next_char;
+
+    faudes::Generator t;
+    std::string str;
+    option<std::vector<long>> representative;
+
+public:
+
+    static Automaton covered;
+
+    static Automaton singleton();
+
+    Automaton concat(const Automaton &that) const;
+    Automaton kleene_plus() const;
+    Automaton unite(const Automaton &that) const;
+
+    bool subset(const Automaton &that) const;
+    bool empty() const;
+
+    option<std::vector<long>> get_representative() const;
+
+    friend std::ostream& operator<<(std::ostream &s, const Automaton &a);
+
+};
 
 struct Step {
     const TransIdx transition;
@@ -22,13 +47,51 @@ struct Step {
 
 };
 
-class Reachability {
+class Accelerated;
+class Covered;
+class Dropped;
+class Failed;
 
-    enum LoopState {
-        Accelerated,
-        Covered,
-        Dropped
-    };
+class LoopState{
+
+protected:
+    LoopState();
+
+public:
+    virtual void foo() = 0;
+    virtual option<Accelerated> accelerated();
+    virtual option<Covered> covered();
+    virtual option<Dropped> dropped();
+    virtual option<Failed> failed();
+};
+
+class Accelerated: public LoopState {
+    Result<TransIdx> idx;
+
+public:
+    Accelerated(const Result<TransIdx> &idx);
+    void foo() override;
+    option<Accelerated> accelerated() override;
+    Result<TransIdx>& operator*();
+    Result<TransIdx>* operator->();
+};
+
+class Covered: public LoopState {
+    void foo() override;
+    option<Covered> covered() override;
+};
+
+class Dropped: public LoopState {
+    void foo() override;
+    option<Dropped> dropped() override;
+};
+
+class Failed: public LoopState {
+    void foo() override;
+    option<Failed> failed() override;
+};
+
+class Reachability {
 
     ITSProblem &its;
     Proof proof;
@@ -38,19 +101,22 @@ class Reachability {
     std::map<LocationIdx, std::vector<TransIdx>> accelerated;
     std::map<LocationIdx, std::list<TransIdx>> transitions;
     std::map<LocationIdx, std::vector<TransIdx>> queries;
+    std::vector<TransIdx> conditional_empty_clauses;
+    std::map<LocationIdx, std::vector<TransIdx>> deterministic_recursive_clauses;
+    std::map<LocationIdx, std::map<std::vector<long>, TransIdx>> representative_to_transition;
     LocationIdx sink = *its.getSink();
     Z3<IntTheory, BoolTheory> z3;
 
     std::vector<Step> trace;
     std::vector<Subs> sigmas{{}};
+    std::vector<Subs> models;
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked{{}};
     VarSet prog_vars;
+    std::map<Var, Var> post_vars;
     TransIdx lastOrigRule = 0;
 
-    long next_char = 0;
     std::map<std::pair<TransIdx, Guard>, Automaton> alphabet;
     std::map<TransIdx, Automaton> regexes;
-    Automaton covered;
 
     ResultViaSideEffects removeIrrelevantTransitions();
     ResultViaSideEffects simplify();
@@ -64,8 +130,9 @@ class Reachability {
     std::pair<Rule, Automaton> build_loop(const int backlink);
     Result<Rule> preprocess_loop(const Rule &loop);
     TransIdx add_accelerated_rule(const Rule &accel, const Automaton &automaton);
-    LoopState handle_loop(const int backlink);
-    BoolExpr project(const TransIdx idx);
+    std::unique_ptr<LoopState> learn_clause(const Rule &rule, const Automaton &automaton);
+    std::unique_ptr<LoopState> handle_loop(const int backlink);
+    void learn_suffixes(const TransIdx idx);
     bool leaves_scc(const TransIdx idx) const;
     int is_loop();
     void handle_update(const TransIdx idx);
@@ -77,8 +144,12 @@ class Reachability {
     void store(const TransIdx idx, const BoolExpr &sat);
     void print_run(std::ostream &s);
     LocationIdx get_current_location() const;
+    bool try_queries(const std::vector<TransIdx> &queries);
     bool try_queries();
+    bool try_conditional_empty_clauses();
     Automaton get_language(const Step &step);
+    void update_deterministic_recursive_clauses(const Rule &rule, TransIdx idx);
+    bool redundant(const Rule &rule);
 
     Reachability(ITSProblem &its);
     void analyze();

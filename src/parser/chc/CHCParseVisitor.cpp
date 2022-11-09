@@ -62,6 +62,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     }
     for (const Clause &c: clauses) {
         Subs ren;
+        // replace the arguments of the body predicate with the corresponding program variables
         for (unsigned i = 0; i < c.lhs.args.size(); ++i) {
             if (std::holds_alternative<NumVar>(c.lhs.args[i])) {
                 ren.put<IntTheory>(std::get<NumVar>(c.lhs.args[i]), vars[i]);
@@ -74,8 +75,9 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             cVars.insert(var);
         }
         c.guard->collectVars(cVars);
+        // replace all other variables from the clause with temporary variables
         for (const auto &x: cVars) {
-            if (!ren.changes(x)) {
+            if (!ren.contains(x)) {
                 if (std::holds_alternative<NumVar>(x)) {
                     const auto &var = std::get<NumVar>(x);
                     ren.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
@@ -83,7 +85,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
                     const auto &var = std::get<BoolVar>(x);
                     ren.put<BoolTheory>(var, BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
                 } else {
-                    throw std::logic_error("unsupporte theory in CHCParseVisitor");
+                    throw std::logic_error("unsupported theory in CHCParseVisitor");
                 }
             }
         }
@@ -94,7 +96,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             } else if (std::holds_alternative<BoolVar>(c.rhs.args[i])) {
                 up.put<BoolTheory>(bvars[i], ren.get<BoolTheory>(std::get<BoolVar>(c.rhs.args[i])));
             } else {
-                throw std::logic_error("unsupporte theory in CHCParseVisitor");
+                throw std::logic_error("unsupported theory in CHCParseVisitor");
             }
         }
         for (unsigned i = c.rhs.args.size(); i < maxArity; ++i) {

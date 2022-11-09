@@ -14,10 +14,10 @@ namespace SmtFactory {
         std::unique_ptr<Smt<Th...>> res;
         switch (logic) {
         case QF_LA:
-    //    case Smt::QF_NA:
+        case QF_NA:
             res = std::unique_ptr<Smt<Th...>>(new Yices<Th...>(varMan, logic));
             break;
-        case QF_NA:
+//        case QF_NA:
         case QF_ENA:
             res = std::unique_ptr<Smt<Th...>>(new Z3<Th...>(varMan));
             break;
@@ -50,8 +50,13 @@ namespace SmtFactory {
 
     template<ITheory... Th>
     BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan) {
-        std::unique_ptr<Smt<Th...>> solver = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(assumptions), varMan);
-        return solver->_unsatCore(assumptions).second;
+        const auto logic = Smt<Th...>::chooseLogic(assumptions);
+        if (logic == QF_LA) {
+            return Yices<Th...>(varMan, QF_LA)._unsatCore(assumptions).second;
+        } else {
+            // as far as I can tell, yices' mcsat for NA does not support unsat cores
+            return Z3<Th...>(varMan)._unsatCore(assumptions).second;
+        }
     }
 
 }

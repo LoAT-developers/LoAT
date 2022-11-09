@@ -317,13 +317,18 @@ bool AccelerationProblem::eventualWeakIncrease(const Lit &lit, Proof &proof) {
 
 bool AccelerationProblem::fixpoint(const Lit &lit, Proof &proof) {
     if (res.find(lit) == res.end()) {
-        std::vector<Lit> eqs;
+        std::vector<BoolExpr> eqs;
         const auto vars = util::RelevantVariables<IntTheory, BoolTheory>::find(literal::variables(lit), {up}, BExpression::True);
         for (const auto& v: vars) {
-            const NumVar &var = std::get<NumVar>(v);
-            eqs.push_back(Rel::buildEq(var, Expr(var).subs(up.get<IntTheory>())));
+            if (std::holds_alternative<NumVar>(v)) {
+                const auto &var = std::get<NumVar>(v);
+                eqs.push_back(BExpression::buildTheoryLit(Rel::buildEq(var, Expr(var).subs(up.get<IntTheory>()))));
+            } else if (std::holds_alternative<BoolVar>(v)) {
+                const auto &var = BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(v)));
+                eqs.push_back((var & var->subs(up)) | ((!var) & (!var->subs(up))));
+            }
         }
-        const auto allEq = BExpression::buildAndFromLits(eqs);
+        const auto allEq = BExpression::buildAnd(eqs);
         if (SmtFactory::check(guard & lit & allEq, its) == Sat) {
             BoolExpr newGuard = allEq & lit;
             option<unsigned int> idx = store(lit, {}, newGuard, false, true);
