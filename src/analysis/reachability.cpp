@@ -548,7 +548,7 @@ TransIdx Reachability::add_accelerated_rule(const Rule &accel, const Automaton &
 std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Automaton &automaton) {
     if (automaton.subset(Automaton::covered)) {
         if (log) std::cout << "loop already covered" << std::endl;
-        return std::make_unique<Covered>(Covered());
+        return std::make_unique<Covered>();
     } else if (log) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << automaton << std::endl;
@@ -572,7 +572,7 @@ std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Au
         if (accel->getUpdate(0) == res->getUpdate(0)) {
             if (log) std::cout << "acceleration yielded equivalent rule" << std::endl;
             Automaton::covered = Automaton::covered.unite(automaton);
-            return std::make_unique<Failed>(Failed());
+            return std::make_unique<Failed>();
         } else {
             res = *accel;
             res.storeSubProof(accel_res.proof);
@@ -583,11 +583,11 @@ std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Au
     } else {
         if (log) std::cout << "acceleration failed" << std::endl;
         Automaton::covered = Automaton::covered.unite(automaton);
-        return std::make_unique<Failed>(Failed());
+        return std::make_unique<Failed>();
     }
-    return std::make_unique<Accelerated>(Accelerated(res.map<TransIdx>([this, &automaton](const auto &x){
+    return std::make_unique<Accelerated>(res.map<TransIdx>([this, &automaton](const auto &x){
         return add_accelerated_rule(x, automaton);
-    })));
+    }));
 }
 
 std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
@@ -615,7 +615,7 @@ std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
     } else {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
         z3.pop();
-        return std::make_unique<Dropped>(Dropped());
+        return std::make_unique<Dropped>();
     }
 }
 
