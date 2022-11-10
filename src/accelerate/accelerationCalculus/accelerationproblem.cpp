@@ -393,6 +393,9 @@ AccelerationProblem::ReplacementMap AccelerationProblem::computeReplacementMap(b
 
 AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     AcceleratorPair ret;
+    if (!closed && !Config::Analysis::tryNonterm()) {
+        return ret;
+    }
     Proof proof;
     for (const auto& lit: todo) {
         bool res = recurrence(lit, proof);
@@ -406,7 +409,10 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     if (map.acceleratedAll || !isConjunction) {
         bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || SmtFactory::isImplication(guard, BExpression::buildTheoryLit(Rel::buildGt(cost, 0)), its);
         bool nt = map.nonterm && positiveCost;
-        auto newGuard = guard->replaceLits(map.map) & *bound;
+        auto newGuard = guard->replaceLits(map.map);
+        if (closed) {
+            newGuard = newGuard & *bound;
+        }
         if (SmtFactory::check(newGuard, its) == Sat) {
             ret.term.emplace(newGuard, proof, map.exact);
             ret.term->proof.append(std::stringstream() << "Replacement map: " << map.map);
