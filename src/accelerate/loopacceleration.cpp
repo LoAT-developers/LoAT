@@ -61,9 +61,14 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
             if (up.isPoly() && up.degree(var) == 1) {
                 const Expr coeff = up.coeff(var);
                 if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
-                    res = Chaining::chainRules(its, res, renameTmpVars(res, its), false).get();
-                    period *= 2;
-                    break;
+                    const auto sub_res = Chaining::chainRules(its, res, renameTmpVars(res, its));
+                    if (sub_res) {
+                        res = *sub_res;
+                        period *= 2;
+                        break;
+                    } else {
+                        return {res, period};
+                    }
                 }
             }
         }
@@ -96,8 +101,13 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
             lcm = std::lcm(lcm, e.second);
         }
         for (unsigned i = 0; i < lcm; ++i) {
-            res = Chaining::chainRules(its, res, renameTmpVars(res, its), false).get();
-            period *= 2;
+            const auto sub_res = Chaining::chainRules(its, res, renameTmpVars(res, its));
+            if (sub_res) {
+                res = *sub_res;
+                period *= 2;
+            } else {
+                return {res, period};
+            }
         }
     }
     // chain if it eliminates variables from an update
@@ -118,10 +128,15 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
                 }
             }
             if (varsTwoSteps.size() < varsOneStep.size() && std::includes(varsOneStep.begin(), varsOneStep.end(), varsTwoSteps.begin(), varsTwoSteps.end())) {
-                res = Chaining::chainRules(its, res, renameTmpVars(res, its), false).get();
-                period *= 2;
-                changed = true;
-                break;
+                const auto sub_res = Chaining::chainRules(its, res, renameTmpVars(res, its));
+                if (sub_res) {
+                    res = *sub_res;
+                    period *= 2;
+                    changed = true;
+                    break;
+                } else {
+                    return {res, period};
+                }
             }
         }
     } while (changed);
@@ -134,12 +149,19 @@ AccelerationResult LoopAcceleration::run() {
         return res;
     }
     const auto [rule, period] = chain(this->rule, its);
-    if (SmtFactory::check(rule.getGuard(), its) != Sat) {
+    // only check sat if we didn't chain, as chaining ensures that the guard is sat
+    if (period == 1 && SmtFactory::check(rule.getGuard(), its) != Sat) {
         return res;
-    }
-    if (period > 1) {
+    } else if (period > 1) {
         res.proof.ruleTransformationProof(this->rule, "unrolling", rule, its);
         res.period = period;
+    }
+    // for rules with runtime 1, our acceleration techniques do not work properly,
+    // as the closed forms are usually only valid for n > 0 --> special case
+    if (!Chaining::chainRules(its, rule, rule)) {
+        res.rule = rule;
+        res.proof.append("rule cannot be iterated more than once");
+        return res;
     }
     const auto rec = Recurrence::iterateRule(its, rule);
     const auto accelerationTechnique = AccelerationFactory::get(rule, rec, its);
@@ -159,17 +181,14 @@ AccelerationResult LoopAcceleration::run() {
             throw logic_error("validity bound should be at most one due to unrolling");
         }
         res.n = rec->n;
-        BoolExpr guard = accelerationResult.term->formula;
-        if (SmtFactory::check(guard->subs(Subs::build<IntTheory>(rec->n, 2)), its) == Sat) {
-            res.rule = LinearRule(
-                        rule.getLhsLoc(),
-                        guard,
-                        rec->cost,
-                        rule.getRhsLoc(),
-                        rec->update);
-            res.proof.ruleTransformationProof(rule, "acceleration", *res.rule, its);
-            res.proof.storeSubProof(accelerationResult.term->proof);
-        }
+        res.rule = LinearRule(
+                    rule.getLhsLoc(),
+                    accelerationResult.term->formula,
+                    rec->cost,
+                    rule.getRhsLoc(),
+                    rec->update);
+        res.proof.ruleTransformationProof(rule, "acceleration", *res.rule, its);
+        res.proof.storeSubProof(accelerationResult.term->proof);
     }
     return res;
 }
