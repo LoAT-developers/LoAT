@@ -89,8 +89,28 @@ bool Expr::isPoly() const {
     return ex.info(GiNaC::info_flags::polynomial);
 }
 
+unsigned Expr::totalDegree() const {
+    if (isAdd()) {
+        unsigned res = 0;
+        for (unsigned i = 0; i < arity(); ++i) {
+            res = max(res, op(i).totalDegree());
+        }
+        return res;
+    } else if (isMul()) {
+        unsigned res = 0;
+        for (unsigned i = 0; i < arity(); ++i) {
+            res = res + op(i).totalDegree();
+        }
+        return res;
+    } else if (isVar()) {
+        return 1;
+    }
+    assert(isGround());
+    return 0;
+}
+
 bool Expr::isPoly(unsigned max_degree) const {
-    return isPoly() && maxDegree() <= max_degree;
+    return isPoly() && totalDegree() <= max_degree;
 }
 
 bool Expr::isPoly(const NumVar &n) const {
