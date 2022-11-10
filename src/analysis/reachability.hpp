@@ -103,7 +103,7 @@ class Reachability {
     Rule build_loop(const int backlink);
     Result<Rule> preprocess_loop(const Rule &loop);
     TransIdx add_accelerated_rule(const Rule &accel, const Red::T &automaton);
-    std::unique_ptr<LoopState> learn_clause(const Rule &rule, const Red::T &automaton);
+    std::unique_ptr<LoopState> learn_clause(const Rule &rule, const Red::T &automaton, const int backlink);
     std::unique_ptr<LoopState> handle_loop(const int backlink);
     bool leaves_scc(const TransIdx idx) const;
     int is_loop();

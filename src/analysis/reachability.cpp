@@ -472,31 +472,38 @@ TransIdx Reachability::add_accelerated_rule(const Rule &accel, const Red::T &aut
     return loop_idx;
 }
 
-std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Red::T &automaton) {
+std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Red::T &automaton, const int backlink) {
     Result<Rule> res {rule};
     res.concat(preprocess_loop(*res));
     AccelerationResult accel_res = LoopAcceleration::accelerate(its, res->toLinear(), -1, Complexity::Const);
-    option<Rule> accel;
     if (accel_res.rule) {
-        accel = accel_res.rule;
-        const auto simplified = Preprocess::simplifyRule(its, *accel, true);
-        if (simplified) {
-            accel = *simplified;
+        // acceleration succeeded, simplify the result
+        const auto simplified = Preprocess::simplifyRule(its, *accel_res.rule, true);
+        if (simplified->getUpdate(0) == res->getUpdate(0)) {
+            bool orig = false;
+            for (auto i = backlink; i < trace.size(); ++i) {
+                if (trace[i].transition <= lastOrigRule) {
+                    orig = true;
+                    break;
+                }
+            }
+            if (orig) {
+                if (log) std::cout << "acceleration yielded equivalent rule, keeping preprocessed rule" << std::endl;
+                res.succeed();
+            } else {
+                if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
+                return std::make_unique<Failed>();
+            }
+        } else {
+            // accelerated rule differs from the original one, update the result
+            res = *accel_res.rule;
+            res.storeSubProof(accel_res.proof);
+            res.concat(simplified);
         }
         if (log) {
             std::cout << "accelerated rule:" << std::endl;
-            ITSExport::printRule(*accel, its, std::cout);
+            ITSExport::printRule(*res, its, std::cout);
             std::cout << std::endl;
-        }
-        if (accel->getUpdate(0) == res->getUpdate(0)) {
-            if (log) std::cout << "acceleration yielded equivalent rule" << std::endl;
-            return std::make_unique<Failed>();
-        } else {
-            res = *accel;
-            res.storeSubProof(accel_res.proof);
-            if (simplified) {
-                res.storeSubProof(simplified.getProof());
-            }
         }
     } else {
         if (log) std::cout << "acceleration failed" << std::endl;
@@ -523,7 +530,8 @@ std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
     if (loop.getUpdate(0).isPoly() && !loop.getUpdate(0).isPoly(10)) {
         return std::make_unique<Failed>();
     }
-    auto state = learn_clause(loop, automaton);
+    bool orig = static_cast<size_t>(backlink) == trace.size() - 1;
+    auto state = learn_clause(loop, automaton, orig);
     if (!state->accelerated()) {
         return state;
     }
