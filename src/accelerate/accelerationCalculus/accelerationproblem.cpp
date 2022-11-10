@@ -406,10 +406,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     if (map.acceleratedAll || !isConjunction) {
         bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || SmtFactory::isImplication(guard, BExpression::buildTheoryLit(Rel::buildGt(cost, 0)), its);
         bool nt = map.nonterm && positiveCost;
-        auto newGuard = guard->replaceLits(map.map);
-        if (!nt) {
-            newGuard = newGuard & *bound;
-        }
+        auto newGuard = guard->replaceLits(map.map) & *bound;
         if (SmtFactory::check(newGuard, its) == Sat) {
             ret.term.emplace(newGuard, proof, map.exact);
             ret.term->proof.append(std::stringstream() << "Replacement map: " << map.map);
