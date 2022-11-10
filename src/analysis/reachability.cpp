@@ -480,10 +480,10 @@ std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Re
         // acceleration succeeded, simplify the result
         const auto simplified = Preprocess::simplifyRule(its, *accel_res.rule, true);
         if (simplified->getUpdate(0) == res->getUpdate(0)) {
-            bool orig = false;
+            bool orig = true;
             for (size_t i = backlink; i < trace.size(); ++i) {
-                if (trace[i].transition <= lastOrigRule) {
-                    orig = true;
+                if (trace[i].transition > lastOrigRule) {
+                    orig = false;
                     break;
                 }
             }
