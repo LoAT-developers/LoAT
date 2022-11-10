@@ -16,7 +16,7 @@ AccelerationViaQE::AcceleratorPair AccelerationViaQE::computeRes() {
     AcceleratorPair ret;
     BoolExpr matrix = rule.getGuard()->toG()->subs(closed->update);
     if (Config::Analysis::tryNonterm()) {
-        const QFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {closed->n}, {{closed->n, 1}}, {})});
+        const QFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {closed->n}, {{closed->n, 0}}, {})});
         res = qelim->qe(q);
         if (res && res->qf != BExpression::False) {
             Proof proof;
@@ -40,7 +40,7 @@ AccelerationViaQE::AcceleratorPair AccelerationViaQE::computeRes() {
         }
     }
     matrix = matrix->subs(Subs::build<IntTheory>(closed->n, m));
-    const QFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, 1}}, {{m, (*closed->n) - 1}})});
+    const QFormula q = matrix->quantify({Quantifier(Quantifier::Type::Forall, {m}, {{m, 0}}, {{m, (*closed->n) - 1}})});
     res = qelim->qe(q);
     if (res && res->qf != BExpression::False) {
         const auto accelerator = res->qf & Rel(closed->n, Rel::geq, 1);
