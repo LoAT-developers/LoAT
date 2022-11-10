@@ -325,9 +325,11 @@ public:
                     }
                 }
             }
-            if (newChildren.empty()) {
+            if (!changed) {
+                return this->shared_from_this();
+            } else if (newChildren.empty()) {
                 return BoolExpression<Th...>::True;
-            } else if (changed) {
+            } else {
                 for (const auto &c: newChildren) {
                     if (c->getTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
@@ -336,8 +338,6 @@ public:
                     }
                 }
                 return BoolExpression<Th...>::buildAnd(newChildren);
-            } else {
-                return this->shared_from_this();
             }
         } else if (isOr()) {
             BoolExpressionSet<Th...> newChildren;
@@ -358,9 +358,11 @@ public:
                     }
                 }
             }
-            if (newChildren.empty()) {
+            if (!changed) {
+                return this->shared_from_this();
+            } else if (newChildren.empty()) {
               return BoolExpression<Th...>::False;
-            } else if (changed) {
+            } else {
                 for (const auto &c: newChildren) {
                     if (c->getTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
@@ -369,8 +371,6 @@ public:
                     }
                 }
                 return BoolExpression<Th...>::buildOr(newChildren);
-            } else {
-                return this->shared_from_this();
             }
         } else if (getTheoryLit()) {
             const auto &lit = *getTheoryLit();
