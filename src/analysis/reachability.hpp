@@ -5,6 +5,8 @@
 #include "itsproblem.hpp"
 #include "proof.hpp"
 #include "result.hpp"
+#include "redundance.hpp"
+#include "redundanceviasquarefreewords.hpp"
 
 #include <list>
 
@@ -84,10 +86,8 @@ class Reachability {
     std::map<Var, Var> post_vars;
     TransIdx lastOrigRule = 0;
 
-    std::map<std::pair<TransIdx, Guard>, long> alphabet;
-    std::map<TransIdx, std::vector<long>> regexes;
-    std::set<std::vector<long>> covered;
-    long next_char = 0;
+    using Red = RedundanceViaSquareFreeWords;
+    std::unique_ptr<Red> redundance {std::make_unique<Red>()};
 
     ResultViaSideEffects removeIrrelevantTransitions();
     ResultViaSideEffects simplify();
@@ -98,15 +98,16 @@ class Reachability {
     void unsat();
     option<BoolExpr> do_step(const TransIdx idx);
     void drop_loop(const int backlink);
-    std::pair<Rule, std::vector<long>> build_loop(const int backlink);
+    Red::T get_language(const Step &step);
+    Red::T build_language(const int backlink);
+    Rule build_loop(const int backlink);
     Result<Rule> preprocess_loop(const Rule &loop);
-    TransIdx add_accelerated_rule(const Rule &accel, const std::vector<long> &automaton);
-    std::unique_ptr<LoopState> learn_clause(const Rule &rule, const std::vector<long> &automaton);
+    TransIdx add_accelerated_rule(const Rule &accel, const Red::T &automaton);
+    std::unique_ptr<LoopState> learn_clause(const Rule &rule, const Red::T &automaton);
     std::unique_ptr<LoopState> handle_loop(const int backlink);
     bool leaves_scc(const TransIdx idx) const;
     int is_loop();
     void handle_update(const TransIdx idx);
-    long singleton_language(const TransIdx idx, const Guard &guard);
     void do_block(const Step &step);
     void backtrack();
     void pop();
@@ -117,7 +118,6 @@ class Reachability {
     bool try_queries(const std::vector<TransIdx> &queries);
     bool try_queries();
     bool try_conditional_empty_clauses();
-    std::vector<long> get_language(const Step &step);
 
     Reachability(ITSProblem &its);
     void analyze();

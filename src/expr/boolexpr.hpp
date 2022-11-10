@@ -476,6 +476,22 @@ public:
         });
     }
 
+    bool isPoly(unsigned max_degree) const{
+        return forall([&max_degree](const auto &lit) {
+            if constexpr ((std::same_as<Rel, typename Th::Lit> || ...)) {
+                if (std::holds_alternative<Rel>(lit)) {
+                    return std::get<Rel>(lit).isPoly(max_degree);
+                }
+            }
+            if constexpr ((std::same_as<BoolLit, typename Th::Lit> || ...)) {
+                if (std::holds_alternative<BoolLit>(lit)) {
+                    return true;
+                }
+            }
+            throw std::logic_error("unknown literal");
+        });
+    }
+
 private:
 
     void findConsequences(const BExpr<Th...> &lit, BES &res) const {

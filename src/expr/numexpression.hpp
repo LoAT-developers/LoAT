@@ -114,6 +114,8 @@ public:
      */
     bool isPoly() const;
 
+    bool isPoly(unsigned max_degree) const;
+
     /**
      * @return True iff this expression is polynomial where all coefficients are integers.
      */
@@ -145,7 +147,7 @@ public:
      * @return The highest degree of any variable in this expression.
      * @note For polynomials only.
      */
-    int maxDegree() const;
+    unsigned maxDegree() const;
 
     /**
      * @brief Collects all variables that occur in this expression.
@@ -223,12 +225,12 @@ public:
      * @return The degree wrt. var.
      * @note For polynomials only.
      */
-    int degree(const NumVar &var) const;
+    unsigned degree(const NumVar &var) const;
 
     /**
      * @return The minimal degree of all monomials wrt. var.
      */
-    int ldegree(const NumVar &var) const;
+    unsigned ldegree(const NumVar &var) const;
 
     /**
      * @return The coefficient of the monomial where var occurs with the given degree (which defaults to 1).
@@ -405,6 +407,8 @@ public:
     bool isLinear() const;
 
     bool isPoly() const;
+
+    bool isPoly(unsigned max_degree) const;
 
     bool isOctagon() const;
 

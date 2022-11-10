@@ -32,6 +32,10 @@ bool Rel::isPoly() const {
     return l.isPoly() && r.isPoly();
 }
 
+bool Rel::isPoly(unsigned max_degree) const {
+    return (l - r).expand().isPoly(max_degree);
+}
+
 bool Rel::isLinear(const option<std::set<NumVar>> &vars) const {
     return l.isLinear(vars) && r.isLinear(vars);
 }

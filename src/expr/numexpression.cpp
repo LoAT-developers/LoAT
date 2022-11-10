@@ -89,6 +89,10 @@ bool Expr::isPoly() const {
     return ex.info(GiNaC::info_flags::polynomial);
 }
 
+bool Expr::isPoly(unsigned max_degree) const {
+    return isPoly() && maxDegree() <= max_degree;
+}
+
 bool Expr::isPoly(const NumVar &n) const {
     return ex.is_polynomial(*n);
 }
@@ -141,11 +145,11 @@ bool Expr::isOctagon() const {
     return true;
 }
 
-int Expr::maxDegree() const {
+unsigned Expr::maxDegree() const {
     assert(isPoly());
     Expr expanded = expand();
 
-    int res = 0;
+    unsigned res = 0;
     for (const auto &var : vars()) {
         res = std::max(res, expanded.degree(var));
     }
@@ -281,11 +285,11 @@ bool Expr::equals(const Expr &that) const {
     return ex.is_equal(that.ex);
 }
 
-int Expr::degree(const NumVar &var) const {
+unsigned Expr::degree(const NumVar &var) const {
     return ex.degree(*var);
 }
 
-int Expr::ldegree(const NumVar &var) const {
+unsigned Expr::ldegree(const NumVar &var) const {
     return ex.ldegree(*var);
 }
 
@@ -700,6 +704,12 @@ bool ExprSubs::isLinear() const {
 bool ExprSubs::isPoly() const {
     return std::all_of(begin(), end(), [](const auto &p) {
        return p.second.isPoly();
+    });
+}
+
+bool ExprSubs::isPoly(unsigned max_degree) const {
+    return std::all_of(begin(), end(), [max_degree](const auto &p) {
+       return p.second.isPoly(max_degree);
     });
 }
 

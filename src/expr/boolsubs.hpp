@@ -189,6 +189,10 @@ public:
         return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isPoly();});
     }
 
+    bool isPoly(unsigned max_degree) const {
+        return std::all_of(map.begin(), map.end(), [&max_degree](const auto &p){return p.second->isPoly(max_degree);});
+    }
+
 };
 
 template <ITheory... Th>

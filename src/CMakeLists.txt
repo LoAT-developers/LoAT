@@ -10,6 +10,7 @@ add_subdirectory(merging)
 add_subdirectory(qelim)
 add_subdirectory(concepts)
 add_subdirectory(theories)
+add_subdirectory(redundance)
 
 target_sources(${EXECUTABLE}
     PRIVATE
