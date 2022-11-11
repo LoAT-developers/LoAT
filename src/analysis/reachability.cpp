@@ -15,90 +15,86 @@
 
 bool Reachability::log = false;
 
-LoopState::LoopState() {}
+LearningState::LearningState() {}
 
-option<Accelerated> LoopState::accelerated() {
+option<Succeeded> LearningState::succeeded() {
     return {};
 }
 
-option<Covered> LoopState::covered() {
+option<Covered> LearningState::covered() {
     return {};
 }
 
-option<Dropped> LoopState::dropped() {
+option<Dropped> LearningState::dropped() {
     return {};
 }
 
-option<Failed> LoopState::failed() {
+option<Failed> LearningState::failed() {
     return {};
 }
 
-Accelerated::Accelerated(const Result<TransIdx> &idx): idx(idx) {}
+Succeeded::Succeeded(const Result<TransIdx> &idx): idx(idx) {}
 
-void Accelerated::foo() {}
-
-option<Accelerated> Accelerated::accelerated() {
+option<Succeeded> Succeeded::succeeded() {
     return *this;
 }
 
-Result<TransIdx>& Accelerated::operator*() {
+Result<TransIdx>& Succeeded::operator*() {
     return idx;
 }
 
-Result<TransIdx>* Accelerated::operator->() {
+Result<TransIdx>* Succeeded::operator->() {
     return &idx;
 }
-
-void Covered::foo() {}
 
 option<Covered> Covered::covered() {
     return *this;
 }
 
-void Dropped::foo() {}
-
 option<Dropped> Dropped::dropped() {
     return *this;
 }
-
-void Failed::foo() {}
 
 option<Failed> Failed::failed() {
     return *this;
 }
 
-Reachability::Reachability(ITSProblem &its): its(its), z3(its) {
+Reachability::Reachability(ITSProblem &its): chcs(its), z3(its) {
     z3.enableModels();
 }
 
-Step::Step(const TransIdx transition, const BoolExpr &sat): transition(transition), sat(sat) {}
+Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const ThModel &model):
+    clause_idx(transition),
+    implicant(sat),
+    var_renaming(var_renaming),
+    model(model.toSubs()){}
 
 std::ostream& operator<<(std::ostream &s, const std::vector<Step> &step) {
     for (auto it = step.begin(); it != step.end(); ++it) {
-        s << " [" << it->sat << "] " << it->transition;
+        s << " [" << it->implicant << "] " << it->clause_idx;
     }
     return s;
 }
 
-ResultViaSideEffects Reachability::removeIrrelevantTransitions() {
+ResultViaSideEffects Reachability::remove_irrelevant_clauses() {
     std::set<LocationIdx> keep;
     std::stack<LocationIdx> todo;
-    todo.push(*its.getSink());
+    todo.push(*chcs.getSink());
     do {
         const LocationIdx current = todo.top();
         todo.pop();
         keep.insert(current);
-        for (const auto p: its.getPredecessorLocations(current)) {
+        for (const auto p: chcs.getPredecessorLocations(current)) {
             if (keep.find(p) == keep.end()) {
                 todo.push(p);
             }
         }
     } while (!todo.empty());
     std::set<TransIdx> deleted;
-    for (const auto idx: its.getAllTransitions()) {
-        const LocationIdx target = its.getRule(idx).getRhsLoc(0);
+    for (const auto idx: chcs.getAllTransitions()) {
+        const LocationIdx target = chcs.getRule(idx).getRhsLoc(0);
         if (keep.find(target) == keep.end()) {
-            const std::set<TransIdx> d = its.removeLocationAndRules(target);
+            const std::set<TransIdx> d = chcs.removeLocationAndRules(target);
             deleted.insert(d.begin(), d.end());
         }
     }
@@ -112,32 +108,34 @@ ResultViaSideEffects Reachability::removeIrrelevantTransitions() {
 
 ResultViaSideEffects Reachability::simplify() {
     ResultViaSideEffects ret;
-    for (const TransIdx idx: its.getAllTransitions()) {
-        const auto res = Preprocess::preprocessRule(its, its.getRule(idx));
+    for (const TransIdx idx: chcs.getAllTransitions()) {
+        const auto res = Preprocess::preprocessRule(chcs, chcs.getRule(idx));
         if (res) {
             ret.succeed();
-            its.replaceRules({idx}, {res.get()});
+            chcs.replaceRules({idx}, {res.get()});
             ret.concat(res.getProof());
         }
     }
     return ret;
 }
 
+
+// TODO under-approximation?
 ResultViaSideEffects Reachability::unroll() {
     ResultViaSideEffects ret;
-    for (const TransIdx idx: its.getAllTransitions()) {
-        const Rule &r = its.getRule(idx);
+    for (const TransIdx idx: chcs.getAllTransitions()) {
+        const Rule &r = chcs.getRule(idx);
         if (r.isSimpleLoop()) {
-            const auto [res, period] = LoopAcceleration::chain(r.toLinear(), its);
+            const auto [res, period] = LoopAcceleration::chain(r.toLinear(), chcs);
             if (period > 1) {
-                const auto simplified = Preprocess::simplifyRule(its, res, true);
+                const auto simplified = Preprocess::simplifyRule(chcs, res, true);
                 ret.succeed();
-                ret.ruleTransformationProof(r, "unrolling", res, its);
+                ret.ruleTransformationProof(r, "unrolling", res, chcs);
                 if (simplified) {
-                    its.replaceRules({idx}, {*simplified});
+                    chcs.replaceRules({idx}, {*simplified});
                     ret.concat(simplified.getProof());
                 } else {
-                    its.replaceRules({idx}, {res});
+                    chcs.replaceRules({idx}, {res});
                 }
             }
         }
@@ -146,22 +144,22 @@ ResultViaSideEffects Reachability::unroll() {
 }
 
 bool Reachability::leaves_scc(const TransIdx idx) const {
-    const Rule &r = its.getRule(idx);
+    const Rule &r = chcs.getRule(idx);
     return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc(0));
 }
 
-int Reachability::is_loop() {
+int Reachability::has_looping_suffix() {
     if (trace.empty()) {
         return -1;
     }
-    const LocationIdx dst = its.getRule(trace.back().transition).getRhsLoc(0);
+    const LocationIdx dst = chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step step = trace[pos];
-        if (leaves_scc(step.transition)) {
+        if (leaves_scc(step.clause_idx)) {
             return -1;
         }
-        if (its.getRule(step.transition).getLhsLoc() == dst) {
-            bool looping = static_cast<unsigned>(pos) < trace.size() - 1 || step.transition <= lastOrigRule;
+        if (chcs.getRule(step.clause_idx).getLhsLoc() == dst) {
+            bool looping = static_cast<unsigned>(pos) < trace.size() - 1 || is_orig_clause(step.clause_idx);
             if (looping) {
                 return pos;
             }
@@ -170,21 +168,21 @@ int Reachability::is_loop() {
     return -1;
 }
 
-void Reachability::handle_update(const TransIdx idx) {
-    const Rule &r = its.getRule(idx);
+Subs Reachability::handle_update(const TransIdx idx) {
+    const Rule &r = chcs.getRule(idx);
     RelSet eqs;
-    const Subs &old_sigma = sigmas.back();
+    const Subs old_sigma = trace.empty() ? Subs() : trace.back().var_renaming;
     Subs new_sigma;
     const Subs up = r.getUpdate(0);
     for (const auto &v: prog_vars) {
         if (std::holds_alternative<NumVar>(v)) {
             const auto &var = std::get<NumVar>(v);
-            const auto x = its.getFreshUntrackedSymbol<IntTheory>(var.getName(), Expr::Int);
+            const auto x = chcs.getFreshUntrackedSymbol<IntTheory>(var.getName(), Expr::Int);
             z3.add(boolExpression::build(Rel::buildEq(x, up.get<IntTheory>(var).subs(old_sigma.get<IntTheory>()))));
             new_sigma.put<IntTheory>(var, x);
         } else if (std::holds_alternative<BoolVar>(v)) {
             const auto &var = std::get<BoolVar>(v);
-            const auto x = its.getFreshUntrackedSymbol<BoolTheory>(var.getName(), Expr::Bool);
+            const auto x = chcs.getFreshUntrackedSymbol<BoolTheory>(var.getName(), Expr::Bool);
             const auto lhs = boolExpression::build(x);
             const auto rhs = up.get<BoolTheory>(var)->subs(old_sigma);
             z3.add((lhs & rhs) | ((!lhs) & (!rhs)));
@@ -192,36 +190,34 @@ void Reachability::handle_update(const TransIdx idx) {
         }
     }
     for (const auto &var: r.vars()) {
-        if (its.isTempVar(var)) {
+        if (chcs.isTempVar(var)) {
             if (std::holds_alternative<NumVar>(var)) {
-                new_sigma.put<IntTheory>(std::get<NumVar>(var), its.getFreshUntrackedSymbol<IntTheory>(variable::getName(var), Expr::Int));
+                new_sigma.put<IntTheory>(std::get<NumVar>(var), chcs.getFreshUntrackedSymbol<IntTheory>(variable::getName(var), Expr::Int));
             } else if (std::holds_alternative<BoolVar>(var)) {
-                new_sigma.put<BoolTheory>(std::get<BoolVar>(var), boolExpression::build(its.getFreshUntrackedSymbol<BoolTheory>(variable::getName(var), Expr::Bool)));
+                new_sigma.put<BoolTheory>(std::get<BoolVar>(var), boolExpression::build(chcs.getFreshUntrackedSymbol<BoolTheory>(variable::getName(var), Expr::Bool)));
             } else {
                 throw std::logic_error("unsupported theory");
             }
         }
     }
-    sigmas.push_back(new_sigma);
+    return new_sigma;
 }
 
-void Reachability::do_block(const Step &step) {
-    if (log) std::cout << "blocking " << step.transition << ", " << step.sat << std::endl;
-    // optimization for conjunctive clauses: blocked iff find(step.transition) != end()
-    if (its.getRule(step.transition).getGuard()->isConjunction()) {
-        blocked.back()[step.transition] = {};
+void Reachability::block(const Step &step) {
+    if (log) std::cout << "blocking " << step.clause_idx << ", " << step.implicant << std::endl;
+    if (chcs.getRule(step.clause_idx).getGuard()->isConjunction()) {
+        blocked_clauses.back()[step.clause_idx] = {};
     }
-    auto block = blocked.back().find(step.transition);
-    if (block == blocked.back().end()) {
-        blocked.back()[step.transition] = {step.sat};
+    auto block = blocked_clauses.back().find(step.clause_idx);
+    if (block == blocked_clauses.back().end()) {
+        blocked_clauses.back()[step.clause_idx] = {step.implicant};
     } else {
-        block->second.insert(step.sat);
+        block->second.insert(step.implicant);
     }
 }
 
 void Reachability::pop() {
-    sigmas.pop_back();
-    blocked.pop_back();
+    blocked_clauses.pop_back();
     trace.pop_back();
     z3.pop();
     proof.pop();
@@ -231,108 +227,109 @@ void Reachability::backtrack() {
     if (log) std::cout << "backtracking" << std::endl;
     const Step step = trace.back();
     pop();
-    do_block(step);
+    block(step);
 }
 
-void Reachability::extend_trace(const TransIdx idx, const BoolExpr &sat) {
+void Reachability::add_to_trace(const Step &step) {
     if (!trace.empty()) {
-        assert(its.getRule(trace.back().transition).getRhsLoc(0) == its.getRule(idx).getLhsLoc());
+        assert(chcs.getRule(trace.back().clause_idx).getRhsLoc(0) == chcs.getRule(step.clause_idx).getLhsLoc());
     }
-    trace.emplace_back(idx, sat);
-    models.push_back(z3.model().toSubs());
+    trace.emplace_back(step);
     proof.push();
     proof.headline("extended trace");
-    proof.append(std::stringstream() << "added " << idx << " to trace");
+    proof.append(std::stringstream() << "added " << step.clause_idx << " to trace");
     Proof subProof;
-    subProof.section("sat");
-    subProof.append(std::stringstream() << sat);
+    subProof.section("implicant");
+    subProof.append(std::stringstream() << step.implicant);
     subProof.section("trace");
     subProof.append(std::stringstream() << trace);
     proof.storeSubProof(subProof);
 }
 
-void Reachability::store(const TransIdx idx, const BoolExpr &sat) {
-    extend_trace(idx, sat);
-    blocked.push_back({});
-    z3.add(sat->subs(sigmas.back()));
-    handle_update(idx);
+void Reachability::store_step(const TransIdx idx, const BoolExpr &sat) {
+    const auto model = z3.model();
+    if (trace.empty()) {
+        z3.add(sat);
+    } else {
+        z3.add(sat->subs(trace.back().var_renaming));
+    }
+    const auto new_var_renaming = handle_update(idx);
+    const Step step(idx, sat, new_var_renaming, model);
+    add_to_trace(step);
+    blocked_clauses.push_back({});
 }
 
-void Reachability::print_run(std::ostream &s) {
-    auto it = sigmas.begin();
-    const auto &model = models.back();
+void Reachability::print_trace(std::ostream &s) {
     for (const auto &step: trace) {
         s << " [";
         for (const auto &x: prog_vars) {
-            s << " " << x << "=" << expression::subs(it->get(x), model);
+            s << " " << x << "=" << expression::subs(step.var_renaming.get(x), step.model);
         }
-        ++it;
-        s << " ] " << step.transition;
+        s << " ] " << step.clause_idx;
     }
     s << std::endl;
 }
 
 void Reachability::preprocess() {
-    ResultViaSideEffects res = removeIrrelevantTransitions();
+    ResultViaSideEffects res = remove_irrelevant_clauses();
     if (res) {
-        proof.majorProofStep("removed irrelevant transitions", its);
+        proof.majorProofStep("removed irrelevant transitions", chcs);
         proof.storeSubProof(res.getProof());
     }
-    res = Chaining::chainLinearPaths(its);
+    res = Chaining::chainLinearPaths(chcs);
     if (res) {
-        proof.majorProofStep("chained linear paths", its);
+        proof.majorProofStep("chained linear paths", chcs);
         proof.storeSubProof(res.getProof());
     }
     res = simplify();
     if (res) {
-        proof.majorProofStep("simplified transitions", its);
+        proof.majorProofStep("simplified transitions", chcs);
         proof.storeSubProof(res.getProof());
     }
     res = unroll();
     if (res) {
-        proof.majorProofStep("unrolled loops", its);
+        proof.majorProofStep("unrolled loops", chcs);
         proof.storeSubProof(res.getProof());
     }
     if (log) {
         std::cout << "simplified ITS" << std::endl;
-        ITSExport::printForProof(its, std::cout);
+        ITSExport::printForProof(chcs, std::cout);
     }
 }
 
-void Reachability::update_transitions(const LocationIdx loc) {
-    auto it = cross_scc.find(loc);
+void Reachability::update_rules(const LocationIdx idx) {
+    auto it = cross_scc.find(idx);
     std::list<LocationIdx> trans;
     if (it != cross_scc.end()) {
         trans.insert(trans.end(), it->second.begin(), it->second.end());
     }
-    it = accelerated.find(loc);
-    if (it != accelerated.end()) {
+    it = learned_clauses.find(idx);
+    if (it != learned_clauses.end()) {
         trans.insert(trans.end(), it->second.begin(), it->second.end());
     }
-    it = in_scc.find(loc);
+    it = in_scc.find(idx);
     if (it != in_scc.end()) {
         trans.insert(trans.end(), it->second.begin(), it->second.end());
     }
-    transitions[loc] = trans;
+    rules[idx] = trans;
 }
 
 void Reachability::init() {
-    for (const auto &x: its.getVars()) {
-        if (!its.isTempVar(x)) {
+    for (const auto &x: chcs.getVars()) {
+        if (!chcs.isTempVar(x)) {
             prog_vars.insert(x);
-            post_vars.emplace(x, its.addFreshTemporaryVariable(x));
         }
     }
-    for (const TransIdx idx: its.getAllTransitions()) {
-        lastOrigRule = std::max(lastOrigRule, idx);
-        const auto rule = its.getRule(idx);
+    for (const TransIdx idx: chcs.getAllTransitions()) {
+        last_orig_clause = std::max(last_orig_clause, idx);
+        const auto rule = chcs.getRule(idx);
         const auto src = rule.getLhsLoc();
         const auto dst = rule.getRhsLoc(0);
-        if (src == its.getInitialLocation() && dst == its.getSink()) {
+        if (src == chcs.getInitialLocation() && dst == chcs.getSink()) {
             conditional_empty_clauses.push_back(idx);
         } else {
             std::map<LocationIdx, std::vector<TransIdx>> *to_insert;
-            if (dst == its.getSink()) {
+            if (dst == chcs.getSink()) {
                 to_insert = &queries;
             } else if (leaves_scc(idx)) {
                 to_insert = &cross_scc;
@@ -347,8 +344,8 @@ void Reachability::init() {
             }
         }
     }
-    for (const auto loc: its.getLocations()) {
-        update_transitions(loc);
+    for (const auto loc: chcs.getLocations()) {
+        update_rules(loc);
     }
 }
 
@@ -356,10 +353,10 @@ void Reachability::unsat() {
     std::cout << "unsat" << std::endl << std::endl;
     std::stringstream trace_stream, counterexample;
     trace_stream << trace;
-    print_run(counterexample);
+    print_trace(counterexample);
     if (log) {
         std::cout << "final ITS:" << std::endl;
-        ITSExport::printForProof(its, std::cout);
+        ITSExport::printForProof(chcs, std::cout);
         std::cout << std::endl << "final trace:" << trace_stream.str() << std::endl << std::endl;
         std::cout << "counterexample:" << counterexample.str();
     }
@@ -373,11 +370,11 @@ void Reachability::unsat() {
     proof.print();
 }
 
-option<BoolExpr> Reachability::do_step(const TransIdx idx) {
-    Subs sigma = sigmas.back();
-    const Rule r = its.getRule(idx);
-    const auto block = blocked.back().find(idx);
-    if (block != blocked.back().end()) {
+option<BoolExpr> Reachability::resolve(const TransIdx idx) {
+    const auto sigma = trace.empty() ? Subs() : trace.back().var_renaming;
+    const Rule r = chcs.getRule(idx);
+    const auto block = blocked_clauses.back().find(idx);
+    if (block != blocked_clauses.back().end()) {
         if (r.getGuard()->isConjunction()) {
             return {};
         }
@@ -404,17 +401,17 @@ option<BoolExpr> Reachability::do_step(const TransIdx idx) {
     }
 }
 
-void Reachability::drop_loop(const int backlink) {
-    while (trace.size() > static_cast<unsigned>(backlink)) {
+void Reachability::drop_until(const int new_size) {
+    while (trace.size() > static_cast<unsigned>(new_size)) {
         pop();
     }
 }
 
 Reachability::Red::T Reachability::get_language(const Step &step) {
-    if (step.transition <= lastOrigRule) {
-        return redundance->get_singleton_language(step.transition, step.sat->conjunctionToGuard());
+    if (is_orig_clause(step.clause_idx)) {
+        return redundance->get_singleton_language(step.clause_idx, step.implicant->conjunctionToGuard());
     } else {
-        return redundance->get_language(step.transition);
+        return redundance->get_language(step.clause_idx);
     }
 }
 
@@ -428,65 +425,57 @@ Reachability::Red::T Reachability::build_language(const int backlink) {
 }
 
 Rule Reachability::build_loop(const int backlink) {
-    Rule loop = its.getRule(trace.back().transition).withGuard(trace.back().sat);
+    Rule loop = chcs.getRule(trace.back().clause_idx).withGuard(trace.back().implicant);
     for (int i = trace.size() - 2; i >= backlink; --i) {
         const Step &step = trace[i];
-        auto sigma = sigmas[i+1];
+        auto sigma = step.var_renaming;
         sigma.erase(prog_vars); // rename temporary variables before chaining
-        const TransIdx t = step.transition;
-        const Rule &r = its.getRule(t);
-        loop = *Chaining::chainRules(its, r.withGuard(step.sat).subs(sigma), loop, false);
+        const TransIdx t = step.clause_idx;
+        const Rule &r = chcs.getRule(t);
+        loop = *Chaining::chainRules(chcs, r.withGuard(step.implicant).subs(sigma), loop, false);
     }
     assert(loop.getLhsLoc() == loop.getRhsLoc(0));
     if (log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
-        ITSExport::printRule(loop, its, std::cout);
+        ITSExport::printRule(loop, chcs, std::cout);
         std::cout << std::endl;
     }
     return loop;
 }
 
-Result<Rule> Reachability::preprocess_loop(const Rule &loop) {
-    Result<Rule> res(loop);
-    const Result<Rule> simplified = Preprocess::simplifyRule(its, *res, true);
-    if (simplified) {
-        res = *simplified;
-        res = res->withGuard(res->getGuard()->toG());
-        res.storeSubProof(simplified.getProof());
-        if (log) {
-            std::cout << "simplified loop:" << std::endl;
-            ITSExport::printRule(*res, its, std::cout);
-            std::cout << std::endl;
-        }
-    }
-    return res;
-}
-
-TransIdx Reachability::add_accelerated_rule(const Rule &accel, const Red::T &automaton) {
-    const auto loop_idx = its.addRule(accel);
-    redundance->set_language(loop_idx, automaton);
+TransIdx Reachability::add_learned_clause(const Rule &accel, const Red::T &lang) {
+    const auto loop_idx = chcs.addRule(accel);
+    redundance->set_language(loop_idx, lang);
     const auto src = accel.getLhsLoc();
-    auto acc_it = accelerated.find(src);
-    if (acc_it == accelerated.end()) {
-        accelerated.emplace(src, std::vector<TransIdx>{loop_idx});
+    auto acc_it = learned_clauses.find(src);
+    if (acc_it == learned_clauses.end()) {
+        learned_clauses.emplace(src, std::vector<TransIdx>{loop_idx});
     } else {
         acc_it->second.push_back(loop_idx);
     }
-    update_transitions(src);
+    update_rules(src);
     return loop_idx;
 }
 
-std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Red::T &automaton, const int backlink) {
-    Result<Rule> res {rule};
-    res.concat(preprocess_loop(*res));
-    AccelerationResult accel_res = LoopAcceleration::accelerate(its, res->toLinear(), -1, Complexity::Const);
+bool Reachability::is_learned_clause(const TransIdx idx) const {
+    return idx > last_orig_clause;
+}
+
+bool Reachability::is_orig_clause(const TransIdx idx) const {
+    return idx <= last_orig_clause;
+}
+
+std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &automaton, const int backlink) {
+    Result<Rule> res {Preprocess::simplifyRule(chcs, rule, true)};
+    AccelerationResult accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), -1, Complexity::Const);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
-        const auto simplified = Preprocess::simplifyRule(its, *accel_res.rule, true);
+        const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
+        // TODO problematic for SAT
         if (simplified->getUpdate(0) == res->getUpdate(0)) {
             bool orig = true;
             for (size_t i = backlink; i < trace.size(); ++i) {
-                if (trace[i].transition > lastOrigRule) {
+                if (is_learned_clause(trace[i].clause_idx)) {
                     orig = false;
                     break;
                 }
@@ -506,19 +495,19 @@ std::unique_ptr<LoopState> Reachability::learn_clause(const Rule &rule, const Re
         }
         if (log) {
             std::cout << "accelerated rule:" << std::endl;
-            ITSExport::printRule(*res, its, std::cout);
+            ITSExport::printRule(*res, chcs, std::cout);
             std::cout << std::endl;
         }
     } else {
         if (log) std::cout << "acceleration failed" << std::endl;
         return std::make_unique<Failed>();
     }
-    return std::make_unique<Accelerated>(res.map<TransIdx>([this, &automaton](const auto &x){
-        return add_accelerated_rule(x, automaton);
+    return std::make_unique<Succeeded>(res.map<TransIdx>([this, &automaton](const auto &x){
+        return add_learned_clause(x, automaton);
     }));
 }
 
-std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
+std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
     const Step step = trace[backlink];
     const auto automaton = build_language(backlink);
     if (redundance->is_redundant(automaton)) {
@@ -534,26 +523,28 @@ std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
         std::cout << "dropping trivial loop" << std::endl;
         return std::make_unique<Covered>();
     }
+    // TODO bad idea for SAT
     // for large-degree polynomials, Z3 tends to get stalled, irrespectively of its timeout
     if (loop.getUpdate(0).isPoly() && !loop.getUpdate(0).isPoly(10)) {
         return std::make_unique<Failed>();
     }
     bool orig = static_cast<size_t>(backlink) == trace.size() - 1;
     auto state = learn_clause(loop, automaton, orig);
-    if (!state->accelerated()) {
+    if (!state->succeeded()) {
         return state;
     }
-    auto accel_state = *state->accelerated();
+    auto accel_state = *state->succeeded();
     const auto idx = **accel_state;
     const auto subproof = accel_state->getProof();
-    const auto accel = its.getRule(idx);
-    drop_loop(backlink);
-    proof.majorProofStep("accelerated loop", its);
+    const auto accel = chcs.getRule(idx);
+    drop_until(backlink);
+    proof.majorProofStep("accelerated loop", chcs);
     proof.storeSubProof(subproof);
     z3.push();
-    z3.add(accel.getGuard()->subs(sigmas.back()));
+    // TODO this makes little sense for loops with more than one clause
+    z3.add(accel.getGuard()->subs(trace.back().var_renaming));
     if (z3.check() == Sat) {
-        store(idx, accel.getGuard());
+        store_step(idx, accel.getGuard());
         proof.append(std::stringstream() << "added " << idx << " to trace");
         return state;
     } else {
@@ -563,16 +554,20 @@ std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
     }
 }
 
-LocationIdx Reachability::get_current_location() const {
-    return trace.empty() ? its.getInitialLocation() : its.getRule(trace.back().transition).getRhsLoc(0);
+LocationIdx Reachability::get_current_predicate() const {
+    return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
 }
 
 bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
     for (const auto &q: queries) {
         z3.push();
-        const option<BoolExpr> sat = do_step(q);
+        const option<BoolExpr> sat = resolve(q);
         if (sat) {
-            extend_trace(q, *sat);
+            // no need to compute the model and the variable renaming for the next step, as we are done
+            const ThModel model;
+            const Subs new_var_renaming;
+            const Step step(q, *sat, new_var_renaming, model);
+            add_to_trace(step);
             unsat();
             return true;
         }
@@ -582,7 +577,7 @@ bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
 }
 
 bool Reachability::try_queries() {
-    return try_queries(queries[get_current_location()]);
+    return try_queries(queries[get_current_predicate()]);
 }
 
 bool Reachability::try_conditional_empty_clauses() {
@@ -590,10 +585,10 @@ bool Reachability::try_conditional_empty_clauses() {
 }
 
 void Reachability::analyze() {
-    proof.majorProofStep("initial ITS", its);
+    proof.majorProofStep("initial ITS", chcs);
     if (log) {
         std::cout << "initial ITS" << std::endl;
-        ITSExport::printForProof(its, std::cout);
+        ITSExport::printForProof(chcs, std::cout);
     }
     preprocess();
     init();
@@ -602,46 +597,46 @@ void Reachability::analyze() {
     }
     do {
         if (log) std::cout << "trace: " << trace << std::endl;
-        for (int backlink = is_loop(); backlink >= 0; backlink = is_loop()) {
+        for (int backlink = has_looping_suffix(); backlink >= 0; backlink = has_looping_suffix()) {
             const Step step = trace[backlink];
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             auto state = handle_loop(backlink);
             if (state->covered()) {
                 backtrack();
-            } else if (state->accelerated()) {
+            } else if (state->succeeded()) {
                 if (simple_loop) {
-                    do_block(step);
+                    block(step);
                 }
                 // make sure that we do not apply the accelerated transition again straight away, which is redundant
-                do_block(trace.back());
+                block(trace.back());
                 // try to apply a query before doing another step
                 if (try_queries()) {
                     return;
                 }
             } else if (state->dropped()) {
-                do_block(step);
+                block(step);
             } else if (state->failed()) {
                 // acceleration failed, loop has been added to Automaton::covered so that it won't be unrolled again
                 // try to continue instead of backtracking immediately
                 break;
             }
         }
-        auto &trans = transitions[get_current_location()];
+        auto &trans = rules[get_current_predicate()];
         auto it = trans.begin();
         std::vector<TransIdx> append;
         while (it != trans.end()) {
             z3.push();
-            const option<BoolExpr> sat = do_step(*it);
+            const option<BoolExpr> sat = resolve(*it);
             if (!sat) {
                 z3.pop();
                 append.push_back(*it);
                 it = trans.erase(it);
             } else {
                 // block learned clauses after adding them to the trace
-                if (*it > lastOrigRule) {
-                    do_block(trace.back());
+                if (is_learned_clause(*it)) {
+                    block(trace.back());
                 }
-                store(*it, *sat);
+                store_step(*it, *sat);
                 break;
             }
         }

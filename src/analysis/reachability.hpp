@@ -5,121 +5,303 @@
 #include "itsproblem.hpp"
 #include "proof.hpp"
 #include "result.hpp"
-#include "redundance.hpp"
 #include "redundanceviasquarefreewords.hpp"
 
 #include <list>
 
+/**
+ * Represents a resolution step, i.e., an element of the trace.
+ */
 struct Step {
-    const TransIdx transition;
-    const BoolExpr sat;
 
-    Step(const TransIdx transition, const BoolExpr &sat);
+    const TransIdx clause_idx;
 
-    friend std::ostream& operator<<(std::ostream &s, const Step &step);
+    /**
+     * a conjunction that implies the condition of the clause
+     */
+    const BoolExpr implicant;
+
+    /**
+     * renames the program variables to fresh variables that serve as input for the next step
+     */
+    const Subs var_renaming;
+
+    /**
+     * model for the trace up to this point
+     */
+    const Subs model;
+
+    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const ThModel &model);
 
 };
 
-class Accelerated;
+std::ostream& operator<<(std::ostream &s, const Step &step);
+
+// forward declarations of acceleration states
+class Succeeded;
 class Covered;
 class Dropped;
 class Failed;
 
-class LoopState{
+/**
+ * When learning clauses, an instance of this class is returned.
+ * It indicates whether a clause has been learned or not,
+ * as well as the reason for not learning a clause.
+ */
+class LearningState {
 
 protected:
-    LoopState();
+    LearningState();
 
 public:
-    virtual void foo() = 0;
-    virtual option<Accelerated> accelerated();
+    /**
+     * true if a clause was learned
+     */
+    virtual option<Succeeded> succeeded();
+    /**
+     * true if no clause was learned since it would have been redundant
+     */
     virtual option<Covered> covered();
+    /**
+     * True if the learned clause could not be added to the trace without introducing
+     * inconsistencies. This may happen when our acceleration technique returns an
+     * under-approximation.
+     * TODO For sat, the current handling of this case is not sound.
+     */
     virtual option<Dropped> dropped();
+    /**
+     * true if no clause was learned for some other reason
+     * TODO We have to think about ways to deal with this case when trying to prove sat.
+     */
     virtual option<Failed> failed();
 };
 
-class Accelerated: public LoopState {
+class Succeeded: public LearningState {
+    /**
+     * the index of the learned clause
+     */
     Result<TransIdx> idx;
 
 public:
-    Accelerated(const Result<TransIdx> &idx);
-    void foo() override;
-    option<Accelerated> accelerated() override;
+    Succeeded(const Result<TransIdx> &idx);
+    option<Succeeded> succeeded() override;
     Result<TransIdx>& operator*();
     Result<TransIdx>* operator->();
 };
 
-class Covered: public LoopState {
-    void foo() override;
+class Covered: public LearningState {
     option<Covered> covered() override;
 };
 
-class Dropped: public LoopState {
-    void foo() override;
+class Dropped: public LearningState {
     option<Dropped> dropped() override;
 };
 
-class Failed: public LoopState {
-    void foo() override;
+class Failed: public LearningState {
     option<Failed> failed() override;
 };
 
 class Reachability {
 
-    ITSProblem &its;
+    ITSProblem &chcs;
+
     Proof proof;
-    HyperGraph::SCCs sccs = its.sccs();
+
+    const HyperGraph::SCCs sccs {chcs.sccs()};
+
+    /**
+     * rules where the head and body symbol belong to different SCCs
+     */
     std::map<LocationIdx, std::vector<TransIdx>> cross_scc;
+
+    /**
+     * rules where the head and the body symbol belong to the same SCC
+     */
     std::map<LocationIdx, std::vector<TransIdx>> in_scc;
-    std::map<LocationIdx, std::vector<TransIdx>> accelerated;
-    std::map<LocationIdx, std::list<TransIdx>> transitions;
+
+    /**
+     * learned clauses
+     */
+    std::map<LocationIdx, std::vector<TransIdx>> learned_clauses;
+
+    /**
+     * All rules (including learned clauses).
+     * The order of these lists determines the selection order of clauses for resolution.
+     * It is updated on the fly when we learn clauses.
+     */
+    std::map<LocationIdx, std::list<TransIdx>> rules;
+
     std::map<LocationIdx, std::vector<TransIdx>> queries;
+
     std::vector<TransIdx> conditional_empty_clauses;
-    LocationIdx sink = *its.getSink();
+
+    /**
+     * predicate representing 'false'
+     */
+    LocationIdx bottom = *chcs.getSink();
+
     Z3<IntTheory, BoolTheory> z3;
 
     std::vector<Step> trace;
-    std::vector<Subs> sigmas{{}};
-    std::vector<Subs> models;
-    std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked{{}};
-    VarSet prog_vars;
-    std::map<Var, Var> post_vars;
-    TransIdx lastOrigRule = 0;
 
+    /**
+     * A conjunctive clause x is blocked if find(x) != end().
+     * A conjunctive variant y of a non-conjunctive clause x is blocked if cond(y) implies an element of blocked_clause[x].
+     * Maybe it would be better to subdivide the blocking formulas w.r.t. pairs of predicates instead of clauses.
+     */
+    std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked_clauses{{}};
+
+    VarSet prog_vars;
+
+    /**
+     * clauses up to this one are original ones, all other clauses are learned
+     */
+    TransIdx last_orig_clause = 0;
+
+    /**
+     * Implementation of our redundancy check.
+     * TODO RedundanceViaSquareFreeWords is not sound for sat. RedundanceViaAutomata should be sound.
+     */
     using Red = RedundanceViaSquareFreeWords;
     std::unique_ptr<Red> redundance {std::make_unique<Red>()};
 
-    ResultViaSideEffects removeIrrelevantTransitions();
+    bool is_learned_clause(const TransIdx idx) const;
+
+    bool is_orig_clause(const TransIdx idx) const;
+
+    /**
+     * removes clauses that are not on a path from a fact to a query
+     */
+    ResultViaSideEffects remove_irrelevant_clauses();
+
+    /**
+     * applies some very basic simplifications
+     * TODO Should be sound for sat, but we should check it to be sure.
+     */
     ResultViaSideEffects simplify();
+
+    /**
+     * resolves recursive clauses with themselves in cases where
+     * the resulting clause might be easier to accelerate
+     * TODO Not sound for sat.
+     */
     ResultViaSideEffects unroll();
+
+    /**
+     * preprocesses the CHC problem
+     */
     void preprocess();
-    void update_transitions(const LocationIdx loc);
+
+    /**
+     * updates the list of clauses, and hence the selection order for resolution, for the given predicate
+     */
+    void update_rules(const LocationIdx idx);
+
+    /**
+     * initializes all data structures after preprocessing
+     */
     void init();
+
+    /**
+     * finishes the analysis when we were able to prove unsat
+     */
     void unsat();
-    option<BoolExpr> do_step(const TransIdx idx);
-    void drop_loop(const int backlink);
+
+    /**
+     * tries to resolve the trace with the given clause
+     */
+    option<BoolExpr> resolve(const TransIdx idx);
+
+    /**
+     * drops a suffix of the trace, up to the given new size
+     */
+    void drop_until(const int new_size);
+
+    /**
+     * computes (an approximation of) the language associated with the clause used for the given step
+     */
     Red::T get_language(const Step &step);
+
+    /**
+     * computes (an approximation of) the language associated with the looping suffix of the trace
+     * @param backlink the start of the looping suffix of the trace
+     */
     Red::T build_language(const int backlink);
+
+    /**
+     * computes a clause that is equivalent to the looping suffix of the trace
+     * @param backlink the start of the looping suffix of the trace
+     */
     Rule build_loop(const int backlink);
-    Result<Rule> preprocess_loop(const Rule &loop);
-    TransIdx add_accelerated_rule(const Rule &accel, const Red::T &automaton);
-    std::unique_ptr<LoopState> learn_clause(const Rule &rule, const Red::T &automaton, const int backlink);
-    std::unique_ptr<LoopState> handle_loop(const int backlink);
+
+    /**
+     * add a learned clause to all relevant data structures
+     */
+    TransIdx add_learned_clause(const Rule &clause, const Red::T &lang);
+
+    /**
+     * Try to accelerate the given clause.
+     * @param lang the language associated with the accelerated rule.
+     * @param backlink the start of the looping suffix of the trace
+     */
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang, const int backlink);
+
+    /**
+     * does everything that needs to be done if the trace has a looping suffix
+     */
+    std::unique_ptr<LearningState> handle_loop(const int backlink);
+
+    /**
+     * checks whether the head and the body symbol of the given clause belong to different SCCs
+     */
     bool leaves_scc(const TransIdx idx) const;
-    int is_loop();
-    void handle_update(const TransIdx idx);
-    void do_block(const Step &step);
+
+    /**
+     * @return the start position of the looping suffix of the trace, if any, or -1
+     */
+    int has_looping_suffix();
+
+    /**
+     * Generates a fresh copy of the program variables and fixes their value according to the update of the
+     * given clause by adding corresponding constraints to the SMT solver.
+     * @return a variable renaming from the program variables to the fresh copy
+     */
+    Subs handle_update(const TransIdx idx);
+
+    /**
+     * blocks the given step
+     */
+    void block(const Step &step);
+
     void backtrack();
+
+    /**
+     * remove the last element of the trace, and from all other data structures that have to have the same
+     * size as the trace
+     */
     void pop();
-    void extend_trace(const TransIdx idx, const BoolExpr &sat);
-    void store(const TransIdx idx, const BoolExpr &sat);
-    void print_run(std::ostream &s);
-    LocationIdx get_current_location() const;
+
+    void add_to_trace(const Step &step);
+
+    /**
+     * Assumes that the trace can be resolved with the given clause.
+     * Does everything that needs to be done to apply the rule "Step".
+     */
+    void store_step(const TransIdx idx, const BoolExpr &sat);
+
+    void print_trace(std::ostream &s);
+
+    /**
+     * @return the head predicate of the trace
+     */
+    LocationIdx get_current_predicate() const;
+
     bool try_queries(const std::vector<TransIdx> &queries);
     bool try_queries();
     bool try_conditional_empty_clauses();
 
     Reachability(ITSProblem &its);
+
     void analyze();
 
 public:

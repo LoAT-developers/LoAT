@@ -4,6 +4,9 @@
 
 #include <variant>
 
+/**
+ * encapsulates the result of some computation, together with a proof
+ */
 template<class T>
 class Result
 {

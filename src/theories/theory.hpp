@@ -4,6 +4,7 @@
 #include "inttheory.hpp"
 #include "booltheory.hpp"
 #include "subs.hpp"
+#include "model.hpp"
 
 #include <boost/functional/hash.hpp>
 #include <variant>
@@ -22,6 +23,7 @@ using Theories = TheTheory::Theories;
 using VarSet = theory::VarSet<IntTheory, BoolTheory>;
 using LitSet = theory::LitSet<IntTheory, BoolTheory>;
 using Subs = theory::Subs<IntTheory, BoolTheory>;
+using ThModel = Model<IntTheory, BoolTheory>;
 
 extern const BoolExpr True;
 extern const BoolExpr False;

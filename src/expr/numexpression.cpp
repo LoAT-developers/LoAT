@@ -104,6 +104,12 @@ unsigned Expr::totalDegree() const {
         return res;
     } else if (isVar()) {
         return 1;
+    } else if (isPow()) {
+        return op(1).toNum().to_int();
+    }
+    if (!isGround()) {
+        std::cerr << "Expr::totalDegree: " << *this << " is not a polynomial" << std::endl;
+        throw std::invalid_argument("not a polynomial");
     }
     assert(isGround());
     return 0;
