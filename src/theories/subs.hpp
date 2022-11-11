@@ -281,22 +281,6 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void collectVarsImpl(VS &res) const {
-        if constexpr (I < sizeof...(Th)) {
-            std::get<I>(t).collectVars(res.template get<I>());
-            collectVarsImpl<I+1>(res);
-        }
-    }
-
-public:
-
-    void collectVars(VS &vars) const {
-        collectVarsImpl(vars);
-    }
-
-private:
-
-    template<std::size_t I = 0>
     inline size_t hashImpl() const {
         if constexpr (I + 1 >= sizeof...(Th)) {
             return std::get<I>(t).hash();

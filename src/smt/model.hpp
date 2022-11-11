@@ -1,6 +1,7 @@
 #pragma once
 
 #include "itheory.hpp"
+#include "thset.hpp"
 
 template <ITheory... Th>
 class Model
@@ -9,6 +10,7 @@ class Model
     using TheTheory = Theory<Th...>;
     using Theories = typename TheTheory::Theories;
     using S = theory::Subs<Th...>;
+    using VarSet = typename theory::VarSet<Th...>;
 
 public:
 
@@ -50,6 +52,32 @@ public:
     S toSubs() const {
         S res;
         toSubsImpl(res);
+        return res;
+    }
+
+private:
+
+    template<std::size_t I = 0>
+    inline void toSubsImpl(S &subs, const VarSet &vars) const {
+        if constexpr (I < std::tuple_size_v<Theories>) {
+            const auto &map = std::get<I>(m);
+            auto &s = subs.template get<I>();
+            for (const auto &x: vars.template get<I>()) {
+                const auto it = map.find(x);
+                if (it != map.end()) {
+                    using T = std::tuple_element_t<I, Theories>;
+                    s.put(x, T::valToExpr(it->second));
+                }
+            }
+            toSubsImpl<I+1>(subs, vars);
+        }
+    }
+
+public:
+
+    S toSubs(const VarSet &vars) const {
+        S res;
+        toSubsImpl(res, vars);
         return res;
     }
 

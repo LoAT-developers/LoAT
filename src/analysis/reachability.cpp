@@ -388,7 +388,11 @@ option<BoolExpr> Reachability::do_step(const TransIdx idx) {
     z3.add(r.getGuard()->subs(sigma));
     if (z3.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
-        const auto implicant = r.getGuard()->implicant(sigma.compose(z3.model().toSubs()));
+        // Z3's models get huge, but we are only interested in those variables that occur in
+        // the guard or sigma
+        VarSet vars = r.getGuard()->vars();
+        substitution::collectVariables(sigma, vars);
+        const auto implicant = r.getGuard()->implicant(sigma.compose(z3.model().toSubs(vars)));
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {
