@@ -246,15 +246,15 @@ void Reachability::add_to_trace(const Step &step) {
     proof.storeSubProof(subProof);
 }
 
-void Reachability::store_step(const TransIdx idx, const BoolExpr &sat) {
+void Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     const auto model = z3.model();
     if (trace.empty()) {
-        z3.add(sat);
+        z3.add(implicant);
     } else {
-        z3.add(sat->subs(trace.back().var_renaming));
+        z3.add(implicant->subs(trace.back().var_renaming));
     }
     const auto new_var_renaming = handle_update(idx);
-    const Step step(idx, sat, new_var_renaming, model);
+    const Step step(idx, implicant, new_var_renaming, model);
     add_to_trace(step);
     blocked_clauses.push_back({});
 }
