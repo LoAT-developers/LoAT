@@ -117,7 +117,7 @@ unknown
 017
 021
 023
-# 073 nonterm?
+# 073 after a very long time: terminate called after throwing an instance of 'std::logic_error' what():  model, but no implicant --> wrong model?
 079
 # 080 nonterm?
 081
