@@ -2,6 +2,7 @@
 
 #include "itheory.hpp"
 #include "option.hpp"
+#include "set.hpp"
 
 namespace theory {
 
@@ -304,6 +305,26 @@ public:
         return equalsImpl(that);
     }
 
+private:
+
+    template <size_t I = 0>
+    inline std::ostream& printImpl(std::ostream &s) const {
+        if constexpr (I < variant_size) {
+            if (I > 0) {
+                s << " u ";
+            }
+            return printImpl<I+1>(s << std::get<I>(t));
+        } else {
+            return s;
+        }
+    }
+
+public:
+
+    std::ostream& print(std::ostream &that) const {
+        return printImpl(that);
+    }
+
     template <class T>
     std::set<T>& get() {
         return std::get<std::set<T>>(t);
@@ -333,6 +354,11 @@ public:
 template <class VS, class VSI, class Var, ITheory... Th>
 bool operator==(const ThSet<VS, VSI, Var, Th...> &fst, const ThSet<VS, VSI, Var, Th...> &snd) {
     return fst.equals(snd);
+}
+
+template <class VS, class VSI, class Var, ITheory... Th>
+std::ostream& operator<<(std::ostream &s, const ThSet<VS, VSI, Var, Th...> &set) {
+    return set.print(s);
 }
 
 template<ITheory... Th>
