@@ -526,6 +526,10 @@ std::unique_ptr<LoopState> Reachability::handle_loop(const int backlink) {
     }
     redundance->mark_as_redundant(automaton);
     const auto loop = build_loop(backlink);
+    if (loop.getUpdate(0).empty()) {
+        std::cout << "dropping trivial loop" << std::endl;
+        return std::make_unique<Covered>();
+    }
     // for large-degree polynomials, Z3 tends to get stalled, irrespectively of its timeout
     if (loop.getUpdate(0).isPoly() && !loop.getUpdate(0).isPoly(10)) {
         return std::make_unique<Failed>();

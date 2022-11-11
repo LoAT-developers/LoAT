@@ -34,6 +34,8 @@ unsat
 328
 322
 336
+# 135 terminates, but takes too long
+
 unknown
 036
 037
@@ -68,7 +70,6 @@ unknown
 125
 126
 127
-# 135 nonterm?
 # 136 nonterm?
 # 137 nonterm?
 # 138 nonterm?
