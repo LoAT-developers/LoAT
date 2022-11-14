@@ -16,7 +16,7 @@ if(${CMAKE_GENERATOR} MATCHES "Visual Studio.*")
 elseif(${CMAKE_GENERATOR} MATCHES "Xcode.*")
   set(ANTLR4_OUTPUT_DIR ${ANTLR4_ROOT}/runtime/Cpp/dist/$(CONFIGURATION))
 else()
-  set(ANTLR4_OUTPUT_DIR ${ANTLR4_ROOT}/runtime/Cpp/dist)
+  set(ANTLR4_OUTPUT_DIR ${ANTLR4_ROOT}/runtime/Cpp/runtime)
 endif()
 
 if(MSVC)
