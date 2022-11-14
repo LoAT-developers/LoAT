@@ -26,8 +26,13 @@
 
 using namespace std;
 
-LoopAcceleration::LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx)
-    : its(its), rule(rule), sink(sink), cpx(cpx) {}
+LoopAcceleration::LoopAcceleration(
+        ITSProblem &its,
+        const LinearRule &rule,
+        LocationIdx sink,
+        Complexity cpx,
+        const Approx approx)
+    : its(its), rule(rule), sink(sink), cpx(cpx), approx(approx) {}
 
 bool LoopAcceleration::shouldAccelerate() const {
     return (!Config::Analysis::tryNonterm() || !rule.getCost().isNontermSymbol()) && (!Config::Analysis::complexity() || rule.getCost().isPoly());
@@ -143,14 +148,28 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
     return {res, period};
 }
 
-AccelerationResult LoopAcceleration::run() {
-    AccelerationResult res;
+acceleration::Result LoopAcceleration::run() {
+    acceleration::Result res;
     if (!shouldAccelerate()) {
         return res;
+    }
+    if (approx != UnderApprox) {
+        if (!rule.getGuard()->isConjunction()) {
+            res.status = acceleration::Disjunctive;
+            return res;
+        }
+        // for non-deterministic loops, we can only offer under-approximations
+        for (const auto &x: rule.vars()) {
+            if (its.isTempVar(x)) {
+                res.status = acceleration::Nondet;
+                return res;
+            }
+        }
     }
     const auto [rule, period] = chain(this->rule, its);
     // only check sat if we didn't chain, as chaining ensures that the guard is sat
     if (period == 1 && SmtFactory::check(rule.getGuard(), its) != Sat) {
+        res.status = acceleration::Unsat;
         return res;
     } else if (period > 1) {
         res.proof.ruleTransformationProof(this->rule, "unrolling", rule, its);
@@ -160,12 +179,21 @@ AccelerationResult LoopAcceleration::run() {
     // as the closed forms are usually only valid for n > 0 --> special case
     if (!Chaining::chainRules(its, rule, rule)) {
         res.rule = rule;
+        res.status = acceleration::PseudoLoop;
         res.proof.append("rule cannot be iterated more than once");
         return res;
     }
     const auto rec = Recurrence::iterateRule(its, rule);
-    const auto accelerationTechnique = AccelerationFactory::get(rule, rec, its);
+    if (!rec && approx != UnderApprox) {
+        res.status = acceleration::ClosedFormFailed;
+        return res;
+    }
+    const auto accelerationTechnique = AccelerationFactory::get(rule, rec, its, approx);
     const auto accelerationResult = accelerationTechnique->computeRes();
+    if (!accelerationResult.term && approx != UnderApprox) {
+        res.status = acceleration::AccelerationFailed;
+        return res;
+    }
     if (Config::Analysis::tryNonterm() && accelerationResult.nonterm) {
         res.nontermRule = LinearRule(
                     rule.getLhsLoc(),
@@ -194,7 +222,12 @@ AccelerationResult LoopAcceleration::run() {
 }
 
 
-AccelerationResult LoopAcceleration::accelerate(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx) {
-    LoopAcceleration ba(its, rule, sink, cpx);
+acceleration::Result LoopAcceleration::accelerate(
+        ITSProblem &its,
+        const LinearRule &rule,
+        LocationIdx sink,
+        Complexity cpx,
+        const Approx approx) {
+    LoopAcceleration ba(its, rule, sink, cpx, approx);
     return ba.run();
 }

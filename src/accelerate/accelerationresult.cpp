@@ -1,14 +1,14 @@
 #include "accelerationresult.hpp"
 
-bool AccelerationResult::successful() const {
+bool acceleration::Result::successful() const {
     return rule || nontermRule;
 }
 
-bool AccelerationResult::inexact() const {
+bool acceleration::Result::inexact() const {
     return !successful() || strengthened;
 }
 
-std::vector<Rule> AccelerationResult::rules() const {
+std::vector<Rule> acceleration::Result::rules() const {
     std::vector<Rule> res;
     if ( rule) {
         res.push_back(*rule);

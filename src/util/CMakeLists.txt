@@ -1,5 +1,6 @@
 target_sources(${EXECUTABLE}
     PRIVATE
+        approx.hpp
         option.hpp
         proof.hpp
         proof.cpp

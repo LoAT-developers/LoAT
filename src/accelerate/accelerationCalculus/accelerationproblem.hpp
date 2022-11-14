@@ -7,6 +7,7 @@
 #include "smt.hpp"
 #include "accelerationtechnique.hpp"
 #include "theory.hpp"
+#include "approx.hpp"
 
 class AccelerationProblem {
 
@@ -32,6 +33,7 @@ class AccelerationProblem {
     ITSProblem &its;
     bool isConjunction;
     option<Rel> bound;
+    const Approx approx;
 
     bool monotonicity(const Lit &lit, Proof &proof);
     bool recurrence(const Lit &lit, Proof &proof);
@@ -55,11 +57,12 @@ class AccelerationProblem {
             const Subs &up,
             const option<Recurrence::Result> &closed,
             const Expr &cost,
-            ITSProblem &its);
+            ITSProblem &its,
+            const Approx approx);
 
 public:
 
-    static AccelerationProblem init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its);
+    static AccelerationProblem init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its, Approx approx);
 
     AcceleratorPair computeRes();
     std::pair<BoolExpr, bool> buildRes(const Model<IntTheory, BoolTheory> &model, const std::map<Lit, std::vector<BoolExpr>> &entryVars);

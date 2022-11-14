@@ -7,7 +7,8 @@
 AccelerationViaQE::AccelerationViaQE(
         const LinearRule &rule,
         const Recurrence::Result closed,
-        ITSProblem &its): AccelerationTechnique(rule, closed, its) {}
+        ITSProblem &its,
+        const Approx approx): AccelerationTechnique(rule, closed, its, approx) {}
 
 AccelerationViaQE::AcceleratorPair AccelerationViaQE::computeRes() {
     NumVar m = its.getFreshUntrackedSymbol<IntTheory>("m", Expr::Int);

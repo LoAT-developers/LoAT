@@ -3,7 +3,14 @@
 #include "proof.hpp"
 #include "rule.hpp"
 
-struct AccelerationResult {
+namespace acceleration {
+
+enum Status {
+    Unsat, Nondet, PseudoLoop, Disjunctive, AccelerationFailed, ClosedFormFailed
+};
+
+struct Result {
+    option<Status> status;
     option<Rule> rule;
     option<Rule> nontermRule;
     unsigned period = 1;
@@ -17,3 +24,5 @@ struct AccelerationResult {
     std::vector<Rule> rules() const;
 
 };
+
+}

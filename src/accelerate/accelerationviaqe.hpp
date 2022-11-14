@@ -14,7 +14,8 @@ public:
     AccelerationViaQE(
             const LinearRule &rule,
             const Recurrence::Result closed,
-            ITSProblem &its);
+            ITSProblem &its,
+            const Approx approx);
 
     AcceleratorPair computeRes() override;
 

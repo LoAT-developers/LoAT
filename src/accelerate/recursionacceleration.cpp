@@ -54,9 +54,9 @@ static MeteringFinder::Result meterWithInstantiation(ITSProblem &its, const Rule
  * @param sink Used for non-terminating and nonlinear rules (since we do not know to what they evaluate).
  * otherwise it is not modified.
  */
-static AccelerationResult meterAndIterate(ITSProblem &its, const Rule &r, LocationIdx sink) {
+static acceleration::Result meterAndIterate(ITSProblem &its, const Rule &r, LocationIdx sink) {
     using namespace RecursionAcceleration;
-    AccelerationResult res;
+    acceleration::Result res;
 
     // We may require that the cost is at least 1 in every single iteration of the loop.
     // For linear rules, this is only required for non-termination (see special case below).
@@ -106,26 +106,26 @@ static AccelerationResult meterAndIterate(ITSProblem &its, const Rule &r, Locati
 }
 
 
-AccelerationResult RecursionAcceleration::accelerateFast(ITSProblem &its, const Rule &rule, LocationIdx sink) {
+acceleration::Result RecursionAcceleration::accelerateFast(ITSProblem &its, const Rule &rule, LocationIdx sink) {
     return meterAndIterate(its, rule, sink);
 }
 
 
-AccelerationResult RecursionAcceleration::accelerate(ITSProblem &its, const Rule &rule, LocationIdx sink) {
+acceleration::Result RecursionAcceleration::accelerate(ITSProblem &its, const Rule &rule, LocationIdx sink) {
     // Try to find a metering function without any heuristics
-    AccelerationResult accel = meterAndIterate(its, rule, sink);
+    acceleration::Result accel = meterAndIterate(its, rule, sink);
     if (accel.rule) {
         return accel;
     }
 
-    AccelerationResult res;
+    acceleration::Result res;
 
     // Guard strengthening heuristic (helps in the presence of constant updates like x := 5 or x := free).
     // Check and (possibly) apply heuristic, this modifies newRule
     option<Rule> strengthened = MeteringFinder::strengthenGuard(its, rule);
     if (strengthened) {
         res.strengthened = true;
-        const AccelerationResult &accel = accelerateFast(its, strengthened.get(), sink);
+        const acceleration::Result &accel = accelerateFast(its, strengthened.get(), sink);
         if (accel.rule) {
             res.proof.ruleTransformationProof(rule, "strengthening", strengthened.get(), its);
             res.proof.concat(accel.proof);

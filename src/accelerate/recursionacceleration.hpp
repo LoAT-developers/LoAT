@@ -36,11 +36,11 @@ namespace RecursionAcceleration {
      * If the original loop was linear, the result is still a simple loop, unless it is non-terminating.
      * If the original loop was nonlinear or found to be non-terminating, the resulting rules go to the given sink.
      */
-    AccelerationResult accelerate(ITSProblem &its, const Rule &rule, LocationIdx sink);
+    acceleration::Result accelerate(ITSProblem &its, const Rule &rule, LocationIdx sink);
 
     /**
      * Like accelerateNonlinear, but does not invoke any heuristics (and is thus faster but less powerful).
      * The result is always a single accelerated rule (if acceleration was successful).
      */
-    AccelerationResult accelerateFast(ITSProblem &its, const Rule &rule, LocationIdx sink);
+    acceleration::Result accelerateFast(ITSProblem &its, const Rule &rule, LocationIdx sink);
 }

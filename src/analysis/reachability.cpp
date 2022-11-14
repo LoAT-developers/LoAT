@@ -497,7 +497,7 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule, true);
-    AccelerationResult accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), -1, Complexity::Const);
+    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), -1, Complexity::Const);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
         const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);

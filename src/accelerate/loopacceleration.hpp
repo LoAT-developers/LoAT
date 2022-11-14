@@ -21,6 +21,7 @@
 #include "rule.hpp"
 #include "complexity.hpp"
 #include "accelerationresult.hpp"
+#include "approx.hpp"
 
 class LoopAcceleration {
 public:
@@ -30,17 +31,17 @@ public:
         const unsigned int validityBound;
     };
 
-    static AccelerationResult accelerate(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
+    static acceleration::Result accelerate(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx, Approx = UnderApprox);
 
     static const std::pair<LinearRule, unsigned> chain(const LinearRule &rule, ITSProblem &its);
 
 private:
-    LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
+    LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx, Approx approx);
 
     /**
      * Main function, just calls the methods below in the correct order
      */
-    AccelerationResult run();
+    acceleration::Result run();
 
     /**
      * Checks whether the backward acceleration technique might be applicable.
@@ -54,4 +55,5 @@ private:
     const LinearRule &rule;
     LocationIdx sink;
     Complexity cpx;
+    const Approx approx;
 };

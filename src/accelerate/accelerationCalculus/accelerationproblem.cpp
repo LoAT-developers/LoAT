@@ -11,12 +11,14 @@ AccelerationProblem::AccelerationProblem(
         const Subs &up,
         const option<Recurrence::Result> &closed,
         const Expr &cost,
-        ITSProblem &its):
+        ITSProblem &its,
+        const Approx approx):
     up(up),
     closed(closed),
     cost(cost),
     guard(guard),
-    its(its) {
+    its(its),
+    approx(approx) {
     for (const auto &l: guard->lits()) {
         todo.insert(l);
     }
@@ -32,8 +34,12 @@ AccelerationProblem::AccelerationProblem(
     this->isConjunction = guard->isConjunction();
 }
 
-AccelerationProblem AccelerationProblem::init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its) {
-    return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, rule.getCost(), its);
+AccelerationProblem AccelerationProblem::init(
+        const LinearRule &rule,
+        const option<Recurrence::Result> &closed,
+        ITSProblem &its,
+        const Approx approx) {
+    return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, rule.getCost(), its, approx);
 }
 
 LitSet AccelerationProblem::findConsistentSubset(BoolExpr e) const {
@@ -401,8 +407,8 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
         bool res = recurrence(lit, proof);
         res |= monotonicity(lit, proof);
         res |= eventualWeakDecrease(lit, proof);
-        res |= eventualWeakIncrease(lit, proof);
-        res |= fixpoint(lit, proof);
+        res |= approx == UnderApprox && eventualWeakIncrease(lit, proof);
+        res |= approx == UnderApprox && fixpoint(lit, proof);
         if (!res && isConjunction) return ret;
     }
     ReplacementMap map = computeReplacementMap(false);
