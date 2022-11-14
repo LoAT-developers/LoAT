@@ -59,7 +59,7 @@ option<Failed> Failed::failed() {
     return *this;
 }
 
-Reachability::Reachability(ITSProblem &its): chcs(its), z3(its) {
+Reachability::Reachability(ITSProblem &chcs): chcs(chcs), z3(chcs), non_loops(chcs) {
     z3.enableModels();
 }
 
@@ -74,6 +74,47 @@ std::ostream& operator<<(std::ostream &s, const std::vector<Step> &step) {
         s << " [" << it->implicant << "] " << it->clause_idx;
     }
     return s;
+}
+
+NonLoops::NonLoops(const ITSProblem &chcs): chcs(chcs) {}
+
+std::vector<long> NonLoops::build(const Step &step) {
+    std::vector<long> res;
+    append(res, step);
+    return res;
+}
+
+std::vector<long> NonLoops::build(const std::vector<Step> &trace, int backlink) {
+   std::vector<long> sequence;
+   for (int i = trace.size() - 1; i >= backlink; --i) {
+       append(sequence, trace[i]);
+   }
+   return sequence;
+}
+
+void NonLoops::add(const std::vector<Step> &trace, int backlink) {
+    non_loops.insert(build(trace, backlink));
+}
+
+bool NonLoops::contains(const std::vector<long> &sequence) {
+    return non_loops.contains(sequence);
+}
+
+void NonLoops::append(std::vector<long> &sequence, const Step &step) {
+    std::pair<TransIdx, BoolExpr> key;
+    if (chcs.getRule(step.clause_idx).getGuard()->isConjunction()) {
+        key = {step.clause_idx, BExpression::True};
+    } else {
+        key = {step.clause_idx, step.implicant};
+    }
+    const auto it = alphabet.find(key);
+    if (it == alphabet.end()) {
+        alphabet.emplace(key, next_char);
+        sequence.push_back(next_char);
+        ++next_char;
+    } else {
+        sequence.push_back(it->second);
+    }
 }
 
 ResultViaSideEffects Reachability::remove_irrelevant_clauses() {
@@ -151,13 +192,16 @@ int Reachability::has_looping_suffix() {
         return -1;
     }
     const LocationIdx dst = chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
+    std::vector<long> sequence = non_loops.build(trace.back());
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
-        if (step.failed_loops.contains(pos)) {
-            continue;
-        }
         if (leaves_scc(step.clause_idx)) {
             return -1;
+        }
+        non_loops.append(sequence, step);
+        if (non_loops.contains(sequence)) {
+            if (log) std::cout << sequence << " is a non-loop" << std::endl;
+            continue;
         }
         if (chcs.getRule(step.clause_idx).getLhsLoc() == dst) {
             bool looping = static_cast<unsigned>(pos) < trace.size() - 1 || is_orig_clause(step.clause_idx);
@@ -597,9 +641,9 @@ void Reachability::analyze() {
             } else if (state->dropped()) {
                 block(step);
             } else if (state->failed()) {
+                non_loops.add(trace, backlink);
                 // acceleration failed, loop has been added to Automaton::covered so that it won't be unrolled again
                 // try to continue instead of backtracking immediately
-                trace[backlink].failed_loops.insert(backlink);
                 break;
             }
         }

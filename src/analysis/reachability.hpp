@@ -31,9 +31,42 @@ struct Step {
      */
     const Subs model;
 
-    std::set<size_t> failed_loops;
-
     Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const ThModel &model);
+
+};
+
+/**
+ * Stores which looping sequences of CHCs should be treated as if they were non-looping.
+ * Used for sequences whose resolvent is something like f(x) -> f(0). For such clauses,
+ * the learned clause would be equivalent to the original clause, and we want to avoid
+ * learning many of those useless clauses. Additionally, we treat looping sequences where
+ * acceleration fails as if they were non-looping.
+ *
+ * Note that we still mark the corresponding language as redundant. So if [1,2,3] is
+ * a non-loop, then we keep using "Step" such that we may eventually obtain [1,2,3,1,2,3].
+ * Then the latter is redundant and we backtrack, i.e., non-loops should not be a problem
+ * w.r.t. termination.
+ */
+class NonLoops {
+
+    std::map<std::pair<TransIdx, BoolExpr>, long> alphabet;
+    long next_char = 0;
+    std::set<std::vector<long>> non_loops;
+    const ITSProblem &chcs;
+
+public:
+
+    NonLoops(const ITSProblem &chcs);
+
+    std::vector<long> build(const std::vector<Step> &trace, int backlink);
+
+    std::vector<long> build(const Step &step);
+
+    void add(const std::vector<Step> &trace, int backlink);
+
+    bool contains(const std::vector<long> &sequence);
+
+    void append(std::vector<long> &sequence, const Step &step);
 
 };
 
@@ -163,6 +196,8 @@ class Reachability {
      */
     using Red = RedundanceViaSquareFreeWords;
     std::unique_ptr<Red> redundance {std::make_unique<Red>()};
+
+    NonLoops non_loops;
 
     bool is_learned_clause(const TransIdx idx) const;
 

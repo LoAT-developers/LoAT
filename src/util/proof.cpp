@@ -53,7 +53,7 @@ void Proof::append(const Style &style, std::string s) {
         std::vector<std::string> lines;
         boost::split(lines, s, boost::is_any_of("\n"));
         for (const std::string &l: lines) {
-            proof.push_back(ProofStep{style, l});
+            proof.emplace_back(ProofStep{style, l});
         }
     }
 }
