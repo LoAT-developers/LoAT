@@ -8,8 +8,8 @@
 #include "smt.hpp"
 #include "export.hpp"
 #include "expression.hpp"
-#include "boolexpression.hpp"
 #include "vector.hpp"
+#include "literal.hpp"
 
 #include <numeric>
 
@@ -119,8 +119,6 @@ ResultViaSideEffects Reachability::simplify() {
     return ret;
 }
 
-
-// TODO under-approximation?
 ResultViaSideEffects Reachability::unroll() {
     ResultViaSideEffects ret;
     for (const TransIdx idx: chcs.getAllTransitions()) {
@@ -154,7 +152,10 @@ int Reachability::has_looping_suffix() {
     }
     const LocationIdx dst = chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
-        const Step step = trace[pos];
+        const Step &step = trace[pos];
+        if (step.failed_loops.contains(pos)) {
+            continue;
+        }
         if (leaves_scc(step.clause_idx)) {
             return -1;
         }
@@ -170,37 +171,20 @@ int Reachability::has_looping_suffix() {
 
 Subs Reachability::handle_update(const TransIdx idx) {
     const Rule &r = chcs.getRule(idx);
-    RelSet eqs;
-    const Subs old_sigma = trace.empty() ? Subs() : trace.back().var_renaming;
-    Subs new_sigma;
+    const Subs last_var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
+    Subs new_var_renaming;
     const Subs up = r.getUpdate(0);
-    for (const auto &v: prog_vars) {
-        if (std::holds_alternative<NumVar>(v)) {
-            const auto &var = std::get<NumVar>(v);
-            const auto x = chcs.getFreshUntrackedSymbol<IntTheory>(var.getName(), Expr::Int);
-            z3.add(boolExpression::build(Rel::buildEq(x, up.get<IntTheory>(var).subs(old_sigma.get<IntTheory>()))));
-            new_sigma.put<IntTheory>(var, x);
-        } else if (std::holds_alternative<BoolVar>(v)) {
-            const auto &var = std::get<BoolVar>(v);
-            const auto x = chcs.getFreshUntrackedSymbol<BoolTheory>(var.getName(), Expr::Bool);
-            const auto lhs = boolExpression::build(x);
-            const auto rhs = up.get<BoolTheory>(var)->subs(old_sigma);
-            z3.add((lhs & rhs) | ((!lhs) & (!rhs)));
-            new_sigma.put<BoolTheory>(var, lhs);
-        }
+    for (const auto &x: prog_vars) {
+        const auto y = chcs.getFreshUntrackedSymbol(x);
+        z3.add(literal::mkEq(y, expression::subs(up.get(x), last_var_renaming)));
+        new_var_renaming.put(x, TheTheory::varToExpr(y));
     }
     for (const auto &var: r.vars()) {
         if (chcs.isTempVar(var)) {
-            if (std::holds_alternative<NumVar>(var)) {
-                new_sigma.put<IntTheory>(std::get<NumVar>(var), chcs.getFreshUntrackedSymbol<IntTheory>(variable::getName(var), Expr::Int));
-            } else if (std::holds_alternative<BoolVar>(var)) {
-                new_sigma.put<BoolTheory>(std::get<BoolVar>(var), boolExpression::build(chcs.getFreshUntrackedSymbol<BoolTheory>(variable::getName(var), Expr::Bool)));
-            } else {
-                throw std::logic_error("unsupported theory");
-            }
+            new_var_renaming.put(var, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(var)));
         }
     }
-    return new_sigma;
+    return new_var_renaming;
 }
 
 void Reachability::block(const Step &step) {
@@ -225,14 +209,15 @@ void Reachability::pop() {
 
 void Reachability::backtrack() {
     if (log) std::cout << "backtracking" << std::endl;
+    // copy the last step before popping it
     const Step step = trace.back();
     pop();
     block(step);
 }
 
 void Reachability::add_to_trace(const Step &step) {
-    if (!trace.empty()) {
-        assert(chcs.getRule(trace.back().clause_idx).getRhsLoc(0) == chcs.getRule(step.clause_idx).getLhsLoc());
+    if (!trace.empty() && chcs.getRule(trace.back().clause_idx).getRhsLoc(0) != chcs.getRule(step.clause_idx).getLhsLoc()) {
+        throw std::logic_error("adding clause with wrong body symbol");
     }
     trace.emplace_back(step);
     proof.push();
@@ -299,14 +284,18 @@ void Reachability::preprocess() {
 
 void Reachability::update_rules(const LocationIdx idx) {
     auto it = cross_scc.find(idx);
+    // the order of the clauses in this list determines the selection order for resolution
     std::list<LocationIdx> trans;
+    // try to get out of the current SCC as we want to reach 'bottom', which is its own SCC
     if (it != cross_scc.end()) {
         trans.insert(trans.end(), it->second.begin(), it->second.end());
     }
+    // try learned clauses next
     it = learned_clauses.find(idx);
     if (it != learned_clauses.end()) {
         trans.insert(trans.end(), it->second.begin(), it->second.end());
     }
+    // try original clauses that stay within the current SCC last
     it = in_scc.find(idx);
     if (it != in_scc.end()) {
         trans.insert(trans.end(), it->second.begin(), it->second.end());
@@ -371,25 +360,28 @@ void Reachability::unsat() {
 }
 
 option<BoolExpr> Reachability::resolve(const TransIdx idx) {
-    const auto sigma = trace.empty() ? Subs() : trace.back().var_renaming;
+    const auto var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     const Rule r = chcs.getRule(idx);
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
+        // a blocked conjunctive clause --> fail
         if (r.getGuard()->isConjunction()) {
             return {};
         }
+        // a non-conjunctive clause where some variants are blocked
+        // --> make sure that we use a non-blocked variant, if any
         for (const auto &b: block->second) {
-            z3.add(!b->subs(sigma));
+            z3.add(!b->subs(var_renaming));
         }
     }
-    z3.add(r.getGuard()->subs(sigma));
+    z3.add(r.getGuard()->subs(var_renaming));
     if (z3.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
-        // Z3's models get huge, but we are only interested in those variables that occur in
-        // the guard or sigma
+        // the models get huge, but we are only interested in those variables that occur in
+        // the guard or the variable renaming
         VarSet vars = r.getGuard()->vars();
-        substitution::collectVariables(sigma, vars);
-        const auto implicant = r.getGuard()->implicant(sigma.compose(z3.model().toSubs(vars)));
+        substitution::collectVariables(var_renaming, vars);
+        const auto implicant = r.getGuard()->implicant(var_renaming.compose(z3.model().toSubs(vars)));
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {
@@ -431,7 +423,7 @@ Rule Reachability::build_loop(const int backlink) {
         auto sigma = step.var_renaming;
         sigma.erase(prog_vars); // rename temporary variables before chaining
         const TransIdx t = step.clause_idx;
-        const Rule &r = chcs.getRule(t);
+        const Rule r = chcs.getRule(t);
         loop = *Chaining::chainRules(chcs, r.withGuard(step.implicant).subs(sigma), loop, false);
     }
     assert(loop.getLhsLoc() == loop.getRhsLoc(0));
@@ -465,28 +457,18 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
     return idx <= last_orig_clause;
 }
 
-std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &automaton, const int backlink) {
-    Result<Rule> res {Preprocess::simplifyRule(chcs, rule, true)};
+std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
+    Result<Rule> res = Preprocess::simplifyRule(chcs, rule, true);
     AccelerationResult accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), -1, Complexity::Const);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
         const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
-        // TODO problematic for SAT
         if (simplified->getUpdate(0) == res->getUpdate(0)) {
-            bool orig = true;
-            for (size_t i = backlink; i < trace.size(); ++i) {
-                if (is_learned_clause(trace[i].clause_idx)) {
-                    orig = false;
-                    break;
-                }
-            }
-            if (orig) {
-                if (log) std::cout << "acceleration yielded equivalent rule, keeping preprocessed rule" << std::endl;
-                res.succeed();
-            } else {
-                if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
-                return std::make_unique<Failed>();
-            }
+            // The learned clause is trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
+            // Such clauses are pretty useless, so we do not store them.
+            // TODO incorrect for SAT, as we mark 'lang' as redundant without learning a clause
+            if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
+            return std::make_unique<Failed>();
         } else {
             // accelerated rule differs from the original one, update the result
             res = *accel_res.rule;
@@ -502,8 +484,8 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         if (log) std::cout << "acceleration failed" << std::endl;
         return std::make_unique<Failed>();
     }
-    return std::make_unique<Succeeded>(res.map<TransIdx>([this, &automaton](const auto &x){
-        return add_learned_clause(x, automaton);
+    return std::make_unique<Succeeded>(res.map<TransIdx>([this, &lang](const auto &x){
+        return add_learned_clause(x, lang);
     }));
 }
 
@@ -520,16 +502,15 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
     redundance->mark_as_redundant(automaton);
     const auto loop = build_loop(backlink);
     if (loop.getUpdate(0).empty()) {
-        std::cout << "dropping trivial loop" << std::endl;
+        if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
-    // TODO bad idea for SAT
     // for large-degree polynomials, Z3 tends to get stalled, irrespectively of its timeout
+    // TODO incorrect for SAT
     if (loop.getUpdate(0).isPoly() && !loop.getUpdate(0).isPoly(10)) {
         return std::make_unique<Failed>();
     }
-    bool orig = static_cast<size_t>(backlink) == trace.size() - 1;
-    auto state = learn_clause(loop, automaton, orig);
+    auto state = learn_clause(loop, automaton);
     if (!state->succeeded()) {
         return state;
     }
@@ -598,7 +579,7 @@ void Reachability::analyze() {
     do {
         if (log) std::cout << "trace: " << trace << std::endl;
         for (int backlink = has_looping_suffix(); backlink >= 0; backlink = has_looping_suffix()) {
-            const Step step = trace[backlink];
+            Step step = trace[backlink];
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             auto state = handle_loop(backlink);
             if (state->covered()) {
@@ -618,6 +599,7 @@ void Reachability::analyze() {
             } else if (state->failed()) {
                 // acceleration failed, loop has been added to Automaton::covered so that it won't be unrolled again
                 // try to continue instead of backtracking immediately
+                trace[backlink].failed_loops.insert(backlink);
                 break;
             }
         }

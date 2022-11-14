@@ -35,6 +35,24 @@ public:
         return res;
     }
 
+    Var getFreshUntrackedSymbol(const Var &x) {
+        std::lock_guard guard(mutex);
+        const std::string name = getFreshName(variable::getName(x));
+        option<Var> res;
+        Expr::Type type;
+        if (std::holds_alternative<NumVar>(x)) {
+            type = Expr::Int;
+            res = NumVar(name);
+        } else if (std::holds_alternative<BoolVar>(x)) {
+            type = Expr::Int;
+            res = BoolVar(name);
+        } else {
+            throw std::invalid_argument("unsupported variable type");
+        }
+        untrackedVariables[*res] = type;
+        return *res;
+    }
+
     Expr::Type getType(const Var &x) const;
 
     static std::recursive_mutex mutex;

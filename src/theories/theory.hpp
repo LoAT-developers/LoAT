@@ -27,3 +27,12 @@ using ThModel = Model<IntTheory, BoolTheory>;
 
 extern const BoolExpr True;
 extern const BoolExpr False;
+
+namespace theory {
+
+template <size_t I, ITheory T>
+constexpr bool is() {
+    return std::same_as<std::tuple_element_t<I, TheTheory::Theories>, T>;
+}
+
+}

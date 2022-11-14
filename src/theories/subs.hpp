@@ -212,6 +212,25 @@ public:
         putImpl(p);
     }
 
+private:
+
+    template<std::size_t I = 0>
+    inline void putImpl(const Var &x, const Expr &y) {
+        if constexpr (I < sizeof...(Th)) {
+            if (x.index() == I) {
+                std::get<I>(t).put(std::get<I>(x), std::get<I>(y));
+            } else {
+                putImpl<I+1>(x, y);
+            }
+        }
+    }
+
+public:
+
+    void put(const Var &x, const Expr &y) {
+        putImpl(x, y);
+    }
+
     template <ITheory T>
     void put(const typename T::Var &var, const typename T::Expression &expr) {
         std::get<typename T::Subs>(t).put(var, expr);

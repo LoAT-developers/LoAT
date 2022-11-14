@@ -3,13 +3,15 @@
 #include "itheory.hpp"
 #include "inttheory.hpp"
 #include "expression.hpp"
-#include "theory.hpp"
 
 namespace substitution {
 
-Var first(const theory::Subs<IntTheory, BoolTheory>::Pair &p);
+using TheSubs = theory::Subs<IntTheory, BoolTheory>;
+using Pair = TheSubs::Pair;
 
-ThExpr second(const theory::Subs<IntTheory, BoolTheory>::Pair &p);
+Var first(const Pair &p);
+
+ThExpr second(const Pair &p);
 
 template <ITheory... Th>
 void collectVars(const theory::Subs<Th...> &subs, theory::VarSet<Th...> &vars) {

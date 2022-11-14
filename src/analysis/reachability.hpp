@@ -31,6 +31,8 @@ struct Step {
      */
     const Subs model;
 
+    std::set<size_t> failed_loops;
+
     Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const ThModel &model);
 
 };
@@ -119,9 +121,6 @@ class Reachability {
      */
     std::map<LocationIdx, std::vector<TransIdx>> in_scc;
 
-    /**
-     * learned clauses
-     */
     std::map<LocationIdx, std::vector<TransIdx>> learned_clauses;
 
     /**
@@ -146,7 +145,7 @@ class Reachability {
 
     /**
      * A conjunctive clause x is blocked if find(x) != end().
-     * A conjunctive variant y of a non-conjunctive clause x is blocked if cond(y) implies an element of blocked_clause[x].
+     * A conjunctive variant y of a non-conjunctive clause x is blocked if cond(y) implies an element of at(x).
      * Maybe it would be better to subdivide the blocking formulas w.r.t. pairs of predicates instead of clauses.
      */
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked_clauses{{}};
@@ -170,7 +169,7 @@ class Reachability {
     bool is_orig_clause(const TransIdx idx) const;
 
     /**
-     * removes clauses that are not on a path from a fact to a query
+     * removes clauses that are not on a CFG-path from a fact to a query
      */
     ResultViaSideEffects remove_irrelevant_clauses();
 
@@ -223,7 +222,8 @@ class Reachability {
     Red::T get_language(const Step &step);
 
     /**
-     * computes (an approximation of) the language associated with the looping suffix of the trace
+     * computes (an approximation of) the language associated with the clause that can be learned
+     * from the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
     Red::T build_language(const int backlink);
@@ -235,16 +235,16 @@ class Reachability {
     Rule build_loop(const int backlink);
 
     /**
-     * add a learned clause to all relevant data structures
+     * adds a learned clause to all relevant data structures
+     * @param lang (an approximation of) the language associated with the learned clause
      */
     TransIdx add_learned_clause(const Rule &clause, const Red::T &lang);
 
     /**
-     * Try to accelerate the given clause.
-     * @param lang the language associated with the accelerated rule.
-     * @param backlink the start of the looping suffix of the trace
+     * tries to accelerate the given clause
+     * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang, const int backlink);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix
