@@ -194,5 +194,5 @@ option<Rule> Chaining::chainRules(VarMan &varMan, const Rule &first, const Rule 
 option<LinearRule> Chaining::chainRules(VarMan &varMan, const LinearRule &first, const LinearRule &second,
                                         bool checkSat)
 {
-    return chainLinearRules(varMan, first.toLinear(), second.toLinear(), checkSat);
+    return chainLinearRules(varMan, first, second, checkSat);
 }

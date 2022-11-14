@@ -372,7 +372,7 @@ size_t Expr::arity() const {
 }
 
 Expr Expr::subs(const ExprSubs &map) const {
-    return ex.subs(map.ginacMap);
+    return ex.subs(map.ginacMap, GiNaC::subs_options::no_pattern);
 }
 
 void Expr::traverse(GiNaC::visitor &v) const {

@@ -338,7 +338,7 @@ void Reachability::update_rules(const LocationIdx idx) {
     if (it != in_scc.end()) {
         trans.insert(trans.end(), it->second.begin(), it->second.end());
     }
-    rules[idx] = trans;
+    facts_and_rules[idx] = trans;
 }
 
 void Reachability::init() {
@@ -580,10 +580,10 @@ LocationIdx Reachability::get_current_predicate() const {
 bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
     for (const auto &q: queries) {
         z3.push();
-        const option<BoolExpr> sat = resolve(q);
-        if (sat) {
+        const option<BoolExpr> implicant = resolve(q);
+        if (implicant) {
             // no need to compute the model and the variable renaming for the next step, as we are done
-            add_to_trace(Step(q, *sat, Subs(), ThModel()));
+            add_to_trace(Step(q, *implicant, Subs(), ThModel()));
             unsat();
             return true;
         }
@@ -637,40 +637,38 @@ void Reachability::analyze() {
                 break;
             }
         }
-        auto &trans = rules[get_current_predicate()];
-        auto it = trans.begin();
-        // used to re-order clauses by putting those that cannot used for resolution to the end of the list
+        auto &to_try = facts_and_rules[get_current_predicate()];
+        auto it = to_try.begin();
         std::vector<TransIdx> append;
-        while (it != trans.end()) {
+        while (it != to_try.end()) {
             z3.push();
-            const option<BoolExpr> sat = resolve(*it);
-            if (!sat) {
+            const option<BoolExpr> implicant = resolve(*it);
+            if (!implicant) {
                 z3.pop();
                 append.push_back(*it);
-                it = trans.erase(it);
+                it = to_try.erase(it);
             } else {
                 // block learned clauses after adding them to the trace
                 if (is_learned_clause(*it)) {
                     block(trace.back());
                 }
-                store_step(*it, *sat);
+                store_step(*it, *implicant);
                 break;
             }
         }
         if (trace.empty()) {
             break;
-        } else {
-            if (it == trans.end()) {
-                backtrack();
-            } else {
-                // check whether a query is applicable after every step and,
-                // importantly, before acceleration (which might approximate)
-                if (try_queries()) {
-                    return;
-                }
-            }
-            trans.insert(trans.end(), append.begin(), append.end());
         }
+        if (it == to_try.end()) {
+            backtrack();
+        } else {
+            // check whether a query is applicable after every step and,
+            // importantly, before acceleration (which might approximate)
+            if (try_queries()) {
+                return;
+            }
+        }
+        to_try.insert(to_try.end(), append.begin(), append.end());
     } while (true);
     std::cout << "unknown" << std::endl << std::endl;
 }

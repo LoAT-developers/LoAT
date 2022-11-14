@@ -147,7 +147,7 @@ class Reachability {
     const HyperGraph::SCCs sccs {chcs.sccs()};
 
     /**
-     * rules where the head and body symbol belong to different SCCs
+     * facts and rules where the head and body symbol belong to different SCCs
      */
     std::map<LocationIdx, std::vector<TransIdx>> cross_scc;
 
@@ -159,11 +159,11 @@ class Reachability {
     std::map<LocationIdx, std::vector<TransIdx>> learned_clauses;
 
     /**
-     * All rules (including learned clauses).
+     * All facts and rules (including learned clauses).
      * The order of these lists determines the selection order of clauses for resolution.
      * It is updated on the fly when we learn clauses.
      */
-    std::map<LocationIdx, std::list<TransIdx>> rules;
+    std::map<LocationIdx, std::list<TransIdx>> facts_and_rules;
 
     std::map<LocationIdx, std::vector<TransIdx>> queries;
 
