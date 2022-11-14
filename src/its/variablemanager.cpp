@@ -35,19 +35,13 @@ void VariableManager::toLower(string &str) const {
 string VariableManager::getFreshName(string basename) {
     std::lock_guard guard(mutex);
     toLower(basename);
-    std::string res;
-    if (basenameCount.find(basename) == basenameCount.end()) {
-        basenameCount.emplace(basename, 0);
-        res = basename;
-    } else {
-        unsigned int count = basenameCount.at(basename);
+    auto &count = basenameCount.emplace(basename, 0).first->second;
+    std::string res = count == 0 ? basename : basename + to_string(count);
+    while (used.find(res) != used.end()) {
+        ++count;
         res = basename + to_string(count);
-        while (used.find(res) != used.end()) {
-            ++count;
-            res = basename + to_string(count);
-        }
-        basenameCount[basename] = count + 1;
     }
+    count++;
     used.insert(res);
     return res;
 }
