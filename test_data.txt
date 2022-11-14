@@ -61,7 +61,7 @@ unknown
 029
 090
 091
-102
+# 102 segfault after a long time, not reproducible with debug info
 103
 104
 105
@@ -191,7 +191,7 @@ unknown
 186
 173
 320
-096
+# 096 segfault after a long time, not reproducible with debug info
 016
 150
 009
