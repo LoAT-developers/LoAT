@@ -78,12 +78,6 @@ std::ostream& operator<<(std::ostream &s, const std::vector<Step> &step) {
 
 NonLoops::NonLoops(const ITSProblem &chcs): chcs(chcs) {}
 
-std::vector<long> NonLoops::build(const Step &step) {
-    std::vector<long> res;
-    append(res, step);
-    return res;
-}
-
 std::vector<long> NonLoops::build(const std::vector<Step> &trace, int backlink) {
    std::vector<long> sequence;
    for (int i = trace.size() - 1; i >= backlink; --i) {
@@ -192,7 +186,7 @@ int Reachability::has_looping_suffix() {
         return -1;
     }
     const LocationIdx dst = chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
-    std::vector<long> sequence = non_loops.build(trace.back());
+    std::vector<long> sequence;
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
         if (leaves_scc(step.clause_idx)) {
@@ -452,12 +446,12 @@ Reachability::Red::T Reachability::get_language(const Step &step) {
 }
 
 Reachability::Red::T Reachability::build_language(const int backlink) {
-    std::vector<long> automaton = get_language(trace.back());
+    auto lang = get_language(trace.back());
     for (int i = trace.size() - 2; i >= backlink; --i) {
-        redundance->concat(automaton, get_language(trace[i]));
+        redundance->concat(lang, get_language(trace[i]));
     }
-    redundance->transitive_closure(automaton);
-    return automaton;
+    redundance->transitive_closure(lang);
+    return lang;
 }
 
 Rule Reachability::build_loop(const int backlink) {
@@ -509,8 +503,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
         if (simplified->getUpdate(0) == res->getUpdate(0)) {
             // The learned clause is trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
-            // Such clauses are pretty useless, so we do not store them.
-            // TODO incorrect for SAT, as we mark 'lang' as redundant without learning a clause
+            // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
             if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
             return std::make_unique<Failed>();
         } else {
@@ -518,11 +511,11 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             res = *accel_res.rule;
             res.storeSubProof(accel_res.proof);
             res.concat(simplified);
-        }
-        if (log) {
-            std::cout << "accelerated rule:" << std::endl;
-            ITSExport::printRule(*res, chcs, std::cout);
-            std::cout << std::endl;
+            if (log) {
+                std::cout << "accelerated rule:" << std::endl;
+                ITSExport::printRule(*res, chcs, std::cout);
+                std::cout << std::endl;
+            }
         }
     } else {
         if (log) std::cout << "acceleration failed" << std::endl;
@@ -534,16 +527,15 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
 }
 
 std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
-    const Step step = trace[backlink];
-    const auto automaton = build_language(backlink);
-    if (redundance->is_redundant(automaton)) {
+    const auto lang = build_language(backlink);
+    if (redundance->is_redundant(lang)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
     } else if (log) {
         std::cout << "learning clause for the following language:" << std::endl;
-        std::cout << automaton << std::endl;
+        std::cout << lang << std::endl;
     }
-    redundance->mark_as_redundant(automaton);
+    redundance->mark_as_redundant(lang);
     const auto loop = build_loop(backlink);
     if (loop.getUpdate(0).empty()) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
@@ -554,7 +546,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
     if (loop.getUpdate(0).isPoly() && !loop.getUpdate(0).isPoly(10)) {
         return std::make_unique<Failed>();
     }
-    auto state = learn_clause(loop, automaton);
+    auto state = learn_clause(loop, lang);
     if (!state->succeeded()) {
         return state;
     }
@@ -562,11 +554,13 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
     const auto idx = **accel_state;
     const auto subproof = accel_state->getProof();
     const auto accel = chcs.getRule(idx);
+    // drop the looping suffix
     drop_until(backlink);
     proof.majorProofStep("accelerated loop", chcs);
     proof.storeSubProof(subproof);
     z3.push();
-    // TODO this makes little sense for loops with more than one clause
+    // TODO This makes little sense for loops with more than one clause, since temporary variables from
+    // previous steps do not get renamed
     z3.add(accel.getGuard()->subs(trace.back().var_renaming));
     if (z3.check() == Sat) {
         store_step(idx, accel.getGuard());
@@ -589,10 +583,7 @@ bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
         const option<BoolExpr> sat = resolve(q);
         if (sat) {
             // no need to compute the model and the variable renaming for the next step, as we are done
-            const ThModel model;
-            const Subs new_var_renaming;
-            const Step step(q, *sat, new_var_renaming, model);
-            add_to_trace(step);
+            add_to_trace(Step(q, *sat, Subs(), ThModel()));
             unsat();
             return true;
         }
@@ -641,14 +632,14 @@ void Reachability::analyze() {
             } else if (state->dropped()) {
                 block(step);
             } else if (state->failed()) {
+                // non-loop --> do not backtrack
                 non_loops.add(trace, backlink);
-                // acceleration failed, loop has been added to Automaton::covered so that it won't be unrolled again
-                // try to continue instead of backtracking immediately
                 break;
             }
         }
         auto &trans = rules[get_current_predicate()];
         auto it = trans.begin();
+        // used to re-order clauses by putting those that cannot used for resolution to the end of the list
         std::vector<TransIdx> append;
         while (it != trans.end()) {
             z3.push();
@@ -666,8 +657,9 @@ void Reachability::analyze() {
                 break;
             }
         }
-        trans.insert(trans.end(), append.begin(), append.end());
-        if (!trace.empty()) {
+        if (trace.empty()) {
+            break;
+        } else {
             if (it == trans.end()) {
                 backtrack();
             } else {
@@ -677,8 +669,9 @@ void Reachability::analyze() {
                     return;
                 }
             }
+            trans.insert(trans.end(), append.begin(), append.end());
         }
-    } while (!trace.empty());
+    } while (true);
     std::cout << "unknown" << std::endl << std::endl;
 }
 

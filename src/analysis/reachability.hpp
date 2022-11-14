@@ -39,8 +39,12 @@ struct Step {
  * Stores which looping sequences of CHCs should be treated as if they were non-looping.
  * Used for sequences whose resolvent is something like f(x) -> f(0). For such clauses,
  * the learned clause would be equivalent to the original clause, and we want to avoid
- * learning many of those useless clauses. Additionally, we treat looping sequences where
- * acceleration fails as if they were non-looping.
+ * learning many of those useless clauses.
+ *
+ * TODO Should be sound for SAT, but we have to check that carefully.
+ *
+ * Additionally, we treat looping sequences where acceleration fails as if they were
+ * non-looping.
  *
  * Note that we still mark the corresponding language as redundant. So if [1,2,3] is
  * a non-loop, then we keep using "Step" such that we may eventually obtain [1,2,3,1,2,3].
@@ -59,8 +63,6 @@ public:
     NonLoops(const ITSProblem &chcs);
 
     std::vector<long> build(const std::vector<Step> &trace, int backlink);
-
-    std::vector<long> build(const Step &step);
 
     void add(const std::vector<Step> &trace, int backlink);
 
