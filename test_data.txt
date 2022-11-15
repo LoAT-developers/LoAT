@@ -1,5 +1,6 @@
 LIA-Lin
 unsat
+
 032
 034
 038
@@ -35,12 +36,24 @@ unsat
 322
 336
 # 135 terminates, but takes too long
+332
+335
+327
+401
+334
+358
+362
+386
+381
+348
+197
 
 unknown
+
 036
 037
 111
-# 211 -- GiNaC crashes
+# 211 takes too long
 242
 179
 199
@@ -51,7 +64,7 @@ unknown
 194
 182
 006
-008
+# 008 nonterm?
 015
 018
 020
@@ -103,7 +116,6 @@ unknown
 # 169 nonterm?
 312
 461
-381
 000
 001
 002
@@ -111,7 +123,7 @@ unknown
 004
 005
 010
-012
+# 012 nonterm?
 # 013 terminates, but takes too long
 014
 017
@@ -195,3 +207,29 @@ unknown
 016
 150
 009
+333
+325
+180
+181
+240
+171
+208
+215
+257
+240
+198
+207
+# 258 nonterm?
+# 188 nonterm?
+241
+355
+217
+239
+226
+210
+231
+248
+243
+# 195 nonterm?
+# 405 nonterm?
+# 230 nonterm?
