@@ -497,13 +497,17 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule, true);
+    if (res->getUpdate(0) == res->getUpdate(0).concat(res->getUpdate(0))) {
+        // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
+        // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
+        if (log) std::cout << "acceleration would yielded equivalent rule -> dropping it" << std::endl;
+        return std::make_unique<Failed>();
+    }
     acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), -1, Complexity::Const);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
         const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
         if (simplified->getUpdate(0) == res->getUpdate(0)) {
-            // The learned clause is trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
-            // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
             if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
             return std::make_unique<Failed>();
         } else {
