@@ -568,7 +568,6 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
     z3.add(accel.getGuard()->subs(trace.back().var_renaming));
     if (z3.check() == Sat) {
         store_step(idx, accel.getGuard());
-        proof.append(std::stringstream() << "added " << idx << " to trace");
         return state;
     } else {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
