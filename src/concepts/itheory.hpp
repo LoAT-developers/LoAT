@@ -60,6 +60,7 @@ concept ITheory = requires(T t, typename T::Val val, typename T::Var var) {
         typename T::Subs;
         {T::valToExpr(val)} -> std::same_as<typename T::Expression>;
         {T::varToExpr(var)} -> std::same_as<typename T::Expression>;
+        {T::anyValue()} -> std::same_as<typename T::Expression>;
 };
 
 template<ITheory... Th>
@@ -97,6 +98,27 @@ public:
 
     static Expression varToExpr(const Var &var) {
         return varToExprImpl<0>(var);
+    }
+
+private:
+
+    template <size_t I = 0>
+    inline static Expression anyValueImpl(const size_t i) {
+        if constexpr (I < sizeof...(Th)) {
+            if (i == I) {
+                return std::tuple_element_t<I, Theories>::anyValue();
+            } else {
+                return anyValueImpl<I+1>(i);
+            }
+        } else {
+            throw std::logic_error("I too large");
+        }
+    }
+
+public:
+
+    static Expression anyValue(const size_t i) {
+        return anyValueImpl<0>(i);
     }
 
 };

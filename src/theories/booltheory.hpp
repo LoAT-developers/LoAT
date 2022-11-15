@@ -27,6 +27,10 @@ struct BoolTheory: public BoolBaseTheory {
         return BoolExpression<IntTheory, BoolTheory>::buildTheoryLit(Lit(val));
     }
 
+    static Expression anyValue() {
+        return BoolExpression<IntTheory, BoolTheory>::False;
+    }
+
 };
 
 static_assert(IBaseTheory<BoolBaseTheory>);

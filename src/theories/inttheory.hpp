@@ -19,6 +19,10 @@ struct IntTheory {
         return var;
     }
 
+    static Expression anyValue() {
+        return 0;
+    }
+
 };
 
 static_assert(ITheory<IntTheory>);

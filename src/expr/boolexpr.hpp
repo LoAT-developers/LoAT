@@ -178,7 +178,7 @@ public:
 
 private:
 
-    bool implicant(const Subs &subs, LS &res) const {
+    bool implicant(Subs &subs, LS &res) const {
         if (isOr()) {
             option<LS> best_res;
             for (const auto &c: getChildren()) {
@@ -206,7 +206,17 @@ private:
         } else {
             const auto lit = getTheoryLit();
             if (lit) {
-                if (literal::subs(*lit, subs)->isTriviallyTrue()) {
+                auto l = literal::subs(*lit, subs);
+                const auto vars = l->vars();
+                if (!vars.empty()) {
+                    // Since this->subs(subs) is a tautology, we may set variables in non-ground
+                    // literals to arbitrary values.
+                    for (const auto &x: vars) {
+                        subs.put(x, T::anyValue(x.index()));
+                    }
+                    l = l->subs(subs);
+                }
+                if (l->isTriviallyTrue()) {
                     res.insert(*lit);
                     return true;
                 } else {
@@ -220,7 +230,10 @@ private:
 
 public:
 
-    option<LS> implicant(const Subs &subs) const {
+    /**
+     * Assumes that this->subs(subs) is a tautology.
+     */
+    option<LS> implicant(Subs subs) const {
         LS res;
         if (implicant(subs, res)) {
             return res;
