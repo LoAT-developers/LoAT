@@ -188,7 +188,9 @@ private:
     Num getRealFromModel(model_t *model, type_t symbol) {
         int64_t num;
         uint64_t denom;
-        yices_get_rational64_value(model, symbol, &num, &denom);
+        if (yices_get_rational64_value(model, symbol, &num, &denom) == EVAL_OVERFLOW) {
+            throw std::overflow_error("overflow during conversion of model");
+        }
         assert(denom != 0);
         Num res = num;
         res = res / denom;

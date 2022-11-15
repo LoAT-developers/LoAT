@@ -149,7 +149,7 @@ public:
      */
     unsigned maxDegree() const;
 
-    unsigned totalDegree() const;
+    Num totalDegree() const;
 
     /**
      * @brief Collects all variables that occur in this expression.

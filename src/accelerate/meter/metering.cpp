@@ -241,7 +241,11 @@ void MeteringFinder::ensureIntegralMetering(Result &result, const Model<IntTheor
 
     for (const auto &theCoeff : meterVars.coeffs) {
         Num coeff = model.get<IntTheory>(theCoeff);
-        if (coeff.denom().to_int() != 1) {
+        if (!coeff.denom().is_equal(1)) {
+            if ((coeff.denom() - std::numeric_limits<int>::min()).is_negative() ||
+                    (coeff.denom() - std::numeric_limits<int>::max()).is_positive()) {
+                throw std::overflow_error("denominator too large");
+            }
             has_reals = true;
             mult = boost::integer::lcm(mult, coeff.denom().to_int());
         }

@@ -205,8 +205,12 @@ int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
             if (ex.op(1).has(n) && ex.op(1).isPoly(n)) {
                 assert(ex.op(0).isInt());
                 assert(ex.op(0).toNum().is_positive());
-
-                int base =  ex.op(0).toNum().to_int();
+                Num numBase = ex.op(0).toNum();
+                if ((numBase - std::numeric_limits<int>::min()).is_negative() ||
+                        (numBase - std::numeric_limits<int>::max()).is_positive()) {
+                    throw std::overflow_error("base too large");
+                }
+                int base = numBase.to_int();
                 if (base > lowerBound) {
                     lowerBound = base;
                 }

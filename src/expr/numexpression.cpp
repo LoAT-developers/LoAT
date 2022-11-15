@@ -89,15 +89,18 @@ bool Expr::isPoly() const {
     return ex.info(GiNaC::info_flags::polynomial);
 }
 
-unsigned Expr::totalDegree() const {
+Num Expr::totalDegree() const {
     if (isAdd()) {
-        unsigned res = 0;
+        Num res(0);
         for (unsigned i = 0; i < arity(); ++i) {
-            res = max(res, op(i).totalDegree());
+            Num deg = op(i).totalDegree();
+            if ((deg - res).is_positive()) {
+                res = deg;
+            }
         }
         return res;
     } else if (isMul()) {
-        unsigned res = 0;
+        Num res(0);
         for (unsigned i = 0; i < arity(); ++i) {
             res = res + op(i).totalDegree();
         }
@@ -105,7 +108,7 @@ unsigned Expr::totalDegree() const {
     } else if (isVar()) {
         return 1;
     } else if (isPow()) {
-        return op(1).toNum().to_int();
+        return op(1).toNum();
     }
     if (!isGround()) {
         std::cerr << "Expr::totalDegree: " << *this << " is not a polynomial" << std::endl;
@@ -116,7 +119,7 @@ unsigned Expr::totalDegree() const {
 }
 
 bool Expr::isPoly(unsigned max_degree) const {
-    return isPoly() && totalDegree() <= max_degree;
+    return isPoly() && !(totalDegree() - max_degree).is_positive();
 }
 
 bool Expr::isPoly(const NumVar &n) const {
@@ -166,7 +169,7 @@ bool Expr::isOctagon() const {
         if (degree(v) > 1) return false;
         const Expr c = coeff(v);
         if (!c.isInt()) return false;
-        if (std::abs(c.toNum().to_int()) > 1) return false;
+        if ((c.toNum() - 1).is_positive() || (c.toNum() + 1).is_negative()) return false;
     }
     return true;
 }

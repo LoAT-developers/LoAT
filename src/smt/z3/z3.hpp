@@ -131,14 +131,16 @@ private:
     z3::solver solver;
 
     Num getRealFromModel(const z3::model &model, const z3::expr &symbol) {
-        int num,denom;
-        Z3_get_numeral_int(model.ctx(),Z3_get_numerator(model.ctx(),model.eval(symbol,true)),&num);
-        Z3_get_numeral_int(model.ctx(),Z3_get_denominator(model.ctx(),model.eval(symbol,true)),&denom);
-        assert(denom != 0);
-
-        Num res = num;
-        res = res / denom;
-        return res;
+        return Num(Z3_get_numeral_string(
+                       model.ctx(),
+                       Z3_get_numerator(
+                           model.ctx(),
+                           model.eval(symbol, true)))) /
+                Num(Z3_get_numeral_string(
+                        model.ctx(),
+                        Z3_get_denominator(
+                            model.ctx(),
+                            model.eval(symbol, true))));
     }
 
     void updateParams() {

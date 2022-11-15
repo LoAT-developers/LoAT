@@ -17,6 +17,8 @@
 
 #include "complexity.hpp"
 
+#include <limits>
+
 const Complexity Complexity::Unknown = Complexity(CpxUnknown);
 const Complexity Complexity::Const = Complexity::Poly(0);
 const Complexity Complexity::Exp = Complexity(CpxExponential);
@@ -151,6 +153,10 @@ Complexity toComplexityRec(const Expr &term) {
             }
             Num numexp = term.op(1).toNum();
             if (!numexp.is_nonneg_integer()) {
+                return Complexity::Unknown;
+            }
+            if ((numexp - std::numeric_limits<int>::min()).is_negative() ||
+                    (numexp - std::numeric_limits<int>::max()).is_positive()) {
                 return Complexity::Unknown;
             }
 

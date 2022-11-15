@@ -119,7 +119,7 @@ protected:
         //rewrite power as multiplication if possible, which z3 can handle much better (e.g x^3 becomes x*x*x)
         if (e.op(1).isRationalConstant()) {
             Num num = e.op(1).toNum();
-            if (num.is_integer() && num.is_positive() && num.to_long() <= Config::Smt::MaxExponentWithoutPow) {
+            if (num.is_integer() && num.is_positive() && !(num - Config::Smt::MaxExponentWithoutPow).is_positive()) {
                 int exp = num.to_int();
                 EXPR base = convertEx(e.op(0));
 
