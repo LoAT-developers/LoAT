@@ -35,7 +35,6 @@ unsat
 328
 322
 336
-# 135 terminates, but takes too long
 332
 335
 327
@@ -53,7 +52,7 @@ unknown
 036
 037
 111
-# 211 takes too long
+211
 242
 179
 199
@@ -233,3 +232,4 @@ unknown
 # 195 nonterm?
 # 405 nonterm?
 # 230 nonterm?
+# 135 terminates, but takes too long
