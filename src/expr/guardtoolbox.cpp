@@ -142,10 +142,10 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
             const auto var = *it;
             if (its.isTempVar(var)) {
                 BoolExprSet consequences = rule.getGuard()->findConsequences(var);
-                const auto lit = BExpression::buildTheoryLit(var);
+                const BoolLit lit(var);
                 for (const BoolExpr &c: consequences) {
                     if (!hasTempVars(c)) {
-                        if (SmtFactory::isImplication(rule.getGuard() & c, lit, its)) {
+                        if ((rule.getGuard() & c)->implies(lit)) {
                             res = res->subs(Subs::build<BoolTheory>(var, c));
                             it = bvars.erase(it);
                             changed = true;

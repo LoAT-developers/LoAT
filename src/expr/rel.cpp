@@ -198,6 +198,13 @@ void Rel::getBounds(const NumVar &n, Bounds &res) const {
     }
 }
 
+bool Rel::implies(const Rel &that) const {
+    const Expr x = this->makeRhsZero().toGt().lhs();
+    const Expr y = that.makeRhsZero().toGt().lhs();
+    const Expr diff = y - x;
+    return diff.isRationalConstant() && diff.toNum().is_positive();
+}
+
 Rel Rel::toIntPoly() const {
     assert(isPoly());
     return Rel((l-r).toIntPoly(), op, 0);

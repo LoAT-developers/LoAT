@@ -58,6 +58,10 @@ void BoolLit::collectVars(std::set<BoolVar> &res) const {
     res.insert(var);
 }
 
+bool BoolLit::implies(const BoolLit &that) const {
+    return *this == that;
+}
+
 bool operator<(const BoolLit &l1, const BoolLit &l2) {
     return l1.compare(l2) < 0;
 }

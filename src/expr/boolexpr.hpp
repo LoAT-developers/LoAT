@@ -542,6 +542,26 @@ public:
         return res;
     }
 
+    bool implies(const Lit &lit) const {
+        if (isAnd()) {
+            for (const auto &c: getChildren()) {
+                if (c->implies(lit)) {
+                    return true;
+                }
+            }
+            return false;
+        } else if (isOr()) {
+            for (const auto &c: getChildren()) {
+                if (!c->implies(lit)) {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return literal_t::implies<Th...>(*this->getTheoryLit(), lit);
+        }
+    }
+
     std::vector<G> dnf() const {
         std::vector<G> res;
         dnf(res);

@@ -151,4 +151,24 @@ bool isPoly(const typename Theory<Th...>::Lit &lit) {
     return isPolyImpl<0, Th...>(lit);
 }
 
+template <size_t I = 0, ITheory... Th>
+inline bool impliesImpl(const typename Theory<Th...>::Lit &x, const typename Theory<Th...>::Lit &y) {
+    if constexpr (I < sizeof...(Th)) {
+        if (x.index() == I) {
+            return std::get<I>(x).implies(std::get<I>(y));
+        }
+        return impliesImpl<I+1, Th...>(x, y);
+    } else {
+        throw std::logic_error("unknown theory");
+    }
+}
+
+template <ITheory... Th>
+bool implies(const typename Theory<Th...>::Lit &x, const typename Theory<Th...>::Lit &y) {
+    if (x.index() != y.index()) {
+        return false;
+    }
+    return impliesImpl<0, Th...>(x, y);
+}
+
 }
