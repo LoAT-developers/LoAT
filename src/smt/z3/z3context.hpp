@@ -55,9 +55,6 @@ public:
     z3::expr bFalse() const override;
     z3::expr negate(const z3::expr &x) override;
 
-    bool isNoOp(const z3::expr &e) const override;
-
-    bool isLit(const z3::expr &e) const override;
     bool isTrue(const z3::expr &e) const override;
     bool isFalse(const z3::expr &e) const override;
     bool isNot(const z3::expr &e) const override;
@@ -65,15 +62,11 @@ public:
     bool isAnd(const z3::expr &e) const override;
     bool isAdd(const z3::expr &e) const override;
     bool isMul(const z3::expr &e) const override;
-    bool isDiv(const z3::expr &e) const override;
     bool isPow(const z3::expr &e) const override;
     bool isVar(const z3::expr &e) const override;
     bool isRationalConstant(const z3::expr &e) const override;
     bool isInt(const z3::expr &e) const override;
-    bool isITE(const z3::expr &e) const override;
     long toInt(const z3::expr &e) const override;
-    long numerator(const z3::expr &e) const override;
-    long denominator(const z3::expr &e) const override;
     z3::expr lhs(const z3::expr &e) const override;
     z3::expr rhs(const z3::expr &e) const override;
     Rel::RelOp relOp(const z3::expr &e) const override;

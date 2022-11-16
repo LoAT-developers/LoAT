@@ -47,11 +47,6 @@ public:
     virtual EXPR bFalse() const = 0;
     virtual EXPR negate(const EXPR &x) = 0;
 
-    virtual bool isNoOp(const EXPR &e) const {
-        return false;
-    }
-
-    virtual bool isLit(const EXPR &e) const = 0;
     virtual bool isTrue(const EXPR &e) const = 0;
     virtual bool isFalse(const EXPR &e) const = 0;
     virtual bool isNot(const EXPR &e) const = 0;
@@ -59,15 +54,11 @@ public:
     virtual bool isAnd(const EXPR &e) const = 0;
     virtual bool isAdd(const EXPR &e) const = 0;
     virtual bool isMul(const EXPR &e) const = 0;
-    virtual bool isDiv(const EXPR &e) const = 0;
     virtual bool isPow(const EXPR &e) const = 0;
     virtual bool isVar(const EXPR &e) const = 0;
     virtual bool isRationalConstant(const EXPR &e) const = 0;
     virtual bool isInt(const EXPR &e) const = 0;
-    virtual bool isITE(const EXPR &e) const = 0;
     virtual long toInt(const EXPR &e) const = 0;
-    virtual long numerator(const EXPR &e) const = 0;
-    virtual long denominator(const EXPR &e) const = 0;
     virtual EXPR lhs(const EXPR &e) const = 0;
     virtual EXPR rhs(const EXPR &e) const = 0;
     virtual Rel::RelOp relOp(const EXPR &e) const = 0;

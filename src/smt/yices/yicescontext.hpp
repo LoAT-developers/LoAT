@@ -50,7 +50,6 @@ public:
     term_t bFalse() const override;
     term_t negate(const term_t &x) override;
 
-    bool isLit(const term_t &e) const override;
     bool isTrue(const term_t &e) const override;
     bool isFalse(const term_t &e) const override;
     bool isNot(const term_t &e) const override;
@@ -58,15 +57,11 @@ public:
     bool isAnd(const term_t &e) const override;
     bool isAdd(const term_t &e) const override;
     bool isMul(const term_t &e) const override;
-    bool isDiv(const term_t &e) const override;
     bool isPow(const term_t &e) const override;
     bool isVar(const term_t &e) const override;
     bool isRationalConstant(const term_t &e) const override;
     bool isInt(const term_t &e) const override;
-    bool isITE(const term_t &e) const override;
     long toInt(const term_t &e) const override;
-    long numerator(const term_t &e) const override;
-    long denominator(const term_t &e) const override;
     term_t lhs(const term_t &e) const override;
     term_t rhs(const term_t &e) const override;
     Rel::RelOp relOp(const term_t &e) const override;
@@ -78,6 +73,10 @@ protected:
     term_t buildVar(const std::string &basename, Expr::Type type) override;
 
 private:
+
+    long numerator(const term_t &e) const;
+    long denominator(const term_t &e) const;
+
     std::map<term_t, std::string> varNames;
 
 };

@@ -124,12 +124,6 @@ bool YicesContext::isMul(const term_t &e) const {
     return yices_term_is_product(e) || (yices_term_num_children(e) == 1 && yices_term_is_sum(e));
 }
 
-bool YicesContext::isDiv(const term_t &e) const {
-    term_constructor ctor = yices_term_constructor(e);
-    assert(ctor != YICES_RDIV);
-    return ctor == YICES_IDIV;
-}
-
 bool YicesContext::isPow(const term_t &e) const {
     // yices does not support exponentiation
     // it has a special internal representation for polynomials, though
@@ -147,10 +141,6 @@ bool YicesContext::isRationalConstant(const term_t &e) const {
 
 bool YicesContext::isInt(const term_t &e) const {
     return yices_is_int_atom(e);
-}
-
-bool YicesContext::isITE(const term_t &e) const {
-    return yices_term_constructor(e) == YICES_ITE_TERM;
 }
 
 long YicesContext::toInt(const term_t &e) const {
@@ -191,11 +181,6 @@ term_t YicesContext::lhs(const term_t &e) const {
 
 term_t YicesContext::rhs(const term_t &e) const {
     return yices_term_child(e, 1);
-}
-
-bool YicesContext::isLit(const term_t &e) const {
-    term_constructor ctor = yices_term_constructor(e);
-    return ctor == YICES_ARITH_GE_ATOM || ctor == YICES_EQ_TERM;
 }
 
 bool YicesContext::isTrue(const term_t &e) const {

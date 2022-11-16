@@ -25,12 +25,10 @@
 #include "numvar.hpp"
 
 class Expr;
-class NumExpr;
 class NumVar;
 class Recurrence;
 class Rel;
 class ExprSubs;
-class ExprMap;
 
 // Specifies for which coefficients c we can solve "c*x == t" for x.
 enum SolvingLevel {
@@ -53,11 +51,7 @@ class Expr {
      */
     friend class Recurrence;
 
-    /*
-     * An ExprMap encapsulates a GiNaC::exmap, which can directly be applied to the encapsulated GiNaC::ex.
-     */
     friend class ExprSubs;
-    friend class ExprMap;
 
 public:
 

@@ -96,25 +96,6 @@ z3::expr Z3Context::negate(const z3::expr &x) {
     return !x;
 }
 
-bool Z3Context::isNoOp(const z3::expr &e) const {
-    switch (e.decl().decl_kind()) {
-    case Z3_OP_TO_INT:
-    case Z3_OP_TO_REAL: return true;
-    default: return false;
-    }
-}
-
-bool Z3Context::isLit(const z3::expr &e) const {
-    switch (e.decl().decl_kind()) {
-    case Z3_OP_EQ:
-    case Z3_OP_GT:
-    case Z3_OP_GE:
-    case Z3_OP_LE:
-    case Z3_OP_LT: return true;
-    default: return false;
-    }
-}
-
 bool Z3Context::isTrue(const z3::expr &e) const {
     return e.is_true();
 }
@@ -148,10 +129,6 @@ bool Z3Context::isMul(const z3::expr &e) const {
     return e.is_app() && e.decl().decl_kind() == Z3_OP_MUL;
 }
 
-bool Z3Context::isDiv(const z3::expr &e) const {
-    return e.is_app() && e.decl().decl_kind() == Z3_OP_DIV;
-}
-
 bool Z3Context::isPow(const z3::expr &e) const  {
     return e.is_app() && e.decl().decl_kind() == Z3_OP_POWER;
 }
@@ -168,20 +145,8 @@ bool Z3Context::isInt(const z3::expr &e) const {
     return e.is_numeral() && e.is_int();
 }
 
-bool Z3Context::isITE(const z3::expr &e) const {
-    return e.is_ite();
-}
-
 long Z3Context::toInt(const z3::expr &e) const {
     return e.get_numeral_int64();
-}
-
-long Z3Context::numerator(const z3::expr &e) const {
-    return e.numerator().get_numeral_int64();
-}
-
-long Z3Context::denominator(const z3::expr &e) const {
-    return e.denominator().get_numeral_int64();
 }
 
 z3::expr Z3Context::lhs(const z3::expr &e) const {

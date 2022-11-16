@@ -111,7 +111,7 @@ public:
             BoolExprSet res;
             for (const z3::expr &e: core) {
                 std::pair<unsigned int, std::string> key = {e.hash(), e.to_string()};
-                assert(map.count(key) > 0);
+                assert(map.contains(key));
                 res.insert(map[key]);
             }
             return {Unsat, res};
