@@ -69,26 +69,6 @@ RUN make install
 
 RUN xbps-install -y gmp-devel gmpxx-devel
 
-RUN xbps-install -y bash
-RUN xbps-install -y patch
-RUN xbps-install -y libedit-devel
-RUN xbps-install -y python3-pip
-RUN xbps-install -y openjdk
-
-# CVC
-# has to be installed before libpoly, as it does not work with all libpoly versions,
-# but tries to use the system-wider installation if there is one
-RUN /usr/sbin/python3 -m pip install toml
-WORKDIR /src
-RUN wget https://codeload.github.com/cvc5/cvc5/tar.gz/refs/tags/cvc5-1.0.2
-RUN tar xf cvc5-1.0.2
-WORKDIR /src/cvc5-cvc5-1.0.2
-RUN ./contrib/get-glpk-cut-log
-RUN ./configure.sh --best --auto-download --gpl --static
-WORKDIR /src/cvc5-cvc5-1.0.2/build
-RUN make -j
-RUN make install
-
 # libpoly
 WORKDIR /src
 RUN git clone https://github.com/SRI-CSL/libpoly.git
@@ -167,6 +147,7 @@ WORKDIR /src
 RUN wget https://fgdes.tf.fau.de/archive/libfaudes-2_30b.tar.gz
 RUN tar xf libfaudes-2_30b.tar.gz
 WORKDIR /src/libfaudes-2_30b
+RUN xbps-install -y bash
 RUN sed -i 's/MAINOPTS += -std=gnu++98 -D_GLIBCXX_USE_CXX11_ABI=0/MAINOPTS += -std=c++11/g' Makefile
 RUN FAUDES_LINKING=static make -j
 

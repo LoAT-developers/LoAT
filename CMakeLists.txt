@@ -50,8 +50,6 @@ find_library(Z3 z3)
 message(STATUS "z3: ${Z3}")
 find_library(YICES yices)
 message(STATUS "yices: ${YICES}")
-find_library(CVC cvc5)
-message(STATUS "CVC: ${CVC}")
 find_library(PURRS purrs)
 message(STATUS "purrs: ${PURRS}")
 find_library(GINAC ginac)
@@ -109,11 +107,6 @@ if (NOT Z3)
     return()
 endif() 
 
-if (NOT CVC)
-    message(STATUS "CVC not found.")
-    return()
-endif()
-
 target_include_directories(${EXECUTABLE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../reduce-algebra/generic/libreduce/src/")
 target_include_directories(${EXECUTABLE} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_30b/include/")
 
@@ -122,7 +115,6 @@ target_link_libraries(
     ${PURRS}
     ${GINAC}
     ${Z3}
-    ${CVC}
     ${NTL}
     ${CLN}
     ${YICES}
