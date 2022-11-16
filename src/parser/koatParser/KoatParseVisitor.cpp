@@ -148,7 +148,7 @@ antlrcpp::Any KoatParseVisitor::visitCond(KoatParser::CondContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
     if (ctx->INT()) {
-        return Expr(stoi(ctx->INT()->getText()));
+        return Num(ctx->INT()->getText().c_str());
     } else if (ctx->var()) {
         const auto var = any_cast<var_type>(visit(ctx->var()));
         return Expr(var);

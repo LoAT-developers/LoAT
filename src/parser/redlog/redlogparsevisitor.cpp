@@ -19,7 +19,7 @@ antlrcpp::Any RedlogParseVisitor::visitExpr(redlogParser::ExprContext *ctx) {
   if (ctx->VAR()) {
       return Expr(NumVar(ctx->getText()));
   } else if (ctx->INT()) {
-      return Expr(stoi(ctx->getText()));
+      return Num(ctx->getText().c_str());
   } else if (ctx->MINUS()) {
       const auto child = any_cast<expr_type>(visit(ctx->expr(0)));
       return -child;
