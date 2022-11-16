@@ -183,7 +183,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
     const auto sort = any_cast<sort_type>(visit(ctx->sort()));
-    const auto name = ctx->var()->getText();
+    const auto name = unescape(ctx->var()->getText());
     switch (sort) {
     case Bool:
         var(name, Expr::Bool);
@@ -292,7 +292,7 @@ Var CHCParseVisitor::var(const std::string &name, Expr::Type type) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
-    const auto name = ctx->var()->getText();
+    const auto name = unescape(ctx->var()->getText());
     let_type ret;
     if (ctx->i_formula()) {
         const auto res = any_cast<formula_type>(visit(ctx->i_formula()));
@@ -442,8 +442,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         const auto x = any_cast<Var>(visit(ctx->var()));
         res.t = std::get<NumVar>(x);
     } else if (ctx->INT()) {
-        long l = std::stoi(ctx->getText());
-        res.t = l;
+        res.t = std::stoi(ctx->getText());
     } else if (args.size() == 1) {
         res.t = args[0];
     }
@@ -484,7 +483,7 @@ antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *ctx) {
     if (ctx->var()) {
-        const option<LocationIdx> loc = its.getLocationIdx(ctx->getText());
+        const option<LocationIdx> loc = its.getLocationIdx(unescape(ctx->getText()));
         if (loc) {
             return std::variant<BoolVar, FunApp>(FunApp(*loc, {}));
         } else {
