@@ -59,8 +59,8 @@ option<Failed> Failed::failed() {
     return *this;
 }
 
-Reachability::Reachability(ITSProblem &chcs): chcs(chcs), z3(chcs), non_loops(chcs) {
-    z3.enableModels();
+Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs), non_loops(chcs) {
+    solver.enableModels();
 }
 
 Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const ThModel &model):
@@ -214,7 +214,7 @@ Subs Reachability::handle_update(const TransIdx idx) {
     const Subs up = r.getUpdate(0);
     for (const auto &x: prog_vars) {
         const auto y = chcs.getFreshUntrackedSymbol(x);
-        z3.add(literal::mkEq(y, expression::subs(up.get(x), last_var_renaming)));
+        solver.add(literal::mkEq(y, expression::subs(up.get(x), last_var_renaming)));
         new_var_renaming.put(x, TheTheory::varToExpr(y));
     }
     for (const auto &var: r.vars()) {
@@ -241,7 +241,7 @@ void Reachability::block(const Step &step) {
 void Reachability::pop() {
     blocked_clauses.pop_back();
     trace.pop_back();
-    z3.pop();
+    solver.pop();
     proof.pop();
 }
 
@@ -270,11 +270,11 @@ void Reachability::add_to_trace(const Step &step) {
 }
 
 void Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
-    const auto model = z3.model();
+    const auto model = solver.model();
     if (trace.empty()) {
-        z3.add(implicant);
+        solver.add(implicant);
     } else {
-        z3.add(implicant->subs(trace.back().var_renaming));
+        solver.add(implicant->subs(trace.back().var_renaming));
     }
     const auto new_var_renaming = handle_update(idx);
     const Step step(idx, implicant, new_var_renaming, model);
@@ -409,17 +409,17 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
         // a non-conjunctive clause where some variants are blocked
         // --> make sure that we use a non-blocked variant, if any
         for (const auto &b: block->second) {
-            z3.add(!b->subs(var_renaming));
+            solver.add(!b->subs(var_renaming));
         }
     }
-    z3.add(r.getGuard()->subs(var_renaming));
-    if (z3.check() == Sat) {
+    solver.add(r.getGuard()->subs(var_renaming));
+    if (solver.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
         // the models get huge, but we are only interested in those variables that occur in
         // the guard or the variable renaming
         VarSet vars = r.getGuard()->vars();
         substitution::collectVariables(var_renaming, vars);
-        const auto implicant = r.getGuard()->implicant(var_renaming.compose(z3.model().toSubs(vars)));
+        const auto implicant = r.getGuard()->implicant(var_renaming.compose(solver.model().toSubs(vars)));
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {
@@ -562,16 +562,16 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
     drop_until(backlink);
     proof.majorProofStep("accelerated loop", chcs);
     proof.storeSubProof(subproof);
-    z3.push();
+    solver.push();
     // TODO This makes little sense for loops with more than one clause, since temporary variables from
     // previous steps do not get renamed
-    z3.add(accel.getGuard()->subs(trace.back().var_renaming));
-    if (z3.check() == Sat) {
+    solver.add(accel.getGuard()->subs(trace.back().var_renaming));
+    if (solver.check() == Sat) {
         store_step(idx, accel.getGuard());
         return state;
     } else {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
-        z3.pop();
+        solver.pop();
         return std::make_unique<Dropped>();
     }
 }
@@ -582,7 +582,7 @@ LocationIdx Reachability::get_current_predicate() const {
 
 bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
     for (const auto &q: queries) {
-        z3.push();
+        solver.push();
         const option<BoolExpr> implicant = resolve(q);
         if (implicant) {
             // no need to compute the model and the variable renaming for the next step, as we are done
@@ -590,7 +590,7 @@ bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
             unsat();
             return true;
         }
-        z3.pop();
+        solver.pop();
     }
     return false;
 }
@@ -644,10 +644,10 @@ void Reachability::analyze() {
         auto it = to_try.begin();
         std::vector<TransIdx> append;
         while (it != to_try.end()) {
-            z3.push();
+            solver.push();
             const option<BoolExpr> implicant = resolve(*it);
             if (!implicant) {
-                z3.pop();
+                solver.pop();
                 append.push_back(*it);
                 it = to_try.erase(it);
             } else {

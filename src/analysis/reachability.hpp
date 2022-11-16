@@ -1,7 +1,7 @@
 #pragma once
 
 #include "itsproblem.hpp"
-#include "z3.hpp"
+#include "linearizingsolver.hpp"
 #include "itsproblem.hpp"
 #include "proof.hpp"
 #include "result.hpp"
@@ -174,7 +174,7 @@ class Reachability {
      */
     LocationIdx bottom = *chcs.getSink();
 
-    Z3<IntTheory, BoolTheory> z3;
+    LinearizingSolver<IntTheory, BoolTheory> solver;
 
     std::vector<Step> trace;
 

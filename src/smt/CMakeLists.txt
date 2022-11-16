@@ -9,6 +9,7 @@ target_sources(${EXECUTABLE}
         smtfactory.hpp
         model.hpp
         combined_solver.hpp
+        linearizingsolver.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")
