@@ -127,8 +127,8 @@ private:
     CVCContext ctx;
 
     void updateParams() {
-        solver.setOption("produce-models", (std::stringstream() << std::boolalpha << models).str());
-        solver.setOption("tlimit", (std::stringstream() << timeout).str());
+        solver.setOption("produce-models", models ? "true" : "false");
+        solver.setOption("tlimit", std::to_string(timeout));
         // TODO make this configurable
         solver.setOption("produce-unsat-assumptions", "true");
     }

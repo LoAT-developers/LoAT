@@ -69,15 +69,27 @@ RUN make install
 
 RUN xbps-install -y gmp-devel gmpxx-devel
 
+# libpoly
+WORKDIR /src
+RUN git clone https://github.com/SRI-CSL/libpoly.git
+WORKDIR /src/libpoly/build
+# poly version required by CVC
+RUN git checkout 1383809f2aa5005ef20110fec84b66959518f697
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" ..
+RUN make -j
+RUN make install
+
 RUN xbps-install -y bash
 RUN xbps-install -y patch
 RUN xbps-install -y libedit-devel
 RUN xbps-install -y python3-pip
 RUN xbps-install -y openjdk
+RUN xbps-install -y libbsd-devel
+RUN xbps-install -y ncurses-libtinfo-devel
+RUN xbps-install -y ncurses-libtinfo-libs
+RUN ln -s /usr/lib/libcurses.a /usr/lib/libtinfo.a
 
 # CVC
-# has to be installed before libpoly, as it does not work with all libpoly versions,
-# but tries to use the system-wider installation if there is one
 RUN /usr/sbin/python3 -m pip install toml
 WORKDIR /src
 RUN wget https://codeload.github.com/cvc5/cvc5/tar.gz/refs/tags/cvc5-1.0.2
@@ -87,15 +99,7 @@ RUN ./contrib/get-glpk-cut-log
 RUN ./configure.sh --best --auto-download --gpl --static
 RUN sed -i 's/fpu_control.h/fenv.h/g' src/prop/minisat/utils/System.h
 WORKDIR /src/cvc5-cvc5-1.0.2/build
-RUN make -j4
-RUN make install
-
-# libpoly
-WORKDIR /src
-RUN git clone https://github.com/SRI-CSL/libpoly.git
-WORKDIR /src/libpoly/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" ..
-RUN make -j
+RUN make -j6
 RUN make install
 
 # cudd
