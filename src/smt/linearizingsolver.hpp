@@ -3,6 +3,10 @@
 #include "z3.hpp"
 #include "itheory.hpp"
 
+/**
+ * Wrapper around Z3 that first linearizes non-polynomial terms and then instantiates their exponent with candidates
+ * that are derived from the model of the linearization (if any).
+ */
 template <ITheory... Th>
 class LinearizingSolver: public Smt<Th...> {
 
@@ -13,9 +17,23 @@ class LinearizingSolver: public Smt<Th...> {
     using LitSet = theory::LitSet<Th...>;
 
     VarMan &varMan;
+
     Z3<Th...> z3;
+
+    /**
+     * reverses the linearization
+     */
     ExprSubs de_lin;
+
+    /**
+     * maps non-polynomial terms to their linearization (so far, just fresh variables)
+     */
     std::map<Expr, NumVar> lin;
+
+    /**
+     * all fresh variables that have been created to linearize terms
+     * push() adds a new element to the stack in order to support incremental solving
+     */
     std::stack<std::vector<NumVar>> lin_vars;
 
 public:
@@ -50,7 +68,8 @@ public:
             }
             return res;
         } else if (expr.isPow()) {
-            if (!expr.op(0).isInt()) {
+            if (!expr.op(0).isRationalConstant()) {
+                // we just support exponentials with constant bases, so far
                 return {};
             }
             const auto it = lin.find(expr);
@@ -102,11 +121,15 @@ public:
         std::map<NumVar, Num> candidates;
         auto res = z3.check();
         if (res != Sat) {
+            // if the linearization is unsat, we are done
+            // if the linearization is unknown, there's nothing we can do
             return res;
         }
+        // points to the variable that we try to handle in the current iteration
         auto it = todo.begin();
         while (true) {
             if (it == todo.end()) {
+                // we've successfully handled all variables -- done
                 return Sat;
             }
             const Expr expr = de_lin.get(*it);
@@ -115,25 +138,33 @@ public:
             z3.push();
             z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(*it, expr)));
             if (candidates.contains(*it)) {
+                // we've stored a candidate for the exponent earlier --> try it
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, candidates.at(*it))));
                 candidates.erase(*it);
             } else {
+                // derive new candidates from the model
                 const Num val = z3.model().template get<IntTheory>(*it);
                 Num high(1);
                 while ((GiNaC::pow(base, high) - val).is_negative()) {
                     high = high + 1;
                 }
+                // now we have base^high >= val and base^(high-1) < val
                 if (!(GiNaC::pow(base, high) - val).is_zero()) {
+                    // if base^high > val, store high-1 as candidate for later
                     candidates.emplace(*it, high-1);
                 }
+                // try to set the exponent to high
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, high)));
             }
             if (z3.check() == Sat) {
                 ++it;
             } else {
+                // the current candidate failed, backtrack
                 z3.pop();
                 while (!candidates.contains(*it)) {
                     if (it == todo.begin()) {
+                        // we've exhausted all candidate instantiations
+                        // try to solve the non-linearized problem directly
                         for (const auto &p: lin) {
                             z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(p.first, p.second)));
                         }
