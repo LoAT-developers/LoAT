@@ -85,8 +85,9 @@ RUN tar xf cvc5-1.0.2
 WORKDIR /src/cvc5-cvc5-1.0.2
 RUN ./contrib/get-glpk-cut-log
 RUN ./configure.sh --best --auto-download --gpl --static
+RUN sed -i 's/fpu_control.h/fenv.h/g' src/prop/minisat/utils/System.h
 WORKDIR /src/cvc5-cvc5-1.0.2/build
-RUN make -j
+RUN make -j4
 RUN make install
 
 # libpoly
