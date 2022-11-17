@@ -16,10 +16,9 @@ namespace SmtFactory {
         std::unique_ptr<Smt<Th...>> res;
         switch (logic) {
         case QF_LA:
-        case QF_NA:
             res = std::unique_ptr<Smt<Th...>>(new Yices<Th...>(varMan, logic));
             break;
-//        case QF_NA:
+        case QF_NA:
         case QF_ENA:
             res = std::unique_ptr<Smt<Th...>>(new Z3<Th...>(varMan));
             break;
