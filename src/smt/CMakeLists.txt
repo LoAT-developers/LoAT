@@ -1,6 +1,5 @@
 add_subdirectory(z3)
 add_subdirectory(yices)
-add_subdirectory(cvc)
 
 target_sources(${EXECUTABLE}
     PRIVATE
