@@ -581,6 +581,7 @@ LocationIdx Reachability::get_current_predicate() const {
 }
 
 bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
+    solver.setTimeout(2000);
     for (const auto &q: queries) {
         solver.push();
         const option<BoolExpr> implicant = resolve(q);
@@ -592,6 +593,7 @@ bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
         }
         solver.pop();
     }
+    solver.setTimeout(Config::Smt::DefaultTimeout);
     return false;
 }
 
