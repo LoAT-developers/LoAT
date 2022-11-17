@@ -1,6 +1,8 @@
 #pragma once
 
 #include "smt.hpp"
+// has to be included before yices.hpp due to name clashes...
+#include "cvc.hpp"
 #include "yices.hpp"
 #include "z3.hpp"
 #include "linearizingsolver.hpp"
