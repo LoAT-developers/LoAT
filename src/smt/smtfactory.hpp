@@ -40,14 +40,6 @@ namespace SmtFactory {
     }
 
     template<ITheory... Th>
-    bool isImplication(const BExpr<Th...> lhs, const BExpr<Th...> rhs, const VariableManager &varMan) {
-        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{lhs, rhs}), varMan);
-        s->add(lhs);
-        s->add(!rhs);
-        return s->check() == Unsat;
-    }
-
-    template<ITheory... Th>
     BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan) {
         const auto logic = Smt<Th...>::chooseLogic(assumptions);
         if (logic == QF_LA) {

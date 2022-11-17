@@ -60,7 +60,6 @@ public:
 
     virtual ~Smt() {}
 
-    static bool isImplication(const BExpr<Th...> lhs, const BExpr<Th...> rhs, const VariableManager &varMan);
     static BoolExprSet unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan);
 
     void popAll() {
