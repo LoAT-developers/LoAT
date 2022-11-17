@@ -5,65 +5,60 @@
 #include "cvc.hpp"
 #include "yices.hpp"
 #include "z3.hpp"
-#include "linearizingsolver.hpp"
 #include "config.hpp"
 #include "itheory.hpp"
 #include "theory.hpp"
 
 namespace SmtFactory {
 
-struct SmtConfig {
-    Logic logic;
-    bool produce_models = false;
-    bool incremental = false;
-    bool produce_unsat_cores = false;
-    unsigned timeout = Config::Smt::DefaultTimeout;
-
-    SmtConfig(Logic logic): logic(logic) {}
-
-};
-
-template<ITheory... Th>
-std::unique_ptr<Smt<Th...>> solver(const SmtConfig &config, VariableManager &varMan) {
-    std::unique_ptr<Smt<Th...>> res;
-    switch (config.logic) {
-    case QF_LA:
-        res = std::unique_ptr<Smt<Th...>>(new Yices<Th...>(varMan, QF_LA));
-        break;
-    case QF_NA:
-        if (config.incremental || config.produce_unsat_cores) {
+    template<ITheory... Th>
+    std::unique_ptr<Smt<Th...>> solver(Logic logic, const VariableManager &varMan, unsigned int timeout = Config::Smt::DefaultTimeout) {
+        std::unique_ptr<Smt<Th...>> res;
+        switch (logic) {
+        case QF_LA:
+        case QF_NA:
+            res = std::unique_ptr<Smt<Th...>>(new Yices<Th...>(varMan, logic));
+            break;
+//        case QF_NA:
+        case QF_ENA:
             res = std::unique_ptr<Smt<Th...>>(new Z3<Th...>(varMan));
-        } else {
-            res = std::unique_ptr<Smt<Th...>>(new Yices<Th...>(varMan, QF_NA));
+            break;
         }
-        break;
-    case QF_NAT:
-        if (config.produce_unsat_cores) {
-            res = std::unique_ptr<Smt<Th...>>(new Z3<Th...>(varMan));
-        } else {
-            res = std::unique_ptr<Smt<Th...>>(new LinearizingSolver<Th...>(varMan));
-        }
-        break;
+        res->setTimeout(timeout);
+        return res;
     }
-    if (config.produce_models) {
+
+    template<ITheory... Th>
+    std::unique_ptr<Smt<Th...>> modelBuildingSolver(Logic logic, const VariableManager &varMan, unsigned int timeout = Config::Smt::DefaultTimeout) {
+        std::unique_ptr<Smt<Th...>> res = solver<Th...>(logic, varMan, timeout);
         res->enableModels();
+        return res;
     }
-    res->setTimeout(config.timeout);
-    return res;
-}
 
-template<ITheory... Th>
-static SmtResult check(const BExpr<Th...> e, VariableManager &varMan) {
-    std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(SmtConfig(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{e})), varMan);
-    s->add(e);
-    return s->check();
-}
+    template<ITheory... Th>
+    static SmtResult check(const BExpr<Th...> e, const VariableManager &varMan) {
+        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{e}), varMan);
+        s->add(e);
+        return s->check();
+    }
 
-template<ITheory... Th>
-BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan) {
-    SmtConfig config(Smt<Th...>::chooseLogic(assumptions));
-    config.produce_unsat_cores = true;
-    return solver<Th...>(config, varMan)->_unsatCore(assumptions).second;
-}
+    template<ITheory... Th>
+    bool isImplication(const BExpr<Th...> lhs, const BExpr<Th...> rhs, const VariableManager &varMan) {
+        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{lhs, rhs}), varMan);
+        s->add(lhs);
+        s->add(!rhs);
+        return s->check() == Unsat;
+    }
+
+    template<ITheory... Th>
+    BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan) {
+        const auto logic = Smt<Th...>::chooseLogic(assumptions);
+        if (logic == QF_LA) {
+            return Yices<Th...>(varMan, QF_LA)._unsatCore(assumptions).second;
+        } else {
+            // as far as I can tell, yices' mcsat for NA does not support unsat cores
+            return Z3<Th...>(varMan)._unsatCore(assumptions).second;
+        }
+    }
 
 }

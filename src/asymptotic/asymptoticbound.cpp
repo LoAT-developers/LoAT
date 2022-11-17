@@ -691,9 +691,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
 
         if (it->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const auto &query = currentLP.getQuery();
-            SmtFactory::SmtConfig config(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}));
-            config.produce_models = true;
-            auto solver = SmtFactory::solver<IntTheory>(config, varMan);
+            auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}), varMan);
             solver->add(BoolExpression<IntTheory>::buildAndFromLits(query));
             SmtResult result = solver->check();
 

@@ -115,11 +115,7 @@ option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, 
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    SmtFactory::SmtConfig config(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}));
-    config.timeout = timeout;
-    config.incremental = true;
-    config.produce_models = true;
-    auto solver = SmtFactory::solver<IntTheory>(config, varMan);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}), varMan, timeout);
 
     // the parameter of the desired family of solutions
     auto n = currentLP.getN();
@@ -254,11 +250,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    SmtFactory::SmtConfig config(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0))}));
-    config.incremental = true;
-    config.produce_models = true;
-    config.timeout = timeout;
-    auto solver = SmtFactory::solver<IntTheory>(config, varMan);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0))}), varMan, timeout);
 
     // the parameter of the desired family of solutions
     NumVar n = varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int);

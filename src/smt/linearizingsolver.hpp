@@ -119,7 +119,7 @@ public:
         std::set<NumVar> vars = de_lin.domain();
         std::vector<NumVar> todo(vars.begin(), vars.end());
         std::map<NumVar, Num> candidates;
-        auto res = z3.check();
+        const auto res = z3.check();
         if (res != Sat) {
             // if the linearization is unsat, we are done
             // if the linearization is unknown, there's nothing we can do
