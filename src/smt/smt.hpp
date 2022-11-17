@@ -6,7 +6,19 @@
 #include "model.hpp"
 
 enum SmtResult {Sat, Unknown, Unsat};
-enum Logic {QF_LA, QF_NA, QF_ENA};
+enum Logic {
+    /**
+     * linear arithmetic
+     */
+    QF_LA,
+    /**
+     * non-linear arithmetic
+     */
+    QF_NA,
+    /**
+     * non-linear arithmetic + transcendentals (currently just exponentiation)
+     */
+    QF_NAT};
 
 namespace SmtFactory {
 template<ITheory... Th>
@@ -48,7 +60,6 @@ public:
 
     virtual ~Smt() {}
 
-    static bool isImplication(const BExpr<Th...> lhs, const BExpr<Th...> rhs, const VariableManager &varMan);
     static BoolExprSet unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan);
 
     void popAll() {
@@ -62,7 +73,7 @@ public:
         for (const auto &x: xs) {
             if (!(x->isLinear())) {
                 if (!(x->isPoly())) {
-                    return QF_ENA;
+                    return QF_NAT;
                 }
                 res = QF_NA;
             }
@@ -70,7 +81,7 @@ public:
         for (const Subs &u: up) {
             if (!u.isLinear()) {
                 if (!u.isPoly()) {
-                    return QF_ENA;
+                    return QF_NAT;
                 }
                 res = QF_NA;
             }
@@ -83,7 +94,7 @@ public:
         for (const auto &x: xs) {
             if (!(x->isLinear())) {
                 if (!(x->isPoly())) {
-                    return QF_ENA;
+                    return QF_NAT;
                 }
                 res = QF_NA;
             }
@@ -98,7 +109,7 @@ public:
             for (const auto &lit: rels) {
                 if (!literal_t::isLinear<Th...>(lit)) {
                     if (!literal_t::isPoly<Th...>(lit)) {
-                        return QF_ENA;
+                        return QF_NAT;
                     }
                     res = QF_NA;
                 }
@@ -107,7 +118,7 @@ public:
         for (const UP &t: up) {
             if (!t.isLinear()) {
                 if (!t.isPoly()) {
-                    return QF_ENA;
+                    return QF_NAT;
                 }
                 res = QF_NA;
             }

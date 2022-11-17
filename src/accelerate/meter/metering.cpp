@@ -298,7 +298,11 @@ MeteringFinder::Result MeteringFinder::generate(VarMan &varMan, const Rule &rule
     meter.buildLinearConstraints();
 
     // solve constraints for the metering function (without the "GuardPositiveImplication" for now)
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(QF_LA, varMan, Config::Smt::MeterTimeout);
+    SmtFactory::SmtConfig config(QF_LA);
+    config.timeout = Config::Smt::MeterTimeout;
+    config.incremental = true;
+    config.produce_models = true;
+    auto solver = SmtFactory::solver<IntTheory>(config, varMan);
     solver->add(meter.genNotGuardImplication());
     solver->add(meter.genUpdateImplications());
     solver->add(meter.genNonTrivial());
@@ -381,7 +385,9 @@ option<pair<Rule, Proof>> MeteringFinder::instantiateTempVarsHeuristic(ITSProble
     meter.buildMeteringVariables();
     meter.buildLinearConstraints();
 
-    auto solver = SmtFactory::solver<IntTheory>(QF_LA, its, Config::Smt::MeterTimeout);
+    SmtFactory::SmtConfig config(QF_LA);
+    config.timeout = Config::Smt::MeterTimeout;
+    auto solver = SmtFactory::solver<IntTheory>(config, its);
     SmtResult smtRes = SmtResult::Unsat; // this method should only be called if generate() fails
 
     Conjunction<IntTheory> oldGuard = meter.guard;

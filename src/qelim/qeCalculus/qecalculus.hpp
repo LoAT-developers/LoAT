@@ -459,8 +459,10 @@ public:
         if (quantifier.getType() != Quantifier::Type::Forall) {
             return {};
         }
-        Logic logic = Smt<Th...>::template chooseLogic<LS, ExprSubs>({formula->getMatrix()->lits()}, {});
-        this->solver = SmtFactory::modelBuildingSolver<Th...>(logic, varMan);
+        SmtFactory::SmtConfig config(Smt<Th...>::template chooseLogic<LS, ExprSubs>({formula->getMatrix()->lits()}, {}));
+        config.incremental = true;
+        config.produce_models = true;
+        this->solver = SmtFactory::solver<Th...>(config, varMan);
         const auto vars = quantifier.getVars();
         bool exact = true;
         for (const auto& var: vars) {

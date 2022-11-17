@@ -100,7 +100,7 @@ public:
         std::set<NumVar> vars = de_lin.domain();
         std::vector<NumVar> todo(vars.begin(), vars.end());
         std::map<NumVar, Num> candidates;
-        const auto res = z3.check();
+        auto res = z3.check();
         if (res != Sat) {
             return res;
         }
@@ -123,7 +123,9 @@ public:
                 while ((GiNaC::pow(base, high) - val).is_negative()) {
                     high = high + 1;
                 }
-                candidates.emplace(*it, high-1);
+                if (!(GiNaC::pow(base, high) - val).is_zero()) {
+                    candidates.emplace(*it, high-1);
+                }
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, high)));
             }
             if (z3.check() == Sat) {

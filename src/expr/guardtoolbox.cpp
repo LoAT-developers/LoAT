@@ -312,7 +312,10 @@ Result<Rule> GuardToolbox::propagateEqualitiesBySmt(const Rule &rule, ITSProblem
     }
 
     Templates templates;
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(QF_NA, its, Config::Smt::SimpTimeout);
+    SmtFactory::SmtConfig config(QF_NA);
+    config.timeout = Config::Smt::SimpTimeout;
+    config.produce_models = true;
+    auto solver = SmtFactory::solver<IntTheory>(config, its);
     for (const auto &x: tempVars) {
         solver->resetSolver();
         theory::VarSet<IntTheory> varsOfInterest;
