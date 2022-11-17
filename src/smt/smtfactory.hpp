@@ -31,7 +31,11 @@ std::unique_ptr<Smt<Th...>> solver(const SmtConfig &config, VariableManager &var
         res = std::unique_ptr<Smt<Th...>>(new Yices<Th...>(varMan, QF_LA));
         break;
     case QF_NA:
-        res = std::unique_ptr<Smt<Th...>>(new Z3<Th...>(varMan));
+        if (config.incremental || config.produce_unsat_cores) {
+            res = std::unique_ptr<Smt<Th...>>(new Z3<Th...>(varMan));
+        } else {
+            res = std::unique_ptr<Smt<Th...>>(new Yices<Th...>(varMan, QF_NA));
+        }
         break;
     case QF_NAT:
         if (config.produce_unsat_cores) {

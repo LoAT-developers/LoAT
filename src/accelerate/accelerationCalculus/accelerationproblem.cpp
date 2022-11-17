@@ -116,7 +116,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit, Proof &proof) {
         return false;
     }
     const auto newGuard = literal::subs(lit, closed->update)->subs(Subs::build<IntTheory>(closed->n, *closed->n-1));
-    if (SmtFactory::check(newGuard & *bound, its) != Sat) {
+    if (newGuard->implies(!*bound)) {
         return false;
     }
     const auto updated = literal::subs(lit, up);
@@ -227,7 +227,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit, Proof &proof) {
     }
     const Rel newCond = rel.subs(closed->update.get<IntTheory>()).subs({{closed->n, *closed->n-1}});
     const auto newGuard = BExpression::buildTheoryLit(rel) & newCond;
-    if (SmtFactory::check(newGuard & *bound, its) != Sat) {
+    if (newGuard->implies(!*bound)) {
         return false;
     }
     const Expr updated = rel.lhs().subs(up.get<IntTheory>());
@@ -287,8 +287,7 @@ bool AccelerationProblem::eventualWeakIncrease(const Lit &lit, Proof &proof) {
     const Rel &rel = std::get<Rel>(lit);
     const Expr &updated = rel.lhs().subs(up.get<IntTheory>());
     const Rel &inc = Rel::buildLeq(rel.lhs(), updated);
-    const auto newGuard = BExpression::buildTheoryLit(rel) & inc;
-    if (SmtFactory::check(newGuard, its) != Sat) {
+    if (rel.implies(!inc)) {
         return false;
     }
     const Rel &dec = Rel::buildGt(updated, updated.subs(up.get<IntTheory>()));
@@ -319,6 +318,7 @@ bool AccelerationProblem::eventualWeakIncrease(const Lit &lit, Proof &proof) {
             dependencies.insert(*lit.begin());
         }
     }
+    const auto newGuard = BExpression::buildTheoryLit(rel) & inc;
     option<unsigned int> idx = store(rel, dependencies, newGuard, false, true);
     if (!idx) {
         return false;
