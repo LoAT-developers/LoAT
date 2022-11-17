@@ -98,9 +98,6 @@ void parseFlags(int argc, char *argv[]) {
             if (!found) {
                 cerr << "Unknown mode " << str << ", defaulting to " << Config::Analysis::modeName(Config::Analysis::mode) << endl;
             }
-        } else if (strcmp("--version", argv[arg]) == 0) {
-            cout << "Build SHA: " << Version::GIT_SHA << (Version::GIT_DIRTY == "1" ? " (dirty)" : "") << endl;
-            exit(0);
         } else if (strcmp("--format", argv[arg]) == 0) {
             std::string str = getNext();
             if (boost::iequals("koat", str)) {
@@ -181,6 +178,7 @@ int main(int argc, char *argv[]) {
         throw std::invalid_argument("unsupported mode");
     }
 
+    cout << "Build SHA: " << Version::GIT_SHA << (Version::GIT_DIRTY == "1" ? " (dirty)" : "") << endl;
 
     return 0;
 }
