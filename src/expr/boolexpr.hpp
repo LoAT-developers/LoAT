@@ -560,6 +560,10 @@ public:
         return {};
     }
 
+    /**
+     * Cheap and (very) incomplete implication check, which only looks for implications between literals.
+     * So it can prove x>1 ==> x>0, but not x>0 /\ y>0 ==> x+y>0.
+     */
     bool implies(const Lit &lit) const {
         if (isAnd()) {
             for (const auto &c: getChildren()) {
