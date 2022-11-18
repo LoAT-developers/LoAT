@@ -114,7 +114,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit, Proof &proof) {
         return false;
     }
     const auto newGuard = literal::subs(lit, closed->update)->subs(Subs::build<IntTheory>(closed->n, *closed->n-1));
-    if (newGuard->implies(!*bound)) {
+    if (!config.allowDisjunctions && !newGuard->isConjunction()) {
         return false;
     }
     const auto updated = literal::subs(lit, up);
