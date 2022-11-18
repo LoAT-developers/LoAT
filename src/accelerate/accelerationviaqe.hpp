@@ -15,7 +15,7 @@ public:
             const LinearRule &rule,
             const Recurrence::Result closed,
             ITSProblem &its,
-            const Approx approx);
+            const AccelConfig &config);
 
     AcceleratorPair computeRes() override;
 

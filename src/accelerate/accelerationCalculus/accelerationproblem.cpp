@@ -12,13 +12,13 @@ AccelerationProblem::AccelerationProblem(
         const option<Recurrence::Result> &closed,
         const Expr &cost,
         ITSProblem &its,
-        const Approx approx):
+        const AccelConfig &config):
     up(up),
     closed(closed),
     cost(cost),
     guard(guard),
     its(its),
-    approx(approx) {
+    config(config) {
     for (const auto &l: guard->lits()) {
         todo.insert(l);
     }
@@ -38,8 +38,8 @@ AccelerationProblem AccelerationProblem::init(
         const LinearRule &rule,
         const option<Recurrence::Result> &closed,
         ITSProblem &its,
-        const Approx approx) {
-    return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, rule.getCost(), its, approx);
+        const AccelConfig &config) {
+    return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, rule.getCost(), its, config);
 }
 
 LitSet AccelerationProblem::findConsistentSubset(BoolExpr e) const {
@@ -341,13 +341,11 @@ bool AccelerationProblem::fixpoint(const Lit &lit, Proof &proof) {
     std::vector<BoolExpr> eqs;
     const auto vars = util::RelevantVariables<IntTheory, BoolTheory>::find(literal::variables(lit), {up}, BExpression::True);
     for (const auto& v: vars) {
-        if (std::holds_alternative<NumVar>(v)) {
-            const auto &var = std::get<NumVar>(v);
-            eqs.push_back(BExpression::buildTheoryLit(Rel::buildEq(var, Expr(var).subs(up.get<IntTheory>()))));
-        } else if (std::holds_alternative<BoolVar>(v)) {
-            const auto &var = BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(v)));
-            eqs.push_back((var & var->subs(up)) | ((!var) & (!var->subs(up))));
+        if (!config.allowDisjunctions && std::holds_alternative<BoolVar>(v)) {
+            // encoding equality for booleans introduces a disjunction
+            return false;
         }
+        eqs.push_back(literal::mkEq(v, up.get(v)));
     }
     const auto allEq = BExpression::buildAnd(eqs);
     if (SmtFactory::check(guard & lit & allEq, its) != Sat) {
@@ -422,8 +420,8 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
         bool res = recurrence(lit, proof);
         res |= monotonicity(lit, proof);
         res |= eventualWeakDecrease(lit, proof);
-        res |= approx == UnderApprox && eventualWeakIncrease(lit, proof);
-        res |= approx == UnderApprox && fixpoint(lit, proof);
+        res |= config.approx == UnderApprox && eventualWeakIncrease(lit, proof);
+        res |= config.approx == UnderApprox && fixpoint(lit, proof);
         if (!res && isConjunction) return ret;
     }
     ReplacementMap map = computeReplacementMap(false);

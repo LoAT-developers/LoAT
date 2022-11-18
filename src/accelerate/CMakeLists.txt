@@ -20,6 +20,7 @@ target_sources(${EXECUTABLE}
         accelerationtechnique.hpp
         accelerationfactory.hpp
         accelerationfactory.cpp
+        accelconfig.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

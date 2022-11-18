@@ -3,7 +3,7 @@
 #include "boolexpr.hpp"
 #include "proof.hpp"
 #include "recurrence.hpp"
-#include "approx.hpp"
+#include "accelconfig.hpp"
 
 template <ITheory... Th>
 class AccelerationTechnique {
@@ -34,13 +34,13 @@ protected:
     LinearRule rule;
     const option<Recurrence::Result> closed;
     ITSProblem &its;
-    const Approx approx;
+    const AccelConfig config;
 
-    AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result> closed, ITSProblem &its, const Approx approx):
+    AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result> closed, ITSProblem &its, const AccelConfig &config):
         rule(rule),
         closed(closed),
         its(its),
-        approx(approx){}
+        config(config){}
 
 public:
 

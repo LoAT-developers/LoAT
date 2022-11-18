@@ -6,9 +6,9 @@ AccelerationViaCalculus::AccelerationViaCalculus(
         const LinearRule &rule,
         const option<Recurrence::Result> closed,
         ITSProblem &its,
-        const Approx approx): AccelerationTechnique(rule, closed, its, approx) {}
+        const AccelConfig &config): AccelerationTechnique(rule, closed, its, config) {}
 
 
 AccelerationViaCalculus::AcceleratorPair AccelerationViaCalculus::computeRes() {
-    return AccelerationProblem::init(rule, closed, its, approx).computeRes();
+    return AccelerationProblem::init(rule, closed, its, config).computeRes();
 }

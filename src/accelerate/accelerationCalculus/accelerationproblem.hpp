@@ -33,7 +33,7 @@ class AccelerationProblem {
     ITSProblem &its;
     bool isConjunction;
     option<Rel> bound;
-    const Approx approx;
+    const AccelConfig config;
 
     bool monotonicity(const Lit &lit, Proof &proof);
     bool recurrence(const Lit &lit, Proof &proof);
@@ -58,11 +58,11 @@ class AccelerationProblem {
             const option<Recurrence::Result> &closed,
             const Expr &cost,
             ITSProblem &its,
-            const Approx approx);
+            const AccelConfig &config);
 
 public:
 
-    static AccelerationProblem init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its, Approx approx);
+    static AccelerationProblem init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its, const AccelConfig &config);
 
     AcceleratorPair computeRes();
     std::pair<BoolExpr, bool> buildRes(const Model<IntTheory, BoolTheory> &model, const std::map<Lit, std::vector<BoolExpr>> &entryVars);

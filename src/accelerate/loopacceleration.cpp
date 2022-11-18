@@ -31,8 +31,8 @@ LoopAcceleration::LoopAcceleration(
         const LinearRule &rule,
         LocationIdx sink,
         Complexity cpx,
-        const Approx approx)
-    : its(its), rule(rule), sink(sink), cpx(cpx), approx(approx) {}
+        const AccelConfig &config)
+    : its(its), rule(rule), sink(sink), cpx(cpx), config(config) {}
 
 bool LoopAcceleration::shouldAccelerate() const {
     return (!Config::Analysis::tryNonterm() || !rule.getCost().isNontermSymbol()) && (!Config::Analysis::complexity() || rule.getCost().isPoly());
@@ -153,7 +153,7 @@ acceleration::Result LoopAcceleration::run() {
     if (!shouldAccelerate()) {
         return res;
     }
-    if (approx != UnderApprox) {
+    if (config.approx != UnderApprox) {
         if (!rule.getGuard()->isConjunction()) {
             res.status = acceleration::Disjunctive;
             return res;
@@ -184,13 +184,13 @@ acceleration::Result LoopAcceleration::run() {
         return res;
     }
     const auto rec = Recurrence::iterateRule(its, rule);
-    if (!rec && approx != UnderApprox) {
+    if (!rec && config.approx != UnderApprox) {
         res.status = acceleration::ClosedFormFailed;
         return res;
     }
-    const auto accelerationTechnique = AccelerationFactory::get(rule, rec, its, approx);
+    const auto accelerationTechnique = AccelerationFactory::get(rule, rec, its, config);
     const auto accelerationResult = accelerationTechnique->computeRes();
-    if (!accelerationResult.term && approx != UnderApprox) {
+    if (!accelerationResult.term && config.approx != UnderApprox) {
         res.status = acceleration::AccelerationFailed;
         return res;
     }
@@ -227,7 +227,7 @@ acceleration::Result LoopAcceleration::accelerate(
         const LinearRule &rule,
         LocationIdx sink,
         Complexity cpx,
-        const Approx approx) {
-    LoopAcceleration ba(its, rule, sink, cpx, approx);
+        const AccelConfig &config) {
+    LoopAcceleration ba(its, rule, sink, cpx, config);
     return ba.run();
 }
