@@ -650,17 +650,17 @@ void Reachability::analyze() {
         while (it != to_try.end()) {
             solver.push();
             const option<BoolExpr> implicant = resolve(*it);
-            if (!implicant) {
-                solver.pop();
-                append.push_back(*it);
-                it = to_try.erase(it);
-            } else {
+            if (implicant) {
                 // block learned clauses after adding them to the trace
                 if (is_learned_clause(*it)) {
                     block(trace.back());
                 }
                 store_step(*it, *implicant);
                 break;
+            } else {
+                solver.pop();
+                append.push_back(*it);
+                it = to_try.erase(it);
             }
         }
         if (trace.empty()) {

@@ -135,10 +135,10 @@ public:
             const Expr expr = de_lin.get(*it);
             const Num base = expr.op(0).toNum();
             const Expr exp = expr.op(1);
-            z3.push();
-            z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(*it, expr)));
             if (candidates.contains(*it)) {
                 // we've stored a candidate for the exponent earlier --> try it
+                z3.push();
+                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(*it, expr)));
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, candidates.at(*it))));
                 candidates.erase(*it);
             } else {
@@ -154,6 +154,8 @@ public:
                     candidates.emplace(*it, high-1);
                 }
                 // try to set the exponent to high
+                z3.push();
+                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(*it, expr)));
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, high)));
             }
             if (z3.check() == Sat) {
