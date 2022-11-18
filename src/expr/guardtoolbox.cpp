@@ -151,7 +151,7 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
         }
     } while (changed);
     if (res) {
-        res.ruleTransformationProof(rule, "propagated boolean equalities", res.get(), its);
+        res.ruleTransformationProof(rule, "propagated boolean equalities", *res, its);
         res.storeSubProof(subproof);
     }
     return res;

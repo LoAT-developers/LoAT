@@ -516,12 +516,12 @@ public:
                     const auto it = grandChildren.find(lit);
                     if (it != grandChildren.end()) {
                         grandChildren.erase(it);
-                        const BE c = std::make_shared<BoolJunction<Th...>>(grandChildren, ConcatOperator::ConcatOr);
-                        // we have     lit \/  c
-                        // search for !lit \/ !c
-                        if (children.contains((!lit) | (!c))) {
-                            // we have (lit \/ c) /\ (!lit \/ !c), i.e., lit <==> !candidate
-                            return !c;
+                        const BE cand = buildOr(grandChildren);
+                        // we have     lit \/  cand
+                        // search for !lit \/ !cand
+                        if (children.contains((!lit) | (!cand))) {
+                            // we have (lit \/ cand) /\ (!lit \/ !cand), i.e., lit <==> !cand
+                            return !cand;
                         }
                     }
                 }
@@ -533,26 +533,28 @@ public:
         for (const auto &current: todo) {
             if (current->isOr()) {
                 const auto children = current->getChildren();
-                for (const auto &c: children) {
-                    if (c->isAnd()) {
-                        auto grandChildren = c->getChildren();
-                        const auto it = grandChildren.find(lit);
-                        if (it != grandChildren.end()) {
-                            grandChildren.erase(it);
-                            const BE c = std::make_shared<BoolJunction<Th...>>(grandChildren, ConcatOperator::ConcatAnd);
-                            // we have     lit /\  c
-                            // search for !lit /\ !c
-                            if (children.contains((!lit) & (!c))) {
-                                // we have (lit /\ c) \/ (!lit /\ !c), i.e., lit <==> candidate
-                                return c;
+                if (children.size() == 2) {
+                    for (const auto &c: children) {
+                        if (c->isAnd()) {
+                            auto grandChildren = c->getChildren();
+                            const auto it = grandChildren.find(lit);
+                            if (it != grandChildren.end()) {
+                                grandChildren.erase(it);
+                                const BE cand = buildAnd(grandChildren);
+                                // we have     lit /\  cand
+                                // search for !lit /\ !cand
+                                if (children.contains((!lit) & (!cand))) {
+                                    // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
+                                    return cand;
+                                }
                             }
                         }
                     }
                 }
             } else if (current == lit) {
-                return False;
-            } else if (current == !lit) {
                 return True;
+            } else if (current == !lit) {
+                return False;
             }
         }
         return {};

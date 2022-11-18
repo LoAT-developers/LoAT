@@ -116,11 +116,11 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
         return !rule.getCost().has(std::get<NumVar>(sym));
     };
 
-    res.concat(GuardToolbox::propagateBooleanEqualities(its, *res));
-
     //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
     res.concat(GuardToolbox::makeEqualities(*res, its));
     res.fail(); // *just* finding implied equalities does not suffice for success
+
+    res.concat(GuardToolbox::propagateBooleanEqualities(its, *res));
 
     //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
     res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTempInUpdate));

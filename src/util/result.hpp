@@ -101,7 +101,7 @@ public:
         if (that) {
             proof.concat(that.proof);
             res = that.res;
-            success = that.success;
+            success = true;
         }
     }
 
