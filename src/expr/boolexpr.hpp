@@ -505,41 +505,57 @@ public:
         });
     }
 
-private:
-
-    void findConsequences(const BExpr<Th...> &lit, BES &res) const {
+    option<BE> impliedEquality(const Lit &l) const {
+        std::vector<BE> todo;
+        const BE lit = buildTheoryLit(l);
         if (isAnd()) {
-            for (const auto &c: getChildren()) {
-                c->findConsequences(lit, res);
-            }
-        } else if (isOr()) {
-            BES children = getChildren();
-            bool trivial = true;
-            for (auto it = children.begin(); it != children.end();) {
-                const BE c = *it;
-                if ((c == lit) || (c->isAnd() && c->getChildren().contains(lit))) {
-                    it = children.erase(it);
-                    trivial = false;
-                } else {
-                    ++it;
+            const auto children = getChildren();
+            for (const auto &c: children) {
+                if (c->isOr()) {
+                    auto grandChildren = c->getChildren();
+                    const auto it = grandChildren.find(lit);
+                    if (it != grandChildren.end()) {
+                        grandChildren.erase(it);
+                        const BE c = std::make_shared<BoolJunction<Th...>>(grandChildren, ConcatOperator::ConcatOr);
+                        // we have     lit \/  c
+                        // search for !lit \/ !c
+                        if (children.contains((!lit) | (!c))) {
+                            // we have (lit \/ c) /\ (!lit \/ !c), i.e., lit <==> !candidate
+                            return !c;
+                        }
+                    }
                 }
             }
-            if (!trivial) {
-                res.insert(buildOr(children));
-            }
-        } else if (this->shared_from_this() == lit) {
-            res.insert(BoolExpression<Th...>::False);
-        } else if (this->shared_from_this() == !lit) {
-            res.insert(BoolExpression<Th...>::True);
+            todo.insert(todo.end(), children.begin(), children.end());
+        } else {
+            todo.push_back(this->shared_from_this());
         }
-    }
-
-public:
-
-    BES findConsequences(const Lit &lit) const {
-        BES res;
-        findConsequences(buildTheoryLit(literal_t::negate<Th...>(lit)), res);
-        return res;
+        for (const auto &current: todo) {
+            if (current->isOr()) {
+                const auto children = current->getChildren();
+                for (const auto &c: children) {
+                    if (c->isAnd()) {
+                        auto grandChildren = c->getChildren();
+                        const auto it = grandChildren.find(lit);
+                        if (it != grandChildren.end()) {
+                            grandChildren.erase(it);
+                            const BE c = std::make_shared<BoolJunction<Th...>>(grandChildren, ConcatOperator::ConcatAnd);
+                            // we have     lit /\  c
+                            // search for !lit /\ !c
+                            if (children.contains((!lit) & (!c))) {
+                                // we have (lit /\ c) \/ (!lit /\ !c), i.e., lit <==> candidate
+                                return c;
+                            }
+                        }
+                    }
+                }
+            } else if (current == lit) {
+                return False;
+            } else if (current == !lit) {
+                return True;
+            }
+        }
+        return {};
     }
 
     bool implies(const Lit &lit) const {

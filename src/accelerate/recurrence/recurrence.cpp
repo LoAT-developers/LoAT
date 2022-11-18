@@ -64,7 +64,7 @@ option<Recurrence::RecurrenceSolution<IntTheory>> Recurrence::solve(const NumVar
 
 option<Recurrence::RecurrenceSolution<BoolTheory>> Recurrence::solve(const BoolVar &updateLhs, const BoolExpr &updateRhs, const std::map<Var, unsigned int> &validitybounds) {
     const auto updated = updateRhs->subs(updatePreRecurrences);
-    const VarSet &vars = updateRhs->vars();
+    const VarSet &vars = updated->vars();
     if (vars.find(updateLhs) == vars.end() || vars.size() == vars.get<BoolVar>().size()) {
         unsigned int validitybound = 1;
         for (const auto &x: vars) {
@@ -114,10 +114,10 @@ option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Sub
     Subs newUpdate;
 
     //in the given order try to solve the recurrence for every updated variable
-    unsigned int validityBound = 0;
-    std::map<Var, unsigned int> validityBounds;
+    unsigned validityBound = 0;
+    std::map<Var, unsigned> validityBounds;
     for (const Var &target : dependencyOrder) {
-        int validityBound = std::visit(
+        int vb = std::visit(
                     Overload{
                         [&](const NumVar &target) {
                             const auto updateRec = solve(target, update.get<IntTheory>(target), validityBounds);
@@ -141,11 +141,11 @@ option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Sub
                             return static_cast<int>(updateRec->validityBound);
                         }
                     }, target);
-        if (validityBound < 0) {
+        if (vb < 0) {
             return {};
         }
-        validityBounds[target] = validityBound;
-        validityBound = max(validityBound, validityBound);
+        validityBounds[target] = vb;
+        validityBound = max(validityBound, static_cast<unsigned>(vb));
     }
 
     return {{newUpdate, validityBound}};

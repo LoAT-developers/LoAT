@@ -116,7 +116,7 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
         return !rule.getCost().has(std::get<NumVar>(sym));
     };
 
-//    res.concat(GuardToolbox::propagateBooleanEqualities(its, *res));
+    res.concat(GuardToolbox::propagateBooleanEqualities(its, *res));
 
     //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
     res.concat(GuardToolbox::makeEqualities(*res, its));

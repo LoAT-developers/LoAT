@@ -123,15 +123,6 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
 
 
 Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, const Rule &rule) {
-    auto hasTempVars = [&](const auto e) {
-        const auto boolVars = expression::variables(e).template get<BoolVar>();
-        for (const auto &x: boolVars) {
-            if (its.isTempVar(x)) {
-                return true;
-            }
-        }
-        return false;
-    };
     auto bvars = rule.getGuard()->vars().get<BoolVar>();
     Result<Rule> res(rule);
     Proof subproof;
@@ -141,20 +132,15 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
         for (auto it = bvars.begin(); it != bvars.end();) {
             const auto var = *it;
             if (its.isTempVar(var)) {
-                BoolExpr guard = res->getGuard();
-                BoolExprSet consequences = guard->findConsequences(var);
+                const auto eq = res->getGuard()->impliedEquality(var);
                 const BoolLit lit(var);
-                for (const BoolExpr &c: consequences) {
-                    if (!hasTempVars(c)) {
-                        if (SmtFactory::check(guard & ((!c) & lit), its, 200u) == Unsat) {
-                            res = res->subs(Subs::build<BoolTheory>(var, c));
-                            it = bvars.erase(it);
-                            changed = true;
-                            subproof.append(stringstream() << "replaced " << var << " with " << c);
-                            res.storeSubProof(subproof);
-                            break;
-                        }
-                    }
+                if (eq) {
+                    res = res->subs(Subs::build<BoolTheory>(var, *eq));
+                    it = bvars.erase(it);
+                    changed = true;
+                    subproof.append(stringstream() << "replaced " << var << " with " << *eq);
+                    res.storeSubProof(subproof);
+                    break;
                 }
             }
             if (changed) {
