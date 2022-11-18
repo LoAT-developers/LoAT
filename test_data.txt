@@ -52,7 +52,7 @@ unsat
 unknown
 
 036
-211
+# 211 too slow
 242
 179
 199
@@ -60,7 +60,7 @@ unknown
 170
 323
 214
-194
+# 194 too slow
 182
 006
 # 008 nonterm?
@@ -69,7 +69,7 @@ unknown
 020
 022
 026
-027
+# 027 too slow
 029
 090
 091
@@ -113,7 +113,7 @@ unknown
 # 167 nonterm?
 # 168 nonterm?
 # 169 nonterm?
-312
+# 312 too slow
 461
 000
 001
@@ -125,7 +125,7 @@ unknown
 # 012 nonterm?
 # 013 terminates, but takes too long
 014
-017
+# 017 too slow
 021
 023
 # 073 after a very long time: terminate called after throwing an instance of 'std::logic_error' what():  model, but no implicant --> wrong model?
@@ -216,15 +216,15 @@ unknown
 215
 257
 240
-198
+# 198 too slow
 207
 # 258 nonterm?
 # 188 nonterm?
 241
-355
-217
-239
-226
+# 355 too slow
+# 217 too slow
+# 239 too slow
+# 226 too slow
 210
 231
 248
