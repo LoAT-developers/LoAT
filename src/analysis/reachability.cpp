@@ -497,31 +497,20 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule, true);
-    if (res->getUpdate(0) == substitution::concat(res->getUpdate(0), res->getUpdate(0))) {
-        // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
-        // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
-        if (log) std::cout << "acceleration would yield equivalent rule -> dropping it" << std::endl;
-        return std::make_unique<Failed>();
-    }
     AccelConfig config;
     config.allowDisjunctions = false;
+    config.allowSameUpdate = false;
     acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), -1, Complexity::Const, config);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
-        const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
-        if (simplified->getUpdate(0) == res->getUpdate(0)) {
-            if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
-            return std::make_unique<Failed>();
-        } else {
-            // accelerated rule differs from the original one, update the result
-            res = *accel_res.rule;
-            res.storeSubProof(accel_res.proof);
-            res.concat(simplified);
-            if (log) {
-                std::cout << "accelerated rule:" << std::endl;
-                ITSExport::printRule(*res, chcs, std::cout);
-                std::cout << std::endl;
-            }
+        res = *accel_res.rule;
+        res.storeSubProof(accel_res.proof);
+        const auto simplified = Preprocess::simplifyRule(chcs, *res, true);
+        res.concat(simplified);
+        if (log) {
+            std::cout << "accelerated rule:" << std::endl;
+            ITSExport::printRule(*res, chcs, std::cout);
+            std::cout << std::endl;
         }
     } else {
         if (log) std::cout << "acceleration failed" << std::endl;

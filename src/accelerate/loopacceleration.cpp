@@ -178,14 +178,19 @@ acceleration::Result LoopAcceleration::run() {
     // for rules with runtime 1, our acceleration techniques do not work properly,
     // as the closed forms are usually only valid for n > 0 --> special case
     if (!Chaining::chainRules(its, rule, rule)) {
-        res.rule = rule;
-        res.status = acceleration::PseudoLoop;
-        res.proof.append("rule cannot be iterated more than once");
+        if (config.allowSameUpdate) {
+            res.rule = rule;
+            res.status = acceleration::PseudoLoop;
+            res.proof.append("rule cannot be iterated more than once");
+        }
         return res;
     }
     const auto rec = Recurrence::iterateRule(its, rule);
     if (!rec && config.approx != UnderApprox) {
         res.status = acceleration::ClosedFormFailed;
+        return res;
+    }
+    if (rec && !config.allowSameUpdate && rec->update == rule.getUpdate()) {
         return res;
     }
     const auto accelerationTechnique = AccelerationFactory::get(rule, rec, its, config);
