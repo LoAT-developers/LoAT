@@ -146,7 +146,7 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
                 const BoolLit lit(var);
                 for (const BoolExpr &c: consequences) {
                     if (!hasTempVars(c)) {
-                        if (c->implies(lit) || guard->implies(lit)) {
+                        if (SmtFactory::check(guard & ((!c) & lit), its, 200u) == Unsat) {
                             res = res->subs(Subs::build<BoolTheory>(var, c));
                             it = bvars.erase(it);
                             changed = true;

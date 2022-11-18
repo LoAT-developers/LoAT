@@ -27,14 +27,14 @@ namespace SmtFactory {
 
     template<ITheory... Th>
     std::unique_ptr<Smt<Th...>> modelBuildingSolver(Logic logic, const VariableManager &varMan, unsigned int timeout = Config::Smt::DefaultTimeout) {
-        std::unique_ptr<Smt<Th...>> res = solver<Th...>(logic, varMan, timeout);
+        std::unique_ptr<Smt<Th...>> res = solver<Th...>(logic, varMan);
         res->enableModels();
         return res;
     }
 
     template<ITheory... Th>
-    static SmtResult check(const BExpr<Th...> e, const VariableManager &varMan) {
-        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{e}), varMan);
+    static SmtResult check(const BExpr<Th...> e, const VariableManager &varMan, unsigned int timeout = Config::Smt::DefaultTimeout) {
+        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{e}), varMan, timeout);
         s->add(e);
         return s->check();
     }
