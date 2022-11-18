@@ -47,7 +47,7 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
     dependencies.erase(N);
 }
 
-const std::set<std::pair<VarEliminator::IntSubs, BoolExpr>> VarEliminator::eliminateDependency(const IntSubs &subs, const BoolExpr guard) const {
+const std::set<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDependency(const ExprSubs &subs, const BoolExpr guard) const {
     VarSet vars = guard->vars();
     for (auto it = dependencies.begin(); it != dependencies.end(); ++it) {
         if (vars.find(*it) == vars.end()) {
@@ -55,12 +55,11 @@ const std::set<std::pair<VarEliminator::IntSubs, BoolExpr>> VarEliminator::elimi
         }
         Bounds bounds;
         guard->getBounds(*it, bounds);
-        std::set<std::pair<IntSubs, BoolExpr>> res;
+        std::set<std::pair<ExprSubs, BoolExpr>> res;
         for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
             for (const auto &b: bb) {
                 if (b.expand().isGround()) {
-                    Subs newSubs;
-                    newSubs.get<IntTheory>().put(*it, b);
+                    Subs newSubs = Subs::build<IntTheory>(*it, b);
                     res.insert({subs.compose(newSubs.get<IntTheory>()), guard->subs(newSubs)});
                 }
             }
@@ -74,8 +73,8 @@ const std::set<std::pair<VarEliminator::IntSubs, BoolExpr>> VarEliminator::elimi
 
 void VarEliminator::eliminateDependencies() {
     while (!todoDeps.empty()) {
-        const std::pair<IntSubs, BoolExpr> current = todoDeps.top();
-        const std::set<std::pair<IntSubs, BoolExpr>> &res = eliminateDependency(current.first, current.second);
+        const std::pair<ExprSubs, BoolExpr> current = todoDeps.top();
+        const std::set<std::pair<ExprSubs, BoolExpr>> &res = eliminateDependency(current.first, current.second);
         if (res.empty()) {
             todoN.insert(current);
         }
@@ -89,22 +88,22 @@ void VarEliminator::eliminateDependencies() {
 void VarEliminator::eliminate() {
     eliminateDependencies();
     for (const auto &p: todoN) {
-        const IntSubs &subs = p.first;
+        const ExprSubs &subs = p.first;
         const BoolExpr guard = p.second;
         Bounds bounds;
         guard->getBounds(N, bounds);
         if (bounds.equality) {
-            IntSubs::Pair p = std::pair<NumVar, Expr>(N, *bounds.equality);
-            res.insert(subs.compose(IntSubs(p)));
+            ExprSubs p{{N, *bounds.equality}};
+            res.insert(subs.compose(p));
         } else {
             for (const Expr &b: bounds.upperBounds) {
-                IntSubs::Pair p = std::pair<NumVar, Expr>(N, b);
-                res.insert(subs.compose(IntSubs(p)));
+                ExprSubs p{{N, b}};
+                res.insert(subs.compose(p));
             }
         }
     }
 }
 
-const std::set<VarEliminator::IntSubs> VarEliminator::getRes() const {
+const std::set<ExprSubs> VarEliminator::getRes() const {
     return res;
 }

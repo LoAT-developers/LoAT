@@ -419,7 +419,7 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
         // the guard or the variable renaming
         VarSet vars = r.getGuard()->vars();
         substitution::collectVariables(var_renaming, vars);
-        const auto implicant = r.getGuard()->implicant(var_renaming.compose(solver.model().toSubs(vars)));
+        const auto implicant = r.getGuard()->implicant(substitution::compose(var_renaming, solver.model().toSubs(vars)));
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {
@@ -497,7 +497,7 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule, true);
-    if (res->getUpdate(0) == res->getUpdate(0).concat(res->getUpdate(0))) {
+    if (res->getUpdate(0) == substitution::concat(res->getUpdate(0), res->getUpdate(0))) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
         if (log) std::cout << "acceleration would yield equivalent rule -> dropping it" << std::endl;

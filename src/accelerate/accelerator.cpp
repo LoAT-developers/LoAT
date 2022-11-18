@@ -86,8 +86,8 @@ Result<std::vector<Rule>> Accelerator::instantiate(const NumVar &n, const Rule &
     }
     // create one rule for each upper bound, by instantiating N with this bound
     for (const auto &s : ve.getRes()) {
-        if (s.get<IntTheory>(n).isRationalConstant()) continue;
-        const auto instantiated = rule.subs(Subs::build<IntTheory>(s.get<IntTheory>()));
+        if (s.get(n).isRationalConstant()) continue;
+        const auto instantiated = rule.subs(Subs::build<IntTheory>(s));
         res->push_back(instantiated);
         res.ruleTransformationProof(rule, "instantiation", instantiated, its);
         res.succeed();

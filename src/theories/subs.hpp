@@ -343,28 +343,10 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void composeImpl(const Subs &that, Subs &res) const {
-        if constexpr (I < sizeof...(Th)) {
-            std::get<I>(res.t) = std::get<I>(t).compose(std::get<I>(that.t));
-            composeImpl<I+1>(that, res);
-        }
-    }
-
-public:
-
-    Subs compose(const Subs &that) const {
-        Subs res;
-        composeImpl(that, res);
-        return res;
-    }
-
-private:
-
-    template<std::size_t I = 0>
     inline void uniteImpl(const Subs &that, Subs &res) const {
         if constexpr (I < sizeof...(Th)) {
             std::get<I>(res.t) = std::get<I>(t).unite(std::get<I>(that.t));
-            composeImpl<I+1>(that, res);
+            uniteImpl<I+1>(that, res);
         }
     }
 
@@ -373,24 +355,6 @@ public:
     Subs unite(const Subs &that) const {
         Subs res;
         uniteImpl(that, res);
-        return res;
-    }
-
-private:
-
-    template<std::size_t I = 0>
-    inline void concatImpl(const Subs &that, Subs &res) const {
-        if constexpr (I < sizeof...(Th)) {
-            std::get<I>(res.t) = std::get<I>(t).concat(std::get<I>(that.t));
-            concatImpl<I+1>(that, res);
-        }
-    }
-
-public:
-
-    Subs concat(const Subs &that) const {
-        Subs res;
-        concatImpl(that, res);
         return res;
     }
 

@@ -20,4 +20,16 @@ VarSet variables(const Subs &e) {
     return substitution::vars<IntTheory, BoolTheory>(e);
 }
 
+TheSubs compose(const TheSubs &fst, const TheSubs &snd) {
+    TheSubs res;
+    composeImpl(fst, snd, res);
+    return res;
+}
+
+TheSubs concat(const TheSubs &fst, const TheSubs &snd) {
+    TheSubs res;
+    concatImpl(fst, snd, res);
+    return res;
+}
+
 }

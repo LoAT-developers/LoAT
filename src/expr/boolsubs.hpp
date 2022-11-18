@@ -64,23 +64,20 @@ public:
         return map.find(var) != map.end();
     }
 
-    BoolSubs compose(const BoolSubs &that) const {
+    BoolSubs concat(const theory::Subs<Th...> &that) const {
         BoolSubs res;
         for (const auto &p: *this) {
-            res.put(p.first, that(p.second));
-        }
-        for (const auto &p: that) {
-            if (!res.contains(p.first)) {
-                res.put(p.first, p.second);
-            }
+            res.put(p.first, p.second->subs(that));
         }
         return res;
     }
 
-    BoolSubs concat(const BoolSubs &that) const {
-        BoolSubs res;
-        for (const auto &p: *this) {
-            res.put(p.first, that(p.second));
+    BoolSubs unite(const BoolSubs &t) const {
+        BoolSubs res = *this;
+        for (const auto &p: t) {
+            if (!res.contains(p.first)) {
+                res.put(p.first, p.second);
+            }
         }
         return res;
     }

@@ -93,7 +93,7 @@ static option<LinearRule> chainLinearRules(VarMan &varMan, const LinearRule &fir
         return {};
     }
 
-    return LinearRule(newLhs.get(), RuleRhs(second.getRhsLoc(), second.getUpdate().compose(first.getUpdate())));
+    return LinearRule(newLhs.get(), RuleRhs(second.getRhsLoc(), substitution::compose(second.getUpdate(), first.getUpdate())));
 }
 
 
@@ -127,7 +127,7 @@ static option<Rule> chainRulesOnRhs(VarMan &varMan, const Rule &first, unsigned 
 
     // insert the rhss of second, chained with first's update
     for (const RuleRhs &secondRhs : second.getRhss()) {
-        newRhss.push_back(RuleRhs(secondRhs.getLoc(), secondRhs.getUpdate().compose(firstUpdate)));
+        newRhss.push_back(RuleRhs(secondRhs.getLoc(), substitution::compose(secondRhs.getUpdate(), firstUpdate)));
     }
 
     // keep the last rhss of first (after the one we want to chain)

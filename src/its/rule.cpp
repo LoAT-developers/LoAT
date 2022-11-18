@@ -78,7 +78,7 @@ bool Rule::isSimpleLoop() const {
 Rule Rule::subs(const Subs &subs) const {
     std::vector<RuleRhs> newRhss;
     for (const RuleRhs &rhs : rhss) {
-        newRhss.push_back(RuleRhs(rhs.getLoc(), rhs.getUpdate().concat(subs)));
+        newRhss.push_back(RuleRhs(rhs.getLoc(), substitution::concat(rhs.getUpdate(), subs)));
     }
     return Rule(RuleLhs(getLhsLoc(), getGuard()->subs(subs), getCost().subs(subs.get<IntTheory>())), newRhss);
 }
