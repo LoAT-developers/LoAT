@@ -225,9 +225,6 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit, Proof &proof) {
     }
     const Rel newCond = rel.subs(closed->update.get<IntTheory>()).subs({{closed->n, *closed->n-1}});
     const auto newGuard = BExpression::buildTheoryLit(rel) & newCond;
-    if (newGuard->implies(!*bound)) {
-        return false;
-    }
     const Expr updated = rel.lhs().subs(up.get<IntTheory>());
     const Rel dec = Rel::buildGeq(rel.lhs(), updated);
     const Rel inc = Rel::buildLt(updated, updated.subs(up.get<IntTheory>()));
@@ -285,9 +282,6 @@ bool AccelerationProblem::eventualWeakIncrease(const Lit &lit, Proof &proof) {
     const Rel &rel = std::get<Rel>(lit);
     const Expr &updated = rel.lhs().subs(up.get<IntTheory>());
     const Rel &inc = Rel::buildLeq(rel.lhs(), updated);
-    if (rel.implies(!inc)) {
-        return false;
-    }
     const Rel &dec = Rel::buildGt(updated, updated.subs(up.get<IntTheory>()));
     auto premise = findConsistentSubset(guard & inc & !dec & rel);
     if (premise.empty()) {
@@ -426,7 +420,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     }
     ReplacementMap map = computeReplacementMap(false);
     if (map.acceleratedAll || !isConjunction) {
-        bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || guard->implies(Rel::buildGt(cost, 0));
+        bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || SmtFactory::check(guard & Rel::buildLeq(cost, 0), its) == Unsat;
         bool nt = map.nonterm && positiveCost;
         auto newGuard = guard->replaceLits(map.map);
         if (closed) {

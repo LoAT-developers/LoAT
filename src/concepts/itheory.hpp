@@ -37,7 +37,6 @@ concept ILit = requires(T x, T y) {
         {x.isWellformed()} -> std::same_as<bool>;
         {x.isPoly()} -> std::same_as<bool>;
         {x.isLinear()} -> std::same_as<bool>;
-        {x.implies(y)} -> std::same_as<bool>;
 };
 
 template <typename T>

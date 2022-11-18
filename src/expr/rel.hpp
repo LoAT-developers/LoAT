@@ -36,7 +36,6 @@ public:
     bool isOctagon() const;
     bool isWellformed() const;
     void getBounds(const NumVar &n, Bounds &res) const;
-    bool implies(const Rel &rel) const;
 
     unsigned hash() const;
 

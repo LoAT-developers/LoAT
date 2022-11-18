@@ -20,7 +20,6 @@ public:
     void collectVars(std::set<BoolVar> &res) const;
     BoolLit normalize() const;
     bool isTriviallyTrue() const;
-    bool implies(const BoolLit &that) const;
 
 };
 

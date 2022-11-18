@@ -560,30 +560,6 @@ public:
         return {};
     }
 
-    /**
-     * Cheap and (very) incomplete implication check, which only looks for implications between literals.
-     * So it can prove x>1 ==> x>0, but not x>0 /\ y>0 ==> x+y>0.
-     */
-    bool implies(const Lit &lit) const {
-        if (isAnd()) {
-            for (const auto &c: getChildren()) {
-                if (c->implies(lit)) {
-                    return true;
-                }
-            }
-            return false;
-        } else if (isOr()) {
-            for (const auto &c: getChildren()) {
-                if (!c->implies(lit)) {
-                    return false;
-                }
-            }
-            return true;
-        } else {
-            return literal_t::implies<Th...>(*this->getTheoryLit(), lit);
-        }
-    }
-
     std::vector<G> dnf() const {
         std::vector<G> res;
         dnf(res);
