@@ -13,7 +13,7 @@ while read line; do
                 # line contains the number of the next benchmark -- run it
                 ex=$line
                 echo "running chc-${path}_$ex.smt2"
-                actual=$(./build/static/release/loat-static --mode reachability --format horn --proof-level 0 --timeout 10 "$repo/$path/chc-${path}_$ex.smt2")
+                actual=$(./build/static/release/loat-static --mode reachability --format horn --proof-level 0 --timeout 10 "$repo/$path/chc-${path}_$ex.smt2" | head -n 1)
                 if [ "$expected" = "$actual" ]; then
                     echo "test passed"
                 else
