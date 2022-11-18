@@ -505,8 +505,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         // acceleration succeeded, simplify the result
         res = *accel_res.rule;
         res.storeSubProof(accel_res.proof);
-        const auto simplified = Preprocess::simplifyRule(chcs, *res, true);
-        res.concat(simplified);
+        res.concat(Preprocess::simplifyRule(chcs, *res, true));
         if (log) {
             std::cout << "accelerated rule:" << std::endl;
             ITSExport::printRule(*res, chcs, std::cout);
