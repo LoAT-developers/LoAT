@@ -219,6 +219,10 @@ public:
 
     ~LinearizingSolver() override {}
 
+    std::ostream& print(std::ostream& os) const {
+        return z3.print(os);
+    }
+
 protected:
 
     std::pair<SmtResult, BoolExpressionSet<Th...>> _unsatCore(const BoolExpressionSet<Th...> &assumptions) override {

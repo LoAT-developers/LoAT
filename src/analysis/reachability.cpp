@@ -226,16 +226,16 @@ Subs Reachability::handle_update(const TransIdx idx) {
     for (const auto &x: prog_vars) {
         new_var_renaming.put(x, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(x)));
     }
+    for (const auto &var: r.vars()) {
+        if (chcs.isTempVar(var)) {
+            new_var_renaming.put(var, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(var)));
+        }
+    }
     for (const auto &x: prog_vars) {
         const auto eq = bkwd ?
                     literal::mkEq(expression::subs(up.get(x), new_var_renaming), last_var_renaming.get(x)) :
                     literal::mkEq(new_var_renaming.get(x), expression::subs(up.get(x), last_var_renaming));
         solver.add(eq);
-    }
-    for (const auto &var: r.vars()) {
-        if (chcs.isTempVar(var)) {
-            new_var_renaming.put(var, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(var)));
-        }
     }
     return new_var_renaming;
 }
@@ -283,19 +283,34 @@ void Reachability::add_to_trace(const Step &step) {
 
 bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     solver.push();
-    if (trace.empty()) {
+    option<Subs> new_var_renaming;
+    if (bkwd) {
+        // If we are reasoning backward, then we have to take the update into account, as it determines the values
+        // of the pre-variables that appear in the guard.
+        new_var_renaming = handle_update(idx);
+        solver.add(implicant->subs(*new_var_renaming));
+    } else if (trace.empty()) {
         solver.add(implicant);
     } else {
         // TODO This makes little sense for loops with more than one clause, since temporary variables from
         // previous steps do not get renamed
         solver.add(implicant->subs(trace.back().var_renaming));
     }
-    const auto new_var_renaming = handle_update(idx);
     if (solver.check() == Sat) {
         const auto model = solver.model();
-        const Step step(idx, implicant, new_var_renaming, model);
+        if (!bkwd) {
+            // If we are reasoning forward, then the update determines the values of the post-variables, that do
+            // not appear in the guard, i.e., they are irrelevant for satisfiability. As the update may still
+            // cause troubles (e.g., by introducing exponentials), we take care of the update after the sat check.
+            new_var_renaming = handle_update(idx);
+        }
+        const Step step(idx, implicant, *new_var_renaming, model);
         add_to_trace(step);
         blocked_clauses.push_back({});
+        // block learned clauses after adding them to the trace
+        if (is_learned_clause(idx)) {
+            block(step);
+        }
         return true;
     } else {
         solver.pop();
@@ -423,7 +438,14 @@ void Reachability::unsat() {
 
 option<BoolExpr> Reachability::resolve(const TransIdx idx) {
     PushPop pp(solver);
-    const auto var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
+    option<Subs> var_renaming;
+    if (bkwd) {
+        var_renaming = handle_update(idx);
+    } else if (trace.empty()) {
+        var_renaming = Subs();
+    } else {
+        var_renaming = trace.back().var_renaming;
+    }
     const auto clause = chcs.getRule(idx);
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
@@ -434,20 +456,17 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
         // a non-conjunctive clause where some variants are blocked
         // --> make sure that we use a non-blocked variant, if any
         for (const auto &b: block->second) {
-            solver.add(!b->subs(var_renaming));
+            solver.add(!b->subs(*var_renaming));
         }
     }
-    solver.add(clause.getGuard()->subs(var_renaming));
-    if (bkwd) {
-        handle_update(idx);
-    }
+    solver.add(clause.getGuard()->subs(*var_renaming));
     if (solver.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
         // the models get huge, but we are only interested in those variables that occur in
         // the guard or the variable renaming
         VarSet vars = clause.getGuard()->vars();
-        substitution::collectVariables(var_renaming, vars);
-        const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model().toSubs(vars)));
+        substitution::collectVariables(*var_renaming, vars);
+        const auto implicant = clause.getGuard()->implicant(substitution::compose(*var_renaming, solver.model().toSubs(vars)));
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {
@@ -660,8 +679,6 @@ void Reachability::analyze() {
                 if (simple_loop) {
                     block(step);
                 }
-                // make sure that we do not apply the accelerated transition again straight away, which is redundant
-                block(trace.back());
                 // try to apply a query before doing another step
                 if (try_to_finish()) {
                     return;
@@ -680,14 +697,8 @@ void Reachability::analyze() {
         std::vector<TransIdx> append;
         while (it != to_try.end()) {
             const option<BoolExpr> implicant = resolve(*it);
-            if (implicant) {
-                if (store_step(*it, *implicant)) {
-                    // block learned clauses after adding them to the trace
-                    if (is_learned_clause(*it)) {
-                        block(trace.back());
-                    }
-                    break;
-                }
+            if (implicant && store_step(*it, *implicant)) {
+                break;
             }
             append.push_back(*it);
             it = to_try.erase(it);
