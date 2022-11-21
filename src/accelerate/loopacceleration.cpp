@@ -66,86 +66,92 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
             if (up.isPoly() && up.degree(var) == 1) {
                 const Expr coeff = up.coeff(var);
                 if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
-                    const auto sub_res = Chaining::chainRules(its, res, renameTmpVars(res, its));
-                    if (sub_res) {
-                        res = *sub_res;
-                        period *= 2;
-                        break;
-                    } else {
-                        return {res, period};
-                    }
+                    res = *Chaining::chainRules(its, res, renameTmpVars(res, its), false);
+                    period = 2;
+                    break;
                 }
+            }
+        }
+    }
+    if (period == 1) {
+        // chain if there are updates like b = !b
+        for (const auto &p: rule.getUpdate().get<BoolTheory>()) {
+            const auto lits = p.second->lits();
+            const auto lit = BoolLit(p.first);
+            if (lits.find(!lit) != lits.end() && lits.find(lit) == lits.end()) {
+                res = *Chaining::chainRules(its, res, renameTmpVars(res, its), false);
+                period = 2;
+                break;
             }
         }
     }
     // chain if there are updates like x = y; y = x
-    std::map<NumVar, unsigned> cycleLength;
-    auto up = res.getUpdate().get<IntTheory>();
+    unsigned cycleLength = 1;
+    auto up = res.getUpdate();
     for (const auto &p: up) {
-        auto vars = p.second.vars();
+        if (p.index() == 1) continue;
+        const auto var = substitution::first(p);
+        const auto expr = substitution::second(p);
+        auto vars = expression::variables(expr);
         unsigned oldSize = 0;
-        unsigned count = 0;
-        while (oldSize != vars.size() && vars.find(p.first) == vars.end()) {
+        unsigned count = 1;
+        while (oldSize != vars.size() && vars.find(var) == vars.end()) {
             oldSize = vars.size();
             count++;
+            VarSet toInsert;
             for (const auto& var: vars) {
-                const auto it = up.find(var);
+                auto it = up.find(var);
                 if (it != up.end()) {
-                    const auto newVars = it->second.vars();
-                    vars.insert(newVars.begin(), newVars.end());
+                    toInsert.insertAll(expression::variables(substitution::second(*it)));
                 }
             }
+            vars.insertAll(toInsert);
         }
-        if (vars.find(p.first) != vars.end() && count > 0) {
-            cycleLength[p.first] = count;
-        }
-    }
-    if (!cycleLength.empty()) {
-        unsigned lcm = 1;
-        for (const auto &e: cycleLength) {
-            lcm = std::lcm(lcm, e.second);
-        }
-        for (unsigned i = 0; i < lcm; ++i) {
-            const auto sub_res = Chaining::chainRules(its, res, renameTmpVars(res, its));
-            if (sub_res) {
-                res = *sub_res;
-                period *= 2;
-            } else {
-                return {res, period};
-            }
+        if (count > 0 && vars.find(var) != vars.end()) {
+            cycleLength = std::lcm(cycleLength, count);
         }
     }
+    if (cycleLength > 1) {
+        LinearRule orig(res);
+        for (unsigned i = 1; i < cycleLength; ++i) {
+            res = *Chaining::chainRules(its, res, renameTmpVars(orig, its), false);
+        }
+        period *= cycleLength;
+    }
+    LinearRule orig(res);
+    unsigned origPeriod = period;
+    const auto &origUp = orig.getUpdate();
     // chain if it eliminates variables from an update
-    bool changed;
-    do {
-        changed = false;
+    NEXT: while (true) {
         up = res.getUpdate().get<IntTheory>();
         for (const auto &p: up) {
-            auto varsOneStep = p.second.vars();
+            std::set<NumVar> varsOneStep = p.second.vars();
             std::set<NumVar> varsTwoSteps;
             for (const auto &var: varsOneStep) {
-                const auto it = up.find(var);
-                if (it != up.end()) {
-                    const auto newVars = it->second.vars();
-                    varsTwoSteps.insert(newVars.begin(), newVars.end());
-                } else {
+                if (its.isTempVar(var)) {
+                    continue;
+                }
+                auto it = origUp.find(var);
+                if (it == origUp.end()) {
                     varsTwoSteps.insert(var);
+                } else {
+                    const auto toInsert = it->second.vars();
+                    varsTwoSteps.insert(toInsert.begin(), toInsert.end());
                 }
             }
-            if (varsTwoSteps.size() < varsOneStep.size() && std::includes(varsOneStep.begin(), varsOneStep.end(), varsTwoSteps.begin(), varsTwoSteps.end())) {
-                const auto sub_res = Chaining::chainRules(its, res, renameTmpVars(res, its));
-                if (sub_res) {
-                    res = *sub_res;
-                    period *= 2;
-                    changed = true;
-                    break;
-                } else {
-                    return {res, period};
+            for (const auto &var: varsOneStep) {
+                if (its.isTempVar(var)) {
+                    continue;
+                }
+                if (varsTwoSteps.find(var) == varsTwoSteps.end()) {
+                    res = *Chaining::chainRules(its, res, renameTmpVars(orig, its), false);
+                    period += origPeriod;
+                    goto NEXT;
                 }
             }
         }
-    } while (changed);
-    return {res, period};
+        return {res, period};
+    }
 }
 
 acceleration::Result LoopAcceleration::run() {
@@ -167,8 +173,7 @@ acceleration::Result LoopAcceleration::run() {
         }
     }
     const auto [rule, period] = chain(this->rule, its);
-    // only check sat if we didn't chain, as chaining ensures that the guard is sat
-    if (period == 1 && SmtFactory::check(rule.getGuard(), its) != Sat) {
+    if (SmtFactory::check(rule.getGuard(), its) != Sat) {
         res.status = acceleration::Unsat;
         return res;
     } else if (period > 1) {
@@ -205,9 +210,6 @@ acceleration::Result LoopAcceleration::run() {
         res.proof.storeSubProof(accelerationResult.nonterm->proof);
     }
     if (rec && accelerationResult.term) {
-        if (rec->validityBound > 1) {
-            throw logic_error("validity bound should be at most one due to unrolling");
-        }
         res.n = rec->n;
         res.rule = LinearRule(
                     rule.getLhsLoc(),
