@@ -12,7 +12,7 @@ bool isTriviallyTrue(const Lit &lit);
 
 Lit negate(const Lit &lit);
 
-BoolExpr mkEq(const Var &x, const ThExpr &e);
+BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2);
 
 }
 

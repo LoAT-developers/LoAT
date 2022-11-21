@@ -87,7 +87,7 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
     }
     // chain if there are updates like x = y; y = x
     unsigned cycleLength = 1;
-    auto up = res.getUpdate();
+    const auto up = res.getUpdate();
     for (const auto &p: up) {
         if (p.index() == 1) continue;
         const auto var = substitution::first(p);
@@ -120,12 +120,12 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
     }
     LinearRule orig(res);
     unsigned origPeriod = period;
-    const auto &origUp = orig.getUpdate();
+    const auto &origUp = orig.getUpdate().get<IntTheory>();
     // chain if it eliminates variables from an update
     NEXT: while (true) {
-        up = res.getUpdate().get<IntTheory>();
+        const auto up = res.getUpdate().get<IntTheory>();
         for (const auto &p: up) {
-            std::set<NumVar> varsOneStep = p.second.vars();
+            std::set<NumVar> varsOneStep(p.second.vars());
             std::set<NumVar> varsTwoSteps;
             for (const auto &var: varsOneStep) {
                 if (its.isTempVar(var)) {

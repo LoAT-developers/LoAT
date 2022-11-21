@@ -185,7 +185,8 @@ int Reachability::has_looping_suffix() {
     if (trace.empty()) {
         return -1;
     }
-    const LocationIdx dst = chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
+    const auto last_clause = chcs.getRule(trace.back().clause_idx);
+    const auto dst = bkwd ? last_clause.getLhsLoc() : last_clause.getRhsLoc(0);
     std::vector<long> sequence;
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
@@ -197,7 +198,9 @@ int Reachability::has_looping_suffix() {
             if (log) std::cout << sequence << " is a non-loop" << std::endl;
             continue;
         }
-        if (chcs.getRule(step.clause_idx).getLhsLoc() == dst) {
+        const auto clause = chcs.getRule(step.clause_idx);
+        const auto src = bkwd ? clause.getRhsLoc(0) : clause.getLhsLoc();
+        if (src == dst) {
             bool looping = static_cast<unsigned>(pos) < trace.size() - 1 || is_orig_clause(step.clause_idx);
             if (looping) {
                 return pos;
@@ -213,9 +216,13 @@ Subs Reachability::handle_update(const TransIdx idx) {
     Subs new_var_renaming;
     const Subs up = r.getUpdate(0);
     for (const auto &x: prog_vars) {
-        const auto y = chcs.getFreshUntrackedSymbol(x);
-        solver.add(literal::mkEq(y, expression::subs(up.get(x), last_var_renaming)));
-        new_var_renaming.put(x, TheTheory::varToExpr(y));
+        new_var_renaming.put(x, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(x)));
+    }
+    for (const auto &x: prog_vars) {
+        const auto eq = bkwd ?
+                    literal::mkEq(expression::subs(up.get(x), new_var_renaming), last_var_renaming.get(x)) :
+                    literal::mkEq(new_var_renaming.get(x), expression::subs(up.get(x), last_var_renaming));
+        solver.add(eq);
     }
     for (const auto &var: r.vars()) {
         if (chcs.isTempVar(var)) {
@@ -254,9 +261,6 @@ void Reachability::backtrack() {
 }
 
 void Reachability::add_to_trace(const Step &step) {
-    if (!trace.empty() && chcs.getRule(trace.back().clause_idx).getRhsLoc(0) != chcs.getRule(step.clause_idx).getLhsLoc()) {
-        throw std::logic_error("adding clause with wrong body symbol");
-    }
     trace.emplace_back(step);
     proof.push();
     proof.headline("extended trace");
@@ -271,11 +275,6 @@ void Reachability::add_to_trace(const Step &step) {
 
 void Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     const auto model = solver.model();
-    if (trace.empty()) {
-        solver.add(implicant);
-    } else {
-        solver.add(implicant->subs(trace.back().var_renaming));
-    }
     const auto new_var_renaming = handle_update(idx);
     const Step step(idx, implicant, new_var_renaming, model);
     add_to_trace(step);
@@ -321,24 +320,24 @@ void Reachability::preprocess() {
 }
 
 void Reachability::update_rules(const LocationIdx idx) {
-    auto it = cross_scc.find(idx);
+    auto l_it = cross_scc.find(idx);
     // the order of the clauses in this list determines the selection order for resolution
     std::list<LocationIdx> trans;
     // try to get out of the current SCC as we want to reach 'bottom', which is its own SCC
-    if (it != cross_scc.end()) {
-        trans.insert(trans.end(), it->second.begin(), it->second.end());
+    if (l_it != cross_scc.end()) {
+        trans.insert(trans.end(), l_it->second.begin(), l_it->second.end());
     }
     // try learned clauses next
-    it = learned_clauses.find(idx);
+    const auto it = learned_clauses.find(idx);
     if (it != learned_clauses.end()) {
         trans.insert(trans.end(), it->second.begin(), it->second.end());
     }
     // try original clauses that stay within the current SCC last
-    it = in_scc.find(idx);
-    if (it != in_scc.end()) {
-        trans.insert(trans.end(), it->second.begin(), it->second.end());
+    l_it = in_scc.find(idx);
+    if (l_it != in_scc.end()) {
+        trans.insert(trans.end(), l_it->second.begin(), l_it->second.end());
     }
-    facts_and_rules[idx] = trans;
+    rules[idx] = trans;
 }
 
 void Reachability::init() {
@@ -355,17 +354,20 @@ void Reachability::init() {
         if (src == chcs.getInitialLocation() && dst == chcs.getSink()) {
             conditional_empty_clauses.push_back(idx);
         } else {
-            std::map<LocationIdx, std::vector<TransIdx>> *to_insert;
-            if (dst == chcs.getSink()) {
+            std::map<LocationIdx, std::list<TransIdx>> *to_insert;
+            if (src == chcs.getInitialLocation()) {
+                to_insert = &facts;
+            } else if (dst == chcs.getSink()) {
                 to_insert = &queries;
             } else if (leaves_scc(idx)) {
                 to_insert = &cross_scc;
             } else {
                 to_insert = &in_scc;
             }
-            const auto it = to_insert->find(src);
+            const auto key = bkwd ? dst : src;
+            const auto it = to_insert->find(key);
             if (it == to_insert->end()) {
-                to_insert->emplace(src, std::vector<TransIdx>{idx});
+                to_insert->emplace(key, std::list<TransIdx>{idx});
             } else {
                 it->second.push_back(idx);
             }
@@ -397,13 +399,16 @@ void Reachability::unsat() {
     proof.print();
 }
 
+// TODO refactor pops via RAII
 option<BoolExpr> Reachability::resolve(const TransIdx idx) {
     const auto var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
-    const Rule r = chcs.getRule(idx);
+    const auto clause = chcs.getRule(idx);
     const auto block = blocked_clauses.back().find(idx);
+    solver.push();
     if (block != blocked_clauses.back().end()) {
         // a blocked conjunctive clause --> fail
-        if (r.getGuard()->isConjunction()) {
+        if (clause.getGuard()->isConjunction()) {
+            solver.pop();
             return {};
         }
         // a non-conjunctive clause where some variants are blocked
@@ -412,14 +417,15 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
             solver.add(!b->subs(var_renaming));
         }
     }
-    solver.add(r.getGuard()->subs(var_renaming));
+    solver.add(clause.getGuard()->subs(var_renaming));
     if (solver.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
         // the models get huge, but we are only interested in those variables that occur in
         // the guard or the variable renaming
-        VarSet vars = r.getGuard()->vars();
+        VarSet vars = clause.getGuard()->vars();
         substitution::collectVariables(var_renaming, vars);
-        const auto implicant = r.getGuard()->implicant(substitution::compose(var_renaming, solver.model().toSubs(vars)));
+        const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model().toSubs(vars)));
+        solver.pop();
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {
@@ -427,6 +433,7 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
         }
     } else {
         if (log) std::cout << "could not find a model for " << idx << std::endl;
+        solver.pop();
         return {};
     }
 }
@@ -462,7 +469,12 @@ Rule Reachability::build_loop(const int backlink) {
         sigma.erase(prog_vars); // rename temporary variables before chaining
         const TransIdx t = step.clause_idx;
         const Rule r = chcs.getRule(t);
-        loop = *Chaining::chainRules(chcs, r.withGuard(step.implicant).subs(sigma), loop, false);
+        if (bkwd) {
+            loop = *Chaining::chainRules(chcs, loop, r.withGuard(step.implicant).subs(sigma), false);
+        } else {
+            loop = *Chaining::chainRules(chcs, r.withGuard(step.implicant).subs(sigma), loop, false);
+        }
+
     }
     assert(loop.getLhsLoc() == loop.getRhsLoc(0));
     if (log) {
@@ -579,13 +591,16 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
 }
 
 LocationIdx Reachability::get_current_predicate() const {
-    return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
+    if (bkwd) {
+        return trace.empty() ? *chcs.getSink() : chcs.getRule(trace.back().clause_idx).getLhsLoc();
+    } else {
+        return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
+    }
 }
 
-bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
+bool Reachability::try_to_finish(const std::list<TransIdx> &clauses) {
     solver.setTimeout(2000);
-    for (const auto &q: queries) {
-        solver.push();
+    for (const auto &q: clauses) {
         const option<BoolExpr> implicant = resolve(q);
         if (implicant) {
             // no need to compute the model and the variable renaming for the next step, as we are done
@@ -593,18 +608,18 @@ bool Reachability::try_queries(const std::vector<TransIdx> &queries) {
             unsat();
             return true;
         }
-        solver.pop();
     }
     solver.setTimeout(Config::Smt::DefaultTimeout);
     return false;
 }
 
-bool Reachability::try_queries() {
-    return try_queries(queries[get_current_predicate()]);
+bool Reachability::try_to_finish() {
+    const auto current = get_current_predicate();
+    return try_to_finish(bkwd ? facts[current] : queries[current]);
 }
 
 bool Reachability::try_conditional_empty_clauses() {
-    return try_queries(conditional_empty_clauses);
+    return try_to_finish(conditional_empty_clauses);
 }
 
 void Reachability::analyze() {
@@ -633,7 +648,7 @@ void Reachability::analyze() {
                 // make sure that we do not apply the accelerated transition again straight away, which is redundant
                 block(trace.back());
                 // try to apply a query before doing another step
-                if (try_queries()) {
+                if (try_to_finish()) {
                     return;
                 }
             } else if (state->dropped()) {
@@ -644,24 +659,30 @@ void Reachability::analyze() {
                 break;
             }
         }
-        auto &to_try = facts_and_rules[get_current_predicate()];
+        const auto current = get_current_predicate();
+        auto &to_try = trace.empty() ? (bkwd ? queries[current] : facts[current]) : rules[current];
         auto it = to_try.begin();
         std::vector<TransIdx> append;
         while (it != to_try.end()) {
-            solver.push();
             const option<BoolExpr> implicant = resolve(*it);
             if (implicant) {
-                // block learned clauses after adding them to the trace
-                if (is_learned_clause(*it)) {
-                    block(trace.back());
+                solver.push();
+                if (trace.empty()) {
+                    solver.add(*implicant);
+                } else {
+                    solver.add((*implicant)->subs(trace.back().var_renaming));
                 }
-                store_step(*it, *implicant);
-                break;
-            } else {
-                solver.pop();
-                append.push_back(*it);
-                it = to_try.erase(it);
+                if (solver.check() == Sat) {
+                    store_step(*it, *implicant);
+                    // block learned clauses after adding them to the trace
+                    if (is_learned_clause(*it)) {
+                        block(trace.back());
+                    }
+                    break;
+                }
             }
+            append.push_back(*it);
+            it = to_try.erase(it);
         }
         if (trace.empty()) {
             break;
@@ -671,7 +692,7 @@ void Reachability::analyze() {
         } else {
             // check whether a query is applicable after every step and,
             // importantly, before acceleration (which might approximate)
-            if (try_queries()) {
+            if (try_to_finish()) {
                 return;
             }
         }

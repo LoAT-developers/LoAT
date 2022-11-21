@@ -339,7 +339,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit, Proof &proof) {
             // encoding equality for booleans introduces a disjunction
             return false;
         }
-        eqs.push_back(literal::mkEq(v, up.get(v)));
+        eqs.push_back(literal::mkEq(TheTheory::varToExpr(v), up.get(v)));
     }
     const auto allEq = BExpression::buildAnd(eqs);
     if (SmtFactory::check(guard & lit & allEq, its) != Sat) {

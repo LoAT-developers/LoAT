@@ -20,18 +20,17 @@ Lit negate(const Lit &lit) {
     return literal_t::negate<IntTheory, BoolTheory>(lit);
 }
 
-BoolExpr mkEq(const Var &x, const ThExpr &e) {
+BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
                 Overload{
-                    [&e](const NumVar &x){
-                        return BExpression::buildTheoryLit(Rel::buildEq(x, std::get<Expr>(e)));
+                    [&e2](const Expr &e1){
+                        return BExpression::buildTheoryLit(Rel::buildEq(e1, std::get<Expr>(e2)));
                     },
-                    [&e](const BoolVar &x){
-                        const auto lhs = BExpression::buildTheoryLit(BoolLit(x));
-                        const auto rhs = std::get<BoolExpr>(e);
+                    [&e2](const BoolExpr &lhs){
+                        const auto rhs = std::get<BoolExpr>(e2);
                         return (lhs & rhs) | ((!lhs) & (!rhs));
                     }
-                }, x);
+                }, e1);
 }
 
 }

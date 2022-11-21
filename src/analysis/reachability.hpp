@@ -147,27 +147,29 @@ class Reachability {
     const HyperGraph::SCCs sccs {chcs.sccs()};
 
     /**
-     * facts and rules where the head and body symbol belong to different SCCs
+     * rules where the head and body symbol belong to different SCCs
      */
-    std::map<LocationIdx, std::vector<TransIdx>> cross_scc;
+    std::map<LocationIdx, std::list<TransIdx>> cross_scc;
 
     /**
      * rules where the head and the body symbol belong to the same SCC
      */
-    std::map<LocationIdx, std::vector<TransIdx>> in_scc;
+    std::map<LocationIdx, std::list<TransIdx>> in_scc;
 
     std::map<LocationIdx, std::vector<TransIdx>> learned_clauses;
 
     /**
-     * All facts and rules (including learned clauses).
+     * All rules (including learned clauses).
      * The order of these lists determines the selection order of clauses for resolution.
      * It is updated on the fly when we learn clauses.
      */
-    std::map<LocationIdx, std::list<TransIdx>> facts_and_rules;
+    std::map<LocationIdx, std::list<TransIdx>> rules;
 
-    std::map<LocationIdx, std::vector<TransIdx>> queries;
+    std::map<LocationIdx, std::list<TransIdx>> facts;
 
-    std::vector<TransIdx> conditional_empty_clauses;
+    std::map<LocationIdx, std::list<TransIdx>> queries;
+
+    std::list<TransIdx> conditional_empty_clauses;
 
     /**
      * predicate representing 'false'
@@ -200,6 +202,8 @@ class Reachability {
     std::unique_ptr<Red> redundance {std::make_unique<Red>()};
 
     NonLoops non_loops;
+
+    bool bkwd = false;
 
     bool is_learned_clause(const TransIdx idx) const;
 
@@ -333,8 +337,8 @@ class Reachability {
      */
     LocationIdx get_current_predicate() const;
 
-    bool try_queries(const std::vector<TransIdx> &queries);
-    bool try_queries();
+    bool try_to_finish(const std::list<TransIdx> &clauses);
+    bool try_to_finish();
     bool try_conditional_empty_clauses();
 
     Reachability(ITSProblem &its);
