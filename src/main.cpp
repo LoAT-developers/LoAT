@@ -26,6 +26,7 @@
 #include "proof.hpp"
 #include "version.hpp"
 #include "reachability.hpp"
+#include "satisfiability.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -173,6 +174,9 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Analysis::Reachability:
         reachability::Reachability::analyze(its);
+        break;
+    case Config::Analysis::Satisfiability:
+        Satisfiability::analyze(its);
         break;
     default:
         throw std::invalid_argument("unsupported mode");

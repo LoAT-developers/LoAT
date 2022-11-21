@@ -12,6 +12,8 @@ target_sources(${EXECUTABLE}
         prune.hpp
         reachability.hpp
         reachability.cpp
+        satisfiability.cpp
+        satisfiability.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

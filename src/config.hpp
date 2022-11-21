@@ -136,7 +136,7 @@ namespace Config {
     // Main algorithm
     namespace Analysis {
 
-        enum Mode { Complexity, NonTermination, Reachability };
+        enum Mode { Complexity, NonTermination, Reachability, Satisfiability };
         extern std::vector<Mode> modes;
         extern bool Pruning;
         extern Mode mode;
@@ -146,6 +146,7 @@ namespace Config {
         bool tryNonterm();
         bool reachability();
         bool complexity();
+        bool satisfiability();
 
     }
 
