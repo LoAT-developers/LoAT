@@ -139,7 +139,6 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
                     it = bvars.erase(it);
                     changed = true;
                     subproof.append(stringstream() << "replaced " << var << " with " << *eq);
-                    res.storeSubProof(subproof);
                     break;
                 }
             }

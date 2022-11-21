@@ -424,6 +424,7 @@ private:
         if constexpr (I < sizeof...(Th)) {
             s << std::get<I>(t);
             if constexpr (I + 1 < variant_size) {
+                s << " u ";
                 printImpl<I+1>(s);
             }
         }
