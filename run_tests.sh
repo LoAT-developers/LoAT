@@ -20,7 +20,7 @@ while read line; do
                 if [ "$expected" = "$actual" ]; then
                     echo "test passed in ${runtime}s"
                 else
-                    echo "test failed after ${runtime}s -- expted $expected, got $actual"
+                    echo "test failed after ${runtime}s -- expected $expected, got $actual"
                     exit 0
                 fi
             else
