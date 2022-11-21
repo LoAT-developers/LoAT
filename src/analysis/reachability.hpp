@@ -138,6 +138,15 @@ class Failed: public LearningState {
     option<Failed> failed() override;
 };
 
+/**
+ * auxiliary class for incremental SMT via RAII
+ */
+struct PushPop {
+    LinearizingSolver<IntTheory, BoolTheory> &solver;
+    PushPop(LinearizingSolver<IntTheory, BoolTheory> &solver);
+    ~PushPop();
+};
+
 class Reachability {
 
     ITSProblem &chcs;
@@ -328,7 +337,7 @@ class Reachability {
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    void store_step(const TransIdx idx, const BoolExpr &sat);
+    bool store_step(const TransIdx idx, const BoolExpr &sat);
 
     void print_trace(std::ostream &s);
 

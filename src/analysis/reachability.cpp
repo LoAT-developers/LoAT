@@ -59,6 +59,14 @@ option<Failed> Failed::failed() {
     return *this;
 }
 
+PushPop::PushPop(LinearizingSolver<IntTheory, BoolTheory> &solver): solver(solver) {
+    solver.push();
+}
+
+PushPop::~PushPop() {
+    solver.pop();
+}
+
 Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs), non_loops(chcs) {
     solver.enableModels();
 }
@@ -273,12 +281,26 @@ void Reachability::add_to_trace(const Step &step) {
     proof.storeSubProof(subProof);
 }
 
-void Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
-    const auto model = solver.model();
+bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
+    solver.push();
+    if (trace.empty()) {
+        solver.add(implicant);
+    } else {
+        // TODO This makes little sense for loops with more than one clause, since temporary variables from
+        // previous steps do not get renamed
+        solver.add(implicant->subs(trace.back().var_renaming));
+    }
     const auto new_var_renaming = handle_update(idx);
-    const Step step(idx, implicant, new_var_renaming, model);
-    add_to_trace(step);
-    blocked_clauses.push_back({});
+    if (solver.check() == Sat) {
+        const auto model = solver.model();
+        const Step step(idx, implicant, new_var_renaming, model);
+        add_to_trace(step);
+        blocked_clauses.push_back({});
+        return true;
+    } else {
+        solver.pop();
+        return false;
+    }
 }
 
 void Reachability::print_trace(std::ostream &s) {
@@ -399,16 +421,14 @@ void Reachability::unsat() {
     proof.print();
 }
 
-// TODO refactor pops via RAII
 option<BoolExpr> Reachability::resolve(const TransIdx idx) {
+    PushPop pp(solver);
     const auto var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     const auto clause = chcs.getRule(idx);
     const auto block = blocked_clauses.back().find(idx);
-    solver.push();
     if (block != blocked_clauses.back().end()) {
         // a blocked conjunctive clause --> fail
         if (clause.getGuard()->isConjunction()) {
-            solver.pop();
             return {};
         }
         // a non-conjunctive clause where some variants are blocked
@@ -418,6 +438,9 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
         }
     }
     solver.add(clause.getGuard()->subs(var_renaming));
+    if (bkwd) {
+        handle_update(idx);
+    }
     if (solver.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
         // the models get huge, but we are only interested in those variables that occur in
@@ -425,7 +448,6 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
         VarSet vars = clause.getGuard()->vars();
         substitution::collectVariables(var_renaming, vars);
         const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model().toSubs(vars)));
-        solver.pop();
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {
@@ -433,7 +455,6 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
         }
     } else {
         if (log) std::cout << "could not find a model for " << idx << std::endl;
-        solver.pop();
         return {};
     }
 }
@@ -576,16 +597,10 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
     drop_until(backlink);
     proof.majorProofStep("accelerated loop", chcs);
     proof.storeSubProof(subproof);
-    solver.push();
-    // TODO This makes little sense for loops with more than one clause, since temporary variables from
-    // previous steps do not get renamed
-    solver.add(accel.getGuard()->subs(trace.back().var_renaming));
-    if (solver.check() == Sat) {
-        store_step(idx, accel.getGuard());
+    if (store_step(idx, accel.getGuard())) {
         return state;
     } else {
         if (log) std::cout << "applying accelerated rule failed" << std::endl;
-        solver.pop();
         return std::make_unique<Dropped>();
     }
 }
@@ -666,14 +681,7 @@ void Reachability::analyze() {
         while (it != to_try.end()) {
             const option<BoolExpr> implicant = resolve(*it);
             if (implicant) {
-                solver.push();
-                if (trace.empty()) {
-                    solver.add(*implicant);
-                } else {
-                    solver.add((*implicant)->subs(trace.back().var_renaming));
-                }
-                if (solver.check() == Sat) {
-                    store_step(*it, *implicant);
+                if (store_step(*it, *implicant)) {
                     // block learned clauses after adding them to the trace
                     if (is_learned_clause(*it)) {
                         block(trace.back());
