@@ -194,7 +194,7 @@ int Reachability::has_looping_suffix() {
         return -1;
     }
     const auto last_clause = chcs.getRule(trace.back().clause_idx);
-    const auto dst = bkwd ? last_clause.getLhsLoc() : last_clause.getRhsLoc(0);
+    const auto dst = last_clause.getRhsLoc(0);
     std::vector<long> sequence;
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
@@ -206,9 +206,7 @@ int Reachability::has_looping_suffix() {
             if (log) std::cout << sequence << " is a non-loop" << std::endl;
             continue;
         }
-        const auto clause = chcs.getRule(step.clause_idx);
-        const auto src = bkwd ? clause.getRhsLoc(0) : clause.getLhsLoc();
-        if (src == dst) {
+        if (chcs.getRule(step.clause_idx).getLhsLoc() == dst) {
             bool looping = static_cast<unsigned>(pos) < trace.size() - 1 || is_orig_clause(step.clause_idx);
             if (looping) {
                 return pos;
@@ -232,10 +230,7 @@ Subs Reachability::handle_update(const TransIdx idx) {
         }
     }
     for (const auto &x: prog_vars) {
-        const auto eq = bkwd ?
-                    literal::mkEq(expression::subs(up.get(x), new_var_renaming), last_var_renaming.get(x)) :
-                    literal::mkEq(new_var_renaming.get(x), expression::subs(up.get(x), last_var_renaming));
-        solver.add(eq);
+        solver.add(literal::mkEq(new_var_renaming.get(x), expression::subs(up.get(x), last_var_renaming)));
     }
     return new_var_renaming;
 }
@@ -283,13 +278,7 @@ void Reachability::add_to_trace(const Step &step) {
 
 bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     solver.push();
-    option<Subs> new_var_renaming;
-    if (bkwd) {
-        // If we are reasoning backward, then we have to take the update into account, as it determines the values
-        // of the pre-variables that appear in the guard.
-        new_var_renaming = handle_update(idx);
-        solver.add(implicant->subs(*new_var_renaming));
-    } else if (trace.empty()) {
+    if (trace.empty()) {
         solver.add(implicant);
     } else {
         // TODO This makes little sense for loops with more than one clause, since temporary variables from
@@ -298,13 +287,8 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     }
     if (solver.check() == Sat) {
         const auto model = solver.model();
-        if (!bkwd) {
-            // If we are reasoning forward, then the update determines the values of the post-variables, that do
-            // not appear in the guard, i.e., they are irrelevant for satisfiability. As the update may still
-            // cause troubles (e.g., by introducing exponentials), we take care of the update after the sat check.
-            new_var_renaming = handle_update(idx);
-        }
-        const Step step(idx, implicant, *new_var_renaming, model);
+        const auto new_var_renaming = handle_update(idx);
+        const Step step(idx, implicant, new_var_renaming, model);
         add_to_trace(step);
         blocked_clauses.push_back({});
         // block learned clauses after adding them to the trace
@@ -391,20 +375,17 @@ void Reachability::init() {
         if (src == chcs.getInitialLocation() && dst == chcs.getSink()) {
             conditional_empty_clauses.push_back(idx);
         } else {
-            std::map<LocationIdx, std::list<TransIdx>> *to_insert;
-            if (src == chcs.getInitialLocation()) {
-                to_insert = &facts;
-            } else if (dst == chcs.getSink()) {
+            std::map<LocationIdx, std::vector<TransIdx>> *to_insert;
+            if (dst == chcs.getSink()) {
                 to_insert = &queries;
             } else if (leaves_scc(idx)) {
                 to_insert = &cross_scc;
             } else {
                 to_insert = &in_scc;
             }
-            const auto key = bkwd ? dst : src;
-            const auto it = to_insert->find(key);
+            const auto it = to_insert->find(src);
             if (it == to_insert->end()) {
-                to_insert->emplace(key, std::list<TransIdx>{idx});
+                to_insert->emplace(src, std::vector<TransIdx>{idx});
             } else {
                 it->second.push_back(idx);
             }
@@ -438,14 +419,7 @@ void Reachability::unsat() {
 
 option<BoolExpr> Reachability::resolve(const TransIdx idx) {
     PushPop pp(solver);
-    option<Subs> var_renaming;
-    if (bkwd) {
-        var_renaming = handle_update(idx);
-    } else if (trace.empty()) {
-        var_renaming = Subs();
-    } else {
-        var_renaming = trace.back().var_renaming;
-    }
+    const auto var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     const auto clause = chcs.getRule(idx);
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
@@ -456,17 +430,17 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
         // a non-conjunctive clause where some variants are blocked
         // --> make sure that we use a non-blocked variant, if any
         for (const auto &b: block->second) {
-            solver.add(!b->subs(*var_renaming));
+            solver.add(!b->subs(var_renaming));
         }
     }
-    solver.add(clause.getGuard()->subs(*var_renaming));
+    solver.add(clause.getGuard()->subs(var_renaming));
     if (solver.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
         // the models get huge, but we are only interested in those variables that occur in
         // the guard or the variable renaming
         VarSet vars = clause.getGuard()->vars();
-        substitution::collectVariables(*var_renaming, vars);
-        const auto implicant = clause.getGuard()->implicant(substitution::compose(*var_renaming, solver.model().toSubs(vars)));
+        substitution::collectVariables(var_renaming, vars);
+        const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model().toSubs(vars)));
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {
@@ -507,13 +481,7 @@ Rule Reachability::build_loop(const int backlink) {
         const Step &step = trace[i];
         auto sigma = step.var_renaming;
         sigma.erase(prog_vars); // rename temporary variables before chaining
-        const TransIdx t = step.clause_idx;
-        const Rule r = chcs.getRule(t);
-        if (bkwd) {
-            loop = *Chaining::chainRules(chcs, loop, r.withGuard(step.implicant).subs(sigma), false);
-        } else {
-            loop = *Chaining::chainRules(chcs, r.withGuard(step.implicant).subs(sigma), loop, false);
-        }
+        loop = *Chaining::chainRules(chcs, chcs.getRule(step.clause_idx).withGuard(step.implicant).subs(sigma), loop, false);
 
     }
     assert(loop.getLhsLoc() == loop.getRhsLoc(0));
@@ -625,14 +593,10 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
 }
 
 LocationIdx Reachability::get_current_predicate() const {
-    if (bkwd) {
-        return trace.empty() ? *chcs.getSink() : chcs.getRule(trace.back().clause_idx).getLhsLoc();
-    } else {
-        return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
-    }
+    return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
 }
 
-bool Reachability::try_to_finish(const std::list<TransIdx> &clauses) {
+bool Reachability::try_to_finish(const std::vector<TransIdx> &clauses) {
     solver.setTimeout(2000);
     for (const auto &q: clauses) {
         const option<BoolExpr> implicant = resolve(q);
@@ -648,8 +612,7 @@ bool Reachability::try_to_finish(const std::list<TransIdx> &clauses) {
 }
 
 bool Reachability::try_to_finish() {
-    const auto current = get_current_predicate();
-    return try_to_finish(bkwd ? facts[current] : queries[current]);
+    return try_to_finish(queries[get_current_predicate()]);
 }
 
 bool Reachability::try_conditional_empty_clauses() {
@@ -692,7 +655,7 @@ void Reachability::analyze() {
             }
         }
         const auto current = get_current_predicate();
-        auto &to_try = trace.empty() ? (bkwd ? queries[current] : facts[current]) : rules[current];
+        auto &to_try = rules[current];
         auto it = to_try.begin();
         std::vector<TransIdx> append;
         while (it != to_try.end()) {
