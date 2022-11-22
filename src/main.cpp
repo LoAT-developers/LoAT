@@ -84,7 +84,7 @@ void parseFlags(int argc, char *argv[]) {
                 cerr << "Unknown strategy " << strategy << " for limit problems, defaulting to " << Config::Limit::PolyStrategy->name() << endl;
             }
         } else if (strcmp("--reach-log", argv[arg]) == 0) {
-            Reachability::log = true;
+            reachability::Reachability::log = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
             bool found = false;
             std::string str = getNext();
@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
         Analysis::analyze(its);
         break;
     case Config::Analysis::Reachability:
-        Reachability::analyze(its);
+        reachability::Reachability::analyze(its);
         break;
     default:
         throw std::invalid_argument("unsupported mode");

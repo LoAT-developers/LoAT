@@ -9,6 +9,8 @@
 
 #include <list>
 
+namespace reachability {
+
 /**
  * Represents a resolution step, i.e., an element of the trace.
  */
@@ -364,3 +366,5 @@ public:
     static void analyze(ITSProblem &its);
 
 };
+
+}

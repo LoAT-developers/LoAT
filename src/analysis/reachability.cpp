@@ -8,10 +8,13 @@
 #include "smt.hpp"
 #include "export.hpp"
 #include "expression.hpp"
-#include "vector.hpp"
 #include "literal.hpp"
 
 #include <numeric>
+
+namespace reachability {
+
+#include "vector.hpp"
 
 bool Reachability::log = false;
 
