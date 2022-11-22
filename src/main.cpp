@@ -86,6 +86,8 @@ void parseFlags(int argc, char *argv[]) {
             }
         } else if (strcmp("--reach-log", argv[arg]) == 0) {
             reachability::Reachability::log = true;
+        } else if (strcmp("--sat-log", argv[arg]) == 0) {
+            satisfiability::Satisfiability::log = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
             bool found = false;
             std::string str = getNext();
@@ -176,7 +178,7 @@ int main(int argc, char *argv[]) {
         reachability::Reachability::analyze(its);
         break;
     case Config::Analysis::Satisfiability:
-        Satisfiability::analyze(its);
+        satisfiability::Satisfiability::analyze(its);
         break;
     default:
         throw std::invalid_argument("unsupported mode");
