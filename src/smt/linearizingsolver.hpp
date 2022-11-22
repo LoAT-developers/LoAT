@@ -249,6 +249,10 @@ public:
         return z3.print(os);
     }
 
+    void setSeed(unsigned seed) {
+        z3.setSeed(seed);
+    }
+
 protected:
 
     std::pair<SmtResult, BoolExpressionSet<Th...>> _unsatCore(const BoolExpressionSet<Th...> &assumptions) override {

@@ -122,6 +122,11 @@ public:
         }
     }
 
+    void setSeed(unsigned seed) {
+        this->seed = seed;
+        updateParams();
+    }
+
 private:
     bool models = false;
     unsigned int timeout = Config::Smt::DefaultTimeout;
@@ -129,6 +134,7 @@ private:
     z3::context z3Ctx;
     Z3Context ctx;
     z3::solver solver;
+    unsigned seed = 42u;
 
     Num getRealFromModel(const z3::model &model, const z3::expr &symbol) {
         return Num(Z3_get_numeral_string(
@@ -147,6 +153,7 @@ private:
         z3::params params(z3Ctx);
         params.set(":model", models);
         params.set(":timeout", timeout);
+        params.set(":seed", seed);
         solver.set(params);
     }
 

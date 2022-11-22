@@ -201,6 +201,14 @@ class Reachability {
      */
     TransIdx last_orig_clause = 0;
 
+    std::pair<unsigned, unsigned> luby{1u,1u};
+
+    unsigned luby_unit = 10;
+
+    unsigned luby_loop_count = 0;
+
+    void luby_next();
+
     /**
      * Implementation of our redundancy check.
      * TODO RedundanceViaSquareFreeWords is not sound for sat. RedundanceViaAutomata should be sound.

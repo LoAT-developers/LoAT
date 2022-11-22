@@ -362,6 +362,7 @@ void Reachability::update_rules(const LocationIdx idx) {
 }
 
 void Reachability::init() {
+    srand(42);
     for (const auto &x: chcs.getVars()) {
         if (!chcs.isTempVar(x)) {
             prog_vars.insert(x);
@@ -394,6 +395,12 @@ void Reachability::init() {
     for (const auto loc: chcs.getLocations()) {
         update_rules(loc);
     }
+}
+
+void Reachability::luby_next() {
+    const auto [u,v] = luby;
+    luby = (u & (u-1)) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
+    luby_loop_count = 0;
 }
 
 void Reachability::unsat() {
@@ -561,6 +568,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << lang << std::endl;
     }
+    luby_loop_count++;
     redundance->mark_as_redundant(lang);
     const auto loop = build_loop(backlink);
     if (loop.getUpdate(0).empty()) {
@@ -631,6 +639,15 @@ void Reachability::analyze() {
         return;
     }
     do {
+        if (luby_loop_count == luby_unit * luby.second) {
+            if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
+            // restart
+            while (!trace.empty()) {
+                pop();
+            }
+            luby_next();
+            solver.setSeed(rand());
+        }
         if (log) std::cout << "trace: " << trace << std::endl;
         for (int backlink = has_looping_suffix(); backlink >= 0; backlink = has_looping_suffix()) {
             Step step = trace[backlink];
