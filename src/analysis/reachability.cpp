@@ -9,12 +9,13 @@
 #include "export.hpp"
 #include "expression.hpp"
 #include "literal.hpp"
+#include "vector.hpp"
 
 #include <numeric>
 
 namespace reachability {
 
-#include "vector.hpp"
+using ::operator<<;
 
 bool Reachability::log = false;
 
