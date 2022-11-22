@@ -708,3 +708,5 @@ void Reachability::analyze(ITSProblem &its) {
     Reachability(its).analyze();
     yices::exit();
 }
+
+}
