@@ -9,12 +9,13 @@
 #include "export.hpp"
 #include "expression.hpp"
 #include "literal.hpp"
+#include "vector.hpp"
 
 #include <numeric>
 
 namespace satisfiability {
 
-#include "vector.hpp"
+using ::operator<<;
 
 bool Satisfiability::log = false;
 
