@@ -4,7 +4,7 @@
 #include "itheory.hpp"
 
 /**
- * Wrapper around Z3 that first linearizes non-polynomial terms and then instantiates their exponent with candidates
+ * Wrapper around Z3 that first linearizes exponentials and then instantiates their exponent with candidates
  * that are derived from the model of the linearization (if any).
  */
 template <ITheory... Th>
@@ -35,6 +35,11 @@ class LinearizingSolver: public Smt<Th...> {
      * push() adds a new element to the stack in order to support incremental solving
      */
     std::stack<std::vector<NumVar>> lin_vars;
+
+    /**
+     * variables that occur in exponents of linearized subexpressions
+     */
+    std::set<NumVar> exp_vars;
 
 public:
 
@@ -76,6 +81,8 @@ public:
             if (it != lin.end()) {
                 return Expr(it->second);
             }
+            const auto vars = expr.op(1).vars();
+            exp_vars.insert(vars.begin(), vars.end());
             const NumVar res = varMan.getFreshUntrackedSymbol<IntTheory>("exp", Expr::Int);
             lin.emplace(expr, res);
             de_lin.put(res, expr);
@@ -166,11 +173,30 @@ public:
                 while (!candidates.contains(*it)) {
                     if (it == todo.begin()) {
                         // we've exhausted all candidate instantiations
-                        // try to solve the non-linearized problem directly
-                        for (const auto &p: lin) {
-                            z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(p.first, p.second)));
+                        // get a model for the linearization
+                        auto res = z3.check();
+                        if (res == Sat) {
+                            const auto model = z3.model();
+                            // add the semantics of the linearized variables
+                            for (const auto &p: lin) {
+                                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(p.first, p.second)));
+                            }
+                            z3.push();
+                            // fix the values of the variables appearing in exponents according to the model
+                            for (const auto &x: exp_vars) {
+                                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(x, model.template get<IntTheory>(x))));
+                            }
+                            res = z3.check();
+                            if (res == Sat) {
+                                return Sat;
+                            }
+                            // failed, drop the values of the variables appearing in exponents
+                            z3.pop();
+                            // last resort: apply z3 to the original problem
+                            return z3.check();
+                        } else {
+                            return res;
                         }
-                        return z3.check();
                     }
                     --it;
                     z3.pop();
