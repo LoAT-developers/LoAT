@@ -579,11 +579,6 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
-    // for large-degree polynomials, Z3 tends to get stalled, irrespectively of its timeout
-    // TODO incorrect for SAT
-    if (loop.getUpdate(0).isPoly() && !loop.getUpdate(0).isPoly(10)) {
-        return std::make_unique<Failed>();
-    }
     auto state = learn_clause(loop, lang);
     if (!state->succeeded()) {
         return state;
