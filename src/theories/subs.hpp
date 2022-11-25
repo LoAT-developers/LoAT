@@ -479,10 +479,6 @@ public:
         return std::apply([](const auto&... x){return (true && ... && x.isLinear());}, t);
     }
 
-    bool isPoly(unsigned max_degree) const {
-        return std::apply([&max_degree](const auto&... x){return (true && ... && x.isPoly(max_degree));}, t);
-    }
-
     bool isPoly() const {
         return std::apply([](const auto&... x){return (true && ... && x.isPoly());}, t);
     }

@@ -5,7 +5,7 @@
 #include "itsproblem.hpp"
 #include "proof.hpp"
 #include "result.hpp"
-#include "redundanceviasquarefreewords.hpp"
+#include "redundanceviaautomata.hpp"
 
 #include <list>
 
@@ -215,7 +215,7 @@ class Reachability {
      * Implementation of our redundancy check.
      * TODO RedundanceViaSquareFreeWords is not sound for sat. RedundanceViaAutomata should be sound.
      */
-    using Red = RedundanceViaSquareFreeWords;
+    using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundance {std::make_unique<Red>()};
 
     NonLoops non_loops;

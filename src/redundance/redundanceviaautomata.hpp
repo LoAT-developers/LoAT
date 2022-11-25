@@ -30,18 +30,22 @@ public:
 
 class RedundanceViaAutomata: public Redundance<Automaton> {
 
-    long next_char;
-    std::map<std::pair<TransIdx, Guard>, Automaton> alphabet;
-    std::map<TransIdx, Automaton> regexes;
-
 public:
 
-    virtual Automaton get_singleton_language(const TransIdx idx, const Guard &guard) override;
-    virtual Automaton get_language(const TransIdx idx) override;
-    virtual void set_language(const TransIdx idx, const Automaton &t) override;
-    virtual bool is_redundant(const Automaton &t) const override;
-    virtual void mark_as_redundant(const Automaton &t) override;
-    virtual void concat(Automaton &t1, const Automaton &t2) const override;
-    virtual void transitive_closure(Automaton &t) const override;
+    using T = Automaton;
+
+    virtual T get_singleton_language(const TransIdx idx, const Guard &guard) override;
+    virtual T get_language(const TransIdx idx) override;
+    virtual void set_language(const TransIdx idx, const T &t) override;
+    virtual bool is_redundant(const T &t) const override;
+    virtual void mark_as_redundant(const T &t) override;
+    virtual void concat(T &t1, const T &t2) const override;
+    virtual void transitive_closure(T &t) const override;
+
+private:
+
+    long next_char;
+    std::map<std::pair<TransIdx, Guard>, T> alphabet;
+    std::map<TransIdx, T> regexes;
 
 };

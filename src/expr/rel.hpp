@@ -26,7 +26,6 @@ public:
     Expr rhs() const;
     Rel expand() const;
     bool isPoly() const;
-    bool isPoly(unsigned max_degree) const;
     bool isLinear(const option<std::set<NumVar>> &vars = option<std::set<NumVar>>()) const;
     bool isIneq() const;
     bool isEq() const;

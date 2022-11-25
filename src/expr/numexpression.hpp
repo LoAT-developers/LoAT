@@ -108,8 +108,6 @@ public:
      */
     bool isPoly() const;
 
-    bool isPoly(unsigned max_degree) const;
-
     /**
      * @return True iff this expression is polynomial where all coefficients are integers.
      */
@@ -403,8 +401,6 @@ public:
     bool isLinear() const;
 
     bool isPoly() const;
-
-    bool isPoly(unsigned max_degree) const;
 
     bool isOctagon() const;
 

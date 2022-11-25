@@ -118,10 +118,6 @@ Num Expr::totalDegree() const {
     return 0;
 }
 
-bool Expr::isPoly(unsigned max_degree) const {
-    return isPoly() && !(totalDegree() - max_degree).is_positive();
-}
-
 bool Expr::isPoly(const NumVar &n) const {
     return ex.is_polynomial(*n);
 }
@@ -733,12 +729,6 @@ bool ExprSubs::isLinear() const {
 bool ExprSubs::isPoly() const {
     return std::all_of(begin(), end(), [](const auto &p) {
        return p.second.isPoly();
-    });
-}
-
-bool ExprSubs::isPoly(unsigned max_degree) const {
-    return std::all_of(begin(), end(), [max_degree](const auto &p) {
-       return p.second.isPoly(max_degree);
     });
 }
 

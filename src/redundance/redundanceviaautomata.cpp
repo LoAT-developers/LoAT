@@ -28,15 +28,13 @@ void Automaton::concat(const Automaton &that) {
 
 void Automaton::unite(const Automaton &that) {
     if (this->empty()) {
-        faudes::EmptyLanguage(t.Alphabet(), t);
-        return;
+        this->t = that.t;
+        this->str = that.str;
+    } else if (!that.empty()) {
+        faudes::LanguageUnion(t, that.t, t);
+        faudes::StateMin(t, t);
+        str = "(" + str + ") u (" + that.str + ")";
     }
-    if (that.empty()) {
-        return;
-    }
-    faudes::LanguageUnion(t, that.t, t);
-    faudes::StateMin(t, t);
-    str = "(" + str + ") u (" + that.str + ")";
 }
 
 void Automaton::kleene_plus() {
