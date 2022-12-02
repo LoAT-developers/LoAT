@@ -637,18 +637,10 @@ void Reachability::analyze() {
     if (try_conditional_empty_clauses()) {
         return;
     }
+    size_t next_restart = luby_unit * luby.second;
     do {
-        if (luby_loop_count == luby_unit * luby.second) {
-            if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
-            // restart
-            while (!trace.empty()) {
-                pop();
-            }
-            luby_next();
-            solver.setSeed(rand());
-        }
         if (log) std::cout << "trace: " << trace << std::endl;
-        for (int backlink = has_looping_suffix(); backlink >= 0; backlink = has_looping_suffix()) {
+        for (int backlink = has_looping_suffix(); backlink >= 0 && luby_loop_count < next_restart; backlink = has_looping_suffix()) {
             Step step = trace[backlink];
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             auto state = handle_loop(backlink);
@@ -669,6 +661,15 @@ void Reachability::analyze() {
                 non_loops.add(trace, backlink);
                 break;
             }
+        }
+        if (luby_loop_count == next_restart) {
+            if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
+            // restart
+            while (!trace.empty()) {
+                pop();
+            }
+            luby_next();
+            solver.setSeed(rand());
         }
         const auto current = get_current_predicate();
         auto &to_try = rules[current];
