@@ -203,7 +203,7 @@ class Reachability {
      */
     TransIdx last_orig_clause = 0;
 
-    std::pair<unsigned, unsigned> luby{1u,1u};
+    std::pair<int, int> luby{1,1};
 
     unsigned luby_unit = 10;
 

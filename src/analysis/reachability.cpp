@@ -12,6 +12,7 @@
 #include "vector.hpp"
 
 #include <numeric>
+#include <random>
 
 namespace reachability {
 
@@ -402,8 +403,18 @@ void Reachability::init() {
 }
 
 void Reachability::luby_next() {
+    static std::default_random_engine rnd {};
     const auto [u,v] = luby;
-    luby = (u & (u-1)) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
+    luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
+    const auto shuffle = [](auto &v) {
+        for (auto &p: v) {
+            std::shuffle(std::begin(p.second), std::end(p.second), rnd);
+        }
+    };
+    shuffle(in_scc);
+    shuffle(cross_scc);
+    shuffle(learned_clauses);
+    shuffle(queries);
     luby_loop_count = 0;
 }
 
@@ -572,13 +583,13 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << lang << std::endl;
     }
-    luby_loop_count++;
     redundance->mark_as_redundant(lang);
     const auto loop = build_loop(backlink);
     if (loop.getUpdate(0).empty()) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
+    luby_loop_count++;
     auto state = learn_clause(loop, lang);
     if (!state->succeeded()) {
         return state;
@@ -637,8 +648,8 @@ void Reachability::analyze() {
     if (try_conditional_empty_clauses()) {
         return;
     }
-    size_t next_restart = luby_unit * luby.second;
     do {
+        size_t next_restart = luby_unit * luby.second;
         if (log) std::cout << "trace: " << trace << std::endl;
         for (int backlink = has_looping_suffix(); backlink >= 0 && luby_loop_count < next_restart; backlink = has_looping_suffix()) {
             Step step = trace[backlink];
