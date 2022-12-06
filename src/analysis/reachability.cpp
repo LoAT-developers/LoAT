@@ -190,10 +190,10 @@ ResultViaSideEffects Reachability::unroll() {
                 ret.succeed();
                 ret.ruleTransformationProof(r, "unrolling", res, chcs);
                 if (simplified) {
-                    chcs.replaceRules({idx}, {*simplified});
+                    chcs.addRule(*simplified);
                     ret.concat(simplified.getProof());
                 } else {
-                    chcs.replaceRules({idx}, {res});
+                    chcs.addRule(res);
                 }
             }
         }
