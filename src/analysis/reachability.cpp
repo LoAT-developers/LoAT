@@ -432,7 +432,8 @@ void Reachability::luby_next() {
 }
 
 void Reachability::unsat() {
-    std::cout << "unsat" << std::endl << std::endl;
+    const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
+    std::cout << res << std::endl << std::endl;
     std::stringstream trace_stream, counterexample;
     trace_stream << trace;
     print_trace(counterexample);
