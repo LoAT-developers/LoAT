@@ -239,11 +239,11 @@ Subs Reachability::handle_update(const TransIdx idx) {
     Subs new_var_renaming;
     const Subs up = r.getUpdate(0);
     for (const auto &x: prog_vars) {
-        new_var_renaming.put(x, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(x)));
+        new_var_renaming.put(x, TheTheory::varToExpr(chcs.addFreshTemporaryVariable(x)));
     }
     for (const auto &var: r.vars()) {
         if (chcs.isTempVar(var)) {
-            new_var_renaming.put(var, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(var)));
+            new_var_renaming.put(var, TheTheory::varToExpr(chcs.addFreshTemporaryVariable(var)));
         }
     }
     for (const auto &x: prog_vars) {
