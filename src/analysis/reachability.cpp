@@ -558,6 +558,11 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         if (log) std::cout << "acceleration would yield equivalent rule -> dropping it" << std::endl;
         return std::make_unique<Failed>();
     }
+    if (log && simp) {
+        std::cout << "simplified loop:" << std::endl;
+        ITSExport::printRule(*simp, chcs, std::cout);
+        std::cout << std::endl;
+    }
     AccelConfig config;
     config.allowDisjunctions = false;
     acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, simp->toLinear(), Complexity::Const, config);
