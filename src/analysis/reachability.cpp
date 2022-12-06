@@ -206,17 +206,19 @@ bool Reachability::leaves_scc(const TransIdx idx) const {
     return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc(0));
 }
 
-int Reachability::has_looping_suffix() {
+option<RecursiveSuffix> Reachability::has_looping_suffix() {
     if (trace.empty()) {
-        return -1;
+        return {};
     }
     const auto last_clause = chcs.getRule(trace.back().clause_idx);
     const auto dst = last_clause.getRhsLoc(0);
     std::vector<long> sequence;
+    unsigned depth = 0;
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
+        depth = std::max(depth, this->depth[step.clause_idx]);
         if (leaves_scc(step.clause_idx)) {
-            return -1;
+            return {};
         }
         non_loops.append(sequence, step);
         if (non_loops.contains(sequence)) {
@@ -224,13 +226,14 @@ int Reachability::has_looping_suffix() {
             continue;
         }
         if (chcs.getRule(step.clause_idx).getLhsLoc() == dst) {
-            bool looping = static_cast<unsigned>(pos) < trace.size() - 1 || is_orig_clause(step.clause_idx);
+            auto upos = static_cast<unsigned>(pos);
+            bool looping = upos < trace.size() - 1 || is_orig_clause(step.clause_idx);
             if (looping) {
-                return pos;
+                return {{upos, depth}};
             }
         }
     }
-    return -1;
+    return {};
 }
 
 Subs Reachability::handle_update(const TransIdx idx) {
@@ -394,6 +397,7 @@ void Reachability::init() {
         if (src == chcs.getInitialLocation() && dst == chcs.getSink()) {
             conditional_empty_clauses.push_back(idx);
         } else {
+            depth[idx] = 0;
             std::map<LocationIdx, std::vector<TransIdx>> *to_insert;
             if (dst == chcs.getSink()) {
                 to_insert = &queries;
@@ -529,7 +533,7 @@ Rule Reachability::build_loop(const int backlink) {
     return loop;
 }
 
-TransIdx Reachability::add_learned_clause(const Rule &accel, const Red::T &lang) {
+TransIdx Reachability::add_learned_clause(const Rule &accel, const Red::T &lang, unsigned depth) {
     const auto loop_idx = chcs.addRule(accel);
     redundance->set_language(loop_idx, lang);
     const auto src = accel.getLhsLoc();
@@ -539,6 +543,7 @@ TransIdx Reachability::add_learned_clause(const Rule &accel, const Red::T &lang)
     } else {
         acc_it->second.push_back(loop_idx);
     }
+    this->depth[loop_idx] = depth;
     return loop_idx;
 }
 
@@ -550,7 +555,7 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
     return idx <= last_orig_clause;
 }
 
-std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
+std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang, unsigned depth) {
     Result<Rule> simp = Preprocess::simplifyRule(chcs, rule, true);
     if (Config::Analysis::reachability() && simp->getUpdate(0) == substitution::concat(simp->getUpdate(0), simp->getUpdate(0))) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -591,7 +596,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         if (simplified->getUpdate(0) != simp->getUpdate(0)) {
             // accelerated rule differs from the original one, update the result
             res.succeed();
-            res->push_back(add_learned_clause(*simplified, lang));
+            res->push_back(add_learned_clause(*simplified, lang, depth + 1));
             res.storeSubProof(accel_res.proof);
             res.concat(simplified.getProof());
             if (log) {
@@ -609,8 +614,8 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     return std::make_unique<Succeeded>(res);
 }
 
-std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
-    const auto lang = build_language(backlink);
+std::unique_ptr<LearningState> Reachability::handle_loop(const RecursiveSuffix &recursive_suffix) {
+    const auto lang = build_language(recursive_suffix.backlink);
     if (redundance->is_redundant(lang)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
@@ -618,14 +623,18 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << lang << std::endl;
     }
+    if (recursive_suffix.depth > current_depth) {
+        depth_suffices = false;
+        return std::make_unique<Covered>();
+    }
     redundance->mark_as_redundant(lang);
-    const auto loop = build_loop(backlink);
+    const auto loop = build_loop(recursive_suffix.backlink);
     if (Config::Analysis::reachability() && loop.getUpdate(0).empty()) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
     luby_loop_count++;
-    auto state = learn_clause(loop, lang);
+    auto state = learn_clause(loop, lang, recursive_suffix.depth);
     if (!state->succeeded()) {
         return state;
     }
@@ -633,7 +642,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
     const auto idxs = **accel_state;
     const auto subproof = accel_state->getProof();
     // drop the looping suffix
-    drop_until(backlink);
+    drop_until(recursive_suffix.backlink);
     proof.majorProofStep("accelerated loop", chcs);
     proof.storeSubProof(subproof);
     for (const auto idx: idxs) {
@@ -688,13 +697,20 @@ void Reachability::analyze() {
     if (try_conditional_empty_clauses()) {
         return;
     }
+    depth_suffices = false;
+    for (current_depth = 0; !depth_suffices; ++current_depth) {
+        if (log) std::cout << "starting major iteration with depth " << current_depth << std::endl;
+        depth_suffices = true;
+        blocked_clauses[0].clear();
         do {
             size_t next_restart = luby_unit * luby.second;
             if (log) std::cout << "trace: " << trace << std::endl;
-        for (int backlink = has_looping_suffix(); backlink >= 0 && luby_loop_count < next_restart; backlink = has_looping_suffix()) {
-            Step step = trace[backlink];
-            bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
-            auto state = handle_loop(backlink);
+            for (auto recursive_suffix = has_looping_suffix();
+                 recursive_suffix && luby_loop_count < next_restart;
+                 recursive_suffix = has_looping_suffix()) {
+                Step step = trace[recursive_suffix->backlink];
+                bool simple_loop = recursive_suffix->backlink == trace.size() - 1;
+                auto state = handle_loop(*recursive_suffix);
                 if (state->covered()) {
                     backtrack();
                 } else if (state->succeeded()) {
@@ -736,9 +752,7 @@ void Reachability::analyze() {
                 append.push_back(*it);
                 it = to_try.erase(it);
             }
-        if (trace.empty()) {
-            break;
-        }
+            if (!trace.empty()) {
                 if (it == to_try.end()) {
                     backtrack();
                 } else {
@@ -748,8 +762,10 @@ void Reachability::analyze() {
                         return;
                     }
                 }
+            }
             to_try.insert(to_try.end(), append.begin(), append.end());
-    } while (true);
+        } while (!trace.empty());
+    }
     std::cout << "unknown" << std::endl << std::endl;
 }
 

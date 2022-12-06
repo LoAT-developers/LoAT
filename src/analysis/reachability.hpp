@@ -156,6 +156,11 @@ struct PushPop {
     ~PushPop();
 };
 
+struct RecursiveSuffix {
+    unsigned backlink;
+    unsigned depth;
+};
+
 class Reachability {
 
     ITSProblem &chcs;
@@ -183,6 +188,8 @@ class Reachability {
      */
     std::map<LocationIdx, std::list<TransIdx>> rules;
 
+    std::map<TransIdx, unsigned> depth;
+
     std::map<LocationIdx, std::vector<TransIdx>> queries;
 
     std::vector<TransIdx> conditional_empty_clauses;
@@ -204,6 +211,10 @@ class Reachability {
      * clauses up to this one are original ones, all other clauses are learned
      */
     TransIdx last_orig_clause = 0;
+
+    unsigned current_depth;
+
+    bool depth_suffices = true;
 
     std::pair<int, int> luby{1,1};
 
@@ -296,18 +307,18 @@ class Reachability {
      * adds a learned clause to all relevant data structures
      * @param lang (an approximation of) the language associated with the learned clause
      */
-    TransIdx add_learned_clause(const Rule &clause, const Red::T &lang);
+    TransIdx add_learned_clause(const Rule &clause, const Red::T &lang, unsigned depth);
 
     /**
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang, unsigned depth);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix
      */
-    std::unique_ptr<LearningState> handle_loop(const int backlink);
+    std::unique_ptr<LearningState> handle_loop(const RecursiveSuffix&);
 
     /**
      * checks whether the head and the body symbol of the given clause belong to different SCCs
@@ -317,7 +328,7 @@ class Reachability {
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
      */
-    int has_looping_suffix();
+    option<RecursiveSuffix> has_looping_suffix();
 
     /**
      * Generates a fresh copy of the program variables and fixes their value according to the update of the
