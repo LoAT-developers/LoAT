@@ -38,17 +38,21 @@ option<Failed> LearningState::failed() {
     return {};
 }
 
-Succeeded::Succeeded(const Result<TransIdx> &idx): idx(idx) {}
+option<ProvedUnsat> LearningState::unsat() {
+    return {};
+}
+
+Succeeded::Succeeded(const Result<std::vector<TransIdx>> &idx): idx(idx) {}
 
 option<Succeeded> Succeeded::succeeded() {
     return *this;
 }
 
-Result<TransIdx>& Succeeded::operator*() {
+Result<std::vector<TransIdx>>& Succeeded::operator*() {
     return idx;
 }
 
-Result<TransIdx>* Succeeded::operator->() {
+Result<std::vector<TransIdx>>* Succeeded::operator->() {
     return &idx;
 }
 
@@ -61,6 +65,10 @@ option<Dropped> Dropped::dropped() {
 }
 
 option<Failed> Failed::failed() {
+    return *this;
+}
+
+option<ProvedUnsat> ProvedUnsat::unsat() {
     return *this;
 }
 
@@ -127,7 +135,7 @@ void NonLoops::append(std::vector<long> &sequence, const Step &step) {
 ResultViaSideEffects Reachability::remove_irrelevant_clauses() {
     std::set<LocationIdx> keep;
     std::stack<LocationIdx> todo;
-    todo.push(*chcs.getSink());
+    todo.push(chcs.getSink());
     do {
         const LocationIdx current = todo.top();
         todo.pop();
@@ -138,13 +146,17 @@ ResultViaSideEffects Reachability::remove_irrelevant_clauses() {
             }
         }
     } while (!todo.empty());
-    std::set<TransIdx> deleted;
+    std::vector<LocationIdx> to_delete;
     for (const auto idx: chcs.getAllTransitions()) {
         const LocationIdx target = chcs.getRule(idx).getRhsLoc(0);
         if (keep.find(target) == keep.end()) {
-            const std::set<TransIdx> d = chcs.removeLocationAndRules(target);
-            deleted.insert(d.begin(), d.end());
+            to_delete.push_back(target);
         }
+    }
+    std::set<TransIdx> deleted;
+    for (const auto idx: to_delete) {
+        const std::set<TransIdx> d = chcs.removeLocationAndRules(idx);
+        deleted.insert(d.begin(), d.end());
     }
     ResultViaSideEffects ret;
     if (!deleted.empty()) {
@@ -317,10 +329,13 @@ void Reachability::print_trace(std::ostream &s) {
 }
 
 void Reachability::preprocess() {
-    ResultViaSideEffects res = remove_irrelevant_clauses();
-    if (res) {
-        proof.majorProofStep("removed irrelevant transitions", chcs);
-        proof.storeSubProof(res.getProof());
+    ResultViaSideEffects res;
+    if (Config::Analysis::reachability()) {
+        res = remove_irrelevant_clauses();
+        if (res) {
+            proof.majorProofStep("removed irrelevant transitions", chcs);
+            proof.storeSubProof(res.getProof());
+        }
     }
     res = Chaining::chainLinearPaths(chcs);
     if (res) {
@@ -523,7 +538,6 @@ TransIdx Reachability::add_learned_clause(const Rule &accel, const Red::T &lang)
     } else {
         acc_it->second.push_back(loop_idx);
     }
-    update_rules(src);
     return loop_idx;
 }
 
@@ -536,8 +550,8 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
 }
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
-    Result<Rule> res = Preprocess::simplifyRule(chcs, rule, true);
-    if (res->getUpdate(0) == substitution::concat(res->getUpdate(0), res->getUpdate(0))) {
+    Result<Rule> simp = Preprocess::simplifyRule(chcs, rule, true);
+    if (Config::Analysis::reachability() && simp->getUpdate(0) == substitution::concat(simp->getUpdate(0), simp->getUpdate(0))) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
         if (log) std::cout << "acceleration would yield equivalent rule -> dropping it" << std::endl;
@@ -545,31 +559,48 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     AccelConfig config;
     config.allowDisjunctions = false;
-    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), -1, Complexity::Const, config);
+    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, simp->toLinear(), Complexity::Const, config);
+    Result<std::vector<TransIdx>> res;
+    const auto src = rule.getLhsLoc();
+    if (accel_res.nontermRule) {
+        res.succeed();
+        const auto idx = chcs.addRule(*accel_res.nontermRule);
+        auto it = queries.find(src);
+        if (it == queries.end()) {
+            queries.emplace(src, std::vector<TransIdx>{idx});
+        } else {
+            it->second.push_back(idx);
+        }
+        res->push_back(idx);
+        res.storeSubProof(accel_res.nontermProof);
+        if (log) {
+            std::cout << "accelerated non-terminating rule:" << std::endl;
+            ITSExport::printRule(*accel_res.nontermRule, chcs, std::cout);
+            std::cout << std::endl;
+        }
+    }
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
         const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
-        if (simplified->getUpdate(0) == res->getUpdate(0)) {
-            if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
-            return std::make_unique<Failed>();
-        } else {
+        if (simplified->getUpdate(0) != simp->getUpdate(0)) {
             // accelerated rule differs from the original one, update the result
-            res = *accel_res.rule;
+            res.succeed();
+            res->push_back(add_learned_clause(*simplified, lang));
             res.storeSubProof(accel_res.proof);
-            res.concat(simplified);
+            res.concat(simplified.getProof());
             if (log) {
                 std::cout << "accelerated rule:" << std::endl;
-                ITSExport::printRule(*res, chcs, std::cout);
+                ITSExport::printRule(*simplified, chcs, std::cout);
                 std::cout << std::endl;
             }
         }
-    } else {
+    }
+    if (!res) {
         if (log) std::cout << "acceleration failed" << std::endl;
         return std::make_unique<Failed>();
     }
-    return std::make_unique<Succeeded>(res.map<TransIdx>([this, &lang](const auto &x){
-        return add_learned_clause(x, lang);
-    }));
+    update_rules(src);
+    return std::make_unique<Succeeded>(res);
 }
 
 std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
@@ -583,7 +614,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
     }
     redundance->mark_as_redundant(lang);
     const auto loop = build_loop(backlink);
-    if (loop.getUpdate(0).empty()) {
+    if (Config::Analysis::reachability() && loop.getUpdate(0).empty()) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
@@ -593,19 +624,24 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const int backlink) {
         return state;
     }
     auto accel_state = *state->succeeded();
-    const auto idx = **accel_state;
+    const auto idxs = **accel_state;
     const auto subproof = accel_state->getProof();
-    const auto accel = chcs.getRule(idx);
     // drop the looping suffix
     drop_until(backlink);
     proof.majorProofStep("accelerated loop", chcs);
     proof.storeSubProof(subproof);
-    if (store_step(idx, accel.getGuard())) {
-        return state;
-    } else {
-        if (log) std::cout << "applying accelerated rule failed" << std::endl;
-        return std::make_unique<Dropped>();
+    for (const auto idx: idxs) {
+        const auto clause = chcs.getRule(idx);
+        if (store_step(idx, clause.getGuard())) {
+            if (clause.getRhsLoc(0) == chcs.getSink()) {
+                return std::make_unique<ProvedUnsat>();
+            } else {
+                return state;
+            }
+        }
     }
+    if (log) std::cout << "applying accelerated rule failed" << std::endl;
+    return std::make_unique<Dropped>();
 }
 
 LocationIdx Reachability::get_current_predicate() const {
@@ -669,6 +705,9 @@ void Reachability::analyze() {
                 // non-loop --> do not backtrack
                 non_loops.add(trace, backlink);
                 break;
+            } else if (state->unsat()) {
+                unsat();
+                return;
             }
         }
         if (luby_loop_count == next_restart) {

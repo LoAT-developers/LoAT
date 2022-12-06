@@ -59,7 +59,6 @@ class  CHCParseVisitor : public CHCVisitor {
     std::map<std::string, LocationIdx> locations;
     std::map<std::string, Var> vars;
     unsigned long maxArity = 0;
-    LocationIdx sink;
 
     LocationIdx loc(const std::string &name);
     Var var(const std::string &name, Expr::Type type);

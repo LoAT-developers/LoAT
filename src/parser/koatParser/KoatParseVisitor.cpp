@@ -41,11 +41,11 @@ antlrcpp::Any KoatParseVisitor::visitVar(KoatParser::VarContext *ctx) {
     std::string name = ctx->getText();
     auto it = vars.find(name);
     if (it == vars.end()) {
-        return it->second;
-    } else {
         const NumVar var {its.addFreshTemporaryVariable<IntTheory>(name)};
         vars.emplace(name, var);
         return var;
+    } else {
+        return it->second;
     }
 }
 
@@ -87,7 +87,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
         for (const auto& c: ctx->var()) {
             const NumVar var {its.addFreshVariable<IntTheory>(c->getText())};
             programVars.push_back(var);
-            vars.emplace(ctx->getText(), var);
+            vars.emplace(c->getText(), var);
         }
         initVars = false;
     } else {
@@ -148,7 +148,7 @@ antlrcpp::Any KoatParseVisitor::visitCond(KoatParser::CondContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
     if (ctx->INT()) {
-        return Num(ctx->INT()->getText().c_str());
+        return Expr(Num(ctx->INT()->getText().c_str()));
     } else if (ctx->var()) {
         const auto var = any_cast<var_type>(visit(ctx->var()));
         return Expr(var);
@@ -179,7 +179,7 @@ antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitFormula(KoatParser::FormulaContext *ctx) {
     if (ctx->lit()) {
-        return BoolExpression<IntTheory>::buildTheoryLit(any_cast<lit_type>(visit(ctx->lit())));
+        return BExpression::buildTheoryLit(any_cast<lit_type>(visit(ctx->lit())));
     } else if (ctx->LPAR()) {
         return visit(ctx->formula(0));
     } else {

@@ -52,12 +52,8 @@ void ITSProblem::setInitialLocation(LocationIdx loc) {
     initialLocation = loc;
 }
 
-option<LocationIdx> ITSProblem::getSink() const {
+LocationIdx ITSProblem::getSink() const {
     return sink;
-}
-
-void ITSProblem::setSink(LocationIdx loc) {
-    sink = loc;
 }
 
 bool ITSProblem::hasRule(TransIdx transition) const {

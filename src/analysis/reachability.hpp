@@ -81,6 +81,7 @@ class Succeeded;
 class Covered;
 class Dropped;
 class Failed;
+class ProvedUnsat;
 
 /**
  * When learning clauses, an instance of this class is returned.
@@ -113,19 +114,21 @@ public:
      * TODO We have to think about ways to deal with this case when trying to prove sat.
      */
     virtual option<Failed> failed();
+
+    virtual option<ProvedUnsat> unsat();
 };
 
 class Succeeded: public LearningState {
     /**
-     * the index of the learned clause
+     * the indices of the learned clause
      */
-    Result<TransIdx> idx;
+    Result<std::vector<TransIdx>> idx;
 
 public:
-    Succeeded(const Result<TransIdx> &idx);
+    Succeeded(const Result<std::vector<TransIdx>> &idx);
     option<Succeeded> succeeded() override;
-    Result<TransIdx>& operator*();
-    Result<TransIdx>* operator->();
+    Result<std::vector<TransIdx>>& operator*();
+    Result<std::vector<TransIdx>>* operator->();
 };
 
 class Covered: public LearningState {
@@ -138,6 +141,10 @@ class Dropped: public LearningState {
 
 class Failed: public LearningState {
     option<Failed> failed() override;
+};
+
+class ProvedUnsat: public LearningState {
+    option<ProvedUnsat> unsat() override;
 };
 
 /**
@@ -179,11 +186,6 @@ class Reachability {
     std::map<LocationIdx, std::vector<TransIdx>> queries;
 
     std::vector<TransIdx> conditional_empty_clauses;
-
-    /**
-     * predicate representing 'false'
-     */
-    LocationIdx bottom = *chcs.getSink();
 
     LinearizingSolver<IntTheory, BoolTheory> solver;
 

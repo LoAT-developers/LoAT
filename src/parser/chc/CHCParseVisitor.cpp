@@ -42,8 +42,6 @@ LocationIdx CHCParseVisitor::loc(const std::string &name) {
 
 antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     its.setInitialLocation(its.addNamedLocation("LoAT_init"));
-    sink = its.addNamedLocation("LoAT_sink");
-    its.setSink(sink);
     for (const auto &c: ctx->fun_decl()) {
         visit(c);
     }
@@ -178,7 +176,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
     }
     const auto lhs = any_cast<tail_type>(visit(ctx->chc_tail()));
     vars.clear();
-    return Clause(lhs.first, FunApp(sink, {}), lhs.second);
+    return Clause(lhs.first, FunApp(its.getSink(), {}), lhs.second);
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {

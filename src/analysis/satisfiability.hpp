@@ -183,7 +183,7 @@ class Satisfiability {
     /**
      * predicate representing 'false'
      */
-    LocationIdx bottom = *chcs.getSink();
+    LocationIdx bottom = chcs.getSink();
 
     LinearizingSolver<IntTheory, BoolTheory> solver;
 

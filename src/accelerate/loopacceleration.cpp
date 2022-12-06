@@ -29,10 +29,9 @@ using namespace std;
 LoopAcceleration::LoopAcceleration(
         ITSProblem &its,
         const LinearRule &rule,
-        LocationIdx sink,
         Complexity cpx,
         const AccelConfig &config)
-    : its(its), rule(rule), sink(sink), cpx(cpx), config(config) {}
+    : its(its), rule(rule), cpx(cpx), config(config) {}
 
 bool LoopAcceleration::shouldAccelerate() const {
     return (!Config::Analysis::tryNonterm() || !rule.getCost().isNontermSymbol()) && (!Config::Analysis::complexity() || rule.getCost().isPoly());
@@ -204,9 +203,9 @@ acceleration::Result LoopAcceleration::run() {
                     rule.getLhsLoc(),
                     accelerationResult.nonterm->formula,
                     Expr::NontermSymbol,
-                    sink,
+                    its.getSink(),
                     {});
-        res.proof.ruleTransformationProof(rule, "nonterm", *res.rule, its);
+        res.proof.ruleTransformationProof(rule, "nonterm", *res.nontermRule, its);
         res.proof.storeSubProof(accelerationResult.nonterm->proof);
     }
     if (rec && accelerationResult.term) {
@@ -227,9 +226,8 @@ acceleration::Result LoopAcceleration::run() {
 acceleration::Result LoopAcceleration::accelerate(
         ITSProblem &its,
         const LinearRule &rule,
-        LocationIdx sink,
         Complexity cpx,
         const AccelConfig &config) {
-    LoopAcceleration ba(its, rule, sink, cpx, config);
+    LoopAcceleration ba(its, rule, cpx, config);
     return ba.run();
 }

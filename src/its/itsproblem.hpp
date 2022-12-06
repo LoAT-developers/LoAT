@@ -42,8 +42,7 @@ public:
     LocationIdx getInitialLocation() const;
     bool isInitialLocation(LocationIdx loc) const;
     void setInitialLocation(LocationIdx loc);
-    option<LocationIdx> getSink() const;
-    void setSink(LocationIdx loc);
+    LocationIdx getSink() const;
     option<LocationIdx> getLocationIdx(const std::string &name) const;
 
     // query the rule associated with a given transition
@@ -118,14 +117,14 @@ protected:
     // the set of all locations (locations are just arbitrary numbers to allow simple addition/deletion)
     std::set<LocationIdx> locations;
 
-    // the initial location
-    LocationIdx initialLocation = 0;
-    option<LocationIdx> sink;
+    // only for output, remembers the original location names
+    std::map<LocationIdx, std::string> locationNames;
 
     // the next free location index
     LocationIdx nextUnusedLocation = 0;
 
-    // only for output, remembers the original location names
-    std::map<LocationIdx, std::string> locationNames;
+    // the initial location
+    LocationIdx initialLocation;
+    LocationIdx sink = addNamedLocation("LoAT_sink");
 
 };

@@ -96,7 +96,7 @@ Result<std::vector<Rule>> Accelerator::instantiate(const NumVar &n, const Rule &
 }
 
 Result<std::vector<Rule>> Accelerator::accelerate(const LinearRule &rule, Complexity cpx) const {
-    const auto accelRes = LoopAcceleration::accelerate(its, rule, sinkLoc, cpx);
+    const auto accelRes = LoopAcceleration::accelerate(its, rule, cpx);
     Result<std::vector<Rule>> res;
     if (accelRes.rule && accelRes.n) {
         res.succeed();

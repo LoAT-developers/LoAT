@@ -126,7 +126,7 @@ void NonLoops::append(std::vector<long> &sequence, const Step &step) {
 ResultViaSideEffects Satisfiability::remove_irrelevant_clauses() {
     std::set<LocationIdx> keep;
     std::stack<LocationIdx> todo;
-    todo.push(*chcs.getSink());
+    todo.push(chcs.getSink());
     do {
         const LocationIdx current = todo.top();
         todo.pop();
@@ -536,7 +536,7 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
     }
     AccelConfig config;
     config.allowDisjunctions = false;
-    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), -1, Complexity::Const, config);
+    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), Complexity::Const, config);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
         const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);

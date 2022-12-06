@@ -132,7 +132,7 @@ private:
     // The location for which simple loops shall be accelerated.
     LocationIdx targetLoc;
 
-    // Sink location for accelerated (nonlinear/nonterminating) rules
+    // Sink location for accelerated nonlinear rules
     LocationIdx sinkLoc;
 
     // The set of resulting rules.
