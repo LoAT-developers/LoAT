@@ -688,68 +688,67 @@ void Reachability::analyze() {
     if (try_conditional_empty_clauses()) {
         return;
     }
-    do {
-        size_t next_restart = luby_unit * luby.second;
-        if (log) std::cout << "trace: " << trace << std::endl;
+        do {
+            size_t next_restart = luby_unit * luby.second;
+            if (log) std::cout << "trace: " << trace << std::endl;
         for (int backlink = has_looping_suffix(); backlink >= 0 && luby_loop_count < next_restart; backlink = has_looping_suffix()) {
             Step step = trace[backlink];
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             auto state = handle_loop(backlink);
-            if (state->covered()) {
-                backtrack();
-            } else if (state->succeeded()) {
-                if (simple_loop) {
+                if (state->covered()) {
+                    backtrack();
+                } else if (state->succeeded()) {
+                    if (simple_loop) {
+                        block(step);
+                    }
+                    // try to apply a query before doing another step
+                    if (try_to_finish()) {
+                        return;
+                    }
+                } else if (state->dropped()) {
                     block(step);
-                }
-                // try to apply a query before doing another step
-                if (try_to_finish()) {
+                } else if (state->failed()) {
+                    // non-loop --> do not backtrack
+                    non_loops.add(trace, recursive_suffix->backlink);
+                } else if (state->unsat()) {
+                    unsat();
                     return;
                 }
-            } else if (state->dropped()) {
-                block(step);
-            } else if (state->failed()) {
-                // non-loop --> do not backtrack
-                non_loops.add(trace, backlink);
-                break;
-            } else if (state->unsat()) {
-                unsat();
-                return;
             }
-        }
-        if (luby_loop_count == next_restart) {
-            if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
-            // restart
-            while (!trace.empty()) {
-                pop();
+            if (luby_loop_count == next_restart) {
+                if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
+                // restart
+                while (!trace.empty()) {
+                    pop();
+                }
+                luby_next();
+                solver.setSeed(rand());
             }
-            luby_next();
-            solver.setSeed(rand());
-        }
-        const auto current = get_current_predicate();
-        auto &to_try = rules[current];
-        auto it = to_try.begin();
-        std::vector<TransIdx> append;
-        while (it != to_try.end()) {
-            const option<BoolExpr> implicant = resolve(*it);
-            if (implicant && store_step(*it, *implicant)) {
-                break;
+            const auto current = get_current_predicate();
+            auto &to_try = rules[current];
+            auto it = to_try.begin();
+            std::vector<TransIdx> append;
+            while (it != to_try.end()) {
+                const option<BoolExpr> implicant = resolve(*it);
+                if (implicant && store_step(*it, *implicant)) {
+                    break;
+                }
+                append.push_back(*it);
+                it = to_try.erase(it);
             }
-            append.push_back(*it);
-            it = to_try.erase(it);
-        }
         if (trace.empty()) {
             break;
         }
-        if (it == to_try.end()) {
-            backtrack();
-        } else {
-            // check whether a query is applicable after every step and,
-            // importantly, before acceleration (which might approximate)
-            if (try_to_finish()) {
-                return;
-            }
-        }
-        to_try.insert(to_try.end(), append.begin(), append.end());
+                if (it == to_try.end()) {
+                    backtrack();
+                } else {
+                    // check whether a query is applicable after every step and,
+                    // importantly, before acceleration (which might approximate)
+                    if (try_to_finish()) {
+                        return;
+                    }
+                }
+            to_try.insert(to_try.end(), append.begin(), append.end());
     } while (true);
     std::cout << "unknown" << std::endl << std::endl;
 }
