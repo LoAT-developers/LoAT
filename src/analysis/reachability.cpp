@@ -286,8 +286,6 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     if (trace.empty()) {
         solver.add(implicant);
     } else {
-        // TODO This makes little sense for loops with more than one clause, since temporary variables from
-        // previous steps do not get renamed
         solver.add(implicant->subs(trace.back().var_renaming));
     }
     if (solver.check() == Sat) {
