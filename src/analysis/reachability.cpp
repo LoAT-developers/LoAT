@@ -503,8 +503,8 @@ Reachability::Red::T Reachability::get_language(const Step &step) {
 }
 
 Reachability::Red::T Reachability::build_language(const int backlink) {
-    auto lang = get_language(trace.back());
-    for (int i = trace.size() - 2; i >= backlink; --i) {
+    auto lang = get_language(trace[backlink]);
+    for (size_t i = backlink + 1; i < trace.size(); ++i) {
         redundance->concat(lang, get_language(trace[i]));
     }
     redundance->transitive_closure(lang);
