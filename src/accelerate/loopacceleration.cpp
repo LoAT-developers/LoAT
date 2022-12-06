@@ -118,8 +118,6 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
         period *= cycleLength;
     }
     LinearRule orig(res);
-    unsigned origPeriod = period;
-    const auto &origUp = orig.getUpdate().get<IntTheory>();
     // chain if it eliminates variables from an update
     NEXT: while (true) {
         const auto up = res.getUpdate().get<IntTheory>();
@@ -130,8 +128,8 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
                 if (its.isTempVar(var)) {
                     continue;
                 }
-                auto it = origUp.find(var);
-                if (it == origUp.end()) {
+                auto it = up.find(var);
+                if (it == up.end()) {
                     varsTwoSteps.insert(var);
                 } else {
                     const auto toInsert = it->second.vars();
@@ -144,7 +142,7 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
                 }
                 if (varsTwoSteps.find(var) == varsTwoSteps.end()) {
                     res = *Chaining::chainRules(its, res, renameTmpVars(orig, its), false);
-                    period += origPeriod;
+                    period *= 2;
                     goto NEXT;
                 }
             }
