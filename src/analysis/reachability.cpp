@@ -693,8 +693,7 @@ void Reachability::analyze() {
     if (try_conditional_empty_clauses()) {
         return;
     }
-    depth_suffices = false;
-    for (current_depth = 0; !depth_suffices; ++current_depth) {
+    for (depth_suffices = false; !depth_suffices; ++current_depth) {
         if (log) std::cout << "starting major iteration with depth " << current_depth << std::endl;
         depth_suffices = true;
         blocked_clauses[0].clear();

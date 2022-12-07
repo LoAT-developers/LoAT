@@ -69,6 +69,8 @@ void parseFlags(int argc, char *argv[]) {
             timeout = atoi(getNext());
         } else if (strcmp("--proof-level",argv[arg]) == 0) {
             proofLevel = atoi(getNext());
+        } else if (strcmp("--iterative-deepening",argv[arg]) == 0) {
+            Config::ADCL::IterativeDeepening = (strcmp(getNext(), "false") != 0);
         } else if (strcmp("--plain",argv[arg]) == 0) {
             Config::Output::Colors = false;
         } else if (strcmp("--limit-strategy",argv[arg]) == 0) {

@@ -127,6 +127,10 @@ namespace Config {
         const unsigned int ProblemDiscardSize = 10;
     }
 
+    namespace ADCL {
+        bool IterativeDeepening = true;
+    }
+
     namespace Analysis {
 
         std::vector<Mode> modes { Complexity, NonTermination, Reachability, Satisfiability };

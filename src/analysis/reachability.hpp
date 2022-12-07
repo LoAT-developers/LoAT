@@ -7,6 +7,7 @@
 #include "result.hpp"
 #include "redundanceviaautomata.hpp"
 
+#include <limits>
 #include <list>
 
 namespace reachability {
@@ -207,7 +208,7 @@ class Reachability {
      */
     TransIdx last_orig_clause = 0;
 
-    unsigned current_depth;
+    unsigned current_depth = Config::ADCL::IterativeDeepening ? 0 : std::numeric_limits<unsigned>::max();
 
     bool depth_suffices = true;
 
