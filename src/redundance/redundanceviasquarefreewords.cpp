@@ -2,11 +2,11 @@
 
 using T = RedundanceViaSquareFreeWords::T;
 
-T RedundanceViaSquareFreeWords::get_singleton_language(const TransIdx idx, const BoolExpr g) {
+T RedundanceViaSquareFreeWords::get_singleton_language(const TransIdx idx, const Guard &g) {
     const auto it = alphabet.find({idx, g});
     if (it == alphabet.end()) {
         long res = next_char;
-        alphabet.emplace(std::pair<TransIdx, BoolExpr>(idx, g), res);
+        alphabet.emplace(std::pair<TransIdx, Guard>(idx, g), res);
         ++next_char;
         return {res};
     } else {

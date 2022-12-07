@@ -24,14 +24,12 @@ struct Step {
      */
     const BoolExpr implicant;
 
-    const Rule clause;
-
     /**
      * renames the program variables to fresh variables that serve as input for the next step
      */
     const Subs var_renaming;
 
-    Step(const TransIdx transition, const BoolExpr &implicant, const Rule &clause, const Subs &var_renaming);
+    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming);
 
 };
 
@@ -276,7 +274,7 @@ class Reachability {
     /**
      * tries to resolve the trace with the given clause
      */
-    option<std::pair<BoolExpr, Rule>> resolve(const TransIdx idx);
+    option<BoolExpr> resolve(const TransIdx idx);
 
     /**
      * drops a suffix of the trace, up to the given new size
@@ -354,7 +352,7 @@ class Reachability {
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const TransIdx idx, const BoolExpr &sat, const Rule &clause);
+    bool store_step(const TransIdx idx, const BoolExpr &sat);
 
     void print_trace(std::ostream &s);
 

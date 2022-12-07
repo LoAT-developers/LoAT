@@ -11,8 +11,8 @@ ThExpr second(const Pair &p) {
     return theory::second<IntTheory, BoolTheory>(p);
 }
 
-void collectVariables(const Subs &subs, VarSet &vars) {
-    substitution::collectVars<IntTheory, BoolTheory>(subs, vars);
+VarSet variables(const Subs &e) {
+    return substitution::vars<IntTheory, BoolTheory>(e);
 }
 
 TheSubs compose(const TheSubs &fst, const TheSubs &snd) {

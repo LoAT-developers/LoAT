@@ -6,7 +6,7 @@
 template <class T>
 class Redundance {
 public:
-    virtual T get_singleton_language(const TransIdx idx, const BoolExpr guard) = 0;
+    virtual T get_singleton_language(const TransIdx idx, const Guard &guard) = 0;
     virtual T get_language(const TransIdx idx) = 0;
     virtual void set_language(const TransIdx idx, const T &t) = 0;
     virtual bool is_redundant(const T &t) const = 0;

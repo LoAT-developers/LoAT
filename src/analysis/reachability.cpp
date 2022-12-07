@@ -84,10 +84,9 @@ Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs), non_loop
     solver.enableModels();
 }
 
-Step::Step(const TransIdx transition, const BoolExpr &implicant, const Rule &clause, const Subs &var_renaming):
+Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming):
     clause_idx(transition),
-    implicant(implicant),
-    clause(clause),
+    implicant(sat),
     var_renaming(var_renaming) {}
 
 std::ostream& operator<<(std::ostream &s, const std::vector<Step> &step) {
@@ -116,7 +115,12 @@ bool NonLoops::contains(const std::vector<long> &sequence) {
 }
 
 void NonLoops::append(std::vector<long> &sequence, const Step &step) {
-    std::pair<TransIdx, BoolExpr> key {step.clause_idx, step.implicant};
+    std::pair<TransIdx, BoolExpr> key;
+    if (chcs.getRule(step.clause_idx).getGuard()->isConjunction()) {
+        key = {step.clause_idx, BExpression::True};
+    } else {
+        key = {step.clause_idx, step.implicant};
+    }
     const auto it = alphabet.find(key);
     if (it == alphabet.end()) {
         alphabet.emplace(key, next_char);
@@ -205,7 +209,7 @@ option<RecursiveSuffix> Reachability::has_looping_suffix() {
     if (trace.empty()) {
         return {};
     }
-    const auto last_clause = trace.back().clause;
+    const auto last_clause = chcs.getRule(trace.back().clause_idx);
     const auto dst = last_clause.getRhsLoc(0);
     std::vector<long> sequence;
     unsigned depth = 0;
@@ -220,7 +224,7 @@ option<RecursiveSuffix> Reachability::has_looping_suffix() {
             if (log) std::cout << sequence << " is a non-loop" << std::endl;
             continue;
         }
-        if (step.clause.getLhsLoc() == dst) {
+        if (chcs.getRule(step.clause_idx).getLhsLoc() == dst) {
             auto upos = static_cast<unsigned>(pos);
             bool looping = upos < trace.size() - 1 || is_orig_clause(step.clause_idx);
             if (looping) {
@@ -256,6 +260,9 @@ Subs Reachability::handle_update(const TransIdx idx) {
 
 void Reachability::block(const Step &step) {
     if (log) std::cout << "blocking " << step.clause_idx << ", " << step.implicant << std::endl;
+    if (chcs.getRule(step.clause_idx).getGuard()->isConjunction()) {
+        blocked_clauses.back()[step.clause_idx] = {};
+    }
     auto block = blocked_clauses.back().find(step.clause_idx);
     if (block == blocked_clauses.back().end()) {
         blocked_clauses.back()[step.clause_idx] = {step.implicant};
@@ -292,7 +299,7 @@ void Reachability::add_to_trace(const Step &step) {
     proof.storeSubProof(subProof);
 }
 
-bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant, const Rule &clause) {
+bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     solver.push();
     if (trace.empty()) {
         solver.add(implicant);
@@ -301,7 +308,7 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant, con
     }
     if (solver.check() == Sat) {
         const auto new_var_renaming = handle_update(idx);
-        const Step step(idx, implicant, clause, new_var_renaming);
+        const Step step(idx, implicant, new_var_renaming);
         add_to_trace(step);
         blocked_clauses.push_back({});
         // block learned clauses after adding them to the trace
@@ -453,12 +460,18 @@ void Reachability::unsat() {
     proof.print();
 }
 
-option<std::pair<BoolExpr, Rule>> Reachability::resolve(const TransIdx idx) {
+option<BoolExpr> Reachability::resolve(const TransIdx idx) {
     PushPop pp(solver);
     const auto var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     const auto clause = chcs.getRule(idx);
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
+        // a blocked conjunctive clause --> fail
+        if (clause.getGuard()->isConjunction()) {
+            return {};
+        }
+        // a non-conjunctive clause where some variants are blocked
+        // --> make sure that we use a non-blocked variant, if any
         for (const auto &b: block->second) {
             solver.add(!b->subs(var_renaming));
         }
@@ -467,36 +480,9 @@ option<std::pair<BoolExpr, Rule>> Reachability::resolve(const TransIdx idx) {
     solver.add(guard);
     if (solver.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
-        auto update = clause.getUpdate(0);
-        auto vars = guard->vars();
-        substitution::collectVariables(update, vars);
-        const auto model = substitution::compose(var_renaming, solver.model(vars).toSubs());
-        const auto implicant = clause.getGuard()->implicant(model);
+        const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model(guard->vars()).toSubs()));
         if (implicant) {
-            const auto new_guard = BExpression::buildAndFromLits(*implicant);
-            std::vector<BoolExpr> discriminators;
-            if (!guard->isConjunction()) {
-                discriminators.push_back(new_guard);
-            }
-            for (const auto &p: update) {
-                const auto &fst = substitution::first(p);
-                if (std::holds_alternative<BoolVar>(fst)) {
-                    const auto &x = std::get<BoolVar>(fst);
-                    const auto rhs = std::get<BoolExpr>(substitution::second(p));
-                    if (!rhs->isConjunction()) {
-                        if (rhs->subs(model)->isTriviallyTrue()) {
-                            discriminators.push_back(rhs);
-                            update.put<BoolTheory>(x, BExpression::True);
-                        } else {
-                            discriminators.push_back(!rhs);
-                            update.put<BoolTheory>(x, BExpression::False);
-                        }
-                    }
-                }
-            }
-            const auto projection = LinearRule(clause.getLhsLoc(), new_guard, 1, clause.getRhsLoc(0), update);
-            const auto discriminator = BExpression::buildAnd(discriminators);
-            return {{discriminator, projection}};
+            return BExpression::buildAndFromLits(*implicant);
         } else {
             throw std::logic_error("model, but no implicant");
         }
@@ -514,7 +500,7 @@ void Reachability::drop_until(const int new_size) {
 
 Reachability::Red::T Reachability::get_language(const Step &step) {
     if (is_orig_clause(step.clause_idx)) {
-        return redundance->get_singleton_language(step.clause_idx, step.implicant);
+        return redundance->get_singleton_language(step.clause_idx, step.implicant->conjunctionToGuard());
     } else {
         return redundance->get_language(step.clause_idx);
     }
@@ -530,12 +516,13 @@ Reachability::Red::T Reachability::build_language(const int backlink) {
 }
 
 Rule Reachability::build_loop(const int backlink) {
-    Rule loop = trace.back().clause;
+    Rule loop = chcs.getRule(trace.back().clause_idx).withGuard(trace.back().implicant);
     for (int i = trace.size() - 2; i >= backlink; --i) {
         const Step &step = trace[i];
         auto sigma = step.var_renaming;
         sigma.erase(prog_vars); // rename temporary variables before chaining
-        loop = *Chaining::chainRules(chcs, step.clause.subs(sigma), loop, false);
+        loop = *Chaining::chainRules(chcs, chcs.getRule(step.clause_idx).withGuard(step.implicant).subs(sigma), loop, false);
+
     }
     assert(loop.getLhsLoc() == loop.getRhsLoc(0));
     if (log) {
@@ -660,7 +647,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const RecursiveSuffix &
     proof.storeSubProof(subproof);
     for (const auto idx: idxs) {
         const auto clause = chcs.getRule(idx);
-        if (store_step(idx, clause.getGuard(), clause)) {
+        if (store_step(idx, clause.getGuard())) {
             if (clause.getRhsLoc(0) == chcs.getSink()) {
                 return std::make_unique<ProvedUnsat>();
             } else {
@@ -673,17 +660,16 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const RecursiveSuffix &
 }
 
 LocationIdx Reachability::get_current_predicate() const {
-    return trace.empty() ? chcs.getInitialLocation() : trace.back().clause.getRhsLoc(0);
+    return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
 }
 
 bool Reachability::try_to_finish(const std::vector<TransIdx> &clauses) {
     solver.setTimeout(2000);
     for (const auto &q: clauses) {
-        const auto p = resolve(q);
-        if (p) {
-            const auto [discrimiator, projection] = *p;
+        const option<BoolExpr> implicant = resolve(q);
+        if (implicant) {
             // no need to compute the model and the variable renaming for the next step, as we are done
-            add_to_trace(Step(q, discrimiator, projection, Subs()));
+            add_to_trace(Step(q, *implicant, Subs()));
             unsat();
             return true;
         }
@@ -739,7 +725,6 @@ void Reachability::analyze() {
                 } else if (state->failed()) {
                     // non-loop --> do not backtrack
                     non_loops.add(trace, recursive_suffix->backlink);
-                    break;
                 } else if (state->unsat()) {
                     unsat();
                     return;
@@ -759,10 +744,8 @@ void Reachability::analyze() {
             auto it = to_try.begin();
             std::vector<TransIdx> append;
             while (it != to_try.end()) {
-                const auto p = resolve(*it);
-                if (p) {
-                    const auto [discriminator, projection] = *p;
-                    store_step(*it, discriminator, projection);
+                const option<BoolExpr> implicant = resolve(*it);
+                if (implicant && store_step(*it, *implicant)) {
                     break;
                 }
                 append.push_back(*it);

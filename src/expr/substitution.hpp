@@ -29,8 +29,6 @@ theory::VarSet<Th...> vars(const theory::Subs<Th...> &e) {
     return res;
 }
 
-void collectVariables(const Subs &subs, VarSet &vars);
-
 template<std::size_t I = 0>
 inline void concatImpl(const TheSubs &fst, const TheSubs &snd, TheSubs &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {

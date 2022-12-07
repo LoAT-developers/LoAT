@@ -1047,11 +1047,6 @@ bool operator ==(const BExpr<Th...> a, const BExpr<Th...> b) {
 }
 
 template <ITheory... Th>
-bool operator <(const BExpr<Th...> a, const BExpr<Th...> b) {
-    return a->compare(b) < 0;
-}
-
-template <ITheory... Th>
 bool operator !=(const BExpr<Th...> a, const BExpr<Th...> b) {
     return !(a==b);
 }
