@@ -751,19 +751,16 @@ void Reachability::analyze() {
                 append.push_back(*it);
                 it = to_try.erase(it);
             }
-            if (!trace.empty()) {
-                if (it == to_try.end()) {
-                    backtrack();
-                } else {
-                    // check whether a query is applicable after every step and,
-                    // importantly, before acceleration (which might approximate)
-                    if (try_to_finish()) {
-                        return;
-                    }
-                }
-            }
+            bool all_failed = it == to_try.end();
             to_try.insert(to_try.end(), append.begin(), append.end());
-        } while (!trace.empty());
+            if (trace.empty()) {
+                break;
+            } else if (all_failed) {
+                backtrack();
+            } else if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
+                return;
+            }
+        } while (true);
     }
     std::cout << "unknown" << std::endl << std::endl;
 }
