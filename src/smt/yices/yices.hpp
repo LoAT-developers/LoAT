@@ -93,13 +93,13 @@ public:
         }
     }
 
-    Model<Th...> model() override {
+    Model<Th...> model(const option<const VarSet> &vars = {}) override {
         if (ctx.getSymbolMap().empty()) {
             return Model<Th...>();
         }
         model_t *m = yices_get_model(solver, true);
         Model<Th...> res;
-        for (const auto &p: ctx.getSymbolMap()) {
+        const auto add = [&res, this, m](const auto &p) {
             if constexpr ((std::same_as<IntTheory, Th> || ...)) {
                 if (std::holds_alternative<NumVar>(p.first)) {
                     res.template put<IntTheory>(std::get<NumVar>(p.first), getRealFromModel(m, p.second));
@@ -114,6 +114,19 @@ public:
                 }
             } else {
                 throw std::logic_error("unknown variable type");
+            }
+        };
+        const auto map = ctx.getSymbolMap();
+        if (vars) {
+            for (const auto &x: *vars) {
+                const auto it = map.find(x);
+                if (it != map.end()) {
+                    add(*it);
+                }
+            }
+        } else {
+            for (const auto &p: map) {
+                add(p);
             }
         }
         yices_free_model(m);

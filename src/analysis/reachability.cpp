@@ -84,11 +84,10 @@ Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs), non_loop
     solver.enableModels();
 }
 
-Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const ThModel &model):
+Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming):
     clause_idx(transition),
     implicant(sat),
-    var_renaming(var_renaming),
-    model(model.toSubs()){}
+    var_renaming(var_renaming) {}
 
 std::ostream& operator<<(std::ostream &s, const std::vector<Step> &step) {
     for (auto it = step.begin(); it != step.end(); ++it) {
@@ -304,9 +303,8 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
         solver.add(implicant->subs(trace.back().var_renaming));
     }
     if (solver.check() == Sat) {
-        const auto model = solver.model();
         const auto new_var_renaming = handle_update(idx);
-        const Step step(idx, implicant, new_var_renaming, model);
+        const Step step(idx, implicant, new_var_renaming);
         add_to_trace(step);
         blocked_clauses.push_back({});
         // block learned clauses after adding them to the trace
@@ -321,10 +319,11 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
 }
 
 void Reachability::print_trace(std::ostream &s) {
+    const auto model = solver.model().toSubs();
     for (const auto &step: trace) {
         s << " [";
         for (const auto &x: prog_vars) {
-            s << " " << x << "=" << expression::subs(step.var_renaming.get(x), step.model);
+            s << " " << x << "=" << expression::subs(step.var_renaming.get(x), model);
         }
         s << " ] " << step.clause_idx;
     }
@@ -473,14 +472,11 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
             solver.add(!b->subs(var_renaming));
         }
     }
-    solver.add(clause.getGuard()->subs(var_renaming));
+    const auto guard = clause.getGuard()->subs(var_renaming);
+    solver.add(guard);
     if (solver.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
-        // the models get huge, but we are only interested in those variables that occur in
-        // the guard or the variable renaming
-        VarSet vars = clause.getGuard()->vars();
-        substitution::collectVariables(var_renaming, vars);
-        const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model().toSubs(vars)));
+        const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model(guard->vars()).toSubs()));
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {
@@ -669,7 +665,7 @@ bool Reachability::try_to_finish(const std::vector<TransIdx> &clauses) {
         const option<BoolExpr> implicant = resolve(q);
         if (implicant) {
             // no need to compute the model and the variable renaming for the next step, as we are done
-            add_to_trace(Step(q, *implicant, Subs(), ThModel()));
+            add_to_trace(Step(q, *implicant, Subs()));
             unsat();
             return true;
         }

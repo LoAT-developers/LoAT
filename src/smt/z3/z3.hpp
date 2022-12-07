@@ -4,6 +4,7 @@
 #include "z3context.hpp"
 #include "config.hpp"
 #include "exprtosmt.hpp"
+#include "thset.hpp"
 
 template <ITheory... Th>
 class Z3 : public Smt<Th...> {
@@ -41,17 +42,17 @@ public:
         throw std::logic_error("unknown result");
     }
 
-    Model<Th...> model() override {
+    Model<Th...> model(const option<const VarSet> &vars = {}) override {
         assert(models);
         const z3::model &m = solver.get_model();
         Model<Th...> res;
-        for (const auto &p: ctx.getSymbolMap()) {
+        const auto add = [&res, this, &m](const auto &p) {
             if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
                 if (std::holds_alternative<NumVar>(p.first)) {
                     NumVar var = std::get<NumVar>(p.first);
                     Num val = getRealFromModel(m, p.second);
                     res.template put<IntTheory>(var, val);
-                    continue;
+                    return;
                 }
             }
             if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
@@ -66,10 +67,23 @@ public:
                         break;
                     default: break;
                     }
-                    continue;
+                    return;
                 }
             }
             throw std::logic_error("unknown variable type");
+        };
+        const auto map = ctx.getSymbolMap();
+        if (vars) {
+            for (const auto &x: *vars) {
+                const auto it = map.find(x);
+                if (it != map.end()) {
+                    add(*it);
+                }
+            }
+        } else {
+            for (const auto &p: map) {
+                add(p);
+            }
         }
         return res;
     }

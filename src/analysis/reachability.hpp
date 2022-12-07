@@ -28,12 +28,7 @@ struct Step {
      */
     const Subs var_renaming;
 
-    /**
-     * model for the trace up to this point
-     */
-    const Subs model;
-
-    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const ThModel &model);
+    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming);
 
 };
 

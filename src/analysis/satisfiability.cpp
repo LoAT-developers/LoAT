@@ -444,14 +444,11 @@ option<BoolExpr> Satisfiability::resolve(const TransIdx idx) {
             solver.add(!b->subs(var_renaming));
         }
     }
-    solver.add(clause.getGuard()->subs(var_renaming));
+    const auto guard = clause.getGuard()->subs(var_renaming);
+    solver.add(guard);
     if (solver.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
-        // the models get huge, but we are only interested in those variables that occur in
-        // the guard or the variable renaming
-        VarSet vars = clause.getGuard()->vars();
-        substitution::collectVariables(var_renaming, vars);
-        const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model().toSubs(vars)));
+        const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model(guard->vars()).toSubs()));
         if (implicant) {
             return BExpression::buildAndFromLits(*implicant);
         } else {

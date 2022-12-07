@@ -57,35 +57,6 @@ public:
 
 private:
 
-    template<std::size_t I = 0>
-    inline void toSubsImpl(S &subs, const VarSet &vars) const {
-        if constexpr (I < std::tuple_size_v<Theories>) {
-            const auto &map = std::get<I>(m);
-            auto &s = subs.template get<I>();
-            for (const auto &x: vars.template get<I>()) {
-                const auto it = map.find(x);
-                if (it != map.end()) {
-                    using T = std::tuple_element_t<I, Theories>;
-                    s.put(x, T::valToExpr(it->second));
-                }
-            }
-            toSubsImpl<I+1>(subs, vars);
-        }
-    }
-
-public:
-
-    S toSubs(const VarSet &vars) const {
-        S res;
-        toSubsImpl(res, vars);
-        return res;
-    }
-
-    template <ITheory... Th_>
-    friend std::ostream& operator<<(std::ostream &s, const Model<Th_...> &e);
-
-private:
-
     typename TheTheory::Model m;
 
 };

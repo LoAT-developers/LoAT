@@ -223,8 +223,8 @@ public:
         lin_vars.pop();
     }
 
-    Model<Th...> model() override {
-        return z3.model();
+    Model<Th...> model(const option<const VarSet> &vars = {}) override {
+        return z3.model(vars);
     }
 
     void setTimeout(unsigned int timeout) override {
