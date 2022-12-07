@@ -14,12 +14,12 @@ private:
 
     std::set<T> covered;
     long next_char;
-    std::map<std::pair<TransIdx, Guard>, long> alphabet;
+    std::map<std::pair<TransIdx, BoolExpr>, long> alphabet;
     std::map<TransIdx, T> regexes;
 
 public:
 
-    virtual T get_singleton_language(const TransIdx idx, const Guard &guard) override;
+    virtual T get_singleton_language(const TransIdx idx, const BoolExpr guard) override;
     virtual T get_language(const TransIdx idx) override;
     virtual void set_language(const TransIdx idx, const T &t) override;
     virtual bool is_redundant(const T &t) const override;

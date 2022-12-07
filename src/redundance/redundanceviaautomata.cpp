@@ -60,11 +60,11 @@ std::ostream& operator<<(std::ostream &s, const Automaton &a) {
     return s << a.str;
 }
 
-Automaton RedundanceViaAutomata::get_singleton_language(const TransIdx idx, const Guard &g) {
+Automaton RedundanceViaAutomata::get_singleton_language(const TransIdx idx, const BoolExpr g) {
     const auto it = alphabet.find({idx, g});
     if (it == alphabet.end()) {
         const auto res = Automaton::singleton();
-        alphabet.emplace(std::pair<TransIdx, Guard>(idx, g), res);
+        alphabet.emplace(std::pair<TransIdx, BoolExpr>(idx, g), res);
         return res;
     } else {
         return it->second;

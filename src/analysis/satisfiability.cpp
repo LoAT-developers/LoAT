@@ -468,7 +468,7 @@ void Satisfiability::drop_until(const int new_size) {
 
 Satisfiability::Red::T Satisfiability::get_language(const Step &step) {
     if (is_orig_clause(step.clause_idx)) {
-        return redundance->get_singleton_language(step.clause_idx, step.implicant->conjunctionToGuard());
+        return redundance->get_singleton_language(step.clause_idx, step.implicant);
     } else {
         return redundance->get_language(step.clause_idx);
     }
