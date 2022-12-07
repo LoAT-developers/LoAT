@@ -237,6 +237,10 @@ option<RecursiveSuffix> Reachability::has_looping_suffix() {
 
 Subs Reachability::handle_update(const TransIdx idx) {
     const Rule &r = chcs.getRule(idx);
+    if (r.getRhsLoc(0) == chcs.getSink()) {
+        // no need to compute a new variable renaming if we just applied a query
+        return {};
+    }
     const Subs last_var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     Subs new_var_renaming;
     const Subs up = r.getUpdate(0);
