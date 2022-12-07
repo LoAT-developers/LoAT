@@ -333,11 +333,13 @@ void Satisfiability::preprocess() {
         proof.majorProofStep("simplified transitions", chcs);
         proof.storeSubProof(res.getProof());
     }
+    /*
     res = unroll();
     if (res) {
         proof.majorProofStep("unrolled loops", chcs);
         proof.storeSubProof(res.getProof());
     }
+    */
     if (log) {
         std::cout << "simplified ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
@@ -408,7 +410,9 @@ void Satisfiability::luby_next() {
 }
 
 void Satisfiability::unsat() {
-    std::cout << "unsat" << std::endl << std::endl;
+     std::cout << "unknown" << std::endl << std::endl;
+    /*
+     std::cout << "unsat" << std::endl << std::endl;
     std::stringstream trace_stream, counterexample;
     trace_stream << trace;
     print_trace(counterexample);
@@ -426,6 +430,7 @@ void Satisfiability::unsat() {
     subProof.append(counterexample);
     proof.storeSubProof(subProof);
     proof.print();
+    */
 }
 
 option<BoolExpr> Satisfiability::resolve(const TransIdx idx) {
@@ -533,6 +538,8 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
     }
     AccelConfig config;
     config.allowDisjunctions = false;
+    config.approx = OverApprox;
+    // ---
     acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), Complexity::Const, config);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
@@ -623,6 +630,29 @@ bool Satisfiability::try_conditional_empty_clauses() {
     return try_to_finish(conditional_empty_clauses);
 }
 
+bool Satisfiability::learn_trivial_clause(const LocationIdx idx) {
+    // constructs a new, trivial clause
+    Subs update;
+    for(const auto &x: prog_vars){
+        update.put(x, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(x)));
+    }
+    const LinearRule trivialClause = LinearRule(idx, BExpression::True, 1, idx, update);
+
+
+    //TODO: add new, trivial clause to all relevant data structures
+    //const auto lang = redundance->get_singleton_language();
+    //add_learned_clause(&trivialClause, &lang);
+
+    //TODO: store step in the trace
+    /*if(store_step()){
+
+    }else{
+        std::cout << "Error: adding trivial clause to the trace failed" << std::endl;
+        return false;
+    }*/
+    return true;
+}
+
 void Satisfiability::analyze() {
     proof.majorProofStep("initial ITS", chcs);
     if (log) {
@@ -663,6 +693,7 @@ void Satisfiability::analyze() {
                 block(step);
             } else if (state->failed()) {
                 // non-loop --> do not backtrack
+                // This case should only happen if the learned clause is trivially redundant w.r.t. the looping suffix
                 non_loops.add(trace, backlink);
                 break;
             }
@@ -693,7 +724,7 @@ void Satisfiability::analyze() {
         }
         to_try.insert(to_try.end(), append.begin(), append.end());
     } while (true);
-    std::cout << "unknown" << std::endl << std::endl;
+    std::cout << "sat" << std::endl << std::endl;
 }
 
 void Satisfiability::analyze(ITSProblem &its) {

@@ -5,7 +5,7 @@
 #include "itsproblem.hpp"
 #include "proof.hpp"
 #include "result.hpp"
-#include "redundanceviasquarefreewords.hpp"
+#include "redundanceviaautomata.hpp"
 
 #include <list>
 
@@ -213,9 +213,8 @@ class Satisfiability {
 
     /**
      * Implementation of our redundancy check.
-     * TODO RedundanceViaSquareFreeWords is not sound for sat. RedundanceViaAutomata should be sound.
      */
-    using Red = RedundanceViaSquareFreeWords;
+    using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundance {std::make_unique<Red>()};
 
     NonLoops non_loops;
@@ -238,7 +237,6 @@ class Satisfiability {
     /**
      * resolves recursive clauses with themselves in cases where
      * the resulting clause might be easier to accelerate
-     * TODO Not sound for sat.
      */
     ResultViaSideEffects unroll();
 
@@ -355,6 +353,11 @@ class Satisfiability {
     bool try_to_finish(const std::vector<TransIdx> &clauses);
     bool try_to_finish();
     bool try_conditional_empty_clauses();
+
+    /**
+     * Learns a new trivial clause if the acceleration fails or if the accelerated clause is dropped.
+     */
+    bool learn_trivial_clause(const LocationIdx idx);
 
     Satisfiability(ITSProblem &its);
 
