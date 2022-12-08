@@ -325,14 +325,14 @@ void Reachability::update_cpx() {
 }
 
 Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const {
-    static Rule dummy(RuleLhs(0, BExpression::True), {});
+    static Rule dummy(0, BExpression::True, 0, 0, Subs());
     if (!Config::Analysis::complexity()) {
         return dummy;
     }
-    if (trace.empty()) {
-        return chcs.getRule(idx).withGuard(implicant);
+    auto resolvent = chcs.getRule(idx).withGuard(implicant);
+    if (!trace.empty()) {
+        resolvent = *Chaining::chainRules(chcs, trace.back().resolvent, resolvent, false);
     }
-    const auto resolvent = *Chaining::chainRules(chcs, trace.back().resolvent, chcs.getRule(idx).withGuard(implicant), false);
     return *Preprocess::simplifyRule(chcs, resolvent, false);
 }
 
