@@ -435,6 +435,11 @@ void Reachability::luby_next() {
     shuffle(cross_scc);
     shuffle(learned_clauses);
     shuffle(queries);
+    for (const auto idx: chcs.getLocations()) {
+        update_rules(idx);
+    }
+    solver.setSeed(rand());
+    solver.resetSolver();
     luby_loop_count = 0;
 }
 
@@ -737,7 +742,6 @@ void Reachability::analyze() {
                     pop();
                 }
                 luby_next();
-                solver.setSeed(rand());
             }
             const auto current = get_current_predicate();
             auto &to_try = rules[current];
