@@ -86,10 +86,11 @@ Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs), non_loop
     solver.enableModels();
 }
 
-Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming):
+Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent):
     clause_idx(transition),
     implicant(sat),
-    var_renaming(var_renaming) {}
+    var_renaming(var_renaming),
+    resolvent(resolvent) {}
 
 std::ostream& operator<<(std::ostream &s, const std::vector<Step> &step) {
     for (auto it = step.begin(); it != step.end(); ++it) {
@@ -305,20 +306,14 @@ void Reachability::update_cpx() {
     if (!Config::Analysis::complexity()) {
         return;
     }
-    const auto &first_step = trace.front();
-    auto chained = chcs.getRule(first_step.clause_idx).withGuard(first_step.implicant);
-    for (unsigned i = 1; i < trace.size(); ++i) {
-        const auto &step = trace.at(i);
-        chained = *Chaining::chainRules(chcs, chained, chcs.getRule(step.clause_idx).withGuard(step.implicant), false);
-    }
-    chained = *Preprocess::simplifyRule(chcs, chained, false);
-    const auto &cost = chained.getCost();
+    const auto &resolvent = trace.back().resolvent;
+    const auto &cost = resolvent.getCost();
     const auto max_cpx = toComplexity(cost);
     if (max_cpx <= cpx) {
         return;
     }
-    for (const auto &tc: chained.getGuard()->transform<IntTheory>()->dnf()) {
-        const auto res = AsymptoticBound::determineComplexity(chcs, tc, chained.getCost(), false, cpx);
+    for (const auto &tc: resolvent.getGuard()->transform<IntTheory>()->dnf()) {
+        const auto res = AsymptoticBound::determineComplexity(chcs, tc, cost, false, cpx);
         if (res.cpx > cpx) {
             cpx = res.cpx;
             std::cout << cpx.toWstString() << std::endl;
@@ -327,6 +322,18 @@ void Reachability::update_cpx() {
             break;
         }
     }
+}
+
+Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const {
+    static Rule dummy(RuleLhs(0, BExpression::True), {});
+    if (!Config::Analysis::complexity()) {
+        return dummy;
+    }
+    if (trace.empty()) {
+        return chcs.getRule(idx).withGuard(implicant);
+    }
+    const auto resolvent = *Chaining::chainRules(chcs, trace.back().resolvent, chcs.getRule(idx).withGuard(implicant), false);
+    return *Preprocess::simplifyRule(chcs, resolvent, false);
 }
 
 bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
@@ -338,7 +345,7 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     }
     if (solver.check() == Sat) {
         const auto new_var_renaming = handle_update(idx);
-        const Step step(idx, implicant, new_var_renaming);
+        const Step step(idx, implicant, new_var_renaming, compute_resolvent(idx, implicant));
         add_to_trace(step);
         blocked_clauses.push_back({});
         // block learned clauses after adding them to the trace
@@ -731,7 +738,7 @@ bool Reachability::try_to_finish(const std::vector<TransIdx> &clauses) {
         const option<BoolExpr> implicant = resolve(q);
         if (implicant) {
             // no need to compute the model and the variable renaming for the next step, as we are done
-            add_to_trace(Step(q, *implicant, Subs()));
+            add_to_trace(Step(q, *implicant, Subs(), compute_resolvent(q, *implicant)));
             unsat();
             return true;
         }

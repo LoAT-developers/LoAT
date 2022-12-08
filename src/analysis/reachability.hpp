@@ -35,7 +35,9 @@ struct Step {
      */
     const Subs var_renaming;
 
-    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming);
+    const Rule resolvent;
+
+    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent);
 
 };
 
@@ -360,11 +362,13 @@ class Reachability {
 
     void add_to_trace(const Step &step);
 
+    Rule compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const;
+
     /**
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const TransIdx idx, const BoolExpr &sat);
+    bool store_step(const TransIdx idx, const BoolExpr &implicant);
 
     void print_trace(std::ostream &s);
 
