@@ -44,6 +44,10 @@ private:
 
 std::ostream& operator<<(std::ostream &os, const InftyExpression &ie);
 
+/**
+ * just compares the expressions, not their labels, such that the
+ * set of labeled expressions cannot contain duplicate expressions
+ */
 bool operator<(const InftyExpression &x, const InftyExpression &y);
 
 typedef std::set<InftyExpression> InftyExpressionSet;
