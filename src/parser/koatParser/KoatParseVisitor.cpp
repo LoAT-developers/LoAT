@@ -96,7 +96,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
             throw std::invalid_argument("wrong arity: " + ctx->getText());
         }
         for (unsigned i = 0; i < sz; ++i) {
-            if (programVars[i].getName() != ctx->var(i)->getText()) {
+            if (programVars[i].getName() != vars.at(ctx->var(i)->getText()).getName()) {
                 throw std::invalid_argument("invalid arguments: expected " + variable::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
             }
         }
