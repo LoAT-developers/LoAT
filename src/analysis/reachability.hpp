@@ -6,6 +6,7 @@
 #include "proof.hpp"
 #include "result.hpp"
 #include "redundanceviaautomata.hpp"
+#include "complexity.hpp"
 
 #include <limits>
 #include <list>
@@ -234,9 +235,15 @@ class Reachability {
 
     NonLoops non_loops;
 
+    Complexity cpx = Complexity::Const;
+
     bool is_learned_clause(const TransIdx idx) const;
 
     bool is_orig_clause(const TransIdx idx) const;
+
+    void update_cpx();
+
+    Result<Rule> instantiate(const NumVar &n, const Rule &rule) const;
 
     /**
      * removes clauses that are not on a CFG-path from a fact to a query

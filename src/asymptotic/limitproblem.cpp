@@ -5,12 +5,12 @@
 #include <utility>
 
 LimitProblem::LimitProblem(VariableManager &varMan)
-    : variableN("n"), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
+    : variableN(varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int)), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
 }
 
 
 LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const Expr &cost, VariableManager &varMan)
-    : variableN("n"), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
+    : LimitProblem(varMan) {
     for (const auto &lit : normalizedGuard) {
         const Rel &rel = std::get<Rel>(lit);
         assert(rel.isGZeroConstraint());

@@ -173,8 +173,6 @@ int main(int argc, char *argv[]) {
     // Skip ITS problems with nonlinear (i.e., recursive) rules.
     switch (Config::Analysis::mode) {
     case Config::Analysis::Complexity:
-        Analysis::analyze(its);
-        break;
     case Config::Analysis::NonTermination:
     case Config::Analysis::Reachability:
         reachability::Reachability::analyze(its);

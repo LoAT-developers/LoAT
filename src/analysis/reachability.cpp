@@ -10,6 +10,8 @@
 #include "expression.hpp"
 #include "literal.hpp"
 #include "vector.hpp"
+#include "asymptoticbound.hpp"
+#include "vareliminator.hpp"
 
 #include <numeric>
 #include <random>
@@ -299,6 +301,34 @@ void Reachability::add_to_trace(const Step &step) {
     proof.storeSubProof(subProof);
 }
 
+void Reachability::update_cpx() {
+    if (!Config::Analysis::complexity()) {
+        return;
+    }
+    const auto &first_step = trace.front();
+    auto chained = chcs.getRule(first_step.clause_idx).withGuard(first_step.implicant);
+    for (unsigned i = 1; i < trace.size(); ++i) {
+        const auto &step = trace.at(i);
+        chained = *Chaining::chainRules(chcs, chained, chcs.getRule(step.clause_idx).withGuard(step.implicant), false);
+    }
+    chained = *Preprocess::simplifyRule(chcs, chained, false);
+    const auto &cost = chained.getCost();
+    const auto max_cpx = toComplexity(cost);
+    if (max_cpx <= cpx) {
+        return;
+    }
+    for (const auto &tc: chained.getGuard()->transform<IntTheory>()->dnf()) {
+        const auto res = AsymptoticBound::determineComplexity(chcs, tc, chained.getCost(), false, cpx);
+        if (res.cpx > cpx) {
+            cpx = res.cpx;
+            std::cout << cpx.toWstString() << std::endl;
+        }
+        if (res.cpx == max_cpx) {
+            break;
+        }
+    }
+}
+
 bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     solver.push();
     if (trace.empty()) {
@@ -315,6 +345,7 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
         if (is_learned_clause(idx)) {
             block(step);
         }
+        update_cpx();
         return true;
     } else {
         solver.pop();
@@ -566,6 +597,23 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
     return idx <= last_orig_clause;
 }
 
+Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const {
+    Result<Rule> res(rule);
+    VarEliminator ve(rule.getGuard(), n, chcs);
+    if (ve.getRes().empty() || ve.getRes().size() > 1) {
+        return res;
+    }
+    for (const auto &s : ve.getRes()) {
+        if (s.get(n).isRationalConstant()) continue;
+        if (res) {
+            return Result<Rule>(rule);
+        }
+        res = rule.subs(Subs::build<IntTheory>(s));
+        res.ruleTransformationProof(rule, "instantiation", *res, chcs);
+    }
+    return res;
+}
+
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang, unsigned depth) {
     Result<Rule> simp = Preprocess::simplifyRule(chcs, rule, true);
     if (Config::Analysis::reachability() && simp->getUpdate(0) == substitution::concat(simp->getUpdate(0), simp->getUpdate(0))) {
@@ -603,9 +651,12 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
-        const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
+        auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
         if (simplified->getUpdate(0) != simp->getUpdate(0)) {
             // accelerated rule differs from the original one, update the result
+            if (Config::Analysis::complexity()) {
+                simplified.concat(instantiate(*accel_res.n, *simplified));
+            }
             res.succeed();
             res->push_back(add_learned_clause(*simplified, lang, depth + 1));
             res.storeSubProof(accel_res.proof);
@@ -772,7 +823,9 @@ void Reachability::analyze() {
             }
         } while (true);
     }
-    std::cout << "unknown" << std::endl << std::endl;
+    if (!Config::Analysis::complexity() || cpx <= Complexity::Const) {
+        std::cout << "unknown" << std::endl << std::endl;
+    }
 }
 
 void Reachability::analyze(ITSProblem &its) {

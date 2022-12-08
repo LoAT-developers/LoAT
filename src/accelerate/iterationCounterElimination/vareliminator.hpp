@@ -1,6 +1,6 @@
 #pragma once
 
-#include "itsproblem.hpp"
+#include "variablemanager.hpp"
 #include "theory.hpp"
 
 /**
