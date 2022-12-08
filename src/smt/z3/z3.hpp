@@ -168,6 +168,7 @@ private:
         params.set(":model", models);
         params.set(":timeout", timeout);
         params.set(":seed", seed);
+        params.set(":random_seed", seed);
         solver.set(params);
     }
 
