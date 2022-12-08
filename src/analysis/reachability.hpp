@@ -10,6 +10,11 @@
 #include <limits>
 #include <list>
 
+/**
+ * Possible improvements:
+ * - remove original clauses that are subsumed by learned clauses
+ * - allow disjunctive clauses on the trace and project wrt. the current model before acceleration, not after every step
+ */
 namespace reachability {
 
 /**

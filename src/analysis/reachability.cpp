@@ -368,16 +368,18 @@ void Reachability::update_rules(const LocationIdx idx) {
     auto l_it = cross_scc.find(idx);
     // the order of the clauses in this list determines the selection order for resolution
     std::list<LocationIdx> trans;
-    // try to get out of the current SCC as we want to reach 'bottom', which is its own SCC
+    // Try to get out of the current SCC as we want to reach 'bottom', which is its own SCC.
     if (l_it != cross_scc.end()) {
         trans.insert(trans.end(), l_it->second.begin(), l_it->second.end());
     }
-    // then try original clauses that stay within the current SCC
+    // Then try original clauses that stay within the current SCC.
+    // The motivation for trying them before learned clauses is that it increases the probability
+    // that we visit different parts of the search space after restarts.
     l_it = in_scc.find(idx);
     if (l_it != in_scc.end()) {
         trans.insert(trans.end(), l_it->second.begin(), l_it->second.end());
     }
-    // try learned clauses last
+    // Try learned clauses last.
     const auto it = learned_clauses.find(idx);
     if (it != learned_clauses.end()) {
         trans.insert(trans.end(), it->second.begin(), it->second.end());
