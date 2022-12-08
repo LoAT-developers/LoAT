@@ -372,15 +372,15 @@ void Reachability::update_rules(const LocationIdx idx) {
     if (l_it != cross_scc.end()) {
         trans.insert(trans.end(), l_it->second.begin(), l_it->second.end());
     }
-    // try learned clauses next
-    const auto it = learned_clauses.find(idx);
-    if (it != learned_clauses.end()) {
-        trans.insert(trans.end(), it->second.begin(), it->second.end());
-    }
-    // try original clauses that stay within the current SCC last
+    // then try original clauses that stay within the current SCC
     l_it = in_scc.find(idx);
     if (l_it != in_scc.end()) {
         trans.insert(trans.end(), l_it->second.begin(), l_it->second.end());
+    }
+    // try learned clauses last
+    const auto it = learned_clauses.find(idx);
+    if (it != learned_clauses.end()) {
+        trans.insert(trans.end(), it->second.begin(), it->second.end());
     }
     rules[idx] = trans;
 }
