@@ -436,7 +436,6 @@ void Reachability::luby_next() {
     shuffle(in_scc);
     shuffle(cross_scc);
     shuffle(learned_clauses);
-    shuffle(queries);
     for (const auto idx: chcs.getLocations()) {
         update_rules(idx);
     }
