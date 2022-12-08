@@ -36,6 +36,8 @@ class LinearizingSolver: public Smt<Th...> {
      */
     std::stack<std::vector<NumVar>> lin_vars;
 
+    std::stack<unsigned> push_stack {{0}};
+
     /**
      * variables that occur in exponents of linearized subexpressions
      */
@@ -122,6 +124,16 @@ public:
         }
     }
 
+    void z3_push() {
+        z3.push();
+        push_stack.top()++;
+    }
+
+    void z3_pop() {
+        z3.pop();
+        push_stack.top()--;
+    }
+
     SmtResult check() override {
         std::set<NumVar> vars = de_lin.domain();
         std::vector<NumVar> todo(vars.begin(), vars.end());
@@ -144,7 +156,7 @@ public:
             const Expr exp = expr.op(1);
             if (candidates.contains(*it)) {
                 // we've stored a candidate for the exponent earlier --> try it
-                z3.push();
+                z3_push();
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(*it, expr)));
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, candidates.at(*it))));
                 candidates.erase(*it);
@@ -161,7 +173,7 @@ public:
                     candidates.emplace(*it, high-1);
                 }
                 // try to set the exponent to high
-                z3.push();
+                z3_push();
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(*it, expr)));
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, high)));
             }
@@ -169,7 +181,7 @@ public:
                 ++it;
             } else {
                 // the current candidate failed, backtrack
-                z3.pop();
+                z3_pop();
                 while (!candidates.contains(*it)) {
                     if (it == todo.begin()) {
                         // we've exhausted all candidate instantiations
@@ -181,7 +193,7 @@ public:
                             for (const auto &p: lin) {
                                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(p.first, p.second)));
                             }
-                            z3.push();
+                            z3_push();
                             // fix the values of the variables appearing in exponents according to the model
                             for (const auto &x: exp_vars) {
                                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(x, model.template get<IntTheory>(x))));
@@ -190,8 +202,8 @@ public:
                             if (res == Sat) {
                                 return Sat;
                             }
+                            z3_pop();
                             // failed, drop the values of the variables appearing in exponents
-                            z3.pop();
                             // last resort: apply z3 to the original problem
                             return z3.check();
                         } else {
@@ -199,7 +211,7 @@ public:
                         }
                     }
                     --it;
-                    z3.pop();
+                    z3_pop();
                 }
             }
         }
@@ -212,9 +224,14 @@ public:
     void push() override {
         z3.push();
         lin_vars.push({});
+        push_stack.push(0);
     }
 
     void pop() override {
+        for (unsigned i = 0; i < push_stack.top(); ++i) {
+            z3.pop();
+        }
+        push_stack.pop();
         z3.pop();
         for (const NumVar &x: lin_vars.top()) {
             lin.erase(de_lin.get(x));
@@ -246,7 +263,10 @@ public:
     ~LinearizingSolver() override {}
 
     std::ostream& print(std::ostream& os) const {
-        return z3.print(os);
+        os << "Z3:" << std::endl;
+        z3.print(os);
+        os << "linearization:" << std::endl;
+        return std::cout << de_lin << std::endl;
     }
 
     void setSeed(unsigned seed) {
