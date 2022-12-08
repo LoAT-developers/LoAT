@@ -96,6 +96,26 @@ void VarEliminator::eliminate() {
             ExprSubs p{{N, *bounds.equality}};
             res.insert(subs.compose(p));
         } else {
+            for (auto it = bounds.upperBounds.begin(); it != bounds.upperBounds.end();) {
+                bool removed = false;
+                for (auto it2 = std::next(it); it2 != bounds.upperBounds.end();) {
+                    const auto diff = (*it - *it2).expand();
+                    if (diff.isRationalConstant()) {
+                        if (diff.toNum().is_positive()) {
+                            it = bounds.upperBounds.erase(it);
+                            removed = true;
+                            break;
+                        } else {
+                            it2 = bounds.upperBounds.erase(it2);
+                        }
+                    } else {
+                        ++it2;
+                    }
+                }
+                if (!removed) {
+                    ++it;
+                }
+            }
             for (const Expr &b: bounds.upperBounds) {
                 ExprSubs p{{N, b}};
                 res.insert(subs.compose(p));
