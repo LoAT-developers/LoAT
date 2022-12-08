@@ -309,7 +309,7 @@ void Reachability::update_cpx() {
     const auto &resolvent = trace.back().resolvent;
     const auto &cost = resolvent.getCost();
     const auto max_cpx = toComplexity(cost);
-    if (max_cpx <= cpx) {
+    if (max_cpx <= cpx && !cost.hasVarWith([this](const auto &x){return chcs.isTempVar(x);})) {
         return;
     }
     for (const auto &tc: resolvent.getGuard()->transform<IntTheory>()->dnf()) {
