@@ -471,8 +471,8 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
     const auto clause = chcs.getRule(idx);
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
-        // a blocked conjunctive clause --> fail
-        if (clause.getGuard()->isConjunction()) {
+        // empty means all variants are blocked --> fail
+        if (block->second.empty()) {
             return {};
         }
         // a non-conjunctive clause where some variants are blocked
@@ -492,6 +492,11 @@ option<BoolExpr> Reachability::resolve(const TransIdx idx) {
             throw std::logic_error("model, but no implicant");
         }
     } else {
+        if (block == blocked_clauses.back().end()) {
+            blocked_clauses.back()[idx] = {};
+        } else {
+            block->second.clear();
+        }
         if (log) std::cout << "could not find a model for " << idx << std::endl;
         return {};
     }
