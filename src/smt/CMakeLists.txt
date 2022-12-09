@@ -8,7 +8,6 @@ target_sources(${EXECUTABLE}
         exprtosmt.hpp
         smtfactory.hpp
         model.hpp
-        combined_solver.hpp
         linearizingsolver.hpp
 )
 

@@ -4,8 +4,6 @@ target_sources(${EXECUTABLE}
         option.hpp
         proof.hpp
         proof.cpp
-        timeout.cpp
-        timeout.hpp
         status.hpp
         farkas.cpp
         farkas.hpp

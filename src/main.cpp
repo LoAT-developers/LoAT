@@ -17,12 +17,10 @@
 
 #include "main.hpp"
 
-#include "analysis.hpp"
 #include "itsparser.hpp"
 #include "parser.hpp"
 #include "chcparser.hpp"
 #include "config.hpp"
-#include "timeout.hpp"
 #include "proof.hpp"
 #include "version.hpp"
 #include "reachability.hpp"
@@ -35,13 +33,11 @@ using namespace std;
 
 // Variables for command line flags
 string filename;
-int timeout = 0; // no timeout
 int proofLevel = static_cast<int>(Proof::defaultProofLevel);
 
 void printHelp(char *arg0) {
     cout << "Usage: " << arg0 << " [options] <file>" << endl;
     cout << "Options:" << endl;
-    cout << "  --timeout <sec>                                  Timeout (in seconds), minimum: 10" << endl;
     cout << "  --proof-level <n>                                Detail level for proof output" << endl;
     cout << "  --plain                                          Disable colored output" << endl;
     cout << "  --limit-strategy <smt|calculus|smtAndCalculus>   Strategy for limit problems" << endl;
@@ -65,8 +61,6 @@ void parseFlags(int argc, char *argv[]) {
         if (strcmp("--help",argv[arg]) == 0) {
             printHelp(argv[0]);
             exit(1);
-        } else if (strcmp("--timeout",argv[arg]) == 0) {
-            timeout = atoi(getNext());
         } else if (strcmp("--proof-level",argv[arg]) == 0) {
             proofLevel = atoi(getNext());
         } else if (strcmp("--iterative-deepening",argv[arg]) == 0) {
@@ -133,13 +127,6 @@ int main(int argc, char *argv[]) {
 
     // Parse and interpret command line flags
     parseFlags(argc, argv);
-
-    // Timeout
-    if (timeout < 0 || (timeout > 0 && timeout < 10)) {
-        cerr << "Error: timeout must be at least 10 seconds" << endl;
-        return 1;
-    }
-    Timeout::setTimeouts(static_cast<unsigned int>(timeout));
 
     // Start parsing
     if (filename.empty()) {
