@@ -349,7 +349,7 @@ ResultViaSideEffects Chaining::chainAcceleratedRules(ITSProblem &its, const set<
                 if (optRule) {
                     // Simplify the rule (can help to eliminate temporary variables of the metering function)
                     proof.chainingProof(incomingRule, accelRule, optRule.get(), its);
-                    Result<Rule> simplified = Preprocess::simplifyRule(its, optRule.get(), true);
+                    Result<Rule> simplified = Preprocess::simplifyRule(its, optRule.get());
                     Rule newRule = simplified ? simplified.get() : optRule.get();
                     if (simplified) {
                         proof.ruleTransformationProof(*optRule, "simplification", newRule, its);

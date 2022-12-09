@@ -39,7 +39,7 @@ namespace Preprocess
     /**
      * A simpler/cheaper version of preprocessRule without any smt queries.
      */
-    Result<Rule> simplifyRule(ITSProblem &its, const Rule &rule, bool fast);
+    Result<Rule> simplifyRule(ITSProblem &its, const Rule &rule);
 
     /**
      * Simplifies the guard by dropping trivial constraints and constraints
@@ -70,5 +70,5 @@ namespace Preprocess
      * @param rule the rule, modified
      * @return true iff rule was modified
      */
-    Result<Rule> eliminateTempVars(ITSProblem &its, const Rule &rule, bool fast);
+    Result<Rule> eliminateTempVars(ITSProblem &its, const Rule &rule);
 }

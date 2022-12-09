@@ -188,7 +188,7 @@ ResultViaSideEffects Reachability::unroll() {
         if (r.isSimpleLoop()) {
             const auto [res, period] = LoopAcceleration::chain(r.toLinear(), chcs);
             if (period > 1) {
-                const auto simplified = Preprocess::simplifyRule(chcs, res, true);
+                const auto simplified = Preprocess::simplifyRule(chcs, res);
                 ret.succeed();
                 ret.ruleTransformationProof(r, "unrolling", res, chcs);
                 if (simplified) {
@@ -333,7 +333,7 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
     if (!trace.empty()) {
         resolvent = *Chaining::chainRules(chcs, trace.back().resolvent, resolvent, false);
     }
-    return *Preprocess::simplifyRule(chcs, resolvent, false);
+    return *Preprocess::simplifyRule(chcs, resolvent);
 }
 
 bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
@@ -622,7 +622,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
 }
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang, unsigned depth) {
-    Result<Rule> simp = Preprocess::simplifyRule(chcs, rule, true);
+    Result<Rule> simp = Preprocess::simplifyRule(chcs, rule);
     if (Config::Analysis::reachability() && simp->getUpdate(0) == substitution::concat(simp->getUpdate(0), simp->getUpdate(0))) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
@@ -658,7 +658,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
-        auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
+        auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule);
         if (simplified->getUpdate(0) != simp->getUpdate(0)) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {

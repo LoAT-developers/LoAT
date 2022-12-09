@@ -5,10 +5,6 @@ target_sources(${EXECUTABLE}
         proof.hpp
         proof.cpp
         status.hpp
-        farkas.cpp
-        farkas.hpp
-        templates.cpp
-        templates.hpp
         relevantvariables.hpp
         result.hpp
         map.hpp

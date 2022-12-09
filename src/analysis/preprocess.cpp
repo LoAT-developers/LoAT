@@ -28,7 +28,7 @@ Result<Rule> Preprocess::preprocessRule(ITSProblem &its, const Rule &rule) {
     // The other steps are repeated (might not help very often, but is probably cheap enough)
     bool changed = false;
     do {
-        Result<Rule> tmp = eliminateTempVars(its, *res, true);
+        Result<Rule> tmp = eliminateTempVars(its, *res);
         tmp.concat(removeTrivialUpdates(*res, its));
         changed = bool(tmp);
         res.concat(tmp);
@@ -36,9 +36,9 @@ Result<Rule> Preprocess::preprocessRule(ITSProblem &its, const Rule &rule) {
     return res;
 }
 
-Result<Rule> Preprocess::simplifyRule(ITSProblem &its, const Rule &rule, bool fast) {
+Result<Rule> Preprocess::simplifyRule(ITSProblem &its, const Rule &rule) {
     Result<Rule> res(rule);
-    res.concat(eliminateTempVars(its, *res, fast));
+    res.concat(eliminateTempVars(its, *res));
     res.concat(removeTrivialUpdates(*res, its));
     return res;
 }
@@ -91,7 +91,7 @@ static VarSet collectVarsInUpdateRhs(const Rule &rule) {
 }
 
 
-Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bool fast) {
+Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule) {
     Result<Rule> res(rule);
 
     //declare helper lambdas to filter variables, to be passed as arguments
@@ -127,10 +127,6 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule, bo
 
     //try to remove all remaining temp variables (we do 2 steps to priorizie removing vars from the update)
     res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTemp));
-
-    if (!fast && !res->getGuard()->isConjunction()) {
-        res.concat(GuardToolbox::propagateEqualitiesBySmt(*res, its));
-    }
 
     BoolExpr guard = res->getGuard();
     BoolExpr newGuard = guard->simplify();

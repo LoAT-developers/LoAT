@@ -173,7 +173,7 @@ ResultViaSideEffects Satisfiability::unroll() {
         if (r.isSimpleLoop()) {
             const auto [res, period] = LoopAcceleration::chain(r.toLinear(), chcs);
             if (period > 1) {
-                const auto simplified = Preprocess::simplifyRule(chcs, res, true);
+                const auto simplified = Preprocess::simplifyRule(chcs, res);
                 ret.succeed();
                 ret.ruleTransformationProof(r, "unrolling", res, chcs);
                 if (simplified) {
@@ -529,7 +529,7 @@ bool Satisfiability::is_orig_clause(const TransIdx idx) const {
 }
 
 std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang) {
-    Result<Rule> res = Preprocess::simplifyRule(chcs, rule, true);
+    Result<Rule> res = Preprocess::simplifyRule(chcs, rule);
     if (res->getUpdate(0) == substitution::concat(res->getUpdate(0), res->getUpdate(0))) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
@@ -543,7 +543,7 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
     acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), Complexity::Const, config);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
-        const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule, true);
+        const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule);
         if (simplified->getUpdate(0) == res->getUpdate(0)) {
             if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
             return std::make_unique<Failed>();

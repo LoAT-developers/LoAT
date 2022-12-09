@@ -75,23 +75,6 @@ namespace GuardToolbox {
      */
     Result<Rule> eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow, const ITSProblem &its);
 
-    std::pair<option<Expr>, option<Expr>> getBoundFromIneq(const Rel &rel, const NumVar &N);
-
-    /**
-     * Tries to solve the equation term == 0 for the given variable, using the given level of restrictiveness
-     * @return if possible, the term t such that "var == t" is equivalent to "term == 0"
-     */
-    option<Expr> solveTermFor(Expr term, const NumVar &var, SolvingLevel level);
-
-
-    /**
-     * Given two relations lhs and rhs, checks if rhs is trivially (syntactically) implied by lhs.
-     * For example, A > 0 or A == 0 both imply A+1 > 0
-     * @return true if lhsConstraint implies rhsConstraint, false has no meaning.
-     */
-    bool isTrivialImplication(const Rel &lhsConstraint, const Rel &rhsConstraint);
-
-
     /**
      * Replaces bidirectional inequalities, e.g. x <= y, y >= x by an equality, e.g. x == y.
      * The inequalties are removed, the equality is added to guard.
@@ -99,9 +82,6 @@ namespace GuardToolbox {
      * @return true iff guard was changed.
      */
     Result<Rule> makeEqualities(const Rule &rule, const ITSProblem &its);
-
-    Result<Rule> propagateEqualitiesBySmt(const Rule &rule, ITSProblem &its);
-
 
     /**
      * Returns true iff term contains a temporary variable
