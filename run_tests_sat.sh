@@ -14,7 +14,7 @@ while read line; do
                 ex=$line
                 echo "running chc-${path}_$ex.smt2"
                 start=`date +%s`
-                actual=$(./build/static/release/loat-static --mode satisfiability --format horn --proof-level 0 --timeout 10 "$repo/$path/chc-${path}_$ex.smt2" | head -n 1)
+                actual=$(./build/static/release/loat-static --mode satisfiability --format horn --proof-level 0 "$repo/$path/chc-${path}_$ex.smt2" | head -n 1)
                 end=`date +%s`
                 runtime=$((end-start))
                 if [ "$expected" = "$actual" ]; then

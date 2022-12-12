@@ -230,7 +230,6 @@ class Satisfiability {
 
     /**
      * applies some very basic simplifications
-     * TODO Should be sound for sat, but we should check it to be sure.
      */
     ResultViaSideEffects simplify();
 
@@ -355,9 +354,9 @@ class Satisfiability {
     bool try_conditional_empty_clauses();
 
     /**
-     * Learns a new trivial clause if the acceleration fails or if the accelerated clause is dropped.
+     * Builds a new trivial clause if the acceleration fails or if the accelerated clause is dropped.
      */
-    bool learn_trivial_clause(const LocationIdx idx);
+    Result<Rule> build_trivial_clause(const LocationIdx idx);
 
     Satisfiability(ITSProblem &its);
 

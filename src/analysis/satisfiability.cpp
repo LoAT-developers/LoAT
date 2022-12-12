@@ -559,8 +559,14 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
             }
         }
     } else {
-        if (log) std::cout << "acceleration failed" << std::endl;
-        return std::make_unique<Failed>();
+        // learn a trivial clause if the acceleration fails
+        // TODO: So richtig?
+        res = build_trivial_clause(res->getLhsLoc());
+        if (log) {
+            std::cout << "accelerated rule using a trivial clause:" << std::endl;
+            ITSExport::printRule(*res, chcs, std::cout);
+            std::cout << std::endl;
+        }
     }
     return std::make_unique<Succeeded>(res.map<TransIdx>([this, &lang](const auto &x){
         return add_learned_clause(x, lang);
@@ -576,7 +582,7 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << lang << std::endl;
     }
-    luby_loop_count++;
+    //luby_loop_count++;
     redundance->mark_as_redundant(lang);
     const auto loop = build_loop(backlink);
     if (loop.getUpdate(0).empty()) {
@@ -593,13 +599,56 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
     const auto accel = chcs.getRule(idx);
     // drop the looping suffix
     drop_until(backlink);
-    proof.majorProofStep("accelerated loop", chcs);
-    proof.storeSubProof(subproof);
+    // CHANGE
+    //proof.majorProofStep("accelerated loop", chcs);
+    //proof.storeSubProof(subproof);
     if (store_step(idx, accel.getGuard())) {
+        // TODO: So richtig? Proof erst hinzufügen, wenn es klappt
+        proof.majorProofStep("accelerated loop", chcs);
+        proof.storeSubProof(subproof);
         return state;
     } else {
-        if (log) std::cout << "applying accelerated rule failed" << std::endl;
-        return std::make_unique<Dropped>();
+        // In this case the accelerated clause could not be added to the trace. So we remove it and add a trivial clause instead.
+        // Remove the learned clause from learned_clauses
+        const auto src = accel.getLhsLoc();
+        auto acc_it = learned_clauses.find(src);
+        acc_it->second.pop_back();
+        // TODO: Aus Redundance entfernen
+
+        // Remove the learned clause from chcs
+        chcs.removeRule(idx);
+        // Build a new trivial clause and add it to chcs, redundance and learned_clauses
+        const auto trivial_clause = build_trivial_clause(src);
+        const auto new_idx = *(trivial_clause.map<TransIdx>([this, &lang](const auto &x){return add_learned_clause(x, lang);}));
+        // Store new step with the trivial clause. This should not fail.
+        if (store_step(new_idx, trivial_clause->getGuard())) {
+            // TODO: Proof adden
+
+            if (log) {
+                std::cout << "accelerated rule using a trivial clause:" << std::endl;
+                ITSExport::printRule(*trivial_clause, chcs, std::cout);
+                std::cout << std::endl;
+            }
+            return state;
+        } else {
+            return std::make_unique<Dropped>();
+        }
+        /* TODO:
+         * * --- Neue Clause aus learned Clauses entfernen
+         * Neue Regel mit ihrer Sprache aus Redundance entfernen
+         * --- Accelerated Clause aus chcs entfernen -> chcs.removeRule(idx);
+         * --- Neue triviale Klausel adden zu chcs
+         * --- Neue Regel und ihre Sprache zu Redundance adden
+         * --- Neue Clause zu learned_clauses adden
+         * --- update_rules
+         * Proof adden
+         * --- Neuen Step mit trivialer Klausel zum Trace adden -> store_step
+         */
+
+
+        // Alter Inhalt:
+        //if (log) std::cout << "applying accelerated rule failed" << std::endl;
+        //return std::make_unique<Dropped>();
     }
 }
 
@@ -630,28 +679,16 @@ bool Satisfiability::try_conditional_empty_clauses() {
     return try_to_finish(conditional_empty_clauses);
 }
 
-bool Satisfiability::learn_trivial_clause(const LocationIdx idx) {
-    // constructs a new, trivial clause
+Result<Rule> Satisfiability::build_trivial_clause(const LocationIdx idx) {
     Subs update;
     for(const auto &x: prog_vars){
         update.put(x, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(x)));
     }
     const LinearRule trivialClause = LinearRule(idx, BExpression::True, 1, idx, update);
 
-
-    //TODO: add new, trivial clause to all relevant data structures
-    //const auto lang = redundance->get_singleton_language();
-    //add_learned_clause(&trivialClause, &lang);
-
-    //TODO: store step in the trace
-    /*if(store_step()){
-
-    }else{
-        std::cout << "Error: adding trivial clause to the trace failed" << std::endl;
-        return false;
-    }*/
-    return true;
+    return trivialClause;
 }
+
 
 void Satisfiability::analyze() {
     proof.majorProofStep("initial ITS", chcs);
@@ -665,7 +702,7 @@ void Satisfiability::analyze() {
         return;
     }
     do {
-        if (luby_loop_count == luby_unit * luby.second) {
+        /*if (luby_loop_count == luby_unit * luby.second) {
             if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
             // restart
             while (!trace.empty()) {
@@ -673,7 +710,7 @@ void Satisfiability::analyze() {
             }
             luby_next();
             solver.setSeed(rand());
-        }
+        }*/
         if (log) std::cout << "trace: " << trace << std::endl;
         for (int backlink = has_looping_suffix(); backlink >= 0; backlink = has_looping_suffix()) {
             Step step = trace[backlink];
@@ -690,7 +727,9 @@ void Satisfiability::analyze() {
                     return;
                 }
             } else if (state->dropped()) {
-                block(step);
+                // This case should not happen.
+                std::cout << "Error: Adding a trivial Clause in a Dropped case failed." << std::endl;
+                return;
             } else if (state->failed()) {
                 // non-loop --> do not backtrack
                 // This case should only happen if the learned clause is trivially redundant w.r.t. the looping suffix
