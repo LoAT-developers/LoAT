@@ -79,6 +79,10 @@ void RedundanceViaAutomata::set_language(const TransIdx idx, const Automaton &t)
     regexes.emplace(idx, t);
 }
 
+void RedundanceViaAutomata::delete_language(const TransIdx idx) {
+    regexes.erase(idx);
+}
+
 bool RedundanceViaAutomata::is_redundant(const Automaton &t) const {
     return t.subset(Automaton::covered);
 }

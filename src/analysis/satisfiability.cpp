@@ -560,7 +560,6 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
         }
     } else {
         // learn a trivial clause if the acceleration fails
-        // TODO: So richtig?
         res = build_trivial_clause(res->getLhsLoc());
         if (log) {
             std::cout << "accelerated rule using a trivial clause:" << std::endl;
@@ -603,7 +602,6 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
     //proof.majorProofStep("accelerated loop", chcs);
     //proof.storeSubProof(subproof);
     if (store_step(idx, accel.getGuard())) {
-        // TODO: So richtig? Proof erst hinzufügen, wenn es klappt
         proof.majorProofStep("accelerated loop", chcs);
         proof.storeSubProof(subproof);
         return state;
@@ -613,8 +611,8 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         const auto src = accel.getLhsLoc();
         auto acc_it = learned_clauses.find(src);
         acc_it->second.pop_back();
-        // TODO: Aus Redundance entfernen
-
+        // Aus Redundance entfernen
+        redundance->delete_language(idx);
         // Remove the learned clause from chcs
         chcs.removeRule(idx);
         // Build a new trivial clause and add it to chcs, redundance and learned_clauses
@@ -622,7 +620,7 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         const auto new_idx = *(trivial_clause.map<TransIdx>([this, &lang](const auto &x){return add_learned_clause(x, lang);}));
         // Store new step with the trivial clause. This should not fail.
         if (store_step(new_idx, trivial_clause->getGuard())) {
-            // TODO: Proof so richtig?
+            // TODO: Proof eventuell überarbeiten
             proof.majorProofStep("accelerated loop", chcs);
             proof.ruleTransformationProof(loop, "acceleration", trivial_clause.get(), chcs);
             if (log) {
@@ -634,19 +632,6 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         } else {
             return std::make_unique<Dropped>();
         }
-        /* TODO:
-         * * --- Neue Clause aus learned Clauses entfernen
-         * Neue Regel mit ihrer Sprache aus Redundance entfernen
-         * --- Accelerated Clause aus chcs entfernen -> chcs.removeRule(idx);
-         * --- Neue triviale Klausel adden zu chcs
-         * --- Neue Regel und ihre Sprache zu Redundance adden
-         * --- Neue Clause zu learned_clauses adden
-         * --- update_rules
-         * Proof adden
-         * --- Neuen Step mit trivialer Klausel zum Trace adden -> store_step
-         */
-
-
         // Alter Inhalt:
         //if (log) std::cout << "applying accelerated rule failed" << std::endl;
         //return std::make_unique<Dropped>();

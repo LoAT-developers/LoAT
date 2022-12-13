@@ -37,6 +37,7 @@ public:
     virtual T get_singleton_language(const TransIdx idx, const Guard &guard) override;
     virtual T get_language(const TransIdx idx) override;
     virtual void set_language(const TransIdx idx, const T &t) override;
+    virtual void delete_language(const TransIdx idx);
     virtual bool is_redundant(const T &t) const override;
     virtual void mark_as_redundant(const T &t) override;
     virtual void concat(T &t1, const T &t2) const override;
