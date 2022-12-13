@@ -622,8 +622,9 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         const auto new_idx = *(trivial_clause.map<TransIdx>([this, &lang](const auto &x){return add_learned_clause(x, lang);}));
         // Store new step with the trivial clause. This should not fail.
         if (store_step(new_idx, trivial_clause->getGuard())) {
-            // TODO: Proof adden
-
+            // TODO: Proof so richtig?
+            proof.majorProofStep("accelerated loop", chcs);
+            proof.ruleTransformationProof(loop, "acceleration", trivial_clause.get(), chcs);
             if (log) {
                 std::cout << "accelerated rule using a trivial clause:" << std::endl;
                 ITSExport::printRule(*trivial_clause, chcs, std::cout);
@@ -685,7 +686,6 @@ Result<Rule> Satisfiability::build_trivial_clause(const LocationIdx idx) {
         update.put(x, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(x)));
     }
     const LinearRule trivialClause = LinearRule(idx, BExpression::True, 1, idx, update);
-
     return trivialClause;
 }
 
