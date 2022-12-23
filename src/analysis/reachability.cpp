@@ -278,7 +278,9 @@ void Reachability::pop() {
     blocked_clauses.pop_back();
     trace.pop_back();
     solver.pop();
-    proof.pop();
+    if (!Config::Analysis::complexity()) {
+        proof.pop();
+    }
 }
 
 void Reachability::backtrack() {
@@ -838,7 +840,11 @@ void Reachability::analyze() {
             }
         } while (true);
     }
-    if (!Config::Analysis::complexity() || cpx <= Complexity::Const) {
+    if (Config::Analysis::complexity()) {
+        if (cpx != Complexity::Const) {
+            proof.print();
+        }
+    } else {
         std::cout << "unknown" << std::endl << std::endl;
     }
 }
