@@ -128,7 +128,7 @@ namespace Config {
     }
 
     namespace ADCL {
-        bool IterativeDeepening = true;
+        bool IterativeDeepening = false;
     }
 
     namespace Analysis {
