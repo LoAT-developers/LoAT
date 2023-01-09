@@ -339,8 +339,9 @@ class Satisfiability {
     /**
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
+     * It returns 1 if the step was stored successfully, 0 if the step could not be added because the solver returned unsat and 2 if the solver returned unknown.
      */
-    bool store_step(const TransIdx idx, const BoolExpr &sat);
+    int store_step(const TransIdx idx, const BoolExpr &sat);
 
     void print_trace(std::ostream &s);
 

@@ -280,7 +280,7 @@ void Satisfiability::add_to_trace(const Step &step) {
     proof.storeSubProof(subProof);
 }
 
-bool Satisfiability::store_step(const TransIdx idx, const BoolExpr &implicant) {
+int Satisfiability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     solver.push();
     if (trace.empty()) {
         solver.add(implicant);
@@ -289,7 +289,8 @@ bool Satisfiability::store_step(const TransIdx idx, const BoolExpr &implicant) {
         // previous steps do not get renamed
         solver.add(implicant->subs(trace.back().var_renaming));
     }
-    if (solver.check() == Sat) {
+    SmtResult r = solver.check();
+    if (r == Sat) {
         const auto model = solver.model();
         const auto new_var_renaming = handle_update(idx);
         const Step step(idx, implicant, new_var_renaming, model);
@@ -299,10 +300,13 @@ bool Satisfiability::store_step(const TransIdx idx, const BoolExpr &implicant) {
         if (is_learned_clause(idx)) {
             block(step);
         }
-        return true;
-    } else {
+        return 1;
+    } else if(r == Unsat){
         solver.pop();
-        return false;
+        return 0;
+    // if the Solver returns unknown
+    } else{
+        return 2;
     }
 }
 
@@ -601,11 +605,15 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
     // CHANGE
     //proof.majorProofStep("accelerated loop", chcs);
     //proof.storeSubProof(subproof);
-    if (store_step(idx, accel.getGuard())) {
+    auto store_step_result = store_step(idx, accel.getGuard());
+    if (store_step_result == 1) {
         proof.majorProofStep("accelerated loop", chcs);
         proof.storeSubProof(subproof);
         return state;
-    } else {
+     // if the solver returned unknown
+    } else if(store_step_result == 2){
+        return std::make_unique<Dropped>();
+    } else{
         // In this case the accelerated clause could not be added to the trace. So we remove it and add a trivial clause instead.
         // Remove the learned clause from learned_clauses
         const auto src = accel.getLhsLoc();
@@ -619,7 +627,8 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         const auto trivial_clause = build_trivial_clause(src);
         const auto new_idx = *(trivial_clause.map<TransIdx>([this, &lang](const auto &x){return add_learned_clause(x, lang);}));
         // Store new step with the trivial clause. This should not fail.
-        if (store_step(new_idx, trivial_clause->getGuard())) {
+        store_step_result = store_step(new_idx, trivial_clause->getGuard());
+        if (store_step_result == 1) {
             // TODO: Proof eventuell überarbeiten
             proof.majorProofStep("accelerated loop", chcs);
             proof.ruleTransformationProof(loop, "acceleration", trivial_clause.get(), chcs);
@@ -643,7 +652,7 @@ LocationIdx Satisfiability::get_current_predicate() const {
 }
 
 bool Satisfiability::try_to_finish(const std::vector<TransIdx> &clauses) {
-    solver.setTimeout(2000);
+    //solver.setTimeout(2000);
     for (const auto &q: clauses) {
         const option<BoolExpr> implicant = resolve(q);
         if (implicant) {
@@ -653,7 +662,7 @@ bool Satisfiability::try_to_finish(const std::vector<TransIdx> &clauses) {
             return true;
         }
     }
-    solver.setTimeout(Config::Smt::DefaultTimeout);
+    //solver.setTimeout(Config::Smt::DefaultTimeout);
     return false;
 }
 
@@ -681,6 +690,7 @@ void Satisfiability::analyze() {
         std::cout << "initial ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
     }
+    solver.setTimeout(500);
     preprocess();
     init();
     if (try_conditional_empty_clauses()) {
@@ -712,8 +722,10 @@ void Satisfiability::analyze() {
                     return;
                 }
             } else if (state->dropped()) {
-                // This case should not happen.
-                std::cout << "Error: Adding a trivial Clause in a Dropped case failed." << std::endl;
+                // This case happens if the z3 solver returns unknown.
+                // In this case we can't show satisfiability anymore.
+                if (log) std::cout << "z3 Solver returned unknown (during acceleration)" << std::endl;
+                unsat();
                 return;
             } else if (state->failed()) {
                 // non-loop --> do not backtrack
@@ -728,9 +740,23 @@ void Satisfiability::analyze() {
         std::vector<TransIdx> append;
         while (it != to_try.end()) {
             const option<BoolExpr> implicant = resolve(*it);
-            if (implicant && store_step(*it, *implicant)) {
-                break;
+            if(implicant){
+                auto store_step_result = store_step(*it, *implicant);
+                // if the solver returned unknown, we can't prove satisfiability anymore
+                if (store_step_result == 2){
+                    if (log) std::cout << "z3 Solver returned unknown (when trying new clauses)" << std::endl;
+                    unsat();
+                    return;
+                } else if(store_step_result == 1) {
+                    break;
+                }
             }
+
+            /*
+            if(implicant && store_step(*it, *implicant)){
+                break;
+            }*/
+
             append.push_back(*it);
             it = to_try.erase(it);
         }

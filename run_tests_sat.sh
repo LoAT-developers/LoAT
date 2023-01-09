@@ -1,5 +1,8 @@
 #!/bin/bash
 repo=../chc-comp22-benchmarks
+declare -i passed=0
+declare -i failed=0
+startwhole=`date +%s`
 while read line; do
     if [ "$line" = "unsat" ] || [ "$line" = "sat" ] || [ "$line" == "unknown" ]; then
         # line contains the expected result for the following benchmarks
@@ -18,8 +21,10 @@ while read line; do
                 end=`date +%s`
                 runtime=$((end-start))
                 if [ "$expected" = "$actual" ]; then
+                    passed=$((passed+1))
                     echo "test passed in ${runtime}s"
                 else
+                    failed=$((failed+1))
                     echo "test failed after ${runtime}s -- expected $expected, got $actual"
                     # exit 0
                 fi
@@ -35,3 +40,9 @@ while read line; do
         fi
     fi
 done < test_data_sat.txt
+
+endwhole=`date +%s`
+runtimewhole=$((endwhole-startwhole))
+echo "whole runtime: ${runtimewhole}s"
+echo "tests passed: ${passed}"
+echo "tests failed: ${failed}" 
