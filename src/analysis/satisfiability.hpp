@@ -363,6 +363,8 @@ class Satisfiability {
 
     void analyze();
 
+    void analyze_with_timeout();
+
 public:
 
     static bool log;

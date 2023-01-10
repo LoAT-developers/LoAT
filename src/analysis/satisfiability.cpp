@@ -13,6 +13,13 @@
 
 #include <numeric>
 
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
+//using namespace std::chrono_literals;
+
 namespace satisfiability {
 
 using ::operator<<;
@@ -777,10 +784,31 @@ void Satisfiability::analyze() {
     std::cout << "sat" << std::endl << std::endl;
 }
 
-void Satisfiability::analyze(ITSProblem &its) {
-    yices::init();
-    Satisfiability(its).analyze();
-    yices::exit();
+void Satisfiability::analyze_with_timeout() {
+    std::mutex m;
+    std::condition_variable cv;
+
+    std::thread t([&cv, this]()
+    {
+        analyze();
+        cv.notify_one();
+    });
+
+    t.detach();
+
+    {
+        std::unique_lock<std::mutex> l(m);
+        if(cv.wait_for(l, std::chrono::seconds(60)) == std::cv_status::timeout) {
+            std::cout << "unknown" << std::endl << std::endl;
+        }
+    }
+    return;
 }
 
+void Satisfiability::analyze(ITSProblem &its) {
+    yices::init();
+    //Satisfiability(its).analyze();
+    Satisfiability(its).analyze_with_timeout();
+    yices::exit();
+}
 }
