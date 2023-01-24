@@ -297,12 +297,12 @@ class Satisfiability {
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang, const int backlink);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang, const int backlink, int &period);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix
      */
-    std::unique_ptr<LearningState> handle_loop(const int backlink);
+    std::unique_ptr<LearningState> handle_loop(const int backlink, int &period);
 
     /**
      * checks whether the head and the body symbol of the given clause belong to different SCCs
