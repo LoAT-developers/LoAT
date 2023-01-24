@@ -297,7 +297,7 @@ class Satisfiability {
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang, const int backlink);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix

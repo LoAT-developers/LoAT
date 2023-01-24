@@ -539,7 +539,7 @@ bool Satisfiability::is_orig_clause(const TransIdx idx) const {
     return idx <= last_orig_clause;
 }
 
-std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang) {
+std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang, const int backlink) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule);
     if (res->getUpdate(0) == substitution::concat(res->getUpdate(0), res->getUpdate(0))) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -558,8 +558,8 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
         if (simplified->getUpdate(0) == res->getUpdate(0)) {
             if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
             return std::make_unique<Failed>();
+        // accelerated rule differs from the original one, update the result
         } else {
-            // accelerated rule differs from the original one, update the result
             res = *accel_res.rule;
             res.storeSubProof(accel_res.proof);
             res.concat(simplified);
@@ -578,9 +578,25 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
             std::cout << std::endl;
         }
     }
-    return std::make_unique<Succeeded>(res.map<TransIdx>([this, &lang](const auto &x){
-        return add_learned_clause(x, lang);
-    }));
+
+    // if period > 1, change the language from a⁺ to aa⁺
+    //if (accel_res.period > 1){
+    if (false){
+        /*Red::T new_lang = get_language(trace.back());
+        for (int i = trace.size() - 2; i >= backlink; --i) {
+            redundance->concat(new_lang, get_language(trace[i]));
+        }
+        redundance->concat(new_lang,lang);
+
+        return std::make_unique<Succeeded>(res.map<TransIdx>([this, &new_lang](const auto &x){
+            return add_learned_clause(x, new_lang);
+        }));*/
+        return std::make_unique<Dropped>();
+    } else {
+        return std::make_unique<Succeeded>(res.map<TransIdx>([this, &lang](const auto &x){
+            return add_learned_clause(x, lang);
+        }));
+    }
 }
 
 std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
@@ -599,7 +615,7 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
-    auto state = learn_clause(loop, lang);
+    auto state = learn_clause(loop, lang, backlink);
     if (!state->succeeded()) {
         return state;
     }
@@ -807,8 +823,8 @@ void Satisfiability::analyze_with_timeout() {
 
 void Satisfiability::analyze(ITSProblem &its) {
     yices::init();
-    //Satisfiability(its).analyze();
-    Satisfiability(its).analyze_with_timeout();
+    Satisfiability(its).analyze();
+    //Satisfiability(its).analyze_with_timeout();
     yices::exit();
 }
 }
