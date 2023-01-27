@@ -12,6 +12,7 @@ The tool is based on the recurrence solver [PURRS](http://www.cs.unipr.it/purrs/
 # Downloading LoAT
 
 [Here](https://github.com/loat-developers/LoAT/releases) you can find the latests releases of LoAT.
+Older releases can be found [here](https://github.com/aprove-developers/LoAT/releases).
 
 # Input Formats
 
