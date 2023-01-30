@@ -587,7 +587,10 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
         for (int i = trace.size() - 2; i >= backlink; --i) {
             redundance->concat(new_lang, get_language(trace[i]));
         }
-        redundance->concat(new_lang, new_lang);
+        Red::T loop_lang = new_lang;
+        for(unsigned int i=0; i<(accel_res.period-1); i++){
+            redundance->concat(new_lang, loop_lang);
+        }
         redundance->transitive_closure(new_lang);
 
         return std::make_unique<Succeeded>(res.map<TransIdx>([this, &new_lang](const auto &x){
