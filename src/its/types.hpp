@@ -15,13 +15,8 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef TYPES_H
-#define TYPES_H
-
+#pragma once
 
 // some typedefs for clarity
 using TransIdx = unsigned int;
 using LocationIdx = unsigned int;
-
-
-#endif // TYPES_H

@@ -17,18 +17,14 @@
 
 #include "main.hpp"
 
-#include "analysis/analysis.hpp"
-#include "its/koatParser/itsparser.hpp"
-#include "its/smt2Parser/parser.hpp"
-#include "its/t2Parser/t2parser.hpp"
+#include "itsparser.hpp"
+#include "parser.hpp"
+#include "chcparser.hpp"
 #include "config.hpp"
-#include "util/timeout.hpp"
-#include "util/proof.hpp"
-#include "analysis/rankingfunctionfinder.hpp"
-#include "analysis/recurrentsetfinder.hpp"
-#include "its/smt2export.hpp"
-#include "its/cintegerexport.hpp"
+#include "proof.hpp"
 #include "version.hpp"
+#include "reachability.hpp"
+#include "satisfiability.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -37,14 +33,12 @@ using namespace std;
 
 // Variables for command line flags
 string filename;
-int timeout = 0; // no timeout
 int proofLevel = static_cast<int>(Proof::defaultProofLevel);
 
 void printHelp(char *arg0) {
     cout << "Usage: " << arg0 << " [options] <file>" << endl;
     cout << "Options:" << endl;
-    cout << "  --timeout <sec>                                  Timeout (in seconds), minimum: 10" << endl;
-    cout << "  --proof-level <n>                                Detail level for proof output (0-" << Proof::maxProofLevel << ", default " << proofLevel << ")" << endl;
+    cout << "  --proof-level <n>                                Detail level for proof output" << endl;
     cout << "  --plain                                          Disable colored output" << endl;
     cout << "  --limit-strategy <smt|calculus|smtAndCalculus>   Strategy for limit problems" << endl;
     cout << "  --mode <complexity|non_termination>              Analysis mode" << endl;
@@ -67,10 +61,10 @@ void parseFlags(int argc, char *argv[]) {
         if (strcmp("--help",argv[arg]) == 0) {
             printHelp(argv[0]);
             exit(1);
-        } else if (strcmp("--timeout",argv[arg]) == 0) {
-            timeout = atoi(getNext());
         } else if (strcmp("--proof-level",argv[arg]) == 0) {
             proofLevel = atoi(getNext());
+        } else if (strcmp("--iterative-deepening",argv[arg]) == 0) {
+            Config::ADCL::IterativeDeepening = (strcmp(getNext(), "false") != 0);
         } else if (strcmp("--plain",argv[arg]) == 0) {
             Config::Output::Colors = false;
         } else if (strcmp("--limit-strategy",argv[arg]) == 0) {
@@ -86,7 +80,11 @@ void parseFlags(int argc, char *argv[]) {
             if (!found) {
                 cerr << "Unknown strategy " << strategy << " for limit problems, defaulting to " << Config::Limit::PolyStrategy->name() << endl;
             }
-        } else if (strcmp("--mode",argv[arg]) == 0) {
+        } else if (strcmp("--reach-log", argv[arg]) == 0) {
+            reachability::Reachability::log = true;
+        } else if (strcmp("--sat-log", argv[arg]) == 0) {
+            satisfiability::Satisfiability::log = true;
+        } else if (strcmp("--mode", argv[arg]) == 0) {
             bool found = false;
             std::string str = getNext();
             for (const Config::Analysis::Mode mode: Config::Analysis::modes) {
@@ -99,8 +97,18 @@ void parseFlags(int argc, char *argv[]) {
             if (!found) {
                 cerr << "Unknown mode " << str << ", defaulting to " << Config::Analysis::modeName(Config::Analysis::mode) << endl;
             }
-        } else if (strcmp("--version", argv[arg]) == 0) {
-            cout << "Build SHA: " << Version::GIT_SHA << (Version::GIT_DIRTY == "1" ? " (dirty)" : "") << endl;
+        } else if (strcmp("--format", argv[arg]) == 0) {
+            std::string str = getNext();
+            if (boost::iequals("koat", str)) {
+                Config::Input::format = Config::Input::Koat;
+            } else if (boost::iequals("its", str)) {
+                Config::Input::format = Config::Input::Its;
+            } else if (boost::iequals("horn", str)) {
+                Config::Input::format = Config::Input::Horn;
+            } else {
+                cout << "Error: unknown format " << str << std::endl;
+                exit(1);
+            }
         } else {
             if (!filename.empty()) {
                 cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << endl;
@@ -120,13 +128,6 @@ int main(int argc, char *argv[]) {
     // Parse and interpret command line flags
     parseFlags(argc, argv);
 
-    // Timeout
-    if (timeout < 0 || (timeout > 0 && timeout < 10)) {
-        cerr << "Error: timeout must be at least 10 seconds" << endl;
-        return 1;
-    }
-    Timeout::setTimeouts(static_cast<unsigned int>(timeout));
-
     // Start parsing
     if (filename.empty()) {
         cerr << "Error: missing filename" << endl;
@@ -134,21 +135,23 @@ int main(int argc, char *argv[]) {
     }
 
     ITSProblem its;
-    try {
-        if (boost::algorithm::ends_with(filename, ".koat")) {
-            its = parser::ITSParser::loadFromFile(filename);
-        } else if (boost::algorithm::ends_with(filename, ".smt2")) {
-            its = sexpressionparser::Parser::loadFromFile(filename);
-        } else if (boost::algorithm::ends_with(filename, ".t2")) {
-            its = t2parser::T2Parser::loadFromFile(filename);
-        }
-    } catch (const parser::ITSParser::FileError &err) {
-        cout << "Error loading file " << filename << ": " << err.what() << endl;
-        return 1;
+    switch (Config::Input::format) {
+    case Config::Input::Koat:
+        its = parser::ITSParser::loadFromFile(filename);
+        break;
+    case Config::Input::Its:
+        its = sexpressionparser::Parser::loadFromFile(filename);
+        break;
+    case Config::Input::Horn:
+        its = hornParser::HornParser::loadFromFile(filename);
+        break;
+    default:
+        std::cout << "Error: unknown format" << std::endl;
+        exit(1);
     }
 
-    if (proofLevel < 0 || proofLevel > 3) {
-        cerr << "Error: proof level must be between 0 and 3" << endl;
+    if (proofLevel < 0) {
+        cerr << "Error: proof level must be non-negative" << endl;
         return 1;
     }
     Proof::setProofLevel(static_cast<unsigned int>(proofLevel));
@@ -156,26 +159,19 @@ int main(int argc, char *argv[]) {
     // Start the analysis of the parsed ITS problem.
     // Skip ITS problems with nonlinear (i.e., recursive) rules.
     switch (Config::Analysis::mode) {
-    case Config::Analysis::NonTermination:
     case Config::Analysis::Complexity:
-        Analysis::analyze(its);
+    case Config::Analysis::NonTermination:
+    case Config::Analysis::Reachability:
+        reachability::Reachability::analyze(its);
         break;
-    case Config::Analysis::RecurrentSet:
-        RecurrentSetFinder::run(its);
-        break;
-    case Config::Analysis::Smt2Export:
-        smt2Export::doExport(its);
-        break;
-    case Config::Analysis::RankingFunction:
-        RankingFunctionFinder::run(its);
-        break;
-    case Config::Analysis::CIntExport:
-        c_integer_export::doExport(its);
+    case Config::Analysis::Satisfiability:
+        satisfiability::Satisfiability::analyze(its);
         break;
     default:
         throw std::invalid_argument("unsupported mode");
     }
 
+    cout << "Build SHA: " << Version::GIT_SHA << (Version::GIT_DIRTY == "1" ? " (dirty)" : "") << endl;
 
     return 0;
 }

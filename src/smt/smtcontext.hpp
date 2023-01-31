@@ -15,12 +15,13 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef SMTCONTEXT_H
-#define SMTCONTEXT_H
+#pragma once
 
-#include "../util/option.hpp"
-#include "../expr/expression.hpp"
-#include "../expr/rel.hpp"
+#include "option.hpp"
+#include "numexpression.hpp"
+#include "rel.hpp"
+#include "theory.hpp"
+#include "variable.hpp"
 
 #include <map>
 
@@ -46,11 +47,6 @@ public:
     virtual EXPR bFalse() const = 0;
     virtual EXPR negate(const EXPR &x) = 0;
 
-    virtual bool isNoOp(const EXPR &e) const {
-        return false;
-    }
-
-    virtual bool isLit(const EXPR &e) const = 0;
     virtual bool isTrue(const EXPR &e) const = 0;
     virtual bool isFalse(const EXPR &e) const = 0;
     virtual bool isNot(const EXPR &e) const = 0;
@@ -58,15 +54,11 @@ public:
     virtual bool isAnd(const EXPR &e) const = 0;
     virtual bool isAdd(const EXPR &e) const = 0;
     virtual bool isMul(const EXPR &e) const = 0;
-    virtual bool isDiv(const EXPR &e) const = 0;
     virtual bool isPow(const EXPR &e) const = 0;
     virtual bool isVar(const EXPR &e) const = 0;
     virtual bool isRationalConstant(const EXPR &e) const = 0;
     virtual bool isInt(const EXPR &e) const = 0;
-    virtual bool isITE(const EXPR &e) const = 0;
     virtual long toInt(const EXPR &e) const = 0;
-    virtual long numerator(const EXPR &e) const = 0;
-    virtual long denominator(const EXPR &e) const = 0;
     virtual EXPR lhs(const EXPR &e) const = 0;
     virtual EXPR rhs(const EXPR &e) const = 0;
     virtual Rel::RelOp relOp(const EXPR &e) const = 0;
@@ -79,48 +71,28 @@ public:
         if (it != varMap.end()) {
             return it->second;
         }
-        return {};
+        return option<EXPR>{};
     }
 
     option<Var> getVariable(const std::string &name) const {
         auto it = nameMap.find(name);
-        if (it != nameMap.end() && varMap.count(it->second) > 0) {
+        if (it != nameMap.end() && varMap.find(it->second) != varMap.end()) {
             return it->second;
         }
         return {};
     }
 
-    EXPR addNewVariable(const Var &symbol, Expr::Type type = Expr::Int) {
-        assert(varMap.count(symbol) == 0);
-        assert(nameMap.count(symbol.get_name()) == 0);
-        EXPR res = generateFreshVar(symbol.get_name(), type);
+    EXPR addNewVariable(const Var &symbol, Expr::Type type) {
+        assert(varMap.find(symbol) == varMap.end());
+        assert(nameMap.find(variable::getName(symbol)) == nameMap.end());
+        EXPR res = generateFreshVar(variable::getName(symbol), type);
         varMap.emplace(symbol, res);
-        nameMap.emplace(symbol.get_name(), symbol);
+        nameMap.emplace(variable::getName(symbol), symbol);
         return res;
     }
 
-    VarMap<EXPR> getSymbolMap() const {
+    std::map<Var, EXPR> getSymbolMap() const {
         return varMap;
-    }
-
-    std::map<unsigned int, EXPR> getConstMap() const {
-        return constMap;
-    }
-
-    EXPR bConst(int id) {
-        bool negated = id < 0;
-        if (negated) {
-            id = -id;
-        }
-        const auto &it = constMap.find(id);
-        option<EXPR> res;
-        if (it == constMap.end()) {
-            res = buildConst(id);
-            constMap.emplace(id, res.get());
-        } else {
-            res = it->second;
-        }
-        return negated ? negate(res.get()) : res.get();
     }
 
     virtual ~SmtContext() {}
@@ -129,7 +101,6 @@ public:
         varMap.clear();
         nameMap.clear();
         usedNames.clear();
-        constMap.clear();
     }
 
 protected:
@@ -148,14 +119,10 @@ protected:
         return buildVar(generateFreshVarName(basename), type);
     }
 
-    virtual EXPR buildVar(const std::string &basename, Expr::Type type) = 0;
-    virtual EXPR buildConst(unsigned int id) = 0;
+    virtual EXPR buildVar(const std::string &name, Expr::Type type) = 0;
 
 protected:
-    VarMap<EXPR> varMap;
+    std::map<Var, EXPR> varMap;
     std::map<std::string, Var> nameMap;
     std::map<std::string, int> usedNames;
-    std::map<unsigned int, EXPR> constMap;
 };
-
-#endif // SMTCONTEXT_H

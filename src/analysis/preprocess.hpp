@@ -15,11 +15,11 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef PREPROCESS_H
-#define PREPROCESS_H
+#pragma once
 
-#include "../its/rule.hpp"
-#include "../its/variablemanager.hpp"
+#include "rule.hpp"
+#include "itsproblem.hpp"
+#include "result.hpp"
 
 
 /**
@@ -34,12 +34,12 @@ namespace Preprocess
      * @param rule The rule to be simplified, is modified.
      * @returns true iff rule was modified
      */
-    option<Rule> preprocessRule(VarMan &varMan, const Rule &rule);
+    Result<Rule> preprocessRule(ITSProblem &its, const Rule &rule);
 
     /**
      * A simpler/cheaper version of preprocessRule without any smt queries.
      */
-    option<Rule> simplifyRule(VarMan &varMan, const Rule &rule, bool fast);
+    Result<Rule> simplifyRule(ITSProblem &its, const Rule &rule);
 
     /**
      * Simplifies the guard by dropping trivial constraints and constraints
@@ -53,13 +53,13 @@ namespace Preprocess
      *
      * @return true iff the given guard was modified (some constraints were removed)
      */
-    option<Rule> simplifyGuard(const Rule &rule, const VariableManager &varMan);
+    Result<Rule> simplifyGuard(const Rule &rule, const ITSProblem &its);
 
     /**
      * Removes trivial updates of the form x <- x.
      * @return true iff update was modified
      */
-    option<Rule> removeTrivialUpdates(const Rule &rule);
+    Result<Rule> removeTrivialUpdates(const Rule &rule, const ITSProblem &its);
 
     bool removeTrivialUpdates(Subs &subs);
 
@@ -70,7 +70,5 @@ namespace Preprocess
      * @param rule the rule, modified
      * @return true iff rule was modified
      */
-    option<Rule> eliminateTempVars(VarMan &varMan, const Rule &rule, bool fast);
+    Result<Rule> eliminateTempVars(ITSProblem &its, const Rule &rule);
 }
-
-#endif // PREPROCESS_H

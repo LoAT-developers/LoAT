@@ -15,12 +15,12 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef RECURRENCE_H
-#define RECURRENCE_H
+#pragma once
 
-#include "../../its/rule.hpp"
-#include "../../its/variablemanager.hpp"
-#include "../../util/option.hpp"
+#include "rule.hpp"
+#include "variablemanager.hpp"
+#include "option.hpp"
+#include "numexpression.hpp"
 
 
 /**
@@ -37,6 +37,10 @@ public:
         Expr cost;
         Subs update;
         unsigned int validityBound;
+        NumVar n;
+
+        Result(const NumVar &n);
+
     };
 
     /**
@@ -44,12 +48,13 @@ public:
      * In addition to iterateUpdateCost, an additional heuristic is used if no dependency order is found.
      * This heuristic adds new constraints to the rule's guard and is thus only used in this method.
      */
-    static option<Result> iterateRule(const VarMan &varMan, const LinearRule &rule, const Expr &metering);
+    static option<Result> iterateRule(VarMan &varMan, const LinearRule &rule);
 
 private:
 
+    template <ITheory Th>
     struct RecurrenceSolution {
-        Expr res;
+        typename Th::Expression res;
         const unsigned int validityBound;
     };
 
@@ -58,51 +63,46 @@ private:
         const unsigned int validityBound;
     };
 
-    Recurrence(const VarMan &varMan, const std::vector<Var> &dependencyOrder);
+    Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder);
 
     /**
      * Main implementation
      */
-    option<Result> iterate(const Subs &update, const Expr &cost, const Expr &metering);
+    option<Result> iterate(const Subs &update, const Expr &cost);
 
     /**
      * Computes the iterated update, with meterfunc as iteration step (if possible).
      * @note dependencyOrder must be set before
      * @note sets updatePreRecurrences
      */
-    option<RecurrenceSystemSolution> iterateUpdate(const Subs &update, const Expr &meterfunc);
+    option<RecurrenceSystemSolution> iterateUpdate(const Subs &update);
 
     /**
      * Computes the iterated cost, with meterfunc as iteration step (if possible).
      * @note updatePreRecurrences must be set before (so iterateUpdate() needs to be called before)
      */
-    option<Expr> iterateCost(const Expr &cost, const Expr &meterfunc);
+    option<GiNaC::ex> iterateCost(const Expr &c);
 
     /**
      * Helper for iterateUpdate.
      * Tries to find a recurrence for the given single update.
      * Note that all variables occurring in update must have been solved before (and added to updatePreRecurrences).
      */
-    option<RecurrenceSolution> findUpdateRecurrence(const Expr &updateRhs, Var updateLhs, const VarMap<unsigned int> &validitybounds);
+    option<RecurrenceSolution<IntTheory>> solve(const NumVar &updateLhs, const Expr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
 
-    /**
-     * Tries to find a recurrence for the given cost term.
-     * Note that all variables occuring in update must have been solved before (and added to updatePreRecurrences).
-     */
-    option<Expr> findCostRecurrence(Expr cost);
+    option<RecurrenceSolution<BoolTheory>> solve(const BoolVar &updateLhs, const BoolExpr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
 
-    static const option<RecurrenceSystemSolution> iterateUpdate(const VariableManager&, const Subs&, const Var&);
+    static const option<RecurrenceSystemSolution> iterateUpdate(const VariableManager&, const Subs&);
 
-private:
     /**
      * To query variable names/indices
      */
-    const VariableManager &varMan;
+    VariableManager &varMan;
 
     /**
      * Purrs::Recurrence::n converted to a ginac expression, for convenience only
      */
-    const Var ginacN;
+    const GiNaC::symbol ginacN;
 
     /**
      * Order in which recurrences for updated variables can be computed
@@ -116,5 +116,3 @@ private:
      */
     Subs updatePreRecurrences;
 };
-
-#endif // RECURRENCE_H

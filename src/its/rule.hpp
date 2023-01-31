@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef RULE_H
-#define RULE_H
+#pragma once
 
 #include <map>
 #include <vector>
@@ -24,9 +23,10 @@
 #include <unordered_set>
 
 #include "types.hpp"
-#include "../util/option.hpp"
-#include "../expr/boolexpr.hpp"
-#include "../config.hpp"
+#include "option.hpp"
+#include "theory.hpp"
+#include "config.hpp"
+#include "substitution.hpp"
 
 
 class RuleLhs {
@@ -36,7 +36,14 @@ class RuleLhs {
 
 public:
     RuleLhs(LocationIdx loc, BoolExpr guard) : RuleLhs(loc, guard, 1) {}
-    RuleLhs(LocationIdx loc, BoolExpr guard, Expr cost) : loc(loc), guard(guard), cost(cost) {}
+    RuleLhs(LocationIdx loc, BoolExpr guard, Expr cost) :
+        loc(loc),
+        guard(guard),
+        cost(Config::Analysis::complexity()
+             ? cost
+             : (Config::Analysis::nonTermination()
+                ? (cost.isNontermSymbol() ? cost : 1)
+                : 1)) {}
 
     LocationIdx getLoc() const { return loc; }
     const BoolExpr& getGuard() const { return guard; }
@@ -44,7 +51,7 @@ public:
 
     void collectVars(VarSet &vars) const {
         guard->collectVars(vars);
-        cost.collectVars(vars);
+        cost.collectVars(vars.get<NumVar>());
     }
 
     unsigned hash() const {
@@ -69,11 +76,11 @@ public:
     const Subs& getUpdate() const { return update; }
 
     void collectVars(VarSet &vars) const {
-        update.collectAllVars(vars);
+        substitution::collectVars(update, vars);
     }
 
-    unsigned hash() const {
-        unsigned hash = 7;
+    size_t hash() const {
+        size_t hash = 7;
         hash = hash * 31 + loc;
         hash = hash * 31 + update.hash();
         return hash;
@@ -210,6 +217,3 @@ public:
  * For debugging output (not very readable)
  */
 std::ostream& operator<<(std::ostream &s, const Rule &rule);
-
-
-#endif // RULE_H

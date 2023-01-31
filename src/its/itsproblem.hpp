@@ -15,11 +15,9 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef ITSPROBLEM_H
-#define ITSPROBLEM_H
+#pragma once
 
-#include "../util/option.hpp"
-
+#include "option.hpp"
 #include "rule.hpp"
 #include "variablemanager.hpp"
 #include "hypergraph.hpp"
@@ -44,11 +42,13 @@ public:
     LocationIdx getInitialLocation() const;
     bool isInitialLocation(LocationIdx loc) const;
     void setInitialLocation(LocationIdx loc);
-    LocationIdx getLocationIdx(const std::string &name) const;
+    LocationIdx getSink() const;
+    option<LocationIdx> getLocationIdx(const std::string &name) const;
 
     // query the rule associated with a given transition
     bool hasRule(TransIdx transition) const;
     const Rule getRule(TransIdx transition) const;
+    option<TransIdx> getTransIdx(const Rule &rule) const;
 
     // the rule associated with the given index must be linear!
     LinearRule getLinearRule(TransIdx transition) const;
@@ -76,7 +76,7 @@ public:
 
     // Mutation of Rules
     void removeRule(TransIdx transition);
-    option<TransIdx> addRule(Rule rule);
+    TransIdx addRule(Rule rule);
     std::vector<TransIdx> replaceRules(const std::vector<TransIdx> &toReplace, const std::vector<Rule> replacement);
 
     // Mutation for Locations
@@ -88,12 +88,16 @@ public:
     option<std::string> getLocationName(LocationIdx idx) const;
     std::string getPrintableLocationName(LocationIdx idx) const; // returns "[idx]" if there is no name
 
+    VarSet getVars() const;
+
     // Removes a location, but does _not_ care about rules.
     // Rules from/to this location must be removed before calling this!
     void removeOnlyLocation(LocationIdx loc);
 
     // Removes a location and all rules that visit loc
     std::set<TransIdx> removeLocationAndRules(LocationIdx loc);
+
+    HyperGraph::SCCs sccs() const;
 
     // Print the ITSProblem in a simple, but user-friendly format
     void print(std::ostream &s) const;
@@ -104,26 +108,23 @@ public:
 protected:
 
     // Main structure is the graph, where (hyper-)transitions are annotated with a RuleIdx.
-    HyperGraph<LocationIdx> graph;
+    HyperGraph graph;
 
     // Collection of all rules, identified by the corresponding transitions in the graph.
     // The map allows to efficiently add/delete rules.
     std::map<TransIdx, Rule> rules;
-    Rule::ApproxMap<TransIdx> rulesBwd;
 
     // the set of all locations (locations are just arbitrary numbers to allow simple addition/deletion)
     std::set<LocationIdx> locations;
 
-    // the initial location
-    LocationIdx initialLocation = 0;
+    // only for output, remembers the original location names
+    std::map<LocationIdx, std::string> locationNames;
 
     // the next free location index
     LocationIdx nextUnusedLocation = 0;
 
-    // only for output, remembers the original location names
-    std::map<LocationIdx, std::string> locationNames;
+    // the initial location
+    LocationIdx initialLocation;
+    LocationIdx sink = addNamedLocation("LoAT_sink");
 
 };
-
-
-#endif // ITSPROBLEM_H

@@ -1,6 +1,9 @@
 #include "export.hpp"
-#include "../config.hpp"
-#include "../expr/rel.hpp"
+#include "config.hpp"
+#include "theory.hpp"
+#include "substitution.hpp"
+#include "literal.hpp"
+#include "variable.hpp"
 
 using namespace std;
 namespace Color = Config::Color;
@@ -50,8 +53,8 @@ void ITSExport::printRule(const Rule &rule, const ITSProblem &its, std::ostream 
 
         for (auto upit : it->getUpdate()) {
             if (colors) printColor(s, Color::Update);
-            s << upit.first << "'";
-            s << "=" << upit.second;
+            s << substitution::first(upit) << "'";
+            s << "=" << substitution::second(upit);
             if (colors) printColor(s, Color::None);
             s << ", ";
         }
@@ -107,7 +110,7 @@ void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
     printLocation(its.getInitialLocation(), its, s, true);
     s << endl;
     s << "Program variables:";
-    for (const Var &x: its.getVars()) {
+    for (const auto &x: its.getVars()) {
         if (!its.isTempVar(x)) {
             s << " " << x;
         }
@@ -145,7 +148,7 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
     VarSet vars;
     for (TransIdx rule : its.getAllTransitions()) {
         VarSet rVars = its.getRule(rule).vars();
-        vars.insert(rVars.begin(), rVars.end());
+        vars.insertAll(rVars);
     }
     for (const Var &var : vars) {
         s << " " << var;
@@ -164,8 +167,7 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
 
         //write transition in KoAT format (note that relevantVars is an ordered set)
         for (TransIdx trans : its.getTransitionsFrom(n)) {
-            const Rule &rule = its.getRule(trans);
-            if (!rule.isSimpleLoop() || rule.getGuard()->size() < 30) continue;
+            const Rule &rule = its.getRule(trans);;
             //lhs
             printNode(n);
             bool first = true;
@@ -192,7 +194,7 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
                     s << ((first) ? "(" : ",");
                     auto it = rhs->getUpdate().find(var);
                     if (it != rhs->getUpdate().end()) {
-                        s << it->second.expand();
+                        s << substitution::second(*it);
                     } else {
                         s << var;
                     }

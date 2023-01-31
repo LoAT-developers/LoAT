@@ -15,8 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef PROOFOUTPUT_H
-#define PROOFOUTPUT_H
+#pragma once
 
 #include <streambuf>
 #include <ostream>
@@ -26,11 +25,11 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
+#include <variant>
 
 #include <boost/algorithm/string.hpp>
 
-#include "../config.hpp"
-#include "../its/itsproblem.hpp"
+#include "itsproblem.hpp"
 
 class Proof {
 public:
@@ -63,7 +62,7 @@ public:
 
     void result(const std::ostream &s);
 
-    void print() const;
+    void print(unsigned level = 1) const;
 
     void ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule, const ITSProblem &its);
 
@@ -73,13 +72,17 @@ public:
 
     void deletionProof(const std::set<TransIdx> &rules);
 
-    void storeSubProof(const Proof &subProof, const std::string &technique);
+    void storeSubProof(Proof subProof);
 
     void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule, const ITSProblem &its);
 
     void concat(const Proof &that);
 
     bool empty() const;
+
+    void push();
+
+    void pop();
 
     static unsigned int defaultProofLevel;
 
@@ -89,10 +92,10 @@ private:
 
     static unsigned int proofLevel;
 
-    std::vector<std::pair<Style, std::string>> proof;
+    using ProofStep = std::pair<Style, std::string>;
 
-    void writeToFile(const std::string &file) const;
+    std::vector<std::variant<ProofStep, Proof>> proof;
+
+    std::stack<unsigned> pop_stack;
 
 };
-
-#endif // PROOFOUTPUT_H

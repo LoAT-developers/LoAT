@@ -16,7 +16,6 @@
  */
 
 #include "rule.hpp"
-#include "../expr/rel.hpp"
 
 using namespace std;
 
@@ -79,9 +78,9 @@ bool Rule::isSimpleLoop() const {
 Rule Rule::subs(const Subs &subs) const {
     std::vector<RuleRhs> newRhss;
     for (const RuleRhs &rhs : rhss) {
-        newRhss.push_back(RuleRhs(rhs.getLoc(), rhs.getUpdate().concat(subs)));
+        newRhss.push_back(RuleRhs(rhs.getLoc(), substitution::concat(rhs.getUpdate(), subs)));
     }
-    return Rule(RuleLhs(getLhsLoc(), getGuard()->subs(subs), getCost().subs(subs)), newRhss);
+    return Rule(RuleLhs(getLhsLoc(), getGuard()->subs(subs), getCost().subs(subs.get<IntTheory>())), newRhss);
 }
 
 LinearRule Rule::replaceRhssBySink(LocationIdx sink) const {
@@ -135,9 +134,9 @@ bool Rule::approxEqual(const Rule &that, bool compareRhss) const {
 
             // update has to be fully equal (one inclusion suffices, since the size is equal)
             for (const auto &itA : updateA) {
-                auto itB = updateB.find(itA.first);
+                auto itB = updateB.find(substitution::first(itA));
                 if (itB == updateB.end()) return false;
-                if (!itB->second.equals(itA.second)) return false;
+                if (substitution::second(*itB) != substitution::second(itA)) return false;
             }
         }
     }
@@ -179,11 +178,7 @@ ostream& operator<<(ostream &s, const Rule &rule) {
 
     for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
         s << "| " << rhs->getLoc() << " | ";
-
-        for (auto upit : rhs->getUpdate()) {
-            s << upit.first << "=" << upit.second;
-            s << ", ";
-        }
+        s << rhs->getUpdate();
     }
 
     s << ")";

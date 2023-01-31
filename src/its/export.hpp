@@ -1,5 +1,4 @@
-#ifndef EXPORT_H
-#define EXPORT_H
+#pragma once
 
 #include <ostream>
 #include <string>
@@ -44,7 +43,3 @@ namespace ITSExport {
     void printKoAT(const ITSProblem &its, std::ostream &s);
 
 }
-
-
-
-#endif //EXPORT_H

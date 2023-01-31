@@ -16,7 +16,7 @@
  */
 
 #include "variablemanager.hpp"
-#include "itsproblem.hpp"
+#include "variable.hpp"
 
 using namespace std;
 
@@ -25,92 +25,39 @@ std::recursive_mutex VariableManager::mutex;
 
 bool VariableManager::isTempVar(const Var &var) const {
     std::lock_guard guard(mutex);
-    return temporaryVariables.count(var) > 0;
+    return temporaryVariables.find(variable::getName(var)) != temporaryVariables.end();
 }
 
-Var VariableManager::addFreshVariable(string basename) {
-    std::lock_guard guard(mutex);
-    return addVariable(getFreshName(basename));
-}
-
-Var VariableManager::addFreshTemporaryVariable(string basename) {
-    std::lock_guard guard(mutex);
-    Var x = addVariable(getFreshName(basename));
-    temporaryVariables.insert(x);
-    return x;
-}
-
-Var VariableManager::getFreshUntrackedSymbol(string basename, Expr::Type type) {
-    std::lock_guard guard(mutex);
-    Var res(getFreshName(basename));
-    variableNameLookup.emplace(res.get_name(), res);
-    untrackedVariables[res] = type;
-    return res;
-}
-
-Var VariableManager::addVariable(string name) {
-    std::lock_guard guard(mutex);
-    //convert to ginac
-    auto sym = Var(name);
-
-    // remember variable
-    if (basenameCount.count(name) == 0) {
-        basenameCount.emplace(name, 0);
-    }
-    variables.insert(sym);
-    variableNameLookup.emplace(name, sym);
-
-    return sym;
+void VariableManager::toLower(string &str) const {
+    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
 }
 
 string VariableManager::getFreshName(string basename) {
     std::lock_guard guard(mutex);
-    if (basenameCount.count(basename) == 0) {
-        basenameCount.emplace(basename, 0);
-        return basename;
-    } else {
-        unsigned int count = basenameCount.at(basename);
-        std::string res = basename + to_string(count);
-        while (variableNameLookup.count(res) != 0) {
-            ++count;
-            res = basename + to_string(count);
-        }
-        basenameCount[basename] = count + 1;
-        return res;
+    toLower(basename);
+    auto &count = basenameCount.emplace(basename, 0).first->second;
+    std::string res = count == 0 ? basename : basename + to_string(count);
+    while (used.find(res) != used.end()) {
+        ++count;
+        res = basename + to_string(count);
     }
+    count++;
+    used.insert(res);
+    return res;
 }
-
-const VarSet &VariableManager::getTempVars() const {
-    std::lock_guard guard(mutex);
-    return temporaryVariables;
-}
-
-VarSet VariableManager::getVars() const {
-    std::lock_guard guard(mutex);
-    return variables;
-}
-
-option<Var> VariableManager::getVar(std::string name) const {
-    std::lock_guard guard(mutex);
-    auto it = variableNameLookup.find(name);
-    if (it == variableNameLookup.end()) {
-        return {};
-    } else {
-        return it->second;
-    }
-}
-
 
 Expr::Type VariableManager::getType(const Var &x) const {
     std::lock_guard guard(mutex);
     if (untrackedVariables.find(x) != untrackedVariables.end()) {
         return untrackedVariables.at(x);
     } else {
-        return Expr::Int;
+        return std::visit(Overload{
+                              [](const NumVar &x){
+                                  return Expr::Int;
+                              },
+                              [](const BoolVar &x){
+                                  return Expr::Bool;
+                              }
+                          }, x);
     }
-}
-
-BoolExpr VariableManager::freshBoolVar() {
-    std::lock_guard guard(mutex);
-    return buildConst(boolVarCount++);
 }

@@ -5,19 +5,16 @@
 #include <algorithm>
 #include <sstream>
 
-#include "../expr/expression.hpp"
-#include "../expr/guardtoolbox.hpp"
-
-#include "../smt/smt.hpp"
-#include "../smt/smtfactory.hpp"
-
+#include "numexpression.hpp"
+#include "smt.hpp"
+#include "smtfactory.hpp"
 #include "limitsmt.hpp"
 #include "inftyexpression.hpp"
 
 using namespace std;
 
 
-AsymptoticBound::AsymptoticBound(VarMan &varMan, Guard guard,
+AsymptoticBound::AsymptoticBound(VarMan &varMan, Conjunction<IntTheory> guard,
                                  Expr cost, bool finalCheck, unsigned int timeout)
     : varMan(varMan), guard(guard), cost(cost), finalCheck(finalCheck), timeout(timeout),
       addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP(varMan) {
@@ -54,18 +51,19 @@ void AsymptoticBound::initLimitVectors() {
 
 void AsymptoticBound::normalizeGuard() {
 
-    Guard ineqs;
-    for (const Rel &rel : guard) {
-
+    Conjunction<IntTheory> ineqs;
+    for (const auto &lit : guard) {
+        const Rel &rel = std::get<Rel>(lit);
         if (rel.isEq()) {
             // Split equation
-            ineqs.push_back(rel.lhs() - rel.rhs() >= 0);
-            ineqs.push_back(rel.rhs() - rel.lhs() >= 0);
+            ineqs.push_back(Rel::buildGeq(rel.lhs() - rel.rhs(), 0));
+            ineqs.push_back(Rel::buildGeq(rel.rhs() - rel.lhs(), 0));
         } else {
             ineqs.push_back(rel.toG().makeRhsZero());
         }
     }
-    for (const Rel &rel: ineqs) {
+    for (const auto &lit: ineqs) {
+        const Rel &rel = std::get<Rel>(lit);
         if (rel.isPoly() && !rel.isStrict()) {
             normalizedGuard.push_back(rel.toGt());
         } else {
@@ -86,13 +84,14 @@ void AsymptoticBound::propagateBounds() {
     }
 
     // build substitutions from equations
-    for (const Rel &rel : guard) {
+    for (const auto &lit : guard) {
+        const Rel &rel = std::get<Rel>(lit);
         Expr target = rel.rhs() - rel.lhs();
         if (rel.isEq() && rel.isPoly()) {
 
-            std::vector<Var> vars;
-            std::vector<Var> tempVars;
-            for (const Var & var : target.vars()) {
+            std::vector<NumVar> vars;
+            std::vector<NumVar> tempVars;
+            for (const auto & var : target.vars()) {
                 if (varMan.isTempVar(var)) {
                     tempVars.push_back(var);
                 } else {
@@ -104,11 +103,11 @@ void AsymptoticBound::propagateBounds() {
 
             // check if equation can be solved for a single variable
             // check program variables first
-            for (const Var &var : vars) {
+            for (const auto &var : vars) {
                 //solve target for var (result is in target)
-                auto optSolved = GuardToolbox::solveTermFor(target, var, GuardToolbox::TrivialCoeffs);
+                auto optSolved = target.solveTermFor(var, TrivialCoeffs);
                 if (optSolved) {
-                    substitutions.push_back(Subs(var, optSolved.get()));
+                    substitutions.push_back({{var, *optSolved}});
                     break;
                 }
             }
@@ -126,24 +125,25 @@ void AsymptoticBound::propagateBounds() {
     limitProblems.push_back(currentLP);
 }
 
-Subs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
+ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
     assert(limitProblem.isSolved());
 
-    Subs solution;
+    ExprSubs solution;
     for (int index : limitProblem.getSubstitutions()) {
-        const Subs &sub = substitutions[index];
+        const auto &sub = substitutions[index];
 
         solution = solution.compose(sub);
     }
 
     solution = solution.compose(limitProblem.getSolution());
 
-    Guard guardCopy = guard;
-    guardCopy.push_back(cost > 0);
-    for (const Rel &rel : guardCopy) {
-        for (const Var &var : rel.vars()) {
+    Conjunction<IntTheory> guardCopy = guard;
+    guardCopy.push_back(Rel::buildGt(cost, 0));
+    for (const auto &lit : guardCopy) {
+        const Rel &rel = std::get<Rel>(lit);
+        for (const auto &var : rel.vars()) {
             if (!solution.contains(var)) {
-                solution = solution.compose(Subs(var, 0));
+                solution = solution.compose({{var, 0}});
             }
         }
     }
@@ -153,8 +153,8 @@ Subs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
 
 
 int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem,
-                                               const Subs &solution) {
-    Var n = limitProblem.getN();
+                                               const ExprSubs &solution) {
+    NumVar n = limitProblem.getN();
     int upperBound = 0;
     for (auto const &pair : solution) {
         if (!varMan.isTempVar(pair.first)) {
@@ -177,12 +177,12 @@ int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem,
 
 
 int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProblem,
-                                                 const Subs &solution) {
+                                                 const ExprSubs &solution) {
 
     Expr solvedCost = cost.subs(solution);
 
     int lowerBound;
-    Var n = limitProblem.getN();
+    NumVar n = limitProblem.getN();
     if (solvedCost.isPoly()) {
         assert(solvedCost.isPoly(n));
         assert(solvedCost.isNotMultivariate());
@@ -196,7 +196,7 @@ int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
         Expr expanded = solvedCost.expand();
 
         Expr powerPattern = Expr::wildcard(1) ^ Expr::wildcard(2);
-        ExprSet powers;
+        std::set<Expr> powers;
         assert(expanded.findAll(powerPattern, powers));
 
         lowerBound = 1;
@@ -205,8 +205,12 @@ int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
             if (ex.op(1).has(n) && ex.op(1).isPoly(n)) {
                 assert(ex.op(0).isInt());
                 assert(ex.op(0).toNum().is_positive());
-
-                int base =  ex.op(0).toNum().to_int();
+                Num numBase = ex.op(0).toNum();
+                if ((numBase - std::numeric_limits<int>::min()).is_negative() ||
+                        (numBase - std::numeric_limits<int>::max()).is_positive()) {
+                    throw std::overflow_error("base too large");
+                }
+                int base = numBase.to_int();
                 if (base > lowerBound) {
                     lowerBound = base;
                 }
@@ -223,11 +227,11 @@ int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
 
 void AsymptoticBound::removeUnsatProblems() {
     for (int i = limitProblems.size() - 1; i >= 0; --i) {
-        auto result = Smt::check(buildAnd(limitProblems[i].getQuery()), varMan);
+        auto result = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(limitProblems[i].getQuery()), varMan);
 
-        if (result == Smt::Unsat) {
+        if (result == Unsat) {
             limitProblems.erase(limitProblems.begin() + i);
-        } else if (result == Smt::Unknown
+        } else if (result == Unknown
                    && !finalCheck
                    && limitProblems[i].getSize() >= Config::Limit::ProblemDiscardSize) {
             limitProblems.erase(limitProblems.begin() + i);
@@ -237,7 +241,7 @@ void AsymptoticBound::removeUnsatProblems() {
 
 
 bool AsymptoticBound::solveViaSMT(Complexity currentRes) {
-    if (!Config::Limit::PolyStrategy->smtEnabled() || !currentLP.isPolynomial() || !trySmtEncoding(currentRes)) {
+    if (!Config::Limit::PolyStrategy->smtEnabled() || !currentLP.isPoly() || !trySmtEncoding(currentRes)) {
         return false;
     }
 
@@ -271,7 +275,7 @@ bool AsymptoticBound::solveLimitProblem() {
         }
 
         //if the problem is polynomial, try a (max)SMT encoding
-        if (Config::Limit::PolyStrategy->smtEnabled() && currentLP.isPolynomial()) {
+        if (Config::Limit::PolyStrategy->smtEnabled() && currentLP.isPoly()) {
             if (trySmtEncoding(Complexity::Const)) {
                 goto start;
             } else if (!Config::Limit::PolyStrategy->calculusEnabled()) {
@@ -400,12 +404,12 @@ bool AsymptoticBound::isAdequateSolution(const LimitProblem &limitProblem) {
         return true;
     }
 
-    if (cost.toComplexity()  > result.complexity) {
+    if (toComplexity(cost)  > result.complexity) {
         return false;
     }
 
     Expr solvedCost = cost.subs(result.solution).expand();
-    Var n = limitProblem.getN();
+    NumVar n = limitProblem.getN();
 
     if (solvedCost.isPoly(n)) {
         if (!cost.isPoly()) {
@@ -418,7 +422,7 @@ bool AsymptoticBound::isAdequateSolution(const LimitProblem &limitProblem) {
 
     }
 
-    for (const Var &var : cost.vars()) {
+    for (const auto &var : cost.vars()) {
         if (varMan.isTempVar(var)) {
             // we try to achieve ComplexInfty
             return false;
@@ -531,7 +535,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
 
     } else if (it->isNaturalPow()) {
         Expr base = it->op(0);
-        GiNaC::numeric power = it->op(1).toNum();
+        Num power = it->op(1).toNum();
 
         if (power.is_even()) {
             l = base ^ (power / 2);
@@ -559,7 +563,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
         r = 0;
 
         bool foundOneVar = false;
-        Var oneVar;
+        option<Var> oneVar;
         for (unsigned int i = 0; i < it->arity(); ++i) {
             Expr ex(it->op(i));
 
@@ -574,7 +578,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                     oneVar = ex.someVar();
                     l = ex;
 
-                } else if (oneVar == ex.someVar()) {
+                } else if (oneVar && *oneVar == ex.someVar()) {
                     l = l + ex;
 
                 } else {
@@ -595,7 +599,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
         r = 1;
 
         bool foundOneVar = false;
-        Var oneVar;
+        option<Var> oneVar;
         for (unsigned int i = 0; i < it->arity(); ++i) {
             Expr ex(it->op(i));
 
@@ -610,7 +614,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                     oneVar = ex.someVar();
                     l = ex;
 
-                } else if (oneVar == ex.someVar()) {
+                } else if (oneVar && *oneVar == ex.someVar()) {
                     l = l * ex;
 
                 } else {
@@ -686,20 +690,20 @@ bool AsymptoticBound::tryInstantiatingVariable() {
         Direction dir = it->getDirection();
 
         if (it->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
-            const std::vector<Rel> &query = currentLP.getQuery();
-            std::unique_ptr<Smt> solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Rel>, Subs>({query}, {}), varMan);
-            solver->add(buildAnd(query));
-            Smt::Result result = solver->check();
+            const auto &query = currentLP.getQuery();
+            auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}), varMan);
+            solver->add(BoolExpression<IntTheory>::buildAndFromLits(query));
+            SmtResult result = solver->check();
 
-            if (result == Smt::Unsat) {
+            if (result == Unsat) {
                 currentLP.setUnsolvable();
 
-            } else if (result == Smt::Sat) {
-                const Model &model = solver->model();
-                Var var = it->someVar();
+            } else if (result == Sat) {
+                const auto &model = solver->model();
+                auto var = it->someVar();
 
-                Expr rational = model.get(var);
-                substitutions.push_back(Subs(var, rational));
+                Expr rational = model.get<IntTheory>(var);
+                substitutions.push_back({{var, rational}});
 
                 createBacktrackingPoint(it, POS_INF);
                 currentLP.substitute(substitutions.back(), substitutions.size() - 1);
@@ -734,7 +738,7 @@ bool AsymptoticBound::trySubstitutingVariable() {
                         || (dir == NEG_INF && dir2 == NEG_INF)) {
                         assert(!it->equals(*it2));
 
-                        Subs sub(it->toVar(), *it2);
+                        ExprSubs sub{{it->toVar(), *it2}};
                         substitutions.push_back(sub);
 
                         createBacktrackingPoint(it, POS_CONS);
@@ -765,7 +769,7 @@ bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
 
 
 AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
-                                                             const Guard &guard,
+                                                             const Conjunction<IntTheory> &guard,
                                                              const Expr &cost,
                                                              bool finalCheck,
                                                              const Complexity &currentRes,
@@ -777,14 +781,14 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
 
     // Handle nontermination. It suffices to check that the guard is satisfiable
     if (expandedCost.isNontermSymbol()) {
-        auto smtRes = Smt::check(buildAnd(guard), varMan);
-        if (smtRes == Smt::Sat) {
+        auto smtRes = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(guard), varMan);
+        if (smtRes == Sat) {
             Proof proof;
             proof.append("Guard is satisfiable, yielding nontermination");
             return Result(Complexity::Nonterm, Expr::NontermSymbol, 0, proof);
         } else {
             // if Z3 fails, the calculus for limit problems might still succeed if, e.g., the rule contains exponentials
-            costToCheck = varMan.addFreshVariable("x");
+            costToCheck = varMan.addFreshVariable<IntTheory>("x");
         }
     }
     if (finalCheck && Config::Analysis::nonTermination()) {
@@ -798,7 +802,7 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
 
     asymptoticBound.createInitialLimitProblem(varMan);
     // first try the SMT encoding
-    bool polynomial = cost.isPoly() && asymptoticBound.currentLP.isPolynomial();
+    bool polynomial = cost.isPoly() && asymptoticBound.currentLP.isPoly();
     bool result = polynomial && asymptoticBound.solveViaSMT(currentRes);
     if (!result && (!polynomial || Config::Limit::PolyStrategy->calculusEnabled())) {
         // Otherwise perform limit calculus
@@ -835,7 +839,7 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
 }
 
 AsymptoticBound::Result AsymptoticBound:: determineComplexityViaSMT(VarMan &varMan,
-                                                                    const Guard &guard,
+                                                                    const Conjunction<IntTheory> &guard,
                                                                     const Expr &cost,
                                                                     bool finalCheck,
                                                                     Complexity currentRes,
@@ -843,8 +847,8 @@ AsymptoticBound::Result AsymptoticBound:: determineComplexityViaSMT(VarMan &varM
     Expr expandedCost = cost.expand();
     // Handle nontermination. It suffices to check that the guard is satisfiable
     if (expandedCost.isNontermSymbol()) {
-        auto smtRes = Smt::check(buildAnd(guard), varMan);
-        if (smtRes == Smt::Sat) {
+        auto smtRes = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(guard), varMan);
+        if (smtRes == Sat) {
             Proof proof;
             proof.append("proved non-termination via SMT");
             return Result(Complexity::Nonterm, Expr::NontermSymbol, 0, proof);
@@ -873,7 +877,7 @@ AsymptoticBound::Result AsymptoticBound:: determineComplexityViaSMT(VarMan &varM
 }
 
 AsymptoticBound::Result AsymptoticBound:: determineComplexityViaSMT(VarMan &varMan,
-                                                                    const BoolExpr guard,
+                                                                    const BExpr<IntTheory> guard,
                                                                     const Expr &cost,
                                                                     bool finalCheck,
                                                                     Complexity currentRes,
@@ -881,8 +885,8 @@ AsymptoticBound::Result AsymptoticBound:: determineComplexityViaSMT(VarMan &varM
     Expr expandedCost = cost.expand();
     // Handle nontermination. It suffices to check that the guard is satisfiable
     if (expandedCost.isNontermSymbol()) {
-        auto smtRes = Smt::check(guard, varMan);
-        if (smtRes == Smt::Sat) {
+        auto smtRes = SmtFactory::check(guard, varMan);
+        if (smtRes == Sat) {
             Proof proof;
             proof.append("proved non-termination via SMT");
             return Result(Complexity::Nonterm);
@@ -893,16 +897,16 @@ AsymptoticBound::Result AsymptoticBound:: determineComplexityViaSMT(VarMan &varM
         return Result(Complexity::Unknown);
     }
     assert(!expandedCost.has(Expr::NontermSymbol));
-    const std::pair<Subs, Complexity> &p = LimitSmtEncoding::applyEncoding(guard, cost, varMan, currentRes, timeout);
-    const Subs &subs = p.first;
+    const std::pair<ExprSubs, Complexity> &p = LimitSmtEncoding::applyEncoding(guard, cost, varMan, currentRes, timeout);
+    const ExprSubs &subs = p.first;
     const Complexity &cpx = p.second;
     Proof proof;
     if (cpx == Complexity::Unknown) {
         return Result(Complexity::Unknown, 0, 0, proof);
     }
     const Expr &solvedCost = expandedCost.subs(subs).expand();
-    const VarSet &costVars = cost.vars();
-    long inftyVars = std::count_if(costVars.begin(), costVars.end(), [&](const Var &x){
+    const auto &costVars = cost.vars();
+    long inftyVars = std::count_if(costVars.begin(), costVars.end(), [&](const NumVar &x){
         return !subs.get(x).isGround();
     });
     proof.append("solved via SMT");

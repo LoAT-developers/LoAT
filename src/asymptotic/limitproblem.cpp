@@ -1,20 +1,19 @@
 #include "limitproblem.hpp"
+#include "smtfactory.hpp"
 
 #include <sstream>
 #include <utility>
 
-#include "../smt/smt.hpp"
-
 LimitProblem::LimitProblem(VariableManager &varMan)
-    : variableN("n"), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
+    : variableN(varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int)), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
 }
 
 
-LimitProblem::LimitProblem(const Guard &normalizedGuard, const Expr &cost, VariableManager &varMan)
-    : variableN("n"), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
-    for (const Rel &rel : normalizedGuard) {
+LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const Expr &cost, VariableManager &varMan)
+    : LimitProblem(varMan) {
+    for (const auto &lit : normalizedGuard) {
+        const Rel &rel = std::get<Rel>(lit);
         assert(rel.isGZeroConstraint());
-
         addExpression(InftyExpression(rel.lhs(), POS));
     }
 
@@ -25,9 +24,10 @@ LimitProblem::LimitProblem(const Guard &normalizedGuard, const Expr &cost, Varia
 }
 
 
-LimitProblem::LimitProblem(const Guard &normalizedGuard, VariableManager &varMan)
+LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, VariableManager &varMan)
     : variableN("n"), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
-    for (const Rel &rel : normalizedGuard) {
+    for (const auto &lit : normalizedGuard) {
+        const Rel &rel = std::get<Rel>(lit);
         assert(rel.isGZeroConstraint());
         addExpression(InftyExpression(rel.lhs(), POS));
     }
@@ -149,7 +149,7 @@ void LimitProblem::applyLimitVector(const InftyExpressionSet::const_iterator &it
 void LimitProblem::removeConstant(const InftyExpressionSet::const_iterator &it) {
     assert(it->isInt());
 
-    GiNaC::numeric num = it->toNum();
+    Num num = it->toNum();
 #ifndef NDEBUG
     Direction dir = it->getDirection();
     assert((num.is_positive() && (dir == POS_CONS || dir == POS))
@@ -164,7 +164,7 @@ void LimitProblem::removeConstant(const InftyExpressionSet::const_iterator &it) 
 }
 
 
-void LimitProblem::substitute(const Subs &sub, int substitutionIndex) {
+void LimitProblem::substitute(const ExprSubs &sub, int substitutionIndex) {
 #ifndef NDEBUG
     for (auto const &s : sub) {
         assert(!s.second.has(s.first));
@@ -193,12 +193,12 @@ void LimitProblem::trimPolynomial(const InftyExpressionSet::const_iterator &it) 
     Direction dir = it->getDirection();
     assert((dir == POS) || (dir == POS_INF) || (dir == NEG_INF));
 
-    Var var = it->someVar();
+    NumVar var = it->someVar();
 
     Expr expanded = it->expand();
 
     if (expanded.isAdd()) {
-        Expr leadingTerm = expanded.lcoeff(var) * pow(var, expanded.degree(var));
+        Expr leadingTerm = expanded.lcoeff(var) * pow(*var, expanded.degree(var));
 
         if (dir == POS) {
             // Fix the direction
@@ -222,7 +222,7 @@ void LimitProblem::reduceExp(const InftyExpressionSet::const_iterator &it) {
     assert(it->getDirection() == POS_INF || it->getDirection() == POS);
 
     assert(it->isUnivariate());
-    Var x = it->someVar();
+    NumVar x = it->someVar();
 
     Expr powerInExp;
     if (it->isAdd()) {
@@ -338,10 +338,10 @@ bool LimitProblem::isSolved() const {
 }
 
 
-Subs LimitProblem::getSolution() const {
+ExprSubs LimitProblem::getSolution() const {
     assert(isSolved());
 
-    Subs solution;
+    ExprSubs solution;
     for (const InftyExpression &ex : set) {
         assert(ex.isVar());
         switch (ex.getDirection()) {
@@ -350,7 +350,7 @@ Subs LimitProblem::getSolution() const {
                 solution.put(ex.toVar(), variableN);
                 break;
             case NEG_INF:
-                solution.put(ex.toVar(), -variableN);
+                solution.put(ex.toVar(), -*variableN);
                 break;
             case POS_CONS:
                 solution.put(ex.toVar(), 1);
@@ -365,7 +365,7 @@ Subs LimitProblem::getSolution() const {
 }
 
 
-Var LimitProblem::getN() const {
+NumVar LimitProblem::getN() const {
     return variableN;
 }
 
@@ -380,24 +380,24 @@ InftyExpressionSet::const_iterator LimitProblem::find(const InftyExpression &ex)
 }
 
 
-VarSet LimitProblem::getVariables() const {
-    VarSet res;
+std::set<NumVar> LimitProblem::getVariables() const {
+    std::set<NumVar> res;
     for (const InftyExpression &ex : set) {
-        VarSet exVars = ex.vars();
-        res.insert(exVars.cbegin(),exVars.cend());
+        const auto exVars = ex.vars();
+        res.insert(exVars.begin(), exVars.end());
     }
     return res;
 }
 
 
-std::vector<Rel> LimitProblem::getQuery() const {
-    std::vector<Rel> query;
+std::vector<Theory<IntTheory>::Lit> LimitProblem::getQuery() const {
+    std::vector<Theory<IntTheory>::Lit> query;
 
     for (const InftyExpression &ex : set) {
         if (ex.getDirection() == NEG_INF || ex.getDirection() == NEG_CONS) {
-            query.push_back(ex.expand() < 0);
+            query.push_back(Rel(ex.expand(), Rel::lt, 0));
         } else {
-            query.push_back(ex.expand() > 0);
+            query.push_back(Rel(ex.expand(), Rel::gt, 0));
         }
     }
 
@@ -406,7 +406,7 @@ std::vector<Rel> LimitProblem::getQuery() const {
 
 
 bool LimitProblem::isUnsat() const {
-    return Smt::check(buildAnd(getQuery()), varMan) == Smt::Unsat;
+    return SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(getQuery()), varMan) == Unsat;
 }
 
 
@@ -419,7 +419,7 @@ bool LimitProblem::isLinear() const {
     return true;
 }
 
-bool LimitProblem::isPolynomial() const {
+bool LimitProblem::isPoly() const {
     for (const InftyExpression &ex : set) {
         if (!ex.isPoly()) {
             return false;
@@ -433,7 +433,7 @@ bool LimitProblem::removeConstantIsApplicable(const InftyExpressionSet::const_it
         return false;
     }
 
-    GiNaC::numeric num = it->toNum();
+    Num num = it->toNum();
     Direction dir = it->getDirection();
 
     return (num.is_positive() && (dir == POS_CONS || dir == POS))
@@ -470,7 +470,7 @@ bool LimitProblem::reduceExpIsApplicable(const InftyExpressionSet::const_iterato
         return false;
     }
 
-    Var x = it->someVar();
+    NumVar x = it->someVar();
 
     Expr powerInExp;
     if (it->isAdd()) {

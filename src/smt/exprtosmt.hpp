@@ -15,43 +15,49 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef EXPRTOSMT_H
-#define EXPRTOSMT_H
+#pragma once
 
-#include "../util/exceptions.hpp"
 #include "smtcontext.hpp"
-#include "../its/itsproblem.hpp"
-#include "../config.hpp"
-#include "../expr/boolexpr.hpp"
+#include "config.hpp"
+#include "boolexpr.hpp"
+#include "variablemanager.hpp"
+#include "numexpression.hpp"
 
 #include <map>
 #include <sstream>
 
-template<typename EXPR> class ExprToSmt {
+template<typename EXPR, ITheory... Th> class ExprToSmt {
 public:
-    EXCEPTION(GinacConversionError,CustomException);
-    EXCEPTION(GinacLargeConstantError,CustomException);
 
-    static EXPR convert(const BoolExpr e, SmtContext<EXPR> &ctx, const VariableManager &varMan) {
-        ExprToSmt<EXPR> converter(ctx, varMan);
+    static EXPR convert(const BExpr<Th...> e, SmtContext<EXPR> &ctx, const VariableManager &varMan) {
+        ExprToSmt<EXPR, Th...> converter(ctx, varMan);
         return converter.convertBoolEx(e);
     }
 
 
 protected:
-    ExprToSmt<EXPR>(SmtContext<EXPR> &context, const VariableManager &varMan):
+    ExprToSmt(SmtContext<EXPR> &context, const VariableManager &varMan):
         context(context),
         varMan(varMan) {}
 
-    EXPR convertBoolEx(const BoolExpr e) {
-        if (e->getLit()) {
-            return convertRelational(e->getLit().get());
-        } else if (e->getConst()) {
-            return context.bConst(e->getConst().get());
+    EXPR convertBoolEx(const BExpr<Th...> e) {
+        if (e->getTheoryLit()) {
+            const auto lit = *e->getTheoryLit();
+            if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
+                if (std::holds_alternative<Rel>(lit)) {
+                    return convertRelational(std::get<Rel>(lit));
+                }
+            }
+            if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
+                if (std::holds_alternative<BoolLit>(lit)) {
+                    return convertLit(std::get<BoolLit>(lit));
+                }
+            }
+            throw std::logic_error("unsupported theory in exprtosmt");
         }
         EXPR res = e->isAnd() ? context.bTrue() : context.bFalse();
         bool first = true;
-        for (const BoolExpr &c: e->getChildren()) {
+        for (const BExpr<Th...> &c: e->getChildren()) {
             if (first) {
                 res = convertBoolEx(c);
                 first = false;
@@ -81,8 +87,8 @@ protected:
         }
 
         std::stringstream ss;
-        ss << "Error: GiNaC type not implemented for term: " << e << std::endl;
-        throw GinacConversionError(ss.str());
+        ss << "Error: conversion not implemented for term: " << e << std::endl;
+        throw std::invalid_argument(ss.str());
     }
 
     EXPR convertAdd(const Expr &e){
@@ -112,8 +118,8 @@ protected:
 
         //rewrite power as multiplication if possible, which z3 can handle much better (e.g x^3 becomes x*x*x)
         if (e.op(1).isRationalConstant()) {
-            GiNaC::numeric num = e.op(1).toNum();
-            if (num.is_integer() && num.is_positive() && num.to_long() <= Config::Smt::MaxExponentWithoutPow) {
+            Num num = e.op(1).toNum();
+            if (num.is_integer() && num.is_positive() && !(num - Config::Smt::MaxExponentWithoutPow).is_positive()) {
                 int exp = num.to_int();
                 EXPR base = convertEx(e.op(0));
 
@@ -130,7 +136,7 @@ protected:
         return context.pow(convertEx(e.op(0)), convertEx(e.op(1)));
     }
 
-    EXPR convertNumeric(const GiNaC::numeric &num) {
+    EXPR convertNumeric(const Num &num) {
         assert(num.is_integer() || num.is_real());
 
         try {
@@ -143,7 +149,7 @@ protected:
             return context.getReal(num.numer().to_long(), num.denom().to_long());
 
         } catch (...) {
-            throw GinacLargeConstantError("Numeric constant too large, cannot convert to z3");
+            throw std::invalid_argument("Numeric constant too large, cannot convert");
         }
     }
 
@@ -172,9 +178,15 @@ protected:
         throw std::invalid_argument("unreachable");
     }
 
+    EXPR convertLit(const BoolLit &lit) {
+        auto optVar = context.getVariable(lit.getBoolVar());
+        if (!optVar) {
+            optVar = context.addNewVariable(lit.getBoolVar(), Expr::Bool);
+        }
+        return lit.isNegated() ? context.negate(*optVar) : *optVar;
+    }
+
 private:
     SmtContext<EXPR> &context;
     const VariableManager &varMan;
 };
-
-#endif // ExprToSmt_H

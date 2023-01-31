@@ -39,6 +39,10 @@ bool InftyExpression::isTriviallyUnsatisfiable() const {
     return false;
 }
 
+bool operator<(const InftyExpression &x, const InftyExpression &y) {
+    return static_cast<Expr>(x) < static_cast<Expr>(y);
+}
+
 std::ostream& operator<<(std::ostream &os, const InftyExpression &ie) {
     os << static_cast<const Expr &>(ie) << " ("
        << DirectionNames[ie.getDirection()] << ")";

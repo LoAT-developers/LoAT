@@ -1,8 +1,7 @@
 #include "vareliminator.hpp"
-#include "boundextractor.hpp"
-#include "../../expr/rel.hpp"
+#include "rel.hpp"
 
-VarEliminator::VarEliminator(const BoolExpr guard, const Var &N, VariableManager &varMan): varMan(varMan), N(N) {
+VarEliminator::VarEliminator(const BoolExpr guard, const NumVar &N, VariableManager &varMan): varMan(varMan), N(N) {
     assert(varMan.isTempVar(N));
     todoDeps.push({{}, guard});
     findDependencies(guard);
@@ -15,28 +14,31 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
     do {
         changed = false;
         // compute dependencies of var
-        for (const Var &var: dependencies) {
-            option<Var> dep;
-            for (const Rel &rel: guard->lits()) {
-                const Expr &ex = (rel.lhs() - rel.rhs()).expand();
-                if (ex.degree(var) == 1) {
-                    // we found a constraint which is linear in var, check all variables in var's coefficient
-                    const Expr &coeff = ex.coeff(var, 1);
-                    for (const Var &x: coeff.vars()) {
-                        if (varMan.isTempVar(x)) {
-                            if (dependencies.find(x) == dependencies.end()) {
-                                // we found a tmp variable in coeff which has not yet been marked as dependency
-                                dep = x;
+        for (const NumVar &var: dependencies) {
+            option<NumVar> dep;
+            for (const Lit &lit: guard->lits()) {
+                if (std::holds_alternative<Rel>(lit)) {
+                    const Rel &rel = std::get<Rel>(lit);
+                    const Expr &ex = (rel.lhs() - rel.rhs()).expand();
+                    if (ex.degree(var) == 1) {
+                        // we found a constraint which is linear in var, check all variables in var's coefficient
+                        const Expr &coeff = ex.coeff(var, 1);
+                        for (const NumVar &x: coeff.vars()) {
+                            if (varMan.isTempVar(x)) {
+                                if (dependencies.find(x) == dependencies.end()) {
+                                    // we found a tmp variable in coeff which has not yet been marked as dependency
+                                    dep = x;
+                                }
+                            } else {
+                                // coeff also contains non-tmp variables, ignore the current constraint
+                                dep = {};
+                                break;
                             }
-                        } else {
-                            // coeff also contains non-tmp variables, ignore the current constraint
-                            dep = {};
-                            break;
                         }
-                    }
-                    if (dep) {
-                        dependencies.insert(dep.get());
-                        changed = true;
+                        if (dep) {
+                            dependencies.insert(dep.get());
+                            changed = true;
+                        }
                     }
                 }
             }
@@ -45,17 +47,22 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
     dependencies.erase(N);
 }
 
-const std::set<std::pair<Subs, BoolExpr>> VarEliminator::eliminateDependency(const Subs &subs, const BoolExpr guard) const {
+const std::set<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDependency(const ExprSubs &subs, const BoolExpr guard) const {
     VarSet vars = guard->vars();
     for (auto it = dependencies.begin(); it != dependencies.end(); ++it) {
         if (vars.find(*it) == vars.end()) {
             continue;
         }
-        BoundExtractor be(guard, *it);
-        std::set<std::pair<Subs, BoolExpr>> res;
-        for (const Expr &bound: be.getConstantBounds()) {
-            Subs newSubs(*it, bound);
-            res.insert({subs.compose(newSubs), guard->subs(newSubs)});
+        Bounds bounds;
+        guard->getBounds(*it, bounds);
+        std::set<std::pair<ExprSubs, BoolExpr>> res;
+        for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
+            for (const auto &b: bb) {
+                if (b.expand().isGround()) {
+                    Subs newSubs = Subs::build<IntTheory>(*it, b);
+                    res.insert({subs.compose(newSubs.get<IntTheory>()), guard->subs(newSubs)});
+                }
+            }
         }
         if (!res.empty()) {
             return res;
@@ -66,8 +73,8 @@ const std::set<std::pair<Subs, BoolExpr>> VarEliminator::eliminateDependency(con
 
 void VarEliminator::eliminateDependencies() {
     while (!todoDeps.empty()) {
-        const std::pair<Subs, BoolExpr> current = todoDeps.top();
-        const std::set<std::pair<Subs, BoolExpr>> &res = eliminateDependency(current.first, current.second);
+        const std::pair<ExprSubs, BoolExpr> current = todoDeps.top();
+        const std::set<std::pair<ExprSubs, BoolExpr>> &res = eliminateDependency(current.first, current.second);
         if (res.empty()) {
             todoN.insert(current);
         }
@@ -81,19 +88,42 @@ void VarEliminator::eliminateDependencies() {
 void VarEliminator::eliminate() {
     eliminateDependencies();
     for (const auto &p: todoN) {
-        const Subs &subs = p.first;
+        const ExprSubs &subs = p.first;
         const BoolExpr guard = p.second;
-        BoundExtractor be(guard, N);
-        if (be.getEq()) {
-            res.insert(subs.compose(Subs(N, be.getEq().get())));
+        Bounds bounds;
+        guard->getBounds(N, bounds);
+        if (bounds.equality) {
+            ExprSubs p{{N, *bounds.equality}};
+            res.insert(subs.compose(p));
         } else {
-            for (const Expr &b: be.getUpper()) {
-                res.insert(subs.compose(Subs(N, b)));
+            for (auto it = bounds.upperBounds.begin(); it != bounds.upperBounds.end();) {
+                bool removed = false;
+                for (auto it2 = std::next(it); it2 != bounds.upperBounds.end();) {
+                    const auto diff = (*it - *it2).expand();
+                    if (diff.isRationalConstant()) {
+                        if (diff.toNum().is_positive()) {
+                            it = bounds.upperBounds.erase(it);
+                            removed = true;
+                            break;
+                        } else {
+                            it2 = bounds.upperBounds.erase(it2);
+                        }
+                    } else {
+                        ++it2;
+                    }
+                }
+                if (!removed) {
+                    ++it;
+                }
+            }
+            for (const Expr &b: bounds.upperBounds) {
+                ExprSubs p{{N, b}};
+                res.insert(subs.compose(p));
             }
         }
     }
 }
 
-const std::set<Subs> VarEliminator::getRes() const {
+const std::set<ExprSubs> VarEliminator::getRes() const {
     return res;
 }

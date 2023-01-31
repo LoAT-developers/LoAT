@@ -15,31 +15,21 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef GUARDTOOLBOX_H
-#define GUARDTOOLBOX_H
+#pragma once
 
-#include "expression.hpp"
-#include "../its/variablemanager.hpp"
-#include "../util/option.hpp"
+#include "numexpression.hpp"
+#include "variablemanager.hpp"
+#include "option.hpp"
+#include "result.hpp"
 
 #include <vector>
 #include <map>
-
-class Rule;
-
 
 /**
  * Namespace for several functions operating on guards (list of relational expressions) and related helpers.
  * Note: We never allow != in relations.
  */
 namespace GuardToolbox {
-
-    // Specifies for which coefficients c we can solve "c*x == t" for x.
-    enum SolvingLevel {
-        TrivialCoeffs = 0, // only c=1 and c=-1 is allowed
-        ResultMapsToInt = 1, // c can be any rational constant, as long as x = t/c maps to int
-        ConstantCoeffs = 2, // c can be any rational constant (the result may not map to int, use with caution!)
-    };
 
     // Shorthand for lambdas that check if a given symbol is accepted/allowed (depending on the context)
     using SymbolAcceptor = std::function<bool(const Var &)>;
@@ -66,8 +56,9 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    option<Rule> propagateEqualities(const VarMan &varMan, const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
+    Result<Rule> propagateEqualities(const ITSProblem &its, const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
 
+    Result<Rule> propagateBooleanEqualities(const ITSProblem &its, const Rule &rule);
 
     /**
      * Tries to replace inequalities using their transitive closure,
@@ -82,24 +73,7 @@ namespace GuardToolbox {
      *
      * @return true if any changes have been made
      */
-    option<Rule> eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow);
-
-    std::pair<option<Expr>, option<Expr>> getBoundFromIneq(const Rel &rel, const Var &N);
-
-    /**
-     * Tries to solve the equation term == 0 for the given variable, using the given level of restrictiveness
-     * @return if possible, the term t such that "var == t" is equivalent to "term == 0"
-     */
-    option<Expr> solveTermFor(Expr term, const Var &var, SolvingLevel level);
-
-
-    /**
-     * Given two relations lhs and rhs, checks if rhs is trivially (syntactically) implied by lhs.
-     * For example, A > 0 or A == 0 both imply A+1 > 0
-     * @return true if lhsConstraint implies rhsConstraint, false has no meaning.
-     */
-    bool isTrivialImplication(const Rel &lhsConstraint, const Rel &rhsConstraint);
-
+    Result<Rule> eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow, const ITSProblem &its);
 
     /**
      * Replaces bidirectional inequalities, e.g. x <= y, y >= x by an equality, e.g. x == y.
@@ -107,22 +81,16 @@ namespace GuardToolbox {
      * @note expensive for large guards
      * @return true iff guard was changed.
      */
-    option<Rule> makeEqualities(const Rule &rule);
-
-    option<Rule> propagateEqualitiesBySmt(const Rule &rule, VariableManager &varMan);
-
+    Result<Rule> makeEqualities(const Rule &rule, const ITSProblem &its);
 
     /**
      * Returns true iff term contains a temporary variable
      */
     template<class T>
     bool containsTempVar(const VarMan &varMan, const T &x) {
-        return x.hasVarWith([&varMan](const Var &sym) {
+        return x.hasVarWith([&varMan](const NumVar &sym) {
             return varMan.isTempVar(sym);
         });
     }
 
 }
-
-
-#endif // GUARDTOOLBOX_H

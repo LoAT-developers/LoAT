@@ -15,13 +15,13 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef BACKWARDACCELERATION_H
-#define BACKWARDACCELERATION_H
+#pragma once
 
-#include "../its/itsproblem.hpp"
-#include "../its/rule.hpp"
-#include "../util/option.hpp"
-#include "result.hpp"
+#include "itsproblem.hpp"
+#include "rule.hpp"
+#include "complexity.hpp"
+#include "accelerationresult.hpp"
+#include "accelconfig.hpp"
 
 class LoopAcceleration {
 public:
@@ -31,40 +31,28 @@ public:
         const unsigned int validityBound;
     };
 
-    static Acceleration::Result accelerate(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
+    static acceleration::Result accelerate(ITSProblem &its, const LinearRule &rule, Complexity cpx, const AccelConfig &config = AccelConfig());
+
+    static const std::pair<LinearRule, unsigned> chain(const LinearRule &rule, ITSProblem &its);
 
 private:
-    LoopAcceleration(ITSProblem &its, const LinearRule &rule, LocationIdx sink, Complexity cpx);
-
-    LinearRule buildNontermRule(const BoolExpr guard) const;
+    LoopAcceleration(ITSProblem &its, const LinearRule &rule, Complexity cpx, const AccelConfig &config);
 
     /**
      * Main function, just calls the methods below in the correct order
      */
-    Acceleration::Result run();
+    acceleration::Result run();
 
     /**
      * Checks whether the backward acceleration technique might be applicable.
      */
     bool shouldAccelerate() const;
 
-    /**
-     * If possible, replaces N by all its upper bounds from the guard of the given rule.
-     * For every upper bound, a separate rule is created.
-     *
-     * If this is not possible (i.e., there is at least one upper bound that is too difficult
-     * to compute like N^2 <= X or there are too many upper bounds), then N is not replaced
-     * and a vector consisting only of the given rule is returned.
-     *
-     * @return A list of rules, either with N eliminated or only containing the given rule
-     */
-    std::vector<Rule> replaceByUpperbounds(const Var &N, const Rule &rule);
+    static LinearRule renameTmpVars(const LinearRule &rule, ITSProblem &its);
 
 private:
     ITSProblem &its;
     const LinearRule &rule;
-    LocationIdx sink;
     Complexity cpx;
+    const AccelConfig config;
 };
-
-#endif /* BACKWARDACCELERATION_H */

@@ -15,13 +15,11 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
 
 #include <string>
 #include <vector>
 #include <ostream>
-#include "util/option.hpp"
 
 /**
  * Global settings and constants.
@@ -37,6 +35,11 @@ namespace Config {
     // Proof output
     namespace Output {
         extern bool Colors;
+    }
+
+    namespace Input {
+        enum Format {Koat, Its, Horn};
+        extern Format format;
     }
 
     // Colors (Ansi color codes) for output
@@ -70,9 +73,17 @@ namespace Config {
         extern const unsigned SimpTimeout;
     }
 
+    namespace Qelim {
+        extern const bool useRedlog;
+    }
+
     // Loop acceleration technique
     namespace LoopAccel {
         extern const unsigned MaxUpperboundsForPropagation;
+        enum AccelerationTechnique {
+            Calculus, QE, Combined
+        };
+        extern const AccelerationTechnique accelerationTechnique;
     }
 
     // High level acceleration strategy
@@ -90,6 +101,10 @@ namespace Config {
     // Pruning in case of too many rules
     namespace Prune {
         extern const unsigned MaxParallelRules;
+    }
+
+    namespace ADCL {
+        extern bool IterativeDeepening;
     }
 
     // Asymptotic complexity computation using limit problems
@@ -125,14 +140,17 @@ namespace Config {
     // Main algorithm
     namespace Analysis {
 
-        enum Mode { Complexity, NonTermination, Acceleration, RankingFunction, RecurrentSet, Smt2Export, CIntExport };
+        enum Mode { Complexity, NonTermination, Reachability, Satisfiability };
         extern std::vector<Mode> modes;
         extern bool Pruning;
         extern Mode mode;
 
         std::string modeName(const Mode mode);
         bool nonTermination();
+        bool tryNonterm();
+        bool reachability();
         bool complexity();
+        bool satisfiability();
 
     }
 
@@ -142,5 +160,3 @@ namespace Config {
      */
     void printConfig(std::ostream &s, bool withDescription);
 }
-
-#endif //CONFIG_H

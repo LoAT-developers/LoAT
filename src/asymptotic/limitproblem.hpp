@@ -7,8 +7,8 @@
 #include <string>
 #include <memory>
 
-#include "../its/guard.hpp"
-#include "../expr/guardtoolbox.hpp"
+#include "variablemanager.hpp"
+#include "theory.hpp"
 #include "inftyexpression.hpp"
 #include "limitvector.hpp"
 
@@ -28,12 +28,12 @@ public:
      *                        of the form t > 0
      * @param cost a term
      */
-    LimitProblem(const Guard &normalizedGuard, const Expr &cost, VariableManager &varMan);
+    LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const Expr &cost, VariableManager &varMan);
 
     /**
      * Creates the initial LimitProblem without any cost term.
      */
-    LimitProblem(const Guard &normalizedGuard, VariableManager &varMan);
+    LimitProblem(const Conjunction<IntTheory> &normalizedGuard, VariableManager &varMan);
 
     // copy constructor and assignment operator
     LimitProblem(const LimitProblem &other);
@@ -86,7 +86,7 @@ public:
      * transformation rule (C)
      * @param sub must be a valid substitution
      */
-    void substitute(const Subs &sub, int substitutionIndex);
+    void substitute(const ExprSubs &sub, int substitutionIndex);
 
     /**
      * Discards all but the leading term of the given univariate polynomial.
@@ -141,12 +141,12 @@ public:
      * Returns a solution for this LimitProblem.
      * This LimitProblem must be solved and must not be marked as unsolvable.
      */
-    Subs getSolution() const;
+    ExprSubs getSolution() const;
 
     /**
      * Returns the variable that is used in the solution returned by getSolution().
      */
-    Var getN() const;
+    NumVar getN() const;
 
     /**
      * Returns a reference to the vector storing the substitution identifiers.
@@ -162,14 +162,14 @@ public:
     /**
      * Returns a set of all variables appearing in this limit problem
      */
-    VarSet getVariables() const;
+    std::set<NumVar> getVariables() const;
 
     /**
      * Returns this LimitProblem as a set of relational Expressions:
      * t (+), t (+!), t(+/+!) -> t > 0
      * t (-), t (-!) -> t < 0
      */
-    std::vector<Rel> getQuery() const;
+    std::vector<typename Theory<IntTheory>::Lit> getQuery() const;
 
     /**
      * Returns true if the result of getQuery() is unsatisfiable according to z3.
@@ -186,7 +186,7 @@ public:
     /**
      * Returns true if all expressions of this limit problem are polynomial.
      */
-    bool isPolynomial() const;
+    bool isPoly() const;
 
 
     /**
@@ -224,7 +224,7 @@ public:
 
 private:
     InftyExpressionSet set;
-    Var variableN;
+    NumVar variableN;
     std::vector<int> substitutions;
     bool unsolvable;
     VariableManager &varMan;

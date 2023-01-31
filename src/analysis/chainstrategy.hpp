@@ -15,13 +15,11 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef CHAINSTRATEGY_H
-#define CHAINSTRATEGY_H
+#pragma once
 
-#include "../its/types.hpp"
-#include "../its/itsproblem.hpp"
-#include "../util/option.hpp"
-#include "../util/proof.hpp"
+#include "types.hpp"
+#include "itsproblem.hpp"
+#include "result.hpp"
 
 
 namespace Chaining {
@@ -38,7 +36,7 @@ namespace Chaining {
      *
      * @return true iff the ITS was modified
      */
-    option<Proof> chainLinearPaths(ITSProblem &its);
+    ResultViaSideEffects chainLinearPaths(ITSProblem &its);
 
     /**
      * Applies a more involved chaining strategy to the entire ITS problem.
@@ -54,7 +52,7 @@ namespace Chaining {
      *
      * @return true iff the ITS was modified
      */
-    option<Proof> chainTreePaths(ITSProblem &its);
+    ResultViaSideEffects chainTreePaths(ITSProblem &its);
 
     /**
      * Starting from the initial location and performing a DFS traversal,
@@ -68,7 +66,7 @@ namespace Chaining {
      *
      * @return true iff the ITS was modified
      */
-    bool eliminateALocation(ITSProblem &its, std::string &eliminatedLocation);
+    ResultViaSideEffects eliminateALocation(ITSProblem &its, std::string &eliminatedLocation);
 
     /**
      * Chains all rules of the given vector (the list of successfully accelerated rules)
@@ -82,8 +80,6 @@ namespace Chaining {
      *
      * @return true iff the ITS was modified, which is the case iff acceleratedRules was non-empty.
      */
-    option<Proof> chainAcceleratedRules(ITSProblem &its, const std::set<TransIdx> &acceleratedRules);
+    ResultViaSideEffects chainAcceleratedRules(ITSProblem &its, const std::set<TransIdx> &acceleratedRules);
 
 }
-
-#endif // CHAINSTRATEGY_H

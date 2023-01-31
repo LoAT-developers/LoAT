@@ -1,18 +1,19 @@
-#ifndef VARELIMINATOR_HPP
-#define VARELIMINATOR_HPP
+#pragma once
 
-#include "../../its/itsproblem.hpp"
+#include "variablemanager.hpp"
+#include "theory.hpp"
 
 /**
  * Computes substitutions that are suitable to eliminate the given temporary variable from the rule by replacing it with its bounds.
  */
 class VarEliminator
 {
+
 public:
 
-    VarEliminator(const BoolExpr guard, const Var &N, VariableManager &varMan);
+    VarEliminator(const BoolExpr guard, const NumVar &N, VariableManager &varMan);
 
-    const std::set<Subs> getRes() const;
+    const std::set<ExprSubs> getRes() const;
 
 private:
 
@@ -27,7 +28,7 @@ private:
      * Tries to eliminate a single dependency by instantiating it with a constant bound.
      * Creates a new branch (i.e., a new entry in todoDeps) for every possible instantiation.
      */
-    const std::set<std::pair<Subs, BoolExpr>> eliminateDependency(const Subs &subs, const BoolExpr guard) const;
+    const std::set<std::pair<ExprSubs, BoolExpr>> eliminateDependency(const ExprSubs &subs, const BoolExpr guard) const;
 
     /**
      * Eliminates as many dependencies as possible by instantiating them with constant bounds.
@@ -41,27 +42,25 @@ private:
 
     VariableManager &varMan;
 
-    Var N;
+    NumVar N;
 
     /**
      * Each entry represents one branch in the search for suitable instantiations of dependencies.
      * Entries that do not allow for further instantiation are moved to todoN.
      */
-    std::stack<std::pair<Subs, BoolExpr>> todoDeps;
+    std::stack<std::pair<ExprSubs, BoolExpr>> todoDeps;
 
     /**
      * Each entry represents one possibility to instantiate dependencies exhaustively.
      * N still needs to be eliminated.
      */
-    std::set<std::pair<Subs, BoolExpr>> todoN;
+    std::set<std::pair<ExprSubs, BoolExpr>> todoN;
 
     /**
      * Substitutions that are suitable to eliminate N.
      */
-    std::set<Subs> res;
+    std::set<ExprSubs> res;
 
-    VarSet dependencies;
+    std::set<NumVar> dependencies;
 
 };
-
-#endif // VARELIMINATOR_HPP

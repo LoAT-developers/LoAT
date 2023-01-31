@@ -1,27 +1,67 @@
-#ifndef MODEL_HPP
-#define MODEL_HPP
+#pragma once
 
-#include "../expr/boolexpr.hpp"
+#include "itheory.hpp"
+#include "thset.hpp"
 
+template <ITheory... Th>
 class Model
 {
+
+    using TheTheory = Theory<Th...>;
+    using Theories = typename TheTheory::Theories;
+    using S = theory::Subs<Th...>;
+    using VarSet = typename theory::VarSet<Th...>;
+
 public:
 
-    Model(VarMap<GiNaC::numeric> vars, std::map<unsigned int, bool> constants);
+    Model() {}
+    Model(const typename TheTheory::Model &m): m(m) {}
 
-    GiNaC::numeric get(const Var &var) const;
-    bool get(unsigned int id) const;
-    bool contains(const Var &var) const;
-    bool contains(unsigned int id) const;
-    Subs toSubs() const;
+    template <ITheory T>
+    typename T::Val get(const typename T::Var &var) const {
+        return std::get<std::map<typename T::Var, typename T::Val>>(m).at(var);
+    }
 
-    friend std::ostream& operator<<(std::ostream &s, const Model &e);
+    template <ITheory T>
+    void put(const typename T::Var &var, const typename T::Val &val) {
+        std::get<std::map<typename T::Var, typename T::Val>>(m).emplace(var, val);
+    }
+
+    template <ITheory T>
+    bool contains(const typename T::Var &var) const {
+        const auto &map = std::get<std::map<typename T::Var, typename T::Val>>(m);
+        return map.find(var) != map.end();
+    }
 
 private:
 
-    VarMap<GiNaC::numeric> vars;
-    std::map<unsigned int, bool> constants;
+    template<std::size_t I = 0>
+    inline void toSubsImpl(S &subs) const {
+        if constexpr (I < std::tuple_size_v<Theories>) {
+            const auto map = std::get<I>(m);
+            for (const auto &p: map) {
+                using T = std::tuple_element_t<I, Theories>;
+                subs.put(typename S::Pair(std::pair(p.first, T::valToExpr(p.second))));
+            }
+            toSubsImpl<I+1>(subs);
+        }
+    }
+
+public:
+
+    S toSubs() const {
+        S res;
+        toSubsImpl(res);
+        return res;
+    }
+
+private:
+
+    typename TheTheory::Model m;
 
 };
 
-#endif // MODEL_HPP
+template <ITheory... Th>
+std::ostream& operator<<(std::ostream &s, const Model<Th...> &e) {
+    return s << e.toSubs();
+}

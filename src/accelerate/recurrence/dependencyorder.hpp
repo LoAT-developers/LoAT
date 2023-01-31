@@ -15,13 +15,12 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#ifndef DEPENDENCYORDER_H
-#define DEPENDENCYORDER_H
+#pragma once
 
-#include "../../its/rule.hpp"
-#include "../../its/variablemanager.hpp"
-#include "../../util/option.hpp"
-
+#include "option.hpp"
+#include "theory.hpp"
+#include "substitution.hpp"
+#include "expression.hpp"
 
 /**
  * Functions to compute an ordering on updated variables,
@@ -34,13 +33,12 @@
  * e.g., A := B+1, B := A+2.
  */
 namespace DependencyOrder {
-    /**
-     * Tries to find an order to calculate recurrence equations.
-     * Fails if there is a nontrivial set of variables whose updates depend on each other.
-     * @return list indicating the order (if successful)
-     */
-    option<std::vector<Var>> findOrder(const Subs &update);
+
+/**
+ * Tries to find an order to calculate recurrence equations.
+ * Fails if there is a nontrivial set of variables whose updates depend on each other.
+ * @return list indicating the order (if successful)
+ */
+option<std::vector<Var>> findOrder(const Subs &update);
 
 }
-
-#endif // DEPENDENCYORDER_H

@@ -1,40 +1,39 @@
 #include "proof.hpp"
-#include "../its/export.hpp"
+#include "export.hpp"
 
 #include <iostream>
 #include <string>
 
-unsigned int Proof::defaultProofLevel = 2;
-unsigned int Proof::maxProofLevel = 3;
+unsigned int Proof::defaultProofLevel = 1;
+unsigned int Proof::maxProofLevel = 2;
 unsigned int Proof::proofLevel = defaultProofLevel;
 
-void Proof::writeToFile(const std::string &file) const {
-    if (proofLevel > 0) {
-        std::ofstream myfile;
-        myfile.open(file);
-        for (const auto &l: proof) {
-            myfile << l.second << std::endl;
+void Proof::print(unsigned level) const {
+    if (level <= proofLevel) {
+        std::stringstream indentBuilder;
+        for (unsigned i = 0; i < level - 1; ++i) {
+            indentBuilder << "\t";
         }
-        myfile.close();
-    }
-}
-
-void Proof::print() const {
-    if (proofLevel > 0) {
+        std::string indent = indentBuilder.str();
         for (const auto &l: proof) {
-            if (Config::Output::Colors) {
-                switch (l.first) {
-                case None: std::cout << Config::Color::None;
-                    break;
-                case Result: std::cout << Config::Color::Result;
-                    break;
-                case Section: std::cout << Config::Color::Section;
-                    break;
-                case Headline: std::cout << Config::Color::Headline;
-                    break;
+            if (std::holds_alternative<ProofStep>(l)) {
+                ProofStep ps = std::get<ProofStep>(l);
+                if (Config::Output::Colors) {
+                    switch (ps.first) {
+                    case None: std::cout << Config::Color::None;
+                        break;
+                    case Result: std::cout << Config::Color::Result;
+                        break;
+                    case Section: std::cout << Config::Color::Section;
+                        break;
+                    case Headline: std::cout << Config::Color::Headline;
+                        break;
+                    }
                 }
+                std::cout << indent << ps.second << std::endl;
+            } else {
+                std::get<Proof>(l).print(level + 1);
             }
-            std::cout << l.second << std::endl;
         }
     }
 }
@@ -54,7 +53,7 @@ void Proof::append(const Style &style, std::string s) {
         std::vector<std::string> lines;
         boost::split(lines, s, boost::is_any_of("\n"));
         for (const std::string &l: lines) {
-            proof.push_back({style, l});
+            proof.emplace_back(ProofStep{style, l});
         }
     }
 }
@@ -154,19 +153,22 @@ void Proof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule,
     append(s);
 }
 
-void Proof::storeSubProof(const Proof &subProof, const std::string &technique) {
-    switch (proofLevel) {
-        case 2: {
-            const std::string &file = std::tmpnam(nullptr);
-            subProof.writeToFile(file + ".txt");
-            append("Sub-proof via " + technique + " written to file://" + file + ".txt");
-            break;
-        }
-        case 3: {
-            append("Sub-proof via " + technique + ":");
-            concat(subProof);
-            break;
-        }
+void Proof::push() {
+    pop_stack.push(proof.size());
+}
+
+void Proof::pop() {
+    const unsigned current_size = proof.size();
+    const unsigned new_size = pop_stack.top();
+    pop_stack.pop();
+    for (unsigned i = 0; i < current_size - new_size; ++i) {
+        proof.pop_back();
+    }
+}
+
+void Proof::storeSubProof(Proof subProof) {
+    if (proofLevel > 1) {
+        proof.push_back(subProof);
     }
 }
 

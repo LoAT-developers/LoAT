@@ -1,16 +1,14 @@
-#ifndef ASYMPTOTICBOUND_H
-#define ASYMPTOTICBOUND_H
+#pragma once
 
 #include <string>
 #include <vector>
 
-#include "../expr/expression.hpp"
-#include "../expr/guardtoolbox.hpp"
-#include "../its/variablemanager.hpp"
+#include "numexpression.hpp"
+#include "variablemanager.hpp"
 #include "inftyexpression.hpp"
 #include "limitproblem.hpp"
-#include "../util/proof.hpp"
-
+#include "proof.hpp"
+#include "complexity.hpp"
 
 class AsymptoticBound {
 private:
@@ -20,22 +18,22 @@ private:
             : complexity(), upperBound(0), lowerBound(0), inftyVars(0) {
         }
 
-        Subs solution;
+        ExprSubs solution;
         Complexity complexity;
         int upperBound;
         int lowerBound;
         int inftyVars;
     };
 
-    AsymptoticBound(VarMan &varMan, Guard guard, Expr cost, bool finalCheck, unsigned int timeout);
+    AsymptoticBound(VarMan &varMan, Conjunction<IntTheory> guard, Expr cost, bool finalCheck, unsigned int timeout);
 
     void initLimitVectors();
     void normalizeGuard();
     void createInitialLimitProblem(VariableManager &varMan);
     void propagateBounds();
-    Subs calcSolution(const LimitProblem &limitProblem);
-    int findUpperBoundforSolution(const LimitProblem &limitProblem, const Subs &solution);
-    int findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const Subs &solution);
+    ExprSubs calcSolution(const LimitProblem &limitProblem);
+    int findUpperBoundforSolution(const LimitProblem &limitProblem, const ExprSubs &solution);
+    int findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ExprSubs &solution);
     void removeUnsatProblems();
     bool solveViaSMT(Complexity currentRes);
     bool solveLimitProblem();
@@ -58,10 +56,10 @@ private:
 
 private:
     VariableManager &varMan;
-    const Guard guard;
+    const Conjunction<IntTheory> guard;
     const Expr cost;
     bool finalCheck;
-    Guard normalizedGuard;
+    Conjunction<IntTheory> normalizedGuard;
     ComplexityResult bestComplexity;
     Proof proof;
     unsigned int timeout;
@@ -74,7 +72,7 @@ private:
     std::vector<LimitProblem> solvedLimitProblems;
     LimitProblem currentLP;
 
-    std::vector<Subs> substitutions;
+    std::vector<ExprSubs> substitutions;
 
     std::vector<LimitVector> toApply;
 
@@ -104,26 +102,24 @@ public:
      * @param finalCheck enables more sophisticated backtracking and uses Timeout::hard
      */
     static Result determineComplexity(VarMan &varMan,
-                                      const Guard &guard,
+                                      const Conjunction<IntTheory> &guard,
                                       const Expr &cost,
                                       bool finalCheck = false,
                                       const Complexity &currentRes = Complexity::Const,
                                       unsigned int timeout = Config::Smt::LimitTimeout);
 
     static Result determineComplexityViaSMT(VarMan &varMan,
-                                            const Guard &guard,
+                                            const Conjunction<IntTheory> &guard,
                                             const Expr &cost,
                                             bool finalCheck = false,
                                             Complexity currentRes = Complexity::Const,
                                             unsigned int timeout = Config::Smt::LimitTimeout);
 
     static Result determineComplexityViaSMT(VarMan &varMan,
-                                            const BoolExpr guard,
+                                            const BExpr<IntTheory> guard,
                                             const Expr &cost,
                                             bool finalCheck = false,
                                             Complexity currentRes = Complexity::Const,
                                             unsigned int timeout = Config::Smt::LimitTimeout);
 
 };
-
-#endif //ASYMPTOTICBOUND_H

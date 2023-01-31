@@ -26,15 +26,19 @@ YicesError::YicesError() : std::exception() {
 YicesContext::~YicesContext() { }
 
 term_t YicesContext::buildVar(const std::string &name, Expr::Type type) {
-    term_t res = (type == Expr::Int) ? yices_new_uninterpreted_term(yices_int_type()) : yices_new_uninterpreted_term(yices_real_type());
+    type_t t;
+    switch (type) {
+    case Expr::Int: t = yices_int_type();
+        break;
+    case Expr::Rational: t = yices_real_type();
+        break;
+    case Expr::Bool: t = yices_bool_type();
+        break;
+    default: throw std::invalid_argument("unknown type");
+    }
+    term_t res = yices_new_uninterpreted_term(t);
     yices_set_term_name(res, name.c_str());
     varNames[res] = name;
-    return res;
-}
-
-term_t YicesContext::buildConst(unsigned int id) {
-    term_t res = yices_new_uninterpreted_term(yices_bool_type());
-    yices_set_term_name(res, ("x" + to_string(id)).c_str());
     return res;
 }
 
@@ -120,12 +124,6 @@ bool YicesContext::isMul(const term_t &e) const {
     return yices_term_is_product(e) || (yices_term_num_children(e) == 1 && yices_term_is_sum(e));
 }
 
-bool YicesContext::isDiv(const term_t &e) const {
-    term_constructor ctor = yices_term_constructor(e);
-    assert(ctor != YICES_RDIV);
-    return ctor == YICES_IDIV;
-}
-
 bool YicesContext::isPow(const term_t &e) const {
     // yices does not support exponentiation
     // it has a special internal representation for polynomials, though
@@ -143,10 +141,6 @@ bool YicesContext::isRationalConstant(const term_t &e) const {
 
 bool YicesContext::isInt(const term_t &e) const {
     return yices_is_int_atom(e);
-}
-
-bool YicesContext::isITE(const term_t &e) const {
-    return yices_term_constructor(e) == YICES_ITE_TERM;
 }
 
 long YicesContext::toInt(const term_t &e) const {
@@ -187,11 +181,6 @@ term_t YicesContext::lhs(const term_t &e) const {
 
 term_t YicesContext::rhs(const term_t &e) const {
     return yices_term_child(e, 1);
-}
-
-bool YicesContext::isLit(const term_t &e) const {
-    term_constructor ctor = yices_term_constructor(e);
-    return ctor == YICES_ARITH_GE_ATOM || ctor == YICES_EQ_TERM;
 }
 
 bool YicesContext::isTrue(const term_t &e) const {

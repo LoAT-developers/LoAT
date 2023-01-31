@@ -1,9 +1,8 @@
-#ifndef INFTYEXPRESSION_H
-#define INFTYEXPRESSION_H
+#pragma once
 
 #include <set>
 
-#include "../expr/expression.hpp"
+#include "numexpression.hpp"
 
 /**
  * This enum represents a direction. POS stands for POS_INF or POS_CONS.
@@ -18,7 +17,7 @@ extern const char* DirectionNames[];
 class InftyExpression : public Expr {
 public:
     /**
-     * Creates a new InftyExpression from the given ginac expression and direction.
+     * Creates a new InftyExpression from the given expression and direction.
      */
     InftyExpression(const Expr &other, Direction dir);
 
@@ -45,6 +44,10 @@ private:
 
 std::ostream& operator<<(std::ostream &os, const InftyExpression &ie);
 
-typedef std::set<InftyExpression, Expr_is_less> InftyExpressionSet;
+/**
+ * just compares the expressions, not their labels, such that the
+ * set of labeled expressions cannot contain duplicate expressions
+ */
+bool operator<(const InftyExpression &x, const InftyExpression &y);
 
-#endif // INFTYEXPRESSION_H
+typedef std::set<InftyExpression> InftyExpressionSet;

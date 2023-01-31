@@ -17,9 +17,9 @@
 
 #include "chain.hpp"
 
-#include "../smt/smt.hpp"
-#include "../config.hpp"
-#include "../expr/boolexpr.hpp"
+#include "smtfactory.hpp"
+#include "config.hpp"
+#include "boolexpr.hpp"
 
 using namespace std;
 
@@ -32,11 +32,11 @@ using namespace std;
  * Helper for chainRules. Checks if the given (chained) guard is satisfiable.
  */
 static bool checkSatisfiability(const BoolExpr newGuard, VariableManager &varMan) {
-    auto smtRes = Smt::check(newGuard, varMan);
+    auto smtRes = SmtFactory::check(newGuard, varMan);
 
     // If we still get "unknown", we interpret it as "sat", so we prefer to chain if unsure.
     // This is especially needed for exponentials, since z3 cannot handle them well.
-    return smtRes != Smt::Unsat;
+    return smtRes != Unsat;
 }
 
 
@@ -57,7 +57,7 @@ static option<RuleLhs> chainLhss(VarMan &varMan, const RuleLhs &firstLhs, const 
     BoolExpr newGuard = firstLhs.getGuard() & secondLhs.getGuard()->subs(firstUpdate);
 
     // Add the costs, but apply first rule's update to second cost
-    Expr newCost = firstLhs.getCost() + secondLhs.getCost().subs(firstUpdate);
+    Expr newCost = firstLhs.getCost() + secondLhs.getCost().subs(firstUpdate.get<IntTheory>());
 
     // As a small optimization: Keep a NONTERM symbol (easier to identify NONTERM cost later on)
     if (firstLhs.getCost().isNontermSymbol() || secondLhs.getCost().isNontermSymbol()) {
@@ -93,7 +93,7 @@ static option<LinearRule> chainLinearRules(VarMan &varMan, const LinearRule &fir
         return {};
     }
 
-    return LinearRule(newLhs.get(), RuleRhs(second.getRhsLoc(), second.getUpdate().compose(first.getUpdate())));
+    return LinearRule(newLhs.get(), RuleRhs(second.getRhsLoc(), substitution::compose(second.getUpdate(), first.getUpdate())));
 }
 
 
@@ -127,7 +127,7 @@ static option<Rule> chainRulesOnRhs(VarMan &varMan, const Rule &first, unsigned 
 
     // insert the rhss of second, chained with first's update
     for (const RuleRhs &secondRhs : second.getRhss()) {
-        newRhss.push_back(RuleRhs(secondRhs.getLoc(), secondRhs.getUpdate().compose(firstUpdate)));
+        newRhss.push_back(RuleRhs(secondRhs.getLoc(), substitution::compose(secondRhs.getUpdate(), firstUpdate)));
     }
 
     // keep the last rhss of first (after the one we want to chain)
@@ -194,5 +194,5 @@ option<Rule> Chaining::chainRules(VarMan &varMan, const Rule &first, const Rule 
 option<LinearRule> Chaining::chainRules(VarMan &varMan, const LinearRule &first, const LinearRule &second,
                                         bool checkSat)
 {
-    return chainLinearRules(varMan, first.toLinear(), second.toLinear(), checkSat);
+    return chainLinearRules(varMan, first, second, checkSat);
 }

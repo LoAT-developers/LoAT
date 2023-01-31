@@ -1,10 +1,7 @@
-#ifndef RESULT_H
-#define RESULT_H
+#pragma once
 
 enum Status {
     Success,
     PartialSuccess,
     Failure,
 };
-
-#endif // RESULT_H

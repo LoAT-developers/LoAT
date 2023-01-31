@@ -36,6 +36,10 @@ namespace Config {
         bool Colors = true;
     }
 
+    namespace Input {
+        Format format = Koat;
+    }
+
     namespace Color {
         // Proof output
         const std::string Section = "\033[0;4;33m"; // underlined yellow
@@ -72,12 +76,17 @@ namespace Config {
         const unsigned MaxExponentWithoutPow = 5;
     }
 
+    namespace Qelim {
+        const bool useRedlog = false;
+    }
+
     // Loop acceleration technique
     namespace LoopAccel {
         // If KeepTempVarForIterationCount is false, then "k" is instantiated by its upper bounds.
         // If there are several upperbounds, several rules are created.
         // To avoid rule explosion, the propagation is only performed up to this number of upperbounds.
         const unsigned MaxUpperboundsForPropagation = 3;
+        const AccelerationTechnique accelerationTechnique = Calculus;
     }
 
     namespace Accel {
@@ -118,9 +127,13 @@ namespace Config {
         const unsigned int ProblemDiscardSize = 10;
     }
 
+    namespace ADCL {
+        bool IterativeDeepening = false;
+    }
+
     namespace Analysis {
 
-        std::vector<Mode> modes { Complexity, RankingFunction, NonTermination, Acceleration, RecurrentSet, Smt2Export, CIntExport };
+        std::vector<Mode> modes { Complexity, NonTermination, Reachability, Satisfiability };
 
         // Whether to enable pruning to reduce the number of rules.
         // Pruning works by greedily keeping rules with a high complexity.
@@ -135,15 +148,9 @@ namespace Config {
                 break;
             case NonTermination: return "non_termination";
                 break;
-            case Acceleration: return "acceleration";
+            case Reachability: return "reachability";
                 break;
-            case RecurrentSet: return "recurrent_set";
-                break;
-            case RankingFunction: return "ranking_function";
-                break;
-            case Smt2Export: return "smt2export";
-                break;
-            case CIntExport: return "c_int_export";
+            case Satisfiability: return "satisfiability";
                 break;
             default:
                 throw std::invalid_argument("unknown mode");
@@ -154,8 +161,20 @@ namespace Config {
             return mode == NonTermination;
         }
 
+        bool reachability() {
+            return mode == Reachability;
+        }
+
+        bool satisfiability(){
+            return mode == Satisfiability;
+        }
+
         bool complexity() {
             return mode == Complexity;
+        }
+
+        bool tryNonterm() {
+            return nonTermination() || complexity();
         }
 
     }

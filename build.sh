@@ -47,13 +47,13 @@ function bundle {
         rm $OUT
     fi
 
-    print "building LoAT..."
-    ./compile_static_binary
-    check "build"
-
     if [[ -d $BUNDLE ]]; then
         rm -r $BUNDLE
     fi
+
+    print "building LoAT..."
+    ./compile_static_binary
+    check "build"
 
     print "creating bundle..."
     cp -r $TEMPLATE $BUNDLE

@@ -1,0 +1,4 @@
+add_subdirectory(koatParser)
+add_subdirectory(smt2Parser)
+add_subdirectory(redlog)
+add_subdirectory(chc)

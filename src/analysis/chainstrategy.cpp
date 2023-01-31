@@ -16,7 +16,7 @@
  */
 
 #include "chainstrategy.hpp"
-
+#include "complexity.hpp"
 #include "chain.hpp"
 #include "preprocess.hpp"
 
@@ -73,17 +73,8 @@ static Proof eliminateLocationByChaining(ITSProblem &its, LocationIdx loc,
                     assert(optRule); // this only happens for simple loops, which we disallow
                 }
 
-                // Simplify the guard (chaining often introduces trivial constraints)
-                Rule newRule = optRule.get();
-                proof.chainingProof(inRule, outRule, newRule, its);
-
-                option<Rule> simplified = Preprocess::simplifyGuard(newRule, its);
-                if (simplified) {
-                    proof.ruleTransformationProof(newRule, "simplification", simplified.get(), its);
-                    newRule = simplified.get();
-                }
-
-                its.addRule(newRule);
+                proof.chainingProof(inRule, outRule, *optRule, its);
+                its.addRule(*optRule);
 
 
             } else {
@@ -93,7 +84,13 @@ static Proof eliminateLocationByChaining(ITSProblem &its, LocationIdx loc,
 
         if (keepUnchainable && !wasChainedWithAll) {
             // Only keep the rule if it might give non-trivial complexity
-            if (inRule.getCost().toComplexity() > Complexity::Const) {
+            bool keep;
+            if (Config::Analysis::complexity()) {
+                keep = toComplexity(inRule.getCost()) > Complexity::Const;
+            } else {
+                keep = inRule.getCost().isNontermSymbol();
+            }
+            if (keep) {
                 keepRules.insert(in);
             }
         }
@@ -134,7 +131,7 @@ static Proof eliminateLocationByChaining(ITSProblem &its, LocationIdx loc,
  * Implementation of callRepeatedlyOnEachNode
  */
 template <typename F>
-static bool callOnEachNodeImpl(ITSProblem &its, Proof &proof, F function, LocationIdx node, bool repeat, set<LocationIdx> &visited) {
+static bool callOnEachNodeImpl(ITSProblem &its, ResultViaSideEffects &proof, F function, LocationIdx node, bool repeat, set<LocationIdx> &visited) {
     if (!visited.insert(node).second) {
         return false;
     }
@@ -173,7 +170,7 @@ static bool callOnEachNodeImpl(ITSProblem &its, Proof &proof, F function, Locati
  * @returns true iff at least one call of the given function returned true.
  */
 template <typename F>
-static bool callOnEachNode(ITSProblem &its, Proof &proof, F function, bool repeat) {
+static bool callOnEachNode(ITSProblem &its, ResultViaSideEffects &proof, F function, bool repeat) {
     set<LocationIdx> visited;
     return callOnEachNodeImpl(its, proof, function, its.getInitialLocation(), repeat, visited);
 }
@@ -210,8 +207,8 @@ static bool isOnLinearPath(ITSProblem &its, LocationIdx node) {
 // ##  Chaining Strategies  ##
 // ###########################
 
-option<Proof> Chaining::chainLinearPaths(ITSProblem &its) {
-    auto implementation = [](ITSProblem &its, Proof &proof, LocationIdx node) {
+ResultViaSideEffects Chaining::chainLinearPaths(ITSProblem &its) {
+    auto implementation = [](ITSProblem &its, ResultViaSideEffects &proof, LocationIdx node) {
         bool changed = false;
         for (LocationIdx succ : its.getSuccessorLocations(node)) {
 
@@ -224,21 +221,19 @@ option<Proof> Chaining::chainLinearPaths(ITSProblem &its) {
             if (isOnLinearPath(its, succ)) {
                 changed = true;
                 proof.concat(eliminateLocationByChaining(its, succ, true));
+                proof.succeed();
             }
         }
         return changed;
     };
-    Proof proof;
-    if (callOnEachNode(its, proof, implementation, true)) {
-        return {proof};
-    } else {
-        return {};
-    }
+    ResultViaSideEffects proof;
+    callOnEachNode(its, proof, implementation, true);
+    return proof;
 }
 
 
-option<Proof> Chaining::chainTreePaths(ITSProblem &its) {
-    auto implementation = [](ITSProblem &its, Proof &proof, LocationIdx node) {
+ResultViaSideEffects Chaining::chainTreePaths(ITSProblem &its) {
+    auto implementation = [](ITSProblem &its, ResultViaSideEffects &proof, LocationIdx node) {
         bool changed = false;
         for (LocationIdx succ : its.getSuccessorLocations(node)) {
 
@@ -255,6 +250,7 @@ option<Proof> Chaining::chainTreePaths(ITSProblem &its) {
             // Chain transitions from node to succ with all transitions from succ.
             if (its.hasTransitionsFrom(succ)) {
                 proof.concat(eliminateLocationByChaining(its, succ, true));
+                proof.succeed();
                 changed = true;
             }
         }
@@ -266,21 +262,19 @@ option<Proof> Chaining::chainTreePaths(ITSProblem &its) {
     // We then call the implementation on h (f's new child), which may eliminate u.
     // This avoids the exponential blowup, so we can first accelerate rules or
     // prune rules before calling this method again.
-    Proof proof;
-    if (callOnEachNode(its, proof, implementation, false)) {
-        return {proof};
-    } else {
-        return {};
-    }
+    ResultViaSideEffects proof;
+    callOnEachNode(its, proof, implementation, false);
+    return proof;
 }
 
 
 /**
  * Implementation of eliminateALocation
  */
-static bool eliminateALocationImpl(ITSProblem &its, LocationIdx node, set<LocationIdx> &visited, string &eliminated) {
+static ResultViaSideEffects eliminateALocationImpl(ITSProblem &its, LocationIdx node, set<LocationIdx> &visited, string &eliminated) {
+    ResultViaSideEffects proof;
     if (!visited.insert(node).second) {
-        return false;
+        return proof;
     }
 
     bool hasIncoming = its.hasTransitionsTo(node);
@@ -290,21 +284,23 @@ static bool eliminateALocationImpl(ITSProblem &its, LocationIdx node, set<Locati
     // If we cannot eliminate node, continue with its children (DFS traversal)
     if (hasSimpleLoop || its.isInitialLocation(node) || !hasIncoming || !hasOutgoing) {
         for (LocationIdx succ : its.getSuccessorLocations(node)) {
-            if (eliminateALocationImpl(its, succ, visited, eliminated)) {
-                return true;
+            const ResultViaSideEffects proof = eliminateALocationImpl(its, succ, visited, eliminated);
+            if (proof) {
+                return proof;
             }
         }
-        return false;
+        return proof;
     }
 
     // Otherwise, we can eliminate node
     eliminated = its.getPrintableLocationName(node);
-    eliminateLocationByChaining(its, node, true, true);
-    return true;
+    proof.concat(eliminateLocationByChaining(its, node, true, true));
+    proof.succeed();
+    return proof;
 }
 
 
-bool Chaining::eliminateALocation(ITSProblem &its, string &eliminatedLocation) {
+ResultViaSideEffects Chaining::eliminateALocation(ITSProblem &its, string &eliminatedLocation) {
     set<LocationIdx> visited;
     return eliminateALocationImpl(its, its.getInitialLocation(), visited, eliminatedLocation);
 }
@@ -314,9 +310,9 @@ bool Chaining::eliminateALocation(ITSProblem &its, string &eliminatedLocation) {
 // ##  Chaining after Acceleration  ##
 // ###################################
 
-option<Proof> Chaining::chainAcceleratedRules(ITSProblem &its, const set<TransIdx> &acceleratedRules) {
-    if (acceleratedRules.empty()) return {};
-    Proof proof;
+ResultViaSideEffects Chaining::chainAcceleratedRules(ITSProblem &its, const set<TransIdx> &acceleratedRules) {
+    ResultViaSideEffects proof;
+    if (acceleratedRules.empty()) return proof;
     set<TransIdx> successfullyChained;
 
     // Find all lhs locations of accelerated rules, so we can iterate over them.
@@ -353,10 +349,11 @@ option<Proof> Chaining::chainAcceleratedRules(ITSProblem &its, const set<TransId
                 if (optRule) {
                     // Simplify the rule (can help to eliminate temporary variables of the metering function)
                     proof.chainingProof(incomingRule, accelRule, optRule.get(), its);
-                    option<Rule> simplified = Preprocess::simplifyRule(its, optRule.get(), true);
+                    Result<Rule> simplified = Preprocess::simplifyRule(its, optRule.get());
                     Rule newRule = simplified ? simplified.get() : optRule.get();
                     if (simplified) {
-                        proof.ruleTransformationProof(optRule.get(), "simplification", newRule, its);
+                        proof.ruleTransformationProof(*optRule, "simplification", newRule, its);
+                        proof.storeSubProof(simplified.getProof());
                     }
 
                     // Add the chained rule
@@ -365,9 +362,10 @@ option<Proof> Chaining::chainAcceleratedRules(ITSProblem &its, const set<TransId
                 }
             }
             its.replaceRules({accel}, replacement);
+            proof.succeed();
         }
         proof.deletionProof(deleted);
     }
 
-    return {proof};
+    return proof;
 }
