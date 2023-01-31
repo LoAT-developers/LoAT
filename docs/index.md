@@ -6,9 +6,13 @@ LoAT (**Lo**op **A**cceleration **T**ool) is a fully automated tool to analyze *
 For transition systems, it supports the inference of **lower bounds** on the worst-case runtime complexity and **non-termination proving**.
 For CHCs, it can prove **unsatisfiability**.
 
-LoAT is based on a [calculus for modular loop acceleration](https://doi.org/10.1007/978-3-030-45190-5_4).
+LoAT is based on a [calculus for modular *loop acceleration*](https://doi.org/10.1007/978-3-030-45190-5_4).
+Loop acceleration techniques transform a relation (described by a conjunctive, quantifier-free first-order formula) into a first-order formula that describes its transitive closure.
+To lift loop acceleration from such relations to more complex formalisms (like transition systems or CHCs), earlier versions of LoAT used the framework described in the paper [Inferring Lower Runtime Bounds for Integer Programs](https://doi.org/10.1145/3410331).
+Current version of LoAT use a novel calculus called *ADCL* instead.
+Details on ADCL will be available soon.
 
-It uses the recurrence solver [PURRS](http://www.cs.unipr.it/purrs/), the SMT solvers [Yices](https://yices.csl.sri.com/) and [Z3](https://github.com/Z3Prover/z3/), and the automata-library [libFAUDES](https://www.fgdes.tf.fau.de/faudes/index.html).
+LoAT uses the recurrence solver [PURRS](http://www.cs.unipr.it/purrs/), the SMT solvers [Yices](https://yices.csl.sri.com/) and [Z3](https://github.com/Z3Prover/z3/), and the automata-library [libFAUDES](https://www.fgdes.tf.fau.de/faudes/index.html).
 
 # Downloading LoAT
 
@@ -58,6 +62,16 @@ The techniques implemented in LoAT are described in the following publications (
   F. Frohn\
   TACAS '20\
   Winner of the EASST Best Paper Award
+* [A Calculus for Modular Loop Acceleration and Non-Termination Proofs](https://doi.org/10.1007/s10009-022-00670-2)
+  F. Frohn and C. Fuhs\
+  International Journal on Software Tools for Technology Transfer, volume 24
+* [Proving Non-Termination and Lower Runtime Bounds with LoAT (System Description)](https://doi.org/10.1007/978-3-031-10769-6_41)
+  F.Frohn and J. Giesl\
+  IJCAR '22
+
+# Citing LoAT
+
+If you refer to LoAT in your paper, please cite our [IJCAR '22 system description](https://doi.org/10.1007/978-3-031-10769-6_41)
 
 # Awards
 
@@ -67,8 +81,10 @@ In 2020, LoAT competed as standalone tool at the [*Termination and Complexity Co
 * 2nd place in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2020*](http://termination-portal.org/wiki/Termination_Competition_2020)
 * best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2021*](http://termination-portal.org/wiki/Termination_Competition_2021)
 * 2nd place in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2021*](http://termination-portal.org/wiki/Termination_Competition_2021)
+* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
+* 2nd place in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
 
-Since 2016, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT as backend to prove lower bounds on the runtime complexity of integer transition systems.
+From 2016 until the last run of this category in 2019, [AProVE](http://aprove.informatik.rwth-aachen.de/) was using LoAT as backend to prove lower bounds on the runtime complexity of integer transition systems.
 In this constellation, AProVE and LoAT won the following awards:
 
 * 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2016*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2016)
@@ -80,6 +96,8 @@ Since 2021, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in 
 In this constellation AProVE, LoAT, and T2 won the following awards:
 
 * 2nd place in the Category Termination at the [*Competition on Software Verification 2022*](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
+* 1st place in the Category *Termination of C programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
+* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
 
 # Build
 
