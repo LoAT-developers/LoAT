@@ -2,12 +2,13 @@
     <title>LoAT</title>
 </head>
 
-LoAT (**Lo**op **A**cceleration **T**ool, formerly known as **Lo**wer Bounds **A**nalysis **T**ool) is a fully automated tool to analyze programs operating on integers.
-Currently, it supports the inference of **lower bounds** on the worst-case runtime complexity and **non-termination proving**.
+LoAT (**Lo**op **A**cceleration **T**ool, formerly known as **Lo**wer Bounds **A**nalysis **T**ool) is a fully automated tool to analyze *Transition Systems* and linear *Constrained Horn Clauses (CHCs)* with integer variables.
+For transition systems, it supports the inference of **lower bounds** on the worst-case runtime complexity and **non-termination proving**.
+For CHCs, it can prove **unsatisfiability**.
 
-LoAT uses a [calculus for modular loop acceleration](https://doi.org/10.1007/978-3-030-45190-5_4) and a variation of ranking functions to deduce lower bounds and to prove non-termination.
+LoAT is based on a [calculus for modular loop acceleration](https://doi.org/10.1007/978-3-030-45190-5_4).
 
-The tool is based on the recurrence solver [PURRS](http://www.cs.unipr.it/purrs/) and the SMT solvers [Yices](https://yices.csl.sri.com/) and [Z3](https://github.com/Z3Prover/z3/).
+It uses the recurrence solver [PURRS](http://www.cs.unipr.it/purrs/), the SMT solvers [Yices](https://yices.csl.sri.com/) and [Z3](https://github.com/Z3Prover/z3/), and the automata-library [libFAUDES](https://www.fgdes.tf.fau.de/faudes/index.html).
 
 # Downloading LoAT
 
@@ -16,8 +17,9 @@ Older releases can be found [here](https://github.com/aprove-developers/LoAT/rel
 
 # Input Formats
 
-To analyze programs with LoAT, they need to be represented as *Integer Transition Systems*.
-It supports the most common formats for such systems.
+## Integer Transition Systems
+
+LoAT supports the most common formats for *Integer Transition Systems*.
 
 ## SMTLIB
 
@@ -35,9 +37,9 @@ Here, `A^2` and `A^2+B` are lower and upper bounds on the cost of the rule.
 The upper bound is ignored by LoAT.
 The lower bound has to be non-negative for every model of the transition's guard.
 
-## T2
+## Constrained Horn Clauses
 
-LoAT also comes with experimental support for the native input format of [T2](https://github.com/mmjb/T2).
+LoAT can parse the [SMTLIB-format](https://chc-comp.github.io/format.html) used at the annual [*CHC-COMP*](https://chc-comp.github.io/).
 
 # Publications
 
