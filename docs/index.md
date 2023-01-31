@@ -7,9 +7,9 @@ For transition systems, it supports the inference of **lower bounds** on the wor
 For CHCs, it can prove **unsatisfiability**.
 
 LoAT is based on a [calculus for modular *loop acceleration*](https://doi.org/10.1007/978-3-030-45190-5_4).
-Loop acceleration techniques transform a relation (described by a conjunctive, quantifier-free first-order formula) into a first-order formula that describes its transitive closure.
-To lift loop acceleration from such relations to more complex formalisms (like transition systems or CHCs), earlier versions of LoAT used the framework described in the paper [Inferring Lower Runtime Bounds for Integer Programs](https://doi.org/10.1145/3410331).
-Current version of LoAT use a novel calculus called *ADCL* instead.
+Loop acceleration techniques transform certain simple relations into first-order formulas that describe their transitive closures.
+To lift loop acceleration to more complex formalisms (like transition systems or CHCs), earlier versions of LoAT used the framework described in [this paper](https://doi.org/10.1145/3410331).
+Current versions use a novel calculus called *ADCL* instead.
 Details on ADCL will be available soon.
 
 LoAT uses the recurrence solver [PURRS](http://www.cs.unipr.it/purrs/), the SMT solvers [Yices](https://yices.csl.sri.com/) and [Z3](https://github.com/Z3Prover/z3/), and the automata-library [libFAUDES](https://www.fgdes.tf.fau.de/faudes/index.html).
