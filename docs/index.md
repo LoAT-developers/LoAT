@@ -7,7 +7,7 @@ For transition systems, it supports the inference of **lower bounds** on the wor
 For CHCs, it can prove **unsatisfiability**.
 
 LoAT is based on a [calculus for modular *loop acceleration*](https://doi.org/10.1007/978-3-030-45190-5_4).
-Loop acceleration techniques transform certain simple relations into first-order formulas that describe their transitive closures.
+Loop acceleration transforms certain simple relations into first-order formulas that describe their transitive closures.
 To lift loop acceleration to more complex formalisms (like transition systems or CHCs), earlier versions of LoAT used the framework described in [this paper](https://doi.org/10.1145/3410331).
 Current versions use a novel calculus called *ADCL* instead.
 Details on ADCL will be available soon.
