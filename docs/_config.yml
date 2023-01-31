@@ -1,6 +1,6 @@
 title: <img src="./logo.svg" alt="LoAT">
 email: florian.frohn@cs.rwth-aachen.de
 description: >- # this means to ignore newlines until "baseurl:"
-  The Loop Acceleration Tool (LoAT) is a powerful tool for proving non-termination and worst-case lower bounds for programs operating on integers.
+  The Loop Acceleration Tool (LoAT) is a powerful tool for proving unsatisfiability of CHCs, and non-termination and worst-case lower bounds for integers transition systems.
 github_username:  ffrohn
 theme: jekyll-theme-cayman
