@@ -2,7 +2,7 @@
     <title>LoAT</title>
 </head>
 
-LoAT (**Lo**op **A**cceleration **T**ool, formerly known as **Lo**wer Bounds **A**nalysis **T**ool) is a fully automated tool to analyze *Transition Systems* and linear *Constrained Horn Clauses (CHCs)* with integer variables.
+LoAT (**Lo**op **A**cceleration **T**ool) is a fully automated tool to analyze *Transition Systems* and linear *Constrained Horn Clauses (CHCs)* with integer variables.
 For transition systems, it supports the inference of **lower bounds** on the worst-case runtime complexity and **non-termination proving**.
 For CHCs, it can prove **unsatisfiability**.
 
