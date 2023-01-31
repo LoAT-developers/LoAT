@@ -62,10 +62,10 @@ The techniques implemented in LoAT are described in the following publications (
   F. Frohn\
   TACAS '20\
   Winner of the EASST Best Paper Award
-* [A Calculus for Modular Loop Acceleration and Non-Termination Proofs](https://doi.org/10.1007/s10009-022-00670-2)
+* [A Calculus for Modular Loop Acceleration and Non-Termination Proofs](https://doi.org/10.1007/s10009-022-00670-2)\
   F. Frohn and C. Fuhs\
   International Journal on Software Tools for Technology Transfer, volume 24
-* [Proving Non-Termination and Lower Runtime Bounds with LoAT (System Description)](https://doi.org/10.1007/978-3-031-10769-6_41)
+* [Proving Non-Termination and Lower Runtime Bounds with LoAT (System Description)](https://doi.org/10.1007/978-3-031-10769-6_41)\
   F.Frohn and J. Giesl\
   IJCAR '22
 
