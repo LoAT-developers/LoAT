@@ -2,6 +2,7 @@
     <title>LoAT</title>
     <style>
     p {text-align: justify;}
+    </style>
 </head>
 
 LoAT (**Lo**op **A**cceleration **T**ool) is a fully automated tool to analyze *Transition Systems* and linear *Constrained Horn Clauses (CHCs)* with integer variables.
