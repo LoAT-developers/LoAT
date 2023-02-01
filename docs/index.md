@@ -24,6 +24,14 @@ Older releases can be found [here](https://github.com/aprove-developers/LoAT/rel
 
 # Using LoAT
 
+To choose the goal of your analysis, please use one of the following command-line option
+<ul>
+    <li>`--mode non_termination` for proving non-termination</li>
+    <li>`--mode complexity` for proving lower bounds on the worst-case runtime complexity</li>
+    <li>`--mode reachability` for proving reachability of error states, which corresponds to unsatisfiability of CHCs</li>
+</ul>
+Currently, reachability / unsatisfiability is supported for CHCs only, as LoAT's input formats for transition systems do not allow for specifying error states.
+
 ## Input Formats
 
 ### Integer Transition Systems
