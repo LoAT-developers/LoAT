@@ -22,17 +22,21 @@ LoAT uses the recurrence solver [PURRS](http://www.cs.unipr.it/purrs/), the SMT 
 [Here](https://github.com/loat-developers/LoAT/releases) you can find the latests releases of LoAT.
 Older releases can be found [here](https://github.com/aprove-developers/LoAT/releases).
 
-# Input Formats
+# Using LoAT
 
-## Integer Transition Systems
+## Input Formats
+
+### Integer Transition Systems
 
 LoAT supports the most common formats for *Integer Transition Systems*.
 
-## SMTLIB
+#### SMTLIB
 
 LoAT can parse the [SMTLIB-format](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/SMTPushdownPrograms.pdf) used in the category *Termination of Integer Transition Systems* at the annual [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition).
 
-## KoAT
+To use this format, please use the command-line option `--format its`.
+
+#### KoAT
 
 LoAT also supports an extended version of [KoAT's input format](http://aprove.informatik.rwth-aachen.de/eval/IntegerComplexity/), which is also used in the category *Complexity of Integer Transition Systems* at the annual *Termination and Complexity Competition*.
 
@@ -44,9 +48,20 @@ Here, `A^2` and `A^2+B` are lower and upper bounds on the cost of the rule.
 The upper bound is ignored by LoAT.
 The lower bound has to be non-negative for every model of the transition's guard.
 
-## Constrained Horn Clauses
+To use this format, please use the command-line option `--format koat`.
+
+### Constrained Horn Clauses
 
 LoAT can parse the [SMTLIB-format](https://chc-comp.github.io/format.html) used at the annual [*CHC-COMP*](https://chc-comp.github.io/).
+
+To use this format, please use the command-line option `--format horn`.
+
+## Discontinued Features
+
+Earlier versions of LoAT could analyze the complexity of non-tail-recursive transition systems, i.e., systems with transitions of the form `f(x) -> Com2(f(x-1), f(x-2)) :|: x>1`.
+Such systems are no longer supported.
+If you are interested in analyzing such systems, please use the release that was published with our [TOPLAS '20 paper](https://doi.org/10.1145/3410331).
+A link to this release, as well as further information about using it, can be found [here](https://aprove-developers.github.io/its-lowerbounds-journal/).
 
 # Publications
 
@@ -71,13 +86,6 @@ The techniques implemented in LoAT are described in the following publications (
 * [Proving Non-Termination and Lower Runtime Bounds with LoAT (System Description)](https://doi.org/10.1007/978-3-031-10769-6_41)\
   F.Frohn and J. Giesl\
   IJCAR '22
-
-# Discontinued Features
-
-Earlier versions of LoAT could analyze the complexity of non-tail-recursive transition systems, i.e., systems with transitions of the form `f(x) -> Com2(f(x-1), f(x-2)) :|: x>1`.
-Such systems are no longer supported.
-If you are interested in analyzing such systems, please use the release that was published with our [TOPLAS '20 paper](https://doi.org/10.1145/3410331).
-A link to this release, as well as further information about using it, can be found [here](https://aprove-developers.github.io/its-lowerbounds-journal/).
 
 # Citing LoAT
 
@@ -111,6 +119,8 @@ In this constellation AProVE, LoAT, and T2 won the following awards:
 
 # Build
 
-Install docker and run ``./compile_static_binary``. Then the path to the binary is ``./build/static/release/loat-static``.
+In theory, all you need to do is install docker and run ``./compile_static_binary``.
+Then the path to the binary is ``./build/static/release/loat-static``.
+In practice, it's usually more complicated than that, so please consider using one of our [releases](https://github.com/loat-developers/LoAT/releases) instead.
 
 If you experience any problems, contact florian.frohn [at] cs.rwth-aachen.de.
