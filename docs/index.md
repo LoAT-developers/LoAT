@@ -1,7 +1,7 @@
 <head>
     <title>LoAT</title>
     <style>
-    p {text-align: justify;}
+        p {text-align: justify;}
     </style>
 </head>
 
@@ -38,7 +38,7 @@ LoAT also supports an extended version of [KoAT's input format](http://aprove.in
 
 In this extension, rules can be annotated with polynomial costs:
 ```
-l1(A,B) -{A^2,A^2+B}> Com_2(l2(A,B),l3(A,B)) :|: B >= 0
+l1(A,B) -{A^2,A^2+B}> l2(A,B) :|: B >= 0
 ```
 Here, `A^2` and `A^2+B` are lower and upper bounds on the cost of the rule.
 The upper bound is ignored by LoAT.
@@ -67,10 +67,17 @@ The techniques implemented in LoAT are described in the following publications (
   Winner of the EASST Best Paper Award
 * [A Calculus for Modular Loop Acceleration and Non-Termination Proofs](https://doi.org/10.1007/s10009-022-00670-2)\
   F. Frohn and C. Fuhs\
-  International Journal on Software Tools for Technology Transfer, volume 24
+  International Journal on Software Tools for Technology Transfer, 24(5), 2022
 * [Proving Non-Termination and Lower Runtime Bounds with LoAT (System Description)](https://doi.org/10.1007/978-3-031-10769-6_41)\
   F.Frohn and J. Giesl\
   IJCAR '22
+
+# Discontinued Features
+
+Earlier versions of LoAT could analyze the complexity of non-tail-recursive transition systems, i.e., systems with transitions of the form `f(x) -> Com2(f(x-1), f(x-2)) :|: x>1`.
+Such systems are no longer supported.
+If you are interested in analyzing such systems, please use the release that was published with our [TOPLAS '20 paper](https://doi.org/10.1145/3410331).
+A link to this release, as well as further information about using it, can be found [here](https://aprove-developers.github.io/its-lowerbounds-journal/).
 
 # Citing LoAT
 
