@@ -5,7 +5,7 @@
     </style>
 </head>
 
-LoAT (**Lo**op **A**cceleration **T**ool) is a fully automated tool to analyze *Transition Systems* and linear *Constrained Horn Clauses (CHCs)* with integer variables.
+LoAT (**Lo**op **A**cceleration **T**ool) is a fully automated tool to analyze *transition systems* and linear *Constrained Horn Clauses (CHCs)* with integer variables.
 For transition systems, it supports the inference of **lower bounds** on the worst-case runtime complexity and **non-termination proving**.
 For CHCs, it can prove **unsatisfiability**.
 
@@ -32,7 +32,7 @@ To choose the goal of your analysis, please use one of the following command-lin
 
 Currently, reachability / unsatisfiability is supported for CHCs only, as LoAT's input formats for transition systems do not allow for specifying error states.
 
-## Input Formats for Integer Transition Systems
+## Input Formats for Transition Systems
 
 LoAT supports the most common formats for *Integer Transition Systems*.
 
@@ -64,7 +64,7 @@ To use this format, please use the command-line option `--format horn`.
 
 ## Discontinued Features
 
-Earlier versions of LoAT could analyze the complexity of non-tail-recursive transition systems, i.e., systems with transitions of the form `f(x) -> Com2(f(x-1), f(x-2)) :|: x>1`.
+Earlier versions of LoAT could analyze the complexity of non-tail-recursive transition systems, i.e., systems with transitions like `f(x) -> Com2(f(x-1), f(x-2)) :|: x>1`.
 Such systems are no longer supported.
 If you are interested in analyzing such systems, please use the release that was published with our [TOPLAS '20 paper](https://doi.org/10.1145/3410331).
 A link to this release, as well as further information about using it, can be found [here](https://aprove-developers.github.io/its-lowerbounds-journal/).
