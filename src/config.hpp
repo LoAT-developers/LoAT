@@ -103,10 +103,6 @@ namespace Config {
         extern const unsigned MaxParallelRules;
     }
 
-    namespace ADCL {
-        extern bool IterativeDeepening;
-    }
-
     // Asymptotic complexity computation using limit problems
     namespace Limit {
         class PolynomialLimitProblemStrategy {

@@ -208,17 +208,15 @@ bool Reachability::leaves_scc(const TransIdx idx) const {
     return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc(0));
 }
 
-option<RecursiveSuffix> Reachability::has_looping_suffix() {
+option<unsigned> Reachability::has_looping_suffix() {
     if (trace.empty()) {
         return {};
     }
     const auto last_clause = chcs.getRule(trace.back().clause_idx);
     const auto dst = last_clause.getRhsLoc(0);
     std::vector<long> sequence;
-    unsigned depth = 0;
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
-        depth = std::max(depth, this->depth[step.clause_idx]);
         if (leaves_scc(step.clause_idx)) {
             return {};
         }
@@ -231,7 +229,7 @@ option<RecursiveSuffix> Reachability::has_looping_suffix() {
             auto upos = static_cast<unsigned>(pos);
             bool looping = upos < trace.size() - 1 || is_orig_clause(step.clause_idx);
             if (looping) {
-                return {{upos, depth}};
+                return upos;
             }
         }
     }
@@ -450,7 +448,6 @@ void Reachability::init() {
         if (src == chcs.getInitialLocation() && dst == chcs.getSink()) {
             conditional_empty_clauses.push_back(idx);
         } else {
-            depth[idx] = 0;
             std::map<LocationIdx, std::vector<TransIdx>> *to_insert;
             if (dst == chcs.getSink()) {
                 to_insert = &queries;
@@ -592,7 +589,7 @@ Rule Reachability::build_loop(const int backlink) {
     return loop;
 }
 
-TransIdx Reachability::add_learned_clause(const Rule &accel, const Red::T &lang, unsigned depth) {
+TransIdx Reachability::add_learned_clause(const Rule &accel, const Red::T &lang) {
     const auto loop_idx = chcs.addRule(accel);
     redundance->set_language(loop_idx, lang);
     const auto src = accel.getLhsLoc();
@@ -602,7 +599,6 @@ TransIdx Reachability::add_learned_clause(const Rule &accel, const Red::T &lang,
     } else {
         acc_it->second.push_back(loop_idx);
     }
-    this->depth[loop_idx] = depth;
     return loop_idx;
 }
 
@@ -631,7 +627,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
     return res;
 }
 
-std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang, unsigned depth) {
+std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
     Result<Rule> simp = Preprocess::simplifyRule(chcs, rule);
     if (Config::Analysis::reachability() && simp->getUpdate(0) == substitution::concat(simp->getUpdate(0), simp->getUpdate(0))) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -675,7 +671,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
                 simplified.concat(instantiate(*accel_res.n, *simplified));
             }
             res.succeed();
-            res->push_back(add_learned_clause(*simplified, lang, depth + 1));
+            res->push_back(add_learned_clause(*simplified, lang));
             res.storeSubProof(accel_res.proof);
             res.concat(simplified.getProof());
             if (log) {
@@ -693,8 +689,8 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     return std::make_unique<Succeeded>(res);
 }
 
-std::unique_ptr<LearningState> Reachability::handle_loop(const RecursiveSuffix &recursive_suffix) {
-    const auto lang = build_language(recursive_suffix.backlink);
+std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
+    const auto lang = build_language(backlink);
     if (redundance->is_redundant(lang)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
@@ -702,18 +698,14 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const RecursiveSuffix &
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << lang << std::endl;
     }
-    if (recursive_suffix.depth > current_depth) {
-        depth_suffices = false;
-        return std::make_unique<Covered>();
-    }
     redundance->mark_as_redundant(lang);
-    const auto loop = build_loop(recursive_suffix.backlink);
+    const auto loop = build_loop(backlink);
     if (Config::Analysis::reachability() && loop.getUpdate(0).empty()) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
     luby_loop_count++;
-    auto state = learn_clause(loop, lang, recursive_suffix.depth);
+    auto state = learn_clause(loop, lang);
     if (!state->succeeded()) {
         return state;
     }
@@ -721,7 +713,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const RecursiveSuffix &
     const auto idxs = **accel_state;
     const auto subproof = accel_state->getProof();
     // drop the looping suffix
-    drop_until(recursive_suffix.backlink);
+    drop_until(backlink);
     proof.majorProofStep("accelerated loop", chcs);
     proof.storeSubProof(subproof);
     for (const auto idx: idxs) {
@@ -776,70 +768,66 @@ void Reachability::analyze() {
     if (try_conditional_empty_clauses()) {
         return;
     }
-    for (depth_suffices = false; !depth_suffices; ++current_depth) {
-        if (log) std::cout << "starting major iteration with depth " << current_depth << std::endl;
-        depth_suffices = true;
-        blocked_clauses[0].clear();
-        do {
-            size_t next_restart = luby_unit * luby.second;
-            if (log) std::cout << "trace: " << trace << std::endl;
-            for (auto recursive_suffix = has_looping_suffix();
-                 recursive_suffix && luby_loop_count < next_restart;
-                 recursive_suffix = has_looping_suffix()) {
-                Step step = trace[recursive_suffix->backlink];
-                bool simple_loop = recursive_suffix->backlink == trace.size() - 1;
-                auto state = handle_loop(*recursive_suffix);
-                if (state->covered()) {
-                    backtrack();
-                } else if (state->succeeded()) {
-                    if (simple_loop) {
-                        block(step);
-                    }
-                    // try to apply a query before doing another step
-                    if (try_to_finish()) {
-                        return;
-                    }
-                } else if (state->dropped()) {
+    blocked_clauses[0].clear();
+    do {
+        size_t next_restart = luby_unit * luby.second;
+        if (log) std::cout << "trace: " << trace << std::endl;
+        for (auto backlink = has_looping_suffix();
+             backlink && luby_loop_count < next_restart;
+             backlink = has_looping_suffix()) {
+            Step step = trace[*backlink];
+            bool simple_loop = *backlink == trace.size() - 1;
+            auto state = handle_loop(*backlink);
+            if (state->covered()) {
+                backtrack();
+            } else if (state->succeeded()) {
+                if (simple_loop) {
                     block(step);
-                } else if (state->failed()) {
-                    // non-loop --> do not backtrack
-                    non_loops.add(trace, recursive_suffix->backlink);
-                } else if (state->unsat()) {
-                    unsat();
+                }
+                // try to apply a query before doing another step
+                if (try_to_finish()) {
                     return;
                 }
-            }
-            if (luby_loop_count == next_restart) {
-                if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
-                // restart
-                while (!trace.empty()) {
-                    pop();
-                }
-                luby_next();
-            }
-            const auto current = get_current_predicate();
-            auto &to_try = rules[current];
-            auto it = to_try.begin();
-            std::vector<TransIdx> append;
-            while (it != to_try.end()) {
-                const option<BoolExpr> implicant = resolve(*it);
-                if (implicant && store_step(*it, *implicant)) {
-                    break;
-                }
-                append.push_back(*it);
-                it = to_try.erase(it);
-            }
-            bool all_failed = it == to_try.end();
-            to_try.insert(to_try.end(), append.begin(), append.end());
-            if (trace.empty()) {
-                break;
-            } else if (all_failed) {
-                backtrack();
-            } else if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
+            } else if (state->dropped()) {
+                block(step);
+            } else if (state->failed()) {
+                // non-loop --> do not backtrack
+                non_loops.add(trace, *backlink);
+            } else if (state->unsat()) {
+                unsat();
                 return;
             }
-        } while (true);
-    }
+        }
+        if (luby_loop_count == next_restart) {
+            if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
+            // restart
+            while (!trace.empty()) {
+                pop();
+            }
+            luby_next();
+        }
+        const auto current = get_current_predicate();
+        auto &to_try = rules[current];
+        auto it = to_try.begin();
+        std::vector<TransIdx> append;
+        while (it != to_try.end()) {
+            const option<BoolExpr> implicant = resolve(*it);
+            if (implicant && store_step(*it, *implicant)) {
+                break;
+            }
+            append.push_back(*it);
+            it = to_try.erase(it);
+        }
+        bool all_failed = it == to_try.end();
+        to_try.insert(to_try.end(), append.begin(), append.end());
+        if (trace.empty()) {
+            break;
+        } else if (all_failed) {
+            backtrack();
+        } else if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
+            return;
+        }
+    } while (true);
     if (Config::Analysis::complexity()) {
         if (cpx != Complexity::Const) {
             proof.print();
