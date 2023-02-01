@@ -1,0 +1,9 @@
+#!/bin/bash
+#To be executed from the top directory of the repository
+#The static binary is compiled in a Dockerfile and then copied into the main file
+rm -f loat-static
+docker build -f Dockerfile_local_purrs -t loat .
+docker create -ti --name loat_dummy loat bash
+mkdir -p ./build/static/release
+docker cp loat_dummy:/home/ffrohn/repos/LoAT/build/static/release/loat-static ./build/static/release/loat-static
+docker rm -f loat_dummy

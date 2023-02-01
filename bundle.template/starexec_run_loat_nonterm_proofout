@@ -1,0 +1,4 @@
+#!/bin/bash
+trap "" SIGRTMIN
+TO=`expr $STAREXEC_WALLCLOCK_LIMIT - 3`
+./loat-static --plain --timeout $TO --mode non_termination --format its $1 2> /dev/null
