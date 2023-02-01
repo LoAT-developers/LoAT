@@ -5,7 +5,7 @@
 #include "export.hpp"
 
 AccelerationViaQE::AccelerationViaQE(
-        const LinearRule &rule,
+        const Rule &rule,
         const Recurrence::Result closed,
         ITSProblem &its,
         const AccelConfig &config): AccelerationTechnique(rule, closed, its, config) {}

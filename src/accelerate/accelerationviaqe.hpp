@@ -12,7 +12,7 @@ class AccelerationViaQE: public AccelerationTechnique<IntTheory, BoolTheory> {
 public:
 
     AccelerationViaQE(
-            const LinearRule &rule,
+            const Rule &rule,
             const Recurrence::Result closed,
             ITSProblem &its,
             const AccelConfig &config);

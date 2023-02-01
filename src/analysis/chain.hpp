@@ -23,16 +23,7 @@
 
 
 namespace Chaining {
-    /**
-     * Chains all right-hand sides of the first rule that lead to the second rule's lhs location
-     * with the second rule. If both rules are linear, a simpler implementation is used for better performance.
-     * @return The resulting rule, unless it can be shown to be unsatisfiable.
-     */
+
     option<Rule> chainRules(VarMan &varMan, const Rule &first, const Rule &second, bool checkSat = true);
 
-    /**
-     * Specialized implementation for linear rules, for performance only.
-     * The implementation is much simpler, but semantically equivalent to chainRules.
-     */
-    option<LinearRule> chainRules(VarMan &varMan, const LinearRule &first, const LinearRule &second, bool checkSat = true);
 }

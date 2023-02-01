@@ -36,9 +36,6 @@ public:
     // True iff there are no rules
     bool isEmpty() const;
 
-    // True iff all rules are linear
-    bool isLinear() const;
-
     LocationIdx getInitialLocation() const;
     bool isInitialLocation(LocationIdx loc) const;
     void setInitialLocation(LocationIdx loc);
@@ -49,9 +46,6 @@ public:
     bool hasRule(TransIdx transition) const;
     const Rule getRule(TransIdx transition) const;
     option<TransIdx> getTransIdx(const Rule &rule) const;
-
-    // the rule associated with the given index must be linear!
-    LinearRule getLinearRule(TransIdx transition) const;
 
     // returns the destinations of the given transition
     const std::set<LocationIdx> getTransitionTargets(TransIdx idx) const;

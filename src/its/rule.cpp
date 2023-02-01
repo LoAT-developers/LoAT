@@ -20,32 +20,22 @@
 using namespace std;
 
 
-Rule::Rule(RuleLhs lhs, std::vector<RuleRhs> rhss) : lhs(lhs), rhss(rhss) {
-    assert(!rhss.empty());
+Rule::Rule(RuleLhs lhs, RuleRhs rhs) : lhs(lhs), rhs(rhs) {
     if (getCost().isNontermSymbol()) {
-        rhss = {RuleRhs(rhss[0].getLoc(), {})};
+        rhs = {RuleRhs(rhs.getLoc(), {})};
     }
 }
 
 Rule::Rule(LocationIdx lhsLoc, BoolExpr guard, Expr cost, LocationIdx rhsLoc, Subs update)
-        : lhs(lhsLoc, guard, cost), rhss({RuleRhs(rhsLoc, update)}) {
+        : lhs(lhsLoc, guard, cost), rhs(RuleRhs(rhsLoc, update)) {
     if (getCost().isNontermSymbol()) {
-        rhss = {RuleRhs(rhss[0].getLoc(), {})};
-    }
-}
-
-Rule::Rule(RuleLhs lhs, RuleRhs rhs)
-        : lhs(lhs), rhss({rhs}) {
-    if (getCost().isNontermSymbol()) {
-        rhss = {RuleRhs(rhss[0].getLoc(), {})};
+        rhs = {RuleRhs(rhs.getLoc(), {})};
     }
 }
 
 void Rule::collectVars(VarSet &vars) const {
     lhs.collectVars(vars);
-    for (const RuleRhs &rhs: rhss) {
-        rhs.collectVars(vars);
-    }
+    rhs.collectVars(vars);
 }
 
 VarSet Rule::vars() const {
@@ -54,109 +44,42 @@ VarSet Rule::vars() const {
     return res;
 }
 
-LinearRule Rule::dummyRule(LocationIdx lhsLoc, LocationIdx rhsLoc) {
-    return LinearRule(lhsLoc, {}, 0, rhsLoc, {});
+Rule Rule::dummyRule(LocationIdx lhsLoc, LocationIdx rhsLoc) {
+    return Rule(lhsLoc, {}, 0, rhsLoc, {});
 }
 
 bool Rule::isDummyRule() const {
-    return isLinear() && getCost().isZero() && getGuard() == True && getUpdate(0).empty();
-}
-
-bool Rule::isLinear() const {
-    return rhss.size() == 1;
-}
-
-LinearRule Rule::toLinear() const {
-    assert(isLinear());
-    return LinearRule(lhs, rhss.front());
+    return getCost().isZero() && getGuard() == True && getUpdate().empty();
 }
 
 bool Rule::isSimpleLoop() const {
-    return std::all_of(rhss.begin(), rhss.end(), [&](const RuleRhs &rhs){ return rhs.getLoc() == lhs.getLoc(); });
+    return rhs.getLoc() == lhs.getLoc();
 }
 
 Rule Rule::subs(const Subs &subs) const {
-    std::vector<RuleRhs> newRhss;
-    for (const RuleRhs &rhs : rhss) {
-        newRhss.push_back(RuleRhs(rhs.getLoc(), substitution::concat(rhs.getUpdate(), subs)));
-    }
-    return Rule(RuleLhs(getLhsLoc(), getGuard()->subs(subs), getCost().subs(subs.get<IntTheory>())), newRhss);
+    return Rule(RuleLhs(getLhsLoc(), getGuard()->subs(subs), getCost().subs(subs.get<IntTheory>())), RuleRhs(rhs.getLoc(), substitution::concat(rhs.getUpdate(), subs)));
 }
 
-LinearRule Rule::replaceRhssBySink(LocationIdx sink) const {
-    return LinearRule(getLhs(), RuleRhs(sink, {}));
-}
-
-option<Rule> Rule::stripRhsLocation(LocationIdx toRemove) const {
-    vector<RuleRhs> newRhss;
-    for (const RuleRhs &rhs : rhss) {
-        if (rhs.getLoc() != toRemove) {
-            newRhss.push_back(rhs);
-        }
-    }
-
-    if (newRhss.empty()) {
-        return {};
-    } else {
-        return Rule(lhs, newRhss);
-    }
+Rule Rule::replaceRhsBySink(LocationIdx sink) const {
+    return Rule(getLhs(), RuleRhs(sink, {}));
 }
 
 Rule Rule::withGuard(const BoolExpr guard) const {
-    return Rule(RuleLhs(getLhsLoc(), guard, getCost()), getRhss());
+    return Rule(RuleLhs(getLhsLoc(), guard, getCost()), getRhs());
 }
 
 Rule Rule::withCost(const Expr &cost) const {
-    return Rule(RuleLhs(getLhsLoc(), getGuard(), cost), getRhss());
+    return Rule(RuleLhs(getLhsLoc(), getGuard(), cost), getRhs());
 }
 
-Rule Rule::withUpdate(unsigned int i, const Subs &up) const {
-    std::vector<RuleRhs> rhss = getRhss();
-    rhss[i] = RuleRhs(rhss[i].getLoc(), up);
-    return Rule(RuleLhs(getLhsLoc(), getGuard(), getCost()), rhss);
-}
-
-bool Rule::approxEqual(const Rule &that, bool compareRhss) const {
-    // Some trivial syntactic checks
-    if (compareRhss && rhsCount() != that.rhsCount()) return false;
-
-    // Costs have to be equal up to a numeric constant
-    if (!(getCost() - that.getCost()).isRationalConstant()) return false;
-
-    // All right-hand sides have to match exactly
-    if (compareRhss) {
-        for (unsigned int i=0; i < rhsCount(); ++i) {
-            const Subs &updateA = getUpdate(i);
-            const Subs &updateB = that.getUpdate(i);
-
-            if (getRhsLoc(i) != that.getRhsLoc(i)) return false;
-            if (updateA.size() != updateB.size()) return false;
-
-            // update has to be fully equal (one inclusion suffices, since the size is equal)
-            for (const auto &itA : updateA) {
-                auto itB = updateB.find(substitution::first(itA));
-                if (itB == updateB.end()) return false;
-                if (substitution::second(*itB) != substitution::second(itA)) return false;
-            }
-        }
-    }
-
-    // Guard has to be fully equal (including the ordering)
-    if (getGuard() != that.getGuard()) return false;
-    return true;
+Rule Rule::withUpdate(const Subs &up) const {
+    return Rule(RuleLhs(getLhsLoc(), getGuard(), getCost()), RuleRhs(rhs.getLoc(), up));
 }
 
 unsigned Rule::hash() const {
     unsigned hash = 7;
     hash = hash * 31 + lhs.hash();
-    std::vector<unsigned> rhsHashs;
-    for (const auto& r: rhss) {
-        rhsHashs.push_back(r.hash());
-    }
-    std::sort(rhsHashs.begin(), rhsHashs.end());
-    for (unsigned h: rhsHashs) {
-        hash = 31 * hash + h;
-    }
+    hash = hash * 31 + rhs.hash();
     return hash;
 }
 
@@ -176,10 +99,8 @@ ostream& operator<<(ostream &s, const Rule &rule) {
     // rhs (loc, update)*
     s << " |";
 
-    for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
-        s << "| " << rhs->getLoc() << " | ";
-        s << rhs->getUpdate();
-    }
+    s << "| " << rule.getRhs().getLoc() << " | ";
+    s << rule.getRhs().getUpdate();
 
     s << ")";
     return s;

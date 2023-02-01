@@ -62,7 +62,7 @@ class AccelerationProblem {
 
 public:
 
-    static AccelerationProblem init(const LinearRule &rule, const option<Recurrence::Result> &closed, ITSProblem &its, const AccelConfig &config);
+    static AccelerationProblem init(const Rule &rule, const option<Recurrence::Result> &closed, ITSProblem &its, const AccelConfig &config);
 
     AcceleratorPair computeRes();
     std::pair<BoolExpr, bool> buildRes(const Model<IntTheory, BoolTheory> &model, const std::map<Lit, std::vector<BoolExpr>> &entryVars);

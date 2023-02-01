@@ -57,12 +57,15 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     const auto lhsLoc = any_cast<lhs_type>(visit(ctx->lhs()));
     const auto cost = any_cast<to_type>(visit(ctx->to()));
     const auto rhss = any_cast<com_type>(visit(ctx->com()));
+    if (rhss.size() > 1) {
+        throw std::invalid_argument("Com-symbols are not supported");
+    }
     BoolExpr cond = True;
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }
     RuleLhs lhs(lhsLoc, cond, cost);
-    Rule rule(lhs, rhss);
+    Rule rule(lhs, rhss.at(0));
     auto vars = rule.vars();
     Subs varRenaming;
     for (const auto &x: vars) {

@@ -90,8 +90,6 @@ public:
 
 bool operator ==(const RuleRhs &fst, const RuleRhs &snd);
 
-class LinearRule;
-
 /**
  * A general rule, consisting of a left-hand side with location, guard and cost
  * and several (but at least one) right-hand sides, each with location and update.
@@ -102,48 +100,27 @@ class LinearRule;
 class Rule {
 private:
     RuleLhs lhs;
-    std::vector<RuleRhs> rhss;
+    RuleRhs rhs;
 
 public:
-    Rule(RuleLhs lhs, std::vector<RuleRhs> rhss);
-
-    // constructors for linear rules
     Rule(RuleLhs lhs, RuleRhs rhs);
     Rule(LocationIdx lhsLoc, BoolExpr guard, Expr cost, LocationIdx rhsLoc, Subs update);
 
     // constructs an empty rule (guard/update empty, cost 0)
-    static LinearRule dummyRule(LocationIdx lhsLoc, LocationIdx rhsLoc);
+    static Rule dummyRule(LocationIdx lhsLoc, LocationIdx rhsLoc);
     bool isDummyRule() const;
 
     const RuleLhs& getLhs() const { return lhs; }
-    const std::vector<RuleRhs>& getRhss() const { return rhss; }
+    const RuleRhs& getRhs() const { return rhs; }
 
     // query lhs data
     LocationIdx getLhsLoc() const { return lhs.getLoc(); }
     const BoolExpr& getGuard() const { return lhs.getGuard(); }
     const Expr& getCost() const { return lhs.getCost(); }
 
-    // iteration over right-hand sides
-    const RuleRhs* rhsBegin() const { return &rhss.front(); }
-    const RuleRhs* rhsEnd() const { return &rhss.back()+1; }
-    RuleRhs* rhsBegin() { return &rhss.front(); }
-    RuleRhs* rhsEnd() { return &rhss.back()+1; }
-    size_t rhsCount() const { return rhss.size(); }
-
     // special methods for nonlinear rules (idx is an index to rhss)
-    LocationIdx getRhsLoc(unsigned int idx) const { return rhss[idx].getLoc(); }
-    const std::vector<Subs> getUpdates() const {
-        std::vector<Subs> res;
-        for (const RuleRhs &rhs: rhss) {
-            res.push_back(rhs.getUpdate());
-        }
-        return res;
-    }
-    const Subs& getUpdate(unsigned int idx) const { return rhss[idx].getUpdate(); }
-
-    // conversion to linear rule
-    bool isLinear() const;
-    LinearRule toLinear() const;
+    LocationIdx getRhsLoc() const { return rhs.getLoc(); }
+    const Subs& getUpdate() const { return rhs.getUpdate(); }
 
     // checks if lhs location coincides with _all_ rhs locations
     bool isSimpleLoop() const;
@@ -154,20 +131,16 @@ public:
     Rule subs(const Subs &subs) const;
 
     // Creates a new rule that only leads to the given location, the updates are cleared, guard/cost are kept
-    LinearRule replaceRhssBySink(LocationIdx sink) const;
-
-    // Removes all right-hand sides that lead to the given location, returns none if all rhss would be removed
-    option<Rule> stripRhsLocation(LocationIdx toRemove) const;
+    Rule replaceRhsBySink(LocationIdx sink) const;
 
     Rule withGuard(const BoolExpr guard) const;
     Rule withCost(const Expr &cost) const;
-    Rule withUpdate(unsigned int i, const Subs &up) const;
+    Rule withUpdate(const Subs &up) const;
 
     VarSet vars() const;
     void collectVars(VarSet &vars) const;
 
     unsigned hash() const;
-    bool approxEqual(const Rule &that, bool compareRhss) const;
 
     struct Hash {
         std::size_t operator()(const Rule& r) const {
@@ -175,43 +148,7 @@ public:
         }
     };
 
-    struct ApproxEqual {
-        bool operator()(const Rule& fst, const Rule& snd) const {
-            return fst.approxEqual(snd, true);
-        }
-    };
-
-    using ApproxSet = std::unordered_set<Rule, Rule::Hash, Rule::ApproxEqual>;
-
-    template<class T>
-    using ApproxMap = std::unordered_map<Rule, T, Rule::Hash, Rule::ApproxEqual>;
-
 };
-
-
-/**
- * A linear rule is a rule with exactly one right-hand side.
- *
- * To simplify the code, linear rules are just a subclass of Rule,
- * so they use the same data representation (a vector of right-hand sides).
- * The result is that most of the code can work with the more general Rule,
- * at the cost of a minor performance loss (which is probably not critical).
- *
- * This class is only used to have more expressive function signatures.
- * If performance is critical, all uses of LinearRule can be replaced by Rule
- * together with assertions that the Rule is in fact linear.
- */
-class LinearRule : public Rule {
-public:
-    LinearRule(RuleLhs lhs, RuleRhs rhs) : Rule(lhs, rhs) {}
-    LinearRule(LocationIdx lhsLoc, BoolExpr guard, Expr cost, LocationIdx rhsLoc, Subs update)
-            : Rule(lhsLoc, guard, cost, rhsLoc, update) {}
-
-    // special shorthands for linear rules, overwriting the general ones
-    LocationIdx getRhsLoc() const { return Rule::getRhsLoc(0); }
-    const Subs& getUpdate() const { return Rule::getUpdate(0); }
-};
-
 
 /**
  * For debugging output (not very readable)

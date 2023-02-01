@@ -48,7 +48,7 @@ public:
      * In addition to iterateUpdateCost, an additional heuristic is used if no dependency order is found.
      * This heuristic adds new constraints to the rule's guard and is thus only used in this method.
      */
-    static option<Result> iterateRule(VarMan &varMan, const LinearRule &rule);
+    static option<Result> iterateRule(VarMan &varMan, const Rule &rule);
 
 private:
 

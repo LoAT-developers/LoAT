@@ -7,7 +7,7 @@
 namespace AccelerationFactory {
 
 std::unique_ptr<AccelerationTechnique<IntTheory, BoolTheory>> get(
-        const LinearRule &rule,
+        const Rule &rule,
         option<Recurrence::Result> closed,
         ITSProblem &its,
         const AccelConfig &config);

@@ -47,17 +47,15 @@ void ITSExport::printRule(const Rule &rule, const ITSProblem &its, std::ostream 
     printLocation(rule.getLhsLoc(), its, s, colors);
     s << " -> ";
 
-    for (auto it = rule.rhsBegin(); it != rule.rhsEnd(); ++it) {
-        printLocation(it->getLoc(), its, s, colors);
-        s << " : ";
+    printLocation(rule.getRhsLoc(), its, s, colors);
+    s << " : ";
 
-        for (auto upit : it->getUpdate()) {
-            if (colors) printColor(s, Color::Update);
-            s << substitution::first(upit) << "'";
-            s << "=" << substitution::second(upit);
-            if (colors) printColor(s, Color::None);
-            s << ", ";
-        }
+    for (auto upit : rule.getUpdate()) {
+        if (colors) printColor(s, Color::Update);
+        s << substitution::first(upit) << "'";
+        s << "=" << substitution::second(upit);
+        if (colors) printColor(s, Color::None);
+        s << ", ";
     }
 
     printGuard(rule.getGuard(), s, colors);
@@ -180,30 +178,18 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
             //cost
             s << ") -{" << rule.getCost().expand() << "," << rule.getCost().expand() << "}> ";
 
-            //rhs updates
-            if (rule.rhsCount() > 1) {
-                s << "Com_" << rule.rhsCount() << "(";
-            }
+            printNode(rule.getRhsLoc());
 
-            for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
-                if (rhs != rule.rhsBegin()) s << ",";
-                printNode(rhs->getLoc());
-
-                first = true;
-                for (const Var &var : relevantVars) {
-                    s << ((first) ? "(" : ",");
-                    auto it = rhs->getUpdate().find(var);
-                    if (it != rhs->getUpdate().end()) {
-                        s << substitution::second(*it);
-                    } else {
-                        s << var;
-                    }
-                    first = false;
+            first = true;
+            for (const Var &var : relevantVars) {
+                s << ((first) ? "(" : ",");
+                auto it = rule.getUpdate().find(var);
+                if (it != rule.getUpdate().end()) {
+                    s << substitution::second(*it);
+                } else {
+                    s << var;
                 }
-            }
-
-            if (rule.rhsCount() > 1) {
-                s << ")";
+                first = false;
             }
 
             //guard

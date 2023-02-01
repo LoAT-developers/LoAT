@@ -174,7 +174,7 @@ option<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &c
 }
 
 
-option<Recurrence::Result> Recurrence::iterateRule(VarMan &varMan, const LinearRule &rule) {
+option<Recurrence::Result> Recurrence::iterateRule(VarMan &varMan, const Rule &rule) {
     // This may modify the rule's guard and update
     auto order = DependencyOrder::findOrder(rule.getUpdate());
     if (!order) {

@@ -65,13 +65,6 @@ static Proof eliminateLocationByChaining(ITSProblem &its, LocationIdx loc,
             const Rule outRule = its.getRule(out);
             auto optRule = Chaining::chainRules(its, inRule, outRule);
             if (optRule) {
-                // If we allow self loops at loc, then chained rules may still lead to loc,
-                // e.g. if h -> f and f -> f,g are chained to h -> f,g (where f is loc).
-                // Since we want to eliminate loc, we remove all rhss leading to loc (e.g. h -> g).
-                if (allowSelfloops) {
-                    optRule = optRule.get().stripRhsLocation(loc);
-                    assert(optRule); // this only happens for simple loops, which we disallow
-                }
 
                 proof.chainingProof(inRule, outRule, *optRule, its);
                 its.addRule(*optRule);
@@ -101,17 +94,10 @@ static Proof eliminateLocationByChaining(ITSProblem &its, LocationIdx loc,
         LocationIdx dummyLoc = its.addLocation();
         for (TransIdx trans : keepRules) {
             const Rule oldRule = its.getRule(trans);
-            auto newRule = oldRule.stripRhsLocation(loc);
-            if (newRule) {
-                // In case of nonlinear rules, we can simply delete all rhss leading to loc, but keep the other ones
-                its.addRule(newRule.get());
-                proof.ruleTransformationProof(oldRule, "partial deletion", newRule.get(), its);
-            } else {
-                // If all rhss lead to loc (for instance if the rule is linear), we add a new dummy rhs
-                const Rule &dummyRule = oldRule.replaceRhssBySink(dummyLoc);
-                its.addRule(dummyRule);
-                proof.ruleTransformationProof(oldRule, "partial deletion", dummyRule, its);
-            }
+            // If all rhss lead to loc (for instance if the rule is linear), we add a new dummy rhs
+            const Rule &dummyRule = oldRule.replaceRhsBySink(dummyLoc);
+            its.addRule(dummyRule);
+            proof.ruleTransformationProof(oldRule, "partial deletion", dummyRule, its);
         }
     }
 

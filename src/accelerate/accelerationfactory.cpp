@@ -5,7 +5,7 @@
 using AT = std::unique_ptr<AccelerationTechnique<IntTheory, BoolTheory>>;
 
 AT AccelerationFactory::get(
-        const LinearRule &rule,
+        const Rule &rule,
         option<Recurrence::Result> closed,
         ITSProblem &its,
         const AccelConfig &config) {

@@ -27,16 +27,6 @@ bool ITSProblem::isEmpty() const {
     return rules.empty();
 }
 
-bool ITSProblem::isLinear() const {
-    std::lock_guard guard(mutex);
-    for (const auto &it : rules) {
-        if (!it.second.isLinear()) {
-            return false;
-        }
-    }
-    return true;
-}
-
 LocationIdx ITSProblem::getInitialLocation() const {
     std::lock_guard guard(mutex);
     return initialLocation;
@@ -73,11 +63,6 @@ void ITSProblem::lock() {
 
 void ITSProblem::unlock() {
     mutex.unlock();
-}
-
-LinearRule ITSProblem::getLinearRule(TransIdx transition) const {
-    std::lock_guard guard(mutex);
-    return rules.at(transition).toLinear();
 }
 
 const std::set<LocationIdx> ITSProblem::getTransitionTargets(TransIdx idx) const {
@@ -150,13 +135,9 @@ void ITSProblem::removeRule(TransIdx transition) {
 TransIdx ITSProblem::addRule(Rule rule) {
     std::lock_guard guard(mutex);
     // gather target locations
-    set<LocationIdx> rhsLocs;
-    for (auto it = rule.rhsBegin(); it != rule.rhsEnd(); ++it) {
-        rhsLocs.insert(it->getLoc());
-    }
 
     // add transition and store mapping to rule
-    TransIdx idx = graph.addTrans(rule.getLhsLoc(), rhsLocs);
+    TransIdx idx = graph.addTrans(rule.getLhsLoc(), rule.getRhsLoc());
     rules.emplace(idx, rule);
     return idx;
 }

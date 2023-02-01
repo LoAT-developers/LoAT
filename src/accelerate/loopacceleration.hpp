@@ -31,12 +31,12 @@ public:
         const unsigned int validityBound;
     };
 
-    static acceleration::Result accelerate(ITSProblem &its, const LinearRule &rule, Complexity cpx, const AccelConfig &config = AccelConfig());
+    static acceleration::Result accelerate(ITSProblem &its, const Rule &rule, Complexity cpx, const AccelConfig &config = AccelConfig());
 
-    static const std::pair<LinearRule, unsigned> chain(const LinearRule &rule, ITSProblem &its);
+    static const std::pair<Rule, unsigned> chain(const Rule &rule, ITSProblem &its);
 
 private:
-    LoopAcceleration(ITSProblem &its, const LinearRule &rule, Complexity cpx, const AccelConfig &config);
+    LoopAcceleration(ITSProblem &its, const Rule &rule, Complexity cpx, const AccelConfig &config);
 
     /**
      * Main function, just calls the methods below in the correct order
@@ -48,11 +48,11 @@ private:
      */
     bool shouldAccelerate() const;
 
-    static LinearRule renameTmpVars(const LinearRule &rule, ITSProblem &its);
+    static Rule renameTmpVars(const Rule &rule, ITSProblem &its);
 
 private:
     ITSProblem &its;
-    const LinearRule &rule;
+    const Rule &rule;
     Complexity cpx;
     const AccelConfig config;
 };

@@ -31,12 +31,12 @@ public:
 
 protected:
 
-    LinearRule rule;
+    Rule rule;
     const option<Recurrence::Result> closed;
     ITSProblem &its;
     const AccelConfig config;
 
-    AccelerationTechnique(const LinearRule &rule, const option<Recurrence::Result> closed, ITSProblem &its, const AccelConfig &config):
+    AccelerationTechnique(const Rule &rule, const option<Recurrence::Result> closed, ITSProblem &its, const AccelConfig &config):
         rule(rule),
         closed(closed),
         its(its),

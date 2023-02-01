@@ -28,7 +28,7 @@ using namespace std;
 
 LoopAcceleration::LoopAcceleration(
         ITSProblem &its,
-        const LinearRule &rule,
+        const Rule &rule,
         Complexity cpx,
         const AccelConfig &config)
     : its(its), rule(rule), cpx(cpx), config(config) {}
@@ -37,7 +37,7 @@ bool LoopAcceleration::shouldAccelerate() const {
     return (!Config::Analysis::tryNonterm() || !rule.getCost().isNontermSymbol()) && (!Config::Analysis::complexity() || rule.getCost().isPoly());
 }
 
-LinearRule LoopAcceleration::renameTmpVars(const LinearRule &rule, ITSProblem &its) {
+Rule LoopAcceleration::renameTmpVars(const Rule &rule, ITSProblem &its) {
     Subs sigma;
     for (const auto &x: rule.vars()) {
         if (its.isTempVar(x)) {
@@ -50,11 +50,11 @@ LinearRule LoopAcceleration::renameTmpVars(const LinearRule &rule, ITSProblem &i
             }
         }
     }
-    return rule.subs(sigma).toLinear();
+    return rule.subs(sigma);
 }
 
-const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &rule, ITSProblem &its) {
-    LinearRule res = rule;
+const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, ITSProblem &its) {
+    Rule res = rule;
     unsigned period = 1;
     // chain if there are updates like x = -x + p
     for (const auto &p: rule.getUpdate().get<IntTheory>()) {
@@ -111,13 +111,13 @@ const std::pair<LinearRule, unsigned> LoopAcceleration::chain(const LinearRule &
         }
     }
     if (cycleLength > 1) {
-        LinearRule orig(res);
+        Rule orig(res);
         for (unsigned i = 1; i < cycleLength; ++i) {
             res = *Chaining::chainRules(its, res, renameTmpVars(orig, its), false);
         }
         period *= cycleLength;
     }
-    LinearRule orig(res);
+    Rule orig(res);
     // chain if it eliminates variables from an update
     NEXT: while (true) {
         const auto up = res.getUpdate().get<IntTheory>();
@@ -197,7 +197,7 @@ acceleration::Result LoopAcceleration::run() {
         return res;
     }
     if (Config::Analysis::tryNonterm() && accelerationResult.nonterm) {
-        res.nontermRule = LinearRule(
+        res.nontermRule = Rule(
                     rule.getLhsLoc(),
                     accelerationResult.nonterm->formula,
                     Expr::NontermSymbol,
@@ -208,7 +208,7 @@ acceleration::Result LoopAcceleration::run() {
     }
     if (rec && accelerationResult.term) {
         res.n = rec->n;
-        res.rule = LinearRule(
+        res.rule = Rule(
                     rule.getLhsLoc(),
                     accelerationResult.term->formula,
                     rec->cost,
@@ -223,7 +223,7 @@ acceleration::Result LoopAcceleration::run() {
 
 acceleration::Result LoopAcceleration::accelerate(
         ITSProblem &its,
-        const LinearRule &rule,
+        const Rule &rule,
         Complexity cpx,
         const AccelConfig &config) {
     LoopAcceleration ba(its, rule, cpx, config);

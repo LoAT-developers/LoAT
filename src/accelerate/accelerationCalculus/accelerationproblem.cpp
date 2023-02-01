@@ -35,7 +35,7 @@ AccelerationProblem::AccelerationProblem(
 }
 
 AccelerationProblem AccelerationProblem::init(
-        const LinearRule &rule,
+        const Rule &rule,
         const option<Recurrence::Result> &closed,
         ITSProblem &its,
         const AccelConfig &config) {

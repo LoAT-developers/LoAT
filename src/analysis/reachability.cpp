@@ -150,7 +150,7 @@ ResultViaSideEffects Reachability::remove_irrelevant_clauses() {
     } while (!todo.empty());
     std::vector<LocationIdx> to_delete;
     for (const auto idx: chcs.getAllTransitions()) {
-        const LocationIdx target = chcs.getRule(idx).getRhsLoc(0);
+        const LocationIdx target = chcs.getRule(idx).getRhsLoc();
         if (keep.find(target) == keep.end()) {
             to_delete.push_back(target);
         }
@@ -186,7 +186,7 @@ ResultViaSideEffects Reachability::unroll() {
     for (const TransIdx idx: chcs.getAllTransitions()) {
         const Rule &r = chcs.getRule(idx);
         if (r.isSimpleLoop()) {
-            const auto [res, period] = LoopAcceleration::chain(r.toLinear(), chcs);
+            const auto [res, period] = LoopAcceleration::chain(r, chcs);
             if (period > 1) {
                 const auto simplified = Preprocess::simplifyRule(chcs, res);
                 ret.succeed();
@@ -205,7 +205,7 @@ ResultViaSideEffects Reachability::unroll() {
 
 bool Reachability::leaves_scc(const TransIdx idx) const {
     const Rule &r = chcs.getRule(idx);
-    return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc(0));
+    return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc());
 }
 
 option<unsigned> Reachability::has_looping_suffix() {
@@ -213,7 +213,7 @@ option<unsigned> Reachability::has_looping_suffix() {
         return {};
     }
     const auto last_clause = chcs.getRule(trace.back().clause_idx);
-    const auto dst = last_clause.getRhsLoc(0);
+    const auto dst = last_clause.getRhsLoc();
     std::vector<long> sequence;
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
@@ -238,13 +238,13 @@ option<unsigned> Reachability::has_looping_suffix() {
 
 Subs Reachability::handle_update(const TransIdx idx) {
     const Rule &r = chcs.getRule(idx);
-    if (r.getRhsLoc(0) == chcs.getSink()) {
+    if (r.getRhsLoc() == chcs.getSink()) {
         // no need to compute a new variable renaming if we just applied a query
         return {};
     }
     const Subs last_var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     Subs new_var_renaming;
-    const Subs up = r.getUpdate(0);
+    const Subs up = r.getUpdate();
     for (const auto &x: prog_vars) {
         new_var_renaming.put(x, TheTheory::varToExpr(chcs.addFreshTemporaryVariable(x)));
     }
@@ -444,7 +444,7 @@ void Reachability::init() {
         last_orig_clause = std::max(last_orig_clause, idx);
         const auto rule = chcs.getRule(idx);
         const auto src = rule.getLhsLoc();
-        const auto dst = rule.getRhsLoc(0);
+        const auto dst = rule.getRhsLoc();
         if (src == chcs.getInitialLocation() && dst == chcs.getSink()) {
             conditional_empty_clauses.push_back(idx);
         } else {
@@ -580,7 +580,7 @@ Rule Reachability::build_loop(const int backlink) {
         loop = *Chaining::chainRules(chcs, chcs.getRule(step.clause_idx).withGuard(step.implicant).subs(sigma), loop, false);
 
     }
-    assert(loop.getLhsLoc() == loop.getRhsLoc(0));
+    assert(loop.getLhsLoc() == loop.getRhsLoc());
     if (log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         ITSExport::printRule(loop, chcs, std::cout);
@@ -629,7 +629,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
     Result<Rule> simp = Preprocess::simplifyRule(chcs, rule);
-    if (Config::Analysis::reachability() && simp->getUpdate(0) == substitution::concat(simp->getUpdate(0), simp->getUpdate(0))) {
+    if (Config::Analysis::reachability() && simp->getUpdate() == substitution::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
         if (log) std::cout << "acceleration would yield equivalent rule -> dropping it" << std::endl;
@@ -642,7 +642,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     AccelConfig config;
     config.allowDisjunctions = false;
-    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, simp->toLinear(), Complexity::Const, config);
+    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *simp, Complexity::Const, config);
     Result<std::vector<TransIdx>> res;
     const auto src = rule.getLhsLoc();
     if (accel_res.nontermRule) {
@@ -665,7 +665,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
         auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule);
-        if (simplified->getUpdate(0) != simp->getUpdate(0)) {
+        if (simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
                 simplified.concat(instantiate(*accel_res.n, *simplified));
@@ -700,7 +700,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     redundance->mark_as_redundant(lang);
     const auto loop = build_loop(backlink);
-    if (Config::Analysis::reachability() && loop.getUpdate(0).empty()) {
+    if (Config::Analysis::reachability() && loop.getUpdate().empty()) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
@@ -719,7 +719,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     for (const auto idx: idxs) {
         const auto clause = chcs.getRule(idx);
         if (store_step(idx, clause.getGuard())) {
-            if (clause.getRhsLoc(0) == chcs.getSink()) {
+            if (clause.getRhsLoc() == chcs.getSink()) {
                 return std::make_unique<ProvedUnsat>();
             } else {
                 return state;
@@ -731,7 +731,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
 }
 
 LocationIdx Reachability::get_current_predicate() const {
-    return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
+    return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc();
 }
 
 bool Reachability::try_to_finish(const std::vector<TransIdx> &clauses) {

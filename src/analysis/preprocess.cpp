@@ -45,13 +45,9 @@ Result<Rule> Preprocess::simplifyRule(ITSProblem &its, const Rule &rule) {
 
 Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule, const ITSProblem &its) {
     bool changed = false;
-    std::vector<RuleRhs> newRhss;
-    for (const RuleRhs &rhs: rule.getRhss()) {
-        Subs up = rhs.getUpdate();
-        changed |= removeTrivialUpdates(up);
-        newRhss.push_back(RuleRhs(rhs.getLoc(), up));
-    }
-    Result<Rule> res{Rule(rule.getLhs(), newRhss), changed};
+    Subs up = rule.getUpdate();
+    changed |= removeTrivialUpdates(up);
+    Result<Rule> res{Rule(rule.getLhs(), RuleRhs(rule.getRhsLoc(), up)), changed};
     if (res) {
         res.ruleTransformationProof(rule, "removed trivial updates", res.get(), its);
     }
@@ -82,10 +78,8 @@ bool Preprocess::removeTrivialUpdates(Subs &update) {
  */
 static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     VarSet varsInUpdate;
-    for (auto rhs = rule.rhsBegin(); rhs != rule.rhsEnd(); ++rhs) {
-        for (const auto &it : rhs->getUpdate()) {
-            expression::collectVars(substitution::second(it), varsInUpdate);
-        }
+    for (const auto &it : rule.getUpdate()) {
+        expression::collectVars(substitution::second(it), varsInUpdate);
     }
     return varsInUpdate;
 }

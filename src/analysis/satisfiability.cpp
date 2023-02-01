@@ -146,7 +146,7 @@ ResultViaSideEffects Satisfiability::remove_irrelevant_clauses() {
     } while (!todo.empty());
     std::set<TransIdx> deleted;
     for (const auto idx: chcs.getAllTransitions()) {
-        const LocationIdx target = chcs.getRule(idx).getRhsLoc(0);
+        const LocationIdx target = chcs.getRule(idx).getRhsLoc();
         if (keep.find(target) == keep.end()) {
             const std::set<TransIdx> d = chcs.removeLocationAndRules(target);
             deleted.insert(d.begin(), d.end());
@@ -178,7 +178,7 @@ ResultViaSideEffects Satisfiability::unroll() {
     for (const TransIdx idx: chcs.getAllTransitions()) {
         const Rule &r = chcs.getRule(idx);
         if (r.isSimpleLoop()) {
-            const auto [res, period] = LoopAcceleration::chain(r.toLinear(), chcs);
+            const auto [res, period] = LoopAcceleration::chain(r, chcs);
             if (period > 1) {
                 const auto simplified = Preprocess::simplifyRule(chcs, res);
                 ret.succeed();
@@ -197,7 +197,7 @@ ResultViaSideEffects Satisfiability::unroll() {
 
 bool Satisfiability::leaves_scc(const TransIdx idx) const {
     const Rule &r = chcs.getRule(idx);
-    return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc(0));
+    return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc());
 }
 
 int Satisfiability::has_looping_suffix() {
@@ -205,7 +205,7 @@ int Satisfiability::has_looping_suffix() {
         return -1;
     }
     const auto last_clause = chcs.getRule(trace.back().clause_idx);
-    const auto dst = last_clause.getRhsLoc(0);
+    const auto dst = last_clause.getRhsLoc();
     std::vector<long> sequence;
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
@@ -231,7 +231,7 @@ Subs Satisfiability::handle_update(const TransIdx idx) {
     const Rule &r = chcs.getRule(idx);
     const Subs last_var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     Subs new_var_renaming;
-    const Subs up = r.getUpdate(0);
+    const Subs up = r.getUpdate();
     for (const auto &x: prog_vars) {
         new_var_renaming.put(x, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(x)));
     }
@@ -389,7 +389,7 @@ void Satisfiability::init() {
         last_orig_clause = std::max(last_orig_clause, idx);
         const auto rule = chcs.getRule(idx);
         const auto src = rule.getLhsLoc();
-        const auto dst = rule.getRhsLoc(0);
+        const auto dst = rule.getRhsLoc();
         if (src == chcs.getInitialLocation() && dst == chcs.getSink()) {
             conditional_empty_clauses.push_back(idx);
         } else {
@@ -508,7 +508,7 @@ Rule Satisfiability::build_loop(const int backlink) {
         loop = *Chaining::chainRules(chcs, chcs.getRule(step.clause_idx).withGuard(step.implicant).subs(sigma), loop, false);
 
     }
-    assert(loop.getLhsLoc() == loop.getRhsLoc(0));
+    assert(loop.getLhsLoc() == loop.getRhsLoc());
     if (log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         ITSExport::printRule(loop, chcs, std::cout);
@@ -541,7 +541,7 @@ bool Satisfiability::is_orig_clause(const TransIdx idx) const {
 
 std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang, const int backlink, int &period) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule);
-    if (res->getUpdate(0) == substitution::concat(res->getUpdate(0), res->getUpdate(0))) {
+    if (res->getUpdate() == substitution::concat(res->getUpdate(), res->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
         if (log) std::cout << "acceleration would yield equivalent rule -> dropping it" << std::endl;
@@ -551,11 +551,11 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
     config.allowDisjunctions = false;
     config.approx = OverApprox;
     // ---
-    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), Complexity::Const, config);
+    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *res, Complexity::Const, config);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
         const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule);
-        if (simplified->getUpdate(0) == res->getUpdate(0)) {
+        if (simplified->getUpdate() == res->getUpdate()) {
             if (log) std::cout << "acceleration yielded equivalent rule -> dropping it" << std::endl;
             return std::make_unique<Failed>();
         // accelerated rule differs from the original one, update the result
@@ -616,7 +616,7 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink, i
     //luby_loop_count++;
     redundance->mark_as_redundant(lang);
     const auto loop = build_loop(backlink);
-    if (loop.getUpdate(0).empty()) {
+    if (loop.getUpdate().empty()) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
@@ -676,7 +676,7 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink, i
 }
 
 LocationIdx Satisfiability::get_current_predicate() const {
-    return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc(0);
+    return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc();
 }
 
 bool Satisfiability::try_to_finish(const std::vector<TransIdx> &clauses) {
@@ -707,7 +707,7 @@ Result<Rule> Satisfiability::build_trivial_clause(const LocationIdx idx) {
     for(const auto &x: prog_vars){
         update.put(x, TheTheory::varToExpr(chcs.getFreshUntrackedSymbol(x)));
     }
-    const LinearRule trivialClause = LinearRule(idx, BExpression::True, 1, idx, update);
+    const Rule trivialClause = Rule(idx, BExpression::True, 1, idx, update);
     return trivialClause;
 }
 
