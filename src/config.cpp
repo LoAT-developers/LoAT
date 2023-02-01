@@ -121,8 +121,6 @@ namespace Config {
 
     // Asymptotic complexity computation using limit problems
     namespace Limit {
-        PolynomialLimitProblemStrategy* PolyStrategy = &SmtAndCalculus;
-
         // Discard a limit problem of size >= ProblemDiscardSize in a non-final check if z3 yields "unknown"
         const unsigned int ProblemDiscardSize = 10;
     }

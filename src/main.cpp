@@ -40,8 +40,8 @@ void printHelp(char *arg0) {
     cout << "Options:" << endl;
     cout << "  --proof-level <n>                                Detail level for proof output" << endl;
     cout << "  --plain                                          Disable colored output" << endl;
-    cout << "  --limit-strategy <smt|calculus|smtAndCalculus>   Strategy for limit problems" << endl;
-    cout << "  --mode <complexity|non_termination>              Analysis mode" << endl;
+    cout << "  --mode <complexity|non_termination|reachability> Analysis mode" << endl;
+    cout << "  --format <koat|its|horn>                         Input format" << endl;
 }
 
 
@@ -65,19 +65,6 @@ void parseFlags(int argc, char *argv[]) {
             proofLevel = atoi(getNext());
         } else if (strcmp("--plain",argv[arg]) == 0) {
             Config::Output::Colors = false;
-        } else if (strcmp("--limit-strategy",argv[arg]) == 0) {
-            const std::string &strategy = getNext();
-            bool found = false;
-            for (Config::Limit::PolynomialLimitProblemStrategy* s: Config::Limit::PolyStrategies) {
-                if (boost::iequals(strategy, s->name())) {
-                    Config::Limit::PolyStrategy = s;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                cerr << "Unknown strategy " << strategy << " for limit problems, defaulting to " << Config::Limit::PolyStrategy->name() << endl;
-            }
         } else if (strcmp("--reach-log", argv[arg]) == 0) {
             reachability::Reachability::log = true;
         } else if (strcmp("--sat-log", argv[arg]) == 0) {

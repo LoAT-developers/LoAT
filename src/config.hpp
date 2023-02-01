@@ -105,31 +105,6 @@ namespace Config {
 
     // Asymptotic complexity computation using limit problems
     namespace Limit {
-        class PolynomialLimitProblemStrategy {
-        public:
-            virtual bool smtEnabled() const = 0;
-            virtual bool calculusEnabled() const = 0;
-            virtual std::string name() const = 0;
-        };
-        class: public PolynomialLimitProblemStrategy {
-            bool smtEnabled() const override {return true;}
-            bool calculusEnabled() const override {return false;}
-            std::string name() const override {return "smt";}
-        } Smt;
-        class: public PolynomialLimitProblemStrategy {
-            bool smtEnabled() const override {return false;}
-            bool calculusEnabled() const override {return true;}
-            std::string name() const override {return "calculus";}
-        } Calculus;
-        class: public PolynomialLimitProblemStrategy {
-            bool smtEnabled() const override {return true;}
-            bool calculusEnabled() const override {return true;}
-            std::string name() const override {return "smtAndCalculus";}
-        } SmtAndCalculus;
-
-        static const std::vector<PolynomialLimitProblemStrategy*> PolyStrategies = {&Smt, &Calculus, &SmtAndCalculus};
-
-        extern PolynomialLimitProblemStrategy* PolyStrategy;
         extern const unsigned int ProblemDiscardSize;
     }
 
