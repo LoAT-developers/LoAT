@@ -25,26 +25,24 @@ Older releases can be found [here](https://github.com/aprove-developers/LoAT/rel
 # Using LoAT
 
 To choose the goal of your analysis, please use one of the following command-line option
-<ul>
-    <li>`--mode non_termination` for proving non-termination</li>
-    <li>`--mode complexity` for proving lower bounds on the worst-case runtime complexity</li>
-    <li>`--mode reachability` for proving reachability of error states, which corresponds to unsatisfiability of CHCs</li>
-</ul>
+
+* `--mode non_termination` for proving non-termination
+* `--mode complexity` for proving lower bounds on the worst-case runtime complexity
+* `--mode reachability` for proving reachability of error states, which corresponds to unsatisfiability of CHCs
+
 Currently, reachability / unsatisfiability is supported for CHCs only, as LoAT's input formats for transition systems do not allow for specifying error states.
 
-## Input Formats
-
-### Integer Transition Systems
+## Input Formats for Integer Transition Systems
 
 LoAT supports the most common formats for *Integer Transition Systems*.
 
-#### SMTLIB
+### SMTLIB
 
 LoAT can parse the [SMTLIB-format](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/SMTPushdownPrograms.pdf) used in the category *Termination of Integer Transition Systems* at the annual [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition).
 
 To use this format, please use the command-line option `--format its`.
 
-#### KoAT
+### KoAT
 
 LoAT also supports an extended version of [KoAT's input format](http://aprove.informatik.rwth-aachen.de/eval/IntegerComplexity/), which is also used in the category *Complexity of Integer Transition Systems* at the annual *Termination and Complexity Competition*.
 
@@ -58,7 +56,7 @@ The lower bound has to be non-negative for every model of the transition's guard
 
 To use this format, please use the command-line option `--format koat`.
 
-### Constrained Horn Clauses
+## Input Format for Constrained Horn Clauses
 
 LoAT can parse the [SMTLIB-format](https://chc-comp.github.io/format.html) used at the annual [*CHC-COMP*](https://chc-comp.github.io/).
 
