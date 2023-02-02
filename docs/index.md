@@ -125,8 +125,8 @@ In this constellation AProVE, LoAT, and T2 won the following awards:
 
 # Build
 
-In theory, all you need to do is install docker and run ``./compile_static_binary``.
+In theory, all you need to do is install [docker](https://www.docker.com/) and run ``./compile_static_binary``.
 Then the path to the binary is ``./build/static/release/loat-static``.
 In practice, it's usually more complicated than that, so please consider using one of our [releases](https://github.com/loat-developers/LoAT/releases) instead.
 
-If you experience any problems, contact florian.frohn [at] cs.rwth-aachen.de.
+If you experience any problems, contact `florian.frohn [at] cs.rwth-aachen.de`.
