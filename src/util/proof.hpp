@@ -42,6 +42,8 @@ public:
 
     static void setProofLevel(unsigned int proofLevel);
 
+    static bool disabled();
+
     void append(const std::string &s);
 
     void append(const std::ostream &s);
@@ -85,8 +87,6 @@ public:
     void pop();
 
     static unsigned int defaultProofLevel;
-
-    static unsigned int maxProofLevel;
 
 private:
 

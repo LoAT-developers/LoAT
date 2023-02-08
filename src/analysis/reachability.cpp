@@ -391,6 +391,9 @@ void Reachability::print_trace(std::ostream &s) {
 }
 
 void Reachability::print_state() {
+    if (Proof::disabled()) {
+        return;
+    }
     Proof state_p;
     std::stringstream s;
     state_p.section("Trace");
@@ -543,6 +546,9 @@ void Reachability::luby_next() {
 void Reachability::unsat() {
     const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
     std::cout << res << std::endl;
+    if (!log && Proof::disabled()) {
+        return;
+    }
     std::stringstream counterexample;
     print_trace(counterexample);
     if (log) {
@@ -558,6 +564,8 @@ void Reachability::unsat() {
     subProof.section("Counterexample");
     subProof.append(counterexample);
     proof.storeSubProof(subProof);
+    proof.result(res);
+    proof.newline();
     proof.print();
 }
 
@@ -897,6 +905,7 @@ void Reachability::analyze() {
         }
     } while (true);
     proof.headline("Accept");
+    proof.result("unknown");
     proof.newline();
     std::cout << "unknown" << std::endl;
     proof.print();

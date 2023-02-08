@@ -5,8 +5,11 @@
 #include <string>
 
 unsigned int Proof::defaultProofLevel = 1;
-unsigned int Proof::maxProofLevel = 2;
 unsigned int Proof::proofLevel = defaultProofLevel;
+
+bool Proof::disabled() {
+    return proofLevel <= 0;
+}
 
 void Proof::print(unsigned level) const {
     if (level <= proofLevel) {
@@ -43,18 +46,22 @@ void Proof::append(const std::string &s) {
 }
 
 void Proof::append(const std::ostream &s) {
+    if (Proof::disabled()) {
+        return;
+    }
     std::stringstream str;
     str << s.rdbuf();
     append(str.str());
 }
 
 void Proof::append(const Style &style, std::string s) {
-    if (proofLevel > 0) {
-        std::vector<std::string> lines;
-        boost::split(lines, s, boost::is_any_of("\n"));
-        for (const std::string &l: lines) {
-            proof.emplace_back(ProofStep{style, l});
-        }
+    if (Proof::disabled()) {
+        return;
+    }
+    std::vector<std::string> lines;
+    boost::split(lines, s, boost::is_any_of("\n"));
+    for (const std::string &l: lines) {
+        proof.emplace_back(ProofStep{style, l});
     }
 }
 
@@ -69,6 +76,9 @@ void Proof::headline(const std::string &s) {
 
 // print given string in headline style with spacing
 void Proof::headline(const std::ostream &s) {
+    if (Proof::disabled()) {
+        return;
+    }
     std::stringstream str;
     str << s.rdbuf();
     headline(str.str());
@@ -80,6 +90,9 @@ void Proof::section(const std::string &s) {
 }
 
 void Proof::section(const std::ostream &s) {
+    if (Proof::disabled()) {
+        return;
+    }
     std::stringstream str;
     str << s.rdbuf();
     section(str.str());
@@ -90,6 +103,9 @@ void Proof::result(const std::string &s) {
 }
 
 void Proof::result(const std::ostream &s) {
+    if (Proof::disabled()) {
+        return;
+    }
     std::stringstream str;
     str << s.rdbuf();
     result(str.str());
@@ -100,12 +116,16 @@ void Proof::setProofLevel(unsigned int proofLevel) {
 }
 
 void Proof::concat(const Proof &that) {
-    if (proofLevel > 0) {
-        proof.insert(proof.end(), that.proof.begin(), that.proof.end());
+    if (Proof::disabled()) {
+        return;
     }
+    proof.insert(proof.end(), that.proof.begin(), that.proof.end());
 }
 
 void Proof::ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule, const ITSProblem &its) {
+    if (Proof::disabled()) {
+        return;
+    }
     section(transformation);
     std::stringstream s;
     s << "Original rule:\n";
@@ -116,6 +136,9 @@ void Proof::ruleTransformationProof(const Rule &oldRule, const std::string &tran
 }
 
 void Proof::majorProofStep(const std::string &step, const ITSProblem &its) {
+    if (Proof::disabled()) {
+        return;
+    }
     headline(step);
     std::stringstream s;
     ITSExport::printForProof(its, s);
@@ -123,6 +146,9 @@ void Proof::majorProofStep(const std::string &step, const ITSProblem &its) {
 }
 
 void Proof::minorProofStep(const std::string &step, const ITSProblem &its) {
+    if (Proof::disabled()) {
+        return;
+    }
     section(step);
     std::stringstream s;
     ITSExport::printForProof(its, s);
@@ -130,6 +156,9 @@ void Proof::minorProofStep(const std::string &step, const ITSProblem &its) {
 }
 
 void Proof::deletionProof(const std::set<TransIdx> &rules) {
+    if (Proof::disabled()) {
+        return;
+    }
     if (!rules.empty()) {
         section("Applied deletion");
         std::stringstream s;
@@ -142,6 +171,9 @@ void Proof::deletionProof(const std::set<TransIdx> &rules) {
 }
 
 void Proof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule, const ITSProblem &its) {
+    if (Proof::disabled()) {
+        return;
+    }
     section("Applied chaining");
     std::stringstream s;
     s << "First rule:\n";
