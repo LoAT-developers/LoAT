@@ -428,6 +428,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
         }
         if (SmtFactory::check(newGuard, its) == Sat) {
             ret.term.emplace(newGuard, proof, map.exact);
+            ret.term->proof.newline();
             ret.term->proof.append(std::stringstream() << "Replacement map: " << map.map);
             if (nt) {
                 ret.nonterm = ret.term;
@@ -439,6 +440,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
                 auto newGuard = guard->replaceLits(map.map);
                 if (SmtFactory::check(newGuard, its) == Sat) {
                     ret.nonterm.emplace(newGuard, proof, map.exact);
+                    ret.nonterm->proof.newline();
                     ret.nonterm->proof.append(std::stringstream() << "Replacement map: " << map.map);
                 }
             }

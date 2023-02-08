@@ -203,8 +203,8 @@ acceleration::Result LoopAcceleration::run() {
                     Expr::NontermSymbol,
                     its.getSink(),
                     {});
-        res.proof.ruleTransformationProof(rule, "nonterm", *res.nontermRule, its);
-        res.proof.storeSubProof(accelerationResult.nonterm->proof);
+        res.nontermProof.ruleTransformationProof(rule, "Certificate of Non-Termination", *res.nontermRule, its);
+        res.nontermProof.storeSubProof(accelerationResult.nonterm->proof);
     }
     if (rec && accelerationResult.term) {
         res.n = rec->n;
@@ -214,7 +214,7 @@ acceleration::Result LoopAcceleration::run() {
                     rec->cost,
                     rule.getRhsLoc(),
                     rec->update);
-        res.proof.ruleTransformationProof(rule, "acceleration", *res.rule, its);
+        res.proof.ruleTransformationProof(rule, "Loop Acceleration", *res.rule, its);
         res.proof.storeSubProof(accelerationResult.term->proof);
     }
     return res;

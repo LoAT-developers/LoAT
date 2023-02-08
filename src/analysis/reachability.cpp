@@ -62,8 +62,18 @@ option<Covered> Covered::covered() {
     return *this;
 }
 
+Dropped::Dropped(const Result<std::vector<TransIdx>> &idx): idx(idx) {}
+
 option<Dropped> Dropped::dropped() {
     return *this;
+}
+
+Result<std::vector<TransIdx>>& Dropped::operator*() {
+    return idx;
+}
+
+Result<std::vector<TransIdx>>* Dropped::operator->() {
+    return &idx;
 }
 
 option<Failed> Failed::failed() {
@@ -72,6 +82,16 @@ option<Failed> Failed::failed() {
 
 option<ProvedUnsat> ProvedUnsat::unsat() {
     return *this;
+}
+
+ProvedUnsat::ProvedUnsat(const Proof &proof): proof(proof) {}
+
+Proof& ProvedUnsat::operator*() {
+    return proof;
+}
+
+Proof* ProvedUnsat::operator->() {
+    return &proof;
 }
 
 PushPop::PushPop(LinearizingSolver<IntTheory, BoolTheory> &solver): solver(solver) {
@@ -94,7 +114,10 @@ Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renam
 
 std::ostream& operator<<(std::ostream &s, const std::vector<Step> &step) {
     for (auto it = step.begin(); it != step.end(); ++it) {
-        s << " [" << it->implicant << "] " << it->clause_idx;
+        if (it != step.begin()) {
+            s << ", ";
+        }
+        s << it->clause_idx << "[" << it->implicant << "]";
     }
     return s;
 }
@@ -190,7 +213,7 @@ ResultViaSideEffects Reachability::unroll() {
             if (period > 1) {
                 const auto simplified = Preprocess::simplifyRule(chcs, res);
                 ret.succeed();
-                ret.ruleTransformationProof(r, "unrolling", res, chcs);
+                ret.ruleTransformationProof(r, "Unrolling", res, chcs);
                 if (simplified) {
                     chcs.addRule(*simplified);
                     ret.concat(simplified.getProof());
@@ -263,12 +286,13 @@ void Reachability::block(const Step &step) {
     if (log) std::cout << "blocking " << step.clause_idx << ", " << step.implicant << std::endl;
     if (chcs.getRule(step.clause_idx).getGuard()->isConjunction()) {
         blocked_clauses.back()[step.clause_idx] = {};
-    }
-    auto block = blocked_clauses.back().find(step.clause_idx);
-    if (block == blocked_clauses.back().end()) {
-        blocked_clauses.back()[step.clause_idx] = {step.implicant};
     } else {
-        block->second.insert(step.implicant);
+        auto block = blocked_clauses.back().find(step.clause_idx);
+        if (block == blocked_clauses.back().end()) {
+            blocked_clauses.back()[step.clause_idx] = {step.implicant};
+        } else {
+            block->second.insert(step.implicant);
+        }
     }
 }
 
@@ -276,9 +300,6 @@ void Reachability::pop() {
     blocked_clauses.pop_back();
     trace.pop_back();
     solver.pop();
-    if (!Config::Analysis::complexity()) {
-        proof.pop();
-    }
 }
 
 void Reachability::backtrack() {
@@ -291,15 +312,6 @@ void Reachability::backtrack() {
 
 void Reachability::add_to_trace(const Step &step) {
     trace.emplace_back(step);
-    proof.push();
-    proof.headline("extended trace");
-    proof.append(std::stringstream() << "added " << step.clause_idx << " to trace");
-    Proof subProof;
-    subProof.section("implicant");
-    subProof.append(std::stringstream() << step.implicant);
-    subProof.section("trace");
-    subProof.append(std::stringstream() << trace);
-    proof.storeSubProof(subProof);
 }
 
 void Reachability::update_cpx() {
@@ -362,8 +374,14 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
 
 void Reachability::print_trace(std::ostream &s) {
     const auto model = solver.model().toSubs();
+    bool first = true;
     for (const auto &step: trace) {
-        s << " [";
+        if (first) {
+            first = false;
+        } else {
+            s << " ";
+        }
+        s << "[";
         for (const auto &x: prog_vars) {
             s << " " << x << "=" << expression::subs(step.var_renaming.get(x), model);
         }
@@ -372,32 +390,65 @@ void Reachability::print_trace(std::ostream &s) {
     s << std::endl;
 }
 
+void Reachability::print_state() {
+    Proof state_p;
+    std::stringstream s;
+    state_p.section("Trace");
+    s << trace;
+    state_p.append(s);
+    s.clear();
+    state_p.section("Blocked");
+    bool first_set = true;
+    s << "[";
+    for (const auto &e: blocked_clauses) {
+        if (first_set) {
+            first_set = false;
+        } else {
+            s << ", ";
+        }
+        s << "{";
+        bool first_trans = true;
+        for (const auto &[idx,blocked]: e) {
+            if (first_trans) {
+                first_trans = false;
+            } else {
+                s << ", ";
+            }
+            s << idx << "[" << BExpression::buildAnd(blocked) << "]";
+        }
+        s << "}";
+    }
+    s << "]";
+    state_p.append(s);
+    proof.storeSubProof(state_p);
+}
+
 void Reachability::preprocess() {
     ResultViaSideEffects res;
     if (Config::Analysis::reachability()) {
         res = remove_irrelevant_clauses();
         if (res) {
-            proof.majorProofStep("removed irrelevant transitions", chcs);
+            proof.majorProofStep("Removed Irrelevant Transitions", chcs);
             proof.storeSubProof(res.getProof());
         }
     }
     res = Chaining::chainLinearPaths(chcs);
     if (res) {
-        proof.majorProofStep("chained linear paths", chcs);
+        proof.majorProofStep("Chained Linear Paths", chcs);
         proof.storeSubProof(res.getProof());
     }
     res = simplify();
     if (res) {
-        proof.majorProofStep("simplified transitions", chcs);
+        proof.majorProofStep("Simplified Transitions", chcs);
         proof.storeSubProof(res.getProof());
     }
     res = unroll();
     if (res) {
-        proof.majorProofStep("unrolled loops", chcs);
+        proof.majorProofStep("Unrolled Loops", chcs);
         proof.storeSubProof(res.getProof());
     }
     if (log) {
-        std::cout << "simplified ITS" << std::endl;
+        std::cout << "Simplified ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
     }
 }
@@ -491,21 +542,20 @@ void Reachability::luby_next() {
 
 void Reachability::unsat() {
     const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
-    std::cout << res << std::endl << std::endl;
-    std::stringstream trace_stream, counterexample;
-    trace_stream << trace;
+    std::cout << res << std::endl;
+    std::stringstream counterexample;
     print_trace(counterexample);
     if (log) {
+        std::stringstream trace_stream;
+        trace_stream << trace;
         std::cout << "final ITS:" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
         std::cout << std::endl << "final trace:" << trace_stream.str() << std::endl << std::endl;
-        std::cout << "counterexample:" << counterexample.str();
+        std::cout << "counterexample: " << counterexample.str();
     }
-    proof.headline("proved unsatisfiability");
+    proof.headline("Refute");
     Proof subProof;
-    subProof.section("final trace");
-    subProof.append(trace_stream);
-    subProof.section("counterexample");
+    subProof.section("Counterexample");
     subProof.append(counterexample);
     proof.storeSubProof(subProof);
     proof.print();
@@ -655,7 +705,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             it->second.push_back(idx);
         }
         res->push_back(idx);
-        res.storeSubProof(accel_res.nontermProof);
+        res.concat(accel_res.nontermProof);
         if (log) {
             std::cout << "accelerated non-terminating rule:" << std::endl;
             ITSExport::printRule(*accel_res.nontermRule, chcs, std::cout);
@@ -672,7 +722,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             }
             res.succeed();
             res->push_back(add_learned_clause(*simplified, lang));
-            res.storeSubProof(accel_res.proof);
+            res.concat(accel_res.proof);
             res.concat(simplified.getProof());
             if (log) {
                 std::cout << "accelerated rule:" << std::endl;
@@ -711,23 +761,20 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     auto accel_state = *state->succeeded();
     const auto idxs = **accel_state;
-    const auto subproof = accel_state->getProof();
     // drop the looping suffix
     drop_until(backlink);
-    proof.majorProofStep("accelerated loop", chcs);
-    proof.storeSubProof(subproof);
     for (const auto idx: idxs) {
         const auto clause = chcs.getRule(idx);
         if (store_step(idx, clause.getGuard())) {
             if (clause.getRhsLoc() == chcs.getSink()) {
-                return std::make_unique<ProvedUnsat>();
+                return std::make_unique<ProvedUnsat>(accel_state->getProof());
             } else {
                 return state;
             }
         }
     }
     if (log) std::cout << "applying accelerated rule failed" << std::endl;
-    return std::make_unique<Dropped>();
+    return std::make_unique<Dropped>(*accel_state);
 }
 
 LocationIdx Reachability::get_current_predicate() const {
@@ -741,6 +788,8 @@ bool Reachability::try_to_finish(const std::vector<TransIdx> &clauses) {
         if (implicant) {
             // no need to compute the model and the variable renaming for the next step, as we are done
             add_to_trace(Step(q, *implicant, Subs(), compute_resolvent(q, *implicant)));
+            proof.headline("Step with " + std::to_string(q));
+            print_state();
             unsat();
             return true;
         }
@@ -758,9 +807,9 @@ bool Reachability::try_conditional_empty_clauses() {
 }
 
 void Reachability::analyze() {
-    proof.majorProofStep("initial ITS", chcs);
+    proof.majorProofStep("Initial ITS", chcs);
     if (log) {
-        std::cout << "initial ITS" << std::endl;
+        std::cout << "Initial ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
     }
     preprocess();
@@ -780,20 +829,34 @@ void Reachability::analyze() {
             auto state = handle_loop(*backlink);
             if (state->covered()) {
                 backtrack();
+                proof.headline("Covered");
+                print_state();
             } else if (state->succeeded()) {
                 if (simple_loop) {
                     block(step);
                 }
+                proof.majorProofStep("Accelerate", chcs);
+                proof.storeSubProof((*state->succeeded())->getProof());
+                print_state();
                 // try to apply a query before doing another step
                 if (try_to_finish()) {
                     return;
                 }
             } else if (state->dropped()) {
                 block(step);
+                proof.majorProofStep("Accelerate and Drop", chcs);
+                proof.storeSubProof((*state->dropped())->getProof());
+                print_state();
             } else if (state->failed()) {
                 // non-loop --> do not backtrack
+                proof.headline("Acceleration Failed");
+                proof.append("marked recursive suffix as redundant");
                 non_loops.add(trace, *backlink);
             } else if (state->unsat()) {
+                proof.majorProofStep("Nonterm", chcs);
+                proof.storeSubProof(**state->unsat());
+                proof.headline("Step with " + std::to_string(trace.back().clause_idx));
+                print_state();
                 unsat();
                 return;
             }
@@ -805,6 +868,7 @@ void Reachability::analyze() {
                 pop();
             }
             luby_next();
+            proof.headline("Restart");
         }
         const auto current = get_current_predicate();
         auto &to_try = rules[current];
@@ -813,6 +877,8 @@ void Reachability::analyze() {
         while (it != to_try.end()) {
             const option<BoolExpr> implicant = resolve(*it);
             if (implicant && store_step(*it, *implicant)) {
+                proof.headline("Step with " + std::to_string(*it));
+                print_state();
                 break;
             }
             append.push_back(*it);
@@ -824,17 +890,16 @@ void Reachability::analyze() {
             break;
         } else if (all_failed) {
             backtrack();
+            proof.headline("Backtrack");
+            print_state();
         } else if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
             return;
         }
     } while (true);
-    if (Config::Analysis::complexity()) {
-        if (cpx != Complexity::Const) {
-            proof.print();
-        }
-    } else {
-        std::cout << "unknown" << std::endl << std::endl;
-    }
+    proof.headline("Accept");
+    proof.newline();
+    std::cout << "unknown" << std::endl;
+    proof.print();
 }
 
 void Reachability::analyze(ITSProblem &its) {

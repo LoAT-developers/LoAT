@@ -49,7 +49,7 @@ Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule, const ITSProblem
     changed |= removeTrivialUpdates(up);
     Result<Rule> res{Rule(rule.getLhs(), RuleRhs(rule.getRhsLoc(), up)), changed};
     if (res) {
-        res.ruleTransformationProof(rule, "removed trivial updates", res.get(), its);
+        res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get(), its);
     }
     return res;
 }
@@ -119,14 +119,14 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule) {
     //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
     res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTempInUpdate));
 
-    //try to remove all remaining temp variables (we do 2 steps to priorizie removing vars from the update)
+    //try to remove all remaining temp variables (we do 2 steps to prioritize removing vars from the update)
     res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTemp));
 
     BoolExpr guard = res->getGuard();
     BoolExpr newGuard = guard->simplify();
     if (newGuard.get() != guard.get()) {
         const Rule newRule = res->withGuard(newGuard);
-        res.ruleTransformationProof(res.get(), "simplified guard", newRule, its);
+        res.ruleTransformationProof(res.get(), "Simplified Guard", newRule, its);
         res = newRule;
     }
 

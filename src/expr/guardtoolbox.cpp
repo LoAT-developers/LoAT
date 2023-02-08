@@ -75,7 +75,8 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
         Subs subs;
         subs.get<IntTheory>() = varSubs;
         res = rule.subs(subs);
-        res.ruleTransformationProof(rule, "propagated equalities", res.get(), its);
+        res.ruleTransformationProof(rule, "Propagated Equalities", res.get(), its);
+        res.newline();
         res.storeSubProof(proof.getProof());
     }
     return res;
@@ -184,7 +185,7 @@ abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (changed) {
         res = rule.withGuard(BExpression::buildAndFromLits(guard));
-        res.ruleTransformationProof(rule, "eliminated temporary variables via transitive closure", *res, its);
+        res.ruleTransformationProof(rule, "Eliminated Temporary Variables via Transitive Closure", *res, its);
     }
     return res;
 }

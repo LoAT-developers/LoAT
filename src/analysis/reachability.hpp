@@ -140,7 +140,16 @@ class Covered: public LearningState {
 };
 
 class Dropped: public LearningState {
+    /**
+     * the indices of the learned clause
+     */
+    Result<std::vector<TransIdx>> idx;
+
+public:
+    Dropped(const Result<std::vector<TransIdx>> &idx);
     option<Dropped> dropped() override;
+    Result<std::vector<TransIdx>>& operator*();
+    Result<std::vector<TransIdx>>* operator->();
 };
 
 class Failed: public LearningState {
@@ -148,7 +157,13 @@ class Failed: public LearningState {
 };
 
 class ProvedUnsat: public LearningState {
+    Proof proof;
+
+public:
+    ProvedUnsat(const Proof &proof);
     option<ProvedUnsat> unsat() override;
+    Proof& operator*();
+    Proof* operator->();
 };
 
 /**
@@ -360,6 +375,8 @@ class Reachability {
     bool store_step(const TransIdx idx, const BoolExpr &implicant);
 
     void print_trace(std::ostream &s);
+
+    void print_state();
 
     /**
      * @return the head predicate of the trace

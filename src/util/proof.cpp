@@ -106,7 +106,7 @@ void Proof::concat(const Proof &that) {
 }
 
 void Proof::ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule, const ITSProblem &its) {
-    section("Applied " + transformation);
+    section(transformation);
     std::stringstream s;
     s << "Original rule:\n";
     ITSExport::printRule(oldRule, its, s);

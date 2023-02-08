@@ -1057,9 +1057,9 @@ std::ostream& operator<<(std::ostream &s, const BExpr<T, Th...> e) {
         std::visit([&s](const auto &lit){s << lit;}, *e->getTheoryLit());
     } else if (e->getChildren().empty()) {
         if (e->isAnd()) {
-            s << "TRUE";
+            s << "T";
         } else {
-            s << "FALSE";
+            s << "_|_";
         }
     } else {
         bool first = true;
