@@ -18,9 +18,19 @@ void Proof::print(unsigned level) const {
             indentBuilder << "\t";
         }
         std::string indent = indentBuilder.str();
+        // initialize with true to skip leading blank lines
+        bool last_blank = true;
         for (const auto &l: proof) {
             if (std::holds_alternative<ProofStep>(l)) {
                 ProofStep ps = std::get<ProofStep>(l);
+                bool is_blank = ps.second.empty();
+                if (is_blank && last_blank) {
+                    continue;
+                }
+                if (!is_blank && !last_blank && ps.first != Proof::Style::None) {
+                    // make sure that there is a blank line before headlines and results
+                    std::cout << std::endl;
+                }
                 if (Config::Output::Colors) {
                     switch (ps.first) {
                     case None: std::cout << Config::Color::None;
@@ -34,9 +44,26 @@ void Proof::print(unsigned level) const {
                     }
                 }
                 std::cout << indent << ps.second << std::endl;
+                // make sure that there is a blank line after headlines and results
+                if (!is_blank && ps.first != Proof::Style::None) {
+                    std::cout << std::endl;
+                    last_blank = true;
+                } else {
+                    last_blank = is_blank;
+                }
             } else {
+                if (!last_blank) {
+                    // make sure there is a blank line before the sub-proof
+                    std::cout << std::endl;
+                }
                 std::get<Proof>(l).print(level + 1);
+                // the sub-proof ends with a blank line
+                last_blank = true;
             }
+        }
+        if (!last_blank) {
+            // make sure the proof ends with a blank line
+            std::cout << std::endl;
         }
     }
 }

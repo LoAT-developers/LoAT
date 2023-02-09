@@ -329,6 +329,7 @@ void Reachability::update_cpx() {
         if (res.cpx > cpx) {
             cpx = res.cpx;
             std::cout << cpx.toWstString() << std::endl;
+            proof.result(cpx.toString());
         }
         if (res.cpx == max_cpx) {
             break;
@@ -364,7 +365,6 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
         if (is_learned_clause(idx)) {
             block(step);
         }
-        update_cpx();
         return true;
     } else {
         solver.pop();
@@ -545,7 +545,7 @@ void Reachability::luby_next() {
 
 void Reachability::unsat() {
     const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
-    std::cout << res << std::endl;
+    std::cout << res << std::endl << std::endl;
     if (!log && Proof::disabled()) {
         return;
     }
@@ -565,7 +565,6 @@ void Reachability::unsat() {
     subProof.append(counterexample);
     proof.storeSubProof(subProof);
     proof.result(res);
-    proof.newline();
     proof.print();
 }
 
@@ -680,7 +679,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
             return Result<Rule>(rule);
         }
         res = rule.subs(Subs::build<IntTheory>(s));
-        res.ruleTransformationProof(rule, "instantiation", *res, chcs);
+        res.ruleTransformationProof(rule, "Instantiation", *res, chcs);
     }
     return res;
 }
@@ -846,6 +845,7 @@ void Reachability::analyze() {
                 proof.majorProofStep("Accelerate", chcs);
                 proof.storeSubProof((*state->succeeded())->getProof());
                 print_state();
+                update_cpx();
                 // try to apply a query before doing another step
                 if (try_to_finish()) {
                     return;
@@ -887,6 +887,7 @@ void Reachability::analyze() {
             if (implicant && store_step(*it, *implicant)) {
                 proof.headline("Step with " + std::to_string(*it));
                 print_state();
+                update_cpx();
                 break;
             }
             append.push_back(*it);
@@ -905,9 +906,13 @@ void Reachability::analyze() {
         }
     } while (true);
     proof.headline("Accept");
-    proof.result("unknown");
-    proof.newline();
-    std::cout << "unknown" << std::endl;
+    if (Config::Analysis::complexity()) {
+        proof.result(cpx.toString());
+    } else {
+        proof.result("unknown");
+        std::cout << "unknown" << std::endl;
+    }
+    std::cout << std::endl;
     proof.print();
 }
 
