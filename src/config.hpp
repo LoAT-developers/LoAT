@@ -38,7 +38,7 @@ namespace Config {
     }
 
     namespace Input {
-        enum Format {Koat, Its, Horn};
+        enum Format {Koat, Its, Horn, C};
         extern Format format;
     }
 

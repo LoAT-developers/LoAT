@@ -1,5 +1,4 @@
-#ifndef HORNPARSER_H
-#define HORNPARSER_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -20,5 +19,3 @@ public:
 };
 
 }
-
-#endif //ITSPARSER_H

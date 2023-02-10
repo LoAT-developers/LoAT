@@ -41,7 +41,9 @@ num_atom : ZERO | POS | nondet | V | OPENP W* bool_expr W* CLOSEP;
 
 mult_expr : num_atom (W* MULT W* num_atom)*;
 
-num_expr : mult_expr (W* (PLUS | MINUS) W* mult_expr)* | MINUS W* mult_expr (W* (PLUS | MINUS) W* mult_expr)*;
+pm_mult_expr: W* (PLUS | MINUS) W* mult_expr;
+
+num_expr : mult_expr pm_mult_expr* | MINUS W* mult_expr pm_mult_expr*;
 
 bool_atom : TRUE | FALSE | num_expr (W* BO W* num_expr)?;
 
@@ -72,7 +74,7 @@ instructions : instruction (W* instructions)?;
 // the opening part of each program
 // ("typedef enum {false,true} bool;extern int __VERIFIER_nondet_int(void);int main(){")
 pre :
-    *W
+    W*
     TYPEDEF W+ ENUM W* OPENC W* FALSE W* COMMA W* TRUE W* CLOSEC W* BOOL W* TERMINATOR
     W*
     EXTERN W+ INT W+ NONDETNAME W* OPENP W* VOID W* CLOSEP W* TERMINATOR

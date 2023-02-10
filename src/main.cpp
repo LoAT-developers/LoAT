@@ -20,6 +20,7 @@
 #include "itsparser.hpp"
 #include "parser.hpp"
 #include "chcparser.hpp"
+#include "cintparser.hpp"
 #include "config.hpp"
 #include "proof.hpp"
 #include "version.hpp"
@@ -90,6 +91,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Input::format = Config::Input::Its;
             } else if (boost::iequals("horn", str)) {
                 Config::Input::format = Config::Input::Horn;
+            } else if (boost::iequals("c", str)) {
+                Config::Input::format = Config::Input::C;
             } else {
                 cout << "Error: unknown format " << str << std::endl;
                 exit(1);
@@ -129,6 +132,9 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Input::Horn:
         its = hornParser::HornParser::loadFromFile(filename);
+        break;
+    case Config::Input::C:
+        its = cintParser::CIntParser::loadFromFile(filename);
         break;
     default:
         std::cout << "Error: unknown format" << std::endl;
