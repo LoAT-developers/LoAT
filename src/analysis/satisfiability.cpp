@@ -539,7 +539,7 @@ bool Satisfiability::is_orig_clause(const TransIdx idx) const {
     return idx <= last_orig_clause;
 }
 
-std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang, const int backlink, int &period) {
+std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang, const int backlink) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule);
     if (res->getUpdate(0) == substitution::concat(res->getUpdate(0), res->getUpdate(0))) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -581,8 +581,6 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
 
     // if period > 1, change the language from a⁺ to aa⁺
     if (accel_res.period > 1){
-    //if (false){
-        period = accel_res.period;
         Red::T new_lang = get_language(trace.back());
         for (int i = trace.size() - 2; i >= backlink; --i) {
             redundance->concat(new_lang, get_language(trace[i]));
@@ -596,7 +594,6 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
         return std::make_unique<Succeeded>(res.map<TransIdx>([this, &new_lang](const auto &x){
             return add_learned_clause(x, new_lang);
         }));
-        //return std::make_unique<Dropped>();
     } else {
         return std::make_unique<Succeeded>(res.map<TransIdx>([this, &lang](const auto &x){
             return add_learned_clause(x, lang);
@@ -604,7 +601,7 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
     }
 }
 
-std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink, int &period) {
+std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
     const auto lang = build_language(backlink);
     if (redundance->is_redundant(lang)) {
         if (log) std::cout << "loop already covered" << std::endl;
@@ -620,7 +617,7 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink, i
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
-    auto state = learn_clause(loop, lang, backlink, period);
+    auto state = learn_clause(loop, lang, backlink);
     if (!state->succeeded()) {
         return state;
     }
@@ -718,7 +715,7 @@ void Satisfiability::analyze() {
         std::cout << "initial ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
     }
-    solver.setTimeout(500);
+    solver.setTimeout(1500);
     preprocess();
     init();
     if (try_conditional_empty_clauses()) {
@@ -738,12 +735,11 @@ void Satisfiability::analyze() {
         for (int backlink = has_looping_suffix(); backlink >= 0; backlink = has_looping_suffix()) {
             Step step = trace[backlink];
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
-            int period = 1;
-            auto state = handle_loop(backlink, period);
+            auto state = handle_loop(backlink);
             if (state->covered()) {
                 backtrack();
             } else if (state->succeeded()) {
-                if (simple_loop && (period==1)) {
+                if (simple_loop) {
                     block(step);
                 }
                 // try to apply a query before doing another step
