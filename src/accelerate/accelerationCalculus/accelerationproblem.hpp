@@ -38,7 +38,7 @@ class AccelerationProblem {
     bool monotonicity(const Lit &lit, Proof &proof);
     bool recurrence(const Lit &lit, Proof &proof);
     bool eventualWeakDecrease(const Lit &lit, Proof &proof);
-    bool eventualWeakIncrease(const Lit &lit, Proof &proof);
+    bool eventualIncrease(const Lit &lit, const bool strict, Proof &proof);
     bool fixpoint(const Lit &lit, Proof &proof);
     LitSet findConsistentSubset(const BoolExpr e) const;
     option<unsigned int> store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool exact = true, bool nonterm = false);

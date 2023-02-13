@@ -272,7 +272,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit, Proof &proof) {
     return true;
 }
 
-bool AccelerationProblem::eventualWeakIncrease(const Lit &lit, Proof &proof) {
+bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict, Proof &proof) {
     if (!std::holds_alternative<Rel>(lit)) {
         return false;
     }
@@ -281,8 +281,8 @@ bool AccelerationProblem::eventualWeakIncrease(const Lit &lit, Proof &proof) {
     }
     const Rel &rel = std::get<Rel>(lit);
     const Expr &updated = rel.lhs().subs(up.get<IntTheory>());
-    const Rel &inc = Rel::buildLeq(rel.lhs(), updated);
-    const Rel &dec = Rel::buildGt(updated, updated.subs(up.get<IntTheory>()));
+    const Rel &inc = strict ? Rel::buildLt(rel.lhs(), updated) : Rel::buildLeq(rel.lhs(), updated);
+    const Rel &dec = strict ? Rel::buildGeq(updated, updated.subs(up.get<IntTheory>())) : Rel::buildGt(updated, updated.subs(up.get<IntTheory>()));
     auto premise = findConsistentSubset(guard & inc & !dec & rel);
     if (premise.empty()) {
         return false;
@@ -414,7 +414,13 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
         bool res = recurrence(lit, proof);
         res |= monotonicity(lit, proof);
         res |= eventualWeakDecrease(lit, proof);
-        res |= config.approx == UnderApprox && eventualWeakIncrease(lit, proof);
+        if (config.approx == UnderApprox) {
+            bool evInc = eventualIncrease(lit, false, proof);
+            if (!evInc) {
+                evInc = eventualIncrease(lit, true, proof);
+            }
+            res |= evInc;
+        }
         res |= config.approx == UnderApprox && fixpoint(lit, proof);
         if (!res && isConjunction) return ret;
     }
