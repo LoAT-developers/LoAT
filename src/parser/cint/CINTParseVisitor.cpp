@@ -43,7 +43,6 @@ std::any CINTParseVisitor::visitNum_expr(CINTParser::Num_exprContext *ctx) {
 }
 
 std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
-    std::cout << ctx->getText() << std::endl;
     if (ctx->lit()) {
         return BExpression::buildTheoryLit(std::any_cast<Rel>(visit(ctx->lit())))->simplify();
     } else if (ctx->TRUE()) {
