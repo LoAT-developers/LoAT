@@ -35,56 +35,49 @@ grammar CINT;
 
 // parser rules
 
-nondet : NONDETNAME W* OPENP W* CLOSEP;
+nondet : NONDETNAME OPENP CLOSEP;
 
-num_atom : ZERO | POS | nondet | V | OPENP W* bool_expr W* CLOSEP;
+// arithmetic expressions
+num_expr: OPENP num_expr CLOSEP | MINUS num_expr | num_expr MULT num_expr | num_expr PLUS num_expr | num_expr MINUS num_expr | V | ZERO | POS | nondet;
 
-mult_expr : num_atom (W* MULT W* num_atom)*;
+// boolean expressions
+bool_expr: OPENP bool_expr CLOSEP | NOT bool_expr | bool_expr AND bool_expr | bool_expr OR bool_expr | lit | FALSE | TRUE;
+lit: num_expr relop num_expr;
+relop: LT | LEQ | EQ | GT | GEQ | NEQ;
 
-pm_mult_expr: W* (PLUS | MINUS) W* mult_expr;
-
-num_expr : mult_expr pm_mult_expr* | MINUS W* mult_expr pm_mult_expr*;
-
-bool_atom : TRUE | FALSE | num_expr (W* BO W* num_expr)?;
-
-and_expr : bool_atom (W* AND W* bool_atom)*;
-
-bool_expr : and_expr (W* OR W* and_expr)* | NOT W* bool_atom;
-
-loop : WHILE W* OPENP W* bool_expr W* CLOSEP W* OPENC W* (instructions W*)? CLOSEC;
+loop : WHILE OPENP bool_expr CLOSEP OPENC (instructions)? CLOSEC;
 
 condition :
     IF
-    W*
-    OPENP W* bool_expr W* CLOSEP
-    W*
-    OPENC W* (instructions W*)? CLOSEC
-    (W* ELSE W* OPENC W* (instructions W*)? CLOSEC)?;
+    OPENP bool_expr CLOSEP
+    OPENC then CLOSEC
+    (ELSE OPENC else CLOSEC)?;
 
-assignment : V W* ASSIGN W* num_expr W* TERMINATOR;
+then : instructions?;
+
+else : instructions?;
+
+assignment : V ASSIGN num_expr TERMINATOR;
 
 instruction : loop | condition | assignment;
 
-declaration : INT W+ V (W* COMMA W* V)* W* TERMINATOR;
+declaration : INT V (COMMA V)* TERMINATOR;
 
-declarations : declaration (W* declarations)?;
+declarations : declaration+;
 
-instructions : instruction (W* instructions)?;
+instructions : instruction+;
 
 // the opening part of each program
 // ("typedef enum {false,true} bool;extern int __VERIFIER_nondet_int(void);int main(){")
 pre :
-    W*
-    TYPEDEF W+ ENUM W* OPENC W* FALSE W* COMMA W* TRUE W* CLOSEC W* BOOL W* TERMINATOR
-    W*
-    EXTERN W+ INT W+ NONDETNAME W* OPENP W* VOID W* CLOSEP W* TERMINATOR
-    W*
-    INT W+ MAIN W* OPENP W* CLOSEP W* OPENC;
+    TYPEDEF ENUM OPENC FALSE COMMA TRUE CLOSEC BOOL TERMINATOR
+    EXTERN INT NONDETNAME OPENP VOID CLOSEP TERMINATOR
+    INT MAIN OPENP CLOSEP OPENC;
 
 // the closing part of each program ("return 0;}")
-post : RETURN W+ ZERO W* TERMINATOR W* CLOSEC W*;
+post : RETURN ZERO TERMINATOR CLOSEC;
 
-main : pre (W* declarations)? (W* instructions)? W* post;
+main : pre declarations? instructions? post;
 
 
 // lexer rules
@@ -101,7 +94,12 @@ CLOSEC : '}';
 MULT : '*';
 MINUS : '-';
 PLUS : '+';
-BO : '<=' | '>=' | '<' | '>' | '==' | '!=';
+LT	:	'<';
+LEQ     :       '<=';
+EQ      :       '==';
+NEQ     :       '!=';
+GEQ     :       '>=';
+GT      :       '>' ;
 ASSIGN : '=';
 NONDETNAME : '__VERIFIER_nondet_int';
 OR : '||';
@@ -126,6 +124,6 @@ fragment ALPHANUM : CHAR | DIGIT;
 fragment CHAR : LOW | UP;
 fragment LOW : 'a'..'z';
 fragment UP: 'A'..'Z';
-W : ' ' | '\n' | '\r' | '\t';
+W : (' ' | '\n' | '\r' | '\t')+ -> skip;
 BLOCKCOMMENT : '/*' (.)*? '*/' -> skip;
 LINECOMMENT : '//' (~('\r'|'\n'))* -> skip;

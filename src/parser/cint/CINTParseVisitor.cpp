@@ -10,102 +10,90 @@ std::any CINTParseVisitor::visitNondet(CINTParser::NondetContext *ctx) {
     return {};
 }
 
-std::any CINTParseVisitor::visitNum_atom(CINTParser::Num_atomContext *ctx) {
-    if (ctx->ZERO()) {
+std::any CINTParseVisitor::visitNum_expr(CINTParser::Num_exprContext *ctx) {
+    if (ctx->num_expr().size() > 0) {
+        const auto lhs = std::any_cast<Expr>(visit(ctx->num_expr(0)));
+        if (ctx->num_expr().size() == 2) {
+            const auto rhs = std::any_cast<Expr>(visit(ctx->num_expr(1)));
+            if (ctx->MINUS()) {
+                return lhs - rhs;
+            } else if (ctx->PLUS()) {
+                return lhs + rhs;
+            } else if (ctx->MULT()) {
+                return lhs * rhs;
+            }
+        } else {
+            assert(ctx->num_expr().size() == 1);
+            if (ctx->MINUS()) {
+                return -lhs;
+            } else {
+                return lhs;
+            }
+        }
+    } else if (ctx->V()) {
+        return Expr(vars.at(ctx->getText()));
+    } else if (ctx->ZERO()) {
         return Expr(0);
     } else if (ctx->POS()) {
         return Expr(std::stoi(ctx->getText()));
     } else if (ctx->nondet()) {
-        const auto var = its.addFreshTemporaryVariable<IntTheory>("nondet");
-        return Expr(var);
-    } else if (ctx->V()) {
-        return Expr(vars.at(ctx->V()->getText()));
-    } else if (ctx->num_atom()) {
-        const auto res = std::any_cast<Expr>(visit(ctx->num_atom()));
-        return ctx->MINUS() ? -res : res;
-    } else {
-        throw std::invalid_argument("unknown num atom " + ctx->getText());
+        return Expr(its.addFreshTemporaryVariable<IntTheory>("nondet"));
     }
+    throw std::invalid_argument("unknown expression " + ctx->getText());
 }
 
-std::any CINTParseVisitor::visitMult_expr(CINTParser::Mult_exprContext *ctx) {
-    Expr expr = 1;
-    for (const auto &a: ctx->num_atom()) {
-        expr = expr * std::any_cast<Expr>(visit(a));
-    }
-    return expr;
-}
-
-std::any CINTParseVisitor::visitPm_mult_expr(CINTParser::Pm_mult_exprContext *ctx) {
-    auto expr = std::any_cast<Expr>(visit(ctx->mult_expr()));
-    if (ctx->MINUS()) {
-        expr = -expr;
-    }
-    return expr;
-}
-
-std::any CINTParseVisitor::visitNum_expr(CINTParser::Num_exprContext *ctx) {
-    auto expr = std::any_cast<Expr>(visit(ctx->mult_expr()));
-    if (ctx->MINUS()) {
-        expr = -expr;
-    }
-    for (const auto &pm: ctx->pm_mult_expr()) {
-        expr = expr + std::any_cast<Expr>(visit(pm));
-    }
-    return expr;
-}
-
-std::any CINTParseVisitor::visitBool_atom(CINTParser::Bool_atomContext *ctx) {
-    if (ctx->TRUE()) {
+std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
+    std::cout << ctx->getText() << std::endl;
+    if (ctx->lit()) {
+        return BExpression::buildTheoryLit(std::any_cast<Rel>(visit(ctx->lit())))->simplify();
+    } else if (ctx->TRUE()) {
         return BExpression::True;
     } else if (ctx->FALSE()) {
         return BExpression::False;
     } else {
-        const auto lhs = std::any_cast<Expr>(visit(ctx->num_expr(0)));
-        option<Rel> rel;
-        if (ctx->BO()) {
-            const auto rhs = std::any_cast<Expr>(visit(ctx->num_expr(1)));
-            const auto txt = ctx->BO()->getText();
-            if (txt == "<=") {
-                rel = Rel::buildLeq(lhs, rhs);
-            } else if (txt == ">=") {
-                rel = Rel::buildGeq(lhs, rhs);
-            } else if (txt == "<") {
-                rel = Rel::buildLt(lhs, rhs);
-            } else if (txt == ">") {
-                rel = Rel::buildGt(lhs, rhs);
-            } else if (txt == "==") {
-                rel = Rel::buildEq(lhs, rhs);
-            } else if (txt == "!=") {
-                rel = Rel::buildNeq(lhs, rhs);
-            } else {
-                throw std::invalid_argument("unknown relation " + txt);
+        const auto lhs = std::any_cast<BoolExpr>(visit(ctx->bool_expr(0)));
+        if (ctx->bool_expr().size() == 2) {
+            const auto rhs = std::any_cast<BoolExpr>(visit(ctx->bool_expr(1)));
+            if (ctx->AND()) {
+                return lhs & rhs;
+            } else if (ctx->OR()) {
+                return lhs | rhs;
             }
         } else {
-            rel = Rel::buildNeq(lhs, 0);
+            assert(ctx->bool_expr().size() == 1);
+            if (ctx->NOT()) {
+                return (!lhs)->simplify();
+            } else {
+                return lhs;
+            }
         }
-        return BExpression::buildTheoryLit(*rel)->simplify();
     }
+    throw std::invalid_argument("unknown Boolean expression " + ctx->getText());
 }
 
-std::any CINTParseVisitor::visitAnd_expr(CINTParser::And_exprContext *ctx) {
-    std::vector<BoolExpr> lits;
-    for (const auto &l: ctx->bool_atom()) {
-        lits.push_back(std::any_cast<BoolExpr>(visit(l)));
-    }
-    return BExpression::buildAnd(lits);
+std::any CINTParseVisitor::visitLit(CINTParser::LitContext *ctx) {
+    const auto lhs = std::any_cast<Expr>(visit(ctx->num_expr(0)));
+    const auto op = std::any_cast<Rel::RelOp>(visit(ctx->relop()));
+    const auto rhs = std::any_cast<Expr>(visit(ctx->num_expr(1)));
+    return Rel(lhs, op, rhs);
 }
 
-std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
-    if (ctx->NOT()) {
-        const auto atom = std::any_cast<BoolLit>(visit(ctx->bool_atom()));
-        return BExpression::buildTheoryLit(atom)->negation()->simplify();
+std::any CINTParseVisitor::visitRelop(CINTParser::RelopContext *ctx) {
+    const auto op = ctx->getText();
+    if (op == "==") {
+        return Rel::eq;
+    } else if (op == "!=") {
+        return Rel::neq;
+    } else if (op == ">") {
+        return Rel::gt;
+    } else if (op == ">=") {
+        return Rel::geq;
+    } else if (op == "<") {
+        return Rel::lt;
+    } else if (op == "<=") {
+        return Rel::leq;
     } else {
-        std::vector<BoolExpr> disj;
-        for (const auto &a: ctx->and_expr()) {
-            disj.push_back(std::any_cast<BoolExpr>(visit(a)));
-        }
-        return BExpression::buildOr(disj);
+        throw std::invalid_argument("unknown comparison " + ctx->getText());
     }
 }
 
@@ -127,24 +115,38 @@ std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
     return {};
 }
 
+std::any CINTParseVisitor::visitThen(CINTParser::ThenContext *ctx) {
+    if (ctx->instructions()) {
+        visit(ctx->instructions());
+    }
+    return {};
+}
+
+std::any CINTParseVisitor::visitElse(CINTParser::ElseContext *ctx) {
+    if (ctx->instructions()) {
+        visit(ctx->instructions());
+    }
+    return {};
+}
+
 std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
     const auto cond = std::any_cast<BoolExpr>(visit(ctx->bool_expr()));
     const auto pre = current;
     const auto post = its.addLocation();
-    if (ctx->instructions(0)) {
+    if (ctx->then()) {
         const auto loc = its.addLocation();
         its.addRule(Rule(pre, cond, 1, loc, Subs()));
         current = loc;
-        visit(ctx->instructions(0));
+        visit(ctx->then());
         its.addRule(Rule(current, BExpression::True, 0, post, Subs()));
     } else {
         its.addRule(Rule(pre, cond, 1, post, Subs()));
     }
-    if (ctx->instructions(1)) {
+    if (ctx->else_()) {
         const auto loc = its.addLocation();
         its.addRule(Rule(pre, (!cond)->simplify(), 1, loc, Subs()));
         current = loc;
-        visit(ctx->instructions(1));
+        visit(ctx->else_());
         its.addRule(Rule(current, BExpression::True, 0, post, Subs()));
     } else {
         its.addRule(Rule(pre, (!cond)->simplify(), 1, post, Subs()));
@@ -183,17 +185,15 @@ std::any CINTParseVisitor::visitDeclaration(CINTParser::DeclarationContext *ctx)
 }
 
 std::any CINTParseVisitor::visitDeclarations(CINTParser::DeclarationsContext *ctx) {
-    visit(ctx->declaration());
-    if (ctx->declarations()) {
-        visit(ctx->declarations());
+    for (const auto &x: ctx->declaration()) {
+        visit(x);
     }
     return {};
 }
 
 std::any CINTParseVisitor::visitInstructions(CINTParser::InstructionsContext *ctx) {
-    visit(ctx->instruction());
-    if (ctx->instructions()) {
-        visit(ctx->instructions());
+    for (const auto &x: ctx->instruction()) {
+        visit(x);
     }
     return {};
 }
@@ -207,7 +207,11 @@ std::any CINTParseVisitor::visitPost(CINTParser::PostContext *ctx) {
 }
 
 std::any CINTParseVisitor::visitMain(CINTParser::MainContext *ctx) {
-    visit(ctx->declarations());
-    visit(ctx->instructions());
+    if (ctx->declarations()) {
+        visit(ctx->declarations());
+    }
+    if (ctx->instructions()) {
+        visit(ctx->instructions());
+    }
     return its;
 }

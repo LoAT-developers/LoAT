@@ -17,32 +17,29 @@ public:
   virtual void enterNondet(CINTParser::NondetContext *ctx) = 0;
   virtual void exitNondet(CINTParser::NondetContext *ctx) = 0;
 
-  virtual void enterNum_atom(CINTParser::Num_atomContext *ctx) = 0;
-  virtual void exitNum_atom(CINTParser::Num_atomContext *ctx) = 0;
-
-  virtual void enterMult_expr(CINTParser::Mult_exprContext *ctx) = 0;
-  virtual void exitMult_expr(CINTParser::Mult_exprContext *ctx) = 0;
-
-  virtual void enterPm_mult_expr(CINTParser::Pm_mult_exprContext *ctx) = 0;
-  virtual void exitPm_mult_expr(CINTParser::Pm_mult_exprContext *ctx) = 0;
-
   virtual void enterNum_expr(CINTParser::Num_exprContext *ctx) = 0;
   virtual void exitNum_expr(CINTParser::Num_exprContext *ctx) = 0;
 
-  virtual void enterBool_atom(CINTParser::Bool_atomContext *ctx) = 0;
-  virtual void exitBool_atom(CINTParser::Bool_atomContext *ctx) = 0;
-
-  virtual void enterAnd_expr(CINTParser::And_exprContext *ctx) = 0;
-  virtual void exitAnd_expr(CINTParser::And_exprContext *ctx) = 0;
-
   virtual void enterBool_expr(CINTParser::Bool_exprContext *ctx) = 0;
   virtual void exitBool_expr(CINTParser::Bool_exprContext *ctx) = 0;
+
+  virtual void enterLit(CINTParser::LitContext *ctx) = 0;
+  virtual void exitLit(CINTParser::LitContext *ctx) = 0;
+
+  virtual void enterRelop(CINTParser::RelopContext *ctx) = 0;
+  virtual void exitRelop(CINTParser::RelopContext *ctx) = 0;
 
   virtual void enterLoop(CINTParser::LoopContext *ctx) = 0;
   virtual void exitLoop(CINTParser::LoopContext *ctx) = 0;
 
   virtual void enterCondition(CINTParser::ConditionContext *ctx) = 0;
   virtual void exitCondition(CINTParser::ConditionContext *ctx) = 0;
+
+  virtual void enterThen(CINTParser::ThenContext *ctx) = 0;
+  virtual void exitThen(CINTParser::ThenContext *ctx) = 0;
+
+  virtual void enterElse(CINTParser::ElseContext *ctx) = 0;
+  virtual void exitElse(CINTParser::ElseContext *ctx) = 0;
 
   virtual void enterAssignment(CINTParser::AssignmentContext *ctx) = 0;
   virtual void exitAssignment(CINTParser::AssignmentContext *ctx) = 0;

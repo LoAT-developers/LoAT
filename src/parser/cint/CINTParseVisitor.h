@@ -17,15 +17,14 @@ public:
     CINTParseVisitor();
 
     virtual std::any visitNondet(CINTParser::NondetContext *ctx) override;
-    virtual std::any visitNum_atom(CINTParser::Num_atomContext *ctx) override;
-    virtual std::any visitPm_mult_expr(CINTParser::Pm_mult_exprContext *ctx) override;
-    virtual std::any visitMult_expr(CINTParser::Mult_exprContext *ctx) override;
-    virtual std::any visitNum_expr(CINTParser::Num_exprContext *ctx) override;
-    virtual std::any visitBool_atom(CINTParser::Bool_atomContext *ctx) override;
-    virtual std::any visitAnd_expr(CINTParser::And_exprContext *ctx) override;
+    virtual std::any visitNum_expr(CINTParser::Num_exprContext*ctx) override;
     virtual std::any visitBool_expr(CINTParser::Bool_exprContext *ctx) override;
+    virtual std::any visitLit(CINTParser::LitContext *ctx) override;
+    virtual std::any visitRelop(CINTParser::RelopContext *ctx) override;
     virtual std::any visitLoop(CINTParser::LoopContext *ctx) override;
     virtual std::any visitCondition(CINTParser::ConditionContext *ctx) override;
+    virtual std::any visitThen(CINTParser::ThenContext *ctx) override;
+    virtual std::any visitElse(CINTParser::ElseContext *ctx) override;
     virtual std::any visitAssignment(CINTParser::AssignmentContext *ctx) override;
     virtual std::any visitInstruction(CINTParser::InstructionContext *ctx) override;
     virtual std::any visitDeclaration(CINTParser::DeclarationContext *ctx) override;

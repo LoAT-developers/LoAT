@@ -21,23 +21,21 @@ public:
    */
     virtual std::any visitNondet(CINTParser::NondetContext *context) = 0;
 
-    virtual std::any visitNum_atom(CINTParser::Num_atomContext *context) = 0;
-
-    virtual std::any visitMult_expr(CINTParser::Mult_exprContext *context) = 0;
-
-    virtual std::any visitPm_mult_expr(CINTParser::Pm_mult_exprContext *context) = 0;
-
     virtual std::any visitNum_expr(CINTParser::Num_exprContext *context) = 0;
 
-    virtual std::any visitBool_atom(CINTParser::Bool_atomContext *context) = 0;
-
-    virtual std::any visitAnd_expr(CINTParser::And_exprContext *context) = 0;
-
     virtual std::any visitBool_expr(CINTParser::Bool_exprContext *context) = 0;
+
+    virtual std::any visitLit(CINTParser::LitContext *context) = 0;
+
+    virtual std::any visitRelop(CINTParser::RelopContext *context) = 0;
 
     virtual std::any visitLoop(CINTParser::LoopContext *context) = 0;
 
     virtual std::any visitCondition(CINTParser::ConditionContext *context) = 0;
+
+    virtual std::any visitThen(CINTParser::ThenContext *context) = 0;
+
+    virtual std::any visitElse(CINTParser::ElseContext *context) = 0;
 
     virtual std::any visitAssignment(CINTParser::AssignmentContext *context) = 0;
 
