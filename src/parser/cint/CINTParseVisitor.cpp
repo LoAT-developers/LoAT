@@ -20,8 +20,9 @@ std::any CINTParseVisitor::visitNum_atom(CINTParser::Num_atomContext *ctx) {
         return Expr(var);
     } else if (ctx->V()) {
         return Expr(vars.at(ctx->V()->getText()));
-    } else if (ctx->bool_expr()) {
-        throw std::invalid_argument("casts from bool to int are not yet supported");
+    } else if (ctx->num_atom()) {
+        const auto res = std::any_cast<Expr>(visit(ctx->num_atom()));
+        return ctx->MINUS() ? -res : res;
     } else {
         throw std::invalid_argument("unknown num atom " + ctx->getText());
     }
@@ -98,7 +99,7 @@ std::any CINTParseVisitor::visitAnd_expr(CINTParser::And_exprContext *ctx) {
 std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
     if (ctx->NOT()) {
         const auto atom = std::any_cast<BoolLit>(visit(ctx->bool_atom()));
-        return BExpression::buildTheoryLit(atom)->negation();
+        return BExpression::buildTheoryLit(atom)->negation()->simplify();
     } else {
         std::vector<BoolExpr> disj;
         for (const auto &a: ctx->and_expr()) {
@@ -121,7 +122,7 @@ std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
         its.addRule(Rule(pre, cond, 1, pre, Subs()));
     }
     const auto post = its.addLocation();
-    its.addRule(Rule(pre, !cond, 1, post, Subs()));
+    its.addRule(Rule(pre, (!cond)->simplify(), 1, post, Subs()));
     current = post;
     return {};
 }
@@ -141,12 +142,12 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
     }
     if (ctx->instructions(1)) {
         const auto loc = its.addLocation();
-        its.addRule(Rule(pre, !cond, 1, loc, Subs()));
+        its.addRule(Rule(pre, (!cond)->simplify(), 1, loc, Subs()));
         current = loc;
         visit(ctx->instructions(1));
         its.addRule(Rule(current, BExpression::True, 0, post, Subs()));
     } else {
-        its.addRule(Rule(pre, !cond, 1, post, Subs()));
+        its.addRule(Rule(pre, (!cond)->simplify(), 1, post, Subs()));
     }
     current = post;
     return {};
