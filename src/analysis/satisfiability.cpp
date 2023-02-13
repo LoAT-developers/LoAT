@@ -561,7 +561,8 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
         // accelerated rule differs from the original one, update the result
         } else {
             res = *accel_res.rule;
-            res.storeSubProof(accel_res.proof);
+            res.storeSubProof(accel_res.preprocessingProof);
+            res.storeSubProof(accel_res.accelerationProof);
             res.concat(simplified);
             if (log) {
                 std::cout << "accelerated rule:" << std::endl;

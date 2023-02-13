@@ -174,7 +174,7 @@ acceleration::Result LoopAcceleration::run() {
         res.status = acceleration::Unsat;
         return res;
     } else if (period > 1) {
-        res.proof.ruleTransformationProof(this->rule, "unrolling", rule, its);
+        res.preprocessingProof.ruleTransformationProof(this->rule, "unrolling", rule, its);
         res.period = period;
     }
     // for rules with runtime 1, our acceleration techniques do not work properly,
@@ -182,7 +182,7 @@ acceleration::Result LoopAcceleration::run() {
     if (!Chaining::chainRules(its, rule, rule)) {
         res.rule = rule;
         res.status = acceleration::PseudoLoop;
-        res.proof.append("rule cannot be iterated more than once");
+        res.accelerationProof.append("rule cannot be iterated more than once");
         return res;
     }
     const auto rec = Recurrence::iterateRule(its, rule);
@@ -214,8 +214,8 @@ acceleration::Result LoopAcceleration::run() {
                     rec->cost,
                     rule.getRhsLoc(),
                     rec->update);
-        res.proof.ruleTransformationProof(rule, "Loop Acceleration", *res.rule, its);
-        res.proof.storeSubProof(accelerationResult.term->proof);
+        res.accelerationProof.ruleTransformationProof(rule, "Loop Acceleration", *res.rule, its);
+        res.accelerationProof.storeSubProof(accelerationResult.term->proof);
     }
     return res;
 }

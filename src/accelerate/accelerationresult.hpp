@@ -15,7 +15,8 @@ struct Result {
     option<Rule> nontermRule;
     unsigned period = 1;
     bool strengthened = false;
-    Proof proof;
+    Proof preprocessingProof;
+    Proof accelerationProof;
     Proof nontermProof;
     option<NumVar> n;
 

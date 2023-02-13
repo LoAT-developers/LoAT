@@ -702,6 +702,9 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *simp, Complexity::Const, config);
     Result<std::vector<TransIdx>> res;
     const auto src = rule.getLhsLoc();
+    if (accel_res.successful()) {
+        res.concat(accel_res.preprocessingProof);
+    }
     if (accel_res.nontermRule) {
         res.succeed();
         const auto idx = chcs.addRule(*accel_res.nontermRule);
@@ -729,7 +732,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             }
             res.succeed();
             res->push_back(add_learned_clause(*simplified, lang));
-            res.concat(accel_res.proof);
+            res.concat(accel_res.accelerationProof);
             res.concat(simplified.getProof());
             if (log) {
                 std::cout << "accelerated rule:" << std::endl;
