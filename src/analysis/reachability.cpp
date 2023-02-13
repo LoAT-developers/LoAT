@@ -854,6 +854,9 @@ void Reachability::analyze() {
                     return;
                 }
             } else if (state->dropped()) {
+                if (simple_loop) {
+                    block(step);
+                }
                 proof.majorProofStep("Accelerate and Drop", chcs);
                 proof.storeSubProof((*state->dropped())->getProof());
                 print_state();
