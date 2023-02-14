@@ -541,6 +541,8 @@ bool Satisfiability::is_orig_clause(const TransIdx idx) const {
 
 std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang, const int backlink) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule);
+    // Copy of the original looping clause to use if period > 1
+    Rule orig = *res;
     if (res->getUpdate(0) == substitution::concat(res->getUpdate(0), res->getUpdate(0))) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
@@ -579,18 +581,39 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
         }
     }
 
-    // if period > 1, change the language from a⁺ to aa⁺
+    // if period > 1, change the language from a⁺ to (a^n)⁺ and learn additional clauses to cover the whole spectrum of a⁺
     if (accel_res.period > 1){
+        if (log) std::cout << "Period = "<< accel_res.period << ": Learning " << accel_res.period << " new clauses" << std::endl;
+        // Build the language of the loop
         Red::T new_lang = get_language(trace.back());
         for (int i = trace.size() - 2; i >= backlink; --i) {
             redundance->concat(new_lang, get_language(trace[i]));
         }
+        // Concatenate the loop-language n=period times and use transitive closure to get the language (a^n)⁺
         Red::T loop_lang = new_lang;
         for(unsigned int i=0; i<(accel_res.period-1); i++){
             redundance->concat(new_lang, loop_lang);
         }
         redundance->transitive_closure(new_lang);
 
+        // Learn (period-1) additional clauses and their languages to cover the rest of a⁺
+        for (unsigned int i=0; i<(accel_res.period-1); i++) {
+            // The new clause and its language are instantiated with the same values as the acc clause and its language
+            option<Rule> chained = *res;
+            Red::T chained_lang = new_lang;
+            // Then we concatenate the new clause/its language with the original clause/its language j times
+            for (unsigned int j=0; j<=i; j++) {
+                chained = Chaining::chainRules(chcs, *chained, orig, true);
+                redundance->concat(chained_lang, loop_lang);
+            }
+            // If the concatenation worked, we simplify the result and add it and its language
+            if (chained){
+                Result<Rule> simp = Preprocess::simplifyRule(chcs, *chained);
+                add_learned_clause(*simp, chained_lang);
+                // TODO: Neue Klausel blockieren
+            }
+        }
+        // Learn the accelerated clause (a^n)⁺ and return Succeeded
         return std::make_unique<Succeeded>(res.map<TransIdx>([this, &new_lang](const auto &x){
             return add_learned_clause(x, new_lang);
         }));
@@ -654,7 +677,6 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         // Store new step with the trivial clause. This should not fail.
         store_step_result = store_step(new_idx, trivial_clause->getGuard());
         if (store_step_result == 1) {
-            // TODO: Proof eventuell überarbeiten
             proof.majorProofStep("accelerated loop", chcs);
             proof.ruleTransformationProof(loop, "acceleration", trivial_clause.get(), chcs);
             if (log) {
