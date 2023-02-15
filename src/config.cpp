@@ -127,7 +127,7 @@ namespace Config {
 
     namespace Analysis {
 
-        std::vector<Mode> modes { Complexity, NonTermination, Reachability, Satisfiability };
+        std::vector<Mode> modes { Complexity, NonTermination, Reachability, Satisfiability, CheckLinear };
 
         // Whether to enable pruning to reduce the number of rules.
         // Pruning works by greedily keeping rules with a high complexity.
@@ -145,6 +145,8 @@ namespace Config {
             case Reachability: return "reachability";
                 break;
             case Satisfiability: return "satisfiability";
+                break;
+            case CheckLinear: return "check_linear";
                 break;
             default:
                 throw std::invalid_argument("unknown mode");

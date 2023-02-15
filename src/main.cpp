@@ -158,6 +158,16 @@ int main(int argc, char *argv[]) {
     case Config::Analysis::Satisfiability:
         satisfiability::Satisfiability::analyze(its);
         break;
+    case Config::Analysis::CheckLinear:
+        for (const auto &idx: its.getAllTransitions()) {
+            const auto rule = its.getRule(idx);
+            if (!rule.getGuard()->isLinear() || !rule.getUpdate().isLinear()) {
+                std::cout << "NO" << std::endl;
+                return 0;
+            }
+        }
+        std::cout << "YES" << std::endl;
+        return 0;
     default:
         throw std::invalid_argument("unsupported mode");
     }
