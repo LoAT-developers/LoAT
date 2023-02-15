@@ -539,7 +539,7 @@ bool Satisfiability::is_orig_clause(const TransIdx idx) const {
     return idx <= last_orig_clause;
 }
 
-std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang, const int backlink) {
+std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang, const int backlink, std::vector<TransIdx> &clauses_to_be_blocked) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule);
     // Copy of the original looping clause to use if period > 1
     Rule orig = *res;
@@ -609,8 +609,11 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
             // If the concatenation worked, we simplify the result and add it and its language
             if (chained){
                 Result<Rule> simp = Preprocess::simplifyRule(chcs, *chained);
-                add_learned_clause(*simp, chained_lang);
-                // TODO: Neue Klausel blockieren
+                TransIdx idx_simp = add_learned_clause(*simp, chained_lang);
+                // Add the new clauses to the vector of clauses, which have to be blocked after store_step
+                clauses_to_be_blocked.push_back(idx_simp);
+                //if (log) std::cout << "blocking " << idx_simp << ", " << simp->getGuard() << std::endl;
+                //blocked_clauses.back()[idx_simp] = {simp->getGuard()};
             }
         }
         // Learn the accelerated clause (a^n)⁺ and return Succeeded
@@ -633,14 +636,15 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << lang << std::endl;
     }
-    //luby_loop_count++;
     redundance->mark_as_redundant(lang);
     const auto loop = build_loop(backlink);
     if (loop.getUpdate(0).empty()) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
-    auto state = learn_clause(loop, lang, backlink);
+    // Vector to save the clauses which have to be blocked if period>1
+    std::vector<TransIdx> clauses_to_be_blocked;
+    auto state = learn_clause(loop, lang, backlink, clauses_to_be_blocked);
     if (!state->succeeded()) {
         return state;
     }
@@ -650,13 +654,16 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
     const auto accel = chcs.getRule(idx);
     // drop the looping suffix
     drop_until(backlink);
-    // CHANGE
-    //proof.majorProofStep("accelerated loop", chcs);
-    //proof.storeSubProof(subproof);
-    auto store_step_result = store_step(idx, accel.getGuard());
+    auto store_step_result = store_step(idx, accel.getGuard()); 
+    // Check if store_step worked
     if (store_step_result == 1) {
         proof.majorProofStep("accelerated loop", chcs);
         proof.storeSubProof(subproof);
+        // If period>1, block the clauses in clauses_to_be_blocked
+        for (auto it = std::begin(clauses_to_be_blocked); it != std::end(clauses_to_be_blocked); it++) {
+            if (log) std::cout << "blocking " << *it << ", " << chcs.getRule(*it).getGuard() << std::endl;
+            blocked_clauses.back()[*it] = {chcs.getRule(*it).getGuard()};
+        }
         return state;
      // if the solver returned unknown
     } else if(store_step_result == 2){
@@ -688,9 +695,6 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         } else {
             return std::make_unique<Dropped>();
         }
-        // Alter Inhalt:
-        //if (log) std::cout << "applying accelerated rule failed" << std::endl;
-        //return std::make_unique<Dropped>();
     }
 }
 
