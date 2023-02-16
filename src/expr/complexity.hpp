@@ -56,11 +56,13 @@ public:
     }
 
     std::string toString() const {
+        std::stringstream ss;
         if (isInteger()) {
-            return std::to_string(numer);
+            ss << numer;
         } else {
-            return "(" + std::to_string(numer) + "/" + std::to_string(denom) + ")";
+            ss << "(" << numer << "/" << denom << ")";
         }
+        return ss.str();
     }
 
 private:
