@@ -156,7 +156,7 @@ protected:
     EXPR convertSymbol(const Var &e) {
         auto optVar = context.getVariable(e);
         if (optVar) {
-            return optVar.get();
+            return *optVar;
         }
         return context.addNewVariable(e, varMan.getType(e));
     }

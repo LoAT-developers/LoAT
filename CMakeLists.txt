@@ -107,8 +107,12 @@ if (NOT Z3)
     return()
 endif() 
 
+target_include_directories(${EXECUTABLE} PRIVATE ${loat_util_INCLUDE_DIRS})
+target_include_directories(${EXECUTABLE} PRIVATE ${loat_expr_INCLUDE_DIRS})
 target_include_directories(${EXECUTABLE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../reduce-algebra/generic/libreduce/src/")
 target_include_directories(${EXECUTABLE} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_30b/include/")
+
+target_link_libraries(${EXECUTABLE} loat_expr)
 
 target_link_libraries(
     ${EXECUTABLE}

@@ -17,9 +17,10 @@
 
 #pragma once
 
+#include <optional>
+
 #include "rule.hpp"
 #include "variablemanager.hpp"
-#include "option.hpp"
 #include "numexpression.hpp"
 
 
@@ -48,7 +49,7 @@ public:
      * In addition to iterateUpdateCost, an additional heuristic is used if no dependency order is found.
      * This heuristic adds new constraints to the rule's guard and is thus only used in this method.
      */
-    static option<Result> iterateRule(VarMan &varMan, const Rule &rule);
+    static std::optional<Result> iterateRule(VarMan &varMan, const Rule &rule);
 
 private:
 
@@ -68,31 +69,31 @@ private:
     /**
      * Main implementation
      */
-    option<Result> iterate(const Subs &update, const Expr &cost);
+    std::optional<Result> iterate(const Subs &update, const Expr &cost);
 
     /**
      * Computes the iterated update, with meterfunc as iteration step (if possible).
      * @note dependencyOrder must be set before
      * @note sets updatePreRecurrences
      */
-    option<RecurrenceSystemSolution> iterateUpdate(const Subs &update);
+    std::optional<RecurrenceSystemSolution> iterateUpdate(const Subs &update);
 
     /**
      * Computes the iterated cost, with meterfunc as iteration step (if possible).
      * @note updatePreRecurrences must be set before (so iterateUpdate() needs to be called before)
      */
-    option<GiNaC::ex> iterateCost(const Expr &c);
+    std::optional<GiNaC::ex> iterateCost(const Expr &c);
 
     /**
      * Helper for iterateUpdate.
      * Tries to find a recurrence for the given single update.
      * Note that all variables occurring in update must have been solved before (and added to updatePreRecurrences).
      */
-    option<RecurrenceSolution<IntTheory>> solve(const NumVar &updateLhs, const Expr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
+    std::optional<RecurrenceSolution<IntTheory>> solve(const NumVar &updateLhs, const Expr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
 
-    option<RecurrenceSolution<BoolTheory>> solve(const BoolVar &updateLhs, const BoolExpr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
+    std::optional<RecurrenceSolution<BoolTheory>> solve(const BoolVar &updateLhs, const BoolExpr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
 
-    static const option<RecurrenceSystemSolution> iterateUpdate(const VariableManager&, const Subs&);
+    static const std::optional<RecurrenceSystemSolution> iterateUpdate(const VariableManager&, const Subs&);
 
     /**
      * To query variable names/indices

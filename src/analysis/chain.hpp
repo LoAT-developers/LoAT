@@ -19,11 +19,11 @@
 
 #include "rule.hpp"
 #include "variablemanager.hpp"
-#include "option.hpp"
 
+#include <optional>
 
 namespace Chaining {
 
-    option<Rule> chainRules(VarMan &varMan, const Rule &first, const Rule &second, bool checkSat = true);
+    std::optional<Rule> chainRules(VarMan &varMan, const Rule &first, const Rule &second, bool checkSat = true);
 
 }

@@ -17,7 +17,8 @@
 
 #pragma once
 
-#include "option.hpp"
+#include <optional>
+
 #include "theory.hpp"
 #include "substitution.hpp"
 #include "expression.hpp"
@@ -39,6 +40,6 @@ namespace DependencyOrder {
  * Fails if there is a nontrivial set of variables whose updates depend on each other.
  * @return list indicating the order (if successful)
  */
-option<std::vector<Var>> findOrder(const Subs &update);
+std::optional<std::vector<Var>> findOrder(const Subs &update);
 
 }

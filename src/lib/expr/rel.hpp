@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "numexpression.hpp"
 
 using RelSet = std::set<Rel>;
@@ -8,7 +10,7 @@ template <class T> using RelMap = std::map<Rel, T>;
 struct Bounds {
     std::set<Expr> upperBounds;
     std::set<Expr> lowerBounds;
-    option<Expr> equality;
+    std::optional<Expr> equality;
 };
 
 std::ostream& operator<<(std::ostream &s, const RelSet &set);
@@ -26,7 +28,7 @@ public:
     Expr rhs() const;
     Rel expand() const;
     bool isPoly() const;
-    bool isLinear(const option<std::set<NumVar>> &vars = option<std::set<NumVar>>()) const;
+    bool isLinear(const std::optional<std::set<NumVar>> &vars = std::optional<std::set<NumVar>>()) const;
     bool isIneq() const;
     bool isEq() const;
     bool isNeq() const;
@@ -84,9 +86,9 @@ public:
     friend bool operator<(const Rel &x, const Rel &y);
     friend std::ostream& operator<<(std::ostream &s, const Rel &e);
 
-    option<std::string> toQepcad() const;
+    std::optional<std::string> toQepcad() const;
 
-    std::pair<option<Expr>, option<Expr>> getBoundFromIneq(const NumVar &N) const;
+    std::pair<std::optional<Expr>, std::optional<Expr>> getBoundFromIneq(const NumVar &N) const;
 
 private:
 
@@ -95,7 +97,7 @@ private:
      * by checking if rhs-lhs is a numeric value. If unsure, returns none.
      * @return true/false if the relation is trivially valid/invalid
      */
-    option<bool> checkTrivial() const;
+    std::optional<bool> checkTrivial() const;
     Rel toIntPoly() const;
 
     Expr l;

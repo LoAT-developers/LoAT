@@ -3,6 +3,7 @@
 
 #include <variant>
 #include <algorithm>
+#include <optional>
 
 using expr_type = Res<Expr>;
 using formula_type = Res<BoolExpr>;
@@ -156,7 +157,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
         const auto r = any_cast<formula_type>(visit(c));
         guards.push_back(r.t & r.refinement);
     }
-    option<FunApp> lhs;
+    std::optional<FunApp> lhs;
     for (const auto &c: ctx->var_or_atom()) {
         const auto v = any_cast<var_or_atom_type>(visit(c));
         if (std::holds_alternative<BoolVar>(v)) {
@@ -167,7 +168,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
             lhs = std::get<FunApp>(v);
         }
     }
-    return std::pair(lhs.get_value_or(FunApp(its.getInitialLocation(), {})), BExpression::buildAnd(guards));
+    return std::pair(lhs.value_or(FunApp(its.getInitialLocation(), {})), BExpression::buildAnd(guards));
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) {
@@ -195,7 +196,7 @@ antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *ctx) {
     const auto name = any_cast<symbol_type>(visit(ctx->symbol()));
-    const option<LocationIdx> loc = its.getLocationIdx(name);
+    const std::optional<LocationIdx> loc = its.getLocationIdx(name);
     if (!loc) {
         throw std::invalid_argument("undeclared function symbol " + name);
     }
@@ -270,7 +271,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
 Var CHCParseVisitor::var(const std::string &name, Expr::Type type) {
     const auto it = vars.find(name);
     if (it == vars.end()) {
-        option<Var> var;
+        std::optional<Var> var;
         switch (type) {
         case Expr::Int: {
             var = its.getFreshUntrackedSymbol<IntTheory>(name, type);
@@ -481,7 +482,7 @@ antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *ctx) {
     if (ctx->var()) {
-        const option<LocationIdx> loc = its.getLocationIdx(unescape(ctx->getText()));
+        const std::optional<LocationIdx> loc = its.getLocationIdx(unescape(ctx->getText()));
         if (loc) {
             return std::variant<BoolVar, FunApp>(FunApp(*loc, {}));
         } else {

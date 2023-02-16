@@ -111,7 +111,7 @@ static map<int, Expr> getCoefficients(const Expr &ex, const NumVar &n) {
     return coefficients;
 }
 
-option<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Expr &cost,
+std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Expr &cost,
                                                      VarMan &varMan, Complexity currentRes, unsigned int timeout)
 {
     // initialize z3

@@ -10,6 +10,8 @@
 #include "boollit.hpp"
 #include "variant.hpp"
 
+#include <optional>
+
 template <ITheory... Th>
 class QeProblem : public Qelim<Th...>
 {
@@ -32,10 +34,10 @@ class QeProblem : public Qelim<Th...>
     using Res = std::map<Lit, std::vector<Entry>>;
 
     Res res;
-    option<std::map<Lit, Entry>> solution;
+    std::optional<std::map<Lit, Entry>> solution;
     LS todo;
     std::unique_ptr<Smt<Th...>> solver;
-    option<QFormula> formula;
+    std::optional<QFormula> formula;
     VariableManager &varMan;
 
     bool monotonicity(const Lit &lit, const NumVar &n, Proof &proof) {
@@ -67,10 +69,10 @@ class QeProblem : public Qelim<Th...>
                             dependencies.insert(*lit.begin());
                         }
                     }
-                    option<unsigned int> idx = store(lit, dependencies, newGuard);
+                    std::optional<unsigned int> idx = store(lit, dependencies, newGuard);
                     if (idx) {
                         std::stringstream ss;
-                        ss << lit << " [" << idx.get() << "]: montonic decrease yields " << newGuard;
+                        ss << lit << " [" << *idx << "]: montonic decrease yields " << newGuard;
                         if (!dependencies.empty()) {
                             ss << ", dependencies:";
                             for (const auto &dep: dependencies) {
@@ -116,10 +118,10 @@ class QeProblem : public Qelim<Th...>
                         }
                     }
                     dependencies.erase(lit);
-                    option<unsigned int> idx = store(lit, dependencies, newGuard);
+                    std::optional<unsigned int> idx = store(lit, dependencies, newGuard);
                     if (idx) {
                         std::stringstream ss;
-                        ss << lit << " [" << idx.get() << "]: monotonic increase yields " << newGuard;
+                        ss << lit << " [" << *idx << "]: monotonic increase yields " << newGuard;
                         if (!dependencies.empty()) {
                             ss << ", dependencies:";
                             for (const auto &dep: dependencies) {
@@ -152,7 +154,7 @@ class QeProblem : public Qelim<Th...>
             const Expr updated = rel.lhs().subs({{n, *n + 1}});
             const Rel dec = Rel::buildGeq(rel.lhs(), updated);
             const Rel inc = Rel::buildLt(updated, updated.subs({{n, *n + 1}}));
-            const auto newGuard = BExpression::buildTheoryLit(rel.subs({{n, lowerBound.get()}})) & rel.subs({{n, upperBound.get()}});
+            const auto newGuard = BExpression::buildTheoryLit(rel.subs({{n, *lowerBound}})) & rel.subs({{n, *upperBound}});
             auto premise = findConsistentSubset(boundedFormula(n) & dec & !inc & newGuard, n);
             if (!premise.empty()) {
                 BoolExprSet assumptions, deps;
@@ -176,10 +178,10 @@ class QeProblem : public Qelim<Th...>
                             dependencies.insert(*lit.begin());
                         }
                     }
-                    option<unsigned int> idx = store(rel, dependencies, newGuard);
+                    std::optional<unsigned int> idx = store(rel, dependencies, newGuard);
                     if (idx) {
                         std::stringstream ss;
-                        ss << rel << " [" << idx.get() << "]: eventual decrease yields " << newGuard;
+                        ss << rel << " [" << *idx << "]: eventual decrease yields " << newGuard;
                         if (!dependencies.empty()) {
                             ss << ", dependencies:";
                             for (const auto &dep: dependencies) {
@@ -211,7 +213,7 @@ class QeProblem : public Qelim<Th...>
             const Expr updated = rel.lhs().subs({{n, *n + 1}});
             const Rel inc = Rel::buildLeq(rel.lhs(), updated);
             const Rel dec = Rel::buildGt(updated, updated.subs({{n, *n + 1}}));
-            const Rel newCond = rel.subs({{n, bound.get()}});
+            const Rel newCond = rel.subs({{n, *bound}});
             auto premise = findConsistentSubset(boundedFormula(n) & inc & !dec & newCond, n);
             if (!premise.empty()) {
                 BoolExprSet assumptions, deps;
@@ -235,12 +237,12 @@ class QeProblem : public Qelim<Th...>
                             dependencies.insert(*lit.begin());
                         }
                     }
-                    const auto newGuard = BExpression::buildTheoryLit(newCond) & inc.subs({{n, bound.get()}});
+                    const auto newGuard = BExpression::buildTheoryLit(newCond) & inc.subs({{n, *bound}});
                     if (SmtFactory::check(newGuard, varMan) == Sat) {
-                        option<unsigned int> idx = store(rel, dependencies, newGuard, false);
+                        std::optional<unsigned int> idx = store(rel, dependencies, newGuard, false);
                         if (idx) {
                             std::stringstream ss;
-                            ss << rel << " [" << idx.get() << "]: eventual increase yields " << newGuard;
+                            ss << rel << " [" << *idx << "]: eventual increase yields " << newGuard;
                             if (!dependencies.empty()) {
                                 ss << ", dependencies:";
                                 for (const auto &dep: dependencies) {
@@ -257,7 +259,7 @@ class QeProblem : public Qelim<Th...>
         return false;
     }
 
-//    option<BExpr<IntTheory>> strengthen(const Rel &rel, const NumVar &n, Proof &proof) {
+//    std::optional<BExpr<IntTheory>> strengthen(const Rel &rel, const NumVar &n, Proof &proof) {
 //        if (res.find(rel) == res.end() && rel.isPoly()) {
 //            const auto lhs = rel.lhs().expand();
 //            unsigned degree = lhs.degree(n);
@@ -301,10 +303,10 @@ class QeProblem : public Qelim<Th...>
             const auto constant = Rel::buildGt(lhs.subs({{n, 0}}), 0);
             if (SmtFactory::check(boundedFormula(n) & constant & vanish, varMan) == Sat) {
                 auto newGuard = BExpression::buildTheoryLit(constant) & vanish;
-                option<unsigned int> idx = store(rel, {}, newGuard, false);
+                std::optional<unsigned int> idx = store(rel, {}, newGuard, false);
                 if (idx) {
                     std::stringstream ss;
-                    ss << rel << " [" << idx.get() << "]: fixpoint yields " << newGuard;
+                    ss << rel << " [" << *idx << "]: fixpoint yields " << newGuard;
                     proof.append(ss);
                     return true;
                 }
@@ -333,7 +335,7 @@ class QeProblem : public Qelim<Th...>
         return res;
     }
 
-    option<unsigned int> store(const Lit &lit, const LS &deps, const BoolExpr formula, bool exact = true) {
+    std::optional<unsigned int> store(const Lit &lit, const LS &deps, const BoolExpr formula, bool exact = true) {
         auto it = res.find(lit);
         if (it == res.end()) {
             res[lit] = {{deps, formula, exact}};
@@ -349,11 +351,11 @@ class QeProblem : public Qelim<Th...>
         const Quantifier quantifier = getQuantifier();
         const auto lowerBound = quantifier.lowerBound(var);
         if (lowerBound) {
-            res = res & Rel::buildLeq(lowerBound.get(), var);
+            res = res & Rel::buildLeq(*lowerBound, var);
         }
         const auto upperBound = quantifier.upperBound(var);
         if (upperBound) {
-            res = res & Rel::buildLeq(var, upperBound.get());
+            res = res & Rel::buildLeq(var, *upperBound);
         }
         return res;
     }
@@ -446,7 +448,7 @@ public:
 
     QeProblem(VariableManager &varMan): varMan(varMan){}
 
-    option<Result> qe(const QFormula &qf) override {
+    std::optional<Result> qe(const QFormula &qf) override {
         Proof fullProof;
         fullProof.headline("Eliminated Quantifier via QE-Calculus");
         fullProof.append(std::stringstream() << "Input Formula: " << qf);
@@ -485,7 +487,7 @@ public:
                     }
                 }
     //            for (const Rel &rel: todo) {
-    //                const option<BoolExpr> str = strengthen(rel, var, proof);
+    //                const std::optional<BoolExpr> str = strengthen(rel, var, proof);
     //                if (str) {
     //                    const auto lits = (*str)->lits();
     //                    todo.insert(lits.begin(), lits.end());

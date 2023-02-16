@@ -17,7 +17,8 @@
 
 #pragma once
 
-#include "option.hpp"
+#include <optional>
+
 #include "numexpression.hpp"
 #include "rel.hpp"
 #include "theory.hpp"
@@ -66,15 +67,15 @@ public:
 
     virtual void printStderr(const EXPR &e) const = 0;
 
-    option<EXPR> getVariable(const Var &symbol) const {
+    std::optional<EXPR> getVariable(const Var &symbol) const {
         auto it = varMap.find(symbol);
         if (it != varMap.end()) {
             return it->second;
         }
-        return option<EXPR>{};
+        return std::optional<EXPR>{};
     }
 
-    option<Var> getVariable(const std::string &name) const {
+    std::optional<Var> getVariable(const std::string &name) const {
         auto it = nameMap.find(name);
         if (it != nameMap.end() && varMap.find(it->second) != varMap.end()) {
             return it->second;

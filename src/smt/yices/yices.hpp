@@ -93,7 +93,7 @@ public:
         }
     }
 
-    Model<Th...> model(const option<const VarSet> &vars = {}) override {
+    Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
         if (ctx.getSymbolMap().empty()) {
             return Model<Th...>();
         }

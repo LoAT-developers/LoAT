@@ -15,7 +15,7 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
         changed = false;
         // compute dependencies of var
         for (const NumVar &var: dependencies) {
-            option<NumVar> dep;
+            std::optional<NumVar> dep;
             for (const Lit &lit: guard->lits()) {
                 if (std::holds_alternative<Rel>(lit)) {
                     const Rel &rel = std::get<Rel>(lit);
@@ -36,7 +36,7 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
                             }
                         }
                         if (dep) {
-                            dependencies.insert(dep.get());
+                            dependencies.insert(*dep);
                             changed = true;
                         }
                     }

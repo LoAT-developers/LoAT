@@ -42,7 +42,7 @@ static void findOrderUntilConflicting(const Subs &update, PartialResult &res) {
     }
 }
 
-option<std::vector<Var>> findOrder(const Subs &update) {
+std::optional<std::vector<Var>> findOrder(const Subs &update) {
     PartialResult res;
     findOrderUntilConflicting(update, res);
 

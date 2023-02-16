@@ -17,11 +17,11 @@
 
 #pragma once
 
-#include "option.hpp"
 #include "rule.hpp"
 #include "variablemanager.hpp"
 #include "hypergraph.hpp"
 
+#include <optional>
 #include <unordered_map>
 
 
@@ -40,12 +40,12 @@ public:
     bool isInitialLocation(LocationIdx loc) const;
     void setInitialLocation(LocationIdx loc);
     LocationIdx getSink() const;
-    option<LocationIdx> getLocationIdx(const std::string &name) const;
+    std::optional<LocationIdx> getLocationIdx(const std::string &name) const;
 
     // query the rule associated with a given transition
     bool hasRule(TransIdx transition) const;
     const Rule getRule(TransIdx transition) const;
-    option<TransIdx> getTransIdx(const Rule &rule) const;
+    std::optional<TransIdx> getTransIdx(const Rule &rule) const;
 
     // returns the destinations of the given transition
     const std::set<LocationIdx> getTransitionTargets(TransIdx idx) const;
@@ -79,7 +79,7 @@ public:
 
     // Required for printing (see ITSExport)
     std::set<LocationIdx> getLocations() const;
-    option<std::string> getLocationName(LocationIdx idx) const;
+    std::optional<std::string> getLocationName(LocationIdx idx) const;
     std::string getPrintableLocationName(LocationIdx idx) const; // returns "[idx]" if there is no name
 
     VarSet getVars() const;

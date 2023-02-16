@@ -38,7 +38,7 @@ public:
     Var getFreshUntrackedSymbol(const Var &x) {
         std::lock_guard guard(mutex);
         const std::string name = getFreshName(variable::getName(x));
-        option<Var> res;
+        std::optional<Var> res;
         Expr::Type type;
         if (std::holds_alternative<NumVar>(x)) {
             type = Expr::Int;
@@ -136,10 +136,10 @@ public:
                     auto lb = q.lowerBound(x);
                     auto ub = q.upperBound(x);
                     if (lb) {
-                        newLowerBounds[x] = lb.get();
+                        newLowerBounds[x] = *lb;
                     }
                     if (ub) {
-                        newUpperBounds[x] = ub.get();
+                        newUpperBounds[x] = *ub;
                     }
                 }
             }

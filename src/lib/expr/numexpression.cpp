@@ -18,6 +18,7 @@
 #include "numexpression.hpp"
 
 #include <sstream>
+#include <assert.h>
 
 using namespace std;
 
@@ -55,8 +56,8 @@ bool Expr::isNontermSymbol() const {
 }
 
 
-bool Expr::isLinear(const option<std::set<NumVar>> &vars) const {
-    std::set<NumVar> theVars = vars ? vars.get() : this->vars();
+bool Expr::isLinear(const std::optional<std::set<NumVar>> &vars) const {
+    std::set<NumVar> theVars = vars ? *vars : this->vars();
     // linear expressions are always polynomials
     if (!isPoly()) return false;
 
@@ -244,7 +245,7 @@ NumVar Expr::someVar() const {
             return *variable;
         }
     private:
-        option<NumVar> variable;
+        std::optional<NumVar> variable;
     };
 
     SymbolVisitor visitor;
@@ -563,12 +564,12 @@ std::string toQepcadRec(const Expr& e) {
     }
 }
 
-option<std::string> Expr::toQepcad() const {
+std::optional<std::string> Expr::toQepcad() const {
     if (!this->isPoly()) return {};
     return toQepcadRec(this->expand());
 }
 
-option<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) const {
+std::optional<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) const {
     // expand is needed before using degree/coeff
     Expr term = this->expand();
 

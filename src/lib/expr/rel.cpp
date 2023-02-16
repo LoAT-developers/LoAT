@@ -1,6 +1,7 @@
 #include "rel.hpp"
 
 #include <sstream>
+#include <assert.h>
 
 std::ostream& operator<<(std::ostream &s, const RelSet &set) {
     s << "{";
@@ -32,7 +33,7 @@ bool Rel::isPoly() const {
     return l.isPoly() && r.isPoly();
 }
 
-bool Rel::isLinear(const option<std::set<NumVar>> &vars) const {
+bool Rel::isLinear(const std::optional<std::set<NumVar>> &vars) const {
     return l.isLinear(vars) && r.isLinear(vars);
 }
 
@@ -56,7 +57,7 @@ Rel Rel::toLeq() const {
     assert(isIneq());
     assert(isPoly() || !isStrict());
 
-    option<Rel> res;
+    std::optional<Rel> res;
     if (isStrict()) {
         Num lcm = GiNaC::lcm(l.denomLcm(), r.denomLcm());
         res = lcm == 1 ? *this : Rel(l * lcm, op, r * lcm);
@@ -75,14 +76,14 @@ Rel Rel::toLeq() const {
     }
 
     assert(res->op == Rel::leq);
-    return res.get();
+    return *res;
 }
 
 Rel Rel::toGt() const {
     assert(isIneq());
     assert(isPoly() || isStrict());
 
-    option<Rel> res;
+    std::optional<Rel> res;
     if (!isStrict()) {
         Num lcm = GiNaC::lcm(l.denomLcm(), r.denomLcm());
         res = lcm == 1 ? *this : Rel(l * lcm, op, r * lcm);
@@ -100,7 +101,7 @@ Rel Rel::toGt() const {
     }
 
     assert(res->op == Rel::gt);
-    return res.get();
+    return *res;
 }
 
 Rel Rel::toL() const {
@@ -138,7 +139,7 @@ bool Rel::isOctagon() const {
     return op != neq && (lhs() - rhs()).expand().isOctagon();
 }
 
-std::pair<option<Expr>, option<Expr>> Rel::getBoundFromIneq(const NumVar &N) const {
+std::pair<std::optional<Expr>, std::optional<Expr>> Rel::getBoundFromIneq(const NumVar &N) const {
     Rel l = isPoly() ? toLeq() : toL();
     Expr term = (l.lhs() - l.rhs()).expand();
     if (term.degree(N) != 1) return {};
@@ -149,9 +150,9 @@ std::pair<option<Expr>, option<Expr>> Rel::getBoundFromIneq(const NumVar &N) con
         const Expr &coeff = term.coeff(N, 1);
         assert(coeff.isRationalConstant());
         if (coeff.toNum().is_negative()) {
-            return {{l.isStrict() ? optSolved.get() + 1 : optSolved.get()}, {}};
+            return {{l.isStrict() ? *optSolved + 1 : *optSolved}, {}};
         } else {
-            return {{}, {l.isStrict() ? optSolved.get() - 1 : optSolved.get()}};
+            return {{}, {l.isStrict() ? *optSolved - 1 : *optSolved}};
         }
     }
     return {};
@@ -160,7 +161,7 @@ std::pair<option<Expr>, option<Expr>> Rel::getBoundFromIneq(const NumVar &N) con
 void Rel::getBounds(const NumVar &n, Bounds &res) const {
     if (has(n)) {
         if (isEq()) {
-            const option<Expr> eq = (lhs() - rhs()).solveTermFor(n, ResultMapsToInt);
+            const std::optional<Expr> eq = (lhs() - rhs()).solveTermFor(n, ResultMapsToInt);
             if (eq) {
                 res.equality = *eq;
                 res.lowerBounds.insert(*eq);
@@ -243,15 +244,15 @@ Rel Rel::splitVariableAndConstantAddends(const std::set<NumVar> &params) const {
 
 bool Rel::isTriviallyTrue() const {
     auto optTrivial = checkTrivial();
-    return (optTrivial && optTrivial.get());
+    return (optTrivial && *optTrivial);
 }
 
 bool Rel::isTriviallyFalse() const {
     auto optTrivial = checkTrivial();
-    return (optTrivial && !optTrivial.get());
+    return (optTrivial && !*optTrivial);
 }
 
-option<bool> Rel::checkTrivial() const {
+std::optional<bool> Rel::checkTrivial() const {
     Expr diff = (l - r).expand();
     if (diff.isRationalConstant()) {
         switch (op) {
@@ -317,11 +318,11 @@ unsigned Rel::hash() const {
     return hash;
 }
 
-option<std::string> Rel::toQepcad() const {
+std::optional<std::string> Rel::toQepcad() const {
     const Rel gt = this->toGt();
-    option<std::string> diff = (gt.l - gt.r).toQepcad();
+    std::optional<std::string> diff = (gt.l - gt.r).toQepcad();
     if (!diff) return {};
-    return diff.get() + " > 0";
+    return *diff + " > 0";
 }
 
 bool Rel::isWellformed() const {

@@ -50,7 +50,7 @@ static bool checkSatisfiability(const BoolExpr newGuard, VariableManager &varMan
  * by applying the first rule's update to the second rule's lhs (guard/cost).
  * Also checks whether the resulting guard is satisfiable (and returns none if not), unless checkSat is false.
  */
-static option<RuleLhs> chainLhss(VarMan &varMan, const RuleLhs &firstLhs, const Subs &firstUpdate,
+static std::optional<RuleLhs> chainLhss(VarMan &varMan, const RuleLhs &firstLhs, const Subs &firstUpdate,
                                  const RuleLhs &secondLhs, bool checkSat)
 {
     // Concatenate both guards, but apply the first rule's update to second guard
@@ -74,7 +74,7 @@ static option<RuleLhs> chainLhss(VarMan &varMan, const RuleLhs &firstLhs, const 
     return RuleLhs(firstLhs.getLoc(), newGuard, newCost);
 }
 
-option<Rule> Chaining::chainRules(VarMan &varMan, const Rule &first, const Rule &second, bool checkSat)
+std::optional<Rule> Chaining::chainRules(VarMan &varMan, const Rule &first, const Rule &second, bool checkSat)
 {
     assert(first.getRhsLoc() == second.getLhsLoc());
 
@@ -83,5 +83,5 @@ option<Rule> Chaining::chainRules(VarMan &varMan, const Rule &first, const Rule 
         return {};
     }
 
-    return Rule(newLhs.get(), RuleRhs(second.getRhsLoc(), substitution::compose(second.getUpdate(), first.getUpdate())));
+    return Rule(*newLhs, RuleRhs(second.getRhsLoc(), substitution::compose(second.getUpdate(), first.getUpdate())));
 }

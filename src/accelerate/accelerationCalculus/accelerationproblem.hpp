@@ -1,7 +1,8 @@
 #pragma once
 
+#include <optional>
+
 #include "rule.hpp"
-#include "option.hpp"
 #include "itsproblem.hpp"
 #include "proof.hpp"
 #include "smt.hpp"
@@ -23,16 +24,16 @@ class AccelerationProblem {
     using Res = std::map<Lit, std::vector<Entry>>;
 
     Res res;
-    option<std::map<Lit, Entry>> solution;
+    std::optional<std::map<Lit, Entry>> solution;
     LitSet todo;
     Subs up;
-    const option<Recurrence::Result> closed;
+    const std::optional<Recurrence::Result> closed;
     Expr cost;
     BoolExpr guard;
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     ITSProblem &its;
     bool isConjunction;
-    option<Rel> bound;
+    std::optional<Rel> bound;
     const AccelConfig config;
 
     bool monotonicity(const Lit &lit, Proof &proof);
@@ -41,7 +42,7 @@ class AccelerationProblem {
     bool eventualIncrease(const Lit &lit, const bool strict, Proof &proof);
     bool fixpoint(const Lit &lit, Proof &proof);
     LitSet findConsistentSubset(const BoolExpr e) const;
-    option<unsigned int> store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool exact = true, bool nonterm = false);
+    std::optional<unsigned int> store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool exact = true, bool nonterm = false);
 
     struct ReplacementMap {
         bool acceleratedAll;
@@ -55,14 +56,14 @@ class AccelerationProblem {
     AccelerationProblem(
             const BoolExpr guard,
             const Subs &up,
-            const option<Recurrence::Result> &closed,
+            const std::optional<Recurrence::Result> &closed,
             const Expr &cost,
             ITSProblem &its,
             const AccelConfig &config);
 
 public:
 
-    static AccelerationProblem init(const Rule &rule, const option<Recurrence::Result> &closed, ITSProblem &its, const AccelConfig &config);
+    static AccelerationProblem init(const Rule &rule, const std::optional<Recurrence::Result> &closed, ITSProblem &its, const AccelConfig &config);
 
     AcceleratorPair computeRes();
     std::pair<BoolExpr, bool> buildRes(const Model<IntTheory, BoolTheory> &model, const std::map<Lit, std::vector<BoolExpr>> &entryVars);

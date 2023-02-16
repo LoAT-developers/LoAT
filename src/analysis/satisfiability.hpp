@@ -8,6 +8,7 @@
 #include "redundanceviaautomata.hpp"
 
 #include <list>
+#include <optional>
 
 namespace satisfiability {
 
@@ -96,23 +97,23 @@ public:
     /**
      * true if a clause was learned
      */
-    virtual option<Succeeded> succeeded();
+    virtual std::optional<Succeeded> succeeded();
     /**
      * true if no clause was learned since it would have been redundant
      */
-    virtual option<Covered> covered();
+    virtual std::optional<Covered> covered();
     /**
      * True if the learned clause could not be added to the trace without introducing
      * inconsistencies. This may happen when our acceleration technique returns an
      * under-approximation.
      * TODO For sat, the current handling of this case is not sound.
      */
-    virtual option<Dropped> dropped();
+    virtual std::optional<Dropped> dropped();
     /**
      * true if no clause was learned for some other reason
      * TODO We have to think about ways to deal with this case when trying to prove sat.
      */
-    virtual option<Failed> failed();
+    virtual std::optional<Failed> failed();
 };
 
 class Succeeded: public LearningState {
@@ -123,21 +124,21 @@ class Succeeded: public LearningState {
 
 public:
     Succeeded(const Result<TransIdx> &idx);
-    option<Succeeded> succeeded() override;
+    std::optional<Succeeded> succeeded() override;
     Result<TransIdx>& operator*();
     Result<TransIdx>* operator->();
 };
 
 class Covered: public LearningState {
-    option<Covered> covered() override;
+    std::optional<Covered> covered() override;
 };
 
 class Dropped: public LearningState {
-    option<Dropped> dropped() override;
+    std::optional<Dropped> dropped() override;
 };
 
 class Failed: public LearningState {
-    option<Failed> failed() override;
+    std::optional<Failed> failed() override;
 };
 
 /**
@@ -262,7 +263,7 @@ class Satisfiability {
     /**
      * tries to resolve the trace with the given clause
      */
-    option<BoolExpr> resolve(const TransIdx idx);
+    std::optional<BoolExpr> resolve(const TransIdx idx);
 
     /**
      * drops a suffix of the trace, up to the given new size

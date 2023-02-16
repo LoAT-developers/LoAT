@@ -19,7 +19,6 @@
 
 #include "numexpression.hpp"
 #include "variablemanager.hpp"
-#include "option.hpp"
 #include "result.hpp"
 
 #include <vector>

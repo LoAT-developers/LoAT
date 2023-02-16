@@ -24,29 +24,29 @@ bool Reachability::log = false;
 
 LearningState::LearningState() {}
 
-option<Succeeded> LearningState::succeeded() {
+std::optional<Succeeded> LearningState::succeeded() {
     return {};
 }
 
-option<Covered> LearningState::covered() {
+std::optional<Covered> LearningState::covered() {
     return {};
 }
 
-option<Dropped> LearningState::dropped() {
+std::optional<Dropped> LearningState::dropped() {
     return {};
 }
 
-option<Failed> LearningState::failed() {
+std::optional<Failed> LearningState::failed() {
     return {};
 }
 
-option<ProvedUnsat> LearningState::unsat() {
+std::optional<ProvedUnsat> LearningState::unsat() {
     return {};
 }
 
 Succeeded::Succeeded(const Result<std::vector<TransIdx>> &idx): idx(idx) {}
 
-option<Succeeded> Succeeded::succeeded() {
+std::optional<Succeeded> Succeeded::succeeded() {
     return *this;
 }
 
@@ -58,13 +58,13 @@ Result<std::vector<TransIdx>>* Succeeded::operator->() {
     return &idx;
 }
 
-option<Covered> Covered::covered() {
+std::optional<Covered> Covered::covered() {
     return *this;
 }
 
 Dropped::Dropped(const Result<std::vector<TransIdx>> &idx): idx(idx) {}
 
-option<Dropped> Dropped::dropped() {
+std::optional<Dropped> Dropped::dropped() {
     return *this;
 }
 
@@ -76,11 +76,11 @@ Result<std::vector<TransIdx>>* Dropped::operator->() {
     return &idx;
 }
 
-option<Failed> Failed::failed() {
+std::optional<Failed> Failed::failed() {
     return *this;
 }
 
-option<ProvedUnsat> ProvedUnsat::unsat() {
+std::optional<ProvedUnsat> ProvedUnsat::unsat() {
     return *this;
 }
 
@@ -231,7 +231,7 @@ bool Reachability::leaves_scc(const TransIdx idx) const {
     return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc());
 }
 
-option<unsigned> Reachability::has_looping_suffix() {
+std::optional<unsigned> Reachability::has_looping_suffix() {
     if (trace.empty()) {
         return {};
     }
@@ -568,7 +568,7 @@ void Reachability::unsat() {
     proof.print();
 }
 
-option<BoolExpr> Reachability::resolve(const TransIdx idx) {
+std::optional<BoolExpr> Reachability::resolve(const TransIdx idx) {
     PushPop pp(solver);
     const auto var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     const auto clause = chcs.getRule(idx);
@@ -794,7 +794,7 @@ LocationIdx Reachability::get_current_predicate() const {
 bool Reachability::try_to_finish(const std::vector<TransIdx> &clauses) {
     solver.setTimeout(2000);
     for (const auto &q: clauses) {
-        const option<BoolExpr> implicant = resolve(q);
+        const std::optional<BoolExpr> implicant = resolve(q);
         if (implicant) {
             // no need to compute the model and the variable renaming for the next step, as we are done
             add_to_trace(Step(q, *implicant, Subs(), compute_resolvent(q, *implicant)));
@@ -888,7 +888,7 @@ void Reachability::analyze() {
         auto it = to_try.begin();
         std::vector<TransIdx> append;
         while (it != to_try.end()) {
-            const option<BoolExpr> implicant = resolve(*it);
+            const std::optional<BoolExpr> implicant = resolve(*it);
             if (implicant && store_step(*it, *implicant)) {
                 proof.headline("Step with " + std::to_string(*it));
                 print_state();

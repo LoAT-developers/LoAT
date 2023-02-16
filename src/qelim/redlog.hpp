@@ -16,7 +16,7 @@ public:
 
     Redlog(VariableManager &varMan): varMan(varMan){}
 
-    option<typename Qelim<IntTheory>::Result> qe(const QuantifiedFormula<IntTheory> &qf) override;
+    std::optional<typename Qelim<IntTheory>::Result> qe(const QuantifiedFormula<IntTheory> &qf) override;
     static void init();
     static void exit();
 

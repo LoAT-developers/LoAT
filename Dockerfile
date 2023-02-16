@@ -119,6 +119,8 @@ RUN ./configure CXXFLAGS='-march=sandybridge -O3 -DNDEBUG'
 RUN make -j
 RUN make install
 
+ARG CACHEBUST=2
+
 # purrs
 WORKDIR /src
 RUN git clone https://github.com/aprove-developers/LoAT-purrs.git

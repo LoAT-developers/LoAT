@@ -10,6 +10,7 @@
 
 #include <limits>
 #include <list>
+#include <optional>
 
 /**
  * Possible improvements:
@@ -101,25 +102,25 @@ public:
     /**
      * true if a clause was learned
      */
-    virtual option<Succeeded> succeeded();
+    virtual std::optional<Succeeded> succeeded();
     /**
      * true if no clause was learned since it would have been redundant
      */
-    virtual option<Covered> covered();
+    virtual std::optional<Covered> covered();
     /**
      * True if the learned clause could not be added to the trace without introducing
      * inconsistencies. This may happen when our acceleration technique returns an
      * under-approximation.
      * TODO For sat, the current handling of this case is not sound.
      */
-    virtual option<Dropped> dropped();
+    virtual std::optional<Dropped> dropped();
     /**
      * true if no clause was learned for some other reason
      * TODO We have to think about ways to deal with this case when trying to prove sat.
      */
-    virtual option<Failed> failed();
+    virtual std::optional<Failed> failed();
 
-    virtual option<ProvedUnsat> unsat();
+    virtual std::optional<ProvedUnsat> unsat();
 };
 
 class Succeeded: public LearningState {
@@ -130,13 +131,13 @@ class Succeeded: public LearningState {
 
 public:
     Succeeded(const Result<std::vector<TransIdx>> &idx);
-    option<Succeeded> succeeded() override;
+    std::optional<Succeeded> succeeded() override;
     Result<std::vector<TransIdx>>& operator*();
     Result<std::vector<TransIdx>>* operator->();
 };
 
 class Covered: public LearningState {
-    option<Covered> covered() override;
+    std::optional<Covered> covered() override;
 };
 
 class Dropped: public LearningState {
@@ -147,13 +148,13 @@ class Dropped: public LearningState {
 
 public:
     Dropped(const Result<std::vector<TransIdx>> &idx);
-    option<Dropped> dropped() override;
+    std::optional<Dropped> dropped() override;
     Result<std::vector<TransIdx>>& operator*();
     Result<std::vector<TransIdx>>* operator->();
 };
 
 class Failed: public LearningState {
-    option<Failed> failed() override;
+    std::optional<Failed> failed() override;
 };
 
 class ProvedUnsat: public LearningState {
@@ -161,7 +162,7 @@ class ProvedUnsat: public LearningState {
 
 public:
     ProvedUnsat(const Proof &proof);
-    option<ProvedUnsat> unsat() override;
+    std::optional<ProvedUnsat> unsat() override;
     Proof& operator*();
     Proof* operator->();
 };
@@ -292,7 +293,7 @@ class Reachability {
     /**
      * tries to resolve the trace with the given clause
      */
-    option<BoolExpr> resolve(const TransIdx idx);
+    std::optional<BoolExpr> resolve(const TransIdx idx);
 
     /**
      * drops a suffix of the trace, up to the given new size
@@ -342,7 +343,7 @@ class Reachability {
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
      */
-    option<unsigned> has_looping_suffix();
+    std::optional<unsigned> has_looping_suffix();
 
     /**
      * Generates a fresh copy of the program variables and fixes their value according to the update of the

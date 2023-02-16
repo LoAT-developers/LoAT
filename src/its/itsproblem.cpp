@@ -176,7 +176,7 @@ set<LocationIdx> ITSProblem::getLocations() const {
     return locations;
 }
 
-option<string> ITSProblem::getLocationName(LocationIdx idx) const {
+std::optional<string> ITSProblem::getLocationName(LocationIdx idx) const {
     std::lock_guard guard(mutex);
     auto it = locationNames.find(idx);
     if (it != locationNames.end()) {
@@ -185,7 +185,7 @@ option<string> ITSProblem::getLocationName(LocationIdx idx) const {
     return {};
 }
 
-option<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) const {
+std::optional<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) const {
     std::lock_guard guard(mutex);
     for (const auto &p: locationNames) {
         if (p.second == name) {

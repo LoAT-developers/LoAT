@@ -13,7 +13,7 @@ AccelerationViaQE::AccelerationViaQE(
 AccelerationViaQE::AcceleratorPair AccelerationViaQE::computeRes() {
     NumVar m = its.getFreshUntrackedSymbol<IntTheory>("m", Expr::Int);
     auto qelim = qelimfactory::solver<IntTheory, BoolTheory>(its);
-    option<Qelim<IntTheory,BoolTheory>::Result> res;
+    std::optional<Qelim<IntTheory,BoolTheory>::Result> res;
     AcceleratorPair ret;
     BoolExpr matrix = rule.getGuard()->toG()->subs(closed->update);
     if (Config::Analysis::tryNonterm()) {

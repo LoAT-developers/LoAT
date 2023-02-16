@@ -2,22 +2,9 @@ target_sources(${EXECUTABLE}
     PRIVATE
         complexity.cpp
         complexity.hpp
-        numvar.hpp
-        numvar.cpp
-        numexpression.cpp
-        numexpression.hpp
-        rel.cpp
-        rel.hpp
         guardtoolbox.cpp
         guardtoolbox.hpp
-        boolexpr.cpp
-        boolexpr.hpp
-        boolvar.cpp
-        boolvar.hpp
-        boollit.cpp
-        boollit.hpp
         boolsubs.hpp
-        literaltemplates.hpp
         literal.cpp
         literal.hpp
         expression.hpp

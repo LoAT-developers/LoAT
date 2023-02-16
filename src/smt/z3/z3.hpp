@@ -42,7 +42,7 @@ public:
         throw std::logic_error("unknown result");
     }
 
-    Model<Th...> model(const option<const VarSet> &vars = {}) override {
+    Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
         assert(models);
         const z3::model &m = solver.get_model();
         Model<Th...> res;

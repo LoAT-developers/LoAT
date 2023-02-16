@@ -1,8 +1,6 @@
 #pragma once
 
 #include "itheory.hpp"
-#include "option.hpp"
-#include "set.hpp"
 
 namespace theory {
 
@@ -134,7 +132,7 @@ public:
 
         const Self *set;
         VSI ptr;
-        option<Var> current;
+        std::optional<Var> current;
 
     };
 

@@ -14,6 +14,6 @@ public:
         Result(const BExpr<Th...> &qf, const Proof &proof, bool exact): qf(qf), proof(proof), exact(exact) {}
     };
 
-    virtual option<Result> qe(const QuantifiedFormula<Th...> &qf) = 0;
+    virtual std::optional<Result> qe(const QuantifiedFormula<Th...> &qf) = 0;
 
 };

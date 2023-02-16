@@ -23,7 +23,6 @@
 #include <unordered_set>
 
 #include "types.hpp"
-#include "option.hpp"
 #include "theory.hpp"
 #include "config.hpp"
 #include "substitution.hpp"

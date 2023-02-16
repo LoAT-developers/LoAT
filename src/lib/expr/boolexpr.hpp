@@ -1,6 +1,5 @@
 #pragma once
 
-#include "option.hpp"
 #include "itheory.hpp"
 #include "thset.hpp"
 #include "conjunction.hpp"
@@ -146,7 +145,7 @@ public:
         return BE(new BoolTheoryLit<Th...>(lit));
     }
 
-    virtual option<const Lit&> getTheoryLit() const = 0;
+    virtual std::optional<const Lit> getTheoryLit() const = 0;
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
     virtual BES getChildren() const = 0;
@@ -180,7 +179,7 @@ private:
 
     bool implicant(Subs &subs, LS &res) const {
         if (isOr()) {
-            option<LS> best_res;
+            std::optional<LS> best_res;
             for (const auto &c: getChildren()) {
                 LS current_res;
                 if (c->implicant(subs, current_res)) {
@@ -233,7 +232,7 @@ public:
     /**
      * Assumes that this->subs(subs) is a tautology.
      */
-    option<LS> implicant(Subs subs) const {
+    std::optional<LS> implicant(Subs subs) const {
         LS res;
         if (implicant(subs, res)) {
             return res;
@@ -489,7 +488,7 @@ public:
         });
     }
 
-    option<BE> impliedEquality(const Lit &l) const {
+    std::optional<BE> impliedEquality(const Lit &l) const {
         std::vector<BE> todo;
         const BE lit = buildTheoryLit(l);
         if (isAnd()) {
@@ -630,7 +629,7 @@ public:
         return false;
     }
 
-    option<const Lit&> getTheoryLit() const override {
+    std::optional<const Lit> getTheoryLit() const override {
         return {lit};
     }
 
@@ -737,7 +736,7 @@ public:
         return op == ConcatOr;
     }
 
-    option<const Lit&> getTheoryLit() const override {
+    std::optional<const Lit> getTheoryLit() const override {
         return {};
     }
 
@@ -901,8 +900,8 @@ public:
     const std::set<NumVar>& getVars() const;
     Type getType() const;
     std::string toRedlog() const;
-    option<Expr> lowerBound(const NumVar &x) const;
-    option<Expr> upperBound(const NumVar &x) const;
+    std::optional<Expr> lowerBound(const NumVar &x) const;
+    std::optional<Expr> upperBound(const NumVar &x) const;
     Quantifier remove(const NumVar &x) const;
 
 };

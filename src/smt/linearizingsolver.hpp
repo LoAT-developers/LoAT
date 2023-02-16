@@ -49,13 +49,13 @@ public:
         lin_vars.push({});
     }
 
-    option<Expr> linearize(const Expr &expr) {
+    std::optional<Expr> linearize(const Expr &expr) {
         if (expr.isPoly()) {
             return {};
         } else if (expr.isAdd()) {
             Expr res(0);
             for (unsigned i = 0; i < expr.arity(); ++i) {
-                const option<Expr> c = linearize(expr.op(i));
+                const std::optional<Expr> c = linearize(expr.op(i));
                 if (c) {
                     res = res + *c;
                 } else {
@@ -66,7 +66,7 @@ public:
         } else if (expr.isMul()) {
             Expr res(1);
             for (unsigned i = 0; i < expr.arity(); ++i) {
-                const option<Expr> c = linearize(expr.op(i));
+                const std::optional<Expr> c = linearize(expr.op(i));
                 if (c) {
                     res = res * *c;
                 } else {
@@ -99,14 +99,14 @@ public:
         const LitSet lits = e->lits();
         std::map<Lit, BExpr<Th...>> map;
         for (const Rel &lit: lits.template get<Rel>()) {
-            option<Expr> lin_lhs;
+            std::optional<Expr> lin_lhs;
             if (lit.isPoly()) {
                 continue;
             }
             Expr lhs = lit.isIneq() ? lit.makeRhsZero().toGt().lhs() : lit.makeRhsZero().lhs();
             lin_lhs = linearize(lhs);
             if (lin_lhs) {
-                option<Rel> lin_lit;
+                std::optional<Rel> lin_lit;
                 if (lit.isEq()) {
                     lin_lit = Rel::buildEq(*lin_lhs, 0);
                 } else if (lit.isNeq()) {
@@ -240,7 +240,7 @@ public:
         lin_vars.pop();
     }
 
-    Model<Th...> model(const option<const VarSet> &vars = {}) override {
+    Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
         return z3.model(vars);
     }
 

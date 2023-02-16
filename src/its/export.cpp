@@ -85,7 +85,7 @@ void ITSExport::printDebug(const ITSProblem &its, std::ostream &s) {
         s << " " << loc;
         auto optName = its.getLocationName(loc);
         if (optName) {
-            s << "/" << optName.get();
+            s << "/" << *optName;
         }
         if (its.isInitialLocation(loc)) {
             s << "*";
@@ -132,7 +132,7 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
     auto printNode = [&](LocationIdx n) {
         auto optName = its.getLocationName(n);
         if (optName) {
-            s << optName.get();
+            s << *optName;
         } else {
             s << "loc" << n << "'";
         }

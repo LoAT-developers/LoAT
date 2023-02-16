@@ -28,25 +28,25 @@ bool Satisfiability::log = false;
 
 LearningState::LearningState() {}
 
-option<Succeeded> LearningState::succeeded() {
+std::optional<Succeeded> LearningState::succeeded() {
     return {};
 }
 
-option<Covered> LearningState::covered() {
+std::optional<Covered> LearningState::covered() {
     return {};
 }
 
-option<Dropped> LearningState::dropped() {
+std::optional<Dropped> LearningState::dropped() {
     return {};
 }
 
-option<Failed> LearningState::failed() {
+std::optional<Failed> LearningState::failed() {
     return {};
 }
 
 Succeeded::Succeeded(const Result<TransIdx> &idx): idx(idx) {}
 
-option<Succeeded> Succeeded::succeeded() {
+std::optional<Succeeded> Succeeded::succeeded() {
     return *this;
 }
 
@@ -58,15 +58,15 @@ Result<TransIdx>* Succeeded::operator->() {
     return &idx;
 }
 
-option<Covered> Covered::covered() {
+std::optional<Covered> Covered::covered() {
     return *this;
 }
 
-option<Dropped> Dropped::dropped() {
+std::optional<Dropped> Dropped::dropped() {
     return *this;
 }
 
-option<Failed> Failed::failed() {
+std::optional<Failed> Failed::failed() {
     return *this;
 }
 
@@ -444,7 +444,7 @@ void Satisfiability::unsat() {
     */
 }
 
-option<BoolExpr> Satisfiability::resolve(const TransIdx idx) {
+std::optional<BoolExpr> Satisfiability::resolve(const TransIdx idx) {
     PushPop pp(solver);
     const auto var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     const auto clause = chcs.getRule(idx);
@@ -683,7 +683,7 @@ LocationIdx Satisfiability::get_current_predicate() const {
 bool Satisfiability::try_to_finish(const std::vector<TransIdx> &clauses) {
     //solver.setTimeout(2000);
     for (const auto &q: clauses) {
-        const option<BoolExpr> implicant = resolve(q);
+        const std::optional<BoolExpr> implicant = resolve(q);
         if (implicant) {
             // no need to compute the model and the variable renaming for the next step, as we are done
             add_to_trace(Step(q, *implicant, Subs(), ThModel()));
@@ -769,7 +769,7 @@ void Satisfiability::analyze() {
         auto it = to_try.begin();
         std::vector<TransIdx> append;
         while (it != to_try.end()) {
-            const option<BoolExpr> implicant = resolve(*it);
+            const std::optional<BoolExpr> implicant = resolve(*it);
             if(implicant){
                 auto store_step_result = store_step(*it, *implicant);
                 // if the solver returned unknown, we can't prove satisfiability anymore

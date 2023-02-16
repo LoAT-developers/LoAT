@@ -4,7 +4,7 @@
 
 AccelerationViaCalculus::AccelerationViaCalculus(
         const Rule &rule,
-        const option<Recurrence::Result> closed,
+        const std::optional<Recurrence::Result> closed,
         ITSProblem &its,
         const AccelConfig &config): AccelerationTechnique(rule, closed, its, config) {}
 

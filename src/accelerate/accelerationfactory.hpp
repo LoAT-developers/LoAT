@@ -4,11 +4,13 @@
 #include "recurrence.hpp"
 #include "accelconfig.hpp"
 
+#include <optional>
+
 namespace AccelerationFactory {
 
 std::unique_ptr<AccelerationTechnique<IntTheory, BoolTheory>> get(
         const Rule &rule,
-        option<Recurrence::Result> closed,
+        std::optional<Recurrence::Result> closed,
         ITSProblem &its,
         const AccelConfig &config);
 

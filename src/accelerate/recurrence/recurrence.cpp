@@ -32,7 +32,7 @@ Recurrence::Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder)
       dependencyOrder(dependencyOrder)
 {}
 
-option<Recurrence::RecurrenceSolution<IntTheory>> Recurrence::solve(const NumVar &updateLhs, const Expr &updateRhs, const std::map<Var, unsigned int> &validitybounds) {
+std::optional<Recurrence::RecurrenceSolution<IntTheory>> Recurrence::solve(const NumVar &updateLhs, const Expr &updateRhs, const std::map<Var, unsigned int> &validitybounds) {
     const auto updated = updateRhs.subs(updatePreRecurrences.get<IntTheory>());
     const std::set<NumVar> &vars = updateRhs.vars();
     if (vars.find(updateLhs) == vars.end()) {
@@ -62,7 +62,7 @@ option<Recurrence::RecurrenceSolution<IntTheory>> Recurrence::solve(const NumVar
     return {};
 }
 
-option<Recurrence::RecurrenceSolution<BoolTheory>> Recurrence::solve(const BoolVar &updateLhs, const BoolExpr &updateRhs, const std::map<Var, unsigned int> &validitybounds) {
+std::optional<Recurrence::RecurrenceSolution<BoolTheory>> Recurrence::solve(const BoolVar &updateLhs, const BoolExpr &updateRhs, const std::map<Var, unsigned int> &validitybounds) {
     const auto updated = updateRhs->subs(updatePreRecurrences);
     const VarSet &vars = updated->vars();
     if (vars.find(updateLhs) == vars.end() || vars.size() == vars.get<BoolVar>().size()) {
@@ -77,7 +77,7 @@ option<Recurrence::RecurrenceSolution<BoolTheory>> Recurrence::solve(const BoolV
     return {};
 }
 
-option<GiNaC::ex> Recurrence::iterateCost(const Expr &c) {
+std::optional<GiNaC::ex> Recurrence::iterateCost(const Expr &c) {
     const auto cost = c.subs(updatePreRecurrences.get<IntTheory>()); //replace variables by their recurrence equations
 
     //Example: if cost = y, the result is x(n) = x(n-1) + y(n-1), with x(0) = 0
@@ -109,7 +109,7 @@ option<GiNaC::ex> Recurrence::iterateCost(const Expr &c) {
 }
 
 
-option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Subs &update) {
+std::optional<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Subs &update) {
     assert(dependencyOrder.size() == update.size());
     Subs newUpdate;
 
@@ -153,7 +153,7 @@ option<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Sub
 
 Recurrence::Result::Result(const NumVar &n): n(n) {}
 
-option<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &cost) {
+std::optional<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &cost) {
     auto newUpdate = iterateUpdate(update);
     if (!newUpdate) {
         return {};
@@ -169,18 +169,18 @@ option<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &c
     }
     res.update.get<BoolTheory>() = newUpdate->update.get<BoolTheory>();
     res.cost = newCost->subs(subs);
-    res.validityBound = newUpdate.get().validityBound;
+    res.validityBound = newUpdate->validityBound;
     return {res};
 }
 
 
-option<Recurrence::Result> Recurrence::iterateRule(VarMan &varMan, const Rule &rule) {
+std::optional<Recurrence::Result> Recurrence::iterateRule(VarMan &varMan, const Rule &rule) {
     // This may modify the rule's guard and update
     auto order = DependencyOrder::findOrder(rule.getUpdate());
     if (!order) {
         return {};
     }
 
-    Recurrence rec(varMan, order.get());
+    Recurrence rec(varMan, *order);
     return rec.iterate(rule.getUpdate(), rule.getCost());
 }

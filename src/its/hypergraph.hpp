@@ -23,9 +23,9 @@
 #include <map>
 #include <set>
 #include <algorithm>
+#include <optional>
 
 #include "types.hpp" // for TransIdx
-#include "option.hpp"
 
 using Node = LocationIdx;
 
@@ -306,7 +306,7 @@ private:
             }
             if (lowlinkMap[v] == indexMap[v]) {
                 std::set<Node> scc;
-                option<Node> w;
+                std::optional<Node> w;
                 unsigned index = res.sccs.size();
                 do {
                     w = stack.top();

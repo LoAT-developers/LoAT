@@ -20,8 +20,8 @@
 #include <ginac/ginac.h>
 #include <variant>
 #include <initializer_list>
+#include <optional>
 
-#include "option.hpp"
 #include "numvar.hpp"
 
 class Expr;
@@ -101,7 +101,7 @@ public:
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
      */
-    bool isLinear(const option<std::set<NumVar>> &vars = option<std::set<NumVar>>()) const;
+    bool isLinear(const std::optional<std::set<NumVar>> &vars = std::optional<std::set<NumVar>>()) const;
 
     /**
      * @return True iff this expression is a polynomial.
@@ -332,9 +332,9 @@ public:
 
     Num denomLcm() const;
 
-    option<std::string> toQepcad() const;
+    std::optional<std::string> toQepcad() const;
 
-    option<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
+    std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
 
     /**
      * @brief exponentiation

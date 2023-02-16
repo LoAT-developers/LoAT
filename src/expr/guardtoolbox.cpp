@@ -48,7 +48,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
                     //solve target for var (result is in target)
                     auto optSolved = target.solveTermFor(var, (SolvingLevel)level);
                     if (!optSolved) continue;
-                    Expr solved = optSolved.get();
+                    Expr solved = *optSolved;
 
                     //disallow replacing non-free vars by a term containing free vars
                     //could be unsound, as free vars can lead to unbounded complexity

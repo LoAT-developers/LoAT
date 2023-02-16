@@ -144,7 +144,7 @@ public:
 
         const Subs &subs;
         It ptr;
-        option<Pair> current;
+        std::optional<Pair> current;
 
     };
 

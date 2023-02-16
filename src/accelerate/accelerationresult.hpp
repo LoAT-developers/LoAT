@@ -3,6 +3,8 @@
 #include "proof.hpp"
 #include "rule.hpp"
 
+#include <optional>
+
 namespace acceleration {
 
 enum Status {
@@ -10,15 +12,15 @@ enum Status {
 };
 
 struct Result {
-    option<Status> status;
-    option<Rule> rule;
-    option<Rule> nontermRule;
+    std::optional<Status> status;
+    std::optional<Rule> rule;
+    std::optional<Rule> nontermRule;
     unsigned period = 1;
     bool strengthened = false;
     Proof preprocessingProof;
     Proof accelerationProof;
     Proof nontermProof;
-    option<NumVar> n;
+    std::optional<NumVar> n;
 
     bool successful() const;
     bool inexact() const;

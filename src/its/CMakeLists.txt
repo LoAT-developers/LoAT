@@ -8,7 +8,6 @@ target_sources(${EXECUTABLE}
         rule.cpp
         rule.hpp
         types.hpp
-        conjunction.hpp
         variablemanager.cpp
         variablemanager.hpp
 )

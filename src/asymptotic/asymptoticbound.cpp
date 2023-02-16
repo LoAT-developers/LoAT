@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <optional>
 
 #include "numexpression.hpp"
 #include "smt.hpp"
@@ -560,7 +561,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
         r = 0;
 
         bool foundOneVar = false;
-        option<Var> oneVar;
+        std::optional<Var> oneVar;
         for (unsigned int i = 0; i < it->arity(); ++i) {
             Expr ex(it->op(i));
 
@@ -596,7 +597,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
         r = 1;
 
         bool foundOneVar = false;
-        option<Var> oneVar;
+        std::optional<Var> oneVar;
         for (unsigned int i = 0; i < it->arity(); ++i) {
             Expr ex(it->op(i));
 
@@ -756,7 +757,7 @@ bool AsymptoticBound::trySubstitutingVariable() {
 bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
     auto optSubs = LimitSmtEncoding::applyEncoding(currentLP, cost, varMan, currentRes, timeout);
     if (!optSubs) return false;
-    auto subs = optSubs.get();
+    auto subs = *optSubs;
     auto idx = substitutions.size();
     substitutions.push_back(subs);
     currentLP.removeAllConstraints();

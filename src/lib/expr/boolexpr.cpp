@@ -8,7 +8,7 @@
 
 Quantifier::Quantifier(const Type &qType, const std::set<NumVar> &vars, const std::map<NumVar, Expr> &lowerBounds, const std::map<NumVar, Expr> &upperBounds): qType(qType), vars(vars), lowerBounds(lowerBounds), upperBounds(upperBounds) {}
 
-option<Expr> Quantifier::lowerBound(const NumVar &x) const {
+std::optional<Expr> Quantifier::lowerBound(const NumVar &x) const {
     const auto it = lowerBounds.find(x);
     if (it == lowerBounds.end()) {
         return {};
@@ -17,7 +17,7 @@ option<Expr> Quantifier::lowerBound(const NumVar &x) const {
     }
 }
 
-option<Expr> Quantifier::upperBound(const NumVar &x) const {
+std::optional<Expr> Quantifier::upperBound(const NumVar &x) const {
     const auto it = upperBounds.find(x);
     if (it == upperBounds.end()) {
         return {};

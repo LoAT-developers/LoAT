@@ -1,7 +1,8 @@
 #pragma once
 
+#include <optional>
+
 #include "rule.hpp"
-#include "option.hpp"
 #include "itsproblem.hpp"
 #include "accelerationtechnique.hpp"
 #include "accelconfig.hpp"
@@ -12,7 +13,7 @@ public:
 
     AccelerationViaCalculus(
             const Rule &rule,
-            const option<Recurrence::Result> closed,
+            const std::optional<Recurrence::Result> closed,
             ITSProblem &its,
             const AccelConfig &config);
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "boolexpr.hpp"
 #include "proof.hpp"
 #include "recurrence.hpp"
@@ -23,20 +25,20 @@ public:
     };
 
     struct AcceleratorPair {
-        option<Accelerator> term;
-        option<Accelerator> nonterm;
+        std::optional<Accelerator> term;
+        std::optional<Accelerator> nonterm;
     };
 
-    option<Recurrence::Result> getClosed() const;
+    std::optional<Recurrence::Result> getClosed() const;
 
 protected:
 
     Rule rule;
-    const option<Recurrence::Result> closed;
+    const std::optional<Recurrence::Result> closed;
     ITSProblem &its;
     const AccelConfig config;
 
-    AccelerationTechnique(const Rule &rule, const option<Recurrence::Result> closed, ITSProblem &its, const AccelConfig &config):
+    AccelerationTechnique(const Rule &rule, const std::optional<Recurrence::Result> closed, ITSProblem &its, const AccelConfig &config):
         rule(rule),
         closed(closed),
         its(its),

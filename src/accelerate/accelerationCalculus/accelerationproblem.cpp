@@ -9,7 +9,7 @@
 AccelerationProblem::AccelerationProblem(
         const BoolExpr guard,
         const Subs &up,
-        const option<Recurrence::Result> &closed,
+        const std::optional<Recurrence::Result> &closed,
         const Expr &cost,
         ITSProblem &its,
         const AccelConfig &config):
@@ -25,9 +25,7 @@ AccelerationProblem::AccelerationProblem(
     if (closed) {
         bound =  Rel(closed->n, Rel::geq, 1);
     }
-    const auto subs = closed.map([&up](auto const &closed){
-        return std::vector<Subs>{up, closed.update};
-    }).get_value_or({up});
+    const auto subs = closed ? std::vector<Subs>{up, closed->update} : std::vector<Subs>{up};
     Logic logic = Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({guard->lits()}, subs);
     this->solver = SmtFactory::modelBuildingSolver<IntTheory, BoolTheory>(logic, its);
     this->solver->add(guard);
@@ -36,7 +34,7 @@ AccelerationProblem::AccelerationProblem(
 
 AccelerationProblem AccelerationProblem::init(
         const Rule &rule,
-        const option<Recurrence::Result> &closed,
+        const std::optional<Recurrence::Result> &closed,
         ITSProblem &its,
         const AccelConfig &config) {
     return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, rule.getCost(), its, config);
@@ -62,7 +60,7 @@ LitSet AccelerationProblem::findConsistentSubset(BoolExpr e) const {
     return res;
 }
 
-option<unsigned int> AccelerationProblem::store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool exact, bool nonterm) {
+std::optional<unsigned int> AccelerationProblem::store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool exact, bool nonterm) {
     auto it = res.find(lit);
     if (it == res.end()) {
         res[lit] = {{deps, formula, exact, nonterm}};
@@ -146,12 +144,12 @@ bool AccelerationProblem::monotonicity(const Lit &lit, Proof &proof) {
             dependencies.insert(*lit.begin());
         }
     }
-    option<unsigned int> idx = store(lit, dependencies, newGuard);
+    std::optional<unsigned int> idx = store(lit, dependencies, newGuard);
     if (!idx) {
         return false;
     }
     std::stringstream ss;
-    ss << lit << " [" << idx.get() << "]: montonic decrease yields " << newGuard;
+    ss << lit << " [" << *idx << "]: montonic decrease yields " << newGuard;
     if (!dependencies.empty()) {
         ss << ", dependencies:";
         for (const auto &dep: dependencies) {
@@ -195,12 +193,12 @@ bool AccelerationProblem::recurrence(const Lit &lit, Proof &proof) {
     }
     dependencies.erase(lit);
     const auto newGuard = BExpression::buildTheoryLit(lit);
-    option<unsigned int> idx = store(lit, dependencies, newGuard, true, true);
+    std::optional<unsigned int> idx = store(lit, dependencies, newGuard, true, true);
     if (!idx) {
         return false;
     }
     std::stringstream ss;
-    ss << lit << " [" << idx.get() << "]: monotonic increase yields " << newGuard;
+    ss << lit << " [" << *idx << "]: monotonic increase yields " << newGuard;
     if (!dependencies.empty()) {
         ss << ", dependencies:";
         for (const auto &dep: dependencies) {
@@ -255,12 +253,12 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit, Proof &proof) {
             dependencies.insert(*lit.begin());
         }
     }
-    option<unsigned int> idx = store(rel, dependencies, newGuard);
+    std::optional<unsigned int> idx = store(rel, dependencies, newGuard);
     if (!idx) {
         return false;
     }
     std::stringstream ss;
-    ss << rel << " [" << idx.get() << "]: eventual decrease yields " << newGuard;
+    ss << rel << " [" << *idx << "]: eventual decrease yields " << newGuard;
     if (!dependencies.empty()) {
         ss << ", dependencies:";
         for (const auto &dep: dependencies) {
@@ -311,12 +309,12 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict, Pr
         }
     }
     const auto newGuard = BExpression::buildTheoryLit(rel) & inc;
-    option<unsigned int> idx = store(rel, dependencies, newGuard, false, true);
+    std::optional<unsigned int> idx = store(rel, dependencies, newGuard, false, true);
     if (!idx) {
         return false;
     }
     std::stringstream ss;
-    ss << rel << " [" << idx.get() << "]: eventual increase yields " << newGuard;
+    ss << rel << " [" << *idx << "]: eventual increase yields " << newGuard;
     if (!dependencies.empty()) {
         ss << ", dependencies:";
         for (const auto &dep: dependencies) {
@@ -346,12 +344,12 @@ bool AccelerationProblem::fixpoint(const Lit &lit, Proof &proof) {
         return false;
     }
     BoolExpr newGuard = allEq & lit;
-    option<unsigned int> idx = store(lit, {}, newGuard, false, true);
+    std::optional<unsigned int> idx = store(lit, {}, newGuard, false, true);
     if (!idx) {
         return false;
     }
     std::stringstream ss;
-    ss << lit << " [" << idx.get() << "]: fixpoint yields " << newGuard;
+    ss << lit << " [" << *idx << "]: fixpoint yields " << newGuard;
     proof.newline();
     proof.append(ss);
     return true;
