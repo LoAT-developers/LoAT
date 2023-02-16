@@ -8,7 +8,6 @@ add_subdirectory(parser)
 add_subdirectory(util)
 add_subdirectory(smt)
 add_subdirectory(qelim)
-add_subdirectory(theories)
 add_subdirectory(redundance)
 
 target_sources(${EXECUTABLE}

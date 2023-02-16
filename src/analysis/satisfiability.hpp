@@ -12,6 +12,8 @@
 
 namespace satisfiability {
 
+using ThModel = Model<IntTheory, BoolTheory>;
+
 /**
  * Represents a resolution step, i.e., an element of the trace.
  */

@@ -22,6 +22,21 @@ add_library(${PROJECT_NAME} STATIC
   conjunction.hpp
   boolexpr.cpp
   boolexpr.hpp
+  inttheory.hpp
+  booltheory.hpp
+  boolexpression.hpp
+  boolexpression.cpp
+  boolsubs.hpp
+  theory.hpp
+  theory.cpp
+  literal.cpp
+  literal.hpp
+  expression.hpp
+  expression.cpp
+  substitution.hpp
+  substitution.cpp
+  variable.hpp
+  variable.cpp
 )
 
 find_library(GINAC ginac)

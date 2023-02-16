@@ -1,6 +1,5 @@
 #pragma once
 
-#include "itheory.hpp"
 #include "boollit.hpp"
 #include "boolvar.hpp"
 #include "boolsubs.hpp"
