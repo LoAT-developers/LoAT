@@ -385,8 +385,8 @@ public:
                 return BoolExpression<Th...>::buildOr(newChildren);
             }
         } else if (getTheoryLit()) {
-            const auto &lit = *getTheoryLit();
-            const auto mapped = f(*getTheoryLit());
+            const auto lit = *getTheoryLit();
+            const auto mapped = f(lit);
             const auto mappedLit = mapped->getTheoryLit();
             if (mappedLit && *mappedLit == lit) {
                 return this->shared_from_this();
@@ -1053,7 +1053,7 @@ bool operator !=(const BExpr<Th...> a, const BExpr<Th...> b) {
 template <ITheory T, ITheory... Th>
 std::ostream& operator<<(std::ostream &s, const BExpr<T, Th...> e) {
     if (e->getTheoryLit()) {
-        std::visit([&s](const auto &lit){s << lit;}, *e->getTheoryLit());
+        std::visit([&s](const auto lit){s << lit;}, *e->getTheoryLit());
     } else if (e->getChildren().empty()) {
         if (e->isAnd()) {
             s << "T";
