@@ -201,7 +201,7 @@ string ITSProblem::getPrintableLocationName(LocationIdx idx) const {
     if (it != locationNames.end()) {
         return it->second;
     }
-    return "[" + to_string(idx) + "]";
+    return (stringstream() << "[" << idx << "]").str();
 }
 
 VarSet ITSProblem::getVars() const {

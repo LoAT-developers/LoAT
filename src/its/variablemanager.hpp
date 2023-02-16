@@ -111,44 +111,43 @@ public:
     }
 
     std::pair<QuantifiedFormula<IntTheory>, theory::Subs<IntTheory>> normalizeVariables(const QuantifiedFormula<IntTheory> &f) {
-        {
-            const auto matrix = f.getMatrix();
-            std::set<NumVar> vars = matrix->vars().get<NumVar>();
-            ExprSubs normalization, inverse;
-            unsigned count = 0;
-            for (const NumVar &x: vars) {
-                ++count;
-                std::string varName = "x" + std::to_string(count);
-                const NumVar replacement = NumVar(varName);
-                normalization.put(x, replacement);
-                inverse.put(replacement, x);
-            }
-            const auto newMatrix = matrix->subs(normalization);
-            std::vector<Quantifier> newPrefix;
-            for (const auto& q: f.getPrefix()) {
-                std::set<NumVar> newVars;
-                std::map<NumVar, Expr> newLowerBounds;
-                std::map<NumVar, Expr> newUpperBounds;
-                for (const auto& x: q.getVars()) {
-                    if (vars.find(x) != vars.end()) {
-                        newVars.insert(normalization.get(x).toVar());
-                        auto lb = q.lowerBound(x);
-                        auto ub = q.upperBound(x);
-                        if (lb) {
-                            newLowerBounds[x] = lb.get();
-                        }
-                        if (ub) {
-                            newUpperBounds[x] = ub.get();
-                        }
+        const auto matrix = f.getMatrix();
+        std::set<NumVar> vars = matrix->vars().get<NumVar>();
+        ExprSubs normalization, inverse;
+        size_t count = 0;
+        std::stringstream ss;
+        for (const NumVar &x: vars) {
+            ++count;
+            ss << "x";
+            const NumVar replacement = NumVar(ss.str());
+            ss.clear();
+            normalization.put(x, replacement);
+            inverse.put(replacement, x);
+        }
+        const auto newMatrix = matrix->subs(normalization);
+        std::vector<Quantifier> newPrefix;
+        for (const auto& q: f.getPrefix()) {
+            std::set<NumVar> newVars;
+            std::map<NumVar, Expr> newLowerBounds;
+            std::map<NumVar, Expr> newUpperBounds;
+            for (const auto& x: q.getVars()) {
+                if (vars.find(x) != vars.end()) {
+                    newVars.insert(normalization.get(x).toVar());
+                    auto lb = q.lowerBound(x);
+                    auto ub = q.upperBound(x);
+                    if (lb) {
+                        newLowerBounds[x] = lb.get();
+                    }
+                    if (ub) {
+                        newUpperBounds[x] = ub.get();
                     }
                 }
-                if (!newVars.empty()) {
-                    newPrefix.push_back(Quantifier(q.getType(), newVars, newLowerBounds, newUpperBounds));
-                }
             }
-            return {QuantifiedFormula(newPrefix, newMatrix), inverse};
+            if (!newVars.empty()) {
+                newPrefix.push_back(Quantifier(q.getType(), newVars, newLowerBounds, newUpperBounds));
+            }
         }
-
+        return {QuantifiedFormula(newPrefix, newMatrix), inverse};
     }
 
 private:
