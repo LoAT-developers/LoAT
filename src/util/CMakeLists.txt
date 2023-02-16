@@ -6,10 +6,6 @@ target_sources(${EXECUTABLE}
         status.hpp
         relevantvariables.hpp
         result.hpp
-        map.hpp
-        set.hpp
-        vector.hpp
-        variant.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")
