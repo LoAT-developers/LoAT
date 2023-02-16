@@ -42,6 +42,12 @@ LoAT can parse the [SMTLIB-format](https://www.microsoft.com/en-us/research/wp-c
 
 To use this format, please use the command-line option `--format its`.
 
+### C Integer Programs
+
+LoAT can parse the [C Integer Programs](https://termination-portal.org/wiki/C_Integer_Programs) used in the category *Termination of C Integer Programs* at the annual [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition).
+
+To use this format, please use the command-line option `--format c`.
+
 ### KoAT
 
 LoAT also supports an extended version of [KoAT's input format](http://aprove.informatik.rwth-aachen.de/eval/IntegerComplexity/), which is also used in the category *Complexity of Integer Transition Systems* at the annual *Termination and Complexity Competition*.
