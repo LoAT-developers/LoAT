@@ -3,7 +3,6 @@ target_sources(${EXECUTABLE}
         approx.hpp
         proof.hpp
         proof.cpp
-        status.hpp
         relevantvariables.hpp
         result.hpp
 )
