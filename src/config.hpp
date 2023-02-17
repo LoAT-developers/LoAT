@@ -44,10 +44,6 @@ namespace Config {
 
     // Colors (Ansi color codes) for output
     namespace Color {
-        extern const std::string Section;
-        extern const std::string Headline;
-        extern const std::string Warning;
-        extern const std::string Result;
         extern const std::string None;
 
         extern const std::string Location;

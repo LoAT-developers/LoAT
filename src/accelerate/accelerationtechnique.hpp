@@ -6,6 +6,7 @@
 #include "proof.hpp"
 #include "recurrence.hpp"
 #include "accelconfig.hpp"
+#include "itsproblem.hpp"
 
 template <ITheory... Th>
 class AccelerationTechnique {

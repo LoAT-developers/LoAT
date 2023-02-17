@@ -206,3 +206,8 @@ void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
     }
     s << ")" << endl;
 }
+
+std::ostream& operator<<(std::ostream &s, const ITSProblem &its) {
+    ITSExport::printForProof(its, s);
+    return s;
+}

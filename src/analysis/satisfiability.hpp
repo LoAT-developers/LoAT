@@ -3,7 +3,7 @@
 #include "itsproblem.hpp"
 #include "linearizingsolver.hpp"
 #include "itsproblem.hpp"
-#include "proof.hpp"
+#include "itsproof.hpp"
 #include "result.hpp"
 #include "redundanceviaautomata.hpp"
 
@@ -156,7 +156,7 @@ class Satisfiability {
 
     ITSProblem &chcs;
 
-    Proof proof;
+    ITSProof proof;
 
     const HyperGraph::SCCs sccs {chcs.sccs()};
 

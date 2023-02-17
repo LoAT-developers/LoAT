@@ -1,15 +1,21 @@
 #include "proof.hpp"
-#include "export.hpp"
 
 #include <iostream>
 #include <string>
 
 unsigned int Proof::defaultProofLevel = 1;
 unsigned int Proof::proofLevel = defaultProofLevel;
+bool Proof::use_colors = true;
 
 bool Proof::disabled() {
     return proofLevel <= 0;
 }
+
+const std::string SectionColor = "\033[0;4;33m"; // underlined yellow
+const std::string HeadlineColor = "\033[1;4;33m"; // bold underlined yellow
+const std::string WarningColor = "\033[1;31m"; // bold red
+const std::string ResultColor = "\033[1;32m"; // bold green
+const std::string NoColor = "\033[0m"; // reset color
 
 void Proof::print(unsigned level) const {
     if (level <= proofLevel) {
@@ -31,15 +37,15 @@ void Proof::print(unsigned level) const {
                     // make sure that there is a blank line before headlines and results
                     std::cout << std::endl;
                 }
-                if (Config::Output::Colors) {
+                if (use_colors) {
                     switch (ps.first) {
-                    case None: std::cout << Config::Color::None;
+                    case None: std::cout << NoColor;
                         break;
-                    case Result: std::cout << Config::Color::Result;
+                    case Result: std::cout << ResultColor;
                         break;
-                    case Section: std::cout << Config::Color::Section;
+                    case Section: std::cout << SectionColor;
                         break;
-                    case Headline: std::cout << Config::Color::Headline;
+                    case Headline: std::cout << HeadlineColor;
                         break;
                     }
                 }
@@ -147,69 +153,6 @@ void Proof::concat(const Proof &that) {
         return;
     }
     proof.insert(proof.end(), that.proof.begin(), that.proof.end());
-}
-
-void Proof::ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule, const ITSProblem &its) {
-    if (Proof::disabled()) {
-        return;
-    }
-    section(transformation);
-    std::stringstream s;
-    s << "Original rule:\n";
-    ITSExport::printRule(oldRule, its, s);
-    s << "\nNew rule:\n";
-    ITSExport::printRule(newRule, its, s);
-    append(s);
-}
-
-void Proof::majorProofStep(const std::string &step, const ITSProblem &its) {
-    if (Proof::disabled()) {
-        return;
-    }
-    headline(step);
-    std::stringstream s;
-    ITSExport::printForProof(its, s);
-    append(s);
-}
-
-void Proof::minorProofStep(const std::string &step, const ITSProblem &its) {
-    if (Proof::disabled()) {
-        return;
-    }
-    section(step);
-    std::stringstream s;
-    ITSExport::printForProof(its, s);
-    append(s);
-}
-
-void Proof::deletionProof(const std::set<TransIdx> &rules) {
-    if (Proof::disabled()) {
-        return;
-    }
-    if (!rules.empty()) {
-        section("Applied deletion");
-        std::stringstream s;
-        s << "Removed the following rules:";
-        for (TransIdx i: rules) {
-            s << " " << i;
-        }
-        append(s);
-    }
-}
-
-void Proof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule, const ITSProblem &its) {
-    if (Proof::disabled()) {
-        return;
-    }
-    section("Applied chaining");
-    std::stringstream s;
-    s << "First rule:\n";
-    ITSExport::printRule(fst, its, s);
-    s << "\nSecond rule:\n";
-    ITSExport::printRule(snd, its, s);
-    s << "\nNew rule:\n";
-    ITSExport::printRule(newRule, its, s);
-    append(s);
 }
 
 void Proof::push() {

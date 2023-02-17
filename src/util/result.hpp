@@ -1,6 +1,6 @@
 #pragma once
 
-#include "proof.hpp"
+#include "itsproof.hpp"
 
 #include <variant>
 
@@ -12,7 +12,7 @@ class Result
 {
 
 bool success;
-Proof proof;
+ITSProof proof;
 T res;
 
 public:
@@ -81,7 +81,7 @@ public:
         proof.minorProofStep(step, its);
     }
 
-    void deletionProof(const std::set<TransIdx> &rules) {
+    void deletionProof(const std::set<unsigned> &rules) {
         proof.deletionProof(rules);
     }
 
@@ -166,6 +166,6 @@ public:
 class ResultViaSideEffects: public Result<std::monostate> {
 
 public:
-    ResultViaSideEffects(): Result(std::monostate()) {}
+    ResultViaSideEffects(): Result<std::monostate>(std::monostate()) {}
 
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "proof.hpp"
+#include "itsproof.hpp"
 #include "rule.hpp"
 
 #include <optional>
@@ -17,9 +17,9 @@ struct Result {
     std::optional<Rule> nontermRule;
     unsigned period = 1;
     bool strengthened = false;
-    Proof preprocessingProof;
-    Proof accelerationProof;
-    Proof nontermProof;
+    ITSProof preprocessingProof;
+    ITSProof accelerationProof;
+    ITSProof nontermProof;
     std::optional<NumVar> n;
 
     bool successful() const;
