@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include "types.hpp"
 #include "itsproblem.hpp"
 #include "result.hpp"
 
@@ -37,49 +36,5 @@ namespace Chaining {
      * @return true iff the ITS was modified
      */
     ResultViaSideEffects chainLinearPaths(ITSProblem &its);
-
-    /**
-     * Applies a more involved chaining strategy to the entire ITS problem.
-     *
-     * In contrast to chainLinearPaths, this also eliminates nodes with multiple outgoing edges
-     * However, nodes with several distinct predecessors are *not* eliminated. The idea is that such
-     * nodes are often the head of a loop, so eliminating them would destroy the loop structure
-     * (this is, of course, only a heuristic argument).
-     *
-     * As for chainLinearPaths, edges which cannot be chained are deleted, since they can never be taken.
-     *
-     * @note This is quite powerful, but often creates many branches. Consider pruning afterwards.
-     *
-     * @return true iff the ITS was modified
-     */
-    ResultViaSideEffects chainTreePaths(ITSProblem &its);
-
-    /**
-     * Starting from the initial location and performing a DFS traversal,
-     * eliminates the first applicable node by chaining and stops.
-     * Returns true iff an applicable node was found (and thus eliminated).
-     *
-     * A node is applicable for elimination if it has no simple loops,
-     * has both in- and outgoing transitions and is not the initial location.
-     *
-     * @param eliminatedLocation Set to the printable name of the eliminated location (if result is true).
-     *
-     * @return true iff the ITS was modified
-     */
-    ResultViaSideEffects eliminateALocation(ITSProblem &its, std::string &eliminatedLocation);
-
-    /**
-     * Chains all rules of the given vector (the list of successfully accelerated rules)
-     * with their predecessors (if possible), unless the predecessor is itself an accelerated rule or self-loop.
-     * All rules of the given vector are removed afterwards.
-     *
-     * The incoming rules (predecessors) which are successfully chained may be removed,
-     * depending on the KeepIncomingInChainAccelerated configuration.
-     *
-     * Should be called directly after acceleration.
-     *
-     * @return true iff the ITS was modified, which is the case iff acceleratedRules was non-empty.
-     */
-    ResultViaSideEffects chainAcceleratedRules(ITSProblem &its, const std::set<TransIdx> &acceleratedRules);
 
 }

@@ -4,6 +4,8 @@ target_sources(${EXECUTABLE}
         chain.hpp
         chainstrategy.cpp
         chainstrategy.hpp
+        guardtoolbox.hpp
+        guardtoolbox.cpp
         preprocess.cpp
         preprocess.hpp
         reachability.hpp

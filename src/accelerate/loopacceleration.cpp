@@ -29,9 +29,8 @@ using namespace std;
 LoopAcceleration::LoopAcceleration(
         ITSProblem &its,
         const Rule &rule,
-        Complexity cpx,
         const AccelConfig &config)
-    : its(its), rule(rule), cpx(cpx), config(config) {}
+    : its(its), rule(rule), config(config) {}
 
 bool LoopAcceleration::shouldAccelerate() const {
     return (!Config::Analysis::tryNonterm() || !rule.getCost().isNontermSymbol()) && (!Config::Analysis::complexity() || rule.getCost().isPoly());
@@ -224,8 +223,7 @@ acceleration::Result LoopAcceleration::run() {
 acceleration::Result LoopAcceleration::accelerate(
         ITSProblem &its,
         const Rule &rule,
-        Complexity cpx,
         const AccelConfig &config) {
-    LoopAcceleration ba(its, rule, cpx, config);
+    LoopAcceleration ba(its, rule, config);
     return ba.run();
 }
