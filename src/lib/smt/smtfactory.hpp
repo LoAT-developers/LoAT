@@ -5,12 +5,17 @@
 #include "z3.hpp"
 #include "itheory.hpp"
 #include "theory.hpp"
-#include "config.hpp"
+
+namespace smt {
+
+extern const unsigned default_timeout;
+
+}
 
 namespace SmtFactory {
 
     template<ITheory... Th>
-    std::unique_ptr<Smt<Th...>> solver(Logic logic, const VariableManager &varMan, unsigned timeout = Config::Smt::DefaultTimeout) {
+    std::unique_ptr<Smt<Th...>> solver(Logic logic, const VariableManager &varMan, unsigned timeout = smt::default_timeout) {
         std::unique_ptr<Smt<Th...>> res;
         switch (logic) {
         case QF_LA:
@@ -25,21 +30,21 @@ namespace SmtFactory {
     }
 
     template<ITheory... Th>
-    std::unique_ptr<Smt<Th...>> modelBuildingSolver(Logic logic, const VariableManager &varMan, unsigned timeout = Config::Smt::DefaultTimeout) {
+    std::unique_ptr<Smt<Th...>> modelBuildingSolver(Logic logic, const VariableManager &varMan, unsigned timeout = smt::default_timeout) {
         std::unique_ptr<Smt<Th...>> res = solver<Th...>(logic, varMan, timeout);
         res->enableModels();
         return res;
     }
 
     template<ITheory... Th>
-    static SmtResult check(const BExpr<Th...> e, const VariableManager &varMan, unsigned int timeout = Config::Smt::DefaultTimeout) {
+    static SmtResult check(const BExpr<Th...> e, const VariableManager &varMan, unsigned int timeout = smt::default_timeout) {
         std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{e}), varMan, timeout);
         s->add(e);
         return s->check();
     }
 
     template<ITheory... Th>
-    BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan, unsigned timeout = Config::Smt::DefaultTimeout) {
+    BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan, unsigned timeout = smt::default_timeout) {
         const auto logic = Smt<Th...>::chooseLogic(assumptions);
         if (logic == QF_LA) {
             return Yices<Th...>(varMan, QF_LA, timeout)._unsatCore(assumptions).second;

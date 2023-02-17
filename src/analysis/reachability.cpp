@@ -102,7 +102,7 @@ PushPop::~PushPop() {
     solver.pop();
 }
 
-Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs, Config::Smt::DefaultTimeout), non_loops(chcs) {
+Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs, smt_timeout), non_loops(chcs) {
     solver.enableModels();
 }
 
@@ -804,7 +804,7 @@ bool Reachability::try_to_finish(const std::vector<TransIdx> &clauses) {
             return true;
         }
     }
-    solver.setTimeout(Config::Smt::DefaultTimeout);
+    solver.setTimeout(smt_timeout);
     return false;
 }
 

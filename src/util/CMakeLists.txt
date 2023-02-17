@@ -3,8 +3,6 @@ target_sources(${EXECUTABLE}
         approx.hpp
         relevantvariables.hpp
         result.hpp
-        smtfactory.hpp
-        qelimfactory.hpp
         itsproof.hpp
         itsproof.cpp
 )
