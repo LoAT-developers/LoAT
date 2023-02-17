@@ -33,10 +33,6 @@ find_library(Z3 z3)
 message(STATUS "z3: ${Z3}")
 find_library(YICES yices)
 message(STATUS "yices: ${YICES}")
-find_library(CLN cln)
-message(STATUS "cln: ${CLN}")
-find_library(GMP gmp)
-message(STATUS "gmp: ${GMP}")
 find_library(POLY poly)
 message(STATUS "poly: ${POLY}")
 find_library(CUDD cudd)
@@ -45,11 +41,9 @@ message(STATUS "cudd: ${CUDD}")
 target_link_libraries(
     ${PROJECT_NAME}
     ${Z3}
-    ${CLN}
     ${YICES}
     ${POLY}
-    ${CUDD}
-    ${GMP})
+    ${CUDD})
 
 # Expose public includes to other
 # subprojects through cache variable.
