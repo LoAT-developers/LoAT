@@ -9,6 +9,7 @@ extern "C" {
 
 class Redlog: Qelim<IntTheory> {
 
+    static bool enabled;
     static RedProc process();
     VariableManager &varMan;
 
@@ -19,5 +20,6 @@ public:
     std::optional<typename Qelim<IntTheory>::Result> qe(const QuantifiedFormula<IntTheory> &qf) override;
     static void init();
     static void exit();
+    static void enable();
 
 };

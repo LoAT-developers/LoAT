@@ -49,46 +49,30 @@ message(STATUS "Searching libraries")
 find_library(PURRS purrs)
 message(STATUS "purrs: ${PURRS}")
 
-set(REDUCE ${CMAKE_CURRENT_SOURCE_DIR}/lib/libreduce.a)
-message(STATUS "reduce: ${REDUCE}")
 set(FAUDES ${CMAKE_CURRENT_SOURCE_DIR}/lib/libfaudes.a)
 message(STATUS "faudes: ${FAUDES}")
 
-if (DEFINED ENV{ANTLR4_INCLUDE_PATH})
-    # ANTLR4 is available and we know where to find the headers
-    find_library(ANTLR4 antlr4-runtime)
-    message(STATUS "antlr4: ${ANTLR4}")
-    target_include_directories(${EXECUTABLE} SYSTEM PRIVATE $ENV{ANTLR4_INCLUDE_PATH})
-    target_link_libraries(${EXECUTABLE} ${ANTLR4})
-else()
-    # ANTLR4 is not available, build it
-    set(ANTLR4_TAG 4.11.1)
-    LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-    if (${STATIC})
-        add_definitions(-DANTLR4CPP_STATIC)
-    endif()
-    include(ExternalAntlr4Cpp)
-    include_directories(SYSTEM ${ANTLR4_INCLUDE_DIRS})
-    if (${STATIC})
-        target_link_libraries(${EXECUTABLE} antlr4_static)
-    else()
-        target_link_libraries(${EXECUTABLE} antlr4_shared)
-    endif()
-endif()
+target_include_directories(${EXECUTABLE} PRIVATE
+  ${loat_util_INCLUDE_DIRS}
+  ${loat_expr_INCLUDE_DIRS}
+  ${loat_smt_INCLUDE_DIRS}
+  ${loat_qe_INCLUDE_DIRS}
+  ${ANTLR4_INCLUDE_DIRS}
+)
 
-target_include_directories(${EXECUTABLE} PRIVATE ${loat_util_INCLUDE_DIRS})
-target_include_directories(${EXECUTABLE} PRIVATE ${loat_expr_INCLUDE_DIRS})
-target_include_directories(${EXECUTABLE} PRIVATE ${loat_smt_INCLUDE_DIRS})
-
-target_include_directories(${EXECUTABLE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../reduce-algebra/generic/libreduce/src/")
 target_include_directories(${EXECUTABLE} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_30b/include/")
 
-target_link_libraries(${EXECUTABLE} loat_expr)
-target_link_libraries(${EXECUTABLE} loat_smt)
+message(STATUS "antlr4: ${ANTLR4}")
+
+target_link_libraries(${EXECUTABLE}
+  loat_util
+  loat_expr
+  loat_smt
+  loat_qe
+  ${ANTLR4})
 
 target_link_libraries(
     ${EXECUTABLE}
     ${PURRS}
-    ${REDUCE}
     ${FAUDES}
     ${LINKER_OPTIONS})

@@ -180,7 +180,7 @@ class Reachability {
 
     ITSProblem &chcs;
 
-    Proof proof;
+    ITSProof proof;
 
     const HyperGraph::SCCs sccs {chcs.sccs()};
 

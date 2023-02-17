@@ -34,7 +34,6 @@ using namespace std;
 
 // Variables for command line flags
 string filename;
-int proofLevel = static_cast<int>(Proof::defaultProofLevel);
 
 void printHelp(char *arg0) {
     cout << "Usage: " << arg0 << " [options] <file>" << endl;
@@ -63,9 +62,15 @@ void parseFlags(int argc, char *argv[]) {
             printHelp(argv[0]);
             exit(1);
         } else if (strcmp("--proof-level",argv[arg]) == 0) {
-            proofLevel = atoi(getNext());
+            int proofLevel = atoi(getNext());
+            if (proofLevel < 0) {
+                cerr << "proof level must be non-negative, ignoring value " << proofLevel << endl;
+            } else {
+                Proof::setProofLevel(proofLevel);
+            }
         } else if (strcmp("--plain",argv[arg]) == 0) {
             Config::Output::Colors = false;
+            Proof::disableColors();
         } else if (strcmp("--reach-log", argv[arg]) == 0) {
             reachability::Reachability::log = true;
         } else if (strcmp("--sat-log", argv[arg]) == 0) {
@@ -140,12 +145,6 @@ int main(int argc, char *argv[]) {
         std::cout << "Error: unknown format" << std::endl;
         exit(1);
     }
-
-    if (proofLevel < 0) {
-        cerr << "Error: proof level must be non-negative" << endl;
-        return 1;
-    }
-    Proof::setProofLevel(static_cast<unsigned int>(proofLevel));
 
     // Start the analysis of the parsed ITS problem.
     // Skip ITS problems with nonlinear (i.e., recursive) rules.

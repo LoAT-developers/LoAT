@@ -45,7 +45,7 @@ static Proof eliminateLocationByChaining(ITSProblem &its, LocationIdx loc,
                                         bool keepUnchainable, bool allowSelfloops = false)
 {
     set<TransIdx> keepRules;
-    Proof proof;
+    ITSProof proof;
     proof.headline("Eliminating location " + its.getPrintableLocationName(loc) + " by chaining:");
 
     // Chain all pairs of in- and outgoing rules

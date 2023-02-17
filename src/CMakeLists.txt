@@ -6,7 +6,6 @@ add_subdirectory(analysis)
 add_subdirectory(asymptotic)
 add_subdirectory(parser)
 add_subdirectory(util)
-add_subdirectory(qelim)
 add_subdirectory(redundance)
 
 target_sources(${EXECUTABLE}

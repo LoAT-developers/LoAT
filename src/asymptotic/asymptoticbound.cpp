@@ -561,7 +561,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
         r = 0;
 
         bool foundOneVar = false;
-        std::optional<Var> oneVar;
+        std::optional<NumVar> oneVar;
         for (unsigned int i = 0; i < it->arity(); ++i) {
             Expr ex(it->op(i));
 
@@ -597,7 +597,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
         r = 1;
 
         bool foundOneVar = false;
-        std::optional<Var> oneVar;
+        std::optional<NumVar> oneVar;
         for (unsigned int i = 0; i < it->arity(); ++i) {
             Expr ex(it->op(i));
 

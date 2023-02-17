@@ -1,6 +1,7 @@
 #pragma once
 
 #include "proof.hpp"
+#include "boolexpr.hpp"
 
 template <ITheory... Th>
 class Qelim {

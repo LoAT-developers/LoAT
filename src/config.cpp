@@ -41,13 +41,7 @@ namespace Config {
     }
 
     namespace Color {
-        // Proof output
-        const std::string Section = "\033[0;4;33m"; // underlined yellow
-        const std::string Headline = "\033[1;4;33m"; // bold underlined yellow
-        const std::string Warning = "\033[1;31m"; // bold red
-        const std::string Result = "\033[1;32m"; // bold green
-        const std::string None = "\033[0m"; // reset color
-
+        const std::string None = "\033[0m";
         // ITS Output
         const std::string Location = "\033[1;34m"; // bold blue
         const std::string Update = "\033[0;36m"; // cyan

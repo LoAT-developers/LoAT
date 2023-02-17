@@ -9,6 +9,7 @@
 #include "limitproblem.hpp"
 #include "proof.hpp"
 #include "complexity.hpp"
+#include "config.hpp"
 
 class AsymptoticBound {
 private:

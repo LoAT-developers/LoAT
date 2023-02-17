@@ -2,8 +2,9 @@
 
 #include "redlog.hpp"
 #include "redlogparsevisitor.h"
-#include "config.hpp"
 #include "boolexpr.hpp"
+
+bool Redlog::enabled = false;
 
 RedProc initRedproc() {
     std::string path = std::getenv("PATH");
@@ -28,7 +29,7 @@ RedProc Redlog::process() {
 }
 
 void Redlog::init() {
-    if (Config::Qelim::useRedlog) {
+    if (enabled) {
         const char* cmd = "rlset r;";
         RedAns output = RedAns_new(process(), cmd);
         if (output->error) {
@@ -39,9 +40,13 @@ void Redlog::init() {
 }
 
 void Redlog::exit() {
-    if (Config::Qelim::useRedlog) {
+    if (enabled) {
         RedProc_delete(process());
     }
+}
+
+void Redlog::enable() {
+    enabled = true;
 }
 
 std::optional<typename Qelim<IntTheory>::Result> Redlog::qe(const QuantifiedFormula<IntTheory> &qf) {

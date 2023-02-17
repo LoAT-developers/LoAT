@@ -26,10 +26,9 @@
 #include <iostream>
 #include <fstream>
 #include <variant>
+#include <stack>
 
 #include <boost/algorithm/string.hpp>
-
-#include "itsproblem.hpp"
 
 class Proof {
 public:
@@ -66,17 +65,7 @@ public:
 
     void print(unsigned level = 1) const;
 
-    void ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule, const ITSProblem &its);
-
-    void majorProofStep(const std::string &step, const ITSProblem &its);
-
-    void minorProofStep(const std::string &step, const ITSProblem &its);
-
-    void deletionProof(const std::set<TransIdx> &rules);
-
     void storeSubProof(Proof subProof);
-
-    void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule, const ITSProblem &its);
 
     void concat(const Proof &that);
 
@@ -88,9 +77,15 @@ public:
 
     static unsigned int defaultProofLevel;
 
+    static void disableColors() {
+        use_colors = false;
+    }
+
 private:
 
     static unsigned int proofLevel;
+
+    static bool use_colors;
 
     using ProofStep = std::pair<Style, std::string>;
 

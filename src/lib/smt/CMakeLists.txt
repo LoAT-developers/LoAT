@@ -6,8 +6,6 @@ project(loat_smt CXX)
 
 message(STATUS "loat_expr includes: ${loat_expr_INCLUDE_DIRS}")
 
-include_directories(${loat_expr_INCLUDE_DIRS})
-
 add_library(${PROJECT_NAME} STATIC
   smt.hpp
   smtcontext.hpp
@@ -23,6 +21,7 @@ add_library(${PROJECT_NAME} STATIC
   yicescontext.hpp
 )
 
+target_include_directories(${PROJECT_NAME} PRIVATE ${loat_expr_INCLUDE_DIRS})
 target_include_directories(${PROJECT_NAME} INTERFACE ".")
 
 target_link_libraries(${PROJECT_NAME} loat_expr)
