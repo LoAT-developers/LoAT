@@ -19,7 +19,6 @@
 
 #include "itsproblem.hpp"
 #include "rule.hpp"
-#include "complexity.hpp"
 #include "accelerationresult.hpp"
 #include "accelconfig.hpp"
 
@@ -31,12 +30,12 @@ public:
         const unsigned int validityBound;
     };
 
-    static acceleration::Result accelerate(ITSProblem &its, const Rule &rule, Complexity cpx, const AccelConfig &config = AccelConfig());
+    static acceleration::Result accelerate(ITSProblem &its, const Rule &rule, const AccelConfig &config = AccelConfig());
 
     static const std::pair<Rule, unsigned> chain(const Rule &rule, ITSProblem &its);
 
 private:
-    LoopAcceleration(ITSProblem &its, const Rule &rule, Complexity cpx, const AccelConfig &config);
+    LoopAcceleration(ITSProblem &its, const Rule &rule, const AccelConfig &config);
 
     /**
      * Main function, just calls the methods below in the correct order
@@ -53,6 +52,5 @@ private:
 private:
     ITSProblem &its;
     const Rule &rule;
-    Complexity cpx;
     const AccelConfig config;
 };

@@ -1,6 +1,5 @@
 add_subdirectory(lib)
 add_subdirectory(its)
-add_subdirectory(expr)
 add_subdirectory(accelerate)
 add_subdirectory(analysis)
 add_subdirectory(asymptotic)

@@ -10,6 +10,8 @@ target_sources(${EXECUTABLE}
         limitsmt.hpp
         limitvector.cpp
         limitvector.hpp
+        complexity.cpp
+        complexity.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

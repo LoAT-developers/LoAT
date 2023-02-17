@@ -699,7 +699,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     AccelConfig config;
     config.allowDisjunctions = false;
-    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *simp, Complexity::Const, config);
+    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *simp, config);
     Result<std::vector<TransIdx>> res;
     const auto src = rule.getLhsLoc();
     if (accel_res.successful()) {

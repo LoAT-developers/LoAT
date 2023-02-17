@@ -551,7 +551,7 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
     config.allowDisjunctions = false;
     config.approx = OverApprox;
     // ---
-    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *res, Complexity::Const, config);
+    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *res, config);
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
         const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule);
