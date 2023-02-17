@@ -174,13 +174,13 @@ std::optional<Recurrence::Result> Recurrence::iterate(const Subs &update, const 
 }
 
 
-std::optional<Recurrence::Result> Recurrence::iterateRule(VarMan &varMan, const Rule &rule) {
+std::optional<Recurrence::Result> Recurrence::iterate(VarMan &varMan, const Subs &update, const Expr &cost) {
     // This may modify the rule's guard and update
-    auto order = DependencyOrder::findOrder(rule.getUpdate());
+    auto order = DependencyOrder::findOrder(update);
     if (!order) {
         return {};
     }
 
     Recurrence rec(varMan, *order);
-    return rec.iterate(rule.getUpdate(), rule.getCost());
+    return rec.iterate(update, cost);
 }

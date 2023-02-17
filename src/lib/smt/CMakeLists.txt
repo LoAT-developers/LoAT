@@ -37,8 +37,6 @@ find_library(CLN cln)
 message(STATUS "cln: ${CLN}")
 find_library(GMP gmp)
 message(STATUS "gmp: ${GMP}")
-find_library(NTL ntl)
-message(STATUS "ntl: ${NTL}")
 find_library(POLY poly)
 message(STATUS "poly: ${POLY}")
 find_library(CUDD cudd)
@@ -47,7 +45,6 @@ message(STATUS "cudd: ${CUDD}")
 target_link_libraries(
     ${PROJECT_NAME}
     ${Z3}
-    ${NTL}
     ${CLN}
     ${YICES}
     ${POLY}

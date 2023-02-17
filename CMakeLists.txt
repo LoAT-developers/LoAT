@@ -45,10 +45,6 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT
 add_executable(${EXECUTABLE} "")
 add_subdirectory(src)
 
-message(STATUS "Searching libraries")
-find_library(PURRS purrs)
-message(STATUS "purrs: ${PURRS}")
-
 set(FAUDES ${CMAKE_CURRENT_SOURCE_DIR}/lib/libfaudes.a)
 message(STATUS "faudes: ${FAUDES}")
 
@@ -57,6 +53,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_expr_INCLUDE_DIRS}
   ${loat_smt_INCLUDE_DIRS}
   ${loat_qe_INCLUDE_DIRS}
+  ${loat_recurrence_INCLUDE_DIRS}
   ${ANTLR4_INCLUDE_DIRS}
 )
 
@@ -69,10 +66,7 @@ target_link_libraries(${EXECUTABLE}
   loat_expr
   loat_smt
   loat_qe
-  ${ANTLR4})
-
-target_link_libraries(
-    ${EXECUTABLE}
-    ${PURRS}
-    ${FAUDES}
-    ${LINKER_OPTIONS})
+  loat_recurrence
+  ${ANTLR4}
+  ${FAUDES}
+  ${LINKER_OPTIONS})

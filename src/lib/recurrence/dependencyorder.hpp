@@ -20,8 +20,6 @@
 #include <optional>
 
 #include "theory.hpp"
-#include "substitution.hpp"
-#include "expression.hpp"
 
 /**
  * Functions to compute an ordering on updated variables,

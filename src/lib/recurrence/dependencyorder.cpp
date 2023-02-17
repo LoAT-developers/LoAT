@@ -1,4 +1,5 @@
 #include "dependencyorder.hpp"
+#include "substitution.hpp"
 
 namespace DependencyOrder {
 

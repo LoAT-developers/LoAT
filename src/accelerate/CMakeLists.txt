@@ -1,4 +1,3 @@
-add_subdirectory(recurrence)
 add_subdirectory(iterationCounterElimination)
 add_subdirectory(accelerationCalculus)
 
