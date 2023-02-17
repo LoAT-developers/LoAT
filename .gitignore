@@ -1,5 +1,7 @@
-# object files
+# object files and libraries
 *.o
+*.so
+*.a
 
 # latex build files
 *.synctex.gz
@@ -35,6 +37,8 @@ compile_commands.json
 loat-static
 LoAT.*
 *.zip
+src/build*
+src/lib/build*
 
 # QT Creator
 *.user
