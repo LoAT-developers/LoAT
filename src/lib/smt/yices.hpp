@@ -8,7 +8,6 @@
 
 #include "smt.hpp"
 #include "yicescontext.hpp"
-#include "config.hpp"
 #include "exprtosmt.hpp"
 
 namespace yices {
@@ -31,7 +30,7 @@ class Yices : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    Yices(const VariableManager &varMan, Logic logic): ctx(YicesContext()), varMan(varMan), config(yices_new_config()) {
+    Yices(const VariableManager &varMan, Logic logic, unsigned timeout): timeout(timeout), ctx(YicesContext()), varMan(varMan), config(yices_new_config()) {
         std::string l;
         switch (logic) {
         case QF_LA:
@@ -191,7 +190,7 @@ public:
     }
 
 private:
-    unsigned int timeout = Config::Smt::DefaultTimeout;
+    unsigned int timeout;
     YicesContext ctx;
     const VariableManager &varMan;
     ctx_config_t *config;

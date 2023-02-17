@@ -1,5 +1,6 @@
 #include "limitproblem.hpp"
 #include "smtfactory.hpp"
+#include "config.hpp"
 
 #include <sstream>
 #include <utility>

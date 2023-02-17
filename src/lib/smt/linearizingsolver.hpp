@@ -45,7 +45,7 @@ class LinearizingSolver: public Smt<Th...> {
 
 public:
 
-    LinearizingSolver(VariableManager &varMan): varMan(varMan), z3(varMan) {
+    LinearizingSolver(VariableManager &varMan, unsigned timeout): varMan(varMan), z3(varMan, timeout) {
         lin_vars.push({});
     }
 

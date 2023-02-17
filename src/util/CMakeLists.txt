@@ -5,6 +5,7 @@ target_sources(${EXECUTABLE}
         proof.cpp
         relevantvariables.hpp
         result.hpp
+        smtfactory.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

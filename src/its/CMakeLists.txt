@@ -8,8 +8,6 @@ target_sources(${EXECUTABLE}
         rule.cpp
         rule.hpp
         types.hpp
-        variablemanager.cpp
-        variablemanager.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")
