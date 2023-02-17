@@ -19,7 +19,7 @@
 
 #include <optional>
 
-#include "rule.hpp"
+#include "theory.hpp"
 #include "variablemanager.hpp"
 #include "numexpression.hpp"
 
@@ -49,7 +49,7 @@ public:
      * In addition to iterateUpdateCost, an additional heuristic is used if no dependency order is found.
      * This heuristic adds new constraints to the rule's guard and is thus only used in this method.
      */
-    static std::optional<Result> iterateRule(VarMan &varMan, const Rule &rule);
+    static std::optional<Result> iterate(VarMan &varMan, const Subs &update, const Expr &cost);
 
 private:
 

@@ -8,7 +8,6 @@
 #include "smt.hpp"
 #include "accelerationtechnique.hpp"
 #include "theory.hpp"
-#include "approx.hpp"
 
 class AccelerationProblem {
 

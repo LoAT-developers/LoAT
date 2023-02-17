@@ -185,7 +185,7 @@ acceleration::Result LoopAcceleration::run() {
         res.accelerationProof.append("rule cannot be iterated more than once");
         return res;
     }
-    const auto rec = Recurrence::iterateRule(its, rule);
+    const auto rec = Recurrence::iterate(its, rule.getUpdate(), rule.getCost());
     if (!rec && config.approx != UnderApprox) {
         res.status = acceleration::ClosedFormFailed;
         return res;
