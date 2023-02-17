@@ -2,7 +2,6 @@
 
 #include "smt.hpp"
 #include "z3context.hpp"
-#include "config.hpp"
 #include "exprtosmt.hpp"
 #include "thset.hpp"
 
@@ -15,7 +14,7 @@ class Z3 : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    Z3(const VariableManager &varMan): varMan(varMan), ctx(z3Ctx), solver(z3Ctx) {
+    Z3(const VariableManager &varMan, unsigned timeout): timeout(timeout), varMan(varMan), ctx(z3Ctx), solver(z3Ctx) {
         updateParams();
     }
 
@@ -143,7 +142,7 @@ public:
 
 private:
     bool models = false;
-    unsigned int timeout = Config::Smt::DefaultTimeout;
+    unsigned int timeout;
     const VariableManager &varMan;
     z3::context z3Ctx;
     Z3Context ctx;

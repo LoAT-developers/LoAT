@@ -102,7 +102,7 @@ PushPop::~PushPop() {
     solver.pop();
 }
 
-Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs), non_loops(chcs) {
+Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs, Config::Smt::DefaultTimeout), non_loops(chcs) {
     solver.enableModels();
 }
 

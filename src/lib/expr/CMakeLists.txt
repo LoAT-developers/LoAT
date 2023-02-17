@@ -37,6 +37,8 @@ add_library(${PROJECT_NAME} STATIC
   substitution.cpp
   variable.hpp
   variable.cpp
+  variablemanager.hpp
+  variablemanager.cpp
 )
 
 find_library(GINAC ginac)

@@ -52,8 +52,6 @@ find_library(YICES yices)
 message(STATUS "yices: ${YICES}")
 find_library(PURRS purrs)
 message(STATUS "purrs: ${PURRS}")
-find_library(GINAC ginac)
-message(STATUS "ginac: ${GINAC}")
 find_library(CLN cln)
 message(STATUS "cln: ${CLN}")
 find_library(GMP gmp)
@@ -109,15 +107,17 @@ endif()
 
 target_include_directories(${EXECUTABLE} PRIVATE ${loat_util_INCLUDE_DIRS})
 target_include_directories(${EXECUTABLE} PRIVATE ${loat_expr_INCLUDE_DIRS})
+target_include_directories(${EXECUTABLE} PRIVATE ${loat_smt_INCLUDE_DIRS})
+
 target_include_directories(${EXECUTABLE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../reduce-algebra/generic/libreduce/src/")
 target_include_directories(${EXECUTABLE} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_30b/include/")
 
 target_link_libraries(${EXECUTABLE} loat_expr)
+target_link_libraries(${EXECUTABLE} loat_smt)
 
 target_link_libraries(
     ${EXECUTABLE}
     ${PURRS}
-    ${GINAC}
     ${Z3}
     ${NTL}
     ${CLN}

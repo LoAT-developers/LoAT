@@ -20,16 +20,8 @@ enum Logic {
      */
     QF_NAT};
 
-namespace SmtFactory {
-template<ITheory... Th>
-BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan);
-}
-
 template <ITheory... Th>
-class Smt
-{
-    template<ITheory... Th_>
-    friend BoolExpressionSet<Th_...> SmtFactory::unsatCore(const BoolExpressionSet<Th_...> &assumptions, VariableManager &varMan);
+class Smt {
 
 public:
 

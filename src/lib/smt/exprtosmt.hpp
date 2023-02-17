@@ -18,7 +18,6 @@
 #pragma once
 
 #include "smtcontext.hpp"
-#include "config.hpp"
 #include "boolexpr.hpp"
 #include "variablemanager.hpp"
 #include "numexpression.hpp"
@@ -115,24 +114,6 @@ protected:
 
     EXPR convertPower(const Expr &e) {
         assert(e.arity() == 2);
-
-        //rewrite power as multiplication if possible, which z3 can handle much better (e.g x^3 becomes x*x*x)
-        if (e.op(1).isRationalConstant()) {
-            Num num = e.op(1).toNum();
-            if (num.is_integer() && num.is_positive() && !(num - Config::Smt::MaxExponentWithoutPow).is_positive()) {
-                int exp = num.to_int();
-                EXPR base = convertEx(e.op(0));
-
-                EXPR res = base;
-                while (--exp > 0) {
-                    res = context.times(res, base);
-                }
-
-                return res;
-            }
-        }
-
-        //use z3 power as fallback (only poorly supported)
         return context.pow(convertEx(e.op(0)), convertEx(e.op(1)));
     }
 
