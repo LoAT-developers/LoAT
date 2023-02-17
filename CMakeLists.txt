@@ -46,22 +46,8 @@ add_executable(${EXECUTABLE} "")
 add_subdirectory(src)
 
 message(STATUS "Searching libraries")
-find_library(Z3 z3)
-message(STATUS "z3: ${Z3}")
-find_library(YICES yices)
-message(STATUS "yices: ${YICES}")
 find_library(PURRS purrs)
 message(STATUS "purrs: ${PURRS}")
-find_library(CLN cln)
-message(STATUS "cln: ${CLN}")
-find_library(GMP gmp)
-message(STATUS "gmp: ${GMP}")
-find_library(NTL ntl)
-message(STATUS "ntl: ${NTL}")
-find_library(POLY poly)
-message(STATUS "poly: ${POLY}")
-find_library(CUDD cudd)
-message(STATUS "cudd: ${CUDD}")
 
 set(REDUCE ${CMAKE_CURRENT_SOURCE_DIR}/lib/libreduce.a)
 message(STATUS "reduce: ${REDUCE}")
@@ -90,21 +76,6 @@ else()
     endif()
 endif()
 
-if (NOT YICES)
-    message(STATUS "Yices not found.")
-    return()
-endif()
-
-if (NOT POLY OR NOT CUDD)
-    message(STATUS "Yices has missing dependencies.")
-    return()
-endif()
-
-if (NOT Z3)
-    message(STATUS "Z3 not found.")
-    return()
-endif() 
-
 target_include_directories(${EXECUTABLE} PRIVATE ${loat_util_INCLUDE_DIRS})
 target_include_directories(${EXECUTABLE} PRIVATE ${loat_expr_INCLUDE_DIRS})
 target_include_directories(${EXECUTABLE} PRIVATE ${loat_smt_INCLUDE_DIRS})
@@ -118,13 +89,6 @@ target_link_libraries(${EXECUTABLE} loat_smt)
 target_link_libraries(
     ${EXECUTABLE}
     ${PURRS}
-    ${Z3}
-    ${NTL}
-    ${CLN}
-    ${YICES}
-    ${POLY}
-    ${CUDD}
-    ${GMP}
     ${REDUCE}
     ${FAUDES}
     ${LINKER_OPTIONS})
