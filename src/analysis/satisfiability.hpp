@@ -188,6 +188,8 @@ class Satisfiability {
      */
     LocationIdx bottom = chcs.getSink();
 
+    unsigned smt_timeout = 500u;
+
     LinearizingSolver<IntTheory, BoolTheory> solver;
 
     std::vector<Step> trace;

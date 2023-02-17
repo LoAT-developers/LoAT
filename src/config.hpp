@@ -59,7 +59,6 @@ namespace Config {
 
     // All settings for interfacing z3
     namespace Smt {
-        extern const unsigned DefaultTimeout;
         extern const unsigned MeterTimeout;
         extern const unsigned StrengtheningTimeout;
         extern const unsigned LimitTimeout;

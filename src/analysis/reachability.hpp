@@ -207,6 +207,8 @@ class Reachability {
 
     std::vector<TransIdx> conditional_empty_clauses;
 
+    unsigned smt_timeout = 500u;
+
     LinearizingSolver<IntTheory, BoolTheory> solver;
 
     std::vector<Step> trace;

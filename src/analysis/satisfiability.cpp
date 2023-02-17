@@ -78,7 +78,7 @@ PushPop::~PushPop() {
     solver.pop();
 }
 
-Satisfiability::Satisfiability(ITSProblem &chcs): chcs(chcs), solver(chcs, Config::Smt::DefaultTimeout), non_loops(chcs) {
+Satisfiability::Satisfiability(ITSProblem &chcs): chcs(chcs), solver(chcs, smt_timeout), non_loops(chcs) {
     solver.enableModels();
 }
 
