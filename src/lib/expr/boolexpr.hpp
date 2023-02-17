@@ -145,6 +145,7 @@ public:
         return BE(new BoolTheoryLit<Th...>(lit));
     }
 
+    virtual bool isTheoryLit() const = 0;
     virtual std::optional<const Lit> getTheoryLit() const = 0;
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
@@ -161,7 +162,7 @@ public:
     virtual int compare(const BE that) const = 0;
 
     bool isTriviallyTrue() const {
-        if (getTheoryLit()) {
+        if (isTheoryLit()) {
             return literal_t::isTriviallyTrue<Th...>(*getTheoryLit());
         } else {
             const auto children = getChildren();
@@ -242,7 +243,7 @@ public:
     }
 
     void iter(const std::function<void(const Lit&)> &f) const {
-        if (getTheoryLit()) {
+        if (isTheoryLit()) {
             f(*getTheoryLit());
         } else {
             for (const auto &c: getChildren()) {
@@ -274,7 +275,7 @@ public:
                 return BoolExpression<Th_...>::True;
             } else {
                 for (const auto &c: newChildren) {
-                    if (c->getTheoryLit()) {
+                    if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
                             return BoolExpression<Th_...>::False;
                         }
@@ -303,7 +304,7 @@ public:
               return BoolExpression<Th_...>::False;
             } else {
                 for (const auto &c: newChildren) {
-                    if (c->getTheoryLit()) {
+                    if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
                             return BoolExpression<Th_...>::True;
                         }
@@ -311,7 +312,7 @@ public:
                 }
                 return BoolExpression<Th_...>::buildOr(newChildren);
             }
-        } else if (getTheoryLit()) {
+        } else if (isTheoryLit()) {
             return f(*getTheoryLit());
         }
         throw std::logic_error("unknown boolean expression");
@@ -343,7 +344,7 @@ public:
                 return BoolExpression<Th...>::True;
             } else {
                 for (const auto &c: newChildren) {
-                    if (c->getTheoryLit()) {
+                    if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
                             return BoolExpression<Th...>::False;
                         }
@@ -376,7 +377,7 @@ public:
               return BoolExpression<Th...>::False;
             } else {
                 for (const auto &c: newChildren) {
-                    if (c->getTheoryLit()) {
+                    if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
                             return BoolExpression<Th...>::True;
                         }
@@ -384,7 +385,7 @@ public:
                 }
                 return BoolExpression<Th...>::buildOr(newChildren);
             }
-        } else if (getTheoryLit()) {
+        } else if (isTheoryLit()) {
             const auto lit = *getTheoryLit();
             const auto mapped = f(lit);
             const auto mappedLit = mapped->getTheoryLit();
@@ -629,6 +630,10 @@ public:
         return false;
     }
 
+    bool isTheoryLit() const override {
+        return true;
+    }
+
     std::optional<const Lit> getTheoryLit() const override {
         return {lit};
     }
@@ -680,13 +685,14 @@ public:
     }
 
     int compare(const BE that) const override {
-        if (!that->getTheoryLit()) {
+        const auto other_lit = that->getTheoryLit();
+        if (!other_lit) {
             return -1;
         }
-        if (lit == *that->getTheoryLit()) {
+        if (lit == *other_lit) {
             return 0;
         }
-        return lit < *that->getTheoryLit() ? -1 : 1;
+        return lit < *other_lit ? -1 : 1;
     }
 
 protected:
@@ -736,6 +742,10 @@ public:
         return op == ConcatOr;
     }
 
+    bool isTheoryLit() const override {
+        return false;
+    }
+
     std::optional<const Lit> getTheoryLit() const override {
         return {};
     }
@@ -777,9 +787,8 @@ public:
         LS res;
         if (isAnd()) {
             for (const BE &c: children) {
-                const auto lit = c->getTheoryLit();
-                if (lit) {
-                    res.insert(*lit);
+                if (c->isTheoryLit()) {
+                    res.insert(*c->getTheoryLit());
                 }
             }
         }
@@ -1036,7 +1045,7 @@ bool operator ==(const BExpr<Th...> a, const BExpr<Th...> b) {
     if (a->getTheoryLit() != b->getTheoryLit()) {
         return false;
     }
-    if (a->getTheoryLit()) {
+    if (a->isTheoryLit()) {
         return true;
     }
     if (a->isAnd() != b->isAnd()) {
@@ -1052,7 +1061,7 @@ bool operator !=(const BExpr<Th...> a, const BExpr<Th...> b) {
 
 template <ITheory T, ITheory... Th>
 std::ostream& operator<<(std::ostream &s, const BExpr<T, Th...> e) {
-    if (e->getTheoryLit()) {
+    if (e->isTheoryLit()) {
         std::visit([&s](const auto lit){s << lit;}, *e->getTheoryLit());
     } else if (e->getChildren().empty()) {
         if (e->isAnd()) {
