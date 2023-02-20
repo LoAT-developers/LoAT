@@ -571,56 +571,63 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
                 std::cout << std::endl;
             }
         }
+        // if period > 1, change the language from a⁺ to (a^n)⁺ and learn additional clauses to cover the whole spectrum of a⁺
+        if (accel_res.period > 1){
+            if (log) std::cout << "Period = "<< accel_res.period << ": Learning " << accel_res.period << " new clauses" << std::endl;
+            // Build the language of the loop
+            Red::T new_lang = get_language(trace.back());
+            for (int i = trace.size() - 2; i >= backlink; --i) {
+                redundance->concat(new_lang, get_language(trace[i]));
+            }
+            // Concatenate the loop-language n=period times and use transitive closure to get the language (a^n)⁺
+            Red::T loop_lang = new_lang;
+            for(unsigned int i=0; i<(accel_res.period-1); i++){
+                redundance->concat(new_lang, loop_lang);
+            }
+            redundance->transitive_closure(new_lang);
+
+            // Learn (period-1) additional clauses and their languages to cover the rest of a⁺
+            for (unsigned int i=0; i<(accel_res.period-1); i++) {
+                // The new clause and its language are instantiated with the same values as the acc clause and its language
+                option<Rule> chained = *res;
+                Red::T chained_lang = new_lang;
+                // Then we concatenate the new clause/its language with the original clause/its language j times
+                for (unsigned int j=0; j<=i; j++) {
+                    chained = Chaining::chainRules(chcs, *chained, orig, true);
+                    redundance->concat(chained_lang, loop_lang);
+                }
+                // If the concatenation worked, we simplify the result and add it and its language
+                if (chained){
+                    Result<Rule> simp = Preprocess::simplifyRule(chcs, *chained);
+                    TransIdx idx_simp = add_learned_clause(*simp, chained_lang);
+                    if (log) {
+                        std::cout << "Additional new clause(s):" << std::endl;
+                        ITSExport::printRule(*simp, chcs, std::cout);
+                        std::cout << std::endl;
+                    }
+                    // Add the new clauses to the vector of clauses, which have to be blocked after store_step
+                    clauses_to_be_blocked.push_back(idx_simp);
+                    //if (log) std::cout << "blocking " << idx_simp << ", " << simp->getGuard() << std::endl;
+                    //blocked_clauses.back()[idx_simp] = {simp->getGuard()};
+                }
+            }
+            // Learn the accelerated clause (a^n)⁺ and return Succeeded
+            return std::make_unique<Succeeded>(res.map<TransIdx>([this, &new_lang](const auto &x){
+                return add_learned_clause(x, new_lang);
+            }));
+        } else {
+            return std::make_unique<Succeeded>(res.map<TransIdx>([this, &lang](const auto &x){
+                return add_learned_clause(x, lang);
+            }));
+        }
+    // if acceleration didn't work, learn a trivial clause
     } else {
-        // learn a trivial clause if the acceleration fails
         res = build_trivial_clause(res->getLhsLoc());
         if (log) {
             std::cout << "accelerated rule using a trivial clause:" << std::endl;
             ITSExport::printRule(*res, chcs, std::cout);
             std::cout << std::endl;
         }
-    }
-
-    // if period > 1, change the language from a⁺ to (a^n)⁺ and learn additional clauses to cover the whole spectrum of a⁺
-    if (accel_res.period > 1){
-        if (log) std::cout << "Period = "<< accel_res.period << ": Learning " << accel_res.period << " new clauses" << std::endl;
-        // Build the language of the loop
-        Red::T new_lang = get_language(trace.back());
-        for (int i = trace.size() - 2; i >= backlink; --i) {
-            redundance->concat(new_lang, get_language(trace[i]));
-        }
-        // Concatenate the loop-language n=period times and use transitive closure to get the language (a^n)⁺
-        Red::T loop_lang = new_lang;
-        for(unsigned int i=0; i<(accel_res.period-1); i++){
-            redundance->concat(new_lang, loop_lang);
-        }
-        redundance->transitive_closure(new_lang);
-
-        // Learn (period-1) additional clauses and their languages to cover the rest of a⁺
-        for (unsigned int i=0; i<(accel_res.period-1); i++) {
-            // The new clause and its language are instantiated with the same values as the acc clause and its language
-            option<Rule> chained = *res;
-            Red::T chained_lang = new_lang;
-            // Then we concatenate the new clause/its language with the original clause/its language j times
-            for (unsigned int j=0; j<=i; j++) {
-                chained = Chaining::chainRules(chcs, *chained, orig, true);
-                redundance->concat(chained_lang, loop_lang);
-            }
-            // If the concatenation worked, we simplify the result and add it and its language
-            if (chained){
-                Result<Rule> simp = Preprocess::simplifyRule(chcs, *chained);
-                TransIdx idx_simp = add_learned_clause(*simp, chained_lang);
-                // Add the new clauses to the vector of clauses, which have to be blocked after store_step
-                clauses_to_be_blocked.push_back(idx_simp);
-                //if (log) std::cout << "blocking " << idx_simp << ", " << simp->getGuard() << std::endl;
-                //blocked_clauses.back()[idx_simp] = {simp->getGuard()};
-            }
-        }
-        // Learn the accelerated clause (a^n)⁺ and return Succeeded
-        return std::make_unique<Succeeded>(res.map<TransIdx>([this, &new_lang](const auto &x){
-            return add_learned_clause(x, new_lang);
-        }));
-    } else {
         return std::make_unique<Succeeded>(res.map<TransIdx>([this, &lang](const auto &x){
             return add_learned_clause(x, lang);
         }));
@@ -648,6 +655,9 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
     if (!state->succeeded()) {
         return state;
     }
+    // If Acceleration worked, don't change the trace and just return Covered, so that the last step will be backtracked
+    //return std::make_unique<Covered>();;
+
     auto accel_state = *state->succeeded();
     const auto idx = **accel_state;
     const auto subproof = accel_state->getProof();
@@ -670,6 +680,7 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         return std::make_unique<Dropped>();
     } else{
         // In this case the accelerated clause could not be added to the trace. So we remove it and add a trivial clause instead.
+        if (log) std::cout << "Accelerated clause can't be stored on trace "  << std::endl;
         // Remove the learned clause from learned_clauses
         const auto src = accel.getLhsLoc();
         auto acc_it = learned_clauses.find(src);
@@ -696,6 +707,7 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
             return std::make_unique<Dropped>();
         }
     }
+
 }
 
 LocationIdx Satisfiability::get_current_predicate() const {
