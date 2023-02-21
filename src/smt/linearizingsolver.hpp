@@ -103,7 +103,7 @@ public:
             if (lit.isPoly()) {
                 continue;
             }
-            Expr lhs = lit.isIneq() ? lit.makeRhsZero().toGt().lhs() : lit.makeRhsZero().lhs();
+            Expr lhs = lit.isIneq() ? lit.makeRhsZero().toG().lhs() : lit.makeRhsZero().lhs();
             lin_lhs = linearize(lhs);
             if (lin_lhs) {
                 option<Rel> lin_lit;
