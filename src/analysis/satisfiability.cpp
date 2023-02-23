@@ -539,7 +539,7 @@ bool Satisfiability::is_orig_clause(const TransIdx idx) const {
     return idx <= last_orig_clause;
 }
 
-std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang, const int backlink, std::vector<TransIdx> &clauses_to_be_blocked) {
+std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, const Red::T &lang, const int backlink) {
     Result<Rule> res = Preprocess::simplifyRule(chcs, rule);
     // Copy of the original looping clause to use if period > 1
     Rule orig = *res;
@@ -599,14 +599,14 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
                 // If the concatenation worked, we simplify the result and add it and its language
                 if (chained){
                     Result<Rule> simp = Preprocess::simplifyRule(chcs, *chained);
-                    TransIdx idx_simp = add_learned_clause(*simp, chained_lang);
+                    /*TransIdx idx_simp = */add_learned_clause(*simp, chained_lang);
                     if (log) {
                         std::cout << "Additional new clause(s):" << std::endl;
                         ITSExport::printRule(*simp, chcs, std::cout);
                         std::cout << std::endl;
                     }
-                    // Add the new clauses to the vector of clauses, which have to be blocked after store_step
-                    clauses_to_be_blocked.push_back(idx_simp);
+                    // Add the new clauses to the vector of clauses, which have to be blocked after store_step (not needed for the new accelerate)
+                    //clauses_to_be_blocked.push_back(idx_simp);
                     //if (log) std::cout << "blocking " << idx_simp << ", " << simp->getGuard() << std::endl;
                     //blocked_clauses.back()[idx_simp] = {simp->getGuard()};
                 }
@@ -649,14 +649,17 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
         if (log) std::cout << "trivial looping suffix" << std::endl;
         return std::make_unique<Covered>();
     }
-    // Vector to save the clauses which have to be blocked if period>1
-    std::vector<TransIdx> clauses_to_be_blocked;
-    auto state = learn_clause(loop, lang, backlink, clauses_to_be_blocked);
+    // Vector to save the clauses which have to be blocked if period>1 (not needed for the new accelerate)
+    //std::vector<TransIdx> clauses_to_be_blocked;
+    auto state = learn_clause(loop, lang, backlink);
+
+    // with the new accelerate we can just return the state
+    return state;
+
+    /*
     if (!state->succeeded()) {
         return state;
     }
-    // If Acceleration worked, don't change the trace and just return Covered, so that the last step will be backtracked
-    //return std::make_unique<Covered>();;
 
     auto accel_state = *state->succeeded();
     const auto idx = **accel_state;
@@ -707,7 +710,7 @@ std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
             return std::make_unique<Dropped>();
         }
     }
-
+    */
 }
 
 LocationIdx Satisfiability::get_current_predicate() const {
@@ -772,18 +775,23 @@ void Satisfiability::analyze() {
         if (log) std::cout << "trace: " << trace << std::endl;
         for (int backlink = has_looping_suffix(); backlink >= 0; backlink = has_looping_suffix()) {
             Step step = trace[backlink];
+            // not needed for the new accelerate
             bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             auto state = handle_loop(backlink);
             if (state->covered()) {
                 backtrack();
             } else if (state->succeeded()) {
+
                 if (simple_loop) {
+                    if (log) std::cout << "Simple loop:" << std::endl;
                     block(step);
                 }
+
                 // try to apply a query before doing another step
                 if (try_to_finish()) {
                     return;
                 }
+                break;
             } else if (state->dropped()) {
                 // This case happens if the z3 solver returns unknown.
                 // In this case we can't show satisfiability anymore.
