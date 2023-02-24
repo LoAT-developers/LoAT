@@ -776,17 +776,17 @@ void Satisfiability::analyze() {
         for (int backlink = has_looping_suffix(); backlink >= 0; backlink = has_looping_suffix()) {
             Step step = trace[backlink];
             // not needed for the new accelerate
-            bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
+            //bool simple_loop = static_cast<unsigned>(backlink) == trace.size() - 1;
             auto state = handle_loop(backlink);
             if (state->covered()) {
                 backtrack();
             } else if (state->succeeded()) {
-
+                /*
                 if (simple_loop) {
                     if (log) std::cout << "Simple loop:" << std::endl;
                     block(step);
                 }
-
+                */
                 // try to apply a query before doing another step
                 if (try_to_finish()) {
                     return;
