@@ -9,6 +9,17 @@ struct Res {
     BoolExpr refinement = True;
     Res(const T &t);
     Res();
+
+    template<class S>
+    void conjoin(const Res<S> &that) {
+        this->refinement = this->refinement & that.refinement;
+    }
+
+    void operator=(const Res<T> &that) {
+        conjoin(that);
+        this->t = that.t;
+    }
+
 };
 
 enum UnaryOp {
