@@ -4,8 +4,6 @@
 #include "theory.hpp"
 #include "variable.hpp"
 
-#include <mutex>
-
 /**
  * Manages variables, i.e., can map between variable indices, names and symbols.
  * Also manages the set of temporary/free variables.
@@ -29,14 +27,12 @@ public:
      */
     template<ITheory Th>
     typename Th::Var getFreshUntrackedSymbol(std::string basename, Expr::Type type) {
-        std::lock_guard guard(mutex);
         typename Th::Var res {getFreshName(basename)};
         untrackedVariables[res] = type;
         return res;
     }
 
     Var getFreshUntrackedSymbol(const Var &x) {
-        std::lock_guard guard(mutex);
         const std::string name = getFreshName(variable::getName(x));
         std::optional<Var> res;
         Expr::Type type;
@@ -55,8 +51,6 @@ public:
 
     Expr::Type getType(const Var &x) const;
 
-    static std::recursive_mutex mutex;
-
 private:
 
     void toLower(std::string &str) const;
@@ -64,7 +58,6 @@ private:
     // Adds a variable with the given name to all relevant maps, returns the new index
     template<ITheory Th>
     typename Th::Var addVariable(std::string name) {
-        std::lock_guard guard(mutex);
         toLower(name);
         typename Th::Var sym {name};
         return sym;
@@ -82,20 +75,17 @@ public:
      */
     template<ITheory Th>
     typename Th::Var addFreshVariable(std::string basename) {
-        std::lock_guard guard(mutex);
         return addVariable<Th>(getFreshName(basename));
     }
 
     template<ITheory Th>
     typename Th::Var addFreshTemporaryVariable(std::string basename) {
-        std::lock_guard guard(mutex);
         typename Th::Var x = addVariable<Th>(getFreshName(basename));
         temporaryVariables.insert(x.getName());
         return x;
     }
 
     Var addFreshTemporaryVariable(const Var &var) {
-        std::lock_guard guard(mutex);
         const auto name = getFreshName(variable::getName(var));
         Var x = std::visit(
                     Overload{

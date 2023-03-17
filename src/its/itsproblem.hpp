@@ -96,9 +96,6 @@ public:
     // Print the ITSProblem in a simple, but user-friendly format
     void print(std::ostream &s) const;
 
-    static void lock();
-    static void unlock();
-
 protected:
 
     // Main structure is the graph, where (hyper-)transitions are annotated with a RuleIdx.

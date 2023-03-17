@@ -2,7 +2,6 @@
 
 #include <poly/algebraic_number.h>
 #include <yices.h>
-#include <mutex>
 #include <future>
 #include <stdexcept>
 
@@ -11,9 +10,6 @@
 #include "exprtosmt.hpp"
 
 namespace yices {
-
-extern unsigned int running;
-extern std::mutex mutex;
 
 extern void init();
 
@@ -50,9 +46,6 @@ public:
             throw std::logic_error("error from yices");
         }
         solver = yices_new_context(config);
-        yices::mutex.lock();
-        ++yices::running;
-        yices::mutex.unlock();
     }
 
     void add(const BoolExpr e) override {
@@ -143,9 +136,6 @@ public:
     }
 
     ~Yices() override {
-        yices::mutex.lock();
-        --yices::running;
-        yices::mutex.unlock();
         yices_free_config(config);
         yices_free_context(solver);
     }
