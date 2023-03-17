@@ -1,6 +1,5 @@
 #include "accelerationfactory.hpp"
 #include "accelerationviacalculus.hpp"
-#include "accelerationviaqe.hpp"
 
 using AT = std::unique_ptr<AccelerationTechnique<IntTheory, BoolTheory>>;
 

@@ -7,8 +7,6 @@ target_sources(${EXECUTABLE}
         loopacceleration.hpp
         accelerationresult.hpp
         accelerationresult.cpp
-        accelerationviaqe.cpp
-        accelerationviaqe.hpp
         accelerationviacalculus.cpp
         accelerationviacalculus.hpp
         accelerationtechnique.hpp
