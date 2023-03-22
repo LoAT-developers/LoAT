@@ -16,7 +16,7 @@ namespace ITSExport {
      * Print the given rule in a readable format (used by printLabeledRule).
      * Note that colors are only used if colors is true and Config::Output::ColorInIts is true
      */
-    void printRule(const Rule &rule, const ITSProblem &its, std::ostream &s, bool colors = true);
+    void printRule(const Rule &rule, std::ostream &s, bool colors = true);
 
     /**
      * Prints the given guard in a readable format (constraints separated by &&)

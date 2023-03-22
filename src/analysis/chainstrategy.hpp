@@ -20,21 +20,10 @@
 #include "itsproblem.hpp"
 #include "result.hpp"
 
-
 namespace Chaining {
-    /**
-     * Applies a simple chaining strategy to the entire ITS problem.
-     *
-     * Starting from the initial node, all "linear paths" are chained (in a DFS traversal).
-     * Here, "linear path" is a path where each node has at most one incoming and outgoing edge.
-     * Such paths have no interesting control flow and can safely be chained into a single edge.
-     *
-     * After calling this, all nodes with exactly one in- and one outgoing edge have either been
-     * (1) eliminated, if chaining the in- and outgoing edge was possible, or
-     * (2) their outgoing edge was removed, if chaining was not possible (so the edge can never be taken).
-     *
-     * @return true iff the ITS was modified
-     */
+
     ResultViaSideEffects chainLinearPaths(ITSProblem &its);
+
+    Rule chain(const Rule &fst, const Rule &snd, ITSProblem &its);
 
 }

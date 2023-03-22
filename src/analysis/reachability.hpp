@@ -123,7 +123,7 @@ public:
     virtual std::optional<ProvedUnsat> unsat();
 };
 
-class Succeeded: public LearningState {
+class Succeeded final: public LearningState {
     /**
      * the indices of the learned clause
      */
@@ -136,11 +136,11 @@ public:
     Result<std::vector<TransIdx>>* operator->();
 };
 
-class Covered: public LearningState {
+class Covered final: public LearningState {
     std::optional<Covered> covered() override;
 };
 
-class Dropped: public LearningState {
+class Dropped final: public LearningState {
     /**
      * the indices of the learned clause
      */
@@ -153,11 +153,11 @@ public:
     Result<std::vector<TransIdx>>* operator->();
 };
 
-class Failed: public LearningState {
+class Failed final: public LearningState {
     std::optional<Failed> failed() override;
 };
 
-class ProvedUnsat: public LearningState {
+class ProvedUnsat final: public LearningState {
     Proof proof;
 
 public:
@@ -181,31 +181,6 @@ class Reachability {
     ITSProblem &chcs;
 
     ITSProof proof;
-
-    const HyperGraph::SCCs sccs {chcs.sccs()};
-
-    /**
-     * rules where the head and body symbol belong to different SCCs
-     */
-    std::map<LocationIdx, std::vector<TransIdx>> cross_scc;
-
-    /**
-     * rules where the head and the body symbol belong to the same SCC
-     */
-    std::map<LocationIdx, std::vector<TransIdx>> in_scc;
-
-    std::map<LocationIdx, std::vector<TransIdx>> learned_clauses;
-
-    /**
-     * All rules (including learned clauses).
-     * The order of these lists determines the selection order of clauses for resolution.
-     * It is updated on the fly when we learn clauses.
-     */
-    std::map<LocationIdx, std::list<TransIdx>> rules;
-
-    std::map<LocationIdx, std::vector<TransIdx>> queries;
-
-    std::vector<TransIdx> conditional_empty_clauses;
 
     unsigned smt_timeout = 500u;
 
@@ -278,11 +253,6 @@ class Reachability {
     void preprocess();
 
     /**
-     * updates the list of clauses, and hence the selection order for resolution, for the given predicate
-     */
-    void update_rules(const LocationIdx idx);
-
-    /**
      * initializes all data structures after preprocessing
      */
     void init();
@@ -324,23 +294,18 @@ class Reachability {
      * adds a learned clause to all relevant data structures
      * @param lang (an approximation of) the language associated with the learned clause
      */
-    TransIdx add_learned_clause(const Rule &clause, const Red::T &lang);
+    TransIdx add_learned_clause(const Rule &clause, const unsigned backlink, const Red::T &lang);
 
     /**
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Red::T &lang);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const unsigned backlink, const Red::T &lang);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix
      */
     std::unique_ptr<LearningState> handle_loop(const unsigned backlink);
-
-    /**
-     * checks whether the head and the body symbol of the given clause belong to different SCCs
-     */
-    bool leaves_scc(const TransIdx idx) const;
 
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
@@ -381,14 +346,7 @@ class Reachability {
 
     void print_state();
 
-    /**
-     * @return the head predicate of the trace
-     */
-    LocationIdx get_current_predicate() const;
-
-    bool try_to_finish(const std::vector<TransIdx> &clauses);
     bool try_to_finish();
-    bool try_conditional_empty_clauses();
 
     Reachability(ITSProblem &its);
 

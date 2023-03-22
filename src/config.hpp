@@ -57,49 +57,10 @@ namespace Config {
         extern const std::string DebugHighlight;
     }
 
-    // All settings for interfacing z3
-    namespace Smt {
-        extern const unsigned MeterTimeout;
-        extern const unsigned StrengtheningTimeout;
-        extern const unsigned LimitTimeout;
-        extern const unsigned LimitTimeoutFinal;
-        extern const unsigned LimitTimeoutFinalFast;
-        extern const unsigned SimpTimeout;
-    }
-
-    namespace Qelim {
-        extern const bool useRedlog;
-    }
-
-    // Loop acceleration technique
-    namespace LoopAccel {
-        extern const unsigned MaxUpperboundsForPropagation;
-        enum AccelerationTechnique {
-            Calculus, QE, Combined
-        };
-        extern const AccelerationTechnique accelerationTechnique;
-    }
-
-    // High level acceleration strategy
-    namespace Accel {
-        extern const bool SimplifyRulesBefore;
-        extern bool PartialDeletionHeuristic;
-        extern bool TryNesting;
-    }
-
-    // Chaining and chaining strategies
-    namespace Chain {
-        extern const bool CheckSat;
-    }
-
-    // Pruning in case of too many rules
-    namespace Prune {
-        extern const unsigned MaxParallelRules;
-    }
-
     // Asymptotic complexity computation using limit problems
     namespace Limit {
         extern const unsigned int ProblemDiscardSize;
+        extern const unsigned Timeout;
     }
 
     // Main algorithm
@@ -107,7 +68,6 @@ namespace Config {
 
         enum Mode { Complexity, NonTermination, Reachability, Satisfiability, CheckLinear };
         extern std::vector<Mode> modes;
-        extern bool Pruning;
         extern Mode mode;
 
         std::string modeName(const Mode mode);

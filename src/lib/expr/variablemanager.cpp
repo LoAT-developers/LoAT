@@ -20,11 +20,7 @@
 
 using namespace std;
 
-
-std::recursive_mutex VariableManager::mutex;
-
 bool VariableManager::isTempVar(const Var &var) const {
-    std::lock_guard guard(mutex);
     return temporaryVariables.find(variable::getName(var)) != temporaryVariables.end();
 }
 
@@ -33,7 +29,6 @@ void VariableManager::toLower(string &str) const {
 }
 
 string VariableManager::getFreshName(string basename) {
-    std::lock_guard guard(mutex);
     toLower(basename);
     auto &count = basenameCount.emplace(basename, 0).first->second;
     std::string res = count == 0 ? basename : basename + to_string(count);
@@ -47,7 +42,6 @@ string VariableManager::getFreshName(string basename) {
 }
 
 Expr::Type VariableManager::getType(const Var &x) const {
-    std::lock_guard guard(mutex);
     if (untrackedVariables.find(x) != untrackedVariables.end()) {
         return untrackedVariables.at(x);
     } else {

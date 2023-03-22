@@ -16,26 +16,15 @@
  */
 
 #include "rule.hpp"
+#include "substitution.hpp"
 
 using namespace std;
 
-
-Rule::Rule(RuleLhs lhs, RuleRhs rhs) : lhs(lhs), rhs(rhs) {
-    if (getCost().isNontermSymbol()) {
-        rhs = {RuleRhs(rhs.getLoc(), {})};
-    }
-}
-
-Rule::Rule(LocationIdx lhsLoc, BoolExpr guard, Expr cost, LocationIdx rhsLoc, Subs update)
-        : lhs(lhsLoc, guard, cost), rhs(RuleRhs(rhsLoc, update)) {
-    if (getCost().isNontermSymbol()) {
-        rhs = {RuleRhs(rhs.getLoc(), {})};
-    }
-}
+Rule::Rule(const BoolExpr guard, const Subs &update): guard(guard), update(update) {}
 
 void Rule::collectVars(VarSet &vars) const {
-    lhs.collectVars(vars);
-    rhs.collectVars(vars);
+    guard->collectVars(vars);
+    substitution::collectVars(update, vars);
 }
 
 VarSet Rule::vars() const {
@@ -44,64 +33,29 @@ VarSet Rule::vars() const {
     return res;
 }
 
-Rule Rule::dummyRule(LocationIdx lhsLoc, LocationIdx rhsLoc) {
-    return Rule(lhsLoc, {}, 0, rhsLoc, {});
-}
-
-bool Rule::isDummyRule() const {
-    return getCost().isZero() && getGuard() == True && getUpdate().empty();
-}
-
-bool Rule::isSimpleLoop() const {
-    return rhs.getLoc() == lhs.getLoc();
-}
-
 Rule Rule::subs(const Subs &subs) const {
-    return Rule(RuleLhs(getLhsLoc(), getGuard()->subs(subs), getCost().subs(subs.get<IntTheory>())), RuleRhs(rhs.getLoc(), substitution::concat(rhs.getUpdate(), subs)));
-}
-
-Rule Rule::replaceRhsBySink(LocationIdx sink) const {
-    return Rule(getLhs(), RuleRhs(sink, {}));
+    return Rule(guard->subs(subs), substitution::concat(update, subs));
 }
 
 Rule Rule::withGuard(const BoolExpr guard) const {
-    return Rule(RuleLhs(getLhsLoc(), guard, getCost()), getRhs());
+    return Rule(guard, update);
 }
 
-Rule Rule::withCost(const Expr &cost) const {
-    return Rule(RuleLhs(getLhsLoc(), getGuard(), cost), getRhs());
+Rule Rule::withUpdate(const Subs &update) const {
+    return Rule(guard, update);
 }
 
-Rule Rule::withUpdate(const Subs &up) const {
-    return Rule(RuleLhs(getLhsLoc(), getGuard(), getCost()), RuleRhs(rhs.getLoc(), up));
+Rule Rule::chain(const Rule &that) const {
+    return Rule(guard & that.getGuard()->subs(update), substitution::compose(that.getUpdate(), update));
 }
 
 unsigned Rule::hash() const {
     unsigned hash = 7;
-    hash = hash * 31 + lhs.hash();
-    hash = hash * 31 + rhs.hash();
+    hash = hash * 31 + guard->hash();
+    hash = hash * 31 + update.hash();
     return hash;
 }
 
-bool operator ==(const RuleRhs &fst, const RuleRhs &snd) {
-    return fst.getLoc() == snd.getLoc() && fst.getUpdate() == snd.getUpdate();
-}
-
 ostream& operator<<(ostream &s, const Rule &rule) {
-    s << "Rule(";
-
-    // lhs (loc, guard, cost)
-    s << rule.getLhsLoc() << " | ";
-    s << rule.getGuard();
-    s << "| ";
-    s << rule.getCost();
-
-    // rhs (loc, update)*
-    s << " |";
-
-    s << "| " << rule.getRhs().getLoc() << " | ";
-    s << rule.getRhs().getUpdate();
-
-    s << ")";
-    return s;
+    return s << rule.getGuard() << " /\\ " << rule.getUpdate();
 }

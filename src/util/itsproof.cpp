@@ -11,9 +11,9 @@ void ITSProof::ruleTransformationProof(const Rule &oldRule, const std::string &t
     section(transformation);
     std::stringstream s;
     s << "Original rule:\n";
-    ITSExport::printRule(oldRule, its, s);
+    ITSExport::printRule(oldRule, s);
     s << "\nNew rule:\n";
-    ITSExport::printRule(newRule, its, s);
+    ITSExport::printRule(newRule, s);
     append(s);
 }
 
@@ -52,17 +52,17 @@ void ITSProof::deletionProof(const std::set<TransIdx> &rules) {
     }
 }
 
-void ITSProof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule, const ITSProblem &its) {
+void ITSProof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule) {
     if (Proof::disabled()) {
         return;
     }
     section("Applied chaining");
     std::stringstream s;
     s << "First rule:\n";
-    ITSExport::printRule(fst, its, s);
+    ITSExport::printRule(fst, s);
     s << "\nSecond rule:\n";
-    ITSExport::printRule(snd, its, s);
+    ITSExport::printRule(snd, s);
     s << "\nNew rule:\n";
-    ITSExport::printRule(newRule, its, s);
+    ITSExport::printRule(newRule, s);
     append(s);
 }

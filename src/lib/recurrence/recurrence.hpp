@@ -24,18 +24,12 @@
 #include "numexpression.hpp"
 
 
-/**
- * This class is the interface end to the recurrence solver PURRS,
- * and allows calculating iterated cost and update
- */
-class Recurrence
-{
+class Recurrence {
 private:
 
 public:
 
     struct Result {
-        Expr cost;
         Subs update;
         unsigned int validityBound;
         NumVar n;
@@ -44,12 +38,7 @@ public:
 
     };
 
-    /**
-     * Iterates the rule's update and cost, similar to iterateUpdateCost.
-     * In addition to iterateUpdateCost, an additional heuristic is used if no dependency order is found.
-     * This heuristic adds new constraints to the rule's guard and is thus only used in this method.
-     */
-    static std::optional<Result> iterate(VarMan &varMan, const Subs &update, const Expr &cost);
+    static std::optional<Result> iterate(VarMan &varMan, const Subs &update);
 
 private:
 
@@ -66,23 +55,9 @@ private:
 
     Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder);
 
-    /**
-     * Main implementation
-     */
-    std::optional<Result> iterate(const Subs &update, const Expr &cost);
+    std::optional<Result> iterate(const Subs &update);
 
-    /**
-     * Computes the iterated update, with meterfunc as iteration step (if possible).
-     * @note dependencyOrder must be set before
-     * @note sets updatePreRecurrences
-     */
     std::optional<RecurrenceSystemSolution> iterateUpdate(const Subs &update);
-
-    /**
-     * Computes the iterated cost, with meterfunc as iteration step (if possible).
-     * @note updatePreRecurrences must be set before (so iterateUpdate() needs to be called before)
-     */
-    std::optional<GiNaC::ex> iterateCost(const Expr &c);
 
     /**
      * Helper for iterateUpdate.

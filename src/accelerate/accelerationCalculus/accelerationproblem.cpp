@@ -5,17 +5,16 @@
 #include "literal.hpp"
 #include "boolexpr.hpp"
 #include "map.hpp"
+#include "config.hpp"
 
 AccelerationProblem::AccelerationProblem(
         const BoolExpr guard,
         const Subs &up,
         const std::optional<Recurrence::Result> &closed,
-        const Expr &cost,
         ITSProblem &its,
         const AccelConfig &config):
     up(up),
     closed(closed),
-    cost(cost),
     guard(guard),
     its(its),
     config(config) {
@@ -37,7 +36,7 @@ AccelerationProblem AccelerationProblem::init(
         const std::optional<Recurrence::Result> &closed,
         ITSProblem &its,
         const AccelConfig &config) {
-    return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, rule.getCost(), its, config);
+    return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, its, config);
 }
 
 LitSet AccelerationProblem::findConsistentSubset(BoolExpr e) const {
@@ -424,8 +423,6 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     }
     ReplacementMap map = computeReplacementMap(false);
     if (map.acceleratedAll || !isConjunction) {
-        bool positiveCost = Config::Analysis::mode != Config::Analysis::Mode::Complexity || SmtFactory::check(guard & Rel::buildLeq(cost, 0), its) == Unsat;
-        bool nt = map.nonterm && positiveCost;
         auto newGuard = guard->replaceLits(map.map);
         if (closed) {
             newGuard = newGuard & *bound;
@@ -434,11 +431,11 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
             ret.term.emplace(newGuard, proof, map.exact);
             ret.term->proof.newline();
             ret.term->proof.append(std::stringstream() << "Replacement map: " << map.map);
-            if (nt) {
+            if (map.nonterm) {
                 ret.nonterm = ret.term;
             }
         }
-        if (Config::Analysis::tryNonterm() && closed && positiveCost && !map.nonterm) {
+        if (Config::Analysis::tryNonterm() && closed && !map.nonterm) {
             ReplacementMap map = computeReplacementMap(true);
             if (map.acceleratedAll || !isConjunction) {
                 auto newGuard = guard->replaceLits(map.map);

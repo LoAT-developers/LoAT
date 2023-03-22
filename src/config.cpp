@@ -55,72 +55,16 @@ namespace Config {
         const std::string Cyan = "\033[0;36m"; // cyan
     }
 
-    namespace Smt {
-        const unsigned MeterTimeout = 500u;
-        const unsigned StrengtheningTimeout = 750u;
-        const unsigned LimitTimeout = 500u;
-        const unsigned LimitTimeoutFinal = 3000u;
-        const unsigned LimitTimeoutFinalFast = 500u;
-        const unsigned SimpTimeout = 200u;
-    }
-
-    namespace Qelim {
-        const bool useRedlog = false;
-    }
-
-    // Loop acceleration technique
-    namespace LoopAccel {
-        // If KeepTempVarForIterationCount is false, then "k" is instantiated by its upper bounds.
-        // If there are several upperbounds, several rules are created.
-        // To avoid rule explosion, the propagation is only performed up to this number of upperbounds.
-        const unsigned MaxUpperboundsForPropagation = 3;
-        const AccelerationTechnique accelerationTechnique = Calculus;
-    }
-
-    namespace Accel {
-        // Simplify rules before trying to accelerate them.
-        // Should be enabled (especially helps to eliminate free variables).
-        const bool SimplifyRulesBefore = true;
-
-        // Heuristic to shorten nonlinear rules by deleting some of the rhss if metering failed.
-        // We currently try to meter all pairs and every single rhs, so this is rather expensive.
-        bool PartialDeletionHeuristic = true;
-
-        // If true, tries to nest parallel rules. Nesting means that one iteration of the "outer"
-        // loop is followed by a full execution of the "inner" loop. This is a simple application
-        // of chaining combined with acceleration, but is not described in the paper.
-        bool TryNesting = true;
-    }
-
-    // Chaining and chaining strategies
-    namespace Chain {
-        // Whether to check if the chained rule's guard is still satisfiable.
-        // This is expensive if many rules are chained, but should nevertheless be enabled.
-        // If disabled, a rule with high complexity can become unsatisfiable if chained with an incompatible rule.
-        // If disabled, many unsatisfiable rules could be created, leading to rule explosion.
-        const bool CheckSat = true;
-    }
-
-    namespace Prune {
-        // Prune parallel rules if there are more than this number.
-        // We consider two rules parallel if they have an edge in common, e.g. f -> f,g and f -> g are parallel.
-        const unsigned MaxParallelRules = 5;
-    }
-
     // Asymptotic complexity computation using limit problems
     namespace Limit {
         // Discard a limit problem of size >= ProblemDiscardSize in a non-final check if z3 yields "unknown"
         const unsigned int ProblemDiscardSize = 10;
+        const unsigned Timeout = 500u;
     }
 
     namespace Analysis {
 
         std::vector<Mode> modes { Complexity, NonTermination, Reachability, Satisfiability, CheckLinear };
-
-        // Whether to enable pruning to reduce the number of rules.
-        // Pruning works by greedily keeping rules with a high complexity.
-        // To be more accurate, this involves the asymptotic check (and can thus be expensive).
-        bool Pruning = true;
 
         Mode mode = Complexity;
 

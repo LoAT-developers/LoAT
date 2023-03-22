@@ -89,8 +89,8 @@ public:
         proof.storeSubProof(subProof);
     }
 
-    void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule, const ITSProblem &its) {
-        proof.chainingProof(fst, snd, newRule, its);
+    void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule) {
+        proof.chainingProof(fst, snd, newRule);
     }
 
     void concat(const Proof &that) {

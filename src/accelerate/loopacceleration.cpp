@@ -18,8 +18,10 @@
 #include "loopacceleration.hpp"
 #include "smtfactory.hpp"
 #include "recurrence.hpp"
-#include "chain.hpp"
 #include "accelerationfactory.hpp"
+#include "config.hpp"
+#include "substitution.hpp"
+#include "chainstrategy.hpp"
 
 #include <purrs.hh>
 #include <numeric>
@@ -33,23 +35,7 @@ LoopAcceleration::LoopAcceleration(
     : its(its), rule(rule), config(config) {}
 
 bool LoopAcceleration::shouldAccelerate() const {
-    return (!Config::Analysis::tryNonterm() || !rule.getCost().isNontermSymbol()) && (!Config::Analysis::complexity() || rule.getCost().isPoly());
-}
-
-Rule LoopAcceleration::renameTmpVars(const Rule &rule, ITSProblem &its) {
-    Subs sigma;
-    for (const auto &x: rule.vars()) {
-        if (its.isTempVar(x)) {
-            if (std::holds_alternative<NumVar>(x)) {
-                const auto &var = std::get<NumVar>(x);
-                sigma.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
-            } else if (std::holds_alternative<BoolVar>(x)) {
-                const auto &var = std::get<BoolVar>(x);
-                sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
-            }
-        }
-    }
-    return rule.subs(sigma);
+    return (!Config::Analysis::complexity() || its.getCost(rule).isPoly());
 }
 
 const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, ITSProblem &its) {
@@ -64,7 +50,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, ITSPro
             if (up.isPoly() && up.degree(var) == 1) {
                 const Expr coeff = up.coeff(var);
                 if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
-                    res = *Chaining::chainRules(its, res, renameTmpVars(res, its), false);
+                    res = Chaining::chain(res, res, its);
                     period = 2;
                     break;
                 }
@@ -77,7 +63,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, ITSPro
             const auto lits = p.second->lits();
             const auto lit = BoolLit(p.first);
             if (lits.find(!lit) != lits.end() && lits.find(lit) == lits.end()) {
-                res = *Chaining::chainRules(its, res, renameTmpVars(res, its), false);
+                res = Chaining::chain(res, res, its);
                 period = 2;
                 break;
             }
@@ -112,7 +98,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, ITSPro
     if (cycleLength > 1) {
         Rule orig(res);
         for (unsigned i = 1; i < cycleLength; ++i) {
-            res = *Chaining::chainRules(its, res, renameTmpVars(orig, its), false);
+            res = Chaining::chain(res, orig, its);
         }
         period *= cycleLength;
     }
@@ -140,7 +126,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, ITSPro
                     continue;
                 }
                 if (varsTwoSteps.find(var) == varsTwoSteps.end()) {
-                    res = *Chaining::chainRules(its, res, renameTmpVars(orig, its), false);
+                    res = Chaining::chain(res, orig, its);
                     period *= 2;
                     goto NEXT;
                 }
@@ -178,13 +164,13 @@ acceleration::Result LoopAcceleration::run() {
     }
     // for rules with runtime 1, our acceleration techniques do not work properly,
     // as the closed forms are usually only valid for n > 0 --> special case
-    if (!Chaining::chainRules(its, rule, rule)) {
+    if (SmtFactory::check(rule.chain(rule).getGuard(), its) != SmtResult::Sat) {
         res.rule = rule;
         res.status = acceleration::PseudoLoop;
         res.accelerationProof.append("rule cannot be iterated more than once");
         return res;
     }
-    const auto rec = Recurrence::iterate(its, rule.getUpdate(), rule.getCost());
+    const auto rec = Recurrence::iterate(its, rule.getUpdate());
     if (!rec && config.approx != UnderApprox) {
         res.status = acceleration::ClosedFormFailed;
         return res;
@@ -197,21 +183,15 @@ acceleration::Result LoopAcceleration::run() {
     }
     if (Config::Analysis::tryNonterm() && accelerationResult.nonterm) {
         res.nontermRule = Rule(
-                    rule.getLhsLoc(),
                     accelerationResult.nonterm->formula,
-                    Expr::NontermSymbol,
-                    its.getSink(),
-                    {});
+                    Subs::build<IntTheory>(its.getLocVar(), its.getSink()));
         res.nontermProof.ruleTransformationProof(rule, "Certificate of Non-Termination", *res.nontermRule, its);
         res.nontermProof.storeSubProof(accelerationResult.nonterm->proof);
     }
     if (rec && accelerationResult.term) {
         res.n = rec->n;
         res.rule = Rule(
-                    rule.getLhsLoc(),
                     accelerationResult.term->formula,
-                    rec->cost,
-                    rule.getRhsLoc(),
                     rec->update);
         res.accelerationProof.ruleTransformationProof(rule, "Loop Acceleration", *res.rule, its);
         res.accelerationProof.storeSubProof(accelerationResult.term->proof);

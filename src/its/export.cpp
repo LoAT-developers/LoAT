@@ -2,7 +2,6 @@
 #include "config.hpp"
 #include "theory.hpp"
 #include "substitution.hpp"
-#include "literal.hpp"
 #include "variable.hpp"
 
 using namespace std;
@@ -18,7 +17,6 @@ static void printColor(ostream &os, const std::string &s) {
     }
 }
 
-
 /**
  * Helper that prints the location's name or (if it has no name) its index to the given stream
  */
@@ -28,183 +26,62 @@ static void printLocation(LocationIdx loc, const ITSProblem &its, std::ostream &
     if (colors) printColor(s, Color::None);
 }
 
-
 void ITSExport::printGuard(const BoolExpr guard, std::ostream &s, bool colors) {
     if (colors) printColor(s, Color::Guard);
     s << guard;
 }
 
-
-void ITSExport::printCost(const Expr &cost, std::ostream &s, bool colors) {
-    if (colors) printColor(s, Color::Cost);
-    s << cost;
-    if (colors) printColor(s, Color::None);
-
-}
-
-
-void ITSExport::printRule(const Rule &rule, const ITSProblem &its, std::ostream &s, bool colors) {
-    printLocation(rule.getLhsLoc(), its, s, colors);
-    s << " -> ";
-
-    printLocation(rule.getRhsLoc(), its, s, colors);
-    s << " : ";
-
+void ITSExport::printRule(const Rule &rule, std::ostream &s, bool colors) {
+    printGuard(rule.getGuard(), s, colors);
+    s << " /\\ ";
+    bool first = true;
     for (auto upit : rule.getUpdate()) {
+        if (first) {
+            first = false;
+        } else {
+            s << ", ";
+        }
         if (colors) printColor(s, Color::Update);
         s << substitution::first(upit) << "'";
         s << "=" << substitution::second(upit);
         if (colors) printColor(s, Color::None);
-        s << ", ";
     }
-
-    printGuard(rule.getGuard(), s, colors);
-    s << ", cost: ";
-    printCost(rule.getCost(), s, colors);
 }
-
 
 void ITSExport::printLabeledRule(TransIdx rule, const ITSProblem &its, std::ostream &s) {
     s << setw(4) << rule << ": ";
-    printRule(its.getRule(rule), its, s, true);
+    printRule(its.getRule(rule), s, true);
 }
-
-
-void ITSExport::printDebug(const ITSProblem &its, std::ostream &s) {
-    s << "Variables:";
-    for (const Var &x: its.getVars()) {
-        s << " " << x;
-        if (its.isTempVar(x)) {
-            s << "*";
-        }
-    }
-    s << endl;
-
-    s << "Nodes:";
-    for (LocationIdx loc : its.getLocations()) {
-        s << " " << loc;
-        auto optName = its.getLocationName(loc);
-        if (optName) {
-            s << "/" << *optName;
-        }
-        if (its.isInitialLocation(loc)) {
-            s << "*";
-        }
-    }
-    s << endl;
-
-    s << "Transitions:" << endl;
-    for (LocationIdx loc : its.getLocations()) {
-        for (TransIdx trans : its.getTransitionsFrom(loc)) {
-            printLabeledRule(trans, its, s);
-            s << endl;
-        }
-    }
-}
-
 
 void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
     s << "Start location: ";
     printLocation(its.getInitialLocation(), its, s, true);
-    s << endl;
-    s << "Program variables:";
+    s << endl << endl;
+    if (!its.getLocationNames().empty()) {
+        s << "Location map:" << std::endl;
+        for (const auto p: its.getLocations()) {
+            printLocation(p, its, s, true);
+            s << " -> " << p << std::endl;
+        }
+    }
+    s << endl << "Program variables:";
     for (const auto &x: its.getVars()) {
         if (!its.isTempVar(x)) {
             s << " " << x;
         }
     }
-    s << endl;
-
+    s << endl << endl;
+    s << "Rules:" << endl;
     if (its.isEmpty()) {
         s << "  <empty>" << endl;
-        return;
-    }
-
-    for (LocationIdx n : its.getLocations()) {
-        for (TransIdx trans : its.getTransitionsFrom(n)) {
-            printLabeledRule(trans, its, s);
+    } else {
+        for (const auto idx : its.getAllTransitions()) {
+            printLabeledRule(idx, its, s);
             s << endl;
         }
     }
-}
-
-void ITSExport::printKoAT(const ITSProblem &its, std::ostream &s) {
-    auto printNode = [&](LocationIdx n) {
-        auto optName = its.getLocationName(n);
-        if (optName) {
-            s << *optName;
-        } else {
-            s << "loc" << n << "'";
-        }
-    };
-
-    s << "(GOAL COMPLEXITY)" << endl;
-    s << "(STARTTERM (FUNCTIONSYMBOLS "; printNode(its.getInitialLocation()); s << "))" << endl;
-    s << "(VAR";
-
-    // collect variables that actually appear in the rules
-    VarSet vars;
-    for (TransIdx rule : its.getAllTransitions()) {
-        VarSet rVars = its.getRule(rule).vars();
-        vars.insertAll(rVars);
-    }
-    for (const Var &var : vars) {
-        s << " " << var;
-    }
-
-    s << ")" << endl << "(RULES" << endl;
-
-    for (LocationIdx n : its.getLocations()) {
-        // figure out which variables appear on the lhs of the given location
-        VarSet relevantVars;
-        for (auto x: its.getVars()) {
-            if (!its.isTempVar(x)) {
-                relevantVars.insert(x);
-            }
-        }
-
-        //write transition in KoAT format (note that relevantVars is an ordered set)
-        for (TransIdx trans : its.getTransitionsFrom(n)) {
-            const Rule &rule = its.getRule(trans);;
-            //lhs
-            printNode(n);
-            bool first = true;
-            for (const Var &var : relevantVars) {
-                s << ((first) ? "(" : ",");
-                s << var;
-                first = false;
-            }
-
-            //cost
-            s << ") -{" << rule.getCost().expand() << "," << rule.getCost().expand() << "}> ";
-
-            printNode(rule.getRhsLoc());
-
-            first = true;
-            for (const Var &var : relevantVars) {
-                s << ((first) ? "(" : ",");
-                auto it = rule.getUpdate().find(var);
-                if (it != rule.getUpdate().end()) {
-                    s << substitution::second(*it);
-                } else {
-                    s << var;
-                }
-                first = false;
-            }
-
-            //guard
-            s << ") :|: ";
-            assert(rule.getGuard()->isConjunction());
-            first = true;
-            for (auto lit: rule.getGuard()->lits()) {
-                if (first) first = false;
-                else s << " && ";
-                s << lit;
-            }
-            s << endl;
-        }
-    }
-    s << ")" << endl;
+    s << endl << "Dependency graph:" << endl;
+    s << its.getDependencyGraph() << endl;
 }
 
 std::ostream& operator<<(std::ostream &s, const ITSProblem &its) {

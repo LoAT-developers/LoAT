@@ -1,0 +1,55 @@
+/*  This file is part of LoAT.
+ *  Copyright (c) 2015-2016 Matthias Naaf, RWTH Aachen University, Germany
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program. If not, see <http://www.gnu.org/licenses>.
+ */
+
+#pragma once
+
+
+#include <vector>
+#include <map>
+#include <set>
+#include <functional>
+#include <ostream>
+
+#include "types.hpp" // for TransIdx
+
+using Node = TransIdx;
+
+class DependencyGraph {
+public:
+    DependencyGraph();
+
+    void addNode(const Node node, std::set<Node> preds, std::set<Node> succs, bool self_loop);
+    void replaceNode(Node to_replace, Node replacement);
+    void removeEdge(Node from, Node to);
+    void removeEdges(const std::vector<std::pair<Node, Node>> &remove);
+    void refine(Node node, std::function<bool(Node, Node)> is_edge);
+    void refine(std::function<bool(Node, Node)> is_edge);
+    bool hasEdge(Node from, Node to) const;
+    std::set<Node> getNodes() const;
+    std::set<Node> getSuccessors(Node node) const;
+    std::set<Node> getPredecessors(Node node) const;
+    void removeNode(Node node);
+
+private:
+
+    std::set<Node> nodes;
+    std::map<Node, std::set<Node>> successors;
+    std::map<Node, std::set<Node>> predecessors;
+
+};
+
+std::ostream& operator<<(std::ostream &s, const DependencyGraph &d);

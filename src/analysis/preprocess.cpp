@@ -18,6 +18,7 @@
 #include "preprocess.hpp"
 #include "substitution.hpp"
 #include "guardtoolbox.hpp"
+#include "config.hpp"
 
 using namespace std;
 
@@ -47,7 +48,7 @@ Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule, const ITSProblem
     bool changed = false;
     Subs up = rule.getUpdate();
     changed |= removeTrivialUpdates(up);
-    Result<Rule> res{Rule(rule.getLhs(), RuleRhs(rule.getRhsLoc(), up)), changed};
+    Result<Rule> res{Rule(rule.getGuard(), up), changed};
     if (res) {
         res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get(), its);
     }
@@ -98,16 +99,7 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule) {
     };
     auto isTempOnlyInGuard = [&](const Var &sym) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
-        if (!isTemp(sym) || varsInUpdate.find(sym) != varsInUpdate.end()) {
-            return false;
-        }
-        if (!Config::Analysis::complexity()) {
-            return true;
-        }
-        if (!std::holds_alternative<NumVar>(sym)) {
-            return true;
-        }
-        return !rule.getCost().has(std::get<NumVar>(sym));
+        return isTemp(sym) && varsInUpdate.find(sym) == varsInUpdate.end();
     };
 
     //equalities allow easy propagation, thus transform x <= y, x >= y into x == y

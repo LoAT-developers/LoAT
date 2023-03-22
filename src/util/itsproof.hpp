@@ -43,6 +43,6 @@ public:
 
     void deletionProof(const std::set<TransIdx> &rules);
 
-    void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule, const ITSProblem &its);
+    void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule);
 
 };

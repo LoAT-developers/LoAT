@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "rule.hpp"
+#include "expression.hpp"
 
 namespace util {
 
@@ -82,17 +82,6 @@ namespace util {
                 varsOfInterest.collectVars(rel);
             }
             return find(varsOfInterest, updates, guard);
-        }
-
-        static const VarSet find(
-                const Guard &constraints,
-                const std::vector<RuleRhs> &rhss,
-                const BoolExpr guard) {
-            std::vector<Subs> updates;
-            for (const RuleRhs &rhs: rhss) {
-                updates.push_back(rhs.getUpdate());
-            }
-            return RelevantVariables::find(constraints, updates, guard);
         }
 
     };

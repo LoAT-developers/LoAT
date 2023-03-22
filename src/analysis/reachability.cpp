@@ -1,6 +1,5 @@
 #include "reachability.hpp"
 #include "chainstrategy.hpp"
-#include "chain.hpp"
 #include "preprocess.hpp"
 #include "loopacceleration.hpp"
 #include "result.hpp"
@@ -12,6 +11,7 @@
 #include "vector.hpp"
 #include "asymptoticbound.hpp"
 #include "vareliminator.hpp"
+#include "substitution.hpp"
 
 #include <numeric>
 #include <random>
@@ -158,14 +158,16 @@ void NonLoops::append(std::vector<long> &sequence, const Step &step) {
 }
 
 ResultViaSideEffects Reachability::remove_irrelevant_clauses() {
-    std::set<LocationIdx> keep;
-    std::stack<LocationIdx> todo;
-    todo.push(chcs.getSink());
+    std::set<TransIdx> keep;
+    std::stack<TransIdx> todo;
+    for (const auto x: chcs.getSinkTransitions()) {
+        todo.push(x);
+    }
     do {
-        const LocationIdx current = todo.top();
+        const TransIdx current = todo.top();
         todo.pop();
         keep.insert(current);
-        for (const auto p: chcs.getPredecessorLocations(current)) {
+        for (const auto p: chcs.getPredecessors(current)) {
             if (keep.find(p) == keep.end()) {
                 todo.push(p);
             }
@@ -173,15 +175,14 @@ ResultViaSideEffects Reachability::remove_irrelevant_clauses() {
     } while (!todo.empty());
     std::vector<LocationIdx> to_delete;
     for (const auto idx: chcs.getAllTransitions()) {
-        const LocationIdx target = chcs.getRule(idx).getRhsLoc();
-        if (keep.find(target) == keep.end()) {
-            to_delete.push_back(target);
+        if (keep.find(idx) == keep.end()) {
+            to_delete.push_back(idx);
         }
     }
     std::set<TransIdx> deleted;
     for (const auto idx: to_delete) {
-        const std::set<TransIdx> d = chcs.removeLocationAndRules(idx);
-        deleted.insert(d.begin(), d.end());
+        chcs.removeRule(idx);
+        deleted.insert(idx);
     }
     ResultViaSideEffects ret;
     if (!deleted.empty()) {
@@ -197,7 +198,7 @@ ResultViaSideEffects Reachability::simplify() {
         const auto res = Preprocess::preprocessRule(chcs, chcs.getRule(idx));
         if (res) {
             ret.succeed();
-            chcs.replaceRules({idx}, {res.get()});
+            chcs.replaceRule(idx, *res);
             ret.concat(res.getProof());
         }
     }
@@ -208,47 +209,36 @@ ResultViaSideEffects Reachability::unroll() {
     ResultViaSideEffects ret;
     for (const TransIdx idx: chcs.getAllTransitions()) {
         const Rule &r = chcs.getRule(idx);
-        if (r.isSimpleLoop()) {
+        if (chcs.isSimpleLoop(idx)) {
             const auto [res, period] = LoopAcceleration::chain(r, chcs);
             if (period > 1) {
                 const auto simplified = Preprocess::simplifyRule(chcs, res);
                 ret.succeed();
                 ret.ruleTransformationProof(r, "Unrolling", res, chcs);
                 if (simplified) {
-                    chcs.addRule(*simplified);
                     ret.concat(simplified.getProof());
-                } else {
-                    chcs.addRule(res);
                 }
+                chcs.addRule(*simplified, idx, idx);
             }
         }
     }
     return ret;
 }
 
-bool Reachability::leaves_scc(const TransIdx idx) const {
-    const Rule &r = chcs.getRule(idx);
-    return sccs.getSccIndex(r.getLhsLoc()) != sccs.getSccIndex(r.getRhsLoc());
-}
-
 std::optional<unsigned> Reachability::has_looping_suffix() {
     if (trace.empty()) {
         return {};
     }
-    const auto last_clause = chcs.getRule(trace.back().clause_idx);
-    const auto dst = last_clause.getRhsLoc();
+    const auto last_clause = trace.back().clause_idx;
     std::vector<long> sequence;
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
-        if (leaves_scc(step.clause_idx)) {
-            return {};
-        }
         non_loops.append(sequence, step);
         if (non_loops.contains(sequence)) {
             if (log) std::cout << sequence << " is a non-loop" << std::endl;
             continue;
         }
-        if (chcs.getRule(step.clause_idx).getLhsLoc() == dst) {
+        if (chcs.areAdjacent(last_clause, step.clause_idx)) {
             auto upos = static_cast<unsigned>(pos);
             bool looping = upos < trace.size() - 1 || is_orig_clause(step.clause_idx);
             if (looping) {
@@ -260,11 +250,11 @@ std::optional<unsigned> Reachability::has_looping_suffix() {
 }
 
 Subs Reachability::handle_update(const TransIdx idx) {
-    const Rule &r = chcs.getRule(idx);
-    if (r.getRhsLoc() == chcs.getSink()) {
+    if (chcs.isSinkTransition(idx)) {
         // no need to compute a new variable renaming if we just applied a query
         return {};
     }
+    const Rule &r = chcs.getRule(idx);
     const Subs last_var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
     Subs new_var_renaming;
     const Subs up = r.getUpdate();
@@ -319,7 +309,7 @@ void Reachability::update_cpx() {
         return;
     }
     const auto &resolvent = trace.back().resolvent;
-    const auto &cost = resolvent.getCost();
+    const auto &cost = chcs.getCost(resolvent);
     const auto max_cpx = toComplexity(cost);
     if (max_cpx <= cpx && !cost.hasVarWith([this](const auto &x){return chcs.isTempVar(x);})) {
         return;
@@ -338,13 +328,13 @@ void Reachability::update_cpx() {
 }
 
 Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const {
-    static Rule dummy(0, BExpression::True, 0, 0, Subs());
+    static Rule dummy(BExpression::True, Subs());
     if (!Config::Analysis::complexity()) {
         return dummy;
     }
     auto resolvent = chcs.getRule(idx).withGuard(implicant);
     if (!trace.empty()) {
-        resolvent = *Chaining::chainRules(chcs, trace.back().resolvent, resolvent, false);
+        resolvent = Chaining::chain(trace.back().resolvent, resolvent, chcs);
     }
     return *Preprocess::simplifyRule(chcs, resolvent);
 }
@@ -456,37 +446,6 @@ void Reachability::preprocess() {
     }
 }
 
-void Reachability::update_rules(const LocationIdx idx) {
-    // the order of the clauses in this list determines the selection order for resolution
-    std::list<LocationIdx> trans;
-    if (!Config::Analysis::complexity()) {
-        auto l_it = cross_scc.find(idx);
-        // Try to get out of the current SCC as we want to reach 'bottom', which is its own SCC.
-        if (l_it != cross_scc.end()) {
-            trans.insert(trans.end(), l_it->second.begin(), l_it->second.end());
-        }
-    }
-    // Then try original clauses that stay within the current SCC.
-    // The motivation for trying them before learned clauses is that it increases the probability
-    // that we visit different parts of the search space after restarts.
-    auto l_it = in_scc.find(idx);
-    if (l_it != in_scc.end()) {
-        trans.insert(trans.end(), l_it->second.begin(), l_it->second.end());
-    }
-    // Try learned clauses last.
-    const auto it = learned_clauses.find(idx);
-    if (it != learned_clauses.end()) {
-        trans.insert(trans.end(), it->second.begin(), it->second.end());
-    }
-    if (Config::Analysis::complexity()) {
-        auto l_it = cross_scc.find(idx);
-        if (l_it != cross_scc.end()) {
-            trans.insert(trans.end(), l_it->second.begin(), l_it->second.end());
-        }
-    }
-    rules[idx] = trans;
-}
-
 void Reachability::init() {
     srand(42);
     for (const auto &x: chcs.getVars()) {
@@ -496,48 +455,12 @@ void Reachability::init() {
     }
     for (const TransIdx idx: chcs.getAllTransitions()) {
         last_orig_clause = std::max(last_orig_clause, idx);
-        const auto rule = chcs.getRule(idx);
-        const auto src = rule.getLhsLoc();
-        const auto dst = rule.getRhsLoc();
-        if (src == chcs.getInitialLocation() && dst == chcs.getSink()) {
-            conditional_empty_clauses.push_back(idx);
-        } else {
-            std::map<LocationIdx, std::vector<TransIdx>> *to_insert;
-            if (dst == chcs.getSink()) {
-                to_insert = &queries;
-            } else if (leaves_scc(idx)) {
-                to_insert = &cross_scc;
-            } else {
-                to_insert = &in_scc;
-            }
-            const auto it = to_insert->find(src);
-            if (it == to_insert->end()) {
-                to_insert->emplace(src, std::vector<TransIdx>{idx});
-            } else {
-                it->second.push_back(idx);
-            }
-        }
-    }
-    for (const auto loc: chcs.getLocations()) {
-        update_rules(loc);
     }
 }
 
 void Reachability::luby_next() {
-    static std::default_random_engine rnd {};
     const auto [u,v] = luby;
     luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
-    const auto shuffle = [](auto &v) {
-        for (auto &p: v) {
-            std::shuffle(std::begin(p.second), std::end(p.second), rnd);
-        }
-    };
-    shuffle(in_scc);
-    shuffle(cross_scc);
-    shuffle(learned_clauses);
-    for (const auto idx: chcs.getLocations()) {
-        update_rules(idx);
-    }
     solver.setSeed(rand());
     solver.resetSolver();
     luby_loop_count = 0;
@@ -632,30 +555,21 @@ Rule Reachability::build_loop(const int backlink) {
     Rule loop = chcs.getRule(trace.back().clause_idx).withGuard(trace.back().implicant);
     for (int i = trace.size() - 2; i >= backlink; --i) {
         const Step &step = trace[i];
-        auto sigma = step.var_renaming;
-        sigma.erase(prog_vars); // rename temporary variables before chaining
-        loop = *Chaining::chainRules(chcs, chcs.getRule(step.clause_idx).withGuard(step.implicant).subs(sigma), loop, false);
-
+        loop = Chaining::chain(chcs.getRule(step.clause_idx).withGuard(step.implicant), loop, chcs);
     }
-    assert(loop.getLhsLoc() == loop.getRhsLoc());
     if (log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
-        ITSExport::printRule(loop, chcs, std::cout);
+        ITSExport::printRule(loop, std::cout);
         std::cout << std::endl;
     }
     return loop;
 }
 
-TransIdx Reachability::add_learned_clause(const Rule &accel, const Red::T &lang) {
-    const auto loop_idx = chcs.addRule(accel);
+TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink, const Red::T &lang) {
+    const auto fst = trace.at(backlink).clause_idx;
+    const auto last = trace.back().clause_idx;
+    const auto loop_idx = chcs.addLearnedRule(accel, fst, last);
     redundance->set_language(loop_idx, lang);
-    const auto src = accel.getLhsLoc();
-    auto acc_it = learned_clauses.find(src);
-    if (acc_it == learned_clauses.end()) {
-        learned_clauses.emplace(src, std::vector<TransIdx>{loop_idx});
-    } else {
-        acc_it->second.push_back(loop_idx);
-    }
     return loop_idx;
 }
 
@@ -684,7 +598,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
     return res;
 }
 
-std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Red::T &lang) {
+std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const unsigned backlink, const Red::T &lang) {
     Result<Rule> simp = Preprocess::simplifyRule(chcs, rule);
     if (Config::Analysis::reachability() && simp->getUpdate() == substitution::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -694,31 +608,25 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (log && simp) {
         std::cout << "simplified loop:" << std::endl;
-        ITSExport::printRule(*simp, chcs, std::cout);
+        ITSExport::printRule(*simp, std::cout);
         std::cout << std::endl;
     }
     AccelConfig config;
     config.allowDisjunctions = false;
     acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *simp, config);
     Result<std::vector<TransIdx>> res;
-    const auto src = rule.getLhsLoc();
+    const auto fst = trace.at(backlink).clause_idx;
     if (accel_res.successful()) {
         res.concat(accel_res.preprocessingProof);
     }
     if (accel_res.nontermRule) {
         res.succeed();
-        const auto idx = chcs.addRule(*accel_res.nontermRule);
-        auto it = queries.find(src);
-        if (it == queries.end()) {
-            queries.emplace(src, std::vector<TransIdx>{idx});
-        } else {
-            it->second.push_back(idx);
-        }
+        const auto idx = chcs.addQuery(*accel_res.nontermRule, fst);
         res->push_back(idx);
         res.concat(accel_res.nontermProof);
         if (log) {
             std::cout << "accelerated non-terminating rule:" << std::endl;
-            ITSExport::printRule(*accel_res.nontermRule, chcs, std::cout);
+            ITSExport::printRule(*accel_res.nontermRule, std::cout);
             std::cout << std::endl;
         }
     }
@@ -731,12 +639,12 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
                 simplified.concat(instantiate(*accel_res.n, *simplified));
             }
             res.succeed();
-            res->push_back(add_learned_clause(*simplified, lang));
+            res->push_back(add_learned_clause(*simplified, backlink, lang));
             res.concat(accel_res.accelerationProof);
             res.concat(simplified.getProof());
             if (log) {
                 std::cout << "accelerated rule:" << std::endl;
-                ITSExport::printRule(*simplified, chcs, std::cout);
+                ITSExport::printRule(*simplified, std::cout);
                 std::cout << std::endl;
             }
         }
@@ -745,7 +653,6 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         if (log) std::cout << "acceleration failed" << std::endl;
         return std::make_unique<Failed>();
     }
-    update_rules(src);
     return std::make_unique<Succeeded>(res);
 }
 
@@ -765,7 +672,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         return std::make_unique<Covered>();
     }
     luby_loop_count++;
-    auto state = learn_clause(loop, lang);
+    auto state = learn_clause(loop, backlink, lang);
     if (!state->succeeded()) {
         return state;
     }
@@ -774,9 +681,8 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     // drop the looping suffix
     drop_until(backlink);
     for (const auto idx: idxs) {
-        const auto clause = chcs.getRule(idx);
-        if (store_step(idx, clause.getGuard())) {
-            if (clause.getRhsLoc() == chcs.getSink()) {
+        if (store_step(idx, chcs.getRule(idx).getGuard())) {
+            if (chcs.isSinkTransition(idx)) {
                 return std::make_unique<ProvedUnsat>(accel_state->getProof());
             } else {
                 return state;
@@ -787,33 +693,29 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     return std::make_unique<Dropped>(*accel_state);
 }
 
-LocationIdx Reachability::get_current_predicate() const {
-    return trace.empty() ? chcs.getInitialLocation() : chcs.getRule(trace.back().clause_idx).getRhsLoc();
-}
-
-bool Reachability::try_to_finish(const std::vector<TransIdx> &clauses) {
+bool Reachability::try_to_finish() {
     solver.setTimeout(2000);
+    std::set<TransIdx> clauses = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
     for (const auto &q: clauses) {
-        const std::optional<BoolExpr> implicant = resolve(q);
-        if (implicant) {
-            // no need to compute the model and the variable renaming for the next step, as we are done
-            add_to_trace(Step(q, *implicant, Subs(), compute_resolvent(q, *implicant)));
-            proof.headline("Step with " + std::to_string(q));
-            print_state();
-            unsat();
-            return true;
+        if (chcs.isSinkTransition(q)) {
+            const std::optional<BoolExpr> implicant = resolve(q);
+            if (implicant) {
+                // no need to compute the model and the variable renaming for the next step, as we are done
+                add_to_trace(Step(q, *implicant, Subs(), compute_resolvent(q, *implicant)));
+                proof.headline("Step with " + std::to_string(q));
+                print_state();
+                unsat();
+                return true;
+            }
         }
     }
     solver.setTimeout(smt_timeout);
     return false;
 }
 
-bool Reachability::try_to_finish() {
-    return try_to_finish(queries[get_current_predicate()]);
-}
-
-bool Reachability::try_conditional_empty_clauses() {
-    return try_to_finish(conditional_empty_clauses);
+void shuffle(std::vector<TransIdx> &v) {
+    static std::default_random_engine rnd {};
+    std::shuffle(std::begin(v), std::end(v), rnd);
 }
 
 void Reachability::analyze() {
@@ -824,7 +726,7 @@ void Reachability::analyze() {
     }
     preprocess();
     init();
-    if (try_conditional_empty_clauses()) {
+    if (try_to_finish()) {
         return;
     }
     blocked_clauses[0].clear();
@@ -883,8 +785,9 @@ void Reachability::analyze() {
             luby_next();
             proof.headline("Restart");
         }
-        const auto current = get_current_predicate();
-        auto &to_try = rules[current];
+        const auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
+        std::vector<TransIdx> to_try(try_set.begin(), try_set.end());
+        shuffle(to_try);
         auto it = to_try.begin();
         std::vector<TransIdx> append;
         while (it != to_try.end()) {

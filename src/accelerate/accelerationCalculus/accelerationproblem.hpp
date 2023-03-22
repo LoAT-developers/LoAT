@@ -27,7 +27,6 @@ class AccelerationProblem {
     LitSet todo;
     Subs up;
     const std::optional<Recurrence::Result> closed;
-    Expr cost;
     BoolExpr guard;
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     ITSProblem &its;
@@ -56,7 +55,6 @@ class AccelerationProblem {
             const BoolExpr guard,
             const Subs &up,
             const std::optional<Recurrence::Result> &closed,
-            const Expr &cost,
             ITSProblem &its,
             const AccelConfig &config);
 

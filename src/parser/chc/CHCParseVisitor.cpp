@@ -102,8 +102,10 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             up.put<IntTheory>(vars[i], its.addFreshTemporaryVariable<IntTheory>("tmp"));
             up.put<BoolTheory>(bvars[i], BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>("tmp")));
         }
-        const BoolExpr guard = c.guard->subs(ren)->simplify();
-        its.addRule(Rule(c.lhs.loc, guard, 1, c.rhs.loc, up));
+        const auto loc_var = its.getLocVar();
+        up.put(loc_var, c.rhs.loc);
+        const BoolExpr guard = c.guard->subs(ren)->simplify() & Rel::buildEq(loc_var, c.lhs.loc);
+        its.addRule(Rule(guard, up), c.lhs.loc);
     }
     return its;
 }

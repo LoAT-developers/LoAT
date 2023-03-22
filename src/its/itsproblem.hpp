@@ -19,7 +19,7 @@
 
 #include "rule.hpp"
 #include "variablemanager.hpp"
-#include "hypergraph.hpp"
+#include "dependencygraph.hpp"
 
 #include <optional>
 #include <unordered_map>
@@ -42,36 +42,27 @@ public:
     LocationIdx getSink() const;
     std::optional<LocationIdx> getLocationIdx(const std::string &name) const;
 
-    // query the rule associated with a given transition
-    bool hasRule(TransIdx transition) const;
-    const Rule getRule(TransIdx transition) const;
-    std::optional<TransIdx> getTransIdx(const Rule &rule) const;
+    const Rule& getRule(TransIdx transition) const;
 
-    // returns the destinations of the given transition
-    const std::set<LocationIdx> getTransitionTargets(TransIdx idx) const;
-
-    // query transitions of the graph
-    std::set<TransIdx> getTransitionsFrom(LocationIdx loc) const;
-    std::vector<TransIdx> getTransitionsFromTo(LocationIdx from, LocationIdx to) const;
-    std::set<TransIdx> getTransitionsTo(LocationIdx loc) const;
-
-    std::vector<TransIdx> getAllTransitions() const;
-
-    bool hasTransitionsFrom(LocationIdx loc) const;
-    bool hasTransitionsFromTo(LocationIdx from, LocationIdx to) const;
-    bool hasTransitionsTo(LocationIdx loc) const;
-
-    // returns transitions from loc to loc for which isSimpleLoops() holds
-    std::vector<TransIdx> getSimpleLoopsAt(LocationIdx loc) const;
-
-    // query nodes of the graph
-    std::set<LocationIdx> getSuccessorLocations(LocationIdx loc) const;
-    std::set<LocationIdx> getPredecessorLocations(LocationIdx loc) const;
+    std::set<TransIdx> getAllTransitions() const;
+    std::set<TransIdx> getSuccessors(const TransIdx loc) const;
+    std::set<TransIdx> getPredecessors(const TransIdx loc) const;
+    bool areAdjacent(const TransIdx first, const TransIdx second) const;
 
     // Mutation of Rules
     void removeRule(TransIdx transition);
-    TransIdx addRule(Rule rule);
-    std::vector<TransIdx> replaceRules(const std::vector<TransIdx> &toReplace, const std::vector<Rule> replacement);
+
+private:
+
+    TransIdx addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<TransIdx> &preds, const std::set<TransIdx> &succs);
+
+public:
+
+    TransIdx addRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs);
+    TransIdx addLearnedRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs);
+    TransIdx addRule(const Rule &rule, const LocationIdx start);
+    TransIdx addQuery(const Rule &rule, const TransIdx same_preds);
+    TransIdx replaceRule(const TransIdx toReplace, const Rule &replacement);
 
     // Mutation for Locations
     LocationIdx addLocation();
@@ -79,43 +70,57 @@ public:
 
     // Required for printing (see ITSExport)
     std::set<LocationIdx> getLocations() const;
-    std::optional<std::string> getLocationName(LocationIdx idx) const;
+    const std::map<LocationIdx, std::string>& getLocationNames() const;
     std::string getPrintableLocationName(LocationIdx idx) const; // returns "[idx]" if there is no name
 
     VarSet getVars() const;
 
-    // Removes a location, but does _not_ care about rules.
-    // Rules from/to this location must be removed before calling this!
-    void removeOnlyLocation(LocationIdx loc);
-
     // Removes a location and all rules that visit loc
     std::set<TransIdx> removeLocationAndRules(LocationIdx loc);
-
-    HyperGraph::SCCs sccs() const;
 
     // Print the ITSProblem in a simple, but user-friendly format
     void print(std::ostream &s) const;
 
+    Expr getCost(const Rule &rule) const;
+
+    Expr getCost(const TransIdx &idx) const;
+
+    NumVar getCostVar() const;
+
+    NumVar getLocVar() const;
+
+    std::optional<LocationIdx> getRhsLoc(const Rule &rule) const;
+
+    LocationIdx getLhsLoc(const TransIdx idx) const;
+
+    LocationIdx getRhsLoc(const TransIdx idx) const;
+
+    const std::set<TransIdx>& getInitialTransitions() const;
+
+    const std::set<TransIdx>& getSinkTransitions() const;
+
+    bool isSimpleLoop(const TransIdx idx) const;
+
+    bool isSinkTransition(const TransIdx idx) const;
+
+    bool isInitialTransition(const TransIdx idx) const;
+
+    const DependencyGraph& getDependencyGraph() const;
+
 protected:
 
-    // Main structure is the graph, where (hyper-)transitions are annotated with a RuleIdx.
-    HyperGraph graph;
-
-    // Collection of all rules, identified by the corresponding transitions in the graph.
-    // The map allows to efficiently add/delete rules.
+    DependencyGraph graph;
     std::map<TransIdx, Rule> rules;
-
-    // the set of all locations (locations are just arbitrary numbers to allow simple addition/deletion)
     std::set<LocationIdx> locations;
-
-    // only for output, remembers the original location names
     std::map<LocationIdx, std::string> locationNames;
-
-    // the next free location index
-    LocationIdx nextUnusedLocation = 0;
-
-    // the initial location
+    std::map<TransIdx, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations;
+    std::set<TransIdx> initialTransitions;
+    std::set<TransIdx> sinkTransitions;
+    TransIdx next {0};
+    LocationIdx nextUnusedLocation {0};
     LocationIdx initialLocation;
-    LocationIdx sink = addNamedLocation("LoAT_sink");
+    LocationIdx sink {addNamedLocation("LoAT_sink")};
+    NumVar cost {addFreshVariable<IntTheory>("cost")};
+    NumVar loc {addFreshVariable<IntTheory>("loc")};
 
 };

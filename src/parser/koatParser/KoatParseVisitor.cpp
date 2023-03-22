@@ -1,13 +1,14 @@
 #include "KoatParseVisitor.h"
 #include "boolexpression.hpp"
 #include "variable.hpp"
+#include "config.hpp"
 
 using fs_type = LocationIdx;
 using lhs_type = LocationIdx;
 using to_type = Expr;
-using com_type = std::vector<RuleRhs>;
+using com_type = std::vector<Subs>;
 using cond_type = BoolExpr;
-using rhs_type = RuleRhs;
+using rhs_type = Subs;
 using expr_type = Expr;
 using var_type = NumVar;
 using lit_type = Rel;
@@ -64,8 +65,12 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }
-    RuleLhs lhs(lhsLoc, cond, cost);
-    Rule rule(lhs, rhss.at(0));
+    cond = cond & Rel::buildEq(its.getLocVar(), lhsLoc);
+    auto up = rhss.at(0);
+    if (Config::Analysis::complexity()) {
+        up.put<IntTheory>(its.getCostVar(), its.getCostVar() + cost);
+    }
+    Rule rule(cond, up);
     auto vars = rule.vars();
     Subs varRenaming;
     for (const auto &x: vars) {
@@ -80,7 +85,8 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
                        }, x);
         }
     }
-    its.addRule(rule.subs(varRenaming));
+    rule = rule.subs(varRenaming);
+    its.addRule(rule, lhsLoc);
     return {};
 }
 
@@ -108,7 +114,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
 }
 
 antlrcpp::Any KoatParseVisitor::visitCom(KoatParser::ComContext *ctx) {
-    std::vector<RuleRhs> rhss;
+    com_type rhss;
     for (const auto &rhs: ctx->rhs()) {
         rhss.push_back(any_cast<rhs_type>(visit(rhs)));
     }
@@ -126,7 +132,8 @@ antlrcpp::Any KoatParseVisitor::visitRhs(KoatParser::RhsContext *ctx) {
         }
     }
     LocationIdx loc = any_cast<fs_type>(visit(ctx->fs()));
-    return RuleRhs(loc, up);
+    up.put<IntTheory>(its.getLocVar(), loc);
+    return up;
 }
 
 antlrcpp::Any KoatParseVisitor::visitTo(KoatParser::ToContext *ctx) {

@@ -1,7 +1,5 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-        chain.cpp
-        chain.hpp
         chainstrategy.cpp
         chainstrategy.hpp
         guardtoolbox.hpp
@@ -10,8 +8,6 @@ target_sources(${EXECUTABLE}
         preprocess.hpp
         reachability.hpp
         reachability.cpp
-        satisfiability.cpp
-        satisfiability.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

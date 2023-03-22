@@ -25,7 +25,6 @@
 #include "proof.hpp"
 #include "version.hpp"
 #include "reachability.hpp"
-#include "satisfiability.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -73,8 +72,6 @@ void parseFlags(int argc, char *argv[]) {
             Proof::disableColors();
         } else if (strcmp("--reach-log", argv[arg]) == 0) {
             reachability::Reachability::log = true;
-        } else if (strcmp("--sat-log", argv[arg]) == 0) {
-            satisfiability::Satisfiability::log = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
             bool found = false;
             std::string str = getNext();
@@ -153,9 +150,6 @@ int main(int argc, char *argv[]) {
     case Config::Analysis::NonTermination:
     case Config::Analysis::Reachability:
         reachability::Reachability::analyze(its);
-        break;
-    case Config::Analysis::Satisfiability:
-        satisfiability::Satisfiability::analyze(its);
         break;
     case Config::Analysis::CheckLinear:
         for (const auto &idx: its.getAllTransitions()) {

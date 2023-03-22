@@ -77,38 +77,6 @@ std::optional<Recurrence::RecurrenceSolution<BoolTheory>> Recurrence::solve(cons
     return {};
 }
 
-std::optional<GiNaC::ex> Recurrence::iterateCost(const Expr &c) {
-    const auto cost = c.subs(updatePreRecurrences.get<IntTheory>()); //replace variables by their recurrence equations
-
-    //Example: if cost = y, the result is x(n) = x(n-1) + y(n-1), with x(0) = 0
-    Purrs::Expr rhs = Purrs::x(Purrs::Recurrence::n - 1) + Purrs::Expr::fromGiNaC(cost.ex);
-    Purrs::Expr sol;
-
-    try {
-        Purrs::Recurrence rec(rhs);
-        rec.set_initial_conditions({ {0, 0} }); // 0 iterations have 0 costs
-
-        auto res = rec.compute_exact_solution();
-        if (res != Purrs::Recurrence::SUCCESS) {
-            // try lower bound as fallback, since it is sound to under-approximate costs
-            res = rec.compute_lower_bound();
-            if (res != Purrs::Recurrence::SUCCESS) {
-                return {};
-            } else {
-                rec.lower_bound(sol);
-            }
-        } else {
-            rec.exact_solution(sol);
-        }
-    } catch (...) {
-        //purrs throws a runtime exception if the recurrence is too difficult
-        return {};
-    }
-
-    return {sol.toGiNaC()};
-}
-
-
 std::optional<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Subs &update) {
     assert(dependencyOrder.size() == update.size());
     Subs newUpdate;
@@ -153,13 +121,9 @@ std::optional<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(co
 
 Recurrence::Result::Result(const NumVar &n): n(n) {}
 
-std::optional<Recurrence::Result> Recurrence::iterate(const Subs &update, const Expr &cost) {
+std::optional<Recurrence::Result> Recurrence::iterate(const Subs &update) {
     auto newUpdate = iterateUpdate(update);
     if (!newUpdate) {
-        return {};
-    }
-    auto newCost = iterateCost(cost);
-    if (!newCost) {
         return {};
     }
     Recurrence::Result res(varMan.addFreshTemporaryVariable<IntTheory>("n"));
@@ -168,19 +132,17 @@ std::optional<Recurrence::Result> Recurrence::iterate(const Subs &update, const 
         res.update.put<IntTheory>(p.first, p.second.ex.subs(subs));
     }
     res.update.get<BoolTheory>() = newUpdate->update.get<BoolTheory>();
-    res.cost = newCost->subs(subs);
     res.validityBound = newUpdate->validityBound;
     return {res};
 }
 
 
-std::optional<Recurrence::Result> Recurrence::iterate(VarMan &varMan, const Subs &update, const Expr &cost) {
+std::optional<Recurrence::Result> Recurrence::iterate(VarMan &varMan, const Subs &update) {
     // This may modify the rule's guard and update
     auto order = DependencyOrder::findOrder(update);
     if (!order) {
         return {};
     }
-
     Recurrence rec(varMan, *order);
-    return rec.iterate(update, cost);
+    return rec.iterate(update);
 }

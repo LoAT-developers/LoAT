@@ -107,20 +107,6 @@ public:
                                       const Expr &cost,
                                       bool finalCheck = false,
                                       const Complexity &currentRes = Complexity::Const,
-                                      unsigned int timeout = Config::Smt::LimitTimeout);
-
-    static Result determineComplexityViaSMT(VarMan &varMan,
-                                            const Conjunction<IntTheory> &guard,
-                                            const Expr &cost,
-                                            bool finalCheck = false,
-                                            Complexity currentRes = Complexity::Const,
-                                            unsigned int timeout = Config::Smt::LimitTimeout);
-
-    static Result determineComplexityViaSMT(VarMan &varMan,
-                                            const BExpr<IntTheory> guard,
-                                            const Expr &cost,
-                                            bool finalCheck = false,
-                                            Complexity currentRes = Complexity::Const,
-                                            unsigned int timeout = Config::Smt::LimitTimeout);
+                                      unsigned int timeout = Config::Limit::Timeout);
 
 };

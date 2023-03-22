@@ -17,6 +17,7 @@
 
 #include "parser.hpp"
 #include "boolexpression.hpp"
+#include "config.hpp"
 
 #include <fstream>
 #include <boost/algorithm/string.hpp>
@@ -72,6 +73,8 @@ namespace sexpressionparser {
                     for (const std::string &str: postVars) {
                         tmpVars.insert(vars.at(str));
                     }
+                    const auto loc_var = res.getLocVar();
+                    const auto cost_var = res.getCostVar();
                     for (auto &ruleExp: ruleExps.arguments()) {
                         if (ruleExp[0].str() == "cfg_trans2") {
                             LocationIdx from = locations[ruleExp[2].str()];
@@ -79,11 +82,16 @@ namespace sexpressionparser {
                             Subs update;
                             Conjunction<IntTheory> guard;
                             parseCond(ruleExp[5], guard);
+                            guard.push_back(Rel::buildEq(loc_var, from));
                             BoolExpr cond = boolExpression::transform(BoolExpression<IntTheory>::buildAndFromLits(guard));
                             for (unsigned int i = 0; i < preVars.size(); i++) {
-                                update.get<IntTheory>().put(vars.at(preVars[i]), vars.at(postVars[i]));
+                                update.put<IntTheory>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            Rule rule(from, cond, 1, to, update);
+                            update.put<IntTheory>(loc_var, to);
+                            if (Config::Analysis::complexity()) {
+                                update.put(cost_var, Expr(cost_var) + 1);
+                            }
+                            Rule rule(cond, update);
                             // make sure that the temporary variables are unique
                             std::set<NumVar> currTmpVars(tmpVars);
                             cond->collectVars<IntTheory>(currTmpVars);
@@ -93,7 +101,7 @@ namespace sexpressionparser {
                                     subs.get<IntTheory>().put(var, res.addFreshTemporaryVariable<IntTheory>(var.getName()));
                                 }
                             }
-                            res.addRule(rule.subs(subs));
+                            res.addRule(rule.subs(subs), from);
                         }
                     }
                 }
