@@ -182,7 +182,7 @@ Complexity toComplexityRec(const Expr &term) {
         return cpx;
 
     } else if (term.isVar()) {
-        return (term.compare(Expr::NontermSymbol) == 0) ? Complexity::Nonterm : Complexity::Poly(1);
+        return Complexity::Poly(1);
     }
 
     //unknown expression type (e.g. relational)
@@ -191,10 +191,6 @@ Complexity toComplexityRec(const Expr &term) {
 
 
 Complexity toComplexity(const Expr &e) {
-    if (e.isNontermSymbol()) {
-        return Complexity::Nonterm;
-    }
-
     Expr simple = e.expand(); // multiply out
     return toComplexityRec(simple);
 }

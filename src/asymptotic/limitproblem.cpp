@@ -26,7 +26,7 @@ LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const 
 
 
 LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, VariableManager &varMan)
-    : variableN("n"), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
+    : variableN(varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int)), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
     for (const auto &lit : normalizedGuard) {
         const Rel &rel = std::get<Rel>(lit);
         assert(rel.isGZeroConstraint());

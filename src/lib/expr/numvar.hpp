@@ -10,6 +10,8 @@ class NumVar {
 
 public:
 
+    explicit NumVar(const GiNaC::symbol &sym);
+
     explicit NumVar(const std::string &name);
 
     std::string getName() const;

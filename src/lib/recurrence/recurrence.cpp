@@ -128,7 +128,7 @@ std::optional<Recurrence::Result> Recurrence::iterate(const Subs &update) {
         return {};
     }
     Recurrence::Result res(varMan.addFreshTemporaryVariable<IntTheory>("n"));
-    Subs subs {Subs::build<IntTheory>(NumVar(ginacN.get_name()), *res.n)};
+    Subs subs {Subs::build<IntTheory>(NumVar(ginacN), *res.n)};
     res.update = substitution::concat(newUpdate->update, subs);
     res.validityBound = newUpdate->validityBound;
     return {res};

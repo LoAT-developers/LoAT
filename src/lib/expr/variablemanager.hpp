@@ -14,6 +14,8 @@
 class VariableManager {
 public:
 
+    explicit VariableManager();
+
     // Handling of temporary variables
     bool isTempVar(const Var &var) const;
 

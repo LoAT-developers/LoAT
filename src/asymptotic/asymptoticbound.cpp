@@ -775,26 +775,8 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
 
     // Expand the cost to make it easier to analyze
     Expr expandedCost = cost.expand();
-    Expr costToCheck = expandedCost;
 
-    // Handle nontermination. It suffices to check that the guard is satisfiable
-    if (expandedCost.isNontermSymbol()) {
-        auto smtRes = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(guard), varMan);
-        if (smtRes == Sat) {
-            Proof proof;
-            proof.append("Guard is satisfiable, yielding nontermination");
-            return Result(Complexity::Nonterm, Expr::NontermSymbol, 0, proof);
-        } else {
-            // if Z3 fails, the calculus for limit problems might still succeed if, e.g., the rule contains exponentials
-            costToCheck = varMan.addFreshVariable<IntTheory>("x");
-        }
-    }
-    if (finalCheck && Config::Analysis::nonTermination()) {
-        return Result(Complexity::Unknown);
-    }
-    assert(!costToCheck.has(Expr::NontermSymbol));
-
-    AsymptoticBound asymptoticBound(varMan, guard, costToCheck, finalCheck, timeout);
+    AsymptoticBound asymptoticBound(varMan, guard, expandedCost, finalCheck, timeout);
     asymptoticBound.initLimitVectors();
     asymptoticBound.normalizeGuard();
 
@@ -817,16 +799,11 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
             asymptoticBound.proof.append(stringstream() << pair.first << " / " << pair.second);
         }
 
-        // Gather all relevant information
-        if (expandedCost.isNontermSymbol()) {
-            return Result(Complexity::Nonterm, Expr::NontermSymbol, 0, asymptoticBound.proof);
-        } else {
-            Expr solvedCost = asymptoticBound.cost.subs(asymptoticBound.bestComplexity.solution);
-            return Result(asymptoticBound.bestComplexity.complexity,
-                          solvedCost.expand(),
-                          asymptoticBound.bestComplexity.inftyVars,
-                          asymptoticBound.proof);
-        }
+        Expr solvedCost = asymptoticBound.cost.subs(asymptoticBound.bestComplexity.solution);
+        return Result(asymptoticBound.bestComplexity.complexity,
+                      solvedCost.expand(),
+                      asymptoticBound.bestComplexity.inftyVars,
+                      asymptoticBound.proof);
     } else {
 
         asymptoticBound.proof.append("Could not solve the limit problem.");

@@ -1,8 +1,15 @@
 #include "numvar.hpp"
 
+#include <assert.h>
+
 std::map<std::string, GiNaC::symbol> NumVar::symbols;
 
 NumVar::NumVar(const std::string &name): name(name) {}
+
+NumVar::NumVar(const GiNaC::symbol &sym): name(sym.get_name()) {
+    assert(symbols.find(name) == symbols.end());
+    symbols.emplace(name, sym);
+}
 
 std::string NumVar::getName() const {
     return name;

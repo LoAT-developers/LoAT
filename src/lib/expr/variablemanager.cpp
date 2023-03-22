@@ -20,6 +20,12 @@
 
 using namespace std;
 
+VariableManager::VariableManager() {
+    // block the variable name "n" which is used by PURRS
+    used.insert("n");
+    basenameCount.emplace("n", 1);
+}
+
 bool VariableManager::isTempVar(const Var &var) const {
     return temporaryVariables.find(variable::getName(var)) != temporaryVariables.end();
 }

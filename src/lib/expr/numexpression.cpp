@@ -22,8 +22,6 @@
 
 using namespace std;
 
-const NumVar Expr::NontermSymbol("NONTERM");
-
 void Expr::applySubs(const ExprSubs &subs) {
     this->ex = this->ex.subs(subs.ginacMap);
 }
@@ -45,16 +43,9 @@ bool Expr::findAll(const Expr &pattern, std::set<Expr> &found) const {
     return anyFound;
 }
 
-
 bool Expr::equals(const NumVar &var) const {
     return this->compare(*var) == 0;
 }
-
-
-bool Expr::isNontermSymbol() const {
-    return equals(NontermSymbol);
-}
-
 
 bool Expr::isLinear(const std::optional<std::set<NumVar>> &vars) const {
     std::set<NumVar> theVars = vars ? *vars : this->vars();
@@ -187,8 +178,7 @@ void Expr::collectVars(std::set<NumVar> &res) const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
         SymbolVisitor(std::set<NumVar> &t) : target(t) {}
         void visit(const GiNaC::symbol &sym) {
-            const std::string name = sym.get_name();
-            if (name != NontermSymbol.getName()) target.insert(NumVar(name));
+            target.insert(NumVar(sym.get_name()));
         }
     private:
         std::set<NumVar> &target;

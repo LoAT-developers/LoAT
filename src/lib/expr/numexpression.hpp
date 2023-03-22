@@ -61,11 +61,6 @@ public:
     enum Type {Int, Rational, Bool};
 
     /**
-     * Special variable that represents the cost of non-terminating computations.
-     */
-    static const NumVar NontermSymbol;
-
-    /**
      * @return A wildcard for constructing patterns.
      */
     static Expr wildcard(unsigned int label);
@@ -92,11 +87,6 @@ public:
      * @return True iff this expression is equal (resp. evaluates) to the given variable
      */
     bool equals(const NumVar &var) const;
-
-    /**
-     * @return True iff this expression is equal to NontermSymbol.
-     */
-    bool isNontermSymbol() const;
 
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
