@@ -24,6 +24,8 @@ public:
     bool subset(const Automaton &that) const;
     bool empty() const;
 
+    faudes::EventSet get_alphabet() const;
+
     friend std::ostream& operator<<(std::ostream &s, const Automaton &a);
 
 };
@@ -42,6 +44,9 @@ public:
     virtual void mark_as_redundant(const T &t) override;
     virtual void concat(T &t1, const T &t2) const override;
     virtual void transitive_closure(T &t) const override;
+
+    // TODO could be used to compute unsat cores
+    std::set<std::pair<TransIdx, Guard>> get_alphabet(const T &t) const;
 
 private:
 
