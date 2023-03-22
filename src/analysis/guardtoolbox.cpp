@@ -21,7 +21,7 @@
 
 using namespace std;
 
-Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
+Result<Rule> GuardToolbox::propagateEqualities(const VarMan &its, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
     ExprSubs varSubs;
     ResultViaSideEffects proof;
     auto guard = rule.getGuard()->universallyValidLits();
@@ -75,7 +75,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
         Subs subs;
         subs.get<IntTheory>() = varSubs;
         res = rule.subs(subs);
-        res.ruleTransformationProof(rule, "Propagated Equalities", res.get(), its);
+        res.ruleTransformationProof(rule, "Propagated Equalities", res.get());
         res.newline();
         res.storeSubProof(proof.getProof());
     }
@@ -83,7 +83,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const ITSProblem &its, const Rule
 }
 
 
-Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, const Rule &rule) {
+Result<Rule> GuardToolbox::propagateBooleanEqualities(const VarMan &its, const Rule &rule) {
     auto bvars = rule.getGuard()->vars().get<BoolVar>();
     Result<Rule> res(rule);
     Proof subproof;
@@ -111,14 +111,14 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const ITSProblem &its, con
         }
     } while (changed);
     if (res) {
-        res.ruleTransformationProof(rule, "propagated boolean equalities", *res, its);
+        res.ruleTransformationProof(rule, "Propagated Boolean Equalities", *res);
         res.storeSubProof(subproof);
     }
     return res;
 }
 
 
-Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow, const ITSProblem &its) {
+Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow) {
     Result<Rule> res(rule);
     if (!rule.getGuard()->isConjunction()) {
         return res;
@@ -185,13 +185,13 @@ abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (changed) {
         res = rule.withGuard(BExpression::buildAndFromLits(guard));
-        res.ruleTransformationProof(rule, "Eliminated Temporary Variables via Transitive Closure", *res, its);
+        res.ruleTransformationProof(rule, "Eliminated Temporary Variables via Transitive Closure", *res);
     }
     return res;
 }
 
 
-Result<Rule> GuardToolbox::makeEqualities(const Rule &rule, const ITSProblem &its) {
+Result<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
     Result<Rule> res(rule);
     const auto &guard = rule.getGuard()->universallyValidLits();
     vector<pair<Rel,Expr>> terms; //inequalities from the guard, with the associated index in guard
@@ -235,7 +235,7 @@ Result<Rule> GuardToolbox::makeEqualities(const Rule &rule, const ITSProblem &it
     }
     if (!equalities.empty()) {
         res.set(rule.withGuard(rule.getGuard() & BExpression::buildAndFromLits(equalities)));
-        res.ruleTransformationProof(rule, "made implied equalities explicit", *res, its);
+        res.ruleTransformationProof(rule, "made implied equalities explicit", *res);
     }
     return res;
 }

@@ -12,6 +12,7 @@
 #include "asymptoticbound.hpp"
 #include "vareliminator.hpp"
 #include "substitution.hpp"
+#include "chain.hpp"
 
 #include <numeric>
 #include <random>
@@ -214,7 +215,7 @@ ResultViaSideEffects Reachability::unroll() {
             if (period > 1) {
                 const auto simplified = Preprocess::simplifyRule(chcs, res);
                 ret.succeed();
-                ret.ruleTransformationProof(r, "Unrolling", res, chcs);
+                ret.ruleTransformationProof(r, "Unrolling", res);
                 if (simplified) {
                     ret.concat(simplified.getProof());
                 }
@@ -223,6 +224,26 @@ ResultViaSideEffects Reachability::unroll() {
         }
     }
     return ret;
+}
+
+ResultViaSideEffects Reachability::refine_dependency_graph() {
+    ResultViaSideEffects res;
+    const auto removed {chcs.refineDependencyGraph()};
+    if (!removed.empty()) {
+        res.succeed();
+        res.dependencyGraphRefinementProof(removed);
+    }
+    return res;
+}
+
+ResultViaSideEffects Reachability::refine_dependency_graph(const TransIdx idx) {
+    ResultViaSideEffects res;
+    const auto removed {chcs.refineDependencyGraph(idx)};
+    if (!removed.empty()) {
+        res.succeed();
+        res.dependencyGraphRefinementProof(removed);
+    }
+    return res;
 }
 
 std::optional<unsigned> Reachability::has_looping_suffix() {
@@ -440,6 +461,11 @@ void Reachability::preprocess() {
         proof.majorProofStep("Unrolled Loops", chcs);
         proof.storeSubProof(res.getProof());
     }
+    res = refine_dependency_graph();
+    if (res) {
+        proof.majorProofStep("Refined Dependency Graph", chcs);
+        proof.storeSubProof(res.getProof());
+    }
     if (log) {
         std::cout << "Simplified ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
@@ -593,7 +619,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
             return Result<Rule>(rule);
         }
         res = rule.subs(Subs::build<IntTheory>(s));
-        res.ruleTransformationProof(rule, "Instantiation", *res, chcs);
+        res.ruleTransformationProof(rule, "Instantiation", *res);
     }
     return res;
 }
@@ -624,6 +650,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         const auto idx = chcs.addQuery(*accel_res.nontermRule, fst);
         res->push_back(idx);
         res.concat(accel_res.nontermProof);
+        res.concat(refine_dependency_graph(idx).getProof());
         if (log) {
             std::cout << "accelerated non-terminating rule:" << std::endl;
             ITSExport::printRule(*accel_res.nontermRule, std::cout);
@@ -639,9 +666,13 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
                 simplified.concat(instantiate(*accel_res.n, *simplified));
             }
             res.succeed();
-            res->push_back(add_learned_clause(*simplified, backlink, lang));
+            const auto loop_idx {add_learned_clause(*simplified, backlink, lang)};
+            res->push_back(loop_idx);
             res.concat(accel_res.accelerationProof);
             res.concat(simplified.getProof());
+            if (accel_res.inexact()) {
+                res.concat(refine_dependency_graph(loop_idx).getProof());
+            }
             if (log) {
                 std::cout << "accelerated rule:" << std::endl;
                 ITSExport::printRule(*simplified, std::cout);

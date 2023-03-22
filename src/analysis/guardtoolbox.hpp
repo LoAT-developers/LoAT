@@ -55,9 +55,9 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    Result<Rule> propagateEqualities(const ITSProblem &its, const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
+    Result<Rule> propagateEqualities(const VarMan &its, const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
 
-    Result<Rule> propagateBooleanEqualities(const ITSProblem &its, const Rule &rule);
+    Result<Rule> propagateBooleanEqualities(const VarMan &its, const Rule &rule);
 
     /**
      * Tries to replace inequalities using their transitive closure,
@@ -72,7 +72,7 @@ namespace GuardToolbox {
      *
      * @return true if any changes have been made
      */
-    Result<Rule> eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow, const ITSProblem &its);
+    Result<Rule> eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow);
 
     /**
      * Replaces bidirectional inequalities, e.g. x <= y, y >= x by an equality, e.g. x == y.
@@ -80,7 +80,7 @@ namespace GuardToolbox {
      * @note expensive for large guards
      * @return true iff guard was changed.
      */
-    Result<Rule> makeEqualities(const Rule &rule, const ITSProblem &its);
+    Result<Rule> makeEqualities(const Rule &rule);
 
     /**
      * Returns true iff term contains a temporary variable

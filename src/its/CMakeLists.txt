@@ -9,6 +9,8 @@ target_sources(${EXECUTABLE}
         types.hpp
         dependencygraph.hpp
         dependencygraph.cpp
+        chain.hpp
+        chain.cpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

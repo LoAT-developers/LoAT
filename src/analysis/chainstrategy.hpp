@@ -24,6 +24,4 @@ namespace Chaining {
 
     ResultViaSideEffects chainLinearPaths(ITSProblem &its);
 
-    Rule chain(const Rule &fst, const Rule &snd, ITSProblem &its);
-
 }

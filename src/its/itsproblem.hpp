@@ -107,6 +107,10 @@ public:
 
     const DependencyGraph& getDependencyGraph() const;
 
+    std::set<Edge> refineDependencyGraph();
+
+    std::set<Edge> refineDependencyGraph(const TransIdx idx);
+
 protected:
 
     DependencyGraph graph;

@@ -18,7 +18,6 @@
 #pragma once
 
 #include "rule.hpp"
-#include "itsproblem.hpp"
 #include "result.hpp"
 
 
@@ -34,32 +33,18 @@ namespace Preprocess
      * @param rule The rule to be simplified, is modified.
      * @returns true iff rule was modified
      */
-    Result<Rule> preprocessRule(ITSProblem &its, const Rule &rule);
+    Result<Rule> preprocessRule(VarMan &its, const Rule &rule);
 
     /**
      * A simpler/cheaper version of preprocessRule without any smt queries.
      */
-    Result<Rule> simplifyRule(ITSProblem &its, const Rule &rule);
-
-    /**
-     * Simplifies the guard by dropping trivial constraints and constraints
-     * which are (syntactically!) implied by one of the other constraints.
-     * E.g. "x+1 >= x" is trivially true and "x > 1" implies "x > 0",
-     * whereas "x^2 >= 0" is not recognized by the syntactic check.
-     *
-     * This method does not involve any z3 queries, so it only checks for
-     * syntactically similar terms. The complexity is quadratic, but does
-     * not involve any z3 queries.
-     *
-     * @return true iff the given guard was modified (some constraints were removed)
-     */
-    Result<Rule> simplifyGuard(const Rule &rule, const ITSProblem &its);
+    Result<Rule> simplifyRule(VarMan &its, const Rule &rule);
 
     /**
      * Removes trivial updates of the form x <- x.
      * @return true iff update was modified
      */
-    Result<Rule> removeTrivialUpdates(const Rule &rule, const ITSProblem &its);
+    Result<Rule> removeTrivialUpdates(const Rule &rule);
 
     bool removeTrivialUpdates(Subs &subs);
 
@@ -70,5 +55,5 @@ namespace Preprocess
      * @param rule the rule, modified
      * @return true iff rule was modified
      */
-    Result<Rule> eliminateTempVars(ITSProblem &its, const Rule &rule);
+    Result<Rule> eliminateTempVars(VarMan &its, const Rule &rule);
 }

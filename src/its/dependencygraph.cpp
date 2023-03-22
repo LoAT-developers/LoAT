@@ -45,38 +45,40 @@ void DependencyGraph::removeEdge(Node from, Node to) {
     predecessors.at(to).erase(from);
 }
 
-void DependencyGraph::removeEdges(const std::vector<std::pair<Node, Node>> &remove) {
+void DependencyGraph::removeEdges(const std::set<Edge> &remove) {
     for (const auto &p: remove) {
         removeEdge(p.first, p.second);
     }
 }
 
-void DependencyGraph::refine(Node node, std::function<bool(Node, Node)> is_edge) {
-    std::vector<std::pair<Node, Node>> remove;
+std::set<Edge> DependencyGraph::refine(Node node, std::function<bool(Node, Node)> is_edge) {
+    std::set<Edge> remove;
     for (const auto succ: successors.at(node)) {
         if (!is_edge(node, succ)) {
-            remove.emplace_back(node, succ);
+            remove.emplace(node, succ);
         }
     }
     for (const auto pred: predecessors.at(node)) {
         if (!is_edge(pred, node)) {
-            remove.emplace_back(pred, node);
+            remove.emplace(pred, node);
         }
     }
     removeEdges(remove);
+    return remove;
 }
 
-void DependencyGraph::refine(std::function<bool(Node, Node)> is_edge) {
-    std::vector<std::pair<Node, Node>> remove;
+std::set<Edge> DependencyGraph::refine(std::function<bool(Node, Node)> is_edge) {
+    std::set<Edge> remove;
     for (auto p: successors) {
         Node from = p.first;
         for (const auto to: p.second) {
             if (!is_edge(from, to)) {
-                remove.emplace_back(from, to);
+                remove.emplace(from, to);
             }
         }
     }
     removeEdges(remove);
+    return remove;
 }
 
 bool DependencyGraph::hasEdge(Node from, Node to) const {

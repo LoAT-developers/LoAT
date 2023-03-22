@@ -27,6 +27,7 @@
 #include "types.hpp" // for TransIdx
 
 using Node = TransIdx;
+using Edge = std::pair<Node, Node>;
 
 class DependencyGraph {
 public:
@@ -35,9 +36,9 @@ public:
     void addNode(const Node node, std::set<Node> preds, std::set<Node> succs, bool self_loop);
     void replaceNode(Node to_replace, Node replacement);
     void removeEdge(Node from, Node to);
-    void removeEdges(const std::vector<std::pair<Node, Node>> &remove);
-    void refine(Node node, std::function<bool(Node, Node)> is_edge);
-    void refine(std::function<bool(Node, Node)> is_edge);
+    void removeEdges(const std::set<Edge> &remove);
+    std::set<Edge> refine(Node node, std::function<bool(Node, Node)> is_edge);
+    std::set<Edge> refine(std::function<bool(Node, Node)> is_edge);
     bool hasEdge(Node from, Node to) const;
     std::set<Node> getNodes() const;
     std::set<Node> getSuccessors(Node node) const;

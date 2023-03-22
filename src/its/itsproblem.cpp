@@ -18,6 +18,8 @@
 #include "itsproblem.hpp"
 #include "export.hpp"
 #include "config.hpp"
+#include "smtfactory.hpp"
+#include "chain.hpp"
 
 using namespace std;
 
@@ -253,4 +255,18 @@ bool ITSProblem::isInitialTransition(const TransIdx idx) const {
 
 const DependencyGraph& ITSProblem::getDependencyGraph() const {
     return graph;
+}
+
+std::set<Edge> ITSProblem::refineDependencyGraph() {
+    const auto is_edge = [this](const auto fst, const auto snd){
+        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd), *this).getGuard(), *this) == Sat;
+    };
+    return graph.refine(is_edge);
+}
+
+std::set<Edge> ITSProblem::refineDependencyGraph(const TransIdx idx) {
+    const auto is_edge = [this](const auto fst, const auto snd){
+        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd), *this).getGuard(), *this) == Sat;
+    };
+    return graph.refine(idx, is_edge);
 }

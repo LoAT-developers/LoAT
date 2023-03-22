@@ -21,7 +21,7 @@
 #include "accelerationfactory.hpp"
 #include "config.hpp"
 #include "substitution.hpp"
-#include "chainstrategy.hpp"
+#include "chain.hpp"
 
 #include <purrs.hh>
 #include <numeric>
@@ -159,7 +159,7 @@ acceleration::Result LoopAcceleration::run() {
         res.status = acceleration::Unsat;
         return res;
     } else if (period > 1) {
-        res.preprocessingProof.ruleTransformationProof(this->rule, "unrolling", rule, its);
+        res.preprocessingProof.ruleTransformationProof(this->rule, "unrolling", rule);
         res.period = period;
     }
     // for rules with runtime 1, our acceleration techniques do not work properly,
@@ -185,7 +185,7 @@ acceleration::Result LoopAcceleration::run() {
         res.nontermRule = Rule(
                     accelerationResult.nonterm->formula,
                     Subs::build<IntTheory>(its.getLocVar(), its.getSink()));
-        res.nontermProof.ruleTransformationProof(rule, "Certificate of Non-Termination", *res.nontermRule, its);
+        res.nontermProof.ruleTransformationProof(rule, "Certificate of Non-Termination", *res.nontermRule);
         res.nontermProof.storeSubProof(accelerationResult.nonterm->proof);
     }
     if (rec && accelerationResult.term) {
@@ -193,7 +193,7 @@ acceleration::Result LoopAcceleration::run() {
         res.rule = Rule(
                     accelerationResult.term->formula,
                     rec->update);
-        res.accelerationProof.ruleTransformationProof(rule, "Loop Acceleration", *res.rule, its);
+        res.accelerationProof.ruleTransformationProof(rule, "Loop Acceleration", *res.rule);
         res.accelerationProof.storeSubProof(accelerationResult.term->proof);
     }
     return res;

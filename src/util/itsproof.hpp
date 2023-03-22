@@ -35,11 +35,13 @@
 class ITSProof: public Proof {
 public:
 
-    void ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule, const ITSProblem &its);
+    void ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule);
 
     void majorProofStep(const std::string &step, const ITSProblem &its);
 
     void minorProofStep(const std::string &step, const ITSProblem &its);
+
+    void dependencyGraphRefinementProof(const std::set<Edge> &removed);
 
     void deletionProof(const std::set<TransIdx> &rules);
 

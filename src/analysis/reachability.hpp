@@ -247,6 +247,10 @@ class Reachability {
      */
     ResultViaSideEffects unroll();
 
+    ResultViaSideEffects refine_dependency_graph();
+
+    ResultViaSideEffects refine_dependency_graph(const TransIdx idx);
+
     /**
      * preprocesses the CHC problem
      */

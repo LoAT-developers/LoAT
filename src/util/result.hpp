@@ -69,8 +69,12 @@ public:
         proof.print();
     }
 
-    void ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule, const ITSProblem &its) {
-        proof.ruleTransformationProof(oldRule, transformation, newRule, its);
+    void ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule) {
+        proof.ruleTransformationProof(oldRule, transformation, newRule);
+    }
+
+    void dependencyGraphRefinementProof(const std::set<Edge> &removed) {
+        proof.dependencyGraphRefinementProof(removed);
     }
 
     void majorProofStep(const std::string &step, const ITSProblem &its) {
@@ -109,7 +113,7 @@ public:
         return proof.empty();
     }
 
-    Proof getProof() const {
+    ITSProof getProof() const {
         return proof;
     }
 

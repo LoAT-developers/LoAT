@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-void ITSProof::ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule, const ITSProblem &its) {
+void ITSProof::ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule) {
     if (Proof::disabled()) {
         return;
     }
@@ -42,7 +42,7 @@ void ITSProof::deletionProof(const std::set<TransIdx> &rules) {
         return;
     }
     if (!rules.empty()) {
-        section("Applied deletion");
+        section("Applied Deletion");
         std::stringstream s;
         s << "Removed the following rules:";
         for (TransIdx i: rules) {
@@ -56,7 +56,7 @@ void ITSProof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRu
     if (Proof::disabled()) {
         return;
     }
-    section("Applied chaining");
+    section("Applied Chaining");
     std::stringstream s;
     s << "First rule:\n";
     ITSExport::printRule(fst, s);
@@ -65,4 +65,19 @@ void ITSProof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRu
     s << "\nNew rule:\n";
     ITSExport::printRule(newRule, s);
     append(s);
+}
+
+void ITSProof::dependencyGraphRefinementProof(const std::set<Edge> &removed) {
+    if (Proof::disabled()) {
+        return;
+    }
+    if (!removed.empty()) {
+        section("Refined Dependency Graph");
+        std::stringstream s;
+        s << "Removed the following edges:";
+        for (const auto &e: removed) {
+            s << " " << e.first << "->" << e.second;
+        }
+        append(s);
+    }
 }

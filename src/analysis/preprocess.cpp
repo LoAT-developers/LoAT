@@ -18,39 +18,38 @@
 #include "preprocess.hpp"
 #include "substitution.hpp"
 #include "guardtoolbox.hpp"
-#include "config.hpp"
 
 using namespace std;
 
 
-Result<Rule> Preprocess::preprocessRule(ITSProblem &its, const Rule &rule) {
+Result<Rule> Preprocess::preprocessRule(VarMan &its, const Rule &rule) {
     Result<Rule> res(rule);
 
     // The other steps are repeated (might not help very often, but is probably cheap enough)
     bool changed = false;
     do {
         Result<Rule> tmp = eliminateTempVars(its, *res);
-        tmp.concat(removeTrivialUpdates(*res, its));
+        tmp.concat(removeTrivialUpdates(*res));
         changed = bool(tmp);
         res.concat(tmp);
     } while (changed);
     return res;
 }
 
-Result<Rule> Preprocess::simplifyRule(ITSProblem &its, const Rule &rule) {
+Result<Rule> Preprocess::simplifyRule(VarMan &its, const Rule &rule) {
     Result<Rule> res(rule);
     res.concat(eliminateTempVars(its, *res));
-    res.concat(removeTrivialUpdates(*res, its));
+    res.concat(removeTrivialUpdates(*res));
     return res;
 }
 
-Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule, const ITSProblem &its) {
+Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule) {
     bool changed = false;
     Subs up = rule.getUpdate();
     changed |= removeTrivialUpdates(up);
     Result<Rule> res{Rule(rule.getGuard(), up), changed};
     if (res) {
-        res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get(), its);
+        res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
     }
     return res;
 }
@@ -86,7 +85,7 @@ static VarSet collectVarsInUpdateRhs(const Rule &rule) {
 }
 
 
-Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule) {
+Result<Rule> Preprocess::eliminateTempVars(VarMan &its, const Rule &rule) {
     Result<Rule> res(rule);
 
     //declare helper lambdas to filter variables, to be passed as arguments
@@ -103,7 +102,7 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule) {
     };
 
     //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
-    res.concat(GuardToolbox::makeEqualities(*res, its));
+    res.concat(GuardToolbox::makeEqualities(*res));
     res.fail(); // *just* finding implied equalities does not suffice for success
 
     res.concat(GuardToolbox::propagateBooleanEqualities(its, *res));
@@ -118,13 +117,13 @@ Result<Rule> Preprocess::eliminateTempVars(ITSProblem &its, const Rule &rule) {
     BoolExpr newGuard = guard->simplify();
     if (newGuard.get() != guard.get()) {
         const Rule newRule = res->withGuard(newGuard);
-        res.ruleTransformationProof(res.get(), "Simplified Guard", newRule, its);
+        res.ruleTransformationProof(res.get(), "Simplified Guard", newRule);
         res = newRule;
     }
 
     //now eliminate a <= x and replace a <= x, x <= b by a <= b for all free variables x where this is sound
     //(not sound if x appears in update or cost, since we then need the value of x)
-    res.concat(GuardToolbox::eliminateByTransitiveClosure(*res, true, isTempOnlyInGuard, its));
+    res.concat(GuardToolbox::eliminateByTransitiveClosure(*res, true, isTempOnlyInGuard));
 
     return res;
 }
