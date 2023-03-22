@@ -18,6 +18,7 @@
 #include "recurrence.hpp"
 #include "dependencyorder.hpp"
 #include "inttheory.hpp"
+#include "substitution.hpp"
 
 #include <purrs.hh>
 
@@ -127,11 +128,8 @@ std::optional<Recurrence::Result> Recurrence::iterate(const Subs &update) {
         return {};
     }
     Recurrence::Result res(varMan.addFreshTemporaryVariable<IntTheory>("n"));
-    GiNaC::exmap subs {{ginacN, *res.n}};
-    for (const auto &p: newUpdate->update.get<IntTheory>()) {
-        res.update.put<IntTheory>(p.first, p.second.ex.subs(subs));
-    }
-    res.update.get<BoolTheory>() = newUpdate->update.get<BoolTheory>();
+    Subs subs {Subs::build<IntTheory>(NumVar(ginacN.get_name()), *res.n)};
+    res.update = substitution::concat(newUpdate->update, subs);
     res.validityBound = newUpdate->validityBound;
     return {res};
 }
