@@ -185,7 +185,7 @@ abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (changed) {
         res = rule.withGuard(BExpression::buildAndFromLits(guard));
-        res.ruleTransformationProof(rule, "Eliminated Temporary Variables via Transitive Closure", *res);
+        res.ruleTransformationProof(rule, "Eliminated Temporary Variables", *res);
     }
     return res;
 }
@@ -235,7 +235,7 @@ Result<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
     }
     if (!equalities.empty()) {
         res.set(rule.withGuard(rule.getGuard() & BExpression::buildAndFromLits(equalities)));
-        res.ruleTransformationProof(rule, "made implied equalities explicit", *res);
+        res.ruleTransformationProof(rule, "Extracted Implied Equalities", *res);
     }
     return res;
 }
