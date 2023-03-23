@@ -55,18 +55,24 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     }
     std::vector<NumVar> vars;
     std::vector<BoolVar> bvars;
-    for (unsigned i = 0; i < maxArity; ++i) {
+    for (unsigned i = 0; i < max_int_arity; ++i) {
         vars.emplace_back(its.addFreshVariable<IntTheory>("x" + std::to_string(i)));
+    }
+    for (unsigned i = 0; i < max_bool_arity; ++i) {
         bvars.emplace_back(its.addFreshVariable<BoolTheory>("b" + std::to_string(i)));
     }
     for (const Clause &c: clauses) {
         Subs ren;
         // replace the arguments of the body predicate with the corresponding program variables
+        unsigned bool_arg {0};
+        unsigned int_arg {0};
         for (unsigned i = 0; i < c.lhs.args.size(); ++i) {
             if (std::holds_alternative<NumVar>(c.lhs.args[i])) {
-                ren.put<IntTheory>(std::get<NumVar>(c.lhs.args[i]), vars[i]);
+                ren.put<IntTheory>(std::get<NumVar>(c.lhs.args[i]), vars[int_arg]);
+                ++int_arg;
             } else {
-                ren.put<BoolTheory>(std::get<BoolVar>(c.lhs.args[i]), BExpression::buildTheoryLit(bvars[i]));
+                ren.put<BoolTheory>(std::get<BoolVar>(c.lhs.args[i]), BExpression::buildTheoryLit(bvars[bool_arg]));
+                ++bool_arg;
             }
         }
         VarSet cVars;
@@ -88,18 +94,24 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
                 }
             }
         }
+        bool_arg = 0;
+        int_arg = 0;
         Subs up;
         for (unsigned i = 0; i < c.rhs.args.size(); ++i) {
             if (std::holds_alternative<NumVar>(c.rhs.args[i])) {
-                up.put<IntTheory>(vars[i], ren.get<IntTheory>(std::get<NumVar>(c.rhs.args[i])));
+                up.put<IntTheory>(vars[int_arg], ren.get<IntTheory>(std::get<NumVar>(c.rhs.args[i])));
+                ++int_arg;
             } else if (std::holds_alternative<BoolVar>(c.rhs.args[i])) {
-                up.put<BoolTheory>(bvars[i], ren.get<BoolTheory>(std::get<BoolVar>(c.rhs.args[i])));
+                up.put<BoolTheory>(bvars[bool_arg], ren.get<BoolTheory>(std::get<BoolVar>(c.rhs.args[i])));
+                ++bool_arg;
             } else {
                 throw std::logic_error("unsupported theory in CHCParseVisitor");
             }
         }
-        for (unsigned i = c.rhs.args.size(); i < maxArity; ++i) {
+        for (unsigned i = int_arg; i < max_int_arity; ++i) {
             up.put<IntTheory>(vars[i], its.addFreshTemporaryVariable<IntTheory>("tmp"));
+        }
+        for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
             up.put<BoolTheory>(bvars[i], BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>("tmp")));
         }
         const auto loc_var = its.getLocVar();
@@ -119,10 +131,20 @@ std::string unescape(std::string name) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitFun_decl(CHCParser::Fun_declContext *ctx) {
+    unsigned long int_arity {0};
+    unsigned long bool_arity {0};
     for (const auto &s: ctx->sort()) {
-        visit(s);
+        switch (std::any_cast<sort_type>(visit(s))) {
+        case Int:
+            ++int_arity;
+            break;
+        case Bool:
+            ++bool_arity;
+            break;
+        }
     }
-    maxArity = std::max(maxArity, ctx->sort().size());
+    max_int_arity = std::max(max_int_arity, int_arity);
+    max_bool_arity = std::max(max_bool_arity, bool_arity);
     const auto name = any_cast<symbol_type>(visit(ctx->symbol()));
     const LocationIdx idx = its.addNamedLocation(name);
     locations[name] = idx;
