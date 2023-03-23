@@ -77,12 +77,8 @@ public:
         proof.dependencyGraphRefinementProof(removed);
     }
 
-    void majorProofStep(const std::string &step, const ITSProblem &its) {
-        proof.majorProofStep(step, its);
-    }
-
-    void minorProofStep(const std::string &step, const ITSProblem &its) {
-        proof.minorProofStep(step, its);
+    void majorProofStep(const std::string &step, const ITSProof &subproof, const ITSProblem &its) {
+        proof.majorProofStep(step, subproof, its);
     }
 
     void deletionProof(const std::set<unsigned> &rules) {

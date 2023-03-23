@@ -158,13 +158,13 @@ class Failed final: public LearningState {
 };
 
 class ProvedUnsat final: public LearningState {
-    Proof proof;
+    ITSProof proof;
 
 public:
-    ProvedUnsat(const Proof &proof);
+    ProvedUnsat(const ITSProof &proof);
     std::optional<ProvedUnsat> unsat() override;
-    Proof& operator*();
-    Proof* operator->();
+    ITSProof& operator*();
+    ITSProof* operator->();
 };
 
 /**

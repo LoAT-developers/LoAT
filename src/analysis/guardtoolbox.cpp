@@ -99,7 +99,7 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const VarMan &its, const R
                     res = res->subs(Subs::build<BoolTheory>(var, *eq));
                     it = bvars.erase(it);
                     changed = true;
-                    subproof.append(stringstream() << "replaced " << var << " with " << *eq);
+                    subproof.append(stringstream() << "propagated equivalence " << var << " <=> " << *eq << std::endl);
                     break;
                 }
             }
@@ -111,7 +111,7 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const VarMan &its, const R
         }
     } while (changed);
     if (res) {
-        res.ruleTransformationProof(rule, "Propagated Boolean Equalities", *res);
+        res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
         res.storeSubProof(subproof);
     }
     return res;

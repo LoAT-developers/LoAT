@@ -85,13 +85,13 @@ std::optional<ProvedUnsat> ProvedUnsat::unsat() {
     return *this;
 }
 
-ProvedUnsat::ProvedUnsat(const Proof &proof): proof(proof) {}
+ProvedUnsat::ProvedUnsat(const ITSProof &proof): proof(proof) {}
 
-Proof& ProvedUnsat::operator*() {
+ITSProof& ProvedUnsat::operator*() {
     return proof;
 }
 
-Proof* ProvedUnsat::operator->() {
+ITSProof* ProvedUnsat::operator->() {
     return &proof;
 }
 
@@ -442,29 +442,24 @@ void Reachability::preprocess() {
     if (Config::Analysis::reachability()) {
         res = remove_irrelevant_clauses();
         if (res) {
-            proof.majorProofStep("Removed Irrelevant Transitions", chcs);
-            proof.storeSubProof(res.getProof());
+            proof.majorProofStep("Removed Irrelevant Transitions", res.getProof(), chcs);
         }
     }
     res = Chaining::chainLinearPaths(chcs);
     if (res) {
-        proof.majorProofStep("Chained Linear Paths", chcs);
-        proof.storeSubProof(res.getProof());
+        proof.majorProofStep("Chained Linear Paths", res.getProof(), chcs);
     }
     res = simplify();
     if (res) {
-        proof.majorProofStep("Simplified Transitions", chcs);
-        proof.storeSubProof(res.getProof());
+        proof.majorProofStep("Simplified Transitions", res.getProof(), chcs);
     }
     res = unroll();
     if (res) {
-        proof.majorProofStep("Unrolled Loops", chcs);
-        proof.storeSubProof(res.getProof());
+        proof.majorProofStep("Unrolled Loops", res.getProof(), chcs);
     }
     res = refine_dependency_graph();
     if (res) {
-        proof.majorProofStep("Refined Dependency Graph", chcs);
-        proof.storeSubProof(res.getProof());
+        proof.majorProofStep("Refined Dependency Graph", res.getProof(), chcs);
     }
     if (log) {
         std::cout << "Simplified ITS" << std::endl;
@@ -750,7 +745,7 @@ void shuffle(std::vector<TransIdx> &v) {
 }
 
 void Reachability::analyze() {
-    proof.majorProofStep("Initial ITS", chcs);
+    proof.majorProofStep("Initial ITS", ITSProof(), chcs);
     if (log) {
         std::cout << "Initial ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
@@ -778,8 +773,7 @@ void Reachability::analyze() {
                 if (simple_loop) {
                     block(step);
                 }
-                proof.majorProofStep("Accelerate", chcs);
-                proof.storeSubProof((*state->succeeded())->getProof());
+                proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
                 print_state();
                 update_cpx();
                 // try to apply a query before doing another step
@@ -790,8 +784,7 @@ void Reachability::analyze() {
                 if (simple_loop) {
                     block(step);
                 }
-                proof.majorProofStep("Accelerate and Drop", chcs);
-                proof.storeSubProof((*state->dropped())->getProof());
+                proof.majorProofStep("Accelerate and Drop", (*state->dropped())->getProof(), chcs);
                 print_state();
             } else if (state->failed()) {
                 // non-loop --> do not backtrack
@@ -799,8 +792,7 @@ void Reachability::analyze() {
                 proof.append("marked recursive suffix as redundant");
                 non_loops.add(trace, *backlink);
             } else if (state->unsat()) {
-                proof.majorProofStep("Nonterm", chcs);
-                proof.storeSubProof(**state->unsat());
+                proof.majorProofStep("Nonterm", **state->unsat(), chcs);
                 proof.headline("Step with " + std::to_string(trace.back().clause_idx));
                 print_state();
                 unsat();
