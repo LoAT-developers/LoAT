@@ -61,7 +61,7 @@ public:
     TransIdx addRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs);
     TransIdx addLearnedRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs);
     TransIdx addRule(const Rule &rule, const LocationIdx start);
-    TransIdx addQuery(const Rule &rule, const TransIdx same_preds);
+    TransIdx addQuery(const BoolExpr &guard, const TransIdx same_preds);
     TransIdx replaceRule(const TransIdx toReplace, const Rule &replacement);
 
     // Mutation for Locations

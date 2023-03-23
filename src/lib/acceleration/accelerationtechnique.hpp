@@ -6,7 +6,8 @@
 #include "proof.hpp"
 #include "recurrence.hpp"
 #include "accelconfig.hpp"
-#include "itsproblem.hpp"
+#include "variablemanager.hpp"
+#include "rule.hpp"
 
 template <ITheory... Th>
 class AccelerationTechnique {
@@ -36,10 +37,10 @@ protected:
 
     Rule rule;
     const std::optional<Recurrence::Result> closed;
-    ITSProblem &its;
+    VarMan &its;
     const AccelConfig config;
 
-    AccelerationTechnique(const Rule &rule, const std::optional<Recurrence::Result> closed, ITSProblem &its, const AccelConfig &config):
+    AccelerationTechnique(const Rule &rule, const std::optional<Recurrence::Result> closed, VarMan &its, const AccelConfig &config):
         rule(rule),
         closed(closed),
         its(its),

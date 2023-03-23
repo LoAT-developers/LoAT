@@ -20,6 +20,8 @@ add_library(${PROJECT_NAME} STATIC
   redlogVisitor.cpp
   redlogVisitor.h
   qelimfactory.hpp
+  vareliminator.hpp
+  vareliminator.cpp
 )
 
 set(REDUCE ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/libreduce.a)

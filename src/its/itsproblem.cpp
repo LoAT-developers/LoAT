@@ -103,10 +103,10 @@ TransIdx ITSProblem::addLearnedRule(const Rule &rule, const TransIdx same_preds,
     return res;
 }
 
-TransIdx ITSProblem::addQuery(const Rule &rule, const TransIdx same_preds) {
+TransIdx ITSProblem::addQuery(const BoolExpr &guard, const TransIdx same_preds) {
     const auto start = getLhsLoc(same_preds);
     const auto preds = graph.getPredecessors(same_preds);
-    return addRule(rule, start, sink, preds, {});
+    return addRule(Rule(guard, Subs::build<IntTheory>(loc, sink)), start, sink, preds, {});
 }
 
 TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {

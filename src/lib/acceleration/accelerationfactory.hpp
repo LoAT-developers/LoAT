@@ -11,7 +11,7 @@ namespace AccelerationFactory {
 std::unique_ptr<AccelerationTechnique<IntTheory, BoolTheory>> get(
         const Rule &rule,
         std::optional<Recurrence::Result> closed,
-        ITSProblem &its,
+        VarMan &its,
         const AccelConfig &config);
 
 }

@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "itsproblem.hpp"
+#include "variablemanager.hpp"
 #include "rule.hpp"
 #include "accelerationresult.hpp"
 #include "accelconfig.hpp"
@@ -30,27 +30,22 @@ public:
         const unsigned int validityBound;
     };
 
-    static acceleration::Result accelerate(ITSProblem &its, const Rule &rule, const AccelConfig &config = AccelConfig());
+    static acceleration::Result accelerate(VarMan &its, const Rule &rule, const AccelConfig &config = AccelConfig());
 
-    static const std::pair<Rule, unsigned> chain(const Rule &rule, ITSProblem &its);
+    static const std::pair<Rule, unsigned> chain(const Rule &rule, VarMan &its);
 
 private:
-    LoopAcceleration(ITSProblem &its, const Rule &rule, const AccelConfig &config);
+    LoopAcceleration(VarMan &its, const Rule &rule, const AccelConfig &config);
 
     /**
      * Main function, just calls the methods below in the correct order
      */
     acceleration::Result run();
 
-    /**
-     * Checks whether the backward acceleration technique might be applicable.
-     */
-    bool shouldAccelerate() const;
-
-    static Rule renameTmpVars(const Rule &rule, ITSProblem &its);
+    static Rule renameTmpVars(const Rule &rule, VarMan &its);
 
 private:
-    ITSProblem &its;
+    VarMan &its;
     const Rule &rule;
     const AccelConfig config;
 };

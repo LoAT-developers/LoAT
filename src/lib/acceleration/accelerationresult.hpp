@@ -1,6 +1,6 @@
 #pragma once
 
-#include "itsproof.hpp"
+#include "proof.hpp"
 #include "rule.hpp"
 
 #include <optional>
@@ -14,17 +14,15 @@ enum Status {
 struct Result {
     std::optional<Status> status;
     std::optional<Rule> rule;
-    std::optional<Rule> nontermRule;
+    BoolExpr nontermCertificate {BExpression::False};
     unsigned period = 1;
     bool strengthened = false;
-    ITSProof preprocessingProof;
-    ITSProof accelerationProof;
-    ITSProof nontermProof;
+    Proof accelerationProof;
+    Proof nontermProof;
     std::optional<NumVar> n;
 
     bool successful() const;
     bool inexact() const;
-    std::vector<Rule> rules() const;
 
 };
 

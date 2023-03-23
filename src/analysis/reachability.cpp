@@ -631,24 +631,22 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         ITSExport::printRule(*simp, std::cout);
         std::cout << std::endl;
     }
-    AccelConfig config;
-    config.allowDisjunctions = false;
+    AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
     acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *simp, config);
     Result<std::vector<TransIdx>> res;
     const auto fst = trace.at(backlink).clause_idx;
-    if (accel_res.successful()) {
-        res.concat(accel_res.preprocessingProof);
-    }
-    if (accel_res.nontermRule) {
+    if (accel_res.nontermCertificate != BExpression::False) {
         res.succeed();
-        const auto idx = chcs.addQuery(*accel_res.nontermRule, fst);
+        const auto idx = chcs.addQuery(accel_res.nontermCertificate, fst);
         res->push_back(idx);
-        res.concat(accel_res.nontermProof);
+        ITSProof nonterm_proof;
+        nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", chcs.getRule(idx));
+        nonterm_proof.storeSubProof(accel_res.nontermProof);
+        res.concat(nonterm_proof);
         res.concat(refine_dependency_graph(idx).getProof());
         if (log) {
-            std::cout << "accelerated non-terminating rule:" << std::endl;
-            ITSExport::printRule(*accel_res.nontermRule, std::cout);
-            std::cout << std::endl;
+            std::cout << "found certificate of non-termination:" << std::endl;
+            std::cout << accel_res.nontermCertificate << std::endl;
         }
     }
     if (accel_res.rule) {
@@ -662,7 +660,10 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             res.succeed();
             const auto loop_idx {add_learned_clause(*simplified, backlink, lang)};
             res->push_back(loop_idx);
-            res.concat(accel_res.accelerationProof);
+            ITSProof acceleration_proof;
+            acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", *accel_res.rule);
+            acceleration_proof.storeSubProof(accel_res.accelerationProof);
+            res.concat(acceleration_proof);
             res.concat(simplified.getProof());
             if (accel_res.inexact()) {
                 res.concat(refine_dependency_graph(loop_idx).getProof());

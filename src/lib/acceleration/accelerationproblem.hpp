@@ -3,7 +3,7 @@
 #include <optional>
 
 #include "rule.hpp"
-#include "itsproblem.hpp"
+#include "variablemanager.hpp"
 #include "proof.hpp"
 #include "smt.hpp"
 #include "accelerationtechnique.hpp"
@@ -29,7 +29,7 @@ class AccelerationProblem {
     const std::optional<Recurrence::Result> closed;
     BoolExpr guard;
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
-    ITSProblem &its;
+    VarMan &its;
     bool isConjunction;
     std::optional<Rel> bound;
     const AccelConfig config;
@@ -55,12 +55,12 @@ class AccelerationProblem {
             const BoolExpr guard,
             const Subs &up,
             const std::optional<Recurrence::Result> &closed,
-            ITSProblem &its,
+            VarMan &its,
             const AccelConfig &config);
 
 public:
 
-    static AccelerationProblem init(const Rule &rule, const std::optional<Recurrence::Result> &closed, ITSProblem &its, const AccelConfig &config);
+    static AccelerationProblem init(const Rule &rule, const std::optional<Recurrence::Result> &closed, VarMan &its, const AccelConfig &config);
 
     AcceleratorPair computeRes();
     std::pair<BoolExpr, bool> buildRes(const Model<IntTheory, BoolTheory> &model, const std::map<Lit, std::vector<BoolExpr>> &entryVars);

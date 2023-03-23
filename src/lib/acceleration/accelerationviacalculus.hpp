@@ -3,7 +3,7 @@
 #include <optional>
 
 #include "rule.hpp"
-#include "itsproblem.hpp"
+#include "variablemanager.hpp"
 #include "accelerationtechnique.hpp"
 #include "accelconfig.hpp"
 
@@ -14,7 +14,7 @@ public:
     AccelerationViaCalculus(
             const Rule &rule,
             const std::optional<Recurrence::Result> closed,
-            ITSProblem &its,
+            VarMan &its,
             const AccelConfig &config);
 
     AcceleratorPair computeRes() override;

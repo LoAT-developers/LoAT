@@ -19,7 +19,6 @@
 #include "smtfactory.hpp"
 #include "recurrence.hpp"
 #include "accelerationfactory.hpp"
-#include "config.hpp"
 #include "substitution.hpp"
 #include "chain.hpp"
 
@@ -29,16 +28,12 @@
 using namespace std;
 
 LoopAcceleration::LoopAcceleration(
-        ITSProblem &its,
+        VarMan &its,
         const Rule &rule,
         const AccelConfig &config)
     : its(its), rule(rule), config(config) {}
 
-bool LoopAcceleration::shouldAccelerate() const {
-    return (!Config::Analysis::complexity() || its.getCost(rule).isPoly());
-}
-
-const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, ITSProblem &its) {
+const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, VarMan &its) {
     Rule res = rule;
     unsigned period = 1;
     // chain if there are updates like x = -x + p
@@ -138,9 +133,6 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, ITSPro
 
 acceleration::Result LoopAcceleration::run() {
     acceleration::Result res;
-    if (!shouldAccelerate()) {
-        return res;
-    }
     if (config.approx != UnderApprox) {
         if (!rule.getGuard()->isConjunction()) {
             res.status = acceleration::Disjunctive;
@@ -158,15 +150,18 @@ acceleration::Result LoopAcceleration::run() {
     if (SmtFactory::check(rule.getGuard(), its) != Sat) {
         res.status = acceleration::Unsat;
         return res;
-    } else if (period > 1) {
-        res.preprocessingProof.ruleTransformationProof(this->rule, "unrolling", rule);
+    }
+    Proof proof;
+    if (period > 1) {
         res.period = period;
+        proof.append(stringstream() << "period: " << period);
     }
     // for rules with runtime 1, our acceleration techniques do not work properly,
     // as the closed forms are usually only valid for n > 0 --> special case
     if (SmtFactory::check(rule.chain(rule).getGuard(), its) != SmtResult::Sat) {
         res.rule = rule;
         res.status = acceleration::PseudoLoop;
+        res.accelerationProof = proof;
         res.accelerationProof.append("rule cannot be iterated more than once");
         return res;
     }
@@ -181,27 +176,25 @@ acceleration::Result LoopAcceleration::run() {
         res.status = acceleration::AccelerationFailed;
         return res;
     }
-    if (Config::Analysis::tryNonterm() && accelerationResult.nonterm) {
-        res.nontermRule = Rule(
-                    accelerationResult.nonterm->formula,
-                    Subs::build<IntTheory>(its.getLocVar(), its.getSink()));
-        res.nontermProof.ruleTransformationProof(rule, "Certificate of Non-Termination", *res.nontermRule);
-        res.nontermProof.storeSubProof(accelerationResult.nonterm->proof);
+    if (config.tryNonterm && accelerationResult.nonterm) {
+        res.nontermCertificate = accelerationResult.nonterm->formula;
+        res.nontermProof = proof;
+        res.nontermProof.concat(accelerationResult.nonterm->proof);
     }
     if (rec && accelerationResult.term) {
         res.n = rec->n;
         res.rule = Rule(
                     accelerationResult.term->formula,
                     rec->update);
-        res.accelerationProof.ruleTransformationProof(rule, "Loop Acceleration", *res.rule);
-        res.accelerationProof.storeSubProof(accelerationResult.term->proof);
+        res.accelerationProof = proof;
+        res.accelerationProof.concat(accelerationResult.term->proof);
     }
     return res;
 }
 
 
 acceleration::Result LoopAcceleration::accelerate(
-        ITSProblem &its,
+        VarMan &its,
         const Rule &rule,
         const AccelConfig &config) {
     LoopAcceleration ba(its, rule, config);

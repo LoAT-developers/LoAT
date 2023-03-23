@@ -54,6 +54,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_smt_INCLUDE_DIRS}
   ${loat_qe_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
+  ${loat_acceleration_INCLUDE_DIRS}
   ${ANTLR4_INCLUDE_DIRS}
 )
 
@@ -67,6 +68,7 @@ target_link_libraries(${EXECUTABLE}
   loat_smt
   loat_qe
   loat_recurrence
+  loat_acceleration
   ${ANTLR4}
   ${FAUDES}
   ${LINKER_OPTIONS})

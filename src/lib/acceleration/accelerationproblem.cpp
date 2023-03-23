@@ -5,13 +5,12 @@
 #include "literal.hpp"
 #include "boolexpr.hpp"
 #include "map.hpp"
-#include "config.hpp"
 
 AccelerationProblem::AccelerationProblem(
         const BoolExpr guard,
         const Subs &up,
         const std::optional<Recurrence::Result> &closed,
-        ITSProblem &its,
+        VarMan &its,
         const AccelConfig &config):
     up(up),
     closed(closed),
@@ -34,7 +33,7 @@ AccelerationProblem::AccelerationProblem(
 AccelerationProblem AccelerationProblem::init(
         const Rule &rule,
         const std::optional<Recurrence::Result> &closed,
-        ITSProblem &its,
+        VarMan &its,
         const AccelConfig &config) {
     return AccelerationProblem(rule.getGuard()->toG(), rule.getUpdate(), closed, its, config);
 }
@@ -403,7 +402,7 @@ AccelerationProblem::ReplacementMap AccelerationProblem::computeReplacementMap(b
 
 AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     AcceleratorPair ret;
-    if (!closed && !Config::Analysis::tryNonterm()) {
+    if (!closed && !config.tryNonterm) {
         return ret;
     }
     Proof proof;
@@ -435,7 +434,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
                 ret.nonterm = ret.term;
             }
         }
-        if (Config::Analysis::tryNonterm() && closed && !map.nonterm) {
+        if (config.tryNonterm && closed && !map.nonterm) {
             ReplacementMap map = computeReplacementMap(true);
             if (map.acceleratedAll || !isConjunction) {
                 auto newGuard = guard->replaceLits(map.map);
