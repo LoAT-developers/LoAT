@@ -113,14 +113,8 @@ Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renam
     var_renaming(var_renaming),
     resolvent(resolvent) {}
 
-std::ostream& operator<<(std::ostream &s, const std::vector<Step> &step) {
-    for (auto it = step.begin(); it != step.end(); ++it) {
-        if (it != step.begin()) {
-            s << ", ";
-        }
-        s << it->clause_idx << "[" << it->implicant << "]";
-    }
-    return s;
+std::ostream& operator<<(std::ostream &s, const Step &step) {
+    return s << step.clause_idx << "[" << step.implicant << "]";
 }
 
 NonLoops::NonLoops(const ITSProblem &chcs): chcs(chcs) {}
@@ -323,6 +317,7 @@ void Reachability::backtrack() {
 
 void Reachability::add_to_trace(const Step &step) {
     trace.emplace_back(step);
+    blocked_clauses.emplace_back();
 }
 
 void Reachability::update_cpx() {
@@ -371,7 +366,6 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
         const auto new_var_renaming = handle_update(idx);
         const Step step(idx, implicant, new_var_renaming, compute_resolvent(idx, implicant));
         add_to_trace(step);
-        blocked_clauses.push_back({});
         // block learned clauses after adding them to the trace
         if (is_learned_clause(idx)) {
             block(step);
@@ -385,18 +379,29 @@ bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
 
 void Reachability::print_trace(std::ostream &s) {
     const auto model = solver.model().toSubs();
-    bool first = true;
-    for (const auto &step: trace) {
+    s << "(";
+    bool first {true};
+    for (const auto &x: prog_vars) {
         if (first) {
             first = false;
         } else {
-            s << " ";
+            s << ", ";
         }
-        s << "[";
+        s << x << "=" << model.get(x);
+    }
+    s << ")" << std::endl;
+    for (const auto &step: trace) {
+        s << "-" << step.clause_idx << "-> " << "(";
+        first = true;
         for (const auto &x: prog_vars) {
-            s << " " << x << "=" << expression::subs(step.var_renaming.get(x), model);
+            if (first) {
+                first = false;
+            } else {
+                s << ", ";
+            }
+            s << x << "=" << expression::subs(step.var_renaming.get(x), model);
         }
-        s << " ] " << step.clause_idx;
+        s << " )" << std::endl;
     }
     s << std::endl;
 }
@@ -406,20 +411,15 @@ void Reachability::print_state() {
         return;
     }
     Proof state_p;
-    std::stringstream s;
     state_p.section("Trace");
-    s << trace;
+    std::stringstream s;
+    for (const auto &x: trace) {
+        s << x << std::endl;
+    }
     state_p.append(s);
     s.clear();
     state_p.section("Blocked");
-    bool first_set = true;
-    s << "[";
     for (const auto &e: blocked_clauses) {
-        if (first_set) {
-            first_set = false;
-        } else {
-            s << ", ";
-        }
         s << "{";
         bool first_trans = true;
         for (const auto &[idx,blocked]: e) {
@@ -430,9 +430,8 @@ void Reachability::print_state() {
             }
             s << idx << "[" << BExpression::buildAnd(blocked) << "]";
         }
-        s << "}";
+        s << "}" << std::endl;
     }
-    s << "]";
     state_p.append(s);
     proof.storeSubProof(state_p);
 }
