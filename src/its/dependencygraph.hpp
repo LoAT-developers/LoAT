@@ -51,7 +51,7 @@ private:
     std::set<Node> nodes;
     std::map<Node, std::set<Node>> successors;
     std::map<Node, std::set<Node>> predecessors;
-    size_t edgecount;
+    size_t edgecount {0};
 
 };
 
