@@ -9,6 +9,8 @@ void DependencyGraph::addNode(const Node node, std::set<Node> preds, std::set<No
     }
     predecessors.emplace(node, preds);
     successors.emplace(node, succs);
+    edgecount += preds.size();
+    edgecount += succs.size();
     for (const auto p: preds) {
         successors.at(p).insert(node);
     }
@@ -43,6 +45,7 @@ void DependencyGraph::replaceNode(Node to_replace, Node replacement) {
 void DependencyGraph::removeEdge(Node from, Node to) {
     successors.at(from).erase(to);
     predecessors.at(to).erase(from);
+    --edgecount;
 }
 
 void DependencyGraph::removeEdges(const std::set<Edge> &remove) {
@@ -116,6 +119,8 @@ void DependencyGraph::removeNode(Node node) {
     for (const auto p: predecessors.at(node)) {
         successors.at(p).erase(node);
     }
+    edgecount -= predecessors.at(node).size();
+    edgecount -= successors.at(node).size();
     predecessors.erase(node);
     successors.erase(node);
 }
@@ -136,4 +141,8 @@ std::ostream& operator<<(std::ostream &s, const DependencyGraph &d) {
         }
     }
     return s;
+}
+
+size_t DependencyGraph::size() const {
+    return edgecount;
 }

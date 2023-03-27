@@ -456,9 +456,11 @@ void Reachability::preprocess() {
     if (res) {
         proof.majorProofStep("Unrolled Loops", res.getProof(), chcs);
     }
-    res = refine_dependency_graph();
-    if (res) {
-        proof.majorProofStep("Refined Dependency Graph", res.getProof(), chcs);
+    if (chcs.size() <= 1000) {
+        res = refine_dependency_graph();
+        if (res) {
+            proof.majorProofStep("Refined Dependency Graph", res.getProof(), chcs);
+        }
     }
     if (log) {
         std::cout << "Simplified ITS" << std::endl;
@@ -479,11 +481,52 @@ void Reachability::init() {
 }
 
 void Reachability::luby_next() {
-    const auto [u,v] = luby;
+    static const auto is_simple_expr {[](const Expr &expr) {
+            return expr.isPoly() && expr.totalDegree() <= 3;
+        }};
+    static const auto is_simple_lit {[](const Lit &lit) {
+            if (std::holds_alternative<Rel>(lit)) {
+                const auto &rel {std::get<Rel>(lit)};
+                return is_simple_expr(rel.lhs() - rel.rhs());
+            } else {
+                return true;
+            }
+        }};
+    const auto [u,v] {luby};
     luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
     solver.setSeed(rand());
     solver.resetSolver();
     luby_loop_count = 0;
+    auto trans {chcs.getAllTransitions()};
+    for (auto it = trans.begin(); it != trans.end();) {
+        bool remove {false};
+        if (is_learned_clause(*it)) {
+            for (const auto &p: chcs.getRule(*it).getUpdate()) {
+                const auto snd {substitution::second(p)};
+                if (std::holds_alternative<Expr>(snd) && !is_simple_expr(std::get<Expr>(snd))) {
+                    remove = true;
+                    break;
+                }
+            }
+        }
+        if (remove) {
+            chcs.removeRule(*it);
+            it = trans.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    for (auto it = trans.begin(); it != trans.end();) {
+        if (is_learned_clause(*it)) {
+            const auto &r {chcs.getRule(*it)};
+            if (!r.getGuard()->forall(is_simple_lit)) {
+                chcs.removeRule(*it);
+                it = trans.erase(it);
+                continue;
+            }
+        }
+        ++it;
+    }
 }
 
 void Reachability::unsat() {
@@ -739,12 +782,8 @@ bool Reachability::try_to_finish() {
     return false;
 }
 
-void shuffle(std::vector<TransIdx> &v) {
-    static std::default_random_engine rnd {};
-    std::shuffle(std::begin(v), std::end(v), rnd);
-}
-
 void Reachability::analyze() {
+    static std::default_random_engine rnd {};
     proof.majorProofStep("Initial ITS", ITSProof(), chcs);
     if (log) {
         std::cout << "Initial ITS" << std::endl;
@@ -758,48 +797,8 @@ void Reachability::analyze() {
     blocked_clauses[0].clear();
     do {
         size_t next_restart = luby_unit * luby.second;
-        if (log) std::cout << "trace: " << trace << std::endl;
-        for (auto backlink = has_looping_suffix();
-             backlink && luby_loop_count < next_restart;
-             backlink = has_looping_suffix()) {
-            Step step = trace[*backlink];
-            bool simple_loop = *backlink == trace.size() - 1;
-            auto state = handle_loop(*backlink);
-            if (state->covered()) {
-                backtrack();
-                proof.headline("Covered");
-                print_state();
-            } else if (state->succeeded()) {
-                if (simple_loop) {
-                    block(step);
-                }
-                proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
-                print_state();
-                update_cpx();
-                // try to apply a query before doing another step
-                if (try_to_finish()) {
-                    return;
-                }
-            } else if (state->dropped()) {
-                if (simple_loop) {
-                    block(step);
-                }
-                proof.majorProofStep("Accelerate and Drop", (*state->dropped())->getProof(), chcs);
-                print_state();
-            } else if (state->failed()) {
-                // non-loop --> do not backtrack
-                proof.headline("Acceleration Failed");
-                proof.append("marked recursive suffix as redundant");
-                non_loops.add(trace, *backlink);
-            } else if (state->unsat()) {
-                proof.majorProofStep("Nonterm", **state->unsat(), chcs);
-                proof.headline("Step with " + std::to_string(trace.back().clause_idx));
-                print_state();
-                unsat();
-                return;
-            }
-        }
-        if (luby_loop_count == next_restart) {
+        auto backlink = has_looping_suffix();
+        if (backlink && luby_loop_count >= next_restart) {
             if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
             // restart
             while (!trace.empty()) {
@@ -807,25 +806,62 @@ void Reachability::analyze() {
             }
             luby_next();
             proof.headline("Restart");
+        } else {
+            if (log) std::cout << "trace: " << trace << std::endl;
+            while (backlink) {
+                Step step = trace[*backlink];
+                bool simple_loop = *backlink == trace.size() - 1;
+                auto state = handle_loop(*backlink);
+                if (state->covered()) {
+                    backtrack();
+                    proof.headline("Covered");
+                    print_state();
+                } else if (state->succeeded()) {
+                    if (simple_loop) {
+                        block(step);
+                    }
+                    proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
+                    print_state();
+                    update_cpx();
+                    // try to apply a query before doing another step
+                    if (try_to_finish()) {
+                        return;
+                    }
+                } else if (state->dropped()) {
+                    if (simple_loop) {
+                        block(step);
+                    }
+                    proof.majorProofStep("Accelerate and Drop", (*state->dropped())->getProof(), chcs);
+                    print_state();
+                } else if (state->failed()) {
+                    // non-loop --> do not backtrack
+                    proof.headline("Acceleration Failed");
+                    proof.append("marked recursive suffix as redundant");
+                    non_loops.add(trace, *backlink);
+                } else if (state->unsat()) {
+                    proof.majorProofStep("Nonterm", **state->unsat(), chcs);
+                    proof.headline("Step with " + std::to_string(trace.back().clause_idx));
+                    print_state();
+                    unsat();
+                    return;
+                }
+                backlink = has_looping_suffix();
+            }
         }
         const auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
-        std::vector<TransIdx> to_try(try_set.begin(), try_set.end());
-        shuffle(to_try);
-        auto it = to_try.begin();
-        std::vector<TransIdx> append;
-        while (it != to_try.end()) {
-            const std::optional<BoolExpr> implicant = resolve(*it);
-            if (implicant && store_step(*it, *implicant)) {
-                proof.headline("Step with " + std::to_string(*it));
+        std::vector<TransIdx> to_try(try_set.rbegin(), try_set.rend());
+        std::shuffle(to_try.begin(), to_try.end(), rnd);
+        bool all_failed {true};
+        for (const auto idx: to_try) {
+            const std::optional<BoolExpr> implicant = resolve(idx);
+            if (implicant && store_step(idx, *implicant)) {
+                proof.headline("Step with " + std::to_string(idx));
                 print_state();
                 update_cpx();
+                all_failed = false;
                 break;
             }
-            append.push_back(*it);
-            it = to_try.erase(it);
         }
-        bool all_failed = it == to_try.end();
-        to_try.insert(to_try.end(), append.begin(), append.end());
         if (trace.empty()) {
             break;
         } else if (all_failed) {

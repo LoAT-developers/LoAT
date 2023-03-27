@@ -204,7 +204,7 @@ class Reachability {
 
     std::pair<int, int> luby{1,1};
 
-    unsigned luby_unit = 10;
+    unsigned luby_unit = 3;
 
     unsigned luby_loop_count = 0;
 

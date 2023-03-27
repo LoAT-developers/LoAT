@@ -111,6 +111,8 @@ public:
 
     std::set<Edge> refineDependencyGraph(const TransIdx idx);
 
+    size_t size() const;
+
 protected:
 
     DependencyGraph graph;

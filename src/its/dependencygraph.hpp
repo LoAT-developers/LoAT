@@ -44,12 +44,14 @@ public:
     std::set<Node> getSuccessors(Node node) const;
     std::set<Node> getPredecessors(Node node) const;
     void removeNode(Node node);
+    size_t size() const;
 
 private:
 
     std::set<Node> nodes;
     std::map<Node, std::set<Node>> successors;
     std::map<Node, std::set<Node>> predecessors;
+    size_t edgecount;
 
 };
 

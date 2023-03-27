@@ -270,3 +270,7 @@ std::set<Edge> ITSProblem::refineDependencyGraph(const TransIdx idx) {
     };
     return graph.refine(idx, is_edge);
 }
+
+size_t ITSProblem::size() const {
+    return graph.size();
+}
