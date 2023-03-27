@@ -200,13 +200,13 @@ class Reachability {
     /**
      * clauses up to this one are original ones, all other clauses are learned
      */
-    TransIdx last_orig_clause = 0;
+    TransIdx last_orig_clause {0};
 
-    std::pair<int, int> luby{1,1};
+    std::pair<int, int> luby {1,1};
 
-    unsigned luby_unit = 3;
+    unsigned luby_unit {5};
 
-    unsigned luby_loop_count = 0;
+    unsigned luby_loop_count {0};
 
     void luby_next();
 
@@ -248,8 +248,6 @@ class Reachability {
     ResultViaSideEffects unroll();
 
     ResultViaSideEffects refine_dependency_graph();
-
-    ResultViaSideEffects refine_dependency_graph(const TransIdx idx);
 
     /**
      * preprocesses the CHC problem

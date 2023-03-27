@@ -230,16 +230,6 @@ ResultViaSideEffects Reachability::refine_dependency_graph() {
     return res;
 }
 
-ResultViaSideEffects Reachability::refine_dependency_graph(const TransIdx idx) {
-    ResultViaSideEffects res;
-    const auto removed {chcs.refineDependencyGraph(idx)};
-    if (!removed.empty()) {
-        res.succeed();
-        res.dependencyGraphRefinementProof(removed);
-    }
-    return res;
-}
-
 std::optional<unsigned> Reachability::has_looping_suffix() {
     if (trace.empty()) {
         return {};
@@ -482,7 +472,7 @@ void Reachability::init() {
 
 void Reachability::luby_next() {
     static const auto is_simple_expr {[](const Expr &expr) {
-            return expr.isPoly() && expr.totalDegree() <= 3;
+            return expr.isPoly() && expr.totalDegree() <= 10;
         }};
     static const auto is_simple_lit {[](const Lit &lit) {
             if (std::holds_alternative<Rel>(lit)) {
@@ -686,7 +676,6 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", chcs.getRule(idx));
         nonterm_proof.storeSubProof(accel_res.nontermProof);
         res.concat(nonterm_proof);
-        res.concat(refine_dependency_graph(idx).getProof());
         if (log) {
             std::cout << "found certificate of non-termination:" << std::endl;
             std::cout << accel_res.nontermCertificate << std::endl;
@@ -708,9 +697,6 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             acceleration_proof.storeSubProof(accel_res.accelerationProof);
             res.concat(acceleration_proof);
             res.concat(simplified.getProof());
-            if (accel_res.inexact()) {
-                res.concat(refine_dependency_graph(loop_idx).getProof());
-            }
             if (log) {
                 std::cout << "accelerated rule:" << std::endl;
                 ITSExport::printRule(*simplified, std::cout);
