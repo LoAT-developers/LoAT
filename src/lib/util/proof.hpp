@@ -65,7 +65,7 @@ public:
 
     void print(unsigned level = 1) const;
 
-    void storeSubProof(Proof subProof);
+    void storeSubProof(const Proof &subProof);
 
     void concat(const Proof &that);
 

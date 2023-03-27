@@ -109,7 +109,7 @@ public:
         return proof.empty();
     }
 
-    ITSProof getProof() const {
+    const ITSProof& getProof() const {
         return proof;
     }
 

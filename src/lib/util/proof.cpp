@@ -168,7 +168,7 @@ void Proof::pop() {
     }
 }
 
-void Proof::storeSubProof(Proof subProof) {
+void Proof::storeSubProof(const Proof &subProof) {
     if (proofLevel > 1) {
         proof.push_back(subProof);
     }
