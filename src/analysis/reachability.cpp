@@ -471,52 +471,11 @@ void Reachability::init() {
 }
 
 void Reachability::luby_next() {
-    static const auto is_simple_expr {[](const Expr &expr) {
-            return expr.isPoly() && expr.totalDegree() <= 10;
-        }};
-    static const auto is_simple_lit {[](const Lit &lit) {
-            if (std::holds_alternative<Rel>(lit)) {
-                const auto &rel {std::get<Rel>(lit)};
-                return is_simple_expr(rel.lhs() - rel.rhs());
-            } else {
-                return true;
-            }
-        }};
     const auto [u,v] {luby};
     luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
     solver.setSeed(rand());
     solver.resetSolver();
     luby_loop_count = 0;
-    auto trans {chcs.getAllTransitions()};
-    for (auto it = trans.begin(); it != trans.end();) {
-        bool remove {false};
-        if (is_learned_clause(*it)) {
-            for (const auto &p: chcs.getRule(*it).getUpdate()) {
-                const auto snd {substitution::second(p)};
-                if (std::holds_alternative<Expr>(snd) && !is_simple_expr(std::get<Expr>(snd))) {
-                    remove = true;
-                    break;
-                }
-            }
-        }
-        if (remove) {
-            chcs.removeRule(*it);
-            it = trans.erase(it);
-        } else {
-            ++it;
-        }
-    }
-    for (auto it = trans.begin(); it != trans.end();) {
-        if (is_learned_clause(*it)) {
-            const auto &r {chcs.getRule(*it)};
-            if (!r.getGuard()->forall(is_simple_lit)) {
-                chcs.removeRule(*it);
-                it = trans.erase(it);
-                continue;
-            }
-        }
-        ++it;
-    }
 }
 
 void Reachability::unsat() {
