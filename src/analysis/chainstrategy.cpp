@@ -31,6 +31,9 @@ ResultViaSideEffects Chaining::chainLinearPaths(ITSProblem &its) {
             res.chainingProof(first, second, chained);
             its.addRule(chained, first_idx, second_idx);
             its.removeRule(first_idx);
+            if (its.getPredecessors(second_idx).empty()) {
+                its.removeRule(second_idx);
+            }
             res.deletionProof({first_idx});
         }
     }
