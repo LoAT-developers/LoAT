@@ -742,8 +742,48 @@ void Reachability::analyze() {
     blocked_clauses[0].clear();
     do {
         size_t next_restart = luby_unit * luby.second;
-        auto backlink = has_looping_suffix();
-        if (backlink && luby_loop_count >= next_restart) {
+        if (log) std::cout << "trace: " << trace << std::endl;
+        for (auto backlink = has_looping_suffix();
+             backlink && luby_loop_count < next_restart;
+             backlink = has_looping_suffix()) {
+            Step step = trace[*backlink];
+            bool simple_loop = *backlink == trace.size() - 1;
+            auto state = handle_loop(*backlink);
+            if (state->covered()) {
+                backtrack();
+                proof.headline("Covered");
+                print_state();
+            } else if (state->succeeded()) {
+                if (simple_loop) {
+                    block(step);
+                }
+                proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
+                print_state();
+                update_cpx();
+                // try to apply a query before doing another step
+                if (try_to_finish()) {
+                    return;
+                }
+            } else if (state->dropped()) {
+                if (simple_loop) {
+                    block(step);
+                }
+                proof.majorProofStep("Accelerate and Drop", (*state->dropped())->getProof(), chcs);
+                print_state();
+            } else if (state->failed()) {
+                // non-loop --> do not backtrack
+                proof.headline("Acceleration Failed");
+                proof.append("marked recursive suffix as redundant");
+                non_loops.add(trace, *backlink);
+            } else if (state->unsat()) {
+                proof.majorProofStep("Nonterm", **state->unsat(), chcs);
+                proof.headline("Step with " + std::to_string(trace.back().clause_idx));
+                print_state();
+                unsat();
+                return;
+            }
+        }
+        if (luby_loop_count == next_restart) {
             if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
             // restart
             while (!trace.empty()) {
@@ -751,47 +791,6 @@ void Reachability::analyze() {
             }
             luby_next();
             proof.headline("Restart");
-        } else {
-            if (log) std::cout << "trace: " << trace << std::endl;
-            while (backlink) {
-                Step step = trace[*backlink];
-                bool simple_loop = *backlink == trace.size() - 1;
-                auto state = handle_loop(*backlink);
-                if (state->covered()) {
-                    backtrack();
-                    proof.headline("Covered");
-                    print_state();
-                } else if (state->succeeded()) {
-                    if (simple_loop) {
-                        block(step);
-                    }
-                    proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
-                    print_state();
-                    update_cpx();
-                    // try to apply a query before doing another step
-                    if (try_to_finish()) {
-                        return;
-                    }
-                } else if (state->dropped()) {
-                    if (simple_loop) {
-                        block(step);
-                    }
-                    proof.majorProofStep("Accelerate and Drop", (*state->dropped())->getProof(), chcs);
-                    print_state();
-                } else if (state->failed()) {
-                    // non-loop --> do not backtrack
-                    proof.headline("Acceleration Failed");
-                    proof.append("marked recursive suffix as redundant");
-                    non_loops.add(trace, *backlink);
-                } else if (state->unsat()) {
-                    proof.majorProofStep("Nonterm", **state->unsat(), chcs);
-                    proof.headline("Step with " + std::to_string(trace.back().clause_idx));
-                    print_state();
-                    unsat();
-                    return;
-                }
-                backlink = has_looping_suffix();
-            }
         }
         const auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
         std::vector<TransIdx> to_try(try_set.rbegin(), try_set.rend());
