@@ -39,18 +39,18 @@ private:
 public:
     Rule(const BoolExpr guard, const Subs &update);
 
-    const BoolExpr& getGuard() const {
-        return guard;
+    const BoolExpr getGuard() const;
+
+    template <ITheory Th>
+    const typename Th::Subs& getUpdate() const {
+        return update.get<Th>();
     }
 
-    const Subs& getUpdate() const {
-        return update;
-    }
+    const Subs& getUpdate() const;
 
     Rule subs(const Subs &subs) const;
 
     Rule withGuard(const BoolExpr guard) const;
-    Rule withUpdate(const Subs &up) const;
 
     VarSet vars() const;
     void collectVars(VarSet &vars) const;
@@ -60,9 +60,7 @@ public:
     unsigned hash() const;
 
     struct Hash {
-        std::size_t operator()(const Rule& r) const {
-            return r.hash();
-        }
+        std::size_t operator()(const Rule& r) const;
     };
 
 };

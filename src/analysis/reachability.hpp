@@ -290,7 +290,7 @@ class Reachability {
      * computes a clause that is equivalent to the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    Rule build_loop(const int backlink);
+    std::pair<Rule, Subs> build_loop(const int backlink);
 
     /**
      * adds a learned clause to all relevant data structures
@@ -302,7 +302,7 @@ class Reachability {
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const unsigned backlink, const Red::T &lang);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink, const Red::T &lang);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix

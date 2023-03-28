@@ -31,31 +31,19 @@ namespace util {
 
         static const VS find(
                 const VS &varsOfInterest,
-                const std::vector<S> &updates,
-                const BExpr<Th...> guard) {
+                const S &up) {
             VS res = varsOfInterest;
             // Compute the closure of res under all updates and the guard
             VS todo = res;
             while (!todo.empty()) {
                 VS next;
                 for (const auto &x : todo) {
-                    for (const auto &up: updates) {
-                        std::visit([&up, &next](const auto &x) {
-                            auto it = up.find(x);
-                            if (it != up.end()) {
-                                expression::collectVars<Th...>(theory::second<Th...>(*it), next);
-                            }
-                        }, x);
-                    }
-                    for (const auto &lit: guard->lits()) {
-                        VS relVars;
-                        literal_t::collectVars<Th...>(lit, relVars);
-                        if (relVars.find(x) != relVars.end()) {
-                            for (const auto &x: relVars) {
-                                next.insert(x);
-                            }
+                    std::visit([&up, &next](const auto &x) {
+                        auto it = up.find(x);
+                        if (it != up.end()) {
+                            expression::collectVars<Th...>(theory::second<Th...>(*it), next);
                         }
-                    }
+                    }, x);
                 }
                 todo.clear();
                 for (const auto &var : next) {

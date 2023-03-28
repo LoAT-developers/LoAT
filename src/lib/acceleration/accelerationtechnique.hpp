@@ -35,7 +35,7 @@ public:
 
 protected:
 
-    Rule rule;
+    const Rule rule;
     const std::optional<Recurrence::Result> closed;
     VarMan &its;
     const AccelConfig config;

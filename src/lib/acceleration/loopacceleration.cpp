@@ -30,8 +30,9 @@ using namespace std;
 LoopAcceleration::LoopAcceleration(
         VarMan &its,
         const Rule &rule,
+        const Subs &sample_point,
         const AccelConfig &config)
-    : its(its), rule(rule), config(config) {}
+    : its(its), rule(rule), sample_point(sample_point), config(config) {}
 
 const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, VarMan &its) {
     Rule res = rule;
@@ -170,7 +171,7 @@ acceleration::Result LoopAcceleration::run() {
         res.status = acceleration::ClosedFormFailed;
         return res;
     }
-    const auto accelerationTechnique = AccelerationFactory::get(rule, rec, its, config);
+    const auto accelerationTechnique = AccelerationFactory::get(rule, rec, sample_point, its, config);
     const auto accelerationResult = accelerationTechnique->computeRes();
     if (!accelerationResult.term && config.approx != UnderApprox) {
         res.status = acceleration::AccelerationFailed;
@@ -196,7 +197,8 @@ acceleration::Result LoopAcceleration::run() {
 acceleration::Result LoopAcceleration::accelerate(
         VarMan &its,
         const Rule &rule,
+        const Subs &sample_point,
         const AccelConfig &config) {
-    LoopAcceleration ba(its, rule, config);
+    LoopAcceleration ba(its, rule, sample_point, config);
     return ba.run();
 }
