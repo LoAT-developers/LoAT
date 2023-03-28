@@ -793,7 +793,7 @@ void Reachability::analyze() {
             proof.headline("Restart");
         }
         const auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
-        std::vector<TransIdx> to_try(try_set.rbegin(), try_set.rend());
+        std::vector<TransIdx> to_try(try_set.begin(), try_set.end());
         std::shuffle(to_try.begin(), to_try.end(), rnd);
         bool all_failed {true};
         for (const auto idx: to_try) {
