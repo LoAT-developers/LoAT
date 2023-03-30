@@ -7,12 +7,12 @@
 #include "map.hpp"
 
 AccelerationProblem::AccelerationProblem(
-        const Rule &rule,
+        const Rule &r,
         const std::optional<Recurrence::Result> &closed,
         const Subs &samplePoint,
         VarMan &its,
         const AccelConfig &config):
-    AccelerationTechnique(rule, closed, its, config),
+    AccelerationTechnique(r.withGuard(r.getGuard()->toG()), closed, its, config),
     samplePoint(samplePoint) {
     for (const auto &l: rule.getGuard()->lits()) {
         todo.insert(l);
