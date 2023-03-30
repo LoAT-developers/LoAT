@@ -17,12 +17,12 @@ public:
     struct Accelerator {
         BExpr<Th...> formula;
         Proof proof;
-        bool exact;
+        BExpr<Th...> covered;
 
-        Accelerator(const BExpr<Th...> &formula, const Proof &proof, bool exact):
+        Accelerator(const BExpr<Th...> &formula, const Proof &proof, BExpr<Th...> covered):
             formula(formula),
             proof(proof),
-            exact(exact) {}
+            covered(covered) {}
 
     };
 

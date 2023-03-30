@@ -567,7 +567,9 @@ std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
     const auto &step {trace.back()};
     auto rule {chcs.getRule(step.clause_idx).withGuard(step.implicant)};
     auto loop {rule};
-    Subs sample_point {solver.model(rule.subs(step.var_renaming).vars()).toSubs()};
+    Subs sample_point {
+        substitution::compose(step.var_renaming, solver.model(rule.subs(step.var_renaming).vars()).toSubs())
+    };
     for (int i = trace.size() - 2; i >= backlink; --i) {
         const auto &step {trace[i]};
         rule = chcs.getRule(step.clause_idx).withGuard(step.implicant);

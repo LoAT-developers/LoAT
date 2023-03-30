@@ -16,7 +16,7 @@ class AccelerationProblem: public AccelerationTechnique<IntTheory, BoolTheory>  
     struct Entry {
         LitSet dependencies;
         BoolExpr formula;
-        bool exact;
+        BoolExpr covered;
         bool nonterm;
     };
 
@@ -29,17 +29,17 @@ class AccelerationProblem: public AccelerationTechnique<IntTheory, BoolTheory>  
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     std::optional<Rel> bound;
 
-    BoolExpr polynomial(const Lit &lit, Proof &proof);
-    BoolExpr monotonicity(const Lit &lit, Proof &proof);
-    BoolExpr recurrence(const Lit &lit, Proof &proof);
-    BoolExpr eventualWeakDecrease(const Lit &lit, Proof &proof);
-    BoolExpr eventualIncrease(const Lit &lit, const bool strict, Proof &proof);
-    BoolExpr fixpoint(const Lit &lit, Proof &proof);
-    std::optional<unsigned int> store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool exact = true, bool nonterm = false);
+    bool polynomial(const Lit &lit, Proof &proof);
+    bool monotonicity(const Lit &lit, Proof &proof);
+    bool recurrence(const Lit &lit, Proof &proof);
+    bool eventualWeakDecrease(const Lit &lit, Proof &proof);
+    bool eventualIncrease(const Lit &lit, const bool strict, Proof &proof);
+    bool fixpoint(const Lit &lit, Proof &proof);
+    unsigned store(const Lit &lit, const LitSet &deps, const BoolExpr formula, const BoolExpr covered, bool nonterm = false);
 
     struct ReplacementMap {
         bool nonterm;
-        bool exact;
+        BoolExpr covered;
         std::map<Lit, BoolExpr> map;
     };
 
