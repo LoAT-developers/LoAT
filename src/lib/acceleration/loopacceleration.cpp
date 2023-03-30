@@ -160,10 +160,9 @@ acceleration::Result LoopAcceleration::run() {
     // for rules with runtime 1, our acceleration techniques do not work properly,
     // as the closed forms are usually only valid for n > 0 --> special case
     if (SmtFactory::check(rule.chain(rule).getGuard(), its) != SmtResult::Sat) {
-        res.rule = rule;
+        res.accel = {BExpression::True, rule, proof};
+        res.accel->proof.append("rule cannot be iterated more than once");
         res.status = acceleration::PseudoLoop;
-        res.accelerationProof = proof;
-        res.accelerationProof.append("rule cannot be iterated more than once");
         return res;
     }
     const auto rec = Recurrence::iterate(its, rule.getUpdate());
@@ -178,17 +177,13 @@ acceleration::Result LoopAcceleration::run() {
         return res;
     }
     if (config.tryNonterm && accelerationResult.nonterm) {
-        res.nontermCertificate = accelerationResult.nonterm->formula;
-        res.nontermProof = proof;
-        res.nontermProof.concat(accelerationResult.nonterm->proof);
+        res.nonterm = {accelerationResult.nonterm->covered, accelerationResult.nonterm->formula, proof};
+        res.nonterm->proof.concat(accelerationResult.nonterm->proof);
     }
     if (rec && accelerationResult.term) {
         res.n = rec->n;
-        res.rule = Rule(
-                    accelerationResult.term->formula,
-                    rec->update);
-        res.accelerationProof = proof;
-        res.accelerationProof.concat(accelerationResult.term->proof);
+        res.accel = {accelerationResult.term->covered, Rule(accelerationResult.term->formula, rec->update), proof};
+        res.accel->proof.concat(accelerationResult.term->proof);
     }
     return res;
 }

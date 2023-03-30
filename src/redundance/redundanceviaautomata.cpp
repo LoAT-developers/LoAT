@@ -66,11 +66,11 @@ std::ostream& operator<<(std::ostream &s, const Automaton &a) {
     return s << a.str;
 }
 
-Automaton RedundanceViaAutomata::get_singleton_language(const TransIdx idx, const Guard &g) {
+Automaton RedundanceViaAutomata::get_singleton_language(const std::vector<TransIdx> idx, const Guard &g) {
     const auto it = alphabet.find({idx, g});
     if (it == alphabet.end()) {
         const auto res = Automaton::singleton();
-        alphabet.emplace(std::pair<TransIdx, Guard>(idx, g), res);
+        alphabet.emplace(std::pair<std::vector<TransIdx>, Guard>(idx, g), res);
         return res;
     } else {
         return it->second;
@@ -103,17 +103,4 @@ void RedundanceViaAutomata::concat(Automaton &t1, const Automaton &t2) const {
 
 void RedundanceViaAutomata::transitive_closure(Automaton &t) const {
     t.kleene_plus();
-}
-
-std::set<std::pair<TransIdx, Guard>> RedundanceViaAutomata::get_alphabet(const T &t) const {
-    std::set<std::pair<TransIdx, Guard>> res;
-    const auto alphabet {t.get_alphabet()};
-    for (const auto &e: this->alphabet) {
-        const auto singleton {e.second.get_alphabet()};
-        assert(singleton.Size() == 1);
-        if (alphabet.Find(*singleton.Begin()) != alphabet.End()) {
-            res.insert(e.first);
-        }
-    }
-    return res;
 }

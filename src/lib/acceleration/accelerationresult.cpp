@@ -1,7 +1,7 @@
 #include "accelerationresult.hpp"
 
 bool acceleration::Result::successful() const {
-    return rule || nontermCertificate != BExpression::False;
+    return accel || nonterm;
 }
 
 bool acceleration::Result::inexact() const {

@@ -1,8 +1,9 @@
 #pragma once
 
-#include <libfaudes.h>
+#include "theory.hpp"
+#include "types.hpp"
 
-#include "redundance.hpp"
+#include <libfaudes.h>
 
 class Automaton {
 
@@ -30,28 +31,23 @@ public:
 
 };
 
-class RedundanceViaAutomata: public Redundance<Automaton> {
+class RedundanceViaAutomata {
 
 public:
 
-    using T = Automaton;
-
-    virtual T get_singleton_language(const TransIdx idx, const Guard &guard) override;
-    virtual T get_language(const TransIdx idx) override;
-    virtual void set_language(const TransIdx idx, const T &t) override;
-    virtual void delete_language(const TransIdx idx);
-    virtual bool is_redundant(const T &t) const override;
-    virtual void mark_as_redundant(const T &t) override;
-    virtual void concat(T &t1, const T &t2) const override;
-    virtual void transitive_closure(T &t) const override;
-
-    // TODO could be used to compute unsat cores
-    std::set<std::pair<TransIdx, Guard>> get_alphabet(const T &t) const;
+    Automaton get_singleton_language(const std::vector<TransIdx> idx, const Guard &guard);
+    Automaton get_language(const TransIdx idx);
+    void set_language(const TransIdx idx, const Automaton &t);
+    void delete_language(const TransIdx idx);
+    bool is_redundant(const Automaton &t) const;
+    void mark_as_redundant(const Automaton &t);
+    void concat(Automaton &t1, const Automaton &t2) const;
+    void transitive_closure(Automaton &t) const;
 
 private:
 
     long next_char;
-    std::map<std::pair<TransIdx, Guard>, T> alphabet;
-    std::map<TransIdx, T> regexes;
+    std::map<std::pair<std::vector<TransIdx>, Guard>, Automaton> alphabet;
+    std::map<TransIdx, Automaton> regexes;
 
 };

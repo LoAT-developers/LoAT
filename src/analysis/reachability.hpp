@@ -127,13 +127,13 @@ class Succeeded final: public LearningState {
     /**
      * the indices of the learned clause
      */
-    Result<std::vector<TransIdx>> idx;
+    Result<std::vector<std::pair<TransIdx, BoolExpr>>> idx;
 
 public:
-    Succeeded(const Result<std::vector<TransIdx>> &idx);
+    Succeeded(const Result<std::vector<std::pair<TransIdx, BoolExpr>>> &idx);
     std::optional<Succeeded> succeeded() override;
-    Result<std::vector<TransIdx>>& operator*();
-    Result<std::vector<TransIdx>>* operator->();
+    Result<std::vector<std::pair<TransIdx, BoolExpr>>>& operator*();
+    Result<std::vector<std::pair<TransIdx, BoolExpr>>>* operator->();
 };
 
 class Covered final: public LearningState {
@@ -141,16 +141,13 @@ class Covered final: public LearningState {
 };
 
 class Dropped final: public LearningState {
-    /**
-     * the indices of the learned clause
-     */
-    Result<std::vector<TransIdx>> idx;
+
+    ITSProof proof;
 
 public:
-    Dropped(const Result<std::vector<TransIdx>> &idx);
+    Dropped(const ITSProof &proof);
     std::optional<Dropped> dropped() override;
-    Result<std::vector<TransIdx>>& operator*();
-    Result<std::vector<TransIdx>>* operator->();
+    const ITSProof& get_proof() const;
 };
 
 class Failed final: public LearningState {
@@ -216,6 +213,7 @@ class Reachability {
      */
     using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundance {std::make_unique<Red>()};
+    std::map<std::pair<std::vector<TransIdx>, BoolExpr>, BoolExpr> conditional_redundance;
 
     NonLoops non_loops;
 
@@ -277,14 +275,14 @@ class Reachability {
     /**
      * computes (an approximation of) the language associated with the clause used for the given step
      */
-    Red::T get_language(const Step &step);
+    Automaton get_language(const Step &step);
 
     /**
      * computes (an approximation of) the language associated with the clause that can be learned
      * from the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    Red::T build_language(const int backlink);
+    Automaton build_language(const int backlink);
 
     /**
      * computes a clause that is equivalent to the looping suffix of the trace
@@ -296,13 +294,13 @@ class Reachability {
      * adds a learned clause to all relevant data structures
      * @param lang (an approximation of) the language associated with the learned clause
      */
-    TransIdx add_learned_clause(const Rule &clause, const unsigned backlink, const Red::T &lang);
+    TransIdx add_learned_clause(const Rule &clause, const unsigned backlink, const Automaton &lang);
 
     /**
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink, const Red::T &lang);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink, const Automaton &lang);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix
