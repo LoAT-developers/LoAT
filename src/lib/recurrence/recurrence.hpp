@@ -76,11 +76,6 @@ private:
     VariableManager &varMan;
 
     /**
-     * Purrs::Recurrence::n converted to a ginac expression, for convenience only
-     */
-    const GiNaC::symbol ginacN;
-
-    /**
      * Order in which recurrences for updated variables can be computed
      */
     std::vector<Var> dependencyOrder;

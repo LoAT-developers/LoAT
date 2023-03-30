@@ -29,7 +29,6 @@ namespace Purrs = Parma_Recurrence_Relation_Solver;
 
 Recurrence::Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder)
     : varMan(varMan),
-      ginacN(GiNaC::ex_to<GiNaC::symbol>(Purrs::Expr(Purrs::Recurrence::n).toGiNaC())),
       dependencyOrder(dependencyOrder)
 {}
 
@@ -95,7 +94,8 @@ std::optional<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(co
                             }
                             //remember this recurrence to replace vi in the updates depending on vi
                             //note that updates need the value at n-1, e.g. x(n) = x(n-1) + vi(n-1) for the update x=x+vi
-                            updatePreRecurrences.put<IntTheory>(target, updateRec->res.ex.subs({{ginacN, ginacN-1}}));
+                            const auto &n {*NumVar::ginacN()};
+                            updatePreRecurrences.put<IntTheory>(target, updateRec->res.ex.subs({{n, n-1}}));
                             //calculate the final update
                             newUpdate.put<IntTheory>(target, updateRec->res);
                             return static_cast<int>(updateRec->validityBound);
@@ -128,7 +128,7 @@ std::optional<Recurrence::Result> Recurrence::iterate(const Subs &update) {
         return {};
     }
     Recurrence::Result res(varMan.addFreshTemporaryVariable<IntTheory>("n"));
-    Subs subs {Subs::build<IntTheory>(NumVar(ginacN), *res.n)};
+    Subs subs {Subs::build<IntTheory>(NumVar::ginacN(), *res.n)};
     res.update = substitution::concat(newUpdate->update, subs);
     res.validityBound = newUpdate->validityBound;
     return {res};

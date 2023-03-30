@@ -1,8 +1,16 @@
 #include "numvar.hpp"
+#include "purrs.hh"
 
 #include <assert.h>
 
+namespace Purrs = Parma_Recurrence_Relation_Solver;
+
 std::map<std::string, GiNaC::symbol> NumVar::symbols;
+
+NumVar NumVar::ginacN() {
+    static const NumVar res {GiNaC::ex_to<GiNaC::symbol>(Purrs::Expr(Purrs::Recurrence::n).toGiNaC())};
+    return res;
+}
 
 NumVar::NumVar(const std::string &name): name(name) {}
 

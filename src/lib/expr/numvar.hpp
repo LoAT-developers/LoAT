@@ -8,9 +8,11 @@ class NumVar {
 
     static std::map<std::string, GiNaC::symbol> symbols;
 
+    explicit NumVar(const GiNaC::symbol &sym);
+
 public:
 
-    explicit NumVar(const GiNaC::symbol &sym);
+    static NumVar ginacN();
 
     explicit NumVar(const std::string &name);
 
