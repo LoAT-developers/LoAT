@@ -36,9 +36,11 @@ struct Step {
      */
     const Subs var_renaming;
 
+    const Subs model;
+
     const Rule resolvent;
 
-    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent);
+    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Subs &model, const Rule &resolvent);
 
 };
 
@@ -207,10 +209,6 @@ class Reachability {
 
     void luby_next();
 
-    /**
-     * Implementation of our redundancy check.
-     * TODO RedundanceViaSquareFreeWords is not sound for sat. RedundanceViaAutomata should be sound.
-     */
     using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundance {std::make_unique<Red>()};
     std::map<std::pair<std::vector<TransIdx>, BoolExpr>, BoolExpr> conditional_redundance;

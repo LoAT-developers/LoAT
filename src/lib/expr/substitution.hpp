@@ -41,6 +41,8 @@ inline void concatImpl(const TheSubs &fst, const TheSubs &snd, TheSubs &res) {
     }
 }
 
+TheSubs concat(const TheSubs &fst, const TheSubs &snd);
+
 template<std::size_t I = 0>
 inline void composeImpl(const TheSubs &fst, const TheSubs &snd, TheSubs &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
@@ -55,6 +57,18 @@ inline void composeImpl(const TheSubs &fst, const TheSubs &snd, TheSubs &res) {
 
 TheSubs compose(const TheSubs &fst, const TheSubs &snd);
 
-TheSubs concat(const TheSubs &fst, const TheSubs &snd);
+template<std::size_t I = 0>
+inline void coDomainVarsImpl(const TheSubs &subs, VarSet &res) {
+    if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
+        if constexpr (theory::is<I, BoolTheory>()) {
+            subs.get<I>().collectCoDomainVars(res);
+        } else {
+            subs.get<I>().collectCoDomainVars(res.get<I>());
+        }
+        coDomainVarsImpl<I+1>(subs, res);
+    }
+}
+
+VarSet coDomainVars(const TheSubs &subs);
 
 }

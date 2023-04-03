@@ -104,10 +104,11 @@ Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs, smt_timeo
     solver.enableModels();
 }
 
-Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent):
+Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Subs &model, const Rule &resolvent):
     clause_idx(transition),
     implicant(sat),
     var_renaming(var_renaming),
+    model(model),
     resolvent(resolvent) {}
 
 std::ostream& operator<<(std::ostream &s, const Step &step) {
@@ -256,9 +257,9 @@ Subs Reachability::handle_update(const TransIdx idx) {
         // no need to compute a new variable renaming if we just applied a query
         return {};
     }
-    const Rule &r = chcs.getRule(idx);
-    const Subs last_var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
-    Subs new_var_renaming;
+    const auto &r {chcs.getRule(idx)};
+    const auto &last_var_renaming = trace.empty() ? Subs::Empty : trace.back().var_renaming;
+    Subs new_var_renaming {last_var_renaming};
     const Subs up = r.getUpdate();
     for (const auto &x: prog_vars) {
         new_var_renaming.put(x, TheTheory::varToExpr(chcs.addFreshTemporaryVariable(x)));
@@ -344,14 +345,14 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
 
 bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
     solver.push();
-    if (trace.empty()) {
-        solver.add(implicant);
-    } else {
-        solver.add(implicant->subs(trace.back().var_renaming));
-    }
+    const auto imp = trace.empty() ? implicant : implicant->subs(trace.back().var_renaming);
+    solver.add(imp);
     if (solver.check() == Sat) {
-        const auto new_var_renaming = handle_update(idx);
-        const Step step(idx, implicant, new_var_renaming, compute_resolvent(idx, implicant));
+        auto vars = trace.empty() ? prog_vars : substitution::coDomainVars(trace.back().var_renaming.project(prog_vars));
+        vars.insertAll(imp->vars());
+        const auto model {solver.model(vars).toSubs()};
+        const auto new_var_renaming {handle_update(idx)};
+        const Step step(idx, implicant, new_var_renaming, model, compute_resolvent(idx, implicant));
         add_to_trace(step);
         // block learned clauses after adding them to the trace
         if (is_learned_clause(idx)) {
@@ -502,7 +503,7 @@ void Reachability::unsat() {
 
 std::optional<BoolExpr> Reachability::resolve(const TransIdx idx) {
     PushPop pp(solver);
-    const auto var_renaming = trace.empty() ? Subs() : trace.back().var_renaming;
+    const auto &var_renaming = trace.empty() ? Subs::Empty : trace.back().var_renaming;
     const auto clause = chcs.getRule(idx);
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
@@ -516,13 +517,16 @@ std::optional<BoolExpr> Reachability::resolve(const TransIdx idx) {
             solver.add(!b->subs(var_renaming));
         }
     }
-    const auto guard = clause.getGuard()->subs(var_renaming);
+    const auto vars {clause.getGuard()->vars()};
+    const auto projected_var_renaming {var_renaming.project(vars)};
+    const auto guard {clause.getGuard()->subs(projected_var_renaming)};
     solver.add(guard);
     if (solver.check() == Sat) {
         if (log) std::cout << "found model for " << idx << std::endl;
-        const auto implicant = clause.getGuard()->implicant(substitution::compose(var_renaming, solver.model(guard->vars()).toSubs()));
+        const auto model {solver.model(guard->vars()).toSubs()};
+        const auto implicant {clause.getGuard()->implicant(substitution::compose(projected_var_renaming, model))};
         if (implicant) {
-            return BExpression::buildAndFromLits(*implicant);
+            return {BExpression::buildAndFromLits(*implicant)};
         } else {
             throw std::logic_error("model, but no implicant");
         }
@@ -562,24 +566,26 @@ Automaton Reachability::build_language(const int backlink) {
 
 std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
     const auto &step {trace.back()};
-    auto rule {chcs.getRule(step.clause_idx).withGuard(step.implicant)};
+    const auto &tmp_var_renaming = trace.size() >= 2 ? trace.at(trace.size() - 2).var_renaming.setminus(prog_vars) : Subs::Empty;
+    auto rule {chcs.getRule(step.clause_idx).withGuard(step.implicant).subs(tmp_var_renaming)};
     auto loop {rule};
-    Subs sample_point {
-        substitution::compose(step.var_renaming, solver.model(rule.subs(step.var_renaming).vars()).toSubs())
-    };
+    auto model {step.model};
     for (int i = trace.size() - 2; i >= backlink; --i) {
         const auto &step {trace[i]};
-        rule = chcs.getRule(step.clause_idx).withGuard(step.implicant);
+        const auto &tmp_var_renaming = i > 0 ? trace.at(i - 1).var_renaming.setminus(prog_vars) : Subs::Empty;
+        rule = chcs.getRule(step.clause_idx).withGuard(step.implicant).subs(tmp_var_renaming);
         loop = Chaining::chain(rule, loop, chcs);
-        const auto model {solver.model(rule.subs(step.var_renaming).vars()).toSubs()};
-        sample_point = substitution::compose(sample_point, model);
+        model = substitution::compose(step.model, model);
+    }
+    if (backlink > 0) {
+        model = substitution::compose(trace.at(backlink-1).var_renaming.project(prog_vars), model);
     }
     if (log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         ITSExport::printRule(loop, std::cout);
         std::cout << std::endl;
     }
-    return {loop, sample_point};
+    return {loop, model};
 }
 
 TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink, const Automaton &lang) {
@@ -739,10 +745,10 @@ bool Reachability::try_to_finish() {
     std::set<TransIdx> clauses = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
     for (const auto &q: clauses) {
         if (chcs.isSinkTransition(q)) {
-            const std::optional<BoolExpr> implicant = resolve(q);
+            const auto implicant {resolve(q)};
             if (implicant) {
                 // no need to compute the model and the variable renaming for the next step, as we are done
-                add_to_trace(Step(q, *implicant, Subs(), compute_resolvent(q, *implicant)));
+                add_to_trace(Step(q, *implicant, Subs(), Subs(), compute_resolvent(q, *implicant)));
                 proof.headline("Step with " + std::to_string(q));
                 print_state();
                 unsat();
@@ -824,7 +830,7 @@ void Reachability::analyze() {
         std::shuffle(to_try.begin(), to_try.end(), rnd);
         bool all_failed {true};
         for (const auto idx: to_try) {
-            const std::optional<BoolExpr> implicant = resolve(idx);
+            const auto implicant {resolve(idx)};
             if (implicant && store_step(idx, *implicant)) {
                 proof.headline("Step with " + std::to_string(idx));
                 print_state();

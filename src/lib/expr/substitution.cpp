@@ -27,4 +27,10 @@ TheSubs concat(const TheSubs &fst, const TheSubs &snd) {
     return res;
 }
 
+VarSet coDomainVars(const TheSubs &subs) {
+    VarSet res;
+    coDomainVarsImpl(subs, res);
+    return res;
+}
+
 }

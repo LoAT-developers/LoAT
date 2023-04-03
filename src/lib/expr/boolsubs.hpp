@@ -84,9 +84,37 @@ public:
 
     BoolSubs project(const std::set<BoolVar> &vars) const {
         BoolSubs res;
-        for (const auto &p: *this) {
-            if (vars.find(p.first) != vars.end()) {
-                res.put(p.first, p.second);
+        if (size() < vars.size()) {
+            for (const auto &p: *this) {
+                if (vars.find(p.first) != vars.end()) {
+                    res.put(p.first, p.second);
+                }
+            }
+        } else {
+            for (const auto &x: vars) {
+                const auto it {find(x)};
+                if (it != end()) {
+                    res.put(it->first, it->second);
+                }
+            }
+        }
+        return res;
+    }
+
+    BoolSubs setminus(const std::set<BoolVar> &vars) const {
+        BoolSubs res;
+        if (size() < vars.size()) {
+            for (const auto &p: *this) {
+                if (vars.find(p.first) == vars.end()) {
+                    res.put(p.first, p.second);
+                }
+            }
+        }  else {
+            for (const auto &x: vars) {
+                const auto it {find(x)};
+                if (it == end()) {
+                    res.put(it->first, it->second);
+                }
             }
         }
         return res;
@@ -104,8 +132,6 @@ public:
         collectDomain(res);
         return res;
     }
-
-    std::set<BoolVar> coDomainVars() const;
 
     std::set<BoolVar> allVars() const {
         std::set<BoolVar> res;

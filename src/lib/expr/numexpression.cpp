@@ -691,9 +691,37 @@ ExprSubs ExprSubs::unite(const ExprSubs &that) const {
 
 ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
     ExprSubs res;
-    for (const auto &p: *this) {
-        if (vars.find(p.first) != vars.end()) {
-            res.put(p.first, p.second);
+    if (size() < vars.size()) {
+        for (const auto &p: *this) {
+            if (vars.find(p.first) != vars.end()) {
+                res.put(p.first, p.second);
+            }
+        }
+    } else {
+        for (const auto &x: vars) {
+            const auto it {find(x)};
+            if (it != end()) {
+                res.put(it->first, it->second);
+            }
+        }
+    }
+    return res;
+}
+
+ExprSubs ExprSubs::setminus(const std::set<NumVar> &vars) const {
+    ExprSubs res;
+    if (size() < vars.size()) {
+        for (const auto &p: *this) {
+            if (vars.find(p.first) == vars.end()) {
+                res.put(p.first, p.second);
+            }
+        }
+    } else {
+        for (const auto &x: vars) {
+            const auto it {find(x)};
+            if (it == end()) {
+                res.put(it->first, it->second);
+            }
         }
     }
     return res;

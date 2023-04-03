@@ -386,6 +386,8 @@ public:
 
     ExprSubs project(const std::set<NumVar> &vars) const;
 
+    ExprSubs setminus(const std::set<NumVar> &vars) const;
+
     bool changes(const NumVar &key) const;
 
     bool isLinear() const;
