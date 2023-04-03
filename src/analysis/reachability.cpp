@@ -370,24 +370,30 @@ void Reachability::print_trace(std::ostream &s) {
     s << "(";
     bool first {true};
     for (const auto &x: prog_vars) {
+        const auto &y {model.get(x)};
+        if (x == y) continue;
         if (first) {
             first = false;
         } else {
             s << ", ";
         }
-        s << x << "=" << model.get(x);
+        s << x << "=" << y;
     }
     s << ")" << std::endl;
     for (const auto &step: trace) {
         s << "-" << step.clause_idx << "-> " << "(";
         first = true;
-        for (const auto &x: prog_vars) {
-            if (first) {
-                first = false;
-            } else {
-                s << ", ";
+        if (!chcs.isSinkTransition(step.clause_idx)) {
+            for (const auto &x: prog_vars) {
+                const auto y {expression::subs(step.var_renaming.get(x), model)};
+                if (x == y) continue;
+                if (first) {
+                    first = false;
+                } else {
+                    s << ", ";
+                }
+                s << x << "=" << y;
             }
-            s << x << "=" << expression::subs(step.var_renaming.get(x), model);
         }
         s << " )" << std::endl;
     }
