@@ -116,7 +116,12 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         }
         const auto loc_var = its.getLocVar();
         up.put(loc_var, c.rhs.loc);
-        const BoolExpr guard = c.guard->subs(ren)->simplify() & Rel::buildEq(loc_var, c.lhs.loc);
+        const auto cost {its.getCostVar()};
+        up.put(cost, Expr(cost) + 1);
+        auto guard {c.guard->subs(ren)->simplify() & Rel::buildEq(loc_var, c.lhs.loc)};
+        if (c.lhs.loc == its.getInitialLocation()) {
+            guard = guard & Rel::buildEq(cost, 0);
+        }
         its.addRule(Rule(guard, up), c.lhs.loc);
     }
     return its;
