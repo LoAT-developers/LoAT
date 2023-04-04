@@ -210,10 +210,6 @@ class Reachability {
 
     void luby_next();
 
-    /**
-     * Implementation of our redundancy check.
-     * TODO RedundanceViaSquareFreeWords is not sound for sat. RedundanceViaAutomata should be sound.
-     */
     using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundance {std::make_unique<Red>()};
 
