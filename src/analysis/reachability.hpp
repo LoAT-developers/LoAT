@@ -292,13 +292,13 @@ class Reachability {
      * adds a learned clause to all relevant data structures
      * @param lang (an approximation of) the language associated with the learned clause
      */
-    TransIdx add_learned_clause(const Rule &clause, const unsigned backlink, const Automaton &lang);
+    TransIdx add_learned_clause(const Rule &clause, const unsigned backlink);
 
     /**
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink, const Automaton &lang);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix

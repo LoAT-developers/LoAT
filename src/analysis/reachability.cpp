@@ -594,11 +594,10 @@ std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
     return {loop, model};
 }
 
-TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink, const Automaton &lang) {
+TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink) {
     const auto fst = trace.at(backlink).clause_idx;
     const auto last = trace.back().clause_idx;
     const auto loop_idx = chcs.addLearnedRule(accel, fst, last);
-    redundance->set_language(loop_idx, lang);
     return loop_idx;
 }
 
@@ -627,7 +626,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
     return res;
 }
 
-std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink, const Automaton &lang) {
+std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink) {
     Result<Rule> simp = Preprocess::simplifyRule(chcs, rule);
     if (Config::Analysis::reachability() && simp->getUpdate() == substitution::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -666,7 +665,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
                 simplified.concat(instantiate(*accel_res.n, *simplified));
             }
             res.succeed();
-            const auto loop_idx {add_learned_clause(*simplified, backlink, lang)};
+            const auto loop_idx {add_learned_clause(*simplified, backlink)};
             res->emplace_back(loop_idx, accel_res.accel->covered);
             ITSProof acceleration_proof;
             acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
@@ -688,7 +687,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
 }
 
 std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
-    const auto lang = build_language(backlink);
+    const auto lang {build_language(backlink)};
     if (redundance->is_redundant(lang)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
@@ -713,7 +712,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         return std::make_unique<Covered>();
     }
     luby_loop_count++;
-    auto state {learn_clause(loop, sample_point, backlink, lang)};
+    auto state {learn_clause(loop, sample_point, backlink)};
     if (!state->succeeded()) {
         redundance->mark_as_redundant(lang);
         return state;
@@ -736,7 +735,25 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     redundance_condition = BExpression::buildOr(new_redundance_condition);
     if (redundance_condition->isTriviallyTrue() || SmtFactory::check(!redundance_condition, chcs) == SmtResult::Unsat) {
+        for (const auto &[idx, covered]: idxs) {
+            if (!chcs.isSinkTransition(idx)) {
+                redundance->set_language(idx, lang);
+            }
+        }
         redundance->mark_as_redundant(lang);
+    } else {
+        const auto guard {loop.getGuard()->conjunctionToGuard()};
+        for (const auto &[idx, covered]: idxs) {
+            if (!chcs.isSinkTransition(idx)) {
+                auto g1 {guard};
+                const auto g2 {covered->conjunctionToGuard()};
+                g1.insert(g1.end(), g2.begin(), g2.end());
+                auto closure {redundance->get_singleton_language(indices, g1)};
+                redundance->transitive_closure(closure);
+                redundance->mark_as_redundant(closure);
+                redundance->set_language(idx, closure);
+            }
+        }
     }
     if (done) {
         return state;
