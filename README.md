@@ -1,6 +1,7 @@
 # LoAT -- the Loop Acceleration Tool
 
-LoAT (**Lo**op **A**cceleration **T**ool, formerly known as **Lo**wer Bounds **A**nalysis **T**ool) is a fully automated tool to analyze programs operating on integers.
-Currently, it supports the inference of **lower bounds** on the worst-case runtime complexity and **non-termination proving**.
+LoAT (**Lo**op **A**cceleration **T**ool) is a fully automated tool to analyze *transition systems* and linear *Constrained Horn Clauses (CHCs)* with integer variables.
+For transition systems, it supports the inference of **lower bounds** on the worst-case runtime complexity and **non-termination proving**.
+For CHCs, it can prove **unsatisfiability**.
 
 For more information, please visit [LoAT's website](https://loat-developers.github.io/LoAT/).
