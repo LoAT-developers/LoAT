@@ -623,7 +623,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
             }
         }
 
-        if (l.equals(1) || r.equals(1)) {
+        if (l == 1 || r == 1) {
             return false;
         }
 
@@ -734,7 +734,7 @@ bool AsymptoticBound::trySubstitutingVariable() {
 
                     if (((dir == POS || dir == POS_INF) && (dir2 == POS || dir2 == POS_INF))
                         || (dir == NEG_INF && dir2 == NEG_INF)) {
-                        assert(!it->equals(*it2));
+                        assert(*it != *it2);
 
                         ExprSubs sub{{it->toVar(), *it2}};
                         substitutions.push_back(sub);

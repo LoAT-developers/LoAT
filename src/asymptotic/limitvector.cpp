@@ -110,7 +110,7 @@ bool LimitVector::makesSense(Expr l, Expr r) const {
         return false;
     }
 
-    if (l.equals(r) && first != second) {
+    if (l == r && first != second) {
         return false;
     }
 

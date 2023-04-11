@@ -154,8 +154,8 @@ Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool r
 
                 //check coefficient and direction
                 Expr c = target.expand().coeff(var);
-                if (c.compare(1) != 0 && c.compare(-1) != 0) goto abort;
-                if (c.compare(1) == 0) {
+                if (c != 1 && c != -1) goto abort;
+                if (c == 1) {
                     varLessThan.push_back( -(target-var) );
                 } else {
                     varGreaterThan.push_back( target+var );

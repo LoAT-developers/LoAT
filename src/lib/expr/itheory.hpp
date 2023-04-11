@@ -136,16 +136,6 @@ std::ostream& operator<<(std::ostream &s, const Subs<Th...> &subs) {
 }
 
 template<ITheory... Th>
-bool operator==(const Subs<Th...> &fst, const Subs<Th...> &snd) {
-    return fst.t == snd.t;
-}
-
-template<ITheory... Th>
-bool operator<(const Subs<Th...> &fst, const Subs<Th...> &snd) {
-    return fst.t < snd.t;
-}
-
-template<ITheory... Th>
 std::enable_if_t<(sizeof...(Th) > 0), typename Theory<Th...>::Var> first(const typename Subs<Th...>::Pair &p) {
     return std::visit([](const auto &p){return typename Theory<Th...>::Var(p.first);}, p);
 }

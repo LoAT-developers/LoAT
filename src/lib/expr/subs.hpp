@@ -18,12 +18,6 @@ class Subs {
     typename TheTheory::Subs t;
     static const size_t variant_size = std::variant_size_v<Expr>;
 
-    template <ITheory... Th_>
-    friend bool operator==(const Subs<Th_...> &fst, const Subs<Th_...> &snd);
-
-    template <ITheory... Th_>
-    friend bool operator<(const Subs<Th_...> &fst, const Subs<Th_...> &snd);
-
 public:
 
     using Pair = typename TheTheory::Pair;
@@ -134,10 +128,6 @@ public:
 
         friend bool operator== (const Iterator& a, const Iterator& b) {
             return a.ptr == b.ptr;
-        };
-
-        friend bool operator!= (const Iterator& a, const Iterator& b) {
-            return a.ptr != b.ptr;
         };
 
     private:
@@ -501,15 +491,7 @@ public:
         return std::apply([](const auto&... x){return (true && ... && x.isPoly());}, t);
     }
 
-    int compare(const Subs &that) const {
-        if (this->t == that.t) {
-            return 0;
-        } else if (this->t < that.t) {
-            return -1;
-        } else {
-            return 1;
-        }
-    }
+    auto operator<=>(const Subs &that) const = default;
 
     template <ITheory T>
     typename T::Subs& get() {

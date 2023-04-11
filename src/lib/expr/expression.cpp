@@ -15,7 +15,3 @@ std::ostream& operator<<(std::ostream &s, const ThExpr &e) {
     std::visit([&s](const auto &e){s << e;}, e);
     return s;
 }
-
-bool operator==(const ThExpr &e, const Var &var) {
-    return e == TheTheory::varToExpr(var);
-}

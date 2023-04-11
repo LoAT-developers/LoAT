@@ -127,7 +127,7 @@ antlrcpp::Any KoatParseVisitor::visitRhs(KoatParser::RhsContext *ctx) {
     Subs up;
     for (unsigned i = 0; i < sz; ++i) {
         Expr rhs = any_cast<expr_type>(visit(expr[i]));
-        if (!rhs.equals(programVars[i])) {
+        if (rhs != programVars[i]) {
             up.put<IntTheory>(programVars[i], rhs);
         }
     }

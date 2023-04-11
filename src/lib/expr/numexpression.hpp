@@ -53,6 +53,9 @@ class Expr {
 
     friend class ExprSubs;
 
+    friend bool operator==(const Expr&, const Expr&);
+    friend std::strong_ordering operator<=>(const Expr &x, const Expr &y);
+
 public:
 
     /**
@@ -82,11 +85,6 @@ public:
      * @return True iff there was at least one match.
      */
     bool findAll(const Expr &pattern, std::set<Expr> &found) const;
-
-    /**
-     * @return True iff this expression is equal (resp. evaluates) to the given variable
-     */
-    bool equals(const NumVar &var) const;
 
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
@@ -201,11 +199,6 @@ public:
     std::string toString() const;
 
     /**
-     * @return True iff this and that are equal.
-     */
-    bool equals(const Expr &that) const;
-
-    /**
      * @return The degree wrt. var.
      * @note For polynomials only.
      */
@@ -292,11 +285,6 @@ public:
      */
     Expr subs(const ExprSubs &map) const;
 
-    /**
-     * @brief Provides a total order for expressions.
-     */
-    int compare(const Expr &that) const;
-
     size_t hash() const;
 
     /**
@@ -336,8 +324,6 @@ public:
     friend Expr operator*(const Expr &x, const Expr &y);
     friend Expr operator/(const Expr &x, const Expr &y);
     friend std::ostream& operator<<(std::ostream &s, const Expr &e);
-    friend bool operator<(const Expr &x, const Expr &y);
-    friend bool operator==(const Expr &x, const Expr &y);
 
 private:
 
@@ -351,6 +337,7 @@ private:
 class ExprSubs {
 
     friend class Expr;
+    friend auto operator<=>(const ExprSubs &m1, const ExprSubs &m2) = default;
 
 public:
 
@@ -410,8 +397,6 @@ public:
 
     size_t hash() const;
 
-    int compare(const ExprSubs &that) const;
-
 private:
     void putGinac(const NumVar &key, const Expr &val);
     void eraseGinac(const NumVar &key);
@@ -420,8 +405,4 @@ private:
 
 };
 
-bool operator==(const ExprSubs &m1, const ExprSubs &m2);
-
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
-
-bool operator<(const ExprSubs &x, const ExprSubs &y);

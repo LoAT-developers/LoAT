@@ -32,16 +32,6 @@ BoolVar BoolLit::getBoolVar() const {
     return var;
 }
 
-int BoolLit::compare(const BoolLit &that) const {
-    if (negated && !that.negated) {
-        return 1;
-    }
-    if (!negated && that.negated) {
-        return -1;
-    }
-    return var.compare(that.var);
-}
-
 BoolLit BoolLit::normalize() const {
     return *this;
 }
@@ -56,14 +46,6 @@ bool BoolLit::isWellformed() const {
 
 void BoolLit::collectVars(std::set<BoolVar> &res) const {
     res.insert(var);
-}
-
-bool operator<(const BoolLit &l1, const BoolLit &l2) {
-    return l1.compare(l2) < 0;
-}
-
-bool operator==(const BoolLit &l1, const BoolLit &l2) {
-    return l1.compare(l2) == 0;
 }
 
 BoolLit operator!(const BoolLit &l) {

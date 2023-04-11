@@ -43,10 +43,6 @@ bool Expr::findAll(const Expr &pattern, std::set<Expr> &found) const {
     return anyFound;
 }
 
-bool Expr::equals(const NumVar &var) const {
-    return this->compare(*var) == 0;
-}
-
 bool Expr::isLinear(const std::optional<std::set<NumVar>> &vars) const {
     std::set<NumVar> theVars = vars ? *vars : this->vars();
     // linear expressions are always polynomials
@@ -297,10 +293,6 @@ string Expr::toString() const {
     return ss.str();
 }
 
-bool Expr::equals(const Expr &that) const {
-    return ex.is_equal(that.ex);
-}
-
 unsigned Expr::degree(const NumVar &var) const {
     return ex.degree(*var);
 }
@@ -369,8 +361,15 @@ void Expr::traverse(GiNaC::visitor &v) const {
     ex.traverse(v);
 }
 
-int Expr::compare(const Expr &that) const {
-    return ex.compare(that.ex);
+std::strong_ordering operator<=>(const Expr &x, const Expr &y) {
+    const auto res {x.ex.compare(y.ex)};
+    if (res == 0) {
+        return std::strong_ordering::equal;
+    } else if (res < 0) {
+        return std::strong_ordering::less;
+    } else {
+        return std::strong_ordering::greater;
+    }
 }
 
 size_t Expr::hash() const {
@@ -570,7 +569,7 @@ std::optional<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) co
     Expr c = term.coeff(var);
     if (!c.isRationalConstant()) return {};
 
-    bool trivialCoeff = (c.compare(1) == 0 || c.compare(-1) == 0);
+    bool trivialCoeff = (c == 1 || c == -1);
 
     if (level == TrivialCoeffs && !trivialCoeff) {
         return {};
@@ -591,11 +590,6 @@ std::optional<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) co
     }
 
     return {term};
-}
-
-bool operator<(const Expr &e1, const Expr &e2) {
-    static GiNaC::ex_is_less comp;
-    return comp(e1.ex, e2.ex);
 }
 
 bool operator==(const Expr &e1, const Expr &e2) {
@@ -736,7 +730,7 @@ void ExprSubs::eraseGinac(const NumVar &key) {
 }
 
 bool ExprSubs::changes(const NumVar &key) const {
-    return contains(key) && !get(key).equals(key);
+    return contains(key) && get(key) != key;
 }
 
 bool ExprSubs::isLinear() const {
@@ -801,27 +795,6 @@ size_t ExprSubs::hash() const {
     return hash;
 }
 
-int ExprSubs::compare(const ExprSubs &that) const {
-    if (*this == that) return 0;
-    else if (*this < that) return -1;
-    else return 1;
-}
-
-bool operator==(const ExprSubs &m1, const ExprSubs &m2) {
-    if (m1.size() != m2.size()) {
-        return false;
-    }
-    auto it1 = m1.begin();
-    auto it2 = m2.begin();
-    while (it1 != m1.end() && it2 != m2.end()) {
-        if (!Expr(it1->first).equals(it2->first)) return false;
-        if (!it1->second.equals(it2->second)) return false;
-        ++it1;
-        ++it2;
-    }
-    return it1 == m1.end() && it2 == m2.end();
-}
-
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
     if (map.empty()) {
         return s << "{}";
@@ -838,22 +811,4 @@ std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
         }
         return s << "}";
     }
-}
-
-bool operator<(const ExprSubs &x, const ExprSubs &y) {
-    auto it1 = x.begin();
-    auto it2 = y.begin();
-    while (it1 != x.end() && it2 != y.end()) {
-        int fst = it1->first.compare(it2->first);
-        if (fst != 0) {
-            return fst < 0;
-        }
-        int snd = it1->second.compare(it2->second);
-        if (snd != 0) {
-            return snd < 0;
-        }
-        ++it1;
-        ++it2;
-    }
-    return it1 == x.end() && it2 != y.end();
 }

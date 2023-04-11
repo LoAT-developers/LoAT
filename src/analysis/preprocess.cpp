@@ -59,7 +59,7 @@ bool Preprocess::removeTrivialUpdates(Subs &update) {
     for (const auto &it : update) {
         const auto first = substitution::first(it);
         const auto second = substitution::second(it);
-        if (first == second) {
+        if (TheTheory::varToExpr(first) == second) {
             remove.push(first);
         }
     }

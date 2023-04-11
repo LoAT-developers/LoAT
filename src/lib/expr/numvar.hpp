@@ -10,6 +10,8 @@ class NumVar {
 
     explicit NumVar(const GiNaC::symbol &sym);
 
+    friend auto operator<=>(const NumVar&, const NumVar&) = default;
+
 public:
 
     static NumVar ginacN();
@@ -20,14 +22,8 @@ public:
 
     unsigned hash() const;
 
-    signed compare(const NumVar &that) const;
-
     const GiNaC::symbol& operator*() const;
 
 };
-
-bool operator==(const NumVar &x, const NumVar &y);
-
-bool operator<(const NumVar &x, const NumVar &y);
 
 std::ostream& operator<<(std::ostream &s, const NumVar &x);

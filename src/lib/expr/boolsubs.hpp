@@ -191,18 +191,7 @@ public:
         map.erase(var);
     }
 
-    int compare(const BoolSubs& that) const {
-        if (map == that.map) {
-            return 0;
-        } else if (map < that.map) {
-            return -1;
-        } else {
-            return 1;
-        }
-    }
-
-    template <ITheory... Th_>
-    friend bool operator==(const BoolSubs<Th_...> &s1, const BoolSubs<Th_...> &s2);
+    auto operator<=>(const BoolSubs<Th...>&) const = default;
 
     bool isLinear() const {
         return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isLinear();});
@@ -231,14 +220,4 @@ std::ostream& operator<<(std::ostream &s, const BoolSubs<Th...> &e) {
         }
         return s << "}";
     }
-}
-
-template <ITheory... Th>
-bool operator==(const BoolSubs<Th...> &s1, const BoolSubs<Th...> &s2) {
-    return s1.map == s2.map;
-}
-
-template <ITheory... Th>
-bool operator<(const BoolSubs<Th...> &s1, const BoolSubs<Th...> &s2) {
-    return s1.compare(s2) < 0;
 }

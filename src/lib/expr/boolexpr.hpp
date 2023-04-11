@@ -53,7 +53,7 @@ BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th.
 template <ITheory... Th>
 struct BExpr_compare {
     bool operator() (const BExpr<Th...> a, const BExpr<Th...> b) const {
-        return a->compare(b) < 0;
+        return a < b;
     }
 };
 
@@ -159,7 +159,6 @@ public:
     virtual size_t size() const = 0;
     virtual unsigned hash() const = 0;
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
-    virtual int compare(const BE that) const = 0;
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
@@ -684,17 +683,6 @@ public:
         }
     }
 
-    int compare(const BE that) const override {
-        const auto other_lit = that->getTheoryLit();
-        if (!other_lit) {
-            return -1;
-        }
-        if (lit == *other_lit) {
-            return 0;
-        }
-        return lit < *other_lit ? -1 : 1;
-    }
-
 protected:
 
     void dnf(std::vector<C> &res) const override {
@@ -853,22 +841,6 @@ public:
                 }
             }
         }
-    }
-
-    int compare(const BE that) const override {
-        if (!that->isAnd() && !that->isOr()) {
-            return 1;
-        }
-        if (isAnd() && that->isOr()) {
-            return 1;
-        }
-        if (isOr() && that->isAnd()) {
-            return -1;
-        }
-        const auto c1 = getChildren();
-        const auto c2 = that->getChildren();
-        if (c1 == c2) return 0;
-        return c1 < c2 ? -1 : 1;
     }
 
 protected:
@@ -1052,6 +1024,20 @@ bool operator ==(const BExpr<Th...> a, const BExpr<Th...> b) {
         return false;
     }
     return a->getChildren() == b->getChildren();
+}
+
+template <ITheory... Th>
+std::strong_ordering operator <=>(const BExpr<Th...> a, const BExpr<Th...> b) {
+    auto res {a->getTheoryLit() <=> b->getTheoryLit()};
+    if (std::is_neq(res)) {
+        return res;
+    }
+    if (a->isAnd() && !b->isAnd()) {
+        return std::strong_ordering::greater;
+    } else if (!a->isAnd() && b->isAnd()) {
+        return std::strong_ordering::less;
+    }
+    return a->getChildren() <=> b->getChildren();
 }
 
 template <ITheory... Th>

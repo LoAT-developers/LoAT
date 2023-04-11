@@ -371,7 +371,7 @@ void Reachability::print_trace(std::ostream &s) {
     bool first {true};
     for (const auto &x: prog_vars) {
         const auto &y {model.get(x)};
-        if (x == y) continue;
+        if (TheTheory::varToExpr(x) == y) continue;
         if (first) {
             first = false;
         } else {
@@ -386,7 +386,7 @@ void Reachability::print_trace(std::ostream &s) {
         if (!chcs.isSinkTransition(step.clause_idx)) {
             for (const auto &x: prog_vars) {
                 const auto y {expression::subs(step.var_renaming.get(x), model)};
-                if (x == y) continue;
+                if (TheTheory::varToExpr(x) == y) continue;
                 if (first) {
                     first = false;
                 } else {

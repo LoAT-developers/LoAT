@@ -365,29 +365,6 @@ Rel operator!(const Rel &x) {
     throw std::invalid_argument("unknown relation");
 }
 
-bool operator==(const Rel &x, const Rel &y) {
-    return x.l.equals(y.l) && x.op == y.op && x.r.equals(y.r);
-}
-
-bool operator!=(const Rel &x, const Rel &y) {
-    return !(x == y);
-}
-
-int Rel::compare(const Rel &that) const {
-    int fst = lhs().compare(that.lhs());
-    if (fst != 0) {
-        return fst;
-    }
-    if (relOp() != that.relOp()) {
-        return relOp() < that.relOp() ? -1 : 1;
-    }
-    return rhs().compare(that.rhs());
-}
-
-bool operator<(const Rel &x, const Rel &y) {
-    return x.compare(y) < 0;
-}
-
 std::ostream& operator<<(std::ostream &s, const Rel &rel) {
     s << rel.l;
     switch (rel.op) {
