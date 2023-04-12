@@ -20,22 +20,31 @@
 
 ResultViaSideEffects Chaining::chainLinearPaths(ITSProblem &its) {
     ResultViaSideEffects res;
+    bool changed;
+    do {
+        changed = false;
     for (const auto first_idx: its.getAllTransitions()) {
         const auto succ {its.getSuccessors(first_idx)};
         if (succ.size() == 1 && succ.find(first_idx) == succ.end()) {
             const auto second_idx {*succ.begin()};
-            const auto &first {its.getRule(first_idx)};
-            auto second {its.getRule(second_idx)};
-            const auto chained {chain(first, second, its)};
-            res.succeed();
-            res.chainingProof(first, second, chained);
-            its.addRule(chained, first_idx, second_idx);
-            its.removeRule(first_idx);
-            if (its.getPredecessors(second_idx).empty()) {
-                its.removeRule(second_idx);
+            if (!its.isSimpleLoop(second_idx)) {
+                const auto &first {its.getRule(first_idx)};
+                auto second {its.getRule(second_idx)};
+                const auto chained {chain(first, second, its)};
+                res.succeed();
+                res.chainingProof(first, second, chained);
+                its.addRule(chained, first_idx, second_idx);
+                its.removeRule(first_idx);
+                std::set<TransIdx> deleted {first_idx};
+                if (its.getPredecessors(second_idx).size() == 1) {
+                    its.removeRule(second_idx);
+                    deleted.insert(second_idx);
+                }
+                res.deletionProof(deleted);
+                changed = true;
             }
-            res.deletionProof({first_idx});
         }
     }
+    } while (changed);
     return res;
 }
