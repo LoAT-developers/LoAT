@@ -182,7 +182,11 @@ public:
         map.erase(var);
     }
 
-    auto operator<=>(const BoolSubs<Th...>&) const = default;
+    template <ITheory... Th_>
+    friend auto operator<=>(const BoolSubs<Th_...> &e1, const BoolSubs<Th_...> &e2);
+
+    template <ITheory... Th_>
+    friend bool operator==(const BoolSubs<Th_...> &e1, const BoolSubs<Th_...> &e2);
 
     bool isLinear() const {
         return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isLinear();});
@@ -193,6 +197,16 @@ public:
     }
 
 };
+
+template <ITheory... Th>
+auto operator<=>(const BoolSubs<Th...> &e1, const BoolSubs<Th...> &e2) {
+    return e1.map <=> e2.map;
+}
+
+template <ITheory... Th>
+bool operator==(const BoolSubs<Th...> &e1, const BoolSubs<Th...> &e2) {
+    return e1.map == e2.map;
+}
 
 template <ITheory... Th>
 std::ostream& operator<<(std::ostream &s, const BoolSubs<Th...> &e) {
