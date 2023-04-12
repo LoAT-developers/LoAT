@@ -29,6 +29,8 @@ class AccelerationProblem: public AccelerationTechnique<IntTheory, BoolTheory>  
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     std::optional<Rel> bound;
 
+    bool trivial(const Lit &lit, Proof &proof);
+    bool unchanged(const Lit &lit, Proof &proof);
     bool polynomial(const Lit &lit, Proof &proof);
     bool monotonicity(const Lit &lit, Proof &proof);
     bool recurrence(const Lit &lit, Proof &proof);

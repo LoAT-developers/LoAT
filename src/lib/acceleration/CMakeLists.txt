@@ -14,7 +14,6 @@ add_library(${PROJECT_NAME} STATIC
   accelerationproblem.cpp
   accelerationproblem.hpp
   approx.hpp
-  relevantvariables.hpp
   loopacceleration.cpp
   loopacceleration.hpp
   accelerationresult.hpp

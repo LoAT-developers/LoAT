@@ -1,7 +1,7 @@
 #include "accelerationproblem.hpp"
 #include "recurrence.hpp"
 #include "smtfactory.hpp"
-#include "relevantvariables.hpp"
+#include "expression.hpp"
 #include "literal.hpp"
 #include "boolexpr.hpp"
 #include "map.hpp"
@@ -66,6 +66,26 @@ bool AccelerationProblem::depsWellFounded(const Lit& lit, std::map<Lit, const Ac
             entryMap[it->first] = &e;
             return true;
         }
+    }
+    return false;
+}
+
+bool AccelerationProblem::trivial(const Lit &lit, Proof &proof) {
+    if (literal::subs(lit, rule.getUpdate())->isTriviallyTrue()) {
+        auto idx {store(lit, {}, BExpression::True, BExpression::True, true)};
+        proof.newline();
+        proof.append(std::stringstream() << lit << " [" << idx << "]: trivial");
+        return true;
+    }
+    return false;
+}
+
+bool AccelerationProblem::unchanged(const Lit &lit, Proof &proof) {
+    if (BExpression::buildTheoryLit(lit) == literal::subs(lit, rule.getUpdate())) {
+        auto idx {store(lit, {}, BExpression::True, BExpression::True, true)};
+        proof.newline();
+        proof.append(std::stringstream() << lit << " [" << idx << "]: unchanged");
+        return true;
     }
     return false;
 }
@@ -341,21 +361,22 @@ bool AccelerationProblem::fixpoint(const Lit &lit, Proof &proof) {
     if (res.find(lit) != res.end()) {
         return false;
     }
-    std::vector<BoolExpr> eqs;
-    const auto vars {util::RelevantVariables<IntTheory, BoolTheory>::find(literal::variables(lit), rule.getUpdate())};
-    for (const auto& v: vars) {
-        if (!config.allowDisjunctions && std::holds_alternative<BoolVar>(v)) {
-            // encoding equality for booleans introduces a disjunction
-            return false;
-        }
-        eqs.push_back(literal::mkEq(TheTheory::varToExpr(v), rule.getUpdate().get(v)));
-    }
-    const auto allEq = BExpression::buildAnd(eqs);
-    if (!allEq->subs(samplePoint)->isTriviallyTrue()) {
+    const auto ex {
+        std::visit(Overload{
+                       [](const Rel &rel) {
+                           return TheTheory::Expression(rel.lhs());
+                       },
+                       [](const BoolLit &blit) {
+                           return TheTheory::varToExpr(blit.getBoolVar());
+                       }
+                   }, lit)
+    };
+    const auto eq {literal::mkEq(ex, expression::subs(ex, rule.getUpdate()))};
+    if (!eq->subs(samplePoint)->isTriviallyTrue()) {
         return false;
     }
-    BoolExpr newGuard = allEq & lit;
-    auto idx {store(lit, {}, newGuard, allEq, true)};
+    BoolExpr newGuard {eq & lit};
+    auto idx {store(lit, {}, newGuard, eq, true)};
     std::stringstream ss;
     ss << lit << " [" << idx << "]: fixpoint yields " << newGuard;
     proof.newline();
@@ -389,9 +410,10 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     }
     Proof proof;
     for (const auto& lit: todo) {
-        auto res {polynomial(lit, proof)};
-        if (res) continue;
-        res |= recurrence(lit, proof);
+        if (trivial(lit, proof)) continue;
+        if (unchanged(lit, proof)) continue;
+        if (polynomial(lit, proof)) continue;
+        auto res {recurrence(lit, proof)};
         res |= monotonicity(lit, proof);
         res |= eventualWeakDecrease(lit, proof);
         if (config.approx == UnderApprox) {
