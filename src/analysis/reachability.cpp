@@ -742,13 +742,9 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         }
         redundance->mark_as_redundant(lang);
     } else {
-        const auto guard {loop.getGuard()->conjunctionToGuard()};
         for (const auto &[idx, covered]: idxs) {
             if (!chcs.isSinkTransition(idx)) {
-                auto g1 {guard};
-                const auto g2 {covered->conjunctionToGuard()};
-                g1.insert(g1.end(), g2.begin(), g2.end());
-                auto closure {redundance->get_singleton_language(indices, g1)};
+                auto closure {redundance->get_singleton_language(indices, {})};
                 redundance->transitive_closure(closure);
                 redundance->mark_as_redundant(closure);
                 redundance->set_language(idx, closure);
