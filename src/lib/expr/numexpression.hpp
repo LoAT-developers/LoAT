@@ -285,8 +285,6 @@ public:
      */
     Expr subs(const ExprSubs &map) const;
 
-    size_t hash() const;
-
     /**
      * @return The numerator.
      * @note For fractions only.
@@ -394,8 +392,6 @@ public:
     void collectCoDomainVars(std::set<NumVar> &vars) const;
 
     void collectVars(std::set<NumVar> &vars) const;
-
-    size_t hash() const;
 
 private:
     void putGinac(const NumVar &key, const Expr &val);

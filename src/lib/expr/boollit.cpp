@@ -1,19 +1,12 @@
 #include "boollit.hpp"
 
 #include <stdexcept>
-#include <boost/functional/hash.hpp>
+#include <ostream>
 
 BoolLit::BoolLit(const BoolVar &var, bool negated): var(var), negated(negated) {}
 
 std::string BoolLit::toRedlog() const {
     throw std::logic_error("unsupported operation");
-}
-
-unsigned BoolLit::hash() const {
-    std::size_t seed = 0;
-    boost::hash_combine(seed, var.hash());
-    boost::hash_combine(seed, negated);
-    return seed;
 }
 
 bool BoolLit::isNegated() const {

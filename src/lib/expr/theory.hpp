@@ -5,7 +5,6 @@
 #include "booltheory.hpp"
 #include "subs.hpp"
 
-#include <boost/functional/hash.hpp>
 #include <variant>
 #include <tuple>
 

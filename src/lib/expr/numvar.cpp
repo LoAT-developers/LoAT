@@ -23,10 +23,6 @@ std::string NumVar::getName() const {
     return name;
 }
 
-unsigned NumVar::hash() const {
-    return std::hash<std::string>()(name);
-}
-
 const GiNaC::symbol& NumVar::operator*() const {
     const auto it = symbols.find(name);
     if (it == symbols.end()) {

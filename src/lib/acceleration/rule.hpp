@@ -19,8 +19,6 @@
 
 #include <map>
 #include <vector>
-#include <unordered_map>
-#include <unordered_set>
 
 #include "theory.hpp"
 
@@ -56,12 +54,6 @@ public:
     void collectVars(VarSet &vars) const;
 
     Rule chain(const Rule &that) const;
-
-    unsigned hash() const;
-
-    struct Hash {
-        std::size_t operator()(const Rule& r) const;
-    };
 
 };
 

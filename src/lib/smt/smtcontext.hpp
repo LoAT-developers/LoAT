@@ -18,13 +18,13 @@
 #pragma once
 
 #include <optional>
+#include <assert.h>
+#include <map>
 
 #include "numexpression.hpp"
 #include "rel.hpp"
 #include "theory.hpp"
 #include "variable.hpp"
-
-#include <map>
 
 template<class EXPR>
 class SmtContext {

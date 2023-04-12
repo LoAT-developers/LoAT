@@ -2,6 +2,9 @@
 
 #include "itheory.hpp"
 
+#include <optional>
+#include <ostream>
+
 namespace theory {
 
 template <class VS, class VSI, class Var, ITheory... Th>

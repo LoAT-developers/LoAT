@@ -372,10 +372,6 @@ std::strong_ordering operator<=>(const Expr &x, const Expr &y) {
     }
 }
 
-size_t Expr::hash() const {
-    return ex.gethash();
-}
-
 Expr Expr::numerator() const {
     return ex.numer();
 }
@@ -784,15 +780,6 @@ std::set<NumVar> ExprSubs::allVars() const {
     std::set<NumVar> res;
     collectVars(res);
     return res;
-}
-
-size_t ExprSubs::hash() const {
-    size_t hash = 7;
-    for (const auto& p: *this) {
-        hash = hash * 31 + p.first.hash();
-        hash = hash * 31 + p.second.hash();
-    }
-    return hash;
 }
 
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {

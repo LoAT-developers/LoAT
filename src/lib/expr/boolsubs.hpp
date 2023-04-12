@@ -158,15 +158,6 @@ public:
         }
     }
 
-    size_t hash() const {
-        size_t hash = 7;
-        for (const auto& p: *this) {
-            hash = hash * 31 + p.first.hash();
-            hash = hash * 31 + p.second->hash();
-        }
-        return hash;
-    }
-
     bool empty() const {
         return map.empty();
     }

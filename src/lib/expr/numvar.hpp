@@ -20,8 +20,6 @@ public:
 
     std::string getName() const;
 
-    unsigned hash() const;
-
     const GiNaC::symbol& operator*() const;
 
 };

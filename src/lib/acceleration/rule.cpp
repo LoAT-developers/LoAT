@@ -53,17 +53,6 @@ const Subs& Rule::getUpdate() const {
     return update;
 }
 
-std::size_t Rule::Hash::operator()(const Rule& r) const {
-    return r.hash();
-}
-
-unsigned Rule::hash() const {
-    unsigned hash = 7;
-    hash = hash * 31 + guard->hash();
-    hash = hash * 31 + update.hash();
-    return hash;
-}
-
 ostream& operator<<(ostream &s, const Rule &rule) {
     return s << rule.getGuard() << " /\\ " << rule.getUpdate();
 }

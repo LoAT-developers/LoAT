@@ -287,46 +287,6 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline Expr subsImpl(const Lit &s) const {
-        if constexpr (I < sizeof...(Th)) {
-            if (s.index() == I) {
-                return std::get<I>(s).subs(std::get<I>(t));
-            } else {
-                return subsImpl<I+1>(s);
-            }
-        } else {
-            return s;
-        }
-    }
-
-public:
-
-    Expr subs(const Lit &s) const {
-        return subsImpl(s);
-    }
-
-private:
-
-    template<std::size_t I = 0>
-    inline size_t hashImpl() const {
-        if constexpr (I + 1 >= sizeof...(Th)) {
-            return std::get<I>(t).hash();
-        } else {
-            size_t res = hashImpl<I+1>();
-            boost::hash_combine<size_t>(res, std::get<I>(t).hash());
-            return res;
-        }
-    }
-
-public:
-
-    size_t hash() const {
-        return hashImpl();
-    }
-
-private:
-
-    template<std::size_t I = 0>
     inline Expr getImpl(const Var &var) const {
         if constexpr (I >= sizeof...(Th)) {
             throw std::invalid_argument("variable not found");

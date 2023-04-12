@@ -310,14 +310,6 @@ Rel Rel::makeRhsZero() const {
     return Rel(l - r, op, 0);
 }
 
-unsigned Rel::hash() const {
-    unsigned hash = 7;
-    hash = 31 * hash + l.hash();
-    hash = 31 * hash + op;
-    hash = 31 * hash + r.hash();
-    return hash;
-}
-
 std::optional<std::string> Rel::toQepcad() const {
     const Rel gt = this->toGt();
     std::optional<std::string> diff = (gt.l - gt.r).toQepcad();

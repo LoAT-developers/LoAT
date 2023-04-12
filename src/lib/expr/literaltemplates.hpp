@@ -99,25 +99,6 @@ std::string toRedlog(const typename Theory<Th...>::Lit &lit) {
 }
 
 template <size_t I = 0, ITheory... Th>
-inline size_t hashImpl(const typename Theory<Th...>::Lit &lit) {
-    if constexpr (I < sizeof...(Th)) {
-        if (lit.index() == I) {
-            size_t res = std::get<I>(lit).hash();
-            boost::hash_combine(res, I);
-            return res;
-        }
-        return hashImpl<I+1, Th...>(lit);
-    } else {
-        throw std::logic_error("unknown theory");
-    }
-}
-
-template <ITheory... Th>
-size_t hash(const typename Theory<Th...>::Lit &lit) {
-    return hashImpl<0, Th...>(lit);
-}
-
-template <size_t I = 0, ITheory... Th>
 inline bool isLinearImpl(const typename Theory<Th...>::Lit &lit) {
     if constexpr (I < sizeof...(Th)) {
         if (lit.index() == I) {

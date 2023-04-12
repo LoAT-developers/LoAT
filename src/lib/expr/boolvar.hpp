@@ -15,8 +15,6 @@ public:
 
     BoolVar(const std::string &name);
     std::string getName() const;
-    std::string get_name() const;
-    size_t hash() const;
 
 };
 

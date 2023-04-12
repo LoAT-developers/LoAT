@@ -1,6 +1,8 @@
 #include "vareliminator.hpp"
 #include "rel.hpp"
 
+#include <assert.h>
+
 VarEliminator::VarEliminator(const BoolExpr guard, const NumVar &N, VariableManager &varMan): varMan(varMan), N(N) {
     assert(varMan.isTempVar(N));
     todoDeps.push({{}, guard});

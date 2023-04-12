@@ -22,7 +22,6 @@
 #include "dependencygraph.hpp"
 
 #include <optional>
-#include <unordered_map>
 
 
 class ITSProblem : public VariableManager {

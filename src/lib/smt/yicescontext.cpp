@@ -17,6 +17,8 @@
 
 #include "yicescontext.hpp"
 
+#include <assert.h>
+
 using namespace std;
 
 YicesError::YicesError() : std::exception() {

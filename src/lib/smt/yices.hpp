@@ -4,6 +4,7 @@
 #include <yices.h>
 #include <future>
 #include <stdexcept>
+#include <map>
 
 #include "smt.hpp"
 #include "yicescontext.hpp"

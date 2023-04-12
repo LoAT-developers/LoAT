@@ -157,7 +157,6 @@ public:
     virtual void collectLits(LS &res) const = 0;
     virtual std::string toRedlog() const = 0;
     virtual size_t size() const = 0;
-    virtual unsigned hash() const = 0;
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
 
     bool isTriviallyTrue() const {
@@ -673,10 +672,6 @@ public:
         return literal_t::toRedlog<Th...>(lit);
     }
 
-    unsigned hash() const override {
-        return literal_t::hash<Th...>(lit);
-    }
-
     void getBounds(const Var &var, Bounds &res) const override {
         if (std::holds_alternative<Rel>(lit)) {
             std::get<Rel>(lit).getBounds(std::get<NumVar>(var), res);
@@ -807,15 +802,6 @@ public:
             res += (*it)->toRedlog();
         }
         return "(" + res + ")";
-    }
-
-    unsigned hash() const override {
-        unsigned hash = 7;
-        for (const BE& c: children) {
-            hash = 31 * hash + c->hash();
-        }
-        hash = 31 * hash + op;
-        return hash;
     }
 
     void getBounds(const Var &n, Bounds &res) const override {

@@ -8,7 +8,6 @@
 #include <map>
 #include <variant>
 #include <tuple>
-#include <boost/functional/hash.hpp>
 
 template<typename ... Ts>
 struct Overload : Ts ... {
@@ -32,7 +31,6 @@ concept ILit = requires(T x, T y) {
         requires IComparable<T>;
         {x.normalize()} -> std::same_as<T>;
         {x.toRedlog()} -> std::same_as<std::string>;
-        {x.hash()} -> std::same_as<unsigned>;
         {x.isTriviallyTrue()} -> std::same_as<bool>;
         {x.isWellformed()} -> std::same_as<bool>;
         {x.isPoly()} -> std::same_as<bool>;
