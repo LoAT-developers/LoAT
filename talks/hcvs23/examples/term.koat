@@ -1,0 +1,12 @@
+(GOAL COMPLEXITY)
+(STARTTERM (FUNCTIONSYMBOLS init))
+(VAR x y z)
+(RULES
+init(x,y,z) -> f(x,y,z) :|: x <= 0 && z >= 5000 && y <= z
+f(x,y,z) -> f(x+1,y,z) :|: y <= 2 * z && x < z
+f(x,y,z) -> f(x+1,y+1,z) :|: y <= 2 * z && x >= z
+f(x,y,z) -> g(x,y,z) :|: x = y && x > 2 * z
+g(x,y,z) -> g(x,x-1,z) :|: x = y && x > 0
+g(x,y,z) -> g(y,y,z) :|: x > 0 && y > 0 && x < y
+g(x,y,z) -> g(y,x,z) :|: x > 0 && y > 0 && x > y
+)

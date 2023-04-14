@@ -1,0 +1,11 @@
+(GOAL COMPLEXITY)
+(STARTTERM (FUNCTIONSYMBOLS l0))
+(VAR x y z u free)
+(RULES
+l0(x,y,z,u) -> l1(x,0,z,u)
+l1(x,y,z,u) -> l1(x-1,y+x,z,u) :|: x > 0
+l1(x,y,z,u) -> l2(x,y,y,u) :|: x <= 0
+l2(x,y,z,u) -> l3(x,y,z,z-1) :|: z > 0
+l3(x,y,z,u) -> l3(x,y,z,u-free) :|: u > 0 && free > 0
+l3(x,y,z,u) -> l2(x,y,z-1,u) :|: u <= 0
+)

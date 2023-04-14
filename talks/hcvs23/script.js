@@ -19,7 +19,7 @@ var his_frame13 = view("his-frame13");
 var his = view("history");
 var aims = view("aims").set_scale(1.3);
 var devel = view("devel").set_scale(1.3);
-var term = view("term").set_scale(1.3);
+var term = view("term").set_scale(1.5);
  
 var slides = [
     [
@@ -67,13 +67,10 @@ var slides = [
             "aims",
             "aims1",
             "aims2",
-            "aims3",
-            "aims4",
             "aims5",
             "aims6",
             "aims7",
             "aims8",
-            "aims9",
             "aims10",
             "devel",
             "sat",
@@ -91,6 +88,7 @@ var slides = [
             "theories3",
             "nonlinear",
             "term",
+            "term2",
         ], duration=0),
     ],
     [change_view(title, delay=0, slowdown=0)],
@@ -128,13 +126,10 @@ var slides = [
     [change_view(aims), fade_in(["aims"])],
     [fade_in(["aims1"])],
     [fade_in(["aims2"])],
-    [fade_in(["aims3"])],
-    [fade_in(["aims4"])],
     [fade_in(["aims5"])],
     [fade_in(["aims6"])],
     [fade_in(["aims7"])],
     [fade_in(["aims8"])],
-    [fade_in(["aims9"])],
     [fade_in(["aims10"])],
     [change_view(svg)],
 
@@ -153,6 +148,7 @@ var slides = [
     [change_view(svg)],
 
     [change_view(term), fade_in(["term"])],
+    [fade_in(["term2"])],
     [change_view(svg)],
 ];
 
