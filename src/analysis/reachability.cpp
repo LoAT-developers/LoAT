@@ -663,6 +663,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             acceleration_proof.storeSubProof(accel_res.accelerationProof);
             res.concat(acceleration_proof);
             res.concat(simplified.getProof());
+            res.dependencyGraphRefinementProof(chcs.refineDependencyGraph(loop_idx));
             if (log) {
                 std::cout << "accelerated rule:" << std::endl;
                 ITSExport::printRule(*simplified, std::cout);

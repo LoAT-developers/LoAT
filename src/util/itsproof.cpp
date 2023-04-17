@@ -70,7 +70,7 @@ void ITSProof::dependencyGraphRefinementProof(const std::set<Edge> &removed) {
     }
     if (!removed.empty()) {
         std::stringstream s;
-        s << "Removed the following edges: ";
+        s << "Removed the following edges from the dependency graph: ";
         bool first {true};
         for (const auto &e: removed) {
             if (first) {
