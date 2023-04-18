@@ -72,6 +72,9 @@ void Proof::print(unsigned level) const {
             std::cout << std::endl;
         }
     }
+    if (level == 1 && use_colors) {
+        std::cout << NoColor;
+    }
 }
 
 void Proof::append(const std::string &s) {
