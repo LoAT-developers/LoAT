@@ -1,0 +1,53 @@
+#!/bin/bash
+HELP=0
+if (( $# == 2 )); then
+    TO=300
+elif (( $# == 3 )); then
+    TO=$3
+else
+    HELP=1
+    echo "wrong number of arguments"
+fi
+if [ "$1" = "--help" ]; then
+    HELP=1
+elif [ "$1" != "loat" ] && [ "$1" != "bmc" ] && [ "$1" != "spacer" ] && [ "$1" != "eld" ] && [ "$1" != "tpa" ] && [ "$1" != "eld_stac" ]; then
+    echo "unsupported tool name"
+    HELP=1
+fi
+if [ "$2" != "lia-lin" ] && [ "$2" != "lia-lin-int" ]; then
+    echo "unsupported benchmark set"
+    HELP=1
+fi
+if (( $HELP == 1 )); then
+    echo "usage: run_all SOLVER BENCHMARKS [TIMEOUT]"
+    echo "       where"
+    echo "           SOLVER = loat | bmc | spacer | eld | tpa | eld_stac"
+    echo "           BENCHMARKS = lia-lin | lia-lin-int"
+    echo "       The timeout is given in seconds."
+    echo "       If no timeout is specified, then it defaults to 300s."
+else
+    CMD="run_$1"
+    SAT=0
+    UNSAT=0
+    UNKNOWN=0
+    for FILE in /examples/$2/*.smt2; do
+        echo $FILE
+        RES=`$CMD $FILE $TO 2> /dev/null | head -n 1`
+        if [ -z "$RES" ]; then
+            UNKNOWN=$((UNKNOWN+1))
+            echo "unknown"
+        else
+            if [ "$RES" == "sat" ]; then
+                SAT=$((SAT+1))
+            elif [ "$RES" == "unsat" ]; then
+                UNSAT=$((UNSAT+1))
+            else
+                UNKNOWN=$((UNKNOWN+1))
+            fi
+            echo $RES
+        fi
+    done
+    echo "unsat: $UNSAT";
+    echo "sat: $SAT";
+    echo "unknown: $UNKNOWN";
+fi

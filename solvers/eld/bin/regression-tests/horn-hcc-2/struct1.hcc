@@ -1,0 +1,11 @@
+
+
+struct S {
+  int x;
+  int y;
+};
+
+void main() {
+  struct S a;
+  a.x = 42;
+}

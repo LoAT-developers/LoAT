@@ -1,0 +1,12 @@
+
+
+typedef unsigned int u32;
+typedef u32 u32_2;
+
+void main() {
+
+  u32_2 z;
+
+  assert(z == 42);
+
+}

@@ -1,0 +1,29 @@
+#!/bin/sh
+
+LAZABS=../../eld
+
+TESTS="cousot.correct.nts.smt2 \
+       palindrome.nts.smt2 \
+       inf1.error.nts.smt2 \
+       eq.smt2 \
+       monniaux-loop1.smt2 monniaux-loop2.smt2 \
+       loopDetectorBug.smt2 \
+       loopDetectorBug2.smt2"
+
+for name in $TESTS; do
+    echo
+    echo $name
+    $LAZABS -abstract -ssol -pngNo "$@" $name 2>&1 | grep -v "^Elapsed Time"
+done
+
+TESTS="palindrome_bv32.smt2 listcounter.correct.nts.smt2"
+
+for name in $TESTS; do
+    echo
+    echo $name
+    $LAZABS -abstract -pngNo "$@" $name 2>&1 | grep -v "^Elapsed Time"
+done
+
+$LAZABS -abstract -ssol -pngNo "$@" -hints:initial-preds.tpl reve.smt2 2>&1 | grep -v "^Elapsed Time"
+
+$LAZABS -abstract -ssol -pngNo "$@" -hints:templates.tpl templates.smt2 2>&1 | grep -v "^Elapsed Time"

@@ -1,0 +1,71 @@
+===== available solvers =====
+
+This Docker container allows you to run the following solvers:
+
+* loat     -- LoAT's implementation of Acceleration Driven Clause Learning
+* bmc      -- Z3's implementation of bounded model checking
+* spacer   -- Z3's implementation of the Spacer algorithm
+* eld      -- Eldarica's default configuration
+* tpa      -- Golem's implementation of Transition Power Abstraction
+* eld-stac -- Eldarica with acceleration as pre-processing
+
+
+===== available benchmarks =====
+
+This Docker container provides the following collections of benchmarks:
+
+* lia-lin-int -- the benchmarks from the CHC-Comp category LIA-Lin *without*
+  - benchmarks using the operators div or mod and
+  - benchmarks using variables of type Bool
+* lia-lin     -- the benchmarks from the CHC-Comp category LIA-Lin *without*
+  - benchmarks using the operators div or mod and
+
+The benchmarks are located in the directory /examples/lia-lin[-int].
+
+
+===== running a single benchmark =====
+
+You can run a single solver on a single benchmark via
+
+run_$solver $benchmark $timeout.
+
+For example,
+
+run_loat /examples/lia-lin-int/chc-LIA-Lin_052.smt2 1
+
+runs LoAT on the leading example from our paper with a timeout of one second. If
+the timeout is omitted, then it defaults to 300.
+
+
+===== running a benchmark collection =====
+
+You can run a single solver on one of the provided collections of benchmarks via
+
+run_all $solver $benchmark_collection $timeout.
+
+For example,
+
+run_all loat lia-lin-int 1
+
+runs LoAT on all examples from the benchmark collection lia-lin-int with a
+timeout of one second. If the timeout is omitted, then it defaults to 300.
+
+When run_all finishes, it provides the number of instances where sat or unsat
+was proven. For examples, on my machine the command above finishes with:
+
+unsat: 30
+sat: 0
+unknown: 179
+
+Of course, you might get slightly different results, depending on the machine
+that you are using.
+
+
+===== custom benchmarks =====
+
+Of course, you can also run the tools on custom benchmarks. To write them, the
+following editors are pre-installed in the Docker container:
+
+* emacs
+* vim
+* nano
