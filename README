@@ -37,33 +37,6 @@ runs LoAT on the leading example from our paper with a timeout of one second. If
 the timeout is omitted, then it defaults to 300.
 
 
-===== getting LoAT's proofs =====
-
-To see the proof produced by LoAT, you can run
-
-run_loat_proofs $benchmark $timeout.
-
-For example, you can run
-
-run_loat_proofs /examples/lia-lin-int/chc-LIA-Lin_052.smt2 1
-
-to see LoAT's proof for the leading example from our paper. If the timeout is
-omitted, then it defaults to 300.
-
-By default, LoAT's proofs are colored to make them more readable. However, this
-is disadvantageous if you want to write a proof to a file or inspect it with,
-e.g., 'less', as the colors are not displayed correctly in these cases. To get
-uncolored proofs, you can run
-
-run_loat_proofs_plain $benchmark $timeout.
-
-For example, you can run
-
-run_loat_proofs_plain /examples/lia-lin-int/chc-LIA-Lin_052.smt2 1
-
-to see LoAT's proof for the leading example from our paper without colors.
-
-
 ===== running a benchmark collection =====
 
 You can run a single solver on one of the provided collections of benchmarks via
@@ -96,3 +69,130 @@ following editors are pre-installed in the Docker container:
 * emacs
 * vim
 * nano
+
+
+===== getting LoAT's proofs =====
+
+To see the proof produced by LoAT, you can run
+
+run_loat_proofs $benchmark $timeout.
+
+For example, you can run
+
+run_loat_proofs /examples/lia-lin-int/chc-LIA-Lin_052.smt2 1
+
+to see LoAT's proof for the leading example from our paper. If the timeout is
+omitted, then it defaults to 300.
+
+By default, LoAT's proofs are colored to make them more readable. However, this
+is disadvantageous if you want to write a proof to a file or inspect it with,
+e.g., 'less', as the colors are not displayed correctly in these cases. To get
+uncolored proofs, you can run
+
+run_loat_proofs_plain $benchmark $timeout.
+
+For example, you can run
+
+run_loat_proofs_plain /examples/lia-lin-int/chc-LIA-Lin_052.smt2 1
+
+to see LoAT's proof for the leading example from our paper without colors.
+
+
+===== understanding LoAT's output =====
+
+The first line of LoAT's output indicates the result of the analysis (unsat or
+unknown).
+
+If the result is unsat, then the next line provides the length of the refutation
+found by LoAT, i.e., the number of resolution steps. Note that the refutation
+found by LoAT may contain learned clauses. Every resolution step with a learned
+clause can be transformed into a sequence of resolution steps with original
+clauses only. The third line provides the length of the refutation that would
+result such a transformation.
+
+LoAT's proofs are structured as trees. In the proof output, the structure of
+this tree is reflected by the indentation, i.e., children are indented further
+than their parents.
+
+The top-level proof steps are
+
+* Simplified Transitions
+
+  Initially, LoAT tries to simplify the CHC problem without changing its
+  semantics by, e.g., propagating equalities, removing superfluous literals
+  (like 0 == 0), etc.
+
+* Refined Dependency Graph
+
+  Essentially, the dependency graph is LoAT's internal representation of the
+  "control flow graph" of the CHC problem: Its nodes are CHCs and an edge from
+  phi to phi' means that phi' may be used for resolution right after phi. To
+  avoid attempting fruitless resolution steps, LoAT sometimes removes edges from
+  this graph if the constraint of the resolvent of phi and phi' is unsatisfiable.
+
+* Step, Accelerate, Covered, Backtrack, Refute, Nonterm
+
+  These proof steps represent the corresponding rules of the ADCL calculus.
+
+Each of these top-level proof steps has further children that show additional
+information. For example, below every occurrence of "Step", the resulting trace
+and list of blocking clause sets are shown, and below every occurrence of
+"Accelerate", the proof of the corresponding acceleration technique is shown.
+
+Whenever a proof step modifies the CHC problem (as in the case of "Accelerate"),
+the resulting, modified CHC problem is displayed.
+
+
+===== the structure of LoAT's source code =====
+
+You can find LoAT's source code in the following folder:
+
+/src/LoAT/src
+
+In the following, we provide a high-level overview of the structure of the code.
+We write "file.xpp" as abbreviation for "file.hpp and file.cpp".
+
+main.xpp:    entry point
+
+analysis:    preprocessings (preprocess.xpp) and the implementation of ADCL
+             (reachability.xpp)
+
+asymptotic:  techniques to derive asymptotic lower bounds on the worst-case
+             runtime complexity of transition systems. Not relevant for CHCs.
+
+its:         central data structures for representing transition systems as well
+             as CHC problems (itsproblem.xpp)
+
+parser:      parsers for various input formats, in particular the format from
+             the CHC competition (parsers/chc)
+
+redundance:  the language-based redundancy check explained in our paper
+             (redundanceviaautomata.xpp)
+
+util:        utility classes
+
+lib:         several libraries that have recently been extracted from LoAT, so
+             that they can be made available for other tools in the future
+
+lib/acceleration: implementation of loop acceleration techniques
+
+lib/expr:         representation of expressions
+
+lib/qe:           techniques for quantifier elimination
+
+lib/recurrence:   interface to the recurrence solver PURRS
+
+lib/smt:          interfaces to the SMT solvers Z3 and Yices
+
+lib/util:         utility classes
+
+
+===== recompiling LoAT =====
+
+To recompile LoAT, go to the folder
+
+/src/LoAT/build/static/release
+
+and run:
+
+make
