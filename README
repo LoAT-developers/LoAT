@@ -108,7 +108,7 @@ found by LoAT, i.e., the number of resolution steps. Note that the refutation
 found by LoAT may contain learned clauses. Every resolution step with a learned
 clause can be transformed into a sequence of resolution steps with original
 clauses only. The third line provides the length of the refutation that would
-result such a transformation.
+result from such a transformation.
 
 LoAT's proofs are structured as trees. In the proof output, the structure of
 this tree is reflected by the indentation, i.e., children are indented further
