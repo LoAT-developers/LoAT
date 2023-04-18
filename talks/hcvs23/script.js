@@ -126,10 +126,10 @@ var slides = [
     [change_view(aims), fade_in(["aims"])],
     [fade_in(["aims1"])],
     [fade_in(["aims2"])],
+    [fade_in(["aims8"])],
     [fade_in(["aims5"])],
     [fade_in(["aims6"])],
     [fade_in(["aims7"])],
-    [fade_in(["aims8"])],
     [fade_in(["aims10"])],
     [change_view(svg)],
 
