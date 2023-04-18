@@ -381,16 +381,18 @@ void Reachability::print_trace(std::ostream &s) {
     s << ")" << std::endl;
     for (const auto &step: trace) {
         s << "-" << step.clause_idx << "-> " << "(";
-        first = true;
-        for (const auto &x: prog_vars) {
-            if (first) {
-                first = false;
-            } else {
-                s << ", ";
+        if (!step.var_renaming.empty()) {
+            first = true;
+            for (const auto &x: prog_vars) {
+                if (first) {
+                    first = false;
+                } else {
+                    s << ", ";
+                }
+                s << x << "=" << expression::subs(step.var_renaming.get(x), model);
             }
-            s << x << "=" << expression::subs(step.var_renaming.get(x), model);
         }
-        s << " )" << std::endl;
+        s << ")" << std::endl;
     }
     s << std::endl;
 }
