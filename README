@@ -37,6 +37,33 @@ runs LoAT on the leading example from our paper with a timeout of one second. If
 the timeout is omitted, then it defaults to 300.
 
 
+===== getting LoAT's proofs =====
+
+To see the proof produced by LoAT, you can run
+
+run_loat_proofs $benchmark $timeout.
+
+For example, you can run
+
+run_loat_proofs /examples/lia-lin-int/chc-LIA-Lin_052.smt2 1
+
+to see LoAT's proof for the leading example from our paper. If the timeout is
+omitted, then it defaults to 300.
+
+By default, LoAT's proofs are colored to make them more readable. However, this
+is disadvantageous if you want to write a proof to a file or inspect it with,
+e.g., 'less', as the colors are not displayed correctly in these cases. To get
+uncolored proofs, you can run
+
+run_loat_proofs_plain $benchmark $timeout.
+
+For example, you can run
+
+run_loat_proofs_plain /examples/lia-lin-int/chc-LIA-Lin_052.smt2 1
+
+to see LoAT's proof for the leading example from our paper without colors.
+
+
 ===== running a benchmark collection =====
 
 You can run a single solver on one of the provided collections of benchmarks via
