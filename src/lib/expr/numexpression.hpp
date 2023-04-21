@@ -68,8 +68,8 @@ public:
      */
     static Expr wildcard(unsigned int label);
 
-    Expr() : Expr(GiNaC::ex()) {}
-    Expr(const GiNaC::basic &other) : Expr(GiNaC::ex(other)) {}
+    Expr(): ex(GiNaC::ex()) {}
+    Expr(const GiNaC::basic &other): ex(GiNaC::ex(other)) {}
     Expr(const GiNaC::ex &ex) : ex(ex) {}
     Expr(long i): ex(i) {}
     Expr(const NumVar &var): ex(*var) {}

@@ -102,22 +102,21 @@ public:
     }
 
     BoolSubs setminus(const std::set<BoolVar> &vars) const {
-        BoolSubs res;
         if (size() < vars.size()) {
+            BoolSubs res;
             for (const auto &p: *this) {
                 if (vars.find(p.first) == vars.end()) {
                     res.put(p.first, p.second);
                 }
             }
-        }  else {
+            return res;
+        } else {
+            BoolSubs res(*this);
             for (const auto &x: vars) {
-                const auto it {find(x)};
-                if (it == end()) {
-                    res.put(it->first, it->second);
-                }
+                res.erase(x);
             }
+            return res;
         }
-        return res;
     }
 
     bool changes(const BoolVar &key) const {

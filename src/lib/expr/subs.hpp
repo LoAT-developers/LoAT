@@ -197,7 +197,7 @@ public:
     Subs setminus(const VS &vars) const {
         Subs res;
         setminusImpl(res, vars);
-        return Subs(res);
+        return res;
     }
 
 private:

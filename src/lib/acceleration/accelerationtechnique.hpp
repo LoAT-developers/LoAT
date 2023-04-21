@@ -35,16 +35,34 @@ public:
 
 protected:
 
-    const Rule rule;
     const std::optional<Recurrence::Result> closed;
+    Subs update;
+    BoolExpr guard;
     VarMan &its;
     const AccelConfig config;
+    Proof proof;
 
     AccelerationTechnique(const Rule &rule, const std::optional<Recurrence::Result> closed, VarMan &its, const AccelConfig &config):
-        rule(rule),
         closed(closed),
+        update(rule.getUpdate()),
         its(its),
-        config(config){}
+        config(config){
+        if (closed && !closed->refinement.empty()) {
+            update.get<IntTheory>() = closed->refined_equations;
+            auto conjuncts {closed->refinement};
+            conjuncts.push_back(rule.getGuard());
+            guard = BExpression::buildAnd(conjuncts);
+            proof.append("refinement:");
+            for (const auto &r: closed->refinement) {
+                proof.append(std::stringstream() << r);
+            }
+            proof.append(std::stringstream() << "refined guard: " << guard);
+            proof.append(std::stringstream() << "refined update: " << update);
+        } else {
+            guard = rule.getGuard();
+        }
+        guard = guard->toG();
+    }
 
 public:
 

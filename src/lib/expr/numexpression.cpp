@@ -193,7 +193,7 @@ std::set<NumVar> Expr::vars() const {
 
 
 bool Expr::isGround() const {
-    return !hasVarWith([](const auto &) { return true; });
+    return ex.info(GiNaC::info_flags::numeric);
 }
 
 
@@ -593,8 +593,7 @@ bool operator==(const Expr &e1, const Expr &e2) {
 }
 
 std::ostream& operator<<(std::ostream &s, const Expr &e) {
-    s << e.ex;
-    return s;
+    return s << e.ex;
 }
 
 ExprSubs::ExprSubs() {}
@@ -699,22 +698,21 @@ ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
 }
 
 ExprSubs ExprSubs::setminus(const std::set<NumVar> &vars) const {
-    ExprSubs res;
     if (size() < vars.size()) {
+        ExprSubs res;
         for (const auto &p: *this) {
             if (vars.find(p.first) == vars.end()) {
                 res.put(p.first, p.second);
             }
         }
+        return res;
     } else {
+        ExprSubs res(*this);
         for (const auto &x: vars) {
-            const auto it {find(x)};
-            if (it == end()) {
-                res.put(it->first, it->second);
-            }
+            res.erase(x);
         }
+        return res;
     }
-    return res;
 }
 
 void ExprSubs::putGinac(const NumVar &key, const Expr &val) {

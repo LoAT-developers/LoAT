@@ -27,12 +27,11 @@ struct Result {
     std::optional<Status> status;
     std::optional<Accel> accel;
     std::optional<Nonterm> nonterm;
+    unsigned prefix = 0;
     unsigned period = 1;
-    bool strengthened = false;
     std::optional<NumVar> n;
 
     bool successful() const;
-    bool inexact() const;
 
 };
 

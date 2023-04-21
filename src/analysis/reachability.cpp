@@ -42,22 +42,26 @@ std::optional<Failed> LearningState::failed() {
     return {};
 }
 
+std::optional<Unroll> LearningState::unroll() {
+    return {};
+}
+
 std::optional<ProvedUnsat> LearningState::unsat() {
     return {};
 }
 
-Succeeded::Succeeded(const Result<std::vector<std::pair<TransIdx, BoolExpr>>> &idx): idx(idx) {}
+Succeeded::Succeeded(const Result<LearnedClauses> &learned): learned(learned) {}
 
 std::optional<Succeeded> Succeeded::succeeded() {
     return *this;
 }
 
-Result<std::vector<std::pair<TransIdx, BoolExpr>>>& Succeeded::operator*() {
-    return idx;
+const Result<LearnedClauses>& Succeeded::operator*() const {
+    return learned;
 }
 
-Result<std::vector<std::pair<TransIdx, BoolExpr>>>* Succeeded::operator->() {
-    return &idx;
+const Result<LearnedClauses>* Succeeded::operator->() const {
+    return &learned;
 }
 
 std::optional<Covered> Covered::covered() {
@@ -75,6 +79,10 @@ const ITSProof& Dropped::get_proof() const {
 }
 
 std::optional<Failed> Failed::failed() {
+    return *this;
+}
+
+std::optional<Unroll> Unroll::unroll() {
     return *this;
 }
 
@@ -228,7 +236,7 @@ ResultViaSideEffects Reachability::refine_dependency_graph() {
     return res;
 }
 
-std::optional<unsigned> Reachability::has_looping_suffix() {
+std::optional<unsigned> Reachability::has_looping_suffix(int start) {
     if (trace.empty()) {
         return {};
     }
@@ -237,6 +245,9 @@ std::optional<unsigned> Reachability::has_looping_suffix() {
     for (int pos = trace.size() - 1; pos >= 0; --pos) {
         const Step &step = trace[pos];
         non_loops.append(sequence, step);
+        if (pos > start) {
+            continue;
+        }
         if (non_loops.contains(sequence)) {
             if (log) std::cout << sequence << " is a non-loop" << std::endl;
             continue;
@@ -555,18 +566,17 @@ void Reachability::drop_until(const int new_size) {
 
 Automaton Reachability::get_language(const Step &step) {
     if (is_orig_clause(step.clause_idx)) {
-        return redundance->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard());
+        return redundancy->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard());
     } else {
-        return redundance->get_language(step.clause_idx);
+        return redundancy->get_language(step.clause_idx);
     }
 }
 
 Automaton Reachability::build_language(const int backlink) {
     auto lang = get_language(trace[backlink]);
     for (size_t i = backlink + 1; i < trace.size(); ++i) {
-        redundance->concat(lang, get_language(trace[i]));
+        redundancy->concat(lang, get_language(trace[i]));
     }
-    redundance->transitive_closure(lang);
     return lang;
 }
 
@@ -640,13 +650,16 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         std::cout << std::endl;
     }
     AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
-    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *simp, sample_point, config);
-    Result<std::vector<std::pair<TransIdx, BoolExpr>>> res;
+    const auto accel_res {LoopAcceleration::accelerate(chcs, *simp, sample_point, config)};
+    if (accel_res.status == acceleration::PseudoLoop) {
+        return std::make_unique<Unroll>();
+    }
+    Result<LearnedClauses> res{{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period}};
     const auto fst = trace.at(backlink).clause_idx;
     if (accel_res.nonterm) {
         res.succeed();
         const auto idx = chcs.addQuery(accel_res.nonterm->certificate, fst);
-        res->emplace_back(idx, accel_res.nonterm->covered);
+        res->res.emplace_back(idx, accel_res.nonterm->covered);
         ITSProof nonterm_proof;
         nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", chcs.getRule(idx));
         nonterm_proof.storeSubProof(accel_res.nonterm->proof);
@@ -666,7 +679,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             }
             res.succeed();
             const auto loop_idx {add_learned_clause(*simplified, backlink)};
-            res->emplace_back(loop_idx, accel_res.accel->covered);
+            res->res.emplace_back(loop_idx, accel_res.accel->covered);
             ITSProof acceleration_proof;
             acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
             acceleration_proof.storeSubProof(accel_res.accel->proof);
@@ -688,43 +701,71 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
 
 std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
     const auto lang {build_language(backlink)};
-    if (redundance->is_redundant(lang)) {
+    auto closure {lang};
+    redundancy->transitive_closure(closure);
+    if (redundancy->is_redundant(closure)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
     } else if (log) {
         std::cout << "learning clause for the following language:" << std::endl;
-        std::cout << lang << std::endl;
+        std::cout << closure << std::endl;
     }
     const auto [loop, sample_point] {build_loop(backlink)};
-    if (Config::Analysis::reachability() && loop.getUpdate().empty()) {
-        if (log) std::cout << "trivial looping suffix" << std::endl;
-        redundance->mark_as_redundant(lang);
-        return std::make_unique<Covered>();
+    if (Config::Analysis::reachability()) {
+        if (loop.getUpdate().empty()) {
+            if (log) std::cout << "trivial looping suffix" << std::endl;
+            redundancy->mark_as_redundant(closure);
+            return std::make_unique<Covered>();
+        } else if (loop.chain(loop).getUpdate() == loop.getUpdate()) {
+            redundancy->mark_as_redundant(closure);
+            return std::make_unique<Unroll>();
+        }
     }
-    std::vector<TransIdx> indices;
+    std::vector<unsigned> indices;
     for (unsigned i = backlink; i < trace.size(); ++i) {
-        indices.push_back(trace.at(i).clause_idx);
+        const auto &step {trace.at(i)};
+        const auto c {*redundancy->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard()).get_alphabet().Begin()};
+        indices.push_back(c);
     }
-    const std::pair<std::vector<TransIdx>, BoolExpr> key {indices, loop.getGuard()};
-    auto &redundance_condition {conditional_redundance.emplace(key, BExpression::False).first->second};
-    if (redundance_condition->subs(sample_point)->isTriviallyTrue()) {
+    const auto &old_redundance_condition {conditionally_redundant.emplace(indices, BExpression::False).first->second};
+    if (old_redundance_condition->subs(sample_point)->isTriviallyTrue()) {
         if (log) std::cout << "loop partially covered" << std::endl;
         return std::make_unique<Covered>();
     }
+    if (redundancy->is_accelerated(lang)) {
+        if (log) std::cout << "loop must be unrolled" << std::endl;
+        return std::make_unique<Unroll>();
+    }
+    auto &acceleration_condition {conditionally_accelerated.emplace(indices, BExpression::False).first->second};
+    if (acceleration_condition->subs(sample_point)->isTriviallyTrue()) {
+        if (log) std::cout << "loop must be unrolled (conditional)" << std::endl;
+        return std::make_unique<Unroll>();
+    }
     luby_loop_count++;
     auto state {learn_clause(loop, sample_point, backlink)};
-    if (!state->succeeded()) {
-        redundance->mark_as_redundant(lang);
+    if (state->unroll()) {
+        redundancy->mark_as_accelerated(lang);
         return state;
     }
-    auto accel_state = *state->succeeded();
-    const auto idxs = **accel_state;
+    if (!state->succeeded()) {
+        redundancy->mark_as_redundant(closure);
+        return state;
+    }
+    const auto accel_state {*state->succeeded()};
+    const auto learned_clauses {**accel_state};
     // drop the looping suffix
     drop_until(backlink);
+    std::vector<unsigned> new_indices {indices};
+    for (unsigned i = 0; i < learned_clauses.prefix + learned_clauses.period; ++i) {
+        new_indices.insert(new_indices.end(), indices.begin(), indices.end());
+    }
+    auto &redundance_condition {conditionally_redundant.emplace(new_indices, BExpression::False).first->second};
     BoolExprSet new_redundance_condition {redundance_condition};
+    BoolExprSet new_acceleration_condition {acceleration_condition};
     bool done {false};
-    for (const auto &[idx, covered]: idxs) {
+    for (const auto &[idx, covered]: learned_clauses.res) {
         new_redundance_condition.insert(covered);
+        new_acceleration_condition.insert(covered);
         if (!done && store_step(idx, chcs.getRule(idx).getGuard())) {
             if (chcs.isSinkTransition(idx)) {
                 return std::make_unique<ProvedUnsat>(accel_state->getProof());
@@ -734,22 +775,38 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         }
     }
     redundance_condition = BExpression::buildOr(new_redundance_condition);
+    acceleration_condition = BExpression::buildOr(new_acceleration_condition);
     if (redundance_condition->isTriviallyTrue() || SmtFactory::check(!redundance_condition, chcs) == SmtResult::Unsat) {
-        for (const auto &[idx, covered]: idxs) {
+        auto new_lang {closure};
+        for (unsigned i = 1; i < learned_clauses.period; ++i) {
+            redundancy->concat(closure, closure);
+        }
+        if (learned_clauses.prefix > 0) {
+            auto prefix_lang {lang};
+            for (unsigned i = 1; i < learned_clauses.prefix; ++i) {
+                redundancy->concat(prefix_lang, prefix_lang);
+            }
+            redundancy->concat(prefix_lang, new_lang);
+            new_lang = prefix_lang;
+        }
+        for (const auto &[idx, _]: learned_clauses.res) {
             if (!chcs.isSinkTransition(idx)) {
-                redundance->set_language(idx, lang);
+                redundancy->set_language(idx, new_lang);
             }
         }
-        redundance->mark_as_redundant(lang);
+        redundancy->mark_as_redundant(new_lang);
     } else {
-        for (const auto &[idx, covered]: idxs) {
+        for (const auto &[idx, covered]: learned_clauses.res) {
             if (!chcs.isSinkTransition(idx)) {
-                auto closure {redundance->get_singleton_language(indices, {})};
-                redundance->transitive_closure(closure);
-                redundance->mark_as_redundant(closure);
-                redundance->set_language(idx, closure);
+                auto closure {redundancy->get_singleton_language(new_indices, covered->conjunctionToGuard())};
+                redundancy->transitive_closure(closure);
+                redundancy->mark_as_redundant(closure);
+                redundancy->set_language(idx, closure);
             }
         }
+    }
+    if (acceleration_condition->isTriviallyTrue() || SmtFactory::check(!acceleration_condition, chcs) == SmtResult::Unsat) {
+        redundancy->mark_as_accelerated(lang);
     }
     if (done) {
         return state;
@@ -795,44 +852,46 @@ void Reachability::analyze() {
     do {
         size_t next_restart = luby_unit * luby.second;
         if (log) std::cout << "trace: " << trace << std::endl;
-        for (auto backlink = has_looping_suffix();
-             backlink && luby_loop_count < next_restart;
-             backlink = has_looping_suffix()) {
-            Step step = trace[*backlink];
-            bool simple_loop = *backlink == trace.size() - 1;
-            auto state = handle_loop(*backlink);
-            if (state->covered()) {
-                backtrack();
-                proof.headline("Covered");
-                print_state();
-            } else if (state->succeeded()) {
-                if (simple_loop) {
-                    block(step);
-                }
-                proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
-                print_state();
-                update_cpx();
-                // try to apply a query before doing another step
-                if (try_to_finish()) {
+        if (!trace.empty()) {
+            for (auto backlink = has_looping_suffix(trace.size() - 1);
+                 backlink && luby_loop_count < next_restart;
+                 backlink = has_looping_suffix(*backlink - 1)) {
+                Step step = trace[*backlink];
+                bool simple_loop = *backlink == trace.size() - 1;
+                auto state = handle_loop(*backlink);
+                if (state->covered()) {
+                    backtrack();
+                    proof.headline("Covered");
+                    print_state();
+                } else if (state->succeeded()) {
+                    if (simple_loop) {
+                        block(step);
+                    }
+                    proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
+                    print_state();
+                    update_cpx();
+                    // try to apply a query before doing another step
+                    if (try_to_finish()) {
+                        return;
+                    }
+                } else if (state->dropped()) {
+                    if (simple_loop) {
+                        block(step);
+                    }
+                    proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
+                    print_state();
+                } else if (state->failed()) {
+                    // non-loop --> do not backtrack
+                    proof.headline("Acceleration Failed");
+                    proof.append("marked recursive suffix as redundant");
+                    non_loops.add(trace, *backlink);
+                } else if (state->unsat()) {
+                    proof.majorProofStep("Nonterm", **state->unsat(), chcs);
+                    proof.headline("Step with " + std::to_string(trace.back().clause_idx));
+                    print_state();
+                    unsat();
                     return;
                 }
-            } else if (state->dropped()) {
-                if (simple_loop) {
-                    block(step);
-                }
-                proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
-                print_state();
-            } else if (state->failed()) {
-                // non-loop --> do not backtrack
-                proof.headline("Acceleration Failed");
-                proof.append("marked recursive suffix as redundant");
-                non_loops.add(trace, *backlink);
-            } else if (state->unsat()) {
-                proof.majorProofStep("Nonterm", **state->unsat(), chcs);
-                proof.headline("Step with " + std::to_string(trace.back().clause_idx));
-                print_state();
-                unsat();
-                return;
             }
         }
         if (luby_loop_count == next_restart) {

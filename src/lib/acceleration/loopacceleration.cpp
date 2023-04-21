@@ -165,13 +165,14 @@ acceleration::Result LoopAcceleration::run() {
         res.status = acceleration::PseudoLoop;
         return res;
     }
-    const auto rec = Recurrence::iterate(its, rule.getUpdate());
+    const auto rec {Recurrence::solve(its, rule.getUpdate())};
     if (!rec && config.approx != UnderApprox) {
         res.status = acceleration::ClosedFormFailed;
         return res;
     }
-    const auto accelerationTechnique = AccelerationFactory::get(rule, rec, sample_point, its, config);
-    const auto accelerationResult = accelerationTechnique->computeRes();
+    res.prefix = rec->prefix;
+    const auto accelerationTechnique {AccelerationFactory::get(rule, rec, sample_point, its, config)};
+    const auto accelerationResult {accelerationTechnique->computeRes()};
     if (!accelerationResult.term && config.approx != UnderApprox) {
         res.status = acceleration::AccelerationFailed;
         return res;
@@ -182,7 +183,7 @@ acceleration::Result LoopAcceleration::run() {
     }
     if (rec && accelerationResult.term) {
         res.n = rec->n;
-        res.accel = {accelerationResult.term->covered, Rule(accelerationResult.term->formula, rec->update), proof};
+        res.accel = {accelerationResult.term->covered, Rule(accelerationResult.term->formula, rec->closed_form), proof};
         res.accel->proof.concat(accelerationResult.term->proof);
     }
     return res;

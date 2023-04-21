@@ -88,6 +88,7 @@ class Succeeded;
 class Covered;
 class Dropped;
 class Failed;
+class Unroll;
 class ProvedUnsat;
 
 /**
@@ -122,20 +123,28 @@ public:
      */
     virtual std::optional<Failed> failed();
 
+    virtual std::optional<Unroll> unroll();
+
     virtual std::optional<ProvedUnsat> unsat();
+};
+
+struct LearnedClauses {
+    std::vector<std::pair<TransIdx, BoolExpr>> res;
+    const unsigned prefix;
+    const unsigned period;
 };
 
 class Succeeded final: public LearningState {
     /**
      * the indices of the learned clause
      */
-    Result<std::vector<std::pair<TransIdx, BoolExpr>>> idx;
+    Result<LearnedClauses> learned;
 
 public:
-    Succeeded(const Result<std::vector<std::pair<TransIdx, BoolExpr>>> &idx);
+    Succeeded(const Result<LearnedClauses> &learned);
     std::optional<Succeeded> succeeded() override;
-    Result<std::vector<std::pair<TransIdx, BoolExpr>>>& operator*();
-    Result<std::vector<std::pair<TransIdx, BoolExpr>>>* operator->();
+    const Result<LearnedClauses>& operator*() const;
+    const Result<LearnedClauses>* operator->() const;
 };
 
 class Covered final: public LearningState {
@@ -154,6 +163,10 @@ public:
 
 class Failed final: public LearningState {
     std::optional<Failed> failed() override;
+};
+
+class Unroll final: public LearningState {
+    std::optional<Unroll> unroll() override;
 };
 
 class ProvedUnsat final: public LearningState {
@@ -210,8 +223,9 @@ class Reachability {
     void luby_next();
 
     using Red = RedundanceViaAutomata;
-    std::unique_ptr<Red> redundance {std::make_unique<Red>()};
-    std::map<std::pair<std::vector<TransIdx>, BoolExpr>, BoolExpr> conditional_redundance;
+    std::unique_ptr<Red> redundancy {std::make_unique<Red>()};
+    std::map<std::vector<unsigned>, BoolExpr> conditionally_redundant;
+    std::map<std::vector<unsigned>, BoolExpr> conditionally_accelerated;
 
     NonLoops non_loops;
 
@@ -308,7 +322,7 @@ class Reachability {
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
      */
-    std::optional<unsigned> has_looping_suffix();
+    std::optional<unsigned> has_looping_suffix(int start);
 
     /**
      * Generates a fresh copy of the program variables and fixes their value according to the update of the

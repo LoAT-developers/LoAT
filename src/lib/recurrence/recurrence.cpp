@@ -25,122 +25,119 @@
 using namespace std;
 namespace Purrs = Parma_Recurrence_Relation_Solver;
 
+Recurrence::Recurrence(VarMan &var_man, const Subs &equations):
+    var_man(var_man),
+    equations(equations),
+    result(var_man.addFreshTemporaryVariable<IntTheory>("n")) {}
 
-
-Recurrence::Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder)
-    : varMan(varMan),
-      dependencyOrder(dependencyOrder)
-{}
-
-std::optional<Recurrence::RecurrenceSolution<IntTheory>> Recurrence::solve(const NumVar &updateLhs, const Expr &updateRhs, const std::map<Var, unsigned int> &validitybounds) {
-    const auto updated = updateRhs.subs(updatePreRecurrences.get<IntTheory>());
-    const std::set<NumVar> &vars = updateRhs.vars();
-    if (vars.find(updateLhs) == vars.end()) {
-        unsigned int validitybound = 1;
-        for (const NumVar &x: vars) {
-            if (validitybounds.find(x) != validitybounds.end() && validitybounds.at(x) + 1 > validitybound) {
-                validitybound = validitybounds.at(x) + 1;
-            }
-        }
-        return {{updated, validitybound}};
-    }
-    Expr last = Purrs::x(Purrs::Recurrence::n - 1).toGiNaC();
-    Purrs::Expr rhs = Purrs::Expr::fromGiNaC(updated.subs(ExprSubs{{updateLhs, last}}).ex);
-    Purrs::Expr exact;
-    Purrs::Recurrence rec(rhs);
-    Purrs::Recurrence::Solver_Status res = Purrs::Recurrence::Solver_Status::TOO_COMPLEX;
-    try {
-        rec.set_initial_conditions({ {0, Purrs::Expr::fromGiNaC(*updateLhs)} });
-        res = rec.compute_exact_solution();
-    } catch (...) {
-        //purrs throws a runtime exception if the recurrence is too difficult
-    }
-    if (res == Purrs::Recurrence::SUCCESS) {
-        rec.exact_solution(exact);
-        return {{exact.toGiNaC(), 0}};
-    }
-    return {};
-}
-
-std::optional<Recurrence::RecurrenceSolution<BoolTheory>> Recurrence::solve(const BoolVar &updateLhs, const BoolExpr &updateRhs, const std::map<Var, unsigned int> &validitybounds) {
-    const auto updated = updateRhs->subs(updatePreRecurrences);
-    const VarSet &vars = updated->vars();
-    if (vars.find(updateLhs) == vars.end() || vars.size() == vars.get<BoolVar>().size()) {
-        unsigned int validitybound = 1;
+bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
+    const auto updated {rhs.subs(closed_form_pre.get<IntTheory>())};
+    const auto &vars {rhs.vars()};
+    unsigned prefix {0};
+    Expr closed_form;
+    if (vars.find(lhs) == vars.end()) {
+        prefix = 1;
         for (const auto &x: vars) {
-            if (validitybounds.find(x) != validitybounds.end() && validitybounds.at(x) + 1 > validitybound) {
-                validitybound = validitybounds.at(x) + 1;
+            const auto it {prefixes.find(x)};
+            if (it != prefixes.end() && it->second >= prefix) {
+                prefix = it->second + 1;
             }
         }
-        return {{updated, validitybound}};
+        if (inverse) {
+            const auto last {rhs.subs(*inverse)};
+            result.refinement.push_back(BExpression::buildTheoryLit(Rel::buildEq(lhs, last)));
+            result.refined_equations.put(lhs, lhs + rhs - last);
+            inverse->put(lhs, lhs - rhs + last);
+        }
+        closed_form = updated;
+    } else {
+        const auto i {rhs.solveTermFor(lhs, ConstantCoeffs)};
+        if (!i) {
+            inverse = std::optional<ExprSubs>();
+        } else {
+            inverse->put(lhs, lhs - *i);
+        }
+        result.refined_equations.put(lhs, rhs);
+        Expr last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
+        Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(updated.subs(ExprSubs{{lhs, last}}).ex)};
+        auto status {Purrs::Recurrence::Solver_Status::TOO_COMPLEX};
+        try {
+            rec.set_initial_conditions({ {0, Purrs::Expr::fromGiNaC(*lhs)} });
+            status = rec.compute_exact_solution();
+        } catch (...) {
+            //purrs throws a runtime exception if the recurrence is too difficult
+            return false;
+        }
+        if (status == Purrs::Recurrence::SUCCESS) {
+            Purrs::Expr exact;
+            rec.exact_solution(exact);
+            closed_form = exact.toGiNaC();
+        } else {
+            return false;
+        }
     }
-    return {};
+    prefixes.emplace(lhs, prefix);
+    result.prefix = std::max(result.prefix, prefix);
+    const auto &n {*NumVar::ginacN()};
+    closed_form_pre.put<IntTheory>(lhs, closed_form.ex.subs({{n, n-1}}));
+    result.closed_form.put<IntTheory>(lhs, closed_form);
+    return true;
 }
 
-std::optional<Recurrence::RecurrenceSystemSolution> Recurrence::iterateUpdate(const Subs &update) {
-    assert(dependencyOrder.size() == update.size());
-    Subs newUpdate;
-
-    //in the given order try to solve the recurrence for every updated variable
-    unsigned validityBound = 0;
-    std::map<Var, unsigned> validityBounds;
-    for (const Var &target : dependencyOrder) {
-        int vb = std::visit(
-                    Overload{
-                        [&](const NumVar &target) {
-                            const auto updateRec = solve(target, update.get<IntTheory>(target), validityBounds);
-                            if (!updateRec) {
-                                return -1;
-                            }
-                            //remember this recurrence to replace vi in the updates depending on vi
-                            //note that updates need the value at n-1, e.g. x(n) = x(n-1) + vi(n-1) for the update x=x+vi
-                            const auto &n {*NumVar::ginacN()};
-                            updatePreRecurrences.put<IntTheory>(target, updateRec->res.ex.subs({{n, n-1}}));
-                            //calculate the final update
-                            newUpdate.put<IntTheory>(target, updateRec->res);
-                            return static_cast<int>(updateRec->validityBound);
-                        },
-                        [&](const BoolVar &target) {
-                            const auto updateRec = solve(target, update.get<BoolTheory>(target), validityBounds);
-                            if (!updateRec) {
-                                return -1;
-                            }
-                            updatePreRecurrences.put<BoolTheory>(target, updateRec->res);
-                            newUpdate.put<BoolTheory>(target, updateRec->res);
-                            return static_cast<int>(updateRec->validityBound);
-                        }
-                    }, target);
-        if (vb < 0) {
-            return {};
-        }
-        validityBounds[target] = vb;
-        validityBound = max(validityBound, static_cast<unsigned>(vb));
+bool Recurrence::solve(const BoolVar &lhs, const BoolExpr &rhs) {
+    const auto updated {rhs->subs(closed_form_pre)};
+    const auto &vars {updated->vars()};
+    if (vars.find(lhs) != vars.end() && vars.size() != vars.get<BoolVar>().size()) {
+        return false;
     }
-
-    return {{newUpdate, validityBound}};
+    unsigned prefix {1};
+    for (const auto &x: vars) {
+        const auto it {prefixes.find(x)};
+        if (it != prefixes.end() && it->second >= prefix) {
+            prefix = it->second + 1;
+        }
+    }
+    prefixes.emplace(lhs, prefix);
+    result.prefix = std::max(result.prefix, prefix);
+    closed_form_pre.put<BoolTheory>(lhs, updated);
+    result.closed_form.put<BoolTheory>(lhs, updated);
+    return true;
 }
 
 Recurrence::Result::Result(const NumVar &n): n(n) {}
 
-std::optional<Recurrence::Result> Recurrence::iterate(const Subs &update) {
-    auto newUpdate = iterateUpdate(update);
-    if (!newUpdate) {
-        return {};
+bool Recurrence::solve() {
+    const auto order {DependencyOrder::findOrder(equations)};
+    if (!order) {
+        return false;
     }
-    Recurrence::Result res(varMan.addFreshTemporaryVariable<IntTheory>("n"));
-    Subs subs {Subs::build<IntTheory>(NumVar::ginacN(), *res.n)};
-    res.update = substitution::concat(newUpdate->update, subs);
-    res.validityBound = newUpdate->validityBound;
-    return {res};
+    for (const auto &lhs : *order) {
+        const auto success {
+            std::visit(
+                        Overload{
+                            [&](const NumVar &lhs) {
+                                return solve(lhs, equations.get<IntTheory>(lhs));
+                            },
+                            [&](const BoolVar &lhs) {
+                                return solve(lhs, equations.get<BoolTheory>(lhs));
+                            }
+                        }, lhs)
+        };
+        if (!success) {
+            return false;
+        }
+    }
+    const auto subs {Subs::build<IntTheory>(NumVar::ginacN(), result.n)};
+    result.closed_form = substitution::concat(result.closed_form, subs);
+    return true;
 }
 
 
-std::optional<Recurrence::Result> Recurrence::iterate(VarMan &varMan, const Subs &update) {
-    // This may modify the rule's guard and update
-    auto order = DependencyOrder::findOrder(update);
-    if (!order) {
+std::optional<Recurrence::Result> Recurrence::solve(VarMan &var_man, const Subs &update) {
+    Recurrence rec {var_man, update};
+    if (rec.solve()) {
+        return rec.result;
+    } else {
         return {};
     }
-    Recurrence rec(varMan, *order);
-    return rec.iterate(update);
 }

@@ -11,6 +11,7 @@ class Automaton {
 
     static long next_char;
     static Automaton covered;
+    static Automaton accelerated;
     faudes::Generator t;
     std::string str;
 
@@ -40,7 +41,9 @@ public:
     void set_language(const TransIdx idx, const Automaton &t);
     void delete_language(const TransIdx idx);
     bool is_redundant(const Automaton &t) const;
+    bool is_accelerated(const Automaton &t) const;
     void mark_as_redundant(const Automaton &t);
+    void mark_as_accelerated(const Automaton &t);
     void concat(Automaton &t1, const Automaton &t2) const;
     void transitive_closure(Automaton &t) const;
 

@@ -29,14 +29,14 @@ class AccelerationProblem: public AccelerationTechnique<IntTheory, BoolTheory>  
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     std::optional<Rel> bound;
 
-    bool trivial(const Lit &lit, Proof &proof);
-    bool unchanged(const Lit &lit, Proof &proof);
-    bool polynomial(const Lit &lit, Proof &proof);
-    bool monotonicity(const Lit &lit, Proof &proof);
-    bool recurrence(const Lit &lit, Proof &proof);
-    bool eventualWeakDecrease(const Lit &lit, Proof &proof);
-    bool eventualIncrease(const Lit &lit, const bool strict, Proof &proof);
-    bool fixpoint(const Lit &lit, Proof &proof);
+    bool trivial(const Lit &lit);
+    bool unchanged(const Lit &lit);
+    bool polynomial(const Lit &lit);
+    bool monotonicity(const Lit &lit);
+    bool recurrence(const Lit &lit);
+    bool eventualWeakDecrease(const Lit &lit);
+    bool eventualIncrease(const Lit &lit, const bool strict);
+    bool fixpoint(const Lit &lit);
     unsigned store(const Lit &lit, const LitSet &deps, const BoolExpr formula, const BoolExpr covered, bool nonterm = false);
 
     struct ReplacementMap {

@@ -1,6 +1,7 @@
 #include "redundanceviaautomata.hpp"
 
 Automaton Automaton::covered;
+Automaton Automaton::accelerated;
 long Automaton::next_char;
 
 Automaton Automaton::singleton() {
@@ -93,8 +94,16 @@ bool RedundanceViaAutomata::is_redundant(const Automaton &t) const {
     return t.subset(Automaton::covered);
 }
 
+bool RedundanceViaAutomata::is_accelerated(const Automaton &t) const {
+    return t.subset(Automaton::accelerated);
+}
+
 void RedundanceViaAutomata::mark_as_redundant(const Automaton &t) {
     Automaton::covered.unite(t);
+}
+
+void RedundanceViaAutomata::mark_as_accelerated(const Automaton &t) {
+    Automaton::accelerated.unite(t);
 }
 
 void RedundanceViaAutomata::concat(Automaton &t1, const Automaton &t2) const {
