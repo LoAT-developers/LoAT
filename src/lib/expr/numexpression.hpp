@@ -17,18 +17,25 @@
 
 #pragma once
 
-#include <ginac/ginac.h>
 #include <variant>
 #include <initializer_list>
 #include <optional>
+#include <boost/multiprecision/cpp_int.hpp>
 
 #include "numvar.hpp"
 
-class Expr;
+namespace mp = boost::multiprecision;
+
 class NumVar;
-class Recurrence;
-class Rel;
-class ExprSubs;
+class _Integer;
+class _Rational;
+class Monomial;
+class Polynomial;
+class ExponentialPolynomial;
+class _Expr;
+using Integer = std::shared_ptr<const _Integer>;
+using Rational = std::shared_ptr<const _Rational>;
+using Expr = std::shared_ptr<const _Expr>;
 
 // Specifies for which coefficients c we can solve "c*x == t" for x.
 enum SolvingLevel {
@@ -37,21 +44,7 @@ enum SolvingLevel {
     ConstantCoeffs = 2, // c can be any rational constant (the result may not map to int, use with caution!)
 };
 
-using Num = GiNaC::numeric;
-
-/**
- * Class for arithmetic expressions.
- * Just a wrapper for GiNaC expressions.
- */
-class Expr {
-
-    /*
-     * We use PURRS to solve recurrence relatios, which also uses GiNaC.
-     * Declaring it as a friend allows us to direclty work on the encapsulated GiNaC::ex when constructing recurrence relations.
-     */
-    friend class Recurrence;
-
-    friend class ExprSubs;
+class _Expr {
 
     friend bool operator==(const Expr&, const Expr&);
     friend std::strong_ordering operator<=>(const Expr &x, const Expr &y);
@@ -63,254 +56,36 @@ public:
      */
     enum Type {Int, Rational, Bool};
 
-    /**
-     * @return A wildcard for constructing patterns.
-     */
-    static Expr wildcard(unsigned int label);
-
-    Expr(): ex(GiNaC::ex()) {}
-    Expr(const GiNaC::basic &other): ex(GiNaC::ex(other)) {}
-    Expr(const GiNaC::ex &ex) : ex(ex) {}
-    Expr(long i): ex(i) {}
-    Expr(const NumVar &var): ex(*var) {}
-
-    /**
-     * @brief Applies a substitution via side-effects.
-     * @deprecated use subs instead
-     */
-    void applySubs(const ExprSubs &subs);
-
-    /**
-     * @brief Computes all matches of the given pattern.
-     * @return True iff there was at least one match.
-     */
-    bool findAll(const Expr &pattern, std::set<Expr> &found) const;
-
-    /**
-     * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
-     */
-    bool isLinear(const std::optional<std::set<NumVar>> &vars = std::optional<std::set<NumVar>>()) const;
-
-    /**
-     * @return True iff this expression is a polynomial.
-     */
-    bool isPoly() const;
-
-    /**
-     * @return True iff this expression is polynomial where all coefficients are integers.
-     */
-    bool isIntPoly() const;
-
-    /**
-     * @return True iff this expression is an integer value (and thus a constant).
-     */
-    bool isInt() const;
-
-    /**
-     * @return True iff this expression is a rational number (and thus a constant).
-     */
-    bool isRationalConstant() const;
-
-    /**
-     * @return True iff this expression is a rational number, but no integer constant.
-     */
-    bool isNonIntConstant() const;
-
-    /**
-     * @return True iff this expression is a power where the exponent is a natural number > 1.
-     */
-    bool isNaturalPow() const;
-
-    bool isOctagon() const;
-
-    /**
-     * @return The highest degree of any variable in this expression.
-     * @note For polynomials only.
-     */
-    unsigned maxDegree() const;
-
-    Num totalDegree() const;
-
-    /**
-     * @brief Collects all variables that occur in this expression.
-     */
-    void collectVars(std::set<NumVar> &res) const;
-
-    /**
-     * @return The set of all variables that occur in this expression.
-     */
-    std::set<NumVar> vars() const;
-
-    /**
-     * @return True iff this expression contains a variable that satisfies the given predicate.
-     * @param A function of type `const Var & => bool`.
-     */
-    template <typename P>
-    bool hasVarWith(P predicate) const {
-        struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
-            SymbolVisitor(P predicate) : predicate(predicate) {}
-            void visit(const GiNaC::symbol &sym) {
-                if (!res && predicate(NumVar(sym.get_name()))) {
-                    res = true;
-                }
-            }
-            bool result() const {
-                return res;
-            }
-        private:
-            bool res = false;
-            P predicate;
-        };
-
-        SymbolVisitor visitor(predicate);
-        traverse(visitor);
-        return visitor.result();
-    }
-
-    /**
-     * @return True iff this expression does not contain any variables.
-     */
-    bool isGround() const;
-
-    /**
-     * @return True iff this expression contains exactly one variable.
-     */
-    bool isUnivariate() const;
-
-    /**
-     * @return Some variable that occurs in this Expression.
-     * @note Only for non-ground expressions.
-     */
-    NumVar someVar() const;
-
-    /**
-     * @return True iff this expression is ground or univariate.
-     */
-    bool isNotMultivariate() const;
-
-    /**
-     * @return True iff this expression contains at least two variable.
-     */
-    bool isMultivariate() const;
-
-    /**
-     * @return A string representation of this expression.
-     */
-    std::string toString() const;
-
-    /**
-     * @return The degree wrt. var.
-     * @note For polynomials only.
-     */
-    unsigned degree(const NumVar &var) const;
-
-    /**
-     * @return The minimal degree of all monomials wrt. var.
-     */
-    unsigned ldegree(const NumVar &var) const;
-
-    /**
-     * @return The coefficient of the monomial where var occurs with the given degree (which defaults to 1).
-     */
-    Expr coeff(const NumVar &var, int degree = 1) const;
-
-    /**
-     * @return The coefficient of the monomial whose degree wrt. var is ldegree(var).
-     */
-    Expr lcoeff(const NumVar &var) const;
-
-    /**
-     * @return A normalized version of this expression up to the order of monomials.
-     * @note No guarantees for non-polynomial expressions.
-     */
-    Expr expand() const;
-
-    /**
-     * @return True iff some subexpression matches the given pattern.
-     */
-    bool has(const Expr &pattern) const;
-
-    /**
-     * @return True iff this is 0.
-     */
-    bool isZero() const;
-
-    /**
-     * @return True iff this is a variable.
-     */
-    bool isVar() const;
-
-    /**
-     * @return True iff this is of the form x^y for some expressions x, y.
-     */
-    bool isPow() const;
-
-    /**
-     * @return True iff this is of the form x*y for some expressions x, y.
-     */
-    bool isMul() const;
-
-    /**
-     * @return True iff this is of the form x+y for some expressions x, y.
-     */
-    bool isAdd() const;
-
-    /**
-     * @return This as a variable.
-     * @note For variables only.
-     */
-    NumVar toVar() const;
-
-    /**
-     * @return This as a number.
-     * @note For constants only.
-     */
-    GiNaC::numeric toNum() const;
-
-    /**
-     * @return The i-th operand.
-     * @note For function applications whose root symbol has at least arity i+1 only.
-     */
-    Expr op(unsigned int i) const;
-
-    /**
-     * @return The arity of the root symbol.
-     * @note For function applications only.
-     */
-    size_t arity() const;
-
-    /**
-     * @return The result of applying the given substitution to this expression.
-     * @note The second argument is deprecated.
-     */
-    Expr subs(const ExprSubs &map) const;
-
-    /**
-     * @return The numerator.
-     * @note For fractions only.
-     */
-    Expr numerator() const;
-
-    /**
-     * @return The denominator.
-     * @note For fractions only.
-     */
-    Expr denominator() const;
-
-    /**
-     * @return True iff this is a polynomial wrt. the given variable.
-     */
-    bool isPoly(const NumVar &n) const;
-
-    bool isIntegral() const;
-
-    Expr toIntPoly() const;
-
-    Num denomLcm() const;
-
-    std::optional<std::string> toQepcad() const;
-
-    std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
+    virtual bool isLinear() const;
+    virtual bool isPoly() const;
+    virtual bool isNaturalPow() const;
+    virtual unsigned maxDegree() const;
+    virtual Integer totalDegree() const;
+    virtual void collectVars(std::set<NumVar> &res) const;
+    virtual std::set<NumVar> vars() const;
+    virtual bool isConstant() const;
+    virtual bool isInt() const;
+    virtual bool isRational() const;
+    virtual bool isUnivariate() const;
+    virtual NumVar someVar() const;
+    virtual bool isNotMultivariate() const;
+    virtual bool isMultivariate() const;
+    virtual unsigned degree(const NumVar &var) const;
+    virtual Expr coeff(const NumVar &var, int degree = 1) const;
+    virtual Expr lcoeff(const NumVar &var) const;
+    virtual bool isVar() const;
+    virtual bool isPow() const;
+    virtual bool isMul() const;
+    virtual bool isAdd() const;
+    virtual NumVar toVar() const;
+    virtual ::Rational toRational() const;
+    virtual Expr op(unsigned int i) const;
+    virtual size_t arity() const;
+//    virtual Expr subs(const ExprSubs &map) const;
+    virtual bool isPoly(const NumVar &n) const;
+    virtual Integer denomLcm() const;
+    virtual std::optional<std::string> toQepcad() const;
+    virtual std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
 
     /**
      * @brief exponentiation
@@ -323,82 +98,118 @@ public:
     friend Expr operator/(const Expr &x, const Expr &y);
     friend std::ostream& operator<<(std::ostream &s, const Expr &e);
 
+};
+
+class RationalNumber {
+
+    RationalNumber(const mp::cpp_rational &val);
+
+    Integer numerator() const;
+    Integer denominator() const;
+    virtual bool isLinear() const;
+    virtual bool isPoly() const;
+    virtual bool isNaturalPow() const;
+    virtual unsigned maxDegree() const;
+    virtual Integer totalDegree() const;
+    virtual void collectVars(std::set<NumVar> &res) const;
+    virtual std::set<NumVar> vars() const;
+    virtual bool isConstant() const;
+    virtual bool isInt() const;
+    virtual bool isRational() const;
+    virtual bool isUnivariate() const;
+    virtual NumVar someVar() const;
+    virtual bool isNotMultivariate() const;
+    virtual bool isMultivariate() const;
+    virtual unsigned degree(const NumVar &var) const;
+    virtual Expr coeff(const NumVar &var, int degree = 1) const;
+    virtual Expr lcoeff(const NumVar &var) const;
+    virtual bool isVar() const;
+    virtual bool isPow() const;
+    virtual bool isMul() const;
+    virtual bool isAdd() const;
+    virtual NumVar toVar() const;
+    virtual ::Rational toRational() const;
+    virtual Expr op(unsigned int i) const;
+    virtual size_t arity() const;
+//    virtual Expr subs(const ExprSubs &map) const;
+    virtual bool isPoly(const NumVar &n) const;
+    virtual Integer denomLcm() const;
+    virtual std::optional<std::string> toQepcad() const;
+    virtual std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
+
 private:
 
-    GiNaC::ex ex;
-
-    bool match(const Expr &pattern) const;
-    void traverse(GiNaC::visitor & v) const;
+    const mp::cpp_rational val;
 
 };
 
-class ExprSubs {
+//class ExprSubs {
 
-    friend class Expr;
-    friend auto operator<=>(const ExprSubs &m1, const ExprSubs &m2) = default;
+//    friend class Expr;
+//    friend auto operator<=>(const ExprSubs &m1, const ExprSubs &m2) = default;
 
-public:
+//public:
 
-    using const_iterator = typename std::map<NumVar, Expr>::const_iterator;
+//    using const_iterator = typename std::map<NumVar, Expr>::const_iterator;
 
-    ExprSubs();
+//    ExprSubs();
 
-    ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init);
+//    ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init);
 
-    Expr get(const NumVar &key) const;
+//    Expr get(const NumVar &key) const;
 
-    void put(const NumVar &key, const Expr &val);
+//    void put(const NumVar &key, const Expr &val);
 
-    const_iterator begin() const;
+//    const_iterator begin() const;
 
-    const_iterator end() const;
+//    const_iterator end() const;
 
-    const_iterator find(const NumVar &e) const;
+//    const_iterator find(const NumVar &e) const;
 
-    bool contains(const NumVar &e) const;
+//    bool contains(const NumVar &e) const;
 
-    bool empty() const;
+//    bool empty() const;
 
-    unsigned int size() const;
+//    unsigned int size() const;
 
-    size_t erase(const NumVar &key);
+//    size_t erase(const NumVar &key);
 
-    ExprSubs compose(const ExprSubs &that) const;
+//    ExprSubs compose(const ExprSubs &that) const;
 
-    ExprSubs concat(const ExprSubs &that) const;
+//    ExprSubs concat(const ExprSubs &that) const;
 
-    ExprSubs unite(const ExprSubs &that) const;
+//    ExprSubs unite(const ExprSubs &that) const;
 
-    ExprSubs project(const std::set<NumVar> &vars) const;
+//    ExprSubs project(const std::set<NumVar> &vars) const;
 
-    ExprSubs setminus(const std::set<NumVar> &vars) const;
+//    ExprSubs setminus(const std::set<NumVar> &vars) const;
 
-    bool changes(const NumVar &key) const;
+//    bool changes(const NumVar &key) const;
 
-    bool isLinear() const;
+//    bool isLinear() const;
 
-    bool isPoly() const;
+//    bool isPoly() const;
 
-    bool isOctagon() const;
+//    bool isOctagon() const;
 
-    std::set<NumVar> domain() const;
+//    std::set<NumVar> domain() const;
 
-    std::set<NumVar> coDomainVars() const;
+//    std::set<NumVar> coDomainVars() const;
 
-    std::set<NumVar> allVars() const;
+//    std::set<NumVar> allVars() const;
 
-    void collectDomain(std::set<NumVar> &vars) const;
+//    void collectDomain(std::set<NumVar> &vars) const;
 
-    void collectCoDomainVars(std::set<NumVar> &vars) const;
+//    void collectCoDomainVars(std::set<NumVar> &vars) const;
 
-    void collectVars(std::set<NumVar> &vars) const;
+//    void collectVars(std::set<NumVar> &vars) const;
 
-private:
-    void putGinac(const NumVar &key, const Expr &val);
-    void eraseGinac(const NumVar &key);
-    GiNaC::exmap ginacMap;
-    std::map<NumVar, Expr> map;
+//private:
+//    void putGinac(const NumVar &key, const Expr &val);
+//    void eraseGinac(const NumVar &key);
+//    GiNaC::exmap ginacMap;
+//    std::map<NumVar, Expr> map;
 
-};
+//};
 
-std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
+//std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
