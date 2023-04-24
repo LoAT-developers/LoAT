@@ -1,6 +1,15 @@
+===== running the Docker container =====
+
+To run the Docker container, please execute the following commands:
+
+docker load -i sas23.tar.gz
+docker run --name loat -dit loat
+docker exec -it loat bash
+
+
 ===== available solvers =====
 
-This Docker container allows you to run the following solvers:
+The Docker container allows you to run the following solvers:
 
 * loat     -- LoAT's implementation of Acceleration Driven Clause Learning
 * bmc      -- Z3's implementation of bounded model checking
@@ -12,13 +21,13 @@ This Docker container allows you to run the following solvers:
 
 ===== available benchmarks =====
 
-This Docker container provides the following collections of benchmarks:
+The Docker container provides the following collections of benchmarks:
 
-* lia-lin-int -- the benchmarks from the CHC-Comp category LIA-Lin *without*
+* lia-lin-int -- the benchmarks from the CHC-Comp 2022, category LIA-Lin, *without*
   - benchmarks using the operators div or mod and
   - benchmarks using variables of type Bool
-* lia-lin     -- the benchmarks from the CHC-Comp category LIA-Lin *without*
-  - benchmarks using the operators div or mod and
+* lia-lin     -- the benchmarks from the CHC-Comp 2022, category LIA-Lin, *without*
+  - benchmarks using the operators div or mod
 
 The benchmarks are located in the directory /examples/lia-lin[-int].
 
@@ -51,7 +60,7 @@ runs LoAT on all examples from the benchmark collection lia-lin-int with a
 timeout of one second. If the timeout is omitted, then it defaults to 300.
 
 When run_all finishes, it provides the number of instances where sat or unsat
-was proven. For examples, on my machine the command above finishes with:
+was proven. For example, on my machine the command above finishes with:
 
 unsat: 30
 sat: 0
@@ -130,7 +139,7 @@ The top-level proof steps are
   avoid attempting fruitless resolution steps, LoAT sometimes removes edges from
   this graph if the constraint of the resolvent of phi and phi' is unsatisfiable.
 
-* Step, Accelerate, Covered, Backtrack, Refute, Nonterm
+* Step, Accelerate, Covered, Backtrack, Refute
 
   These proof steps represent the corresponding rules of the ADCL calculus.
 
@@ -174,7 +183,7 @@ util:        utility classes
 lib:         several libraries that have recently been extracted from LoAT, so
              that they can be made available for other tools in the future
 
-lib/acceleration: implementation of loop acceleration techniques
+lib/acceleration: loop acceleration techniques
 
 lib/expr:         representation of expressions
 
