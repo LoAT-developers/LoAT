@@ -25,17 +25,8 @@
 #include "numvar.hpp"
 
 namespace mp = boost::multiprecision;
-
-class NumVar;
-class _Integer;
-class _Rational;
-class Monomial;
-class Polynomial;
-class ExponentialPolynomial;
-class _Expr;
-using Integer = std::shared_ptr<const _Integer>;
-using Rational = std::shared_ptr<const _Rational>;
-using Expr = std::shared_ptr<const _Expr>;
+using integer = mp::cpp_int;
+using rational = mp::cpp_rational;
 
 // Specifies for which coefficients c we can solve "c*x == t" for x.
 enum SolvingLevel {
@@ -44,102 +35,85 @@ enum SolvingLevel {
     ConstantCoeffs = 2, // c can be any rational constant (the result may not map to int, use with caution!)
 };
 
-class _Expr {
-
-    friend bool operator==(const Expr&, const Expr&);
-    friend std::strong_ordering operator<=>(const Expr &x, const Expr &y);
+class Polynomial {
 
 public:
 
-    /**
-     * possible types of variables
-     */
-    enum Type {Int, Rational, Bool};
+    using Monomial = std::map<NumVar, integer>;
 
-    virtual bool isLinear() const;
-    virtual bool isPoly() const;
-    virtual bool isNaturalPow() const;
-    virtual unsigned maxDegree() const;
-    virtual Integer totalDegree() const;
-    virtual void collectVars(std::set<NumVar> &res) const;
-    virtual std::set<NumVar> vars() const;
-    virtual bool isConstant() const;
-    virtual bool isInt() const;
-    virtual bool isRational() const;
-    virtual bool isUnivariate() const;
-    virtual NumVar someVar() const;
-    virtual bool isNotMultivariate() const;
-    virtual bool isMultivariate() const;
-    virtual unsigned degree(const NumVar &var) const;
-    virtual Expr coeff(const NumVar &var, int degree = 1) const;
-    virtual Expr lcoeff(const NumVar &var) const;
-    virtual bool isVar() const;
-    virtual bool isPow() const;
-    virtual bool isMul() const;
-    virtual bool isAdd() const;
-    virtual NumVar toVar() const;
-    virtual ::Rational toRational() const;
-    virtual Expr op(unsigned int i) const;
-    virtual size_t arity() const;
-//    virtual Expr subs(const ExprSubs &map) const;
-    virtual bool isPoly(const NumVar &n) const;
-    virtual Integer denomLcm() const;
-    virtual std::optional<std::string> toQepcad() const;
-    virtual std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
+    Polynomial(const std::map<Monomial, rational> &addends);
 
-    /**
-     * @brief exponentiation
-     */
-    friend Expr operator^(const Expr &x, const Expr &y);
-    friend Expr operator-(const Expr &x);
-    friend Expr operator-(const Expr &x, const Expr &y);
-    friend Expr operator+(const Expr &x, const Expr &y);
-    friend Expr operator*(const Expr &x, const Expr &y);
-    friend Expr operator/(const Expr &x, const Expr &y);
-    friend std::ostream& operator<<(std::ostream &s, const Expr &e);
+    bool isLinear() const;
+    integer maxDegree() const;
+    integer totalDegree() const;
+    void collectVars(std::set<NumVar> &res) const;
+    std::set<NumVar> vars() const;
+    bool isConstant() const;
+    bool isInt() const;
+    bool isRational() const;
+    bool isUnivariate() const;
+    NumVar someVar() const;
+    bool isNotMultivariate() const;
+    bool isMultivariate() const;
+    unsigned degree(const NumVar &var) const;
+    Polynomial coeff(const NumVar &var, int degree = 1) const;
+    Polynomial lcoeff(const NumVar &var) const;
+    bool isVar() const;
+    NumVar toVar() const;
+    rational toRational() const;
+//    Expr subs(const ExprSubs &map) const;
+    std::optional<std::string> toQepcad() const;
+    std::optional<Polynomial> solveFor(const NumVar &var, SolvingLevel level) const;
 
-};
-
-class RationalNumber {
-
-    RationalNumber(const mp::cpp_rational &val);
-
-    Integer numerator() const;
-    Integer denominator() const;
-    virtual bool isLinear() const;
-    virtual bool isPoly() const;
-    virtual bool isNaturalPow() const;
-    virtual unsigned maxDegree() const;
-    virtual Integer totalDegree() const;
-    virtual void collectVars(std::set<NumVar> &res) const;
-    virtual std::set<NumVar> vars() const;
-    virtual bool isConstant() const;
-    virtual bool isInt() const;
-    virtual bool isRational() const;
-    virtual bool isUnivariate() const;
-    virtual NumVar someVar() const;
-    virtual bool isNotMultivariate() const;
-    virtual bool isMultivariate() const;
-    virtual unsigned degree(const NumVar &var) const;
-    virtual Expr coeff(const NumVar &var, int degree = 1) const;
-    virtual Expr lcoeff(const NumVar &var) const;
-    virtual bool isVar() const;
-    virtual bool isPow() const;
-    virtual bool isMul() const;
-    virtual bool isAdd() const;
-    virtual NumVar toVar() const;
-    virtual ::Rational toRational() const;
-    virtual Expr op(unsigned int i) const;
-    virtual size_t arity() const;
-//    virtual Expr subs(const ExprSubs &map) const;
-    virtual bool isPoly(const NumVar &n) const;
-    virtual Integer denomLcm() const;
-    virtual std::optional<std::string> toQepcad() const;
-    virtual std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
+    friend bool operator==(const Monomial&, const Monomial&);
+    friend std::strong_ordering operator<=>(const Monomial&, const Monomial&);
+    friend bool operator==(const Polynomial&, const Polynomial&);
+    friend std::strong_ordering operator<=>(const Polynomial&, const Polynomial&);
 
 private:
 
-    const mp::cpp_rational val;
+    std::map<Monomial, mp::cpp_rational> addends;
+
+};
+
+class Expr {
+
+public:
+
+    class Exp {
+        mp::cpp_int base;
+        Polynomial exponent;
+    };
+
+    Expr(const std::map<Exp, Polynomial> &addends);
+
+    bool isLinear() const;
+    bool isPoly() const;
+    bool isNaturalPow() const;
+    void collectVars(std::set<NumVar> &res) const;
+    std::set<NumVar> vars() const;
+    bool isConstant() const;
+    bool isInt() const;
+    bool isRational() const;
+    bool isUnivariate() const;
+    NumVar someVar() const;
+    bool isNotMultivariate() const;
+    bool isMultivariate() const;
+    bool isVar() const;
+    bool isPow() const;
+    NumVar toVar() const;
+    rational toRational() const;
+//    Expr subs(const ExprSubs &map) const;
+    bool isPoly(const NumVar &n) const;
+    std::optional<std::string> toQepcad() const;
+    std::optional<Expr> solveFor(const NumVar &var, SolvingLevel level) const;
+
+    friend bool operator==(const Expr&, const Expr&);
+    friend std::strong_ordering operator<=>(const Expr&, const Expr&);
+
+private:
+
+    std::map<Exp, Polynomial> addends;
 
 };
 

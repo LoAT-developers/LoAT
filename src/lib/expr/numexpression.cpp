@@ -20,78 +20,45 @@
 #include <sstream>
 #include <assert.h>
 
-RationalNumber::RationalNumber(const mp::cpp_rational &val): val(val) {}
+Polynomial::Polynomial(const std::map<Monomial, rational> &monomials): monomials(monomials) {}
 
-Integer RationalNumber::numerator() const {
-    return Integer(mp::numerator(val));
-}
-
-Integer RationalNumber::denominator() const {
-    return Integer(mp::numerator(val));
-}
-bool RationalNumber::isLinear() const {
+bool Polynomial::isLinear() const {
+    for (const auto &p: monomials) {
+        if (p.first.size() > 1) {
+            return false;
+        }
+        if (!p.first.empty() && p.first.begin()->second > 1) {
+            return false;
+        }
+    }
     return true;
 }
 
-bool RationalNumber::isPoly() const {
-    return true;
-}
+integer Polynomial::maxDegree() const;
+integer Polynomial::totalDegree() const;
+void Polynomial::collectVars(std::set<NumVar> &res) const;
+std::set<NumVar> Polynomial::vars() const;
+bool Polynomial::isConstant() const;
+bool Polynomial::isInt() const;
+bool Polynomial::isRational() const;
+bool Polynomial::isUnivariate() const;
+NumVar Polynomial::someVar() const;
+bool Polynomial::isNotMultivariate() const;
+bool Polynomial::isMultivariate() const;
+unsigned Polynomial::degree(const NumVar &var) const;
+Polynomial Polynomial::coeff(const NumVar &var, int degree = 1) const;
+Polynomial Polynomial::lcoeff(const NumVar &var) const;
+bool Polynomial::isVar() const;
+NumVar Polynomial::toVar() const;
+rational Polynomial::toRational() const;
+//    Expr subs(const ExprSubs &map) const;
+std::optional<std::string> Polynomial::toQepcad() const;
+std::optional<Polynomial> Polynomial::solveFor(const NumVar &var, SolvingLevel level) const;
 
-bool RationalNumber::isNaturalPow() const {
-    return false;
-}
-
-unsigned RationalNumber::maxDegree() const {
-    return 0;
-}
-
-Integer RationalNumber::totalDegree() const {
-    return 0;
-}
-
-void RationalNumber::collectVars(std::set<NumVar> &res) const {
-    return;
-}
-
-std::set<NumVar> RationalNumber::vars() const {
-    return {};
-}
-
-bool RationalNumber::isConstant() const {
-    return true;
-}
-
-bool RationalNumber::isInt() const {
-    return denominator() == 0;
-}
-
-bool RationalNumber::isRational() const {
-    return true;
-}
-
-bool RationalNumber::isUnivariate() const {
-    return false;
-}
-
-virtual NumVar someVar() const;
-virtual bool isNotMultivariate() const;
-virtual bool isMultivariate() const;
-virtual unsigned degree(const NumVar &var) const;
-virtual Expr coeff(const NumVar &var, int degree = 1) const;
-virtual Expr lcoeff(const NumVar &var) const;
-virtual bool isVar() const;
-virtual bool isPow() const;
-virtual bool isMul() const;
-virtual bool isAdd() const;
-virtual NumVar toVar() const;
-virtual ::Rational toRational() const;
-virtual Expr op(unsigned int i) const;
-virtual size_t arity() const;
-virtual Expr subs(const ExprSubs &map) const;
-virtual bool isPoly(const NumVar &n) const;
-virtual Integer denomLcm() const;
-virtual std::optional<std::string> toQepcad() const;
-virtual std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
+friend bool operator==(const Monomial&, const Monomial&);
+friend std::strong_ordering operator<=>(const Monomial&, const Monomial&);
+friend bool operator==(const Polynomial&, const Polynomial&);
+friend std::strong_ordering operator<=>(const Polynomial&, const Polynomial&);
 
 //std::string toQepcadRec(const Expr& e) {
 //    if (e.isInt() || e.isVar()) {
@@ -159,12 +126,7 @@ virtual std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) 
 //    }
 //}
 
-std::optional<std::string> Expr::toQepcad() const {
-    if (!this->isPoly()) return {};
-    return toQepcadRec(this->expand());
-}
-
-//std::optional<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) const {
+//std::optional<Expr> Expr::solveTermFor(const IntVar &var, SolvingLevel level) const {
 //    // expand is needed before using degree/coeff
 //    Expr term = this->expand();
 
@@ -208,18 +170,18 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 
 //ExprSubs::ExprSubs() {}
 
-//ExprSubs::ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init): map(init) {
+//ExprSubs::ExprSubs(std::initializer_list<std::pair<const IntVar, Expr>> init): map(init) {
 //    for (const auto &p: init) {
 //        putGinac(p.first, p.second);
 //    }
 //}
 
-//Expr ExprSubs::get(const NumVar &key) const {
+//Expr ExprSubs::get(const IntVar &key) const {
 //    const auto it = map.find(key);
 //    return it == map.end() ? key : it->second;
 //}
 
-//void ExprSubs::put(const NumVar &key, const Expr &val) {
+//void ExprSubs::put(const IntVar &key, const Expr &val) {
 //    map[key] = val;
 //    putGinac(key, val);
 //}
@@ -232,11 +194,11 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 //    return map.end();
 //}
 
-//ExprSubs::const_iterator ExprSubs::find(const NumVar &e) const {
+//ExprSubs::const_iterator ExprSubs::find(const IntVar &e) const {
 //    return map.find(e);
 //}
 
-//bool ExprSubs::contains(const NumVar &e) const {
+//bool ExprSubs::contains(const IntVar &e) const {
 //    return map.find(e) != map.end();
 //}
 
@@ -248,7 +210,7 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 //    return map.size();
 //}
 
-//size_t ExprSubs::erase(const NumVar &key) {
+//size_t ExprSubs::erase(const IntVar &key) {
 //    eraseGinac(key);
 //    return map.erase(key);
 //}
@@ -288,7 +250,7 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 //    return res;
 //}
 
-//ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
+//ExprSubs ExprSubs::project(const std::set<IntVar> &vars) const {
 //    ExprSubs res;
 //    if (size() < vars.size()) {
 //        for (const auto &p: *this) {
@@ -307,7 +269,7 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 //    return res;
 //}
 
-//ExprSubs ExprSubs::setminus(const std::set<NumVar> &vars) const {
+//ExprSubs ExprSubs::setminus(const std::set<IntVar> &vars) const {
 //    if (size() < vars.size()) {
 //        ExprSubs res;
 //        for (const auto &p: *this) {
@@ -325,15 +287,15 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 //    }
 //}
 
-//void ExprSubs::putGinac(const NumVar &key, const Expr &val) {
+//void ExprSubs::putGinac(const IntVar &key, const Expr &val) {
 //    ginacMap[*key] = val.ex;
 //}
 
-//void ExprSubs::eraseGinac(const NumVar &key) {
+//void ExprSubs::eraseGinac(const IntVar &key) {
 //    ginacMap.erase(*key);
 //}
 
-//bool ExprSubs::changes(const NumVar &key) const {
+//bool ExprSubs::changes(const IntVar &key) const {
 //    return contains(key) && get(key) != key;
 //}
 
@@ -355,37 +317,37 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 //    });
 //}
 
-//void ExprSubs::collectDomain(std::set<NumVar> &vars) const {
+//void ExprSubs::collectDomain(std::set<IntVar> &vars) const {
 //    for (const auto &p: *this) {
 //        vars.insert(p.first);
 //    }
 //}
 
-//void ExprSubs::collectCoDomainVars(std::set<NumVar> &vars) const {
+//void ExprSubs::collectCoDomainVars(std::set<IntVar> &vars) const {
 //    for (const auto &p: *this) {
 //        p.second.collectVars(vars);
 //    }
 //}
 
-//void ExprSubs::collectVars(std::set<NumVar> &vars) const {
+//void ExprSubs::collectVars(std::set<IntVar> &vars) const {
 //    collectCoDomainVars(vars);
 //    collectDomain(vars);
 //}
 
-//std::set<NumVar> ExprSubs::domain() const {
-//    std::set<NumVar> res;
+//std::set<IntVar> ExprSubs::domain() const {
+//    std::set<IntVar> res;
 //    collectDomain(res);
 //    return res;
 //}
 
-//std::set<NumVar> ExprSubs::coDomainVars() const {
-//    std::set<NumVar> res;
+//std::set<IntVar> ExprSubs::coDomainVars() const {
+//    std::set<IntVar> res;
 //    collectCoDomainVars(res);
 //    return res;
 //}
 
-//std::set<NumVar> ExprSubs::allVars() const {
-//    std::set<NumVar> res;
+//std::set<IntVar> ExprSubs::allVars() const {
+//    std::set<IntVar> res;
 //    collectVars(res);
 //    return res;
 //}
