@@ -79,7 +79,7 @@ following editors are pre-installed in the Docker container:
 * vim
 * nano
 
-Alternatively, you can copy examples from your local system to the docker
+Alternatively, you can copy benchmarks from your local system to the Docker
 container with the following command:
 
 docker cp $example loat:/$destination
@@ -89,7 +89,7 @@ So for example,
 docker cp test.smt2 loat:/examples/
 
 copies the file test.smt2 from your local system to the folder /examples of the
-docker container.
+Docker container.
 
 
 ===== getting LoAT's proofs =====
