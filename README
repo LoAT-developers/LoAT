@@ -80,7 +80,8 @@ following editors are pre-installed in the Docker container:
 * nano
 
 Alternatively, you can copy benchmarks from your local system to the Docker
-container with the following command:
+container by executing the following command on your local system (*not*
+within the Docker container):
 
 docker cp $example loat:/$destination
 
