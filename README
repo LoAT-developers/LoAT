@@ -16,7 +16,7 @@ The Docker container allows you to run the following solvers:
 * spacer   -- Z3's implementation of the Spacer algorithm
 * eld      -- Eldarica's default configuration
 * tpa      -- Golem's implementation of Transition Power Abstraction
-* eld-stac -- Eldarica with acceleration as pre-processing
+* eld_stac -- Eldarica with acceleration as pre-processing
 
 
 ===== available benchmarks =====
@@ -149,7 +149,7 @@ The top-level proof steps are
   "control flow graph" of the CHC problem: Its nodes are CHCs and an edge from
   phi to phi' means that phi' may be used for resolution right after phi. To
   avoid attempting fruitless resolution steps, LoAT sometimes removes edges from
-  this graph if the constraint of the resolvent of phi and phi' is unsatisfiable.
+  this graph if the condition of the resolvent of phi and phi' is unsatisfiable.
 
 * Step, Accelerate, Covered, Backtrack, Refute
 
