@@ -79,6 +79,18 @@ following editors are pre-installed in the Docker container:
 * vim
 * nano
 
+Alternatively, you can copy examples from your local system to the docker
+container with the following command:
+
+docker cp $example loat:/$destination
+
+So for example,
+
+docker cp test.smt2 loat:/examples/
+
+copies the file test.smt2 from your local system to the folder /examples of the
+docker container.
+
 
 ===== getting LoAT's proofs =====
 
