@@ -300,13 +300,6 @@ Rel Rel::makeRhsZero() const {
     return Rel(l - r, op, 0);
 }
 
-std::optional<std::string> Rel::toQepcad() const {
-    const Rel gt = this->toGt();
-    std::optional<std::string> diff = (gt.l - gt.r).toQepcad();
-    if (!diff) return {};
-    return *diff + " > 0";
-}
-
 bool Rel::isWellformed() const {
     return op != neq;
 }

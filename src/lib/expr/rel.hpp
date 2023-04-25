@@ -84,8 +84,6 @@ public:
     friend Rel operator!(const Rel &x);
     friend std::ostream& operator<<(std::ostream &s, const Rel &e);
 
-    std::optional<std::string> toQepcad() const;
-
     std::pair<std::optional<Expr>, std::optional<Expr>> getBoundFromIneq(const NumVar &N) const;
 
 private:

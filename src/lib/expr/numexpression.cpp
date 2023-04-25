@@ -20,352 +20,274 @@
 #include <sstream>
 #include <assert.h>
 
-Polynomial::Polynomial(const std::map<Monomial, rational> &monomials): monomials(monomials) {}
+Polynomial::Polynomial(const std::map<Monomial, rational> &addends): addends(addends) {
+    for (auto it = this->addends.begin(); it != this->addends.end();) {
+        const auto &[monomial, coeff] {*it};
+        if (coeff == 0 && monomial.empty()) {
+            it = this->addends.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
 
 bool Polynomial::isLinear() const {
-    for (const auto &p: monomials) {
-        if (p.first.size() > 1) {
+    for (const auto &[monomial, _]: addends) {
+        if (monomial.size() > 1) {
             return false;
         }
-        if (!p.first.empty() && p.first.begin()->second > 1) {
+        if (!monomial.empty() && monomial.begin()->second > 1) {
             return false;
         }
     }
     return true;
 }
 
-integer Polynomial::maxDegree() const;
-integer Polynomial::totalDegree() const;
-void Polynomial::collectVars(std::set<NumVar> &res) const;
-std::set<NumVar> Polynomial::vars() const;
-bool Polynomial::isConstant() const;
-bool Polynomial::isInt() const;
-bool Polynomial::isRational() const;
-bool Polynomial::isUnivariate() const;
-NumVar Polynomial::someVar() const;
-bool Polynomial::isNotMultivariate() const;
-bool Polynomial::isMultivariate() const;
-unsigned Polynomial::degree(const NumVar &var) const;
-Polynomial Polynomial::coeff(const NumVar &var, int degree = 1) const;
-Polynomial Polynomial::lcoeff(const NumVar &var) const;
-bool Polynomial::isVar() const;
-NumVar Polynomial::toVar() const;
-rational Polynomial::toRational() const;
-//    Expr subs(const ExprSubs &map) const;
-std::optional<std::string> Polynomial::toQepcad() const;
-std::optional<Polynomial> Polynomial::solveFor(const NumVar &var, SolvingLevel level) const;
-
-friend bool operator==(const Monomial&, const Monomial&);
-friend std::strong_ordering operator<=>(const Monomial&, const Monomial&);
-friend bool operator==(const Polynomial&, const Polynomial&);
-friend std::strong_ordering operator<=>(const Polynomial&, const Polynomial&);
-
-//std::string toQepcadRec(const Expr& e) {
-//    if (e.isInt() || e.isVar()) {
-//        return e.toString();
-//    } else if (e.isAdd()) {
-//        unsigned arity = e.arity();
-//        if (arity == 0) {
-//            return "0";
-//        }
-//        std::string res = toQepcadRec(e.op(0));
-//        for (unsigned i = 1; i < arity; ++i) {
-//            std::string subRes = toQepcadRec(e.op(i));
-//            if (subRes[0] != '-') {
-//                res += "+";
-//            }
-//            res += subRes;
-//        }
-//        return res;
-//    } else if (e.isMul()) {
-//        unsigned arity = e.arity();
-//        if (arity == 0) {
-//            return "1";
-//        }
-//        bool sign = true;
-//        Expr constant = 1;
-//        for (unsigned i = 0; i < arity; ++i) {
-//            const auto op = e.op(i);
-//            if (op.isRationalConstant()) {
-//                constant = constant * op;
-//                if (op.toNum().is_negative()) {
-//                    sign = !sign;
-//                    constant = -constant;
-//                }
-//            }
-//        }
-//        constant = constant.expand();
-//        if (constant.toNum().is_zero()) {
-//            return "0";
-//        }
-//        std::string res = sign ? "" : "-";
-//        bool skip;
-//        if (constant.toNum().is_equal(1)) {
-//            skip = true;
-//        } else {
-//            res += constant.toString();
-//            skip = false;
-//        }
-//        for (unsigned i = 0; i < arity; ++i) {
-//            if (!e.op(i).isRationalConstant()) {
-//                if (skip) {
-//                    skip = false;
-//                } else {
-//                    res += " ";
-//                }
-//                res = res + toQepcadRec(e.op(i));
-//            }
-//        }
-//        return res;
-//    } else if (e.isNaturalPow()) {
-//        return toQepcadRec(e.op(0)) + "^" + toQepcadRec(e.op(1));
-//    } else if (e.isRationalConstant()) {
-//        return e.numerator().toString() + "/" + e.denominator().toString();
-//    } else {
-//        throw std::invalid_argument("conversion to Qepcad failed for polynomial " + e.toString());
-//    }
-//}
-
-//std::optional<Expr> Expr::solveTermFor(const IntVar &var, SolvingLevel level) const {
-//    // expand is needed before using degree/coeff
-//    Expr term = this->expand();
-
-//    // we can only solve linear expressions...
-//    if (term.degree(var) != 1) return {};
-
-//    // ...with rational coefficients
-//    Expr c = term.coeff(var);
-//    if (!c.isRationalConstant()) return {};
-
-//    bool trivialCoeff = (c == 1 || c == -1);
-
-//    if (level == TrivialCoeffs && !trivialCoeff) {
-//        return {};
-//    }
-
-//    term = (term - c*var) / (-c);
-
-//    // If c is trivial, we don't have to check if the result maps to int,
-//    // since we assume that all constraints in the guard map to int.
-//    // So if c is trivial, we can also handle non-polynomial terms.
-//    if (level == ResultMapsToInt && !trivialCoeff) {
-//        if (!term.isPoly() || !term.isIntegral()) return {};
-//    }
-
-//    // we assume that terms in the guard map to int, make sure this is the case
-//    if (trivialCoeff) {
-//        assert(!term.isPoly() || term.isIntegral());
-//    }
-
-//    return {term};
-//}
-
-bool operator==(const Expr &e1, const Expr &e2) {
-    return e1.ex.is_equal(e2.ex);
-}
-
-std::ostream& operator<<(std::ostream &s, const Expr &e) {
-    return s << e.ex;
-}
-
-//ExprSubs::ExprSubs() {}
-
-//ExprSubs::ExprSubs(std::initializer_list<std::pair<const IntVar, Expr>> init): map(init) {
-//    for (const auto &p: init) {
-//        putGinac(p.first, p.second);
-//    }
-//}
-
-//Expr ExprSubs::get(const IntVar &key) const {
-//    const auto it = map.find(key);
-//    return it == map.end() ? key : it->second;
-//}
-
-//void ExprSubs::put(const IntVar &key, const Expr &val) {
-//    map[key] = val;
-//    putGinac(key, val);
-//}
-
-//ExprSubs::const_iterator ExprSubs::begin() const {
-//    return map.begin();
-//}
-
-//ExprSubs::const_iterator ExprSubs::end() const {
-//    return map.end();
-//}
-
-//ExprSubs::const_iterator ExprSubs::find(const IntVar &e) const {
-//    return map.find(e);
-//}
-
-//bool ExprSubs::contains(const IntVar &e) const {
-//    return map.find(e) != map.end();
-//}
-
-//bool ExprSubs::empty() const {
-//    return map.empty();
-//}
-
-//unsigned int ExprSubs::size() const {
-//    return map.size();
-//}
-
-//size_t ExprSubs::erase(const IntVar &key) {
-//    eraseGinac(key);
-//    return map.erase(key);
-//}
-
-//ExprSubs ExprSubs::compose(const ExprSubs &that) const {
-//    ExprSubs res;
-//    for (const auto &p: *this) {
-//        res.put(p.first, p.second.subs(that));
-//    }
-//    for (const auto &p: that) {
-//        if (!res.contains(p.first)) {
-//            res.put(p.first, p.second);
-//        }
-//    }
-//    return res;
-//}
-
-//ExprSubs ExprSubs::concat(const ExprSubs &that) const {
-//    ExprSubs res;
-//    for (const auto &p: *this) {
-//        res.put(p.first, p.second.subs(that));
-//    }
-//    return res;
-//}
-
-//ExprSubs ExprSubs::unite(const ExprSubs &that) const {
-//    ExprSubs res;
-//    for (const auto &p: *this) {
-//        res.put(p.first, p.second);
-//    }
-//    for (const auto &p: that) {
-//        if (res.find(p.first) != res.end()) {
-//            throw std::invalid_argument("union of substitutions is only defined if their domain is disjoint");
-//        }
-//        res.put(p.first, p.second);
-//    }
-//    return res;
-//}
-
-//ExprSubs ExprSubs::project(const std::set<IntVar> &vars) const {
-//    ExprSubs res;
-//    if (size() < vars.size()) {
-//        for (const auto &p: *this) {
-//            if (vars.find(p.first) != vars.end()) {
-//                res.put(p.first, p.second);
-//            }
-//        }
-//    } else {
-//        for (const auto &x: vars) {
-//            const auto it {find(x)};
-//            if (it != end()) {
-//                res.put(it->first, it->second);
-//            }
-//        }
-//    }
-//    return res;
-//}
-
-//ExprSubs ExprSubs::setminus(const std::set<IntVar> &vars) const {
-//    if (size() < vars.size()) {
-//        ExprSubs res;
-//        for (const auto &p: *this) {
-//            if (vars.find(p.first) == vars.end()) {
-//                res.put(p.first, p.second);
-//            }
-//        }
-//        return res;
-//    } else {
-//        ExprSubs res(*this);
-//        for (const auto &x: vars) {
-//            res.erase(x);
-//        }
-//        return res;
-//    }
-//}
-
-//void ExprSubs::putGinac(const IntVar &key, const Expr &val) {
-//    ginacMap[*key] = val.ex;
-//}
-
-//void ExprSubs::eraseGinac(const IntVar &key) {
-//    ginacMap.erase(*key);
-//}
-
-//bool ExprSubs::changes(const IntVar &key) const {
-//    return contains(key) && get(key) != key;
-//}
-
-//bool ExprSubs::isLinear() const {
-//    return std::all_of(begin(), end(), [](const auto &p) {
-//       return p.second.isLinear();
-//    });
-//}
-
-//bool ExprSubs::isPoly() const {
-//    return std::all_of(begin(), end(), [](const auto &p) {
-//       return p.second.isPoly();
-//    });
-//}
-
-//bool ExprSubs::isOctagon() const {
-//    return std::all_of(begin(), end(), [](const auto &p) {
-//       return p.second.isOctagon();
-//    });
-//}
-
-//void ExprSubs::collectDomain(std::set<IntVar> &vars) const {
-//    for (const auto &p: *this) {
-//        vars.insert(p.first);
-//    }
-//}
-
-//void ExprSubs::collectCoDomainVars(std::set<IntVar> &vars) const {
-//    for (const auto &p: *this) {
-//        p.second.collectVars(vars);
-//    }
-//}
-
-//void ExprSubs::collectVars(std::set<IntVar> &vars) const {
-//    collectCoDomainVars(vars);
-//    collectDomain(vars);
-//}
-
-//std::set<IntVar> ExprSubs::domain() const {
-//    std::set<IntVar> res;
-//    collectDomain(res);
-//    return res;
-//}
-
-//std::set<IntVar> ExprSubs::coDomainVars() const {
-//    std::set<IntVar> res;
-//    collectCoDomainVars(res);
-//    return res;
-//}
-
-//std::set<IntVar> ExprSubs::allVars() const {
-//    std::set<IntVar> res;
-//    collectVars(res);
-//    return res;
-//}
-
-std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
-    if (map.empty()) {
-        return s << "{}";
-    } else {
-        s << "{";
-        bool fst = true;
-        for (const auto &p: map) {
-            if (!fst) {
-                s << ", ";
-            } else {
-                fst = false;
-            }
-            s << p.first << ": " << p.second;
+integer Polynomial::maxDegree() const {
+    integer res {0};
+    for (const auto &[monomial, _]: addends) {
+        for (const auto &[_, exponent]: monomial) {
+            res = max(res, exponent);
         }
-        return s << "}";
     }
+    return res;
+}
+
+integer Polynomial::totalDegree() const {
+    integer res {0};
+    for (const auto &[monomial, _]: addends) {
+        integer deg {0};
+        for (const auto &[_, exponent]: monomial) {
+            deg += exponent;
+        }
+        res = max(res, deg);
+    }
+    return res;
+}
+
+void Polynomial::collectVars(std::set<NumVar> &res) const {
+    for (const auto &[monomial, _]: addends) {
+        integer deg {0};
+        for (const auto &[var, _]: monomial) {
+            res.insert(var);
+        }
+    }
+}
+
+std::set<NumVar> Polynomial::vars() const {
+    std::set<NumVar> res;
+    collectVars(res);
+    return res;
+}
+
+bool Polynomial::isConstant() const {
+    return addends.empty();
+}
+
+bool is_int(const rational &x) {
+    return mp::abs(mp::denominator(x)) == 1;
+}
+
+bool Polynomial::isInt() const {
+    if (addends.size() == 0) {
+        return true;
+    }
+    if (addends.size() == 1) {
+        const auto &[monomial, coeff] {*addends.begin()};
+        return monomial.empty() && is_int(coeff);
+    }
+    return false;
+}
+
+bool Polynomial::isRational() const {
+    return addends.size() == 0 || (addends.size() == 1 && addends.begin()->first.empty());
+}
+
+bool Polynomial::isUnivariate() const {
+    std::optional<NumVar> var;
+    for (const auto &[monomial, _]: addends) {
+        if (monomial.size() > 1) {
+            return false;
+        }
+        const auto &x {monomial.begin()->first};
+        if (!var) {
+            var = x;
+        } else if (*var != x) {
+            return false;
+        }
+    }
+    return var ? true : false;
+}
+
+NumVar Polynomial::someVar() const {
+    return addends.begin()->first.begin()->first;
+}
+
+bool Polynomial::isNotMultivariate() const {
+    std::optional<NumVar> var;
+    for (const auto &[monomial, _]: addends) {
+        if (monomial.size() > 1) {
+            return false;
+        }
+        const auto &x {monomial.begin()->first};
+        if (!var) {
+            var = x;
+        } else if (*var != x) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Polynomial::isMultivariate() const {
+    std::optional<NumVar> var;
+    for (const auto &[monomial, _]: addends) {
+        if (monomial.size() > 1) {
+            return true;
+        }
+        const auto &x {monomial.begin()->first};
+        if (!var) {
+            var = x;
+        } else if (*var != x) {
+            return true;
+        }
+    }
+    return false;
+}
+
+integer Polynomial::degree(const NumVar &var) const {
+    integer res {0};
+    for (const auto &[monomial, _]: addends) {
+        auto it {monomial.find(var)};
+        if (it != monomial.end()) {
+            res = max(res, it->second);
+        }
+    }
+    return res;
+}
+
+Polynomial Polynomial::coeff(const NumVar &var, integer degree) const {
+    std::map<Monomial, rational> res;
+    for (const auto &[monomial, coeff]: addends) {
+        auto it {monomial.find(var)};
+        if (it != monomial.end() && it->second == degree) {
+            auto mon {monomial};
+            mon.erase(var);
+            res.emplace(mon, coeff);
+        }
+    }
+    return Polynomial(res);
+}
+
+bool Polynomial::isVar() const {
+    if (addends.size() == 1) {
+        const auto &[monomial, coeff] {*addends.begin()};
+        return coeff == 1 && monomial.size() == 1 && monomial.begin()->second == 1;
+    }
+    return false;
+}
+
+NumVar Polynomial::toVar() const {
+    assert(isVar());
+    return addends.begin()->first.begin()->first;
+}
+
+rational Polynomial::toRational() const {
+    assert(isConstant());
+    return addends.begin()->second;
+}
+
+//    Expr subs(const Subs &map) const;
+
+bool Polynomial::isIntPoly() const {
+    for (const auto &[_, coeff]: addends) {
+        if (!is_int(coeff)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Polynomial::isIntegral() const {
+    if (isIntPoly()) {
+        return true;
+    }
+    const auto varSet {this->vars()};
+    std::vector<NumVar> vars{varSet.begin(), varSet.end()};
+    std::vector<integer> degrees;
+    std::vector<integer> subs;
+    for (const auto &x: vars) {
+        degrees.push_back(degree(x));
+        subs.push_back(0);
+    }
+
+    while (true) {
+        // substitute every variable x_i by the integer subs[i] and check if the result is an integer
+        Subs currSubs;
+        for (unsigned int i = 0; i < degrees.size(); i++) {
+            currSubs.put(vars[i], subs[i]);
+        }
+        const auto res {this->subs(currSubs)};
+        if (!res.isInt()) {
+            return false;
+        }
+        // increase subs (lexicographically) if possible
+        // (the idea is that subs takes all possible combinations of 0,...,degree[i]+1 for every entry i)
+        bool foundNext {false};
+        for (unsigned int i = 0; i < degrees.size(); i++) {
+            if (subs[i] >= degrees[i]+1) {
+                subs[i] = 0;
+            } else {
+                subs[i] += 1;
+                foundNext = true;
+                break;
+            }
+        }
+        if (!foundNext) {
+            return true;
+        }
+    }
+}
+
+std::optional<Polynomial> Polynomial::solveFor(const NumVar &var, SolvingLevel level) const {
+    std::map<Monomial, rational> res;
+    rational c;
+    for (const auto &[monomial, coeff]: addends) {
+        auto it {monomial.find(var)};
+        if (it == monomial.end()) {
+            res.emplace(monomial, coeff);
+        } else if (monomial.size() > 1 || it->second > 1) {
+            return {};
+        } else {
+            c = it->second;
+        }
+    }
+    if (level == TrivialCoeffs && (!is_int(c) || mp::abs(mp::numerator(c)) != 1)) {
+        return {};
+    }
+    c = -c;
+    for (auto &[_, coeff]: res) {
+        coeff = coeff / (-c);
+    }
+    const Polynomial ret{res};
+    if (level == ResultMapsToInt && !ret.isIntegral()) {
+        return {};
+    }
+    return ret;
+}
+
+std::ostream& operator<<(std::ostream &s, const Polynomial &p) {
+    bool first {true};
+    for (const auto &[monomial, coeff]: p.addends) {
+        if (first) {
+            first = false;
+        } else {
+            s << " + ";
+        }
+        s << coeff;
+        for (const auto &[var, degree]: monomial) {
+            s << " * " << var << "^" << degree;
+        }
+    }
+    return s;
 }

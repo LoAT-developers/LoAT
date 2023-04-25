@@ -10,7 +10,7 @@ class NumVar {
 
     explicit NumVar(const GiNaC::symbol &sym);
 
-    friend auto operator<=>(const NumVar&, const NumVar&) = default;
+    friend std::strong_ordering operator<=>(const NumVar&, const NumVar&) = default;
 
 public:
 

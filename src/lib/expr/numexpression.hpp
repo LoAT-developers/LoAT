@@ -35,11 +35,212 @@ enum SolvingLevel {
     ConstantCoeffs = 2, // c can be any rational constant (the result may not map to int, use with caution!)
 };
 
-class Polynomial {
+template <class T>
+class Substitution {
+
+    friend auto operator<=>(const Substitution<T> &m1, const Substitution<T> &m2) = default;
 
 public:
 
+    using const_iterator = typename std::map<NumVar, T>::const_iterator;
+
+    Substitution() {}
+
+    Substitution(std::initializer_list<std::pair<const NumVar, T>> init): map(init) {}
+
+    T get(const NumVar &key) const {
+        const auto it {map.find(key)};
+        return it == map.end() ? key : it->second;
+    }
+
+    void put(const NumVar &key, const T &val) {
+        map[key] = val;
+    }
+
+    const_iterator begin() const {
+        return map.begin();
+    }
+
+    const_iterator end() const {
+        return map.end();
+    }
+
+    const_iterator find(const NumVar &e) const {
+        return map.find(e);
+    }
+
+    bool contains(const NumVar &e) const {
+        return map.find(e) != map.end();
+    }
+
+    bool empty() const {
+        return map.empty();
+    }
+
+    unsigned int size() const {
+        return map.size();
+    }
+
+    size_t erase(const NumVar &key) {
+        return map.erase(key);
+    }
+
+    Substitution<T> compose(const Substitution<T> &that) const {
+        Substitution<T> res;
+        for (const auto &[var, val]: *this) {
+            res.put(var, val.subs(that));
+        }
+        for (const auto &[var, val]: that) {
+            if (!res.contains(var)) {
+                res.put(var, val);
+            }
+        }
+        return res;
+    }
+
+    Substitution<T> concat(const Substitution<T> &that) const {
+        Substitution<T> res;
+        for (const auto &[var, val]: *this) {
+            res.put(var, val.subs(that));
+        }
+        return res;
+    }
+
+    Substitution<T> unite(const Substitution<T> &that) const {
+        Substitution<T> res;
+        for (const auto &[var, val]: *this) {
+            res.put(var, val);
+        }
+        for (const auto &[var, val]: that) {
+            if (res.find(var) != res.end()) {
+                throw std::invalid_argument("union of substitutions is only defined if their domain is disjoint");
+            }
+            res.put(var, val);
+        }
+        return res;
+    }
+
+    Substitution<T> project(const std::set<NumVar> &vars) const {
+        Substitution<T> res;
+        if (size() < vars.size()) {
+            for (const auto &[var, val]: *this) {
+                if (vars.find(var) != vars.end()) {
+                    res.put(var, val);
+                }
+            }
+        } else {
+            for (const auto &x: vars) {
+                const auto it {find(x)};
+                if (it != end()) {
+                    res.put(it->first, it->second);
+                }
+            }
+        }
+        return res;
+    }
+
+    Substitution<T> setminus(const std::set<NumVar> &vars) const {
+        if (size() < vars.size()) {
+            Substitution<T> res;
+            for (const auto &[var, val]: *this) {
+                if (vars.find(var) == vars.end()) {
+                    res.put(var, val);
+                }
+            }
+            return res;
+        } else {
+            Substitution<T> res(*this);
+            for (const auto &x: vars) {
+                res.erase(x);
+            }
+            return res;
+        }
+    }
+
+    bool changes(const NumVar &key) const {
+        return contains(key) && get(key) != key;
+    }
+
+    bool isLinear() const {
+        return std::all_of(begin(), end(), [](const auto &p) {
+            return p.second.isLinear();
+        });
+    }
+
+    bool isPoly() const {
+        return std::all_of(begin(), end(), [](const auto &p) {
+            return p.second.isPoly();
+        });
+    }
+
+    std::set<NumVar> domain() const {
+        std::set<NumVar> res;
+        collectDomain(res);
+        return res;
+    }
+
+    std::set<NumVar> coDomainVars() const {
+        std::set<NumVar> res;
+        collectCoDomainVars(res);
+        return res;
+    }
+
+    std::set<NumVar> allVars() const {
+        std::set<NumVar> res;
+        collectVars(res);
+        return res;
+    }
+
+    void collectDomain(std::set<NumVar> &vars) const {
+        for (const auto &[var, _]: *this) {
+            vars.insert(var);
+        }
+    }
+
+    void collectCoDomainVars(std::set<NumVar> &vars) const {
+        for (const auto &[_, val]: *this) {
+            val.collectVars(vars);
+        }
+    }
+
+    void collectVars(std::set<NumVar> &vars) const {
+        for (const auto &[var, val]: *this) {
+            vars.insert(var);
+            val.collectVars(vars);
+        }
+    }
+
+private:
+
+    std::map<NumVar, T> map;
+
+};
+
+template <class T>
+std::ostream& operator<<(std::ostream &s, const Substitution<T> &map) {
+    if (map.empty()) {
+        return s << "{}";
+    } else {
+        s << "{";
+        bool fst = true;
+        for (const auto &p: map) {
+            if (!fst) {
+                s << ", ";
+            } else {
+                fst = false;
+            }
+            s << p.first << ": " << p.second;
+        }
+        return s << "}";
+    }
+}
+
+class Polynomial {
+
     using Monomial = std::map<NumVar, integer>;
+    using Subs = Substitution<Polynomial>;
+
+public:
 
     Polynomial(const std::map<Monomial, rational> &addends);
 
@@ -55,20 +256,19 @@ public:
     NumVar someVar() const;
     bool isNotMultivariate() const;
     bool isMultivariate() const;
-    unsigned degree(const NumVar &var) const;
-    Polynomial coeff(const NumVar &var, int degree = 1) const;
-    Polynomial lcoeff(const NumVar &var) const;
+    integer degree(const NumVar &var) const;
+    Polynomial coeff(const NumVar &var, integer degree = 1) const;
     bool isVar() const;
     NumVar toVar() const;
     rational toRational() const;
-//    Expr subs(const ExprSubs &map) const;
-    std::optional<std::string> toQepcad() const;
+    bool isIntegral() const;
+    bool isIntPoly() const;
+    Polynomial subs(const Subs &map) const;
     std::optional<Polynomial> solveFor(const NumVar &var, SolvingLevel level) const;
 
-    friend bool operator==(const Monomial&, const Monomial&);
-    friend std::strong_ordering operator<=>(const Monomial&, const Monomial&);
-    friend bool operator==(const Polynomial&, const Polynomial&);
-    friend std::strong_ordering operator<=>(const Polynomial&, const Polynomial&);
+    friend bool operator==(const Polynomial&, const Polynomial&) = default;
+    friend std::strong_ordering operator<=>(const Polynomial&, const Polynomial&) = default;
+    friend std::ostream& operator<<(std::ostream &s, const Polynomial &p);
 
 private:
 
@@ -77,6 +277,8 @@ private:
 };
 
 class Expr {
+
+    using Subs = Substitution<Expr>;
 
 public:
 
@@ -103,9 +305,8 @@ public:
     bool isPow() const;
     NumVar toVar() const;
     rational toRational() const;
-//    Expr subs(const ExprSubs &map) const;
+    Expr subs(const Subs &map) const;
     bool isPoly(const NumVar &n) const;
-    std::optional<std::string> toQepcad() const;
     std::optional<Expr> solveFor(const NumVar &var, SolvingLevel level) const;
 
     friend bool operator==(const Expr&, const Expr&);
@@ -116,74 +317,3 @@ private:
     std::map<Exp, Polynomial> addends;
 
 };
-
-//class ExprSubs {
-
-//    friend class Expr;
-//    friend auto operator<=>(const ExprSubs &m1, const ExprSubs &m2) = default;
-
-//public:
-
-//    using const_iterator = typename std::map<NumVar, Expr>::const_iterator;
-
-//    ExprSubs();
-
-//    ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init);
-
-//    Expr get(const NumVar &key) const;
-
-//    void put(const NumVar &key, const Expr &val);
-
-//    const_iterator begin() const;
-
-//    const_iterator end() const;
-
-//    const_iterator find(const NumVar &e) const;
-
-//    bool contains(const NumVar &e) const;
-
-//    bool empty() const;
-
-//    unsigned int size() const;
-
-//    size_t erase(const NumVar &key);
-
-//    ExprSubs compose(const ExprSubs &that) const;
-
-//    ExprSubs concat(const ExprSubs &that) const;
-
-//    ExprSubs unite(const ExprSubs &that) const;
-
-//    ExprSubs project(const std::set<NumVar> &vars) const;
-
-//    ExprSubs setminus(const std::set<NumVar> &vars) const;
-
-//    bool changes(const NumVar &key) const;
-
-//    bool isLinear() const;
-
-//    bool isPoly() const;
-
-//    bool isOctagon() const;
-
-//    std::set<NumVar> domain() const;
-
-//    std::set<NumVar> coDomainVars() const;
-
-//    std::set<NumVar> allVars() const;
-
-//    void collectDomain(std::set<NumVar> &vars) const;
-
-//    void collectCoDomainVars(std::set<NumVar> &vars) const;
-
-//    void collectVars(std::set<NumVar> &vars) const;
-
-//private:
-//    void putGinac(const NumVar &key, const Expr &val);
-//    void eraseGinac(const NumVar &key);
-//    GiNaC::exmap ginacMap;
-//    std::map<NumVar, Expr> map;
-
-//};
-
-//std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
