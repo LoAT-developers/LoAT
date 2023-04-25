@@ -185,7 +185,7 @@ its:         central data structures for representing transition systems as well
              as CHC problems (itsproblem.xpp)
 
 parser:      parsers for various input formats, in particular the format from
-             the CHC competition (parsers/chc)
+             the CHC competition (parser/chc)
 
 redundance:  the language-based redundancy check explained in our paper
              (redundanceviaautomata.xpp)
