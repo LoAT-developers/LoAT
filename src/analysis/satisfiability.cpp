@@ -554,6 +554,12 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
     config.approx = OverApprox;
     // ---
     acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, res->toLinear(), Complexity::Const, config);
+    /*// if Acceleration yielded pseudoloop and period = 1, return failed
+    if (log) std::cout << "Status: " << accel_res.status << " Period: " << accel_res.period << std::endl;
+    if (accel_res.status == acceleration::PseudoLoop && accel_res.period == 1){
+        if (log) std::cout << "PseudoLoop and period = 1 -> don't accelerate" << std::endl;
+        return std::make_unique<Failed>();
+    }*/
     if (accel_res.rule) {
         // acceleration succeeded, simplify the result
         const auto simplified = Preprocess::simplifyRule(chcs, *accel_res.rule);
@@ -624,7 +630,7 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
     } else {
         res = build_trivial_clause(res->getLhsLoc());
         if (log) {
-            std::cout << "accelerated rule using a trivial clause:" << std::endl;
+            std::cout << "accelerated rule using a trivial clause: acc didnt work" << std::endl;
             ITSExport::printRule(*res, chcs, std::cout);
             std::cout << std::endl;
         }
@@ -636,6 +642,8 @@ std::unique_ptr<LearningState> Satisfiability::learn_clause(const Rule &rule, co
 
 std::unique_ptr<LearningState> Satisfiability::handle_loop(const int backlink) {
     const auto lang = build_language(backlink);
+    if (log) std::cout << "loop at " << backlink
+                       << std::endl;
     if (redundance->is_redundant(lang)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
