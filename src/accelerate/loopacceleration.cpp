@@ -156,19 +156,6 @@ acceleration::Result LoopAcceleration::run() {
     if (!shouldAccelerate()) {
         return res;
     }
-    if (config.approx != UnderApprox) {
-        if (!rule.getGuard()->isConjunction()) {
-            res.status = acceleration::Disjunctive;
-            return res;
-        }
-        // for non-deterministic loops, we can only offer under-approximations
-        for (const auto &x: rule.vars()) {
-            if (its.isTempVar(x)) {
-                res.status = acceleration::Nondet;
-                return res;
-            }
-        }
-    }
     const auto [rule, period] = chain(this->rule, its);
     if (SmtFactory::check(rule.getGuard(), its) != Sat) {
         res.status = acceleration::Unsat;
@@ -184,6 +171,19 @@ acceleration::Result LoopAcceleration::run() {
         res.status = acceleration::PseudoLoop;
         res.proof.append("rule cannot be iterated more than once");
         return res;
+    }
+    if (config.approx != UnderApprox) {
+        if (!rule.getGuard()->isConjunction()) {
+            res.status = acceleration::Disjunctive;
+            return res;
+        }
+        // for non-deterministic loops, we can only offer under-approximations
+        for (const auto &x: rule.vars()) {
+            if (its.isTempVar(x)) {
+                res.status = acceleration::Nondet;
+                return res;
+            }
+        }
     }
     const auto rec = Recurrence::iterateRule(its, rule);
     if (!rec && config.approx != UnderApprox) {
