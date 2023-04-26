@@ -20,126 +20,120 @@
 #include <sstream>
 #include <assert.h>
 
-Expr::Expr(const std::map<std::optional<Exp>, Polynomial> &addends): addends(addends) {}
+Polynomial::Polynomial(const std::map<Monomial, rational> &addends): addends(addends) {}
 
-Expr Expr::zero {{{{}, Polynomial::mk(0)}}};
-
-Expr Expr::mk(const std::map<std::optional<Exp>, Polynomial> &addends) {
+Polynomial Polynomial::mk(const std::map<Monomial, rational> &addends) {
     if (addends.empty()) {
         return zero;
     }
-    Expr res(addends);
+    Polynomial res(addends);
     for (auto it = res.addends.begin(); it != res.addends.end();) {
-        auto &[exp, coeff] {*it};
-        if (exp && coeff.isZero()) {
+        const auto &[monomial, coeff] {*it};
+        if (coeff == 0 && !monomial.empty()) {
             it = res.addends.erase(it);
         } else {
-            assert(!exp || exp->base > 0);
             ++it;
         }
     }
     return res;
 }
 
-Expr Expr::mk(const rational &x) {
+Polynomial Polynomial::mk(const rational &x) {
     if (x == 0) {
         return zero;
+    } else {
+        return Polynomial({{{}, x}});
     }
-    return Expr({{{}, Polynomial::mk(x)}});
 }
 
-void Expr::collectVars(std::set<NumVar> &res) const {
-    for (const auto &[exp, coeff]: addends) {
-        coeff.collectVars(res);
-        if (exp) {
-            res.insert(exp->exponent);
+Polynomial Polynomial::zero {{{{}, 0}}};
+
+bool Polynomial::isZero() const {
+    return *this == zero;
+}
+
+bool Polynomial::isLinear() const {
+    for (const auto &[monomial, _]: addends) {
+        if (monomial.size() > 1) {
+            return false;
+        }
+        if (!monomial.empty() && monomial.begin()->second > 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+integer Polynomial::maxDegree() const {
+    integer res {0};
+    for (const auto &[monomial, _]: addends) {
+        for (const auto &[_, exponent]: monomial) {
+            res = max(res, exponent);
+        }
+    }
+    return res;
+}
+
+integer Polynomial::totalDegree() const {
+    integer res {0};
+    for (const auto &[monomial, _]: addends) {
+        integer deg {0};
+        for (const auto &[_, exponent]: monomial) {
+            deg += exponent;
+        }
+        res = max(res, deg);
+    }
+    return res;
+}
+
+void Polynomial::collectVars(std::set<NumVar> &res) const {
+    for (const auto &[monomial, _]: addends) {
+        for (const auto &[var, _]: monomial) {
+            res.insert(var);
         }
     }
 }
 
-std::set<NumVar> Expr::vars() const {
+std::set<NumVar> Polynomial::vars() const {
     std::set<NumVar> res;
     collectVars(res);
     return res;
 }
 
-bool Expr::isInt() const {
-    if (addends.size() > 1) {
-        return false;
-    }
-    const auto &[exp, coeff] {*addends.begin()};
-    return !exp && coeff.isInt();
+bool is_int(const rational &x) {
+    return mp::abs(mp::denominator(x)) == 1;
 }
 
-bool Expr::isRational() const {
-    if (addends.size() > 1) {
-        return false;
+bool Polynomial::isInt() const {
+    if (addends.size() == 1) {
+        const auto &[monomial, coeff] {*addends.begin()};
+        return monomial.empty() && is_int(coeff);
     }
-    return !addends.begin()->first;
+    return false;
 }
 
-std::optional<NumVar> Expr::isUnivariate() const {
+bool Polynomial::isRational() const {
+    return addends.size() == 1 && addends.begin()->first.empty();
+}
+
+std::optional<NumVar> Polynomial::isUnivariate() const {
     std::optional<NumVar> var;
-    for (const auto &[exp, coeff]: addends) {
-        if (!coeff.isRational()) {
-            if (!var) {
-                var = coeff.isUnivariate();
-                if (!var) {
-                    return {};
-                }
-            } else {
-                const auto coeffVar {coeff.isUnivariate()};
-                if (coeffVar != var) {
-                    return {};
-                }
-            }
+    for (const auto &[monomial, _]: addends) {
+        if (monomial.size() > 1) {
+            return {};
         }
-        if (exp) {
-            if (!var) {
-                var = exp->exponent;
-            } else if (*var != exp->exponent) {
-                return {};
-            }
+        const auto &x {monomial.begin()->first};
+        if (!var) {
+            var = x;
+        } else if (*var != x) {
+            return {};
         }
     }
     return var;
 }
 
-NumVar Expr::someVar() const {
-    for (const auto &[exp, coeff]: addends) {
-        if (exp) {
-            return exp->exponent;
-        } else if (!coeff.isRational()) {
-            return coeff.someVar();
-        }
-    }
-    throw std::invalid_argument("someVar on ground expression");
-}
-
-bool Expr::isNotMultivariate() const {
-    std::optional<NumVar> var;
-    for (const auto &[exp, coeff]: addends) {
-        if (!coeff.isRational()) {
-            auto coeffVar {coeff.isUnivariate()};
-            auto ground {coeff.isRational()};
-            if (!ground && !coeffVar) {
-                return false;
-            }
-            if (!var) {
-                var = coeffVar;
-            } else if (!ground && var != coeffVar) {
-                return false;
-            }
-        }
-        if (exp) {
-            if (!var) {
-                var = exp->exponent;
-            } else if (*var != exp->exponent) {
-                return false;
-            }
-        }
-    }
-    return true;
+NumVar Polynomial::someVar() const {
+    return addends.begin()->first.begin()->first;
 }
 
 bool Polynomial::isMultivariate() const {
@@ -196,13 +190,13 @@ NumVar Polynomial::toVar() const {
 }
 
 rational Polynomial::toRational() const {
-    assert(isConstant());
+    assert(isRational());
     return addends.begin()->second;
 }
 
 Polynomial Polynomial::add(const std::vector<Polynomial> &polys) {
     if (polys.empty()) {
-        return Polynomial(0);
+        return zero;
     }
     auto poly_it {polys.begin()};
     std::map<Monomial, rational> addends {poly_it->addends};
@@ -221,7 +215,7 @@ Polynomial Polynomial::add(const std::vector<Polynomial> &polys) {
 
 Polynomial Polynomial::mult(const std::vector<Polynomial> &polys) {
     if (polys.empty()) {
-        return Polynomial(1);
+        return mk(1);
     }
     auto poly_it {polys.begin()};
     std::map<Monomial, rational> addends;
@@ -286,7 +280,7 @@ Polynomial Polynomial::subs(const Subs &subs) const {
         for (const auto &[var, degree]: monomial) {
             factors.emplace_back(subs.get(var).pow(degree));
         }
-        factors.emplace_back(coeff);
+        factors.emplace_back(mk(coeff));
         addends.emplace_back(mult(factors));
     }
     return add(addends);
@@ -317,7 +311,7 @@ bool Polynomial::isIntegral() const {
         // substitute every variable x_i by the integer subs[i] and check if the result is an integer
         Subs currSubs;
         for (unsigned int i = 0; i < degrees.size(); i++) {
-            currSubs.put(vars[i], Polynomial(subs[i]));
+            currSubs.put(vars[i], mk(subs[i]));
         }
         const auto res {this->subs(currSubs)};
         if (!res.isInt()) {
