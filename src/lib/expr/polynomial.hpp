@@ -36,8 +36,13 @@ enum SolvingLevel {
 
 class Polynomial {
 
-    using Monomial = std::map<NumVar, integer>;
     using Subs = Substitution<Polynomial>;
+
+public:
+
+    using Monomial = std::map<NumVar, integer>;
+
+private:
 
     explicit Polynomial(const std::map<Monomial, rational> &addends);
 

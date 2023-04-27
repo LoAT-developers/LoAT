@@ -176,17 +176,37 @@ Polynomial Polynomial::coeff(const NumVar &var, integer degree) const {
     return Polynomial(res);
 }
 
+bool is_linear(const Polynomial::Monomial &monomial) {
+    return monomial.empty() || (monomial.size() == 1 && monomial.begin()->second == 1);
+}
+
 bool Polynomial::isVar() const {
+    auto it {addends.begin()};
+    const auto &[monomial, coeff] {*it};
+    if (!is_linear(monomial)) {
+        return false;
+    }
     if (addends.size() == 1) {
-        const auto &[monomial, coeff] {*addends.begin()};
-        return coeff == 1 && monomial.size() == 1 && monomial.begin()->second == 1;
+        return coeff == 1;
+    } else if (addends.size() == 2) {
+        ++it;
+        const auto &[monomial_2, coeff_2] {*it};
+        if (!is_linear(monomial_2)) {
+            return false;
+        }
+        return (monomial.empty() && coeff_2 == 1) || (monomial_2.empty() && coeff == 1);
     }
     return false;
 }
 
 NumVar Polynomial::toVar() const {
     assert(isVar());
-    return addends.begin()->first.begin()->first;
+    for (const auto &[monomial, _]: addends) {
+        if (!monomial.empty()) {
+            return monomial.begin()->first;
+        }
+    }
+    throw std::invalid_argument("toVar on constant polynomial");
 }
 
 rational Polynomial::toRational() const {
@@ -226,7 +246,7 @@ Polynomial Polynomial::mult(const std::vector<Polynomial> &polys) {
         for (const auto &[monomial_1, coeff_1]: addends) {
             for (const auto &[monomial_2, coeff_2]: poly_it->addends) {
                 const auto coeff {coeff_1 * coeff_2};
-                Monomial monomial(monomial_1);
+                Monomial monomial {monomial_1};
                 for (const auto &[var, degree]: monomial_2) {
                     auto it {monomial.find(var)};
                     if (it == monomial.end()) {
@@ -244,7 +264,7 @@ Polynomial Polynomial::mult(const std::vector<Polynomial> &polys) {
             }
         }
     }
-    return Polynomial(addends);
+    return Polynomial(res);
 }
 
 rational power(const rational &x, const integer &exp) {
