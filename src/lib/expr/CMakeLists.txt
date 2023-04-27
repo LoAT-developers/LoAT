@@ -39,9 +39,6 @@ add_library(${PROJECT_NAME} STATIC
   variable.cpp
   variablemanager.hpp
   variablemanager.cpp
-  intsubs.hpp
-  polynomial.hpp
-  polynomial.cpp
 )
 
 find_library(GINAC ginac)

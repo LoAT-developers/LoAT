@@ -195,6 +195,11 @@ void Rel::getBounds(const NumVar &n, Bounds &res) const {
     }
 }
 
+Rel Rel::toIntPoly() const {
+    assert(isPoly());
+    return Rel((l-r).toIntPoly(), op, 0);
+}
+
 Rel Rel::splitVariableAndConstantAddends(const std::set<NumVar> &params) const {
     assert(isIneq());
 
@@ -276,6 +281,11 @@ Rel Rel::subs(const ExprSubs &map) const {
     return Rel(l.subs(map), op, r.subs(map));
 }
 
+void Rel::applySubs(const ExprSubs &subs) {
+    l.applySubs(subs);
+    r.applySubs(subs);
+}
+
 std::string Rel::toString() const {
     std::stringstream s;
     s << *this;
@@ -298,6 +308,13 @@ std::set<NumVar> Rel::vars() const {
 
 Rel Rel::makeRhsZero() const {
     return Rel(l - r, op, 0);
+}
+
+std::optional<std::string> Rel::toQepcad() const {
+    const Rel gt = this->toGt();
+    std::optional<std::string> diff = (gt.l - gt.r).toQepcad();
+    if (!diff) return {};
+    return *diff + " > 0";
 }
 
 bool Rel::isWellformed() const {
