@@ -19,7 +19,6 @@
 
 #include "smtcontext.hpp"
 #include "boolexpr.hpp"
-#include "variablemanager.hpp"
 #include "numexpression.hpp"
 
 #include <map>
@@ -29,16 +28,14 @@
 template<typename EXPR, ITheory... Th> class ExprToSmt {
 public:
 
-    static EXPR convert(const BExpr<Th...> e, SmtContext<EXPR> &ctx, const VariableManager &varMan) {
-        ExprToSmt<EXPR, Th...> converter(ctx, varMan);
+    static EXPR convert(const BExpr<Th...> e, SmtContext<EXPR> &ctx) {
+        ExprToSmt<EXPR, Th...> converter(ctx);
         return converter.convertBoolEx(e);
     }
 
 
 protected:
-    ExprToSmt(SmtContext<EXPR> &context, const VariableManager &varMan):
-        context(context),
-        varMan(varMan) {}
+    ExprToSmt(SmtContext<EXPR> &context): context(context) {}
 
     EXPR convertBoolEx(const BExpr<Th...> e) {
         if (e->getTheoryLit()) {
@@ -140,7 +137,7 @@ protected:
         if (optVar) {
             return *optVar;
         }
-        return context.addNewVariable(e, varMan.getType(e));
+        return context.addNewVariable(e);
     }
 
     EXPR convertRelational(const Rel &rel) {
@@ -163,12 +160,11 @@ protected:
     EXPR convertLit(const BoolLit &lit) {
         auto optVar = context.getVariable(lit.getBoolVar());
         if (!optVar) {
-            optVar = context.addNewVariable(lit.getBoolVar(), Expr::Bool);
+            optVar = context.addNewVariable(lit.getBoolVar());
         }
         return lit.isNegated() ? context.negate(*optVar) : *optVar;
     }
 
 private:
     SmtContext<EXPR> &context;
-    const VariableManager &varMan;
 };

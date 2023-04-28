@@ -1,17 +1,17 @@
 #include "limitproblem.hpp"
 #include "smtfactory.hpp"
-#include "config.hpp"
+
 
 #include <sstream>
 #include <utility>
 
-LimitProblem::LimitProblem(VariableManager &varMan)
-    : variableN(varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int)), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
+LimitProblem::LimitProblem()
+    : variableN(NumVar::next()), unsolvable(false), log(new std::ostringstream()) {
 }
 
 
-LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const Expr &cost, VariableManager &varMan)
-    : LimitProblem(varMan) {
+LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const Expr &cost)
+    : LimitProblem() {
     for (const auto &lit : normalizedGuard) {
         const Rel &rel = std::get<Rel>(lit);
         assert(rel.isGZeroConstraint());
@@ -25,8 +25,8 @@ LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const 
 }
 
 
-LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, VariableManager &varMan)
-    : variableN(varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int)), unsolvable(false), varMan(varMan), log(new std::ostringstream()) {
+LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard)
+    : variableN(NumVar::next()), unsolvable(false), log(new std::ostringstream()) {
     for (const auto &lit : normalizedGuard) {
         const Rel &rel = std::get<Rel>(lit);
         assert(rel.isGZeroConstraint());
@@ -43,7 +43,6 @@ LimitProblem::LimitProblem(const LimitProblem &other)
       variableN(other.variableN),
       substitutions(other.substitutions),
       unsolvable(other.unsolvable),
-      varMan(other.varMan),
       log(new std::ostringstream()) {
     (*log) << other.log->str();
 }
@@ -54,7 +53,6 @@ LimitProblem& LimitProblem::operator=(const LimitProblem &other) {
         set = other.set;
         variableN = other.variableN;
         substitutions = other.substitutions;
-        varMan = other.varMan;
         (*log) << other.log->str();
         unsolvable = other.unsolvable;
     }
@@ -68,7 +66,6 @@ LimitProblem::LimitProblem(LimitProblem &&other)
       variableN(other.variableN),
       substitutions(std::move(other.substitutions)),
       unsolvable(other.unsolvable),
-      varMan(other.varMan),
       log(std::move(other.log)) {
 }
 
@@ -78,7 +75,6 @@ LimitProblem& LimitProblem::operator=(LimitProblem &&other) {
         set = std::move(other.set);
         variableN = other.variableN;
         substitutions = std::move(other.substitutions);
-        varMan = other.varMan;
         log = std::move(other.log);
         unsolvable = other.unsolvable;
     }
@@ -407,7 +403,7 @@ std::vector<Theory<IntTheory>::Lit> LimitProblem::getQuery() const {
 
 
 bool LimitProblem::isUnsat() const {
-    return SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(getQuery()), varMan) == Unsat;
+    return SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(getQuery())) == Unsat;
 }
 
 

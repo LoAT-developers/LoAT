@@ -6,7 +6,6 @@
 #include "proof.hpp"
 #include "recurrence.hpp"
 #include "accelconfig.hpp"
-#include "variablemanager.hpp"
 #include "rule.hpp"
 
 template <ITheory... Th>
@@ -38,14 +37,12 @@ protected:
     const std::optional<Recurrence::Result> closed;
     Subs update;
     BoolExpr guard;
-    VarMan &its;
     const AccelConfig config;
     Proof proof;
 
-    AccelerationTechnique(const Rule &rule, const std::optional<Recurrence::Result> closed, VarMan &its, const AccelConfig &config):
+    AccelerationTechnique(const Rule &rule, const std::optional<Recurrence::Result> closed, const AccelConfig &config):
         closed(closed),
         update(rule.getUpdate()),
-        its(its),
         config(config){
         if (closed && !closed->refinement.empty()) {
             update.get<IntTheory>() = closed->refined_equations;

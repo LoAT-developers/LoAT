@@ -56,10 +56,10 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     std::vector<NumVar> vars;
     std::vector<BoolVar> bvars;
     for (unsigned i = 0; i < max_int_arity; ++i) {
-        vars.emplace_back(its.addFreshVariable<IntTheory>("x" + std::to_string(i)));
+        vars.emplace_back(NumVar::nextProgVar());
     }
     for (unsigned i = 0; i < max_bool_arity; ++i) {
-        bvars.emplace_back(its.addFreshVariable<BoolTheory>("b" + std::to_string(i)));
+        bvars.emplace_back(BoolVar::nextProgVar());
     }
     for (const Clause &c: clauses) {
         Subs ren;
@@ -85,10 +85,10 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             if (!ren.contains(x)) {
                 if (std::holds_alternative<NumVar>(x)) {
                     const auto &var = std::get<NumVar>(x);
-                    ren.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
+                    ren.put<IntTheory>(var, NumVar::next());
                 } else if (std::holds_alternative<BoolVar>(x)) {
                     const auto &var = std::get<BoolVar>(x);
-                    ren.put<BoolTheory>(var, BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
+                    ren.put<BoolTheory>(var, BExpression::buildTheoryLit(BoolVar::next()));
                 } else {
                     throw std::logic_error("unsupported theory in CHCParseVisitor");
                 }
@@ -109,10 +109,10 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             }
         }
         for (unsigned i = int_arg; i < max_int_arity; ++i) {
-            up.put<IntTheory>(vars[i], its.addFreshTemporaryVariable<IntTheory>("tmp"));
+            up.put<IntTheory>(vars[i], NumVar::next());
         }
         for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
-            up.put<BoolTheory>(bvars[i], BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>("tmp")));
+            up.put<BoolTheory>(bvars[i], BExpression::buildTheoryLit(BoolVar::next()));
         }
         const auto loc_var = its.getLocVar();
         up.put(loc_var, c.rhs.loc);
@@ -207,14 +207,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
     const auto sort = any_cast<sort_type>(visit(ctx->sort()));
     const auto name = unescape(ctx->var()->getText());
-    switch (sort) {
-    case Bool:
-        var(name, Expr::Bool);
-        break;
-    case Int:
-        var(name, Expr::Int);
-        break;
-    }
+    var(name, sort);
     return {};
 }
 
@@ -291,17 +284,17 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
     return res;
 }
 
-Var CHCParseVisitor::var(const std::string &name, Expr::Type type) {
+Var CHCParseVisitor::var(const std::string &name, Sort sort) {
     const auto it = vars.find(name);
     if (it == vars.end()) {
         std::optional<Var> var;
-        switch (type) {
-        case Expr::Int: {
-            var = its.getFreshUntrackedSymbol<IntTheory>(name, type);
+        switch (sort) {
+        case Int: {
+            var = NumVar::next();
             break;
         }
-        case Expr::Bool: {
-            var = its.getFreshUntrackedSymbol<BoolTheory>(name, type);
+        case Bool: {
+            var = BoolVar::next();
             break;
         }
         default: throw std::invalid_argument("unsupported type");
@@ -319,11 +312,11 @@ antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
     if (ctx->i_formula()) {
         const auto res = any_cast<formula_type>(visit(ctx->i_formula()));
         ret.conjoin(res);
-        ret.t.get<BoolTheory>().put(std::get<BoolVar>(var(name, Expr::Bool)), res.t);
+        ret.t.get<BoolTheory>().put(std::get<BoolVar>(var(name, Bool)), res.t);
     } else {
         const auto res = any_cast<expr_type>(visit(ctx->expr()));
         ret.conjoin(res);
-        ret.t.get<IntTheory>().put(std::get<NumVar>(var(name, Expr::Int)), res.t);
+        ret.t.get<IntTheory>().put(std::get<NumVar>(var(name, Int)), res.t);
     }
     return ret;
 }
@@ -430,8 +423,8 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
             break;
         case Div:
         case Mod:
-            const NumVar div = its.addFreshTemporaryVariable<IntTheory>("div");
-            const NumVar mod = its.addFreshTemporaryVariable<IntTheory>("mod");
+            const NumVar div = NumVar::next();
+            const NumVar mod = NumVar::next();
             res.refinement = res.refinement
                     & Rel::buildEq(args[0], args[1] * div + mod)
                     & Rel::buildNeq(args[1], 0); // division by zero is undefined
@@ -484,7 +477,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
     } else if (ctx->ITE()) {
         const auto r = any_cast<formula_type>(visit(ctx->i_formula()));
         res.conjoin(r);
-        res.t = its.getFreshUntrackedSymbol<IntTheory>("ite", Expr::Int);
+        res.t = NumVar::next();
         res.refinement = res.refinement & ((r.t & Rel::buildEq(res.t, args[0])) | ((!r.t) & Rel::buildEq(res.t, args[1])));
     } else if (ctx->var()) {
         const auto x = any_cast<Var>(visit(ctx->var()));

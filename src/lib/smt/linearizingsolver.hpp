@@ -16,8 +16,6 @@ class LinearizingSolver: public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
     using LitSet = theory::LitSet<Th...>;
 
-    VarMan &varMan;
-
     Z3<Th...> z3;
 
     /**
@@ -45,7 +43,7 @@ class LinearizingSolver: public Smt<Th...> {
 
 public:
 
-    LinearizingSolver(VariableManager &varMan, unsigned timeout): varMan(varMan), z3(varMan, timeout) {
+    LinearizingSolver(unsigned timeout): z3(timeout) {
         lin_vars.push({});
     }
 
@@ -85,7 +83,7 @@ public:
             }
             const auto vars = expr.op(1).vars();
             exp_vars.insert(vars.begin(), vars.end());
-            const NumVar res = varMan.getFreshUntrackedSymbol<IntTheory>("exp", Expr::Int);
+            const auto res {NumVar::next()};
             lin.emplace(expr, res);
             de_lin.put(res, expr);
             lin_vars.top().push_back(res);

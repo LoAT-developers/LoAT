@@ -59,11 +59,6 @@ class Expr {
 public:
 
     /**
-     * possible types of variables
-     */
-    enum Type {Int, Rational, Bool};
-
-    /**
      * @return A wildcard for constructing patterns.
      */
     static Expr wildcard(unsigned int label);
@@ -141,6 +136,8 @@ public:
      */
     std::set<NumVar> vars() const;
 
+    static unsigned getIndex(const GiNaC::symbol &x);
+
     /**
      * @return True iff this expression contains a variable that satisfies the given predicate.
      * @param A function of type `const Var & => bool`.
@@ -150,7 +147,7 @@ public:
         struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
             SymbolVisitor(P predicate) : predicate(predicate) {}
             void visit(const GiNaC::symbol &sym) {
-                if (!res && predicate(NumVar(sym.get_name()))) {
+                if (!res && predicate(NumVar(getIndex(sym)))) {
                     res = true;
                 }
             }
@@ -308,9 +305,9 @@ public:
 
     Num denomLcm() const;
 
-    std::optional<std::string> toQepcad() const;
-
     std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
+
+    unsigned nextVarIdx() const;
 
     /**
      * @brief exponentiation
@@ -392,6 +389,8 @@ public:
     void collectCoDomainVars(std::set<NumVar> &vars) const;
 
     void collectVars(std::set<NumVar> &vars) const;
+
+    unsigned nextVarIdx() const;
 
 private:
     void putGinac(const NumVar &key, const Expr &val);

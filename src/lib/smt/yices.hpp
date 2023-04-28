@@ -27,7 +27,7 @@ class Yices : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    Yices(const VariableManager &varMan, Logic logic, unsigned timeout): timeout(timeout), ctx(YicesContext()), varMan(varMan), config(yices_new_config()) {
+    Yices(Logic logic, unsigned timeout): timeout(timeout), ctx(YicesContext()), config(yices_new_config()) {
         std::string l;
         switch (logic) {
         case QF_LA:
@@ -50,7 +50,7 @@ public:
     }
 
     void add(const BoolExpr e) override {
-        if (yices_assert_formula(solver, ExprToSmt<term_t, Th...>::convert(e, ctx, varMan)) < 0) {
+        if (yices_assert_formula(solver, ExprToSmt<term_t, Th...>::convert(e, ctx)) < 0) {
             throw YicesError();
         }
     }
@@ -147,7 +147,7 @@ public:
         std::vector<term_t> as;
         std::map<term_t, BExpr<Th...>> map;
         for (const BoolExpr &a: assumptions) {
-            term_t t = ExprToSmt<term_t, Th...>::convert(a, ctx, varMan);
+            term_t t = ExprToSmt<term_t, Th...>::convert(a, ctx);
             as.push_back(t);
             map.emplace(t, a);
         }
@@ -183,7 +183,6 @@ public:
 private:
     unsigned int timeout;
     YicesContext ctx;
-    const VariableManager &varMan;
     ctx_config_t *config;
     context_t *solver;
 

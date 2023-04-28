@@ -15,10 +15,10 @@
 using namespace std;
 
 
-AsymptoticBound::AsymptoticBound(VarMan &varMan, Conjunction<IntTheory> guard,
+AsymptoticBound::AsymptoticBound(Conjunction<IntTheory> guard,
                                  Expr cost, bool finalCheck, unsigned int timeout)
-    : varMan(varMan), guard(guard), cost(cost), finalCheck(finalCheck), timeout(timeout),
-      addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP(varMan) {
+    : guard(guard), cost(cost), finalCheck(finalCheck), timeout(timeout),
+      addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP() {
     assert(guard.isWellformed());
 }
 
@@ -73,8 +73,8 @@ void AsymptoticBound::normalizeGuard() {
     }
 }
 
-void AsymptoticBound::createInitialLimitProblem(VariableManager &varMan) {
-    currentLP = LimitProblem(normalizedGuard, cost, varMan);
+void AsymptoticBound::createInitialLimitProblem() {
+    currentLP = LimitProblem(normalizedGuard, cost);
 }
 
 void AsymptoticBound::propagateBounds() {
@@ -93,7 +93,7 @@ void AsymptoticBound::propagateBounds() {
             std::vector<NumVar> vars;
             std::vector<NumVar> tempVars;
             for (const auto & var : target.vars()) {
-                if (varMan.isTempVar(var)) {
+                if (var.isTempVar()) {
                     tempVars.push_back(var);
                 } else {
                     vars.push_back(var);
@@ -158,7 +158,7 @@ int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem,
     NumVar n = limitProblem.getN();
     int upperBound = 0;
     for (auto const &pair : solution) {
-        if (!varMan.isTempVar(pair.first)) {
+        if (!pair.first.isTempVar()) {
             Expr sub = pair.second;
             assert(sub.isPoly(n));
             assert(sub.isGround()
@@ -228,7 +228,7 @@ int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
 
 void AsymptoticBound::removeUnsatProblems() {
     for (int i = limitProblems.size() - 1; i >= 0; --i) {
-        auto result = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(limitProblems[i].getQuery()), varMan);
+        auto result = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(limitProblems[i].getQuery()));
 
         if (result == Unsat) {
             limitProblems.erase(limitProblems.begin() + i);
@@ -421,7 +421,7 @@ bool AsymptoticBound::isAdequateSolution(const LimitProblem &limitProblem) {
     }
 
     for (const auto &var : cost.vars()) {
-        if (varMan.isTempVar(var)) {
+        if (var.isTempVar()) {
             // we try to achieve ComplexInfty
             return false;
         }
@@ -689,7 +689,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
 
         if (it->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const auto &query = currentLP.getQuery();
-            auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}), varMan);
+            auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}));
             solver->add(BoolExpression<IntTheory>::buildAndFromLits(query));
             SmtResult result = solver->check();
 
@@ -755,7 +755,7 @@ bool AsymptoticBound::trySubstitutingVariable() {
 
 
 bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
-    auto optSubs = LimitSmtEncoding::applyEncoding(currentLP, cost, varMan, currentRes, timeout);
+    auto optSubs = LimitSmtEncoding::applyEncoding(currentLP, cost, currentRes, timeout);
     if (!optSubs) return false;
     auto subs = *optSubs;
     auto idx = substitutions.size();
@@ -766,8 +766,7 @@ bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
 }
 
 
-AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
-                                                             const Conjunction<IntTheory> &guard,
+AsymptoticBound::Result AsymptoticBound::determineComplexity(const Conjunction<IntTheory> &guard,
                                                              const Expr &cost,
                                                              bool finalCheck,
                                                              const Complexity &currentRes,
@@ -776,11 +775,11 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(VarMan &varMan,
     // Expand the cost to make it easier to analyze
     Expr expandedCost = cost.expand();
 
-    AsymptoticBound asymptoticBound(varMan, guard, expandedCost, finalCheck, timeout);
+    AsymptoticBound asymptoticBound(guard, expandedCost, finalCheck, timeout);
     asymptoticBound.initLimitVectors();
     asymptoticBound.normalizeGuard();
 
-    asymptoticBound.createInitialLimitProblem(varMan);
+    asymptoticBound.createInitialLimitProblem();
     // first try the SMT encoding
     bool polynomial = cost.isPoly() && asymptoticBound.currentLP.isPoly();
     bool result = polynomial && asymptoticBound.solveViaSMT(currentRes);

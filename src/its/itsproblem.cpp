@@ -23,8 +23,6 @@
 
 using namespace std;
 
-ITSProblem::ITSProblem(VariableManager &&varMan) : VariableManager(varMan) {}
-
 bool ITSProblem::isEmpty() const {
     return rules.empty();
 }
@@ -259,14 +257,14 @@ const DependencyGraph& ITSProblem::getDependencyGraph() const {
 
 std::set<Edge> ITSProblem::refineDependencyGraph() {
     const auto is_edge = [this](const auto fst, const auto snd){
-        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd), *this).getGuard(), *this) == Sat;
+        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd)).getGuard()) == Sat;
     };
     return graph.refine(is_edge);
 }
 
 std::set<Edge> ITSProblem::refineDependencyGraph(const TransIdx idx) {
     const auto is_edge = [this](const auto fst, const auto snd){
-        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd), *this).getGuard(), *this) == Sat;
+        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd)).getGuard()) == Sat;
     };
     return graph.refine(idx, is_edge);
 }

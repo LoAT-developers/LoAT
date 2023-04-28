@@ -42,7 +42,7 @@ antlrcpp::Any KoatParseVisitor::visitVar(KoatParser::VarContext *ctx) {
     std::string name = ctx->getText();
     auto it = vars.find(name);
     if (it == vars.end()) {
-        const NumVar var {its.addFreshTemporaryVariable<IntTheory>(name)};
+        const NumVar var {NumVar::next()};
         vars.emplace(name, var);
         return var;
     } else {
@@ -74,15 +74,9 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     auto vars = rule.vars();
     Subs varRenaming;
     for (const auto &x: vars) {
-        if (its.isTempVar(x)) {
-            std::visit(Overload{
-                           [&](const NumVar &x){
-                               varRenaming.put<IntTheory>(x, its.addFreshTemporaryVariable<IntTheory>(x.getName()));
-                           },
-                           [&](const BoolVar &x){
-                               varRenaming.put<BoolTheory>(x, boolExpression::build(its.addFreshTemporaryVariable<BoolTheory>(x.getName())));
-                           }
-                       }, x);
+        const auto var {std::get<NumVar>(x)};
+        if (var.isTempVar()) {
+            varRenaming.put<IntTheory>(var, NumVar::next());
         }
     }
     rule = rule.subs(varRenaming);
@@ -94,7 +88,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
     static bool initVars = true;
     if (initVars) {
         for (const auto& c: ctx->var()) {
-            const NumVar var {its.addFreshVariable<IntTheory>(c->getText())};
+            const NumVar var {NumVar::nextProgVar()};
             programVars.push_back(var);
             vars.emplace(c->getText(), var);
         }

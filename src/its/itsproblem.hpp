@@ -18,19 +18,15 @@
 #pragma once
 
 #include "rule.hpp"
-#include "variablemanager.hpp"
 #include "dependencygraph.hpp"
 
 #include <optional>
 
 
-class ITSProblem : public VariableManager {
+class ITSProblem {
 public:
     // Creates an empty ITS problem. The initialLocation is set to 0
     ITSProblem() = default;
-
-    // Creates an empty ITS problem with the given variables
-    explicit ITSProblem(VariableManager &&varMan);
 
     // True iff there are no rules
     bool isEmpty() const;
@@ -125,7 +121,7 @@ protected:
     LocationIdx nextUnusedLocation {0};
     LocationIdx initialLocation;
     LocationIdx sink {addNamedLocation("LoAT_sink")};
-    NumVar cost {addFreshVariable<IntTheory>("cost")};
-    NumVar loc {addFreshVariable<IntTheory>("loc")};
+    NumVar cost {NumVar::nextProgVar()};
+    NumVar loc {NumVar::nextProgVar()};
 
 };

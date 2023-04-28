@@ -10,9 +10,8 @@ AccelerationProblem::AccelerationProblem(
         const Rule &r,
         const std::optional<Recurrence::Result> &closed,
         const Subs &samplePoint,
-        VarMan &its,
         const AccelConfig &config):
-    AccelerationTechnique(r, closed, its, config),
+    AccelerationTechnique(r, closed, config),
     samplePoint(samplePoint) {
     for (const auto &l: guard->lits()) {
         todo.insert(l);
@@ -22,7 +21,7 @@ AccelerationProblem::AccelerationProblem(
     }
     const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
     Logic logic {Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({todo}, subs)};
-    this->solver = SmtFactory::modelBuildingSolver<IntTheory, BoolTheory>(logic, its);
+    this->solver = SmtFactory::modelBuildingSolver<IntTheory, BoolTheory>(logic);
     this->solver->add(guard);
 }
 
@@ -97,7 +96,6 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     const auto &rel {std::get<Rel>(lit)};
     const auto &up {update.get<IntTheory>()};
     const auto nfold {rel.lhs().subs(closed->closed_form.get<IntTheory>()).expand()};
-    std::cout << nfold << std::endl;
     if (nfold.isGround() || !nfold.isPoly()) {
         return false;
     }
@@ -182,7 +180,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     }
     assumptions.insert(updated);
     assumptions.insert(BExpression::buildTheoryLit(literal::negate(lit)));
-    const auto &unsatCore = SmtFactory::unsatCore(assumptions, its);
+    const auto &unsatCore = SmtFactory::unsatCore(assumptions);
     if (unsatCore.empty()) {
         return false;
     }
@@ -223,7 +221,7 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
     }
     assumptions.insert(BExpression::buildTheoryLit(lit));
     assumptions.insert(!updated);
-    const auto unsatCore = SmtFactory::unsatCore(assumptions, its);
+    const auto unsatCore = SmtFactory::unsatCore(assumptions);
     if (unsatCore.empty()) {
         return false;
     }
@@ -279,7 +277,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     }
     assumptions.insert(BExpression::buildTheoryLit(dec));
     assumptions.insert(BExpression::buildTheoryLit(inc));
-    const auto unsatCore = SmtFactory::unsatCore(assumptions, its);
+    const auto unsatCore = SmtFactory::unsatCore(assumptions);
     if (unsatCore.empty()) {
         return false;
     }
@@ -331,7 +329,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     }
     assumptions.insert(BExpression::buildTheoryLit(dec));
     assumptions.insert(BExpression::buildTheoryLit(inc));
-    const auto unsatCore {SmtFactory::unsatCore(assumptions, its)};
+    const auto unsatCore {SmtFactory::unsatCore(assumptions)};
     if (unsatCore.empty()) {
         return false;
     }
@@ -432,7 +430,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     if (closed) {
         newGuard = newGuard & *bound;
     }
-    if (SmtFactory::check(newGuard, its) == Sat) {
+    if (SmtFactory::check(newGuard) == Sat) {
         ret.term.emplace(newGuard, proof, map->covered);
         ret.term->proof.newline();
         ret.term->proof.append(std::stringstream() << "Replacement map: " << map->map);
@@ -444,7 +442,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
         map = computeReplacementMap(true);
         if (map) {
             newGuard = guard->replaceLits(map->map);
-            if (SmtFactory::check(newGuard, its) == Sat) {
+            if (SmtFactory::check(newGuard) == Sat) {
                 ret.nonterm.emplace(newGuard, proof, map->covered);
                 ret.nonterm->proof.newline();
                 ret.nonterm->proof.append(std::stringstream() << "Replacement map: " << map->map);

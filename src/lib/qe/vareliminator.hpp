@@ -1,7 +1,7 @@
 #pragma once
 
-#include "variablemanager.hpp"
 #include "theory.hpp"
+#include <functional>
 
 /**
  * Computes substitutions that are suitable to eliminate the given temporary variable from the rule by replacing it with its bounds.
@@ -11,7 +11,7 @@ class VarEliminator
 
 public:
 
-    VarEliminator(const BoolExpr guard, const NumVar &N, VariableManager &varMan);
+    VarEliminator(const BoolExpr guard, const NumVar &N, const std::function<bool(NumVar)> &keep);
 
     const std::set<ExprSubs> getRes() const;
 
@@ -40,8 +40,6 @@ private:
      */
     void eliminate();
 
-    VariableManager &varMan;
-
     NumVar N;
 
     /**
@@ -62,5 +60,7 @@ private:
     std::set<ExprSubs> res;
 
     std::set<NumVar> dependencies;
+
+    const std::function<bool(NumVar)> keep;
 
 };

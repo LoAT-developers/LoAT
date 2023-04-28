@@ -18,17 +18,18 @@
 #include "preprocess.hpp"
 #include "substitution.hpp"
 #include "guardtoolbox.hpp"
+#include "variable.hpp"
 
 using namespace std;
 
 
-Result<Rule> Preprocess::preprocessRule(VarMan &its, const Rule &rule) {
+Result<Rule> Preprocess::preprocessRule(const Rule &rule) {
     Result<Rule> res(rule);
 
     // The other steps are repeated (might not help very often, but is probably cheap enough)
     bool changed = false;
     do {
-        Result<Rule> tmp = eliminateTempVars(its, *res);
+        Result<Rule> tmp = eliminateTempVars(*res);
         tmp.concat(removeTrivialUpdates(*res));
         changed = bool(tmp);
         res.concat(tmp);
@@ -36,9 +37,9 @@ Result<Rule> Preprocess::preprocessRule(VarMan &its, const Rule &rule) {
     return res;
 }
 
-Result<Rule> Preprocess::simplifyRule(VarMan &its, const Rule &rule) {
+Result<Rule> Preprocess::simplifyRule(const Rule &rule) {
     Result<Rule> res(rule);
-    res.concat(eliminateTempVars(its, *res));
+    res.concat(eliminateTempVars(*res));
     res.concat(removeTrivialUpdates(*res));
     return res;
 }
@@ -85,12 +86,12 @@ static VarSet collectVarsInUpdateRhs(const Rule &rule) {
 }
 
 
-Result<Rule> Preprocess::eliminateTempVars(VarMan &its, const Rule &rule) {
+Result<Rule> Preprocess::eliminateTempVars(const Rule &rule) {
     Result<Rule> res(rule);
 
     //declare helper lambdas to filter variables, to be passed as arguments
     auto isTemp = [&](const Var &sym) {
-        return its.isTempVar(sym);
+        return variable::isTempVar(sym);
     };
     auto isTempInUpdate = [&](const Var &sym) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
@@ -105,13 +106,13 @@ Result<Rule> Preprocess::eliminateTempVars(VarMan &its, const Rule &rule) {
     res.concat(GuardToolbox::makeEqualities(*res));
     res.fail(); // *just* finding implied equalities does not suffice for success
 
-    res.concat(GuardToolbox::propagateBooleanEqualities(its, *res));
+    res.concat(GuardToolbox::propagateBooleanEqualities(*res));
 
     //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
-    res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTempInUpdate));
+    res.concat(GuardToolbox::propagateEqualities(*res, ResultMapsToInt, isTempInUpdate));
 
     //try to remove all remaining temp variables (we do 2 steps to prioritize removing vars from the update)
-    res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTemp));
+    res.concat(GuardToolbox::propagateEqualities(*res, ResultMapsToInt, isTemp));
 
     BoolExpr guard = res->getGuard();
     BoolExpr newGuard = guard->simplify();

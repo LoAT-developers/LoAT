@@ -1,38 +1,54 @@
 #include "numvar.hpp"
-#include "purrs.hh"
 
 #include <assert.h>
 
-namespace Purrs = Parma_Recurrence_Relation_Solver;
+int NumVar::last_tmp_idx {0};
+int NumVar::last_prog_idx {0};
 
-std::map<std::string, GiNaC::symbol> NumVar::symbols;
+std::map<int, GiNaC::symbol> NumVar::symbols;
 
-NumVar NumVar::ginacN() {
-    static const NumVar res {GiNaC::ex_to<GiNaC::symbol>(Purrs::Expr(Purrs::Recurrence::n).toGiNaC())};
-    return res;
+NumVar::NumVar(const int idx): idx(idx) {
+    const auto it {symbols.find(idx)};
+    if (it == symbols.end()) {
+        if (idx > 0) {
+            last_prog_idx = std::max(last_prog_idx, idx);
+        } else {
+            last_tmp_idx = std::min(last_tmp_idx, idx);
+        }
+        symbols.emplace(idx, getName());
+    }
 }
 
-NumVar::NumVar(const std::string &name): name(name) {}
-
-NumVar::NumVar(const GiNaC::symbol &sym): name(sym.get_name()) {
-    assert(symbols.find(name) == symbols.end());
-    symbols.emplace(name, sym);
+int NumVar::getIdx() const {
+    return idx;
 }
 
 std::string NumVar::getName() const {
-    return name;
+    if (idx > 0) {
+        return "i" + std::to_string(idx);
+    } else {
+        return "it" + std::to_string(-idx);
+    }
 }
 
 const GiNaC::symbol& NumVar::operator*() const {
-    const auto it = symbols.find(name);
-    if (it == symbols.end()) {
-        symbols.emplace(name, GiNaC::symbol(name));
-        return symbols.at(name);
-    } else {
-        return it->second;
-    }
+    return symbols[idx];
 }
 
 std::ostream& operator<<(std::ostream &s, const NumVar &x) {
     return s << x.getName();
+}
+
+NumVar NumVar::next() {
+    --last_tmp_idx;
+    return NumVar(last_tmp_idx);
+}
+
+NumVar NumVar::nextProgVar() {
+    ++last_prog_idx;
+    return NumVar(last_prog_idx);
+}
+
+bool NumVar::isTempVar() const {
+    return idx < 0;
 }

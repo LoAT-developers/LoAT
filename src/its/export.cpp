@@ -64,12 +64,6 @@ void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
             s << " -> " << p << std::endl;
         }
     }
-    s << endl << "Program variables:";
-    for (const auto &x: its.getVars()) {
-        if (!its.isTempVar(x)) {
-            s << " " << x;
-        }
-    }
     s << endl << endl;
     s << "Rules:" << endl;
     if (its.isEmpty()) {

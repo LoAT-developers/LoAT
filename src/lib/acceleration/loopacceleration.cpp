@@ -21,6 +21,7 @@
 #include "accelerationfactory.hpp"
 #include "substitution.hpp"
 #include "chain.hpp"
+#include "variable.hpp"
 
 #include <purrs.hh>
 #include <numeric>
@@ -28,13 +29,12 @@
 using namespace std;
 
 LoopAcceleration::LoopAcceleration(
-        VarMan &its,
         const Rule &rule,
         const Subs &sample_point,
         const AccelConfig &config)
-    : its(its), rule(rule), sample_point(sample_point), config(config) {}
+    : rule(rule), sample_point(sample_point), config(config) {}
 
-const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, VarMan &its) {
+const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     Rule res = rule;
     unsigned period = 1;
     // chain if there are updates like x = -x + p
@@ -46,7 +46,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, VarMan
             if (up.isPoly() && up.degree(var) == 1) {
                 const Expr coeff = up.coeff(var);
                 if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
-                    res = Chaining::chain(res, res, its);
+                    res = Chaining::chain(res, res);
                     period = 2;
                     break;
                 }
@@ -59,7 +59,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, VarMan
             const auto lits = p.second->lits();
             const auto lit = BoolLit(p.first);
             if (lits.find(!lit) != lits.end() && lits.find(lit) == lits.end()) {
-                res = Chaining::chain(res, res, its);
+                res = Chaining::chain(res, res);
                 period = 2;
                 break;
             }
@@ -94,7 +94,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, VarMan
     if (cycleLength > 1) {
         Rule orig(res);
         for (unsigned i = 1; i < cycleLength; ++i) {
-            res = Chaining::chain(res, orig, its);
+            res = Chaining::chain(res, orig);
         }
         period *= cycleLength;
     }
@@ -106,7 +106,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, VarMan
             std::set<NumVar> varsOneStep(p.second.vars());
             std::set<NumVar> varsTwoSteps;
             for (const auto &var: varsOneStep) {
-                if (its.isTempVar(var)) {
+                if (variable::isTempVar(var)) {
                     continue;
                 }
                 auto it = up.find(var);
@@ -118,11 +118,11 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule, VarMan
                 }
             }
             for (const auto &var: varsOneStep) {
-                if (its.isTempVar(var)) {
+                if (variable::isTempVar(var)) {
                     continue;
                 }
                 if (varsTwoSteps.find(var) == varsTwoSteps.end()) {
-                    res = Chaining::chain(res, orig, its);
+                    res = Chaining::chain(res, orig);
                     period *= 2;
                     goto NEXT;
                 }
@@ -141,14 +141,14 @@ acceleration::Result LoopAcceleration::run() {
         }
         // for non-deterministic loops, we can only offer under-approximations
         for (const auto &x: rule.vars()) {
-            if (its.isTempVar(x)) {
+            if (variable::isTempVar(x)) {
                 res.status = acceleration::Nondet;
                 return res;
             }
         }
     }
-    const auto [rule, period] = chain(this->rule, its);
-    if (SmtFactory::check(rule.getGuard(), its) != Sat) {
+    const auto [rule, period] = chain(this->rule);
+    if (SmtFactory::check(rule.getGuard()) != Sat) {
         res.status = acceleration::Unsat;
         return res;
     }
@@ -159,19 +159,19 @@ acceleration::Result LoopAcceleration::run() {
     }
     // for rules with runtime 1, our acceleration techniques do not work properly,
     // as the closed forms are usually only valid for n > 0 --> special case
-    if (SmtFactory::check(rule.chain(rule).getGuard(), its) != SmtResult::Sat) {
+    if (SmtFactory::check(rule.chain(rule).getGuard()) != SmtResult::Sat) {
         res.accel = {BExpression::True, rule, proof};
         res.accel->proof.append("rule cannot be iterated more than once");
         res.status = acceleration::PseudoLoop;
         return res;
     }
-    const auto rec {Recurrence::solve(its, rule.getUpdate())};
+    const auto rec {Recurrence::solve(rule.getUpdate())};
     if (!rec && config.approx != UnderApprox) {
         res.status = acceleration::ClosedFormFailed;
         return res;
     }
     res.prefix = rec->prefix;
-    const auto accelerationTechnique {AccelerationFactory::get(rule, rec, sample_point, its, config)};
+    const auto accelerationTechnique {AccelerationFactory::get(rule, rec, sample_point, config)};
     const auto accelerationResult {accelerationTechnique->computeRes()};
     if (!accelerationResult.term && config.approx != UnderApprox) {
         res.status = acceleration::AccelerationFailed;
@@ -191,10 +191,9 @@ acceleration::Result LoopAcceleration::run() {
 
 
 acceleration::Result LoopAcceleration::accelerate(
-        VarMan &its,
         const Rule &rule,
         const Subs &sample_point,
         const AccelConfig &config) {
-    LoopAcceleration ba(its, rule, sample_point, config);
+    LoopAcceleration ba(rule, sample_point, config);
     return ba.run();
 }

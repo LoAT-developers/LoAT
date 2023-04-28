@@ -7,11 +7,10 @@ AT AccelerationFactory::get(
         const Rule &rule,
         std::optional<Recurrence::Result> closed,
         const Subs &sample_point,
-        VarMan &its,
         const AccelConfig &config) {
 //    if (closed && rule.getGuard()->isPoly() && closed->update.isPoly()) {
 //        return AT(new AccelerationViaQE(rule, *closed, its));
 //    } else {
-        return AT(new AccelerationProblem(rule, closed, sample_point, its, config));
+        return AT(new AccelerationProblem(rule, closed, sample_point, config));
 //    }
 }

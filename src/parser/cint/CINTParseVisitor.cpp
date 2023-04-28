@@ -38,7 +38,7 @@ std::any CINTParseVisitor::visitNum_expr(CINTParser::Num_exprContext *ctx) {
     } else if (ctx->POS()) {
         return Expr(std::stoi(ctx->getText()));
     } else if (ctx->nondet()) {
-        return Expr(its.addFreshTemporaryVariable<IntTheory>("nondet"));
+        return Expr(NumVar::next());
     }
     throw std::invalid_argument("unknown expression " + ctx->getText());
 }
@@ -232,7 +232,7 @@ std::any CINTParseVisitor::visitInstruction(CINTParser::InstructionContext *ctx)
 std::any CINTParseVisitor::visitDeclaration(CINTParser::DeclarationContext *ctx)  {
     for (const auto &v: ctx->V()) {
         const auto &name = v->getText();
-        vars.emplace(name, its.addFreshVariable<IntTheory>(name));
+        vars.emplace(name, NumVar::nextProgVar());
     }
     return {};
 }

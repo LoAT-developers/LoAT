@@ -4,23 +4,31 @@
 
 class NumVar {
 
-    std::string name;
+    static int last_tmp_idx;
+    static int last_prog_idx;
 
-    static std::map<std::string, GiNaC::symbol> symbols;
+    int idx;
 
-    explicit NumVar(const GiNaC::symbol &sym);
+    static std::map<int, GiNaC::symbol> symbols;
 
     friend auto operator<=>(const NumVar&, const NumVar&) = default;
+    friend bool operator==(const NumVar&, const NumVar&) = default;
 
 public:
 
-    static NumVar ginacN();
+    explicit NumVar(const int idx);
 
-    explicit NumVar(const std::string &name);
+    int getIdx() const;
 
     std::string getName() const;
 
     const GiNaC::symbol& operator*() const;
+
+    static NumVar next();
+
+    static NumVar nextProgVar();
+
+    bool isTempVar() const;
 
 };
 

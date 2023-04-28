@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "theory.hpp"
+#include "substitution.hpp"
 
 /**
  * A general rule, consisting of a left-hand side with location, guard and cost
@@ -51,9 +52,15 @@ public:
     Rule withGuard(const BoolExpr guard) const;
 
     VarSet vars() const;
+
     void collectVars(VarSet &vars) const;
 
     Rule chain(const Rule &that) const;
+
+    template <ITheory T>
+    unsigned nextVarIdx() const {
+        return std::max(guard->nextVarIdx<T>(), substitution::nextVarIdx<T>(update));
+    }
 
 };
 

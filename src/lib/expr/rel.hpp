@@ -54,7 +54,6 @@ public:
     Rel subs(const ExprSubs &map) const;
     void applySubs(const ExprSubs &subs);
     std::string toString() const;
-    std::string toRedlog() const;
     RelOp relOp() const;
     std::set<NumVar> vars() const;
 
@@ -84,8 +83,6 @@ public:
 
     friend Rel operator!(const Rel &x);
     friend std::ostream& operator<<(std::ostream &s, const Rel &e);
-
-    std::optional<std::string> toQepcad() const;
 
     std::pair<std::optional<Expr>, std::optional<Expr>> getBoundFromIneq(const NumVar &N) const;
 

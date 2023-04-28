@@ -25,16 +25,15 @@
 using namespace std;
 namespace Purrs = Parma_Recurrence_Relation_Solver;
 
-Recurrence::Recurrence(VarMan &var_man, const Subs &equations):
-    var_man(var_man),
-    equations(equations),
-    result(var_man.addFreshTemporaryVariable<IntTheory>("n")) {}
+Recurrence::Recurrence(const Subs &equations):
+    equations(equations) {}
 
 bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
-    const auto updated {rhs.subs(closed_form_pre.get<IntTheory>())};
+    const auto n {Purrs::Expr(Purrs::Recurrence::n).toGiNaC()};
+    const auto updated {rhs.subs(closed_form_pre.get<IntTheory>()).ex.subs(*result.n == n)};
     const auto &vars {rhs.vars()};
     unsigned prefix {0};
-    Expr closed_form;
+    GiNaC::ex closed_form;
     if (vars.find(lhs) == vars.end()) {
         prefix = 1;
         for (const auto &x: vars) {
@@ -58,8 +57,8 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
             inverse->put(lhs, lhs - *i);
         }
         result.refined_equations.put(lhs, rhs);
-        Expr last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
-        Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(updated.subs(ExprSubs{{lhs, last}}).ex)};
+        auto last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
+        Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(updated.subs({{*lhs, last}}))};
         auto status {Purrs::Recurrence::Solver_Status::TOO_COMPLEX};
         try {
             rec.set_initial_conditions({ {0, Purrs::Expr::fromGiNaC(*lhs)} });
@@ -78,9 +77,8 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    const auto &n {*NumVar::ginacN()};
-    closed_form_pre.put<IntTheory>(lhs, closed_form.ex.subs({{n, n-1}}));
-    result.closed_form.put<IntTheory>(lhs, closed_form);
+    closed_form_pre.put<IntTheory>(lhs, closed_form.subs(n == *result.n-1));
+    result.closed_form.put<IntTheory>(lhs, closed_form.subs(n == *result.n));
     return true;
 }
 
@@ -104,7 +102,7 @@ bool Recurrence::solve(const BoolVar &lhs, const BoolExpr &rhs) {
     return true;
 }
 
-Recurrence::Result::Result(const NumVar &n): n(n) {}
+Recurrence::Result::Result(): n(NumVar::next()) {}
 
 bool Recurrence::solve() {
     const auto order {DependencyOrder::findOrder(equations)};
@@ -127,14 +125,14 @@ bool Recurrence::solve() {
             return false;
         }
     }
-    const auto subs {Subs::build<IntTheory>(NumVar::ginacN(), result.n)};
+    const auto subs {Subs::build<IntTheory>(NumVar(0), result.n)};
     result.closed_form = substitution::concat(result.closed_form, subs);
     return true;
 }
 
 
-std::optional<Recurrence::Result> Recurrence::solve(VarMan &var_man, const Subs &update) {
-    Recurrence rec {var_man, update};
+std::optional<Recurrence::Result> Recurrence::solve(const Subs &update) {
+    Recurrence rec {update};
     if (rec.solve()) {
         return rec.result;
     } else {

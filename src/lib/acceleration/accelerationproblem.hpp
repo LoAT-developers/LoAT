@@ -3,8 +3,6 @@
 #include <optional>
 
 #include "rule.hpp"
-#include "variablemanager.hpp"
-#include "proof.hpp"
 #include "smt.hpp"
 #include "accelerationtechnique.hpp"
 #include "theory.hpp"
@@ -53,7 +51,6 @@ public:
             const Rule &rule,
             const std::optional<Recurrence::Result> &closed,
             const Subs &samplePoint,
-            VarMan &its,
             const AccelConfig &config);
 
     AcceleratorPair computeRes();

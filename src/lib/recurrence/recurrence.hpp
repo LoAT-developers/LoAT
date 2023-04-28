@@ -20,7 +20,6 @@
 #include <optional>
 
 #include "theory.hpp"
-#include "variablemanager.hpp"
 #include "numexpression.hpp"
 
 class Recurrence {
@@ -35,23 +34,21 @@ public:
         ExprSubs refined_equations;
         NumVar n;
 
-        Result(const NumVar &n);
+        Result();
 
     };
 
-    static std::optional<Result> solve(VarMan &varMan, const Subs &equations);
+    static std::optional<Result> solve(const Subs &equations);
 
 private:
 
-    Recurrence(VarMan &varMan, const Subs &subs);
+    Recurrence(const Subs &subs);
 
     bool solve();
 
     bool solve(const NumVar &lhs, const Expr &rhs);
 
     bool solve(const BoolVar &lhs, const BoolExpr &rhs);
-
-    VariableManager &var_man;
 
     Subs equations;
 

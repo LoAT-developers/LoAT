@@ -112,10 +112,10 @@ static map<int, Expr> getCoefficients(const Expr &ex, const NumVar &n) {
 }
 
 std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Expr &cost,
-                                                     VarMan &varMan, Complexity currentRes, unsigned int timeout)
+                                                        Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}), varMan, timeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}), timeout);
 
     // the parameter of the desired family of solutions
     auto n = currentLP.getN();
@@ -127,8 +127,8 @@ std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &curr
     ExprSubs templateSubs;
     std::map<NumVar, NumVar> varCoeff, varCoeff0;
     for (const auto &var : vars) {
-        auto c0 = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_0", Expr::Int);
-        auto c = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_c", Expr::Int);
+        auto c0 = NumVar::next();
+        auto c = NumVar::next();
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
         templateSubs.put(var, *c0 + (*n * *c));
@@ -178,7 +178,7 @@ std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &curr
     // first fix that all program variables have to be constants
     // a model witnesses unbounded complexity
     for (const auto &var : vars) {
-        if (!varMan.isTempVar(var)) {
+        if (!var.isTempVar()) {
             solver->add(Rel::buildEq(varCoeff.at(var), 0));
         }
     }
@@ -247,13 +247,13 @@ BExpr<IntTheory> encodeBoolExpr(const BExpr<IntTheory> expr, const ExprSubs &tem
 }
 
 std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntTheory> expr, const Expr &cost,
-                                                     VarMan &varMan, Complexity currentRes, unsigned int timeout)
+                                                                Complexity currentRes, unsigned int timeout)
 {
     // initialize z3
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0))}), varMan, timeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0))}), timeout);
 
     // the parameter of the desired family of solutions
-    NumVar n = varMan.getFreshUntrackedSymbol<IntTheory>("n", Expr::Int);
+    NumVar n = NumVar::next();
 
     // get all relevant variables
     std::set<NumVar> vars = expr->vars().get<NumVar>();
@@ -264,9 +264,9 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
     ExprSubs templateSubs;
     std::map<NumVar, NumVar> varCoeff, varCoeff0;
     for (const auto &var : vars) {
-        hasTmpVars |= varMan.isTempVar(var);
-        auto c0 = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_0", Expr::Int);
-        auto c = varMan.getFreshUntrackedSymbol<IntTheory>(var.getName() + "_c", Expr::Int);
+        hasTmpVars |= var.isTempVar();
+        auto c0 = NumVar::next();
+        auto c = NumVar::next();
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
         templateSubs.put(var, *c0 + (*n * *c));
@@ -310,7 +310,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
         // first fix that all program variables have to be constants
         // a model witnesses unbounded complexity
         for (const auto &var : vars) {
-            if (!varMan.isTempVar(var)) {
+            if (!var.isTempVar()) {
                 solver->add(Rel::buildEq(varCoeff.at(var), 0));
             }
         }

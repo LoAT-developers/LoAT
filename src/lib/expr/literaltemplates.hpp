@@ -82,23 +82,6 @@ typename Theory<Th...>::Lit negate(const typename Theory<Th...>::Lit &lit) {
 }
 
 template <size_t I = 0, ITheory... Th>
-inline std::string toRedlogImpl(const typename Theory<Th...>::Lit &lit) {
-    if constexpr (I < sizeof...(Th)) {
-        if (lit.index() == I) {
-            return std::get<I>(lit).toRedlog();
-        }
-        return toRedlogImpl<I+1, Th...>(lit);
-    } else {
-        throw std::logic_error("unknown theory");
-    }
-}
-
-template <ITheory... Th>
-std::string toRedlog(const typename Theory<Th...>::Lit &lit) {
-    return toRedlogImpl<0, Th...>(lit);
-}
-
-template <size_t I = 0, ITheory... Th>
 inline bool isLinearImpl(const typename Theory<Th...>::Lit &lit) {
     if constexpr (I < sizeof...(Th)) {
         if (lit.index() == I) {

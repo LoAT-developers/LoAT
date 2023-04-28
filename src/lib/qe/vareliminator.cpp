@@ -3,8 +3,8 @@
 
 #include <assert.h>
 
-VarEliminator::VarEliminator(const BoolExpr guard, const NumVar &N, VariableManager &varMan): varMan(varMan), N(N) {
-    assert(varMan.isTempVar(N));
+VarEliminator::VarEliminator(const BoolExpr guard, const NumVar &N, const std::function<bool(NumVar)> &keep): N(N), keep(keep) {
+    assert(!keep(N));
     todoDeps.push({{}, guard});
     findDependencies(guard);
     eliminate();
@@ -26,7 +26,7 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
                         // we found a constraint which is linear in var, check all variables in var's coefficient
                         const Expr &coeff = ex.coeff(var, 1);
                         for (const NumVar &x: coeff.vars()) {
-                            if (varMan.isTempVar(x)) {
+                            if (!keep(x)) {
                                 if (dependencies.find(x) == dependencies.end()) {
                                     // we found a tmp variable in coeff which has not yet been marked as dependency
                                     dep = x;

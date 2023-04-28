@@ -21,7 +21,7 @@
 
 using namespace std;
 
-Result<Rule> GuardToolbox::propagateEqualities(const VarMan &its, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
+Result<Rule> GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
     ExprSubs varSubs;
     ResultViaSideEffects proof;
     auto guard = rule.getGuard()->universallyValidLits();
@@ -52,7 +52,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const VarMan &its, const Rule &ru
 
                     //disallow replacing non-free vars by a term containing free vars
                     //could be unsound, as free vars can lead to unbounded complexity
-                    if (!its.isTempVar(var) && containsTempVar(its, solved)) continue;
+                    if (!var.isTempVar() && containsTempVar(solved)) continue;
 
                     //extend the substitution, use compose in case var occurs on some rhs of varSubs
                     varSubs.put(var, solved);
@@ -83,7 +83,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const VarMan &its, const Rule &ru
 }
 
 
-Result<Rule> GuardToolbox::propagateBooleanEqualities(const VarMan &its, const Rule &rule) {
+Result<Rule> GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
     auto bvars = rule.getGuard()->vars().get<BoolVar>();
     Result<Rule> res(rule);
     Proof subproof;
@@ -92,7 +92,7 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const VarMan &its, const R
         changed = false;
         for (auto it = bvars.begin(); it != bvars.end();) {
             const auto var = *it;
-            if (its.isTempVar(var)) {
+            if (var.isTempVar()) {
                 const auto eq = res->getGuard()->impliedEquality(var);
                 const BoolLit lit(var);
                 if (eq) {

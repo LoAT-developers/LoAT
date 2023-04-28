@@ -20,7 +20,6 @@ add_library(${PROJECT_NAME} STATIC
   rel.cpp
   rel.hpp
   conjunction.hpp
-  boolexpr.cpp
   boolexpr.hpp
   inttheory.hpp
   booltheory.hpp
@@ -37,8 +36,8 @@ add_library(${PROJECT_NAME} STATIC
   substitution.cpp
   variable.hpp
   variable.cpp
-  variablemanager.hpp
-  variablemanager.cpp
+#  variablemanager.hpp
+#  variablemanager.cpp
 )
 
 find_library(GINAC ginac)

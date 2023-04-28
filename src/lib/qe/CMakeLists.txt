@@ -5,21 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 project(loat_qe CXX)
 
 add_library(${PROJECT_NAME} STATIC
-  redlog.cpp
-  redlog.hpp
-  qelim.hpp
-  qecalculus.hpp
-  redlogLexer.cpp
-  redlogLexer.h
-  redlogListener.cpp
-  redlogListener.h
-  redlogParser.cpp
-  redlogParser.h
-  redlogparsevisitor.cpp
-  redlogparsevisitor.h
-  redlogVisitor.cpp
-  redlogVisitor.h
-  qelimfactory.hpp
   vareliminator.hpp
   vareliminator.cpp
 )

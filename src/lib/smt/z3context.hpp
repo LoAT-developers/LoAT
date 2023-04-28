@@ -18,7 +18,6 @@
 #pragma once
 
 #include "smtcontext.hpp"
-#include "numexpression.hpp"
 
 #include <z3++.h>
 #include <map>
@@ -70,7 +69,6 @@ public:
     z3::expr lhs(const z3::expr &e) const override;
     z3::expr rhs(const z3::expr &e) const override;
     Rel::RelOp relOp(const z3::expr &e) const override;
-    std::string getName(const z3::expr &x) const override;
 
     void printStderr(const z3::expr &e) const override;
 
@@ -78,6 +76,6 @@ private:
 
     z3::context &ctx;
 
-    z3::expr buildVar(const std::string &basename, Expr::Type type) override;
+    z3::expr buildVar(const Var &var) override;
 
 };

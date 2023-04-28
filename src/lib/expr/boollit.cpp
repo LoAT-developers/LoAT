@@ -5,10 +5,6 @@
 
 BoolLit::BoolLit(const BoolVar &var, bool negated): var(var), negated(negated) {}
 
-std::string BoolLit::toRedlog() const {
-    throw std::logic_error("unsupported operation");
-}
-
 bool BoolLit::isNegated() const {
     return negated;
 }

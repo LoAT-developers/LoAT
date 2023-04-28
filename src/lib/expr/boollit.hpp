@@ -11,7 +11,6 @@ class BoolLit {
 public:
 
     BoolLit(const BoolVar &var, bool negated = false);
-    std::string toRedlog() const;
     bool isNegated() const;
     bool isPoly() const;
     bool isLinear() const;

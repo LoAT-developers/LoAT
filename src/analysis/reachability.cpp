@@ -14,6 +14,7 @@
 #include "vareliminator.hpp"
 #include "substitution.hpp"
 #include "chain.hpp"
+#include "variable.hpp"
 
 #include <numeric>
 #include <random>
@@ -108,7 +109,7 @@ PushPop::~PushPop() {
     solver.pop();
 }
 
-Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(chcs, smt_timeout), non_loops(chcs) {
+Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(smt_timeout), non_loops(chcs) {
     solver.enableModels();
 }
 
@@ -196,7 +197,7 @@ ResultViaSideEffects Reachability::remove_irrelevant_clauses() {
 ResultViaSideEffects Reachability::simplify() {
     ResultViaSideEffects ret;
     for (const TransIdx idx: chcs.getAllTransitions()) {
-        const auto res = Preprocess::preprocessRule(chcs, chcs.getRule(idx));
+        const auto res = Preprocess::preprocessRule(chcs.getRule(idx));
         if (res) {
             ret.succeed();
             chcs.replaceRule(idx, *res);
@@ -211,9 +212,9 @@ ResultViaSideEffects Reachability::unroll() {
     for (const TransIdx idx: chcs.getAllTransitions()) {
         const Rule &r = chcs.getRule(idx);
         if (chcs.isSimpleLoop(idx)) {
-            const auto [res, period] = LoopAcceleration::chain(r, chcs);
+            const auto [res, period] = LoopAcceleration::chain(r);
             if (period > 1) {
-                const auto simplified = Preprocess::simplifyRule(chcs, res);
+                const auto simplified = Preprocess::simplifyRule(res);
                 ret.succeed();
                 ret.ruleTransformationProof(r, "Unrolling", res);
                 if (simplified) {
@@ -273,11 +274,11 @@ Subs Reachability::handle_update(const TransIdx idx) {
     Subs new_var_renaming {last_var_renaming};
     const Subs up = r.getUpdate();
     for (const auto &x: prog_vars) {
-        new_var_renaming.put(x, TheTheory::varToExpr(chcs.addFreshTemporaryVariable(x)));
+        new_var_renaming.put(x, TheTheory::varToExpr(variable::next(x)));
     }
     for (const auto &var: r.vars()) {
-        if (chcs.isTempVar(var)) {
-            new_var_renaming.put(var, TheTheory::varToExpr(chcs.addFreshTemporaryVariable(var)));
+        if (variable::isTempVar(var)) {
+            new_var_renaming.put(var, TheTheory::varToExpr(variable::next(var)));
         }
     }
     for (const auto &x: prog_vars) {
@@ -326,11 +327,11 @@ void Reachability::update_cpx() {
     const auto &resolvent = trace.back().resolvent;
     const auto &cost = chcs.getCost(resolvent);
     const auto max_cpx = toComplexity(cost);
-    if (max_cpx <= cpx && !cost.hasVarWith([this](const auto &x){return chcs.isTempVar(x);})) {
+    if (max_cpx <= cpx && !cost.hasVarWith([](const auto &x){return variable::isTempVar(x);})) {
         return;
     }
     for (const auto &tc: resolvent.getGuard()->transform<IntTheory>()->dnf()) {
-        const auto res = AsymptoticBound::determineComplexity(chcs, tc, cost, false, cpx);
+        const auto res = AsymptoticBound::determineComplexity(tc, cost, false, cpx);
         if (res.cpx > cpx) {
             cpx = res.cpx;
             std::cout << cpx.toWstString() << std::endl;
@@ -349,9 +350,9 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
     }
     auto resolvent = chcs.getRule(idx).withGuard(implicant);
     if (!trace.empty()) {
-        resolvent = Chaining::chain(trace.back().resolvent, resolvent, chcs);
+        resolvent = Chaining::chain(trace.back().resolvent, resolvent);
     }
-    return *Preprocess::simplifyRule(chcs, resolvent);
+    return *Preprocess::simplifyRule(resolvent);
 }
 
 bool Reachability::store_step(const TransIdx idx, const BoolExpr &implicant) {
@@ -476,7 +477,7 @@ void Reachability::preprocess() {
 void Reachability::init() {
     srand(42);
     for (const auto &x: chcs.getVars()) {
-        if (!chcs.isTempVar(x)) {
+        if (!variable::isTempVar(x)) {
             prog_vars.insert(x);
         }
     }
@@ -582,15 +583,13 @@ Automaton Reachability::build_language(const int backlink) {
 
 std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
     const auto &step {trace.back()};
-    const auto &tmp_var_renaming = trace.size() >= 2 ? trace.at(trace.size() - 2).var_renaming.setminus(prog_vars) : Subs::Empty;
-    auto rule {chcs.getRule(step.clause_idx).withGuard(step.implicant).subs(tmp_var_renaming)};
+    auto rule {chcs.getRule(step.clause_idx).withGuard(step.implicant)};
     auto loop {rule};
     auto model {step.model};
     for (int i = trace.size() - 2; i >= backlink; --i) {
         const auto &step {trace[i]};
-        const auto &tmp_var_renaming = i > 0 ? trace.at(i - 1).var_renaming.setminus(prog_vars) : Subs::Empty;
-        rule = chcs.getRule(step.clause_idx).withGuard(step.implicant).subs(tmp_var_renaming);
-        loop = Chaining::chain(rule, loop, chcs);
+        rule = chcs.getRule(step.clause_idx).withGuard(step.implicant);
+        loop = Chaining::chain(rule, loop);
         model = substitution::compose(step.model, model);
     }
     if (backlink > 0) {
@@ -621,7 +620,7 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
 
 Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const {
     Result<Rule> res(rule);
-    VarEliminator ve(rule.getGuard(), n, chcs);
+    VarEliminator ve(rule.getGuard(), n, variable::isProgVar);
     if (ve.getRes().empty() || ve.getRes().size() > 1) {
         return res;
     }
@@ -637,7 +636,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
 }
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink) {
-    Result<Rule> simp = Preprocess::simplifyRule(chcs, rule);
+    Result<Rule> simp = Preprocess::simplifyRule(rule);
     if (Config::Analysis::reachability() && simp->getUpdate() == substitution::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them. Return 'Failed', so that it becomes a non-loop.
@@ -650,7 +649,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         std::cout << std::endl;
     }
     AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
-    const auto accel_res {LoopAcceleration::accelerate(chcs, *simp, sample_point, config)};
+    const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
@@ -671,7 +670,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (accel_res.accel) {
         // acceleration succeeded, simplify the result
-        auto simplified = Preprocess::simplifyRule(chcs, accel_res.accel->rule);
+        auto simplified = Preprocess::simplifyRule(accel_res.accel->rule);
         if (simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
@@ -776,7 +775,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     redundance_condition = BExpression::buildOr(new_redundance_condition);
     acceleration_condition = BExpression::buildOr(new_acceleration_condition);
-    if (redundance_condition->isTriviallyTrue() || SmtFactory::check(!redundance_condition, chcs) == SmtResult::Unsat) {
+    if (redundance_condition->isTriviallyTrue() || SmtFactory::check(!redundance_condition) == SmtResult::Unsat) {
         auto new_lang {closure};
         for (unsigned i = 1; i < learned_clauses.period; ++i) {
             redundancy->concat(closure, closure);
@@ -805,7 +804,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
             }
         }
     }
-    if (acceleration_condition->isTriviallyTrue() || SmtFactory::check(!acceleration_condition, chcs) == SmtResult::Unsat) {
+    if (acceleration_condition->isTriviallyTrue() || SmtFactory::check(!acceleration_condition) == SmtResult::Unsat) {
         redundancy->mark_as_accelerated(lang);
     }
     if (done) {

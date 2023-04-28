@@ -30,7 +30,6 @@ template <typename T>
 concept ILit = requires(T x, T y) {
         requires IComparable<T>;
         {x.normalize()} -> std::same_as<T>;
-        {x.toRedlog()} -> std::same_as<std::string>;
         {x.isTriviallyTrue()} -> std::same_as<bool>;
         {x.isWellformed()} -> std::same_as<bool>;
         {x.isPoly()} -> std::same_as<bool>;
@@ -38,9 +37,10 @@ concept ILit = requires(T x, T y) {
 };
 
 template <typename T>
-concept IVar = requires(T x, std::string name) {
+concept IVar = requires(T x, unsigned idx) {
         requires IComparable<T>;
-        {T(name)} -> std::same_as<T>;
+        {T(idx)} -> std::same_as<T>;
+        {T::next()} -> std::same_as<T>;
 };
 
 template <typename T>

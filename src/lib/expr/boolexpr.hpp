@@ -17,9 +17,6 @@ template <ITheory... Th>
 class BoolJunction;
 template <IBaseTheory... Th>
 class BoolExpression;
-class Quantifier;
-template <ITheory... Th>
-class QuantifiedFormula;
 template <ITheory... Th>
 using BExpr = std::shared_ptr<const BoolExpression<Th...>>;
 
@@ -78,7 +75,6 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
     using G = Conjunction<Th...>;
     using BE = BExpr<Th...>;
     using BES = BoolExpressionSet<Th...>;
-    using QF = QuantifiedFormula<Th...>;
     using Subs = theory::Subs<Th...>;
 
 public:
@@ -155,7 +151,6 @@ public:
     virtual LS universallyValidLits() const = 0;
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LS &res) const = 0;
-    virtual std::string toRedlog() const = 0;
     virtual size_t size() const = 0;
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
 
@@ -553,10 +548,6 @@ public:
         return G(lits.begin(), lits.end());
     }
 
-    QF quantify(const std::vector<Quantifier> &prefix) const {
-        return QuantifiedFormula(prefix, this->shared_from_this());
-    }
-
     BE toG() const {
         return map([](const Lit &lit) {
             if (std::holds_alternative<Rel>(lit)) {
@@ -587,6 +578,12 @@ public:
             throw std::logic_error("transform failed");
         };
         return map<T>(mapper);
+    }
+
+    template<ITheory T>
+    unsigned nextVarIdx() const {
+        const auto variables {vars().template get<typename T::Var>()};
+        return variables.empty() ? 1 : variables.rbegin()->getIdx() + 1;
     }
 
 protected:
@@ -666,10 +663,6 @@ public:
 
     size_t size() const override {
         return 1;
-    }
-
-    std::string toRedlog() const override {
-        return literal_t::toRedlog<Th...>(lit);
     }
 
     void getBounds(const Var &var, Bounds &res) const override {
@@ -792,18 +785,6 @@ public:
         return res;
     }
 
-    std::string toRedlog() const override {
-        std::string infix = isAnd() ? " and " : " or ";
-        std::string res;
-        bool first = true;
-        for (auto it = children.begin(); it != children.end(); ++it) {
-            if (first) first = false;
-            else res += infix;
-            res += (*it)->toRedlog();
-        }
-        return "(" + res + ")";
-    }
-
     void getBounds(const Var &n, Bounds &res) const override {
         if (isAnd()) {
             for (const auto &c: children) {
@@ -845,128 +826,6 @@ protected:
                 res.insert(res.end(), newRes.begin(), newRes.end());
             }
         }
-    }
-
-};
-
-class Quantifier {
-
-public:
-    enum class Type { Forall, Exists };
-
-private:
-    Type qType;
-    std::set<NumVar> vars;
-    std::map<NumVar, Expr> lowerBounds;
-    std::map<NumVar, Expr> upperBounds;
-
-public:
-    Quantifier(const Type &qType, const std::set<NumVar> &vars, const std::map<NumVar, Expr> &lowerBounds, const std::map<NumVar, Expr> &upperBounds);
-
-    Quantifier negation() const;
-    const std::set<NumVar>& getVars() const;
-    Type getType() const;
-    std::string toRedlog() const;
-    std::optional<Expr> lowerBound(const NumVar &x) const;
-    std::optional<Expr> upperBound(const NumVar &x) const;
-    Quantifier remove(const NumVar &x) const;
-
-};
-
-template <ITheory... Th>
-class QuantifiedFormula {
-
-    static_assert(sizeof...(Th) > 0);
-
-    using T = Theory<Th...>;
-    using Var = typename T::Var;
-    using Lit = typename T::Lit;
-    using VS = theory::VarSet<Th...>;
-    using LS = theory::LitSet<Th...>;
-    using BE = BExpr<Th...>;
-    using QF = QuantifiedFormula<Th...>;
-    using Subs = theory::Subs<Th...>;
-
-    BE True = BoolExpression<Th...>::True;
-    BE False = BoolExpression<Th...>::False;
-
-    std::vector<Quantifier> prefix;
-    BE matrix;
-
-public:
-
-    QuantifiedFormula(std::vector<Quantifier> prefix, const BE &matrix): prefix(prefix), matrix(matrix) {}
-
-    const QF negation() const {
-        std::vector<Quantifier> _prefix;
-        std::transform(prefix.begin(), prefix.end(), _prefix.begin(), [](const auto &q ){return q.negation();});
-        return QF(_prefix, matrix->negation());
-    }
-
-    bool forall(const std::function<bool(const Lit&)> &pred) const {
-        return matrix->forall(pred);
-    }
-
-    QF map(const std::function<BE(const Lit&)> &f) const;
-
-    QF simplify() const {
-        return matrix->simplify()->quantify(prefix);
-    }
-
-    std::set<NumVar> boundVars() const {
-        std::set<NumVar> res;
-        for (const Quantifier &q: prefix) {
-            res.insert(q.getVars().begin(), q.getVars().end());
-        }
-        return res;
-    }
-
-    QF toG() const {
-        return QF(prefix, matrix->toG());
-    }
-
-    void collectLits(LS &res) const {
-        matrix->collectLits(res);
-    }
-
-    std::string toRedlog() const {
-        std::string res;
-        for (const auto &q: prefix) {
-            res += q.toRedlog();
-        }
-        res += matrix->toRedlog();
-        for (const auto &q: prefix) {
-            unsigned size = q.getVars().size();
-            for (unsigned i = 0; i < size; ++i) {
-                res += ")";
-            }
-        }
-        return res;
-    }
-
-    bool isTiviallyTrue() const {
-        return matrix == True;
-    }
-
-    bool isTiviallyFalse() const {
-        return matrix == False;
-    }
-
-    std::vector<Quantifier> getPrefix() const {
-        return prefix;
-    }
-
-    BE getMatrix() const {
-        return matrix;
-    }
-
-    bool isConjunction() const {
-        return matrix->isConjunction();
-    }
-
-    template <ITheory T>
-    QuantifiedFormula<T> transform() const {
-        return matrix->template transform<T>().quantify(prefix);
     }
 
 };
@@ -1059,42 +918,5 @@ std::ostream& operator<<(std::ostream &s, const BExpr<T, Th...> e) {
         }
         s << ")";
     }
-    return s;
-}
-
-template <ITheory T, ITheory... Th>
-std::ostream& operator<<(std::ostream &s, const QuantifiedFormula<T, Th...> &f) {
-    for (const auto &q: f.getPrefix()) {
-        switch (q.getType()) {
-        case Quantifier::Type::Exists:
-            s << "EX";
-            break;
-        case Quantifier::Type::Forall:
-            s << "ALL";
-            break;
-        }
-        for (const auto &x: q.getVars()) {
-            s << " " << x;
-            const auto lb = q.lowerBound(x);
-            const auto ub = q.upperBound(x);
-            if (lb || ub) {
-                s << " in [";
-                if (lb) {
-                    s << *lb;
-                } else {
-                    s << "-oo";
-                }
-                s << ",";
-                if (ub) {
-                    s << *ub;
-                } else {
-                    s << "oo";
-                }
-                s << "]";
-            }
-        }
-        s << " . ";
-    }
-    s << f.getMatrix();
     return s;
 }

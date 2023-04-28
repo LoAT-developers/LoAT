@@ -195,6 +195,12 @@ public:
         return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isPoly();});
     }
 
+    template <ITheory T>
+    unsigned nextVarIdx() const {
+        const auto variables {allVars().template get<T::Var>()};
+        return variables.empty() ? 1 : variables.rbegin()->getIndex() + 1;
+    }
+
 };
 
 template <ITheory... Th>

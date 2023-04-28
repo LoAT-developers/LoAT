@@ -30,7 +30,7 @@ ResultViaSideEffects Chaining::chainLinearPaths(ITSProblem &its) {
             if (!its.isSimpleLoop(second_idx)) {
                 const auto &first {its.getRule(first_idx)};
                 auto second {its.getRule(second_idx)};
-                const auto chained {chain(first, second, its)};
+                const auto chained {chain(first, second)};
                 res.succeed();
                 res.chainingProof(first, second, chained);
                 its.addRule(chained, first_idx, second_idx);

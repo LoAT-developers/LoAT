@@ -2,8 +2,8 @@
 
 #include "itheory.hpp"
 #include "boolexpr.hpp"
-#include "variablemanager.hpp"
 #include "model.hpp"
+#include "theory.hpp"
 
 enum SmtResult {Sat, Unknown, Unsat};
 enum Logic {
@@ -52,7 +52,7 @@ public:
 
     virtual ~Smt() {}
 
-    static BoolExprSet unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan);
+    static BoolExprSet unsatCore(const BoolExpressionSet<Th...> &assumptions);
 
     void popAll() {
         while (pushCount > 0) {

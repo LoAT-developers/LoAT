@@ -16,6 +16,7 @@
  */
 
 #include "yicescontext.hpp"
+#include "variable.hpp"
 
 #include <assert.h>
 
@@ -27,20 +28,18 @@ YicesError::YicesError() : std::exception() {
 
 YicesContext::~YicesContext() { }
 
-term_t YicesContext::buildVar(const std::string &name, Expr::Type type) {
-    type_t t;
-    switch (type) {
-    case Expr::Int: t = yices_int_type();
-        break;
-    case Expr::Rational: t = yices_real_type();
-        break;
-    case Expr::Bool: t = yices_bool_type();
-        break;
-    default: throw std::invalid_argument("unknown type");
-    }
+term_t YicesContext::buildVar(const Var &var) {
+    type_t t {
+        std::visit(Overload{
+                       [](const NumVar&) {
+                           return yices_int_type();
+                       },
+                       [](const BoolVar&) {
+                           return yices_bool_type();
+                       }
+                   }, var)};
     term_t res = yices_new_uninterpreted_term(t);
-    yices_set_term_name(res, name.c_str());
-    varNames[res] = name;
+    yices_set_term_name(res, variable::getName(var).c_str());
     return res;
 }
 
@@ -270,10 +269,6 @@ Rel::RelOp YicesContext::relOp(const term_t &e) const {
     case YICES_EQ_TERM: return Rel::RelOp::eq;
     default: throw std::invalid_argument("unknown relation"); // yices normalizes all other relations to >= or =
     }
-}
-
-std::string YicesContext::getName(const term_t &e) const {
-    return varNames.at(e);
 }
 
 void YicesContext::printStderr(const term_t &e) const {

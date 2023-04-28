@@ -12,7 +12,6 @@ std::unique_ptr<AccelerationTechnique<IntTheory, BoolTheory>> get(
         const Rule &rule,
         std::optional<Recurrence::Result> closed,
         const Subs &sample_point,
-        VarMan &its,
         const AccelConfig &config);
 
 }

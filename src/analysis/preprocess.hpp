@@ -33,12 +33,12 @@ namespace Preprocess
      * @param rule The rule to be simplified, is modified.
      * @returns true iff rule was modified
      */
-    Result<Rule> preprocessRule(VarMan &its, const Rule &rule);
+    Result<Rule> preprocessRule(const Rule &rule);
 
     /**
      * A simpler/cheaper version of preprocessRule without any smt queries.
      */
-    Result<Rule> simplifyRule(VarMan &its, const Rule &rule);
+    Result<Rule> simplifyRule(const Rule &rule);
 
     /**
      * Removes trivial updates of the form x <- x.
@@ -55,5 +55,5 @@ namespace Preprocess
      * @param rule the rule, modified
      * @return true iff rule was modified
      */
-    Result<Rule> eliminateTempVars(VarMan &its, const Rule &rule);
+    Result<Rule> eliminateTempVars(const Rule &rule);
 }

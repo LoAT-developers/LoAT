@@ -29,6 +29,12 @@ theory::VarSet<Th...> vars(const theory::Subs<Th...> &e) {
     return res;
 }
 
+template <ITheory T>
+unsigned nextVarIdx(const TheSubs &e) {
+    const auto variables {vars(e).template get<typename T::Var>()};
+    return variables.empty() ? 1 : variables.rbegin()->getIdx() + 1;
+}
+
 template<std::size_t I = 0>
 inline void concatImpl(const TheSubs &fst, const TheSubs &snd, TheSubs &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
