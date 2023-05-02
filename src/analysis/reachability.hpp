@@ -43,50 +43,12 @@ struct Step {
 
 };
 
-/**
- * Stores which looping sequences of CHCs should be treated as if they were non-looping.
- * Used for sequences whose resolvent is something like f(x) -> f(0). For such clauses,
- * the learned clause would be equivalent to the original clause, and we want to avoid
- * learning many of those useless clauses.
- *
- * TODO Should be sound for SAT, but we have to check that carefully.
- *
- * Additionally, we treat looping sequences where acceleration fails as if they were
- * non-looping.
- *
- * Note that we still mark the corresponding language as redundant. So if [1,2,3] is
- * a non-loop, then we keep using "Step" such that we may eventually obtain [1,2,3,1,2,3].
- * Then the latter is redundant and we backtrack, i.e., non-loops should not be a problem
- * w.r.t. termination.
- */
-class NonLoops {
-
-    std::map<std::pair<TransIdx, BoolExpr>, long> alphabet;
-    long next_char = 0;
-    std::set<std::vector<long>> non_loops;
-    const ITSProblem &chcs;
-
-public:
-
-    NonLoops(const ITSProblem &chcs);
-
-    std::vector<long> build(const std::vector<Step> &trace, int backlink);
-
-    void add(const std::vector<Step> &trace, int backlink);
-
-    bool contains(const std::vector<long> &sequence);
-
-    void append(std::vector<long> &sequence, const Step &step);
-
-};
-
 std::ostream& operator<<(std::ostream &s, const Step &step);
 
 // forward declarations of acceleration states
 class Succeeded;
 class Covered;
 class Dropped;
-class Failed;
 class Unroll;
 class ProvedUnsat;
 
@@ -116,11 +78,6 @@ public:
      * TODO For sat, the current handling of this case is not sound.
      */
     virtual std::optional<Dropped> dropped();
-    /**
-     * true if no clause was learned for some other reason
-     * TODO We have to think about ways to deal with this case when trying to prove sat.
-     */
-    virtual std::optional<Failed> failed();
 
     virtual std::optional<Unroll> unroll();
 
@@ -160,11 +117,20 @@ public:
     const ITSProof& get_proof() const;
 };
 
-class Failed final: public LearningState {
-    std::optional<Failed> failed() override;
-};
-
 class Unroll final: public LearningState {
+
+private:
+
+    std::optional<unsigned> max;
+
+public:
+
+    Unroll();
+
+    Unroll(unsigned max);
+
+    std::optional<unsigned> get_max();
+
     std::optional<Unroll> unroll() override;
 };
 
@@ -226,8 +192,6 @@ class Reachability {
     std::map<std::vector<unsigned>, BoolExpr> conditionally_redundant;
     std::map<std::vector<unsigned>, BoolExpr> conditionally_accelerated;
 
-    NonLoops non_loops;
-
     Complexity cpx = Complexity::Const;
 
     bool is_learned_clause(const TransIdx idx) const;
@@ -241,7 +205,7 @@ class Reachability {
     /**
      * removes clauses that are not on a CFG-path from a fact to a query
      */
-    ResultViaSideEffects remove_irrelevant_clauses();
+    ResultViaSideEffects remove_irrelevant_clauses(bool forward);
 
     /**
      * applies some very basic simplifications
