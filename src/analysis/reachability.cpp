@@ -751,7 +751,11 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     const auto learned_clauses {**accel_state};
     // drop the looping suffix
     drop_until(backlink);
-    std::vector<unsigned> new_indices {indices};
+    std::vector<unsigned> new_indices;
+    if (log) {
+        std::cout << "prefix: " << learned_clauses.prefix << std::endl;
+        std::cout << "period: " << learned_clauses.period << std::endl;
+    }
     for (unsigned i = 0; i < learned_clauses.prefix + learned_clauses.period; ++i) {
         new_indices.insert(new_indices.end(), indices.begin(), indices.end());
     }
