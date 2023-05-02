@@ -648,6 +648,14 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         ITSExport::printRule(*simp, std::cout);
         std::cout << std::endl;
     }
+    if (Config::Analysis::reachability()) {
+        if (simp->getUpdate().empty()) {
+            if (log) std::cout << "trivial looping suffix" << std::endl;
+            return std::make_unique<Covered>();
+        } else if (simp->chain(*simp).getUpdate() == simp->getUpdate()) {
+            return std::make_unique<Unroll>();
+        }
+    }
     AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
     const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
@@ -710,16 +718,6 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         std::cout << closure << std::endl;
     }
     const auto [loop, sample_point] {build_loop(backlink)};
-    if (Config::Analysis::reachability()) {
-        if (loop.getUpdate().empty()) {
-            if (log) std::cout << "trivial looping suffix" << std::endl;
-            redundancy->mark_as_redundant(closure);
-            return std::make_unique<Covered>();
-        } else if (loop.chain(loop).getUpdate() == loop.getUpdate()) {
-            redundancy->mark_as_redundant(closure);
-            return std::make_unique<Unroll>();
-        }
-    }
     std::vector<unsigned> indices;
     for (unsigned i = backlink; i < trace.size(); ++i) {
         const auto &step {trace.at(i)};
@@ -742,12 +740,11 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     luby_loop_count++;
     auto state {learn_clause(loop, sample_point, backlink)};
-    if (state->unroll()) {
-        redundancy->mark_as_accelerated(lang);
-        return state;
-    }
     if (!state->succeeded()) {
         redundancy->mark_as_redundant(closure);
+        if (state->unroll()) {
+            redundancy->mark_as_accelerated(lang);
+        }
         return state;
     }
     const auto accel_state {*state->succeeded()};
