@@ -54,7 +54,7 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
         if (!i) {
             inverse = std::optional<ExprSubs>();
         } else {
-            inverse->put(lhs, lhs - *i);
+            inverse->put(lhs, lhs + *i);
         }
         result.refined_equations.put(lhs, rhs);
         auto last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
