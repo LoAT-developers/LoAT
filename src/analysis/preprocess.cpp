@@ -29,8 +29,7 @@ Result<Rule> Preprocess::preprocessRule(const Rule &rule) {
     // The other steps are repeated (might not help very often, but is probably cheap enough)
     bool changed = false;
     do {
-        Result<Rule> tmp = eliminateTempVars(*res);
-        tmp.concat(removeTrivialUpdates(*res));
+        Result<Rule> tmp {simplifyRule(*res)};
         changed = bool(tmp);
         res.concat(tmp);
     } while (changed);
