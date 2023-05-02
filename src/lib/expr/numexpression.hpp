@@ -307,8 +307,6 @@ public:
 
     std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
 
-    unsigned nextVarIdx() const;
-
     /**
      * @brief exponentiation
      */
@@ -390,7 +388,7 @@ public:
 
     void collectVars(std::set<NumVar> &vars) const;
 
-    unsigned nextVarIdx() const;
+    int nextTmpVarIdx() const;
 
 private:
     void putGinac(const NumVar &key, const Expr &val);

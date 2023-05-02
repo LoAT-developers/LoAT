@@ -58,8 +58,8 @@ public:
     Rule chain(const Rule &that) const;
 
     template <ITheory T>
-    unsigned nextVarIdx() const {
-        return std::max(guard->nextVarIdx<T>(), substitution::nextVarIdx<T>(update));
+    int nextTmpVarIdx() const {
+        return std::min(guard->nextTmpVarIdx<T>(), substitution::nextTmpVarIdx<T>(update));
     }
 
 };

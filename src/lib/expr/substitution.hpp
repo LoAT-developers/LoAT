@@ -30,9 +30,9 @@ theory::VarSet<Th...> vars(const theory::Subs<Th...> &e) {
 }
 
 template <ITheory T>
-unsigned nextVarIdx(const TheSubs &e) {
+int nextTmpVarIdx(const TheSubs &e) {
     const auto variables {vars(e).template get<typename T::Var>()};
-    return variables.empty() ? 1 : variables.rbegin()->getIdx() + 1;
+    return (variables.empty() ? 0 : std::min(0, variables.begin()->getIdx())) - 1;
 }
 
 template<std::size_t I = 0>

@@ -491,11 +491,6 @@ bool Expr::isIntegral() const {
     }
 }
 
-unsigned Expr::nextVarIdx() const {
-     const auto variables {vars()};
-     return variables.empty() ? 1 : variables.rbegin()->getIdx() + 1;
-}
-
 std::optional<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) const {
     // expand is needed before using degree/coeff
     Expr term = this->expand();
@@ -722,9 +717,9 @@ std::set<NumVar> ExprSubs::allVars() const {
     return res;
 }
 
-unsigned ExprSubs::nextVarIdx() const {
+int ExprSubs::nextTmpVarIdx() const {
      const auto variables {allVars()};
-     return variables.empty() ? 1 : variables.rbegin()->getIdx() + 1;
+     return (variables.empty() ? 0 : std::min(0, variables.begin()->getIdx())) - 1;
 }
 
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {

@@ -196,9 +196,9 @@ public:
     }
 
     template <ITheory T>
-    unsigned nextVarIdx() const {
+    int nextTmpVarIdx() const {
         const auto variables {allVars().template get<T::Var>()};
-        return variables.empty() ? 1 : variables.rbegin()->getIndex() + 1;
+        return (variables.empty() ? 0 : std::min(0, variables.begin()->getIndex())) - 1;
     }
 
 };
