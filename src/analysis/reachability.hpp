@@ -48,9 +48,7 @@ std::ostream& operator<<(std::ostream &s, const Step &step);
 // forward declarations of acceleration states
 class Succeeded;
 class Covered;
-class Dropped;
 class Unroll;
-class ProvedUnsat;
 
 /**
  * When learning clauses, an instance of this class is returned.
@@ -71,17 +69,8 @@ public:
      * true if no clause was learned since it would have been redundant
      */
     virtual std::optional<Covered> covered();
-    /**
-     * True if the learned clause could not be added to the trace without introducing
-     * inconsistencies. This may happen when our acceleration technique returns an
-     * under-approximation.
-     * TODO For sat, the current handling of this case is not sound.
-     */
-    virtual std::optional<Dropped> dropped();
 
     virtual std::optional<Unroll> unroll();
-
-    virtual std::optional<ProvedUnsat> unsat();
 };
 
 struct LearnedClauses {
@@ -107,16 +96,6 @@ class Covered final: public LearningState {
     std::optional<Covered> covered() override;
 };
 
-class Dropped final: public LearningState {
-
-    ITSProof proof;
-
-public:
-    Dropped(const ITSProof &proof);
-    std::optional<Dropped> dropped() override;
-    const ITSProof& get_proof() const;
-};
-
 class Unroll final: public LearningState {
 
 private:
@@ -132,16 +111,6 @@ public:
     std::optional<unsigned> get_max();
 
     std::optional<Unroll> unroll() override;
-};
-
-class ProvedUnsat final: public LearningState {
-    ITSProof proof;
-
-public:
-    ProvedUnsat(const ITSProof &proof);
-    std::optional<ProvedUnsat> unsat() override;
-    ITSProof& operator*();
-    ITSProof* operator->();
 };
 
 /**
@@ -240,12 +209,7 @@ class Reachability {
     /**
      * tries to resolve the trace with the given clause
      */
-    std::optional<BoolExpr> resolve(const TransIdx idx);
-
-    /**
-     * drops a suffix of the trace, up to the given new size
-     */
-    void drop_until(const int new_size);
+    std::optional<Rule> resolve(const TransIdx idx);
 
     /**
      * computes (an approximation of) the language associated with the clause used for the given step
@@ -315,7 +279,7 @@ class Reachability {
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const TransIdx idx, const BoolExpr &implicant);
+    bool store_step(const TransIdx idx, const Rule &resolvent);
 
     void print_trace(std::ostream &s);
 
