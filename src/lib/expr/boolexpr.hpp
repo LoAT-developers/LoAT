@@ -482,23 +482,45 @@ public:
         });
     }
 
-    std::optional<BE> impliedEquality(const Lit &l) const {
+    Subs impliedEqualities() const {
+        Subs res;
         std::vector<BE> todo;
-        const BE lit = buildTheoryLit(l);
+        const auto find_elim = [](const BE &c) {
+            std::optional<BoolVar> elim;
+            const auto vars {c->vars().template get<BoolVar>()};
+            for (const auto &x: vars) {
+                if (x.isTempVar()) {
+                    if (elim) {
+                        return std::optional<BoolVar>{};
+                    } else {
+                        elim = x;
+                    }
+                }
+            }
+            return elim;
+        };
         if (isAnd()) {
-            const auto children = getChildren();
+            const auto children {getChildren()};
             for (const auto &c: children) {
                 if (c->isOr()) {
-                    auto grandChildren = c->getChildren();
-                    const auto it = grandChildren.find(lit);
-                    if (it != grandChildren.end()) {
-                        grandChildren.erase(it);
-                        const BE cand = buildOr(grandChildren);
+                    const auto elim {find_elim(c)};
+                    if (elim) {
+                        auto grandChildren {c->getChildren()};
+                        auto lit {buildTheoryLit(BoolLit(*elim))};
+                        bool positive {grandChildren.contains(lit)};
+                        if (!positive) {
+                            lit = !lit;
+                            if (!grandChildren.contains(lit)) {
+                                continue;
+                            }
+                        }
+                        grandChildren.erase(lit);
+                        const BE cand {buildOr(grandChildren)};
                         // we have     lit \/  cand
                         // search for !lit \/ !cand
                         if (children.contains((!lit) | (!cand))) {
                             // we have (lit \/ cand) /\ (!lit \/ !cand), i.e., lit <==> !cand
-                            return !cand;
+                            res.put(*elim, positive ? !cand : cand);
                         }
                     }
                 }
@@ -509,32 +531,40 @@ public:
         }
         for (const auto &current: todo) {
             if (current->isOr()) {
-                const auto children = current->getChildren();
+                const auto children {current->getChildren()};
                 if (children.size() == 2) {
                     for (const auto &c: children) {
                         if (c->isAnd()) {
-                            auto grandChildren = c->getChildren();
-                            const auto it = grandChildren.find(lit);
-                            if (it != grandChildren.end()) {
-                                grandChildren.erase(it);
-                                const BE cand = buildAnd(grandChildren);
-                                // we have     lit /\  cand
-                                // search for !lit /\ !cand
+                            const auto elim {find_elim(c)};
+                            if (elim) {
+                                auto grandChildren {c->getChildren()};
+                                auto lit {buildTheoryLit(BoolLit(*elim))};
+                                bool positive {grandChildren.contains(lit)};
+                                if (!positive) {
+                                    lit = !lit;
+                                    if (!grandChildren.contains(lit)) {
+                                        continue;
+                                    }
+                                }
+                                grandChildren.erase(lit);
+                                const BE cand {buildAnd(grandChildren)};
                                 if (children.contains((!lit) & (!cand))) {
                                     // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
-                                    return cand;
+                                    res.put(*elim, positive ? cand : !cand);
                                 }
                             }
                         }
                     }
                 }
-            } else if (current == lit) {
-                return True;
-            } else if (current == !lit) {
-                return False;
+            } else if (current->isTheoryLit()) {
+                const auto lit {*current->getTheoryLit()};
+                if (std::holds_alternative<BoolLit>(lit)) {
+                    const auto &bool_lit {std::get<BoolLit>(lit)};
+                    res.put(bool_lit.getBoolVar(), bool_lit.isNegated() ? False : True);
+                }
             }
         }
-        return {};
+        return res;
     }
 
     std::vector<G> dnf() const {

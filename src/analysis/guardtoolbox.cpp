@@ -84,32 +84,16 @@ Result<Rule> GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel ma
 
 
 Result<Rule> GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
-    auto bvars = rule.getGuard()->vars().get<BoolVar>();
     Result<Rule> res(rule);
     Proof subproof;
-    bool changed;
+    Subs equiv;
     do {
-        changed = false;
-        for (auto it = bvars.begin(); it != bvars.end();) {
-            const auto var = *it;
-            if (var.isTempVar()) {
-                const auto eq = res->getGuard()->impliedEquality(var);
-                const BoolLit lit(var);
-                if (eq) {
-                    res = res->subs(Subs::build<BoolTheory>(var, *eq));
-                    it = bvars.erase(it);
-                    changed = true;
-                    subproof.append(stringstream() << "propagated equivalence " << var << " <=> " << *eq << std::endl);
-                    break;
-                }
-            }
-            if (changed) {
-                break;
-            } else {
-                ++it;
-            }
+        equiv = res->getGuard()->impliedEqualities();
+        if (!equiv.empty()) {
+            res = res->subs(equiv);
+            subproof.append(stringstream() << "propagated equivalences: " << equiv << std::endl);
         }
-    } while (changed);
+    } while (!equiv.empty());
     if (res) {
         res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
         res.storeSubProof(subproof);
