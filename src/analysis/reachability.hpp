@@ -3,7 +3,6 @@
 #include "itsproblem.hpp"
 #include "linearizingsolver.hpp"
 #include "itsproblem.hpp"
-#include "proof.hpp"
 #include "result.hpp"
 #include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
