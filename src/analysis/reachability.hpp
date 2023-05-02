@@ -113,15 +113,6 @@ public:
     std::optional<Unroll> unroll() override;
 };
 
-/**
- * auxiliary class for incremental SMT via RAII
- */
-struct PushPop {
-    LinearizingSolver<IntTheory, BoolTheory> &solver;
-    PushPop(LinearizingSolver<IntTheory, BoolTheory> &solver);
-    ~PushPop();
-};
-
 class Reachability {
 
     ITSProblem &chcs;

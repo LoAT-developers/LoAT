@@ -69,14 +69,6 @@ std::optional<Unroll> Unroll::unroll() {
     return *this;
 }
 
-PushPop::PushPop(LinearizingSolver<IntTheory, BoolTheory> &solver): solver(solver) {
-    solver.push();
-}
-
-PushPop::~PushPop() {
-    solver.pop();
-}
-
 Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(smt_timeout) {
     solver.enableModels();
 }
@@ -280,17 +272,16 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
     return *Preprocess::simplifyRule(resolvent);
 }
 
-bool Reachability::store_step(const TransIdx idx, const Rule &resolvent) {
+bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
     solver.push();
-    const auto r {trace.empty() ? resolvent : resolvent.subs(trace.back().var_renaming)};
-    const auto implicant {r.getGuard()};
-    solver.add(implicant);
+    const auto imp {trace.empty() ? implicant : implicant.subs(trace.back().var_renaming)};
+    solver.add(imp.getGuard());
     if (solver.check() == Sat) {
         auto vars = trace.empty() ? prog_vars : substitution::coDomainVars(trace.back().var_renaming.project(prog_vars));
-        vars.insertAll(r.vars());
+        vars.insertAll(imp.vars());
         const auto model {solver.model(vars).toSubs()};
         const auto new_var_renaming {handle_update(idx)};
-        const Step step(idx, implicant, new_var_renaming, model, compute_resolvent(idx, implicant));
+        const Step step(idx, implicant.getGuard(), new_var_renaming, model, compute_resolvent(idx, implicant.getGuard()));
         add_to_trace(step);
         // block learned clauses after adding them to the trace
         if (is_learned_clause(idx)) {
@@ -737,7 +728,7 @@ bool Reachability::try_to_finish() {
     std::set<TransIdx> clauses = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
     for (const auto &q: clauses) {
         if (chcs.isSinkTransition(q)) {
-            PushPop pp(solver);
+            solver.push();
             const auto implicant {resolve(q)};
             if (implicant) {
                 // no need to compute the model and the variable renaming for the next step, as we are done
@@ -747,6 +738,7 @@ bool Reachability::try_to_finish() {
                 unsat();
                 return true;
             }
+            solver.pop();
         }
     }
     solver.setTimeout(smt_timeout);
@@ -808,8 +800,9 @@ void Reachability::analyze() {
         std::shuffle(to_try.begin(), to_try.end(), rnd);
         bool all_failed {true};
         for (const auto idx: to_try) {
-            PushPop pp(solver);
+            solver.push();
             const auto implicant {resolve(idx)};
+            solver.pop();
             if (implicant && store_step(idx, *implicant)) {
                 proof.headline("Step with " + std::to_string(idx));
                 print_state();
