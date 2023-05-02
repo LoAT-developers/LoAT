@@ -30,15 +30,16 @@ ResultViaSideEffects Chaining::chainLinearPaths(ITSProblem &its) {
             if (!its.isSimpleLoop(second_idx)) {
                 const auto &first {its.getRule(first_idx)};
                 auto second {its.getRule(second_idx)};
-                const auto chained {chain(first, second)};
-                res.succeed();
-                res.chainingProof(first, second, chained);
-                its.addRule(chained, first_idx, second_idx);
-                its.removeRule(first_idx);
                 std::set<TransIdx> deleted {first_idx};
                 if (its.getPredecessors(second_idx).size() == 1) {
-                    its.removeRule(second_idx);
                     deleted.insert(second_idx);
+                }
+                res.succeed();
+                const auto chained {chain(first, second)};
+                its.addRule(chained, first_idx, second_idx);
+                res.chainingProof(first, second, chained);
+                for (const auto &idx: deleted) {
+                    its.removeRule(idx);
                 }
                 res.deletionProof(deleted);
                 changed = true;
