@@ -35,11 +35,9 @@ struct Step {
      */
     const Subs var_renaming;
 
-    const Subs model;
-
     const Rule resolvent;
 
-    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Subs &model, const Rule &resolvent);
+    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent);
 
 };
 
@@ -49,6 +47,7 @@ std::ostream& operator<<(std::ostream &s, const Step &step);
 class Succeeded;
 class Covered;
 class Unroll;
+class Restart;
 
 /**
  * When learning clauses, an instance of this class is returned.
@@ -71,6 +70,8 @@ public:
     virtual std::optional<Covered> covered();
 
     virtual std::optional<Unroll> unroll();
+
+    virtual std::optional<Restart> restart();
 };
 
 struct LearnedClauses {
@@ -111,6 +112,10 @@ public:
     std::optional<unsigned> get_max();
 
     std::optional<Unroll> unroll() override;
+};
+
+class Restart final: public LearningState {
+    std::optional<Restart> restart() override;
 };
 
 class Reachability {
@@ -231,6 +236,8 @@ class Reachability {
      * @param lang the language associated with the learned clause.
      */
     std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink);
+
+    bool check_consistency();
 
     /**
      * does everything that needs to be done if the trace has a looping suffix

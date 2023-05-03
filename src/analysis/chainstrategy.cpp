@@ -35,7 +35,7 @@ ResultViaSideEffects Chaining::chainLinearPaths(ITSProblem &its) {
                     deleted.insert(second_idx);
                 }
                 res.succeed();
-                const auto chained {chain(first, second)};
+                const auto chained {chain(first, second).first};
                 its.addRule(chained, first_idx, second_idx);
                 res.chainingProof(first, second, chained);
                 for (const auto &idx: deleted) {

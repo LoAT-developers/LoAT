@@ -4,6 +4,6 @@
 
 namespace Chaining {
 
-    Rule chain(const Rule &fst, const Rule &snd);
+    std::pair<Rule, Subs> chain(const Rule &fst, const Rule &snd);
 
 }

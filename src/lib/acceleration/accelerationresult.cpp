@@ -1,5 +1,17 @@
 #include "accelerationresult.hpp"
 
-bool acceleration::Result::successful() const {
-    return accel || nonterm;
+namespace acceleration {
+
+std::ostream& operator<<(std::ostream &s, const Status x) {
+    switch (x) {
+    case Unsat: return s << "unsat";
+    case Nondet: return s << "nondet";
+    case PseudoLoop: return s << "pseudo loop";
+    case Disjunctive: return s << "disjunctive";
+    case AccelerationFailed: return s << "acceleration failed";
+    case ClosedFormFailed: return s << "closed form failed";
+    }
+    return s;
+}
+
 }

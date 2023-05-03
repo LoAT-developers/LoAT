@@ -11,6 +11,8 @@ enum Status {
     Unsat, Nondet, PseudoLoop, Disjunctive, AccelerationFailed, ClosedFormFailed
 };
 
+std::ostream& operator<<(std::ostream &s, const Status x);
+
 struct Accel {
     BoolExpr covered;
     Rule rule;
@@ -30,8 +32,6 @@ struct Result {
     unsigned prefix = 0;
     unsigned period = 1;
     std::optional<NumVar> n;
-
-    bool successful() const;
 
 };
 

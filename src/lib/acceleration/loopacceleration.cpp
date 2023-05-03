@@ -46,7 +46,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
             if (up.isPoly() && up.degree(var) == 1) {
                 const Expr coeff = up.coeff(var);
                 if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
-                    res = Chaining::chain(res, res);
+                    res = Chaining::chain(res, res).first;
                     period = 2;
                     break;
                 }
@@ -59,7 +59,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
             const auto lits = p.second->lits();
             const auto lit = BoolLit(p.first);
             if (lits.find(!lit) != lits.end() && lits.find(lit) == lits.end()) {
-                res = Chaining::chain(res, res);
+                res = Chaining::chain(res, res).first;
                 period = 2;
                 break;
             }
@@ -94,7 +94,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     if (cycleLength > 1) {
         Rule orig(res);
         for (unsigned i = 1; i < cycleLength; ++i) {
-            res = Chaining::chain(res, orig);
+            res = Chaining::chain(res, orig).first;
         }
         period *= cycleLength;
     }
@@ -122,7 +122,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
                     continue;
                 }
                 if (varsTwoSteps.find(var) == varsTwoSteps.end()) {
-                    res = Chaining::chain(res, orig);
+                    res = Chaining::chain(res, orig).first;
                     period *= 2;
                     goto NEXT;
                 }

@@ -39,6 +39,10 @@ std::optional<Unroll> LearningState::unroll() {
     return {};
 }
 
+std::optional<Restart> LearningState::restart() {
+    return {};
+}
+
 Succeeded::Succeeded(const Result<LearnedClauses> &learned): learned(learned) {}
 
 std::optional<Succeeded> Succeeded::succeeded() {
@@ -54,6 +58,10 @@ const Result<LearnedClauses>* Succeeded::operator->() const {
 }
 
 std::optional<Covered> Covered::covered() {
+    return *this;
+}
+
+std::optional<Restart> Restart::restart() {
     return *this;
 }
 
@@ -73,11 +81,10 @@ Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(smt_timeout) {
     solver.enableModels();
 }
 
-Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Subs &model, const Rule &resolvent):
+Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent):
     clause_idx(transition),
     implicant(sat),
     var_renaming(var_renaming),
-    model(model),
     resolvent(resolvent) {}
 
 std::ostream& operator<<(std::ostream &s, const Step &step) {
@@ -267,7 +274,7 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
     }
     auto resolvent = chcs.getRule(idx).withGuard(implicant);
     if (!trace.empty()) {
-        resolvent = Chaining::chain(trace.back().resolvent, resolvent);
+        resolvent = Chaining::chain(trace.back().resolvent, resolvent).first;
     }
     return *Preprocess::simplifyRule(resolvent);
 }
@@ -277,11 +284,8 @@ bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
     const auto imp {trace.empty() ? implicant : implicant.subs(trace.back().var_renaming)};
     solver.add(imp.getGuard());
     if (solver.check() == Sat) {
-        auto vars = trace.empty() ? prog_vars : substitution::coDomainVars(trace.back().var_renaming.project(prog_vars));
-        vars.insertAll(imp.vars());
-        const auto model {solver.model(vars).toSubs()};
         const auto new_var_renaming {handle_update(idx)};
-        const Step step(idx, implicant.getGuard(), new_var_renaming, model, compute_resolvent(idx, implicant.getGuard()));
+        const Step step(idx, implicant.getGuard(), new_var_renaming, compute_resolvent(idx, implicant.getGuard()));
         add_to_trace(step);
         // block learned clauses after adding them to the trace
         if (is_learned_clause(idx)) {
@@ -496,25 +500,32 @@ Automaton Reachability::build_language(const int backlink) {
 }
 
 std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
-    const auto &step {trace.back()};
-    auto rule {chcs.getRule(step.clause_idx).withGuard(step.implicant)};
-    auto loop {rule};
-    auto model {step.model};
-    for (int i = trace.size() - 2; i >= backlink; --i) {
+    std::optional<Rule> loop;
+    Subs var_renaming;
+    for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto &step {trace[i]};
-        rule = chcs.getRule(step.clause_idx).withGuard(step.implicant);
-        loop = Chaining::chain(rule, loop);
-        model = substitution::compose(step.model, model);
+        const auto rule {chcs.getRule(step.clause_idx).withGuard(step.implicant)};
+        if (loop) {
+            const auto [chained, sigma] {Chaining::chain(rule, *loop)};
+            loop = chained;
+            var_renaming = substitution::compose(sigma, var_renaming);
+        } else {
+            loop = rule;
+        }
+        if (i > 0) {
+            var_renaming = substitution::compose(trace[i-1].var_renaming.project(rule.vars()), var_renaming);
+        }
     }
-    if (backlink > 0) {
-        model = substitution::compose(trace.at(backlink-1).var_renaming.project(prog_vars), model);
-    }
+    auto vars {loop->vars()};
+    var_renaming = var_renaming.project(vars);
+    substitution::collectCoDomainVars(var_renaming, vars);
+    const auto model {substitution::compose(var_renaming, solver.model(vars).toSubs())};
     if (log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
-        ITSExport::printRule(loop, std::cout);
+        ITSExport::printRule(*loop, std::cout);
         std::cout << std::endl;
     }
-    return {loop, model};
+    return {*loop, model};
 }
 
 TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink) {
@@ -584,7 +595,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         nonterm_proof.storeSubProof(accel_res.nonterm->proof);
         res.concat(nonterm_proof);
         if (log) {
-            std::cout << "found certificate of non-termination:" << std::endl;
+            std::cout << "found certificate of non-termination, idx " << idx << std::endl;
             std::cout << accel_res.nonterm->certificate << std::endl;
         }
     }
@@ -605,17 +616,35 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             res.concat(acceleration_proof);
             res.concat(simplified.getProof());
             if (log) {
-                std::cout << "accelerated rule:" << std::endl;
+                std::cout << "accelerated rule, idx " << loop_idx << std::endl;
                 ITSExport::printRule(*simplified, std::cout);
                 std::cout << std::endl;
             }
         }
     }
     if (!res) {
-        if (log) std::cout << "acceleration failed" << std::endl;
+        if (log) {
+            std::cout << "acceleration failed" << std::endl;
+            if (accel_res.status) {
+                std::cout << "status: " << *accel_res.status << std::endl;
+            }
+        }
         return std::make_unique<Unroll>(1);
     }
     return std::make_unique<Succeeded>(res);
+}
+
+bool Reachability::check_consistency() {
+    // make sure that a model is available
+    switch (solver.check()) {
+    case Unsat:
+        throw std::logic_error("trace is contradictory");
+    case Unknown:
+        std::cerr << "consistency of trace cannot be proven" << std::endl;
+        return false;
+    case Sat: {}
+    }
+    return true;
 }
 
 std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
@@ -628,6 +657,9 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     } else if (log) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << closure << std::endl;
+    }
+    if (!check_consistency()) {
+        return std::make_unique<Restart>();
     }
     const auto [loop, sample_point] {build_loop(backlink)};
     std::vector<unsigned> indices;
@@ -731,8 +763,8 @@ bool Reachability::try_to_finish() {
             solver.push();
             const auto implicant {resolve(q)};
             if (implicant) {
-                // no need to compute the model and the variable renaming for the next step, as we are done
-                add_to_trace(Step(q, implicant->getGuard(), Subs(), Subs(), compute_resolvent(q, implicant->getGuard())));
+                // no need to compute a variable renaming for the next step, as we are done
+                add_to_trace(Step(q, implicant->getGuard(), Subs(), compute_resolvent(q, implicant->getGuard())));
                 proof.headline("Step with " + std::to_string(q));
                 print_state();
                 unsat();
@@ -760,22 +792,21 @@ void Reachability::analyze() {
     blocked_clauses[0].clear();
     do {
         size_t next_restart = luby_unit * luby.second;
+        std::unique_ptr<LearningState> state;
         if (log) std::cout << "trace: " << trace << std::endl;
         if (!trace.empty()) {
             for (auto backlink = has_looping_suffix(trace.size() - 1);
                  backlink && luby_loop_count < next_restart;
                  backlink = has_looping_suffix(*backlink - 1)) {
                 Step step = trace[*backlink];
-                bool simple_loop = *backlink == trace.size() - 1;
-                auto state = handle_loop(*backlink);
-                if (state->covered()) {
+                state = handle_loop(*backlink);
+                if (state->restart()) {
+                    break;
+                } else if (state->covered()) {
                     backtrack();
                     proof.headline("Covered");
                     print_state();
                 } else if (state->succeeded()) {
-                    if (simple_loop) {
-                        block(step);
-                    }
                     proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
                     print_state();
                     update_cpx();
@@ -786,7 +817,7 @@ void Reachability::analyze() {
                 }
             }
         }
-        if (luby_loop_count == next_restart) {
+        if (luby_loop_count == next_restart || (state && state->restart()) || !check_consistency()) {
             if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
             // restart
             while (!trace.empty()) {
