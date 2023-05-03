@@ -809,11 +809,6 @@ void Reachability::analyze() {
                 } else if (state->succeeded()) {
                     proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
                     print_state();
-                    update_cpx();
-                    // try to apply a query before doing another step
-                    if (try_to_finish()) {
-                        return;
-                    }
                 }
             }
         }
