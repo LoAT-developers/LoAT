@@ -41,5 +41,5 @@ BoolVar BoolVar::nextProgVar() {
 }
 
 bool BoolVar::isTempVar() const {
-    return idx <= 0;
+    return idx < 0;
 }

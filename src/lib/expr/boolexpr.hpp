@@ -560,7 +560,10 @@ public:
                 const auto lit {*current->getTheoryLit()};
                 if (std::holds_alternative<BoolLit>(lit)) {
                     const auto &bool_lit {std::get<BoolLit>(lit)};
-                    res.put(bool_lit.getBoolVar(), bool_lit.isNegated() ? False : True);
+                    const auto var {bool_lit.getBoolVar()};
+                    if (var.isTempVar()) {
+                        res.put(var, bool_lit.isNegated() ? False : True);
+                    }
                 }
             }
         }
