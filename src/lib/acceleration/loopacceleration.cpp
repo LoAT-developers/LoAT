@@ -148,9 +148,12 @@ acceleration::Result LoopAcceleration::run() {
         }
     }
     const auto [rule, period] = chain(this->rule);
-    if (SmtFactory::check(rule.getGuard()) != Sat) {
-        res.status = acceleration::Unsat;
+    switch (SmtFactory::check(rule.getGuard())) {
+    case Unsat: res.status = acceleration::PseudoLoop;
         return res;
+    case Unknown: res.status = acceleration::NotSat;
+        return res;
+    case Sat: {}
     }
     Proof proof;
     if (period > 1) {
@@ -159,11 +162,15 @@ acceleration::Result LoopAcceleration::run() {
     }
     // for rules with runtime 1, our acceleration techniques do not work properly,
     // as the closed forms are usually only valid for n > 0 --> special case
-    if (SmtFactory::check(rule.chain(rule).getGuard()) != SmtResult::Sat) {
+    switch (SmtFactory::check(rule.chain(rule).getGuard())) {
+    case Unsat:
         res.accel = {BExpression::True, rule, proof};
         res.accel->proof.append("rule cannot be iterated more than once");
         res.status = acceleration::PseudoLoop;
         return res;
+    case Unknown: res.status = acceleration::NotSat;
+        return res;
+    case Sat: {}
     }
     const auto rec {Recurrence::solve(rule.getUpdate())};
     if (!rec && config.approx != UnderApprox) {
