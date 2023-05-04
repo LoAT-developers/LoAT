@@ -58,6 +58,7 @@ public:
     TransIdx addRule(const Rule &rule, const LocationIdx start);
     TransIdx addQuery(const BoolExpr &guard, const TransIdx same_preds);
     TransIdx replaceRule(const TransIdx toReplace, const Rule &replacement);
+    void removeEdge(const TransIdx from, const TransIdx to);
 
     // Mutation for Locations
     LocationIdx addLocation();

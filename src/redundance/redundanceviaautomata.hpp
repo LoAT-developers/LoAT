@@ -37,7 +37,7 @@ class RedundanceViaAutomata {
 public:
 
     Automaton get_singleton_language(const std::vector<TransIdx> idx, const Guard &guard);
-    Automaton get_language(const TransIdx idx);
+    std::optional<Automaton> get_language(const TransIdx idx);
     void set_language(const TransIdx idx, const Automaton &t);
     void delete_language(const TransIdx idx);
     bool is_redundant(const Automaton &t) const;

@@ -484,11 +484,8 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
 }
 
 Automaton Reachability::get_language(const Step &step) {
-    if (is_orig_clause(step.clause_idx)) {
-        return redundancy->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard());
-    } else {
-        return redundancy->get_language(step.clause_idx);
-    }
+    const auto res {redundancy->get_language(step.clause_idx)};
+    return res ? *res : redundancy->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard());
 }
 
 Automaton Reachability::build_language(const int backlink) {
@@ -649,12 +646,13 @@ bool Reachability::check_consistency() {
 
 std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
     const auto lang {build_language(backlink)};
-    auto closure {lang};
-    redundancy->transitive_closure(closure);
-    if (redundancy->is_redundant(closure)) {
+    if (redundancy->is_redundant(lang)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
-    } else if (log) {
+    }
+    auto closure {lang};
+    redundancy->transitive_closure(closure);
+    if (log) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << closure << std::endl;
     }
@@ -662,24 +660,8 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         return std::make_unique<Restart>();
     }
     const auto [loop, sample_point] {build_loop(backlink)};
-    std::vector<unsigned> indices;
-    for (unsigned i = backlink; i < trace.size(); ++i) {
-        const auto &step {trace.at(i)};
-        const auto c {*redundancy->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard()).get_alphabet().Begin()};
-        indices.push_back(c);
-    }
-    const auto &old_redundance_condition {conditionally_redundant.emplace(indices, BExpression::False).first->second};
-    if (old_redundance_condition->subs(sample_point)->isTriviallyTrue()) {
-        if (log) std::cout << "loop partially covered" << std::endl;
-        return std::make_unique<Covered>();
-    }
     if (redundancy->is_accelerated(lang)) {
         if (log) std::cout << "loop must be unrolled" << std::endl;
-        return std::make_unique<Unroll>();
-    }
-    auto &acceleration_condition {conditionally_accelerated.emplace(indices, BExpression::False).first->second};
-    if (acceleration_condition->subs(sample_point)->isTriviallyTrue()) {
-        if (log) std::cout << "loop must be unrolled (conditional)" << std::endl;
         return std::make_unique<Unroll>();
     }
     luby_loop_count++;
@@ -703,55 +685,64 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
-    std::vector<unsigned> new_indices;
     if (log) {
         std::cout << "prefix: " << learned_clauses.prefix << std::endl;
         std::cout << "period: " << learned_clauses.period << std::endl;
     }
-    for (unsigned i = 0; i < learned_clauses.prefix + learned_clauses.period; ++i) {
-        new_indices.insert(new_indices.end(), indices.begin(), indices.end());
+    std::vector<BoolExpr> cs;
+    for (const auto &[_, c]: learned_clauses.res) {
+        cs.emplace_back(c);
     }
-    auto &redundance_condition {conditionally_redundant.emplace(new_indices, BExpression::False).first->second};
-    BoolExprSet new_redundance_condition {redundance_condition};
-    BoolExprSet new_acceleration_condition {acceleration_condition};
-    for (const auto &[idx, covered]: learned_clauses.res) {
-        new_redundance_condition.insert(covered);
-        new_acceleration_condition.insert(covered);
-    }
-    redundance_condition = BExpression::buildOr(new_redundance_condition);
-    acceleration_condition = BExpression::buildOr(new_acceleration_condition);
-    if (redundance_condition->isTriviallyTrue() || SmtFactory::check(!redundance_condition) == SmtResult::Unsat) {
-        auto new_lang {closure};
-        for (unsigned i = 1; i < learned_clauses.period; ++i) {
-            redundancy->concat(closure, closure);
-        }
-        if (learned_clauses.prefix > 0) {
-            auto prefix_lang {lang};
-            for (unsigned i = 1; i < learned_clauses.prefix; ++i) {
-                redundancy->concat(prefix_lang, prefix_lang);
-            }
-            redundancy->concat(prefix_lang, new_lang);
-            new_lang = prefix_lang;
-        }
-        for (const auto &[idx, _]: learned_clauses.res) {
-            if (!chcs.isSinkTransition(idx)) {
-                redundancy->set_language(idx, new_lang);
+    const auto covered {BExpression::buildAnd(cs)};
+    Automaton covered_lang;
+    TransIdx block;
+    if (covered->isTriviallyTrue()) {
+        covered_lang = lang;
+        if (backlink < trace.size() - 1) {
+            block = add_learned_clause(loop, backlink);
+            redundancy->mark_as_redundant(lang);
+            redundancy->set_language(block, lang);
+        } else {
+            const auto &last_step {trace.back()};
+            const auto last_rule {chcs.getRule(last_step.clause_idx)};
+            if (last_rule.getGuard()->isConjunction()) {
+                block = last_step.clause_idx;
+            } else {
+                redundancy->mark_as_redundant(lang);
+                block = add_learned_clause(loop, backlink);
+                add_learned_clause(loop.withGuard(loop.getGuard() & (!last_step.implicant)), backlink);
+                covered_lang = redundancy->get_singleton_language({block}, loop.getGuard()->conjunctionToGuard());
             }
         }
-        redundancy->mark_as_redundant(new_lang);
     } else {
-        for (const auto &[idx, covered]: learned_clauses.res) {
-            if (!chcs.isSinkTransition(idx)) {
-                auto closure {redundancy->get_singleton_language(new_indices, covered->conjunctionToGuard())};
-                redundancy->transitive_closure(closure);
-                redundancy->mark_as_redundant(closure);
-                redundancy->set_language(idx, closure);
-            }
+        redundancy->mark_as_redundant(lang);
+        block = add_learned_clause(loop.withGuard(loop.getGuard() & covered), backlink);
+        add_learned_clause(loop.withGuard(loop.getGuard() & (!covered)), backlink);
+        covered_lang = redundancy->get_singleton_language({block}, covered->conjunctionToGuard());
+    }
+    redundancy->mark_as_accelerated(covered_lang);
+    auto covered_closure {covered_lang};
+    for (unsigned i = 1; i < learned_clauses.period; ++i) {
+        redundancy->concat(covered_closure, covered_lang);
+    }
+    redundancy->transitive_closure(covered_closure);
+    if (learned_clauses.prefix > 0) {
+        auto prefix_lang {covered_lang};
+        for (unsigned i = 1; i < learned_clauses.prefix; ++i) {
+            redundancy->concat(prefix_lang, covered_lang);
+        }
+        redundancy->concat(prefix_lang, covered_closure);
+        covered_lang = prefix_lang;
+    } else {
+        covered_lang = covered_closure;
+    }
+    for (const auto &[idx, _]: learned_clauses.res) {
+        if (!chcs.isSinkTransition(idx)) {
+            redundancy->set_language(idx, covered_lang);
+            chcs.removeEdge(idx, block);
         }
     }
-    if (acceleration_condition->isTriviallyTrue() || SmtFactory::check(!acceleration_condition) == SmtResult::Unsat) {
-        redundancy->mark_as_accelerated(lang);
-    }
+    redundancy->mark_as_redundant(covered_lang);
     return state;
 }
 
@@ -807,6 +798,7 @@ void Reachability::analyze() {
                     proof.headline("Covered");
                     print_state();
                 } else if (state->succeeded()) {
+                    backtrack();
                     proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
                     print_state();
                 }

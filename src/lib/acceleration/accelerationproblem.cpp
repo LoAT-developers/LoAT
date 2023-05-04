@@ -129,9 +129,13 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     }
     for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
         if (signs.at(i).is_positive()) {
-            covered.insert(Rel::buildGeq(derivatives.at(i), 0));
+            const auto r {Rel::buildGeq(derivatives.at(i), 0)};
+            guard.insert(r);
+            covered.insert(r);
         } else {
-            covered.insert(Rel::buildLeq(derivatives.at(i), 0));
+            const auto r {Rel::buildLeq(derivatives.at(i), 0)};
+            guard.insert(r);
+            covered.insert(r);
         }
         if (signs.at(i+1).is_positive()) {
             // the i-th derivative is monotonically increasing at the sampling point

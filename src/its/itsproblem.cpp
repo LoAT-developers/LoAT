@@ -141,6 +141,10 @@ TransIdx ITSProblem::replaceRule(const TransIdx toReplace, const Rule &replaceme
     return idx;
 }
 
+void ITSProblem::removeEdge(const TransIdx from, const TransIdx to) {
+    graph.removeEdge(from, to);
+}
+
 LocationIdx ITSProblem::addLocation() {
     LocationIdx loc = nextUnusedLocation++;
     locations.insert(loc);

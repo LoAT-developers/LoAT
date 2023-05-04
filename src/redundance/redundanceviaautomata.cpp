@@ -78,8 +78,9 @@ Automaton RedundanceViaAutomata::get_singleton_language(const std::vector<TransI
     }
 }
 
-Automaton RedundanceViaAutomata::get_language(const TransIdx idx) {
-    return regexes[idx];
+std::optional<Automaton> RedundanceViaAutomata::get_language(const TransIdx idx) {
+    const auto it {regexes.find(idx)};
+    return it == regexes.end() ? std::optional<Automaton>() : it->second;
 }
 
 void RedundanceViaAutomata::set_language(const TransIdx idx, const Automaton &t) {

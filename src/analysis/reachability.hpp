@@ -154,8 +154,6 @@ class Reachability {
 
     using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundancy {std::make_unique<Red>()};
-    std::map<std::vector<unsigned>, BoolExpr> conditionally_redundant;
-    std::map<std::vector<unsigned>, BoolExpr> conditionally_accelerated;
 
     Complexity cpx = Complexity::Const;
 
