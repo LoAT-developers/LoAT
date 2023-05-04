@@ -4,7 +4,6 @@
 #include "linearizingsolver.hpp"
 #include "itsproblem.hpp"
 #include "result.hpp"
-#include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
 
 #include <limits>
@@ -65,7 +64,7 @@ public:
      */
     virtual std::optional<Succeeded> succeeded();
     /**
-     * true if no clause was learned since it would have been redundant
+     * true if no clause was since it would have been redundant
      */
     virtual std::optional<Covered> covered();
 
@@ -118,9 +117,15 @@ class Restart final: public LearningState {
     std::optional<Restart> restart() override;
 };
 
+enum Mode {
+    Backtrack, Default
+};
+
 class Reachability {
 
     ITSProblem &chcs;
+
+    Mode mode {Default};
 
     ITSProof proof;
 
@@ -137,6 +142,16 @@ class Reachability {
      */
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked_clauses{{}};
 
+    unsigned next_char{1};
+
+    std::map<std::pair<TransIdx, BoolExpr>, int> alphabet;
+
+    using word = std::vector<int>;
+
+    static const std::vector<std::pair<TransIdx, BoolExpr>> nothing_learned;
+
+    std::map<word, std::vector<std::pair<TransIdx, BoolExpr>>> learned;
+
     VarSet prog_vars;
 
     /**
@@ -152,9 +167,6 @@ class Reachability {
 
     void luby_next();
 
-    using Red = RedundanceViaAutomata;
-    std::unique_ptr<Red> redundancy {std::make_unique<Red>()};
-
     Complexity cpx = Complexity::Const;
 
     bool is_learned_clause(const TransIdx idx) const;
@@ -164,6 +176,12 @@ class Reachability {
     void update_cpx();
 
     Result<Rule> instantiate(const NumVar &n, const Rule &rule) const;
+
+    int get_char(const TransIdx idx, const BoolExpr imp);
+
+    word get_word(const int backlink);
+
+    bool is_duplicate(const int backlink);
 
     /**
      * removes clauses that are not on a CFG-path from a fact to a query
@@ -206,18 +224,6 @@ class Reachability {
     std::optional<Rule> resolve(const TransIdx idx);
 
     /**
-     * computes (an approximation of) the language associated with the clause used for the given step
-     */
-    Automaton get_language(const Step &step);
-
-    /**
-     * computes (an approximation of) the language associated with the clause that can be learned
-     * from the looping suffix of the trace
-     * @param backlink the start of the looping suffix of the trace
-     */
-    Automaton build_language(const int backlink);
-
-    /**
      * computes a clause that is equivalent to the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
@@ -227,7 +233,7 @@ class Reachability {
      * adds a learned clause to all relevant data structures
      * @param lang (an approximation of) the language associated with the learned clause
      */
-    TransIdx add_learned_clause(const Rule &clause, const unsigned backlink);
+    TransIdx add_learned_clause(const Rule &clause, const BoolExpr covered, const unsigned backlink);
 
     /**
      * tries to accelerate the given clause
