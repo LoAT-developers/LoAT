@@ -318,6 +318,7 @@ class Reachability {
 public:
 
     static bool log;
+    static const bool drop;
     static void analyze(ITSProblem &its);
 
 };

@@ -3,7 +3,6 @@
 #include "preprocess.hpp"
 #include "loopacceleration.hpp"
 #include "result.hpp"
-#include "smtfactory.hpp"
 #include "yices.hpp"
 #include "smt.hpp"
 #include "export.hpp"
@@ -23,7 +22,9 @@ namespace reachability {
 
 using ::operator<<;
 
-bool Reachability::log = false;
+bool Reachability::log {false};
+
+const bool Reachability::drop {true};
 
 LearningState::LearningState() {}
 
@@ -668,15 +669,22 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
 
 bool Reachability::check_consistency() {
     // make sure that a model is available
+    bool res;
+    solver.setTimeout(5 * smt_timeout);
     switch (solver.check()) {
     case Unsat:
         throw std::logic_error("trace is contradictory");
     case Unknown:
         std::cerr << "consistency of trace cannot be proven" << std::endl;
-        return false;
-    case Sat: {}
+        solver.setTimeout(smt_timeout);
+        res = false;
+        break;
+    case Sat:
+        res = true;
+        break;
     }
-    return true;
+    solver.setTimeout(smt_timeout);
+    return res;
 }
 
 void Reachability::drop_until(const int new_size) {
@@ -712,12 +720,12 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         if (state->unroll()) {
             if (state->unroll()->get_max()) {
                 const auto max {*state->unroll()->get_max()};
-                auto redundant {lang};
+                auto redundant_lang {lang};
                 for (unsigned i = 0; i < max; ++i) {
-                    redundancy->concat(redundant, lang);
+                    redundancy->concat(redundant_lang, lang);
                 }
-                redundancy->concat(redundant, closure);
-                redundancy->mark_as_redundant(redundant);
+                redundancy->concat(redundant_lang, closure);
+                redundancy->mark_as_redundant(redundant_lang);
             }
         } else {
             redundancy->mark_as_redundant(closure);
@@ -726,30 +734,33 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
-//    drop_until(backlink);
-//    bool done {false};
-    auto covered_closure {lang};
+    auto learned_lang {lang};
     for (unsigned i = 1; i < learned_clauses.period; ++i) {
-        redundancy->concat(covered_closure, lang);
+        redundancy->concat(learned_lang, lang);
     }
-    redundancy->transitive_closure(covered_closure);
-    redundancy->mark_as_redundant(covered_closure);
+    redundancy->transitive_closure(learned_lang);
+    redundancy->mark_as_redundant(learned_lang);
+    bool do_drop {drop || backlink == trace.size() - 1};
+    if (do_drop) {
+        drop_until(backlink);
+    }
+    bool done {!do_drop};
     for (const auto &[idx, covered]: learned_clauses.res) {
-        redundancy->set_language(idx, covered_closure);
-//        if (!done && store_step(idx, chcs.getRule(idx))) {
-//            if (chcs.isSinkTransition(idx)) {
-//                return std::make_unique<ProvedUnsat>(accel_state->getProof());
-//            } else {
-//                done = true;
-//            }
-//        }
+        redundancy->set_language(idx, learned_lang);
+        if (!done && store_step(idx, chcs.getRule(idx))) {
+            if (chcs.isSinkTransition(idx)) {
+                return std::make_unique<ProvedUnsat>(accel_state->getProof());
+            } else {
+                done = true;
+            }
+        }
     }
-//    if (done) {
+    if (done) {
         return state;
-//    } else {
-//        if (log) std::cout << "applying accelerated rule failed" << std::endl;
-//        return std::make_unique<Dropped>(accel_state->getProof());
-//    }
+    } else {
+        if (log) std::cout << "applying accelerated rule failed" << std::endl;
+        return std::make_unique<Dropped>(accel_state->getProof());
+    }
 }
 
 bool Reachability::try_to_finish() {
@@ -810,6 +821,9 @@ void Reachability::analyze() {
                     }
                     proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
                     print_state();
+                    if ((drop || simple_loop) && try_to_finish()) {
+                        return;
+                    }
                 } else if (state->dropped()) {
                     if (simple_loop) {
                         block(step);
