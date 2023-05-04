@@ -30,7 +30,6 @@ public:
     struct Result {
         Subs closed_form;
         unsigned int prefix = 0;
-        std::vector<BoolExpr> refinement;
         ExprSubs refined_equations;
         NumVar n;
 

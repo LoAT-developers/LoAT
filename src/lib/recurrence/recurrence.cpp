@@ -44,7 +44,6 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
         }
         if (inverse) {
             const auto last {rhs.subs(*inverse)};
-            result.refinement.push_back(BExpression::buildTheoryLit(Rel::buildEq(lhs, last)));
             result.refined_equations.put(lhs, lhs + rhs - last);
             inverse->put(lhs, lhs - rhs + last);
         }

@@ -43,22 +43,12 @@ protected:
     AccelerationTechnique(const Rule &rule, const std::optional<Recurrence::Result> closed, const AccelConfig &config):
         closed(closed),
         update(rule.getUpdate()),
-        config(config){
-        if (closed && !closed->refinement.empty()) {
+        guard(rule.getGuard()->toG()),
+        config(config) {
+        if (closed) {
             update.get<IntTheory>() = closed->refined_equations;
-            auto conjuncts {closed->refinement};
-            conjuncts.push_back(rule.getGuard());
-            guard = BExpression::buildAnd(conjuncts);
-            proof.append("refinement:");
-            for (const auto &r: closed->refinement) {
-                proof.append(std::stringstream() << r);
-            }
-            proof.append(std::stringstream() << "refined guard: " << guard);
             proof.append(std::stringstream() << "refined update: " << update);
-        } else {
-            guard = rule.getGuard();
         }
-        guard = guard->toG();
     }
 
 public:
