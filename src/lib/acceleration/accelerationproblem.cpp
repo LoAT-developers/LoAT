@@ -96,59 +96,94 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     const auto &rel {std::get<Rel>(lit)};
     const auto &up {update.get<IntTheory>()};
     const auto nfold {rel.lhs().subs(closed->closed_form.get<IntTheory>()).expand()};
-    if (nfold.isGround() || !nfold.isPoly()) {
-        return false;
-    }
     const ExprSubs but_last {closed->closed_form.get<IntTheory>().compose({{closed->n, Expr(closed->n) - 1}})};
-    auto sample_point {samplePoint.get<IntTheory>()};
-    std::vector<Expr> derivatives {rel.lhs()};
-    std::vector<GiNaC::numeric> signs {rel.lhs().subs(sample_point).toNum()};
-    Expr diff;
-    do {
-        const auto &last {derivatives.back()};
-        diff = (last.subs(up) - last).expand();
-        derivatives.push_back(diff);
-        signs.push_back(diff.subs(sample_point).toNum());
-    } while (!diff.isGround());
+    bool low_degree {false};
     RelSet guard;
     RelSet covered;
-    for (unsigned i = 1; i < signs.size() - 1; ++i) {
-        if (signs.at(i).is_zero()) {
-            for (unsigned j = i + 1; j < signs.size(); ++j) {
-                if (!signs.at(j).is_zero()) {
-                    signs[i] = signs[j];
-                    break;
+    if (nfold.isPoly(closed->n)) {
+        switch (nfold.degree(closed->n)) {
+        case 0: return false;
+        case 1: {
+            const auto coeff {nfold.coeff(closed->n, 1)};
+            if (coeff.isGround()) {
+                if (coeff.toNum().is_positive()) {
+                    guard.insert(rel);
+                } else {
+                    guard.insert(rel.subs(but_last));
+                }
+            } else {
+                guard.insert(rel);
+                guard.insert(rel.subs(but_last));
+            }
+            low_degree = true;
+            break;
+        }
+        case 2: {
+            const auto coeff {nfold.coeff(closed->n, 2)};
+            if (coeff.isGround()) {
+                if (coeff.toNum().is_negative()) {
+                    guard.insert(rel);
+                    guard.insert(rel.subs(but_last));
+                    low_degree = true;
+                }
+            }
+            break;
+        }
+        default: {}
+        }
+    }
+    if (!low_degree) {
+        if (nfold.isGround() || !nfold.isPoly(closed->n)) {
+            return false;
+        }
+        auto sample_point {samplePoint.get<IntTheory>()};
+        std::vector<Expr> derivatives {rel.lhs()};
+        std::vector<GiNaC::numeric> signs {rel.lhs().subs(sample_point).toNum()};
+        Expr diff;
+        do {
+            const auto &last {derivatives.back()};
+            diff = (last.subs(up) - last).expand();
+            derivatives.push_back(diff);
+            signs.push_back(diff.subs(sample_point).toNum());
+        } while (!diff.isGround());
+        for (unsigned i = 1; i < signs.size() - 1; ++i) {
+            if (signs.at(i).is_zero()) {
+                for (unsigned j = i + 1; j < signs.size(); ++j) {
+                    if (!signs.at(j).is_zero()) {
+                        signs[i] = signs[j];
+                        break;
+                    }
                 }
             }
         }
-    }
-    if (signs.at(1).is_positive()) {
-        guard.insert(rel);
-    } else {
-        guard.insert(rel.subs(but_last));
-    }
-    for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
-        if (signs.at(i).is_positive()) {
-            const auto r {Rel::buildGeq(derivatives.at(i), 0)};
-            guard.insert(r);
-            covered.insert(r);
+        if (signs.at(1).is_positive()) {
+            guard.insert(rel);
         } else {
-            const auto r {Rel::buildLeq(derivatives.at(i), 0)};
-            guard.insert(r);
-            covered.insert(r);
+            guard.insert(rel.subs(but_last));
         }
-        if (signs.at(i+1).is_positive()) {
-            // the i-th derivative is monotonically increasing at the sampling point
+        for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
             if (signs.at(i).is_positive()) {
-                guard.insert(Rel::buildGeq(derivatives.at(i), 0));
+                const auto r {Rel::buildGeq(derivatives.at(i), 0)};
+                guard.insert(r);
+                covered.insert(r);
             } else {
-                guard.insert(Rel::buildLeq(derivatives.at(i).subs(but_last), 0));
+                const auto r {Rel::buildLeq(derivatives.at(i), 0)};
+                guard.insert(r);
+                covered.insert(r);
             }
-        } else {
-            if (signs.at(i).is_positive()) {
-                guard.insert(Rel::buildGeq(derivatives.at(i).subs(but_last), 0));
+            if (signs.at(i+1).is_positive()) {
+                // the i-th derivative is monotonically increasing at the sampling point
+                if (signs.at(i).is_positive()) {
+                    guard.insert(Rel::buildGeq(derivatives.at(i), 0));
+                } else {
+                    guard.insert(Rel::buildLeq(derivatives.at(i).subs(but_last), 0));
+                }
             } else {
-                guard.insert(Rel::buildLeq(derivatives.at(i), 0));
+                if (signs.at(i).is_positive()) {
+                    guard.insert(Rel::buildGeq(derivatives.at(i).subs(but_last), 0));
+                } else {
+                    guard.insert(Rel::buildLeq(derivatives.at(i), 0));
+                }
             }
         }
     }
