@@ -48,6 +48,8 @@ class Succeeded;
 class Covered;
 class Unroll;
 class Restart;
+class Dropped;
+class ProvedUnsat;
 
 /**
  * When learning clauses, an instance of this class is returned.
@@ -69,7 +71,11 @@ public:
      */
     virtual std::optional<Covered> covered();
 
+    virtual std::optional<Dropped> dropped();
+
     virtual std::optional<Unroll> unroll();
+
+    virtual std::optional<ProvedUnsat> unsat();
 
     virtual std::optional<Restart> restart();
 };
@@ -97,6 +103,16 @@ class Covered final: public LearningState {
     std::optional<Covered> covered() override;
 };
 
+class Dropped final: public LearningState {
+
+    ITSProof proof;
+
+public:
+    Dropped(const ITSProof &proof);
+    std::optional<Dropped> dropped() override;
+    const ITSProof& get_proof() const;
+};
+
 class Unroll final: public LearningState {
 
 private:
@@ -112,6 +128,16 @@ public:
     std::optional<unsigned> get_max();
 
     std::optional<Unroll> unroll() override;
+};
+
+class ProvedUnsat final: public LearningState {
+    ITSProof proof;
+
+public:
+    ProvedUnsat(const ITSProof &proof);
+    std::optional<ProvedUnsat> unsat() override;
+    ITSProof& operator*();
+    ITSProof* operator->();
 };
 
 class Restart final: public LearningState {
@@ -236,6 +262,8 @@ class Reachability {
     std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink);
 
     bool check_consistency();
+
+    void drop_until(const int new_size);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix

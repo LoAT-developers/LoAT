@@ -35,11 +35,29 @@ std::optional<Covered> LearningState::covered() {
     return {};
 }
 
+std::optional<Dropped> LearningState::dropped() {
+    return {};
+}
+
+Dropped::Dropped(const ITSProof &proof): proof(proof) {}
+
+const ITSProof& Dropped::get_proof() const {
+    return proof;
+}
+
+std::optional<Dropped> Dropped::dropped() {
+    return *this;
+}
+
 std::optional<Unroll> LearningState::unroll() {
     return {};
 }
 
 std::optional<Restart> LearningState::restart() {
+    return {};
+}
+
+std::optional<ProvedUnsat> LearningState::unsat() {
     return {};
 }
 
@@ -75,6 +93,20 @@ std::optional<unsigned> Unroll::get_max() {
 
 std::optional<Unroll> Unroll::unroll() {
     return *this;
+}
+
+std::optional<ProvedUnsat> ProvedUnsat::unsat() {
+    return *this;
+}
+
+ProvedUnsat::ProvedUnsat(const ITSProof &proof): proof(proof) {}
+
+ITSProof& ProvedUnsat::operator*() {
+    return proof;
+}
+
+ITSProof* ProvedUnsat::operator->() {
+    return &proof;
 }
 
 Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(smt_timeout) {
@@ -484,8 +516,11 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
 }
 
 Automaton Reachability::get_language(const Step &step) {
-    const auto res {redundancy->get_language(step.clause_idx)};
-    return res ? *res : redundancy->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard());
+    if (is_orig_clause(step.clause_idx)) {
+        return redundancy->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard());
+    } else {
+        return *redundancy->get_language(step.clause_idx);
+    }
 }
 
 Automaton Reachability::build_language(const int backlink) {
@@ -644,31 +679,37 @@ bool Reachability::check_consistency() {
     return true;
 }
 
+void Reachability::drop_until(const int new_size) {
+    while (trace.size() > static_cast<unsigned>(new_size)) {
+        pop();
+    }
+}
+
 std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
     const auto lang {build_language(backlink)};
-    if (redundancy->is_redundant(lang)) {
+    auto closure {lang};
+    redundancy->transitive_closure(closure);
+    if (redundancy->is_redundant(closure)) {
         if (log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
     }
-    auto closure {lang};
-    redundancy->transitive_closure(closure);
-    if (log) {
-        std::cout << "learning clause for the following language:" << std::endl;
-        std::cout << closure << std::endl;
-    }
-    if (!check_consistency()) {
-        return std::make_unique<Restart>();
-    }
-    const auto [loop, sample_point] {build_loop(backlink)};
     if (redundancy->is_accelerated(lang)) {
         if (log) std::cout << "loop must be unrolled" << std::endl;
         return std::make_unique<Unroll>();
     }
+    if (!check_consistency()) {
+        return std::make_unique<Restart>();
+    }
+    if (log) {
+        std::cout << "learning clause for the following language:" << std::endl;
+        std::cout << closure << std::endl;
+    }
+    const auto [loop, sample_point] {build_loop(backlink)};
     luby_loop_count++;
     auto state {learn_clause(loop, sample_point, backlink)};
+    redundancy->mark_as_accelerated(closure);
     if (!state->succeeded()) {
         if (state->unroll()) {
-            redundancy->mark_as_accelerated(lang);
             if (state->unroll()->get_max()) {
                 const auto max {*state->unroll()->get_max()};
                 auto redundant {lang};
@@ -685,65 +726,30 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
-    if (log) {
-        std::cout << "prefix: " << learned_clauses.prefix << std::endl;
-        std::cout << "period: " << learned_clauses.period << std::endl;
-    }
-    std::vector<BoolExpr> cs;
-    for (const auto &[_, c]: learned_clauses.res) {
-        cs.emplace_back(c);
-    }
-    const auto covered {BExpression::buildAnd(cs)};
-    Automaton covered_lang;
-    TransIdx block;
-    if (covered->isTriviallyTrue()) {
-        covered_lang = lang;
-        if (backlink < trace.size() - 1) {
-            block = add_learned_clause(loop, backlink);
-            redundancy->mark_as_redundant(lang);
-            redundancy->set_language(block, lang);
-        } else {
-            const auto &last_step {trace.back()};
-            const auto last_rule {chcs.getRule(last_step.clause_idx)};
-            if (last_rule.getGuard()->isConjunction()) {
-                block = last_step.clause_idx;
-            } else {
-                redundancy->mark_as_redundant(lang);
-                block = add_learned_clause(loop, backlink);
-                add_learned_clause(loop.withGuard(loop.getGuard() & (!last_step.implicant)), backlink);
-                covered_lang = redundancy->get_singleton_language({block}, loop.getGuard()->conjunctionToGuard());
-            }
-        }
-    } else {
-        redundancy->mark_as_redundant(lang);
-        block = add_learned_clause(loop.withGuard(loop.getGuard() & covered), backlink);
-        add_learned_clause(loop.withGuard(loop.getGuard() & (!covered)), backlink);
-        covered_lang = redundancy->get_singleton_language({block}, covered->conjunctionToGuard());
-    }
-    redundancy->mark_as_accelerated(covered_lang);
-    auto covered_closure {covered_lang};
+//    drop_until(backlink);
+//    bool done {false};
+    auto covered_closure {lang};
     for (unsigned i = 1; i < learned_clauses.period; ++i) {
-        redundancy->concat(covered_closure, covered_lang);
+        redundancy->concat(covered_closure, lang);
     }
     redundancy->transitive_closure(covered_closure);
-    if (learned_clauses.prefix > 0) {
-        auto prefix_lang {covered_lang};
-        for (unsigned i = 1; i < learned_clauses.prefix; ++i) {
-            redundancy->concat(prefix_lang, covered_lang);
-        }
-        redundancy->concat(prefix_lang, covered_closure);
-        covered_lang = prefix_lang;
-    } else {
-        covered_lang = covered_closure;
+    redundancy->mark_as_redundant(covered_closure);
+    for (const auto &[idx, covered]: learned_clauses.res) {
+        redundancy->set_language(idx, covered_closure);
+//        if (!done && store_step(idx, chcs.getRule(idx))) {
+//            if (chcs.isSinkTransition(idx)) {
+//                return std::make_unique<ProvedUnsat>(accel_state->getProof());
+//            } else {
+//                done = true;
+//            }
+//        }
     }
-    for (const auto &[idx, _]: learned_clauses.res) {
-        if (!chcs.isSinkTransition(idx)) {
-            redundancy->set_language(idx, covered_lang);
-            chcs.removeEdge(idx, block);
-        }
-    }
-    redundancy->mark_as_redundant(covered_lang);
-    return state;
+//    if (done) {
+        return state;
+//    } else {
+//        if (log) std::cout << "applying accelerated rule failed" << std::endl;
+//        return std::make_unique<Dropped>(accel_state->getProof());
+//    }
 }
 
 bool Reachability::try_to_finish() {
@@ -789,7 +795,8 @@ void Reachability::analyze() {
             for (auto backlink = has_looping_suffix(trace.size() - 1);
                  backlink && luby_loop_count < next_restart;
                  backlink = has_looping_suffix(*backlink - 1)) {
-                Step step = trace[*backlink];
+                auto step {trace[*backlink]};
+                auto simple_loop {*backlink == trace.size() - 1};
                 state = handle_loop(*backlink);
                 if (state->restart()) {
                     break;
@@ -798,9 +805,23 @@ void Reachability::analyze() {
                     proof.headline("Covered");
                     print_state();
                 } else if (state->succeeded()) {
-                    backtrack();
+                    if (simple_loop) {
+                        block(step);
+                    }
                     proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
                     print_state();
+                } else if (state->dropped()) {
+                    if (simple_loop) {
+                        block(step);
+                    }
+                    proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
+                    print_state();
+                } else if (state->unsat()) {
+                    proof.majorProofStep("Nonterm", **state->unsat(), chcs);
+                    proof.headline("Step with " + std::to_string(trace.back().clause_idx));
+                    print_state();
+                    unsat();
+                    return;
                 }
             }
         }
