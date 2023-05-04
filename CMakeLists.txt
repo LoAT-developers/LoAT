@@ -54,11 +54,7 @@ else()
     add_definitions(-DANTLR4CPP_STATIC)
   endif()
   include(ExternalAntlr4Cpp)
-  if (${STATIC})
-    set(ANTLR4 antlr4_static)
-  else()
-    set(ANTLR4 antlr4_shared)
-  endif()
+  set(ANTLR4 antlr4_static)
 endif()
 
 # generate version.cc
