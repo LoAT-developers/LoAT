@@ -25,8 +25,6 @@ using ::operator<<;
 
 bool Reachability::log = false;
 
-const std::vector<std::pair<TransIdx, BoolExpr>> Reachability::nothing_learned;
-
 LearningState::LearningState() {}
 
 std::optional<Succeeded> LearningState::succeeded() {
@@ -214,9 +212,6 @@ Subs Reachability::handle_update(const TransIdx idx) {
 }
 
 void Reachability::block(const Step &step) {
-    if (!is_orig_clause(step.clause_idx)) {
-        return;
-    }
     if (log) std::cout << "blocking " << step.clause_idx << ", " << step.implicant << std::endl;
     if (chcs.getRule(step.clause_idx).getGuard()->isConjunction()) {
         blocked_clauses.back()[step.clause_idx] = {};
@@ -238,7 +233,6 @@ void Reachability::pop() {
 
 void Reachability::backtrack() {
     if (log) std::cout << "backtracking" << std::endl;
-    mode = Backtrack;
     // copy the last step before popping it
     const Step step = trace.back();
     pop();
@@ -293,6 +287,10 @@ bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
         const auto new_var_renaming {handle_update(idx)};
         const Step step(idx, implicant.getGuard(), new_var_renaming, compute_resolvent(idx, implicant.getGuard()));
         add_to_trace(step);
+        // block learned clauses after adding them to the trace
+        if (is_learned_clause(idx)) {
+            block(step);
+        }
         return true;
     } else {
         solver.pop();
@@ -485,6 +483,19 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     }
 }
 
+Automaton Reachability::get_language(const Step &step) {
+    const auto res {redundancy->get_language(step.clause_idx)};
+    return res ? *res : redundancy->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard());
+}
+
+Automaton Reachability::build_language(const int backlink) {
+    auto lang = get_language(trace[backlink]);
+    for (size_t i = backlink + 1; i < trace.size(); ++i) {
+        redundancy->concat(lang, get_language(trace[i]));
+    }
+    return lang;
+}
+
 std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
@@ -514,32 +525,10 @@ std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
     return {*loop, model};
 }
 
-int Reachability::get_char(const TransIdx idx, const BoolExpr imp) {
-    auto &res {alphabet.emplace(std::pair<TransIdx, BoolExpr>{idx, imp}, 0).first->second};
-    if (res > 0) {
-        return res;
-    } else {
-        res = next_char;
-        ++next_char;
-        return res;
-    }
-}
-
-Reachability::word Reachability::get_word(const int backlink) {
-    word res;
-    for (size_t i = backlink; i < trace.size(); ++i) {
-        const auto &step {trace.at(i)};
-        res.push_back(get_char(step.clause_idx, step.implicant));
-    }
-    return res;
-}
-
-TransIdx Reachability::add_learned_clause(const Rule &accel, const BoolExpr covered, const unsigned backlink) {
-    const auto fst {trace.at(backlink).clause_idx};
-    const auto last {trace.back().clause_idx};
-    const auto loop_idx {chcs.addLearnedRule(accel, fst, last)};
-    auto &vec {learned.emplace(get_word(backlink), nothing_learned).first->second};
-    vec.emplace_back(loop_idx, covered);
+TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink) {
+    const auto fst = trace.at(backlink).clause_idx;
+    const auto last = trace.back().clause_idx;
+    const auto loop_idx = chcs.addLearnedRule(accel, fst, last);
     return loop_idx;
 }
 
@@ -569,14 +558,6 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
 }
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink) {
-    for (const auto &[idx, covered]: learned.emplace(get_word(backlink), nothing_learned).first->second) {
-        if (covered->subs(sample_point)->isTriviallyTrue()) {
-            Result<LearnedClauses> res{{.res = {{idx, covered}}, .prefix = 1, .period = 1}};
-            res.succeed();
-            res.section("Cached accelerated clause");
-            return std::make_unique<Succeeded>(res);
-        }
-    }
     Result<Rule> simp = Preprocess::simplifyRule(rule);
     if (Config::Analysis::reachability() && simp->getUpdate() == substitution::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -624,7 +605,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
                 simplified.concat(instantiate(*accel_res.n, *simplified));
             }
             res.succeed();
-            const auto loop_idx {add_learned_clause(*simplified, accel_res.accel->covered, backlink)};
+            const auto loop_idx {add_learned_clause(*simplified, backlink)};
             res->res.emplace_back(loop_idx, accel_res.accel->covered);
             ITSProof acceleration_proof;
             acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
@@ -663,38 +644,105 @@ bool Reachability::check_consistency() {
     return true;
 }
 
-bool Reachability::is_duplicate(const int backlink) {
-    const auto length {trace.size() - backlink};
-    if (trace.size() >= 2 * length) {
-        for (size_t i = 0; i < length; ++i) {
-            const auto fst {trace.at(backlink - length + i)};
-            const auto snd {trace.at(backlink + i)};
-            if (fst.clause_idx != snd.clause_idx || fst.implicant != snd.implicant) {
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
-}
-
 std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
+    const auto lang {build_language(backlink)};
+    if (redundancy->is_redundant(lang)) {
+        if (log) std::cout << "loop already covered" << std::endl;
+        return std::make_unique<Covered>();
+    }
+    auto closure {lang};
+    redundancy->transitive_closure(closure);
+    if (log) {
+        std::cout << "learning clause for the following language:" << std::endl;
+        std::cout << closure << std::endl;
+    }
     if (!check_consistency()) {
         return std::make_unique<Restart>();
     }
     const auto [loop, sample_point] {build_loop(backlink)};
+    if (redundancy->is_accelerated(lang)) {
+        if (log) std::cout << "loop must be unrolled" << std::endl;
+        return std::make_unique<Unroll>();
+    }
     luby_loop_count++;
     auto state {learn_clause(loop, sample_point, backlink)};
     if (!state->succeeded()) {
+        if (state->unroll()) {
+            redundancy->mark_as_accelerated(lang);
+            if (state->unroll()->get_max()) {
+                const auto max {*state->unroll()->get_max()};
+                auto redundant {lang};
+                for (unsigned i = 0; i < max; ++i) {
+                    redundancy->concat(redundant, lang);
+                }
+                redundancy->concat(redundant, closure);
+                redundancy->mark_as_redundant(redundant);
+            }
+        } else {
+            redundancy->mark_as_redundant(closure);
+        }
         return state;
     }
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
+    if (log) {
+        std::cout << "prefix: " << learned_clauses.prefix << std::endl;
+        std::cout << "period: " << learned_clauses.period << std::endl;
+    }
+    std::vector<BoolExpr> cs;
+    for (const auto &[_, c]: learned_clauses.res) {
+        cs.emplace_back(c);
+    }
+    const auto covered {BExpression::buildAnd(cs)};
+    Automaton covered_lang;
+    TransIdx block;
+    if (covered->isTriviallyTrue()) {
+        covered_lang = lang;
+        if (backlink < trace.size() - 1) {
+            block = add_learned_clause(loop, backlink);
+            redundancy->mark_as_redundant(lang);
+            redundancy->set_language(block, lang);
+        } else {
+            const auto &last_step {trace.back()};
+            const auto last_rule {chcs.getRule(last_step.clause_idx)};
+            if (last_rule.getGuard()->isConjunction()) {
+                block = last_step.clause_idx;
+            } else {
+                redundancy->mark_as_redundant(lang);
+                block = add_learned_clause(loop, backlink);
+                add_learned_clause(loop.withGuard(loop.getGuard() & (!last_step.implicant)), backlink);
+                covered_lang = redundancy->get_singleton_language({block}, loop.getGuard()->conjunctionToGuard());
+            }
+        }
+    } else {
+        redundancy->mark_as_redundant(lang);
+        block = add_learned_clause(loop.withGuard(loop.getGuard() & covered), backlink);
+        add_learned_clause(loop.withGuard(loop.getGuard() & (!covered)), backlink);
+        covered_lang = redundancy->get_singleton_language({block}, covered->conjunctionToGuard());
+    }
+    redundancy->mark_as_accelerated(covered_lang);
+    auto covered_closure {covered_lang};
+    for (unsigned i = 1; i < learned_clauses.period; ++i) {
+        redundancy->concat(covered_closure, covered_lang);
+    }
+    redundancy->transitive_closure(covered_closure);
+    if (learned_clauses.prefix > 0) {
+        auto prefix_lang {covered_lang};
+        for (unsigned i = 1; i < learned_clauses.prefix; ++i) {
+            redundancy->concat(prefix_lang, covered_lang);
+        }
+        redundancy->concat(prefix_lang, covered_closure);
+        covered_lang = prefix_lang;
+    } else {
+        covered_lang = covered_closure;
+    }
     for (const auto &[idx, _]: learned_clauses.res) {
-        if (store_step(idx, chcs.getRule(idx))) {
-            break;
+        if (!chcs.isSinkTransition(idx)) {
+            redundancy->set_language(idx, covered_lang);
+            chcs.removeEdge(idx, block);
         }
     }
+    redundancy->mark_as_redundant(covered_lang);
     return state;
 }
 
@@ -739,33 +787,20 @@ void Reachability::analyze() {
         if (log) std::cout << "trace: " << trace << std::endl;
         if (!trace.empty()) {
             for (auto backlink = has_looping_suffix(trace.size() - 1);
-                 mode == Default && backlink && luby_loop_count < next_restart;
+                 backlink && luby_loop_count < next_restart;
                  backlink = has_looping_suffix(*backlink - 1)) {
-                if (is_duplicate(*backlink)) {
+                Step step = trace[*backlink];
+                state = handle_loop(*backlink);
+                if (state->restart()) {
+                    break;
+                } else if (state->covered()) {
                     backtrack();
                     proof.headline("Covered");
                     print_state();
-                } else {
-                    const auto old_size {trace.size()};
-                    state = handle_loop(*backlink);
-                    if (state->restart()) {
-                        break;
-                    } else if (state->covered()) {
-                        backtrack();
-                        proof.headline("Covered");
-                        print_state();
-                    } else if (state->succeeded()) {
-                        proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
-                        print_state();
-                        if (try_to_finish()) {
-                            return;
-                        }
-                        if (trace.size() > old_size && is_duplicate(*backlink)) {
-                            backtrack();
-                            proof.headline("Covered");
-                            print_state();
-                        }
-                    }
+                } else if (state->succeeded()) {
+                    backtrack();
+                    proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
+                    print_state();
                 }
             }
         }
@@ -779,12 +814,7 @@ void Reachability::analyze() {
             proof.headline("Restart");
         }
         const auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
-        std::vector<TransIdx> to_try;
-        for (const auto &idx: try_set) {
-            if (is_orig_clause(idx)) {
-                to_try.push_back(idx);
-            }
-        }
+        std::vector<TransIdx> to_try(try_set.begin(), try_set.end());
         std::shuffle(to_try.begin(), to_try.end(), rnd);
         bool all_failed {true};
         for (const auto idx: to_try) {
@@ -793,7 +823,6 @@ void Reachability::analyze() {
             solver.pop();
             if (implicant && store_step(idx, *implicant)) {
                 proof.headline("Step with " + std::to_string(idx));
-                mode = Default;
                 print_state();
                 update_cpx();
                 all_failed = false;
