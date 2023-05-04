@@ -156,6 +156,7 @@ RUN FAUDES_LINKING=static make -j
 ARG ANTLR4_INCLUDE_PATH=/src/antlr4/runtime/Cpp/runtime/src
 ARG SHA
 ARG DIRTY
+ARG BUILD_TYPE
 
 # loat
 RUN mkdir -p /src/LoAT
@@ -168,5 +169,5 @@ RUN cp /src/reduce-algebra/generic/libreduce/x86_64-pc-linux-musl/libreduce.* /s
 RUN cp /src/libfaudes-2_30b/libfaudes.* /src/LoAT/lib
 RUN mkdir -p /src/LoAT/build/static/release
 WORKDIR /src/LoAT/build/static/release
-RUN cmake -DSTATIC=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE='-march=sandybridge -O3 -DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='-march=sandybridge -O3 -DNDEBUG' -DSHA=$SHA -DDIRTY=$DIRTY ../../../
+RUN cmake -DSTATIC=1 -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_FLAGS_RELEASE='-march=sandybridge -O3 -DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='-march=sandybridge -O3 -DNDEBUG' -DSHA=$SHA -DDIRTY=$DIRTY ../../../
 RUN make -j

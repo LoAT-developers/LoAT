@@ -14,13 +14,14 @@ add_link_options(-pthread)
 
 if(${STATIC})
     message(STATUS "Configuring static build")
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     set(BUILD_SHARED_LIBS OFF)
     add_link_options(-ldl -static)
     set(EXECUTABLE loat-static)
 else()
-    message(STATUS "Configuring non-static build")
-    set(EXECUTABLE loat)
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")
+  message(STATUS "Configuring non-static build")
+  set(EXECUTABLE loat)
 endif()
 
 if(${SANITIZE})
@@ -31,13 +32,34 @@ endif()
 
 add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter)
 
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
+
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 message(STATUS "Compiler flags:" ${CMAKE_CXX_COMPILE_FLAGS})
 message(STATUS "Compiler cxx debug flags:" ${CMAKE_CXX_FLAGS_DEBUG})
 message(STATUS "Compiler cxx release flags:" ${CMAKE_CXX_FLAGS_RELEASE})
+message(STATUS "Compiler cxx relwithdebinfo flags:" ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 message(STATUS "Compiler cxx min size flags:" ${CMAKE_CXX_FLAGS_MINSIZEREL})
 message(STATUS "Compiler cxx flags:" ${CMAKE_CXX_FLAGS})
 
+if (DEFINED ENV{ANTLR4_INCLUDE_PATH})
+  # ANTLR4 is available and we know where to find the headers
+  find_library(ANTLR4 antlr4-runtime)
+  set(ANTLR4_INCLUDE_DIRS $ENV{ANTLR4_INCLUDE_PATH})
+else()
+  # ANTLR4 is not available, build it
+  set(ANTLR4_TAG 4.11.1)
+  LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+  if (${STATIC})
+    add_definitions(-DANTLR4CPP_STATIC)
+  endif()
+  include(ExternalAntlr4Cpp)
+  if (${STATIC})
+    set(ANTLR4 antlr4_static)
+  else()
+    set(ANTLR4 antlr4_shared)
+  endif()
+endif()
 
 # generate version.cc
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp" @ONLY)
