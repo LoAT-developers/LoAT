@@ -190,7 +190,11 @@ acceleration::Result LoopAcceleration::run() {
     }
     if (rec && accelerationResult.term) {
         res.n = rec->n;
-        res.accel = {accelerationResult.term->covered, Rule(accelerationResult.term->formula, rec->closed_form), proof};
+        Rule r {accelerationResult.term->formula, rec->closed_form};
+        for (unsigned i = 1; i < res.prefix; ++i) {
+            r = rule.chain(r);
+        }
+        res.accel = {accelerationResult.term->covered, r, proof};
         res.accel->proof.concat(accelerationResult.term->proof);
     }
     return res;

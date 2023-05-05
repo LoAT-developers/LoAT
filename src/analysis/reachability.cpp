@@ -745,6 +745,9 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         drop_until(backlink);
     }
     bool done {!do_drop};
+    if (log) {
+        std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
+    }
     for (const auto &[idx, covered]: learned_clauses.res) {
         redundancy->set_language(idx, learned_lang);
         if (!done && store_step(idx, chcs.getRule(idx))) {

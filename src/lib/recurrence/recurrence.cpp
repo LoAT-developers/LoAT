@@ -34,14 +34,14 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
     const auto &vars {rhs.vars()};
     unsigned prefix {0};
     GiNaC::ex closed_form;
-    if (vars.find(lhs) == vars.end()) {
-        prefix = 1;
-        for (const auto &x: vars) {
-            const auto it {prefixes.find(x)};
-            if (it != prefixes.end() && it->second >= prefix) {
-                prefix = it->second + 1;
-            }
+    for (const auto &x: vars) {
+        const auto it {prefixes.find(x)};
+        if (it != prefixes.end() && it->second > 0) {
+            prefix = std::max(it->second + 1, prefix);
         }
+    }
+    if (vars.find(lhs) == vars.end()) {
+        prefix = std::max(1u, prefix);
         if (inverse) {
             const auto last {rhs.subs(*inverse)};
             result.refined_equations.put(lhs, lhs + rhs - last);
