@@ -41,6 +41,10 @@ Rule Rule::withGuard(const BoolExpr guard) const {
     return Rule(guard, update);
 }
 
+Rule Rule::withUpdate(const Subs &update) const {
+    return Rule(guard, update);
+}
+
 Rule Rule::chain(const Rule &that) const {
     return Rule(guard & that.getGuard()->subs(update), substitution::compose(that.getUpdate(), update));
 }

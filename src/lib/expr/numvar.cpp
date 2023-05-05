@@ -3,9 +3,10 @@
 #include <assert.h>
 
 int NumVar::last_tmp_idx {0};
-int NumVar::last_prog_idx {0};
+int NumVar::last_prog_idx {1};
 
 std::map<int, GiNaC::symbol> NumVar::symbols;
+const NumVar NumVar::loc_var {1};
 
 NumVar::NumVar(const int idx): idx(idx) {
     const auto it {symbols.find(idx)};

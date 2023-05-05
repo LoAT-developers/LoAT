@@ -114,9 +114,8 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
             up.put<BoolTheory>(bvars[i], BExpression::buildTheoryLit(BoolVar::next()));
         }
-        const auto loc_var = its.getLocVar();
-        up.put(loc_var, c.rhs.loc);
-        const BoolExpr guard = c.guard->subs(ren)->simplify() & Rel::buildEq(loc_var, c.lhs.loc);
+        up.put(NumVar::loc_var, c.rhs.loc);
+        const BoolExpr guard = c.guard->subs(ren)->simplify() & Rel::buildEq(NumVar::loc_var, c.lhs.loc);
         its.addRule(Rule(guard, up), c.lhs.loc);
     }
     return its;

@@ -44,7 +44,7 @@ private:
     static Rule renameTmpVars(const Rule &rule);
 
 private:
-    const Rule &rule;
+    Rule rule;
     const Subs sample_point;
     const AccelConfig config;
 };

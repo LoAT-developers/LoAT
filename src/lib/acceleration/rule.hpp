@@ -51,6 +51,8 @@ public:
 
     Rule withGuard(const BoolExpr guard) const;
 
+    Rule withUpdate(const Subs &up) const;
+
     VarSet vars() const;
 
     void collectVars(VarSet &vars) const;

@@ -669,7 +669,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
 
 bool Reachability::check_consistency() {
     // make sure that a model is available
-    bool res;
+    bool res {true};
     solver.setTimeout(5 * smt_timeout);
     switch (solver.check()) {
     case Unsat:
@@ -680,7 +680,6 @@ bool Reachability::check_consistency() {
         res = false;
         break;
     case Sat:
-        res = true;
         break;
     }
     solver.setTimeout(smt_timeout);

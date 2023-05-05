@@ -32,7 +32,11 @@ LoopAcceleration::LoopAcceleration(
         const Rule &rule,
         const Subs &sample_point,
         const AccelConfig &config)
-    : rule(rule), sample_point(sample_point), config(config) {}
+    : rule(rule), sample_point(sample_point), config(config) {
+    auto up {rule.getUpdate()};
+    up.put<IntTheory>(NumVar::loc_var, Expr(NumVar::loc_var));
+    this->rule = rule.withUpdate(up);
+}
 
 const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     Rule res = rule;
@@ -191,7 +195,7 @@ acceleration::Result LoopAcceleration::run() {
     if (rec && accelerationResult.term) {
         res.n = rec->n;
         Rule r {accelerationResult.term->formula, rec->closed_form};
-        for (unsigned i = 1; i < res.prefix; ++i) {
+        for (unsigned i = 0; i < res.prefix; ++i) {
             r = rule.chain(r);
         }
         res.accel = {accelerationResult.term->covered, r, proof};

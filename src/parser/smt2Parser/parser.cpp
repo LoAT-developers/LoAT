@@ -73,7 +73,6 @@ namespace sexpressionparser {
                     for (const std::string &str: postVars) {
                         tmpVars.insert(vars.at(str));
                     }
-                    const auto loc_var = res.getLocVar();
                     const auto cost_var = res.getCostVar();
                     for (auto &ruleExp: ruleExps.arguments()) {
                         if (ruleExp[0].str() == "cfg_trans2") {
@@ -82,12 +81,12 @@ namespace sexpressionparser {
                             Subs update;
                             Conjunction<IntTheory> guard;
                             parseCond(ruleExp[5], guard);
-                            guard.push_back(Rel::buildEq(loc_var, from));
+                            guard.push_back(Rel::buildEq(NumVar::loc_var, from));
                             BoolExpr cond = boolExpression::transform(BoolExpression<IntTheory>::buildAndFromLits(guard));
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.put<IntTheory>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            update.put<IntTheory>(loc_var, to);
+                            update.put<IntTheory>(NumVar::loc_var, to);
                             if (Config::Analysis::complexity()) {
                                 update.put(cost_var, Expr(cost_var) + 1);
                             }

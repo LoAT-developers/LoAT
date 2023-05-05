@@ -83,8 +83,6 @@ public:
 
     NumVar getCostVar() const;
 
-    NumVar getLocVar() const;
-
     std::optional<LocationIdx> getRhsLoc(const Rule &rule) const;
 
     LocationIdx getLhsLoc(const TransIdx idx) const;
@@ -123,6 +121,5 @@ protected:
     LocationIdx initialLocation;
     LocationIdx sink {addNamedLocation("LoAT_sink")};
     NumVar cost {NumVar::nextProgVar()};
-    NumVar loc {NumVar::nextProgVar()};
 
 };

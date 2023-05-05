@@ -16,6 +16,8 @@ class NumVar {
 
 public:
 
+    static const NumVar loc_var;
+
     explicit NumVar(const int idx);
 
     int getIdx() const;

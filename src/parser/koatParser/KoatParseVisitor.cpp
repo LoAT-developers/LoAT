@@ -65,7 +65,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }
-    cond = cond & Rel::buildEq(its.getLocVar(), lhsLoc);
+    cond = cond & Rel::buildEq(NumVar::loc_var, lhsLoc);
     auto up = rhss.at(0);
     if (Config::Analysis::complexity()) {
         up.put<IntTheory>(its.getCostVar(), its.getCostVar() + cost);
@@ -126,7 +126,7 @@ antlrcpp::Any KoatParseVisitor::visitRhs(KoatParser::RhsContext *ctx) {
         }
     }
     LocationIdx loc = any_cast<fs_type>(visit(ctx->fs()));
-    up.put<IntTheory>(its.getLocVar(), loc);
+    up.put<IntTheory>(NumVar::loc_var, loc);
     return up;
 }
 

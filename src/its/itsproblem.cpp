@@ -104,7 +104,7 @@ TransIdx ITSProblem::addLearnedRule(const Rule &rule, const TransIdx same_preds,
 TransIdx ITSProblem::addQuery(const BoolExpr &guard, const TransIdx same_preds) {
     const auto start = getLhsLoc(same_preds);
     const auto preds = graph.getPredecessors(same_preds);
-    return addRule(Rule(guard, Subs::build<IntTheory>(loc, sink)), start, sink, preds, {});
+    return addRule(Rule(guard, Subs::build<IntTheory>(NumVar::loc_var, sink)), start, sink, preds, {});
 }
 
 TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
@@ -213,13 +213,9 @@ NumVar ITSProblem::getCostVar() const {
     return cost;
 }
 
-NumVar ITSProblem::getLocVar() const {
-    return loc;
-}
-
 std::optional<LocationIdx> ITSProblem::getRhsLoc(const Rule &rule) const {
     const auto up = rule.getUpdate().get<IntTheory>();
-    const auto it = up.find(loc);
+    const auto it = up.find(NumVar::loc_var);
     if (it == up.end()) {
         return {};
     } else {
