@@ -16,7 +16,6 @@
  */
 
 #include "rule.hpp"
-#include "substitution.hpp"
 
 using namespace std;
 
@@ -24,7 +23,7 @@ Rule::Rule(const BoolExpr guard, const Subs &update): guard(guard), update(updat
 
 void Rule::collectVars(VarSet &vars) const {
     guard->collectVars(vars);
-    substitution::collectVars(update, vars);
+    expr::collectVars(update, vars);
 }
 
 VarSet Rule::vars() const {
@@ -34,7 +33,7 @@ VarSet Rule::vars() const {
 }
 
 Rule Rule::subs(const Subs &subs) const {
-    return Rule(guard->subs(subs), substitution::concat(update, subs));
+    return Rule(guard->subs(subs), expr::concat(update, subs));
 }
 
 Rule Rule::withGuard(const BoolExpr guard) const {
@@ -46,7 +45,7 @@ Rule Rule::withUpdate(const Subs &update) const {
 }
 
 Rule Rule::chain(const Rule &that) const {
-    return Rule(guard & that.getGuard()->subs(update), substitution::compose(that.getUpdate(), update));
+    return Rule(guard & that.getGuard()->subs(update), expr::compose(that.getUpdate(), update));
 }
 
 const BoolExpr Rule::getGuard() const {

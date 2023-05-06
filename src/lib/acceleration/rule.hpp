@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "theory.hpp"
-#include "substitution.hpp"
+#include "expr.hpp"
 
 /**
  * A general rule, consisting of a left-hand side with location, guard and cost
@@ -61,7 +61,7 @@ public:
 
     template <ITheory T>
     int nextTmpVarIdx() const {
-        return std::min(guard->nextTmpVarIdx<T>(), substitution::nextTmpVarIdx<T>(update));
+        return std::min(guard->nextTmpVarIdx<T>(), expr::nextTmpVarIdx<T>(update));
     }
 
 };

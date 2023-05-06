@@ -16,7 +16,7 @@
  */
 
 #include "yicescontext.hpp"
-#include "variable.hpp"
+#include "expr.hpp"
 
 #include <assert.h>
 
@@ -39,7 +39,7 @@ term_t YicesContext::buildVar(const Var &var) {
                        }
                    }, var)};
     term_t res = yices_new_uninterpreted_term(t);
-    yices_set_term_name(res, variable::getName(var).c_str());
+    yices_set_term_name(res, expr::getName(var).c_str());
     return res;
 }
 

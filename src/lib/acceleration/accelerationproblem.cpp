@@ -1,8 +1,7 @@
 #include "accelerationproblem.hpp"
 #include "recurrence.hpp"
 #include "smtfactory.hpp"
-#include "expression.hpp"
-#include "literal.hpp"
+#include "expr.hpp"
 #include "boolexpr.hpp"
 #include "map.hpp"
 
@@ -70,7 +69,7 @@ bool AccelerationProblem::depsWellFounded(const Lit& lit, std::map<Lit, const Ac
 }
 
 bool AccelerationProblem::trivial(const Lit &lit) {
-    if (literal::subs(lit, update)->isTriviallyTrue()) {
+    if (expr::subs(lit, update)->isTriviallyTrue()) {
         auto idx {store(lit, {}, BExpression::buildTheoryLit(lit), BExpression::True, true)};
         proof.newline();
         proof.append(std::stringstream() << lit << " [" << idx << "]: trivial");
@@ -80,7 +79,7 @@ bool AccelerationProblem::trivial(const Lit &lit) {
 }
 
 bool AccelerationProblem::unchanged(const Lit &lit) {
-    if (BExpression::buildTheoryLit(lit) == literal::subs(lit, update)) {
+    if (BExpression::buildTheoryLit(lit) == expr::subs(lit, update)) {
         auto idx {store(lit, {}, BExpression::buildTheoryLit(lit), BExpression::True, true)};
         proof.newline();
         proof.append(std::stringstream() << lit << " [" << idx << "]: unchanged");
@@ -201,11 +200,11 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     if (depsWellFounded(lit, false)) {
         return false;
     }
-    const auto newGuard = literal::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(closed->n, *closed->n-1));
+    const auto newGuard = expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(closed->n, *closed->n-1));
     if (!config.allowDisjunctions && !newGuard->isConjunction()) {
         return false;
     }
-    const auto updated = literal::subs(lit, update);
+    const auto updated = expr::subs(lit, update);
     auto premise {todo};
     premise.erase(lit);
     if (updated->getTheoryLit()) {
@@ -218,7 +217,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         deps.insert(lit);
     }
     assumptions.insert(updated);
-    assumptions.insert(BExpression::buildTheoryLit(literal::negate(lit)));
+    assumptions.insert(BExpression::buildTheoryLit(expr::negate(lit)));
     const auto &unsatCore = SmtFactory::unsatCore(assumptions);
     if (unsatCore.empty()) {
         return false;
@@ -246,7 +245,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
 }
 
 bool AccelerationProblem::recurrence(const Lit &lit) {
-    const auto updated = literal::subs(lit, update);
+    const auto updated = expr::subs(lit, update);
     auto premise {todo};
     premise.erase(lit);
     if (updated->getTheoryLit()) {
@@ -409,7 +408,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
                        }
                    }, lit)
     };
-    const auto eq {literal::mkEq(ex, expression::subs(ex, update))};
+    const auto eq {expr::mkEq(ex, expr::subs(ex, update))};
     if (!eq->subs(samplePoint)->isTriviallyTrue()) {
         return false;
     }

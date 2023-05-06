@@ -19,9 +19,8 @@
 #include "smtfactory.hpp"
 #include "recurrence.hpp"
 #include "accelerationfactory.hpp"
-#include "substitution.hpp"
 #include "chain.hpp"
-#include "variable.hpp"
+#include "expr.hpp"
 
 #include <purrs.hh>
 #include <numeric>
@@ -74,9 +73,9 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     const auto up = res.getUpdate();
     for (const auto &p: up) {
         if (p.index() == 1) continue;
-        const auto var = substitution::first(p);
-        const auto expr = substitution::second(p);
-        auto vars = expression::variables(expr);
+        const auto var = expr::first(p);
+        const auto ex = expr::second(p);
+        auto vars = expr::vars(ex);
         unsigned oldSize = 0;
         unsigned count = 1;
         while (oldSize != vars.size() && vars.find(var) == vars.end()) {
@@ -86,7 +85,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
             for (const auto& var: vars) {
                 auto it = up.find(var);
                 if (it != up.end()) {
-                    toInsert.insertAll(expression::variables(substitution::second(*it)));
+                    toInsert.insertAll(expr::vars(expr::second(*it)));
                 }
             }
             vars.insertAll(toInsert);
@@ -110,7 +109,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
             std::set<NumVar> varsOneStep(p.second.vars());
             std::set<NumVar> varsTwoSteps;
             for (const auto &var: varsOneStep) {
-                if (variable::isTempVar(var)) {
+                if (expr::isTempVar(var)) {
                     continue;
                 }
                 auto it = up.find(var);
@@ -122,7 +121,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
                 }
             }
             for (const auto &var: varsOneStep) {
-                if (variable::isTempVar(var)) {
+                if (expr::isTempVar(var)) {
                     continue;
                 }
                 if (varsTwoSteps.find(var) == varsTwoSteps.end()) {
@@ -145,7 +144,7 @@ acceleration::Result LoopAcceleration::run() {
         }
         // for non-deterministic loops, we can only offer under-approximations
         for (const auto &x: rule.vars()) {
-            if (variable::isTempVar(x)) {
+            if (expr::isTempVar(x)) {
                 res.status = acceleration::Nondet;
                 return res;
             }

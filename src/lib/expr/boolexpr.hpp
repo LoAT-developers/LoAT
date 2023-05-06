@@ -5,7 +5,7 @@
 #include "conjunction.hpp"
 #include "rel.hpp"
 #include "boollit.hpp"
-#include "literaltemplates.hpp"
+#include "literal.hpp"
 
 #include <type_traits>
 #include <memory>
@@ -156,7 +156,7 @@ public:
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
-            return literal_t::isTriviallyTrue<Th...>(*getTheoryLit());
+            return literal::isTriviallyTrue<Th...>(*getTheoryLit());
         } else {
             const auto children = getChildren();
             if (isAnd()) {
@@ -399,7 +399,7 @@ public:
 
     void collectVars(VS &vars) const {
         iter([&vars](const auto &lit) {
-            literal_t::collectVars<Th...>(lit, vars);
+            literal::collectVars<Th...>(lit, vars);
         });
     }
 
@@ -648,7 +648,7 @@ class BoolTheoryLit: public BoolExpression<Th...> {
 
 public:
 
-    BoolTheoryLit(const Lit &lit) : lit(literal_t::normalize<Th...>(lit)) {}
+    BoolTheoryLit(const Lit &lit) : lit(literal::normalize<Th...>(lit)) {}
 
     bool isAnd() const override {
         return false;
@@ -671,7 +671,7 @@ public:
     }
 
     const BE negation() const override {
-        return BoolExpression<Th...>::buildTheoryLit(literal_t::negate<Th...>(lit));
+        return BoolExpression<Th...>::buildTheoryLit(literal::negate<Th...>(lit));
     }
 
     bool forall(const std::function<bool(const Lit&)> &pred) const override {

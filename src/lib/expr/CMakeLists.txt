@@ -12,7 +12,7 @@ add_library(${PROJECT_NAME} STATIC
   boolvar.cpp
   boollit.hpp
   boollit.cpp
-  literaltemplates.hpp
+  literal.hpp
   numvar.hpp
   numvar.cpp
   numexpression.cpp
@@ -28,16 +28,8 @@ add_library(${PROJECT_NAME} STATIC
   boolsubs.hpp
   theory.hpp
   theory.cpp
-  literal.cpp
-  literal.hpp
-  expression.hpp
-  expression.cpp
-  substitution.hpp
-  substitution.cpp
-  variable.hpp
-  variable.cpp
-#  variablemanager.hpp
-#  variablemanager.cpp
+  expr.hpp
+  expr.cpp
 )
 
 find_library(GINAC ginac)

@@ -16,7 +16,7 @@
  */
 
 #include "z3context.hpp"
-#include "variable.hpp"
+#include "expr.hpp"
 
 using namespace std;
 
@@ -25,7 +25,7 @@ Z3Context::Z3Context(z3::context& ctx): ctx(ctx) { }
 Z3Context::~Z3Context() { }
 
 z3::expr Z3Context::buildVar(const Var &var) {
-    const auto name {variable::getName(var)};
+    const auto name {expr::getName(var)};
     return std::visit(Overload{
                           [&](const NumVar&) {
                               return ctx.int_const(name.c_str());

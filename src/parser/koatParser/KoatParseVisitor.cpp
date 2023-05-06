@@ -1,6 +1,5 @@
 #include "KoatParseVisitor.h"
-#include "boolexpression.hpp"
-#include "variable.hpp"
+#include "expr.hpp"
 #include "config.hpp"
 
 using fs_type = LocationIdx;
@@ -100,7 +99,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
         }
         for (unsigned i = 0; i < sz; ++i) {
             if (programVars[i].getName() != vars.at(ctx->var(i)->getText()).getName()) {
-                throw std::invalid_argument("invalid arguments: expected " + variable::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
+                throw std::invalid_argument("invalid arguments: expected " + expr::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
             }
         }
     }

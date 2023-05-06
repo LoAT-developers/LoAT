@@ -3,7 +3,7 @@
 #include "itheory.hpp"
 #include "rel.hpp"
 #include "thset.hpp"
-#include "literaltemplates.hpp"
+#include "literal.hpp"
 
 #include <variant>
 #include <vector>
@@ -39,7 +39,7 @@ public:
 
     void collectVars(theory::VarSet<Th...> &vars) const {
         for (const auto &lit: *this) {
-            literal_t::collectVars<Th...>(lit, vars);
+            literal::collectVars<Th...>(lit, vars);
         }
     }
 

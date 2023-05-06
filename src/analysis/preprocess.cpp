@@ -16,9 +16,9 @@
  */
 
 #include "preprocess.hpp"
-#include "substitution.hpp"
+#include "expr.hpp"
 #include "guardtoolbox.hpp"
-#include "variable.hpp"
+#include "expr.hpp"
 
 using namespace std;
 
@@ -57,8 +57,8 @@ Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule) {
 bool Preprocess::removeTrivialUpdates(Subs &update) {
     stack<Var> remove;
     for (const auto &it : update) {
-        const auto first = substitution::first(it);
-        const auto second = substitution::second(it);
+        const auto first = expr::first(it);
+        const auto second = expr::second(it);
         if (TheTheory::varToExpr(first) == second) {
             remove.push(first);
         }
@@ -79,7 +79,7 @@ bool Preprocess::removeTrivialUpdates(Subs &update) {
 static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     VarSet varsInUpdate;
     for (const auto &it : rule.getUpdate()) {
-        expression::collectVars(substitution::second(it), varsInUpdate);
+        expr::collectVars(expr::second(it), varsInUpdate);
     }
     return varsInUpdate;
 }
@@ -90,7 +90,7 @@ Result<Rule> Preprocess::eliminateTempVars(const Rule &rule) {
 
     //declare helper lambdas to filter variables, to be passed as arguments
     auto isTemp = [&](const Var &sym) {
-        return variable::isTempVar(sym);
+        return expr::isTempVar(sym);
     };
     auto isTempInUpdate = [&](const Var &sym) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(*res);

@@ -99,8 +99,8 @@ public:
         Logic res = QF_LA;
         for (const RELS &rels: g) {
             for (const auto &lit: rels) {
-                if (!literal_t::isLinear<Th...>(lit)) {
-                    if (!literal_t::isPoly<Th...>(lit)) {
+                if (!literal::isLinear<Th...>(lit)) {
+                    if (!literal::isPoly<Th...>(lit)) {
                         return QF_NAT;
                     }
                     res = QF_NA;

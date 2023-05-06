@@ -1,5 +1,5 @@
 #include "dependencyorder.hpp"
-#include "substitution.hpp"
+#include "expr.hpp"
 
 namespace DependencyOrder {
 
@@ -21,13 +21,13 @@ static void findOrderUntilConflicting(const Subs &update, PartialResult &res) {
         changed = false;
 
         for (const auto &up : update) {
-            const auto var = substitution::first(up);
-            const auto expr = substitution::second(up);
+            const auto var = expr::first(up);
+            const auto ex = expr::second(up);
             if (res.ordered.find(var) != res.ordered.end()) continue;
 
             //check if all variables on update rhs are already processed
             bool ready = true;
-            for (const auto &x : expression::variables(expr)) {
+            for (const auto &x : expr::vars(ex)) {
                 if (x != var && update.contains(x) && res.ordered.find(x) == res.ordered.end()) {
                     ready = false;
                     break;

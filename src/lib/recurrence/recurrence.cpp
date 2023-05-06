@@ -18,7 +18,7 @@
 #include "recurrence.hpp"
 #include "dependencyorder.hpp"
 #include "inttheory.hpp"
-#include "substitution.hpp"
+#include "expr.hpp"
 
 #include <purrs.hh>
 
@@ -125,7 +125,7 @@ bool Recurrence::solve() {
         }
     }
     const auto subs {Subs::build<IntTheory>(NumVar(0), result.n)};
-    result.closed_form = substitution::concat(result.closed_form, subs);
+    result.closed_form = expr::concat(result.closed_form, subs);
     return true;
 }
 
