@@ -1,7 +1,5 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-        chainstrategy.cpp
-        chainstrategy.hpp
         guardtoolbox.hpp
         guardtoolbox.cpp
         preprocess.cpp

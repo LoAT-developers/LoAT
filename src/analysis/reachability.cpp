@@ -1,9 +1,7 @@
 #include "reachability.hpp"
-#include "chainstrategy.hpp"
 #include "preprocess.hpp"
 #include "loopacceleration.hpp"
 #include "result.hpp"
-#include "yices.hpp"
 #include "smt.hpp"
 #include "export.hpp"
 #include "vector.hpp"
@@ -121,54 +119,6 @@ std::ostream& operator<<(std::ostream &s, const Step &step) {
     return s << step.clause_idx << "[" << step.implicant << "]";
 }
 
-ResultViaSideEffects Reachability::remove_irrelevant_clauses(bool forward) {
-    std::set<TransIdx> keep;
-    std::stack<TransIdx> todo;
-    for (const auto x: forward ? chcs.getInitialTransitions() : chcs.getSinkTransitions()) {
-        todo.push(x);
-    }
-    do {
-        const TransIdx current = todo.top();
-        todo.pop();
-        keep.insert(current);
-        for (const auto p: forward ? chcs.getSuccessors(current) : chcs.getPredecessors(current)) {
-            if (keep.find(p) == keep.end()) {
-                todo.push(p);
-            }
-        }
-    } while (!todo.empty());
-    std::vector<LocationIdx> to_delete;
-    for (const auto idx: chcs.getAllTransitions()) {
-        if (keep.find(idx) == keep.end()) {
-            to_delete.push_back(idx);
-        }
-    }
-    std::set<TransIdx> deleted;
-    for (const auto idx: to_delete) {
-        chcs.removeRule(idx);
-        deleted.insert(idx);
-    }
-    ResultViaSideEffects ret;
-    if (!deleted.empty()) {
-        ret.succeed();
-        ret.deletionProof(deleted);
-    }
-    return ret;
-}
-
-ResultViaSideEffects Reachability::simplify() {
-    ResultViaSideEffects ret;
-    for (const TransIdx idx: chcs.getAllTransitions()) {
-        const auto res = Preprocess::preprocessRule(chcs.getRule(idx));
-        if (res) {
-            ret.succeed();
-            chcs.replaceRule(idx, *res);
-            ret.concat(res.getProof());
-        }
-    }
-    return ret;
-}
-
 ResultViaSideEffects Reachability::unroll() {
     ResultViaSideEffects ret;
     for (const TransIdx idx: chcs.getAllTransitions()) {
@@ -176,7 +126,7 @@ ResultViaSideEffects Reachability::unroll() {
         if (chcs.isSimpleLoop(idx)) {
             const auto [res, period] = LoopAcceleration::chain(r);
             if (period > 1) {
-                const auto simplified = Preprocess::simplifyRule(res);
+                const auto simplified = Preprocess::preprocessRule(res);
                 ret.succeed();
                 ret.ruleTransformationProof(r, "Unrolling", res);
                 if (simplified) {
@@ -306,7 +256,7 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
     if (!trace.empty()) {
         resolvent = Chaining::chain(trace.back().resolvent, resolvent).first;
     }
-    return *Preprocess::simplifyRule(resolvent);
+    return *Preprocess::preprocessRule(resolvent);
 }
 
 bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
@@ -394,25 +344,8 @@ void Reachability::print_state() {
 }
 
 void Reachability::preprocess() {
-    ResultViaSideEffects res;
-    if (Config::Analysis::reachability()) {
-        res = remove_irrelevant_clauses(true);
-        if (res) {
-            proof.majorProofStep("Removed Irrelevant Transitions (forward)", res.getProof(), chcs);
-        }
-        res = remove_irrelevant_clauses(false);
-        if (res) {
-            proof.majorProofStep("Removed Irrelevant Transitions (backward)", res.getProof(), chcs);
-        }
-    }
-    res = Chaining::chainLinearPaths(chcs);
-    if (res) {
-        proof.majorProofStep("Chained Linear Paths", res.getProof(), chcs);
-    }
-    res = simplify();
-    if (res) {
-        proof.majorProofStep("Simplified Transitions", res.getProof(), chcs);
-    }
+    ResultViaSideEffects res {Preprocess::preprocess(chcs)};
+    proof.concat(res.getProof());
     res = unroll();
     if (res) {
         proof.majorProofStep("Unrolled Loops", res.getProof(), chcs);
@@ -591,7 +524,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
 }
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink) {
-    Result<Rule> simp = Preprocess::simplifyRule(rule);
+    Result<Rule> simp = Preprocess::preprocessRule(rule);
     if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
@@ -631,7 +564,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (accel_res.accel) {
         // acceleration succeeded, simplify the result
-        auto simplified = Preprocess::simplifyRule(accel_res.accel->rule);
+        auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
         if (simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
@@ -885,9 +818,7 @@ void Reachability::analyze() {
 }
 
 void Reachability::analyze(ITSProblem &its) {
-    yices::init();
     Reachability(its).analyze();
-    yices::exit();
 }
 
 }

@@ -25,6 +25,9 @@
 #include "proof.hpp"
 #include "version.hpp"
 #include "reachability.hpp"
+#include "bmc.hpp"
+#include "abmc.hpp"
+#include "yices.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -85,6 +88,18 @@ void parseFlags(int argc, char *argv[]) {
             if (!found) {
                 cerr << "Unknown mode " << str << ", defaulting to " << Config::Analysis::modeName(Config::Analysis::mode) << endl;
             }
+        } else if (strcmp("--engine", argv[arg]) == 0) {
+            std::string str = getNext();
+            if (boost::iequals("adcl", str)) {
+                Config::Analysis::engine = Config::Analysis::ADCL;
+            } else if (boost::iequals("abmc", str)) {
+                Config::Analysis::engine = Config::Analysis::ABMC;
+            } else if (boost::iequals("bmc", str)) {
+                Config::Analysis::engine = Config::Analysis::BMC;
+            } else {
+                cout << "Error: unknown engine " << str << std::endl;
+                exit(1);
+            }
         } else if (strcmp("--format", argv[arg]) == 0) {
             std::string str = getNext();
             if (boost::iequals("koat", str)) {
@@ -143,27 +158,19 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    // Start the analysis of the parsed ITS problem.
-    // Skip ITS problems with nonlinear (i.e., recursive) rules.
-    switch (Config::Analysis::mode) {
-    case Config::Analysis::Complexity:
-    case Config::Analysis::NonTermination:
-    case Config::Analysis::Reachability:
+    yices::init();
+    switch (Config::Analysis::engine) {
+    case Config::Analysis::ADCL:
         reachability::Reachability::analyze(its);
         break;
-    case Config::Analysis::CheckLinear:
-        for (const auto &idx: its.getAllTransitions()) {
-            const auto rule = its.getRule(idx);
-            if (!rule.getGuard()->isLinear() || !rule.getUpdate().isLinear()) {
-                std::cout << "NO" << std::endl;
-                return 0;
-            }
-        }
-        std::cout << "YES" << std::endl;
-        return 0;
-    default:
-        throw std::invalid_argument("unsupported mode");
+    case Config::Analysis::BMC:
+        BMC::analyze(its);
+        break;
+    case Config::Analysis::ABMC:
+        ABMC::analyze(its);
+        break;
     }
+    yices::exit();
 
     cout << "Build SHA: " << Version::GIT_SHA << (Version::GIT_DIRTY == "1" ? " (dirty)" : "") << endl;
 

@@ -192,17 +192,6 @@ class Reachability {
     Result<Rule> instantiate(const NumVar &n, const Rule &rule) const;
 
     /**
-     * removes clauses that are not on a CFG-path from a fact to a query
-     */
-    ResultViaSideEffects remove_irrelevant_clauses(bool forward);
-
-    /**
-     * applies some very basic simplifications
-     * TODO Should be sound for sat, but we should check it to be sure.
-     */
-    ResultViaSideEffects simplify();
-
-    /**
      * resolves recursive clauses with themselves in cases where
      * the resulting clause might be easier to accelerate
      * TODO Not sound for sat.

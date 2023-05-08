@@ -19,41 +19,18 @@
 
 #include "rule.hpp"
 #include "result.hpp"
-
+#include "itsproblem.hpp"
 
 /**
  * Methods useful for preprocessing / simplifying the transitions
  */
 namespace Preprocess
 {
-    /**
-     * Main preprocessing function which combines the methods below in a suitable way.
-     * Calls simplifyGuardBySmt, so this method involves many smt queries!
-     *
-     * @param rule The rule to be simplified, is modified.
-     * @returns true iff rule was modified
-     */
+
+    ResultViaSideEffects preprocessRules(ITSProblem &its);
+
     Result<Rule> preprocessRule(const Rule &rule);
 
-    /**
-     * A simpler/cheaper version of preprocessRule without any smt queries.
-     */
-    Result<Rule> simplifyRule(const Rule &rule);
+    ResultViaSideEffects preprocess(ITSProblem &its);
 
-    /**
-     * Removes trivial updates of the form x <- x.
-     * @return true iff update was modified
-     */
-    Result<Rule> removeTrivialUpdates(const Rule &rule);
-
-    bool removeTrivialUpdates(Subs &subs);
-
-    /**
-     * Tries to remove as many temporary variables from update right-hand sides
-     * and the guard as possible. Temporary variables are eliminated by equality propagation
-     * (e.g. for free == 2*x) and transitive elimination (e.g. a <= free <= b becomes a <= b).
-     * @param rule the rule, modified
-     * @return true iff rule was modified
-     */
-    Result<Rule> eliminateTempVars(const Rule &rule);
 }
