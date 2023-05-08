@@ -480,10 +480,12 @@ void Reachability::luby_next() {
 void Reachability::unsat() {
     const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
     std::cout << res << std::endl << std::endl;
-    std::cout << "length of accelerated refutation: " << trace.size() - 1 << std::endl << std::endl;
-    const auto cost_var {Expr(chcs.getCostVar()).subs(trace.at(trace.size() - 2).var_renaming.get<IntTheory>())};
-    const auto cost {cost_var.subs(solver.model(expression::variables(cost_var)).toSubs().get<IntTheory>())};
-    std::cout << "length of original refutation: " << cost << std::endl << std::endl;
+    if (Config::Analysis::compute_length_of_refutation) {
+        std::cout << "length of accelerated refutation: " << trace.size() - 1 << std::endl << std::endl;
+        const auto cost_var {Expr(chcs.getCostVar()).subs(trace.at(trace.size() - 2).var_renaming.get<IntTheory>())};
+        const auto cost {cost_var.subs(solver.model(expression::variables(cost_var)).toSubs().get<IntTheory>())};
+        std::cout << "length of original refutation: " << cost << std::endl << std::endl;
+    }
     if (!log && Proof::disabled()) {
         return;
     }

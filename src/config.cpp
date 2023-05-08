@@ -64,6 +64,8 @@ namespace Config {
 
     namespace Analysis {
 
+        bool compute_length_of_refutation = false;
+
         std::vector<Mode> modes { Complexity, NonTermination, Reachability, Satisfiability, CheckLinear };
 
         Mode mode = Complexity;
