@@ -635,7 +635,9 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         std::cout << std::endl;
     }
     AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
-    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, *simp, config);
+    auto up {simp->getUpdate()};
+    up.put(chcs.getLocVar(), chcs.getLocVar());
+    acceleration::Result accel_res = LoopAcceleration::accelerate(chcs, simp->withUpdate(up), config);
     Result<std::vector<TransIdx>> res;
     const auto fst = trace.at(backlink).clause_idx;
     if (accel_res.nontermCertificate != BExpression::False) {

@@ -182,10 +182,12 @@ acceleration::Result LoopAcceleration::run() {
         res.nontermProof.concat(accelerationResult.nonterm->proof);
     }
     if (rec && accelerationResult.term) {
+        Rule r {accelerationResult.term->formula, rec->update};
+        for (unsigned i = 0; i < rec->validityBound; ++i) {
+            r = rule.chain(r);
+        }
         res.n = rec->n;
-        res.rule = Rule(
-                    accelerationResult.term->formula,
-                    rec->update);
+        res.rule = r;
         res.accelerationProof = proof;
         res.accelerationProof.concat(accelerationResult.term->proof);
     }
