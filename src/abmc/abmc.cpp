@@ -67,10 +67,9 @@ std::tuple<Rule, Subs, ABMC::Key> ABMC::build_loop(const int backlink) {
         } else {
             loop = rule;
         }
-        var_renaming = expr::compose(subs[i].project(rule.vars()), var_renaming);
+        var_renaming = expr::compose(subs[i].project(vars), var_renaming);
     }
     auto vars {loop->vars()};
-    var_renaming = var_renaming.project(vars);
     expr::collectCoDomainVars(var_renaming, vars);
     const auto model {expr::compose(var_renaming, solver->model(vars).toSubs())};
     const auto imp {loop->getGuard()->implicant(model)};
@@ -232,6 +231,7 @@ void ABMC::analyze() {
             }
             solver->add(sc | step->subs(s));
         }
+        subs.push_back(s);
         switch (solver->check()) {
         case SmtResult::Unsat:
             if (!approx) {
@@ -259,7 +259,6 @@ void ABMC::analyze() {
             shortcut = True;
             trace.clear();
         }
-        subs.push_back(s);
     }
 
 }
