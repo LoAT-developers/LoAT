@@ -192,20 +192,6 @@ class Reachability {
     Result<Rule> instantiate(const NumVar &n, const Rule &rule) const;
 
     /**
-     * resolves recursive clauses with themselves in cases where
-     * the resulting clause might be easier to accelerate
-     * TODO Not sound for sat.
-     */
-    ResultViaSideEffects unroll();
-
-    ResultViaSideEffects refine_dependency_graph();
-
-    /**
-     * preprocesses the CHC problem
-     */
-    void preprocess();
-
-    /**
      * initializes all data structures after preprocessing
      */
     void init();

@@ -2,8 +2,10 @@ target_sources(${EXECUTABLE}
     PRIVATE
         guardtoolbox.hpp
         guardtoolbox.cpp
-        preprocess.cpp
-        preprocess.hpp
+        preprocessing.cpp
+        preprocessing.hpp
+        rulepreprocessing.cpp
+        rulepreprocessing.hpp
         reachability.hpp
         reachability.cpp
 )

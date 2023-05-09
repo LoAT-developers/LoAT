@@ -1,5 +1,6 @@
 #include "reachability.hpp"
-#include "preprocess.hpp"
+#include "preprocessing.hpp"
+#include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
 #include "result.hpp"
 #include "smt.hpp"
@@ -117,36 +118,6 @@ Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renam
 
 std::ostream& operator<<(std::ostream &s, const Step &step) {
     return s << step.clause_idx << "[" << step.implicant << "]";
-}
-
-ResultViaSideEffects Reachability::unroll() {
-    ResultViaSideEffects ret;
-    for (const TransIdx idx: chcs.getAllTransitions()) {
-        const Rule &r = chcs.getRule(idx);
-        if (chcs.isSimpleLoop(idx)) {
-            const auto [res, period] = LoopAcceleration::chain(r);
-            if (period > 1) {
-                const auto simplified = Preprocess::preprocessRule(res);
-                ret.succeed();
-                ret.ruleTransformationProof(r, "Unrolling", res);
-                if (simplified) {
-                    ret.concat(simplified.getProof());
-                }
-                chcs.addRule(*simplified, idx, idx);
-            }
-        }
-    }
-    return ret;
-}
-
-ResultViaSideEffects Reachability::refine_dependency_graph() {
-    ResultViaSideEffects res;
-    const auto removed {chcs.refineDependencyGraph()};
-    if (!removed.empty()) {
-        res.succeed();
-        res.dependencyGraphRefinementProof(removed);
-    }
-    return res;
 }
 
 std::optional<unsigned> Reachability::has_looping_suffix(int start) {
@@ -341,25 +312,6 @@ void Reachability::print_state() {
     }
     state_p.append(s);
     proof.storeSubProof(state_p);
-}
-
-void Reachability::preprocess() {
-    ResultViaSideEffects res {Preprocess::preprocess(chcs)};
-    proof.concat(res.getProof());
-    res = unroll();
-    if (res) {
-        proof.majorProofStep("Unrolled Loops", res.getProof(), chcs);
-    }
-    if (chcs.size() <= 1000) {
-        res = refine_dependency_graph();
-        if (res) {
-            proof.majorProofStep("Refined Dependency Graph", res.getProof(), chcs);
-        }
-    }
-    if (log) {
-        std::cout << "Simplified ITS" << std::endl;
-        ITSExport::printForProof(chcs, std::cout);
-    }
 }
 
 void Reachability::init() {
@@ -724,7 +676,14 @@ void Reachability::analyze() {
         std::cout << "Initial ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
     }
-    preprocess();
+    const auto res {Preprocess::preprocess(chcs)};
+    if (res) {
+        proof.concat(res.getProof());
+        if (log) {
+            std::cout << "Simplified ITS" << std::endl;
+            ITSExport::printForProof(chcs, std::cout);
+        }
+    }
     init();
     if (try_to_finish()) {
         return;

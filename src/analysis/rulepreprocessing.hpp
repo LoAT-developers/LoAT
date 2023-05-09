@@ -19,18 +19,9 @@
 
 #include "rule.hpp"
 #include "result.hpp"
-#include "itsproblem.hpp"
 
-/**
- * Methods useful for preprocessing / simplifying the transitions
- */
-namespace Preprocess
-{
-
-    ResultViaSideEffects preprocessRules(ITSProblem &its);
+namespace Preprocess {
 
     Result<Rule> preprocessRule(const Rule &rule);
-
-    ResultViaSideEffects preprocess(ITSProblem &its);
 
 }

@@ -1,6 +1,6 @@
 #include "bmc.hpp"
 #include "expr.hpp"
-#include "preprocess.hpp"
+#include "preprocessing.hpp"
 #include "smtfactory.hpp"
 
 const bool BMC::log {true};
