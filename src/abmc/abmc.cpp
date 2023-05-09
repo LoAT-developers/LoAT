@@ -8,7 +8,7 @@
 #include "export.hpp"
 #include "vector.hpp"
 
-const bool ABMC::log {true};
+const bool ABMC::log {false};
 
 ABMC::ABMC(const ITSProblem &its):
     its(its),
