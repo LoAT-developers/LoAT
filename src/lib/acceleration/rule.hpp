@@ -59,6 +59,8 @@ public:
 
     Rule chain(const Rule &that) const;
 
+    bool isPoly() const;
+
     template <ITheory T>
     int nextTmpVarIdx() const {
         return std::min(guard->nextTmpVarIdx<T>(), expr::nextTmpVarIdx<T>(update));

@@ -59,3 +59,7 @@ const Subs& Rule::getUpdate() const {
 ostream& operator<<(ostream &s, const Rule &rule) {
     return s << rule.getGuard() << " /\\ " << rule.getUpdate();
 }
+
+bool Rule::isPoly() const {
+    return guard->isPoly() && update.isPoly();
+}

@@ -105,7 +105,7 @@ bool ABMC::handle_loop(int backlink) {
                 const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
                 if (accel_res.accel) {
                     auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
-                    if (simplified->getUpdate() != simp->getUpdate()) {
+                    if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
                         const auto new_idx {add_learned_clause(*simplified, backlink)};
                         vars.insert(*accel_res.n);
                         post_vars.emplace(*accel_res.n, NumVar::next());
