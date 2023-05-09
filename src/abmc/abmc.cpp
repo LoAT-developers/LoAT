@@ -110,6 +110,10 @@ bool ABMC::handle_loop(int backlink) {
                         vars.insert(*accel_res.n);
                         post_vars.emplace(*accel_res.n, NumVar::next());
                         it = cache.emplace(key, new_idx).first;
+                        if (log) {
+                            std::cout << "learned clause:" << std::endl;
+                            std::cout << *simplified << std::endl;
+                        }
                     }
                 }
             }
