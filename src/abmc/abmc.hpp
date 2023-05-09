@@ -3,6 +3,7 @@
 #include <limits>
 
 #include "itsproblem.hpp"
+#include "z3_opt.hpp"
 #include "z3.hpp"
 
 class ABMC {
@@ -13,13 +14,14 @@ private:
     using Key = std::pair<Run, LitSet>;
 
     static const bool log;
+    static const bool optimize;
 
     ABMC(const ITSProblem &its);
 
     void analyze();
 
     ITSProblem its;
-    Z3<IntTheory, BoolTheory> z3{std::numeric_limits<unsigned>::max()};
+    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     bool approx {false};
     TransIdx last_orig_clause;
     std::vector<Subs> subs {Subs::Empty};
@@ -27,7 +29,7 @@ private:
     VarSet vars;
     std::map<Var, Var> post_vars;
     NumVar trace_var;
-    std::vector<BoolExpr> shortcuts;
+    BoolExpr shortcut {BExpression::True};
     std::map<Key, std::optional<TransIdx>> cache;
     int lookback {0};
 

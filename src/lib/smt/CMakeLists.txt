@@ -13,6 +13,7 @@ add_library(${PROJECT_NAME} STATIC
   model.hpp
   linearizingsolver.hpp
   z3.hpp
+  z3_opt.hpp
   z3context.cpp
   z3context.hpp
   yices.hpp

@@ -9,17 +9,24 @@
 #include "export.hpp"
 #include "vector.hpp"
 
-const bool ABMC::log {false};
+const bool ABMC::log {true};
+const bool ABMC::optimize {false};
 
 ABMC::ABMC(const ITSProblem &its):
     its(its),
     vars(its.getVars()),
     trace_var(NumVar::next()) {
+    const auto timeout {std::numeric_limits<unsigned>::max()};
+    if (optimize) {
+        solver = std::make_unique<Z3Opt<IntTheory, BoolTheory>>(timeout);
+    } else {
+        solver = std::make_unique<Z3<IntTheory, BoolTheory>>(timeout);
+    }
     vars.insert(trace_var);
     for (const auto &var: vars) {
         post_vars.emplace(var, expr::next(var));
     }
-    z3.enableModels();
+    solver->enableModels();
 }
 
 bool ABMC::is_orig_clause(const TransIdx idx) const {
@@ -65,7 +72,7 @@ std::tuple<Rule, Subs, ABMC::Key> ABMC::build_loop(const int backlink) {
     auto vars {loop->vars()};
     var_renaming = var_renaming.project(vars);
     expr::collectCoDomainVars(var_renaming, vars);
-    const auto model {expr::compose(var_renaming, z3.model(vars).toSubs())};
+    const auto model {expr::compose(var_renaming, solver->model(vars).toSubs())};
     const auto imp {loop->getGuard()->implicant(model)};
     if (!imp) {
         throw std::logic_error("model, but no implicant");
@@ -122,7 +129,7 @@ bool ABMC::handle_loop(int backlink) {
     if (it == cache.end()) {
         it = cache.emplace(key, std::optional<TransIdx>()).first;
     } else if (it->second) {
-        shortcuts.emplace_back(encode_transition(*it->second));
+        shortcut = encode_transition(*it->second);
     }
     return it->second.has_value();
 }
@@ -165,7 +172,7 @@ void ABMC::analyze() {
             inits.push_back(encode_transition(idx));
         }
     }
-    z3.add(BExpression::buildOr(inits));
+    solver->add(BExpression::buildOr(inits));
 
     std::vector<BoolExpr> steps;
     for (const auto &idx: its.getAllTransitions()) {
@@ -204,9 +211,9 @@ void ABMC::analyze() {
             }
             s.put(post_var, expr::toExpr(next));
         }
-        z3.push();
-        z3.add(query->subs(s));
-        switch (z3.check()) {
+        solver->push();
+        solver->add(query->subs(s));
+        switch (solver->check()) {
         case SmtResult::Sat:
             std::cout << "unsat" << std::endl;
             return;
@@ -215,19 +222,26 @@ void ABMC::analyze() {
             break;
         case SmtResult::Unsat: {}
         }
-        z3.pop();
-        shortcuts.emplace_back(step);
-        z3.add(BExpression::buildOr(shortcuts)->subs(s));
-        switch (z3.check()) {
+        solver->pop();
+        if (shortcut->isTriviallyTrue()) {
+            solver->add(step->subs(s));
+        } else {
+            const auto sc {shortcut->subs(s)};
+            if (optimize) {
+                solver->add_soft(sc);
+            }
+            solver->add(sc | step->subs(s));
+        }
+        switch (solver->check()) {
         case SmtResult::Unsat:
             if (!approx) {
                 std::cout << "sat" << std::endl;
             }
             return;
         case SmtResult::Sat: {
-            shortcuts.clear();
+            shortcut = True;
             trace.clear();
-            const auto model {z3.model(trace_vars).toSubs().get<IntTheory>()};
+            const auto model {solver->model(trace_vars).toSubs().get<IntTheory>()};
             for (const auto &s: subs) {
                 trace.push_back(s.get<IntTheory>(trace_var).subs(model).toNum().to_int());
             }
@@ -242,7 +256,7 @@ void ABMC::analyze() {
             break;
         }
         case SmtResult::Unknown:
-            shortcuts.clear();
+            shortcut = True;
             trace.clear();
         }
         subs.push_back(s);

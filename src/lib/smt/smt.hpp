@@ -32,6 +32,10 @@ public:
 
     virtual void add(const BoolExpr e) = 0;
 
+    virtual void add_soft(const BoolExpr e) {
+        throw std::invalid_argument("add_soft not supported");
+    }
+
     void add(const Lit &e) {
         return this->add(BoolExpression<Th...>::buildTheoryLit(e));
     }
