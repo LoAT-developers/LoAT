@@ -37,7 +37,14 @@ message(STATUS "ginac: ${GINAC}")
 
 target_link_libraries(${PROJECT_NAME} ${GINAC})
 
-target_include_directories(${PROJECT_NAME} INTERFACE ".")
+target_include_directories(${PROJECT_NAME} PRIVATE
+  ${loat_util_INCLUDE_DIRS}
+)
+
+target_include_directories(${PROJECT_NAME} INTERFACE
+  ${loat_util_INCLUDE_DIRS}
+  "."
+)
 
 # Expose public includes to other
 # subprojects through cache variable.

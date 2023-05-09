@@ -1,6 +1,7 @@
 #pragma once
 
 #include "itheory.hpp"
+#include "set.hpp"
 
 #include <optional>
 #include <ostream>
