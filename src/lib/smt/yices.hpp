@@ -141,7 +141,9 @@ public:
         yices_free_context(solver);
     }
 
-    std::ostream& print(std::ostream& os) const;
+    std::ostream& print(std::ostream& os) const override {
+        throw std::invalid_argument("print not supported by yices");
+    }
 
     std::pair<SmtResult, BoolExpressionSet<Th...>> _unsatCore(const BoolExpressionSet<Th...> &assumptions) override {
         std::vector<term_t> as;

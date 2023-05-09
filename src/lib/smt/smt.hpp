@@ -122,6 +122,8 @@ public:
         return res;
     }
 
+    virtual std::ostream& print(std::ostream& os) const = 0;
+
 protected:
 
     virtual std::pair<SmtResult, BoolExpressionSet<Th...>> _unsatCore(const BoolExpressionSet<Th...> &assumptions) = 0;

@@ -4,22 +4,18 @@
 std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) {
     Subs sigma, inverted;
     auto first_vars {first.vars()};
-    int next_int_var {std::min(first.nextTmpVarIdx<IntTheory>(), second.nextTmpVarIdx<IntTheory>())};
-    int next_bool_var {std::min(first.nextTmpVarIdx<BoolTheory>(), second.nextTmpVarIdx<BoolTheory>())};
     for (const auto &x: second.vars()) {
         if (expr::isTempVar(x) && first_vars.find(x) != first_vars.end()) {
             if (std::holds_alternative<NumVar>(x)) {
                 const auto &var = std::get<NumVar>(x);
-                const NumVar next {next_int_var};
+                const NumVar next {NumVar::next()};
                 sigma.put<IntTheory>(var, next);
                 inverted.put(next, var);
-                --next_int_var;
             } else if (std::holds_alternative<BoolVar>(x)) {
                 const auto &var = std::get<BoolVar>(x);
-                const BoolVar next {next_bool_var};
+                const BoolVar next {BoolVar::next()};
                 sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(next));
                 inverted.put<BoolTheory>(next, BExpression::buildTheoryLit(var));
-                --next_bool_var;
             }
         }
     }
