@@ -206,32 +206,44 @@ void ABMC::analyze() {
         }
         z3.push();
         z3.add(query->subs(s));
-        if (z3.check() == SmtResult::Sat) {
+        switch (z3.check()) {
+        case SmtResult::Sat:
             std::cout << "unsat" << std::endl;
             return;
+        case SmtResult::Unknown:
+            approx = true;
+            break;
+        case SmtResult::Unsat: {}
         }
         z3.pop();
         shortcuts.emplace_back(step);
         z3.add(BExpression::buildOr(shortcuts)->subs(s));
-        if (z3.check() == SmtResult::Unsat) {
+        switch (z3.check()) {
+        case SmtResult::Unsat:
             if (!approx) {
                 std::cout << "sat" << std::endl;
             }
             return;
-        }
-        shortcuts.clear();
-        trace.clear();
-        const auto model {z3.model(trace_vars).toSubs().get<IntTheory>()};
-        for (const auto &s: subs) {
-            trace.push_back(s.get<IntTheory>(trace_var).subs(model).toNum().to_int());
-        }
-        for (auto backlink = has_looping_suffix(trace.size() - 1);
-             backlink;
-             backlink = has_looping_suffix(*backlink - 1)) {
-            if (handle_loop(*backlink)) {
-                lookback = trace.size();
-                break;
+        case SmtResult::Sat: {
+            shortcuts.clear();
+            trace.clear();
+            const auto model {z3.model(trace_vars).toSubs().get<IntTheory>()};
+            for (const auto &s: subs) {
+                trace.push_back(s.get<IntTheory>(trace_var).subs(model).toNum().to_int());
             }
+            for (auto backlink = has_looping_suffix(trace.size() - 1);
+                 backlink;
+                 backlink = has_looping_suffix(*backlink - 1)) {
+                if (handle_loop(*backlink)) {
+                    lookback = trace.size();
+                    break;
+                }
+            }
+            break;
+        }
+        case SmtResult::Unknown:
+            shortcuts.clear();
+            trace.clear();
         }
         subs.push_back(s);
     }
