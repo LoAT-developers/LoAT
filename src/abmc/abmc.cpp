@@ -68,7 +68,7 @@ std::tuple<Rule, Subs, ABMC::Key> ABMC::build_loop(const int backlink) {
         } else {
             loop = rule;
         }
-        var_renaming = expr::compose(subs[i].project(vars), var_renaming);
+        var_renaming = expr::compose(subs[i].project(rule.vars()), var_renaming);
     }
     auto vars {loop->vars()};
     expr::collectCoDomainVars(var_renaming, vars);
