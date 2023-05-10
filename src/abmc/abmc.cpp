@@ -92,8 +92,6 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 
 bool ABMC::handle_loop(int backlink) {
     const auto [loop, sample_point, key] {build_loop(backlink)};
-    auto it {cache.find(key)};
-    if (it == cache.end()) {
         const auto simp {Preprocess::preprocessRule(loop)};
         if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
             // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -116,22 +114,17 @@ bool ABMC::handle_loop(int backlink) {
                         const auto new_idx {add_learned_clause(*simplified, backlink)};
                         vars.insert(*accel_res.n);
                         post_vars.emplace(*accel_res.n, NumVar::next());
-                        it = cache.emplace(key, new_idx).first;
+                        shortcut = encode_transition(new_idx);
                         if (Config::Analysis::log) {
                             std::cout << "learned clause:" << std::endl;
                             std::cout << *simplified << std::endl;
                         }
+                        return true;
                     }
                 }
             }
         }
-    }
-    if (it == cache.end()) {
-        it = cache.emplace(key, std::optional<TransIdx>()).first;
-    } else if (it->second) {
-        shortcut = encode_transition(*it->second);
-    }
-    return it->second.has_value();
+    return false;
 }
 
 BoolExpr ABMC::encode_transition(const TransIdx idx) {

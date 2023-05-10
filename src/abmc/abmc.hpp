@@ -28,7 +28,6 @@ private:
     std::map<Var, Var> post_vars;
     NumVar trace_var;
     BoolExpr shortcut {BExpression::True};
-    std::map<Key, std::optional<TransIdx>> cache;
     int lookback {0};
 
     BoolExpr encode_transition(const TransIdx idx);
