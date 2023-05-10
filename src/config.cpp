@@ -68,6 +68,7 @@ namespace Config {
 
         Mode mode = Complexity;
         Engine engine = ADCL;
+        bool log = false;
 
         std::string modeName(const Mode mode) {
             switch (mode) {

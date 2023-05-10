@@ -3,8 +3,7 @@
 #include <limits>
 
 #include "itsproblem.hpp"
-#include "z3_opt.hpp"
-#include "z3.hpp"
+#include "smt.hpp"
 
 class ABMC {
 
@@ -13,7 +12,6 @@ private:
     using Run = std::vector<TransIdx>;
     using Key = std::pair<Run, LitSet>;
 
-    static const bool log;
     static const bool optimize;
 
     ABMC(const ITSProblem &its);

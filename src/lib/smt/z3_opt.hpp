@@ -107,7 +107,7 @@ public:
 
     ~Z3Opt() override {}
 
-    std::ostream& print(std::ostream& os) const {
+    std::ostream& print(std::ostream& os) const override {
         return os << solver;
     }
 

@@ -44,6 +44,8 @@ void printHelp(char *arg0) {
     cout << "  --plain                                          Disable colored output" << endl;
     cout << "  --mode <complexity|non_termination|reachability> Analysis mode" << endl;
     cout << "  --format <koat|its|horn>                         Input format" << endl;
+    cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << endl;
+    cout << "  --log                                            Enable logging" << endl;
 }
 
 
@@ -73,8 +75,8 @@ void parseFlags(int argc, char *argv[]) {
         } else if (strcmp("--plain",argv[arg]) == 0) {
             Config::Output::Colors = false;
             Proof::disableColors();
-        } else if (strcmp("--reach-log", argv[arg]) == 0) {
-            reachability::Reachability::log = true;
+        } else if (strcmp("--log", argv[arg]) == 0) {
+            Config::Analysis::log = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
             bool found = false;
             std::string str = getNext();

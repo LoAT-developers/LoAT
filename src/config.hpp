@@ -71,6 +71,7 @@ namespace Config {
         extern std::vector<Mode> modes;
         extern Mode mode;
         extern Engine engine;
+        extern bool log;
 
         std::string modeName(const Mode mode);
         bool nonTermination();

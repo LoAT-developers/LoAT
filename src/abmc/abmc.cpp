@@ -8,8 +8,9 @@
 #include "config.hpp"
 #include "export.hpp"
 #include "vector.hpp"
+#include "z3_opt.hpp"
+#include "z3.hpp"
 
-const bool ABMC::log {true};
 const bool ABMC::optimize {false};
 
 ABMC::ABMC(const ITSProblem &its):
@@ -77,7 +78,7 @@ std::tuple<Rule, Subs, ABMC::Key> ABMC::build_loop(const int backlink) {
         throw std::logic_error("model, but no implicant");
     }
     const auto implicant {loop->withGuard(BExpression::buildAndFromLits(*imp))};
-    if (log) {
+    if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         ITSExport::printRule(implicant, std::cout);
         std::cout << std::endl;
@@ -97,15 +98,15 @@ bool ABMC::handle_loop(int backlink) {
         if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
             // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
             // Such clauses are pretty useless, so we do not store them.
-            if (log) std::cout << "acceleration would yield equivalent rule" << std::endl;
+            if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
         } else {
-            if (log && simp) {
+            if (Config::Analysis::log && simp) {
                 std::cout << "simplified loop:" << std::endl;
                 ITSExport::printRule(*simp, std::cout);
                 std::cout << std::endl;
             }
             if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
-                if (log) std::cout << "trivial looping suffix" << std::endl;
+                if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
             } else {
                 AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
                 const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
@@ -116,7 +117,7 @@ bool ABMC::handle_loop(int backlink) {
                         vars.insert(*accel_res.n);
                         post_vars.emplace(*accel_res.n, NumVar::next());
                         it = cache.emplace(key, new_idx).first;
-                        if (log) {
+                        if (Config::Analysis::log) {
                             std::cout << "learned clause:" << std::endl;
                             std::cout << *simplified << std::endl;
                         }
@@ -147,11 +148,11 @@ BoolExpr ABMC::encode_transition(const TransIdx idx) {
 }
 
 void ABMC::analyze() {
-    if (log) {
+    if (Config::Analysis::log) {
         its.print(std::cout);
     }
     const auto res {Preprocess::preprocess(its)};
-    if (log && res) {
+    if (Config::Analysis::log && res) {
         res.print();
     }
     last_orig_clause = *its.getAllTransitions().rbegin();
@@ -196,7 +197,7 @@ void ABMC::analyze() {
     trace_vars.insert(trace_var);
     trace_vars.insert(post_vars.at(trace_var));
     while (true) {
-        if (log) {
+        if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
             ++depth;
         }

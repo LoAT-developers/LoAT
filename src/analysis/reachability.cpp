@@ -18,8 +18,6 @@ namespace reachability {
 
 using ::operator<<;
 
-bool Reachability::log {false};
-
 const bool Reachability::drop {true};
 
 LearningState::LearningState() {}
@@ -163,7 +161,7 @@ Subs Reachability::handle_update(const TransIdx idx) {
 }
 
 void Reachability::block(const Step &step) {
-    if (log) std::cout << "blocking " << step.clause_idx << ", " << step.implicant << std::endl;
+    if (Config::Analysis::log) std::cout << "blocking " << step.clause_idx << ", " << step.implicant << std::endl;
     if (chcs.getRule(step.clause_idx).getGuard()->isConjunction()) {
         blocked_clauses.back()[step.clause_idx] = {};
     } else {
@@ -183,7 +181,7 @@ void Reachability::pop() {
 }
 
 void Reachability::backtrack() {
-    if (log) std::cout << "backtracking" << std::endl;
+    if (Config::Analysis::log) std::cout << "backtracking" << std::endl;
     // copy the last step before popping it
     const Step step = trace.back();
     pop();
@@ -337,12 +335,12 @@ void Reachability::luby_next() {
 void Reachability::unsat() {
     const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
     std::cout << res << std::endl << std::endl;
-    if (!log && Proof::disabled()) {
+    if (!Config::Analysis::log && Proof::disabled()) {
         return;
     }
     std::stringstream counterexample;
     print_trace(counterexample);
-    if (log) {
+    if (Config::Analysis::log) {
         std::stringstream trace_stream;
         trace_stream << trace;
         std::cout << "final ITS:" << std::endl;
@@ -379,7 +377,7 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     const auto guard {clause.getGuard()->subs(projected_var_renaming)};
     solver.add(guard);
     if (solver.check() == Sat) {
-        if (log) std::cout << "found model for " << idx << std::endl;
+        if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
         const auto model {solver.model(guard->vars()).toSubs()};
         const auto implicant {clause.getGuard()->implicant(expr::compose(projected_var_renaming, model))};
         if (implicant) {
@@ -393,7 +391,7 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
         } else {
             block->second.clear();
         }
-        if (log) std::cout << "could not find a model for " << idx << std::endl;
+        if (Config::Analysis::log) std::cout << "could not find a model for " << idx << std::endl;
         return {};
     }
 }
@@ -435,7 +433,7 @@ std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
     var_renaming = var_renaming.project(vars);
     expr::collectCoDomainVars(var_renaming, vars);
     const auto model {expr::compose(var_renaming, solver.model(vars).toSubs())};
-    if (log) {
+    if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         ITSExport::printRule(*loop, std::cout);
         std::cout << std::endl;
@@ -480,17 +478,17 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
-        if (log) std::cout << "acceleration would yield equivalent rule" << std::endl;
+        if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
         return std::make_unique<Unroll>(1);
     }
-    if (log && simp) {
+    if (Config::Analysis::log && simp) {
         std::cout << "simplified loop:" << std::endl;
         ITSExport::printRule(*simp, std::cout);
         std::cout << std::endl;
     }
     if (Config::Analysis::reachability()) {
         if (simp->getUpdate().empty()) {
-            if (log) std::cout << "trivial looping suffix" << std::endl;
+            if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
             return std::make_unique<Covered>();
         }
     }
@@ -509,7 +507,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", chcs.getRule(idx));
         nonterm_proof.storeSubProof(accel_res.nonterm->proof);
         res.concat(nonterm_proof);
-        if (log) {
+        if (Config::Analysis::log) {
             std::cout << "found certificate of non-termination, idx " << idx << std::endl;
             std::cout << accel_res.nonterm->certificate << std::endl;
         }
@@ -530,7 +528,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             acceleration_proof.storeSubProof(accel_res.accel->proof);
             res.concat(acceleration_proof);
             res.concat(simplified.getProof());
-            if (log) {
+            if (Config::Analysis::log) {
                 std::cout << "accelerated rule, idx " << loop_idx << std::endl;
                 ITSExport::printRule(*simplified, std::cout);
                 std::cout << std::endl;
@@ -538,7 +536,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         }
     }
     if (!res) {
-        if (log) {
+        if (Config::Analysis::log) {
             std::cout << "acceleration failed" << std::endl;
             if (accel_res.status) {
                 std::cout << "status: " << *accel_res.status << std::endl;
@@ -579,17 +577,17 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     auto closure {lang};
     redundancy->transitive_closure(closure);
     if (redundancy->is_redundant(closure)) {
-        if (log) std::cout << "loop already covered" << std::endl;
+        if (Config::Analysis::log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
     }
     if (redundancy->is_accelerated(lang)) {
-        if (log) std::cout << "loop must be unrolled" << std::endl;
+        if (Config::Analysis::log) std::cout << "loop must be unrolled" << std::endl;
         return std::make_unique<Unroll>();
     }
     if (!check_consistency()) {
         return std::make_unique<Restart>();
     }
-    if (log) {
+    if (Config::Analysis::log) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << closure << std::endl;
     }
@@ -626,7 +624,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         drop_until(backlink);
     }
     bool done {!do_drop};
-    if (log) {
+    if (Config::Analysis::log) {
         std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
     }
     for (const auto &[idx, covered]: learned_clauses.res) {
@@ -642,7 +640,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     if (done) {
         return state;
     } else {
-        if (log) std::cout << "applying accelerated rule failed" << std::endl;
+        if (Config::Analysis::log) std::cout << "applying accelerated rule failed" << std::endl;
         return std::make_unique<Dropped>(accel_state->getProof());
     }
 }
@@ -672,14 +670,14 @@ bool Reachability::try_to_finish() {
 void Reachability::analyze() {
     static std::default_random_engine rnd {};
     proof.majorProofStep("Initial ITS", ITSProof(), chcs);
-    if (log) {
+    if (Config::Analysis::log) {
         std::cout << "Initial ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
     }
     const auto res {Preprocess::preprocess(chcs)};
     if (res) {
         proof.concat(res.getProof());
-        if (log) {
+        if (Config::Analysis::log) {
             std::cout << "Simplified ITS" << std::endl;
             ITSExport::printForProof(chcs, std::cout);
         }
@@ -692,7 +690,7 @@ void Reachability::analyze() {
     do {
         size_t next_restart = luby_unit * luby.second;
         std::unique_ptr<LearningState> state;
-        if (log) std::cout << "trace: " << trace << std::endl;
+        if (Config::Analysis::log) std::cout << "trace: " << trace << std::endl;
         if (!trace.empty()) {
             for (auto backlink = has_looping_suffix(trace.size() - 1);
                  backlink && luby_loop_count < next_restart;
@@ -731,7 +729,7 @@ void Reachability::analyze() {
             }
         }
         if (luby_loop_count == next_restart || (state && state->restart()) || !check_consistency()) {
-            if (log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
+            if (Config::Analysis::log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
             // restart
             while (!trace.empty()) {
                 pop();
