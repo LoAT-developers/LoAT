@@ -484,10 +484,9 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         return std::make_unique<Unroll>();
     }
     Result<LearnedClauses> res{{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period}};
-    const auto fst = trace.at(backlink).clause_idx;
     if (accel_res.nonterm) {
         res.succeed();
-        const auto idx = chcs.addQuery(accel_res.nonterm->certificate, fst);
+        const auto idx = chcs.addQuery(accel_res.nonterm->certificate, trace.at(backlink).clause_idx);
         res->res.emplace_back(idx);
         ITSProof nonterm_proof;
         nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", chcs.getRule(idx));
@@ -586,7 +585,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
             if (state->unroll()->get_max()) {
                 const auto max {*state->unroll()->get_max()};
                 auto redundant_lang {lang};
-                for (unsigned i = 0; i < max; ++i) {
+                for (unsigned i = 1; i < max; ++i) {
                     redundancy->concat(redundant_lang, lang);
                 }
                 redundancy->concat(redundant_lang, closure);
