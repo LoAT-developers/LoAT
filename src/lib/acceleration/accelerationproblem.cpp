@@ -8,10 +8,17 @@
 AccelerationProblem::AccelerationProblem(
         const Rule &r,
         const std::optional<Recurrence::Result> &closed,
-        const Subs &samplePoint,
+        const std::optional<Subs> &samplePoint,
         const AccelConfig &config):
-    AccelerationTechnique(r, closed, config),
+    closed(closed),
+    update(r.getUpdate()),
+    guard(r.getGuard()->toG()),
+    config(config),
     samplePoint(samplePoint) {
+    if (closed) {
+        update.get<IntTheory>() = closed->refined_equations;
+        proof.append(std::stringstream() << "refined update: " << update);
+    }
     for (const auto &l: guard->lits()) {
         todo.insert(l);
     }
@@ -24,13 +31,13 @@ AccelerationProblem::AccelerationProblem(
     this->solver->add(guard);
 }
 
-unsigned AccelerationProblem::store(const Lit &lit, const LitSet &deps, const BoolExpr formula, const BoolExpr covered, bool nonterm) {
+unsigned AccelerationProblem::store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool nonterm) {
     auto it = res.find(lit);
     if (it == res.end()) {
-        res[lit] = {{deps, formula, covered, nonterm}};
+        res[lit] = {{deps, formula, nonterm}};
         return 0;
     } else {
-        it->second.push_back({deps, formula, covered, nonterm});
+        it->second.push_back({deps, formula, nonterm});
         return it->second.size() - 1;
     }
 }
@@ -70,7 +77,7 @@ bool AccelerationProblem::depsWellFounded(const Lit& lit, std::map<Lit, const Ac
 
 bool AccelerationProblem::trivial(const Lit &lit) {
     if (expr::subs(lit, update)->isTriviallyTrue()) {
-        auto idx {store(lit, {}, BExpression::buildTheoryLit(lit), BExpression::True, true)};
+        auto idx {store(lit, {}, BExpression::buildTheoryLit(lit), true)};
         proof.newline();
         proof.append(std::stringstream() << lit << " [" << idx << "]: trivial");
         return true;
@@ -80,7 +87,7 @@ bool AccelerationProblem::trivial(const Lit &lit) {
 
 bool AccelerationProblem::unchanged(const Lit &lit) {
     if (BExpression::buildTheoryLit(lit) == expr::subs(lit, update)) {
-        auto idx {store(lit, {}, BExpression::buildTheoryLit(lit), BExpression::True, true)};
+        auto idx {store(lit, {}, BExpression::buildTheoryLit(lit), true)};
         proof.newline();
         proof.append(std::stringstream() << lit << " [" << idx << "]: unchanged");
         return true;
@@ -93,49 +100,49 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         return false;
     }
     const auto &rel {std::get<Rel>(lit)};
-    const auto &up {update.get<IntTheory>()};
     const auto nfold {rel.lhs().subs(closed->closed_form.get<IntTheory>()).expand()};
+    if (!nfold.isPoly(closed->n)) {
+        return false;
+    }
+    const auto &up {update.get<IntTheory>()};
     const ExprSubs but_last {closed->closed_form.get<IntTheory>().compose({{closed->n, Expr(closed->n) - 1}})};
     bool low_degree {false};
     RelSet guard;
-    RelSet covered;
-    if (nfold.isPoly(closed->n)) {
-        switch (nfold.degree(closed->n)) {
-        case 0: return false;
-        case 1: {
-            const auto coeff {nfold.coeff(closed->n, 1)};
-            if (coeff.isGround()) {
-                if (coeff.toNum().is_positive()) {
-                    guard.insert(rel);
-                } else {
-                    guard.insert(rel.subs(but_last));
-                }
-            } else {
+    switch (nfold.degree(closed->n)) {
+    case 0: return false;
+    case 1: {
+        const auto coeff {nfold.coeff(closed->n, 1)};
+        if (coeff.isGround()) {
+            if (coeff.toNum().is_positive()) {
                 guard.insert(rel);
+            } else {
                 guard.insert(rel.subs(but_last));
             }
-            low_degree = true;
-            break;
+        } else {
+            guard.insert(rel);
+            guard.insert(rel.subs(but_last));
         }
-        case 2: {
-            const auto coeff {nfold.coeff(closed->n, 2)};
-            if (coeff.isGround()) {
-                if (coeff.toNum().is_negative()) {
-                    guard.insert(rel);
-                    guard.insert(rel.subs(but_last));
-                    low_degree = true;
-                }
-            }
-            break;
-        }
-        default: {}
-        }
+        low_degree = true;
+        break;
     }
-    if (!low_degree) {
+    case 2: {
+        const auto coeff {nfold.coeff(closed->n, 2)};
+        if (coeff.isGround()) {
+            if (coeff.toNum().is_negative()) {
+                guard.insert(rel);
+                guard.insert(rel.subs(but_last));
+                low_degree = true;
+            }
+        }
+        break;
+    }
+    default: {}
+    }
+    if (!low_degree && samplePoint) {
         if (nfold.isGround() || !nfold.isPoly(closed->n)) {
             return false;
         }
-        auto sample_point {samplePoint.get<IntTheory>()};
+        auto sample_point {samplePoint->get<IntTheory>()};
         std::vector<Expr> derivatives {rel.lhs()};
         std::vector<GiNaC::numeric> signs {rel.lhs().subs(sample_point).toNum()};
         Expr diff;
@@ -164,11 +171,9 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             if (signs.at(i).is_positive()) {
                 const auto r {Rel::buildGeq(derivatives.at(i), 0)};
                 guard.insert(r);
-                covered.insert(r);
             } else {
                 const auto r {Rel::buildLeq(derivatives.at(i), 0)};
                 guard.insert(r);
-                covered.insert(r);
             }
             if (signs.at(i+1).is_positive()) {
                 // the i-th derivative is monotonically increasing at the sampling point
@@ -187,7 +192,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         }
     }
     const auto res {BExpression::buildAndFromLits(guard)};
-    auto idx {store(lit, {}, res, BExpression::buildAndFromLits(covered))};
+    auto idx {store(lit, {}, res)};
     proof.newline();
     proof.append(std::stringstream() << lit << " [" << idx << "]: polynomial acceleration yields " << res);
     return true;
@@ -230,7 +235,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
             dependencies.insert(*lit.begin());
         }
     }
-    auto idx {store(lit, dependencies, newGuard, BExpression::True)};
+    auto idx {store(lit, dependencies, newGuard)};
     std::stringstream ss;
     ss << lit << " [" << idx << "]: montonic decrease yields " << newGuard;
     if (!dependencies.empty()) {
@@ -273,7 +278,7 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
     }
     dependencies.erase(lit);
     const auto newGuard = BExpression::buildTheoryLit(lit);
-    auto idx {store(lit, dependencies, newGuard, BExpression::True, true)};
+    auto idx {store(lit, dependencies, newGuard, true)};
     std::stringstream ss;
     ss << lit << " [" << idx << "]: monotonic increase yields " << newGuard;
     if (!dependencies.empty()) {
@@ -327,7 +332,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
             dependencies.insert(*lit.begin());
         }
     }
-    auto idx {store(rel, dependencies, newGuard, BExpression::True)};
+    auto idx {store(rel, dependencies, newGuard)};
     std::stringstream ss;
     ss << rel << " [" << idx << "]: eventual decrease yields " << newGuard;
     if (!dependencies.empty()) {
@@ -351,7 +356,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     const auto &rel {std::get<Rel>(lit)};
     const auto &updated {rel.lhs().subs(update.get<IntTheory>())};
     const auto &inc = strict ? Rel::buildLt(rel.lhs(), updated) : Rel::buildLeq(rel.lhs(), updated);
-    if (inc.subs(samplePoint.get<IntTheory>()).isTriviallyFalse()) {
+    if (samplePoint && inc.subs(samplePoint->get<IntTheory>()).isTriviallyFalse()) {
         return false;
     }
     const auto &dec = strict ? Rel::buildGeq(updated, updated.subs(update.get<IntTheory>())) : Rel::buildGt(updated, updated.subs(update.get<IntTheory>()));
@@ -380,7 +385,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         }
     }
     const auto newGuard {BExpression::buildTheoryLit(rel) & inc};
-    auto idx {store(rel, dependencies, newGuard, BExpression::buildTheoryLit(inc), true)};
+    auto idx {store(rel, dependencies, newGuard, true)};
     std::stringstream ss;
     ss << rel << " [" << idx << "]: eventual increase yields " << newGuard;
     if (!dependencies.empty()) {
@@ -409,11 +414,11 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
                    }, lit)
     };
     const auto eq {expr::mkEq(ex, expr::subs(ex, update))};
-    if (!eq->subs(samplePoint)->isTriviallyTrue()) {
+    if (samplePoint && !eq->subs(*samplePoint)->isTriviallyTrue()) {
         return false;
     }
     BoolExpr newGuard {eq & lit};
-    auto idx {store(lit, {}, newGuard, eq, true)};
+    auto idx {store(lit, {}, newGuard, true)};
     std::stringstream ss;
     ss << lit << " [" << idx << "]: fixpoint yields " << newGuard;
     proof.newline();
@@ -424,12 +429,10 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
 std::optional<AccelerationProblem::ReplacementMap> AccelerationProblem::computeReplacementMap(bool nontermOnly) const {
     ReplacementMap res;
     res.nonterm = true;
-    res.covered = BExpression::True;
     std::map<Lit, const Entry*> entryMap;
     for (const auto& lit: todo) {
         if (depsWellFounded(lit, entryMap, nontermOnly)) {
             res.nonterm &= entryMap[lit]->nonterm;
-            res.covered = res.covered & entryMap[lit]->covered;
         } else {
             return {};
         }
@@ -469,7 +472,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
         newGuard = newGuard & *bound;
     }
     if (SmtFactory::check(newGuard) == Sat) {
-        ret.term.emplace(newGuard, proof, map->covered);
+        ret.term.emplace(newGuard, proof);
         ret.term->proof.newline();
         ret.term->proof.append(std::stringstream() << "Replacement map: " << map->map);
         if (map->nonterm) {
@@ -481,7 +484,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
         if (map) {
             newGuard = guard->replaceLits(map->map);
             if (SmtFactory::check(newGuard) == Sat) {
-                ret.nonterm.emplace(newGuard, proof, map->covered);
+                ret.nonterm.emplace(newGuard, proof);
                 ret.nonterm->proof.newline();
                 ret.nonterm->proof.append(std::stringstream() << "Replacement map: " << map->map);
             }

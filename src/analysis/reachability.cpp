@@ -412,33 +412,19 @@ Automaton Reachability::build_language(const int backlink) {
     return lang;
 }
 
-std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
+Rule Reachability::build_loop(const int backlink) {
     std::optional<Rule> loop;
-    Subs var_renaming;
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto &step {trace[i]};
         const auto rule {chcs.getRule(step.clause_idx).withGuard(step.implicant)};
-        if (loop) {
-            const auto [chained, sigma] {Chaining::chain(rule, *loop)};
-            loop = chained;
-            var_renaming = expr::compose(sigma, var_renaming);
-        } else {
-            loop = rule;
-        }
-        if (i > 0) {
-            var_renaming = expr::compose(trace[i-1].var_renaming.project(rule.vars()), var_renaming);
-        }
+        loop = loop ? Chaining::chain(rule, *loop).first : rule;
     }
-    auto vars {loop->vars()};
-    var_renaming = var_renaming.project(vars);
-    expr::collectCoDomainVars(var_renaming, vars);
-    const auto model {expr::compose(var_renaming, solver.model(vars).toSubs())};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         ITSExport::printRule(*loop, std::cout);
         std::cout << std::endl;
     }
-    return {*loop, model};
+    return {*loop};
 }
 
 TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink) {
@@ -473,7 +459,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
     return res;
 }
 
-std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &sample_point, const unsigned backlink) {
+std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const unsigned backlink) {
     Result<Rule> simp = Preprocess::preprocessRule(rule);
     if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -493,7 +479,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         }
     }
     AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
-    const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
+    const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
@@ -502,7 +488,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     if (accel_res.nonterm) {
         res.succeed();
         const auto idx = chcs.addQuery(accel_res.nonterm->certificate, fst);
-        res->res.emplace_back(idx, accel_res.nonterm->covered);
+        res->res.emplace_back(idx);
         ITSProof nonterm_proof;
         nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", chcs.getRule(idx));
         nonterm_proof.storeSubProof(accel_res.nonterm->proof);
@@ -522,7 +508,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             }
             res.succeed();
             const auto loop_idx {add_learned_clause(*simplified, backlink)};
-            res->res.emplace_back(loop_idx, accel_res.accel->covered);
+            res->res.emplace_back(loop_idx);
             ITSProof acceleration_proof;
             acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
             acceleration_proof.storeSubProof(accel_res.accel->proof);
@@ -591,9 +577,9 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << closure << std::endl;
     }
-    const auto [loop, sample_point] {build_loop(backlink)};
+    const auto loop {build_loop(backlink)};
     luby_loop_count++;
-    auto state {learn_clause(loop, sample_point, backlink)};
+    auto state {learn_clause(loop, backlink)};
     redundancy->mark_as_accelerated(closure);
     if (!state->succeeded()) {
         if (state->unroll()) {
@@ -627,7 +613,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     if (Config::Analysis::log) {
         std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
     }
-    for (const auto &[idx, covered]: learned_clauses.res) {
+    for (const auto idx: learned_clauses.res) {
         redundancy->set_language(idx, learned_lang);
         if (!done && store_step(idx, chcs.getRule(idx))) {
             if (chcs.isSinkTransition(idx)) {

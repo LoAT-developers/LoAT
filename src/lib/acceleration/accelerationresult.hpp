@@ -14,13 +14,11 @@ enum Status {
 std::ostream& operator<<(std::ostream &s, const Status x);
 
 struct Accel {
-    BoolExpr covered;
     Rule rule;
     Proof proof;
 };
 
 struct Nonterm {
-    BoolExpr covered;
     BoolExpr certificate {BExpression::False};
     Proof proof;
 };

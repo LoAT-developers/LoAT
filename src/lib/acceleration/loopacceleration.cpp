@@ -18,7 +18,7 @@
 #include "loopacceleration.hpp"
 #include "smtfactory.hpp"
 #include "recurrence.hpp"
-#include "accelerationfactory.hpp"
+#include "accelerationproblem.hpp"
 #include "chain.hpp"
 #include "expr.hpp"
 
@@ -29,7 +29,7 @@ using namespace std;
 
 LoopAcceleration::LoopAcceleration(
         const Rule &rule,
-        const Subs &sample_point,
+        const std::optional<Subs> &sample_point,
         const AccelConfig &config)
     : rule(rule), sample_point(sample_point), config(config) {
     auto up {rule.getUpdate()};
@@ -167,7 +167,7 @@ acceleration::Result LoopAcceleration::run() {
     // as the closed forms are usually only valid for n > 0 --> special case
     switch (SmtFactory::check(rule.chain(rule).getGuard())) {
     case Unsat:
-        res.accel = {BExpression::True, rule, proof};
+        res.accel = {rule, proof};
         res.accel->proof.append("rule cannot be iterated more than once");
         res.status = acceleration::PseudoLoop;
         return res;
@@ -181,14 +181,13 @@ acceleration::Result LoopAcceleration::run() {
         return res;
     }
     res.prefix = rec->prefix;
-    const auto accelerationTechnique {AccelerationFactory::get(rule, rec, sample_point, config)};
-    const auto accelerationResult {accelerationTechnique->computeRes()};
+    const auto accelerationResult {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
     if (!accelerationResult.term && config.approx != UnderApprox) {
         res.status = acceleration::AccelerationFailed;
         return res;
     }
     if (config.tryNonterm && accelerationResult.nonterm) {
-        res.nonterm = {accelerationResult.nonterm->covered, accelerationResult.nonterm->formula, proof};
+        res.nonterm = {accelerationResult.nonterm->formula, proof};
         res.nonterm->proof.concat(accelerationResult.nonterm->proof);
     }
     if (rec && accelerationResult.term) {
@@ -197,7 +196,7 @@ acceleration::Result LoopAcceleration::run() {
         for (unsigned i = 0; i < res.prefix; ++i) {
             r = rule.chain(r);
         }
-        res.accel = {accelerationResult.term->covered, r, proof};
+        res.accel = {r, proof};
         res.accel->proof.concat(accelerationResult.term->proof);
     }
     return res;
@@ -208,6 +207,11 @@ acceleration::Result LoopAcceleration::accelerate(
         const Rule &rule,
         const Subs &sample_point,
         const AccelConfig &config) {
-    LoopAcceleration ba(rule, sample_point, config);
-    return ba.run();
+    return LoopAcceleration(rule, sample_point, config).run();
+}
+
+acceleration::Result LoopAcceleration::accelerate(
+        const Rule &rule,
+        const AccelConfig &config) {
+    return LoopAcceleration(rule, std::optional<Subs>(), config).run();
 }

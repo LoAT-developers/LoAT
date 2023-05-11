@@ -4,26 +4,51 @@
 
 #include "rule.hpp"
 #include "smt.hpp"
-#include "accelerationtechnique.hpp"
 #include "theory.hpp"
+#include "proof.hpp"
+#include "recurrence.hpp"
+#include "accelconfig.hpp"
 
-class AccelerationProblem: public AccelerationTechnique<IntTheory, BoolTheory>  {
+class AccelerationProblem {
 
-    using AcceleratorPair = AccelerationTechnique<IntTheory, BoolTheory>::AcceleratorPair;
+public:
+
+    struct Accelerator {
+        BoolExpr formula;
+        Proof proof;
+
+        Accelerator(const BoolExpr &formula, const Proof &proof):
+            formula(formula),
+            proof(proof) {}
+
+    };
+
+    struct AcceleratorPair {
+        std::optional<Accelerator> term;
+        std::optional<Accelerator> nonterm;
+    };
+
+    std::optional<Recurrence::Result> getClosed() const;
+
+private:
 
     struct Entry {
         LitSet dependencies;
         BoolExpr formula;
-        BoolExpr covered;
         bool nonterm;
     };
 
     using Res = std::map<Lit, std::vector<Entry>>;
 
+    const std::optional<Recurrence::Result> closed;
+    Subs update;
+    BoolExpr guard;
+    const AccelConfig config;
+    Proof proof;
     Res res;
     std::optional<std::map<Lit, Entry>> solution;
     LitSet todo;
-    const Subs &samplePoint;
+    const std::optional<Subs> &samplePoint;
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     std::optional<Rel> bound;
 
@@ -35,11 +60,10 @@ class AccelerationProblem: public AccelerationTechnique<IntTheory, BoolTheory>  
     bool eventualWeakDecrease(const Lit &lit);
     bool eventualIncrease(const Lit &lit, const bool strict);
     bool fixpoint(const Lit &lit);
-    unsigned store(const Lit &lit, const LitSet &deps, const BoolExpr formula, const BoolExpr covered, bool nonterm = false);
+    unsigned store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool nonterm = false);
 
     struct ReplacementMap {
         bool nonterm;
-        BoolExpr covered;
         std::map<Lit, BoolExpr> map;
     };
 
@@ -50,7 +74,7 @@ public:
     AccelerationProblem(
             const Rule &rule,
             const std::optional<Recurrence::Result> &closed,
-            const Subs &samplePoint,
+            const std::optional<Subs> &samplePoint,
             const AccelConfig &config);
 
     AcceleratorPair computeRes();
