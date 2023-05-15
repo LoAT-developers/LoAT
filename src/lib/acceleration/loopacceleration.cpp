@@ -186,6 +186,7 @@ acceleration::Result LoopAcceleration::run() {
         res.status = acceleration::AccelerationFailed;
         return res;
     }
+    res.status = acceleration::Success;
     if (config.tryNonterm && accelerationResult.nonterm) {
         res.nonterm = {accelerationResult.nonterm->formula, proof};
         res.nonterm->proof.concat(accelerationResult.nonterm->proof);

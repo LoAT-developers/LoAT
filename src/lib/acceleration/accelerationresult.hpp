@@ -8,7 +8,7 @@
 namespace acceleration {
 
 enum Status {
-    NotSat, Nondet, PseudoLoop, Disjunctive, AccelerationFailed, ClosedFormFailed
+    NotSat, Nondet, PseudoLoop, Disjunctive, AccelerationFailed, ClosedFormFailed, Success
 };
 
 std::ostream& operator<<(std::ostream &s, const Status x);
@@ -24,7 +24,7 @@ struct Nonterm {
 };
 
 struct Result {
-    std::optional<Status> status;
+    Status status;
     std::optional<Accel> accel;
     std::optional<Nonterm> nonterm;
     unsigned prefix = 0;

@@ -10,6 +10,7 @@ std::ostream& operator<<(std::ostream &s, const Status x) {
     case Disjunctive: return s << "disjunctive";
     case AccelerationFailed: return s << "acceleration failed";
     case ClosedFormFailed: return s << "closed form failed";
+    case Success: return s << "success";
     }
     return s;
 }

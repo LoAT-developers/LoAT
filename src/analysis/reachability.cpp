@@ -522,10 +522,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (!res) {
         if (Config::Analysis::log) {
-            std::cout << "acceleration failed" << std::endl;
-            if (accel_res.status) {
-                std::cout << "status: " << *accel_res.status << std::endl;
-            }
+            std::cout << "acceleration failed, status: " << accel_res.status << std::endl;
         }
         return std::make_unique<Unroll>(1);
     }
