@@ -243,7 +243,7 @@ void ABMC::analyze() {
                  backlink;
                  backlink = has_looping_suffix(*backlink - 1)) {
                 if (handle_loop(*backlink)) {
-                    lookback = trace.size();
+                    lookback = trace.size() - 1;
                     break;
                 }
             }
