@@ -33,6 +33,11 @@ public:
         return converter.convertBoolEx(e);
     }
 
+    static EXPR convert(const Expr e, SmtContext<EXPR> &ctx) {
+        ExprToSmt<EXPR, Th...> converter(ctx);
+        return converter.convertEx(e);
+    }
+
 
 protected:
     ExprToSmt(SmtContext<EXPR> &context): context(context) {}

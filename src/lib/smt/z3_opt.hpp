@@ -22,6 +22,10 @@ public:
         solver.add_soft(ExprToSmt<z3::expr, Th...>::convert(e, ctx), 1);
     }
 
+    void add_objective(const Expr e) override {
+        solver.maximize(ExprToSmt<z3::expr, Th...>::convert(e, ctx));
+    }
+
     void add(const BExpr<Th...> e) override {
         solver.add(ExprToSmt<z3::expr, Th...>::convert(e, ctx));
     }

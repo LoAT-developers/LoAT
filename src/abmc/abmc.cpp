@@ -11,6 +11,7 @@
 #include "z3_opt.hpp"
 #include "z3.hpp"
 
+const bool ABMC::max_smt {false};
 const bool ABMC::optimize {false};
 
 ABMC::ABMC(const ITSProblem &its):
@@ -18,7 +19,7 @@ ABMC::ABMC(const ITSProblem &its):
     vars(its.getVars()),
     trace_var(NumVar::next()) {
     const auto timeout {std::numeric_limits<unsigned>::max()};
-    if (optimize) {
+    if (max_smt || optimize) {
         solver = std::make_unique<Z3Opt<IntTheory, BoolTheory>>(timeout);
     } else {
         solver = std::make_unique<Z3<IntTheory, BoolTheory>>(timeout);
@@ -39,7 +40,6 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start) {
         return {};
     }
     const auto last_clause = trace.back();
-    std::vector<long> sequence;
     for (int pos = start; pos >= lookback; --pos) {
         const auto &idx {trace[pos]};
         if (its.areAdjacent(last_clause, idx)) {
@@ -112,8 +112,9 @@ bool ABMC::handle_loop(int backlink) {
                     auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
                     if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
                         const auto new_idx {add_learned_clause(*simplified, backlink)};
-                        vars.insert(*accel_res.n);
-                        post_vars.emplace(*accel_res.n, NumVar::next());
+                        n = *accel_res.n;
+                        vars.insert(*n);
+                        post_vars.emplace(*n, NumVar::next());
                         shortcut = encode_transition(new_idx);
                         if (Config::Analysis::log) {
                             std::cout << "learned clause:" << std::endl;
@@ -142,6 +143,7 @@ BoolExpr ABMC::encode_transition(const TransIdx idx) {
 
 void ABMC::analyze() {
     if (Config::Analysis::log) {
+        std::cout << "initial ITS" << std::endl;
         its.print(std::cout);
     }
     const auto res {Preprocess::preprocess(its)};
@@ -211,19 +213,31 @@ void ABMC::analyze() {
             std::cout << "unsat" << std::endl;
             return;
         case SmtResult::Unknown:
+            if (Config::Analysis::log && !approx) {
+                std::cout << "got unknown from SMT solver -- approximating" << std::endl;
+            }
             approx = true;
             break;
         case SmtResult::Unsat: {}
         }
         solver->pop();
+        bool pop {false};
         if (shortcut->isTriviallyTrue()) {
             solver->add(step->subs(s));
         } else {
             const auto sc {shortcut->subs(s)};
-            if (optimize) {
+            if (max_smt) {
                 solver->add_soft(sc);
             }
-            solver->add(sc | step->subs(s));
+            if (optimize) {
+                objective = objective + *n;
+                solver->add(sc | (expr::mkEq(*n, 0) & step->subs(s)));
+                solver->push();
+                solver->add_objective(objective);
+                pop = true;
+            } else {
+                solver->add(sc | step->subs(s));
+            }
         }
         subs.push_back(s);
         switch (solver->check()) {
@@ -239,11 +253,14 @@ void ABMC::analyze() {
             for (const auto &s: subs) {
                 trace.push_back(s.get<IntTheory>(trace_var).subs(model).toNum().to_int());
             }
+            if (Config::Analysis::log) {
+                std::cout << "trace: " << trace << std::endl;
+            }
             for (auto backlink = has_looping_suffix(trace.size() - 1);
                  backlink;
                  backlink = has_looping_suffix(*backlink - 1)) {
                 if (handle_loop(*backlink)) {
-                    lookback = trace.size() - 1;
+                    lookback = trace.size();
                     break;
                 }
             }
@@ -252,6 +269,9 @@ void ABMC::analyze() {
         case SmtResult::Unknown:
             shortcut = True;
             trace.clear();
+        }
+        if (pop) {
+            solver->pop();
         }
     }
 

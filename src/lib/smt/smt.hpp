@@ -36,6 +36,10 @@ public:
         throw std::invalid_argument("add_soft not supported");
     }
 
+    virtual void add_objective(const Expr e) {
+        throw std::invalid_argument("add_objective not supported");
+    }
+
     void add(const Lit &e) {
         return this->add(BoolExpression<Th...>::buildTheoryLit(e));
     }

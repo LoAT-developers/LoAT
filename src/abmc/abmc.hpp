@@ -12,6 +12,7 @@ private:
     using Run = std::vector<TransIdx>;
     using Key = std::pair<Run, LitSet>;
 
+    static const bool max_smt;
     static const bool optimize;
 
     ABMC(const ITSProblem &its);
@@ -28,6 +29,8 @@ private:
     std::map<Var, Var> post_vars;
     NumVar trace_var;
     BoolExpr shortcut {BExpression::True};
+    std::optional<NumVar> n;
+    Expr objective {0};
     int lookback {0};
 
     BoolExpr encode_transition(const TransIdx idx);
