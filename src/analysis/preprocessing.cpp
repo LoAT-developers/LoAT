@@ -157,17 +157,19 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
         res.majorProofStep("Chained Linear Paths", sub_res.getProof(), its);
     }
     sub_res = preprocessRules(its);
-    if (res) {
+    if (sub_res) {
         res.succeed();
         res.majorProofStep("Preprocessed Transitions", sub_res.getProof(), its);
     }
     sub_res = unroll(its);
-    if (res) {
+    if (sub_res) {
+        res.succeed();
         res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
     }
     if (its.size() <= 1000) {
         sub_res = refine_dependency_graph(its);
-        if (res) {
+        if (sub_res) {
+            res.succeed();
             res.majorProofStep("Refined Dependency Graph", sub_res.getProof(), its);
         }
     }
