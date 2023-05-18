@@ -4,13 +4,13 @@
 
 #include "itsproblem.hpp"
 #include "smt.hpp"
+#include "redundanceviaautomata.hpp"
 
 class ABMC {
 
 private:
 
-    using Run = std::vector<TransIdx>;
-    using Key = std::pair<Run, LitSet>;
+    using Red = RedundanceViaAutomata;
 
     static const bool max_smt;
     static const bool optimize;
@@ -31,13 +31,16 @@ private:
     BoolExpr shortcut {BExpression::True};
     std::optional<NumVar> n;
     Expr objective {0};
+    NumVar objective_var;
     int lookback {0};
+    Red red;
 
+    Automaton get_language(unsigned i);
     BoolExpr encode_transition(const TransIdx idx);
     bool is_orig_clause(const TransIdx idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start);
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
-    std::tuple<Rule, Subs, Key> build_loop(const int backlink);
+    std::tuple<Rule, Subs, Automaton> build_loop(const int backlink);
     bool handle_loop(int backlink);
 
 public:

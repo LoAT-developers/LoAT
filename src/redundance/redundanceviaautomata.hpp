@@ -36,7 +36,7 @@ class RedundanceViaAutomata {
 
 public:
 
-    Automaton get_singleton_language(const std::vector<TransIdx> idx, const Guard &guard);
+    Automaton get_singleton_language(const TransIdx idx, const Guard &guard);
     std::optional<Automaton> get_language(const TransIdx idx);
     void set_language(const TransIdx idx, const Automaton &t);
     void delete_language(const TransIdx idx);
@@ -50,7 +50,7 @@ public:
 private:
 
     long next_char;
-    std::map<std::pair<std::vector<TransIdx>, Guard>, Automaton> alphabet;
+    std::map<std::pair<TransIdx, Guard>, Automaton> alphabet;
     std::map<TransIdx, Automaton> regexes;
 
 };

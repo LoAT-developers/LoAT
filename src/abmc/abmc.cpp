@@ -17,10 +17,14 @@ const bool ABMC::optimize {false};
 ABMC::ABMC(const ITSProblem &its):
     its(its),
     vars(its.getVars()),
-    trace_var(NumVar::next()) {
+    trace_var(NumVar::next()),
+    objective_var(NumVar::next()){
     const auto timeout {std::numeric_limits<unsigned>::max()};
     if (max_smt || optimize) {
         solver = std::make_unique<Z3Opt<IntTheory, BoolTheory>>(timeout);
+        if (optimize) {
+            solver->add_objective(objective_var);
+        }
     } else {
         solver = std::make_unique<Z3<IntTheory, BoolTheory>>(timeout);
     }
@@ -53,14 +57,34 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start) {
     return {};
 }
 
-std::tuple<Rule, Subs, ABMC::Key> ABMC::build_loop(const int backlink) {
+Automaton ABMC::get_language(unsigned i) {
+    const auto idx {trace[i]};
+    if (is_orig_clause(idx)) {
+        const auto rule {its.getRule(idx)};
+        const auto model {solver->model(rule.subs(subs[i]).vars()).toSubs()};
+        const auto imp {rule.getGuard()->implicant(model)};
+        if (!imp) {
+            throw std::logic_error("model, but no implicant");
+        }
+        return red.get_singleton_language(idx, BExpression::buildAnd(*imp)->conjunctionToGuard());
+    } else {
+        return *red.get_language(idx);
+    }
+}
+
+std::tuple<Rule, Subs, Automaton> ABMC::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
-    std::vector<unsigned> run;
+    std::optional<Automaton> lang;
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto idx {trace[i]};
         const auto rule {its.getRule(idx)};
-        run.push_back(idx);
+        const auto l {get_language(i)};
+        if (lang) {
+            lang->concat(l);
+        } else {
+            lang = l;
+        }
         if (loop) {
             const auto [chained, sigma] {Chaining::chain(rule, *loop)};
             loop = chained;
@@ -83,7 +107,7 @@ std::tuple<Rule, Subs, ABMC::Key> ABMC::build_loop(const int backlink) {
         ITSExport::printRule(implicant, std::cout);
         std::cout << std::endl;
     }
-    return {implicant, model, {run, *imp}};
+    return {implicant, model, *lang};
 }
 
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
@@ -91,40 +115,41 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 }
 
 bool ABMC::handle_loop(int backlink) {
-    const auto [loop, sample_point, key] {build_loop(backlink)};
-        const auto simp {Preprocess::preprocessRule(loop)};
-        if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
-            // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
-            // Such clauses are pretty useless, so we do not store them.
-            if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
+    const auto [loop, sample_point, lang] {build_loop(backlink)};
+    if (is_orig_clause())
+    const auto simp {Preprocess::preprocessRule(loop)};
+    if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
+        // The learned     return is_orig_clause(idx) ?  : ;clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
+        // Such clauses are pretty useless, so we do not store them.
+        if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
+    } else {
+        if (Config::Analysis::log && simp) {
+            std::cout << "simplified loop:" << std::endl;
+            ITSExport::printRule(*simp, std::cout);
+            std::cout << std::endl;
+        }
+        if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
+            if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
         } else {
-            if (Config::Analysis::log && simp) {
-                std::cout << "simplified loop:" << std::endl;
-                ITSExport::printRule(*simp, std::cout);
-                std::cout << std::endl;
-            }
-            if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
-                if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
-            } else {
-                AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
-                const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
-                if (accel_res.accel) {
-                    auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
-                    if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
-                        const auto new_idx {add_learned_clause(*simplified, backlink)};
-                        n = *accel_res.n;
-                        vars.insert(*n);
-                        post_vars.emplace(*n, NumVar::next());
-                        shortcut = encode_transition(new_idx);
-                        if (Config::Analysis::log) {
-                            std::cout << "learned clause:" << std::endl;
-                            std::cout << *simplified << std::endl;
-                        }
-                        return true;
+            AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
+            const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
+            if (accel_res.accel) {
+                auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
+                if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
+                    const auto new_idx {add_learned_clause(*simplified, backlink)};
+                    n = *accel_res.n;
+                    vars.insert(*n);
+                    post_vars.emplace(*n, NumVar::next());
+                    shortcut = encode_transition(new_idx);
+                    if (Config::Analysis::log) {
+                        std::cout << "learned clause:" << std::endl;
+                        std::cout << *simplified << std::endl;
                     }
+                    return true;
                 }
             }
         }
+    }
     return false;
 }
 
@@ -221,7 +246,6 @@ void ABMC::analyze() {
         case SmtResult::Unsat: {}
         }
         solver->pop();
-        bool pop {false};
         if (shortcut->isTriviallyTrue()) {
             solver->add(step->subs(s));
         } else {
@@ -232,12 +256,13 @@ void ABMC::analyze() {
             if (optimize) {
                 objective = objective + *n;
                 solver->add(sc | (expr::mkEq(*n, 0) & step->subs(s)));
-                solver->push();
-                solver->add_objective(objective);
-                pop = true;
             } else {
                 solver->add(sc | step->subs(s));
             }
+        }
+        if (optimize) {
+            solver->push();
+            solver->add(expr::mkEq(objective_var, objective));
         }
         subs.push_back(s);
         switch (solver->check()) {
@@ -270,7 +295,7 @@ void ABMC::analyze() {
             shortcut = True;
             trace.clear();
         }
-        if (pop) {
+        if (optimize) {
             solver->pop();
         }
     }

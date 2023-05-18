@@ -67,7 +67,7 @@ std::ostream& operator<<(std::ostream &s, const Automaton &a) {
     return s << a.str;
 }
 
-Automaton RedundanceViaAutomata::get_singleton_language(const std::vector<TransIdx> idx, const Guard &g) {
+Automaton RedundanceViaAutomata::get_singleton_language(const TransIdx idx, const Guard &g) {
     const auto it = alphabet.find({idx, g});
     if (it == alphabet.end()) {
         const auto res = Automaton::singleton();

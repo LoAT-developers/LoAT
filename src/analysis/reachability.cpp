@@ -398,7 +398,7 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
 
 Automaton Reachability::get_language(const Step &step) {
     if (is_orig_clause(step.clause_idx)) {
-        return redundancy->get_singleton_language({step.clause_idx}, step.implicant->conjunctionToGuard());
+        return redundancy->get_singleton_language(step.clause_idx, step.implicant->conjunctionToGuard());
     } else {
         return *redundancy->get_language(step.clause_idx);
     }
