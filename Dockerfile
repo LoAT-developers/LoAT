@@ -22,28 +22,12 @@ RUN xbps-install -y pkg-config
 RUN xbps-install -y boost-devel
 RUN xbps-install -y giac-devel
 RUN xbps-install -y python-devel
+RUN xbps-install -y gmp-devel
+RUN xbps-install -y gmpxx-devel
+RUN xbps-install -y apache-maven
+RUN xbps-install -y bash
 
 RUN mkdir /src/
-
-# reduce
-RUN xbps-install -y subversion
-RUN xbps-install -y ncurses-devel
-RUN xbps-install -y libX11-devel
-RUN xbps-install -y libXft-devel
-RUN xbps-install -y libXext-devel
-RUN xbps-install -y file
-RUN xbps-install -y libffi-devel
-RUN xbps-install -y libltdl-devel
-WORKDIR /src
-RUN svn co -r 6325 http://svn.code.sf.net/p/reduce-algebra/code/trunk reduce-algebra
-WORKDIR /src/reduce-algebra
-RUN ./configure --with-csl
-RUN cp /usr/include/unistd.h /usr/include/sys/
-RUN make
-WORKDIR /src/reduce-algebra/generic/libreduce
-RUN sed -i 's/AC_CONFIG_MACRO_DIRS/AC_CONFIG_MACRO_DIR/g' src/configure.ac
-RUN xbps-alternatives -g python -s python
-RUN make
 
 # z3
 WORKDIR /src
@@ -66,8 +50,6 @@ RUN ./configure ABI=64 CFLAGS="-fPIC -O3 -DNDEBUG" CPPFLAGS="-DPIC -O3 -DNDEBUG"
 RUN make -j
 RUN make -j check
 RUN make install
-
-RUN xbps-install -y gmp-devel gmpxx-devel
 
 # libpoly
 WORKDIR /src
@@ -119,8 +101,6 @@ RUN ./configure CXXFLAGS='-march=sandybridge -O3 -DNDEBUG'
 RUN make -j
 RUN make install
 
-ARG CACHEBUST=2
-
 # purrs
 WORKDIR /src
 RUN git clone https://github.com/aprove-developers/LoAT-purrs.git
@@ -130,8 +110,6 @@ RUN automake
 RUN ./configure --with-cxxflags='-march=sandybridge -O3 -DNDEBUG'
 RUN make -j
 RUN make install
-
-RUN xbps-install -y apache-maven
 
 # antlr4
 WORKDIR /src
@@ -149,7 +127,6 @@ WORKDIR /src
 RUN wget https://fgdes.tf.fau.de/archive/libfaudes-2_30b.tar.gz
 RUN tar xf libfaudes-2_30b.tar.gz
 WORKDIR /src/libfaudes-2_30b
-RUN xbps-install -y bash
 RUN sed -i 's/MAINOPTS += -std=gnu++98 -D_GLIBCXX_USE_CXX11_ABI=0/MAINOPTS += -std=c++11/g' Makefile
 RUN FAUDES_LINKING=static make -j
 
@@ -165,7 +142,6 @@ COPY CMakeLists.txt /src/LoAT/
 COPY src /src/LoAT/src/
 COPY --from=loat /src/LoAT/build /src/LoAT/build
 RUN mkdir /src/LoAT/lib
-RUN cp /src/reduce-algebra/generic/libreduce/x86_64-pc-linux-musl/libreduce.* /src/LoAT/lib
 RUN cp /src/libfaudes-2_30b/libfaudes.* /src/LoAT/lib
 RUN mkdir -p /src/LoAT/build/static/release
 WORKDIR /src/LoAT/build/static/release
