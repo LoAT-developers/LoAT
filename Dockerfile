@@ -52,7 +52,7 @@ RUN tar xf z3-4.9.1.tar.gz
 WORKDIR /src/z3-z3-4.9.1
 RUN mkdir build
 WORKDIR /src/z3-z3-4.9.1/build
-RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" ..
+RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
 
@@ -62,7 +62,7 @@ RUN wget https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz
 RUN lzip -d gmp-6.2.1.tar.lz
 RUN tar xf gmp-6.2.1.tar
 WORKDIR /src/gmp-6.2.1
-RUN ./configure ABI=64 CFLAGS="-fPIC -O3 -DNDEBUG" CPPFLAGS="-DPIC -O3 -DNDEBUG" --host=sandybridge-pc-linux-gnu --enable-cxx --prefix /gmp/
+RUN ./configure ABI=64 CFLAGS="-fPIC -O3 -DNDEBUG" CPPFLAGS="-DPIC -O3 -DNDEBUG" --host=x86_64-pc-linux-gnu --enable-cxx --prefix /gmp/
 RUN make -j
 RUN make -j check
 RUN make install
@@ -73,7 +73,7 @@ RUN xbps-install -y gmp-devel gmpxx-devel
 WORKDIR /src
 RUN git clone https://github.com/SRI-CSL/libpoly.git
 WORKDIR /src/libpoly/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" ..
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
 
@@ -82,7 +82,7 @@ WORKDIR /src
 RUN git clone https://github.com/ivmai/cudd.git
 WORKDIR /src/cudd
 # make check fails when compiled with -DNDEBUG
-RUN ./configure CFLAGS='-fPIC -march=sandybridge -O3' CXXFLAGS='-fPIC -march=sandybridge -O3'
+RUN ./configure CFLAGS='-fPIC -march=x86-64 -O3' CXXFLAGS='-fPIC -march=x86-64 -O3'
 RUN sed -i 's/aclocal-1.14/aclocal-1.16/g' Makefile
 RUN sed -i 's/automake-1.14/automake-1.16/g' Makefile
 RUN make -j
@@ -94,7 +94,7 @@ WORKDIR /src
 RUN git clone https://github.com/SRI-CSL/yices2.git
 WORKDIR /src/yices2
 RUN autoconf
-RUN ./configure --enable-mcsat --with-pic-gmp=/gmp/lib/libgmp.a CFLAGS='-march=sandybridge -O3 -DNDEBUG'
+RUN ./configure --enable-mcsat --with-pic-gmp=/gmp/lib/libgmp.a CFLAGS='-march=x86-64 -O3 -DNDEBUG'
 RUN make -j
 RUN make -j static-lib
 RUN make install
@@ -106,7 +106,7 @@ RUN tar xf ginac-1.8.6.tar.bz2
 WORKDIR /src/ginac-1.8.6
 RUN mkdir build
 WORKDIR /src/ginac-1.8.6/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" ..
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
 
@@ -115,7 +115,7 @@ WORKDIR /src
 RUN wget https://libntl.org/ntl-11.4.4.tar.gz
 RUN tar xf ntl-11.4.4.tar.gz
 WORKDIR /src/ntl-11.4.4/src
-RUN ./configure CXXFLAGS='-march=sandybridge -O3 -DNDEBUG'
+RUN ./configure CXXFLAGS='-march=x86-64 -O3 -DNDEBUG'
 RUN make -j
 RUN make install
 
@@ -127,10 +127,11 @@ RUN git clone https://github.com/aprove-developers/LoAT-purrs.git
 WORKDIR /src/LoAT-purrs
 RUN autoreconf --install
 RUN automake
-RUN ./configure --with-cxxflags='-march=sandybridge -O3 -DNDEBUG'
+RUN ./configure --with-cxxflags='-march=x86-64 -O3 -DNDEBUG'
 RUN make -j
 RUN make install
 
+RUN xbps-install -yS
 RUN xbps-install -y apache-maven
 
 # antlr4
@@ -140,7 +141,7 @@ WORKDIR /src/antlr4
 RUN git checkout 4.11.1
 RUN mkdir /src/antlr4/runtime/Cpp/build
 WORKDIR /src/antlr4/runtime/Cpp/build
-RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR="/usr/local/lib" -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG"
+RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR="/usr/local/lib" -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG"
 RUN make -j
 RUN make install
 
@@ -168,22 +169,22 @@ RUN cp /src/reduce-algebra/generic/libreduce/x86_64-pc-linux-musl/libreduce.* /s
 RUN cp /src/libfaudes-2_30b/libfaudes.* /src/LoAT/lib
 RUN mkdir -p /src/LoAT/build/static/release
 WORKDIR /src/LoAT/build/static/release
-RUN cmake -DSTATIC=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE='-march=sandybridge -O3 -DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='-march=sandybridge -O3 -DNDEBUG' -DSHA=$SHA -DDIRTY=$DIRTY ../../../
+RUN cmake -DSTATIC=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE='-march=x86-64 -O3 -DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='-march=x86-64 -O3 -DNDEBUG' -DSHA=$SHA -DDIRTY=$DIRTY ../../../
 RUN make -j
 
-RUN mkdir /examples
-WORKDIR /examples
-COPY example/lia-lin /examples/lia-lin
-COPY example/lia-lin-int /examples/lia-lin-int
+# RUN mkdir /examples
+# WORKDIR /examples
+# COPY example/lia-lin /examples/lia-lin
+# COPY example/lia-lin-int /examples/lia-lin-int
 
-WORKDIR /
-COPY solvers /solvers
-RUN cp /src/LoAT/build/static/release/loat-static /solvers/loat
+# WORKDIR /
+# COPY solvers /solvers
+# RUN cp /src/LoAT/build/static/release/loat-static /solvers/loat
 
-COPY bin /bin2
-RUN cp /bin2/* /bin/
-RUN rm -r /bin2
+# COPY bin /bin2
+# RUN cp /bin2/* /bin/
+# RUN rm -r /bin2
 
-RUN xbps-install -yS
-RUN xbps-install -y emacs vim nano
-RUN xbps-install -y ncurses
+# RUN xbps-install -yS
+# RUN xbps-install -y emacs vim nano
+# RUN xbps-install -y ncurses
