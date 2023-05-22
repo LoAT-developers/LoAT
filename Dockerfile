@@ -172,19 +172,19 @@ WORKDIR /src/LoAT/build/static/release
 RUN cmake -DSTATIC=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE='-march=x86-64 -O3 -DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='-march=x86-64 -O3 -DNDEBUG' -DSHA=$SHA -DDIRTY=$DIRTY ../../../
 RUN make -j
 
-# RUN mkdir /examples
-# WORKDIR /examples
-# COPY example/lia-lin /examples/lia-lin
-# COPY example/lia-lin-int /examples/lia-lin-int
+RUN mkdir /examples
+WORKDIR /examples
+COPY example/lia-lin /examples/lia-lin
+COPY example/lia-lin-int /examples/lia-lin-int
 
-# WORKDIR /
-# COPY solvers /solvers
-# RUN cp /src/LoAT/build/static/release/loat-static /solvers/loat
+WORKDIR /
+COPY solvers /solvers
+RUN cp /src/LoAT/build/static/release/loat-static /solvers/loat
 
-# COPY bin /bin2
-# RUN cp /bin2/* /bin/
-# RUN rm -r /bin2
+COPY bin /bin2
+RUN cp /bin2/* /bin/
+RUN rm -r /bin2
 
-# RUN xbps-install -yS
-# RUN xbps-install -y emacs vim nano
-# RUN xbps-install -y ncurses
+RUN xbps-install -yS
+RUN xbps-install -y emacs vim nano
+RUN xbps-install -y ncurses
