@@ -2,10 +2,10 @@ version: "3"
 
 services:
   app:
-    image: loat_dev:latest
+    image: qtcreator:latest
     build:
       context: .
-      dockerfile: loat_dev.Dockerfile
+      dockerfile: qtcreator.Dockerfile
     environment:
       - DISPLAY=${DISPLAY}
     volumes:
