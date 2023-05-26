@@ -26,7 +26,14 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${loat_expr_INCLUDE_DIRS})
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")
 
-target_link_libraries(${PROJECT_NAME} ${PURRS} ${GINAC} ${NTL} ${CLN} ${GMP} loat_expr)
+target_link_libraries(${PROJECT_NAME}
+  ${PURRS}
+  ${GINAC}
+  ${NTL}
+  ${CLN}
+  ${GMP}
+  loat_expr
+)
 
 # Expose public includes to other
 # subprojects through cache variable.

@@ -44,7 +44,8 @@ target_link_libraries(
     ${Z3}
     ${YICES}
     ${POLY}
-    ${CUDD})
+    ${CUDD}
+)
 
 # Expose public includes to other
 # subprojects through cache variable.

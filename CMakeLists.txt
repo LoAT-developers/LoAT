@@ -5,7 +5,7 @@ project(LoAT)
 set(CMAKE_CXX_STANDARD 20)
 
 # non-static build by default
-option(STATIC "static" OFF)
+option(STATIC "static" ON)
 option(SANITIZE "sanitize" OFF)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
@@ -42,29 +42,16 @@ message(STATUS "Compiler cxx relwithdebinfo flags:" ${CMAKE_CXX_FLAGS_RELWITHDEB
 message(STATUS "Compiler cxx min size flags:" ${CMAKE_CXX_FLAGS_MINSIZEREL})
 message(STATUS "Compiler cxx flags:" ${CMAKE_CXX_FLAGS})
 
-if (DEFINED ENV{ANTLR4_INCLUDE_PATH})
-  # ANTLR4 is available and we know where to find the headers
-  find_library(ANTLR4 antlr4-runtime)
-  set(ANTLR4_INCLUDE_DIRS $ENV{ANTLR4_INCLUDE_PATH})
-else()
-  # ANTLR4 is not available, build it
-  set(ANTLR4_TAG 4.11.1)
-  LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-  if (${STATIC})
-    add_definitions(-DANTLR4CPP_STATIC)
-  endif()
-  include(ExternalAntlr4Cpp)
-  set(ANTLR4 antlr4_static)
-endif()
+find_library(ANTLR4 antlr4-runtime)
+message(STATUS "antlr4: ${ANTLR4}")
+find_library(FAUDES faudes)
+message(STATUS "faudes: ${FAUDES}")
 
 # generate version.cc
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp" @ONLY)
 
 add_executable(${EXECUTABLE} "")
 add_subdirectory(src)
-
-set(FAUDES ${CMAKE_CURRENT_SOURCE_DIR}/lib/libfaudes.a)
-message(STATUS "faudes: ${FAUDES}")
 
 target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_util_INCLUDE_DIRS}
