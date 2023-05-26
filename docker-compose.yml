@@ -1,8 +1,11 @@
 version: "3"
 
 services:
-  app:
+  qtcreator:
     image: qtcreator:latest
+    container_name: qtcreator
+    security_opt: [seccomp:unconfined]
+    cap_add: [SYS_PTRACE]
     build:
       context: .
       dockerfile: qtcreator.Dockerfile
