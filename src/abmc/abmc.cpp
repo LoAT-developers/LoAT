@@ -60,8 +60,8 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start) {
 Automaton ABMC::get_language(unsigned i) {
     const auto idx {trace[i]};
     if (is_orig_clause(idx)) {
-        const auto rule {its.getRule(idx)};
-        const auto model {solver->model(rule.subs(subs[i]).vars()).toSubs()};
+        const auto rule {its.getRule(idx).subs(subs[i])};
+        const auto model {solver->model(rule.vars()).toSubs()};
         const auto imp {rule.getGuard()->implicant(model)};
         if (!imp) {
             throw std::logic_error("model, but no implicant");
