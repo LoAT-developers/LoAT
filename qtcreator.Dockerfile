@@ -7,4 +7,4 @@ RUN xbps-install -yS qtcreator xauth mesa
 
 RUN xauth add $TOKEN
 
-CMD ["/usr/bin/qtcreator"]
+CMD ["/usr/bin/qtcreator", "-settingspath", "."]
