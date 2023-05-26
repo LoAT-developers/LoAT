@@ -71,7 +71,7 @@ Automaton RedundanceViaAutomata::get_singleton_language(const TransIdx idx, cons
     const auto it = alphabet.find({idx, g});
     if (it == alphabet.end()) {
         const auto res = Automaton::singleton();
-        alphabet.emplace(std::pair<std::vector<TransIdx>, Guard>(idx, g), res);
+        alphabet.emplace(std::pair<TransIdx, Guard>(idx, g), res);
         return res;
     } else {
         return it->second;

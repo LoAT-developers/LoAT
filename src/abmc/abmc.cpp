@@ -66,7 +66,7 @@ Automaton ABMC::get_language(unsigned i) {
         if (!imp) {
             throw std::logic_error("model, but no implicant");
         }
-        return red.get_singleton_language(idx, BExpression::buildAnd(*imp)->conjunctionToGuard());
+        return red.get_singleton_language(idx, BExpression::buildAndFromLits(*imp)->conjunctionToGuard());
     } else {
         return *red.get_language(idx);
     }
@@ -115,37 +115,40 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 }
 
 bool ABMC::handle_loop(int backlink) {
-    const auto [loop, sample_point, lang] {build_loop(backlink)};
-    if (is_orig_clause())
-    const auto simp {Preprocess::preprocessRule(loop)};
-    if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
-        // The learned     return is_orig_clause(idx) ?  : ;clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
-        // Such clauses are pretty useless, so we do not store them.
-        if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
-    } else {
-        if (Config::Analysis::log && simp) {
-            std::cout << "simplified loop:" << std::endl;
-            ITSExport::printRule(*simp, std::cout);
-            std::cout << std::endl;
-        }
-        if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
-            if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
+    auto [loop, sample_point, lang] {build_loop(backlink)};
+    if (is_orig_clause(trace.back()) || !red.is_redundant(lang)) {
+        red.transitive_closure(lang);
+        red.mark_as_redundant(lang);
+        const auto simp {Preprocess::preprocessRule(loop)};
+        if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
+            // The learned     return is_orig_clause(idx) ?  : ;clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
+            // Such clauses are pretty useless, so we do not store them.
+            if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
         } else {
-            AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
-            const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
-            if (accel_res.accel) {
-                auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
-                if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
-                    const auto new_idx {add_learned_clause(*simplified, backlink)};
-                    n = *accel_res.n;
-                    vars.insert(*n);
-                    post_vars.emplace(*n, NumVar::next());
-                    shortcut = encode_transition(new_idx);
-                    if (Config::Analysis::log) {
-                        std::cout << "learned clause:" << std::endl;
-                        std::cout << *simplified << std::endl;
+            if (Config::Analysis::log && simp) {
+                std::cout << "simplified loop:" << std::endl;
+                ITSExport::printRule(*simp, std::cout);
+                std::cout << std::endl;
+            }
+            if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
+                if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
+            } else {
+                AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
+                const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
+                if (accel_res.accel) {
+                    auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
+                    if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
+                        const auto new_idx {add_learned_clause(*simplified, backlink)};
+                        n = *accel_res.n;
+                        vars.insert(*n);
+                        post_vars.emplace(*n, NumVar::next());
+                        shortcut = encode_transition(new_idx);
+                        if (Config::Analysis::log) {
+                            std::cout << "learned clause:" << std::endl;
+                            std::cout << *simplified << std::endl;
+                        }
+                        return true;
                     }
-                    return true;
                 }
             }
         }
