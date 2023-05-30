@@ -47,6 +47,11 @@ message(STATUS "antlr4: ${ANTLR4}")
 find_library(FAUDES faudes)
 message(STATUS "faudes: ${FAUDES}")
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
+include(GetGitRevisionDescription)
+get_git_head_revision(GIT_REFSPEC SHA)
+git_local_changes(DIRTY)
+
 # generate version.cc
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp" @ONLY)
 
