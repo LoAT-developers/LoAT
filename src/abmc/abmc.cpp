@@ -117,8 +117,6 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 bool ABMC::handle_loop(int backlink) {
     auto [loop, sample_point, lang] {build_loop(backlink)};
     if (is_orig_clause(trace.back()) || !red.is_redundant(lang)) {
-        red.transitive_closure(lang);
-        red.mark_as_redundant(lang);
         const auto simp {Preprocess::preprocessRule(loop)};
         if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
             // The learned     return is_orig_clause(idx) ?  : ;clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -147,6 +145,9 @@ bool ABMC::handle_loop(int backlink) {
                             std::cout << "learned clause:" << std::endl;
                             std::cout << *simplified << std::endl;
                         }
+                        red.transitive_closure(lang);
+                        red.mark_as_redundant(lang);
+                        red.set_language(new_idx, lang);
                         return true;
                     }
                 }
