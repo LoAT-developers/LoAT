@@ -421,7 +421,7 @@ void Satisfiability::luby_next() {
 }
 
 void Satisfiability::unsat() {
-     std::cout << "unknown" << std::endl << std::endl;
+     std::cout << "NO" << std::endl << std::endl;
     /*
      std::cout << "unsat" << std::endl << std::endl;
     std::stringstream trace_stream, counterexample;
@@ -853,7 +853,7 @@ void Satisfiability::analyze() {
         }
         to_try.insert(to_try.end(), append.begin(), append.end());
     } while (true);
-    std::cout << "sat" << std::endl << std::endl;
+    std::cout << "YES" << std::endl << std::endl;
 }
 
 void Satisfiability::analyze_with_timeout() {
@@ -871,7 +871,7 @@ void Satisfiability::analyze_with_timeout() {
     {
         std::unique_lock<std::mutex> l(m);
         if(cv.wait_for(l, std::chrono::seconds(60)) == std::cv_status::timeout) {
-            std::cout << "unknown" << std::endl << std::endl;
+            std::cout << "NO" << std::endl << std::endl;
         }
     }
     return;
