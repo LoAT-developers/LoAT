@@ -645,7 +645,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         redundancy->prepend(lang, learned_lang);
     }
     redundancy->mark_as_redundant(learned_lang);
-    bool do_drop {drop || backlink == trace.size() - 1};
+    bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix == 0 && learned_clauses.period == 1)};
     if (do_drop) {
         drop_until(backlink);
     }
