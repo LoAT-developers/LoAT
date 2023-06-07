@@ -161,10 +161,12 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
         res.succeed();
         res.majorProofStep("Preprocessed Transitions", sub_res.getProof(), its);
     }
-    sub_res = unroll(its);
-    if (sub_res) {
-        res.succeed();
-        res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
+    if (!Config::Analysis::safety()) {
+        sub_res = unroll(its);
+        if (sub_res) {
+            res.succeed();
+            res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
+        }
     }
     if (its.size() <= 1000) {
         sub_res = refine_dependency_graph(its);

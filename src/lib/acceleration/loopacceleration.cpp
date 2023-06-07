@@ -144,7 +144,7 @@ acceleration::Result LoopAcceleration::run() {
         }
     }
     const auto [rule, period] = chain(this->rule);
-    switch (SmtFactory::check(rule.getGuard())) {
+    switch (SmtFactory::check(rule.getGuard(), config.smt_timeout)) {
     case Unsat: res.status = acceleration::PseudoLoop;
         return res;
     case Unknown: res.status = acceleration::NotSat;
@@ -158,7 +158,7 @@ acceleration::Result LoopAcceleration::run() {
     }
     // for rules with runtime 1, our acceleration techniques do not work properly,
     // as the closed forms are usually only valid for n > 0 --> special case
-    switch (SmtFactory::check(rule.chain(rule).getGuard())) {
+    switch (SmtFactory::check(rule.chain(rule).getGuard()), config.smt_timeout) {
     case Unsat:
         res.accel = {rule, proof};
         res.accel->proof.append("rule cannot be iterated more than once");
@@ -182,7 +182,7 @@ acceleration::Result LoopAcceleration::run() {
         for (const auto &p: rec->closed_form) {
             auto tmp {false};
             for (const auto &x: expr::vars(expr::second(p))) {
-                if (expr::isTempVar(x)) {
+                if (x != Var(rec->n) && expr::isTempVar(x)) {
                     const auto var {expr::first(p)};
                     up.put(var, expr::toExpr(expr::next(var)));
                     tmp = true;
@@ -206,7 +206,7 @@ acceleration::Result LoopAcceleration::run() {
             if (add) {
                 lits.insert(BExpression::buildTheoryLit(l));
             }
-            auto updated {expr::subs(l, rec->closed_form)};
+            auto updated {expr::subs(l, up)};
             add = true;
             for (const auto &x: updated->vars()) {
                 if (x != Var(rec->n) && expr::isTempVar(x)) {
@@ -220,7 +220,7 @@ acceleration::Result LoopAcceleration::run() {
         }
         auto guard {BExpression::buildAnd(lits) & Rel::buildGt(rec->n, 0)};
         proof.append("over-approximating acceleration using closed form");
-        accel_rule = Rule(guard, rec->closed_form);
+        accel_rule = Rule(guard, up);
     } else {
         const auto accelerationResult {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
         if (!accelerationResult.term && config.approx != UnderApprox) {

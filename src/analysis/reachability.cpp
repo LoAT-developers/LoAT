@@ -5,6 +5,7 @@
 #include "result.hpp"
 #include "smt.hpp"
 #include "export.hpp"
+#include "smtfactory.hpp"
 #include "vector.hpp"
 #include "asymptoticbound.hpp"
 #include "vareliminator.hpp"
@@ -502,7 +503,11 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             return std::make_unique<Covered>();
         }
     }
-    AccelConfig config {.approx = Config::Analysis::safety() ? OverApprox : UnderApprox, .allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
+    AccelConfig config {
+        .approx = Config::Analysis::safety() ? OverApprox : UnderApprox,
+        .allowDisjunctions = false,
+        .tryNonterm = Config::Analysis::tryNonterm(),
+        .smt_timeout = Config::Analysis::safety() ? 0 : smt::default_timeout};
     const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
@@ -544,6 +549,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             const auto loop_idx {add_learned_clause(*simplified, backlink)};
             res->res.emplace_back(loop_idx);
             ITSProof acceleration_proof;
+            acceleration_proof.storeSubProof(simp.getProof());
             acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
             acceleration_proof.storeSubProof(accel_res.accel->proof);
             res.concat(acceleration_proof);

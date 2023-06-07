@@ -222,6 +222,8 @@ public:
      */
     Expr expand() const;
 
+    Expr normalizeCoefficients() const;
+
     /**
      * @return True iff some subexpression matches the given pattern.
      */
