@@ -20,6 +20,7 @@ public:
     static Automaton singleton();
 
     void concat(const Automaton &that);
+    void prepend(const Automaton &that);
     void kleene_plus();
     void unite(const Automaton &that);
 
@@ -45,6 +46,7 @@ public:
     void mark_as_redundant(const Automaton &t);
     void mark_as_accelerated(const Automaton &t);
     void concat(Automaton &t1, const Automaton &t2) const;
+    void prepend(const Automaton &t1, Automaton &t2) const;
     void transitive_closure(Automaton &t) const;
 
 private:
