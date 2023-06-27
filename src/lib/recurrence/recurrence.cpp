@@ -36,12 +36,12 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
     GiNaC::ex closed_form;
     for (const auto &x: vars) {
         const auto it {prefixes.find(x)};
-        if (it != prefixes.end() && it->second > 0) {
-            prefix = std::max(it->second + 1, prefix);
+        if (it != prefixes.end()) {
+            prefix = std::max(it->second, prefix);
         }
     }
     if (vars.find(lhs) == vars.end()) {
-        prefix = std::max(1u, prefix);
+        ++prefix;
         if (inverse) {
             const auto last {rhs.subs(*inverse)};
             result.refined_equations.put(lhs, lhs + rhs - last);
