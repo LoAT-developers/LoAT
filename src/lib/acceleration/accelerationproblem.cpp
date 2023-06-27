@@ -15,10 +15,10 @@ AccelerationProblem::AccelerationProblem(
     guard(r.getGuard()->toG()),
     config(config),
     samplePoint(samplePoint) {
-    if (closed) {
-        update.get<IntTheory>() = closed->refined_equations;
-        proof.append(std::stringstream() << "refined update: " << update);
-    }
+//    if (closed) {
+//        update.get<IntTheory>() = closed->refined_equations;
+//        proof.append(std::stringstream() << "refined update: " << update);
+//    }
     for (const auto &l: guard->lits()) {
         todo.insert(l);
     }
@@ -451,7 +451,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     for (const auto& lit: todo) {
         if (trivial(lit)) continue;
         if (unchanged(lit)) continue;
-        if (polynomial(lit)) continue;
+//        if (polynomial(lit)) continue;
         auto res {recurrence(lit)};
         res |= monotonicity(lit);
         res |= eventualWeakDecrease(lit);
