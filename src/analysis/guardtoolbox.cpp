@@ -188,6 +188,9 @@ Result<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
             if (rel.isEq()) continue;
             if (!rel.isPoly() && rel.isStrict()) continue;
             Expr term = rel.toLeq().makeRhsZero().lhs().normalizeCoefficients();
+            if (term.isGround()) {
+                continue;
+            }
             for (const auto &prev : terms) {
                 const auto div {(prev.second / term).expand()};
                 if (div.isRationalConstant() && div.toNum().is_negative()) {
