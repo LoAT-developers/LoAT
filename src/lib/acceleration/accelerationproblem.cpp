@@ -4,6 +4,7 @@
 #include "expr.hpp"
 #include "boolexpr.hpp"
 #include "map.hpp"
+#include "relevantvariables.hpp"
 
 AccelerationProblem::AccelerationProblem(
         const Rule &r,
@@ -403,21 +404,20 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     if (res.find(lit) != res.end()) {
         return false;
     }
-    const auto ex {
-        std::visit(Overload{
-                       [](const Rel &rel) {
-                           return TheTheory::Expression(rel.lhs());
-                       },
-                       [](const BoolLit &blit) {
-                           return TheTheory::varToExpr(blit.getBoolVar());
-                       }
-                   }, lit)
-    };
-    const auto eq {expr::mkEq(ex, expr::subs(ex, update))};
-    if (samplePoint && !eq->subs(*samplePoint)->isTriviallyTrue()) {
+    std::vector<BoolExpr> eqs;
+    const auto vars {util::RelevantVariables::find(expr::variables(lit), update)};
+    for (const auto& v: vars) {
+        if (!config.allowDisjunctions && std::holds_alternative<BoolVar>(v)) {
+            // encoding equality for booleans introduces a disjunction
+            return false;
+        }
+        eqs.push_back(expr::mkEq(TheTheory::varToExpr(v), update.get(v)));
+    }
+    const auto allEq = BExpression::buildAnd(eqs);
+    if (samplePoint && !allEq->subs(*samplePoint)->isTriviallyTrue()) {
         return false;
     }
-    BoolExpr newGuard {eq & lit};
+    BoolExpr newGuard = allEq & lit;
     auto idx {store(lit, {}, newGuard, true)};
     std::stringstream ss;
     ss << lit << " [" << idx << "]: fixpoint yields " << newGuard;

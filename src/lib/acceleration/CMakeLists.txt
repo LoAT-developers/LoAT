@@ -17,6 +17,7 @@ add_library(${PROJECT_NAME} STATIC
   accelerationresult.cpp
   chain.hpp
   chain.cpp
+  relevantvariables.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
