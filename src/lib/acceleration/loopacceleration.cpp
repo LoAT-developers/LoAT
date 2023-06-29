@@ -223,16 +223,17 @@ acceleration::Result LoopAcceleration::run() {
         accel_rule = Rule(guard, up);
     } else {
         const auto accelerationResult {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
-        if (!accelerationResult.term && config.approx != UnderApprox) {
+        if (!accelerationResult.term && (config.approx != UnderApprox || !accelerationResult.nonterm)) {
             res.status = acceleration::AccelerationFailed;
             return res;
         }
-        res.status = acceleration::Success;
         if (config.tryNonterm && accelerationResult.nonterm) {
+            res.status = acceleration::Nonterminating;
             res.nonterm = {accelerationResult.nonterm->formula, proof};
             res.nonterm->proof.concat(accelerationResult.nonterm->proof);
         }
         if (rec && accelerationResult.term) {
+            res.status = acceleration::Success;
             accel_rule = Rule(accelerationResult.term->formula, rec->closed_form);
             proof.concat(accelerationResult.term->proof);
         }
