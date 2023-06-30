@@ -49,6 +49,9 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
         }
         closed_form = updated;
     } else {
+        if (prefix > 0) {
+            ++prefix;
+        }
         const auto i {rhs.solveTermFor(lhs, ConstantCoeffs)};
         if (!i) {
             inverse = std::optional<ExprSubs>();

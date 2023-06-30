@@ -637,12 +637,16 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
     auto learned_lang {lang};
-    for (unsigned i = 1; i < learned_clauses.period; ++i) {
-        redundancy->concat(learned_lang, lang);
+    if (Config::Analysis::safety()) {
+        for (unsigned i = 1; i < learned_clauses.period; ++i) {
+            redundancy->concat(learned_lang, lang);
+        }
     }
     redundancy->transitive_closure(learned_lang);
-    for (unsigned i = 0; i < learned_clauses.prefix; ++i) {
-        redundancy->prepend(lang, learned_lang);
+    if (Config::Analysis::safety()) {
+        for (unsigned i = 0; i < learned_clauses.prefix; ++i) {
+            redundancy->prepend(lang, learned_lang);
+        }
     }
     redundancy->mark_as_redundant(learned_lang);
     bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix == 0 && learned_clauses.period == 1)};

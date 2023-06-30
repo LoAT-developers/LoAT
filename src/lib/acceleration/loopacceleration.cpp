@@ -239,7 +239,7 @@ acceleration::Result LoopAcceleration::run() {
         }
     }
     if (accel_rule) {
-        for (unsigned i = 0; i < res.prefix; ++i) {
+        for (unsigned i = 1; i < res.prefix; ++i) {
             accel_rule = rule.chain(*accel_rule);
         }
         res.accel = {*accel_rule, proof};
