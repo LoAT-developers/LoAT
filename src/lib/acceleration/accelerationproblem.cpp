@@ -206,7 +206,10 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     if (depsWellFounded(lit, false)) {
         return false;
     }
-    const auto newGuard = expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(closed->n, *closed->n-1));
+    auto newGuard = expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(closed->n, *closed->n-1));
+    if (closed->prefix > 0) {
+        newGuard = newGuard & lit;
+    }
     if (!config.allowDisjunctions && !newGuard->isConjunction()) {
         return false;
     }
