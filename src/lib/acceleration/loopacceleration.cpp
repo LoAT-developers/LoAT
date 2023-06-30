@@ -158,7 +158,7 @@ acceleration::Result LoopAcceleration::run() {
     }
     // for rules with runtime 1, our acceleration techniques do not work properly,
     // as the closed forms are usually only valid for n > 0 --> special case
-    switch (SmtFactory::check(rule.chain(rule).getGuard()), config.smt_timeout) {
+    switch (SmtFactory::check(rule.chain(rule).getGuard(), config.smt_timeout)) {
     case Unsat:
         res.accel = {rule, proof};
         res.accel->proof.append("rule cannot be iterated more than once");
