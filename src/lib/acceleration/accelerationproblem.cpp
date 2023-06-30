@@ -371,8 +371,11 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         assumptions.insert(lit);
         deps.insert(lit);
     }
-    assumptions.insert(BExpression::buildTheoryLit(dec));
     assumptions.insert(BExpression::buildTheoryLit(inc));
+    if (SmtFactory::check(BExpression::buildAnd(assumptions)) != Sat) {
+        return false;
+    }
+    assumptions.insert(BExpression::buildTheoryLit(dec));
     const auto unsatCore {SmtFactory::unsatCore(assumptions)};
     if (unsatCore.empty()) {
         return false;
