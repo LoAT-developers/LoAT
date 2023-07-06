@@ -636,6 +636,14 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
+    bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix == 0 && learned_clauses.period == 1)};
+    if (do_drop) {
+        drop_until(backlink);
+    }
+    bool done {!do_drop};
+    if (Config::Analysis::log) {
+        std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
+    }
     auto learned_lang {lang};
     if (Config::Analysis::safety()) {
         for (unsigned i = 1; i < learned_clauses.period; ++i) {
@@ -648,18 +656,10 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
             redundancy->prepend(lang, learned_lang);
         }
     }
-    redundancy->mark_as_redundant(learned_lang);
-    bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix == 0 && learned_clauses.period == 1)};
-    if (do_drop) {
-        drop_until(backlink);
-    }
-    bool done {!do_drop};
-    if (Config::Analysis::log) {
-        std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
-    }
     for (const auto idx: learned_clauses.res) {
         redundancy->set_language(idx, learned_lang);
         if (!done && store_step(idx, chcs.getRule(idx), false)) {
+            update_cpx();
             if (chcs.isSinkTransition(idx)) {
                 return std::make_unique<ProvedUnsat>(accel_state->getProof());
             } else {
@@ -668,8 +668,12 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         }
     }
     if (done) {
+        redundancy->mark_as_redundant(learned_lang);
         return state;
     } else {
+        // unroll once if we dropped the loop
+        redundancy->concat(learned_lang, learned_lang);
+        redundancy->mark_as_redundant(learned_lang);
         if (Config::Analysis::log) std::cout << "applying accelerated rule failed" << std::endl;
         return std::make_unique<Dropped>(accel_state->getProof());
     }
