@@ -124,6 +124,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    if (Config::Analysis::mode == Config::Analysis::CheckLinear) {
+        Config::Analysis::compute_length_of_refutation = false;
+    }
+
     ITSProblem its;
     switch (Config::Input::format) {
     case Config::Input::Koat:
@@ -149,18 +153,9 @@ int main(int argc, char *argv[]) {
     case Config::Analysis::Complexity:
     case Config::Analysis::NonTermination:
     case Config::Analysis::Reachability:
+    case Config::Analysis::CheckLinear:
         reachability::Reachability::analyze(its);
         break;
-    case Config::Analysis::CheckLinear:
-        for (const auto &idx: its.getAllTransitions()) {
-            const auto rule = its.getRule(idx);
-            if (!rule.getGuard()->isLinear() || !rule.getUpdate().isLinear()) {
-                std::cout << "NO" << std::endl;
-                return 0;
-            }
-        }
-        std::cout << "YES" << std::endl;
-        return 0;
     default:
         throw std::invalid_argument("unsupported mode");
     }

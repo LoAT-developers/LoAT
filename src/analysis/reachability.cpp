@@ -591,6 +591,12 @@ Rule Reachability::build_loop(const int backlink) {
 }
 
 TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink, const Red::T &lang) {
+    if (Config::Analysis::mode == Config::Analysis::CheckLinear && (!accel.getGuard()->isLinear() || !accel.getUpdate().isLinear())) {
+        std::cout << "learned clause with non-linear arithmetic:" << std::endl;
+        ITSExport::printRule(accel, std::cout);
+        std::cout << std::endl;
+        exit(0);
+    }
     const auto fst = trace.at(backlink).clause_idx;
     const auto last = trace.back().clause_idx;
     const auto loop_idx = chcs.addLearnedRule(accel, fst, last);
