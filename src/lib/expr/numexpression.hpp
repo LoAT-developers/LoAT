@@ -53,20 +53,18 @@ class Expr {
 
     friend class ExprSubs;
 
-public:
+    friend bool operator==(const Expr&, const Expr&);
+    friend std::strong_ordering operator<=>(const Expr &x, const Expr &y);
 
-    /**
-     * possible types of variables
-     */
-    enum Type {Int, Rational, Bool};
+public:
 
     /**
      * @return A wildcard for constructing patterns.
      */
     static Expr wildcard(unsigned int label);
 
-    Expr() : Expr(GiNaC::ex()) {}
-    Expr(const GiNaC::basic &other) : Expr(GiNaC::ex(other)) {}
+    Expr(): ex(GiNaC::ex()) {}
+    Expr(const GiNaC::basic &other): ex(GiNaC::ex(other)) {}
     Expr(const GiNaC::ex &ex) : ex(ex) {}
     Expr(long i): ex(i) {}
     Expr(const NumVar &var): ex(*var) {}
@@ -82,11 +80,6 @@ public:
      * @return True iff there was at least one match.
      */
     bool findAll(const Expr &pattern, std::set<Expr> &found) const;
-
-    /**
-     * @return True iff this expression is equal (resp. evaluates) to the given variable
-     */
-    bool equals(const NumVar &var) const;
 
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
@@ -143,6 +136,8 @@ public:
      */
     std::set<NumVar> vars() const;
 
+    static unsigned getIndex(const GiNaC::symbol &x);
+
     /**
      * @return True iff this expression contains a variable that satisfies the given predicate.
      * @param A function of type `const Var & => bool`.
@@ -152,7 +147,7 @@ public:
         struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
             SymbolVisitor(P predicate) : predicate(predicate) {}
             void visit(const GiNaC::symbol &sym) {
-                if (!res && predicate(NumVar(sym.get_name()))) {
+                if (!res && predicate(NumVar(getIndex(sym)))) {
                     res = true;
                 }
             }
@@ -199,11 +194,6 @@ public:
      * @return A string representation of this expression.
      */
     std::string toString() const;
-
-    /**
-     * @return True iff this and that are equal.
-     */
-    bool equals(const Expr &that) const;
 
     /**
      * @return The degree wrt. var.
@@ -293,13 +283,6 @@ public:
     Expr subs(const ExprSubs &map) const;
 
     /**
-     * @brief Provides a total order for expressions.
-     */
-    int compare(const Expr &that) const;
-
-    size_t hash() const;
-
-    /**
      * @return The numerator.
      * @note For fractions only.
      */
@@ -322,8 +305,6 @@ public:
 
     Num denomLcm() const;
 
-    std::optional<std::string> toQepcad() const;
-
     std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
 
     /**
@@ -336,8 +317,6 @@ public:
     friend Expr operator*(const Expr &x, const Expr &y);
     friend Expr operator/(const Expr &x, const Expr &y);
     friend std::ostream& operator<<(std::ostream &s, const Expr &e);
-    friend bool operator<(const Expr &x, const Expr &y);
-    friend bool operator==(const Expr &x, const Expr &y);
 
 private:
 
@@ -351,6 +330,7 @@ private:
 class ExprSubs {
 
     friend class Expr;
+    friend auto operator<=>(const ExprSubs &m1, const ExprSubs &m2) = default;
 
 public:
 
@@ -408,9 +388,7 @@ public:
 
     void collectVars(std::set<NumVar> &vars) const;
 
-    size_t hash() const;
-
-    int compare(const ExprSubs &that) const;
+    int nextTmpVarIdx() const;
 
 private:
     void putGinac(const NumVar &key, const Expr &val);
@@ -420,8 +398,4 @@ private:
 
 };
 
-bool operator==(const ExprSubs &m1, const ExprSubs &m2);
-
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
-
-bool operator<(const ExprSubs &x, const ExprSubs &y);

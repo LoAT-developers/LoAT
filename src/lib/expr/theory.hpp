@@ -5,14 +5,12 @@
 #include "booltheory.hpp"
 #include "subs.hpp"
 
-#include <boost/functional/hash.hpp>
 #include <variant>
 #include <tuple>
 
 using TheTheory = Theory<IntTheory, BoolTheory>;
 using BoolExpr = BExpr<IntTheory, BoolTheory>;
 using BExpression = BoolExpression<IntTheory, BoolTheory>;
-using QFormula = QuantifiedFormula<IntTheory, BoolTheory>;
 using BoolExprSet = BoolExpressionSet<IntTheory, BoolTheory>;
 using Guard = Conjunction<IntTheory, BoolTheory>;
 using Lit = TheTheory::Lit;

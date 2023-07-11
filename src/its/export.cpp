@@ -1,8 +1,7 @@
 #include "export.hpp"
 #include "config.hpp"
 #include "theory.hpp"
-#include "substitution.hpp"
-#include "variable.hpp"
+#include "expr.hpp"
 
 using namespace std;
 namespace Color = Config::Color;
@@ -42,8 +41,8 @@ void ITSExport::printRule(const Rule &rule, std::ostream &s, bool colors) {
             s << ", ";
         }
         if (colors) printColor(s, Color::Update);
-        s << substitution::first(upit) << "'";
-        s << "=" << substitution::second(upit);
+        s << expr::first(upit) << "'";
+        s << "=" << expr::second(upit);
         if (colors) printColor(s, Color::None);
     }
 }
@@ -62,12 +61,6 @@ void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
         for (const auto p: its.getLocations()) {
             printLocation(p, its, s, true);
             s << " -> " << p << std::endl;
-        }
-    }
-    s << endl << "Program variables:";
-    for (const auto &x: its.getVars()) {
-        if (!its.isTempVar(x)) {
-            s << " " << x;
         }
     }
     s << endl << endl;

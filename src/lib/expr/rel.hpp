@@ -16,6 +16,11 @@ struct Bounds {
 std::ostream& operator<<(std::ostream &s, const RelSet &set);
 
 class Rel {
+
+private:
+
+    friend auto operator<=>(const Rel &x, const Rel &y) = default;
+
 public:
 
     class InvalidRelationalExpression: std::exception { };
@@ -38,8 +43,6 @@ public:
     bool isWellformed() const;
     void getBounds(const NumVar &n, Bounds &res) const;
 
-    unsigned hash() const;
-
     /**
      * @return Moves all addends containing variables to the lhs and all other addends to the rhs, where the given parameters are consiedered to be constants.
      */
@@ -51,10 +54,8 @@ public:
     Rel subs(const ExprSubs &map) const;
     void applySubs(const ExprSubs &subs);
     std::string toString() const;
-    std::string toRedlog() const;
     RelOp relOp() const;
     std::set<NumVar> vars() const;
-    int compare(const Rel& that) const;
 
     template <typename P>
     bool hasVarWith(P predicate) const {
@@ -81,12 +82,7 @@ public:
     static Rel buildLt(const Expr &x, const Expr &y);
 
     friend Rel operator!(const Rel &x);
-    friend bool operator==(const Rel &x, const Rel &y);
-    friend bool operator!=(const Rel &x, const Rel &y);
-    friend bool operator<(const Rel &x, const Rel &y);
     friend std::ostream& operator<<(std::ostream &s, const Rel &e);
-
-    std::optional<std::string> toQepcad() const;
 
     std::pair<std::optional<Expr>, std::optional<Expr>> getBoundFromIneq(const NumVar &N) const;
 

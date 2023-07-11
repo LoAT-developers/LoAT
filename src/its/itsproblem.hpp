@@ -18,20 +18,15 @@
 #pragma once
 
 #include "rule.hpp"
-#include "variablemanager.hpp"
 #include "dependencygraph.hpp"
 
 #include <optional>
-#include <unordered_map>
 
 
-class ITSProblem : public VariableManager {
+class ITSProblem {
 public:
     // Creates an empty ITS problem. The initialLocation is set to 0
     ITSProblem() = default;
-
-    // Creates an empty ITS problem with the given variables
-    explicit ITSProblem(VariableManager &&varMan);
 
     // True iff there are no rules
     bool isEmpty() const;
@@ -63,6 +58,7 @@ public:
     TransIdx addRule(const Rule &rule, const LocationIdx start);
     TransIdx addQuery(const BoolExpr &guard, const TransIdx same_preds);
     TransIdx replaceRule(const TransIdx toReplace, const Rule &replacement);
+    void removeEdge(const TransIdx from, const TransIdx to);
 
     // Mutation for Locations
     LocationIdx addLocation();
@@ -86,8 +82,6 @@ public:
     Expr getCost(const TransIdx &idx) const;
 
     NumVar getCostVar() const;
-
-    NumVar getLocVar() const;
 
     std::optional<LocationIdx> getRhsLoc(const Rule &rule) const;
 
@@ -126,7 +120,6 @@ protected:
     LocationIdx nextUnusedLocation {0};
     LocationIdx initialLocation;
     LocationIdx sink {addNamedLocation("LoAT_sink")};
-    NumVar cost {addFreshVariable<IntTheory>("cost")};
-    NumVar loc {addFreshVariable<IntTheory>("loc")};
+    NumVar cost {NumVar::nextProgVar()};
 
 };

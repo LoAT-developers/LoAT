@@ -18,7 +18,6 @@
 #pragma once
 
 #include "numexpression.hpp"
-#include "variablemanager.hpp"
 #include "result.hpp"
 
 #include <vector>
@@ -55,9 +54,9 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    Result<Rule> propagateEqualities(const VarMan &its, const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
+    Result<Rule> propagateEqualities(const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
 
-    Result<Rule> propagateBooleanEqualities(const VarMan &its, const Rule &rule);
+    Result<Rule> propagateBooleanEqualities(const Rule &rule);
 
     /**
      * Tries to replace inequalities using their transitive closure,
@@ -86,9 +85,9 @@ namespace GuardToolbox {
      * Returns true iff term contains a temporary variable
      */
     template<class T>
-    bool containsTempVar(const VarMan &varMan, const T &x) {
-        return x.hasVarWith([&varMan](const NumVar &sym) {
-            return varMan.isTempVar(sym);
+    bool containsTempVar(const T &x) {
+        return x.hasVarWith([](const NumVar &sym) {
+            return sym.isTempVar();
         });
     }
 

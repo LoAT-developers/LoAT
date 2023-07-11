@@ -13,6 +13,7 @@ add_library(${PROJECT_NAME} STATIC
   model.hpp
   linearizingsolver.hpp
   z3.hpp
+  z3_opt.hpp
   z3context.cpp
   z3context.hpp
   yices.hpp
@@ -43,7 +44,8 @@ target_link_libraries(
     ${Z3}
     ${YICES}
     ${POLY}
-    ${CUDD})
+    ${CUDD}
+)
 
 # Expose public includes to other
 # subprojects through cache variable.

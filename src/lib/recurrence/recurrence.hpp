@@ -20,9 +20,7 @@
 #include <optional>
 
 #include "theory.hpp"
-#include "variablemanager.hpp"
 #include "numexpression.hpp"
-
 
 class Recurrence {
 private:
@@ -30,65 +28,40 @@ private:
 public:
 
     struct Result {
-        Subs update;
-        unsigned int validityBound;
+        Subs closed_form;
+        unsigned int prefix = 0;
+        ExprSubs refined_equations;
         NumVar n;
 
-        Result(const NumVar &n);
+        Result();
 
     };
 
-    static std::optional<Result> iterate(VarMan &varMan, const Subs &update);
+    static std::optional<Result> solve(const Subs &equations);
 
 private:
 
-    template <ITheory Th>
-    struct RecurrenceSolution {
-        typename Th::Expression res;
-        const unsigned int validityBound;
-    };
+    Recurrence(const Subs &subs);
 
-    struct RecurrenceSystemSolution {
-        Subs update;
-        const unsigned int validityBound;
-    };
+    bool solve();
 
-    Recurrence(VarMan &varMan, const std::vector<Var> &dependencyOrder);
+    bool solve(const NumVar &lhs, const Expr &rhs);
 
-    std::optional<Result> iterate(const Subs &update);
+    bool solve(const BoolVar &lhs, const BoolExpr &rhs);
 
-    std::optional<RecurrenceSystemSolution> iterateUpdate(const Subs &update);
-
-    /**
-     * Helper for iterateUpdate.
-     * Tries to find a recurrence for the given single update.
-     * Note that all variables occurring in update must have been solved before (and added to updatePreRecurrences).
-     */
-    std::optional<RecurrenceSolution<IntTheory>> solve(const NumVar &updateLhs, const Expr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
-
-    std::optional<RecurrenceSolution<BoolTheory>> solve(const BoolVar &updateLhs, const BoolExpr &updateRhs, const std::map<Var, unsigned int> &validitybounds);
-
-    static const std::optional<RecurrenceSystemSolution> iterateUpdate(const VariableManager&, const Subs&);
-
-    /**
-     * To query variable names/indices
-     */
-    VariableManager &varMan;
-
-    /**
-     * Purrs::Recurrence::n converted to a ginac expression, for convenience only
-     */
-    const GiNaC::symbol ginacN;
-
-    /**
-     * Order in which recurrences for updated variables can be computed
-     */
-    std::vector<Var> dependencyOrder;
+    Subs equations;
 
     /**
      * Substitution map, mapping variables to their recurrence equations
      * @note the recurrence equations are valid *before* the transition is taken,
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
-    Subs updatePreRecurrences;
+    Subs closed_form_pre;
+
+    std::optional<ExprSubs> inverse {ExprSubs()};
+
+    Result result;
+
+    std::map<Var, unsigned> prefixes;
+
 };

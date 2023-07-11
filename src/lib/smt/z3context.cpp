@@ -16,6 +16,7 @@
  */
 
 #include "z3context.hpp"
+#include "expr.hpp"
 
 using namespace std;
 
@@ -23,13 +24,16 @@ Z3Context::Z3Context(z3::context& ctx): ctx(ctx) { }
 
 Z3Context::~Z3Context() { }
 
-z3::expr Z3Context::buildVar(const std::string &name, Expr::Type type) {
-    switch (type) {
-    case Expr::Int: return ctx.int_const(name.c_str());
-    case Expr::Rational: return ctx.real_const(name.c_str());
-    case Expr::Bool: return ctx.bool_const(name.c_str());
-    }
-    throw std::logic_error("unknown type");
+z3::expr Z3Context::buildVar(const Var &var) {
+    const auto name {expr::getName(var)};
+    return std::visit(Overload{
+                          [&](const NumVar&) {
+                              return ctx.int_const(name.c_str());
+                          },
+                          [&](const BoolVar&) {
+                              return ctx.bool_const(name.c_str());
+                          }
+                      }, var);
 }
 
 z3::expr Z3Context::getInt(long val) {
@@ -168,10 +172,6 @@ Rel::RelOp Z3Context::relOp(const z3::expr &e) const {
     case Z3_OP_LE: return Rel::RelOp::leq;
     default: throw std::invalid_argument("unknown relation");
     }
-}
-
-std::string Z3Context::getName(const z3::expr &x) const {
-    return x.to_string();
 }
 
 void Z3Context::printStderr(const z3::expr &e) const {

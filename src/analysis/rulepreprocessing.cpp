@@ -15,62 +15,14 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#include "preprocess.hpp"
-#include "substitution.hpp"
+#include "rulepreprocessing.hpp"
+#include "expr.hpp"
 #include "guardtoolbox.hpp"
+#include "expr.hpp"
+
+#include <numeric>
 
 using namespace std;
-
-
-Result<Rule> Preprocess::preprocessRule(VarMan &its, const Rule &rule) {
-    Result<Rule> res(rule);
-
-    // The other steps are repeated (might not help very often, but is probably cheap enough)
-    bool changed = false;
-    do {
-        Result<Rule> tmp = eliminateTempVars(its, *res);
-        tmp.concat(removeTrivialUpdates(*res));
-        changed = bool(tmp);
-        res.concat(tmp);
-    } while (changed);
-    return res;
-}
-
-Result<Rule> Preprocess::simplifyRule(VarMan &its, const Rule &rule) {
-    Result<Rule> res(rule);
-    res.concat(eliminateTempVars(its, *res));
-    res.concat(removeTrivialUpdates(*res));
-    return res;
-}
-
-Result<Rule> Preprocess::removeTrivialUpdates(const Rule &rule) {
-    bool changed = false;
-    Subs up = rule.getUpdate();
-    changed |= removeTrivialUpdates(up);
-    Result<Rule> res{Rule(rule.getGuard(), up), changed};
-    if (res) {
-        res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
-    }
-    return res;
-}
-
-bool Preprocess::removeTrivialUpdates(Subs &update) {
-    stack<Var> remove;
-    for (const auto &it : update) {
-        const auto first = substitution::first(it);
-        const auto second = substitution::second(it);
-        if (first == second) {
-            remove.push(first);
-        }
-    }
-    if (remove.empty()) return false;
-    while (!remove.empty()) {
-        update.erase(remove.top());
-        remove.pop();
-    }
-    return true;
-}
-
 
 /**
  * Returns the set of all variables that appear in the rhs of some update.
@@ -79,18 +31,17 @@ bool Preprocess::removeTrivialUpdates(Subs &update) {
 static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     VarSet varsInUpdate;
     for (const auto &it : rule.getUpdate()) {
-        expression::collectVars(substitution::second(it), varsInUpdate);
+        expr::collectVars(expr::second(it), varsInUpdate);
     }
     return varsInUpdate;
 }
 
-
-Result<Rule> Preprocess::eliminateTempVars(VarMan &its, const Rule &rule) {
+Result<Rule> eliminateTempVars(const Rule &rule) {
     Result<Rule> res(rule);
 
     //declare helper lambdas to filter variables, to be passed as arguments
     auto isTemp = [&](const Var &sym) {
-        return its.isTempVar(sym);
+        return expr::isTempVar(sym);
     };
     auto isTempInUpdate = [&](const Var &sym) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
@@ -105,13 +56,13 @@ Result<Rule> Preprocess::eliminateTempVars(VarMan &its, const Rule &rule) {
     res.concat(GuardToolbox::makeEqualities(*res));
     res.fail(); // *just* finding implied equalities does not suffice for success
 
-    res.concat(GuardToolbox::propagateBooleanEqualities(its, *res));
+    res.concat(GuardToolbox::propagateBooleanEqualities(*res));
 
     //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
-    res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTempInUpdate));
+    res.concat(GuardToolbox::propagateEqualities(*res, ResultMapsToInt, isTempInUpdate));
 
     //try to remove all remaining temp variables (we do 2 steps to prioritize removing vars from the update)
-    res.concat(GuardToolbox::propagateEqualities(its, *res, ResultMapsToInt, isTemp));
+    res.concat(GuardToolbox::propagateEqualities(*res, ResultMapsToInt, isTemp));
 
     BoolExpr guard = res->getGuard();
     BoolExpr newGuard = guard->simplify();
@@ -125,5 +76,53 @@ Result<Rule> Preprocess::eliminateTempVars(VarMan &its, const Rule &rule) {
     //(not sound if x appears in update or cost, since we then need the value of x)
     res.concat(GuardToolbox::eliminateByTransitiveClosure(*res, true, isTempOnlyInGuard));
 
+    return res;
+}
+
+bool removeTrivialUpdates(Subs &update) {
+    stack<Var> remove;
+    for (const auto &it : update) {
+        const auto first = expr::first(it);
+        const auto second = expr::second(it);
+        if (TheTheory::varToExpr(first) == second) {
+            remove.push(first);
+        }
+    }
+    if (remove.empty()) return false;
+    while (!remove.empty()) {
+        update.erase(remove.top());
+        remove.pop();
+    }
+    return true;
+}
+
+Result<Rule> removeTrivialUpdates(const Rule &rule) {
+    bool changed = false;
+    Subs up = rule.getUpdate();
+    changed |= removeTrivialUpdates(up);
+    Result<Rule> res{Rule(rule.getGuard(), up), changed};
+    if (res) {
+        res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
+    }
+    return res;
+}
+
+Result<Rule> simplifyRule(const Rule &rule) {
+    Result<Rule> res(rule);
+    res.concat(eliminateTempVars(*res));
+    res.concat(removeTrivialUpdates(*res));
+    return res;
+}
+
+Result<Rule> Preprocess::preprocessRule(const Rule &rule) {
+    Result<Rule> res(rule);
+
+    // The other steps are repeated (might not help very often, but is probably cheap enough)
+    bool changed = false;
+    do {
+        Result<Rule> tmp {simplifyRule(*res)};
+        changed = bool(tmp);
+        res.concat(tmp);
+    } while (changed);
     return res;
 }

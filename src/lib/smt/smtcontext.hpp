@@ -18,13 +18,11 @@
 #pragma once
 
 #include <optional>
+#include <assert.h>
+#include <map>
 
-#include "numexpression.hpp"
 #include "rel.hpp"
 #include "theory.hpp"
-#include "variable.hpp"
-
-#include <map>
 
 template<class EXPR>
 class SmtContext {
@@ -63,7 +61,6 @@ public:
     virtual EXPR lhs(const EXPR &e) const = 0;
     virtual EXPR rhs(const EXPR &e) const = 0;
     virtual Rel::RelOp relOp(const EXPR &e) const = 0;
-    virtual std::string getName(const EXPR &e) const = 0;
 
     virtual void printStderr(const EXPR &e) const = 0;
 
@@ -75,20 +72,10 @@ public:
         return std::optional<EXPR>{};
     }
 
-    std::optional<Var> getVariable(const std::string &name) const {
-        auto it = nameMap.find(name);
-        if (it != nameMap.end() && varMap.find(it->second) != varMap.end()) {
-            return it->second;
-        }
-        return {};
-    }
-
-    EXPR addNewVariable(const Var &symbol, Expr::Type type) {
+    EXPR addNewVariable(const Var &symbol) {
         assert(varMap.find(symbol) == varMap.end());
-        assert(nameMap.find(variable::getName(symbol)) == nameMap.end());
-        EXPR res = generateFreshVar(variable::getName(symbol), type);
+        EXPR res {buildVar(symbol)};
         varMap.emplace(symbol, res);
-        nameMap.emplace(variable::getName(symbol), symbol);
         return res;
     }
 
@@ -100,30 +87,12 @@ public:
 
     void reset() {
         varMap.clear();
-        nameMap.clear();
-        usedNames.clear();
     }
 
 protected:
 
-    std::string generateFreshVarName(const std::string &basename) {
-        std::string newname = basename;
-        while (usedNames.find(newname) != usedNames.end()) {
-            int cnt = usedNames[basename]++;
-            newname = basename + "_" + std::to_string(cnt);
-        }
-        usedNames.emplace(newname, 1); // newname is now used once
-        return newname;
-    }
-
-    EXPR generateFreshVar(const std::string &basename, Expr::Type type) {
-        return buildVar(generateFreshVarName(basename), type);
-    }
-
-    virtual EXPR buildVar(const std::string &name, Expr::Type type) = 0;
+    virtual EXPR buildVar(const Var &var) = 0;
 
 protected:
     std::map<Var, EXPR> varMap;
-    std::map<std::string, Var> nameMap;
-    std::map<std::string, int> usedNames;
 };

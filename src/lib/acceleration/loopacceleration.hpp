@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include "variablemanager.hpp"
 #include "rule.hpp"
 #include "accelerationresult.hpp"
 #include "accelconfig.hpp"
@@ -25,27 +24,20 @@
 class LoopAcceleration {
 public:
 
-    struct AcceleratedRules {
-        const std::vector<Rule> rules;
-        const unsigned int validityBound;
-    };
+    static acceleration::Result accelerate(const Rule &rule, const Subs &sample_point, const AccelConfig &config = AccelConfig());
 
-    static acceleration::Result accelerate(VarMan &its, const Rule &rule, const AccelConfig &config = AccelConfig());
+    static acceleration::Result accelerate(const Rule &rule, const AccelConfig &config = AccelConfig());
 
-    static const std::pair<Rule, unsigned> chain(const Rule &rule, VarMan &its);
+    static const std::pair<Rule, unsigned> chain(const Rule &rule);
 
 private:
-    LoopAcceleration(VarMan &its, const Rule &rule, const AccelConfig &config);
 
-    /**
-     * Main function, just calls the methods below in the correct order
-     */
+    LoopAcceleration(const Rule &rule, const std::optional<Subs> &sample_point, const AccelConfig &config);
+
     acceleration::Result run();
 
-    static Rule renameTmpVars(const Rule &rule, VarMan &its);
-
-private:
-    VarMan &its;
-    const Rule &rule;
+    Rule rule;
+    const std::optional<Subs> sample_point;
     const AccelConfig config;
+
 };

@@ -2,8 +2,8 @@
 
 #include "itheory.hpp"
 #include "boolexpr.hpp"
-#include "variablemanager.hpp"
 #include "model.hpp"
+#include "theory.hpp"
 
 enum SmtResult {Sat, Unknown, Unsat};
 enum Logic {
@@ -32,6 +32,14 @@ public:
 
     virtual void add(const BoolExpr e) = 0;
 
+    virtual void add_soft(const BoolExpr e) {
+        throw std::invalid_argument("add_soft not supported");
+    }
+
+    virtual void add_objective(const Expr e) {
+        throw std::invalid_argument("add_objective not supported");
+    }
+
     void add(const Lit &e) {
         return this->add(BoolExpression<Th...>::buildTheoryLit(e));
     }
@@ -52,7 +60,7 @@ public:
 
     virtual ~Smt() {}
 
-    static BoolExprSet unsatCore(const BoolExpressionSet<Th...> &assumptions, VariableManager &varMan);
+    static BoolExprSet unsatCore(const BoolExpressionSet<Th...> &assumptions);
 
     void popAll() {
         while (pushCount > 0) {
@@ -99,8 +107,8 @@ public:
         Logic res = QF_LA;
         for (const RELS &rels: g) {
             for (const auto &lit: rels) {
-                if (!literal_t::isLinear<Th...>(lit)) {
-                    if (!literal_t::isPoly<Th...>(lit)) {
+                if (!literal::isLinear<Th...>(lit)) {
+                    if (!literal::isPoly<Th...>(lit)) {
                         return QF_NAT;
                     }
                     res = QF_NA;
@@ -117,6 +125,8 @@ public:
         }
         return res;
     }
+
+    virtual std::ostream& print(std::ostream& os) const = 0;
 
 protected:
 

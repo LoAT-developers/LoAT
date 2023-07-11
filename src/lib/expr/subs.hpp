@@ -18,12 +18,6 @@ class Subs {
     typename TheTheory::Subs t;
     static const size_t variant_size = std::variant_size_v<Expr>;
 
-    template <ITheory... Th_>
-    friend bool operator==(const Subs<Th_...> &fst, const Subs<Th_...> &snd);
-
-    template <ITheory... Th_>
-    friend bool operator<(const Subs<Th_...> &fst, const Subs<Th_...> &snd);
-
 public:
 
     using Pair = typename TheTheory::Pair;
@@ -136,10 +130,6 @@ public:
             return a.ptr == b.ptr;
         };
 
-        friend bool operator!= (const Iterator& a, const Iterator& b) {
-            return a.ptr != b.ptr;
-        };
-
     private:
 
         const Subs &subs;
@@ -207,7 +197,7 @@ public:
     Subs setminus(const VS &vars) const {
         Subs res;
         setminusImpl(res, vars);
-        return Subs(res);
+        return res;
     }
 
 private:
@@ -292,46 +282,6 @@ public:
         VS res;
         domainImpl(res);
         return res;
-    }
-
-private:
-
-    template<std::size_t I = 0>
-    inline Expr subsImpl(const Lit &s) const {
-        if constexpr (I < sizeof...(Th)) {
-            if (s.index() == I) {
-                return std::get<I>(s).subs(std::get<I>(t));
-            } else {
-                return subsImpl<I+1>(s);
-            }
-        } else {
-            return s;
-        }
-    }
-
-public:
-
-    Expr subs(const Lit &s) const {
-        return subsImpl(s);
-    }
-
-private:
-
-    template<std::size_t I = 0>
-    inline size_t hashImpl() const {
-        if constexpr (I + 1 >= sizeof...(Th)) {
-            return std::get<I>(t).hash();
-        } else {
-            size_t res = hashImpl<I+1>();
-            boost::hash_combine<size_t>(res, std::get<I>(t).hash());
-            return res;
-        }
-    }
-
-public:
-
-    size_t hash() const {
-        return hashImpl();
     }
 
 private:
@@ -501,15 +451,7 @@ public:
         return std::apply([](const auto&... x){return (true && ... && x.isPoly());}, t);
     }
 
-    int compare(const Subs &that) const {
-        if (this->t == that.t) {
-            return 0;
-        } else if (this->t < that.t) {
-            return -1;
-        } else {
-            return 1;
-        }
-    }
+    auto operator<=>(const Subs &that) const = default;
 
     template <ITheory T>
     typename T::Subs& get() {

@@ -5,7 +5,7 @@ project(LoAT)
 set(CMAKE_CXX_STANDARD 20)
 
 # non-static build by default
-option(STATIC "static" OFF)
+option(STATIC "static" ON)
 option(SANITIZE "sanitize" OFF)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
@@ -14,13 +14,14 @@ add_link_options(-pthread)
 
 if(${STATIC})
     message(STATUS "Configuring static build")
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     set(BUILD_SHARED_LIBS OFF)
     add_link_options(-ldl -static)
     set(EXECUTABLE loat-static)
 else()
-    message(STATUS "Configuring non-static build")
-    set(EXECUTABLE loat)
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")
+  message(STATUS "Configuring non-static build")
+  set(EXECUTABLE loat)
 endif()
 
 if(${SANITIZE})
@@ -31,22 +32,31 @@ endif()
 
 add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter)
 
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
+
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 message(STATUS "Compiler flags:" ${CMAKE_CXX_COMPILE_FLAGS})
 message(STATUS "Compiler cxx debug flags:" ${CMAKE_CXX_FLAGS_DEBUG})
 message(STATUS "Compiler cxx release flags:" ${CMAKE_CXX_FLAGS_RELEASE})
+message(STATUS "Compiler cxx relwithdebinfo flags:" ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 message(STATUS "Compiler cxx min size flags:" ${CMAKE_CXX_FLAGS_MINSIZEREL})
 message(STATUS "Compiler cxx flags:" ${CMAKE_CXX_FLAGS})
 
+find_library(ANTLR4 antlr4-runtime)
+message(STATUS "antlr4: ${ANTLR4}")
+find_library(FAUDES faudes)
+message(STATUS "faudes: ${FAUDES}")
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
+include(GetGitRevisionDescription)
+get_git_head_revision(GIT_REFSPEC SHA)
+git_local_changes(DIRTY)
 
 # generate version.cc
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp" @ONLY)
 
 add_executable(${EXECUTABLE} "")
 add_subdirectory(src)
-
-set(FAUDES ${CMAKE_CURRENT_SOURCE_DIR}/lib/libfaudes.a)
-message(STATUS "faudes: ${FAUDES}")
 
 target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_util_INCLUDE_DIRS}

@@ -7,16 +7,10 @@ project(loat_acceleration CXX)
 add_library(${PROJECT_NAME} STATIC
   rule.hpp
   rule.cpp
-  accelerationviacalculus.cpp
-  accelerationviacalculus.hpp
-  accelerationtechnique.hpp
-  accelerationfactory.hpp
-  accelerationfactory.cpp
   accelconfig.hpp
   accelerationproblem.cpp
   accelerationproblem.hpp
   approx.hpp
-  relevantvariables.hpp
   loopacceleration.cpp
   loopacceleration.hpp
   accelerationresult.hpp

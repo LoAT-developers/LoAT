@@ -5,7 +5,7 @@
 #include "conjunction.hpp"
 #include "rel.hpp"
 #include "boollit.hpp"
-#include "literaltemplates.hpp"
+#include "literal.hpp"
 
 #include <type_traits>
 #include <memory>
@@ -17,9 +17,6 @@ template <ITheory... Th>
 class BoolJunction;
 template <IBaseTheory... Th>
 class BoolExpression;
-class Quantifier;
-template <ITheory... Th>
-class QuantifiedFormula;
 template <ITheory... Th>
 using BExpr = std::shared_ptr<const BoolExpression<Th...>>;
 
@@ -53,7 +50,7 @@ BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th.
 template <ITheory... Th>
 struct BExpr_compare {
     bool operator() (const BExpr<Th...> a, const BExpr<Th...> b) const {
-        return a->compare(b) < 0;
+        return a < b;
     }
 };
 
@@ -78,7 +75,6 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
     using G = Conjunction<Th...>;
     using BE = BExpr<Th...>;
     using BES = BoolExpressionSet<Th...>;
-    using QF = QuantifiedFormula<Th...>;
     using Subs = theory::Subs<Th...>;
 
 public:
@@ -155,15 +151,12 @@ public:
     virtual LS universallyValidLits() const = 0;
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LS &res) const = 0;
-    virtual std::string toRedlog() const = 0;
     virtual size_t size() const = 0;
-    virtual unsigned hash() const = 0;
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
-    virtual int compare(const BE that) const = 0;
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
-            return literal_t::isTriviallyTrue<Th...>(*getTheoryLit());
+            return literal::isTriviallyTrue<Th...>(*getTheoryLit());
         } else {
             const auto children = getChildren();
             if (isAnd()) {
@@ -406,7 +399,7 @@ public:
 
     void collectVars(VS &vars) const {
         iter([&vars](const auto &lit) {
-            literal_t::collectVars<Th...>(lit, vars);
+            literal::collectVars<Th...>(lit, vars);
         });
     }
 
@@ -489,23 +482,45 @@ public:
         });
     }
 
-    std::optional<BE> impliedEquality(const Lit &l) const {
+    Subs impliedEqualities() const {
+        Subs res;
         std::vector<BE> todo;
-        const BE lit = buildTheoryLit(l);
+        const auto find_elim = [](const BE &c) {
+            std::optional<BoolVar> elim;
+            const auto vars {c->vars().template get<BoolVar>()};
+            for (const auto &x: vars) {
+                if (x.isTempVar()) {
+                    if (elim) {
+                        return std::optional<BoolVar>{};
+                    } else {
+                        elim = x;
+                    }
+                }
+            }
+            return elim;
+        };
         if (isAnd()) {
-            const auto children = getChildren();
+            const auto children {getChildren()};
             for (const auto &c: children) {
                 if (c->isOr()) {
-                    auto grandChildren = c->getChildren();
-                    const auto it = grandChildren.find(lit);
-                    if (it != grandChildren.end()) {
-                        grandChildren.erase(it);
-                        const BE cand = buildOr(grandChildren);
+                    const auto elim {find_elim(c)};
+                    if (elim) {
+                        auto grandChildren {c->getChildren()};
+                        auto lit {buildTheoryLit(BoolLit(*elim))};
+                        bool positive {grandChildren.contains(lit)};
+                        if (!positive) {
+                            lit = !lit;
+                            if (!grandChildren.contains(lit)) {
+                                continue;
+                            }
+                        }
+                        grandChildren.erase(lit);
+                        const BE cand {buildOr(grandChildren)};
                         // we have     lit \/  cand
                         // search for !lit \/ !cand
                         if (children.contains((!lit) | (!cand))) {
                             // we have (lit \/ cand) /\ (!lit \/ !cand), i.e., lit <==> !cand
-                            return !cand;
+                            res.put(*elim, positive ? !cand : cand);
                         }
                     }
                 }
@@ -516,32 +531,43 @@ public:
         }
         for (const auto &current: todo) {
             if (current->isOr()) {
-                const auto children = current->getChildren();
+                const auto children {current->getChildren()};
                 if (children.size() == 2) {
                     for (const auto &c: children) {
                         if (c->isAnd()) {
-                            auto grandChildren = c->getChildren();
-                            const auto it = grandChildren.find(lit);
-                            if (it != grandChildren.end()) {
-                                grandChildren.erase(it);
-                                const BE cand = buildAnd(grandChildren);
-                                // we have     lit /\  cand
-                                // search for !lit /\ !cand
+                            const auto elim {find_elim(c)};
+                            if (elim) {
+                                auto grandChildren {c->getChildren()};
+                                auto lit {buildTheoryLit(BoolLit(*elim))};
+                                bool positive {grandChildren.contains(lit)};
+                                if (!positive) {
+                                    lit = !lit;
+                                    if (!grandChildren.contains(lit)) {
+                                        continue;
+                                    }
+                                }
+                                grandChildren.erase(lit);
+                                const BE cand {buildAnd(grandChildren)};
                                 if (children.contains((!lit) & (!cand))) {
                                     // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
-                                    return cand;
+                                    res.put(*elim, positive ? cand : !cand);
                                 }
                             }
                         }
                     }
                 }
-            } else if (current == lit) {
-                return True;
-            } else if (current == !lit) {
-                return False;
+            } else if (current->isTheoryLit()) {
+                const auto lit {*current->getTheoryLit()};
+                if (std::holds_alternative<BoolLit>(lit)) {
+                    const auto &bool_lit {std::get<BoolLit>(lit)};
+                    const auto var {bool_lit.getBoolVar()};
+                    if (var.isTempVar()) {
+                        res.put(var, bool_lit.isNegated() ? False : True);
+                    }
+                }
             }
         }
-        return {};
+        return res;
     }
 
     std::vector<G> dnf() const {
@@ -553,10 +579,6 @@ public:
     G conjunctionToGuard() const{
         const LS &lits = this->lits();
         return G(lits.begin(), lits.end());
-    }
-
-    QF quantify(const std::vector<Quantifier> &prefix) const {
-        return QuantifiedFormula(prefix, this->shared_from_this());
     }
 
     BE toG() const {
@@ -591,6 +613,12 @@ public:
         return map<T>(mapper);
     }
 
+    template<ITheory T>
+    int nextTmpVarIdx() const {
+        const auto variables {vars().template get<typename T::Var>()};
+        return (variables.empty() ? 0 : std::min(0, variables.begin()->getIdx())) - 1;
+    }
+
 protected:
     virtual void dnf(std::vector<G> &res) const = 0;
 };
@@ -620,7 +648,7 @@ class BoolTheoryLit: public BoolExpression<Th...> {
 
 public:
 
-    BoolTheoryLit(const Lit &lit) : lit(literal_t::normalize<Th...>(lit)) {}
+    BoolTheoryLit(const Lit &lit) : lit(literal::normalize<Th...>(lit)) {}
 
     bool isAnd() const override {
         return false;
@@ -643,7 +671,7 @@ public:
     }
 
     const BE negation() const override {
-        return BoolExpression<Th...>::buildTheoryLit(literal_t::negate<Th...>(lit));
+        return BoolExpression<Th...>::buildTheoryLit(literal::negate<Th...>(lit));
     }
 
     bool forall(const std::function<bool(const Lit&)> &pred) const override {
@@ -670,29 +698,10 @@ public:
         return 1;
     }
 
-    std::string toRedlog() const override {
-        return literal_t::toRedlog<Th...>(lit);
-    }
-
-    unsigned hash() const override {
-        return literal_t::hash<Th...>(lit);
-    }
-
     void getBounds(const Var &var, Bounds &res) const override {
         if (std::holds_alternative<Rel>(lit)) {
             std::get<Rel>(lit).getBounds(std::get<NumVar>(var), res);
         }
-    }
-
-    int compare(const BE that) const override {
-        const auto other_lit = that->getTheoryLit();
-        if (!other_lit) {
-            return -1;
-        }
-        if (lit == *other_lit) {
-            return 0;
-        }
-        return lit < *other_lit ? -1 : 1;
     }
 
 protected:
@@ -809,27 +818,6 @@ public:
         return res;
     }
 
-    std::string toRedlog() const override {
-        std::string infix = isAnd() ? " and " : " or ";
-        std::string res;
-        bool first = true;
-        for (auto it = children.begin(); it != children.end(); ++it) {
-            if (first) first = false;
-            else res += infix;
-            res += (*it)->toRedlog();
-        }
-        return "(" + res + ")";
-    }
-
-    unsigned hash() const override {
-        unsigned hash = 7;
-        for (const BE& c: children) {
-            hash = 31 * hash + c->hash();
-        }
-        hash = 31 * hash + op;
-        return hash;
-    }
-
     void getBounds(const Var &n, Bounds &res) const override {
         if (isAnd()) {
             for (const auto &c: children) {
@@ -855,22 +843,6 @@ public:
         }
     }
 
-    int compare(const BE that) const override {
-        if (!that->isAnd() && !that->isOr()) {
-            return 1;
-        }
-        if (isAnd() && that->isOr()) {
-            return 1;
-        }
-        if (isOr() && that->isAnd()) {
-            return -1;
-        }
-        const auto c1 = getChildren();
-        const auto c2 = that->getChildren();
-        if (c1 == c2) return 0;
-        return c1 < c2 ? -1 : 1;
-    }
-
 protected:
 
     void dnf(std::vector<C> &res) const override {
@@ -887,128 +859,6 @@ protected:
                 res.insert(res.end(), newRes.begin(), newRes.end());
             }
         }
-    }
-
-};
-
-class Quantifier {
-
-public:
-    enum class Type { Forall, Exists };
-
-private:
-    Type qType;
-    std::set<NumVar> vars;
-    std::map<NumVar, Expr> lowerBounds;
-    std::map<NumVar, Expr> upperBounds;
-
-public:
-    Quantifier(const Type &qType, const std::set<NumVar> &vars, const std::map<NumVar, Expr> &lowerBounds, const std::map<NumVar, Expr> &upperBounds);
-
-    Quantifier negation() const;
-    const std::set<NumVar>& getVars() const;
-    Type getType() const;
-    std::string toRedlog() const;
-    std::optional<Expr> lowerBound(const NumVar &x) const;
-    std::optional<Expr> upperBound(const NumVar &x) const;
-    Quantifier remove(const NumVar &x) const;
-
-};
-
-template <ITheory... Th>
-class QuantifiedFormula {
-
-    static_assert(sizeof...(Th) > 0);
-
-    using T = Theory<Th...>;
-    using Var = typename T::Var;
-    using Lit = typename T::Lit;
-    using VS = theory::VarSet<Th...>;
-    using LS = theory::LitSet<Th...>;
-    using BE = BExpr<Th...>;
-    using QF = QuantifiedFormula<Th...>;
-    using Subs = theory::Subs<Th...>;
-
-    BE True = BoolExpression<Th...>::True;
-    BE False = BoolExpression<Th...>::False;
-
-    std::vector<Quantifier> prefix;
-    BE matrix;
-
-public:
-
-    QuantifiedFormula(std::vector<Quantifier> prefix, const BE &matrix): prefix(prefix), matrix(matrix) {}
-
-    const QF negation() const {
-        std::vector<Quantifier> _prefix;
-        std::transform(prefix.begin(), prefix.end(), _prefix.begin(), [](const auto &q ){return q.negation();});
-        return QF(_prefix, matrix->negation());
-    }
-
-    bool forall(const std::function<bool(const Lit&)> &pred) const {
-        return matrix->forall(pred);
-    }
-
-    QF map(const std::function<BE(const Lit&)> &f) const;
-
-    QF simplify() const {
-        return matrix->simplify()->quantify(prefix);
-    }
-
-    std::set<NumVar> boundVars() const {
-        std::set<NumVar> res;
-        for (const Quantifier &q: prefix) {
-            res.insert(q.getVars().begin(), q.getVars().end());
-        }
-        return res;
-    }
-
-    QF toG() const {
-        return QF(prefix, matrix->toG());
-    }
-
-    void collectLits(LS &res) const {
-        matrix->collectLits(res);
-    }
-
-    std::string toRedlog() const {
-        std::string res;
-        for (const auto &q: prefix) {
-            res += q.toRedlog();
-        }
-        res += matrix->toRedlog();
-        for (const auto &q: prefix) {
-            unsigned size = q.getVars().size();
-            for (unsigned i = 0; i < size; ++i) {
-                res += ")";
-            }
-        }
-        return res;
-    }
-
-    bool isTiviallyTrue() const {
-        return matrix == True;
-    }
-
-    bool isTiviallyFalse() const {
-        return matrix == False;
-    }
-
-    std::vector<Quantifier> getPrefix() const {
-        return prefix;
-    }
-
-    BE getMatrix() const {
-        return matrix;
-    }
-
-    bool isConjunction() const {
-        return matrix->isConjunction();
-    }
-
-    template <ITheory T>
-    QuantifiedFormula<T> transform() const {
-        return matrix->template transform<T>().quantify(prefix);
     }
 
 };
@@ -1055,6 +905,20 @@ bool operator ==(const BExpr<Th...> a, const BExpr<Th...> b) {
 }
 
 template <ITheory... Th>
+std::strong_ordering operator <=>(const BExpr<Th...> a, const BExpr<Th...> b) {
+    auto res {a->getTheoryLit() <=> b->getTheoryLit()};
+    if (std::is_neq(res)) {
+        return res;
+    }
+    if (a->isAnd() && !b->isAnd()) {
+        return std::strong_ordering::greater;
+    } else if (!a->isAnd() && b->isAnd()) {
+        return std::strong_ordering::less;
+    }
+    return a->getChildren() <=> b->getChildren();
+}
+
+template <ITheory... Th>
 bool operator !=(const BExpr<Th...> a, const BExpr<Th...> b) {
     return !(a==b);
 }
@@ -1087,42 +951,5 @@ std::ostream& operator<<(std::ostream &s, const BExpr<T, Th...> e) {
         }
         s << ")";
     }
-    return s;
-}
-
-template <ITheory T, ITheory... Th>
-std::ostream& operator<<(std::ostream &s, const QuantifiedFormula<T, Th...> &f) {
-    for (const auto &q: f.getPrefix()) {
-        switch (q.getType()) {
-        case Quantifier::Type::Exists:
-            s << "EX";
-            break;
-        case Quantifier::Type::Forall:
-            s << "ALL";
-            break;
-        }
-        for (const auto &x: q.getVars()) {
-            s << " " << x;
-            const auto lb = q.lowerBound(x);
-            const auto ub = q.upperBound(x);
-            if (lb || ub) {
-                s << " in [";
-                if (lb) {
-                    s << *lb;
-                } else {
-                    s << "-oo";
-                }
-                s << ",";
-                if (ub) {
-                    s << *ub;
-                } else {
-                    s << "oo";
-                }
-                s << "]";
-            }
-        }
-        s << " . ";
-    }
-    s << f.getMatrix();
     return s;
 }

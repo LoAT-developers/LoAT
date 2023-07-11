@@ -38,7 +38,7 @@ std::any CINTParseVisitor::visitNum_expr(CINTParser::Num_exprContext *ctx) {
     } else if (ctx->POS()) {
         return Expr(std::stoi(ctx->getText()));
     } else if (ctx->nondet()) {
-        return Expr(its.addFreshTemporaryVariable<IntTheory>("nondet"));
+        return Expr(NumVar::next());
     }
     throw std::invalid_argument("unknown expression " + ctx->getText());
 }
@@ -100,23 +100,22 @@ std::any CINTParseVisitor::visitRelop(CINTParser::RelopContext *ctx) {
 std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
     auto cond = std::any_cast<BoolExpr>(visit(ctx->bool_expr()));
     const auto pre = current;
-    const auto loc_var = its.getLocVar();
     const auto cost_var = its.getCostVar();
     if (ctx->instructions()) {
         const auto loc = its.addLocation();
-        auto continue_cond = cond & Rel::buildEq(loc_var, pre);
-        auto body = Subs::build<IntTheory>(loc_var, loc);
+        auto continue_cond = cond & Rel::buildEq(NumVar::loc_var, pre);
+        auto body = Subs::build<IntTheory>(NumVar::loc_var, loc);
         if (Config::Analysis::complexity()) {
             body.put<IntTheory>(cost_var, Expr(cost_var) + 1);
         }
         its.addRule(Rule(continue_cond, body), pre);
         current = loc;
         visit(ctx->instructions());
-        const auto backjump_cond = BExpression::buildTheoryLit(Rel::buildEq(loc_var, current));
-        const auto backjump = Subs::build<IntTheory>(loc_var, pre);
+        const auto backjump_cond = BExpression::buildTheoryLit(Rel::buildEq(NumVar::loc_var, current));
+        const auto backjump = Subs::build<IntTheory>(NumVar::loc_var, pre);
         its.addRule(Rule(backjump_cond, backjump), current);
     } else {
-        const auto nonterm_cond = BExpression::buildTheoryLit(Rel::buildEq(loc_var, pre));
+        const auto nonterm_cond = BExpression::buildTheoryLit(Rel::buildEq(NumVar::loc_var, pre));
         Subs nonterm;
         if (Config::Analysis::complexity()) {
             nonterm.put<IntTheory>(cost_var, Expr(cost_var) + 1);
@@ -124,8 +123,8 @@ std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
         its.addRule(Rule(nonterm_cond, nonterm), pre);
     }
     const auto post = its.addLocation();
-    const auto exit_cond = (!cond)->simplify() & Rel::buildEq(loc_var, pre);
-    auto exit = Subs::build<IntTheory>(loc_var, post);
+    const auto exit_cond = (!cond)->simplify() & Rel::buildEq(NumVar::loc_var, pre);
+    auto exit = Subs::build<IntTheory>(NumVar::loc_var, post);
     if (Config::Analysis::complexity()) {
         exit.put<IntTheory>(cost_var, Expr(cost_var) + 1);
     }
@@ -152,24 +151,23 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
     const auto cond = std::any_cast<BoolExpr>(visit(ctx->bool_expr()));
     const auto pre = current;
     const auto post = its.addLocation();
-    const auto loc_var = its.getLocVar();
     const auto cost_var = its.getCostVar();
     if (ctx->then()) {
         const auto loc = its.addLocation();
-        const auto consequence_cond = cond & Rel::buildEq(loc_var, pre);
-        auto consequence = Subs::build<IntTheory>(loc_var, loc);
+        const auto consequence_cond = cond & Rel::buildEq(NumVar::loc_var, pre);
+        auto consequence = Subs::build<IntTheory>(NumVar::loc_var, loc);
         if (Config::Analysis::complexity()) {
             consequence.put<IntTheory>(cost_var, Expr(cost_var) + 1);
         }
         its.addRule(Rule(consequence_cond, consequence), pre);
         current = loc;
         visit(ctx->then());
-        const auto exit_cond = cond & Rel::buildEq(loc_var, current);
-        auto exit = Subs::build<IntTheory>(loc_var, post);
+        const auto exit_cond = cond & Rel::buildEq(NumVar::loc_var, current);
+        auto exit = Subs::build<IntTheory>(NumVar::loc_var, post);
         its.addRule(Rule(exit_cond, exit), current);
     } else {
-        const auto exit_cond = cond & Rel::buildEq(loc_var, pre);
-        auto exit = Subs::build<IntTheory>(loc_var, post);
+        const auto exit_cond = cond & Rel::buildEq(NumVar::loc_var, pre);
+        auto exit = Subs::build<IntTheory>(NumVar::loc_var, post);
         if (Config::Analysis::complexity()) {
             exit.put<IntTheory>(cost_var, Expr(cost_var) + 1);
         }
@@ -177,20 +175,20 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
     }
     if (ctx->else_()) {
         const auto loc = its.addLocation();
-        const auto alternative_cond = (!cond)->simplify() & Rel::buildEq(loc_var, pre);
-        auto alternative = Subs::build<IntTheory>(loc_var, loc);
+        const auto alternative_cond = (!cond)->simplify() & Rel::buildEq(NumVar::loc_var, pre);
+        auto alternative = Subs::build<IntTheory>(NumVar::loc_var, loc);
         if (Config::Analysis::complexity()) {
             alternative.put<IntTheory>(cost_var, Expr(cost_var) + 1);
         }
         its.addRule(Rule(alternative_cond, alternative), pre);
         current = loc;
         visit(ctx->else_());
-        const auto exit_cond = cond & Rel::buildEq(loc_var, current);
-        auto exit = Subs::build<IntTheory>(loc_var, post);
+        const auto exit_cond = cond & Rel::buildEq(NumVar::loc_var, current);
+        auto exit = Subs::build<IntTheory>(NumVar::loc_var, post);
         its.addRule(Rule(exit_cond, exit), current);
     } else {
-        const auto exit_cond = (!cond)->simplify() & Rel::buildEq(loc_var, pre);
-        auto exit = Subs::build<IntTheory>(loc_var, post);
+        const auto exit_cond = (!cond)->simplify() & Rel::buildEq(NumVar::loc_var, pre);
+        auto exit = Subs::build<IntTheory>(NumVar::loc_var, post);
         if (Config::Analysis::complexity()) {
             exit.put<IntTheory>(cost_var, Expr(cost_var) + 1);
         }
@@ -204,10 +202,9 @@ std::any CINTParseVisitor::visitAssignment(CINTParser::AssignmentContext *ctx) {
     const auto &name = ctx->V()->getText();
     const auto expr = std::any_cast<Expr>(visit(ctx->num_expr()));
     const auto loc = its.addLocation();
-    const auto loc_var = its.getLocVar();
-    const auto cond = BExpression::buildTheoryLit(Rel::buildEq(loc_var, current));
+    const auto cond = BExpression::buildTheoryLit(Rel::buildEq(NumVar::loc_var, current));
     auto up = Subs::build<IntTheory>(vars.at(name), expr);
-    up.put<IntTheory>(loc_var, loc);
+    up.put<IntTheory>(NumVar::loc_var, loc);
     if (Config::Analysis::complexity()) {
         const auto cost_var = its.getCostVar();
         up.put<IntTheory>(cost_var, Expr(cost_var) + 1);
@@ -232,7 +229,7 @@ std::any CINTParseVisitor::visitInstruction(CINTParser::InstructionContext *ctx)
 std::any CINTParseVisitor::visitDeclaration(CINTParser::DeclarationContext *ctx)  {
     for (const auto &v: ctx->V()) {
         const auto &name = v->getText();
-        vars.emplace(name, its.addFreshVariable<IntTheory>(name));
+        vars.emplace(name, NumVar::nextProgVar());
     }
     return {};
 }

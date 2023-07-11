@@ -1,6 +1,7 @@
 #include "redundanceviaautomata.hpp"
 
 Automaton Automaton::covered;
+Automaton Automaton::accelerated;
 long Automaton::next_char;
 
 Automaton Automaton::singleton() {
@@ -77,8 +78,9 @@ Automaton RedundanceViaAutomata::get_singleton_language(const TransIdx idx, cons
     }
 }
 
-Automaton RedundanceViaAutomata::get_language(const TransIdx idx) {
-    return regexes[idx];
+std::optional<Automaton> RedundanceViaAutomata::get_language(const TransIdx idx) {
+    const auto it {regexes.find(idx)};
+    return it == regexes.end() ? std::optional<Automaton>() : it->second;
 }
 
 void RedundanceViaAutomata::set_language(const TransIdx idx, const Automaton &t) {
@@ -93,8 +95,16 @@ bool RedundanceViaAutomata::is_redundant(const Automaton &t) const {
     return t.subset(Automaton::covered);
 }
 
+bool RedundanceViaAutomata::is_accelerated(const Automaton &t) const {
+    return t.subset(Automaton::accelerated);
+}
+
 void RedundanceViaAutomata::mark_as_redundant(const Automaton &t) {
     Automaton::covered.unite(t);
+}
+
+void RedundanceViaAutomata::mark_as_accelerated(const Automaton &t) {
+    Automaton::accelerated.unite(t);
 }
 
 void RedundanceViaAutomata::concat(Automaton &t1, const Automaton &t2) const {
@@ -103,17 +113,4 @@ void RedundanceViaAutomata::concat(Automaton &t1, const Automaton &t2) const {
 
 void RedundanceViaAutomata::transitive_closure(Automaton &t) const {
     t.kleene_plus();
-}
-
-std::set<std::pair<TransIdx, Guard>> RedundanceViaAutomata::get_alphabet(const T &t) const {
-    std::set<std::pair<TransIdx, Guard>> res;
-    const auto alphabet {t.get_alphabet()};
-    for (const auto &e: this->alphabet) {
-        const auto singleton {e.second.get_alphabet()};
-        assert(singleton.Size() == 1);
-        if (alphabet.Find(*singleton.Begin()) != alphabet.End()) {
-            res.insert(e.first);
-        }
-    }
-    return res;
 }

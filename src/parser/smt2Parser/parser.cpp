@@ -49,7 +49,7 @@ namespace sexpressionparser {
                     sexpresso::Sexp &scope = ex[2];
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
-                            vars.emplace(e[0].str(), res.addFreshVariable<IntTheory>(e[0].str()));
+                            vars.emplace(e[0].str(), NumVar::nextProgVar());
                             preVars.push_back(e[0].str());
                         }
                     }
@@ -62,7 +62,7 @@ namespace sexpressionparser {
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
                             if (std::find(preVars.begin(), preVars.end(), e[0].str()) == preVars.end()) {
-                                vars.emplace(e[0].str(), res.addFreshTemporaryVariable<IntTheory>(e[0].str()));
+                                vars.emplace(e[0].str(), NumVar::next());
                                 postVars.push_back(e[0].str());
                             }
                         }
@@ -73,7 +73,6 @@ namespace sexpressionparser {
                     for (const std::string &str: postVars) {
                         tmpVars.insert(vars.at(str));
                     }
-                    const auto loc_var = res.getLocVar();
                     const auto cost_var = res.getCostVar();
                     for (auto &ruleExp: ruleExps.arguments()) {
                         if (ruleExp[0].str() == "cfg_trans2") {
@@ -82,12 +81,12 @@ namespace sexpressionparser {
                             Subs update;
                             Conjunction<IntTheory> guard;
                             parseCond(ruleExp[5], guard);
-                            guard.push_back(Rel::buildEq(loc_var, from));
+                            guard.push_back(Rel::buildEq(NumVar::loc_var, from));
                             BoolExpr cond = boolExpression::transform(BoolExpression<IntTheory>::buildAndFromLits(guard));
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.put<IntTheory>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            update.put<IntTheory>(loc_var, to);
+                            update.put<IntTheory>(NumVar::loc_var, to);
                             if (Config::Analysis::complexity()) {
                                 update.put(cost_var, Expr(cost_var) + 1);
                             }
@@ -97,8 +96,8 @@ namespace sexpressionparser {
                             cond->collectVars<IntTheory>(currTmpVars);
                             Subs subs;
                             for (const NumVar &var: currTmpVars) {
-                                if (res.isTempVar(var)) {
-                                    subs.get<IntTheory>().put(var, res.addFreshTemporaryVariable<IntTheory>(var.getName()));
+                                if (var.isTempVar()) {
+                                    subs.get<IntTheory>().put(var, NumVar::next());
                                 }
                             }
                             res.addRule(rule.subs(subs), from);
@@ -127,7 +126,7 @@ namespace sexpressionparser {
             sexpresso::Sexp scope = sexp[1];
             for (sexpresso::Sexp &var: scope.arguments()) {
                 const std::string &varName = var[0].str();
-                vars.emplace(varName, res.addFreshTemporaryVariable<IntTheory>(varName));
+                vars.emplace(varName, NumVar::next());
             }
             parseCond(sexp[2], guard);
         } else {
@@ -168,7 +167,7 @@ namespace sexpressionparser {
                 return parser(str);
             } else {
                 if (vars.find(str) == vars.end()) {
-                    vars.emplace(str, res.addFreshTemporaryVariable<IntTheory>(str));
+                    vars.emplace(str, NumVar::next());
                 }
                 return vars.at(str);
             }

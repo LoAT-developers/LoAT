@@ -292,10 +292,6 @@ std::string Rel::toString() const {
     return s.str();
 }
 
-std::string Rel::toRedlog() const {
-    return toString();
-}
-
 Rel::RelOp Rel::relOp() const {
     return op;
 }
@@ -308,21 +304,6 @@ std::set<NumVar> Rel::vars() const {
 
 Rel Rel::makeRhsZero() const {
     return Rel(l - r, op, 0);
-}
-
-unsigned Rel::hash() const {
-    unsigned hash = 7;
-    hash = 31 * hash + l.hash();
-    hash = 31 * hash + op;
-    hash = 31 * hash + r.hash();
-    return hash;
-}
-
-std::optional<std::string> Rel::toQepcad() const {
-    const Rel gt = this->toGt();
-    std::optional<std::string> diff = (gt.l - gt.r).toQepcad();
-    if (!diff) return {};
-    return *diff + " > 0";
 }
 
 bool Rel::isWellformed() const {
@@ -363,29 +344,6 @@ Rel operator!(const Rel &x) {
     case Rel::geq: return Rel(x.l, Rel::lt, x.r);
     }
     throw std::invalid_argument("unknown relation");
-}
-
-bool operator==(const Rel &x, const Rel &y) {
-    return x.l.equals(y.l) && x.op == y.op && x.r.equals(y.r);
-}
-
-bool operator!=(const Rel &x, const Rel &y) {
-    return !(x == y);
-}
-
-int Rel::compare(const Rel &that) const {
-    int fst = lhs().compare(that.lhs());
-    if (fst != 0) {
-        return fst;
-    }
-    if (relOp() != that.relOp()) {
-        return relOp() < that.relOp() ? -1 : 1;
-    }
-    return rhs().compare(that.rhs());
-}
-
-bool operator<(const Rel &x, const Rel &y) {
-    return x.compare(y) < 0;
 }
 
 std::ostream& operator<<(std::ostream &s, const Rel &rel) {

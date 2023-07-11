@@ -4,6 +4,7 @@
 #include <yices.h>
 #include <future>
 #include <stdexcept>
+#include <map>
 
 #include "smt.hpp"
 #include "yicescontext.hpp"
@@ -26,7 +27,7 @@ class Yices : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    Yices(const VariableManager &varMan, Logic logic, unsigned timeout): timeout(timeout), ctx(YicesContext()), varMan(varMan), config(yices_new_config()) {
+    Yices(Logic logic, unsigned timeout): timeout(timeout), ctx(YicesContext()), config(yices_new_config()) {
         std::string l;
         switch (logic) {
         case QF_LA:
@@ -49,7 +50,7 @@ public:
     }
 
     void add(const BoolExpr e) override {
-        if (yices_assert_formula(solver, ExprToSmt<term_t, Th...>::convert(e, ctx, varMan)) < 0) {
+        if (yices_assert_formula(solver, ExprToSmt<term_t, Th...>::convert(e, ctx)) < 0) {
             throw YicesError();
         }
     }
@@ -140,13 +141,15 @@ public:
         yices_free_context(solver);
     }
 
-    std::ostream& print(std::ostream& os) const;
+    std::ostream& print(std::ostream& os) const override {
+        throw std::invalid_argument("print not supported by yices");
+    }
 
     std::pair<SmtResult, BoolExpressionSet<Th...>> _unsatCore(const BoolExpressionSet<Th...> &assumptions) override {
         std::vector<term_t> as;
         std::map<term_t, BExpr<Th...>> map;
         for (const BoolExpr &a: assumptions) {
-            term_t t = ExprToSmt<term_t, Th...>::convert(a, ctx, varMan);
+            term_t t = ExprToSmt<term_t, Th...>::convert(a, ctx);
             as.push_back(t);
             map.emplace(t, a);
         }
@@ -182,7 +185,6 @@ public:
 private:
     unsigned int timeout;
     YicesContext ctx;
-    const VariableManager &varMan;
     ctx_config_t *config;
     context_t *solver;
 

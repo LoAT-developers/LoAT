@@ -4,28 +4,34 @@
 
 class NumVar {
 
-    std::string name;
+    static int last_tmp_idx;
+    static int last_prog_idx;
 
-    static std::map<std::string, GiNaC::symbol> symbols;
+    int idx;
+
+    static std::map<int, GiNaC::symbol> symbols;
+
+    friend auto operator<=>(const NumVar&, const NumVar&) = default;
+    friend bool operator==(const NumVar&, const NumVar&) = default;
 
 public:
 
-    explicit NumVar(const GiNaC::symbol &sym);
+    static const NumVar loc_var;
 
-    explicit NumVar(const std::string &name);
+    explicit NumVar(const int idx);
+
+    int getIdx() const;
 
     std::string getName() const;
 
-    unsigned hash() const;
-
-    signed compare(const NumVar &that) const;
-
     const GiNaC::symbol& operator*() const;
 
+    static NumVar next();
+
+    static NumVar nextProgVar();
+
+    bool isTempVar() const;
+
 };
-
-bool operator==(const NumVar &x, const NumVar &y);
-
-bool operator<(const NumVar &x, const NumVar &y);
 
 std::ostream& operator<<(std::ostream &s, const NumVar &x);

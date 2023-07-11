@@ -43,10 +43,6 @@ bool Expr::findAll(const Expr &pattern, std::set<Expr> &found) const {
     return anyFound;
 }
 
-bool Expr::equals(const NumVar &var) const {
-    return this->compare(*var) == 0;
-}
-
 bool Expr::isLinear(const std::optional<std::set<NumVar>> &vars) const {
     std::set<NumVar> theVars = vars ? *vars : this->vars();
     // linear expressions are always polynomials
@@ -173,12 +169,20 @@ unsigned Expr::maxDegree() const {
     return res;
 }
 
+unsigned Expr::getIndex(const GiNaC::symbol &x) {
+    const auto name {x.get_name()};
+    if (name[1] == 't') {
+        return -stoi(x.get_name().substr(2));
+    } else {
+        return stoi(x.get_name().substr(1));
+    }
+}
 
 void Expr::collectVars(std::set<NumVar> &res) const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
         SymbolVisitor(std::set<NumVar> &t) : target(t) {}
         void visit(const GiNaC::symbol &sym) {
-            target.insert(NumVar(sym.get_name()));
+            target.emplace(getIndex(sym));
         }
     private:
         std::set<NumVar> &target;
@@ -197,7 +201,7 @@ std::set<NumVar> Expr::vars() const {
 
 
 bool Expr::isGround() const {
-    return !hasVarWith([](const auto &) { return true; });
+    return ex.info(GiNaC::info_flags::numeric);
 }
 
 
@@ -229,7 +233,7 @@ bool Expr::isUnivariate() const {
 NumVar Expr::someVar() const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
         void visit(const GiNaC::symbol &var) {
-            variable = NumVar(var.get_name());
+            variable = NumVar(getIndex(var));
         }
         NumVar result() const {
             return *variable;
@@ -297,10 +301,6 @@ string Expr::toString() const {
     return ss.str();
 }
 
-bool Expr::equals(const Expr &that) const {
-    return ex.is_equal(that.ex);
-}
-
 unsigned Expr::degree(const NumVar &var) const {
     return ex.degree(*var);
 }
@@ -346,7 +346,7 @@ bool Expr::isAdd() const {
 }
 
 NumVar Expr::toVar() const {
-    return NumVar(GiNaC::ex_to<GiNaC::symbol>(ex).get_name());
+    return NumVar(getIndex(GiNaC::ex_to<GiNaC::symbol>(ex)));
 }
 
 GiNaC::numeric Expr::toNum() const {
@@ -369,12 +369,15 @@ void Expr::traverse(GiNaC::visitor &v) const {
     ex.traverse(v);
 }
 
-int Expr::compare(const Expr &that) const {
-    return ex.compare(that.ex);
-}
-
-size_t Expr::hash() const {
-    return ex.gethash();
+std::strong_ordering operator<=>(const Expr &x, const Expr &y) {
+    const auto res {x.ex.compare(y.ex)};
+    if (res == 0) {
+        return std::strong_ordering::equal;
+    } else if (res < 0) {
+        return std::strong_ordering::less;
+    } else {
+        return std::strong_ordering::greater;
+    }
 }
 
 Expr Expr::numerator() const {
@@ -488,77 +491,6 @@ bool Expr::isIntegral() const {
     }
 }
 
-std::string toQepcadRec(const Expr& e) {
-    if (e.isInt() || e.isVar()) {
-        return e.toString();
-    } else if (e.isAdd()) {
-        unsigned arity = e.arity();
-        if (arity == 0) {
-            return "0";
-        }
-        std::string res = toQepcadRec(e.op(0));
-        for (unsigned i = 1; i < arity; ++i) {
-            std::string subRes = toQepcadRec(e.op(i));
-            if (subRes[0] != '-') {
-                res += "+";
-            }
-            res += subRes;
-        }
-        return res;
-    } else if (e.isMul()) {
-        unsigned arity = e.arity();
-        if (arity == 0) {
-            return "1";
-        }
-        bool sign = true;
-        Expr constant = 1;
-        for (unsigned i = 0; i < arity; ++i) {
-            const auto op = e.op(i);
-            if (op.isRationalConstant()) {
-                constant = constant * op;
-                if (op.toNum().is_negative()) {
-                    sign = !sign;
-                    constant = -constant;
-                }
-            }
-        }
-        constant = constant.expand();
-        if (constant.toNum().is_zero()) {
-            return "0";
-        }
-        std::string res = sign ? "" : "-";
-        bool skip;
-        if (constant.toNum().is_equal(1)) {
-            skip = true;
-        } else {
-            res += constant.toString();
-            skip = false;
-        }
-        for (unsigned i = 0; i < arity; ++i) {
-            if (!e.op(i).isRationalConstant()) {
-                if (skip) {
-                    skip = false;
-                } else {
-                    res += " ";
-                }
-                res = res + toQepcadRec(e.op(i));
-            }
-        }
-        return res;
-    } else if (e.isNaturalPow()) {
-        return toQepcadRec(e.op(0)) + "^" + toQepcadRec(e.op(1));
-    } else if (e.isRationalConstant()) {
-        return e.numerator().toString() + "/" + e.denominator().toString();
-    } else {
-        throw std::invalid_argument("conversion to Qepcad failed for polynomial " + e.toString());
-    }
-}
-
-std::optional<std::string> Expr::toQepcad() const {
-    if (!this->isPoly()) return {};
-    return toQepcadRec(this->expand());
-}
-
 std::optional<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) const {
     // expand is needed before using degree/coeff
     Expr term = this->expand();
@@ -570,7 +502,7 @@ std::optional<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) co
     Expr c = term.coeff(var);
     if (!c.isRationalConstant()) return {};
 
-    bool trivialCoeff = (c.compare(1) == 0 || c.compare(-1) == 0);
+    bool trivialCoeff = (c == 1 || c == -1);
 
     if (level == TrivialCoeffs && !trivialCoeff) {
         return {};
@@ -593,18 +525,12 @@ std::optional<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) co
     return {term};
 }
 
-bool operator<(const Expr &e1, const Expr &e2) {
-    static GiNaC::ex_is_less comp;
-    return comp(e1.ex, e2.ex);
-}
-
 bool operator==(const Expr &e1, const Expr &e2) {
     return e1.ex.is_equal(e2.ex);
 }
 
 std::ostream& operator<<(std::ostream &s, const Expr &e) {
-    s << e.ex;
-    return s;
+    return s << e.ex;
 }
 
 ExprSubs::ExprSubs() {}
@@ -709,22 +635,21 @@ ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
 }
 
 ExprSubs ExprSubs::setminus(const std::set<NumVar> &vars) const {
-    ExprSubs res;
     if (size() < vars.size()) {
+        ExprSubs res;
         for (const auto &p: *this) {
             if (vars.find(p.first) == vars.end()) {
                 res.put(p.first, p.second);
             }
         }
+        return res;
     } else {
+        ExprSubs res(*this);
         for (const auto &x: vars) {
-            const auto it {find(x)};
-            if (it == end()) {
-                res.put(it->first, it->second);
-            }
+            res.erase(x);
         }
+        return res;
     }
-    return res;
 }
 
 void ExprSubs::putGinac(const NumVar &key, const Expr &val) {
@@ -736,7 +661,7 @@ void ExprSubs::eraseGinac(const NumVar &key) {
 }
 
 bool ExprSubs::changes(const NumVar &key) const {
-    return contains(key) && !get(key).equals(key);
+    return contains(key) && get(key) != key;
 }
 
 bool ExprSubs::isLinear() const {
@@ -792,34 +717,9 @@ std::set<NumVar> ExprSubs::allVars() const {
     return res;
 }
 
-size_t ExprSubs::hash() const {
-    size_t hash = 7;
-    for (const auto& p: *this) {
-        hash = hash * 31 + p.first.hash();
-        hash = hash * 31 + p.second.hash();
-    }
-    return hash;
-}
-
-int ExprSubs::compare(const ExprSubs &that) const {
-    if (*this == that) return 0;
-    else if (*this < that) return -1;
-    else return 1;
-}
-
-bool operator==(const ExprSubs &m1, const ExprSubs &m2) {
-    if (m1.size() != m2.size()) {
-        return false;
-    }
-    auto it1 = m1.begin();
-    auto it2 = m2.begin();
-    while (it1 != m1.end() && it2 != m2.end()) {
-        if (!Expr(it1->first).equals(it2->first)) return false;
-        if (!it1->second.equals(it2->second)) return false;
-        ++it1;
-        ++it2;
-    }
-    return it1 == m1.end() && it2 == m2.end();
+int ExprSubs::nextTmpVarIdx() const {
+     const auto variables {allVars()};
+     return (variables.empty() ? 0 : std::min(0, variables.begin()->getIdx())) - 1;
 }
 
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
@@ -838,22 +738,4 @@ std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
         }
         return s << "}";
     }
-}
-
-bool operator<(const ExprSubs &x, const ExprSubs &y) {
-    auto it1 = x.begin();
-    auto it2 = y.begin();
-    while (it1 != x.end() && it2 != y.end()) {
-        int fst = it1->first.compare(it2->first);
-        if (fst != 0) {
-            return fst < 0;
-        }
-        int snd = it1->second.compare(it2->second);
-        if (snd != 0) {
-            return snd < 0;
-        }
-        ++it1;
-        ++it2;
-    }
-    return it1 == x.end() && it2 != y.end();
 }

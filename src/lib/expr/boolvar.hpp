@@ -4,24 +4,30 @@
 #include <set>
 #include <map>
 
-class BoolVar
-{
+class BoolVar {
 
-    std::string name;
+    static int last_prog_idx;
+    static int last_tmp_idx;
+
+    int idx;
+
+    friend auto operator<=>(const BoolVar &x, const BoolVar &y) = default;
+    friend bool operator==(const BoolVar &x, const BoolVar &y) = default;
 
 public:
 
-    BoolVar(const std::string &name);
+    BoolVar(const int idx);
+
     std::string getName() const;
-    std::string get_name() const;
-    size_t hash() const;
-    bool equals(const BoolVar &that) const;
-    int compare(const BoolVar &that) const;
+
+    int getIdx() const;
+
+    static BoolVar next();
+
+    static BoolVar nextProgVar();
+
+    bool isTempVar() const;
 
 };
-
-bool operator ==(const BoolVar &v1, const BoolVar &v2);
-
-bool operator <(const BoolVar &v1, const BoolVar &v2);
 
 std::ostream& operator<<(std::ostream &s, const BoolVar &e);

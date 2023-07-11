@@ -2,45 +2,54 @@
 
 #include <assert.h>
 
-std::map<std::string, GiNaC::symbol> NumVar::symbols;
+int NumVar::last_tmp_idx {0};
+int NumVar::last_prog_idx {1};
 
-NumVar::NumVar(const std::string &name): name(name) {}
+std::map<int, GiNaC::symbol> NumVar::symbols;
+const NumVar NumVar::loc_var {1};
 
-NumVar::NumVar(const GiNaC::symbol &sym): name(sym.get_name()) {
-    assert(symbols.find(name) == symbols.end());
-    symbols.emplace(name, sym);
-}
-
-std::string NumVar::getName() const {
-    return name;
-}
-
-unsigned NumVar::hash() const {
-    return std::hash<std::string>()(name);
-}
-
-signed NumVar::compare(const NumVar &that) const {
-    return name.compare(that.name);
-}
-
-const GiNaC::symbol& NumVar::operator*() const {
-    const auto it = symbols.find(name);
+NumVar::NumVar(const int idx): idx(idx) {
+    const auto it {symbols.find(idx)};
     if (it == symbols.end()) {
-        symbols.emplace(name, GiNaC::symbol(name));
-        return symbols.at(name);
-    } else {
-        return it->second;
+        if (idx > 0) {
+            last_prog_idx = std::max(last_prog_idx, idx);
+        } else {
+            last_tmp_idx = std::min(last_tmp_idx, idx);
+        }
+        symbols.emplace(idx, getName());
     }
 }
 
-bool operator==(const NumVar &x, const NumVar &y) {
-    return x.getName() == y.getName();
+int NumVar::getIdx() const {
+    return idx;
 }
 
-bool operator<(const NumVar &x, const NumVar &y) {
-    return x.getName() < y.getName();
+std::string NumVar::getName() const {
+    if (idx > 0) {
+        return "i" + std::to_string(idx);
+    } else {
+        return "it" + std::to_string(-idx);
+    }
+}
+
+const GiNaC::symbol& NumVar::operator*() const {
+    return symbols[idx];
 }
 
 std::ostream& operator<<(std::ostream &s, const NumVar &x) {
     return s << x.getName();
+}
+
+NumVar NumVar::next() {
+    --last_tmp_idx;
+    return NumVar(last_tmp_idx);
+}
+
+NumVar NumVar::nextProgVar() {
+    ++last_prog_idx;
+    return NumVar(last_prog_idx);
+}
+
+bool NumVar::isTempVar() const {
+    return idx < 0;
 }

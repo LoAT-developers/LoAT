@@ -3,7 +3,6 @@
 #include "itsproblem.hpp"
 #include "linearizingsolver.hpp"
 #include "itsproblem.hpp"
-#include "proof.hpp"
 #include "result.hpp"
 #include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
@@ -42,50 +41,14 @@ struct Step {
 
 };
 
-/**
- * Stores which looping sequences of CHCs should be treated as if they were non-looping.
- * Used for sequences whose resolvent is something like f(x) -> f(0). For such clauses,
- * the learned clause would be equivalent to the original clause, and we want to avoid
- * learning many of those useless clauses.
- *
- * TODO Should be sound for SAT, but we have to check that carefully.
- *
- * Additionally, we treat looping sequences where acceleration fails as if they were
- * non-looping.
- *
- * Note that we still mark the corresponding language as redundant. So if [1,2,3] is
- * a non-loop, then we keep using "Step" such that we may eventually obtain [1,2,3,1,2,3].
- * Then the latter is redundant and we backtrack, i.e., non-loops should not be a problem
- * w.r.t. termination.
- */
-class NonLoops {
-
-    std::map<std::pair<TransIdx, BoolExpr>, long> alphabet;
-    long next_char = 0;
-    std::set<std::vector<long>> non_loops;
-    const ITSProblem &chcs;
-
-public:
-
-    NonLoops(const ITSProblem &chcs);
-
-    std::vector<long> build(const std::vector<Step> &trace, int backlink);
-
-    void add(const std::vector<Step> &trace, int backlink);
-
-    bool contains(const std::vector<long> &sequence);
-
-    void append(std::vector<long> &sequence, const Step &step);
-
-};
-
 std::ostream& operator<<(std::ostream &s, const Step &step);
 
 // forward declarations of acceleration states
 class Succeeded;
 class Covered;
+class Unroll;
+class Restart;
 class Dropped;
-class Failed;
 class ProvedUnsat;
 
 /**
@@ -107,33 +70,33 @@ public:
      * true if no clause was learned since it would have been redundant
      */
     virtual std::optional<Covered> covered();
-    /**
-     * True if the learned clause could not be added to the trace without introducing
-     * inconsistencies. This may happen when our acceleration technique returns an
-     * under-approximation.
-     * TODO For sat, the current handling of this case is not sound.
-     */
+
     virtual std::optional<Dropped> dropped();
-    /**
-     * true if no clause was learned for some other reason
-     * TODO We have to think about ways to deal with this case when trying to prove sat.
-     */
-    virtual std::optional<Failed> failed();
+
+    virtual std::optional<Unroll> unroll();
 
     virtual std::optional<ProvedUnsat> unsat();
+
+    virtual std::optional<Restart> restart();
+};
+
+struct LearnedClauses {
+    std::vector<TransIdx> res;
+    const unsigned prefix;
+    const unsigned period;
 };
 
 class Succeeded final: public LearningState {
     /**
      * the indices of the learned clause
      */
-    Result<std::vector<TransIdx>> idx;
+    Result<LearnedClauses> learned;
 
 public:
-    Succeeded(const Result<std::vector<TransIdx>> &idx);
+    Succeeded(const Result<LearnedClauses> &learned);
     std::optional<Succeeded> succeeded() override;
-    Result<std::vector<TransIdx>>& operator*();
-    Result<std::vector<TransIdx>>* operator->();
+    const Result<LearnedClauses>& operator*() const;
+    const Result<LearnedClauses>* operator->() const;
 };
 
 class Covered final: public LearningState {
@@ -141,20 +104,30 @@ class Covered final: public LearningState {
 };
 
 class Dropped final: public LearningState {
-    /**
-     * the indices of the learned clause
-     */
-    Result<std::vector<TransIdx>> idx;
+
+    ITSProof proof;
 
 public:
-    Dropped(const Result<std::vector<TransIdx>> &idx);
+    Dropped(const ITSProof &proof);
     std::optional<Dropped> dropped() override;
-    Result<std::vector<TransIdx>>& operator*();
-    Result<std::vector<TransIdx>>* operator->();
+    const ITSProof& get_proof() const;
 };
 
-class Failed final: public LearningState {
-    std::optional<Failed> failed() override;
+class Unroll final: public LearningState {
+
+private:
+
+    std::optional<unsigned> max;
+
+public:
+
+    Unroll();
+
+    Unroll(unsigned max);
+
+    std::optional<unsigned> get_max();
+
+    std::optional<Unroll> unroll() override;
 };
 
 class ProvedUnsat final: public LearningState {
@@ -167,13 +140,8 @@ public:
     ITSProof* operator->();
 };
 
-/**
- * auxiliary class for incremental SMT via RAII
- */
-struct PushPop {
-    LinearizingSolver<IntTheory, BoolTheory> &solver;
-    PushPop(LinearizingSolver<IntTheory, BoolTheory> &solver);
-    ~PushPop();
+class Restart final: public LearningState {
+    std::optional<Restart> restart() override;
 };
 
 class Reachability {
@@ -211,9 +179,7 @@ class Reachability {
     void luby_next();
 
     using Red = RedundanceViaAutomata;
-    std::unique_ptr<Red> redundance {std::make_unique<Red>()};
-
-    NonLoops non_loops;
+    std::unique_ptr<Red> redundancy {std::make_unique<Red>()};
 
     Complexity cpx = Complexity::Const;
 
@@ -224,31 +190,6 @@ class Reachability {
     void update_cpx();
 
     Result<Rule> instantiate(const NumVar &n, const Rule &rule) const;
-
-    /**
-     * removes clauses that are not on a CFG-path from a fact to a query
-     */
-    ResultViaSideEffects remove_irrelevant_clauses();
-
-    /**
-     * applies some very basic simplifications
-     * TODO Should be sound for sat, but we should check it to be sure.
-     */
-    ResultViaSideEffects simplify();
-
-    /**
-     * resolves recursive clauses with themselves in cases where
-     * the resulting clause might be easier to accelerate
-     * TODO Not sound for sat.
-     */
-    ResultViaSideEffects unroll();
-
-    ResultViaSideEffects refine_dependency_graph();
-
-    /**
-     * preprocesses the CHC problem
-     */
-    void preprocess();
 
     /**
      * initializes all data structures after preprocessing
@@ -263,24 +204,19 @@ class Reachability {
     /**
      * tries to resolve the trace with the given clause
      */
-    std::optional<BoolExpr> resolve(const TransIdx idx);
-
-    /**
-     * drops a suffix of the trace, up to the given new size
-     */
-    void drop_until(const int new_size);
+    std::optional<Rule> resolve(const TransIdx idx);
 
     /**
      * computes (an approximation of) the language associated with the clause used for the given step
      */
-    Red::T get_language(const Step &step);
+    Automaton get_language(const Step &step);
 
     /**
      * computes (an approximation of) the language associated with the clause that can be learned
      * from the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    Red::T build_language(const int backlink);
+    Automaton build_language(const int backlink);
 
     /**
      * computes a clause that is equivalent to the looping suffix of the trace
@@ -292,13 +228,17 @@ class Reachability {
      * adds a learned clause to all relevant data structures
      * @param lang (an approximation of) the language associated with the learned clause
      */
-    TransIdx add_learned_clause(const Rule &clause, const unsigned backlink, const Red::T &lang);
+    TransIdx add_learned_clause(const Rule &clause, const unsigned backlink);
 
     /**
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const unsigned backlink, const Red::T &lang);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const unsigned backlink);
+
+    bool check_consistency();
+
+    void drop_until(const int new_size);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix
@@ -308,7 +248,7 @@ class Reachability {
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
      */
-    std::optional<unsigned> has_looping_suffix();
+    std::optional<unsigned> has_looping_suffix(int start);
 
     /**
      * Generates a fresh copy of the program variables and fixes their value according to the update of the
@@ -338,7 +278,7 @@ class Reachability {
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const TransIdx idx, const BoolExpr &implicant);
+    bool store_step(const TransIdx idx, const Rule &resolvent);
 
     void print_trace(std::ostream &s);
 
@@ -352,7 +292,7 @@ class Reachability {
 
 public:
 
-    static bool log;
+    static const bool drop;
     static void analyze(ITSProblem &its);
 
 };

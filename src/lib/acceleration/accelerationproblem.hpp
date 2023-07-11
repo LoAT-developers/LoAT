@@ -3,64 +3,79 @@
 #include <optional>
 
 #include "rule.hpp"
-#include "variablemanager.hpp"
-#include "proof.hpp"
 #include "smt.hpp"
-#include "accelerationtechnique.hpp"
 #include "theory.hpp"
+#include "proof.hpp"
+#include "recurrence.hpp"
+#include "accelconfig.hpp"
 
 class AccelerationProblem {
 
-    using AcceleratorPair = AccelerationTechnique<IntTheory, BoolTheory>::AcceleratorPair;
+public:
+
+    struct Accelerator {
+        BoolExpr formula;
+        Proof proof;
+
+        Accelerator(const BoolExpr &formula, const Proof &proof):
+            formula(formula),
+            proof(proof) {}
+
+    };
+
+    struct AcceleratorPair {
+        std::optional<Accelerator> term;
+        std::optional<Accelerator> nonterm;
+    };
+
+    std::optional<Recurrence::Result> getClosed() const;
+
+private:
 
     struct Entry {
         LitSet dependencies;
         BoolExpr formula;
-        bool exact;
         bool nonterm;
     };
 
     using Res = std::map<Lit, std::vector<Entry>>;
 
+    const std::optional<Recurrence::Result> closed;
+    Subs update;
+    BoolExpr guard;
+    const AccelConfig config;
+    Proof proof;
     Res res;
     std::optional<std::map<Lit, Entry>> solution;
     LitSet todo;
-    Subs up;
-    const std::optional<Recurrence::Result> closed;
-    BoolExpr guard;
+    const std::optional<Subs> &samplePoint;
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
-    VarMan &its;
-    bool isConjunction;
     std::optional<Rel> bound;
-    const AccelConfig config;
 
-    bool monotonicity(const Lit &lit, Proof &proof);
-    bool recurrence(const Lit &lit, Proof &proof);
-    bool eventualWeakDecrease(const Lit &lit, Proof &proof);
-    bool eventualIncrease(const Lit &lit, const bool strict, Proof &proof);
-    bool fixpoint(const Lit &lit, Proof &proof);
-    LitSet findConsistentSubset(const BoolExpr e) const;
-    std::optional<unsigned int> store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool exact = true, bool nonterm = false);
+    bool trivial(const Lit &lit);
+    bool unchanged(const Lit &lit);
+    bool polynomial(const Lit &lit);
+    bool monotonicity(const Lit &lit);
+    bool recurrence(const Lit &lit);
+    bool eventualWeakDecrease(const Lit &lit);
+    bool eventualIncrease(const Lit &lit, const bool strict);
+    bool fixpoint(const Lit &lit);
+    unsigned store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool nonterm = false);
 
     struct ReplacementMap {
-        bool acceleratedAll;
         bool nonterm;
-        bool exact;
         std::map<Lit, BoolExpr> map;
     };
 
-    ReplacementMap computeReplacementMap(bool nontermOnly) const;
-
-    AccelerationProblem(
-            const BoolExpr guard,
-            const Subs &up,
-            const std::optional<Recurrence::Result> &closed,
-            VarMan &its,
-            const AccelConfig &config);
+    std::optional<ReplacementMap> computeReplacementMap(bool nontermOnly) const;
 
 public:
 
-    static AccelerationProblem init(const Rule &rule, const std::optional<Recurrence::Result> &closed, VarMan &its, const AccelConfig &config);
+    AccelerationProblem(
+            const Rule &rule,
+            const std::optional<Recurrence::Result> &closed,
+            const std::optional<Subs> &samplePoint,
+            const AccelConfig &config);
 
     AcceleratorPair computeRes();
     std::pair<BoolExpr, bool> buildRes(const Model<IntTheory, BoolTheory> &model, const std::map<Lit, std::vector<BoolExpr>> &entryVars);

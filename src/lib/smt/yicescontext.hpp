@@ -18,7 +18,6 @@
 #pragma once
 
 #include "smtcontext.hpp"
-#include "numexpression.hpp"
 
 #include <gmp.h>
 #include <yices.h>
@@ -65,12 +64,11 @@ public:
     term_t lhs(const term_t &e) const override;
     term_t rhs(const term_t &e) const override;
     Rel::RelOp relOp(const term_t &e) const override;
-    std::string getName(const term_t &e) const override;
 
     void printStderr(const term_t &e) const override;
 
 protected:
-    term_t buildVar(const std::string &basename, Expr::Type type) override;
+    term_t buildVar(const Var &var) override;
 
 private:
 

@@ -23,8 +23,6 @@
 
 using namespace std;
 
-ITSProblem::ITSProblem(VariableManager &&varMan) : VariableManager(varMan) {}
-
 bool ITSProblem::isEmpty() const {
     return rules.empty();
 }
@@ -106,7 +104,7 @@ TransIdx ITSProblem::addLearnedRule(const Rule &rule, const TransIdx same_preds,
 TransIdx ITSProblem::addQuery(const BoolExpr &guard, const TransIdx same_preds) {
     const auto start = getLhsLoc(same_preds);
     const auto preds = graph.getPredecessors(same_preds);
-    return addRule(Rule(guard, Subs::build<IntTheory>(loc, sink)), start, sink, preds, {});
+    return addRule(Rule(guard, Subs::build<IntTheory>(NumVar::loc_var, sink)), start, sink, preds, {});
 }
 
 TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
@@ -141,6 +139,10 @@ TransIdx ITSProblem::replaceRule(const TransIdx toReplace, const Rule &replaceme
         sinkTransitions.erase(toReplace);
     }
     return idx;
+}
+
+void ITSProblem::removeEdge(const TransIdx from, const TransIdx to) {
+    graph.removeEdge(from, to);
 }
 
 LocationIdx ITSProblem::addLocation() {
@@ -211,13 +213,9 @@ NumVar ITSProblem::getCostVar() const {
     return cost;
 }
 
-NumVar ITSProblem::getLocVar() const {
-    return loc;
-}
-
 std::optional<LocationIdx> ITSProblem::getRhsLoc(const Rule &rule) const {
     const auto up = rule.getUpdate().get<IntTheory>();
-    const auto it = up.find(loc);
+    const auto it = up.find(NumVar::loc_var);
     if (it == up.end()) {
         return {};
     } else {
@@ -259,14 +257,14 @@ const DependencyGraph& ITSProblem::getDependencyGraph() const {
 
 std::set<Edge> ITSProblem::refineDependencyGraph() {
     const auto is_edge = [this](const auto fst, const auto snd){
-        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd), *this).getGuard(), *this) == Sat;
+        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd)).first.getGuard()) == Sat;
     };
     return graph.refine(is_edge);
 }
 
 std::set<Edge> ITSProblem::refineDependencyGraph(const TransIdx idx) {
     const auto is_edge = [this](const auto fst, const auto snd){
-        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd), *this).getGuard(), *this) == Sat;
+        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd)).first.getGuard()) == Sat;
     };
     return graph.refine(idx, is_edge);
 }

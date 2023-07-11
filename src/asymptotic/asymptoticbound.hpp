@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "numexpression.hpp"
-#include "variablemanager.hpp"
 #include "inftyexpression.hpp"
 #include "limitproblem.hpp"
 #include "proof.hpp"
@@ -26,11 +25,11 @@ private:
         int inftyVars;
     };
 
-    AsymptoticBound(VarMan &varMan, Conjunction<IntTheory> guard, Expr cost, bool finalCheck, unsigned int timeout);
+    AsymptoticBound(Conjunction<IntTheory> guard, Expr cost, bool finalCheck, unsigned int timeout);
 
     void initLimitVectors();
     void normalizeGuard();
-    void createInitialLimitProblem(VariableManager &varMan);
+    void createInitialLimitProblem();
     void propagateBounds();
     ExprSubs calcSolution(const LimitProblem &limitProblem);
     int findUpperBoundforSolution(const LimitProblem &limitProblem, const ExprSubs &solution);
@@ -56,7 +55,6 @@ private:
     bool trySmtEncoding(Complexity currentRes);
 
 private:
-    VariableManager &varMan;
     const Conjunction<IntTheory> guard;
     const Expr cost;
     bool finalCheck;
@@ -102,8 +100,7 @@ public:
      * @param varMan the VariableManager instance is needed to get information about free variables
      * @param finalCheck enables more sophisticated backtracking and uses Timeout::hard
      */
-    static Result determineComplexity(VarMan &varMan,
-                                      const Conjunction<IntTheory> &guard,
+    static Result determineComplexity(const Conjunction<IntTheory> &guard,
                                       const Expr &cost,
                                       bool finalCheck = false,
                                       const Complexity &currentRes = Complexity::Const,

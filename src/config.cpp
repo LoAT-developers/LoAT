@@ -64,9 +64,11 @@ namespace Config {
 
     namespace Analysis {
 
-        std::vector<Mode> modes { Complexity, NonTermination, Reachability, Satisfiability, CheckLinear };
+        std::vector<Mode> modes { Complexity, NonTermination, Reachability };
 
         Mode mode = Complexity;
+        Engine engine = ADCL;
+        bool log = false;
 
         std::string modeName(const Mode mode) {
             switch (mode) {
@@ -75,10 +77,6 @@ namespace Config {
             case NonTermination: return "non_termination";
                 break;
             case Reachability: return "reachability";
-                break;
-            case Satisfiability: return "satisfiability";
-                break;
-            case CheckLinear: return "check_linear";
                 break;
             default:
                 throw std::invalid_argument("unknown mode");
@@ -91,10 +89,6 @@ namespace Config {
 
         bool reachability() {
             return mode == Reachability;
-        }
-
-        bool satisfiability(){
-            return mode == Satisfiability;
         }
 
         bool complexity() {

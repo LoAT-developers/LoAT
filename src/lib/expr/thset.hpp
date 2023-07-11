@@ -1,6 +1,10 @@
 #pragma once
 
 #include "itheory.hpp"
+#include "set.hpp"
+
+#include <optional>
+#include <ostream>
 
 namespace theory {
 
@@ -122,10 +126,6 @@ public:
 
         friend bool operator== (const Iterator& a, const Iterator& b) {
             return a.ptr == b.ptr;
-        }
-
-        friend bool operator!= (const Iterator& a, const Iterator& b) {
-            return a.ptr != b.ptr;
         }
 
     private:
@@ -285,27 +285,6 @@ public:
 private:
 
     template <size_t I = 0>
-    inline bool equalsImpl(const Self &that) const {
-        if constexpr (I < variant_size) {
-            if (std::get<I>(t) != std::get<I>(that.t)) {
-                return false;
-            } else {
-                return equalsImpl<I+1>(that);
-            }
-        } else {
-            return true;
-        }
-    }
-
-public:
-
-    bool equals(const Self &that) const {
-        return equalsImpl(that);
-    }
-
-private:
-
-    template <size_t I = 0>
     inline std::ostream& printImpl(std::ostream &s) const {
         if constexpr (I < variant_size) {
             if (I > 0) {
@@ -347,12 +326,9 @@ public:
         std::apply([](auto &... s){(..., s.clear());}, t);
     }
 
-};
+    auto operator<=>(const ThSet<VS, VSI, Var, Th...> &) const = default;
 
-template <class VS, class VSI, class Var, ITheory... Th>
-bool operator==(const ThSet<VS, VSI, Var, Th...> &fst, const ThSet<VS, VSI, Var, Th...> &snd) {
-    return fst.equals(snd);
-}
+};
 
 template <class VS, class VSI, class Var, ITheory... Th>
 std::ostream& operator<<(std::ostream &s, const ThSet<VS, VSI, Var, Th...> &set) {

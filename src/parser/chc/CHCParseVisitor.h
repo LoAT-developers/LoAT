@@ -73,7 +73,7 @@ class  CHCParseVisitor : public CHCVisitor {
     unsigned long max_bool_arity {0};
 
     LocationIdx loc(const std::string &name);
-    Var var(const std::string &name, Expr::Type type);
+    Var var(const std::string &name, Sort sort);
 
 public:
 

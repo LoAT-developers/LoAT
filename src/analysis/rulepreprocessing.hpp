@@ -17,11 +17,11 @@
 
 #pragma once
 
-#include "itsproblem.hpp"
+#include "rule.hpp"
 #include "result.hpp"
 
-namespace Chaining {
+namespace Preprocess {
 
-    ResultViaSideEffects chainLinearPaths(ITSProblem &its);
+    Result<Rule> preprocessRule(const Rule &rule);
 
 }

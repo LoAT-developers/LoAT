@@ -8,21 +8,28 @@
 namespace acceleration {
 
 enum Status {
-    Unsat, Nondet, PseudoLoop, Disjunctive, AccelerationFailed, ClosedFormFailed
+    NotSat, Nondet, PseudoLoop, Disjunctive, AccelerationFailed, ClosedFormFailed, Success
+};
+
+std::ostream& operator<<(std::ostream &s, const Status x);
+
+struct Accel {
+    Rule rule;
+    Proof proof;
+};
+
+struct Nonterm {
+    BoolExpr certificate {BExpression::False};
+    Proof proof;
 };
 
 struct Result {
-    std::optional<Status> status;
-    std::optional<Rule> rule;
-    BoolExpr nontermCertificate {BExpression::False};
+    Status status;
+    std::optional<Accel> accel;
+    std::optional<Nonterm> nonterm;
+    unsigned prefix = 0;
     unsigned period = 1;
-    bool strengthened = false;
-    Proof accelerationProof;
-    Proof nontermProof;
     std::optional<NumVar> n;
-
-    bool successful() const;
-    bool inexact() const;
 
 };
 

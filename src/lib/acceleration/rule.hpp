@@ -19,10 +19,9 @@
 
 #include <map>
 #include <vector>
-#include <unordered_map>
-#include <unordered_set>
 
 #include "theory.hpp"
+#include "expr.hpp"
 
 /**
  * A general rule, consisting of a left-hand side with location, guard and cost
@@ -39,31 +38,33 @@ private:
 public:
     Rule(const BoolExpr guard, const Subs &update);
 
-    const BoolExpr& getGuard() const {
-        return guard;
+    const BoolExpr getGuard() const;
+
+    template <ITheory Th>
+    const typename Th::Subs& getUpdate() const {
+        return update.get<Th>();
     }
 
-    const Subs& getUpdate() const {
-        return update;
-    }
+    const Subs& getUpdate() const;
 
     Rule subs(const Subs &subs) const;
 
     Rule withGuard(const BoolExpr guard) const;
+
     Rule withUpdate(const Subs &up) const;
 
     VarSet vars() const;
+
     void collectVars(VarSet &vars) const;
 
     Rule chain(const Rule &that) const;
 
-    unsigned hash() const;
+    bool isPoly() const;
 
-    struct Hash {
-        std::size_t operator()(const Rule& r) const {
-            return r.hash();
-        }
-    };
+    template <ITheory T>
+    int nextTmpVarIdx() const {
+        return std::min(guard->nextTmpVarIdx<T>(), expr::nextTmpVarIdx<T>(update));
+    }
 
 };
 

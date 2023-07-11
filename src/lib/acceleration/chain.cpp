@@ -1,26 +1,30 @@
 #include "chain.hpp"
-#include "substitution.hpp"
+#include "expr.hpp"
 
-Subs computeVarRenaming(const Rule &first, const Rule &second, VariableManager &its) {
-    Subs sigma;
+std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) {
+    Subs sigma, inverted;
     auto first_vars {first.vars()};
     for (const auto &x: second.vars()) {
-        if (its.isTempVar(x) && first_vars.find(x) != first_vars.end()) {
+        if (expr::isTempVar(x) && first_vars.find(x) != first_vars.end()) {
             if (std::holds_alternative<NumVar>(x)) {
                 const auto &var = std::get<NumVar>(x);
-                sigma.put<IntTheory>(var, its.addFreshTemporaryVariable<IntTheory>(var.getName()));
+                const NumVar next {NumVar::next()};
+                sigma.put<IntTheory>(var, next);
+                inverted.put(next, var);
             } else if (std::holds_alternative<BoolVar>(x)) {
                 const auto &var = std::get<BoolVar>(x);
-                sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(its.addFreshTemporaryVariable<BoolTheory>(var.getName())));
+                const BoolVar next {BoolVar::next()};
+                sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(next));
+                inverted.put<BoolTheory>(next, BExpression::buildTheoryLit(var));
             }
         }
     }
-    return sigma;
+    return {sigma, inverted};
 }
 
-Rule Chaining::chain(const Rule &fst, const Rule &snd, VariableManager &its) {
-    const auto sigma {computeVarRenaming(fst, snd, its)};
-    const auto guard {fst.getGuard() & snd.getGuard()->subs(substitution::compose(sigma, fst.getUpdate()))};
-    const auto up {substitution::compose(substitution::concat(snd.getUpdate(), sigma), fst.getUpdate())};
-    return Rule(guard, up);
+std::pair<Rule, Subs> Chaining::chain(const Rule &fst, const Rule &snd) {
+    const auto [sigma, inverted] {computeVarRenaming(fst, snd)};
+    const auto guard {fst.getGuard() & snd.getGuard()->subs(expr::compose(sigma, fst.getUpdate()))};
+    const auto up {expr::compose(expr::concat(snd.getUpdate(), sigma), fst.getUpdate())};
+    return {Rule(guard, up), inverted};
 }

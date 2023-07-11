@@ -1,5 +1,4 @@
-#ifndef LIMITPROBLEM_H
-#define LIMITPROBLEM_H
+#pragma once
 
 #include <ostream>
 #include <set>
@@ -7,8 +6,8 @@
 #include <string>
 #include <memory>
 
-#include "variablemanager.hpp"
-#include "theory.hpp"
+#include "inttheory.hpp"
+#include "conjunction.hpp"
 #include "inftyexpression.hpp"
 #include "limitvector.hpp"
 
@@ -20,7 +19,7 @@ public:
     /**
      * Creates a new, empty LimitProblem.
      */
-    LimitProblem(VariableManager &varMan);
+    LimitProblem();
 
     /**
      * Creates the initial LimitProblem for the given guard and cost.
@@ -28,12 +27,12 @@ public:
      *                        of the form t > 0
      * @param cost a term
      */
-    LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const Expr &cost, VariableManager &varMan);
+    LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const Expr &cost);
 
     /**
      * Creates the initial LimitProblem without any cost term.
      */
-    LimitProblem(const Conjunction<IntTheory> &normalizedGuard, VariableManager &varMan);
+    LimitProblem(const Conjunction<IntTheory> &normalizedGuard);
 
     // copy constructor and assignment operator
     LimitProblem(const LimitProblem &other);
@@ -227,12 +226,9 @@ private:
     NumVar variableN;
     std::vector<int> substitutions;
     bool unsolvable;
-    VariableManager &varMan;
 
     // use unique_ptr, as gcc < 5 is lacking std::move on ostringstream
     std::unique_ptr<std::ostringstream> log;
 };
 
 std::ostream& operator<<(std::ostream &os, const LimitProblem &lp);
-
-#endif //LIMITPROBLEM_H

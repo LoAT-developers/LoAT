@@ -21,7 +21,7 @@
 
 using namespace std;
 
-Result<Rule> GuardToolbox::propagateEqualities(const VarMan &its, const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
+Result<Rule> GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
     ExprSubs varSubs;
     ResultViaSideEffects proof;
     auto guard = rule.getGuard()->universallyValidLits();
@@ -52,7 +52,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const VarMan &its, const Rule &ru
 
                     //disallow replacing non-free vars by a term containing free vars
                     //could be unsound, as free vars can lead to unbounded complexity
-                    if (!its.isTempVar(var) && containsTempVar(its, solved)) continue;
+                    if (!var.isTempVar() && containsTempVar(solved)) continue;
 
                     //extend the substitution, use compose in case var occurs on some rhs of varSubs
                     varSubs.put(var, solved);
@@ -83,33 +83,17 @@ Result<Rule> GuardToolbox::propagateEqualities(const VarMan &its, const Rule &ru
 }
 
 
-Result<Rule> GuardToolbox::propagateBooleanEqualities(const VarMan &its, const Rule &rule) {
-    auto bvars = rule.getGuard()->vars().get<BoolVar>();
+Result<Rule> GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
     Result<Rule> res(rule);
     Proof subproof;
-    bool changed;
+    Subs equiv;
     do {
-        changed = false;
-        for (auto it = bvars.begin(); it != bvars.end();) {
-            const auto var = *it;
-            if (its.isTempVar(var)) {
-                const auto eq = res->getGuard()->impliedEquality(var);
-                const BoolLit lit(var);
-                if (eq) {
-                    res = res->subs(Subs::build<BoolTheory>(var, *eq));
-                    it = bvars.erase(it);
-                    changed = true;
-                    subproof.append(stringstream() << "propagated equivalence " << var << " <=> " << *eq << std::endl);
-                    break;
-                }
-            }
-            if (changed) {
-                break;
-            } else {
-                ++it;
-            }
+        equiv = res->getGuard()->impliedEqualities();
+        if (!equiv.empty()) {
+            res = res->subs(equiv);
+            subproof.append(stringstream() << "propagated equivalences: " << equiv << std::endl);
         }
-    } while (changed);
+    } while (!equiv.empty());
     if (res) {
         res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
         res.storeSubProof(subproof);
@@ -154,8 +138,8 @@ Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool r
 
                 //check coefficient and direction
                 Expr c = target.expand().coeff(var);
-                if (c.compare(1) != 0 && c.compare(-1) != 0) goto abort;
-                if (c.compare(1) == 0) {
+                if (c != 1 && c != -1) goto abort;
+                if (c == 1) {
                     varLessThan.push_back( -(target-var) );
                 } else {
                     varGreaterThan.push_back( target+var );

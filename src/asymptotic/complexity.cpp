@@ -141,7 +141,7 @@ Complexity toComplexityRec(const Expr &term) {
         // If the exponent is at least polynomial (non-constant), complexity might be exponential
         if (toComplexityRec(term.op(1)) > Complexity::Const) {
             const Expr &base = term.op(0);
-            if (base.isZero() || base.compare(1) == 0 || base.compare(-1) == 0) {
+            if (base.isZero() || base == 1 || base == -1) {
                 return Complexity::Const;
             }
             return Complexity::Exp;

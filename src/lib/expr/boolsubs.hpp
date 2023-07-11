@@ -102,22 +102,21 @@ public:
     }
 
     BoolSubs setminus(const std::set<BoolVar> &vars) const {
-        BoolSubs res;
         if (size() < vars.size()) {
+            BoolSubs res;
             for (const auto &p: *this) {
                 if (vars.find(p.first) == vars.end()) {
                     res.put(p.first, p.second);
                 }
             }
-        }  else {
+            return res;
+        } else {
+            BoolSubs res(*this);
             for (const auto &x: vars) {
-                const auto it {find(x)};
-                if (it == end()) {
-                    res.put(it->first, it->second);
-                }
+                res.erase(x);
             }
+            return res;
         }
-        return res;
     }
 
     bool changes(const BoolVar &key) const {
@@ -158,15 +157,6 @@ public:
         }
     }
 
-    size_t hash() const {
-        size_t hash = 7;
-        for (const auto& p: *this) {
-            hash = hash * 31 + p.first.hash();
-            hash = hash * 31 + p.second->hash();
-        }
-        return hash;
-    }
-
     bool empty() const {
         return map.empty();
     }
@@ -191,18 +181,11 @@ public:
         map.erase(var);
     }
 
-    int compare(const BoolSubs& that) const {
-        if (map == that.map) {
-            return 0;
-        } else if (map < that.map) {
-            return -1;
-        } else {
-            return 1;
-        }
-    }
+    template <ITheory... Th_>
+    friend auto operator<=>(const BoolSubs<Th_...> &e1, const BoolSubs<Th_...> &e2);
 
     template <ITheory... Th_>
-    friend bool operator==(const BoolSubs<Th_...> &s1, const BoolSubs<Th_...> &s2);
+    friend bool operator==(const BoolSubs<Th_...> &e1, const BoolSubs<Th_...> &e2);
 
     bool isLinear() const {
         return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isLinear();});
@@ -212,7 +195,23 @@ public:
         return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isPoly();});
     }
 
+    template <ITheory T>
+    int nextTmpVarIdx() const {
+        const auto variables {allVars().template get<T::Var>()};
+        return (variables.empty() ? 0 : std::min(0, variables.begin()->getIndex())) - 1;
+    }
+
 };
+
+template <ITheory... Th>
+auto operator<=>(const BoolSubs<Th...> &e1, const BoolSubs<Th...> &e2) {
+    return e1.map <=> e2.map;
+}
+
+template <ITheory... Th>
+bool operator==(const BoolSubs<Th...> &e1, const BoolSubs<Th...> &e2) {
+    return e1.map == e2.map;
+}
 
 template <ITheory... Th>
 std::ostream& operator<<(std::ostream &s, const BoolSubs<Th...> &e) {
@@ -231,14 +230,4 @@ std::ostream& operator<<(std::ostream &s, const BoolSubs<Th...> &e) {
         }
         return s << "}";
     }
-}
-
-template <ITheory... Th>
-bool operator==(const BoolSubs<Th...> &s1, const BoolSubs<Th...> &s2) {
-    return s1.map == s2.map;
-}
-
-template <ITheory... Th>
-bool operator<(const BoolSubs<Th...> &s1, const BoolSubs<Th...> &s2) {
-    return s1.compare(s2) < 0;
 }

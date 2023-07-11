@@ -12,7 +12,7 @@ add_library(${PROJECT_NAME} STATIC
   boolvar.cpp
   boollit.hpp
   boollit.cpp
-  literaltemplates.hpp
+  literal.hpp
   numvar.hpp
   numvar.cpp
   numexpression.cpp
@@ -20,7 +20,6 @@ add_library(${PROJECT_NAME} STATIC
   rel.cpp
   rel.hpp
   conjunction.hpp
-  boolexpr.cpp
   boolexpr.hpp
   inttheory.hpp
   booltheory.hpp
@@ -29,16 +28,8 @@ add_library(${PROJECT_NAME} STATIC
   boolsubs.hpp
   theory.hpp
   theory.cpp
-  literal.cpp
-  literal.hpp
-  expression.hpp
-  expression.cpp
-  substitution.hpp
-  substitution.cpp
-  variable.hpp
-  variable.cpp
-  variablemanager.hpp
-  variablemanager.cpp
+  expr.hpp
+  expr.cpp
 )
 
 find_library(GINAC ginac)
@@ -46,7 +37,14 @@ message(STATUS "ginac: ${GINAC}")
 
 target_link_libraries(${PROJECT_NAME} ${GINAC})
 
-target_include_directories(${PROJECT_NAME} INTERFACE ".")
+target_include_directories(${PROJECT_NAME} PRIVATE
+  ${loat_util_INCLUDE_DIRS}
+)
+
+target_include_directories(${PROJECT_NAME} INTERFACE
+  ${loat_util_INCLUDE_DIRS}
+  "."
+)
 
 # Expose public includes to other
 # subprojects through cache variable.

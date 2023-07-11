@@ -14,12 +14,12 @@ class Z3 : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    Z3(const VariableManager &varMan, unsigned timeout): timeout(timeout), varMan(varMan), ctx(z3Ctx), solver(z3Ctx) {
+    Z3(unsigned timeout): timeout(timeout), ctx(z3Ctx), solver(z3Ctx) {
         updateParams();
     }
 
     void add(const BExpr<Th...> e) override {
-        solver.add(ExprToSmt<z3::expr, Th...>::convert(e, ctx, varMan));
+        solver.add(ExprToSmt<z3::expr, Th...>::convert(e, ctx));
     }
 
     void push() override {
@@ -104,7 +104,7 @@ public:
 
     ~Z3() override {}
 
-    std::ostream& print(std::ostream& os) const {
+    std::ostream& print(std::ostream& os) const override {
         return os << solver;
     }
 
@@ -112,7 +112,7 @@ public:
         std::vector<z3::expr> as;
         std::map<std::pair<unsigned int, std::string>, BExpr<Th...>> map;
         for (const auto &a: assumptions) {
-            z3::expr t = ExprToSmt<z3::expr, Th...>::convert(a, ctx, varMan);
+            z3::expr t = ExprToSmt<z3::expr, Th...>::convert(a, ctx);
             as.push_back(t);
             std::pair<unsigned int, std::string> key = {t.hash(), t.to_string()};
             assert(map.count(key) == 0);
@@ -143,7 +143,6 @@ public:
 private:
     bool models = false;
     unsigned int timeout;
-    const VariableManager &varMan;
     z3::context z3Ctx;
     Z3Context ctx;
     z3::solver solver;
