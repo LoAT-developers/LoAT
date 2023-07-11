@@ -66,6 +66,8 @@ namespace Config {
     // Main algorithm
     namespace Analysis {
 
+        extern bool compute_length_of_refutation;
+
         enum Mode { Complexity, NonTermination, Reachability, Satisfiability, CheckLinear };
         extern std::vector<Mode> modes;
         extern Mode mode;
