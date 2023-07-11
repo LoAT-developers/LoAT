@@ -146,12 +146,15 @@ to see LoAT's proof for the leading example from our paper without colors.
 The first line of LoAT's output indicates the result of the analysis (unsat or
 unknown).
 
-If the result is unsat, then the next line provides the length of the refutation
-found by LoAT, i.e., the number of resolution steps. Note that the refutation
-found by LoAT may contain learned clauses. Every resolution step with a learned
-clause can be transformed into a sequence of resolution steps with original
-clauses only. The third line provides the length of the refutation that would
-result from such a transformation.
+If the result is unsat and you are using 'loat' (as opposed to 'loat_sb'), then
+the next line provides the length of the refutation found by LoAT, i.e., the
+number of resolution steps. Note that the refutation found by LoAT may contain
+learned clauses. Every resolution step with a learned clause can be transformed
+into a sequence of resolution steps with original clauses only. The third line
+provides the length of the refutation that would result from such a
+transformation. Note that the computation of the length of the refutation was
+disabled in our evaluation (which was performed with 'loat_sb', as mentioned
+above), as it causes a slight overhead.
 
 LoAT's proofs are structured as trees. In the proof output, the structure of
 this tree is reflected by the indentation, i.e., children are indented further
