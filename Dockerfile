@@ -14,7 +14,7 @@ WORKDIR /antlr4
 RUN git checkout 4.11.1
 RUN mkdir /antlr4/runtime/Cpp/build
 WORKDIR /antlr4/runtime/Cpp/build
-RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR="/usr/local/lib" -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG"
+RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR="/usr/local/lib" -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG"
 RUN make -j
 RUN make install
 
@@ -25,7 +25,7 @@ FROM base as cudd
 RUN git clone https://github.com/ivmai/cudd.git
 WORKDIR /cudd
 # make check fails when compiled with -DNDEBUG
-RUN ./configure CFLAGS='-fPIC -march=sandybridge -O3' CXXFLAGS='-fPIC -march=sandybridge -O3'
+RUN ./configure CFLAGS='-fPIC -march=x86-64 -O3' CXXFLAGS='-fPIC -march=x86-64 -O3'
 RUN sed -i 's/aclocal-1.14/aclocal-1.16/g' Makefile
 RUN sed -i 's/automake-1.14/automake-1.16/g' Makefile
 RUN make -j
@@ -57,7 +57,7 @@ RUN tar xf ginac-1.8.6.tar.bz2
 WORKDIR /ginac-1.8.6
 RUN mkdir build
 WORKDIR /ginac-1.8.6/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" ..
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
 
@@ -71,7 +71,7 @@ RUN wget https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz
 RUN lzip -d gmp-6.2.1.tar.lz
 RUN tar xf gmp-6.2.1.tar
 WORKDIR /gmp-6.2.1
-RUN ./configure ABI=64 CFLAGS="-fPIC -O3 -DNDEBUG" CPPFLAGS="-DPIC -O3 -DNDEBUG" --host=sandybridge-pc-linux-gnu --enable-cxx --prefix /gmp/
+RUN ./configure ABI=64 CFLAGS="-fPIC -O3 -DNDEBUG" CPPFLAGS="-DPIC -O3 -DNDEBUG" --host=x86_64-pc-linux-gnu --enable-cxx --prefix /gmp/
 RUN make -j
 RUN make -j check
 RUN make install
@@ -85,7 +85,7 @@ RUN xbps-install -yS gmp-devel
 RUN wget https://libntl.org/ntl-11.4.4.tar.gz
 RUN tar xf ntl-11.4.4.tar.gz
 WORKDIR /ntl-11.4.4/src
-RUN ./configure CXXFLAGS='-march=sandybridge -O3 -DNDEBUG'
+RUN ./configure CXXFLAGS='-march=x86-64 -O3 -DNDEBUG'
 RUN make -j
 RUN make install
 
@@ -97,7 +97,7 @@ RUN xbps-install -yS gmpxx-devel
 
 RUN git clone https://github.com/SRI-CSL/libpoly.git
 WORKDIR /libpoly/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" ..
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
 
@@ -117,7 +117,7 @@ RUN git clone https://github.com/aprove-developers/LoAT-purrs.git
 WORKDIR /LoAT-purrs
 RUN autoreconf --install
 RUN automake
-RUN ./configure --with-cxxflags='-march=sandybridge -O3 -DNDEBUG'
+RUN ./configure --with-cxxflags='-march=x86-64 -O3 -DNDEBUG'
 RUN make -j
 RUN make install
 
@@ -138,7 +138,7 @@ COPY --from=cudd /usr/local/include/cudd.h /usr/local/include/cudd.h
 RUN git clone https://github.com/SRI-CSL/yices2.git
 WORKDIR /yices2
 RUN autoconf
-RUN ./configure --enable-mcsat --with-pic-gmp=/gmp/lib/libgmp.a CFLAGS='-march=sandybridge -O3 -DNDEBUG'
+RUN ./configure --enable-mcsat --with-pic-gmp=/gmp/lib/libgmp.a CFLAGS='-march=x86-64 -O3 -DNDEBUG'
 RUN make -j
 RUN make -j static-lib
 RUN make install
@@ -152,7 +152,7 @@ RUN tar xf z3-4.9.1.tar.gz
 WORKDIR /z3-z3-4.9.1
 RUN mkdir build
 WORKDIR /z3-z3-4.9.1/build
-RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-march=sandybridge -O3 -DNDEBUG" ..
+RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
 
