@@ -12,11 +12,18 @@ docker exec -it loat bash
 The Docker container allows you to run the following solvers:
 
 * loat     -- LoAT's implementation of Acceleration Driven Clause Learning
+* loat_sb  -- LoAT's implementation of Acceleration Driven Clause Learning,
+              compiled with optimizations for the Sandybridge architecture
 * bmc      -- Z3's implementation of bounded model checking
 * spacer   -- Z3's implementation of the Spacer algorithm
 * eld      -- Eldarica's default configuration
 * tpa      -- Golem's implementation of Transition Power Abstraction
 * eld_stac -- Eldarica with acceleration as pre-processing
+
+For our evaluation, we used 'loat_sb'. However, as it was compiled with
+optimizations for the Sandybridge architecture, it may not run on your
+machine. In this case, please use 'loat' instead. In this case, you might
+get slightly different results.
 
 
 ===== available benchmarks =====
@@ -29,7 +36,10 @@ The Docker container provides the following collections of benchmarks:
 * lia-lin     -- the benchmarks from the CHC-Comp 2022, category LIA-Lin, *without*
   - benchmarks using the operators div or mod
 
-The benchmarks are located in the directory /examples/lia-lin[-int].
+The benchmarks are located in the directory /examples/lia-lin[-int]. The format
+of the benchmarks is described here:
+
+https://chc-comp.github.io/format.html
 
 
 ===== running a single benchmark =====
@@ -97,11 +107,22 @@ Docker container.
 
 To see the proof produced by LoAT, you can run
 
-run_loat_proofs $benchmark $timeout.
+run_loat_proofs $benchmark $timeout
+
+or
+
+run_loat_sb_proofs $benchmark $timeout,
+
+where the latter version uses the LoAT-binary that was compiled with
+optimizations for the Sandybridge architecture.
 
 For example, you can run
 
 run_loat_proofs /examples/lia-lin-int/chc-LIA-Lin_052.smt2 1
+
+or
+
+run_loat_sb_proofs /examples/lia-lin-int/chc-LIA-Lin_052.smt2 1
 
 to see LoAT's proof for the leading example from our paper. If the timeout is
 omitted, then it defaults to 300.
@@ -211,10 +232,19 @@ lib/util:         utility classes
 
 ===== recompiling LoAT =====
 
-To recompile LoAT, go to the folder
+To recompile LoAT (without optimizations for the Sandybridge architecture), go
+to the folder
 
 /src/LoAT/build/static/release
 
 and run:
 
 make
+
+Then the new binary is
+
+/src/LoAT/build/static/release/loat-static
+
+and you can replace the old loat-binary with it by running:
+
+cp /src/LoAT/build/static/release/loat-static /solvers/loat
