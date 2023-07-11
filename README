@@ -64,7 +64,7 @@ run_all $solver $benchmark_collection $timeout.
 
 For example,
 
-run_all loat lia-lin-int 1
+run_all loat_sb lia-lin-int 1
 
 runs LoAT on all examples from the benchmark collection lia-lin-int with a
 timeout of one second. If the timeout is omitted, then it defaults to 300.
@@ -72,9 +72,9 @@ timeout of one second. If the timeout is omitted, then it defaults to 300.
 When run_all finishes, it provides the number of instances where sat or unsat
 was proven. For example, on my machine the command above finishes with:
 
-unsat: 30
+unsat: 29
 sat: 0
-unknown: 179
+unknown: 180
 
 Of course, you might get slightly different results, depending on the machine
 that you are using.
@@ -132,7 +132,11 @@ is disadvantageous if you want to write a proof to a file or inspect it with,
 e.g., 'less', as the colors are not displayed correctly in these cases. To get
 uncolored proofs, you can run
 
-run_loat_proofs_plain $benchmark $timeout.
+run_loat_proofs_plain $benchmark $timeout
+
+or
+
+run_loat_sb_proofs_plain $benchmark $timeout.
 
 For example, you can run
 

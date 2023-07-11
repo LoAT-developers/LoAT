@@ -10,7 +10,7 @@ else
 fi
 if [ "$1" = "--help" ]; then
     HELP=1
-elif [ "$1" != "loat" ] && [ "$1" != "bmc" ] && [ "$1" != "spacer" ] && [ "$1" != "eld" ] && [ "$1" != "tpa" ] && [ "$1" != "eld_stac" ]; then
+elif [ "$1" != "loat" ] && [ "$1" != "bmc" ] && [ "$1" != "spacer" ] && [ "$1" != "eld" ] && [ "$1" != "tpa" ] && [ "$1" != "eld_stac" ] && [ "$1" != "loat_sb" ]; then
     echo "unsupported tool name"
     HELP=1
 fi
@@ -21,7 +21,7 @@ fi
 if (( $HELP == 1 )); then
     echo "usage: run_all SOLVER BENCHMARKS [TIMEOUT]"
     echo "       where"
-    echo "           SOLVER = loat | bmc | spacer | eld | tpa | eld_stac"
+    echo "           SOLVER = loat | loat_sb | bmc | spacer | eld | tpa | eld_stac"
     echo "           BENCHMARKS = lia-lin | lia-lin-int"
     echo "       The timeout is given in seconds."
     echo "       If no timeout is specified, then it defaults to 300s."
