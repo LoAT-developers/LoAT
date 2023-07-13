@@ -1,3 +1,6 @@
+# Creates a docker container where the root directory of LoAT is mounted to
+# /LoAT and start QtCreator.
+
 version: "3"
 
 services:

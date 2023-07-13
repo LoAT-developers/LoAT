@@ -1,10 +1,8 @@
 #!/bin/bash
 
-ME=`basename "$0"`
+# creates a StarExec-bundle with the binary from build/release
 
-function help {
-    echo "usage: ./$ME ({(dynamic|static) (release|debug)} | bundle)"
-}
+ME=`basename "$0"`
 
 function print {
     echo

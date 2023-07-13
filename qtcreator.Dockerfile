@@ -1,3 +1,6 @@
+# Starts QtCreator within a docker container. Assumes that the LoAT root
+# directory is mounted at /LoAT.
+
 FROM loat-docker:latest
 LABEL author="Florian Frohn"
 
