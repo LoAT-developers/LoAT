@@ -181,7 +181,7 @@ WORKDIR /
 COPY solvers /solvers
 RUN cp /src/LoAT/build/static/release/loat-static /solvers/loat
 
-COPY bin /bin2
+COPY bin2 /bin2
 RUN cp /bin2/* /bin/
 RUN rm -r /bin2
 
