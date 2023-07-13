@@ -267,12 +267,12 @@ function(git_local_changes _var)
     endif()
 
     execute_process(
-        COMMAND "${GIT_EXECUTABLE}" diff-index --quiet HEAD --
+        COMMAND "${GIT_EXECUTABLE}" diff
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         RESULT_VARIABLE res
         OUTPUT_VARIABLE out
         ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if(res EQUAL 0)
+    if("${out}" STREQUAL "")
         set(${_var}
             "CLEAN"
             PARENT_SCOPE)
