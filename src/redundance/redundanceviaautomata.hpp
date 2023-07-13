@@ -29,6 +29,8 @@ public:
 
     faudes::EventSet get_alphabet() const;
 
+    std::string to_string() const;
+
     friend std::ostream& operator<<(std::ostream &s, const Automaton &a);
 
 };

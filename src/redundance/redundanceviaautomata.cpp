@@ -75,6 +75,10 @@ faudes::EventSet Automaton::get_alphabet() const {
     return res;
 }
 
+std::string Automaton::to_string() const {
+    return str;
+}
+
 std::ostream& operator<<(std::ostream &s, const Automaton &a) {
     return s << a.str;
 }

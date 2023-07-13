@@ -38,17 +38,25 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
     return idx <= last_orig_clause;
 }
 
-std::optional<unsigned> ABMC::has_looping_suffix(unsigned start) {
-    if (trace.empty()) {
-        return {};
-    }
+std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::optional<Automaton> &lang) {
     const auto last_clause = trace.back();
-    for (int pos = start; pos >= lookback; --pos) {
+    for (int pos = start, length = trace.size() - pos; pos >= lookback + length; --pos, ++length) {
         const auto &idx {trace[pos]};
+        if (!lang) {
+            lang = get_language(pos);
+        } else {
+            lang->concat(get_language(pos));
+        }
         if (its.areAdjacent(last_clause, idx)) {
+            const auto length {trace.size() - pos};
+            auto prev_lang {get_language(pos - 1)};
             auto upos = static_cast<unsigned>(pos);
-            bool looping = upos < trace.size() - 1 || is_orig_clause(idx);
-            if (looping) {
+            for (int prev_pos = pos - 2; prev_pos + length >= upos; --prev_pos) {
+                prev_lang.concat(get_language(prev_pos));
+            }
+            std::cout << "lang: " << lang->to_string() << std::endl;
+            std::cout << "prev lang: " << prev_lang.to_string() << std::endl;
+            if (lang->to_string() == prev_lang.to_string()) {
                 return upos;
             }
         }
@@ -59,9 +67,9 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start) {
 Automaton ABMC::get_language(unsigned i) {
     const auto idx {trace[i]};
     if (is_orig_clause(idx)) {
-        const auto rule {its.getRule(idx).subs(subs[i])};
-        const auto model {solver->model(rule.vars()).toSubs()};
-        const auto imp {rule.getGuard()->implicant(model)};
+        const auto rule {its.getRule(idx)};
+        const auto model {solver->model(rule.subs(subs[i]).vars()).toSubs()};
+        const auto imp {rule.getGuard()->implicant(expr::compose(subs[i], model))};
         if (!imp) {
             throw std::logic_error("model, but no implicant");
         }
@@ -71,19 +79,12 @@ Automaton ABMC::get_language(unsigned i) {
     }
 }
 
-std::tuple<Rule, Subs, Automaton> ABMC::build_loop(const int backlink) {
+std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
-    std::optional<Automaton> lang;
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto idx {trace[i]};
         const auto rule {its.getRule(idx)};
-        const auto l {get_language(i)};
-        if (lang) {
-            lang->concat(l);
-        } else {
-            lang = l;
-        }
         if (loop) {
             const auto [chained, sigma] {Chaining::chain(rule, *loop)};
             loop = chained;
@@ -106,15 +107,15 @@ std::tuple<Rule, Subs, Automaton> ABMC::build_loop(const int backlink) {
         ITSExport::printRule(implicant, std::cout);
         std::cout << std::endl;
     }
-    return {implicant, model, *lang};
+    return {implicant, model};
 }
 
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     return its.addLearnedRule(accel, trace.at(backlink), trace.back());
 }
 
-bool ABMC::handle_loop(int backlink) {
-    auto [loop, sample_point, lang] {build_loop(backlink)};
+bool ABMC::handle_loop(int backlink, Automaton lang) {
+    auto [loop, sample_point] {build_loop(backlink)};
     if (is_orig_clause(trace.back()) || !red.is_redundant(lang)) {
         const auto simp {Preprocess::preprocessRule(loop)};
         if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
@@ -284,10 +285,11 @@ void ABMC::analyze() {
             if (Config::Analysis::log) {
                 std::cout << "trace: " << trace << std::endl;
             }
-            for (auto backlink = has_looping_suffix(trace.size() - 1);
+            auto lang {std::optional<Automaton>()};
+            for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
                  backlink;
-                 backlink = has_looping_suffix(*backlink - 1)) {
-                if (handle_loop(*backlink)) {
+                 backlink = has_looping_suffix(*backlink - 1, lang)) {
+                if (handle_loop(*backlink, *lang)) {
                     lookback = trace.size();
                     break;
                 }

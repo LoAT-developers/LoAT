@@ -38,10 +38,10 @@ private:
     Automaton get_language(unsigned i);
     BoolExpr encode_transition(const TransIdx idx);
     bool is_orig_clause(const TransIdx idx) const;
-    std::optional<unsigned> has_looping_suffix(unsigned start);
+    std::optional<unsigned> has_looping_suffix(unsigned start, std::optional<Automaton> &lang);
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
-    std::tuple<Rule, Subs, Automaton> build_loop(const int backlink);
-    bool handle_loop(int backlink);
+    std::pair<Rule, Subs> build_loop(const int backlink);
+    bool handle_loop(int backlink, Automaton lang);
 
 public:
 
