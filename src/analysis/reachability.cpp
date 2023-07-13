@@ -5,6 +5,7 @@
 #include "result.hpp"
 #include "smt.hpp"
 #include "export.hpp"
+#include "smtfactory.hpp"
 #include "vector.hpp"
 #include "asymptoticbound.hpp"
 #include "vareliminator.hpp"
@@ -17,8 +18,6 @@
 namespace reachability {
 
 using ::operator<<;
-
-const bool Reachability::drop {true};
 
 LearningState::LearningState() {}
 
@@ -104,7 +103,14 @@ ITSProof* ProvedUnsat::operator->() {
     return &proof;
 }
 
-Reachability::Reachability(ITSProblem &chcs): chcs(chcs), solver(smt_timeout) {
+ProofFailed::ProofFailed(const std::string &msg): std::runtime_error(msg) {}
+
+Reachability::Reachability(ITSProblem &chcs):
+    chcs(chcs),
+    smt_timeout(Config::Analysis::safety() ? 0 : 500u),
+    solver(smt_timeout),
+    drop(!Config::Analysis::safety())
+{
     solver.enableModels();
 }
 
@@ -228,11 +234,11 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
     return *Preprocess::preprocessRule(resolvent);
 }
 
-bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
+bool Reachability::store_step(const TransIdx idx, const Rule &implicant, bool force) {
     solver.push();
     const auto imp {trace.empty() ? implicant : implicant.subs(trace.back().var_renaming)};
     solver.add(imp.getGuard());
-    if (solver.check() == Sat) {
+    if (solver.check() == Sat || force) {
         const auto new_var_renaming {handle_update(idx)};
         const Step step(idx, implicant.getGuard(), new_var_renaming, compute_resolvent(idx, implicant.getGuard()));
         add_to_trace(step);
@@ -333,7 +339,7 @@ void Reachability::luby_next() {
 }
 
 void Reachability::unsat() {
-    const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
+    const auto res = Config::Analysis::safety() ? "unknown" : (Config::Analysis::reachability() ? "unsat" : "NO");
     std::cout << res << std::endl << std::endl;
     if (!Config::Analysis::log && Proof::disabled()) {
         return;
@@ -357,6 +363,17 @@ void Reachability::unsat() {
     proof.print();
 }
 
+void Reachability::sat() {
+    const auto res = Config::Analysis::safety() ? "sat" : "unknown";
+    std::cout << res << std::endl << std::endl;
+    if (!Config::Analysis::log && Proof::disabled()) {
+        return;
+    }
+    proof.headline("Prove");
+    proof.result(res);
+    proof.print();
+}
+
 std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     const auto &var_renaming = trace.empty() ? Subs::Empty : trace.back().var_renaming;
     const auto clause = chcs.getRule(idx);
@@ -376,7 +393,8 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     const auto projected_var_renaming {var_renaming.project(vars)};
     const auto guard {clause.getGuard()->subs(projected_var_renaming)};
     solver.add(guard);
-    if (solver.check() == Sat) {
+    switch (solver.check()) {
+    case Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
         const auto model {solver.model(guard->vars()).toSubs()};
         const auto implicant {clause.getGuard()->implicant(expr::compose(projected_var_renaming, model))};
@@ -385,15 +403,22 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
         } else {
             throw std::logic_error("model, but no implicant");
         }
-    } else {
+    }
+    case Unknown: {
+        if (Config::Analysis::safety()) {
+            throw ProofFailed("SMT returned UNKNOWN during resolution");
+        }
+    } // fall through intended
+    case Unsat: {
         if (block == blocked_clauses.back().end()) {
             blocked_clauses.back()[idx] = {};
         } else {
             block->second.clear();
         }
         if (Config::Analysis::log) std::cout << "could not find a model for " << idx << std::endl;
-        return {};
     }
+    }
+    return {};
 }
 
 Automaton Reachability::get_language(const Step &step) {
@@ -478,10 +503,25 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             return std::make_unique<Covered>();
         }
     }
-    AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
+    AccelConfig config {
+        .approx = Config::Analysis::safety() ? OverApprox : UnderApprox,
+        .allowDisjunctions = false,
+        .tryNonterm = Config::Analysis::tryNonterm(),
+        .smt_timeout = Config::Analysis::safety() ? 0 : smt::default_timeout};
     const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
+    }
+    if (Config::Analysis::safety() && accel_res.status != acceleration::Success) {
+        std::stringstream s;
+        s << "acceleration failed, status: " << accel_res.status;
+        if (Config::Analysis::log) {
+            std::cout << s.str() << std::endl;
+            std::cout << "rule:" << std::endl;
+            ITSExport::printRule(*simp, std::cout);
+            std::cout << std::endl;
+        }
+        throw ProofFailed(s.str());
     }
     Result<LearnedClauses> res{{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period}};
     if (accel_res.nonterm) {
@@ -509,6 +549,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             const auto loop_idx {add_learned_clause(*simplified, backlink)};
             res->res.emplace_back(loop_idx);
             ITSProof acceleration_proof;
+            acceleration_proof.storeSubProof(simp.getProof());
             acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
             acceleration_proof.storeSubProof(accel_res.accel->proof);
             res.concat(acceleration_proof);
@@ -595,13 +636,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
-    auto learned_lang {lang};
-    for (unsigned i = 1; i < learned_clauses.period; ++i) {
-        redundancy->concat(learned_lang, lang);
-    }
-    redundancy->transitive_closure(learned_lang);
-    redundancy->mark_as_redundant(learned_lang);
-    bool do_drop {drop || backlink == trace.size() - 1};
+    bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix == 0 && learned_clauses.period == 1)};
     if (do_drop) {
         drop_until(backlink);
     }
@@ -609,9 +644,22 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     if (Config::Analysis::log) {
         std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
     }
+    auto learned_lang {lang};
+    if (Config::Analysis::safety()) {
+        for (unsigned i = 1; i < learned_clauses.period; ++i) {
+            redundancy->concat(learned_lang, lang);
+        }
+    }
+    redundancy->transitive_closure(learned_lang);
+    if (Config::Analysis::safety()) {
+        for (unsigned i = 0; i < learned_clauses.prefix; ++i) {
+            redundancy->prepend(lang, learned_lang);
+        }
+    }
     for (const auto idx: learned_clauses.res) {
         redundancy->set_language(idx, learned_lang);
-        if (!done && store_step(idx, chcs.getRule(idx))) {
+        if (!done && store_step(idx, chcs.getRule(idx), false)) {
+            update_cpx();
             if (chcs.isSinkTransition(idx)) {
                 return std::make_unique<ProvedUnsat>(accel_state->getProof());
             } else {
@@ -620,8 +668,12 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         }
     }
     if (done) {
+        redundancy->mark_as_redundant(learned_lang);
         return state;
     } else {
+        // unroll once if we dropped the loop
+        redundancy->concat(learned_lang, learned_lang);
+        redundancy->mark_as_redundant(learned_lang);
         if (Config::Analysis::log) std::cout << "applying accelerated rule failed" << std::endl;
         return std::make_unique<Dropped>(accel_state->getProof());
     }
@@ -696,7 +748,7 @@ void Reachability::analyze() {
                         return;
                     }
                 } else if (state->dropped()) {
-                    if (simple_loop) {
+                    if (simple_loop && !Config::Analysis::safety()) {
                         block(step);
                     }
                     proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
@@ -727,7 +779,7 @@ void Reachability::analyze() {
             solver.push();
             const auto implicant {resolve(idx)};
             solver.pop();
-            if (implicant && store_step(idx, *implicant)) {
+            if (implicant && store_step(idx, *implicant, Config::Analysis::safety())) {
                 proof.headline("Step with " + std::to_string(idx));
                 print_state();
                 update_cpx();
@@ -748,12 +800,11 @@ void Reachability::analyze() {
     proof.headline("Accept");
     if (Config::Analysis::complexity()) {
         proof.result(cpx.toString());
+        proof.print();
     } else {
-        proof.result("unknown");
-        std::cout << "unknown" << std::endl;
+        sat();
     }
     std::cout << std::endl;
-    proof.print();
 }
 
 void Reachability::analyze(ITSProblem &its) {

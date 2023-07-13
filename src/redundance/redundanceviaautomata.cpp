@@ -27,6 +27,18 @@ void Automaton::concat(const Automaton &that) {
     str = str + "." + that.str;
 }
 
+void Automaton::prepend(const Automaton &that) {
+    if (this->empty()) {
+        return;
+    }
+    if (that.empty()) {
+        faudes::EmptyLanguage(t.Alphabet(), t);
+        return;
+    }
+    faudes::LanguageConcatenate(that.t, t, t);
+    str = that.str + "." + str;
+}
+
 void Automaton::unite(const Automaton &that) {
     if (this->empty()) {
         this->t = that.t;
@@ -109,6 +121,10 @@ void RedundanceViaAutomata::mark_as_accelerated(const Automaton &t) {
 
 void RedundanceViaAutomata::concat(Automaton &t1, const Automaton &t2) const {
     t1.concat(t2);
+}
+
+void RedundanceViaAutomata::prepend(const Automaton &t1, Automaton &t2) const {
+    t2.prepend(t1);
 }
 
 void RedundanceViaAutomata::transitive_closure(Automaton &t) const {

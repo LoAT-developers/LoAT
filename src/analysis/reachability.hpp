@@ -144,15 +144,22 @@ class Restart final: public LearningState {
     std::optional<Restart> restart() override;
 };
 
+class ProofFailed : public std::runtime_error {
+public:
+    ProofFailed(const std::string &msg);
+};
+
 class Reachability {
 
     ITSProblem &chcs;
 
     ITSProof proof;
 
-    unsigned smt_timeout = 500u;
+    unsigned smt_timeout;
 
     LinearizingSolver<IntTheory, BoolTheory> solver;
+
+    const bool drop;
 
     std::vector<Step> trace;
 
@@ -200,6 +207,8 @@ class Reachability {
      * finishes the analysis when we were able to prove unsat
      */
     void unsat();
+
+    void sat();
 
     /**
      * tries to resolve the trace with the given clause
@@ -278,7 +287,7 @@ class Reachability {
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const TransIdx idx, const Rule &resolvent);
+    bool store_step(const TransIdx idx, const Rule &resolvent, bool force);
 
     void print_trace(std::ostream &s);
 
@@ -292,7 +301,6 @@ class Reachability {
 
 public:
 
-    static const bool drop;
     static void analyze(ITSProblem &its);
 
 };

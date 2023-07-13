@@ -4,6 +4,7 @@
 #include "expr.hpp"
 #include "boolexpr.hpp"
 #include "map.hpp"
+#include "relevantvariables.hpp"
 
 AccelerationProblem::AccelerationProblem(
         const Rule &r,
@@ -15,10 +16,10 @@ AccelerationProblem::AccelerationProblem(
     guard(r.getGuard()->toG()),
     config(config),
     samplePoint(samplePoint) {
-    if (closed) {
-        update.get<IntTheory>() = closed->refined_equations;
-        proof.append(std::stringstream() << "refined update: " << update);
-    }
+//    if (closed) {
+//        update.get<IntTheory>() = closed->refined_equations;
+//        proof.append(std::stringstream() << "refined update: " << update);
+//    }
     for (const auto &l: guard->lits()) {
         todo.insert(l);
     }
@@ -205,7 +206,10 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     if (depsWellFounded(lit, false)) {
         return false;
     }
-    const auto newGuard = expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(closed->n, *closed->n-1));
+    auto newGuard = expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(closed->n, *closed->n-1));
+    if (closed->prefix > 0) {
+        newGuard = newGuard & lit;
+    }
     if (!config.allowDisjunctions && !newGuard->isConjunction()) {
         return false;
     }
@@ -370,8 +374,11 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         assumptions.insert(lit);
         deps.insert(lit);
     }
-    assumptions.insert(BExpression::buildTheoryLit(dec));
     assumptions.insert(BExpression::buildTheoryLit(inc));
+    if (SmtFactory::check(BExpression::buildAnd(assumptions)) != Sat) {
+        return false;
+    }
+    assumptions.insert(BExpression::buildTheoryLit(dec));
     const auto unsatCore {SmtFactory::unsatCore(assumptions)};
     if (unsatCore.empty()) {
         return false;
@@ -403,21 +410,20 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     if (res.find(lit) != res.end()) {
         return false;
     }
-    const auto ex {
-        std::visit(Overload{
-                       [](const Rel &rel) {
-                           return TheTheory::Expression(rel.lhs());
-                       },
-                       [](const BoolLit &blit) {
-                           return TheTheory::varToExpr(blit.getBoolVar());
-                       }
-                   }, lit)
-    };
-    const auto eq {expr::mkEq(ex, expr::subs(ex, update))};
-    if (samplePoint && !eq->subs(*samplePoint)->isTriviallyTrue()) {
+    std::vector<BoolExpr> eqs;
+    const auto vars {util::RelevantVariables::find(expr::variables(lit), update)};
+    for (const auto& v: vars) {
+        if (!config.allowDisjunctions && std::holds_alternative<BoolVar>(v)) {
+            // encoding equality for booleans introduces a disjunction
+            return false;
+        }
+        eqs.push_back(expr::mkEq(TheTheory::varToExpr(v), update.get(v)));
+    }
+    const auto allEq = BExpression::buildAnd(eqs);
+    if (samplePoint && !allEq->subs(*samplePoint)->isTriviallyTrue()) {
         return false;
     }
-    BoolExpr newGuard {eq & lit};
+    BoolExpr newGuard = allEq & lit;
     auto idx {store(lit, {}, newGuard, true)};
     std::stringstream ss;
     ss << lit << " [" << idx << "]: fixpoint yields " << newGuard;
@@ -451,7 +457,7 @@ AccelerationProblem::AcceleratorPair AccelerationProblem::computeRes() {
     for (const auto& lit: todo) {
         if (trivial(lit)) continue;
         if (unchanged(lit)) continue;
-        if (polynomial(lit)) continue;
+//        if (polynomial(lit)) continue;
         auto res {recurrence(lit)};
         res |= monotonicity(lit);
         res |= eventualWeakDecrease(lit);

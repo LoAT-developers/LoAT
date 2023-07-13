@@ -65,24 +65,32 @@ public:
         yices_pop(solver);
     }
 
+    SmtResult processResult(smt_status status) {
+        switch (status) {
+        case STATUS_SAT:
+            return Sat;
+        case STATUS_UNSAT:
+            return Unsat;
+        case STATUS_ERROR: {
+            std::cerr << yices_error_string() << std::endl;
+            throw std::logic_error("error from yices");
+        }
+        default:
+            return Unknown;
+        }
+    }
+
     SmtResult check() override {
-        auto future = std::async(yices_check_context, solver, nullptr);
-        if (future.wait_for(std::chrono::milliseconds(timeout)) != std::future_status::timeout) {
-            switch (future.get()) {
-            case STATUS_SAT:
-                return Sat;
-            case STATUS_UNSAT:
-                return Unsat;
-            case STATUS_ERROR: {
-                std::cerr << yices_error_string() << std::endl;
-                throw std::logic_error("error from yices");
-            }
-            default:
+        if (timeout > 0) {
+            auto future = std::async(yices_check_context, solver, nullptr);
+            if (future.wait_for(std::chrono::milliseconds(timeout)) != std::future_status::timeout) {
+                return processResult(future.get());
+            } else {
+                yices_stop_search(solver);
                 return Unknown;
             }
         } else {
-           yices_stop_search(solver);
-           return Unknown;
+            return processResult(yices_check_context(solver, nullptr));
         }
     }
 

@@ -17,6 +17,8 @@
 
 #include "numexpression.hpp"
 
+#include <cmath>
+#include <purrs.hh>
 #include <sstream>
 #include <assert.h>
 
@@ -319,6 +321,60 @@ Expr Expr::lcoeff(const NumVar &var) const {
 
 Expr Expr::expand() const {
     return ex.expand();
+}
+
+/*
+ * Let q be the result of normalizing the given polynomial such that the least coefficient of the homogeneous part is 1.
+ * This function returns a polynomial p where the least coefficient of the homogeneous part is normalized to 1,
+ * the non-homogeneous part is an integer, and p = ceil(q). Useful for normalizing the lhs of relations of the form
+ * poly <= 0.
+ */
+Expr Expr::normalizeCoefficients() const {
+    if (!isPoly()) {
+        return *this;
+    }
+    const auto expanded {this->expand()};
+    auto getConstantArg = [](const auto addend, const auto default_value) {
+        for (size_t i = 0; i < addend.arity(); ++i) {
+            if (addend.op(i).isGround()) {
+                return addend.op(i).toNum();
+            }
+        }
+        return GiNaC::numeric(default_value);
+    };
+    if (isMul()) {
+        return expanded / GiNaC::abs(getConstantArg(expanded, 1));
+    } else if (isAdd()) {
+        // first make sure that all coefficients are integers
+        GiNaC::numeric lcm {1};
+        for (size_t i = 0; i < expanded.arity(); ++i) {
+            const auto op {expanded.op(i)};
+            if (!op.isGround()) {
+                lcm = GiNaC::lcm(lcm, GiNaC::abs(getConstantArg(op, 1)).denom());
+            }
+        }
+        Expr integral = expanded * lcm;
+        // compute the gcd of all coefficients
+        std::optional<GiNaC::numeric> gcd;
+        for (size_t i = 0; i < integral.arity(); ++i) {
+            const auto op {integral.op(i)};
+            if (!op.isGround()) {
+                const auto factor {GiNaC::abs(getConstantArg(op, 1))};
+                if (gcd) {
+                    gcd = GiNaC::gcd(*gcd, factor);
+                } else {
+                    gcd = factor;
+                }
+            }
+        }
+        // normalize such that the least coefficient of the homogeneous part is 1
+        auto normalized = integral / gcd.value_or(1);
+        // normalize the non-homogeneous part to the next integer
+        auto addend {getConstantArg(normalized, 0)};
+        return normalized - addend + GiNaC::floor(addend);
+    } else {
+        return *this;
+    }
 }
 
 bool Expr::has(const Expr &pattern) const {
