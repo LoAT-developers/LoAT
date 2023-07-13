@@ -70,8 +70,6 @@ target_include_directories(${EXECUTABLE} PRIVATE
 
 target_include_directories(${EXECUTABLE} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_30b/include/")
 
-message(STATUS "antlr4: ${ANTLR4}")
-
 target_link_libraries(${EXECUTABLE}
   loat_util
   loat_expr
