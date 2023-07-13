@@ -2,7 +2,7 @@
 
 To run the Docker container, please execute the following commands:
 
-docker load -i sas23.tar.gz
+docker load -i sas23.tar
 docker run --name loat -dit loat
 docker exec -it loat bash
 
@@ -22,8 +22,8 @@ The Docker container allows you to run the following solvers:
 
 For our evaluation, we used 'loat_sb'. However, as it was compiled with
 optimizations for the Sandybridge architecture, it may not run on your
-machine. In this case, please use 'loat' instead. In this case, you might
-get slightly different results.
+machine. In this case, please use 'loat' instead. Note, however, that 'loat'
+might yield slightly different results than 'loat_sb'.
 
 
 ===== available benchmarks =====
