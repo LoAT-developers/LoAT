@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build -t loat .
+docker build -t loat-docker .

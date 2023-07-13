@@ -1,9 +1,9 @@
-FROM loat/loat:latest
+FROM loat-docker:latest
 LABEL author="Florian Frohn"
 
-ARG TOKEN
+RUN xbps-install -yS qtcreator xauth mesa gdb clang clang-tools-extra
 
-RUN xbps-install -yS qtcreator xauth mesa gdb
+ARG TOKEN
 
 RUN xauth add $TOKEN
 

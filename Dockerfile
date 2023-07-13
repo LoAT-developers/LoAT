@@ -158,9 +158,7 @@ RUN make install
 
 
 
-FROM base as loat
-
-FROM loat/base:latest
+FROM base as loat-docker
 LABEL author="Florian Frohn"
 
 RUN xbps-install -yS boost-devel cln-devel gmp-devel
