@@ -107,8 +107,7 @@ ProofFailed::ProofFailed(const std::string &msg): std::runtime_error(msg) {}
 
 Reachability::Reachability(ITSProblem &chcs):
     chcs(chcs),
-    smt_timeout(Config::Analysis::safety() ? 0 : 500u),
-    solver(smt_timeout),
+    solver(smt::default_timeout),
     drop(!Config::Analysis::safety())
 {
     solver.enableModels();
@@ -506,8 +505,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     AccelConfig config {
         .approx = Config::Analysis::safety() ? OverApprox : UnderApprox,
         .allowDisjunctions = false,
-        .tryNonterm = Config::Analysis::tryNonterm(),
-        .smt_timeout = Config::Analysis::safety() ? 0 : smt::default_timeout};
+        .tryNonterm = Config::Analysis::tryNonterm()};
     const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
@@ -573,19 +571,16 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
 bool Reachability::check_consistency() {
     // make sure that a model is available
     bool res {true};
-    solver.setTimeout(5 * smt_timeout);
     switch (solver.check()) {
     case Unsat:
         throw std::logic_error("trace is contradictory");
     case Unknown:
         std::cerr << "consistency of trace cannot be proven" << std::endl;
-        solver.setTimeout(smt_timeout);
         res = false;
         break;
     case Sat:
         break;
     }
-    solver.setTimeout(smt_timeout);
     return res;
 }
 
@@ -680,7 +675,6 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
 }
 
 bool Reachability::try_to_finish() {
-    solver.setTimeout(2000);
     std::set<TransIdx> clauses = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
     for (const auto &q: clauses) {
         if (chcs.isSinkTransition(q)) {
@@ -697,7 +691,6 @@ bool Reachability::try_to_finish() {
             solver.pop();
         }
     }
-    solver.setTimeout(smt_timeout);
     return false;
 }
 

@@ -144,7 +144,7 @@ acceleration::Result LoopAcceleration::run() {
         }
     }
     const auto [rule, period] = chain(this->rule);
-    switch (SmtFactory::check(rule.getGuard(), config.smt_timeout)) {
+    switch (SmtFactory::check(rule.getGuard())) {
     case Unsat: res.status = acceleration::PseudoLoop;
         return res;
     case Unknown: res.status = acceleration::NotSat;
@@ -158,11 +158,11 @@ acceleration::Result LoopAcceleration::run() {
     }
     // for rules with runtime 1, our acceleration techniques do not work properly,
     // as the closed forms are usually only valid for n > 0 --> special case
-    auto sat {SmtFactory::check(rule.chain(rule).getGuard(), config.smt_timeout)};
+    auto sat {SmtFactory::check(rule.chain(rule).getGuard())};
     if (sat != Sat) {
         res.accel = {rule, proof};
         res.accel->proof.append("rule cannot be iterated more than once");
-        if (sat == Unsat && SmtFactory::check(Chaining::chain(rule, rule).first.getGuard(), config.smt_timeout) == Unsat) {
+        if (sat == Unsat && SmtFactory::check(Chaining::chain(rule, rule).first.getGuard()) == Unsat) {
             res.status = acceleration::PseudoLoop;
         } else {
             res.status = acceleration::NotSat;

@@ -155,8 +155,6 @@ class Reachability {
 
     ITSProof proof;
 
-    unsigned smt_timeout;
-
     LinearizingSolver<IntTheory, BoolTheory> solver;
 
     const bool drop;

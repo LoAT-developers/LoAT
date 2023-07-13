@@ -19,14 +19,13 @@ ABMC::ABMC(const ITSProblem &its):
     vars(its.getVars()),
     trace_var(NumVar::next()),
     objective_var(NumVar::next()){
-    const auto timeout {std::numeric_limits<unsigned>::max()};
     if (max_smt || optimize) {
-        solver = std::make_unique<Z3Opt<IntTheory, BoolTheory>>(timeout);
+        solver = std::make_unique<Z3Opt<IntTheory, BoolTheory>>(smt::default_timeout);
         if (optimize) {
             solver->add_objective(objective_var);
         }
     } else {
-        solver = std::make_unique<Z3<IntTheory, BoolTheory>>(timeout);
+        solver = std::make_unique<Z3<IntTheory, BoolTheory>>(smt::default_timeout);
     }
     vars.insert(trace_var);
     for (const auto &var: vars) {
