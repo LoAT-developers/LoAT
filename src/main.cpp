@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
     }
     yices::exit();
 
-    cout << "Build SHA: " << Version::GIT_SHA << (Version::GIT_DIRTY == "DIRTY" ? " (dirty)" : "") << endl;
+    cout << "Build SHA: " << Version::GIT_SHA << " (" << Version::GIT_DIRTY << ")" << endl;
 
     return 0;
 }
