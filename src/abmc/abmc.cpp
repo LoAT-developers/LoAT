@@ -40,7 +40,7 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
 
 std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::optional<Automaton> &lang) {
     const auto last_clause = trace.back();
-    for (int pos = start, length = trace.size() - pos; pos >= lookback + length; --pos, ++length) {
+    for (int pos = start, length = trace.size() - pos; pos >= length; --pos, ++length) {
         const auto &idx {trace[pos]};
         if (!lang) {
             lang = get_language(pos);
@@ -54,8 +54,6 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::optional<A
             for (int prev_pos = pos - 2; prev_pos + length >= upos; --prev_pos) {
                 prev_lang.concat(get_language(prev_pos));
             }
-            std::cout << "lang: " << lang->to_string() << std::endl;
-            std::cout << "prev lang: " << prev_lang.to_string() << std::endl;
             if (lang->to_string() == prev_lang.to_string()) {
                 return upos;
             }
@@ -116,11 +114,9 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 
 bool ABMC::handle_loop(int backlink, Automaton lang) {
     auto [loop, sample_point] {build_loop(backlink)};
-    if (is_orig_clause(trace.back()) || !red.is_redundant(lang)) {
+    if (is_orig_clause(trace.back())) {
         const auto simp {Preprocess::preprocessRule(loop)};
         if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
-            // The learned     return is_orig_clause(idx) ?  : ;clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
-            // Such clauses are pretty useless, so we do not store them.
             if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
         } else {
             if (Config::Analysis::log && simp) {
@@ -290,7 +286,6 @@ void ABMC::analyze() {
                  backlink;
                  backlink = has_looping_suffix(*backlink - 1, lang)) {
                 if (handle_loop(*backlink, *lang)) {
-                    lookback = trace.size();
                     break;
                 }
             }

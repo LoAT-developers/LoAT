@@ -32,7 +32,6 @@ private:
     std::optional<NumVar> n;
     Expr objective {0};
     NumVar objective_var;
-    int lookback {0};
     Red red;
 
     Automaton get_language(unsigned i);
