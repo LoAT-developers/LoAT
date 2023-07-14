@@ -139,7 +139,9 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     }
     default: {}
     }
-    if (!low_degree && samplePoint) {
+    if (!low_degree && !samplePoint) {
+        return false;
+    } else if (!low_degree) {
         if (nfold.isGround() || !nfold.isPoly(closed->n)) {
             return false;
         }
