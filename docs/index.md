@@ -12,8 +12,7 @@ For CHCs, it can prove **unsatisfiability**.
 LoAT is based on a [calculus for modular *loop acceleration*](https://doi.org/10.1007/978-3-030-45190-5_4).
 Loop acceleration transforms certain simple relations into first-order formulas that describe their transitive closure.
 To lift loop acceleration to more complex formalisms (like transition systems or CHCs), earlier versions of LoAT used the framework described in [this paper](https://doi.org/10.1145/3410331).
-Current versions use a novel calculus called *ADCL* instead.
-Details on ADCL will be available soon.
+Current versions use a novel calculus called [*ADCL*](https://arxiv.org/abs/2303.01827) instead.
 
 LoAT uses the recurrence solver [PURRS](http://www.cs.unipr.it/purrs/), the SMT solvers [Yices](https://yices.csl.sri.com/) and [Z3](https://github.com/Z3Prover/z3/), and the automata-library [libFAUDES](https://www.fgdes.tf.fau.de/faudes/index.html).
 
@@ -98,6 +97,12 @@ The techniques implemented in LoAT are described in the following publications (
 * [Proving Non-Termination and Lower Runtime Bounds with LoAT (System Description)](https://doi.org/10.1007/978-3-031-10769-6_41)\
   F.Frohn and J. Giesl\
   IJCAR '22
+* [Proving Non-Termination by Acceleration Driven Clause Learning](https://arxiv.org/abs/2304.10166)\
+  F.Frohn and J. Giesl\
+  CADE '23
+* [ADCL: Acceleration Driven Clause Learning for Constrained Horn Clauses](ADCL: Acceleration Driven Clause Learning for Constrained Horn Clauses)\
+  F.Frohn and J. Giesl\
+  SAS '23
 
 # Citing LoAT
 
