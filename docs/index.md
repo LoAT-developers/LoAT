@@ -100,7 +100,7 @@ The techniques implemented in LoAT are described in the following publications (
 * [Proving Non-Termination by Acceleration Driven Clause Learning](https://arxiv.org/abs/2304.10166)\
   F.Frohn and J. Giesl\
   CADE '23
-* [ADCL: Acceleration Driven Clause Learning for Constrained Horn Clauses](ADCL: Acceleration Driven Clause Learning for Constrained Horn Clauses)\
+* [ADCL: Acceleration Driven Clause Learning for Constrained Horn Clauses](https://arxiv.org/abs/2303.01827)\
   F.Frohn and J. Giesl\
   SAS '23
 
