@@ -12,6 +12,8 @@ bool isProgVar(const Var &var);
 
 Var next(const Var &var);
 
+Var nthTmpVar(const Var &var, unsigned n);
+
 ThExpr toExpr(const Var &var);
 
 ThExpr subs(const ThExpr &expr, const Subs &subs);
@@ -29,12 +31,6 @@ ThExpr second(const Pair &p);
 void collectVars(const Subs &subs, VarSet &vars);
 
 VarSet vars(const Subs &e);
-
-template <ITheory T>
-int nextTmpVarIdx(const Subs &e) {
-    const auto variables {vars(e).template get<typename T::Var>()};
-    return (variables.empty() ? 0 : std::min(0, variables.begin()->getIdx())) - 1;
-}
 
 template<std::size_t I = 0>
 inline void concatImpl(const Subs &fst, const Subs &snd, Subs &res) {

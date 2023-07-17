@@ -28,6 +28,8 @@ public:
 
     static NumVar next();
 
+    static NumVar nth(unsigned n);
+
     static NumVar nextProgVar();
 
     bool isTempVar() const;

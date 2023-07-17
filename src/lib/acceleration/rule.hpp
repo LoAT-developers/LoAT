@@ -61,10 +61,7 @@ public:
 
     bool isPoly() const;
 
-    template <ITheory T>
-    int nextTmpVarIdx() const {
-        return std::min(guard->nextTmpVarIdx<T>(), expr::nextTmpVarIdx<T>(update));
-    }
+    Rule normlizeTmpVars() const;
 
 };
 

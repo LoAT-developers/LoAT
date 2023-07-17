@@ -773,11 +773,6 @@ std::set<NumVar> ExprSubs::allVars() const {
     return res;
 }
 
-int ExprSubs::nextTmpVarIdx() const {
-     const auto variables {allVars()};
-     return (variables.empty() ? 0 : std::min(0, variables.begin()->getIdx())) - 1;
-}
-
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
     if (map.empty()) {
         return s << "{}";

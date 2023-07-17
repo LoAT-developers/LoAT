@@ -63,3 +63,15 @@ ostream& operator<<(ostream &s, const Rule &rule) {
 bool Rule::isPoly() const {
     return guard->isPoly() && update.isPoly();
 }
+
+Rule Rule::normlizeTmpVars() const {
+    Subs s;
+    unsigned next {0};
+    for (const auto &x: vars()) {
+        if (expr::isTempVar(x)) {
+            s.put(x, expr::toExpr(expr::nthTmpVar(x, next)));
+            ++next;
+        }
+    }
+    return subs(s);
+}

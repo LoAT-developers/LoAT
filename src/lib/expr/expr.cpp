@@ -25,6 +25,17 @@ Var next(const Var &var) {
                       }, var);
 }
 
+Var nthTmpVar(const Var &var, unsigned n) {
+    return std::visit(Overload{
+                          [n](const NumVar&) {
+                              return Var(NumVar::nth(n));
+                          },
+                          [n](const BoolVar&) {
+                              return Var(BoolVar::nth(n));
+                          }
+                      }, var);
+}
+
 ThExpr toExpr(const Var &var) {
     return TheTheory::varToExpr(var);
 }

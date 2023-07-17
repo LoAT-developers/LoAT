@@ -40,6 +40,10 @@ std::ostream& operator<<(std::ostream &s, const NumVar &x) {
     return s << x.getName();
 }
 
+NumVar NumVar::nth(unsigned n) {
+    return NumVar(-static_cast<int>(n + 1));
+}
+
 NumVar NumVar::next() {
     --last_tmp_idx;
     return NumVar(last_tmp_idx);

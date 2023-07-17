@@ -613,12 +613,6 @@ public:
         return map<T>(mapper);
     }
 
-    template<ITheory T>
-    int nextTmpVarIdx() const {
-        const auto variables {vars().template get<typename T::Var>()};
-        return (variables.empty() ? 0 : std::min(0, variables.begin()->getIdx())) - 1;
-    }
-
 protected:
     virtual void dnf(std::vector<G> &res) const = 0;
 };
