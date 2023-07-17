@@ -81,7 +81,7 @@ public:
         proof.majorProofStep(step, subproof, its);
     }
 
-    void deletionProof(const std::set<unsigned> &rules) {
+    void deletionProof(const std::set<TransIdx> &rules) {
         proof.deletionProof(rules);
     }
 
