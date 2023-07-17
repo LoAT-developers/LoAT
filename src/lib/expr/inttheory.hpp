@@ -12,7 +12,7 @@ struct IntTheory {
     using Val = Num;
 
     static Expression valToExpr(const Val &val) {
-        return val;
+        return Expr(val);
     }
 
     static Expression varToExpr(const Var &var) {

@@ -59,7 +59,7 @@ Rel Rel::toLeq() const {
 
     std::optional<Rel> res;
     if (isStrict()) {
-        Num lcm = GiNaC::lcm(l.denomLcm(), r.denomLcm());
+        Expr lcm {GiNaC::lcm(l.denomLcm(), r.denomLcm())};
         res = lcm == 1 ? *this : Rel(l * lcm, op, r * lcm);
     } else {
         res = *this;
@@ -85,7 +85,7 @@ Rel Rel::toGt() const {
 
     std::optional<Rel> res;
     if (!isStrict()) {
-        Num lcm = GiNaC::lcm(l.denomLcm(), r.denomLcm());
+        Expr lcm {GiNaC::lcm(l.denomLcm(), r.denomLcm())};
         res = lcm == 1 ? *this : Rel(l * lcm, op, r * lcm);
     } else {
         res = *this;

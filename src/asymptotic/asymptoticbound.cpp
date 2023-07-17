@@ -536,11 +536,11 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
         Num power = it->op(1).toNum();
 
         if (power.is_even()) {
-            l = base ^ (power / 2);
+            l = base ^ Expr(power / 2);
             r = l;
         } else {
             l = base;
-            r = base ^ (power - 1);
+            r = base ^ Expr(power - 1);
         }
 
         limitVectors = &multiplication[it->getDirection()];
@@ -700,7 +700,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
                 const auto &model = solver->model();
                 auto var = it->someVar();
 
-                Expr rational = model.get<IntTheory>(var);
+                Expr rational {model.get<IntTheory>(var)};
                 substitutions.push_back({{var, rational}});
 
                 createBacktrackingPoint(it, POS_INF);

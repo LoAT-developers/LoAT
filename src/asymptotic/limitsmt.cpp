@@ -131,7 +131,7 @@ std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &curr
         auto c = NumVar::next();
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
-        templateSubs.put(var, *c0 + (*n * *c));
+        templateSubs.put(var, c0 + (Expr(n) * c));
     }
 
     // replace variables in the cost function with their linear templates
@@ -219,7 +219,7 @@ std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &curr
     for (const auto &var : vars) {
         auto c0 = varCoeff0.at(var);
         auto c = model.get<IntTheory>(varCoeff.at(var));
-        smtSubs.put(var, model.contains<IntTheory>(c0) ? (model.get<IntTheory>(c0) + c * *n) : (c * *n));
+        smtSubs.put(var, model.contains<IntTheory>(c0) ? (Expr(model.get<IntTheory>(c0)) + Expr(c) * n) : (Expr(c) * n));
     }
 
     return {smtSubs};
@@ -269,7 +269,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
         auto c = NumVar::next();
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
-        templateSubs.put(var, *c0 + (*n * *c));
+        templateSubs.put(var, c0 + (Expr(n) * c));
     }
 
     // replace variables in the cost function with their linear templates
@@ -299,7 +299,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
         for (const auto &var : vars) {
             auto c0 = varCoeff0.at(var);
             auto c = model.get<IntTheory>(varCoeff.at(var));
-            smtSubs.put(var, model.contains<IntTheory>(c0) ? (model.get<IntTheory>(c0) + c * *n) : (c * *n));
+            smtSubs.put(var, model.contains<IntTheory>(c0) ? (Expr(model.get<IntTheory>(c0)) + Expr(c) * n) : (Expr(c) * n));
         }
         return smtSubs;
     };

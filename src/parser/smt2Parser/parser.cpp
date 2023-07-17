@@ -164,7 +164,7 @@ namespace sexpressionparser {
             const std::string &str = sexp.str();
             if (std::isdigit(str[0]) || str[0] == '-') {
                 GiNaC::parser parser;
-                return parser(str);
+                return Expr(parser(str));
             } else {
                 if (vars.find(str) == vars.end()) {
                     vars.emplace(str, NumVar::next());

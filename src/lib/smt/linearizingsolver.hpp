@@ -156,7 +156,7 @@ public:
                 // we've stored a candidate for the exponent earlier --> try it
                 z3_push();
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(*it, expr)));
-                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, candidates.at(*it))));
+                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, Expr(candidates.at(*it)))));
                 candidates.erase(*it);
             } else {
                 // derive new candidates from the model
@@ -173,7 +173,7 @@ public:
                 // try to set the exponent to high
                 z3_push();
                 z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(*it, expr)));
-                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, high)));
+                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(exp, Expr(high))));
             }
             if (z3.check() == Sat) {
                 ++it;
@@ -194,7 +194,7 @@ public:
                             z3_push();
                             // fix the values of the variables appearing in exponents according to the model
                             for (const auto &x: exp_vars) {
-                                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(x, model.template get<IntTheory>(x))));
+                                z3.add(BoolExpression<Th...>::buildTheoryLit(Rel::buildEq(x, Expr(model.template get<IntTheory>(x)))));
                             }
                             res = z3.check();
                             if (res == Sat) {
@@ -260,7 +260,7 @@ public:
 
     ~LinearizingSolver() override {}
 
-    std::ostream& print(std::ostream& os) const {
+    std::ostream& print(std::ostream& os) const override {
         os << "Z3:" << std::endl;
         z3.print(os);
         os << "linearization:" << std::endl;

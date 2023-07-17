@@ -208,7 +208,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     if (depsWellFounded(lit, false)) {
         return false;
     }
-    auto newGuard = expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(closed->n, *closed->n-1));
+    auto newGuard = expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(closed->n, Expr(closed->n)-1));
     if (closed->prefix > 0) {
         newGuard = newGuard & lit;
     }
@@ -309,7 +309,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     if (depsWellFounded(rel, false)) {
         return false;
     }
-    const auto newCond {rel.subs(closed->closed_form.get<IntTheory>()).subs({{closed->n, *closed->n-1}})};
+    const auto newCond {rel.subs(closed->closed_form.get<IntTheory>()).subs({{closed->n, Expr(closed->n)-1}})};
     const auto newGuard {BExpression::buildTheoryLit(rel) & newCond};
     const auto updated {rel.lhs().subs(update.get<IntTheory>())};
     const auto dec {Rel::buildGeq(rel.lhs(), updated)};

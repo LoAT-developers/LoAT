@@ -482,7 +482,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         const auto x = any_cast<Var>(visit(ctx->var()));
         res.t = std::get<NumVar>(x);
     } else if (ctx->INT()) {
-        res.t = Num(ctx->getText().c_str());
+        res.t = Expr(Num(ctx->getText().c_str()));
     } else if (args.size() == 1) {
         res.t = args[0];
     }

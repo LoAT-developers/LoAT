@@ -79,8 +79,8 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    closed_form_pre.put<IntTheory>(lhs, closed_form.subs(n == *result.n-1));
-    result.closed_form.put<IntTheory>(lhs, closed_form.subs(n == *result.n));
+    closed_form_pre.put<IntTheory>(lhs, Expr(closed_form.subs(n == *result.n-1)));
+    result.closed_form.put<IntTheory>(lhs, Expr(closed_form.subs(n == *result.n)));
     return true;
 }
 

@@ -312,15 +312,15 @@ unsigned Expr::ldegree(const NumVar &var) const {
 }
 
 Expr Expr::coeff(const NumVar &var, int degree) const {
-    return ex.coeff(*var, degree);
+    return Expr(ex.coeff(*var, degree));
 }
 
 Expr Expr::lcoeff(const NumVar &var) const {
-    return ex.lcoeff(*var);
+    return Expr(ex.lcoeff(*var));
 }
 
 Expr Expr::expand() const {
-    return ex.expand();
+    return Expr(ex.expand());
 }
 
 /*
@@ -343,7 +343,7 @@ Expr Expr::normalizeCoefficients() const {
         return GiNaC::numeric(default_value);
     };
     if (isMul()) {
-        return expanded / GiNaC::abs(getConstantArg(expanded, 1));
+        return expanded / Expr(GiNaC::abs(getConstantArg(expanded, 1)));
     } else if (isAdd()) {
         // first make sure that all coefficients are integers
         GiNaC::numeric lcm {1};
@@ -353,7 +353,7 @@ Expr Expr::normalizeCoefficients() const {
                 lcm = GiNaC::lcm(lcm, GiNaC::abs(getConstantArg(op, 1)).denom());
             }
         }
-        Expr integral = expanded * lcm;
+        auto integral = expanded * Expr(lcm);
         // compute the gcd of all coefficients
         std::optional<GiNaC::numeric> gcd;
         for (size_t i = 0; i < integral.arity(); ++i) {
@@ -368,10 +368,10 @@ Expr Expr::normalizeCoefficients() const {
             }
         }
         // normalize such that the least coefficient of the homogeneous part is 1
-        auto normalized = integral / gcd.value_or(1);
+        auto normalized = integral / Expr(gcd.value_or(1));
         // normalize the non-homogeneous part to the next integer
         auto addend {getConstantArg(normalized, 0)};
-        return normalized - addend + GiNaC::floor(addend);
+        return normalized - Expr(addend + GiNaC::floor(addend));
     } else {
         return *this;
     }
@@ -410,7 +410,7 @@ GiNaC::numeric Expr::toNum() const {
 }
 
 Expr Expr::op(unsigned int i) const {
-    return ex.op(i);
+    return Expr(ex.op(i));
 }
 
 size_t Expr::arity() const {
@@ -418,7 +418,7 @@ size_t Expr::arity() const {
 }
 
 Expr Expr::subs(const ExprSubs &map) const {
-    return ex.subs(map.ginacMap, GiNaC::subs_options::no_pattern);
+    return Expr(ex.subs(map.ginacMap, GiNaC::subs_options::no_pattern));
 }
 
 void Expr::traverse(GiNaC::visitor &v) const {
@@ -437,11 +437,11 @@ std::strong_ordering operator<=>(const Expr &x, const Expr &y) {
 }
 
 Expr Expr::numerator() const {
-    return ex.numer();
+    return Expr(ex.numer());
 }
 
 Expr Expr::denominator() const {
-    return ex.denom();
+    return Expr(ex.denom());
 }
 
 bool Expr::match(const Expr &pattern) const {
@@ -449,31 +449,31 @@ bool Expr::match(const Expr &pattern) const {
 }
 
 Expr operator-(const Expr &x) {
-    return -x.ex;
+    return Expr(-x.ex);
 }
 
 Expr operator-(const Expr &x, const Expr &y) {
-    return x.ex - y.ex;
+    return Expr(x.ex - y.ex);
 }
 
 Expr operator+(const Expr &x, const Expr &y) {
-    return x.ex + y.ex;
+    return Expr(x.ex + y.ex);
 }
 
 Expr operator*(const Expr &x, const Expr &y) {
-    return x.ex * y.ex;
+    return Expr(x.ex * y.ex);
 }
 
 Expr operator/(const Expr &x, const Expr &y) {
-    return x.ex / y.ex;
+    return Expr(x.ex / y.ex);
 }
 
 Expr operator^(const Expr &x, const Expr &y) {
-    return GiNaC::pow(x.ex, y.ex);
+    return Expr(GiNaC::pow(x.ex, y.ex));
 }
 
 Expr Expr::wildcard(unsigned int label) {
-    return GiNaC::wild(label);
+    return Expr(GiNaC::wild(label));
 }
 
 Num Expr::denomLcm() const {
@@ -491,7 +491,7 @@ Num Expr::denomLcm() const {
 
 Expr Expr::toIntPoly() const {
     GiNaC::numeric lcm = denomLcm();
-    return lcm == 1 ? *this : *this * lcm;
+    return lcm == 1 ? *this : *this * Expr(lcm);
 }
 
 bool Expr::isIntegral() const {
