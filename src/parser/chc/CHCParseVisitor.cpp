@@ -33,7 +33,7 @@ Res<T>::Res() {}
 LocationIdx CHCParseVisitor::loc(const std::string &name) {
     auto it = locations.find(name);
     if (it == locations.end()) {
-        auto idx = its.addNamedLocation(name);
+        auto idx = its->addNamedLocation(name);
         locations[name] = idx;
         return idx;
     } else {
@@ -42,7 +42,7 @@ LocationIdx CHCParseVisitor::loc(const std::string &name) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
-    its.setInitialLocation(its.addNamedLocation("LoAT_init"));
+    its->setInitialLocation(its->addNamedLocation("LoAT_init"));
     for (const auto &c: ctx->fun_decl()) {
         visit(c);
     }
@@ -116,7 +116,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         }
         up.put(NumVar::loc_var, c.rhs.loc);
         const BoolExpr guard = c.guard->subs(ren)->simplify() & Rel::buildEq(NumVar::loc_var, c.lhs.loc);
-        its.addRule(Rule(guard, up), c.lhs.loc);
+        its->addRule(Rule(guard, up), c.lhs.loc);
     }
     return its;
 }
@@ -145,7 +145,7 @@ antlrcpp::Any CHCParseVisitor::visitFun_decl(CHCParser::Fun_declContext *ctx) {
     max_int_arity = std::max(max_int_arity, int_arity);
     max_bool_arity = std::max(max_bool_arity, bool_arity);
     const auto name = any_cast<symbol_type>(visit(ctx->symbol()));
-    const LocationIdx idx = its.addNamedLocation(name);
+    const LocationIdx idx = its->addNamedLocation(name);
     locations[name] = idx;
     return idx;
 }
@@ -191,7 +191,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
             lhs = std::get<FunApp>(v);
         }
     }
-    return std::pair(lhs.value_or(FunApp(its.getInitialLocation(), {})), BExpression::buildAnd(guards));
+    return std::pair(lhs.value_or(FunApp(its->getInitialLocation(), {})), BExpression::buildAnd(guards));
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) {
@@ -200,7 +200,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
     }
     const auto lhs = any_cast<tail_type>(visit(ctx->chc_tail()));
     vars.clear();
-    return Clause(lhs.first, FunApp(its.getSink(), {}), lhs.second);
+    return Clause(lhs.first, FunApp(its->getSink(), {}), lhs.second);
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
@@ -212,7 +212,7 @@ antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *ctx) {
     const auto name = any_cast<symbol_type>(visit(ctx->symbol()));
-    const std::optional<LocationIdx> loc = its.getLocationIdx(name);
+    const std::optional<LocationIdx> loc = its->getLocationIdx(name);
     if (!loc) {
         throw std::invalid_argument("undeclared function symbol " + name);
     }
@@ -523,7 +523,7 @@ antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *ctx) {
     if (ctx->var()) {
-        const std::optional<LocationIdx> loc = its.getLocationIdx(unescape(ctx->getText()));
+        const std::optional<LocationIdx> loc = its->getLocationIdx(unescape(ctx->getText()));
         if (loc) {
             return std::variant<BoolVar, FunApp>(FunApp(*loc, {}));
         } else {

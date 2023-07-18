@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    ITSProblem its;
+    ITSPtr its;
     switch (Config::Input::format) {
     case Config::Input::Koat:
         its = parser::ITSParser::loadFromFile(filename);
@@ -163,13 +163,13 @@ int main(int argc, char *argv[]) {
     yices::init();
     switch (Config::Analysis::engine) {
     case Config::Analysis::ADCL:
-        reachability::Reachability::analyze(its);
+        reachability::Reachability::analyze(*its);
         break;
     case Config::Analysis::BMC:
-        BMC::analyze(its);
+        BMC::analyze(*its);
         break;
     case Config::Analysis::ABMC:
-        ABMC::analyze(its);
+        ABMC::analyze(*its);
         break;
     }
     yices::exit();

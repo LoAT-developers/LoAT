@@ -66,7 +66,7 @@ struct Clause {
  */
 class  CHCParseVisitor : public CHCVisitor {
 
-    ITSProblem its;
+    ITSPtr its {std::make_shared<ITSProblem>()};
     std::map<std::string, LocationIdx> locations;
     std::map<std::string, Var> vars;
     unsigned long max_int_arity {0};

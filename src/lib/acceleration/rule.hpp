@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "theory.hpp"
-#include "expr.hpp"
 
 /**
  * A general rule, consisting of a left-hand side with location, guard and cost
@@ -34,6 +33,9 @@ class Rule {
 private:
     BoolExpr guard;
     Subs update;
+    unsigned id;
+
+    static unsigned next_id;
 
 public:
     Rule(const BoolExpr guard, const Subs &update);
@@ -62,6 +64,10 @@ public:
     bool isPoly() const;
 
     Rule normlizeTmpVars() const;
+
+    auto operator<=>(const Rule &that) const = default;
+
+    unsigned getId() const;
 
 };
 

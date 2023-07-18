@@ -31,6 +31,7 @@ void ITSExport::printGuard(const BoolExpr guard, std::ostream &s, bool colors) {
 }
 
 void ITSExport::printRule(const Rule &rule, std::ostream &s, bool colors) {
+    s << rule.getId() << ": ";
     printGuard(rule.getGuard(), s, colors);
     s << " /\\ ";
     bool first = true;
@@ -45,11 +46,6 @@ void ITSExport::printRule(const Rule &rule, std::ostream &s, bool colors) {
         s << "=" << expr::second(upit);
         if (colors) printColor(s, Color::None);
     }
-}
-
-void ITSExport::printLabeledRule(TransIdx rule, const ITSProblem &its, std::ostream &s) {
-    s << setw(4) << rule << ": ";
-    printRule(its.getRule(rule), s, true);
 }
 
 void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
@@ -69,7 +65,8 @@ void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
         s << "  <empty>" << endl;
     } else {
         for (const auto idx : its.getAllTransitions()) {
-            printLabeledRule(idx, its, s);
+            s << setw(4);
+            printRule(*idx, s);
             s << endl;
         }
     }

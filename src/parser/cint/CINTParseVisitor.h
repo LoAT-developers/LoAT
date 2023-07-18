@@ -9,7 +9,7 @@ class  CINTParseVisitor : public CINTVisitor {
 private:
 
     std::map<std::string, NumVar> vars;
-    ITSProblem its;
+    ITSPtr its {std::make_shared<ITSProblem>()};
     LocationIdx current;
 
 public:

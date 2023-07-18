@@ -33,6 +33,7 @@ private:
     Expr objective {0};
     NumVar objective_var;
     Red red;
+    std::map<unsigned, TransIdx> rule_map;
 
     Automaton get_language(unsigned i);
     BoolExpr encode_transition(const TransIdx idx);

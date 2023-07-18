@@ -37,8 +37,6 @@ public:
     LocationIdx getSink() const;
     std::optional<LocationIdx> getLocationIdx(const std::string &name) const;
 
-    const Rule& getRule(TransIdx transition) const;
-
     std::set<TransIdx> getAllTransitions() const;
     std::set<TransIdx> getSuccessors(const TransIdx loc) const;
     std::set<TransIdx> getPredecessors(const TransIdx loc) const;
@@ -71,15 +69,10 @@ public:
 
     VarSet getVars() const;
 
-    // Removes a location and all rules that visit loc
-    std::set<TransIdx> removeLocationAndRules(LocationIdx loc);
-
     // Print the ITSProblem in a simple, but user-friendly format
     void print(std::ostream &s) const;
 
     Expr getCost(const Rule &rule) const;
-
-    Expr getCost(const TransIdx &idx) const;
 
     NumVar getCostVar() const;
 
@@ -110,16 +103,17 @@ public:
 protected:
 
     DependencyGraph graph;
-    std::map<TransIdx, Rule> rules;
+    std::set<Rule> rules;
     std::set<LocationIdx> locations;
     std::map<LocationIdx, std::string> locationNames;
     std::map<TransIdx, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations;
     std::set<TransIdx> initialTransitions;
     std::set<TransIdx> sinkTransitions;
-    TransIdx next {0};
     LocationIdx nextUnusedLocation {0};
     LocationIdx initialLocation;
     LocationIdx sink {addNamedLocation("LoAT_sink")};
     NumVar cost {NumVar::nextProgVar()};
 
 };
+
+using ITSPtr = std::shared_ptr<ITSProblem>;

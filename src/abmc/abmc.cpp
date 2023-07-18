@@ -65,9 +65,8 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::optional<A
 Automaton ABMC::get_language(unsigned i) {
     const auto idx {trace[i]};
     if (is_orig_clause(idx)) {
-        const auto rule {its.getRule(idx)};
-        const auto model {solver->model(rule.subs(subs[i]).vars()).toSubs()};
-        const auto imp {rule.getGuard()->implicant(expr::compose(subs[i], model))};
+        const auto model {solver->model(idx->subs(subs[i]).vars()).toSubs()};
+        const auto imp {idx->getGuard()->implicant(expr::compose(subs[i], model))};
         if (!imp) {
             throw std::logic_error("model, but no implicant");
         }
@@ -82,15 +81,14 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
     Subs var_renaming;
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto idx {trace[i]};
-        const auto rule {its.getRule(idx)};
         if (loop) {
-            const auto [chained, sigma] {Chaining::chain(rule, *loop)};
+            const auto [chained, sigma] {Chaining::chain(*idx, *loop)};
             loop = chained;
             var_renaming = expr::compose(sigma, var_renaming);
         } else {
-            loop = rule;
+            loop = *idx;
         }
-        var_renaming = expr::compose(subs[i].project(rule.vars()), var_renaming);
+        var_renaming = expr::compose(subs[i].project(idx->vars()), var_renaming);
     }
     auto vars {loop->vars()};
     expr::collectCoDomainVars(var_renaming, vars);
@@ -109,7 +107,9 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
 }
 
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
-    return its.addLearnedRule(accel, trace.at(backlink), trace.back());
+    const auto idx {its.addLearnedRule(accel, trace.at(backlink), trace.back())};
+    rule_map.emplace(idx->getId(), idx);
+    return idx;
 }
 
 bool ABMC::handle_loop(int backlink, Automaton lang) {
@@ -154,10 +154,9 @@ bool ABMC::handle_loop(int backlink, Automaton lang) {
 }
 
 BoolExpr ABMC::encode_transition(const TransIdx idx) {
-    const Rule r {its.getRule(idx)};
-    const auto up {r.getUpdate()};
-    std::vector<BoolExpr> res {r.getGuard()};
-    res.emplace_back(BExpression::buildTheoryLit(Rel::buildEq(trace_var, idx)));
+    const auto up {idx->getUpdate()};
+    std::vector<BoolExpr> res {idx->getGuard()};
+    res.emplace_back(BExpression::buildTheoryLit(Rel::buildEq(trace_var, idx->getId())));
     for (const auto &x: vars) {
         if (expr::isProgVar(x)) {
             res.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
@@ -175,11 +174,14 @@ void ABMC::analyze() {
     if (Config::Analysis::log && res) {
         res.print();
     }
+    for (const auto t: its.getAllTransitions()) {
+        rule_map.emplace(t->getId(), t);
+    }
     last_orig_clause = *its.getAllTransitions().rbegin();
     std::vector<BoolExpr> inits;
     for (const auto &idx: its.getInitialTransitions()) {
         if (its.isSinkTransition(idx)) {
-            switch (SmtFactory::check(its.getRule(idx).getGuard())) {
+            switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
                 std::cout << "unsat" << std::endl;
                 return;
@@ -206,8 +208,7 @@ void ABMC::analyze() {
     std::vector<BoolExpr> queries;
     for (const auto &idx: its.getSinkTransitions()) {
         if (!its.isInitialTransition(idx)) {
-            const auto r {its.getRule(idx)};
-            queries.push_back(r.getGuard());
+            queries.push_back(idx->getGuard());
         }
     }
     const auto query {BExpression::buildOr(queries)};
@@ -276,7 +277,7 @@ void ABMC::analyze() {
             trace.clear();
             const auto model {solver->model(trace_vars).toSubs().get<IntTheory>()};
             for (const auto &s: subs) {
-                trace.push_back(s.get<IntTheory>(trace_var).subs(model).toNum().to_int());
+                trace.push_back(rule_map.at(s.get<IntTheory>(trace_var).subs(model).toNum().to_int()));
             }
             if (Config::Analysis::log) {
                 std::cout << "trace: " << trace << std::endl;

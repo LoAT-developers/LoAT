@@ -10,7 +10,7 @@ namespace cintParser {
 class CIntParser {
 public:
 
-    static ITSProblem loadFromFile(const std::string &path);
+    static ITSPtr loadFromFile(const std::string &path);
 
 };
 

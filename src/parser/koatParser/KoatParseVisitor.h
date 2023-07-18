@@ -10,7 +10,7 @@
  */
 class  KoatParseVisitor : public KoatVisitor {
 
-    ITSProblem its;
+    ITSPtr its {std::make_shared<ITSProblem>()};
     std::map<std::string, LocationIdx> locations;
     std::map<std::string, NumVar> vars;
     std::vector<NumVar> programVars;
@@ -22,7 +22,7 @@ class  KoatParseVisitor : public KoatVisitor {
     LocationIdx loc(const std::string &name) {
         auto it = locations.find(name);
         if (it == locations.end()) {
-            auto idx = its.addNamedLocation(name);
+            auto idx = its->addNamedLocation(name);
             locations[name] = idx;
             return idx;
         } else {

@@ -147,14 +147,13 @@ Subs Reachability::handle_update(const TransIdx idx) {
         // no need to compute a new variable renaming if we just applied a query
         return {};
     }
-    const auto &r {chcs.getRule(idx)};
     const auto &last_var_renaming = trace.empty() ? Subs::Empty : trace.back().var_renaming;
     Subs new_var_renaming {last_var_renaming};
-    const Subs up = r.getUpdate();
+    const Subs up = idx->getUpdate();
     for (const auto &x: prog_vars) {
         new_var_renaming.put(x, TheTheory::varToExpr(expr::next(x)));
     }
-    for (const auto &var: r.vars()) {
+    for (const auto &var: idx->vars()) {
         if (expr::isTempVar(var)) {
             new_var_renaming.put(var, TheTheory::varToExpr(expr::next(var)));
         }
@@ -167,7 +166,7 @@ Subs Reachability::handle_update(const TransIdx idx) {
 
 void Reachability::block(const Step &step) {
     if (Config::Analysis::log) std::cout << "blocking " << step.clause_idx << ", " << step.implicant << std::endl;
-    if (chcs.getRule(step.clause_idx).getGuard()->isConjunction()) {
+    if (step.clause_idx->getGuard()->isConjunction()) {
         blocked_clauses.back()[step.clause_idx] = {};
     } else {
         auto block = blocked_clauses.back().find(step.clause_idx);
@@ -226,7 +225,7 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
     if (!Config::Analysis::complexity()) {
         return dummy;
     }
-    auto resolvent = chcs.getRule(idx).withGuard(implicant);
+    auto resolvent = idx->withGuard(implicant);
     if (!trace.empty()) {
         resolvent = Chaining::chain(trace.back().resolvent, resolvent).first;
     }
@@ -375,7 +374,6 @@ void Reachability::sat() {
 
 std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     const auto &var_renaming = trace.empty() ? Subs::Empty : trace.back().var_renaming;
-    const auto clause = chcs.getRule(idx);
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
         // empty means all variants are blocked --> fail
@@ -388,17 +386,17 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
             solver.add(!b->subs(var_renaming));
         }
     }
-    const auto vars {clause.getGuard()->vars()};
+    const auto vars {idx->getGuard()->vars()};
     const auto projected_var_renaming {var_renaming.project(vars)};
-    const auto guard {clause.getGuard()->subs(projected_var_renaming)};
+    const auto guard {idx->getGuard()->subs(projected_var_renaming)};
     solver.add(guard);
     switch (solver.check()) {
     case Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
         const auto model {solver.model(guard->vars()).toSubs()};
-        const auto implicant {clause.getGuard()->implicant(expr::compose(projected_var_renaming, model))};
+        const auto implicant {idx->getGuard()->implicant(expr::compose(projected_var_renaming, model))};
         if (implicant) {
-            return {clause.withGuard(BExpression::buildAndFromLits(*implicant))};
+            return {idx->withGuard(BExpression::buildAndFromLits(*implicant))};
         } else {
             throw std::logic_error("model, but no implicant");
         }
@@ -440,7 +438,7 @@ Rule Reachability::build_loop(const int backlink) {
     std::optional<Rule> loop;
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto &step {trace[i]};
-        const auto rule {chcs.getRule(step.clause_idx).withGuard(step.implicant)};
+        const auto rule {step.clause_idx->withGuard(step.implicant)};
         loop = loop ? Chaining::chain(rule, *loop).first : rule;
     }
     if (Config::Analysis::log) {
@@ -527,7 +525,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         const auto idx = chcs.addQuery(accel_res.nonterm->certificate, trace.at(backlink).clause_idx);
         res->res.emplace_back(idx);
         ITSProof nonterm_proof;
-        nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", chcs.getRule(idx));
+        nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", *idx);
         nonterm_proof.storeSubProof(accel_res.nonterm->proof);
         res.concat(nonterm_proof);
         if (Config::Analysis::log) {
@@ -653,7 +651,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     for (const auto idx: learned_clauses.res) {
         redundancy->set_language(idx, learned_lang);
-        if (!done && store_step(idx, chcs.getRule(idx), false)) {
+        if (!done && store_step(idx, *idx, false)) {
             update_cpx();
             if (chcs.isSinkTransition(idx)) {
                 return std::make_unique<ProvedUnsat>(accel_state->getProof());
@@ -683,7 +681,7 @@ bool Reachability::try_to_finish() {
             if (implicant) {
                 // no need to compute a variable renaming for the next step, as we are done
                 add_to_trace(Step(q, implicant->getGuard(), Subs(), compute_resolvent(q, implicant->getGuard())));
-                proof.headline("Step with " + std::to_string(q));
+                proof.headline("Step with " + std::to_string(q->getId()));
                 print_state();
                 unsat();
                 return true;
@@ -748,7 +746,7 @@ void Reachability::analyze() {
                     print_state();
                 } else if (state->unsat()) {
                     proof.majorProofStep("Nonterm", **state->unsat(), chcs);
-                    proof.headline("Step with " + std::to_string(trace.back().clause_idx));
+                    proof.headline("Step with " + std::to_string(trace.back().clause_idx->getId()));
                     print_state();
                     unsat();
                     return;
@@ -773,7 +771,7 @@ void Reachability::analyze() {
             const auto implicant {resolve(idx)};
             solver.pop();
             if (implicant && store_step(idx, *implicant, Config::Analysis::safety())) {
-                proof.headline("Step with " + std::to_string(idx));
+                proof.headline("Step with " + std::to_string(idx->getId()));
                 print_state();
                 update_cpx();
                 all_failed = false;

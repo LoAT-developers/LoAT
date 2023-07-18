@@ -16,10 +16,13 @@
  */
 
 #include "rule.hpp"
+#include "expr.hpp"
 
 using namespace std;
 
-Rule::Rule(const BoolExpr guard, const Subs &update): guard(guard), update(update) {}
+unsigned Rule::next_id {0};
+
+Rule::Rule(const BoolExpr guard, const Subs &update): guard(guard), update(update), id(next_id++) {}
 
 void Rule::collectVars(VarSet &vars) const {
     guard->collectVars(vars);
@@ -56,8 +59,12 @@ const Subs& Rule::getUpdate() const {
     return update;
 }
 
+unsigned Rule::getId() const {
+    return id;
+}
+
 ostream& operator<<(ostream &s, const Rule &rule) {
-    return s << rule.getGuard() << " /\\ " << rule.getUpdate();
+    return s << rule.getId() << ": " << rule.getGuard() << " /\\ " << rule.getUpdate();
 }
 
 bool Rule::isPoly() const {

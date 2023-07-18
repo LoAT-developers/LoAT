@@ -7,13 +7,9 @@
 
 
 namespace ITSExport {
-    /**
-     * Print the given rule in a readable format, prefixed with its index (used for proof output)
-     */
-    void printLabeledRule(TransIdx rule, const ITSProblem &its, std::ostream &s);
 
     /**
-     * Print the given rule in a readable format (used by printLabeledRule).
+     * Print the given rule in a readable format.
      * Note that colors are only used if colors is true and Config::Output::ColorInIts is true
      */
     void printRule(const Rule &rule, std::ostream &s, bool colors = true);

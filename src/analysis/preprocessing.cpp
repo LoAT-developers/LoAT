@@ -41,7 +41,7 @@ ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its, bool forward) {
             }
         }
     } while (!todo.empty());
-    std::vector<LocationIdx> to_delete;
+    std::vector<TransIdx> to_delete;
     for (const auto idx: its.getAllTransitions()) {
         if (keep.find(idx) == keep.end()) {
             to_delete.push_back(idx);
@@ -76,16 +76,14 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
             if (succ.size() == 1 && succ.find(first_idx) == succ.end()) {
                 const auto second_idx {*succ.begin()};
                 if (!its.isSimpleLoop(second_idx)) {
-                    const auto &first {its.getRule(first_idx)};
-                    auto second {its.getRule(second_idx)};
                     std::set<TransIdx> deleted {first_idx};
                     if (its.getPredecessors(second_idx).size() == 1) {
                         deleted.insert(second_idx);
                     }
                     res.succeed();
-                    const auto chained {Chaining::chain(first, second).first};
+                    const auto chained {Chaining::chain(*first_idx, *second_idx).first};
                     its.addRule(chained, first_idx, second_idx);
-                    res.chainingProof(first, second, chained);
+                    res.chainingProof(*first_idx, *second_idx, chained);
                     for (const auto &idx: deleted) {
                         its.removeRule(idx);
                     }
@@ -100,13 +98,17 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
 
 ResultViaSideEffects preprocessRules(ITSProblem &its) {
     ResultViaSideEffects ret;
+    std::map<TransIdx, Rule> replacements;
     for (const TransIdx idx: its.getAllTransitions()) {
-        const auto res = Preprocess::preprocessRule(its.getRule(idx));
+        const auto res = Preprocess::preprocessRule(*idx);
         if (res) {
             ret.succeed();
-            its.replaceRule(idx, *res);
+            replacements.emplace(idx, *res);
             ret.concat(res.getProof());
         }
+    }
+    for (const auto &[idx, replacement]: replacements) {
+        its.replaceRule(idx, replacement);
     }
     return ret;
 }
@@ -114,13 +116,12 @@ ResultViaSideEffects preprocessRules(ITSProblem &its) {
 ResultViaSideEffects unroll(ITSProblem &its) {
     ResultViaSideEffects ret;
     for (const TransIdx idx: its.getAllTransitions()) {
-        const Rule &r = its.getRule(idx);
         if (its.isSimpleLoop(idx)) {
-            const auto [res, period] = LoopAcceleration::chain(r);
+            const auto [res, period] = LoopAcceleration::chain(*idx);
             if (period > 1) {
                 const auto simplified = Preprocess::preprocessRule(res);
                 ret.succeed();
-                ret.ruleTransformationProof(r, "Unrolling", res);
+                ret.ruleTransformationProof(*idx, "Unrolling", res);
                 if (simplified) {
                     ret.concat(simplified.getProof());
                 }

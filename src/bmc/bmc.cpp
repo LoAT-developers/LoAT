@@ -22,9 +22,8 @@ void BMC::analyze() {
     }
     std::vector<BoolExpr> inits;
     for (const auto &idx: its.getInitialTransitions()) {
-        const auto r {its.getRule(idx)};
         if (its.isSinkTransition(idx)) {
-            switch (SmtFactory::check(r.getGuard())) {
+            switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
                 std::cout << "unsat" << std::endl;
                 return;
@@ -34,8 +33,8 @@ void BMC::analyze() {
             case SmtResult::Unsat: {}
             }
         } else {
-            const auto up {r.getUpdate()};
-            std::vector<BoolExpr> i {r.getGuard()};
+            const auto up {idx->getUpdate()};
+            std::vector<BoolExpr> i {idx->getGuard()};
             for (const auto &x: vars) {
                 if (expr::isProgVar(x)) {
                     i.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
@@ -51,9 +50,8 @@ void BMC::analyze() {
         if (its.isInitialTransition(idx) || its.isSinkTransition(idx)) {
             continue;
         }
-        const auto r {its.getRule(idx)};
-        const auto up {r.getUpdate()};
-        std::vector<BoolExpr> s {r.getGuard()};
+        const auto up {idx->getUpdate()};
+        std::vector<BoolExpr> s {idx->getGuard()};
         for (const auto &x: vars) {
             if (expr::isProgVar(x)) {
                 s.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
@@ -66,8 +64,7 @@ void BMC::analyze() {
     std::vector<BoolExpr> queries;
     for (const auto &idx: its.getSinkTransitions()) {
         if (!its.isInitialTransition(idx)) {
-            const auto r {its.getRule(idx)};
-            queries.push_back(r.getGuard());
+            queries.push_back(idx->getGuard());
         }
     }
     const auto query {BExpression::buildOr(queries)};

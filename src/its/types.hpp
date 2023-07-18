@@ -17,6 +17,9 @@
 
 #pragma once
 
-// some typedefs for clarity
-using TransIdx = unsigned int;
+#include "rule.hpp"
+
+using TransIdx = const Rule*;
 using LocationIdx = unsigned int;
+
+std::ostream& operator<<(std::ostream &s, const TransIdx &idx);

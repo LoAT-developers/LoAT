@@ -27,7 +27,7 @@ namespace sexpressionparser {
 
     typedef Parser Self;
 
-    ITSProblem Self::loadFromFile(const std::string &filename) {
+    ITSPtr Self::loadFromFile(const std::string &filename) {
         Parser parser;
         parser.run(filename);
         return parser.res;
@@ -41,7 +41,7 @@ namespace sexpressionparser {
         sexpresso::Sexp sexp = sexpresso::parse(content);
         for (auto &ex: sexp.arguments()) {
             if (ex[0].str() == "declare-const" && ex[2].str() == "Loc") {
-                LocationIdx locIdx = res.addNamedLocation(ex[1].str());
+                LocationIdx locIdx = res->addNamedLocation(ex[1].str());
                 locations[ex[1].str()] = locIdx;
             } else if (ex[0].str() == "define-fun") {
                 if (ex[1].str() == "init_main") {
@@ -56,7 +56,7 @@ namespace sexpressionparser {
                     sexpresso::Sexp &init = ex[4];
                     // we do not support conditions regarding the initial state
                     assert(init[3].str() == "true");
-                    res.setInitialLocation(locations[init[2].str()]);
+                    res->setInitialLocation(locations[init[2].str()]);
                 } else if (ex[1].value.str == "next_main") {
                     sexpresso::Sexp &scope = ex[2];
                     for (sexpresso::Sexp &e: scope.arguments()) {
@@ -73,7 +73,7 @@ namespace sexpressionparser {
                     for (const std::string &str: postVars) {
                         tmpVars.insert(vars.at(str));
                     }
-                    const auto cost_var = res.getCostVar();
+                    const auto cost_var = res->getCostVar();
                     for (auto &ruleExp: ruleExps.arguments()) {
                         if (ruleExp[0].str() == "cfg_trans2") {
                             LocationIdx from = locations[ruleExp[2].str()];
@@ -100,7 +100,7 @@ namespace sexpressionparser {
                                     subs.get<IntTheory>().put(var, NumVar::next());
                                 }
                             }
-                            res.addRule(rule.subs(subs), from);
+                            res->addRule(rule.subs(subs), from);
                         }
                     }
                 }

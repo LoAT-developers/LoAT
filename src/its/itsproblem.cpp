@@ -17,7 +17,6 @@
 
 #include "itsproblem.hpp"
 #include "export.hpp"
-#include "config.hpp"
 #include "smtfactory.hpp"
 #include "chain.hpp"
 
@@ -43,11 +42,6 @@ LocationIdx ITSProblem::getSink() const {
     return sink;
 }
 
-const Rule& ITSProblem::getRule(TransIdx transition) const {
-    assert(rules.find(transition) != rules.end());
-    return rules.at(transition);
-}
-
 std::set<TransIdx> ITSProblem::getAllTransitions() const {
     return graph.getNodes();
 }
@@ -66,16 +60,14 @@ bool ITSProblem::areAdjacent(const TransIdx first, const TransIdx second) const 
 
 void ITSProblem::removeRule(TransIdx transition) {
     graph.removeNode(transition);
-    rules.erase(transition);
     startAndTargetLocations.erase(transition);
     initialTransitions.erase(transition);
     sinkTransitions.erase(transition);
+    rules.erase(*transition);
 }
 
 TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<TransIdx> &preds, const std::set<TransIdx> &succs) {
-    TransIdx idx = next;
-    ++next;
-    rules.emplace(idx, rule.normlizeTmpVars());
+    const auto idx {&*rules.emplace(rule.normlizeTmpVars()).first};
     startAndTargetLocations.emplace(idx, std::pair<LocationIdx, LocationIdx>(start, target));
     graph.addNode(idx, preds, succs, start == target);
     if (start == initialLocation) {
@@ -123,10 +115,7 @@ TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
 }
 
 TransIdx ITSProblem::replaceRule(const TransIdx toReplace, const Rule &replacement) {
-    TransIdx idx = next;
-    ++next;
-    rules.emplace(idx, replacement);
-    rules.erase(toReplace);
+    const auto idx {&*rules.emplace(replacement).first};
     startAndTargetLocations.emplace(idx, startAndTargetLocations.at(toReplace));
     startAndTargetLocations.erase(toReplace);
     graph.replaceNode(toReplace, idx);
@@ -138,6 +127,7 @@ TransIdx ITSProblem::replaceRule(const TransIdx toReplace, const Rule &replaceme
         sinkTransitions.insert(idx);
         sinkTransitions.erase(toReplace);
     }
+    rules.erase(*toReplace);
     return idx;
 }
 
@@ -185,7 +175,7 @@ string ITSProblem::getPrintableLocationName(LocationIdx idx) const {
 VarSet ITSProblem::getVars() const {
     VarSet res;
     for (const auto &r: rules) {
-        r.second.collectVars(res);
+        r.collectVars(res);
     }
     return res;
 }
@@ -195,7 +185,6 @@ void ITSProblem::print(std::ostream &s) const {
 }
 
 Expr ITSProblem::getCost(const Rule &rule) const {
-    assert(Config::Analysis::complexity());
     const auto up {rule.getUpdate().get<IntTheory>()};
     const auto it {up.find(cost)};
     if (it == up.end()) {
@@ -203,10 +192,6 @@ Expr ITSProblem::getCost(const Rule &rule) const {
     } else {
         return it->second - cost;
     }
-}
-
-Expr ITSProblem::getCost(const TransIdx &idx) const {
-    return getCost(getRule(idx));
 }
 
 NumVar ITSProblem::getCostVar() const {
@@ -256,15 +241,15 @@ const DependencyGraph& ITSProblem::getDependencyGraph() const {
 }
 
 std::set<Edge> ITSProblem::refineDependencyGraph() {
-    const auto is_edge = [this](const auto fst, const auto snd){
-        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd)).first.getGuard()) == Sat;
+    const auto is_edge = [](const auto fst, const auto snd){
+        return SmtFactory::check(Chaining::chain(*fst, *snd).first.getGuard()) == Sat;
     };
     return graph.refine(is_edge);
 }
 
 std::set<Edge> ITSProblem::refineDependencyGraph(const TransIdx idx) {
-    const auto is_edge = [this](const auto fst, const auto snd){
-        return SmtFactory::check(Chaining::chain(getRule(fst), getRule(snd)).first.getGuard()) == Sat;
+    const auto is_edge = [](const auto fst, const auto snd){
+        return SmtFactory::check(Chaining::chain(*fst, *snd).first.getGuard()) == Sat;
     };
     return graph.refine(idx, is_edge);
 }

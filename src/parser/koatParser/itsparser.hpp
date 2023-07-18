@@ -1,8 +1,6 @@
-#ifndef ITSPARSER_H
-#define ITSPARSER_H
+#pragma once
 
 #include <string>
-#include <vector>
 
 #include "itsproblem.hpp"
 
@@ -15,9 +13,7 @@ public:
      * @param path The file to load
      * @return The resulting ITSProblem (a FileError is thrown if parsing fails)
      */
-    static ITSProblem loadFromFile(const std::string &path);
+    static ITSPtr loadFromFile(const std::string &path);
 };
 
 }
-
-#endif //ITSPARSER_H

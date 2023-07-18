@@ -26,7 +26,7 @@ namespace sexpressionparser {
     class Parser {
 
     public:
-        static ITSProblem loadFromFile(const std::string &filename);
+        static ITSPtr loadFromFile(const std::string &filename);
 
     private:
         void run(const std::string &filename);
@@ -41,7 +41,7 @@ namespace sexpressionparser {
         std::vector<std::string> postVars;
         std::map<std::string, LocationIdx > locations;
         std::map<std::string, NumVar> vars;
-        ITSProblem res;
+        ITSPtr res {std::make_shared<ITSProblem>()};
 
     };
 

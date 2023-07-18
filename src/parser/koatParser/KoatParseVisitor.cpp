@@ -24,7 +24,7 @@ antlrcpp::Any KoatParseVisitor::visitGoal(KoatParser::GoalContext *ctx) {
 }
 
 antlrcpp::Any KoatParseVisitor::visitStart(KoatParser::StartContext *ctx) {
-    its.setInitialLocation(any_cast<fs_type>(visit(ctx->fs())));
+    its->setInitialLocation(any_cast<fs_type>(visit(ctx->fs())));
     return {};
 }
 
@@ -67,7 +67,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     cond = cond & Rel::buildEq(NumVar::loc_var, lhsLoc);
     auto up = rhss.at(0);
     if (Config::Analysis::complexity()) {
-        up.put<IntTheory>(its.getCostVar(), its.getCostVar() + cost);
+        up.put<IntTheory>(its->getCostVar(), its->getCostVar() + cost);
     }
     Rule rule(cond, up);
     auto vars = rule.vars();
@@ -79,7 +79,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
         }
     }
     rule = rule.subs(varRenaming);
-    its.addRule(rule, lhsLoc);
+    its->addRule(rule, lhsLoc);
     return {};
 }
 
