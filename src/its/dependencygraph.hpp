@@ -26,7 +26,7 @@
 
 #include "rule.hpp" // for TransIdx
 
-using Node = TransIdx;
+using Node = Implicant;
 using Edge = std::pair<Node, Node>;
 
 class DependencyGraph {
@@ -37,10 +37,10 @@ public:
     void replaceNode(Node to_replace, Node replacement);
     void removeEdge(Node from, Node to);
     void removeEdges(const std::set<Edge> &remove);
-    std::set<Edge> refine(Node node, std::function<bool(Node, Node)> is_edge);
-    std::set<Edge> refine(std::function<bool(Node, Node)> is_edge);
+    std::set<Edge> refine(Node node, std::function<bool(const Node&, const Node&)> is_edge);
+    std::set<Edge> refine(std::function<bool(const Node&, const Node&)> is_edge);
     bool hasEdge(Node from, Node to) const;
-    std::set<Node> getNodes() const;
+    const std::set<Node>& getNodes() const;
     std::set<Node> getSuccessors(Node node) const;
     std::set<Node> getPredecessors(Node node) const;
     void removeNode(Node node);
@@ -55,4 +55,5 @@ private:
 
 };
 
+std::ostream& operator<<(std::ostream &s, const Edge &e);
 std::ostream& operator<<(std::ostream &s, const DependencyGraph &d);

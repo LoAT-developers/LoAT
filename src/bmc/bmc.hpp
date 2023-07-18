@@ -11,16 +11,16 @@ private:
 
     static const bool log;
 
-    BMC(const ITSProblem &its);
+    BMC(ITSProblem &its);
 
     void analyze();
 
-    ITSProblem its;
+    ITSProblem &its;
     Z3<IntTheory, BoolTheory> z3{std::numeric_limits<unsigned>::max()};
     bool approx {false};
 
 public:
 
-    static void analyze(const ITSProblem &its);
+    static void analyze(ITSProblem &its);
 
 };

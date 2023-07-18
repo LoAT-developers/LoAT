@@ -13,8 +13,9 @@
 
 const bool ABMC::max_smt {false};
 const bool ABMC::optimize {false};
+const bool ABMC::refine {false};
 
-ABMC::ABMC(const ITSProblem &its):
+ABMC::ABMC(ITSProblem &its):
     its(its),
     vars(its.getVars()),
     trace_var(NumVar::next()),
@@ -35,18 +36,18 @@ ABMC::ABMC(const ITSProblem &its):
 }
 
 bool ABMC::is_orig_clause(const TransIdx idx) const {
-    return idx <= last_orig_clause;
+    return idx->getId() <= last_orig_clause;
 }
 
 std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::string &lang) {
-    const auto last_clause = trace.back().first;
+    const auto last = trace.back();
     for (int pos = start, length = trace.size() - pos; pos >= length; --pos, ++length) {
         const auto &imp {trace[pos]};
         lang += get_language(pos);
         if (cache.contains(lang)) {
             return pos;
         }
-        if (its.areAdjacent(last_clause, imp.first)) {
+        if (its.areAdjacent(last, imp)) {
             const auto length {trace.size() - pos};
             auto prev_lang {get_language(pos - 1)};
             auto upos = static_cast<unsigned>(pos);
@@ -106,8 +107,21 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
     return {implicant, model};
 }
 
+void ABMC::refine_dependency_graph(const Implicant &imp) {
+    if (refine) {
+        const auto removed = its.refineDependencyGraph(imp);
+        if (Config::Analysis::log && !removed.empty()) {
+            std::cout << "removed the following edges from the dependency graph:" << std::endl;
+            for (const auto &e: removed) {
+                std::cout << e << std::endl;
+            }
+        }
+    }
+}
+
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     const auto idx {its.addLearnedRule(accel, trace.at(backlink).first, trace.back().first)};
+    refine_dependency_graph({idx, {}});
     rule_map.emplace(idx->getId(), idx);
     return idx;
 }
@@ -179,10 +193,11 @@ void ABMC::analyze() {
     if (Config::Analysis::log && res) {
         res.print();
     }
-    for (const auto t: its.getAllTransitions()) {
-        rule_map.emplace(t->getId(), t);
+    last_orig_clause = 0;
+    for (const auto &r: its.getAllTransitions()) {
+        rule_map.emplace(r.getId(), &r);
+        last_orig_clause = std::max(last_orig_clause, r.getId());
     }
-    last_orig_clause = *its.getAllTransitions().rbegin();
     std::vector<BoolExpr> inits;
     for (const auto &idx: its.getInitialTransitions()) {
         if (its.isSinkTransition(idx)) {
@@ -202,11 +217,11 @@ void ABMC::analyze() {
     solver->add(BExpression::buildOr(inits));
 
     std::vector<BoolExpr> steps;
-    for (const auto &idx: its.getAllTransitions()) {
-        if (its.isInitialTransition(idx) || its.isSinkTransition(idx)) {
+    for (const auto &r: its.getAllTransitions()) {
+        if (its.isInitialTransition(&r) || its.isSinkTransition(&r)) {
             continue;
         }
-        steps.push_back(encode_transition(idx));
+        steps.push_back(encode_transition(&r));
     }
     const auto step {BExpression::buildOr(steps)};
 
@@ -287,6 +302,9 @@ void ABMC::analyze() {
                 if (!imp) {
                     throw std::logic_error("model, but no implicant");
                 }
+                if (its.addImplicant({rule, *imp})) {
+                    refine_dependency_graph({rule, *imp});
+                }
                 trace.emplace_back(rule, *imp);
             }
             if (Config::Analysis::log) {
@@ -313,19 +331,11 @@ void ABMC::analyze() {
 
 }
 
-void ABMC::analyze(const ITSProblem &its) {
+void ABMC::analyze(ITSProblem &its) {
     ABMC(its).analyze();
 }
 
-std::ostream& operator<<(std::ostream &s, const LitPtr lit) {
-    return s << *lit;
-}
-
-std::ostream& operator<<(std::ostream &s, const ABMC::Implicant &imp) {
-    return s << imp.first->getId() << ": " << imp.second << " /\\ " << imp.first->getUpdate();
-}
-
-std::ostream& operator<<(std::ostream &s, const std::vector<ABMC::Implicant> &trace) {
+std::ostream& operator<<(std::ostream &s, const std::vector<Implicant> &trace) {
     for (const auto &imp: trace) {
         s << imp << std::endl;
     }

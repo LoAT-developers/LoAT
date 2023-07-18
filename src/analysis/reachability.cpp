@@ -323,8 +323,8 @@ void Reachability::init() {
             prog_vars.insert(x);
         }
     }
-    for (const TransIdx idx: chcs.getAllTransitions()) {
-        last_orig_clause = std::max(last_orig_clause, idx);
+    for (const auto &r: chcs.getAllTransitions()) {
+        last_orig_clause = std::max(last_orig_clause, r.getId());
     }
 }
 
@@ -457,11 +457,11 @@ TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned back
 }
 
 bool Reachability::is_learned_clause(const TransIdx idx) const {
-    return idx > last_orig_clause;
+    return idx->getId() > last_orig_clause;
 }
 
 bool Reachability::is_orig_clause(const TransIdx idx) const {
-    return idx <= last_orig_clause;
+    return idx->getId() <= last_orig_clause;
 }
 
 Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const {

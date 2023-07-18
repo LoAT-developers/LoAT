@@ -38,6 +38,7 @@ private:
     static unsigned next_id;
 
 public:
+
     Rule(const BoolExpr guard, const Subs &update);
 
     const BoolExpr getGuard() const;
@@ -78,5 +79,8 @@ std::ostream& operator<<(std::ostream &s, const Rule &rule);
 
 using TransIdx = const Rule*;
 using LitPtr = const Lit*;
+using Implicant = std::pair<TransIdx, std::set<LitPtr>>;
 
 std::ostream& operator<<(std::ostream &s, const TransIdx &idx);
+std::ostream& operator<<(std::ostream &s, const LitPtr lit);
+std::ostream& operator<<(std::ostream &s, const Implicant &imp);

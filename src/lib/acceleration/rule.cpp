@@ -86,3 +86,11 @@ Rule Rule::normlizeTmpVars() const {
 std::ostream& operator<<(std::ostream &s, const TransIdx &idx) {
     return s << idx->getId();
 }
+
+std::ostream& operator<<(std::ostream &s, const LitPtr lit) {
+    return s << *lit;
+}
+
+std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
+    return s << imp.first->getId() << ": " << imp.second << " /\\ " << imp.first->getUpdate();
+}

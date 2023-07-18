@@ -5,7 +5,7 @@
 
 const bool BMC::log {true};
 
-BMC::BMC(const ITSProblem &its): its(its) {}
+BMC::BMC(ITSProblem &its): its(its) {}
 
 void BMC::analyze() {
     if (log) {
@@ -46,12 +46,12 @@ void BMC::analyze() {
     z3.add(BExpression::buildOr(inits));
 
     std::vector<BoolExpr> steps;
-    for (const auto &idx: its.getAllTransitions()) {
-        if (its.isInitialTransition(idx) || its.isSinkTransition(idx)) {
+    for (const auto &r: its.getAllTransitions()) {
+        if (its.isInitialTransition(&r) || its.isSinkTransition(&r)) {
             continue;
         }
-        const auto up {idx->getUpdate()};
-        std::vector<BoolExpr> s {idx->getGuard()};
+        const auto up {r.getUpdate()};
+        std::vector<BoolExpr> s {r.getGuard()};
         for (const auto &x: vars) {
             if (expr::isProgVar(x)) {
                 s.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
@@ -99,6 +99,6 @@ void BMC::analyze() {
 
 }
 
-void BMC::analyze(const ITSProblem &its) {
+void BMC::analyze(ITSProblem &its) {
     BMC(its).analyze();
 }

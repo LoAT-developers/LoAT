@@ -28,6 +28,7 @@ class ITSProblem {
 public:
     // Creates an empty ITS problem. The initialLocation is set to 0
     ITSProblem() = default;
+    ITSProblem(const ITSProblem&) = delete;
 
     // True iff there are no rules
     bool isEmpty() const;
@@ -38,17 +39,19 @@ public:
     LocationIdx getSink() const;
     std::optional<LocationIdx> getLocationIdx(const std::string &name) const;
 
-    std::set<TransIdx> getAllTransitions() const;
+    const std::set<Rule>& getAllTransitions() const;
     std::set<TransIdx> getSuccessors(const TransIdx loc) const;
     std::set<TransIdx> getPredecessors(const TransIdx loc) const;
     bool areAdjacent(const TransIdx first, const TransIdx second) const;
+    bool areAdjacent(const Implicant first, const Implicant second) const;
+    bool addImplicant(const Implicant &imp);
 
     // Mutation of Rules
     void removeRule(TransIdx transition);
 
 private:
 
-    TransIdx addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<TransIdx> &preds, const std::set<TransIdx> &succs);
+    TransIdx addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<Implicant> &preds, const std::set<Implicant> &succs);
 
 public:
 
@@ -97,7 +100,7 @@ public:
 
     std::set<Edge> refineDependencyGraph();
 
-    std::set<Edge> refineDependencyGraph(const TransIdx idx);
+    std::set<Edge> refineDependencyGraph(const Implicant &idx);
 
     size_t size() const;
 

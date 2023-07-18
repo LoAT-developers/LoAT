@@ -173,7 +173,7 @@ class Reachability {
     /**
      * clauses up to this one are original ones, all other clauses are learned
      */
-    TransIdx last_orig_clause {0};
+    unsigned last_orig_clause {0};
 
     std::pair<int, int> luby {1,1};
 

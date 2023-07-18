@@ -42,9 +42,9 @@ ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its, bool forward) {
         }
     } while (!todo.empty());
     std::vector<TransIdx> to_delete;
-    for (const auto idx: its.getAllTransitions()) {
-        if (keep.find(idx) == keep.end()) {
-            to_delete.push_back(idx);
+    for (const auto &r: its.getAllTransitions()) {
+        if (keep.find(&r) == keep.end()) {
+            to_delete.push_back(&r);
         }
     }
     std::set<TransIdx> deleted;
@@ -71,19 +71,19 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
     bool changed;
     do {
         changed = false;
-        for (const auto first_idx: its.getAllTransitions()) {
-            const auto succ {its.getSuccessors(first_idx)};
-            if (succ.size() == 1 && succ.find(first_idx) == succ.end()) {
+        for (const auto &first: its.getAllTransitions()) {
+            const auto succ {its.getSuccessors(&first)};
+            if (succ.size() == 1 && succ.find(&first) == succ.end()) {
                 const auto second_idx {*succ.begin()};
                 if (!its.isSimpleLoop(second_idx)) {
-                    std::set<TransIdx> deleted {first_idx};
+                    std::set<TransIdx> deleted {&first};
                     if (its.getPredecessors(second_idx).size() == 1) {
                         deleted.insert(second_idx);
                     }
                     res.succeed();
-                    const auto chained {Chaining::chain(*first_idx, *second_idx).first};
-                    its.addRule(chained, first_idx, second_idx);
-                    res.chainingProof(*first_idx, *second_idx, chained);
+                    const auto chained {Chaining::chain(first, *second_idx).first};
+                    its.addRule(chained, &first, second_idx);
+                    res.chainingProof(first, *second_idx, chained);
                     for (const auto &idx: deleted) {
                         its.removeRule(idx);
                     }
@@ -99,11 +99,11 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
 ResultViaSideEffects preprocessRules(ITSProblem &its) {
     ResultViaSideEffects ret;
     std::map<TransIdx, Rule> replacements;
-    for (const TransIdx idx: its.getAllTransitions()) {
-        const auto res = Preprocess::preprocessRule(*idx);
+    for (const auto &r: its.getAllTransitions()) {
+        const auto res = Preprocess::preprocessRule(r);
         if (res) {
             ret.succeed();
-            replacements.emplace(idx, *res);
+            replacements.emplace(&r, *res);
             ret.concat(res.getProof());
         }
     }
@@ -115,17 +115,17 @@ ResultViaSideEffects preprocessRules(ITSProblem &its) {
 
 ResultViaSideEffects unroll(ITSProblem &its) {
     ResultViaSideEffects ret;
-    for (const TransIdx idx: its.getAllTransitions()) {
-        if (its.isSimpleLoop(idx)) {
-            const auto [res, period] = LoopAcceleration::chain(*idx);
+    for (const auto &r: its.getAllTransitions()) {
+        if (its.isSimpleLoop(&r)) {
+            const auto [res, period] = LoopAcceleration::chain(r);
             if (period > 1) {
                 const auto simplified = Preprocess::preprocessRule(res);
                 ret.succeed();
-                ret.ruleTransformationProof(*idx, "Unrolling", res);
+                ret.ruleTransformationProof(r, "Unrolling", res);
                 if (simplified) {
                     ret.concat(simplified.getProof());
                 }
-                its.addRule(*simplified, idx, idx);
+                its.addRule(*simplified, &r, &r);
             }
         }
     }

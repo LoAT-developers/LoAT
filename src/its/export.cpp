@@ -64,9 +64,9 @@ void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
     if (its.isEmpty()) {
         s << "  <empty>" << endl;
     } else {
-        for (const auto idx : its.getAllTransitions()) {
+        for (const auto &idx : its.getAllTransitions()) {
             s << setw(4);
-            printRule(*idx, s);
+            printRule(idx, s);
             s << endl;
         }
     }
