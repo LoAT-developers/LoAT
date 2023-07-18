@@ -38,23 +38,19 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
     return idx <= last_orig_clause;
 }
 
-std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::optional<Automaton> &lang) {
+std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::string &lang) {
     const auto last_clause = trace.back();
     for (int pos = start, length = trace.size() - pos; pos >= length; --pos, ++length) {
         const auto &idx {trace[pos]};
-        if (!lang) {
-            lang = get_language(pos);
-        } else {
-            lang->concat(get_language(pos));
-        }
+        lang += get_language(pos);
         if (its.areAdjacent(last_clause, idx)) {
             const auto length {trace.size() - pos};
             auto prev_lang {get_language(pos - 1)};
             auto upos = static_cast<unsigned>(pos);
             for (int prev_pos = pos - 2; prev_pos + length >= upos; --prev_pos) {
-                prev_lang.concat(get_language(prev_pos));
+                prev_lang += get_language(prev_pos);
             }
-            if (lang->to_string() == prev_lang.to_string()) {
+            if (lang == prev_lang) {
                 return upos;
             }
         }
@@ -62,7 +58,7 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::optional<A
     return {};
 }
 
-Automaton ABMC::get_language(unsigned i) {
+std::string ABMC::get_language(unsigned i) {
     const auto idx {trace[i]};
     if (is_orig_clause(idx)) {
         const auto model {solver->model(idx->subs(subs[i]).vars()).toSubs()};
@@ -70,9 +66,14 @@ Automaton ABMC::get_language(unsigned i) {
         if (!imp) {
             throw std::logic_error("model, but no implicant");
         }
-        return red.get_singleton_language(idx, BExpression::buildAndFromLits(*imp)->conjunctionToGuard());
+        const auto lang {std::to_string(next)};
+        const auto res {lang_map.emplace(Implicant{idx, *imp}, lang)};
+        if (res.second) {
+            ++next;
+        }
+        return res.first->second;
     } else {
-        return *red.get_language(idx);
+        return lang_map.at({idx, {}});
     }
 }
 
@@ -97,7 +98,7 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
     if (!imp) {
         throw std::logic_error("model, but no implicant");
     }
-    const auto implicant {loop->withGuard(BExpression::buildAndFromLits(*imp))};
+    const auto implicant {loop->withGuard(BExpression::buildAndFromLitPtrs(*imp))};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         ITSExport::printRule(implicant, std::cout);
@@ -112,7 +113,7 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     return idx;
 }
 
-bool ABMC::handle_loop(int backlink, Automaton lang) {
+bool ABMC::handle_loop(int backlink, const std::string &lang) {
     auto [loop, sample_point] {build_loop(backlink)};
     if (is_orig_clause(trace.back())) {
         const auto simp {Preprocess::preprocessRule(loop)};
@@ -141,9 +142,7 @@ bool ABMC::handle_loop(int backlink, Automaton lang) {
                             std::cout << "learned clause:" << std::endl;
                             std::cout << *simplified << std::endl;
                         }
-                        red.transitive_closure(lang);
-                        red.mark_as_redundant(lang);
-                        red.set_language(new_idx, lang);
+                        lang_map.emplace(Implicant(new_idx, {}), "(" + lang + ")+");
                         return true;
                     }
                 }
@@ -282,11 +281,11 @@ void ABMC::analyze() {
             if (Config::Analysis::log) {
                 std::cout << "trace: " << trace << std::endl;
             }
-            auto lang {std::optional<Automaton>()};
+            std::string lang;
             for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
                  backlink;
                  backlink = has_looping_suffix(*backlink - 1, lang)) {
-                if (handle_loop(*backlink, *lang)) {
+                if (handle_loop(*backlink, lang)) {
                     break;
                 }
             }

@@ -82,3 +82,7 @@ Rule Rule::normlizeTmpVars() const {
     }
     return subs(s);
 }
+
+std::ostream& operator<<(std::ostream &s, const TransIdx &idx) {
+    return s << idx->getId();
+}

@@ -82,6 +82,15 @@ public:
     static const BE True;
     static const BE False;
 
+    template <class LitPtrs>
+    static const BE buildFromLitPtrs(const LitPtrs &lits, ConcatOperator op) {
+        BES children;
+        for (const Lit *lit: lits) {
+            children.insert(buildTheoryLit(*lit));
+        }
+        return BE(new BoolJunction(children, op));
+    }
+
     template <class Lits>
     static const BE buildFromLits(const Lits &lits, ConcatOperator op) {
         BES children;
@@ -122,6 +131,11 @@ public:
         return buildFromLits(lits, ConcatAnd);
     }
 
+    template <class LitPtrs>
+    static const BE buildAndFromLitPtrs(const LitPtrs &lits) {
+        return buildFromLitPtrs(lits, ConcatAnd);
+    }
+
     template <class Children>
     static const BE buildAnd(const Children &lits) {
         return build(lits, ConcatAnd);
@@ -142,7 +156,7 @@ public:
     }
 
     virtual bool isTheoryLit() const = 0;
-    virtual std::optional<const Lit> getTheoryLit() const = 0;
+    virtual const Lit* getTheoryLit() const = 0;
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
     virtual BES getChildren() const = 0;
@@ -171,11 +185,11 @@ public:
 
 private:
 
-    bool implicant(Subs &subs, LS &res) const {
+    bool implicant(Subs &subs, std::set<const Lit*> &res) const {
         if (isOr()) {
-            std::optional<LS> best_res;
+            std::optional<std::set<const Lit*>> best_res;
             for (const auto &c: getChildren()) {
-                LS current_res;
+                std::set<const Lit*> current_res;
                 if (c->implicant(subs, current_res)) {
                     if (!best_res) {
                         best_res = current_res;
@@ -185,7 +199,7 @@ private:
                 }
             }
             if (best_res) {
-                res.insertAll(*best_res);
+                res.insert(best_res->begin(), best_res->end());
             }
             return best_res.has_value();
         } else if (isAnd()) {
@@ -210,7 +224,7 @@ private:
                     l = l->subs(subs);
                 }
                 if (l->isTriviallyTrue()) {
-                    res.insert(*lit);
+                    res.insert(lit);
                     return true;
                 } else {
                     return false;
@@ -226,8 +240,8 @@ public:
     /**
      * Assumes that this->subs(subs) is a tautology.
      */
-    std::optional<LS> implicant(Subs subs) const {
-        LS res;
+    std::optional<std::set<const Lit*>> implicant(Subs subs) const {
+        std::set<const Lit*> res;
         if (implicant(subs, res)) {
             return res;
         } else {
@@ -656,8 +670,8 @@ public:
         return true;
     }
 
-    std::optional<const Lit> getTheoryLit() const override {
-        return {lit};
+    const Lit* getTheoryLit() const override {
+        return &lit;
     }
 
     BES getChildren() const override {
@@ -749,8 +763,8 @@ public:
         return false;
     }
 
-    std::optional<const Lit> getTheoryLit() const override {
-        return {};
+    const Lit* getTheoryLit() const override {
+        return nullptr;
     }
 
     BES getChildren() const override {
@@ -886,11 +900,15 @@ const BExpr<Th...> operator !(const BExpr<Th...> a) {
 
 template <ITheory... Th>
 bool operator ==(const BExpr<Th...> a, const BExpr<Th...> b) {
-    if (a->getTheoryLit() != b->getTheoryLit()) {
-        return false;
-    }
     if (a->isTheoryLit()) {
-        return true;
+        if (b->isTheoryLit()) {
+            return *a->getTheoryLit() == *b->getTheoryLit();
+        } else {
+            return false;
+        }
+    }
+    if (b->isTheoryLit()) {
+        return false;
     }
     if (a->isAnd() != b->isAnd()) {
         return false;
@@ -900,9 +918,15 @@ bool operator ==(const BExpr<Th...> a, const BExpr<Th...> b) {
 
 template <ITheory... Th>
 std::strong_ordering operator <=>(const BExpr<Th...> a, const BExpr<Th...> b) {
-    auto res {a->getTheoryLit() <=> b->getTheoryLit()};
-    if (std::is_neq(res)) {
-        return res;
+    if (a->isTheoryLit()) {
+        if (b->isTheoryLit()) {
+            return *a->getTheoryLit() <=> *b->getTheoryLit();
+        } else {
+            return std::strong_ordering::less;
+        }
+    }
+    if (b->isTheoryLit()) {
+        return std::strong_ordering::greater;
     }
     if (a->isAnd() && !b->isAnd()) {
         return std::strong_ordering::greater;

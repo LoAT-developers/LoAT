@@ -75,3 +75,8 @@ public:
  * For debugging output (not very readable)
  */
 std::ostream& operator<<(std::ostream &s, const Rule &rule);
+
+using TransIdx = const Rule*;
+using LitPtr = const Lit*;
+
+std::ostream& operator<<(std::ostream &s, const TransIdx &idx);

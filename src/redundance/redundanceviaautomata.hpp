@@ -1,7 +1,7 @@
 #pragma once
 
 #include "theory.hpp"
-#include "types.hpp"
+#include "rule.hpp"
 
 #include <libfaudes.h>
 

@@ -24,7 +24,7 @@
 #include <functional>
 #include <ostream>
 
-#include "types.hpp" // for TransIdx
+#include "rule.hpp" // for TransIdx
 
 using Node = TransIdx;
 using Edge = std::pair<Node, Node>;

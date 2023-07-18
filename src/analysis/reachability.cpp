@@ -396,7 +396,7 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
         const auto model {solver.model(guard->vars()).toSubs()};
         const auto implicant {idx->getGuard()->implicant(expr::compose(projected_var_renaming, model))};
         if (implicant) {
-            return {idx->withGuard(BExpression::buildAndFromLits(*implicant))};
+            return {idx->withGuard(BExpression::buildAndFromLitPtrs(*implicant))};
         } else {
             throw std::logic_error("model, but no implicant");
         }

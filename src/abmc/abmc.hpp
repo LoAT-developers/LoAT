@@ -4,16 +4,15 @@
 
 #include "itsproblem.hpp"
 #include "smt.hpp"
-#include "redundanceviaautomata.hpp"
 
 class ABMC {
 
 private:
 
-    using Red = RedundanceViaAutomata;
-
     static const bool max_smt;
     static const bool optimize;
+
+    using Implicant = std::pair<TransIdx, std::set<LitPtr>>;
 
     ABMC(const ITSProblem &its);
 
@@ -27,21 +26,23 @@ private:
     std::vector<TransIdx> trace;
     VarSet vars;
     std::map<Var, Var> post_vars;
+    std::map<Implicant, std::string> lang_map;
+    std::map<std::string, std::set<TransIdx>> cache;
     NumVar trace_var;
     BoolExpr shortcut {BExpression::True};
     std::optional<NumVar> n;
     Expr objective {0};
     NumVar objective_var;
-    Red red;
     std::map<unsigned, TransIdx> rule_map;
+    long next {0};
 
-    Automaton get_language(unsigned i);
+    std::string get_language(unsigned i);
     BoolExpr encode_transition(const TransIdx idx);
     bool is_orig_clause(const TransIdx idx) const;
-    std::optional<unsigned> has_looping_suffix(unsigned start, std::optional<Automaton> &lang);
+    std::optional<unsigned> has_looping_suffix(unsigned start, std::string &lang);
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
     std::pair<Rule, Subs> build_loop(const int backlink);
-    bool handle_loop(int backlink, Automaton lang);
+    bool handle_loop(int backlink, const std::string &lang);
 
 public:
 

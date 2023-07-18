@@ -5,7 +5,6 @@ target_sources(${EXECUTABLE}
         itsproblem.cpp
         itsproblem.hpp
         types.hpp
-        types.cpp
         dependencygraph.hpp
         dependencygraph.cpp
 )

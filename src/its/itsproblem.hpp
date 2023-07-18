@@ -19,6 +19,7 @@
 
 #include "rule.hpp"
 #include "dependencygraph.hpp"
+#include "types.hpp"
 
 #include <optional>
 
