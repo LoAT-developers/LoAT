@@ -39,11 +39,14 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
 }
 
 std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::string &lang) {
-    const auto last_clause = trace.back();
+    const auto last_clause = trace.back().first;
     for (int pos = start, length = trace.size() - pos; pos >= length; --pos, ++length) {
-        const auto &idx {trace[pos]};
+        const auto &imp {trace[pos]};
         lang += get_language(pos);
-        if (its.areAdjacent(last_clause, idx)) {
+        if (cache.contains(lang)) {
+            return pos;
+        }
+        if (its.areAdjacent(last_clause, imp.first)) {
             const auto length {trace.size() - pos};
             auto prev_lang {get_language(pos - 1)};
             auto upos = static_cast<unsigned>(pos);
@@ -59,21 +62,16 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::string &la
 }
 
 std::string ABMC::get_language(unsigned i) {
-    const auto idx {trace[i]};
-    if (is_orig_clause(idx)) {
-        const auto model {solver->model(idx->subs(subs[i]).vars()).toSubs()};
-        const auto imp {idx->getGuard()->implicant(expr::compose(subs[i], model))};
-        if (!imp) {
-            throw std::logic_error("model, but no implicant");
-        }
+    const auto imp {trace[i]};
+    if (is_orig_clause(imp.first)) {
         const auto lang {std::to_string(next)};
-        const auto res {lang_map.emplace(Implicant{idx, *imp}, lang)};
+        const auto res {lang_map.emplace(imp, lang)};
         if (res.second) {
             ++next;
         }
         return res.first->second;
     } else {
-        return lang_map.at({idx, {}});
+        return lang_map.at({imp.first, {}});
     }
 }
 
@@ -81,15 +79,16 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
     for (int i = trace.size() - 1; i >= backlink; --i) {
-        const auto idx {trace[i]};
+        const auto imp {trace[i]};
+        const auto rule {imp.first->withGuard(BExpression::buildAndFromLitPtrs(imp.second))};
         if (loop) {
-            const auto [chained, sigma] {Chaining::chain(*idx, *loop)};
+            const auto [chained, sigma] {Chaining::chain(rule, *loop)};
             loop = chained;
             var_renaming = expr::compose(sigma, var_renaming);
         } else {
-            loop = *idx;
+            loop = rule;
         }
-        var_renaming = expr::compose(subs[i].project(idx->vars()), var_renaming);
+        var_renaming = expr::compose(subs[i].project(rule.vars()), var_renaming);
     }
     auto vars {loop->vars()};
     expr::collectCoDomainVars(var_renaming, vars);
@@ -108,14 +107,20 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
 }
 
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
-    const auto idx {its.addLearnedRule(accel, trace.at(backlink), trace.back())};
+    const auto idx {its.addLearnedRule(accel, trace.at(backlink).first, trace.back().first)};
     rule_map.emplace(idx->getId(), idx);
     return idx;
 }
 
 bool ABMC::handle_loop(int backlink, const std::string &lang) {
-    auto [loop, sample_point] {build_loop(backlink)};
-    if (is_orig_clause(trace.back())) {
+    const auto it {cache.find(lang)};
+    if (it != cache.end()) {
+        if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
+        shortcut = encode_transition(it->second);
+        return true;
+    }
+    if (is_orig_clause(trace.back().first)) {
+        auto [loop, sample_point] {build_loop(backlink)};
         const auto simp {Preprocess::preprocessRule(loop)};
         if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
             if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
@@ -143,6 +148,7 @@ bool ABMC::handle_loop(int backlink, const std::string &lang) {
                             std::cout << *simplified << std::endl;
                         }
                         lang_map.emplace(Implicant(new_idx, {}), "(" + lang + ")+");
+                        cache.emplace(lang, new_idx);
                         return true;
                     }
                 }
@@ -274,9 +280,14 @@ void ABMC::analyze() {
         case SmtResult::Sat: {
             shortcut = True;
             trace.clear();
-            const auto model {solver->model(trace_vars).toSubs().get<IntTheory>()};
+            const auto model {solver->model().toSubs()};
             for (const auto &s: subs) {
-                trace.push_back(rule_map.at(s.get<IntTheory>(trace_var).subs(model).toNum().to_int()));
+                const auto rule {rule_map.at(s.get<IntTheory>(trace_var).subs(model.get<IntTheory>()).toNum().to_int())};
+                const auto imp {rule->getGuard()->implicant(expr::compose(s, model))};
+                if (!imp) {
+                    throw std::logic_error("model, but no implicant");
+                }
+                trace.emplace_back(rule, *imp);
             }
             if (Config::Analysis::log) {
                 std::cout << "trace: " << trace << std::endl;
@@ -304,4 +315,19 @@ void ABMC::analyze() {
 
 void ABMC::analyze(const ITSProblem &its) {
     ABMC(its).analyze();
+}
+
+std::ostream& operator<<(std::ostream &s, const LitPtr lit) {
+    return s << *lit;
+}
+
+std::ostream& operator<<(std::ostream &s, const ABMC::Implicant &imp) {
+    return s << imp.first->getId() << ": " << imp.second << " /\\ " << imp.first->getUpdate();
+}
+
+std::ostream& operator<<(std::ostream &s, const std::vector<ABMC::Implicant> &trace) {
+    for (const auto &imp: trace) {
+        s << imp << std::endl;
+    }
+    return s;
 }

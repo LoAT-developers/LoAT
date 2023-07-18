@@ -4,6 +4,7 @@
 
 #include "itsproblem.hpp"
 #include "smt.hpp"
+#include "variant.hpp"
 
 class ABMC {
 
@@ -12,7 +13,11 @@ private:
     static const bool max_smt;
     static const bool optimize;
 
+public:
+
     using Implicant = std::pair<TransIdx, std::set<LitPtr>>;
+
+private:
 
     ABMC(const ITSProblem &its);
 
@@ -23,11 +28,11 @@ private:
     bool approx {false};
     TransIdx last_orig_clause;
     std::vector<Subs> subs {Subs::Empty};
-    std::vector<TransIdx> trace;
+    std::vector<Implicant> trace;
     VarSet vars;
     std::map<Var, Var> post_vars;
     std::map<Implicant, std::string> lang_map;
-    std::map<std::string, std::set<TransIdx>> cache;
+    std::map<std::string, TransIdx> cache;
     NumVar trace_var;
     BoolExpr shortcut {BExpression::True};
     std::optional<NumVar> n;
@@ -49,3 +54,9 @@ public:
     static void analyze(const ITSProblem &its);
 
 };
+
+std::ostream& operator<<(std::ostream &s, const LitPtr lit);
+
+std::ostream& operator<<(std::ostream &s, const ABMC::Implicant &imp);
+
+std::ostream& operator<<(std::ostream &s, const std::vector<ABMC::Implicant> &trace);
