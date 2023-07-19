@@ -39,20 +39,20 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::string &lang) {
+std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::vector<int> &lang) {
     const auto last = trace.back();
     for (int pos = start, length = trace.size() - pos; pos >= length; --pos, ++length) {
         const auto &imp {trace[pos]};
-        lang += get_language(pos);
+        lang.push_back(get_language(pos));
         if (cache.contains(lang)) {
             return pos;
         }
         if (its.areAdjacent(last, imp)) {
             const auto length {trace.size() - pos};
-            auto prev_lang {get_language(pos - 1)};
+            std::vector<int> prev_lang {get_language(pos - 1)};
             auto upos = static_cast<unsigned>(pos);
             for (int prev_pos = pos - 2; prev_pos + length >= upos; --prev_pos) {
-                prev_lang += get_language(prev_pos);
+                prev_lang.push_back(get_language(prev_pos));
             }
             if (lang == prev_lang) {
                 return upos;
@@ -62,11 +62,10 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::string &la
     return {};
 }
 
-std::string ABMC::get_language(unsigned i) {
+int ABMC::get_language(unsigned i) {
     const auto imp {trace[i]};
     if (is_orig_clause(imp.first)) {
-        const auto lang {std::to_string(next)};
-        const auto res {lang_map.emplace(imp, lang)};
+        const auto res {lang_map.emplace(imp, next)};
         if (res.second) {
             ++next;
         }
@@ -126,15 +125,19 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     return idx;
 }
 
-bool ABMC::handle_loop(int backlink, const std::string &lang) {
-    const auto it {cache.find(lang)};
-    if (it != cache.end()) {
-        if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
-        shortcut = encode_transition(it->second);
-        return true;
-    }
+bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
     if (is_orig_clause(trace.back().first)) {
         auto [loop, sample_point] {build_loop(backlink)};
+        const auto it {cache.find(lang)};
+        if (it != cache.end()) {
+            for (const auto &[imp, t]: it->second) {
+                if (imp->subs(sample_point)->isTriviallyTrue()) {
+                    if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
+                    shortcut = encode_transition(t);
+                    return true;
+                }
+            }
+        }
         const auto simp {Preprocess::preprocessRule(loop)};
         if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
             if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
@@ -161,8 +164,10 @@ bool ABMC::handle_loop(int backlink, const std::string &lang) {
                             std::cout << "learned clause:" << std::endl;
                             std::cout << *simplified << std::endl;
                         }
-                        lang_map.emplace(Implicant(new_idx, {}), "(" + lang + ")+");
-                        cache.emplace(lang, new_idx);
+                        lang_map.emplace(Implicant(new_idx, {}), next);
+                        ++next;
+                        auto &map {cache.emplace(lang, std::map<BoolExpr, TransIdx>()).first->second};
+                        map.emplace(accel_res.accel->covered, new_idx);
                         return true;
                     }
                 }
@@ -310,7 +315,7 @@ void ABMC::analyze() {
             if (Config::Analysis::log) {
                 std::cout << "trace: " << trace << std::endl;
             }
-            std::string lang;
+            std::vector<int> lang;
             for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
                  backlink;
                  backlink = has_looping_suffix(*backlink - 1, lang)) {
