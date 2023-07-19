@@ -4,7 +4,6 @@
 
 #include "itsproblem.hpp"
 #include "smt.hpp"
-#include "variant.hpp"
 
 class ABMC {
 

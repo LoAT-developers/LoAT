@@ -14,43 +14,22 @@ class AccelerationProblem {
 public:
 
     struct Accelerator {
-        BoolExpr formula;
+        std::vector<BoolExpr> formula;
         Proof proof;
-
-        Accelerator(const BoolExpr &formula, const Proof &proof):
-            formula(formula),
-            proof(proof) {}
-
+        std::vector<BoolExpr> covered;
+        bool nonterm {true};
     };
-
-    struct AcceleratorPair {
-        std::optional<Accelerator> term;
-        std::optional<Accelerator> nonterm;
-    };
-
-    std::optional<Recurrence::Result> getClosed() const;
 
 private:
-
-    struct Entry {
-        LitSet dependencies;
-        BoolExpr formula;
-        bool nonterm;
-    };
-
-    using Res = std::map<Lit, std::vector<Entry>>;
 
     const std::optional<Recurrence::Result> closed;
     Subs update;
     BoolExpr guard;
     const AccelConfig config;
-    Proof proof;
-    Res res;
-    std::optional<std::map<Lit, Entry>> solution;
     LitSet todo;
+    Accelerator res;
     const std::optional<Subs> &samplePoint;
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
-    std::optional<Rel> bound;
 
     bool trivial(const Lit &lit);
     bool unchanged(const Lit &lit);
@@ -60,14 +39,6 @@ private:
     bool eventualWeakDecrease(const Lit &lit);
     bool eventualIncrease(const Lit &lit, const bool strict);
     bool fixpoint(const Lit &lit);
-    unsigned store(const Lit &lit, const LitSet &deps, const BoolExpr formula, bool nonterm = false);
-
-    struct ReplacementMap {
-        bool nonterm;
-        std::map<Lit, BoolExpr> map;
-    };
-
-    std::optional<ReplacementMap> computeReplacementMap(bool nontermOnly) const;
 
 public:
 
@@ -77,12 +48,6 @@ public:
             const std::optional<Subs> &samplePoint,
             const AccelConfig &config);
 
-    AcceleratorPair computeRes();
-    std::pair<BoolExpr, bool> buildRes(const Model<IntTheory, BoolTheory> &model, const std::map<Lit, std::vector<BoolExpr>> &entryVars);
-
-private:
-
-    bool depsWellFounded(const Lit& lit, bool nontermOnly) const;
-    bool depsWellFounded(const Lit& lit, std::map<Lit, const AccelerationProblem::Entry*> &entryMap, bool nontermOnly, LitSet seen = {}) const;
+    std::optional<Accelerator> computeRes();
 
 };

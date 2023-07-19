@@ -135,115 +135,107 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     }
 }
 
-acceleration::Result LoopAcceleration::run() {
-    acceleration::Result res;
-    if (config.approx != UnderApprox) {
-        if (!rule.getGuard()->isConjunction()) {
-            res.status = acceleration::Disjunctive;
-            return res;
+Rule LoopAcceleration::overApproximatingAcceleration(const Subs &closed_form, const NumVar &n) {
+    Subs up;
+    for (const auto &p: closed_form) {
+        auto tmp {false};
+        for (const auto &x: expr::vars(expr::second(p))) {
+            if (x != Var(n) && expr::isTempVar(x)) {
+                const auto var {expr::first(p)};
+                up.put(var, expr::toExpr(expr::next(var)));
+                tmp = true;
+                break;
+            }
+        }
+        if (!tmp) {
+            up.put(p);
         }
     }
+    BoolExprSet lits, up_lits;
+    auto previous {Subs::build<IntTheory>(n, Expr(n)-1)};
+    for (const auto &l: rule.getGuard()->lits()) {
+        auto add {true};
+        for (const auto &x: expr::variables(l)) {
+            if (expr::isTempVar(x)) {
+                add = false;
+                break;
+            }
+        }
+        if (add) {
+            lits.insert(BExpression::buildTheoryLit(l));
+        }
+        auto updated {expr::subs(l, up)};
+        add = true;
+        for (const auto &x: updated->vars()) {
+            if (x != Var(n) && expr::isTempVar(x)) {
+                add = false;
+                break;
+            }
+        }
+        if (add) {
+            lits.insert(updated->subs(previous));
+        }
+    }
+    auto guard {BExpression::buildAnd(lits) & Rel::buildGt(n, 0)};
+    return Rule(guard, up);
+}
+
+acceleration::Result LoopAcceleration::run() {
+    acceleration::Result res;
+    if (!rule.getGuard()->isConjunction()) {
+        res.status = acceleration::Disjunctive;
+        return res;
+    }
     const auto [rule, period] = chain(this->rule);
-    switch (SmtFactory::check(rule.getGuard())) {
+    Proof proof;
+    if (period > 1) {
+        res.period = period;
+        proof.append(stringstream() << "period: " << period);
+    }
+    switch (SmtFactory::check(Chaining::chain(rule, rule).first.getGuard())) {
     case Unsat: res.status = acceleration::PseudoLoop;
         return res;
     case Unknown: res.status = acceleration::NotSat;
         return res;
     case Sat: {}
     }
-    Proof proof;
-    if (period > 1) {
-        res.period = period;
-        proof.append(stringstream() << "period: " << period);
-    }
-    // for rules with runtime 1, our acceleration techniques do not work properly,
-    // as the closed forms are usually only valid for n > 0 --> special case
-    auto sat {SmtFactory::check(rule.chain(rule).getGuard())};
-    if (sat != Sat) {
-        res.accel = {rule, proof};
-        res.accel->proof.append("rule cannot be iterated more than once");
-        if (sat == Unsat && SmtFactory::check(Chaining::chain(rule, rule).first.getGuard()) == Unsat) {
-            res.status = acceleration::PseudoLoop;
-        } else {
-            res.status = acceleration::NotSat;
-        }
-        return res;
-    }
     const auto rec {Recurrence::solve(rule.getUpdate())};
-    if (!rec && config.approx != UnderApprox) {
+    if (!rec && !config.tryNonterm) {
         res.status = acceleration::ClosedFormFailed;
         return res;
     }
     res.prefix = rec->prefix;
     res.n = rec->n;
     std::optional<Rule> accel_rule;
+    auto covered {BExpression::True};
     if (config.approx == OverApprox) {
-        res.status = acceleration::Success;
-        Subs up;
-        for (const auto &p: rec->closed_form) {
-            auto tmp {false};
-            for (const auto &x: expr::vars(expr::second(p))) {
-                if (x != Var(rec->n) && expr::isTempVar(x)) {
-                    const auto var {expr::first(p)};
-                    up.put(var, expr::toExpr(expr::next(var)));
-                    tmp = true;
-                    break;
-                }
-            }
-            if (!tmp) {
-                up.put(p);
-            }
-        }
-        BoolExprSet lits, up_lits;
-        auto previous {Subs::build<IntTheory>(rec->n, Expr(rec->n)-1)};
-        for (const auto &l: rule.getGuard()->lits()) {
-            auto add {true};
-            for (const auto &x: expr::variables(l)) {
-                if (expr::isTempVar(x)) {
-                    add = false;
-                    break;
-                }
-            }
-            if (add) {
-                lits.insert(BExpression::buildTheoryLit(l));
-            }
-            auto updated {expr::subs(l, up)};
-            add = true;
-            for (const auto &x: updated->vars()) {
-                if (x != Var(rec->n) && expr::isTempVar(x)) {
-                    add = false;
-                    break;
-                }
-            }
-            if (add) {
-                lits.insert(updated->subs(previous));
-            }
-        }
-        auto guard {BExpression::buildAnd(lits) & Rel::buildGt(rec->n, 0)};
+        accel_rule = overApproximatingAcceleration(rec->closed_form, rec->n);
         proof.append("over-approximating acceleration using closed form");
-        accel_rule = Rule(guard, up);
+        res.status = acceleration::Success;
     } else {
-        const auto accelerationResult {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
-        if (!accelerationResult.term && (config.approx != UnderApprox || !accelerationResult.nonterm)) {
-            res.status = acceleration::AccelerationFailed;
-            return res;
-        }
-        if (config.tryNonterm && accelerationResult.nonterm) {
-            res.status = acceleration::Nonterminating;
-            res.nonterm = {accelerationResult.nonterm->formula, proof};
-            res.nonterm->proof.concat(accelerationResult.nonterm->proof);
-        }
-        if (rec && accelerationResult.term) {
+        auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
+        res.status = acceleration::AccelerationFailed;
+        if (accelerator) {
             res.status = acceleration::Success;
-            accel_rule = Rule(accelerationResult.term->formula, rec->closed_form);
-            proof.concat(accelerationResult.term->proof);
+            accel_rule = Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form);
+            proof.concat(accelerator->proof);
+        }
+        if (config.tryNonterm && (!accelerator || !accelerator->nonterm)) {
+            accelerator = AccelerationProblem(rule, {}, sample_point, config).computeRes();
+            if (accelerator) {
+                if (res.status == acceleration::AccelerationFailed) {
+                    res.status = acceleration::Nonterminating;
+                }
+                res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
+                res.nonterm->proof.concat(accelerator->proof);
+            }
         }
     }
     if (accel_rule) {
         for (unsigned i = 1; i < res.prefix; ++i) {
             accel_rule = rule.chain(*accel_rule);
         }
-        res.accel = {*accel_rule, proof};
+        res.accel = {*accel_rule, proof, covered};
     }
     return res;
 }

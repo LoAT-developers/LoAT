@@ -502,7 +502,6 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     AccelConfig config {
         .approx = Config::Analysis::safety() ? OverApprox : UnderApprox,
-        .allowDisjunctions = false,
         .tryNonterm = Config::Analysis::tryNonterm()};
     const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
     if (accel_res.status == acceleration::PseudoLoop) {

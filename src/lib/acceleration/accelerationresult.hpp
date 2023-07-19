@@ -16,6 +16,7 @@ std::ostream& operator<<(std::ostream &s, const Status x);
 struct Accel {
     Rule rule;
     Proof proof;
+    BoolExpr covered;
 };
 
 struct Nonterm {

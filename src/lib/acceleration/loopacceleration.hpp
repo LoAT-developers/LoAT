@@ -34,6 +34,8 @@ private:
 
     LoopAcceleration(const Rule &rule, const std::optional<Subs> &sample_point, const AccelConfig &config);
 
+    Rule overApproximatingAcceleration(const Subs &closed_form, const NumVar &n);
+
     acceleration::Result run();
 
     Rule rule;

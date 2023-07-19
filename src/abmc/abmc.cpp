@@ -147,7 +147,7 @@ bool ABMC::handle_loop(int backlink, const std::string &lang) {
             if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
                 if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
             } else {
-                AccelConfig config {.allowDisjunctions = false, .tryNonterm = Config::Analysis::tryNonterm()};
+                AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm()};
                 const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
                 if (accel_res.accel) {
                     auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
