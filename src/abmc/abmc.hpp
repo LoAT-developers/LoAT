@@ -43,6 +43,8 @@ private:
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
     std::pair<Rule, Subs> build_loop(const int backlink);
     bool handle_loop(int backlink, const std::vector<int> &lang);
+    void unsat(const unsigned depth);
+    void sat(const unsigned depth);
 
 public:
 

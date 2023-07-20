@@ -2,18 +2,38 @@
 #include "expr.hpp"
 #include "preprocessing.hpp"
 #include "smtfactory.hpp"
-
-const bool BMC::log {true};
+#include "config.hpp"
+#include "export.hpp"
 
 BMC::BMC(ITSProblem &its): its(its) {}
 
+void BMC::unsat(const unsigned depth) {
+    std::cout << "unsat" << std::endl;
+    proof.append("reached error location at depth " + std::to_string(depth));
+    proof.result("unsat");
+    proof.print();
+}
+
+void BMC::sat(const unsigned depth) {
+    std::cout << "sat" << std::endl;
+    proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
+    proof.result("sat");
+    proof.print();
+}
+
 void BMC::analyze() {
-    if (log) {
+    if (Config::Analysis::log) {
+        std::cout << "initial ITS" << std::endl;
         its.print(std::cout);
     }
+    proof.majorProofStep("Initial ITS", ITSProof(), its);
     const auto res {Preprocess::preprocess(its)};
-    if (log && res) {
-        res.print();
+    if (res) {
+        proof.concat(res.getProof());
+        if (Config::Analysis::log) {
+            std::cout << "Simplified ITS" << std::endl;
+            ITSExport::printForProof(its, std::cout);
+        }
     }
     std::map<Var, Var> post_vars;
     const auto vars {its.getVars()};
@@ -25,7 +45,7 @@ void BMC::analyze() {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
-                std::cout << "unsat" << std::endl;
+                unsat(1);
                 return;
             case SmtResult::Unknown:
                 approx = true;
@@ -72,10 +92,10 @@ void BMC::analyze() {
     Subs subs;
     unsigned depth {1};
     while (true) {
-        if (log) {
+        if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
-            ++depth;
         }
+        ++depth;
         for (const auto &var: vars) {
             const auto &post_var {post_vars.at(var)};
             subs.put(var, subs.get(post_var));
@@ -84,14 +104,14 @@ void BMC::analyze() {
         z3.push();
         z3.add(query->subs(subs));
         if (z3.check() == SmtResult::Sat) {
-            std::cout << "unsat" << std::endl;
+            unsat(depth);
             return;
         }
         z3.pop();
         z3.add(step->subs(subs));
         if (z3.check() == SmtResult::Unsat) {
             if (!approx) {
-                std::cout << "sat" << std::endl;
+                sat(depth);
             }
             return;
         }

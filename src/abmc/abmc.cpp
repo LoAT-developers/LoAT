@@ -202,6 +202,20 @@ BoolExpr ABMC::encode_transition(const TransIdx idx) {
     return BExpression::buildAnd(res);
 }
 
+void ABMC::unsat(const unsigned depth) {
+    std::cout << "unsat" << std::endl;
+    proof.append("reached error location at depth " + std::to_string(depth));
+    proof.result("unsat");
+    proof.print();
+}
+
+void ABMC::sat(const unsigned depth) {
+    std::cout << "sat" << std::endl;
+    proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
+    proof.result("sat");
+    proof.print();
+}
+
 void ABMC::analyze() {
     if (Config::Analysis::log) {
         std::cout << "initial ITS" << std::endl;
@@ -226,7 +240,7 @@ void ABMC::analyze() {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
-                std::cout << "unsat" << std::endl;
+                unsat(1);
                 return;
             case SmtResult::Unknown:
                 approx = true;
@@ -279,10 +293,7 @@ void ABMC::analyze() {
         solver->add(query->subs(s));
         switch (solver->check()) {
         case SmtResult::Sat:
-            std::cout << "unsat" << std::endl;
-            proof.append("reached error location at depth " + std::to_string(depth));
-            proof.result("unsat");
-            proof.print();
+            unsat(depth);
             return;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
@@ -315,10 +326,7 @@ void ABMC::analyze() {
         switch (solver->check()) {
         case SmtResult::Unsat:
             if (!approx) {
-                std::cout << "sat" << std::endl;
-                proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
-                proof.result("sat");
-                proof.print();
+                sat(depth);
             }
             return;
         case SmtResult::Sat: {
