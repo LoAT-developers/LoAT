@@ -126,50 +126,48 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 }
 
 bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
-    if (is_orig_clause(trace.back().first)) {
-        auto [loop, sample_point] {build_loop(backlink)};
-        const auto it {cache.find(lang)};
-        if (it != cache.end()) {
-            for (const auto &[imp, t]: it->second) {
-                if (imp->subs(sample_point)->isTriviallyTrue()) {
-                    if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
-                    shortcut = encode_transition(t);
-                    return true;
-                }
+    auto [loop, sample_point] {build_loop(backlink)};
+    const auto it {cache.find(lang)};
+    if (it != cache.end()) {
+        for (const auto &[imp, t]: it->second) {
+            if (imp->subs(sample_point)->isTriviallyTrue()) {
+                if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
+                shortcut = encode_transition(t);
+                return true;
             }
         }
-        const auto simp {Preprocess::preprocessRule(loop)};
-        if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
-            if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
+    }
+    const auto simp {Preprocess::preprocessRule(loop)};
+    if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
+        if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
+    } else {
+        if (Config::Analysis::log && simp) {
+            std::cout << "simplified loop:" << std::endl;
+            ITSExport::printRule(*simp, std::cout);
+            std::cout << std::endl;
+        }
+        if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
+            if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
         } else {
-            if (Config::Analysis::log && simp) {
-                std::cout << "simplified loop:" << std::endl;
-                ITSExport::printRule(*simp, std::cout);
-                std::cout << std::endl;
-            }
-            if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
-                if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
-            } else {
-                AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm()};
-                const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
-                if (accel_res.accel) {
-                    auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
-                    if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
-                        const auto new_idx {add_learned_clause(*simplified, backlink)};
-                        n = *accel_res.n;
-                        vars.insert(*n);
-                        post_vars.emplace(*n, NumVar::next());
-                        shortcut = encode_transition(new_idx);
-                        if (Config::Analysis::log) {
-                            std::cout << "learned clause:" << std::endl;
-                            std::cout << *simplified << std::endl;
-                        }
-                        lang_map.emplace(Implicant(new_idx, {}), next);
-                        ++next;
-                        auto &map {cache.emplace(lang, std::map<BoolExpr, TransIdx>()).first->second};
-                        map.emplace(accel_res.accel->covered, new_idx);
-                        return true;
+            AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm()};
+            const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
+            if (accel_res.accel) {
+                auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
+                if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
+                    const auto new_idx {add_learned_clause(*simplified, backlink)};
+                    n = *accel_res.n;
+                    vars.insert(*n);
+                    post_vars.emplace(*n, NumVar::next());
+                    shortcut = encode_transition(new_idx);
+                    if (Config::Analysis::log) {
+                        std::cout << "learned clause:" << std::endl;
+                        std::cout << *simplified << std::endl;
                     }
+                    lang_map.emplace(Implicant(new_idx, {}), next);
+                    ++next;
+                    auto &map {cache.emplace(lang, std::map<BoolExpr, TransIdx>()).first->second};
+                    map.emplace(accel_res.accel->covered, new_idx);
+                    return true;
                 }
             }
         }
