@@ -1,4 +1,4 @@
-# Creates a docker container where the LoAT root direcotyr is mounted to /LoAT
+# Creates a docker container where the LoAT root direcotry is mounted to /LoAT
 # and triggers a build.
 
 version: "3"

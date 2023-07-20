@@ -32,6 +32,9 @@ if [[ -d $BUNDLE ]]; then
     rm -r $BUNDLE
 fi
 
+print "building LoAT..."
+./build.sh
+check "building LoAT"
 print "creating bundle..."
 cp -r $TEMPLATE $BUNDLE
 cp $BUILD/$BIN $BUNDLE
