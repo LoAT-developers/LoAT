@@ -220,7 +220,7 @@ std::ostream& operator<<(std::ostream &s, const BoolSubs<Th...> &e) {
             } else {
                 s << ", ";
             }
-            s << p.first << " -> " << p.second;
+            s << p.first << " <- " << p.second;
         }
         return s << "}";
     }

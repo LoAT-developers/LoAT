@@ -785,7 +785,7 @@ std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
             } else {
                 fst = false;
             }
-            s << p.first << ": " << p.second;
+            s << p.first << " <- " << p.second;
         }
         return s << "}";
     }

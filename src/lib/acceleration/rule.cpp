@@ -92,5 +92,17 @@ std::ostream& operator<<(std::ostream &s, const LitPtr lit) {
 }
 
 std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
-    return s << imp.first->getId() << ": " << imp.second << " /\\ " << imp.first->getUpdate();
+    s << imp.first->getId() << ": ";
+    const auto &up {imp.first->getUpdate()};
+    if (!imp.second.empty()) {
+        s << imp.second;
+        if (!up.empty()) {
+            s << " /\\ " << up;
+        }
+    } else if (!up.empty()) {
+        s << up;
+    } else {
+        s << BExpression::True;
+    }
+    return s;
 }

@@ -109,6 +109,7 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
 void ABMC::refine_dependency_graph(const Implicant &imp) {
     if (refine) {
         const auto removed = its.refineDependencyGraph(imp);
+        proof.dependencyGraphRefinementProof(removed);
         if (Config::Analysis::log && !removed.empty()) {
             std::cout << "removed the following edges from the dependency graph:" << std::endl;
             for (const auto &e: removed) {
@@ -159,14 +160,22 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
                     vars.insert(*n);
                     post_vars.emplace(*n, NumVar::next());
                     shortcut = encode_transition(new_idx);
-                    if (Config::Analysis::log) {
-                        std::cout << "learned clause:" << std::endl;
-                        std::cout << *simplified << std::endl;
-                    }
                     lang_map.emplace(Implicant(new_idx, {}), next);
                     ++next;
                     auto &map {cache.emplace(lang, std::map<BoolExpr, TransIdx>()).first->second};
                     map.emplace(accel_res.accel->covered, new_idx);
+                    ITSProof sub_proof, acceleration_proof;
+                    acceleration_proof.storeSubProof(simp.getProof());
+                    acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
+                    acceleration_proof.storeSubProof(accel_res.accel->proof);
+                    sub_proof.concat(acceleration_proof);
+                    sub_proof.concat(simplified.getProof());
+                    proof.majorProofStep("Accelerate", sub_proof, its);
+                    if (Config::Analysis::log) {
+                        std::cout << "accelerated rule, idx " << new_idx->getId() << std::endl;
+                        ITSExport::printRule(*simplified, std::cout);
+                        std::cout << std::endl;
+                    }
                     return true;
                 }
             }
@@ -192,9 +201,14 @@ void ABMC::analyze() {
         std::cout << "initial ITS" << std::endl;
         its.print(std::cout);
     }
+    proof.majorProofStep("Initial ITS", ITSProof(), its);
     const auto res {Preprocess::preprocess(its)};
-    if (Config::Analysis::log && res) {
-        res.print();
+    if (res) {
+        proof.concat(res.getProof());
+        if (Config::Analysis::log) {
+            std::cout << "Simplified ITS" << std::endl;
+            ITSExport::printForProof(its, std::cout);
+        }
     }
     last_orig_clause = 0;
     for (const auto &r: its.getAllTransitions()) {
@@ -243,8 +257,8 @@ void ABMC::analyze() {
     while (true) {
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
-            ++depth;
         }
+        ++depth;
         Subs s;
         for (const auto &var: vars) {
             const auto &post_var {post_vars.at(var)};
@@ -260,6 +274,9 @@ void ABMC::analyze() {
         switch (solver->check()) {
         case SmtResult::Sat:
             std::cout << "unsat" << std::endl;
+            proof.append("reached error location at depth " + std::to_string(depth));
+            proof.result("unsat");
+            proof.print();
             return;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
@@ -293,6 +310,9 @@ void ABMC::analyze() {
         case SmtResult::Unsat:
             if (!approx) {
                 std::cout << "sat" << std::endl;
+                proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
+                proof.result("sat");
+                proof.print();
             }
             return;
         case SmtResult::Sat: {
@@ -331,7 +351,6 @@ void ABMC::analyze() {
             solver->pop();
         }
     }
-
 }
 
 void ABMC::analyze(ITSProblem &its) {

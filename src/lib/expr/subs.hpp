@@ -388,12 +388,19 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void printImpl(std::ostream &s) const {
+    inline void printImpl(std::ostream &s, bool first = true) const {
         if constexpr (I < sizeof...(Th)) {
-            s << std::get<I>(t);
+            const auto &m {std::get<I>(t)};
+            if (!m.empty()) {
+                if (first) {
+                    first = false;
+                } else {
+                    s << " u ";
+                }
+                s << m;
+            }
             if constexpr (I + 1 < variant_size) {
-                s << " u ";
-                printImpl<I+1>(s);
+                printImpl<I+1>(s, first);
             }
         }
     }

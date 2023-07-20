@@ -131,17 +131,8 @@ std::ostream& operator<<(std::ostream &s, const Edge &e) {
 
 std::ostream& operator<<(std::ostream &s, const DependencyGraph &d) {
     for (const auto &l: d.getNodes()) {
-        bool first {true};
         for (const auto &r: d.getSuccessors(l)) {
-            if (first) {
-                first = false;
-            } else {
-                s << ", ";
-            }
-            s << l << " -> " << r;
-        }
-        if (!first) {
-            s << std::endl;
+            s << l << " -> " << r << std::endl;
         }
     }
     return s;

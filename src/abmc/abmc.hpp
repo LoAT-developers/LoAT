@@ -4,6 +4,7 @@
 
 #include "itsproblem.hpp"
 #include "smt.hpp"
+#include "itsproof.hpp"
 
 class ABMC {
 
@@ -34,6 +35,7 @@ private:
     NumVar objective_var;
     std::map<unsigned, TransIdx> rule_map;
     int next {0};
+    ITSProof proof;
 
     int get_language(unsigned i);
     BoolExpr encode_transition(const TransIdx idx);
