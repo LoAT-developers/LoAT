@@ -43,11 +43,21 @@ void printHelp(char *arg0) {
     cout << "  --proof-level <n>                                Detail level for proof output" << endl;
     cout << "  --plain                                          Disable colored output" << endl;
     cout << "  --mode <complexity|non_termination|reachability> Analysis mode" << endl;
-    cout << "  --format <koat|its|horn>                         Input format" << endl;
+    cout << "  --format <koat|its|horn|c>                       Input format" << endl;
     cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << endl;
     cout << "  --log                                            Enable logging" << endl;
+    cout << "  --abmc::refine <true|false>                      ABMC: En- or disable on-the-fly dependency graph refinement" << std::endl;
+    cout << "  --abmc::optimize <true|false>                    ABMC: En- or disable optimization module theories" << std::endl;
+    cout << "  --abmc::max_smt <true|false>                     ABMC: En- or disable MAX-SMT" << std::endl;
 }
 
+void setBool(const char *str, bool &b) {
+    if (strcmp("true", str) == 0) {
+        b = true;
+    } else if (strcmp("false", str) == 0) {
+        b = false;
+    }
+}
 
 void parseFlags(int argc, char *argv[]) {
     int arg=0;
@@ -116,6 +126,12 @@ void parseFlags(int argc, char *argv[]) {
                 cout << "Error: unknown format " << str << std::endl;
                 exit(1);
             }
+        } else if (strcmp("--abmc::refine", argv[arg]) == 0) {
+            setBool(getNext(), Config::ABMC::refine);
+        } else if (strcmp("--abmc::optimize", argv[arg]) == 0) {
+            setBool(getNext(), Config::ABMC::optimize);
+        } else if (strcmp("--abmc::max_smt", argv[arg]) == 0) {
+            setBool(getNext(), Config::ABMC::max_smt);
         } else {
             if (!filename.empty()) {
                 cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << endl;

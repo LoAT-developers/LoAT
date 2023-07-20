@@ -107,4 +107,10 @@ namespace Config {
 
     }
 
+    namespace ABMC {
+        bool refine {false};
+        bool optimize {false};
+        bool max_smt {false};
+    }
+
 }

@@ -11,9 +11,7 @@
 #include "z3_opt.hpp"
 #include "z3.hpp"
 
-const bool ABMC::max_smt {false};
-const bool ABMC::optimize {false};
-const bool ABMC::refine {false};
+using namespace Config::ABMC;
 
 ABMC::ABMC(ITSProblem &its):
     its(its),
@@ -133,7 +131,11 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
         for (const auto &[imp, t]: it->second) {
             if (imp->subs(sample_point)->isTriviallyTrue()) {
                 if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
-                shortcut = encode_transition(t);
+                shortcut = t;
+                if (last_loop == lang) {
+                    lookback = backlink;
+                }
+                last_loop = lang;
                 return true;
             }
         }
@@ -159,7 +161,11 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
                     n = *accel_res.n;
                     vars.insert(*n);
                     post_vars.emplace(*n, NumVar::next());
-                    shortcut = encode_transition(new_idx);
+                    shortcut = new_idx;
+                    if (last_loop == lang) {
+                        lookback = backlink;
+                    }
+                    last_loop = lang;
                     lang_map.emplace(Implicant(new_idx, {}), next);
                     ++next;
                     auto &map {cache.emplace(lang, std::map<BoolExpr, TransIdx>()).first->second};
@@ -287,10 +293,10 @@ void ABMC::analyze() {
         case SmtResult::Unsat: {}
         }
         solver->pop();
-        if (shortcut->isTriviallyTrue()) {
+        if (!shortcut) {
             solver->add(step->subs(s));
         } else {
-            const auto sc {shortcut->subs(s)};
+            const auto sc {encode_transition(*shortcut)->subs(s)};
             if (max_smt) {
                 solver->add_soft(sc);
             }
@@ -316,7 +322,7 @@ void ABMC::analyze() {
             }
             return;
         case SmtResult::Sat: {
-            shortcut = True;
+            shortcut.reset();
             trace.clear();
             const auto model {solver->model().toSubs()};
             for (const auto &s: subs) {
@@ -335,7 +341,7 @@ void ABMC::analyze() {
             }
             std::vector<int> lang;
             for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
-                 backlink;
+                 backlink && *backlink > lookback;
                  backlink = has_looping_suffix(*backlink - 1, lang)) {
                 if (handle_loop(*backlink, lang)) {
                     break;
@@ -344,7 +350,7 @@ void ABMC::analyze() {
             break;
         }
         case SmtResult::Unknown:
-            shortcut = True;
+            shortcut.reset();
             trace.clear();
         }
         if (optimize) {

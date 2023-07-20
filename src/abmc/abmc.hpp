@@ -10,10 +10,6 @@ class ABMC {
 
 private:
 
-    static const bool max_smt;
-    static const bool optimize;
-    static const bool refine;
-
     ABMC(ITSProblem &its);
 
     void analyze();
@@ -29,7 +25,9 @@ private:
     std::map<Implicant, int> lang_map;
     std::map<std::vector<int>, std::map<BoolExpr, TransIdx>> cache;
     NumVar trace_var;
-    BoolExpr shortcut {BExpression::True};
+    std::optional<TransIdx> shortcut;
+    std::vector<int> last_loop;
+    unsigned lookback {0};
     std::optional<NumVar> n;
     Expr objective {0};
     NumVar objective_var;

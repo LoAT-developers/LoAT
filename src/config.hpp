@@ -74,19 +74,22 @@ namespace Config {
         extern bool log;
 
         std::string modeName(const Mode mode);
+
         bool nonTermination();
         bool tryNonterm();
         bool reachability();
         bool safety();
         bool complexity();
 
-
-
     }
 
-    /**
-     * Prints all of the above config values to the given stream.
-     * Useful to test command line flags and to include configuration benchmarks.
-     */
-    void printConfig(std::ostream &s, bool withDescription);
+    namespace ABMC {
+        /** refine the dependency graph on the fly */
+        extern bool refine;
+        /** use optimization modulo theories to direct the SMT solver towards long runs */
+        extern bool optimize;
+        /** use MAX-SMT to direct the SMT solver towards using learned transitions */
+        extern bool max_smt;
+    }
+
 }
