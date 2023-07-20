@@ -187,16 +187,23 @@ Result<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
             const auto &rel = std::get<Rel>(lit);
             if (rel.isEq()) continue;
             if (!rel.isPoly() && rel.isStrict()) continue;
-            Expr term = rel.toLeq().makeRhsZero().lhs().normalizeCoefficients();
-            if (term.isGround()) {
-                continue;
-            }
+//            Expr term = rel.toLeq().makeRhsZero().lhs().normalizeCoefficients();
+//            if (term.isGround()) {
+//                continue;
+//            }
+//            for (const auto &prev : terms) {
+//                const auto div {(prev.second / term).expand()};
+//                if (div.isRationalConstant() && div.toNum().is_negative()) {
+//                    matches.emplace(prev.first, make_pair(rel, prev.second));
+//                }
+//            }
+            Expr term = rel.toLeq().makeRhsZero().lhs();
             for (const auto &prev : terms) {
-                const auto div {(prev.second / term).expand()};
-                if (div.isRationalConstant() && div.toNum().is_negative()) {
-                    matches.emplace(prev.first, make_pair(rel, prev.second));
+                if ((prev.second + term).isZero()) {
+                    matches.emplace(prev.first, make_pair(rel,prev.second));
                 }
             }
+            terms.push_back(make_pair(rel,term));
             terms.push_back(make_pair(rel, term));
         }
     }
