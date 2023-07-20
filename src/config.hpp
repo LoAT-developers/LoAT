@@ -35,6 +35,7 @@ namespace Config {
     // Proof output
     namespace Output {
         extern bool Colors;
+        extern bool PrintDependencyGraph;
     }
 
     namespace Input {

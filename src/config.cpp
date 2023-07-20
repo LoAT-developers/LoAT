@@ -33,7 +33,8 @@ namespace Config {
 
     namespace Output {
         // Whether to enable colors in the proof output
-        bool Colors = true;
+        bool Colors {true};
+        bool PrintDependencyGraph {false};
     }
 
     namespace Input {

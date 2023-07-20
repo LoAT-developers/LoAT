@@ -42,6 +42,7 @@ void printHelp(char *arg0) {
     cout << "Options:" << endl;
     cout << "  --proof-level <n>                                Detail level for proof output" << endl;
     cout << "  --plain                                          Disable colored output" << endl;
+    cout << "  --print_dep_graph                                Print the dependency graph in the proof output (can be very verbose)" << endl;
     cout << "  --mode <complexity|non_termination|reachability> Analysis mode" << endl;
     cout << "  --format <koat|its|horn|c>                       Input format" << endl;
     cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << endl;
@@ -85,6 +86,8 @@ void parseFlags(int argc, char *argv[]) {
         } else if (strcmp("--plain",argv[arg]) == 0) {
             Config::Output::Colors = false;
             Proof::disableColors();
+        } else if (strcmp("--print_dep_graph",argv[arg]) == 0) {
+            Config::Output::PrintDependencyGraph = true;
         } else if (strcmp("--log", argv[arg]) == 0) {
             Config::Analysis::log = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {

@@ -70,8 +70,10 @@ void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
             s << endl;
         }
     }
-    s << endl << "Dependency graph:" << endl;
-    s << its.getDependencyGraph() << endl;
+    if (Config::Output::PrintDependencyGraph) {
+        s << endl << "Dependency graph:" << endl;
+        s << its.getDependencyGraph() << endl;
+    }
 }
 
 std::ostream& operator<<(std::ostream &s, const ITSProblem &its) {
