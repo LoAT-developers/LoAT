@@ -145,32 +145,65 @@ ResultViaSideEffects refine_dependency_graph(ITSProblem &its) {
 ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
     ResultViaSideEffects res;
     ResultViaSideEffects sub_res;
+    if (Config::Analysis::log) {
+        std::cout << "starting preprocesing..." << std::endl;
+    }
     if (Config::Analysis::reachability()) {
+        if (Config::Analysis::log) {
+            std::cout << "removing irrelevant clauses..." << std::endl;
+        }
         sub_res = remove_irrelevant_clauses(its);
+        if (Config::Analysis::log) {
+            std::cout << "finished removing irrelevant clauses" << std::endl;
+        }
         if (sub_res) {
             res.succeed();
             res.majorProofStep("Removed Irrelevant Clauses", sub_res.getProof(), its);
         }
     }
+    if (Config::Analysis::log) {
+        std::cout << "chaining linear paths..." << std::endl;
+    }
     sub_res = chainLinearPaths(its);
+    if (Config::Analysis::log) {
+        std::cout << "finished chaining linear paths" << std::endl;
+    }
     if (sub_res) {
         res.succeed();
         res.majorProofStep("Chained Linear Paths", sub_res.getProof(), its);
     }
+    if (Config::Analysis::log) {
+        std::cout << "preprocessing rules..." << std::endl;
+    }
     sub_res = preprocessRules(its);
+    if (Config::Analysis::log) {
+        std::cout << "finished preprocessing rules" << std::endl;
+    }
     if (sub_res) {
         res.succeed();
         res.majorProofStep("Preprocessed Transitions", sub_res.getProof(), its);
     }
     if (!Config::Analysis::safety()) {
+        if (Config::Analysis::log) {
+            std::cout << "unrolling..." << std::endl;
+        }
         sub_res = unroll(its);
+        if (Config::Analysis::log) {
+            std::cout << "finished unrolling" << std::endl;
+        }
         if (sub_res) {
             res.succeed();
             res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
         }
     }
     if (its.size() <= 1000) {
+        if (Config::Analysis::log) {
+            std::cout << "refining the dependency graph..." << std::endl;
+        }
         sub_res = refine_dependency_graph(its);
+        if (Config::Analysis::log) {
+            std::cout << "finished refining the dependency graph" << std::endl;
+        }
         if (sub_res) {
             res.succeed();
             res.majorProofStep("Refined Dependency Graph", sub_res.getProof(), its);
