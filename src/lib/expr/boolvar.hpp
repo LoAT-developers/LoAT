@@ -24,8 +24,6 @@ public:
 
     static BoolVar next();
 
-    static BoolVar nth(unsigned n);
-
     static BoolVar nextProgVar();
 
     bool isTempVar() const;

@@ -64,8 +64,6 @@ public:
 
     bool isPoly() const;
 
-    Rule normlizeTmpVars() const;
-
     auto operator<=>(const Rule &that) const = default;
 
     unsigned getId() const;
