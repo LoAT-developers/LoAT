@@ -216,9 +216,15 @@ void ABMC::sat(const unsigned depth) {
 void ABMC::build_trace() {
     trace.clear();
     const auto model {solver->model().toSubs()};
+    if (optimize && Config::Analysis::log) {
+        std::cout << "objective: " << objective.subs(model.get<IntTheory>()) << std::endl;
+    }
+    std::vector<Subs> run;
     for (const auto &s: subs) {
         const auto rule {rule_map.at(s.get<IntTheory>(trace_var).subs(model.get<IntTheory>()).toNum().to_int())};
-        const auto imp {rule->getGuard()->implicant(expr::compose(s, model))};
+        const auto comp {expr::compose(s, model)};
+        const auto imp {rule->getGuard()->implicant(comp)};
+        run.push_back(comp.project(rule->getUpdate().domain()));
         if (!imp) {
             throw std::logic_error("model, but no implicant");
         }
@@ -228,7 +234,11 @@ void ABMC::build_trace() {
         trace.emplace_back(rule, *imp);
     }
     if (Config::Analysis::log) {
-        std::cout << "trace:" << std::endl << trace << std::endl;
+        std::cout << "trace:" << std::endl << trace;
+        std::cout << "run:" << std::endl;
+        for (const auto &s: run) {
+            std::cout << s << std::endl;
+        }
     }
 }
 
@@ -286,7 +296,7 @@ void ABMC::analyze() {
     }
     const auto query {BExpression::buildOr(queries)};
 
-    unsigned depth {1};
+    unsigned depth {0};
     VarSet trace_vars;
     trace_vars.insert(trace_var);
     trace_vars.insert(post_vars.at(trace_var));
@@ -329,8 +339,9 @@ void ABMC::analyze() {
                 solver->add_soft(sc);
             }
             if (optimize) {
-                objective = objective + *n;
-                solver->add(sc | (expr::mkEq(*n, 0) & step->subs(s)));
+                const auto m {s.get<IntTheory>(*n)};
+                objective = objective + m;
+                solver->add(sc | (expr::mkEq(m, 0) & step->subs(s)));
             } else {
                 solver->add(sc | step->subs(s));
             }

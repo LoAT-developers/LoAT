@@ -90,7 +90,7 @@ void BMC::analyze() {
     const auto query {BExpression::buildOr(queries)};
 
     Subs subs;
-    unsigned depth {1};
+    unsigned depth {0};
     while (true) {
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
