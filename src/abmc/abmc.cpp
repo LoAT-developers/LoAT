@@ -39,9 +39,9 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
 
 std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::vector<int> &lang) {
     const auto last = trace.back();
-    for (int pos = start, length = trace.size() - pos; pos >= length; --pos, ++length) {
-        const auto &imp {trace[pos]};
+    for (unsigned pos = start; pos > lookback; --pos) {
         lang.push_back(get_language(pos));
+        const auto &imp {trace[pos]};
         if (its.areAdjacent(last, imp)) {
             return pos;
         }
@@ -344,7 +344,7 @@ void ABMC::analyze() {
             }
             std::vector<int> lang;
             for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
-                 backlink && *backlink > lookback;
+                 backlink;
                  backlink = has_looping_suffix(*backlink - 1, lang)) {
                 if (handle_loop(*backlink, lang)) {
                     break;
