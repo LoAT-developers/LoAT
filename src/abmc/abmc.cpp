@@ -340,7 +340,7 @@ void ABMC::analyze() {
                 trace.emplace_back(rule, *imp);
             }
             if (Config::Analysis::log) {
-                std::cout << "trace: " << trace << std::endl;
+                std::cout << "trace:" << std::endl << trace << std::endl;
             }
             std::vector<int> lang;
             for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
