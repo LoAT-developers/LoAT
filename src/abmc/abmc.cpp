@@ -42,19 +42,8 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::vector<int
     for (int pos = start, length = trace.size() - pos; pos >= length; --pos, ++length) {
         const auto &imp {trace[pos]};
         lang.push_back(get_language(pos));
-        if (cache.contains(lang)) {
-            return pos;
-        }
         if (its.areAdjacent(last, imp)) {
-            const auto length {trace.size() - pos};
-            std::vector<int> prev_lang {get_language(pos - 1)};
-            auto upos = static_cast<unsigned>(pos);
-            for (int prev_pos = pos - 2; prev_pos + length >= upos; --prev_pos) {
-                prev_lang.push_back(get_language(prev_pos));
-            }
-            if (lang == prev_lang) {
-                return upos;
-            }
+            return pos;
         }
     }
     return {};
