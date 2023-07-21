@@ -38,11 +38,16 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
 }
 
 std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::vector<int> &lang) {
-    const auto last = trace.back();
+    const auto last {trace.back()};
+    const auto ends_with_orig {is_orig_clause(last.first)};
+    std::set<unsigned> learned;
     for (unsigned pos = start; pos > lookback; --pos) {
         lang.push_back(get_language(pos));
         const auto &imp {trace[pos]};
-        if (its.areAdjacent(last, imp)) {
+        if (!is_orig_clause(imp.first)) {
+            learned.insert(imp.first->getId());
+        }
+        if (its.areAdjacent(last, imp) && (ends_with_orig || learned.size() > 1)) {
             return pos;
         }
     }
@@ -155,9 +160,6 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
                     vars.insert(*n);
                     post_vars.emplace(*n, NumVar::next());
                     shortcut = new_idx;
-                    if (last_loop == lang) {
-                        lookback = backlink;
-                    }
                     last_loop = lang;
                     lang_map.emplace(Implicant(new_idx, {}), next);
                     ++next;
@@ -209,6 +211,25 @@ void ABMC::sat(const unsigned depth) {
     proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
     proof.result("sat");
     proof.print();
+}
+
+void ABMC::build_trace() {
+    trace.clear();
+    const auto model {solver->model().toSubs()};
+    for (const auto &s: subs) {
+        const auto rule {rule_map.at(s.get<IntTheory>(trace_var).subs(model.get<IntTheory>()).toNum().to_int())};
+        const auto imp {rule->getGuard()->implicant(expr::compose(s, model))};
+        if (!imp) {
+            throw std::logic_error("model, but no implicant");
+        }
+        if (its.addImplicant({rule, *imp})) {
+            refine_dependency_graph({rule, *imp});
+        }
+        trace.emplace_back(rule, *imp);
+    }
+    if (Config::Analysis::log) {
+        std::cout << "trace:" << std::endl << trace << std::endl;
+    }
 }
 
 void ABMC::analyze() {
@@ -288,6 +309,7 @@ void ABMC::analyze() {
         solver->add(query->subs(s));
         switch (solver->check()) {
         case SmtResult::Sat:
+            build_trace();
             unsat(depth);
             return;
         case SmtResult::Unknown:
@@ -326,22 +348,7 @@ void ABMC::analyze() {
             return;
         case SmtResult::Sat: {
             shortcut.reset();
-            trace.clear();
-            const auto model {solver->model().toSubs()};
-            for (const auto &s: subs) {
-                const auto rule {rule_map.at(s.get<IntTheory>(trace_var).subs(model.get<IntTheory>()).toNum().to_int())};
-                const auto imp {rule->getGuard()->implicant(expr::compose(s, model))};
-                if (!imp) {
-                    throw std::logic_error("model, but no implicant");
-                }
-                if (its.addImplicant({rule, *imp})) {
-                    refine_dependency_graph({rule, *imp});
-                }
-                trace.emplace_back(rule, *imp);
-            }
-            if (Config::Analysis::log) {
-                std::cout << "trace:" << std::endl << trace << std::endl;
-            }
+            build_trace();
             std::vector<int> lang;
             for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
                  backlink;
