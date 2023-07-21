@@ -45,6 +45,7 @@ private:
     bool handle_loop(int backlink, const std::vector<int> &lang);
     void unsat(const unsigned depth);
     void sat(const unsigned depth);
+    void build_trace();
 
 public:
 
