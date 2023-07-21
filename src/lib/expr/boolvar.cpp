@@ -35,10 +35,6 @@ BoolVar BoolVar::next() {
     return BoolVar(last_tmp_idx);
 }
 
-BoolVar BoolVar::nth(unsigned n) {
-    return BoolVar(-static_cast<int>(n));
-}
-
 BoolVar BoolVar::nextProgVar() {
     ++last_prog_idx;
     return BoolVar(last_prog_idx);

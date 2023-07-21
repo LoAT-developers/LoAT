@@ -12,8 +12,6 @@ bool isProgVar(const Var &var);
 
 Var next(const Var &var);
 
-Var nthTmpVar(const Var &var, unsigned n);
-
 ThExpr toExpr(const Var &var);
 
 ThExpr subs(const ThExpr &expr, const Subs &subs);

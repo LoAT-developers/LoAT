@@ -71,18 +71,6 @@ bool Rule::isPoly() const {
     return guard->isPoly() && update.isPoly();
 }
 
-Rule Rule::normlizeTmpVars() const {
-    Subs s;
-    unsigned next {0};
-    for (const auto &x: vars()) {
-        if (expr::isTempVar(x)) {
-            s.put(x, expr::toExpr(expr::nthTmpVar(x, next)));
-            ++next;
-        }
-    }
-    return subs(s);
-}
-
 std::ostream& operator<<(std::ostream &s, const TransIdx &idx) {
     return s << idx->getId();
 }
