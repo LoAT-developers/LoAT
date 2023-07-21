@@ -88,7 +88,7 @@ void ITSProblem::removeRule(TransIdx transition) {
 }
 
 TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<Implicant> &preds, const std::set<Implicant> &succs) {
-    const auto idx {&*rules.emplace(rule.normlizeTmpVars()).first};
+    const auto idx {&*rules.emplace(rule).first};
     startAndTargetLocations.emplace(idx, std::pair<LocationIdx, LocationIdx>(start, target));
     graph.addNode({idx, {}}, preds, succs, start == target);
     if (start == initialLocation) {
