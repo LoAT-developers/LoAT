@@ -120,12 +120,16 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
         for (const auto &[imp, t]: it->second) {
             if (imp->subs(sample_point)->isTriviallyTrue()) {
                 if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
-                shortcut = t;
-                if (last_loop == lang) {
-                    lookback = backlink;
+                if (t) {
+                    shortcut = t;
+                    if (last_loop == lang) {
+                        lookback = backlink;
+                    }
+                    last_loop = lang;
+                    return true;
+                } else {
+                    return false;
                 }
-                last_loop = lang;
-                return true;
             }
         }
     }
@@ -176,6 +180,8 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
             }
         }
     }
+    auto &map {cache.emplace(lang, std::map<BoolExpr, TransIdx>()).first->second};
+    map.emplace(BExpression::True, nullptr);
     return false;
 }
 
