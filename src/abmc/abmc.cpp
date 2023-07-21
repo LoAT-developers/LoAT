@@ -343,9 +343,12 @@ void ABMC::analyze() {
                 std::cout << "trace: " << trace << std::endl;
             }
             std::vector<int> lang;
-            const auto backlink {has_looping_suffix(trace.size() - 1, lang)};
-            if (backlink && *backlink > lookback) {
-                handle_loop(*backlink, lang);
+            for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
+                 backlink && *backlink > lookback;
+                 backlink = has_looping_suffix(*backlink - 1, lang)) {
+                if (handle_loop(*backlink, lang)) {
+                    break;
+                }
             }
             break;
         }
