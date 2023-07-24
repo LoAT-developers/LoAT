@@ -41,7 +41,7 @@ private:
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
     void refine_dependency_graph(const Implicant &imp);
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
-    std::pair<Rule, Subs> build_loop(const int backlink);
+    std::tuple<Rule, Subs, bool> build_loop(const int backlink);
     bool handle_loop(int backlink, const std::vector<int> &lang);
     void unsat(const unsigned depth);
     void sat(const unsigned depth);
