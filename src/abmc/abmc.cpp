@@ -15,7 +15,6 @@ using namespace Config::ABMC;
 
 ABMC::ABMC(ITSProblem &its):
     its(its),
-    vars(its.getVars()),
     trace_var(NumVar::next()),
     objective_var(NumVar::next()){
     if (max_smt || optimize) {
@@ -27,9 +26,6 @@ ABMC::ABMC(ITSProblem &its):
         solver = std::make_unique<Z3<IntTheory, BoolTheory>>(smt::default_timeout);
     }
     vars.insert(trace_var);
-    for (const auto &var: vars) {
-        post_vars.emplace(var, expr::next(var));
-    }
     solver->enableModels();
 }
 
@@ -156,9 +152,9 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
                 auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
                 if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
                     const auto new_idx {add_learned_clause(*simplified, backlink)};
-                    n = *accel_res.n;
-                    vars.insert(*n);
-                    post_vars.emplace(*n, NumVar::next());
+                    n_map.emplace(new_idx->getId(), *accel_res.n);
+                    vars.insert(*accel_res.n);
+                    post_vars.emplace(*accel_res.n, NumVar::next());
                     shortcut = new_idx;
                     last_loop = lang;
                     lang_map.emplace(Implicant(new_idx, {}), next);
@@ -256,6 +252,10 @@ void ABMC::analyze() {
             ITSExport::printForProof(its, std::cout);
         }
     }
+    vars.insertAll(its.getVars());
+    for (const auto &var: vars) {
+        post_vars.emplace(var, expr::next(var));
+    }
     last_orig_clause = 0;
     for (const auto &r: its.getAllTransitions()) {
         rule_map.emplace(r.getId(), &r);
@@ -339,7 +339,7 @@ void ABMC::analyze() {
                 solver->add_soft(sc);
             }
             if (optimize) {
-                const auto m {s.get<IntTheory>(*n)};
+                const auto m {s.get<IntTheory>(n_map.at((*shortcut)->getId()))};
                 objective = objective + m;
                 solver->add(sc | (expr::mkEq(m, 0) & step->subs(s)));
             } else {

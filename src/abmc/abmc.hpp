@@ -28,7 +28,7 @@ private:
     std::optional<TransIdx> shortcut;
     std::vector<int> last_loop;
     unsigned lookback {0};
-    std::optional<NumVar> n;
+    std::map<unsigned, NumVar> n_map;
     Expr objective {0};
     NumVar objective_var;
     std::map<unsigned, TransIdx> rule_map;
