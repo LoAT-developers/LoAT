@@ -94,3 +94,14 @@ std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
     }
     return s;
 }
+
+bool Rule::isDeterministic() const {
+    for (const auto &e: update) {
+        for (const auto &x: expr::vars(expr::second(e))) {
+            if (expr::isTempVar(x)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}

@@ -68,6 +68,8 @@ public:
 
     unsigned getId() const;
 
+    bool isDeterministic() const;
+
 };
 
 /**

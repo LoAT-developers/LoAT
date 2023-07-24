@@ -35,15 +35,10 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
 
 std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::vector<int> &lang) {
     const auto last {trace.back()};
-    const auto ends_with_orig {is_orig_clause(last.first)};
-    std::set<unsigned> learned;
     for (unsigned pos = start; pos > lookback; --pos) {
         lang.push_back(get_language(pos));
         const auto &imp {trace[pos]};
-        if (!is_orig_clause(imp.first)) {
-            learned.insert(imp.first->getId());
-        }
-        if (its.areAdjacent(last, imp) && (ends_with_orig || learned.size() > 1)) {
+        if (its.areAdjacent(last, imp)) {
             return pos;
         }
     }
@@ -63,11 +58,13 @@ int ABMC::get_language(unsigned i) {
     }
 }
 
-std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
+std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
+    bool nested {false};
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto imp {trace[i]};
+        nested |= is_orig_clause(imp.first);
         const auto rule {imp.first->withGuard(BExpression::buildAndFromLitPtrs(imp.second))};
         if (loop) {
             const auto [chained, sigma] {Chaining::chain(rule, *loop)};
@@ -91,7 +88,7 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
         ITSExport::printRule(implicant, std::cout);
         std::cout << std::endl;
     }
-    return {implicant, model};
+    return {implicant, model, nested};
 }
 
 void ABMC::refine_dependency_graph(const Implicant &imp) {
@@ -115,7 +112,7 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 }
 
 bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
-    auto [loop, sample_point] {build_loop(backlink)};
+    auto [loop, sample_point, nested] {build_loop(backlink)};
     const auto it {cache.find(lang)};
     if (it != cache.end()) {
         for (const auto &[imp, t]: it->second) {
@@ -135,6 +132,10 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
         }
     }
     const auto simp {Preprocess::preprocessRule(loop)};
+    if (nested && !simp->isDeterministic()) {
+        if (Config::Analysis::log) std::cout << "not accelerating non-deterministic, nested loop" << std::endl;
+        return false;
+    }
     if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
     } else {
