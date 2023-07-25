@@ -65,7 +65,7 @@ namespace Config {
 
     namespace Analysis {
 
-        std::vector<Mode> modes { Complexity, NonTermination, Reachability, Safety };
+        std::vector<Mode> modes { Complexity, NonTermination, Reachability, Safety, Recurrence };
 
         Mode mode = Complexity;
         Engine engine = ADCL;
@@ -80,6 +80,8 @@ namespace Config {
             case Reachability: return "reachability";
                 break;
             case Safety: return "safety";
+                break;
+            case Recurrence: return "recurrence";
                 break;
             default:
                 throw std::invalid_argument("unknown mode");

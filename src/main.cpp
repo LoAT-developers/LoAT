@@ -28,6 +28,7 @@
 #include "bmc.hpp"
 #include "abmc.hpp"
 #include "yices.hpp"
+#include "recurrence.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -158,6 +159,11 @@ int main(int argc, char *argv[]) {
     if (filename.empty()) {
         cerr << "Error: missing filename" << endl;
         return 1;
+    }
+
+    if (Config::Analysis::mode == Config::Analysis::Recurrence) {
+        Recurrence::solve(filename);
+        return 0;
     }
 
     ITSPtr its;
