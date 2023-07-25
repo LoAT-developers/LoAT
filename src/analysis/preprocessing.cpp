@@ -71,12 +71,13 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
     bool changed;
     do {
         changed = false;
+        std::set<TransIdx> deleted;
         for (const auto &first: its.getAllTransitions()) {
             const auto succ {its.getSuccessors(&first)};
             if (succ.size() == 1 && succ.find(&first) == succ.end()) {
                 const auto second_idx {*succ.begin()};
                 if (!its.isSimpleLoop(second_idx)) {
-                    std::set<TransIdx> deleted {&first};
+                    deleted.insert(&first);
                     if (its.getPredecessors(second_idx).size() == 1) {
                         deleted.insert(second_idx);
                     }
@@ -84,14 +85,14 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
                     const auto chained {Chaining::chain(first, *second_idx).first};
                     its.addRule(chained, &first, second_idx);
                     res.chainingProof(first, *second_idx, chained);
-                    for (const auto &idx: deleted) {
-                        its.removeRule(idx);
-                    }
-                    res.deletionProof(deleted);
                     changed = true;
                 }
             }
         }
+        for (const auto &idx: deleted) {
+            its.removeRule(idx);
+        }
+        res.deletionProof(deleted);
     } while (changed);
     return res;
 }
