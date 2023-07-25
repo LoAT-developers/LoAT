@@ -21,6 +21,7 @@
 #include "expr.hpp"
 
 #include <purrs.hh>
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 namespace Purrs = Parma_Recurrence_Relation_Solver;
@@ -139,5 +140,34 @@ std::optional<Recurrence::Result> Recurrence::solve(const Subs &update) {
         return rec.result;
     } else {
         return {};
+    }
+}
+
+void Recurrence::solve(const std::string &eq) {
+    std::vector<std::string> strs;
+    boost::split(strs, eq, boost::is_any_of("="));
+    if (strs.size() != 2) {
+        throw std::logic_error("equation must have the form lhs=rhs, where lhs is a variable");
+    }
+    const auto n {Purrs::Expr(Purrs::Recurrence::n).toGiNaC()};
+    GiNaC::symtab table;
+    table["n"] = n;
+    GiNaC::parser parser{table};
+    const GiNaC::ex lhs {parser(strs[0])};
+    const GiNaC::ex rhs {parser(strs[1])};
+    assert(Expr(lhs).isVar());
+    auto last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
+    Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(rhs.subs({{lhs, last}}))};
+    auto status {Purrs::Recurrence::Solver_Status::TOO_COMPLEX};
+    try {
+        status = rec.compute_exact_solution();
+    } catch (...) {
+    }
+    if (status == Purrs::Recurrence::SUCCESS) {
+        Purrs::Expr exact;
+        rec.exact_solution(exact);
+        std::cout << exact.toGiNaC() << std::endl;
+    } else {
+        std::cout << "failed  to solve recurrence" << std::endl;
     }
 }

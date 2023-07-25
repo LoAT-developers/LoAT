@@ -67,7 +67,7 @@ namespace Config {
     // Main algorithm
     namespace Analysis {
 
-        enum Mode { Complexity, NonTermination, Reachability, Safety };
+        enum Mode { Complexity, NonTermination, Reachability, Safety, Recurrence };
         enum Engine { ADCL, BMC, ABMC };
         extern std::vector<Mode> modes;
         extern Mode mode;

@@ -39,6 +39,8 @@ public:
 
     static std::optional<Result> solve(const Subs &equations);
 
+    static void solve(const std::string &eq);
+
 private:
 
     Recurrence(const Subs &subs);
