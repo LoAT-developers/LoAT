@@ -217,6 +217,7 @@ acceleration::Result LoopAcceleration::run() {
         res.status = acceleration::AccelerationFailed;
         if (accelerator) {
             res.status = acceleration::Success;
+            covered = BExpression::buildAnd(accelerator->covered);
             accel_rule = Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form);
             proof.concat(accelerator->proof);
         }
