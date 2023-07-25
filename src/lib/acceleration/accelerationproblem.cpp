@@ -236,8 +236,11 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     if (!std::holds_alternative<Rel>(lit)) {
         return false;
     }
+    // t > 0
     const auto &rel {std::get<Rel>(lit)};
+    // up(t)
     const auto updated {rel.lhs().subs(update.get<IntTheory>())};
+    // t <(=) up(t)
     const auto i = strict ? Rel::buildLt(rel.lhs(), updated) : Rel::buildLeq(rel.lhs(), updated);
     const auto inc {BExpression::buildTheoryLit(i)};
     solver->push();
@@ -246,7 +249,9 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         solver->pop();
         return false;
     }
-    const auto dec {BExpression::buildTheoryLit(strict ? Rel::buildGeq(updated, updated.subs(update.get<IntTheory>())) : Rel::buildGt(updated, updated.subs(update.get<IntTheory>())))};
+    // up(t) >(=) up^2(t)
+    const auto d {strict ? Rel::buildGeq(updated, updated.subs(update.get<IntTheory>())) : Rel::buildGt(updated, updated.subs(update.get<IntTheory>()))};
+    const auto dec {BExpression::buildTheoryLit(d)};
     solver->add(dec);
     const auto success {solver->check()};
     solver->pop();
@@ -257,8 +262,9 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
             if (!closed) {
                 return false;
             }
-            g = dec & rel.subs(closed->closed_form.get<IntTheory>()).subs({{closed->n, Expr(closed->n)-1}});
-            c = dec;
+            const auto s {closed->closed_form.get<IntTheory>().compose(ExprSubs({{closed->n, Expr(closed->n)-1}}))};
+            g = BExpression::buildTheoryLit((!i).subs(s)) & rel.subs(s);
+            c = BExpression::buildTheoryLit((!i));
             res.nonterm = false;
         } else {
             g = inc & rel;
