@@ -52,7 +52,6 @@ bool ends_with_square(const std::vector<int> &w) {
 }
 
 bool has_square(const std::vector<int> &w, const unsigned max_length) {
-    std::cout << "searching square of length <= " << max_length << " in " << w << std::endl;
     auto size = w.size();
     for (auto it = w.begin(); it != w.end(); ++it) {
         if (starts_with_square(it, size, max_length)) {
