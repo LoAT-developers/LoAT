@@ -24,10 +24,9 @@ private:
     std::map<Var, Var> post_vars;
     std::map<Implicant, int> lang_map;
     std::map<std::vector<int>, std::map<BoolExpr, TransIdx>> cache;
+    std::map<int, std::vector<int>> history;
     NumVar trace_var;
     std::optional<TransIdx> shortcut;
-    std::vector<int> last_loop;
-    unsigned lookback {0};
     std::map<unsigned, NumVar> n_map;
     Expr objective {0};
     NumVar objective_var;
@@ -46,6 +45,7 @@ private:
     void unsat(const unsigned depth);
     void sat(const unsigned depth);
     void build_trace();
+    bool is_redundant(const std::vector<int> &w) const;
 
 public:
 

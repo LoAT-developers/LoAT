@@ -33,13 +33,73 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
+template <class iterator>
+bool starts_with_square(iterator &it, const unsigned size, const unsigned max_length) {
+    auto start {it};
+    auto end {it};
+    for (auto length = 1u; length <= max_length; ++length) {
+        ++end;
+        if (std::equal(start, end, end)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ends_with_square(const std::vector<int> &w) {
+    const auto it {w.rbegin()};
+    return starts_with_square(it, w.size(), w.size() / 2);
+}
+
+bool has_square(const std::vector<int> &w, const unsigned max_length) {
+    std::cout << "searching square of length <= " << max_length << " in " << w << std::endl;
+    auto size = w.size();
+    for (auto it = w.begin(); it != w.end(); ++it) {
+        if (starts_with_square(it, size, max_length)) {
+            return true;
+        }
+        --size;
+    }
+    return false;
+}
+
+bool ABMC::is_redundant(const std::vector<int> &ww) const {
+    auto it {ww.begin()};
+    const auto size {ww.size() / 2};
+    for (auto i = 0u; i < size; ++i, ++it) {
+        auto h {history.find(*it)};
+        if (h != history.end()) {
+            auto next {it};
+            ++next;
+            if (h->second.size() == size - 1 && std::equal(h->second.begin(), h->second.end(), next)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::vector<int> &lang) {
     const auto last {trace.back()};
-    for (unsigned pos = start; pos > lookback; --pos) {
+    for (unsigned pos = start; pos > 0; --pos) {
         lang.push_back(get_language(pos));
+        if (ends_with_square(lang)) {
+            if (Config::Analysis::log) std::cout << "skipping square " << lang << std::endl;
+            return {};
+        } else {
+            if (Config::Analysis::log) std::cout << lang << " does not have a square" << std::endl;
+        }
         const auto &imp {trace[pos]};
         if (its.areAdjacent(last, imp)) {
-            return pos;
+            std::vector<int> ll{lang.begin(), lang.end()};
+            ll.insert(ll.end(), lang.begin(), lang.end());
+            if (has_square(ll, lang.size() / 2)) {
+                if (Config::Analysis::log) std::cout << "skipping cyclic square " << lang << std::endl;
+            } else if (is_redundant(ll)) {
+                if (Config::Analysis::log) std::cout << "skipping redundant loop" << std::endl;
+            } else {
+                return pos;
+            }
         }
     }
     return {};
@@ -120,10 +180,6 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
                 if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
                 if (t) {
                     shortcut = t;
-                    if (last_loop == lang) {
-                        lookback = backlink;
-                    }
-                    last_loop = lang;
                     return true;
                 } else {
                     return false;
@@ -157,7 +213,7 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
                     vars.insert(*accel_res.n);
                     post_vars.emplace(*accel_res.n, NumVar::next());
                     shortcut = new_idx;
-                    last_loop = lang;
+                    history.emplace(next, lang);
                     lang_map.emplace(Implicant(new_idx, {}), next);
                     ++next;
                     auto &map {cache.emplace(lang, std::map<BoolExpr, TransIdx>()).first->second};
@@ -362,6 +418,7 @@ void ABMC::analyze() {
             shortcut.reset();
             build_trace();
             std::vector<int> lang;
+            if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
             for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
                  backlink;
                  backlink = has_looping_suffix(*backlink - 1, lang)) {
@@ -369,6 +426,7 @@ void ABMC::analyze() {
                     break;
                 }
             }
+            if (Config::Analysis::log) std::cout << "done with loop handling" << std::endl;
             break;
         }
         case SmtResult::Unknown:
