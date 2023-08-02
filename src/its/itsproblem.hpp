@@ -18,6 +18,7 @@
 #pragma once
 
 #include "rule.hpp"
+#include "linearsolver.hpp"
 #include "dependencygraph.hpp"
 #include "types.hpp"
 
@@ -105,6 +106,20 @@ public:
     std::set<DG::Edge> refineDependencyGraph(const Implicant &idx);
 
     size_t size() const;
+
+    // TODO: these attributes should probably not be "so" public. They should only be initialized
+    // once after parsing and should not be mutated during analysis. But because the ITS instance is constructed 
+    // incrementally, we can't pass these values into the constructor and having public getters+setters
+    // is no different from making the attributes public directly.    
+    std::vector<NumVar> numProgVars;
+    std::vector<BoolVar> boolProgVars;
+    const std::vector<Var> getProgVars() const;
+
+    std::list<Clause> nonLinearCHCs;
+
+    void addClause(const Clause &chc);
+
+    const Clause clauseFrom(TransIdx trans_idx) const;
 
 protected:
 

@@ -29,6 +29,7 @@
 #include "abmc.hpp"
 #include "yices.hpp"
 #include "recurrence.hpp"
+#include "nonlinear.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -193,7 +194,12 @@ int main(int argc, char *argv[]) {
     yices::init();
     switch (Config::Analysis::engine) {
     case Config::Analysis::ADCL:
-        reachability::Reachability::analyze(*its);
+        if (its->nonLinearCHCs.size() == 0) {
+            reachability::Reachability::analyze(*its);
+        } else {
+            auto linear_solver = reachability::Reachability(*its, true);
+            NonLinearSolver::analyze(linear_solver);
+        }
         break;
     case Config::Analysis::BMC:
         BMC::analyze(*its);

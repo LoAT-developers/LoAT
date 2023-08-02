@@ -33,6 +33,7 @@ build
 build-static
 bundle
 CMakeFiles
+CMakeCache.txt
 compile_commands.json
 loat-static
 LoAT.*

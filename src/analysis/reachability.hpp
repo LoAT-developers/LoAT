@@ -149,7 +149,7 @@ public:
     ProofFailed(const std::string &msg);
 };
 
-class Reachability {
+class Reachability : public ILinearSolver {
 
     ITSProblem &chcs;
 
@@ -293,11 +293,37 @@ class Reachability {
 
     bool try_to_finish();
 
-    Reachability(ITSProblem &its);
-
     void analyze();
 
+    void analyze_incremental();
+
+    bool main_loop_body();
+
+    void restart();
+
+    LinearSolver::Result analysis_result;
+
+    LinearSolver::Result analysis_result_from(std::string res) const;
+
+    const bool incremental_mode;
+
+    std::set<std::vector<std::pair<TransIdx, BoolExpr>>> seen_traces;
+
+    const std::optional<Clause> trace_as_fact();
+
 public:
+
+    Reachability(ITSProblem &chcs, bool incremental_mode);
+
+    LinearSolver::Result get_analysis_result() const override;
+
+    void add_clauses(const std::list<Clause> &chc) override;
+
+    const std::list<Clause> derive_new_facts() override;
+
+    const std::list<Clause> get_initial_facts() const override;
+
+    const std::list<Clause> get_non_linear_chcs() const override;
 
     static void analyze(ITSProblem &its);
 

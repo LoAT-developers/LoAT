@@ -17,6 +17,7 @@
 
 #include "itsproblem.hpp"
 #include "export.hpp"
+#include "expr.hpp"
 #include "smtfactory.hpp"
 #include "chain.hpp"
 
@@ -257,4 +258,149 @@ std::set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph() {
 
 size_t ITSProblem::size() const {
     return graph.size();
+}
+
+const std::vector<Var> ITSProblem::getProgVars() const {
+    std::vector<Var> prog_vars;
+    prog_vars.reserve(numProgVars.size() + boolProgVars.size());
+    for (const auto &var: numProgVars) {
+        prog_vars.push_back(var);
+    }
+    for (const auto &var: boolProgVars) {
+        prog_vars.push_back(var);
+    }
+    return prog_vars;
+}
+
+/** 
+ * Converts an ITS rule (identified by a TransIdx) back to CHC representation.
+ * This does not restore the original representation after parsing perfectly,
+ * since number and order of predicate arguments is lost.
+ */
+const Clause ITSProblem::clauseFrom(TransIdx rule) const {
+    const auto prog_vars = getProgVars();
+
+    const auto guard = rule->getGuard();
+
+    const LocationIdx lhs_loc = getLhsLoc(rule);
+    const LocationIdx rhs_loc = getRhsLoc(rule);
+
+    const auto rhs = FunApp(rhs_loc, prog_vars).renameWith(rule->getUpdate());
+
+    if (lhs_loc == getInitialLocation()) {     
+        // rule is a linear CHC with no LHS predicates, ie a "fact"
+        return Clause({}, rhs, guard);
+    } else {
+        // rule is a linear CHC with exactly one LHS predicates, ie a "rule"
+        return Clause({ FunApp(lhs_loc, prog_vars) }, rhs, guard);  
+    }
+}
+
+/**
+ * TODO docs
+ */
+const FunApp normalizePredicate(unsigned int_var_count, unsigned bool_var_count, const FunApp &pred) {   
+    std::vector<Var> int_args;
+    int_args.reserve(int_var_count);
+    std::vector<Var> bool_args;
+    bool_args.reserve(bool_var_count);
+
+    for (const Var &arg: pred.args) {
+        if (std::holds_alternative<NumVar>(arg)) {
+            int_args.push_back(arg);
+        } else {
+            bool_args.push_back(arg);
+        }
+    }
+
+    while (int_args.size() < int_var_count) {
+        int_args.push_back(NumVar::next());
+    }
+
+    while (bool_args.size() < bool_var_count) {
+        bool_args.push_back(BoolVar::next());
+    }
+
+    int_args.insert(int_args.end(), bool_args.begin(), bool_args.end());
+    return FunApp(pred.loc, int_args);
+}
+
+/**
+ * Adds a clause to the ITS problem. If the clause is linear, it's converted to an ITS rule.
+ * If the clause is non-linear it's separately stored in `nonLinearCHCs`.
+ */
+void ITSProblem::addClause(const Clause &c) {    
+    if (c.isLinear()) {       
+        // If the clause is linear, extract the single LHS predicate. Or in case there are zero
+        // LHS predicates, construct a dummy predicate with the initial ITS location as the 
+        // predicate symbol.
+        const FunApp lhs = c.lhs.size() == 1 ? *c.lhs.begin() : FunApp(getInitialLocation(), {});
+    
+        Subs ren;
+        // replace the arguments of the body predicate with the corresponding program variables
+        unsigned bool_arg {0};
+        unsigned int_arg {0};
+        for (unsigned i = 0; i < lhs.args.size(); ++i) {
+            if (std::holds_alternative<NumVar>(lhs.args[i])) {
+                ren.put<IntTheory>(
+                    std::get<NumVar>(lhs.args[i]), 
+                    numProgVars[int_arg]
+                );
+                ++int_arg;
+            } else {
+                ren.put<BoolTheory>(
+                    std::get<BoolVar>(lhs.args[i]), 
+                    std::get<BoolExpr>(expr::toExpr(boolProgVars[bool_arg]))
+                );
+                ++bool_arg;
+            }
+        }
+        VarSet cVars;
+        for (const auto &var: c.rhs.args) {
+            cVars.insert(var);
+        }
+        c.guard->collectVars(cVars);
+        // replace all other variables from the clause with temporary variables
+        for (const auto &x: cVars) {
+            if (!ren.contains(x)) {
+                ren.put(x, expr::toExpr(expr::next(x)));
+            }
+        }
+        bool_arg = 0;
+        int_arg = 0;
+        Subs up;
+        for (unsigned i = 0; i < c.rhs.args.size(); ++i) {
+            if (std::holds_alternative<NumVar>(c.rhs.args[i])) {
+                up.put<IntTheory>(numProgVars[int_arg], ren.get<IntTheory>(std::get<NumVar>(c.rhs.args[i])));
+                ++int_arg;
+            } else if (std::holds_alternative<BoolVar>(c.rhs.args[i])) {
+                up.put<BoolTheory>(boolProgVars[bool_arg], ren.get<BoolTheory>(std::get<BoolVar>(c.rhs.args[i])));
+                ++bool_arg;
+            } else {
+                throw std::logic_error("unsupported theory in CHCParseVisitor");
+            }
+        }
+        for (unsigned i = int_arg; i < numProgVars.size(); ++i) {
+            up.put<IntTheory>(numProgVars[i], NumVar::next());
+        }
+        for (unsigned i = bool_arg; i < boolProgVars.size(); ++i) {
+            up.put<BoolTheory>(boolProgVars[i], std::get<BoolExpr>(expr::toExpr(BoolVar::next())));
+        }
+        up.put(NumVar::loc_var, c.rhs.loc);
+        const BoolExpr guard = c.guard->subs(ren)->simplify() & Rel::buildEq(NumVar::loc_var, lhs.loc);
+        addRule(Rule(guard, up), lhs.loc);
+    } else {
+        std::set<FunApp> lhs_normalized;
+
+        for (const FunApp &pred: c.lhs) {
+            const auto pred_normalized = normalizePredicate(numProgVars.size(), boolProgVars.size(), pred);
+            lhs_normalized.insert(pred_normalized);
+        }            
+    
+        nonLinearCHCs.push_back(Clause(
+            lhs_normalized, 
+            normalizePredicate(numProgVars.size(), boolProgVars.size(), c.rhs),
+            c.guard
+        ));       
+    } 
 }

@@ -33,6 +33,7 @@ endif()
 add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter)
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 message(STATUS "Compiler flags:" ${CMAKE_CXX_COMPILE_FLAGS})

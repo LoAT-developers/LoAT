@@ -10,6 +10,8 @@ bool isTempVar(const Var &var);
 
 bool isProgVar(const Var &var);
 
+const std::optional<Var> toVar(const ThExpr &expr);
+
 Var next(const Var &var);
 
 ThExpr toExpr(const Var &var);

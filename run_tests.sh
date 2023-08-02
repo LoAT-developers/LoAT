@@ -28,7 +28,7 @@ while read line; do
                     exit 0
                 fi
             else
-                if [ "$line" = "LIA-Lin" ]; then
+                if [[ "$line" = "LIA-Lin" ]] || [[ $line = "LIA" ]]; then
                     # line contains the folder of the following benchmarks
                     path=$line
                 else

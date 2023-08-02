@@ -25,7 +25,16 @@
 
 using namespace std;
 
+// FIXME: for trivial ITS with no (reachable) initial locations or no (reachable) sinks, 
+// we should return SAT, but due to this preprocessing step we will throw an error instead.
 ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its, bool forward) {
+    if (its.getInitialTransitions().size() == 0) {
+        throw std::logic_error("remove_irrelevant_clauses: ITS has no initial transitions");
+    }
+    if (its.getSinkTransitions().size() == 0) {
+        throw std::logic_error("remove_irrelevant_clauses: ITS has no sink transitions");
+    }
+ 
     std::set<TransIdx> keep;
     std::stack<TransIdx> todo;
     for (const auto x: forward ? its.getInitialTransitions() : its.getSinkTransitions()) {
@@ -149,7 +158,12 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
     if (Config::Analysis::log) {
         std::cout << "starting preprocesing..." << std::endl;
     }
-    if (Config::Analysis::reachability()) {
+    if (Config::Analysis::reachability() && its.nonLinearCHCs.size() == 0) {
+        // In this preprocessing step we remove transitions, that are not "forward reachable"
+        // from a initial location or "backward reachable" from a sink. Note, that this step
+        // is not valid though, if the ITS contains non-linear CHCs. For example a sink might 
+        // only be reachable via a non-linear CHCs, but because non-linear CHCs are not acounted
+        // for in the dependency graph, we would remove the sink because it appears to be unreachable.
         if (Config::Analysis::log) {
             std::cout << "removing irrelevant clauses..." << std::endl;
         }
