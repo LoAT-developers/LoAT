@@ -478,7 +478,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
             res.refinement.push_back(BExpression::buildTheoryLit(Rel::buildNeq(args[1], 0))); // division by zero is undefined
             bool explicit_encoding = false;
             if (args[1].isInt()) {
-                int y = args[1].toNum().to_int();
+                Num y = args[1].toNum();
                 if (y > 0 && y <= 100) {
                     explicit_encoding = true;
                     std::vector<Rel> refinement;
