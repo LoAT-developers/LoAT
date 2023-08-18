@@ -34,6 +34,7 @@ private:
     int next {0};
     ITSProof proof;
     DependencyGraph<Implicant> dependency_graph;
+    DependencyGraph<Implicant> non_dependency_graph;
 
     int get_language(unsigned i);
     BoolExpr encode_transition(const TransIdx idx);
