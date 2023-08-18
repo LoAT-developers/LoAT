@@ -147,9 +147,6 @@ public:
     }
 
     bool hasEdge(Node from, Node to) const {
-        if (!nodes.contains(from)) {
-            return false;
-        }
         const auto &succ = successors.at(from);
         return succ.find(to) != succ.end();
     }
