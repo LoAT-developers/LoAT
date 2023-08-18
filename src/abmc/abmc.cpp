@@ -10,6 +10,8 @@
 #include "vector.hpp"
 #include "z3_opt.hpp"
 #include "z3.hpp"
+#include "rule.hpp"
+#include "dependencygraph.hpp"
 
 using namespace Config::ABMC;
 
@@ -89,7 +91,7 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::vector<int
             if (Config::Analysis::log) std::cout << lang << " does not have a square" << std::endl;
         }
         const auto &imp {trace[pos]};
-        if (its.areAdjacent(last, imp)) {
+        if (dependency_graph.hasEdge(last, imp)) {
             std::vector<int> ll{lang.begin(), lang.end()};
             ll.insert(ll.end(), lang.begin(), lang.end());
             if (has_square(ll, lang.size() / 2)) {
@@ -150,22 +152,8 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
     return {implicant, model, nested};
 }
 
-void ABMC::refine_dependency_graph(const Implicant &imp) {
-    if (refine) {
-        const auto removed = its.refineDependencyGraph(imp);
-        proof.dependencyGraphRefinementProof(removed);
-        if (Config::Analysis::log && !removed.empty()) {
-            std::cout << "removed the following edges from the dependency graph:" << std::endl;
-            for (const auto &e: removed) {
-                std::cout << e << std::endl;
-            }
-        }
-    }
-}
-
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     const auto idx {its.addLearnedRule(accel, trace.at(backlink).first, trace.back().first)};
-    refine_dependency_graph({idx, {}});
     rule_map.emplace(idx->getId(), idx);
     return idx;
 }
@@ -272,6 +260,7 @@ void ABMC::build_trace() {
         std::cout << "objective: " << objective.subs(model.get<IntTheory>()) << std::endl;
     }
     std::vector<Subs> run;
+    std::optional<Implicant> prev;
     for (const auto &s: subs) {
         const auto rule {rule_map.at(s.get<IntTheory>(trace_var).subs(model.get<IntTheory>()).toNum().to_int())};
         const auto comp {expr::compose(s, model)};
@@ -280,9 +269,11 @@ void ABMC::build_trace() {
         if (!imp) {
             throw std::logic_error("model, but no implicant");
         }
-        if (its.addImplicant({rule, *imp})) {
-            refine_dependency_graph({rule, *imp});
+        const Implicant i {rule, *imp};
+        if (prev) {
+            dependency_graph.addEdge(*prev, i);
         }
+        prev = i;
         trace.emplace_back(rule, *imp);
     }
     if (Config::Analysis::log) {

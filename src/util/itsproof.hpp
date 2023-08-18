@@ -39,7 +39,20 @@ public:
 
     void majorProofStep(const std::string &step, const ITSProof &subproof, const ITSProblem &its);
 
-    void dependencyGraphRefinementProof(const std::set<Edge> &removed);
+    template <class Edge>
+    void dependencyGraphRefinementProof(const std::set<Edge> &removed) {
+        if (Proof::disabled()) {
+            return;
+        }
+        if (!removed.empty()) {
+            std::stringstream s;
+            s << "Removed the following edges from the dependency graph:" << std::endl;
+            for (const auto &e: removed) {
+                s << e.first << " -> " << e.second << std::endl;
+            }
+            append(s);
+        }
+    }
 
     void deletionProof(const std::set<TransIdx> &rules);
 

@@ -63,17 +63,3 @@ void ITSProof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRu
     ITSExport::printRule(newRule, s);
     append(s);
 }
-
-void ITSProof::dependencyGraphRefinementProof(const std::set<Edge> &removed) {
-    if (Proof::disabled()) {
-        return;
-    }
-    if (!removed.empty()) {
-        std::stringstream s;
-        s << "Removed the following edges from the dependency graph:" << std::endl;
-        for (const auto &e: removed) {
-            s << e.first << " -> " << e.second << std::endl;
-        }
-        append(s);
-    }
-}

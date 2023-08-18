@@ -73,7 +73,7 @@ public:
         proof.ruleTransformationProof(oldRule, transformation, newRule);
     }
 
-    void dependencyGraphRefinementProof(const std::set<Edge> &removed) {
+    void dependencyGraphRefinementProof(const std::set<ITSProblem::DG::Edge> &removed) {
         proof.dependencyGraphRefinementProof(removed);
     }
 
