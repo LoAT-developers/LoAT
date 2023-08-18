@@ -48,7 +48,7 @@ const std::set<Rule>& ITSProblem::getAllTransitions() const {
 
 std::set<TransIdx> ITSProblem::getSuccessors(const TransIdx loc) const {
     std::set<TransIdx> res;
-    for (const auto &[idx, _]: graph.getSuccessors({loc, {}})) {
+    for (const auto &idx: graph.getSuccessors(loc)) {
         res.insert(idx);
     }
     return res;
@@ -56,41 +56,28 @@ std::set<TransIdx> ITSProblem::getSuccessors(const TransIdx loc) const {
 
 std::set<TransIdx> ITSProblem::getPredecessors(const TransIdx loc) const {
     std::set<TransIdx> res;
-    for (const auto &[idx, _]: graph.getPredecessors({loc, {}})) {
+    for (const auto &idx: graph.getPredecessors(loc)) {
         res.insert(idx);
     }
     return res;
 }
 
 bool ITSProblem::areAdjacent(const TransIdx first, const TransIdx second) const {
-    return graph.hasEdge({first, {}}, {second, {}});
-}
-
-bool ITSProblem::areAdjacent(const Implicant first, const Implicant second) const {
     return graph.hasEdge(first, second);
 }
 
-bool ITSProblem::addImplicant(const Implicant &imp) {
-    if (graph.getNodes().contains(imp)) {
-        return false;
-    }
-    const Implicant orig {imp.first, {}};
-    graph.addNode(imp, graph.getPredecessors(orig), graph.getSuccessors(orig), isSimpleLoop(imp.first));
-    return true;
-}
-
 void ITSProblem::removeRule(TransIdx transition) {
-    graph.removeNode({transition, {}});
+    graph.removeNode(transition);
     startAndTargetLocations.erase(transition);
     initialTransitions.erase(transition);
     sinkTransitions.erase(transition);
     rules.erase(*transition);
 }
 
-TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<Implicant> &preds, const std::set<Implicant> &succs) {
+TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<TransIdx> &preds, const std::set<TransIdx> &succs) {
     const auto idx {&*rules.emplace(rule).first};
     startAndTargetLocations.emplace(idx, std::pair<LocationIdx, LocationIdx>(start, target));
-    graph.addNode({idx, {}}, preds, succs, start == target);
+    graph.addNode(idx, preds, succs, start == target);
     if (start == initialLocation) {
         initialTransitions.insert(idx);
     }
@@ -103,34 +90,33 @@ TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const Lo
 TransIdx ITSProblem::addRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs) {
     const auto start = getLhsLoc(same_preds);
     const auto target = getRhsLoc(same_succs);
-    const auto preds = graph.getPredecessors({same_preds, {}});
-    const auto succs = graph.getSuccessors({same_succs, {}});
+    const auto preds = graph.getPredecessors(same_preds);
+    const auto succs = graph.getSuccessors(same_succs);
     return addRule(rule, start, target, preds, succs);
 }
 
 TransIdx ITSProblem::addLearnedRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs) {
     const auto res = addRule(rule, same_preds, same_succs);
-    const Implicant imp {res, {}};
-    graph.removeEdge(imp, imp);
+    graph.removeEdge(res, res);
     return res;
 }
 
 TransIdx ITSProblem::addQuery(const BoolExpr &guard, const TransIdx same_preds) {
     const auto start = getLhsLoc(same_preds);
-    const auto preds = graph.getPredecessors({same_preds, {}});
+    const auto preds = graph.getPredecessors(same_preds);
     return addRule(Rule(guard, Subs::build<IntTheory>(NumVar::loc_var, sink)), start, sink, preds, {});
 }
 
 TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
     const auto target_opt = getRhsLoc(rule);
     const auto target = target_opt ? *target_opt : start;
-    std::set<Implicant> preds, succs;
+    std::set<TransIdx> preds, succs;
     for (const auto &e: startAndTargetLocations) {
         if (e.second.first == target) {
-            succs.insert({e.first, {}});
+            succs.insert(e.first);
         }
         if (e.second.second == start) {
-            preds.insert({e.first, {}});
+            preds.insert(e.first);
         }
     }
     return addRule(rule, start, target, preds, succs);
@@ -140,7 +126,7 @@ TransIdx ITSProblem::replaceRule(const TransIdx toReplace, const Rule &replaceme
     const auto idx {&*rules.emplace(replacement).first};
     startAndTargetLocations.emplace(idx, startAndTargetLocations.at(toReplace));
     startAndTargetLocations.erase(toReplace);
-    graph.replaceNode({toReplace, {}}, {idx, {}});
+    graph.replaceNode(toReplace, idx);
     if (isInitialTransition(toReplace)) {
         initialTransitions.insert(idx);
         initialTransitions.erase(toReplace);
@@ -154,7 +140,7 @@ TransIdx ITSProblem::replaceRule(const TransIdx toReplace, const Rule &replaceme
 }
 
 void ITSProblem::removeEdge(const TransIdx from, const TransIdx to) {
-    graph.removeEdge({from, {}}, {to, {}});
+    graph.removeEdge(from, to);
 }
 
 LocationIdx ITSProblem::addLocation() {
@@ -247,8 +233,7 @@ const std::set<TransIdx>& ITSProblem::getSinkTransitions() const {
 }
 
 bool ITSProblem::isSimpleLoop(const TransIdx idx) const {
-    const Implicant imp {idx, {}};
-    return graph.hasEdge(imp, imp);
+    return graph.hasEdge(idx, idx);
 }
 
 bool ITSProblem::isSinkTransition(const TransIdx idx) const {
@@ -259,28 +244,15 @@ bool ITSProblem::isInitialTransition(const TransIdx idx) const {
     return initialTransitions.find(idx) != initialTransitions.end();
 }
 
-const DependencyGraph& ITSProblem::getDependencyGraph() const {
+const ITSProblem::DG& ITSProblem::getDependencyGraph() const {
     return graph;
 }
 
-std::set<Edge> ITSProblem::refineDependencyGraph() {
-    const auto is_edge = [](const Implicant &fst, const Implicant &snd){
-        return SmtFactory::check(
-                   Chaining::chain(
-                       fst.first->withGuard(BExpression::buildAndFromLitPtrs(fst.second)),
-                       snd.first->withGuard(BExpression::buildAndFromLitPtrs(snd.second))).first.getGuard()) == Sat;
+std::set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph() {
+    const auto is_edge = [](const TransIdx fst, const TransIdx snd){
+        return SmtFactory::check(Chaining::chain(*fst, *snd).first.getGuard()) == Sat;
     };
     return graph.refine(is_edge);
-}
-
-std::set<Edge> ITSProblem::refineDependencyGraph(const Implicant &imp) {
-    const auto is_edge = [](const Implicant &fst, const Implicant &snd){
-        return SmtFactory::check(
-                   Chaining::chain(
-                       fst.first->withGuard(BExpression::buildAndFromLitPtrs(fst.second)),
-                       snd.first->withGuard(BExpression::buildAndFromLitPtrs(snd.second))).first.getGuard()) == Sat;
-    };
-    return graph.refine(imp, is_edge);
 }
 
 size_t ITSProblem::size() const {

@@ -33,12 +33,12 @@ private:
     std::map<unsigned, TransIdx> rule_map;
     int next {0};
     ITSProof proof;
+    DependencyGraph<Implicant> dependency_graph;
 
     int get_language(unsigned i);
     BoolExpr encode_transition(const TransIdx idx);
     bool is_orig_clause(const TransIdx idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
-    void refine_dependency_graph(const Implicant &imp);
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
     std::tuple<Rule, Subs, bool> build_loop(const int backlink);
     bool handle_loop(int backlink, const std::vector<int> &lang);
