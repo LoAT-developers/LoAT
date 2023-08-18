@@ -276,6 +276,18 @@ void ABMC::build_trace() {
         prev = i;
         trace.emplace_back(rule, *imp);
     }
+    const auto last {trace.back()};
+    const auto last_rule {last.first->withGuard(BExpression::buildAndFromLitPtrs(last.second))};
+    for (const auto &imp: trace) {
+        if (its.areAdjacent(last.first, imp.first) && !dependency_graph.hasEdge(last, imp) && !non_dependency_graph.hasEdge(last, imp)) {
+            const auto chained {Chaining::chain(last_rule, imp.first->withGuard(BExpression::buildAndFromLitPtrs(imp.second))).first};
+            if (SmtFactory::check(chained.getGuard()) == Sat) {
+                dependency_graph.addEdge(last, imp);
+            } else {
+                non_dependency_graph.addEdge(last, imp);
+            }
+        }
+    }
     if (Config::Analysis::log) {
         std::cout << "trace:" << std::endl << trace;
         std::cout << "run:" << std::endl;
