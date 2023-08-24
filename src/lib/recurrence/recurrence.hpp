@@ -31,19 +31,15 @@ public:
         Subs closed_form;
         unsigned int prefix = 0;
         ExprSubs refined_equations;
-        NumVar n;
-
-        Result();
-
     };
 
-    static std::optional<Result> solve(const Subs &equations);
+    static std::optional<Result> solve(const Subs &equations, const NumVar &n);
 
     static void solve(const std::string &eq);
 
 private:
 
-    Recurrence(const Subs &subs);
+    Recurrence(const Subs &subs, const NumVar &n);
 
     bool solve();
 
@@ -52,6 +48,8 @@ private:
     bool solve(const BoolVar &lhs, const BoolExpr &rhs);
 
     Subs equations;
+
+    const NumVar &n;
 
     /**
      * Substitution map, mapping variables to their recurrence equations

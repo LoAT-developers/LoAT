@@ -135,12 +135,12 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     }
 }
 
-Rule LoopAcceleration::overApproximatingAcceleration(const Subs &closed_form, const NumVar &n) {
+Rule LoopAcceleration::overApproximatingAcceleration(const Subs &closed_form) {
     Subs up;
     for (const auto &p: closed_form) {
         auto tmp {false};
         for (const auto &x: expr::vars(expr::second(p))) {
-            if (x != Var(n) && expr::isTempVar(x)) {
+            if (x != Var(config.n) && expr::isTempVar(x)) {
                 const auto var {expr::first(p)};
                 up.put(var, expr::toExpr(expr::next(var)));
                 tmp = true;
@@ -152,7 +152,7 @@ Rule LoopAcceleration::overApproximatingAcceleration(const Subs &closed_form, co
         }
     }
     BoolExprSet lits, up_lits;
-    auto previous {Subs::build<IntTheory>(n, Expr(n)-1)};
+    auto previous {Subs::build<IntTheory>(config.n, Expr(config.n)-1)};
     for (const auto &l: rule.getGuard()->lits()) {
         auto add {true};
         for (const auto &x: expr::variables(l)) {
@@ -167,7 +167,7 @@ Rule LoopAcceleration::overApproximatingAcceleration(const Subs &closed_form, co
         auto updated {expr::subs(l, up)};
         add = true;
         for (const auto &x: updated->vars()) {
-            if (x != Var(n) && expr::isTempVar(x)) {
+            if (x != Var(config.n) && expr::isTempVar(x)) {
                 add = false;
                 break;
             }
@@ -176,7 +176,7 @@ Rule LoopAcceleration::overApproximatingAcceleration(const Subs &closed_form, co
             lits.insert(updated->subs(previous));
         }
     }
-    auto guard {BExpression::buildAnd(lits) & Rel::buildGt(n, 0)};
+    auto guard {BExpression::buildAnd(lits) & Rel::buildGt(config.n, 0)};
     return Rule(guard, up);
 }
 
@@ -199,17 +199,16 @@ acceleration::Result LoopAcceleration::run() {
         return res;
     case Sat: {}
     }
-    const auto rec {Recurrence::solve(rule.getUpdate())};
+    const auto rec {Recurrence::solve(rule.getUpdate(), config.n)};
     if (!rec && !config.tryNonterm) {
         res.status = acceleration::ClosedFormFailed;
         return res;
     }
     res.prefix = rec->prefix;
-    res.n = rec->n;
     std::optional<Rule> accel_rule;
     auto covered {BExpression::True};
     if (config.approx == OverApprox) {
-        accel_rule = overApproximatingAcceleration(rec->closed_form, rec->n);
+        accel_rule = overApproximatingAcceleration(rec->closed_form);
         proof.append("over-approximating acceleration using closed form");
         res.status = acceleration::Success;
     } else {

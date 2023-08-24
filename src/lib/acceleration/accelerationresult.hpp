@@ -17,6 +17,7 @@ struct Accel {
     Rule rule;
     Proof proof;
     BoolExpr covered;
+
 };
 
 struct Nonterm {
@@ -30,7 +31,6 @@ struct Result {
     std::optional<Nonterm> nonterm;
     unsigned prefix = 0;
     unsigned period = 1;
-    std::optional<NumVar> n;
 
 };
 
