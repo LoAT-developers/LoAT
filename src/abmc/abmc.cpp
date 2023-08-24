@@ -28,6 +28,7 @@ ABMC::ABMC(ITSProblem &its):
         solver = std::make_unique<Z3<IntTheory, BoolTheory>>(smt::default_timeout);
     }
     vars.insert(trace_var);
+    vars.insert(n);
     solver->enableModels();
 }
 
@@ -35,8 +36,10 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-template <class iterator>
-bool starts_with_square(iterator &it, const unsigned size, const unsigned max_length) {
+bool ends_with_square(const std::vector<int> &w) {
+    const auto it {w.rbegin()};
+    const auto size {w.size()};
+    const auto max_length {size / 2};
     auto start {it};
     auto end {it};
     for (auto length = 1u; length <= max_length; ++length) {
@@ -44,22 +47,6 @@ bool starts_with_square(iterator &it, const unsigned size, const unsigned max_le
         if (std::equal(start, end, end)) {
             return true;
         }
-    }
-    return false;
-}
-
-bool ends_with_square(const std::vector<int> &w) {
-    const auto it {w.rbegin()};
-    return starts_with_square(it, w.size(), w.size() / 2);
-}
-
-bool has_square(const std::vector<int> &w, const unsigned max_length) {
-    auto size = w.size();
-    for (auto it = w.begin(); it != w.end(); ++it) {
-        if (starts_with_square(it, size, max_length)) {
-            return true;
-        }
-        --size;
     }
     return false;
 }
@@ -94,9 +81,7 @@ std::optional<unsigned> ABMC::has_looping_suffix(unsigned start, std::vector<int
         if (dependency_graph.hasEdge(last, imp)) {
             std::vector<int> ll{lang.begin(), lang.end()};
             ll.insert(ll.end(), lang.begin(), lang.end());
-            if (has_square(ll, lang.size() / 2)) {
-                if (Config::Analysis::log) std::cout << "skipping cyclic square " << lang << std::endl;
-            } else if (is_redundant(ll)) {
+            if (is_redundant(ll)) {
                 if (Config::Analysis::log) std::cout << "skipping redundant loop" << std::endl;
             } else {
                 return pos;
@@ -126,7 +111,9 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto imp {trace[i]};
         nested |= is_orig_clause(imp.first);
-        const auto rule {imp.first->withGuard(BExpression::buildAndFromLitPtrs(imp.second))};
+        const auto rule {imp.first
+                            ->withGuard(BExpression::buildAndFromLitPtrs(imp.second))
+                            .subs(Subs::build<IntTheory>(n, subs.at(i).get<IntTheory>(n)))};
         if (loop) {
             const auto [chained, sigma] {Chaining::chain(rule, *loop)};
             loop = chained;
@@ -152,34 +139,65 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
     return {implicant, model, nested};
 }
 
+BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
+    if (loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
+        return BExpression::True;
+    }
+    // we must not start another iteration of the loop in the next step,
+    // so we require that we either use the learned transition,
+    // or some implicant of the loop is violated
+    BoolExprSet pre;
+    const auto s {subs_at(depth + 1)};
+    const auto not_covered {!loop.covered->subs(s)};
+    pre.insert(BExpression::buildTheoryLit(Rel::buildEq(s.get<IntTheory>(trace_var), (*shortcut)->getId())));
+    pre.insert(not_covered);
+    unsigned long length {depth - backlink + 1};
+    for (unsigned i = 0; i < length; ++i) {
+        const auto s {subs_at(depth + i + 1)};
+        for (const auto lit: trace[backlink + i].second) {
+            pre.insert(expr::subs(expr::negate(*lit), s));
+        }
+    }
+    // we must not start another iteration of the loop after using the learned transition in the next step
+    BoolExprSet post;
+    post.insert(BExpression::buildTheoryLit(Rel::buildNeq(subs_at(depth + 1).get<IntTheory>(trace_var), (*shortcut)->getId())));
+    post.insert(not_covered);
+    for (unsigned i = 0; i < length; ++i) {
+        const auto s {subs_at(depth + i + 2)};
+        for (const auto lit: trace[backlink + i].second) {
+            post.insert(expr::subs(expr::negate(*lit), s));
+        }
+    }
+    return BExpression::buildOr(pre) & BExpression::buildOr(post);
+}
+
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     const auto idx {its.addLearnedRule(accel, trace.at(backlink).first, trace.back().first)};
     rule_map.emplace(idx->getId(), idx);
     return idx;
 }
 
-bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
+std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
     auto [loop, sample_point, nested] {build_loop(backlink)};
     const auto it {cache.find(lang)};
     if (it != cache.end()) {
-        for (const auto &[imp, t]: it->second) {
+        for (const auto &[imp, loop]: it->second) {
             if (imp->subs(sample_point)->isTriviallyTrue()) {
                 if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
-                if (t) {
-                    shortcut = t;
-                    return true;
+                if (loop) {
+                    shortcut = loop->idx;
+                    return loop;
                 } else {
-                    return false;
+                    return {};
                 }
             }
         }
     }
     const auto simp {Preprocess::preprocessRule(loop)};
-    if (nested && !simp->isDeterministic()) {
+    const auto deterministic {simp->isDeterministic()};
+    if (nested && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic, nested loop" << std::endl;
-        return false;
-    }
-    if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
+    } else if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
     } else {
         if (Config::Analysis::log && simp) {
@@ -190,21 +208,23 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
         if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
             if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
         } else {
-            AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm()};
+            AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
             const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
             if (accel_res.accel) {
                 auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
                 if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
                     const auto new_idx {add_learned_clause(*simplified, backlink)};
-                    n_map.emplace(new_idx->getId(), *accel_res.n);
-                    vars.insert(*accel_res.n);
-                    post_vars.emplace(*accel_res.n, NumVar::next());
                     shortcut = new_idx;
                     history.emplace(next, lang);
                     lang_map.emplace(Implicant(new_idx, {}), next);
                     ++next;
-                    auto &map {cache.emplace(lang, std::map<BoolExpr, TransIdx>()).first->second};
-                    map.emplace(accel_res.accel->covered, new_idx);
+                    const Loop loop {.idx = new_idx,
+                                    .prefix = accel_res.prefix,
+                                    .period = accel_res.period,
+                                    .covered = accel_res.accel->covered,
+                                    .deterministic = deterministic};
+                    auto &map {cache.emplace(lang, std::map<BoolExpr, std::optional<Loop>>()).first->second};
+                    map.emplace(accel_res.accel->covered, loop);
                     ITSProof sub_proof, acceleration_proof;
                     acceleration_proof.storeSubProof(simp.getProof());
                     acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
@@ -217,14 +237,14 @@ bool ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
                         ITSExport::printRule(*simplified, std::cout);
                         std::cout << std::endl;
                     }
-                    return true;
+                    return loop;
                 }
             }
         }
     }
-    auto &map {cache.emplace(lang, std::map<BoolExpr, TransIdx>()).first->second};
-    map.emplace(BExpression::True, nullptr);
-    return false;
+    auto &map {cache.emplace(lang, std::map<BoolExpr, std::optional<Loop>>()).first->second};
+    map.emplace(BExpression::True, std::optional<Loop>());
+    return {};
 }
 
 BoolExpr ABMC::encode_transition(const TransIdx idx) {
@@ -239,14 +259,14 @@ BoolExpr ABMC::encode_transition(const TransIdx idx) {
     return BExpression::buildAnd(res);
 }
 
-void ABMC::unsat(const unsigned depth) {
+void ABMC::unsat() {
     std::cout << "unsat" << std::endl;
     proof.append("reached error location at depth " + std::to_string(depth));
     proof.result("unsat");
     proof.print();
 }
 
-void ABMC::sat(const unsigned depth) {
+void ABMC::sat() {
     std::cout << "sat" << std::endl;
     proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
     proof.result("sat");
@@ -261,11 +281,15 @@ void ABMC::build_trace() {
     }
     std::vector<Subs> run;
     std::optional<Implicant> prev;
-    for (const auto &s: subs) {
+    for (unsigned d = 0; d <= depth; ++d) {
+        const auto s {subs.at(d)};
         const auto rule {rule_map.at(s.get<IntTheory>(trace_var).subs(model.get<IntTheory>()).toNum().to_int())};
         const auto comp {expr::compose(s, model)};
         const auto imp {rule->getGuard()->implicant(comp)};
-        run.push_back(comp.project(rule->getUpdate().domain()));
+        auto vars {rule->getUpdate().domain()};
+        vars.insert(n);
+        vars.insert(trace_var);
+        run.push_back(comp.project(vars));
         if (!imp) {
             throw std::logic_error("model, but no implicant");
         }
@@ -283,6 +307,19 @@ void ABMC::build_trace() {
             std::cout << s << std::endl;
         }
     }
+}
+
+const Subs& ABMC::subs_at(const unsigned i) {
+    while (subs.size() <= i) {
+        Subs s;
+        for (const auto &var: vars) {
+            const auto &post_var {post_vars.at(var)};
+            s.put(var, subs.back().get(post_var));
+            s.put(post_var, expr::toExpr(expr::next(post_var)));
+        }
+        subs.push_back(s);
+    }
+    return subs.at(i);
 }
 
 void ABMC::analyze() {
@@ -313,7 +350,7 @@ void ABMC::analyze() {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
-                unsat(1);
+                unsat();
                 return;
             case SmtResult::Unknown:
                 approx = true;
@@ -343,31 +380,14 @@ void ABMC::analyze() {
     }
     const auto query {BExpression::buildOr(queries)};
 
-    unsigned depth {0};
-    VarSet trace_vars;
-    trace_vars.insert(trace_var);
-    trace_vars.insert(post_vars.at(trace_var));
     while (true) {
-        if (Config::Analysis::log) {
-            std::cout << "depth: " << depth << std::endl;
-        }
-        ++depth;
-        Subs s;
-        for (const auto &var: vars) {
-            const auto &post_var {post_vars.at(var)};
-            s.put(var, subs.back().get(post_var));
-            const auto next {expr::next(post_var)};
-            if (var == Var(trace_var)) {
-                trace_vars.insert(next);
-            }
-            s.put(post_var, expr::toExpr(next));
-        }
+        const auto &s {subs_at(depth + 1)};
         solver->push();
         solver->add(query->subs(s));
         switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
-            unsat(depth);
+            unsat();
             return;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
@@ -386,7 +406,7 @@ void ABMC::analyze() {
                 solver->add_soft(sc);
             }
             if (optimize) {
-                const auto m {s.get<IntTheory>(n_map.at((*shortcut)->getId()))};
+                const auto m {s.get<IntTheory>(n)};
                 objective = objective + m;
                 solver->add(sc | (expr::mkEq(m, 0) & step->subs(s)));
             } else {
@@ -397,11 +417,12 @@ void ABMC::analyze() {
             solver->push();
             solver->add(expr::mkEq(objective_var, objective));
         }
-        subs.push_back(s);
+        ++depth;
+        BoolExpr blocking_clause;
         switch (solver->check()) {
         case SmtResult::Unsat:
             if (!approx) {
-                sat(depth);
+                sat();
             }
             return;
         case SmtResult::Sat: {
@@ -409,11 +430,11 @@ void ABMC::analyze() {
             build_trace();
             std::vector<int> lang;
             if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
-            for (auto backlink = has_looping_suffix(trace.size() - 1, lang);
-                 backlink;
-                 backlink = has_looping_suffix(*backlink - 1, lang)) {
-                if (handle_loop(*backlink, lang)) {
-                    break;
+            const auto backlink = has_looping_suffix(trace.size() - 1, lang);
+            if (backlink) {
+                const auto loop {handle_loop(*backlink, lang)};
+                if (loop) {
+                    blocking_clause = build_blocking_clause(*backlink, *loop);
                 }
             }
             if (Config::Analysis::log) std::cout << "done with loop handling" << std::endl;
@@ -423,8 +444,14 @@ void ABMC::analyze() {
             shortcut.reset();
             trace.clear();
         }
+        if (Config::Analysis::log) {
+            std::cout << "depth: " << depth << std::endl;
+        }
         if (optimize) {
             solver->pop();
+        }
+        if (blocking_clause) {
+            solver->add(blocking_clause);
         }
     }
 }

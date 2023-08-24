@@ -500,9 +500,11 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             return std::make_unique<Covered>();
         }
     }
+    const NumVar n {NumVar::next()};
     AccelConfig config {
         .approx = Config::Analysis::safety() ? OverApprox : UnderApprox,
-        .tryNonterm = Config::Analysis::tryNonterm()};
+        .tryNonterm = Config::Analysis::tryNonterm(),
+        .n = n};
     const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
@@ -538,7 +540,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         if (simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
-                simplified.concat(instantiate(*accel_res.n, *simplified));
+                simplified.concat(instantiate(n, *simplified));
             }
             res.succeed();
             const auto loop_idx {add_learned_clause(*simplified, backlink)};

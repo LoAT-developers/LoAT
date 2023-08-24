@@ -197,7 +197,7 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
             res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
         }
     }
-    if (its.size() <= 1000) {
+    if (its.size() <= 1000 && Config::Analysis::engine != Config::Analysis::BMC && Config::Analysis::engine != Config::Analysis::ABMC) {
         if (Config::Analysis::log) {
             std::cout << "refining the dependency graph..." << std::endl;
         }

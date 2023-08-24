@@ -14,6 +14,14 @@ private:
 
     void analyze();
 
+    struct Loop {
+        TransIdx idx;
+        unsigned prefix;
+        unsigned period;
+        BoolExpr covered;
+        bool deterministic;
+    };
+
     ITSProblem &its;
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     bool approx {false};
@@ -21,19 +29,20 @@ private:
     std::vector<Subs> subs {Subs::Empty};
     std::vector<Implicant> trace;
     VarSet vars;
+    NumVar n {NumVar::next()};
     std::map<Var, Var> post_vars;
     std::map<Implicant, int> lang_map;
-    std::map<std::vector<int>, std::map<BoolExpr, TransIdx>> cache;
+    std::map<std::vector<int>, std::map<BoolExpr, std::optional<Loop>>> cache;
     std::map<int, std::vector<int>> history;
     NumVar trace_var;
     std::optional<TransIdx> shortcut;
-    std::map<unsigned, NumVar> n_map;
     Expr objective {0};
     NumVar objective_var;
     std::map<unsigned, TransIdx> rule_map;
     int next {0};
     ITSProof proof;
     DependencyGraph<Implicant> dependency_graph;
+    unsigned depth {0};
 
     int get_language(unsigned i);
     BoolExpr encode_transition(const TransIdx idx);
@@ -41,11 +50,13 @@ private:
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
     std::tuple<Rule, Subs, bool> build_loop(const int backlink);
-    bool handle_loop(int backlink, const std::vector<int> &lang);
-    void unsat(const unsigned depth);
-    void sat(const unsigned depth);
+    BoolExpr build_blocking_clause(const int backlink, const Loop &loop);
+    std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
+    void unsat();
+    void sat();
     void build_trace();
     bool is_redundant(const std::vector<int> &w) const;
+    const Subs& subs_at(const unsigned i);
 
 public:
 

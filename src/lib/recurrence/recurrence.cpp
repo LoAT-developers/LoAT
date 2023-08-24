@@ -18,7 +18,6 @@
 #include "recurrence.hpp"
 #include "dependencyorder.hpp"
 #include "inttheory.hpp"
-#include "expr.hpp"
 
 #include <purrs.hh>
 #include <boost/algorithm/string.hpp>
@@ -26,12 +25,12 @@
 using namespace std;
 namespace Purrs = Parma_Recurrence_Relation_Solver;
 
-Recurrence::Recurrence(const Subs &equations):
-    equations(equations) {}
+Recurrence::Recurrence(const Subs &equations, const NumVar &n):
+    equations(equations), n(n) {}
 
 bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
     const auto n {Purrs::Expr(Purrs::Recurrence::n).toGiNaC()};
-    const auto updated {rhs.subs(closed_form_pre.get<IntTheory>()).ex.subs(*result.n == n)};
+    const auto updated {rhs.subs(closed_form_pre.get<IntTheory>()).ex.subs(*this->n == n)};
     const auto &vars {rhs.vars()};
     unsigned prefix {0};
     GiNaC::ex closed_form;
@@ -80,8 +79,8 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    closed_form_pre.put<IntTheory>(lhs, Expr(closed_form.subs(n == *result.n-1)));
-    result.closed_form.put<IntTheory>(lhs, Expr(closed_form.subs(n == *result.n)));
+    closed_form_pre.put<IntTheory>(lhs, Expr(closed_form.subs(n == *this->n-1)));
+    result.closed_form.put<IntTheory>(lhs, Expr(closed_form.subs(n == *this->n)));
     return true;
 }
 
@@ -105,8 +104,6 @@ bool Recurrence::solve(const BoolVar &lhs, const BoolExpr &rhs) {
     return true;
 }
 
-Recurrence::Result::Result(): n(NumVar::next()) {}
-
 bool Recurrence::solve() {
     const auto order {DependencyOrder::findOrder(equations)};
     if (!order) {
@@ -128,14 +125,12 @@ bool Recurrence::solve() {
             return false;
         }
     }
-    const auto subs {Subs::build<IntTheory>(NumVar(0), result.n)};
-    result.closed_form = expr::concat(result.closed_form, subs);
     return true;
 }
 
 
-std::optional<Recurrence::Result> Recurrence::solve(const Subs &update) {
-    Recurrence rec {update};
+std::optional<Recurrence::Result> Recurrence::solve(const Subs &update, const NumVar &n) {
+    Recurrence rec {update, n};
     if (rec.solve()) {
         return rec.result;
     } else {

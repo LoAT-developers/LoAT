@@ -26,7 +26,7 @@ AccelerationProblem::AccelerationProblem(
     Logic logic {Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver<IntTheory, BoolTheory>(logic);
     if (closed) {
-        const auto bound {BExpression::buildTheoryLit(Rel(closed->n, Rel::geq, 1))};
+        const auto bound {BExpression::buildTheoryLit(Rel(config.n, Rel::geq, 1))};
         this->solver->add(bound);
         this->res.formula.push_back(bound);
     }
@@ -60,18 +60,18 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     }
     const auto &rel {std::get<Rel>(lit)};
     const auto nfold {rel.lhs().subs(closed->closed_form.get<IntTheory>()).expand()};
-    if (!nfold.isPoly(closed->n)) {
+    if (!nfold.isPoly(config.n)) {
         return false;
     }
     const auto &up {update.get<IntTheory>()};
-    const ExprSubs but_last {closed->closed_form.get<IntTheory>().compose({{closed->n, Expr(closed->n) - 1}})};
+    const ExprSubs but_last {closed->closed_form.get<IntTheory>().compose({{config.n, Expr(config.n) - 1}})};
     bool low_degree {false};
     RelSet guard;
     RelSet covered;
-    switch (nfold.degree(closed->n)) {
+    switch (nfold.degree(config.n)) {
     case 0: return false;
     case 1: {
-        const auto coeff {nfold.coeff(closed->n, 1)};
+        const auto coeff {nfold.coeff(config.n, 1)};
         if (coeff.isGround()) {
             if (coeff.toNum().is_positive()) {
                 guard.insert(rel);
@@ -86,7 +86,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         break;
     }
     case 2: {
-        const auto coeff {nfold.coeff(closed->n, 2)};
+        const auto coeff {nfold.coeff(config.n, 2)};
         if (coeff.isGround()) {
             if (coeff.toNum().is_negative()) {
                 guard.insert(rel);
@@ -101,7 +101,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     if (!low_degree && !samplePoint) {
         return false;
     } else if (!low_degree) {
-        if (nfold.isGround() || !nfold.isPoly(closed->n)) {
+        if (nfold.isGround() || !nfold.isPoly(config.n)) {
             return false;
         }
         auto sample_point {samplePoint->get<IntTheory>()};
@@ -174,7 +174,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     auto success {solver->check() == Unsat};
     solver->pop();
     if (success) {
-        auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(closed->n, Expr(closed->n)-1))};
+        auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, Expr(config.n)-1))};
         if (closed->prefix > 0) {
             g = g & lit;
         }
@@ -222,7 +222,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     const auto success {solver->check() == Unsat};
     solver->pop();
     if (success) {
-        const auto g {BExpression::buildTheoryLit(rel) & rel.subs(closed->closed_form.get<IntTheory>()).subs({{closed->n, Expr(closed->n)-1}})};
+        const auto g {BExpression::buildTheoryLit(rel) & rel.subs(closed->closed_form.get<IntTheory>()).subs({{config.n, Expr(config.n)-1}})};
         res.formula.push_back(g);
         res.proof.newline();
         res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
@@ -262,7 +262,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
             if (!closed) {
                 return false;
             }
-            const auto s {closed->closed_form.get<IntTheory>().compose(ExprSubs({{closed->n, Expr(closed->n)-1}}))};
+            const auto s {closed->closed_form.get<IntTheory>().compose(ExprSubs({{config.n, Expr(config.n)-1}}))};
             g = BExpression::buildTheoryLit((!i).subs(s)) & rel.subs(s);
             c = BExpression::buildTheoryLit((!i));
             res.nonterm = false;
