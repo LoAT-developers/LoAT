@@ -3,7 +3,11 @@ repo=../chc-comp22-benchmarks
 while read line; do
     if [ "$line" = "unsat" ] || [ "$line" = "sat" ] || [ "$line" == "unknown" ]; then
         # line contains the expected result for the following benchmarks
-        expected=$line
+        if [ "$line" == "unknown" ]; then
+            expected=""
+        else
+            expected=$line
+        fi
     else
         if [[ $line =~ ^#.*$ ]] || [ "$line" = "" ] ; then
             # skip comments and empty lines
@@ -14,7 +18,7 @@ while read line; do
                 ex=$line
                 echo "running chc-${path}_$ex.smt2"
                 start=`date +%s`
-                actual=$(./build/static/release/loat-static --mode reachability --format horn --proof-level 0 --timeout 10 "$repo/$path/chc-${path}_$ex.smt2" | head -n 1)
+                actual=$(timeout 10 ./build/release/loat-static --mode safety --format horn --proof-level 0 --engine adcl "$repo/$path/chc-${path}_$ex.smt2" | head -n 1)
                 end=`date +%s`
                 runtime=$((end-start))
                 if [ "$expected" = "$actual" ]; then
