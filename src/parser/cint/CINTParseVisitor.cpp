@@ -210,8 +210,8 @@ std::any CINTParseVisitor::visitAssignment(CINTParser::AssignmentContext *ctx) {
         up.put<IntTheory>(cost_var, Expr(cost_var) + 1);
     }
     const Rule rule{cond, up};
-    current = loc;
     its->addRule(rule, current);
+    current = loc;
     return {};
 }
 
