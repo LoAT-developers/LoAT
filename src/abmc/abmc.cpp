@@ -209,7 +209,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
         } else {
             AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
-            const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
+            const auto accel_res {LoopAcceleration::accelerate(*simp, /*sample_point,*/ config)};
             if (accel_res.accel) {
                 auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
                 if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
