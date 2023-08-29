@@ -187,7 +187,7 @@ acceleration::Result LoopAcceleration::run() {
         return res;
     }
     const auto [rule, period] = chain(this->rule);
-    Proof proof;
+    Proof proof, accel_proof;
     if (period > 1) {
         res.period = period;
         proof.append(stringstream() << "period: " << period);
@@ -207,9 +207,10 @@ acceleration::Result LoopAcceleration::run() {
     res.prefix = rec->prefix;
     std::optional<Rule> accel_rule;
     auto covered {BExpression::True};
+    accel_proof = proof;
     if (config.approx == OverApprox) {
         accel_rule = overApproximatingAcceleration(rec->closed_form);
-        proof.append("over-approximating acceleration using closed form");
+        accel_proof.append("over-approximating acceleration using closed form");
         res.status = acceleration::Success;
     } else {
         auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
@@ -218,7 +219,7 @@ acceleration::Result LoopAcceleration::run() {
             res.status = acceleration::Success;
             covered = BExpression::buildAnd(accelerator->covered);
             accel_rule = Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form);
-            proof.concat(accelerator->proof);
+            accel_proof.concat(accelerator->proof);
         }
         if (config.tryNonterm && (!accelerator || !accelerator->nonterm)) {
             accelerator = AccelerationProblem(rule, {}, sample_point, config).computeRes();
@@ -227,7 +228,9 @@ acceleration::Result LoopAcceleration::run() {
                     res.status = acceleration::Nonterminating;
                 }
                 res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
+                accelerator->proof.print();
                 res.nonterm->proof.concat(accelerator->proof);
+                res.nonterm->proof.print();
             }
         }
     }
@@ -235,7 +238,7 @@ acceleration::Result LoopAcceleration::run() {
         for (unsigned i = 1; i < res.prefix; ++i) {
             accel_rule = rule.chain(*accel_rule);
         }
-        res.accel = {*accel_rule, proof, covered};
+        res.accel = {*accel_rule, accel_proof, covered};
     }
     return res;
 }
