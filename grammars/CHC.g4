@@ -68,8 +68,10 @@ boolop:            AND
                  | NEQ;
 
 lit:               LPAR (
-                       EQ var var
-                     | NEQ var var
+                       EQ formula_or_expr formula_or_expr
+                     | NEQ formula_or_expr formula_or_expr
+                     | EQ i_formula i_formula
+                     | NEQ i_formula i_formula
                      | relop expr expr
                    ) RPAR;
 

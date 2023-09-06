@@ -180,7 +180,8 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
     std::vector<BoolExpr> guards;
     for (const auto &c: ctx->i_formula()) {
         const auto r = any_cast<formula_type>(visit(c));
-        guards.push_back(r.t & r.refinement);
+        guards.push_back(r.t);
+        guards.insert(guards.end(), r.refinement.begin(), r.refinement.end());
     }
     std::optional<FunApp> lhs;
     for (const auto &c: ctx->var_or_atom()) {
@@ -234,7 +235,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         res.conjoin(bindings);
         res.conjoin(formula);
         res.t = formula.t->subs(bindings.t);
-        res.refinement = res.refinement->subs(bindings.t);
+        res.subsRefinement(bindings.t);
         return res;
     }
     for (const auto &c: ctx->i_formula()) {
@@ -354,40 +355,41 @@ antlrcpp::Any CHCParseVisitor::visitBoolop(CHCParser::BoolopContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
-    if (ctx->var().size() == 2) {
-        const auto p1 = any_cast<Var>(visit(ctx->var(0)));
-        const auto p2 = any_cast<Var>(visit(ctx->var(1)));
-        if (std::holds_alternative<BoolVar>(p1)) {
-            const BoolExpr x1 = BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(p1)));
-            const BoolExpr x2 = BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(p2)));
-            if (ctx->EQ()) {
-                return Res<BoolExpr>{(x1 & x2) | ((!x1) & (!x2))};
-            } else if (ctx->NEQ()) {
-                return Res<BoolExpr>{(x1 & (!x2)) | ((!x1) & x2)};
-            } else {
-                throw std::invalid_argument("unknown operator");
-            }
+    Res<BoolExpr> res;
+    if (ctx->formula_or_expr().size() == 2) {
+        const auto p1 = any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr(0)));
+        res.conjoin(p1);
+        const auto p2 = any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr(1)));
+        res.conjoin(p2);
+        if (ctx->EQ()) {
+            res.t = expr::mkEq(p1.t, p2.t);
+        } else if (ctx->NEQ()) {
+            res.t = !expr::mkEq(p1.t, p2.t);
         } else {
-            const NumVar x1 = std::get<NumVar>(p1);
-            const NumVar x2 = std::get<NumVar>(p2);
-            if (ctx->EQ()) {
-                return Res<BoolExpr>{BExpression::buildTheoryLit(Rel::buildEq(x1, x2))};
-            } else if (ctx->NEQ()) {
-                return Res<BoolExpr>{BExpression::buildTheoryLit(Rel::buildNeq(x1, x2))};
-            } else {
-                throw std::invalid_argument("unknown operator");
-            }
+            throw std::invalid_argument("unknown operator");
         }
-    }
-    if (ctx->expr().size() != 2) {
+    } else if (ctx->i_formula().size() == 2) {
+        const auto p1 {any_cast<formula_type>(visit(ctx->i_formula(0)))};
+        res.conjoin(p1);
+        const auto p2 {any_cast<formula_type>(visit(ctx->i_formula(1)))};
+        res.conjoin(p2);
+        if (ctx->EQ()) {
+            res.t = expr::mkEq(p1.t, p2.t);
+        } else if (ctx->NEQ()) {
+            res.t = !expr::mkEq(p1.t, p2.t);
+        } else {
+            throw std::invalid_argument("unknown operator");
+        }
+    } else if (ctx->expr().size() == 2) {
+        const auto p1 = any_cast<expr_type>(visit(ctx->expr(0)));
+        res.conjoin(p1);
+        const auto p2 = any_cast<expr_type>(visit(ctx->expr(1)));
+        res.conjoin(p2);
+        const auto op = any_cast<relop_type>(visit(ctx->relop()));
+        res.t = BExpression::buildTheoryLit(Rel(p1.t, op, p2.t));
+    } else {
         throw std::invalid_argument("wrong number of arguments: " + ctx->getText());
     }
-    const auto p1 = any_cast<expr_type>(visit(ctx->expr(0)));
-    const auto p2 = any_cast<expr_type>(visit(ctx->expr(1)));
-    const auto op = any_cast<relop_type>(visit(ctx->relop()));
-    Res<BoolExpr> res {BExpression::buildTheoryLit(Rel(p1.t, op, p2.t))};
-    res.conjoin(p1);
-    res.conjoin(p2);
     return res;
 }
 
@@ -418,7 +420,7 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
                                    return std::variant<Expr, BoolExpr>(expr->subs(bindings.t));
                                }
                            }, expr.t);
-        res.refinement = res.refinement->subs(bindings.t);
+        res.subsRefinement(bindings.t);
     } else if (ctx->ITE()) {
         const auto r {any_cast<formula_type>(visit(ctx->i_formula()))};
         res.conjoin(r);
@@ -429,7 +431,7 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
         if (std::holds_alternative<Expr>(then_case.t)) {
             const auto var {NumVar::next()};
             res.t = expr::toExpr(var);
-            res.refinement = res.refinement & ((r.t & Rel::buildEq(var, std::get<Expr>(then_case.t))) | ((!r.t) & Rel::buildEq(var, std::get<Expr>(else_case.t))));
+            res.refinement.push_back((r.t & Rel::buildEq(var, std::get<Expr>(then_case.t))) | ((!r.t) & Rel::buildEq(var, std::get<Expr>(else_case.t))));
         } else {
             res.t = (r.t & std::get<BoolExpr>(then_case.t)) | ((!r.t) & std::get<BoolExpr>(else_case.t));
         }
@@ -446,7 +448,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         res.conjoin(bindings);
         res.conjoin(expr);
         res.t = expr.t.subs(bindings.t.get<IntTheory>());
-        res.refinement = res.refinement->subs(bindings.t);
+        res.subsRefinement(bindings.t);
         return res;
     }
     for (const auto &c: ctx->expr()) {
@@ -472,9 +474,8 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         case Mod:
             const NumVar div = NumVar::next();
             const NumVar mod = NumVar::next();
-            res.refinement = res.refinement
-                    & Rel::buildEq(args[0], args[1] * div + mod)
-                    & Rel::buildNeq(args[1], 0); // division by zero is undefined
+            res.refinement.push_back(BExpression::buildTheoryLit(Rel::buildEq(args[0], args[1] * div + mod)));
+            res.refinement.push_back(BExpression::buildTheoryLit(Rel::buildNeq(args[1], 0))); // division by zero is undefined
             bool explicit_encoding = false;
             if (args[1].isInt()) {
                 int y = args[1].toNum().to_int();
@@ -484,16 +485,14 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
                     for (int i = 0; i < y; i++) {
                         refinement.push_back(Rel::buildEq(mod, i));
                     }
-                    res.refinement = res.refinement & (BExpression::buildOrFromLits(refinement));
+                    res.refinement.push_back(BExpression::buildOrFromLits(refinement));
                 }
             }
             if (!explicit_encoding) {
-                res.refinement = res.refinement
-                        & Rel::buildGeq(mod, 0) // x mod y is non-negative
-                        & ( // |y| > x mod y
-                            (BExpression::buildTheoryLit(Rel::buildGt(args[1], 0)) & Rel::buildGt(args[1], mod))
-                          | (BExpression::buildTheoryLit(Rel::buildLt(args[1], 0)) & Rel::buildGt(-args[1], mod))
-                        );
+                res.refinement.push_back(BExpression::buildTheoryLit(Rel::buildGeq(mod, 0))); // x mod y is non-negative
+                res.refinement.push_back( // |y| > x mod y
+                    (BExpression::buildTheoryLit(Rel::buildGt(args[1], 0)) & Rel::buildGt(args[1], mod))
+                    | (BExpression::buildTheoryLit(Rel::buildLt(args[1], 0)) & Rel::buildGt(-args[1], mod)));
             }
             if (op == Div) {
                 res.t = IntTheory::varToExpr(div);
@@ -525,7 +524,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         const auto r = any_cast<formula_type>(visit(ctx->i_formula()));
         res.conjoin(r);
         res.t = NumVar::next();
-        res.refinement = res.refinement & ((r.t & Rel::buildEq(res.t, args[0])) | ((!r.t) & Rel::buildEq(res.t, args[1])));
+        res.refinement.push_back((r.t & Rel::buildEq(res.t, args[0])) | ((!r.t) & Rel::buildEq(res.t, args[1])));
     } else if (ctx->var()) {
         const auto x = any_cast<Var>(visit(ctx->var()));
         res.t = std::get<NumVar>(x);
