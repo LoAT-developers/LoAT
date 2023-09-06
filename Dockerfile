@@ -161,6 +161,21 @@ RUN make install
 
 
 
+FROM base as z3-binary
+
+RUN xbps-install -yS xbps
+RUN xbps-install -yS python3-devel
+
+RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.2.tar.gz
+RUN tar xf z3-4.12.2.tar.gz
+WORKDIR /z3-z3-4.12.2
+RUN python scripts/mk_make.py --staticbin
+WORKDIR /z3-z3-4.12.2/build
+RUN make -j4
+RUN make install
+
+
+
 FROM base as loat-docker
 LABEL author="Florian Frohn"
 
