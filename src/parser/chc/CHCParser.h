@@ -479,9 +479,11 @@ public:
     antlr4::tree::TerminalNode *LPAR();
     antlr4::tree::TerminalNode *RPAR();
     antlr4::tree::TerminalNode *EQ();
-    std::vector<VarContext *> var();
-    VarContext* var(size_t i);
+    std::vector<Formula_or_exprContext *> formula_or_expr();
+    Formula_or_exprContext* formula_or_expr(size_t i);
     antlr4::tree::TerminalNode *NEQ();
+    std::vector<I_formulaContext *> i_formula();
+    I_formulaContext* i_formula(size_t i);
     RelopContext *relop();
     std::vector<ExprContext *> expr();
     ExprContext* expr(size_t i);

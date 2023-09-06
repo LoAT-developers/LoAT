@@ -6,18 +6,26 @@
 template<class T>
 struct Res {
     T t;
-    BoolExpr refinement = True;
+    std::vector<BoolExpr> refinement;
     Res(const T &t);
     Res();
 
     template<class S>
     void conjoin(const Res<S> &that) {
-        this->refinement = this->refinement & that.refinement;
+        this->refinement.insert(this->refinement.end(), that.refinement.begin(), that.refinement.end());
     }
 
     void operator=(const Res<T> &that) {
         conjoin(that);
         this->t = that.t;
+    }
+
+    void subsRefinement(const Subs &subs) {
+        auto it {refinement.begin()};
+        while (it != refinement.end()) {
+            *it = (*it)->subs(subs);
+            ++it;
+        }
     }
 
 };
