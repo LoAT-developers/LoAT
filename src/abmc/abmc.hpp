@@ -51,6 +51,7 @@ private:
     BoolExpr build_blocking_clause(const int backlink, const Loop &loop);
     std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
     void unsat();
+    void unknown();
     void sat();
     void build_trace();
     bool is_redundant(const std::vector<int> &w) const;
