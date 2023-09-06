@@ -85,12 +85,7 @@ namespace Config {
     }
 
     namespace ABMC {
-        /** refine the dependency graph on the fly */
-        extern bool refine;
-        /** use optimization modulo theories to direct the SMT solver towards long runs */
-        extern bool optimize;
-        /** use MAX-SMT to direct the SMT solver towards using learned transitions */
-        extern bool max_smt;
+        extern bool blocking_clauses;
     }
 
 }
