@@ -8,7 +8,6 @@
 #include "config.hpp"
 #include "export.hpp"
 #include "vector.hpp"
-#include "z3_opt.hpp"
 #include "z3.hpp"
 #include "rule.hpp"
 #include "dependencygraph.hpp"
@@ -17,16 +16,8 @@ using namespace Config::ABMC;
 
 ABMC::ABMC(ITSProblem &its):
     its(its),
-    trace_var(NumVar::next()),
-    objective_var(NumVar::next()){
-    if (max_smt || optimize) {
-        solver = std::make_unique<Z3Opt<IntTheory, BoolTheory>>(smt::default_timeout);
-        if (optimize) {
-            solver->add_objective(objective_var);
-        }
-    } else {
-        solver = std::make_unique<Z3<IntTheory, BoolTheory>>(smt::default_timeout);
-    }
+    solver(std::make_unique<Z3<IntTheory, BoolTheory>>(smt::default_timeout)),
+    trace_var(NumVar::next()) {
     vars.insert(trace_var);
     vars.insert(n);
     solver->enableModels();
@@ -140,7 +131,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
 }
 
 BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
-    if (loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
+    if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
         return BExpression::True;
     }
     // we must not start another iteration of the loop in the next step,
@@ -276,9 +267,6 @@ void ABMC::sat() {
 void ABMC::build_trace() {
     trace.clear();
     const auto model {solver->model().toSubs()};
-    if (optimize && Config::Analysis::log) {
-        std::cout << "objective: " << objective.subs(model.get<IntTheory>()) << std::endl;
-    }
     std::vector<Subs> run;
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
@@ -401,21 +389,7 @@ void ABMC::analyze() {
         if (!shortcut) {
             solver->add(step->subs(s));
         } else {
-            const auto sc {encode_transition(*shortcut)->subs(s)};
-            if (max_smt) {
-                solver->add_soft(sc);
-            }
-            if (optimize) {
-                const auto m {s.get<IntTheory>(n)};
-                objective = objective + m;
-                solver->add(sc | (expr::mkEq(m, 0) & step->subs(s)));
-            } else {
-                solver->add(sc | step->subs(s));
-            }
-        }
-        if (optimize) {
-            solver->push();
-            solver->add(expr::mkEq(objective_var, objective));
+            solver->add((encode_transition(*shortcut) | step)->subs(s));
         }
         ++depth;
         BoolExpr blocking_clause;
@@ -446,9 +420,6 @@ void ABMC::analyze() {
         }
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
-        }
-        if (optimize) {
-            solver->pop();
         }
         if (blocking_clause) {
             solver->add(blocking_clause);

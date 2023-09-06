@@ -36,8 +36,6 @@ private:
     std::map<int, std::vector<int>> history;
     NumVar trace_var;
     std::optional<TransIdx> shortcut;
-    Expr objective {0};
-    NumVar objective_var;
     std::map<unsigned, TransIdx> rule_map;
     int next {0};
     ITSProof proof;
