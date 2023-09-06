@@ -184,30 +184,32 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
         res.succeed();
         res.majorProofStep("Preprocessed Transitions", sub_res.getProof(), its);
     }
-    if (!Config::Analysis::safety()) {
-        if (Config::Analysis::log) {
-            std::cout << "unrolling..." << std::endl;
+    if (Config::Analysis::engine == Config::Analysis::ADCL) {
+        if (!Config::Analysis::safety()) {
+            if (Config::Analysis::log) {
+                std::cout << "unrolling..." << std::endl;
+            }
+            sub_res = unroll(its);
+            if (Config::Analysis::log) {
+                std::cout << "finished unrolling" << std::endl;
+            }
+            if (sub_res) {
+                res.succeed();
+                res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
+            }
         }
-        sub_res = unroll(its);
-        if (Config::Analysis::log) {
-            std::cout << "finished unrolling" << std::endl;
-        }
-        if (sub_res) {
-            res.succeed();
-            res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
-        }
-    }
-    if (its.size() <= 1000 && Config::Analysis::engine != Config::Analysis::BMC && Config::Analysis::engine != Config::Analysis::ABMC) {
-        if (Config::Analysis::log) {
-            std::cout << "refining the dependency graph..." << std::endl;
-        }
-        sub_res = refine_dependency_graph(its);
-        if (Config::Analysis::log) {
-            std::cout << "finished refining the dependency graph" << std::endl;
-        }
-        if (sub_res) {
-            res.succeed();
-            res.majorProofStep("Refined Dependency Graph", sub_res.getProof(), its);
+        if (its.size() <= 1000) {
+            if (Config::Analysis::log) {
+                std::cout << "refining the dependency graph..." << std::endl;
+            }
+            sub_res = refine_dependency_graph(its);
+            if (Config::Analysis::log) {
+                std::cout << "finished refining the dependency graph" << std::endl;
+            }
+            if (sub_res) {
+                res.succeed();
+                res.majorProofStep("Refined Dependency Graph", sub_res.getProof(), its);
+            }
         }
     }
     return res;
