@@ -111,6 +111,8 @@ public:
 
     virtual antlrcpp::Any visitExpr(CHCParser::ExprContext *ctx) override;
 
+    virtual antlrcpp::Any visitFormula_or_expr(CHCParser::Formula_or_exprContext *context) override;
+
     virtual antlrcpp::Any visitUnaryop(CHCParser::UnaryopContext *ctx) override;
 
     virtual antlrcpp::Any visitBinaryop(CHCParser::BinaryopContext *ctx) override;
