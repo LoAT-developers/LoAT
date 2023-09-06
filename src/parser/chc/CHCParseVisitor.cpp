@@ -232,6 +232,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         res.conjoin(bindings);
         res.conjoin(formula);
         res.t = formula.t->subs(bindings.t);
+        res.refinement = res.refinement->subs(bindings.t);
         return res;
     }
     for (const auto &c: ctx->i_formula()) {
