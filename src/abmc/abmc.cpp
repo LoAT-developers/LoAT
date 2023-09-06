@@ -131,7 +131,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
 }
 
 BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
-    if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
+    if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || (Config::Analysis::reachability() && !loop.deterministic)) {
         return BExpression::True;
     }
     // we must not start another iteration of the loop in the next step,
@@ -199,8 +199,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
             if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
         } else {
-            AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
-            const auto accel_res {LoopAcceleration::accelerate(*simp, /*sample_point,*/ config)};
+            AccelConfig config {.approx = Config::Analysis::safety() ? Approx::OverApprox : Approx::UnderApprox, .tryNonterm = Config::Analysis::tryNonterm(), .n = n};
+            const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
             if (accel_res.accel) {
                 auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
                 if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
@@ -250,10 +250,17 @@ BoolExpr ABMC::encode_transition(const TransIdx idx) {
     return BExpression::buildAnd(res);
 }
 
+void ABMC::unknown() {
+    std::cout << "unknwon" << std::endl;
+    proof.result("unknown");
+    proof.print();
+}
+
 void ABMC::unsat() {
-    std::cout << "unsat" << std::endl;
+    const auto str = Config::Analysis::safety() ? "unknown" : "unsat";
+    std::cout << str << std::endl;
     proof.append("reached error location at depth " + std::to_string(depth));
-    proof.result("unsat");
+    proof.result(str);
     proof.print();
 }
 
@@ -342,6 +349,10 @@ void ABMC::analyze() {
                 return;
             case SmtResult::Unknown:
                 approx = true;
+                if (Config::Analysis::safety()) {
+                    unknown();
+                    return;
+                }
                 break;
             case SmtResult::Unsat: {}
             }
@@ -380,6 +391,10 @@ void ABMC::analyze() {
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
                 std::cout << "got unknown from SMT solver -- approximating" << std::endl;
+            }
+            if (Config::Analysis::safety()) {
+                unknown();
+                return;
             }
             approx = true;
             break;
