@@ -147,11 +147,14 @@ RUN make install
 
 FROM base as z3
 
-RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.9.1.tar.gz
-RUN tar xf z3-4.9.1.tar.gz
-WORKDIR /z3-z3-4.9.1
+RUN xbps-install -yS xbps
+RUN xbps-install -yS python3-devel
+
+RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.2.tar.gz
+RUN tar xf z3-4.12.2.tar.gz
+WORKDIR /z3-z3-4.12.2
 RUN mkdir build
-WORKDIR /z3-z3-4.9.1/build
+WORKDIR /z3-z3-4.12.2/build
 RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
