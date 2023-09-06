@@ -30,8 +30,13 @@ var_or_atom:       var
 u_pred_atom:       LPAR symbol var* RPAR
                  | symbol;
 
-let:               LPAR var (i_formula | expr) RPAR;
+let:               LPAR var (formula_or_expr | i_formula | expr) RPAR;
 lets:              LET LPAR let+ RPAR;
+
+formula_or_expr:   var
+                 | LPAR formula_or_expr RPAR
+                 | LPAR lets formula_or_expr RPAR
+                 | LPAR ITE i_formula formula_or_expr formula_or_expr RPAR;
 
 expr:              LPAR unaryop expr RPAR
                  | LPAR binaryop expr expr RPAR

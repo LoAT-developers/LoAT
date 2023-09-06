@@ -53,6 +53,9 @@ public:
   virtual void enterLets(CHCParser::LetsContext *ctx) = 0;
   virtual void exitLets(CHCParser::LetsContext *ctx) = 0;
 
+  virtual void enterFormula_or_expr(CHCParser::Formula_or_exprContext *ctx) = 0;
+  virtual void exitFormula_or_expr(CHCParser::Formula_or_exprContext *ctx) = 0;
+
   virtual void enterExpr(CHCParser::ExprContext *ctx) = 0;
   virtual void exitExpr(CHCParser::ExprContext *ctx) = 0;
 

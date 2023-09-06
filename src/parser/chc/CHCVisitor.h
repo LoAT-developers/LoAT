@@ -45,6 +45,8 @@ public:
 
     virtual std::any visitLets(CHCParser::LetsContext *context) = 0;
 
+    virtual std::any visitFormula_or_expr(CHCParser::Formula_or_exprContext *context) = 0;
+
     virtual std::any visitExpr(CHCParser::ExprContext *context) = 0;
 
     virtual std::any visitUnaryop(CHCParser::UnaryopContext *context) = 0;

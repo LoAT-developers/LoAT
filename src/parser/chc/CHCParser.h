@@ -23,9 +23,9 @@ public:
     RuleMain = 0, RuleFun_decl = 1, RuleChc_assert = 2, RuleChc_assert_head = 3, 
     RuleChc_assert_body = 4, RuleChc_tail = 5, RuleChc_head = 6, RuleChc_query = 7, 
     RuleVar_decl = 8, RuleVar_or_atom = 9, RuleU_pred_atom = 10, RuleLet = 11, 
-    RuleLets = 12, RuleExpr = 13, RuleUnaryop = 14, RuleBinaryop = 15, RuleNaryop = 16, 
-    RuleI_formula = 17, RuleBoolop = 18, RuleLit = 19, RuleRelop = 20, RuleSymbol = 21, 
-    RuleSort = 22, RuleVar = 23
+    RuleLets = 12, RuleFormula_or_expr = 13, RuleExpr = 14, RuleUnaryop = 15, 
+    RuleBinaryop = 16, RuleNaryop = 17, RuleI_formula = 18, RuleBoolop = 19, 
+    RuleLit = 20, RuleRelop = 21, RuleSymbol = 22, RuleSort = 23, RuleVar = 24
   };
 
   explicit CHCParser(antlr4::TokenStream *input);
@@ -58,6 +58,7 @@ public:
   class U_pred_atomContext;
   class LetContext;
   class LetsContext;
+  class Formula_or_exprContext;
   class ExprContext;
   class UnaryopContext;
   class BinaryopContext;
@@ -299,6 +300,7 @@ public:
     antlr4::tree::TerminalNode *LPAR();
     VarContext *var();
     antlr4::tree::TerminalNode *RPAR();
+    Formula_or_exprContext *formula_or_expr();
     I_formulaContext *i_formula();
     ExprContext *expr();
 
@@ -329,6 +331,28 @@ public:
   };
 
   LetsContext* lets();
+
+  class  Formula_or_exprContext : public antlr4::ParserRuleContext {
+  public:
+    Formula_or_exprContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    VarContext *var();
+    antlr4::tree::TerminalNode *LPAR();
+    std::vector<Formula_or_exprContext *> formula_or_expr();
+    Formula_or_exprContext* formula_or_expr(size_t i);
+    antlr4::tree::TerminalNode *RPAR();
+    LetsContext *lets();
+    antlr4::tree::TerminalNode *ITE();
+    I_formulaContext *i_formula();
+
+    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
+    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Formula_or_exprContext* formula_or_expr();
 
   class  ExprContext : public antlr4::ParserRuleContext {
   public:

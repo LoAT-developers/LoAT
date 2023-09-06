@@ -1,5 +1,6 @@
 #include "CHCParseVisitor.h"
 #include "boollit.hpp"
+#include "expr.hpp"
 
 #include <variant>
 #include <algorithm>
@@ -7,6 +8,7 @@
 
 using expr_type = Res<Expr>;
 using formula_type = Res<BoolExpr>;
+using formula_or_expr_type = Res<std::variant<Expr, BoolExpr>>;
 using let_type = Res<Subs>;
 using lets_type = Res<Subs>;
 using relop_type = Rel::RelOp;
@@ -224,6 +226,7 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
 }
 
 antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) {
+    std::cout << ctx->getText() << std::endl;
     std::vector<BoolExpr> args;
     Res<BoolExpr> res;
     if (ctx->lets()) {
@@ -309,7 +312,15 @@ Var CHCParseVisitor::var(const std::string &name, Sort sort) {
 antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
     const auto name = unescape(ctx->var()->getText());
     let_type ret;
-    if (ctx->i_formula()) {
+    if (ctx->formula_or_expr()) {
+        const auto res = any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr()));
+        ret.conjoin(res);
+        if (std::holds_alternative<Expr>(res.t)) {
+            ret.t.get<IntTheory>().put(std::get<NumVar>(var(name, Int)), std::get<Expr>(res.t));
+        } else {
+            ret.t.get<BoolTheory>().put(std::get<BoolVar>(var(name, Bool)), std::get<BoolExpr>(res.t));
+        }
+    } else if (ctx->i_formula()) {
         const auto res = any_cast<formula_type>(visit(ctx->i_formula()));
         ret.conjoin(res);
         ret.t.get<BoolTheory>().put(std::get<BoolVar>(var(name, Bool)), res.t);
@@ -391,6 +402,42 @@ antlrcpp::Any CHCParseVisitor::visitRelop(CHCParser::RelopContext *ctx) {
     throw std::invalid_argument("failed to parse operator " + ctx->getText());
 }
 
+antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprContext *ctx) {
+    formula_or_expr_type res;
+    if (ctx->var()) {
+        res.t = expr::toExpr(any_cast<Var>(visitVar(ctx->var())));
+    } else if (ctx->lets()) {
+        const auto bindings {std::any_cast<lets_type>(visit(ctx->lets()))};
+        const auto expr {std::any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr()[0]))};
+        res.conjoin(bindings);
+        res.conjoin(expr);
+        res.t = std::visit(Overload{
+                               [&bindings](const Expr &expr) {
+                                   return std::variant<Expr, BoolExpr>(expr.subs(bindings.t.get<IntTheory>()));
+                               },
+                               [&bindings](const BoolExpr &expr) {
+                                   return std::variant<Expr, BoolExpr>(expr->subs(bindings.t));
+                               }
+                           }, expr.t);
+        res.refinement = res.refinement->subs(bindings.t);
+    } else if (ctx->ITE()) {
+        const auto r {any_cast<formula_type>(visit(ctx->i_formula()))};
+        res.conjoin(r);
+        const auto then_case {any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr()[0]))};
+        res.conjoin(then_case);
+        const auto else_case {any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr()[1]))};
+        res.conjoin(else_case);
+        if (std::holds_alternative<Expr>(then_case.t)) {
+            const auto var {NumVar::next()};
+            res.t = expr::toExpr(var);
+            res.refinement = res.refinement & ((r.t & Rel::buildEq(var, std::get<Expr>(then_case.t))) | ((!r.t) & Rel::buildEq(var, std::get<Expr>(else_case.t))));
+        } else {
+            res.t = (r.t & std::get<BoolExpr>(then_case.t)) | (!r.t & std::get<BoolExpr>(else_case.t));
+        }
+    }
+    return res;
+}
+
 antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
     Res<Expr> res;
     std::vector<Expr> args;
@@ -400,6 +447,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         res.conjoin(bindings);
         res.conjoin(expr);
         res.t = expr.t.subs(bindings.t.get<IntTheory>());
+        res.refinement = res.refinement->subs(bindings.t);
         return res;
     }
     for (const auto &c: ctx->expr()) {
