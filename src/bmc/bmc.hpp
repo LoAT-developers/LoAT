@@ -5,6 +5,7 @@
 #include "itsproblem.hpp"
 #include "z3.hpp"
 #include "itsproof.hpp"
+#include "smtfactory.hpp"
 
 class BMC {
 
@@ -15,12 +16,16 @@ private:
     void analyze();
 
     ITSProblem &its;
-    Z3<IntTheory, BoolTheory> z3{std::numeric_limits<unsigned>::max()};
+    Z3<IntTheory, BoolTheory> solver{smt::default_timeout};
     bool approx {false};
+    VarSet vars;
+    std::map<Var, Var> post_vars;
+    unsigned depth {0};
     ITSProof proof;
 
-    void unsat(const unsigned depth);
-    void sat(const unsigned depth);
+    BoolExpr encode_transition(const TransIdx idx);
+    void unsat();
+    void sat();
 
 public:
 

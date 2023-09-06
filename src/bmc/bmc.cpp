@@ -7,18 +7,29 @@
 
 BMC::BMC(ITSProblem &its): its(its) {}
 
-void BMC::unsat(const unsigned depth) {
+void BMC::unsat() {
     std::cout << "unsat" << std::endl;
     proof.append("reached error location at depth " + std::to_string(depth));
     proof.result("unsat");
     proof.print();
 }
 
-void BMC::sat(const unsigned depth) {
+void BMC::sat() {
     std::cout << "sat" << std::endl;
     proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
     proof.result("sat");
     proof.print();
+}
+
+BoolExpr BMC::encode_transition(const TransIdx idx) {
+    const auto up {idx->getUpdate()};
+    std::vector<BoolExpr> res {idx->getGuard()};
+    for (const auto &x: vars) {
+        if (expr::isProgVar(x)) {
+            res.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
+        }
+    }
+    return BExpression::buildAnd(res);
 }
 
 void BMC::analyze() {
@@ -35,8 +46,7 @@ void BMC::analyze() {
             ITSExport::printForProof(its, std::cout);
         }
     }
-    std::map<Var, Var> post_vars;
-    const auto vars {its.getVars()};
+    vars.insertAll(its.getVars());
     for (const auto &var: vars) {
         post_vars.emplace(var, expr::next(var));
     }
@@ -45,39 +55,28 @@ void BMC::analyze() {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
-                unsat(1);
+                unsat();
                 return;
             case SmtResult::Unknown:
+                if (Config::Analysis::log) {
+                    std::cout << "got unknown from SMT solver -- approximating" << std::endl;
+                }
                 approx = true;
                 break;
             case SmtResult::Unsat: {}
             }
         } else {
-            const auto up {idx->getUpdate()};
-            std::vector<BoolExpr> i {idx->getGuard()};
-            for (const auto &x: vars) {
-                if (expr::isProgVar(x)) {
-                    i.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
-                }
-            }
-            inits.push_back(BExpression::buildAnd(i));
+            inits.push_back(encode_transition(idx));
         }
     }
-    z3.add(BExpression::buildOr(inits));
+    solver.add(BExpression::buildOr(inits));
 
     std::vector<BoolExpr> steps;
     for (const auto &r: its.getAllTransitions()) {
         if (its.isInitialTransition(&r) || its.isSinkTransition(&r)) {
             continue;
         }
-        const auto up {r.getUpdate()};
-        std::vector<BoolExpr> s {r.getGuard()};
-        for (const auto &x: vars) {
-            if (expr::isProgVar(x)) {
-                s.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
-            }
-        }
-        steps.push_back(BExpression::buildAnd(s));
+        steps.push_back(encode_transition(&r));
     }
     const auto step {BExpression::buildOr(steps)};
 
@@ -89,31 +88,40 @@ void BMC::analyze() {
     }
     const auto query {BExpression::buildOr(queries)};
 
-    unsigned depth {0};
+    Subs last_s;
     while (true) {
-        Subs subs;
-        if (Config::Analysis::log) {
-            std::cout << "depth: " << depth << std::endl;
-        }
-        ++depth;
+        Subs s;
         for (const auto &var: vars) {
             const auto &post_var {post_vars.at(var)};
-            subs.put(var, subs.get(post_var));
-            subs.put(post_var, expr::toExpr(expr::next(post_var)));
+            s.put(var, last_s.get(post_var));
+            s.put(post_var, expr::toExpr(expr::next(post_var)));
         }
-        z3.push();
-        z3.add(query->subs(subs));
-        if (z3.check() == SmtResult::Sat) {
-            unsat(depth);
+        last_s = s;
+        solver.push();
+        solver.add(query->subs(s));
+        switch (solver.check()) {
+        case SmtResult::Sat:
+            unsat();
             return;
+        case SmtResult::Unknown:
+            if (Config::Analysis::log && !approx) {
+                std::cout << "got unknown from SMT solver -- approximating" << std::endl;
+            }
+            approx = true;
+            break;
+        case SmtResult::Unsat: {}
         }
-        z3.pop();
-        z3.add(step->subs(subs));
-        if (z3.check() == SmtResult::Unsat) {
+        solver.pop();
+        solver.add(step->subs(s));
+        ++depth;
+        if (solver.check() == SmtResult::Unsat) {
             if (!approx) {
-                sat(depth);
+                sat();
             }
             return;
+        }
+        if (Config::Analysis::log) {
+            std::cout << "depth: " << depth << std::endl;
         }
     }
 

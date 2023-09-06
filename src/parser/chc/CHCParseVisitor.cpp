@@ -226,7 +226,6 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
 }
 
 antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) {
-    std::cout << ctx->getText() << std::endl;
     std::vector<BoolExpr> args;
     Res<BoolExpr> res;
     if (ctx->lets()) {
@@ -432,7 +431,7 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
             res.t = expr::toExpr(var);
             res.refinement = res.refinement & ((r.t & Rel::buildEq(var, std::get<Expr>(then_case.t))) | ((!r.t) & Rel::buildEq(var, std::get<Expr>(else_case.t))));
         } else {
-            res.t = (r.t & std::get<BoolExpr>(then_case.t)) | (!r.t & std::get<BoolExpr>(else_case.t));
+            res.t = (r.t & std::get<BoolExpr>(then_case.t)) | ((!r.t) & std::get<BoolExpr>(else_case.t));
         }
     }
     return res;
