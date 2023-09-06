@@ -16,11 +16,10 @@ using namespace Config::ABMC;
 
 ABMC::ABMC(ITSProblem &its):
     its(its),
-    solver(std::make_unique<Z3<IntTheory, BoolTheory>>(smt::default_timeout)),
     trace_var(NumVar::next()) {
     vars.insert(trace_var);
     vars.insert(n);
-    solver->enableModels();
+    solver.enableModels();
 }
 
 bool ABMC::is_orig_clause(const TransIdx idx) const {
@@ -116,7 +115,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
     }
     auto vars {loop->vars()};
     expr::collectCoDomainVars(var_renaming, vars);
-    const auto model {expr::compose(var_renaming, solver->model(vars).toSubs())};
+    const auto model {expr::compose(var_renaming, solver.model(vars).toSubs())};
     const auto imp {loop->getGuard()->implicant(model)};
     if (!imp) {
         throw std::logic_error("model, but no implicant");
@@ -273,7 +272,7 @@ void ABMC::sat() {
 
 void ABMC::build_trace() {
     trace.clear();
-    const auto model {solver->model().toSubs()};
+    const auto model {solver.model().toSubs()};
     std::vector<Subs> run;
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
@@ -348,6 +347,9 @@ void ABMC::analyze() {
                 unsat();
                 return;
             case SmtResult::Unknown:
+                if (Config::Analysis::log) {
+                    std::cout << "got unknown from SMT solver -- approximating" << std::endl;
+                }
                 approx = true;
                 if (Config::Analysis::safety()) {
                     unknown();
@@ -360,7 +362,7 @@ void ABMC::analyze() {
             inits.push_back(encode_transition(idx));
         }
     }
-    solver->add(BExpression::buildOr(inits));
+    solver.add(BExpression::buildOr(inits));
 
     std::vector<BoolExpr> steps;
     for (const auto &r: its.getAllTransitions()) {
@@ -381,9 +383,9 @@ void ABMC::analyze() {
 
     while (true) {
         const auto &s {subs_at(depth + 1)};
-        solver->push();
-        solver->add(query->subs(s));
-        switch (solver->check()) {
+        solver.push();
+        solver.add(query->subs(s));
+        switch (solver.check()) {
         case SmtResult::Sat:
             build_trace();
             unsat();
@@ -400,15 +402,15 @@ void ABMC::analyze() {
             break;
         case SmtResult::Unsat: {}
         }
-        solver->pop();
+        solver.pop();
         if (!shortcut) {
-            solver->add(step->subs(s));
+            solver.add(step->subs(s));
         } else {
-            solver->add((encode_transition(*shortcut) | step)->subs(s));
+            solver.add((encode_transition(*shortcut) | step)->subs(s));
         }
         ++depth;
         BoolExpr blocking_clause;
-        switch (solver->check()) {
+        switch (solver.check()) {
         case SmtResult::Unsat:
             if (!approx) {
                 sat();
@@ -437,7 +439,7 @@ void ABMC::analyze() {
             std::cout << "depth: " << depth << std::endl;
         }
         if (blocking_clause) {
-            solver->add(blocking_clause);
+            solver.add(blocking_clause);
         }
     }
 }
