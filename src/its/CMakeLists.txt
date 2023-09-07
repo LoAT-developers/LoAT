@@ -6,7 +6,6 @@ target_sources(${EXECUTABLE}
         itsproblem.hpp
         types.hpp
         dependencygraph.hpp
-        dependencygraph.cpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")
