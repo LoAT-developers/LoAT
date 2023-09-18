@@ -136,8 +136,10 @@ In this constellation AProVE, LoAT, and T2 won the following awards:
 
 # Build
 
-In theory, all you need to do is install [docker](https://www.docker.com/) and run ``./compile_static_binary``.
-Then the path to the binary is ``./build/static/release/loat-static``.
-In practice, it's usually more complicated than that, so please consider using one of our [releases](https://github.com/loat-developers/LoAT/releases) instead.
+1. think about using one of our [releases](https://github.com/loat-developers/LoAT/releases) instead
+2. install [Docker](https://www.docker.com/)
+3. execute `build-container.sh` to initialize the Docker container that is used for building LoAT
+4. execute `build.sh` to build a statically linked binary (`build/release/loat-static`)
+5. if you want to contribute to LoAT, execute `qtcreator.sh` to start a pre-configured IDE, which runs in a Docker container as well
+6. if you experience any problems, contact `florian.frohn [at] cs.rwth-aachen.de`
 
-If you experience any problems, contact `florian.frohn [at] cs.rwth-aachen.de`.
