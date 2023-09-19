@@ -16,7 +16,6 @@
  */
 
 #include "parser.hpp"
-#include "boolexpression.hpp"
 #include "config.hpp"
 
 #include <fstream>
@@ -79,10 +78,10 @@ namespace sexpressionparser {
                             LocationIdx from = locations[ruleExp[2].str()];
                             LocationIdx to = locations[ruleExp[4].str()];
                             Subs update;
-                            Conjunction<IntTheory> guard;
+                            Guard guard;
                             parseCond(ruleExp[5], guard);
                             guard.push_back(Rel::buildEq(NumVar::loc_var, from));
-                            BoolExpr cond = boolExpression::transform(BoolExpression<IntTheory>::buildAndFromLits(guard));
+                            BoolExpr cond = BExpression::buildAndFromLits(guard);
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.put<IntTheory>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
@@ -108,7 +107,7 @@ namespace sexpressionparser {
         }
     }
 
-    void Self::parseCond(sexpresso::Sexp &sexp, Conjunction<IntTheory> &guard) {
+    void Self::parseCond(sexpresso::Sexp &sexp, Guard &guard) {
         if (sexp.isString()) {
             if (sexp.str() == "false") {
                 guard.push_back(Rel(0, Rel::lt, 0));
