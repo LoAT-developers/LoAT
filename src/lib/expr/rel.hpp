@@ -74,6 +74,8 @@ public:
     Rel toG() const;
     Rel normalize() const;
 
+    std::size_t hash() const;
+
     static Rel buildEq(const Expr &x, const Expr &y);
     static Rel buildNeq(const Expr &x, const Expr &y);
     static Rel buildGeq(const Expr &x, const Expr &y);

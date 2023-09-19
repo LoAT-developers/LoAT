@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 #include <ostream>
+#include <boost/functional/hash.hpp>
+#include <functional>
 
 BoolLit::BoolLit(const BoolVar &var, bool negated): var(var), negated(negated) {}
 
@@ -39,6 +41,13 @@ void BoolLit::collectVars(std::set<BoolVar> &res) const {
 
 BoolLit operator!(const BoolLit &l) {
     return BoolLit(l.getBoolVar(), !l.isNegated());
+}
+
+std::size_t BoolLit::hash() const {
+    std::size_t seed {0};
+    boost::hash_combine(seed, std::hash<bool>{}(negated));
+    boost::hash_combine(seed, var.hash());
+    return seed;
 }
 
 std::ostream& operator<<(std::ostream &s, const BoolLit &l) {

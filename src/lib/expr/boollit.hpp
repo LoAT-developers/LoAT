@@ -19,6 +19,7 @@ public:
     void collectVars(std::set<BoolVar> &res) const;
     BoolLit normalize() const;
     bool isTriviallyTrue() const;
+    std::size_t hash() const;
 
 };
 

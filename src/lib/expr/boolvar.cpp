@@ -1,6 +1,7 @@
 #include "boolvar.hpp"
 
 #include <string>
+#include <functional>
 
 int BoolVar::last_tmp_idx {0};
 int BoolVar::last_prog_idx {0};
@@ -42,4 +43,8 @@ BoolVar BoolVar::nextProgVar() {
 
 bool BoolVar::isTempVar() const {
     return idx < 0;
+}
+
+std::size_t BoolVar::hash() const {
+    return std::hash<int>{}(idx);
 }

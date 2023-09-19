@@ -28,6 +28,8 @@ public:
 
     bool isTempVar() const;
 
+    std::size_t hash() const;
+
 };
 
 std::ostream& operator<<(std::ostream &s, const BoolVar &e);

@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <assert.h>
+#include <boost/functional/hash.hpp>
 
 std::ostream& operator<<(std::ostream &s, const RelSet &set) {
     s << "{";
@@ -308,6 +309,14 @@ Rel Rel::makeRhsZero() const {
 
 bool Rel::isWellformed() const {
     return op != neq;
+}
+
+std::size_t Rel::hash() const {
+    std::size_t seed {0};
+    boost::hash_combine(seed, l.hash());
+    boost::hash_combine(seed, op);
+    boost::hash_combine(seed, r.hash());
+    return seed;
 }
 
 Rel Rel::buildEq(const Expr &x, const Expr &y) {

@@ -581,6 +581,10 @@ std::optional<Expr> Expr::solveTermFor(const NumVar &var, SolvingLevel level) co
     return {term};
 }
 
+std::size_t Expr::hash() const {
+    return ex.gethash();
+}
+
 bool operator==(const Expr &e1, const Expr &e2) {
     return e1.ex.is_equal(e2.ex);
 }

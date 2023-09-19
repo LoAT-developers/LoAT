@@ -309,6 +309,8 @@ public:
 
     std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
 
+    std::size_t hash() const;
+
     /**
      * @brief exponentiation
      */

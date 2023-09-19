@@ -10,6 +10,8 @@
 #include <type_traits>
 #include <memory>
 #include <set>
+#include <unordered_set>
+#include <boost/functional/hash.hpp>
 
 template <ITheory... Th>
 class BoolTheoryLit;
@@ -19,6 +21,19 @@ template <IBaseTheory... Th>
 class BoolExpression;
 template <ITheory... Th>
 using BExpr = std::shared_ptr<const BoolExpression<Th...>>;
+template<ITheory... Th>
+struct BExprHash;
+template<ITheory... Th>
+struct BExprEqual;
+
+template<ITheory... Th>
+struct CacheEntry {
+    std::weak_ptr<const BoolExpression<Th...>> ptr;
+    size_t hash;
+
+    CacheEntry(const BExpr<Th...> ptr): ptr(ptr), hash(ptr->hash()) {}
+
+};
 
 namespace literal {
 
@@ -48,14 +63,47 @@ BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th.
 }
 
 template <ITheory... Th>
-struct BExpr_compare {
+struct BExprCompare {
     bool operator() (const BExpr<Th...> a, const BExpr<Th...> b) const {
         return a < b;
     }
 };
 
+template<ITheory... Th>
+struct CacheHash {
+    std::size_t operator()(const CacheEntry<Th...> &e) const noexcept {
+        return e.hash;
+    }
+};
+
+template<ITheory... Th>
+struct CacheEqual {
+    std::size_t operator()(const CacheEntry<Th...> e1, const CacheEntry<Th...> e2) const noexcept {
+        if (e1.hash != e2.hash || e1.ptr.expired() || e2.ptr.expired()) {
+            return false;
+        }
+        const auto s1 {e1.ptr.lock()};
+        const auto s2 {e2.ptr.lock()};
+        if (s1 == s2) {
+            return true;
+        }
+        const auto l1 {s1->getTheoryLit()};
+        const auto l2 {s2->getTheoryLit()};
+        if (l1 && l2) {
+            return *l1 == *l2;
+        } else if (l1 || l2) {
+            return false;
+        }
+        if (s1->isAnd() != s2->isAnd()) {
+            return false;
+        } else {
+            return s1->getChildren() == s2->getChildren();
+        }
+    }
+};
+
 template <ITheory... Th>
-using BoolExpressionSet = std::set<BExpr<Th...>, BExpr_compare<Th...>> ;
+using BoolExpressionSet = std::set<BExpr<Th...>, BExprCompare<Th...>> ;
 
 enum ConcatOperator { ConcatAnd, ConcatOr };
 
@@ -77,6 +125,25 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
     using BES = BoolExpressionSet<Th...>;
     using Subs = theory::Subs<Th...>;
 
+    static const BE from_cache(const BE e) {
+        static std::unordered_set<
+            CacheEntry<Th...>,
+            CacheHash<Th...>,
+            CacheEqual<Th...>> cache {};
+        const CacheEntry ce {e};
+        auto it {cache.find(ce)};
+        if (it == cache.end()) {
+            cache.insert(ce);
+            return e;
+        } else {
+            return it->ptr.lock();
+        }
+    }
+
+    static const BE build_cached(const BES &children, ConcatOperator op) {
+        return from_cache(BE(new BoolJunction(children, op)));
+    }
+
 public:
 
     static const BE True;
@@ -88,7 +155,7 @@ public:
         for (const Lit *lit: lits) {
             children.insert(buildTheoryLit(*lit));
         }
-        return BE(new BoolJunction(children, op));
+        return build_cached(children, op);
     }
 
     template <class Lits>
@@ -97,7 +164,7 @@ public:
         for (const Lit &lit: lits) {
             children.insert(buildTheoryLit(lit));
         }
-        return BE(new BoolJunction(children, op));
+        return build_cached(children, op);
     }
 
     template <class Children>
@@ -123,7 +190,7 @@ public:
         if (children.size() == 1) {
             return *children.begin();
         }
-        return BE(new BoolJunction(children, op));
+        return build_cached(children, op);
     }
 
     template <class Lits>
@@ -152,7 +219,7 @@ public:
     }
 
     static const BE buildTheoryLit(const Lit &lit) {
-        return BE(new BoolTheoryLit<Th...>(lit));
+        return from_cache(BE(new BoolTheoryLit<Th...>(lit)));
     }
 
     virtual bool isTheoryLit() const = 0;
@@ -167,6 +234,7 @@ public:
     virtual void collectLits(LS &res) const = 0;
     virtual size_t size() const = 0;
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
+    virtual std::size_t hash() const = 0;
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
@@ -325,17 +393,23 @@ public:
         throw std::logic_error("unknown boolean expression");
     }
 
-    BE map(const std::function<BE(const Lit&)> &f) const {
+    BE map(const std::function<BE(const Lit&)> &f, std::unordered_map<BE, BE> &cache) const {
+        const auto it {cache.find(this->shared_from_this())};
+        if (it != cache.end()) {
+            return it->second;
+        }
+        BE res;
         if (isAnd()) {
             bool changed = false;
             BoolExpressionSet<Th...> newChildren;
             for (const auto &c: getChildren()) {
-                const auto simp = c->map(f);
+                const auto simp = c->map(f, cache);
                 changed |= simp.get() != c.get();
-                if (simp == BoolExpression<Th...>::False) {
-                    return BoolExpression<Th...>::False;
+                if (simp == False) {
+                    cache.emplace(this->shared_from_this(), False);
+                    return False;
                 } else {
-                    if (simp != BoolExpression<Th...>::True) {
+                    if (simp != True) {
                         if (simp->isAnd()) {
                             const auto children = simp->getChildren();
                             newChildren.insert(children.begin(), children.end());
@@ -346,29 +420,31 @@ public:
                 }
             }
             if (!changed) {
-                return this->shared_from_this();
+                res = this->shared_from_this();
             } else if (newChildren.empty()) {
-                return BoolExpression<Th...>::True;
+                res = True;
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
-                            return BoolExpression<Th...>::False;
+                            cache.emplace(this->shared_from_this(), False);
+                            return False;
                         }
                     }
                 }
-                return BoolExpression<Th...>::buildAnd(newChildren);
+                res = buildAnd(newChildren);
             }
         } else if (isOr()) {
             BoolExpressionSet<Th...> newChildren;
             bool changed = false;
             for (const auto &c: getChildren()) {
-                const auto simp = c->map(f);
+                const auto simp = c->map(f, cache);
                 changed |= simp.get() != c.get();
-                if (simp == BoolExpression<Th...>::True) {
-                    return BoolExpression<Th...>::True;
+                if (simp == True) {
+                    cache.emplace(this->shared_from_this(), True);
+                    return True;
                 } else {
-                    if (simp != BoolExpression<Th...>::False) {
+                    if (simp != False) {
                         if (simp->isOr()) {
                             const auto children = simp->getChildren();
                             newChildren.insert(children.begin(), children.end());
@@ -379,30 +455,37 @@ public:
                 }
             }
             if (!changed) {
-                return this->shared_from_this();
+                res = this->shared_from_this();
             } else if (newChildren.empty()) {
-              return BoolExpression<Th...>::False;
+                res = False;
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
-                            return BoolExpression<Th...>::True;
+                            cache.emplace(this->shared_from_this(), True);
+                            return True;
                         }
                     }
                 }
-                return BoolExpression<Th...>::buildOr(newChildren);
+                res = buildOr(newChildren);
             }
         } else if (isTheoryLit()) {
             const auto lit = *getTheoryLit();
             const auto mapped = f(lit);
             const auto mappedLit = mapped->getTheoryLit();
             if (mappedLit && *mappedLit == lit) {
-                return this->shared_from_this();
+                res = this->shared_from_this();
             } else {
-                return mapped;
+                res = mapped;
             }
         }
-        throw std::logic_error("unknown boolean expression");
+        cache.emplace(this->shared_from_this(), res);
+        return res;
+    }
+
+    BE map(const std::function<BE(const Lit&)> &f) const {
+        std::unordered_map<BE, BE> cache;
+        return map(f, cache);
     }
 
     BE subs(const Subs &subs) const {
@@ -632,10 +715,10 @@ protected:
 };
 
 template <IBaseTheory... Th>
-const BExpr<Th...> BoolExpression<Th...>::True = BE(new BoolJunction(BoolExpressionSet<Th...>{}, ConcatAnd));
+const BExpr<Th...> BoolExpression<Th...>::True = build_cached(BoolExpressionSet<Th...>{}, ConcatAnd);
 
 template <IBaseTheory... Th>
-const BExpr<Th...> BoolExpression<Th...>::False = BE(new BoolJunction(BoolExpressionSet<Th...>{}, ConcatOr));
+const BExpr<Th...> BoolExpression<Th...>::False = build_cached(BoolExpressionSet<Th...>{}, ConcatOr);
 
 template <ITheory... Th>
 class BoolTheoryLit: public BoolExpression<Th...> {
@@ -710,6 +793,14 @@ public:
         if (std::holds_alternative<Rel>(lit)) {
             std::get<Rel>(lit).getBounds(std::get<NumVar>(var), res);
         }
+    }
+
+    std::size_t hash() const {
+        return std::visit(Overload {
+            [](const auto &lit) {
+                return lit.hash();
+            }
+        }, lit);
     }
 
 protected:
@@ -851,6 +942,13 @@ public:
         }
     }
 
+    std::size_t hash() const {
+        std::size_t seed = 0;
+        boost::hash_combine(seed, op);
+        boost::hash_combine(seed, boost::hash_range(children.begin(), children.end()));
+        return seed;
+    }
+
 protected:
 
     void dnf(std::vector<C> &res) const override {
@@ -899,25 +997,10 @@ const BExpr<Th...> operator !(const BExpr<Th...> a) {
 }
 
 template <ITheory... Th>
-bool operator ==(const BExpr<Th...> a, const BExpr<Th...> b) {
-    if (a->isTheoryLit()) {
-        if (b->isTheoryLit()) {
-            return *a->getTheoryLit() == *b->getTheoryLit();
-        } else {
-            return false;
-        }
-    }
-    if (b->isTheoryLit()) {
-        return false;
-    }
-    if (a->isAnd() != b->isAnd()) {
-        return false;
-    }
-    return a->getChildren() == b->getChildren();
-}
-
-template <ITheory... Th>
 std::strong_ordering operator <=>(const BExpr<Th...> a, const BExpr<Th...> b) {
+    if (a == b) {
+        return std::strong_ordering::equal;
+    }
     if (a->isTheoryLit()) {
         if (b->isTheoryLit()) {
             return *a->getTheoryLit() <=> *b->getTheoryLit();
@@ -934,11 +1017,6 @@ std::strong_ordering operator <=>(const BExpr<Th...> a, const BExpr<Th...> b) {
         return std::strong_ordering::less;
     }
     return a->getChildren() <=> b->getChildren();
-}
-
-template <ITheory... Th>
-bool operator !=(const BExpr<Th...> a, const BExpr<Th...> b) {
-    return !(a==b);
 }
 
 template <ITheory T, ITheory... Th>
