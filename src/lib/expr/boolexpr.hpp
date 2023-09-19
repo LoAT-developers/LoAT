@@ -10,30 +10,18 @@
 #include <type_traits>
 #include <memory>
 #include <set>
-#include <unordered_set>
 #include <boost/functional/hash.hpp>
+
+
 
 template <ITheory... Th>
 class BoolTheoryLit;
-template <ITheory... Th>
+template <IBaseTheory... Th>
 class BoolJunction;
 template <IBaseTheory... Th>
 class BoolExpression;
 template <ITheory... Th>
 using BExpr = std::shared_ptr<const BoolExpression<Th...>>;
-template<ITheory... Th>
-struct BExprHash;
-template<ITheory... Th>
-struct BExprEqual;
-
-template<ITheory... Th>
-struct CacheEntry {
-    std::weak_ptr<const BoolExpression<Th...>> ptr;
-    size_t hash;
-
-    CacheEntry(const BExpr<Th...> ptr): ptr(ptr), hash(ptr->hash()) {}
-
-};
 
 namespace literal {
 
@@ -63,49 +51,62 @@ BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th.
 }
 
 template <ITheory... Th>
-struct BExprCompare {
-    bool operator() (const BExpr<Th...> a, const BExpr<Th...> b) const {
-        return a < b;
+using BoolExpressionSet = std::set<BExpr<Th...>>;
+
+enum ConcatOperator { ConcatAnd, ConcatOr };
+
+template<ITheory... Th>
+struct JunctionCacheEntry {
+    std::vector<std::weak_ptr<const BoolExpression<Th...>>> children;
+    ConcatOperator op;
+    size_t hash {0};
+
+    JunctionCacheEntry(const BoolExpressionSet<Th...> &children, const ConcatOperator op): children(children.begin(), children.end()), op(op) {
+        boost::hash_combine(hash, boost::hash_range(children.begin(), children.end()));
+        boost::hash_combine(hash, op);
     }
+
 };
 
 template<ITheory... Th>
-struct CacheHash {
-    std::size_t operator()(const CacheEntry<Th...> &e) const noexcept {
+struct JunctionCacheHash {
+    std::size_t operator()(const JunctionCacheEntry<Th...> &e) const noexcept {
         return e.hash;
     }
 };
 
 template<ITheory... Th>
-struct CacheEqual {
-    std::size_t operator()(const CacheEntry<Th...> e1, const CacheEntry<Th...> e2) const noexcept {
-        if (e1.hash != e2.hash || e1.ptr.expired() || e2.ptr.expired()) {
+struct JunctionCacheEqual {
+    std::size_t operator()(const JunctionCacheEntry<Th...> e1, const JunctionCacheEntry<Th...> e2) const noexcept {
+        if (e1.op != e2.op || e1.children.size() != e2.children.size()) {
             return false;
         }
-        const auto s1 {e1.ptr.lock()};
-        const auto s2 {e2.ptr.lock()};
-        if (s1 == s2) {
-            return true;
+        auto it1 {e1.children.begin()};
+        auto it2 {e2.children.begin()};
+        while (it1 != e1.children.end()) {
+            if (it1->expired() || it2->expired() || it1->lock() != it2->lock()) {
+                return false;
+            }
+            ++it1;
+            ++it2;
         }
-        const auto l1 {s1->getTheoryLit()};
-        const auto l2 {s2->getTheoryLit()};
-        if (l1 && l2) {
-            return *l1 == *l2;
-        } else if (l1 || l2) {
-            return false;
-        }
-        if (s1->isAnd() != s2->isAnd()) {
-            return false;
-        } else {
-            return s1->getChildren() == s2->getChildren();
-        }
+        return true;
     }
 };
 
-template <ITheory... Th>
-using BoolExpressionSet = std::set<BExpr<Th...>, BExprCompare<Th...>> ;
+template<ITheory... Th>
+struct LitHash {
+    std::size_t operator()(const typename Theory<Th...>::Lit &lit) const noexcept {
+        return literal::hash<Th...>(lit);
+    }
+};
 
-enum ConcatOperator { ConcatAnd, ConcatOr };
+template<ITheory... Th>
+struct LitEqual {
+    std::size_t operator()(const typename Theory<Th...>::Lit &l1, const typename Theory<Th...>::Lit &l2) const noexcept {
+        return l1 == l2;
+    }
+};
 
 template <IBaseTheory... Th>
 class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>> {
@@ -125,23 +126,37 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
     using BES = BoolExpressionSet<Th...>;
     using Subs = theory::Subs<Th...>;
 
-    static const BE from_cache(const BE e) {
-        static std::unordered_set<
-            CacheEntry<Th...>,
-            CacheHash<Th...>,
-            CacheEqual<Th...>> cache {};
-        const CacheEntry ce {e};
+    static const BE from_cache(const BES &children, ConcatOperator op) {
+        static std::unordered_map<
+            JunctionCacheEntry<Th...>,
+            std::weak_ptr<const BoolExpression<Th...>>,
+            JunctionCacheHash<Th...>,
+            JunctionCacheEqual<Th...>> cache {};
+        const JunctionCacheEntry<Th...> ce {children, op};
         auto it {cache.find(ce)};
-        if (it == cache.end()) {
-            cache.insert(ce);
-            return e;
+        if (it == cache.end() || it->second.expired()) {
+            const BE res {new BoolJunction<Th...>(children, op)};
+            cache.emplace(ce, res);
+            return res;
         } else {
-            return it->ptr.lock();
+            return it->second.lock();
         }
     }
 
-    static const BE build_cached(const BES &children, ConcatOperator op) {
-        return from_cache(BE(new BoolJunction(children, op)));
+    static const BE from_cache(const Lit &lit) {
+        static std::unordered_map<
+            Lit,
+            std::weak_ptr<const BoolExpression<Th...>>,
+            LitHash<Th...>,
+            LitEqual<Th...>> cache {};
+        auto it {cache.find(lit)};
+        if (it == cache.end() || it->second.expired()) {
+            const BE res {new BoolTheoryLit<Th...>(lit)};
+            cache.emplace(lit, res);
+            return res;
+        } else {
+            return it->second.lock();
+        }
     }
 
 public:
@@ -155,7 +170,7 @@ public:
         for (const Lit *lit: lits) {
             children.insert(buildTheoryLit(*lit));
         }
-        return build_cached(children, op);
+        return from_cache(children, op);
     }
 
     template <class Lits>
@@ -164,7 +179,7 @@ public:
         for (const Lit &lit: lits) {
             children.insert(buildTheoryLit(lit));
         }
-        return build_cached(children, op);
+        return from_cache(children, op);
     }
 
     template <class Children>
@@ -190,7 +205,7 @@ public:
         if (children.size() == 1) {
             return *children.begin();
         }
-        return build_cached(children, op);
+        return from_cache(children, op);
     }
 
     template <class Lits>
@@ -219,7 +234,7 @@ public:
     }
 
     static const BE buildTheoryLit(const Lit &lit) {
-        return from_cache(BE(new BoolTheoryLit<Th...>(lit)));
+        return from_cache(lit);
     }
 
     virtual bool isTheoryLit() const = 0;
@@ -715,10 +730,10 @@ protected:
 };
 
 template <IBaseTheory... Th>
-const BExpr<Th...> BoolExpression<Th...>::True = build_cached(BoolExpressionSet<Th...>{}, ConcatAnd);
+const BExpr<Th...> BoolExpression<Th...>::True = from_cache(BoolExpressionSet<Th...>{}, ConcatAnd);
 
 template <IBaseTheory... Th>
-const BExpr<Th...> BoolExpression<Th...>::False = build_cached(BoolExpressionSet<Th...>{}, ConcatOr);
+const BExpr<Th...> BoolExpression<Th...>::False = from_cache(BoolExpressionSet<Th...>{}, ConcatOr);
 
 template <ITheory... Th>
 class BoolTheoryLit: public BoolExpression<Th...> {
@@ -796,11 +811,7 @@ public:
     }
 
     std::size_t hash() const {
-        return std::visit(Overload {
-            [](const auto &lit) {
-                return lit.hash();
-            }
-        }, lit);
+        return literal::hash<Th...>(lit);
     }
 
 protected:
@@ -817,7 +828,7 @@ protected:
 
 };
 
-template <ITheory... Th>
+template <IBaseTheory... Th>
 class BoolJunction: public BoolExpression<Th...> {
 
     static_assert(sizeof...(Th) > 0);
@@ -994,29 +1005,6 @@ const BExpr<Th...> operator |(const BExpr<Th...> a, const typename Theory<Th...>
 template <ITheory... Th>
 const BExpr<Th...> operator !(const BExpr<Th...> a) {
     return a->negation();
-}
-
-template <ITheory... Th>
-std::strong_ordering operator <=>(const BExpr<Th...> a, const BExpr<Th...> b) {
-    if (a == b) {
-        return std::strong_ordering::equal;
-    }
-    if (a->isTheoryLit()) {
-        if (b->isTheoryLit()) {
-            return *a->getTheoryLit() <=> *b->getTheoryLit();
-        } else {
-            return std::strong_ordering::less;
-        }
-    }
-    if (b->isTheoryLit()) {
-        return std::strong_ordering::greater;
-    }
-    if (a->isAnd() && !b->isAnd()) {
-        return std::strong_ordering::greater;
-    } else if (!a->isAnd() && b->isAnd()) {
-        return std::strong_ordering::less;
-    }
-    return a->getChildren() <=> b->getChildren();
 }
 
 template <ITheory T, ITheory... Th>

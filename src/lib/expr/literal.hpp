@@ -115,4 +115,13 @@ bool isPoly(const typename Theory<Th...>::Lit &lit) {
     return isPolyImpl<0, Th...>(lit);
 }
 
+template <ITheory... Th>
+size_t hash(const typename Theory<Th...>::Lit lit) {
+    return std::visit(Overload {
+                          [](const auto &lit) {
+                              return lit.hash();
+                          }
+                      }, lit);
+}
+
 }
