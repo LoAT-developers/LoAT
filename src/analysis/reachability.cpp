@@ -207,16 +207,11 @@ void Reachability::update_cpx() {
     if (max_cpx <= cpx && !cost.hasVarWith([](const auto &x){return expr::isTempVar(x);})) {
         return;
     }
-    for (const auto &tc: resolvent.getGuard()->transform<IntTheory>()->dnf()) {
-        const auto res = AsymptoticBound::determineComplexity(tc, cost, false, cpx);
-        if (res.cpx > cpx) {
-            cpx = res.cpx;
-            std::cout << cpx.toWstString() << std::endl;
-            proof.result(cpx.toString());
-        }
-        if (res.cpx == max_cpx) {
-            break;
-        }
+    const auto res = AsymptoticBound::determineComplexity(resolvent.getGuard()->conjunctionToGuard(), cost, false, cpx);
+    if (res.cpx > cpx) {
+        cpx = res.cpx;
+        std::cout << cpx.toWstString() << std::endl;
+        proof.result(cpx.toString());
     }
 }
 

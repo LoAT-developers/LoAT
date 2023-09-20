@@ -10,7 +10,7 @@ LimitProblem::LimitProblem()
 }
 
 
-LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const Expr &cost)
+LimitProblem::LimitProblem(const Guard &normalizedGuard, const Expr &cost)
     : LimitProblem() {
     for (const auto &lit : normalizedGuard) {
         const Rel &rel = std::get<Rel>(lit);
@@ -25,7 +25,7 @@ LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard, const 
 }
 
 
-LimitProblem::LimitProblem(const Conjunction<IntTheory> &normalizedGuard)
+LimitProblem::LimitProblem(const Guard &normalizedGuard)
     : variableN(NumVar::next()), unsolvable(false), log(new std::ostringstream()) {
     for (const auto &lit : normalizedGuard) {
         const Rel &rel = std::get<Rel>(lit);

@@ -15,7 +15,7 @@
 using namespace std;
 
 
-AsymptoticBound::AsymptoticBound(Conjunction<IntTheory> guard,
+AsymptoticBound::AsymptoticBound(Guard guard,
                                  Expr cost, bool finalCheck, unsigned int timeout)
     : guard(guard), cost(cost), finalCheck(finalCheck), timeout(timeout),
       addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP() {
@@ -138,7 +138,7 @@ ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
 
     solution = solution.compose(limitProblem.getSolution());
 
-    Conjunction<IntTheory> guardCopy = guard;
+    Guard guardCopy = guard;
     guardCopy.push_back(Rel::buildGt(cost, 0));
     for (const auto &lit : guardCopy) {
         const Rel &rel = std::get<Rel>(lit);
@@ -369,7 +369,6 @@ AsymptoticBound::ComplexityResult AsymptoticBound::getComplexity(const LimitProb
     } else {
         res.lowerBound = findLowerBoundforSolvedCost(limitProblem, res.solution);
 
-        Var n = limitProblem.getN();
         if (res.lowerBound < 0) { // lower bound is exponential
             res.lowerBound = -res.lowerBound;
             res.complexity = Complexity::Exp;
@@ -766,7 +765,7 @@ bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
 }
 
 
-AsymptoticBound::Result AsymptoticBound::determineComplexity(const Conjunction<IntTheory> &guard,
+AsymptoticBound::Result AsymptoticBound::determineComplexity(const Guard &guard,
                                                              const Expr &cost,
                                                              bool finalCheck,
                                                              const Complexity &currentRes,

@@ -335,72 +335,6 @@ public:
         }
     }
 
-    template <ITheory... Th_>
-    BExpr<Th_...> map(const std::function<BExpr<Th_...>(const Lit&)> &f) const {
-        if (isAnd()) {
-            BoolExpressionSet<Th_...> newChildren;
-            for (const auto &c: getChildren()) {
-                const auto simp = c->template map<Th_...>(f);
-                if (simp == BoolExpression<Th_...>::bot()) {
-                    return BoolExpression<Th_...>::bot();
-                } else {
-                    if (simp != BoolExpression<Th_...>::top()) {
-                        if (simp->isAnd()) {
-                            const auto children = simp->getChildren();
-                            newChildren.insert(children.begin(), children.end());
-                        } else {
-                            newChildren.insert(simp);
-                        }
-                    }
-                }
-            }
-            if (newChildren.empty()) {
-                return BoolExpression<Th_...>::top();
-            } else {
-                for (const auto &c: newChildren) {
-                    if (c->isTheoryLit()) {
-                        if (newChildren.find(!c) != newChildren.end()) {
-                            return BoolExpression<Th_...>::bot();
-                        }
-                    }
-                }
-                return BoolExpression<Th_...>::buildAnd(newChildren);
-            }
-        } else if (isOr()) {
-            BoolExpressionSet<Th_...> newChildren;
-            for (const auto &c: getChildren()) {
-                const auto simp = c->template map<Th_...>(f);
-                if (simp == BoolExpression<Th_...>::top()) {
-                    return BoolExpression<Th_...>::top();
-                } else {
-                    if (simp != BoolExpression<Th_...>::bot()) {
-                        if (simp->isOr()) {
-                            const auto children = simp->getChildren();
-                            newChildren.insert(children.begin(), children.end());
-                        } else {
-                            newChildren.insert(simp);
-                        }
-                    }
-                }
-            }
-            if (newChildren.empty()) {
-                return BoolExpression<Th_...>::bot();
-            } else {
-                for (const auto &c: newChildren) {
-                    if (c->isTheoryLit()) {
-                        if (newChildren.find(!c) != newChildren.end()) {
-                            return BoolExpression<Th_...>::top();
-                        }
-                    }
-                }
-                return BoolExpression<Th_...>::buildOr(newChildren);
-            }
-        } else if (isTheoryLit()) {
-            return f(*getTheoryLit());
-        }
-        throw std::logic_error("unknown boolean expression");
-    }
-
     BE map(const std::function<BE(const Lit&)> &f, std::unordered_map<BE, BE> &cache) const {
         const auto it {cache.find(this->shared_from_this())};
         if (it != cache.end()) {
@@ -675,12 +609,6 @@ public:
         return res;
     }
 
-    std::vector<G> dnf() const {
-        std::vector<G> res;
-        dnf(res);
-        return res;
-    }
-
     G conjunctionToGuard() const{
         const LS &lits = this->lits();
         return G(lits.begin(), lits.end());
@@ -707,19 +635,6 @@ public:
         });
     }
 
-    template <ITheory T>
-    BExpr<T> transform() const {
-        const std::function<BExpr<T>(const Lit&)> mapper = [](const Lit &lit) {
-            if (std::holds_alternative<typename T::Lit>(lit)) {
-                return BoolExpression<T>::buildTheoryLit(typename Theory<T>::Lit(std::get<typename T::Lit>(lit)));
-            }
-            throw std::logic_error("transform failed");
-        };
-        return map<T>(mapper);
-    }
-
-protected:
-    virtual void dnf(std::vector<G> &res) const = 0;
 };
 
 template <ITheory... Th>
@@ -799,18 +714,6 @@ public:
 
     std::size_t hash() const {
         return literal::hash<Th...>(lit);
-    }
-
-protected:
-
-    void dnf(std::vector<C> &res) const override {
-        if (res.empty()) {
-            res.push_back({lit});
-        } else {
-            for (auto &g: res) {
-                g.push_back(lit);
-            }
-        }
     }
 
 };
@@ -942,24 +845,6 @@ public:
         boost::hash_combine(seed, op);
         boost::hash_combine(seed, boost::hash_range(children.begin(), children.end()));
         return seed;
-    }
-
-protected:
-
-    void dnf(std::vector<C> &res) const override {
-        if (isAnd()) {
-            for (const BE &e: children) {
-                e->dnf(res);
-            }
-        } else {
-            std::vector<C> oldRes(res);
-            res.clear();
-            for (const BE &e: children) {
-                std::vector<C> newRes(oldRes);
-                e->dnf(newRes);
-                res.insert(res.end(), newRes.begin(), newRes.end());
-            }
-        }
     }
 
 };

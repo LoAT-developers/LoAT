@@ -9,6 +9,7 @@
 #include "proof.hpp"
 #include "complexity.hpp"
 #include "config.hpp"
+#include "theory.hpp"
 
 class AsymptoticBound {
 private:
@@ -25,7 +26,7 @@ private:
         int inftyVars;
     };
 
-    AsymptoticBound(Conjunction<IntTheory> guard, Expr cost, bool finalCheck, unsigned int timeout);
+    AsymptoticBound(Guard guard, Expr cost, bool finalCheck, unsigned int timeout);
 
     void initLimitVectors();
     void normalizeGuard();
@@ -55,10 +56,10 @@ private:
     bool trySmtEncoding(Complexity currentRes);
 
 private:
-    const Conjunction<IntTheory> guard;
+    const Guard guard;
     const Expr cost;
     bool finalCheck;
-    Conjunction<IntTheory> normalizedGuard;
+    Guard normalizedGuard;
     ComplexityResult bestComplexity;
     Proof proof;
     unsigned int timeout;
@@ -100,7 +101,7 @@ public:
      * @param varMan the VariableManager instance is needed to get information about free variables
      * @param finalCheck enables more sophisticated backtracking and uses Timeout::hard
      */
-    static Result determineComplexity(const Conjunction<IntTheory> &guard,
+    static Result determineComplexity(const Guard &guard,
                                       const Expr &cost,
                                       bool finalCheck = false,
                                       const Complexity &currentRes = Complexity::Const,
