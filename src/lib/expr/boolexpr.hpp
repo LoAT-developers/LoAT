@@ -126,33 +126,37 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
     using BES = BoolExpressionSet<Th...>;
     using Subs = theory::Subs<Th...>;
 
+protected:
+
+    static std::unordered_map<
+        JunctionCacheEntry<Th...>,
+        std::weak_ptr<const BoolExpression<Th...>>,
+        JunctionCacheHash<Th...>,
+        JunctionCacheEqual<Th...>> junctionCache;
+
     static const BE from_cache(const BES &children, ConcatOperator op) {
-        static std::unordered_map<
-            JunctionCacheEntry<Th...>,
-            std::weak_ptr<const BoolExpression<Th...>>,
-            JunctionCacheHash<Th...>,
-            JunctionCacheEqual<Th...>> cache {};
         const JunctionCacheEntry<Th...> ce {children, op};
-        auto it {cache.find(ce)};
-        if (it == cache.end() || it->second.expired()) {
+        auto it {junctionCache.find(ce)};
+        if (it == junctionCache.end() || it->second.expired()) {
             const BE res {new BoolJunction<Th...>(children, op)};
-            cache.emplace(ce, res);
+            junctionCache.emplace(ce, res);
             return res;
         } else {
             return it->second.lock();
         }
     }
 
+    static std::unordered_map<
+        Lit,
+        std::weak_ptr<const BoolExpression<Th...>>,
+        LitHash<Th...>,
+        LitEqual<Th...>> litCache;
+
     static const BE from_cache(const Lit &lit) {
-        static std::unordered_map<
-            Lit,
-            std::weak_ptr<const BoolExpression<Th...>>,
-            LitHash<Th...>,
-            LitEqual<Th...>> cache {};
-        auto it {cache.find(lit)};
-        if (it == cache.end() || it->second.expired()) {
+        auto it {litCache.find(lit)};
+        if (it == litCache.end() || it->second.expired()) {
             const BE res {new BoolTheoryLit<Th...>(lit)};
-            cache.emplace(lit, res);
+            litCache.emplace(lit, res);
             return res;
         } else {
             return it->second.lock();
@@ -637,6 +641,20 @@ public:
 
 };
 
+template <IBaseTheory... Th>
+std::unordered_map<
+    JunctionCacheEntry<Th...>,
+    std::weak_ptr<const BoolExpression<Th...>>,
+    JunctionCacheHash<Th...>,
+    JunctionCacheEqual<Th...>> BoolExpression<Th...>::junctionCache {};
+
+template <IBaseTheory... Th>
+std::unordered_map<
+    typename BoolExpression<Th...>::Lit,
+    std::weak_ptr<const BoolExpression<Th...>>,
+    LitHash<Th...>,
+    LitEqual<Th...>> BoolExpression<Th...>::litCache {};
+
 template <ITheory... Th>
 class BoolTheoryLit: public BoolExpression<Th...> {
 
@@ -686,7 +704,9 @@ public:
         return pred(lit);
     }
 
-    ~BoolTheoryLit() override {}
+    ~BoolTheoryLit() override {
+        BoolExpression<Th...>::litCache.erase(lit);
+    }
 
     bool isConjunction() const override {
         return true;
@@ -781,7 +801,9 @@ public:
         return true;
     }
 
-    ~BoolJunction() override {}
+    ~BoolJunction() override {
+        BoolExpression<Th...>::junctionCache.erase(JunctionCacheEntry<Th...>(children, op));
+    }
 
     bool isConjunction() const override {
         return isAnd() && std::all_of(children.begin(), children.end(), [](const BE c){
