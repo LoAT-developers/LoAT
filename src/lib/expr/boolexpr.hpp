@@ -161,8 +161,15 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
 
 public:
 
-    static const BE True;
-    static const BE False;
+    static const BE top() {
+        const static auto res {from_cache(BoolExpressionSet<Th...>{}, ConcatAnd)};
+        return res;
+    }
+
+    static const BE bot() {
+        const static auto res {from_cache(BoolExpressionSet<Th...>{}, ConcatOr)};
+        return res;
+    }
 
     template <class Lits>
     static const BE buildFromLits(const Lits &lits, ConcatOperator op) {
@@ -334,10 +341,10 @@ public:
             BoolExpressionSet<Th_...> newChildren;
             for (const auto &c: getChildren()) {
                 const auto simp = c->template map<Th_...>(f);
-                if (simp == BoolExpression<Th_...>::False) {
-                    return BoolExpression<Th_...>::False;
+                if (simp == BoolExpression<Th_...>::bot()) {
+                    return BoolExpression<Th_...>::bot();
                 } else {
-                    if (simp != BoolExpression<Th_...>::True) {
+                    if (simp != BoolExpression<Th_...>::top()) {
                         if (simp->isAnd()) {
                             const auto children = simp->getChildren();
                             newChildren.insert(children.begin(), children.end());
@@ -348,12 +355,12 @@ public:
                 }
             }
             if (newChildren.empty()) {
-                return BoolExpression<Th_...>::True;
+                return BoolExpression<Th_...>::top();
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
-                            return BoolExpression<Th_...>::False;
+                            return BoolExpression<Th_...>::bot();
                         }
                     }
                 }
@@ -363,10 +370,10 @@ public:
             BoolExpressionSet<Th_...> newChildren;
             for (const auto &c: getChildren()) {
                 const auto simp = c->template map<Th_...>(f);
-                if (simp == BoolExpression<Th_...>::True) {
-                    return BoolExpression<Th_...>::True;
+                if (simp == BoolExpression<Th_...>::top()) {
+                    return BoolExpression<Th_...>::top();
                 } else {
-                    if (simp != BoolExpression<Th_...>::False) {
+                    if (simp != BoolExpression<Th_...>::bot()) {
                         if (simp->isOr()) {
                             const auto children = simp->getChildren();
                             newChildren.insert(children.begin(), children.end());
@@ -377,12 +384,12 @@ public:
                 }
             }
             if (newChildren.empty()) {
-              return BoolExpression<Th_...>::False;
+                return BoolExpression<Th_...>::bot();
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
-                            return BoolExpression<Th_...>::True;
+                            return BoolExpression<Th_...>::top();
                         }
                     }
                 }
@@ -406,11 +413,11 @@ public:
             for (const auto &c: getChildren()) {
                 const auto simp = c->map(f, cache);
                 changed |= simp.get() != c.get();
-                if (simp == False) {
-                    cache.emplace(this->shared_from_this(), False);
-                    return False;
+                if (simp == bot()) {
+                    cache.emplace(this->shared_from_this(), bot());
+                    return bot();
                 } else {
-                    if (simp != True) {
+                    if (simp != top()) {
                         if (simp->isAnd()) {
                             const auto children = simp->getChildren();
                             newChildren.insert(children.begin(), children.end());
@@ -423,13 +430,13 @@ public:
             if (!changed) {
                 res = this->shared_from_this();
             } else if (newChildren.empty()) {
-                res = True;
+                res = top();
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
-                            cache.emplace(this->shared_from_this(), False);
-                            return False;
+                            cache.emplace(this->shared_from_this(), bot());
+                            return bot();
                         }
                     }
                 }
@@ -441,11 +448,11 @@ public:
             for (const auto &c: getChildren()) {
                 const auto simp = c->map(f, cache);
                 changed |= simp.get() != c.get();
-                if (simp == True) {
-                    cache.emplace(this->shared_from_this(), True);
-                    return True;
+                if (simp == top()) {
+                    cache.emplace(this->shared_from_this(), top());
+                    return top();
                 } else {
-                    if (simp != False) {
+                    if (simp != bot()) {
                         if (simp->isOr()) {
                             const auto children = simp->getChildren();
                             newChildren.insert(children.begin(), children.end());
@@ -458,13 +465,13 @@ public:
             if (!changed) {
                 res = this->shared_from_this();
             } else if (newChildren.empty()) {
-                res = False;
+                res = bot();
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
                         if (newChildren.find(!c) != newChildren.end()) {
-                            cache.emplace(this->shared_from_this(), True);
-                            return True;
+                            cache.emplace(this->shared_from_this(), top());
+                            return top();
                         }
                     }
                 }
@@ -519,9 +526,9 @@ public:
             if (std::holds_alternative<Rel>(lit)) {
                 const auto &rel = std::get<Rel>(lit);
                 if (rel.isTriviallyTrue()) {
-                    return True;
+                    return top();
                 } else if (rel.isTriviallyFalse()) {
-                    return False;
+                    return bot();
                 } else if (rel.isNeq()) {
                     return buildTheoryLit(Rel(rel.lhs(), Rel::lt, rel.rhs())) | (Rel(rel.lhs(), Rel::gt, rel.rhs()));
                 }
@@ -660,7 +667,7 @@ public:
                     const auto &bool_lit {std::get<BoolLit>(lit)};
                     const auto var {bool_lit.getBoolVar()};
                     if (var.isTempVar()) {
-                        res.put(var, bool_lit.isNegated() ? False : True);
+                        res.put(var, bool_lit.isNegated() ? bot() : top());
                     }
                 }
             }
@@ -714,12 +721,6 @@ public:
 protected:
     virtual void dnf(std::vector<G> &res) const = 0;
 };
-
-template <IBaseTheory... Th>
-const BExpr<Th...> BoolExpression<Th...>::True = from_cache(BoolExpressionSet<Th...>{}, ConcatAnd);
-
-template <IBaseTheory... Th>
-const BExpr<Th...> BoolExpression<Th...>::False = from_cache(BoolExpressionSet<Th...>{}, ConcatOr);
 
 template <ITheory... Th>
 class BoolTheoryLit: public BoolExpression<Th...> {
@@ -828,9 +829,6 @@ class BoolJunction: public BoolExpression<Th...> {
     using BE = BExpr<Th...>;
     using BES = BoolExpressionSet<Th...>;
     using Subs = theory::Subs<Th...>;
-
-    BE True = BoolExpression<Th...>::True;
-    BE False = BoolExpression<Th...>::False;
 
     BES children;
     ConcatOperator op;

@@ -21,8 +21,8 @@ using VarSet = theory::VarSet<IntTheory, BoolTheory>;
 using LitSet = theory::LitSet<IntTheory, BoolTheory>;
 using Subs = theory::Subs<IntTheory, BoolTheory>;
 
-extern const BoolExpr True;
-extern const BoolExpr False;
+const BoolExpr top();
+const BoolExpr bot();
 
 namespace theory {
 

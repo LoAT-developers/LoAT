@@ -19,7 +19,7 @@ struct BoolTheory: public BoolBaseTheory {
     using Subs = BoolSubs<IntTheory, BoolTheory>;
 
     static Expression valToExpr(const Val &val) {
-        return val ? BoolExpression<IntTheory, BoolTheory>::True : BoolExpression<IntTheory, BoolTheory>::False;
+        return val ? BoolExpression<IntTheory, BoolTheory>::top() : BoolExpression<IntTheory, BoolTheory>::bot();
     }
 
     static Expression varToExpr(const Var &val) {
@@ -27,7 +27,7 @@ struct BoolTheory: public BoolBaseTheory {
     }
 
     static Expression anyValue() {
-        return BoolExpression<IntTheory, BoolTheory>::False;
+        return BoolExpression<IntTheory, BoolTheory>::bot();
     }
 
 };

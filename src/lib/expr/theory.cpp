@@ -1,4 +1,9 @@
 #include "theory.hpp"
 
-const BoolExpr True = BoolExpression<IntTheory, BoolTheory>::True;
-const BoolExpr False = BoolExpression<IntTheory, BoolTheory>::False;
+const BoolExpr top() {
+    return BoolExpression<IntTheory, BoolTheory>::top();
+}
+
+const BoolExpr bot() {
+    return BoolExpression<IntTheory, BoolTheory>::bot();
+}

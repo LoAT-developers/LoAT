@@ -21,7 +21,7 @@ struct Accel {
 };
 
 struct Nonterm {
-    BoolExpr certificate {BExpression::False};
+    BoolExpr certificate {bot()};
     Proof proof;
 };
 

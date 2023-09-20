@@ -221,7 +221,7 @@ void Reachability::update_cpx() {
 }
 
 Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const {
-    static Rule dummy(BExpression::True, Subs());
+    static Rule dummy(top(), Subs());
     if (!Config::Analysis::complexity()) {
         return dummy;
     }

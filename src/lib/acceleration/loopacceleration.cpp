@@ -206,7 +206,7 @@ acceleration::Result LoopAcceleration::run() {
     }
     res.prefix = rec->prefix;
     std::optional<Rule> accel_rule;
-    auto covered {BExpression::True};
+    auto covered {top()};
     accel_proof = proof;
     if (config.approx == OverApprox) {
         accel_rule = overApproximatingAcceleration(rec->closed_form);

@@ -86,7 +86,7 @@ std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
     } else if (!up.empty()) {
         s << up;
     } else {
-        s << BExpression::True;
+        s << top();
     }
     return s;
 }

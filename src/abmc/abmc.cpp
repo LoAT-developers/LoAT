@@ -131,7 +131,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
 
 BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || (Config::Analysis::reachability() && !loop.deterministic)) {
-        return BExpression::True;
+        return top();
     }
     // we must not start another iteration of the loop in the next step,
     // so we require that we either use the learned transition,
@@ -229,7 +229,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         }
     }
     auto &map {cache.emplace(lang, std::map<BoolExpr, std::optional<Loop>>()).first->second};
-    map.emplace(BExpression::True, std::optional<Loop>());
+    map.emplace(top(), std::optional<Loop>());
     return {};
 }
 

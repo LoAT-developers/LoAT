@@ -278,9 +278,9 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
     } else if (args.size() == 1) {
         res.t = args[0];
     } else if (ctx->TRUE()) {
-        res.t = True;
+        res.t = top();
     } else if (ctx->FALSE()) {
-        res.t = False;
+        res.t = bot();
     } else {
         throw std::invalid_argument("failed to parse " + ctx->getText());
     }

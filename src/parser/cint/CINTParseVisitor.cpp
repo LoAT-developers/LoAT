@@ -47,9 +47,9 @@ std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
     if (ctx->lit()) {
         return BExpression::buildTheoryLit(std::any_cast<Rel>(visit(ctx->lit())))->simplify();
     } else if (ctx->TRUE()) {
-        return BExpression::True;
+        return top();
     } else if (ctx->FALSE()) {
-        return BExpression::False;
+        return bot();
     } else {
         const auto lhs = std::any_cast<BoolExpr>(visit(ctx->bool_expr(0)));
         if (ctx->bool_expr().size() == 2) {

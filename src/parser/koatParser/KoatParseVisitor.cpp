@@ -60,7 +60,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (rhss.size() > 1) {
         throw std::invalid_argument("Com-symbols are not supported");
     }
-    BoolExpr cond = True;
+    BoolExpr cond = top();
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }
