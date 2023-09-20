@@ -102,7 +102,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
         const auto imp {trace[i]};
         nested |= is_orig_clause(imp.first);
         const auto rule {imp.first
-                            ->withGuard(BExpression::buildAndFromLitPtrs(imp.second))
+                            ->withGuard(imp.second)
                             .subs(Subs::build<IntTheory>(n, subs.at(i).get<IntTheory>(n)))};
         if (loop) {
             const auto [chained, sigma] {Chaining::chain(rule, *loop)};
@@ -120,7 +120,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
     if (!imp) {
         throw std::logic_error("model, but no implicant");
     }
-    const auto implicant {loop->withGuard(BExpression::buildAndFromLitPtrs(*imp))};
+    const auto implicant {loop->withGuard(*imp)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         ITSExport::printRule(implicant, std::cout);
@@ -144,9 +144,7 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     unsigned long length {depth - backlink + 1};
     for (unsigned i = 0; i < length; ++i) {
         const auto s {subs_at(depth + i + 1)};
-        for (const auto lit: trace[backlink + i].second) {
-            pre.insert(expr::subs(expr::negate(*lit), s));
-        }
+        pre.insert(trace[backlink + i].second->negation()->subs(s));
     }
     // we must not start another iteration of the loop after using the learned transition in the next step
     BoolExprSet post;
@@ -154,9 +152,7 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     post.insert(not_covered);
     for (unsigned i = 0; i < length; ++i) {
         const auto s {subs_at(depth + i + 2)};
-        for (const auto lit: trace[backlink + i].second) {
-            post.insert(expr::subs(expr::negate(*lit), s));
-        }
+        post.insert(trace[backlink + i].second->negation()->subs(s));
     }
     return BExpression::buildOr(pre) & BExpression::buildOr(post);
 }

@@ -78,9 +78,7 @@ public:
 std::ostream& operator<<(std::ostream &s, const Rule &rule);
 
 using TransIdx = const Rule*;
-using LitPtr = const Lit*;
-using Implicant = std::pair<TransIdx, std::set<LitPtr>>;
+using Implicant = std::pair<TransIdx, BoolExpr>;
 
 std::ostream& operator<<(std::ostream &s, const TransIdx &idx);
-std::ostream& operator<<(std::ostream &s, const LitPtr lit);
 std::ostream& operator<<(std::ostream &s, const Implicant &imp);

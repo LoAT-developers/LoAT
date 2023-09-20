@@ -164,15 +164,6 @@ public:
     static const BE True;
     static const BE False;
 
-    template <class LitPtrs>
-    static const BE buildFromLitPtrs(const LitPtrs &lits, ConcatOperator op) {
-        BES children;
-        for (const Lit *lit: lits) {
-            children.insert(buildTheoryLit(*lit));
-        }
-        return from_cache(children, op);
-    }
-
     template <class Lits>
     static const BE buildFromLits(const Lits &lits, ConcatOperator op) {
         BES children;
@@ -211,11 +202,6 @@ public:
     template <class Lits>
     static const BE buildAndFromLits(const Lits &lits) {
         return buildFromLits(lits, ConcatAnd);
-    }
-
-    template <class LitPtrs>
-    static const BE buildAndFromLitPtrs(const LitPtrs &lits) {
-        return buildFromLitPtrs(lits, ConcatAnd);
     }
 
     template <class Children>
@@ -268,11 +254,11 @@ public:
 
 private:
 
-    bool implicant(Subs &subs, std::set<const Lit*> &res) const {
+    bool implicant(Subs &subs, std::set<BE> &res) const {
         if (isOr()) {
-            std::optional<std::set<const Lit*>> best_res;
+            std::optional<std::set<BE>> best_res;
             for (const auto &c: getChildren()) {
-                std::set<const Lit*> current_res;
+                std::set<BE> current_res;
                 if (c->implicant(subs, current_res)) {
                     if (!best_res) {
                         best_res = current_res;
@@ -307,7 +293,7 @@ private:
                     l = l->subs(subs);
                 }
                 if (l->isTriviallyTrue()) {
-                    res.insert(lit);
+                    res.insert(this->shared_from_this());
                     return true;
                 } else {
                     return false;
@@ -323,10 +309,10 @@ public:
     /**
      * Assumes that this->subs(subs) is a tautology.
      */
-    std::optional<std::set<const Lit*>> implicant(Subs subs) const {
-        std::set<const Lit*> res;
+    std::optional<BE> implicant(Subs subs) const {
+        std::set<BE> res;
         if (implicant(subs, res)) {
-            return res;
+            return buildAnd(res);
         } else {
             return {};
         }

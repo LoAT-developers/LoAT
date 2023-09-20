@@ -75,14 +75,10 @@ std::ostream& operator<<(std::ostream &s, const TransIdx &idx) {
     return s << idx->getId();
 }
 
-std::ostream& operator<<(std::ostream &s, const LitPtr lit) {
-    return s << *lit;
-}
-
 std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
     s << imp.first->getId() << ": ";
     const auto &up {imp.first->getUpdate()};
-    if (!imp.second.empty()) {
+    if (!imp.second->isTriviallyTrue()) {
         s << imp.second;
         if (!up.empty()) {
             s << " /\\ " << up;
