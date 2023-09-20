@@ -3,8 +3,6 @@
 #include "smt.hpp"
 #include "yices.hpp"
 #include "z3.hpp"
-#include "itheory.hpp"
-#include "theory.hpp"
 
 namespace smt {
 
@@ -41,17 +39,6 @@ namespace SmtFactory {
         std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{e}), timeout);
         s->add(e);
         return s->check();
-    }
-
-    template<ITheory... Th>
-    BoolExpressionSet<Th...> unsatCore(const BoolExpressionSet<Th...> &assumptions, unsigned timeout = smt::default_timeout) {
-        const auto logic = Smt<Th...>::chooseLogic(assumptions);
-        if (logic == QF_LA) {
-            return Yices<Th...>(QF_LA, timeout)._unsatCore(assumptions).second;
-        } else {
-            // as far as I can tell, yices' mcsat for NA does not support unsat cores
-            return Z3<Th...>(timeout)._unsatCore(assumptions).second;
-        }
     }
 
 }

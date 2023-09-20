@@ -44,13 +44,9 @@ public:
         return this->add(BoolExpression<Th...>::buildTheoryLit(e));
     }
 
-    virtual void push() {
-        pushCount++;
-    }
+    virtual void push() = 0;
 
-    virtual void pop() {
-        pushCount--;
-    };
+    virtual void pop() = 0;
 
     virtual SmtResult check() = 0;
     virtual Model<Th...> model(const std::optional<const VarSet> &vars = {}) = 0;
@@ -59,14 +55,6 @@ public:
     virtual void resetSolver() = 0;
 
     virtual ~Smt() {}
-
-    static BoolExprSet unsatCore(const BoolExpressionSet<Th...> &assumptions);
-
-    void popAll() {
-        while (pushCount > 0) {
-            pop();
-        }
-    }
 
     static Logic chooseLogic(const std::vector<BExpr<Th...>> &xs, const std::vector<Subs> &up = {}) {
         Logic res = QF_LA;
@@ -128,12 +116,4 @@ public:
 
     virtual std::ostream& print(std::ostream& os) const = 0;
 
-protected:
-
-    virtual std::pair<SmtResult, BoolExpressionSet<Th...>> _unsatCore(const BoolExpressionSet<Th...> &assumptions) = 0;
-
-
-private:
-
-    int pushCount = 0;
 };

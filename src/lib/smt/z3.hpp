@@ -23,12 +23,10 @@ public:
     }
 
     void push() override {
-        Smt<Th...>::push();
         solver.push();
     }
 
     void pop() override {
-        Smt<Th...>::pop();
         solver.pop();
     }
 
@@ -106,33 +104,6 @@ public:
 
     std::ostream& print(std::ostream& os) const override {
         return os << solver;
-    }
-
-    std::pair<SmtResult, BoolExpressionSet<Th...>> _unsatCore(const BoolExpressionSet<Th...> &assumptions) override {
-        std::vector<z3::expr> as;
-        std::map<std::pair<unsigned int, std::string>, BExpr<Th...>> map;
-        for (const auto &a: assumptions) {
-            z3::expr t = ExprToSmt<z3::expr, Th...>::convert(a, ctx);
-            as.push_back(t);
-            std::pair<unsigned int, std::string> key = {t.hash(), t.to_string()};
-            assert(map.count(key) == 0);
-            map.emplace(key, a);
-        }
-        auto z3res = solver.check(as.size(), &as[0]);
-        if (z3res == z3::unsat) {
-            z3::expr_vector core = solver.unsat_core();
-            BoolExprSet res;
-            for (const z3::expr &e: core) {
-                std::pair<unsigned int, std::string> key = {e.hash(), e.to_string()};
-                assert(map.contains(key));
-                res.insert(map[key]);
-            }
-            return {Unsat, res};
-        } else if (z3res == z3::sat) {
-            return {Sat, {}};
-        } else {
-            return {Unknown, {}};
-        }
     }
 
     void setSeed(unsigned seed) {

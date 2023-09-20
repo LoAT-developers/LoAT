@@ -56,12 +56,10 @@ public:
     }
 
     void push() override {
-        Smt<Th...>::push();
         yices_push(solver);
     }
 
     void pop() override {
-        Smt<Th...>::pop();
         yices_pop(solver);
     }
 
@@ -151,43 +149,6 @@ public:
 
     std::ostream& print(std::ostream& os) const override {
         throw std::invalid_argument("print not supported by yices");
-    }
-
-    std::pair<SmtResult, BoolExpressionSet<Th...>> _unsatCore(const BoolExpressionSet<Th...> &assumptions) override {
-        std::vector<term_t> as;
-        std::map<term_t, BExpr<Th...>> map;
-        for (const BoolExpr &a: assumptions) {
-            term_t t = ExprToSmt<term_t, Th...>::convert(a, ctx);
-            as.push_back(t);
-            map.emplace(t, a);
-        }
-        auto future = std::async(yices_check_context_with_assumptions, solver, nullptr, as.size(), &as[0]);
-        if (future.wait_for(std::chrono::milliseconds(timeout)) != std::future_status::timeout) {
-            auto status = future.get();
-            switch (status) {
-            case STATUS_SAT:
-                return {Sat, {}};
-            case STATUS_UNSAT: {
-                term_vector_t core;
-                yices_init_term_vector(&core);
-                yices_get_unsat_core(solver, &core);
-                BoolExprSet res;
-                for (unsigned int i = 0; i < core.size; ++i) {
-                    res.insert(map[core.data[i]]);
-                }
-                return {Unsat, res};
-            }
-            case STATUS_ERROR: {
-                std::cerr << yices_error_string() << std::endl;
-                throw std::logic_error("error from yices");
-            }
-            default:
-                return {Unknown, {}};
-            }
-        } else {
-            yices_stop_search(solver);
-            return {Unknown, {}};
-        }
     }
 
 private:

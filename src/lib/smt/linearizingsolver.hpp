@@ -271,10 +271,4 @@ public:
         z3.setSeed(seed);
     }
 
-protected:
-
-    std::pair<SmtResult, BoolExpressionSet<Th...>> _unsatCore(const BoolExpressionSet<Th...> &assumptions) override {
-        throw std::logic_error("not supported");
-    }
-
 };
