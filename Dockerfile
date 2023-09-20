@@ -145,6 +145,28 @@ RUN make install
 
 
 
+# FROM alpine:3.18.3 as CVC5
+# RUN apk add bash gcc g++ make cmake python3-dev py3-pip autoconf automake libtool texinfo
+
+FROM base as CVC5-base
+
+RUN xbps-install -yuS xbps
+RUN xbps-install -yS python3-devel python3-pip libtool texinfo cln-devel
+RUN python3 -m pip install tomli pyparsing
+
+RUN wget https://github.com/cvc5/cvc5/archive/refs/tags/cvc5-1.0.8.tar.gz
+RUN tar xf cvc5-1.0.8.tar.gz
+WORKDIR /cvc5-cvc5-1.0.8
+RUN sed -i 's/__linux__/__GLIBC__/g' src/prop/minisat/utils/System.h
+RUN sed -i 's/#include <unistd.h>/#include <time.h>\n#include <unistd.h>/g' src/util/safe_print.h
+RUN ./configure.sh --static --auto-download --poly --cln --gpl --no-docs
+WORKDIR /cvc5-cvc5-1.0.8/build
+
+FROM CVC5-base as CVC5
+RUN make -j4
+RUN make install
+
+
 FROM base as z3
 
 RUN xbps-install -yS xbps
@@ -207,3 +229,6 @@ COPY --from=antlr4 /usr/local/include/antlr4-runtime/ /usr/local/include/
 
 COPY --from=faudes /usr/local/lib/libfaudes.a /usr/local/lib/libfaudes.a
 COPY --from=faudes /usr/local/include/faudes/ /usr/local/include/
+
+COPY --from=CVC5 /usr/local/lib64/libcvc5.a /usr/local/lib/libcvc5.a
+COPY --from=CVC5 /usr/local/include/cvc5 /usr/local/include/cvc5

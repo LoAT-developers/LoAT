@@ -19,6 +19,9 @@ add_library(${PROJECT_NAME} STATIC
   yices.cpp
   yicescontext.cpp
   yicescontext.hpp
+  cvc5.hpp
+  cvc5context.hpp
+  cvc5context.cpp
   smtfactory.hpp
   smtfactory.cpp
 )

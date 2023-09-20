@@ -1,0 +1,173 @@
+#include "cvc5context.hpp"
+#include "expr.hpp"
+
+using namespace std;
+
+CVC5Context::CVC5Context(cvc5::Solver& ctx): ctx(ctx), refinement(ctx.mkBoolean(true)) { }
+
+CVC5Context::~CVC5Context() { }
+
+cvc5::Term CVC5Context::buildVar(const Var &var) {
+    const auto name {expr::getName(var)};
+    return std::visit(Overload{
+                          [&](const NumVar&) {
+                              return ctx.mkConst(ctx.getIntegerSort(), name);
+                          },
+                          [&](const BoolVar&) {
+                              return ctx.mkConst(ctx.getBooleanSort(), name);
+                          }
+                      }, var);
+}
+
+cvc5::Term CVC5Context::getInt(long val) {
+    return ctx.mkInteger(val);
+}
+
+cvc5::Term CVC5Context::getReal(long num, long denom) {
+    return ctx.mkReal(num, denom);
+}
+
+cvc5::Term CVC5Context::pow(const cvc5::Term &base, const cvc5::Term &exp) {
+    if (exp.isIntegerValue()) {
+        return ctx.mkTerm(cvc5::Kind::POW, {base, exp});
+    } else if (base.isRealValue()) {
+        const auto log {ctx.mkConst(ctx.getRealSort())};
+        refinement = refinement.andTerm(base.eqTerm(ctx.mkTerm(cvc5::Kind::EXPONENTIAL, {log})));
+        return ctx.mkTerm(cvc5::Kind::EXPONENTIAL, {ctx.mkTerm(cvc5::Kind::MULT, {log, exp})});
+    } else {
+        throw std::invalid_argument("one argument of CVC5Context::pow must be a constant");
+    }
+}
+
+cvc5::Term CVC5Context::plus(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::ADD, {x, y});
+}
+
+cvc5::Term CVC5Context::times(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::MULT, {x, y});
+}
+
+cvc5::Term CVC5Context::eq(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::EQUAL, {x, y});
+}
+
+cvc5::Term CVC5Context::lt(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::LT, {x, y});
+}
+
+cvc5::Term CVC5Context::le(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::LEQ, {x, y});
+}
+
+cvc5::Term CVC5Context::gt(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::GT, {x, y});
+}
+
+cvc5::Term CVC5Context::ge(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::GEQ, {x, y});
+}
+
+cvc5::Term CVC5Context::neq(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::NOT, {ctx.mkTerm(cvc5::Kind::EQUAL, {x, y})});
+}
+
+cvc5::Term CVC5Context::bAnd(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::AND, {x, y});
+}
+
+cvc5::Term CVC5Context::bOr(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::OR, {x, y});
+}
+
+cvc5::Term CVC5Context::bTrue() const {
+    return ctx.mkBoolean(true);
+}
+
+cvc5::Term CVC5Context::bFalse() const {
+    return ctx.mkBoolean(false);
+}
+
+cvc5::Term CVC5Context::negate(const cvc5::Term &x) {
+    return ctx.mkTerm(cvc5::Kind::NOT, {x});
+}
+
+bool CVC5Context::isTrue(const cvc5::Term &e) const {
+    return e.isBooleanValue() && e.getBooleanValue();
+}
+
+bool CVC5Context::isFalse(const cvc5::Term &e) const {
+    return !e.isBooleanValue() || !e.getBooleanValue();
+}
+
+bool CVC5Context::isNot(const cvc5::Term &e) const {
+    return e.getKind() == cvc5::Kind::NOT;
+}
+
+std::vector<cvc5::Term> CVC5Context::getChildren(const cvc5::Term &e) const {
+    std::vector<cvc5::Term> res {e.begin(), e.end()};
+    return res;
+}
+
+bool CVC5Context::isAnd(const cvc5::Term &e) const {
+    return e.getKind() == cvc5::Kind::AND;
+}
+
+bool CVC5Context::isAdd(const cvc5::Term &e) const {
+    return e.getKind() == cvc5::Kind::ADD;
+}
+
+bool CVC5Context::isMul(const cvc5::Term &e) const {
+    return e.getKind() == cvc5::Kind::MULT;
+}
+
+bool CVC5Context::isPow(const cvc5::Term &e) const  {
+    return e.getKind() == cvc5::Kind::POW;
+}
+
+bool CVC5Context::isVar(const cvc5::Term &e) const  {
+    return e.getKind() == cvc5::Kind::CONSTANT;
+}
+
+bool CVC5Context::isRationalConstant(const cvc5::Term &e) const {
+    return e.getKind() == cvc5::Kind::CONST_RATIONAL;
+}
+
+bool CVC5Context::isInt(const cvc5::Term &e) const {
+    return e.getKind() == cvc5::Kind::CONST_INTEGER;
+}
+
+long CVC5Context::toInt(const cvc5::Term &e) const {
+    return e.getInt64Value();
+}
+
+cvc5::Term CVC5Context::lhs(const cvc5::Term &e) const {
+    assert(e.getNumChildren() == 2);
+    return *e.begin();
+}
+
+cvc5::Term CVC5Context::rhs(const cvc5::Term &e) const {
+    assert(e.getNumChildren() == 2);
+    return *(++e.begin());
+}
+
+Rel::RelOp CVC5Context::relOp(const cvc5::Term &e) const {
+
+    switch (e.getKind()) {
+    case cvc5::Kind::EQUAL: return Rel::RelOp::eq;
+    case cvc5::Kind::GT: return Rel::RelOp::gt;
+    case cvc5::Kind::GEQ: return Rel::RelOp::geq;
+    case cvc5::Kind::LT: return Rel::RelOp::lt;
+    case cvc5::Kind::LEQ: return Rel::RelOp::leq;
+    default: throw std::invalid_argument("unknown relation");
+    }
+}
+
+void CVC5Context::printStderr(const cvc5::Term &e) const {
+    std::cerr << e << std::endl;
+}
+
+cvc5::Term CVC5Context::clearRefinement() {
+    const auto res {refinement};
+    refinement = bTrue();
+    return res;
+}
