@@ -626,7 +626,9 @@ public:
         return pred(lit);
     }
 
-    ~BoolTheoryLit() override {}
+    ~BoolTheoryLit() override {
+        cache.erase(lit);
+    }
 
     bool isConjunction() const override {
         return true;
@@ -750,7 +752,9 @@ public:
         return true;
     }
 
-    ~BoolJunction() override {}
+    ~BoolJunction() override {
+        cache.erase(children, op);
+    }
 
     bool isConjunction() const override {
         return isAnd() && std::all_of(children.begin(), children.end(), [](const BE c){

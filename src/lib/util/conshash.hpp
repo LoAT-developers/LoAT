@@ -10,7 +10,7 @@ protected:
 
     std::unordered_map<
         std::tuple<const Args...>,
-        std::shared_ptr<const Abstract>,
+        std::weak_ptr<const Abstract>,
         Hash,
         Eq> cache;
 
@@ -18,11 +18,18 @@ public:
 
     const std::shared_ptr<const Abstract> from_cache(const Args&... args) {
         const auto ce {std::make_tuple(args...)};
-        auto it {cache.find(ce)};
-        if (it == cache.end()) {
-            it = cache.emplace(ce, std::shared_ptr<const Abstract> {new Concrete(args...)}).first;
+        const auto it {cache.find(ce)};
+        if (it == cache.end() || it->second.expired()) { // TODO how can the pointer expired without getting erased?
+            const std::shared_ptr<const Abstract> res {new Concrete(args...)};
+            cache.emplace(ce, res);
+            return res;
+        } else {
+            return it->second.lock();
         }
-        return it->second;
+    }
+
+    void erase(const Args&... args) {
+        cache.erase(std::make_tuple(args...));
     }
 
 };
