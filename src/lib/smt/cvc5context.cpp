@@ -30,12 +30,12 @@ cvc5::Term CVC5Context::getReal(long num, long denom) {
 cvc5::Term CVC5Context::pow(const cvc5::Term &base, const cvc5::Term &exp) {
     if (exp.isIntegerValue()) {
         return ctx.mkTerm(cvc5::Kind::POW, {base, exp});
-    } else if (base.isRealValue()) {
+    } else if (base.isIntegerValue()) {
         const auto log {ctx.mkConst(ctx.getRealSort())};
-        refinement = refinement.andTerm(base.eqTerm(ctx.mkTerm(cvc5::Kind::EXPONENTIAL, {log})));
-        return ctx.mkTerm(cvc5::Kind::EXPONENTIAL, {ctx.mkTerm(cvc5::Kind::MULT, {log, exp})});
+        refinement = refinement.andTerm(ctx.mkTerm(cvc5::Kind::TO_REAL, {base}).eqTerm(ctx.mkTerm(cvc5::Kind::EXPONENTIAL, {log})));
+        return ctx.mkTerm(cvc5::Kind::TO_INTEGER, {ctx.mkTerm(cvc5::Kind::EXPONENTIAL, {ctx.mkTerm(cvc5::Kind::MULT, {log, exp})})});
     } else {
-        throw std::invalid_argument("one argument of CVC5Context::pow must be a constant");
+        throw std::invalid_argument((std::stringstream() << "one argument of CVC5Context::pow must be an integer, got " << base << " and " << exp).str());
     }
 }
 
