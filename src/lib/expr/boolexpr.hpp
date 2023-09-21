@@ -534,11 +534,9 @@ public:
             if (std::holds_alternative<Rel>(lit)) {
                 const Rel &rel = std::get<Rel>(lit);
                 if (rel.isEq()) {
-                    const auto fst {buildTheoryLit(Rel::buildGeq(rel.lhs(), rel.rhs()))};
-                    const auto snd {buildTheoryLit(Rel::buildGeq(rel.rhs(), rel.lhs()))};
                     return buildAnd(std::initializer_list<BE>{
-                                        fst,
-                                        snd
+                                        buildTheoryLit(Rel::buildGeq(rel.lhs(), rel.rhs())),
+                                        buildTheoryLit(Rel::buildGeq(rel.rhs(), rel.lhs()))
                                     });
                 } else if (rel.isNeq()) {
                     return buildOr(std::initializer_list<BE>{
