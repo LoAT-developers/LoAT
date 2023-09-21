@@ -48,7 +48,13 @@ cvc5::Term CVC5Context::times(const cvc5::Term &x, const cvc5::Term &y) {
 }
 
 cvc5::Term CVC5Context::eq(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::EQUAL, {x, y});
+    if (x.getSort() != y.getSort()
+        && (x.getSort() == ctx.getRealSort() || y.getSort() == ctx.getRealSort())
+        && (x.getSort() == ctx.getIntegerSort() || y.getSort() == ctx.getIntegerSort())) {
+        return ctx.mkTerm(cvc5::Kind::EQUAL, {ctx.mkTerm(cvc5::Kind::TO_REAL, {x}), ctx.mkTerm(cvc5::Kind::TO_REAL, {y})});
+    } else {
+        return ctx.mkTerm(cvc5::Kind::EQUAL, {x, y});
+    }
 }
 
 cvc5::Term CVC5Context::lt(const cvc5::Term &x, const cvc5::Term &y) {
@@ -68,7 +74,7 @@ cvc5::Term CVC5Context::ge(const cvc5::Term &x, const cvc5::Term &y) {
 }
 
 cvc5::Term CVC5Context::neq(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::NOT, {ctx.mkTerm(cvc5::Kind::EQUAL, {x, y})});
+    return ctx.mkTerm(cvc5::Kind::NOT, {eq(x, y)});
 }
 
 cvc5::Term CVC5Context::bAnd(const cvc5::Term &x, const cvc5::Term &y) {
