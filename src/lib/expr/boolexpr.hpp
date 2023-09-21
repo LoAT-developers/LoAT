@@ -6,6 +6,7 @@
 #include "rel.hpp"
 #include "boollit.hpp"
 #include "literal.hpp"
+#include "conshash.hpp"
 
 #include <type_traits>
 #include <memory>
@@ -55,59 +56,6 @@ using BoolExpressionSet = std::set<BExpr<Th...>>;
 
 enum ConcatOperator { ConcatAnd, ConcatOr };
 
-template<ITheory... Th>
-struct JunctionCacheEntry {
-    std::vector<std::weak_ptr<const BoolExpression<Th...>>> children;
-    ConcatOperator op;
-    size_t hash {0};
-
-    JunctionCacheEntry(const BoolExpressionSet<Th...> &children, const ConcatOperator op): children(children.begin(), children.end()), op(op) {
-        boost::hash_combine(hash, boost::hash_range(children.begin(), children.end()));
-        boost::hash_combine(hash, op);
-    }
-
-};
-
-template<ITheory... Th>
-struct JunctionCacheHash {
-    std::size_t operator()(const JunctionCacheEntry<Th...> &e) const noexcept {
-        return e.hash;
-    }
-};
-
-template<ITheory... Th>
-struct JunctionCacheEqual {
-    std::size_t operator()(const JunctionCacheEntry<Th...> e1, const JunctionCacheEntry<Th...> e2) const noexcept {
-        if (e1.op != e2.op || e1.children.size() != e2.children.size()) {
-            return false;
-        }
-        auto it1 {e1.children.begin()};
-        auto it2 {e2.children.begin()};
-        while (it1 != e1.children.end()) {
-            if (it1->lock() != it2->lock()) {
-                return false;
-            }
-            ++it1;
-            ++it2;
-        }
-        return true;
-    }
-};
-
-template<ITheory... Th>
-struct LitHash {
-    std::size_t operator()(const typename Theory<Th...>::Lit &lit) const noexcept {
-        return literal::hash<Th...>(lit);
-    }
-};
-
-template<ITheory... Th>
-struct LitEqual {
-    std::size_t operator()(const typename Theory<Th...>::Lit &l1, const typename Theory<Th...>::Lit &l2) const noexcept {
-        return l1 == l2;
-    }
-};
-
 template <IBaseTheory... Th>
 class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>> {
 
@@ -126,52 +74,15 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
     using BES = BoolExpressionSet<Th...>;
     using Subs = theory::Subs<Th...>;
 
-protected:
-
-    static std::unordered_map<
-        JunctionCacheEntry<Th...>,
-        std::weak_ptr<const BoolExpression<Th...>>,
-        JunctionCacheHash<Th...>,
-        JunctionCacheEqual<Th...>> junctionCache;
-
-    static const BE from_cache(const BES &children, ConcatOperator op) {
-        const JunctionCacheEntry<Th...> ce {children, op};
-        auto it {junctionCache.find(ce)};
-        if (it == junctionCache.end() || it->second.expired()) {
-            const BE res {new BoolJunction<Th...>(children, op)};
-            junctionCache.emplace(ce, res);
-            return res;
-        } else {
-            return it->second.lock();
-        }
-    }
-
-    static std::unordered_map<
-        Lit,
-        std::weak_ptr<const BoolExpression<Th...>>,
-        LitHash<Th...>,
-        LitEqual<Th...>> litCache;
-
-    static const BE from_cache(const Lit &lit) {
-        auto it {litCache.find(lit)};
-        if (it == litCache.end() || it->second.expired()) {
-            const BE res {new BoolTheoryLit<Th...>(lit)};
-            litCache.emplace(lit, res);
-            return res;
-        } else {
-            return it->second.lock();
-        }
-    }
-
 public:
 
     static const BE top() {
-        const static auto res {from_cache(BoolExpressionSet<Th...>{}, ConcatAnd)};
+        const static auto res {BoolJunction<Th...>::from_cache(BoolExpressionSet<Th...>{}, ConcatAnd)};
         return res;
     }
 
     static const BE bot() {
-        const static auto res {from_cache(BoolExpressionSet<Th...>{}, ConcatOr)};
+        const static auto res {BoolJunction<Th...>::from_cache(BoolExpressionSet<Th...>{}, ConcatOr)};
         return res;
     }
 
@@ -181,7 +92,7 @@ public:
         for (const Lit &lit: lits) {
             children.insert(buildTheoryLit(lit));
         }
-        return from_cache(children, op);
+        return BoolJunction<Th...>::from_cache(children, op);
     }
 
     template <class Children>
@@ -207,7 +118,7 @@ public:
         if (children.size() == 1) {
             return *children.begin();
         }
-        return from_cache(children, op);
+        return BoolJunction<Th...>::from_cache(children, op);
     }
 
     template <class Lits>
@@ -231,7 +142,7 @@ public:
     }
 
     static const BE buildTheoryLit(const Lit &lit) {
-        return from_cache(lit);
+        return BoolTheoryLit<Th...>::from_cache(lit);
     }
 
     virtual bool isTheoryLit() const = 0;
@@ -623,9 +534,11 @@ public:
             if (std::holds_alternative<Rel>(lit)) {
                 const Rel &rel = std::get<Rel>(lit);
                 if (rel.isEq()) {
+                    const auto fst {buildTheoryLit(Rel::buildGeq(rel.lhs(), rel.rhs()))};
+                    const auto snd {buildTheoryLit(Rel::buildGeq(rel.rhs(), rel.lhs()))};
                     return buildAnd(std::initializer_list<BE>{
-                                        buildTheoryLit(Rel::buildGeq(rel.lhs(), rel.rhs())),
-                                        buildTheoryLit(Rel::buildGeq(rel.rhs(), rel.lhs()))
+                                        fst,
+                                        snd
                                     });
                 } else if (rel.isNeq()) {
                     return buildOr(std::initializer_list<BE>{
@@ -641,19 +554,6 @@ public:
 
 };
 
-template <IBaseTheory... Th>
-std::unordered_map<
-    JunctionCacheEntry<Th...>,
-    std::weak_ptr<const BoolExpression<Th...>>,
-    JunctionCacheHash<Th...>,
-    JunctionCacheEqual<Th...>> BoolExpression<Th...>::junctionCache {};
-
-template <IBaseTheory... Th>
-std::unordered_map<
-    typename BoolExpression<Th...>::Lit,
-    std::weak_ptr<const BoolExpression<Th...>>,
-    LitHash<Th...>,
-    LitEqual<Th...>> BoolExpression<Th...>::litCache {};
 
 template <ITheory... Th>
 class BoolTheoryLit: public BoolExpression<Th...> {
@@ -672,9 +572,31 @@ class BoolTheoryLit: public BoolExpression<Th...> {
 
     Lit lit;
 
+    struct CacheEqual {
+
+        bool operator()(const std::tuple<Lit> &args1, const std::tuple<Lit> &args2) const noexcept {
+            return args1 == args2;
+        }
+
+    };
+
+    struct CacheHash {
+
+        size_t operator()(const std::tuple<Lit> &args) const noexcept {
+            return literal::hash<Th...>(std::get<0>(args));
+        }
+
+    };
+
+    static ConsHash<BoolExpression<Th...>, BoolTheoryLit<Th...>, CacheHash, CacheEqual, Lit> cache;
+
 public:
 
     BoolTheoryLit(const Lit &lit) : lit(literal::normalize<Th...>(lit)) {}
+
+    static BE from_cache(const Lit &lit) {
+        return cache.from_cache(lit);
+    }
 
     bool isAnd() const override {
         return false;
@@ -704,9 +626,7 @@ public:
         return pred(lit);
     }
 
-    ~BoolTheoryLit() override {
-        BoolExpression<Th...>::litCache.erase(lit);
-    }
+    ~BoolTheoryLit() override {}
 
     bool isConjunction() const override {
         return true;
@@ -738,6 +658,9 @@ public:
 
 };
 
+template <ITheory... Th>
+ConsHash<BoolExpression<Th...>, BoolTheoryLit<Th...>, typename BoolTheoryLit<Th...>::CacheHash, typename BoolTheoryLit<Th...>::CacheEqual, typename BoolTheoryLit<Th...>::Lit> BoolTheoryLit<Th...>::cache;
+
 template <IBaseTheory... Th>
 class BoolJunction: public BoolExpression<Th...> {
 
@@ -756,7 +679,33 @@ class BoolJunction: public BoolExpression<Th...> {
     BES children;
     ConcatOperator op;
 
+    struct CacheEqual {
+
+        bool operator()(const std::tuple<BES, ConcatOperator> &args1, const std::tuple<BES, ConcatOperator> &args2) const noexcept {
+            return args1 == args2;
+        }
+
+    };
+
+    struct CacheHash {
+
+        size_t operator()(const std::tuple<BES, ConcatOperator> &args) const noexcept {
+            const auto &[children, op] {args};
+            size_t hash {0};
+            boost::hash_combine(hash, boost::hash_range(children.begin(), children.end()));
+            boost::hash_combine(hash, op);
+            return hash;
+        }
+
+    };
+
+    static ConsHash<BoolExpression<Th...>, BoolJunction<Th...>, CacheHash, CacheEqual, BES, ConcatOperator> cache;
+
 public:
+
+    static BE from_cache(const BES &children, ConcatOperator op) {
+        return cache.from_cache(children, op);
+    }
 
     BoolJunction(const BES &children, ConcatOperator op): children(children), op(op) { }
 
@@ -801,9 +750,7 @@ public:
         return true;
     }
 
-    ~BoolJunction() override {
-        BoolExpression<Th...>::junctionCache.erase(JunctionCacheEntry<Th...>(children, op));
-    }
+    ~BoolJunction() override {}
 
     bool isConjunction() const override {
         return isAnd() && std::all_of(children.begin(), children.end(), [](const BE c){
@@ -870,6 +817,9 @@ public:
     }
 
 };
+
+template<IBaseTheory... Th>
+ConsHash<BoolExpression<Th...>, BoolJunction<Th...>, typename BoolJunction<Th...>::CacheHash, typename BoolJunction<Th...>::CacheEqual, std::set<BExpr<Th...>>, ConcatOperator> BoolJunction<Th...>::cache{};
 
 template <ITheory... Th>
 const BExpr<Th...> operator &(const BExpr<Th...> a, const BExpr<Th...> b) {
