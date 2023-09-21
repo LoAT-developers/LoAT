@@ -228,9 +228,7 @@ acceleration::Result LoopAcceleration::run() {
                     res.status = acceleration::Nonterminating;
                 }
                 res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
-                accelerator->proof.print();
                 res.nonterm->proof.concat(accelerator->proof);
-                res.nonterm->proof.print();
             }
         }
     }
