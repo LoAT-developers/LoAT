@@ -15,7 +15,7 @@ class CVC5 : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    CVC5(unsigned timeout): timeout(timeout), ctx(solver) {
+    CVC5(): solver(), ctx(solver) {
         updateParams();
     }
 
@@ -81,8 +81,7 @@ public:
     }
 
     void setTimeout(unsigned int timeout) override {
-        this->timeout = timeout;
-        updateParams();
+        throw std::runtime_error("timeout not supported by CVC5");
     }
 
     void enableModels() override {
@@ -111,29 +110,32 @@ public:
 
 private:
     bool models = false;
-    unsigned int timeout;
-    CVC5Context ctx;
     cvc5::Solver solver;
+    CVC5Context ctx;
     unsigned seed = 42u;
 
     Num getRealFromModel(const cvc5::Term &symbol) {
         const auto val {solver.getValue(symbol)};
-        if (val.isReal64Value()) {
-            throw std::overflow_error("overflow in CVC5::getRealFromModel");
+        if (val.isIntegerValue()) {
+            return Num(val.getIntegerValue().c_str());
+        } else if (val.isRealValue()) {
+            if (val.isReal64Value()) {
+                const auto [num, denom] {val.getReal64Value()};
+                return Num(num) / Num(denom);
+            } else {
+                throw std::overflow_error((std::stringstream() << "overflow in CVC5::getRealFromModel: " << val).str());
+            }
+        } else {
+            throw std::logic_error((std::stringstream() << "CVC5::getRealFromModel: tried to convert " << val << " to real").str());
         }
-        const auto [num, denom] {val.getReal64Value()};
-        return Num(num) / Num(denom);
     }
 
     void updateParams() {
         if (models) {
             solver.setOption("produce-models", "true");
         }
-        if (timeout > 0) {
-            solver.setOption("timeout", std::to_string(timeout));
-        }
         solver.setOption("seed", std::to_string(seed));
-        solver.setLogic("QF_NIAT");
+        solver.setLogic("QF_NIRAT");
     }
 
 };

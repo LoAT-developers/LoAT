@@ -84,7 +84,7 @@ struct JunctionCacheEqual {
         auto it1 {e1.children.begin()};
         auto it2 {e2.children.begin()};
         while (it1 != e1.children.end()) {
-            if (it1->expired() || it2->expired() || it1->lock() != it2->lock()) {
+            if (it1->lock() != it2->lock()) {
                 return false;
             }
             ++it1;

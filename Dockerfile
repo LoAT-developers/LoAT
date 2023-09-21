@@ -95,8 +95,9 @@ FROM base as poly
 
 RUN xbps-install -yS gmpxx-devel
 
-RUN git clone https://github.com/SRI-CSL/libpoly.git
-WORKDIR /libpoly/build
+RUN wget https://github.com/SRI-CSL/libpoly/archive/refs/tags/v0.1.13.tar.gz
+RUN tar xf v0.1.13.tar.gz
+WORKDIR /libpoly-0.1.13/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
@@ -154,13 +155,15 @@ RUN xbps-install -yuS xbps
 RUN xbps-install -yS python3-devel python3-pip libtool texinfo cln-devel
 RUN python3 -m pip install tomli pyparsing
 
-RUN wget https://github.com/cvc5/cvc5/archive/refs/tags/cvc5-1.0.8.tar.gz
-RUN tar xf cvc5-1.0.8.tar.gz
-WORKDIR /cvc5-cvc5-1.0.8
-RUN sed -i 's/__linux__/__GLIBC__/g' src/prop/minisat/utils/System.h
-RUN sed -i 's/#include <unistd.h>/#include <time.h>\n#include <unistd.h>/g' src/util/safe_print.h
-RUN ./configure.sh --static --auto-download --poly --cln --gpl --no-docs
-WORKDIR /cvc5-cvc5-1.0.8/build
+COPY --from=poly /usr/local/lib/libpoly.a /usr/local/lib/
+COPY --from=poly /usr/local/lib/libpolyxx.a /usr/local/lib/
+COPY --from=poly /usr/local/include/poly /usr/local/include/poly
+
+RUN git clone https://github.com/ffrohn/cvc5
+WORKDIR cvc5
+RUN git checkout cvc5-1.0.8-musl
+RUN ./configure.sh --static --no-statistics --auto-download --poly --cln --gpl --no-docs
+WORKDIR /cvc5/build
 
 FROM CVC5-base as CVC5
 RUN make -j4
@@ -208,6 +211,7 @@ COPY --from=z3 /usr/local/include/z3*.h /usr/local/include/
 
 COPY --from=poly /usr/local/include/poly /usr/local/include/poly
 COPY --from=poly /usr/local/lib/libpoly.a /usr/local/lib/
+COPY --from=poly /usr/local/lib/libpolyxx.a /usr/local/lib/
 
 COPY --from=cudd /usr/local/include/cudd.h /usr/local/include/cudd.h
 COPY --from=cudd /usr/local/lib/libcudd.a /usr/local/lib/libcudd.a
@@ -232,3 +236,4 @@ COPY --from=faudes /usr/local/include/faudes/ /usr/local/include/
 
 COPY --from=CVC5 /usr/local/lib64/libcvc5.a /usr/local/lib/libcvc5.a
 COPY --from=CVC5 /usr/local/include/cvc5 /usr/local/include/cvc5
+COPY --from=CVC5 /usr/local/lib64/libcadical.a /usr/local/lib/libcadical.a

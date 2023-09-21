@@ -65,10 +65,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_qe_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
   ${loat_acceleration_INCLUDE_DIRS}
-  ${ANTLR4_INCLUDE_DIRS}
 )
-
-target_include_directories(${EXECUTABLE} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../libfaudes-2_30b/include/")
 
 target_link_libraries(${EXECUTABLE}
   loat_util

@@ -69,6 +69,7 @@ namespace Config {
 
         Mode mode = Complexity;
         Engine engine = ADCL;
+        SmtSolver smtSolver = Z3;
         bool log = false;
 
         std::string modeName(const Mode mode) {

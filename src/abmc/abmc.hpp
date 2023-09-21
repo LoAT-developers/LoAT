@@ -3,9 +3,8 @@
 #include <limits>
 
 #include "itsproblem.hpp"
-#include "z3.hpp"
+#include "smt.hpp"
 #include "itsproof.hpp"
-#include "smtfactory.hpp"
 
 class ABMC {
 
@@ -24,7 +23,7 @@ private:
     };
 
     ITSProblem &its;
-    Z3<IntTheory, BoolTheory> solver{smt::default_timeout};
+    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     bool approx {false};
     unsigned last_orig_clause;
     std::vector<Subs> subs {Subs::Empty};

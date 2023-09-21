@@ -69,9 +69,11 @@ namespace Config {
 
         enum Mode { Complexity, NonTermination, Reachability, Safety, Recurrence };
         enum Engine { ADCL, BMC, ABMC };
+        enum SmtSolver { Z3, CVC5 };
         extern std::vector<Mode> modes;
         extern Mode mode;
         extern Engine engine;
+        extern SmtSolver smtSolver;
         extern bool log;
 
         std::string modeName(const Mode mode);
