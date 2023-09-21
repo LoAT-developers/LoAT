@@ -11,6 +11,7 @@
 #include "vareliminator.hpp"
 #include "chain.hpp"
 #include "expr.hpp"
+#include "cvc5.hpp"
 
 #include <numeric>
 #include <random>
@@ -107,10 +108,17 @@ ProofFailed::ProofFailed(const std::string &msg): std::runtime_error(msg) {}
 
 Reachability::Reachability(ITSProblem &chcs):
     chcs(chcs),
-    solver(smt::default_timeout),
     drop(!Config::Analysis::safety())
 {
-    solver.enableModels();
+    switch (Config::Analysis::smtSolver) {
+    case Config::Analysis::Z3:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout));
+        break;
+    case Config::Analysis::CVC5:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
+        break;
+    }
+    solver->enableModels();
 }
 
 Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent):
@@ -159,7 +167,7 @@ Subs Reachability::handle_update(const TransIdx idx) {
         }
     }
     for (const auto &x: prog_vars) {
-        solver.add(expr::mkEq(new_var_renaming.get(x), expr::subs(up.get(x), last_var_renaming)));
+        solver->add(expr::mkEq(new_var_renaming.get(x), expr::subs(up.get(x), last_var_renaming)));
     }
     return new_var_renaming;
 }
@@ -181,7 +189,7 @@ void Reachability::block(const Step &step) {
 void Reachability::pop() {
     blocked_clauses.pop_back();
     trace.pop_back();
-    solver.pop();
+    solver->pop();
 }
 
 void Reachability::backtrack() {
@@ -228,10 +236,10 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
 }
 
 bool Reachability::store_step(const TransIdx idx, const Rule &implicant, bool force) {
-    solver.push();
+    solver->push();
     const auto imp {trace.empty() ? implicant : implicant.subs(trace.back().var_renaming)};
-    solver.add(imp.getGuard());
-    if (solver.check() == Sat || force) {
+    solver->add(imp.getGuard());
+    if (solver->check() == Sat || force) {
         const auto new_var_renaming {handle_update(idx)};
         const Step step(idx, implicant.getGuard(), new_var_renaming, compute_resolvent(idx, implicant.getGuard()));
         add_to_trace(step);
@@ -241,13 +249,13 @@ bool Reachability::store_step(const TransIdx idx, const Rule &implicant, bool fo
         }
         return true;
     } else {
-        solver.pop();
+        solver->pop();
         return false;
     }
 }
 
 void Reachability::print_trace(std::ostream &s) {
-    const auto model {solver.model().toSubs()};
+    const auto model {solver->model().toSubs()};
     s << "(";
     bool first {true};
     for (const auto &x: prog_vars) {
@@ -326,8 +334,8 @@ void Reachability::init() {
 void Reachability::luby_next() {
     const auto [u,v] {luby};
     luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
-    solver.setSeed(rand());
-    solver.resetSolver();
+    solver->setSeed(rand());
+    solver->resetSolver();
     luby_loop_count = 0;
 }
 
@@ -378,17 +386,17 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
         // a non-conjunctive clause where some variants are blocked
         // --> make sure that we use a non-blocked variant, if any
         for (const auto &b: block->second) {
-            solver.add(!b->subs(var_renaming));
+            solver->add(!b->subs(var_renaming));
         }
     }
     const auto vars {idx->getGuard()->vars()};
     const auto projected_var_renaming {var_renaming.project(vars)};
     const auto guard {idx->getGuard()->subs(projected_var_renaming)};
-    solver.add(guard);
-    switch (solver.check()) {
+    solver->add(guard);
+    switch (solver->check()) {
     case Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
-        const auto model {solver.model(guard->vars()).toSubs()};
+        const auto model {solver->model(guard->vars()).toSubs()};
         const auto implicant {idx->getGuard()->implicant(expr::compose(projected_var_renaming, model))};
         if (implicant) {
             return {idx->withGuard(*implicant)};
@@ -565,7 +573,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
 bool Reachability::check_consistency() {
     // make sure that a model is available
     bool res {true};
-    switch (solver.check()) {
+    switch (solver->check()) {
     case Unsat:
         throw std::logic_error("trace is contradictory");
     case Unknown:
@@ -672,7 +680,7 @@ bool Reachability::try_to_finish() {
     std::set<TransIdx> clauses = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
     for (const auto &q: clauses) {
         if (chcs.isSinkTransition(q)) {
-            solver.push();
+            solver->push();
             const auto implicant {resolve(q)};
             if (implicant) {
                 // no need to compute a variable renaming for the next step, as we are done
@@ -682,7 +690,7 @@ bool Reachability::try_to_finish() {
                 unsat();
                 return true;
             }
-            solver.pop();
+            solver->pop();
         }
     }
     return false;
@@ -763,9 +771,9 @@ void Reachability::analyze() {
         std::shuffle(to_try.begin(), to_try.end(), rnd);
         bool all_failed {true};
         for (const auto idx: to_try) {
-            solver.push();
+            solver->push();
             const auto implicant {resolve(idx)};
-            solver.pop();
+            solver->pop();
             if (implicant && store_step(idx, *implicant, Config::Analysis::safety())) {
                 proof.headline("Step with " + std::to_string(idx->getId()));
                 print_state();

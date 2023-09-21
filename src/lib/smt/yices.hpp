@@ -136,6 +136,10 @@ public:
         this->timeout = timeout;
     }
 
+    void setSeed(unsigned seed) override {
+        throw std::runtime_error("Yices::setSeed not yet implemented");
+    }
+
     void enableModels() override {}
 
     void resetSolver() override {

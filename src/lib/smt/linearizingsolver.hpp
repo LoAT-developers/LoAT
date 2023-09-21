@@ -267,7 +267,7 @@ public:
         return std::cout << de_lin << std::endl;
     }
 
-    void setSeed(unsigned seed) {
+    void setSeed(unsigned seed) override {
         z3.setSeed(seed);
     }
 

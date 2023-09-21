@@ -106,7 +106,7 @@ public:
         return os << solver;
     }
 
-    void setSeed(unsigned seed) {
+    void setSeed(unsigned seed) override {
         this->seed = seed;
         updateParams();
     }

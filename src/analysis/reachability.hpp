@@ -155,7 +155,7 @@ class Reachability {
 
     ITSProof proof;
 
-    LinearizingSolver<IntTheory, BoolTheory> solver;
+    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
 
     const bool drop;
 
