@@ -32,6 +32,8 @@ public:
 
     bool isTempVar() const;
 
+    size_t hash() const;
+
 };
 
 std::ostream& operator<<(std::ostream &s, const NumVar &x);

@@ -70,6 +70,8 @@ public:
 
     bool isDeterministic() const;
 
+    size_t hash() const;
+
 };
 
 /**

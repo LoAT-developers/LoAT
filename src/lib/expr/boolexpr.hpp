@@ -157,7 +157,6 @@ public:
     virtual void collectLits(LS &res) const = 0;
     virtual size_t size() const = 0;
     virtual void getBounds(const Var &n, Bounds &res) const = 0;
-    virtual std::size_t hash() const = 0;
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
@@ -581,7 +580,7 @@ class BoolTheoryLit: public BoolExpression<Th...> {
     struct CacheHash {
 
         size_t operator()(const std::tuple<Lit> &args) const noexcept {
-            return hash_value<Th...>(std::get<0>(args));
+            return literal::hash<Th...>(std::get<0>(args));
         }
 
     };
@@ -650,10 +649,6 @@ public:
         if (std::holds_alternative<Rel>(lit)) {
             std::get<Rel>(lit).getBounds(std::get<NumVar>(var), res);
         }
-    }
-
-    std::size_t hash() const {
-        return literal::hash<Th...>(lit);
     }
 
 };
@@ -809,13 +804,6 @@ public:
                 }
             }
         }
-    }
-
-    std::size_t hash() const {
-        std::size_t seed = 0;
-        boost::hash_combine(seed, op);
-        boost::hash_combine(seed, boost::hash_range(children.begin(), children.end()));
-        return seed;
     }
 
 };

@@ -53,3 +53,7 @@ NumVar NumVar::nextProgVar() {
 bool NumVar::isTempVar() const {
     return idx < 0;
 }
+
+size_t NumVar::hash() const {
+    return std::hash<int>{}(idx);
+}

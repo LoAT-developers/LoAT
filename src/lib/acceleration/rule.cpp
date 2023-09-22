@@ -99,3 +99,10 @@ bool Rule::isDeterministic() const {
     }
     return true;
 }
+
+size_t Rule::hash() const {
+    size_t hash {0};
+    boost::hash_combine(hash, std::hash<BoolExpr>{}(guard));
+    boost::hash_combine(hash, update.hash());
+    return hash;
+}

@@ -392,6 +392,8 @@ public:
 
     void collectVars(std::set<NumVar> &vars) const;
 
+    size_t hash() const;
+
 private:
     void putGinac(const NumVar &key, const Expr &val);
     void eraseGinac(const NumVar &key);

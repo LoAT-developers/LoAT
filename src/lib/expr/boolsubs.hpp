@@ -4,6 +4,8 @@
 #include "boolexpr.hpp"
 #include "itheory.hpp"
 
+#include <boost/functional/hash.hpp>
+
 template <IBaseTheory... Th>
 class BoolSubs {
 
@@ -27,7 +29,7 @@ public:
 
     BoolExpr get(const BoolVar &var) const {
         const auto it = map.find(var);
-        return it == map.end() ? BoolExpression<Th...>::buildTheoryLit(var) : it->second;
+        return it == map.end() ? BoolExpression<Th...>::buildTheoryLit(BoolLit(var)) : it->second;
     }
 
     BoolExpr subs(const BoolLit &lit) const {
@@ -193,6 +195,15 @@ public:
 
     bool isPoly() const {
         return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isPoly();});
+    }
+
+    size_t hash() const {
+        size_t hash {0};
+        for (const auto &[key, value]: map) {
+            boost::hash_combine(hash, key.hash());
+            boost::hash_combine(hash, std::hash<BoolExpr>{}(value));
+        }
+        return hash;
     }
 
 };

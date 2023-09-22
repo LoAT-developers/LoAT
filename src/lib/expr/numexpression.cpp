@@ -21,6 +21,7 @@
 #include <purrs.hh>
 #include <sstream>
 #include <assert.h>
+#include <boost/functional/hash.hpp>
 
 using namespace std;
 
@@ -775,6 +776,15 @@ std::set<NumVar> ExprSubs::allVars() const {
     std::set<NumVar> res;
     collectVars(res);
     return res;
+}
+
+size_t ExprSubs::hash() const {
+    size_t hash {0};
+    for (const auto &[key, value]: map) {
+        boost::hash_combine(hash, key.hash());
+        boost::hash_combine(hash, value.hash());
+    }
+    return hash;
 }
 
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {

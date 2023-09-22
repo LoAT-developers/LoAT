@@ -73,7 +73,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
                 ren.put<IntTheory>(std::get<NumVar>(c.lhs.args[i]), vars[int_arg]);
                 ++int_arg;
             } else {
-                ren.put<BoolTheory>(std::get<BoolVar>(c.lhs.args[i]), BExpression::buildTheoryLit(bvars[bool_arg]));
+                ren.put<BoolTheory>(std::get<BoolVar>(c.lhs.args[i]), BExpression::buildTheoryLit(BoolLit(bvars[bool_arg])));
                 ++bool_arg;
             }
         }
@@ -90,7 +90,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
                     ren.put<IntTheory>(var, NumVar::next());
                 } else if (std::holds_alternative<BoolVar>(x)) {
                     const auto &var = std::get<BoolVar>(x);
-                    ren.put<BoolTheory>(var, BExpression::buildTheoryLit(BoolVar::next()));
+                    ren.put<BoolTheory>(var, BExpression::buildTheoryLit(BoolLit(BoolVar::next())));
                 } else {
                     throw std::logic_error("unsupported theory in CHCParseVisitor");
                 }
@@ -114,7 +114,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             up.put<IntTheory>(vars[i], NumVar::next());
         }
         for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
-            up.put<BoolTheory>(bvars[i], BExpression::buildTheoryLit(BoolVar::next()));
+            up.put<BoolTheory>(bvars[i], BExpression::buildTheoryLit(BoolLit(BoolVar::next())));
         }
         up.put(NumVar::loc_var, c.rhs.loc);
         const BoolExpr guard = c.guard->subs(ren)->simplify() & Rel::buildEq(NumVar::loc_var, c.lhs.loc);

@@ -19,7 +19,7 @@ public:
     const std::shared_ptr<const Abstract> from_cache(const Args&... args) {
         const auto ce {std::make_tuple(args...)};
         const auto it {cache.find(ce)};
-        if (it == cache.end() || it->second.expired()) { // TODO how can the pointer expired without getting erased?
+        if (it == cache.end()) {
             const std::shared_ptr<const Abstract> res {new Concrete(args...)};
             cache.emplace(ce, res);
             return res;

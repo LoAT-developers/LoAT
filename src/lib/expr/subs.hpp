@@ -3,6 +3,8 @@
 #include "itheory.hpp"
 #include "thset.hpp"
 
+#include <boost/functional/hash.hpp>
+
 namespace theory {
 
 template <ITheory... Th>
@@ -409,6 +411,26 @@ public:
 
     void print(std::ostream &s) const {
         printImpl(s);
+    }
+
+private:
+
+    template<std::size_t I = 0>
+    inline void hashImpl(size_t &res) const {
+        if constexpr (I < sizeof...(Th)) {
+            boost::hash_combine(res, std::get<I>(t).hash());
+            if constexpr (I + 1 < variant_size) {
+                hashImpl<I+1>(res);
+            }
+        }
+    }
+
+public:
+
+    size_t hash() const {
+        size_t res;
+        hashImpl(res);
+        return res;
     }
 
 private:

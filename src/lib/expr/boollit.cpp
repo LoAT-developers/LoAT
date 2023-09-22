@@ -45,7 +45,7 @@ BoolLit operator!(const BoolLit &l) {
 
 std::size_t BoolLit::hash() const {
     std::size_t seed {0};
-    boost::hash_combine(seed, std::hash<bool>{}(negated));
+    boost::hash_combine(seed, negated);
     boost::hash_combine(seed, var.hash());
     return seed;
 }

@@ -10,7 +10,7 @@ class BoolLit {
 
 public:
 
-    BoolLit(const BoolVar &var, bool negated = false);
+    explicit BoolLit(const BoolVar &var, bool negated = false);
     bool isNegated() const;
     bool isPoly() const;
     bool isLinear() const;
