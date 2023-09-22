@@ -568,7 +568,7 @@ class BoolTheoryLit: public BoolExpression<Th...> {
     using BES = BoolExpressionSet<Th...>;
     using Subs = theory::Subs<Th...>;
 
-    Lit lit;
+    const Lit lit;
 
     struct CacheEqual {
 
@@ -581,7 +581,7 @@ class BoolTheoryLit: public BoolExpression<Th...> {
     struct CacheHash {
 
         size_t operator()(const std::tuple<Lit> &args) const noexcept {
-            return literal::hash<Th...>(std::get<0>(args));
+            return hash_value<Th...>(std::get<0>(args));
         }
 
     };
@@ -590,10 +590,10 @@ class BoolTheoryLit: public BoolExpression<Th...> {
 
 public:
 
-    BoolTheoryLit(const Lit &lit) : lit(literal::normalize<Th...>(lit)) {}
+    BoolTheoryLit(const Lit &lit) : lit(lit) {}
 
     static BE from_cache(const Lit &lit) {
-        return cache.from_cache(lit);
+        return cache.from_cache(literal::normalize<Th...>(lit));
     }
 
     bool isAnd() const override {
@@ -676,8 +676,8 @@ class BoolJunction: public BoolExpression<Th...> {
     using BES = BoolExpressionSet<Th...>;
     using Subs = theory::Subs<Th...>;
 
-    BES children;
-    ConcatOperator op;
+    const BES children;
+    const ConcatOperator op;
 
     struct CacheEqual {
 

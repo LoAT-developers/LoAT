@@ -14,8 +14,8 @@ std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) 
             } else if (std::holds_alternative<BoolVar>(x)) {
                 const auto &var = std::get<BoolVar>(x);
                 const BoolVar next {BoolVar::next()};
-                sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(next));
-                inverted.put<BoolTheory>(next, BExpression::buildTheoryLit(var));
+                sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(BoolLit(next)));
+                inverted.put<BoolTheory>(next, BExpression::buildTheoryLit(BoolLit(var)));
             }
         }
     }
