@@ -382,6 +382,41 @@ bool Expr::has(const Expr &pattern) const {
     return ex.has(pattern.ex);
 }
 
+std::pair<Expr, std::vector<std::pair<NumVar, Expr>>> Expr::flattenExp() const {
+    struct Mapper: GiNaC::map_function {
+        GiNaC::ex operator()(const GiNaC::ex &ex) {
+            if (GiNaC::is_a<GiNaC::power>(ex)) {
+                const auto base {ex.op(0)};
+                const auto exp {ex.op(1)};
+                if (GiNaC::is_a<GiNaC::numeric>(exp)) {
+                    return ex;
+                }
+                GiNaC::ex new_base, new_exp;
+                if (GiNaC::is_a<GiNaC::symbol>(base) || GiNaC::is_a<GiNaC::numeric>(base)) {
+                    new_base = base;
+                } else {
+                    new_base = base.map(*this);
+                    repl.push_back({NumVar::next(), Expr(new_base)});
+                }
+                if (GiNaC::is_a<GiNaC::symbol>(exp)) {
+                    new_exp = exp;
+                } else {
+                    new_exp = exp.map(*this);
+                    repl.push_back({NumVar::next(), Expr(new_exp)});
+                }
+                return GiNaC::pow(new_base, new_exp);
+            } else {
+                return ex.map(*this);
+            }
+        }
+
+        std::vector<std::pair<NumVar, Expr>> repl;
+    };
+    Mapper f;
+    const Expr res {f(ex)};
+    return {res, f.repl};
+}
+
 bool Expr::isZero() const {
     return ex.is_zero();
 }

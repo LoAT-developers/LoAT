@@ -34,6 +34,8 @@
  */
 class Z3Context : public SmtContext<z3::expr> {
 
+    static z3::func_decl mkExp(z3::context& ctx);
+
 public:
     Z3Context(z3::context& ctx);
     ~Z3Context() override;
@@ -72,9 +74,16 @@ public:
 
     void printStderr(const z3::expr &e) const override;
 
+    z3::func_decl getExp() const;
+
+    std::vector<z3::expr> clearExps();
+
 private:
 
     z3::context &ctx;
+
+    z3::func_decl exp;
+    std::vector<z3::expr> exps;
 
     z3::expr buildVar(const Var &var) override;
 

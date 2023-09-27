@@ -1,11 +1,10 @@
 #pragma once
 
 #include "itsproblem.hpp"
-#include "linearizingsolver.hpp"
-#include "itsproblem.hpp"
 #include "result.hpp"
 #include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
+#include "smt.hpp"
 
 #include <limits>
 #include <list>

@@ -229,6 +229,8 @@ public:
      */
     bool has(const Expr &pattern) const;
 
+    std::pair<Expr, std::vector<std::pair<NumVar, Expr>>> flattenExp() const;
+
     /**
      * @return True iff this is 0.
      */

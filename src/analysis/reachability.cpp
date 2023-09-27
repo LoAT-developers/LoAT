@@ -1,4 +1,6 @@
 #include "reachability.hpp"
+#include "linearizingsolver.hpp"
+#include "z3.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
@@ -112,7 +114,7 @@ Reachability::Reachability(ITSProblem &chcs):
 {
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Z3:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout));
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>(smt::default_timeout));
         break;
     case Config::Analysis::CVC5:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
