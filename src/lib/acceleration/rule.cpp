@@ -71,6 +71,17 @@ bool Rule::isPoly() const {
     return guard->isPoly() && update.isPoly();
 }
 
+std::strong_ordering Rule::operator<=>(const Rule &that) const {
+    if (id == that.id) {
+        return std::strong_ordering::equivalent;
+    }
+    auto res {guard <=> that.guard};
+    if (res != std::weak_ordering::equivalent) {
+        return res;
+    }
+    return update <=> that.update;
+}
+
 std::ostream& operator<<(std::ostream &s, const TransIdx &idx) {
     return s << idx->getId();
 }

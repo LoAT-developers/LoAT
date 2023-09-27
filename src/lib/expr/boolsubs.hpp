@@ -184,7 +184,7 @@ public:
     }
 
     template <ITheory... Th_>
-    friend auto operator<=>(const BoolSubs<Th_...> &e1, const BoolSubs<Th_...> &e2);
+    friend std::strong_ordering operator<=>(const BoolSubs<Th_...> &e1, const BoolSubs<Th_...> &e2);
 
     template <ITheory... Th_>
     friend bool operator==(const BoolSubs<Th_...> &e1, const BoolSubs<Th_...> &e2);
@@ -209,7 +209,7 @@ public:
 };
 
 template <ITheory... Th>
-auto operator<=>(const BoolSubs<Th...> &e1, const BoolSubs<Th...> &e2) {
+std::strong_ordering operator<=>(const BoolSubs<Th...> &e1, const BoolSubs<Th...> &e2) {
     return e1.map <=> e2.map;
 }
 

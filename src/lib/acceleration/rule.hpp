@@ -64,7 +64,7 @@ public:
 
     bool isPoly() const;
 
-    auto operator<=>(const Rule &that) const = default;
+    std::strong_ordering operator<=>(const Rule &that) const;
 
     unsigned getId() const;
 

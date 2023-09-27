@@ -334,7 +334,8 @@ private:
 class ExprSubs {
 
     friend class Expr;
-    friend auto operator<=>(const ExprSubs &m1, const ExprSubs &m2) = default;
+    friend std::strong_ordering operator<=>(const ExprSubs &m1, const ExprSubs &m2);
+    friend bool operator==(const ExprSubs &m1, const ExprSubs &m2);
 
 public:
 

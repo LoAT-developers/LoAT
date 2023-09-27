@@ -787,6 +787,14 @@ size_t ExprSubs::hash() const {
     return hash;
 }
 
+std::strong_ordering operator<=>(const ExprSubs &m1, const ExprSubs &m2) {
+    return m1.map <=> m2.map;
+}
+
+bool operator==(const ExprSubs &m1, const ExprSubs &m2) {
+    return m1.map == m2.map;
+}
+
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
     if (map.empty()) {
         return s << "{}";
