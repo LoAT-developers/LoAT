@@ -137,7 +137,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             }
             if (signs.at(i+1).is_positive()) {
                 // the i-th derivative is monotonically increasing at the sampling point
-                if (!signs.at(i).is_positive()) {
+                if (signs.at(i).is_positive()) {
                     guard.insert(Rel::buildGeq(derivatives.at(i), 0));
                 } else {
                     guard.insert(Rel::buildLeq(derivatives.at(i).subs(but_last), 0));
