@@ -49,7 +49,7 @@ public:
                 } else if (base == 1) {
                     this->solver.add(z3::implies(exp >= 0, e == 1));
                 } else {
-                    this->solver.add(e > 0);
+                    this->solver.add(z3::implies(exp >= 0, e > 0));
                     this->solver.add(z3::implies(exp == 0, e == 1));
                     this->solver.add(z3::implies(exp > 0, e > exp));
                 }
