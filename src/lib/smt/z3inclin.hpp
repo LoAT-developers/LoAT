@@ -6,14 +6,13 @@
 template <ITheory... Th>
 class Z3IncLin: public Z3Base<Z3IncLinContext, Th...> {
 
-    std::vector<std::set<z3::expr>> exps;
+    std::unordered_map<unsigned, std::vector<z3::expr>> exps;
     static const bool log {false};
+    unsigned level;
 
 public:
 
-    Z3IncLin(): Z3Base<Z3IncLinContext, Th...>(smt::default_timeout) {
-        exps.emplace_back();
-    }
+    Z3IncLin(): Z3Base<Z3IncLinContext, Th...>(smt::default_timeout) {}
 
     void add(const BExpr<Th...> e) override {
         if (log) std::cout << "add - e: " << e << std::endl;
@@ -40,7 +39,8 @@ public:
         this->solver.add(to_add);
         const auto exps {this->ctx.clearExps()};
         if (!exps.empty()) {
-            this->exps.back().insert(exps.begin(), exps.end());
+            auto &vec {this->exps.emplace(level, std::vector<z3::expr>()).first->second};
+            vec.insert(vec.end(), exps.begin(), exps.end());
             for (const auto &e: exps) {
                 const GiNaC::numeric base {e.arg(0).to_string().c_str()};
                 const auto exp {e.arg(1)};
@@ -60,13 +60,14 @@ public:
     void push() override {
         if (log) std::cout << "push" << std::endl;
         this->solver.push();
-        exps.emplace_back();
+        ++level;
     }
 
     void pop() override {
         if (log) std::cout << "pop" << std::endl;
         this->solver.pop();
-        exps.pop_back();
+        exps.erase(level);
+        --level;
     }
 
     struct HashExpr {
@@ -95,7 +96,7 @@ public:
                 model = this->solver.get_model();
                 bool sat {true};
                 // check if the model can be lifted, add refinement lemmas otherwise
-                for (const auto &es: exps) {
+                for (const auto &[_,es]: exps) {
                     for (const auto &e: es) {
                         const auto base {e.arg(0)};
                         const GiNaC::numeric ginac_base {base.to_string().c_str()};
@@ -176,8 +177,8 @@ public:
                     // search for pairs exp(b,e1), exp(b,e2) whose models violate monotonicity of exp
                     auto outer_it1 {exps.begin()};
                     while (outer_it1 != exps.end()) {
-                        auto inner_it1 {outer_it1->begin()};
-                        while (inner_it1 != outer_it1->end()) {
+                        auto inner_it1 {outer_it1->second.begin()};
+                        while (inner_it1 != outer_it1->second.end()) {
                             const auto e1 {*inner_it1};
                             const auto base1 {e1.arg(0)};
                             const GiNaC::numeric ginac_base1 {base1.to_string().c_str()};
@@ -185,12 +186,12 @@ public:
                                 const auto exp1 {e1.arg(1)};
                                 auto outer_it2 = outer_it1;
                                 while (outer_it2 != exps.end()) {
-                                    auto inner_it2 {outer_it2->begin()};
+                                    auto inner_it2 {outer_it2->second.begin()};
                                     if (outer_it1 == outer_it2) {
                                         inner_it2 = inner_it1;
                                         ++inner_it2;
                                     }
-                                    while (inner_it2 != outer_it2->end()) {
+                                    while (inner_it2 != outer_it2->second.end()) {
                                         const auto e2 {*inner_it2};
                                         const auto base2 {e2.arg(0)};
                                         const GiNaC::numeric ginac_base2 {base2.to_string().c_str()};
