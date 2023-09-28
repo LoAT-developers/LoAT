@@ -428,7 +428,7 @@ private:
 public:
 
     size_t hash() const {
-        size_t res;
+        size_t res {0};
         hashImpl(res);
         return res;
     }
