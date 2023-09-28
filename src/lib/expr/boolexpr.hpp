@@ -89,7 +89,7 @@ public:
     template <class Lits>
     static const BE buildFromLits(const Lits &lits, ConcatOperator op) {
         BES children;
-        for (const Lit &lit: lits) {
+        for (const auto &lit: lits) {
             children.insert(buildTheoryLit(lit));
         }
         return BoolJunction<Th...>::from_cache(children, op);

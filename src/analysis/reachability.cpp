@@ -416,7 +416,8 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
         if (Config::Analysis::safety()) {
             throw ProofFailed("SMT returned UNKNOWN during resolution");
         }
-    } // fall through intended
+    }
+    [[fallthrough]];
     case Unsat: {
         if (block == blocked_clauses.back().end()) {
             blocked_clauses.back()[idx] = {};

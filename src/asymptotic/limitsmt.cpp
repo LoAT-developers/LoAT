@@ -13,7 +13,7 @@ using namespace std;
  * lim_{n->\infty} p is a positive constant
  */
 static BExpr<IntTheory> posConstraint(const map<int, Expr>& coefficients) {
-    std::vector<Theory<IntTheory>::Lit> conjunction;
+    std::vector<Rel> conjunction;
     for (pair<int, Expr> p : coefficients) {
         int degree = p.first;
         Expr c = p.second;
@@ -32,7 +32,7 @@ static BExpr<IntTheory> posConstraint(const map<int, Expr>& coefficients) {
  * lim_{n->\infty} p is a negative constant
  */
 static BExpr<IntTheory> negConstraint(const map<int, Expr>& coefficients) {
-    std::vector<Theory<IntTheory>::Lit> conjunction;
+    std::vector<Rel> conjunction;
     for (pair<int, Expr> p : coefficients) {
         int degree = p.first;
         Expr c = p.second;
@@ -57,7 +57,7 @@ static BExpr<IntTheory> negInfConstraint(const map<int, Expr>& coefficients) {
     }
     std::vector<BExpr<IntTheory>> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
-        std::vector<Theory<IntTheory>::Lit> conjunction;
+        std::vector<Rel> conjunction;
         for (pair<int, Expr> p: coefficients) {
             int degree = p.first;
             Expr c = p.second;
@@ -84,7 +84,7 @@ static BExpr<IntTheory> posInfConstraint(const map<int, Expr>& coefficients) {
     }
     std::vector<BExpr<IntTheory>> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
-        std::vector<Theory<IntTheory>::Lit> conjunction;
+        std::vector<Rel> conjunction;
         for (pair<int, Expr> p: coefficients) {
             int degree = p.first;
             Expr c = p.second;
