@@ -1,10 +1,8 @@
 FROM voidlinux/voidlinux-musl:latest as base
 LABEL author="Florian Frohn"
 
-RUN xbps-install -yS xbps
-RUN xbps-install -ySu
+RUN xbps-install -ySu xbps
 RUN xbps-install -yS gcc git automake autoconf make cmake wget python-devel bash
-
 
 
 FROM base as antlr4
@@ -52,11 +50,11 @@ FROM base as ginac
 
 RUN xbps-install -yS cln-devel
 
-RUN wget https://www.ginac.de/ginac-1.8.6.tar.bz2
-RUN tar xf ginac-1.8.6.tar.bz2
-WORKDIR /ginac-1.8.6
+RUN wget https://www.ginac.de/ginac-1.8.7.tar.bz2
+RUN tar xf ginac-1.8.7.tar.bz2
+WORKDIR /ginac-1.8.7
 RUN mkdir build
-WORKDIR /ginac-1.8.6/build
+WORKDIR /ginac-1.8.7/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
@@ -106,7 +104,12 @@ RUN make install
 
 FROM base as purrs
 
-RUN xbps-install -yS libtool gmpxx-devel cln-devel giac-devel
+# The `giac-devel` package has conflicting dependencies with other packages that 
+# are already installed at this point. Ad-hoc workaround: update the offenting 
+# packages. A full system update with `xbps-install -ySu` somehow also crashes.
+RUN xbps-install -ySu libblkid libfdisk libmount libsmartcols util-linux base-minimal
+
+RUN xbps-install -yS libtool gmpxx-devel cln-devel giac-devel 
 
 COPY --from=ginac /usr/local/lib64/libginac.a /usr/local/lib64/libginac.a
 COPY --from=ginac /usr/local/include/ginac /usr/local/include/ginac
@@ -146,10 +149,10 @@ RUN make install
 
 
 
-# FROM alpine:3.18.3 as CVC5
+# FROM alpine:3.18.3 as cvc5
 # RUN apk add bash gcc g++ make cmake python3-dev py3-pip autoconf automake libtool texinfo
 
-FROM base as CVC5-base
+FROM base as cvc5-base
 
 RUN xbps-install -yuS xbps
 RUN xbps-install -yS python3-devel python3-pip libtool texinfo cln-devel
@@ -165,7 +168,7 @@ RUN git checkout cvc5-1.0.8-musl
 RUN ./configure.sh --static --no-statistics --auto-download --poly --cln --gpl --no-docs
 WORKDIR /cvc5/build
 
-FROM CVC5-base as CVC5
+FROM cvc5-base as cvc5
 RUN make -j4
 RUN make install
 
@@ -234,6 +237,6 @@ COPY --from=antlr4 /usr/local/include/antlr4-runtime/ /usr/local/include/
 COPY --from=faudes /usr/local/lib/libfaudes.a /usr/local/lib/libfaudes.a
 COPY --from=faudes /usr/local/include/faudes/ /usr/local/include/
 
-COPY --from=CVC5 /usr/local/lib64/libcvc5.a /usr/local/lib/libcvc5.a
-COPY --from=CVC5 /usr/local/include/cvc5 /usr/local/include/cvc5
-COPY --from=CVC5 /usr/local/lib64/libcadical.a /usr/local/lib/libcadical.a
+COPY --from=cvc5 /usr/local/lib64/libcvc5.a /usr/local/lib/libcvc5.a
+COPY --from=cvc5 /usr/local/include/cvc5 /usr/local/include/cvc5
+COPY --from=cvc5 /usr/local/lib64/libcadical.a /usr/local/lib/libcadical.a
