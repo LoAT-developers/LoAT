@@ -8,13 +8,17 @@ message(STATUS "loat_expr includes: ${loat_expr_INCLUDE_DIRS}")
 
 add_library(${PROJECT_NAME} STATIC
   smt.hpp
+  smt.cpp
   smtcontext.hpp
   exprtosmt.hpp
   model.hpp
   linearizingsolver.hpp
   z3.hpp
+  z3inclin.hpp
   z3context.cpp
   z3context.hpp
+  z3inclincontext.cpp
+  z3inclincontext.hpp
   yices.hpp
   yices.cpp
   yicescontext.cpp
@@ -23,7 +27,6 @@ add_library(${PROJECT_NAME} STATIC
   cvc5context.hpp
   cvc5context.cpp
   smtfactory.hpp
-  smtfactory.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${loat_expr_INCLUDE_DIRS})

@@ -20,14 +20,7 @@
 
 using namespace std;
 
-z3::func_decl Z3Context::mkExp(z3::context& ctx) {
-    z3::sort_vector sorts{ctx};
-    sorts.push_back(ctx.int_sort());
-    sorts.push_back(ctx.int_sort());
-    return ctx.function("exp", sorts, ctx.int_sort());
-}
-
-Z3Context::Z3Context(z3::context& ctx): ctx(ctx), exp(mkExp(ctx)) {}
+Z3Context::Z3Context(z3::context& ctx): ctx(ctx) {}
 
 Z3Context::~Z3Context() { }
 
@@ -52,13 +45,7 @@ z3::expr Z3Context::getReal(long num, long denom) {
 }
 
 z3::expr Z3Context::pow(const z3::expr &base, const z3::expr &exp) {
-    if (isRationalConstant(exp) || !isRationalConstant(base)) {
-        return z3::pw(base, exp);
-    } else {
-        const auto res {this->exp(base, exp)};
-        exps.push_back(res);
-        return res;
-    }
+    return z3::pw(base, exp);
 }
 
 z3::expr Z3Context::plus(const z3::expr &x, const z3::expr &y) {
@@ -185,16 +172,6 @@ Rel::RelOp Z3Context::relOp(const z3::expr &e) const {
     case Z3_OP_LE: return Rel::RelOp::leq;
     default: throw std::invalid_argument("unknown relation");
     }
-}
-
-z3::func_decl Z3Context::getExp() const {
-    return exp;
-}
-
-std::vector<z3::expr> Z3Context::clearExps() {
-    std::vector<z3::expr> res {exps};
-    exps.clear();
-    return res;
 }
 
 void Z3Context::printStderr(const z3::expr &e) const {

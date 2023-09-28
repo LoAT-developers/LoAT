@@ -5,6 +5,12 @@
 #include "model.hpp"
 #include "theory.hpp"
 
+namespace smt {
+
+extern const unsigned default_timeout;
+
+}
+
 enum SmtResult {Sat, Unknown, Unsat};
 enum Logic {
     /**

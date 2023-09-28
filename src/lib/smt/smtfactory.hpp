@@ -4,12 +4,6 @@
 #include "yices.hpp"
 #include "z3.hpp"
 
-namespace smt {
-
-extern const unsigned default_timeout;
-
-}
-
 namespace SmtFactory {
 
     template<ITheory... Th>

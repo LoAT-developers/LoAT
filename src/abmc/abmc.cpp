@@ -12,6 +12,8 @@
 #include "cvc5.hpp"
 #include "rule.hpp"
 #include "dependencygraph.hpp"
+#include "linearizingsolver.hpp"
+#include "z3inclin.hpp"
 
 using namespace Config::ABMC;
 
@@ -24,6 +26,12 @@ ABMC::ABMC(ITSProblem &its):
         break;
     case Config::Analysis::CVC5:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
+        break;
+    case Config::Analysis::Z3Lin:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout));
+        break;
+    case Config::Analysis::Z3IncLin:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3IncLin<IntTheory, BoolTheory>());
         break;
     }
     vars.insert(trace_var);

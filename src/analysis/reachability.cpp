@@ -7,7 +7,7 @@
 #include "result.hpp"
 #include "smt.hpp"
 #include "export.hpp"
-#include "smtfactory.hpp"
+#include "z3inclin.hpp"
 #include "vector.hpp"
 #include "asymptoticbound.hpp"
 #include "vareliminator.hpp"
@@ -118,6 +118,12 @@ Reachability::Reachability(ITSProblem &chcs):
         break;
     case Config::Analysis::CVC5:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
+        break;
+    case Config::Analysis::Z3Lin:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout));
+        break;
+    case Config::Analysis::Z3IncLin:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3IncLin<IntTheory, BoolTheory>());
         break;
     }
     solver->enableModels();
