@@ -139,17 +139,19 @@ public:
                                 for (const auto &[ginac_other,other]: it->second) {
                                     if (ginac_other < ginac_exp_val) {
                                         if (ginac_other > ginac_prev) {
+                                            ginac_prev = ginac_other;
                                             prev = other;
                                         }
                                     } else if (ginac_next < 0 || ginac_other < ginac_next) {
+                                        ginac_next = ginac_other;
                                         next = other;
                                     }
                                 }
                                 // if there are none, use the neighbours
-                                if (prev < 0) {
+                                if (ginac_prev < 0) {
                                     prev = exp_val - 1;
                                 }
-                                if (next < 0) {
+                                if (ginac_next < 0) {
                                     next = exp_val + 1;
                                 }
                                 // store the current secant point
