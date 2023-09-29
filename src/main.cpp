@@ -29,6 +29,7 @@
 #include "abmc.hpp"
 #include "yices.hpp"
 #include "recurrence.hpp"
+#include "accelerationproblem.hpp"
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -129,6 +130,8 @@ void parseFlags(int argc, char *argv[]) {
                 cout << "Error: unknown SMT solver " << str << std::endl;
                 exit(1);
             }
+        } else if (strcmp("--polyaccel", argv[arg]) == 0) {
+            AccelerationProblem::polyaccel = true;
         } else if (strcmp("--format", argv[arg]) == 0) {
             std::string str = getNext();
             if (boost::iequals("koat", str)) {

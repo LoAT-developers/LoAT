@@ -13,6 +13,8 @@ class AccelerationProblem {
 
 public:
 
+    static bool polyaccel;
+
     struct Accelerator {
         std::vector<BoolExpr> formula;
         Proof proof;

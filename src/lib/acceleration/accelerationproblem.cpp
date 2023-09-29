@@ -5,6 +5,8 @@
 #include "boolexpr.hpp"
 #include "relevantvariables.hpp"
 
+bool AccelerationProblem::polyaccel = false;
+
 AccelerationProblem::AccelerationProblem(
         const Rule &r,
         const std::optional<Recurrence::Result> &closed,
@@ -15,7 +17,7 @@ AccelerationProblem::AccelerationProblem(
     guard(r.getGuard()->toG()),
     config(config),
     samplePoint(samplePoint) {
-    if (closed) {
+    if (closed && polyaccel) {
         update.get<IntTheory>() = closed->refined_equations;
         res.proof.append(std::stringstream() << "refined update: " << update);
     }
@@ -55,7 +57,7 @@ bool AccelerationProblem::unchanged(const Lit &lit) {
 }
 
 bool AccelerationProblem::polynomial(const Lit &lit) {
-    if (!closed || !std::holds_alternative<Rel>(lit)) {
+    if (!polyaccel || !closed || !std::holds_alternative<Rel>(lit)) {
         return false;
     }
     const auto &rel {std::get<Rel>(lit)};
@@ -258,7 +260,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     if (success) {
         BoolExpr g;
         BoolExpr c;
-        if (samplePoint && i.subs(samplePoint->get<IntTheory>()).isTriviallyFalse()) {
+        if (polyaccel && samplePoint && i.subs(samplePoint->get<IntTheory>()).isTriviallyFalse()) {
             if (!closed) {
                 return false;
             }
@@ -291,7 +293,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         eqs.push_back(expr::mkEq(TheTheory::varToExpr(v), update.get(v)));
     }
     const auto c {BExpression::buildAnd(eqs)};
-    if (samplePoint && !c->subs(*samplePoint)->isTriviallyTrue()) {
+    if (polyaccel && samplePoint && !c->subs(*samplePoint)->isTriviallyTrue()) {
         return false;
     }
     BoolExpr g {c & lit};
