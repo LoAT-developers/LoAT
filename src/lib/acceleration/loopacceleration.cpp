@@ -239,12 +239,19 @@ acceleration::Result LoopAcceleration::run() {
             }
         }
     }
-    if (accel_rule) {
-        for (unsigned i = 1; i < res.prefix; ++i) {
-            accel_rule = rule.chain(*accel_rule);
+    if (res.prefix > 1) {
+        auto prefix {rule};
+        for (unsigned i = 2; i < res.prefix; ++i) {
+            prefix = prefix.chain(rule);
         }
-        res.accel = {*accel_rule, accel_proof, covered};
+        if (accel_rule) {
+            accel_rule = prefix.chain(*accel_rule);
+        }
+        if (res.nonterm) {
+            res.nonterm->certificate = prefix.getGuard() & res.nonterm->certificate->subs(prefix.getUpdate());
+        }
     }
+    res.accel = {*accel_rule, accel_proof, covered};
     return res;
 }
 

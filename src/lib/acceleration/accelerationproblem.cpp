@@ -17,12 +17,15 @@ AccelerationProblem::AccelerationProblem(
     guard(r.getGuard()->toG()),
     config(config),
     samplePoint(samplePoint) {
-    if (closed && polyaccel) {
-        update.get<IntTheory>() = closed->refined_equations;
-        res.proof.append(std::stringstream() << "refined update: " << update);
-    }
+//    if (closed && polyaccel) {
+//        update.get<IntTheory>() = closed->refined_equations;
+//        res.proof.append(std::stringstream() << "refined update: " << update);
+//    }
     for (const auto &l: guard->lits()) {
         todo.insert(l);
+    }
+    if (closed->prefix > 0) {
+        res.formula.push_back(guard);
     }
     const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
     Logic logic {Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({todo}, subs)};
@@ -62,7 +65,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     }
     const auto &rel {std::get<Rel>(lit)};
     const auto nfold {rel.lhs().subs(closed->closed_form.get<IntTheory>()).expand()};
-    if (!nfold.isPoly(config.n)) {
+    if (!nfold.has(config.n) || !nfold.isPoly(config.n)) {
         return false;
     }
     const auto &up {update.get<IntTheory>()};
@@ -177,9 +180,6 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     solver->pop();
     if (success) {
         auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, Expr(config.n)-1))};
-        if (closed->prefix > 0) {
-            g = g & lit;
-        }
         res.formula.push_back(g);
         res.proof.newline();
         res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
