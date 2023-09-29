@@ -40,34 +40,6 @@ LoopAcceleration::LoopAcceleration(
 const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     Rule res = rule;
     unsigned period = 1;
-    // chain if there are updates like x = -x + p
-    for (const auto &p: rule.getUpdate().get<IntTheory>()) {
-        const auto var = p.first;
-        const auto up = p.second.expand();
-        const auto upVars = up.vars();
-        if (upVars.find(var) != upVars.end()) {
-            if (up.isPoly() && up.degree(var) == 1) {
-                const Expr coeff = up.coeff(var);
-                if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
-                    res = Chaining::chain(res, res).first;
-                    period = 2;
-                    break;
-                }
-            }
-        }
-    }
-    if (period == 1) {
-        // chain if there are updates like b = !b
-        for (const auto &p: rule.getUpdate().get<BoolTheory>()) {
-            const auto lits = p.second->lits();
-            const auto lit = BoolLit(p.first);
-            if (lits.find(!lit) != lits.end() && lits.find(lit) == lits.end()) {
-                res = Chaining::chain(res, res).first;
-                period = 2;
-                break;
-            }
-        }
-    }
     // chain if there are updates like x = y; y = x
     unsigned cycleLength = 1;
     const auto up = res.getUpdate();
@@ -90,7 +62,7 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
             }
             vars.insertAll(toInsert);
         }
-        if (count > 0 && vars.find(var) != vars.end()) {
+        if (count > 1 && vars.find(var) != vars.end()) {
             cycleLength = std::lcm(cycleLength, count);
         }
     }
@@ -101,38 +73,70 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
         }
         period *= cycleLength;
     }
-    Rule orig(res);
     // chain if it eliminates variables from an update
     NEXT: while (true) {
         const auto up = res.getUpdate().get<IntTheory>();
         for (const auto &p: up) {
             std::set<NumVar> varsOneStep(p.second.vars());
-            std::set<NumVar> varsTwoSteps;
-            for (const auto &var: varsOneStep) {
+            std::set<NumVar> varsTwoSteps(p.second.subs(up).vars());
+            bool subset {true};
+            for (const auto &var: varsTwoSteps) {
                 if (expr::isTempVar(var)) {
                     continue;
                 }
-                auto it = up.find(var);
-                if (it == up.end()) {
-                    varsTwoSteps.insert(var);
-                } else {
-                    const auto toInsert = it->second.vars();
-                    varsTwoSteps.insert(toInsert.begin(), toInsert.end());
+                if (varsOneStep.find(var) == varsOneStep.end()) {
+                    subset = true;
+                    break;
                 }
             }
-            for (const auto &var: varsOneStep) {
-                if (expr::isTempVar(var)) {
-                    continue;
-                }
-                if (varsTwoSteps.find(var) == varsTwoSteps.end()) {
-                    res = Chaining::chain(res, orig).first;
-                    period *= 2;
-                    goto NEXT;
+            if (subset) {
+                for (const auto &var: varsOneStep) {
+                    if (expr::isTempVar(var)) {
+                        continue;
+                    }
+                    if (varsTwoSteps.find(var) == varsTwoSteps.end()) {
+                        res = Chaining::chain(res, res).first;
+                        period *= 2;
+                        goto NEXT;
+                    }
                 }
             }
         }
-        return {res, period};
+        break;
     }
+    bool changed;
+    do {
+        changed = false;
+        // chain if there are updates like x = -x + p
+        for (const auto &p: res.getUpdate().get<IntTheory>()) {
+            const auto var = p.first;
+            const auto up = p.second.expand();
+            const auto upVars = up.vars();
+            if (upVars.find(var) != upVars.end()) {
+                if (up.isPoly() && up.degree(var) == 1) {
+                    const Expr coeff = up.coeff(var);
+                    if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
+                        res = Chaining::chain(res, res).first;
+                        period *= 2;
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+        }
+        // chain if there are updates like b = !b
+        for (const auto &p: res.getUpdate().get<BoolTheory>()) {
+            const auto lits = p.second->lits();
+            const auto lit = BoolLit(p.first);
+            if (lits.find(!lit) != lits.end() && lits.find(lit) == lits.end()) {
+                res = Chaining::chain(res, res).first;
+                period *= 2;
+                changed = true;
+                break;
+            }
+        }
+    } while (changed);
+    return {res, period};
 }
 
 Rule LoopAcceleration::overApproximatingAcceleration(const Subs &closed_form) {
