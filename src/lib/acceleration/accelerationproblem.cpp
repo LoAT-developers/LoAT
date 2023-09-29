@@ -82,10 +82,12 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
                 guard.insert(rel);
             } else {
                 guard.insert(rel.subs(but_last));
+                res.nonterm = false;
             }
         } else {
             guard.insert(rel);
             guard.insert(rel.subs(but_last));
+            res.nonterm = false;
         }
         low_degree = true;
         break;
@@ -96,6 +98,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             if (coeff.toNum().is_negative()) {
                 guard.insert(rel);
                 guard.insert(rel.subs(but_last));
+                res.nonterm = false;
                 low_degree = true;
             }
         }
@@ -133,6 +136,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             guard.insert(rel);
         } else {
             guard.insert(rel.subs(but_last));
+            res.nonterm = false;
         }
         for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
             if (signs.at(i).is_positive()) {
@@ -148,6 +152,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
                     guard.insert(Rel::buildLeq(derivatives.at(i).subs(but_last), 0));
                 }
             } else {
+                res.nonterm = false;
                 if (signs.at(i).is_positive()) {
                     guard.insert(Rel::buildGeq(derivatives.at(i).subs(but_last), 0));
                 } else {
@@ -163,7 +168,6 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     res.proof.newline();
     res.proof.append(std::stringstream() << lit << ": polynomial acceleration yields " << g << std::endl);
     res.proof.append(std::stringstream() << "covered: " << c);
-    res.nonterm = false;
     solver->add(BExpression::buildTheoryLit(lit));
     return true;
 }
