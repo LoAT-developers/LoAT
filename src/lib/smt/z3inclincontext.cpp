@@ -10,7 +10,8 @@ z3::func_decl Z3IncLinContext::mkExp(z3::context& ctx) {
 }
 
 z3::expr Z3IncLinContext::pow(const z3::expr &base, const z3::expr &exp) {
-    if (isRationalConstant(exp) || !isRationalConstant(base)) {
+    long int_base;
+    if (isRationalConstant(exp) || !isRationalConstant(base) || !base.is_numeral_i64(int_base) || int_base < 2) {
         return Z3Context::pow(base, exp);
     } else {
         const auto res {this->exp(base, exp)};
