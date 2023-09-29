@@ -224,6 +224,9 @@ acceleration::Result LoopAcceleration::run() {
             covered = BExpression::buildAnd(accelerator->covered);
             accel_rule = Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form);
             accel_proof.concat(accelerator->proof);
+            if (accelerator->nonterm) {
+                res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
+            }
         }
         if (config.tryNonterm && (!accelerator || !accelerator->nonterm)) {
             accelerator = AccelerationProblem(rule, {}, sample_point, config).computeRes();
