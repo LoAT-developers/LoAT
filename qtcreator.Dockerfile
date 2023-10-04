@@ -4,6 +4,7 @@
 FROM loat-docker:latest
 LABEL author="Florian Frohn"
 
+RUN xbps-install -uyS xbps
 RUN xbps-install -yS qtcreator xauth mesa gdb clang-tools-extra
 
 RUN git config --global --add safe.directory /LoAT
