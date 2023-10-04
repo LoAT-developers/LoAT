@@ -84,6 +84,8 @@ BoolExpr subs(const Lit &lit, const Subs &s);
 
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2);
 
+BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2);
+
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e);

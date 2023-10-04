@@ -131,7 +131,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
 
 BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || (Config::Analysis::reachability() && !loop.deterministic)) {
-        return BExpression::True;
+        return BoolExpr();
     }
     // we must not start another iteration of the loop in the next step,
     // so we require that we either use the learned transition,
@@ -143,19 +143,33 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     pre.insert(not_covered);
     unsigned long length {depth - backlink + 1};
     for (unsigned i = 0; i < length; ++i) {
-        const auto s {subs_at(depth + i + 1)};
-        for (const auto lit: trace[backlink + i].second) {
-            pre.insert(expr::subs(expr::negate(*lit), s));
+        const auto &[rule, implicant] {trace[backlink + i]};
+        const auto s_current {subs_at(depth + i + 1)};
+        const auto s_next {subs_at(depth + i + 2)};
+        for (const auto lit: implicant) {
+            pre.insert(expr::subs(expr::negate(*lit), s_current));
+        }
+        for (const auto x: vars) {
+            if (expr::isProgVar(x)) {
+                pre.insert(expr::mkNeq(s_next.get(x), expr::subs(rule->getUpdate().get(x), s_current)));
+            }
         }
     }
     // we must not start another iteration of the loop after using the learned transition in the next step
     BoolExprSet post;
-    post.insert(BExpression::buildTheoryLit(Rel::buildNeq(subs_at(depth + 1).get<IntTheory>(trace_var), (*shortcut)->getId())));
+    post.insert(BExpression::buildTheoryLit(Rel::buildNeq(s.get<IntTheory>(trace_var), (*shortcut)->getId())));
     post.insert(not_covered);
     for (unsigned i = 0; i < length; ++i) {
-        const auto s {subs_at(depth + i + 2)};
-        for (const auto lit: trace[backlink + i].second) {
-            post.insert(expr::subs(expr::negate(*lit), s));
+        const auto &[rule, implicant] {trace[backlink + i]};
+        const auto s_current {subs_at(depth + i + 2)};
+        const auto s_next {subs_at(depth + i + 3)};
+        for (const auto lit: implicant) {
+            post.insert(expr::subs(expr::negate(*lit), s_current));
+        }
+        for (const auto x: vars) {
+            if (expr::isProgVar(x)) {
+                pre.insert(expr::mkNeq(s_next.get(x), expr::subs(rule->getUpdate().get(x), s_current)));
+            }
         }
     }
     return BExpression::buildOr(pre) & BExpression::buildOr(post);

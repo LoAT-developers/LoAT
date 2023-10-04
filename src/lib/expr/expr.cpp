@@ -129,6 +129,19 @@ BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
                 }, e1);
 }
 
+BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
+    return std::visit(
+        Overload{
+            [&e2](const Expr &e1){
+                return BExpression::buildTheoryLit(Rel::buildNeq(e1, std::get<Expr>(e2)));
+            },
+            [&e2](const BoolExpr &lhs){
+                const auto rhs = std::get<BoolExpr>(e2);
+                return (lhs & (!rhs)) | ((!lhs) & rhs);
+            }
+        }, e1);
+}
+
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e) {
