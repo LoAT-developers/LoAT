@@ -85,21 +85,38 @@ public:
     void replaceNode(Node to_replace, Node replacement) {
         nodes.insert(replacement);
         nodes.erase(to_replace);
+        // all predecessors of to_replace get replacement as successor
         for (const auto &pred: predecessors.at(to_replace)) {
-            successors.at(pred).erase(to_replace);
-            successors.at(pred).insert(replacement);
+            auto it {successors.find(pred)};
+            it->second.erase(to_replace);
+            it->second.insert(replacement);
         }
-        for (const auto &pred: successors.at(to_replace)) {
-            if (pred == replacement) {
-                predecessors.at(to_replace).erase(to_replace);
-                predecessors.at(to_replace).insert(replacement);
-            } else {
-                predecessors.at(pred).erase(to_replace);
-                predecessors.at(pred).insert(replacement);
+        for (const auto &succ: successors.at(to_replace)) {
+            auto it {predecessors.find(succ)};
+            // all former successors of to_replace get replacement as predecessor
+            if (it != predecessors.end()) {
+                it->second.erase(to_replace);
+                it->second.insert(replacement);
+            }
+            // to_replace has a self-loop -- redirect it to replacement
+            // we'll copy the predecessors of to_replace to replacement later
+            if (succ == replacement) {
+                auto it {predecessors.find(to_replace)};
+                it->second.erase(to_replace);
+                it->second.insert(replacement);
             }
         }
-        predecessors.emplace(replacement, predecessors.at(to_replace));
-        successors.emplace(replacement, successors.at(to_replace));
+        auto [it, new_node] {predecessors.emplace(replacement, predecessors.at(to_replace))};
+        if (!new_node) {
+            // replacement is an old node -- add all predecessors of to_replace
+            const auto &to_insert {predecessors.at(to_replace)};
+            it->second.insert(to_insert.begin(), to_insert.end());
+        }
+        it = successors.emplace(replacement, successors.at(to_replace)).first;
+        if (!new_node) {
+            const auto &to_insert {successors.at(to_replace)};
+            it->second.insert(to_insert.begin(), to_insert.end());
+        }
         predecessors.erase(to_replace);
         successors.erase(to_replace);
     }
