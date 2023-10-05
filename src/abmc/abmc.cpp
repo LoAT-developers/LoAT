@@ -162,13 +162,8 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 1)};
-        const auto s_next {subs_at(depth + i + 2)};
         pre.insert(implicant->negation()->subs(s_current));
-        for (const auto x: vars) {
-            if (expr::isProgVar(x)) {
-                pre.insert(expr::mkNeq(s_next.get(x), expr::subs(rule->getUpdate().get(x), s_current)));
-            }
-        }
+        pre.insert(BExpression::buildTheoryLit(Rel::buildNeq(s_current.get<IntTheory>(trace_var), rule->getId())));
     }
     // we must not start another iteration of the loop after using the learned transition in the next step
     BoolExprSet post;
@@ -177,13 +172,8 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 2)};
-        const auto s_next {subs_at(depth + i + 3)};
         post.insert(implicant->negation()->subs(s_current));
-        for (const auto x: vars) {
-            if (expr::isProgVar(x)) {
-                pre.insert(expr::mkNeq(s_next.get(x), expr::subs(rule->getUpdate().get(x), s_current)));
-            }
-        }
+        post.insert(BExpression::buildTheoryLit(Rel::buildNeq(s_current.get<IntTheory>(trace_var), rule->getId())));
     }
     return BExpression::buildOr(pre) & BExpression::buildOr(post);
 }
