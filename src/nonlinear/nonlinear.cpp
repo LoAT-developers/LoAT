@@ -1,33 +1,46 @@
 #include "nonlinear.hpp"
 #include "booltheory.hpp"
+#include "linearizingsolver.hpp"
 #include "linearsolver.hpp"
+#include "smt.hpp"
 #include <stdexcept>
 
 void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
-    std::stack<Clause, std::list<Clause>> facts(linear_solver.get_initial_facts());    
+    std::unique_ptr<Smt<IntTheory, BoolTheory>> smt(new LinearizingSolver<IntTheory, BoolTheory>(4294967295u));
+    smt->enableModels();
+
+    // For the first loop iteration, the list of facts is composed of the original facts 
+    // given in the CHC problem. In subsequent iterations, the facts are whatever
+    // the linear solver managed to derive.
+    std::list<Clause> facts(linear_solver.get_initial_facts());    
 
     while (true) {
-        // std::cout << "================" << std::endl;
         std::list<Clause> resolvents;
+        std::list<Clause> non_linear_chcs = linear_solver.get_non_linear_chcs();
 
-        // Do resolution with of all `facts` with all non-linear clauses with the goal to derive
-        // new linear clauses that the linear solver can handle.        
-        while (!facts.empty()) {
-            const Clause fact = facts.top();
-            facts.pop();
-
-            // Note, we don't add resolvents to the ITS during this loop but instead collect on a stack,
-            // and then add the contained clauses to the ITS afterwards in a dedicated loop. 
-            // Otherwise, the following for-loop is "dynamically extended" because we also loop 
-            // over the newly added clauses.
-            for (const Clause &non_linear_chc: linear_solver.get_non_linear_chcs()) {
+        // Do resolution with all combinations of facts and non-linear clauses to 
+        // get every possible linear clause that we can derive in this iteration.
+        for (const Clause &non_linear_chc: non_linear_chcs) {
+            for (const auto &fact: facts) {
                 for (const auto &pred: non_linear_chc.lhs) {
                     const auto optional_resolvent = fact.resolutionWith(non_linear_chc, pred);
 
                     if (optional_resolvent.has_value()) {
                         const auto resolvent = optional_resolvent.value();
                         // TODO: check for redundancy
-                        resolvents.push_back(resolvent);
+
+                        // TODO: Is SMT a singleton? Does this reset influence the linear solver?
+                        // Filter out resolvents, where guard is UNSAT 
+                        smt->resetSolver();
+                        smt->add(resolvent.guard);
+                        if (smt->check() != Unsat) {                           
+                            resolvents.push_back(resolvent);
+                            if (!resolvent.isLinear()) {
+                                // Note that we append items to `non_linear_chcs` while iterating over it.
+                                // That means we also iterate over all added items.
+                                non_linear_chcs.push_back(resolvent);
+                            }
+                        }
                     }
                 }
             }
@@ -35,13 +48,9 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
 
         linear_solver.add_clauses(resolvents);
 
+        facts.clear();
         const auto new_facts = linear_solver.derive_new_facts();
-        for (const auto &fact : new_facts) {
-            // std::cout << fact << std::endl;
-            facts.push(fact);
-        }
-
-        // std::cout << "facts: " << new_facts.size() << std::endl;
+        facts.insert(facts.end(), new_facts.begin(), new_facts.end());
 
         const auto result = linear_solver.get_analysis_result();     
         if (result == LinearSolver::Result::Unsat) {

@@ -862,7 +862,6 @@ const std::list<Clause> Reachability::derive_new_facts() {
                 }
             }
 
-            ////////////////////////////////////// TODO: refactor this ///////////////////////////////////////////////////////////
             if (incremental_mode && should_add_fact) {
                 // Using a crude (additional) redundancy criterion for facts here. We identify facts by the trace that lead to them.
                 // This is only sufficient because equivalent facts can have multiple traces. We don't need to memoize the entire                    

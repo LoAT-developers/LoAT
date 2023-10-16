@@ -180,17 +180,19 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
         return {};
     }
 
-    const Clause this_unified = this->renameWith(unifier.value());
+    const Clause this_unified = this_with_disjoint_vars.renameWith(unifier.value());
 
     // LHS of resolvent is the union of the renamed LHS of `this` ...
     std::set<FunApp> resolvent_lhs = this_unified.lhs;
     // ... and the LHS of `chc` where `pred` is removed.
     resolvent_lhs.insert(chc_lhs_without_pred.begin(), chc_lhs_without_pred.end());
 
+    const auto new_guard = this_unified.guard & chc.guard;
+
     return Clause(
         resolvent_lhs, 
         chc.rhs, 
-        this_unified.guard & chc.guard
+        new_guard->simplify()
     );
 }
 

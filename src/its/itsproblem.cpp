@@ -400,7 +400,7 @@ void ITSProblem::addClause(const Clause &c) {
         nonLinearCHCs.push_back(Clause(
             lhs_normalized, 
             normalizePredicate(numProgVars.size(), boolProgVars.size(), c.rhs),
-            c.guard
+            c.guard->simplify()
         ));       
     } 
 }
