@@ -1,0 +1,5 @@
+The provided artefact contains the tools that were used for the evaluation of
+our paper "Accelerated Bounded Model Checking": LoAT, Z3, Golem, and Eldarica.
+Moreover, it contains the examples that were used for the evaluation of our
+paper: The benchmarks from the category "Linear CHCs, Linear Integer Arithmetic"
+from the CHC competitions 2022 and 2023.

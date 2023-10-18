@@ -1,0 +1,22 @@
+#!/bin/bash
+HELP=0
+if (( $# == 1 )); then
+    TO=300
+elif (( $# == 2 )); then
+    TO=$2
+else
+    HELP=1
+    echo "wrong number of arguments"
+fi
+if [ "$1" = "--help" ]; then
+    HELP=1
+fi
+if (( $HELP == 1 )); then
+    echo "usage: run_loat INPUT [TIMEOUT]"
+    echo "       The timeout is given in seconds."
+    echo "       If no timeout is specified, then it defaults to 300s."
+else
+    FACTOR=$(cat ./timeout_scaling_factor)
+    TO=$(echo "scale=0; $TO * (100000 * $FACTOR) / 100000 + 1" | bc)
+    timeout --foreground $TO ./z3 fp.engine=spacer $1
+fi

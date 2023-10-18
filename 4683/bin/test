@@ -1,0 +1,11 @@
+#!/bin/bash
+SOLVERS=("loat_abmc_block" "loat_abmc" "loat_bmc" "loat_adcl" "spacer" "z3_bmc" "golem_tpa" "golem_bmc" "eldarica")
+for S in ${SOLVERS[@]}; do
+    CMD="./run_$S"
+    RES=`$CMD ../examples/2022/chc-LIA-Lin_030.smt2 2> /dev/null | head -n 1`
+    if [ "$RES" == "unsat" ]; then
+        echo "$S tested successfully"
+    else
+        echo "testing $S failed, got $RES instead of unsat"
+    fi
+done

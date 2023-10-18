@@ -1,0 +1,123 @@
+; ./prepared/seahorn/./sv_comp_flat_small/float-benchs/feedback_diverge.c.flat_000.smt2
+(set-logic HORN)
+
+
+(declare-fun |main_1| ( Int Int ) Bool)
+
+(assert
+  (forall ( (A Int) (v_1 Int) ) 
+    (=>
+      (and
+        (and true (= 0 v_1))
+      )
+      (main_1 v_1 A)
+    )
+  )
+)
+(assert
+  (forall ( (A Int) (B Int) (C Bool) (D Bool) (E Bool) (F Int) (v_6 Int) (v_7 Int) ) 
+    (=>
+      (and
+        (main_1 v_6 B)
+        (and (= 0 v_6)
+     (or (= F 0) (not E) (not C))
+     (or (not D) (and C E))
+     (= D true)
+     (or (= A F) (not E) (not C))
+     (= 1 v_7))
+      )
+      (main_1 v_7 A)
+    )
+  )
+)
+(assert
+  (forall ( (A Bool) (B Bool) (C Bool) (D Int) (E Bool) (F Int) (G Int) (H Bool) (I Int) (J Bool) (K Bool) (L Bool) (M Bool) (N Bool) (O Bool) (P Bool) (Q Bool) (R Bool) (S Bool) (T Bool) (U Bool) (V Bool) (W Int) (X Bool) (Y Bool) (v_25 Int) (v_26 Int) ) 
+    (=>
+      (and
+        (main_1 v_25 G)
+        (let ((a!1 (or (not T) (not (= (<= 3600000 W) A)))))
+  (and (= 1 v_25)
+       (or (not T) (and V H) (and O U))
+       (or (= I W) (not T) (not Y))
+       (or (= F I) (not T) (not Y))
+       (or (and L P) (and J Q) (not O))
+       (or (= R N) (not L) (not P))
+       (or (= C R) (not L) (not P))
+       (or (= C S) (not J) (not Q))
+       (or (not S) (not J) (not Q))
+       (or (not E) (not H) (not K))
+       (or B (not J) (not Q))
+       (or (not B) (not J) (not M))
+       (or A (not T) (not Y))
+       (or E (not V) (not H))
+       a!1
+       (or (not T) (= W (+ 1 G)))
+       (or (not L) (and J M))
+       (or (not J) (and H K))
+       (or C (not O))
+       (or (not X) (and T Y))
+       (= X true)
+       (= E (= D 0))
+       (= 1 v_26)))
+      )
+      (main_1 v_26 F)
+    )
+  )
+)
+(assert
+  (forall ( (A Bool) (B Bool) (C Bool) (D Bool) (E Bool) (F Bool) (G Int) (H Bool) (I Int) (J Bool) (K Bool) (L Bool) (M Bool) (N Bool) (O Bool) (P Bool) (Q Bool) (R Bool) (S Bool) (T Bool) (U Bool) (V Bool) (W Bool) (X Int) (Y Bool) (Z Bool) (A1 Bool) (B1 Bool) (C1 Bool) (D1 Bool) (E1 Bool) (F1 Bool) (G1 Bool) (H1 Bool) (I1 Bool) (J1 Bool) (v_36 Int) (v_37 Int) ) 
+    (=>
+      (and
+        (main_1 v_36 I)
+        (let ((a!1 (or (not U) (not (= (<= 3600000 X) D)))))
+  (and (= 1 v_36)
+       (or (= F T) (not K) (not R))
+       (or (not T) (not K) (not R))
+       (or E (not K) (not R))
+       (or (and A1 E1) (and Y F1) (not D1))
+       (or (= C G1) (not E1) (not A1))
+       (or (= G1 C1) (not E1) (not A1))
+       (or (= C H1) (not Y) (not F1))
+       (or B (not Y) (not F1))
+       (or (not B) (not B1) (not Y))
+       (or H (not W) (not J))
+       (or (and P V) (not U) (and W J))
+       (or (not D) (not Z) (not U))
+       (or (not P) (and M Q) (and K R))
+       (or (not E) (not K) (not N))
+       (or (not M) (= F S) (not Q))
+       (or (not M) (= S O) (not Q))
+       (or (not H) (not J) (not L))
+       (or (not H1) (not Y) (not F1))
+       (or (not K) (and L J))
+       (or (not D1) (not (= C A)))
+       (or (not D1) A)
+       (or (not A1) (and Y B1))
+       (or (not Y) (and U Z))
+       a!1
+       (or (not U) (= X (+ 1 I)))
+       (or (not P) F)
+       (or (not M) (and N K))
+       (or (not I1) (and D1 J1))
+       (= I1 true)
+       (= H (= G 0))
+       (= 2 v_37)))
+      )
+      (main_1 v_37 I)
+    )
+  )
+)
+(assert
+  (forall ( (A Int) (v_1 Int) ) 
+    (=>
+      (and
+        (main_1 v_1 A)
+        (= 2 v_1)
+      )
+      false
+    )
+  )
+)
+
+(check-sat)
+(exit)

@@ -1,0 +1,121 @@
+; ./seahorn/./sv_comp_flat_small/recursive-simple/sum_non_eq_true-unreach-call.c.flat_000.smt2
+(set-logic HORN)
+
+(declare-fun |main_1| ( Int Int Int Int Int ) Bool)
+
+(assert
+  (forall ( (A Int) (B Int) (C Int) (D Int) (v_4 Int) ) 
+    (=>
+      (and
+        (and true (= 0 v_4))
+      )
+      (main_1 v_4 A B C D)
+    )
+  )
+)
+(assert
+  (forall ( (A Int) (B Int) (C Int) (D Int) (E Bool) (F Int) (G Int) (H Int) (I Int) (J Bool) (K Int) (L Int) (M Bool) (N Bool) (O Bool) (P Bool) (Q Int) (R Int) (v_18 Int) (v_19 Int) ) 
+    (=>
+      (and
+        (main_1 v_18 F G H I)
+        (and (= 0 v_18)
+     (or (= B R) (not M) (not P))
+     (or (= A Q) (not M) (not P))
+     (or (= R L) (not M) (not P))
+     (or (= Q K) (not M) (not P))
+     (or (not E) (not J) (not N))
+     (or (not O) (and M P))
+     (or (not M) (and J N))
+     (= O true)
+     (= E (= L 0))
+     (= 1 v_19))
+      )
+      (main_1 v_19 D C B A)
+    )
+  )
+)
+(assert
+  (forall ( (A Int) (B Bool) (C Int) (D Int) (E Bool) (F Int) (G Int) (H Int) (I Int) (J Bool) (K Int) (L Int) (M Bool) (N Bool) (O Int) (P Int) (Q Bool) (R Bool) (v_18 Int) (v_19 Int) ) 
+    (=>
+      (and
+        (main_1 v_18 F G H I)
+        (and (= 0 v_18)
+     (or (= P O) (not J) (not N))
+     (or (= O K) (not J) (not N))
+     (or E (not J) (not N))
+     (or (not Q) (and M R))
+     (or (not M) (= B (= P A)))
+     (or (not M) (= A (+ D C)))
+     (or (not M) (and J N))
+     (or (not M) (not B))
+     (= Q true)
+     (= E (= L 0))
+     (= 2 v_19))
+      )
+      (main_1 v_19 D C H I)
+    )
+  )
+)
+(assert
+  (forall ( (A Bool) (B Int) (C Int) (D Int) (E Int) (F Int) (G Int) (H Bool) (I Int) (J Int) (K Int) (L Int) (M Bool) (N Bool) (v_14 Int) (v_15 Int) ) 
+    (=>
+      (and
+        (main_1 v_14 D E F G)
+        (and (= 1 v_14)
+     (= L (+ 1 G))
+     (= K (+ (- 1) F))
+     (or (not N) (not H) (= J K))
+     (or (not N) (not H) (= I L))
+     (or (not N) (not H) (= C J))
+     (or (not N) (not H) (= B I))
+     (or (not A) (not N) (not H))
+     (or (not M) (and N H))
+     (= M true)
+     (= A (= K 0))
+     (= 1 v_15))
+      )
+      (main_1 v_15 D E C B)
+    )
+  )
+)
+(assert
+  (forall ( (A Int) (B Bool) (C Bool) (D Int) (E Int) (F Int) (G Int) (H Int) (I Bool) (J Bool) (K Int) (L Int) (M Bool) (N Bool) (O Int) (P Int) (Q Bool) (R Bool) (S Int) (T Bool) (v_20 Int) (v_21 Int) ) 
+    (=>
+      (and
+        (main_1 v_20 E F G H)
+        (and (= 1 v_20)
+     (= P (+ 1 H))
+     (= O (+ (- 1) G))
+     (or (not R) (not I) (= D S))
+     (or (not R) (not I) (= S P))
+     (or C (not R) (not I))
+     (or (= L K) (not Q) (not T))
+     (or (= K D) (not Q) (not T))
+     (or (not M) (and N J))
+     (or (not J) (= B (= L A)))
+     (or (not J) (= A (+ E F)))
+     (or (not J) (and Q T))
+     (or (not B) (not J))
+     (or (not Q) (and R I))
+     (= M true)
+     (= C (= O 0))
+     (= 2 v_21))
+      )
+      (main_1 v_21 E F G H)
+    )
+  )
+)
+(assert
+  (forall ( (A Int) (B Int) (C Int) (D Int) (v_4 Int) ) 
+    (=>
+      (and
+        (main_1 v_4 A B C D)
+        (= 2 v_4)
+      )
+      false
+    )
+  )
+)
+
+(check-sat)
+(exit)

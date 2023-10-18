@@ -1,0 +1,53 @@
+#!/bin/bash
+HELP=0
+if (( $# == 2 )); then
+    TO=300
+elif (( $# == 3 )); then
+    TO=$3
+else
+    HELP=1
+    echo "wrong number of arguments"
+fi
+if [ "$1" = "--help" ]; then
+    HELP=1
+elif [ "$1" != "loat_abmc_block" ] && [ "$1" != "loat_abmc" ] && [ "$1" != "loat_bmc" ] && [ "$1" != "loat_adcl" ] && [ "$1" != "spacer" ] && [ "$1" != "z3_bmc" ] && [ "$1" != "golem_tpa" ] && [ "$1" != "golem_bmc" ] && [ "$1" != "eldarica" ]; then
+    echo "unsupported tool name"
+    HELP=1
+fi
+if [ "$2" != "short" ] && [ "$2" != "2022" ] && [ "$2" != "2023" ]; then
+    echo "unsupported benchmark set"
+    HELP=1
+fi
+if (( $HELP == 1 )); then
+    echo "usage: run_all SOLVER BENCHMARKS [TIMEOUT]"
+    echo "       where"
+    echo "           SOLVER = loat_abmc_block | loat_abmc | loat_bmc | loat_adcl | spacer | z3_bmc | golem_tpa | golem_bmc | eldarica"
+    echo "           BENCHMARKS = 2022 | 2023"
+    echo "       The timeout is given in seconds."
+    echo "       If no timeout is specified, then it defaults to 300s."
+else
+    CMD="./run_$1"
+    SAT=0
+    UNSAT=0
+    UNKNOWN=0
+    for FILE in ../examples/$2/*.smt2; do
+        echo $FILE
+        RES=`$CMD $FILE $TO 2> /dev/null | head -n 1`
+        if [ -z "$RES" ]; then
+            UNKNOWN=$((UNKNOWN+1))
+            echo "unknown"
+        else
+            if [ "$RES" == "sat" ]; then
+                SAT=$((SAT+1))
+            elif [ "$RES" == "unsat" ]; then
+                UNSAT=$((UNSAT+1))
+            else
+                UNKNOWN=$((UNKNOWN+1))
+            fi
+            echo $RES
+        fi
+    done
+    echo "unsat: $UNSAT";
+    echo "sat: $SAT";
+    echo "unknown: $UNKNOWN";
+fi
