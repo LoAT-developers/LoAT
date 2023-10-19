@@ -17,8 +17,6 @@ cache size	: 10240 KB
 n100:~$ cat /proc/meminfo  | grep MemTotal
 MemTotal:       263932744 kB
 
-Timeout scaling factor (see "Calibrating the Timeout" in README): ~1
-
 
 ===== Personal Machine =====
 
@@ -35,4 +33,3 @@ cache size	: 512 KB
 $ cat /proc/meminfo  | grep MemTotal
 MemTotal:       32278512 kB
 
-Timeout scaling factor (see "Calibrating the Timeout" in README): ~0.45

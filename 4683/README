@@ -19,9 +19,6 @@ Please unzip the artefact and execute:
 
 cd ./4683/bin
 
-
------ Initial Testing -----
-
 To verify that the artefact can properly run, please execute:
 
 ./test
@@ -37,26 +34,6 @@ z3_bmc tested successfully
 golem_tpa tested successfully
 golem_bmc tested successfully
 eldarica tested successfully
-
-
------ Calibrating the Timeout -----
-
-Please run:
-
-./claibrate_timeout
-
-This scripts runs several tests, measures the required time, and compares it
-with the time $starexec_runtime that was required for the same tests on StarExec
-in our evaluation. Then it writes a number $factor to the file
-timeout_scaling_factor in the current working director. Its meaning is that the
-runtime on your machine was $factor * $starexec_runtime.
-
-In the sequel, this factor is used to scale all timeouts automatically. In this
-way, we try to take the difference between the performance of your machine and
-StarExec into account.
-
-
------ Short Evaluation -----
 
 To perform a short evaluation of the artefact, please run
 
@@ -85,8 +62,8 @@ We recommend to test at least one version of each tool, e.g.,
 (Note that Spacer is part of Z3.)
 
 Regarding the timeout, we recommend 2 second for all solvers but eldarica. For
-eldarica, we recommend 8 seconds. The reason is that eldarica is implemented in
-Java, and hence it can hardly solve any benchmarks within 2 seconds due to the
+eldarica, we recommend 6 seconds. The reason is that eldarica is implemented in
+Java, and hence it can hardly solve any benchmarks within one second due to the
 startup time of the Java Virtual Machine.
 
 Thus, we recommend to execute the following commands for a short evaluation:
@@ -94,10 +71,10 @@ Thus, we recommend to execute the following commands for a short evaluation:
 ./run_all loat_abmc_block short 2
 ./run_all spacer short 2
 ./run_all golem_tpa short 2
-./run_all eldarica short 8
+./run_all eldarica short 6
 
 Below, we provide the expected results for each solver, where we used a timeout
-of 8 seconds for eldarica, and 2 second for all other solvers. Of course, you
+of 6 seconds for eldarica, and 2 second for all other solvers. Of course, you
 might get slightly different results, depending on the machine that you are
 using.
 
@@ -146,8 +123,7 @@ using.
   - sat: 8
   - unknown: 45
 
-These results were obtained on my personal machine, see machine_specs.txt for
-details.
+These results were obtained on StarExec, see machine_specs.txt for details.
 
 
 ===== Detailed Instructions =====
@@ -155,9 +131,6 @@ details.
 Please unzip the artefact and execute:
 
 cd ./4683/bin
-
-Then follow the instructions from the section "Calibrating the Timeout" above,
-if you have not done that yet.
 
 
 ----- available solvers -----
@@ -214,16 +187,15 @@ For example,
 ./run_all loat_abmc_block 2023 5
 
 runs LoAT's implementation of ABMC with blocking clauses on all examples from
-the benchmark collection 2023 with a timeout of 5 seconds. If the timeout is
+the benchmark collection 2023 with a timeout of 5 second. If the timeout is
 omitted, then it defaults to 300.
 
 When run_all finishes, it provides the number of benchmarks where sat or unsat
-was proven. For example, on my personal machine (see machine_specs.txt for
-details) the command above finishes with:
+was proven. For example, on the command above may finish with:
 
-unsat: 54
-sat: 71
-unknown: 297
+unsat: 51
+sat: 70
+unknown: 301
 
 Of course, you might get slightly different results, depending on the machine
 that you are using.
@@ -262,21 +234,6 @@ where 0 < $timeout < 300. So after running
 - compare the entry with the result of your run.
 
 Of course, you might get slightly different results, depending on the machine
-that you are using. We ran our tests on StarExec. The specifications of StarExec
-can be found in machine_specs.txt.
+that you are using. We ran our tests on StarExec.
 
-For example, on my personal machine (whose specifications can be found in
-machine_specs.txt as well),
-
-./run_all loat_abmc_block 2023 5
-
-yields
-
-unsat: 54
-sat: 71
-unknown: 297,
-
-but the corresponding entries in results/unsat_2023.csv and results/sat_2023.csv
-are 51 and 70, respectively. So on my personal machine, this solver finds
-slightly more proofs than on StarExec.
-
+TODO provide StarExec bundles and make clear that one cannot expect to reproduce the results exactly with different hardware
