@@ -62,7 +62,7 @@
 061 timeout 
 062 unsat 
 063 unsat 
-064 unknown 
+064 timeout 
 065 timeout 
 066 unknown 
 067 unsat 
@@ -248,7 +248,7 @@
 247 unknown 
 248 unknown 
 249 unknown 
-250 error 
+250 unknown 
 251 unknown 
 252 unknown 
 253 unknown 
@@ -259,11 +259,11 @@
 258 unknown 
 259 unknown 
 260 unknown 
-261 error 
-262 error 
-263 error 
+261 unknown 
+262 unknown 
+263 unknown 
 264 timeout 
-265 error 
+265 unknown 
 266 timeout 
 267 timeout 
 268 unknown 
@@ -313,7 +313,7 @@
 312 timeout 
 313 timeout 
 314 timeout 
-315 error 
+315 unknown 
 316 timeout 
 317 timeout 
 318 unknown 
@@ -347,7 +347,7 @@
 346 timeout 
 347 timeout 
 348 timeout 
-349 error 
+349 unsat 
 350 unsat 
 351 timeout 
 352 timeout 
@@ -453,4 +453,3 @@
 452 timeout 
 453 timeout 
 454 timeout 
-455 timeout

@@ -7,31 +7,27 @@ set -e
 pushd $(dirname ${BASH_SOURCE[0]})
 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build
+# cmake --build build
+pushd build
+make -j4
+popd
 
-# debug: 009
-
-# pushd build
-# make -j4
-# popd
-
-
-# gdb --args \
-#   ./build/loat-static \
-#     --mode reachability \
-#     --format horn \
-#     --proof-level 0 \
-#     "../chc-comp22-benchmarks/LIA/chc-LIA_060.smt2"
-# # # #   # "../chc-comp22-benchmarks/LIA/chc-LIA_999.smt2"
-# # # #   # --log \
+# # debug: 009
+# # gdb --args \
+# ./build/loat-static \
+#   --mode reachability \
+#   --format horn \
+#   --proof-level 0 \
+#   --log \
+#   "../chc-comp22-benchmarks/LIA/chc-LIA_265.smt2"
 
 # popd
 # exit
 
+##########################################################################
+
 benchmark="LIA"
-# benchmark="LIA"
-# compare_with="z3"
-compare_with="z3"
+compare_with="adcl"
 
 while IFS= read -r line
 do
@@ -42,11 +38,11 @@ do
     read idx prev_result <<< "$line"
     file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
 
-    # if [[ "$prev_result" != "timeout" ]]; then
-
+    # if true; then
+    if [[ "$prev_result" != "timeout" ]]; then
       set +e
       result=$(timeout 5 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")
-      # result=$(timeout 10 z3 "$file")
+      # result=$(timeout 5 z3 "$file")
       exit_status=$?
       set -e
 
@@ -64,8 +60,12 @@ do
       else
         printf "$idx $prev_result --> $result \n"
       fi
+    else
+      # if we skip an instance nevertheless include it in the output
+      # so the log can easily be copied and saved as a whole
+      printf "$idx $prev_result \n"
+    fi
 
-    #fi
   fi
 done < "./benchmarks/${benchmark}_${compare_with}.txt"
 
