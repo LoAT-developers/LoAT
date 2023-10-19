@@ -3,11 +3,11 @@
 #include "linearizingsolver.hpp"
 #include "linearsolver.hpp"
 #include "smt.hpp"
+#include "smtfactory.hpp"
 #include <stdexcept>
 
 void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> smt(new LinearizingSolver<IntTheory, BoolTheory>(4294967295u));
-    smt->enableModels();
+    LinearizingSolver<IntTheory, BoolTheory> smt(4294967295u);
 
     // For the first loop iteration, the list of facts is composed of the original facts 
     // given in the CHC problem. In subsequent iterations, the facts are whatever
@@ -27,19 +27,17 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
 
                     if (optional_resolvent.has_value()) {
                         const auto resolvent = optional_resolvent.value();
+
                         // TODO: check for redundancy
 
-                        // TODO: Is SMT a singleton? Does this reset influence the linear solver?
-                        // Filter out resolvents, where guard is UNSAT 
-                        smt->resetSolver();
-                        smt->add(resolvent.guard);
-                        if (smt->check() != Unsat) {                           
+                        // maybe later dont reject resolvent on `Unknown`?
+                        if (SmtFactory::check(resolvent.guard) == Sat) {                           
                             resolvents.push_back(resolvent);
                             if (!resolvent.isLinear()) {
                                 // Note that we append items to `non_linear_chcs` while iterating over it.
                                 // That means we also iterate over all added items.
                                 non_linear_chcs.push_back(resolvent);
-                            }
+                            }                         
                         }
                     }
                 }

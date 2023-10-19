@@ -272,20 +272,50 @@ const std::vector<Var> ITSProblem::getProgVars() const {
     return prog_vars;
 }
 
+
 /** 
- * Converts an ITS rule (identified by a TransIdx) back to CHC representation.
+ * Converts an ITS rule (identified by a TransIdx) back to Clause representation.
  * This does not restore the original representation after parsing perfectly,
  * since number and order of predicate arguments is lost.
  */
 const Clause ITSProblem::clauseFrom(TransIdx rule) const {
     const auto prog_vars = getProgVars();
 
-    const auto guard = rule->getGuard();
-
     const LocationIdx lhs_loc = getLhsLoc(rule);
     const LocationIdx rhs_loc = getRhsLoc(rule);
 
-    const auto rhs = FunApp(rhs_loc, prog_vars).renameWith(rule->getUpdate());
+    const auto update = rule->getUpdate();
+
+    // `update` might map vars to non-var compound expressions or literals. 
+    // The `Clause` representation only allows variable arguments though for the
+    // RHS predicate. So we extract those expressions and put them back into the 
+    // clause guard. This is a bit ad-hoc and also un-does work of the linear 
+    // solver and the preprocessing, so it might be worth optimizing later. 
+    std::vector<BoolExpr> guard_conj = { rule->getGuard() };
+    std::vector<Var> rhs_args;
+    for (const Var &var : getProgVars()) {
+        auto it = update.find(var);
+
+        if (it == update.end()) { 
+            // If `var` is not contained in `update` it's implicitly mapped to itself,
+            // i.e. `update` does not change it's value. Thus, we add `var` directly
+            // into `rhs_args`.
+            rhs_args.push_back(var);
+        } else {
+            const auto optional_var = expr::toVar(expr::second(*it));
+
+            if (optional_var.has_value()) {
+                rhs_args.push_back(optional_var.value());
+            } else {
+                const auto new_var = expr::next(var);
+                rhs_args.push_back(new_var);
+                guard_conj.push_back(expr::mkEq(expr::toExpr(new_var), update.get(var)));
+            }
+        }                   
+    }
+
+    const auto guard = BExpression::buildAnd(guard_conj);
+    const auto rhs = FunApp(rhs_loc, rhs_args); 
 
     if (lhs_loc == getInitialLocation()) {     
         // rule is a linear CHC with no LHS predicates, ie a "fact"

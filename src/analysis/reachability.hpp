@@ -311,6 +311,8 @@ class Reachability : public ILinearSolver {
 
     const std::optional<Clause> trace_as_fact();
 
+    std::set<unsigned> learned_clause_ids;
+
 public:
 
     Reachability(ITSProblem &chcs, bool incremental_mode);

@@ -126,6 +126,18 @@ Reachability::Reachability(ITSProblem &chcs, bool incremental_mode):
         std::cout << "Initial ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
     }
+
+    chcs.refineDependencyGraph();
+    // TODO: are other preprocessing steps also unsound when in non-linear context? 
+    const auto res {Preprocess::preprocess(chcs)};
+    if (res) {
+        proof.concat(res.getProof());
+        if (Config::Analysis::log) {
+            std::cout << "Simplified ITS" << std::endl;
+            ITSExport::printForProof(chcs, std::cout);
+        }
+    }
+    init();
 }
 
 Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent):
@@ -330,6 +342,7 @@ void Reachability::print_state() {
     proof.storeSubProof(state_p);
 }
 
+// TODO: do we need this function? ITS also has the function `getProgVars` now.
 void Reachability::init() {
     srand(42);
     for (const auto &x: chcs.getVars()) {
@@ -337,10 +350,8 @@ void Reachability::init() {
             prog_vars.insert(x);
         }
     }
-    for (const auto &r: chcs.getAllTransitions()) {
-        last_orig_clause = std::max(last_orig_clause, r.getId());
-    }
 }
+
 
 void Reachability::luby_next() {
     const auto [u,v] {luby};
@@ -426,7 +437,9 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
         } else {
             block->second.clear();
         }
-        if (Config::Analysis::log) std::cout << "could not find a model for " << idx << std::endl;
+        if (Config::Analysis::log) { 
+            std::cout << "could not find a model for " << idx << std::endl;
+        }
     }
     }
     return {};
@@ -467,15 +480,16 @@ TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned back
     const auto fst = trace.at(backlink).clause_idx;
     const auto last = trace.back().clause_idx;
     const auto loop_idx = chcs.addLearnedRule(accel, fst, last);
+    learned_clause_ids.insert(loop_idx->getId());
     return loop_idx;
 }
 
 bool Reachability::is_learned_clause(const TransIdx idx) const {
-    return idx->getId() > last_orig_clause;
+    return learned_clause_ids.contains(idx->getId());
 }
 
 bool Reachability::is_orig_clause(const TransIdx idx) const {
-    return idx->getId() <= last_orig_clause;
+    return !is_learned_clause(idx);
 }
 
 Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const {
@@ -726,17 +740,6 @@ LinearSolver::Result Reachability::get_analysis_result() const {
 }
 
 void Reachability::analyze() {
-    // TODO: are other preprocessing steps also unsound when in non-linear context? 
-    const auto res {Preprocess::preprocess(chcs)};
-    if (res) {
-        proof.concat(res.getProof());
-        if (Config::Analysis::log) {
-            std::cout << "Simplified ITS" << std::endl;
-            ITSExport::printForProof(chcs, std::cout);
-        }
-    }
-    init();
-
     if (!try_to_finish()) {
         blocked_clauses[0].clear();
         derive_new_facts();
@@ -776,6 +779,7 @@ const std::optional<Clause> Reachability::trace_as_fact() {
     } else {
         const Step step = trace.back();
 
+        // TODO: this has quite some duplication with `ITS::clauseFrom`
         std::vector<BoolExpr> guard_conj = { step.resolvent.getGuard() };
         std::vector<Var> args_renamed;
         const auto subs = step.resolvent.getUpdate();
@@ -805,9 +809,13 @@ const std::optional<Clause> Reachability::trace_as_fact() {
 }
 
 const std::list<Clause> Reachability::derive_new_facts() {
-    static std::default_random_engine rnd {};
+    static std::default_random_engine rnd {};       
 
     std::list<Clause> derived_facts;
+
+    if (try_to_finish()) {
+        return derived_facts;
+    }
 
     while (true) {
         size_t next_restart = luby_unit * luby.second;
@@ -862,7 +870,7 @@ const std::list<Clause> Reachability::derive_new_facts() {
                 }
             }
 
-            if (incremental_mode && should_add_fact) {
+            if (incremental_mode && should_add_fact) { // TODO: when trace not empty
                 // Using a crude (additional) redundancy criterion for facts here. We identify facts by the trace that lead to them.
                 // This is only sufficient because equivalent facts can have multiple traces. We don't need to memoize the entire                    
                 // trace structure. It's enough to store clause_idx/implicant for each trace step.
@@ -952,7 +960,6 @@ void Reachability::add_clauses(const std::list<Clause> &clauses) {
                 ITSExport::printForProof(chcs, std::cout);
             }
         }
-        init();
 
         // When we add a new linear clause we have to restart the solver,
         // i.e. reset the trace, otherwise we might block a potential reachability path.
