@@ -34,6 +34,7 @@ const Var varAt(const Var &var, const Subs &subs) {
  *    F(x,x) and G(y,z) are not unifiable
  *    F(x)   and F(y,z) are not unifiable
  * 	  F(w,x) and F(y,z) returns { w -> y, x -> z }
+ * 	  F(x,x) and F(y,z) returns { x -> y, z -> y }
  *
  * In practice we normalize all predicates to have the same arity with same argument 
  * types in the same order. So only differing predicate symbols should be a reason
@@ -46,28 +47,37 @@ const std::optional<Subs> computeUnifier(const FunApp &pred1, const FunApp &pred
 
         size_t size = pred1.args.size();
         for (size_t i = 0; i < size; ++i) {
-            const auto var1 = pred1.args[i];
-            const auto var2 = pred2.args[i];
+            const Var var1 = pred1.args[i];
+            const Var var2 = pred2.args[i];
 
-            // QUESTION: I suspect some C++ template magic can make this prettier
-            bool both_nums = std::holds_alternative<NumVar>(var1) &&
-                           std::holds_alternative<NumVar>(var2);
-            bool both_bools = std::holds_alternative<BoolVar>(var1) &&
-                            std::holds_alternative<BoolVar>(var2);
-
-            if (both_nums) {
-                subs.put(std::make_pair(
-                    std::get<NumVar>(var1), 
-                    std::get<Expr>(expr::toExpr(var2))
-                ));
-            } else if (both_bools) {
-                subs.put(std::make_pair(
-                    std::get<BoolVar>(var1),
-                    std::get<BoolExpr>(expr::toExpr(var2))
-                ));
+            auto it = subs.find(var1);
+            if (it != subs.end()) {
+                // If `var1` is already contained in `subs`, then `pred1` must 
+                // have `var1` multiple times as an argument. This is an implict
+                // equality that must also hold in `pred2` so we map `var2` to 
+                // whatever `var1` already maps to.
+                subs.put(var2, expr::second(*it));
             } else {
-                // argument types don't match ==> not unifiable
-                return {};
+                // QUESTION: I suspect some C++ template magic can make this prettier
+                bool both_nums = std::holds_alternative<NumVar>(var1) &&
+                               std::holds_alternative<NumVar>(var2);
+                bool both_bools = std::holds_alternative<BoolVar>(var1) &&
+                                std::holds_alternative<BoolVar>(var2);
+
+                if (both_nums) {
+                    subs.put(std::make_pair(
+                        std::get<NumVar>(var1), 
+                        std::get<Expr>(expr::toExpr(var2))
+                    ));
+                } else if (both_bools) {
+                    subs.put(std::make_pair(
+                        std::get<BoolVar>(var1),
+                        std::get<BoolExpr>(expr::toExpr(var2))
+                    ));
+                } else {
+                    // argument types don't match ==> not unifiable
+                    return {};
+                }
             }
         }
 
@@ -155,9 +165,6 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
         throw std::logic_error("Given `pred` is not on the LHS of `chc`");
     }
 
-    std::set<FunApp> chc_lhs_without_pred = chc.lhs;
-    chc_lhs_without_pred.erase(pred);
-
     // Make sure variables in `this` and `chc` are disjoint.
     Subs renaming;
     const VarSet this_vars {this->vars()};
@@ -181,17 +188,21 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
     }
 
     const Clause this_unified = this_with_disjoint_vars.renameWith(unifier.value());
+    std::set<FunApp> chc_lhs_without_pred = chc.lhs;
+    chc_lhs_without_pred.erase(pred);
+    const Clause chc_unified = Clause(chc_lhs_without_pred, chc.rhs, chc.guard)
+        .renameWith(unifier.value());
 
     // LHS of resolvent is the union of the renamed LHS of `this` ...
     std::set<FunApp> resolvent_lhs = this_unified.lhs;
     // ... and the LHS of `chc` where `pred` is removed.
-    resolvent_lhs.insert(chc_lhs_without_pred.begin(), chc_lhs_without_pred.end());
+    resolvent_lhs.insert(chc_unified.lhs.begin(), chc_unified.lhs.end());
 
-    const auto new_guard = this_unified.guard & chc.guard;
+    const auto new_guard = this_unified.guard & chc_unified.guard;
 
     return Clause(
         resolvent_lhs, 
-        chc.rhs, 
+        chc_unified.rhs, 
         new_guard->simplify()
     );
 }

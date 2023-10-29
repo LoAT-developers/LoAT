@@ -293,7 +293,7 @@ const Clause ITSProblem::clauseFrom(TransIdx rule) const {
     // solver and the preprocessing, so it might be worth optimizing later. 
     std::vector<BoolExpr> guard_conj = { rule->getGuard() };
     std::vector<Var> rhs_args;
-    for (const Var &var : getProgVars()) {
+    for (const Var &var: prog_vars) {
         auto it = update.find(var);
 
         if (it == update.end()) { 

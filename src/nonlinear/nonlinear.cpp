@@ -16,6 +16,11 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
     std::list<Clause> facts(linear_solver.get_initial_facts());    
 
     while (true) {
+
+        if (Config::Analysis::log) {
+            std::cout << "============= non-linear solver main loop =============" << std::endl;
+        }
+
         std::list<Clause> resolvents;
         std::list<Clause> non_linear_chcs = linear_solver.get_non_linear_chcs();
 

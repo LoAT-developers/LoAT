@@ -1,4 +1,5 @@
 #include "reachability.hpp"
+#include "config.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
