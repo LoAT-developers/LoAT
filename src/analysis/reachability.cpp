@@ -740,10 +740,8 @@ LinearSolver::Result Reachability::get_analysis_result() const {
 }
 
 void Reachability::analyze() {
-    if (!try_to_finish()) {
-        blocked_clauses[0].clear();
-        derive_new_facts();
-    }
+    blocked_clauses[0].clear();
+    derive_new_facts();
 
     switch (get_analysis_result()) {
         case LinearSolver::Result::Sat:
@@ -960,6 +958,9 @@ void Reachability::add_clauses(const std::list<Clause> &clauses) {
                 ITSExport::printForProof(chcs, std::cout);
             }
         }
+
+        // TODO: shouldn't we clear all components?
+        blocked_clauses[0].clear();
 
         // When we add a new linear clause we have to restart the solver,
         // i.e. reset the trace, otherwise we might block a potential reachability path.

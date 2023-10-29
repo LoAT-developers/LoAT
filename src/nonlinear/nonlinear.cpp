@@ -1,5 +1,6 @@
 #include "nonlinear.hpp"
 #include "booltheory.hpp"
+#include "config.hpp"
 #include "linearizingsolver.hpp"
 #include "linearsolver.hpp"
 #include "smt.hpp"
@@ -27,28 +28,46 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
 
                     if (optional_resolvent.has_value()) {
                         const auto resolvent = optional_resolvent.value();
-
                         // TODO: check for redundancy
-
                         // maybe later dont reject resolvent on `Unknown`?
                         if (SmtFactory::check(resolvent.guard) == Sat) {                           
                             resolvents.push_back(resolvent);
                             if (!resolvent.isLinear()) {
+                                // std::cout << "new non-linear: " << resolvent << std::endl;
                                 // Note that we append items to `non_linear_chcs` while iterating over it.
                                 // That means we also iterate over all added items.
                                 non_linear_chcs.push_back(resolvent);
-                            }                         
+                            }
+
+                            if (Config::Analysis::log) {
+                                if (resolvent.isLinear()) {
+                                    std::cout << "new linear: " << resolvent << std::endl;
+                                } else {
+                                    std::cout << "new non-linear: " << resolvent << std::endl;
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
+        // TODO: saw this constraint: (-2+i3 == 0 /\ 2-i3 == 0). Could be simplified more.
+
         linear_solver.add_clauses(resolvents);
 
         facts.clear();
         const auto new_facts = linear_solver.derive_new_facts();
         facts.insert(facts.end(), new_facts.begin(), new_facts.end());
+
+        if (Config::Analysis::log) {
+            for (const auto &fact: new_facts) {
+                std::cout << "new fact: " << fact << std::endl;
+                // NOTE: seeing facts that are redundant up to renaming:
+                // new fact: (-1+i1 == 0 /\ -1+it15 < 0 /\ -3+it59 == 0 /\ -2+it60-it15 == 0) ==> F2(it59,it60)
+                // new fact: (-1+i1 == 0 /\ -2+it35 < 0 /\ -1+it66-it35 == 0 /\ -3+it65 == 0) ==> F2(it65,it66)
+            }
+        }
 
         const auto result = linear_solver.get_analysis_result();     
         if (result == LinearSolver::Result::Unsat) {

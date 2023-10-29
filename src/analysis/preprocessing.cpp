@@ -175,17 +175,55 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
             res.succeed();
             res.majorProofStep("Removed Irrelevant Clauses", sub_res.getProof(), its);
         }
-    }
-    if (Config::Analysis::log) {
-        std::cout << "chaining linear paths..." << std::endl;
-    }
-    sub_res = chainLinearPaths(its);
-    if (Config::Analysis::log) {
-        std::cout << "finished chaining linear paths" << std::endl;
-    }
-    if (sub_res) {
-        res.succeed();
-        res.majorProofStep("Chained Linear Paths", sub_res.getProof(), its);
+
+        /* 
+            Chaining linear paths is also problematic in incremental mode, because
+            we remove the chained rules/facts, which cuts-off paths that might be        
+            reachable via a non-linear rule. For example, consider the CHC problem:
+
+                fib(1,1)
+                fib(2,1)
+                fib(a,c) /\ fib(b,d) /\ b=a+1 ==> f(b+1,c+d)
+                fib(5,5) ==> false
+
+            The fact `fib(5,5)` is reachable so the problem should be UNSAT.
+            However, when we compute the resolvents of the non-linear clause with 
+            all facts we get:
+
+                fib(0,c) ==> fib(2,c+1)              (R1)
+                fib(1,c) ==> fib(3,c+1)              (R2)
+                fib(2,d) ==> fib(3,d+1)              (R3)
+                fib(3,y) ==> fib(4,d+1)              (R4)
+
+            If we now chain linear paths we get:
+
+                [fib(1,1), R2] = fib(3,2)
+                [fib(2,1), R3] = fib(3,2)
+
+                [fib(3,2), R4] = fib(4,3)
+
+            At this point we remove all facts except `fib(4,3)` because in the
+            linear context we can assume that all paths from these facts lead
+            to `fib(4,3)` anyway. However in the non-linear context we need to
+            keep `fib(3,2)` to derive `fib(5,5)`.
+
+            QUESTION: We could add the chained rules to the ITS without removing
+            the rules that are part of the chain. However, that's potentially a             
+            lot of rules and is this really cheaper re-generating these rules 
+            during search? Maybe we can just add the maximal paths instead of
+            every prefix of every path.
+        */
+        if (Config::Analysis::log) {
+            std::cout << "chaining linear paths..." << std::endl;
+        }
+        sub_res = chainLinearPaths(its);
+        if (Config::Analysis::log) {
+            std::cout << "finished chaining linear paths" << std::endl;
+        }
+        if (sub_res) {
+            res.succeed();
+            res.majorProofStep("Chained Linear Paths", sub_res.getProof(), its);
+        }
     }
     if (Config::Analysis::log) {
         std::cout << "preprocessing rules..." << std::endl;
