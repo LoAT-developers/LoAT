@@ -63,7 +63,7 @@ We recommend to test at least one version of each tool, e.g.,
 
 Regarding the timeout, we recommend 2 second for all solvers but eldarica. For
 eldarica, we recommend 6 seconds. The reason is that eldarica is implemented in
-Java, and hence it can hardly solve any benchmarks within one second due to the
+Java, and hence it can hardly solve any benchmarks within two seconds due to the
 startup time of the Java Virtual Machine.
 
 Thus, we recommend to execute the following commands for a short evaluation:
@@ -191,7 +191,7 @@ the benchmark collection 2023 with a timeout of 5 second. If the timeout is
 omitted, then it defaults to 300.
 
 When run_all finishes, it provides the number of benchmarks where sat or unsat
-was proven. For example, on the command above may finish with:
+was proven. For example, the command above may finish with:
 
 unsat: 51
 sat: 70
@@ -223,17 +223,18 @@ results/unsat_2023.csv
 results/sat_2023.csv
 
 For each solver, they contain the number of examples from 2022 and 2023,
-respectively, where (un)satisfiability could be proven within $timeout seconds,
-where 0 < $timeout < 300. So after running
+respectively, where (un)satisfiability could be proven within $timeout seconds
+(where 0 < $timeout < 300). So after running
 
 ./run_all $solver $benchmarks $timeout,
 
-- open the file results/(un)sat_$benchmarks.csv,
+- open the file results/(un)sat_$benchmarks.csv (e.g., with MS Excel or
+  LibreOffice Calc),
 - within this file, search for the column $solver,
 - within this column, search for the row $timeout, and
 - compare the entry with the result of your run.
 
 Of course, you might get slightly different results, depending on the machine
-that you are using. We ran our tests on StarExec.
+that you are using. We ran our tests on StarExec, see machine_specs.txt for
+details.
 
-TODO provide StarExec bundles and make clear that one cannot expect to reproduce the results exactly with different hardware

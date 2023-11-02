@@ -1,4 +1,4 @@
-===== StarExec =====
+===== StarExec Machine Specifications =====
 
 The following information is taken from:
 
@@ -16,20 +16,3 @@ cache size	: 10240 KB
 
 n100:~$ cat /proc/meminfo  | grep MemTotal
 MemTotal:       263932744 kB
-
-
-===== Personal Machine =====
-
-$ cat /etc/debian_version 
-bookworm/sid
-
-$ uname -r
-5.19.0-1-amd64
-
-$ cat /proc/cpuinfo  | egrep "^model name|^cache size" | head -2
-model name	: AMD Ryzen 7 4800H with Radeon Graphics
-cache size	: 512 KB
-
-$ cat /proc/meminfo  | grep MemTotal
-MemTotal:       32278512 kB
-
