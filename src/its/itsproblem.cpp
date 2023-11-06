@@ -18,6 +18,7 @@
 #include "itsproblem.hpp"
 #include "export.hpp"
 #include "expr.hpp"
+#include "inttheory.hpp"
 #include "smtfactory.hpp"
 #include "chain.hpp"
 
@@ -272,26 +273,58 @@ const std::vector<Var> ITSProblem::getProgVars() const {
     return prog_vars;
 }
 
-
-/** 
- * Converts an ITS rule (identified by a TransIdx) back to Clause representation.
- * This does not restore the original representation after parsing perfectly,
- * since number and order of predicate arguments is lost.
+/**
+ * Note that `clauseFrom(TransIdx rule)` can only be used for rules that are stored
+ * in the ITS. Not to turn an entire trace into a clause, because `ITSProblem::getLhsLoc`
+ * and `ITSProblem::getRhsLoc` are only defined for rules that are actually in the ITS.
+ * Thus, here is a generalized version of `clauseFrom` that accepts the lhs/rhs location
+ * explicitly.
  */
-const Clause ITSProblem::clauseFrom(TransIdx rule) const {
+const Clause ITSProblem::clauseFrom(const LocationIdx lhs_loc, const LocationIdx rhs_loc, const Rule& rule) const {
     const auto prog_vars = getProgVars();
+    const auto update = rule.getUpdate();
 
-    const LocationIdx lhs_loc = getLhsLoc(rule);
-    const LocationIdx rhs_loc = getRhsLoc(rule);
-
-    const auto update = rule->getUpdate();
+    // First we eliminate the location variable from the guard. In the ITS context,
+    // the location variable encoded the lhs predicate. But in clauses the lhs
+    // predicate is carried explicitly. Thus, the location variable turns into 
+    // a superfluous temporary variable in the constraint, which causes subsequent
+    // calls of Clause::resolutionWith to give different results even on same 
+    // arguments. For example, computing the resolvent of
+    //
+    //     (fact_F) i1=0 ==> F(y)
+    //     (rule_F) i1=1 /\ F(x) ==> F(x)
+    //
+    // where `i1` is the location variable, gives:
+    //
+    //     F(x) /\ i1=0 /\ i2=0 ==> F(x)
+    //
+    // because `i1` appeared in both clauses and had to be renamed in `fact_F` to 
+    // make the variables in the clauses disjoint. If we do the same computation 
+    // again we get:
+    //
+    //     F(x) /\ i1=0 /\ i3=0 ==> F(x)
+    //
+    // with `i3` instead of `i2`, because new variables are created using a global
+    // counter and `i2` already exists. Thus, the resolvents are not syntactially 
+    // equal, which leads to otherwise trivially detectable redundancy.
+    //
+    // To eliminate the location variable, we substitute `i1` with it's value to 
+    // make the literate trivially true, which simplifies away when we later call
+    // `simplify()` on the guard, i.e. we substitute
+    //
+    //    (i1=0 ==> F(y))[i1/0]
+    //  = ( 0=0 ==> F(y)) 
+    //  = (true ==> F(y))
+    //
+    const auto eliminate_loc_var = Subs::build<IntTheory>(NumVar::loc_var, lhs_loc);
+    const auto guard_without_loc_var = rule.getGuard()->subs(eliminate_loc_var);
 
     // `update` might map vars to non-var compound expressions or literals. 
     // The `Clause` representation only allows variable arguments though for the
     // RHS predicate. So we extract those expressions and put them back into the 
     // clause guard. This is a bit ad-hoc and also un-does work of the linear 
     // solver and the preprocessing, so it might be worth optimizing later. 
-    std::vector<BoolExpr> guard_conj = { rule->getGuard() };
+    std::vector<BoolExpr> guard_conj = { guard_without_loc_var };
     std::vector<Var> rhs_args;
     for (const Var &var: prog_vars) {
         auto it = update.find(var);
@@ -314,16 +347,27 @@ const Clause ITSProblem::clauseFrom(TransIdx rule) const {
         }                   
     }
 
-    const auto guard = BExpression::buildAnd(guard_conj);
-    const auto rhs = FunApp(rhs_loc, rhs_args); 
+    const auto final_guard = BExpression::buildAnd(guard_conj)->simplify();
+    const auto rhs = FunApp(rhs_loc, rhs_args);
 
     if (lhs_loc == getInitialLocation()) {     
         // rule is a linear CHC with no LHS predicates, ie a "fact"
-        return Clause({}, rhs, guard);
+        return Clause({}, rhs, final_guard);
     } else {
         // rule is a linear CHC with exactly one LHS predicates, ie a "rule"
-        return Clause({ FunApp(lhs_loc, prog_vars) }, rhs, guard);  
+        return Clause({ FunApp(lhs_loc, prog_vars) }, rhs, final_guard);  
     }
+}
+
+/** 
+ * Converts an ITS rule (identified by a TransIdx) back to Clause representation.
+ * This does not restore the original representation after parsing perfectly,
+ * since number and order of predicate arguments is lost.
+ */
+const Clause ITSProblem::clauseFrom(TransIdx rule) const {
+    const LocationIdx lhs_loc = getLhsLoc(rule);
+    const LocationIdx rhs_loc = getRhsLoc(rule);
+    return clauseFrom(lhs_loc, rhs_loc, *rule);
 }
 
 /**
@@ -427,7 +471,7 @@ void ITSProblem::addClause(const Clause &c) {
             lhs_normalized.insert(pred_normalized);
         }            
     
-        nonLinearCHCs.push_back(Clause(
+        nonLinearCHCs.insert(Clause(
             lhs_normalized, 
             normalizePredicate(numProgVars.size(), boolProgVars.size(), c.rhs),
             c.guard->simplify()

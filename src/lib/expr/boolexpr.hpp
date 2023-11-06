@@ -435,6 +435,7 @@ public:
         });
     }
 
+    // TODO: extend for program variables
     Subs impliedEqualities() const {
         Subs res;
         std::vector<BE> todo;
@@ -442,6 +443,7 @@ public:
             std::optional<BoolVar> elim;
             const auto vars {c->vars().template get<BoolVar>()};
             for (const auto &x: vars) {
+                // TODO: here 
                 if (x.isTempVar()) {
                     if (elim) {
                         return std::optional<BoolVar>{};

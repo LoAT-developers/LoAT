@@ -319,13 +319,13 @@ public:
 
     LinearSolver::Result get_analysis_result() const override;
 
-    void add_clauses(const std::list<Clause> &chc) override;
+    void add_clauses(const std::set<Clause> &chc) override;
 
-    const std::list<Clause> derive_new_facts() override;
+    const std::set<Clause> derive_new_facts() override;
 
-    const std::list<Clause> get_initial_facts() const override;
+    const std::set<Clause> get_initial_facts() const override;
 
-    const std::list<Clause> get_non_linear_chcs() const override;
+    const std::set<Clause> get_non_linear_chcs() const override;
 
     static void analyze(ITSProblem &its);
 

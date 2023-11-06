@@ -777,40 +777,18 @@ const std::optional<Clause> Reachability::trace_as_fact() {
         return {};
     } else {
         const Step step = trace.back();
-
-        // TODO: this has quite some duplication with `ITS::clauseFrom`
-        std::vector<BoolExpr> guard_conj = { step.resolvent.getGuard() };
-        std::vector<Var> args_renamed;
-        const auto subs = step.resolvent.getUpdate();
-
-        for (const Var &var : chcs.getProgVars()) {
-            auto it = subs.find(var);
-
-            if (it == subs.end()) {
-                args_renamed.push_back(var);
-            } else {
-                const auto optional_var = expr::toVar(expr::second(*it));
-
-                if (optional_var.has_value()) {
-                    args_renamed.push_back(optional_var.value());
-                } else {
-                    const auto new_var = expr::next(var);
-                    args_renamed.push_back(new_var);
-                    guard_conj.push_back(expr::mkEq(expr::toExpr(new_var), subs.get(var)));
-                }
-            }                   
-        }
-
-        const auto guard = BExpression::buildAnd(guard_conj);
-        const auto rhs = FunApp(chcs.getRhsLoc(step.clause_idx), args_renamed);
-        return Clause({}, rhs, guard);
+        return chcs.clauseFrom(
+            chcs.getInitialLocation(), 
+            chcs.getRhsLoc(step.clause_idx),
+            step.resolvent
+        );
     }
 }
 
-const std::list<Clause> Reachability::derive_new_facts() {
+const std::set<Clause> Reachability::derive_new_facts() {
     static std::default_random_engine rnd {};       
 
-    std::list<Clause> derived_facts;
+    std::set<Clause> derived_facts;
 
     if (try_to_finish()) {
         return derived_facts;
@@ -881,8 +859,13 @@ const std::list<Clause> Reachability::derive_new_facts() {
                     ));
                 }
 
-                if (!seen_traces.contains(trace_id)) {
-                    derived_facts.push_back(trace_as_fact().value());
+                // Forwarding initial facts is redundant, because they are already obtained by calling `get_initial_facts`.
+                // TODO: Remove `get_initial_facts` and force non linear solver to get inital facts from first round of 
+                // calling `derive_new_facts`.
+                bool is_initial_fact = trace.size() == 1 && chcs.isInitialTransition(trace[0].clause_idx);
+
+                if (!seen_traces.contains(trace_id) && !is_initial_fact) {
+                    derived_facts.insert(trace_as_fact().value());
                     seen_traces.insert(trace_id);
                 }
             }
@@ -939,7 +922,7 @@ void Reachability::restart() {
     analysis_result = LinearSolver::Result::Pending;
 }
 
-void Reachability::add_clauses(const std::list<Clause> &clauses) {
+void Reachability::add_clauses(const std::set<Clause> &clauses) {
     bool any_linear_clauses = false;
     for (const auto &chc : clauses) {
         chcs.addClause(chc);
@@ -969,16 +952,15 @@ void Reachability::add_clauses(const std::list<Clause> &clauses) {
     }
 }
 
-const std::list<Clause> Reachability::get_initial_facts() const {     
-    std::list<Clause> facts;    
+const std::set<Clause> Reachability::get_initial_facts() const {     
+    std::set<Clause> facts;    
     for (const auto trans_idx : chcs.getInitialTransitions()) {
-        const Clause fact = chcs.clauseFrom(trans_idx);
-        facts.push_back(fact);
+        facts.insert(chcs.clauseFrom(trans_idx));
     }
     return facts;
 }
 
-const std::list<Clause> Reachability::get_non_linear_chcs() const {
+const std::set<Clause> Reachability::get_non_linear_chcs() const {
     return chcs.nonLinearCHCs;
 }
 

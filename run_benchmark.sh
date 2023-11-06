@@ -12,24 +12,14 @@ pushd build
 make -j4
 popd
 
-
-# 074
-# 106   
-# 109   
-# 110   
-# 111   
-# 113   
-# 114 
-
-# TODO: debug 342 (seg fault)
+# TODO: debug 335 (seg fault)
 
 # # gdb --args \
 # ./build/loat-static \
 #   --mode reachability \
 #   --format horn \
 #   --proof-level 0 \
-#   --log \
-#   "../chc-comp22-benchmarks/LIA/chc-LIA_074.smt2"
+#   "../chc-comp22-benchmarks/LIA/chc-LIA_113.smt2"
 
 # popd
 # exit
@@ -49,8 +39,9 @@ do
     read idx z3_result adcl_result <<< "$line"
     file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
 
-    # if true; then
-    if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]]; then
+    if true; then
+    # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]]; then
+    # if [[ "$adcl_result" == "unsat" ]]; then
       set +e
       result=$(timeout 5 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")
       # result=$(timeout 5 z3 "$file")

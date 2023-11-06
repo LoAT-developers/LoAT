@@ -3,6 +3,7 @@
 #include "expr.hpp"
 #include "theory.hpp"
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 
 /**
@@ -208,6 +209,25 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
 }
 
 /**
+ * Partition clauses into linear- and non-linear. The first tuple component holds the linear
+ * clauses while second component holds the non-linear clauses.
+ */
+const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause> chcs) {
+    std::set<Clause> linear;
+    std::set<Clause> non_linear;
+
+    for (const Clause& chc: chcs) {
+        if (chc.isLinear()) {
+            linear.insert(chc);
+        } else {
+            non_linear.insert(chc);
+        }
+    }
+
+    return std::make_tuple(linear, non_linear);
+}
+
+/**
  * Returns true iff the clause has at most one LHS predicate.
  */
 bool Clause::isLinear() const {
@@ -221,6 +241,24 @@ bool operator<(const FunApp &fun1, const FunApp &fun2) {
         return false;
     } else {
         return fun1.args < fun2.args;
+    }
+}
+
+bool operator<(const Clause &c1, const Clause &c2) {
+    if (c1.lhs < c2.lhs) {
+        return true;
+    } else if (c2.lhs > c1.lhs) {
+        return false;
+    } else if (c1.rhs < c2.rhs) {
+        return true;
+    } else if (c2.rhs < c1.rhs) {
+        return false;
+    } else if (c1.guard < c2.guard) {
+        return true;
+    } else if (c2.guard < c1.guard) {
+        return false;
+    } else {
+        return false;
     }
 }
 

@@ -48,7 +48,10 @@ public:
 
 };
 
-// implement comparison operator for FunApp so we can store them in std::set
+const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause> chcs);
+
+// implement comparison operators so they can be stored in std::set
+bool operator<(const Clause &c1, const Clause &c2);
 bool operator<(const FunApp &fun1, const FunApp &fun2);
 
 std::ostream& operator<<(std::ostream &s, const FunApp &fun_app);

@@ -115,11 +115,13 @@ public:
     std::vector<BoolVar> boolProgVars;
     const std::vector<Var> getProgVars() const;
 
-    std::list<Clause> nonLinearCHCs;
+    std::set<Clause> nonLinearCHCs;
 
     void addClause(const Clause &chc);
 
     const Clause clauseFrom(TransIdx trans_idx) const;
+
+    const Clause clauseFrom(const LocationIdx lhs_loc, const LocationIdx rhs_loc, const Rule& rule) const;
 
 protected:
 

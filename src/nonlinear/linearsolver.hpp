@@ -23,7 +23,7 @@ public:
 	 * Let linear solver derive all (ideally non-redundant) facts it can derive with 
 	 * the current linear clause set.
  	 */
-	virtual const std::list<Clause> derive_new_facts() = 0;
+	virtual const std::set<Clause> derive_new_facts() = 0;
 
 	virtual LinearSolver::Result get_analysis_result() const = 0;
 
@@ -31,10 +31,10 @@ public:
 	 * Adds a new clauses to the linear solver in batch. The added clauses can be 
 	 * linear or non-linear. 
 	 */
-    virtual void add_clauses(const std::list<Clause> &clauses) = 0;
+    virtual void add_clauses(const std::set<Clause> &clauses) = 0;
 
-	virtual const std::list<Clause> get_initial_facts() const = 0;
+	virtual const std::set<Clause> get_initial_facts() const = 0;
 
-	virtual const std::list<Clause> get_non_linear_chcs() const = 0;
+	virtual const std::set<Clause> get_non_linear_chcs() const = 0;
 
 };
