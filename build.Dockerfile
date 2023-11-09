@@ -2,7 +2,12 @@
 # directory is mounted at /LoAT.
 
 FROM loat-docker:latest
-LABEL author="Florian Frohn"
+
+RUN echo "repository=https://repo-default.voidlinux.org/current/musl" > /etc/xbps.d/00-repository-main.conf
+RUN xbps-install -yS xbps
+RUN xbps-install -ySu
+RUN xbps-install -yS gcc git make cmake
+RUN xbps-install -yS boost-devel cln-devel gmp-devel
 
 RUN git config --global --add safe.directory /LoAT
 
