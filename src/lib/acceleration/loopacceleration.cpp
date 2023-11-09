@@ -190,7 +190,9 @@ acceleration::Result LoopAcceleration::run() {
         res.status = acceleration::Disjunctive;
         return res;
     }
-    const auto [rule, period] = chain(this->rule);
+    const auto p {chain(this->rule)};
+    const auto rule {p.first};
+    const auto period {p.second};
     Proof proof, accel_proof;
     if (period > 1) {
         res.period = period;
@@ -204,9 +206,25 @@ acceleration::Result LoopAcceleration::run() {
     case Sat: {}
     }
     const auto rec {Recurrence::solve(rule.getUpdate(), config.n)};
-    if (!rec && !config.tryNonterm) {
-        res.status = acceleration::ClosedFormFailed;
-        return res;
+    const auto try_nonterm = [&]() {
+        const auto accelerator = AccelerationProblem(rule, {}, sample_point, config).computeRes();
+        if (accelerator) {
+            if (res.status == acceleration::AccelerationFailed) {
+                res.status = acceleration::Nonterminating;
+            }
+            res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
+            res.nonterm->proof.concat(accelerator->proof);
+            return true;
+        }
+        return false;
+    };
+    if (!rec) {
+        if (config.tryNonterm && try_nonterm()) {
+            return res;
+        } else {
+            res.status = acceleration::ClosedFormFailed;
+            return res;
+        }
     }
     res.prefix = rec->prefix;
     std::optional<Rule> accel_rule;
@@ -229,14 +247,7 @@ acceleration::Result LoopAcceleration::run() {
             }
         }
         if (config.tryNonterm && (!accelerator || !accelerator->nonterm)) {
-            accelerator = AccelerationProblem(rule, {}, sample_point, config).computeRes();
-            if (accelerator) {
-                if (res.status == acceleration::AccelerationFailed) {
-                    res.status = acceleration::Nonterminating;
-                }
-                res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
-                res.nonterm->proof.concat(accelerator->proof);
-            }
+            try_nonterm();
         }
     }
     if (res.prefix > 1) {
