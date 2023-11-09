@@ -1,10 +1,11 @@
 FROM voidlinux/voidlinux-musl:latest as base
-LABEL author="Florian Frohn"
 
+ENV CFLAGS -march=x86-64 -O2
+ENV CXXFLAGS $CFLAGS
+RUN echo "repository=https://repo-default.voidlinux.org/current/musl" > /etc/xbps.d/00-repository-main.conf
 RUN xbps-install -yS xbps
 RUN xbps-install -ySu
 RUN xbps-install -yS gcc git automake autoconf make cmake wget python-devel bash
-
 
 
 FROM base as antlr4
@@ -14,7 +15,7 @@ WORKDIR /antlr4
 RUN git checkout 4.11.1
 RUN mkdir /antlr4/runtime/Cpp/build
 WORKDIR /antlr4/runtime/Cpp/build
-RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR="/usr/local/lib" -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG"
+RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR="/usr/local/lib"
 RUN make -j
 RUN make install
 
@@ -25,7 +26,7 @@ FROM base as cudd
 RUN git clone https://github.com/ivmai/cudd.git
 WORKDIR /cudd
 # make check fails when compiled with -DNDEBUG
-RUN ./configure CFLAGS='-fPIC -march=x86-64 -O3' CXXFLAGS='-fPIC -march=x86-64 -O3'
+RUN ./configure CFLAGS="$CFLAGS -fPIC" CXXFLAGS="$CXXFLAGS -fPIC"
 RUN sed -i 's/aclocal-1.14/aclocal-1.16/g' Makefile
 RUN sed -i 's/automake-1.14/automake-1.16/g' Makefile
 RUN make -j
@@ -52,12 +53,12 @@ FROM base as ginac
 
 RUN xbps-install -yS cln-devel
 
-RUN wget https://www.ginac.de/ginac-1.8.6.tar.bz2
-RUN tar xf ginac-1.8.6.tar.bz2
-WORKDIR /ginac-1.8.6
+RUN git clone git://www.ginac.de/ginac.git
+WORKDIR /ginac
+RUN git checkout release_1-8-7
 RUN mkdir build
-WORKDIR /ginac-1.8.6/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
+WORKDIR /ginac/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false ..
 RUN make -j
 RUN make install
 
@@ -71,7 +72,7 @@ RUN wget https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz
 RUN lzip -d gmp-6.2.1.tar.lz
 RUN tar xf gmp-6.2.1.tar
 WORKDIR /gmp-6.2.1
-RUN ./configure ABI=64 CFLAGS="-fPIC -O3 -DNDEBUG" CPPFLAGS="-DPIC -O3 -DNDEBUG" --host=x86_64-pc-linux-gnu --enable-cxx --prefix /gmp/
+RUN ./configure ABI=64 CFLAGS="$CFLAGS -fPIC" CPPFLAGS="$CXXFLAGS -DPIC" --host=x86_64-pc-linux-gnu --enable-cxx --prefix /gmp/
 RUN make -j
 RUN make -j check
 RUN make install
@@ -85,7 +86,7 @@ RUN xbps-install -yS gmp-devel
 RUN wget https://libntl.org/ntl-11.4.4.tar.gz
 RUN tar xf ntl-11.4.4.tar.gz
 WORKDIR /ntl-11.4.4/src
-RUN ./configure CXXFLAGS='-march=x86-64 -O3 -DNDEBUG'
+RUN ./configure
 RUN make -j
 RUN make install
 
@@ -98,7 +99,7 @@ RUN xbps-install -yS gmpxx-devel
 RUN wget https://github.com/SRI-CSL/libpoly/archive/refs/tags/v0.1.13.tar.gz
 RUN tar xf v0.1.13.tar.gz
 WORKDIR /libpoly-0.1.13/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
 RUN make -j
 RUN make install
 
@@ -106,7 +107,7 @@ RUN make install
 
 FROM base as purrs
 
-RUN xbps-install -yS libtool gmpxx-devel cln-devel giac-devel
+RUN xbps-install -yS libtool gmpxx-devel cln-devel readline-devel
 
 COPY --from=ginac /usr/local/lib64/libginac.a /usr/local/lib64/libginac.a
 COPY --from=ginac /usr/local/include/ginac /usr/local/include/ginac
@@ -118,7 +119,7 @@ RUN git clone https://github.com/aprove-developers/LoAT-purrs.git
 WORKDIR /LoAT-purrs
 RUN autoreconf --install
 RUN automake
-RUN ./configure --with-cxxflags='-march=x86-64 -O3 -DNDEBUG'
+RUN ./configure
 RUN make -j
 RUN make install
 
@@ -139,21 +140,20 @@ COPY --from=cudd /usr/local/include/cudd.h /usr/local/include/cudd.h
 RUN git clone https://github.com/SRI-CSL/yices2.git
 WORKDIR /yices2
 RUN autoconf
-RUN ./configure --enable-mcsat --with-pic-gmp=/gmp/lib/libgmp.a CFLAGS='-march=x86-64 -O3 -DNDEBUG'
+RUN ./configure --enable-mcsat --with-pic-gmp=/gmp/lib/libgmp.a
 RUN make -j
 RUN make -j static-lib
 RUN make install
 
 
 
-# FROM alpine:3.18.3 as CVC5
-# RUN apk add bash gcc g++ make cmake python3-dev py3-pip autoconf automake libtool texinfo
+FROM base as cvc5
 
-FROM base as CVC5-base
-
-RUN xbps-install -yuS xbps
 RUN xbps-install -yS python3-devel python3-pip libtool texinfo cln-devel
-RUN python3 -m pip install tomli pyparsing
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN pip install tomli pyparsing
 
 COPY --from=poly /usr/local/lib/libpoly.a /usr/local/lib/
 COPY --from=poly /usr/local/lib/libpolyxx.a /usr/local/lib/
@@ -164,15 +164,13 @@ WORKDIR cvc5
 RUN git checkout cvc5-1.0.8-musl
 RUN ./configure.sh --static --no-statistics --auto-download --poly --cln --gpl --no-docs
 WORKDIR /cvc5/build
-
-FROM CVC5-base as CVC5
 RUN make -j4
 RUN make install
 
 
+
 FROM base as z3
 
-RUN xbps-install -yS xbps
 RUN xbps-install -yS python3-devel
 
 RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.2.tar.gz
@@ -180,31 +178,27 @@ RUN tar xf z3-4.12.2.tar.gz
 WORKDIR /z3-z3-4.12.2
 RUN mkdir build
 WORKDIR /z3-z3-4.12.2/build
-RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
+RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release ..
 RUN make -j
 RUN make install
 
 
 
-FROM base as z3-binary
+# FROM base as z3-binary
 
-RUN xbps-install -yS xbps
-RUN xbps-install -yS python3-devel
+# RUN xbps-install -yS python3-devel
 
-RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.2.tar.gz
-RUN tar xf z3-4.12.2.tar.gz
-WORKDIR /z3-z3-4.12.2
-RUN python scripts/mk_make.py --staticbin
-WORKDIR /z3-z3-4.12.2/build
-RUN make -j4
-RUN make install
-
+# RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.2.tar.gz
+# RUN tar xf z3-4.12.2.tar.gz
+# WORKDIR /z3-z3-4.12.2
+# RUN python scripts/mk_make.py --staticbin
+# WORKDIR /z3-z3-4.12.2/build
+# RUN make -j4
+# RUN make install
 
 
-FROM base as loat-docker
-LABEL author="Florian Frohn"
 
-RUN xbps-install -yS boost-devel cln-devel gmp-devel
+FROM voidlinux/voidlinux-musl:latest as loat-docker
 
 COPY --from=z3 /usr/local/lib64/libz3.a /usr/local/lib64/
 COPY --from=z3 /usr/local/include/z3*.h /usr/local/include/
