@@ -3,6 +3,9 @@
 #include "z3.hpp"
 #include "itheory.hpp"
 
+#include <iostream>
+#include <fstream>
+
 /**
  * Wrapper around Z3 that first linearizes exponentials and then instantiates their exponent with candidates
  * that are derived from the model of the linearization (if any).
@@ -17,6 +20,7 @@ class LinearizingSolver: public Smt<Th...> {
     using LitSet = theory::LitSet<Th...>;
 
     Z3<Th...> z3;
+    Z3<Th...> printer;
 
     /**
      * reverses the linearization
@@ -41,9 +45,12 @@ class LinearizingSolver: public Smt<Th...> {
      */
     std::set<NumVar> exp_vars;
 
+    unsigned counter {0};
+    std::string filename;
+
 public:
 
-    LinearizingSolver(unsigned timeout): z3(timeout) {
+    LinearizingSolver(unsigned timeout, const std::string &filename): z3(timeout), printer(timeout), filename(filename) {
         lin_vars.push({});
     }
 
@@ -133,6 +140,15 @@ public:
     }
 
     SmtResult check() override {
+        if (!lin.empty()) {
+            std::ofstream out;
+            std::string name {"./benchmarks/" + filename + "_" + std::to_string(counter)};
+            out.open(name);
+            std::cout << "writing " << name << std::endl;
+            ++counter;
+            printer.print(out);
+            out.close();
+        }
         std::set<NumVar> vars = de_lin.domain();
         std::vector<NumVar> todo(vars.begin(), vars.end());
         std::map<NumVar, Num> candidates;
@@ -217,10 +233,12 @@ public:
 
     void add(const BExpr<Th...> e) override {
         z3.add(linearize(e));
+        printer.add(e);
     }
 
     void push() override {
         z3.push();
+        printer.push();
         lin_vars.push({});
         push_stack.push(0);
     }
@@ -235,6 +253,7 @@ public:
             lin.erase(de_lin.get(x));
             de_lin.erase(x);
         }
+        printer.pop();
         lin_vars.pop();
     }
 
@@ -252,6 +271,7 @@ public:
 
     void resetSolver() override {
         z3.resetSolver();
+        printer.resetSolver();
         de_lin = ExprSubs();
         lin = {};
         lin_vars = {};

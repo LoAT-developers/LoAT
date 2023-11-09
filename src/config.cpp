@@ -31,6 +31,8 @@ using namespace std;
  */
 namespace Config {
 
+std::string filename;
+
     namespace Output {
         // Whether to enable colors in the proof output
         bool Colors {true};

@@ -28,7 +28,7 @@ ABMC::ABMC(ITSProblem &its):
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
         break;
     case Config::Analysis::Z3Lin:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout));
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout, Config::filename));
         break;
     case Config::Analysis::Z3IncLin:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3IncLin<IntTheory, BoolTheory>());

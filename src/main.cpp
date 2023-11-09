@@ -173,6 +173,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    auto startpos = filename.find_last_of('/') + 1;
+    Config::filename = filename.substr(startpos);
+
     if (Config::Analysis::mode == Config::Analysis::Recurrence) {
         Recurrence::solve(filename);
         return 0;

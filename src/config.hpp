@@ -32,6 +32,8 @@
  */
 namespace Config {
 
+extern std::string filename;
+
     // Proof output
     namespace Output {
         extern bool Colors;
