@@ -15,9 +15,9 @@
 013 sat     timeout
 014 timeout timeout
 015 sat     timeout
-016 timeout timeout
+016 timeout unknown
 017 sat     timeout
-018 timeout timeout
+018 timeout unknown
 019 sat     timeout
 020 timeout unknown
 021 sat     unknown
@@ -33,19 +33,19 @@
 031 timeout timeout
 032 timeout timeout
 033 timeout timeout
-034 timeout unknown
+034 timeout error
 035 timeout timeout
 036 timeout timeout
-037 timeout unknown
+037 timeout timeout
 038 timeout timeout
-039 timeout unknown
+039 timeout timeout
 040 timeout timeout
 041 timeout unknown
 042 timeout unknown
 043 sat     timeout
 044 timeout unknown
 045 timeout unknown
-046 timeout unknown
+046 timeout timeout
 047 timeout timeout
 048 sat     timeout
 049 unsat   timeout
@@ -114,7 +114,7 @@
 112 unsat   timeout
 113 unsat   unsat
 114 unsat   unsat
-115 sat     timeout
+115 sat     unknown
 116 sat     timeout
 117 sat     timeout
 118 sat     timeout
@@ -238,7 +238,7 @@
 236 sat     timeout
 237 sat     unknown
 238 sat     timeout
-239 timeout unknown
+239 timeout timeout
 240 timeout unknown
 241 timeout unknown
 242 timeout timeout
@@ -255,7 +255,7 @@
 253 unsat   timeout
 254 sat     timeout
 255 sat     timeout
-256 unsat   timeout
+256 unsat   unsat
 257 sat     timeout
 258 sat     unknown
 259 unsat   timeout
@@ -398,7 +398,7 @@
 396 sat     timeout
 397 sat     timeout
 398 sat     timeout
-399 unsat   timeout
+399 unsat   unsat
 400 unsat   timeout
 401 sat     timeout
 402 timeout timeout
@@ -453,4 +453,4 @@
 451 unsat   timeout
 452 unsat   timeout
 453 sat     timeout
-454 sat     timeout 
+454 sat     timeout

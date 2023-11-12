@@ -13,13 +13,15 @@ make -j4
 popd
 
 # TODO: debug 335 (seg fault)
+# TODO: debug 034 (seg fault)
 
 # # gdb --args \
 # ./build/loat-static \
 #   --mode reachability \
 #   --format horn \
 #   --proof-level 0 \
-#   "../chc-comp22-benchmarks/LIA/chc-LIA_113.smt2"
+#   --log \
+#   "../chc-comp22-benchmarks/LIA/chc-LIA_069.smt2"
 
 # popd
 # exit
@@ -41,6 +43,7 @@ do
 
     if true; then
     # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]]; then
+    # if [[ "$z3_result" == "unsat" ]]; then
     # if [[ "$adcl_result" == "unsat" ]]; then
       set +e
       result=$(timeout 5 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")

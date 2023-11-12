@@ -16,6 +16,7 @@
  */
 
 #include "guardtoolbox.hpp"
+#include "expr.hpp"
 #include "rule.hpp"
 #include "rel.hpp"
 
@@ -87,14 +88,44 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
     Result<Rule> res(rule);
     Proof subproof;
     Subs equiv;
+
+    // If the value of program variables is implied by the guard, 
+    // we remove them during propagating, which looses information.
+    // Thus we collect implied program variable equalities and re-add 
+    // them to the guard at the end.
+    std::vector<BoolExpr> program_var_equalities;
     do {
         equiv = res->getGuard()->impliedEqualities();
+
+        // collect implied program variable equalities:
+        for (const auto &var: equiv.domain()) {
+            if (expr::isProgVar(var)) {
+                if (res->getGuard()->countOccuranceOf(var) == 1) {
+                    // when the program variable occurs only once in the expression,
+                    // there is no need to substitute it. This also prevents an 
+                    // infinite loop, because when we re-add the program variables to the 
+                    // guard using `buildAnd`, we trigger `propagateBooleanEqualities`
+                    // again.
+                    equiv.erase(var);
+                } else {
+                    program_var_equalities.push_back(
+                        expr::mkEq(expr::toExpr(var), equiv.get(var))->simplify()
+                    );
+                }
+            }
+        }
+
         if (!equiv.empty()) {
             res = res->subs(equiv);
             subproof.append(stringstream() << "propagated equivalences: " << equiv << std::endl);
         }
     } while (!equiv.empty());
     if (res) {
+        // re-add program variable equalities to guard:
+        program_var_equalities.push_back(res->getGuard());
+        const auto new_guard = BExpression::buildAnd(program_var_equalities);
+        res = res->withGuard(new_guard);
+
         res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
         res.storeSubProof(subproof);
     }

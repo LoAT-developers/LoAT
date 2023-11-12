@@ -12,6 +12,7 @@
 #include <memory>
 #include <set>
 #include <boost/functional/hash.hpp>
+#include <variant>
 
 
 
@@ -356,6 +357,19 @@ public:
         });
     }
 
+    unsigned countOccuranceOf(const Var& var) const {
+        unsigned count = 0;
+        iter([&var,&count](const Lit& lit) {
+            if (std::holds_alternative<BoolLit>(lit) && std::holds_alternative<BoolVar>(var)) {
+                const BoolLit bool_lit = std::get<BoolLit>(lit);
+                if (bool_lit.getBoolVar() == std::get<BoolVar>(var)) {
+                    count++;
+                }
+            }
+        });
+        return count;
+    }
+
     template <ITheory T>
     void collectVars(std::set<typename T::Var> &vars) const {
         VS res;
@@ -435,7 +449,6 @@ public:
         });
     }
 
-    // TODO: extend for program variables
     Subs impliedEqualities() const {
         Subs res;
         std::vector<BE> todo;
@@ -443,13 +456,10 @@ public:
             std::optional<BoolVar> elim;
             const auto vars {c->vars().template get<BoolVar>()};
             for (const auto &x: vars) {
-                // TODO: here 
-                if (x.isTempVar()) {
-                    if (elim) {
-                        return std::optional<BoolVar>{};
-                    } else {
-                        elim = x;
-                    }
+                if (elim) {
+                    return std::optional<BoolVar>{};
+                } else {
+                    elim = x;
                 }
             }
             return elim;
@@ -516,9 +526,7 @@ public:
                 if (std::holds_alternative<BoolLit>(lit)) {
                     const auto &bool_lit {std::get<BoolLit>(lit)};
                     const auto var {bool_lit.getBoolVar()};
-                    if (var.isTempVar()) {
-                        res.put(var, bool_lit.isNegated() ? bot() : top());
-                    }
+                    res.put(var, bool_lit.isNegated() ? bot() : top());
                 }
             }
         }
