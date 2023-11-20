@@ -3,6 +3,7 @@
 #include "itsproblem.hpp"
 #include "linearizingsolver.hpp"
 #include "itsproblem.hpp"
+#include "linearsolver.hpp"
 #include "result.hpp"
 #include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
@@ -250,7 +251,7 @@ class Reachability : public ILinearSolver {
     /**
      * does everything that needs to be done if the trace has a looping suffix
      */
-    std::unique_ptr<LearningState> handle_loop(const unsigned backlink);
+    std::unique_ptr<LearningState> handle_loop(const unsigned backlink, LinearSolver::ConstraintTier max_constr_tier);
 
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
@@ -313,6 +314,8 @@ class Reachability : public ILinearSolver {
 
     std::set<unsigned> learned_clause_ids;
 
+    LinearSolver::ConstraintTier constraint_tier_of(TransIdx rule) const;
+
 public:
 
     Reachability(ITSProblem &chcs, bool incremental_mode);
@@ -321,7 +324,7 @@ public:
 
     void add_clauses(const std::set<Clause> &chc) override;
 
-    const std::set<Clause> derive_new_facts() override;
+    const std::set<Clause> derive_new_facts(LinearSolver::ConstraintTier max_constr_type) override;
 
     const std::set<Clause> get_initial_facts() const override;
 

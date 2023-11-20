@@ -206,12 +206,6 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
             linear context we can assume that all paths from these facts lead
             to `fib(4,3)` anyway. However in the non-linear context we need to
             keep `fib(3,2)` to derive `fib(5,5)`.
-
-            QUESTION: We could add the chained rules to the ITS without removing
-            the rules that are part of the chain. However, that's potentially a             
-            lot of rules and is this really cheaper re-generating these rules 
-            during search? Maybe we can just add the maximal paths instead of
-            every prefix of every path.
         */
         if (Config::Analysis::log) {
             std::cout << "chaining linear paths..." << std::endl;

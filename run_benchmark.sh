@@ -7,24 +7,23 @@ set -e
 pushd $(dirname ${BASH_SOURCE[0]})
 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+# cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 # cmake --build build
 pushd build
 make -j4
 popd
 
-# TODO: debug 335 (seg fault)
-# TODO: debug 034 (seg fault)
+# ERROR: 070, 095
 
-# # gdb --args \
-# ./build/loat-static \
-#   --mode reachability \
-#   --format horn \
-#   --proof-level 0 \
-#   --log \
-#   "../chc-comp22-benchmarks/LIA/chc-LIA_069.smt2"
+gdb --args \
+./build/loat-static \
+  --mode reachability \
+  --format horn \
+  --proof-level 0 \
+  "../chc-comp22-benchmarks/LIA/chc-LIA_070.smt2"
 
-# popd
-# exit
+popd
+exit
 
 ##########################################################################
 
@@ -44,6 +43,7 @@ do
     if true; then
     # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]]; then
     # if [[ "$z3_result" == "unsat" ]]; then
+    # if [[ "$adcl_result" == "unknown" ]]; then
     # if [[ "$adcl_result" == "unsat" ]]; then
       set +e
       result=$(timeout 5 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")

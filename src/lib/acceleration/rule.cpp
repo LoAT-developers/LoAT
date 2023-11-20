@@ -71,6 +71,10 @@ bool Rule::isPoly() const {
     return guard->isPoly() && update.isPoly();
 }
 
+bool Rule::isLinear() const {
+    return guard->isLinear() && update.isLinear();
+}
+
 std::strong_ordering Rule::operator<=>(const Rule &that) const {
     if (id == that.id) {
         return std::strong_ordering::equivalent;

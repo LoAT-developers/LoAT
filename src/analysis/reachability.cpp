@@ -1,5 +1,6 @@
 #include "reachability.hpp"
 #include "config.hpp"
+#include "linearsolver.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
@@ -128,8 +129,6 @@ Reachability::Reachability(ITSProblem &chcs, bool incremental_mode):
         ITSExport::printForProof(chcs, std::cout);
     }
 
-    chcs.refineDependencyGraph();
-    // TODO: are other preprocessing steps also unsound when in non-linear context? 
     const auto res {Preprocess::preprocess(chcs)};
     if (res) {
         proof.concat(res.getProof());
@@ -566,6 +565,11 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     if (accel_res.accel) {
         // acceleration succeeded, simplify the result
         auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
+
+        // if (!simplified->isLinear()) {
+        //     return std::make_unique<Unroll>(1);
+        // }
+            
         if (simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
@@ -618,7 +622,7 @@ void Reachability::drop_until(const int new_size) {
     }
 }
 
-std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
+std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink, LinearSolver::ConstraintTier max_constr_tier) {
     const auto lang {build_language(backlink)};
     auto closure {lang};
     redundancy->transitive_closure(closure);
@@ -660,6 +664,16 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
     bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix == 0 && learned_clauses.period == 1)};
+
+    // To respect `max_constraint_tier` we don't replace the recursive suffix with a 
+    // learned clause if at least one of the learned clauses has a higher constraint tier
+    // then the maximum dictated by `max_constraint_tier` right now. 
+    for (const auto idx: learned_clauses.res) {
+        if (constraint_tier_of(idx) > max_constr_tier) {
+            do_drop = false;
+        }
+    }
+
     if (do_drop) {
         drop_until(backlink);
     }
@@ -741,8 +755,17 @@ LinearSolver::Result Reachability::get_analysis_result() const {
 }
 
 void Reachability::analyze() {
-    blocked_clauses[0].clear();
-    derive_new_facts();
+    // First only derive "easy" to handle rules with linear guard. If that's not enough
+    // also try rules with polynomial guard. Otherwise also consider exponential 
+    // (arbitrary) guards.
+    for (const auto tier: constraint_tiers) {
+        blocked_clauses[0].clear();
+        derive_new_facts(tier);
+
+        if (get_analysis_result() == LinearSolver::Result::Unsat) {
+            break;
+        }
+    }
 
     switch (get_analysis_result()) {
         case LinearSolver::Result::Sat:
@@ -785,7 +808,17 @@ const std::optional<Clause> Reachability::trace_as_fact() {
     }
 }
 
-const std::set<Clause> Reachability::derive_new_facts() {
+LinearSolver::ConstraintTier Reachability::constraint_tier_of(TransIdx rule) const {    
+    if (rule->isLinear()) {
+        return LinearSolver::ConstraintTier::Linear;
+    } else if (rule->isPoly()) {
+        return LinearSolver::ConstraintTier::Polynomial;
+    } else {
+        return LinearSolver::ConstraintTier::Exponential;
+    }
+}
+
+const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTier max_constr_tier) {
     static std::default_random_engine rnd {};       
 
     std::set<Clause> derived_facts;
@@ -809,7 +842,7 @@ const std::set<Clause> Reachability::derive_new_facts() {
                  backlink = has_looping_suffix(*backlink - 1)) {
                 auto step {trace[*backlink]};
                 auto simple_loop {*backlink == trace.size() - 1};
-                state = handle_loop(*backlink);
+                state = handle_loop(*backlink, max_constr_tier);
                 if (state->restart()) {
                     break;
                 } else if (state->covered()) {
@@ -862,6 +895,7 @@ const std::set<Clause> Reachability::derive_new_facts() {
                 // Forwarding initial facts is redundant, because they are already obtained by calling `get_initial_facts`.
                 // TODO: Remove `get_initial_facts` and force non linear solver to get inital facts from first round of 
                 // calling `derive_new_facts`.
+                // NOTE: tried the approach above but it definitely lead to more timeouts.
                 bool is_initial_fact = trace.size() == 1 && chcs.isInitialTransition(trace[0].clause_idx);
 
                 if (!seen_traces.contains(trace_id) && !is_initial_fact) {
@@ -875,7 +909,18 @@ const std::set<Clause> Reachability::derive_new_facts() {
             if (Config::Analysis::log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
             restart();
         }
-        const auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
+
+        std::set<TransIdx> try_set;
+        for (const auto idx: trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx)) {
+            // Only consider rules for "Step" whose guard has at most the the constraint tier
+            // configured for the current run. For example if `max_constr_tier` is `Polynomial`,
+            // we only consider rules with `Linear` or `Polynomial` guard but ignore rules with
+            // `Exponential` guard.
+            if (constraint_tier_of(idx) <= max_constr_tier) {
+                try_set.insert(idx);
+            }
+        }
+
         std::vector<TransIdx> to_try(try_set.begin(), try_set.end());
         std::shuffle(to_try.begin(), to_try.end(), rnd);
         bool all_failed {true};

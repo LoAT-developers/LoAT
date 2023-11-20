@@ -16,55 +16,65 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
     // the linear solver managed to derive.
     std::set<Clause> facts(linear_solver.get_initial_facts());    
 
-    while (true) {
-        if (Config::Analysis::log) {
-            std::cout << "============= non-linear solver main loop =============" << std::endl;
-        }
+    for (const auto max_constraint_tier: linear_solver.constraint_tiers) {
+        while (true) {
+            if (Config::Analysis::log) {
+                std::cout << "============= non-linear solver main loop =============" << std::endl;
+            }
 
-        const std::set<Clause> non_linear_chcs(linear_solver.get_non_linear_chcs());
+            const std::set<Clause> non_linear_chcs(linear_solver.get_non_linear_chcs());
 
-        // Do resolution with all combinations of facts and non-linear clauses to 
-        // get every possible linear clause that we can derive in this iteration.
-        std::list<Clause> resolvents;
-        for (const auto& non_linear_chc: linear_solver.get_non_linear_chcs()) {
-            const auto res(all_resolvents(non_linear_chc, facts));           
-            resolvents.insert(
-                resolvents.end(),
-                res.begin(),
-                res.end()
-            );
-        }
+            // Do resolution with all combinations of facts and non-linear clauses to 
+            // get every possible linear clause that we can derive in this iteration.
+            std::list<Clause> resolvents;
+            for (const auto& non_linear_chc: linear_solver.get_non_linear_chcs()) {
+                const auto res(all_resolvents(non_linear_chc, facts));           
+                resolvents.insert(
+                    resolvents.end(),
+                    res.begin(),
+                    res.end()
+                );
+            }
 
-        const std::set resolvents_distinct(resolvents.begin(), resolvents.end());
+            // for (const auto& res: resolvents) {
+            //     std::cout << "Res: " << res << std::endl;
+            // }
 
-        if (Config::Analysis::log) {
-            std::cout 
-                << (resolvents.size() - resolvents_distinct.size())
-                << " of "
-                << resolvents.size()
-                << " resolvents are syntactially redundant"                
-                << std::endl;
-        }
+            const std::set<Clause> resolvents_distinct(resolvents.begin(), resolvents.end());
 
-        linear_solver.add_clauses(resolvents_distinct);
+            if (Config::Analysis::log) {
+                std::cout 
+                    << (resolvents.size() - resolvents_distinct.size())
+                    << " of "
+                    << resolvents.size()
+                    << " resolvents are syntactially redundant"                
+                    << std::endl;
+            }
 
-        // std::cout << "facts      : " << facts.size() << std::endl;
-        // std::cout << "non linear : " << non_linear_chcs.size() << std::endl;
+            linear_solver.add_clauses(resolvents_distinct);
 
-        facts.clear();
-        const auto new_facts = linear_solver.derive_new_facts();
-        facts.insert(new_facts.begin(), new_facts.end());
+            // std::cout << "facts      : " << facts.size() << std::endl;
+            // std::cout << "non linear : " << non_linear_chcs.size() << std::endl;
 
-        if (Config::Analysis::log) {
-            for (const auto &fact: new_facts) {
-                std::cout << "new fact: " << fact << std::endl;
+            facts.clear();
+            const auto new_facts = linear_solver.derive_new_facts(max_constraint_tier);
+            facts.insert(new_facts.begin(), new_facts.end());
+
+            if (Config::Analysis::log) {
+                for (const auto &fact: new_facts) {
+                    std::cout << "new fact: " << fact << std::endl;
+                }
+            }
+
+            const auto result = linear_solver.get_analysis_result();     
+            if (result == LinearSolver::Result::Unsat) {
+                break;
+            } else if ((result == LinearSolver::Result::Sat || result == LinearSolver::Result::Unknown) && facts.empty()) {
+                break;
             }
         }
 
-        const auto result = linear_solver.get_analysis_result();     
-        if (result == LinearSolver::Result::Unsat) {
-            break;
-        } else if ((result == LinearSolver::Result::Sat || result == LinearSolver::Result::Unknown) && facts.empty()) {
+        if (linear_solver.get_analysis_result() == LinearSolver::Result::Unsat) {
             break;
         }
     }
@@ -105,21 +115,23 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
  * no facts (i.e. clauses with no LHS predicates).
  */
 const std::list<Clause> all_resolvents(const Clause& chc, const std::set<Clause>& facts) {
-    return all_resolvents_aux(chc, chc.lhs.begin(), facts);
+    std::list<Clause> resolvents;
+    all_resolvents_aux(chc, chc.lhs.begin(), facts, resolvents);
+    return resolvents;
 }
-const std::list<Clause> all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator preds, const std::set<Clause>& facts) {
+void all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator preds, const std::set<Clause>& facts, std::list<Clause>& resolvents) {
     // === Running example ===
     // `chc`   : F(x) /\ F(y) /\ F(z) ==> G(x,y,z)
     // `preds` :  ^---- iterator pointing on first predicate of `chc`
     // `facts` : [F(1), F(2)]
 
     if (preds == chc.lhs.end() || chc.isLinear()) {
-        return {}; 
+        return; 
     } else {
         const auto current_pred = *preds; // == F(x)
 
         // All resolvents that DONT eliminate F(x)
-        const auto res_with_head = all_resolvents_aux(chc, std::next(preds), facts);
+        all_resolvents_aux(chc, std::next(preds), facts, resolvents);
         // F(x) /\ F(y) ==> G(x,y,1)
         // F(x) /\ F(y) ==> G(x,y,2)
         //
@@ -132,7 +144,7 @@ const std::list<Clause> all_resolvents_aux(const Clause& chc, const std::set<Fun
         // F(x) ==> G(x,2,2)
 
         // All resolvents that DO eliminate F(x)
-        std::list<Clause> res_without_head;
+        // std::list<Clause> res_without_head;
         for (const auto& fact: facts) {             
             const auto optional_resolvent = fact.resolutionWith(chc, current_pred);
 
@@ -142,8 +154,12 @@ const std::list<Clause> all_resolvents_aux(const Clause& chc, const std::set<Fun
                 //
                 // for fact = F(2) :      F(y) /\ F(z) ==> G(2,y,z)
 
+
                 if (SmtFactory::check(resolvent.guard) == Sat) {
-                    const auto res(all_resolvents_aux(resolvent, resolvent.lhs.begin(), facts));
+                    resolvents.push_back(resolvent);
+
+                    // const auto res(all_resolvents_aux(resolvent, resolvent.lhs.begin(), facts));
+                    all_resolvents_aux(resolvent, resolvent.lhs.begin(), facts, resolvents);
                     // for fact = F(1) :       F(y) ==> G(1,y,1)
                     //                         F(y) ==> G(1,y,2)
                     //                         F(z) ==> G(1,1,z)
@@ -154,22 +170,22 @@ const std::list<Clause> all_resolvents_aux(const Clause& chc, const std::set<Fun
                     //                         F(z) ==> G(2,1,z)
                     //                         F(z) ==> G(2,2,z)
 
-                    res_without_head.push_back(resolvent);
-                    res_without_head.insert(
-                        res_without_head.begin(),
-                        res.begin(),
-                        res.end()
-                    );
+                    // res_without_head.push_back(resolvent);
+                    // res_without_head.insert(
+                    //     res_without_head.begin(),
+                    //     res.begin(),
+                    //     res.end()
+                    // );
                 }
             }
         }
 
         // join all collected resolvents and return:
-        res_without_head.insert(
-            res_without_head.end(),
-            res_with_head.begin(), 
-            res_with_head.end()
-        );
-        return res_without_head;
+        // res_without_head.insert(
+        //     res_without_head.end(),
+        //     res_with_head.begin(), 
+        //     res_with_head.end()
+        // );
+        // return res_without_head;
     }
 }

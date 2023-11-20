@@ -357,19 +357,6 @@ public:
         });
     }
 
-    unsigned countOccuranceOf(const Var& var) const {
-        unsigned count = 0;
-        iter([&var,&count](const Lit& lit) {
-            if (std::holds_alternative<BoolLit>(lit) && std::holds_alternative<BoolVar>(var)) {
-                const BoolLit bool_lit = std::get<BoolLit>(lit);
-                if (bool_lit.getBoolVar() == std::get<BoolVar>(var)) {
-                    count++;
-                }
-            }
-        });
-        return count;
-    }
-
     template <ITheory T>
     void collectVars(std::set<typename T::Var> &vars) const {
         VS res;

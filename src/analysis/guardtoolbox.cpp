@@ -100,18 +100,18 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
         // collect implied program variable equalities:
         for (const auto &var: equiv.domain()) {
             if (expr::isProgVar(var)) {
-                if (res->getGuard()->countOccuranceOf(var) == 1) {
-                    // when the program variable occurs only once in the expression,
-                    // there is no need to substitute it. This also prevents an 
-                    // infinite loop, because when we re-add the program variables to the 
-                    // guard using `buildAnd`, we trigger `propagateBooleanEqualities`
-                    // again.
-                    equiv.erase(var);
-                } else {
-                    program_var_equalities.push_back(
-                        expr::mkEq(expr::toExpr(var), equiv.get(var))->simplify()
-                    );
-                }
+                // if (res->getGuard()->countOccuranceOf(var) == 1) {
+                //     // when the program variable occurs only once in the expression,
+                //     // there is no need to substitute it. This also prevents an 
+                //     // infinite loop, because when we re-add the program variables to the 
+                //     // guard using `buildAnd`, we trigger `propagateBooleanEqualities`
+                //     // again.
+                //     equiv.erase(var);
+                // } else {
+                program_var_equalities.push_back(
+                    expr::mkEq(expr::toExpr(var), equiv.get(var))->simplify()
+                );
+                // }
             }
         }
 
@@ -124,8 +124,12 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
         // re-add program variable equalities to guard:
         program_var_equalities.push_back(res->getGuard());
         const auto new_guard = BExpression::buildAnd(program_var_equalities);
-        res = res->withGuard(new_guard);
 
+        if (rule.getGuard() == new_guard) {
+            return Result(rule);
+        } 
+
+        res = res->withGuard(new_guard);
         res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
         res.storeSubProof(subproof);
     }

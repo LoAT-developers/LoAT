@@ -31,6 +31,10 @@ public:
     }
 
     SmtResult check() override {
+        // std::cerr << "==============================" << std::endl;
+        // // // std::cerr << solver << std::endl;
+        // std::cerr << "==============================" << std::endl;
+
         switch (solver.check()) {
         case z3::sat: return Sat;
         case z3::unsat: return Unsat;

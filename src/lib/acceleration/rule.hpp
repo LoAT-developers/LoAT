@@ -64,6 +64,8 @@ public:
 
     bool isPoly() const;
 
+    bool isLinear() const;
+
     std::strong_ordering operator<=>(const Rule &that) const;
 
     unsigned getId() const;

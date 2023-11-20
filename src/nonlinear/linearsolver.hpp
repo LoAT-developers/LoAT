@@ -3,6 +3,7 @@
 
 namespace LinearSolver {
     enum Result { Unsat, Sat, Unknown, Pending };
+    enum ConstraintTier { Linear, Polynomial, Exponential };
 }
 
 /**
@@ -21,9 +22,30 @@ public:
 
 	/**
 	 * Let linear solver derive all (ideally non-redundant) facts it can derive with 
-	 * the current linear clause set.
- 	 */
-	virtual const std::set<Clause> derive_new_facts() = 0;
+	 * the current linear clause set. 
+	 *
+	 * The argument `max_constr_tier` can be set to `Linear`, `Polynomial` or `Exponential`.
+	 * Here "linear" does NOT refer the the plurality of left-hand-side predicates but the
+	 * clause constraint. For example:
+	 *
+	 *  - linear constraint      : F(x) /\ 2*x=4 ==> F(x)
+	 *  - polynomial constraint  : F(x) /\ x^2=4 ==> F(x)
+	 *  - exponential constraint : F(x) /\ 2^x=4 ==> F(x)
+     *
+	 * If the argument is set to `Linear` the solver should only derive facts with linear 
+	 * constraint. If the argument is set to `Polynomial`, only polynomial facts should be
+	 * derived. This includes linear facts, since linear constraints are also polynomial.
+	 * Polynomial constraints are also exponential, so the argument `Exponential` instructs
+	 * the solver to derive arbitrary constraints.
+	 *
+	 * The distinction is for optimization. Because the constraint tiers are successively
+	 * harder to deal with for SMT solvers, we can first try to solve a CHC instance by only
+	 * considering "easy" linear constraints and only consider harder polynomial and exponential
+	 * constraints if necessary.
+	 */
+	virtual const std::set<Clause> derive_new_facts(
+		LinearSolver::ConstraintTier max_constr_tier
+	) = 0;
 
 	virtual LinearSolver::Result get_analysis_result() const = 0;
 
@@ -36,5 +58,14 @@ public:
 	virtual const std::set<Clause> get_initial_facts() const = 0;
 
 	virtual const std::set<Clause> get_non_linear_chcs() const = 0;
+
+	/**
+	 * Fixed list of all constaint tiers in order of solving difficulty. 
+	 */
+    const std::vector<LinearSolver::ConstraintTier> constraint_tiers = {
+        LinearSolver::ConstraintTier::Linear,
+        LinearSolver::ConstraintTier::Polynomial,
+        LinearSolver::ConstraintTier::Exponential
+    };
 
 };
