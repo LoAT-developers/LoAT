@@ -74,9 +74,7 @@ Thus, we recommend to execute the following commands for a short evaluation:
 ./run_all eldarica short 6
 
 Below, we provide the expected results for each solver, where we used a timeout
-of 6 seconds for eldarica, and 2 second for all other solvers. Of course, you
-might get slightly different results, depending on the machine that you are
-using.
+of 6 seconds for eldarica, and 2 second for all other solvers.
 
 * loat_abmc_block
   - unsat: 18
@@ -121,9 +119,27 @@ using.
 * eldarica
   - unsat: 3
   - sat: 8
-  - unknown: 45
+  - unknown: 40
 
-These results were obtained on StarExec, see machine_specs.txt for details.
+These results were obtained on StarExec, see machine_specs.txt for details. Of
+course, you might get slightly different results, depending on the machine that
+you are using. If you obtain results that are significantly worse for some
+solvers, then please compare your results with the detailed expected results:
+
+results/solved_light.txt
+
+Rerun those benchmarks via
+
+./run_$solver $benchmark
+
+which runs the given solver with a timeout of 5 minutes. If you obtain the
+expected results, then everything is fine, your machine is just significantly
+slower than StarExec in these specific cases. Please take that into account when
+you judge the results of further tests.
+
+In our tests, the runtimes of Eldarica varied considerably, depending on various
+factors, including the version of the JRE and whether we tested in the TACAS-AEC
+virtual machine or not.
 
 
 ===== Detailed Instructions =====
@@ -224,7 +240,7 @@ results/sat_2023.csv
 
 For each solver, they contain the number of examples from 2022 and 2023,
 respectively, where (un)satisfiability could be proven within $timeout seconds
-(where 0 < $timeout < 300). So after running
+(where 1 <= $timeout <= 300). So after running
 
 ./run_all $solver $benchmarks $timeout,
 

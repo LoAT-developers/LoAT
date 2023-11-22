@@ -1,4 +1,4 @@
-time,loat_abmc_block,loat_abmc,loat_bmc,loat_adcl,spacer,z3_bmc,golem_tpa,golem_bmc,eldarica
+time,loat+AF8-abmc+AF8-block,loat+AF8-abmc,loat+AF8-bmc,loat+AF8-adcl,spacer,z3+AF8-bmc,golem+AF8-tpa,golem+AF8-bmc,eldarica
 1,74,36,40,0,111,28,103,29,0
 2,81,42,48,0,122,28,108,31,23
 3,82,43,49,0,131,28,112,31,70
@@ -298,3 +298,4 @@ time,loat_abmc_block,loat_abmc,loat_bmc,loat_adcl,spacer,z3_bmc,golem_tpa,golem_
 297,95,53,61,0,206,29,140,31,175
 298,95,53,61,0,206,29,140,31,175
 299,95,53,61,0,206,29,140,31,175
+300,95,53,61,0,206,29,140,31,175

@@ -1,0 +1,156 @@
+===== LoAT ABMC block =====
+
+chc lia lin 23/chc-LIA-Lin_002.smt2: sat
+chc lia lin 23/chc-LIA-Lin_003.smt2: sat
+chc lia lin 23/chc-LIA-Lin_006.smt2: sat
+chc lia lin 23/chc-LIA-Lin_007.smt2: sat
+chc lia lin 23/chc-LIA-Lin_008.smt2: sat
+chc lia lin 23/chc-LIA-Lin_010.smt2: sat
+chc lia lin 23/chc-LIA-Lin_011.smt2: sat
+chc lia lin 23/chc-LIA-Lin_012.smt2: sat
+chc lia lin 23/chc-LIA-Lin_015.smt2: sat
+chc lia lin 23/chc-LIA-Lin_017.smt2: sat
+chc lia lin 23/chc-LIA-Lin_018.smt2: sat
+chc lia lin 23/chc-LIA-Lin_020.smt2: sat
+chc lia lin 23/chc-LIA-Lin_022.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_023.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_024.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_025.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_027.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_028.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_029.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_033.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_035.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_036.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_038.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_039.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_041.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_043.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_044.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_046.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_047.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_049.smt2: unsat
+
+
+===== LoAT ABMC =====
+
+chc lia lin 23/chc-LIA-Lin_022.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_023.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_024.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_025.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_027.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_028.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_029.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_033.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_035.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_036.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_038.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_039.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_041.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_043.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_044.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_046.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_047.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_049.smt2: unsat
+
+
+===== LoAT BMC =====
+
+chc lia lin 23/chc-LIA-Lin_003.smt2: sat
+chc lia lin 23/chc-LIA-Lin_008.smt2: sat
+chc lia lin 23/chc-LIA-Lin_015.smt2: sat
+chc lia lin 23/chc-LIA-Lin_018.smt2: sat
+chc lia lin 23/chc-LIA-Lin_022.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_023.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_024.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_025.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_026.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_027.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_045.smt2: unsat
+
+
+===== LoAT ADCL =====
+
+chc lia lin 23/chc-LIA-Lin_023.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_025.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_027.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_028.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_029.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_033.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_035.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_036.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_038.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_039.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_041.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_043.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_044.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_046.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_047.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_049.smt2: unsat
+
+
+===== Spacer =====
+
+chc lia lin 23/chc-LIA-Lin_006.smt2: sat
+chc lia lin 23/chc-LIA-Lin_007.smt2: sat
+chc lia lin 23/chc-LIA-Lin_009.smt2: sat
+chc lia lin 23/chc-LIA-Lin_011.smt2: sat
+chc lia lin 23/chc-LIA-Lin_021.smt2: sat
+chc lia lin 23/chc-LIA-Lin_022.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_023.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_024.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_025.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_026.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_027.smt2: unsat
+
+
+===== Z3 BMC =====
+
+chc lia lin 23/chc-LIA-Lin_022.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_023.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_024.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_025.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_027.smt2: unsat
+
+
+===== Golem TPA =====
+
+chc lia lin 23/chc-LIA-Lin_002.smt2: sat
+chc lia lin 23/chc-LIA-Lin_003.smt2: sat
+chc lia lin 23/chc-LIA-Lin_008.smt2: sat
+chc lia lin 23/chc-LIA-Lin_010.smt2: sat
+chc lia lin 23/chc-LIA-Lin_018.smt2: sat
+chc lia lin 23/chc-LIA-Lin_022.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_023.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_024.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_025.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_026.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_027.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_028.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_030.smt2: unsat
+
+
+===== Golem BMC =====
+
+chc lia lin 23/chc-LIA-Lin_022.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_023.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_024.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_025.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_026.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_027.smt2: unsat
+
+
+===== Eldarica =====
+
+chc lia lin 23/chc-LIA-Lin_002.smt2: sat
+chc lia lin 23/chc-LIA-Lin_005.smt2: sat
+chc lia lin 23/chc-LIA-Lin_006.smt2: sat
+chc lia lin 23/chc-LIA-Lin_010.smt2: sat
+chc lia lin 23/chc-LIA-Lin_014.smt2: sat
+chc lia lin 23/chc-LIA-Lin_019.smt2: sat
+chc lia lin 23/chc-LIA-Lin_020.smt2: sat
+chc lia lin 23/chc-LIA-Lin_021.smt2: sat
+chc lia lin 23/chc-LIA-Lin_023.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_025.smt2: unsat
+chc lia lin 23/chc-LIA-Lin_027.smt2: unsat
+
