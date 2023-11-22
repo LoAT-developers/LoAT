@@ -262,7 +262,9 @@ acceleration::Result LoopAcceleration::run() {
             res.nonterm->certificate = prefix.getGuard() & res.nonterm->certificate->subs(prefix.getUpdate());
         }
     }
-    res.accel = {*accel_rule, accel_proof, covered};
+    if (accel_rule) {
+        res.accel = {*accel_rule, accel_proof, covered};
+    }
     return res;
 }
 
