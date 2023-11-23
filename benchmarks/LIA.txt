@@ -68,7 +68,7 @@
 066 sat     timeout
 067 unsat   unsat
 068 sat     timeout
-069 unsat   timeout
+069 unsat   unsat
 070 sat     error
 071 sat     unknown
 072 unsat   unsat
@@ -246,7 +246,7 @@
 244 sat     timeout
 245 unsat   timeout
 246 sat     timeout
-247 unsat   timeout
+247 unsat   unsat
 248 sat     timeout
 249 unsat   unsat
 250 sat     timeout
@@ -272,7 +272,7 @@
 270 sat     timeout
 271 unsat   timeout
 272 sat     unknown
-273 unsat   timeout
+273 unsat   unsat
 274 timeout timeout
 275 unsat   timeout
 276 unsat   timeout
@@ -398,7 +398,7 @@
 396 sat     timeout
 397 sat     timeout
 398 sat     timeout
-399 unsat   timeout
+399 unsat   unsat
 400 unsat   timeout
 401 sat     timeout
 402 timeout timeout
