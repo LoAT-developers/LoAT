@@ -1,4 +1,5 @@
-time,loat+AF8-abmc+AF8-block,loat+AF8-abmc,loat+AF8-bmc,loat+AF8-adcl,spacer,z3+AF8-bmc,golem+AF8-tpa,golem+AF8-bmc,eldarica
+sep=,
+time,loat_abmc_block,loat_abmc,loat_bmc,loat_adcl,spacer,z3_bmc,golem_tpa,golem_bmc,eldarica
 1,66,25,30,0,70,21,68,19,0
 2,69,27,32,0,77,21,72,20,14
 3,70,28,33,0,81,21,73,20,45

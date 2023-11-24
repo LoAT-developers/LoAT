@@ -39,8 +39,9 @@ To perform a short evaluation of the artefact, please run
 
 ./run_all $solver short $timeout
 
-where $solver is the solver that should be tested and $timeout specifies the
-timeout per benchmark in seconds. The available solvers are:
+where $solver is the solver that should be tested, "short" is a small benchmark
+collection consisting of 50 examples, and $timeout specifies the timeout per
+benchmark in seconds. The available solvers are:
 
 * loat_abmc_block
 * loat_abmc
@@ -121,10 +122,11 @@ of 6 seconds for eldarica, and 2 second for all other solvers.
   - sat: 8
   - unknown: 40
 
-These results were obtained on StarExec, see machine_specs.txt for details. Of
-course, you might get slightly different results, depending on the machine that
-you are using. If you obtain results that are significantly worse for some
-solvers, then please compare your results with the detailed expected results:
+These results were obtained on StarExec, see 4683/machine_specs.txt for
+details. Of course, you might get slightly different results, depending on the
+machine that you are using. If you obtain results that are significantly worse
+for some solvers, then please compare your results with the detailed expected
+results:
 
 results/solved_light.txt
 
@@ -132,10 +134,17 @@ Rerun those benchmarks via
 
 ./run_$solver $benchmark
 
-which runs the given solver with a timeout of 5 minutes. If you obtain the
-expected results, then everything is fine, your machine is just significantly
-slower than StarExec in these specific cases. Please take that into account when
-you judge the results of further tests.
+which runs the given solver with a timeout of 5 minutes. For example, on my
+laptop, Eldarica only proves satisfiability of 7 instead of 8 benchmarks, so I
+rerun the failing benchmark via
+
+./run_eldarica ../examples/short/chc-LIA-Lin_006.smt2
+
+and get the expected result "sat" after ~8s.
+
+If you obtain the expected results, then everything is fine, your machine is
+just significantly slower than StarExec in these specific cases. Please take
+that into account when you judge the results of further tests.
 
 In our tests, the runtimes of Eldarica varied considerably, depending on various
 factors, including the version of the JRE and whether we tested in the TACAS-AEC
@@ -188,7 +197,7 @@ For example,
 ./run_loat_abmc_block ../examples/2022/chc-LIA-Lin_052.smt2 5
 
 runs LoAT's implementation of ABMC with blocking clauses on benchmark number 52
-from the CHC competition 2022 with a timeout of 5 second. If the timeout is
+from the CHC competition 2022 with a timeout of 5 seconds. If the timeout is
 omitted, then it defaults to 300.
 
 
@@ -203,7 +212,7 @@ For example,
 ./run_all loat_abmc_block 2023 5
 
 runs LoAT's implementation of ABMC with blocking clauses on all examples from
-the benchmark collection 2023 with a timeout of 5 second. If the timeout is
+the benchmark collection 2023 with a timeout of 5 seconds. If the timeout is
 omitted, then it defaults to 300.
 
 When run_all finishes, it provides the number of benchmarks where sat or unsat
@@ -251,6 +260,8 @@ respectively, where (un)satisfiability could be proven within $timeout seconds
 - compare the entry with the result of your run.
 
 Of course, you might get slightly different results, depending on the machine
-that you are using. We ran our tests on StarExec, see machine_specs.txt for
+that you are using. We ran our tests on StarExec, see 4683/machine_specs.txt for
 details.
 
+With LibreOffice Calc, the first cell might contain "sep=,", which is just
+meta-information and can be ignored.
