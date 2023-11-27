@@ -50,6 +50,8 @@ public:
 
 const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause> chcs);
 
+const std::optional<Subs> computeUnifier(const std::vector<Var> &args1, const std::vector<Var> &args2);
+
 // implement comparison operators so they can be stored in std::set
 bool operator<(const Clause &c1, const Clause &c2);
 bool operator<(const FunApp &fun1, const FunApp &fun2);

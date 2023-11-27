@@ -13,6 +13,6 @@ public:
 
 };
 
-const std::list<Clause> all_resolvents(const Clause& chc, const std::set<Clause>& facts);
+const std::vector<Clause> all_resolvents(const Clause& chc, const std::set<Clause>& facts);
 
-void all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator preds, const std::set<Clause>& facts, std::list<Clause>& resolvents);
+void all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator preds, const std::set<Clause>& facts, std::vector<Clause>& resolvents);

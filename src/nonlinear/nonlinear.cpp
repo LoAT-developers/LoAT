@@ -8,13 +8,76 @@
 #include "smtfactory.hpp"
 #include <stdexcept>
 
+/**
+ * All predicates have the same arguments up to renaming. By unifying the RHS
+ * of a set of CHCs we should be able to detect CHCs that are syntactially 
+ * equivalent up to renaming.
+ */
+const std::vector<Clause> unify_all(const std::set<Clause>& chcs) {
+    if (chcs.empty()) {
+        return {};
+    } else {
+        std::vector<Clause> res;
+
+        auto it = chcs.begin();
+        // Sample a clause from `chcs` and extract the argument vector from the
+        // RHS predicate:
+        const auto first_rhs_args = it->rhs.args;
+
+        res.push_back(*it);
+
+        it++;
+        while (it != chcs.end()) {
+            const auto next = *it;
+            const auto unifier = computeUnifier(next.rhs.args, first_rhs_args);
+            if (unifier.has_value()) {
+                res.push_back(next.renameWith(unifier.value()));
+            } else {
+                throw std::logic_error("should be unifiable by construction");
+            }
+            it++;
+        }
+
+        return res;
+    }   
+}
+
+/*
+
+c1)  fib(0, 1)
+c2)  fib(2, 3)
+c3)  fib(x1, y1) /\ fib(x2, y2) /\ x1+1 = x2 ==> fib(x2+1, y1+y2)
+
+
+res(c1,c3)  =  fib(x2, y2) /\ 0+1 = x2 ==> fib(x2+1, 1+y2)
+            =  fib(1, y) ==> fib(2, y+1)
+
+res(c2,c3)  =  fib(x1, y1) /\ x1+1 = 2 ==> fib(2+1, y1+3)
+            =  fib(1, y) ==> fib(3, y+3)
+
+fib(2,4)
+fib(2,4)
+
+
+fib(2,4)
+fib(2,7)
+
+trace :
+
+    [c2, res(c1, c3)] = [f(1,1), fib(1, y) ==> fib(2, y+1)] = fib(2,2)
+
+    [c1, res(c2, c3)] = [f(0,1), fib(0, y) ==> fib(2, y+1)] = fib(2,2)
+
+*/
+
+
 void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
     LinearizingSolver<IntTheory, BoolTheory> smt(4294967295u);
 
     // For the first loop iteration, the list of facts is composed of the original facts 
     // given in the CHC problem. In subsequent iterations, the facts are whatever
     // the linear solver managed to derive.
-    std::set<Clause> facts(linear_solver.get_initial_facts());    
+    std::set<Clause> facts(linear_solver.get_initial_facts());
 
     for (const auto max_constraint_tier: linear_solver.constraint_tiers) {
         while (true) {
@@ -36,12 +99,8 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
                 );
             }
 
-            // for (const auto& res: resolvents) {
-            //     std::cout << "Res: " << res << std::endl;
-            // }
-
+            // Filter-out syntactially redundant resolvents
             const std::set<Clause> resolvents_distinct(resolvents.begin(), resolvents.end());
-
             if (Config::Analysis::log) {
                 std::cout 
                     << (resolvents.size() - resolvents_distinct.size())
@@ -50,18 +109,34 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
                     << " resolvents are syntactially redundant"                
                     << std::endl;
             }
+            const std::vector resolvents_normalized(unify_all(resolvents_distinct));
+            const std::set<Clause> resolvents_distinct2(resolvents_normalized.begin(), resolvents_normalized.end());
+            if (Config::Analysis::log) {
+                std::cout 
+                    << (resolvents_normalized.size() - resolvents_distinct2.size())
+                    << " of "
+                    << resolvents_normalized.size()
+                    << " additional resolvents are redundant up to renaming"                
+                    << std::endl;
+            }
 
-            linear_solver.add_clauses(resolvents_distinct);
-
-            // std::cout << "facts      : " << facts.size() << std::endl;
-            // std::cout << "non linear : " << non_linear_chcs.size() << std::endl;
+            linear_solver.add_clauses(resolvents_distinct2);
 
             facts.clear();
             const auto new_facts = linear_solver.derive_new_facts(max_constraint_tier);
-            facts.insert(new_facts.begin(), new_facts.end());
+            const std::vector normalized_new_facts = unify_all(new_facts);
+            facts.insert(normalized_new_facts.begin(), normalized_new_facts.end());
+            if (Config::Analysis::log) {
+                std::cout 
+                    << (normalized_new_facts.size() - facts.size())
+                    << " of "
+                    << normalized_new_facts.size()
+                    << " derived facts are redundant up to renaming"                
+                    << std::endl;
+            }
 
             if (Config::Analysis::log) {
-                for (const auto &fact: new_facts) {
+                for (const auto &fact: facts) {
                     std::cout << "new fact: " << fact << std::endl;
                 }
             }
@@ -114,12 +189,12 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
  * `facts` are not redundant. The returned list should also not contain `chc` itself and
  * no facts (i.e. clauses with no LHS predicates).
  */
-const std::list<Clause> all_resolvents(const Clause& chc, const std::set<Clause>& facts) {
-    std::list<Clause> resolvents;
+const std::vector<Clause> all_resolvents(const Clause& chc, const std::set<Clause>& facts) {
+    std::vector<Clause> resolvents;
     all_resolvents_aux(chc, chc.lhs.begin(), facts, resolvents);
     return resolvents;
 }
-void all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator preds, const std::set<Clause>& facts, std::list<Clause>& resolvents) {
+void all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator preds, const std::set<Clause>& facts, std::vector<Clause>& resolvents) {
     // === Running example ===
     // `chc`   : F(x) /\ F(y) /\ F(z) ==> G(x,y,z)
     // `preds` :  ^---- iterator pointing on first predicate of `chc`
@@ -154,9 +229,12 @@ void all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator pred
                 //
                 // for fact = F(2) :      F(y) /\ F(z) ==> G(2,y,z)
 
-
                 if (SmtFactory::check(resolvent.guard) == Sat) {
                     resolvents.push_back(resolvent);
+                    // if (Config::Analysis::log) {
+                    //     std::cout << "new resolvent: " << resolvent << std::endl;
+                    // }
+
 
                     // const auto res(all_resolvents_aux(resolvent, resolvent.lhs.begin(), facts));
                     all_resolvents_aux(resolvent, resolvent.lhs.begin(), facts, resolvents);

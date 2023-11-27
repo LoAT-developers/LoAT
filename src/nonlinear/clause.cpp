@@ -43,13 +43,19 @@ const Var varAt(const Var &var, const Subs &subs) {
  * arity and argument types.
  */
 const std::optional<Subs> computeUnifier(const FunApp &pred1, const FunApp &pred2) {
-    if (pred1.loc == pred2.loc && pred1.args.size() == pred2.args.size()) {
+    if (pred1.loc == pred2.loc) {
+        return computeUnifier(pred1.args, pred2.args);
+    } else {
+        return {};
+    }
+}
+const std::optional<Subs> computeUnifier(const std::vector<Var> &args1, const std::vector<Var> &args2) {
+    if (args1.size() == args2.size()) {
         Subs subs;
 
-        size_t size = pred1.args.size();
-        for (size_t i = 0; i < size; ++i) {
-            const Var var1 = pred1.args[i];
-            const Var var2 = pred2.args[i];
+        for (size_t i = 0; i < args1.size(); ++i) {
+            const Var var1 = args1[i];
+            const Var var2 = args2[i];
 
             auto it = subs.find(var1);
             if (it != subs.end()) {
@@ -87,6 +93,7 @@ const std::optional<Subs> computeUnifier(const FunApp &pred1, const FunApp &pred
         return {};
     }
 }
+
 
 /**
  * Apply `renaming` to all arguments of the predicate. 

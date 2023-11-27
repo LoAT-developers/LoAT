@@ -331,8 +331,8 @@ const Clause ITSProblem::clauseFrom(const LocationIdx lhs_loc, const LocationIdx
 
         if (it == update.end()) { 
             // If `var` is not contained in `update` it's implicitly mapped to itself,
-            // i.e. `update` does not change it's value. Thus, we add `var` directly
-            // into `rhs_args`.
+            // i.e. `update` does not change the value of `var`. Thus, we add `var` 
+            // directly into `rhs_args`.
             rhs_args.push_back(var);
         } else {
             const auto optional_var = expr::toVar(expr::second(*it));
