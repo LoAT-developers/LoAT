@@ -254,7 +254,7 @@ bool operator<(const FunApp &fun1, const FunApp &fun2) {
 bool operator<(const Clause &c1, const Clause &c2) {
     if (c1.lhs < c2.lhs) {
         return true;
-    } else if (c2.lhs > c1.lhs) {
+    } else if (c2.lhs < c1.lhs) {
         return false;
     } else if (c1.rhs < c2.rhs) {
         return true;

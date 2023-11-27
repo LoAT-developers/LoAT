@@ -977,7 +977,6 @@ void Reachability::add_clauses(const std::set<Clause> &clauses) {
     }
 
     if (any_linear_clauses) {
-        chcs.refineDependencyGraph();
         // TODO: are other preprocessing steps also unsound when in non-linear context? 
         const auto res {Preprocess::preprocess(chcs)};
         if (res) {

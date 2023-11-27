@@ -13,17 +13,23 @@ pushd build
 make -j4
 popd
 
-# ERROR: 070, 095
+# all fibonacci: 081,093,090,086,098,353,354,077,345,073,080,076,343,344
 
-gdb --args \
-./build/loat-static \
-  --mode reachability \
-  --format horn \
-  --proof-level 0 \
-  "../chc-comp22-benchmarks/LIA/chc-LIA_070.smt2"
+# unsat: 141,145,137
 
-popd
-exit
+# too long: 136,150
+
+# TODO: 147,134,342,157,148,152,168,139,133,165,158
+
+# # # gdb --args \
+# time ./build/loat-static \
+#   --mode reachability \
+#   --format horn \
+#   --proof-level 0 \
+#   "../chc-comp22-benchmarks/LIA/chc-LIA_399.smt2"
+
+# popd
+# exit
 
 ##########################################################################
 
@@ -40,13 +46,14 @@ do
     read idx z3_result adcl_result <<< "$line"
     file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
 
-    if true; then
-    # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]]; then
+    # if true; then
+    if [[ "$z3_result" != "sat" ]]; then
+    # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]] && [[ "$adcl_result" == "timeout" ]]; then
     # if [[ "$z3_result" == "unsat" ]]; then
     # if [[ "$adcl_result" == "unknown" ]]; then
     # if [[ "$adcl_result" == "unsat" ]]; then
       set +e
-      result=$(timeout 5 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")
+      result=$(timeout 20 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")
       # result=$(timeout 5 z3 "$file")
       exit_status=$?
       set -e
@@ -62,10 +69,10 @@ do
 
       printf "$idx %-7s %-7s %-7s \n" $z3_result $adcl_result $result
 
-    # else
-    #   # if we skip an instance nevertheless include it in the output
-    #   # so the log can easily be copied and saved as a whole
-    #   printf "$idx $prev_result \n"
+    else
+      # if we skip an instance nevertheless include it in the output
+      # so the log can easily be copied and saved as a whole
+      printf "$idx %-7s %-7s %-7s \n" $z3_result $adcl_result $adcl_result
     fi
 
   fi
