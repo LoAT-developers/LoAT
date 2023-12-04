@@ -8,10 +8,8 @@ RUN xbps-install -yS xbps
 RUN xbps-install -ySu
 RUN xbps-install -yS gcc git make cmake
 RUN xbps-install -yS boost-devel cln-devel gmp-devel
+RUN xbps-install -yS bash
 
 RUN git config --global --add safe.directory /LoAT
 
-WORKDIR /LoAT/
-
-CMD ["./configure_and_build.sh"]
-
+CMD ["/LoAT/configure_and_build.sh"]
