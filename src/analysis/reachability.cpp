@@ -880,7 +880,7 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
                 }
             }
 
-            if (incremental_mode && should_add_fact) { // TODO: when trace not empty
+            if (should_add_fact) { // TODO: when trace not empty
                 // Using a crude (additional) redundancy criterion for facts here. We identify facts by the trace that lead to them.
                 // This is only sufficient because equivalent facts can have multiple traces. We don't need to memoize the entire                    
                 // trace structure. It's enough to store clause_idx/implicant for each trace step.
@@ -929,11 +929,18 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
             const auto implicant {resolve(idx)};
             solver->pop();
             if (implicant && store_step(idx, *implicant, Config::Analysis::safety())) {
-                proof.headline("Step with " + std::to_string(idx->getId()));
-                print_state();
-                update_cpx();
-                all_failed = false;
-                break;
+                // Additional redundnacy check: if resolvent of trace (after step) is 
+                // syntactially equivalent (up to renaming) to an already derived fact, 
+                // then backtrack and try a different step. 
+                if (derived_facts.contains(trace_as_fact().value())) {
+                    backtrack();
+                } else {
+                    proof.headline("Step with " + std::to_string(idx->getId()));
+                    print_state();
+                    update_cpx();
+                    all_failed = false;
+                    break;
+                }
             }
         }
         if (trace.empty()) {

@@ -8,40 +8,6 @@
 #include "smtfactory.hpp"
 #include <stdexcept>
 
-/**
- * All predicates have the same arguments up to renaming. By unifying the RHS
- * of a set of CHCs we should be able to detect CHCs that are syntactially 
- * equivalent up to renaming.
- */
-const std::vector<Clause> unify_all(const std::set<Clause>& chcs) {
-    if (chcs.empty()) {
-        return {};
-    } else {
-        std::vector<Clause> res;
-
-        auto it = chcs.begin();
-        // Sample a clause from `chcs` and extract the argument vector from the
-        // RHS predicate:
-        const auto first_rhs_args = it->rhs.args;
-
-        res.push_back(*it);
-
-        it++;
-        while (it != chcs.end()) {
-            const auto next = *it;
-            const auto unifier = computeUnifier(next.rhs.args, first_rhs_args);
-            if (unifier.has_value()) {
-                res.push_back(next.renameWith(unifier.value()));
-            } else {
-                throw std::logic_error("should be unifiable by construction");
-            }
-            it++;
-        }
-
-        return res;
-    }   
-}
-
 /*
 
 c1)  fib(0, 1)
@@ -109,32 +75,13 @@ void NonLinearSolver::analyze(ILinearSolver &linear_solver) {
                     << " resolvents are syntactially redundant"                
                     << std::endl;
             }
-            const std::vector resolvents_normalized(unify_all(resolvents_distinct));
-            const std::set<Clause> resolvents_distinct2(resolvents_normalized.begin(), resolvents_normalized.end());
-            if (Config::Analysis::log) {
-                std::cout 
-                    << (resolvents_normalized.size() - resolvents_distinct2.size())
-                    << " of "
-                    << resolvents_normalized.size()
-                    << " additional resolvents are redundant up to renaming"                
-                    << std::endl;
-            }
 
-            linear_solver.add_clauses(resolvents_distinct2);
+            linear_solver.add_clauses(resolvents_distinct);
 
             facts.clear();
-            const auto new_facts = linear_solver.derive_new_facts(max_constraint_tier);
-            const std::vector normalized_new_facts = unify_all(new_facts);
-            facts.insert(normalized_new_facts.begin(), normalized_new_facts.end());
-            if (Config::Analysis::log) {
-                std::cout 
-                    << (normalized_new_facts.size() - facts.size())
-                    << " of "
-                    << normalized_new_facts.size()
-                    << " derived facts are redundant up to renaming"                
-                    << std::endl;
-            }
-
+            facts = linear_solver.derive_new_facts(max_constraint_tier);
+            // const auto new_facts = linear_solver.derive_new_facts(max_constraint_tier);
+            // facts.insert(new_facts.begin(), new_facts.end());
             if (Config::Analysis::log) {
                 for (const auto &fact: facts) {
                     std::cout << "new fact: " << fact << std::endl;

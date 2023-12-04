@@ -212,7 +212,7 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
         resolvent_lhs, 
         chc_unified.rhs, 
         new_guard->simplify()
-    );
+    ).normalize();
 }
 
 /**
@@ -232,6 +232,59 @@ const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std
     }
 
     return std::make_tuple(linear, non_linear);
+}
+
+/**
+ * Normalize the variable indices of the RHS predicate arguments. For example
+ *
+ *     i44 > i9 /\ b23 ==> F(i44,b23,i9)
+ *
+ * is renamed to
+ * 
+ *     i0 > i2 /\ b1 ==> F(i0,b1,i2)
+ *
+ * So the variables indices on the right-hand-side should always be 0,1,2,3,etc.
+ * unless a variable occurs multiple times in the arguments of the original RHS 
+ * predicate. For example:
+ * 
+ *     i44 > i9 /\ b23 ==> F(i44,b23,i9,i44)
+ *
+ * is renamed to
+ *
+ *     i0 > i2 /\ b1 ==> F(i0,b1,i2,i0)
+ *
+ * to preserve the implict equality.
+ *
+ * Useful to detect if clauses are syntactially equivalent up-to-renaming.
+ */
+const Clause Clause::normalize() const {
+    // construct a vector of variables with the same length as `this->rhs.args`
+    // and the same variable types in each position, except that the variable
+    // indices are simply: 0,1,2,3,etc.
+    std::vector<Var> target_args;
+    for (unsigned i=0; i < size(this->rhs.args); i++) {           
+        const auto var = std::visit(Overload{
+            [i](const NumVar&) {
+                return Var(NumVar(i));
+            },
+            [i](const BoolVar&) {
+                return Var(BoolVar(i));
+            }
+        }, this->rhs.args[i]);
+
+        target_args.push_back(var);
+    }
+
+    const auto unifier = computeUnifier(this->rhs.args, target_args);
+
+    if (unifier.has_value()) {
+        return this->renameWith(unifier.value());
+    } else {
+        // Variable vectors should always be unifiable unless the vectors have differnt length,
+        // but the vectors should have the same length by construction so this error should not
+        // occur.
+        throw std::logic_error("failed to unify variable vectors");
+    }
 }
 
 /**

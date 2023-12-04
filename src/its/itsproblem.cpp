@@ -352,10 +352,10 @@ const Clause ITSProblem::clauseFrom(const LocationIdx lhs_loc, const LocationIdx
 
     if (lhs_loc == getInitialLocation()) {     
         // rule is a linear CHC with no LHS predicates, ie a "fact"
-        return Clause({}, rhs, final_guard);
+        return Clause({}, rhs, final_guard).normalize();
     } else {
         // rule is a linear CHC with exactly one LHS predicates, ie a "rule"
-        return Clause({ FunApp(lhs_loc, prog_vars) }, rhs, final_guard);  
+        return Clause({ FunApp(lhs_loc, prog_vars) }, rhs, final_guard).normalize();  
     }
 }
 

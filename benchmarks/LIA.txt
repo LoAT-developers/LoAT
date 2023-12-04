@@ -48,7 +48,7 @@
 046 timeout timeout
 047 timeout timeout
 048 sat     unknown
-049 unsat   timeout
+049 unsat   unsat
 050 timeout timeout
 051 sat     unknown
 052 timeout timeout
@@ -76,11 +76,11 @@
 074 sat     timeout
 075 unsat   unsat
 076 unsat   timeout
-077 unsat   timeout
+077 unsat   unsat
 078 sat     timeout
 079 sat     timeout
 080 unsat   timeout
-081 unsat   timeout
+081 unsat   unsat
 082 sat     timeout
 083 sat     timeout
 084 sat     timeout
@@ -244,7 +244,7 @@
 242 timeout timeout
 243 timeout timeout
 244 sat     timeout
-245 unsat   timeout
+245 unsat   unsat
 246 sat     timeout
 247 unsat   unsat
 248 sat     timeout
@@ -258,7 +258,7 @@
 256 unsat   unsat
 257 sat     timeout
 258 sat     unknown
-259 unsat   timeout
+259 unsat   unsat
 260 sat     timeout
 261 sat     unknown
 262 sat     unknown
@@ -344,13 +344,13 @@
 342 unsat   unsat
 343 unsat   unsat
 344 unsat   timeout
-345 unsat   timeout
+345 unsat   unsat
 346 sat     timeout
 347 sat     timeout
 348 sat     timeout
 349 unsat   unsat
 350 unsat   unsat
-351 unsat   timeout
+351 unsat   unsat
 352 sat     timeout
 353 unsat   timeout
 354 unsat   timeout

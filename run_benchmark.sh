@@ -17,16 +17,21 @@ popd
 
 # unsat: 141,145,137
 
+# unsat (1m10s): 147
+# unsat (17m)  : 134   --> (1m6s)
+
 # too long: 136,150
+
+# with hack: unsat 342
 
 # TODO: 147,134,342,157,148,152,168,139,133,165,158
 
-# # # gdb --args \
+# # gdb --args \
 # time ./build/loat-static \
 #   --mode reachability \
 #   --format horn \
 #   --proof-level 0 \
-#   "../chc-comp22-benchmarks/LIA/chc-LIA_399.smt2"
+#   "../chc-comp22-benchmarks/LIA/chc-LIA_141.smt2"
 
 # popd
 # exit
@@ -47,7 +52,7 @@ do
     file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
 
     # if true; then
-    if [[ "$z3_result" != "sat" ]]; then
+    if [[ "$z3_result" == "unsat" ]] && [[ "$adcl_result" == "timeout" ]]; then
     # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]] && [[ "$adcl_result" == "timeout" ]]; then
     # if [[ "$z3_result" == "unsat" ]]; then
     # if [[ "$adcl_result" == "unknown" ]]; then
@@ -69,10 +74,10 @@ do
 
       printf "$idx %-7s %-7s %-7s \n" $z3_result $adcl_result $result
 
-    else
-      # if we skip an instance nevertheless include it in the output
-      # so the log can easily be copied and saved as a whole
-      printf "$idx %-7s %-7s %-7s \n" $z3_result $adcl_result $adcl_result
+    # else
+    #   # if we skip an instance nevertheless include it in the output
+    #   # so the log can easily be copied and saved as a whole
+    #   printf "$idx %-7s %-7s %-7s \n" $z3_result $adcl_result $adcl_result
     fi
 
   fi
