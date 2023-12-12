@@ -10,7 +10,7 @@ services:
     security_opt: [seccomp:unconfined]
     cap_add: [SYS_PTRACE]
     volumes:
-      - .:/LoAT
+      - ..:/LoAT
     build:
       context: .
       dockerfile: build.Dockerfile

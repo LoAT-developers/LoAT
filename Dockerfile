@@ -125,6 +125,7 @@ RUN make install
 
 
 
+FROM voidlinux/voidlinux-musl:latest as loat-docker
 FROM base as yices
 
 RUN xbps-install -yS gperf gmp-devel
@@ -197,36 +198,37 @@ RUN make install
 # RUN make install
 
 
+RUN mkdir /my_include
+RUN mkdir /my_lib
 
-FROM voidlinux/voidlinux-musl:latest as loat-docker
+COPY --from=ntl /usr/local/include/NTL /my_include/NTL
+COPY --from=ntl /usr/local/lib/libntl.a /my_lib
 
-COPY --from=z3 /usr/local/lib64/libz3.a /usr/local/lib64/
-COPY --from=z3 /usr/local/include/z3*.h /usr/local/include/
+COPY --from=ginac /usr/local/lib64/libginac.a /my_lib
+COPY --from=ginac /usr/local/include/ginac /my_include/ginac
 
+COPY --from=purrs /usr/local/lib/libpurrs.a /my_lib
+COPY --from=purrs /usr/local/include/purrs.hh /my_include
 COPY --from=poly /usr/local/include/poly /usr/local/include/poly
 COPY --from=poly /usr/local/lib/libpoly.a /usr/local/lib/
 COPY --from=poly /usr/local/lib/libpolyxx.a /usr/local/lib/
 
+COPY --from=antlr4 /usr/local/lib/libantlr4-runtime.a /my_lib
+COPY --from=antlr4 /usr/local/include/antlr4-runtime/ /my_include
 COPY --from=cudd /usr/local/include/cudd.h /usr/local/include/cudd.h
 COPY --from=cudd /usr/local/lib/libcudd.a /usr/local/lib/libcudd.a
 
-COPY --from=ntl /usr/local/include/NTL /usr/local/include/NTL
-COPY --from=ntl /usr/local/lib/libntl.a /usr/local/lib/libntl.a
+COPY --from=faudes /usr/local/lib/libfaudes.a /my_lib
+COPY --from=faudes /usr/local/include/faudes/ /my_include
 
-COPY --from=yices /usr/local/include/yices*.h /usr/local/include/
-COPY --from=yices /usr/local/lib/libyices.a /usr/local/lib/libyices.a
+# COPY --from=swine-docker /usr/local/lib64/libz3.a /my_lib
+# COPY --from=swine-docker /usr/local/include/z3*.h /my_include
 
-COPY --from=ginac /usr/local/lib64/libginac.a /usr/local/lib64/libginac.a
-COPY --from=ginac /usr/local/include/ginac /usr/local/include/ginac
 
-COPY --from=purrs /usr/local/lib/libpurrs.a /usr/local/lib/libpurrs.a
-COPY --from=purrs /usr/local/include/purrs.hh /usr/local/include/purrs.hh
 
-COPY --from=antlr4 /usr/local/lib/libantlr4-runtime.a /usr/local/lib/libantlr4-runtime.a
-COPY --from=antlr4 /usr/local/include/antlr4-runtime/ /usr/local/include/
+# COPY --from=swine-docker /usr/local/include/yices*.h /usr/local/include/
+# COPY --from=swine-docker /usr/local/lib/libyices.a /usr/local/lib/libyices.a
 
-COPY --from=faudes /usr/local/lib/libfaudes.a /usr/local/lib/libfaudes.a
-COPY --from=faudes /usr/local/include/faudes/ /usr/local/include/
 
 COPY --from=CVC5 /usr/local/lib64/libcvc5.a /usr/local/lib/libcvc5.a
 COPY --from=CVC5 /usr/local/include/cvc5 /usr/local/include/cvc5

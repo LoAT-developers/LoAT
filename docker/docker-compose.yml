@@ -16,5 +16,6 @@ services:
       - DISPLAY=${DISPLAY}
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - .:/LoAT
+      - ..:/LoAT
+      - ../../swine:/swine
     network_mode: host

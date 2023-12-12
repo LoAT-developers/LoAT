@@ -18,10 +18,10 @@ function check {
     fi
 }
 
-BUILD=build/release
+BUILD=../build/release
 BIN=loat-static
-BUNDLE=bin
-TEMPLATE=bundle.template
+BUNDLE=../bin
+TEMPLATE=../bundle.template
 OUT=loat.zip
 
 if [[ ! -d $OUT ]]; then
