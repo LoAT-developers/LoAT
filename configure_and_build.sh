@@ -6,5 +6,5 @@
 # working tree is clean or not.
 
 cd /LoAT/build/release
-cmake .
+cmake -DCMAKE_BUILD_TYPE=Release ../../
 make -j

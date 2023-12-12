@@ -1,6 +1,8 @@
 FROM voidlinux/voidlinux-musl:latest as base
 LABEL author="Florian Frohn"
 
+RUN echo noextract=/etc/hosts > /etc/xbps.d/test.conf
+RUN echo "repository=https://repo-default.voidlinux.org/current/musl" > /etc/xbps.d/00-repository-main.conf
 RUN xbps-install -yS xbps
 RUN xbps-install -ySu
 RUN xbps-install -yS gcc git automake autoconf make cmake wget python-devel bash
@@ -52,11 +54,11 @@ FROM base as ginac
 
 RUN xbps-install -yS cln-devel
 
-RUN wget https://www.ginac.de/ginac-1.8.6.tar.bz2
-RUN tar xf ginac-1.8.6.tar.bz2
-WORKDIR /ginac-1.8.6
+RUN wget https://www.ginac.de/ginac-1.8.7.tar.bz2
+RUN tar xf ginac-1.8.7.tar.bz2
+WORKDIR /ginac-1.8.7
 RUN mkdir build
-WORKDIR /ginac-1.8.6/build
+WORKDIR /ginac-1.8.7/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
