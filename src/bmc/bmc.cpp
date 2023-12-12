@@ -9,6 +9,7 @@ BMC::BMC(ITSProblem &its): its(its) {}
 
 void BMC::unsat() {
     std::cout << "unsat" << std::endl;
+    std::cout << depth << std::endl;
     proof.append("reached error location at depth " + std::to_string(depth));
     proof.result("unsat");
     proof.print();

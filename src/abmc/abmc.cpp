@@ -264,6 +264,7 @@ void ABMC::unknown() {
 void ABMC::unsat() {
     const auto str = Config::Analysis::safety() ? "unknown" : "unsat";
     std::cout << str << std::endl;
+    std::cout << depth << std::endl;
     proof.append("reached error location at depth " + std::to_string(depth));
     proof.result(str);
     proof.print();
