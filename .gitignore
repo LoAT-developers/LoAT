@@ -42,6 +42,7 @@ src/lib/build*
 
 # QT Creator
 *.user
+QtProject
 
 # backups
 *.bak
