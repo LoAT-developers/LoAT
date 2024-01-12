@@ -23,9 +23,6 @@ add_library(${PROJECT_NAME} STATIC
   yices.cpp
   yicescontext.cpp
   yicescontext.hpp
-  cvc5.hpp
-  cvc5context.hpp
-  cvc5context.cpp
   smtfactory.hpp
 )
 
@@ -41,22 +38,13 @@ find_library(YICES yices)
 message(STATUS "yices: ${YICES}")
 find_library(POLY poly)
 message(STATUS "poly: ${POLY}")
-find_library(POLYXX polyxx)
-message(STATUS "polyxx: ${POLYXX}")
 find_library(CUDD cudd)
 message(STATUS "cudd: ${CUDD}")
-find_library(CVC5 cvc5)
-message(STATUS "cvc5: ${CVC5}")
-find_library(CADICAL cadical)
-message(STATUS "cadical: ${CADICAL}")
 
 target_link_libraries(
     ${PROJECT_NAME}
     ${Z3}
-    ${CVC5}
-    ${CADICAL}
     ${YICES}
-    ${POLYXX}
     ${POLY}
     ${CUDD}
 )

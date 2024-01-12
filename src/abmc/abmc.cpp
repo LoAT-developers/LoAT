@@ -9,7 +9,6 @@
 #include "export.hpp"
 #include "vector.hpp"
 #include "z3.hpp"
-#include "cvc5.hpp"
 #include "rule.hpp"
 #include "dependencygraph.hpp"
 #include "linearizingsolver.hpp"
@@ -23,9 +22,6 @@ ABMC::ABMC(ITSProblem &its):
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Z3:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>(smt::default_timeout));
-        break;
-    case Config::Analysis::CVC5:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
         break;
     case Config::Analysis::Z3Lin:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout, Config::filename));

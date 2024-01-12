@@ -13,7 +13,6 @@
 #include "vareliminator.hpp"
 #include "chain.hpp"
 #include "expr.hpp"
-#include "cvc5.hpp"
 
 #include <numeric>
 #include <random>
@@ -115,9 +114,6 @@ Reachability::Reachability(ITSProblem &chcs):
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Z3:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>(smt::default_timeout));
-        break;
-    case Config::Analysis::CVC5:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
         break;
     case Config::Analysis::Z3Lin:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout, Config::filename));

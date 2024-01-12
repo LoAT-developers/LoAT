@@ -30,7 +30,6 @@ public:
     struct Result {
         Subs closed_form;
         unsigned int prefix = 0;
-        ExprSubs refined_equations;
     };
 
     static std::optional<Result> solve(const Subs &equations, const NumVar &n);
@@ -57,8 +56,6 @@ private:
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
     Subs closed_form_pre;
-
-    std::optional<ExprSubs> inverse {ExprSubs()};
 
     Result result;
 
