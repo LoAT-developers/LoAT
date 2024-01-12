@@ -145,7 +145,8 @@ protected:
         return context.addNewVariable(e);
     }
 
-    EXPR convertRelational(const Rel &rel) {
+    EXPR convertRelational(const Rel &r) {
+        const auto rel {r.normalize()};
 
         EXPR a = convertEx(rel.lhs());
         EXPR b = convertEx(rel.rhs());

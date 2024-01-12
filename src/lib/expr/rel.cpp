@@ -128,7 +128,7 @@ Rel Rel::toG() const {
 }
 
 Rel Rel::normalize() const {
-    return makeRhsZero();
+    return Rel(makeRhsZero().lhs().toIntPoly(), op, 0);
 }
 
 bool Rel::isStrict() const {

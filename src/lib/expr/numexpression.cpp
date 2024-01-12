@@ -513,16 +513,12 @@ Expr Expr::wildcard(unsigned int label) {
 }
 
 Num Expr::denomLcm() const {
-    const Expr &denom = Expr::wildcard(0);
-    const Expr &num = Expr::wildcard(1);
-    const Expr &pattern = denom / num;
-    std::set<Expr> matches;
-    GiNaC::numeric lcm = 1;
-    findAll(pattern, matches);
-    for (const Expr &e: matches) {
-        lcm = GiNaC::lcm(lcm, e.denominator().toNum());
+    const Expr denom {this->ex.denom()};
+    if (denom.isInt()) {
+        return denom.toNum();
+    } else {
+        return 1;
     }
-    return lcm;
 }
 
 Expr Expr::toIntPoly() const {
