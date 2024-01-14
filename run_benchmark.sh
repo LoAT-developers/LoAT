@@ -7,34 +7,26 @@ set -e
 pushd $(dirname ${BASH_SOURCE[0]})
 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
-# cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-# cmake --build build
 pushd build
 make -j4
 popd
 
-# all fibonacci: 081,093,090,086,098,353,354,077,345,073,080,076,343,344
+# DEBUG: non-deterministic unsat/unknown for 133,139
 
-# unsat: 141,145,137
+# gdb --args \
+time ./build/loat-static \
+   --mode reachability \
+   --format horn \
+   --proof-level 0 \
+   --log \
+   "../chc-comp22-benchmarks/LIA/chc-LIA_130.smt2"
+   # "../chc-comp23-benchmarks/test.smt2"
+   # "../chc-comp23-benchmarks/LIA-nonlin/chc-LIA_004.smt2"
 
-# unsat (1m10s): 147
-# unsat (17m)  : 134   --> (1m6s)
+popd
+exit
 
-# too long: 136,150
-
-# with hack: unsat 342
-
-# TODO: 147,134,342,157,148,152,168,139,133,165,158
-
-# # gdb --args \
-# time ./build/loat-static \
-#   --mode reachability \
-#   --format horn \
-#   --proof-level 0 \
-#   "../chc-comp22-benchmarks/LIA/chc-LIA_141.smt2"
-
-# popd
-# exit
+# CHECK: 073 () / 119 () / 126 () / 130 (1m13s) / 351 (2m50s)
 
 ##########################################################################
 
@@ -49,14 +41,15 @@ do
     continue
   else
     read idx z3_result adcl_result <<< "$line"
+    # file="../chc-comp23-benchmarks/${benchmark}-nonlin/chc-${benchmark}_${idx}.smt2"
     file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
 
     # if true; then
-    if [[ "$z3_result" == "unsat" ]] && [[ "$adcl_result" == "timeout" ]]; then
-    # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]] && [[ "$adcl_result" == "timeout" ]]; then
-    # if [[ "$z3_result" == "unsat" ]]; then
+    # if [[ "$z3_result" == "unsat" ]] && [[ "$adcl_result" == "timeout" ]]; then
+    # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]]; then
+    # if [[ "$z3_result" != "sat" ]]; then
     # if [[ "$adcl_result" == "unknown" ]]; then
-    # if [[ "$adcl_result" == "unsat" ]]; then
+    if [[ "$adcl_result" == "unsat" ]]; then
       set +e
       result=$(timeout 20 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")
       # result=$(timeout 5 z3 "$file")
@@ -81,6 +74,7 @@ do
     fi
 
   fi
+# done < "./benchmarks/comp23-${benchmark}-nonlin.txt"
 done < "./benchmarks/${benchmark}.txt"
 
 # "undo" pushd

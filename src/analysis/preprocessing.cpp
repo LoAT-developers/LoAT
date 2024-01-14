@@ -152,18 +152,18 @@ ResultViaSideEffects refine_dependency_graph(ITSProblem &its) {
     return res;
 }
 
-ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
+ResultViaSideEffects Preprocess::preprocess(ITSProblem &its, bool incremental_mode) {
     ResultViaSideEffects res;
     ResultViaSideEffects sub_res;
     if (Config::Analysis::log) {
         std::cout << "starting preprocesing..." << std::endl;
     }
-    if (Config::Analysis::reachability() && its.nonLinearCHCs.size() == 0) {
-        // In this preprocessing step we remove transitions, that are not "forward reachable"
-        // from a initial location or "backward reachable" from a sink. Note, that this step
-        // is not valid though, if the ITS contains non-linear CHCs. For example a sink might 
-        // only be reachable via a non-linear CHCs, but because non-linear CHCs are not acounted
-        // for in the dependency graph, we would remove the sink because it appears to be unreachable.
+    if (Config::Analysis::reachability() && !incremental_mode) {
+        // In this preprocessing step we remove transitions that are not "forward reachable"
+        // from an initial location or "backward reachable" from a sink. Note, that this step
+        // is not valid if the ITS contains non-linear CHCs. For example, a sink appears to 
+        // be unreachable if it is only reachable via a non-linear CHC (which are not accounted 
+        // for in the dependency graph).
         if (Config::Analysis::log) {
             std::cout << "removing irrelevant clauses..." << std::endl;
         }
@@ -177,7 +177,7 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
         }
 
         /* 
-            Chaining linear paths is also problematic in incremental mode, because
+            Chaining linear paths is also problematic in incremental mode because
             we remove the chained rules/facts, which cuts-off paths that might be        
             reachable via a non-linear rule. For example, consider the CHC problem:
 

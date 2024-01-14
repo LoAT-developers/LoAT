@@ -129,7 +129,7 @@ Reachability::Reachability(ITSProblem &chcs, bool incremental_mode):
         ITSExport::printForProof(chcs, std::cout);
     }
 
-    const auto res {Preprocess::preprocess(chcs)};
+    const auto res {Preprocess::preprocess(chcs, incremental_mode)};
     if (res) {
         proof.concat(res.getProof());
         if (Config::Analysis::log) {
@@ -243,19 +243,19 @@ void Reachability::update_cpx() {
 }
 
 Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const {
-    static Rule dummy(top(), Subs());
+    // static Rule dummy(top(), Subs());
 
     // Resolvent only has to be computed in incremental mode (i.e. when the problem includes non linear CHCs) or 
     // for complexity analysis. Otherwise we can skip it.
-    if (Config::Analysis::complexity() || incremental_mode) {
+    // if (Config::Analysis::complexity() || incremental_mode) {
         auto resolvent = idx->withGuard(implicant);
         if (!trace.empty()) {
             resolvent = Chaining::chain(trace.back().resolvent, resolvent).first;
         }
         return *Preprocess::preprocessRule(resolvent);
-    } else {
-        return dummy;
-    }
+    // } else {
+    //     return dummy;
+    // }
 }
 
 bool Reachability::store_step(const TransIdx idx, const Rule &implicant, bool force) {
@@ -758,7 +758,7 @@ void Reachability::analyze() {
     // First only derive "easy" to handle rules with linear guard. If that's not enough
     // also try rules with polynomial guard. Otherwise also consider exponential 
     // (arbitrary) guards.
-    for (const auto tier: constraint_tiers) {
+    for (const auto tier: LinearSolver::constraint_tiers) {
         blocked_clauses[0].clear();
         derive_new_facts(tier);
 
@@ -790,11 +790,11 @@ void Reachability::analyze() {
  * this function returns nullopt.
  */
 const std::optional<Clause> Reachability::trace_as_fact() {
-    if (!incremental_mode) {
-        // In non-incremental mode the trace resolvent is not really computed and only a dummy expression.
-        // See `compute_resolvent` above. So `trace_as_fact` will silently return nonsense.
-        throw std::logic_error("Calling `trace_as_fact` in non-incremental mode doesn't make sense.");
-    }
+    // if (!incremental_mode) {
+    //     // In non-incremental mode the trace resolvent is not really computed and only a dummy expression.
+    //     // See `compute_resolvent` above. So `trace_as_fact` will silently return nonsense.
+    //     throw std::logic_error("Calling `trace_as_fact` in non-incremental mode doesn't make sense.");
+    // }
 
     if (trace.empty()) {
         return {};
@@ -975,17 +975,18 @@ void Reachability::restart() {
 }
 
 void Reachability::add_clauses(const std::set<Clause> &clauses) {
-    bool any_linear_clauses = false;
-    for (const auto &chc : clauses) {
-        chcs.addClause(chc);
+    for (const auto &chc: clauses) {
         if (chc.isLinear()) {
-            any_linear_clauses = true;
+            chcs.addClause(chc);
+        } else {
+            throw std::logic_error("Reachability::add_clauses: tried to add non-linear CHC");
         }
     }
 
-    if (any_linear_clauses) {
+    // only start preprocessing again if at least one new clause was added.
+    if (!clauses.empty()) {
         // TODO: are other preprocessing steps also unsound when in non-linear context? 
-        const auto res {Preprocess::preprocess(chcs)};
+        const auto res {Preprocess::preprocess(chcs, incremental_mode)};
         if (res) {
             proof.concat(res.getProof());
             if (Config::Analysis::log) {
@@ -1001,18 +1002,6 @@ void Reachability::add_clauses(const std::set<Clause> &clauses) {
         // i.e. reset the trace, otherwise we might block a potential reachability path.
         restart();
     }
-}
-
-const std::set<Clause> Reachability::get_initial_facts() const {     
-    std::set<Clause> facts;    
-    for (const auto trans_idx : chcs.getInitialTransitions()) {
-        facts.insert(chcs.clauseFrom(trans_idx));
-    }
-    return facts;
-}
-
-const std::set<Clause> Reachability::get_non_linear_chcs() const {
-    return chcs.nonLinearCHCs;
 }
 
 void Reachability::analyze(ITSProblem &its) {

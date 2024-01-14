@@ -326,10 +326,6 @@ public:
 
     const std::set<Clause> derive_new_facts(LinearSolver::ConstraintTier max_constr_type) override;
 
-    const std::set<Clause> get_initial_facts() const override;
-
-    const std::set<Clause> get_non_linear_chcs() const override;
-
     static void analyze(ITSProblem &its);
 
 };

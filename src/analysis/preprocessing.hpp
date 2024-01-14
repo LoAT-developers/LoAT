@@ -22,6 +22,6 @@
 
 namespace Preprocess {
 
-    ResultViaSideEffects preprocess(ITSProblem &its);
+    ResultViaSideEffects preprocess(ITSProblem &its, bool incremental_mode);
 
 }

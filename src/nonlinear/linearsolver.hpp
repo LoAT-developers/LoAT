@@ -4,7 +4,17 @@
 namespace LinearSolver {
     enum Result { Unsat, Sat, Unknown, Pending };
     enum ConstraintTier { Linear, Polynomial, Exponential };
+
+	/**
+	 * Fixed list of all constaint tiers in order of solving difficulty. 
+	 */
+    const std::vector<LinearSolver::ConstraintTier> constraint_tiers = {
+        LinearSolver::ConstraintTier::Linear,
+        LinearSolver::ConstraintTier::Polynomial,
+        LinearSolver::ConstraintTier::Exponential
+    };
 }
+
 
 /**
  * Any linear CHC solver that implements this interface (e.g. ADCL) is compatible with the 
@@ -47,25 +57,16 @@ public:
 		LinearSolver::ConstraintTier max_constr_tier
 	) = 0;
 
+	/**
+	 * Return current status of the solver. Status Unknown or Sat should be reset to 
+	 * Pending, when new clauses are added via `add_clauses`. The status Unsat should
+	 * be considered final.
+	 */
 	virtual LinearSolver::Result get_analysis_result() const = 0;
 
 	/**
-	 * Adds a new clauses to the linear solver in batch. The added clauses can be 
-	 * linear or non-linear. 
+	 * Adds new clauses to the solver in batch. The added clauses must be linear. 
 	 */
     virtual void add_clauses(const std::set<Clause> &clauses) = 0;
-
-	virtual const std::set<Clause> get_initial_facts() const = 0;
-
-	virtual const std::set<Clause> get_non_linear_chcs() const = 0;
-
-	/**
-	 * Fixed list of all constaint tiers in order of solving difficulty. 
-	 */
-    const std::vector<LinearSolver::ConstraintTier> constraint_tiers = {
-        LinearSolver::ConstraintTier::Linear,
-        LinearSolver::ConstraintTier::Polynomial,
-        LinearSolver::ConstraintTier::Exponential
-    };
 
 };

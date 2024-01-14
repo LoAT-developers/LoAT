@@ -39,11 +39,11 @@ const Var varAt(const Var &var, const Subs &subs) {
  *
  * In practice we normalize all predicates to have the same arity with same argument 
  * types in the same order. So only differing predicate symbols should be a reason
- * for two predicates to not be unifiable. But for "local" correctness we also check
- * arity and argument types.
+ * for two predicates to not be unifiable. But this is a non-local assumption (that might 
+ * change) so for "local correctness" we also check arity and argument types.
  */
 const std::optional<Subs> computeUnifier(const FunApp &pred1, const FunApp &pred2) {
-    if (pred1.loc == pred2.loc) {
+    if (pred1.name == pred2.name) {
         return computeUnifier(pred1.args, pred2.args);
     } else {
         return {};
@@ -108,7 +108,7 @@ const FunApp FunApp::renameWith(const Subs &renaming) const {
     args_renamed.push_back(target_var);
   }
 
-  return FunApp(loc, args_renamed);
+  return FunApp(name, args_renamed);
 }
 
 /**
@@ -123,6 +123,32 @@ const VarSet FunApp::vars() const {
 }
 
 /**
+ * Count number arguments with type integer valued arguments.
+ */
+unsigned long FunApp::intArity() const {
+    unsigned arity {0};
+    for (const auto &arg: args) {
+        if (std::holds_alternative<NumVar>(arg)) {
+            arity++;
+        }
+    }
+    return arity;
+}
+
+/**
+ * Count number arguments with type integer valued arguments.
+ */
+unsigned long FunApp::boolArity() const {
+    unsigned arity {0};
+    for (const auto &arg: args) {
+        if (std::holds_alternative<BoolVar>(arg)) {
+            arity++;
+        }
+    }
+    return arity;
+}
+
+/**
  * Apply `renaming` to all variables in the clause, i.e variables in the guard and the 
  * arguments of all predicates on both LHS and RHS. Will throw an error if the renaming 
  * maps to compound expressions 
@@ -133,9 +159,17 @@ const Clause Clause::renameWith(const Subs &renaming) const {
         lhs_renamed.insert(pred.renameWith(renaming));
     }
 
-    const FunApp rhs_renamed = rhs.renameWith(renaming);
     const auto guard_renamed = guard->subs(renaming);
-    return Clause(lhs_renamed, rhs_renamed, guard_renamed);
+
+    if (rhs.has_value()) {
+        return Clause(
+            lhs_renamed,
+            rhs.value().renameWith(renaming),
+            guard_renamed
+        );
+    } else {
+        return Clause(lhs_renamed, {}, guard_renamed);
+    }
 }
 
 /**
@@ -146,7 +180,9 @@ const VarSet Clause::vars() const {
     for (const auto &pred: lhs) {
         vs.insertAll(pred.vars());
     }
-    vs.insertAll(rhs.vars());
+    if (rhs.has_value()) {
+        vs.insertAll(rhs.value().vars());
+    }
     guard->collectVars(vs);
     return vs;
 }
@@ -173,6 +209,11 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
         throw std::logic_error("Given `pred` is not on the LHS of `chc`");
     }
 
+    // No resolvent if `this` is a query, ie has no RHS predicate.
+    if (this->isQuery()) {
+        return {};
+    }
+
     // Make sure variables in `this` and `chc` are disjoint.
     Subs renaming;
     const VarSet this_vars {this->vars()};
@@ -183,7 +224,7 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
     }
     const Clause this_with_disjoint_vars = this->renameWith(renaming);
 
-    const auto unifier = computeUnifier(this_with_disjoint_vars.rhs, pred);
+    const auto unifier = computeUnifier(this_with_disjoint_vars.rhs.value(), pred);
 
     // If the predicates are not unifiable, we don't throw an error but return
     // nullopt. That way the caller can filter out unifiable predicates using this
@@ -219,23 +260,26 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
  * Partition clauses into linear- and non-linear. The first tuple component holds the linear
  * clauses while second component holds the non-linear clauses.
  */
-const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause> chcs) {
-    std::set<Clause> linear;
-    std::set<Clause> non_linear;
+const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause>& chcs) {
+    std::set<Clause> linear_chcs;
+    std::set<Clause> non_linear_chcs;
 
     for (const Clause& chc: chcs) {
         if (chc.isLinear()) {
-            linear.insert(chc);
+            linear_chcs.insert(chc);
         } else {
-            non_linear.insert(chc);
+            non_linear_chcs.insert(chc);
         }
     }
 
-    return std::make_tuple(linear, non_linear);
+    return std::make_tuple(linear_chcs, non_linear_chcs);
 }
 
 /**
- * Normalize the variable indices of the RHS predicate arguments. For example
+ * Normalize variable names to detect syntactic equivalence of clauses up-to-renaming.
+ *
+ * For that the RHS predicate arguments are renamed to always have the indices 0,1,2,3,...    
+ * For example
  *
  *     i44 > i9 /\ b23 ==> F(i44,b23,i9)
  *
@@ -243,9 +287,8 @@ const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std
  * 
  *     i0 > i2 /\ b1 ==> F(i0,b1,i2)
  *
- * So the variables indices on the right-hand-side should always be 0,1,2,3,etc.
- * unless a variable occurs multiple times in the arguments of the original RHS 
- * predicate. For example:
+ * One exception is when a variable occurs multiple times in the arguments of the 
+ * original RHS predicate. For example:
  * 
  *     i44 > i9 /\ b23 ==> F(i44,b23,i9,i44)
  *
@@ -253,16 +296,20 @@ const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std
  *
  *     i0 > i2 /\ b1 ==> F(i0,b1,i2,i0)
  *
- * to preserve the implict equality.
- *
- * Useful to detect if clauses are syntactially equivalent up-to-renaming.
+ * to preserve the implict equality. But this is not a problem to detect syntatic
+ * equivalence.
  */
 const Clause Clause::normalize() const {
+    if (!this->rhs.has_value()) {
+        return *this;
+    }
+    const auto rhs = this->rhs.value();
+
     // construct a vector of variables with the same length as `this->rhs.args`
     // and the same variable types in each position, except that the variable
     // indices are simply: 0,1,2,3,etc.
     std::vector<Var> target_args;
-    for (unsigned i=0; i < size(this->rhs.args); i++) {           
+    for (unsigned i=0; i < size(rhs.args); i++) {           
         const auto var = std::visit(Overload{
             [i](const NumVar&) {
                 return Var(NumVar(i));
@@ -270,12 +317,12 @@ const Clause Clause::normalize() const {
             [i](const BoolVar&) {
                 return Var(BoolVar(i));
             }
-        }, this->rhs.args[i]);
+        }, rhs.args[i]);
 
         target_args.push_back(var);
     }
 
-    const auto unifier = computeUnifier(this->rhs.args, target_args);
+    const auto unifier = computeUnifier(rhs.args, target_args);
 
     if (unifier.has_value()) {
         return this->renameWith(unifier.value());
@@ -294,10 +341,75 @@ bool Clause::isLinear() const {
     return lhs.size() <= 1;
 }
 
+/**
+ * Returns true iff the clause has no LHS predicates.
+ */
+bool Clause::isFact() const {
+    return lhs.size() == 0;
+}
+
+/**
+ * Returns true iff the clause has no RHS predicate.
+ */
+bool Clause::isQuery() const {
+    return !rhs.has_value();
+}
+
+/**
+ * Return first predicate with given `name` if it occurs on the LHS of the clause.
+ * Returns nullopt if there is no predicate with given `name`. 
+ */
+std::optional<FunApp> Clause::getLHSPredicate(const std::basic_string<char> name) const {
+    for (const auto& pred: lhs) {
+        if (pred.name == name) {
+            return pred;
+        }
+    }
+
+    return {};
+}
+
+/**
+ * Find maximum number of int/bool-valued variables that appear in the arguments of any
+ * any predicate in any clause of `chc_problem`. Returns counts as pair:
+ * 
+ *     [ max_int_arity, max_bool_arity ] = maxArity(chc_problem);
+ * 
+ */
+const std::pair<unsigned long, unsigned long> maxArity(const std::vector<Clause>& chc_problem) {
+    unsigned long max_int_arity {0};
+    unsigned long max_bool_arity {0};
+
+    for (const auto &chc: chc_problem) {
+        if (chc.rhs.has_value()) {
+            const auto& rhs = chc.rhs.value();
+            max_int_arity = std::max(max_int_arity, rhs.intArity());
+            max_bool_arity = std::max(max_bool_arity, rhs.boolArity());
+        }
+
+        for (const auto &pred: chc.lhs) {
+            max_int_arity = std::max(max_int_arity, pred.intArity());
+            max_bool_arity = std::max(max_bool_arity, pred.boolArity());
+        }
+    }
+
+    return std::pair(max_int_arity, max_bool_arity);
+}
+
+bool allLinear(const std::vector<Clause>& chcs) {
+    for (const auto& chc: chcs) {
+        if (!chc.isLinear()) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 bool operator<(const FunApp &fun1, const FunApp &fun2) {
-    if (fun1.loc < fun2.loc) {
+    if (fun1.name < fun2.name) {
         return true;
-    } else if (fun2.loc < fun1.loc) {
+    } else if (fun2.name < fun1.name) {
         return false;
     } else {
         return fun1.args < fun2.args;
@@ -323,7 +435,7 @@ bool operator<(const Clause &c1, const Clause &c2) {
 }
 
 std::ostream &operator<<(std::ostream &s, const FunApp &fun) {
-    s << "F" << fun.loc;
+    s << fun.name;
 
     if (fun.args.size() > 0) {
         auto iter = fun.args.begin();
@@ -347,7 +459,13 @@ std::ostream &operator<<(std::ostream &s, const Clause &chc) {
         s << fun_app << " /\\ ";
     }
 
-    s << chc.guard << " ==> " << chc.rhs;
+    s << chc.guard << " ==> ";
+
+    if (chc.rhs.has_value()) {
+        s << chc.rhs.value();
+    } else {
+        s << "false";
+    }
 
     return s;
 }

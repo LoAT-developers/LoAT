@@ -111,17 +111,18 @@ public:
     // once after parsing and should not be mutated during analysis. But because the ITS instance is constructed 
     // incrementally, we can't pass these values into the constructor and having public getters+setters
     // is no different from making the attributes public directly.    
-    std::vector<NumVar> numProgVars;
-    std::vector<BoolVar> boolProgVars;
-    const std::vector<Var> getProgVars() const;
-
-    std::set<Clause> nonLinearCHCs;
+    std::vector<NumVar> numProgVars; // TODO: clean up
+    std::vector<BoolVar> boolProgVars; // TODO: clean up
+    const std::vector<Var> getProgVars() const; // TODO: clean up
 
     void addClause(const Clause &chc);
 
     const Clause clauseFrom(TransIdx trans_idx) const;
 
     const Clause clauseFrom(const LocationIdx lhs_loc, const LocationIdx rhs_loc, const Rule& rule) const;
+
+    static std::shared_ptr<ITSProblem> fromClauses(const std::set<Clause>& chc_problem);
+    static std::shared_ptr<ITSProblem> fromClauses(const std::vector<Clause>& chc_problem);
 
 protected:
 

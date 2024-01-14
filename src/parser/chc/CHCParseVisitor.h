@@ -56,13 +56,15 @@ enum Sort {
  */
 class  CHCParseVisitor : public CHCVisitor {
 
-    ITSPtr its {std::make_shared<ITSProblem>()};
-    std::map<std::string, LocationIdx> locations;
+    // ITSPtr its {std::make_shared<ITSProblem>()};
+    // std::map<std::string, LocationIdx> locations;
     std::map<std::string, Var> vars;
-    unsigned long max_int_arity {0};
-    unsigned long max_bool_arity {0};
+    // unsigned long max_int_arity {0};
+    // unsigned long max_bool_arity {0};
 
-    LocationIdx loc(const std::string &name);
+    std::set<std::basic_string<char>> fun_names;
+
+    // LocationIdx loc(const std::string &name);
     Var var(const std::string &name, Sort sort);
 
 public:

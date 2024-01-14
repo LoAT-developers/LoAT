@@ -6,21 +6,28 @@
 class FunApp {
 
 public:
-    const LocationIdx loc;
+    const std::basic_string<char> name;
     const std::vector<Var> args;
 
-    FunApp(const LocationIdx loc, const std::vector<Var> args): loc(loc), args(args) {}
+    FunApp(
+        const std::basic_string<char> name,
+        const std::vector<Var> args
+    ): name(name), args(args) {}
 
     const FunApp renameWith(const Subs &renaming) const;
 
     const VarSet vars() const;
+
+    unsigned long intArity() const;
+
+    unsigned long boolArity() const;
 };
 
 class Clause {
 
 public:
     const std::set<FunApp> lhs;
-    const FunApp rhs;
+    const std::optional<FunApp> rhs;
     const BoolExpr guard;
 
     /**
@@ -32,11 +39,14 @@ public:
      *           lhs                  guard                     rhs
      *
      * @param lhs - a set of predicates on the left-hand-side (LHS) of the implication.
-     * @param rhs - a single predicate on the right-hand-side (RHS) of the implication.
+     * @param rhs - an optional predicate on the right-hand-side (RHS) of the implication.
      * @param guard - a boolean expression describing the clause constraint.
      */
-    Clause(const std::set<FunApp> &lhs, const FunApp &rhs, const BoolExpr &guard) 
-        : lhs(lhs), rhs(rhs), guard(guard) {}
+    Clause(
+        const std::set<FunApp> lhs, 
+        const std::optional<FunApp> rhs, 
+        const BoolExpr guard
+    ) : lhs(lhs), rhs(rhs), guard(guard) {}
 
     const Clause renameWith(const Subs &renaming) const;
 
@@ -45,14 +55,23 @@ public:
     const Clause normalize() const;
 
     bool isLinear() const;
+
+    bool isFact() const;
+
+    bool isQuery() const;
     
     const VarSet vars() const;
 
+    std::optional<FunApp> getLHSPredicate(const std::basic_string<char> name) const;
 };
 
-const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause> chcs);
+const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause>& chcs);
 
 const std::optional<Subs> computeUnifier(const std::vector<Var> &args1, const std::vector<Var> &args2);
+
+const std::pair<unsigned long, unsigned long> maxArity(const std::vector<Clause>& chc_problem);
+
+bool allLinear(const std::vector<Clause>& chcs);
 
 // implement comparison operators so they can be stored in std::set
 bool operator<(const Clause &c1, const Clause &c2);

@@ -18,6 +18,7 @@
 #include "main.hpp"
 
 #include "itsparser.hpp"
+#include "itsproblem.hpp"
 #include "parser.hpp"
 #include "chcparser.hpp"
 #include "cintparser.hpp"
@@ -173,6 +174,8 @@ int main(int argc, char *argv[]) {
     }
 
     ITSPtr its;
+    std::vector<Clause> clauses;
+
     switch (Config::Input::format) {
     case Config::Input::Koat:
         its = parser::ITSParser::loadFromFile(filename);
@@ -181,7 +184,7 @@ int main(int argc, char *argv[]) {
         its = sexpressionparser::Parser::loadFromFile(filename);
         break;
     case Config::Input::Horn:
-        its = hornParser::HornParser::loadFromFile(filename);
+        clauses = hornParser::HornParser::loadFromFile(filename);
         break;
     case Config::Input::C:
         its = cintParser::CIntParser::loadFromFile(filename);
@@ -194,11 +197,11 @@ int main(int argc, char *argv[]) {
     yices::init();
     switch (Config::Analysis::engine) {
     case Config::Analysis::ADCL:
-        if (its->nonLinearCHCs.size() == 0) {
+        if (allLinear(clauses)) {
+            its = ITSProblem::fromClauses(clauses);
             reachability::Reachability::analyze(*its);
         } else {
-            auto linear_solver = reachability::Reachability(*its, true);
-            NonLinearSolver::analyze(linear_solver);
+            NonLinearSolver::analyze(clauses);
         }
         break;
     case Config::Analysis::BMC:
