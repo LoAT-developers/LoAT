@@ -55,7 +55,7 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
         const auto i {rhs.solveTermFor(lhs, ConstantCoeffs)};
         if (!i) {
             inverse = std::optional<ExprSubs>();
-        } else {
+        } else if (inverse) {
             inverse->put(lhs, lhs + *i);
         }
         result.refined_equations.put(lhs, rhs);
