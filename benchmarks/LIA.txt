@@ -1,4 +1,4 @@
-### Z3(117) ADCL(69)
+### Z3      ADCL
 000 sat     timeout
 001 sat     timeout
 002 sat     timeout
@@ -263,11 +263,11 @@
 261 sat     unknown
 262 sat     unknown
 263 unsat   unsat
-264 unsat   timeout
+264 unsat   unsat
 265 timeout timeout
 266 unsat   timeout
 267 timeout timeout
-268 unsat   timeout
+268 unsat   unsat
 269 sat     timeout
 270 sat     timeout
 271 unsat   unsat

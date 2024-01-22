@@ -13,9 +13,15 @@ public:
 
 };
 
-const std::vector<Clause> all_resolvents(const Clause& chc, const std::set<Clause>& facts);
+const std::set<Clause> all_resolvents(const std::set<Clause>& non_linear_chcs, const std::set<Clause>& facts);
 
-void all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator preds, const std::set<Clause>& facts, std::vector<Clause>& resolvents);
+void all_resolvents_aux(
+    const Clause& chc, 
+    unsigned pred_index, 
+    const std::set<Clause>& facts, 
+    std::set<Clause>& resolvents, 
+    unsigned& redundant_resolvent_count
+);
 
 const std::vector<Clause> normalize_all_preds(const std::vector<Clause>& chc_problem);
 

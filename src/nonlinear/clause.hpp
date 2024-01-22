@@ -26,7 +26,7 @@ public:
 class Clause {
 
 public:
-    const std::set<FunApp> lhs;
+    const std::vector<FunApp> lhs;
     const std::optional<FunApp> rhs;
     const BoolExpr guard;
 
@@ -43,14 +43,14 @@ public:
      * @param guard - a boolean expression describing the clause constraint.
      */
     Clause(
-        const std::set<FunApp> lhs, 
+        const std::vector<FunApp> lhs, 
         const std::optional<FunApp> rhs, 
         const BoolExpr guard
     ) : lhs(lhs), rhs(rhs), guard(guard) {}
 
     const Clause renameWith(const Subs &renaming) const;
 
-    const std::optional<Clause> resolutionWith(const Clause &chc, const FunApp &pred) const;
+    const std::optional<Clause> resolutionWith(const Clause &chc, unsigned pred_index) const;
 
     const Clause normalize() const;
 
@@ -62,7 +62,7 @@ public:
     
     const VarSet vars() const;
 
-    std::optional<FunApp> getLHSPredicate(const std::basic_string<char> name) const;
+    std::optional<unsigned> indexOfLHSPred(const std::basic_string<char> name) const;
 };
 
 const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause>& chcs);
@@ -80,3 +80,5 @@ bool operator<(const FunApp &fun1, const FunApp &fun2);
 std::ostream& operator<<(std::ostream &s, const FunApp &fun_app);
 
 std::ostream& operator<<(std::ostream &s, const Clause &chc);
+
+std::ostream& printSimple(std::ostream &s, const Clause &chc);

@@ -1,4 +1,4 @@
-### Z3(119) ADCL(40)
+### Z3(119) ADCL(45)
 000 sat     timeout 
 001 sat     timeout 
 002 sat     timeout 
@@ -122,7 +122,7 @@
 120 timeout timeout 
 121 unsat   unsat   
 122 unsat   timeout 
-123 unsat   timeout 
+123 unsat   unsat
 124 unsat   timeout 
 125 sat     timeout 
 126 unsat   unsat   
@@ -203,10 +203,10 @@
 201 unsat   unsat   
 202 unsat   unsat
 203 unsat   unsat   
-204 unsat   timeout 
-205 unsat   timeout 
-206 unsat   timeout 
-207 unsat   timeout 
+204 unsat   unsat
+205 unsat   unsat
+206 unsat   unsat
+207 unsat   unsat
 208 sat     timeout 
 209 sat     timeout 
 210 sat     timeout 

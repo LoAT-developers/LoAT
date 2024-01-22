@@ -66,29 +66,10 @@ void NonLinearSolver::analyze(const std::vector<Clause>& initial_chcs) {
 
             // Do resolution with all combinations of facts and non-linear clauses to 
             // get every possible linear clause that we can derive in this iteration.
-            std::list<Clause> resolvents;
-            for (const auto& non_linear_chc: non_linear_chcs) {
-                const auto res(all_resolvents(non_linear_chc, facts));           
-                resolvents.insert(
-                    resolvents.end(),
-                    res.begin(),
-                    res.end()
-                );
-            }
-
-            // Filter-out syntactially redundant resolvents:
-            const std::set<Clause> resolvents_distinct(resolvents.begin(), resolvents.end());
-            if (Config::Analysis::log) {
-                std::cout 
-                    << (resolvents.size() - resolvents_distinct.size())
-                    << " of "
-                    << resolvents.size()
-                    << " resolvents are syntactially redundant"                
-                    << std::endl;
-            }            
+            const std::set<Clause> resolvents = all_resolvents(non_linear_chcs, facts);
 
             // Add linear resolvents to linear solver and store non-linear resolvents for the next resolutions round:
-            const auto [linear_resolvents, non_linear_resolvents] = partitionByDegree(resolvents_distinct);
+            const auto [linear_resolvents, non_linear_resolvents] = partitionByDegree(resolvents);
             linear_solver.add_clauses(linear_resolvents);
             non_linear_chcs.insert(non_linear_resolvents.begin(), non_linear_resolvents.end());
 
@@ -96,9 +77,9 @@ void NonLinearSolver::analyze(const std::vector<Clause>& initial_chcs) {
             facts.clear();
             facts = linear_solver.derive_new_facts(max_constraint_tier);
             if (Config::Analysis::log) {
-                for (const auto &fact: facts) {
-                    std::cout << "new fact: " << fact << std::endl;
-                }
+                // for (const auto &fact: facts) {
+                //     std::cout << "new fact: " << fact << std::endl;
+                // }
             }
 
             // If the linear solver proved Unsat, we can terminate. Otherwise, we use the derived facts to in the next
@@ -132,9 +113,8 @@ void NonLinearSolver::analyze(const std::vector<Clause>& initial_chcs) {
     }
 }
 
-
 /**
- * Compute all resolvents of `chc` with `facts`, while trying to avoid redundant derivations.
+ * Compute all resolvents of `non_linear_chcs` with `facts`, while trying to avoid redundant derivations.
  * For example, let `F(1)` be the only fact and `chc` be `F(x) /\ F(y) /\ F(z) ==> G(x,y,z)`
  * then a redundant derivation would be:
  *  
@@ -148,28 +128,92 @@ void NonLinearSolver::analyze(const std::vector<Clause>& initial_chcs) {
  *
  *     F(x) ==> G(x,1,1)                  F(x) ==> G(x,1,1)
  * 
- * The returned clause list should not contain any redundant clauses as long as the given 
- * `facts` are not redundant. The returned list should also not contain `chc` itself and
- * no facts (i.e. clauses with no LHS predicates).
+ * The returned clause set should not contain any redundant clauses as long as the given 
+ * `facts` and `non_linear_chcs` are not redundant. The returned clauses should also not 
+ * include `non_linear_chcs` and themselves and no facts (i.e. clauses with no LHS predicates).
  */
-const std::vector<Clause> all_resolvents(const Clause& chc, const std::set<Clause>& facts) {
-    std::vector<Clause> resolvents;
-    all_resolvents_aux(chc, chc.lhs.begin(), facts, resolvents);
+const std::set<Clause> all_resolvents(const std::set<Clause>& non_linear_chcs, const std::set<Clause>& facts) {
+    std::set<Clause> resolvents;
+
+    unsigned redundant_resolvent_count = 0;
+
+    if (Config::Analysis::log) {
+        std::cout 
+            << "resolving "
+            << non_linear_chcs.size()
+            << " non-linear CHCs with "
+            << facts.size()
+            << " facts"                
+            << std::endl;
+    }
+
+    for (const auto& chc: non_linear_chcs) {
+        // std::cout << "preds: " << chc.lhs.size() << std::endl;
+        all_resolvents_aux(chc, 0, facts, resolvents, redundant_resolvent_count);
+    }
+
+    // if (Config::Analysis::log) {
+        std::cout 
+            << "computed "
+            << resolvents.size()
+            << " resolvents ("
+            << redundant_resolvent_count 
+            << " redundant)"
+            << std::endl;
+    // }
+
+    for (const auto& res: resolvents) {
+        const std::set<FunApp> lhs_unique(res.lhs.begin(), res.lhs.end());
+        int red_count = res.lhs.size() - lhs_unique.size();
+        if (red_count != 0) {
+            std::cout << "redundant lhs preds: " << red_count << std::endl;
+        }
+    }
+
     return resolvents;
 }
-void all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator preds, const std::set<Clause>& facts, std::vector<Clause>& resolvents) {
+void all_resolvents_aux(const Clause& chc, unsigned pred_index, const std::set<Clause>& facts, std::set<Clause>& resolvents, unsigned& redundant_resolvent_count) {
     // === Running example ===
-    // `chc`   : F(x) /\ F(y) /\ F(z) ==> G(x,y,z)
-    // `preds` :  ^---- iterator pointing on first predicate of `chc`
-    // `facts` : [F(1), F(2)]
+    // `chc`        : F(x) /\ F(y) /\ F(z) ==> G(x,y,z)
+    // `pred_index` :   ^---- index on first LHS predicate of `chc`
+    // `facts`      : [F(1), F(2)]
 
-    if (preds == chc.lhs.end() || chc.isLinear()) {
-        return; 
+    if (pred_index >= chc.lhs.size() || chc.isLinear()) {
+        return;
     } else {
-        const auto current_pred = *preds; // == F(x)
+        // All resolvents that DO eliminate F(x)
+        for (const auto& fact: facts) {
+            const auto optional_resolvent = fact.resolutionWith(chc, pred_index);
 
+            if (optional_resolvent.has_value()) {
+                const auto resolvent = optional_resolvent.value();
+                // for fact = F(1) :      F(y) /\ F(z) ==> G(1,y,z)
+                //
+                // for fact = F(2) :      F(y) /\ F(z) ==> G(2,y,z)
+
+                if (resolvents.contains(resolvent)) {
+                    redundant_resolvent_count++;
+                    std::cout << "red: " << resolvent << std::endl;
+                    // throw std::logic_error("");
+                } else if (SmtFactory::check(resolvent.guard) == Sat) {
+                    resolvents.insert(resolvent);
+
+                    all_resolvents_aux(resolvent, pred_index, facts, resolvents, redundant_resolvent_count);
+                    // for fact = F(1) :       F(y) ==> G(1,y,1)
+                    //                         F(y) ==> G(1,y,2)
+                    //                         F(z) ==> G(1,1,z)
+                    //                         F(z) ==> G(1,2,z)
+                    //
+                    // for fact = F(2) :       F(y) ==> G(2,y,1)
+                    //                         F(y) ==> G(2,y,2)
+                    //                         F(z) ==> G(2,1,z)
+                    //                         F(z) ==> G(2,2,z)
+                }
+            } 
+        }
+        
         // All resolvents that DONT eliminate F(x)
-        all_resolvents_aux(chc, std::next(preds), facts, resolvents);
+        all_resolvents_aux(chc, pred_index+1, facts, resolvents, redundant_resolvent_count);
         // F(x) /\ F(y) ==> G(x,y,1)
         // F(x) /\ F(y) ==> G(x,y,2)
         //
@@ -180,54 +224,6 @@ void all_resolvents_aux(const Clause& chc, const std::set<FunApp>::iterator pred
         // F(x) /\ F(z) ==> G(x,2,z)
         // F(x) ==> G(x,2,1)
         // F(x) ==> G(x,2,2)
-
-        // All resolvents that DO eliminate F(x)
-        // std::list<Clause> res_without_head;
-        for (const auto& fact: facts) {             
-            const auto optional_resolvent = fact.resolutionWith(chc, current_pred);
-
-            if (optional_resolvent.has_value()) {    
-                const auto resolvent = optional_resolvent.value();
-                // for fact = F(1) :      F(y) /\ F(z) ==> G(1,y,z)
-                //
-                // for fact = F(2) :      F(y) /\ F(z) ==> G(2,y,z)
-
-                if (SmtFactory::check(resolvent.guard) == Sat) {
-                    resolvents.push_back(resolvent);
-                    // if (Config::Analysis::log) {
-                    //     std::cout << "new resolvent: " << resolvent << std::endl;
-                    // }
-
-
-                    // const auto res(all_resolvents_aux(resolvent, resolvent.lhs.begin(), facts));
-                    all_resolvents_aux(resolvent, resolvent.lhs.begin(), facts, resolvents);
-                    // for fact = F(1) :       F(y) ==> G(1,y,1)
-                    //                         F(y) ==> G(1,y,2)
-                    //                         F(z) ==> G(1,1,z)
-                    //                         F(z) ==> G(1,2,z)
-                    //
-                    // for fact = F(2) :       F(y) ==> G(2,y,1)
-                    //                         F(y) ==> G(2,y,2)
-                    //                         F(z) ==> G(2,1,z)
-                    //                         F(z) ==> G(2,2,z)
-
-                    // res_without_head.push_back(resolvent);
-                    // res_without_head.insert(
-                    //     res_without_head.begin(),
-                    //     res.begin(),
-                    //     res.end()
-                    // );
-                }
-            }
-        }
-
-        // join all collected resolvents and return:
-        // res_without_head.insert(
-        //     res_without_head.end(),
-        //     res_with_head.begin(), 
-        //     res_with_head.end()
-        // );
-        // return res_without_head;
     }
 }
 
@@ -273,7 +269,7 @@ const std::vector<Clause> normalize_all_preds(const std::vector<Clause>& initial
     auto [ max_int_arity, max_bool_arity ] = maxArity(initial_chcs);
 
     for (const auto& chc: initial_chcs) {
-        std::set<FunApp> lhs_normalized;
+        std::vector<FunApp> lhs_normalized;
 
         for (const FunApp &pred: chc.lhs) {
             const auto pred_normalized = normalize_pred(
@@ -281,7 +277,7 @@ const std::vector<Clause> normalize_all_preds(const std::vector<Clause>& initial
                 max_bool_arity, 
                 pred
             );
-            lhs_normalized.insert(pred_normalized);
+            lhs_normalized.push_back(pred_normalized);
         }            
 
         if (chc.rhs.has_value()) {
@@ -355,10 +351,10 @@ const Clause eliminate_pred(const Clause& left, const Clause& right) {
     }
 
     const auto& left_pred = left.rhs.value();
-    const auto& right_pred = right.getLHSPredicate(left_pred.name);    
+    const auto& right_pred_index = right.indexOfLHSPred(left_pred.name);
 
-    if (right_pred.has_value()) {
-        return eliminate_pred(left, left.resolutionWith(right, right_pred.value()).value());
+    if (right_pred_index.has_value()) {
+        return eliminate_pred(left, left.resolutionWith(right, right_pred_index.value()).value());
     } else {
         return right;
     }
@@ -410,7 +406,7 @@ const Clause eliminate_pred(const Clause& left, const Clause& right) {
  * Thus, we are left with a trivial CHC problem.
  */
 const std::set<Clause> presolve(const std::vector<Clause>& initial_chcs) {
-    // first collect all RHS predicate that occur in the CHC problem.
+    // first collect all RHS predicates of all CHCs
     std::set<FunApp> rhs_preds;
     for (const auto& chc: initial_chcs) {
         if (chc.rhs.has_value()) {
@@ -449,10 +445,10 @@ const std::set<Clause> presolve(const std::vector<Clause>& initial_chcs) {
                 // We can't completely eliminate `F` because it also occurs on the LHS of `c1`.
                 // In fact, any clause that has `F` on the its LHS is "unreachable" so we can remove
                 // them all from the CHC problem. 
-                if (uni_chc.getLHSPredicate(pred.name).has_value()) {
+                if (uni_chc.indexOfLHSPred(pred.name).has_value()) {
                     std::set<Clause> chcs_without_pred;
                     for (const Clause& chc: chcs) {
-                        if (!chc.getLHSPredicate(pred.name).has_value()) {
+                        if (!chc.indexOfLHSPred(pred.name).has_value()) {
                             chcs_without_pred.insert(chc);
                         }
                     }

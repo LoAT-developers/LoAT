@@ -20,7 +20,7 @@ using lit_type = Res<BoolExpr>;
 using assert_type = Clause;
 using query_type = Clause;
 using symbol_type = std::string;
-using tail_type = std::pair<std::set<FunApp>, BoolExpr>;
+using tail_type = std::pair<std::vector<FunApp>, BoolExpr>;
 using head_type = FunApp;
 using var_or_atom_type = std::variant<BoolVar, FunApp>;
 using boolop_type = BoolOp;
@@ -137,13 +137,13 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
         guards.insert(guards.end(), r.refinement.begin(), r.refinement.end());
     }
 
-    std::set<FunApp> predicates;
+    std::vector<FunApp> predicates;
     for (const auto &c: ctx->var_or_atom()) {
         const auto v = any_cast<var_or_atom_type>(visit(c));
         if (std::holds_alternative<BoolVar>(v)) {
             guards.push_back(BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(v))));
         } else {
-            predicates.insert(std::get<FunApp>(v));
+            predicates.push_back(std::get<FunApp>(v));
         }
     }
 

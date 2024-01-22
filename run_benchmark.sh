@@ -3,7 +3,7 @@
 set -e
 
 # Switch working directory to the folder, where this script is laying around.
-# That way all paths are guaranteed to be relative to the script locaiton.
+# That way all paths are guaranteed to be relative to the script location.
 pushd $(dirname ${BASH_SOURCE[0]})
 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
@@ -11,22 +11,25 @@ pushd build
 make -j4
 popd
 
-# DEBUG: non-deterministic unsat/unknown for 133,139
+# DEBUG: non-deterministic unsat/unknown for 133,139,157
+
+# TODO: propagate equalities for Clauses
 
 # gdb --args \
 time ./build/loat-static \
    --mode reachability \
    --format horn \
    --proof-level 0 \
-   --log \
-   "../chc-comp22-benchmarks/LIA/chc-LIA_130.smt2"
-   # "../chc-comp23-benchmarks/test.smt2"
-   # "../chc-comp23-benchmarks/LIA-nonlin/chc-LIA_004.smt2"
+   "../chc-comp22-benchmarks/LIA/chc-LIA_130_mod.smt2"
+   # "../chc-comp22-benchmarks/LIA/chc-LIA_112.smt2"
+   # "../chc-comp23-benchmarks/LIA-nonlin/chc-LIA_111.smt2"
 
 popd
 exit
 
-# CHECK: 073 () / 119 () / 126 () / 130 (1m13s) / 351 (2m50s)
+# REVIEW (comp22) : 076,073,112
+# REVIEW (comp22) : 119 (1m20s) / 126 (2m19s) 
+# REVIEW (comp23) : 111 
 
 ##########################################################################
 
@@ -45,11 +48,11 @@ do
     file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
 
     # if true; then
-    # if [[ "$z3_result" == "unsat" ]] && [[ "$adcl_result" == "timeout" ]]; then
+    if [[ "$z3_result" == "unsat" ]] && [[ "$adcl_result" == "timeout" ]]; then
     # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]]; then
     # if [[ "$z3_result" != "sat" ]]; then
     # if [[ "$adcl_result" == "unknown" ]]; then
-    if [[ "$adcl_result" == "unsat" ]]; then
+    # if [[ "$adcl_result" == "unsat" ]]; then
       set +e
       result=$(timeout 20 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")
       # result=$(timeout 5 z3 "$file")

@@ -154,9 +154,9 @@ unsigned long FunApp::boolArity() const {
  * maps to compound expressions 
  */
 const Clause Clause::renameWith(const Subs &renaming) const {
-    std::set<FunApp> lhs_renamed;
+    std::vector<FunApp> lhs_renamed;
     for (const FunApp &pred : lhs) {
-        lhs_renamed.insert(pred.renameWith(renaming));
+        lhs_renamed.push_back(pred.renameWith(renaming));
     }
 
     const auto guard_renamed = guard->subs(renaming);
@@ -187,6 +187,16 @@ const VarSet Clause::vars() const {
     return vs;
 }
 
+const std::vector<FunApp> deletePredAt(const std::vector<FunApp>& preds, unsigned index) {
+    std::vector<FunApp> new_preds;
+    for (unsigned i=0; i<preds.size(); i++) {
+        if (i != index) {
+            new_preds.push_back(preds.at(i));
+        }
+    }
+    return new_preds;
+}
+
 /**
  * Compute resolution of `this` and `chc` using the RHS of `this` and `pred`,
  * which is assumed to be on the LHS of `chc`. So the caller is responsible for
@@ -195,19 +205,20 @@ const VarSet Clause::vars() const {
  *
  * For example, with
  *
- * 	 this : F(x) ==> G(x)
- * 	 chc  : G(y) /\ G(z) /\ y < z ==> H(y,z)
- *   pred : G(z)
+ * 	 this       : F(x) ==> G(x)
+ * 	 chc        : G(y) /\ G(z) /\ y < z ==> H(y,z)
+ *   pred_index :  ^--- points on first predicate (i.e. pred_index = 0)
  *
  * the returned resolvent should be
  *
  * 	 G(y) /\ F(z) /\ y < z ==> H(y,z)
  *
  */
-const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunApp &pred) const {
-    if (!chc.lhs.contains(pred)) {
-        throw std::logic_error("Given `pred` is not on the LHS of `chc`");
+const std::optional<Clause> Clause::resolutionWith(const Clause &chc, unsigned pred_index) const {
+    if (pred_index >= chc.lhs.size()) {
+        throw std::logic_error("Clause::resolutionWith: `pred_index` out-of-bounds");
     }
+    const auto& resolved_pred = chc.lhs.at(pred_index);
 
     // No resolvent if `this` is a query, ie has no RHS predicate.
     if (this->isQuery()) {
@@ -224,7 +235,7 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
     }
     const Clause this_with_disjoint_vars = this->renameWith(renaming);
 
-    const auto unifier = computeUnifier(this_with_disjoint_vars.rhs.value(), pred);
+    const auto unifier = computeUnifier(this_with_disjoint_vars.rhs.value(), resolved_pred);
 
     // If the predicates are not unifiable, we don't throw an error but return
     // nullopt. That way the caller can filter out unifiable predicates using this
@@ -237,15 +248,15 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, const FunA
     }
 
     const Clause this_unified = this_with_disjoint_vars.renameWith(unifier.value());
-    std::set<FunApp> chc_lhs_without_pred = chc.lhs;
-    chc_lhs_without_pred.erase(pred);
-    const Clause chc_unified = Clause(chc_lhs_without_pred, chc.rhs, chc.guard)
+    const Clause chc_unified = Clause(deletePredAt(chc.lhs, pred_index), chc.rhs, chc.guard)
         .renameWith(unifier.value());
 
     // LHS of resolvent is the union of the renamed LHS of `this` ...
-    std::set<FunApp> resolvent_lhs = this_unified.lhs;
+    std::vector<FunApp> resolvent_lhs = this_unified.lhs;
     // ... and the LHS of `chc` where `pred` is removed.
-    resolvent_lhs.insert(chc_unified.lhs.begin(), chc_unified.lhs.end());
+    for (const auto& pred: chc_unified.lhs) {
+        resolvent_lhs.push_back(pred);
+    }
 
     const auto new_guard = this_unified.guard & chc_unified.guard;
 
@@ -359,10 +370,10 @@ bool Clause::isQuery() const {
  * Return first predicate with given `name` if it occurs on the LHS of the clause.
  * Returns nullopt if there is no predicate with given `name`. 
  */
-std::optional<FunApp> Clause::getLHSPredicate(const std::basic_string<char> name) const {
-    for (const auto& pred: lhs) {
-        if (pred.name == name) {
-            return pred;
+std::optional<unsigned> Clause::indexOfLHSPred(const std::basic_string<char> name) const {
+    for (unsigned i=0; i<lhs.size(); i++) {
+        if (lhs.at(i).name == name) {
+            return i;
         }
     }
 
@@ -463,6 +474,22 @@ std::ostream &operator<<(std::ostream &s, const Clause &chc) {
 
     if (chc.rhs.has_value()) {
         s << chc.rhs.value();
+    } else {
+        s << "false";
+    }
+
+    return s;
+}
+
+std::ostream& printSimple(std::ostream &s, const Clause &chc) {
+    for (const FunApp& pred: chc.lhs) {
+        s << pred.name << " /\\ ";
+    }
+
+    s << "(...) ==> ";
+
+    if (chc.rhs.has_value()) {
+        s << chc.rhs.value().name;
     } else {
         s << "false";
     }
