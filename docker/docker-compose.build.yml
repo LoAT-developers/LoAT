@@ -12,6 +12,6 @@ services:
     volumes:
       - ..:/LoAT
     build:
-      context: .
-      dockerfile: build.Dockerfile
+      context: ..
+      dockerfile: docker/build.Dockerfile
     network_mode: host

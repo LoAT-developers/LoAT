@@ -3,7 +3,7 @@
 #include "theory.hpp"
 #include "rule.hpp"
 
-#include <libfaudes.h>
+#include <faudes/libfaudes.h>
 
 class Automaton {
 

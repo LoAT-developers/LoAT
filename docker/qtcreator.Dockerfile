@@ -15,8 +15,8 @@ RUN git config --global --add safe.directory /LoAT
 
 FROM base as build
 
-COPY --from=loat-docker:latest /my_include /usr/local/include
-COPY --from=loat-docker:latest /my_lib /usr/local/lib
+COPY ../include /usr/local/include
+COPY ../lib /usr/local/lib
 
 ARG TOKEN
 RUN xauth add $TOKEN

@@ -65,6 +65,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_qe_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
   ${loat_acceleration_INCLUDE_DIRS}
+  /usr/local/include/antlr4-runtime
 )
 
 target_link_libraries(${EXECUTABLE}
