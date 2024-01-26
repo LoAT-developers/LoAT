@@ -22,7 +22,7 @@ BUILD=../build/release
 BIN=loat-static
 BUNDLE=../bin
 TEMPLATE=../bundle.template
-OUT=loat.zip
+OUT=../loat.zip
 
 if [[ ! -d $OUT ]]; then
     rm $OUT
