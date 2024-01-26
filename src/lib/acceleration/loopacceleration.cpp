@@ -21,6 +21,7 @@
 #include "accelerationproblem.hpp"
 #include "chain.hpp"
 #include "expr.hpp"
+#include "loopcomplexity.hpp"
 
 #include <purrs.hh>
 #include <numeric>
@@ -38,85 +39,16 @@ LoopAcceleration::LoopAcceleration(
 }
 
 const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
-    Rule res = rule;
-    unsigned period = 1;
-    // chain if there are updates like x = y; y = x
-    unsigned cycleLength = 1;
-    const auto up = res.getUpdate();
-    for (const auto &p: up) {
-        if (p.index() == 1) continue;
-        const auto var = expr::first(p);
-        const auto ex = expr::second(p);
-        auto vars = expr::vars(ex);
-        unsigned oldSize = 0;
-        unsigned count = 1;
-        while (oldSize != vars.size() && vars.find(var) == vars.end()) {
-            oldSize = vars.size();
-            count++;
-            VarSet toInsert;
-            for (const auto& var: vars) {
-                auto it = up.find(var);
-                if (it != up.end()) {
-                    toInsert.insertAll(expr::vars(expr::second(*it)));
-                }
-            }
-            vars.insertAll(toInsert);
-        }
-        if (count > 1 && vars.find(var) != vars.end()) {
-            cycleLength = std::lcm(cycleLength, count);
-        }
-    }
-    if (cycleLength > 1) {
-        Rule orig(res);
-        for (unsigned i = 1; i < cycleLength; ++i) {
-            res = Chaining::chain(res, orig).first;
-        }
-        period *= cycleLength;
-    }
-    // chain if it eliminates variables from an update
-    NEXT: while (true) {
-        const auto up = res.getUpdate().get<IntTheory>();
-        for (const auto &p: up) {
-            std::set<NumVar> varsOneStep(p.second.vars());
-            std::set<NumVar> varsTwoSteps(p.second.subs(up).vars());
-            bool subset {true};
-            for (const auto &var: varsTwoSteps) {
-                if (expr::isTempVar(var)) {
-                    continue;
-                }
-                if (varsOneStep.find(var) == varsOneStep.end()) {
-                    subset = true;
-                    break;
-                }
-            }
-            if (subset) {
-                for (const auto &var: varsOneStep) {
-                    if (expr::isTempVar(var)) {
-                        continue;
-                    }
-                    if (varsTwoSteps.find(var) == varsTwoSteps.end()) {
-                        res = Chaining::chain(res, res).first;
-                        period *= 2;
-                        goto NEXT;
-                    }
-                }
-            }
-        }
-        break;
-    }
-    bool changed;
+    auto changed {false};
+    auto res {rule};
+    unsigned period {1};
     do {
         changed = false;
-        // chain if there are updates like b = !b
-        for (const auto &p: res.getUpdate().get<BoolTheory>()) {
-            const auto lits = p.second->lits();
-            const auto lit = BoolLit(p.first);
-            if (lits.find(!lit) != lits.end() && lits.find(lit) == lits.end()) {
-                res = Chaining::chain(res, res).first;
-                period *= 2;
-                changed = true;
-                break;
-            }
+        const Rule chained {Chaining::chain(res, res).first};
+        if (LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
+            res = chained;
+            period *= 2;
+            changed = true;
         }
     } while (changed);
     return {res, period};

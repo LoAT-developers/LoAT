@@ -18,6 +18,8 @@ add_library(${PROJECT_NAME} STATIC
   chain.hpp
   chain.cpp
   relevantvariables.hpp
+  loopcomplexity.cpp
+  loopcomplexity.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
