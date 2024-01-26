@@ -43,7 +43,7 @@ class LinearizingSolver: public Smt<Th...> {
 
 public:
 
-    LinearizingSolver(unsigned timeout): z3(timeout) {
+    LinearizingSolver(): z3() {
         lin_vars.push({});
     }
 
@@ -240,10 +240,6 @@ public:
 
     Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
         return z3.model(vars);
-    }
-
-    void setTimeout(unsigned int timeout) override {
-        z3.setTimeout(timeout);
     }
 
     void enableModels() override {

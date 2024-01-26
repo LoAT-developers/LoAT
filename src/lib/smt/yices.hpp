@@ -27,7 +27,7 @@ class Yices : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    Yices(Logic logic, unsigned timeout): timeout(timeout), ctx(YicesContext()), config(yices_new_config()) {
+    Yices(Logic logic): ctx(YicesContext()), config(yices_new_config()) {
         std::string l;
         switch (logic) {
         case QF_LA:
@@ -79,17 +79,7 @@ public:
     }
 
     SmtResult check() override {
-        if (timeout > 0) {
-            auto future = std::async(yices_check_context, solver, nullptr);
-            if (future.wait_for(std::chrono::milliseconds(timeout)) != std::future_status::timeout) {
-                return processResult(future.get());
-            } else {
-                yices_stop_search(solver);
-                return Unknown;
-            }
-        } else {
-            return processResult(yices_check_context(solver, nullptr));
-        }
+        return processResult(yices_check_context(solver, nullptr));
     }
 
     Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
@@ -132,10 +122,6 @@ public:
         return res;
     }
 
-    void setTimeout(unsigned int timeout) override {
-        this->timeout = timeout;
-    }
-
     void setSeed(unsigned seed) override {
         throw std::runtime_error("Yices::setSeed not yet implemented");
     }
@@ -156,7 +142,6 @@ public:
     }
 
 private:
-    unsigned int timeout;
     YicesContext ctx;
     ctx_config_t *config;
     context_t *solver;

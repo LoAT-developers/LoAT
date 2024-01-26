@@ -13,7 +13,7 @@
 #include "rule.hpp"
 #include "dependencygraph.hpp"
 #include "linearizingsolver.hpp"
-#include "z3inclin.hpp"
+#include "swine.hpp"
 
 using namespace Config::ABMC;
 
@@ -22,16 +22,16 @@ ABMC::ABMC(ITSProblem &its):
     trace_var(NumVar::next()) {
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Z3:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>(smt::default_timeout));
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>());
         break;
     case Config::Analysis::CVC5:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
         break;
     case Config::Analysis::Z3Lin:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout));
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>());
         break;
-    case Config::Analysis::Z3IncLin:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3IncLin<IntTheory, BoolTheory>());
+    case Config::Analysis::Swine:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Swine<IntTheory, BoolTheory>());
         break;
     }
     vars.insert(trace_var);

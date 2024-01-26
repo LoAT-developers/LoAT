@@ -1,13 +1,12 @@
 #pragma once
 
 #include "smt.hpp"
-#include "cvc5context.hpp"
+#include "swinecontext.hpp"
 #include "exprtosmt.hpp"
 
-#include <cvc5/cvc5.h>
 
 template <ITheory... Th>
-class CVC5 : public Smt<Th...> {
+class Swine: public Smt<Th...> {
 
     using TheTheory = Theory<Th...>;
     using BoolExpr = BExpr<Th...>;
@@ -15,13 +14,13 @@ class CVC5 : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    CVC5(): solver(), ctx(solver) {
+
+    Swine(const swine::Config config = swine::Config()): solver(config, z3ctx), ctx(solver) {
         updateParams();
     }
 
     void add(const BExpr<Th...> e) override {
-        solver.assertFormula(ExprToSmt<cvc5::Term, Th...>::convert(e, ctx));
-        solver.assertFormula(ctx.clearRefinement());
+        solver.add(ExprToSmt<z3::expr, Th...>::convert(e, ctx));
     }
 
     void push() override {
@@ -33,24 +32,25 @@ public:
     }
 
     SmtResult check() override {
-        const auto res {solver.checkSat()};
-        if (res.isSat()) {
-            return Sat;
-        } else if (res.isUnsat()) {
+        switch (solver.check()) {
+        case z3::unsat:
             return Unsat;
-        } else {
+        case z3::unknown:
             return Unknown;
+        case z3::sat:
+            return Sat;
         }
+        throw std::logic_error("unknown result from SMT solver");
     }
 
     Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
-        assert(models);
+        const z3::model &m = solver.get_model();
         Model<Th...> res;
-        const auto add = [&res, this](const auto &p) {
+        const auto add = [&res, this, &m](const auto &p) {
             if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
                 if (std::holds_alternative<NumVar>(p.first)) {
                     NumVar var = std::get<NumVar>(p.first);
-                    Num val = getRealFromModel(p.second);
+                    Num val = getRealFromModel(m, p.second);
                     res.template put<IntTheory>(var, val);
                     return;
                 }
@@ -58,7 +58,15 @@ public:
             if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
                 if (std::holds_alternative<BoolVar>(p.first)) {
                     BoolVar var = std::get<BoolVar>(p.first);
-                    res.template put<BoolTheory>(var, this->solver.getValue(p.second).getBooleanValue());
+                    switch (m.eval(p.second).bool_value()) {
+                    case Z3_L_FALSE:
+                        res.template put<BoolTheory>(var, false);
+                        break;
+                    case Z3_L_TRUE:
+                        res.template put<BoolTheory>(var, true);
+                        break;
+                    default: break;
+                    }
                     return;
                 }
             }
@@ -80,23 +88,17 @@ public:
         return res;
     }
 
-    void enableModels() override {
-        this->models = true;
-        updateParams();
-    }
+    void enableModels() override {}
 
     void resetSolver() override {
-        solver.resetAssertions();
+        solver.reset();
         updateParams();
     }
 
-    ~CVC5() override {}
+    ~Swine() override {}
 
     std::ostream& print(std::ostream& os) const override {
-        for (const auto &t: solver.getAssertions()) {
-            os << t << std::endl;
-        }
-        return os;
+        return os << solver;
     }
 
     void setSeed(unsigned seed) override {
@@ -105,33 +107,30 @@ public:
     }
 
 private:
-    bool models = false;
-    cvc5::Solver solver;
-    CVC5Context ctx;
+
+    z3::context z3ctx;
+    swine::Swine solver;
+    SwineContext ctx;
     unsigned seed = 42u;
 
-    Num getRealFromModel(const cvc5::Term &symbol) {
-        const auto val {solver.getValue(symbol)};
-        if (val.isIntegerValue()) {
-            return Num(val.getIntegerValue().c_str());
-        } else if (val.isRealValue()) {
-            if (val.isReal64Value()) {
-                const auto [num, denom] {val.getReal64Value()};
-                return Num(num) / Num(denom);
-            } else {
-                throw std::overflow_error((std::stringstream() << "overflow in CVC5::getRealFromModel: " << val).str());
-            }
-        } else {
-            throw std::logic_error((std::stringstream() << "CVC5::getRealFromModel: tried to convert " << val << " to real").str());
-        }
+    Num getRealFromModel(const z3::model &model, const z3::expr &symbol) {
+        return Num(Z3_get_numeral_string(
+                   model.ctx(),
+                   Z3_get_numerator(
+                       model.ctx(),
+                       model.eval(symbol, true)))) /
+               Num(Z3_get_numeral_string(
+                   model.ctx(),
+                   Z3_get_denominator(
+                       model.ctx(),
+                       model.eval(symbol, true))));
     }
 
     void updateParams() {
-        if (models) {
-            solver.setOption("produce-models", "true");
-        }
-        solver.setOption("seed", std::to_string(seed));
-        solver.setLogic("QF_NIRAT");
+        z3::params params(z3ctx);
+        params.set(":seed", seed);
+        params.set(":random_seed", seed);
+        solver.get_solver().set(params);
     }
 
 };

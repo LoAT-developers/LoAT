@@ -11,7 +11,7 @@ services:
     cap_add: [SYS_PTRACE]
     build:
       context: ..
-      dockerfile: qtcreator.Dockerfile
+      dockerfile: docker/qtcreator.Dockerfile
     environment:
       - DISPLAY=${DISPLAY}
     volumes:

@@ -16,7 +16,7 @@ private:
     void analyze();
 
     ITSProblem &its;
-    Z3<IntTheory, BoolTheory> solver{smt::default_timeout};
+    Z3<IntTheory, BoolTheory> solver{};
     bool approx {false};
     VarSet vars;
     std::map<Var, Var> post_vars;

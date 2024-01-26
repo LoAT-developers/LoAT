@@ -107,23 +107,6 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     bool changed;
     do {
         changed = false;
-        // chain if there are updates like x = -x + p
-        for (const auto &p: res.getUpdate().get<IntTheory>()) {
-            const auto var = p.first;
-            const auto up = p.second.expand();
-            const auto upVars = up.vars();
-            if (upVars.find(var) != upVars.end()) {
-                if (up.isPoly() && up.degree(var) == 1) {
-                    const Expr coeff = up.coeff(var);
-                    if (coeff.isRationalConstant() && coeff.toNum().is_negative()) {
-                        res = Chaining::chain(res, res).first;
-                        period *= 2;
-                        changed = true;
-                        break;
-                    }
-                }
-            }
-        }
         // chain if there are updates like b = !b
         for (const auto &p: res.getUpdate().get<BoolTheory>()) {
             const auto lits = p.second->lits();

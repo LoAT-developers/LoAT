@@ -8,7 +8,6 @@
 #include "limitproblem.hpp"
 #include "proof.hpp"
 #include "complexity.hpp"
-#include "config.hpp"
 #include "theory.hpp"
 
 class AsymptoticBound {
@@ -26,7 +25,7 @@ private:
         int inftyVars;
     };
 
-    AsymptoticBound(Guard guard, Expr cost, bool finalCheck, unsigned int timeout);
+    AsymptoticBound(Guard guard, Expr cost, bool finalCheck);
 
     void initLimitVectors();
     void normalizeGuard();
@@ -62,7 +61,6 @@ private:
     Guard normalizedGuard;
     ComplexityResult bestComplexity;
     Proof proof;
-    unsigned int timeout;
 
     std::vector<std::vector<LimitVector>> addition;
     std::vector<std::vector<LimitVector>> multiplication;
@@ -104,7 +102,6 @@ public:
     static Result determineComplexity(const Guard &guard,
                                       const Expr &cost,
                                       bool finalCheck = false,
-                                      const Complexity &currentRes = Complexity::Const,
-                                      unsigned int timeout = Config::Limit::Timeout);
+                                      const Complexity &currentRes = Complexity::Const);
 
 };

@@ -15,10 +15,10 @@ RUN git config --global --add safe.directory /LoAT
 
 FROM base as build
 
-COPY ../include /usr/local/include
-COPY ../lib /usr/local/lib
-
 ARG TOKEN
 RUN xauth add $TOKEN
+
+ENV LD_LIBRARY_PATH=/LoAT/lib
+ENV CPATH=/LoAT/include:/LoAT/include/antlr4-runtime
 
 CMD ["/usr/bin/qtcreator", "-settingspath", "/LoAT/", "-notour", "/LoAT/CMakeLists.txt"]

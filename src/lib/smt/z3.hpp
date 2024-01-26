@@ -82,11 +82,6 @@ public:
         return res;
     }
 
-    void setTimeout(unsigned int timeout) override {
-        this->timeout = timeout;
-        updateParams();
-    }
-
     void enableModels() override {
         this->models = true;
         updateParams();
@@ -110,13 +105,12 @@ public:
 
 protected:
     bool models = false;
-    unsigned int timeout;
     z3::context z3Ctx;
     Ctx ctx;
     z3::solver solver;
     unsigned seed = 42u;
 
-    Z3Base(unsigned timeout): timeout(timeout), ctx(z3Ctx), solver(z3Ctx) {
+    Z3Base(): ctx(z3Ctx), solver(z3Ctx) {
         updateParams();
     }
 
@@ -136,9 +130,6 @@ protected:
     void updateParams() {
         z3::params params(z3Ctx);
         params.set(":model", models);
-        if (timeout > 0) {
-            params.set(":timeout", timeout);
-        }
         params.set(":seed", seed);
         params.set(":random_seed", seed);
         solver.set(params);
@@ -151,6 +142,6 @@ class Z3: public Z3Base<Z3Context, Th...> {
 
 public:
 
-    Z3(unsigned timeout): Z3Base<Z3Context, Th...>(timeout) {}
+    Z3(): Z3Base<Z3Context, Th...>() {}
 
 };

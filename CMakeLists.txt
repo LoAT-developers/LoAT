@@ -9,6 +9,7 @@ option(STATIC "static" ON)
 option(SANITIZE "sanitize" OFF)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+set(CMAKE_LIBRARY_PATH $ENV{LD_LIBRARY_PATH})
 
 add_link_options(-pthread)
 

@@ -13,7 +13,7 @@ RUN git config --global --add safe.directory /LoAT
 
 FROM base as build
 
-COPY ../include /usr/local/include
-COPY ../lib /usr/local/lib
+ENV LD_LIBRARY_PATH=/LoAT/lib
+ENV CPATH=/LoAT/include:/LoAT/include/antlr4-runtime
 
 CMD ["/LoAT/scripts/configure_and_build.sh"]

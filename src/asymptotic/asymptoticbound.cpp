@@ -11,13 +11,14 @@
 #include "smtfactory.hpp"
 #include "limitsmt.hpp"
 #include "inftyexpression.hpp"
+#include "config.hpp"
 
 using namespace std;
 
 
 AsymptoticBound::AsymptoticBound(Guard guard,
-                                 Expr cost, bool finalCheck, unsigned int timeout)
-    : guard(guard), cost(cost), finalCheck(finalCheck), timeout(timeout),
+                                 Expr cost, bool finalCheck)
+    : guard(guard), cost(cost), finalCheck(finalCheck),
       addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP() {
     assert(guard.isWellformed());
 }
@@ -754,7 +755,7 @@ bool AsymptoticBound::trySubstitutingVariable() {
 
 
 bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
-    auto optSubs = LimitSmtEncoding::applyEncoding(currentLP, cost, currentRes, timeout);
+    auto optSubs = LimitSmtEncoding::applyEncoding(currentLP, cost, currentRes);
     if (!optSubs) return false;
     auto subs = *optSubs;
     auto idx = substitutions.size();
@@ -768,13 +769,12 @@ bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
 AsymptoticBound::Result AsymptoticBound::determineComplexity(const Guard &guard,
                                                              const Expr &cost,
                                                              bool finalCheck,
-                                                             const Complexity &currentRes,
-                                                             unsigned int timeout) {
+                                                             const Complexity &currentRes) {
 
     // Expand the cost to make it easier to analyze
     Expr expandedCost = cost.expand();
 
-    AsymptoticBound asymptoticBound(guard, expandedCost, finalCheck, timeout);
+    AsymptoticBound asymptoticBound(guard, expandedCost, finalCheck);
     asymptoticBound.initLimitVectors();
     asymptoticBound.normalizeGuard();
 

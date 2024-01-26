@@ -7,13 +7,14 @@
 #include "result.hpp"
 #include "smt.hpp"
 #include "export.hpp"
-#include "z3inclin.hpp"
+#include "swine.hpp"
 #include "vector.hpp"
 #include "asymptoticbound.hpp"
 #include "vareliminator.hpp"
 #include "chain.hpp"
 #include "expr.hpp"
 #include "cvc5.hpp"
+#include "config.hpp"
 
 #include <numeric>
 #include <random>
@@ -114,16 +115,16 @@ Reachability::Reachability(ITSProblem &chcs):
 {
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Z3:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>(smt::default_timeout));
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>());
         break;
     case Config::Analysis::CVC5:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
         break;
     case Config::Analysis::Z3Lin:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout));
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>());
         break;
-    case Config::Analysis::Z3IncLin:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3IncLin<IntTheory, BoolTheory>());
+    case Config::Analysis::Swine:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Swine<IntTheory, BoolTheory>());
         break;
     }
     solver->enableModels();
