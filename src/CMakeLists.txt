@@ -10,8 +10,6 @@ add_subdirectory(bmc)
 
 target_sources(${EXECUTABLE}
     PRIVATE
-        config.cpp
-        config.hpp
         main.cpp
         main.hpp
         version.cpp

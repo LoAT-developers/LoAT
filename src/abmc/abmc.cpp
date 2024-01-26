@@ -14,6 +14,7 @@
 #include "dependencygraph.hpp"
 #include "linearizingsolver.hpp"
 #include "swine.hpp"
+#include "ruleexport.hpp"
 
 using namespace Config::ABMC;
 
@@ -140,7 +141,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
     const auto implicant {loop->withGuard(*imp)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
-        ITSExport::printRule(implicant, std::cout);
+        RuleExport::printRule(implicant, std::cout);
         std::cout << std::endl;
     }
     return {implicant, model, nested};
@@ -209,7 +210,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     } else {
         if (Config::Analysis::log && simp) {
             std::cout << "simplified loop:" << std::endl;
-            ITSExport::printRule(*simp, std::cout);
+            RuleExport::printRule(*simp, std::cout);
             std::cout << std::endl;
         }
         if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
@@ -232,7 +233,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                                     .deterministic = deterministic};
                     auto &map {cache.emplace(lang, std::map<BoolExpr, std::optional<Loop>>()).first->second};
                     map.emplace(accel_res.accel->covered, loop);
-                    ITSProof sub_proof, acceleration_proof;
+                    RuleProof sub_proof, acceleration_proof;
                     acceleration_proof.storeSubProof(simp.getProof());
                     acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
                     acceleration_proof.storeSubProof(accel_res.accel->proof);
@@ -241,7 +242,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                     proof.majorProofStep("Accelerate", sub_proof, its);
                     if (Config::Analysis::log) {
                         std::cout << "accelerated rule, idx " << new_idx->getId() << std::endl;
-                        ITSExport::printRule(*simplified, std::cout);
+                        RuleExport::printRule(*simplified, std::cout);
                         std::cout << std::endl;
                     }
                     return loop;

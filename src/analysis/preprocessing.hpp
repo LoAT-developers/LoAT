@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "result.hpp"
+#include "itsresult.hpp"
 #include "itsproblem.hpp"
 
 namespace Preprocess {

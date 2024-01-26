@@ -1,23 +1,11 @@
 #include "itsproof.hpp"
+#include "ruleexport.hpp"
 #include "export.hpp"
 
 #include <iostream>
 #include <string>
 
-void ITSProof::ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule) {
-    if (Proof::disabled()) {
-        return;
-    }
-    section(transformation);
-    std::stringstream s;
-    s << "Original rule:\n";
-    ITSExport::printRule(oldRule, s);
-    s << "\nNew rule:\n";
-    ITSExport::printRule(newRule, s);
-    append(s);
-}
-
-void ITSProof::majorProofStep(const std::string &step, const ITSProof &subproof, const ITSProblem &its) {
+void ITSProof::majorProofStep(const std::string &step, const Proof &subproof, const ITSProblem &its) {
     if (Proof::disabled()) {
         return;
     }
@@ -56,10 +44,10 @@ void ITSProof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRu
     section("Applied Chaining");
     std::stringstream s;
     s << "First rule:\n";
-    ITSExport::printRule(fst, s);
+    RuleExport::printRule(fst, s);
     s << "\nSecond rule:\n";
-    ITSExport::printRule(snd, s);
+    RuleExport::printRule(snd, s);
     s << "\nNew rule:\n";
-    ITSExport::printRule(newRule, s);
+    RuleExport::printRule(newRule, s);
     append(s);
 }

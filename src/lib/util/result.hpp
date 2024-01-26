@@ -1,25 +1,29 @@
 #pragma once
 
-#include "itsproof.hpp"
+#include "proof.hpp"
 
+#include <string>
 #include <variant>
 
 /**
  * encapsulates the result of some computation, together with a proof
  */
-template<class T>
-class Result
+template<class T, class P>
+class ResultBase
 {
 
-bool success;
-ITSProof proof;
-T res;
+    bool success;
+    T res;
+
+protected:
+
+    P proof;
 
 public:
 
-    Result(): success(false) {}
+    ResultBase(): success(false) {}
 
-    Result(const T &t, bool success = false): success(success), res(t) {}
+    ResultBase(const T &t, bool success = false): success(success), res(t) {}
 
     void operator=(const T &t) {
         set(t);
@@ -69,35 +73,15 @@ public:
         proof.print();
     }
 
-    void ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule) {
-        proof.ruleTransformationProof(oldRule, transformation, newRule);
-    }
-
-    void dependencyGraphRefinementProof(const std::set<ITSProblem::DG::Edge> &removed) {
-        proof.dependencyGraphRefinementProof(removed);
-    }
-
-    void majorProofStep(const std::string &step, const ITSProof &subproof, const ITSProblem &its) {
-        proof.majorProofStep(step, subproof, its);
-    }
-
-    void deletionProof(const std::set<TransIdx> &rules) {
-        proof.deletionProof(rules);
-    }
-
     void storeSubProof(Proof subProof) {
         proof.storeSubProof(subProof);
-    }
-
-    void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule) {
-        proof.chainingProof(fst, snd, newRule);
     }
 
     void concat(const Proof &that) {
         proof.concat(that);
     }
 
-    void concat(const Result<T> &that) {
+    void concat(const ResultBase<T, P> &that) {
         if (that) {
             proof.concat(that.proof);
             res = that.res;
@@ -109,7 +93,7 @@ public:
         return proof.empty();
     }
 
-    const ITSProof& getProof() const {
+    const P& getProof() const {
         return proof;
     }
 
@@ -134,17 +118,6 @@ public:
         success = true;
     }
 
-    template<class S>
-    Result<S> map(const std::function<S(const T&)> &mapper) const {
-        Result<S> res;
-        res.concat(proof);
-        res = mapper(this->res);
-        if (!success) {
-            res.fail();
-        }
-        return res;
-    }
-
     const T& operator*() const {
         return res;
     }
@@ -160,12 +133,5 @@ public:
     T* operator->() {
         return &res;
     }
-
-};
-
-class ResultViaSideEffects: public Result<std::monostate> {
-
-public:
-    ResultViaSideEffects(): Result<std::monostate>(std::monostate()) {}
 
 };

@@ -15,6 +15,7 @@
 #include "expr.hpp"
 #include "cvc5.hpp"
 #include "config.hpp"
+#include "ruleexport.hpp"
 
 #include <numeric>
 #include <random>
@@ -470,7 +471,7 @@ std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
     const auto model {expr::compose(var_renaming, solver->model(vars).toSubs())};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
-        ITSExport::printRule(*loop, std::cout);
+        RuleExport::printRule(*loop, std::cout);
         std::cout << std::endl;
     }
     return {*loop, model};
@@ -491,8 +492,8 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const {
-    Result<Rule> res(rule);
+RuleResult Reachability::instantiate(const NumVar &n, const Rule &rule) const {
+    RuleResult res(rule);
     VarEliminator ve(rule.getGuard(), n, expr::isProgVar);
     if (ve.getRes().empty() || ve.getRes().size() > 1) {
         return res;
@@ -500,7 +501,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
     for (const auto &s : ve.getRes()) {
         if (s.get(n).isRationalConstant()) continue;
         if (res) {
-            return Result<Rule>(rule);
+            return RuleResult(rule);
         }
         res = rule.subs(Subs::build<IntTheory>(s));
         res.ruleTransformationProof(rule, "Instantiation", *res);
@@ -509,7 +510,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
 }
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &model, const unsigned backlink) {
-    Result<Rule> simp = Preprocess::preprocessRule(rule);
+    RuleResult simp = Preprocess::preprocessRule(rule);
     if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
@@ -518,7 +519,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (Config::Analysis::log && simp) {
         std::cout << "simplified loop:" << std::endl;
-        ITSExport::printRule(*simp, std::cout);
+        RuleExport::printRule(*simp, std::cout);
         std::cout << std::endl;
     }
     if (Config::Analysis::reachability()) {
@@ -542,7 +543,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         if (Config::Analysis::log) {
             std::cout << s.str() << std::endl;
             std::cout << "rule:" << std::endl;
-            ITSExport::printRule(*simp, std::cout);
+            RuleExport::printRule(*simp, std::cout);
             std::cout << std::endl;
         }
         throw ProofFailed(s.str());
@@ -552,7 +553,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         res.succeed();
         const auto idx = chcs.addQuery(accel_res.nonterm->certificate, trace.at(backlink).clause_idx);
         res->res.emplace_back(idx);
-        ITSProof nonterm_proof;
+        RuleProof nonterm_proof;
         nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", *idx);
         nonterm_proof.storeSubProof(accel_res.nonterm->proof);
         res.concat(nonterm_proof);
@@ -572,7 +573,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             res.succeed();
             const auto loop_idx {add_learned_clause(*simplified, backlink)};
             res->res.emplace_back(loop_idx);
-            ITSProof acceleration_proof;
+            RuleProof acceleration_proof;
             acceleration_proof.storeSubProof(simp.getProof());
             acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
             acceleration_proof.storeSubProof(accel_res.accel->proof);
@@ -580,7 +581,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             res.concat(simplified.getProof());
             if (Config::Analysis::log) {
                 std::cout << "accelerated rule, idx " << loop_idx << std::endl;
-                ITSExport::printRule(*simplified, std::cout);
+                RuleExport::printRule(*simplified, std::cout);
                 std::cout << std::endl;
             }
         }

@@ -18,12 +18,14 @@
 #include "guardtoolbox.hpp"
 #include "rule.hpp"
 #include "rel.hpp"
+#include "ruleresult.hpp"
 
 using namespace std;
 
-Result<Rule> GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
+RuleResult GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
     ExprSubs varSubs;
-    ResultViaSideEffects proof;
+    Proof proof;
+    auto success {false};
     auto guard = rule.getGuard()->universallyValidLits();
 
     for (const auto &r: guard) {
@@ -61,7 +63,7 @@ Result<Rule> GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel ma
                     s << "propagated equality " << var << " = " << solved;
                     proof.append(s.str());
                     proof.newline();
-                    proof.succeed();
+                    success = true;
                     goto next;
                 }
             }
@@ -70,21 +72,21 @@ Result<Rule> GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel ma
     }
 
     //apply substitution to the entire rule
-    Result<Rule> res(rule);
-    if (proof) {
+    RuleResult res(rule);
+    if (success) {
         Subs subs;
         subs.get<IntTheory>() = varSubs;
         res = rule.subs(subs);
         res.ruleTransformationProof(rule, "Propagated Equalities", res.get());
         res.newline();
-        res.storeSubProof(proof.getProof());
+        res.storeSubProof(proof);
     }
     return res;
 }
 
 
-Result<Rule> GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
-    Result<Rule> res(rule);
+RuleResult GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
+    RuleResult res(rule);
     Proof subproof;
     Subs equiv;
     do {
@@ -102,8 +104,8 @@ Result<Rule> GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
 }
 
 
-Result<Rule> GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow) {
-    Result<Rule> res(rule);
+RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow) {
+    RuleResult res(rule);
     if (!rule.getGuard()->isConjunction()) {
         return res;
     }
@@ -175,8 +177,8 @@ abort:  ; //this symbol could not be eliminated, try the next one
 }
 
 
-Result<Rule> GuardToolbox::makeEqualities(const Rule &rule) {
-    Result<Rule> res(rule);
+RuleResult GuardToolbox::makeEqualities(const Rule &rule) {
+    RuleResult res(rule);
     const auto &guard = rule.getGuard()->universallyValidLits();
     vector<pair<Rel,Expr>> terms; //inequalities from the guard, with the associated index in guard
     map<Rel,pair<Rel,Expr>> matches; //maps index in guard to a second index in guard, which can be replaced by Expression

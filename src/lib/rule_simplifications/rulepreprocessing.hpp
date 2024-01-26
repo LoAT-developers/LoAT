@@ -18,10 +18,10 @@
 #pragma once
 
 #include "rule.hpp"
-#include "result.hpp"
+#include "ruleresult.hpp"
 
 namespace Preprocess {
 
-    Result<Rule> preprocessRule(const Rule &rule);
+    RuleResult preprocessRule(const Rule &rule);
 
 }

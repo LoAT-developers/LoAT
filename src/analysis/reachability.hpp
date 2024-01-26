@@ -1,7 +1,8 @@
 #pragma once
 
 #include "itsproblem.hpp"
-#include "result.hpp"
+#include "itsresult.hpp"
+#include "ruleresult.hpp"
 #include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
 #include "smt.hpp"
@@ -193,7 +194,7 @@ class Reachability {
 
     void update_cpx();
 
-    Result<Rule> instantiate(const NumVar &n, const Rule &rule) const;
+    RuleResult instantiate(const NumVar &n, const Rule &rule) const;
 
     /**
      * initializes all data structures after preprocessing

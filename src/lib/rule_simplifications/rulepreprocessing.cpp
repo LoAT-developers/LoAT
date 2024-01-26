@@ -36,8 +36,8 @@ static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     return varsInUpdate;
 }
 
-Result<Rule> eliminateTempVars(const Rule &rule) {
-    Result<Rule> res(rule);
+RuleResult eliminateTempVars(const Rule &rule) {
+    RuleResult res(rule);
 
     //declare helper lambdas to filter variables, to be passed as arguments
     auto isTemp = [&](const Var &sym) {
@@ -96,31 +96,31 @@ bool removeTrivialUpdates(Subs &update) {
     return true;
 }
 
-Result<Rule> removeTrivialUpdates(const Rule &rule) {
+RuleResult removeTrivialUpdates(const Rule &rule) {
     bool changed = false;
     Subs up = rule.getUpdate();
     changed |= removeTrivialUpdates(up);
-    Result<Rule> res{Rule(rule.getGuard(), up), changed};
+    RuleResult res{Rule(rule.getGuard(), up), changed};
     if (res) {
         res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
     }
     return res;
 }
 
-Result<Rule> simplifyRule(const Rule &rule) {
-    Result<Rule> res(rule);
+RuleResult simplifyRule(const Rule &rule) {
+    RuleResult res(rule);
     res.concat(eliminateTempVars(*res));
     res.concat(removeTrivialUpdates(*res));
     return res;
 }
 
-Result<Rule> Preprocess::preprocessRule(const Rule &rule) {
-    Result<Rule> res(rule);
+RuleResult Preprocess::preprocessRule(const Rule &rule) {
+    RuleResult res(rule);
 
     // The other steps are repeated (might not help very often, but is probably cheap enough)
     bool changed = false;
     do {
-        Result<Rule> tmp {simplifyRule(*res)};
+        RuleResult tmp {simplifyRule(*res)};
         changed = bool(tmp);
         res.concat(tmp);
     } while (changed);

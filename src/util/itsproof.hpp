@@ -35,9 +35,7 @@
 class ITSProof: public Proof {
 public:
 
-    void ruleTransformationProof(const Rule &oldRule, const std::string &transformation, const Rule &newRule);
-
-    void majorProofStep(const std::string &step, const ITSProof &subproof, const ITSProblem &its);
+    void majorProofStep(const std::string &step, const Proof &subproof, const ITSProblem &its);
 
     template <class Edge>
     void dependencyGraphRefinementProof(const std::set<Edge> &removed) {

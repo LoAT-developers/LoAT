@@ -105,7 +105,7 @@ ResultViaSideEffects preprocessRules(ITSProblem &its) {
         if (res) {
             ret.succeed();
             replacements.emplace(&r, *res);
-            ret.concat(res.getProof());
+            ret.storeSubProof(res.getProof());
         }
     }
     for (const auto &[idx, replacement]: replacements) {
@@ -120,13 +120,12 @@ ResultViaSideEffects unroll(ITSProblem &its) {
         if (its.isSimpleLoop(&r)) {
             const auto [res, period] = LoopAcceleration::chain(r);
             if (period > 1) {
-                const auto simplified = Preprocess::preprocessRule(res);
+                RuleResult rr {r};
+                rr.ruleTransformationProof(r, "Unrolling", res);
+                rr.concat(Preprocess::preprocessRule(res));
                 ret.succeed();
-                ret.ruleTransformationProof(r, "Unrolling", res);
-                if (simplified) {
-                    ret.concat(simplified.getProof());
-                }
-                its.addRule(*simplified, &r, &r);
+                ret.storeSubProof(rr.getProof());
+                its.addRule(*rr, &r, &r);
             }
         }
     }

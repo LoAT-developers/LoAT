@@ -2,37 +2,34 @@ cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_CXX_STANDARD 20)
 
-project(loat_acceleration CXX)
+project(loat_rule_simplifications CXX)
 
 add_library(${PROJECT_NAME} STATIC
-  accelconfig.hpp
-  accelerationproblem.cpp
-  accelerationproblem.hpp
-  approx.hpp
-  loopacceleration.cpp
-  loopacceleration.hpp
-  accelerationresult.hpp
-  accelerationresult.cpp
-  relevantvariables.hpp
-  loopcomplexity.cpp
-  loopcomplexity.hpp
+  rule.hpp
+  rule.cpp
+  chain.hpp
+  chain.cpp
+  ruleproof.hpp
+  ruleproof.cpp
+  ruleresult.hpp
+  ruleresult.cpp
+  ruleexport.hpp
+  ruleexport.cpp
+  guardtoolbox.hpp
+  guardtoolbox.cpp
+  rulepreprocessing.cpp
+  rulepreprocessing.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_util_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
-  ${loat_rule_simplifications_INCLUDE_DIRS}
-  ${loat_smt_INCLUDE_DIRS}
-  ${loat_recurrence_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")
 
 target_link_libraries(${PROJECT_NAME}
-  loat_expr
-  loat_rule_simplifications
-  loat_smt
-  loat_recurrence)
+  loat_expr)
 
 # Expose public includes to other
 # subprojects through cache variable.
