@@ -216,7 +216,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
             if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
         } else {
-            AccelConfig config {.approx = Config::Analysis::safety() ? Approx::OverApprox : Approx::UnderApprox, .tryNonterm = Config::Analysis::tryNonterm(), .n = n};
+            AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
             const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
             if (accel_res.accel) {
                 auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
@@ -274,7 +274,7 @@ void ABMC::unknown() {
 }
 
 void ABMC::unsat() {
-    const auto str = Config::Analysis::safety() ? "unknown" : "unsat";
+    const auto str = "unsat";
     std::cout << str << std::endl;
     proof.append("reached error location at depth " + std::to_string(depth));
     proof.result(str);
@@ -369,10 +369,6 @@ void ABMC::analyze() {
                     std::cout << "got unknown from SMT solver -- approximating" << std::endl;
                 }
                 approx = true;
-                if (Config::Analysis::safety()) {
-                    unknown();
-                    return;
-                }
                 break;
             case SmtResult::Unsat: {}
             }
@@ -411,10 +407,6 @@ void ABMC::analyze() {
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
                 std::cout << "got unknown from SMT solver -- approximating" << std::endl;
-            }
-            if (Config::Analysis::safety()) {
-                unknown();
-                return;
             }
             approx = true;
             break;

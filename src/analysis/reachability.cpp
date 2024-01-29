@@ -108,11 +108,9 @@ ITSProof* ProvedUnsat::operator->() {
     return &proof;
 }
 
-ProofFailed::ProofFailed(const std::string &msg): std::runtime_error(msg) {}
-
 Reachability::Reachability(ITSProblem &chcs):
     chcs(chcs),
-    drop(!Config::Analysis::safety())
+    drop(true)
 {
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Z3:
@@ -245,11 +243,11 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
     return *Preprocess::preprocessRule(resolvent);
 }
 
-bool Reachability::store_step(const TransIdx idx, const Rule &implicant, bool force) {
+bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
     solver->push();
     const auto imp {trace.empty() ? implicant : implicant.subs(trace.back().var_renaming)};
     solver->add(imp.getGuard());
-    if (solver->check() == Sat || force) {
+    if (solver->check() == Sat) {
         const auto new_var_renaming {handle_update(idx)};
         const Step step(idx, implicant.getGuard(), new_var_renaming, compute_resolvent(idx, implicant.getGuard()));
         add_to_trace(step);
@@ -350,7 +348,7 @@ void Reachability::luby_next() {
 }
 
 void Reachability::unsat() {
-    const auto res = Config::Analysis::safety() ? "unknown" : (Config::Analysis::reachability() ? "unsat" : "NO");
+    const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
     std::cout << res << std::endl << std::endl;
     if (!Config::Analysis::log && Proof::disabled()) {
         return;
@@ -374,14 +372,13 @@ void Reachability::unsat() {
     proof.print();
 }
 
-void Reachability::sat() {
-    const auto res = Config::Analysis::safety() ? "sat" : "unknown";
-    std::cout << res << std::endl << std::endl;
+void Reachability::unknown() {
+    std::cout << "unknown" << std::endl << std::endl;
     if (!Config::Analysis::log && Proof::disabled()) {
         return;
     }
     proof.headline("Prove");
-    proof.result(res);
+    proof.result("unknown");
     proof.print();
 }
 
@@ -414,11 +411,7 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
             throw std::logic_error("model, but no implicant");
         }
     }
-    case Unknown: {
-        if (Config::Analysis::safety()) {
-            throw ProofFailed("SMT returned UNKNOWN during resolution");
-        }
-    }
+    case Unknown: {}
     [[fallthrough]];
     case Unsat: {
         if (block == blocked_clauses.back().end()) {
@@ -530,23 +523,11 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     const NumVar n {NumVar::next()};
     AccelConfig config {
-        .approx = Config::Analysis::safety() ? OverApprox : UnderApprox,
         .tryNonterm = Config::Analysis::tryNonterm(),
         .n = n};
     const auto accel_res {LoopAcceleration::accelerate(*simp, model, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
-    }
-    if (Config::Analysis::safety() && accel_res.status != acceleration::Success) {
-        std::stringstream s;
-        s << "acceleration failed, status: " << accel_res.status;
-        if (Config::Analysis::log) {
-            std::cout << s.str() << std::endl;
-            std::cout << "rule:" << std::endl;
-            RuleExport::printRule(*simp, std::cout);
-            std::cout << std::endl;
-        }
-        throw ProofFailed(s.str());
     }
     Result<LearnedClauses> res{{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period}};
     if (accel_res.nonterm) {
@@ -667,20 +648,10 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
     }
     auto learned_lang {lang};
-    if (Config::Analysis::safety()) {
-        for (unsigned i = 1; i < learned_clauses.period; ++i) {
-            redundancy->concat(learned_lang, lang);
-        }
-    }
     redundancy->transitive_closure(learned_lang);
-    if (Config::Analysis::safety()) {
-        for (unsigned i = 1; i < learned_clauses.prefix; ++i) {
-            redundancy->prepend(lang, learned_lang);
-        }
-    }
     for (const auto idx: learned_clauses.res) {
         redundancy->set_language(idx, learned_lang);
-        if (!done && store_step(idx, *idx, false)) {
+        if (!done && store_step(idx, *idx)) {
             update_cpx();
             if (chcs.isSinkTransition(idx)) {
                 return std::make_unique<ProvedUnsat>(accel_state->getProof());
@@ -768,7 +739,7 @@ void Reachability::analyze() {
                         return;
                     }
                 } else if (state->dropped()) {
-                    if (simple_loop && !Config::Analysis::safety()) {
+                    if (simple_loop) {
                         block(step);
                     }
                     proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
@@ -799,7 +770,7 @@ void Reachability::analyze() {
             solver->push();
             const auto implicant {resolve(idx)};
             solver->pop();
-            if (implicant && store_step(idx, *implicant, Config::Analysis::safety())) {
+            if (implicant && store_step(idx, *implicant)) {
                 proof.headline("Step with " + std::to_string(idx->getId()));
                 print_state();
                 update_cpx();
@@ -822,7 +793,7 @@ void Reachability::analyze() {
         proof.result(cpx.toString());
         proof.print();
     } else {
-        sat();
+        unknown();
     }
     std::cout << std::endl;
 }

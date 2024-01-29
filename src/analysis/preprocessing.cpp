@@ -184,7 +184,6 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
         res.majorProofStep("Preprocessed Transitions", sub_res.getProof(), its);
     }
     if (Config::Analysis::engine == Config::Analysis::ADCL) {
-        if (!Config::Analysis::safety()) {
             if (Config::Analysis::log) {
                 std::cout << "unrolling..." << std::endl;
             }
@@ -196,7 +195,6 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
                 res.succeed();
                 res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
             }
-        }
         if (its.size() <= 1000) {
             if (Config::Analysis::log) {
                 std::cout << "refining the dependency graph..." << std::endl;

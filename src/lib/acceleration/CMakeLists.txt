@@ -8,7 +8,6 @@ add_library(${PROJECT_NAME} STATIC
   accelconfig.hpp
   accelerationproblem.cpp
   accelerationproblem.hpp
-  approx.hpp
   loopacceleration.cpp
   loopacceleration.hpp
   accelerationresult.hpp

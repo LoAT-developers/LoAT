@@ -314,13 +314,15 @@ std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes(
     while (!todo.empty() && progress) {
         progress = false;
         for (auto it = todo.begin(); it != todo.end();) {
-            if (trivial(*it) ||
-                unchanged(*it) ||
-                polynomial(*it) ||
-                recurrence(*it) ||
-                monotonicity(*it) ||
-                eventualWeakDecrease(*it) ||
-                (config.approx == UnderApprox && (eventualIncrease(*it, false) || eventualIncrease(*it, true) || fixpoint(*it)))) {
+            if (trivial(*it)
+                || unchanged(*it)
+                || polynomial(*it)
+                || recurrence(*it)
+                || monotonicity(*it)
+                || eventualWeakDecrease(*it)
+                || eventualIncrease(*it, false)
+                || eventualIncrease(*it, true)
+                || fixpoint(*it)) {
                 it = todo.erase(it);
                 progress = true;
             } else {

@@ -144,11 +144,6 @@ class Restart final: public LearningState {
     std::optional<Restart> restart() override;
 };
 
-class ProofFailed : public std::runtime_error {
-public:
-    ProofFailed(const std::string &msg);
-};
-
 class Reachability {
 
     ITSProblem &chcs;
@@ -206,7 +201,7 @@ class Reachability {
      */
     void unsat();
 
-    void sat();
+    void unknown();
 
     /**
      * tries to resolve the trace with the given clause
@@ -285,7 +280,7 @@ class Reachability {
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const TransIdx idx, const Rule &resolvent, bool force);
+    bool store_step(const TransIdx idx, const Rule &resolvent);
 
     void print_trace(std::ostream &s);
 

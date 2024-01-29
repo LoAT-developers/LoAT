@@ -20,7 +20,6 @@
 #include "recurrence.hpp"
 #include "accelerationproblem.hpp"
 #include "chain.hpp"
-#include "expr.hpp"
 #include "loopcomplexity.hpp"
 
 #include <purrs.hh>
@@ -52,51 +51,6 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
         }
     } while (changed);
     return {res, period};
-}
-
-Rule LoopAcceleration::overApproximatingAcceleration(const Subs &closed_form) {
-    Subs up;
-    for (const auto &p: closed_form) {
-        auto tmp {false};
-        for (const auto &x: expr::vars(expr::second(p))) {
-            if (x != Var(config.n) && expr::isTempVar(x)) {
-                const auto var {expr::first(p)};
-                up.put(var, expr::toExpr(expr::next(var)));
-                tmp = true;
-                break;
-            }
-        }
-        if (!tmp) {
-            up.put(p);
-        }
-    }
-    BoolExprSet lits, up_lits;
-    auto previous {Subs::build<IntTheory>(config.n, Expr(config.n)-1)};
-    for (const auto &l: rule.getGuard()->lits()) {
-        auto add {true};
-        for (const auto &x: expr::variables(l)) {
-            if (expr::isTempVar(x)) {
-                add = false;
-                break;
-            }
-        }
-        if (add) {
-            lits.insert(BExpression::buildTheoryLit(l));
-        }
-        auto updated {expr::subs(l, up)};
-        add = true;
-        for (const auto &x: updated->vars()) {
-            if (x != Var(config.n) && expr::isTempVar(x)) {
-                add = false;
-                break;
-            }
-        }
-        if (add) {
-            lits.insert(updated->subs(previous));
-        }
-    }
-    auto guard {BExpression::buildAnd(lits) & Rel::buildGt(config.n, 0)};
-    return Rule(guard, up);
 }
 
 acceleration::Result LoopAcceleration::run() {
@@ -145,25 +99,19 @@ acceleration::Result LoopAcceleration::run() {
     std::optional<Rule> accel_rule;
     auto covered {top()};
     accel_proof = proof;
-    if (config.approx == OverApprox) {
-        accel_rule = overApproximatingAcceleration(rec->closed_form);
-        accel_proof.append("over-approximating acceleration using closed form");
+    auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
+    res.status = acceleration::AccelerationFailed;
+    if (accelerator) {
         res.status = acceleration::Success;
-    } else {
-        auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
-        res.status = acceleration::AccelerationFailed;
-        if (accelerator) {
-            res.status = acceleration::Success;
-            covered = BExpression::buildAnd(accelerator->covered);
-            accel_rule = Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form);
-            accel_proof.concat(accelerator->proof);
-            if (accelerator->nonterm) {
-                res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
-            }
+        covered = BExpression::buildAnd(accelerator->covered);
+        accel_rule = Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form);
+        accel_proof.concat(accelerator->proof);
+        if (accelerator->nonterm) {
+            res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
         }
-        if (config.tryNonterm && (!accelerator || !accelerator->nonterm)) {
-            try_nonterm();
-        }
+    }
+    if (config.tryNonterm && (!accelerator || !accelerator->nonterm)) {
+        try_nonterm();
     }
     if (res.prefix > 1) {
         auto prefix {rule};
