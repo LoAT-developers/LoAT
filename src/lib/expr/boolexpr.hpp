@@ -176,23 +176,7 @@ public:
 private:
 
     bool implicant(Subs &subs, std::set<BE> &res) const {
-        if (isOr()) {
-            std::optional<std::set<BE>> best_res;
-            for (const auto &c: getChildren()) {
-                std::set<BE> current_res;
-                if (c->implicant(subs, current_res)) {
-                    if (!best_res) {
-                        best_res = current_res;
-                    } else if (current_res.size() < best_res->size()) {
-                        best_res = current_res;
-                    }
-                }
-            }
-            if (best_res) {
-                res.insert(best_res->begin(), best_res->end());
-            }
-            return best_res.has_value();
-        } else if (isAnd()) {
+        if (isAnd() || isOr()) {
             for (const auto &c: getChildren()) {
                 if (!c->implicant(subs, res)) {
                     res.clear();
