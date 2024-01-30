@@ -21,6 +21,8 @@
 #include "accelerationproblem.hpp"
 #include "chain.hpp"
 #include "loopcomplexity.hpp"
+#include "ruleresult.hpp"
+#include "rulepreprocessing.hpp"
 
 #include <purrs.hh>
 #include <numeric>
@@ -43,9 +45,10 @@ const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     unsigned period {1};
     do {
         changed = false;
-        const Rule chained {Chaining::chain(res, res).first};
-        if (LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
-            res = chained;
+        RuleResult chained {Chaining::chain(res, res).first};
+        chained.concat(Preprocess::preprocessRule(*chained));
+        if (LoopComplexity::compute(res) > LoopComplexity::compute(*chained)) {
+            res = *chained;
             period *= 2;
             changed = true;
         }
