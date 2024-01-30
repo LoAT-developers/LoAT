@@ -697,6 +697,15 @@ ExprSubs ExprSubs::concat(const ExprSubs &that) const {
     return res;
 }
 
+void ExprSubs::concatInPlace(const ExprSubs &that) {
+    for (const auto &[key,val]: *this) {
+        const auto new_val {val.subs(that)};
+        if (val != new_val) {
+            put(key, val);
+        }
+    }
+}
+
 ExprSubs ExprSubs::unite(const ExprSubs &that) const {
     ExprSubs res;
     for (const auto &p: *this) {

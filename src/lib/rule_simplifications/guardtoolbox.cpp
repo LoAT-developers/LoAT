@@ -58,7 +58,7 @@ RuleResult GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxl
 
                     //extend the substitution, use concat in case var occurs on some rhs of varSubs
                     varSubs.put(var, solved);
-                    varSubs = varSubs.concat(varSubs);
+                    varSubs.concatInPlace(varSubs);
                     stringstream s;
                     s << "propagated equality " << var << " = " << solved;
                     proof.append(s.str());

@@ -369,6 +369,8 @@ public:
 
     ExprSubs concat(const ExprSubs &that) const;
 
+    void concatInPlace(const ExprSubs &that);
+
     ExprSubs unite(const ExprSubs &that) const;
 
     ExprSubs project(const std::unordered_set<NumVar> &vars) const;
