@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <stdexcept>
 #include <string>
-#include <set>
+#include <unordered_set>
 #include <map>
 #include <variant>
 #include <tuple>
@@ -22,13 +22,12 @@ concept IComparable = requires(T x1, T x2) {
 };
 
 template <typename T, typename Var>
-concept IVars = requires(T x, std::set<Var> res) {
+concept IVars = requires(T x, std::unordered_set<Var> res) {
         x.collectVars(res);
 };
 
 template <typename T>
 concept ILit = requires(T x, T y) {
-        requires IComparable<T>;
         {x.normalize()} -> std::same_as<T>;
         {x.isTriviallyTrue()} -> std::same_as<bool>;
         {x.isWellformed()} -> std::same_as<bool>;

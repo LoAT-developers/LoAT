@@ -356,7 +356,7 @@ public:
     }
 
     template <ITheory T>
-    void collectVars(std::set<typename T::Var> &vars) const {
+    void collectVars(std::unordered_set<typename T::Var> &vars) const {
         VS res;
         res.template get<typename T::Var>() = vars;
         collectVars(res);

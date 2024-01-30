@@ -21,6 +21,7 @@
 #include <variant>
 #include <initializer_list>
 #include <optional>
+#include <unordered_set>
 
 #include "numvar.hpp"
 
@@ -79,12 +80,12 @@ public:
      * @brief Computes all matches of the given pattern.
      * @return True iff there was at least one match.
      */
-    bool findAll(const Expr &pattern, std::set<Expr> &found) const;
+    bool findAll(const Expr &pattern, std::unordered_set<Expr> &found) const;
 
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
      */
-    bool isLinear(const std::optional<std::set<NumVar>> &vars = std::optional<std::set<NumVar>>()) const;
+    bool isLinear(const std::optional<std::unordered_set<NumVar>> &vars = std::optional<std::unordered_set<NumVar>>()) const;
 
     /**
      * @return True iff this expression is a polynomial.
@@ -129,12 +130,12 @@ public:
     /**
      * @brief Collects all variables that occur in this expression.
      */
-    void collectVars(std::set<NumVar> &res) const;
+    void collectVars(std::unordered_set<NumVar> &res) const;
 
     /**
      * @return The set of all variables that occur in this expression.
      */
-    std::set<NumVar> vars() const;
+    std::unordered_set<NumVar> vars() const;
 
     static unsigned getIndex(const GiNaC::symbol &x);
 
@@ -336,12 +337,11 @@ private:
 class ExprSubs {
 
     friend class Expr;
-    friend std::strong_ordering operator<=>(const ExprSubs &m1, const ExprSubs &m2);
     friend bool operator==(const ExprSubs &m1, const ExprSubs &m2);
 
 public:
 
-    using const_iterator = typename std::map<NumVar, Expr>::const_iterator;
+    using const_iterator = typename std::unordered_map<NumVar, Expr>::const_iterator;
 
     ExprSubs();
 
@@ -371,9 +371,9 @@ public:
 
     ExprSubs unite(const ExprSubs &that) const;
 
-    ExprSubs project(const std::set<NumVar> &vars) const;
+    ExprSubs project(const std::unordered_set<NumVar> &vars) const;
 
-    ExprSubs setminus(const std::set<NumVar> &vars) const;
+    ExprSubs setminus(const std::unordered_set<NumVar> &vars) const;
 
     bool changes(const NumVar &key) const;
 
@@ -383,17 +383,17 @@ public:
 
     bool isOctagon() const;
 
-    std::set<NumVar> domain() const;
+    std::unordered_set<NumVar> domain() const;
 
-    std::set<NumVar> coDomainVars() const;
+    std::unordered_set<NumVar> coDomainVars() const;
 
-    std::set<NumVar> allVars() const;
+    std::unordered_set<NumVar> allVars() const;
 
-    void collectDomain(std::set<NumVar> &vars) const;
+    void collectDomain(std::unordered_set<NumVar> &vars) const;
 
-    void collectCoDomainVars(std::set<NumVar> &vars) const;
+    void collectCoDomainVars(std::unordered_set<NumVar> &vars) const;
 
-    void collectVars(std::set<NumVar> &vars) const;
+    void collectVars(std::unordered_set<NumVar> &vars) const;
 
     size_t hash() const;
 
@@ -401,8 +401,22 @@ private:
     void putGinac(const NumVar &key, const Expr &val);
     void eraseGinac(const NumVar &key);
     GiNaC::exmap ginacMap;
-    std::map<NumVar, Expr> map;
+    std::unordered_map<NumVar, Expr> map;
 
 };
 
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
+
+template<>
+struct std::hash<Expr> {
+    std::size_t operator()(const Expr& x) const noexcept {
+        return x.hash();
+    }
+};
+
+template<>
+struct std::hash<ExprSubs> {
+    std::size_t operator()(const ExprSubs& x) const noexcept {
+        return x.hash();
+    }
+};

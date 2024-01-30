@@ -29,7 +29,7 @@ void Expr::applySubs(const ExprSubs &subs) {
     this->ex = this->ex.subs(subs.ginacMap);
 }
 
-bool Expr::findAll(const Expr &pattern, std::set<Expr> &found) const {
+bool Expr::findAll(const Expr &pattern, std::unordered_set<Expr> &found) const {
     bool anyFound = false;
 
     if (match(pattern)) {
@@ -46,8 +46,8 @@ bool Expr::findAll(const Expr &pattern, std::set<Expr> &found) const {
     return anyFound;
 }
 
-bool Expr::isLinear(const std::optional<std::set<NumVar>> &vars) const {
-    std::set<NumVar> theVars = vars ? *vars : this->vars();
+bool Expr::isLinear(const std::optional<std::unordered_set<NumVar>> &vars) const {
+    auto theVars = vars ? *vars : this->vars();
     // linear expressions are always polynomials
     if (!isPoly()) return false;
 
@@ -64,7 +64,7 @@ bool Expr::isLinear(const std::optional<std::set<NumVar>> &vars) const {
         }
 
         if (deg == 1) {
-            std::set<NumVar> coefficientVars = expanded.coeff(var,deg).vars();
+            auto coefficientVars = expanded.coeff(var,deg).vars();
             for (const NumVar &e: coefficientVars) {
                 if (theVars.find(e) != theVars.end()) {
                     return false;
@@ -150,7 +150,7 @@ bool Expr::isNaturalPow() const {
 
 bool Expr::isOctagon() const {
     if (!isPoly()) return false;
-    const std::set<NumVar> vs = vars();
+    const auto vs = vars();
     if (vs.size() > 2) return false;
     for (const auto &v: vs) {
         if (degree(v) > 1) return false;
@@ -181,14 +181,14 @@ unsigned Expr::getIndex(const GiNaC::symbol &x) {
     }
 }
 
-void Expr::collectVars(std::set<NumVar> &res) const {
+void Expr::collectVars(std::unordered_set<NumVar> &res) const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
-        SymbolVisitor(std::set<NumVar> &t) : target(t) {}
+        SymbolVisitor(std::unordered_set<NumVar> &t) : target(t) {}
         void visit(const GiNaC::symbol &sym) {
             target.emplace(getIndex(sym));
         }
     private:
-        std::set<NumVar> &target;
+        std::unordered_set<NumVar> &target;
     };
 
     SymbolVisitor v(res);
@@ -196,8 +196,8 @@ void Expr::collectVars(std::set<NumVar> &res) const {
 }
 
 
-std::set<NumVar> Expr::vars() const {
-    std::set<NumVar> res;
+std::unordered_set<NumVar> Expr::vars() const {
+    std::unordered_set<NumVar> res;
     collectVars(res);
     return res;
 }
@@ -516,7 +516,7 @@ Num Expr::denomLcm() const {
     const Expr &denom = Expr::wildcard(0);
     const Expr &num = Expr::wildcard(1);
     const Expr &pattern = denom / num;
-    std::set<Expr> matches;
+    std::unordered_set<Expr> matches;
     GiNaC::numeric lcm = 1;
     findAll(pattern, matches);
     for (const Expr &e: matches) {
@@ -711,7 +711,7 @@ ExprSubs ExprSubs::unite(const ExprSubs &that) const {
     return res;
 }
 
-ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
+ExprSubs ExprSubs::project(const std::unordered_set<NumVar> &vars) const {
     ExprSubs res;
     if (size() < vars.size()) {
         for (const auto &p: *this) {
@@ -730,7 +730,7 @@ ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
     return res;
 }
 
-ExprSubs ExprSubs::setminus(const std::set<NumVar> &vars) const {
+ExprSubs ExprSubs::setminus(const std::unordered_set<NumVar> &vars) const {
     if (size() < vars.size()) {
         ExprSubs res;
         for (const auto &p: *this) {
@@ -778,37 +778,37 @@ bool ExprSubs::isOctagon() const {
     });
 }
 
-void ExprSubs::collectDomain(std::set<NumVar> &vars) const {
+void ExprSubs::collectDomain(std::unordered_set<NumVar> &vars) const {
     for (const auto &p: *this) {
         vars.insert(p.first);
     }
 }
 
-void ExprSubs::collectCoDomainVars(std::set<NumVar> &vars) const {
+void ExprSubs::collectCoDomainVars(std::unordered_set<NumVar> &vars) const {
     for (const auto &p: *this) {
         p.second.collectVars(vars);
     }
 }
 
-void ExprSubs::collectVars(std::set<NumVar> &vars) const {
+void ExprSubs::collectVars(std::unordered_set<NumVar> &vars) const {
     collectCoDomainVars(vars);
     collectDomain(vars);
 }
 
-std::set<NumVar> ExprSubs::domain() const {
-    std::set<NumVar> res;
+std::unordered_set<NumVar> ExprSubs::domain() const {
+    std::unordered_set<NumVar> res;
     collectDomain(res);
     return res;
 }
 
-std::set<NumVar> ExprSubs::coDomainVars() const {
-    std::set<NumVar> res;
+std::unordered_set<NumVar> ExprSubs::coDomainVars() const {
+    std::unordered_set<NumVar> res;
     collectCoDomainVars(res);
     return res;
 }
 
-std::set<NumVar> ExprSubs::allVars() const {
-    std::set<NumVar> res;
+std::unordered_set<NumVar> ExprSubs::allVars() const {
+    std::unordered_set<NumVar> res;
     collectVars(res);
     return res;
 }
@@ -820,10 +820,6 @@ size_t ExprSubs::hash() const {
         boost::hash_combine(hash, value.hash());
     }
     return hash;
-}
-
-std::strong_ordering operator<=>(const ExprSubs &m1, const ExprSubs &m2) {
-    return m1.map <=> m2.map;
 }
 
 bool operator==(const ExprSubs &m1, const ExprSubs &m2) {

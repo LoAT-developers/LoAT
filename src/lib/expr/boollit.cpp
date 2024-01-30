@@ -39,7 +39,7 @@ bool BoolLit::isWellformed() const {
     return true;
 }
 
-void BoolLit::collectVars(std::set<BoolVar> &res) const {
+void BoolLit::collectVars(std::unordered_set<BoolVar> &res) const {
     res.insert(var);
 }
 

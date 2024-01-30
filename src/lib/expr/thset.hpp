@@ -1,10 +1,10 @@
 #pragma once
 
 #include "itheory.hpp"
-#include "set.hpp"
 
 #include <optional>
 #include <ostream>
+#include <unordered_set>
 
 namespace theory {
 
@@ -217,8 +217,8 @@ public:
     }
 
     template <class V>
-    void insertAll(const std::set<V> &that) {
-        std::get<std::set<V>>(t).insert(that.begin(), that.end());
+    void insertAll(const std::unordered_set<V> &that) {
+        std::get<std::unordered_set<V>>(t).insert(that.begin(), that.end());
     }
 
 private:
@@ -257,7 +257,7 @@ public:
     }
 
     Iterator end() const {
-        return Iterator(this, std::get<variant_size - 1>(t).end());
+        return Iterator(this, VSI(std::get<variant_size - 1>(t).end()));
     }
 
 private:
@@ -303,13 +303,13 @@ public:
     }
 
     template <class T>
-    std::set<T>& get() {
-        return std::get<std::set<T>>(t);
+    std::unordered_set<T>& get() {
+        return std::get<std::unordered_set<T>>(t);
     }
 
     template <class T>
-    const std::set<T>& get() const {
-        return std::get<std::set<T>>(t);
+    const std::unordered_set<T>& get() const {
+        return std::get<std::unordered_set<T>>(t);
     }
 
     template <size_t I>
@@ -336,9 +336,9 @@ std::ostream& operator<<(std::ostream &s, const ThSet<VS, VSI, Var, Th...> &set)
 }
 
 template<ITheory... Th>
-using VarSet = ThSet<std::tuple<std::set<typename Th::Var>...>, std::variant<typename std::set<typename Th::Var>::iterator...>, typename Theory<Th...>::Var, Th...>;
+using VarSet = ThSet<std::tuple<std::unordered_set<typename Th::Var>...>, std::variant<typename std::unordered_set<typename Th::Var>::const_iterator...>, typename Theory<Th...>::Var, Th...>;
 
 template<ITheory... Th>
-using LitSet = ThSet<std::tuple<std::set<typename Th::Lit>...>, std::variant<typename std::set<typename Th::Lit>::iterator...>, typename Theory<Th...>::Lit, Th...>;
+using LitSet = ThSet<std::tuple<std::unordered_set<typename Th::Lit>...>, std::variant<typename std::unordered_set<typename Th::Lit>::const_iterator...>, typename Theory<Th...>::Lit, Th...>;
 
 }

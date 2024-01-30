@@ -56,9 +56,9 @@ RuleResult GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxl
                     //could be unsound, as free vars can lead to unbounded complexity
                     if (!var.isTempVar() && containsTempVar(solved)) continue;
 
-                    //extend the substitution, use compose in case var occurs on some rhs of varSubs
+                    //extend the substitution, use concat in case var occurs on some rhs of varSubs
                     varSubs.put(var, solved);
-                    varSubs = varSubs.compose(varSubs);
+                    varSubs = varSubs.concat(varSubs);
                     stringstream s;
                     s << "propagated equality " << var << " = " << solved;
                     proof.append(s.str());
@@ -111,7 +111,7 @@ RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool rem
     }
     auto guard = rule.getGuard()->lits();
     //get all variables that appear in an inequality
-    std::set<NumVar> tryVars;
+    std::unordered_set<NumVar> tryVars;
     for (const auto &lit : guard) {
         if (std::holds_alternative<Rel>(lit)) {
             const auto &rel = std::get<Rel>(lit);

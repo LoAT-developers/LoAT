@@ -34,7 +34,7 @@ bool Rel::isPoly() const {
     return l.isPoly() && r.isPoly();
 }
 
-bool Rel::isLinear(const std::optional<std::set<NumVar>> &vars) const {
+bool Rel::isLinear(const std::optional<std::unordered_set<NumVar>> &vars) const {
     return l.isLinear(vars) && r.isLinear(vars);
 }
 
@@ -213,7 +213,7 @@ Rel Rel::splitVariableAndConstantAddends(const std::set<NumVar> &params) const {
     if (newLhs.isAdd()) {
         for (size_t i=0; i < newLhs.arity(); ++i) {
             bool isConstant = true;
-            std::set<NumVar> vars = newLhs.op(i).vars();
+            auto vars = newLhs.op(i).vars();
             for (const NumVar &var: vars) {
                 if (params.find(var) == params.end()) {
                     isConstant = false;
@@ -225,7 +225,7 @@ Rel Rel::splitVariableAndConstantAddends(const std::set<NumVar> &params) const {
             }
         }
     } else {
-        std::set<NumVar> vars = newLhs.vars();
+        auto vars = newLhs.vars();
         bool isConstant = true;
         for (const NumVar &var: vars) {
             if (params.find(var) == params.end()) {
@@ -269,7 +269,7 @@ std::optional<bool> Rel::checkTrivial() const {
     return {};
 }
 
-void Rel::collectVars(std::set<NumVar> &res) const {
+void Rel::collectVars(std::unordered_set<NumVar> &res) const {
     l.collectVars(res);
     r.collectVars(res);
 }
@@ -297,8 +297,8 @@ Rel::RelOp Rel::relOp() const {
     return op;
 }
 
-std::set<NumVar> Rel::vars() const {
-    std::set<NumVar> res;
+std::unordered_set<NumVar> Rel::vars() const {
+    std::unordered_set<NumVar> res;
     collectVars(res);
     return res;
 }

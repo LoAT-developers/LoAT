@@ -64,13 +64,13 @@ public:
 
     bool isPoly() const;
 
-    std::strong_ordering operator<=>(const Rule &that) const;
-
     unsigned getId() const;
 
     bool isDeterministic() const;
 
     size_t hash() const;
+
+    bool operator==(const Rule &that) const = default;
 
 };
 
@@ -78,6 +78,13 @@ public:
  * For debugging output (not very readable)
  */
 std::ostream& operator<<(std::ostream &s, const Rule &rule);
+
+template<>
+struct std::hash<Rule> {
+    std::size_t operator()(const Rule& x) const noexcept {
+        return x.hash();
+    }
+};
 
 using TransIdx = const Rule*;
 using Implicant = std::pair<TransIdx, BoolExpr>;

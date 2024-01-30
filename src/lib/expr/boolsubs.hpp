@@ -13,11 +13,11 @@ class BoolSubs {
     using T = Theory<Th...>;
     using VarSet = theory::VarSet<Th...>;
 
-    std::map<BoolVar, BoolExpr> map;
+    std::unordered_map<BoolVar, BoolExpr> map;
 
 public:
 
-    using const_iterator = typename std::map<BoolVar, BoolExpr>::const_iterator;
+    using const_iterator = typename std::unordered_map<BoolVar, BoolExpr>::const_iterator;
 
     BoolSubs() {}
 
@@ -84,7 +84,7 @@ public:
         return res;
     }
 
-    BoolSubs project(const std::set<BoolVar> &vars) const {
+    BoolSubs project(const std::unordered_set<BoolVar> &vars) const {
         BoolSubs res;
         if (size() < vars.size()) {
             for (const auto &p: *this) {
@@ -103,7 +103,7 @@ public:
         return res;
     }
 
-    BoolSubs setminus(const std::set<BoolVar> &vars) const {
+    BoolSubs setminus(const std::unordered_set<BoolVar> &vars) const {
         if (size() < vars.size()) {
             BoolSubs res;
             for (const auto &p: *this) {
@@ -128,19 +128,19 @@ public:
         return BoolExpression<Th...>::buildTheoryLit(BoolLit(key)) != map.at(key);
     }
 
-    std::set<BoolVar> domain() const {
-        std::set<BoolVar> res;
+    std::unordered_set<BoolVar> domain() const {
+        std::unordered_set<BoolVar> res;
         collectDomain(res);
         return res;
     }
 
-    std::set<BoolVar> allVars() const {
-        std::set<BoolVar> res;
+    std::unordered_set<BoolVar> allVars() const {
+        std::unordered_set<BoolVar> res;
         collectVars(res);
         return res;
     }
 
-    void collectDomain(std::set<BoolVar> &vars) const {
+    void collectDomain(std::unordered_set<BoolVar> &vars) const {
         for (const auto &p: map) {
             vars.insert(p.first);
         }
@@ -207,11 +207,6 @@ public:
     }
 
 };
-
-template <ITheory... Th>
-std::strong_ordering operator<=>(const BoolSubs<Th...> &e1, const BoolSubs<Th...> &e2) {
-    return e1.map <=> e2.map;
-}
 
 template <ITheory... Th>
 bool operator==(const BoolSubs<Th...> &e1, const BoolSubs<Th...> &e2) {

@@ -198,7 +198,7 @@ int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
         Expr expanded = solvedCost.expand();
 
         Expr powerPattern = Expr::wildcard(1) ^ Expr::wildcard(2);
-        std::set<Expr> powers;
+        std::unordered_set<Expr> powers;
         assert(expanded.findAll(powerPattern, powers));
 
         lowerBound = 1;

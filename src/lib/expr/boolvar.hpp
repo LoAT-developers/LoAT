@@ -6,15 +6,17 @@
 
 class BoolVar {
 
+private:
+
     static int last_prog_idx;
     static int last_tmp_idx;
 
     int idx;
 
+public:
+
     friend auto operator<=>(const BoolVar &x, const BoolVar &y) = default;
     friend bool operator==(const BoolVar &x, const BoolVar &y) = default;
-
-public:
 
     BoolVar(const int idx);
 
@@ -33,3 +35,10 @@ public:
 };
 
 std::ostream& operator<<(std::ostream &s, const BoolVar &e);
+
+template<>
+struct std::hash<BoolVar> {
+    std::size_t operator()(const BoolVar& x) const noexcept {
+        return x.hash();
+    }
+};

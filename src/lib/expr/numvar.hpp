@@ -1,8 +1,11 @@
 #pragma once
 
 #include <ginac/ginac.h>
+#include <functional>
 
 class NumVar {
+
+private:
 
     static int last_tmp_idx;
     static int last_prog_idx;
@@ -11,10 +14,10 @@ class NumVar {
 
     static std::map<int, GiNaC::symbol> symbols;
 
+public:
+
     friend auto operator<=>(const NumVar&, const NumVar&) = default;
     friend bool operator==(const NumVar&, const NumVar&) = default;
-
-public:
 
     static const NumVar loc_var;
 
@@ -37,3 +40,10 @@ public:
 };
 
 std::ostream& operator<<(std::ostream &s, const NumVar &x);
+
+template<>
+struct std::hash<NumVar> {
+    std::size_t operator()(const NumVar& x) const noexcept {
+        return x.hash();
+    }
+};

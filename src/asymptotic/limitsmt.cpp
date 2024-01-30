@@ -256,7 +256,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
     NumVar n = NumVar::next();
 
     // get all relevant variables
-    std::set<NumVar> vars = expr->vars().get<NumVar>();
+    auto vars = expr->vars().get<NumVar>();
     cost.collectVars(vars);
     bool hasTmpVars = false;
 

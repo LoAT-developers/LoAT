@@ -480,7 +480,7 @@ public:
         return std::apply([](const auto&... x){return (true && ... && x.isPoly());}, t);
     }
 
-    std::strong_ordering operator<=>(const Subs &that) const = default;
+    bool operator==(const Subs &that) const = default;
 
     template <ITheory T>
     typename T::Subs& get() {
