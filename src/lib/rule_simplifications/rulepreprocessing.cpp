@@ -24,33 +24,8 @@
 
 using namespace std;
 
-/**
- * Returns the set of all variables that appear in the rhs of some update.
- * For an update x := a and x := x+a, this is {a} and {x,a}, respectively.
- */
-static VarSet collectVarsInUpdateRhs(const Rule &rule) {
-    VarSet varsInUpdate;
-    for (const auto &it : rule.getUpdate()) {
-        expr::collectVars(expr::second(it), varsInUpdate);
-    }
-    return varsInUpdate;
-}
-
 RuleResult eliminateTempVars(const Rule &rule) {
     RuleResult res(rule);
-
-    //declare helper lambdas to filter variables, to be passed as arguments
-    auto isTemp = [&](const Var &sym) {
-        return expr::isTempVar(sym);
-    };
-    auto isTempInUpdate = [&](const Var &sym) {
-        VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
-        return isTemp(sym) && varsInUpdate.find(sym) != varsInUpdate.end();
-    };
-    auto isTempOnlyInGuard = [&](const Var &sym) {
-        VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
-        return isTemp(sym) && varsInUpdate.find(sym) == varsInUpdate.end();
-    };
 
     //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
     res.concat(GuardToolbox::makeEqualities(*res));
@@ -58,11 +33,9 @@ RuleResult eliminateTempVars(const Rule &rule) {
 
     res.concat(GuardToolbox::propagateBooleanEqualities(*res));
 
-    //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
-    res.concat(GuardToolbox::propagateEqualities(*res, ResultMapsToInt, isTempInUpdate));
-
     //try to remove all remaining temp variables (we do 2 steps to prioritize removing vars from the update)
-    res.concat(GuardToolbox::propagateEqualities(*res, ResultMapsToInt, isTemp));
+
+    res.concat(GuardToolbox::propagateEqualities(*res, ResultMapsToInt, expr::isTempVar));
 
     BoolExpr guard = res->getGuard();
     BoolExpr newGuard = guard->simplify();
@@ -74,6 +47,10 @@ RuleResult eliminateTempVars(const Rule &rule) {
 
     //now eliminate a <= x and replace a <= x, x <= b by a <= b for all free variables x where this is sound
     //(not sound if x appears in update or cost, since we then need the value of x)
+    const auto varsInUpdate {expr::coDomainVars(res->getUpdate())};
+    auto isTempOnlyInGuard = [&](const Var &sym) {
+        return expr::isTempVar(sym) && varsInUpdate.find(sym) == varsInUpdate.end();
+    };
     res.concat(GuardToolbox::eliminateByTransitiveClosure(*res, true, isTempOnlyInGuard));
 
     return res;
