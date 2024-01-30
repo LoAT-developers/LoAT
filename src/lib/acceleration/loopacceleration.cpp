@@ -110,7 +110,7 @@ acceleration::Result LoopAcceleration::run() {
         accel_rule = Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form);
         accel_proof.concat(accelerator->proof);
         if (accelerator->nonterm) {
-            res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
+            res.nonterm = {BExpression::buildAnd(accelerator->formula), accel_proof};
         }
     }
     if (config.tryNonterm && (!accelerator || !accelerator->nonterm)) {
