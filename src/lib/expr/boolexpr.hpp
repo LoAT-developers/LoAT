@@ -173,6 +173,21 @@ public:
         }
     }
 
+    bool isTriviallyFalse() const {
+        if (isTheoryLit()) {
+            return literal::isTriviallyFalse<Th...>(*getTheoryLit());
+        } else {
+            const auto children = getChildren();
+            if (isAnd()) {
+                return std::any_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyFalse();});
+            } else if (isOr()) {
+                return std::all_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyFalse();});
+            } else {
+                throw std::logic_error("unknown junctor");
+            }
+        }
+    }
+
 private:
 
     bool implicant(Subs &subs, std::set<BE> &res) const {

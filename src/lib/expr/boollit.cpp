@@ -31,6 +31,10 @@ bool BoolLit::isTriviallyTrue() const {
     return false;
 }
 
+bool BoolLit::isTriviallyFalse() const {
+    return false;
+}
+
 bool BoolLit::isWellformed() const {
     return true;
 }
