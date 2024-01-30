@@ -99,9 +99,8 @@ public:
         return os;
     }
 
-    void setSeed(unsigned seed) override {
-        this->seed = seed;
-        updateParams();
+    void randomize(unsigned seed) override {
+        // TODO
     }
 
 private:

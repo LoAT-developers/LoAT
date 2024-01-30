@@ -263,8 +263,8 @@ public:
         return std::cout << de_lin << std::endl;
     }
 
-    void setSeed(unsigned seed) override {
-        z3.setSeed(seed);
+    void randomize(unsigned seed) override {
+        z3.randomize(seed);
     }
 
 };
