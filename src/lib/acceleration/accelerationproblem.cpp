@@ -297,10 +297,16 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         eqs.push_back(expr::mkEq(TheTheory::varToExpr(v), update.get(v)));
     }
     const auto c {BExpression::buildAnd(eqs)};
-    if (polyaccel && samplePoint && !c->subs(*samplePoint)->isTriviallyTrue()) {
+    if (c->isTriviallyFalse() || (polyaccel && samplePoint && !c->subs(*samplePoint)->isTriviallyTrue())) {
         return false;
     }
     BoolExpr g {c & lit};
+    solver->push();
+    solver->add(g);
+    if (solver->check() != Sat) {
+        solver->pop();
+        return false;
+    }
     res.formula.push_back(g);
     res.covered.push_back(c);
     res.proof.newline();
