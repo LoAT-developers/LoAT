@@ -57,6 +57,12 @@ class Expr {
     friend bool operator==(const Expr&, const Expr&);
     friend std::strong_ordering operator<=>(const Expr &x, const Expr &y);
 
+    struct Mapper: public GiNaC::map_function {
+        const ExprSubs &map;
+        Mapper(const ExprSubs &map);
+        GiNaC::ex operator()(const GiNaC::ex &ex);
+    };
+
 public:
 
     /**
@@ -69,12 +75,6 @@ public:
     explicit Expr(const GiNaC::ex &ex) : ex(ex) {}
     Expr(long i): ex(i) {}
     Expr(const NumVar &var): ex(*var) {}
-
-    /**
-     * @brief Applies a substitution via side-effects.
-     * @deprecated use subs instead
-     */
-    void applySubs(const ExprSubs &subs);
 
     /**
      * @brief Computes all matches of the given pattern.
@@ -400,9 +400,7 @@ public:
     size_t hash() const;
 
 private:
-    void putGinac(const NumVar &key, const Expr &val);
-    void eraseGinac(const NumVar &key);
-    GiNaC::exmap ginacMap;
+
     std::unordered_map<NumVar, Expr> map;
 
 };

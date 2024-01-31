@@ -54,7 +54,6 @@ public:
     void collectVars(std::unordered_set<NumVar> &res) const;
     bool has(const Expr &pattern) const;
     Rel subs(const ExprSubs &map) const;
-    void applySubs(const ExprSubs &subs);
     std::string toString() const;
     RelOp relOp() const;
     std::unordered_set<NumVar> vars() const;

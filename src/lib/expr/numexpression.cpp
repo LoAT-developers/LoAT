@@ -25,10 +25,6 @@
 
 using namespace std;
 
-void Expr::applySubs(const ExprSubs &subs) {
-    this->ex = this->ex.subs(subs.ginacMap);
-}
-
 bool Expr::findAll(const Expr &pattern, std::unordered_set<Expr> &found) const {
     bool anyFound = false;
 
@@ -453,8 +449,23 @@ size_t Expr::arity() const {
     return ex.nops();
 }
 
+Expr::Mapper::Mapper(const ExprSubs &map): map(map) {}
+
+GiNaC::ex Expr::Mapper::operator()(const GiNaC::ex &ex) {
+    if (ex.info(GiNaC::info_flags::symbol)) {
+        const auto it {map.find(NumVar(getIndex(GiNaC::ex_to<GiNaC::symbol>(ex))))};
+        if (it == map.end()) {
+            return ex;
+        } else {
+            return it->second.ex;
+        }
+    } else {
+        return ex.map(*this);
+    }
+}
+
 Expr Expr::subs(const ExprSubs &map) const {
-    return Expr(ex.subs(map.ginacMap, GiNaC::subs_options::no_pattern));
+    return Expr(Expr::Mapper(map)(ex));
 }
 
 void Expr::traverse(GiNaC::visitor &v) const {
@@ -631,11 +642,7 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 
 ExprSubs::ExprSubs() {}
 
-ExprSubs::ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init): map(init) {
-    for (const auto &p: init) {
-        putGinac(p.first, p.second);
-    }
-}
+ExprSubs::ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init): map(init) {}
 
 Expr ExprSubs::get(const NumVar &key) const {
     const auto it = map.find(key);
@@ -644,7 +651,6 @@ Expr ExprSubs::get(const NumVar &key) const {
 
 void ExprSubs::put(const NumVar &key, const Expr &val) {
     map[key] = val;
-    putGinac(key, val);
 }
 
 ExprSubs::const_iterator ExprSubs::begin() const {
@@ -672,7 +678,6 @@ unsigned int ExprSubs::size() const {
 }
 
 size_t ExprSubs::erase(const NumVar &key) {
-    eraseGinac(key);
     return map.erase(key);
 }
 
@@ -755,14 +760,6 @@ ExprSubs ExprSubs::setminus(const std::unordered_set<NumVar> &vars) const {
         }
         return res;
     }
-}
-
-void ExprSubs::putGinac(const NumVar &key, const Expr &val) {
-    ginacMap[*key] = val.ex;
-}
-
-void ExprSubs::eraseGinac(const NumVar &key) {
-    ginacMap.erase(*key);
 }
 
 bool ExprSubs::changes(const NumVar &key) const {

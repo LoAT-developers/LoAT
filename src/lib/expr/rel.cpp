@@ -282,11 +282,6 @@ Rel Rel::subs(const ExprSubs &map) const {
     return Rel(l.subs(map), op, r.subs(map));
 }
 
-void Rel::applySubs(const ExprSubs &subs) {
-    l.applySubs(subs);
-    r.applySubs(subs);
-}
-
 std::string Rel::toString() const {
     std::stringstream s;
     s << *this;
