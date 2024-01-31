@@ -118,7 +118,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
     bool nested {false};
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto imp {trace[i]};
-        nested |= is_orig_clause(imp.first);
+        nested |= !is_orig_clause(imp.first);
         const auto rule {imp.first
                             ->withGuard(imp.second)
                             .subs(Subs::build<IntTheory>(n, subs.at(i).get<IntTheory>(n)))};
@@ -148,7 +148,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
 }
 
 BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
-    if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || (Config::Analysis::reachability() && !loop.deterministic)) {
+    if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
         return BoolExpr();
     }
     // we must not start another iteration of the loop in the next step,
@@ -218,6 +218,17 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         } else {
             AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
             const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
+            if (accel_res.nonterm) {
+                query = query | accel_res.nonterm->certificate;
+                RuleProof nonterm_proof;
+                nonterm_proof.headline("Certificate of Non-Termination");
+                nonterm_proof.storeSubProof(accel_res.nonterm->proof);
+                proof.majorProofStep("Certificate of non-termination", nonterm_proof, its);
+                if (Config::Analysis::log) {
+                    std::cout << "found certificate of non-termination" << std::endl;
+                    std::cout << accel_res.nonterm->certificate << std::endl;
+                }
+            }
             if (accel_res.accel) {
                 auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
                 if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
@@ -268,13 +279,14 @@ BoolExpr ABMC::encode_transition(const TransIdx idx) {
 }
 
 void ABMC::unknown() {
-    std::cout << "unknwon" << std::endl;
-    proof.result("unknown");
+    const auto str = Config::Analysis::reachability() ? "unknowne" : "MAYBE";
+    std::cout << str << std::endl;
+    proof.result(str);
     proof.print();
 }
 
 void ABMC::unsat() {
-    const auto str = "unsat";
+    const auto str = Config::Analysis::reachability() ? "unsat" : "NO";
     std::cout << str << std::endl;
     proof.append("reached error location at depth " + std::to_string(depth));
     proof.result(str);
@@ -282,9 +294,10 @@ void ABMC::unsat() {
 }
 
 void ABMC::sat() {
-    std::cout << "sat" << std::endl;
+    const auto str = Config::Analysis::reachability() ? "sat" : "MAYBE";
+    std::cout << str << std::endl;
     proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
-    proof.result("sat");
+    proof.result(str);
     proof.print();
 }
 
@@ -393,7 +406,7 @@ void ABMC::analyze() {
             queries.push_back(idx->getGuard());
         }
     }
-    const auto query {BExpression::buildOr(queries)};
+    query = BExpression::buildOr(queries);
 
     while (true) {
         const auto &s {subs_at(depth + 1)};

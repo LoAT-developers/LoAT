@@ -26,6 +26,7 @@ private:
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
     bool approx {false};
     unsigned last_orig_clause;
+    BoolExpr query;
     std::vector<Subs> subs {Subs::Empty};
     std::vector<Implicant> trace;
     VarSet vars;
