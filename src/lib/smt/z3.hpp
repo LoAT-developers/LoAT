@@ -37,6 +37,7 @@ public:
     }
 
     Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
+        assert(models);
         const z3::model &m = solver.get_model();
         Model<Th...> res;
         const auto add = [&res, this, &m](const auto &p) {
@@ -82,11 +83,13 @@ public:
     }
 
     void enableModels() override {
-        solver.set("model", true);
+        this->models = true;
+        updateParams();
     }
 
     void resetSolver() override {
         solver.reset();
+        updateParams();
     }
 
     ~Z3Base() override {}
@@ -96,10 +99,10 @@ public:
     }
 
     void randomize(unsigned seed) override {
-        solver.set("random_seed", seed);
+        solver.set("random-seed", seed);
         solver.set("sat.phase", "random");
+        solver.set("sat.seed", seed);
         solver.set("sat.random_seed", seed);
-        solver.set("seed", seed);
         solver.set("nlsat.seed", seed);
         solver.set("nlsat.shuffle_vars", true);
         solver.set("smt.arith.random_initial_value", true);
@@ -107,13 +110,13 @@ public:
     }
 
 protected:
+    bool models = false;
     z3::context z3Ctx;
     Ctx ctx;
     z3::solver solver;
 
     Z3Base(): ctx(z3Ctx), solver(z3Ctx) {
-        solver.set("random_seed", 42u);
-        solver.set("seed", 42u);
+        updateParams();
     }
 
     Num getRealFromModel(const z3::model &model, const z3::expr &symbol) {
@@ -127,6 +130,12 @@ protected:
                         Z3_get_denominator(
                             model.ctx(),
                             model.eval(symbol, true))));
+    }
+
+    void updateParams() {
+        z3::params params(z3Ctx);
+        params.set(":model", models);
+        solver.set(params);
     }
 
 };
