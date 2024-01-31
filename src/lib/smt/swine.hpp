@@ -15,7 +15,9 @@ class Swine: public Smt<Th...> {
 
 public:
 
-    Swine(const swine::Config config = swine::Config()): solver(config, z3ctx), ctx(solver) {}
+    Swine(const swine::Config config = swine::Config()): solver(config, z3ctx), ctx(solver) {
+        updateParams();
+    }
 
     void add(const BExpr<Th...> e) override {
         solver.add(ExprToSmt<z3::expr, Th...>::convert(e, ctx));
@@ -90,6 +92,7 @@ public:
 
     void resetSolver() override {
         solver.reset();
+        updateParams();
     }
 
     ~Swine() override {}
@@ -98,16 +101,9 @@ public:
         return os << solver;
     }
 
-    void randomize(unsigned seed) override {
-        auto &s {solver.get_solver()};
-        s.set("random-seed", seed);
-        s.set("seed", seed);
-        s.set("sat.phase", "random");
-        s.set("sat.random_seed", seed);
-        s.set("nlsat.seed", seed);
-        s.set("nlsat.shuffle_vars", true);
-        s.set("smt.arith.random_initial_value", true);
-        s.set("smt.phase_selection", 5u);
+    void setSeed(unsigned seed) override {
+        this->seed = seed;
+        updateParams();
     }
 
 private:
@@ -115,6 +111,7 @@ private:
     z3::context z3ctx;
     swine::Swine solver;
     SwineContext ctx;
+    unsigned seed = 42u;
 
     Num getRealFromModel(const z3::model &model, const z3::expr &symbol) {
         return Num(Z3_get_numeral_string(
@@ -127,6 +124,13 @@ private:
                    Z3_get_denominator(
                        model.ctx(),
                        model.eval(symbol, true))));
+    }
+
+    void updateParams() {
+        z3::params params(z3ctx);
+        params.set(":seed", seed);
+        params.set(":random_seed", seed);
+        solver.get_solver().set(params);
     }
 
 };

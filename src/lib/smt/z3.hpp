@@ -98,15 +98,9 @@ public:
         return os << solver;
     }
 
-    void randomize(unsigned seed) override {
-        solver.set("random-seed", seed);
-        solver.set("sat.phase", "random");
-        solver.set("sat.seed", seed);
-        solver.set("sat.random_seed", seed);
-        solver.set("nlsat.seed", seed);
-        solver.set("nlsat.shuffle_vars", true);
-        solver.set("smt.arith.random_initial_value", true);
-        solver.set("smt.phase_selection", 5u);
+    void setSeed(unsigned seed) override {
+        this->seed = seed;
+        updateParams();
     }
 
 protected:
@@ -114,6 +108,7 @@ protected:
     z3::context z3Ctx;
     Ctx ctx;
     z3::solver solver;
+    unsigned seed = 42u;
 
     Z3Base(): ctx(z3Ctx), solver(z3Ctx) {
         updateParams();
@@ -135,6 +130,8 @@ protected:
     void updateParams() {
         z3::params params(z3Ctx);
         params.set(":model", models);
+        params.set(":seed", seed);
+        params.set(":random_seed", seed);
         solver.set(params);
     }
 

@@ -342,8 +342,8 @@ void Reachability::init() {
 void Reachability::luby_next() {
     const auto [u,v] {luby};
     luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
+    solver->setSeed(rand());
     solver->resetSolver();
-    solver->randomize(rand());
     luby_loop_count = 0;
 }
 
@@ -694,7 +694,6 @@ bool Reachability::try_to_finish() {
 
 void Reachability::analyze() {
     static std::default_random_engine rnd {};
-    solver->randomize(rand());
     proof.majorProofStep("Initial ITS", ITSProof(), chcs);
     if (Config::Analysis::log) {
         std::cout << "Initial ITS" << std::endl;
