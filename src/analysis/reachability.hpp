@@ -174,7 +174,7 @@ class Reachability {
 
     unsigned luby_unit {10};
 
-    unsigned luby_count {0};
+    unsigned luby_loop_count {0};
 
     void luby_next();
 
