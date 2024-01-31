@@ -203,7 +203,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     }
     const auto simp {Preprocess::preprocessRule(loop)};
     const auto deterministic {simp->isDeterministic()};
-    if (nested && !deterministic) {
+    if (Config::Analysis::reachability() && nested && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic, nested loop" << std::endl;
     } else if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
@@ -229,7 +229,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                     std::cout << accel_res.nonterm->certificate << std::endl;
                 }
             }
-            if (accel_res.accel) {
+            if ((!nested || deterministic) && accel_res.accel) {
                 auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
                 if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
                     const auto new_idx {add_learned_clause(*simplified, backlink)};
