@@ -53,7 +53,6 @@ bool AccelerationProblem::unchanged(const Lit &lit) {
         res.formula.push_back(BExpression::buildTheoryLit(lit));
         res.proof.newline();
         res.proof.append(std::stringstream() << lit << ": unchanged");
-        solver->add(BExpression::buildTheoryLit(lit));
         return true;
     }
     return false;
@@ -176,20 +175,22 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     if (!closed) {
         return false;
     }
+    auto success {false};
     const auto updated {expr::subs(lit, update)};
     solver->push();
     solver->add(updated);
-    solver->add(BExpression::buildTheoryLit(expr::negate(lit)));
-    auto success {solver->check() == Unsat};
-    solver->pop();
-    if (success) {
-        auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, Expr(config.n)-1))};
-        res.formula.push_back(g);
-        res.proof.newline();
-        res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
-        res.nonterm = false;
-        solver->add(BExpression::buildTheoryLit(lit));
+    if (solver->check() == Sat) {
+        solver->add(BExpression::buildTheoryLit(expr::negate(lit)));
+        if (solver->check() == Unsat) {
+            success = true;
+            auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, Expr(config.n)-1))};
+            res.formula.push_back(g);
+            res.proof.newline();
+            res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
+            res.nonterm = false;
+        }
     }
+    solver->pop();
     return success;
 }
 
@@ -198,15 +199,14 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
     solver->push();
     solver->add(BExpression::buildTheoryLit(lit));
     solver->add(!updated);
-    auto success {solver->check() == Unsat};
-    solver->pop();
+    const auto success {solver->check() == Unsat};
     if (success) {
         const auto g {BExpression::buildTheoryLit(lit)};
         res.formula.push_back(g);
         res.proof.newline();
         res.proof.append(std::stringstream() << lit << ": montonic increase yields " << g);
-        solver->add(BExpression::buildTheoryLit(lit));
     }
+    solver->pop();
     return success;
 }
 
@@ -214,27 +214,25 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     if (!closed || !std::holds_alternative<Rel>(lit)) {
         return false;
     }
+    auto success {false};
     const Rel &rel {std::get<Rel>(lit)};
     const auto updated {rel.lhs().subs(update.get<IntTheory>())};
     const auto dec {Rel::buildGeq(rel.lhs(), updated)};
     solver->push();
     solver->add(BExpression::buildTheoryLit(dec));
-    if (solver->check() != Sat) {
-        solver->pop();
-        return false;
+    if (solver->check() == Sat) {
+        const auto inc {Rel::buildLt(updated, updated.subs(update.get<IntTheory>()))};
+        solver->add(BExpression::buildTheoryLit(inc));
+        if (solver->check() == Unsat) {
+            success = true;
+            const auto g {BExpression::buildTheoryLit(rel) & rel.subs(closed->closed_form.get<IntTheory>()).subs({{config.n, Expr(config.n)-1}})};
+            res.formula.push_back(g);
+            res.proof.newline();
+            res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
+            res.nonterm = false;
+        }
     }
-    const auto inc {Rel::buildLt(updated, updated.subs(update.get<IntTheory>()))};
-    solver->add(BExpression::buildTheoryLit(inc));
-    const auto success {solver->check() == Unsat};
     solver->pop();
-    if (success) {
-        const auto g {BExpression::buildTheoryLit(rel) & rel.subs(closed->closed_form.get<IntTheory>()).subs({{config.n, Expr(config.n)-1}})};
-        res.formula.push_back(g);
-        res.proof.newline();
-        res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
-        res.nonterm = false;
-        solver->add(BExpression::buildTheoryLit(lit));
-    }
     return success;
 }
 
@@ -242,6 +240,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     if (!std::holds_alternative<Rel>(lit)) {
         return false;
     }
+    auto success {false};
     // t > 0
     const auto &rel {std::get<Rel>(lit)};
     // up(t)
@@ -251,38 +250,36 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     const auto inc {BExpression::buildTheoryLit(i)};
     solver->push();
     solver->add(inc);
-    if (solver->check() != Sat) {
-        solver->pop();
-        return false;
-    }
-    // up(t) >(=) up^2(t)
-    const auto d {strict ? Rel::buildGeq(updated, updated.subs(update.get<IntTheory>())) : Rel::buildGt(updated, updated.subs(update.get<IntTheory>()))};
-    const auto dec {BExpression::buildTheoryLit(d)};
-    solver->add(dec);
-    const auto success {solver->check()};
-    solver->pop();
-    if (success) {
-        BoolExpr g;
-        BoolExpr c;
-        if (polyaccel && samplePoint && i.subs(samplePoint->get<IntTheory>()).isTriviallyFalse()) {
-            if (!closed) {
-                return false;
+    if (solver->check() == Sat) {
+        // up(t) >(=) up^2(t)
+        const auto d {strict ? Rel::buildGeq(updated, updated.subs(update.get<IntTheory>())) : Rel::buildGt(updated, updated.subs(update.get<IntTheory>()))};
+        const auto dec {BExpression::buildTheoryLit(d)};
+        solver->add(dec);
+        if (solver->check() == Unsat) {
+            success = true;
+            BoolExpr g;
+            BoolExpr c;
+            if (polyaccel && samplePoint && i.subs(samplePoint->get<IntTheory>()).isTriviallyFalse()) {
+                if (!closed) {
+                    solver->pop();
+                    return false;
+                }
+                const auto s {closed->closed_form.get<IntTheory>().compose(ExprSubs({{config.n, Expr(config.n)-1}}))};
+                g = BExpression::buildTheoryLit((!i).subs(s)) & rel.subs(s);
+                c = BExpression::buildTheoryLit((!i));
+                res.nonterm = false;
+            } else {
+                g = inc & rel;
+                c = inc;
             }
-            const auto s {closed->closed_form.get<IntTheory>().compose(ExprSubs({{config.n, Expr(config.n)-1}}))};
-            g = BExpression::buildTheoryLit((!i).subs(s)) & rel.subs(s);
-            c = BExpression::buildTheoryLit((!i));
-            res.nonterm = false;
-        } else {
-            g = inc & rel;
-            c = inc;
+            res.formula.push_back(g);
+            res.covered.push_back(c);
+            res.proof.newline();
+            res.proof.append(std::stringstream() << rel << ": eventual increase yields " << g);
+            res.proof.append(std::stringstream() << "covered: " << c);
         }
-        res.formula.push_back(g);
-        res.covered.push_back(c);
-        res.proof.newline();
-        res.proof.append(std::stringstream() << rel << ": eventual increase yields " << g);
-        res.proof.append(std::stringstream() << "covered: " << c);
-        solver->add(BExpression::buildTheoryLit(lit));
     }
+    solver->pop();
     return success;
 }
 
@@ -303,16 +300,16 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     BoolExpr g {c & lit};
     solver->push();
     solver->add(g);
-    if (solver->check() != Sat) {
-        solver->pop();
-        return false;
+    if (solver->check() == Sat) {
+        res.formula.push_back(g);
+        res.covered.push_back(c);
+        res.proof.newline();
+        res.proof.append(std::stringstream() << lit << ": fixpoint yields " << g);
+        res.proof.append(std::stringstream() << "covered: " << c);
+        return true;
     }
-    res.formula.push_back(g);
-    res.covered.push_back(c);
-    res.proof.newline();
-    res.proof.append(std::stringstream() << lit << ": fixpoint yields " << g);
-    res.proof.append(std::stringstream() << "covered: " << c);
-    return true;
+    solver->pop();
+    return false;
 }
 
 std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes() {
@@ -320,6 +317,12 @@ std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes(
     while (!todo.empty() && progress) {
         progress = false;
         for (auto it = todo.begin(); it != todo.end();) {
+            solver->push();
+            solver->add(BExpression::buildTheoryLit(*it));
+            if (solver->check() != Sat) {
+                return {};
+            }
+            solver->pop();
             if (trivial(*it)
                 || unchanged(*it)
                 || polynomial(*it)
@@ -329,8 +332,9 @@ std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes(
                 || eventualIncrease(*it, false)
                 || eventualIncrease(*it, true)
                 || fixpoint(*it)) {
-                it = todo.erase(it);
+                solver->add(BExpression::buildTheoryLit(*it));
                 progress = true;
+                it = todo.erase(it);
             } else {
                 ++it;
             }

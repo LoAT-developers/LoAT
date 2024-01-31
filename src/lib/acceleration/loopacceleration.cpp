@@ -81,9 +81,6 @@ acceleration::Result LoopAcceleration::run() {
     const auto try_nonterm = [&]() {
         const auto accelerator = AccelerationProblem(rule, {}, sample_point, config).computeRes();
         if (accelerator) {
-            if (res.status == acceleration::AccelerationFailed) {
-                res.status = acceleration::Nonterminating;
-            }
             res.nonterm = {BExpression::buildAnd(accelerator->formula), proof};
             res.nonterm->proof.concat(accelerator->proof);
             return true;
@@ -103,9 +100,7 @@ acceleration::Result LoopAcceleration::run() {
     auto covered {top()};
     accel_proof = proof;
     auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
-    res.status = acceleration::AccelerationFailed;
     if (accelerator) {
-        res.status = acceleration::Success;
         covered = BExpression::buildAnd(accelerator->covered);
         accel_rule = Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form);
         accel_proof.concat(accelerator->proof);
@@ -123,13 +118,24 @@ acceleration::Result LoopAcceleration::run() {
         }
         if (accel_rule) {
             accel_rule = prefix.chain(*accel_rule);
+            if (SmtFactory::check(accel_rule->getGuard()) != SmtResult::Sat) {
+                accel_rule = {};
+            }
         }
         if (res.nonterm) {
             res.nonterm->certificate = prefix.getGuard() & res.nonterm->certificate->subs(prefix.getUpdate());
+            if (SmtFactory::check(res.nonterm->certificate) != SmtResult::Sat) {
+                res.nonterm = {};
+            }
         }
     }
     if (accel_rule) {
+        res.status = acceleration::Success;
         res.accel = {*accel_rule, accel_proof, covered};
+    } else if (res.nonterm) {
+        res.status = acceleration::Nonterminating;
+    } else {
+        res.status = acceleration::AccelerationFailed;
     }
     return res;
 }
