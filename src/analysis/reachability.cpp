@@ -344,7 +344,7 @@ void Reachability::luby_next() {
     luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
     solver->resetSolver();
     solver->randomize(rand());
-    luby_loop_count = 0;
+    luby_count = 0;
 }
 
 void Reachability::unsat() {
@@ -618,7 +618,6 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         std::cout << closure << std::endl;
     }
     const auto [loop, model] {build_loop(backlink)};
-    luby_loop_count++;
     auto state {learn_clause(loop, model, backlink)};
     redundancy->mark_as_accelerated(closure);
     if (!state->succeeded()) {
@@ -714,12 +713,13 @@ void Reachability::analyze() {
     }
     blocked_clauses[0].clear();
     do {
+        ++luby_count;
         size_t next_restart = luby_unit * luby.second;
         std::unique_ptr<LearningState> state;
         if (Config::Analysis::log) std::cout << "trace: " << trace << std::endl;
         if (!trace.empty()) {
             for (auto backlink = has_looping_suffix(trace.size() - 1);
-                 backlink && luby_loop_count < next_restart;
+                 backlink;
                  backlink = has_looping_suffix(*backlink - 1)) {
                 auto step {trace[*backlink]};
                 auto simple_loop {*backlink == trace.size() - 1};
@@ -754,8 +754,8 @@ void Reachability::analyze() {
                 }
             }
         }
-        if (luby_loop_count == next_restart || (state && state->restart()) || !check_consistency()) {
-            if (Config::Analysis::log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
+        if (luby_count >= next_restart || (state && state->restart()) || !check_consistency()) {
+            if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
             // restart
             while (!trace.empty()) {
                 pop();
