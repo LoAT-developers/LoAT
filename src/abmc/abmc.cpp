@@ -115,13 +115,11 @@ int ABMC::get_language(unsigned i) {
     }
 }
 
-std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
+std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
-    bool nested {false};
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto imp {trace[i]};
-        nested |= !is_orig_clause(imp.first);
         const auto rule {imp.first
                             ->withGuard(imp.second)
                             .subs(Subs::build<IntTheory>(n, subs.at(i).get<IntTheory>(n)))};
@@ -144,7 +142,7 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
         RuleExport::printRule(implicant, std::cout);
         std::cout << std::endl;
     }
-    return {implicant, model, nested};
+    return {implicant, model};
 }
 
 BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
@@ -232,7 +230,7 @@ std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_po
 }
 
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
-    auto [loop, sample_point, nested] {build_loop(backlink)};
+    auto [loop, sample_point] {build_loop(backlink)};
     auto simp {Preprocess::preprocessRule(loop)};
     const auto [projected_rule, projection] {project(*simp, sample_point.get<IntTheory>())};
     if (projection->isTriviallyFalse()) {
@@ -254,8 +252,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         }
     }
     const auto deterministic {projected_rule.isDeterministic()};
-    if (Config::Analysis::reachability() && nested && !deterministic) {
-        if (Config::Analysis::log) std::cout << "not accelerating non-deterministic, nested loop" << std::endl;
+    if (Config::Analysis::reachability() && !deterministic) {
+        if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
     } else if (Config::Analysis::reachability() && projected_rule.getUpdate() == expr::concat(projected_rule.getUpdate(), projected_rule.getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
     } else if (Config::Analysis::reachability() && projected_rule.getUpdate().empty()) {
@@ -273,7 +271,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         }
         AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
         const auto accel_res {LoopAcceleration::accelerate(projected_rule, sample_point, config)};
-        if (accel_res.nonterm) {
+        if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
             query = query | accel_res.nonterm->certificate;
             RuleProof nonterm_proof;
             std::stringstream ss;
@@ -291,7 +289,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                 std::cout << accel_res.nonterm->certificate << std::endl;
             }
         }
-        if ((!nested || deterministic) && accel_res.accel) {
+        if (deterministic && accel_res.accel) {
             auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
             if (simplified->getUpdate() != projected_rule.getUpdate() && simplified->isPoly()) {
                 const auto new_idx {add_learned_clause(*simplified, backlink)};
