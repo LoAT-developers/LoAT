@@ -230,9 +230,9 @@ std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_po
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
     auto [loop, sample_point, nested] {build_loop(backlink)};
     auto simp {Preprocess::preprocessRule(loop)};
-    // const auto [projected_rule, projection] {project(*simp, sample_point.get<IntTheory>())};
-    const auto projected_rule {*simp};
-    const auto projection {BExpression::top()};
+    const auto [projected_rule, projection] {project(*simp, sample_point.get<IntTheory>())};
+    // const auto projected_rule {*simp};
+    // const auto projection {BExpression::top()};
     const std::pair<std::vector<int>, BoolExpr> key {lang, projection};
     auto &map {cache.emplace(key, std::map<BoolExpr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
