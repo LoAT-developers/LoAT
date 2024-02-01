@@ -190,15 +190,11 @@ public:
 
 private:
 
-    bool implicant(Subs &subs, std::set<BE> &res) const {
+    void syntacticImplicant(Subs &subs, std::set<BE> &res) const {
         if (isAnd() || isOr()) {
             for (const auto &c: getChildren()) {
-                if (!c->implicant(subs, res)) {
-                    res.clear();
-                    return false;
-                }
+                c->syntacticImplicant(subs, res);
             }
-            return true;
         } else {
             const auto lit = getTheoryLit();
             if (lit) {
@@ -214,9 +210,6 @@ private:
                 }
                 if (l->isTriviallyTrue()) {
                     res.insert(this->shared_from_this());
-                    return true;
-                } else {
-                    return false;
                 }
             } else {
                 throw std::invalid_argument("unknown kind of BoolExpr");
@@ -229,13 +222,10 @@ public:
     /**
      * Assumes that this->subs(subs) is a tautology.
      */
-    std::optional<BE> implicant(Subs subs) const {
+    BE syntacticImplicant(Subs subs) const {
         std::set<BE> res;
-        if (implicant(subs, res)) {
-            return buildAnd(res);
-        } else {
-            return {};
-        }
+        syntacticImplicant(subs, res);
+        return buildAnd(res);
     }
 
     void iter(const std::function<void(const Lit&)> &f) const {

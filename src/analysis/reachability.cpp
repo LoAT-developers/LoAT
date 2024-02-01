@@ -408,12 +408,8 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     case Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
         const auto model {solver->model(guard->vars()).toSubs()};
-        const auto implicant {idx->getGuard()->implicant(expr::compose(projected_var_renaming, model))};
-        if (implicant) {
-            return {idx->withGuard(*implicant)};
-        } else {
-            throw std::logic_error("model, but no implicant");
-        }
+        const auto implicant {idx->getGuard()->syntacticImplicant(expr::compose(projected_var_renaming, model))};
+        return {idx->withGuard(implicant)};
     }
     case Unknown: {}
     [[fallthrough]];

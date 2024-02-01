@@ -137,11 +137,8 @@ std::tuple<Rule, Subs, bool> ABMC::build_loop(const int backlink) {
     auto vars {loop->vars()};
     expr::collectCoDomainVars(var_renaming, vars);
     const auto model {expr::compose(var_renaming, solver->model(vars).toSubs())};
-    const auto imp {loop->getGuard()->implicant(model)};
-    if (!imp) {
-        throw std::logic_error("model, but no implicant");
-    }
-    const auto implicant {loop->withGuard(*imp)};
+    const auto imp {loop->getGuard()->syntacticImplicant(model)};
+    const auto implicant {loop->withGuard(imp)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         RuleExport::printRule(implicant, std::cout);
@@ -372,20 +369,17 @@ void ABMC::build_trace() {
         const auto s {subs.at(d)};
         const auto rule {rule_map.at(s.get<IntTheory>(trace_var).subs(model.get<IntTheory>()).toNum().to_int())};
         const auto comp {expr::compose(s, model)};
-        const auto imp {rule->getGuard()->implicant(comp)};
+        const auto imp {rule->getGuard()->syntacticImplicant(comp)};
         auto vars {rule->getUpdate().domain()};
         vars.insert(n);
         vars.insert(trace_var);
         run.push_back(comp.project(vars));
-        if (!imp) {
-            throw std::logic_error("model, but no implicant");
-        }
-        const Implicant i {rule, *imp};
+        const Implicant i {rule, imp};
         if (prev) {
             dependency_graph.addEdge(*prev, i);
         }
         prev = i;
-        trace.emplace_back(rule, *imp);
+        trace.emplace_back(rule, imp);
     }
     if (Config::Analysis::log) {
         std::cout << "trace:" << std::endl << trace;
