@@ -189,6 +189,13 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 }
 
 std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_point) {
+    const auto s {subs_at(depth + 1)};
+    solver->push();
+    solver->add(encode_transition(&r)->subs(s));
+    if (solver->check() != SmtResult::Sat) {
+        solver->pop();
+        return {r, BExpression::bot()};
+    }
     const auto vars {r.vars()};
     Rule res {r};
     RelSet projection;
@@ -199,48 +206,41 @@ std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_po
             res.getGuard()->getBounds(x, bounds);
             if (bounds.equality) {
                 res = res.subs(Subs::build<IntTheory>(x, *bounds.equality));
-            } else {
-                std::optional<Expr> closest;
-                Num dist;
+            } else if (!bounds.upperBounds.empty() && !bounds.lowerBounds.empty()) {
+                auto done {false};
                 for (const auto &bs: {bounds.upperBounds, bounds.lowerBounds}) {
                     for (const auto &b: bs) {
-                        const auto d {GiNaC::abs((b.subs(sample_point) - val).toNum())};
-                        if (!closest || d < dist) {
-                            closest = b;
-                            dist = d;
-                            if (dist == 0) {
-                                break;
-                            }
+                        solver->push();
+                        solver->add(Rel::buildEq(b, x).subs(s.get<IntTheory>()));
+                        if (solver->check() == SmtResult::Sat) {
+                            res = res.subs(Subs::build<IntTheory>(x, b));
+                            projection.insert(Rel::buildEq(x, b));
+                            done = true;
+                            break;
+                        } else {
+                            solver->pop();
                         }
                     }
-                    if (closest && dist == 0) {
+                    if (done) {
                         break;
                     }
-                }
-                if (closest) {
-                    res = res.subs(Subs::build<IntTheory>(x, *closest));
-                    projection.insert(Rel::buildEq(x, *closest));
                 }
             }
         }
     }
-    if (res != r) {
-        solver->push();
-        solver->add(encode_transition(&res)->subs(subs_at(depth + 1)));
-        if (solver->check() == SmtResult::Sat) {
-            solver->pop();
-            return {res, BExpression::buildAndFromLits(projection)};
-        }
+    for (unsigned i = 0; i <= projection.size(); ++i) {
         solver->pop();
     }
-    return {r, BExpression::top()};
-
+    return {res, BExpression::buildAndFromLits(projection)};
 }
 
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
     auto [loop, sample_point, nested] {build_loop(backlink)};
     auto simp {Preprocess::preprocessRule(loop)};
     const auto [projected_rule, projection] {project(*simp, sample_point.get<IntTheory>())};
+    if (projection->isTriviallyFalse()) {
+        return {};
+    }
     // const auto projected_rule {*simp};
     // const auto projection {BExpression::top()};
     const std::pair<std::vector<int>, BoolExpr> key {lang, projection};
