@@ -5,7 +5,7 @@
 #include "boolexpr.hpp"
 #include "relevantvariables.hpp"
 
-bool AccelerationProblem::polyaccel = true;
+AccelerationProblem::PolyAccelMode AccelerationProblem::polyaccel {PolyAccelMode::LowDegree};
 
 AccelerationProblem::AccelerationProblem(
         const Rule &r,
@@ -17,10 +17,10 @@ AccelerationProblem::AccelerationProblem(
     guard(r.getGuard()->toG()),
     config(config),
     samplePoint(samplePoint) {
-   if (closed && polyaccel) {
-       update.get<IntTheory>() = closed->refined_equations;
-       res.proof.append(std::stringstream() << "refined update: " << update);
-   }
+    if (closed && polyaccel != PolyAccelMode::None) {
+        update.get<IntTheory>() = closed->refined_equations;
+        res.proof.append(std::stringstream() << "refined update: " << update);
+    }
     for (const auto &l: guard->lits()) {
         todo.insert(l);
     }
@@ -59,7 +59,7 @@ bool AccelerationProblem::unchanged(const Lit &lit) {
 }
 
 bool AccelerationProblem::polynomial(const Lit &lit) {
-    if (!polyaccel || !closed || !std::holds_alternative<Rel>(lit)) {
+    if (polyaccel == PolyAccelMode::None || !closed || !std::holds_alternative<Rel>(lit)) {
         return false;
     }
     const auto &rel {std::get<Rel>(lit)};
@@ -107,7 +107,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     }
     if (!low_degree && !samplePoint) {
         return false;
-    } else if (!low_degree) {
+    } else if (!low_degree && polyaccel == PolyAccelMode::Full) {
         if (nfold.isGround() || !nfold.isPoly(config.n)) {
             return false;
         }

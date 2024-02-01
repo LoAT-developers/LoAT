@@ -13,7 +13,11 @@ class AccelerationProblem {
 
 public:
 
-    static bool polyaccel;
+    enum class PolyAccelMode {
+        None, LowDegree, Full
+    };
+
+    static PolyAccelMode polyaccel;
 
     struct Accelerator {
         std::vector<BoolExpr> formula;

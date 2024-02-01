@@ -133,7 +133,17 @@ void parseFlags(int argc, char *argv[]) {
                 exit(1);
             }
         } else if (strcmp("--polyaccel", argv[arg]) == 0) {
-            AccelerationProblem::polyaccel = true;
+            std::string str = getNext();
+            if (boost::iequals("full", str)) {
+                AccelerationProblem::polyaccel = AccelerationProblem::PolyAccelMode::Full;
+            } else if (boost::iequals("low_degree", str)) {
+                AccelerationProblem::polyaccel = AccelerationProblem::PolyAccelMode::LowDegree;
+            } else if (boost::iequals("none", str)) {
+                AccelerationProblem::polyaccel = AccelerationProblem::PolyAccelMode::None;
+            } else {
+                cout << "Error: unknown mode " << str << " for polynomial acceleration" << std::endl;
+                exit(1);
+            }
         } else if (strcmp("--format", argv[arg]) == 0) {
             std::string str = getNext();
             if (boost::iequals("koat", str)) {
