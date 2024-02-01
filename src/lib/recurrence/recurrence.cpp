@@ -43,9 +43,17 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
     if (vars.find(lhs) == vars.end()) {
         ++prefix;
         if (inverse) {
-            const auto last {rhs.subs(*inverse)};
-            result.refined_equations.put(lhs, lhs + rhs - last);
-            inverse->put(lhs, lhs - rhs + last);
+            for (const auto &x: rhs.vars()) {
+                if (x.isTempVar()) {
+                    inverse = {};
+                    break;
+                }
+            }
+            if (inverse) {
+                const auto last {rhs.subs(*inverse)};
+                result.refined_equations.put(lhs, lhs + rhs - last);
+                inverse->put(lhs, lhs - rhs + last);
+            }
         }
         closed_form = updated;
     } else {
@@ -57,8 +65,8 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
             inverse = std::optional<ExprSubs>();
         } else if (inverse) {
             inverse->put(lhs, lhs + *i);
+            result.refined_equations.put(lhs, rhs);
         }
-        result.refined_equations.put(lhs, rhs);
         auto last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
         Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(updated.subs({{*lhs, last}}))};
         auto status {Purrs::Recurrence::Solver_Status::TOO_COMPLEX};
@@ -124,6 +132,9 @@ bool Recurrence::solve() {
         if (!success) {
             return false;
         }
+    }
+    if (!inverse) {
+        result.refined_equations = equations.get<IntTheory>();
     }
     return true;
 }
