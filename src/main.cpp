@@ -126,6 +126,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::smtSolver = Config::Analysis::Z3Lin;
             } else if (boost::iequals("swine", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Swine;
+            } else if (boost::iequals("yices", str)) {
+                Config::Analysis::smtSolver = Config::Analysis::Yices;
             } else {
                 cout << "Error: unknown SMT solver " << str << std::endl;
                 exit(1);

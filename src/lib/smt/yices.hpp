@@ -123,7 +123,7 @@ public:
     }
 
     void setSeed(unsigned seed) override {
-        throw std::runtime_error("Yices::setSeed not yet implemented");
+        // TODO
     }
 
     void enableModels() override {}

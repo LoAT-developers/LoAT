@@ -31,6 +31,9 @@ ABMC::ABMC(ITSProblem &its):
     case Config::Analysis::Z3Lin:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>());
         break;
+    case Config::Analysis::Yices:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Yices<IntTheory, BoolTheory>(Logic::QF_NA));
+        break;
     case Config::Analysis::Swine:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Swine<IntTheory, BoolTheory>());
         break;

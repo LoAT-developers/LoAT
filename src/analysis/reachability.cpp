@@ -1,6 +1,7 @@
 #include "reachability.hpp"
 #include "linearizingsolver.hpp"
 #include "z3.hpp"
+#include "yices.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
@@ -118,6 +119,9 @@ Reachability::Reachability(ITSProblem &chcs):
         break;
     case Config::Analysis::CVC5:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
+        break;
+    case Config::Analysis::Yices:
+        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Yices<IntTheory, BoolTheory>(Logic::QF_NA));
         break;
     case Config::Analysis::Z3Lin:
         solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>());
