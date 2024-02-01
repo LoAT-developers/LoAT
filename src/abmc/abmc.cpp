@@ -188,84 +188,133 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     return idx;
 }
 
+std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_point) const {
+    const auto vars {r.vars()};
+    Rule res {r};
+    RelSet projection;
+    for (const auto &x: vars.get<NumVar>()) {
+        const auto val {sample_point.get(x)};
+        if (x.isTempVar()) {
+            Bounds bounds;
+            res.getGuard()->getBounds(x, bounds);
+            if (bounds.equality) {
+                res = res.subs(Subs::build<IntTheory>(x, *bounds.equality));
+            } else {
+                std::optional<Expr> closest;
+                Num dist;
+                for (const auto &bs: {bounds.upperBounds, bounds.lowerBounds}) {
+                    for (const auto &b: bs) {
+                        const auto d {GiNaC::abs((b.subs(sample_point) - val).toNum())};
+                        if (!closest || d < dist) {
+                            closest = b;
+                            dist = d;
+                            if (dist == 0) {
+                                break;
+                            }
+                        }
+                    }
+                    if (closest && dist == 0) {
+                        break;
+                    }
+                }
+                if (closest) {
+                    res = res.subs(Subs::build<IntTheory>(x, *closest));
+                    projection.insert(Rel::buildEq(x, *closest));
+                }
+            }
+        }
+    }
+    return {res, BExpression::buildAndFromLits(projection)};
+}
+
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
     auto [loop, sample_point, nested] {build_loop(backlink)};
-    const auto it {cache.find(lang)};
-    if (it != cache.end()) {
-        for (const auto &[imp, loop]: it->second) {
-            if (imp->subs(sample_point)->isTriviallyTrue()) {
-                if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
-                if (loop) {
-                    shortcut = loop->idx;
-                    return loop;
-                } else {
-                    return {};
-                }
+    auto simp {Preprocess::preprocessRule(loop)};
+    // const auto [projected_rule, projection] {project(*simp, sample_point.get<IntTheory>())};
+    const auto projected_rule {*simp};
+    const auto projection {BExpression::top()};
+    const std::pair<std::vector<int>, BoolExpr> key {lang, projection};
+    auto &map {cache.emplace(key, std::map<BoolExpr, std::optional<Loop>>()).first->second};
+    for (const auto &[imp, loop]: map) {
+        if (imp->subs(sample_point)->isTriviallyTrue()) {
+            if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
+            if (loop) {
+                shortcut = loop->idx;
+                return loop;
+            } else {
+                return {};
             }
         }
     }
-    const auto simp {Preprocess::preprocessRule(loop)};
-    const auto deterministic {simp->isDeterministic()};
+    const auto deterministic {projected_rule.isDeterministic()};
     if (Config::Analysis::reachability() && nested && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic, nested loop" << std::endl;
-    } else if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
+    } else if (Config::Analysis::reachability() && projected_rule.getUpdate() == expr::concat(projected_rule.getUpdate(), projected_rule.getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
+    } else if (Config::Analysis::reachability() && projected_rule.getUpdate().empty()) {
+        if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
     } else {
-        if (Config::Analysis::log && simp) {
-            std::cout << "simplified loop:" << std::endl;
-            RuleExport::printRule(*simp, std::cout);
+        if (Config::Analysis::log) {
+            if (simp) {
+                std::cout << "simplified loop:" << std::endl;
+                RuleExport::printRule(*simp, std::cout);
+                std::cout << std::endl;
+            }
+            std::cout << "projected loop:" << std::endl;
+            RuleExport::printRule(projected_rule, std::cout);
             std::cout << std::endl;
         }
-        if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
-            if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
-        } else {
-            AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
-            const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
-            if (accel_res.nonterm) {
-                query = query | accel_res.nonterm->certificate;
-                RuleProof nonterm_proof;
-                nonterm_proof.headline("Certificate of Non-Termination");
-                nonterm_proof.storeSubProof(accel_res.nonterm->proof);
-                proof.majorProofStep("Certificate of non-termination", nonterm_proof, its);
-                if (Config::Analysis::log) {
-                    std::cout << "found certificate of non-termination" << std::endl;
-                    std::cout << accel_res.nonterm->certificate << std::endl;
-                }
+        AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
+        const auto accel_res {LoopAcceleration::accelerate(projected_rule, sample_point, config)};
+        if (accel_res.nonterm) {
+            query = query | accel_res.nonterm->certificate;
+            RuleProof nonterm_proof;
+            std::stringstream ss;
+            ss << "Original rule:" << std::endl;
+            RuleExport::printRule(projected_rule, ss);
+            ss << std::endl;
+            nonterm_proof.append(ss);
+            ss << "Certificate:" << std::endl;
+            ss << accel_res.nonterm->certificate;
+            nonterm_proof.append(ss);
+            nonterm_proof.storeSubProof(accel_res.nonterm->proof);
+            proof.majorProofStep("Certificate of non-termination", nonterm_proof, its);
+            if (Config::Analysis::log) {
+                std::cout << "found certificate of non-termination" << std::endl;
+                std::cout << accel_res.nonterm->certificate << std::endl;
             }
-            if ((!nested || deterministic) && accel_res.accel) {
-                auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
-                if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
-                    const auto new_idx {add_learned_clause(*simplified, backlink)};
-                    shortcut = new_idx;
-                    history.emplace(next, lang);
-                    lang_map.emplace(Implicant(new_idx, {}), next);
-                    ++next;
-                    const Loop loop {.idx = new_idx,
-                                    .prefix = accel_res.prefix,
-                                    .period = accel_res.period,
-                                    .covered = accel_res.accel->covered,
-                                    .deterministic = deterministic};
-                    auto &map {cache.emplace(lang, std::map<BoolExpr, std::optional<Loop>>()).first->second};
-                    map.emplace(accel_res.accel->covered, loop);
-                    RuleProof sub_proof, acceleration_proof;
-                    acceleration_proof.storeSubProof(simp.getProof());
-                    acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
-                    acceleration_proof.storeSubProof(accel_res.accel->proof);
-                    sub_proof.concat(acceleration_proof);
-                    sub_proof.concat(simplified.getProof());
-                    proof.majorProofStep("Accelerate", sub_proof, its);
-                    if (Config::Analysis::log) {
-                        std::cout << "accelerated rule, idx " << new_idx->getId() << std::endl;
-                        RuleExport::printRule(*simplified, std::cout);
-                        std::cout << std::endl;
-                    }
-                    return loop;
+        }
+        if ((!nested || deterministic) && accel_res.accel) {
+            auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
+            if (simplified->getUpdate() != projected_rule.getUpdate() && simplified->isPoly()) {
+                const auto new_idx {add_learned_clause(*simplified, backlink)};
+                shortcut = new_idx;
+                history.emplace(next, lang);
+                lang_map.emplace(Implicant(new_idx, {}), next);
+                ++next;
+                const Loop loop {.idx = new_idx,
+                                .prefix = accel_res.prefix,
+                                .period = accel_res.period,
+                                .covered = accel_res.accel->covered & projection,
+                                .deterministic = deterministic};
+                map.emplace(loop.covered, loop);
+                RuleProof sub_proof, acceleration_proof;
+                acceleration_proof.storeSubProof(simp.getProof());
+                acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
+                acceleration_proof.storeSubProof(accel_res.accel->proof);
+                sub_proof.concat(acceleration_proof);
+                sub_proof.concat(simplified.getProof());
+                proof.majorProofStep("Accelerate", sub_proof, its);
+                if (Config::Analysis::log) {
+                    std::cout << "accelerated rule, idx " << new_idx->getId() << std::endl;
+                    RuleExport::printRule(*simplified, std::cout);
+                    std::cout << std::endl;
                 }
+                return loop;
             }
         }
     }
-    auto &map {cache.emplace(lang, std::map<BoolExpr, std::optional<Loop>>()).first->second};
-    map.emplace(top(), std::optional<Loop>());
+    map.emplace(projection, std::optional<Loop>());
     return {};
 }
 

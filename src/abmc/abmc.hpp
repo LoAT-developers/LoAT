@@ -33,7 +33,7 @@ private:
     NumVar n {NumVar::next()};
     std::map<Var, Var> post_vars;
     std::map<Implicant, int> lang_map;
-    std::map<std::vector<int>, std::map<BoolExpr, std::optional<Loop>>> cache;
+    std::map<std::pair<std::vector<int>, BoolExpr>, std::map<BoolExpr, std::optional<Loop>>> cache;
     std::map<int, std::vector<int>> history;
     NumVar trace_var;
     std::optional<TransIdx> shortcut;
@@ -50,6 +50,7 @@ private:
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
     std::tuple<Rule, Subs, bool> build_loop(const int backlink);
     BoolExpr build_blocking_clause(const int backlink, const Loop &loop);
+    std::pair<Rule, BoolExpr> project(const Rule &r, const ExprSubs &sample_point) const;
     std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
     void unsat();
     void unknown();
