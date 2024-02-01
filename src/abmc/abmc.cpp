@@ -188,7 +188,7 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     return idx;
 }
 
-std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_point) const {
+std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_point) {
     const auto vars {r.vars()};
     Rule res {r};
     RelSet projection;
@@ -224,7 +224,17 @@ std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_po
             }
         }
     }
-    return {res, BExpression::buildAndFromLits(projection)};
+    if (res != r) {
+        solver->push();
+        solver->add(encode_transition(&res)->subs(subs_at(depth + 1)));
+        if (solver->check() == SmtResult::Sat) {
+            solver->pop();
+            return {res, BExpression::buildAndFromLits(projection)};
+        }
+        solver->pop();
+    }
+    return {r, BExpression::top()};
+
 }
 
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
@@ -295,7 +305,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                 const Loop loop {.idx = new_idx,
                                 .prefix = accel_res.prefix,
                                 .period = accel_res.period,
-                                .covered = accel_res.accel->covered & projection,
+                                .covered = accel_res.accel->covered,
                                 .deterministic = deterministic};
                 map.emplace(loop.covered, loop);
                 RuleProof sub_proof, acceleration_proof;
