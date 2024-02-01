@@ -75,7 +75,7 @@
 073 unsat   unsat
 074 sat     timeout
 075 unsat   unsat
-076 unsat   timeout
+076 unsat   unsat
 077 unsat   unsat
 078 sat     timeout
 079 sat     timeout
@@ -111,7 +111,7 @@
 109 unsat   unsat
 110 unsat   unsat
 111 unsat   unsat
-112 unsat   timeout
+112 unsat   unsat
 113 unsat   unsat
 114 unsat   unsat
 115 sat     unknown
@@ -386,9 +386,9 @@
 384 sat     timeout
 385 sat     timeout
 386 sat     timeout
-387 unsat   timeout
+387 unsat   unsat
 388 sat     timeout
-389 unsat   timeout
+389 unsat   unsat
 390 sat     timeout
 391 sat     timeout
 392 sat     timeout
@@ -441,9 +441,9 @@
 439 sat     timeout
 440 sat     timeout
 441 sat     timeout
-442 unsat   timeout
+442 unsat   unsat
 443 sat     timeout
-444 unsat   timeout
+444 unsat   unsat
 445 sat     timeout
 446 sat     timeout
 447 sat     timeout

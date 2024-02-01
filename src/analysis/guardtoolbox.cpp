@@ -83,7 +83,6 @@ Result<Rule> GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel ma
     return res;
 }
 
-
 Result<Rule> GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
     Result<Rule> res(rule);
     Proof subproof;

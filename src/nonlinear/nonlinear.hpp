@@ -23,6 +23,8 @@ void all_resolvents_aux(
     unsigned& redundant_resolvent_count
 );
 
+const Clause merge_facts(const std::vector<Clause> facts);
+
 const std::vector<Clause> normalize_all_preds(const std::vector<Clause>& chc_problem);
 
 const std::optional<Clause> unilaterally_resolvable_with(const FunApp& pred, const std::set<Clause>& chcs);

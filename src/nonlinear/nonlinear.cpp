@@ -1,5 +1,6 @@
 #include "nonlinear.hpp"
 #include "booltheory.hpp"
+#include "boolexpr.hpp"
 #include "config.hpp"
 #include "expr.hpp"
 #include "itsproblem.hpp"
@@ -8,7 +9,13 @@
 #include "linearsolver.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
+#include "theory.hpp"
+#include <numeric>
 #include <stdexcept>
+#include <tuple>
+
+// for debugging: active logging only in this file
+const bool logging_active = Config::Analysis::log;
 
 /*
 
@@ -41,6 +48,12 @@ trace :
 void NonLinearSolver::analyze(const std::vector<Clause>& initial_chcs) {
     const std::set<Clause> chcs_preprocessed = presolve(normalize_all_preds(initial_chcs));
 
+    // If preprocessing manages to eliminate all clauses we can already terminate with SAT.
+    if (chcs_preprocessed.size() == 0) {
+        std::cout << "sat" << std::endl;
+        return;    
+    }
+
     // Setup ITS and linear solver:
     ITSPtr its = ITSProblem::fromClauses(chcs_preprocessed);
     // TODO: why cant we give `linear_solver` the type `ILinearSolver` ?
@@ -60,7 +73,7 @@ void NonLinearSolver::analyze(const std::vector<Clause>& initial_chcs) {
 
     for (const auto max_constraint_tier: LinearSolver::constraint_tiers) {
         while (true) {
-            if (Config::Analysis::log) {
+            if (logging_active) {
                 std::cout << "============= non-linear solver main loop =============" << std::endl;
             }
 
@@ -75,11 +88,14 @@ void NonLinearSolver::analyze(const std::vector<Clause>& initial_chcs) {
 
             // Hand over to linear solver and let it derive new facts:
             facts.clear();
-            facts = linear_solver.derive_new_facts(max_constraint_tier);
-            if (Config::Analysis::log) {
-                // for (const auto &fact: facts) {
-                //     std::cout << "new fact: " << fact << std::endl;
-                // }
+            const auto& derived_facts = linear_solver.derive_new_facts(max_constraint_tier);
+            for (const auto& [_, fact_group]: partitionByRHS(derived_facts)) {
+                const auto& merged_fact = merge_facts(fact_group);
+                facts.insert(merged_fact);
+            }
+            if (logging_active) {
+                std::cout << "total new facts       : " << derived_facts.size() << std::endl;
+                std::cout << "new facts after merge : " << facts.size() << std::endl;
             }
 
             // If the linear solver proved Unsat, we can terminate. Otherwise, we use the derived facts to in the next
@@ -130,29 +146,36 @@ void NonLinearSolver::analyze(const std::vector<Clause>& initial_chcs) {
  * 
  * The returned clause set should not contain any redundant clauses as long as the given 
  * `facts` and `non_linear_chcs` are not redundant. The returned clauses should also not 
- * include `non_linear_chcs` and themselves and no facts (i.e. clauses with no LHS predicates).
+ * include `non_linear_chcs` themselves and no facts (i.e. clauses with no LHS predicates).
  */
 const std::set<Clause> all_resolvents(const std::set<Clause>& non_linear_chcs, const std::set<Clause>& facts) {
     std::set<Clause> resolvents;
 
     unsigned redundant_resolvent_count = 0;
 
-    if (Config::Analysis::log) {
+    if (logging_active) {
         std::cout 
             << "resolving "
             << non_linear_chcs.size()
-            << " non-linear CHCs with "
-            << facts.size()
-            << " facts"                
-            << std::endl;
+            << " non-linear CHCs"
+            << std::endl;       
     }
 
     for (const auto& chc: non_linear_chcs) {
-        // std::cout << "preds: " << chc.lhs.size() << std::endl;
+        if (logging_active) {
+            std::cout 
+                << "resolving non-linear CHC with "
+                << chc.lhs.size()
+                << " LHS predicates with "
+                << facts.size()
+                << " facts"                
+                << std::endl;
+        }
+
         all_resolvents_aux(chc, 0, facts, resolvents, redundant_resolvent_count);
     }
 
-    // if (Config::Analysis::log) {
+    if (logging_active) {
         std::cout 
             << "computed "
             << resolvents.size()
@@ -160,15 +183,16 @@ const std::set<Clause> all_resolvents(const std::set<Clause>& non_linear_chcs, c
             << redundant_resolvent_count 
             << " redundant)"
             << std::endl;
-    // }
-
-    for (const auto& res: resolvents) {
-        const std::set<FunApp> lhs_unique(res.lhs.begin(), res.lhs.end());
-        int red_count = res.lhs.size() - lhs_unique.size();
-        if (red_count != 0) {
-            std::cout << "redundant lhs preds: " << red_count << std::endl;
-        }
     }
+
+    // TODO: check comp23 069
+    // for (const auto& res: resolvents) {
+    //     const std::set<FunApp> lhs_unique(res.lhs.begin(), res.lhs.end());
+    //     int red_count = res.lhs.size() - lhs_unique.size();
+    //     if (red_count != 0) {
+    //         std::cout << "redundant lhs preds: " << red_count << std::endl;
+    //     }
+    // }
 
     return resolvents;
 }
@@ -192,9 +216,16 @@ void all_resolvents_aux(const Clause& chc, unsigned pred_index, const std::set<C
                 // for fact = F(2) :      F(y) /\ F(z) ==> G(2,y,z)
 
                 if (resolvents.contains(resolvent)) {
+                    // There are still many ways how we can get syntactically redundant resolvents.
+                    // For example, with facts G,H and rules
+                    //
+                    //     G /\ F ==> false
+                    //     H /\ F ==> false
+                    //
+                    // we derive `F ==> false` in two different ways. However, when we encouter a 
+                    // redundant resolvent we can prune the recursive call, because all following
+                    // resolvents are also redundant. 
                     redundant_resolvent_count++;
-                    std::cout << "red: " << resolvent << std::endl;
-                    // throw std::logic_error("");
                 } else if (SmtFactory::check(resolvent.guard) == Sat) {
                     resolvents.insert(resolvent);
 
@@ -361,6 +392,73 @@ const Clause eliminate_pred(const Clause& left, const Clause& right) {
 }
 
 /**
+ * Merges a collection of `facts` by building the disjunct of all constraints.
+ * For example, merging the facts:
+ *
+ *     x=0 ==> F(x)
+ *
+ *     y=1 ==> F(y)
+ *
+ *     z>5 ==> F(z)
+ *
+ * results in: 
+ *
+ *     (x=0 \/ x=1 \/ x>5) ==> F(x)
+ *
+ * Notice, that the RHS predicates have to be unified for that. It's assumed that `facts`: 
+ *
+ *   1) contains at least one item
+ *   2) contains only clauses that are indeed facts
+ *   3) all facts share the same RHS predicate
+ *
+ * Otherwise, this function throws an error.
+ */
+const Clause merge_facts(const std::vector<Clause> facts) {
+    if (facts.size() == 0) {
+        throw std::logic_error("merge_facts: expect at least one fact");
+    } 
+
+    std::unique_ptr<const Clause> fact_accum = std::make_unique<const Clause>(facts.at(0));
+
+    if (!fact_accum->isFact()) {
+        throw std::logic_error("merge_facts: got non-fact clause");
+    }
+
+    for (unsigned i=1; i < facts.size(); i++) {
+        const auto& fact_current = facts.at(i);
+
+        if (!fact_current.isFact()) {
+            throw std::logic_error("merge_facts: got non-fact clause");
+        }
+
+        const auto& rhs_pred_accum = fact_accum->rhs.value();
+        const auto& rhs_pred_current = fact_current.rhs.value();
+
+        if (rhs_pred_accum.name != rhs_pred_current.name) {
+            throw std::logic_error("merge_facts: all facts must have matching RHS");
+        }       
+
+        const auto& unifier = computeUnifier(rhs_pred_current, rhs_pred_accum);
+
+        if (!unifier.has_value()) {
+            throw std::logic_error("merge_facts: cannot unify RHS predicates");
+        }
+
+        const std::vector<BoolExpr> guards({ 
+            fact_current.renameWith(unifier.value()).guard, 
+            fact_accum->guard 
+        });
+        const auto& guard_disjunct = BExpression::buildOr(guards);
+
+        fact_accum = std::make_unique<const Clause>(
+            Clause({}, rhs_pred_accum, guard_disjunct)
+        );
+    }
+
+    return *fact_accum;
+}
+
+/**
  * If a predicate only occurs on the RHS of a single CHC, then there is only one 
  * choice how to eliminate the predicate on the LHS of other CHCs. Thus, we can 
  * precompute all resolvents where one of parent clauses has a unique RHS. 
@@ -407,29 +505,29 @@ const Clause eliminate_pred(const Clause& left, const Clause& right) {
  */
 const std::set<Clause> presolve(const std::vector<Clause>& initial_chcs) {
     // first collect all RHS predicates of all CHCs
-    std::set<FunApp> rhs_preds;
+    std::set<FunApp> todo_rhs_preds;
     for (const auto& chc: initial_chcs) {
         if (chc.rhs.has_value()) {
-            rhs_preds.insert(chc.rhs.value());
+            todo_rhs_preds.insert(chc.rhs.value());
         }
     }
 
     std::set<Clause> chcs(initial_chcs.begin(), initial_chcs.end());
 
     // iterate over each RHS predicate and ...
-    while (!rhs_preds.empty()) {
-        if (Config::Analysis::log) {
+    while (!todo_rhs_preds.empty()) {
+        if (logging_active) {
             std::cout << "eliminating predicates: " << std::endl;
         }
 
-        for (const auto& pred: rhs_preds) {
-            // ... check whether it occur uniquely on the RHS of one CHC
+        for (const auto& pred: todo_rhs_preds) {
+            // ... check whether it occurs uniquely on the RHS of one CHC
             const auto optional_uni_chc = unilaterally_resolvable_with(pred, chcs);
             if (optional_uni_chc.has_value()) {
                 const Clause& uni_chc = optional_uni_chc.value();
                 chcs.erase(uni_chc);
 
-                if (Config::Analysis::log) {
+                if (logging_active) {
                     std::cout << " - " << pred.name << std::endl;
                 }
 
@@ -466,9 +564,9 @@ const std::set<Clause> presolve(const std::vector<Clause>& initial_chcs) {
             }
         }
 
-        rhs_preds.clear();
+        todo_rhs_preds.clear();
 
-        if (Config::Analysis::log) {
+        if (logging_active) {
             std::cout << "remove resolvents with UNSAT constraint: " << std::endl;
         }
         // Checking resolvents for satisfiability in a separate loop here, 
@@ -488,14 +586,81 @@ const std::set<Clause> presolve(const std::vector<Clause>& initial_chcs) {
                 // only other clause, which had `G` as its RHS predicate. Thus, whenever
                 // we remove a resolvent, we add its RHS predicate into `rhs_preds`
                 // to re-check it in the next while-loop iteration.
-                rhs_preds.insert(chc.rhs.value());
+                todo_rhs_preds.insert(chc.rhs.value());
             }
         }
 
-        chcs = chcs_with_sat_guard;
+        // We can eliminate even more predicates by merging facts. For example, the
+        // facts:
+        //
+        //     x=0 ==> F(x)
+        //
+        //     x>0 ==> F(x)
+        //
+        // can be merged to:
+        //
+        //     (x=0 \/ x>0) ==> F(x)
+        //
+        // This can make all facts unilaterally resolvable as long as the RHS predicate 
+        // does not also occur on the RHS of a rule. 
+        //
+        // Arguably, that just off-loads dealing with disjunctions to the linear solver. 
+        // We also loose some CHC structure pushing disjunctions into the clause constraint. 
+        // However, ADCL is designed to deal with disjunctions. And computing all resolvents 
+        // in the non-linear solver is worst-case exponential in the number of LHS predicates,
+        // so it's probably worth it to eliminate as many LHS predicate as possible.
+        //
+        // For that we filter-out all the facts we currently have and partition them by their
+        // RHS predicates. Then we merge every group into a single fact. Notice, that we have
+        // to do this step repeatedly because some clauses might only later turn into facts.
+        // For example, here `G(x)` can not completely be merged into a single fact in the
+        // beginning:
+        //
+        //     x=0 ==> F(x)
+        //    
+        //     x=1 ==> F(x)
+        //
+        //     x=2 ==> G(x)
+        //
+        //     F(x) ==> G(x)
+        //
+        // We merge all `F(x)` facts which makes the result unilaterally resolvable: 
+        //
+        //     (x=0 \/ x=1) ==> F(x)
+        //    
+        //     x=2 ==> G(x)
+        //
+        //     F(x) /\ ==> G(x)
+        //
+        // We eliminate `F(x)` and get:
+        //    
+        //     x=2 ==> G(x)
+        //
+        //     (x>0 \/ x=0) ==> G(x)
+        //
+        // Now, `G(x)` can be merged into a single fact:
+        //
+        //     (x=0 \/ x=1 \/ x=2) ==> G(x)
+        //
+        const auto& [ facts, rest_chcs ] = partitionFacts(chcs_with_sat_guard);
+        chcs = rest_chcs;
+        for (const auto& [_, fact_group]: partitionByRHS(facts)) {
+            const Clause& merged_fact = merge_facts(fact_group);           
+
+            // If `fact_group.size() == 1` then `merge_facts` has nothing to merge and just 
+            // returns the single fact unchanged. Thus, no facts where eliminated and nothing
+            // new became unilaterally resolvable. On the other hand, if `fact_group.size() > 1`  
+            // then facts got eliminated, so the resulting clause might now be unilaterally 
+            // resolvable and we add its RHS predicate back into `todo_rhs_preds`.
+            if (fact_group.size() > 1) {
+                todo_rhs_preds.insert(merged_fact.rhs.value());
+            }
+
+            chcs.insert(merged_fact);
+        }
     }
 
-    if (Config::Analysis::log) {
+    if (logging_active) {
         std::cout << std::endl;
     }
 

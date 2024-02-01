@@ -287,6 +287,53 @@ const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std
 }
 
 /**
+ * Partition given `chcs` by their RHS predicate. Returns a map where the keys are RHS predicate names and 
+ * values are the sets of clauses with that RHS predicate. The key is optional because clauses may have no 
+ * RHS predicate (i.e. querys).
+ */
+const std::map<std::optional<std::basic_string<char>>, std::vector<Clause>> partitionByRHS(const std::set<Clause>& chcs) {
+    std::map<
+        std::optional<std::basic_string<char>>, 
+        std::vector<Clause>
+    > partition;
+
+    for (const auto& chc: chcs) {
+        std::optional<std::basic_string<char>> rhs_name;
+        if (chc.rhs.has_value()) {
+            rhs_name = chc.rhs.value().name;
+        }
+
+        if (partition.contains(rhs_name)) {
+            std::vector<Clause>& group = partition.at(chc.rhs->name);
+            group.push_back(chc);
+        } else {
+            partition.emplace(rhs_name, std::vector({ chc }));
+        }
+    }
+
+    return partition;
+}
+
+/**
+ * Filters facts from `chcs` and returns a tuple, where the first component contains all facts and 
+ * the second component contains the remaining clauses.  
+ */
+const std::tuple<std::set<Clause>, std::set<Clause>> partitionFacts(const std::set<Clause>& chcs) {
+    std::set<Clause> facts;
+    std::set<Clause> non_facts;
+
+    for (const auto& chc: chcs) {
+        if (chc.isFact()) {
+            facts.insert(chc);
+        } else {
+            non_facts.insert(chc);
+        }
+    }
+
+    return std::make_tuple(facts, non_facts);
+}
+
+/**
  * Normalize variable names to detect syntactic equivalence of clauses up-to-renaming.
  *
  * For that the RHS predicate arguments are renamed to always have the indices 0,1,2,3,...    
@@ -346,21 +393,42 @@ const Clause Clause::normalize() const {
 }
 
 /**
- * Returns true iff the clause has at most one LHS predicate.
+ * Returns true iff the clause has at most one LHS predicate. For example:
+ * 
+ *     F(x) /\ x > 1 ==> F(x)          (linear)
+ *
+ *     F(x) /\ x > 1 ==> false         (linear)
+ *
+ *     x > 1 ==> F(x)                  (linear)
+ *
+ *     F(x) /\ G(x) ==> false          (non-linear)
+ *
  */
 bool Clause::isLinear() const {
     return lhs.size() <= 1;
 }
 
 /**
- * Returns true iff the clause has no LHS predicates.
+ * Returns true iff the clause has a RHS predicte but no LHS predicates. For example:
+ * 
+ *     x > 0 ==> F(x)                 (fact)
+ *
+ *     F(x) /\ x > 0 ==> F(x)         (not fact)
+ *
+ *     x > 0 ==> false                (not fact)
+ *
  */
 bool Clause::isFact() const {
-    return lhs.size() == 0;
+    return lhs.size() == 0 && rhs.has_value();
 }
 
 /**
- * Returns true iff the clause has no RHS predicate.
+ * Returns true iff the clause has no RHS predicate. For example:
+ *
+ *     F(x) /\ x > 1 ==> false        (query)
+ *
+ *     x > 1 ==> F(x)                 (not query)
+ *
  */
 bool Clause::isQuery() const {
     return !rhs.has_value();

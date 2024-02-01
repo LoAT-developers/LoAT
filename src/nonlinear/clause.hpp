@@ -67,6 +67,13 @@ public:
 
 const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause>& chcs);
 
+const std::map<std::basic_string<char>, std::set<Clause>> partitionFactsByRHS(const std::set<Clause>& facts);
+
+const std::tuple<std::set<Clause>, std::set<Clause>> partitionFacts(const std::set<Clause>& chcs);
+
+const std::map<std::optional<std::basic_string<char>>, std::vector<Clause>> partitionByRHS(const std::set<Clause>& chcs);
+
+const std::optional<Subs> computeUnifier(const FunApp &pred1, const FunApp &pred2);
 const std::optional<Subs> computeUnifier(const std::vector<Var> &args1, const std::vector<Var> &args2);
 
 const std::pair<unsigned long, unsigned long> maxArity(const std::vector<Clause>& chc_problem);
