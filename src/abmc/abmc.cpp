@@ -305,9 +305,9 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                 const Loop loop {.idx = new_idx,
                                 .prefix = accel_res.prefix,
                                 .period = accel_res.period,
-                                .covered = accel_res.accel->covered,
+                                .covered = accel_res.accel->covered & projection,
                                 .deterministic = deterministic};
-                map.emplace(loop.covered, loop);
+                map.emplace(accel_res.accel->covered, loop);
                 RuleProof sub_proof, acceleration_proof;
                 acceleration_proof.storeSubProof(simp.getProof());
                 acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
