@@ -195,29 +195,28 @@ std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_po
     Rule res {r};
     RelSet projection;
     for (const auto &x: vars.get<NumVar>()) {
-        const auto val {sample_point.get(x)};
+        const auto val {sample_point.get(x).toNum()};
         if (x.isTempVar()) {
             Bounds bounds;
             res.getGuard()->getBounds(x, bounds);
             if (bounds.equality) {
                 res = res.subs(Subs::build<IntTheory>(x, *bounds.equality));
-            } else if (!bounds.upperBounds.empty() && !bounds.lowerBounds.empty()) {
-                auto done {false};
+            } else {
+                std::map<Num, Expr> candidates;
                 for (const auto &bs: {bounds.upperBounds, bounds.lowerBounds}) {
                     for (const auto &b: bs) {
-                        solver->push();
-                        solver->add(Rel::buildEq(b, x).subs(s.get<IntTheory>()));
-                        if (solver->check() == SmtResult::Sat) {
-                            res = res.subs(Subs::build<IntTheory>(x, b));
-                            projection.insert(Rel::buildEq(x, b));
-                            done = true;
-                            break;
-                        } else {
-                            solver->pop();
-                        }
+                        candidates.emplace(GiNaC::abs(b.subs(sample_point).toNum() - val), b);
                     }
-                    if (done) {
+                }
+                for (const auto &[_,b]: candidates) {
+                    solver->push();
+                    solver->add(Rel::buildEq(b, x).subs(s.get<IntTheory>()));
+                    if (solver->check() == SmtResult::Sat) {
+                        res = res.subs(Subs::build<IntTheory>(x, b));
+                        projection.insert(Rel::buildEq(x, b));
                         break;
+                    } else {
+                        solver->pop();
                     }
                 }
             }
@@ -251,6 +250,32 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             }
         }
     }
+    const auto nonterm_to_query = [this](const Rule &rule, const acceleration::Result &accel_res) {
+        if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
+            query = query | accel_res.nonterm->certificate;
+            RuleProof nonterm_proof;
+            std::stringstream ss;
+            ss << "Original rule:" << std::endl;
+            RuleExport::printRule(rule, ss);
+            ss << std::endl;
+            nonterm_proof.append(ss);
+            ss << "Certificate:" << std::endl;
+            ss << accel_res.nonterm->certificate;
+            nonterm_proof.append(ss);
+            nonterm_proof.storeSubProof(accel_res.nonterm->proof);
+            proof.majorProofStep("Certificate of non-termination", nonterm_proof, its);
+            if (Config::Analysis::log) {
+                std::cout << "found certificate of non-termination" << std::endl;
+                std::cout << accel_res.nonterm->certificate << std::endl;
+            }
+        }
+    };
+    if (Config::Analysis::tryNonterm() && projection != BExpression::top() && !nonterm_cache.contains(lang)) {
+        AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
+        const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
+        nonterm_to_query(*simp, accel_res);
+        nonterm_cache.emplace(lang);
+    }
     const auto deterministic {projected_rule.isDeterministic()};
     if (Config::Analysis::reachability() && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
@@ -271,25 +296,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         }
         AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
         const auto accel_res {LoopAcceleration::accelerate(projected_rule, sample_point, config)};
-        if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
-            query = query | accel_res.nonterm->certificate;
-            RuleProof nonterm_proof;
-            std::stringstream ss;
-            ss << "Original rule:" << std::endl;
-            RuleExport::printRule(projected_rule, ss);
-            ss << std::endl;
-            nonterm_proof.append(ss);
-            ss << "Certificate:" << std::endl;
-            ss << accel_res.nonterm->certificate;
-            nonterm_proof.append(ss);
-            nonterm_proof.storeSubProof(accel_res.nonterm->proof);
-            proof.majorProofStep("Certificate of non-termination", nonterm_proof, its);
-            if (Config::Analysis::log) {
-                std::cout << "found certificate of non-termination" << std::endl;
-                std::cout << accel_res.nonterm->certificate << std::endl;
-            }
-        }
-        if (deterministic && accel_res.accel) {
+        nonterm_to_query(projected_rule, accel_res);
+        if (accel_res.accel) {
             auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
             if (simplified->getUpdate() != projected_rule.getUpdate() && simplified->isPoly()) {
                 const auto new_idx {add_learned_clause(*simplified, backlink)};

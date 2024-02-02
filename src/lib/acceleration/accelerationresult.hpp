@@ -18,6 +18,8 @@ struct Accel {
     Proof proof;
     BoolExpr covered;
 
+    Accel(const Rule &rule): rule(rule) {}
+
 };
 
 struct Nonterm {

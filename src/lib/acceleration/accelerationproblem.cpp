@@ -172,7 +172,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
 }
 
 bool AccelerationProblem::monotonicity(const Lit &lit) {
-    if (!closed) {
+    if (!closed || !config.tryAccel) {
         return false;
     }
     auto success {false};
@@ -211,7 +211,7 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
 }
 
 bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
-    if (!closed || !std::holds_alternative<Rel>(lit)) {
+    if (!closed || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
         return false;
     }
     auto success {false};
@@ -240,7 +240,6 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     if (!std::holds_alternative<Rel>(lit)) {
         return false;
     }
-    auto success {false};
     // t > 0
     const auto &rel {std::get<Rel>(lit)};
     // up(t)
@@ -254,9 +253,11 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         // up(t) >(=) up^2(t)
         const auto d {strict ? Rel::buildGeq(updated, updated.subs(update.get<IntTheory>())) : Rel::buildGt(updated, updated.subs(update.get<IntTheory>()))};
         const auto dec {BExpression::buildTheoryLit(d)};
+        solver->push();
         solver->add(dec);
-        if (solver->check() == Unsat) {
-            success = true;
+        const auto success {solver->check() == Unsat};
+        solver->pop();
+        if (success) {
             BoolExpr g;
             BoolExpr c;
             if (samplePoint && i.subs(samplePoint->get<IntTheory>()).isTriviallyFalse()) {
@@ -277,10 +278,11 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
             res.proof.newline();
             res.proof.append(std::stringstream() << rel << ": eventual increase yields " << g);
             res.proof.append(std::stringstream() << "covered: " << c);
+            return true;
         }
     }
     solver->pop();
-    return success;
+    return false;
 }
 
 bool AccelerationProblem::fixpoint(const Lit &lit) {

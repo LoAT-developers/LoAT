@@ -34,6 +34,7 @@ private:
     std::map<Var, Var> post_vars;
     std::map<Implicant, int> lang_map;
     std::map<std::pair<std::vector<int>, BoolExpr>, std::map<BoolExpr, std::optional<Loop>>> cache;
+    std::set<std::vector<int>> nonterm_cache;
     std::map<int, std::vector<int>> history;
     NumVar trace_var;
     std::optional<TransIdx> shortcut;
