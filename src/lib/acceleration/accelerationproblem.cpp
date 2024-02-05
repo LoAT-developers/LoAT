@@ -98,57 +98,56 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     }
     default: {}
     }
-    if (!low_degree && !samplePoint) {
-        return false;
-    } else if (!low_degree && polyaccel == PolyAccelMode::Full) {
-        if (nfold.isGround() || !nfold.isPoly(config.n)) {
+    if (!low_degree) {
+        if (!samplePoint || polyaccel != PolyAccelMode::Full) {
             return false;
-        }
-        auto sample_point {samplePoint->get<IntTheory>()};
-        std::vector<Expr> derivatives {rel.lhs()};
-        std::vector<GiNaC::numeric> signs {rel.lhs().subs(sample_point).toNum()};
-        Expr diff;
-        do {
-            const auto &last {derivatives.back()};
-            diff = (last.subs(up) - last).expand();
-            derivatives.push_back(diff);
-            signs.push_back(diff.subs(sample_point).toNum());
-        } while (!diff.isGround());
-        for (unsigned i = 1; i < signs.size() - 1; ++i) {
-            if (signs.at(i).is_zero()) {
-                for (unsigned j = i + 1; j < signs.size(); ++j) {
-                    if (!signs.at(j).is_zero()) {
-                        signs[i] = signs[j];
-                        break;
+        } else {
+            auto sample_point {samplePoint->get<IntTheory>()};
+            std::vector<Expr> derivatives {rel.lhs()};
+            std::vector<GiNaC::numeric> signs {rel.lhs().subs(sample_point).toNum()};
+            Expr diff;
+            do {
+                const auto &last {derivatives.back()};
+                diff = (last.subs(up) - last).expand();
+                derivatives.push_back(diff);
+                signs.push_back(diff.subs(sample_point).toNum());
+            } while (!diff.isGround());
+            for (unsigned i = 1; i < signs.size() - 1; ++i) {
+                if (signs.at(i).is_zero()) {
+                    for (unsigned j = i + 1; j < signs.size(); ++j) {
+                        if (!signs.at(j).is_zero()) {
+                            signs[i] = signs[j];
+                            break;
+                        }
                     }
                 }
             }
-        }
-        if (signs.at(1).is_positive()) {
-            guard.insert(rel);
-        } else {
-            guard.insert(rel.subs(but_last));
-            res.nonterm = false;
-        }
-        for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
-            if (signs.at(i).is_positive()) {
-                covered.insert(Rel::buildGeq(derivatives.at(i), 0));
+            if (signs.at(1).is_positive()) {
+                guard.insert(rel);
             } else {
-                covered.insert(Rel::buildLeq(derivatives.at(i), 0));
-            }
-            if (signs.at(i+1).is_positive()) {
-                // the i-th derivative is monotonically increasing at the sampling point
-                if (signs.at(i).is_positive()) {
-                    guard.insert(Rel::buildGeq(derivatives.at(i), 0));
-                } else {
-                    guard.insert(Rel::buildLeq(derivatives.at(i).subs(but_last), 0));
-                }
-            } else {
+                guard.insert(rel.subs(but_last));
                 res.nonterm = false;
+            }
+            for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
                 if (signs.at(i).is_positive()) {
-                    guard.insert(Rel::buildGeq(derivatives.at(i).subs(but_last), 0));
+                    covered.insert(Rel::buildGeq(derivatives.at(i), 0));
                 } else {
-                    guard.insert(Rel::buildLeq(derivatives.at(i), 0));
+                    covered.insert(Rel::buildLeq(derivatives.at(i), 0));
+                }
+                if (signs.at(i+1).is_positive()) {
+                    // the i-th derivative is monotonically increasing at the sampling point
+                    if (signs.at(i).is_positive()) {
+                        guard.insert(Rel::buildGeq(derivatives.at(i), 0));
+                    } else {
+                        guard.insert(Rel::buildLeq(derivatives.at(i).subs(but_last), 0));
+                    }
+                } else {
+                    res.nonterm = false;
+                    if (signs.at(i).is_positive()) {
+                        guard.insert(Rel::buildGeq(derivatives.at(i).subs(but_last), 0));
+                    } else {
+                        guard.insert(Rel::buildLeq(derivatives.at(i), 0));
+                    }
                 }
             }
         }
