@@ -59,7 +59,7 @@ bool AccelerationProblem::unchanged(const Lit &lit) {
 }
 
 bool AccelerationProblem::polynomial(const Lit &lit) {
-    if (polyaccel == PolyAccelMode::None || !closed || !std::holds_alternative<Rel>(lit)) {
+    if (polyaccel == PolyAccelMode::None || !closed || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
         return false;
     }
     const auto &rel {std::get<Rel>(lit)};

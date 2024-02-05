@@ -91,8 +91,7 @@ void LoopAcceleration::compute_closed_form() {
 }
 
 void LoopAcceleration::accelerate() {
-    if (rec) {
-        res.prefix = rec->prefix;
+    if (rec && config.tryAccel) {
         const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
         if (accelerator) {
             res.accel = acceleration::Accel(Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form));

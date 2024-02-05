@@ -253,7 +253,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     };
     if (Config::Analysis::tryNonterm() && projection != BExpression::top() && !nonterm_cache.contains(key)) {
         AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
-        const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
+        const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};
         nonterm_to_query(*simp, accel_res);
         nonterm_cache.emplace(key);
     }
@@ -276,7 +276,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             std::cout << std::endl;
         }
         AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
-        const auto accel_res {LoopAcceleration::accelerate(projected_rule, sample_point, config)};
+        const auto accel_res {LoopAcceleration::accelerate(projected_rule, {}, config)};
         nonterm_to_query(projected_rule, accel_res);
         if (accel_res.accel) {
             auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
