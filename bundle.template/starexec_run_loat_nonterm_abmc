@@ -1,3 +1,3 @@
 #!/bin/bash
 trap "" SIGRTMIN
-./loat-static --plain --proof-level 0 --mode non_termination --engine abmc --format its $1 2> /dev/null
+./loat-static --plain --proof-level 0 --mode non_termination --engine abmc --format its --abmc::blocking_clauses false $1 2> /dev/null
