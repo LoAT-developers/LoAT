@@ -15,7 +15,10 @@ class Swine: public Smt<Th...> {
 
 public:
 
-    Swine(const swine::Config config = swine::Config()): solver(config, z3ctx), ctx(solver) {}
+    Swine(const swine::Config config = swine::Config()): solver(config, z3ctx), ctx(solver) {
+        solver.get_solver().set("random_seed", 42u);
+        solver.get_solver().set("seed", 42u);
+    }
 
     void add(const BExpr<Th...> e) override {
         solver.add(ExprToSmt<z3::expr, Th...>::convert(e, ctx));
@@ -100,7 +103,7 @@ public:
 
     void randomize(unsigned seed) override {
         auto &s {solver.get_solver()};
-        s.set("random-seed", seed);
+        s.set("random_seed", seed);
         s.set("seed", seed);
         s.set("sat.phase", "random");
         s.set("sat.random_seed", seed);
