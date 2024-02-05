@@ -17,10 +17,6 @@ AccelerationProblem::AccelerationProblem(
     guard(r.getGuard()->toG()),
     config(config),
     samplePoint(samplePoint) {
-    if (closed && polyaccel != PolyAccelMode::None) {
-        update.get<IntTheory>() = closed->refined_equations;
-        res.proof.append(std::stringstream() << "refined update: " << update);
-    }
     for (const auto &l: guard->lits()) {
         todo.insert(l);
     }

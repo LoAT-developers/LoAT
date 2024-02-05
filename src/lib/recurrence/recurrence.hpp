@@ -30,7 +30,6 @@ public:
     struct Result {
         Subs closed_form;
         unsigned int prefix = 0;
-        ExprSubs refined_equations;
     };
 
     static std::optional<Result> solve(const Subs &equations, const NumVar &n);
