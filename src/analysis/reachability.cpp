@@ -80,7 +80,7 @@ std::optional<Restart> Restart::restart() {
 
 Unroll::Unroll() {}
 
-Unroll::Unroll(unsigned max): max(max) {}
+Unroll::Unroll(unsigned max, bool accel_failed): max(max), accel_failed(accel_failed) {}
 
 std::optional<unsigned> Unroll::get_max() {
     return max;
@@ -88,6 +88,10 @@ std::optional<unsigned> Unroll::get_max() {
 
 std::optional<Unroll> Unroll::unroll() {
     return *this;
+}
+
+bool Unroll::acceleration_failed() {
+    return accel_failed;
 }
 
 std::optional<ProvedUnsat> ProvedUnsat::unsat() {
@@ -553,7 +557,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         if (Config::Analysis::log) {
             std::cout << "acceleration failed, status: " << accel_res.status << std::endl;
         }
-        return std::make_unique<Unroll>(1);
+        return std::make_unique<Unroll>(1, true);
     }
     return std::make_unique<Succeeded>(res);
 }
@@ -734,6 +738,9 @@ void Reachability::analyze() {
                     print_state();
                     unsat();
                     return;
+                } else if (state->unroll() && state->unroll()->acceleration_failed()) {
+                    // stop searching for longer loops if the current one was already too complicated
+                    break;
                 }
             }
         }

@@ -119,14 +119,17 @@ class Unroll final: public LearningState {
 private:
 
     std::optional<unsigned> max;
+    bool accel_failed;
 
 public:
 
     Unroll();
 
-    Unroll(unsigned max);
+    Unroll(unsigned max, bool accel_failed = false);
 
     std::optional<unsigned> get_max();
+
+    bool acceleration_failed();
 
     std::optional<Unroll> unroll() override;
 };
