@@ -1,20 +1,15 @@
 #include "reachability.hpp"
-#include "linearizingsolver.hpp"
-#include "z3.hpp"
-#include "yices.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
 #include "result.hpp"
 #include "smt.hpp"
 #include "export.hpp"
-#include "swine.hpp"
 #include "vector.hpp"
 #include "asymptoticbound.hpp"
 #include "vareliminator.hpp"
 #include "chain.hpp"
 #include "expr.hpp"
-#include "cvc5.hpp"
 #include "config.hpp"
 #include "ruleexport.hpp"
 
@@ -111,25 +106,7 @@ ITSProof* ProvedUnsat::operator->() {
 
 Reachability::Reachability(ITSProblem &chcs):
     chcs(chcs),
-    drop(true)
-{
-    switch (Config::Analysis::smtSolver) {
-    case Config::Analysis::Z3:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>());
-        break;
-    case Config::Analysis::CVC5:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
-        break;
-    case Config::Analysis::Yices:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Yices<IntTheory, BoolTheory>(Logic::QF_NA));
-        break;
-    case Config::Analysis::Z3Lin:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>());
-        break;
-    case Config::Analysis::Swine:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Swine<IntTheory, BoolTheory>());
-        break;
-    }
+    drop(true) {
     solver->enableModels();
 }
 

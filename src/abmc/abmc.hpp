@@ -4,6 +4,7 @@
 
 #include "itsproblem.hpp"
 #include "smt.hpp"
+#include "smtfactory.hpp"
 #include "itsproof.hpp"
 
 class ABMC {
@@ -23,7 +24,7 @@ private:
     };
 
     ITSProblem &its;
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
+    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
     bool approx {false};
     unsigned last_orig_clause;
     BoolExpr query;

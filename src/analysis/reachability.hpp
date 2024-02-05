@@ -6,6 +6,7 @@
 #include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
 #include "smt.hpp"
+#include "smtfactory.hpp"
 
 #include <limits>
 #include <list>
@@ -150,7 +151,7 @@ class Reachability {
 
     ITSProof proof;
 
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
+    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
 
     const bool drop;
 

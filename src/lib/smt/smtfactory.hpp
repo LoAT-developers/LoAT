@@ -4,6 +4,9 @@
 #include "yices.hpp"
 #include "z3.hpp"
 #include "swine.hpp"
+#include "cvc5.hpp"
+#include "linearizingsolver.hpp"
+#include "config.hpp"
 
 namespace SmtFactory {
 
@@ -22,6 +25,29 @@ namespace SmtFactory {
             break;
         }
         return res;
+    }
+
+    template<ITheory... Th>
+    std::unique_ptr<Smt<Th...>> solver() {
+        std::unique_ptr<Smt<Th...>> solver;
+        switch (Config::Analysis::smtSolver) {
+        case Config::Analysis::Z3:
+            solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>());
+            break;
+        case Config::Analysis::CVC5:
+            solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
+            break;
+        case Config::Analysis::Z3Lin:
+            solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>());
+            break;
+        case Config::Analysis::Yices:
+            solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Yices<IntTheory, BoolTheory>(Logic::QF_NA));
+            break;
+        case Config::Analysis::Swine:
+            solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Swine<IntTheory, BoolTheory>());
+            break;
+        }
+        return solver;
     }
 
     template<ITheory... Th>

@@ -8,12 +8,8 @@
 #include "config.hpp"
 #include "export.hpp"
 #include "vector.hpp"
-#include "z3.hpp"
-#include "cvc5.hpp"
 #include "rule.hpp"
 #include "dependencygraph.hpp"
-#include "linearizingsolver.hpp"
-#include "swine.hpp"
 #include "ruleexport.hpp"
 
 using namespace Config::ABMC;
@@ -21,23 +17,6 @@ using namespace Config::ABMC;
 ABMC::ABMC(ITSProblem &its):
     its(its),
     trace_var(NumVar::next()) {
-    switch (Config::Analysis::smtSolver) {
-    case Config::Analysis::Z3:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>());
-        break;
-    case Config::Analysis::CVC5:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
-        break;
-    case Config::Analysis::Z3Lin:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>());
-        break;
-    case Config::Analysis::Yices:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Yices<IntTheory, BoolTheory>(Logic::QF_NA));
-        break;
-    case Config::Analysis::Swine:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Swine<IntTheory, BoolTheory>());
-        break;
-    }
     vars.insert(trace_var);
     vars.insert(n);
     solver->enableModels();
@@ -184,11 +163,16 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 }
 
 std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_point) {
-    const auto s {subs_at(depth + 1)};
-    solver->push();
-    solver->add(encode_transition(&r)->subs(s));
-    if (solver->check() != SmtResult::Sat) {
-        solver->pop();
+    const auto s {subs_at(depth)};
+    const auto ss {subs_at(depth + 1)};
+    const auto smt {SmtFactory::solver<IntTheory, BoolTheory>()};
+    for (const auto &[x,val]: sample_point) {
+        if (!x.isTempVar()) {
+            smt->add(Rel::buildEq(s.get<IntTheory>(x), val));
+        }
+    }
+    smt->add(encode_transition(&r)->subs(ss));
+    if (smt->check() != SmtResult::Sat) {
         return {r, BExpression::bot()};
     }
     const auto vars {r.vars()};
@@ -209,21 +193,18 @@ std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_po
                     }
                 }
                 for (const auto &[_,b]: candidates) {
-                    solver->push();
-                    solver->add(Rel::buildEq(b, x).subs(s.get<IntTheory>()));
-                    if (solver->check() == SmtResult::Sat) {
+                    smt->push();
+                    smt->add(Rel::buildEq(b, x).subs(ss.get<IntTheory>()));
+                    if (smt->check() == SmtResult::Sat) {
                         res = res.subs(Subs::build<IntTheory>(x, b));
                         projection.insert(Rel::buildEq(x, b));
                         break;
                     } else {
-                        solver->pop();
+                        smt->pop();
                     }
                 }
             }
         }
-    }
-    for (unsigned i = 0; i <= projection.size(); ++i) {
-        solver->pop();
     }
     return {res, BExpression::buildAndFromLits(projection)};
 }
