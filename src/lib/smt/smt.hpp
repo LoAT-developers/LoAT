@@ -58,7 +58,8 @@ public:
     virtual Model<Th...> model(const std::optional<const VarSet> &vars = {}) = 0;
     virtual void enableModels() = 0;
     virtual void resetSolver() = 0;
-    virtual void setSeed(unsigned seed) = 0;
+
+    virtual void randomize(unsigned seed) = 0;
 
     virtual ~Smt() {}
 

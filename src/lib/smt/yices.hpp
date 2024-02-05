@@ -122,7 +122,7 @@ public:
         return res;
     }
 
-    void setSeed(unsigned seed) override {
+    void randomize(unsigned seed) override {
         // TODO
     }
 
