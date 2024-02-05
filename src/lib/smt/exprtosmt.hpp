@@ -117,6 +117,18 @@ protected:
 
     EXPR convertPower(const Expr &e) {
         assert(e.arity() == 2);
+        if (e.isNaturalPow()) {
+            // Z3 still prefers x*x*...*x over x^c...
+            const auto bound {e.op(1).toNum()};
+            if (1 <= bound && bound <= 10) {
+                EXPR factor {convertEx(e.op(0))};
+                EXPR res {factor};
+                for (unsigned i = 1; i < bound; ++i) {
+                    res = context.times(res, factor);
+                }
+                return res;
+            }
+        }
         return context.pow(convertEx(e.op(0)), convertEx(e.op(1)));
     }
 
@@ -146,6 +158,24 @@ protected:
     }
 
     EXPR convertRelational(const Rel &rel) {
+
+        // Some solvers prefer strict over weak inequalities,
+        // as the latter may require computing with algebraic numbers in NRA.
+        // I'm not sure whether all of them rewrite integer-inequalities correspondingly,
+        // so we do it for them.
+        if (rel.relOp() == Rel::leq) {
+            if (rel.lhs().isIntPoly()) {
+                return convertRelational(Rel::buildLt(rel.lhs() - 1, rel.rhs()));
+            } else if (rel.rhs().isIntPoly()) {
+                return convertRelational(Rel::buildLt(rel.lhs(), rel.rhs() + 1));
+            }
+        } else if (rel.relOp() == Rel::geq) {
+            if (rel.lhs().isIntPoly()) {
+                return convertRelational(Rel::buildGt(rel.lhs() + 1, rel.rhs()));
+            } else if (rel.rhs().isIntPoly()) {
+                return convertRelational(Rel::buildGt(rel.lhs(), rel.rhs() - 1));
+            }
+        }
 
         EXPR a = convertEx(rel.lhs());
         EXPR b = convertEx(rel.rhs());
