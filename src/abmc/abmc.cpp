@@ -270,11 +270,11 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             }
         }
     };
-    if (Config::Analysis::tryNonterm() && projection != BExpression::top() && !nonterm_cache.contains(lang)) {
+    if (Config::Analysis::tryNonterm() && projection != BExpression::top() && !nonterm_cache.contains(key)) {
         AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
         const auto accel_res {LoopAcceleration::accelerate(*simp, sample_point, config)};
         nonterm_to_query(*simp, accel_res);
-        nonterm_cache.emplace(lang);
+        nonterm_cache.emplace(key);
     }
     const auto deterministic {projected_rule.isDeterministic()};
     if (Config::Analysis::reachability() && !deterministic) {
