@@ -24,9 +24,6 @@ AccelerationProblem::AccelerationProblem(
     for (const auto &l: guard->lits()) {
         todo.insert(l);
     }
-    if (closed->prefix > 0) {
-        res.formula.push_back(guard);
-    }
     const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
     Logic logic {Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver<IntTheory, BoolTheory>(logic);
@@ -59,7 +56,7 @@ bool AccelerationProblem::unchanged(const Lit &lit) {
 }
 
 bool AccelerationProblem::polynomial(const Lit &lit) {
-    if (polyaccel == PolyAccelMode::None || !closed || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
+    if (polyaccel == PolyAccelMode::None || !closed || closed->prefix > 0 || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
         return false;
     }
     const auto &rel {std::get<Rel>(lit)};
@@ -211,7 +208,7 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
 }
 
 bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
-    if (!closed || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
+    if (!closed || closed->prefix > 0 || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
         return false;
     }
     auto success {false};
