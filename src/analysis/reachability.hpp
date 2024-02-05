@@ -164,6 +164,8 @@ class Reachability {
      */
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked_clauses{{}};
 
+    std::unordered_set<Automaton> locked;
+
     VarSet prog_vars;
 
     /**

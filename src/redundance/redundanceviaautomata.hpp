@@ -58,3 +58,12 @@ private:
     std::map<TransIdx, Automaton> regexes;
 
 };
+
+template<>
+struct std::hash<Automaton> {
+    std::size_t operator()(const Automaton& x) const noexcept {
+        return std::hash<std::string>()(x.to_string());
+    }
+};
+
+bool operator==(const Automaton &x, const Automaton &y);

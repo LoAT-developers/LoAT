@@ -321,6 +321,11 @@ void Reachability::init() {
 }
 
 void Reachability::luby_next() {
+    for (const auto &x: chcs.getAllTransitions()) {
+        if (is_learned_clause(&x) && !x.isPoly()) {
+            locked.insert(*redundancy->get_language(&x));
+        }
+    }
     const auto [u,v] {luby};
     luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
     solver->resetSolver();
@@ -579,6 +584,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     const auto lang {build_language(backlink)};
     auto closure {lang};
     redundancy->transitive_closure(closure);
+    locked.erase(closure);
     if (redundancy->is_redundant(closure)) {
         if (Config::Analysis::log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
@@ -740,7 +746,14 @@ void Reachability::analyze() {
             luby_next();
             proof.headline("Restart");
         }
-        const auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
+        auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
+        for (auto it = try_set.begin(); it != try_set.end();) {
+            if (is_learned_clause(*it) && locked.contains(*redundancy->get_language(*it))) {
+                it = try_set.erase(it);
+            } else {
+                ++it;
+            }
+        }
         std::vector<TransIdx> to_try(try_set.begin(), try_set.end());
         std::shuffle(to_try.begin(), to_try.end(), rnd);
         bool all_failed {true};
