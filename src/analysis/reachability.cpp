@@ -502,7 +502,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     AccelConfig config {
         .tryNonterm = Config::Analysis::tryNonterm(),
         .n = n};
-    const auto accel_res {LoopAcceleration::accelerate(*simp, model, config)};
+    const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
