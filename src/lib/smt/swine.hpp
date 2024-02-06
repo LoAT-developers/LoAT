@@ -18,6 +18,8 @@ public:
     Swine(const swine::Config config = swine::Config()): solver(config, z3ctx), ctx(solver) {
         solver.get_solver().set("random_seed", 42u);
         solver.get_solver().set("seed", 42u);
+        solver.get_solver().set("sat.random_seed", 42u);
+        solver.get_solver().set("nlsat.seed", 42u);
     }
 
     void add(const BExpr<Th...> e) override {
@@ -105,12 +107,8 @@ public:
         auto &s {solver.get_solver()};
         s.set("random_seed", seed);
         s.set("seed", seed);
-        s.set("sat.phase", "random");
         s.set("sat.random_seed", seed);
         s.set("nlsat.seed", seed);
-        s.set("nlsat.shuffle_vars", true);
-        s.set("smt.arith.random_initial_value", true);
-        s.set("smt.phase_selection", 5u);
     }
 
 private:

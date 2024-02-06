@@ -25,7 +25,7 @@
 
 using namespace std;
 
-bool Expr::findAll(const Expr &pattern, std::unordered_set<Expr> &found) const {
+bool Expr::findAll(const Expr &pattern, linked_hash_set<Expr> &found) const {
     bool anyFound = false;
 
     if (match(pattern)) {
@@ -42,7 +42,7 @@ bool Expr::findAll(const Expr &pattern, std::unordered_set<Expr> &found) const {
     return anyFound;
 }
 
-bool Expr::isLinear(const std::optional<std::unordered_set<NumVar>> &vars) const {
+bool Expr::isLinear(const std::optional<linked_hash_set<NumVar>> &vars) const {
     auto theVars = vars ? *vars : this->vars();
     // linear expressions are always polynomials
     if (!isPoly()) return false;
@@ -177,14 +177,14 @@ unsigned Expr::getIndex(const GiNaC::symbol &x) {
     }
 }
 
-void Expr::collectVars(std::unordered_set<NumVar> &res) const {
+void Expr::collectVars(linked_hash_set<NumVar> &res) const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
-        SymbolVisitor(std::unordered_set<NumVar> &t) : target(t) {}
+        SymbolVisitor(linked_hash_set<NumVar> &t) : target(t) {}
         void visit(const GiNaC::symbol &sym) {
             target.emplace(getIndex(sym));
         }
     private:
-        std::unordered_set<NumVar> &target;
+        linked_hash_set<NumVar> &target;
     };
 
     SymbolVisitor v(res);
@@ -192,8 +192,8 @@ void Expr::collectVars(std::unordered_set<NumVar> &res) const {
 }
 
 
-std::unordered_set<NumVar> Expr::vars() const {
-    std::unordered_set<NumVar> res;
+linked_hash_set<NumVar> Expr::vars() const {
+    linked_hash_set<NumVar> res;
     collectVars(res);
     return res;
 }
@@ -527,7 +527,7 @@ Num Expr::denomLcm() const {
     const Expr &denom = Expr::wildcard(0);
     const Expr &num = Expr::wildcard(1);
     const Expr &pattern = denom / num;
-    std::unordered_set<Expr> matches;
+    linked_hash_set<Expr> matches;
     GiNaC::numeric lcm = 1;
     findAll(pattern, matches);
     for (const Expr &e: matches) {
@@ -632,6 +632,10 @@ std::size_t Expr::hash() const {
     return ex.gethash();
 }
 
+size_t hash_value(const Expr &e) {
+    return e.hash();
+}
+
 bool operator==(const Expr &e1, const Expr &e2) {
     return e1.ex.is_equal(e2.ex);
 }
@@ -650,7 +654,7 @@ Expr ExprSubs::get(const NumVar &key) const {
 }
 
 void ExprSubs::put(const NumVar &key, const Expr &val) {
-    map[key] = val;
+    map.put(key, val);
 }
 
 ExprSubs::const_iterator ExprSubs::begin() const {
@@ -725,7 +729,7 @@ ExprSubs ExprSubs::unite(const ExprSubs &that) const {
     return res;
 }
 
-ExprSubs ExprSubs::project(const std::unordered_set<NumVar> &vars) const {
+ExprSubs ExprSubs::project(const linked_hash_set<NumVar> &vars) const {
     ExprSubs res;
     if (size() < vars.size()) {
         for (const auto &p: *this) {
@@ -742,24 +746,6 @@ ExprSubs ExprSubs::project(const std::unordered_set<NumVar> &vars) const {
         }
     }
     return res;
-}
-
-ExprSubs ExprSubs::setminus(const std::unordered_set<NumVar> &vars) const {
-    if (size() < vars.size()) {
-        ExprSubs res;
-        for (const auto &p: *this) {
-            if (vars.find(p.first) == vars.end()) {
-                res.put(p.first, p.second);
-            }
-        }
-        return res;
-    } else {
-        ExprSubs res(*this);
-        for (const auto &x: vars) {
-            res.erase(x);
-        }
-        return res;
-    }
 }
 
 bool ExprSubs::changes(const NumVar &key) const {
@@ -784,37 +770,37 @@ bool ExprSubs::isOctagon() const {
     });
 }
 
-void ExprSubs::collectDomain(std::unordered_set<NumVar> &vars) const {
+void ExprSubs::collectDomain(linked_hash_set<NumVar> &vars) const {
     for (const auto &p: *this) {
         vars.insert(p.first);
     }
 }
 
-void ExprSubs::collectCoDomainVars(std::unordered_set<NumVar> &vars) const {
+void ExprSubs::collectCoDomainVars(linked_hash_set<NumVar> &vars) const {
     for (const auto &p: *this) {
         p.second.collectVars(vars);
     }
 }
 
-void ExprSubs::collectVars(std::unordered_set<NumVar> &vars) const {
+void ExprSubs::collectVars(linked_hash_set<NumVar> &vars) const {
     collectCoDomainVars(vars);
     collectDomain(vars);
 }
 
-std::unordered_set<NumVar> ExprSubs::domain() const {
-    std::unordered_set<NumVar> res;
+linked_hash_set<NumVar> ExprSubs::domain() const {
+    linked_hash_set<NumVar> res;
     collectDomain(res);
     return res;
 }
 
-std::unordered_set<NumVar> ExprSubs::coDomainVars() const {
-    std::unordered_set<NumVar> res;
+linked_hash_set<NumVar> ExprSubs::coDomainVars() const {
+    linked_hash_set<NumVar> res;
     collectCoDomainVars(res);
     return res;
 }
 
-std::unordered_set<NumVar> ExprSubs::allVars() const {
-    std::unordered_set<NumVar> res;
+linked_hash_set<NumVar> ExprSubs::allVars() const {
+    linked_hash_set<NumVar> res;
     collectVars(res);
     return res;
 }

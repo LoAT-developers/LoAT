@@ -1,10 +1,10 @@
 #pragma once
 
 #include "itheory.hpp"
+#include "set.hpp"
 
 #include <optional>
 #include <ostream>
-#include <unordered_set>
 
 namespace theory {
 
@@ -217,8 +217,8 @@ public:
     }
 
     template <class V>
-    void insertAll(const std::unordered_set<V> &that) {
-        std::get<std::unordered_set<V>>(t).insert(that.begin(), that.end());
+    void insertAll(const linked_hash_set<V> &that) {
+        std::get<linked_hash_set<V>>(t).insert(that.begin(), that.end());
     }
 
 private:
@@ -303,13 +303,13 @@ public:
     }
 
     template <class T>
-    std::unordered_set<T>& get() {
-        return std::get<std::unordered_set<T>>(t);
+    linked_hash_set<T>& get() {
+        return std::get<linked_hash_set<T>>(t);
     }
 
     template <class T>
-    const std::unordered_set<T>& get() const {
-        return std::get<std::unordered_set<T>>(t);
+    const linked_hash_set<T>& get() const {
+        return std::get<linked_hash_set<T>>(t);
     }
 
     template <size_t I>
@@ -336,9 +336,9 @@ std::ostream& operator<<(std::ostream &s, const ThSet<VS, VSI, Var, Th...> &set)
 }
 
 template<ITheory... Th>
-using VarSet = ThSet<std::tuple<std::unordered_set<typename Th::Var>...>, std::variant<typename std::unordered_set<typename Th::Var>::const_iterator...>, typename Theory<Th...>::Var, Th...>;
+using VarSet = ThSet<std::tuple<linked_hash_set<typename Th::Var>...>, std::variant<typename linked_hash_set<typename Th::Var>::const_iterator...>, typename Theory<Th...>::Var, Th...>;
 
 template<ITheory... Th>
-using LitSet = ThSet<std::tuple<std::unordered_set<typename Th::Lit>...>, std::variant<typename std::unordered_set<typename Th::Lit>::const_iterator...>, typename Theory<Th...>::Lit, Th...>;
+using LitSet = ThSet<std::tuple<linked_hash_set<typename Th::Lit>...>, std::variant<typename linked_hash_set<typename Th::Lit>::const_iterator...>, typename Theory<Th...>::Lit, Th...>;
 
 }

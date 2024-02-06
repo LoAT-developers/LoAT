@@ -1,8 +1,7 @@
 #pragma once
 
 #include "boolvar.hpp"
-
-#include <unordered_set>
+#include "set.hpp"
 
 class BoolLit {
     BoolVar var;
@@ -18,7 +17,7 @@ public:
     bool isLinear() const;
     bool isWellformed() const;
     BoolVar getBoolVar() const;
-    void collectVars(std::unordered_set<BoolVar> &res) const;
+    void collectVars(linked_hash_set<BoolVar> &res) const;
     BoolLit normalize() const;
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
@@ -36,3 +35,5 @@ struct std::hash<BoolLit> {
         return x.hash();
     }
 };
+
+size_t hash_value(const BoolLit &lit);

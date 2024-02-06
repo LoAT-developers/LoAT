@@ -13,7 +13,7 @@ public:
 
     VarEliminator(const BoolExpr guard, const NumVar &N, const std::function<bool(NumVar)> &keep);
 
-    const std::unordered_set<ExprSubs> getRes() const;
+    const linked_hash_set<ExprSubs> getRes() const;
 
 private:
 
@@ -57,9 +57,9 @@ private:
     /**
      * Substitutions that are suitable to eliminate N.
      */
-    std::unordered_set<ExprSubs> res;
+    linked_hash_set<ExprSubs> res;
 
-    std::unordered_set<NumVar> dependencies;
+    linked_hash_set<NumVar> dependencies;
 
     const std::function<bool(NumVar)> keep;
 

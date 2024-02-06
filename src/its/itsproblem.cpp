@@ -42,7 +42,7 @@ LocationIdx ITSProblem::getSink() const {
     return sink;
 }
 
-const std::unordered_set<Rule>& ITSProblem::getAllTransitions() const {
+const linked_hash_set<Rule>& ITSProblem::getAllTransitions() const {
     return rules;
 }
 

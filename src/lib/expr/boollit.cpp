@@ -39,7 +39,7 @@ bool BoolLit::isWellformed() const {
     return true;
 }
 
-void BoolLit::collectVars(std::unordered_set<BoolVar> &res) const {
+void BoolLit::collectVars(linked_hash_set<BoolVar> &res) const {
     res.insert(var);
 }
 
@@ -52,6 +52,10 @@ std::size_t BoolLit::hash() const {
     boost::hash_combine(seed, negated);
     boost::hash_combine(seed, var.hash());
     return seed;
+}
+
+size_t hash_value(const BoolLit &lit) {
+    return lit.hash();
 }
 
 std::ostream& operator<<(std::ostream &s, const BoolLit &l) {

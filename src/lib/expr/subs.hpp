@@ -187,24 +187,6 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void setminusImpl(Subs& res, const VS &vars) const {
-        if constexpr (I < sizeof...(Th)) {
-            std::get<I>(res.t) = std::get<I>(t).setminus(vars.template get<I>());
-            setminusImpl<I+1>(res, vars);
-        }
-    }
-
-public:
-
-    Subs setminus(const VS &vars) const {
-        Subs res;
-        setminusImpl(res, vars);
-        return res;
-    }
-
-private:
-
-    template<std::size_t I = 0>
     inline void putImpl(const Pair &p) {
         if constexpr (I < sizeof...(Th)) {
             if (p.index() == I) {

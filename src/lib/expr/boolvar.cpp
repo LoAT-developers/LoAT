@@ -48,3 +48,7 @@ bool BoolVar::isTempVar() const {
 std::size_t BoolVar::hash() const {
     return std::hash<int>{}(idx);
 }
+
+size_t hash_value(const BoolVar &x) {
+    return x.hash();
+}

@@ -57,3 +57,7 @@ bool NumVar::isTempVar() const {
 size_t NumVar::hash() const {
     return std::hash<int>{}(idx);
 }
+
+std::size_t hash_value(const NumVar &x) {
+    return x.hash();
+}

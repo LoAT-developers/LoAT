@@ -21,8 +21,9 @@
 #include <variant>
 #include <initializer_list>
 #include <optional>
-#include <unordered_set>
 
+#include "map.hpp"
+#include "set.hpp"
 #include "numvar.hpp"
 
 class Expr;
@@ -80,12 +81,12 @@ public:
      * @brief Computes all matches of the given pattern.
      * @return True iff there was at least one match.
      */
-    bool findAll(const Expr &pattern, std::unordered_set<Expr> &found) const;
+    bool findAll(const Expr &pattern, linked_hash_set<Expr> &found) const;
 
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
      */
-    bool isLinear(const std::optional<std::unordered_set<NumVar>> &vars = std::optional<std::unordered_set<NumVar>>()) const;
+    bool isLinear(const std::optional<linked_hash_set<NumVar>> &vars = std::optional<linked_hash_set<NumVar>>()) const;
 
     /**
      * @return True iff this expression is a polynomial.
@@ -130,12 +131,12 @@ public:
     /**
      * @brief Collects all variables that occur in this expression.
      */
-    void collectVars(std::unordered_set<NumVar> &res) const;
+    void collectVars(linked_hash_set<NumVar> &res) const;
 
     /**
      * @return The set of all variables that occur in this expression.
      */
-    std::unordered_set<NumVar> vars() const;
+    linked_hash_set<NumVar> vars() const;
 
     static unsigned getIndex(const GiNaC::symbol &x);
 
@@ -341,7 +342,7 @@ class ExprSubs {
 
 public:
 
-    using const_iterator = typename std::unordered_map<NumVar, Expr>::const_iterator;
+    typedef typename linked_hash_map<NumVar, Expr>::const_iterator const_iterator;
 
     ExprSubs();
 
@@ -373,9 +374,7 @@ public:
 
     ExprSubs unite(const ExprSubs &that) const;
 
-    ExprSubs project(const std::unordered_set<NumVar> &vars) const;
-
-    ExprSubs setminus(const std::unordered_set<NumVar> &vars) const;
+    ExprSubs project(const linked_hash_set<NumVar> &vars) const;
 
     bool changes(const NumVar &key) const;
 
@@ -385,23 +384,23 @@ public:
 
     bool isOctagon() const;
 
-    std::unordered_set<NumVar> domain() const;
+    linked_hash_set<NumVar> domain() const;
 
-    std::unordered_set<NumVar> coDomainVars() const;
+    linked_hash_set<NumVar> coDomainVars() const;
 
-    std::unordered_set<NumVar> allVars() const;
+    linked_hash_set<NumVar> allVars() const;
 
-    void collectDomain(std::unordered_set<NumVar> &vars) const;
+    void collectDomain(linked_hash_set<NumVar> &vars) const;
 
-    void collectCoDomainVars(std::unordered_set<NumVar> &vars) const;
+    void collectCoDomainVars(linked_hash_set<NumVar> &vars) const;
 
-    void collectVars(std::unordered_set<NumVar> &vars) const;
+    void collectVars(linked_hash_set<NumVar> &vars) const;
 
     size_t hash() const;
 
 private:
 
-    std::unordered_map<NumVar, Expr> map;
+    linked_hash_map<NumVar, Expr> map;
 
 };
 
@@ -420,3 +419,5 @@ struct std::hash<ExprSubs> {
         return x.hash();
     }
 };
+
+size_t hash_value(const Expr &e);

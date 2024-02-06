@@ -106,3 +106,7 @@ size_t Rule::hash() const {
     boost::hash_combine(hash, update.hash());
     return hash;
 }
+
+size_t hash_value(const Rule &r) {
+    return r.hash();
+}

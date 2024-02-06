@@ -86,6 +86,8 @@ struct std::hash<Rule> {
     }
 };
 
+size_t hash_value(const Rule &r);
+
 using TransIdx = const Rule*;
 using Implicant = std::pair<TransIdx, BoolExpr>;
 

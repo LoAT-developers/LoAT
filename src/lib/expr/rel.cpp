@@ -34,7 +34,7 @@ bool Rel::isPoly() const {
     return l.isPoly() && r.isPoly();
 }
 
-bool Rel::isLinear(const std::optional<std::unordered_set<NumVar>> &vars) const {
+bool Rel::isLinear(const std::optional<linked_hash_set<NumVar>> &vars) const {
     return l.isLinear(vars) && r.isLinear(vars);
 }
 
@@ -269,7 +269,7 @@ std::optional<bool> Rel::checkTrivial() const {
     return {};
 }
 
-void Rel::collectVars(std::unordered_set<NumVar> &res) const {
+void Rel::collectVars(linked_hash_set<NumVar> &res) const {
     l.collectVars(res);
     r.collectVars(res);
 }
@@ -292,8 +292,8 @@ Rel::RelOp Rel::relOp() const {
     return op;
 }
 
-std::unordered_set<NumVar> Rel::vars() const {
-    std::unordered_set<NumVar> res;
+linked_hash_set<NumVar> Rel::vars() const {
+    linked_hash_set<NumVar> res;
     collectVars(res);
     return res;
 }
@@ -312,6 +312,10 @@ std::size_t Rel::hash() const {
     boost::hash_combine(seed, op);
     boost::hash_combine(seed, r.hash());
     return seed;
+}
+
+size_t hash_value(const Rel &rel) {
+    return rel.hash();
 }
 
 Rel Rel::buildEq(const Expr &x, const Expr &y) {

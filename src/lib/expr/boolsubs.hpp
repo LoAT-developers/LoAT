@@ -3,6 +3,7 @@
 #include "boolvar.hpp"
 #include "boolexpr.hpp"
 #include "itheory.hpp"
+#include "map.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -13,18 +14,18 @@ class BoolSubs {
     using T = Theory<Th...>;
     using VarSet = theory::VarSet<Th...>;
 
-    std::unordered_map<BoolVar, BoolExpr> map;
+    linked_hash_map<BoolVar, BoolExpr> map;
 
 public:
 
-    using const_iterator = typename std::unordered_map<BoolVar, BoolExpr>::const_iterator;
+    typedef typename linked_hash_map<BoolVar, BoolExpr>::const_iterator const_iterator;
 
     BoolSubs() {}
 
     BoolSubs(const BoolVar &key, const BoolExpr &val): map({{key, val}}) {}
 
     void put(const BoolVar &key, const BoolExpr &val) {
-        map[key] = val;
+        map.put(key, val);
     }
 
     BoolExpr get(const BoolVar &var) const {
@@ -84,7 +85,7 @@ public:
         return res;
     }
 
-    BoolSubs project(const std::unordered_set<BoolVar> &vars) const {
+    BoolSubs project(const linked_hash_set<BoolVar> &vars) const {
         BoolSubs res;
         if (size() < vars.size()) {
             for (const auto &p: *this) {
@@ -103,24 +104,6 @@ public:
         return res;
     }
 
-    BoolSubs setminus(const std::unordered_set<BoolVar> &vars) const {
-        if (size() < vars.size()) {
-            BoolSubs res;
-            for (const auto &p: *this) {
-                if (vars.find(p.first) == vars.end()) {
-                    res.put(p.first, p.second);
-                }
-            }
-            return res;
-        } else {
-            BoolSubs res(*this);
-            for (const auto &x: vars) {
-                res.erase(x);
-            }
-            return res;
-        }
-    }
-
     bool changes(const BoolVar &key) const {
         if (!contains(key)) {
             return false;
@@ -128,19 +111,19 @@ public:
         return BoolExpression<Th...>::buildTheoryLit(BoolLit(key)) != map.at(key);
     }
 
-    std::unordered_set<BoolVar> domain() const {
-        std::unordered_set<BoolVar> res;
+    linked_hash_set<BoolVar> domain() const {
+        linked_hash_set<BoolVar> res;
         collectDomain(res);
         return res;
     }
 
-    std::unordered_set<BoolVar> allVars() const {
-        std::unordered_set<BoolVar> res;
+    linked_hash_set<BoolVar> allVars() const {
+        linked_hash_set<BoolVar> res;
         collectVars(res);
         return res;
     }
 
-    void collectDomain(std::unordered_set<BoolVar> &vars) const {
+    void collectDomain(linked_hash_set<BoolVar> &vars) const {
         for (const auto &p: map) {
             vars.insert(p.first);
         }

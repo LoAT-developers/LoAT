@@ -97,13 +97,9 @@ public:
 
     void randomize(unsigned seed) override {
         solver.set("random_seed", seed);
-        solver.set("sat.phase", "random");
         solver.set("sat.random_seed", seed);
         solver.set("seed", seed);
         solver.set("nlsat.seed", seed);
-        solver.set("nlsat.shuffle_vars", true);
-        solver.set("smt.arith.random_initial_value", true);
-        solver.set("smt.phase_selection", 5u);
     }
 
 protected:
@@ -113,7 +109,9 @@ protected:
 
     Z3Base(): ctx(z3Ctx), solver(z3Ctx) {
         solver.set("random_seed", 42u);
+        solver.set("sat.random_seed", 42u);
         solver.set("seed", 42u);
+        solver.set("nlsat.seed", 42u);
     }
 
     Num getRealFromModel(const z3::model &model, const z3::expr &symbol) {

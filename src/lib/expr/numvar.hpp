@@ -47,3 +47,5 @@ struct std::hash<NumVar> {
         return x.hash();
     }
 };
+
+std::size_t hash_value(const NumVar &x);

@@ -20,9 +20,9 @@
 #include "rule.hpp"
 #include "dependencygraph.hpp"
 #include "types.hpp"
+#include "set.hpp"
 
 #include <optional>
-
 
 class ITSProblem {
 
@@ -43,7 +43,7 @@ public:
     LocationIdx getSink() const;
     std::optional<LocationIdx> getLocationIdx(const std::string &name) const;
 
-    const std::unordered_set<Rule>& getAllTransitions() const;
+    const linked_hash_set<Rule>& getAllTransitions() const;
     std::set<TransIdx> getSuccessors(const TransIdx loc) const;
     std::set<TransIdx> getPredecessors(const TransIdx loc) const;
     bool areAdjacent(const TransIdx first, const TransIdx second) const;
@@ -109,7 +109,7 @@ public:
 protected:
 
     DG graph;
-    std::unordered_set<Rule> rules;
+    linked_hash_set<Rule> rules;
     std::set<LocationIdx> locations;
     std::map<LocationIdx, std::string> locationNames;
     std::map<TransIdx, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations;

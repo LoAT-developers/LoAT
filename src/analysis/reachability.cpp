@@ -15,6 +15,7 @@
 
 #include <numeric>
 #include <random>
+#include <unordered_set>
 
 namespace reachability {
 
@@ -680,7 +681,6 @@ bool Reachability::try_to_finish() {
 
 void Reachability::analyze() {
     static std::default_random_engine rnd {};
-    solver->randomize(rand());
     proof.majorProofStep("Initial ITS", ITSProof(), chcs);
     if (Config::Analysis::log) {
         std::cout << "Initial ITS" << std::endl;

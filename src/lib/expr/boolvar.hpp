@@ -42,3 +42,5 @@ struct std::hash<BoolVar> {
         return x.hash();
     }
 };
+
+size_t hash_value(const BoolVar &x);

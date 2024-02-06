@@ -111,7 +111,7 @@ RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool rem
     }
     auto guard = rule.getGuard()->lits();
     //get all variables that appear in an inequality
-    std::unordered_set<NumVar> tryVars;
+    linked_hash_set<NumVar> tryVars;
     for (const auto &lit : guard) {
         if (std::holds_alternative<Rel>(lit)) {
             const auto &rel = std::get<Rel>(lit);

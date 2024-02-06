@@ -126,6 +126,6 @@ void VarEliminator::eliminate() {
     }
 }
 
-const std::unordered_set<ExprSubs> VarEliminator::getRes() const {
+const linked_hash_set<ExprSubs> VarEliminator::getRes() const {
     return res;
 }

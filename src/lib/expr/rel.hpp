@@ -1,16 +1,14 @@
 #pragma once
 
 #include <optional>
-#include <unordered_set>
 
 #include "numexpression.hpp"
 
-using RelSet = std::unordered_set<Rel>;
-template <class T> using RelMap = std::unordered_map<Rel, T>;
+using RelSet = linked_hash_set<Rel>;
 
 struct Bounds {
-    std::unordered_set<Expr> upperBounds;
-    std::unordered_set<Expr> lowerBounds;
+    linked_hash_set<Expr> upperBounds;
+    linked_hash_set<Expr> lowerBounds;
     std::optional<Expr> equality;
 };
 
@@ -35,7 +33,7 @@ public:
     Expr rhs() const;
     Rel expand() const;
     bool isPoly() const;
-    bool isLinear(const std::optional<std::unordered_set<NumVar>> &vars = std::optional<std::unordered_set<NumVar>>()) const;
+    bool isLinear(const std::optional<linked_hash_set<NumVar>> &vars = std::optional<linked_hash_set<NumVar>>()) const;
     bool isIneq() const;
     bool isEq() const;
     bool isNeq() const;
@@ -51,12 +49,12 @@ public:
     Rel splitVariableAndConstantAddends(const std::set<NumVar> &params = {}) const;
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
-    void collectVars(std::unordered_set<NumVar> &res) const;
+    void collectVars(linked_hash_set<NumVar> &res) const;
     bool has(const Expr &pattern) const;
     Rel subs(const ExprSubs &map) const;
     std::string toString() const;
     RelOp relOp() const;
-    std::unordered_set<NumVar> vars() const;
+    linked_hash_set<NumVar> vars() const;
 
     template <typename P>
     bool hasVarWith(P predicate) const {
@@ -111,3 +109,5 @@ struct std::hash<Rel> {
         return x.hash();
     }
 };
+
+size_t hash_value(const Rel &rel);
