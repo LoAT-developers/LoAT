@@ -12,7 +12,7 @@ private:
 
     int idx;
 
-    static std::map<int, GiNaC::symbol> symbols;
+    static std::unordered_map<int, GiNaC::symbol> symbols;
 
 public:
 
