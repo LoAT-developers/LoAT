@@ -356,8 +356,6 @@ public:
 
     const_iterator end() const;
 
-    const_iterator find(const NumVar &e) const;
-
     bool contains(const NumVar &e) const;
 
     bool empty() const;

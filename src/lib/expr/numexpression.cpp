@@ -62,7 +62,7 @@ bool Expr::isLinear(const std::optional<linked_hash_set<NumVar>> &vars) const {
         if (deg == 1) {
             auto coefficientVars = expanded.coeff(var,deg).vars();
             for (const NumVar &e: coefficientVars) {
-                if (theVars.find(e) != theVars.end()) {
+                if (theVars.contains(e)) {
                     return false;
                 }
             }
@@ -453,12 +453,7 @@ Expr::Mapper::Mapper(const ExprSubs &map): map(map) {}
 
 GiNaC::ex Expr::Mapper::operator()(const GiNaC::ex &ex) {
     if (ex.info(GiNaC::info_flags::symbol)) {
-        const auto it {map.find(NumVar(getIndex(GiNaC::ex_to<GiNaC::symbol>(ex))))};
-        if (it == map.end()) {
-            return ex;
-        } else {
-            return it->second.ex;
-        }
+        return map.get(NumVar(getIndex(GiNaC::ex_to<GiNaC::symbol>(ex)))).ex;
     } else {
         return ex.map(*this);
     }
@@ -649,8 +644,8 @@ ExprSubs::ExprSubs() {}
 ExprSubs::ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init): map(init) {}
 
 Expr ExprSubs::get(const NumVar &key) const {
-    const auto it = map.find(key);
-    return it == map.end() ? key : it->second;
+    const auto res {map.get(key)};
+    return res ? *res : key;
 }
 
 void ExprSubs::put(const NumVar &key, const Expr &val) {
@@ -665,12 +660,8 @@ ExprSubs::const_iterator ExprSubs::end() const {
     return map.end();
 }
 
-ExprSubs::const_iterator ExprSubs::find(const NumVar &e) const {
-    return map.find(e);
-}
-
 bool ExprSubs::contains(const NumVar &e) const {
-    return map.find(e) != map.end();
+    return map.contains(e);
 }
 
 bool ExprSubs::empty() const {
@@ -721,7 +712,7 @@ ExprSubs ExprSubs::unite(const ExprSubs &that) const {
         res.put(p.first, p.second);
     }
     for (const auto &p: that) {
-        if (res.find(p.first) != res.end()) {
+        if (res.contains(p.first)) {
             throw std::invalid_argument("union of substitutions is only defined if their domain is disjoint");
         }
         res.put(p.first, p.second);
@@ -733,15 +724,15 @@ ExprSubs ExprSubs::project(const linked_hash_set<NumVar> &vars) const {
     ExprSubs res;
     if (size() < vars.size()) {
         for (const auto &p: *this) {
-            if (vars.find(p.first) != vars.end()) {
+            if (vars.contains(p.first)) {
                 res.put(p.first, p.second);
             }
         }
     } else {
         for (const auto &x: vars) {
-            const auto it {find(x)};
-            if (it != end()) {
-                res.put(it->first, it->second);
+            const auto val {map.get(x)};
+            if (val) {
+                res.put(x, *val);
             }
         }
     }

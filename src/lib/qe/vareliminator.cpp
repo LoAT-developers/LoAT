@@ -27,7 +27,7 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
                         const Expr &coeff = ex.coeff(var, 1);
                         for (const NumVar &x: coeff.vars()) {
                             if (!keep(x)) {
-                                if (dependencies.find(x) == dependencies.end()) {
+                                if (!dependencies.contains(x)) {
                                     // we found a tmp variable in coeff which has not yet been marked as dependency
                                     dep = x;
                                 }
@@ -52,7 +52,7 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
 const std::vector<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDependency(const ExprSubs &subs, const BoolExpr guard) const {
     VarSet vars = guard->vars();
     for (auto it = dependencies.begin(); it != dependencies.end(); ++it) {
-        if (vars.find(*it) == vars.end()) {
+        if (!vars.contains(*it)) {
             continue;
         }
         Bounds bounds;

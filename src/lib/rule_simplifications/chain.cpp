@@ -5,7 +5,7 @@ std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) 
     Subs sigma, inverted;
     auto first_vars {first.vars()};
     for (const auto &x: second.vars()) {
-        if (expr::isTempVar(x) && first_vars.find(x) != first_vars.end()) {
+        if (expr::isTempVar(x) && first_vars.contains(x)) {
             if (std::holds_alternative<NumVar>(x)) {
                 const auto &var = std::get<NumVar>(x);
                 const NumVar next {NumVar::next()};

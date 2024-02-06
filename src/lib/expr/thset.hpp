@@ -224,28 +224,23 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline Iterator findImpl(const Var &var) const {
+    inline bool containsImpl(const Var &var) const {
         if constexpr (I < sizeof...(Th)) {
             if (var.index() == I) {
                 const auto &set = std::get<I>(t);
-                const auto &it = set.find(std::get<I>(var));
-                if (it == set.end()) {
-                    return end();
-                } else {
-                    return Iterator(this, it);
-                }
+                return set.contains(std::get<I>(var));
             } else {
-                return findImpl<I+1>(var);
+                return containsImpl<I+1>(var);
             }
         } else {
-            return end();
+            return false;
         }
     }
 
 public:
 
-    Iterator find(const Var &var) const {
-        return findImpl(var);
+    bool contains(const Var &var) const {
+        return containsImpl(var);
     }
 
     size_t size() const {

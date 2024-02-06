@@ -23,12 +23,12 @@ static void findOrderUntilConflicting(const Subs &update, PartialResult &res) {
         for (const auto &up : update) {
             const auto var = expr::first(up);
             const auto ex = expr::second(up);
-            if (res.ordered.find(var) != res.ordered.end()) continue;
+            if (res.ordered.contains(var)) continue;
 
             //check if all variables on update rhs are already processed
             bool ready = true;
             for (const auto &x : expr::vars(ex)) {
-                if (x != var && update.contains(x) && res.ordered.find(x) == res.ordered.end()) {
+                if (x != var && update.contains(x) && !res.ordered.contains(x)) {
                     ready = false;
                     break;
                 }

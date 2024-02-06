@@ -29,8 +29,8 @@ public:
     }
 
     BoolExpr get(const BoolVar &var) const {
-        const auto it = map.find(var);
-        return it == map.end() ? BoolExpression<Th...>::buildTheoryLit(BoolLit(var)) : it->second;
+        const auto res {map.get(var)};
+        return res ? *res : BoolExpression<Th...>::buildTheoryLit(BoolLit(var));
     }
 
     BoolExpr subs(const BoolLit &lit) const {
@@ -43,11 +43,11 @@ public:
             if (std::holds_alternative<BoolLit>(*lit)) {
                 const auto &blit = std::get<BoolLit>(*lit);
                 const BoolVar var = blit.getBoolVar();
-                const auto it = find(var);
-                if (it == end()) {
-                    return e;
+                const auto res {map.get(var)};
+                if (res) {
+                    return blit.isNegated() ? !*res : *res;
                 } else {
-                    return blit.isNegated() ? !it->second : it->second;
+                    return e;
                 }
             } else {
                 return e;
@@ -64,7 +64,7 @@ public:
     }
 
     bool contains(const BoolVar &var) const {
-        return map.find(var) != map.end();
+        return map.contains(var);
     }
 
     BoolSubs concat(const theory::Subs<Th...> &that) const {
@@ -89,15 +89,15 @@ public:
         BoolSubs res;
         if (size() < vars.size()) {
             for (const auto &p: *this) {
-                if (vars.find(p.first) != vars.end()) {
+                if (vars.contains(p.first)) {
                     res.put(p.first, p.second);
                 }
             }
         } else {
             for (const auto &x: vars) {
-                const auto it {find(x)};
-                if (it != end()) {
-                    res.put(it->first, it->second);
+                const auto val {map.get(x)};
+                if (val) {
+                    res.put(x, *val);
                 }
             }
         }
@@ -152,10 +152,6 @@ public:
 
     const_iterator end() const {
         return map.end();
-    }
-
-    const_iterator find(const BoolVar &var) const {
-        return map.find(var);
     }
 
     size_t size() const {

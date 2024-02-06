@@ -47,7 +47,7 @@ RuleResult eliminateTempVars(const Rule &rule) {
 
     auto varsInUpdate {expr::coDomainVars(res->getUpdate())};
     auto isTempInUpdate = [&](const Var &sym) {
-        return expr::isTempVar(sym) && varsInUpdate.find(sym) != varsInUpdate.end();
+        return expr::isTempVar(sym) && varsInUpdate.contains(sym);
     };
     //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
     res.concat(GuardToolbox::propagateEqualities(*res, ResultMapsToInt, isTempInUpdate));
@@ -55,7 +55,7 @@ RuleResult eliminateTempVars(const Rule &rule) {
     varsInUpdate = expr::coDomainVars(res->getUpdate());
     auto isTempOnlyInGuard = [&](const Var &sym) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
-        return expr::isTempVar(sym) && varsInUpdate.find(sym) == varsInUpdate.end();
+        return expr::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
     //try to remove all remaining temp variables (we do 2 steps to prioritize removing vars from the update)
     res.concat(GuardToolbox::propagateEqualities(*res, ResultMapsToInt, expr::isTempVar));

@@ -193,13 +193,7 @@ void ITSProblem::print(std::ostream &s) const {
 }
 
 Expr ITSProblem::getCost(const Rule &rule) const {
-    const auto up {rule.getUpdate().get<IntTheory>()};
-    const auto it {up.find(cost)};
-    if (it == up.end()) {
-        return 0;
-    } else {
-        return it->second - cost;
-    }
+    return rule.getUpdate().get<IntTheory>(cost) - cost;
 }
 
 NumVar ITSProblem::getCostVar() const {
@@ -207,12 +201,11 @@ NumVar ITSProblem::getCostVar() const {
 }
 
 std::optional<LocationIdx> ITSProblem::getRhsLoc(const Rule &rule) const {
-    const auto up = rule.getUpdate().get<IntTheory>();
-    const auto it = up.find(NumVar::loc_var);
-    if (it == up.end()) {
-        return {};
+    const auto res {rule.getUpdate().get<IntTheory>(NumVar::loc_var)};
+    if (res.isInt()) {
+        return res.toNum().to_int();
     } else {
-        return it->second.toNum().to_int();
+        return {};
     }
 }
 
