@@ -698,11 +698,15 @@ ExprSubs ExprSubs::concat(const ExprSubs &that) const {
 }
 
 void ExprSubs::concatInPlace(const ExprSubs &that) {
-    for (const auto &[key,val]: *this) {
+    std::vector<std::pair<NumVar, Expr>> changed;
+    for (const auto &[key, val]: *this) {
         const auto new_val {val.subs(that)};
         if (val != new_val) {
-            put(key, val);
+            changed.emplace_back(key, new_val);
         }
+    }
+    for (const auto &[key, val]: changed) {
+        put(key, val);
     }
 }
 
