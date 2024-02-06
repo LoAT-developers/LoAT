@@ -181,6 +181,7 @@ void Reachability::block(const Step &step) {
 }
 
 void Reachability::pop() {
+    bump_penalty(trace.back().clause_idx);
     blocked_clauses.pop_back();
     trace.pop_back();
     solver->pop();
@@ -679,8 +680,20 @@ bool Reachability::try_to_finish() {
     return false;
 }
 
+unsigned Reachability::get_penalty(const TransIdx idx) const {
+    const auto it {penalty.find(idx)};
+    if (it != penalty.end()) {
+        return it->second;
+    } else {
+        return 0;
+    }
+}
+
+void Reachability::bump_penalty(const TransIdx idx) {
+    penalty.emplace(idx, 0).first->second++;
+}
+
 void Reachability::analyze() {
-    static std::default_random_engine rnd {};
     proof.majorProofStep("Initial ITS", ITSProof(), chcs);
     if (Config::Analysis::log) {
         std::cout << "Initial ITS" << std::endl;
@@ -762,7 +775,15 @@ void Reachability::analyze() {
             }
         }
         std::vector<TransIdx> to_try(try_set.begin(), try_set.end());
-        std::shuffle(to_try.begin(), to_try.end(), rnd);
+        std::sort(to_try.begin(), to_try.end(), [this](const TransIdx x, const TransIdx y){
+            const auto p1 {get_penalty(x)};
+            const auto p2 {get_penalty(y)};
+            if (p1 != p2) {
+                return p1 < p2;
+            } else {
+                return x->getId() < y->getId();
+            }
+        });
         bool all_failed {true};
         for (const auto idx: to_try) {
             solver->push();
@@ -774,6 +795,8 @@ void Reachability::analyze() {
                 update_cpx();
                 all_failed = false;
                 break;
+            } else {
+                bump_penalty(idx);
             }
         }
         if (trace.empty()) {

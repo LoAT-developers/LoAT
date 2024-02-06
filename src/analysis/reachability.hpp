@@ -167,6 +167,10 @@ class Reachability {
      */
     std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked_clauses{{}};
 
+    /**
+     * Languages that correspond to non-linear learned clauses that are not used for resolution after a restart.
+     * They get activated again once the corresponding loop has been unrolled.
+     */
     std::unordered_set<Automaton> locked;
 
     VarSet prog_vars;
@@ -183,6 +187,8 @@ class Reachability {
     unsigned luby_count {0};
 
     void luby_next();
+
+    std::map<TransIdx, unsigned> penalty;
 
     using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundancy {std::make_unique<Red>()};
@@ -208,6 +214,10 @@ class Reachability {
     void unsat();
 
     void unknown();
+
+    unsigned get_penalty(const TransIdx idx) const;
+
+    void bump_penalty(const TransIdx idx);
 
     /**
      * tries to resolve the trace with the given clause
