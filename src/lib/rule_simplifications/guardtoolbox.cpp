@@ -20,6 +20,8 @@
 #include "rel.hpp"
 #include "ruleresult.hpp"
 
+#include <unordered_set>
+
 using namespace std;
 
 RuleResult GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
@@ -112,6 +114,7 @@ RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool rem
     auto guard = rule.getGuard()->lits();
     //get all variables that appear in an inequality
     linked_hash_set<NumVar> tryVars;
+    std::unordered_set<NumVar> eliminated;
     for (const auto &lit : guard) {
         if (std::holds_alternative<Rel>(lit)) {
             const auto &rel = std::get<Rel>(lit);
@@ -119,6 +122,12 @@ RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool rem
             rel.collectVars(tryVars);
         }
     }
+
+    const auto is_explosive = [&](const auto &var, const auto &target){
+        return target.hasVarWith([&](const auto &x) {
+            return x != var && !eliminated.contains(x) && tryVars.contains(x);
+        });
+    };
 
     //for each variable, try if we can eliminate every occurrence. Otherwise do nothing.
     bool changed = false;
@@ -128,6 +137,9 @@ RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool rem
         vector<Expr> varLessThan, varGreaterThan; //var <= expr and var >= expr
         vector<Rel> guardTerms; //indices of guard terms that can be removed if successful
 
+        size_t explosive_lower {0};
+        size_t explosive_upper {0};
+
         for (const auto &lit: guard) {
             if (std::holds_alternative<Rel>(lit)) {
                 const auto &rel = std::get<Rel>(lit);
@@ -136,16 +148,23 @@ RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool rem
                 if (!rel.isIneq() || !rel.isPoly()) goto abort; // contains var, but cannot be handled
 
                 Expr target = rel.toLeq().makeRhsZero().lhs();
-                if (!target.has(var)) continue; // might have changed, e.h. x <= x
+                if (!target.has(var)) continue; // might have changed, e.g. x <= x
 
                 //check coefficient and direction
                 Expr c = target.expand().coeff(var);
                 if (c != 1 && c != -1) goto abort;
                 if (c == 1) {
                     varLessThan.push_back( -(target-var) );
+                    if (is_explosive(var, target)) {
+                        ++explosive_upper;
+                    }
                 } else {
                     varGreaterThan.push_back( target+var );
+                    if (is_explosive(var, target)) {
+                        ++explosive_lower;
+                    }
                 }
+                if (explosive_upper > 1 && explosive_lower > 1) goto abort;
                 guardTerms.push_back(rel);
             }
         }
@@ -165,6 +184,7 @@ RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool rem
                 guard.insert(Rel::buildLeq(lower, upper));
             }
         }
+        eliminated.insert(var);
         changed = true;
 
 abort:  ; //this symbol could not be eliminated, try the next one
