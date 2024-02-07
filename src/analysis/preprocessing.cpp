@@ -22,11 +22,12 @@
 #include "config.hpp"
 
 #include <numeric>
+#include <unordered_set>
 
 using namespace std;
 
 ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its, bool forward) {
-    std::set<TransIdx> keep;
+    std::unordered_set<TransIdx> keep;
     std::stack<TransIdx> todo;
     for (const auto x: forward ? its.getInitialTransitions() : its.getSinkTransitions()) {
         todo.push(x);
@@ -47,7 +48,7 @@ ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its, bool forward) {
             to_delete.push_back(&r);
         }
     }
-    std::set<TransIdx> deleted;
+    linked_hash_set<TransIdx> deleted;
     for (const auto idx: to_delete) {
         its.removeRule(idx);
         deleted.insert(idx);
@@ -71,10 +72,10 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
     bool changed;
     do {
         changed = false;
-        std::set<TransIdx> deleted;
+        linked_hash_set<TransIdx> deleted;
         for (const auto &first: its.getAllTransitions()) {
             const auto succ {its.getSuccessors(&first)};
-            if (succ.size() == 1 && succ.find(&first) == succ.end()) {
+            if (succ.size() == 1 && !succ.contains(&first)) {
                 const auto second_idx {*succ.begin()};
                 if (!its.isSimpleLoop(second_idx)) {
                     deleted.insert(&first);
@@ -99,7 +100,7 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
 
 ResultViaSideEffects preprocessRules(ITSProblem &its) {
     ResultViaSideEffects ret;
-    std::map<TransIdx, Rule> replacements;
+    linked_hash_map<TransIdx, Rule> replacements;
     for (const auto &r: its.getAllTransitions()) {
         const auto res = Preprocess::preprocessRule(r);
         if (res) {

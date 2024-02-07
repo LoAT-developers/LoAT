@@ -165,7 +165,7 @@ class Reachability {
      * A conjunctive variant y of a non-conjunctive clause x is blocked if cond(y) implies an element of at(x).
      * Maybe it would be better to subdivide the blocking formulas w.r.t. pairs of predicates instead of clauses.
      */
-    std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked_clauses{{}};
+    std::vector<std::unordered_map<TransIdx, linked_hash_set<BoolExpr>>> blocked_clauses{{}};
 
     /**
      * Languages that correspond to non-linear learned clauses that are not used for resolution after a restart.
@@ -188,7 +188,7 @@ class Reachability {
 
     void luby_next();
 
-    std::map<TransIdx, unsigned> penalty;
+    std::unordered_map<TransIdx, unsigned> penalty;
 
     using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundancy {std::make_unique<Red>()};

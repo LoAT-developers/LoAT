@@ -16,7 +16,7 @@ void ITSProof::majorProofStep(const std::string &step, const Proof &subproof, co
     append(s);
 }
 
-void ITSProof::deletionProof(const std::set<TransIdx> &rules) {
+void ITSProof::deletionProof(const linked_hash_set<TransIdx> &rules) {
     if (Proof::disabled()) {
         return;
     }

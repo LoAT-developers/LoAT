@@ -44,8 +44,8 @@ public:
     std::optional<LocationIdx> getLocationIdx(const std::string &name) const;
 
     const linked_hash_set<Rule>& getAllTransitions() const;
-    std::set<TransIdx> getSuccessors(const TransIdx loc) const;
-    std::set<TransIdx> getPredecessors(const TransIdx loc) const;
+    linked_hash_set<TransIdx> getSuccessors(const TransIdx loc) const;
+    linked_hash_set<TransIdx> getPredecessors(const TransIdx loc) const;
     bool areAdjacent(const TransIdx first, const TransIdx second) const;
 
     // Mutation of Rules
@@ -53,7 +53,7 @@ public:
 
 private:
 
-    TransIdx addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<TransIdx> &preds, const std::set<TransIdx> &succs);
+    TransIdx addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const linked_hash_set<TransIdx> &preds, const linked_hash_set<TransIdx> &succs);
 
 public:
 
@@ -69,8 +69,7 @@ public:
     LocationIdx addNamedLocation(std::string name);
 
     // Required for printing (see ITSExport)
-    std::set<LocationIdx> getLocations() const;
-    const std::map<LocationIdx, std::string>& getLocationNames() const;
+    linked_hash_set<LocationIdx> getLocations() const;
     std::string getPrintableLocationName(LocationIdx idx) const; // returns "[idx]" if there is no name
 
     VarSet getVars() const;
@@ -88,9 +87,9 @@ public:
 
     LocationIdx getRhsLoc(const TransIdx idx) const;
 
-    const std::set<TransIdx>& getInitialTransitions() const;
+    const linked_hash_set<TransIdx>& getInitialTransitions() const;
 
-    const std::set<TransIdx>& getSinkTransitions() const;
+    const linked_hash_set<TransIdx>& getSinkTransitions() const;
 
     bool isSimpleLoop(const TransIdx idx) const;
 
@@ -100,9 +99,7 @@ public:
 
     const DG& getDependencyGraph() const;
 
-    std::set<DG::Edge> refineDependencyGraph();
-
-    std::set<DG::Edge> refineDependencyGraph(const Implicant &idx);
+    linked_hash_set<DG::Edge> refineDependencyGraph();
 
     size_t size() const;
 
@@ -110,11 +107,11 @@ protected:
 
     DG graph;
     linked_hash_set<Rule> rules;
-    std::set<LocationIdx> locations;
-    std::map<LocationIdx, std::string> locationNames;
-    std::map<TransIdx, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations;
-    std::set<TransIdx> initialTransitions;
-    std::set<TransIdx> sinkTransitions;
+    linked_hash_set<LocationIdx> locations;
+    std::unordered_map<LocationIdx, std::string> locationNames;
+    linked_hash_map<TransIdx, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations;
+    linked_hash_set<TransIdx> initialTransitions;
+    linked_hash_set<TransIdx> sinkTransitions;
     LocationIdx nextUnusedLocation {0};
     LocationIdx initialLocation;
     LocationIdx sink {addNamedLocation("LoAT_sink")};

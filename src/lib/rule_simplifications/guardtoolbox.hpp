@@ -21,7 +21,6 @@
 #include "ruleresult.hpp"
 
 #include <vector>
-#include <map>
 
 /**
  * Namespace for several functions operating on guards (list of relational expressions) and related helpers.

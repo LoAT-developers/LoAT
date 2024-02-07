@@ -11,7 +11,6 @@
 
 #include <type_traits>
 #include <memory>
-#include <set>
 #include <boost/functional/hash.hpp>
 
 
@@ -53,7 +52,7 @@ BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th.
 }
 
 template <ITheory... Th>
-using BoolExpressionSet = std::set<BExpr<Th...>>;
+using BoolExpressionSet = linked_hash_set<BExpr<Th...>>;
 
 enum ConcatOperator { ConcatAnd, ConcatOr };
 
@@ -191,7 +190,7 @@ public:
 
 private:
 
-    void syntacticImplicant(Subs &subs, std::set<BE> &res) const {
+    void syntacticImplicant(Subs &subs, linked_hash_set<BE> &res) const {
         if (isAnd() || isOr()) {
             for (const auto &c: getChildren()) {
                 c->syntacticImplicant(subs, res);
@@ -224,7 +223,7 @@ public:
      * Assumes that this->subs(subs) is a tautology.
      */
     BE syntacticImplicant(Subs subs) const {
-        std::set<BE> res;
+        linked_hash_set<BE> res;
         syntacticImplicant(subs, res);
         return buildAnd(res);
     }
@@ -272,7 +271,7 @@ public:
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
-                        if (newChildren.find(!c) != newChildren.end()) {
+                        if (newChildren.contains(!c)) {
                             cache.emplace(this->shared_from_this(), bot());
                             return bot();
                         }
@@ -307,7 +306,7 @@ public:
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
-                        if (newChildren.find(!c) != newChildren.end()) {
+                        if (newChildren.contains(!c)) {
                             cache.emplace(this->shared_from_this(), top());
                             return top();
                         }
@@ -370,16 +369,6 @@ public:
                 } else if (rel.isNeq()) {
                     return buildTheoryLit(Rel(rel.lhs(), Rel::lt, rel.rhs())) | (Rel(rel.lhs(), Rel::gt, rel.rhs()));
                 }
-            }
-            return buildTheoryLit(lit);
-        });
-    }
-
-    BE replaceLits(const std::map<Lit, BE> &m) const {
-        return map([&m](const Lit &lit) {
-            const auto it = m.find(lit);
-            if (it != m.end()) {
-                return it->second;
             }
             return buildTheoryLit(lit);
         });
@@ -799,7 +788,7 @@ public:
 };
 
 template<IBaseTheory... Th>
-ConsHash<BoolExpression<Th...>, BoolJunction<Th...>, typename BoolJunction<Th...>::CacheHash, typename BoolJunction<Th...>::CacheEqual, std::set<BExpr<Th...>>, ConcatOperator> BoolJunction<Th...>::cache{};
+ConsHash<BoolExpression<Th...>, BoolJunction<Th...>, typename BoolJunction<Th...>::CacheHash, typename BoolJunction<Th...>::CacheEqual, linked_hash_set<BExpr<Th...>>, ConcatOperator> BoolJunction<Th...>::cache{};
 
 template <ITheory... Th>
 const BExpr<Th...> operator &(const BExpr<Th...> a, const BExpr<Th...> b) {

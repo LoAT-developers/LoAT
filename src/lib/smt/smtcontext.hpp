@@ -19,7 +19,6 @@
 
 #include <optional>
 #include <assert.h>
-#include <map>
 
 #include "rel.hpp"
 #include "theory.hpp"
@@ -65,21 +64,21 @@ public:
     virtual void printStderr(const EXPR &e) const = 0;
 
     std::optional<EXPR> getVariable(const Var &symbol) const {
-        auto it = varMap.find(symbol);
-        if (it != varMap.end()) {
-            return it->second;
+        const auto res {varMap.get(symbol)};
+        if (res) {
+            return *res;
         }
         return std::optional<EXPR>{};
     }
 
     EXPR addNewVariable(const Var &symbol) {
-        assert(varMap.find(symbol) == varMap.end());
+        assert(!varMap.contains(symbol));
         EXPR res {buildVar(symbol)};
         varMap.emplace(symbol, res);
         return res;
     }
 
-    std::map<Var, EXPR> getSymbolMap() const {
+    linked_hash_map<Var, EXPR> getSymbolMap() const {
         return varMap;
     }
 
@@ -94,5 +93,5 @@ protected:
     virtual EXPR buildVar(const Var &var) = 0;
 
 protected:
-    std::map<Var, EXPR> varMap;
+    linked_hash_map<Var, EXPR> varMap;
 };

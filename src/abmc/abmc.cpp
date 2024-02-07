@@ -186,12 +186,15 @@ std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_po
             if (bounds.equality) {
                 res = res.subs(Subs::build<IntTheory>(x, *bounds.equality));
             } else {
-                std::map<Num, Expr> candidates;
+                std::vector<std::pair<Num, Expr>> candidates;
                 for (const auto &bs: {bounds.upperBounds, bounds.lowerBounds}) {
                     for (const auto &b: bs) {
-                        candidates.emplace(GiNaC::abs(b.subs(sample_point).toNum() - val), b);
+                        candidates.emplace_back(GiNaC::abs(b.subs(sample_point).toNum() - val), b);
                     }
                 }
+                std::sort(candidates.begin(), candidates.end(), [](const auto &x, const auto &y) {
+                    return x.first < y.first;
+                });
                 for (const auto &[_,b]: candidates) {
                     smt->push();
                     smt->add(Rel::buildEq(b, x).subs(ss.get<IntTheory>()));
@@ -219,7 +222,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     // const auto projected_rule {*simp};
     // const auto projection {BExpression::top()};
     const std::pair<std::vector<int>, BoolExpr> key {lang, projection};
-    auto &map {cache.emplace(key, std::map<BoolExpr, std::optional<Loop>>()).first->second};
+    auto &map {cache.emplace(key, std::unordered_map<BoolExpr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
         if (imp->subs(sample_point)->isTriviallyTrue()) {
             if (Config::Analysis::log) std::cout << "cache hit" << std::endl;

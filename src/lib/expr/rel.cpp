@@ -201,48 +201,6 @@ Rel Rel::toIntPoly() const {
     return Rel((l-r).toIntPoly(), op, 0);
 }
 
-Rel Rel::splitVariableAndConstantAddends(const std::set<NumVar> &params) const {
-    assert(isIneq());
-
-    //move everything to lhs
-    Expr newLhs = l - r;
-    Expr newRhs = 0;
-
-    //move all numerical constants back to rhs
-    newLhs = newLhs.expand();
-    if (newLhs.isAdd()) {
-        for (size_t i=0; i < newLhs.arity(); ++i) {
-            bool isConstant = true;
-            auto vars = newLhs.op(i).vars();
-            for (const NumVar &var: vars) {
-                if (params.find(var) == params.end()) {
-                    isConstant = false;
-                    break;
-                }
-            }
-            if (isConstant) {
-                newRhs = newRhs - newLhs.op(i);
-            }
-        }
-    } else {
-        auto vars = newLhs.vars();
-        bool isConstant = true;
-        for (const NumVar &var: vars) {
-            if (params.find(var) == params.end()) {
-                isConstant = false;
-                break;
-            }
-        }
-        if (isConstant) {
-            newRhs = newRhs - newLhs;
-        }
-    }
-    //other cases (mul, pow, sym) should not include numerical constants (only numerical coefficients)
-
-    newLhs = newLhs + newRhs;
-    return Rel(newLhs, op, newRhs);
-}
-
 bool Rel::isTriviallyTrue() const {
     auto optTrivial = checkTrivial();
     return (optTrivial && *optTrivial);

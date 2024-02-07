@@ -21,7 +21,7 @@ void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
     s << "Start location: ";
     printLocation(its.getInitialLocation(), its, s, true);
     s << endl << endl;
-    if (!its.getLocationNames().empty()) {
+    if (!its.getLocations().empty()) {
         s << "Location map:" << std::endl;
         for (const auto p: its.getLocations()) {
             printLocation(p, its, s, true);

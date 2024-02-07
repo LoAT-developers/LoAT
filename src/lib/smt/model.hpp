@@ -19,18 +19,17 @@ public:
 
     template <ITheory T>
     typename T::Val get(const typename T::Var &var) const {
-        return std::get<std::map<typename T::Var, typename T::Val>>(m).at(var);
+        return std::get<linked_hash_map<typename T::Var, typename T::Val>>(m)[var];
     }
 
     template <ITheory T>
     void put(const typename T::Var &var, const typename T::Val &val) {
-        std::get<std::map<typename T::Var, typename T::Val>>(m).emplace(var, val);
+        std::get<linked_hash_map<typename T::Var, typename T::Val>>(m).emplace(var, val);
     }
 
     template <ITheory T>
     bool contains(const typename T::Var &var) const {
-        const auto &map = std::get<std::map<typename T::Var, typename T::Val>>(m);
-        return map.find(var) != map.end();
+        return std::get<linked_hash_map<typename T::Var, typename T::Val>>(m).contains(var);
     }
 
 private:

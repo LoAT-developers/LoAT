@@ -661,7 +661,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
 }
 
 bool Reachability::try_to_finish() {
-    std::set<TransIdx> clauses = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
+    const auto clauses = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
     for (const auto &q: clauses) {
         if (chcs.isSinkTransition(q)) {
             solver->push();

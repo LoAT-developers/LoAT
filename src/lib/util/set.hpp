@@ -104,7 +104,7 @@ public:
 
 };
 
-template <class S, class T>
+template <class T>
 bool operator==(const linked_hash_set<T> &x, const linked_hash_set<T> &y) {
     return boost::multi_index::get<typename linked_hash_set<T>::hash>(x.c) == boost::multi_index::get<typename linked_hash_set<T>::hash>(y.c);
 }

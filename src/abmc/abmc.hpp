@@ -7,6 +7,16 @@
 #include "smtfactory.hpp"
 #include "itsproof.hpp"
 
+template<>
+struct std::hash<std::pair<std::vector<int>, BoolExpr>> {
+    std::size_t operator()(const std::pair<std::vector<int>, BoolExpr>& x) const noexcept {
+        std::size_t seed {0};
+        boost::hash_combine(seed, x.first);
+        boost::hash_combine(seed, x.second);
+        return seed;
+    }
+};
+
 class ABMC {
 
 private:
@@ -32,14 +42,14 @@ private:
     std::vector<Implicant> trace;
     VarSet vars;
     NumVar n {NumVar::next()};
-    std::map<Var, Var> post_vars;
-    std::map<Implicant, int> lang_map;
-    std::map<std::pair<std::vector<int>, BoolExpr>, std::map<BoolExpr, std::optional<Loop>>> cache;
-    std::set<std::pair<std::vector<int>, BoolExpr>> nonterm_cache;
-    std::map<int, std::vector<int>> history;
+    std::unordered_map<Var, Var> post_vars;
+    std::unordered_map<Implicant, int> lang_map;
+    std::unordered_map<std::pair<std::vector<int>, BoolExpr>, std::unordered_map<BoolExpr, std::optional<Loop>>> cache;
+    std::unordered_set<std::pair<std::vector<int>, BoolExpr>> nonterm_cache;
+    std::unordered_map<int, std::vector<int>> history;
     NumVar trace_var;
     std::optional<TransIdx> shortcut;
-    std::map<unsigned, TransIdx> rule_map;
+    std::unordered_map<unsigned, TransIdx> rule_map;
     int next {0};
     ITSProof proof;
     DependencyGraph<Implicant> dependency_graph;

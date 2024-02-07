@@ -19,7 +19,7 @@ private:
     Z3<IntTheory, BoolTheory> solver{};
     bool approx {false};
     VarSet vars;
-    std::map<Var, Var> post_vars;
+    std::unordered_map<Var, Var> post_vars;
     unsigned depth {0};
     ITSProof proof;
 

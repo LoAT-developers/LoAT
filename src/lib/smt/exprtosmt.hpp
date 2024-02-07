@@ -21,9 +21,7 @@
 #include "boolexpr.hpp"
 #include "numexpression.hpp"
 
-#include <map>
 #include <sstream>
-#include <map>
 
 template<typename EXPR, ITheory... Th> class ExprToSmt {
 public:

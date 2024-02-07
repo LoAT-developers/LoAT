@@ -4,6 +4,8 @@
 #include "smtfactory.hpp"
 #include "inftyexpression.hpp"
 
+#include <map>
+
 using namespace std;
 
 

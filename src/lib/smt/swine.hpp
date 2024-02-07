@@ -49,19 +49,19 @@ public:
     Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
         const z3::model &m = solver.get_model();
         Model<Th...> res;
-        const auto add = [&res, this, &m](const auto &p) {
+        const auto add = [&res, this, &m](const auto &x, const auto &y) {
             if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
-                if (std::holds_alternative<NumVar>(p.first)) {
-                    NumVar var = std::get<NumVar>(p.first);
-                    Num val = getRealFromModel(m, p.second);
+                if (std::holds_alternative<NumVar>(x)) {
+                    NumVar var = std::get<NumVar>(x);
+                    Num val = getRealFromModel(m, y);
                     res.template put<IntTheory>(var, val);
                     return;
                 }
             }
             if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
-                if (std::holds_alternative<BoolVar>(p.first)) {
-                    BoolVar var = std::get<BoolVar>(p.first);
-                    switch (m.eval(p.second).bool_value()) {
+                if (std::holds_alternative<BoolVar>(x)) {
+                    BoolVar var = std::get<BoolVar>(x);
+                    switch (m.eval(y).bool_value()) {
                     case Z3_L_FALSE:
                         res.template put<BoolTheory>(var, false);
                         break;
@@ -78,14 +78,14 @@ public:
         const auto map = ctx.getSymbolMap();
         if (vars) {
             for (const auto &x: *vars) {
-                const auto it = map.find(x);
-                if (it != map.end()) {
-                    add(*it);
+                const auto res {map.get(x)};
+                if (res) {
+                    add(x, *res);
                 }
             }
         } else {
-            for (const auto &p: map) {
-                add(p);
+            for (const auto &[x, y]: map) {
+                add(x, y);
             }
         }
         return res;

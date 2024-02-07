@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <map>
 #include <vector>
 
 #include "theory.hpp"
@@ -93,3 +92,13 @@ using Implicant = std::pair<TransIdx, BoolExpr>;
 
 std::ostream& operator<<(std::ostream &s, const TransIdx &idx);
 std::ostream& operator<<(std::ostream &s, const Implicant &imp);
+
+template<>
+struct std::hash<Implicant> {
+    std::size_t operator()(const Implicant& x) const noexcept {
+        std::size_t seed {0};
+        boost::hash_combine(seed, x.first);
+        boost::hash_combine(seed, x.second);
+        return seed;
+    }
+};

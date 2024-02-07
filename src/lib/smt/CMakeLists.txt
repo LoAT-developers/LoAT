@@ -11,7 +11,6 @@ add_library(${PROJECT_NAME} STATIC
   smtcontext.hpp
   exprtosmt.hpp
   model.hpp
-  linearizingsolver.hpp
   z3.hpp
   z3context.cpp
   z3context.hpp

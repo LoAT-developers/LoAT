@@ -75,8 +75,8 @@ struct Clause {
 class  CHCParseVisitor : public CHCVisitor {
 
     ITSPtr its {std::make_shared<ITSProblem>()};
-    std::map<std::string, LocationIdx> locations;
-    std::map<std::string, Var> vars;
+    std::unordered_map<std::string, LocationIdx> locations;
+    std::unordered_map<std::string, Var> vars;
     unsigned long max_int_arity {0};
     unsigned long max_bool_arity {0};
 

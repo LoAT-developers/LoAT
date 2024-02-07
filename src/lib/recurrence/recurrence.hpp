@@ -61,6 +61,6 @@ private:
 
     Result result;
 
-    std::map<Var, unsigned> prefixes;
+    std::unordered_map<Var, unsigned> prefixes;
 
 };

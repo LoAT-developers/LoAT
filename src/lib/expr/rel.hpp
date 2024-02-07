@@ -43,10 +43,6 @@ public:
     bool isWellformed() const;
     void getBounds(const NumVar &n, Bounds &res) const;
 
-    /**
-     * @return Moves all addends containing variables to the lhs and all other addends to the rhs, where the given parameters are consiedered to be constants.
-     */
-    Rel splitVariableAndConstantAddends(const std::set<NumVar> &params = {}) const;
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
     void collectVars(linked_hash_set<NumVar> &res) const;

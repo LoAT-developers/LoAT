@@ -68,6 +68,11 @@ public:
         h.emplace(s, t);
     }
 
+    template <class... Args>
+    auto emplace(const Args &...args) {
+        return boost::multi_index::get<hash>(c).emplace(args...);
+    }
+
     std::optional<T> get(const S &key) const {
         auto &h {boost::multi_index::get<hash>(c)};
         const auto it {h.find(key)};

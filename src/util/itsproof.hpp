@@ -38,7 +38,7 @@ public:
     void majorProofStep(const std::string &step, const Proof &subproof, const ITSProblem &its);
 
     template <class Edge>
-    void dependencyGraphRefinementProof(const std::set<Edge> &removed) {
+    void dependencyGraphRefinementProof(const linked_hash_set<Edge> &removed) {
         if (Proof::disabled()) {
             return;
         }
@@ -52,7 +52,7 @@ public:
         }
     }
 
-    void deletionProof(const std::set<TransIdx> &rules);
+    void deletionProof(const linked_hash_set<TransIdx> &rules);
 
     void chainingProof(const Rule &fst, const Rule &snd, const Rule &newRule);
 

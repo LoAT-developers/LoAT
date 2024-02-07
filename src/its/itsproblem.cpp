@@ -46,16 +46,16 @@ const linked_hash_set<Rule>& ITSProblem::getAllTransitions() const {
     return rules;
 }
 
-std::set<TransIdx> ITSProblem::getSuccessors(const TransIdx loc) const {
-    std::set<TransIdx> res;
+linked_hash_set<TransIdx> ITSProblem::getSuccessors(const TransIdx loc) const {
+    linked_hash_set<TransIdx> res;
     for (const auto &idx: graph.getSuccessors(loc)) {
         res.insert(idx);
     }
     return res;
 }
 
-std::set<TransIdx> ITSProblem::getPredecessors(const TransIdx loc) const {
-    std::set<TransIdx> res;
+linked_hash_set<TransIdx> ITSProblem::getPredecessors(const TransIdx loc) const {
+    linked_hash_set<TransIdx> res;
     for (const auto &idx: graph.getPredecessors(loc)) {
         res.insert(idx);
     }
@@ -74,7 +74,7 @@ void ITSProblem::removeRule(TransIdx transition) {
     rules.erase(*transition);
 }
 
-TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<TransIdx> &preds, const std::set<TransIdx> &succs) {
+TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const linked_hash_set<TransIdx> &preds, const linked_hash_set<TransIdx> &succs) {
     const auto idx {&*rules.emplace(rule).first};
     startAndTargetLocations.emplace(idx, std::pair<LocationIdx, LocationIdx>(start, target));
     graph.addNode(idx, preds, succs, start == target);
@@ -110,7 +110,7 @@ TransIdx ITSProblem::addQuery(const BoolExpr &guard, const TransIdx same_preds) 
 TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
     const auto target_opt = getRhsLoc(rule);
     const auto target = target_opt ? *target_opt : start;
-    std::set<TransIdx> preds, succs;
+    linked_hash_set<TransIdx> preds, succs;
     for (const auto &e: startAndTargetLocations) {
         if (e.second.first == target) {
             succs.insert(e.first);
@@ -124,7 +124,7 @@ TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
 
 TransIdx ITSProblem::replaceRule(const TransIdx toReplace, const Rule &replacement) {
     const auto idx {&*rules.emplace(replacement).first};
-    startAndTargetLocations.emplace(idx, startAndTargetLocations.at(toReplace));
+    startAndTargetLocations.emplace(idx, startAndTargetLocations[toReplace]);
     startAndTargetLocations.erase(toReplace);
     graph.replaceNode(toReplace, idx);
     if (isInitialTransition(toReplace)) {
@@ -155,12 +155,8 @@ LocationIdx ITSProblem::addNamedLocation(std::string name) {
     return loc;
 }
 
-set<LocationIdx> ITSProblem::getLocations() const {
+linked_hash_set<LocationIdx> ITSProblem::getLocations() const {
     return locations;
-}
-
-const std::map<LocationIdx, std::string>& ITSProblem::getLocationNames() const {
-    return locationNames;
 }
 
 std::optional<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) const {
@@ -210,18 +206,18 @@ std::optional<LocationIdx> ITSProblem::getRhsLoc(const Rule &rule) const {
 }
 
 LocationIdx ITSProblem::getLhsLoc(const TransIdx idx) const {
-    return startAndTargetLocations.at(idx).first;
+    return startAndTargetLocations[idx].first;
 }
 
 LocationIdx ITSProblem::getRhsLoc(const TransIdx idx) const {
-    return startAndTargetLocations.at(idx).second;
+    return startAndTargetLocations[idx].second;
 }
 
-const std::set<TransIdx>& ITSProblem::getInitialTransitions() const {
+const linked_hash_set<TransIdx>& ITSProblem::getInitialTransitions() const {
     return initialTransitions;
 }
 
-const std::set<TransIdx>& ITSProblem::getSinkTransitions() const {
+const linked_hash_set<TransIdx>& ITSProblem::getSinkTransitions() const {
     return sinkTransitions;
 }
 
@@ -230,18 +226,18 @@ bool ITSProblem::isSimpleLoop(const TransIdx idx) const {
 }
 
 bool ITSProblem::isSinkTransition(const TransIdx idx) const {
-    return sinkTransitions.find(idx) != sinkTransitions.end();
+    return sinkTransitions.contains(idx);
 }
 
 bool ITSProblem::isInitialTransition(const TransIdx idx) const {
-    return initialTransitions.find(idx) != initialTransitions.end();
+    return initialTransitions.contains(idx);
 }
 
 const ITSProblem::DG& ITSProblem::getDependencyGraph() const {
     return graph;
 }
 
-std::set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph() {
+linked_hash_set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph() {
     const auto is_edge = [](const TransIdx fst, const TransIdx snd){
         return SmtFactory::check(Chaining::chain(*fst, *snd).first.getGuard()) == Sat;
     };

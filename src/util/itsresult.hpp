@@ -16,11 +16,11 @@ public:
         this->proof.majorProofStep(step, subproof, its);
     }
 
-    void dependencyGraphRefinementProof(const std::set<ITSProblem::DG::Edge> &removed) {
+    void dependencyGraphRefinementProof(const linked_hash_set<ITSProblem::DG::Edge> &removed) {
         this->proof.dependencyGraphRefinementProof(removed);
     }
 
-    void deletionProof(const std::set<TransIdx> &rules) {
+    void deletionProof(const linked_hash_set<TransIdx> &rules) {
         this->proof.deletionProof(rules);
     }
 

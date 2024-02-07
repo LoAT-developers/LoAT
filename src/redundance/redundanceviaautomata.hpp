@@ -35,6 +35,16 @@ public:
 
 };
 
+template<>
+struct std::hash<std::pair<TransIdx, Guard>> {
+    std::size_t operator()(const std::pair<TransIdx, Guard>& x) const noexcept {
+        std::size_t seed {0};
+        boost::hash_combine(seed, x.first);
+        boost::hash_combine(seed, x.second);
+        return seed;
+    }
+};
+
 class RedundanceViaAutomata {
 
 public:
@@ -54,8 +64,8 @@ public:
 private:
 
     long next_char;
-    std::map<std::pair<TransIdx, Guard>, Automaton> alphabet;
-    std::map<TransIdx, Automaton> regexes;
+    std::unordered_map<std::pair<TransIdx, Guard>, Automaton> alphabet;
+    std::unordered_map<TransIdx, Automaton> regexes;
 
 };
 
