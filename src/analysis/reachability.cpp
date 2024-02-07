@@ -730,6 +730,7 @@ void Reachability::analyze() {
                     backtrack();
                     proof.headline("Covered");
                     print_state();
+                    break;
                 } else if (state->succeeded()) {
                     if (simple_loop) {
                         block(step);
@@ -745,6 +746,7 @@ void Reachability::analyze() {
                     }
                     proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
                     print_state();
+                    break;
                 } else if (state->unsat()) {
                     proof.majorProofStep("Nonterm", **state->unsat(), chcs);
                     proof.headline("Step with " + std::to_string(trace.back().clause_idx->getId()));
