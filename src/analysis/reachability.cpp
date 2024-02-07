@@ -635,10 +635,8 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     if (Config::Analysis::log) {
         std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
     }
-    auto learned_lang {lang};
-    redundancy->transitive_closure(learned_lang);
     for (const auto idx: learned_clauses.res) {
-        redundancy->set_language(idx, learned_lang);
+        redundancy->set_language(idx, closure);
         if (!done && store_step(idx, *idx)) {
             update_cpx();
             if (chcs.isSinkTransition(idx)) {
@@ -649,12 +647,12 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         }
     }
     if (done) {
-        redundancy->mark_as_redundant(learned_lang);
+        redundancy->mark_as_redundant(closure);
         return state;
     } else {
         // unroll once if we dropped the loop
-        redundancy->concat(learned_lang, learned_lang);
-        redundancy->mark_as_redundant(learned_lang);
+        redundancy->concat(closure, closure);
+        redundancy->mark_as_redundant(closure);
         if (Config::Analysis::log) std::cout << "applying accelerated rule failed" << std::endl;
         return std::make_unique<Dropped>(accel_state->getProof());
     }
