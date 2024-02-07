@@ -309,23 +309,55 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
 std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes() {
     auto progress {true};
     while (!todo.empty() && progress) {
-        progress = false;
-        for (auto it = todo.begin(); it != todo.end();) {
+        // try complete techniques exhaustively
+        while (!todo.empty() && progress) {
+            progress = false;
+            for (auto it = todo.begin(); it != todo.end();) {
+                solver->push();
+                solver->add(BExpression::buildTheoryLit(*it));
+                if (solver->check() != Sat) {
+                    return {};
+                }
+                solver->pop();
+                if (trivial(*it)
+                    || unchanged(*it)
+                    || polynomial(*it)
+                    || recurrence(*it)
+                    || monotonicity(*it)
+                    || eventualWeakDecrease(*it)) {
+                    solver->add(BExpression::buildTheoryLit(*it));
+                    progress = true;
+                    it = todo.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+        // try incomplete techniques next
+        for (auto it = todo.begin(); !progress && it != todo.end();) {
             solver->push();
             solver->add(BExpression::buildTheoryLit(*it));
             if (solver->check() != Sat) {
                 return {};
             }
             solver->pop();
-            if (trivial(*it)
-                || unchanged(*it)
-                || polynomial(*it)
-                || recurrence(*it)
-                || monotonicity(*it)
-                || eventualWeakDecrease(*it)
-                || eventualIncrease(*it, false)
-                || eventualIncrease(*it, true)
-                || fixpoint(*it)) {
+            if (eventualIncrease(*it, false) || eventualIncrease(*it, true)) {
+                solver->add(BExpression::buildTheoryLit(*it));
+                progress = true;
+                it = todo.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        // only look for fixpoints if nothing else works
+        for (auto it = todo.begin(); !progress && it != todo.end();) {
+            solver->push();
+            solver->add(BExpression::buildTheoryLit(*it));
+            if (solver->check() != Sat) {
+                return {};
+            }
+            solver->pop();
+            if (fixpoint(*it)) {
                 solver->add(BExpression::buildTheoryLit(*it));
                 progress = true;
                 it = todo.erase(it);
