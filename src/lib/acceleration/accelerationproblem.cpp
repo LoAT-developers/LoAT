@@ -278,6 +278,9 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
 }
 
 bool AccelerationProblem::fixpoint(const Lit &lit) {
+    if (config.tryAccel) {
+        return false;
+    }
     std::vector<BoolExpr> eqs;
     const auto vars {util::RelevantVariables::find(expr::variables(lit), update)};
     for (const auto& v: vars) {
