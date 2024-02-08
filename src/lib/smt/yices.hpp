@@ -143,7 +143,7 @@ public:
 private:
     YicesContext ctx;
     ctx_config_t *config;
-    context_t *solver;
+    context_t *solver{};
 
 
     Num getRealFromModel(model_t *model, type_t symbol) {

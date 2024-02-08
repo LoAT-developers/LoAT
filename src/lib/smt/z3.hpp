@@ -103,7 +103,7 @@ public:
     }
 
 protected:
-    z3::context z3Ctx;
+    z3::context z3Ctx{};
     Ctx ctx;
     z3::solver solver;
 

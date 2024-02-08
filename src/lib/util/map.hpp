@@ -44,7 +44,7 @@ private:
                 boost::multi_index::tag<hash>,
                 first>>>;
 
-    container c;
+    container c{};
 
     template <class SS, class TT>
     friend bool operator==(const linked_hash_map<SS, TT> &x, const linked_hash_map<SS, TT> &y);

@@ -14,7 +14,7 @@ class BoolSubs {
     using T = Theory<Th...>;
     using VarSet = theory::VarSet<Th...>;
 
-    linked_hash_map<BoolVar, BoolExpr> map;
+    linked_hash_map<BoolVar, BoolExpr> map{};
 
 public:
 

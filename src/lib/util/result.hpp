@@ -17,7 +17,7 @@ class ResultBase
 
 protected:
 
-    P proof;
+    P proof{};
 
 public:
 
@@ -25,8 +25,9 @@ public:
 
     ResultBase(const T &t, bool success = false): success(success), res(t) {}
 
-    void operator=(const T &t) {
+    ResultBase& operator=(const T &t) {
         set(t);
+        return *this;
     }
 
     void append(const std::string &s) {

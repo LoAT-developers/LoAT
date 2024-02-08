@@ -56,7 +56,7 @@ public:
 
 private:
 
-    typename TheTheory::Model m;
+    typename TheTheory::Model m{};
 
 };
 

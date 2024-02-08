@@ -12,8 +12,8 @@ class Automaton {
     static long next_char;
     static Automaton covered;
     static Automaton accelerated;
-    faudes::Generator t;
-    std::string str;
+    faudes::Generator t {};
+    std::string str {};
 
 public:
 
@@ -63,9 +63,9 @@ public:
 
 private:
 
-    long next_char;
-    std::unordered_map<std::pair<TransIdx, Guard>, Automaton> alphabet;
-    std::unordered_map<TransIdx, Automaton> regexes;
+    long next_char {0};
+    std::unordered_map<std::pair<TransIdx, Guard>, Automaton> alphabet {};
+    std::unordered_map<TransIdx, Automaton> regexes {};
 
 };
 

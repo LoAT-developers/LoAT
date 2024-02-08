@@ -118,7 +118,7 @@ class Unroll final: public LearningState {
 
 private:
 
-    std::optional<unsigned> max;
+    std::optional<unsigned> max {};
     bool accel_failed {false};
 
 public:
@@ -152,28 +152,28 @@ class Reachability {
 
     ITSProblem &chcs;
 
-    ITSProof proof;
+    ITSProof proof {};
 
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
 
     const bool drop;
 
-    std::vector<Step> trace;
+    std::vector<Step> trace {};
 
     /**
      * A conjunctive clause x is blocked if find(x) != end().
      * A conjunctive variant y of a non-conjunctive clause x is blocked if cond(y) implies an element of at(x).
      * Maybe it would be better to subdivide the blocking formulas w.r.t. pairs of predicates instead of clauses.
      */
-    std::vector<std::unordered_map<TransIdx, linked_hash_set<BoolExpr>>> blocked_clauses{{}};
+    std::vector<std::unordered_map<TransIdx, linked_hash_set<BoolExpr>>> blocked_clauses {{}};
 
     /**
      * Languages that correspond to non-linear learned clauses that are not used for resolution after a restart.
      * They get activated again once the corresponding loop has been unrolled.
      */
-    std::unordered_set<Automaton> locked;
+    std::unordered_set<Automaton> locked {};
 
-    VarSet prog_vars;
+    VarSet prog_vars {};
 
     /**
      * clauses up to this one are original ones, all other clauses are learned
@@ -188,7 +188,7 @@ class Reachability {
 
     void luby_next();
 
-    std::unordered_map<TransIdx, unsigned> penalty;
+    std::unordered_map<TransIdx, unsigned> penalty {};
 
     using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundancy {std::make_unique<Red>()};

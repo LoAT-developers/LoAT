@@ -93,5 +93,5 @@ protected:
     virtual EXPR buildVar(const Var &var) = 0;
 
 protected:
-    linked_hash_map<Var, EXPR> varMap;
+    linked_hash_map<Var, EXPR> varMap{};
 };

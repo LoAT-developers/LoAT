@@ -23,8 +23,8 @@ namespace sexpresso {
 		Sexp();
 		explicit Sexp(std::string const& strval);
 		explicit Sexp(std::vector<Sexp> const& sexpval);
-		SexpValueKind kind;
-		struct { std::vector<Sexp> sexp; std::string str; } value;
+        SexpValueKind kind {};
+        struct { std::vector<Sexp> sexp {}; std::string str {}; } value {};
 		auto addChild(Sexp sexp) -> void;
 		auto addChild(std::string str) -> void;
 		auto addChildUnescaped(std::string str) -> void;
@@ -51,7 +51,7 @@ namespace sexpresso {
 
 	struct SexpArgumentIterator {
 		explicit SexpArgumentIterator(Sexp& sexp);
-		Sexp& sexp;
+        Sexp& sexp;
 
 		using iterator = std::vector<Sexp>::iterator;
 		using const_iterator = std::vector<Sexp>::const_iterator;

@@ -46,20 +46,20 @@ private:
      * Each entry represents one branch in the search for suitable instantiations of dependencies.
      * Entries that do not allow for further instantiation are moved to todoN.
      */
-    std::stack<std::pair<ExprSubs, BoolExpr>> todoDeps;
+    std::stack<std::pair<ExprSubs, BoolExpr>> todoDeps {};
 
     /**
      * Each entry represents one possibility to instantiate dependencies exhaustively.
      * N still needs to be eliminated.
      */
-    std::vector<std::pair<ExprSubs, BoolExpr>> todoN;
+    std::vector<std::pair<ExprSubs, BoolExpr>> todoN {};
 
     /**
      * Substitutions that are suitable to eliminate N.
      */
-    linked_hash_set<ExprSubs> res;
+    linked_hash_set<ExprSubs> res {};
 
-    linked_hash_set<NumVar> dependencies;
+    linked_hash_set<NumVar> dependencies {};
 
     const std::function<bool(NumVar)> keep;
 

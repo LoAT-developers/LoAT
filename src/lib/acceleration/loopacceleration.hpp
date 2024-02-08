@@ -47,7 +47,7 @@ private:
     Rule rule;
     const std::optional<Subs> sample_point;
     const AccelConfig config;
-    acceleration::Result res;
-    std::optional<Recurrence::Result> rec;
+    acceleration::Result res {};
+    std::optional<Recurrence::Result> rec {};
 
 };

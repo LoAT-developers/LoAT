@@ -12,7 +12,7 @@ protected:
         std::tuple<const Args...>,
         std::weak_ptr<const Abstract>,
         Hash,
-        Eq> cache;
+        Eq> cache{};
 
 public:
 

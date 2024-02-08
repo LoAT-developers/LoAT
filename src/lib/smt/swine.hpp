@@ -116,7 +116,7 @@ public:
 
 private:
 
-    z3::context z3ctx;
+    z3::context z3ctx{};
     swine::Swine solver;
     SwineContext ctx;
 

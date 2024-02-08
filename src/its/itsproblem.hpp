@@ -105,15 +105,15 @@ public:
 
 protected:
 
-    DG graph;
-    linked_hash_set<Rule> rules;
-    linked_hash_set<LocationIdx> locations;
-    std::unordered_map<LocationIdx, std::string> locationNames;
-    linked_hash_map<TransIdx, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations;
-    linked_hash_set<TransIdx> initialTransitions;
-    linked_hash_set<TransIdx> sinkTransitions;
+    DG graph {};
+    linked_hash_set<Rule> rules {};
+    linked_hash_set<LocationIdx> locations {};
+    std::unordered_map<LocationIdx, std::string> locationNames {};
+    linked_hash_map<TransIdx, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations {};
+    linked_hash_set<TransIdx> initialTransitions {};
+    linked_hash_set<TransIdx> sinkTransitions {};
     LocationIdx nextUnusedLocation {0};
-    LocationIdx initialLocation;
+    LocationIdx initialLocation {0};
     LocationIdx sink {addNamedLocation("LoAT_sink")};
     NumVar cost {NumVar::nextProgVar()};
 

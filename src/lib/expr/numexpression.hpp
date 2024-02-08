@@ -398,7 +398,7 @@ public:
 
 private:
 
-    linked_hash_map<NumVar, Expr> map;
+    linked_hash_map<NumVar, Expr> map{};
 
 };
 

@@ -17,7 +17,7 @@ class Subs {
     using It = typename TheTheory::Iterator;
     using Expr = typename TheTheory::Expression;
 
-    typename TheTheory::Subs t;
+    typename TheTheory::Subs t {};
     static const size_t variant_size = std::variant_size_v<Expr>;
 
 public:
@@ -136,7 +136,7 @@ public:
 
         const Subs &subs;
         It ptr;
-        std::optional<Pair> current;
+        std::optional<Pair> current{};
 
     };
 

@@ -238,7 +238,7 @@ NumVar Expr::someVar() const {
             return *variable;
         }
     private:
-        std::optional<NumVar> variable;
+        std::optional<NumVar> variable {};
     };
 
     SymbolVisitor visitor;
@@ -406,7 +406,7 @@ std::pair<Expr, std::vector<std::pair<NumVar, Expr>>> Expr::flattenExp() const {
             }
         }
 
-        std::vector<std::pair<NumVar, Expr>> repl;
+        std::vector<std::pair<NumVar, Expr>> repl {};
     };
     Mapper f;
     const Expr res {f(ex)};

@@ -14,7 +14,7 @@ class ThSet {
     using TheTheory = Theory<Th...>;
     using Self = ThSet<VS, VSI, Var, Th...>;
 
-    VS t;
+    VS t{};
     static const size_t variant_size = std::variant_size_v<VSI>;
 
 public:
@@ -132,7 +132,7 @@ public:
 
         const Self *set;
         VSI ptr;
-        std::optional<Var> current;
+        std::optional<Var> current{};
 
     };
 

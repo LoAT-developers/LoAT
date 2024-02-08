@@ -18,10 +18,10 @@ private:
     ITSProblem &its;
     Z3<IntTheory, BoolTheory> solver{};
     bool approx {false};
-    VarSet vars;
-    std::unordered_map<Var, Var> post_vars;
+    VarSet vars {};
+    std::unordered_map<Var, Var> post_vars {};
     unsigned depth {0};
-    ITSProof proof;
+    ITSProof proof {};
 
     BoolExpr encode_transition(const TransIdx idx);
     void unsat();

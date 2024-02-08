@@ -36,7 +36,7 @@ private:
             boost::multi_index::sequenced<
                 boost::multi_index::tag<list>>>>;
 
-    container c;
+    container c{};
 
     template <class TT>
     friend bool operator==(const linked_hash_set<TT> &x, const linked_hash_set<TT> &y);

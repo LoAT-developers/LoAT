@@ -208,9 +208,9 @@ public:
 
 private:
 
-    linked_hash_set<Node> nodes;
-    std::unordered_map<Node, linked_hash_set<Node>> successors;
-    std::unordered_map<Node, linked_hash_set<Node>> predecessors;
+    linked_hash_set<Node> nodes {};
+    std::unordered_map<Node, linked_hash_set<Node>> successors {};
+    std::unordered_map<Node, linked_hash_set<Node>> predecessors {};
     size_t edgecount {0};
 
 };

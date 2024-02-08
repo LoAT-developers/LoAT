@@ -4,8 +4,8 @@
 namespace DependencyOrder {
 
 struct PartialResult {
-    std::vector<Var> ordering; // might not contain all variables (hence partial)
-    VarSet ordered; // set of all variables occurring in ordering
+    std::vector<Var> ordering {}; // might not contain all variables (hence partial)
+    VarSet ordered {}; // set of all variables occurring in ordering
 };
 
 /**

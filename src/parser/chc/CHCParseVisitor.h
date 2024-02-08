@@ -5,8 +5,8 @@
 
 template<class T>
 struct Res {
-    T t;
-    std::vector<BoolExpr> refinement;
+    T t {};
+    std::vector<BoolExpr> refinement {};
     Res(const T &t);
     Res();
 
