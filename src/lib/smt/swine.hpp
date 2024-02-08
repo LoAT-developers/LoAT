@@ -15,11 +15,14 @@ class Swine: public Smt<Th...> {
 
 public:
 
-    Swine(const swine::Config config = swine::Config()): solver(config, z3ctx), ctx(solver) {
-        solver.get_solver().set("random_seed", 42u);
-        solver.get_solver().set("seed", 42u);
-        solver.get_solver().set("sat.random_seed", 42u);
-        solver.get_solver().set("nlsat.seed", 42u);
+    Swine(swine::Config config = swine::Config()): solver(config, z3ctx), ctx(solver) {
+        auto &s {solver.get_solver()};
+        s.set("random_seed", 42u);
+        s.set("seed", 42u);
+        s.set("sat.random_seed", 42u);
+        s.set("nlsat.seed", 42u);
+        s.set("rlimit", 10000000u);
+        config.set_rlimit(1000);
     }
 
     void add(const BExpr<Th...> e) override {

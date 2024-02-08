@@ -112,6 +112,7 @@ protected:
         solver.set("sat.random_seed", 42u);
         solver.set("seed", 42u);
         solver.set("nlsat.seed", 42u);
+        solver.set("rlimit", 10000000u);
     }
 
     Num getRealFromModel(const z3::model &model, const z3::expr &symbol) {

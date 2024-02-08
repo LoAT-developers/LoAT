@@ -31,16 +31,16 @@ namespace SmtFactory {
         std::unique_ptr<Smt<Th...>> solver;
         switch (Config::Analysis::smtSolver) {
         case Config::Analysis::Z3:
-            solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Z3<IntTheory, BoolTheory>());
+            solver = std::unique_ptr<Smt<Th...>>(new Z3<Th...>());
             break;
         case Config::Analysis::CVC5:
-            solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
+            solver = std::unique_ptr<Smt<Th...>>(new CVC5<Th...>());
             break;
         case Config::Analysis::Yices:
-            solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Yices<IntTheory, BoolTheory>(Logic::QF_NA));
+            solver = std::unique_ptr<Smt<Th...>>(new Yices<Th...>(Logic::QF_NA));
             break;
         case Config::Analysis::Swine:
-            solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new Swine<IntTheory, BoolTheory>());
+            solver = std::unique_ptr<Smt<Th...>>(new Swine<Th...>());
             break;
         }
         return solver;
