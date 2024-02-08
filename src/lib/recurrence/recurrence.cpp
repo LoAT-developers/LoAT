@@ -75,6 +75,9 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
 
 bool Recurrence::solve(const BoolVar &lhs, const BoolExpr &rhs) {
     const auto updated {rhs->subs(closed_form_pre)};
+    if (updated->lits().contains(BoolLit(lhs, true))) {
+        return false;
+    }
     const auto &vars {updated->vars()};
     if (vars.contains(lhs) && vars.size() != vars.get<BoolVar>().size()) {
         return false;
