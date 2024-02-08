@@ -103,22 +103,14 @@ void LoopAcceleration::accelerate() {
 }
 
 void LoopAcceleration::prepend_prefix() {
-    if (res.prefix > 1) {
+    if (res.prefix > 1 && res.accel) {
         auto prefix {rule};
         for (unsigned i = 2; i < res.prefix; ++i) {
             prefix = prefix.chain(rule);
         }
-        if (res.accel) {
-            res.accel->rule = prefix.chain(res.accel->rule);
-            if (SmtFactory::check(res.accel->rule.getGuard()) != SmtResult::Sat) {
-                res.accel = {};
-            }
-        }
-        if (res.nonterm) {
-            res.nonterm->certificate = prefix.getGuard() & res.nonterm->certificate->subs(prefix.getUpdate());
-            if (SmtFactory::check(res.nonterm->certificate) != SmtResult::Sat) {
-                res.nonterm = {};
-            }
+        res.accel->rule = prefix.chain(res.accel->rule);
+        if (SmtFactory::check(res.accel->rule.getGuard()) != SmtResult::Sat) {
+            res.accel = {};
         }
     }
 }
