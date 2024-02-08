@@ -85,9 +85,71 @@ void LoopAcceleration::compute_closed_form() {
     rec = Recurrence::solve(rule.getUpdate(), config.n);
     if (rec) {
         res.prefix = rec->prefix;
-    } else {
-        res.status = acceleration::ClosedFormFailed;
+        const auto is_temp_var = [](const auto &z){
+            return z.isTempVar();
+        };
+        for (const auto &[x,y]: rule.getUpdate().get<IntTheory>()) {
+            if (y.has(x) && y != Expr(x)) {
+                if (!y.hasVarWith(is_temp_var)) {
+                    return;
+                }
+                if (!y.isLinear()) {
+                    continue;
+                }
+                const auto vars {y.vars()};
+                auto all_lower_bounded {true};
+                auto all_upper_bounded {true};
+                for (const auto &z: vars) {
+                    if (z.isTempVar()) {
+                        const auto bounds {rule.getGuard()->getBounds(z)};
+                        const auto coeff {y.coeff(z).toNum()};
+                        if (bounds.equality && !bounds.equality->hasVarWith(is_temp_var)) {
+                            continue;
+                        }
+                        auto lower_bounded {false};
+                        auto upper_bounded {false};
+                        for (const auto &b: bounds.lowerBounds) {
+                            if (!b.hasVarWith(is_temp_var)) {
+                                if (coeff > 0) {
+                                    lower_bounded = true;
+                                } else {
+                                    upper_bounded = true;
+                                }
+                                if (lower_bounded && upper_bounded) {
+                                    break;
+                                }
+                            }
+                        }
+                        if (!lower_bounded || !upper_bounded) {
+                            for (const auto &b: bounds.upperBounds) {
+                                if (!b.hasVarWith(is_temp_var)) {
+                                    if (coeff > 0) {
+                                        upper_bounded = true;
+                                    } else {
+                                        lower_bounded = true;
+                                    }
+                                    if (lower_bounded && upper_bounded) {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        all_lower_bounded &= lower_bounded;
+                        all_upper_bounded &= upper_bounded;
+                        if (!all_lower_bounded && !all_upper_bounded) {
+                            break;
+                        }
+                    }
+                }
+                if (all_lower_bounded || all_upper_bounded) {
+                    return;
+                }
+            }
+        }
     }
+    res.prefix = 0;
+    rec = {};
+    res.status = acceleration::ClosedFormFailed;
 }
 
 void LoopAcceleration::accelerate() {

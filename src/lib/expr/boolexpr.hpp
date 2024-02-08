@@ -156,7 +156,7 @@ public:
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LS &res) const = 0;
     virtual size_t size() const = 0;
-    virtual void getBounds(const Var &n, Bounds &res) const = 0;
+    virtual void getBounds(const NumVar &n, Bounds &res) const = 0;
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
@@ -186,6 +186,12 @@ public:
                 throw std::logic_error("unknown junctor");
             }
         }
+    }
+
+    Bounds getBounds(const NumVar &n) const {
+        Bounds bounds;
+        getBounds(n, bounds);
+        return bounds;
     }
 
 private:
@@ -624,9 +630,9 @@ public:
         return 1;
     }
 
-    void getBounds(const Var &var, Bounds &res) const override {
+    void getBounds(const NumVar &var, Bounds &res) const override {
         if (std::holds_alternative<Rel>(lit)) {
-            std::get<Rel>(lit).getBounds(std::get<NumVar>(var), res);
+            std::get<Rel>(lit).getBounds(var, res);
         }
     }
 
@@ -760,7 +766,7 @@ public:
         return res;
     }
 
-    void getBounds(const Var &n, Bounds &res) const override {
+    void getBounds(const NumVar &n, Bounds &res) const override {
         if (isAnd()) {
             for (const auto &c: children) {
                 c->getBounds(n, res);
