@@ -738,7 +738,6 @@ void Reachability::analyze() {
                     if ((drop || simple_loop) && try_to_finish()) {
                         return;
                     }
-                    break;
                 } else if (state->dropped()) {
                     if (simple_loop) {
                         block(step);
