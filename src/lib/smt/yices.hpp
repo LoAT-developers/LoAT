@@ -26,6 +26,12 @@ class Yices : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
+
+    Yices(const Yices &that) = delete;
+    Yices(Yices &&that) = delete;
+    Yices& operator=(const Yices &that) = delete;
+    Yices& operator=(Yices &&that) = delete;
+
     Yices(Logic logic): ctx(YicesContext()), config(yices_new_config()) {
         std::string l;
         switch (logic) {

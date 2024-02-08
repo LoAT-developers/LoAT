@@ -40,6 +40,10 @@ struct Step {
 
     Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent);
 
+    Step(const Step &that);
+
+    Step& operator=(const Step &that);
+
 };
 
 std::ostream& operator<<(std::ostream &s, const Step &step);
@@ -79,6 +83,9 @@ public:
     virtual std::optional<ProvedUnsat> unsat();
 
     virtual std::optional<Restart> restart();
+
+    virtual ~LearningState();
+
 };
 
 struct LearnedClauses {

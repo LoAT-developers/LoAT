@@ -81,6 +81,14 @@ public:
 
         Iterator(const Self *set, const VSI &ptr) : set(set), ptr(ptr) {}
 
+        Iterator(const Iterator &that): set(that.set), ptr(that.ptr) {}
+
+        Iterator& operator=(const Iterator &that) {
+            this->set = that.set;
+            this->ptr = that.ptr;
+            return *this;
+        }
+
         reference operator*() {
             current = getCurrent();
             return *current;

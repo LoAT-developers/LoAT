@@ -57,6 +57,8 @@ std::optional<ProvedUnsat> LearningState::unsat() {
     return {};
 }
 
+LearningState::~LearningState() {}
+
 Succeeded::Succeeded(const Result<LearnedClauses> &learned): learned(learned) {}
 
 std::optional<Succeeded> Succeeded::succeeded() {
@@ -120,6 +122,12 @@ Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renam
     implicant(sat),
     var_renaming(var_renaming),
     resolvent(resolvent) {}
+
+Step::Step(const Step &that):
+    clause_idx(that.clause_idx),
+    implicant(that.implicant),
+    var_renaming(that.var_renaming),
+    resolvent(that.resolvent) {}
 
 std::ostream& operator<<(std::ostream &s, const Step &step) {
     return s << step.clause_idx << "[" << step.implicant << "]";
