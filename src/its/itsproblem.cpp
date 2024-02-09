@@ -47,19 +47,11 @@ const linked_hash_set<Rule>& ITSProblem::getAllTransitions() const {
 }
 
 linked_hash_set<TransIdx> ITSProblem::getSuccessors(const TransIdx loc) const {
-    linked_hash_set<TransIdx> res;
-    for (const auto &idx: graph.getSuccessors(loc)) {
-        res.insert(idx);
-    }
-    return res;
+    return graph.getSuccessors(loc);
 }
 
 linked_hash_set<TransIdx> ITSProblem::getPredecessors(const TransIdx loc) const {
-    linked_hash_set<TransIdx> res;
-    for (const auto &idx: graph.getPredecessors(loc)) {
-        res.insert(idx);
-    }
-    return res;
+    return graph.getPredecessors(loc);
 }
 
 bool ITSProblem::areAdjacent(const TransIdx first, const TransIdx second) const {
