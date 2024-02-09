@@ -72,28 +72,29 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
     bool changed;
     do {
         changed = false;
-        linked_hash_set<TransIdx> deleted;
         for (const auto &first: its.getAllTransitions()) {
             const auto succ {its.getSuccessors(&first)};
             if (succ.size() == 1 && !succ.contains(&first)) {
                 const auto second_idx {*succ.begin()};
                 if (!its.isSimpleLoop(second_idx)) {
+                    res.succeed();
+                    const auto chained {Chaining::chain(first, *second_idx).first};
+                    its.addRule(chained, &first, second_idx);
+                    res.chainingProof(chained, first, *second_idx);
+                    linked_hash_set<TransIdx> deleted;
                     deleted.insert(&first);
                     if (its.getPredecessors(second_idx).size() == 1) {
                         deleted.insert(second_idx);
                     }
-                    res.succeed();
-                    const auto chained {Chaining::chain(first, *second_idx).first};
-                    its.addRule(chained, &first, second_idx);
-                    res.chainingProof(first, *second_idx, chained);
+                    for (const auto &idx: deleted) {
+                        its.removeRule(idx);
+                    }
+                    res.deletionProof(deleted);
                     changed = true;
+                    break;
                 }
             }
         }
-        for (const auto &idx: deleted) {
-            its.removeRule(idx);
-        }
-        res.deletionProof(deleted);
     } while (changed);
     return res;
 }
