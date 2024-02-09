@@ -121,7 +121,7 @@ ResultViaSideEffects unroll(ITSProblem &its) {
         if (its.isSimpleLoop(&r)) {
             const auto [res, period] = LoopAcceleration::chain(r);
             if (period > 1) {
-                RuleResult rr {r};
+                RuleResult rr {res};
                 rr.ruleTransformationProof(r, "Unrolling", res);
                 rr.concat(Preprocess::preprocessRule(res));
                 ret.succeed();
