@@ -526,7 +526,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         return std::make_unique<Unroll>();
     }
     Result<LearnedClauses> res{{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period}};
-    if (accel_res.nonterm) {
+    if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
         res.succeed();
         const auto idx = chcs.addQuery(accel_res.nonterm->certificate, trace.at(backlink).clause_idx);
         res->res.emplace_back(idx);
