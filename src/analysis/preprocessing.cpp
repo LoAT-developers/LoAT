@@ -115,10 +115,14 @@ ResultViaSideEffects preprocessRules(ITSProblem &its) {
     return ret;
 }
 
+/**
+ * Motivating example: f(x,y) -> f(-x,z) :|: (y=0 /\ z=1) \/ (y=1 /\ z=0)
+ * In contrast to its implicants, it can be unrolled to obtain simpler closed forms.
+ */
 ResultViaSideEffects unroll(ITSProblem &its) {
     ResultViaSideEffects ret;
     for (const auto &r: its.getAllTransitions()) {
-        if (its.isSimpleLoop(&r)) {
+        if (its.isSimpleLoop(&r) && !r.getGuard()->isConjunction()) {
             const auto [res, period] = LoopAcceleration::chain(r);
             if (period > 1) {
                 RuleResult rr {res};
