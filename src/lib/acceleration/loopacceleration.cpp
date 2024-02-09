@@ -159,15 +159,17 @@ void LoopAcceleration::accelerate() {
             res.accel = acceleration::Accel(Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form));
             res.accel->proof = accelerator->proof;
             res.accel->covered = BExpression::buildAnd(accelerator->covered);
+            prepend_first = accelerator->prependFirst;
             store_nonterm(*accelerator);
         }
     }
 }
 
 void LoopAcceleration::prepend_prefix() {
-    if (res.prefix > 1 && res.accel) {
+    unsigned bound = prepend_first ? 0 : 1;
+    if (res.prefix > bound && res.accel) {
         auto prefix {rule};
-        for (unsigned i = 2; i < res.prefix; ++i) {
+        for (unsigned i = bound + 1; i < res.prefix; ++i) {
             prefix = prefix.chain(rule);
         }
         res.accel->rule = prefix.chain(res.accel->rule);

@@ -203,7 +203,7 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
 }
 
 bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
-    if (!closed || closed->prefix > 0 || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
+    if (!closed || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
         return false;
     }
     auto success {false};
@@ -222,6 +222,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
             res.proof.newline();
             res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
             res.nonterm = false;
+            res.prependFirst |= closed->prefix > 0;
         }
     }
     solver->pop();
