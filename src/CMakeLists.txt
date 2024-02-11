@@ -11,8 +11,6 @@ add_subdirectory(nonlinear)
 
 target_sources(${EXECUTABLE}
     PRIVATE
-        config.cpp
-        config.hpp
         main.cpp
         main.hpp
         version.cpp

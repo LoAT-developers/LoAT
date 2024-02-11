@@ -1,12 +1,12 @@
 #pragma once
 
-#include "itsproblem.hpp"
 #include "CHCVisitor.h"
+#include "theory.hpp"
 
 template<class T>
 struct Res {
-    T t;
-    std::vector<BoolExpr> refinement;
+    T t {};
+    std::vector<BoolExpr> refinement {};
     Res(const T &t);
     Res();
 
@@ -56,12 +56,7 @@ enum Sort {
  */
 class  CHCParseVisitor : public CHCVisitor {
 
-    // ITSPtr its {std::make_shared<ITSProblem>()};
-    // std::map<std::string, LocationIdx> locations;
     std::map<std::string, Var> vars;
-    // unsigned long max_int_arity {0};
-    // unsigned long max_bool_arity {0};
-
     std::set<std::basic_string<char>> fun_names;
 
     // LocationIdx loc(const std::string &name);

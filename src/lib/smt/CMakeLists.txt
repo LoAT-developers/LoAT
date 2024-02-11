@@ -11,7 +11,6 @@ add_library(${PROJECT_NAME} STATIC
   smtcontext.hpp
   exprtosmt.hpp
   model.hpp
-  linearizingsolver.hpp
   z3.hpp
   z3context.cpp
   z3context.hpp
@@ -22,8 +21,10 @@ add_library(${PROJECT_NAME} STATIC
   cvc5.hpp
   cvc5context.hpp
   cvc5context.cpp
+  swine.hpp
+  swinecontext.hpp
+  swinecontext.cpp
   smtfactory.hpp
-  smtfactory.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${loat_expr_INCLUDE_DIRS})
@@ -46,9 +47,12 @@ find_library(CVC5 cvc5)
 message(STATUS "cvc5: ${CVC5}")
 find_library(CADICAL cadical)
 message(STATUS "cadical: ${CADICAL}")
+find_library(SWINE swine-z3)
+message(STATUS "swine: ${SWINE}")
 
 target_link_libraries(
     ${PROJECT_NAME}
+    ${SWINE}
     ${Z3}
     ${CVC5}
     ${CADICAL}

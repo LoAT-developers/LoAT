@@ -9,13 +9,11 @@
 /**
  * TODO docs
  */
-const Var varAt(const Var &var, const Subs &subs) {
-    auto it = subs.find(var);
-    
-    if (it == subs.end()) {
+const Var varAt(const Var &var, const Subs &subs) {  
+    if (!subs.contains(var)) {
         return var;
     } else {
-        const auto optional_var = expr::toVar(expr::second(*it));
+        const auto optional_var = expr::toVar(subs.get(var));
 
         if (optional_var.has_value()) {
             return optional_var.value();
@@ -57,13 +55,12 @@ const std::optional<Subs> computeUnifier(const std::vector<Var> &args1, const st
             const Var var1 = args1[i];
             const Var var2 = args2[i];
 
-            auto it = subs.find(var1);
-            if (it != subs.end()) {
+            if (subs.contains(var1)) {
                 // If `var1` is already contained in `subs`, then `pred1` must 
                 // have `var1` multiple times as an argument. This is an implict
                 // equality that must also hold in `pred2` so we map `var2` to 
                 // whatever `var1` already maps to.
-                subs.put(var2, expr::second(*it));
+                subs.put(var2, subs.get(var1));
             } else {
                 // QUESTION: I suspect some C++ template magic can make this prettier
                 bool both_nums = std::holds_alternative<NumVar>(var1) &&
@@ -229,7 +226,7 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, unsigned p
     Subs renaming;
     const VarSet this_vars {this->vars()};
     for (const auto &var: chc.vars()) {
-        if (this_vars.find(var) != this_vars.end()) {
+        if (this_vars.contains(var)) {
             renaming.put(var, expr::toExpr(expr::next(var)));
         }
     }

@@ -1,6 +1,7 @@
 #include "CHCParseVisitor.h"
 #include "boollit.hpp"
 #include "expr.hpp"
+#include "clause.hpp"
 
 #include <variant>
 #include <algorithm>

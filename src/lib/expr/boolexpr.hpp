@@ -7,10 +7,10 @@
 #include "boollit.hpp"
 #include "literal.hpp"
 #include "conshash.hpp"
+#include "set.hpp"
 
 #include <type_traits>
 #include <memory>
-#include <set>
 #include <boost/functional/hash.hpp>
 #include <variant>
 
@@ -53,7 +53,7 @@ BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th.
 }
 
 template <ITheory... Th>
-using BoolExpressionSet = std::set<BExpr<Th...>>;
+using BoolExpressionSet = linked_hash_set<BExpr<Th...>>;
 
 enum ConcatOperator { ConcatAnd, ConcatOr };
 
@@ -90,7 +90,7 @@ public:
     template <class Lits>
     static const BE buildFromLits(const Lits &lits, ConcatOperator op) {
         BES children;
-        for (const Lit &lit: lits) {
+        for (const auto &lit: lits) {
             children.insert(buildTheoryLit(lit));
         }
         return BoolJunction<Th...>::from_cache(children, op);
@@ -157,7 +157,7 @@ public:
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LS &res) const = 0;
     virtual size_t size() const = 0;
-    virtual void getBounds(const Var &n, Bounds &res) const = 0;
+    virtual void getBounds(const NumVar &n, Bounds &res) const = 0;
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
@@ -174,33 +174,34 @@ public:
         }
     }
 
+    bool isTriviallyFalse() const {
+        if (isTheoryLit()) {
+            return literal::isTriviallyFalse<Th...>(*getTheoryLit());
+        } else {
+            const auto children = getChildren();
+            if (isAnd()) {
+                return std::any_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyFalse();});
+            } else if (isOr()) {
+                return std::all_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyFalse();});
+            } else {
+                throw std::logic_error("unknown junctor");
+            }
+        }
+    }
+
+    Bounds getBounds(const NumVar &n) const {
+        Bounds bounds;
+        getBounds(n, bounds);
+        return bounds;
+    }
+
 private:
 
-    bool implicant(Subs &subs, std::set<BE> &res) const {
-        if (isOr()) {
-            std::optional<std::set<BE>> best_res;
+    void syntacticImplicant(Subs &subs, linked_hash_set<BE> &res) const {
+        if (isAnd() || isOr()) {
             for (const auto &c: getChildren()) {
-                std::set<BE> current_res;
-                if (c->implicant(subs, current_res)) {
-                    if (!best_res) {
-                        best_res = current_res;
-                    } else if (current_res.size() < best_res->size()) {
-                        best_res = current_res;
-                    }
-                }
+                c->syntacticImplicant(subs, res);
             }
-            if (best_res) {
-                res.insert(best_res->begin(), best_res->end());
-            }
-            return best_res.has_value();
-        } else if (isAnd()) {
-            for (const auto &c: getChildren()) {
-                if (!c->implicant(subs, res)) {
-                    res.clear();
-                    return false;
-                }
-            }
-            return true;
         } else {
             const auto lit = getTheoryLit();
             if (lit) {
@@ -216,9 +217,6 @@ private:
                 }
                 if (l->isTriviallyTrue()) {
                     res.insert(this->shared_from_this());
-                    return true;
-                } else {
-                    return false;
                 }
             } else {
                 throw std::invalid_argument("unknown kind of BoolExpr");
@@ -231,13 +229,10 @@ public:
     /**
      * Assumes that this->subs(subs) is a tautology.
      */
-    std::optional<BE> implicant(Subs subs) const {
-        std::set<BE> res;
-        if (implicant(subs, res)) {
-            return buildAnd(res);
-        } else {
-            return {};
-        }
+    BE syntacticImplicant(Subs subs) const {
+        linked_hash_set<BE> res;
+        syntacticImplicant(subs, res);
+        return buildAnd(res);
     }
 
     void iter(const std::function<void(const Lit&)> &f) const {
@@ -283,7 +278,7 @@ public:
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
-                        if (newChildren.find(!c) != newChildren.end()) {
+                        if (newChildren.contains(!c)) {
                             cache.emplace(this->shared_from_this(), bot());
                             return bot();
                         }
@@ -318,7 +313,7 @@ public:
             } else {
                 for (const auto &c: newChildren) {
                     if (c->isTheoryLit()) {
-                        if (newChildren.find(!c) != newChildren.end()) {
+                        if (newChildren.contains(!c)) {
                             cache.emplace(this->shared_from_this(), top());
                             return top();
                         }
@@ -358,7 +353,7 @@ public:
     }
 
     template <ITheory T>
-    void collectVars(std::set<typename T::Var> &vars) const {
+    void collectVars(linked_hash_set<typename T::Var> &vars) const {
         VS res;
         res.template get<typename T::Var>() = vars;
         collectVars(res);
@@ -381,16 +376,6 @@ public:
                 } else if (rel.isNeq()) {
                     return buildTheoryLit(Rel(rel.lhs(), Rel::lt, rel.rhs())) | (Rel(rel.lhs(), Rel::gt, rel.rhs()));
                 }
-            }
-            return buildTheoryLit(lit);
-        });
-    }
-
-    BE replaceLits(const std::map<Lit, BE> &m) const {
-        return map([&m](const Lit &lit) {
-            const auto it = m.find(lit);
-            if (it != m.end()) {
-                return it->second;
             }
             return buildTheoryLit(lit);
         });
@@ -642,9 +627,9 @@ public:
         return 1;
     }
 
-    void getBounds(const Var &var, Bounds &res) const override {
+    void getBounds(const NumVar &var, Bounds &res) const override {
         if (std::holds_alternative<Rel>(lit)) {
-            std::get<Rel>(lit).getBounds(std::get<NumVar>(var), res);
+            std::get<Rel>(lit).getBounds(var, res);
         }
     }
 
@@ -778,7 +763,7 @@ public:
         return res;
     }
 
-    void getBounds(const Var &n, Bounds &res) const override {
+    void getBounds(const NumVar &n, Bounds &res) const override {
         if (isAnd()) {
             for (const auto &c: children) {
                 c->getBounds(n, res);
@@ -806,7 +791,7 @@ public:
 };
 
 template<IBaseTheory... Th>
-ConsHash<BoolExpression<Th...>, BoolJunction<Th...>, typename BoolJunction<Th...>::CacheHash, typename BoolJunction<Th...>::CacheEqual, std::set<BExpr<Th...>>, ConcatOperator> BoolJunction<Th...>::cache{};
+ConsHash<BoolExpression<Th...>, BoolJunction<Th...>, typename BoolJunction<Th...>::CacheHash, typename BoolJunction<Th...>::CacheEqual, linked_hash_set<BExpr<Th...>>, ConcatOperator> BoolJunction<Th...>::cache{};
 
 template <ITheory... Th>
 const BExpr<Th...> operator &(const BExpr<Th...> a, const BExpr<Th...> b) {

@@ -28,9 +28,8 @@ private:
 public:
 
     struct Result {
-        Subs closed_form;
-        unsigned int prefix = 0;
-        ExprSubs refined_equations;
+        Subs closed_form {};
+        unsigned int prefix {0};
     };
 
     static std::optional<Result> solve(const Subs &equations, const NumVar &n);
@@ -56,12 +55,12 @@ private:
      * @note the recurrence equations are valid *before* the transition is taken,
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
-    Subs closed_form_pre;
+    Subs closed_form_pre {};
 
     std::optional<ExprSubs> inverse {ExprSubs()};
 
-    Result result;
+    Result result {};
 
-    std::map<Var, unsigned> prefixes;
+    std::unordered_map<Var, unsigned> prefixes {};
 
 };

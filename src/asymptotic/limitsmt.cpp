@@ -4,6 +4,8 @@
 #include "smtfactory.hpp"
 #include "inftyexpression.hpp"
 
+#include <map>
+
 using namespace std;
 
 
@@ -13,7 +15,7 @@ using namespace std;
  * lim_{n->\infty} p is a positive constant
  */
 static BExpr<IntTheory> posConstraint(const map<int, Expr>& coefficients) {
-    std::vector<Theory<IntTheory>::Lit> conjunction;
+    std::vector<Rel> conjunction;
     for (pair<int, Expr> p : coefficients) {
         int degree = p.first;
         Expr c = p.second;
@@ -32,7 +34,7 @@ static BExpr<IntTheory> posConstraint(const map<int, Expr>& coefficients) {
  * lim_{n->\infty} p is a negative constant
  */
 static BExpr<IntTheory> negConstraint(const map<int, Expr>& coefficients) {
-    std::vector<Theory<IntTheory>::Lit> conjunction;
+    std::vector<Rel> conjunction;
     for (pair<int, Expr> p : coefficients) {
         int degree = p.first;
         Expr c = p.second;
@@ -57,7 +59,7 @@ static BExpr<IntTheory> negInfConstraint(const map<int, Expr>& coefficients) {
     }
     std::vector<BExpr<IntTheory>> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
-        std::vector<Theory<IntTheory>::Lit> conjunction;
+        std::vector<Rel> conjunction;
         for (pair<int, Expr> p: coefficients) {
             int degree = p.first;
             Expr c = p.second;
@@ -84,7 +86,7 @@ static BExpr<IntTheory> posInfConstraint(const map<int, Expr>& coefficients) {
     }
     std::vector<BExpr<IntTheory>> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
-        std::vector<Theory<IntTheory>::Lit> conjunction;
+        std::vector<Rel> conjunction;
         for (pair<int, Expr> p: coefficients) {
             int degree = p.first;
             Expr c = p.second;
@@ -112,10 +114,10 @@ static map<int, Expr> getCoefficients(const Expr &ex, const NumVar &n) {
 }
 
 std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Expr &cost,
-                                                        Complexity currentRes, unsigned int timeout)
+                                                        Complexity currentRes)
 {
     // initialize z3
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}), timeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}));
 
     // the parameter of the desired family of solutions
     auto n = currentLP.getN();
@@ -247,16 +249,16 @@ BExpr<IntTheory> encodeBoolExpr(const BExpr<IntTheory> expr, const ExprSubs &tem
 }
 
 std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntTheory> expr, const Expr &cost,
-                                                                Complexity currentRes, unsigned int timeout)
+                                                                Complexity currentRes)
 {
     // initialize z3
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0))}), timeout);
+    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0))}));
 
     // the parameter of the desired family of solutions
     NumVar n = NumVar::next();
 
     // get all relevant variables
-    std::set<NumVar> vars = expr->vars().get<NumVar>();
+    auto vars = expr->vars().get<NumVar>();
     cost.collectVars(vars);
     bool hasTmpVars = false;
 

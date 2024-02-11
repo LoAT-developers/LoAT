@@ -20,7 +20,6 @@
 #include "smtcontext.hpp"
 
 #include <z3++.h>
-#include <map>
 
 
 /**

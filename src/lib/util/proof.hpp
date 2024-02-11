@@ -89,8 +89,8 @@ private:
 
     using ProofStep = std::pair<Style, std::string>;
 
-    std::vector<std::variant<ProofStep, Proof>> proof;
+    std::vector<std::variant<ProofStep, Proof>> proof{};
 
-    std::stack<unsigned> pop_stack;
+    std::stack<unsigned> pop_stack{};
 
 };

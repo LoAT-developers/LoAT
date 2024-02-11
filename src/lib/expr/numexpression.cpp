@@ -25,11 +25,7 @@
 
 using namespace std;
 
-void Expr::applySubs(const ExprSubs &subs) {
-    this->ex = this->ex.subs(subs.ginacMap);
-}
-
-bool Expr::findAll(const Expr &pattern, std::set<Expr> &found) const {
+bool Expr::findAll(const Expr &pattern, linked_hash_set<Expr> &found) const {
     bool anyFound = false;
 
     if (match(pattern)) {
@@ -46,8 +42,8 @@ bool Expr::findAll(const Expr &pattern, std::set<Expr> &found) const {
     return anyFound;
 }
 
-bool Expr::isLinear(const std::optional<std::set<NumVar>> &vars) const {
-    std::set<NumVar> theVars = vars ? *vars : this->vars();
+bool Expr::isLinear(const std::optional<linked_hash_set<NumVar>> &vars) const {
+    auto theVars = vars ? *vars : this->vars();
     // linear expressions are always polynomials
     if (!isPoly()) return false;
 
@@ -64,9 +60,9 @@ bool Expr::isLinear(const std::optional<std::set<NumVar>> &vars) const {
         }
 
         if (deg == 1) {
-            std::set<NumVar> coefficientVars = expanded.coeff(var,deg).vars();
+            auto coefficientVars = expanded.coeff(var,deg).vars();
             for (const NumVar &e: coefficientVars) {
-                if (theVars.find(e) != theVars.end()) {
+                if (theVars.contains(e)) {
                     return false;
                 }
             }
@@ -150,7 +146,7 @@ bool Expr::isNaturalPow() const {
 
 bool Expr::isOctagon() const {
     if (!isPoly()) return false;
-    const std::set<NumVar> vs = vars();
+    const auto vs = vars();
     if (vs.size() > 2) return false;
     for (const auto &v: vs) {
         if (degree(v) > 1) return false;
@@ -181,14 +177,14 @@ unsigned Expr::getIndex(const GiNaC::symbol &x) {
     }
 }
 
-void Expr::collectVars(std::set<NumVar> &res) const {
+void Expr::collectVars(linked_hash_set<NumVar> &res) const {
     struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
-        SymbolVisitor(std::set<NumVar> &t) : target(t) {}
+        SymbolVisitor(linked_hash_set<NumVar> &t) : target(t) {}
         void visit(const GiNaC::symbol &sym) {
             target.emplace(getIndex(sym));
         }
     private:
-        std::set<NumVar> &target;
+        linked_hash_set<NumVar> &target;
     };
 
     SymbolVisitor v(res);
@@ -196,8 +192,8 @@ void Expr::collectVars(std::set<NumVar> &res) const {
 }
 
 
-std::set<NumVar> Expr::vars() const {
-    std::set<NumVar> res;
+linked_hash_set<NumVar> Expr::vars() const {
+    linked_hash_set<NumVar> res;
     collectVars(res);
     return res;
 }
@@ -242,7 +238,7 @@ NumVar Expr::someVar() const {
             return *variable;
         }
     private:
-        std::optional<NumVar> variable;
+        std::optional<NumVar> variable {};
     };
 
     SymbolVisitor visitor;
@@ -382,6 +378,41 @@ bool Expr::has(const Expr &pattern) const {
     return ex.has(pattern.ex);
 }
 
+std::pair<Expr, std::vector<std::pair<NumVar, Expr>>> Expr::flattenExp() const {
+    struct Mapper: GiNaC::map_function {
+        GiNaC::ex operator()(const GiNaC::ex &ex) {
+            if (GiNaC::is_a<GiNaC::power>(ex)) {
+                const auto base {ex.op(0)};
+                const auto exp {ex.op(1)};
+                if (GiNaC::is_a<GiNaC::numeric>(exp)) {
+                    return ex;
+                }
+                GiNaC::ex new_base, new_exp;
+                if (GiNaC::is_a<GiNaC::symbol>(base) || GiNaC::is_a<GiNaC::numeric>(base)) {
+                    new_base = base;
+                } else {
+                    new_base = base.map(*this);
+                    repl.push_back({NumVar::next(), Expr(new_base)});
+                }
+                if (GiNaC::is_a<GiNaC::symbol>(exp)) {
+                    new_exp = exp;
+                } else {
+                    new_exp = exp.map(*this);
+                    repl.push_back({NumVar::next(), Expr(new_exp)});
+                }
+                return GiNaC::pow(new_base, new_exp);
+            } else {
+                return ex.map(*this);
+            }
+        }
+
+        std::vector<std::pair<NumVar, Expr>> repl {};
+    };
+    Mapper f;
+    const Expr res {f(ex)};
+    return {res, f.repl};
+}
+
 bool Expr::isZero() const {
     return ex.is_zero();
 }
@@ -418,8 +449,18 @@ size_t Expr::arity() const {
     return ex.nops();
 }
 
+Expr::Mapper::Mapper(const ExprSubs &map): map(map) {}
+
+GiNaC::ex Expr::Mapper::operator()(const GiNaC::ex &ex) {
+    if (ex.info(GiNaC::info_flags::symbol)) {
+        return map.get(NumVar(getIndex(GiNaC::ex_to<GiNaC::symbol>(ex)))).ex;
+    } else {
+        return ex.map(*this);
+    }
+}
+
 Expr Expr::subs(const ExprSubs &map) const {
-    return Expr(ex.subs(map.ginacMap, GiNaC::subs_options::no_pattern));
+    return Expr(Expr::Mapper(map)(ex));
 }
 
 void Expr::traverse(GiNaC::visitor &v) const {
@@ -481,7 +522,7 @@ Num Expr::denomLcm() const {
     const Expr &denom = Expr::wildcard(0);
     const Expr &num = Expr::wildcard(1);
     const Expr &pattern = denom / num;
-    std::set<Expr> matches;
+    linked_hash_set<Expr> matches;
     GiNaC::numeric lcm = 1;
     findAll(pattern, matches);
     for (const Expr &e: matches) {
@@ -586,6 +627,10 @@ std::size_t Expr::hash() const {
     return ex.gethash();
 }
 
+size_t hash_value(const Expr &e) {
+    return e.hash();
+}
+
 bool operator==(const Expr &e1, const Expr &e2) {
     return e1.ex.is_equal(e2.ex);
 }
@@ -596,20 +641,15 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 
 ExprSubs::ExprSubs() {}
 
-ExprSubs::ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init): map(init) {
-    for (const auto &p: init) {
-        putGinac(p.first, p.second);
-    }
-}
+ExprSubs::ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init): map(init) {}
 
 Expr ExprSubs::get(const NumVar &key) const {
-    const auto it = map.find(key);
-    return it == map.end() ? key : it->second;
+    const auto res {map.get(key)};
+    return res ? *res : key;
 }
 
 void ExprSubs::put(const NumVar &key, const Expr &val) {
-    map[key] = val;
-    putGinac(key, val);
+    map.put(key, val);
 }
 
 ExprSubs::const_iterator ExprSubs::begin() const {
@@ -620,12 +660,8 @@ ExprSubs::const_iterator ExprSubs::end() const {
     return map.end();
 }
 
-ExprSubs::const_iterator ExprSubs::find(const NumVar &e) const {
-    return map.find(e);
-}
-
 bool ExprSubs::contains(const NumVar &e) const {
-    return map.find(e) != map.end();
+    return map.contains(e);
 }
 
 bool ExprSubs::empty() const {
@@ -637,7 +673,6 @@ unsigned int ExprSubs::size() const {
 }
 
 size_t ExprSubs::erase(const NumVar &key) {
-    eraseGinac(key);
     return map.erase(key);
 }
 
@@ -662,13 +697,26 @@ ExprSubs ExprSubs::concat(const ExprSubs &that) const {
     return res;
 }
 
+void ExprSubs::concatInPlace(const ExprSubs &that) {
+    std::vector<std::pair<NumVar, Expr>> changed;
+    for (const auto &[key, val]: *this) {
+        const auto new_val {val.subs(that)};
+        if (val != new_val) {
+            changed.emplace_back(key, new_val);
+        }
+    }
+    for (const auto &[key, val]: changed) {
+        put(key, val);
+    }
+}
+
 ExprSubs ExprSubs::unite(const ExprSubs &that) const {
     ExprSubs res;
     for (const auto &p: *this) {
         res.put(p.first, p.second);
     }
     for (const auto &p: that) {
-        if (res.find(p.first) != res.end()) {
+        if (res.contains(p.first)) {
             throw std::invalid_argument("union of substitutions is only defined if their domain is disjoint");
         }
         res.put(p.first, p.second);
@@ -676,49 +724,23 @@ ExprSubs ExprSubs::unite(const ExprSubs &that) const {
     return res;
 }
 
-ExprSubs ExprSubs::project(const std::set<NumVar> &vars) const {
+ExprSubs ExprSubs::project(const linked_hash_set<NumVar> &vars) const {
     ExprSubs res;
     if (size() < vars.size()) {
         for (const auto &p: *this) {
-            if (vars.find(p.first) != vars.end()) {
+            if (vars.contains(p.first)) {
                 res.put(p.first, p.second);
             }
         }
     } else {
         for (const auto &x: vars) {
-            const auto it {find(x)};
-            if (it != end()) {
-                res.put(it->first, it->second);
+            const auto val {map.get(x)};
+            if (val) {
+                res.put(x, *val);
             }
         }
     }
     return res;
-}
-
-ExprSubs ExprSubs::setminus(const std::set<NumVar> &vars) const {
-    if (size() < vars.size()) {
-        ExprSubs res;
-        for (const auto &p: *this) {
-            if (vars.find(p.first) == vars.end()) {
-                res.put(p.first, p.second);
-            }
-        }
-        return res;
-    } else {
-        ExprSubs res(*this);
-        for (const auto &x: vars) {
-            res.erase(x);
-        }
-        return res;
-    }
-}
-
-void ExprSubs::putGinac(const NumVar &key, const Expr &val) {
-    ginacMap[*key] = val.ex;
-}
-
-void ExprSubs::eraseGinac(const NumVar &key) {
-    ginacMap.erase(*key);
 }
 
 bool ExprSubs::changes(const NumVar &key) const {
@@ -743,37 +765,37 @@ bool ExprSubs::isOctagon() const {
     });
 }
 
-void ExprSubs::collectDomain(std::set<NumVar> &vars) const {
+void ExprSubs::collectDomain(linked_hash_set<NumVar> &vars) const {
     for (const auto &p: *this) {
         vars.insert(p.first);
     }
 }
 
-void ExprSubs::collectCoDomainVars(std::set<NumVar> &vars) const {
+void ExprSubs::collectCoDomainVars(linked_hash_set<NumVar> &vars) const {
     for (const auto &p: *this) {
         p.second.collectVars(vars);
     }
 }
 
-void ExprSubs::collectVars(std::set<NumVar> &vars) const {
+void ExprSubs::collectVars(linked_hash_set<NumVar> &vars) const {
     collectCoDomainVars(vars);
     collectDomain(vars);
 }
 
-std::set<NumVar> ExprSubs::domain() const {
-    std::set<NumVar> res;
+linked_hash_set<NumVar> ExprSubs::domain() const {
+    linked_hash_set<NumVar> res;
     collectDomain(res);
     return res;
 }
 
-std::set<NumVar> ExprSubs::coDomainVars() const {
-    std::set<NumVar> res;
+linked_hash_set<NumVar> ExprSubs::coDomainVars() const {
+    linked_hash_set<NumVar> res;
     collectCoDomainVars(res);
     return res;
 }
 
-std::set<NumVar> ExprSubs::allVars() const {
-    std::set<NumVar> res;
+linked_hash_set<NumVar> ExprSubs::allVars() const {
+    linked_hash_set<NumVar> res;
     collectVars(res);
     return res;
 }
@@ -785,10 +807,6 @@ size_t ExprSubs::hash() const {
         boost::hash_combine(hash, value.hash());
     }
     return hash;
-}
-
-std::strong_ordering operator<=>(const ExprSubs &m1, const ExprSubs &m2) {
-    return m1.map <=> m2.map;
 }
 
 bool operator==(const ExprSubs &m1, const ExprSubs &m2) {

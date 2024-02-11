@@ -1,5 +1,6 @@
 add_subdirectory(util)
 add_subdirectory(expr)
+add_subdirectory(rule_simplifications)
 add_subdirectory(smt)
 add_subdirectory(qe)
 add_subdirectory(recurrence)

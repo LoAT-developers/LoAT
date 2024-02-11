@@ -4,7 +4,6 @@
 #include <yices.h>
 #include <future>
 #include <stdexcept>
-#include <map>
 
 #include "smt.hpp"
 #include "yicescontext.hpp"
@@ -27,7 +26,13 @@ class Yices : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    Yices(Logic logic, unsigned timeout): timeout(timeout), ctx(YicesContext()), config(yices_new_config()) {
+
+    Yices(const Yices &that) = delete;
+    Yices(Yices &&that) = delete;
+    Yices& operator=(const Yices &that) = delete;
+    Yices& operator=(Yices &&that) = delete;
+
+    Yices(Logic logic): ctx(YicesContext()), config(yices_new_config()) {
         std::string l;
         switch (logic) {
         case QF_LA:
@@ -79,17 +84,7 @@ public:
     }
 
     SmtResult check() override {
-        if (timeout > 0) {
-            auto future = std::async(yices_check_context, solver, nullptr);
-            if (future.wait_for(std::chrono::milliseconds(timeout)) != std::future_status::timeout) {
-                return processResult(future.get());
-            } else {
-                yices_stop_search(solver);
-                return Unknown;
-            }
-        } else {
-            return processResult(yices_check_context(solver, nullptr));
-        }
+        return processResult(yices_check_context(solver, nullptr));
     }
 
     Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
@@ -98,18 +93,18 @@ public:
         }
         model_t *m = yices_get_model(solver, true);
         Model<Th...> res;
-        const auto add = [&res, this, m](const auto &p) {
+        const auto add = [&res, this, m](const auto &x, const auto &y) {
             if constexpr ((std::same_as<IntTheory, Th> || ...)) {
-                if (std::holds_alternative<NumVar>(p.first)) {
-                    res.template put<IntTheory>(std::get<NumVar>(p.first), getRealFromModel(m, p.second));
+                if (std::holds_alternative<NumVar>(x)) {
+                    res.template put<IntTheory>(std::get<NumVar>(x), getRealFromModel(m, y));
                 }
             } else if constexpr ((std::same_as<BoolTheory, Th> || ...)) {
-                if (std::holds_alternative<BoolVar>(p.first)) {
+                if (std::holds_alternative<BoolVar>(x)) {
                     int32_t val;
-                    if (yices_get_bool_value(m, p.second, &val) != 0) {
+                    if (yices_get_bool_value(m, y, &val) != 0) {
                         throw YicesError();
                     }
-                    res.template put<BoolTheory>(std::get<BoolVar>(p.first), val);
+                    res.template put<BoolTheory>(std::get<BoolVar>(x), val);
                 }
             } else {
                 throw std::logic_error("unknown variable type");
@@ -118,26 +113,22 @@ public:
         const auto map = ctx.getSymbolMap();
         if (vars) {
             for (const auto &x: *vars) {
-                const auto it = map.find(x);
-                if (it != map.end()) {
-                    add(*it);
+                const auto res {map.get(x)};
+                if (res) {
+                    add(x, *res);
                 }
             }
         } else {
-            for (const auto &p: map) {
-                add(p);
+            for (const auto &[x,y]: map) {
+                add(x, y);
             }
         }
         yices_free_model(m);
         return res;
     }
 
-    void setTimeout(unsigned int timeout) override {
-        this->timeout = timeout;
-    }
-
-    void setSeed(unsigned seed) override {
-        throw std::runtime_error("Yices::setSeed not yet implemented");
+    void randomize(unsigned seed) override {
+        // TODO
     }
 
     void enableModels() override {}
@@ -156,10 +147,9 @@ public:
     }
 
 private:
-    unsigned int timeout;
     YicesContext ctx;
     ctx_config_t *config;
-    context_t *solver;
+    context_t *solver{};
 
 
     Num getRealFromModel(model_t *model, type_t symbol) {

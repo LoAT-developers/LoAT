@@ -22,6 +22,7 @@
 #include "config.hpp"
 
 #include <numeric>
+#include <unordered_set>
 
 using namespace std;
 
@@ -35,7 +36,7 @@ ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its, bool forward) {
         throw std::logic_error("remove_irrelevant_clauses: ITS has no sink transitions");
     }
  
-    std::set<TransIdx> keep;
+    std::unordered_set<TransIdx> keep;
     std::stack<TransIdx> todo;
     for (const auto x: forward ? its.getInitialTransitions() : its.getSinkTransitions()) {
         todo.push(x);
@@ -56,7 +57,7 @@ ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its, bool forward) {
             to_delete.push_back(&r);
         }
     }
-    std::set<TransIdx> deleted;
+    linked_hash_set<TransIdx> deleted;
     for (const auto idx: to_delete) {
         its.removeRule(idx);
         deleted.insert(idx);
@@ -80,41 +81,42 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
     bool changed;
     do {
         changed = false;
-        std::set<TransIdx> deleted;
         for (const auto &first: its.getAllTransitions()) {
             const auto succ {its.getSuccessors(&first)};
-            if (succ.size() == 1 && succ.find(&first) == succ.end()) {
+            if (succ.size() == 1 && !succ.contains(&first)) {
                 const auto second_idx {*succ.begin()};
                 if (!its.isSimpleLoop(second_idx)) {
+                    res.succeed();
+                    const auto chained {Chaining::chain(first, *second_idx).first};
+                    its.addRule(chained, &first, second_idx);
+                    res.chainingProof(chained, first, *second_idx);
+                    linked_hash_set<TransIdx> deleted;
                     deleted.insert(&first);
                     if (its.getPredecessors(second_idx).size() == 1) {
                         deleted.insert(second_idx);
                     }
-                    res.succeed();
-                    const auto chained {Chaining::chain(first, *second_idx).first};
-                    its.addRule(chained, &first, second_idx);
-                    res.chainingProof(first, *second_idx, chained);
+                    for (const auto &idx: deleted) {
+                        its.removeRule(idx);
+                    }
+                    res.deletionProof(deleted);
                     changed = true;
+                    break;
                 }
             }
         }
-        for (const auto &idx: deleted) {
-            its.removeRule(idx);
-        }
-        res.deletionProof(deleted);
     } while (changed);
     return res;
 }
 
 ResultViaSideEffects preprocessRules(ITSProblem &its) {
     ResultViaSideEffects ret;
-    std::map<TransIdx, Rule> replacements;
+    linked_hash_map<TransIdx, Rule> replacements;
     for (const auto &r: its.getAllTransitions()) {
         const auto res = Preprocess::preprocessRule(r);
         if (res) {
             ret.succeed();
             replacements.emplace(&r, *res);
-            ret.concat(res.getProof());
+            ret.storeSubProof(res.getProof());
         }
     }
     for (const auto &[idx, replacement]: replacements) {
@@ -123,19 +125,22 @@ ResultViaSideEffects preprocessRules(ITSProblem &its) {
     return ret;
 }
 
+/**
+ * Motivating example: f(x,y) -> f(-x,z) :|: (y=0 /\ z=1) \/ (y=1 /\ z=0)
+ * In contrast to its implicants, it can be unrolled to obtain simpler closed forms.
+ */
 ResultViaSideEffects unroll(ITSProblem &its) {
     ResultViaSideEffects ret;
     for (const auto &r: its.getAllTransitions()) {
-        if (its.isSimpleLoop(&r)) {
+        if (its.isSimpleLoop(&r) && !r.getGuard()->isConjunction()) {
             const auto [res, period] = LoopAcceleration::chain(r);
             if (period > 1) {
-                const auto simplified = Preprocess::preprocessRule(res);
+                RuleResult rr {res};
+                rr.ruleTransformationProof(r, "Unrolling", res);
+                rr.concat(Preprocess::preprocessRule(res));
                 ret.succeed();
-                ret.ruleTransformationProof(r, "Unrolling", res);
-                if (simplified) {
-                    ret.concat(simplified.getProof());
-                }
-                its.addRule(*simplified, &r, &r);
+                ret.storeSubProof(rr.getProof());
+                its.addRule(*rr, &r, &r);
             }
         }
     }
@@ -231,7 +236,6 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its, bool incremental_mo
         res.majorProofStep("Preprocessed Transitions", sub_res.getProof(), its);
     }
     if (Config::Analysis::engine == Config::Analysis::ADCL) {
-        if (!Config::Analysis::safety()) {
             if (Config::Analysis::log) {
                 std::cout << "unrolling..." << std::endl;
             }
@@ -243,7 +247,6 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its, bool incremental_mo
                 res.succeed();
                 res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
             }
-        }
         if (its.size() <= 1000) {
             if (Config::Analysis::log) {
                 std::cout << "refining the dependency graph..." << std::endl;

@@ -68,7 +68,7 @@ namespace sexpressionparser {
                     }
                     assert(preVars.size() == postVars.size());
                     sexpresso::Sexp ruleExps = ex[4];
-                    std::set<NumVar> tmpVars;
+                    linked_hash_set<NumVar> tmpVars;
                     for (const std::string &str: postVars) {
                         tmpVars.insert(vars.at(str));
                     }
@@ -91,7 +91,7 @@ namespace sexpressionparser {
                             }
                             Rule rule(cond, update);
                             // make sure that the temporary variables are unique
-                            std::set<NumVar> currTmpVars(tmpVars);
+                            linked_hash_set<NumVar> currTmpVars(tmpVars.begin(), tmpVars.end());
                             cond->collectVars<IntTheory>(currTmpVars);
                             Subs subs;
                             for (const NumVar &var: currTmpVars) {

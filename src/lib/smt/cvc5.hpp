@@ -46,19 +46,19 @@ public:
     Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
         assert(models);
         Model<Th...> res;
-        const auto add = [&res, this](const auto &p) {
+        const auto add = [&res, this](const auto &x, const auto &y) {
             if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
-                if (std::holds_alternative<NumVar>(p.first)) {
-                    NumVar var = std::get<NumVar>(p.first);
-                    Num val = getRealFromModel(p.second);
+                if (std::holds_alternative<NumVar>(x)) {
+                    NumVar var = std::get<NumVar>(x);
+                    Num val = getRealFromModel(y);
                     res.template put<IntTheory>(var, val);
                     return;
                 }
             }
             if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
-                if (std::holds_alternative<BoolVar>(p.first)) {
-                    BoolVar var = std::get<BoolVar>(p.first);
-                    res.template put<BoolTheory>(var, this->solver.getValue(p.second).getBooleanValue());
+                if (std::holds_alternative<BoolVar>(x)) {
+                    BoolVar var = std::get<BoolVar>(x);
+                    res.template put<BoolTheory>(var, this->solver.getValue(y).getBooleanValue());
                     return;
                 }
             }
@@ -67,21 +67,17 @@ public:
         const auto map = ctx.getSymbolMap();
         if (vars) {
             for (const auto &x: *vars) {
-                const auto it = map.find(x);
-                if (it != map.end()) {
-                    add(*it);
+                const auto res {map.get(x)};
+                if (res) {
+                    add(x, *res);
                 }
             }
         } else {
-            for (const auto &p: map) {
-                add(p);
+            for (const auto &[x, y]: map) {
+                add(x, y);
             }
         }
         return res;
-    }
-
-    void setTimeout(unsigned int timeout) override {
-        throw std::runtime_error("timeout not supported by CVC5");
     }
 
     void enableModels() override {
@@ -103,9 +99,8 @@ public:
         return os;
     }
 
-    void setSeed(unsigned seed) override {
-        this->seed = seed;
-        updateParams();
+    void randomize(unsigned seed) override {
+        // TODO
     }
 
 private:

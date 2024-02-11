@@ -1,12 +1,13 @@
 #pragma once
 
 #include "itsproblem.hpp"
-#include "linearizingsolver.hpp"
-#include "itsproblem.hpp"
 #include "linearsolver.hpp"
-#include "result.hpp"
+#include "itsresult.hpp"
+#include "ruleresult.hpp"
 #include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
+#include "smt.hpp"
+#include "smtfactory.hpp"
 
 #include <limits>
 #include <list>
@@ -39,6 +40,10 @@ struct Step {
     const Rule resolvent;
 
     Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent);
+
+    Step(const Step &that);
+
+    Step& operator=(const Step &that);
 
 };
 
@@ -79,6 +84,9 @@ public:
     virtual std::optional<ProvedUnsat> unsat();
 
     virtual std::optional<Restart> restart();
+
+    virtual ~LearningState();
+
 };
 
 struct LearnedClauses {
@@ -118,15 +126,18 @@ class Unroll final: public LearningState {
 
 private:
 
-    std::optional<unsigned> max;
+    std::optional<unsigned> max {};
+    bool accel_failed {false};
 
 public:
 
     Unroll();
 
-    Unroll(unsigned max);
+    Unroll(unsigned max, bool accel_failed = false);
 
     std::optional<unsigned> get_max();
+
+    bool acceleration_failed();
 
     std::optional<Unroll> unroll() override;
 };
@@ -145,31 +156,32 @@ class Restart final: public LearningState {
     std::optional<Restart> restart() override;
 };
 
-class ProofFailed : public std::runtime_error {
-public:
-    ProofFailed(const std::string &msg);
-};
-
-class Reachability : public ILinearSolver {
+class Reachability : public ILinearSolver  {
 
     ITSProblem &chcs;
 
-    ITSProof proof;
+    ITSProof proof {};
 
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
+    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
 
     const bool drop;
 
-    std::vector<Step> trace;
+    std::vector<Step> trace {};
 
     /**
      * A conjunctive clause x is blocked if find(x) != end().
      * A conjunctive variant y of a non-conjunctive clause x is blocked if cond(y) implies an element of at(x).
      * Maybe it would be better to subdivide the blocking formulas w.r.t. pairs of predicates instead of clauses.
      */
-    std::vector<std::map<TransIdx, std::set<BoolExpr>>> blocked_clauses{{}};
+    std::vector<std::unordered_map<TransIdx, linked_hash_set<BoolExpr>>> blocked_clauses {{}};
 
-    VarSet prog_vars;
+    /**
+     * Languages that correspond to non-linear learned clauses that are not used for resolution after a restart.
+     * They get activated again once the corresponding loop has been unrolled.
+     */
+    std::unordered_set<Automaton> locked {};
+
+    VarSet prog_vars {};
 
     /**
      * clauses up to this one are original ones, all other clauses are learned
@@ -180,9 +192,11 @@ class Reachability : public ILinearSolver {
 
     unsigned luby_unit {10};
 
-    unsigned luby_loop_count {0};
+    unsigned luby_count {0};
 
     void luby_next();
+
+    std::unordered_map<TransIdx, unsigned> penalty {};
 
     using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundancy {std::make_unique<Red>()};
@@ -195,7 +209,7 @@ class Reachability : public ILinearSolver {
 
     void update_cpx();
 
-    Result<Rule> instantiate(const NumVar &n, const Rule &rule) const;
+    RuleResult instantiate(const NumVar &n, const Rule &rule) const;
 
     /**
      * initializes all data structures after preprocessing
@@ -207,7 +221,11 @@ class Reachability : public ILinearSolver {
      */
     void unsat();
 
-    void sat();
+    void unknown();
+
+    unsigned get_penalty(const TransIdx idx) const;
+
+    void bump_penalty(const TransIdx idx);
 
     /**
      * tries to resolve the trace with the given clause
@@ -230,7 +248,7 @@ class Reachability : public ILinearSolver {
      * computes a clause that is equivalent to the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    Rule build_loop(const int backlink);
+    std::pair<Rule, Subs> build_loop(const int backlink);
 
     /**
      * adds a learned clause to all relevant data structures
@@ -242,7 +260,7 @@ class Reachability : public ILinearSolver {
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const unsigned backlink);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Subs &model, const unsigned backlink);
 
     bool check_consistency();
 
@@ -286,7 +304,7 @@ class Reachability : public ILinearSolver {
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const TransIdx idx, const Rule &resolvent, bool force);
+    bool store_step(const TransIdx idx, const Rule &resolvent);
 
     void print_trace(std::ostream &s);
 

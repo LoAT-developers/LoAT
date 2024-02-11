@@ -65,6 +65,23 @@ bool isTriviallyTrue(const typename Theory<Th...>::Lit &lit) {
 }
 
 template <size_t I = 0, ITheory... Th>
+inline bool isTriviallyFalseImpl(const typename Theory<Th...>::Lit &lit) {
+    if constexpr (I < sizeof...(Th)) {
+        if (lit.index() == I) {
+            return std::get<I>(lit).isTriviallyFalse();
+        }
+        return isTriviallyFalseImpl<I+1, Th...>(lit);
+    } else {
+        throw std::logic_error("unknown theory");
+    }
+}
+
+template <ITheory... Th>
+bool isTriviallyFalse(const typename Theory<Th...>::Lit &lit) {
+    return isTriviallyFalseImpl<0, Th...>(lit);
+}
+
+template <size_t I = 0, ITheory... Th>
 inline typename Theory<Th...>::Lit negateImpl(const typename Theory<Th...>::Lit &lit) {
     if constexpr (I < sizeof...(Th)) {
         if (lit.index() == I) {

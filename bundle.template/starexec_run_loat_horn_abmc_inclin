@@ -1,0 +1,3 @@
+#!/bin/bash
+trap "" SIGRTMIN
+./loat-static --plain --proof-level 0 --mode reachability --format horn --engine abmc --smt z3inclin $1 2> /dev/null

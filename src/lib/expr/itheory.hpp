@@ -4,10 +4,11 @@
 #include <type_traits>
 #include <stdexcept>
 #include <string>
-#include <set>
-#include <map>
 #include <variant>
 #include <tuple>
+
+#include "set.hpp"
+#include "map.hpp"
 
 template<typename ... Ts>
 struct Overload : Ts ... {
@@ -22,13 +23,12 @@ concept IComparable = requires(T x1, T x2) {
 };
 
 template <typename T, typename Var>
-concept IVars = requires(T x, std::set<Var> res) {
+concept IVars = requires(T x, linked_hash_set<Var> res) {
         x.collectVars(res);
 };
 
 template <typename T>
 concept ILit = requires(T x, T y) {
-        requires IComparable<T>;
         {x.normalize()} -> std::same_as<T>;
         {x.isTriviallyTrue()} -> std::same_as<bool>;
         {x.isWellformed()} -> std::same_as<bool>;
@@ -72,7 +72,7 @@ public:
     using Lit = std::variant<typename Th::Lit...>;
     using Var = std::variant<typename Th::Var...>;
     using Val = std::variant<typename Th::Val...>;
-    using Model = std::tuple<std::map<typename Th::Var, typename Th::Val>...>;
+    using Model = std::tuple<linked_hash_map<typename Th::Var, typename Th::Val>...>;
     using Subs = std::tuple<typename Th::Subs...>;
     using Expression = std::variant<typename Th::Expression...>;
     using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expression>...>;

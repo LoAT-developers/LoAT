@@ -38,7 +38,7 @@ public:
     bool isTriviallyUnsatisfiable() const;
 
 private:
-    Direction direction;
+    Direction direction {};
 
 };
 

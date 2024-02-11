@@ -20,6 +20,8 @@
 #include "rule.hpp"
 #include "accelerationresult.hpp"
 #include "accelconfig.hpp"
+#include "recurrence.hpp"
+#include "accelerationproblem.hpp"
 
 class LoopAcceleration {
 public:
@@ -34,12 +36,19 @@ private:
 
     LoopAcceleration(const Rule &rule, const std::optional<Subs> &sample_point, const AccelConfig &config);
 
-    Rule overApproximatingAcceleration(const Subs &closed_form);
-
-    acceleration::Result run();
+    void chain();
+    void run();
+    void store_nonterm(const AccelerationProblem::Accelerator &accel);
+    void try_nonterm();
+    void compute_closed_form();
+    void accelerate();
+    void prepend_prefix();
 
     Rule rule;
     const std::optional<Subs> sample_point;
     const AccelConfig config;
+    acceleration::Result res {};
+    std::optional<Recurrence::Result> rec {};
+    bool prepend_first {false};
 
 };

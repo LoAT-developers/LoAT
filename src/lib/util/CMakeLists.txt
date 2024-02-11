@@ -10,6 +10,9 @@ add_library(${PROJECT_NAME} STATIC
     proof.hpp
     proof.cpp
     conshash.hpp
+    result.hpp
+    config.cpp
+    config.hpp
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")

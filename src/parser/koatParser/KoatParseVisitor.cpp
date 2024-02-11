@@ -39,13 +39,13 @@ antlrcpp::Any KoatParseVisitor::visitTranss(KoatParser::TranssContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitVar(KoatParser::VarContext *ctx) {
     std::string name = ctx->getText();
-    auto it = vars.find(name);
-    if (it == vars.end()) {
+    const auto res {vars.get(name)};
+    if (res) {
+        return *res;
+    } else {
         const NumVar var {NumVar::next()};
         vars.emplace(name, var);
         return var;
-    } else {
-        return it->second;
     }
 }
 
@@ -98,7 +98,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
             throw std::invalid_argument("wrong arity: " + ctx->getText());
         }
         for (unsigned i = 0; i < sz; ++i) {
-            if (programVars[i].getName() != vars.at(ctx->var(i)->getText()).getName()) {
+            if (programVars[i].getName() != vars[ctx->var(i)->getText()].getName()) {
                 throw std::invalid_argument("invalid arguments: expected " + expr::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
             }
         }

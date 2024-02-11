@@ -5,7 +5,7 @@
 int NumVar::last_tmp_idx {0};
 int NumVar::last_prog_idx {1};
 
-std::map<int, GiNaC::symbol> NumVar::symbols;
+std::unordered_map<int, GiNaC::symbol> NumVar::symbols;
 const NumVar NumVar::loc_var {1};
 
 NumVar::NumVar(const int idx): idx(idx) {
@@ -56,4 +56,8 @@ bool NumVar::isTempVar() const {
 
 size_t NumVar::hash() const {
     return std::hash<int>{}(idx);
+}
+
+std::size_t hash_value(const NumVar &x) {
+    return x.hash();
 }

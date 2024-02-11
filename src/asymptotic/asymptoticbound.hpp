@@ -8,7 +8,6 @@
 #include "limitproblem.hpp"
 #include "proof.hpp"
 #include "complexity.hpp"
-#include "config.hpp"
 #include "theory.hpp"
 
 class AsymptoticBound {
@@ -19,14 +18,14 @@ private:
             : complexity(), upperBound(0), lowerBound(0), inftyVars(0) {
         }
 
-        ExprSubs solution;
+        ExprSubs solution{};
         Complexity complexity;
         int upperBound;
         int lowerBound;
         int inftyVars;
     };
 
-    AsymptoticBound(Guard guard, Expr cost, bool finalCheck, unsigned int timeout);
+    AsymptoticBound(Guard guard, Expr cost, bool finalCheck);
 
     void initLimitVectors();
     void normalizeGuard();
@@ -59,22 +58,21 @@ private:
     const Guard guard;
     const Expr cost;
     bool finalCheck;
-    Guard normalizedGuard;
-    ComplexityResult bestComplexity;
-    Proof proof;
-    unsigned int timeout;
+    Guard normalizedGuard {};
+    ComplexityResult bestComplexity {};
+    Proof proof {};
 
     std::vector<std::vector<LimitVector>> addition;
     std::vector<std::vector<LimitVector>> multiplication;
     std::vector<std::vector<LimitVector>> division;
 
-    std::vector<LimitProblem> limitProblems;
-    std::vector<LimitProblem> solvedLimitProblems;
+    std::vector<LimitProblem> limitProblems {};
+    std::vector<LimitProblem> solvedLimitProblems {};
     LimitProblem currentLP;
 
-    std::vector<ExprSubs> substitutions;
+    std::vector<ExprSubs> substitutions {};
 
-    std::vector<LimitVector> toApply;
+    std::vector<LimitVector> toApply {};
 
 public:
     /**
@@ -90,7 +88,7 @@ public:
         // The number of non-constant variables (i.e., which grow with n).
         int inftyVars;
 
-        Proof proof;
+        Proof proof{};
 
         explicit Result(Complexity c) : cpx(c), solvedCost(0), inftyVars(0) {}
         Result(Complexity c, Expr x, int v, Proof proof) : cpx(c), solvedCost(x), inftyVars(v), proof(proof) {}
@@ -104,7 +102,6 @@ public:
     static Result determineComplexity(const Guard &guard,
                                       const Expr &cost,
                                       bool finalCheck = false,
-                                      const Complexity &currentRes = Complexity::Const,
-                                      unsigned int timeout = Config::Limit::Timeout);
+                                      const Complexity &currentRes = Complexity::Const);
 
 };

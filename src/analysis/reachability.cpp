@@ -7,16 +7,17 @@
 #include "result.hpp"
 #include "smt.hpp"
 #include "export.hpp"
-#include "smtfactory.hpp"
 #include "vector.hpp"
 #include "asymptoticbound.hpp"
 #include "vareliminator.hpp"
 #include "chain.hpp"
 #include "expr.hpp"
-#include "cvc5.hpp"
+#include "config.hpp"
+#include "ruleexport.hpp"
 
 #include <numeric>
 #include <random>
+#include <unordered_set>
 
 namespace reachability {
 
@@ -58,6 +59,8 @@ std::optional<ProvedUnsat> LearningState::unsat() {
     return {};
 }
 
+LearningState::~LearningState() {}
+
 Succeeded::Succeeded(const Result<LearnedClauses> &learned): learned(learned) {}
 
 std::optional<Succeeded> Succeeded::succeeded() {
@@ -82,7 +85,7 @@ std::optional<Restart> Restart::restart() {
 
 Unroll::Unroll() {}
 
-Unroll::Unroll(unsigned max): max(max) {}
+Unroll::Unroll(unsigned max, bool accel_failed): max(max), accel_failed(accel_failed) {}
 
 std::optional<unsigned> Unroll::get_max() {
     return max;
@@ -90,6 +93,10 @@ std::optional<unsigned> Unroll::get_max() {
 
 std::optional<Unroll> Unroll::unroll() {
     return *this;
+}
+
+bool Unroll::acceleration_failed() {
+    return accel_failed;
 }
 
 std::optional<ProvedUnsat> ProvedUnsat::unsat() {
@@ -106,22 +113,11 @@ ITSProof* ProvedUnsat::operator->() {
     return &proof;
 }
 
-ProofFailed::ProofFailed(const std::string &msg): std::runtime_error(msg) {}
-
 Reachability::Reachability(ITSProblem &chcs, bool incremental_mode):
     chcs(chcs),
-    drop(!Config::Analysis::safety()),
+    drop(true),
     analysis_result(LinearSolver::Result::Pending),
-    incremental_mode(incremental_mode)
-{
-    switch (Config::Analysis::smtSolver) {
-    case Config::Analysis::Z3:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new LinearizingSolver<IntTheory, BoolTheory>(smt::default_timeout));
-        break;
-    case Config::Analysis::CVC5:
-        solver = std::unique_ptr<Smt<IntTheory, BoolTheory>>(new CVC5<IntTheory, BoolTheory>());
-        break;
-    }
+    incremental_mode(incremental_mode) {
     solver->enableModels();
     proof.majorProofStep("Initial ITS", ITSProof(), chcs);
     if (Config::Analysis::log) {
@@ -145,6 +141,12 @@ Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renam
     implicant(sat),
     var_renaming(var_renaming),
     resolvent(resolvent) {}
+
+Step::Step(const Step &that):
+    clause_idx(that.clause_idx),
+    implicant(that.implicant),
+    var_renaming(that.var_renaming),
+    resolvent(that.resolvent) {}
 
 std::ostream& operator<<(std::ostream &s, const Step &step) {
     return s << step.clause_idx << "[" << step.implicant << "]";
@@ -206,6 +208,7 @@ void Reachability::block(const Step &step) {
 }
 
 void Reachability::pop() {
+    bump_penalty(trace.back().clause_idx);
     blocked_clauses.pop_back();
     trace.pop_back();
     solver->pop();
@@ -258,11 +261,11 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implica
     // }
 }
 
-bool Reachability::store_step(const TransIdx idx, const Rule &implicant, bool force) {
+bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
     solver->push();
     const auto imp {trace.empty() ? implicant : implicant.subs(trace.back().var_renaming)};
     solver->add(imp.getGuard());
-    if (solver->check() == Sat || force) {
+    if (solver->check() == Sat) {
         const auto new_var_renaming {handle_update(idx)};
         const Step step(idx, implicant.getGuard(), new_var_renaming, compute_resolvent(idx, implicant.getGuard()));
         add_to_trace(step);
@@ -354,15 +357,20 @@ void Reachability::init() {
 
 
 void Reachability::luby_next() {
+    for (const auto &x: chcs.getAllTransitions()) {
+        if (is_learned_clause(&x) && !x.isPoly()) {
+            locked.insert(*redundancy->get_language(&x));
+        }
+    }
     const auto [u,v] {luby};
     luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
-    solver->setSeed(rand());
     solver->resetSolver();
-    luby_loop_count = 0;
+    solver->randomize(rand());
+    luby_count = 0;
 }
 
 void Reachability::unsat() {
-    const auto res = Config::Analysis::safety() ? "unknown" : (Config::Analysis::reachability() ? "unsat" : "NO");
+    const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
     analysis_result = analysis_result_from(res);
     if (!Config::Analysis::log && Proof::disabled()) {
         return;
@@ -386,14 +394,13 @@ void Reachability::unsat() {
     proof.print();
 }
 
-void Reachability::sat() {
-    const auto res = Config::Analysis::safety() ? "sat" : "unknown";
-    analysis_result = analysis_result_from(res);
+void Reachability::unknown() {
+    analysis_result = analysis_result_from("unknown");
     if (!Config::Analysis::log && Proof::disabled()) {
         return;
     }
     proof.headline("Prove");
-    proof.result(res);
+    proof.result("unknown");
     proof.print();
 }
 
@@ -419,18 +426,11 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     case Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
         const auto model {solver->model(guard->vars()).toSubs()};
-        const auto implicant {idx->getGuard()->implicant(expr::compose(projected_var_renaming, model))};
-        if (implicant) {
-            return {idx->withGuard(*implicant)};
-        } else {
-            throw std::logic_error("model, but no implicant");
-        }
+        const auto implicant {idx->getGuard()->syntacticImplicant(expr::compose(projected_var_renaming, model))};
+        return {idx->withGuard(implicant)};
     }
-    case Unknown: {
-        if (Config::Analysis::safety()) {
-            throw ProofFailed("SMT returned UNKNOWN during resolution");
-        }
-    } // fall through intended
+    case Unknown: {}
+    [[fallthrough]];
     case Unsat: {
         if (block == blocked_clauses.back().end()) {
             blocked_clauses.back()[idx] = {};
@@ -461,19 +461,33 @@ Automaton Reachability::build_language(const int backlink) {
     return lang;
 }
 
-Rule Reachability::build_loop(const int backlink) {
+std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
     std::optional<Rule> loop;
+    Subs var_renaming;
     for (int i = trace.size() - 1; i >= backlink; --i) {
         const auto &step {trace[i]};
         const auto rule {step.clause_idx->withGuard(step.implicant)};
-        loop = loop ? Chaining::chain(rule, *loop).first : rule;
+        if (loop) {
+            const auto [chained, sigma] {Chaining::chain(rule, *loop)};
+            loop = chained;
+            var_renaming = expr::compose(sigma, var_renaming);
+        } else {
+            loop = rule;
+        }
+        if (i > 0) {
+            var_renaming = expr::compose(trace[i-1].var_renaming.project(rule.vars()), var_renaming);
+        }
     }
+    auto vars {loop->vars()};
+    var_renaming = var_renaming.project(vars);
+    expr::collectCoDomainVars(var_renaming, vars);
+    const auto model {expr::compose(var_renaming, solver->model(vars).toSubs())};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
-        ITSExport::printRule(*loop, std::cout);
+        RuleExport::printRule(*loop, std::cout);
         std::cout << std::endl;
     }
-    return {*loop};
+    return {*loop, model};
 }
 
 TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink) {
@@ -492,8 +506,8 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
     return !is_learned_clause(idx);
 }
 
-Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const {
-    Result<Rule> res(rule);
+RuleResult Reachability::instantiate(const NumVar &n, const Rule &rule) const {
+    RuleResult res(rule);
     VarEliminator ve(rule.getGuard(), n, expr::isProgVar);
     if (ve.getRes().empty() || ve.getRes().size() > 1) {
         return res;
@@ -501,7 +515,7 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
     for (const auto &s : ve.getRes()) {
         if (s.get(n).isRationalConstant()) continue;
         if (res) {
-            return Result<Rule>(rule);
+            return RuleResult(rule);
         }
         res = rule.subs(Subs::build<IntTheory>(s));
         res.ruleTransformationProof(rule, "Instantiation", *res);
@@ -509,8 +523,8 @@ Result<Rule> Reachability::instantiate(const NumVar &n, const Rule &rule) const 
     return res;
 }
 
-std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const unsigned backlink) {
-    Result<Rule> simp = Preprocess::preprocessRule(rule);
+std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &model, const unsigned backlink) {
+    RuleResult simp = Preprocess::preprocessRule(rule);
     if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
@@ -519,7 +533,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (Config::Analysis::log && simp) {
         std::cout << "simplified loop:" << std::endl;
-        ITSExport::printRule(*simp, std::cout);
+        RuleExport::printRule(*simp, std::cout);
         std::cout << std::endl;
     }
     if (Config::Analysis::reachability()) {
@@ -530,30 +544,18 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     const NumVar n {NumVar::next()};
     AccelConfig config {
-        .approx = Config::Analysis::safety() ? OverApprox : UnderApprox,
         .tryNonterm = Config::Analysis::tryNonterm(),
         .n = n};
-    const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
+    const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
-    if (Config::Analysis::safety() && accel_res.status != acceleration::Success) {
-        std::stringstream s;
-        s << "acceleration failed, status: " << accel_res.status;
-        if (Config::Analysis::log) {
-            std::cout << s.str() << std::endl;
-            std::cout << "rule:" << std::endl;
-            ITSExport::printRule(*simp, std::cout);
-            std::cout << std::endl;
-        }
-        throw ProofFailed(s.str());
-    }
     Result<LearnedClauses> res{{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period}};
-    if (accel_res.nonterm) {
+    if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
         res.succeed();
         const auto idx = chcs.addQuery(accel_res.nonterm->certificate, trace.at(backlink).clause_idx);
         res->res.emplace_back(idx);
-        ITSProof nonterm_proof;
+        RuleProof nonterm_proof;
         nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", *idx);
         nonterm_proof.storeSubProof(accel_res.nonterm->proof);
         res.concat(nonterm_proof);
@@ -578,7 +580,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             res.succeed();
             const auto loop_idx {add_learned_clause(*simplified, backlink)};
             res->res.emplace_back(loop_idx);
-            ITSProof acceleration_proof;
+            RuleProof acceleration_proof;
             acceleration_proof.storeSubProof(simp.getProof());
             acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
             acceleration_proof.storeSubProof(accel_res.accel->proof);
@@ -586,7 +588,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             res.concat(simplified.getProof());
             if (Config::Analysis::log) {
                 std::cout << "accelerated rule, idx " << loop_idx << std::endl;
-                ITSExport::printRule(*simplified, std::cout);
+                RuleExport::printRule(*simplified, std::cout);
                 std::cout << std::endl;
             }
         }
@@ -595,7 +597,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         if (Config::Analysis::log) {
             std::cout << "acceleration failed, status: " << accel_res.status << std::endl;
         }
-        return std::make_unique<Unroll>(1);
+        return std::make_unique<Unroll>(1, true);
     }
     return std::make_unique<Succeeded>(res);
 }
@@ -626,6 +628,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     const auto lang {build_language(backlink)};
     auto closure {lang};
     redundancy->transitive_closure(closure);
+    locked.erase(closure);
     if (redundancy->is_redundant(closure)) {
         if (Config::Analysis::log) std::cout << "loop already covered" << std::endl;
         return std::make_unique<Covered>();
@@ -641,9 +644,8 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << closure << std::endl;
     }
-    const auto loop {build_loop(backlink)};
-    luby_loop_count++;
-    auto state {learn_clause(loop, backlink)};
+    const auto [loop, model] {build_loop(backlink)};
+    auto state {learn_clause(loop, model, backlink)};
     redundancy->mark_as_accelerated(closure);
     if (!state->succeeded()) {
         if (state->unroll()) {
@@ -663,7 +665,8 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
-    bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix == 0 && learned_clauses.period == 1)};
+
+    bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix <= 1 && learned_clauses.period == 1)};
 
     // To respect `max_constraint_tier` we don't replace the recursive suffix with a 
     // learned clause if at least one of the learned clauses has a higher constraint tier
@@ -681,21 +684,9 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     if (Config::Analysis::log) {
         std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
     }
-    auto learned_lang {lang};
-    if (Config::Analysis::safety()) {
-        for (unsigned i = 1; i < learned_clauses.period; ++i) {
-            redundancy->concat(learned_lang, lang);
-        }
-    }
-    redundancy->transitive_closure(learned_lang);
-    if (Config::Analysis::safety()) {
-        for (unsigned i = 0; i < learned_clauses.prefix; ++i) {
-            redundancy->prepend(lang, learned_lang);
-        }
-    }
     for (const auto idx: learned_clauses.res) {
-        redundancy->set_language(idx, learned_lang);
-        if (!done && store_step(idx, *idx, false)) {
+        redundancy->set_language(idx, closure);
+        if (!done && store_step(idx, *idx)) {
             update_cpx();
             if (chcs.isSinkTransition(idx)) {
                 return std::make_unique<ProvedUnsat>(accel_state->getProof());
@@ -705,19 +696,19 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         }
     }
     if (done) {
-        redundancy->mark_as_redundant(learned_lang);
+        redundancy->mark_as_redundant(closure);
         return state;
     } else {
         // unroll once if we dropped the loop
-        redundancy->concat(learned_lang, learned_lang);
-        redundancy->mark_as_redundant(learned_lang);
+        redundancy->concat(closure, closure);
+        redundancy->mark_as_redundant(closure);
         if (Config::Analysis::log) std::cout << "applying accelerated rule failed" << std::endl;
         return std::make_unique<Dropped>(accel_state->getProof());
     }
 }
 
 bool Reachability::try_to_finish() {
-    std::set<TransIdx> clauses = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
+    const auto clauses = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
     for (const auto &q: clauses) {
         if (chcs.isSinkTransition(q)) {
             solver->push();
@@ -754,34 +745,17 @@ LinearSolver::Result Reachability::get_analysis_result() const {
     return analysis_result;
 }
 
-void Reachability::analyze() {
-    // First only derive "easy" to handle rules with linear guard. If that's not enough
-    // also try rules with polynomial guard. Otherwise also consider exponential 
-    // (arbitrary) guards.
-    for (const auto tier: LinearSolver::constraint_tiers) {
-        blocked_clauses[0].clear();
-        derive_new_facts(tier);
-
-        if (get_analysis_result() == LinearSolver::Result::Unsat) {
-            break;
-        }
+unsigned Reachability::get_penalty(const TransIdx idx) const {
+    const auto it {penalty.find(idx)};
+    if (it != penalty.end()) {
+        return it->second;
+    } else {
+        return 0;
     }
+}
 
-    switch (get_analysis_result()) {
-        case LinearSolver::Result::Sat:
-            std::cout << "sat";
-            break;
-        case LinearSolver::Result::Unsat:
-            std::cout << "unsat";
-            break;
-        case LinearSolver::Result::Unknown:
-            std::cout << "unknown";
-            break;
-        case LinearSolver::Result::Pending:
-            throw std::logic_error("exited main loop although analysis result is pending");
-    }
-
-    std::cout << std::endl << std::endl << std::endl;
+void Reachability::bump_penalty(const TransIdx idx) {
+    penalty.emplace(idx, 0).first->second++;
 }
 
 /**
@@ -818,16 +792,45 @@ LinearSolver::ConstraintTier Reachability::constraint_tier_of(TransIdx rule) con
     }
 }
 
-const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTier max_constr_tier) {
-    static std::default_random_engine rnd {};       
+void Reachability::analyze() {
+    // First only derive "easy" to handle rules with linear guard. If that's not enough
+    // also try rules with polynomial guard. Otherwise also consider exponential 
+    // (arbitrary) guards.
+    for (const auto tier: LinearSolver::constraint_tiers) {
+        blocked_clauses[0].clear();
+        derive_new_facts(tier);
 
+        if (get_analysis_result() == LinearSolver::Result::Unsat) {
+            break;
+        }
+    }
+
+    switch (get_analysis_result()) {
+        case LinearSolver::Result::Sat:
+            std::cout << "sat";
+            break;
+        case LinearSolver::Result::Unsat:
+            std::cout << "unsat";
+            break;
+        case LinearSolver::Result::Unknown:
+            std::cout << "unknown";
+            break;
+        case LinearSolver::Result::Pending:
+            throw std::logic_error("exited main loop although analysis result is pending");
+    }
+
+    std::cout << std::endl << std::endl << std::endl;
+}
+
+const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTier max_constr_tier) {
     std::set<Clause> derived_facts;
 
     if (try_to_finish()) {
         return derived_facts;
     }
 
-    while (true) {
+    do {
+        ++luby_count;
         size_t next_restart = luby_unit * luby.second;
         std::unique_ptr<LearningState> state;
         if (Config::Analysis::log) std::cout << "trace: " << trace << std::endl;
@@ -838,7 +841,7 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
 
             // QUESTION: why not exit loop after frist matching case?
             for (auto backlink = has_looping_suffix(trace.size() - 1);
-                 backlink && luby_loop_count < next_restart;
+                 backlink;
                  backlink = has_looping_suffix(*backlink - 1)) {
                 auto step {trace[*backlink]};
                 auto simple_loop {*backlink == trace.size() - 1};
@@ -851,6 +854,7 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
                     print_state();
                     // if we run into `covered` we don't add a new fact, because backtrack to previously seen facts.
                     should_add_fact = false;
+                    break;
                 } else if (state->succeeded()) {
                     if (simple_loop) {
                         block(step);
@@ -864,19 +868,26 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
                     // if we just applied acceleration successfully, then the trace contains a new (more general) fact.
                     should_add_fact = true;
                 } else if (state->dropped()) {
-                    if (simple_loop && !Config::Analysis::safety()) {
+                    if (simple_loop) {
                         block(step);
                     }
                     proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
                     print_state();
+
                     // QUESTION: why shouldn't we add a fact in this case again?
                     should_add_fact = false;
+                    break;
                 } else if (state->unsat()) {
                     proof.majorProofStep("Nonterm", **state->unsat(), chcs);
                     proof.headline("Step with " + std::to_string(trace.back().clause_idx->getId()));
                     print_state();
                     unsat();
+
                     return derived_facts;
+                } else if (state->unroll() && state->unroll()->acceleration_failed()) {
+                    // QUESTION: this case was added after with merge. How to set `should_add_fact` ?
+                    // stop searching for longer loops if the current one was already too complicated
+                    break;
                 }
             }
 
@@ -905,30 +916,42 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
             }
 
         }
-        if (luby_loop_count == next_restart || (state && state->restart()) || !check_consistency()) {
-            if (Config::Analysis::log) std::cout << "restarting after " << luby_loop_count << " loops" << std::endl;
+        if (luby_count >= next_restart || (state && state->restart()) || !check_consistency()) {
+            if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
             restart();
         }
 
-        std::set<TransIdx> try_set;
-        for (const auto idx: trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx)) {
+        auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
+        for (auto it = try_set.begin(); it != try_set.end();) {
             // Only consider rules for "Step" whose guard has at most the the constraint tier
             // configured for the current run. For example if `max_constr_tier` is `Polynomial`,
             // we only consider rules with `Linear` or `Polynomial` guard but ignore rules with
             // `Exponential` guard.
-            if (constraint_tier_of(idx) <= max_constr_tier) {
-                try_set.insert(idx);
+            if (constraint_tier_of(*it) > max_constr_tier) {
+                it = try_set.erase(it);
+            } else if (is_learned_clause(*it) && locked.contains(*redundancy->get_language(*it))) {
+                it = try_set.erase(it);
+            } else {
+                ++it;
             }
         }
 
         std::vector<TransIdx> to_try(try_set.begin(), try_set.end());
-        std::shuffle(to_try.begin(), to_try.end(), rnd);
+        std::sort(to_try.begin(), to_try.end(), [this](const TransIdx x, const TransIdx y){
+            const auto p1 {get_penalty(x)};
+            const auto p2 {get_penalty(y)};
+            if (p1 != p2) {
+                return p1 < p2;
+            } else {
+                return x->getId() < y->getId();
+            }
+        });
         bool all_failed {true};
         for (const auto idx: to_try) {
             solver->push();
             const auto implicant {resolve(idx)};
             solver->pop();
-            if (implicant && store_step(idx, *implicant, Config::Analysis::safety())) {
+            if (implicant && store_step(idx, *implicant)) {
                 // Additional redundnacy check: if resolvent of trace (after step) is 
                 // syntactially equivalent (up to renaming) to an already derived fact, 
                 // then backtrack and try a different step. 
@@ -941,6 +964,8 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
                     all_failed = false;
                     break;
                 }
+            } else {
+                bump_penalty(idx);
             }
         }
         if (trace.empty()) {
@@ -950,7 +975,7 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
                 proof.result(cpx.toString());
                 proof.print();
             } else {
-                sat();
+                unknown();
             }
 
             return derived_facts;
@@ -961,7 +986,7 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
         } else if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
             return derived_facts;
         }
-    }
+    } while (true);
 }
 
 void Reachability::restart() {

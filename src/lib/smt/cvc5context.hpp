@@ -3,7 +3,6 @@
 #include "smtcontext.hpp"
 
 #include <cvc5/cvc5.h>
-#include <map>
 
 
 class CVC5Context : public SmtContext<cvc5::Term> {

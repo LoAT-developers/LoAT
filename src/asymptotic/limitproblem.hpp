@@ -222,9 +222,9 @@ public:
     std::string getProof() const;
 
 private:
-    InftyExpressionSet set;
+    InftyExpressionSet set {};
     NumVar variableN;
-    std::vector<int> substitutions;
+    std::vector<int> substitutions {};
     bool unsolvable;
 
     // use unique_ptr, as gcc < 5 is lacking std::move on ostringstream

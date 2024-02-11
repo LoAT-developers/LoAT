@@ -34,7 +34,7 @@ bool Rel::isPoly() const {
     return l.isPoly() && r.isPoly();
 }
 
-bool Rel::isLinear(const std::optional<std::set<NumVar>> &vars) const {
+bool Rel::isLinear(const std::optional<linked_hash_set<NumVar>> &vars) const {
     return l.isLinear(vars) && r.isLinear(vars);
 }
 
@@ -201,48 +201,6 @@ Rel Rel::toIntPoly() const {
     return Rel((l-r).toIntPoly(), op, 0);
 }
 
-Rel Rel::splitVariableAndConstantAddends(const std::set<NumVar> &params) const {
-    assert(isIneq());
-
-    //move everything to lhs
-    Expr newLhs = l - r;
-    Expr newRhs = 0;
-
-    //move all numerical constants back to rhs
-    newLhs = newLhs.expand();
-    if (newLhs.isAdd()) {
-        for (size_t i=0; i < newLhs.arity(); ++i) {
-            bool isConstant = true;
-            std::set<NumVar> vars = newLhs.op(i).vars();
-            for (const NumVar &var: vars) {
-                if (params.find(var) == params.end()) {
-                    isConstant = false;
-                    break;
-                }
-            }
-            if (isConstant) {
-                newRhs = newRhs - newLhs.op(i);
-            }
-        }
-    } else {
-        std::set<NumVar> vars = newLhs.vars();
-        bool isConstant = true;
-        for (const NumVar &var: vars) {
-            if (params.find(var) == params.end()) {
-                isConstant = false;
-                break;
-            }
-        }
-        if (isConstant) {
-            newRhs = newRhs - newLhs;
-        }
-    }
-    //other cases (mul, pow, sym) should not include numerical constants (only numerical coefficients)
-
-    newLhs = newLhs + newRhs;
-    return Rel(newLhs, op, newRhs);
-}
-
 bool Rel::isTriviallyTrue() const {
     auto optTrivial = checkTrivial();
     return (optTrivial && *optTrivial);
@@ -269,7 +227,7 @@ std::optional<bool> Rel::checkTrivial() const {
     return {};
 }
 
-void Rel::collectVars(std::set<NumVar> &res) const {
+void Rel::collectVars(linked_hash_set<NumVar> &res) const {
     l.collectVars(res);
     r.collectVars(res);
 }
@@ -282,11 +240,6 @@ Rel Rel::subs(const ExprSubs &map) const {
     return Rel(l.subs(map), op, r.subs(map));
 }
 
-void Rel::applySubs(const ExprSubs &subs) {
-    l.applySubs(subs);
-    r.applySubs(subs);
-}
-
 std::string Rel::toString() const {
     std::stringstream s;
     s << *this;
@@ -297,8 +250,8 @@ Rel::RelOp Rel::relOp() const {
     return op;
 }
 
-std::set<NumVar> Rel::vars() const {
-    std::set<NumVar> res;
+linked_hash_set<NumVar> Rel::vars() const {
+    linked_hash_set<NumVar> res;
     collectVars(res);
     return res;
 }
@@ -317,6 +270,10 @@ std::size_t Rel::hash() const {
     boost::hash_combine(seed, op);
     boost::hash_combine(seed, r.hash());
     return seed;
+}
+
+size_t hash_value(const Rel &rel) {
+    return rel.hash();
 }
 
 Rel Rel::buildEq(const Expr &x, const Expr &y) {

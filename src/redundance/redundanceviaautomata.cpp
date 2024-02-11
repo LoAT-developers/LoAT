@@ -83,6 +83,10 @@ std::ostream& operator<<(std::ostream &s, const Automaton &a) {
     return s << a.str;
 }
 
+bool operator==(const Automaton &x, const Automaton &y) {
+    return x.to_string() == y.to_string();
+}
+
 Automaton RedundanceViaAutomata::get_singleton_language(const TransIdx idx, const Guard &g) {
     const auto it = alphabet.find({idx, g});
     if (it == alphabet.end()) {

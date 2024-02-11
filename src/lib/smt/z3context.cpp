@@ -20,7 +20,7 @@
 
 using namespace std;
 
-Z3Context::Z3Context(z3::context& ctx): ctx(ctx) { }
+Z3Context::Z3Context(z3::context& ctx): ctx(ctx) {}
 
 Z3Context::~Z3Context() { }
 

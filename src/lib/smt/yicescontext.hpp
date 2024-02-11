@@ -21,7 +21,6 @@
 
 #include <gmp.h>
 #include <yices.h>
-#include <map>
 
 class YicesError : public std::exception {
 public:
@@ -74,7 +73,5 @@ private:
 
     long numerator(const term_t &e) const;
     long denominator(const term_t &e) const;
-
-    std::map<term_t, std::string> varNames;
 
 };

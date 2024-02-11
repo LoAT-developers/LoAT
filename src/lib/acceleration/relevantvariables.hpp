@@ -35,15 +35,15 @@ namespace util {
                 VarSet next;
                 for (const auto &x : todo) {
                     std::visit([&up, &next](const auto &x) {
-                        auto it = up.find(x);
-                        if (it != up.end()) {
-                            expr::collectVars(expr::second(*it), next);
+                        const auto val {up.get(x)};
+                        if (val != expr::toExpr(x)) {
+                            expr::collectVars(val, next);
                         }
                     }, x);
                 }
                 todo.clear();
                 for (const auto &var : next) {
-                    if (res.find(var) == res.end()) {
+                    if (!res.contains(var)) {
                         todo.insert(var);
                     }
                 }

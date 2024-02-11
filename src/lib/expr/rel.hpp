@@ -4,13 +4,12 @@
 
 #include "numexpression.hpp"
 
-using RelSet = std::set<Rel>;
-template <class T> using RelMap = std::map<Rel, T>;
+using RelSet = linked_hash_set<Rel>;
 
 struct Bounds {
-    std::set<Expr> upperBounds;
-    std::set<Expr> lowerBounds;
-    std::optional<Expr> equality;
+    linked_hash_set<Expr> upperBounds{};
+    linked_hash_set<Expr> lowerBounds{};
+    std::optional<Expr> equality{};
 };
 
 std::ostream& operator<<(std::ostream &s, const RelSet &set);
@@ -20,6 +19,7 @@ class Rel {
 private:
 
     friend auto operator<=>(const Rel &x, const Rel &y) = default;
+    friend bool operator==(const Rel &x, const Rel &y) = default;
 
 public:
 
@@ -33,7 +33,7 @@ public:
     Expr rhs() const;
     Rel expand() const;
     bool isPoly() const;
-    bool isLinear(const std::optional<std::set<NumVar>> &vars = std::optional<std::set<NumVar>>()) const;
+    bool isLinear(const std::optional<linked_hash_set<NumVar>> &vars = std::optional<linked_hash_set<NumVar>>()) const;
     bool isIneq() const;
     bool isEq() const;
     bool isNeq() const;
@@ -43,19 +43,14 @@ public:
     bool isWellformed() const;
     void getBounds(const NumVar &n, Bounds &res) const;
 
-    /**
-     * @return Moves all addends containing variables to the lhs and all other addends to the rhs, where the given parameters are consiedered to be constants.
-     */
-    Rel splitVariableAndConstantAddends(const std::set<NumVar> &params = {}) const;
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
-    void collectVars(std::set<NumVar> &res) const;
+    void collectVars(linked_hash_set<NumVar> &res) const;
     bool has(const Expr &pattern) const;
     Rel subs(const ExprSubs &map) const;
-    void applySubs(const ExprSubs &subs);
     std::string toString() const;
     RelOp relOp() const;
-    std::set<NumVar> vars() const;
+    linked_hash_set<NumVar> vars() const;
 
     template <typename P>
     bool hasVarWith(P predicate) const {
@@ -103,3 +98,12 @@ private:
     RelOp op;
 
 };
+
+template<>
+struct std::hash<Rel> {
+    std::size_t operator()(const Rel& x) const noexcept {
+        return x.hash();
+    }
+};
+
+size_t hash_value(const Rel &rel);

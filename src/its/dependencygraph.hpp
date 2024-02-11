@@ -19,8 +19,7 @@
 
 
 #include <vector>
-#include <map>
-#include <set>
+#include <unordered_set>
 #include <functional>
 #include <ostream>
 
@@ -64,7 +63,7 @@ public:
         return changed;
     }
 
-    void addNode(const Node node, std::set<Node> preds, std::set<Node> succs, bool self_loop) {
+    void addNode(const Node node, linked_hash_set<Node> preds, linked_hash_set<Node> succs, bool self_loop) {
         if (self_loop) {
             preds.insert(node);
             succs.insert(node);
@@ -127,14 +126,14 @@ public:
         --edgecount;
     }
 
-    void removeEdges(const std::set<Edge> &remove) {
+    void removeEdges(const linked_hash_set<Edge> &remove) {
         for (const auto &p: remove) {
             removeEdge(p.first, p.second);
         }
     }
 
-    std::set<Edge> refine(Node node, std::function<bool(const Node&, const Node&)> is_edge) {
-        std::set<Edge> remove;
+    linked_hash_set<Edge> refine(Node node, std::function<bool(const Node&, const Node&)> is_edge) {
+        linked_hash_set<Edge> remove;
         for (const auto &succ: successors.at(node)) {
             if (!is_edge(node, succ)) {
                 remove.emplace(node, succ);
@@ -149,8 +148,8 @@ public:
         return remove;
     }
 
-    std::set<Edge> refine(std::function<bool(const Node&, const Node&)> is_edge) {
-        std::set<Edge> remove;
+    linked_hash_set<Edge> refine(std::function<bool(const Node&, const Node&)> is_edge) {
+        linked_hash_set<Edge> remove;
         for (auto p: successors) {
             Node from = p.first;
             for (const auto &to: p.second) {
@@ -164,15 +163,14 @@ public:
     }
 
     bool hasEdge(Node from, Node to) const {
-        const auto &succ = successors.at(from);
-        return succ.find(to) != succ.end();
+        return successors.at(from).contains(to);
     }
 
-    const std::set<Node>& getNodes() const {
+    const linked_hash_set<Node>& getNodes() const {
         return nodes;
     }
 
-    std::set<Node> getSuccessors(Node node) const {
+    linked_hash_set<Node> getSuccessors(Node node) const {
         const auto it = successors.find(node);
         if (it == successors.end()) {
             return {};
@@ -181,7 +179,7 @@ public:
         }
     }
 
-    std::set<Node> getPredecessors(Node node) const {
+    linked_hash_set<Node> getPredecessors(Node node) const {
         const auto it = predecessors.find(node);
         if (it == predecessors.end()) {
             return {};
@@ -210,9 +208,9 @@ public:
 
 private:
 
-    std::set<Node> nodes;
-    std::map<Node, std::set<Node>> successors;
-    std::map<Node, std::set<Node>> predecessors;
+    linked_hash_set<Node> nodes {};
+    std::unordered_map<Node, linked_hash_set<Node>> successors {};
+    std::unordered_map<Node, linked_hash_set<Node>> predecessors {};
     size_t edgecount {0};
 
 };

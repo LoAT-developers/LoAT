@@ -40,25 +40,14 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
             prefix = std::max(it->second, prefix);
         }
     }
-    if (vars.find(lhs) == vars.end()) {
+    if (!vars.contains(lhs)) {
         ++prefix;
-        if (inverse) {
-            const auto last {rhs.subs(*inverse)};
-            result.refined_equations.put(lhs, lhs + rhs - last);
-            inverse->put(lhs, lhs - rhs + last);
-        }
+
         closed_form = updated;
     } else {
         if (prefix > 0) {
             ++prefix;
         }
-        const auto i {rhs.solveTermFor(lhs, ConstantCoeffs)};
-        if (!i) {
-            inverse = std::optional<ExprSubs>();
-        } else {
-            inverse->put(lhs, lhs + *i);
-        }
-        result.refined_equations.put(lhs, rhs);
         auto last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
         Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(updated.subs({{*lhs, last}}))};
         auto status {Purrs::Recurrence::Solver_Status::TOO_COMPLEX};
@@ -86,8 +75,11 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
 
 bool Recurrence::solve(const BoolVar &lhs, const BoolExpr &rhs) {
     const auto updated {rhs->subs(closed_form_pre)};
+    if (updated->lits().contains(BoolLit(lhs, true))) {
+        return false;
+    }
     const auto &vars {updated->vars()};
-    if (vars.find(lhs) != vars.end() && vars.size() != vars.get<BoolVar>().size()) {
+    if (vars.contains(lhs) && vars.size() != vars.get<BoolVar>().size()) {
         return false;
     }
     unsigned prefix {1};

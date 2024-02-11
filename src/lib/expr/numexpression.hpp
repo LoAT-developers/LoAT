@@ -22,6 +22,8 @@
 #include <initializer_list>
 #include <optional>
 
+#include "map.hpp"
+#include "set.hpp"
 #include "numvar.hpp"
 
 class Expr;
@@ -56,6 +58,12 @@ class Expr {
     friend bool operator==(const Expr&, const Expr&);
     friend std::strong_ordering operator<=>(const Expr &x, const Expr &y);
 
+    struct Mapper: public GiNaC::map_function {
+        const ExprSubs &map;
+        Mapper(const ExprSubs &map);
+        GiNaC::ex operator()(const GiNaC::ex &ex);
+    };
+
 public:
 
     /**
@@ -70,21 +78,15 @@ public:
     Expr(const NumVar &var): ex(*var) {}
 
     /**
-     * @brief Applies a substitution via side-effects.
-     * @deprecated use subs instead
-     */
-    void applySubs(const ExprSubs &subs);
-
-    /**
      * @brief Computes all matches of the given pattern.
      * @return True iff there was at least one match.
      */
-    bool findAll(const Expr &pattern, std::set<Expr> &found) const;
+    bool findAll(const Expr &pattern, linked_hash_set<Expr> &found) const;
 
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
      */
-    bool isLinear(const std::optional<std::set<NumVar>> &vars = std::optional<std::set<NumVar>>()) const;
+    bool isLinear(const std::optional<linked_hash_set<NumVar>> &vars = std::optional<linked_hash_set<NumVar>>()) const;
 
     /**
      * @return True iff this expression is a polynomial.
@@ -129,12 +131,12 @@ public:
     /**
      * @brief Collects all variables that occur in this expression.
      */
-    void collectVars(std::set<NumVar> &res) const;
+    void collectVars(linked_hash_set<NumVar> &res) const;
 
     /**
      * @return The set of all variables that occur in this expression.
      */
-    std::set<NumVar> vars() const;
+    linked_hash_set<NumVar> vars() const;
 
     static unsigned getIndex(const GiNaC::symbol &x);
 
@@ -228,6 +230,8 @@ public:
      * @return True iff some subexpression matches the given pattern.
      */
     bool has(const Expr &pattern) const;
+
+    std::pair<Expr, std::vector<std::pair<NumVar, Expr>>> flattenExp() const;
 
     /**
      * @return True iff this is 0.
@@ -334,12 +338,11 @@ private:
 class ExprSubs {
 
     friend class Expr;
-    friend std::strong_ordering operator<=>(const ExprSubs &m1, const ExprSubs &m2);
     friend bool operator==(const ExprSubs &m1, const ExprSubs &m2);
 
 public:
 
-    using const_iterator = typename std::map<NumVar, Expr>::const_iterator;
+    typedef typename linked_hash_map<NumVar, Expr>::const_iterator const_iterator;
 
     ExprSubs();
 
@@ -353,8 +356,6 @@ public:
 
     const_iterator end() const;
 
-    const_iterator find(const NumVar &e) const;
-
     bool contains(const NumVar &e) const;
 
     bool empty() const;
@@ -367,11 +368,11 @@ public:
 
     ExprSubs concat(const ExprSubs &that) const;
 
+    void concatInPlace(const ExprSubs &that);
+
     ExprSubs unite(const ExprSubs &that) const;
 
-    ExprSubs project(const std::set<NumVar> &vars) const;
-
-    ExprSubs setminus(const std::set<NumVar> &vars) const;
+    ExprSubs project(const linked_hash_set<NumVar> &vars) const;
 
     bool changes(const NumVar &key) const;
 
@@ -381,26 +382,40 @@ public:
 
     bool isOctagon() const;
 
-    std::set<NumVar> domain() const;
+    linked_hash_set<NumVar> domain() const;
 
-    std::set<NumVar> coDomainVars() const;
+    linked_hash_set<NumVar> coDomainVars() const;
 
-    std::set<NumVar> allVars() const;
+    linked_hash_set<NumVar> allVars() const;
 
-    void collectDomain(std::set<NumVar> &vars) const;
+    void collectDomain(linked_hash_set<NumVar> &vars) const;
 
-    void collectCoDomainVars(std::set<NumVar> &vars) const;
+    void collectCoDomainVars(linked_hash_set<NumVar> &vars) const;
 
-    void collectVars(std::set<NumVar> &vars) const;
+    void collectVars(linked_hash_set<NumVar> &vars) const;
 
     size_t hash() const;
 
 private:
-    void putGinac(const NumVar &key, const Expr &val);
-    void eraseGinac(const NumVar &key);
-    GiNaC::exmap ginacMap;
-    std::map<NumVar, Expr> map;
+
+    linked_hash_map<NumVar, Expr> map{};
 
 };
 
 std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
+
+template<>
+struct std::hash<Expr> {
+    std::size_t operator()(const Expr& x) const noexcept {
+        return x.hash();
+    }
+};
+
+template<>
+struct std::hash<ExprSubs> {
+    std::size_t operator()(const ExprSubs& x) const noexcept {
+        return x.hash();
+    }
+};
+
+size_t hash_value(const Expr &e);

@@ -27,7 +27,7 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
                         const Expr &coeff = ex.coeff(var, 1);
                         for (const NumVar &x: coeff.vars()) {
                             if (!keep(x)) {
-                                if (dependencies.find(x) == dependencies.end()) {
+                                if (!dependencies.contains(x)) {
                                     // we found a tmp variable in coeff which has not yet been marked as dependency
                                     dep = x;
                                 }
@@ -49,20 +49,20 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
     dependencies.erase(N);
 }
 
-const std::set<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDependency(const ExprSubs &subs, const BoolExpr guard) const {
+const std::vector<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDependency(const ExprSubs &subs, const BoolExpr guard) const {
     VarSet vars = guard->vars();
     for (auto it = dependencies.begin(); it != dependencies.end(); ++it) {
-        if (vars.find(*it) == vars.end()) {
+        if (!vars.contains(*it)) {
             continue;
         }
         Bounds bounds;
         guard->getBounds(*it, bounds);
-        std::set<std::pair<ExprSubs, BoolExpr>> res;
+        std::vector<std::pair<ExprSubs, BoolExpr>> res;
         for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
             for (const auto &b: bb) {
                 if (b.expand().isGround()) {
                     Subs newSubs = Subs::build<IntTheory>(*it, b);
-                    res.insert({subs.compose(newSubs.get<IntTheory>()), guard->subs(newSubs)});
+                    res.push_back({subs.compose(newSubs.get<IntTheory>()), guard->subs(newSubs)});
                 }
             }
         }
@@ -76,9 +76,9 @@ const std::set<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDependency
 void VarEliminator::eliminateDependencies() {
     while (!todoDeps.empty()) {
         const std::pair<ExprSubs, BoolExpr> current = todoDeps.top();
-        const std::set<std::pair<ExprSubs, BoolExpr>> &res = eliminateDependency(current.first, current.second);
+        const std::vector<std::pair<ExprSubs, BoolExpr>> &res = eliminateDependency(current.first, current.second);
         if (res.empty()) {
-            todoN.insert(current);
+            todoN.push_back(current);
         }
         todoDeps.pop();
         for (const auto &p: res) {
@@ -126,6 +126,6 @@ void VarEliminator::eliminate() {
     }
 }
 
-const std::set<ExprSubs> VarEliminator::getRes() const {
+const linked_hash_set<ExprSubs> VarEliminator::getRes() const {
     return res;
 }

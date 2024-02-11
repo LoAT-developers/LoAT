@@ -13,11 +13,18 @@ class AccelerationProblem {
 
 public:
 
+    enum class PolyAccelMode {
+        None, LowDegree, Full
+    };
+
+    static PolyAccelMode polyaccel;
+
     struct Accelerator {
-        std::vector<BoolExpr> formula;
-        Proof proof;
-        std::vector<BoolExpr> covered;
+        std::vector<BoolExpr> formula{};
+        Proof proof{};
+        std::vector<BoolExpr> covered{};
         bool nonterm {true};
+        bool prependFirst {false};
     };
 
 private:
@@ -26,10 +33,10 @@ private:
     Subs update;
     BoolExpr guard;
     const AccelConfig config;
-    LitSet todo;
-    Accelerator res;
+    LitSet todo {};
+    Accelerator res {};
     const std::optional<Subs> &samplePoint;
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver;
+    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {};
 
     bool trivial(const Lit &lit);
     bool unchanged(const Lit &lit);

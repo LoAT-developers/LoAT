@@ -45,24 +45,16 @@ LocationIdx ITSProblem::getSink() const {
     return sink;
 }
 
-const std::set<Rule>& ITSProblem::getAllTransitions() const {
+const linked_hash_set<Rule>& ITSProblem::getAllTransitions() const {
     return rules;
 }
 
-std::set<TransIdx> ITSProblem::getSuccessors(const TransIdx loc) const {
-    std::set<TransIdx> res;
-    for (const auto &idx: graph.getSuccessors(loc)) {
-        res.insert(idx);
-    }
-    return res;
+linked_hash_set<TransIdx> ITSProblem::getSuccessors(const TransIdx loc) const {
+    return graph.getSuccessors(loc);
 }
 
-std::set<TransIdx> ITSProblem::getPredecessors(const TransIdx loc) const {
-    std::set<TransIdx> res;
-    for (const auto &idx: graph.getPredecessors(loc)) {
-        res.insert(idx);
-    }
-    return res;
+linked_hash_set<TransIdx> ITSProblem::getPredecessors(const TransIdx loc) const {
+    return graph.getPredecessors(loc);
 }
 
 bool ITSProblem::areAdjacent(const TransIdx first, const TransIdx second) const {
@@ -77,7 +69,7 @@ void ITSProblem::removeRule(TransIdx transition) {
     rules.erase(*transition);
 }
 
-TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const std::set<TransIdx> &preds, const std::set<TransIdx> &succs) {
+TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const linked_hash_set<TransIdx> &preds, const linked_hash_set<TransIdx> &succs) {
     const auto idx {&*rules.emplace(rule).first};
     startAndTargetLocations.emplace(idx, std::pair<LocationIdx, LocationIdx>(start, target));
     graph.addNode(idx, preds, succs, start == target);
@@ -113,7 +105,7 @@ TransIdx ITSProblem::addQuery(const BoolExpr &guard, const TransIdx same_preds) 
 TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
     const auto target_opt = getRhsLoc(rule);
     const auto target = target_opt ? *target_opt : start;
-    std::set<TransIdx> preds, succs;
+    linked_hash_set<TransIdx> preds, succs;
     for (const auto &e: startAndTargetLocations) {
         if (e.second.first == target) {
             succs.insert(e.first);
@@ -127,7 +119,7 @@ TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
 
 TransIdx ITSProblem::replaceRule(const TransIdx toReplace, const Rule &replacement) {
     const auto idx {&*rules.emplace(replacement).first};
-    startAndTargetLocations.emplace(idx, startAndTargetLocations.at(toReplace));
+    startAndTargetLocations.emplace(idx, startAndTargetLocations[toReplace]);
     startAndTargetLocations.erase(toReplace);
     graph.replaceNode(toReplace, idx);
     if (isInitialTransition(toReplace)) {
@@ -158,12 +150,8 @@ LocationIdx ITSProblem::addNamedLocation(std::string name) {
     return loc;
 }
 
-set<LocationIdx> ITSProblem::getLocations() const {
+linked_hash_set<LocationIdx> ITSProblem::getLocations() const {
     return locations;
-}
-
-const std::map<LocationIdx, std::string>& ITSProblem::getLocationNames() const {
-    return locationNames;
 }
 
 std::optional<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) const {
@@ -196,13 +184,7 @@ void ITSProblem::print(std::ostream &s) const {
 }
 
 Expr ITSProblem::getCost(const Rule &rule) const {
-    const auto up {rule.getUpdate().get<IntTheory>()};
-    const auto it {up.find(cost)};
-    if (it == up.end()) {
-        return 0;
-    } else {
-        return it->second - cost;
-    }
+    return rule.getUpdate().get<IntTheory>(cost) - cost;
 }
 
 NumVar ITSProblem::getCostVar() const {
@@ -210,28 +192,27 @@ NumVar ITSProblem::getCostVar() const {
 }
 
 std::optional<LocationIdx> ITSProblem::getRhsLoc(const Rule &rule) const {
-    const auto up = rule.getUpdate().get<IntTheory>();
-    const auto it = up.find(NumVar::loc_var);
-    if (it == up.end()) {
-        return {};
+    const auto res {rule.getUpdate().get<IntTheory>(NumVar::loc_var)};
+    if (res.isInt()) {
+        return res.toNum().to_int();
     } else {
-        return it->second.toNum().to_int();
+        return {};
     }
 }
 
 LocationIdx ITSProblem::getLhsLoc(const TransIdx idx) const {
-    return startAndTargetLocations.at(idx).first;
+    return startAndTargetLocations[idx].first;
 }
 
 LocationIdx ITSProblem::getRhsLoc(const TransIdx idx) const {
-    return startAndTargetLocations.at(idx).second;
+    return startAndTargetLocations[idx].second;
 }
 
-const std::set<TransIdx>& ITSProblem::getInitialTransitions() const {
+const linked_hash_set<TransIdx>& ITSProblem::getInitialTransitions() const {
     return initialTransitions;
 }
 
-const std::set<TransIdx>& ITSProblem::getSinkTransitions() const {
+const linked_hash_set<TransIdx>& ITSProblem::getSinkTransitions() const {
     return sinkTransitions;
 }
 
@@ -240,18 +221,18 @@ bool ITSProblem::isSimpleLoop(const TransIdx idx) const {
 }
 
 bool ITSProblem::isSinkTransition(const TransIdx idx) const {
-    return sinkTransitions.find(idx) != sinkTransitions.end();
+    return sinkTransitions.contains(idx);
 }
 
 bool ITSProblem::isInitialTransition(const TransIdx idx) const {
-    return initialTransitions.find(idx) != initialTransitions.end();
+    return initialTransitions.contains(idx);
 }
 
 const ITSProblem::DG& ITSProblem::getDependencyGraph() const {
     return graph;
 }
 
-std::set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph() {
+linked_hash_set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph() {
     const auto is_edge = [](const TransIdx fst, const TransIdx snd){
         return SmtFactory::check(Chaining::chain(*fst, *snd).first.getGuard()) == Sat;
     };
@@ -328,15 +309,13 @@ const Clause ITSProblem::clauseFrom(const LocationIdx lhs_loc, const LocationIdx
     std::vector<BoolExpr> guard_conj = { guard_without_loc_var };
     std::vector<Var> rhs_args;
     for (const Var &var: prog_vars) {
-        auto it = update.find(var);
-
-        if (it == update.end()) { 
+        if (!update.contains(var)) { 
             // If `var` is not contained in `update` it's implicitly mapped to itself,
             // i.e. `update` does not change the value of `var`. Thus, we add `var` 
             // directly into `rhs_args`.
             rhs_args.push_back(var);
         } else {
-            const auto optional_var = expr::toVar(expr::second(*it));
+            const auto optional_var = expr::toVar(update.get(var));
 
             if (optional_var.has_value()) {
                 rhs_args.push_back(optional_var.value());
@@ -349,7 +328,7 @@ const Clause ITSProblem::clauseFrom(const LocationIdx lhs_loc, const LocationIdx
     }
 
     const auto final_guard = BExpression::buildAnd(guard_conj)->simplify();
-    const auto rhs_pred_name = getLocationNames().at(rhs_loc);
+    const auto rhs_pred_name = getPrintableLocationName(rhs_loc);
 
     const std::optional<FunApp> rhs = rhs_loc == getSink() 
         ? std::optional<FunApp>() 
@@ -360,7 +339,7 @@ const Clause ITSProblem::clauseFrom(const LocationIdx lhs_loc, const LocationIdx
         return Clause({}, rhs, final_guard).normalize();
     } else {
         // rule is a linear CHC with exactly one LHS predicates, ie a "rule"
-        const auto lhs_pred_name = getLocationNames().at(lhs_loc);
+        const auto lhs_pred_name = getPrintableLocationName(lhs_loc);
         return Clause({ FunApp(lhs_pred_name, prog_vars) }, rhs, final_guard).normalize();  
     }
 }
@@ -388,7 +367,7 @@ void ITSProblem::addClause(const Clause &c) {
     // If the clause is linear, extract the single LHS predicate. Or in case there are zero
     // LHS predicates, construct a dummy predicate with the initial ITS location as the 
     // predicate symbol.
-    const auto initial_loc_name = getLocationNames().at(getInitialLocation());
+    const auto initial_loc_name = getPrintableLocationName(getInitialLocation());
     const FunApp lhs = c.lhs.size() == 1 ? *c.lhs.begin() : FunApp(initial_loc_name, {});
 
     const std::vector<Var> rhs_args = c.rhs.has_value() 

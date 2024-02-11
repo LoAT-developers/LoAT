@@ -1,4 +1,3 @@
-#include "rule.hpp"
 #include "theory.hpp"
 #include "types.hpp"
 #include <vector>

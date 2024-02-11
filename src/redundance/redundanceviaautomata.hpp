@@ -3,7 +3,7 @@
 #include "theory.hpp"
 #include "rule.hpp"
 
-#include <libfaudes.h>
+#include <faudes/libfaudes.h>
 
 class Automaton {
 
@@ -12,8 +12,8 @@ class Automaton {
     static long next_char;
     static Automaton covered;
     static Automaton accelerated;
-    faudes::Generator t;
-    std::string str;
+    faudes::Generator t {};
+    std::string str {};
 
 public:
 
@@ -35,6 +35,16 @@ public:
 
 };
 
+template<>
+struct std::hash<std::pair<TransIdx, Guard>> {
+    std::size_t operator()(const std::pair<TransIdx, Guard>& x) const noexcept {
+        std::size_t seed {0};
+        boost::hash_combine(seed, x.first);
+        boost::hash_combine(seed, x.second);
+        return seed;
+    }
+};
+
 class RedundanceViaAutomata {
 
 public:
@@ -53,8 +63,17 @@ public:
 
 private:
 
-    long next_char;
-    std::map<std::pair<TransIdx, Guard>, Automaton> alphabet;
-    std::map<TransIdx, Automaton> regexes;
+    long next_char {0};
+    std::unordered_map<std::pair<TransIdx, Guard>, Automaton> alphabet {};
+    std::unordered_map<TransIdx, Automaton> regexes {};
 
 };
+
+template<>
+struct std::hash<Automaton> {
+    std::size_t operator()(const Automaton& x) const noexcept {
+        return std::hash<std::string>()(x.to_string());
+    }
+};
+
+bool operator==(const Automaton &x, const Automaton &y);

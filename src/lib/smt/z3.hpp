@@ -5,8 +5,8 @@
 #include "exprtosmt.hpp"
 #include "thset.hpp"
 
-template <ITheory... Th>
-class Z3 : public Smt<Th...> {
+template <class Ctx, ITheory... Th>
+class Z3Base : public Smt<Th...> {
 
     using TheTheory = Theory<Th...>;
     using BoolExpr = BExpr<Th...>;
@@ -14,9 +14,6 @@ class Z3 : public Smt<Th...> {
     using Lit = typename TheTheory::Lit;
 
 public:
-    Z3(unsigned timeout): timeout(timeout), ctx(z3Ctx), solver(z3Ctx) {
-        updateParams();
-    }
 
     void add(const BExpr<Th...> e) override {
         solver.add(ExprToSmt<z3::expr, Th...>::convert(e, ctx));
@@ -36,30 +33,29 @@ public:
         // std::cerr << "==============================" << std::endl;
 
         switch (solver.check()) {
-        case z3::sat: return Sat;
         case z3::unsat: return Unsat;
         case z3::unknown: return Unknown;
+        case z3::sat: return Sat;
         }
-        throw std::logic_error("unknown result");
+        throw std::logic_error("unknown result from SMT solver");
     }
 
     Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
-        assert(models);
         const z3::model &m = solver.get_model();
         Model<Th...> res;
-        const auto add = [&res, this, &m](const auto &p) {
+        const auto add = [&res, this, &m](const auto &x, const auto &y) {
             if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
-                if (std::holds_alternative<NumVar>(p.first)) {
-                    NumVar var = std::get<NumVar>(p.first);
-                    Num val = getRealFromModel(m, p.second);
+                if (std::holds_alternative<NumVar>(x)) {
+                    NumVar var = std::get<NumVar>(x);
+                    Num val = getRealFromModel(m, y);
                     res.template put<IntTheory>(var, val);
                     return;
                 }
             }
             if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
-                if (std::holds_alternative<BoolVar>(p.first)) {
-                    BoolVar var = std::get<BoolVar>(p.first);
-                    switch (m.eval(p.second).bool_value()) {
+                if (std::holds_alternative<BoolVar>(x)) {
+                    BoolVar var = std::get<BoolVar>(x);
+                    switch (m.eval(y).bool_value()) {
                     case Z3_L_FALSE:
                         res.template put<BoolTheory>(var, false);
                         break;
@@ -76,52 +72,52 @@ public:
         const auto map = ctx.getSymbolMap();
         if (vars) {
             for (const auto &x: *vars) {
-                const auto it = map.find(x);
-                if (it != map.end()) {
-                    add(*it);
+                const auto res {map.get(x)};
+                if (res) {
+                    add(x, *res);
                 }
             }
         } else {
-            for (const auto &p: map) {
-                add(p);
+            for (const auto &[x, y]: map) {
+                add(x, y);
             }
         }
         return res;
     }
 
-    void setTimeout(unsigned int timeout) override {
-        this->timeout = timeout;
-        updateParams();
-    }
-
     void enableModels() override {
-        this->models = true;
-        updateParams();
+        solver.set("model", true);
     }
 
     void resetSolver() override {
         solver.reset();
-        updateParams();
     }
 
-    ~Z3() override {}
+    ~Z3Base() override {}
 
     std::ostream& print(std::ostream& os) const override {
         return os << solver;
     }
 
-    void setSeed(unsigned seed) override {
-        this->seed = seed;
-        updateParams();
+    void randomize(unsigned seed) override {
+        solver.set("random_seed", seed);
+        solver.set("sat.random_seed", seed);
+        solver.set("seed", seed);
+        solver.set("nlsat.seed", seed);
     }
 
-private:
-    bool models = false;
-    unsigned int timeout;
-    z3::context z3Ctx;
-    Z3Context ctx;
+protected:
+    z3::context z3Ctx{};
+    Ctx ctx;
     z3::solver solver;
-    unsigned seed = 42u;
+
+    Z3Base(): ctx(z3Ctx), solver(z3Ctx) {
+        solver.set("random_seed", 42u);
+        solver.set("sat.random_seed", 42u);
+        solver.set("seed", 42u);
+        solver.set("nlsat.seed", 42u);
+        solver.set("rlimit", 10000000u);
+    }
 
     Num getRealFromModel(const z3::model &model, const z3::expr &symbol) {
         return Num(Z3_get_numeral_string(
@@ -136,15 +132,13 @@ private:
                             model.eval(symbol, true))));
     }
 
-    void updateParams() {
-        z3::params params(z3Ctx);
-        params.set(":model", models);
-        if (timeout > 0) {
-            params.set(":timeout", timeout);
-        }
-        params.set(":seed", seed);
-        params.set(":random_seed", seed);
-        solver.set(params);
-    }
+};
+
+template <ITheory... Th>
+class Z3: public Z3Base<Z3Context, Th...> {
+
+public:
+
+    Z3(): Z3Base<Z3Context, Th...>() {}
 
 };

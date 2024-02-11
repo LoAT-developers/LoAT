@@ -17,7 +17,7 @@ class Subs {
     using It = typename TheTheory::Iterator;
     using Expr = typename TheTheory::Expression;
 
-    typename TheTheory::Subs t;
+    typename TheTheory::Subs t {};
     static const size_t variant_size = std::variant_size_v<Expr>;
 
 public:
@@ -136,7 +136,7 @@ public:
 
         const Subs &subs;
         It ptr;
-        std::optional<Pair> current;
+        std::optional<Pair> current{};
 
     };
 
@@ -182,24 +182,6 @@ public:
         Subs res;
         projectImpl(res, vars);
         return Subs(res);
-    }
-
-private:
-
-    template<std::size_t I = 0>
-    inline void setminusImpl(Subs& res, const VS &vars) const {
-        if constexpr (I < sizeof...(Th)) {
-            std::get<I>(res.t) = std::get<I>(t).setminus(vars.template get<I>());
-            setminusImpl<I+1>(res, vars);
-        }
-    }
-
-public:
-
-    Subs setminus(const VS &vars) const {
-        Subs res;
-        setminusImpl(res, vars);
-        return res;
     }
 
 private:
@@ -436,32 +418,23 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline Iterator findImpl(const Var &var) const {
+    inline bool containsImpl(const Var &var) const {
         if constexpr (I < sizeof...(Th)) {
             if (var.index() == I) {
                 const auto &subs = std::get<I>(t);
-                const auto &it = subs.find(std::get<I>(var));
-                if (it == subs.end()) {
-                    return end();
-                } else {
-                    return Iterator(*this, it);
-                }
+                return subs.contains(std::get<I>(var));
             } else {
-                return findImpl<I+1>(var);
+                return containsImpl<I+1>(var);
             }
         } else {
-            return end();
+            return false;
         }
     }
 
 public:
 
-    Iterator find(const Var &var) const {
-        return findImpl(var);
-    }
-
     bool contains(const Var &var) const {
-        return find(var) != end();
+        return containsImpl(var);
     }
 
     size_t size() const {
@@ -480,7 +453,7 @@ public:
         return std::apply([](const auto&... x){return (true && ... && x.isPoly());}, t);
     }
 
-    std::strong_ordering operator<=>(const Subs &that) const = default;
+    bool operator==(const Subs &that) const = default;
 
     template <ITheory T>
     typename T::Subs& get() {
