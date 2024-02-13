@@ -21,7 +21,7 @@ AccelerationProblem::AccelerationProblem(
         todo.insert(l);
     }
     const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
-    Logic logic {Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({todo}, subs)};
+    const auto logic {Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver<IntTheory, BoolTheory>(logic);
     if (closed) {
         const auto bound {BExpression::buildTheoryLit(Rel(config.n, Rel::geq, 1))};
@@ -295,7 +295,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     if (c->isTriviallyFalse() || (samplePoint && !c->subs(*samplePoint)->isTriviallyTrue())) {
         return false;
     }
-    BoolExpr g {c & lit};
+    const auto g {c & lit};
     solver->push();
     solver->add(g);
     if (solver->check() == Sat) {

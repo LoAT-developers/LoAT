@@ -11,7 +11,7 @@ class BMC {
 
 private:
 
-    BMC(ITSProblem &its);
+    explicit BMC(ITSProblem &its);
 
     void analyze();
 

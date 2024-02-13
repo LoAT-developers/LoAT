@@ -18,7 +18,7 @@ class ABMC {
 
 private:
 
-    ABMC(ITSProblem &its);
+    explicit ABMC(ITSProblem &its);
 
     void analyze();
 

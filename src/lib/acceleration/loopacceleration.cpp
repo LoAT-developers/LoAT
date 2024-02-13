@@ -39,7 +39,7 @@ LoopAcceleration::LoopAcceleration(
     this->rule = rule.withUpdate(up);
 }
 
-const std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
+std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     auto changed {false};
     auto res {rule};
     unsigned period {1};

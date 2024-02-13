@@ -15,7 +15,7 @@ private:
     // internal struct for the return value of getComplexity()
     struct ComplexityResult {
         ComplexityResult()
-            : complexity(), upperBound(0), lowerBound(0), inftyVars(0) {
+            : upperBound(0), lowerBound(0), inftyVars(0) {
         }
 
         ExprSubs solution{};
@@ -54,7 +54,6 @@ private:
     bool trySubstitutingVariable();
     bool trySmtEncoding(Complexity currentRes);
 
-private:
     const Guard guard;
     const Expr cost;
     bool finalCheck;
@@ -91,7 +90,7 @@ public:
         Proof proof{};
 
         explicit Result(Complexity c) : cpx(c), solvedCost(0), inftyVars(0) {}
-        Result(Complexity c, Expr x, int v, Proof proof) : cpx(c), solvedCost(x), inftyVars(v), proof(proof) {}
+        Result(Complexity c, const Expr &x, int v, Proof &proof) : cpx(c), solvedCost(x), inftyVars(v), proof(proof) {}
     };
 
     /**

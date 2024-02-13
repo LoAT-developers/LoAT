@@ -69,7 +69,7 @@ ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its) {
 
 ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
     ResultViaSideEffects res;
-    bool changed;
+    bool changed {false};
     do {
         changed = false;
         for (const auto &first: its.getAllTransitions()) {

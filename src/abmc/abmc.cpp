@@ -27,11 +27,10 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
 }
 
 bool ends_with_square(const std::vector<int> &w) {
-    const auto it {w.rbegin()};
+    const auto start {w.rbegin()};
     const auto size {w.size()};
     const auto max_length {size / 2};
-    auto start {it};
-    auto end {it};
+    auto end {start};
     for (auto length = 1u; length <= max_length; ++length) {
         ++end;
         if (std::equal(start, end, end)) {
@@ -97,7 +96,7 @@ int ABMC::get_language(unsigned i) {
 std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
-    for (int i = trace.size() - 1; i >= backlink; --i) {
+    for (long i = trace.size() - 1; i >= backlink; --i) {
         const auto imp {trace[i]};
         const auto rule {imp.first
                             ->withGuard(imp.second)
@@ -136,7 +135,7 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     const auto not_covered {!loop.covered->subs(s)};
     pre.insert(BExpression::buildTheoryLit(Rel::buildEq(s.get<IntTheory>(trace_var), (*shortcut)->getId())));
     pre.insert(not_covered);
-    unsigned long length {depth - backlink + 1};
+    const auto length {depth - backlink + 1};
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 1)};
@@ -198,7 +197,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         }
     };
     if (Config::Analysis::tryNonterm() && !nonterm_cache.contains(lang)) {
-        AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
+        const AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
         const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};
         nonterm_to_query(*simp, accel_res);
         nonterm_cache.emplace(lang);
@@ -216,7 +215,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             RuleExport::printRule(*simp, std::cout);
             std::cout << std::endl;
         }
-        AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
+        const AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
         const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};
         nonterm_to_query(*simp, accel_res);
         if (accel_res.accel) {
@@ -266,7 +265,7 @@ BoolExpr ABMC::encode_transition(const TransIdx idx) {
 }
 
 void ABMC::unknown() {
-    const auto str = Config::Analysis::reachability() ? "unknowne" : "MAYBE";
+    const auto str = Config::Analysis::reachability() ? "unknown" : "MAYBE";
     std::cout << str << std::endl;
     proof.result(str);
     proof.print();
