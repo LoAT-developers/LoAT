@@ -4,6 +4,7 @@
 #include <string>
 
 #include "rule.hpp"
+#include "transition.hpp"
 
 
 namespace RuleExport {
@@ -15,6 +16,8 @@ void printColor(std::ostream &os, const std::string &s);
      * Note that colors are only used if colors is true and Config::Output::ColorInIts is true
      */
 void printRule(const Rule &rule, std::ostream &s, bool colors = true);
+
+void printTransition(const Transition &rule, std::ostream &s, bool colors = true);
 
 /**
      * Prints the given guard in a readable format (constraints separated by &&)

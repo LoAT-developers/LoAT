@@ -19,9 +19,11 @@
 
 #include "rule.hpp"
 #include "ruleresult.hpp"
+#include "transition.hpp"
 
 namespace Preprocess {
 
     RuleResult preprocessRule(const Rule &rule);
+    ResultBase<Transition, Proof> preprocessTransition(const Transition &trans);
 
 }

@@ -19,9 +19,12 @@
 
 #include "itsresult.hpp"
 #include "itsproblem.hpp"
+#include "safetyproblem.hpp"
 
 namespace Preprocess {
 
-    ResultViaSideEffects preprocess(ITSProblem &its);
+ResultViaSideEffects preprocess(ITSProblem &its);
+
+Result<SafetyProblem> preprocess(const SafetyProblem &);
 
 }
