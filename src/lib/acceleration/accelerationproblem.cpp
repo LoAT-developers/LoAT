@@ -180,6 +180,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
             res.proof.newline();
             res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
             res.nonterm = false;
+            res.prependFirst |= closed->prefix > 0;
         }
     }
     solver->pop();
