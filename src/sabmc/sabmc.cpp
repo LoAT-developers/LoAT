@@ -5,8 +5,31 @@
 #include "rulepreprocessing.hpp"
 #include "config.hpp"
 #include "dependencygraph.hpp"
-#include "ruleexport.hpp"
 #include "recurrence.hpp"
+
+Range::Range(const unsigned s, const unsigned e): s(s), e(e) {}
+
+unsigned Range::start() const {
+    return s;
+}
+
+unsigned Range::end() const {
+    return e;
+}
+
+unsigned Range::length() const {
+    return e - s + 1;
+}
+
+Range Range::from_length(const unsigned start, const unsigned length) {
+    return Range(start, start + length - 1);
+}
+
+Range Range::from_interval(const unsigned start, const unsigned end) {
+    return Range(start, end);
+}
+
+SABMC::Loop::Loop(const BoolExpr trans, const unsigned length, const unsigned id): trans(trans), length(length), id(id) {}
 
 SABMC::SABMC(SafetyProblem &t):
     t(t),
@@ -38,20 +61,22 @@ std::pair<Transition, Subs> SABMC::build_loop(const Range &range) {
         const auto imp {trace[i]};
         const auto rule {imp.subs(Subs::build<IntTheory>(n, get_subs(i, 1).get<IntTheory>(n)))};
         if (loop) {
-            const auto [chained, sigma] {Chaining::chain(rule, *loop)};
+            const auto [chained, sigma1, sigma2] {Chaining::chain(rule, *loop)};
             loop = chained;
-            var_renaming = expr::compose(sigma, var_renaming);
+            const auto fst_var_renaming {expr::compose(sigma1, get_subs(i, 1).project(rule.vars()))};
+            const auto snd_var_renaming {expr::compose(sigma2, var_renaming)};
+            var_renaming = expr::compose(fst_var_renaming, snd_var_renaming);
         } else {
             loop = rule;
+            var_renaming = expr::compose(get_subs(i, 1).project(rule.vars()),  var_renaming);
         }
-        var_renaming = expr::compose(get_subs(i, 1).project(rule.vars()), var_renaming);
     }
     auto vars {loop->vars()};
     expr::collectCoDomainVars(var_renaming, vars);
     const auto model {expr::compose(var_renaming, solver->model(vars).toSubs())};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << range.length() << ":" << std::endl;
-        RuleExport::printTransition(*loop, std::cout);
+        std::cout << *loop << std::endl;
         std::cout << std::endl;
     }
     return {*loop, model};
@@ -151,7 +176,7 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
             }
         }
     } while (changed);
-    const auto rec {Recurrence::solve(Subs(up, BoolSubs<IntTheory, BoolTheory>()), n)};
+    const auto rec {Recurrence::solve(Subs::build<IntTheory>(up), n)};
     std::pair<NondetSubs, unsigned> res;
     if (rec) {
         for (const auto &[x,_]: update) {
@@ -168,7 +193,7 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
     return res;
 }
 
-linked_hash_map<BoolVar, bool> SABMC::value_selection(const Transition &trans, const Subs &model) const {
+linked_hash_map<BoolVar, bool> SABMC::value_selection(const Subs &model) const {
     linked_hash_map<BoolVar, bool> res;
     for (const auto &x: t.post_vars()) {
         if (std::holds_alternative<BoolVar>(x)) {
@@ -319,7 +344,7 @@ void SABMC::handle_loop(const Range &range) {
     auto simp {Preprocess::preprocessTransition(loop)};
     const auto sip_res {simp->syntacticImplicant(model)};
     const auto mbp_res {mbp(sip_res, model)};
-    const auto bool_update {value_selection(mbp_res, model)};
+    const auto bool_update {value_selection(model)};
     const auto int_update {bound_selection(mbp_res, model)};
     const auto cp {closed_form(int_update, model)};
     const auto closed {cp.first};
@@ -340,7 +365,7 @@ void SABMC::handle_loop(const Range &range) {
     }
     for (const auto &[x,p]: int_update) {
         const auto &[lower, upper] {p};
-        const auto post_var {std::get<NumVar>(t.vars()[x])};
+        const auto post_var {std::get<NumVar>(t.vars()->at(x))};
         if (lower) {
             res.push_back(BExpression::buildTheoryLit(Rel::buildLeq(*lower, post_var)));
         }
@@ -349,7 +374,7 @@ void SABMC::handle_loop(const Range &range) {
         }
     }
     for (const auto &[x,b]: bool_update) {
-        res.push_back(BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(t.vars()[x]), b)));
+        res.push_back(BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(t.vars()->at(x)), b)));
     }
     std::vector<BoolExpr> disj;
     disj.push_back(BExpression::buildAnd(res));
@@ -360,11 +385,11 @@ void SABMC::handle_loop(const Range &range) {
         auto chained {mbp_res};
         disj.push_back(chained.toBoolExpr());
         for (unsigned i = 1; i < prefix; ++i) {
-            chained = Chaining::chain(chained, mbp_res).first;
+            chained = std::get<Transition>(Chaining::chain(chained, mbp_res));
             disj.push_back(chained.toBoolExpr());
         }
     }
-    add_learned_clause(Transition(BExpression::buildOr(disj)), range.length());
+    add_learned_clause(Transition(BExpression::buildOr(disj), t.vars()), range.length());
 }
 
 BoolExpr SABMC::encode_transition(const Transition &t) {
@@ -431,7 +456,7 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
     while (subs.size() < start + steps) {
         Subs s;
         for (const auto &var: vars) {
-            const auto &post_var {t.vars()[var]};
+            const auto &post_var {t.vars()->at(var)};
             s.put(var, subs.back()[0].get(post_var));
             s.put(post_var, expr::toExpr(expr::next(post_var)));
         }
@@ -443,7 +468,7 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
     while (pre_vec.size() < steps) {
         Subs s;
         for (const auto &var: vars) {
-            const auto &post_var {t.vars()[var]};
+            const auto &post_var {t.vars()->at(var)};
             s.put(var, pre.get(var));
             s.put(post_var, post.get(var));
         }
@@ -467,10 +492,14 @@ void SABMC::analyze() {
         }
     }
     vars = t.pre_vars();
-    rule_map.emplace(t.trans().getId(), t.trans());
+    std::vector<BoolExpr> steps;
+    for (const auto &trans: t.trans()) {
+        rule_map.emplace(trans.getId(), trans);
+        steps.push_back(encode_transition(trans));
+    }
+    step = BExpression::buildOr(steps);
     solver->add(t.init());
     solver->push();
-    step = encode_transition(t.trans());
 
     while (true) {
         const auto &s {get_subs(depth, 1)};

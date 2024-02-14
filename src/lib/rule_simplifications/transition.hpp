@@ -7,11 +7,14 @@ class Transition {
 private:
 
     BoolExpr formula;
-    std::set<std::pair<TheTheory::Expression, TheTheory::Expression>> equalities;
+    std::shared_ptr<const linked_hash_map<Var, Var>> vm;
+    unsigned id;
+
+    static unsigned next_id;
 
 public:
 
-    explicit Transition(const BoolExpr formula);
+    explicit Transition(const BoolExpr formula, std::shared_ptr<const linked_hash_map<Var, Var>> var_map);
 
     Transition subs(const Subs &subs) const;
 
@@ -19,13 +22,15 @@ public:
 
     void collectVars(VarSet &vars) const;
 
-    std::strong_ordering operator<=>(const Transition &that) const;
+    std::shared_ptr<const linked_hash_map<Var, Var>> var_map() const;
+
+    // std::strong_ordering operator<=>(const Transition &that) const;
 
     unsigned getId() const;
 
     size_t hash() const;
 
-    bool operator==(const Transition &that) const = default;
+    bool operator==(const Transition &that) const;
 
     BoolExpr toBoolExpr() const;
 

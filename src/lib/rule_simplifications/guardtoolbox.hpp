@@ -18,7 +18,9 @@
 #pragma once
 
 #include "numexpression.hpp"
-#include "ruleresult.hpp"
+#include "theory.hpp"
+#include "result.hpp"
+#include "boolsubs.hpp"
 
 #include <vector>
 
@@ -53,9 +55,9 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    RuleResult propagateEqualities(const Rule &rule, SolvingLevel level, SymbolAcceptor allow);
+    ResultBase<ExprSubs, Proof> propagateEqualities(const BoolExpr e, SolvingLevel level, const SymbolAcceptor &allow);
 
-    RuleResult propagateBooleanEqualities(const Rule &rule);
+    ResultBase<BoolSubs<IntTheory, BoolTheory>, Proof> propagateBooleanEqualities(const BoolExpr e);
 
     /**
      * Tries to replace inequalities using their transitive closure,
@@ -70,7 +72,7 @@ namespace GuardToolbox {
      *
      * @return true if any changes have been made
      */
-    RuleResult eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow);
+    ResultBase<BoolExpr, Proof> eliminateByTransitiveClosure(const BoolExpr e, bool removeHalfBounds, const SymbolAcceptor &allow);
 
     /**
      * Replaces bidirectional inequalities, e.g. x <= y, y >= x by an equality, e.g. x == y.
@@ -78,7 +80,7 @@ namespace GuardToolbox {
      * @note expensive for large guards
      * @return true iff guard was changed.
      */
-    RuleResult makeEqualities(const Rule &rule);
+    ResultBase<Guard, Proof> makeEqualities(const BoolExpr e);
 
     /**
      * Returns true iff term contains a temporary variable

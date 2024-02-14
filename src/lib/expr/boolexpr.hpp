@@ -194,6 +194,74 @@ public:
         return bounds;
     }
 
+    BE linearize(const NumVar &n) const {
+        return map([&n](const Lit &lit){
+            return std::visit(
+                Overload{
+                    [&n](const Rel &rel) {
+                        const auto ex {rel.lhs() - rel.rhs()};
+                        switch (ex.degree(n)) {
+                        case 0: return buildTheoryLit(rel);
+                        case 1:
+                            if (ex.coeff(n).isGround()) {
+                                return buildTheoryLit(rel);
+                            }
+                        default: return top();
+                        }
+                    },
+                    [](const auto &lit) {
+                        return buildTheoryLit(lit);
+                    }
+                }, lit);
+        });
+    }
+
+    BE toInfinity(const NumVar &n) const {
+        return map([&n](const Lit &lit){
+            return std::visit(
+                Overload{
+                    [&n](const Rel &rel) {
+                        const auto g {rel.toG()};
+                        const auto ex {g.lhs() - g.rhs()};
+                        const auto d {ex.degree(n)};
+                        if (d == 0) {
+                            return buildTheoryLit(rel);
+                        } else if (ex.coeff(n, d).toNum() > 0u) {
+                            return top();
+                        } else {
+                            return bot();
+                        }
+                    },
+                    [](const auto &lit) {
+                        return buildTheoryLit(lit);
+                    }
+                }, lit);
+        });
+    }
+
+    BE toMinusInfinity(const NumVar &n) const {
+        return map([&n](const Lit &lit){
+            return std::visit(
+                Overload{
+                    [&n](const Rel &rel) {
+                        const auto g {rel.toG()};
+                        const auto ex {g.lhs() - g.rhs()};
+                        const auto d {ex.degree(n)};
+                        if (d == 0) {
+                            return buildTheoryLit(rel);
+                        } else if (ex.coeff(n, d).toNum() < 0u) {
+                            return top();
+                        } else {
+                            return bot();
+                        }
+                    },
+                    [](const auto &lit) {
+                        return buildTheoryLit(lit);
+                    }
+                }, lit);
+        });
+    }
+
 private:
 
     void syntacticImplicant(Subs &subs, linked_hash_set<BE> &res) const {

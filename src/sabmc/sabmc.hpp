@@ -47,6 +47,9 @@ private:
         BoolExpr trans;
         unsigned length;
         unsigned id;
+
+        Loop(const BoolExpr trans, const unsigned length, const unsigned id);
+
     };
 
     SafetyProblem &t;
@@ -78,7 +81,7 @@ private:
 
     BoundPair bound_selection(const Transition &t, const Subs &model, const NumVar &x) const;
     NondetSubs bound_selection(const Transition &t, const Subs &model) const;
-    linked_hash_map<BoolVar, bool> value_selection(const Transition &t, const Subs &model) const;
+    linked_hash_map<BoolVar, bool> value_selection(const Subs &model) const;
     std::pair<NondetSubs, unsigned> closed_form(const NondetSubs &update, const Subs &model);
     void handle_rel(const Rel &rel, const NondetSubs &update, const NondetSubs &closed, const Subs &model, std::vector<BoolExpr> &res);
 

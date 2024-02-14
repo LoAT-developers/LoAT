@@ -30,6 +30,15 @@ public:
         return *this;
     }
 
+    template <class... Args>
+    void appendAll(const Args ...args) {
+        std::stringstream ss;
+        ([&]{
+            ss << args;
+        } (), ...);
+        proof.append(ss);
+    }
+
     void append(const std::string &s) {
         proof.append(s);
     }

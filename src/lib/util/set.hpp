@@ -108,3 +108,16 @@ template <class T>
 bool operator==(const linked_hash_set<T> &x, const linked_hash_set<T> &y) {
     return boost::multi_index::get<typename linked_hash_set<T>::hash>(x.c) == boost::multi_index::get<typename linked_hash_set<T>::hash>(y.c);
 }
+
+template<class T>
+std::ostream& operator<<(std::ostream &s, const linked_hash_set<T> &v) {
+    s << "{";
+    for (auto it = v.begin(); it != v.end(); ++it) {
+        if (it != v.begin()) {
+            s << ", ";
+        }
+        s << *it;
+    }
+    s << "}";
+    return s;
+}

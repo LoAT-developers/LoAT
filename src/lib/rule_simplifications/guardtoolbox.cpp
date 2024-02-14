@@ -16,28 +16,24 @@
  */
 
 #include "guardtoolbox.hpp"
-#include "rule.hpp"
 #include "rel.hpp"
-#include "ruleresult.hpp"
 
 #include <unordered_set>
 
 using namespace std;
 
-RuleResult GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxlevel, SymbolAcceptor allow) {
-    ExprSubs varSubs;
-    Proof proof;
-    auto success {false};
-    auto guard = rule.getGuard()->universallyValidLits();
+ResultBase<ExprSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e, SolvingLevel maxlevel, const SymbolAcceptor &allow) {
+    ResultBase<ExprSubs, Proof> res;
+    auto guard = e->universallyValidLits();
 
     for (const auto &r: guard) {
         if (std::holds_alternative<Rel>(r)) {
-            Rel rel = std::get<Rel>(r).subs(varSubs);
+            const auto rel {std::get<Rel>(r).subs(*res)};
             if (!rel.isEq()) {
                 continue;
             }
 
-            Expr target = rel.rhs() - rel.lhs();
+            const auto target {rel.rhs() - rel.lhs()};
             if (!target.isPoly()) {
                 continue;
             }
@@ -52,66 +48,47 @@ RuleResult GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxl
                     //solve target for var (result is in target)
                     auto optSolved = target.solveTermFor(var, (SolvingLevel)level);
                     if (!optSolved) continue;
-                    Expr solved = *optSolved;
+                    const auto solved {*optSolved};
 
                     //disallow replacing non-free vars by a term containing free vars
                     //could be unsound, as free vars can lead to unbounded complexity
                     if (!var.isTempVar() && containsTempVar(solved)) continue;
 
                     //extend the substitution, use concat in case var occurs on some rhs of varSubs
-                    varSubs.put(var, solved);
-                    varSubs.concatInPlace(varSubs);
+                    res->put(var, solved);
+                    res->concatInPlace(*res);
+                    res.succeed();
                     stringstream s;
                     s << "propagated equality " << var << " = " << solved;
-                    proof.append(s.str());
-                    proof.newline();
-                    success = true;
+                    res.append(s.str());
+                    res.newline();
                     goto next;
                 }
             }
         }
         next:;
     }
+    return res;
+}
 
-    //apply substitution to the entire rule
-    RuleResult res(rule);
-    if (success) {
-        Subs subs;
-        subs.get<IntTheory>() = varSubs;
-        res = rule.subs(subs);
-        res.ruleTransformationProof(rule, "Propagated Equalities", res.get());
-        res.newline();
-        res.storeSubProof(proof);
+
+ResultBase<BoolSubs<IntTheory, BoolTheory>, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr e) {
+    ResultBase<BoolSubs<IntTheory, BoolTheory>, Proof> res;
+    const auto equiv {e->impliedEqualities()};
+    if (!equiv.empty()) {
+        res = equiv.get<BoolTheory>();
+        res.append(stringstream() << "propagated equivalences: " << equiv << std::endl);
     }
     return res;
 }
 
 
-RuleResult GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
-    RuleResult res(rule);
-    Proof subproof;
-    Subs equiv;
-    do {
-        equiv = res->getGuard()->impliedEqualities();
-        if (!equiv.empty()) {
-            res = res->subs(equiv);
-            subproof.append(stringstream() << "propagated equivalences: " << equiv << std::endl);
-        }
-    } while (!equiv.empty());
-    if (res) {
-        res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
-        res.storeSubProof(subproof);
-    }
-    return res;
-}
-
-
-RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, SymbolAcceptor allow) {
-    RuleResult res(rule);
-    if (!rule.getGuard()->isConjunction()) {
+ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const BoolExpr e, bool removeHalfBounds, const SymbolAcceptor &allow) {
+    ResultBase<BoolExpr, Proof> res(e);
+    if (!e->isConjunction()) {
         return res;
     }
-    auto guard = rule.getGuard()->lits();
+    auto guard {e->lits()};
     //get all variables that appear in an inequality
     linked_hash_set<NumVar> tryVars;
     std::unordered_set<NumVar> eliminated;
@@ -147,11 +124,11 @@ RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool rem
                 if (!rel.has(var)) continue;
                 if (!rel.isIneq() || !rel.isPoly()) goto abort; // contains var, but cannot be handled
 
-                Expr target = rel.toLeq().makeRhsZero().lhs();
+                const auto target {rel.toLeq().makeRhsZero().lhs()};
                 if (!target.has(var)) continue; // might have changed, e.g. x <= x
 
                 //check coefficient and direction
-                Expr c = target.expand().coeff(var);
+                const auto c {target.expand().coeff(var)};
                 if (c != 1 && c != -1) goto abort;
                 if (c == 1) {
                     varLessThan.push_back( -(target-var) );
@@ -185,21 +162,21 @@ RuleResult GuardToolbox::eliminateByTransitiveClosure(const Rule &rule, bool rem
             }
         }
         eliminated.insert(var);
+        res.appendAll("elimiminated ", var);
         changed = true;
 
 abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (changed) {
-        res = rule.withGuard(BExpression::buildAndFromLits(guard));
-        res.ruleTransformationProof(rule, "Eliminated Temporary Variables", *res);
+        res = BExpression::buildAndFromLits(guard);
     }
     return res;
 }
 
 
-RuleResult GuardToolbox::makeEqualities(const Rule &rule) {
-    RuleResult res(rule);
-    const auto &guard = rule.getGuard()->universallyValidLits();
+ResultBase<Guard, Proof> GuardToolbox::makeEqualities(const BoolExpr e) {
+    ResultBase<Guard, Proof> res;
+    const auto guard {e->universallyValidLits()};
     vector<pair<Rel,Expr>> terms; //inequalities from the guard, with the associated index in guard
     map<Rel,pair<Rel,Expr>> matches; //maps index in guard to a second index in guard, which can be replaced by Expression
 
@@ -219,14 +196,13 @@ RuleResult GuardToolbox::makeEqualities(const Rule &rule) {
 //                    matches.emplace(prev.first, make_pair(rel, prev.second));
 //                }
 //            }
-            Expr term = rel.toLeq().makeRhsZero().lhs();
+            const auto term {rel.toLeq().makeRhsZero().lhs()};
             for (const auto &prev : terms) {
                 if ((prev.second + term).isZero()) {
                     matches.emplace(prev.first, make_pair(rel,prev.second));
                 }
             }
-            terms.push_back(make_pair(rel,term));
-            terms.push_back(make_pair(rel, term));
+            terms.emplace_back(rel, term);
         }
     }
 
@@ -235,24 +211,21 @@ RuleResult GuardToolbox::makeEqualities(const Rule &rule) {
     // Construct the new guard by keeping unmatched constraint
     // and replacing matched pairs by an equality constraint.
     // This code below mostly retains the order of the constraints.
-    Guard equalities;
     set<Rel> ignore;
     for (const auto &lit: guard) {
         if (std::holds_alternative<Rel>(lit)) {
             const auto &rel = std::get<Rel>(lit);
             //ignore multiple equalities as well as the original second inequality
-            if (ignore.count(rel) > 0) continue;
+            if (ignore.contains(rel)) continue;
 
             auto it = matches.find(rel);
             if (it != matches.end()) {
-                equalities.push_back(Rel::buildEq(it->second.second, 0));
+                res.succeed();
+                res->push_back(Rel::buildEq(it->second.second, 0));
+                res.appendAll("extracted ", it->second.second, " = 0");
                 ignore.insert(it->second.first);
             }
         }
-    }
-    if (!equalities.empty()) {
-        res.set(rule.withGuard(rule.getGuard() & BExpression::buildAndFromLits(equalities)));
-        res.ruleTransformationProof(rule, "Extracted Implied Equalities", *res);
     }
     return res;
 }

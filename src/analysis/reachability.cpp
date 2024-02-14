@@ -518,7 +518,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         }
     }
     const NumVar n {NumVar::next()};
-    AccelConfig config {
+    const AccelConfig config {
         .tryNonterm = Config::Analysis::tryNonterm(),
         .n = n};
     const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};

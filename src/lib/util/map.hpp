@@ -91,6 +91,10 @@ public:
         return boost::multi_index::get<hash>(c).find(key)->second;
     }
 
+    const T& at(const S &key) const {
+        return (*this)[key];
+    }
+
     bool contains(const S &key) const {
         auto &h {boost::multi_index::get<hash>(c)};
         return h.find(key) != h.end();

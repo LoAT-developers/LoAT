@@ -217,3 +217,21 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
     }
     return res;
 }
+
+Result<SafetyProblem> Preprocess::preprocess(const SafetyProblem &p) {
+    Result<SafetyProblem> res {p};
+    auto first {true};
+    for (const auto &t: p.trans()) {
+        const auto preproc {Preprocess::preprocessTransition(t)};
+        if (preproc) {
+            if (first) {
+                res.append("Preprocessed Transitions");
+                first = false;
+            }
+            res.succeed();
+            res->replace_transition(t, *preproc);
+            res.storeSubProof(preproc.getProof());
+        }
+    }
+    return res;
+}
