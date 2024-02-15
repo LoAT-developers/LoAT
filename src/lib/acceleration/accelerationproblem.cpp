@@ -176,11 +176,13 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         if (solver->check() == Unsat) {
             success = true;
             auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, Expr(config.n)-1))};
+            if (closed->prefix > 0) {
+                g = g & lit;
+            }
             res.formula.push_back(g);
             res.proof.newline();
             res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
             res.nonterm = false;
-            res.prependFirst |= closed->prefix > 0;
         }
     }
     solver->pop();
@@ -223,7 +225,6 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
             res.proof.newline();
             res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
             res.nonterm = false;
-            res.prependFirst |= closed->prefix > 0;
         }
     }
     solver->pop();

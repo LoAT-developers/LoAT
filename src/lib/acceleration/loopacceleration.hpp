@@ -49,6 +49,5 @@ private:
     const AccelConfig config;
     acceleration::Result res {};
     std::optional<Recurrence::Result> rec {};
-    bool prepend_first {false};
 
 };

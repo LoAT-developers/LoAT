@@ -159,17 +159,41 @@ void LoopAcceleration::accelerate() {
             res.accel = acceleration::Accel(Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form));
             res.accel->proof = accelerator->proof;
             res.accel->covered = BExpression::buildAnd(accelerator->covered);
-            prepend_first = accelerator->prependFirst;
             store_nonterm(*accelerator);
         }
     }
 }
 
 void LoopAcceleration::prepend_prefix() {
-    unsigned bound = prepend_first ? 0 : 1;
-    if (res.prefix > bound && res.accel) {
+    /*
+     * For all literals p>0 in the guard, acceleration either ensures that p>0 is satisfied before the iterations [1..n], or all of the following:
+     *
+     * (A) p>0 holds before the 1st iteration
+     * (B) p^{i-1}>0 holds for all i in [1..prefix]
+     * (C) p>0 holds before the iterations (prefix..n]
+     *
+     * (B) is meaningless, as p^{i-1} only has the intended meaning if j >= prefix, or if the loop has been executed 'prefix-j' times before.
+     *
+     * Example: If the update is x=0, then we get x^(j)=0 and prefix = 1. So if j = 0, then x^(j) = 0 != x.
+     *          However, if the loop has been executed prefix-j = 1 times before,
+     *          then we have x = 0 before applying the accelerated transition, and thus we get x^(j) = 0 = x.
+     *
+     * If prefix = 0, then we are done due to (C).
+     *
+     * If prefix = 1, then we are done due to (A) and (C).
+     *
+     * If prefix > 1, we prepend the loop 'prefix-1' times via chaining. Then the guard is satisfied before the iterations
+     * (a) [1..prefix) due to chaining,
+     * (b) prefix-1 + 1 due to (A)
+     * (c) prefix-1 + [2..prefix] due to (B), and
+     * (d) prefix-1 + (prefix..n] due to (C).
+     *
+     * For (c), note that we would need to prepend the loop 'prefix' instead of 'prefix-1' times to also cover the case prefix-1 + 1 = prefix,
+     * since then p^{0} would have the intended meaning.
+     */
+    if (res.prefix > 1 && res.accel) {
         auto prefix {rule};
-        for (unsigned i = bound + 1; i < res.prefix; ++i) {
+        for (unsigned i = 1; i < res.prefix; ++i) {
             prefix = prefix.chain(rule);
         }
         res.accel->rule = prefix.chain(res.accel->rule);

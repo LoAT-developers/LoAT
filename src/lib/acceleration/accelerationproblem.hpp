@@ -24,7 +24,6 @@ public:
         Proof proof{};
         std::vector<BoolExpr> covered{};
         bool nonterm {true};
-        bool prependFirst {false};
     };
 
 private:
