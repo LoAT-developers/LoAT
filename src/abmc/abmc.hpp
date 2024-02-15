@@ -6,13 +6,7 @@
 #include "smt.hpp"
 #include "smtfactory.hpp"
 #include "itsproof.hpp"
-
-template<>
-struct std::hash<std::vector<int>> {
-    std::size_t operator()(const std::vector<int> &x) const noexcept {
-        return boost::hash_value(x);
-    }
-};
+#include "vector.hpp"
 
 class ABMC {
 

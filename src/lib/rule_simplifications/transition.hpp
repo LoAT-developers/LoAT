@@ -6,15 +6,18 @@ class Transition {
 
 private:
 
+    static std::unordered_map<BoolExpr, Transition> cache;
     BoolExpr formula;
     std::shared_ptr<const linked_hash_map<Var, Var>> vm;
     unsigned id;
 
     static unsigned next_id;
 
+    explicit Transition(const BoolExpr formula, std::shared_ptr<const linked_hash_map<Var, Var>> var_map);
+
 public:
 
-    explicit Transition(const BoolExpr formula, std::shared_ptr<const linked_hash_map<Var, Var>> var_map);
+    static Transition build(const BoolExpr formula, std::shared_ptr<const linked_hash_map<Var, Var>> var_map);
 
     Transition subs(const Subs &subs) const;
 

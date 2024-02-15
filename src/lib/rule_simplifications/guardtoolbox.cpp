@@ -229,3 +229,71 @@ ResultBase<Guard, Proof> GuardToolbox::makeEqualities(const BoolExpr e) {
     }
     return res;
 }
+
+ResultBase<BoolExpr, Proof> _makeEqualities(const BoolExpr &e) {
+    ResultBase<BoolExpr, Proof> res {e};
+    const auto eqs {GuardToolbox::makeEqualities(e)};
+    if (eqs) {
+        res = e & BExpression::buildAndFromLits(*eqs);
+        res.append("Extracted Implied Equalities");
+        res.storeSubProof(eqs.getProof());
+    }
+    return res;
+}
+
+ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr &e) {
+    ResultBase<BoolExpr, Proof> res {e};
+    const auto subs {GuardToolbox::propagateBooleanEqualities(e)};
+    if (subs) {
+        res = e->subs(Subs::build<BoolTheory>(*subs));
+        res.append("Propagated Equivalences");
+        res.storeSubProof(subs.getProof());
+    }
+    return res;
+}
+
+ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, SolvingLevel maxlevel, const GuardToolbox::SymbolAcceptor &allow) {
+    ResultBase<BoolExpr, Proof> res {e};
+    const auto subs {GuardToolbox::propagateEqualities(e, maxlevel, allow)};
+    if (subs) {
+        res = e->subs(Subs::build<IntTheory>(*subs));
+        res.append("Extracted Implied Equalities");
+        res.storeSubProof(subs.getProof());
+    }
+    return res;
+}
+
+ResultBase<BoolExpr, Proof> GuardToolbox::eliminateTempVars(const BoolExpr &e, const SymbolAcceptor &allow) {
+    ResultBase<BoolExpr, Proof> res(e);
+
+    //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
+    res.concat(_makeEqualities(*res));
+    res.fail(); // *just* finding implied equalities does not suffice for success
+
+    res.concat(_propagateBooleanEqualities(*res));
+
+    //try to remove all remaining temp variables (we do 2 steps to prioritize removing vars from the update)
+    res.concat(_propagateEqualities(*res, ResultMapsToInt, allow));
+
+    BoolExpr simplified = (*res)->simplify();
+    if (simplified != *res) {
+        res = simplified;
+        res.append("Simplified Formula");
+    }
+
+    //now eliminate a <= x and replace a <= x, x <= b by a <= b for all free variables x where this is sound
+    //(not sound if x appears in update or cost, since we then need the value of x)
+    res.concat(GuardToolbox::eliminateByTransitiveClosure(*res, true, allow));
+    return res;
+}
+
+ResultBase<BoolExpr, Proof> GuardToolbox::preprocessFormula(const BoolExpr &e, const SymbolAcceptor &allow) {
+    ResultBase<BoolExpr, Proof> res {e};
+    auto changed {false};
+    do {
+        auto tmp {eliminateTempVars(*res, allow)};
+        changed = bool(tmp);
+        res.concat(tmp);
+    } while (changed);
+    return res;
+}

@@ -2,6 +2,7 @@
 
 #include "transition.hpp"
 #include "theory.hpp"
+#include "itsproblem.hpp"
 
 class SafetyProblem {
 
@@ -14,13 +15,17 @@ class SafetyProblem {
 
 public:
 
+    SafetyProblem(const ITSProblem &its);
+
     const linked_hash_set<Transition> &trans() const;
-    std::shared_ptr<const linked_hash_map<Var, Var>> vars() const;
+    std::shared_ptr<const linked_hash_map<Var, Var>> var_map() const;
     void replace_transition(const Transition &old_trans, const Transition &new_trans);
     const VarSet& pre_vars() const;
     const VarSet& post_vars() const;
+    VarSet vars() const;
     BoolExpr init() const;
     BoolExpr err() const;
+    void set_init(const BoolExpr e);
 
 };
 

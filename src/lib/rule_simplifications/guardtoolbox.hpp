@@ -92,4 +92,8 @@ namespace GuardToolbox {
         });
     }
 
+    ResultBase<BoolExpr, Proof> eliminateTempVars(const BoolExpr &trans, const SymbolAcceptor &allow);
+
+    ResultBase<BoolExpr, Proof> preprocessFormula(const BoolExpr &e, const SymbolAcceptor &allow);
+
 }

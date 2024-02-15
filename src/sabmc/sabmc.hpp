@@ -9,12 +9,6 @@
 #include "dependencygraph.hpp"
 #include "map.hpp"
 
-template<>
-struct std::hash<std::vector<int>> {
-    std::size_t operator()(const std::vector<int> &x) const noexcept {
-        return boost::hash_value(x);
-    }
-};
 
 class Range {
     unsigned s;
@@ -57,12 +51,14 @@ private:
     std::vector<std::vector<Subs>> subs {{Subs::Empty}};
     std::vector<Transition> trace {};
     std::vector<Loop> blocked {};
+    linked_hash_map<Var, Var> var_map {};
+    linked_hash_map<Var, Var> inverse_var_map {};
     VarSet vars {};
     linked_hash_map<NumVar, NumVar> lower_vars;
     linked_hash_map<NumVar, NumVar> upper_vars;
     std::unordered_map<unsigned, Transition> rule_map {};
-    const NumVar trace_var;
-    NumVar n {NumVar::next()};
+    const NumVar trace_var {NumVar::next()};
+    const NumVar n {NumVar::next()};
     Proof proof {};
     DependencyGraph<Transition> dependency_graph {};
     unsigned depth {0};
@@ -79,6 +75,7 @@ private:
     void build_trace();
     const Subs& get_subs(const unsigned start, const unsigned steps);
 
+    Transition mbp(const Transition &trans, const Subs &model) const;
     BoundPair bound_selection(const Transition &t, const Subs &model, const NumVar &x) const;
     NondetSubs bound_selection(const Transition &t, const Subs &model) const;
     linked_hash_map<BoolVar, bool> value_selection(const Subs &model) const;

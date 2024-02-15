@@ -1,13 +1,26 @@
 #include "transition.hpp"
 
+std::unordered_map<BoolExpr, Transition> Transition::cache {};
+
 unsigned Transition::next_id {0};
 
 Transition::Transition(const BoolExpr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm): formula(formula), vm(vm), id(next_id) {
     ++next_id;
 }
 
+Transition Transition::build(const BoolExpr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm) {
+    const auto it {cache.find(formula)};
+    if (it == cache.end()) {
+        const Transition res {formula, vm};
+        cache.emplace(formula, res);
+        return res;
+    } else {
+        return it->second;
+    }
+}
+
 Transition Transition::subs(const Subs &subs) const {
-    return Transition(formula->subs(subs), vm);
+    return build(formula->subs(subs), vm);
 }
 
 VarSet Transition::vars() const {
@@ -43,19 +56,19 @@ BoolExpr Transition::toBoolExpr() const {
 }
 
 Transition Transition::syntacticImplicant(const Subs &subs) const {
-    return Transition(formula->syntacticImplicant(subs), vm);
+    return build(formula->syntacticImplicant(subs), vm);
 }
 
 Transition Transition::linearize(const NumVar &x) const {
-    return Transition(formula->linearize(x), vm);
+    return build(formula->linearize(x), vm);
 }
 
 Transition Transition::toMinusInfinity(const NumVar &x) const {
-    return Transition(formula->toMinusInfinity(x), vm);
+    return build(formula->toMinusInfinity(x), vm);
 }
 
 Transition Transition::toInfinity(const NumVar &x) const {
-    return Transition(formula->toInfinity(x), vm);
+    return build(formula->toInfinity(x), vm);
 }
 
 std::shared_ptr<const linked_hash_map<Var, Var>> Transition::var_map() const {
@@ -63,5 +76,5 @@ std::shared_ptr<const linked_hash_map<Var, Var>> Transition::var_map() const {
 }
 
 std::ostream& operator<<(std::ostream &s, const Transition &t) {
-    return s << t.getId() << ": " << t.toBoolExpr() << std::endl;
+    return s << t.getId() << ": " << t.toBoolExpr();
 }

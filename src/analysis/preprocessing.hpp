@@ -25,6 +25,6 @@ namespace Preprocess {
 
 ResultViaSideEffects preprocess(ITSProblem &its);
 
-Result<SafetyProblem> preprocess(const SafetyProblem &);
+ResultBase<SafetyProblem, Proof> preprocess(const SafetyProblem &);
 
 }

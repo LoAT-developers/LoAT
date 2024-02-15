@@ -20,6 +20,8 @@
 #include "loopacceleration.hpp"
 #include "chain.hpp"
 #include "config.hpp"
+#include "expr.hpp"
+#include "guardtoolbox.hpp"
 
 #include <numeric>
 #include <unordered_set>
@@ -218,8 +220,21 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
     return res;
 }
 
-Result<SafetyProblem> Preprocess::preprocess(const SafetyProblem &p) {
-    Result<SafetyProblem> res {p};
+ResultBase<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
+    ResultBase<SafetyProblem, Proof> res {p};
+
+    const auto post_vars {p.post_vars()};
+    const auto allow = [&post_vars](const auto &x) {
+        return expr::isTempVar(x) && !post_vars.contains(x);
+    };
+    ResultBase<BoolExpr, Proof> init {GuardToolbox::preprocessFormula(p.init(), allow)};
+    if (init) {
+        res.append("Preprocessed Initial States");
+        res.appendAll(*init);
+        res.succeed();
+        res->set_init(*init);
+        res.storeSubProof(init.getProof());
+    }
     auto first {true};
     for (const auto &t: p.trans()) {
         const auto preproc {Preprocess::preprocessTransition(t)};

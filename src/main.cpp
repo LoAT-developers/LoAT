@@ -25,6 +25,7 @@
 #include "proof.hpp"
 #include "version.hpp"
 #include "reachability.hpp"
+#include "sabmc.hpp"
 #include "bmc.hpp"
 #include "abmc.hpp"
 #include "yices.hpp"
@@ -112,6 +113,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::engine = Config::Analysis::ABMC;
             } else if (boost::iequals("bmc", str)) {
                 Config::Analysis::engine = Config::Analysis::BMC;
+            } else if (boost::iequals("sabmc", str)) {
+                Config::Analysis::engine = Config::Analysis::SABMC;
             } else {
                 cout << "Error: unknown engine " << str << std::endl;
                 exit(1);
@@ -217,6 +220,10 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Analysis::ABMC:
         ABMC::analyze(*its);
+        break;
+    case Config::Analysis::SABMC:
+        SafetyProblem sp {*its};
+        SABMC::analyze(sp);
         break;
     }
     yices::exit();

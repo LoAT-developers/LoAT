@@ -740,7 +740,7 @@ class BoolJunction: public BoolExpression<Th...> {
         size_t operator()(const std::tuple<BES, ConcatOperator> &args) const noexcept {
             const auto &[children, op] {args};
             size_t hash {0};
-            boost::hash_combine(hash, boost::hash_range(children.begin(), children.end()));
+            boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
             boost::hash_combine(hash, op);
             return hash;
         }

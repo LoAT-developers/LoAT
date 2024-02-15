@@ -60,5 +60,5 @@ std::pair<Subs, Subs> computeSecondRenaming(const Transition &first, const Trans
 std::tuple<Transition, Subs, Subs> Chaining::chain(const Transition &fst, const Transition &snd) {
     const auto [sigma1, inverted1] {computeFirstRenaming(fst, snd)};
     const auto [sigma2, inverted2] {computeSecondRenaming(fst, snd)};
-    return {Transition(fst.toBoolExpr()->subs(sigma1) & snd.toBoolExpr()->subs(sigma2), fst.var_map()), inverted1, inverted2};
+    return {Transition::build(fst.toBoolExpr()->subs(sigma1) & snd.toBoolExpr()->subs(sigma2), fst.var_map()), inverted1, inverted2};
 }

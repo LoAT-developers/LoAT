@@ -20,6 +20,7 @@
 #include "guardtoolbox.hpp"
 #include "expr.hpp"
 
+#include <unordered_set>
 #include <numeric>
 
 using namespace std;
@@ -165,65 +166,20 @@ RuleResult Preprocess::preprocessRule(const Rule &rule) {
     return res;
 }
 
-ResultBase<BoolExpr, Proof> makeEqualities(const BoolExpr &e) {
-    ResultBase<BoolExpr, Proof> res {e};
-    const auto eqs {GuardToolbox::makeEqualities(e)};
-    if (eqs) {
-        res = e & BExpression::buildAndFromLits(*eqs);
-        res.append("Extracted Implied Equalities");
-        res.storeSubProof(eqs.getProof());
-    }
-    return res;
-}
-
-ResultBase<BoolExpr, Proof> propagateBooleanEqualities(const BoolExpr &e) {
-    ResultBase<BoolExpr, Proof> res {e};
-    const auto subs {GuardToolbox::propagateBooleanEqualities(e)};
-    if (subs) {
-        res = e->subs(Subs::build<BoolTheory>(*subs));
-        res.append("Propagated Equivalences");
-        res.storeSubProof(subs.getProof());
-    }
-    return res;
-}
-
-ResultBase<BoolExpr, Proof> propagateEqualities(const BoolExpr e, SolvingLevel maxlevel, const GuardToolbox::SymbolAcceptor &allow) {
-    ResultBase<BoolExpr, Proof> res {e};
-    const auto subs {GuardToolbox::propagateEqualities(e, maxlevel, allow)};
-    if (subs) {
-        res = e->subs(Subs::build<IntTheory>(*subs));
-        res.append("Extracted Implied Equalities");
-        res.storeSubProof(subs.getProof());
-    }
-    return res;
-}
-
 ResultBase<Transition, Proof> eliminateTempVars(const Transition &trans) {
-    ResultBase<BoolExpr, Proof> res(trans.toBoolExpr());
-
-    //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
-    res.concat(makeEqualities(*res));
-    res.fail(); // *just* finding implied equalities does not suffice for success
-
-    res.concat(propagateBooleanEqualities(*res));
-
-    //try to remove all remaining temp variables (we do 2 steps to prioritize removing vars from the update)
-    res.concat(propagateEqualities(*res, ResultMapsToInt, expr::isTempVar));
-
-    BoolExpr simplified = (*res)->simplify();
-    if (simplified != *res) {
-        res = simplified;
-        res.append("Simplified Formula");
+    std::unordered_set<Var> post_vars;
+    for (const auto &[_,y]: *trans.var_map()) {
+        post_vars.emplace(y);
     }
-
-    //now eliminate a <= x and replace a <= x, x <= b by a <= b for all free variables x where this is sound
-    //(not sound if x appears in update or cost, since we then need the value of x)
-    res.concat(GuardToolbox::eliminateByTransitiveClosure(*res, true, expr::isTempVar));
-
+    const auto allow = [&post_vars](const auto &x) {
+        return expr::isTempVar(x) && !post_vars.contains(x);
+    };
+    const auto res {GuardToolbox::eliminateTempVars(trans.toBoolExpr(), allow)};
     ResultBase<Transition, Proof> ret {trans};
     if (res) {
-        ret = Transition(*res, trans.var_map());
-        ret.append("Eliminated Temporary Variables");
+        ret = Transition::build(*res, trans.var_map());
+        ret.append("Eliminated Temporary Variables from Transition:");
+        ret.appendAll(*res);
         ret.storeSubProof(res.getProof());
     }
     return ret;
