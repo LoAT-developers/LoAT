@@ -68,6 +68,7 @@ std::optional<Range> SABMC::has_looping_infix() {
             --start;
         }
         --end;
+        start = end;
     }
     return {};
 }
