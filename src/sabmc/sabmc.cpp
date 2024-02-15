@@ -371,9 +371,9 @@ void SABMC::handle_loop(const Range &range) {
     const auto lm {build_loop(range)};
     const auto loop {lm.first};
     const auto model {lm.second};
-    auto simp {Preprocess::preprocessTransition(loop)};
-    const auto sip_res {simp->syntacticImplicant(model)};
-    const auto mbp_res {mbp(sip_res, model)};
+    const auto sip_res {loop.syntacticImplicant(model)};
+    auto simp {Preprocess::preprocessTransition(sip_res)};
+    const auto mbp_res {mbp(*simp, model)};
     if (Config::Analysis::log) std::cout << "mbp: " << mbp_res << std::endl;
     const auto bool_update {value_selection(model)};
     if (Config::Analysis::log && !bool_update.empty()) std::cout << "bool update: " << bool_update << std::endl;
