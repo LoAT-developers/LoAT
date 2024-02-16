@@ -25,7 +25,7 @@ private:
     };
 
     ITSProblem &its;
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
+    SmtPtr solver {SmtFactory::solver()};
     bool approx {false};
     unsigned last_orig_clause {};
     BoolExpr query {};

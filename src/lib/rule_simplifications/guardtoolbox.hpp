@@ -20,7 +20,6 @@
 #include "numexpression.hpp"
 #include "theory.hpp"
 #include "result.hpp"
-#include "boolsubs.hpp"
 
 #include <vector>
 
@@ -57,7 +56,7 @@ namespace GuardToolbox {
      */
     ResultBase<ExprSubs, Proof> propagateEqualities(const BoolExpr e, SolvingLevel level, const SymbolAcceptor &allow);
 
-    ResultBase<BoolSubs<IntTheory, BoolTheory>, Proof> propagateBooleanEqualities(const BoolExpr e);
+    ResultBase<BSubs, Proof> propagateBooleanEqualities(const BoolExpr e);
 
     /**
      * Tries to replace inequalities using their transitive closure,

@@ -1,9 +1,9 @@
 #include "theory.hpp"
 
 const BoolExpr top() {
-    return BoolExpression<IntTheory, BoolTheory>::top();
+    return BExpression::top();
 }
 
 const BoolExpr bot() {
-    return BoolExpression<IntTheory, BoolTheory>::bot();
+    return BExpression::bot();
 }

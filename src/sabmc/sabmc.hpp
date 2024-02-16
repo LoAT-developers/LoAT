@@ -47,7 +47,7 @@ private:
     };
 
     SafetyProblem &t;
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
+    SmtPtr solver {SmtFactory::solver()};
     std::vector<std::vector<Subs>> subs {};
     std::vector<Transition> trace {};
     std::vector<Loop> blocked {};

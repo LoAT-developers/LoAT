@@ -117,7 +117,7 @@ std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &curr
                                                         Complexity currentRes)
 {
     // initialize z3
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}));
+    auto solver = SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}));
 
     // the parameter of the desired family of solutions
     auto n = currentLP.getN();
@@ -252,7 +252,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
                                                                 Complexity currentRes)
 {
     // initialize z3
-    auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0))}));
+    auto solver = SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::buildTheoryLit(Rel::buildGt(cost, 0))}));
 
     // the parameter of the desired family of solutions
     NumVar n = NumVar::next();

@@ -20,6 +20,7 @@ using Theories = TheTheory::Theories;
 using VarSet = theory::VarSet<IntTheory, BoolTheory>;
 using LitSet = theory::LitSet<IntTheory, BoolTheory>;
 using Subs = theory::Subs<IntTheory, BoolTheory>;
+using BSubs = BoolSubs<IntTheory, BoolTheory>;
 
 const BoolExpr top();
 const BoolExpr bot();

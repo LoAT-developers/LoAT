@@ -15,19 +15,20 @@ struct BoolBaseTheory {
 };
 
 struct BoolTheory: public BoolBaseTheory {
-    using Expression = std::shared_ptr<const BoolExpression<IntTheory, BoolTheory>>;
+    using BExpression = BoolExpression<IntTheory, BoolTheory>;
+    using Expression = std::shared_ptr<const BExpression>;
     using Subs = BoolSubs<IntTheory, BoolTheory>;
 
     static Expression valToExpr(const Val &val) {
-        return val ? BoolExpression<IntTheory, BoolTheory>::top() : BoolExpression<IntTheory, BoolTheory>::bot();
+        return val ? BExpression::top() : BExpression::bot();
     }
 
     static Expression varToExpr(const Var &val) {
-        return BoolExpression<IntTheory, BoolTheory>::buildTheoryLit(Lit(val));
+        return BExpression::buildTheoryLit(Lit(val));
     }
 
     static Expression anyValue() {
-        return BoolExpression<IntTheory, BoolTheory>::bot();
+        return BExpression::bot();
     }
 
 };

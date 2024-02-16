@@ -124,3 +124,6 @@ public:
     virtual std::ostream& print(std::ostream& os) const = 0;
 
 };
+
+using SMT = Smt<IntTheory, BoolTheory>;
+using SmtPtr = std::unique_ptr<SMT>;

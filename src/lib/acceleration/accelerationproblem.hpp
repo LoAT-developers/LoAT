@@ -36,7 +36,7 @@ private:
     LitSet todo {};
     Accelerator res {};
     const std::optional<Subs> &samplePoint;
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {};
+    SmtPtr solver {};
 
     bool trivial(const Lit &lit);
     bool unchanged(const Lit &lit);

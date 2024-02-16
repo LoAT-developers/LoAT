@@ -403,7 +403,7 @@ std::vector<Theory<IntTheory>::Lit> LimitProblem::getQuery() const {
 
 
 bool LimitProblem::isUnsat() const {
-    return SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(getQuery())) == Unsat;
+    return SmtFactory::_check(BoolExpression<IntTheory>::buildAndFromLits(getQuery())) == Unsat;
 }
 
 

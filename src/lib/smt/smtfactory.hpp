@@ -10,7 +10,7 @@
 namespace SmtFactory {
 
     template<ITheory... Th>
-    std::unique_ptr<Smt<Th...>> solver(Logic logic) {
+    std::unique_ptr<Smt<Th...>> _solver(Logic logic) {
         std::unique_ptr<Smt<Th...>> res;
         switch (logic) {
         case QF_LA:
@@ -26,8 +26,10 @@ namespace SmtFactory {
         return res;
     }
 
+    SmtPtr solver(Logic logic);
+
     template<ITheory... Th>
-    std::unique_ptr<Smt<Th...>> solver() {
+    std::unique_ptr<Smt<Th...>> _solver() {
         std::unique_ptr<Smt<Th...>> solver;
         switch (Config::Analysis::smtSolver) {
         case Config::Analysis::Z3:
@@ -46,18 +48,24 @@ namespace SmtFactory {
         return solver;
     }
 
+    SmtPtr solver();
+
     template<ITheory... Th>
-    std::unique_ptr<Smt<Th...>> modelBuildingSolver(Logic logic) {
-        std::unique_ptr<Smt<Th...>> res = solver<Th...>(logic);
+    std::unique_ptr<Smt<Th...>> _modelBuildingSolver(Logic logic) {
+        auto res {_solver<Th...>(logic)};
         res->enableModels();
         return res;
     }
 
+    SmtPtr modelBuildingSolver(Logic logic);
+
     template<ITheory... Th>
-    static SmtResult check(const BExpr<Th...> e) {
-        std::unique_ptr<Smt<Th...>> s = SmtFactory::solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{e}));
+    static SmtResult _check(const BExpr<Th...> e) {
+        auto s {_solver<Th...>(Smt<Th...>::chooseLogic(BoolExpressionSet<Th...>{e}))};
         s->add(e);
         return s->check();
     }
+
+    SmtResult check(const BoolExpr e);
 
 }

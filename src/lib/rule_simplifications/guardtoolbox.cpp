@@ -72,8 +72,8 @@ ResultBase<ExprSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e, 
 }
 
 
-ResultBase<BoolSubs<IntTheory, BoolTheory>, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr e) {
-    ResultBase<BoolSubs<IntTheory, BoolTheory>, Proof> res;
+ResultBase<BSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr e) {
+    ResultBase<BSubs, Proof> res;
     const auto equiv {e->impliedEqualities()};
     if (!equiv.empty()) {
         res = equiv.get<BoolTheory>();

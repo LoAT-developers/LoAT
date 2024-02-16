@@ -161,7 +161,7 @@ class Reachability {
 
     ITSProof proof {};
 
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
+    SmtPtr solver {SmtFactory::solver()};
 
     const bool drop;
 

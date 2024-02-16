@@ -21,8 +21,8 @@ AccelerationProblem::AccelerationProblem(
         todo.insert(l);
     }
     const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
-    const auto logic {Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({todo}, subs)};
-    this->solver = SmtFactory::modelBuildingSolver<IntTheory, BoolTheory>(logic);
+    const auto logic {SMT::chooseLogic<LitSet, Subs>({todo}, subs)};
+    this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
         const auto bound {BExpression::buildTheoryLit(Rel(config.n, Rel::geq, 1))};
         this->solver->add(bound);

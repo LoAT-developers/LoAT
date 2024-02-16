@@ -23,7 +23,6 @@ add_library(${PROJECT_NAME} STATIC
   boolexpr.hpp
   inttheory.hpp
   booltheory.hpp
-  boolexpression.hpp
   boolsubs.hpp
   theory.hpp
   theory.cpp

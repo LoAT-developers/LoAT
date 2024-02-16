@@ -230,7 +230,7 @@ int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
 
 void AsymptoticBound::removeUnsatProblems() {
     for (int i = limitProblems.size() - 1; i >= 0; --i) {
-        auto result = SmtFactory::check(BoolExpression<IntTheory>::buildAndFromLits(limitProblems[i].getQuery()));
+        auto result = SmtFactory::_check(BoolExpression<IntTheory>::buildAndFromLits(limitProblems[i].getQuery()));
 
         if (result == Unsat) {
             limitProblems.erase(limitProblems.begin() + i);
@@ -690,7 +690,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
 
         if (it->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const auto &query = currentLP.getQuery();
-            auto solver = SmtFactory::modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}));
+            auto solver = SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}));
             solver->add(BoolExpression<IntTheory>::buildAndFromLits(query));
             SmtResult result = solver->check();
 

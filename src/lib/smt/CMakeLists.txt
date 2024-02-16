@@ -25,6 +25,7 @@ add_library(${PROJECT_NAME} STATIC
   swinecontext.hpp
   swinecontext.cpp
   smtfactory.hpp
+  smtfactory.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${loat_expr_INCLUDE_DIRS})

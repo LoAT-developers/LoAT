@@ -79,6 +79,17 @@ RuleResult eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds,
     return res;
 }
 
+RuleResult simplify(const Rule &rule) {
+    RuleResult res {rule};
+    const auto new_guard {GuardToolbox::simplify(rule.getGuard())};
+    if (new_guard) {
+        res = rule.withGuard(*new_guard);
+        res.append("Simplified Guard");
+        res.storeSubProof(new_guard.getProof());
+    }
+    return res;
+}
+
 RuleResult eliminateTempVars(Rule rule) {
     rule = makeEqualities(rule);
     auto res {propagateBooleanEqualities(rule)};
@@ -94,21 +105,18 @@ RuleResult eliminateTempVars(Rule rule) {
         return res;
     }
     varsInUpdate = expr::coDomainVars(rule.getUpdate());
-    auto isTempOnlyInGuard = [&](const Var &sym) {
-        VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
-        return expr::isTempVar(sym) && !varsInUpdate.contains(sym);
-    };
     res = propagateEqualities(rule, ResultMapsToInt, expr::isTempVar);
     if (res) {
         return res;
     }
-    const auto guard {rule.getGuard()};
-    const auto newGuard {guard->simplify()};
-    if (newGuard != guard) {
-        res = rule.withGuard(newGuard);
-        res.ruleTransformationProof(rule, "Simplified Guard", *res);
+    res = simplify(rule);
+    if (res) {
         return res;
     }
+    auto isTempOnlyInGuard = [&](const Var &sym) {
+        VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
+        return expr::isTempVar(sym) && !varsInUpdate.contains(sym);
+    };
     return eliminateByTransitiveClosure(rule, true, isTempOnlyInGuard);
 }
 
