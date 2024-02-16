@@ -8,7 +8,7 @@ class RuleResult: public ResultBase<Rule, RuleProof> {
 
 public:
 
-    RuleResult(const Rule &t, bool success = false);
+    explicit RuleResult(const Rule &t, bool success = false);
 
     void operator=(const Rule &t);
 

@@ -1,18 +1,11 @@
 #include "chain.hpp"
 #include "expr.hpp"
 
-void renameVar(const Var &x, Subs &sigma, Subs &inverted) {
-    if (std::holds_alternative<NumVar>(x)) {
-        const auto &var = std::get<NumVar>(x);
-        const NumVar next {NumVar::next()};
-        sigma.put<IntTheory>(var, next);
-        inverted.put(next, var);
-    } else if (std::holds_alternative<BoolVar>(x)) {
-        const auto &var = std::get<BoolVar>(x);
-        const BoolVar next {BoolVar::next()};
-        sigma.put<BoolTheory>(var, BExpression::buildTheoryLit(BoolLit(next)));
-        inverted.put<BoolTheory>(next, BExpression::buildTheoryLit(BoolLit(var)));
-    }
+Var renameVar(const Var &x, Subs &sigma, Subs &inverted) {
+    const auto next {expr::next(x)};
+    sigma.put(x, expr::toExpr(next));
+    inverted.put(next, expr::toExpr(x));
+    return next;
 }
 
 std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) {
@@ -33,32 +26,22 @@ std::pair<Rule, Subs> Chaining::chain(const Rule &fst, const Rule &snd) {
     return {Rule(guard, up), inverted};
 }
 
-std::pair<Subs, Subs> computeFirstRenaming(const Transition &first, const Transition &second) {
-    Subs sigma, inverted;
-    auto first_vars {first.vars()};
-    auto vm {first.var_map()};
-    for (const auto &[_,x]: *vm) {
-        if (first_vars.contains(x)) {
-            renameVar(x, sigma, inverted);
-        }
-    }
-    return {sigma, inverted};
-}
-
-std::pair<Subs, Subs> computeSecondRenaming(const Transition &first, const Transition &second) {
-    Subs sigma, inverted;
-    auto first_vars {first.vars()};
-    auto vm {first.var_map()};
-    for (const auto &x: second.vars()) {
-        if ((expr::isTempVar(x) && first_vars.contains(x)) || vm->contains(x)) {
-            renameVar(x, sigma, inverted);
-        }
-    }
-    return {sigma, inverted};
-}
-
 std::tuple<Transition, Subs, Subs> Chaining::chain(const Transition &fst, const Transition &snd) {
-    const auto [sigma1, inverted1] {computeFirstRenaming(fst, snd)};
-    const auto [sigma2, inverted2] {computeSecondRenaming(fst, snd)};
+    Subs sigma1, inverted1;
+    Subs sigma2, inverted2;
+    auto first_vars {fst.vars()};
+    auto var_map {fst.var_map()};
+    VarSet post_vars;
+    for (const auto &[pre,post]: *var_map) {
+        const auto x {renameVar(post, sigma1, inverted1)};
+        sigma2.put(pre, expr::toExpr(x));
+        inverted2.put(x, expr::toExpr(pre));
+        post_vars.insert(post);
+    }
+    for (const auto &x: snd.vars()) {
+        if (expr::isTempVar(x) && first_vars.contains(x) && !post_vars.contains(x)) {
+            renameVar(x, sigma2, inverted2);
+        }
+    }
     return {Transition::build(fst.toBoolExpr()->subs(sigma1) & snd.toBoolExpr()->subs(sigma2), fst.var_map()), inverted1, inverted2};
 }

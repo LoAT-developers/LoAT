@@ -21,8 +21,8 @@ public:
         s.set("seed", 42u);
         s.set("sat.random_seed", 42u);
         s.set("nlsat.seed", 42u);
-        s.set("rlimit", 10000000u);
-        config.set_rlimit(1000);
+        // s.set("rlimit", 10000000u);
+        // config.set_rlimit(1000);
     }
 
     void add(const BExpr<Th...> e) override {

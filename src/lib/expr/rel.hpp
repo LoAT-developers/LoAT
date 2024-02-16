@@ -7,9 +7,9 @@
 using RelSet = linked_hash_set<Rel>;
 
 struct Bounds {
-    linked_hash_set<Expr> upperBounds{};
-    linked_hash_set<Expr> lowerBounds{};
-    std::optional<Expr> equality{};
+    linked_hash_set<Expr> upperBounds {};
+    linked_hash_set<Expr> lowerBounds {};
+    linked_hash_set<Expr> equalities {};
 };
 
 std::ostream& operator<<(std::ostream &s, const RelSet &set);

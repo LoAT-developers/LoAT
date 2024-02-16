@@ -94,8 +94,8 @@ void VarEliminator::eliminate() {
         const BoolExpr guard = p.second;
         Bounds bounds;
         guard->getBounds(N, bounds);
-        if (bounds.equality) {
-            ExprSubs p{{N, *bounds.equality}};
+        if (!bounds.equalities.empty()) {
+            ExprSubs p{{N, *bounds.equalities.begin()}};
             res.insert(subs.compose(p));
         } else {
             for (auto it = bounds.upperBounds.begin(); it != bounds.upperBounds.end();) {

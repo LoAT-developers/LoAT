@@ -221,12 +221,17 @@ public:
             return std::visit(
                 Overload{
                     [&n](const Rel &rel) {
+                        assert(rel.isPoly());
+                        if (!rel.has(n)) {
+                            return buildTheoryLit(rel);
+                        }
+                        if (rel.isEq()) {
+                            return bot();
+                        }
                         const auto g {rel.toG()};
                         const auto ex {g.lhs() - g.rhs()};
                         const auto d {ex.degree(n)};
-                        if (d == 0) {
-                            return buildTheoryLit(rel);
-                        } else if (ex.coeff(n, d).toNum() > 0u) {
+                        if (ex.coeff(n, d).toNum() > 0u) {
                             return top();
                         } else {
                             return bot();
@@ -244,12 +249,17 @@ public:
             return std::visit(
                 Overload{
                     [&n](const Rel &rel) {
+                        assert(rel.isPoly());
+                        if (!rel.has(n)) {
+                            return buildTheoryLit(rel);
+                        }
+                        if (rel.isEq()) {
+                            return bot();
+                        }
                         const auto g {rel.toG()};
                         const auto ex {g.lhs() - g.rhs()};
                         const auto d {ex.degree(n)};
-                        if (d == 0) {
-                            return buildTheoryLit(rel);
-                        } else if (ex.coeff(n, d).toNum() < 0u) {
+                        if (ex.coeff(n, d).toNum() < 0u) {
                             return top();
                         } else {
                             return bot();
@@ -848,10 +858,28 @@ public:
                 } else {
                     Bounds cres = res;
                     c->getBounds(n, cres);
-                    if (res.equality && (!cres.equality || !(*res.equality - *cres.equality).isZero())) {
-                        res.equality = {};
+                    for (auto it = res.lowerBounds.begin(); it != res.lowerBounds.end();) {
+                        if (!cres.lowerBounds.contains(*it)) {
+                            it = res.lowerBounds.erase(it);
+                        } else {
+                            ++it;
+                        }
                     }
-                    if (!res.equality && res.lowerBounds.empty() && res.upperBounds.empty()) {
+                    for (auto it = res.upperBounds.begin(); it != res.upperBounds.end();) {
+                        if (!cres.upperBounds.contains(*it)) {
+                            it = res.upperBounds.erase(it);
+                        } else {
+                            ++it;
+                        }
+                    }
+                    for (auto it = res.equalities.begin(); it != res.equalities.end();) {
+                        if (!cres.equalities.contains(*it)) {
+                            it = res.equalities.erase(it);
+                        } else {
+                            ++it;
+                        }
+                    }
+                    if (res.equalities.empty() && res.lowerBounds.empty() && res.upperBounds.empty()) {
                         return;
                     }
                 }

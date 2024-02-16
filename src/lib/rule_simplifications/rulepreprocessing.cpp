@@ -37,15 +37,13 @@ static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     return varsInUpdate;
 }
 
-RuleResult makeEqualities(const Rule &rule) {
-    RuleResult res {rule};
+Rule makeEqualities(const Rule &rule) {
     const auto eqs {GuardToolbox::makeEqualities(rule.getGuard())};
-    if (eqs) {
-        res = res->withGuard(res->getGuard() & BExpression::buildAndFromLits(*eqs));
-        res.ruleTransformationProof(rule, "Extracted Implied Equalities", *res);
-        res.storeSubProof(eqs.getProof());
+    if (eqs.empty()) {
+        return rule;
+    } else {
+        return rule.withGuard(rule.getGuard() & BExpression::buildAndFromLits(eqs));
     }
-    return res;
 }
 
 RuleResult propagateBooleanEqualities(const Rule &rule) {
@@ -81,43 +79,37 @@ RuleResult eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds,
     return res;
 }
 
-RuleResult eliminateTempVars(const Rule &rule) {
-    RuleResult res(rule);
-
-    //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
-    res.concat(makeEqualities(*res));
-    res.fail(); // *just* finding implied equalities does not suffice for success
-
-    res.concat(propagateBooleanEqualities(*res));
-
-    auto varsInUpdate {expr::coDomainVars(res->getUpdate())};
+RuleResult eliminateTempVars(Rule rule) {
+    rule = makeEqualities(rule);
+    auto res {propagateBooleanEqualities(rule)};
+    if (res) {
+        return res;
+    }
+    auto varsInUpdate {expr::coDomainVars(rule.getUpdate())};
     auto isTempInUpdate = [&](const Var &sym) {
         return expr::isTempVar(sym) && varsInUpdate.contains(sym);
     };
-    //try to remove temp variables from the update by equality propagation (they are removed from guard and update)
-    res.concat(propagateEqualities(*res, ResultMapsToInt, isTempInUpdate));
-
-    varsInUpdate = expr::coDomainVars(res->getUpdate());
+    res = propagateEqualities(rule, ResultMapsToInt, isTempInUpdate);
+    if (res) {
+        return res;
+    }
+    varsInUpdate = expr::coDomainVars(rule.getUpdate());
     auto isTempOnlyInGuard = [&](const Var &sym) {
-        VarSet varsInUpdate = collectVarsInUpdateRhs(*res);
+        VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
         return expr::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
-    //try to remove all remaining temp variables (we do 2 steps to prioritize removing vars from the update)
-    res.concat(propagateEqualities(*res, ResultMapsToInt, expr::isTempVar));
-
-    BoolExpr guard = res->getGuard();
-    BoolExpr newGuard = guard->simplify();
-    if (newGuard != guard) {
-        const Rule newRule = res->withGuard(newGuard);
-        res.ruleTransformationProof(res.get(), "Simplified Guard", newRule);
-        res = newRule;
+    res = propagateEqualities(rule, ResultMapsToInt, expr::isTempVar);
+    if (res) {
+        return res;
     }
-
-    //now eliminate a <= x and replace a <= x, x <= b by a <= b for all free variables x where this is sound
-    //(not sound if x appears in update or cost, since we then need the value of x)
-    res.concat(eliminateByTransitiveClosure(*res, true, isTempOnlyInGuard));
-
-    return res;
+    const auto guard {rule.getGuard()};
+    const auto newGuard {guard->simplify()};
+    if (newGuard != guard) {
+        res = rule.withGuard(newGuard);
+        res.ruleTransformationProof(rule, "Simplified Guard", *res);
+        return res;
+    }
+    return eliminateByTransitiveClosure(rule, true, isTempOnlyInGuard);
 }
 
 bool removeTrivialUpdates(Subs &update) {

@@ -80,7 +80,7 @@ namespace GuardToolbox {
      * @note expensive for large guards
      * @return true iff guard was changed.
      */
-    ResultBase<Guard, Proof> makeEqualities(const BoolExpr e);
+    Guard makeEqualities(const BoolExpr e);
 
     /**
      * Returns true iff term contains a temporary variable
@@ -92,7 +92,7 @@ namespace GuardToolbox {
         });
     }
 
-    ResultBase<BoolExpr, Proof> eliminateTempVars(const BoolExpr &trans, const SymbolAcceptor &allow);
+    ResultBase<BoolExpr, Proof> eliminateTempVars(BoolExpr trans, const SymbolAcceptor &allow);
 
     ResultBase<BoolExpr, Proof> preprocessFormula(const BoolExpr &e, const SymbolAcceptor &allow);
 

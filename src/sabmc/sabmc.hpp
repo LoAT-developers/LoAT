@@ -48,14 +48,15 @@ private:
 
     SafetyProblem &t;
     std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
-    std::vector<std::vector<Subs>> subs {{Subs::Empty}};
+    std::vector<std::vector<Subs>> subs {};
     std::vector<Transition> trace {};
     std::vector<Loop> blocked {};
     linked_hash_map<Var, Var> var_map {};
     linked_hash_map<Var, Var> inverse_var_map {};
     VarSet vars {};
-    linked_hash_map<NumVar, NumVar> lower_vars;
-    linked_hash_map<NumVar, NumVar> upper_vars;
+    linked_hash_map<NumVar, NumVar> lower_vars {};
+    linked_hash_map<NumVar, NumVar> upper_vars {};
+    ExprSubs reverse_low_up_vars {};
     std::unordered_map<unsigned, Transition> rule_map {};
     const NumVar trace_var {NumVar::next()};
     const NumVar n {NumVar::next()};
@@ -76,7 +77,7 @@ private:
     const Subs& get_subs(const unsigned start, const unsigned steps);
 
     Transition mbp(const Transition &trans, const Subs &model) const;
-    BoundPair bound_selection(const Transition &t, const Subs &model, const NumVar &x) const;
+    BoundPair bound_selection(const Transition &t, const Subs &model, const NumVar &x, linked_hash_set<Expr> &chosen) const;
     NondetSubs bound_selection(const Transition &t, const Subs &model) const;
     linked_hash_map<BoolVar, bool> value_selection(const Subs &model) const;
     std::pair<NondetSubs, unsigned> closed_form(const NondetSubs &update, const Subs &model);

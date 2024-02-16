@@ -174,8 +174,8 @@ abort:  ; //this symbol could not be eliminated, try the next one
 }
 
 
-ResultBase<Guard, Proof> GuardToolbox::makeEqualities(const BoolExpr e) {
-    ResultBase<Guard, Proof> res;
+Guard GuardToolbox::makeEqualities(const BoolExpr e) {
+    Guard res;
     const auto guard {e->universallyValidLits()};
     vector<pair<Rel,Expr>> terms; //inequalities from the guard, with the associated index in guard
     map<Rel,pair<Rel,Expr>> matches; //maps index in guard to a second index in guard, which can be replaced by Expression
@@ -220,9 +220,7 @@ ResultBase<Guard, Proof> GuardToolbox::makeEqualities(const BoolExpr e) {
 
             auto it = matches.find(rel);
             if (it != matches.end()) {
-                res.succeed();
-                res->push_back(Rel::buildEq(it->second.second, 0));
-                res.appendAll("extracted ", it->second.second, " = 0");
+                res.push_back(Rel::buildEq(it->second.second, 0));
                 ignore.insert(it->second.first);
             }
         }
@@ -230,15 +228,8 @@ ResultBase<Guard, Proof> GuardToolbox::makeEqualities(const BoolExpr e) {
     return res;
 }
 
-ResultBase<BoolExpr, Proof> _makeEqualities(const BoolExpr &e) {
-    ResultBase<BoolExpr, Proof> res {e};
-    const auto eqs {GuardToolbox::makeEqualities(e)};
-    if (eqs) {
-        res = e & BExpression::buildAndFromLits(*eqs);
-        res.append("Extracted Implied Equalities");
-        res.storeSubProof(eqs.getProof());
-    }
-    return res;
+BoolExpr _makeEqualities(const BoolExpr &e) {
+    return e & BExpression::buildAndFromLits(GuardToolbox::makeEqualities(e));
 }
 
 ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr &e) {
@@ -253,8 +244,7 @@ ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr &e) {
 }
 
 ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, SolvingLevel maxlevel, const GuardToolbox::SymbolAcceptor &allow) {
-    ResultBase<BoolExpr, Proof> res {e};
-    const auto subs {GuardToolbox::propagateEqualities(e, maxlevel, allow)};
+    ResultBase<BoolExpr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, maxlevel, allow)};
     if (subs) {
         res = e->subs(Subs::build<IntTheory>(*subs));
         res.append("Extracted Implied Equalities");
@@ -263,28 +253,23 @@ ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, SolvingLevel 
     return res;
 }
 
-ResultBase<BoolExpr, Proof> GuardToolbox::eliminateTempVars(const BoolExpr &e, const SymbolAcceptor &allow) {
-    ResultBase<BoolExpr, Proof> res(e);
-
-    //equalities allow easy propagation, thus transform x <= y, x >= y into x == y
-    res.concat(_makeEqualities(*res));
-    res.fail(); // *just* finding implied equalities does not suffice for success
-
-    res.concat(_propagateBooleanEqualities(*res));
-
-    //try to remove all remaining temp variables (we do 2 steps to prioritize removing vars from the update)
-    res.concat(_propagateEqualities(*res, ResultMapsToInt, allow));
-
-    BoolExpr simplified = (*res)->simplify();
-    if (simplified != *res) {
+ResultBase<BoolExpr, Proof> GuardToolbox::eliminateTempVars(BoolExpr e, const SymbolAcceptor &allow) {
+    e = _makeEqualities(e);
+    auto res {_propagateBooleanEqualities(e)};
+    if (res) {
+        return res;
+    }
+    res = _propagateEqualities(e, ResultMapsToInt, allow);
+    if (res) {
+        return res;
+    }
+    BoolExpr simplified = e->simplify();
+    if (simplified != e) {
         res = simplified;
         res.append("Simplified Formula");
+        return res;
     }
-
-    //now eliminate a <= x and replace a <= x, x <= b by a <= b for all free variables x where this is sound
-    //(not sound if x appears in update or cost, since we then need the value of x)
-    res.concat(GuardToolbox::eliminateByTransitiveClosure(*res, true, allow));
-    return res;
+    return GuardToolbox::eliminateByTransitiveClosure(e, true, allow);
 }
 
 ResultBase<BoolExpr, Proof> GuardToolbox::preprocessFormula(const BoolExpr &e, const SymbolAcceptor &allow) {

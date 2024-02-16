@@ -103,7 +103,9 @@ void LoopAcceleration::compute_closed_form() {
                     if (z.isTempVar()) {
                         const auto bounds {rule.getGuard()->getBounds(z)};
                         const auto coeff {y.coeff(z).toNum()};
-                        if (bounds.equality && !bounds.equality->hasVarWith(is_temp_var)) {
+                        if (std::any_of(bounds.equalities.begin(), bounds.equalities.end(), [&is_temp_var](const auto &b) {
+                                return !b.hasVarWith(is_temp_var);
+                            })) {
                             continue;
                         }
                         auto lower_bounded {false};

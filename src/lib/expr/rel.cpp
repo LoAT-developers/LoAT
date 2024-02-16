@@ -164,7 +164,7 @@ void Rel::getBounds(const NumVar &n, Bounds &res) const {
         if (isEq()) {
             const std::optional<Expr> eq = (lhs() - rhs()).solveTermFor(n, ResultMapsToInt);
             if (eq) {
-                res.equality = *eq;
+                res.equalities.insert(*eq);
                 res.lowerBounds.insert(*eq);
                 res.upperBounds.insert(*eq);
             }

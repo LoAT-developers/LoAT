@@ -23,7 +23,7 @@ public:
 
     ResultBase(): success(false) {}
 
-    ResultBase(const T &t, bool success = false): success(success), res(t) {}
+    explicit ResultBase(const T &t, bool success = false): success(success), res(t) {}
 
     ResultBase& operator=(const T &t) {
         set(t);

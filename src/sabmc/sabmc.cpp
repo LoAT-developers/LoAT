@@ -53,6 +53,8 @@ SABMC::SABMC(SafetyProblem &t):
     for (const auto &x: t.pre_vars().get<NumVar>()) {
         lower_vars.emplace(x, NumVar::next());
         upper_vars.emplace(x, NumVar::next());
+        reverse_low_up_vars.put(lower_vars[x], x);
+        reverse_low_up_vars.put(upper_vars[x], x);
     }
     solver->enableModels();
 }
@@ -77,24 +79,34 @@ std::pair<Transition, Subs> SABMC::build_loop(const Range &range) {
     std::optional<Transition> loop;
     Subs var_renaming;
     for (unsigned i = range.end(); i >= range.start(); --i) {
-        const auto imp {trace[i]};
-        const auto rule {imp.subs(Subs::build<IntTheory>(n, get_subs(i, 1).get<IntTheory>(n)))};
+        const auto rule {trace[i]};
+        const auto s {get_subs(i, 1)};
         if (loop) {
             const auto [chained, sigma1, sigma2] {Chaining::chain(rule, *loop)};
             loop = chained;
-            const auto fst_var_renaming {expr::compose(sigma1, get_subs(i, 1).project(rule.vars()))};
-            const auto snd_var_renaming {expr::compose(sigma2, var_renaming)};
+            auto fst_vars {t.pre_vars()};
+            rule.collectVars(fst_vars);
+            for (const auto &x: t.post_vars()) {
+                fst_vars.erase(x);
+            }
+            const auto fst_var_renaming {expr::compose(sigma1, s).project(fst_vars)};
+            auto snd_vars {t.post_vars()};
+            loop->collectVars(snd_vars);
+            for (const auto &x: t.pre_vars()) {
+                snd_vars.erase(x);
+            }
+            auto snd_var_renaming {expr::compose(sigma2, var_renaming).project(snd_vars)};
             var_renaming = expr::compose(fst_var_renaming, snd_var_renaming);
         } else {
             loop = rule;
-            var_renaming = expr::compose(get_subs(i, 1).project(rule.vars()),  var_renaming);
+            var_renaming = s;
         }
     }
     auto vars {loop->vars()};
     expr::collectCoDomainVars(var_renaming, vars);
     const auto model {expr::compose(var_renaming, solver->model(vars).toSubs())};
     if (Config::Analysis::log) {
-        std::cout << "found loop of length " << range.length() << ":" << std::endl;
+        std::cout << "found loop from " << range.start() << " to " << range.end() << ":" << std::endl;
         std::cout << *loop << std::endl;
         std::cout << std::endl;
     }
@@ -108,11 +120,14 @@ void SABMC::add_learned_clause(const Transition &accel, unsigned length) {
     step = step | encode_transition(accel);
 }
 
-std::optional<Expr> closest_bound(const linked_hash_set<Expr> &bounds, const Subs &model, const NumVar &x) {
+std::optional<Expr> closest_bound(const linked_hash_set<Expr> &bounds, const Subs &model, const NumVar &x, const linked_hash_set<Expr> &chosen = {}) {
     std::optional<Expr> closest;
     Num dist;
     const auto val {model.get<IntTheory>(x)};
     for (const auto &b: bounds) {
+        if (chosen.contains(b)) {
+            continue;
+        }
         const auto b_val {b.subs(model.get<IntTheory>())};
         const auto d {GiNaC::abs((val - b_val).toNum())};
         if (!closest || d < dist || (d == dist && b_val < *closest)) {
@@ -134,6 +149,7 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
     std::unordered_set<NumVar> done_lower;
     std::unordered_set<NumVar> done_upper;
     auto changed {false};
+    ExprSubs dec_n {{n, Expr(n)-1}};
     do {
         changed = false;
         for (const auto &[x,p]: update) {
@@ -145,23 +161,31 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
                     if (y == x) {
                         subs.put(x, lower_vars[x]);
                     } else {
+                        const auto y_pre = t.pre_vars().contains(y) ? y : std::get<NumVar>(inverse_var_map[y]);
                         std::optional<Expr> y_res;
                         if (is_increasing(*lower, model, y)) {
-                            if (!done_lower.contains(y)) {
+                            if (!done_lower.contains(y_pre)) {
                                 goto UPPER;
                             }
-                            y_res = update[y].first;
+                            if (up.contains(lower_vars[y_pre])) {
+                                y_res = up.get(lower_vars[y_pre]);
+                            }
                         } else {
-                            if (!done_upper.contains(y)) {
+                            if (!done_upper.contains(y_pre)) {
                                 goto UPPER;
                             }
-                            y_res = update[y].second;
+                            if (up.contains(upper_vars[y_pre])) {
+                                y_res = up.get(upper_vars[y_pre]);
+                            }
                         }
                         if (!y_res) {
                             done_lower.insert(x);
                             changed = true;
                             goto UPPER;
                         } else {
+                            if (t.pre_vars().contains(y)) {
+                                y_res = y_res->subs(dec_n);
+                            }
                             subs.put(y, *y_res);
                         }
                     }
@@ -177,23 +201,31 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
                     if (y == x) {
                         subs.put(x, upper_vars[x]);
                     } else {
+                        const auto y_pre = t.pre_vars().contains(y) ? y : std::get<NumVar>(inverse_var_map[y]);
                         std::optional<Expr> y_res;
                         if (is_increasing(*upper, model, y)) {
-                            if (!done_upper.contains(y)) {
+                            if (!done_upper.contains(y_pre)) {
                                 goto NEXT;
                             }
-                            y_res = update[y].first;
+                            if (up.contains(upper_vars[y_pre])) {
+                                y_res = up.get(upper_vars[y_pre]);
+                            }
                         } else {
-                            if (!done_lower.contains(y)) {
+                            if (!done_lower.contains(y_pre)) {
                                 goto NEXT;
                             }
-                            y_res = update[y].second;
+                            if (up.contains(lower_vars[y_pre])) {
+                                y_res = up.get(lower_vars[y_pre]);
+                            }
                         }
                         if (!y_res) {
                             done_upper.insert(x);
                             changed = true;
                             goto NEXT;
                         } else {
+                            if (t.pre_vars().contains(y)) {
+                                y_res = y_res->subs(dec_n);
+                            }
                             subs.put(y, *y_res);
                         }
                     }
@@ -211,8 +243,8 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
         for (const auto &[x,_]: update) {
             const auto low_var {lower_vars[x]};
             const auto up_var {upper_vars[x]};
-            const auto low = rec->closed_form.contains(low_var) ? rec->closed_form.get<IntTheory>(low_var).subs({{low_var, x}}) : std::optional<Expr>();
-            const auto up = rec->closed_form.contains(up_var) ? rec->closed_form.get<IntTheory>(up_var).subs({{up_var, x}}) : std::optional<Expr>();
+            const auto low = rec->closed_form.contains(low_var) ? rec->closed_form.get<IntTheory>(low_var).subs(reverse_low_up_vars) : std::optional<Expr>();
+            const auto up = rec->closed_form.contains(up_var) ? rec->closed_form.get<IntTheory>(up_var).subs(reverse_low_up_vars) : std::optional<Expr>();
             res.first.emplace(x, BoundPair{low, up});
         }
         res.second = rec->prefix;
@@ -233,22 +265,60 @@ linked_hash_map<BoolVar, bool> SABMC::value_selection(const Subs &model) const {
     return res;
 }
 
-SABMC::BoundPair SABMC::bound_selection(const Transition &t, const Subs &model, const NumVar &x) const {
+SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Subs &model, const NumVar &x, linked_hash_set<Expr> &chosen) const {
     const auto post_var {std::get<NumVar>(var_map[x])};
-    const auto bounds {t.toBoolExpr()->getBounds(post_var)};
-    if (bounds.equality) {
-        return {bounds.equality, bounds.equality};
-    } else {
-        return {closest_bound(bounds.lowerBounds, model, post_var), closest_bound(bounds.upperBounds, model, post_var)};
+    const auto bounds {trans.toBoolExpr()->getBounds(post_var)};
+    if (!bounds.equalities.empty()) {
+        std::optional<Expr> res;
+        for (const auto &e: bounds.equalities) {
+            if (!res) {
+                res = e;
+            } else {
+                const auto old_rec {res->has(x)};
+                const auto new_rec {e.has(x)};
+                if (!old_rec && new_rec) {
+                    res = e;
+                } else if (old_rec == new_rec) {
+                    const auto is_post = [this](const auto x) {
+                        return t.post_vars().contains(x);
+                    };
+                    const auto old_post {res->hasVarWith(is_post)};
+                    const auto new_post {e.hasVarWith(is_post)};
+                    if (old_post && !new_post) {
+                        res = e;
+                    } else if (old_post == new_post) {
+                        const auto old_vars {res->vars().size()};
+                        const auto new_vars {e.vars().size()};
+                        if (old_vars > new_vars) {
+                            res = e;
+                        }
+                    }
+                }
+            }
+        }
+        if (res) {
+            chosen.emplace(*res);
+            return {res, res};
+        }
     }
+    const auto lower {closest_bound(bounds.lowerBounds, model, post_var, chosen)};
+    const auto upper {closest_bound(bounds.upperBounds, model, post_var, chosen)};
+    if (lower) {
+        chosen.emplace(*lower);
+    }
+    if (upper) {
+        chosen.emplace(*upper);
+    }
+    return {lower, upper};
 }
 
 SABMC::NondetSubs SABMC::bound_selection(const Transition &trans, const Subs &model) const {
     NondetSubs res;
+    linked_hash_set<Expr> chosen;
     for (const auto &x: t.pre_vars()) {
         if (std::holds_alternative<NumVar>(x)) {
             const auto nv {std::get<NumVar>(x)};
-            res.emplace(nv, bound_selection(trans, model, nv));
+            res.emplace(nv, bound_selection(trans, model, nv, chosen));
         }
     }
     return res;
@@ -260,8 +330,8 @@ Transition mbp(const Transition &t, const Subs &model, const BoolVar &x) {
 
 Transition mbp(const Transition &t, const Subs &model, const NumVar &x) {
     const auto bounds {t.toBoolExpr()->getBounds(x)};
-    if (bounds.equality) {
-        return t.subs(Subs::build<IntTheory>(x, *bounds.equality));
+    if (!bounds.equalities.empty()) {
+        return t.subs(Subs::build<IntTheory>(x, *bounds.equalities.begin()));
     } else {
         const auto closest =
             bounds.lowerBounds.size() <= bounds.upperBounds.size() ?
@@ -310,14 +380,18 @@ void SABMC::handle_rel(const Rel &rel, const NondetSubs &update, const NondetSub
             const auto up {update.get(pre)};
             if (up) {
                 if (is_increasing(lhs, model, x)) {
-                    if (up->second) {
+                    if (up->second && !up->second->hasVarWith([this](const auto &x) {
+                            return t.post_vars().contains(x);
+                        })) {
                         init.put(x, *up->second);
                     } else {
                         add_init = false;
                         break;
                     }
                 } else {
-                    if (up->first) {
+                    if (up->first && !up->first->hasVarWith([this](const auto &x) {
+                            return t.post_vars().contains(x);
+                        })) {
                         init.put(x, *up->first);
                     } else {
                         add_init = false;
@@ -372,14 +446,29 @@ void SABMC::handle_loop(const Range &range) {
     const auto lm {build_loop(range)};
     const auto loop {lm.first};
     const auto model {lm.second};
+    if (Config::Analysis::log) {
+        std::cout << "model: " << model << std::endl;
+    }
     const auto sip_res {loop.syntacticImplicant(model)};
+    if (Config::Analysis::log) {
+        std::cout << "sip: " << sip_res << std::endl;
+    }
     auto simp {Preprocess::preprocessTransition(sip_res)};
+    if (Config::Analysis::log && simp) {
+        std::cout << "simplified: " << *simp << std::endl;
+    }
     const auto mbp_res {mbp(*simp, model)};
-    if (Config::Analysis::log) std::cout << "mbp: " << mbp_res << std::endl;
+    if (Config::Analysis::log) {
+        std::cout << "mbp: " << mbp_res << std::endl;
+    }
     const auto bool_update {value_selection(model)};
-    if (Config::Analysis::log && !bool_update.empty()) std::cout << "bool update: " << bool_update << std::endl;
+    if (Config::Analysis::log && !bool_update.empty()) {
+        std::cout << "bool update: " << bool_update << std::endl;
+    }
     const auto int_update {bound_selection(mbp_res, model)};
-    if (Config::Analysis::log && !int_update.empty()) std::cout << "int update: " << int_update << std::endl;
+    if (Config::Analysis::log && !int_update.empty()) {
+        std::cout << "int update: " << int_update << std::endl;
+    }
     const auto cp {closed_form(int_update, model)};
     const auto closed {cp.first};
     auto prefix {cp.second};
@@ -416,13 +505,10 @@ void SABMC::handle_loop(const Range &range) {
         const auto post {std::get<BoolVar>(var_map[x])};
         res.push_back(BExpression::buildTheoryLit(BoolLit(post, b)));
     }
-    if (prefix == 0 && !bool_update.empty()) {
-        prefix = 1;
-    }
     res.push_back(BExpression::buildTheoryLit(Rel::buildGeq(n, Expr(prefix))));
     std::vector<BoolExpr> disj;
     disj.push_back(BExpression::buildAnd(res));
-    if (prefix > 0) {
+    if (prefix > 1) {
         auto chained {mbp_res};
         disj.push_back(chained.toBoolExpr());
         for (unsigned i = 1; i < prefix; ++i) {
@@ -441,11 +527,7 @@ void SABMC::add_blocking_clauses() {
     for (const auto &b: blocked) {
         const auto s {get_subs(depth, b.length)};
         const auto block {!b.trans->subs(expr::compose(Subs::build<IntTheory>(ExprSubs({{n, 1}})), s))};
-        if (b.length == 1) {
-            solver->add(block | Rel::buildGeq(s.get<IntTheory>(trace_var), b.id));
-        } else {
-            solver->add(block);
-        }
+        solver->add(block | Rel::buildGeq(s.get<IntTheory>(trace_var), b.id));
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
         const std::vector<Lit> lits {Rel::buildNeq(cur.get<IntTheory>(trace_var), b.id), Rel::buildNeq(next.get<IntTheory>(trace_var), b.id)};
@@ -487,6 +569,7 @@ void SABMC::build_trace() {
     }
     if (Config::Analysis::log) {
         std::cout << "trace:" << std::endl << trace;
+        std::cout << "trace var: " << trace_var << std::endl;
         std::cout << "run:" << std::endl;
         for (const auto &s: run) {
             std::cout << s << std::endl;
@@ -495,6 +578,13 @@ void SABMC::build_trace() {
 }
 
 const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
+    if (subs.empty()) {
+        Subs s;
+        for (const auto &[_,x]: var_map) {
+            s.put(x, expr::toExpr(expr::next(x)));
+        }
+        subs.push_back({s});
+    }
     while (subs.size() < start + steps) {
         Subs s;
         for (const auto &var: vars) {
@@ -509,15 +599,14 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
         subs.push_back({s});
     }
     auto &pre_vec {subs.at(start)};
-    auto &pre {pre_vec.front()};
     auto &post {subs.at(start + steps - 1).front()};
     while (pre_vec.size() < steps) {
         Subs s;
         for (const auto &var: vars) {
-            const auto &post_var {var_map.get(var)};
+            const auto post_var {var_map.get(var)};
             if (post_var) {
-                s.put(var, pre.get(var));
-                s.put(*post_var, post.get(var));
+                s.put(var, pre_vec.front().get(var));
+                s.put(*post_var, post.get(*post_var));
             } else {
                 s.put(var, expr::toExpr(expr::next(var)));
             }
