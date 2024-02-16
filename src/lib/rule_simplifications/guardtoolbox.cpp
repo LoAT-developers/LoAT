@@ -253,6 +253,16 @@ ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, SolvingLevel 
     return res;
 }
 
+ResultBase<BoolExpr, Proof> GuardToolbox::simplify(BoolExpr e) {
+    ResultBase<BoolExpr, Proof> res {e};
+    e = e->simplify();
+    if (*res != e) {
+        res = e;
+        res.append("Simplified Formula");
+    }
+    return res;
+}
+
 ResultBase<BoolExpr, Proof> GuardToolbox::eliminateTempVars(BoolExpr e, const SymbolAcceptor &allow) {
     e = _makeEqualities(e);
     auto res {_propagateBooleanEqualities(e)};
@@ -263,10 +273,8 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateTempVars(BoolExpr e, const Sy
     if (res) {
         return res;
     }
-    BoolExpr simplified = e->simplify();
-    if (simplified != e) {
-        res = simplified;
-        res.append("Simplified Formula");
+    res = simplify(e);
+    if (res) {
         return res;
     }
     return GuardToolbox::eliminateByTransitiveClosure(e, true, allow);

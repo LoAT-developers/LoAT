@@ -140,13 +140,13 @@ bool Rel::isOctagon() const {
     return op != neq && (lhs() - rhs()).expand().isOctagon();
 }
 
-std::pair<std::optional<Expr>, std::optional<Expr>> Rel::getBoundFromIneq(const NumVar &N) const {
+std::pair<std::optional<Expr>, std::optional<Expr>> Rel::getBoundFromIneq(const NumVar &N, const SolvingLevel level) const {
     Rel l = isPoly() ? toLeq() : toL();
     Expr term = (l.lhs() - l.rhs()).expand();
     if (term.degree(N) != 1) return {};
 
     // compute the upper bound represented by N and check that it is integral
-    auto optSolved = term.solveTermFor(N, ResultMapsToInt);
+    auto optSolved = term.solveTermFor(N, level);
     if (optSolved) {
         const Expr &coeff = term.coeff(N, 1);
         assert(coeff.isRationalConstant());
@@ -159,17 +159,17 @@ std::pair<std::optional<Expr>, std::optional<Expr>> Rel::getBoundFromIneq(const 
     return {};
 }
 
-void Rel::getBounds(const NumVar &n, Bounds &res) const {
+void Rel::getBounds(const NumVar &n, Bounds &res, const SolvingLevel level) const {
     if (has(n)) {
         if (isEq()) {
-            const std::optional<Expr> eq = (lhs() - rhs()).solveTermFor(n, ResultMapsToInt);
+            const std::optional<Expr> eq = (lhs() - rhs()).solveTermFor(n, level);
             if (eq) {
                 res.equalities.insert(*eq);
                 res.lowerBounds.insert(*eq);
                 res.upperBounds.insert(*eq);
             }
         } else if (isIneq()) {
-            const auto p = getBoundFromIneq(n);
+            const auto p = getBoundFromIneq(n, level);
             if (p.first) {
                 bool add = true;
                 for (const auto &b: res.lowerBounds) {

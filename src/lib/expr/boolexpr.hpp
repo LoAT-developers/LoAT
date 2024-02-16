@@ -156,7 +156,7 @@ public:
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LS &res) const = 0;
     virtual size_t size() const = 0;
-    virtual void getBounds(const NumVar &n, Bounds &res) const = 0;
+    virtual void getBounds(const NumVar &n, Bounds &res, const SolvingLevel level) const = 0;
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
@@ -188,9 +188,9 @@ public:
         }
     }
 
-    Bounds getBounds(const NumVar &n) const {
+    Bounds getBounds(const NumVar &n, const SolvingLevel level = ResultMapsToInt) const {
         Bounds bounds;
-        getBounds(n, bounds);
+        getBounds(n, bounds, level);
         return bounds;
     }
 
@@ -708,9 +708,9 @@ public:
         return 1;
     }
 
-    void getBounds(const NumVar &var, Bounds &res) const override {
+    void getBounds(const NumVar &var, Bounds &res, const SolvingLevel level) const override {
         if (std::holds_alternative<Rel>(lit)) {
-            std::get<Rel>(lit).getBounds(var, res);
+            std::get<Rel>(lit).getBounds(var, res, level);
         }
     }
 
@@ -844,20 +844,20 @@ public:
         return res;
     }
 
-    void getBounds(const NumVar &n, Bounds &res) const override {
+    void getBounds(const NumVar &n, Bounds &res, const SolvingLevel level) const override {
         if (isAnd()) {
             for (const auto &c: children) {
-                c->getBounds(n, res);
+                c->getBounds(n, res, level);
             }
         } else if (isOr()) {
             bool first = true;
             for (const auto &c: children) {
                 if (first) {
-                    c->getBounds(n, res);
+                    c->getBounds(n, res, level);
                     first = false;
                 } else {
                     Bounds cres = res;
-                    c->getBounds(n, cres);
+                    c->getBounds(n, cres, level);
                     for (auto it = res.lowerBounds.begin(); it != res.lowerBounds.end();) {
                         if (!cres.lowerBounds.contains(*it)) {
                             it = res.lowerBounds.erase(it);

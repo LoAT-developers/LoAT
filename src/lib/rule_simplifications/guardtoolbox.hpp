@@ -74,6 +74,8 @@ namespace GuardToolbox {
      */
     ResultBase<BoolExpr, Proof> eliminateByTransitiveClosure(const BoolExpr e, bool removeHalfBounds, const SymbolAcceptor &allow);
 
+    ResultBase<BoolExpr, Proof> simplify(const BoolExpr e);
+
     /**
      * Replaces bidirectional inequalities, e.g. x <= y, y >= x by an equality, e.g. x == y.
      * The inequalties are removed, the equality is added to guard.

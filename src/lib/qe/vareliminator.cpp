@@ -55,8 +55,7 @@ const std::vector<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDepende
         if (!vars.contains(*it)) {
             continue;
         }
-        Bounds bounds;
-        guard->getBounds(*it, bounds);
+        const auto bounds {guard->getBounds(*it)};
         std::vector<std::pair<ExprSubs, BoolExpr>> res;
         for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
             for (const auto &b: bb) {
@@ -92,8 +91,7 @@ void VarEliminator::eliminate() {
     for (const auto &p: todoN) {
         const ExprSubs &subs = p.first;
         const BoolExpr guard = p.second;
-        Bounds bounds;
-        guard->getBounds(N, bounds);
+        auto bounds {guard->getBounds(N)};
         if (!bounds.equalities.empty()) {
             ExprSubs p{{N, *bounds.equalities.begin()}};
             res.insert(subs.compose(p));

@@ -41,7 +41,7 @@ public:
     bool isStrict() const;
     bool isOctagon() const;
     bool isWellformed() const;
-    void getBounds(const NumVar &n, Bounds &res) const;
+    void getBounds(const NumVar &n, Bounds &res, const SolvingLevel level = ResultMapsToInt) const;
 
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
@@ -81,7 +81,7 @@ public:
     friend Rel operator!(const Rel &x);
     friend std::ostream& operator<<(std::ostream &s, const Rel &e);
 
-    std::pair<std::optional<Expr>, std::optional<Expr>> getBoundFromIneq(const NumVar &N) const;
+    std::pair<std::optional<Expr>, std::optional<Expr>> getBoundFromIneq(const NumVar &N, const SolvingLevel level = ResultMapsToInt) const;
 
 private:
 

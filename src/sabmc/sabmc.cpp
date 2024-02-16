@@ -329,7 +329,7 @@ Transition mbp(const Transition &t, const Subs &model, const BoolVar &x) {
 }
 
 Transition mbp(const Transition &t, const Subs &model, const NumVar &x) {
-    const auto bounds {t.toBoolExpr()->getBounds(x)};
+    const auto bounds {t.toBoolExpr()->getBounds(x, SolvingLevel::ConstantCoeffs)};
     if (!bounds.equalities.empty()) {
         return t.subs(Subs::build<IntTheory>(x, *bounds.equalities.begin()));
     } else {
@@ -354,7 +354,9 @@ Transition mbp(const Transition &t, const Subs &model, const Var &x) {
                 return mbp(t, model, x);
             },
             [&](const NumVar &x) {
-                return mbp(t, model, x);
+                const auto res {mbp(t, model, x)};
+                assert(!res.toBoolExpr()->isTriviallyFalse());
+                return res;
             }
         }, x);
 }
@@ -410,7 +412,7 @@ void SABMC::handle_rel(const Rel &rel, const NondetSubs &update, const NondetSub
     auto add_but_last {true};
     ExprSubs but_last;
     for (const auto &x: vars) {
-        if (t.pre_vars().contains(x)) {
+        if (!t.post_vars().contains(x)) {
             Expr updated;
             if (closed.contains(x)) {
                 const auto up {closed[x]};
@@ -491,15 +493,8 @@ void SABMC::handle_loop(const Range &range) {
                 [](const auto &){}
             }, lit);
     }
-    for (const auto &[x,p]: closed) {
-        const auto post {std::get<NumVar>(var_map[x])};
-        const auto &[lower, upper] {p};
-        if (lower) {
-            res.push_back(BExpression::buildTheoryLit(Rel::buildLeq(*lower, post)));
-        }
-        if (upper) {
-            res.push_back(BExpression::buildTheoryLit(Rel::buildLeq(post, *upper)));
-        }
+    if (Config::Analysis::log) {
+        std::cout << "handled rels: " << BExpression::buildAnd(res) << std::endl;
     }
     for (const auto &[x,b]: bool_update) {
         const auto post {std::get<BoolVar>(var_map[x])};
@@ -526,6 +521,7 @@ BoolExpr SABMC::encode_transition(const Transition &t) {
 void SABMC::add_blocking_clauses() {
     for (const auto &b: blocked) {
         const auto s {get_subs(depth, b.length)};
+        // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(ExprSubs({{n, 1}}))) << std::endl;
         const auto block {!b.trans->subs(expr::compose(Subs::build<IntTheory>(ExprSubs({{n, 1}})), s))};
         solver->add(block | Rel::buildGeq(s.get<IntTheory>(trace_var), b.id));
         const auto cur {get_subs(depth, 1)};
@@ -613,6 +609,7 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
         }
         pre_vec.push_back(s);
     }
+    // std::cout << "get_subs(" << start << ", " << steps << "): " << pre_vec.at(steps - 1) << std::endl;
     return pre_vec.at(steps - 1);
 }
 
@@ -659,8 +656,8 @@ void SABMC::analyze() {
         case SmtResult::Unsat:
             sat();
             return;
-        case SmtResult::Sat: {
-        case SmtResult::Unknown:
+        case SmtResult::Sat:
+        case SmtResult::Unknown: {
             build_trace();
             if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
             const auto range {has_looping_infix()};
