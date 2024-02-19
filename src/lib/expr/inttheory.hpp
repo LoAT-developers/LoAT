@@ -5,6 +5,7 @@
 #include "rel.hpp"
 
 struct IntTheory {
+
     using Lit = Rel;
     using Var = NumVar;
     using Subs = ExprSubs;
@@ -23,6 +24,16 @@ struct IntTheory {
         return 0;
     }
 
+    static NumVar next() {
+        return NumVar::next();
+    }
+
 };
+
+namespace intTheory {
+
+extern IntTheory t;
+
+}
 
 static_assert(ITheory<IntTheory>);

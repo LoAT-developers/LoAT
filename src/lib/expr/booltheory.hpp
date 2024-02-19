@@ -31,7 +31,17 @@ struct BoolTheory: public BoolBaseTheory {
         return BExpression::bot();
     }
 
+    static BoolVar next() {
+        return BoolVar::next();
+    }
+
 };
+
+namespace boolTheory {
+
+extern BoolTheory t;
+
+}
 
 static_assert(IBaseTheory<BoolBaseTheory>);
 static_assert(ITheory<BoolTheory>);

@@ -142,6 +142,14 @@ BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
         }, e1);
 }
 
+IntTheory theory(const NumVar&) {
+    return intTheory::t;
+}
+
+BoolTheory theory(const BoolVar&) {
+    return boolTheory::t;
+}
+
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e) {

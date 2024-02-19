@@ -86,6 +86,15 @@ BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2);
 
 BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2);
 
+IntTheory theory(const NumVar&);
+
+BoolTheory theory(const BoolVar&);
+
+template <class ... Ts>
+auto apply(const Var &x, Ts... f) {
+    return std::visit(Overload{f...}, x);
+}
+
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e);

@@ -161,11 +161,17 @@ Subs Reachability::handle_update(const TransIdx idx) {
     Subs new_var_renaming {last_var_renaming};
     const Subs up = idx->getUpdate();
     for (const auto &x: prog_vars) {
-        new_var_renaming.put(x, TheTheory::varToExpr(expr::next(x)));
+        expr::apply(x, [&new_var_renaming](const auto &x) {
+            const auto th {expr::theory(x)};
+            new_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
+        });
     }
     for (const auto &var: idx->vars()) {
         if (expr::isTempVar(var)) {
-            new_var_renaming.put(var, TheTheory::varToExpr(expr::next(var)));
+            expr::apply(var, [&new_var_renaming](const auto &x) {
+                const auto th {expr::theory(x)};
+                new_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
+            });
         }
     }
     for (const auto &x: prog_vars) {

@@ -577,7 +577,10 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
     if (subs.empty()) {
         Subs s;
         for (const auto &[_,x]: var_map) {
-            s.put(x, expr::toExpr(expr::next(x)));
+            expr::apply(x, [&s](const auto &x) {
+                const auto th {expr::theory(x)};
+                s.put<decltype(th)>(x, th.varToExpr(th.next()));
+            });
         }
         subs.push_back({s});
     }

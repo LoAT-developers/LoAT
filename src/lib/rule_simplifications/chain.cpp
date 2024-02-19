@@ -2,10 +2,13 @@
 #include "expr.hpp"
 
 Var renameVar(const Var &x, Subs &sigma, Subs &inverted) {
-    const auto next {expr::next(x)};
-    sigma.put(x, expr::toExpr(next));
-    inverted.put(next, expr::toExpr(x));
-    return next;
+    return expr::apply(x, [&sigma, &inverted](const auto &x) {
+        const auto th {expr::theory(x)};
+        const auto next {th.next()};
+        sigma.put<decltype(th)>(x, th.varToExpr(next));
+        inverted.put<decltype(th)>(next, th.varToExpr(x));
+        return Var(next);
+    });
 }
 
 std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) {

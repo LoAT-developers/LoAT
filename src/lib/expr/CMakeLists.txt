@@ -22,7 +22,9 @@ add_library(${PROJECT_NAME} STATIC
   conjunction.hpp
   boolexpr.hpp
   inttheory.hpp
+  inttheory.cpp
   booltheory.hpp
+  booltheory.cpp
   boolsubs.hpp
   theory.hpp
   theory.cpp

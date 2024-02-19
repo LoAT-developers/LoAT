@@ -87,7 +87,7 @@ namespace sexpressionparser {
                             }
                             update.put<IntTheory>(NumVar::loc_var, to);
                             if (Config::Analysis::complexity()) {
-                                update.put(cost_var, Expr(cost_var) + 1);
+                                update.put<IntTheory>(cost_var, Expr(cost_var) + 1);
                             }
                             Rule rule(cond, update);
                             // make sure that the temporary variables are unique
