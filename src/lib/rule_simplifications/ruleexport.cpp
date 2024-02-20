@@ -26,15 +26,15 @@ void RuleExport::printRule(const Rule &rule, std::ostream &s, bool colors) {
     printGuard(rule.getGuard(), s, colors);
     s << " /\\ ";
     bool first = true;
-    for (auto upit : rule.getUpdate()) {
+    for (const auto &[x,v] : rule.getUpdate()) {
         if (first) {
             first = false;
         } else {
             s << ", ";
         }
         if (colors) printColor(s, Color::Update);
-        s << expr::first(upit) << "'";
-        s << "=" << expr::second(upit);
+        s << x << "'";
+        s << "=" << v;
         if (colors) printColor(s, Color::None);
     }
 }

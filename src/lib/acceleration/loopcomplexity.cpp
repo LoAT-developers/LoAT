@@ -3,9 +3,7 @@
 
 LoopComplexity LoopComplexity::compute(const Rule &rule) {
     LoopComplexity res;
-    for (const auto &p: rule.getUpdate()) {
-        const auto x {expr::first(p)};
-        const auto v {expr::second(p)};
+    for (const auto &[x,v]: rule.getUpdate()) {
         const auto vars {expr::vars(v)};
         ++res.non_recursive;
         for (const auto &y: vars) {

@@ -102,3 +102,33 @@ std::ostream& operator<<(std::ostream &s, const Var &e);
 std::ostream& operator<<(std::ostream &s, const ThExpr &e);
 
 std::ostream& operator<<(std::ostream &s, const Lit &e);
+
+namespace std {
+
+template<>
+struct tuple_size<Subs::Pair> {
+    static constexpr size_t value = 2;
+};
+
+
+template<>
+struct tuple_element<0, Subs::Pair> {
+    using type = Var;
+};
+
+template<>
+struct tuple_element<1, Subs::Pair> {
+    using type = ThExpr;
+};
+
+template<std::size_t Index>
+std::tuple_element_t<Index, Subs::Pair> get(const Subs::Pair& p) {
+    if constexpr (Index == 0) {
+        return expr::first(p);
+    }
+    if constexpr (Index == 1) {
+        return expr::second(p);
+    }
+}
+
+}

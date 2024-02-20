@@ -20,9 +20,7 @@ static void findOrderUntilConflicting(const Subs &update, PartialResult &res) {
     while (changed && res.ordering.size() < update.size()) {
         changed = false;
 
-        for (const auto &up : update) {
-            const auto var = expr::first(up);
-            const auto ex = expr::second(up);
+        for (const auto &[var, ex] : update) {
             if (res.ordered.contains(var)) continue;
 
             //check if all variables on update rhs are already processed

@@ -31,8 +31,8 @@ using namespace std;
  */
 static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     VarSet varsInUpdate;
-    for (const auto &it : rule.getUpdate()) {
-        expr::collectVars(expr::second(it), varsInUpdate);
+    for (const auto &[_, v] : rule.getUpdate()) {
+        expr::collectVars(v, varsInUpdate);
     }
     return varsInUpdate;
 }
@@ -122,11 +122,9 @@ RuleResult eliminateTempVars(Rule rule) {
 
 bool removeTrivialUpdates(Subs &update) {
     stack<Var> remove;
-    for (const auto &it : update) {
-        const auto first = expr::first(it);
-        const auto second = expr::second(it);
-        if (TheTheory::varToExpr(first) == second) {
-            remove.push(first);
+    for (const auto &[x,v] : update) {
+        if (TheTheory::varToExpr(x) == v) {
+            remove.push(x);
         }
     }
     if (remove.empty()) return false;
