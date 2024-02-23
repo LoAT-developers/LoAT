@@ -2,17 +2,18 @@
 #include "expr.hpp"
 #include "config.hpp"
 
+enum relop_type {lt, leq, gt, geq, eq, neq};
+
 using fs_type = LocationIdx;
 using lhs_type = LocationIdx;
-using to_type = Expr;
+using to_type = IntTheory::Expression;
 using com_type = std::vector<Subs>;
 using cond_type = BoolExpr;
 using rhs_type = Subs;
-using expr_type = Expr;
-using var_type = NumVar;
-using lit_type = Rel;
+using expr_type = IntTheory::Expression;
+using var_type = IntTheory::Var;
+using lit_type = BoolExpr;
 using formula_type = BoolExpr;
-using relop_type = Rel::RelOp;
 
 antlrcpp::Any KoatParseVisitor::visitMain(KoatParser::MainContext *ctx) {
     visitChildren(ctx);
@@ -43,7 +44,7 @@ antlrcpp::Any KoatParseVisitor::visitVar(KoatParser::VarContext *ctx) {
     if (res) {
         return *res;
     } else {
-        const NumVar var {NumVar::next()};
+        const auto var {NumVar::next()};
         vars.emplace(name, var);
         return var;
     }
@@ -64,7 +65,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }
-    cond = cond & Rel::buildEq(NumVar::loc_var, lhsLoc);
+    cond = cond & expr::mkEq(NumVar::loc_var, ne::buildConstant(lhsLoc));
     auto up = rhss.at(0);
     if (Config::Analysis::complexity()) {
         up.put<IntTheory>(its->getCostVar(), its->getCostVar() + cost);
@@ -73,8 +74,8 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     auto vars = rule.vars();
     Subs varRenaming;
     for (const auto &x: vars) {
-        const auto var {std::get<NumVar>(x)};
-        if (var.isTempVar()) {
+        const auto var {std::get<IntTheory::Var>(x)};
+        if (var->isTempVar()) {
             varRenaming.put<IntTheory>(var, NumVar::next());
         }
     }
@@ -87,7 +88,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
     static bool initVars = true;
     if (initVars) {
         for (const auto& c: ctx->var()) {
-            const NumVar var {NumVar::nextProgVar()};
+            const auto var {NumVar::nextProgVar()};
             programVars.push_back(var);
             vars.emplace(c->getText(), var);
         }
@@ -98,7 +99,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
             throw std::invalid_argument("wrong arity: " + ctx->getText());
         }
         for (unsigned i = 0; i < sz; ++i) {
-            if (programVars[i].getName() != vars[ctx->var(i)->getText()].getName()) {
+            if (programVars[i] != vars[ctx->var(i)->getText()]) {
                 throw std::invalid_argument("invalid arguments: expected " + expr::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
             }
         }
@@ -119,13 +120,13 @@ antlrcpp::Any KoatParseVisitor::visitRhs(KoatParser::RhsContext *ctx) {
     unsigned sz = expr.size();
     Subs up;
     for (unsigned i = 0; i < sz; ++i) {
-        Expr rhs = any_cast<expr_type>(visit(expr[i]));
+        const auto rhs = any_cast<expr_type>(visit(expr[i]));
         if (rhs != programVars[i]) {
             up.put<IntTheory>(programVars[i], rhs);
         }
     }
-    LocationIdx loc = any_cast<fs_type>(visit(ctx->fs()));
-    up.put<IntTheory>(NumVar::loc_var, loc);
+    const auto loc = any_cast<fs_type>(visit(ctx->fs()));
+    up.put<IntTheory>(NumVar::loc_var, ne::buildConstant(loc));
     return up;
 }
 
@@ -133,7 +134,7 @@ antlrcpp::Any KoatParseVisitor::visitTo(KoatParser::ToContext *ctx) {
     if (ctx->lb()) {
         return visit(ctx->lb());
     } else {
-        return Expr(1);
+        return ne::buildConstant(1);
     }
 }
 
@@ -151,10 +152,10 @@ antlrcpp::Any KoatParseVisitor::visitCond(KoatParser::CondContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
     if (ctx->INT()) {
-        return Expr(Num(ctx->INT()->getText().c_str()));
+        return ne::buildConstant(Int(ctx->INT()->getText()));
     } else if (ctx->var()) {
         const auto var = any_cast<var_type>(visit(ctx->var()));
-        return Expr(var);
+        return var->toExpr();
     } else if (ctx->LPAR()) {
         return visit(ctx->expr(0));
     } else if (ctx->MINUS()) {
@@ -182,7 +183,7 @@ antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitFormula(KoatParser::FormulaContext *ctx) {
     if (ctx->lit()) {
-        return BExpression::buildTheoryLit(any_cast<lit_type>(visit(ctx->lit())));
+        return any_cast<lit_type>(visit(ctx->lit()));
     } else if (ctx->LPAR()) {
         return visit(ctx->formula(0));
     } else {
@@ -205,22 +206,30 @@ antlrcpp::Any KoatParseVisitor::visitLit(KoatParser::LitContext *ctx) {
     const auto arg1 = any_cast<expr_type>(visit(ctx->expr(0)));
     const auto op = any_cast<relop_type>(visit(children[1]));
     const auto arg2 = any_cast<expr_type>(visit(ctx->expr(1)));
-    return Rel(arg1, op, arg2);
+    switch (op) {
+    case lt: return BExpression::buildTheoryLit(Rel::buildLt(arg1, arg2));
+    case leq: return BExpression::buildTheoryLit(Rel::buildLeq(arg1, arg2));
+    case gt: return BExpression::buildTheoryLit(Rel::buildGt(arg1, arg2));
+    case geq: return BExpression::buildTheoryLit(Rel::buildGeq(arg1, arg2));
+    case eq: return expr::mkEq(arg1, arg2);
+    case neq: return expr::mkNeq(arg1, arg2);
+    }
+    throw std::invalid_argument("unknown relation");
 }
 
 antlrcpp::Any KoatParseVisitor::visitRelop(KoatParser::RelopContext *ctx) {
     if (ctx->LT()) {
-        return Rel::lt;
+        return relop_type::lt;
     } else if (ctx->LEQ()) {
-        return Rel::leq;
+        return relop_type::leq;
     } else if (ctx->EQ()) {
-        return Rel::eq;
+        return relop_type::eq;
     } else if (ctx->GEQ()) {
-        return Rel::geq;
+        return relop_type::geq;
     } else if (ctx->GT()) {
-        return Rel::gt;
+        return relop_type::gt;
     } else if (ctx->NEQ()) {
-        return Rel::neq;
+        return relop_type::neq;
     } else {
         throw std::invalid_argument("unknown relation: " + ctx->getText());
     }

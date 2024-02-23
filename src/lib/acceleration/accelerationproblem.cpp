@@ -14,7 +14,7 @@ AccelerationProblem::AccelerationProblem(
         const AccelConfig &config):
     closed(closed),
     update(r.getUpdate()),
-    guard(r.getGuard()->toG()),
+    guard(r.getGuard()),
     config(config),
     samplePoint(samplePoint) {
     for (const auto &l: guard->lits()) {
@@ -24,7 +24,7 @@ AccelerationProblem::AccelerationProblem(
     const auto logic {SMT::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
-        const auto bound {BExpression::buildTheoryLit(Rel(config.n, Rel::geq, 1))};
+        const auto bound {BExpression::buildTheoryLit(Rel(config.n->toExpr() - ne::buildConstant(1)))};
         this->solver->add(bound);
         this->res.formula.push_back(bound);
     }
@@ -56,21 +56,24 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         return false;
     }
     const auto &rel {std::get<Rel>(lit)};
-    const auto nfold {rel.lhs().subs(closed->closed_form.get<IntTheory>()).expand()};
-    if (!nfold.has(config.n) || !nfold.isPoly(config.n)) {
+    const auto nfold {closed->closed_form.get<IntTheory>()(rel.lhs())};
+    if (!nfold->has(config.n) || !nfold->isPoly(config.n)) {
         return false;
     }
     const auto &up {update.get<IntTheory>()};
-    const ExprSubs but_last {closed->closed_form.get<IntTheory>().compose({{config.n, Expr(config.n) - 1}})};
+    const ExprSubs but_last {closed->closed_form.get<IntTheory>().compose({{config.n, config.n->toExpr() - ne::buildConstant(1)}})};
     bool low_degree {false};
     RelSet guard;
     RelSet covered;
-    switch (nfold.degree(config.n)) {
-    case 0: return false;
-    case 1: {
-        const auto coeff {nfold.coeff(config.n, 1)};
-        if (coeff.isGround()) {
-            if (coeff.toNum().is_positive()) {
+    const auto d {nfold->degree(config.n)};
+    assert(d);
+    if (d == 0) {
+        return false;
+    } else if (d == 1) {
+        const auto coeff {*nfold->coeff(config.n, 1)};
+        const auto c {coeff->isRational()};
+        if (c) {
+            if (*c > 0) {
                 guard.insert(rel);
             } else {
                 guard.insert(rel.subs(but_last));
@@ -82,36 +85,32 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             res.nonterm = false;
         }
         low_degree = true;
-        break;
-    }
-    case 2: {
-        const auto coeff {nfold.coeff(config.n, 2)};
-        if (coeff.isGround()) {
-            if (coeff.toNum().is_negative()) {
+    } else if (d == 2) {
+        const auto coeff {*nfold->coeff(config.n, 2)};
+        const auto c {coeff->isRational()};
+        if (c) {
+            if (*c < 0) {
                 guard.insert(rel);
                 guard.insert(rel.subs(but_last));
                 res.nonterm = false;
                 low_degree = true;
             }
         }
-        break;
-    }
-    default: {}
     }
     if (!low_degree) {
         if (!samplePoint || polyaccel != PolyAccelMode::Full) {
             return false;
         } else {
             auto sample_point {samplePoint->get<IntTheory>()};
-            std::vector<Expr> derivatives {rel.lhs()};
-            std::vector<GiNaC::numeric> signs {rel.lhs().subs(sample_point).toNum()};
-            Expr diff;
+            std::vector<IntTheory::Expression> derivatives {rel.lhs()};
+            std::vector<Rational> signs {*sample_point(rel.lhs())->isRational()};
+            IntTheory::Expression diff;
             do {
                 const auto &last {derivatives.back()};
-                diff = (last.subs(up) - last).expand();
+                diff = up(last) - last;
                 derivatives.push_back(diff);
-                signs.push_back(diff.subs(sample_point).toNum());
-            } while (!diff.isGround());
+                signs.push_back(*sample_point(diff)->isRational());
+            } while (!diff->isRational());
             for (unsigned i = 1; i < signs.size() - 1; ++i) {
                 if (signs.at(i).is_zero()) {
                     for (unsigned j = i + 1; j < signs.size(); ++j) {
@@ -122,29 +121,29 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
                     }
                 }
             }
-            if (signs.at(1).is_positive()) {
+            if (signs.at(1) > 0) {
                 guard.insert(rel);
             } else {
                 guard.insert(rel.subs(but_last));
                 res.nonterm = false;
             }
             for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
-                if (signs.at(i).is_positive()) {
+                if (signs.at(i) > 0) {
                     covered.insert(Rel::buildGeq(derivatives.at(i), 0));
                 } else {
                     covered.insert(Rel::buildLeq(derivatives.at(i), 0));
                 }
-                if (signs.at(i+1).is_positive()) {
+                if (signs.at(i+1) > 0) {
                     // the i-th derivative is monotonically increasing at the sampling point
-                    if (signs.at(i).is_positive()) {
+                    if (signs.at(i) > 0) {
                         guard.insert(Rel::buildGeq(derivatives.at(i), 0));
                     } else {
-                        guard.insert(Rel::buildLeq(derivatives.at(i).subs(but_last), 0));
+                        guard.insert(Rel::buildLeq(but_last(derivatives.at(i)), 0));
                     }
                 } else {
                     res.nonterm = false;
-                    if (signs.at(i).is_positive()) {
-                        guard.insert(Rel::buildGeq(derivatives.at(i).subs(but_last), 0));
+                    if (signs.at(i) > 0) {
+                        guard.insert(Rel::buildGeq(but_last(derivatives.at(i)), 0));
                     } else {
                         guard.insert(Rel::buildLeq(derivatives.at(i), 0));
                     }
@@ -175,7 +174,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         solver->add(BExpression::buildTheoryLit(expr::negate(lit)));
         if (solver->check() == Unsat) {
             success = true;
-            auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, Expr(config.n)-1))};
+            auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, config.n->toExpr() - ne::buildConstant(1)))};
             res.formula.push_back(g);
             res.proof.newline();
             res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
@@ -209,16 +208,16 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     }
     auto success {false};
     const Rel &rel {std::get<Rel>(lit)};
-    const auto updated {rel.lhs().subs(update.get<IntTheory>())};
+    const auto updated {update.get<IntTheory>()(rel.lhs())};
     const auto dec {Rel::buildGeq(rel.lhs(), updated)};
     solver->push();
     solver->add(BExpression::buildTheoryLit(dec));
     if (solver->check() == Sat) {
-        const auto inc {Rel::buildLt(updated, updated.subs(update.get<IntTheory>()))};
+        const auto inc {Rel::buildLt(updated, update.get<IntTheory>()(updated))};
         solver->add(BExpression::buildTheoryLit(inc));
         if (solver->check() == Unsat) {
             success = true;
-            const auto g {BExpression::buildTheoryLit(rel) & rel.subs(closed->closed_form.get<IntTheory>()).subs({{config.n, Expr(config.n)-1}})};
+            const auto g {BExpression::buildTheoryLit(rel) & rel.subs(closed->closed_form.get<IntTheory>()).subs({{config.n, config.n->toExpr() - ne::buildConstant(1)}})};
             res.formula.push_back(g);
             res.proof.newline();
             res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
@@ -237,7 +236,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     // t > 0
     const auto &rel {std::get<Rel>(lit)};
     // up(t)
-    const auto updated {rel.lhs().subs(update.get<IntTheory>())};
+    const auto updated {update.get<IntTheory>()(rel.lhs())};
     // t <(=) up(t)
     const auto i = strict ? Rel::buildLt(rel.lhs(), updated) : Rel::buildLeq(rel.lhs(), updated);
     const auto inc {BExpression::buildTheoryLit(i)};
@@ -245,7 +244,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     solver->add(inc);
     if (solver->check() == Sat) {
         // up(t) >(=) up^2(t)
-        const auto d {strict ? Rel::buildGeq(updated, updated.subs(update.get<IntTheory>())) : Rel::buildGt(updated, updated.subs(update.get<IntTheory>()))};
+        const auto d {strict ? Rel::buildGeq(updated, update.get<IntTheory>()(updated)) : Rel::buildGt(updated, update.get<IntTheory>()(updated))};
         const auto dec {BExpression::buildTheoryLit(d)};
         solver->push();
         solver->add(dec);
@@ -259,7 +258,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
                     solver->pop();
                     return false;
                 }
-                const auto s {closed->closed_form.get<IntTheory>().compose(ExprSubs({{config.n, Expr(config.n)-1}}))};
+                const auto s {closed->closed_form.get<IntTheory>().compose(ExprSubs({{config.n, config.n->toExpr() - ne::buildConstant(1)}}))};
                 g = BExpression::buildTheoryLit((!i).subs(s)) & rel.subs(s);
                 c = BExpression::buildTheoryLit((!i));
                 res.nonterm = false;
@@ -286,7 +285,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     std::vector<BoolExpr> eqs;
     const auto vars {util::RelevantVariables::find(expr::variables(lit), update)};
     for (const auto& v: vars) {
-        if (std::holds_alternative<BoolVar>(v)) {
+        if (std::holds_alternative<BoolTheory::Var>(v)) {
             // encoding equality for booleans introduces a disjunction
             return false;
         }

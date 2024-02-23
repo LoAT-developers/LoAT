@@ -37,15 +37,6 @@ static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     return varsInUpdate;
 }
 
-Rule makeEqualities(const Rule &rule) {
-    const auto eqs {GuardToolbox::makeEqualities(rule.getGuard())};
-    if (eqs.empty()) {
-        return rule;
-    } else {
-        return rule.withGuard(rule.getGuard() & BExpression::buildAndFromLits(eqs));
-    }
-}
-
 RuleResult propagateBooleanEqualities(const Rule &rule) {
     RuleResult res {rule};
     const auto subs {GuardToolbox::propagateBooleanEqualities(rule.getGuard())};
@@ -57,9 +48,9 @@ RuleResult propagateBooleanEqualities(const Rule &rule) {
     return res;
 }
 
-RuleResult propagateEqualities(const Rule &rule, SolvingLevel maxlevel, const GuardToolbox::SymbolAcceptor &allow) {
+RuleResult propagateEqualities(const Rule &rule, GuardToolbox::SymbolAcceptor &allow) {
     RuleResult res {rule};
-    const auto subs {GuardToolbox::propagateEqualities(rule.getGuard(), maxlevel, allow)};
+    const auto subs {GuardToolbox::propagateEqualities(rule.getGuard(), allow)};
     if (subs) {
         res = res->subs(Subs::build<IntTheory>(*subs));
         res.ruleTransformationProof(rule, "Extracted Implied Equalities", *res);
@@ -91,21 +82,21 @@ RuleResult simplify(const Rule &rule) {
 }
 
 RuleResult eliminateTempVars(Rule rule) {
-    rule = makeEqualities(rule);
     auto res {propagateBooleanEqualities(rule)};
     if (res) {
         return res;
     }
     auto varsInUpdate {expr::coDomainVars(rule.getUpdate())};
-    auto isTempInUpdate = [&](const Var &sym) {
-        return expr::isTempVar(sym) && varsInUpdate.contains(sym);
-    };
-    res = propagateEqualities(rule, ResultMapsToInt, isTempInUpdate);
+    GuardToolbox::SymbolAcceptor isTemp {expr::isTempVar};
+    GuardToolbox::SymbolAcceptor isTempInUpdate {[&](const Var &sym) {
+        return isTemp(sym) && varsInUpdate.contains(sym);
+    }};
+    res = propagateEqualities(rule, isTempInUpdate);
     if (res) {
         return res;
     }
     varsInUpdate = expr::coDomainVars(rule.getUpdate());
-    res = propagateEqualities(rule, ResultMapsToInt, expr::isTempVar);
+    res = propagateEqualities(rule, isTemp);
     if (res) {
         return res;
     }

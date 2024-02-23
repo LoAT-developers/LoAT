@@ -21,166 +21,171 @@
 #include <variant>
 #include <initializer_list>
 #include <optional>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
+#include <purrs.hh>
 
-#include "map.hpp"
 #include "set.hpp"
-#include "numvar.hpp"
 
-class Expr;
 class NumVar;
 class Recurrence;
 class Rel;
 class ExprSubs;
+class Expr;
+class NumConstant;
+class Exp;
+class ACApplication;
+using ExprPtr = std::shared_ptr<const Expr>;
+using NumVarPtr = std::shared_ptr<const NumVar>;
 
-// Specifies for which coefficients c we can solve "c*x == t" for x.
-enum SolvingLevel {
-    TrivialCoeffs = 0, // only c=1 and c=-1 is allowed
-    ResultMapsToInt = 1, // c can be any rational constant, as long as x = t/c maps to int
-    ConstantCoeffs = 2, // c can be any rational constant (the result may not map to int, use with caution!)
+
+namespace mp = boost::multiprecision;
+namespace Purrs = Parma_Recurrence_Relation_Solver;
+
+struct SymbolHasher {
+    size_t operator()(const Purrs::Symbol &x) const {
+        return std::hash<std::string>{}(x.get_name());
+    }
 };
 
-using Num = GiNaC::numeric;
+struct SymbolEqual {
+    bool operator()(const Purrs::Symbol &x, const Purrs::Symbol &y) const {
+        return x.get_name() == y.get_name();
+    }
+};
 
-/**
- * Class for arithmetic expressions.
- * Just a wrapper for GiNaC expressions.
- */
-class Expr {
+using Int = mp::cpp_int;
+using Rational = mp::cpp_rational;
+using purrs_var_map = boost::bimap<boost::bimaps::unordered_set_of<NumVarPtr>, boost::bimaps::unordered_set_of<Purrs::Symbol, SymbolHasher, SymbolEqual>>;
 
-    /*
-     * We use PURRS to solve recurrence relatios, which also uses GiNaC.
-     * Declaring it as a friend allows us to direclty work on the encapsulated GiNaC::ex when constructing recurrence relations.
-     */
-    friend class Recurrence;
+namespace num_expression {
 
-    friend class ExprSubs;
+ExprPtr buildPlus(std::vector<ExprPtr> args);
+ExprPtr buildTimes(std::vector<ExprPtr> args);
+ExprPtr buildConstant(const Rational &r);
+ExprPtr buildExp(const ExprPtr base, const ExprPtr exponent);
 
-    friend bool operator==(const Expr&, const Expr&);
-    friend std::strong_ordering operator<=>(const Expr &x, const Expr &y);
+}
 
-    struct Mapper: public GiNaC::map_function {
-        const ExprSubs &map;
-        Mapper(const ExprSubs &map);
-        GiNaC::ex operator()(const GiNaC::ex &ex);
-    };
+namespace ne = num_expression;
+
+class Expr: public std::enable_shared_from_this<Expr> {
+
+    friend class Exp;
+    friend class ACApplication;
+    friend ExprPtr ne::buildPlus(std::vector<ExprPtr> args);
+    friend ExprPtr ne::buildTimes(std::vector<ExprPtr> args);
 
 public:
 
     /**
-     * @return A wildcard for constructing patterns.
-     */
-    static Expr wildcard(unsigned int label);
-
-    Expr(): ex(GiNaC::ex()) {}
-    explicit Expr(const GiNaC::basic &other): ex(GiNaC::ex(other)) {}
-    explicit Expr(const GiNaC::ex &ex) : ex(ex) {}
-    Expr(long i): ex(i) {}
-    Expr(const NumVar &var): ex(*var) {}
-
-    /**
-     * @brief Computes all matches of the given pattern.
-     * @return True iff there was at least one match.
-     */
-    bool findAll(const Expr &pattern, linked_hash_set<Expr> &found) const;
-
-    /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
      */
-    bool isLinear(const std::optional<linked_hash_set<NumVar>> &vars = std::optional<linked_hash_set<NumVar>>()) const;
+    virtual bool isLinear(const std::optional<linked_hash_set<NumVarPtr>> &vars = {}) const = 0;
 
     /**
      * @return True iff this expression is a polynomial.
      */
-    bool isPoly() const;
+    virtual bool isPoly() const = 0;
 
-    /**
-     * @return True iff this expression is polynomial where all coefficients are integers.
-     */
-    bool isIntPoly() const;
-
-    /**
-     * @return True iff this expression is an integer value (and thus a constant).
-     */
-    bool isInt() const;
-
-    /**
-     * @return True iff this expression is a rational number (and thus a constant).
-     */
-    bool isRationalConstant() const;
-
-    /**
-     * @return True iff this expression is a rational number, but no integer constant.
-     */
-    bool isNonIntConstant() const;
-
-    /**
-     * @return True iff this expression is a power where the exponent is a natural number > 1.
-     */
-    bool isNaturalPow() const;
-
-    bool isOctagon() const;
-
-    /**
-     * @return The highest degree of any variable in this expression.
-     * @note For polynomials only.
-     */
-    unsigned maxDegree() const;
-
-    Num totalDegree() const;
+    virtual std::optional<Int> totalDegree() const = 0;
 
     /**
      * @brief Collects all variables that occur in this expression.
      */
-    void collectVars(linked_hash_set<NumVar> &res) const;
-
-    /**
-     * @return The set of all variables that occur in this expression.
-     */
-    linked_hash_set<NumVar> vars() const;
-
-    static unsigned getIndex(const GiNaC::symbol &x);
+    virtual void collectVars(linked_hash_set<NumVarPtr> &res) const = 0;
 
     /**
      * @return True iff this expression contains a variable that satisfies the given predicate.
      * @param A function of type `const Var & => bool`.
      */
-    template <typename P>
-    bool hasVarWith(P predicate) const {
-        struct SymbolVisitor : public GiNaC::visitor, public GiNaC::symbol::visitor {
-            SymbolVisitor(P predicate) : predicate(predicate) {}
-            void visit(const GiNaC::symbol &sym) {
-                if (!res && predicate(NumVar(getIndex(sym)))) {
-                    res = true;
-                }
-            }
-            bool result() const {
-                return res;
-            }
-        private:
-            bool res = false;
-            P predicate;
-        };
-
-        SymbolVisitor visitor(predicate);
-        traverse(visitor);
-        return visitor.result();
-    }
+    virtual bool hasVarWith(const std::function<bool(const NumVarPtr)> predicate) const = 0;
 
     /**
-     * @return True iff this expression does not contain any variables.
+     * @return The degree wrt. var.
+     * @note For polynomials only.
      */
-    bool isGround() const;
+    virtual std::optional<Int> degree(const NumVarPtr var) const = 0;
+
+    virtual Int denomLcm() const = 0;
+
+    /**
+     * @return True iff this expression is an integer value (and thus a constant).
+     */
+    virtual std::optional<Int> isInt() const = 0;
+
+    /**
+     * @return True iff this expression is a rational number (and thus a constant).
+     */
+    virtual std::optional<Rational> isRational() const = 0;
+
+    /**
+     * @return True iff this is a variable.
+     */
+    virtual std::optional<NumVarPtr> isVar() const = 0;
+
+    /**
+     * @return True iff this is of the form x^y for some expressions x, y.
+     */
+    virtual std::optional<std::pair<ExprPtr, ExprPtr>> isPow() const = 0;
+
+    /**
+     * @return True iff this is of the form x*y for some expressions x, y.
+     */
+    virtual const linked_hash_set<ExprPtr>* isMul() const = 0;
+
+    /**
+     * @return True iff this is of the form x+y for some expressions x, y.
+     */
+    virtual const linked_hash_set<ExprPtr>* isAdd() const = 0;
+
+    /**
+     * @return True iff this is a polynomial wrt. the given variable.
+     */
+    virtual bool isPoly(const NumVarPtr n) const = 0;
+
+    virtual std::optional<NumVarPtr> someVar() const = 0;
+
+    /**
+     * @return The coefficient of the monomial where var occurs with the given degree (which defaults to 1).
+     */
+    virtual std::optional<ExprPtr> coeff(const NumVarPtr var, const Int &degree = 1) const = 0;
+
+    /**
+     * @return The coefficient of the monomial whose degree wrt. var is minimal.
+     */
+    virtual std::optional<ExprPtr> lcoeff(const NumVarPtr var) const = 0;
+
+    virtual bool isIntegral() const = 0;
+
+    virtual Rational eval(const std::function<Rational(const NumVarPtr)> &valuation) const = 0;
+
+    virtual Purrs::Expr toPurrs(purrs_var_map &) const;
+
+    virtual void exps(linked_hash_set<linked_hash_set<std::pair<ExprPtr, ExprPtr>>> &acc) const = 0;
+
+protected:
+
+    /**
+     * @return [a,b] s.t. a*b = *this
+     */
+    virtual std::pair<Rational, std::optional<ExprPtr>> decompose() const = 0;
+    virtual bool isUnivariate(std::optional<NumVarPtr> &) const = 0;
+    virtual bool isNotMultivariate(std::optional<NumVarPtr> &) const = 0;
+    virtual bool isMultivariate(std::optional<NumVarPtr> &) const = 0;
+
+public:
+
+    /**
+     * @return The set of all variables that occur in this expression.
+     */
+    linked_hash_set<NumVarPtr> vars() const;
 
     /**
      * @return True iff this expression contains exactly one variable.
      */
     bool isUnivariate() const;
-
-    /**
-     * @return Some variable that occurs in this Expression.
-     * @note Only for non-ground expressions.
-     */
-    NumVar someVar() const;
 
     /**
      * @return True iff this expression is ground or univariate.
@@ -192,230 +197,32 @@ public:
      */
     bool isMultivariate() const;
 
-    /**
-     * @return A string representation of this expression.
-     */
-    std::string toString() const;
+    bool is(const Rational &val) const;
 
     /**
-     * @return The degree wrt. var.
-     * @note For polynomials only.
+     * @return The highest degree of any variable in this expression.
      */
-    unsigned degree(const NumVar &var) const;
+    std::optional<Int> maxDegree() const;
 
     /**
-     * @return The minimal degree of all monomials wrt. var.
+     * @return True iff the expression contains the given variable.
      */
-    unsigned ldegree(const NumVar &var) const;
+    bool has(const NumVarPtr) const;
 
-    /**
-     * @return The coefficient of the monomial where var occurs with the given degree (which defaults to 1).
-     */
-    Expr coeff(const NumVar &var, int degree = 1) const;
+    ExprPtr divide(const Rational &d) const;
 
-    /**
-     * @return The coefficient of the monomial whose degree wrt. var is ldegree(var).
-     */
-    Expr lcoeff(const NumVar &var) const;
+    std::pair<Purrs::Expr, purrs_var_map> toPurrs() const;
 
-    /**
-     * @return A normalized version of this expression up to the order of monomials.
-     * @note No guarantees for non-polynomial expressions.
-     */
-    Expr expand() const;
-
-    Expr normalizeCoefficients() const;
-
-    /**
-     * @return True iff some subexpression matches the given pattern.
-     */
-    bool has(const Expr &pattern) const;
-
-    std::pair<Expr, std::vector<std::pair<NumVar, Expr>>> flattenExp() const;
-
-    /**
-     * @return True iff this is 0.
-     */
-    bool isZero() const;
-
-    /**
-     * @return True iff this is a variable.
-     */
-    bool isVar() const;
-
-    /**
-     * @return True iff this is of the form x^y for some expressions x, y.
-     */
-    bool isPow() const;
-
-    /**
-     * @return True iff this is of the form x*y for some expressions x, y.
-     */
-    bool isMul() const;
-
-    /**
-     * @return True iff this is of the form x+y for some expressions x, y.
-     */
-    bool isAdd() const;
-
-    /**
-     * @return This as a variable.
-     * @note For variables only.
-     */
-    NumVar toVar() const;
-
-    /**
-     * @return This as a number.
-     * @note For constants only.
-     */
-    GiNaC::numeric toNum() const;
-
-    /**
-     * @return The i-th operand.
-     * @note For function applications whose root symbol has at least arity i+1 only.
-     */
-    Expr op(unsigned int i) const;
-
-    /**
-     * @return The arity of the root symbol.
-     * @note For function applications only.
-     */
-    size_t arity() const;
-
-    /**
-     * @return The result of applying the given substitution to this expression.
-     * @note The second argument is deprecated.
-     */
-    Expr subs(const ExprSubs &map) const;
-
-    /**
-     * @return The numerator.
-     * @note For fractions only.
-     */
-    Expr numerator() const;
-
-    /**
-     * @return The denominator.
-     * @note For fractions only.
-     */
-    Expr denominator() const;
-
-    /**
-     * @return True iff this is a polynomial wrt. the given variable.
-     */
-    bool isPoly(const NumVar &n) const;
-
-    bool isIntegral() const;
-
-    Expr toIntPoly() const;
-
-    Num denomLcm() const;
-
-    std::optional<Expr> solveTermFor(const NumVar &var, SolvingLevel level) const;
-
-    std::size_t hash() const;
+    linked_hash_set<std::pair<ExprPtr, ExprPtr>> exps() const;
 
     /**
      * @brief exponentiation
      */
-    friend Expr operator^(const Expr &x, const Expr &y);
-    friend Expr operator-(const Expr &x);
-    friend Expr operator-(const Expr &x, const Expr &y);
-    friend Expr operator+(const Expr &x, const Expr &y);
-    friend Expr operator*(const Expr &x, const Expr &y);
-    friend Expr operator/(const Expr &x, const Expr &y);
-    friend std::ostream& operator<<(std::ostream &s, const Expr &e);
-
-private:
-
-    GiNaC::ex ex;
-
-    bool match(const Expr &pattern) const;
-    void traverse(GiNaC::visitor & v) const;
+    friend ExprPtr operator^(const ExprPtr x, const ExprPtr y);
+    friend ExprPtr operator-(const ExprPtr x);
+    friend ExprPtr operator-(const ExprPtr x, const ExprPtr y);
+    friend ExprPtr operator+(const ExprPtr x, const ExprPtr y);
+    friend ExprPtr operator*(const ExprPtr x, const ExprPtr y);
+    friend std::ostream& operator<<(std::ostream &s, const ExprPtr e);
 
 };
-
-class ExprSubs {
-
-    friend class Expr;
-    friend bool operator==(const ExprSubs &m1, const ExprSubs &m2);
-
-public:
-
-    typedef typename linked_hash_map<NumVar, Expr>::const_iterator const_iterator;
-
-    ExprSubs();
-
-    ExprSubs(std::initializer_list<std::pair<const NumVar, Expr>> init);
-
-    Expr get(const NumVar &key) const;
-
-    void put(const NumVar &key, const Expr &val);
-
-    const_iterator begin() const;
-
-    const_iterator end() const;
-
-    bool contains(const NumVar &e) const;
-
-    bool empty() const;
-
-    unsigned int size() const;
-
-    size_t erase(const NumVar &key);
-
-    ExprSubs compose(const ExprSubs &that) const;
-
-    ExprSubs concat(const ExprSubs &that) const;
-
-    void concatInPlace(const ExprSubs &that);
-
-    ExprSubs unite(const ExprSubs &that) const;
-
-    ExprSubs project(const linked_hash_set<NumVar> &vars) const;
-
-    bool changes(const NumVar &key) const;
-
-    bool isLinear() const;
-
-    bool isPoly() const;
-
-    bool isOctagon() const;
-
-    linked_hash_set<NumVar> domain() const;
-
-    linked_hash_set<NumVar> coDomainVars() const;
-
-    linked_hash_set<NumVar> allVars() const;
-
-    void collectDomain(linked_hash_set<NumVar> &vars) const;
-
-    void collectCoDomainVars(linked_hash_set<NumVar> &vars) const;
-
-    void collectVars(linked_hash_set<NumVar> &vars) const;
-
-    size_t hash() const;
-
-private:
-
-    linked_hash_map<NumVar, Expr> map{};
-
-};
-
-std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
-
-template<>
-struct std::hash<Expr> {
-    std::size_t operator()(const Expr& x) const noexcept {
-        return x.hash();
-    }
-};
-
-template<>
-struct std::hash<ExprSubs> {
-    std::size_t operator()(const ExprSubs& x) const noexcept {
-        return x.hash();
-    }
-};
-
-size_t hash_value(const Expr &e);

@@ -95,8 +95,10 @@ public:
         Model<Th...> res;
         const auto add = [&res, this, m](const auto &x, const auto &y) {
             if constexpr ((std::same_as<IntTheory, Th> || ...)) {
-                if (std::holds_alternative<NumVar>(x)) {
-                    res.template put<IntTheory>(std::get<NumVar>(x), getRealFromModel(m, y));
+                if (std::holds_alternative<IntTheory::Var>(x)) {
+                    const auto val {getRealFromModel(m, y)};
+                    assert(mp::denominator(val) == 1);
+                    res.template put<IntTheory>(std::get<IntTheory::Var>(x), mp::numerator(val));
                 }
             } else if constexpr ((std::same_as<BoolTheory, Th> || ...)) {
                 if (std::holds_alternative<BoolVar>(x)) {
@@ -152,14 +154,14 @@ private:
     context_t *solver{};
 
 
-    Num getRealFromModel(model_t *model, type_t symbol) {
+    Rational getRealFromModel(model_t *model, type_t symbol) {
         int64_t num;
         uint64_t denom;
         if (yices_get_rational64_value(model, symbol, &num, &denom) == EVAL_OVERFLOW) {
             throw std::overflow_error("overflow during conversion of model");
         }
         assert(denom != 0);
-        Num res = num;
+        Rational res {num};
         res = res / denom;
         return res;
     }

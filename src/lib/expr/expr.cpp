@@ -3,11 +3,11 @@
 namespace expr {
 
 std::string getName(const Var &var) {
-    return std::visit([](const auto &var){return var.getName();}, var);
+    return std::visit([](const auto &var){return var->getName();}, var);
 }
 
 bool isTempVar(const Var &var) {
-    return std::visit([](const auto &var){return var.isTempVar();}, var);
+    return std::visit([](const auto &var){return var->isTempVar();}, var);
 }
 
 bool isProgVar(const Var &var) {
@@ -15,14 +15,7 @@ bool isProgVar(const Var &var) {
 }
 
 Var next(const Var &var) {
-    return std::visit(Overload{
-                          [](const NumVar&) {
-                              return Var(NumVar::next());
-                          },
-                          [](const BoolVar&) {
-                              return Var(BoolVar::next());
-                          }
-                      }, var);
+    return std::visit([](const auto x) {return Var(decltype(x)::element_type::next());}, var);
 }
 
 ThExpr toExpr(const Var &var) {
@@ -31,8 +24,8 @@ ThExpr toExpr(const Var &var) {
 
 ThExpr subs(const ThExpr &expr, const Subs &subs) {
     return std::visit(Overload{
-                          [&subs](const Expr &expr) {
-                              return ThExpr(expr.subs(subs.get<IntTheory>()));
+                          [&subs](const ExprPtr expr) {
+                              return ThExpr(subs.get<IntTheory>()(expr));
                           },
                           [&subs](const BoolExpr expr) {
                               return ThExpr(expr->subs(subs));
@@ -42,8 +35,8 @@ ThExpr subs(const ThExpr &expr, const Subs &subs) {
 
 void collectVars(const ThExpr &expr, VarSet &vars) {
     std::visit(Overload{
-                   [&vars](const Expr &expr) {
-                       expr.collectVars(vars.get<NumVar>());
+                   [&vars](const ExprPtr expr) {
+                       expr->collectVars(vars.get<NumVarPtr>());
                    },
                    [&vars](const BoolExpr expr) {
                        expr->collectVars(vars);
@@ -72,9 +65,9 @@ VarSet vars(const Subs &e) {
 }
 
 void collectVars(const Subs &subs, VarSet &vars) {
-    for (const auto &p: subs) {
-        vars.insert(first(p));
-        expr::collectVars(second(p), vars);
+    for (const auto &[x,y]: subs) {
+        vars.insert(x);
+        expr::collectVars(y, vars);
     }
 }
 
@@ -118,35 +111,39 @@ BoolExpr subs(const Lit &lit, const Subs &s) {
 
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
-                Overload{
-                    [&e2](const Expr &e1){
-                        return BExpression::buildTheoryLit(Rel::buildEq(e1, std::get<Expr>(e2)));
-                    },
-                    [&e2](const BoolExpr &lhs){
-                        const auto rhs = std::get<BoolExpr>(e2);
-                        return (lhs & rhs) | ((!lhs) & (!rhs));
-                    }
-                }, e1);
+        Overload {
+            [&e2](const ExprPtr &e1) {
+                return BExpression::buildAndFromLits(
+                    std::vector<Lit>{Rel::buildGeq(e1, std::get<ExprPtr>(e2)),
+                                     Rel::buildLeq(e1, std::get<ExprPtr>(e2))});
+            },
+            [&e2](const BoolExpr lhs) {
+                const auto rhs = std::get<BoolExpr>(e2);
+                return (lhs & rhs) | ((!lhs) & (!rhs));
+            }
+        }, e1);
 }
 
 BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
-        Overload{
-            [&e2](const Expr &e1){
-                return BExpression::buildTheoryLit(Rel::buildNeq(e1, std::get<Expr>(e2)));
+        Overload {
+            [&e2](const ExprPtr &e1) {
+                return BExpression::buildOrFromLits(
+                    std::vector<Lit>{Rel::buildGt(e1, std::get<ExprPtr>(e2)),
+                                     Rel::buildLt(e1, std::get<ExprPtr>(e2))});
             },
-            [&e2](const BoolExpr &lhs){
+            [&e2](const BoolExpr lhs) {
                 const auto rhs = std::get<BoolExpr>(e2);
                 return (lhs & (!rhs)) | ((!lhs) & rhs);
             }
         }, e1);
 }
 
-IntTheory theory(const NumVar&) {
+IntTheory theory(const NumVarPtr&) {
     return intTheory::t;
 }
 
-BoolTheory theory(const BoolVar&) {
+BoolTheory theory(const BoolVarPtr&) {
     return boolTheory::t;
 }
 

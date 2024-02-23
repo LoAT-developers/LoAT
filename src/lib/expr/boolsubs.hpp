@@ -14,21 +14,21 @@ class BoolSubs {
     using T = Theory<Th...>;
     using VarSet = theory::VarSet<Th...>;
 
-    linked_hash_map<BoolVar, BoolExpr> map{};
+    linked_hash_map<BoolVarPtr, BoolExpr> map{};
 
 public:
 
-    typedef typename linked_hash_map<BoolVar, BoolExpr>::const_iterator const_iterator;
+    typedef typename linked_hash_map<BoolVarPtr, BoolExpr>::const_iterator const_iterator;
 
     BoolSubs() {}
 
-    BoolSubs(const BoolVar &key, const BoolExpr &val): map({{key, val}}) {}
+    BoolSubs(const BoolVarPtr key, const BoolExpr val): map({{key, val}}) {}
 
-    void put(const BoolVar &key, const BoolExpr &val) {
+    void put(const BoolVarPtr key, const BoolExpr val) {
         map.put(key, val);
     }
 
-    BoolExpr get(const BoolVar &var) const {
+    BoolExpr get(const BoolVarPtr var) const {
         const auto res {map.get(var)};
         return res ? *res : BoolExpression<Th...>::buildTheoryLit(BoolLit(var));
     }
@@ -63,7 +63,7 @@ public:
         }
     }
 
-    bool contains(const BoolVar &var) const {
+    bool contains(const BoolVarPtr var) const {
         return map.contains(var);
     }
 
@@ -85,7 +85,7 @@ public:
         return res;
     }
 
-    BoolSubs project(const linked_hash_set<BoolVar> &vars) const {
+    BoolSubs project(const linked_hash_set<BoolVarPtr> &vars) const {
         BoolSubs res;
         if (size() < vars.size()) {
             for (const auto &p: *this) {
@@ -104,7 +104,7 @@ public:
         return res;
     }
 
-    bool changes(const BoolVar &key) const {
+    bool changes(const BoolVarPtr key) const {
         if (!contains(key)) {
             return false;
         }
@@ -117,13 +117,13 @@ public:
         return res;
     }
 
-    linked_hash_set<BoolVar> allVars() const {
-        linked_hash_set<BoolVar> res;
+    linked_hash_set<BoolVarPtr> allVars() const {
+        linked_hash_set<BoolVarPtr> res;
         collectVars(res);
         return res;
     }
 
-    void collectDomain(linked_hash_set<BoolVar> &vars) const {
+    void collectDomain(linked_hash_set<BoolVarPtr> &vars) const {
         for (const auto &p: map) {
             vars.insert(p.first);
         }
@@ -158,7 +158,7 @@ public:
         return map.size();
     }
 
-    void erase(const BoolVar &var) {
+    void erase(const BoolVarPtr var) {
         map.erase(var);
     }
 

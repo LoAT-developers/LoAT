@@ -4,6 +4,7 @@
 #include "thset.hpp"
 
 #include <boost/functional/hash.hpp>
+#include <utility>
 
 namespace theory {
 
@@ -400,7 +401,7 @@ private:
     template<std::size_t I = 0>
     inline void hashImpl(size_t &res) const {
         if constexpr (I < sizeof...(Th)) {
-            boost::hash_combine(res, std::get<I>(t).hash());
+            boost::hash_combine(res, t);
             if constexpr (I + 1 < variant_size) {
                 hashImpl<I+1>(res);
             }

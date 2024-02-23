@@ -22,55 +22,27 @@
 
 using namespace std;
 
-ResultBase<ExprSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e, SolvingLevel maxlevel, const SymbolAcceptor &allow) {
+ResultBase<ExprSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow) {
     ResultBase<ExprSubs, Proof> res;
-    auto guard = e->universallyValidLits();
-
-    for (const auto &r: guard) {
-        if (std::holds_alternative<Rel>(r)) {
-            const auto rel {std::get<Rel>(r).subs(*res)};
-            if (!rel.isEq()) {
-                continue;
-            }
-
-            const auto target {rel.rhs() - rel.lhs()};
-            if (!target.isPoly()) {
-                continue;
-            }
-
-            // Check if equation can be solved for any single variable.
-            // We prefer to solve for variables where this is easy,
-            // e.g. in x+2*y = 0 we prefer x since x has only the trivial coefficient 1.
-            for (int level=TrivialCoeffs; level <= (int)maxlevel; ++level) {
-                for (const auto &var : target.vars()) {
-                    if (!allow(var)) continue;
-
-                    //solve target for var (result is in target)
-                    auto optSolved = target.solveTermFor(var, (SolvingLevel)level);
-                    if (!optSolved) continue;
-                    const auto solved {*optSolved};
-
-                    //disallow replacing non-free vars by a term containing free vars
-                    //could be unsound, as free vars can lead to unbounded complexity
-                    if (!var.isTempVar() && containsTempVar(solved)) continue;
-
-                    //extend the substitution, use concat in case var occurs on some rhs of varSubs
-                    res->put(var, solved);
-                    res->concatInPlace(*res);
-                    res.succeed();
-                    stringstream s;
-                    s << "propagated equality " << var << " = " << solved;
-                    res.append(s.str());
-                    res.newline();
-                    goto next;
-                }
+    for (const auto &var: e->vars().get<IntTheory::Var>()) {
+        if (!allow(var)) continue;
+        const auto bounds {e->getBounds(var)};
+        for (const auto &b: bounds.upperBounds) {
+            if (bounds.lowerBounds.contains(b) && b->isIntegral()) {
+                //extend the substitution, use concat in case var occurs on some rhs of varSubs
+                res->put(var, b);
+                res->concatInPlace(*res);
+                res.succeed();
+                stringstream s;
+                s << "propagated equality " << var << " = " << b;
+                res.append(s.str());
+                res.newline();
+                break;
             }
         }
-        next:;
     }
     return res;
 }
-
 
 ResultBase<BSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr e) {
     ResultBase<BSubs, Proof> res;
@@ -82,7 +54,6 @@ ResultBase<BSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr
     return res;
 }
 
-
 ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const BoolExpr e, bool removeHalfBounds, const SymbolAcceptor &allow) {
     ResultBase<BoolExpr, Proof> res(e);
     if (!e->isConjunction()) {
@@ -90,18 +61,18 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
     }
     auto guard {e->lits()};
     //get all variables that appear in an inequality
-    linked_hash_set<NumVar> tryVars;
-    std::unordered_set<NumVar> eliminated;
+    linked_hash_set<IntTheory::Var> tryVars;
+    std::unordered_set<IntTheory::Var> eliminated;
     for (const auto &lit : guard) {
         if (std::holds_alternative<Rel>(lit)) {
             const auto &rel = std::get<Rel>(lit);
-            if (!rel.isIneq() || !rel.isPoly()) continue;
+            if (!rel.isPoly()) continue;
             rel.collectVars(tryVars);
         }
     }
 
     const auto is_explosive = [&](const auto &var, const auto &target){
-        return target.hasVarWith([&](const auto &x) {
+        return target->hasVarWith([&](const auto x) {
             return x != var && !eliminated.contains(x) && tryVars.contains(x);
         });
     };
@@ -111,8 +82,8 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
     for (const auto &var : tryVars) {
         if (!allow(var)) continue;
 
-        vector<Expr> varLessThan, varGreaterThan; //var <= expr and var >= expr
-        vector<Rel> guardTerms; //indices of guard terms that can be removed if successful
+        vector<IntTheory::Expression> varLessThan, varGreaterThan; //var <= expr and var >= expr
+        vector<IntTheory::Lit> guardTerms; //indices of guard terms that can be removed if successful
 
         size_t explosive_lower {0};
         size_t explosive_upper {0};
@@ -122,24 +93,19 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
                 const auto &rel = std::get<Rel>(lit);
                 //check if this guard must be used for var
                 if (!rel.has(var)) continue;
-                if (!rel.isIneq() || !rel.isPoly()) goto abort; // contains var, but cannot be handled
-
-                const auto target {rel.toLeq().makeRhsZero().lhs()};
-                if (!target.has(var)) continue; // might have changed, e.g. x <= x
-
-                //check coefficient and direction
-                const auto c {target.expand().coeff(var)};
-                if (c != 1 && c != -1) goto abort;
-                if (c == 1) {
-                    varLessThan.push_back( -(target-var) );
-                    if (is_explosive(var, target)) {
+                const auto bounds {rel.getBoundFromIneq(var)};
+                if (bounds.first) {
+                    varLessThan.push_back(*bounds.first);
+                    if (is_explosive(var, *bounds.first)) {
                         ++explosive_upper;
                     }
-                } else {
-                    varGreaterThan.push_back( target+var );
-                    if (is_explosive(var, target)) {
+                } else if (bounds.second) {
+                    varGreaterThan.push_back(*bounds.second);
+                    if (is_explosive(var, *bounds.second)) {
                         ++explosive_lower;
                     }
+                } else {
+                    goto abort;
                 }
                 if (explosive_upper > 1 && explosive_lower > 1) goto abort;
                 guardTerms.push_back(rel);
@@ -156,8 +122,8 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
         }
 
         //add new transitive guard terms lower <= upper
-        for (const Expr &upper : varLessThan) {
-            for (const Expr &lower : varGreaterThan) {
+        for (const auto &upper : varLessThan) {
+            for (const auto &lower : varGreaterThan) {
                 guard.insert(Rel::buildLeq(lower, upper));
             }
         }
@@ -173,66 +139,7 @@ abort:  ; //this symbol could not be eliminated, try the next one
     return res;
 }
 
-
-Guard GuardToolbox::makeEqualities(const BoolExpr e) {
-    Guard res;
-    const auto guard {e->universallyValidLits()};
-    vector<pair<Rel,Expr>> terms; //inequalities from the guard, with the associated index in guard
-    map<Rel,pair<Rel,Expr>> matches; //maps index in guard to a second index in guard, which can be replaced by Expression
-
-    // Find matching constraints "t1 <= 0" and "t2 <= 0" such that t1+t2 is zero
-    for (const auto &lit: guard) {
-        if (std::holds_alternative<Rel>(lit)) {
-            const auto &rel = std::get<Rel>(lit);
-            if (rel.isEq()) continue;
-            if (!rel.isPoly() && rel.isStrict()) continue;
-//            Expr term = rel.toLeq().makeRhsZero().lhs().normalizeCoefficients();
-//            if (term.isGround()) {
-//                continue;
-//            }
-//            for (const auto &prev : terms) {
-//                const auto div {(prev.second / term).expand()};
-//                if (div.isRationalConstant() && div.toNum().is_negative()) {
-//                    matches.emplace(prev.first, make_pair(rel, prev.second));
-//                }
-//            }
-            const auto term {rel.toLeq().makeRhsZero().lhs()};
-            for (const auto &prev : terms) {
-                if ((prev.second + term).isZero()) {
-                    matches.emplace(prev.first, make_pair(rel,prev.second));
-                }
-            }
-            terms.emplace_back(rel, term);
-        }
-    }
-
-    if (matches.empty()) return res;
-
-    // Construct the new guard by keeping unmatched constraint
-    // and replacing matched pairs by an equality constraint.
-    // This code below mostly retains the order of the constraints.
-    set<Rel> ignore;
-    for (const auto &lit: guard) {
-        if (std::holds_alternative<Rel>(lit)) {
-            const auto &rel = std::get<Rel>(lit);
-            //ignore multiple equalities as well as the original second inequality
-            if (ignore.contains(rel)) continue;
-
-            auto it = matches.find(rel);
-            if (it != matches.end()) {
-                res.push_back(Rel::buildEq(it->second.second, 0));
-                ignore.insert(it->second.first);
-            }
-        }
-    }
-    return res;
-}
-
-BoolExpr _makeEqualities(const BoolExpr &e) {
-    return e & BExpression::buildAndFromLits(GuardToolbox::makeEqualities(e));
-}
-
-ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr &e) {
+ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr e) {
     ResultBase<BoolExpr, Proof> res {e};
     const auto subs {GuardToolbox::propagateBooleanEqualities(e)};
     if (subs) {
@@ -243,8 +150,8 @@ ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr &e) {
     return res;
 }
 
-ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, SolvingLevel maxlevel, const GuardToolbox::SymbolAcceptor &allow) {
-    ResultBase<BoolExpr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, maxlevel, allow)};
+ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, const GuardToolbox::SymbolAcceptor &allow) {
+    ResultBase<BoolExpr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, allow)};
     if (subs) {
         res = e->subs(Subs::build<IntTheory>(*subs));
         res.append("Extracted Implied Equalities");
@@ -264,12 +171,11 @@ ResultBase<BoolExpr, Proof> GuardToolbox::simplify(BoolExpr e) {
 }
 
 ResultBase<BoolExpr, Proof> GuardToolbox::eliminateTempVars(BoolExpr e, const SymbolAcceptor &allow) {
-    e = _makeEqualities(e);
     auto res {_propagateBooleanEqualities(e)};
     if (res) {
         return res;
     }
-    res = _propagateEqualities(e, ResultMapsToInt, allow);
+    res = _propagateEqualities(e, allow);
     if (res) {
         return res;
     }
@@ -280,7 +186,7 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateTempVars(BoolExpr e, const Sy
     return GuardToolbox::eliminateByTransitiveClosure(e, true, allow);
 }
 
-ResultBase<BoolExpr, Proof> GuardToolbox::preprocessFormula(const BoolExpr &e, const SymbolAcceptor &allow) {
+ResultBase<BoolExpr, Proof> GuardToolbox::preprocessFormula(const BoolExpr e, const SymbolAcceptor &allow) {
     ResultBase<BoolExpr, Proof> res {e};
     auto changed {false};
     do {

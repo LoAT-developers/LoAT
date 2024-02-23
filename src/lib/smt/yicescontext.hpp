@@ -31,8 +31,8 @@ class YicesContext : public SmtContext<term_t> {
 
 public:
     ~YicesContext() override;
-    term_t getInt(long val) override;
-    term_t getReal(long num, long denom) override;
+    term_t getInt(const Int &val) override;
+    term_t getReal(const Int &num, const Int &denom) override;
     term_t pow(const term_t &base, const term_t &exp) override;
     term_t plus(const term_t &x, const term_t &y) override;
     term_t times(const term_t &x, const term_t &y) override;
@@ -62,7 +62,6 @@ public:
     long toInt(const term_t &e) const override;
     term_t lhs(const term_t &e) const override;
     term_t rhs(const term_t &e) const override;
-    Rel::RelOp relOp(const term_t &e) const override;
 
     void printStderr(const term_t &e) const override;
 

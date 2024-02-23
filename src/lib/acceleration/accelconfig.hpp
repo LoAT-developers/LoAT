@@ -5,5 +5,5 @@
 struct AccelConfig {
     bool tryNonterm {true};
     bool tryAccel {true};
-    NumVar n;
+    NumVarPtr n;
 };

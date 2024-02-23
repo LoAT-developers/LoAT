@@ -64,7 +64,7 @@ struct Clause {
     const FunApp rhs;
     const BoolExpr guard;
 
-    Clause(const FunApp &lhs, const FunApp &rhs, const BoolExpr &guard): lhs(lhs), rhs(rhs), guard(guard) {}
+    Clause(const FunApp &lhs, const FunApp &rhs, const BoolExpr guard): lhs(lhs), rhs(rhs), guard(guard) {}
 
 };
 

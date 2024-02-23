@@ -86,9 +86,9 @@ BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2);
 
 BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2);
 
-IntTheory theory(const NumVar&);
+IntTheory theory(const NumVarPtr&);
 
-BoolTheory theory(const BoolVar&);
+BoolTheory theory(const BoolVarPtr&);
 
 template <class ... Ts>
 auto apply(const Var &x, Ts... f) {

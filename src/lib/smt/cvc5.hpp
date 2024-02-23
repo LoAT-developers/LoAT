@@ -48,16 +48,17 @@ public:
         Model<Th...> res;
         const auto add = [&res, this](const auto &x, const auto &y) {
             if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
-                if (std::holds_alternative<NumVar>(x)) {
-                    NumVar var = std::get<NumVar>(x);
-                    Num val = getRealFromModel(y);
-                    res.template put<IntTheory>(var, val);
+                if (std::holds_alternative<IntTheory::Var>(x)) {
+                    const auto var {std::get<IntTheory::Var>(x)};
+                    const auto val {getRealFromModel(y)};
+                    assert(mp::denominator(val) == 1);
+                    res.template put<IntTheory>(var, mp::numerator(val));
                     return;
                 }
             }
             if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
-                if (std::holds_alternative<BoolVar>(x)) {
-                    BoolVar var = std::get<BoolVar>(x);
+                if (std::holds_alternative<BoolTheory::Var>(x)) {
+                    const auto var {std::get<BoolTheory::Var>(x)};
                     res.template put<BoolTheory>(var, this->solver.getValue(y).getBooleanValue());
                     return;
                 }
@@ -109,14 +110,14 @@ private:
     CVC5Context ctx;
     unsigned seed = 42u;
 
-    Num getRealFromModel(const cvc5::Term &symbol) {
+    Rational getRealFromModel(const cvc5::Term &symbol) {
         const auto val {solver.getValue(symbol)};
         if (val.isIntegerValue()) {
-            return Num(val.getIntegerValue().c_str());
+            return Rational(val.getIntegerValue());
         } else if (val.isRealValue()) {
             if (val.isReal64Value()) {
                 const auto [num, denom] {val.getReal64Value()};
-                return Num(num) / Num(denom);
+                return Rational(num) / Rational(denom);
             } else {
                 throw std::overflow_error((std::stringstream() << "overflow in CVC5::getRealFromModel: " << val).str());
             }

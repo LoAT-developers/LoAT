@@ -13,16 +13,16 @@
 #include "inftyexpression.hpp"
 #include "config.hpp"
 #include "set.hpp"
+#include "guardtoolbox.hpp"
+#include "expr.hpp"
 
 using namespace std;
 
 
 AsymptoticBound::AsymptoticBound(Guard guard,
-                                 Expr cost, bool finalCheck)
+                                 IntTheory::Expression cost, bool finalCheck)
     : guard(guard), cost(cost), finalCheck(finalCheck),
-      addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP() {
-    assert(guard.isWellformed());
-}
+      addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP() {}
 
 
 void AsymptoticBound::initLimitVectors() {
@@ -51,32 +51,8 @@ void AsymptoticBound::initLimitVectors() {
 
 }
 
-
-void AsymptoticBound::normalizeGuard() {
-
-    Conjunction<IntTheory> ineqs;
-    for (const auto &lit : guard) {
-        const Rel &rel = std::get<Rel>(lit);
-        if (rel.isEq()) {
-            // Split equation
-            ineqs.push_back(Rel::buildGeq(rel.lhs() - rel.rhs(), 0));
-            ineqs.push_back(Rel::buildGeq(rel.rhs() - rel.lhs(), 0));
-        } else {
-            ineqs.push_back(rel.toG().makeRhsZero());
-        }
-    }
-    for (const auto &lit: ineqs) {
-        const Rel &rel = std::get<Rel>(lit);
-        if (rel.isPoly() && !rel.isStrict()) {
-            normalizedGuard.push_back(rel.toGt());
-        } else {
-            normalizedGuard.push_back(rel);
-        }
-    }
-}
-
 void AsymptoticBound::createInitialLimitProblem() {
-    currentLP = LimitProblem(normalizedGuard, cost);
+    currentLP = LimitProblem(guard, cost);
 }
 
 void AsymptoticBound::propagateBounds() {
@@ -86,36 +62,24 @@ void AsymptoticBound::propagateBounds() {
         return;
     }
 
-    // build substitutions from equations
-    for (const auto &lit : guard) {
-        const Rel &rel = std::get<Rel>(lit);
-        Expr target = rel.rhs() - rel.lhs();
-        if (rel.isEq() && rel.isPoly()) {
-
-            std::vector<NumVar> vars;
-            std::vector<NumVar> tempVars;
-            for (const auto & var : target.vars()) {
-                if (var.isTempVar()) {
-                    tempVars.push_back(var);
-                } else {
-                    vars.push_back(var);
-                }
-            }
-
-            vars.insert(vars.begin(), tempVars.begin(), tempVars.end());
-
-            // check if equation can be solved for a single variable
-            // check program variables first
-            for (const auto &var : vars) {
-                //solve target for var (result is in target)
-                auto optSolved = target.solveTermFor(var, TrivialCoeffs);
-                if (optSolved) {
-                    substitutions.push_back({{var, *optSolved}});
-                    break;
-                }
+    auto g {BExpression::buildAnd(guard)};
+    auto changed {false};
+    do {
+        changed = false;
+        auto subs {GuardToolbox::propagateEqualities(g, [](const auto &x){return !expr::isTempVar(x);})};
+        if (subs) {
+            substitutions.push_back(*subs);
+            g = g->subs(Subs::build<IntTheory>(*subs));
+            changed = true;
+        } else {
+            subs = GuardToolbox::propagateEqualities(g, [](const auto &x){return expr::isTempVar(x);});
+            if (subs) {
+                substitutions.push_back(*subs);
+                g = g->subs(Subs::build<IntTheory>(*subs));
+                changed = true;
             }
         }
-    }
+    } while (changed);
 
     // apply all substitutions resulting from equations
     for (unsigned int i = 0; i < substitutions.size(); ++i) {
@@ -155,67 +119,40 @@ ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
 }
 
 
-int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem,
-                                               const ExprSubs &solution) {
-    NumVar n = limitProblem.getN();
-    int upperBound = 0;
-    for (auto const &pair : solution) {
-        if (!pair.first.isTempVar()) {
-            Expr sub = pair.second;
-            assert(sub.isPoly(n));
-            assert(sub.isGround()
-                   || (sub.isUnivariate() && sub.has(n)));
-
-            Expr expanded = sub.expand();
-            int d = expanded.degree(n);
-
+Int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem, const ExprSubs &solution) {
+    const auto n {limitProblem.getN()};
+    Int upperBound {0};
+    for (auto const &[x,sub] : solution) {
+        if (!x->isTempVar()) {
+            assert(sub->isPoly(n));
+            assert(sub->isRational() || (sub->isUnivariate() && sub->has(n)));
+            const auto d {*sub->degree(n)};
             if (d > upperBound) {
                 upperBound = d;
             }
         }
     }
-
     return upperBound;
 }
 
 
-int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProblem,
-                                                 const ExprSubs &solution) {
-
-    Expr solvedCost = cost.subs(solution);
-
-    int lowerBound;
-    NumVar n = limitProblem.getN();
-    if (solvedCost.isPoly()) {
-        assert(solvedCost.isPoly(n));
-        assert(solvedCost.isNotMultivariate());
-
-        Expr expanded = solvedCost.expand();
-        int d = expanded.degree(n);
-        lowerBound = d;
-
+Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ExprSubs &solution) {
+    const auto solvedCost {solution(cost)};
+    Int lowerBound;
+    const auto n {limitProblem.getN()};
+    if (solvedCost->isPoly()) {
+        assert(solvedCost->isNotMultivariate());
+        lowerBound = *solvedCost->degree(n);
     } else {
-        std::vector<Expr> nonPolynomial;
-        Expr expanded = solvedCost.expand();
-
-        Expr powerPattern = Expr::wildcard(1) ^ Expr::wildcard(2);
-        linked_hash_set<Expr> powers;
-        assert(expanded.findAll(powerPattern, powers));
-
+        std::vector<IntTheory::Expression> nonPolynomial;
+        const auto powers {solvedCost->exps()};
         lowerBound = 1;
-        for (const Expr &ex : powers) {
-
-            if (ex.op(1).has(n) && ex.op(1).isPoly(n)) {
-                assert(ex.op(0).isInt());
-                assert(ex.op(0).toNum().is_positive());
-                Num numBase = ex.op(0).toNum();
-                if ((numBase - std::numeric_limits<int>::min()).is_negative() ||
-                        (numBase - std::numeric_limits<int>::max()).is_positive()) {
-                    throw std::overflow_error("base too large");
-                }
-                int base = numBase.to_int();
-                if (base > lowerBound) {
-                    lowerBound = base;
+        for (const auto &[base, exponent] : powers) {
+            if (exponent->has(n) && exponent->isPoly(n)) {
+                const auto numBase {*base->isInt()};
+                assert(numBase > 0);
+                if (numBase > lowerBound) {
+                    lowerBound = numBase;
                 }
             }
         }
@@ -311,13 +248,13 @@ bool AsymptoticBound::solveLimitProblem() {
         }
 
         for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-            if (it->isNotMultivariate() && tryApplyingLimitVector(it)) {
+            if (it->first->isNotMultivariate() && tryApplyingLimitVector(it)) {
                 goto start;
             }
         }
 
         for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-            if (it->isMultivariate() && tryApplyingLimitVectorSmartly(it)) {
+            if (it->first->isMultivariate() && tryApplyingLimitVectorSmartly(it)) {
                 goto start;
             }
         }
@@ -359,7 +296,7 @@ AsymptoticBound::ComplexityResult AsymptoticBound::getComplexity(const LimitProb
     res.upperBound = findUpperBoundforSolution(limitProblem, res.solution);
 
     for (auto const &pair : res.solution) {
-        if (!pair.second.isRationalConstant()) {
+        if (!pair.second->isRational()) {
             ++res.inftyVars;
         }
     }
@@ -407,22 +344,22 @@ bool AsymptoticBound::isAdequateSolution(const LimitProblem &limitProblem) {
         return false;
     }
 
-    Expr solvedCost = cost.subs(result.solution).expand();
-    NumVar n = limitProblem.getN();
+    const auto solvedCost {result.solution(cost)};
+    const auto n {limitProblem.getN()};
 
-    if (solvedCost.isPoly(n)) {
-        if (!cost.isPoly()) {
+    if (solvedCost->isPoly(n)) {
+        if (!cost->isPoly()) {
             return false;
         }
 
-        if (cost.maxDegree() > solvedCost.degree(n)) {
+        if (cost->maxDegree() > solvedCost->degree(n)) {
             return false;
         }
 
     }
 
-    for (const auto &var : cost.vars()) {
-        if (var.isTempVar()) {
+    for (const auto &var : cost->vars()) {
+        if (var->isTempVar()) {
             // we try to achieve ComplexInfty
             return false;
         }
@@ -436,9 +373,9 @@ void AsymptoticBound::createBacktrackingPoint(const InftyExpressionSet::const_it
                                               Direction dir) {
     assert(dir == POS_INF || dir == POS_CONS);
 
-    if (finalCheck && it->getDirection() == POS) {
+    if (finalCheck && it->second == POS) {
         limitProblems.push_back(currentLP);
-        limitProblems.back().addExpression(InftyExpression(*it, dir));
+        limitProblems.back().addExpression(InftyExpression(it->first, dir));
     }
 }
 

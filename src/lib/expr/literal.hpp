@@ -31,23 +31,6 @@ theory::VarSet<Th...> vars(const typename Theory<Th...>::Lit &lit) {
 }
 
 template <size_t I = 0, ITheory... Th>
-inline typename Theory<Th...>::Lit normalizeImpl(const typename Theory<Th...>::Lit &lit) {
-    if constexpr (I < sizeof...(Th)) {
-        if (lit.index() == I) {
-            return typename Theory<Th...>::Lit(std::get<I>(lit).normalize());
-        }
-        return normalizeImpl<I+1, Th...>(lit);
-    } else {
-        throw std::logic_error("unknown theory");
-    }
-}
-
-template <ITheory... Th>
-typename Theory<Th...>::Lit normalize(const typename Theory<Th...>::Lit &lit) {
-    return normalizeImpl<0, Th...>(lit);
-}
-
-template <size_t I = 0, ITheory... Th>
 inline bool isTriviallyTrueImpl(const typename Theory<Th...>::Lit &lit) {
     if constexpr (I < sizeof...(Th)) {
         if (lit.index() == I) {

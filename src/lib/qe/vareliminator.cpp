@@ -3,7 +3,7 @@
 
 #include <assert.h>
 
-VarEliminator::VarEliminator(const BoolExpr guard, const NumVar &N, const std::function<bool(NumVar)> &keep): N(N), keep(keep) {
+VarEliminator::VarEliminator(const BoolExpr guard, const IntTheory::Var N, const std::function<bool(IntTheory::Var)> &keep): N(N), keep(keep) {
     assert(!keep(N));
     todoDeps.push({{}, guard});
     findDependencies(guard);
@@ -16,16 +16,16 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
     do {
         changed = false;
         // compute dependencies of var
-        for (const NumVar &var: dependencies) {
-            std::optional<NumVar> dep;
-            for (const Lit &lit: guard->lits()) {
-                if (std::holds_alternative<Rel>(lit)) {
-                    const Rel &rel = std::get<Rel>(lit);
-                    const Expr &ex = (rel.lhs() - rel.rhs()).expand();
-                    if (ex.degree(var) == 1) {
+        for (const IntTheory::Var &var: dependencies) {
+            std::optional<IntTheory::Var> dep;
+            for (const auto &lit: guard->lits()) {
+                if (std::holds_alternative<IntTheory::Lit>(lit)) {
+                    const auto &rel {std::get<IntTheory::Lit>(lit)};
+                    const auto ex {rel.lhs()};
+                    if (ex->degree(var) == 1) {
                         // we found a constraint which is linear in var, check all variables in var's coefficient
-                        const Expr &coeff = ex.coeff(var, 1);
-                        for (const NumVar &x: coeff.vars()) {
+                        const auto coeff {*ex->coeff(var)};
+                        for (const auto &x: coeff->vars()) {
                             if (!keep(x)) {
                                 if (!dependencies.contains(x)) {
                                     // we found a tmp variable in coeff which has not yet been marked as dependency
@@ -59,8 +59,8 @@ const std::vector<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDepende
         std::vector<std::pair<ExprSubs, BoolExpr>> res;
         for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
             for (const auto &b: bb) {
-                if (b.expand().isGround()) {
-                    Subs newSubs = Subs::build<IntTheory>(*it, b);
+                if (b->isRational()) {
+                    const auto newSubs {Subs::build<IntTheory>(*it, b)};
                     res.push_back({subs.compose(newSubs.get<IntTheory>()), guard->subs(newSubs)});
                 }
             }
@@ -89,34 +89,37 @@ void VarEliminator::eliminateDependencies() {
 void VarEliminator::eliminate() {
     eliminateDependencies();
     for (const auto &p: todoN) {
-        const ExprSubs &subs = p.first;
-        const BoolExpr guard = p.second;
+        const auto &subs {p.first};
+        const auto guard {p.second};
+        auto done {false};
         auto bounds {guard->getBounds(N)};
-        if (!bounds.equalities.empty()) {
-            ExprSubs p{{N, *bounds.equalities.begin()}};
-            res.insert(subs.compose(p));
-        } else {
-            for (auto it = bounds.upperBounds.begin(); it != bounds.upperBounds.end();) {
-                bool removed = false;
-                for (auto it2 = std::next(it); it2 != bounds.upperBounds.end();) {
-                    const auto diff = (*it - *it2).expand();
-                    if (diff.isRationalConstant()) {
-                        if (diff.toNum().is_positive()) {
-                            it = bounds.upperBounds.erase(it);
-                            removed = true;
-                            break;
-                        } else {
-                            it2 = bounds.upperBounds.erase(it2);
-                        }
+        for (auto it = bounds.upperBounds.begin(); it != bounds.upperBounds.end();) {
+            if (bounds.lowerBounds.contains(*it)) {
+                res.insert(subs.compose(ExprSubs{{N, *it}}));
+                done = true;
+                break;
+            }
+            bool removed = false;
+            for (auto it2 = std::next(it); it2 != bounds.upperBounds.end();) {
+                const auto diff {(*it - *it2)->isRational()};
+                if (diff) {
+                    if (*diff > 0) {
+                        it = bounds.upperBounds.erase(it);
+                        removed = true;
+                        break;
                     } else {
-                        ++it2;
+                        it2 = bounds.upperBounds.erase(it2);
                     }
-                }
-                if (!removed) {
-                    ++it;
+                } else {
+                    ++it2;
                 }
             }
-            for (const Expr &b: bounds.upperBounds) {
+            if (!removed) {
+                ++it;
+            }
+        }
+        if (!done) {
+            for (const auto &b: bounds.upperBounds) {
                 ExprSubs p{{N, b}};
                 res.insert(subs.compose(p));
             }

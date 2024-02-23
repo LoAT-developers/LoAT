@@ -1,12 +1,11 @@
 #include "CINTVisitor.h"
-#include "numvar.hpp"
 #include "itsproblem.hpp"
 
 class  CINTParseVisitor : public CINTVisitor {
 
 private:
 
-    std::unordered_map<std::string, NumVar> vars {};
+    std::unordered_map<std::string, IntTheory::Var> vars {};
     ITSPtr its {std::make_shared<ITSProblem>()};
     LocationIdx current {};
 

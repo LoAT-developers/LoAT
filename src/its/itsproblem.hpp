@@ -60,7 +60,7 @@ public:
     TransIdx addRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs);
     TransIdx addLearnedRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs);
     TransIdx addRule(const Rule &rule, const LocationIdx start);
-    TransIdx addQuery(const BoolExpr &guard, const TransIdx same_preds);
+    TransIdx addQuery(const BoolExpr guard, const TransIdx same_preds);
     TransIdx replaceRule(const TransIdx toReplace, const Rule &replacement);
     void removeEdge(const TransIdx from, const TransIdx to);
 
@@ -77,9 +77,9 @@ public:
     // Print the ITSProblem in a simple, but user-friendly format
     void print(std::ostream &s) const;
 
-    Expr getCost(const Rule &rule) const;
+    IntTheory::Expression getCost(const Rule &rule) const;
 
-    NumVar getCostVar() const;
+    IntTheory::Var getCostVar() const;
 
     std::optional<LocationIdx> getRhsLoc(const Rule &rule) const;
 
@@ -115,7 +115,7 @@ protected:
     LocationIdx nextUnusedLocation {0};
     LocationIdx initialLocation {0};
     LocationIdx sink {addNamedLocation("LoAT_sink")};
-    NumVar cost {NumVar::nextProgVar()};
+    IntTheory::Var cost {NumVar::nextProgVar()};
 
 };
 

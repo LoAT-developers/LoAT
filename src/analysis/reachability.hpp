@@ -38,7 +38,7 @@ struct Step {
 
     const Rule resolvent;
 
-    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent);
+    Step(const TransIdx transition, const BoolExpr sat, const Subs &var_renaming, const Rule &resolvent);
 
     Step(const Step &that);
 
@@ -297,7 +297,7 @@ class Reachability {
 
     void add_to_trace(const Step &step);
 
-    Rule compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const;
+    Rule compute_resolvent(const TransIdx idx, const BoolExpr implicant) const;
 
     /**
      * Assumes that the trace can be resolved with the given clause.

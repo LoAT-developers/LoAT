@@ -99,43 +99,42 @@ bool LimitVector::isApplicable(Direction dir) const {
 }
 
 
-bool LimitVector::makesSense(Expr l, Expr r) const {
+bool LimitVector::makesSense(ExprPtr l, ExprPtr r) const {
     InftyExpression inftyL(l, first);
-    if (inftyL.isTriviallyUnsatisfiable()) {
+    if (isTriviallyUnsatisfiable(inftyL)) {
         return false;
     }
-
     InftyExpression inftyR(r, second);
-    if (inftyR.isTriviallyUnsatisfiable()) {
+    if (isTriviallyUnsatisfiable(inftyR)) {
         return false;
     }
-
     if (l == r && first != second) {
         return false;
     }
-
-    if ((first == NEG_CONS || first == NEG_INF)
-        && l.isPow()
-        && l.op(1).isRationalConstant()
-        && l.op(1).toNum().is_even()) {
-        return false;
+    if (first == NEG_CONS || first == NEG_INF) {
+        const auto p {l->isPow()};
+        if (p) {
+            const auto &[base, exponent] {*p};
+            const auto e {exponent->isInt()};
+            if (e && *e % 2 == 0) {
+                return false;
+            }
+        }
     }
-
-    if ((second == NEG_CONS || second == NEG_INF)
-        && r.isPow()
-        && r.op(1).isRationalConstant()
-        && r.op(1).toNum().is_even()) {
-        return false;
+    if (second == NEG_CONS || second == NEG_INF) {
+        const auto p {r->isPow()};
+        if (p) {
+            const auto &[base, exponent] {*p};
+            const auto e {exponent->isInt()};
+            if (e && *e % 2 == 0) {
+                return false;
+            }
+        }
     }
-
     return true;
 }
 
 
 std::ostream& operator<<(std::ostream &os, const LimitVector &lv) {
-    os << DirectionNames[lv.getType()] << " limit vector "
-       << "(" << DirectionNames[lv.getFirst()] << ","
-       << DirectionNames[lv.getSecond()] << ")";
-
-    return os;
+    return os << DirectionNames[lv.getType()] << " limit vector " << "(" << DirectionNames[lv.getFirst()] << "," << DirectionNames[lv.getSecond()] << ")";
 }

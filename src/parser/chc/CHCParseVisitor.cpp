@@ -416,7 +416,7 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
                                [&bindings](const Expr &expr) {
                                    return std::variant<Expr, BoolExpr>(expr.subs(bindings.t.get<IntTheory>()));
                                },
-                               [&bindings](const BoolExpr &expr) {
+                               [&bindings](const BoolExpr expr) {
                                    return std::variant<Expr, BoolExpr>(expr->subs(bindings.t));
                                }
                            }, expr.t);

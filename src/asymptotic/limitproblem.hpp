@@ -27,7 +27,7 @@ public:
      *                        of the form t > 0
      * @param cost a term
      */
-    LimitProblem(const Guard &normalizedGuard, const Expr &cost);
+    LimitProblem(const Guard &normalizedGuard, const IntTheory::Expression cost);
 
     /**
      * Creates the initial LimitProblem without any cost term.
@@ -68,7 +68,7 @@ public:
      * @param lv must be applicable to *it
      */
     void applyLimitVector(const InftyExpressionSet::const_iterator &it,
-                          const Expr &l, const Expr &r,
+                          const IntTheory::Expression l, const IntTheory::Expression r,
                           const LimitVector &lv);
 
     /**
@@ -145,7 +145,7 @@ public:
     /**
      * Returns the variable that is used in the solution returned by getSolution().
      */
-    NumVar getN() const;
+    IntTheory::Var getN() const;
 
     /**
      * Returns a reference to the vector storing the substitution identifiers.
@@ -161,7 +161,7 @@ public:
     /**
      * Returns a set of all variables appearing in this limit problem
      */
-    std::set<NumVar> getVariables() const;
+    std::set<IntTheory::Var> getVariables() const;
 
     /**
      * Returns this LimitProblem as a set of relational Expressions:
@@ -223,7 +223,7 @@ public:
 
 private:
     InftyExpressionSet set {};
-    NumVar variableN;
+    IntTheory::Var variableN;
     std::vector<int> substitutions {};
     bool unsolvable;
 

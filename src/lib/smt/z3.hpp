@@ -41,16 +41,17 @@ public:
         Model<Th...> res;
         const auto add = [&res, this, &m](const auto &x, const auto &y) {
             if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
-                if (std::holds_alternative<NumVar>(x)) {
-                    NumVar var = std::get<NumVar>(x);
-                    Num val = getRealFromModel(m, y);
-                    res.template put<IntTheory>(var, val);
+                if (std::holds_alternative<IntTheory::Var>(x)) {
+                    const auto var {std::get<IntTheory::Var>(x)};
+                    const auto val {getRealFromModel(m, y)};
+                    assert(mp::denominator(val) == 1);
+                    res.template put<IntTheory>(var, mp::numerator(val));
                     return;
                 }
             }
             if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
-                if (std::holds_alternative<BoolVar>(x)) {
-                    BoolVar var = std::get<BoolVar>(x);
+                if (std::holds_alternative<BoolTheory::Var>(x)) {
+                    const auto var {std::get<BoolTheory::Var>(x)};
                     switch (m.eval(y).bool_value()) {
                     case Z3_L_FALSE:
                         res.template put<BoolTheory>(var, false);
@@ -115,17 +116,18 @@ protected:
         solver.set("rlimit", 10000000u);
     }
 
-    Num getRealFromModel(const z3::model &model, const z3::expr &symbol) {
-        return Num(Z3_get_numeral_string(
-                       model.ctx(),
-                       Z3_get_numerator(
-                           model.ctx(),
-                           model.eval(symbol, true)))) /
-                Num(Z3_get_numeral_string(
-                        model.ctx(),
-                        Z3_get_denominator(
-                            model.ctx(),
-                            model.eval(symbol, true))));
+    Rational getRealFromModel(const z3::model &model, const z3::expr &symbol) {
+        Rational numerator {Z3_get_numeral_string(
+            model.ctx(),
+            Z3_get_numerator(
+                model.ctx(),
+                model.eval(symbol, true)))};
+        Rational denominator {Z3_get_numeral_string(
+            model.ctx(),
+            Z3_get_denominator(
+                model.ctx(),
+                model.eval(symbol, true)))};
+        return numerator / denominator;
     }
 
 };

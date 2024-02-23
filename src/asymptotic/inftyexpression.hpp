@@ -11,36 +11,13 @@ enum Direction { POS_INF = 0, NEG_INF, POS_CONS, NEG_CONS, POS };
 extern const int DirectionSize;
 extern const char* DirectionNames[];
 
+using InftyExpression = std::pair<ExprPtr, Direction>;
+
 /**
- * This class extends an Expression by a direction.
+ * Returns true if this InftyExpression is trivially unsatisfiable, e.g,
+ * if this is a variable and the direction is POS_INF or NEG_INF.
  */
-class InftyExpression : public Expr {
-public:
-    /**
-     * Creates a new InftyExpression from the given expression and direction.
-     */
-    InftyExpression(const Expr &other, Direction dir);
-
-    /**
-     * Sets the direction of this InftyExpression.
-     */
-    void setDirection(Direction dir);
-
-    /**
-     * Returns the direction of this InftyExpression.
-     */
-    Direction getDirection() const;
-
-    /**
-     * Returns true if this InftyExpression is trivially unsatisfiable, e.g,
-     * if this is a variable and the direction is POS_INF or NEG_INF.
-     */
-    bool isTriviallyUnsatisfiable() const;
-
-private:
-    Direction direction {};
-
-};
+bool isTriviallyUnsatisfiable(const InftyExpression&);
 
 std::ostream& operator<<(std::ostream &os, const InftyExpression &ie);
 

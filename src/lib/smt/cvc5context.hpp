@@ -10,8 +10,8 @@ class CVC5Context : public SmtContext<cvc5::Term> {
 public:
     CVC5Context(cvc5::Solver& ctx);
     ~CVC5Context() override;
-    cvc5::Term getInt(long val) override;
-    cvc5::Term getReal(long num, long denom) override;
+    cvc5::Term getInt(const Int &val) override;
+    cvc5::Term getReal(const Int &num, const Int &denom) override;
     cvc5::Term pow(const cvc5::Term &base, const cvc5::Term &exp) override;
     cvc5::Term plus(const cvc5::Term &x, const cvc5::Term &y) override;
     cvc5::Term times(const cvc5::Term &x, const cvc5::Term &y) override;
@@ -41,7 +41,6 @@ public:
     long toInt(const cvc5::Term &e) const override;
     cvc5::Term lhs(const cvc5::Term &e) const override;
     cvc5::Term rhs(const cvc5::Term &e) const override;
-    Rel::RelOp relOp(const cvc5::Term &e) const override;
 
     void printStderr(const cvc5::Term &e) const override;
 

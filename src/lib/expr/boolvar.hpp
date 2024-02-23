@@ -1,6 +1,11 @@
 #pragma once
 
+#include <memory>
 #include <string>
+
+class BoolVar;
+
+using BoolVarPtr = std::shared_ptr<BoolVar>;
 
 class BoolVar {
 
@@ -22,9 +27,9 @@ public:
 
     int getIdx() const;
 
-    static BoolVar next();
+    static BoolVarPtr next();
 
-    static BoolVar nextProgVar();
+    static BoolVarPtr nextProgVar();
 
     bool isTempVar() const;
 

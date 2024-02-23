@@ -31,10 +31,10 @@ YicesContext::~YicesContext() { }
 term_t YicesContext::buildVar(const Var &var) {
     type_t t {
         std::visit(Overload{
-                       [](const NumVar&) {
+                       [](const NumVarPtr&) {
                            return yices_int_type();
                        },
-                       [](const BoolVar&) {
+                       [](const BoolVarPtr&) {
                            return yices_bool_type();
                        }
                    }, var)};
@@ -43,16 +43,16 @@ term_t YicesContext::buildVar(const Var &var) {
     return res;
 }
 
-term_t YicesContext::getInt(long val) {
-    return yices_int64(val);
+term_t YicesContext::getInt(const Int &val) {
+    return yices_int64(val.convert_to<int64_t>());
 }
 
-term_t YicesContext::getReal(long num, long denom) {
+term_t YicesContext::getReal(const Int &num, const Int &denom) {
     assert(denom != 0);
     if (denom > 0) {
-        return yices_rational64(num, denom);
+        return yices_rational64(num.convert_to<int64_t>(), denom.convert_to<int64_t>());
     } else {
-        return yices_rational64(-num, -denom);
+        return yices_rational64((-num).convert_to<int64_t>(), (-denom).convert_to<int64_t>());
     }
 }
 
@@ -261,14 +261,6 @@ std::vector<term_t> YicesContext::getChildren(const term_t &e) const {
         }
     }
     return res;
-}
-
-Rel::RelOp YicesContext::relOp(const term_t &e) const {
-    switch (yices_term_constructor(e)) {
-    case YICES_ARITH_GE_ATOM: return Rel::RelOp::geq;
-    case YICES_EQ_TERM: return Rel::RelOp::eq;
-    default: throw std::invalid_argument("unknown relation"); // yices normalizes all other relations to >= or =
-    }
 }
 
 void YicesContext::printStderr(const term_t &e) const {

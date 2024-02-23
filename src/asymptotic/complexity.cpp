@@ -26,12 +26,12 @@ const Complexity Complexity::NestedExp = Complexity(CpxNestedExponential);
 const Complexity Complexity::Unbounded = Complexity(CpxUnbounded);
 const Complexity Complexity::Nonterm = Complexity(CpxNonterm);
 
-Complexity Complexity::Poly(int degree) {
-    return Complexity(SimpleFraction(degree));
+Complexity Complexity::Poly(Int degree) {
+    return Complexity(degree);
 }
 
-Complexity Complexity::Poly(int numer, int denom) {
-    return Complexity(SimpleFraction(numer, denom));
+Complexity Complexity::Poly(Int numer, Int denom) {
+    return Complexity(numer / denom);
 }
 
 bool Complexity::operator==(const Complexity &other) const {
@@ -66,8 +66,8 @@ Complexity Complexity::operator*(const Complexity &other) {
     return std::max(*this, other);
 }
 
-Complexity Complexity::operator^(const SimpleFraction &exponent) {
-    assert(exponent.toFloat() >= 0);
+Complexity Complexity::operator^(const Rational &exponent) {
+    assert(exponent >= 0);
 
     if (type == CpxPolynomial) {
         return Complexity(polyDegree * exponent);
@@ -76,23 +76,19 @@ Complexity Complexity::operator^(const SimpleFraction &exponent) {
     return *this;
 }
 
-Complexity Complexity::operator^(int exponent) {
-    return (*this) ^ SimpleFraction(exponent);
-}
-
 std::string Complexity::toString() const {
     switch (type) {
-        case CpxUnknown: return "Unknown";
-        case CpxPolynomial:
-            if (polyDegree.isZero()) {
-                return "Constant";
-            } else {
-                return "Poly(n^" + polyDegree.toString() + ")";
-            }
-        case CpxExponential: return "Exp";
-        case CpxNestedExponential: return "ExpNested";
-        case CpxUnbounded: return "Unbounded";
-        case CpxNonterm: return "Nonterm";
+    case CpxUnknown: return "Unknown";
+    case CpxPolynomial:
+        if (polyDegree == 0) {
+            return "Constant";
+        } else {
+            return "Poly(n^" + polyDegree.str() + ")";
+        }
+    case CpxExponential: return "Exp";
+    case CpxNestedExponential: return "ExpNested";
+    case CpxUnbounded: return "Unbounded";
+    case CpxNonterm: return "Nonterm";
     }
     throw std::invalid_argument("unreachable");
 }
@@ -104,93 +100,75 @@ std::string Complexity::toWstString() const {
 
     std::string res = "WORST_CASE(";
     switch (type) {
-        case CpxExponential: res += "EXP"; break;
-        case CpxNestedExponential: res += "EXP"; break;
-        case CpxUnbounded: res += "INF"; break;
-        case CpxUnknown: res += "Omega(0)"; break;
-        case CpxPolynomial:
-            if (polyDegree.isZero()) {
-                res += "Omega(1)";
-            } else {
-                res += "Omega(n^" + polyDegree.toString() + ")";
-            }
-            break;
-        default: assert(false && "unreachable");;
+    case CpxExponential: res += "EXP"; break;
+    case CpxNestedExponential: res += "EXP"; break;
+    case CpxUnbounded: res += "INF"; break;
+    case CpxUnknown: res += "Omega(0)"; break;
+    case CpxPolynomial:
+        if (polyDegree == 0) {
+            res += "Omega(1)";
+        } else {
+            res += "Omega(n^" + polyDegree.str() + ")";
+        }
+        break;
+    default: assert(false && "unreachable");;
     }
     res += ",?)";
     return res;
 }
 
 std::ostream& operator<<(std::ostream &s, const Complexity &cpx) {
-    s << cpx.toString();
-    return s;
+    return s << cpx.toString();
 }
 
-Complexity toComplexityRec(const Expr &term) {
-
+Complexity toComplexityRec(const ExprPtr term) {
     //traverse the expression
-    if (term.isRationalConstant()) {
-        Num num = term.toNum();
-        assert(num.is_integer() || num.is_real());
-        //both for positive and negative constants, as we want to over-approximate the complexity! (e.g. A-B is O(n))
+    const auto r {term->isRational()};
+    if (r) {
         return Complexity::Const;
-
-    } else if (term.isPow()) {
-        assert(term.arity() == 2);
-
+    }
+    const auto p {term->isPow()};
+    if (p) {
+        const auto &[base, exponent] {*p};
         // If the exponent is at least polynomial (non-constant), complexity might be exponential
-        if (toComplexityRec(term.op(1)) > Complexity::Const) {
-            const Expr &base = term.op(0);
-            if (base.isZero() || base == 1 || base == -1) {
+        if (toComplexityRec(exponent) > Complexity::Const) {
+            const auto b {base->isRational()};
+            if (b && *b <= 1) {
                 return Complexity::Const;
             }
             return Complexity::Exp;
-
+        }
         // Otherwise the complexity is polynomial, if the exponent is nonnegative
-        } else {
-            if (!term.op(1).isRationalConstant()) {
-                return Complexity::Unknown;
-            }
-            Num numexp = term.op(1).toNum();
-            if (!numexp.is_nonneg_integer()) {
-                return Complexity::Unknown;
-            }
-            if ((numexp - std::numeric_limits<int>::min()).is_negative() ||
-                    (numexp - std::numeric_limits<int>::max()).is_positive()) {
-                return Complexity::Unknown;
-            }
-
-            Complexity base = toComplexityRec(term.op(0));
-            int exp = numexp.to_int();
-            return base ^ exp;
+        const auto e {exponent->isInt()};
+        if (!e || *e < 0) {
+            return Complexity::Unknown;
         }
-
-    } else if (term.isMul()) {
-        assert(term.arity() > 0);
-        Complexity cpx = toComplexityRec(term.op(0));
-        for (unsigned int i=1; i < term.arity(); ++i) {
-            cpx = cpx * toComplexityRec(term.op(i));
+        auto base_cpx {toComplexityRec(base)};
+        return base_cpx ^ *e;
+    }
+    const auto m {term->isMul()};
+    if (m) {
+        Complexity cpx {Complexity::Const};
+        for (const auto &arg: *m) {
+            cpx = cpx * toComplexityRec(arg);
         }
         return cpx;
-
-    } else if (term.isAdd()) {
-        assert(term.arity() > 0);
-        Complexity cpx = toComplexityRec(term.op(0));
-        for (unsigned int i=1; i < term.arity(); ++i) {
-            cpx = cpx + toComplexityRec(term.op(i));
+    }
+    const auto a {term->isAdd()};
+    if (a) {
+        Complexity cpx {Complexity::Const};
+        for (const auto &arg: *a) {
+            cpx = cpx + toComplexityRec(arg);
         }
         return cpx;
-
-    } else if (term.isVar()) {
+    }
+    if (term->isVar()) {
         return Complexity::Poly(1);
     }
-
     //unknown expression type (e.g. relational)
     return Complexity::Unknown;
 }
 
-
-Complexity toComplexity(const Expr &e) {
-    Expr simple = e.expand(); // multiply out
-    return toComplexityRec(simple);
+Complexity toComplexity(const ExprPtr &e) {
+    return toComplexityRec(e);
 }

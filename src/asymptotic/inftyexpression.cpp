@@ -6,46 +6,26 @@ const int DirectionSize = 5;
 const char* DirectionNames[] = { "+", "-", "+!", "-!", "+/+!"};
 
 
-InftyExpression::InftyExpression(const Expr &other, Direction dir)
-    : Expr(other) {
-    setDirection(dir);
-}
-
-
-void InftyExpression::setDirection(Direction dir) {
-    direction = dir;
-}
-
-
-Direction InftyExpression::getDirection() const {
-    return direction;
-}
-
-
-bool InftyExpression::isTriviallyUnsatisfiable() const {
-    if (this->isRationalConstant()) {
-        if (direction == POS_INF || direction == NEG_INF) {
+bool isTriviallyUnsatisfiable(const InftyExpression &p) {
+    const auto &[e,d] {p};
+    const auto r {e->isRational()};
+    if (r) {
+        if (d == POS_INF || d == NEG_INF) {
             return true;
-
-        } else if ((direction == POS_CONS || direction == POS)
-                   && isRationalConstant() && !toNum().is_positive()) {
+        } else if ((d == POS_CONS || d == POS) && *r <= 0) {
             return true;
-
-        } else if (direction == NEG_CONS && isRationalConstant() && toNum().is_nonneg_integer()) {
+        } else if (d == NEG_CONS && *r >= 0) {
             return true;
         }
     }
-
     return false;
 }
 
 bool operator<(const InftyExpression &x, const InftyExpression &y) {
-    return static_cast<Expr>(x) < static_cast<Expr>(y);
+    return x.first < y.first;
 }
 
-std::ostream& operator<<(std::ostream &os, const InftyExpression &ie) {
-    os << static_cast<const Expr &>(ie) << " ("
-       << DirectionNames[ie.getDirection()] << ")";
-
-    return os;
+std::ostream& operator<<(std::ostream &os, const InftyExpression &p) {
+    const auto &[e,d] {p};
+    return os << e << " (" << DirectionNames[d] << ")";
 }

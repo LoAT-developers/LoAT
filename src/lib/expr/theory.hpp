@@ -36,7 +36,7 @@ constexpr bool is() {
 
 template<>
 struct std::hash<BoolExpr> {
-    std::size_t operator()(const BoolExpr& x) const noexcept {
+    std::size_t operator()(const BoolExpr x) const noexcept {
         return boost::hash_value(x);
     }
 };

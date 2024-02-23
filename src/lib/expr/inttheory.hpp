@@ -3,28 +3,30 @@
 #include "itheory.hpp"
 #include "numexpression.hpp"
 #include "rel.hpp"
+#include "numvar.hpp"
+#include "exprsubs.hpp"
 
 struct IntTheory {
 
     using Lit = Rel;
-    using Var = NumVar;
+    using Var = NumVarPtr;
     using Subs = ExprSubs;
-    using Expression = Expr;
-    using Val = Num;
+    using Expression = ExprPtr;
+    using Val = Int;
 
     static Expression valToExpr(const Val &val) {
-        return Expr(val);
+        return ne::buildConstant(val);
     }
 
     static Expression varToExpr(const Var &var) {
-        return var;
+        return var->toExpr();
     }
 
     static Expression anyValue() {
         return 0;
     }
 
-    static NumVar next() {
+    static Var next() {
         return NumVar::next();
     }
 

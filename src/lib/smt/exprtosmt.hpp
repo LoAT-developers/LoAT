@@ -31,7 +31,7 @@ public:
         return converter.convertBoolEx(e);
     }
 
-    static EXPR convert(const Expr e, SmtContext<EXPR> &ctx) {
+    static EXPR convert(const ExprPtr e, SmtContext<EXPR> &ctx) {
         ExprToSmt<EXPR, Th...> converter(ctx);
         return converter.convertEx(e);
     }
@@ -68,80 +68,72 @@ protected:
         return res;
     }
 
-    EXPR convertEx(const Expr &e){
-        if (e.isAdd()) {
+    EXPR convertEx(const ExprPtr e){
+        if (e->isAdd()) {
             return convertAdd(e);
-
-        } else if (e.isMul()) {
-            return convertMul(e);
-
-        } else if (e.isPow()) {
-            return convertPower(e);
-
-        } else if (e.isRationalConstant()) {
-            return convertNumeric(e.toNum());
-
-        } else if (e.isVar()) {
-            return convertSymbol(e.toVar());
-
         }
-
+        if (e->isMul()) {
+            return convertMul(e);
+        }
+        if (e->isPow()) {
+            return convertPower(e);
+        }
+        const auto r {e->isRational()};
+        if (r) {
+            return convertNumeric(*r);
+        }
+        const auto var {e->isVar()};
+        if (var) {
+            return convertSymbol(*var);
+        }
         std::stringstream ss;
         ss << "Error: conversion not implemented for term: " << e << std::endl;
         throw std::invalid_argument(ss.str());
     }
 
-    EXPR convertAdd(const Expr &e){
-        assert(e.arity() > 0);
-
-        EXPR res = convertEx(e.op(0));
-        for (unsigned int i=1; i < e.arity(); ++i) {
-            res = context.plus(res, convertEx(e.op(i)));
+    EXPR convertAdd(const ExprPtr e){
+        const auto args {e->isAdd()};
+        auto res {convertNumeric(0)};
+        for (const auto &arg: *args) {
+            res = context.plus(res, convertEx(arg));
         }
-
         return res;
     }
 
-    EXPR convertMul(const Expr &e) {
-        assert(e.arity() > 0);
-
-        EXPR res = convertEx(e.op(0));
-        for (unsigned int i=1; i < e.arity(); ++i) {
-            res = context.times(res, convertEx(e.op(i)));
+    EXPR convertMul(const ExprPtr e) {
+        const auto args {e->isMul()};
+        auto res {convertNumeric(1)};
+        for (const auto &arg: *args) {
+            res = context.times(res, convertEx(arg));
         }
-
         return res;
     }
 
-    EXPR convertPower(const Expr &e) {
-        assert(e.arity() == 2);
-        if (e.isNaturalPow()) {
+    EXPR convertPower(const ExprPtr e) {
+        const auto [base, exp] {*e->isPow()};
+        const auto int_exp {exp->isInt()};
+        if (int_exp) {
             // Z3 still prefers x*x*...*x over x^c...
-            const auto bound {e.op(1).toNum()};
-            if (1 <= bound && bound <= 10) {
-                EXPR factor {convertEx(e.op(0))};
-                EXPR res {factor};
-                for (unsigned i = 1; i < bound; ++i) {
+            if (1 <= *int_exp && *int_exp <= 10) {
+                auto factor {convertEx(base)};
+                auto res {factor};
+                for (unsigned i = 1; i < *int_exp; ++i) {
                     res = context.times(res, factor);
                 }
                 return res;
             }
         }
-        return context.pow(convertEx(e.op(0)), convertEx(e.op(1)));
+        return context.pow(convertEx(base), convertEx(exp));
     }
 
-    EXPR convertNumeric(const Num &num) {
-        assert(num.is_integer() || num.is_real());
-
+    EXPR convertNumeric(const Rational &num) {
         try {
             // convert integer either as integer or as reals (depending on settings)
-            if (num.is_integer()) {
-                return context.getInt(num.to_long());
+            if (mp::denominator(num) == 1) {
+                return context.getInt(mp::numerator(num));
             }
-
             // always convert real numbers as reals
-            return context.getReal(num.numer().to_long(), num.denom().to_long());
-
+            return context.getReal(mp::numerator(num), mp::denominator(num));
         } catch (...) {
             throw std::invalid_argument("Numeric constant too large, cannot convert");
         }
@@ -156,38 +148,7 @@ protected:
     }
 
     EXPR convertRelational(const Rel &rel) {
-
-        // Some solvers prefer strict over weak inequalities,
-        // as the latter may require computing with algebraic numbers in NRA.
-        // I'm not sure whether all of them rewrite integer-inequalities correspondingly,
-        // so we do it for them.
-        if (rel.relOp() == Rel::leq) {
-            if (rel.lhs().isIntPoly()) {
-                return convertRelational(Rel::buildLt(rel.lhs() - 1, rel.rhs()));
-            } else if (rel.rhs().isIntPoly()) {
-                return convertRelational(Rel::buildLt(rel.lhs(), rel.rhs() + 1));
-            }
-        } else if (rel.relOp() == Rel::geq) {
-            if (rel.lhs().isIntPoly()) {
-                return convertRelational(Rel::buildGt(rel.lhs() + 1, rel.rhs()));
-            } else if (rel.rhs().isIntPoly()) {
-                return convertRelational(Rel::buildGt(rel.lhs(), rel.rhs() - 1));
-            }
-        }
-
-        EXPR a = convertEx(rel.lhs());
-        EXPR b = convertEx(rel.rhs());
-
-        switch (rel.relOp()) {
-        case Rel::eq: return context.eq(a, b);
-        case Rel::neq: return context.neq(a, b);
-        case Rel::lt: return context.lt(a, b);
-        case Rel::leq: return context.le(a, b);
-        case Rel::gt: return context.gt(a, b);
-        case Rel::geq: return context.ge(a, b);
-        }
-
-        throw std::invalid_argument("unreachable");
+        return context.gt(convertEx(rel.lhs()), convertNumeric(0));
     }
 
     EXPR convertLit(const BoolLit &lit) {

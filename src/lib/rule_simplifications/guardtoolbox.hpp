@@ -54,7 +54,7 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    ResultBase<ExprSubs, Proof> propagateEqualities(const BoolExpr e, SolvingLevel level, const SymbolAcceptor &allow);
+    ResultBase<ExprSubs, Proof> propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow);
 
     ResultBase<BSubs, Proof> propagateBooleanEqualities(const BoolExpr e);
 
@@ -76,14 +76,6 @@ namespace GuardToolbox {
     ResultBase<BoolExpr, Proof> simplify(const BoolExpr e);
 
     /**
-     * Replaces bidirectional inequalities, e.g. x <= y, y >= x by an equality, e.g. x == y.
-     * The inequalties are removed, the equality is added to guard.
-     * @note expensive for large guards
-     * @return true iff guard was changed.
-     */
-    Guard makeEqualities(const BoolExpr e);
-
-    /**
      * Returns true iff term contains a temporary variable
      */
     template<class T>
@@ -95,6 +87,6 @@ namespace GuardToolbox {
 
     ResultBase<BoolExpr, Proof> eliminateTempVars(BoolExpr trans, const SymbolAcceptor &allow);
 
-    ResultBase<BoolExpr, Proof> preprocessFormula(const BoolExpr &e, const SymbolAcceptor &allow);
+    ResultBase<BoolExpr, Proof> preprocessFormula(const BoolExpr e, const SymbolAcceptor &allow);
 
 }

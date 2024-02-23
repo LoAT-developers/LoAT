@@ -18,22 +18,23 @@
 #include "recurrence.hpp"
 #include "dependencyorder.hpp"
 #include "inttheory.hpp"
+#include "numexpressionutils.hpp"
+#include "expr.hpp"
 
 #include <purrs.hh>
 #include <boost/algorithm/string.hpp>
 
 using namespace std;
-namespace Purrs = Parma_Recurrence_Relation_Solver;
 
-Recurrence::Recurrence(const Subs &equations, const NumVar &n):
+Recurrence::Recurrence(const Subs &equations, const IntTheory::Var n):
     equations(equations), n(n) {}
 
-bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
-    const auto n {Purrs::Expr(Purrs::Recurrence::n).toGiNaC()};
-    const auto updated {rhs.subs(closed_form_pre.get<IntTheory>()).ex.subs(*this->n == n)};
-    const auto &vars {rhs.vars()};
-    unsigned prefix {0};
-    GiNaC::ex closed_form;
+bool Recurrence::solve(const IntTheory::Var lhs, const IntTheory::Expression rhs) {
+    auto [updated, map] {closed_form_pre.get<IntTheory>()(rhs)->toPurrs()};
+    updated = updated.substitute(map.left.at(this->n), Purrs::Recurrence::n);
+    const auto vars {rhs->vars()};
+    auto prefix {0u};
+    Purrs::Expr closed_form;
     for (const auto &x: vars) {
         const auto it {prefixes.find(x)};
         if (it != prefixes.end()) {
@@ -42,44 +43,40 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
     }
     if (!vars.contains(lhs)) {
         ++prefix;
-
         closed_form = updated;
     } else {
         if (prefix > 0) {
             ++prefix;
         }
-        auto last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
-        Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(updated.subs({{*lhs, last}}))};
+        auto last {Purrs::x(Purrs::Recurrence::n - 1)};
+        Purrs::Recurrence rec {updated.substitute(map.left.at(lhs), last)};
         auto status {Purrs::Recurrence::Solver_Status::TOO_COMPLEX};
         try {
-            rec.set_initial_conditions({ {0, Purrs::Expr::fromGiNaC(*lhs)} });
             status = rec.compute_exact_solution();
         } catch (...) {
             //purrs throws a runtime exception if the recurrence is too difficult
             return false;
         }
         if (status == Purrs::Recurrence::SUCCESS) {
-            Purrs::Expr exact;
-            rec.exact_solution(exact);
-            closed_form = exact.toGiNaC();
+            rec.exact_solution(closed_form);
         } else {
             return false;
         }
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    closed_form_pre.put<IntTheory>(lhs, Expr(closed_form.subs(n == *this->n-1)));
-    result.closed_form.put<IntTheory>(lhs, Expr(closed_form.subs(n == *this->n)));
+    closed_form_pre.put<IntTheory>(lhs, ne::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)-1), map));
+    result.closed_form.put<IntTheory>(lhs, ne::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)), map));
     return true;
 }
 
-bool Recurrence::solve(const BoolVar &lhs, const BoolExpr &rhs) {
+bool Recurrence::solve(const BoolTheory::Var &lhs, const BoolTheory::Expression rhs) {
     const auto updated {rhs->subs(closed_form_pre)};
     if (updated->lits().contains(BoolLit(lhs, true))) {
         return false;
     }
     const auto &vars {updated->vars()};
-    if (vars.contains(lhs) && vars.size() != vars.get<BoolVar>().size()) {
+    if (vars.contains(lhs) && vars.size() != vars.get<BoolTheory::Var>().size()) {
         return false;
     }
     unsigned prefix {1};
@@ -102,16 +99,11 @@ bool Recurrence::solve() {
         return false;
     }
     for (const auto &lhs : *order) {
-        const auto success {
-            std::visit(
-                        Overload{
-                            [&](const NumVar &lhs) {
-                                return solve(lhs, equations.get<IntTheory>(lhs));
-                            },
-                            [&](const BoolVar &lhs) {
-                                return solve(lhs, equations.get<BoolTheory>(lhs));
-                            }
-                        }, lhs)
+        const auto success {std::visit(
+                [&](const auto lhs) {
+                    const auto th {expr::theory(lhs)};
+                    return solve(lhs, equations.get<decltype(th)>(lhs));
+                }, lhs)
         };
         if (!success) {
             return false;
@@ -121,7 +113,7 @@ bool Recurrence::solve() {
 }
 
 
-std::optional<Recurrence::Result> Recurrence::solve(const Subs &update, const NumVar &n) {
+std::optional<Recurrence::Result> Recurrence::solve(const Subs &update, const IntTheory::Var n) {
     Recurrence rec {update, n};
     if (rec.solve()) {
         return rec.result;
@@ -142,7 +134,6 @@ void Recurrence::solve(const std::string &eq) {
     GiNaC::parser parser{table};
     const GiNaC::ex lhs {parser(strs[0])};
     const GiNaC::ex rhs {parser(strs[1])};
-    assert(Expr(lhs).isVar());
     auto last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
     Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(rhs.subs({{lhs, last}}))};
     auto status {Purrs::Recurrence::Solver_Status::TOO_COMPLEX};

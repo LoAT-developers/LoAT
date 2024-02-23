@@ -20,20 +20,19 @@ private:
 
         ExprSubs solution{};
         Complexity complexity;
-        int upperBound;
-        int lowerBound;
+        Int upperBound;
+        Int lowerBound;
         int inftyVars;
     };
 
-    AsymptoticBound(Guard guard, Expr cost, bool finalCheck);
+    AsymptoticBound(Guard guard, IntTheory::Expression cost, bool finalCheck);
 
     void initLimitVectors();
-    void normalizeGuard();
     void createInitialLimitProblem();
     void propagateBounds();
     ExprSubs calcSolution(const LimitProblem &limitProblem);
-    int findUpperBoundforSolution(const LimitProblem &limitProblem, const ExprSubs &solution);
-    int findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ExprSubs &solution);
+    Int findUpperBoundforSolution(const LimitProblem &limitProblem, const ExprSubs &solution);
+    Int findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ExprSubs &solution);
     void removeUnsatProblems();
     bool solveViaSMT(Complexity currentRes);
     bool solveLimitProblem();
@@ -55,9 +54,8 @@ private:
     bool trySmtEncoding(Complexity currentRes);
 
     const Guard guard;
-    const Expr cost;
+    const IntTheory::Expression cost;
     bool finalCheck;
-    Guard normalizedGuard {};
     ComplexityResult bestComplexity {};
     Proof proof {};
 
@@ -82,7 +80,7 @@ public:
         Complexity cpx;
 
         // The resulting cost, after expressing variables in terms of n.
-        Expr solvedCost;
+        IntTheory::Expression solvedCost;
 
         // The number of non-constant variables (i.e., which grow with n).
         int inftyVars;
@@ -90,7 +88,7 @@ public:
         Proof proof{};
 
         explicit Result(Complexity c) : cpx(c), solvedCost(0), inftyVars(0) {}
-        Result(Complexity c, const Expr &x, int v, Proof &proof) : cpx(c), solvedCost(x), inftyVars(v), proof(proof) {}
+        Result(Complexity c, const IntTheory::Expression x, int v, Proof &proof) : cpx(c), solvedCost(x), inftyVars(v), proof(proof) {}
     };
 
     /**

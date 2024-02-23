@@ -5,7 +5,7 @@
 #include <boost/functional/hash.hpp>
 #include <functional>
 
-BoolLit::BoolLit(const BoolVar &var, bool negated): var(var), negated(negated) {}
+BoolLit::BoolLit(const BoolVarPtr var, bool negated): var(var), negated(negated) {}
 
 bool BoolLit::isNegated() const {
     return negated;
@@ -19,12 +19,8 @@ bool BoolLit::isLinear() const {
     return true;
 }
 
-BoolVar BoolLit::getBoolVar() const {
+BoolVarPtr BoolLit::getBoolVar() const {
     return var;
-}
-
-BoolLit BoolLit::normalize() const {
-    return *this;
 }
 
 bool BoolLit::isTriviallyTrue() const {
@@ -35,11 +31,7 @@ bool BoolLit::isTriviallyFalse() const {
     return false;
 }
 
-bool BoolLit::isWellformed() const {
-    return true;
-}
-
-void BoolLit::collectVars(linked_hash_set<BoolVar> &res) const {
+void BoolLit::collectVars(linked_hash_set<BoolVarPtr> &res) const {
     res.insert(var);
 }
 
@@ -50,7 +42,7 @@ BoolLit operator!(const BoolLit &l) {
 std::size_t BoolLit::hash() const {
     std::size_t seed {0};
     boost::hash_combine(seed, negated);
-    boost::hash_combine(seed, var.hash());
+    boost::hash_combine(seed, var);
     return seed;
 }
 

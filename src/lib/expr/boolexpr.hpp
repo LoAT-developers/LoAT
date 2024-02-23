@@ -31,7 +31,7 @@ inline BExpr<Th...> subsImpl(const typename Theory<Th...>::Lit &lit, const theor
     if constexpr (I < sizeof...(Th)) {
         if (lit.index() == I) {
             using T = typename std::tuple_element_t<I, std::tuple<Th...>>;
-            if constexpr (std::same_as<typename T::Var, BoolVar>) {
+            if constexpr (std::same_as<typename T::Var, BoolVarPtr>) {
                 return s.template get<T>().subs(std::get<I>(lit));
             } else {
                 return BoolExpression<Th...>::buildTheoryLit(std::get<I>(lit).subs(s.template get<T>()));
@@ -156,7 +156,7 @@ public:
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LS &res) const = 0;
     virtual size_t size() const = 0;
-    virtual void getBounds(const NumVar &n, Bounds &res, const SolvingLevel level) const = 0;
+    virtual void getBounds(const NumVarPtr n, Bounds &res) const = 0;
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
@@ -188,25 +188,25 @@ public:
         }
     }
 
-    Bounds getBounds(const NumVar &n, const SolvingLevel level = ResultMapsToInt) const {
+    Bounds getBounds(const NumVarPtr n) const {
         Bounds bounds;
-        getBounds(n, bounds, level);
+        getBounds(n, bounds);
         return bounds;
     }
 
-    BE linearize(const NumVar &n) const {
+    BE linearize(const NumVarPtr n) const {
         return map([&n](const Lit &lit){
             return std::visit(
                 Overload{
                     [&n](const Rel &rel) {
-                        const auto ex {rel.lhs() - rel.rhs()};
-                        switch (ex.degree(n)) {
-                        case 0: return buildTheoryLit(rel);
-                        case 1:
-                            if (ex.coeff(n).isGround()) {
-                                return buildTheoryLit(rel);
-                            }
-                        default: return top();
+                        const auto ex {rel.lhs()};
+                        const auto d {ex->degree(n)};
+                        if (*d == 0) {
+                            return buildTheoryLit(rel);
+                        } else if (*d == 1 && (*ex->coeff(n))->isRational()) {
+                            return buildTheoryLit(rel);
+                        } else {
+                            return top();
                         }
                     },
                     [](const auto &lit) {
@@ -216,22 +216,17 @@ public:
         });
     }
 
-    BE toInfinity(const NumVar &n) const {
+    BE toInfinity(const NumVarPtr n) const {
         return map([&n](const Lit &lit){
             return std::visit(
                 Overload{
                     [&n](const Rel &rel) {
-                        assert(rel.isPoly());
+                        assert(rel.isLinear({{n}}));
                         if (!rel.has(n)) {
                             return buildTheoryLit(rel);
                         }
-                        if (rel.isEq()) {
-                            return bot();
-                        }
-                        const auto g {rel.toG()};
-                        const auto ex {g.lhs() - g.rhs()};
-                        const auto d {ex.degree(n)};
-                        if (ex.coeff(n, d).toNum() > 0u) {
+                        const auto ex {rel.lhs()};
+                        if ((*ex->coeff(n))->isRational() > 0) {
                             return top();
                         } else {
                             return bot();
@@ -244,22 +239,17 @@ public:
         });
     }
 
-    BE toMinusInfinity(const NumVar &n) const {
+    BE toMinusInfinity(const NumVarPtr n) const {
         return map([&n](const Lit &lit){
             return std::visit(
                 Overload{
                     [&n](const Rel &rel) {
-                        assert(rel.isPoly());
+                        assert(rel.isLinear({{n}}));
                         if (!rel.has(n)) {
                             return buildTheoryLit(rel);
                         }
-                        if (rel.isEq()) {
-                            return bot();
-                        }
-                        const auto g {rel.toG()};
-                        const auto ex {g.lhs() - g.rhs()};
-                        const auto d {ex.degree(n)};
-                        if (ex.coeff(n, d).toNum() < 0u) {
+                        const auto ex {rel.lhs()};
+                        if ((*ex->coeff(n))->isRational() < 0) {
                             return top();
                         } else {
                             return bot();
@@ -450,8 +440,6 @@ public:
                     return top();
                 } else if (rel.isTriviallyFalse()) {
                     return bot();
-                } else if (rel.isNeq()) {
-                    return buildTheoryLit(Rel(rel.lhs(), Rel::lt, rel.rhs())) | (Rel(rel.lhs(), Rel::gt, rel.rhs()));
                 }
             }
             return buildTheoryLit(lit);
@@ -502,12 +490,12 @@ public:
         Subs res;
         std::vector<BE> todo;
         const auto find_elim = [](const BE &c) {
-            std::optional<BoolVar> elim;
-            const auto vars {c->vars().template get<BoolVar>()};
+            std::optional<BoolVarPtr> elim;
+            const auto vars {c->vars().template get<BoolVarPtr>()};
             for (const auto &x: vars) {
-                if (x.isTempVar()) {
+                if (x->isTempVar()) {
                     if (elim) {
-                        return std::optional<BoolVar>{};
+                        return std::optional<BoolVarPtr>{};
                     } else {
                         elim = x;
                     }
@@ -577,7 +565,7 @@ public:
                 if (std::holds_alternative<BoolLit>(lit)) {
                     const auto &bool_lit {std::get<BoolLit>(lit)};
                     const auto var {bool_lit.getBoolVar()};
-                    if (var.isTempVar()) {
+                    if (var->isTempVar()) {
                         res.put(var, bool_lit.isNegated() ? bot() : top());
                     }
                 }
@@ -589,27 +577,6 @@ public:
     G conjunctionToGuard() const{
         const LS &lits = this->lits();
         return G(lits.begin(), lits.end());
-    }
-
-    BE toG() const {
-        return map([](const Lit &lit) {
-            if (std::holds_alternative<Rel>(lit)) {
-                const Rel &rel = std::get<Rel>(lit);
-                if (rel.isEq()) {
-                    return buildAnd(std::initializer_list<BE>{
-                                        buildTheoryLit(Rel::buildGeq(rel.lhs(), rel.rhs())),
-                                        buildTheoryLit(Rel::buildGeq(rel.rhs(), rel.lhs()))
-                                    });
-                } else if (rel.isNeq()) {
-                    return buildOr(std::initializer_list<BE>{
-                                       buildTheoryLit(Rel::buildGt(rel.lhs(), rel.rhs())),
-                                       buildTheoryLit(Rel::buildGt(rel.rhs(), rel.lhs()))
-                                   });
-                }
-                return buildTheoryLit(rel.toG());
-            }
-            return buildTheoryLit(lit);
-        });
     }
 
 };
@@ -655,7 +622,7 @@ public:
     BoolTheoryLit(const Lit &lit) : lit(lit) {}
 
     static BE from_cache(const Lit &lit) {
-        return cache.from_cache(literal::normalize<Th...>(lit));
+        return cache.from_cache(lit);
     }
 
     bool isAnd() const override {
@@ -708,9 +675,9 @@ public:
         return 1;
     }
 
-    void getBounds(const NumVar &var, Bounds &res, const SolvingLevel level) const override {
+    void getBounds(const NumVarPtr var, Bounds &res) const override {
         if (std::holds_alternative<Rel>(lit)) {
-            std::get<Rel>(lit).getBounds(var, res, level);
+            std::get<Rel>(lit).getBounds(var, res);
         }
     }
 
@@ -844,20 +811,20 @@ public:
         return res;
     }
 
-    void getBounds(const NumVar &n, Bounds &res, const SolvingLevel level) const override {
+    void getBounds(const NumVarPtr n, Bounds &res) const override {
         if (isAnd()) {
             for (const auto &c: children) {
-                c->getBounds(n, res, level);
+                c->getBounds(n, res);
             }
         } else if (isOr()) {
             bool first = true;
             for (const auto &c: children) {
                 if (first) {
-                    c->getBounds(n, res, level);
+                    c->getBounds(n, res);
                     first = false;
                 } else {
                     Bounds cres = res;
-                    c->getBounds(n, cres, level);
+                    c->getBounds(n, cres);
                     for (auto it = res.lowerBounds.begin(); it != res.lowerBounds.end();) {
                         if (!cres.lowerBounds.contains(*it)) {
                             it = res.lowerBounds.erase(it);
@@ -871,16 +838,6 @@ public:
                         } else {
                             ++it;
                         }
-                    }
-                    for (auto it = res.equalities.begin(); it != res.equalities.end();) {
-                        if (!cres.equalities.contains(*it)) {
-                            it = res.equalities.erase(it);
-                        } else {
-                            ++it;
-                        }
-                    }
-                    if (res.equalities.empty() && res.lowerBounds.empty() && res.upperBounds.empty()) {
-                        return;
                     }
                 }
             }

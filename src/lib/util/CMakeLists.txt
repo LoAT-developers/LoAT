@@ -15,6 +15,7 @@ add_library(${PROJECT_NAME} STATIC
     config.hpp
     pair.hpp
     optional.hpp
+    string.hpp
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")

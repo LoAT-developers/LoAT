@@ -31,7 +31,7 @@ if(${SANITIZE})
     add_compile_options(-fsanitize=undefined)
 endif()
 
-add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter)
+add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter -fconcepts-diagnostics-depth=100)
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
 

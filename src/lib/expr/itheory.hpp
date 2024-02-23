@@ -29,9 +29,7 @@ concept IVars = requires(T x, linked_hash_set<Var> res) {
 
 template <typename T>
 concept ILit = requires(T x, T y) {
-        {x.normalize()} -> std::same_as<T>;
         {x.isTriviallyTrue()} -> std::same_as<bool>;
-        {x.isWellformed()} -> std::same_as<bool>;
         {x.isPoly()} -> std::same_as<bool>;
         {x.isLinear()} -> std::same_as<bool>;
         {x.hash()} -> std::same_as<std::size_t>;
@@ -40,15 +38,14 @@ concept ILit = requires(T x, T y) {
 template <typename T>
 concept IVar = requires(T x, unsigned idx) {
         requires IComparable<T>;
-        {T(idx)} -> std::same_as<T>;
-        {T::next()} -> std::same_as<T>;
+        {x->next()} -> std::same_as<T>;
 };
 
 template <typename T>
 concept IBaseTheory = requires(T t) {
         requires IVar<typename T::Var>;
         requires ILit<typename T::Lit>;
-        requires IVars<typename T::Lit, typename T::Var>;
+        // requires IVars<typename T::Lit, typename T::Var>;
         typename T::Val;
 };
 

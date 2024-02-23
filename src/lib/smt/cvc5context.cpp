@@ -10,21 +10,21 @@ CVC5Context::~CVC5Context() { }
 cvc5::Term CVC5Context::buildVar(const Var &var) {
     const auto name {expr::getName(var)};
     return std::visit(Overload{
-                          [&](const NumVar&) {
+                          [&](const NumVarPtr&) {
                               return ctx.mkConst(ctx.getIntegerSort(), name);
                           },
-                          [&](const BoolVar&) {
+                          [&](const BoolVarPtr&) {
                               return ctx.mkConst(ctx.getBooleanSort(), name);
                           }
                       }, var);
 }
 
-cvc5::Term CVC5Context::getInt(long val) {
-    return ctx.mkInteger(val);
+cvc5::Term CVC5Context::getInt(const Int &val) {
+    return ctx.mkInteger(val.convert_to<int64_t>());
 }
 
-cvc5::Term CVC5Context::getReal(long num, long denom) {
-    return ctx.mkReal(num, denom);
+cvc5::Term CVC5Context::getReal(const Int &num, const Int &denom) {
+    return ctx.mkReal(num.convert_to<int64_t>(), denom.convert_to<int64_t>());
 }
 
 cvc5::Term CVC5Context::pow(const cvc5::Term &base, const cvc5::Term &exp) {
@@ -154,18 +154,6 @@ cvc5::Term CVC5Context::lhs(const cvc5::Term &e) const {
 cvc5::Term CVC5Context::rhs(const cvc5::Term &e) const {
     assert(e.getNumChildren() == 2);
     return *(++e.begin());
-}
-
-Rel::RelOp CVC5Context::relOp(const cvc5::Term &e) const {
-
-    switch (e.getKind()) {
-    case cvc5::Kind::EQUAL: return Rel::RelOp::eq;
-    case cvc5::Kind::GT: return Rel::RelOp::gt;
-    case cvc5::Kind::GEQ: return Rel::RelOp::geq;
-    case cvc5::Kind::LT: return Rel::RelOp::lt;
-    case cvc5::Kind::LEQ: return Rel::RelOp::leq;
-    default: throw std::invalid_argument("unknown relation");
-    }
 }
 
 void CVC5Context::printStderr(const cvc5::Term &e) const {

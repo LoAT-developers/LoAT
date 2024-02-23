@@ -10,7 +10,7 @@
 
 struct BoolBaseTheory {
     using Lit = BoolLit;
-    using Var = BoolVar;
+    using Var = BoolVarPtr;
     using Val = bool;
 };
 
@@ -23,15 +23,15 @@ struct BoolTheory: public BoolBaseTheory {
         return val ? BExpression::top() : BExpression::bot();
     }
 
-    static Expression varToExpr(const Var &val) {
-        return BExpression::buildTheoryLit(Lit(val));
+    static Expression varToExpr(const Var &var) {
+        return BExpression::buildTheoryLit(Lit(var));
     }
 
     static Expression anyValue() {
         return BExpression::bot();
     }
 
-    static BoolVar next() {
+    static Var next() {
         return BoolVar::next();
     }
 

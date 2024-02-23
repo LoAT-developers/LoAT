@@ -35,7 +35,7 @@ LoopAcceleration::LoopAcceleration(
     const AccelConfig &config)
     : rule(rule), sample_point(sample_point), config(config) {
     auto up {rule.getUpdate()};
-    up.put<IntTheory>(NumVar::loc_var, Expr(NumVar::loc_var));
+    up.put<IntTheory>(NumVar::loc_var, NumVar::loc_var->toExpr());
     this->rule = rule.withUpdate(up);
 }
 
@@ -85,33 +85,32 @@ void LoopAcceleration::compute_closed_form() {
     rec = Recurrence::solve(rule.getUpdate(), config.n);
     if (rec) {
         res.prefix = rec->prefix;
-        const auto is_temp_var = [](const auto &z){
-            return z.isTempVar();
+        const auto is_temp_var = [](const auto z){
+            return z->isTempVar();
         };
         for (const auto &[x,y]: rule.getUpdate().get<IntTheory>()) {
-            if (y.has(x) && y != Expr(x)) {
-                if (!y.hasVarWith(is_temp_var)) {
+            if (y->has(x) && y != x->toExpr()) {
+                if (!y->hasVarWith(is_temp_var)) {
                     return;
                 }
-                if (!y.isLinear()) {
+                if (!y->isLinear()) {
                     continue;
                 }
-                const auto vars {y.vars()};
+                const auto vars {y->vars()};
                 auto all_lower_bounded {true};
                 auto all_upper_bounded {true};
                 for (const auto &z: vars) {
-                    if (z.isTempVar()) {
+                    if (z->isTempVar()) {
                         const auto bounds {rule.getGuard()->getBounds(z)};
-                        const auto coeff {y.coeff(z).toNum()};
-                        if (std::any_of(bounds.equalities.begin(), bounds.equalities.end(), [&is_temp_var](const auto &b) {
-                                return !b.hasVarWith(is_temp_var);
-                            })) {
-                            continue;
-                        }
+                        const auto coeff {*(*y->coeff(z))->isRational()};
                         auto lower_bounded {false};
                         auto upper_bounded {false};
                         for (const auto &b: bounds.lowerBounds) {
-                            if (!b.hasVarWith(is_temp_var)) {
+                            if (!b->hasVarWith(is_temp_var)) {
+                                if (bounds.upperBounds.contains(b)) {
+                                    lower_bounded = true;
+                                    upper_bounded = true;
+                                }
                                 if (coeff > 0) {
                                     lower_bounded = true;
                                 } else {
@@ -124,7 +123,7 @@ void LoopAcceleration::compute_closed_form() {
                         }
                         if (!lower_bounded || !upper_bounded) {
                             for (const auto &b: bounds.upperBounds) {
-                                if (!b.hasVarWith(is_temp_var)) {
+                                if (!b->hasVarWith(is_temp_var)) {
                                     if (coeff > 0) {
                                         upper_bounded = true;
                                     } else {

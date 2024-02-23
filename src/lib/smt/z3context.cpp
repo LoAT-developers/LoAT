@@ -26,22 +26,23 @@ Z3Context::~Z3Context() { }
 
 z3::expr Z3Context::buildVar(const Var &var) {
     const auto name {expr::getName(var)};
-    return std::visit(Overload{
-                          [&](const NumVar&) {
-                              return ctx.int_const(name.c_str());
-                          },
-                          [&](const BoolVar&) {
-                              return ctx.bool_const(name.c_str());
-                          }
-                      }, var);
+    return std::visit(
+        Overload{
+            [&](const NumVarPtr&) {
+                return ctx.int_const(name.c_str());
+            },
+            [&](const BoolVarPtr&) {
+                return ctx.bool_const(name.c_str());
+            }
+        }, var);
 }
 
-z3::expr Z3Context::getInt(long val) {
-    return ctx.int_val(val);
+z3::expr Z3Context::getInt(const Int &val) {
+    return ctx.int_val(val.convert_to<int64_t>());
 }
 
-z3::expr Z3Context::getReal(long num, long denom) {
-    return ctx.real_val(num, denom);
+z3::expr Z3Context::getReal(const Int &num, const Int &denom) {
+    return ctx.real_val(num.convert_to<int64_t>(), denom.convert_to<int64_t>());
 }
 
 z3::expr Z3Context::pow(const z3::expr &base, const z3::expr &exp) {
@@ -161,17 +162,6 @@ z3::expr Z3Context::lhs(const z3::expr &e) const {
 z3::expr Z3Context::rhs(const z3::expr &e) const {
     assert(e.num_args() == 2);
     return e.arg(1);
-}
-
-Rel::RelOp Z3Context::relOp(const z3::expr &e) const {
-    switch (e.decl().decl_kind()) {
-    case Z3_OP_EQ: return Rel::RelOp::eq;
-    case Z3_OP_GT: return Rel::RelOp::gt;
-    case Z3_OP_GE: return Rel::RelOp::geq;
-    case Z3_OP_LT: return Rel::RelOp::lt;
-    case Z3_OP_LE: return Rel::RelOp::leq;
-    default: throw std::invalid_argument("unknown relation");
-    }
 }
 
 void Z3Context::printStderr(const z3::expr &e) const {

@@ -30,6 +30,20 @@ add_library(${PROJECT_NAME} STATIC
   theory.cpp
   expr.hpp
   expr.cpp
+  exprsubs.hpp
+  exprsubs.cpp
+  numconstant.hpp
+  numconstant.cpp
+  exp.hpp
+  exp.cpp
+  acapplication.hpp
+  acapplication.cpp
+  mult.hpp
+  mult.cpp
+  add.hpp
+  add.cpp
+  numexpressionutils.hpp
+  numexpressionutils.cpp
 )
 
 find_library(GINAC ginac)
