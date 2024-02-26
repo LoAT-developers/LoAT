@@ -183,11 +183,6 @@ class Reachability : public ILinearSolver  {
 
     VarSet prog_vars {};
 
-    /**
-     * clauses up to this one are original ones, all other clauses are learned
-     */
-    unsigned last_orig_clause {0};
-
     std::pair<int, int> luby {1,1};
 
     unsigned luby_unit {10};
@@ -211,9 +206,6 @@ class Reachability : public ILinearSolver  {
 
     RuleResult instantiate(const NumVar &n, const Rule &rule) const;
 
-    /**
-     * initializes all data structures after preprocessing
-     */
     void init();
 
     /**
@@ -314,13 +306,9 @@ class Reachability : public ILinearSolver  {
 
     void analyze();
 
-    void analyze_incremental();
-
-    bool main_loop_body();
-
     void restart();
 
-    LinearSolver::Result analysis_result;
+    LinearSolver::Result analysis_result = LinearSolver::Result::Pending;
 
     LinearSolver::Result analysis_result_from(std::string res) const;
 

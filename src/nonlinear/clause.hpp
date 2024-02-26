@@ -1,20 +1,21 @@
 #include "theory.hpp"
-#include "types.hpp"
 #include <vector>
 
 class FunApp {
 
 public:
-    const std::basic_string<char> name;
+    const std::string name;
     const std::vector<Var> args;
 
     FunApp(
-        const std::basic_string<char> name,
+        const std::string name,
         const std::vector<Var> args
     ): name(name), args(args) {}
 
     const FunApp renameWith(const Subs &renaming) const;
 
+    const FunApp withArgs(const std::vector<Var> new_args) const;
+    
     const VarSet vars() const;
 
     unsigned long intArity() const;
@@ -64,6 +65,8 @@ public:
     std::optional<unsigned> indexOfLHSPred(const std::basic_string<char> name) const;
 };
 
+const Clause removeDuplicatePredicateArguments(const Clause& chc);
+
 const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std::set<Clause>& chcs);
 
 const std::map<std::basic_string<char>, std::set<Clause>> partitionFactsByRHS(const std::set<Clause>& facts);
@@ -78,6 +81,7 @@ const std::optional<Subs> computeUnifier(const std::vector<Var> &args1, const st
 const std::pair<unsigned long, unsigned long> maxArity(const std::vector<Clause>& chc_problem);
 
 bool allLinear(const std::vector<Clause>& chcs);
+bool allLinear(const std::set<Clause>& chcs);
 
 // implement comparison operators so they can be stored in std::set
 bool operator<(const Clause &c1, const Clause &c2);

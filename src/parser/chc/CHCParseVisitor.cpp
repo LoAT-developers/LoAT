@@ -123,7 +123,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headCo
 antlrcpp::Any CHCParseVisitor::visitChc_assert_body(CHCParser::Chc_assert_bodyContext *ctx) {
     const auto lhs = any_cast<tail_type>(visit(ctx->chc_tail()));
     const auto rhs = any_cast<head_type>(visit(ctx->chc_head()));
-    return Clause(lhs.first, rhs, lhs.second);
+    return Clause(lhs.first, rhs, lhs.second).normalize();
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_head(CHCParser::Chc_headContext *ctx) {
@@ -159,7 +159,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
     vars.clear();
 
     // const auto sink_name = its->getLocationNames().at(its->getSink());
-    return Clause(lhs.first, {}, lhs.second);
+    return Clause(lhs.first, {}, lhs.second).normalize();
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {

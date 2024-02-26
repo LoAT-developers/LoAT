@@ -124,7 +124,6 @@ Reachability::Reachability(ITSProblem &chcs, bool incremental_mode):
         std::cout << "Initial ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
     }
-
     const auto res {Preprocess::preprocess(chcs, incremental_mode)};
     if (res) {
         proof.concat(res.getProof());
@@ -246,19 +245,11 @@ void Reachability::update_cpx() {
 }
 
 Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const {
-    // static Rule dummy(top(), Subs());
-
-    // Resolvent only has to be computed in incremental mode (i.e. when the problem includes non linear CHCs) or 
-    // for complexity analysis. Otherwise we can skip it.
-    // if (Config::Analysis::complexity() || incremental_mode) {
-        auto resolvent = idx->withGuard(implicant);
-        if (!trace.empty()) {
-            resolvent = Chaining::chain(trace.back().resolvent, resolvent).first;
-        }
-        return *Preprocess::preprocessRule(resolvent);
-    // } else {
-    //     return dummy;
-    // }
+    auto resolvent = idx->withGuard(implicant);
+    if (!trace.empty()) {
+        resolvent = Chaining::chain(trace.back().resolvent, resolvent).first;
+    }
+    return *Preprocess::preprocessRule(resolvent);
 }
 
 bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
@@ -355,7 +346,6 @@ void Reachability::init() {
     }
 }
 
-
 void Reachability::luby_next() {
     for (const auto &x: chcs.getAllTransitions()) {
         if (is_learned_clause(&x) && !x.isPoly()) {
@@ -437,9 +427,7 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
         } else {
             block->second.clear();
         }
-        if (Config::Analysis::log) { 
-            std::cout << "could not find a model for " << idx << std::endl;
-        }
+        if (Config::Analysis::log) std::cout << "could not find a model for " << idx << std::endl;
     }
     }
     return {};
@@ -566,12 +554,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (accel_res.accel) {
         // acceleration succeeded, simplify the result
-        auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
-
-        // if (!simplified->isLinear()) {
-        //     return std::make_unique<Unroll>(1);
-        // }
-            
+        auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);          
         if (simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
@@ -764,12 +747,6 @@ void Reachability::bump_penalty(const TransIdx idx) {
  * this function returns nullopt.
  */
 const std::optional<Clause> Reachability::trace_as_fact() {
-    // if (!incremental_mode) {
-    //     // In non-incremental mode the trace resolvent is not really computed and only a dummy expression.
-    //     // See `compute_resolvent` above. So `trace_as_fact` will silently return nonsense.
-    //     throw std::logic_error("Calling `trace_as_fact` in non-incremental mode doesn't make sense.");
-    // }
-
     if (trace.empty()) {
         return {};
     } else {
@@ -797,7 +774,6 @@ void Reachability::analyze() {
     // also try rules with polynomial guard. Otherwise also consider exponential 
     // (arbitrary) guards.
     for (const auto tier: LinearSolver::constraint_tiers) {
-        blocked_clauses[0].clear();
         derive_new_facts(tier);
 
         if (get_analysis_result() == LinearSolver::Result::Unsat) {
@@ -823,23 +799,23 @@ void Reachability::analyze() {
 }
 
 const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTier max_constr_tier) {
+    luby_count = 0;
+    luby = {1,1};
+    restart();
+
     std::set<Clause> derived_facts;
 
     if (try_to_finish()) {
         return derived_facts;
     }
-
+    blocked_clauses[0].clear();
     do {
+        // QUESTION: still correct handling luby this way in incremental mode?
         ++luby_count;
         size_t next_restart = luby_unit * luby.second;
         std::unique_ptr<LearningState> state;
         if (Config::Analysis::log) std::cout << "trace: " << trace << std::endl;
         if (!trace.empty()) {
-            // true by default, because if no case in the following for-loop applies, then we still want to add a new fact,
-            // because we have a non-empty unseen trace.
-            bool should_add_fact = true;
-
-            // QUESTION: why not exit loop after frist matching case?
             for (auto backlink = has_looping_suffix(trace.size() - 1);
                  backlink;
                  backlink = has_looping_suffix(*backlink - 1)) {
@@ -852,8 +828,6 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
                     backtrack();
                     proof.headline("Covered");
                     print_state();
-                    // if we run into `covered` we don't add a new fact, because backtrack to previously seen facts.
-                    should_add_fact = false;
                     break;
                 } else if (state->succeeded()) {
                     if (simple_loop) {
@@ -864,9 +838,6 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
                     if ((drop || simple_loop) && try_to_finish()) {
                         return derived_facts;
                     }
-
-                    // if we just applied acceleration successfully, then the trace contains a new (more general) fact.
-                    should_add_fact = true;
                 } else if (state->dropped()) {
                     if (simple_loop) {
                         block(step);
@@ -874,8 +845,6 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
                     proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
                     print_state();
 
-                    // QUESTION: why shouldn't we add a fact in this case again?
-                    should_add_fact = false;
                     break;
                 } else if (state->unsat()) {
                     proof.majorProofStep("Nonterm", **state->unsat(), chcs);
@@ -885,36 +854,9 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
 
                     return derived_facts;
                 } else if (state->unroll() && state->unroll()->acceleration_failed()) {
-                    // QUESTION: this case was added after with merge. How to set `should_add_fact` ?
-                    // stop searching for longer loops if the current one was already too complicated
                     break;
                 }
             }
-
-            if (should_add_fact) { // TODO: when trace not empty
-                // Using a crude (additional) redundancy criterion for facts here. We identify facts by the trace that lead to them.
-                // This is only sufficient because equivalent facts can have multiple traces. We don't need to memoize the entire                    
-                // trace structure. It's enough to store clause_idx/implicant for each trace step.
-                std::vector<std::pair<TransIdx, BoolExpr>> trace_id;
-                for (const auto &step: trace) {
-                    trace_id.push_back(std::make_pair(
-                        step.clause_idx, 
-                        step.implicant
-                    ));
-                }
-
-                // Forwarding initial facts is redundant, because they are already obtained by calling `get_initial_facts`.
-                // TODO: Remove `get_initial_facts` and force non linear solver to get inital facts from first round of 
-                // calling `derive_new_facts`.
-                // NOTE: tried the approach above but it definitely lead to more timeouts.
-                bool is_initial_fact = trace.size() == 1 && chcs.isInitialTransition(trace[0].clause_idx);
-
-                if (!seen_traces.contains(trace_id) && !is_initial_fact) {
-                    derived_facts.insert(trace_as_fact().value());
-                    seen_traces.insert(trace_id);
-                }
-            }
-
         }
         if (luby_count >= next_restart || (state && state->restart()) || !check_consistency()) {
             if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
@@ -923,7 +865,7 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
 
         auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
         for (auto it = try_set.begin(); it != try_set.end();) {
-            // Only consider rules for "Step" whose guard has at most the the constraint tier
+            // Only consider rules for "Step" whose guard has at most the constraint tier
             // configured for the current run. For example if `max_constr_tier` is `Polynomial`,
             // we only consider rules with `Linear` or `Polynomial` guard but ignore rules with
             // `Exponential` guard.
@@ -980,6 +922,26 @@ const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTi
 
             return derived_facts;
         } else if (all_failed) {
+            // Using a crude (additional) redundancy criterion for facts here. We identify facts by the trace that lead to them.
+            // This is only sufficient because equivalent facts can have multiple traces. We don't need to memoize the entire                    
+            // trace structure. It's enough to store clause_idx/implicant for each trace step.
+            std::vector<std::pair<TransIdx, BoolExpr>> trace_id;
+            for (const auto &step: trace) {
+                trace_id.push_back(std::make_pair(
+                    step.clause_idx, 
+                    step.implicant
+                ));
+            }
+
+            // Assume non-linear solver already nows about facts that are initially part of the CHC problem,
+            // so don't forward them eihter:
+            bool is_initial_fact = trace.size() == 1 && chcs.isInitialTransition(trace[0].clause_idx);
+
+            if (!seen_traces.contains(trace_id) && !is_initial_fact) {
+                derived_facts.insert(trace_as_fact().value());
+                seen_traces.insert(trace_id);
+            }
+
             backtrack();
             proof.headline("Backtrack");
             print_state();
@@ -1019,13 +981,6 @@ void Reachability::add_clauses(const std::set<Clause> &clauses) {
                 ITSExport::printForProof(chcs, std::cout);
             }
         }
-
-        // TODO: shouldn't we clear all components?
-        blocked_clauses[0].clear();
-
-        // When we add a new linear clause we have to restart the solver,
-        // i.e. reset the trace, otherwise we might block a potential reachability path.
-        restart();
     }
 }
 

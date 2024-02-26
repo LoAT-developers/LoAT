@@ -11,24 +11,24 @@ pushd build
 make -j4
 popd
 
-# DEBUG: non-deterministic unsat/unknown for 133,139,157
+# 103 unsat   sat     
+# 247 unsat   sat     
+# 253 unsat   sat     
+# 256 unsat   sat     
+# 259 unsat   sat     
 
-# TODO: propagate equalities for Clauses
+# gdb --args \
+./build/loat-static \
+   --mode reachability \
+   --format horn \
+   --proof-level 0 \
+   "../chc-comp23-benchmarks/LIA-nonlin/chc-LIA_248.smt2"
+   # "../chc-comp22-benchmarks/LIA/chc-LIA_235.smt2"
+  # "../chc-comp22-benchmarks/LIA/chc-LIA_148_unknown.smt2"
+   # "../chc-comp22-benchmarks/LIA/test3.smt2"
 
-# # gdb --args \
-# time ./build/loat-static \
-#    --mode reachability \
-#    --format horn \
-#    --proof-level 0 \
-#    "../chc-comp23-benchmarks/LIA-nonlin/chc-LIA_069.smt2"
-#    # "../chc-comp22-benchmarks/LIA/chc-LIA_112.smt2"
-
-# popd
-# exit
-
-# REVIEW (comp22) : 076,073,112
-# REVIEW (comp22) : 119 (1m20s) / 126 (2m19s) 
-# REVIEW (comp23) : 111 
+popd
+exit
 
 ##########################################################################
 
@@ -43,22 +43,22 @@ do
     continue
   else
     read idx z3_result adcl_result <<< "$line"
-    file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
-    # file="../chc-comp23-benchmarks/${benchmark}-nonlin/chc-${benchmark}_${idx}.smt2"
+    # file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
+    file="../chc-comp23-benchmarks/${benchmark}-nonlin/chc-${benchmark}_${idx}.smt2"
 
-    # if true; then
+    if true; then
     # if [[ "$z3_result" == "unsat" ]] && [[ "$adcl_result" == "timeout" ]]; then
     # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]]; then
-    # if [[ "$z3_result" != "sat" ]]; then
-    # if [[ "$adcl_result" == "unknown" ]]; then
-    if [[ "$adcl_result" == "unsat" ]]; then
+    # if [[ "$z3_result" != "timeout" ]]; then
+    # if [[ "$z3_result" == "sat" ]]; then
+    # if [[ "$adcl_result" == "unsat" ]]; then
       set +e
       result=$(timeout 20 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")
       # result=$(timeout 5 z3 "$file")
       exit_status=$?
       set -e
 
-      if [ $exit_status -eq 0 ]; then
+      if [[ $exit_status -eq 0 ]]; then
         result=$(echo "$result" | head -n 1)
         # result="$result"
       elif [ $exit_status -eq 124 ]; then
@@ -76,8 +76,10 @@ do
     fi
 
   fi
-done < "./benchmarks/${benchmark}.txt"
+done < "./benchmarks/review23.txt"
+# done < "./benchmarks/${benchmark}.txt"
 # done < "./benchmarks/comp23-${benchmark}-nonlin.txt"
 
 # "undo" pushd
 popd
+

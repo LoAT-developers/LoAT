@@ -6,7 +6,7 @@ namespace LinearSolver {
     enum ConstraintTier { Linear, Polynomial, Exponential };
 
 	/**
-	 * Fixed list of all constaint tiers in order of solving difficulty. 
+	 * Fixed list of all constraint tiers in order of solving difficulty. 
 	 */
     const std::vector<LinearSolver::ConstraintTier> constraint_tiers = {
         LinearSolver::ConstraintTier::Linear,

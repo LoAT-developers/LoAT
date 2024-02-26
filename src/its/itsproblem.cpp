@@ -359,10 +359,14 @@ const Clause ITSProblem::clauseFrom(TransIdx rule) const {
  * Adds a linear clause to the ITS problem by converting it to an ITS rule. 
  * Throws an error if the given clause is non-linear.
  */
-void ITSProblem::addClause(const Clause &c) {    
-    if (!c.isLinear()) {
+void ITSProblem::addClause(const Clause &initial_chc) {    
+    if (!initial_chc.isLinear()) {
         throw std::logic_error("Tried to add non-linear clause to ITS");
     }
+
+    // need to make sure that predicate arguments are pairwise distinct before
+    // converting to Rule. TODO: skip this
+    Clause c = removeDuplicatePredicateArguments(initial_chc);
 
     // If the clause is linear, extract the single LHS predicate. Or in case there are zero
     // LHS predicates, construct a dummy predicate with the initial ITS location as the 
@@ -454,7 +458,7 @@ ITSPtr ITSProblem::fromClauses(const std::set<Clause>& chcs) {
 ITSPtr ITSProblem::fromClauses(const std::vector<Clause>& chc_problem) {
     ITSPtr its = std::make_shared<ITSProblem>();
 
-    auto [max_int_arity, max_bool_arity] = maxArity(chc_problem);
+    const auto [max_int_arity, max_bool_arity] = maxArity(chc_problem);
 
     its->setInitialLocation(its->addNamedLocation("LoAT_init"));
     // Collect all predicate that appear in `chc_problem`, add them as 

@@ -2,6 +2,7 @@
 #include "boolexpr.hpp"
 #include "expr.hpp"
 #include "theory.hpp"
+#include <memory>
 #include <stdexcept>
 #include <tuple>
 #include <utility>
@@ -58,9 +59,9 @@ const std::optional<Subs> computeUnifier(const std::vector<Var> &args1, const st
             if (subs.contains(var1)) {
                 // If `var1` is already contained in `subs`, then `pred1` must 
                 // have `var1` multiple times as an argument. This is an implict
-                // equality that must also hold in `pred2` so we map `var2` to 
-                // whatever `var1` already maps to.
-                subs.put(var2, subs.get(var1));
+                // equality. We assume at this point that this doesn't occur and 
+                // that all equalities are explicitly mentioned in the constraint.                
+                throw std::logic_error("computeUnifier: predicate has duplicate arguments");
             } else {
                 // QUESTION: I suspect some C++ template magic can make this prettier
                 bool both_nums = std::holds_alternative<NumVar>(var1) &&
@@ -106,6 +107,13 @@ const FunApp FunApp::renameWith(const Subs &renaming) const {
   }
 
   return FunApp(name, args_renamed);
+}
+
+/**
+ * Create a copy of predicate with argument vector replaced.
+ */
+const FunApp FunApp::withArgs(const std::vector<Var> new_args) const {
+    return FunApp(name, new_args);
 }
 
 /**
@@ -355,12 +363,14 @@ const std::tuple<std::set<Clause>, std::set<Clause>> partitionFacts(const std::s
  * equivalence.
  */
 const Clause Clause::normalize() const {
-    if (!this->rhs.has_value()) {
-        return *this;
-    }
-    const auto rhs = this->rhs.value();
+    const auto& chc_uniq_args = removeDuplicatePredicateArguments(*this);
 
-    // construct a vector of variables with the same length as `this->rhs.args`
+    if (!chc_uniq_args.rhs.has_value()) {
+        return chc_uniq_args;
+    }
+    const auto rhs = chc_uniq_args.rhs.value();
+
+    // construct a vector of variables with the same length as `rhs.args`
     // and the same variable types in each position, except that the variable
     // indices are simply: 0,1,2,3,etc.
     std::vector<Var> target_args;
@@ -380,7 +390,7 @@ const Clause Clause::normalize() const {
     const auto unifier = computeUnifier(rhs.args, target_args);
 
     if (unifier.has_value()) {
-        return this->renameWith(unifier.value());
+        return chc_uniq_args.renameWith(unifier.value());
     } else {
         // Variable vectors should always be unifiable unless the vectors have differnt length,
         // but the vectors should have the same length by construction so this error should not
@@ -435,7 +445,7 @@ bool Clause::isQuery() const {
  * Return first predicate with given `name` if it occurs on the LHS of the clause.
  * Returns nullopt if there is no predicate with given `name`. 
  */
-std::optional<unsigned> Clause::indexOfLHSPred(const std::basic_string<char> name) const {
+std::optional<unsigned> Clause::indexOfLHSPred(const std::string name) const {
     for (unsigned i=0; i<lhs.size(); i++) {
         if (lhs.at(i).name == name) {
             return i;
@@ -472,7 +482,71 @@ const std::pair<unsigned long, unsigned long> maxArity(const std::vector<Clause>
     return std::pair(max_int_arity, max_bool_arity);
 }
 
+/**
+ * If a predicate has duplicate arguments as in 
+ *
+ *     F(x,y,x)
+ *
+ * then this constitutes an implict equality. This function makes the equality
+ * explicit by moving it into the guard.
+ */
+const Clause removeDuplicatePredicateArguments(const Clause& chc) {
+    std::vector<BoolExpr> extra_conditions = { chc.guard };
+
+    std::vector<FunApp> new_lhs;
+    new_lhs.reserve(chc.lhs.size());
+    for (const auto& pred: chc.lhs) {
+        std::vector<Var> new_args;
+        
+        for (const auto& arg: pred.args) {
+            if (std::find(new_args.begin(), new_args.end(), arg) != new_args.end()) { 
+                auto fresh_var = expr::next(arg);
+                extra_conditions.push_back(expr::mkEq(expr::toExpr(arg), expr::toExpr(fresh_var)));
+                new_args.push_back(fresh_var);
+            } else {
+                new_args.push_back(arg);
+            }
+        }
+
+        new_lhs.push_back(pred.withArgs(new_args));
+    }
+
+    std::unique_ptr<FunApp> new_rhs;
+    if (chc.rhs.has_value()) {
+        std::vector<Var> new_args;
+
+        for (const auto& arg: chc.rhs.value().args) {
+            if (std::find(new_args.begin(), new_args.end(), arg) != new_args.end()) { 
+                auto fresh_var = expr::next(arg);
+                extra_conditions.push_back(expr::mkEq(expr::toExpr(arg), expr::toExpr(fresh_var)));
+                new_args.push_back(fresh_var);
+            } else {
+                new_args.push_back(arg);
+            }
+        }
+
+        new_rhs = std::make_unique<FunApp>(
+            chc.rhs.value().withArgs(new_args)
+        );
+    }
+    
+    const auto new_guard = BExpression::buildAnd(extra_conditions)->simplify();
+    return Clause(new_lhs, chc.rhs.has_value() ? *new_rhs : chc.rhs, new_guard);
+}
+
+// QUESTION: does C++ have no iterable type of somehting so we can abstract over the collection type?
 bool allLinear(const std::vector<Clause>& chcs) {
+    for (const auto& chc: chcs) {
+        if (!chc.isLinear()) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+bool allLinear(const std::set<Clause>& chcs) {
+    chcs.begin();
+
     for (const auto& chc: chcs) {
         if (!chc.isLinear()) {
             return false;
