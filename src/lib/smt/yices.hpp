@@ -98,7 +98,8 @@ public:
                 if (std::holds_alternative<NumVar>(x)) {
                     res.template put<IntTheory>(std::get<NumVar>(x), getRealFromModel(m, y));
                 }
-            } else if constexpr ((std::same_as<BoolTheory, Th> || ...)) {
+            }
+            if constexpr ((std::same_as<BoolTheory, Th> || ...)) {
                 if (std::holds_alternative<BoolVar>(x)) {
                     int32_t val;
                     if (yices_get_bool_value(m, y, &val) != 0) {
@@ -106,8 +107,6 @@ public:
                     }
                     res.template put<BoolTheory>(std::get<BoolVar>(x), val);
                 }
-            } else {
-                throw std::logic_error("unknown variable type");
             }
         };
         const auto map = ctx.getSymbolMap();
