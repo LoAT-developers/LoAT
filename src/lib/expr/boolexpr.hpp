@@ -197,11 +197,30 @@ public:
 
 private:
 
-    void syntacticImplicant(Subs &subs, linked_hash_set<BE> &res) const {
-        if (isAnd() || isOr()) {
+    bool syntacticImplicant(Subs &subs, linked_hash_set<BE> &res) const {
+        if (isOr()) {
+            std::optional<linked_hash_set<BE>> best_res;
             for (const auto &c: getChildren()) {
-                c->syntacticImplicant(subs, res);
+                linked_hash_set<BE> current_res;
+                if (c->syntacticImplicant(subs, current_res)) {
+                    if (!best_res) {
+                        best_res = current_res;
+                    } else if (current_res.size() < best_res->size()) {
+                        best_res = current_res;
+                    }
+                }
             }
+            if (best_res) {
+                res.insert(best_res->begin(), best_res->end());
+            }
+            return best_res.has_value();
+        } else if (isAnd()) {
+            for (const auto &c: getChildren()) {
+                if (!c->syntacticImplicant(subs, res)) {
+                    return false;
+                }
+            }
+            return true;
         } else {
             const auto lit = getTheoryLit();
             if (lit) {
@@ -217,10 +236,12 @@ private:
                 }
                 if (l->isTriviallyTrue()) {
                     res.insert(this->shared_from_this());
+                    return true;
                 }
             } else {
                 throw std::invalid_argument("unknown kind of BoolExpr");
             }
+            return false;
         }
     }
 
@@ -669,7 +690,7 @@ class BoolJunction: public BoolExpression<Th...> {
         size_t operator()(const std::tuple<BES, ConcatOperator> &args) const noexcept {
             const auto &[children, op] {args};
             size_t hash {0};
-            boost::hash_combine(hash, boost::hash_range(children.begin(), children.end()));
+            boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
             boost::hash_combine(hash, op);
             return hash;
         }

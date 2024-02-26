@@ -30,7 +30,7 @@ public:
 
     static acceleration::Result accelerate(const Rule &rule, const AccelConfig &config);
 
-    static const std::pair<Rule, unsigned> chain(const Rule &rule);
+    static std::pair<Rule, unsigned> chain(const Rule &rule);
 
 private:
 
@@ -49,6 +49,5 @@ private:
     const AccelConfig config;
     acceleration::Result res {};
     std::optional<Recurrence::Result> rec {};
-    bool prepend_first {false};
 
 };

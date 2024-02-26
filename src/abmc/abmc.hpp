@@ -8,12 +8,9 @@
 #include "itsproof.hpp"
 
 template<>
-struct std::hash<std::pair<std::vector<int>, BoolExpr>> {
-    std::size_t operator()(const std::pair<std::vector<int>, BoolExpr>& x) const noexcept {
-        std::size_t seed {0};
-        boost::hash_combine(seed, x.first);
-        boost::hash_combine(seed, x.second);
-        return seed;
+struct std::hash<std::vector<int>> {
+    std::size_t operator()(const std::vector<int> &x) const noexcept {
+        return boost::hash_value(x);
     }
 };
 
@@ -21,7 +18,7 @@ class ABMC {
 
 private:
 
-    ABMC(ITSProblem &its);
+    explicit ABMC(ITSProblem &its);
 
     void analyze();
 
@@ -44,8 +41,8 @@ private:
     NumVar n {NumVar::next()};
     std::unordered_map<Var, Var> post_vars {};
     std::unordered_map<Implicant, int> lang_map {};
-    std::unordered_map<std::pair<std::vector<int>, BoolExpr>, std::unordered_map<BoolExpr, std::optional<Loop>>> cache {};
-    std::unordered_set<std::pair<std::vector<int>, BoolExpr>> nonterm_cache {};
+    std::unordered_map<std::vector<int>, std::unordered_map<BoolExpr, std::optional<Loop>>> cache {};
+    std::unordered_set<std::vector<int>> nonterm_cache {};
     std::unordered_map<int, std::vector<int>> history {};
     NumVar trace_var;
     std::optional<TransIdx> shortcut {};
@@ -62,7 +59,6 @@ private:
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
     std::pair<Rule, Subs> build_loop(const int backlink);
     BoolExpr build_blocking_clause(const int backlink, const Loop &loop);
-    std::pair<Rule, BoolExpr> project(const Rule &r, const ExprSubs &sample_point);
     std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
     void unsat();
     void unknown();

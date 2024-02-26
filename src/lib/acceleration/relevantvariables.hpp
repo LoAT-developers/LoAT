@@ -25,7 +25,7 @@ namespace util {
 
     public:
 
-        static const VarSet find(
+        static VarSet find(
                 const VarSet &varsOfInterest,
                 const Subs &up) {
             VarSet res = varsOfInterest;

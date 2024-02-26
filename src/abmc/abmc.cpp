@@ -27,11 +27,10 @@ bool ABMC::is_orig_clause(const TransIdx idx) const {
 }
 
 bool ends_with_square(const std::vector<int> &w) {
-    const auto it {w.rbegin()};
+    const auto start {w.rbegin()};
     const auto size {w.size()};
     const auto max_length {size / 2};
-    auto start {it};
-    auto end {it};
+    auto end {start};
     for (auto length = 1u; length <= max_length; ++length) {
         ++end;
         if (std::equal(start, end, end)) {
@@ -97,7 +96,7 @@ int ABMC::get_language(unsigned i) {
 std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
-    for (int i = trace.size() - 1; i >= backlink; --i) {
+    for (long i = trace.size() - 1; i >= backlink; --i) {
         const auto imp {trace[i]};
         const auto rule {imp.first
                             ->withGuard(imp.second)
@@ -136,7 +135,7 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     const auto not_covered {!loop.covered->subs(s)};
     pre.insert(BExpression::buildTheoryLit(Rel::buildEq(s.get<IntTheory>(trace_var), (*shortcut)->getId())));
     pre.insert(not_covered);
-    unsigned long length {depth - backlink + 1};
+    const auto length {depth - backlink + 1};
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 1)};
@@ -162,67 +161,10 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     return idx;
 }
 
-std::pair<Rule, BoolExpr> ABMC::project(const Rule &r, const ExprSubs &sample_point) {
-    const auto s {subs_at(depth)};
-    const auto ss {subs_at(depth + 1)};
-    const auto smt {SmtFactory::solver<IntTheory, BoolTheory>()};
-    for (const auto &[x,val]: sample_point) {
-        if (!x.isTempVar()) {
-            smt->add(Rel::buildEq(s.get<IntTheory>(x), val));
-        }
-    }
-    smt->add(encode_transition(&r)->subs(ss));
-    if (smt->check() != SmtResult::Sat) {
-        return {r, BExpression::bot()};
-    }
-    const auto vars {r.vars()};
-    Rule res {r};
-    RelSet projection;
-    for (const auto &x: vars.get<NumVar>()) {
-        const auto val {sample_point.get(x).toNum()};
-        if (x.isTempVar()) {
-            Bounds bounds;
-            res.getGuard()->getBounds(x, bounds);
-            if (bounds.equality) {
-                res = res.subs(Subs::build<IntTheory>(x, *bounds.equality));
-            } else {
-                std::vector<std::pair<Num, Expr>> candidates;
-                for (const auto &bs: {bounds.upperBounds, bounds.lowerBounds}) {
-                    for (const auto &b: bs) {
-                        candidates.emplace_back(GiNaC::abs(b.subs(sample_point).toNum() - val), b);
-                    }
-                }
-                std::sort(candidates.begin(), candidates.end(), [](const auto &x, const auto &y) {
-                    return x.first < y.first;
-                });
-                for (const auto &[_,b]: candidates) {
-                    smt->push();
-                    smt->add(Rel::buildEq(b, x).subs(ss.get<IntTheory>()));
-                    if (smt->check() == SmtResult::Sat) {
-                        res = res.subs(Subs::build<IntTheory>(x, b));
-                        projection.insert(Rel::buildEq(x, b));
-                        break;
-                    } else {
-                        smt->pop();
-                    }
-                }
-            }
-        }
-    }
-    return {res, BExpression::buildAndFromLits(projection)};
-}
-
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
     auto [loop, sample_point] {build_loop(backlink)};
     auto simp {Preprocess::preprocessRule(loop)};
-    const auto [projected_rule, projection] {project(*simp, sample_point.get<IntTheory>())};
-    if (projection->isTriviallyFalse()) {
-        return {};
-    }
-    // const auto projected_rule {*simp};
-    // const auto projection {BExpression::top()};
-    const std::pair<std::vector<int>, BoolExpr> key {lang, projection};
-    auto &map {cache.emplace(key, std::unordered_map<BoolExpr, std::optional<Loop>>()).first->second};
+    auto &map {cache.emplace(lang, std::unordered_map<BoolExpr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
         if (imp->subs(sample_point)->isTriviallyTrue()) {
             if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
@@ -254,36 +196,31 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             }
         }
     };
-    if (Config::Analysis::tryNonterm() && projection != BExpression::top() && !nonterm_cache.contains(key)) {
-        AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
+    if (Config::Analysis::tryNonterm() && !nonterm_cache.contains(lang)) {
+        const AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
         const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};
         nonterm_to_query(*simp, accel_res);
-        nonterm_cache.emplace(key);
+        nonterm_cache.emplace(lang);
     }
-    const auto deterministic {projected_rule.isDeterministic()};
+    const auto deterministic {simp->isDeterministic()};
     if (Config::Analysis::reachability() && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
-    } else if (Config::Analysis::reachability() && projected_rule.getUpdate() == expr::concat(projected_rule.getUpdate(), projected_rule.getUpdate())) {
+    } else if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
-    } else if (Config::Analysis::reachability() && projected_rule.getUpdate().empty()) {
+    } else if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
         if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
     } else {
-        if (Config::Analysis::log) {
-            if (simp) {
-                std::cout << "simplified loop:" << std::endl;
-                RuleExport::printRule(*simp, std::cout);
-                std::cout << std::endl;
-            }
-            std::cout << "projected loop:" << std::endl;
-            RuleExport::printRule(projected_rule, std::cout);
+        if (Config::Analysis::log && simp) {
+            std::cout << "simplified loop:" << std::endl;
+            RuleExport::printRule(*simp, std::cout);
             std::cout << std::endl;
         }
-        AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
-        const auto accel_res {LoopAcceleration::accelerate(projected_rule, {}, config)};
-        nonterm_to_query(projected_rule, accel_res);
+        const AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
+        const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};
+        nonterm_to_query(*simp, accel_res);
         if (accel_res.accel) {
             auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
-            if (simplified->getUpdate() != projected_rule.getUpdate() && simplified->isPoly()) {
+            if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
                 const auto new_idx {add_learned_clause(*simplified, backlink)};
                 shortcut = new_idx;
                 history.emplace(next, lang);
@@ -292,7 +229,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                 const Loop loop {.idx = new_idx,
                                 .prefix = accel_res.prefix,
                                 .period = accel_res.period,
-                                .covered = accel_res.accel->covered & projection,
+                                .covered = accel_res.accel->covered,
                                 .deterministic = deterministic};
                 map.emplace(accel_res.accel->covered, loop);
                 RuleProof sub_proof, acceleration_proof;
@@ -311,7 +248,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             }
         }
     }
-    map.emplace(projection, std::optional<Loop>());
+    map.emplace(BExpression::top(), std::optional<Loop>());
     return {};
 }
 
@@ -328,7 +265,7 @@ BoolExpr ABMC::encode_transition(const TransIdx idx) {
 }
 
 void ABMC::unknown() {
-    const auto str = Config::Analysis::reachability() ? "unknowne" : "MAYBE";
+    const auto str = Config::Analysis::reachability() ? "unknown" : "MAYBE";
     std::cout << str << std::endl;
     proof.result(str);
     proof.print();

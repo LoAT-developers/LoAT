@@ -21,7 +21,7 @@ AccelerationProblem::AccelerationProblem(
         todo.insert(l);
     }
     const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
-    Logic logic {Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({todo}, subs)};
+    const auto logic {Smt<IntTheory, BoolTheory>::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver<IntTheory, BoolTheory>(logic);
     if (closed) {
         const auto bound {BExpression::buildTheoryLit(Rel(config.n, Rel::geq, 1))};
@@ -176,6 +176,9 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         if (solver->check() == Unsat) {
             success = true;
             auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, Expr(config.n)-1))};
+            if (closed->prefix > 0) {
+                g = g & lit;
+            }
             res.formula.push_back(g);
             res.proof.newline();
             res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
@@ -222,7 +225,6 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
             res.proof.newline();
             res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
             res.nonterm = false;
-            res.prependFirst |= closed->prefix > 0;
         }
     }
     solver->pop();
@@ -295,7 +297,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     if (c->isTriviallyFalse() || (samplePoint && !c->subs(*samplePoint)->isTriviallyTrue())) {
         return false;
     }
-    BoolExpr g {c & lit};
+    const auto g {c & lit};
     solver->push();
     solver->add(g);
     if (solver->check() == Sat) {
