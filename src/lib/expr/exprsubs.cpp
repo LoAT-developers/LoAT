@@ -1,5 +1,5 @@
 #include "exprsubs.hpp"
-#include "numvar.hpp"
+#include "numexpression.hpp"
 
 ExprSubs::ExprSubs() {}
 

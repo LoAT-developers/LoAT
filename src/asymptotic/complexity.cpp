@@ -16,6 +16,7 @@
  */
 
 #include "complexity.hpp"
+#include "optional.hpp"
 
 #include <limits>
 
@@ -49,14 +50,14 @@ bool Complexity::operator>(const Complexity &other) const {
     return type > other.type || (type == CpxPolynomial && type == other.type && polyDegree > other.polyDegree);
 }
 
-Complexity Complexity::operator+(const Complexity &other) {
+Complexity Complexity::operator+(const Complexity &other) const {
     if (type == CpxUnknown || other.type == CpxUnknown) {
         return Unknown;
     }
     return std::max(*this, other);
 }
 
-Complexity Complexity::operator*(const Complexity &other) {
+Complexity Complexity::operator*(const Complexity &other) const {
     if (type == CpxUnknown || other.type == CpxUnknown) {
         return Unknown;
     }
@@ -66,7 +67,7 @@ Complexity Complexity::operator*(const Complexity &other) {
     return std::max(*this, other);
 }
 
-Complexity Complexity::operator^(const Rational &exponent) {
+Complexity Complexity::operator^(const Rational &exponent) const {
     assert(exponent >= 0);
 
     if (type == CpxPolynomial) {
@@ -122,51 +123,42 @@ std::ostream& operator<<(std::ostream &s, const Complexity &cpx) {
 }
 
 Complexity toComplexityRec(const ExprPtr term) {
-    //traverse the expression
-    const auto r {term->isRational()};
-    if (r) {
-        return Complexity::Const;
-    }
-    const auto p {term->isPow()};
-    if (p) {
-        const auto &[base, exponent] {*p};
-        // If the exponent is at least polynomial (non-constant), complexity might be exponential
-        if (toComplexityRec(exponent) > Complexity::Const) {
-            const auto b {base->isRational()};
-            if (b && *b <= 1) {
-                return Complexity::Const;
+    return term->map<Complexity>(
+        [](const Rational&) {
+            return Complexity::Const;
+        },
+        [](const NumVarPtr) {
+            return Complexity::Poly(1);
+        },
+        [](const AddPtr a) {
+            const auto &args {a->getArgs()};
+            return std::accumulate(args.begin(), args.end(), Complexity::Const, [](const auto &x, const auto y) {
+                return x + toComplexityRec(y);
+            });
+        },
+        [](const MultPtr m) {
+            const auto &args {m->getArgs()};
+            return std::accumulate(args.begin(), args.end(), Complexity::Const, [](const auto &x, const auto y) {
+                return x * toComplexityRec(y);
+            });
+        },
+        [](const ExpPtr e) {
+            // If the exponent is at least polynomial (non-constant), complexity might be exponential
+            if (toComplexityRec(e->getExponent()) > Complexity::Const) {
+                const auto b {e->getBase()->isRational()};
+                if (b && *b <= 1) {
+                    return Complexity::Const;
+                }
+                return Complexity::Exp;
             }
-            return Complexity::Exp;
-        }
-        // Otherwise the complexity is polynomial, if the exponent is nonnegative
-        const auto e {exponent->isInt()};
-        if (!e || *e < 0) {
-            return Complexity::Unknown;
-        }
-        auto base_cpx {toComplexityRec(base)};
-        return base_cpx ^ *e;
-    }
-    const auto m {term->isMul()};
-    if (m) {
-        Complexity cpx {Complexity::Const};
-        for (const auto &arg: *m) {
-            cpx = cpx * toComplexityRec(arg);
-        }
-        return cpx;
-    }
-    const auto a {term->isAdd()};
-    if (a) {
-        Complexity cpx {Complexity::Const};
-        for (const auto &arg: *a) {
-            cpx = cpx + toComplexityRec(arg);
-        }
-        return cpx;
-    }
-    if (term->isVar()) {
-        return Complexity::Poly(1);
-    }
-    //unknown expression type (e.g. relational)
-    return Complexity::Unknown;
+            // Otherwise the complexity is polynomial, if the exponent is nonnegative
+            const auto exp {e->getExponent()->isInt()};
+            if (!exp || *exp < 0) {
+                return Complexity::Unknown;
+            }
+            auto base_cpx {toComplexityRec(e->getBase())};
+            return base_cpx ^ *exp;
+        });
 }
 
 Complexity toComplexity(const ExprPtr &e) {

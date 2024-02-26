@@ -60,9 +60,9 @@ public:
     bool operator<=(const Complexity &other) const { return *this < other || *this == other; }
     bool operator>=(const Complexity &other) const { return *this > other || *this == other; }
 
-    Complexity operator+(const Complexity &other);
-    Complexity operator*(const Complexity &other);
-    Complexity operator^(const Rational &exponent);
+    Complexity operator+(const Complexity &other) const;
+    Complexity operator*(const Complexity &other) const;
+    Complexity operator^(const Rational &exponent) const;
 
     std::string toString() const; // readable format
     std::string toWstString() const; // WORST_CASE(cpx,?) format

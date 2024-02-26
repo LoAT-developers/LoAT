@@ -1,5 +1,4 @@
 #include "numexpressionutils.hpp"
-#include "numvar.hpp"
 #include "string.hpp"
 
 #include <purrs.hh>

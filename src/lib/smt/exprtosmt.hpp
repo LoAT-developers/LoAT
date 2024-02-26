@@ -69,86 +69,50 @@ protected:
     }
 
     EXPR convertEx(const ExprPtr e){
-        if (e->isAdd()) {
-            return convertAdd(e);
-        }
-        if (e->isMul()) {
-            return convertMul(e);
-        }
-        if (e->isPow()) {
-            return convertPower(e);
-        }
-        const auto r {e->isRational()};
-        if (r) {
-            return convertNumeric(*r);
-        }
-        const auto var {e->isVar()};
-        if (var) {
-            return convertSymbol(*var);
-        }
-        std::stringstream ss;
-        ss << "Error: conversion not implemented for term: " << e << std::endl;
-        throw std::invalid_argument(ss.str());
-    }
-
-    EXPR convertAdd(const ExprPtr e){
-        const auto args {e->isAdd()};
-        auto res {convertNumeric(0)};
-        for (const auto &arg: *args) {
-            res = context.plus(res, convertEx(arg));
-        }
-        return res;
-    }
-
-    EXPR convertMul(const ExprPtr e) {
-        const auto args {e->isMul()};
-        auto res {convertNumeric(1)};
-        for (const auto &arg: *args) {
-            res = context.times(res, convertEx(arg));
-        }
-        return res;
-    }
-
-    EXPR convertPower(const ExprPtr e) {
-        const auto [base, exp] {*e->isPow()};
-        const auto int_exp {exp->isInt()};
-        if (int_exp) {
-            // Z3 still prefers x*x*...*x over x^c...
-            if (1 <= *int_exp && *int_exp <= 10) {
-                auto factor {convertEx(base)};
-                auto res {factor};
-                for (unsigned i = 1; i < *int_exp; ++i) {
-                    res = context.times(res, factor);
+        return e->map<EXPR>(
+            [this](const Rational &r) {
+                return context.getReal(mp::numerator(r), mp::denominator(r));
+            },
+            [this](const NumVarPtr x) {
+                auto optVar = context.getVariable(x);
+                if (optVar) {
+                    return *optVar;
                 }
-                return res;
-            }
-        }
-        return context.pow(convertEx(base), convertEx(exp));
-    }
-
-    EXPR convertNumeric(const Rational &num) {
-        try {
-            // convert integer either as integer or as reals (depending on settings)
-            if (mp::denominator(num) == 1) {
-                return context.getInt(mp::numerator(num));
-            }
-            // always convert real numbers as reals
-            return context.getReal(mp::numerator(num), mp::denominator(num));
-        } catch (...) {
-            throw std::invalid_argument("Numeric constant too large, cannot convert");
-        }
-    }
-
-    EXPR convertSymbol(const Var &e) {
-        auto optVar = context.getVariable(e);
-        if (optVar) {
-            return *optVar;
-        }
-        return context.addNewVariable(e);
+                return context.addNewVariable(x);
+            },
+            [this](const AddPtr a) {
+                const auto args {a->getArgs()};
+                return std::accumulate(args.begin(), args.end(), context.getInt(0), [this](const auto &x, const auto y) {
+                    return context.plus(x, convertEx(y));
+                });
+            },
+            [this](const MultPtr m) {
+                const auto args {m->getArgs()};
+                return std::accumulate(args.begin(), args.end(), context.getInt(1), [this](const auto &x, const auto y) {
+                    return context.times(x, convertEx(y));
+                });
+            },
+            [this](const ExpPtr e) {
+                const auto base {e->getBase()};
+                const auto exp {e->getExponent()};
+                const auto int_exp {exp->isInt()};
+                if (int_exp) {
+                    // Z3 still prefers x*x*...*x over x^c...
+                    if (1 <= *int_exp && *int_exp <= 10) {
+                        auto factor {convertEx(base)};
+                        auto res {factor};
+                        for (unsigned i = 1; i < *int_exp; ++i) {
+                            res = context.times(res, factor);
+                        }
+                        return res;
+                    }
+                }
+                return context.pow(convertEx(base), convertEx(exp));
+            });
     }
 
     EXPR convertRelational(const Rel &rel) {
-        return context.gt(convertEx(rel.lhs()), convertNumeric(0));
+        return context.gt(convertEx(rel.lhs()), context.getInt(0));
     }
 
     EXPR convertLit(const BoolLit &lit) {

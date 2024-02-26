@@ -3,7 +3,6 @@
 #include "itheory.hpp"
 #include "numexpression.hpp"
 #include "rel.hpp"
-#include "numvar.hpp"
 #include "exprsubs.hpp"
 
 struct IntTheory {

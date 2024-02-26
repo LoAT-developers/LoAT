@@ -114,8 +114,7 @@ bool LimitVector::makesSense(ExprPtr l, ExprPtr r) const {
     if (first == NEG_CONS || first == NEG_INF) {
         const auto p {l->isPow()};
         if (p) {
-            const auto &[base, exponent] {*p};
-            const auto e {exponent->isInt()};
+            const auto e {(*p)->getExponent()->isInt()};
             if (e && *e % 2 == 0) {
                 return false;
             }
@@ -124,8 +123,7 @@ bool LimitVector::makesSense(ExprPtr l, ExprPtr r) const {
     if (second == NEG_CONS || second == NEG_INF) {
         const auto p {r->isPow()};
         if (p) {
-            const auto &[base, exponent] {*p};
-            const auto e {exponent->isInt()};
+            const auto e {(*p)->getExponent()->isInt()};
             if (e && *e % 2 == 0) {
                 return false;
             }

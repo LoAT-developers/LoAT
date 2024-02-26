@@ -13,7 +13,6 @@ add_library(${PROJECT_NAME} STATIC
   boollit.hpp
   boollit.cpp
   literal.hpp
-  numvar.hpp
   numvar.cpp
   numexpression.cpp
   numexpression.hpp
@@ -32,15 +31,9 @@ add_library(${PROJECT_NAME} STATIC
   expr.cpp
   exprsubs.hpp
   exprsubs.cpp
-  numconstant.hpp
   numconstant.cpp
-  exp.hpp
   exp.cpp
-  acapplication.hpp
-  acapplication.cpp
-  mult.hpp
   mult.cpp
-  add.hpp
   add.cpp
   numexpressionutils.hpp
   numexpressionutils.cpp
