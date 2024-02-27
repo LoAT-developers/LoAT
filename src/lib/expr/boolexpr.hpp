@@ -34,7 +34,7 @@ inline BExpr<Th...> subsImpl(const typename Theory<Th...>::Lit &lit, const theor
             if constexpr (std::same_as<typename T::Var, BoolVarPtr>) {
                 return s.template get<T>().subs(std::get<I>(lit));
             } else {
-                return BoolExpression<Th...>::buildTheoryLit(std::get<I>(lit).subs(s.template get<T>()));
+                return BoolExpression<Th...>::mkLit(std::get<I>(lit).subs(s.template get<T>()));
             }
         } else {
             return subsImpl<I+1, Th...>(lit, s);
@@ -90,7 +90,7 @@ public:
     static const BE buildFromLits(const Lits &lits, ConcatOperator op) {
         BES children;
         for (const auto &lit: lits) {
-            children.insert(buildTheoryLit(lit));
+            children.insert(mkLit(lit));
         }
         return BoolJunction<Th...>::from_cache(children, op);
     }
@@ -122,26 +122,26 @@ public:
     }
 
     template <class Lits>
-    static const BE buildAndFromLits(const Lits &lits) {
+    static const BE mkAndFromLits(const Lits &lits) {
         return buildFromLits(lits, ConcatAnd);
     }
 
     template <class Children>
-    static const BE buildAnd(const Children &lits) {
+    static const BE mkAnd(const Children &lits) {
         return build(lits, ConcatAnd);
     }
 
     template <class Lits>
-    static const BE buildOrFromLits(const Lits &lits) {
+    static const BE mkOrFromLits(const Lits &lits) {
         return buildFromLits(lits, ConcatOr);
     }
 
     template <class Children>
-    static const BE buildOr(const Children &lits) {
+    static const BE mkOr(const Children &lits) {
         return build(lits, ConcatOr);
     }
 
-    static const BE buildTheoryLit(const Lit &lit) {
+    static const BE mkLit(const Lit &lit) {
         return BoolTheoryLit<Th...>::from_cache(lit);
     }
 
@@ -202,15 +202,15 @@ public:
                         const auto ex {rel.lhs()};
                         const auto d {ex->degree(n)};
                         if (*d == 0) {
-                            return buildTheoryLit(rel);
+                            return mkLit(rel);
                         } else if (*d == 1 && (*ex->coeff(n))->isRational()) {
-                            return buildTheoryLit(rel);
+                            return mkLit(rel);
                         } else {
                             return top();
                         }
                     },
                     [](const auto &lit) {
-                        return buildTheoryLit(lit);
+                        return mkLit(lit);
                     }
                 }, lit);
         });
@@ -223,7 +223,7 @@ public:
                     [&n](const Rel &rel) {
                         assert(rel.isLinear({{n}}));
                         if (!rel.has(n)) {
-                            return buildTheoryLit(rel);
+                            return mkLit(rel);
                         }
                         const auto ex {rel.lhs()};
                         if (***(*ex->coeff(n))->isRational() > 0) {
@@ -233,7 +233,7 @@ public:
                         }
                     },
                     [](const auto &lit) {
-                        return buildTheoryLit(lit);
+                        return mkLit(lit);
                     }
                 }, lit);
         });
@@ -246,7 +246,7 @@ public:
                     [&n](const Rel &rel) {
                         assert(rel.isLinear({{n}}));
                         if (!rel.has(n)) {
-                            return buildTheoryLit(rel);
+                            return mkLit(rel);
                         }
                         const auto ex {rel.lhs()};
                         if (***(*ex->coeff(n))->isRational() < 0) {
@@ -256,7 +256,7 @@ public:
                         }
                     },
                     [](const auto &lit) {
-                        return buildTheoryLit(lit);
+                        return mkLit(lit);
                     }
                 }, lit);
         });
@@ -299,7 +299,7 @@ public:
     BE syntacticImplicant(Subs subs) const {
         linked_hash_set<BE> res;
         syntacticImplicant(subs, res);
-        return buildAnd(res);
+        return mkAnd(res);
     }
 
     void iter(const std::function<void(const Lit&)> &f) const {
@@ -351,7 +351,7 @@ public:
                         }
                     }
                 }
-                res = buildAnd(newChildren);
+                res = mkAnd(newChildren);
             }
         } else if (isOr()) {
             BoolExpressionSet<Th...> newChildren;
@@ -386,7 +386,7 @@ public:
                         }
                     }
                 }
-                res = buildOr(newChildren);
+                res = mkOr(newChildren);
             }
         } else if (isTheoryLit()) {
             const auto lit = *getTheoryLit();
@@ -442,7 +442,7 @@ public:
                     return bot();
                 }
             }
-            return buildTheoryLit(lit);
+            return mkLit(lit);
         });
     }
 
@@ -510,7 +510,7 @@ public:
                     const auto elim {find_elim(c)};
                     if (elim) {
                         auto grandChildren {c->getChildren()};
-                        auto lit {buildTheoryLit(BoolLit(*elim))};
+                        auto lit {mkLit(BoolLit(*elim))};
                         bool positive {grandChildren.contains(lit)};
                         if (!positive) {
                             lit = !lit;
@@ -519,7 +519,7 @@ public:
                             }
                         }
                         grandChildren.erase(lit);
-                        const BE cand {buildOr(grandChildren)};
+                        const BE cand {mkOr(grandChildren)};
                         // we have     lit \/  cand
                         // search for !lit \/ !cand
                         if (children.contains((!lit) | (!cand))) {
@@ -542,7 +542,7 @@ public:
                             const auto elim {find_elim(c)};
                             if (elim) {
                                 auto grandChildren {c->getChildren()};
-                                auto lit {buildTheoryLit(BoolLit(*elim))};
+                                auto lit {mkLit(BoolLit(*elim))};
                                 bool positive {grandChildren.contains(lit)};
                                 if (!positive) {
                                     lit = !lit;
@@ -551,7 +551,7 @@ public:
                                     }
                                 }
                                 grandChildren.erase(lit);
-                                const BE cand {buildAnd(grandChildren)};
+                                const BE cand {mkAnd(grandChildren)};
                                 if (children.contains((!lit) & (!cand))) {
                                     // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
                                     res.put(*elim, positive ? cand : !cand);
@@ -646,7 +646,7 @@ public:
     }
 
     const BE negation() const override {
-        return BoolExpression<Th...>::buildTheoryLit(literal::negate<Th...>(lit));
+        return BoolExpression<Th...>::mkLit(literal::negate<Th...>(lit));
     }
 
     bool forall(const std::function<bool(const Lit&)> &pred) const override {
@@ -760,8 +760,8 @@ public:
             newChildren.insert(c->negation());
         }
         switch (op) {
-        case ConcatOr: return BoolExpression<Th...>::buildAnd(newChildren);
-        case ConcatAnd: return BoolExpression<Th...>::buildOr(newChildren);
+        case ConcatOr: return BoolExpression<Th...>::mkAnd(newChildren);
+        case ConcatAnd: return BoolExpression<Th...>::mkOr(newChildren);
         }
         throw std::invalid_argument("unknown junction");
     }
@@ -852,23 +852,23 @@ ConsHash<BoolExpression<Th...>, BoolJunction<Th...>, typename BoolJunction<Th...
 template <ITheory... Th>
 const BExpr<Th...> operator &(const BExpr<Th...> a, const BExpr<Th...> b) {
     const BoolExpressionSet<Th...> children{a, b};
-    return BoolExpression<Th...>::buildAnd(children);
+    return BoolExpression<Th...>::mkAnd(children);
 }
 
 template <ITheory... Th>
 const BExpr<Th...> operator &(const BExpr<Th...> a, const typename Theory<Th...>::Lit &b) {
-    return a & BoolExpression<Th...>::buildTheoryLit(b);
+    return a & BoolExpression<Th...>::mkLit(b);
 }
 
 template <ITheory... Th>
 const BExpr<Th...> operator |(const BExpr<Th...> a, const BExpr<Th...> b) {
     const BoolExpressionSet<Th...> children{a, b};
-    return BoolExpression<Th...>::buildOr(children);
+    return BoolExpression<Th...>::mkOr(children);
 }
 
 template <ITheory... Th>
 const BExpr<Th...> operator |(const BExpr<Th...> a, const typename Theory<Th...>::Lit b) {
-    return a | BoolExpression<Th...>::buildTheoryLit(b);
+    return a | BoolExpression<Th...>::mkLit(b);
 }
 
 template <ITheory... Th>

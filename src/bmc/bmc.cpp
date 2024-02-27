@@ -29,7 +29,7 @@ BoolExpr BMC::encode_transition(const TransIdx idx) {
             res.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
         }
     }
-    return BExpression::buildAnd(res);
+    return BExpression::mkAnd(res);
 }
 
 void BMC::analyze() {
@@ -69,7 +69,7 @@ void BMC::analyze() {
             inits.push_back(encode_transition(idx));
         }
     }
-    solver.add(BExpression::buildOr(inits));
+    solver.add(BExpression::mkOr(inits));
 
     std::vector<BoolExpr> steps;
     for (const auto &r: its.getAllTransitions()) {
@@ -78,7 +78,7 @@ void BMC::analyze() {
         }
         steps.push_back(encode_transition(&r));
     }
-    const auto step {BExpression::buildOr(steps)};
+    const auto step {BExpression::mkOr(steps)};
 
     std::vector<BoolExpr> queries;
     for (const auto &idx: its.getSinkTransitions()) {
@@ -86,7 +86,7 @@ void BMC::analyze() {
             queries.push_back(idx->getGuard());
         }
     }
-    const auto query {BExpression::buildOr(queries)};
+    const auto query {BExpression::mkOr(queries)};
 
     Subs last_s;
     while (true) {

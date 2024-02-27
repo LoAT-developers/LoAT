@@ -196,7 +196,7 @@ ExprPtr ExprSubs::operator()(const ExprPtr t) const {
             std::transform(args.begin(), args.end(), new_args.begin(), [&](const auto arg) {
                 return (*this)(arg);
             });
-            return ne::buildPlus(new_args);
+            return arith::mkPlus(new_args);
         },
         [&](const MultPtr m) {
             const auto &args {m->getArgs()};
@@ -204,9 +204,9 @@ ExprPtr ExprSubs::operator()(const ExprPtr t) const {
             std::transform(args.begin(), args.end(), new_args.begin(), [&](const auto arg) {
                 return (*this)(arg);
             });
-            return ne::buildTimes(new_args);
+            return arith::mkTimes(new_args);
         },
         [&](const ExpPtr e) {
-            return ne::buildExp((*this)(e->getBase()), (*this)(e->getExponent()));
+            return arith::mkExp((*this)(e->getBase()), (*this)(e->getExponent()));
         });
 }

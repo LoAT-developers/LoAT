@@ -4,7 +4,7 @@
 
 ConsHash<Expr, Exp, Exp::CacheHash, Exp::CacheEqual, ExprPtr, ExprPtr> Exp::cache;
 
-Exp::Exp(const ExprPtr base, const ExprPtr exponent): Expr(ne::Kind::Exp), base(base), exponent(exponent) {}
+Exp::Exp(const ExprPtr base, const ExprPtr exponent): Expr(arith::Kind::Exp), base(base), exponent(exponent) {}
 
 bool Exp::CacheEqual::operator()(const std::tuple<ExprPtr, ExprPtr> &args1, const std::tuple<ExprPtr, ExprPtr> &args2) const noexcept {
     return args1 == args2;
@@ -17,21 +17,21 @@ size_t Exp::CacheHash::operator()(const std::tuple<ExprPtr, ExprPtr> &args) cons
     return hash;
 }
 
-ExprPtr num_expression::buildExp(const ExprPtr base, const ExprPtr exponent) {
+ExprPtr arith::mkExp(const ExprPtr base, const ExprPtr exponent) {
     const auto b_val {base->isInt()};
     const auto e_val {exponent->isInt()};
     if (b_val && e_val) {
-        return buildConstant(mp::pow(*b_val, std::stoi(e_val->str())));
+        return mkConst(mp::pow(*b_val, std::stoi(e_val->str())));
     }
     if (exponent->is(0) || base->is(1)) {
-        return buildConstant(1);
+        return mkConst(1);
     }
     if (exponent->is(1)) {
         return base;
     }
     auto b {base->isPow()};
     if (b) {
-        return buildExp((*b)->getBase(), (*b)->getExponent() * exponent);
+        return mkExp((*b)->getBase(), (*b)->getExponent() * exponent);
     }
     if (!base->isIntegral() || !exponent->isIntegral()) {
         throw std::invalid_argument("attempt to create exp with non-int arguments");

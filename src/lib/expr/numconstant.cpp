@@ -4,7 +4,7 @@
 
 ConsHash<Expr, NumConstant, NumConstant::CacheHash, NumConstant::CacheEqual, Rational> NumConstant::cache;
 
-NumConstant::NumConstant(const Rational &t): Expr(ne::Kind::Constant), t(t) {}
+NumConstant::NumConstant(const Rational &t): Expr(arith::Kind::Constant), t(t) {}
 
 bool NumConstant::CacheEqual::operator()(const std::tuple<Rational> &args1, const std::tuple<Rational> &args2) const noexcept {
     return args1 == args2;
@@ -14,7 +14,7 @@ size_t NumConstant::CacheHash::operator()(const std::tuple<Rational> &args) cons
     return std::hash<Rational>{}(std::get<0>(args));
 }
 
-ExprPtr num_expression::buildConstant(const Rational &r) {
+ExprPtr arith::mkConst(const Rational &r) {
     return NumConstant::cache.from_cache(r);
 }
 
@@ -37,9 +37,9 @@ const Rational& NumConstant::operator*() const {
 }
 
 const NumConstantPtr NumConstant::denominator() const {
-    return *ne::buildConstant(mp::denominator(t))->isRational();
+    return *arith::mkConst(mp::denominator(t))->isRational();
 }
 
 const NumConstantPtr NumConstant::numerator() const {
-    return *ne::buildConstant(mp::numerator(t))->isRational();
+    return *arith::mkConst(mp::numerator(t))->isRational();
 }

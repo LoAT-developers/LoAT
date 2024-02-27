@@ -53,7 +53,7 @@ public:
 
 template <ITheory... Th>
 std::ostream& operator<<(std::ostream &s, const Conjunction<Th...> &l) {
-    return s << buildAnd(l);
+    return s << mkAnd(l);
 }
 
 template <ITheory... Th>

@@ -162,7 +162,7 @@ void LimitProblem::trimPolynomial(const InftyExpressionSet::const_iterator &it) 
     assert((dir == POS) || (dir == POS_INF) || (dir == NEG_INF));
     const auto var {e->someVar()};
     if (e->isAdd()) {
-        const auto leadingTerm {*e->lcoeff(*var) * ne::buildExp(*var, ne::buildConstant(*e->degree(*var)))};
+        const auto leadingTerm {*e->lcoeff(*var) * arith::mkExp(*var, arith::mkConst(*e->degree(*var)))};
         if (dir == POS) {
             // Fix the direction
             dir = POS_INF;
@@ -201,7 +201,7 @@ void LimitProblem::reduceExp(const InftyExpressionSet::const_iterator &it) {
     assert(powerInExp->getBase()->isPoly(x));
     assert(powerInExp->getExponent()->isPoly(x));
     assert(powerInExp->getExponent()->has(x));
-    InftyExpression firstIE(powerInExp->getBase() - ne::buildConstant(1), POS);
+    InftyExpression firstIE(powerInExp->getBase() - arith::mkConst(1), POS);
     InftyExpression secondIE(powerInExp->getExponent(), POS_INF);
     (*log) << "applying transformation rule (E), replacing " << *it << " by " << firstIE << " and " << secondIE << std::endl;
     set.erase(it);
@@ -231,7 +231,7 @@ void LimitProblem::reduceGeneralExp(const InftyExpressionSet::const_iterator &it
     }
     assert(!powerInExp->getExponent()->isPoly() || powerInExp->isMultivariate());
     const auto b {exp - powerInExp};
-    InftyExpression firstIE(powerInExp->getBase() - ne::buildConstant(1), POS);
+    InftyExpression firstIE(powerInExp->getBase() - arith::mkConst(1), POS);
     InftyExpression secondIE(powerInExp->getExponent() + b, POS_INF);
     (*log) << "reducing general power, replacing " << *it << " by " << firstIE << " and " << secondIE << std::endl;
     set.erase(it);
@@ -288,10 +288,10 @@ ExprSubs LimitProblem::getSolution() const {
             solution.put(x, -variableN);
             break;
         case POS_CONS:
-            solution.put(x, ne::buildConstant(1));
+            solution.put(x, arith::mkConst(1));
             break;
         case NEG_CONS:
-            solution.put(x, ne::buildConstant(-1));
+            solution.put(x, arith::mkConst(-1));
             break;
         }
     }
@@ -328,9 +328,9 @@ std::vector<Theory<IntTheory>::Lit> LimitProblem::getQuery() const {
     std::vector<Theory<IntTheory>::Lit> query;
     for (const auto &[ex,d] : set) {
         if (d == NEG_INF || d == NEG_CONS) {
-            query.push_back(Rel::buildLt(ex, ne::buildConstant(0)));
+            query.push_back(Rel::buildLt(ex, arith::mkConst(0)));
         } else {
-            query.push_back(Rel::buildGt(ex, ne::buildConstant(0)));
+            query.push_back(Rel::buildGt(ex, arith::mkConst(0)));
         }
     }
     return query;
@@ -338,7 +338,7 @@ std::vector<Theory<IntTheory>::Lit> LimitProblem::getQuery() const {
 
 
 bool LimitProblem::isUnsat() const {
-    return SmtFactory::_check(BoolExpression<IntTheory>::buildAndFromLits(getQuery())) == Unsat;
+    return SmtFactory::_check(BoolExpression<IntTheory>::mkAndFromLits(getQuery())) == Unsat;
 }
 
 

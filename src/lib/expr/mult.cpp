@@ -5,7 +5,7 @@
 
 ConsHash<Expr, Mult, Mult::CacheHash, Mult::CacheEqual, linked_hash_set<ExprPtr>> Mult::cache;
 
-Mult::Mult(const linked_hash_set<ExprPtr> &args): Expr(ne::Kind::Times), args(args) {}
+Mult::Mult(const linked_hash_set<ExprPtr> &args): Expr(arith::Kind::Times), args(args) {}
 
 bool Mult::CacheEqual::operator()(const std::tuple<linked_hash_set<ExprPtr>> &args1, const std::tuple<linked_hash_set<ExprPtr>> &args2) const noexcept {
     return args1 == args2;
@@ -18,11 +18,11 @@ size_t Mult::CacheHash::operator()(const std::tuple<linked_hash_set<ExprPtr>> &a
     return hash;
 }
 
-ExprPtr num_expression::buildTimes(std::vector<ExprPtr> args) {
+ExprPtr arith::mkTimes(std::vector<ExprPtr> args) {
     // remove neutral element
-    std::remove(args.begin(), args.end(), buildConstant(1));
+    std::remove(args.begin(), args.end(), mkConst(1));
     if (args.empty()) {
-        return buildConstant(1);
+        return mkConst(1);
     }
     if (args.size() == 1) {
         return args[0];
@@ -52,15 +52,15 @@ ExprPtr num_expression::buildTimes(std::vector<ExprPtr> args) {
             const auto base {(*exp)->getBase()};
             const auto val {map.get(base)};
             changed = changed || val;
-            map.put(base, val.value_or(buildConstant(0)) + (*exp)->getExponent());
+            map.put(base, val.value_or(mkConst(0)) + (*exp)->getExponent());
         } else {
-            map.put(arg, buildConstant(1));
+            map.put(arg, mkConst(1));
         }
     }
     if (changed) {
         args.clear();
         for (const auto &[x,y]: map) {
-            args.emplace_back(buildExp(x, y));
+            args.emplace_back(mkExp(x, y));
         }
     }
     // distribute
@@ -102,9 +102,9 @@ ExprPtr num_expression::buildTimes(std::vector<ExprPtr> args) {
     if (changed) {
         args.clear();
         for (const auto &x: res) {
-            args.emplace_back(buildTimes(x));
+            args.emplace_back(mkTimes(x));
         }
-        return buildPlus(args);
+        return mkPlus(args);
     }
     if (args.size() == 1) {
         return args[0];

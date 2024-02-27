@@ -70,13 +70,13 @@ using Int = mp::cpp_int;
 using Rational = mp::cpp_rational;
 using purrs_var_map = boost::bimap<boost::bimaps::unordered_set_of<NumVarPtr>, boost::bimaps::unordered_set_of<Purrs::Symbol, SymbolHasher, SymbolEqual>>;
 
-namespace num_expression {
+namespace arith {
 
-ExprPtr buildPlus(std::vector<ExprPtr> args);
-ExprPtr buildTimes(std::vector<ExprPtr> args);
-ExprPtr buildConstant(const Rational &r);
-ExprPtr buildExp(const ExprPtr base, const ExprPtr exponent);
-ExprPtr buildVar(const int idx);
+ExprPtr mkPlus(std::vector<ExprPtr> args);
+ExprPtr mkTimes(std::vector<ExprPtr> args);
+ExprPtr mkConst(const Rational &r);
+ExprPtr mkExp(const ExprPtr base, const ExprPtr exponent);
+ExprPtr mkVar(const int idx);
 
 enum class Kind {
     Plus, Times, Exp, Constant, Variable
@@ -84,22 +84,20 @@ enum class Kind {
 
 }
 
-namespace ne = num_expression;
-
 class Expr: public std::enable_shared_from_this<Expr> {
 
     friend class Exp;
     friend class ACApplication;
-    friend ExprPtr ne::buildPlus(std::vector<ExprPtr> args);
-    friend ExprPtr ne::buildTimes(std::vector<ExprPtr> args);
+    friend ExprPtr arith::mkPlus(std::vector<ExprPtr> args);
+    friend ExprPtr arith::mkTimes(std::vector<ExprPtr> args);
 
 protected:
 
-    Expr(const ne::Kind kind);
+    Expr(const arith::Kind kind);
 
 private:
 
-    ne::Kind kind;
+    arith::Kind kind;
 
     void exps(linked_hash_set<ExpPtr> &acc) const;
     /**
@@ -268,7 +266,7 @@ public:
 
 class NumConstant: public Expr, public std::enable_shared_from_this<NumConstant> {
 
-    friend ExprPtr num_expression::buildConstant(const Rational &r);
+    friend ExprPtr arith::mkConst(const Rational &r);
 
 private:
 
@@ -297,7 +295,7 @@ public:
 
 class NumVar: public Expr, public std::enable_shared_from_this<NumVar> {
 
-    friend ExprPtr num_expression::buildVar(const int idx);
+    friend ExprPtr arith::mkVar(const int idx);
 
 private:
 
@@ -339,7 +337,7 @@ std::ostream& operator<<(std::ostream &s, const NumVarPtr x);
 
 class Add: public Expr, public std::enable_shared_from_this<Add> {
 
-    friend ExprPtr num_expression::buildPlus(std::vector<ExprPtr> args);
+    friend ExprPtr arith::mkPlus(std::vector<ExprPtr> args);
 
 public:
 
@@ -365,7 +363,7 @@ private:
 
 class Mult: public Expr, public std::enable_shared_from_this<Mult> {
 
-    friend ExprPtr num_expression::buildTimes(std::vector<ExprPtr> args);
+    friend ExprPtr arith::mkTimes(std::vector<ExprPtr> args);
 
 public:
 
@@ -391,7 +389,7 @@ private:
 
 class Exp: public Expr, public std::enable_shared_from_this<Exp> {
 
-    friend ExprPtr num_expression::buildExp(const ExprPtr base, const ExprPtr exponent);
+    friend ExprPtr arith::mkExp(const ExprPtr base, const ExprPtr exponent);
 
 private:
 

@@ -65,7 +65,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }
-    cond = cond & expr::mkEq(NumVar::loc_var, ne::buildConstant(lhsLoc));
+    cond = cond & expr::mkEq(NumVar::loc_var, arith::mkConst(lhsLoc));
     auto up = rhss.at(0);
     if (Config::Analysis::complexity()) {
         up.put<IntTheory>(its->getCostVar(), its->getCostVar() + cost);
@@ -126,7 +126,7 @@ antlrcpp::Any KoatParseVisitor::visitRhs(KoatParser::RhsContext *ctx) {
         }
     }
     const auto loc = any_cast<fs_type>(visit(ctx->fs()));
-    up.put<IntTheory>(NumVar::loc_var, ne::buildConstant(loc));
+    up.put<IntTheory>(NumVar::loc_var, arith::mkConst(loc));
     return up;
 }
 
@@ -134,7 +134,7 @@ antlrcpp::Any KoatParseVisitor::visitTo(KoatParser::ToContext *ctx) {
     if (ctx->lb()) {
         return visit(ctx->lb());
     } else {
-        return ne::buildConstant(1);
+        return arith::mkConst(1);
     }
 }
 
@@ -152,7 +152,7 @@ antlrcpp::Any KoatParseVisitor::visitCond(KoatParser::CondContext *ctx) {
 
 antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
     if (ctx->INT()) {
-        return ne::buildConstant(Int(ctx->INT()->getText()));
+        return arith::mkConst(Int(ctx->INT()->getText()));
     } else if (ctx->var()) {
         const auto var = any_cast<var_type>(visit(ctx->var()));
         return var->toExpr();
@@ -207,10 +207,10 @@ antlrcpp::Any KoatParseVisitor::visitLit(KoatParser::LitContext *ctx) {
     const auto op = any_cast<relop_type>(visit(children[1]));
     const auto arg2 = any_cast<expr_type>(visit(ctx->expr(1)));
     switch (op) {
-    case lt: return BExpression::buildTheoryLit(Rel::buildLt(arg1, arg2));
-    case leq: return BExpression::buildTheoryLit(Rel::buildLeq(arg1, arg2));
-    case gt: return BExpression::buildTheoryLit(Rel::buildGt(arg1, arg2));
-    case geq: return BExpression::buildTheoryLit(Rel::buildGeq(arg1, arg2));
+    case lt: return BExpression::mkLit(Rel::buildLt(arg1, arg2));
+    case leq: return BExpression::mkLit(Rel::buildLeq(arg1, arg2));
+    case gt: return BExpression::mkLit(Rel::buildGt(arg1, arg2));
+    case geq: return BExpression::mkLit(Rel::buildGeq(arg1, arg2));
     case eq: return expr::mkEq(arg1, arg2);
     case neq: return expr::mkNeq(arg1, arg2);
     }

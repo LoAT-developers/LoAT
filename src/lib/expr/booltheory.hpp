@@ -24,7 +24,7 @@ struct BoolTheory: public BoolBaseTheory {
     }
 
     static Expression varToExpr(const Var &var) {
-        return BExpression::buildTheoryLit(Lit(var));
+        return BExpression::mkLit(Lit(var));
     }
 
     static Expression anyValue() {

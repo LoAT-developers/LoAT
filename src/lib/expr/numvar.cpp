@@ -10,11 +10,11 @@ const NumVarPtr NumVar::loc_var {nextProgVar()};
 
 ConsHash<Expr, NumVar, NumVar::CacheHash, NumVar::CacheEqual, int> NumVar::cache {};
 
-ExprPtr num_expression::buildVar(const int idx) {
+ExprPtr arith::mkVar(const int idx) {
     return NumVar::cache.from_cache(idx);
 }
 
-NumVar::NumVar(const int idx): Expr(ne::Kind::Variable), idx(idx) {}
+NumVar::NumVar(const int idx): Expr(arith::Kind::Variable), idx(idx) {}
 
 int NumVar::getIdx() const {
     return idx;
@@ -34,12 +34,12 @@ std::ostream& operator<<(std::ostream &s, const NumVar &x) {
 
 NumVarPtr NumVar::next() {
     --last_tmp_idx;
-    return (*ne::buildVar(last_tmp_idx)->someVar())->toPtr();
+    return (*arith::mkVar(last_tmp_idx)->someVar())->toPtr();
 }
 
 NumVarPtr NumVar::nextProgVar() {
     ++last_prog_idx;
-    return (*ne::buildVar(last_prog_idx)->someVar())->toPtr();
+    return (*arith::mkVar(last_prog_idx)->someVar())->toPtr();
 }
 
 bool NumVar::isTempVar() const {

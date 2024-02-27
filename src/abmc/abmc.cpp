@@ -133,26 +133,26 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     BoolExprSet pre;
     const auto s {subs_at(depth + 1)};
     const auto not_covered {!loop.covered->subs(s)};
-    pre.insert(expr::mkEq(trace_var, ne::buildConstant((*shortcut)->getId())));
+    pre.insert(expr::mkEq(trace_var, arith::mkConst((*shortcut)->getId())));
     pre.insert(not_covered);
     const auto length {depth - backlink + 1};
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 1)};
         pre.insert(implicant->negation()->subs(s_current));
-        pre.insert(expr::mkNeq(trace_var, ne::buildConstant(rule->getId())));
+        pre.insert(expr::mkNeq(trace_var, arith::mkConst(rule->getId())));
     }
     // we must not start another iteration of the loop after using the learned transition in the next step
     BoolExprSet post;
-    post.insert(expr::mkNeq(trace_var, ne::buildConstant((*shortcut)->getId())));
+    post.insert(expr::mkNeq(trace_var, arith::mkConst((*shortcut)->getId())));
     post.insert(not_covered);
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 2)};
         post.insert(implicant->negation()->subs(s_current));
-        post.insert(expr::mkNeq(trace_var, ne::buildConstant(rule->getId())));
+        post.insert(expr::mkNeq(trace_var, arith::mkConst(rule->getId())));
     }
-    return BExpression::buildOr(pre) & BExpression::buildOr(post);
+    return BExpression::mkOr(pre) & BExpression::mkOr(post);
 }
 
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
@@ -255,13 +255,13 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
 BoolExpr ABMC::encode_transition(const TransIdx idx) {
     const auto up {idx->getUpdate()};
     std::vector<BoolExpr> res {idx->getGuard()};
-    res.emplace_back(expr::mkEq(trace_var, ne::buildConstant(idx->getId())));
+    res.emplace_back(expr::mkEq(trace_var, arith::mkConst(idx->getId())));
     for (const auto &x: vars) {
         if (expr::isProgVar(x)) {
             res.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
         }
     }
-    return BExpression::buildAnd(res);
+    return BExpression::mkAnd(res);
 }
 
 void ABMC::unknown() {
@@ -372,7 +372,7 @@ void ABMC::analyze() {
             inits.push_back(encode_transition(idx));
         }
     }
-    solver->add(BExpression::buildOr(inits));
+    solver->add(BExpression::mkOr(inits));
 
     std::vector<BoolExpr> steps;
     for (const auto &r: its.getAllTransitions()) {
@@ -381,7 +381,7 @@ void ABMC::analyze() {
         }
         steps.push_back(encode_transition(&r));
     }
-    const auto step {BExpression::buildOr(steps)};
+    const auto step {BExpression::mkOr(steps)};
 
     std::vector<BoolExpr> queries;
     for (const auto &idx: its.getSinkTransitions()) {
@@ -389,7 +389,7 @@ void ABMC::analyze() {
             queries.push_back(idx->getGuard());
         }
     }
-    query = BExpression::buildOr(queries);
+    query = BExpression::mkOr(queries);
 
     while (true) {
         const auto &s {subs_at(depth + 1)};

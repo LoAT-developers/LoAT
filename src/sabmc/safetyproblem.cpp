@@ -7,7 +7,7 @@ BoolExpr rule_to_formula(const Rule &r, const linked_hash_map<Var, Var> &var_map
     for (const auto &[x,y]: var_map) {
         conjuncts.push_back(expr::mkEq(expr::toExpr(y), r.getUpdate().get(x)));
     }
-    return BExpression::buildAnd(conjuncts);
+    return BExpression::mkAnd(conjuncts);
 }
 
 SafetyProblem::SafetyProblem(const ITSProblem &its) {
@@ -38,8 +38,8 @@ SafetyProblem::SafetyProblem(const ITSProblem &its) {
             transitions.emplace(Transition::build(rule_to_formula(r, var_map), this->variables));
         }
     }
-    initial_states = BExpression::buildOr(init);
-    error_states = BExpression::buildOr(err);
+    initial_states = BExpression::mkOr(init);
+    error_states = BExpression::mkOr(err);
 }
 
 const linked_hash_set<Transition>& SafetyProblem::trans() const {

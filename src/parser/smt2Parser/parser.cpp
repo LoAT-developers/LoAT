@@ -81,14 +81,14 @@ namespace sexpressionparser {
                             Subs update;
                             std::vector<BoolExpr> guard;
                             parseCond(ruleExp[5], guard);
-                            guard.push_back(expr::mkEq(NumVar::loc_var, ne::buildConstant(from)));
-                            const auto cond {BExpression::buildAnd(guard)};
+                            guard.push_back(expr::mkEq(NumVar::loc_var, arith::mkConst(from)));
+                            const auto cond {BExpression::mkAnd(guard)};
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.put<IntTheory>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            update.put<IntTheory>(NumVar::loc_var, ne::buildConstant(to));
+                            update.put<IntTheory>(NumVar::loc_var, arith::mkConst(to));
                             if (Config::Analysis::complexity()) {
-                                update.put<IntTheory>(cost_var, cost_var + ne::buildConstant(1));
+                                update.put<IntTheory>(cost_var, cost_var + arith::mkConst(1));
                             }
                             Rule rule(cond, update);
                             // make sure that the temporary variables are unique
@@ -145,13 +145,13 @@ namespace sexpressionparser {
         const auto fst {parseExpression(sexp[1])};
         const auto snd {parseExpression(sexp[2])};
         if (op == "<=") {
-            return BExpression::buildTheoryLit(negate ? Rel::buildGt(fst, snd) : Rel::buildLeq(fst, snd));
+            return BExpression::mkLit(negate ? Rel::buildGt(fst, snd) : Rel::buildLeq(fst, snd));
         } else if (sexp[0].str() == "<") {
-            return BExpression::buildTheoryLit(negate ? Rel::buildGeq(fst, snd) : Rel::buildLt(fst, snd));
+            return BExpression::mkLit(negate ? Rel::buildGeq(fst, snd) : Rel::buildLt(fst, snd));
         } else if (sexp[0].str() == ">=") {
-            return BExpression::buildTheoryLit(negate ? Rel::buildLt(fst, snd) : Rel::buildGeq(fst, snd));
+            return BExpression::mkLit(negate ? Rel::buildLt(fst, snd) : Rel::buildGeq(fst, snd));
         } else if (sexp[0].str() == ">") {
-            return BExpression::buildTheoryLit(negate ? Rel::buildLeq(fst, snd) : Rel::buildGt(fst, snd));
+            return BExpression::mkLit(negate ? Rel::buildLeq(fst, snd) : Rel::buildGt(fst, snd));
         } else if (sexp[0].str() == "=") {
             assert(!negate);
             return expr::mkEq(fst, snd);
@@ -163,7 +163,7 @@ namespace sexpressionparser {
         if (sexp.childCount() == 1) {
             const auto &str {sexp.str()};
             if (std::isdigit(str[0]) || str[0] == '-') {
-                return ne::buildConstant(Rational(str));
+                return arith::mkConst(Rational(str));
             } else {
                 if (vars.find(str) == vars.end()) {
                     vars.emplace(str, NumVar::next());

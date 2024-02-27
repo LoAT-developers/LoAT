@@ -30,7 +30,7 @@ public:
 
     BoolExpr get(const BoolVarPtr var) const {
         const auto res {map.get(var)};
-        return res ? *res : BoolExpression<Th...>::buildTheoryLit(BoolLit(var));
+        return res ? *res : BoolExpression<Th...>::mkLit(BoolLit(var));
     }
 
     BoolExpr subs(const BoolLit &lit) const {
@@ -57,7 +57,7 @@ public:
             for (const auto &c: e->getChildren()) {
                 children.push_back((*this)(c));
             }
-            return e->isAnd() ? BoolExpression<Th...>::buildAnd(children) : BoolExpression<Th...>::buildOr(children);
+            return e->isAnd() ? BoolExpression<Th...>::mkAnd(children) : BoolExpression<Th...>::mkOr(children);
         } else {
             return e;
         }
@@ -108,7 +108,7 @@ public:
         if (!contains(key)) {
             return false;
         }
-        return BoolExpression<Th...>::buildTheoryLit(BoolLit(key)) != map.at(key);
+        return BoolExpression<Th...>::mkLit(BoolLit(key)) != map.at(key);
     }
 
     linked_hash_set<BoolVarPtr> domain() const {

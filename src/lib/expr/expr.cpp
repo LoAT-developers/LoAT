@@ -113,7 +113,7 @@ BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
         Overload {
             [&e2](const ExprPtr &e1) {
-                return BExpression::buildAndFromLits(
+                return BExpression::mkAndFromLits(
                     std::vector<Lit>{Rel::buildGeq(e1, std::get<ExprPtr>(e2)),
                                      Rel::buildLeq(e1, std::get<ExprPtr>(e2))});
             },
@@ -128,7 +128,7 @@ BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
         Overload {
             [&e2](const ExprPtr &e1) {
-                return BExpression::buildOrFromLits(
+                return BExpression::mkOrFromLits(
                     std::vector<Lit>{Rel::buildGt(e1, std::get<ExprPtr>(e2)),
                                      Rel::buildLt(e1, std::get<ExprPtr>(e2))});
             },

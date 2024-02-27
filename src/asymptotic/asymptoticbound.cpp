@@ -62,7 +62,7 @@ void AsymptoticBound::propagateBounds() {
         return;
     }
 
-    auto g {BExpression::buildAndFromLits(guard)};
+    auto g {BExpression::mkAndFromLits(guard)};
     auto changed {false};
     do {
         changed = false;
@@ -167,7 +167,7 @@ Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
 
 void AsymptoticBound::removeUnsatProblems() {
     for (int i = limitProblems.size() - 1; i >= 0; --i) {
-        auto result = SmtFactory::_check(BoolExpression<IntTheory>::buildAndFromLits(limitProblems[i].getQuery()));
+        auto result = SmtFactory::_check(BoolExpression<IntTheory>::mkAndFromLits(limitProblems[i].getQuery()));
 
         if (result == Unsat) {
             limitProblems.erase(limitProblems.begin() + i);
@@ -459,7 +459,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   for (; arg_it != args.end(); ++arg_it) {
                       rhs_args.emplace_back(*arg_it);
                   }
-                  r = ne::buildPlus(rhs_args);
+                  r = arith::mkPlus(rhs_args);
                   limitVectors = &addition[d];
                   return true;
               },
@@ -472,7 +472,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   for (; arg_it != args.end(); ++arg_it) {
                       rhs_args.emplace_back(*arg_it);
                   }
-                  r = ne::buildTimes(rhs_args);
+                  r = arith::mkTimes(rhs_args);
                   limitVectors = &multiplication[d];
                   return true;
               },
@@ -485,7 +485,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                                      r = l;
                                  } else {
                                      l = e->getBase();
-                                     r = e->getBase() ^ ne::buildConstant(power - 1);
+                                     r = e->getBase() ^ arith::mkConst(power - 1);
                                  }
                                  limitVectors = &multiplication[d];
                              }).has_value();
@@ -531,8 +531,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                         r_args.push_back(ex);
                     }
                 }
-                l = ne::buildPlus(l_args);
-                r = ne::buildPlus(r_args);
+                l = arith::mkPlus(l_args);
+                r = arith::mkPlus(r_args);
                 if (l->is(0) || r->is(0)) {
                     return false;
                 }
@@ -542,8 +542,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
             [&](const MultPtr m) {
                 std::vector<IntTheory::Expression> l_args;
                 std::vector<IntTheory::Expression> r_args;
-                l_args.emplace_back(ne::buildConstant(1));
-                r_args.emplace_back(ne::buildConstant(1));
+                l_args.emplace_back(arith::mkConst(1));
+                r_args.emplace_back(arith::mkConst(1));
                 std::optional<NumVarPtr> oneVar;
                 for (const auto &ex: m->getArgs()) {
                     const auto c {ex->isRational()};
@@ -566,8 +566,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                         r_args.emplace_back(ex);
                     }
                 }
-                l = ne::buildPlus(l_args);
-                r = ne::buildPlus(r_args);
+                l = arith::mkPlus(l_args);
+                r = arith::mkPlus(r_args);
                 if (l->is(1) || r->is(1)) {
                     return false;
                 }
@@ -635,7 +635,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
         if (e->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const auto &query = currentLP.getQuery();
             auto solver = SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}));
-            solver->add(BoolExpression<IntTheory>::buildAndFromLits(query));
+            solver->add(BoolExpression<IntTheory>::mkAndFromLits(query));
             SmtResult result = solver->check();
 
             if (result == Unsat) {
@@ -646,7 +646,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
                 const auto var {*e->someVar()};
 
                 const auto rational {model.get<IntTheory>(var)};
-                substitutions.push_back({{var, ne::buildConstant(rational)}});
+                substitutions.push_back({{var, arith::mkConst(rational)}});
 
                 createBacktrackingPoint(it, POS_INF);
                 currentLP.substitute(substitutions.back(), substitutions.size() - 1);

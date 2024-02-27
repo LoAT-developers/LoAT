@@ -66,7 +66,7 @@ void LoopAcceleration::store_nonterm(const AccelerationProblem::Accelerator &acc
     if (accelerator.nonterm) {
         res.nonterm = acceleration::Nonterm();
         res.nonterm->proof = accelerator.proof;
-        res.nonterm->certificate = BExpression::buildAnd(accelerator.formula);
+        res.nonterm->certificate = BExpression::mkAnd(accelerator.formula);
     }
 }
 
@@ -157,9 +157,9 @@ void LoopAcceleration::accelerate() {
     if (rec && config.tryAccel) {
         const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
         if (accelerator) {
-            res.accel = acceleration::Accel(Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form));
+            res.accel = acceleration::Accel(Rule(BExpression::mkAnd(accelerator->formula), rec->closed_form));
             res.accel->proof = accelerator->proof;
-            res.accel->covered = BExpression::buildAnd(accelerator->covered);
+            res.accel->covered = BExpression::mkAnd(accelerator->covered);
             prepend_first = accelerator->prependFirst;
             store_nonterm(*accelerator);
         }

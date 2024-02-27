@@ -47,7 +47,7 @@ public:
     }
 
     void add(const Lit &e) {
-        return this->add(BoolExpression<Th...>::buildTheoryLit(e));
+        return this->add(BoolExpression<Th...>::mkLit(e));
     }
 
     virtual void push() = 0;

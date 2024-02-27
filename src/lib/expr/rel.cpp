@@ -34,8 +34,8 @@ bool Rel::isLinear(const std::optional<linked_hash_set<NumVarPtr>> &vars) const 
 
 std::pair<std::optional<ExprPtr>, std::optional<ExprPtr>> Rel::getBoundFromIneq(const NumVarPtr N) const {
     if (l->degree(N) != 1) return {};
-    const auto geq {l - ne::buildConstant(1)};
-    const auto optSolved {ne::solveTermFor(geq, N)};
+    const auto geq {l - arith::mkConst(1)};
+    const auto optSolved {arith::solveTermFor(geq, N)};
     if (optSolved) {
         const auto coeff {*geq->coeff(N)};
         const auto r {coeff->isRational()};
@@ -126,8 +126,8 @@ size_t hash_value(const Rel &rel) {
 
 Rel Rel::buildGeq(const ExprPtr x, const ExprPtr y) {
     const auto lhs {x - y};
-    const auto lhs_integral {lhs * ne::buildConstant(lhs->denomLcm())};
-    return Rel(lhs_integral + ne::buildConstant(1));
+    const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
+    return Rel(lhs_integral + arith::mkConst(1));
 }
 
 Rel Rel::buildLeq(const ExprPtr x, const ExprPtr y) {
@@ -136,7 +136,7 @@ Rel Rel::buildLeq(const ExprPtr x, const ExprPtr y) {
 
 Rel Rel::buildGt(const ExprPtr x, const ExprPtr y) {
     const auto lhs {x - y};
-    const auto lhs_integral {lhs * ne::buildConstant(lhs->denomLcm())};
+    const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
     return Rel(lhs_integral);
 }
 
@@ -145,7 +145,7 @@ Rel Rel::buildLt(const ExprPtr x, const ExprPtr y) {
 }
 
 Rel operator!(const Rel &x) { 
-    return Rel(ne::buildConstant(1) - x.lhs());
+    return Rel(arith::mkConst(1) - x.lhs());
 }
 
 std::ostream& operator<<(std::ostream &s, const Rel &rel) {

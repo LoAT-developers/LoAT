@@ -21,7 +21,7 @@
 
 #include <purrs.hh>
 
-Expr::Expr(const ne::Kind kind): kind(kind) {}
+Expr::Expr(const arith::Kind kind): kind(kind) {}
 
 linked_hash_set<NumVarPtr> Expr::vars() const {
     linked_hash_set<NumVarPtr> res;
@@ -64,31 +64,31 @@ bool Expr::has(const NumVarPtr x) const {
 }
 
 ExprPtr operator-(const ExprPtr x) {
-    return ne::buildTimes({ne::buildConstant(-1),x});
+    return arith::mkTimes({arith::mkConst(-1),x});
 }
 
 ExprPtr operator-(const ExprPtr x, const ExprPtr y) {
-    return ne::buildPlus({x,-y});
+    return arith::mkPlus({x,-y});
 }
 
 ExprPtr operator+(const ExprPtr x, const ExprPtr y) {
-    return ne::buildPlus({x,y});
+    return arith::mkPlus({x,y});
 }
 
 ExprPtr operator*(const ExprPtr x, const ExprPtr y) {
-    return ne::buildTimes({x,y});
+    return arith::mkTimes({x,y});
 }
 
 ExprPtr Expr::divide(const Rational &y) const {
-    return ne::buildTimes({ne::buildConstant(Rational(mp::denominator(y), mp::numerator(y))), shared_from_this()});
+    return arith::mkTimes({arith::mkConst(Rational(mp::denominator(y), mp::numerator(y))), shared_from_this()});
 }
 
 ExprPtr operator^(const ExprPtr x, const ExprPtr y) {
-    return ne::buildExp(x, y);
+    return arith::mkExp(x, y);
 }
 
 std::optional<NumConstantPtr> Expr::isRational() const {
-    if (kind == ne::Kind::Constant) {
+    if (kind == arith::Kind::Constant) {
         return static_cast<const NumConstant*>(this)->std::enable_shared_from_this<NumConstant>::shared_from_this();;
     } else {
         return {};
@@ -102,7 +102,7 @@ std::optional<Int> Expr::isInt() const {
 }
 
 std::optional<NumVarPtr> Expr::isVar() const {
-    if (kind == ne::Kind::Variable) {
+    if (kind == arith::Kind::Variable) {
         return static_cast<const NumVar*>(this)->std::enable_shared_from_this<NumVar>::shared_from_this();
     } else {
         return {};
@@ -110,7 +110,7 @@ std::optional<NumVarPtr> Expr::isVar() const {
 }
 
 std::optional<ExpPtr> Expr::isPow() const {
-    if (kind == ne::Kind::Exp) {
+    if (kind == arith::Kind::Exp) {
         return static_cast<const Exp*>(this)->std::enable_shared_from_this<Exp>::shared_from_this();
     } else {
         return {};
@@ -118,7 +118,7 @@ std::optional<ExpPtr> Expr::isPow() const {
 }
 
 const std::optional<MultPtr> Expr::isMult() const {
-    if (kind == ne::Kind::Times) {
+    if (kind == arith::Kind::Times) {
         return static_cast<const Mult*>(this)->std::enable_shared_from_this<Mult>::shared_from_this();
     } else {
         return {};
@@ -126,7 +126,7 @@ const std::optional<MultPtr> Expr::isMult() const {
 }
 
 const std::optional<AddPtr> Expr::isAdd() const {
-    if (kind == ne::Kind::Plus) {
+    if (kind == arith::Kind::Plus) {
         return static_cast<const Add*>(this)->std::enable_shared_from_this<Add>::shared_from_this();
     } else {
         return {};
@@ -437,10 +437,10 @@ std::optional<ExprPtr> Expr::coeff(const NumVarPtr var, const Int &degree) const
     using opt = std::optional<ExprPtr>;
     return map<opt>(
         [](const NumConstantPtr) {
-            return opt{num_expression::buildConstant(0)};
+            return opt{arith::mkConst(0)};
         },
         [&var, &degree](const NumVarPtr x) {
-            return opt{num_expression::buildConstant(degree == 1 && var == x ? 1 : 0)};
+            return opt{arith::mkConst(degree == 1 && var == x ? 1 : 0)};
         },
         [&var, &degree](const AddPtr a) {
             for (const auto &arg: a->getArgs()) {
@@ -452,7 +452,7 @@ std::optional<ExprPtr> Expr::coeff(const NumVarPtr var, const Int &degree) const
             return opt{};
         },
         [&var, &degree](const MultPtr m) {
-            const auto e {num_expression::buildExp(var->toExpr(), num_expression::buildConstant(degree))};
+            const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
             const auto &args {m->getArgs()};
             if (args.contains(e)) {
                 std::vector<ExprPtr> new_args;
@@ -461,16 +461,16 @@ std::optional<ExprPtr> Expr::coeff(const NumVarPtr var, const Int &degree) const
                         new_args.emplace_back(arg);
                     }
                 }
-                return opt{num_expression::buildTimes(new_args)};
+                return opt{arith::mkTimes(new_args)};
             }
             return opt{};
         },
         [&var, &degree](const ExpPtr e) {
             if (e->getBase()->isVar() == var && e->getExponent()->isInt() == degree) {
-                return opt{num_expression::buildConstant(1)};
+                return opt{arith::mkConst(1)};
             }
             if (e->isPoly(var)) {
-                return opt{num_expression::buildConstant(0)};
+                return opt{arith::mkConst(0)};
             }
             return opt{};
         });
@@ -480,7 +480,7 @@ std::optional<ExprPtr> Expr::lcoeff(const NumVarPtr var) const {
     using opt = std::optional<ExprPtr>;
     return map<opt>(
         [](const NumConstantPtr) {
-            return opt{num_expression::buildConstant(0)};
+            return opt{arith::mkConst(0)};
         },
         [&var](const NumVarPtr x) {
             return x->coeff(var);
@@ -516,14 +516,14 @@ std::optional<ExprPtr> Expr::lcoeff(const NumVarPtr var) const {
                 }
             }
             if (lcoeff) {
-                return opt{num_expression::buildTimes(new_args)};
+                return opt{arith::mkTimes(new_args)};
             } else {
                 return opt{};
             }
         },
         [&var](const ExpPtr e) {
             if (e->isPoly(var)) {
-                return opt{num_expression::buildConstant(1)};
+                return opt{arith::mkConst(1)};
             }
             return opt{};
         });
@@ -547,7 +547,7 @@ bool Expr::isIntegral() const {
                     nonInt.emplace_back(arg);
                 }
             }
-            const auto e {num_expression::buildTimes(nonInt)};
+            const auto e {arith::mkTimes(nonInt)};
             unsigned i {0};
             linked_hash_map<NumVarPtr, unsigned> vars;
             // degrees, subs share indices with vars
@@ -676,7 +676,7 @@ std::pair<Rational, std::optional<ExprPtr>> Expr::decompose() const {
                 const auto val {arg->isRational()};
                 if (val) {
                     std::erase(non_const, arg);
-                    return pair{***val, {num_expression::buildTimes(non_const)}};
+                    return pair{***val, {arith::mkTimes(non_const)}};
                 }
             }
             return pair{1, {m}};

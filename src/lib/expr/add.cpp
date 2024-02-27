@@ -5,7 +5,7 @@
 
 ConsHash<Expr, Add, Add::CacheHash, Add::CacheEqual, linked_hash_set<ExprPtr>> Add::cache;
 
-Add::Add(const linked_hash_set<ExprPtr> &args): Expr(ne::Kind::Plus), args(args) {}
+Add::Add(const linked_hash_set<ExprPtr> &args): Expr(arith::Kind::Plus), args(args) {}
 
 bool Add::CacheEqual::operator()(const std::tuple<linked_hash_set<ExprPtr>> &args1, const std::tuple<linked_hash_set<ExprPtr>> &args2) const noexcept {
     return args1 == args2;
@@ -18,11 +18,11 @@ size_t Add::CacheHash::operator()(const std::tuple<linked_hash_set<ExprPtr>> &ar
     return hash;
 }
 
-ExprPtr num_expression::buildPlus(std::vector<ExprPtr> args) {
+ExprPtr arith::mkPlus(std::vector<ExprPtr> args) {
     // remove neutral element
-    std::remove(args.begin(), args.end(), buildConstant(0));
+    std::remove(args.begin(), args.end(), mkConst(0));
     if (args.empty()) {
-        return buildConstant(0);
+        return mkConst(0);
     }
     if (args.size() == 1) {
         return args[0];
@@ -56,9 +56,9 @@ ExprPtr num_expression::buildPlus(std::vector<ExprPtr> args) {
         args.clear();
         for (const auto &[x,y]: map) {
             if (!x) {
-                args.emplace_back(buildConstant(y));
+                args.emplace_back(mkConst(y));
             } else {
-                args.emplace_back(*x * buildConstant(y));
+                args.emplace_back(*x * mkConst(y));
             }
         }
     }

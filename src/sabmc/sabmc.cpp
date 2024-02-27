@@ -116,7 +116,7 @@ std::pair<Transition, Subs> SABMC::build_loop(const Range &range) {
 void SABMC::add_learned_clause(const Transition &accel, unsigned length) {
     if (Config::Analysis::log) std::cout << "learned transition: " << accel << std::endl;
     rule_map.emplace(accel.getId(), accel);
-    blocked.emplace_back(accel.toBoolExpr()->subs(Subs::build<IntTheory>(n, ne::buildConstant(1))), length, accel.getId());
+    blocked.emplace_back(accel.toBoolExpr()->subs(Subs::build<IntTheory>(n, arith::mkConst(1))), length, accel.getId());
     step = step | encode_transition(accel);
 }
 
@@ -140,7 +140,7 @@ std::optional<IntTheory::Expression> closest_bound(const linked_hash_set<IntTheo
 
 bool is_increasing(const IntTheory::Expression e, const Subs &model, const IntTheory::Var x) {
     const auto &current {model.get<IntTheory>()};
-    const auto next {ExprSubs{{x, x + ne::buildConstant(1)}}.compose(current)};
+    const auto next {ExprSubs{{x, x + arith::mkConst(1)}}.compose(current)};
     const auto coeff {*e->coeff(x)};
     return *(current(coeff) - next(coeff))->isRational() < 0;
 }
@@ -150,7 +150,7 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
     std::unordered_set<IntTheory::Var> done_lower;
     std::unordered_set<IntTheory::Var> done_upper;
     auto changed {false};
-    ExprSubs dec_n {{n, n - ne::buildConstant(1)}};
+    ExprSubs dec_n {{n, n - arith::mkConst(1)}};
     do {
         changed = false;
         for (const auto &[x,p]: update) {
@@ -410,9 +410,9 @@ void SABMC::handle_rel(const Rel &rel, const NondetSubs &update, const NondetSub
         }
     }
     if (add_init) {
-        res.push_back(BExpression::buildTheoryLit(rel.subs(init)));
+        res.push_back(BExpression::mkLit(rel.subs(init)));
     }
-    auto dec_n {ExprSubs{{n, n - ne::buildConstant(1)}}};
+    auto dec_n {ExprSubs{{n, n - arith::mkConst(1)}}};
     auto add_but_last {true};
     ExprSubs but_last;
     for (const auto &x: vars) {
@@ -444,7 +444,7 @@ void SABMC::handle_rel(const Rel &rel, const NondetSubs &update, const NondetSub
         }
     }
     if (add_but_last) {
-        res.push_back(BExpression::buildTheoryLit(rel.subs(but_last)));
+        res.push_back(BExpression::mkLit(rel.subs(but_last)));
     }
 }
 
@@ -493,15 +493,15 @@ void SABMC::handle_loop(const Range &range) {
             }, lit);
     }
     if (Config::Analysis::log) {
-        std::cout << "handled rels: " << BExpression::buildAnd(res) << std::endl;
+        std::cout << "handled rels: " << BExpression::mkAnd(res) << std::endl;
     }
     for (const auto &[x,b]: bool_update) {
         const auto post {std::get<BoolTheory::Var>(var_map[x])};
-        res.push_back(BExpression::buildTheoryLit(BoolLit(post, b)));
+        res.push_back(BExpression::mkLit(BoolLit(post, b)));
     }
-    res.push_back(BExpression::buildTheoryLit(Rel::buildGeq(n, ne::buildConstant(prefix))));
+    res.push_back(BExpression::mkLit(Rel::buildGeq(n, arith::mkConst(prefix))));
     std::vector<BoolExpr> disj;
-    disj.push_back(BExpression::buildAnd(res));
+    disj.push_back(BExpression::mkAnd(res));
     if (prefix > 1) {
         auto chained {mbp_res};
         disj.push_back(chained.toBoolExpr());
@@ -510,23 +510,23 @@ void SABMC::handle_loop(const Range &range) {
             disj.push_back(chained.toBoolExpr());
         }
     }
-    add_learned_clause(Transition::build(BExpression::buildOr(disj), t.var_map()), range.length());
+    add_learned_clause(Transition::build(BExpression::mkOr(disj), t.var_map()), range.length());
 }
 
 BoolExpr SABMC::encode_transition(const Transition &t) {
-    return t.toBoolExpr() & expr::mkEq(trace_var, ne::buildConstant(t.getId()));
+    return t.toBoolExpr() & expr::mkEq(trace_var, arith::mkConst(t.getId()));
 }
 
 void SABMC::add_blocking_clauses() {
     for (const auto &b: blocked) {
         const auto s {get_subs(depth, b.length)};
         // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(ExprSubs({{n, 1}}))) << std::endl;
-        const auto block {!b.trans->subs(expr::compose(Subs::build<IntTheory>(ExprSubs({{n, ne::buildConstant(1)}})), s))};
-        solver->add(block | Rel::buildGeq(s.get<IntTheory>(trace_var), ne::buildConstant(b.id)));
+        const auto block {!b.trans->subs(expr::compose(Subs::build<IntTheory>(ExprSubs({{n, arith::mkConst(1)}})), s))};
+        solver->add(block | Rel::buildGeq(s.get<IntTheory>(trace_var), arith::mkConst(b.id)));
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
-        const std::vector<BoolExpr> lits {expr::mkNeq(trace_var, ne::buildConstant(b.id)), expr::mkNeq(trace_var, ne::buildConstant(b.id))};
-        solver->add(BExpression::buildOr(lits));
+        const std::vector<BoolExpr> lits {expr::mkNeq(trace_var, arith::mkConst(b.id)), expr::mkNeq(trace_var, arith::mkConst(b.id))};
+        solver->add(BExpression::mkOr(lits));
     }
 }
 
@@ -635,7 +635,7 @@ void SABMC::analyze() {
         rule_map.emplace(trans.getId(), trans);
         steps.push_back(encode_transition(trans));
     }
-    step = BExpression::buildOr(steps);
+    step = BExpression::mkOr(steps);
     solver->add(t.init());
     solver->push();
 

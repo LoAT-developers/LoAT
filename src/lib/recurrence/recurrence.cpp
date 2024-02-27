@@ -65,8 +65,8 @@ bool Recurrence::solve(const IntTheory::Var lhs, const IntTheory::Expression rhs
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    closed_form_pre.put<IntTheory>(lhs, ne::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)-1), map));
-    result.closed_form.put<IntTheory>(lhs, ne::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)), map));
+    closed_form_pre.put<IntTheory>(lhs, arith::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)-1), map));
+    result.closed_form.put<IntTheory>(lhs, arith::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)), map));
     return true;
 }
 

@@ -14,7 +14,7 @@ struct IntTheory {
     using Val = Int;
 
     static Expression valToExpr(const Val &val) {
-        return ne::buildConstant(val);
+        return arith::mkConst(val);
     }
 
     static Expression varToExpr(const Var &var) {
