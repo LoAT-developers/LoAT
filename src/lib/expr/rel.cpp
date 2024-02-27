@@ -124,24 +124,24 @@ size_t hash_value(const Rel &rel) {
     return rel.hash();
 }
 
-Rel Rel::buildGeq(const ExprPtr x, const ExprPtr y) {
+Rel Rel::mkGeq(const ExprPtr x, const ExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
     return Rel(lhs_integral + arith::mkConst(1));
 }
 
-Rel Rel::buildLeq(const ExprPtr x, const ExprPtr y) {
-    return buildGeq(-x, -y);
+Rel Rel::mkLeq(const ExprPtr x, const ExprPtr y) {
+    return mkGeq(-x, -y);
 }
 
-Rel Rel::buildGt(const ExprPtr x, const ExprPtr y) {
+Rel Rel::mkGt(const ExprPtr x, const ExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
     return Rel(lhs_integral);
 }
 
-Rel Rel::buildLt(const ExprPtr x, const ExprPtr y) {
-    return buildGt(-x, -y);
+Rel Rel::mkLt(const ExprPtr x, const ExprPtr y) {
+    return mkGt(-x, -y);
 }
 
 Rel operator!(const Rel &x) { 

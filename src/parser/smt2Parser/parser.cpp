@@ -145,13 +145,13 @@ namespace sexpressionparser {
         const auto fst {parseExpression(sexp[1])};
         const auto snd {parseExpression(sexp[2])};
         if (op == "<=") {
-            return BExpression::mkLit(negate ? Rel::buildGt(fst, snd) : Rel::buildLeq(fst, snd));
+            return BExpression::mkLit(negate ? Rel::mkGt(fst, snd) : Rel::mkLeq(fst, snd));
         } else if (sexp[0].str() == "<") {
-            return BExpression::mkLit(negate ? Rel::buildGeq(fst, snd) : Rel::buildLt(fst, snd));
+            return BExpression::mkLit(negate ? Rel::mkGeq(fst, snd) : Rel::mkLt(fst, snd));
         } else if (sexp[0].str() == ">=") {
-            return BExpression::mkLit(negate ? Rel::buildLt(fst, snd) : Rel::buildGeq(fst, snd));
+            return BExpression::mkLit(negate ? Rel::mkLt(fst, snd) : Rel::mkGeq(fst, snd));
         } else if (sexp[0].str() == ">") {
-            return BExpression::mkLit(negate ? Rel::buildLeq(fst, snd) : Rel::buildGt(fst, snd));
+            return BExpression::mkLit(negate ? Rel::mkLeq(fst, snd) : Rel::mkGt(fst, snd));
         } else if (sexp[0].str() == "=") {
             assert(!negate);
             return theories::mkEq(fst, snd);

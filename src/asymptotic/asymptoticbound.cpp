@@ -105,7 +105,7 @@ ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
     solution = solution.compose(limitProblem.getSolution());
 
     Guard guardCopy = guard;
-    guardCopy.push_back(Rel::buildGt(cost, 0));
+    guardCopy.push_back(Rel::mkGt(cost, 0));
     for (const auto &lit : guardCopy) {
         const Rel &rel = std::get<Rel>(lit);
         for (const auto &var : rel.vars()) {

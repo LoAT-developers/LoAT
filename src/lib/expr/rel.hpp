@@ -56,10 +56,10 @@ public:
 
     std::size_t hash() const;
 
-    static Rel buildGeq(const ExprPtr x, const ExprPtr y);
-    static Rel buildLeq(const ExprPtr x, const ExprPtr y);
-    static Rel buildGt(const ExprPtr x, const ExprPtr y);
-    static Rel buildLt(const ExprPtr x, const ExprPtr y);
+    static Rel mkGeq(const ExprPtr x, const ExprPtr y);
+    static Rel mkLeq(const ExprPtr x, const ExprPtr y);
+    static Rel mkGt(const ExprPtr x, const ExprPtr y);
+    static Rel mkLt(const ExprPtr x, const ExprPtr y);
 
     friend Rel operator!(const Rel &x);
     friend std::ostream& operator<<(std::ostream &s, const Rel &e);

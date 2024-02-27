@@ -79,10 +79,10 @@ std::any CINTParseVisitor::visitLit(CINTParser::LitContext *ctx) {
     const auto op = std::any_cast<relop_type>(visit(ctx->relop()));
     const auto arg2 = std::any_cast<IntTheory::Expression>(visit(ctx->num_expr(1)));
     switch (op) {
-    case lt: return BExpression::mkLit(Rel::buildLt(arg1, arg2));
-    case leq: return BExpression::mkLit(Rel::buildLeq(arg1, arg2));
-    case gt: return BExpression::mkLit(Rel::buildGt(arg1, arg2));
-    case geq: return BExpression::mkLit(Rel::buildGeq(arg1, arg2));
+    case lt: return BExpression::mkLit(Rel::mkLt(arg1, arg2));
+    case leq: return BExpression::mkLit(Rel::mkLeq(arg1, arg2));
+    case gt: return BExpression::mkLit(Rel::mkGt(arg1, arg2));
+    case geq: return BExpression::mkLit(Rel::mkGeq(arg1, arg2));
     case eq: return theories::mkEq(arg1, arg2);
     case neq: return theories::mkNeq(arg1, arg2);
     }

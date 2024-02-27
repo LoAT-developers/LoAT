@@ -129,23 +129,23 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             }
             for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
                 if (signs.at(i) > 0) {
-                    covered.insert(Rel::buildGeq(derivatives.at(i), 0));
+                    covered.insert(Rel::mkGeq(derivatives.at(i), 0));
                 } else {
-                    covered.insert(Rel::buildLeq(derivatives.at(i), 0));
+                    covered.insert(Rel::mkLeq(derivatives.at(i), 0));
                 }
                 if (signs.at(i+1) > 0) {
                     // the i-th derivative is monotonically increasing at the sampling point
                     if (signs.at(i) > 0) {
-                        guard.insert(Rel::buildGeq(derivatives.at(i), 0));
+                        guard.insert(Rel::mkGeq(derivatives.at(i), 0));
                     } else {
-                        guard.insert(Rel::buildLeq(but_last(derivatives.at(i)), 0));
+                        guard.insert(Rel::mkLeq(but_last(derivatives.at(i)), 0));
                     }
                 } else {
                     res.nonterm = false;
                     if (signs.at(i) > 0) {
-                        guard.insert(Rel::buildGeq(but_last(derivatives.at(i)), 0));
+                        guard.insert(Rel::mkGeq(but_last(derivatives.at(i)), 0));
                     } else {
-                        guard.insert(Rel::buildLeq(derivatives.at(i), 0));
+                        guard.insert(Rel::mkLeq(derivatives.at(i), 0));
                     }
                 }
             }
@@ -209,11 +209,11 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     auto success {false};
     const Rel &rel {std::get<Rel>(lit)};
     const auto updated {update.get<IntTheory>()(rel.lhs())};
-    const auto dec {Rel::buildGeq(rel.lhs(), updated)};
+    const auto dec {Rel::mkGeq(rel.lhs(), updated)};
     solver->push();
     solver->add(BExpression::mkLit(dec));
     if (solver->check() == Sat) {
-        const auto inc {Rel::buildLt(updated, update.get<IntTheory>()(updated))};
+        const auto inc {Rel::mkLt(updated, update.get<IntTheory>()(updated))};
         solver->add(BExpression::mkLit(inc));
         if (solver->check() == Unsat) {
             success = true;
@@ -238,13 +238,13 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     // up(t)
     const auto updated {update.get<IntTheory>()(rel.lhs())};
     // t <(=) up(t)
-    const auto i = strict ? Rel::buildLt(rel.lhs(), updated) : Rel::buildLeq(rel.lhs(), updated);
+    const auto i = strict ? Rel::mkLt(rel.lhs(), updated) : Rel::mkLeq(rel.lhs(), updated);
     const auto inc {BExpression::mkLit(i)};
     solver->push();
     solver->add(inc);
     if (solver->check() == Sat) {
         // up(t) >(=) up^2(t)
-        const auto d {strict ? Rel::buildGeq(updated, update.get<IntTheory>()(updated)) : Rel::buildGt(updated, update.get<IntTheory>()(updated))};
+        const auto d {strict ? Rel::mkGeq(updated, update.get<IntTheory>()(updated)) : Rel::mkGt(updated, update.get<IntTheory>()(updated))};
         const auto dec {BExpression::mkLit(d)};
         solver->push();
         solver->add(dec);

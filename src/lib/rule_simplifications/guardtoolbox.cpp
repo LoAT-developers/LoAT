@@ -124,7 +124,7 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
         //add new transitive guard terms lower <= upper
         for (const auto &upper : varLessThan) {
             for (const auto &lower : varGreaterThan) {
-                guard.insert(Rel::buildLeq(lower, upper));
+                guard.insert(Rel::mkLeq(lower, upper));
             }
         }
         eliminated.insert(var);

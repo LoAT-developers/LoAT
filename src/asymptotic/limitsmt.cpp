@@ -18,10 +18,10 @@ static BExpr<IntTheory> posConstraint(const map<Int, IntTheory::Expression>& coe
     std::vector<IntTheory::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         if (degree > 0) {
-            conjunction.push_back(Rel::buildGeq(c, arith::mkConst(0)));
-            conjunction.push_back(Rel::buildLeq(c, arith::mkConst(0)));
+            conjunction.push_back(Rel::mkGeq(c, arith::mkConst(0)));
+            conjunction.push_back(Rel::mkLeq(c, arith::mkConst(0)));
         } else {
-            conjunction.push_back(Rel::buildGt(c, arith::mkConst(0)));
+            conjunction.push_back(Rel::mkGt(c, arith::mkConst(0)));
         }
     }
     return BoolExpression<IntTheory>::mkAndFromLits(conjunction);
@@ -36,10 +36,10 @@ static BExpr<IntTheory> negConstraint(const map<Int, IntTheory::Expression>& coe
     std::vector<IntTheory::Lit> conjunction;
     for (const auto &[degree, c] : coefficients) {
         if (degree > 0) {
-            conjunction.push_back(Rel::buildGeq(c, arith::mkConst(0)));
-            conjunction.push_back(Rel::buildLeq(c, arith::mkConst(0)));
+            conjunction.push_back(Rel::mkGeq(c, arith::mkConst(0)));
+            conjunction.push_back(Rel::mkLeq(c, arith::mkConst(0)));
         } else {
-            conjunction.push_back(Rel::buildLt(c, 0));
+            conjunction.push_back(Rel::mkLt(c, 0));
         }
     }
     return BoolExpression<IntTheory>::mkAndFromLits(conjunction);
@@ -60,10 +60,10 @@ static BExpr<IntTheory> negInfConstraint(const map<Int, IntTheory::Expression>& 
         std::vector<IntTheory::Lit> conjunction;
         for (const auto &[degree, c]: coefficients) {
             if (degree > i) {
-                conjunction.push_back(Rel::buildGeq(c, arith::mkConst(0)));
-                conjunction.push_back(Rel::buildLeq(c, arith::mkConst(0)));
+                conjunction.push_back(Rel::mkGeq(c, arith::mkConst(0)));
+                conjunction.push_back(Rel::mkLeq(c, arith::mkConst(0)));
             } else if (degree == i) {
-                conjunction.push_back(Rel::buildLt(c, arith::mkConst(0)));
+                conjunction.push_back(Rel::mkLt(c, arith::mkConst(0)));
             }
         }
         disjunction.push_back(BoolExpression<IntTheory>::mkAndFromLits(conjunction));
@@ -86,10 +86,10 @@ static BExpr<IntTheory> posInfConstraint(const map<Int, IntTheory::Expression>& 
         std::vector<IntTheory::Lit> conjunction;
         for (const auto &[degree, c] : coefficients) {
             if (degree > i) {
-                conjunction.push_back(Rel::buildGeq(c, arith::mkConst(0)));
-                conjunction.push_back(Rel::buildLeq(c, arith::mkConst(0)));
+                conjunction.push_back(Rel::mkGeq(c, arith::mkConst(0)));
+                conjunction.push_back(Rel::mkLeq(c, arith::mkConst(0)));
             } else if (degree == i) {
-                conjunction.push_back(Rel::buildGt(c, arith::mkConst(0)));
+                conjunction.push_back(Rel::mkGt(c, arith::mkConst(0)));
             }
         }
         disjunction.push_back(BoolExpression<IntTheory>::mkAndFromLits(conjunction));
@@ -111,7 +111,7 @@ static map<Int, IntTheory::Expression> getCoefficients(const IntTheory::Expressi
 
 std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const IntTheory::Expression cost, Complexity currentRes) {
     // initialize z3
-    const auto solver {SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::buildGt(cost, 0)}}, {}))};
+    const auto solver {SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::mkGt(cost, 0)}}, {}))};
     // the parameter of the desired family of solutions
     const auto n {currentLP.getN()};
     // get all relevant variables
@@ -162,8 +162,8 @@ std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &curr
     // a model witnesses unbounded complexity
     for (const auto &var : vars) {
         if (!var->isTempVar()) {
-            solver->add(Rel::buildGeq(varCoeff.at(var), arith::mkConst(0)));
-            solver->add(Rel::buildLeq(varCoeff.at(var), arith::mkConst(0)));
+            solver->add(Rel::mkGeq(varCoeff.at(var), arith::mkConst(0)));
+            solver->add(Rel::mkLeq(varCoeff.at(var), arith::mkConst(0)));
         }
     }
     if (!checkSolver()) {
@@ -180,7 +180,7 @@ std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &curr
                 const auto c {coefficients.find(i)->second};
                 // remember the current state for backtracking
                 solver->push();
-                solver->add(Rel::buildGt(c, arith::mkConst(0)));
+                solver->add(Rel::mkGt(c, arith::mkConst(0)));
                 if (checkSolver()) {
                     break;
                 } else if (i == 1 || Complexity::Poly(i - 1) <= currentRes) {
@@ -227,7 +227,7 @@ BExpr<IntTheory> encodeBoolExpr(const BExpr<IntTheory> expr, const ExprSubs &tem
 
 std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntTheory> expr, const IntTheory::Expression cost, Complexity currentRes) {
     // initialize z3
-    auto solver {SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::mkLit(Rel::buildGt(cost, 0))}))};
+    auto solver {SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic(BoolExpressionSet<IntTheory>{expr, BoolExpression<IntTheory>::mkLit(Rel::mkGt(cost, 0))}))};
     // the parameter of the desired family of solutions
     const auto n {NumVar::next()};
     // get all relevant variables
@@ -275,8 +275,8 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
         // a model witnesses unbounded complexity
         for (const auto &var : vars) {
             if (!var->isTempVar()) {
-                solver->add(Rel::buildGeq(varCoeff.at(var), arith::mkConst(0)));
-                solver->add(Rel::buildLeq(varCoeff.at(var), arith::mkConst(0)));
+                solver->add(Rel::mkGeq(varCoeff.at(var), arith::mkConst(0)));
+                solver->add(Rel::mkLeq(varCoeff.at(var), arith::mkConst(0)));
             }
         }
         if (checkSolver()) {
@@ -296,7 +296,7 @@ std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<IntT
             const auto c {coefficients.find(i)->second};
             // remember the current state for backtracking
             solver->push();
-            solver->add(Rel::buildGt(c, arith::mkConst(0)));
+            solver->add(Rel::mkGt(c, arith::mkConst(0)));
             if (checkSolver()) {
                 return {model(), Complexity::Poly(i)};
             } else {

@@ -328,9 +328,9 @@ std::vector<Theory<IntTheory>::Lit> LimitProblem::getQuery() const {
     std::vector<Theory<IntTheory>::Lit> query;
     for (const auto &[ex,d] : set) {
         if (d == NEG_INF || d == NEG_CONS) {
-            query.push_back(Rel::buildLt(ex, arith::mkConst(0)));
+            query.push_back(Rel::mkLt(ex, arith::mkConst(0)));
         } else {
-            query.push_back(Rel::buildGt(ex, arith::mkConst(0)));
+            query.push_back(Rel::mkGt(ex, arith::mkConst(0)));
         }
     }
     return query;
