@@ -18,7 +18,7 @@
 #pragma once
 
 #include "arithexpr.hpp"
-#include "theory.hpp"
+#include "theories.hpp"
 #include "result.hpp"
 
 #include <vector>

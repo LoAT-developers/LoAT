@@ -1,7 +1,7 @@
 #include "ruleexport.hpp"
 #include "config.hpp"
-#include "theory.hpp"
 #include "theories.hpp"
+#include "theory.hpp"
 
 using namespace std;
 namespace Color = Config::Color;

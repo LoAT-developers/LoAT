@@ -16,7 +16,7 @@
  */
 
 #include "z3context.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 using namespace std;
 

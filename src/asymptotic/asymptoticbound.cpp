@@ -14,7 +14,7 @@
 #include "config.hpp"
 #include "set.hpp"
 #include "guardtoolbox.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "optional.hpp"
 #include "string.hpp"
 

@@ -19,7 +19,7 @@
 
 #include <optional>
 
-#include "theory.hpp"
+#include "theories.hpp"
 
 class Recurrence {
 private:

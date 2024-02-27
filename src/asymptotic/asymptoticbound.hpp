@@ -8,7 +8,7 @@
 #include "limitproblem.hpp"
 #include "proof.hpp"
 #include "complexity.hpp"
-#include "theory.hpp"
+#include "theories.hpp"
 
 class AsymptoticBound {
 private:

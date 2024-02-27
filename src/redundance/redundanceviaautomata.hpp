@@ -1,6 +1,6 @@
 #pragma once
 
-#include "theory.hpp"
+#include "theories.hpp"
 #include "rule.hpp"
 
 #include <faudes/libfaudes.h>

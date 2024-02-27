@@ -1,5 +1,5 @@
 #include "dependencyorder.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 namespace DependencyOrder {
 

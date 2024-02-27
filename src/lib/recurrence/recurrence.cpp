@@ -19,7 +19,7 @@
 #include "dependencyorder.hpp"
 #include "arith.hpp"
 #include "arithutil.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 #include <purrs.hh>
 #include <boost/algorithm/string.hpp>

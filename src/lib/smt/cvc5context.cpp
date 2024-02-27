@@ -1,5 +1,5 @@
 #include "cvc5context.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 using namespace std;
 

@@ -16,7 +16,7 @@
  */
 
 #include "yicescontext.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 #include <assert.h>
 

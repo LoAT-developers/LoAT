@@ -1,5 +1,5 @@
 #include "loopcomplexity.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 LoopComplexity LoopComplexity::compute(const Rule &rule) {
     LoopComplexity res;

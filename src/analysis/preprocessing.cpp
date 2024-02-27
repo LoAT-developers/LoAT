@@ -20,7 +20,7 @@
 #include "loopacceleration.hpp"
 #include "chain.hpp"
 #include "config.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "guardtoolbox.hpp"
 
 #include <numeric>

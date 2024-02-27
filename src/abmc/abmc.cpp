@@ -1,6 +1,6 @@
 #include "abmc.hpp"
 #include "chain.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "smtfactory.hpp"

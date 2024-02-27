@@ -1,7 +1,7 @@
 #pragma once
 
 #include "transition.hpp"
-#include "theory.hpp"
+#include "theories.hpp"
 #include "itsproblem.hpp"
 
 class SafetyProblem {

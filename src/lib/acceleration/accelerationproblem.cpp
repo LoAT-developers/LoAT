@@ -1,7 +1,7 @@
 #include "accelerationproblem.hpp"
 #include "recurrence.hpp"
 #include "smtfactory.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "boolexpr.hpp"
 #include "relevantvariables.hpp"
 

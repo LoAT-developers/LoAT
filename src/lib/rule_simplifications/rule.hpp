@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "theory.hpp"
+#include "theories.hpp"
 
 /**
  * A general rule, consisting of a left-hand side with location, guard and cost

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "theory.hpp"
+#include "theories.hpp"
 
 class Transition {
 

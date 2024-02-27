@@ -17,7 +17,7 @@
 
 #include "parser.hpp"
 #include "config.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 #include <fstream>
 #include <boost/algorithm/string.hpp>

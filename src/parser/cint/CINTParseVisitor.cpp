@@ -1,6 +1,6 @@
 #include "CINTParseVisitor.h"
 #include "config.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 enum relop_type {lt, leq, gt, geq, eq, neq};
 

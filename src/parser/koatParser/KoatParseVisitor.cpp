@@ -1,5 +1,5 @@
 #include "KoatParseVisitor.h"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "config.hpp"
 
 enum relop_type {lt, leq, gt, geq, eq, neq};

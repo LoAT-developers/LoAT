@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "arith.hpp"
-#include "theory.hpp"
+#include "theories.hpp"
 #include "inftyexpression.hpp"
 #include "limitvector.hpp"
 

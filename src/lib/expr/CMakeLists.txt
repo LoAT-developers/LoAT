@@ -25,10 +25,10 @@ add_library(${PROJECT_NAME} STATIC
   bools.hpp
   bools.cpp
   boolsubs.hpp
-  theory.hpp
-  theory.cpp
   theories.hpp
   theories.cpp
+  theory.hpp
+  theory.cpp
   arithsubs.hpp
   arithsubs.cpp
   numconstant.cpp

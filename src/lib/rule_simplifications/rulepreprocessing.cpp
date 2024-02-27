@@ -16,9 +16,9 @@
  */
 
 #include "rulepreprocessing.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "guardtoolbox.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 #include <unordered_set>
 #include <numeric>

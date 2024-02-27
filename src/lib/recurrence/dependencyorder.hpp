@@ -19,7 +19,7 @@
 
 #include <optional>
 
-#include "theory.hpp"
+#include "theories.hpp"
 
 /**
  * Functions to compute an ordering on updated variables,

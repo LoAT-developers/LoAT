@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "theories.hpp"
+#include "theory.hpp"
 
 namespace util {
 

@@ -1,5 +1,5 @@
 #include "safetyproblem.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 BoolExpr rule_to_formula(const Rule &r, const linked_hash_map<Var, Var> &var_map) {
     std::vector<BoolExpr> conjuncts;

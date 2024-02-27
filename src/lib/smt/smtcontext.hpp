@@ -20,7 +20,7 @@
 #include <optional>
 #include <assert.h>
 
-#include "theory.hpp"
+#include "theories.hpp"
 
 template<class EXPR>
 class SmtContext {
