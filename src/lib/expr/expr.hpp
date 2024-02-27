@@ -2,7 +2,7 @@
 
 #include "theory.hpp"
 
-namespace expr {
+namespace theories {
 
 std::string getName(const Var &var);
 
@@ -124,10 +124,10 @@ struct tuple_element<1, Subs::Pair> {
 template<std::size_t Index>
 std::tuple_element_t<Index, Subs::Pair> get(const Subs::Pair& p) {
     if constexpr (Index == 0) {
-        return expr::first(p);
+        return theories::first(p);
     }
     if constexpr (Index == 1) {
-        return expr::second(p);
+        return theories::second(p);
     }
 }
 

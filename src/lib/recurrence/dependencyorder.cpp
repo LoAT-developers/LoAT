@@ -25,7 +25,7 @@ static void findOrderUntilConflicting(const Subs &update, PartialResult &res) {
 
             //check if all variables on update rhs are already processed
             bool ready = true;
-            for (const auto &x : expr::vars(ex)) {
+            for (const auto &x : theories::vars(ex)) {
                 if (x != var && update.contains(x) && !res.ordered.contains(x)) {
                     ready = false;
                     break;

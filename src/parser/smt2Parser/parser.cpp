@@ -81,7 +81,7 @@ namespace sexpressionparser {
                             Subs update;
                             std::vector<BoolExpr> guard;
                             parseCond(ruleExp[5], guard);
-                            guard.push_back(expr::mkEq(NumVar::loc_var, arith::mkConst(from)));
+                            guard.push_back(theories::mkEq(NumVar::loc_var, arith::mkConst(from)));
                             const auto cond {BExpression::mkAnd(guard)};
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.put<IntTheory>(vars.at(preVars[i]), vars.at(postVars[i]));
@@ -154,7 +154,7 @@ namespace sexpressionparser {
             return BExpression::mkLit(negate ? Rel::buildLeq(fst, snd) : Rel::buildGt(fst, snd));
         } else if (sexp[0].str() == "=") {
             assert(!negate);
-            return expr::mkEq(fst, snd);
+            return theories::mkEq(fst, snd);
         }
         throw std::invalid_argument("");
     }

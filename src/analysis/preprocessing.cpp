@@ -225,7 +225,7 @@ ResultBase<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) 
 
     const auto post_vars {p.post_vars()};
     const auto allow = [&post_vars](const auto &x) {
-        return expr::isTempVar(x) && !post_vars.contains(x);
+        return theories::isTempVar(x) && !post_vars.contains(x);
     };
     ResultBase<BoolExpr, Proof> init {GuardToolbox::preprocessFormula(p.init(), allow)};
     if (init) {

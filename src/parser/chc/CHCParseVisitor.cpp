@@ -91,7 +91,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             if (!ren.contains(x)) {
                 std::visit(
                     Overload{[&](const auto var) {
-                        const auto th {expr::theory(var)};
+                        const auto th {theories::theory(var)};
                         ren.put<decltype(th)>(var, th.varToExpr(var->next()));
                     }}, x);
             }
@@ -117,7 +117,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             up.put<BoolTheory>(bvars[i], BExpression::mkLit(BoolLit(BoolVar::next())));
         }
         up.put<IntTheory>(NumVar::loc_var, arith::mkConst(c.rhs.loc));
-        const auto guard {c.guard->subs(ren)->simplify() & expr::mkEq(NumVar::loc_var, arith::mkConst(c.lhs.loc))};
+        const auto guard {c.guard->subs(ren)->simplify() & theories::mkEq(NumVar::loc_var, arith::mkConst(c.lhs.loc))};
         its->addRule(Rule(guard, up), c.lhs.loc);
     }
     return its;
@@ -372,9 +372,9 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
         const auto p2 = any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr(1)));
         res.conjoin(p2);
         if (ctx->EQ()) {
-            res.t = expr::mkEq(p1.t, p2.t);
+            res.t = theories::mkEq(p1.t, p2.t);
         } else if (ctx->NEQ()) {
-            res.t = !expr::mkEq(p1.t, p2.t);
+            res.t = !theories::mkEq(p1.t, p2.t);
         } else {
             throw std::invalid_argument("unknown operator");
         }
@@ -384,9 +384,9 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
         const auto p2 {any_cast<formula_type>(visit(ctx->i_formula(1)))};
         res.conjoin(p2);
         if (ctx->EQ()) {
-            res.t = expr::mkEq(p1.t, p2.t);
+            res.t = theories::mkEq(p1.t, p2.t);
         } else if (ctx->NEQ()) {
-            res.t = !expr::mkEq(p1.t, p2.t);
+            res.t = !theories::mkEq(p1.t, p2.t);
         } else {
             throw std::invalid_argument("unknown operator");
         }
@@ -397,8 +397,8 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
         res.conjoin(p2);
         const auto op = any_cast<relop_type>(visit(ctx->relop()));
         switch (op) {
-        case eq: return expr::mkEq(p1.t, p2.t);
-        case neq: return expr::mkNeq(p1.t, p2.t);
+        case eq: return theories::mkEq(p1.t, p2.t);
+        case neq: return theories::mkNeq(p1.t, p2.t);
         case gt: return BExpression::mkLit(Rel::buildGt(p1.t, p2.t));
         case geq: return BExpression::mkLit(Rel::buildGeq(p1.t, p2.t));
         case lt: return BExpression::mkLit(Rel::buildLt(p1.t, p2.t));
@@ -423,7 +423,7 @@ antlrcpp::Any CHCParseVisitor::visitRelop(CHCParser::RelopContext *ctx) {
 antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprContext *ctx) {
     formula_or_expr_type res;
     if (ctx->var()) {
-        res.t = expr::toExpr(any_cast<Var>(visitVar(ctx->var())));
+        res.t = theories::toExpr(any_cast<Var>(visitVar(ctx->var())));
     } else if (ctx->lets()) {
         const auto bindings {std::any_cast<lets_type>(visit(ctx->lets()))};
         const auto expr {std::any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr()[0]))};
@@ -451,7 +451,7 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
                 [&](const IntTheory::Expression e) {
                     const auto var {NumVar::next()};
                     res.t = var->toExpr();
-                    res.refinement.push_back((r.t & expr::mkEq(var, e)) | ((!r.t) & expr::mkEq(var, std::get<IntTheory::Expression>(else_case.t))));
+                    res.refinement.push_back((r.t & theories::mkEq(var, e)) | ((!r.t) & theories::mkEq(var, std::get<IntTheory::Expression>(else_case.t))));
                 },
                 [&](const BoolTheory::Expression e) {
                     res.t = (r.t & e) | ((!r.t) & std::get<BoolTheory::Expression>(else_case.t));
@@ -496,8 +496,8 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         case Mod:
             const auto div {NumVar::next()};
             const auto mod {NumVar::next()};
-            res.refinement.push_back(expr::mkEq(args[0], args[1] * div + mod));
-            res.refinement.push_back(expr::mkNeq(args[1], arith::mkConst(0))); // division by zero is undefined
+            res.refinement.push_back(theories::mkEq(args[0], args[1] * div + mod));
+            res.refinement.push_back(theories::mkNeq(args[1], arith::mkConst(0))); // division by zero is undefined
             bool explicit_encoding = false;
             const auto y {args[1]->isInt()};
             if (y) {
@@ -505,7 +505,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
                     explicit_encoding = true;
                     std::vector<BoolTheory::Expression> refinement;
                     for (int i = 0; i < *y; i++) {
-                        refinement.push_back(expr::mkEq(mod, arith::mkConst(i)));
+                        refinement.push_back(theories::mkEq(mod, arith::mkConst(i)));
                     }
                     res.refinement.push_back(BExpression::mkOr(refinement));
                 }
@@ -540,7 +540,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         const auto r = any_cast<formula_type>(visit(ctx->i_formula()));
         res.conjoin(r);
         res.t = NumVar::next();
-        res.refinement.push_back((r.t & expr::mkEq(res.t, args[0])) | ((!r.t) & expr::mkEq(res.t, args[1])));
+        res.refinement.push_back((r.t & theories::mkEq(res.t, args[0])) | ((!r.t) & theories::mkEq(res.t, args[1])));
     } else if (ctx->var()) {
         const auto x = any_cast<Var>(visit(ctx->var()));
         res.t = std::get<IntTheory::Var>(x);

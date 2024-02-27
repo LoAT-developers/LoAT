@@ -1,6 +1,6 @@
 #include "expr.hpp"
 
-namespace expr {
+namespace theories {
 
 std::string getName(const Var &var) {
     return std::visit([](const auto &var){return var->getName();}, var);
@@ -67,7 +67,7 @@ VarSet vars(const Subs &e) {
 void collectVars(const Subs &subs, VarSet &vars) {
     for (const auto &[x,y]: subs) {
         vars.insert(x);
-        expr::collectVars(y, vars);
+        theories::collectVars(y, vars);
     }
 }
 
@@ -150,7 +150,7 @@ BoolTheory theory(const BoolVarPtr&) {
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e) {
-    std::visit([&s](const auto &e){s << expr::getName(e);}, e);
+    std::visit([&s](const auto &e){s << theories::getName(e);}, e);
     return s;
 }
 

@@ -161,21 +161,21 @@ Subs Reachability::handle_update(const TransIdx idx) {
     Subs new_var_renaming {last_var_renaming};
     const Subs up = idx->getUpdate();
     for (const auto &x: prog_vars) {
-        expr::apply(x, [&new_var_renaming](const auto &x) {
-            const auto th {expr::theory(x)};
+        theories::apply(x, [&new_var_renaming](const auto &x) {
+            const auto th {theories::theory(x)};
             new_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
         });
     }
     for (const auto &var: idx->vars()) {
-        if (expr::isTempVar(var)) {
-            expr::apply(var, [&new_var_renaming](const auto &x) {
-                const auto th {expr::theory(x)};
+        if (theories::isTempVar(var)) {
+            theories::apply(var, [&new_var_renaming](const auto &x) {
+                const auto th {theories::theory(x)};
                 new_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
             });
         }
     }
     for (const auto &x: prog_vars) {
-        solver->add(expr::mkEq(new_var_renaming.get(x), expr::subs(up.get(x), last_var_renaming)));
+        solver->add(theories::mkEq(new_var_renaming.get(x), theories::subs(up.get(x), last_var_renaming)));
     }
     return new_var_renaming;
 }
@@ -221,7 +221,7 @@ void Reachability::update_cpx() {
     const auto &resolvent = trace.back().resolvent;
     const auto &cost = chcs.getCost(resolvent);
     const auto max_cpx = toComplexity(cost);
-    if (max_cpx <= cpx && !cost->hasVarWith([](const auto &x){return expr::isTempVar(x);})) {
+    if (max_cpx <= cpx && !cost->hasVarWith([](const auto &x){return theories::isTempVar(x);})) {
         return;
     }
     const auto res = AsymptoticBound::determineComplexity(resolvent.getGuard()->conjunctionToGuard(), cost, false, cpx);
@@ -283,7 +283,7 @@ void Reachability::print_trace(std::ostream &s) {
         first = true;
         if (!chcs.isSinkTransition(step.clause_idx)) {
             for (const auto &x: prog_vars) {
-                const auto y {expr::subs(step.var_renaming.get(x), model)};
+                const auto y {theories::subs(step.var_renaming.get(x), model)};
                 if (TheTheory::varToExpr(x) == y) continue;
                 if (first) {
                     first = false;
@@ -331,7 +331,7 @@ void Reachability::print_state() {
 void Reachability::init() {
     srand(42);
     for (const auto &x: chcs.getVars()) {
-        if (!expr::isTempVar(x)) {
+        if (!theories::isTempVar(x)) {
             prog_vars.insert(x);
         }
     }
@@ -410,7 +410,7 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     case Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
         const auto model {solver->model(guard->vars()).toSubs()};
-        const auto implicant {idx->getGuard()->syntacticImplicant(expr::compose(projected_var_renaming, model))};
+        const auto implicant {idx->getGuard()->syntacticImplicant(theories::compose(projected_var_renaming, model))};
         return {idx->withGuard(implicant)};
     }
     case Unknown: {}
@@ -452,18 +452,18 @@ std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
         if (loop) {
             const auto [chained, sigma] {Chaining::chain(rule, *loop)};
             loop = chained;
-            var_renaming = expr::compose(sigma, var_renaming);
+            var_renaming = theories::compose(sigma, var_renaming);
         } else {
             loop = rule;
         }
         if (i > 0) {
-            var_renaming = expr::compose(trace[i-1].var_renaming.project(rule.vars()), var_renaming);
+            var_renaming = theories::compose(trace[i-1].var_renaming.project(rule.vars()), var_renaming);
         }
     }
     auto vars {loop->vars()};
     var_renaming = var_renaming.project(vars);
-    expr::collectCoDomainVars(var_renaming, vars);
-    const auto model {expr::compose(var_renaming, solver->model(vars).toSubs())};
+    theories::collectCoDomainVars(var_renaming, vars);
+    const auto model {theories::compose(var_renaming, solver->model(vars).toSubs())};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         RuleExport::printRule(*loop, std::cout);
@@ -489,7 +489,7 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
 
 RuleResult Reachability::instantiate(const IntTheory::Var n, const Rule &rule) const {
     RuleResult res(rule);
-    VarEliminator ve(rule.getGuard(), n, expr::isProgVar);
+    VarEliminator ve(rule.getGuard(), n, theories::isProgVar);
     if (ve.getRes().empty() || ve.getRes().size() > 1) {
         return res;
     }
@@ -506,7 +506,7 @@ RuleResult Reachability::instantiate(const IntTheory::Var n, const Rule &rule) c
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &model, const unsigned backlink) {
     RuleResult simp = Preprocess::preprocessRule(rule);
-    if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
+    if (Config::Analysis::reachability() && simp->getUpdate() == theories::concat(simp->getUpdate(), simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;

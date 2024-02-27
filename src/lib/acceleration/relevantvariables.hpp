@@ -36,8 +36,8 @@ namespace util {
                 for (const auto &x : todo) {
                     std::visit([&up, &next](const auto &x) {
                         const auto val {up.get(x)};
-                        if (val != expr::toExpr(x)) {
-                            expr::collectVars(val, next);
+                        if (val != theories::toExpr(x)) {
+                            theories::collectVars(val, next);
                         }
                     }, x);
                 }

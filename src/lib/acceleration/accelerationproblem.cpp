@@ -31,7 +31,7 @@ AccelerationProblem::AccelerationProblem(
 }
 
 bool AccelerationProblem::trivial(const Lit &lit) {
-    if (expr::subs(lit, update)->isTriviallyTrue()) {
+    if (theories::subs(lit, update)->isTriviallyTrue()) {
         res.formula.push_back(BExpression::mkLit(lit));
         res.proof.newline();
         res.proof.append(std::stringstream() << lit << ": trivial");
@@ -42,7 +42,7 @@ bool AccelerationProblem::trivial(const Lit &lit) {
 }
 
 bool AccelerationProblem::unchanged(const Lit &lit) {
-    if (BExpression::mkLit(lit) == expr::subs(lit, update)) {
+    if (BExpression::mkLit(lit) == theories::subs(lit, update)) {
         res.formula.push_back(BExpression::mkLit(lit));
         res.proof.newline();
         res.proof.append(std::stringstream() << lit << ": unchanged");
@@ -167,14 +167,14 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         return false;
     }
     auto success {false};
-    const auto updated {expr::subs(lit, update)};
+    const auto updated {theories::subs(lit, update)};
     solver->push();
     solver->add(updated);
     if (solver->check() == Sat) {
-        solver->add(BExpression::mkLit(expr::negate(lit)));
+        solver->add(BExpression::mkLit(theories::negate(lit)));
         if (solver->check() == Unsat) {
             success = true;
-            auto g {expr::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, config.n->toExpr() - arith::mkConst(1)))};
+            auto g {theories::subs(lit, closed->closed_form)->subs(Subs::build<IntTheory>(config.n, config.n->toExpr() - arith::mkConst(1)))};
             res.formula.push_back(g);
             res.proof.newline();
             res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
@@ -187,7 +187,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
 }
 
 bool AccelerationProblem::recurrence(const Lit &lit) {
-    const auto updated {expr::subs(lit, update)};
+    const auto updated {theories::subs(lit, update)};
     solver->push();
     solver->add(BExpression::mkLit(lit));
     solver->add(!updated);
@@ -283,13 +283,13 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         return false;
     }
     std::vector<BoolExpr> eqs;
-    const auto vars {util::RelevantVariables::find(expr::variables(lit), update)};
+    const auto vars {util::RelevantVariables::find(theories::variables(lit), update)};
     for (const auto& v: vars) {
         if (std::holds_alternative<BoolTheory::Var>(v)) {
             // encoding equality for booleans introduces a disjunction
             return false;
         }
-        eqs.push_back(expr::mkEq(TheTheory::varToExpr(v), update.get(v)));
+        eqs.push_back(theories::mkEq(TheTheory::varToExpr(v), update.get(v)));
     }
     const auto c {BExpression::mkAnd(eqs)};
     if (c->isTriviallyFalse() || (samplePoint && !c->subs(*samplePoint)->isTriviallyTrue())) {
