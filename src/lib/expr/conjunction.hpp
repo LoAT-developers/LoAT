@@ -37,14 +37,14 @@ public:
         });
     }
 
-    void collectVars(theory::VarSet<Th...> &vars) const {
+    void collectVars(theories::VarSet<Th...> &vars) const {
         for (const auto &lit: *this) {
             literal::collectVars<Th...>(lit, vars);
         }
     }
 
-    theory::VarSet<Th...> vars() const {
-        theory::VarSet<Th...> res;
+    theories::VarSet<Th...> vars() const {
+        theories::VarSet<Th...> res;
         collectVars(res);
         return res;
     }

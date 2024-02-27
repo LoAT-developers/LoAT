@@ -27,7 +27,7 @@ using BExpr = std::shared_ptr<const BoolExpression<Th...>>;
 namespace literal {
 
 template<std::size_t I = 0, ITheory... Th>
-inline BExpr<Th...> subsImpl(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th...> &s) {
+inline BExpr<Th...> subsImpl(const typename Theory<Th...>::Lit &lit, const theories::Subs<Th...> &s) {
     if constexpr (I < sizeof...(Th)) {
         if (lit.index() == I) {
             using T = typename std::tuple_element_t<I, std::tuple<Th...>>;
@@ -45,7 +45,7 @@ inline BExpr<Th...> subsImpl(const typename Theory<Th...>::Lit &lit, const theor
 }
 
 template<ITheory... Th>
-BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theory::Subs<Th...> &s) {
+BExpr<Th...> subs(const typename Theory<Th...>::Lit &lit, const theories::Subs<Th...> &s) {
     return subsImpl<0, Th...>(lit, s);
 }
 
@@ -67,12 +67,12 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
     using T = Theory<Th...>;
     using Var = typename T::Var;
     using Lit = typename T::Lit;
-    using VS = theory::VarSet<Th...>;
-    using LS = theory::LitSet<Th...>;
+    using VS = theories::VarSet<Th...>;
+    using LS = theories::LitSet<Th...>;
     using G = Conjunction<Th...>;
     using BE = BExpr<Th...>;
     using BES = BoolExpressionSet<Th...>;
-    using Subs = theory::Subs<Th...>;
+    using Subs = theories::Subs<Th...>;
 
 private:
 
@@ -592,12 +592,12 @@ class BoolTheoryLit: public BoolExpression<Th...> {
     using T = Theory<Th...>;
     using Var = typename T::Var;
     using Lit = typename T::Lit;
-    using VS = theory::VarSet<Th...>;
-    using LS = theory::LitSet<Th...>;
+    using VS = theories::VarSet<Th...>;
+    using LS = theories::LitSet<Th...>;
     using C = Conjunction<Th...>;
     using BE = BExpr<Th...>;
     using BES = BoolExpressionSet<Th...>;
-    using Subs = theory::Subs<Th...>;
+    using Subs = theories::Subs<Th...>;
 
     const Lit lit;
 
@@ -696,12 +696,12 @@ class BoolJunction: public BoolExpression<Th...> {
     using T = Theory<Th...>;
     using Var = typename T::Var;
     using Lit = typename T::Lit;
-    using VS = theory::VarSet<Th...>;
-    using LS = theory::LitSet<Th...>;
+    using VS = theories::VarSet<Th...>;
+    using LS = theories::LitSet<Th...>;
     using C = Conjunction<Th...>;
     using BE = BExpr<Th...>;
     using BES = BoolExpressionSet<Th...>;
-    using Subs = theory::Subs<Th...>;
+    using Subs = theories::Subs<Th...>;
 
     const BES children;
     const ConcatOperator op;

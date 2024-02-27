@@ -66,13 +66,13 @@ void AsymptoticBound::propagateBounds() {
     auto changed {false};
     do {
         changed = false;
-        auto subs {GuardToolbox::propagateEqualities(g, [](const auto &x){return !theories::isTempVar(x);})};
+        auto subs {GuardToolbox::propagateEqualities(g, [](const auto &x){return !theory::isTempVar(x);})};
         if (subs) {
             substitutions.push_back(*subs);
             g = g->subs(Subs::build<Arith>(*subs));
             changed = true;
         } else {
-            subs = GuardToolbox::propagateEqualities(g, [](const auto &x){return theories::isTempVar(x);});
+            subs = GuardToolbox::propagateEqualities(g, [](const auto &x){return theory::isTempVar(x);});
             if (subs) {
                 substitutions.push_back(*subs);
                 g = g->subs(Subs::build<Arith>(*subs));

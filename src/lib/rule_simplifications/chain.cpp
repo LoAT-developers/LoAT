@@ -2,8 +2,8 @@
 #include "theories.hpp"
 
 Var renameVar(const Var &x, Subs &sigma, Subs &inverted) {
-    return theories::apply(x, [&sigma, &inverted](const auto &x) {
-        const auto th {theories::theory(x)};
+    return theory::apply(x, [&sigma, &inverted](const auto &x) {
+        const auto th {theory::theory(x)};
         const auto next {th.next()};
         sigma.put<decltype(th)>(x, th.varToExpr(next));
         inverted.put<decltype(th)>(next, th.varToExpr(x));
@@ -15,7 +15,7 @@ std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) 
     Subs sigma, inverted;
     auto first_vars {first.vars()};
     for (const auto &x: second.vars()) {
-        if (theories::isTempVar(x) && first_vars.contains(x)) {
+        if (theory::isTempVar(x) && first_vars.contains(x)) {
             renameVar(x, sigma, inverted);
         }
     }
@@ -24,8 +24,8 @@ std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) 
 
 std::pair<Rule, Subs> Chaining::chain(const Rule &fst, const Rule &snd) {
     const auto [sigma, inverted] {computeVarRenaming(fst, snd)};
-    const auto guard {fst.getGuard() && snd.getGuard()->subs(theories::compose(sigma, fst.getUpdate()))};
-    const auto up {theories::compose(theories::concat(snd.getUpdate(), sigma), fst.getUpdate())};
+    const auto guard {fst.getGuard() && snd.getGuard()->subs(theory::compose(sigma, fst.getUpdate()))};
+    const auto up {theory::compose(theory::concat(snd.getUpdate(), sigma), fst.getUpdate())};
     return {Rule(guard, up), inverted};
 }
 
@@ -37,12 +37,12 @@ std::tuple<Transition, Subs, Subs> Chaining::chain(const Transition &fst, const 
     VarSet post_vars;
     for (const auto &[pre,post]: *var_map) {
         const auto x {renameVar(post, sigma1, inverted1)};
-        sigma2.put(pre, theories::toExpr(x));
-        inverted2.put(x, theories::toExpr(pre));
+        sigma2.put(pre, theory::toExpr(x));
+        inverted2.put(x, theory::toExpr(pre));
         post_vars.insert(post);
     }
     for (const auto &x: snd.vars()) {
-        if (theories::isTempVar(x) && first_vars.contains(x) && !post_vars.contains(x)) {
+        if (theory::isTempVar(x) && first_vars.contains(x) && !post_vars.contains(x)) {
             renameVar(x, sigma2, inverted2);
         }
     }

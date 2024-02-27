@@ -101,7 +101,7 @@ bool Recurrence::solve() {
     for (const auto &lhs : *order) {
         const auto success {std::visit(
                 [&](const auto lhs) {
-                    const auto th {theories::theory(lhs)};
+                    const auto th {theory::theory(lhs)};
                     return solve(lhs, equations.get<decltype(th)>(lhs));
                 }, lhs)
         };

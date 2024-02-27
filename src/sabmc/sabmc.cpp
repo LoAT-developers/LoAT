@@ -89,22 +89,22 @@ std::pair<Transition, Subs> SABMC::build_loop(const Range &range) {
             for (const auto &x: t.post_vars()) {
                 fst_vars.erase(x);
             }
-            const auto fst_var_renaming {theories::compose(sigma1, s).project(fst_vars)};
+            const auto fst_var_renaming {theory::compose(sigma1, s).project(fst_vars)};
             auto snd_vars {t.post_vars()};
             loop->collectVars(snd_vars);
             for (const auto &x: t.pre_vars()) {
                 snd_vars.erase(x);
             }
-            auto snd_var_renaming {theories::compose(sigma2, var_renaming).project(snd_vars)};
-            var_renaming = theories::compose(fst_var_renaming, snd_var_renaming);
+            auto snd_var_renaming {theory::compose(sigma2, var_renaming).project(snd_vars)};
+            var_renaming = theory::compose(fst_var_renaming, snd_var_renaming);
         } else {
             loop = rule;
             var_renaming = s;
         }
     }
     auto vars {loop->vars()};
-    theories::collectCoDomainVars(var_renaming, vars);
-    const auto model {theories::compose(var_renaming, solver->model(vars).toSubs())};
+    theory::collectCoDomainVars(var_renaming, vars);
+    const auto model {theory::compose(var_renaming, solver->model(vars).toSubs())};
     if (Config::Analysis::log) {
         std::cout << "found loop from " << range.start() << " to " << range.end() << ":" << std::endl;
         std::cout << *loop << std::endl;
@@ -368,7 +368,7 @@ Transition mbp(const Transition &t, const Subs &model, const Var &x) {
 Transition SABMC::mbp(const Transition &trans, const Subs &model) const {
     Transition res {trans};
     for (const auto &x: trans.vars()) {
-        if (theories::isTempVar(x) && !t.post_vars().contains(x)) {
+        if (theory::isTempVar(x) && !t.post_vars().contains(x)) {
             res = ::mbp(res, model, x);
         }
     }
@@ -514,18 +514,18 @@ void SABMC::handle_loop(const Range &range) {
 }
 
 BoolExpr SABMC::encode_transition(const Transition &t) {
-    return t.toBoolExpr() && theories::mkEq(trace_var, arith::mkConst(t.getId()));
+    return t.toBoolExpr() && theory::mkEq(trace_var, arith::mkConst(t.getId()));
 }
 
 void SABMC::add_blocking_clauses() {
     for (const auto &b: blocked) {
         const auto s {get_subs(depth, b.length)};
         // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(ArithSubs({{n, 1}}))) << std::endl;
-        const auto block {!b.trans->subs(theories::compose(Subs::build<Arith>(ArithSubs({{n, arith::mkConst(1)}})), s))};
+        const auto block {!b.trans->subs(theory::compose(Subs::build<Arith>(ArithSubs({{n, arith::mkConst(1)}})), s))};
         solver->add(block || arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id)));
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
-        const std::vector<BoolExpr> lits {theories::mkNeq(trace_var, arith::mkConst(b.id)), theories::mkNeq(trace_var, arith::mkConst(b.id))};
+        const std::vector<BoolExpr> lits {theory::mkNeq(trace_var, arith::mkConst(b.id)), theory::mkNeq(trace_var, arith::mkConst(b.id))};
         solver->add(bools::mkOr(lits));
     }
 }
@@ -553,7 +553,7 @@ void SABMC::build_trace() {
     for (unsigned d = 0; d < depth; ++d) {
         const auto s {get_subs(d, 1)};
         const auto rule {rule_map.at(*(*model.get<Arith>(trace_var)->isRational())->intValue())};
-        const auto comp {theories::compose(s, model)};
+        const auto comp {theory::compose(s, model)};
         const auto imp {rule.syntacticImplicant(comp)};
         run.push_back(comp.project(vars));
         if (prev) {
@@ -576,8 +576,8 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
     if (subs.empty()) {
         Subs s;
         for (const auto &[_,x]: var_map) {
-            theories::apply(x, [&s](const auto &x) {
-                const auto th {theories::theory(x)};
+            theory::apply(x, [&s](const auto &x) {
+                const auto th {theory::theory(x)};
                 s.put<decltype(th)>(x, th.varToExpr(th.next()));
             });
         }
@@ -589,9 +589,9 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
             const auto post_var {var_map.get(var)};
             if (post_var) {
                 s.put(var, subs.back()[0].get(*post_var));
-                s.put(*post_var, theories::toExpr(theories::next(*post_var)));
+                s.put(*post_var, theory::toExpr(theory::next(*post_var)));
             } else {
-                s.put(var, theories::toExpr(theories::next(var)));
+                s.put(var, theory::toExpr(theory::next(var)));
             }
         }
         subs.push_back({s});
@@ -606,7 +606,7 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
                 s.put(var, pre_vec.front().get(var));
                 s.put(*post_var, post.get(*post_var));
             } else {
-                s.put(var, theories::toExpr(theories::next(var)));
+                s.put(var, theory::toExpr(theory::next(var)));
             }
         }
         pre_vec.push_back(s);

@@ -65,7 +65,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }
-    cond = cond && theories::mkEq(ArithVar::loc_var, arith::mkConst(lhsLoc));
+    cond = cond && theory::mkEq(ArithVar::loc_var, arith::mkConst(lhsLoc));
     auto up = rhss.at(0);
     if (Config::Analysis::complexity()) {
         up.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
@@ -100,7 +100,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
         }
         for (unsigned i = 0; i < sz; ++i) {
             if (programVars[i] != vars[ctx->var(i)->getText()]) {
-                throw std::invalid_argument("invalid arguments: expected " + theories::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
+                throw std::invalid_argument("invalid arguments: expected " + theory::getName(programVars[i]) + ", got " + ctx->var(i)->getText());
             }
         }
     }
@@ -211,8 +211,8 @@ antlrcpp::Any KoatParseVisitor::visitLit(KoatParser::LitContext *ctx) {
     case leq: return bools::mkLit(arith::mkLeq(arg1, arg2));
     case gt: return bools::mkLit(arith::mkGt(arg1, arg2));
     case geq: return bools::mkLit(arith::mkGeq(arg1, arg2));
-    case eq: return theories::mkEq(arg1, arg2);
-    case neq: return theories::mkNeq(arg1, arg2);
+    case eq: return theory::mkEq(arg1, arg2);
+    case neq: return theory::mkNeq(arg1, arg2);
     }
     throw std::invalid_argument("unknown relation");
 }

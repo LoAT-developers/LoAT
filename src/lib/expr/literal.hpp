@@ -6,7 +6,7 @@
 namespace literal {
 
 template<std::size_t I = 0, ITheory... Th>
-inline void collectVarsImpl(const typename Theory<Th...>::Lit &lit, theory::VarSet<Th...> &s) {
+inline void collectVarsImpl(const typename Theory<Th...>::Lit &lit, theories::VarSet<Th...> &s) {
     if constexpr (I < sizeof...(Th)) {
         if (lit.index() == I) {
             return std::get<I>(lit).collectVars(s.template get<I>());
@@ -19,13 +19,13 @@ inline void collectVarsImpl(const typename Theory<Th...>::Lit &lit, theory::VarS
 }
 
 template<ITheory... Th>
-void collectVars(const typename Theory<Th...>::Lit &lit, theory::VarSet<Th...> &s) {
+void collectVars(const typename Theory<Th...>::Lit &lit, theories::VarSet<Th...> &s) {
     collectVarsImpl<0, Th...>(lit, s);
 }
 
 template <ITheory... Th>
-theory::VarSet<Th...> vars(const typename Theory<Th...>::Lit &lit) {
-    theory::VarSet<Th...> res;
+theories::VarSet<Th...> vars(const typename Theory<Th...>::Lit &lit) {
+    theories::VarSet<Th...> res;
     collectVars<Th...>(lit, res);
     return res;
 }

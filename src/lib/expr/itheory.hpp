@@ -119,7 +119,7 @@ public:
 
 };
 
-namespace theory {
+namespace theories {
 
 template <ITheory... Th>
 class Subs;

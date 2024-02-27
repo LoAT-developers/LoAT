@@ -26,7 +26,7 @@ Rule::Rule(const BoolExpr guard, const Subs &update): guard(guard), update(updat
 
 void Rule::collectVars(VarSet &vars) const {
     guard->collectVars(vars);
-    theories::collectVars(update, vars);
+    theory::collectVars(update, vars);
 }
 
 VarSet Rule::vars() const {
@@ -36,7 +36,7 @@ VarSet Rule::vars() const {
 }
 
 Rule Rule::subs(const Subs &subs) const {
-    return Rule(guard->subs(subs), theories::concat(update, subs));
+    return Rule(guard->subs(subs), theory::concat(update, subs));
 }
 
 Rule Rule::withGuard(const BoolExpr guard) const {
@@ -48,7 +48,7 @@ Rule Rule::withUpdate(const Subs &update) const {
 }
 
 Rule Rule::chain(const Rule &that) const {
-    return Rule(guard && that.getGuard()->subs(update), theories::compose(that.getUpdate(), update));
+    return Rule(guard && that.getGuard()->subs(update), theory::compose(that.getUpdate(), update));
 }
 
 const BoolExpr Rule::getGuard() const {
@@ -93,7 +93,7 @@ std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
 
 bool Rule::isDeterministic() const {
     for (const auto &x: vars()) {
-        if (theories::isTempVar(x)) {
+        if (theory::isTempVar(x)) {
             return false;
         }
     }

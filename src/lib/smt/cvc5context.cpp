@@ -8,7 +8,7 @@ CVC5Context::CVC5Context(cvc5::Solver& ctx): ctx(ctx), refinement(ctx.mkBoolean(
 CVC5Context::~CVC5Context() { }
 
 cvc5::Term CVC5Context::buildVar(const Var &var) {
-    const auto name {theories::getName(var)};
+    const auto name {theory::getName(var)};
     return std::visit(Overload{
                           [&](const ArithVarPtr&) {
                               return ctx.mkConst(ctx.getIntegerSort(), name);

@@ -16,9 +16,9 @@ using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;
 using ThExpr = TheTheory::Expr;
 using Theories = TheTheory::Theories;
-using VarSet = theory::VarSet<Arith, Bools>;
-using LitSet = theory::LitSet<Arith, Bools>;
-using Subs = theory::Subs<Arith, Bools>;
+using VarSet = theories::VarSet<Arith, Bools>;
+using LitSet = theories::LitSet<Arith, Bools>;
+using Subs = theories::Subs<Arith, Bools>;
 using BSubs = BoolSubs<Arith, Bools>;
 
 const BoolExpr top();
@@ -50,7 +50,7 @@ Bools::Expr mkLit(const TheTheory::Lit &lit);
 
 }
 
-namespace theory {
+namespace theories {
 
 template <size_t I, ITheory T>
 constexpr bool is() {

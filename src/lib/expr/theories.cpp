@@ -1,6 +1,6 @@
 #include "theories.hpp"
 
-namespace theories {
+namespace theory {
 
 std::string getName(const Var &var) {
     return std::visit([](const auto &var){return var->getName();}, var);
@@ -51,11 +51,11 @@ VarSet vars(const ThExpr &e) {
 }
 
 Var first(const Pair &p) {
-    return theory::first<Arith, Bools>(p);
+    return theories::first<Arith, Bools>(p);
 }
 
 ThExpr second(const Pair &p) {
-    return theory::second<Arith, Bools>(p);
+    return theories::second<Arith, Bools>(p);
 }
 
 VarSet vars(const Subs &e) {
@@ -67,7 +67,7 @@ VarSet vars(const Subs &e) {
 void collectVars(const Subs &subs, VarSet &vars) {
     for (const auto &[x,y]: subs) {
         vars.insert(x);
-        theories::collectVars(y, vars);
+        theory::collectVars(y, vars);
     }
 }
 
@@ -150,7 +150,7 @@ Bools theory(const BoolVarPtr&) {
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e) {
-    std::visit([&s](const auto &e){s << theories::getName(e);}, e);
+    std::visit([&s](const auto &e){s << theory::getName(e);}, e);
     return s;
 }
 

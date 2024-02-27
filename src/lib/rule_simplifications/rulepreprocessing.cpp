@@ -32,7 +32,7 @@ using namespace std;
 static VarSet collectVarsInUpdateRhs(const Rule &rule) {
     VarSet varsInUpdate;
     for (const auto &[_, v] : rule.getUpdate()) {
-        theories::collectVars(v, varsInUpdate);
+        theory::collectVars(v, varsInUpdate);
     }
     return varsInUpdate;
 }
@@ -86,8 +86,8 @@ RuleResult eliminateTempVars(Rule rule) {
     if (res) {
         return res;
     }
-    auto varsInUpdate {theories::coDomainVars(rule.getUpdate())};
-    GuardToolbox::SymbolAcceptor isTemp {theories::isTempVar};
+    auto varsInUpdate {theory::coDomainVars(rule.getUpdate())};
+    GuardToolbox::SymbolAcceptor isTemp {theory::isTempVar};
     GuardToolbox::SymbolAcceptor isTempInUpdate {[&](const Var &sym) {
         return isTemp(sym) && varsInUpdate.contains(sym);
     }};
@@ -95,7 +95,7 @@ RuleResult eliminateTempVars(Rule rule) {
     if (res) {
         return res;
     }
-    varsInUpdate = theories::coDomainVars(rule.getUpdate());
+    varsInUpdate = theory::coDomainVars(rule.getUpdate());
     res = propagateEqualities(rule, isTemp);
     if (res) {
         return res;
@@ -106,7 +106,7 @@ RuleResult eliminateTempVars(Rule rule) {
     }
     auto isTempOnlyInGuard = [&](const Var &sym) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
-        return theories::isTempVar(sym) && !varsInUpdate.contains(sym);
+        return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
     return eliminateByTransitiveClosure(rule, true, isTempOnlyInGuard);
 }
@@ -161,7 +161,7 @@ ResultBase<Transition, Proof> eliminateTempVars(const Transition &trans) {
         post_vars.emplace(y);
     }
     const auto allow = [&post_vars](const auto &x) {
-        return theories::isTempVar(x) && !post_vars.contains(x);
+        return theory::isTempVar(x) && !post_vars.contains(x);
     };
     const auto res {GuardToolbox::eliminateTempVars(trans.toBoolExpr(), allow)};
     ResultBase<Transition, Proof> ret {trans};

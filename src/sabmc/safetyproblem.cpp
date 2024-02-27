@@ -5,7 +5,7 @@ BoolExpr rule_to_formula(const Rule &r, const linked_hash_map<Var, Var> &var_map
     std::vector<BoolExpr> conjuncts;
     conjuncts.push_back(r.getGuard());
     for (const auto &[x,y]: var_map) {
-        conjuncts.push_back(theories::mkEq(theories::toExpr(y), r.getUpdate().get(x)));
+        conjuncts.push_back(theory::mkEq(theory::toExpr(y), r.getUpdate().get(x)));
     }
     return bools::mkAnd(conjuncts);
 }
@@ -14,8 +14,8 @@ SafetyProblem::SafetyProblem(const ITSProblem &its) {
     linked_hash_map<Var, Var> var_map;
     const auto vars {its.getVars()};
     for (const auto &x: vars) {
-        if (theories::isProgVar(x)) {
-            const auto post {theories::next(x)};
+        if (theory::isProgVar(x)) {
+            const auto post {theory::next(x)};
             pre_variables.insert(x);
             post_variables.insert(post);
             var_map.emplace(x, post);
@@ -24,8 +24,8 @@ SafetyProblem::SafetyProblem(const ITSProblem &its) {
     this->variables = std::make_shared<const linked_hash_map<Var, Var>>(var_map);
     Subs init_map;
     for (const auto &[x,y]: var_map) {
-        init_map.put(y, theories::toExpr(x));
-        init_map.put(x, theories::toExpr(theories::next(x)));
+        init_map.put(y, theory::toExpr(x));
+        init_map.put(x, theory::toExpr(theory::next(x)));
     }
     std::vector<BoolExpr> init;
     std::vector<BoolExpr> err;

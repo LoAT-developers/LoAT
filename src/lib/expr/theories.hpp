@@ -2,7 +2,7 @@
 
 #include "theory.hpp"
 
-namespace theories {
+namespace theory {
 
 std::string getName(const Var &var);
 
@@ -33,7 +33,7 @@ VarSet vars(const Subs &e);
 template<std::size_t I = 0>
 inline void concatImpl(const Subs &fst, const Subs &snd, Subs &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-        if constexpr (theory::is<I, Bools>()) {
+        if constexpr (theories::is<I, Bools>()) {
             res.get<I>() = fst.get<I>().concat(snd);
         } else {
             res.get<I>() = fst.get<I>().concat(snd.get<I>());
@@ -47,7 +47,7 @@ Subs concat(const Subs &fst, const Subs &snd);
 template<std::size_t I = 0>
 inline void composeImpl(const Subs &fst, const Subs &snd, Subs &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-        if constexpr (theory::is<I, Bools>()) {
+        if constexpr (theories::is<I, Bools>()) {
             res.get<I>() = fst.get<I>().concat(snd).unite(snd.get<I>());
         } else {
             res.get<I>() = fst.get<I>().compose(snd.get<I>());
@@ -61,7 +61,7 @@ Subs compose(const Subs &fst, const Subs &snd);
 template<std::size_t I = 0>
 inline void collectCoDomainVars(const Subs &subs, VarSet &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-        if constexpr (theory::is<I, Bools>()) {
+        if constexpr (theories::is<I, Bools>()) {
             subs.get<I>().collectCoDomainVars(res);
         } else {
             subs.get<I>().collectCoDomainVars(res.get<I>());
@@ -124,10 +124,10 @@ struct tuple_element<1, Subs::Pair> {
 template<std::size_t Index>
 std::tuple_element_t<Index, Subs::Pair> get(const Subs::Pair& p) {
     if constexpr (Index == 0) {
-        return theories::first(p);
+        return theory::first(p);
     }
     if constexpr (Index == 1) {
-        return theories::second(p);
+        return theory::second(p);
     }
 }
 

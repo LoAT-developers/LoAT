@@ -83,8 +83,8 @@ std::any CINTParseVisitor::visitLit(CINTParser::LitContext *ctx) {
     case leq: return bools::mkLit(arith::mkLeq(arg1, arg2));
     case gt: return bools::mkLit(arith::mkGt(arg1, arg2));
     case geq: return bools::mkLit(arith::mkGeq(arg1, arg2));
-    case eq: return theories::mkEq(arg1, arg2);
-    case neq: return theories::mkNeq(arg1, arg2);
+    case eq: return theory::mkEq(arg1, arg2);
+    case neq: return theory::mkNeq(arg1, arg2);
     }
     throw std::invalid_argument("unknown relation");
 }
@@ -114,7 +114,7 @@ std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
     const auto cost_var = its->getCostVar();
     if (ctx->instructions()) {
         const auto loc = its->addLocation();
-        auto continue_cond = cond && theories::mkEq(ArithVar::loc_var, arith::mkConst(pre));
+        auto continue_cond = cond && theory::mkEq(ArithVar::loc_var, arith::mkConst(pre));
         auto body = Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(loc));
         if (Config::Analysis::complexity()) {
             body.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
@@ -122,11 +122,11 @@ std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
         its->addRule(Rule(continue_cond, body), pre);
         current = loc;
         visit(ctx->instructions());
-        const auto backjump_cond = theories::mkEq(ArithVar::loc_var, arith::mkConst(current));
+        const auto backjump_cond = theory::mkEq(ArithVar::loc_var, arith::mkConst(current));
         const auto backjump = Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(pre));
         its->addRule(Rule(backjump_cond, backjump), current);
     } else {
-        const auto nonterm_cond = theories::mkEq(ArithVar::loc_var, arith::mkConst(pre));
+        const auto nonterm_cond = theory::mkEq(ArithVar::loc_var, arith::mkConst(pre));
         Subs nonterm;
         if (Config::Analysis::complexity()) {
             nonterm.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
@@ -134,7 +134,7 @@ std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
         its->addRule(Rule(nonterm_cond, nonterm), pre);
     }
     const auto post = its->addLocation();
-    const auto exit_cond = (!cond)->simplify() && theories::mkEq(ArithVar::loc_var, arith::mkConst(pre));
+    const auto exit_cond = (!cond)->simplify() && theory::mkEq(ArithVar::loc_var, arith::mkConst(pre));
     auto exit = Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(post));
     if (Config::Analysis::complexity()) {
         exit.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
@@ -165,7 +165,7 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
     const auto cost_var = its->getCostVar();
     if (ctx->then()) {
         const auto loc = its->addLocation();
-        const auto consequence_cond = cond && theories::mkEq(ArithVar::loc_var, arith::mkConst(pre));
+        const auto consequence_cond = cond && theory::mkEq(ArithVar::loc_var, arith::mkConst(pre));
         auto consequence = Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(loc));
         if (Config::Analysis::complexity()) {
             consequence.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
@@ -173,11 +173,11 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
         its->addRule(Rule(consequence_cond, consequence), pre);
         current = loc;
         visit(ctx->then());
-        const auto exit_cond = cond && theories::mkEq(ArithVar::loc_var, arith::mkConst(current));
+        const auto exit_cond = cond && theory::mkEq(ArithVar::loc_var, arith::mkConst(current));
         auto exit = Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(post));
         its->addRule(Rule(exit_cond, exit), current);
     } else {
-        const auto exit_cond = cond && theories::mkEq(ArithVar::loc_var, arith::mkConst(pre));
+        const auto exit_cond = cond && theory::mkEq(ArithVar::loc_var, arith::mkConst(pre));
         auto exit = Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(post));
         if (Config::Analysis::complexity()) {
             exit.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
@@ -186,7 +186,7 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
     }
     if (ctx->else_()) {
         const auto loc = its->addLocation();
-        const auto alternative_cond = (!cond)->simplify() && theories::mkEq(ArithVar::loc_var, arith::mkConst(pre));
+        const auto alternative_cond = (!cond)->simplify() && theory::mkEq(ArithVar::loc_var, arith::mkConst(pre));
         auto alternative = Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(loc));
         if (Config::Analysis::complexity()) {
             alternative.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
@@ -194,11 +194,11 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
         its->addRule(Rule(alternative_cond, alternative), pre);
         current = loc;
         visit(ctx->else_());
-        const auto exit_cond = cond && theories::mkEq(ArithVar::loc_var, arith::mkConst(current));
+        const auto exit_cond = cond && theory::mkEq(ArithVar::loc_var, arith::mkConst(current));
         auto exit = Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(post));
         its->addRule(Rule(exit_cond, exit), current);
     } else {
-        const auto exit_cond = (!cond)->simplify() && theories::mkEq(ArithVar::loc_var, arith::mkConst(pre));
+        const auto exit_cond = (!cond)->simplify() && theory::mkEq(ArithVar::loc_var, arith::mkConst(pre));
         auto exit = Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(post));
         if (Config::Analysis::complexity()) {
             exit.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
@@ -213,7 +213,7 @@ std::any CINTParseVisitor::visitAssignment(CINTParser::AssignmentContext *ctx) {
     const auto &name = ctx->V()->getText();
     const auto expr = std::any_cast<Arith::Expr>(visit(ctx->num_expr()));
     const auto loc = its->addLocation();
-    const auto cond = theories::mkEq(ArithVar::loc_var, arith::mkConst(current));
+    const auto cond = theory::mkEq(ArithVar::loc_var, arith::mkConst(current));
     auto up = Subs::build<Arith>(vars.at(name), expr);
     up.put<Arith>(ArithVar::loc_var, arith::mkConst(loc));
     if (Config::Analysis::complexity()) {

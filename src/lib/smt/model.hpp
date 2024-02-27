@@ -9,8 +9,8 @@ class Model
 
     using TheTheory = Theory<Th...>;
     using Theories = typename TheTheory::Theories;
-    using S = theory::Subs<Th...>;
-    using VarSet = typename theory::VarSet<Th...>;
+    using S = theories::Subs<Th...>;
+    using VarSet = typename theories::VarSet<Th...>;
 
 public:
 

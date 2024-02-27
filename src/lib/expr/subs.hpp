@@ -6,7 +6,7 @@
 #include <boost/functional/hash.hpp>
 #include <utility>
 
-namespace theory {
+namespace theories {
 
 template <ITheory... Th>
 class Subs {

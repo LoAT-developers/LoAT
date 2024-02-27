@@ -6,7 +6,7 @@
 #include <optional>
 #include <ostream>
 
-namespace theory {
+namespace theories {
 
 template <class VS, class VSI, class Var, ITheory... Th>
 class ThSet {

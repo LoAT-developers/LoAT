@@ -4,12 +4,12 @@
 LoopComplexity LoopComplexity::compute(const Rule &rule) {
     LoopComplexity res;
     for (const auto &[x,v]: rule.getUpdate()) {
-        const auto vars {theories::vars(v)};
+        const auto vars {theory::vars(v)};
         ++res.non_recursive;
         for (const auto &y: vars) {
             if (x == y) {
                 --res.non_recursive;
-            } else if (theories::isTempVar(y)) {
+            } else if (theory::isTempVar(y)) {
                 ++res.tmp_vars;
             } else {
                 ++res.foreign_vars;

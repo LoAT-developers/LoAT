@@ -12,7 +12,7 @@ class BoolSubs {
 
     using BoolExpr = BExpr<Th...>;
     using T = Theory<Th...>;
-    using VarSet = theory::VarSet<Th...>;
+    using VarSet = theories::VarSet<Th...>;
 
     linked_hash_map<BoolVarPtr, BoolExpr> map{};
 
@@ -67,7 +67,7 @@ public:
         return map.contains(var);
     }
 
-    BoolSubs concat(const theory::Subs<Th...> &that) const {
+    BoolSubs concat(const theories::Subs<Th...> &that) const {
         BoolSubs res;
         for (const auto &p: *this) {
             res.put(p.first, p.second->subs(that));

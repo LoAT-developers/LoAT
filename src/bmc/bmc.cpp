@@ -25,8 +25,8 @@ BoolExpr BMC::encode_transition(const TransIdx idx) {
     const auto up {idx->getUpdate()};
     std::vector<BoolExpr> res {idx->getGuard()};
     for (const auto &x: vars) {
-        if (theories::isProgVar(x)) {
-            res.push_back(theories::mkEq(theories::toExpr(post_vars.at(x)), up.get(x)));
+        if (theory::isProgVar(x)) {
+            res.push_back(theory::mkEq(theory::toExpr(post_vars.at(x)), up.get(x)));
         }
     }
     return bools::mkAnd(res);
@@ -48,7 +48,7 @@ void BMC::analyze() {
     }
     vars.insertAll(its.getVars());
     for (const auto &var: vars) {
-        post_vars.emplace(var, theories::next(var));
+        post_vars.emplace(var, theory::next(var));
     }
     std::vector<BoolExpr> inits;
     for (const auto &idx: its.getInitialTransitions()) {
@@ -94,7 +94,7 @@ void BMC::analyze() {
         for (const auto &var: vars) {
             const auto &post_var {post_vars.at(var)};
             s.put(var, last_s.get(post_var));
-            s.put(post_var, theories::toExpr(theories::next(post_var)));
+            s.put(post_var, theory::toExpr(theory::next(post_var)));
         }
         last_s = s;
         solver.push();
