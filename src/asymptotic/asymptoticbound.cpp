@@ -437,7 +437,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
     const auto e {it->first};
     const auto d {it->second};
     const auto has_limit_vectors
-        {e->map<bool>(
+        {e->apply<bool>(
               [&](const ArithConstPtr c) {
                   if (c->denominator()->is(1)) {
                       l = c->numerator();
@@ -500,7 +500,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
     const auto e {it->first};
     const auto d {it->second};
     const auto has_limit_vectors
-        {e->map<bool>(
+        {e->apply<bool>(
             [&](const ArithConstPtr) {
                 return false;
             },

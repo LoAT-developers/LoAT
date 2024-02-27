@@ -105,7 +105,7 @@ private:
 public:
 
     template <class T>
-    T map(const std::function<T(const ArithConstPtr)> &constant,
+    T apply(const std::function<T(const ArithConstPtr)> &constant,
           const std::function<T(const ArithVarPtr)> &var,
           const std::function<T(const ArithAddPtr)> &add,
           const std::function<T(const ArithMultPtr)> &mult,

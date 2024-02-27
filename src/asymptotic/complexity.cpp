@@ -123,7 +123,7 @@ std::ostream& operator<<(std::ostream &s, const Complexity &cpx) {
 }
 
 Complexity toComplexityRec(const ArithExprPtr term) {
-    return term->map<Complexity>(
+    return term->apply<Complexity>(
         [](const ArithConstPtr) {
             return Complexity::Const;
         },
