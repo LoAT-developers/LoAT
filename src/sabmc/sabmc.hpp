@@ -30,7 +30,7 @@ class SABMC {
 
 private:
 
-    using BoundPair = std::pair<std::optional<Arith::Expression>, std::optional<Arith::Expression>>;
+    using BoundPair = std::pair<std::optional<Arith::Expr>, std::optional<Arith::Expr>>;
     using NondetSubs = linked_hash_map<Arith::Var, BoundPair>;
 
     explicit SABMC(SafetyProblem &t);
@@ -77,9 +77,9 @@ private:
     const Subs& get_subs(const unsigned start, const unsigned steps);
 
     Transition mbp(const Transition &trans, const Subs &model) const;
-    BoundPair bound_selection(const Transition &t, const Subs &model, const Arith::Var x, linked_hash_set<Arith::Expression> &chosen) const;
+    BoundPair bound_selection(const Transition &t, const Subs &model, const Arith::Var x, linked_hash_set<Arith::Expr> &chosen) const;
     NondetSubs bound_selection(const Transition &t, const Subs &model) const;
-    linked_hash_map<BoolTheory::Var, bool> value_selection(const Subs &model) const;
+    linked_hash_map<Bools::Var, bool> value_selection(const Subs &model) const;
     std::pair<NondetSubs, unsigned> closed_form(const NondetSubs &update, const Subs &model);
     void handle_rel(const Rel &rel, const NondetSubs &update, const NondetSubs &closed, const Subs &model, std::vector<BoolExpr> &res);
 

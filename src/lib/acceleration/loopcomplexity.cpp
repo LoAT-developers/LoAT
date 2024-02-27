@@ -1,5 +1,5 @@
 #include "loopcomplexity.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 
 LoopComplexity LoopComplexity::compute(const Rule &rule) {
     LoopComplexity res;
@@ -28,7 +28,7 @@ LoopComplexity LoopComplexity::compute(const Rule &rule) {
             }
         }
     }
-    for (const auto &[x,v]: rule.getUpdate().get<BoolTheory>()) {
+    for (const auto &[x,v]: rule.getUpdate().get<Bools>()) {
         const auto lits {v->lits()};
         const auto lit {BoolLit(x)};
         if (lits.contains(!lit) && !lits.contains(lit)) {

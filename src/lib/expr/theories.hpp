@@ -33,7 +33,7 @@ VarSet vars(const Subs &e);
 template<std::size_t I = 0>
 inline void concatImpl(const Subs &fst, const Subs &snd, Subs &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-        if constexpr (theory::is<I, BoolTheory>()) {
+        if constexpr (theory::is<I, Bools>()) {
             res.get<I>() = fst.get<I>().concat(snd);
         } else {
             res.get<I>() = fst.get<I>().concat(snd.get<I>());
@@ -47,7 +47,7 @@ Subs concat(const Subs &fst, const Subs &snd);
 template<std::size_t I = 0>
 inline void composeImpl(const Subs &fst, const Subs &snd, Subs &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-        if constexpr (theory::is<I, BoolTheory>()) {
+        if constexpr (theory::is<I, Bools>()) {
             res.get<I>() = fst.get<I>().concat(snd).unite(snd.get<I>());
         } else {
             res.get<I>() = fst.get<I>().compose(snd.get<I>());
@@ -61,7 +61,7 @@ Subs compose(const Subs &fst, const Subs &snd);
 template<std::size_t I = 0>
 inline void collectCoDomainVars(const Subs &subs, VarSet &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-        if constexpr (theory::is<I, BoolTheory>()) {
+        if constexpr (theory::is<I, Bools>()) {
             subs.get<I>().collectCoDomainVars(res);
         } else {
             subs.get<I>().collectCoDomainVars(res.get<I>());
@@ -88,7 +88,7 @@ BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2);
 
 Arith theory(const NumVarPtr&);
 
-BoolTheory theory(const BoolVarPtr&);
+Bools theory(const BoolVarPtr&);
 
 template <class ... Ts>
 auto apply(const Var &x, Ts... f) {

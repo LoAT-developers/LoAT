@@ -8,26 +8,26 @@
 
 #include <memory>
 
-struct BoolBaseTheory {
+struct BoolsBase {
     using Lit = BoolLit;
     using Var = BoolVarPtr;
     using Val = bool;
 };
 
-struct BoolTheory: public BoolBaseTheory {
-    using BExpression = BoolExpression<Arith, BoolTheory>;
-    using Expression = std::shared_ptr<const BExpression>;
-    using Subs = BoolSubs<Arith, BoolTheory>;
+struct Bools: public BoolsBase {
+    using BExpression = BoolExpression<Arith, Bools>;
+    using Expr = std::shared_ptr<const BExpression>;
+    using Subs = BoolSubs<Arith, Bools>;
 
-    static Expression valToExpr(const Val &val) {
+    static Expr valToExpr(const Val &val) {
         return val ? BExpression::top() : BExpression::bot();
     }
 
-    static Expression varToExpr(const Var &var) {
+    static Expr varToExpr(const Var &var) {
         return BExpression::mkLit(Lit(var));
     }
 
-    static Expression anyValue() {
+    static Expr anyValue() {
         return BExpression::bot();
     }
 
@@ -37,11 +37,11 @@ struct BoolTheory: public BoolBaseTheory {
 
 };
 
-namespace boolTheory {
+namespace bools {
 
-extern BoolTheory t;
+extern Bools t;
 
 }
 
-static_assert(IBaseTheory<BoolBaseTheory>);
-static_assert(ITheory<BoolTheory>);
+static_assert(IBaseTheory<BoolsBase>);
+static_assert(ITheory<Bools>);

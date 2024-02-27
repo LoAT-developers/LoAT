@@ -16,7 +16,7 @@
  */
 
 #include "rule.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 
 using namespace std;
 

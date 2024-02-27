@@ -1,7 +1,7 @@
 #include "export.hpp"
 #include "config.hpp"
 #include "theory.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 #include "ruleexport.hpp"
 
 using namespace RuleExport;

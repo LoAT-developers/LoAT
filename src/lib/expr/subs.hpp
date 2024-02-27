@@ -16,7 +16,7 @@ class Subs {
     using Var = typename TheTheory::Var;
     using Lit = typename TheTheory::Lit;
     using It = typename TheTheory::Iterator;
-    using Expr = typename TheTheory::Expression;
+    using Expr = typename TheTheory::Expr;
 
     typename TheTheory::Subs t {};
     static const size_t variant_size = std::variant_size_v<Expr>;
@@ -225,7 +225,7 @@ public:
     }
 
     template <ITheory T>
-    void put(const typename T::Var &var, const typename T::Expression &expr) {
+    void put(const typename T::Var &var, const typename T::Expr &expr) {
         std::get<typename T::Subs>(t).put(var, expr);
     }
 
@@ -236,7 +236,7 @@ public:
     }
 
     template<ITheory T>
-    static Subs build(const typename T::Var var, const typename T::Expression expr) {
+    static Subs build(const typename T::Var var, const typename T::Expr expr) {
         Subs subs;
         subs.put<T>(var, expr);
         return subs;
@@ -289,7 +289,7 @@ public:
     }
 
     template <ITheory T>
-    typename T::Expression get(const typename T::Var &var) const {
+    typename T::Expr get(const typename T::Var &var) const {
         return std::get<typename T::Subs>(t).get(var);
     }
 

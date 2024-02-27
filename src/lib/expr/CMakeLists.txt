@@ -27,8 +27,8 @@ add_library(${PROJECT_NAME} STATIC
   boolsubs.hpp
   theory.hpp
   theory.cpp
-  expr.hpp
-  expr.cpp
+  theories.hpp
+  theories.cpp
   exprsubs.hpp
   exprsubs.cpp
   numconstant.cpp

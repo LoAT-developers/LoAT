@@ -41,9 +41,9 @@ private:
 
     bool solve();
 
-    bool solve(const Arith::Var lhs, const Arith::Expression rhs);
+    bool solve(const Arith::Var lhs, const Arith::Expr rhs);
 
-    bool solve(const BoolTheory::Var &lhs, const BoolTheory::Expression rhs);
+    bool solve(const Bools::Var &lhs, const Bools::Expr rhs);
 
     Subs equations;
 

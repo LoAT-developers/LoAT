@@ -27,7 +27,7 @@ public:
      *                        of the form t > 0
      * @param cost a term
      */
-    LimitProblem(const Guard &normalizedGuard, const Arith::Expression cost);
+    LimitProblem(const Guard &normalizedGuard, const Arith::Expr cost);
 
     /**
      * Creates the initial LimitProblem without any cost term.
@@ -68,7 +68,7 @@ public:
      * @param lv must be applicable to *it
      */
     void applyLimitVector(const InftyExpressionSet::const_iterator &it,
-                          const Arith::Expression l, const Arith::Expression r,
+                          const Arith::Expr l, const Arith::Expr r,
                           const LimitVector &lv);
 
     /**

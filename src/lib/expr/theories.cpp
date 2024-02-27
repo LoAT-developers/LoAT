@@ -1,4 +1,4 @@
-#include "expr.hpp"
+#include "theories.hpp"
 
 namespace theories {
 
@@ -51,11 +51,11 @@ VarSet vars(const ThExpr &e) {
 }
 
 Var first(const Pair &p) {
-    return theory::first<Arith, BoolTheory>(p);
+    return theory::first<Arith, Bools>(p);
 }
 
 ThExpr second(const Pair &p) {
-    return theory::second<Arith, BoolTheory>(p);
+    return theory::second<Arith, Bools>(p);
 }
 
 VarSet vars(const Subs &e) {
@@ -90,23 +90,23 @@ VarSet coDomainVars(const Subs &subs) {
 }
 
 void collectVariables(VarSet &res, const Lit &e) {
-    literal::collectVars<Arith, BoolTheory>(e, res);
+    literal::collectVars<Arith, Bools>(e, res);
 }
 
 VarSet variables(const Lit &e) {
-    return literal::vars<Arith, BoolTheory>(e);
+    return literal::vars<Arith, Bools>(e);
 }
 
 bool isTriviallyTrue(const Lit &lit) {
-    return literal::isTriviallyTrue<Arith, BoolTheory>(lit);
+    return literal::isTriviallyTrue<Arith, Bools>(lit);
 }
 
 Lit negate(const Lit &lit) {
-    return literal::negate<Arith, BoolTheory>(lit);
+    return literal::negate<Arith, Bools>(lit);
 }
 
 BoolExpr subs(const Lit &lit, const Subs &s) {
-    return literal::subs<Arith, BoolTheory>(lit, s);
+    return literal::subs<Arith, Bools>(lit, s);
 }
 
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
@@ -140,11 +140,11 @@ BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
 }
 
 Arith theory(const NumVarPtr&) {
-    return intTheory::t;
+    return arith::t;
 }
 
-BoolTheory theory(const BoolVarPtr&) {
-    return boolTheory::t;
+Bools theory(const BoolVarPtr&) {
+    return bools::t;
 }
 
 }

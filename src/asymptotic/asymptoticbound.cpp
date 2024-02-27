@@ -14,13 +14,13 @@
 #include "config.hpp"
 #include "set.hpp"
 #include "guardtoolbox.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 #include "optional.hpp"
 #include "string.hpp"
 
 
 AsymptoticBound::AsymptoticBound(Guard guard,
-                                 Arith::Expression cost, bool finalCheck)
+                                 Arith::Expr cost, bool finalCheck)
     : guard(guard), cost(cost), finalCheck(finalCheck),
       addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP() {}
 
@@ -144,7 +144,7 @@ Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
         assert(!solvedCost->isMultivariate());
         lowerBound = *solvedCost->degree(n);
     } else {
-        std::vector<Arith::Expression> nonPolynomial;
+        std::vector<Arith::Expr> nonPolynomial;
         const auto powers {solvedCost->exps()};
         lowerBound = 1;
         for (const auto &p : powers) {
@@ -433,7 +433,7 @@ bool AsymptoticBound::tryReducingGeneralExp(const InftyExpressionSet::const_iter
 
 bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_iterator &it) {
     std::vector<LimitVector> *limitVectors;
-    Arith::Expression l, r;
+    Arith::Expr l, r;
     const auto e {it->first};
     const auto d {it->second};
     const auto has_limit_vectors
@@ -455,7 +455,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   auto arg_it {args.begin()};
                   l = *arg_it;
                   ++arg_it;
-                  std::vector<Arith::Expression> rhs_args;
+                  std::vector<Arith::Expr> rhs_args;
                   for (; arg_it != args.end(); ++arg_it) {
                       rhs_args.emplace_back(*arg_it);
                   }
@@ -468,7 +468,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   auto arg_it {args.begin()};
                   l = *arg_it;
                   ++arg_it;
-                  std::vector<Arith::Expression> rhs_args;
+                  std::vector<Arith::Expr> rhs_args;
                   for (; arg_it != args.end(); ++arg_it) {
                       rhs_args.emplace_back(*arg_it);
                   }
@@ -495,7 +495,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
 
 
 bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::const_iterator &it) {
-    Arith::Expression l, r;
+    Arith::Expr l, r;
     std::vector<LimitVector> *limitVectors;
     const auto e {it->first};
     const auto d {it->second};
@@ -508,8 +508,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                 return false;
             },
             [&](const AddPtr a) {
-                std::vector<Arith::Expression> l_args;
-                std::vector<Arith::Expression> r_args;
+                std::vector<Arith::Expr> l_args;
+                std::vector<Arith::Expr> r_args;
                 std::optional<NumVarPtr> oneVar;
                 for (const auto &ex: a->getArgs()) {
                     if (ex->isRational()) {
@@ -540,8 +540,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                 return true;
             },
             [&](const MultPtr m) {
-                std::vector<Arith::Expression> l_args;
-                std::vector<Arith::Expression> r_args;
+                std::vector<Arith::Expr> l_args;
+                std::vector<Arith::Expr> r_args;
                 l_args.emplace_back(arith::mkConst(1));
                 r_args.emplace_back(arith::mkConst(1));
                 std::optional<NumVarPtr> oneVar;
@@ -582,7 +582,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
 
 
 bool AsymptoticBound::applyLimitVectorsThatMakeSense(const InftyExpressionSet::const_iterator &it,
-                                                     const Arith::Expression l, const Arith::Expression r,
+                                                     const Arith::Expr l, const Arith::Expr r,
                                                      const std::vector<LimitVector> &limitVectors) {
     bool posInfVector = false;
     bool posConsVector = false;
@@ -712,7 +712,7 @@ bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
 
 
 AsymptoticBound::Result AsymptoticBound::determineComplexity(const Guard &guard,
-                                                             const Arith::Expression &cost,
+                                                             const Arith::Expr &cost,
                                                              bool finalCheck,
                                                              const Complexity &currentRes) {
 

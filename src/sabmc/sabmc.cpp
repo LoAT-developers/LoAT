@@ -1,6 +1,6 @@
 #include "sabmc.hpp"
 #include "chain.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "config.hpp"
@@ -120,8 +120,8 @@ void SABMC::add_learned_clause(const Transition &accel, unsigned length) {
     step = step | encode_transition(accel);
 }
 
-std::optional<Arith::Expression> closest_bound(const linked_hash_set<Arith::Expression> &bounds, const Subs &model, const Arith::Var &x, const linked_hash_set<Arith::Expression> &chosen = {}) {
-    std::optional<Arith::Expression> closest;
+std::optional<Arith::Expr> closest_bound(const linked_hash_set<Arith::Expr> &bounds, const Subs &model, const Arith::Var &x, const linked_hash_set<Arith::Expr> &chosen = {}) {
+    std::optional<Arith::Expr> closest;
     Int dist;
     const auto val {*model.get<Arith>(x)->isInt()};
     for (const auto &b: bounds) {
@@ -138,7 +138,7 @@ std::optional<Arith::Expression> closest_bound(const linked_hash_set<Arith::Expr
     return closest;
 }
 
-bool is_increasing(const Arith::Expression e, const Subs &model, const Arith::Var x) {
+bool is_increasing(const Arith::Expr e, const Subs &model, const Arith::Var x) {
     const auto &current {model.get<Arith>()};
     const auto next {ExprSubs{{x, x + arith::mkConst(1)}}.compose(current)};
     const auto coeff {*e->coeff(x)};
@@ -163,7 +163,7 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
                         subs.put(x, lower_vars[x]);
                     } else {
                         const auto y_pre = t.pre_vars().contains(y) ? y : std::get<Arith::Var>(inverse_var_map[y]);
-                        std::optional<Arith::Expression> y_res;
+                        std::optional<Arith::Expr> y_res;
                         if (is_increasing(*lower, model, y)) {
                             if (!done_lower.contains(y_pre)) {
                                 goto UPPER;
@@ -203,7 +203,7 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
                         subs.put(x, upper_vars[x]);
                     } else {
                         const auto y_pre = t.pre_vars().contains(y) ? y : std::get<Arith::Var>(inverse_var_map[y]);
-                        std::optional<Arith::Expression> y_res;
+                        std::optional<Arith::Expr> y_res;
                         if (is_increasing(*upper, model, y)) {
                             if (!done_upper.contains(y_pre)) {
                                 goto NEXT;
@@ -244,8 +244,8 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
         for (const auto &[x,_]: update) {
             const auto low_var {lower_vars[x]};
             const auto up_var {upper_vars[x]};
-            const auto low = rec->closed_form.contains(low_var) ? reverse_low_up_vars(rec->closed_form.get<Arith>(low_var)) : std::optional<Arith::Expression>();
-            const auto up = rec->closed_form.contains(up_var) ? reverse_low_up_vars(rec->closed_form.get<Arith>(up_var)) : std::optional<Arith::Expression>();
+            const auto low = rec->closed_form.contains(low_var) ? reverse_low_up_vars(rec->closed_form.get<Arith>(low_var)) : std::optional<Arith::Expr>();
+            const auto up = rec->closed_form.contains(up_var) ? reverse_low_up_vars(rec->closed_form.get<Arith>(up_var)) : std::optional<Arith::Expr>();
             res.first.emplace(x, BoundPair{low, up});
         }
         res.second = rec->prefix;
@@ -255,23 +255,23 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
     return res;
 }
 
-linked_hash_map<BoolTheory::Var, bool> SABMC::value_selection(const Subs &model) const {
-    linked_hash_map<BoolTheory::Var, bool> res;
+linked_hash_map<Bools::Var, bool> SABMC::value_selection(const Subs &model) const {
+    linked_hash_map<Bools::Var, bool> res;
     for (const auto &x: t.pre_vars()) {
-        if (std::holds_alternative<BoolTheory::Var>(x)) {
-            const auto bv {std::get<BoolTheory::Var>(x)};
+        if (std::holds_alternative<Bools::Var>(x)) {
+            const auto bv {std::get<Bools::Var>(x)};
             res.emplace(bv, model.get(var_map[x]) == ThExpr(BExpression::top()));
         }
     }
     return res;
 }
 
-SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Subs &model, const Arith::Var x, linked_hash_set<Arith::Expression> &chosen) const {
+SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Subs &model, const Arith::Var x, linked_hash_set<Arith::Expr> &chosen) const {
     const auto post_var {std::get<Arith::Var>(var_map[x])};
     const auto bounds {trans.toBoolExpr()->getBounds(post_var)};
     const auto equalities {bounds.equalities()};
     if (!equalities.empty()) {
-        std::optional<Arith::Expression> res;
+        std::optional<Arith::Expr> res;
         for (const auto &e: equalities) {
             if (!res) {
                 res = e;
@@ -316,7 +316,7 @@ SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Subs &mod
 
 SABMC::NondetSubs SABMC::bound_selection(const Transition &trans, const Subs &model) const {
     NondetSubs res;
-    linked_hash_set<Arith::Expression> chosen;
+    linked_hash_set<Arith::Expr> chosen;
     for (const auto &x: t.pre_vars()) {
         if (std::holds_alternative<Arith::Var>(x)) {
             const auto nv {std::get<Arith::Var>(x)};
@@ -326,8 +326,8 @@ SABMC::NondetSubs SABMC::bound_selection(const Transition &trans, const Subs &mo
     return res;
 }
 
-Transition mbp(const Transition &t, const Subs &model, const BoolTheory::Var x) {
-    return t.subs(Subs::build<BoolTheory>(x, model.get<BoolTheory>(x)));
+Transition mbp(const Transition &t, const Subs &model, const Bools::Var x) {
+    return t.subs(Subs::build<Bools>(x, model.get<Bools>(x)));
 }
 
 Transition mbp(const Transition &t, const Subs &model, const Arith::Var x) {
@@ -354,7 +354,7 @@ Transition mbp(const Transition &t, const Subs &model, const Arith::Var x) {
 Transition mbp(const Transition &t, const Subs &model, const Var &x) {
     return std::visit(
         Overload{
-            [&](const BoolTheory::Var x) {
+            [&](const Bools::Var x) {
                 return mbp(t, model, x);
             },
             [&](const Arith::Var x) {
@@ -417,7 +417,7 @@ void SABMC::handle_rel(const Rel &rel, const NondetSubs &update, const NondetSub
     ExprSubs but_last;
     for (const auto &x: vars) {
         if (!t.post_vars().contains(x)) {
-            Arith::Expression updated;
+            Arith::Expr updated;
             if (closed.contains(x)) {
                 const auto up {closed[x]};
                 if (is_increasing(lhs, model, x)) {
@@ -496,7 +496,7 @@ void SABMC::handle_loop(const Range &range) {
         std::cout << "handled rels: " << BExpression::mkAnd(res) << std::endl;
     }
     for (const auto &[x,b]: bool_update) {
-        const auto post {std::get<BoolTheory::Var>(var_map[x])};
+        const auto post {std::get<Bools::Var>(var_map[x])};
         res.push_back(BExpression::mkLit(BoolLit(post, b)));
     }
     res.push_back(BExpression::mkLit(Rel::mkGeq(n, arith::mkConst(prefix))));

@@ -16,9 +16,9 @@
  */
 
 #include "rulepreprocessing.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 #include "guardtoolbox.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 
 #include <unordered_set>
 #include <numeric>
@@ -41,7 +41,7 @@ RuleResult propagateBooleanEqualities(const Rule &rule) {
     RuleResult res {rule};
     const auto subs {GuardToolbox::propagateBooleanEqualities(rule.getGuard())};
     if (subs) {
-        res = res->subs(Subs::build<BoolTheory>(*subs));
+        res = res->subs(Subs::build<Bools>(*subs));
         res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
         res.storeSubProof(subs.getProof());
     }

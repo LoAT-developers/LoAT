@@ -35,7 +35,7 @@ namespace sexpressionparser {
 
         BoolExpr parseConstraint(sexpresso::Sexp &sexp, bool negate);
 
-        Arith::Expression parseExpression(sexpresso::Sexp &sexp);
+        Arith::Expr parseExpression(sexpresso::Sexp &sexp);
 
         std::vector<std::string> preVars {};
         std::vector<std::string> postVars {};

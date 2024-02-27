@@ -3,19 +3,19 @@
 namespace SmtFactory {
 
 SmtPtr solver(Logic logic) {
-    return _solver<Arith, BoolTheory>(logic);
+    return _solver<Arith, Bools>(logic);
 }
 
 SmtPtr solver() {
-    return _solver<Arith, BoolTheory>();
+    return _solver<Arith, Bools>();
 }
 
 SmtPtr modelBuildingSolver(Logic logic) {
-    return _modelBuildingSolver<Arith, BoolTheory>(logic);
+    return _modelBuildingSolver<Arith, Bools>(logic);
 }
 
 SmtResult check(const BoolExpr e) {
-    return _check<Arith, BoolTheory>(e);
+    return _check<Arith, Bools>(e);
 }
 
 }

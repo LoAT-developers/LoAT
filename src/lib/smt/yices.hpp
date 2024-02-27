@@ -100,13 +100,13 @@ public:
                     assert(mp::denominator(val) == 1);
                     res.template put<Arith>(std::get<Arith::Var>(x), mp::numerator(val));
                 }
-            } else if constexpr ((std::same_as<BoolTheory, Th> || ...)) {
+            } else if constexpr ((std::same_as<Bools, Th> || ...)) {
                 if (std::holds_alternative<BoolVar>(x)) {
                     int32_t val;
                     if (yices_get_bool_value(m, y, &val) != 0) {
                         throw YicesError();
                     }
-                    res.template put<BoolTheory>(std::get<BoolVar>(x), val);
+                    res.template put<Bools>(std::get<BoolVar>(x), val);
                 }
             } else {
                 throw std::logic_error("unknown variable type");

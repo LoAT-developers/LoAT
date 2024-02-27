@@ -10,18 +10,18 @@ struct Arith {
     using Lit = Rel;
     using Var = NumVarPtr;
     using Subs = ExprSubs;
-    using Expression = ExprPtr;
+    using Expr = ExprPtr;
     using Val = Int;
 
-    static Expression valToExpr(const Val &val) {
+    static Expr valToExpr(const Val &val) {
         return arith::mkConst(val);
     }
 
-    static Expression varToExpr(const Var &var) {
+    static Expr varToExpr(const Var &var) {
         return var->toExpr();
     }
 
-    static Expression anyValue() {
+    static Expr anyValue() {
         return 0;
     }
 
@@ -31,7 +31,7 @@ struct Arith {
 
 };
 
-namespace intTheory {
+namespace arith {
 
 extern Arith t;
 

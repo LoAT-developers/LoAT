@@ -49,15 +49,15 @@ public:
                     return;
                 }
             }
-            if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
-                if (std::holds_alternative<BoolTheory::Var>(x)) {
-                    const auto var {std::get<BoolTheory::Var>(x)};
+            if constexpr ((std::is_same_v<Bools, Th> || ...)) {
+                if (std::holds_alternative<Bools::Var>(x)) {
+                    const auto var {std::get<Bools::Var>(x)};
                     switch (m.eval(y).bool_value()) {
                     case Z3_L_FALSE:
-                        res.template put<BoolTheory>(var, false);
+                        res.template put<Bools>(var, false);
                         break;
                     case Z3_L_TRUE:
-                        res.template put<BoolTheory>(var, true);
+                        res.template put<Bools>(var, true);
                         break;
                     default: break;
                     }

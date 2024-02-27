@@ -1,16 +1,16 @@
 #include "KoatParseVisitor.h"
-#include "expr.hpp"
+#include "theories.hpp"
 #include "config.hpp"
 
 enum relop_type {lt, leq, gt, geq, eq, neq};
 
 using fs_type = LocationIdx;
 using lhs_type = LocationIdx;
-using to_type = Arith::Expression;
+using to_type = Arith::Expr;
 using com_type = std::vector<Subs>;
 using cond_type = BoolExpr;
 using rhs_type = Subs;
-using expr_type = Arith::Expression;
+using expr_type = Arith::Expr;
 using var_type = Arith::Var;
 using lit_type = BoolExpr;
 using formula_type = BoolExpr;

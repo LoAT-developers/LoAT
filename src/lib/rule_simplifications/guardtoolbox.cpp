@@ -48,7 +48,7 @@ ResultBase<BSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr
     ResultBase<BSubs, Proof> res;
     const auto equiv {e->impliedEqualities()};
     if (!equiv.empty()) {
-        res = equiv.get<BoolTheory>();
+        res = equiv.get<Bools>();
         res.append(stringstream() << "propagated equivalences: " << equiv << std::endl);
     }
     return res;
@@ -82,7 +82,7 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
     for (const auto &var : tryVars) {
         if (!allow(var)) continue;
 
-        vector<Arith::Expression> varLessThan, varGreaterThan; //var <= expr and var >= expr
+        vector<Arith::Expr> varLessThan, varGreaterThan; //var <= expr and var >= expr
         vector<Arith::Lit> guardTerms; //indices of guard terms that can be removed if successful
 
         size_t explosive_lower {0};
@@ -143,7 +143,7 @@ ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr e) {
     ResultBase<BoolExpr, Proof> res {e};
     const auto subs {GuardToolbox::propagateBooleanEqualities(e)};
     if (subs) {
-        res = e->subs(Subs::build<BoolTheory>(*subs));
+        res = e->subs(Subs::build<Bools>(*subs));
         res.append("Propagated Equivalences");
         res.storeSubProof(subs.getProof());
     }

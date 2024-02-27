@@ -17,7 +17,7 @@
 
 #include "parser.hpp"
 #include "config.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 
 #include <fstream>
 #include <boost/algorithm/string.hpp>
@@ -159,7 +159,7 @@ namespace sexpressionparser {
         throw std::invalid_argument("");
     }
 
-    Arith::Expression Self::parseExpression(sexpresso::Sexp &sexp) {
+    Arith::Expr Self::parseExpression(sexpresso::Sexp &sexp) {
         if (sexp.childCount() == 1) {
             const auto &str {sexp.str()};
             if (std::isdigit(str[0]) || str[0] == '-') {

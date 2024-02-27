@@ -1,5 +1,5 @@
 #include "bmc.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 #include "preprocessing.hpp"
 #include "smtfactory.hpp"
 #include "config.hpp"

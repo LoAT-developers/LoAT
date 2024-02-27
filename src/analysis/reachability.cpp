@@ -9,7 +9,7 @@
 #include "asymptoticbound.hpp"
 #include "vareliminator.hpp"
 #include "chain.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 #include "config.hpp"
 #include "ruleexport.hpp"
 

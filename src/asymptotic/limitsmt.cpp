@@ -14,7 +14,7 @@ using namespace std;
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a positive constant
  */
-static BExpr<Arith> posConstraint(const map<Int, Arith::Expression>& coefficients) {
+static BExpr<Arith> posConstraint(const map<Int, Arith::Expr>& coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         if (degree > 0) {
@@ -32,7 +32,7 @@ static BExpr<Arith> posConstraint(const map<Int, Arith::Expression>& coefficient
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a negative constant
  */
-static BExpr<Arith> negConstraint(const map<Int, Arith::Expression>& coefficients) {
+static BExpr<Arith> negConstraint(const map<Int, Arith::Expr>& coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (const auto &[degree, c] : coefficients) {
         if (degree > 0) {
@@ -50,7 +50,7 @@ static BExpr<Arith> negConstraint(const map<Int, Arith::Expression>& coefficient
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = -\infty
  */
-static BExpr<Arith> negInfConstraint(const map<Int, Arith::Expression>& coefficients) {
+static BExpr<Arith> negInfConstraint(const map<Int, Arith::Expr>& coefficients) {
     Int maxDegree {0};
     for (const auto &[degree, _]: coefficients) {
         maxDegree = degree > maxDegree ? degree : maxDegree;
@@ -76,7 +76,7 @@ static BExpr<Arith> negInfConstraint(const map<Int, Arith::Expression>& coeffici
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = \infty
  */
-static BExpr<Arith> posInfConstraint(const map<Int, Arith::Expression>& coefficients) {
+static BExpr<Arith> posInfConstraint(const map<Int, Arith::Expr>& coefficients) {
     Int maxDegree {0};
     for (const auto &[degree, _] : coefficients) {
         maxDegree = degree > maxDegree ? degree : maxDegree;
@@ -100,16 +100,16 @@ static BExpr<Arith> posInfConstraint(const map<Int, Arith::Expression>& coeffici
 /**
  * @return the (abstract) coefficients of 'n' in 'ex', where the key is the degree of the respective monomial
  */
-static map<Int, Arith::Expression> getCoefficients(const Arith::Expression ex, const Arith::Var n) {
+static map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::Var n) {
     const auto maxDegree {ex->degree(n)};
-    map<Int, Arith::Expression> coefficients;
+    map<Int, Arith::Expr> coefficients;
     for (int i = 0; i <= maxDegree; i++) {
         coefficients.emplace(i, *ex->coeff(n, i));
     }
     return coefficients;
 }
 
-std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Arith::Expression cost, Complexity currentRes) {
+std::optional<ExprSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
     const auto solver {SmtFactory::_modelBuildingSolver<Arith>(Smt<Arith>::chooseLogic<std::vector<Theory<Arith>::Lit>, ExprSubs>({currentLP.getQuery(), {Rel::mkGt(cost, 0)}}, {}))};
     // the parameter of the desired family of solutions
@@ -225,7 +225,7 @@ BExpr<Arith> encodeBoolExpr(const BExpr<Arith> expr, const ExprSubs &templateSub
     }
 }
 
-std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<Arith> expr, const Arith::Expression cost, Complexity currentRes) {
+std::pair<ExprSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<Arith> expr, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
     auto solver {SmtFactory::_modelBuildingSolver<Arith>(Smt<Arith>::chooseLogic(BoolExpressionSet<Arith>{expr, BoolExpression<Arith>::mkLit(Rel::mkGt(cost, 0))}))};
     // the parameter of the desired family of solutions

@@ -1,5 +1,5 @@
 #include "chain.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 
 Var renameVar(const Var &x, Subs &sigma, Subs &inverted) {
     return theories::apply(x, [&sigma, &inverted](const auto &x) {

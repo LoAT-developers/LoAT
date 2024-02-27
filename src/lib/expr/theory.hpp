@@ -8,19 +8,19 @@
 #include <variant>
 #include <tuple>
 
-using TheTheory = Theory<Arith, BoolTheory>;
-using BoolExpr = BExpr<Arith, BoolTheory>;
-using BExpression = BoolExpression<Arith, BoolTheory>;
-using BoolExprSet = BoolExpressionSet<Arith, BoolTheory>;
-using Guard = Conjunction<Arith, BoolTheory>;
+using TheTheory = Theory<Arith, Bools>;
+using BoolExpr = BExpr<Arith, Bools>;
+using BExpression = BoolExpression<Arith, Bools>;
+using BoolExprSet = BoolExpressionSet<Arith, Bools>;
+using Guard = Conjunction<Arith, Bools>;
 using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;
-using ThExpr = TheTheory::Expression;
+using ThExpr = TheTheory::Expr;
 using Theories = TheTheory::Theories;
-using VarSet = theory::VarSet<Arith, BoolTheory>;
-using LitSet = theory::LitSet<Arith, BoolTheory>;
-using Subs = theory::Subs<Arith, BoolTheory>;
-using BSubs = BoolSubs<Arith, BoolTheory>;
+using VarSet = theory::VarSet<Arith, Bools>;
+using LitSet = theory::LitSet<Arith, Bools>;
+using Subs = theory::Subs<Arith, Bools>;
+using BSubs = BoolSubs<Arith, Bools>;
 
 const BoolExpr top();
 const BoolExpr bot();

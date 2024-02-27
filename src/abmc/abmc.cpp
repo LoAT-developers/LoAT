@@ -1,6 +1,6 @@
 #include "abmc.hpp"
 #include "chain.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "smtfactory.hpp"
@@ -294,7 +294,7 @@ void ABMC::build_trace() {
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
         const auto s {subs.at(d)};
-        const auto rule {rule_map.at(*(*std::get<Arith::Expression>(model.get(trace_var))->isRational())->intValue())};
+        const auto rule {rule_map.at(*(*std::get<Arith::Expr>(model.get(trace_var))->isRational())->intValue())};
         const auto comp {theories::compose(s, model)};
         const auto imp {rule->getGuard()->syntacticImplicant(comp)};
         auto vars {rule->getUpdate().domain()};

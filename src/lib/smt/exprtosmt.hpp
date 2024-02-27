@@ -48,7 +48,7 @@ protected:
                     return convertRelational(std::get<Rel>(lit));
                 }
             }
-            if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
+            if constexpr ((std::is_same_v<Bools, Th> || ...)) {
                 if (std::holds_alternative<BoolLit>(lit)) {
                     return convertLit(std::get<BoolLit>(lit));
                 }

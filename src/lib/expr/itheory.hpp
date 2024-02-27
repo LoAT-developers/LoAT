@@ -52,11 +52,11 @@ concept IBaseTheory = requires(T t) {
 template <typename T>
 concept ITheory = requires(T t, typename T::Val val, typename T::Var var) {
         requires IBaseTheory<T>;
-        typename T::Expression;
+        typename T::Expr;
         typename T::Subs;
-        {T::valToExpr(val)} -> std::same_as<typename T::Expression>;
-        {T::varToExpr(var)} -> std::same_as<typename T::Expression>;
-        {T::anyValue()} -> std::same_as<typename T::Expression>;
+        {T::valToExpr(val)} -> std::same_as<typename T::Expr>;
+        {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
+        {T::anyValue()} -> std::same_as<typename T::Expr>;
 };
 
 template<ITheory... Th>
@@ -71,14 +71,14 @@ public:
     using Val = std::variant<typename Th::Val...>;
     using Model = std::tuple<linked_hash_map<typename Th::Var, typename Th::Val>...>;
     using Subs = std::tuple<typename Th::Subs...>;
-    using Expression = std::variant<typename Th::Expression...>;
-    using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expression>...>;
+    using Expr = std::variant<typename Th::Expr...>;
+    using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expr>...>;
     using Iterator = std::variant<typename Th::Subs::const_iterator...>;
 
 private:
 
     template <size_t I = 0>
-    inline static Expression varToExprImpl(const Var &var) {
+    inline static Expr varToExprImpl(const Var &var) {
         if constexpr (I < sizeof...(Th)) {
             if (var.index() == I) {
                 return std::tuple_element_t<I, Theories>::varToExpr(std::get<I>(var));
@@ -92,14 +92,14 @@ private:
 
 public:
 
-    static Expression varToExpr(const Var &var) {
+    static Expr varToExpr(const Var &var) {
         return varToExprImpl<0>(var);
     }
 
 private:
 
     template <size_t I = 0>
-    inline static Expression anyValueImpl(const size_t i) {
+    inline static Expr anyValueImpl(const size_t i) {
         if constexpr (I < sizeof...(Th)) {
             if (i == I) {
                 return std::tuple_element_t<I, Theories>::anyValue();
@@ -113,7 +113,7 @@ private:
 
 public:
 
-    static Expression anyValue(const size_t i) {
+    static Expr anyValue(const size_t i) {
         return anyValueImpl<0>(i);
     }
 
@@ -137,8 +137,8 @@ std::enable_if_t<(sizeof...(Th) > 0), typename Theory<Th...>::Var> first(const t
 }
 
 template<ITheory... Th>
-std::enable_if_t<(sizeof...(Th) > 0), typename Theory<Th...>::Expression> second(const typename Subs<Th...>::Pair &p) {
-    return std::visit([](const auto &p){return typename Theory<Th...>::Expression(p.second);}, p);
+std::enable_if_t<(sizeof...(Th) > 0), typename Theory<Th...>::Expr> second(const typename Subs<Th...>::Pair &p) {
+    return std::visit([](const auto &p){return typename Theory<Th...>::Expr(p.second);}, p);
 }
 
 }

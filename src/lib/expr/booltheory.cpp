@@ -1,7 +1,7 @@
 #include "booltheory.hpp"
 
-namespace boolTheory {
+namespace bools {
 
-BoolTheory t {};
+Bools t {};
 
 }

@@ -180,7 +180,7 @@ void ITSProblem::print(std::ostream &s) const {
     ITSExport::printForProof(*this, s);
 }
 
-Arith::Expression ITSProblem::getCost(const Rule &rule) const {
+Arith::Expr ITSProblem::getCost(const Rule &rule) const {
     return rule.getUpdate().get<Arith>(cost) - cost;
 }
 

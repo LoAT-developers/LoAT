@@ -25,7 +25,7 @@ private:
         int inftyVars;
     };
 
-    AsymptoticBound(Guard guard, Arith::Expression cost, bool finalCheck);
+    AsymptoticBound(Guard guard, Arith::Expr cost, bool finalCheck);
 
     void initLimitVectors();
     void createInitialLimitProblem();
@@ -47,14 +47,14 @@ private:
     bool tryApplyingLimitVector(const InftyExpressionSet::const_iterator &it);
     bool tryApplyingLimitVectorSmartly(const InftyExpressionSet::const_iterator &it);
     bool applyLimitVectorsThatMakeSense(const InftyExpressionSet::const_iterator &it,
-                                        const Arith::Expression l, const Arith::Expression r,
+                                        const Arith::Expr l, const Arith::Expr r,
                                         const std::vector<LimitVector> &limitVectors);
     bool tryInstantiatingVariable();
     bool trySubstitutingVariable();
     bool trySmtEncoding(Complexity currentRes);
 
     const Guard guard;
-    const Arith::Expression cost;
+    const Arith::Expr cost;
     bool finalCheck;
     ComplexityResult bestComplexity {};
     Proof proof {};
@@ -80,7 +80,7 @@ public:
         Complexity cpx;
 
         // The resulting cost, after expressing variables in terms of n.
-        Arith::Expression solvedCost;
+        Arith::Expr solvedCost;
 
         // The number of non-constant variables (i.e., which grow with n).
         int inftyVars;
@@ -88,7 +88,7 @@ public:
         Proof proof{};
 
         explicit Result(Complexity c) : cpx(c), solvedCost(0), inftyVars(0) {}
-        Result(Complexity c, const Arith::Expression x, int v, Proof &proof) : cpx(c), solvedCost(x), inftyVars(v), proof(proof) {}
+        Result(Complexity c, const Arith::Expr x, int v, Proof &proof) : cpx(c), solvedCost(x), inftyVars(v), proof(proof) {}
     };
 
     /**
@@ -97,7 +97,7 @@ public:
      * @param finalCheck enables more sophisticated backtracking and uses Timeout::hard
      */
     static Result determineComplexity(const Guard &guard,
-                                      const Arith::Expression &cost,
+                                      const Arith::Expr &cost,
                                       bool finalCheck = false,
                                       const Complexity &currentRes = Complexity::Const);
 

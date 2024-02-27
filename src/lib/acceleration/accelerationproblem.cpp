@@ -1,7 +1,7 @@
 #include "accelerationproblem.hpp"
 #include "recurrence.hpp"
 #include "smtfactory.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 #include "boolexpr.hpp"
 #include "relevantvariables.hpp"
 
@@ -102,9 +102,9 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             return false;
         } else {
             auto sample_point {samplePoint->get<Arith>()};
-            std::vector<Arith::Expression> derivatives {rel.lhs()};
+            std::vector<Arith::Expr> derivatives {rel.lhs()};
             std::vector<Rational> signs {(*sample_point(rel.lhs())->isRational())->getValue()};
-            Arith::Expression diff;
+            Arith::Expr diff;
             do {
                 const auto &last {derivatives.back()};
                 diff = up(last) - last;
@@ -285,7 +285,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     std::vector<BoolExpr> eqs;
     const auto vars {util::RelevantVariables::find(theories::variables(lit), update)};
     for (const auto& v: vars) {
-        if (std::holds_alternative<BoolTheory::Var>(v)) {
+        if (std::holds_alternative<Bools::Var>(v)) {
             // encoding equality for booleans introduces a disjunction
             return false;
         }

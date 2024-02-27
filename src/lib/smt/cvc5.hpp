@@ -56,10 +56,10 @@ public:
                     return;
                 }
             }
-            if constexpr ((std::is_same_v<BoolTheory, Th> || ...)) {
-                if (std::holds_alternative<BoolTheory::Var>(x)) {
-                    const auto var {std::get<BoolTheory::Var>(x)};
-                    res.template put<BoolTheory>(var, this->solver.getValue(y).getBooleanValue());
+            if constexpr ((std::is_same_v<Bools, Th> || ...)) {
+                if (std::holds_alternative<Bools::Var>(x)) {
+                    const auto var {std::get<Bools::Var>(x)};
+                    res.template put<Bools>(var, this->solver.getValue(y).getBooleanValue());
                     return;
                 }
             }

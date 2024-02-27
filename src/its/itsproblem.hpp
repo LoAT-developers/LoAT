@@ -77,7 +77,7 @@ public:
     // Print the ITSProblem in a simple, but user-friendly format
     void print(std::ostream &s) const;
 
-    Arith::Expression getCost(const Rule &rule) const;
+    Arith::Expr getCost(const Rule &rule) const;
 
     Arith::Var getCostVar() const;
 

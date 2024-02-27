@@ -1,6 +1,6 @@
 #include "arith.hpp"
 
-namespace intTheory {
+namespace arith {
 
 Arith t {};
 

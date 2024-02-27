@@ -19,7 +19,7 @@
 #include "dependencyorder.hpp"
 #include "arith.hpp"
 #include "numexpressionutils.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 
 #include <purrs.hh>
 #include <boost/algorithm/string.hpp>
@@ -29,7 +29,7 @@ using namespace std;
 Recurrence::Recurrence(const Subs &equations, const Arith::Var n):
     equations(equations), n(n) {}
 
-bool Recurrence::solve(const Arith::Var lhs, const Arith::Expression rhs) {
+bool Recurrence::solve(const Arith::Var lhs, const Arith::Expr rhs) {
     auto [updated, map] {closed_form_pre.get<Arith>()(rhs)->toPurrs()};
     updated = updated.substitute(map.left.at(this->n), Purrs::Recurrence::n);
     const auto vars {rhs->vars()};
@@ -70,13 +70,13 @@ bool Recurrence::solve(const Arith::Var lhs, const Arith::Expression rhs) {
     return true;
 }
 
-bool Recurrence::solve(const BoolTheory::Var &lhs, const BoolTheory::Expression rhs) {
+bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr rhs) {
     const auto updated {rhs->subs(closed_form_pre)};
     if (updated->lits().contains(BoolLit(lhs, true))) {
         return false;
     }
     const auto &vars {updated->vars()};
-    if (vars.contains(lhs) && vars.size() != vars.get<BoolTheory::Var>().size()) {
+    if (vars.contains(lhs) && vars.size() != vars.get<Bools::Var>().size()) {
         return false;
     }
     unsigned prefix {1};
@@ -88,8 +88,8 @@ bool Recurrence::solve(const BoolTheory::Var &lhs, const BoolTheory::Expression 
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    closed_form_pre.put<BoolTheory>(lhs, updated);
-    result.closed_form.put<BoolTheory>(lhs, updated);
+    closed_form_pre.put<Bools>(lhs, updated);
+    result.closed_form.put<Bools>(lhs, updated);
     return true;
 }
 

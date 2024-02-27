@@ -10,7 +10,7 @@ LimitProblem::LimitProblem()
 }
 
 
-LimitProblem::LimitProblem(const Guard &normalizedGuard, const Arith::Expression cost)
+LimitProblem::LimitProblem(const Guard &normalizedGuard, const Arith::Expr cost)
     : LimitProblem() {
     for (const auto &lit : normalizedGuard) {
         addExpression(InftyExpression(std::get<Rel>(lit).lhs(), POS));
@@ -110,7 +110,7 @@ InftyExpressionSet::iterator LimitProblem::cend() const {
 
 
 void LimitProblem::applyLimitVector(const InftyExpressionSet::const_iterator &it,
-                                    const Arith::Expression l, const Arith::Expression r,
+                                    const Arith::Expr l, const Arith::Expr r,
                                     const LimitVector &lv) {
     const auto &[_,d] {*it};
     assert(lv.isApplicable(d));

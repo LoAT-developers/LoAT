@@ -1,6 +1,6 @@
 #include "CINTParseVisitor.h"
 #include "config.hpp"
-#include "expr.hpp"
+#include "theories.hpp"
 
 enum relop_type {lt, leq, gt, geq, eq, neq};
 
@@ -16,9 +16,9 @@ std::any CINTParseVisitor::visitNondet(CINTParser::NondetContext *ctx) {
 
 std::any CINTParseVisitor::visitNum_expr(CINTParser::Num_exprContext *ctx) {
     if (ctx->num_expr().size() > 0) {
-        const auto lhs = std::any_cast<Arith::Expression>(visit(ctx->num_expr(0)));
+        const auto lhs = std::any_cast<Arith::Expr>(visit(ctx->num_expr(0)));
         if (ctx->num_expr().size() == 2) {
-            const auto rhs = std::any_cast<Arith::Expression>(visit(ctx->num_expr(1)));
+            const auto rhs = std::any_cast<Arith::Expr>(visit(ctx->num_expr(1)));
             if (ctx->MINUS()) {
                 return lhs - rhs;
             } else if (ctx->PLUS()) {
@@ -75,9 +75,9 @@ std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
 }
 
 std::any CINTParseVisitor::visitLit(CINTParser::LitContext *ctx) {
-    const auto arg1 = std::any_cast<Arith::Expression>(visit(ctx->num_expr(0)));
+    const auto arg1 = std::any_cast<Arith::Expr>(visit(ctx->num_expr(0)));
     const auto op = std::any_cast<relop_type>(visit(ctx->relop()));
-    const auto arg2 = std::any_cast<Arith::Expression>(visit(ctx->num_expr(1)));
+    const auto arg2 = std::any_cast<Arith::Expr>(visit(ctx->num_expr(1)));
     switch (op) {
     case lt: return BExpression::mkLit(Rel::mkLt(arg1, arg2));
     case leq: return BExpression::mkLit(Rel::mkLeq(arg1, arg2));
@@ -211,7 +211,7 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
 
 std::any CINTParseVisitor::visitAssignment(CINTParser::AssignmentContext *ctx) {
     const auto &name = ctx->V()->getText();
-    const auto expr = std::any_cast<Arith::Expression>(visit(ctx->num_expr()));
+    const auto expr = std::any_cast<Arith::Expr>(visit(ctx->num_expr()));
     const auto loc = its->addLocation();
     const auto cond = theories::mkEq(NumVar::loc_var, arith::mkConst(current));
     auto up = Subs::build<Arith>(vars.at(name), expr);
