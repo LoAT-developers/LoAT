@@ -40,7 +40,7 @@ private:
             const auto map = std::get<I>(m);
             for (const auto &p: map) {
                 using T = std::tuple_element_t<I, Theories>;
-                subs.put(typename S::Pair(std::pair(p.first, T::valToExpr(p.second))));
+                subs.put(typename S::Pair(std::pair(p.first, T::constToExpr(p.second))));
             }
             toSubsImpl<I+1>(subs);
         }

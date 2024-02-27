@@ -13,7 +13,7 @@ struct Arith {
     using Expr = ArithExprPtr;
     using Const = Int;
 
-    static Expr valToExpr(const Const &val) {
+    static Expr constToExpr(const Const &val) {
         return arith::mkConst(val);
     }
 

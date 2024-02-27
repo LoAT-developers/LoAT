@@ -54,7 +54,7 @@ concept ITheory = requires(T t, typename T::Const val, typename T::Var var) {
         requires IBaseTheory<T>;
         typename T::Expr;
         typename T::Subs;
-        {T::valToExpr(val)} -> std::same_as<typename T::Expr>;
+        {T::constToExpr(val)} -> std::same_as<typename T::Expr>;
         {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
         {T::anyValue()} -> std::same_as<typename T::Expr>;
 };

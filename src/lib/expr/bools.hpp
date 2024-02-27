@@ -19,7 +19,7 @@ struct Bools: public BoolsBase {
     using Expr = std::shared_ptr<const BExpression>;
     using Subs = BoolSubs<Arith, Bools>;
 
-    static Expr valToExpr(const Const &val) {
+    static Expr constToExpr(const Const &val) {
         return val ? BExpression::top() : BExpression::bot();
     }
 
