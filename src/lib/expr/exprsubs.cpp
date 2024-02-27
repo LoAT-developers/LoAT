@@ -181,3 +181,32 @@ std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
         return s << "}";
     }
 }
+
+ExprPtr ExprSubs::operator()(const ExprPtr t) const {
+    return t->map<ExprPtr>(
+        [&](const NumConstantPtr) {
+            return t;
+        },
+        [&](const NumVarPtr x) {
+            return get(x);
+        },
+        [&](const AddPtr a) {
+            const auto &args {a->getArgs()};
+            std::vector<ExprPtr> new_args;
+            std::transform(args.begin(), args.end(), new_args.begin(), [&](const auto arg) {
+                return (*this)(arg);
+            });
+            return ne::buildPlus(new_args);
+        },
+        [&](const MultPtr m) {
+            const auto &args {m->getArgs()};
+            std::vector<ExprPtr> new_args;
+            std::transform(args.begin(), args.end(), new_args.begin(), [&](const auto arg) {
+                return (*this)(arg);
+            });
+            return ne::buildTimes(new_args);
+        },
+        [&](const ExpPtr e) {
+            return ne::buildExp((*this)(e->getBase()), (*this)(e->getExponent()));
+        });
+}

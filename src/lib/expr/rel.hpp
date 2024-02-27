@@ -9,6 +9,17 @@ using RelSet = linked_hash_set<Rel>;
 struct Bounds {
     linked_hash_set<ExprPtr> upperBounds {};
     linked_hash_set<ExprPtr> lowerBounds {};
+
+    linked_hash_set<ExprPtr> equalities() const {
+        linked_hash_set<ExprPtr> res;
+        for (const auto &b: lowerBounds) {
+            if (upperBounds.contains(b)) {
+                res.insert(b);
+            }
+        }
+        return res;
+    }
+
 };
 
 std::ostream& operator<<(std::ostream &s, const RelSet &set);

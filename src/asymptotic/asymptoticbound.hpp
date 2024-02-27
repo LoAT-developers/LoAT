@@ -47,7 +47,7 @@ private:
     bool tryApplyingLimitVector(const InftyExpressionSet::const_iterator &it);
     bool tryApplyingLimitVectorSmartly(const InftyExpressionSet::const_iterator &it);
     bool applyLimitVectorsThatMakeSense(const InftyExpressionSet::const_iterator &it,
-                                        const Expr &l, const Expr &r,
+                                        const IntTheory::Expression l, const IntTheory::Expression r,
                                         const std::vector<LimitVector> &limitVectors);
     bool tryInstantiatingVariable();
     bool trySubstitutingVariable();
@@ -97,7 +97,7 @@ public:
      * @param finalCheck enables more sophisticated backtracking and uses Timeout::hard
      */
     static Result determineComplexity(const Guard &guard,
-                                      const Expr &cost,
+                                      const IntTheory::Expression &cost,
                                       bool finalCheck = false,
                                       const Complexity &currentRes = Complexity::Const);
 

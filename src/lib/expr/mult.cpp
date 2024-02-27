@@ -3,6 +3,8 @@
 
 #include <purrs.hh>
 
+ConsHash<Expr, Mult, Mult::CacheHash, Mult::CacheEqual, linked_hash_set<ExprPtr>> Mult::cache;
+
 Mult::Mult(const linked_hash_set<ExprPtr> &args): Expr(ne::Kind::Times), args(args) {}
 
 bool Mult::CacheEqual::operator()(const std::tuple<linked_hash_set<ExprPtr>> &args1, const std::tuple<linked_hash_set<ExprPtr>> &args2) const noexcept {

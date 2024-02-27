@@ -124,7 +124,7 @@ std::ostream& operator<<(std::ostream &s, const Complexity &cpx) {
 
 Complexity toComplexityRec(const ExprPtr term) {
     return term->map<Complexity>(
-        [](const Rational&) {
+        [](const NumConstantPtr) {
             return Complexity::Const;
         },
         [](const NumVarPtr) {
@@ -145,22 +145,21 @@ Complexity toComplexityRec(const ExprPtr term) {
         [](const ExpPtr e) {
             // If the exponent is at least polynomial (non-constant), complexity might be exponential
             if (toComplexityRec(e->getExponent()) > Complexity::Const) {
-                const auto b {e->getBase()->isRational()};
-                if (b && *b <= 1) {
-                    return Complexity::Const;
-                }
-                return Complexity::Exp;
+                return map<NumConstantPtr, Complexity>(
+                           e->getBase()->isRational(),
+                           [](const auto c) {
+                               return **c <= 1 ? Complexity::Const : Complexity::Exp;
+                           }).value_or(Complexity::Exp);
             }
             // Otherwise the complexity is polynomial, if the exponent is nonnegative
-            const auto exp {e->getExponent()->isInt()};
-            if (!exp || *exp < 0) {
-                return Complexity::Unknown;
-            }
-            auto base_cpx {toComplexityRec(e->getBase())};
-            return base_cpx ^ *exp;
+            return map<Int, Complexity>(
+                       e->getExponent()->isInt(),
+                       [&](const auto &exp) {
+                           return exp < 0 ? Complexity::Unknown : toComplexityRec(e->getBase()) ^ exp;
+                       }).value_or(Complexity::Unknown);
         });
 }
 
-Complexity toComplexity(const ExprPtr &e) {
+Complexity toComplexity(const ExprPtr e) {
     return toComplexityRec(e);
 }

@@ -47,7 +47,7 @@ enum BoolOp {
 };
 
 enum Sort {
-    Int, Bool
+    IntType, BoolType
 };
 
 struct FunApp {

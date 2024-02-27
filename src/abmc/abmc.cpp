@@ -133,24 +133,24 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     BoolExprSet pre;
     const auto s {subs_at(depth + 1)};
     const auto not_covered {!loop.covered->subs(s)};
-    pre.insert(BExpression::buildTheoryLit(Rel::buildEq(s.get<IntTheory>(trace_var), (*shortcut)->getId())));
+    pre.insert(expr::mkEq(trace_var, ne::buildConstant((*shortcut)->getId())));
     pre.insert(not_covered);
     const auto length {depth - backlink + 1};
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 1)};
         pre.insert(implicant->negation()->subs(s_current));
-        pre.insert(BExpression::buildTheoryLit(Rel::buildNeq(s_current.get<IntTheory>(trace_var), rule->getId())));
+        pre.insert(expr::mkNeq(trace_var, ne::buildConstant(rule->getId())));
     }
     // we must not start another iteration of the loop after using the learned transition in the next step
     BoolExprSet post;
-    post.insert(BExpression::buildTheoryLit(Rel::buildNeq(s.get<IntTheory>(trace_var), (*shortcut)->getId())));
+    post.insert(expr::mkNeq(trace_var, ne::buildConstant((*shortcut)->getId())));
     post.insert(not_covered);
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 2)};
         post.insert(implicant->negation()->subs(s_current));
-        post.insert(BExpression::buildTheoryLit(Rel::buildNeq(s_current.get<IntTheory>(trace_var), rule->getId())));
+        post.insert(expr::mkNeq(trace_var, ne::buildConstant(rule->getId())));
     }
     return BExpression::buildOr(pre) & BExpression::buildOr(post);
 }
@@ -255,7 +255,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
 BoolExpr ABMC::encode_transition(const TransIdx idx) {
     const auto up {idx->getUpdate()};
     std::vector<BoolExpr> res {idx->getGuard()};
-    res.emplace_back(BExpression::buildTheoryLit(Rel::buildEq(trace_var, idx->getId())));
+    res.emplace_back(expr::mkEq(trace_var, ne::buildConstant(idx->getId())));
     for (const auto &x: vars) {
         if (expr::isProgVar(x)) {
             res.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
@@ -294,7 +294,7 @@ void ABMC::build_trace() {
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
         const auto s {subs.at(d)};
-        const auto rule {rule_map.at(s.get<IntTheory>(trace_var).subs(model.get<IntTheory>()).toNum().to_int())};
+        const auto rule {rule_map.at(*(*std::get<IntTheory::Expression>(model.get(trace_var))->isRational())->intValue())};
         const auto comp {expr::compose(s, model)};
         const auto imp {rule->getGuard()->syntacticImplicant(comp)};
         auto vars {rule->getUpdate().domain()};

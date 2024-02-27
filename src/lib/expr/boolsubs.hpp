@@ -111,8 +111,8 @@ public:
         return BoolExpression<Th...>::buildTheoryLit(BoolLit(key)) != map.at(key);
     }
 
-    linked_hash_set<BoolVar> domain() const {
-        linked_hash_set<BoolVar> res;
+    linked_hash_set<BoolVarPtr> domain() const {
+        linked_hash_set<BoolVarPtr> res;
         collectDomain(res);
         return res;
     }

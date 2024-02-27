@@ -15,8 +15,8 @@
 #include "set.hpp"
 #include "guardtoolbox.hpp"
 #include "expr.hpp"
-
-using namespace std;
+#include "optional.hpp"
+#include "string.hpp"
 
 
 AsymptoticBound::AsymptoticBound(Guard guard,
@@ -62,7 +62,7 @@ void AsymptoticBound::propagateBounds() {
         return;
     }
 
-    auto g {BExpression::buildAnd(guard)};
+    auto g {BExpression::buildAndFromLits(guard)};
     auto changed {false};
     do {
         changed = false;
@@ -141,15 +141,15 @@ Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
     Int lowerBound;
     const auto n {limitProblem.getN()};
     if (solvedCost->isPoly()) {
-        assert(solvedCost->isNotMultivariate());
+        assert(!solvedCost->isMultivariate());
         lowerBound = *solvedCost->degree(n);
     } else {
         std::vector<IntTheory::Expression> nonPolynomial;
         const auto powers {solvedCost->exps()};
         lowerBound = 1;
-        for (const auto &[base, exponent] : powers) {
-            if (exponent->has(n) && exponent->isPoly(n)) {
-                const auto numBase {*base->isInt()};
+        for (const auto &p : powers) {
+            if (p->getExponent()->has(n) && p->getExponent()->isPoly(n)) {
+                const auto numBase {*p->getBase()->isInt()};
                 assert(numBase > 0);
                 if (numBase > lowerBound) {
                     lowerBound = numBase;
@@ -248,7 +248,7 @@ bool AsymptoticBound::solveLimitProblem() {
         }
 
         for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-            if (it->first->isNotMultivariate() && tryApplyingLimitVector(it)) {
+            if (!it->first->isMultivariate() && tryApplyingLimitVector(it)) {
                 goto start;
             }
         }
@@ -433,149 +433,156 @@ bool AsymptoticBound::tryReducingGeneralExp(const InftyExpressionSet::const_iter
 
 bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_iterator &it) {
     std::vector<LimitVector> *limitVectors;
-
-    Expr l, r;
-    if (it->isNonIntConstant()) {
-        l = it->numerator();
-        r = it->denominator();
-
-        limitVectors = &division[it->getDirection()];
-
-    } else if (it->isAdd()) {
-        l = 0;
-        r = 0;
-        int pos = 0;
-
-        for (int i = 0; i <= pos; ++i) {
-            l = l + it->op(i);
-        }
-        for (unsigned int i = pos + 1; i < it->arity(); ++i) {
-            r = r + it->op(i);
-        }
-
-        limitVectors = &addition[it->getDirection()];
-
-    } else if (it->isMul()) {
-        l = 1;
-        r = 1;
-        int pos = 0;
-
-        for (int i = 0; i <= pos; ++i) {
-            l = l * it->op(i);
-        }
-        for (unsigned int i = pos + 1; i < it->arity(); ++i) {
-            r = r * it->op(i);
-        }
-
-        limitVectors = &multiplication[it->getDirection()];
-
-    } else if (it->isNaturalPow()) {
-        Expr base = it->op(0);
-        Num power = it->op(1).toNum();
-
-        if (power.is_even()) {
-            l = base ^ Expr(power / 2);
-            r = l;
-        } else {
-            l = base;
-            r = base ^ Expr(power - 1);
-        }
-
-        limitVectors = &multiplication[it->getDirection()];
-
-    } else {
-        return false;
-    }
-
-    return applyLimitVectorsThatMakeSense(it, l, r, *limitVectors);
+    IntTheory::Expression l, r;
+    const auto e {it->first};
+    const auto d {it->second};
+    const auto has_limit_vectors
+        {e->map<bool>(
+              [&](const NumConstantPtr c) {
+                  if (c->denominator()->is(1)) {
+                      l = c->numerator();
+                      r = c->denominator();
+                      limitVectors = &division[d];
+                      return true;
+                  }
+                  return false;
+              },
+              [&](const NumVarPtr) {
+                  return false;
+              },
+              [&](const AddPtr a) {
+                  const auto &args {a->getArgs()};
+                  auto arg_it {args.begin()};
+                  l = *arg_it;
+                  ++arg_it;
+                  std::vector<IntTheory::Expression> rhs_args;
+                  for (; arg_it != args.end(); ++arg_it) {
+                      rhs_args.emplace_back(*arg_it);
+                  }
+                  r = ne::buildPlus(rhs_args);
+                  limitVectors = &addition[d];
+                  return true;
+              },
+              [&](const MultPtr m) {
+                  const auto &args {m->getArgs()};
+                  auto arg_it {args.begin()};
+                  l = *arg_it;
+                  ++arg_it;
+                  std::vector<IntTheory::Expression> rhs_args;
+                  for (; arg_it != args.end(); ++arg_it) {
+                      rhs_args.emplace_back(*arg_it);
+                  }
+                  r = ne::buildTimes(rhs_args);
+                  limitVectors = &multiplication[d];
+                  return true;
+              },
+              [&](const ExpPtr e) {
+                  return apply<Int>(
+                             e->getExponent()->isInt(),
+                             [&](const auto &power) {
+                                 if (power % 2 == 0) {
+                                     l = e->getBase() ^ e->getExponent()->divide(2);
+                                     r = l;
+                                 } else {
+                                     l = e->getBase();
+                                     r = e->getBase() ^ ne::buildConstant(power - 1);
+                                 }
+                                 limitVectors = &multiplication[d];
+                             }).has_value();
+              })};
+    return has_limit_vectors ? applyLimitVectorsThatMakeSense(it, l, r, *limitVectors) : false;
 }
 
 
 bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::const_iterator &it) {
-    Expr l, r;
+    IntTheory::Expression l, r;
     std::vector<LimitVector> *limitVectors;
-    if (it->isAdd()) {
-        l = 0;
-        r = 0;
-
-        bool foundOneVar = false;
-        std::optional<NumVar> oneVar;
-        for (unsigned int i = 0; i < it->arity(); ++i) {
-            Expr ex(it->op(i));
-
-            if (ex.isGround()) {
-                l = ex;
-                r = *it - ex;
-                break;
-
-            } else if (ex.isUnivariate()) {
-                if (!foundOneVar) {
-                    foundOneVar = true;
-                    oneVar = ex.someVar();
-                    l = ex;
-
-                } else if (oneVar && *oneVar == ex.someVar()) {
-                    l = l + ex;
-
-                } else {
-                    r = r + ex;
+    const auto e {it->first};
+    const auto d {it->second};
+    const auto has_limit_vectors
+        {e->map<bool>(
+            [&](const NumConstantPtr) {
+                return false;
+            },
+            [&](const NumVarPtr) {
+                return false;
+            },
+            [&](const AddPtr a) {
+                std::vector<IntTheory::Expression> l_args;
+                std::vector<IntTheory::Expression> r_args;
+                std::optional<NumVarPtr> oneVar;
+                for (const auto &ex: a->getArgs()) {
+                    if (ex->isRational()) {
+                        l_args.clear();
+                        r_args.clear();
+                        l_args.emplace_back(ex);
+                        r_args.emplace_back(e - ex);
+                        break;
+                    } else if (ex->isUnivariate()) {
+                        if (!oneVar) {
+                            oneVar = ex->someVar();
+                        }
+                        if (oneVar == ex->someVar()) {
+                            l_args.push_back(ex);
+                        } else {
+                            r_args.push_back(ex);
+                        }
+                    } else {
+                        r_args.push_back(ex);
+                    }
                 }
-            } else {
-                r = r + ex;
-            }
-        }
-
-        if (l.isZero() || r.isZero()) {
-            return false;
-        }
-
-        limitVectors = &addition[it->getDirection()];
-    } else if (it->isMul()) {
-        l = 1;
-        r = 1;
-
-        bool foundOneVar = false;
-        std::optional<NumVar> oneVar;
-        for (unsigned int i = 0; i < it->arity(); ++i) {
-            Expr ex(it->op(i));
-
-            if (ex.isGround()) {
-                l = ex;
-                r = *it / ex;
-                break;
-
-            } else if (ex.isUnivariate()) {
-                if (!foundOneVar) {
-                    foundOneVar = true;
-                    oneVar = ex.someVar();
-                    l = ex;
-
-                } else if (oneVar && *oneVar == ex.someVar()) {
-                    l = l * ex;
-
-                } else {
-                    r = r * ex;
+                l = ne::buildPlus(l_args);
+                r = ne::buildPlus(r_args);
+                if (l->is(0) || r->is(0)) {
+                    return false;
                 }
-            } else {
-                r = r * ex;
-            }
-        }
-
-        if (l == 1 || r == 1) {
-            return false;
-        }
-
-        limitVectors = &multiplication[it->getDirection()];
-    } else {
-        return false;
-    }
-
-    return applyLimitVectorsThatMakeSense(it, l, r, *limitVectors);
+                limitVectors = &addition[d];
+                return true;
+            },
+            [&](const MultPtr m) {
+                std::vector<IntTheory::Expression> l_args;
+                std::vector<IntTheory::Expression> r_args;
+                l_args.emplace_back(ne::buildConstant(1));
+                r_args.emplace_back(ne::buildConstant(1));
+                std::optional<NumVarPtr> oneVar;
+                for (const auto &ex: m->getArgs()) {
+                    const auto c {ex->isRational()};
+                    if (c) {
+                        l_args.clear();
+                        r_args.clear();
+                        l_args.push_back(ex);
+                        r_args.push_back(e->divide(***c));
+                        break;
+                    } else if (ex->isUnivariate()) {
+                        if (!oneVar) {
+                            oneVar = ex->someVar();
+                        }
+                        if (oneVar == ex->someVar()) {
+                            l_args.emplace_back(ex);
+                        } else {
+                            r_args.emplace_back(ex);
+                        }
+                    } else {
+                        r_args.emplace_back(ex);
+                    }
+                }
+                l = ne::buildPlus(l_args);
+                r = ne::buildPlus(r_args);
+                if (l->is(1) || r->is(1)) {
+                    return false;
+                }
+                limitVectors = &multiplication[d];
+                return true;
+            },
+            [](const auto ExpPtr) {
+                return false;
+            })};
+    return has_limit_vectors ? applyLimitVectorsThatMakeSense(it, l, r, *limitVectors) : false;
 }
 
 
 bool AsymptoticBound::applyLimitVectorsThatMakeSense(const InftyExpressionSet::const_iterator &it,
-                                                     const Expr &l, const Expr &r,
+                                                     const IntTheory::Expression l, const IntTheory::Expression r,
                                                      const std::vector<LimitVector> &limitVectors) {
     bool posInfVector = false;
     bool posConsVector = false;
@@ -623,9 +630,9 @@ bool AsymptoticBound::applyLimitVectorsThatMakeSense(const InftyExpressionSet::c
 
 bool AsymptoticBound::tryInstantiatingVariable() {
     for (auto it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-        Direction dir = it->getDirection();
+        const auto [e,dir] {*it};
 
-        if (it->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
+        if (e->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const auto &query = currentLP.getQuery();
             auto solver = SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}));
             solver->add(BoolExpression<IntTheory>::buildAndFromLits(query));
@@ -635,11 +642,11 @@ bool AsymptoticBound::tryInstantiatingVariable() {
                 currentLP.setUnsolvable();
 
             } else if (result == Sat) {
-                const auto &model = solver->model();
-                auto var = it->someVar();
+                const auto model {solver->model()};
+                const auto var {*e->someVar()};
 
-                Expr rational {model.get<IntTheory>(var)};
-                substitutions.push_back({{var, rational}});
+                const auto rational {model.get<IntTheory>(var)};
+                substitutions.push_back({{var, ne::buildConstant(rational)}});
 
                 createBacktrackingPoint(it, POS_INF);
                 currentLP.substitute(substitutions.back(), substitutions.size() - 1);
@@ -664,17 +671,17 @@ bool AsymptoticBound::tryInstantiatingVariable() {
 bool AsymptoticBound::trySubstitutingVariable() {
     InftyExpressionSet::const_iterator it, it2;
     for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-        if (it->isVar()) {
+        const auto [e,dir] {*it};
+        const auto e_var {e->isVar()};
+        if (e_var) {
             for (it2 = std::next(it); it2 != currentLP.cend(); ++it2) {
-                if (it2->isVar()) {
-                    Direction dir = it->getDirection();
-                    Direction dir2 = it2->getDirection();
-
+                const auto [e2,dir2] {*it2};
+                if (e2->isVar()) {
                     if (((dir == POS || dir == POS_INF) && (dir2 == POS || dir2 == POS_INF))
                         || (dir == NEG_INF && dir2 == NEG_INF)) {
                         assert(*it != *it2);
 
-                        ExprSubs sub{{it->toVar(), *it2}};
+                        ExprSubs sub{{*e_var, e2}};
                         substitutions.push_back(sub);
 
                         createBacktrackingPoint(it, POS_CONS);
@@ -705,20 +712,16 @@ bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
 
 
 AsymptoticBound::Result AsymptoticBound::determineComplexity(const Guard &guard,
-                                                             const Expr &cost,
+                                                             const IntTheory::Expression &cost,
                                                              bool finalCheck,
                                                              const Complexity &currentRes) {
 
-    // Expand the cost to make it easier to analyze
-    Expr expandedCost = cost.expand();
-
-    AsymptoticBound asymptoticBound(guard, expandedCost, finalCheck);
+    AsymptoticBound asymptoticBound(guard, cost, finalCheck);
     asymptoticBound.initLimitVectors();
-    asymptoticBound.normalizeGuard();
 
     asymptoticBound.createInitialLimitProblem();
     // first try the SMT encoding
-    bool polynomial = cost.isPoly() && asymptoticBound.currentLP.isPoly();
+    bool polynomial = cost->isPoly() && asymptoticBound.currentLP.isPoly();
     bool result = polynomial && asymptoticBound.solveViaSMT(currentRes);
     if (!result) {
         // Otherwise perform limit calculus
@@ -732,12 +735,12 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(const Guard &guard,
         // Print solution
         asymptoticBound.proof.append("Solution:");
         for (const auto &pair : asymptoticBound.bestComplexity.solution) {
-            asymptoticBound.proof.append(stringstream() << pair.first << " / " << pair.second);
+            asymptoticBound.proof.append(toString(pair.first) + " / " + toString(pair.second));
         }
 
-        Expr solvedCost = asymptoticBound.cost.subs(asymptoticBound.bestComplexity.solution);
+        const auto solvedCost {asymptoticBound.bestComplexity.solution(asymptoticBound.cost)};
         return Result(asymptoticBound.bestComplexity.complexity,
-                      solvedCost.expand(),
+                      solvedCost,
                       asymptoticBound.bestComplexity.inftyVars,
                       asymptoticBound.proof);
     } else {

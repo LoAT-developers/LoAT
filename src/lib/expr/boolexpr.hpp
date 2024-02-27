@@ -226,7 +226,7 @@ public:
                             return buildTheoryLit(rel);
                         }
                         const auto ex {rel.lhs()};
-                        if ((*ex->coeff(n))->isRational() > 0) {
+                        if (***(*ex->coeff(n))->isRational() > 0) {
                             return top();
                         } else {
                             return bot();
@@ -249,7 +249,7 @@ public:
                             return buildTheoryLit(rel);
                         }
                         const auto ex {rel.lhs()};
-                        if ((*ex->coeff(n))->isRational() < 0) {
+                        if (***(*ex->coeff(n))->isRational() < 0) {
                             return top();
                         } else {
                             return bot();

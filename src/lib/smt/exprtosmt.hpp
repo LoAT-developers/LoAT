@@ -70,8 +70,8 @@ protected:
 
     EXPR convertEx(const ExprPtr e){
         return e->map<EXPR>(
-            [this](const Rational &r) {
-                return context.getReal(mp::numerator(r), mp::denominator(r));
+            [this](const NumConstantPtr &r) {
+                return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
             },
             [this](const NumVarPtr x) {
                 auto optVar = context.getVariable(x);

@@ -13,7 +13,7 @@ std::optional<ExprPtr> num_expression::solveTermFor(const ExprPtr e, const NumVa
     if (!r) {
         return {};
     }
-    return (e - (*c) * var->toExpr())->divide(-(*r));
+    return (e - (*c) * var->toExpr())->divide(-(***r));
 }
 
 ExprPtr num_expression::fromPurrs(const Purrs::Expr &e, const purrs_var_map &map) {

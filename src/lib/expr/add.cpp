@@ -3,6 +3,8 @@
 
 #include <purrs.hh>
 
+ConsHash<Expr, Add, Add::CacheHash, Add::CacheEqual, linked_hash_set<ExprPtr>> Add::cache;
+
 Add::Add(const linked_hash_set<ExprPtr> &args): Expr(ne::Kind::Plus), args(args) {}
 
 bool Add::CacheEqual::operator()(const std::tuple<linked_hash_set<ExprPtr>> &args1, const std::tuple<linked_hash_set<ExprPtr>> &args2) const noexcept {

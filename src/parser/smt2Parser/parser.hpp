@@ -31,16 +31,16 @@ namespace sexpressionparser {
     private:
         void run(const std::string &filename);
 
-        void parseCond(sexpresso::Sexp &sexp, Guard &guard);
+        void parseCond(sexpresso::Sexp &sexp, std::vector<BoolExpr> &guard);
 
-        Rel parseConstraint(sexpresso::Sexp &sexp, bool negate);
+        BoolExpr parseConstraint(sexpresso::Sexp &sexp, bool negate);
 
-        Expr parseExpression(sexpresso::Sexp &sexp);
+        IntTheory::Expression parseExpression(sexpresso::Sexp &sexp);
 
         std::vector<std::string> preVars {};
         std::vector<std::string> postVars {};
         std::unordered_map<std::string, LocationIdx> locations {};
-        std::unordered_map<std::string, NumVar> vars {};
+        std::unordered_map<std::string, IntTheory::Var> vars {};
         ITSPtr res {std::make_shared<ITSProblem>()};
 
     };

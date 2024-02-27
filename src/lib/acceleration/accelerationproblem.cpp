@@ -103,13 +103,13 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         } else {
             auto sample_point {samplePoint->get<IntTheory>()};
             std::vector<IntTheory::Expression> derivatives {rel.lhs()};
-            std::vector<Rational> signs {*sample_point(rel.lhs())->isRational()};
+            std::vector<Rational> signs {(*sample_point(rel.lhs())->isRational())->getValue()};
             IntTheory::Expression diff;
             do {
                 const auto &last {derivatives.back()};
                 diff = up(last) - last;
                 derivatives.push_back(diff);
-                signs.push_back(*sample_point(diff)->isRational());
+                signs.push_back((*sample_point(diff)->isRational())->getValue());
             } while (!diff->isRational());
             for (unsigned i = 1; i < signs.size() - 1; ++i) {
                 if (signs.at(i).is_zero()) {

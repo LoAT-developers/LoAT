@@ -21,6 +21,8 @@
 #include <variant>
 #include <initializer_list>
 #include <optional>
+#undef EOF
+#define EOF (-1)
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
@@ -43,6 +45,7 @@ class Add;
 class Mult;
 using ExprPtr = std::shared_ptr<const Expr>;
 using NumVarPtr = std::shared_ptr<const NumVar>;
+using NumConstantPtr = std::shared_ptr<const NumConstant>;
 using AddPtr = std::shared_ptr<const Add>;
 using MultPtr = std::shared_ptr<const Mult>;
 using ExpPtr = std::shared_ptr<const Exp>;
@@ -109,7 +112,7 @@ private:
 public:
 
     template <class T>
-    T map(const std::function<T(const Rational&)> &constant,
+    T map(const std::function<T(const NumConstantPtr)> &constant,
           const std::function<T(const NumVarPtr)> &var,
           const std::function<T(const AddPtr)> &add,
           const std::function<T(const MultPtr)> &mult,
@@ -217,7 +220,7 @@ public:
      */
     std::optional<Int> degree(const NumVarPtr var) const;
 
-    std::optional<Rational> isRational() const;
+    std::optional<NumConstantPtr> isRational() const;
 
     /**
      * @return True iff this expression is an integer value (and thus a constant).
@@ -259,12 +262,11 @@ public:
     friend ExprPtr operator-(const ExprPtr x, const ExprPtr y);
     friend ExprPtr operator+(const ExprPtr x, const ExprPtr y);
     friend ExprPtr operator*(const ExprPtr x, const ExprPtr y);
-    friend std::ostream& operator<<(std::ostream &s, const ExprPtr e);
 
 };
 
 
-class NumConstant: public Expr {
+class NumConstant: public Expr, public std::enable_shared_from_this<NumConstant> {
 
     friend ExprPtr num_expression::buildConstant(const Rational &r);
 
@@ -284,7 +286,11 @@ private:
 
 public:
 
+    const Rational& operator*() const;
     const Rational& getValue() const;
+    const NumConstantPtr numerator() const;
+    const NumConstantPtr denominator() const;
+    std::optional<Int> intValue() const;
 
 };
 
@@ -405,7 +411,10 @@ private:
 
 public:
 
-    ExpPtr getBase() const;
-    ExpPtr getExponent() const;
+    ExprPtr getBase() const;
+    ExprPtr getExponent() const;
 
 };
+
+std::ostream& operator<<(std::ostream &s, const ExprPtr e);
+std::ostream& operator<<(std::ostream &s, const NumVarPtr e);

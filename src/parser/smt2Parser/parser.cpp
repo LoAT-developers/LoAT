@@ -17,6 +17,7 @@
 
 #include "parser.hpp"
 #include "config.hpp"
+#include "expr.hpp"
 
 #include <fstream>
 #include <boost/algorithm/string.hpp>
@@ -68,7 +69,7 @@ namespace sexpressionparser {
                     }
                     assert(preVars.size() == postVars.size());
                     sexpresso::Sexp ruleExps = ex[4];
-                    linked_hash_set<NumVar> tmpVars;
+                    linked_hash_set<IntTheory::Var> tmpVars;
                     for (const std::string &str: postVars) {
                         tmpVars.insert(vars.at(str));
                     }
@@ -78,24 +79,24 @@ namespace sexpressionparser {
                             LocationIdx from = locations[ruleExp[2].str()];
                             LocationIdx to = locations[ruleExp[4].str()];
                             Subs update;
-                            Guard guard;
+                            std::vector<BoolExpr> guard;
                             parseCond(ruleExp[5], guard);
-                            guard.push_back(Rel::buildEq(NumVar::loc_var, from));
-                            BoolExpr cond = BExpression::buildAndFromLits(guard);
+                            guard.push_back(expr::mkEq(NumVar::loc_var, ne::buildConstant(from)));
+                            const auto cond {BExpression::buildAnd(guard)};
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.put<IntTheory>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            update.put<IntTheory>(NumVar::loc_var, to);
+                            update.put<IntTheory>(NumVar::loc_var, ne::buildConstant(to));
                             if (Config::Analysis::complexity()) {
-                                update.put<IntTheory>(cost_var, Expr(cost_var) + 1);
+                                update.put<IntTheory>(cost_var, cost_var + ne::buildConstant(1));
                             }
                             Rule rule(cond, update);
                             // make sure that the temporary variables are unique
-                            linked_hash_set<NumVar> currTmpVars(tmpVars.begin(), tmpVars.end());
+                            linked_hash_set<IntTheory::Var> currTmpVars(tmpVars.begin(), tmpVars.end());
                             cond->collectVars<IntTheory>(currTmpVars);
                             Subs subs;
-                            for (const NumVar &var: currTmpVars) {
-                                if (var.isTempVar()) {
+                            for (const auto &var: currTmpVars) {
+                                if (var->isTempVar()) {
                                     subs.get<IntTheory>().put(var, NumVar::next());
                                 }
                             }
@@ -107,10 +108,10 @@ namespace sexpressionparser {
         }
     }
 
-    void Self::parseCond(sexpresso::Sexp &sexp, Guard &guard) {
+    void Self::parseCond(sexpresso::Sexp &sexp, std::vector<BoolExpr> &guard) {
         if (sexp.isString()) {
             if (sexp.str() == "false") {
-                guard.push_back(Rel(0, Rel::lt, 0));
+                guard.push_back(BExpression::bot());
             } else {
                 assert(sexp.str() == "true");
                 return;
@@ -134,36 +135,35 @@ namespace sexpressionparser {
 
     }
 
-    Rel Self::parseConstraint(sexpresso::Sexp &sexp, bool negate) {
+    BoolExpr Self::parseConstraint(sexpresso::Sexp &sexp, bool negate) {
         if (sexp.childCount() == 2) {
             assert(sexp[0].str() == "not");
             return parseConstraint(sexp[1], !negate);
         }
         assert(sexp.childCount() == 3);
-        const std::string &op = sexp[0].str();
-        const Expr &fst = parseExpression(sexp[1]);
-        const Expr &snd = parseExpression(sexp[2]);
+        const std::string &op {sexp[0].str()};
+        const auto fst {parseExpression(sexp[1])};
+        const auto snd {parseExpression(sexp[2])};
         if (op == "<=") {
-            return negate ? Rel::buildGt(fst, snd) : Rel::buildLeq(fst, snd);
+            return BExpression::buildTheoryLit(negate ? Rel::buildGt(fst, snd) : Rel::buildLeq(fst, snd));
         } else if (sexp[0].str() == "<") {
-            return negate ? Rel::buildGeq(fst, snd) : Rel::buildLt(fst, snd);
+            return BExpression::buildTheoryLit(negate ? Rel::buildGeq(fst, snd) : Rel::buildLt(fst, snd));
         } else if (sexp[0].str() == ">=") {
-            return negate ? Rel::buildLt(fst, snd) : Rel::buildGeq(fst, snd);
+            return BExpression::buildTheoryLit(negate ? Rel::buildLt(fst, snd) : Rel::buildGeq(fst, snd));
         } else if (sexp[0].str() == ">") {
-            return negate ? Rel::buildLeq(fst, snd) : Rel::buildGt(fst, snd);
+            return BExpression::buildTheoryLit(negate ? Rel::buildLeq(fst, snd) : Rel::buildGt(fst, snd));
         } else if (sexp[0].str() == "=") {
             assert(!negate);
-            return Rel::buildEq(fst, snd);
+            return expr::mkEq(fst, snd);
         }
         throw std::invalid_argument("");
     }
 
-    Expr Self::parseExpression(sexpresso::Sexp &sexp) {
+    IntTheory::Expression Self::parseExpression(sexpresso::Sexp &sexp) {
         if (sexp.childCount() == 1) {
-            const std::string &str = sexp.str();
+            const auto &str {sexp.str()};
             if (std::isdigit(str[0]) || str[0] == '-') {
-                GiNaC::parser parser;
-                return Expr(parser(str));
+                return ne::buildConstant(Rational(str));
             } else {
                 if (vars.find(str) == vars.end()) {
                     vars.emplace(str, NumVar::next());
@@ -171,10 +171,10 @@ namespace sexpressionparser {
                 return vars.at(str);
             }
         }
-        const std::string &op = sexp[0].str();
-        const Expr &fst = parseExpression(sexp[1]);
+        const auto &op {sexp[0].str()};
+        const auto fst {parseExpression(sexp[1])};
         if (sexp.childCount() == 3) {
-            const Expr &snd = parseExpression(sexp[2]);
+            const auto snd {parseExpression(sexp[2])};
             if (op == "+") {
                 return fst + snd;
             } else if (op == "-") {

@@ -221,7 +221,7 @@ void Reachability::update_cpx() {
     const auto &resolvent = trace.back().resolvent;
     const auto &cost = chcs.getCost(resolvent);
     const auto max_cpx = toComplexity(cost);
-    if (max_cpx <= cpx && !cost.hasVarWith([](const auto &x){return expr::isTempVar(x);})) {
+    if (max_cpx <= cpx && !cost->hasVarWith([](const auto &x){return expr::isTempVar(x);})) {
         return;
     }
     const auto res = AsymptoticBound::determineComplexity(resolvent.getGuard()->conjunctionToGuard(), cost, false, cpx);
@@ -487,14 +487,14 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-RuleResult Reachability::instantiate(const NumVar &n, const Rule &rule) const {
+RuleResult Reachability::instantiate(const IntTheory::Var n, const Rule &rule) const {
     RuleResult res(rule);
     VarEliminator ve(rule.getGuard(), n, expr::isProgVar);
     if (ve.getRes().empty() || ve.getRes().size() > 1) {
         return res;
     }
     for (const auto &s : ve.getRes()) {
-        if (s.get(n).isRationalConstant()) continue;
+        if (s.get(n)->isRational()) continue;
         if (res) {
             return RuleResult(rule);
         }
@@ -523,7 +523,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             return std::make_unique<Covered>();
         }
     }
-    const NumVar n {NumVar::next()};
+    const auto n {NumVar::next()};
     const AccelConfig config {
         .tryNonterm = Config::Analysis::tryNonterm(),
         .n = n};
