@@ -34,21 +34,19 @@
 #include "conshash.hpp"
 
 class ArithVar;
-class Recurrence;
 class ArithLit;
 class ArithSubs;
-class Expr;
-class NumConstant;
-class Exp;
-class ACApplication;
-class Add;
-class Mult;
-using ExprPtr = std::shared_ptr<const Expr>;
+class ArithExpr;
+class ArithVal;
+class ArithExp;
+class ArithAdd;
+class ArithMult;
+using ExprPtr = std::shared_ptr<const ArithExpr>;
 using NumVarPtr = std::shared_ptr<const ArithVar>;
-using NumConstantPtr = std::shared_ptr<const NumConstant>;
-using AddPtr = std::shared_ptr<const Add>;
-using MultPtr = std::shared_ptr<const Mult>;
-using ExpPtr = std::shared_ptr<const Exp>;
+using NumConstantPtr = std::shared_ptr<const ArithVal>;
+using AddPtr = std::shared_ptr<const ArithAdd>;
+using MultPtr = std::shared_ptr<const ArithMult>;
+using ExpPtr = std::shared_ptr<const ArithExp>;
 
 
 namespace mp = boost::multiprecision;
@@ -84,16 +82,15 @@ enum class Kind {
 
 }
 
-class Expr: public std::enable_shared_from_this<Expr> {
+class ArithExpr: public std::enable_shared_from_this<ArithExpr> {
 
-    friend class Exp;
-    friend class ACApplication;
+    friend class ArithExp;
     friend ExprPtr arith::mkPlus(std::vector<ExprPtr> args);
     friend ExprPtr arith::mkTimes(std::vector<ExprPtr> args);
 
 protected:
 
-    Expr(const arith::Kind kind);
+    ArithExpr(const arith::Kind kind);
 
 private:
 
@@ -264,13 +261,13 @@ public:
 };
 
 
-class NumConstant: public Expr, public std::enable_shared_from_this<NumConstant> {
+class ArithVal: public ArithExpr, public std::enable_shared_from_this<ArithVal> {
 
     friend ExprPtr arith::mkConst(const Rational &r);
 
 private:
 
-    NumConstant(const Rational &t);
+    ArithVal(const Rational &t);
     Rational t;
 
     struct CacheEqual {
@@ -279,8 +276,8 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<Rational> &args) const noexcept;
     };
-    friend ConsHash<Expr, NumConstant, CacheHash, CacheEqual, Rational>;
-    static ConsHash<Expr, NumConstant, CacheHash, CacheEqual, Rational> cache;
+    friend ConsHash<ArithExpr, ArithVal, CacheHash, CacheEqual, Rational>;
+    static ConsHash<ArithExpr, ArithVal, CacheHash, CacheEqual, Rational> cache;
 
 public:
 
@@ -293,7 +290,7 @@ public:
 };
 
 
-class ArithVar: public Expr, public std::enable_shared_from_this<ArithVar> {
+class ArithVar: public ArithExpr, public std::enable_shared_from_this<ArithVar> {
 
     friend ExprPtr arith::mkVar(const int idx);
 
@@ -312,8 +309,8 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<int> &args) const noexcept;
     };
-    friend ConsHash<Expr, ArithVar, CacheHash, CacheEqual, int>;
-    static ConsHash<Expr, ArithVar, CacheHash, CacheEqual, int> cache;
+    friend ConsHash<ArithExpr, ArithVar, CacheHash, CacheEqual, int>;
+    static ConsHash<ArithExpr, ArithVar, CacheHash, CacheEqual, int> cache;
 
     NumVarPtr toPtr() const;
 
@@ -335,7 +332,7 @@ public:
 std::ostream& operator<<(std::ostream &s, const NumVarPtr x);
 
 
-class Add: public Expr, public std::enable_shared_from_this<Add> {
+class ArithAdd: public ArithExpr, public std::enable_shared_from_this<ArithAdd> {
 
     friend ExprPtr arith::mkPlus(std::vector<ExprPtr> args);
 
@@ -353,15 +350,15 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<linked_hash_set<ExprPtr>> &args) const noexcept;
     };
-    friend ConsHash<Expr, Add, CacheHash, CacheEqual, linked_hash_set<ExprPtr>>;
-    static ConsHash<Expr, Add, CacheHash, CacheEqual, linked_hash_set<ExprPtr>> cache;
+    friend ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, linked_hash_set<ExprPtr>>;
+    static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, linked_hash_set<ExprPtr>> cache;
 
-    Add(const linked_hash_set<ExprPtr> &args);
+    ArithAdd(const linked_hash_set<ExprPtr> &args);
 
 };
 
 
-class Mult: public Expr, public std::enable_shared_from_this<Mult> {
+class ArithMult: public ArithExpr, public std::enable_shared_from_this<ArithMult> {
 
     friend ExprPtr arith::mkTimes(std::vector<ExprPtr> args);
 
@@ -379,15 +376,15 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<linked_hash_set<ExprPtr>> &args) const noexcept;
     };
-    friend ConsHash<Expr, Mult, CacheHash, CacheEqual, linked_hash_set<ExprPtr>>;
-    static ConsHash<Expr, Mult, CacheHash, CacheEqual, linked_hash_set<ExprPtr>> cache;
+    friend ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, linked_hash_set<ExprPtr>>;
+    static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, linked_hash_set<ExprPtr>> cache;
 
-    Mult(const linked_hash_set<ExprPtr> &args);
+    ArithMult(const linked_hash_set<ExprPtr> &args);
 
 };
 
 
-class Exp: public Expr, public std::enable_shared_from_this<Exp> {
+class ArithExp: public ArithExpr, public std::enable_shared_from_this<ArithExp> {
 
     friend ExprPtr arith::mkExp(const ExprPtr base, const ExprPtr exponent);
 
@@ -396,7 +393,7 @@ private:
     ExprPtr base;
     ExprPtr exponent;
 
-    Exp(const ExprPtr base, const ExprPtr exponent);
+    ArithExp(const ExprPtr base, const ExprPtr exponent);
 
     struct CacheEqual {
         bool operator()(const std::tuple<ExprPtr, ExprPtr> &args1, const std::tuple<ExprPtr, ExprPtr> &args2) const noexcept;
@@ -404,8 +401,8 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<ExprPtr, ExprPtr> &args) const noexcept;
     };
-    friend ConsHash<Expr, Exp, CacheHash, CacheEqual, ExprPtr, ExprPtr>;
-    static ConsHash<Expr, Exp, CacheHash, CacheEqual, ExprPtr, ExprPtr> cache;
+    friend ConsHash<ArithExpr, ArithExp, CacheHash, CacheEqual, ExprPtr, ExprPtr>;
+    static ConsHash<ArithExpr, ArithExp, CacheHash, CacheEqual, ExprPtr, ExprPtr> cache;
 
 public:
 

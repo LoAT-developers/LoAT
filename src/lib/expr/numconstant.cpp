@@ -2,27 +2,27 @@
 
 #include <purrs.hh>
 
-ConsHash<Expr, NumConstant, NumConstant::CacheHash, NumConstant::CacheEqual, Rational> NumConstant::cache;
+ConsHash<ArithExpr, ArithVal, ArithVal::CacheHash, ArithVal::CacheEqual, Rational> ArithVal::cache;
 
-NumConstant::NumConstant(const Rational &t): Expr(arith::Kind::Constant), t(t) {}
+ArithVal::ArithVal(const Rational &t): ArithExpr(arith::Kind::Constant), t(t) {}
 
-bool NumConstant::CacheEqual::operator()(const std::tuple<Rational> &args1, const std::tuple<Rational> &args2) const noexcept {
+bool ArithVal::CacheEqual::operator()(const std::tuple<Rational> &args1, const std::tuple<Rational> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t NumConstant::CacheHash::operator()(const std::tuple<Rational> &args) const noexcept {
+size_t ArithVal::CacheHash::operator()(const std::tuple<Rational> &args) const noexcept {
     return std::hash<Rational>{}(std::get<0>(args));
 }
 
 ExprPtr arith::mkConst(const Rational &r) {
-    return NumConstant::cache.from_cache(r);
+    return ArithVal::cache.from_cache(r);
 }
 
-const Rational& NumConstant::getValue() const {
+const Rational& ArithVal::getValue() const {
     return t;
 }
 
-std::optional<Int> NumConstant::intValue() const {
+std::optional<Int> ArithVal::intValue() const {
     if (mp::denominator(t) == 1) {
         return mp::numerator(t);
     } else if (mp::denominator(t) == -1) {
@@ -32,14 +32,14 @@ std::optional<Int> NumConstant::intValue() const {
     }
 }
 
-const Rational& NumConstant::operator*() const {
+const Rational& ArithVal::operator*() const {
     return t;
 }
 
-const NumConstantPtr NumConstant::denominator() const {
+const NumConstantPtr ArithVal::denominator() const {
     return *arith::mkConst(mp::denominator(t))->isRational();
 }
 
-const NumConstantPtr NumConstant::numerator() const {
+const NumConstantPtr ArithVal::numerator() const {
     return *arith::mkConst(mp::numerator(t))->isRational();
 }

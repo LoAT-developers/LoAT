@@ -2,15 +2,15 @@
 
 #include <purrs.hh>
 
-ConsHash<Expr, Exp, Exp::CacheHash, Exp::CacheEqual, ExprPtr, ExprPtr> Exp::cache;
+ConsHash<ArithExpr, ArithExp, ArithExp::CacheHash, ArithExp::CacheEqual, ExprPtr, ExprPtr> ArithExp::cache;
 
-Exp::Exp(const ExprPtr base, const ExprPtr exponent): Expr(arith::Kind::Exp), base(base), exponent(exponent) {}
+ArithExp::ArithExp(const ExprPtr base, const ExprPtr exponent): ArithExpr(arith::Kind::Exp), base(base), exponent(exponent) {}
 
-bool Exp::CacheEqual::operator()(const std::tuple<ExprPtr, ExprPtr> &args1, const std::tuple<ExprPtr, ExprPtr> &args2) const noexcept {
+bool ArithExp::CacheEqual::operator()(const std::tuple<ExprPtr, ExprPtr> &args1, const std::tuple<ExprPtr, ExprPtr> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t Exp::CacheHash::operator()(const std::tuple<ExprPtr, ExprPtr> &args) const noexcept {
+size_t ArithExp::CacheHash::operator()(const std::tuple<ExprPtr, ExprPtr> &args) const noexcept {
     size_t hash {0};
     boost::hash_combine(hash, std::get<0>(args));
     boost::hash_combine(hash, std::get<1>(args));
@@ -36,13 +36,13 @@ ExprPtr arith::mkExp(const ExprPtr base, const ExprPtr exponent) {
     if (!base->isIntegral() || !exponent->isIntegral()) {
         throw std::invalid_argument("attempt to create exp with non-int arguments");
     }
-    return Exp::cache.from_cache(base, exponent);
+    return ArithExp::cache.from_cache(base, exponent);
 }
 
-ExprPtr Exp::getBase() const {
+ExprPtr ArithExp::getBase() const {
     return base;
 }
 
-ExprPtr Exp::getExponent() const {
+ExprPtr ArithExp::getExponent() const {
     return exponent;
 }

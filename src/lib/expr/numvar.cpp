@@ -8,13 +8,13 @@ int ArithVar::last_prog_idx {1};
 
 const NumVarPtr ArithVar::loc_var {nextProgVar()};
 
-ConsHash<Expr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {};
+ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {};
 
 ExprPtr arith::mkVar(const int idx) {
     return ArithVar::cache.from_cache(idx);
 }
 
-ArithVar::ArithVar(const int idx): Expr(arith::Kind::Variable), idx(idx) {}
+ArithVar::ArithVar(const int idx): ArithExpr(arith::Kind::Variable), idx(idx) {}
 
 int ArithVar::getIdx() const {
     return idx;
@@ -59,7 +59,7 @@ NumVarPtr ArithVar::toPtr() const {
 }
 
 ExprPtr ArithVar::toExpr() const {
-    return Expr::shared_from_this();
+    return ArithExpr::shared_from_this();
 }
 
 bool ArithVar::CacheEqual::operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept {
