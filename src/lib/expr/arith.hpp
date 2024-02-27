@@ -5,7 +5,7 @@
 #include "rel.hpp"
 #include "exprsubs.hpp"
 
-struct IntTheory {
+struct Arith {
 
     using Lit = Rel;
     using Var = NumVarPtr;
@@ -33,8 +33,8 @@ struct IntTheory {
 
 namespace intTheory {
 
-extern IntTheory t;
+extern Arith t;
 
 }
 
-static_assert(ITheory<IntTheory>);
+static_assert(ITheory<Arith>);

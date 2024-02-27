@@ -25,7 +25,7 @@ ThExpr toExpr(const Var &var) {
 ThExpr subs(const ThExpr &expr, const Subs &subs) {
     return std::visit(Overload{
                           [&subs](const ExprPtr expr) {
-                              return ThExpr(subs.get<IntTheory>()(expr));
+                              return ThExpr(subs.get<Arith>()(expr));
                           },
                           [&subs](const BoolExpr expr) {
                               return ThExpr(expr->subs(subs));
@@ -51,11 +51,11 @@ VarSet vars(const ThExpr &e) {
 }
 
 Var first(const Pair &p) {
-    return theory::first<IntTheory, BoolTheory>(p);
+    return theory::first<Arith, BoolTheory>(p);
 }
 
 ThExpr second(const Pair &p) {
-    return theory::second<IntTheory, BoolTheory>(p);
+    return theory::second<Arith, BoolTheory>(p);
 }
 
 VarSet vars(const Subs &e) {
@@ -90,23 +90,23 @@ VarSet coDomainVars(const Subs &subs) {
 }
 
 void collectVariables(VarSet &res, const Lit &e) {
-    literal::collectVars<IntTheory, BoolTheory>(e, res);
+    literal::collectVars<Arith, BoolTheory>(e, res);
 }
 
 VarSet variables(const Lit &e) {
-    return literal::vars<IntTheory, BoolTheory>(e);
+    return literal::vars<Arith, BoolTheory>(e);
 }
 
 bool isTriviallyTrue(const Lit &lit) {
-    return literal::isTriviallyTrue<IntTheory, BoolTheory>(lit);
+    return literal::isTriviallyTrue<Arith, BoolTheory>(lit);
 }
 
 Lit negate(const Lit &lit) {
-    return literal::negate<IntTheory, BoolTheory>(lit);
+    return literal::negate<Arith, BoolTheory>(lit);
 }
 
 BoolExpr subs(const Lit &lit, const Subs &s) {
-    return literal::subs<IntTheory, BoolTheory>(lit, s);
+    return literal::subs<Arith, BoolTheory>(lit, s);
 }
 
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
@@ -139,7 +139,7 @@ BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
         }, e1);
 }
 
-IntTheory theory(const NumVarPtr&) {
+Arith theory(const NumVarPtr&) {
     return intTheory::t;
 }
 

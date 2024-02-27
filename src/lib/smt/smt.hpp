@@ -125,5 +125,5 @@ public:
 
 };
 
-using SMT = Smt<IntTheory, BoolTheory>;
+using SMT = Smt<Arith, BoolTheory>;
 using SmtPtr = std::unique_ptr<SMT>;

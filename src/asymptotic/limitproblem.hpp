@@ -6,7 +6,7 @@
 #include <string>
 #include <memory>
 
-#include "inttheory.hpp"
+#include "arith.hpp"
 #include "theory.hpp"
 #include "inftyexpression.hpp"
 #include "limitvector.hpp"
@@ -27,7 +27,7 @@ public:
      *                        of the form t > 0
      * @param cost a term
      */
-    LimitProblem(const Guard &normalizedGuard, const IntTheory::Expression cost);
+    LimitProblem(const Guard &normalizedGuard, const Arith::Expression cost);
 
     /**
      * Creates the initial LimitProblem without any cost term.
@@ -68,7 +68,7 @@ public:
      * @param lv must be applicable to *it
      */
     void applyLimitVector(const InftyExpressionSet::const_iterator &it,
-                          const IntTheory::Expression l, const IntTheory::Expression r,
+                          const Arith::Expression l, const Arith::Expression r,
                           const LimitVector &lv);
 
     /**
@@ -145,7 +145,7 @@ public:
     /**
      * Returns the variable that is used in the solution returned by getSolution().
      */
-    IntTheory::Var getN() const;
+    Arith::Var getN() const;
 
     /**
      * Returns a reference to the vector storing the substitution identifiers.
@@ -161,14 +161,14 @@ public:
     /**
      * Returns a set of all variables appearing in this limit problem
      */
-    std::set<IntTheory::Var> getVariables() const;
+    std::set<Arith::Var> getVariables() const;
 
     /**
      * Returns this LimitProblem as a set of relational Expressions:
      * t (+), t (+!), t(+/+!) -> t > 0
      * t (-), t (-!) -> t < 0
      */
-    std::vector<typename Theory<IntTheory>::Lit> getQuery() const;
+    std::vector<typename Theory<Arith>::Lit> getQuery() const;
 
     /**
      * Returns true if the result of getQuery() is unsatisfiable according to z3.
@@ -223,7 +223,7 @@ public:
 
 private:
     InftyExpressionSet set {};
-    IntTheory::Var variableN;
+    Arith::Var variableN;
     std::vector<int> substitutions {};
     bool unsolvable;
 

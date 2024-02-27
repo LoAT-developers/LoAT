@@ -8,9 +8,9 @@
 
 enum relop_type {lt, leq, gt, geq, eq, neq};
 
-using expr_type = Res<IntTheory::Expression>;
+using expr_type = Res<Arith::Expression>;
 using formula_type = Res<BoolTheory::Expression>;
-using formula_or_expr_type = Res<std::variant<IntTheory::Expression, BoolTheory::Expression>>;
+using formula_or_expr_type = Res<std::variant<Arith::Expression, BoolTheory::Expression>>;
 using let_type = Res<Subs>;
 using lets_type = Res<Subs>;
 using unaryop_type = UnaryOp;
@@ -56,7 +56,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     for (const auto &c: ctx->chc_query()) {
         clauses.push_back(any_cast<query_type>(visit(c)));
     }
-    std::vector<IntTheory::Var> vars;
+    std::vector<Arith::Var> vars;
     std::vector<BoolTheory::Var> bvars;
     for (unsigned i = 0; i < max_int_arity; ++i) {
         vars.emplace_back(NumVar::nextProgVar());
@@ -71,8 +71,8 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         unsigned int_arg {0};
         for (const auto &x: c.lhs.args) {
             std::visit(
-                Overload{[&](const IntTheory::Var x) {
-                             ren.put<IntTheory>(x, vars[int_arg]);
+                Overload{[&](const Arith::Var x) {
+                             ren.put<Arith>(x, vars[int_arg]);
                              ++int_arg;
                          },
                          [&](const BoolTheory::Var x) {
@@ -101,8 +101,8 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         Subs up;
         for (const auto &arg: c.rhs.args) {
             std::visit(
-                Overload{[&](const IntTheory::Var var) {
-                             up.put<IntTheory>(vars[int_arg], ren.get<IntTheory>(var));
+                Overload{[&](const Arith::Var var) {
+                             up.put<Arith>(vars[int_arg], ren.get<Arith>(var));
                              ++int_arg;
                          },
                          [&](const BoolTheory::Var var) {
@@ -111,12 +111,12 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
                          }}, arg);
         }
         for (unsigned i = int_arg; i < max_int_arity; ++i) {
-            up.put<IntTheory>(vars[i], NumVar::next()->toExpr());
+            up.put<Arith>(vars[i], NumVar::next()->toExpr());
         }
         for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
             up.put<BoolTheory>(bvars[i], BExpression::mkLit(BoolLit(BoolVar::next())));
         }
-        up.put<IntTheory>(NumVar::loc_var, arith::mkConst(c.rhs.loc));
+        up.put<Arith>(NumVar::loc_var, arith::mkConst(c.rhs.loc));
         const auto guard {c.guard->subs(ren)->simplify() & theories::mkEq(NumVar::loc_var, arith::mkConst(c.lhs.loc))};
         its->addRule(Rule(guard, up), c.lhs.loc);
     }
@@ -323,8 +323,8 @@ antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
         ret.conjoin(res);
         std::visit(
             Overload {
-                [&](const IntTheory::Expression e) {
-                    ret.t.get<IntTheory>().put(std::get<IntTheory::Var>(var(name, IntType)), e);
+                [&](const Arith::Expression e) {
+                    ret.t.get<Arith>().put(std::get<Arith::Var>(var(name, IntType)), e);
                 },
                 [&](const BoolTheory::Expression e) {
                     ret.t.get<BoolTheory>().put(std::get<BoolTheory::Var>(var(name, BoolType)), e);
@@ -337,7 +337,7 @@ antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
     } else {
         const auto res = any_cast<expr_type>(visit(ctx->expr()));
         ret.conjoin(res);
-        ret.t.get<IntTheory>().put(std::get<IntTheory::Var>(var(name, IntType)), res.t);
+        ret.t.get<Arith>().put(std::get<Arith::Var>(var(name, IntType)), res.t);
     }
     return ret;
 }
@@ -431,8 +431,8 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
         res.conjoin(expr);
         res.t = std::visit(
             Overload{
-                [&](const IntTheory::Expression expr) {
-                    return TheTheory::Expression(bindings.t.get<IntTheory>()(expr));
+                [&](const Arith::Expression expr) {
+                    return TheTheory::Expression(bindings.t.get<Arith>()(expr));
                 },
                 [&](const BoolTheory::Expression expr) {
                     return TheTheory::Expression(expr->subs(bindings.t));
@@ -448,10 +448,10 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
         res.conjoin(else_case);
         std::visit(
             Overload {
-                [&](const IntTheory::Expression e) {
+                [&](const Arith::Expression e) {
                     const auto var {NumVar::next()};
                     res.t = var->toExpr();
-                    res.refinement.push_back((r.t & theories::mkEq(var, e)) | ((!r.t) & theories::mkEq(var, std::get<IntTheory::Expression>(else_case.t))));
+                    res.refinement.push_back((r.t & theories::mkEq(var, e)) | ((!r.t) & theories::mkEq(var, std::get<Arith::Expression>(else_case.t))));
                 },
                 [&](const BoolTheory::Expression e) {
                     res.t = (r.t & e) | ((!r.t) & std::get<BoolTheory::Expression>(else_case.t));
@@ -462,14 +462,14 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
 }
 
 antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
-    Res<IntTheory::Expression> res;
-    std::vector<IntTheory::Expression> args;
+    Res<Arith::Expression> res;
+    std::vector<Arith::Expression> args;
     if (ctx->lets()) {
         const auto bindings = any_cast<lets_type>(visit(ctx->lets()));
         const auto expr = any_cast<expr_type>(visit(ctx->expr(0)));
         res.conjoin(bindings);
         res.conjoin(expr);
-        res.t = bindings.t.get<IntTheory>()(expr.t);
+        res.t = bindings.t.get<Arith>()(expr.t);
         res.subsRefinement(bindings.t);
         return res;
     }
@@ -517,9 +517,9 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
                     | (BExpression::mkLit(Rel::mkLt(args[1], 0)) & Rel::mkGt(-args[1], mod)));
             }
             if (op == Div) {
-                res.t = IntTheory::varToExpr(div);
+                res.t = Arith::varToExpr(div);
             } else {
-                res.t = IntTheory::varToExpr(mod);
+                res.t = Arith::varToExpr(mod);
             }
             break;
         }
@@ -543,7 +543,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         res.refinement.push_back((r.t & theories::mkEq(res.t, args[0])) | ((!r.t) & theories::mkEq(res.t, args[1])));
     } else if (ctx->var()) {
         const auto x = any_cast<Var>(visit(ctx->var()));
-        res.t = std::get<IntTheory::Var>(x);
+        res.t = std::get<Arith::Var>(x);
     } else if (ctx->INT()) {
         res.t = arith::mkConst(Int(ctx->getText().c_str()));
     } else if (args.size() == 1) {

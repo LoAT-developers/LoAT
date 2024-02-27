@@ -30,8 +30,8 @@ class SABMC {
 
 private:
 
-    using BoundPair = std::pair<std::optional<IntTheory::Expression>, std::optional<IntTheory::Expression>>;
-    using NondetSubs = linked_hash_map<IntTheory::Var, BoundPair>;
+    using BoundPair = std::pair<std::optional<Arith::Expression>, std::optional<Arith::Expression>>;
+    using NondetSubs = linked_hash_map<Arith::Var, BoundPair>;
 
     explicit SABMC(SafetyProblem &t);
 
@@ -54,12 +54,12 @@ private:
     linked_hash_map<Var, Var> var_map {};
     linked_hash_map<Var, Var> inverse_var_map {};
     VarSet vars {};
-    linked_hash_map<IntTheory::Var, IntTheory::Var> lower_vars {};
-    linked_hash_map<IntTheory::Var, IntTheory::Var> upper_vars {};
+    linked_hash_map<Arith::Var, Arith::Var> lower_vars {};
+    linked_hash_map<Arith::Var, Arith::Var> upper_vars {};
     ExprSubs reverse_low_up_vars {};
     std::unordered_map<Int, Transition> rule_map {};
-    const IntTheory::Var trace_var {NumVar::next()};
-    const IntTheory::Var n {NumVar::next()};
+    const Arith::Var trace_var {NumVar::next()};
+    const Arith::Var n {NumVar::next()};
     Proof proof {};
     DependencyGraph<Transition> dependency_graph {};
     unsigned depth {0};
@@ -77,7 +77,7 @@ private:
     const Subs& get_subs(const unsigned start, const unsigned steps);
 
     Transition mbp(const Transition &trans, const Subs &model) const;
-    BoundPair bound_selection(const Transition &t, const Subs &model, const IntTheory::Var x, linked_hash_set<IntTheory::Expression> &chosen) const;
+    BoundPair bound_selection(const Transition &t, const Subs &model, const Arith::Var x, linked_hash_set<Arith::Expression> &chosen) const;
     NondetSubs bound_selection(const Transition &t, const Subs &model) const;
     linked_hash_map<BoolTheory::Var, bool> value_selection(const Subs &model) const;
     std::pair<NondetSubs, unsigned> closed_form(const NondetSubs &update, const Subs &model);

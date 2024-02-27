@@ -20,7 +20,7 @@
 
 
 AsymptoticBound::AsymptoticBound(Guard guard,
-                                 IntTheory::Expression cost, bool finalCheck)
+                                 Arith::Expression cost, bool finalCheck)
     : guard(guard), cost(cost), finalCheck(finalCheck),
       addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP() {}
 
@@ -69,13 +69,13 @@ void AsymptoticBound::propagateBounds() {
         auto subs {GuardToolbox::propagateEqualities(g, [](const auto &x){return !theories::isTempVar(x);})};
         if (subs) {
             substitutions.push_back(*subs);
-            g = g->subs(Subs::build<IntTheory>(*subs));
+            g = g->subs(Subs::build<Arith>(*subs));
             changed = true;
         } else {
             subs = GuardToolbox::propagateEqualities(g, [](const auto &x){return theories::isTempVar(x);});
             if (subs) {
                 substitutions.push_back(*subs);
-                g = g->subs(Subs::build<IntTheory>(*subs));
+                g = g->subs(Subs::build<Arith>(*subs));
                 changed = true;
             }
         }
@@ -144,7 +144,7 @@ Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
         assert(!solvedCost->isMultivariate());
         lowerBound = *solvedCost->degree(n);
     } else {
-        std::vector<IntTheory::Expression> nonPolynomial;
+        std::vector<Arith::Expression> nonPolynomial;
         const auto powers {solvedCost->exps()};
         lowerBound = 1;
         for (const auto &p : powers) {
@@ -167,7 +167,7 @@ Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
 
 void AsymptoticBound::removeUnsatProblems() {
     for (int i = limitProblems.size() - 1; i >= 0; --i) {
-        auto result = SmtFactory::_check(BoolExpression<IntTheory>::mkAndFromLits(limitProblems[i].getQuery()));
+        auto result = SmtFactory::_check(BoolExpression<Arith>::mkAndFromLits(limitProblems[i].getQuery()));
 
         if (result == Unsat) {
             limitProblems.erase(limitProblems.begin() + i);
@@ -433,7 +433,7 @@ bool AsymptoticBound::tryReducingGeneralExp(const InftyExpressionSet::const_iter
 
 bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_iterator &it) {
     std::vector<LimitVector> *limitVectors;
-    IntTheory::Expression l, r;
+    Arith::Expression l, r;
     const auto e {it->first};
     const auto d {it->second};
     const auto has_limit_vectors
@@ -455,7 +455,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   auto arg_it {args.begin()};
                   l = *arg_it;
                   ++arg_it;
-                  std::vector<IntTheory::Expression> rhs_args;
+                  std::vector<Arith::Expression> rhs_args;
                   for (; arg_it != args.end(); ++arg_it) {
                       rhs_args.emplace_back(*arg_it);
                   }
@@ -468,7 +468,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   auto arg_it {args.begin()};
                   l = *arg_it;
                   ++arg_it;
-                  std::vector<IntTheory::Expression> rhs_args;
+                  std::vector<Arith::Expression> rhs_args;
                   for (; arg_it != args.end(); ++arg_it) {
                       rhs_args.emplace_back(*arg_it);
                   }
@@ -495,7 +495,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
 
 
 bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::const_iterator &it) {
-    IntTheory::Expression l, r;
+    Arith::Expression l, r;
     std::vector<LimitVector> *limitVectors;
     const auto e {it->first};
     const auto d {it->second};
@@ -508,8 +508,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                 return false;
             },
             [&](const AddPtr a) {
-                std::vector<IntTheory::Expression> l_args;
-                std::vector<IntTheory::Expression> r_args;
+                std::vector<Arith::Expression> l_args;
+                std::vector<Arith::Expression> r_args;
                 std::optional<NumVarPtr> oneVar;
                 for (const auto &ex: a->getArgs()) {
                     if (ex->isRational()) {
@@ -540,8 +540,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                 return true;
             },
             [&](const MultPtr m) {
-                std::vector<IntTheory::Expression> l_args;
-                std::vector<IntTheory::Expression> r_args;
+                std::vector<Arith::Expression> l_args;
+                std::vector<Arith::Expression> r_args;
                 l_args.emplace_back(arith::mkConst(1));
                 r_args.emplace_back(arith::mkConst(1));
                 std::optional<NumVarPtr> oneVar;
@@ -582,7 +582,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
 
 
 bool AsymptoticBound::applyLimitVectorsThatMakeSense(const InftyExpressionSet::const_iterator &it,
-                                                     const IntTheory::Expression l, const IntTheory::Expression r,
+                                                     const Arith::Expression l, const Arith::Expression r,
                                                      const std::vector<LimitVector> &limitVectors) {
     bool posInfVector = false;
     bool posConsVector = false;
@@ -634,8 +634,8 @@ bool AsymptoticBound::tryInstantiatingVariable() {
 
         if (e->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const auto &query = currentLP.getQuery();
-            auto solver = SmtFactory::_modelBuildingSolver<IntTheory>(Smt<IntTheory>::chooseLogic<std::vector<Theory<IntTheory>::Lit>, ExprSubs>({query}, {}));
-            solver->add(BoolExpression<IntTheory>::mkAndFromLits(query));
+            auto solver = SmtFactory::_modelBuildingSolver<Arith>(Smt<Arith>::chooseLogic<std::vector<Theory<Arith>::Lit>, ExprSubs>({query}, {}));
+            solver->add(BoolExpression<Arith>::mkAndFromLits(query));
             SmtResult result = solver->check();
 
             if (result == Unsat) {
@@ -645,7 +645,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
                 const auto model {solver->model()};
                 const auto var {*e->someVar()};
 
-                const auto rational {model.get<IntTheory>(var)};
+                const auto rational {model.get<Arith>(var)};
                 substitutions.push_back({{var, arith::mkConst(rational)}});
 
                 createBacktrackingPoint(it, POS_INF);
@@ -712,7 +712,7 @@ bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
 
 
 AsymptoticBound::Result AsymptoticBound::determineComplexity(const Guard &guard,
-                                                             const IntTheory::Expression &cost,
+                                                             const Arith::Expression &cost,
                                                              bool finalCheck,
                                                              const Complexity &currentRes) {
 

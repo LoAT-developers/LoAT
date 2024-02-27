@@ -11,7 +11,7 @@ class VarEliminator
 
 public:
 
-    VarEliminator(const BoolExpr guard, const IntTheory::Var N, const std::function<bool(IntTheory::Var)> &keep);
+    VarEliminator(const BoolExpr guard, const Arith::Var N, const std::function<bool(Arith::Var)> &keep);
 
     const linked_hash_set<ExprSubs> getRes() const;
 
@@ -40,7 +40,7 @@ private:
      */
     void eliminate();
 
-    IntTheory::Var N;
+    Arith::Var N;
 
     /**
      * Each entry represents one branch in the search for suitable instantiations of dependencies.
@@ -59,8 +59,8 @@ private:
      */
     linked_hash_set<ExprSubs> res {};
 
-    linked_hash_set<IntTheory::Var> dependencies {};
+    linked_hash_set<Arith::Var> dependencies {};
 
-    const std::function<bool(IntTheory::Var)> keep;
+    const std::function<bool(Arith::Var)> keep;
 
 };

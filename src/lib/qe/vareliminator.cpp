@@ -3,7 +3,7 @@
 
 #include <assert.h>
 
-VarEliminator::VarEliminator(const BoolExpr guard, const IntTheory::Var N, const std::function<bool(IntTheory::Var)> &keep): N(N), keep(keep) {
+VarEliminator::VarEliminator(const BoolExpr guard, const Arith::Var N, const std::function<bool(Arith::Var)> &keep): N(N), keep(keep) {
     assert(!keep(N));
     todoDeps.push({{}, guard});
     findDependencies(guard);
@@ -16,11 +16,11 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
     do {
         changed = false;
         // compute dependencies of var
-        for (const IntTheory::Var &var: dependencies) {
-            std::optional<IntTheory::Var> dep;
+        for (const Arith::Var &var: dependencies) {
+            std::optional<Arith::Var> dep;
             for (const auto &lit: guard->lits()) {
-                if (std::holds_alternative<IntTheory::Lit>(lit)) {
-                    const auto &rel {std::get<IntTheory::Lit>(lit)};
+                if (std::holds_alternative<Arith::Lit>(lit)) {
+                    const auto &rel {std::get<Arith::Lit>(lit)};
                     const auto ex {rel.lhs()};
                     if (ex->degree(var) == 1) {
                         // we found a constraint which is linear in var, check all variables in var's coefficient
@@ -60,8 +60,8 @@ const std::vector<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDepende
         for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
             for (const auto &b: bb) {
                 if (b->isRational()) {
-                    const auto newSubs {Subs::build<IntTheory>(*it, b)};
-                    res.push_back({subs.compose(newSubs.get<IntTheory>()), guard->subs(newSubs)});
+                    const auto newSubs {Subs::build<Arith>(*it, b)};
+                    res.push_back({subs.compose(newSubs.get<Arith>()), guard->subs(newSubs)});
                 }
             }
         }

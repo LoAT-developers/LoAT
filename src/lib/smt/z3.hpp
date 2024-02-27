@@ -40,12 +40,12 @@ public:
         const z3::model &m = solver.get_model();
         Model<Th...> res;
         const auto add = [&res, this, &m](const auto &x, const auto &y) {
-            if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
-                if (std::holds_alternative<IntTheory::Var>(x)) {
-                    const auto var {std::get<IntTheory::Var>(x)};
+            if constexpr ((std::is_same_v<Arith, Th> || ...)) {
+                if (std::holds_alternative<Arith::Var>(x)) {
+                    const auto var {std::get<Arith::Var>(x)};
                     const auto val {getRealFromModel(m, y)};
                     assert(mp::denominator(val) == 1);
-                    res.template put<IntTheory>(var, mp::numerator(val));
+                    res.template put<Arith>(var, mp::numerator(val));
                     return;
                 }
             }

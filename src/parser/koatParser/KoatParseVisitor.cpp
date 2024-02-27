@@ -6,12 +6,12 @@ enum relop_type {lt, leq, gt, geq, eq, neq};
 
 using fs_type = LocationIdx;
 using lhs_type = LocationIdx;
-using to_type = IntTheory::Expression;
+using to_type = Arith::Expression;
 using com_type = std::vector<Subs>;
 using cond_type = BoolExpr;
 using rhs_type = Subs;
-using expr_type = IntTheory::Expression;
-using var_type = IntTheory::Var;
+using expr_type = Arith::Expression;
+using var_type = Arith::Var;
 using lit_type = BoolExpr;
 using formula_type = BoolExpr;
 
@@ -68,15 +68,15 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     cond = cond & theories::mkEq(NumVar::loc_var, arith::mkConst(lhsLoc));
     auto up = rhss.at(0);
     if (Config::Analysis::complexity()) {
-        up.put<IntTheory>(its->getCostVar(), its->getCostVar() + cost);
+        up.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
     }
     Rule rule(cond, up);
     auto vars = rule.vars();
     Subs varRenaming;
     for (const auto &x: vars) {
-        const auto var {std::get<IntTheory::Var>(x)};
+        const auto var {std::get<Arith::Var>(x)};
         if (var->isTempVar()) {
-            varRenaming.put<IntTheory>(var, NumVar::next());
+            varRenaming.put<Arith>(var, NumVar::next());
         }
     }
     rule = rule.subs(varRenaming);
@@ -122,11 +122,11 @@ antlrcpp::Any KoatParseVisitor::visitRhs(KoatParser::RhsContext *ctx) {
     for (unsigned i = 0; i < sz; ++i) {
         const auto rhs = any_cast<expr_type>(visit(expr[i]));
         if (rhs != programVars[i]) {
-            up.put<IntTheory>(programVars[i], rhs);
+            up.put<Arith>(programVars[i], rhs);
         }
     }
     const auto loc = any_cast<fs_type>(visit(ctx->fs()));
-    up.put<IntTheory>(NumVar::loc_var, arith::mkConst(loc));
+    up.put<Arith>(NumVar::loc_var, arith::mkConst(loc));
     return up;
 }
 

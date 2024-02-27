@@ -10,7 +10,7 @@ LimitProblem::LimitProblem()
 }
 
 
-LimitProblem::LimitProblem(const Guard &normalizedGuard, const IntTheory::Expression cost)
+LimitProblem::LimitProblem(const Guard &normalizedGuard, const Arith::Expression cost)
     : LimitProblem() {
     for (const auto &lit : normalizedGuard) {
         addExpression(InftyExpression(std::get<Rel>(lit).lhs(), POS));
@@ -110,7 +110,7 @@ InftyExpressionSet::iterator LimitProblem::cend() const {
 
 
 void LimitProblem::applyLimitVector(const InftyExpressionSet::const_iterator &it,
-                                    const IntTheory::Expression l, const IntTheory::Expression r,
+                                    const Arith::Expression l, const Arith::Expression r,
                                     const LimitVector &lv) {
     const auto &[_,d] {*it};
     assert(lv.isApplicable(d));
@@ -299,7 +299,7 @@ ExprSubs LimitProblem::getSolution() const {
 }
 
 
-IntTheory::Var LimitProblem::getN() const {
+Arith::Var LimitProblem::getN() const {
     return variableN;
 }
 
@@ -314,8 +314,8 @@ InftyExpressionSet::const_iterator LimitProblem::find(const InftyExpression &ex)
 }
 
 
-std::set<IntTheory::Var> LimitProblem::getVariables() const {
-    std::set<IntTheory::Var> res;
+std::set<Arith::Var> LimitProblem::getVariables() const {
+    std::set<Arith::Var> res;
     for (const auto &[ex,_] : set) {
         const auto exVars = ex->vars();
         res.insert(exVars.begin(), exVars.end());
@@ -324,8 +324,8 @@ std::set<IntTheory::Var> LimitProblem::getVariables() const {
 }
 
 
-std::vector<Theory<IntTheory>::Lit> LimitProblem::getQuery() const {
-    std::vector<Theory<IntTheory>::Lit> query;
+std::vector<Theory<Arith>::Lit> LimitProblem::getQuery() const {
+    std::vector<Theory<Arith>::Lit> query;
     for (const auto &[ex,d] : set) {
         if (d == NEG_INF || d == NEG_CONS) {
             query.push_back(Rel::mkLt(ex, arith::mkConst(0)));
@@ -338,7 +338,7 @@ std::vector<Theory<IntTheory>::Lit> LimitProblem::getQuery() const {
 
 
 bool LimitProblem::isUnsat() const {
-    return SmtFactory::_check(BoolExpression<IntTheory>::mkAndFromLits(getQuery())) == Unsat;
+    return SmtFactory::_check(BoolExpression<Arith>::mkAndFromLits(getQuery())) == Unsat;
 }
 
 

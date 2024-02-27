@@ -100,7 +100,7 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
         const auto imp {trace[i]};
         const auto rule {imp.first
                             ->withGuard(imp.second)
-                            .subs(Subs::build<IntTheory>(n, subs.at(i).get<IntTheory>(n)))};
+                            .subs(Subs::build<Arith>(n, subs.at(i).get<Arith>(n)))};
         if (loop) {
             const auto [chained, sigma] {Chaining::chain(rule, *loop)};
             loop = chained;
@@ -294,7 +294,7 @@ void ABMC::build_trace() {
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
         const auto s {subs.at(d)};
-        const auto rule {rule_map.at(*(*std::get<IntTheory::Expression>(model.get(trace_var))->isRational())->intValue())};
+        const auto rule {rule_map.at(*(*std::get<Arith::Expression>(model.get(trace_var))->isRational())->intValue())};
         const auto comp {theories::compose(s, model)};
         const auto imp {rule->getGuard()->syntacticImplicant(comp)};
         auto vars {rule->getUpdate().domain()};

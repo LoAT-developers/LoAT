@@ -52,7 +52,7 @@ RuleResult propagateEqualities(const Rule &rule, GuardToolbox::SymbolAcceptor &a
     RuleResult res {rule};
     const auto subs {GuardToolbox::propagateEqualities(rule.getGuard(), allow)};
     if (subs) {
-        res = res->subs(Subs::build<IntTheory>(*subs));
+        res = res->subs(Subs::build<Arith>(*subs));
         res.ruleTransformationProof(rule, "Extracted Implied Equalities", *res);
         res.storeSubProof(subs.getProof());
     }

@@ -20,8 +20,8 @@ add_library(${PROJECT_NAME} STATIC
   rel.hpp
   conjunction.hpp
   boolexpr.hpp
-  inttheory.hpp
-  inttheory.cpp
+  arith.hpp
+  arith.cpp
   booltheory.hpp
   booltheory.cpp
   boolsubs.hpp

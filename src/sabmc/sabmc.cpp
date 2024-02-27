@@ -50,7 +50,7 @@ SABMC::SABMC(SafetyProblem &t):
             vars.insert(x);
         }
     }
-    for (const auto &x: t.pre_vars().get<IntTheory::Var>()) {
+    for (const auto &x: t.pre_vars().get<Arith::Var>()) {
         lower_vars.emplace(x, NumVar::next());
         upper_vars.emplace(x, NumVar::next());
         reverse_low_up_vars.put(lower_vars[x], x);
@@ -116,19 +116,19 @@ std::pair<Transition, Subs> SABMC::build_loop(const Range &range) {
 void SABMC::add_learned_clause(const Transition &accel, unsigned length) {
     if (Config::Analysis::log) std::cout << "learned transition: " << accel << std::endl;
     rule_map.emplace(accel.getId(), accel);
-    blocked.emplace_back(accel.toBoolExpr()->subs(Subs::build<IntTheory>(n, arith::mkConst(1))), length, accel.getId());
+    blocked.emplace_back(accel.toBoolExpr()->subs(Subs::build<Arith>(n, arith::mkConst(1))), length, accel.getId());
     step = step | encode_transition(accel);
 }
 
-std::optional<IntTheory::Expression> closest_bound(const linked_hash_set<IntTheory::Expression> &bounds, const Subs &model, const IntTheory::Var &x, const linked_hash_set<IntTheory::Expression> &chosen = {}) {
-    std::optional<IntTheory::Expression> closest;
+std::optional<Arith::Expression> closest_bound(const linked_hash_set<Arith::Expression> &bounds, const Subs &model, const Arith::Var &x, const linked_hash_set<Arith::Expression> &chosen = {}) {
+    std::optional<Arith::Expression> closest;
     Int dist;
-    const auto val {*model.get<IntTheory>(x)->isInt()};
+    const auto val {*model.get<Arith>(x)->isInt()};
     for (const auto &b: bounds) {
         if (chosen.contains(b)) {
             continue;
         }
-        const auto b_val {*model.get<IntTheory>()(b)->isInt()};
+        const auto b_val {*model.get<Arith>()(b)->isInt()};
         const auto d {mp::abs(val - b_val)};
         if (!closest || d < dist || (d == dist && b < *closest)) {
             dist = d;
@@ -138,8 +138,8 @@ std::optional<IntTheory::Expression> closest_bound(const linked_hash_set<IntTheo
     return closest;
 }
 
-bool is_increasing(const IntTheory::Expression e, const Subs &model, const IntTheory::Var x) {
-    const auto &current {model.get<IntTheory>()};
+bool is_increasing(const Arith::Expression e, const Subs &model, const Arith::Var x) {
+    const auto &current {model.get<Arith>()};
     const auto next {ExprSubs{{x, x + arith::mkConst(1)}}.compose(current)};
     const auto coeff {*e->coeff(x)};
     return *(current(coeff) - next(coeff))->isRational() < 0;
@@ -147,8 +147,8 @@ bool is_increasing(const IntTheory::Expression e, const Subs &model, const IntTh
 
 std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &update, const Subs &model) {
     ExprSubs up;
-    std::unordered_set<IntTheory::Var> done_lower;
-    std::unordered_set<IntTheory::Var> done_upper;
+    std::unordered_set<Arith::Var> done_lower;
+    std::unordered_set<Arith::Var> done_upper;
     auto changed {false};
     ExprSubs dec_n {{n, n - arith::mkConst(1)}};
     do {
@@ -162,8 +162,8 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
                     if (y == x) {
                         subs.put(x, lower_vars[x]);
                     } else {
-                        const auto y_pre = t.pre_vars().contains(y) ? y : std::get<IntTheory::Var>(inverse_var_map[y]);
-                        std::optional<IntTheory::Expression> y_res;
+                        const auto y_pre = t.pre_vars().contains(y) ? y : std::get<Arith::Var>(inverse_var_map[y]);
+                        std::optional<Arith::Expression> y_res;
                         if (is_increasing(*lower, model, y)) {
                             if (!done_lower.contains(y_pre)) {
                                 goto UPPER;
@@ -202,8 +202,8 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
                     if (y == x) {
                         subs.put(x, upper_vars[x]);
                     } else {
-                        const auto y_pre = t.pre_vars().contains(y) ? y : std::get<IntTheory::Var>(inverse_var_map[y]);
-                        std::optional<IntTheory::Expression> y_res;
+                        const auto y_pre = t.pre_vars().contains(y) ? y : std::get<Arith::Var>(inverse_var_map[y]);
+                        std::optional<Arith::Expression> y_res;
                         if (is_increasing(*upper, model, y)) {
                             if (!done_upper.contains(y_pre)) {
                                 goto NEXT;
@@ -238,14 +238,14 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
             NEXT:;
         }
     } while (changed);
-    const auto rec {Recurrence::solve(Subs::build<IntTheory>(up), n)};
+    const auto rec {Recurrence::solve(Subs::build<Arith>(up), n)};
     std::pair<NondetSubs, unsigned> res;
     if (rec) {
         for (const auto &[x,_]: update) {
             const auto low_var {lower_vars[x]};
             const auto up_var {upper_vars[x]};
-            const auto low = rec->closed_form.contains(low_var) ? reverse_low_up_vars(rec->closed_form.get<IntTheory>(low_var)) : std::optional<IntTheory::Expression>();
-            const auto up = rec->closed_form.contains(up_var) ? reverse_low_up_vars(rec->closed_form.get<IntTheory>(up_var)) : std::optional<IntTheory::Expression>();
+            const auto low = rec->closed_form.contains(low_var) ? reverse_low_up_vars(rec->closed_form.get<Arith>(low_var)) : std::optional<Arith::Expression>();
+            const auto up = rec->closed_form.contains(up_var) ? reverse_low_up_vars(rec->closed_form.get<Arith>(up_var)) : std::optional<Arith::Expression>();
             res.first.emplace(x, BoundPair{low, up});
         }
         res.second = rec->prefix;
@@ -266,12 +266,12 @@ linked_hash_map<BoolTheory::Var, bool> SABMC::value_selection(const Subs &model)
     return res;
 }
 
-SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Subs &model, const IntTheory::Var x, linked_hash_set<IntTheory::Expression> &chosen) const {
-    const auto post_var {std::get<IntTheory::Var>(var_map[x])};
+SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Subs &model, const Arith::Var x, linked_hash_set<Arith::Expression> &chosen) const {
+    const auto post_var {std::get<Arith::Var>(var_map[x])};
     const auto bounds {trans.toBoolExpr()->getBounds(post_var)};
     const auto equalities {bounds.equalities()};
     if (!equalities.empty()) {
-        std::optional<IntTheory::Expression> res;
+        std::optional<Arith::Expression> res;
         for (const auto &e: equalities) {
             if (!res) {
                 res = e;
@@ -316,10 +316,10 @@ SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Subs &mod
 
 SABMC::NondetSubs SABMC::bound_selection(const Transition &trans, const Subs &model) const {
     NondetSubs res;
-    linked_hash_set<IntTheory::Expression> chosen;
+    linked_hash_set<Arith::Expression> chosen;
     for (const auto &x: t.pre_vars()) {
-        if (std::holds_alternative<IntTheory::Var>(x)) {
-            const auto nv {std::get<IntTheory::Var>(x)};
+        if (std::holds_alternative<Arith::Var>(x)) {
+            const auto nv {std::get<Arith::Var>(x)};
             res.emplace(nv, bound_selection(trans, model, nv, chosen));
         }
     }
@@ -330,11 +330,11 @@ Transition mbp(const Transition &t, const Subs &model, const BoolTheory::Var x) 
     return t.subs(Subs::build<BoolTheory>(x, model.get<BoolTheory>(x)));
 }
 
-Transition mbp(const Transition &t, const Subs &model, const IntTheory::Var x) {
+Transition mbp(const Transition &t, const Subs &model, const Arith::Var x) {
     const auto bounds {t.toBoolExpr()->getBounds(x)};
     const auto equalities {bounds.equalities()};
     if (!equalities.empty()) {
-        return t.subs(Subs::build<IntTheory>(x, *equalities.begin()));
+        return t.subs(Subs::build<Arith>(x, *equalities.begin()));
     } else {
         const auto closest =
             bounds.lowerBounds.size() <= bounds.upperBounds.size() ?
@@ -342,7 +342,7 @@ Transition mbp(const Transition &t, const Subs &model, const IntTheory::Var x) {
                                  closest_bound(bounds.upperBounds, model, x);
         const auto lin {t.linearize(x)};
         if (closest) {
-            return lin.subs(Subs::build<IntTheory>(x, *closest));
+            return lin.subs(Subs::build<Arith>(x, *closest));
         } else if (bounds.lowerBounds.size() <= bounds.upperBounds.size()) {
             return lin.toMinusInfinity(x);
         } else {
@@ -357,7 +357,7 @@ Transition mbp(const Transition &t, const Subs &model, const Var &x) {
             [&](const BoolTheory::Var x) {
                 return mbp(t, model, x);
             },
-            [&](const IntTheory::Var x) {
+            [&](const Arith::Var x) {
                 const auto res {mbp(t, model, x)};
                 assert(!res.toBoolExpr()->isTriviallyFalse());
                 return res;
@@ -382,7 +382,7 @@ void SABMC::handle_rel(const Rel &rel, const NondetSubs &update, const NondetSub
     auto add_init {true};
     for (const auto &x: vars) {
         if (t.post_vars().contains(x)) {
-            const auto pre {std::get<IntTheory::Var>(inverse_var_map[x])};
+            const auto pre {std::get<Arith::Var>(inverse_var_map[x])};
             const auto up {update.get(pre)};
             if (up) {
                 if (is_increasing(lhs, model, x)) {
@@ -417,7 +417,7 @@ void SABMC::handle_rel(const Rel &rel, const NondetSubs &update, const NondetSub
     ExprSubs but_last;
     for (const auto &x: vars) {
         if (!t.post_vars().contains(x)) {
-            IntTheory::Expression updated;
+            Arith::Expression updated;
             if (closed.contains(x)) {
                 const auto up {closed[x]};
                 if (is_increasing(lhs, model, x)) {
@@ -521,8 +521,8 @@ void SABMC::add_blocking_clauses() {
     for (const auto &b: blocked) {
         const auto s {get_subs(depth, b.length)};
         // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(ExprSubs({{n, 1}}))) << std::endl;
-        const auto block {!b.trans->subs(theories::compose(Subs::build<IntTheory>(ExprSubs({{n, arith::mkConst(1)}})), s))};
-        solver->add(block | Rel::mkGeq(s.get<IntTheory>(trace_var), arith::mkConst(b.id)));
+        const auto block {!b.trans->subs(theories::compose(Subs::build<Arith>(ExprSubs({{n, arith::mkConst(1)}})), s))};
+        solver->add(block | Rel::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id)));
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
         const std::vector<BoolExpr> lits {theories::mkNeq(trace_var, arith::mkConst(b.id)), theories::mkNeq(trace_var, arith::mkConst(b.id))};
@@ -552,7 +552,7 @@ void SABMC::build_trace() {
     std::optional<Transition> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s {get_subs(d, 1)};
-        const auto rule {rule_map.at(*(*model.get<IntTheory>(trace_var)->isRational())->intValue())};
+        const auto rule {rule_map.at(*(*model.get<Arith>(trace_var)->isRational())->intValue())};
         const auto comp {theories::compose(s, model)};
         const auto imp {rule.syntacticImplicant(comp)};
         run.push_back(comp.project(vars));

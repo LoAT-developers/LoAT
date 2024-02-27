@@ -43,7 +43,7 @@ protected:
     EXPR convertBoolEx(const BExpr<Th...> e) {
         if (e->getTheoryLit()) {
             const auto lit = *e->getTheoryLit();
-            if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
+            if constexpr ((std::is_same_v<Arith, Th> || ...)) {
                 if (std::holds_alternative<Rel>(lit)) {
                     return convertRelational(std::get<Rel>(lit));
                 }

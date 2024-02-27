@@ -35,7 +35,7 @@ LoopAcceleration::LoopAcceleration(
     const AccelConfig &config)
     : rule(rule), sample_point(sample_point), config(config) {
     auto up {rule.getUpdate()};
-    up.put<IntTheory>(NumVar::loc_var, NumVar::loc_var->toExpr());
+    up.put<Arith>(NumVar::loc_var, NumVar::loc_var->toExpr());
     this->rule = rule.withUpdate(up);
 }
 
@@ -88,7 +88,7 @@ void LoopAcceleration::compute_closed_form() {
         const auto is_temp_var = [](const auto z){
             return z->isTempVar();
         };
-        for (const auto &[x,y]: rule.getUpdate().get<IntTheory>()) {
+        for (const auto &[x,y]: rule.getUpdate().get<Arith>()) {
             if (y->has(x) && y != x->toExpr()) {
                 if (!y->hasVarWith(is_temp_var)) {
                     return;

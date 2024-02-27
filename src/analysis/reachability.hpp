@@ -208,7 +208,7 @@ class Reachability {
 
     void update_cpx();
 
-    RuleResult instantiate(const IntTheory::Var n, const Rule &rule) const;
+    RuleResult instantiate(const Arith::Var n, const Rule &rule) const;
 
     /**
      * initializes all data structures after preprocessing

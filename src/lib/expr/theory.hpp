@@ -1,26 +1,26 @@
 #pragma once
 
 #include "itheory.hpp"
-#include "inttheory.hpp"
+#include "arith.hpp"
 #include "booltheory.hpp"
 #include "subs.hpp"
 
 #include <variant>
 #include <tuple>
 
-using TheTheory = Theory<IntTheory, BoolTheory>;
-using BoolExpr = BExpr<IntTheory, BoolTheory>;
-using BExpression = BoolExpression<IntTheory, BoolTheory>;
-using BoolExprSet = BoolExpressionSet<IntTheory, BoolTheory>;
-using Guard = Conjunction<IntTheory, BoolTheory>;
+using TheTheory = Theory<Arith, BoolTheory>;
+using BoolExpr = BExpr<Arith, BoolTheory>;
+using BExpression = BoolExpression<Arith, BoolTheory>;
+using BoolExprSet = BoolExpressionSet<Arith, BoolTheory>;
+using Guard = Conjunction<Arith, BoolTheory>;
 using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;
 using ThExpr = TheTheory::Expression;
 using Theories = TheTheory::Theories;
-using VarSet = theory::VarSet<IntTheory, BoolTheory>;
-using LitSet = theory::LitSet<IntTheory, BoolTheory>;
-using Subs = theory::Subs<IntTheory, BoolTheory>;
-using BSubs = BoolSubs<IntTheory, BoolTheory>;
+using VarSet = theory::VarSet<Arith, BoolTheory>;
+using LitSet = theory::LitSet<Arith, BoolTheory>;
+using Subs = theory::Subs<Arith, BoolTheory>;
+using BSubs = BoolSubs<Arith, BoolTheory>;
 
 const BoolExpr top();
 const BoolExpr bot();

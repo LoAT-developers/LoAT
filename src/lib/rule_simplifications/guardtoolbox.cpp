@@ -24,7 +24,7 @@ using namespace std;
 
 ResultBase<ExprSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow) {
     ResultBase<ExprSubs, Proof> res;
-    for (const auto &var: e->vars().get<IntTheory::Var>()) {
+    for (const auto &var: e->vars().get<Arith::Var>()) {
         if (!allow(var)) continue;
         const auto bounds {e->getBounds(var)};
         for (const auto &b: bounds.upperBounds) {
@@ -61,8 +61,8 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
     }
     auto guard {e->lits()};
     //get all variables that appear in an inequality
-    linked_hash_set<IntTheory::Var> tryVars;
-    std::unordered_set<IntTheory::Var> eliminated;
+    linked_hash_set<Arith::Var> tryVars;
+    std::unordered_set<Arith::Var> eliminated;
     for (const auto &lit : guard) {
         if (std::holds_alternative<Rel>(lit)) {
             const auto &rel = std::get<Rel>(lit);
@@ -82,8 +82,8 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
     for (const auto &var : tryVars) {
         if (!allow(var)) continue;
 
-        vector<IntTheory::Expression> varLessThan, varGreaterThan; //var <= expr and var >= expr
-        vector<IntTheory::Lit> guardTerms; //indices of guard terms that can be removed if successful
+        vector<Arith::Expression> varLessThan, varGreaterThan; //var <= expr and var >= expr
+        vector<Arith::Lit> guardTerms; //indices of guard terms that can be removed if successful
 
         size_t explosive_lower {0};
         size_t explosive_upper {0};
@@ -153,7 +153,7 @@ ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr e) {
 ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, const GuardToolbox::SymbolAcceptor &allow) {
     ResultBase<BoolExpr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, allow)};
     if (subs) {
-        res = e->subs(Subs::build<IntTheory>(*subs));
+        res = e->subs(Subs::build<Arith>(*subs));
         res.append("Extracted Implied Equalities");
         res.storeSubProof(subs.getProof());
     }

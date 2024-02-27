@@ -4,7 +4,7 @@
 #include "boolvar.hpp"
 #include "boolsubs.hpp"
 #include "boolexpr.hpp"
-#include "inttheory.hpp"
+#include "arith.hpp"
 
 #include <memory>
 
@@ -15,9 +15,9 @@ struct BoolBaseTheory {
 };
 
 struct BoolTheory: public BoolBaseTheory {
-    using BExpression = BoolExpression<IntTheory, BoolTheory>;
+    using BExpression = BoolExpression<Arith, BoolTheory>;
     using Expression = std::shared_ptr<const BExpression>;
-    using Subs = BoolSubs<IntTheory, BoolTheory>;
+    using Subs = BoolSubs<Arith, BoolTheory>;
 
     static Expression valToExpr(const Val &val) {
         return val ? BExpression::top() : BExpression::bot();

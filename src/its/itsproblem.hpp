@@ -77,9 +77,9 @@ public:
     // Print the ITSProblem in a simple, but user-friendly format
     void print(std::ostream &s) const;
 
-    IntTheory::Expression getCost(const Rule &rule) const;
+    Arith::Expression getCost(const Rule &rule) const;
 
-    IntTheory::Var getCostVar() const;
+    Arith::Var getCostVar() const;
 
     std::optional<LocationIdx> getRhsLoc(const Rule &rule) const;
 
@@ -115,7 +115,7 @@ protected:
     LocationIdx nextUnusedLocation {0};
     LocationIdx initialLocation {0};
     LocationIdx sink {addNamedLocation("LoAT_sink")};
-    IntTheory::Var cost {NumVar::nextProgVar()};
+    Arith::Var cost {NumVar::nextProgVar()};
 
 };
 

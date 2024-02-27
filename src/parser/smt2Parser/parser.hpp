@@ -35,12 +35,12 @@ namespace sexpressionparser {
 
         BoolExpr parseConstraint(sexpresso::Sexp &sexp, bool negate);
 
-        IntTheory::Expression parseExpression(sexpresso::Sexp &sexp);
+        Arith::Expression parseExpression(sexpresso::Sexp &sexp);
 
         std::vector<std::string> preVars {};
         std::vector<std::string> postVars {};
         std::unordered_map<std::string, LocationIdx> locations {};
-        std::unordered_map<std::string, IntTheory::Var> vars {};
+        std::unordered_map<std::string, Arith::Var> vars {};
         ITSPtr res {std::make_shared<ITSProblem>()};
 
     };

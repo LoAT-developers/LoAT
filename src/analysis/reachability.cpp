@@ -487,7 +487,7 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-RuleResult Reachability::instantiate(const IntTheory::Var n, const Rule &rule) const {
+RuleResult Reachability::instantiate(const Arith::Var n, const Rule &rule) const {
     RuleResult res(rule);
     VarEliminator ve(rule.getGuard(), n, theories::isProgVar);
     if (ve.getRes().empty() || ve.getRes().size() > 1) {
@@ -498,7 +498,7 @@ RuleResult Reachability::instantiate(const IntTheory::Var n, const Rule &rule) c
         if (res) {
             return RuleResult(rule);
         }
-        res = rule.subs(Subs::build<IntTheory>(s));
+        res = rule.subs(Subs::build<Arith>(s));
         res.ruleTransformationProof(rule, "Instantiation", *res);
     }
     return res;

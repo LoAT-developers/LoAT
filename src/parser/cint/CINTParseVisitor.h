@@ -5,7 +5,7 @@ class  CINTParseVisitor : public CINTVisitor {
 
 private:
 
-    std::unordered_map<std::string, IntTheory::Var> vars {};
+    std::unordered_map<std::string, Arith::Var> vars {};
     ITSPtr its {std::make_shared<ITSProblem>()};
     LocationIdx current {};
 

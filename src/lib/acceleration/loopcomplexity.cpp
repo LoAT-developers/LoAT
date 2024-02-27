@@ -16,7 +16,7 @@ LoopComplexity LoopComplexity::compute(const Rule &rule) {
             }
         }
     }
-    for (const auto &[x,v]: rule.getUpdate<IntTheory>()) {
+    for (const auto &[x,v]: rule.getUpdate<Arith>()) {
         const auto vars {v->vars()};
         if (vars.contains(x) && v->isPoly() && v->degree(x) == 1) {
             const auto coeff {v->coeff(x)};

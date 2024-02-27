@@ -94,11 +94,11 @@ public:
         model_t *m = yices_get_model(solver, true);
         Model<Th...> res;
         const auto add = [&res, this, m](const auto &x, const auto &y) {
-            if constexpr ((std::same_as<IntTheory, Th> || ...)) {
-                if (std::holds_alternative<IntTheory::Var>(x)) {
+            if constexpr ((std::same_as<Arith, Th> || ...)) {
+                if (std::holds_alternative<Arith::Var>(x)) {
                     const auto val {getRealFromModel(m, y)};
                     assert(mp::denominator(val) == 1);
-                    res.template put<IntTheory>(std::get<IntTheory::Var>(x), mp::numerator(val));
+                    res.template put<Arith>(std::get<Arith::Var>(x), mp::numerator(val));
                 }
             } else if constexpr ((std::same_as<BoolTheory, Th> || ...)) {
                 if (std::holds_alternative<BoolVar>(x)) {

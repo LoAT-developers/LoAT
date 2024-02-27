@@ -17,7 +17,7 @@
 
 #include "recurrence.hpp"
 #include "dependencyorder.hpp"
-#include "inttheory.hpp"
+#include "arith.hpp"
 #include "numexpressionutils.hpp"
 #include "expr.hpp"
 
@@ -26,11 +26,11 @@
 
 using namespace std;
 
-Recurrence::Recurrence(const Subs &equations, const IntTheory::Var n):
+Recurrence::Recurrence(const Subs &equations, const Arith::Var n):
     equations(equations), n(n) {}
 
-bool Recurrence::solve(const IntTheory::Var lhs, const IntTheory::Expression rhs) {
-    auto [updated, map] {closed_form_pre.get<IntTheory>()(rhs)->toPurrs()};
+bool Recurrence::solve(const Arith::Var lhs, const Arith::Expression rhs) {
+    auto [updated, map] {closed_form_pre.get<Arith>()(rhs)->toPurrs()};
     updated = updated.substitute(map.left.at(this->n), Purrs::Recurrence::n);
     const auto vars {rhs->vars()};
     auto prefix {0u};
@@ -65,8 +65,8 @@ bool Recurrence::solve(const IntTheory::Var lhs, const IntTheory::Expression rhs
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    closed_form_pre.put<IntTheory>(lhs, arith::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)-1), map));
-    result.closed_form.put<IntTheory>(lhs, arith::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)), map));
+    closed_form_pre.put<Arith>(lhs, arith::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)-1), map));
+    result.closed_form.put<Arith>(lhs, arith::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)), map));
     return true;
 }
 
@@ -113,7 +113,7 @@ bool Recurrence::solve() {
 }
 
 
-std::optional<Recurrence::Result> Recurrence::solve(const Subs &update, const IntTheory::Var n) {
+std::optional<Recurrence::Result> Recurrence::solve(const Subs &update, const Arith::Var n) {
     Recurrence rec {update, n};
     if (rec.solve()) {
         return rec.result;

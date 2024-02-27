@@ -31,23 +31,23 @@ public:
         unsigned int prefix {0};
     };
 
-    static std::optional<Result> solve(const Subs &equations, const IntTheory::Var n);
+    static std::optional<Result> solve(const Subs &equations, const Arith::Var n);
 
     static void solve(const std::string &eq);
 
 private:
 
-    Recurrence(const Subs &subs, const IntTheory::Var n);
+    Recurrence(const Subs &subs, const Arith::Var n);
 
     bool solve();
 
-    bool solve(const IntTheory::Var lhs, const IntTheory::Expression rhs);
+    bool solve(const Arith::Var lhs, const Arith::Expression rhs);
 
     bool solve(const BoolTheory::Var &lhs, const BoolTheory::Expression rhs);
 
     Subs equations;
 
-    const IntTheory::Var n;
+    const Arith::Var n;
 
     /**
      * Substitution map, mapping variables to their recurrence equations

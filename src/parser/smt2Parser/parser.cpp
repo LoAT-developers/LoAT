@@ -69,7 +69,7 @@ namespace sexpressionparser {
                     }
                     assert(preVars.size() == postVars.size());
                     sexpresso::Sexp ruleExps = ex[4];
-                    linked_hash_set<IntTheory::Var> tmpVars;
+                    linked_hash_set<Arith::Var> tmpVars;
                     for (const std::string &str: postVars) {
                         tmpVars.insert(vars.at(str));
                     }
@@ -84,20 +84,20 @@ namespace sexpressionparser {
                             guard.push_back(theories::mkEq(NumVar::loc_var, arith::mkConst(from)));
                             const auto cond {BExpression::mkAnd(guard)};
                             for (unsigned int i = 0; i < preVars.size(); i++) {
-                                update.put<IntTheory>(vars.at(preVars[i]), vars.at(postVars[i]));
+                                update.put<Arith>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            update.put<IntTheory>(NumVar::loc_var, arith::mkConst(to));
+                            update.put<Arith>(NumVar::loc_var, arith::mkConst(to));
                             if (Config::Analysis::complexity()) {
-                                update.put<IntTheory>(cost_var, cost_var + arith::mkConst(1));
+                                update.put<Arith>(cost_var, cost_var + arith::mkConst(1));
                             }
                             Rule rule(cond, update);
                             // make sure that the temporary variables are unique
-                            linked_hash_set<IntTheory::Var> currTmpVars(tmpVars.begin(), tmpVars.end());
-                            cond->collectVars<IntTheory>(currTmpVars);
+                            linked_hash_set<Arith::Var> currTmpVars(tmpVars.begin(), tmpVars.end());
+                            cond->collectVars<Arith>(currTmpVars);
                             Subs subs;
                             for (const auto &var: currTmpVars) {
                                 if (var->isTempVar()) {
-                                    subs.get<IntTheory>().put(var, NumVar::next());
+                                    subs.get<Arith>().put(var, NumVar::next());
                                 }
                             }
                             res->addRule(rule.subs(subs), from);
@@ -159,7 +159,7 @@ namespace sexpressionparser {
         throw std::invalid_argument("");
     }
 
-    IntTheory::Expression Self::parseExpression(sexpresso::Sexp &sexp) {
+    Arith::Expression Self::parseExpression(sexpresso::Sexp &sexp) {
         if (sexp.childCount() == 1) {
             const auto &str {sexp.str()};
             if (std::isdigit(str[0]) || str[0] == '-') {
