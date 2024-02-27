@@ -134,7 +134,7 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
 abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (changed) {
-        res = BExpression::mkAndFromLits(guard);
+        res = bools::mkAndFromLits(guard);
     }
     return res;
 }

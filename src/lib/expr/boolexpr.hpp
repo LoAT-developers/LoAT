@@ -74,17 +74,7 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression<Th...>>
     using BES = BoolExpressionSet<Th...>;
     using Subs = theory::Subs<Th...>;
 
-public:
-
-    static const BE top() {
-        const static auto res {BoolJunction<Th...>::from_cache(BoolExpressionSet<Th...>{}, ConcatAnd)};
-        return res;
-    }
-
-    static const BE bot() {
-        const static auto res {BoolJunction<Th...>::from_cache(BoolExpressionSet<Th...>{}, ConcatOr)};
-        return res;
-    }
+private:
 
     template <class Lits>
     static const BE buildFromLits(const Lits &lits, ConcatOperator op) {
@@ -119,6 +109,18 @@ public:
             return *children.begin();
         }
         return BoolJunction<Th...>::from_cache(children, op);
+    }
+
+public:
+
+    static const BE top() {
+        const static auto res {BoolJunction<Th...>::from_cache(BoolExpressionSet<Th...>{}, ConcatAnd)};
+        return res;
+    }
+
+    static const BE bot() {
+        const static auto res {BoolJunction<Th...>::from_cache(BoolExpressionSet<Th...>{}, ConcatOr)};
+        return res;
     }
 
     template <class Lits>

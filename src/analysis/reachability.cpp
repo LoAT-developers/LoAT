@@ -320,7 +320,7 @@ void Reachability::print_state() {
             } else {
                 s << ", ";
             }
-            s << idx << "[" << BExpression::mkAnd(blocked) << "]";
+            s << idx << "[" << bools::mkAnd(blocked) << "]";
         }
         s << "}" << std::endl;
     }

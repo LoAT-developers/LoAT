@@ -152,7 +152,7 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
         post.insert(implicant->negation()->subs(s_current));
         post.insert(theories::mkNeq(trace_var, arith::mkConst(rule->getId())));
     }
-    return BExpression::mkOr(pre) && BExpression::mkOr(post);
+    return bools::mkOr(pre) && bools::mkOr(post);
 }
 
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
@@ -248,7 +248,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             }
         }
     }
-    map.emplace(BExpression::top(), std::optional<Loop>());
+    map.emplace(top(), std::optional<Loop>());
     return {};
 }
 
@@ -261,7 +261,7 @@ BoolExpr ABMC::encode_transition(const TransIdx idx) {
             res.push_back(theories::mkEq(theories::toExpr(post_vars.at(x)), up.get(x)));
         }
     }
-    return BExpression::mkAnd(res);
+    return bools::mkAnd(res);
 }
 
 void ABMC::unknown() {
@@ -372,7 +372,7 @@ void ABMC::analyze() {
             inits.push_back(encode_transition(idx));
         }
     }
-    solver->add(BExpression::mkOr(inits));
+    solver->add(bools::mkOr(inits));
 
     std::vector<BoolExpr> steps;
     for (const auto &r: its.getAllTransitions()) {
@@ -381,7 +381,7 @@ void ABMC::analyze() {
         }
         steps.push_back(encode_transition(&r));
     }
-    const auto step {BExpression::mkOr(steps)};
+    const auto step {bools::mkOr(steps)};
 
     std::vector<BoolExpr> queries;
     for (const auto &idx: its.getSinkTransitions()) {
@@ -389,7 +389,7 @@ void ABMC::analyze() {
             queries.push_back(idx->getGuard());
         }
     }
-    query = BExpression::mkOr(queries);
+    query = bools::mkOr(queries);
 
     while (true) {
         const auto &s {subs_at(depth + 1)};

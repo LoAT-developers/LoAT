@@ -62,7 +62,7 @@ void AsymptoticBound::propagateBounds() {
         return;
     }
 
-    auto g {BExpression::mkAndFromLits(guard)};
+    auto g {bools::mkAndFromLits(guard)};
     auto changed {false};
     do {
         changed = false;

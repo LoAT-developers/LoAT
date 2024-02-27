@@ -48,7 +48,7 @@ std::any CINTParseVisitor::visitNum_expr(CINTParser::Num_exprContext *ctx) {
 
 std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
     if (ctx->lit()) {
-        return BExpression::mkLit(std::any_cast<ArithLit>(visit(ctx->lit())))->simplify();
+        return bools::mkLit(std::any_cast<ArithLit>(visit(ctx->lit())))->simplify();
     } else if (ctx->TRUE()) {
         return top();
     } else if (ctx->FALSE()) {
@@ -79,10 +79,10 @@ std::any CINTParseVisitor::visitLit(CINTParser::LitContext *ctx) {
     const auto op = std::any_cast<relop_type>(visit(ctx->relop()));
     const auto arg2 = std::any_cast<Arith::Expr>(visit(ctx->num_expr(1)));
     switch (op) {
-    case lt: return BExpression::mkLit(arith::mkLt(arg1, arg2));
-    case leq: return BExpression::mkLit(arith::mkLeq(arg1, arg2));
-    case gt: return BExpression::mkLit(arith::mkGt(arg1, arg2));
-    case geq: return BExpression::mkLit(arith::mkGeq(arg1, arg2));
+    case lt: return bools::mkLit(arith::mkLt(arg1, arg2));
+    case leq: return bools::mkLit(arith::mkLeq(arg1, arg2));
+    case gt: return bools::mkLit(arith::mkGt(arg1, arg2));
+    case geq: return bools::mkLit(arith::mkGeq(arg1, arg2));
     case eq: return theories::mkEq(arg1, arg2);
     case neq: return theories::mkNeq(arg1, arg2);
     }

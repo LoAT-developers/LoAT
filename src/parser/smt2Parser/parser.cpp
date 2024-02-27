@@ -82,7 +82,7 @@ namespace sexpressionparser {
                             std::vector<BoolExpr> guard;
                             parseCond(ruleExp[5], guard);
                             guard.push_back(theories::mkEq(ArithVar::loc_var, arith::mkConst(from)));
-                            const auto cond {BExpression::mkAnd(guard)};
+                            const auto cond {bools::mkAnd(guard)};
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.put<Arith>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
@@ -111,7 +111,7 @@ namespace sexpressionparser {
     void Self::parseCond(sexpresso::Sexp &sexp, std::vector<BoolExpr> &guard) {
         if (sexp.isString()) {
             if (sexp.str() == "false") {
-                guard.push_back(BExpression::bot());
+                guard.push_back(bot());
             } else {
                 assert(sexp.str() == "true");
                 return;
@@ -145,13 +145,13 @@ namespace sexpressionparser {
         const auto fst {parseExpression(sexp[1])};
         const auto snd {parseExpression(sexp[2])};
         if (op == "<=") {
-            return BExpression::mkLit(negate ? arith::mkGt(fst, snd) : arith::mkLeq(fst, snd));
+            return bools::mkLit(negate ? arith::mkGt(fst, snd) : arith::mkLeq(fst, snd));
         } else if (sexp[0].str() == "<") {
-            return BExpression::mkLit(negate ? arith::mkGeq(fst, snd) : arith::mkLt(fst, snd));
+            return bools::mkLit(negate ? arith::mkGeq(fst, snd) : arith::mkLt(fst, snd));
         } else if (sexp[0].str() == ">=") {
-            return BExpression::mkLit(negate ? arith::mkLt(fst, snd) : arith::mkGeq(fst, snd));
+            return bools::mkLit(negate ? arith::mkLt(fst, snd) : arith::mkGeq(fst, snd));
         } else if (sexp[0].str() == ">") {
-            return BExpression::mkLit(negate ? arith::mkLeq(fst, snd) : arith::mkGt(fst, snd));
+            return bools::mkLit(negate ? arith::mkLeq(fst, snd) : arith::mkGt(fst, snd));
         } else if (sexp[0].str() == "=") {
             assert(!negate);
             return theories::mkEq(fst, snd);

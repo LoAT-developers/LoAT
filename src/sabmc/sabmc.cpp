@@ -260,7 +260,7 @@ linked_hash_map<Bools::Var, bool> SABMC::value_selection(const Subs &model) cons
     for (const auto &x: t.pre_vars()) {
         if (std::holds_alternative<Bools::Var>(x)) {
             const auto bv {std::get<Bools::Var>(x)};
-            res.emplace(bv, model.get(var_map[x]) == ThExpr(BExpression::top()));
+            res.emplace(bv, model.get(var_map[x]) == ThExpr(top()));
         }
     }
     return res;
@@ -410,7 +410,7 @@ void SABMC::handle_rel(const ArithLit &rel, const NondetSubs &update, const Nond
         }
     }
     if (add_init) {
-        res.push_back(BExpression::mkLit(rel.subs(init)));
+        res.push_back(bools::mkLit(rel.subs(init)));
     }
     auto dec_n {ArithSubs{{n, n - arith::mkConst(1)}}};
     auto add_but_last {true};
@@ -444,7 +444,7 @@ void SABMC::handle_rel(const ArithLit &rel, const NondetSubs &update, const Nond
         }
     }
     if (add_but_last) {
-        res.push_back(BExpression::mkLit(rel.subs(but_last)));
+        res.push_back(bools::mkLit(rel.subs(but_last)));
     }
 }
 
@@ -493,15 +493,15 @@ void SABMC::handle_loop(const Range &range) {
             }, lit);
     }
     if (Config::Analysis::log) {
-        std::cout << "handled rels: " << BExpression::mkAnd(res) << std::endl;
+        std::cout << "handled rels: " << bools::mkAnd(res) << std::endl;
     }
     for (const auto &[x,b]: bool_update) {
         const auto post {std::get<Bools::Var>(var_map[x])};
-        res.push_back(BExpression::mkLit(BoolLit(post, b)));
+        res.push_back(bools::mkLit(BoolLit(post, b)));
     }
-    res.push_back(BExpression::mkLit(arith::mkGeq(n, arith::mkConst(prefix))));
+    res.push_back(bools::mkLit(arith::mkGeq(n, arith::mkConst(prefix))));
     std::vector<BoolExpr> disj;
-    disj.push_back(BExpression::mkAnd(res));
+    disj.push_back(bools::mkAnd(res));
     if (prefix > 1) {
         auto chained {mbp_res};
         disj.push_back(chained.toBoolExpr());
@@ -510,7 +510,7 @@ void SABMC::handle_loop(const Range &range) {
             disj.push_back(chained.toBoolExpr());
         }
     }
-    add_learned_clause(Transition::build(BExpression::mkOr(disj), t.var_map()), range.length());
+    add_learned_clause(Transition::build(bools::mkOr(disj), t.var_map()), range.length());
 }
 
 BoolExpr SABMC::encode_transition(const Transition &t) {
@@ -526,7 +526,7 @@ void SABMC::add_blocking_clauses() {
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
         const std::vector<BoolExpr> lits {theories::mkNeq(trace_var, arith::mkConst(b.id)), theories::mkNeq(trace_var, arith::mkConst(b.id))};
-        solver->add(BExpression::mkOr(lits));
+        solver->add(bools::mkOr(lits));
     }
 }
 
@@ -635,7 +635,7 @@ void SABMC::analyze() {
         rule_map.emplace(trans.getId(), trans);
         steps.push_back(encode_transition(trans));
     }
-    step = BExpression::mkOr(steps);
+    step = bools::mkOr(steps);
     solver->add(t.init());
     solver->push();
 

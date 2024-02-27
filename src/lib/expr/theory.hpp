@@ -10,7 +10,6 @@
 
 using TheTheory = Theory<Arith, Bools>;
 using BoolExpr = BExpr<Arith, Bools>;
-using BExpression = BoolExpression<Arith, Bools>;
 using BoolExprSet = BoolExpressionSet<Arith, Bools>;
 using Guard = Conjunction<Arith, Bools>;
 using Lit = TheTheory::Lit;
@@ -24,6 +23,32 @@ using BSubs = BoolSubs<Arith, Bools>;
 
 const BoolExpr top();
 const BoolExpr bot();
+
+namespace bools {
+
+template <class Lits>
+Bools::Expr mkAndFromLits(const Lits &lits) {
+    return BoolExpression<Arith, Bools>::mkAndFromLits(lits);
+}
+
+template <class Children>
+Bools::Expr mkAnd(const Children &lits) {
+    return BoolExpression<Arith, Bools>::mkAnd(lits);
+}
+
+template <class Lits>
+Bools::Expr mkOrFromLits(const Lits &lits) {
+    return BoolExpression<Arith, Bools>::mkOrFromLits(lits);
+}
+
+template <class Children>
+Bools::Expr mkOr(const Children &lits) {
+    return BoolExpression<Arith, Bools>::mkOr(lits);
+}
+
+Bools::Expr mkLit(const TheTheory::Lit &lit);
+
+}
 
 namespace theory {
 
