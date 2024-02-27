@@ -124,11 +124,10 @@ Int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem,
     Int upperBound {0};
     for (auto const &[x,sub] : solution) {
         if (!x->isTempVar()) {
-            assert(sub->isPoly(n));
             assert(sub->isRational() || (sub->isUnivariate() && sub->has(n)));
-            const auto d {*sub->degree(n)};
-            if (d > upperBound) {
-                upperBound = d;
+            const auto d {sub->isPoly(n)};
+            if (*d > upperBound) {
+                upperBound = *d;
             }
         }
     }
@@ -140,9 +139,10 @@ Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
     const auto solvedCost {solution(cost)};
     Int lowerBound;
     const auto n {limitProblem.getN()};
-    if (solvedCost->isPoly()) {
+    const auto d {solvedCost->isPoly()};
+    if (d) {
         assert(!solvedCost->isMultivariate());
-        lowerBound = *solvedCost->degree(n);
+        lowerBound = *d;
     } else {
         std::vector<Arith::Expr> nonPolynomial;
         const auto powers {solvedCost->exps()};
@@ -348,11 +348,12 @@ bool AsymptoticBound::isAdequateSolution(const LimitProblem &limitProblem) {
     const auto n {limitProblem.getN()};
 
     if (solvedCost->isPoly(n)) {
-        if (!cost->isPoly()) {
+        const auto total_degree {cost->isPoly()};
+        if (!total_degree) {
             return false;
         }
-
-        if (cost->maxDegree() > solvedCost->degree(n)) {
+        const auto n_degree {solvedCost->isPoly(n)};
+        if (*total_degree > n_degree) {
             return false;
         }
 

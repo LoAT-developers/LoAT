@@ -29,9 +29,13 @@ linked_hash_set<ArithVarPtr> ArithExpr::vars() const {
     return res;
 }
 
-bool ArithExpr::isUnivariate() const {
+std::optional<ArithVarPtr> ArithExpr::isUnivariate() const {
     std::optional<ArithVarPtr> var;
-    return isUnivariate(var);
+    if (isUnivariate(var)) {
+        return var;
+    } else {
+        return {};
+    }
 }
 
 bool ArithExpr::isMultivariate() const {
@@ -47,7 +51,7 @@ bool ArithExpr::is(const Rational &val) const {
 std::optional<Int> ArithExpr::maxDegree() const {
     Int max {0};
     for (const auto &x: vars()) {
-        const auto deg {degree(x)};
+        const auto deg {isPoly(x)};
         if (deg) {
             max = mp::max(max, *deg);
         } else {
@@ -162,32 +166,7 @@ bool ArithExpr::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars
         });
 }
 
-bool ArithExpr::isPoly() const {
-    return apply<bool>(
-        [](const ArithConstPtr) {
-            return true;
-        },
-        [](const ArithVarPtr) {
-            return true;
-        },
-        [](const ArithAddPtr a) {
-            const auto &args {a->getArgs()};
-            return std::all_of(args.begin(), args.end(), [](const auto &arg) -> bool {
-                return arg->isPoly();
-            });
-        },
-        [](const ArithMultPtr m) {
-            const auto &args {m->getArgs()};
-            return std::all_of(args.begin(), args.end(), [](const auto &arg) -> bool {
-                return arg->isPoly();
-            });
-        },
-        [](const ArithExpPtr e) {
-            return e->getExponent()->isInt().has_value();
-        });
-}
-
-std::optional<Int> ArithExpr::totalDegree() const {
+std::optional<Int> ArithExpr::isPoly() const {
     using opt = std::optional<Int>;
     return apply<opt>(
         [](const ArithConstPtr) {
@@ -199,7 +178,7 @@ std::optional<Int> ArithExpr::totalDegree() const {
         [](const ArithAddPtr a) {
             Int res {0};
             for (const auto &arg: a->getArgs()) {
-                const auto arg_degree {arg->totalDegree()};
+                const auto arg_degree {arg->isPoly()};
                 if (!arg_degree) {
                     return opt{};
                 }
@@ -210,7 +189,7 @@ std::optional<Int> ArithExpr::totalDegree() const {
         [](const ArithMultPtr m) {
             Int res {0};
             for (const auto &arg: m->getArgs()) {
-                const auto arg_degree {arg->totalDegree()};
+                const auto arg_degree {arg->isPoly()};
                 if (!arg_degree) {
                     return opt{};
                 }
@@ -221,7 +200,7 @@ std::optional<Int> ArithExpr::totalDegree() const {
         [](const ArithExpPtr e) {
             const auto exp {e->getExponent()->isInt()};
             if (exp) {
-                const auto base_degree {e->getBase()->totalDegree()};
+                const auto base_degree {e->getBase()->isPoly()};
                 if (base_degree) {
                     return opt{*base_degree * *exp};
                 }
@@ -277,7 +256,7 @@ bool ArithExpr::hasVarWith(const std::function<bool(const ArithVarPtr)> predicat
         });
 }
 
-std::optional<Int> ArithExpr::degree(const ArithVarPtr var) const {
+std::optional<Int> ArithExpr::isPoly(const ArithVarPtr var) const {
     using opt = std::optional<Int>;
     return apply<opt>(
         [](const ArithConstPtr) {
@@ -289,7 +268,7 @@ std::optional<Int> ArithExpr::degree(const ArithVarPtr var) const {
         [&var](const ArithAddPtr a) {
             Int res {0};
             for (const auto &arg: a->getArgs()) {
-                const auto arg_degree {arg->degree(var)};
+                const auto arg_degree {arg->isPoly(var)};
                 if (!arg_degree) {
                     return opt{};
                 }
@@ -300,7 +279,7 @@ std::optional<Int> ArithExpr::degree(const ArithVarPtr var) const {
         [&var](const ArithMultPtr m) {
             Int res {0};
             for (const auto &arg: m->getArgs()) {
-                const auto arg_degree {arg->degree(var)};
+                const auto arg_degree {arg->isPoly(var)};
                 if (!arg_degree) {
                     return opt{};
                 }
@@ -314,7 +293,7 @@ std::optional<Int> ArithExpr::degree(const ArithVarPtr var) const {
             }
             const auto exp {e->getExponent()->isInt()};
             if (exp) {
-                const auto base_degree {e->getBase()->degree(var)};
+                const auto base_degree {e->getBase()->isPoly(var)};
                 if (base_degree) {
                     return opt{*base_degree * *exp};
                 }
@@ -345,31 +324,6 @@ Int ArithExpr::denomLcm() const {
         },
         [](const ArithExpPtr) {
             return 1;
-        });
-}
-
-bool ArithExpr::isPoly(const ArithVarPtr n) const {
-    return apply<bool>(
-        [](const ArithConstPtr) {
-            return true;
-        },
-        [](const ArithVarPtr) {
-            return true;
-        },
-        [&n](const ArithAddPtr a) {
-            const auto &args {a->getArgs()};
-            return std::all_of(args.begin(), args.end(), [&n](const auto &arg) -> bool {
-                return arg->isPoly(n);
-            });
-        },
-        [&n](const ArithMultPtr m) {
-            const auto &args {m->getArgs()};
-            return std::all_of(args.begin(), args.end(), [&n](const auto &arg) -> bool {
-                return arg->isPoly(n);
-            });
-        },
-        [&n](const ArithExpPtr e) {
-            return e->getExponent()->isInt() || !e->getBase()->has(n);
         });
 }
 
@@ -491,7 +445,7 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr var) const {
             for (const auto &arg: a->getArgs()) {
                 const auto r {arg->lcoeff(var)};
                 if (res) {
-                    const auto d {arg->degree(var)};
+                    const auto d {arg->isPoly(var)};
                     if (!degree || d < *degree) {
                         res = r;
                         degree = d;
@@ -555,7 +509,7 @@ bool ArithExpr::isIntegral() const {
             std::vector<Int> subs;
             for (const auto &x: e->vars()) {
                 vars.emplace(x, i);
-                degrees.push_back(*e->degree(x));
+                degrees.push_back(*e->isPoly(x));
                 subs.push_back(0);
                 ++i;
             }

@@ -161,7 +161,7 @@ public:
     /**
      * @return True iff this expression contains exactly one variable.
      */
-    bool isUnivariate() const;
+    std::optional<ArithVarPtr> isUnivariate() const;
 
     /**
      * @return True iff this expression contains at least two variable.
@@ -189,12 +189,7 @@ public:
      */
     bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = {}) const;
 
-    /**
-     * @return True iff this expression is a polynomial.
-     */
-    bool isPoly() const;
-
-    std::optional<Int> totalDegree() const;
+    std::optional<Int> isPoly() const;
 
     /**
      * @brief Collects all variables that occur in this expression.
@@ -206,12 +201,6 @@ public:
      * @param A function of type `const Var & => bool`.
      */
     bool hasVarWith(const std::function<bool(const ArithVarPtr)> predicate) const;
-
-    /**
-     * @return The degree wrt. var.
-     * @note For polynomials only.
-     */
-    std::optional<Int> degree(const ArithVarPtr var) const;
 
     std::optional<ArithConstPtr> isRational() const;
 
@@ -225,7 +214,7 @@ public:
     /**
      * @return True iff this is a polynomial wrt. the given variable.
      */
-    bool isPoly(const ArithVarPtr n) const;
+    std::optional<Int> isPoly(const ArithVarPtr n) const;
 
     std::optional<ArithVarPtr> someVar() const;
 

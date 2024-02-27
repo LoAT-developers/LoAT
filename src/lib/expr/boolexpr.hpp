@@ -202,10 +202,10 @@ public:
                 Overload{
                     [&n](const ArithLit &rel) {
                         const auto ex {rel.lhs()};
-                        const auto d {ex->degree(n)};
-                        if (*d == 0) {
+                        const auto d {ex->isPoly(n)};
+                        if (d == 0) {
                             return mkLit(rel);
-                        } else if (*d == 1 && (*ex->coeff(n))->isRational()) {
+                        } else if (d == 1 && (*ex->coeff(n))->isRational()) {
                             return mkLit(rel);
                         } else {
                             return top();

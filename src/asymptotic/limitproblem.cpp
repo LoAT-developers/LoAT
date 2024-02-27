@@ -162,7 +162,8 @@ void LimitProblem::trimPolynomial(const InftyExpressionSet::const_iterator &it) 
     assert((dir == POS) || (dir == POS_INF) || (dir == NEG_INF));
     const auto var {e->someVar()};
     if (e->isAdd()) {
-        const auto leadingTerm {*e->lcoeff(*var) * arith::mkExp(*var, arith::mkConst(*e->degree(*var)))};
+        const auto d {*e->isPoly(*var)};
+        const auto leadingTerm {*e->lcoeff(*var) * arith::mkExp(*var, arith::mkConst(d))};
         if (dir == POS) {
             // Fix the direction
             dir = POS_INF;
@@ -382,7 +383,7 @@ bool LimitProblem::trimPolynomialIsApplicable(const InftyExpressionSet::const_it
     if (!e->isAdd()) {
         return false;
     }
-    return e->isUnivariate();
+    return e->isUnivariate().has_value();
 }
 
 

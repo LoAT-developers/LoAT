@@ -57,7 +57,8 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     }
     const auto &rel {std::get<ArithLit>(lit)};
     const auto nfold {closed->closed_form.get<Arith>()(rel.lhs())};
-    if (!nfold->has(config.n) || !nfold->isPoly(config.n)) {
+    const auto d {nfold->isPoly(config.n)};
+    if (!d || d == 0) {
         return false;
     }
     const auto &up {update.get<Arith>()};
@@ -65,8 +66,6 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     bool low_degree {false};
     RelSet guard;
     RelSet covered;
-    const auto d {nfold->degree(config.n)};
-    assert(d);
     if (d == 0) {
         return false;
     } else if (d == 1) {

@@ -101,7 +101,7 @@ static BExpr<Arith> posInfConstraint(const map<Int, Arith::Expr>& coefficients) 
  * @return the (abstract) coefficients of 'n' in 'ex', where the key is the degree of the respective monomial
  */
 static map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::Var n) {
-    const auto maxDegree {ex->degree(n)};
+    const auto maxDegree {*ex->isPoly(n)};
     map<Int, Arith::Expr> coefficients;
     for (int i = 0; i <= maxDegree; i++) {
         coefficients.emplace(i, *ex->coeff(n, i));
@@ -129,7 +129,8 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
     // replace variables in the cost function with their linear templates
     const auto templateCost {templateSubs(cost)};
     // if the cost function is a constant, then we are bound to fail
-    const auto maxPossibleFiniteRes = templateCost->isPoly() ? Complexity::Poly(*templateCost->degree(n)) : Complexity::NestedExp;
+    const auto d {templateCost->isPoly()};
+    const auto maxPossibleFiniteRes = d ? Complexity::Poly(*d) : Complexity::NestedExp;
     if (maxPossibleFiniteRes == Complexity::Const) {
         return {};
     }
@@ -248,7 +249,8 @@ std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<Ari
     // replace variables in the cost function with their linear templates
     const auto templateCost {templateSubs(cost)};
     // if the cost function is a constant, then we are bound to fail
-    const auto maxPossibleFiniteRes = templateCost->isPoly() ? Complexity::Poly(*templateCost->degree(n)) : Complexity::NestedExp;
+    const auto d {templateCost->isPoly()};
+    const auto maxPossibleFiniteRes = d ? Complexity::Poly(*d) : Complexity::NestedExp;
     if (maxPossibleFiniteRes == Complexity::Const) {
         return {{}, Complexity::Unknown};
     }

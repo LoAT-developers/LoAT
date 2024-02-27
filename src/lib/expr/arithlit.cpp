@@ -25,7 +25,7 @@ ArithExprPtr ArithLit::lhs() const {
 }
 
 bool ArithLit::isPoly() const {
-    return l->isPoly();
+    return l->isPoly().has_value();
 }
 
 bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars) const {
@@ -33,7 +33,7 @@ bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars)
 }
 
 std::pair<std::optional<ArithExprPtr>, std::optional<ArithExprPtr>> ArithLit::getBoundFromIneq(const ArithVarPtr N) const {
-    if (l->degree(N) != 1) return {};
+    if (l->isPoly(N) != 1) return {};
     const auto geq {l - arith::mkConst(1)};
     const auto optSolved {arith::solveTermFor(geq, N)};
     if (optSolved) {
