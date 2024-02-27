@@ -3,8 +3,7 @@
 #include <optional>
 
 #include "arithexpr.hpp"
-
-using RelSet = linked_hash_set<ArithLit>;
+#include "arithsubs.hpp"
 
 struct Bounds {
     linked_hash_set<ArithExprPtr> upperBounds {};
@@ -21,8 +20,6 @@ struct Bounds {
     }
 
 };
-
-std::ostream& operator<<(std::ostream &s, const RelSet &set);
 
 class ArithLit {
 
@@ -91,3 +88,7 @@ ArithLit mkGt(const ArithExprPtr x, const ArithExprPtr y);
 ArithLit mkLt(const ArithExprPtr x, const ArithExprPtr y);
 
 }
+
+using RelSet = linked_hash_set<ArithLit>;
+
+std::ostream& operator<<(std::ostream &s, const RelSet &set);

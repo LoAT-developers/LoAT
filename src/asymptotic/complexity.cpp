@@ -124,7 +124,7 @@ std::ostream& operator<<(std::ostream &s, const Complexity &cpx) {
 
 Complexity toComplexityRec(const ArithExprPtr term) {
     return term->map<Complexity>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return Complexity::Const;
         },
         [](const ArithVarPtr) {
@@ -145,7 +145,7 @@ Complexity toComplexityRec(const ArithExprPtr term) {
         [](const ArithExpPtr e) {
             // If the exponent is at least polynomial (non-constant), complexity might be exponential
             if (toComplexityRec(e->getExponent()) > Complexity::Const) {
-                return map<ArithValPtr, Complexity>(
+                return map<ArithConstPtr, Complexity>(
                            e->getBase()->isRational(),
                            [](const auto c) {
                                return **c <= 1 ? Complexity::Const : Complexity::Exp;

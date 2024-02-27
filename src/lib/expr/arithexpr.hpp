@@ -34,16 +34,14 @@
 #include "conshash.hpp"
 
 class ArithVar;
-class ArithLit;
-class ArithSubs;
 class ArithExpr;
-class ArithVal;
+class ArithConst;
 class ArithExp;
 class ArithAdd;
 class ArithMult;
 using ArithExprPtr = std::shared_ptr<const ArithExpr>;
 using ArithVarPtr = std::shared_ptr<const ArithVar>;
-using ArithValPtr = std::shared_ptr<const ArithVal>;
+using ArithConstPtr = std::shared_ptr<const ArithConst>;
 using ArithAddPtr = std::shared_ptr<const ArithAdd>;
 using ArithMultPtr = std::shared_ptr<const ArithMult>;
 using ArithExpPtr = std::shared_ptr<const ArithExp>;
@@ -107,7 +105,7 @@ private:
 public:
 
     template <class T>
-    T map(const std::function<T(const ArithValPtr)> &constant,
+    T map(const std::function<T(const ArithConstPtr)> &constant,
           const std::function<T(const ArithVarPtr)> &var,
           const std::function<T(const ArithAddPtr)> &add,
           const std::function<T(const ArithMultPtr)> &mult,
@@ -215,7 +213,7 @@ public:
      */
     std::optional<Int> degree(const ArithVarPtr var) const;
 
-    std::optional<ArithValPtr> isRational() const;
+    std::optional<ArithConstPtr> isRational() const;
 
     /**
      * @return True iff this expression is an integer value (and thus a constant).
@@ -261,13 +259,13 @@ public:
 };
 
 
-class ArithVal: public ArithExpr, public std::enable_shared_from_this<ArithVal> {
+class ArithConst: public ArithExpr, public std::enable_shared_from_this<ArithConst> {
 
     friend ArithExprPtr arith::mkConst(const Rational &r);
 
 private:
 
-    ArithVal(const Rational &t);
+    ArithConst(const Rational &t);
     Rational t;
 
     struct CacheEqual {
@@ -276,15 +274,15 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<Rational> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithVal, CacheHash, CacheEqual, Rational>;
-    static ConsHash<ArithExpr, ArithVal, CacheHash, CacheEqual, Rational> cache;
+    friend ConsHash<ArithExpr, ArithConst, CacheHash, CacheEqual, Rational>;
+    static ConsHash<ArithExpr, ArithConst, CacheHash, CacheEqual, Rational> cache;
 
 public:
 
     const Rational& operator*() const;
     const Rational& getValue() const;
-    const ArithValPtr numerator() const;
-    const ArithValPtr denominator() const;
+    const ArithConstPtr numerator() const;
+    const ArithConstPtr denominator() const;
     std::optional<Int> intValue() const;
 
 };

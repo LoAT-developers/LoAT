@@ -184,7 +184,7 @@ std::ostream& operator<<(std::ostream &s, const ArithSubs &map) {
 
 ArithExprPtr ArithSubs::operator()(const ArithExprPtr t) const {
     return t->map<ArithExprPtr>(
-        [&](const ArithValPtr) {
+        [&](const ArithConstPtr) {
             return t;
         },
         [&](const ArithVarPtr x) {

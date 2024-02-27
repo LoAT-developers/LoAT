@@ -87,16 +87,16 @@ ArithExprPtr operator^(const ArithExprPtr x, const ArithExprPtr y) {
     return arith::mkExp(x, y);
 }
 
-std::optional<ArithValPtr> ArithExpr::isRational() const {
+std::optional<ArithConstPtr> ArithExpr::isRational() const {
     if (kind == arith::Kind::Constant) {
-        return static_cast<const ArithVal*>(this)->std::enable_shared_from_this<ArithVal>::shared_from_this();;
+        return static_cast<const ArithConst*>(this)->std::enable_shared_from_this<ArithConst>::shared_from_this();;
     } else {
         return {};
     }
 }
 
 std::optional<Int> ArithExpr::isInt() const {
-    return flat_map<ArithValPtr, Int>(isRational(), [](const auto &r){
+    return flat_map<ArithConstPtr, Int>(isRational(), [](const auto &r){
         return r->intValue();
     });
 }
@@ -138,7 +138,7 @@ bool ArithExpr::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars
         return arg->isLinear(vars);
     }};
     return map<bool>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return true;
         },
         [](const ArithVarPtr) {
@@ -164,7 +164,7 @@ bool ArithExpr::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars
 
 bool ArithExpr::isPoly() const {
     return map<bool>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return true;
         },
         [](const ArithVarPtr) {
@@ -190,7 +190,7 @@ bool ArithExpr::isPoly() const {
 std::optional<Int> ArithExpr::totalDegree() const {
     using opt = std::optional<Int>;
     return map<opt>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return opt{0};
         },
         [](const ArithVarPtr) {
@@ -232,7 +232,7 @@ std::optional<Int> ArithExpr::totalDegree() const {
 
 void ArithExpr::collectVars(linked_hash_set<ArithVarPtr> &res) const {
     map<void>(
-        [](const ArithValPtr&) {},
+        [](const ArithConstPtr&) {},
         [&res](const ArithVarPtr x) {
             res.emplace(x);
         },
@@ -254,7 +254,7 @@ void ArithExpr::collectVars(linked_hash_set<ArithVarPtr> &res) const {
 
 bool ArithExpr::hasVarWith(const std::function<bool(const ArithVarPtr)> predicate) const {
     return map<bool>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return false;
         },
         [&predicate](const ArithVarPtr x) {
@@ -280,7 +280,7 @@ bool ArithExpr::hasVarWith(const std::function<bool(const ArithVarPtr)> predicat
 std::optional<Int> ArithExpr::degree(const ArithVarPtr var) const {
     using opt = std::optional<Int>;
     return map<opt>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return opt{0};
         },
         [&var](const ArithVarPtr x) {
@@ -325,7 +325,7 @@ std::optional<Int> ArithExpr::degree(const ArithVarPtr var) const {
 
 Int ArithExpr::denomLcm() const {
     return map<Int>(
-        [](const ArithValPtr t) {
+        [](const ArithConstPtr t) {
             return *t->denominator()->intValue();
         },
         [](const ArithVarPtr) {
@@ -350,7 +350,7 @@ Int ArithExpr::denomLcm() const {
 
 bool ArithExpr::isPoly(const ArithVarPtr n) const {
     return map<bool>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return true;
         },
         [](const ArithVarPtr) {
@@ -376,7 +376,7 @@ bool ArithExpr::isPoly(const ArithVarPtr n) const {
 std::optional<ArithVarPtr> ArithExpr::someVar() const {
     using opt = std::optional<ArithVarPtr>;
     return map<opt>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return opt{};
         },
         [](const ArithVarPtr x) {
@@ -408,7 +408,7 @@ std::optional<ArithVarPtr> ArithExpr::someVar() const {
 
 void ArithExpr::exps(linked_hash_set<ArithExpPtr> &acc) const {
     return map<void>(
-        [](const ArithValPtr) {},
+        [](const ArithConstPtr) {},
         [](const ArithVarPtr) {},
         [&acc](const ArithAddPtr a) {
             for (const auto &arg: a->getArgs()) {
@@ -436,7 +436,7 @@ linked_hash_set<ArithExpPtr> ArithExpr::exps() const {
 std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &degree) const {
     using opt = std::optional<ArithExprPtr>;
     return map<opt>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return opt{arith::mkConst(0)};
         },
         [&var, &degree](const ArithVarPtr x) {
@@ -479,7 +479,7 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
 std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr var) const {
     using opt = std::optional<ArithExprPtr>;
     return map<opt>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return opt{arith::mkConst(0)};
         },
         [&var](const ArithVarPtr x) {
@@ -531,7 +531,7 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr var) const {
 
 bool ArithExpr::isIntegral() const {
     return map<bool>(
-        [](const ArithValPtr x) {
+        [](const ArithConstPtr x) {
             return x->intValue().has_value();
         },
         [](const ArithVarPtr) {
@@ -597,7 +597,7 @@ bool ArithExpr::isIntegral() const {
 
 Rational ArithExpr::eval(const std::function<Rational(const ArithVarPtr)> &valuation) const {
     return map<Rational>(
-        [](const ArithValPtr t) {
+        [](const ArithConstPtr t) {
             return **t;
         },
         [&valuation](const ArithVarPtr x) {
@@ -628,7 +628,7 @@ std::pair<Purrs::Expr, purrs_var_map> ArithExpr::toPurrs() const {
 
 Purrs::Expr ArithExpr::toPurrs(purrs_var_map &m) const {
     return map<Purrs::Expr>(
-        [](const ArithValPtr t) {
+        [](const ArithConstPtr t) {
             return Purrs::Number(t->numerator()->getValue().str().c_str()) / Purrs::Number(t->denominator()->getValue().str().c_str());
         },
         [&m](const ArithVarPtr x) {
@@ -660,7 +660,7 @@ Purrs::Expr ArithExpr::toPurrs(purrs_var_map &m) const {
 std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
     using pair = std::pair<Rational, std::optional<ArithExprPtr>>;
     return map<pair>(
-        [](const ArithValPtr t) {
+        [](const ArithConstPtr t) {
             return pair{**t, {}};
         },
         [](const ArithVarPtr x) {
@@ -688,7 +688,7 @@ std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
 
 bool ArithExpr::isUnivariate(std::optional<ArithVarPtr> &acc) const {
     return map<bool>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return false;
         },
         [&acc](const ArithVarPtr x) {
@@ -716,7 +716,7 @@ bool ArithExpr::isUnivariate(std::optional<ArithVarPtr> &acc) const {
 
 bool ArithExpr::isMultivariate(std::optional<ArithVarPtr> &acc) const {
     return map<bool>(
-        [](const ArithValPtr) {
+        [](const ArithConstPtr) {
             return false;
         },
         [&acc](const ArithVarPtr x) {
@@ -741,7 +741,7 @@ bool ArithExpr::isMultivariate(std::optional<ArithVarPtr> &acc) const {
 
 std::ostream& operator<<(std::ostream &s, const ArithExprPtr e) {
     e->map<void>(
-        [&](const ArithValPtr c) {
+        [&](const ArithConstPtr c) {
             s << c->getValue();
         },
         [&](const ArithVarPtr x) {

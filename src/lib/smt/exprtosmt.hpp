@@ -70,7 +70,7 @@ protected:
 
     EXPR convertEx(const ArithExprPtr e){
         return e->map<EXPR>(
-            [this](const ArithValPtr &r) {
+            [this](const ArithConstPtr &r) {
                 return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
             },
             [this](const ArithVarPtr x) {
