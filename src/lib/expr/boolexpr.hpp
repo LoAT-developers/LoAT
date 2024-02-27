@@ -24,7 +24,7 @@ class BoolExpression;
 template <ITheory... Th>
 using BExpr = std::shared_ptr<const BoolExpression<Th...>>;
 
-namespace literal {
+namespace theories {
 
 template<std::size_t I = 0, ITheory... Th>
 inline BExpr<Th...> subsImpl(const typename Theory<Th...>::Lit &lit, const theories::Subs<Th...> &s) {
@@ -162,7 +162,7 @@ public:
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
-            return literal::isTriviallyTrue<Th...>(*getTheoryLit());
+            return theories::isTriviallyTrue<Th...>(*getTheoryLit());
         } else {
             const auto children = getChildren();
             if (isAnd()) {
@@ -177,7 +177,7 @@ public:
 
     bool isTriviallyFalse() const {
         if (isTheoryLit()) {
-            return literal::isTriviallyFalse<Th...>(*getTheoryLit());
+            return theories::isTriviallyFalse<Th...>(*getTheoryLit());
         } else {
             const auto children = getChildren();
             if (isAnd()) {
@@ -274,7 +274,7 @@ private:
         } else {
             const auto lit = getTheoryLit();
             if (lit) {
-                auto l = literal::subs(*lit, subs);
+                auto l = theories::subs(*lit, subs);
                 const auto vars = l->vars();
                 if (!vars.empty()) {
                     // Since this->subs(subs) is a tautology, we may set variables in non-ground
@@ -411,13 +411,13 @@ public:
 
     BE subs(const Subs &subs) const {
         return map([&subs](const auto &lit) {
-            return literal::subs<Th...>(lit, subs);
+            return theories::subs<Th...>(lit, subs);
         });
     }
 
     void collectVars(VS &vars) const {
         iter([&vars](const auto &lit) {
-            literal::collectVars<Th...>(lit, vars);
+            theories::collectVars<Th...>(lit, vars);
         });
     }
 
@@ -612,7 +612,7 @@ class BoolTheoryLit: public BoolExpression<Th...> {
     struct CacheHash {
 
         size_t operator()(const std::tuple<Lit> &args) const noexcept {
-            return literal::hash<Th...>(std::get<0>(args));
+            return theories::hash<Th...>(std::get<0>(args));
         }
 
     };
@@ -648,7 +648,7 @@ public:
     }
 
     const BE negation() const override {
-        return BoolExpression<Th...>::mkLit(literal::negate<Th...>(lit));
+        return BoolExpression<Th...>::mkLit(theories::negate<Th...>(lit));
     }
 
     bool forall(const std::function<bool(const Lit&)> &pred) const override {

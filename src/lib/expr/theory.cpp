@@ -90,23 +90,23 @@ VarSet coDomainVars(const Subs &subs) {
 }
 
 void collectVariables(VarSet &res, const Lit &e) {
-    literal::collectVars<Arith, Bools>(e, res);
+    theories::collectVars<Arith, Bools>(e, res);
 }
 
 VarSet variables(const Lit &e) {
-    return literal::vars<Arith, Bools>(e);
+    return theories::vars<Arith, Bools>(e);
 }
 
 bool isTriviallyTrue(const Lit &lit) {
-    return literal::isTriviallyTrue<Arith, Bools>(lit);
+    return theories::isTriviallyTrue<Arith, Bools>(lit);
 }
 
 Lit negate(const Lit &lit) {
-    return literal::negate<Arith, Bools>(lit);
+    return theories::negate<Arith, Bools>(lit);
 }
 
 BoolExpr subs(const Lit &lit, const Subs &s) {
-    return literal::subs<Arith, Bools>(lit, s);
+    return theories::subs<Arith, Bools>(lit, s);
 }
 
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
