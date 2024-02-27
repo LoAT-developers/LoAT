@@ -6,11 +6,11 @@
 int ArithVar::last_tmp_idx {0};
 int ArithVar::last_prog_idx {1};
 
-const NumVarPtr ArithVar::loc_var {nextProgVar()};
+const ArithVarPtr ArithVar::loc_var {nextProgVar()};
 
 ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {};
 
-ExprPtr arith::mkVar(const int idx) {
+ArithExprPtr arith::mkVar(const int idx) {
     return ArithVar::cache.from_cache(idx);
 }
 
@@ -32,12 +32,12 @@ std::ostream& operator<<(std::ostream &s, const ArithVar &x) {
     return s << x.getName();
 }
 
-NumVarPtr ArithVar::next() {
+ArithVarPtr ArithVar::next() {
     --last_tmp_idx;
     return (*arith::mkVar(last_tmp_idx)->someVar())->toPtr();
 }
 
-NumVarPtr ArithVar::nextProgVar() {
+ArithVarPtr ArithVar::nextProgVar() {
     ++last_prog_idx;
     return (*arith::mkVar(last_prog_idx)->someVar())->toPtr();
 }
@@ -54,11 +54,11 @@ std::size_t hash_value(const ArithVar &x) {
     return x.hash();
 }
 
-NumVarPtr ArithVar::toPtr() const {
+ArithVarPtr ArithVar::toPtr() const {
     return std::enable_shared_from_this<ArithVar>::shared_from_this();
 }
 
-ExprPtr ArithVar::toExpr() const {
+ArithExprPtr ArithVar::toExpr() const {
     return ArithExpr::shared_from_this();
 }
 

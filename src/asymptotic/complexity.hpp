@@ -80,4 +80,4 @@ private:
 
 std::ostream& operator<<(std::ostream &, const Complexity &);
 
-Complexity toComplexity(const ExprPtr e);
+Complexity toComplexity(const ArithExprPtr e);

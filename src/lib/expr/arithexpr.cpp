@@ -23,19 +23,19 @@
 
 ArithExpr::ArithExpr(const arith::Kind kind): kind(kind) {}
 
-linked_hash_set<NumVarPtr> ArithExpr::vars() const {
-    linked_hash_set<NumVarPtr> res;
+linked_hash_set<ArithVarPtr> ArithExpr::vars() const {
+    linked_hash_set<ArithVarPtr> res;
     collectVars(res);
     return res;
 }
 
 bool ArithExpr::isUnivariate() const {
-    std::optional<NumVarPtr> var;
+    std::optional<ArithVarPtr> var;
     return isUnivariate(var);
 }
 
 bool ArithExpr::isMultivariate() const {
-    std::optional<NumVarPtr> var;
+    std::optional<ArithVarPtr> var;
     return isMultivariate(var);
 }
 
@@ -57,37 +57,37 @@ std::optional<Int> ArithExpr::maxDegree() const {
     return max;
 }
 
-bool ArithExpr::has(const NumVarPtr x) const {
+bool ArithExpr::has(const ArithVarPtr x) const {
     return hasVarWith([&x](const auto &y) {
         return x == y;
     });
 }
 
-ExprPtr operator-(const ExprPtr x) {
+ArithExprPtr operator-(const ArithExprPtr x) {
     return arith::mkTimes({arith::mkConst(-1),x});
 }
 
-ExprPtr operator-(const ExprPtr x, const ExprPtr y) {
+ArithExprPtr operator-(const ArithExprPtr x, const ArithExprPtr y) {
     return arith::mkPlus({x,-y});
 }
 
-ExprPtr operator+(const ExprPtr x, const ExprPtr y) {
+ArithExprPtr operator+(const ArithExprPtr x, const ArithExprPtr y) {
     return arith::mkPlus({x,y});
 }
 
-ExprPtr operator*(const ExprPtr x, const ExprPtr y) {
+ArithExprPtr operator*(const ArithExprPtr x, const ArithExprPtr y) {
     return arith::mkTimes({x,y});
 }
 
-ExprPtr ArithExpr::divide(const Rational &y) const {
+ArithExprPtr ArithExpr::divide(const Rational &y) const {
     return arith::mkTimes({arith::mkConst(Rational(mp::denominator(y), mp::numerator(y))), shared_from_this()});
 }
 
-ExprPtr operator^(const ExprPtr x, const ExprPtr y) {
+ArithExprPtr operator^(const ArithExprPtr x, const ArithExprPtr y) {
     return arith::mkExp(x, y);
 }
 
-std::optional<NumConstantPtr> ArithExpr::isRational() const {
+std::optional<ArithValPtr> ArithExpr::isRational() const {
     if (kind == arith::Kind::Constant) {
         return static_cast<const ArithVal*>(this)->std::enable_shared_from_this<ArithVal>::shared_from_this();;
     } else {
@@ -96,12 +96,12 @@ std::optional<NumConstantPtr> ArithExpr::isRational() const {
 }
 
 std::optional<Int> ArithExpr::isInt() const {
-    return flat_map<NumConstantPtr, Int>(isRational(), [](const auto &r){
+    return flat_map<ArithValPtr, Int>(isRational(), [](const auto &r){
         return r->intValue();
     });
 }
 
-std::optional<NumVarPtr> ArithExpr::isVar() const {
+std::optional<ArithVarPtr> ArithExpr::isVar() const {
     if (kind == arith::Kind::Variable) {
         return static_cast<const ArithVar*>(this)->std::enable_shared_from_this<ArithVar>::shared_from_this();
     } else {
@@ -109,7 +109,7 @@ std::optional<NumVarPtr> ArithExpr::isVar() const {
     }
 }
 
-std::optional<ExpPtr> ArithExpr::isPow() const {
+std::optional<ArithExpPtr> ArithExpr::isPow() const {
     if (kind == arith::Kind::Exp) {
         return static_cast<const ArithExp*>(this)->std::enable_shared_from_this<ArithExp>::shared_from_this();
     } else {
@@ -117,7 +117,7 @@ std::optional<ExpPtr> ArithExpr::isPow() const {
     }
 }
 
-const std::optional<MultPtr> ArithExpr::isMult() const {
+const std::optional<ArithMultPtr> ArithExpr::isMult() const {
     if (kind == arith::Kind::Times) {
         return static_cast<const ArithMult*>(this)->std::enable_shared_from_this<ArithMult>::shared_from_this();
     } else {
@@ -125,7 +125,7 @@ const std::optional<MultPtr> ArithExpr::isMult() const {
     }
 }
 
-const std::optional<AddPtr> ArithExpr::isAdd() const {
+const std::optional<ArithAddPtr> ArithExpr::isAdd() const {
     if (kind == arith::Kind::Plus) {
         return static_cast<const ArithAdd*>(this)->std::enable_shared_from_this<ArithAdd>::shared_from_this();
     } else {
@@ -133,22 +133,22 @@ const std::optional<AddPtr> ArithExpr::isAdd() const {
     }
 }
 
-bool ArithExpr::isLinear(const std::optional<linked_hash_set<NumVarPtr>> &vars) const {
+bool ArithExpr::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars) const {
     const auto is_linear {[&vars](const auto &arg) -> bool {
         return arg->isLinear(vars);
     }};
     return map<bool>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return true;
         },
-        [](const NumVarPtr) {
+        [](const ArithVarPtr) {
             return true;
         },
-        [&is_linear](const AddPtr a) {
+        [&is_linear](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::all_of(args.begin(), args.end(), is_linear);
         },
-        [&is_linear, &vars](const MultPtr m) {
+        [&is_linear, &vars](const ArithMultPtr m) {
             const auto is_constant {[&vars](const auto &arg) -> bool {
                 return !arg->hasVarWith([&vars](const auto &x) {
                     return vars->contains(x);
@@ -157,32 +157,32 @@ bool ArithExpr::isLinear(const std::optional<linked_hash_set<NumVarPtr>> &vars) 
             const auto &args {m->getArgs()};
             return args.size() == 2 && std::all_of(args.begin(), args.end(), is_linear) && std::any_of(args.begin(), args.end(), is_constant);
         },
-        [&vars](const ExpPtr e) {
+        [&vars](const ArithExpPtr e) {
             return e->getBase()->isLinear(vars) && e->getExponent()->isLinear(vars);
         });
 }
 
 bool ArithExpr::isPoly() const {
     return map<bool>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return true;
         },
-        [](const NumVarPtr) {
+        [](const ArithVarPtr) {
             return true;
         },
-        [](const AddPtr a) {
+        [](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::all_of(args.begin(), args.end(), [](const auto &arg) -> bool {
                 return arg->isPoly();
             });
         },
-        [](const MultPtr m) {
+        [](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::all_of(args.begin(), args.end(), [](const auto &arg) -> bool {
                 return arg->isPoly();
             });
         },
-        [](const ExpPtr e) {
+        [](const ArithExpPtr e) {
             return e->getExponent()->isInt().has_value();
         });
 }
@@ -190,13 +190,13 @@ bool ArithExpr::isPoly() const {
 std::optional<Int> ArithExpr::totalDegree() const {
     using opt = std::optional<Int>;
     return map<opt>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return opt{0};
         },
-        [](const NumVarPtr) {
+        [](const ArithVarPtr) {
             return opt{1};
         },
-        [](const AddPtr a) {
+        [](const ArithAddPtr a) {
             Int res {0};
             for (const auto &arg: a->getArgs()) {
                 const auto arg_degree {arg->totalDegree()};
@@ -207,7 +207,7 @@ std::optional<Int> ArithExpr::totalDegree() const {
             }
             return opt{res};
         },
-        [](const MultPtr m) {
+        [](const ArithMultPtr m) {
             Int res {0};
             for (const auto &arg: m->getArgs()) {
                 const auto arg_degree {arg->totalDegree()};
@@ -218,7 +218,7 @@ std::optional<Int> ArithExpr::totalDegree() const {
             }
             return opt{res};
         },
-        [](const ExpPtr e) {
+        [](const ArithExpPtr e) {
             const auto exp {e->getExponent()->isInt()};
             if (exp) {
                 const auto base_degree {e->getBase()->totalDegree()};
@@ -230,63 +230,63 @@ std::optional<Int> ArithExpr::totalDegree() const {
         });
 }
 
-void ArithExpr::collectVars(linked_hash_set<NumVarPtr> &res) const {
+void ArithExpr::collectVars(linked_hash_set<ArithVarPtr> &res) const {
     map<void>(
-        [](const NumConstantPtr&) {},
-        [&res](const NumVarPtr x) {
+        [](const ArithValPtr&) {},
+        [&res](const ArithVarPtr x) {
             res.emplace(x);
         },
-        [&res](const AddPtr a) {
+        [&res](const ArithAddPtr a) {
             for (const auto &arg: a->getArgs()) {
                 arg->collectVars(res);
             }
         },
-        [&res](const MultPtr m) {
+        [&res](const ArithMultPtr m) {
             for (const auto &arg: m->getArgs()) {
                 arg->collectVars(res);
             }
         },
-        [&res](const ExpPtr e) {
+        [&res](const ArithExpPtr e) {
             e->getBase()->collectVars(res);
             e->getExponent()->collectVars(res);
         });
 }
 
-bool ArithExpr::hasVarWith(const std::function<bool(const NumVarPtr)> predicate) const {
+bool ArithExpr::hasVarWith(const std::function<bool(const ArithVarPtr)> predicate) const {
     return map<bool>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return false;
         },
-        [&predicate](const NumVarPtr x) {
+        [&predicate](const ArithVarPtr x) {
             return predicate(x);
         },
-        [&predicate](const AddPtr a) {
+        [&predicate](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::any_of(args.begin(), args.end(), [&predicate](const auto &arg) -> bool {
                 return arg->hasVarWith(predicate);
             });
         },
-        [&predicate](const MultPtr m) {
+        [&predicate](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::any_of(args.begin(), args.end(), [&predicate](const auto &arg) -> bool {
                 return arg->hasVarWith(predicate);
             });
         },
-        [&predicate](const ExpPtr e) {
+        [&predicate](const ArithExpPtr e) {
             return e->getBase()->hasVarWith(predicate) || e->getExponent()->hasVarWith(predicate);
         });
 }
 
-std::optional<Int> ArithExpr::degree(const NumVarPtr var) const {
+std::optional<Int> ArithExpr::degree(const ArithVarPtr var) const {
     using opt = std::optional<Int>;
     return map<opt>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return opt{0};
         },
-        [&var](const NumVarPtr x) {
+        [&var](const ArithVarPtr x) {
             return opt{x == var ? 1 : 0};
         },
-        [&var](const AddPtr a) {
+        [&var](const ArithAddPtr a) {
             Int res {0};
             for (const auto &arg: a->getArgs()) {
                 const auto arg_degree {arg->degree(var)};
@@ -297,7 +297,7 @@ std::optional<Int> ArithExpr::degree(const NumVarPtr var) const {
             }
             return opt{res};
         },
-        [&var](const MultPtr m) {
+        [&var](const ArithMultPtr m) {
             Int res {0};
             for (const auto &arg: m->getArgs()) {
                 const auto arg_degree {arg->degree(var)};
@@ -308,7 +308,7 @@ std::optional<Int> ArithExpr::degree(const NumVarPtr var) const {
             }
             return opt{res};
         },
-        [&var](const ExpPtr e) {
+        [&var](const ArithExpPtr e) {
             if (!e->has(var)) {
                 return opt{0};
             }
@@ -325,64 +325,64 @@ std::optional<Int> ArithExpr::degree(const NumVarPtr var) const {
 
 Int ArithExpr::denomLcm() const {
     return map<Int>(
-        [](const NumConstantPtr t) {
+        [](const ArithValPtr t) {
             return *t->denominator()->intValue();
         },
-        [](const NumVarPtr) {
+        [](const ArithVarPtr) {
             return 1;
         },
-        [](const AddPtr a) {
+        [](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::accumulate(args.begin(), args.end(), Int{1}, [](const auto &x, const auto &y) {
                 return x * y->denomLcm();
             });
         },
-        [](const MultPtr m) {
+        [](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::accumulate(args.begin(), args.end(), Int{1}, [](const auto &x, const auto &y) {
                 return x * y->denomLcm();
             });
         },
-        [](const ExpPtr) {
+        [](const ArithExpPtr) {
             return 1;
         });
 }
 
-bool ArithExpr::isPoly(const NumVarPtr n) const {
+bool ArithExpr::isPoly(const ArithVarPtr n) const {
     return map<bool>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return true;
         },
-        [](const NumVarPtr) {
+        [](const ArithVarPtr) {
             return true;
         },
-        [&n](const AddPtr a) {
+        [&n](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::all_of(args.begin(), args.end(), [&n](const auto &arg) -> bool {
                 return arg->isPoly(n);
             });
         },
-        [&n](const MultPtr m) {
+        [&n](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::all_of(args.begin(), args.end(), [&n](const auto &arg) -> bool {
                 return arg->isPoly(n);
             });
         },
-        [&n](const ExpPtr e) {
+        [&n](const ArithExpPtr e) {
             return e->getExponent()->isInt() || !e->getBase()->has(n);
         });
 }
 
-std::optional<NumVarPtr> ArithExpr::someVar() const {
-    using opt = std::optional<NumVarPtr>;
+std::optional<ArithVarPtr> ArithExpr::someVar() const {
+    using opt = std::optional<ArithVarPtr>;
     return map<opt>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return opt{};
         },
-        [](const NumVarPtr x) {
+        [](const ArithVarPtr x) {
             return opt{x};
         },
-        [](const AddPtr a) {
+        [](const ArithAddPtr a) {
             for (const auto &arg: a->getArgs()) {
                 const auto res {arg->someVar()};
                 if (res) {
@@ -391,7 +391,7 @@ std::optional<NumVarPtr> ArithExpr::someVar() const {
             }
             return opt{};
         },
-        [](const MultPtr m) {
+        [](const ArithMultPtr m) {
             for (const auto &arg: m->getArgs()) {
                 const auto res {arg->someVar()};
                 if (res) {
@@ -400,49 +400,49 @@ std::optional<NumVarPtr> ArithExpr::someVar() const {
             }
             return opt{};
         },
-        [](const ExpPtr e) {
+        [](const ArithExpPtr e) {
             auto res {e->getBase()->someVar()};
             return res ? res : e->getExponent()->someVar();
         });
 }
 
-void ArithExpr::exps(linked_hash_set<ExpPtr> &acc) const {
+void ArithExpr::exps(linked_hash_set<ArithExpPtr> &acc) const {
     return map<void>(
-        [](const NumConstantPtr) {},
-        [](const NumVarPtr) {},
-        [&acc](const AddPtr a) {
+        [](const ArithValPtr) {},
+        [](const ArithVarPtr) {},
+        [&acc](const ArithAddPtr a) {
             for (const auto &arg: a->getArgs()) {
                 arg->exps(acc);
             }
         },
-        [&acc](const MultPtr m) {
+        [&acc](const ArithMultPtr m) {
             for (const auto &arg: m->getArgs()) {
                 arg->exps(acc);
             }
         },
-        [&acc](const ExpPtr e) {
+        [&acc](const ArithExpPtr e) {
             e->getBase()->exps(acc);
             e->getExponent()->exps(acc);
             acc.emplace(e);
         });
 }
 
-linked_hash_set<ExpPtr> ArithExpr::exps() const {
-    linked_hash_set<ExpPtr> acc;
+linked_hash_set<ArithExpPtr> ArithExpr::exps() const {
+    linked_hash_set<ArithExpPtr> acc;
     exps(acc);
     return acc;
 }
 
-std::optional<ExprPtr> ArithExpr::coeff(const NumVarPtr var, const Int &degree) const {
-    using opt = std::optional<ExprPtr>;
+std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &degree) const {
+    using opt = std::optional<ArithExprPtr>;
     return map<opt>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return opt{arith::mkConst(0)};
         },
-        [&var, &degree](const NumVarPtr x) {
+        [&var, &degree](const ArithVarPtr x) {
             return opt{arith::mkConst(degree == 1 && var == x ? 1 : 0)};
         },
-        [&var, &degree](const AddPtr a) {
+        [&var, &degree](const ArithAddPtr a) {
             for (const auto &arg: a->getArgs()) {
                 const auto res {arg->coeff(var, degree)};
                 if (res) {
@@ -451,11 +451,11 @@ std::optional<ExprPtr> ArithExpr::coeff(const NumVarPtr var, const Int &degree) 
             }
             return opt{};
         },
-        [&var, &degree](const MultPtr m) {
+        [&var, &degree](const ArithMultPtr m) {
             const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
             const auto &args {m->getArgs()};
             if (args.contains(e)) {
-                std::vector<ExprPtr> new_args;
+                std::vector<ArithExprPtr> new_args;
                 for (const auto &arg: args) {
                     if (arg != e) {
                         new_args.emplace_back(arg);
@@ -465,7 +465,7 @@ std::optional<ExprPtr> ArithExpr::coeff(const NumVarPtr var, const Int &degree) 
             }
             return opt{};
         },
-        [&var, &degree](const ExpPtr e) {
+        [&var, &degree](const ArithExpPtr e) {
             if (e->getBase()->isVar() == var && e->getExponent()->isInt() == degree) {
                 return opt{arith::mkConst(1)};
             }
@@ -476,16 +476,16 @@ std::optional<ExprPtr> ArithExpr::coeff(const NumVarPtr var, const Int &degree) 
         });
 }
 
-std::optional<ExprPtr> ArithExpr::lcoeff(const NumVarPtr var) const {
-    using opt = std::optional<ExprPtr>;
+std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr var) const {
+    using opt = std::optional<ArithExprPtr>;
     return map<opt>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return opt{arith::mkConst(0)};
         },
-        [&var](const NumVarPtr x) {
+        [&var](const ArithVarPtr x) {
             return x->coeff(var);
         },
-        [&var](const AddPtr a) {
+        [&var](const ArithAddPtr a) {
             std::optional<Int> degree;
             opt res;
             for (const auto &arg: a->getArgs()) {
@@ -500,9 +500,9 @@ std::optional<ExprPtr> ArithExpr::lcoeff(const NumVarPtr var) const {
             }
             return res;
         },
-        [&var](const MultPtr m) {
+        [&var](const ArithMultPtr m) {
             opt lcoeff;
-            std::vector<ExprPtr> new_args;
+            std::vector<ArithExprPtr> new_args;
             for (const auto &arg: m->getArgs()) {
                 if (lcoeff) {
                     new_args.emplace_back(arg);
@@ -521,7 +521,7 @@ std::optional<ExprPtr> ArithExpr::lcoeff(const NumVarPtr var) const {
                 return opt{};
             }
         },
-        [&var](const ExpPtr e) {
+        [&var](const ArithExpPtr e) {
             if (e->isPoly(var)) {
                 return opt{arith::mkConst(1)};
             }
@@ -531,14 +531,14 @@ std::optional<ExprPtr> ArithExpr::lcoeff(const NumVarPtr var) const {
 
 bool ArithExpr::isIntegral() const {
     return map<bool>(
-        [](const NumConstantPtr x) {
+        [](const ArithValPtr x) {
             return x->intValue().has_value();
         },
-        [](const NumVarPtr) {
+        [](const ArithVarPtr) {
             return true;
         },
-        [](const AddPtr a) {
-            std::vector<ExprPtr> nonInt;
+        [](const ArithAddPtr a) {
+            std::vector<ArithExprPtr> nonInt;
             for (const auto &arg: a->getArgs()) {
                 if (!arg->isIntegral()) {
                     if (arg->isPow()) {
@@ -549,7 +549,7 @@ bool ArithExpr::isIntegral() const {
             }
             const auto e {arith::mkTimes(nonInt)};
             unsigned i {0};
-            linked_hash_map<NumVarPtr, unsigned> vars;
+            linked_hash_map<ArithVarPtr, unsigned> vars;
             // degrees, subs share indices with vars
             std::vector<Int> degrees;
             std::vector<Int> subs;
@@ -584,38 +584,38 @@ bool ArithExpr::isIntegral() const {
                 }
             }
         },
-        [](const MultPtr m) {
+        [](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::all_of(args.begin(), args.end(), [](const auto &arg) {
                 return arg->isIntegral();
             });
         },
-        [](const ExpPtr e) {
+        [](const ArithExpPtr e) {
             return true;
         });
 }
 
-Rational ArithExpr::eval(const std::function<Rational(const NumVarPtr)> &valuation) const {
+Rational ArithExpr::eval(const std::function<Rational(const ArithVarPtr)> &valuation) const {
     return map<Rational>(
-        [](const NumConstantPtr t) {
+        [](const ArithValPtr t) {
             return **t;
         },
-        [&valuation](const NumVarPtr x) {
+        [&valuation](const ArithVarPtr x) {
             return valuation(x);
         },
-        [&valuation](const AddPtr a) {
+        [&valuation](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::accumulate(args.begin(), args.end(), Rational{0}, [&valuation](const auto &x, const auto y) {
                 return x + y->eval(valuation);
             });
         },
-        [&valuation](const MultPtr m) {
+        [&valuation](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::accumulate(args.begin(), args.end(), Rational{1}, [&valuation](const auto &x, const auto y) {
                 return x * y->eval(valuation);
             });
         },
-        [&valuation](const ExpPtr e) {
+        [&valuation](const ArithExpPtr e) {
             return mp::pow(mp::numerator(e->getBase()->eval(valuation)), e->getExponent()->eval(valuation).convert_to<long>());
         });
 }
@@ -628,10 +628,10 @@ std::pair<Purrs::Expr, purrs_var_map> ArithExpr::toPurrs() const {
 
 Purrs::Expr ArithExpr::toPurrs(purrs_var_map &m) const {
     return map<Purrs::Expr>(
-        [](const NumConstantPtr t) {
+        [](const ArithValPtr t) {
             return Purrs::Number(t->numerator()->getValue().str().c_str()) / Purrs::Number(t->denominator()->getValue().str().c_str());
         },
-        [&m](const NumVarPtr x) {
+        [&m](const ArithVarPtr x) {
             const auto res {m.left.find(x)};
             if (res == m.left.end()) {
                 Purrs::Symbol s {x->getName()};
@@ -640,38 +640,38 @@ Purrs::Expr ArithExpr::toPurrs(purrs_var_map &m) const {
             }
             return res->second;
         },
-        [&m](const AddPtr a) {
+        [&m](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::accumulate(args.begin(), args.end(), Purrs::Expr(0), [&m](const auto &x, const auto &y){
                 return x + y->toPurrs(m);
             });
         },
-        [&m](const MultPtr mult) {
+        [&m](const ArithMultPtr mult) {
             const auto &args {mult->getArgs()};
             return std::accumulate(args.begin(), args.end(), Purrs::Expr(1), [&m](const auto &x, const auto &y){
                 return x * y->toPurrs(m);
             });
         },
-        [&m](const ExpPtr e) {
+        [&m](const ArithExpPtr e) {
             return Purrs::pwr(e->getBase()->toPurrs(m), e->getExponent()->toPurrs(m));
         });
 }
 
-std::pair<Rational, std::optional<ExprPtr>> ArithExpr::decompose() const {
-    using pair = std::pair<Rational, std::optional<ExprPtr>>;
+std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
+    using pair = std::pair<Rational, std::optional<ArithExprPtr>>;
     return map<pair>(
-        [](const NumConstantPtr t) {
+        [](const ArithValPtr t) {
             return pair{**t, {}};
         },
-        [](const NumVarPtr x) {
+        [](const ArithVarPtr x) {
             return pair{1, {x->toExpr()}};
         },
-        [](const AddPtr a) {
+        [](const ArithAddPtr a) {
             return pair{1, {a}};
         },
-        [](const MultPtr m) {
+        [](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
-            std::vector<ExprPtr> non_const {args.begin(), args.end()};
+            std::vector<ArithExprPtr> non_const {args.begin(), args.end()};
             for (const auto &arg: args) {
                 const auto val {arg->isRational()};
                 if (val) {
@@ -681,73 +681,73 @@ std::pair<Rational, std::optional<ExprPtr>> ArithExpr::decompose() const {
             }
             return pair{1, {m}};
         },
-        [](const ExpPtr e) {
+        [](const ArithExpPtr e) {
             return pair {1, {e}};
         });
 }
 
-bool ArithExpr::isUnivariate(std::optional<NumVarPtr> &acc) const {
+bool ArithExpr::isUnivariate(std::optional<ArithVarPtr> &acc) const {
     return map<bool>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return false;
         },
-        [&acc](const NumVarPtr x) {
+        [&acc](const ArithVarPtr x) {
             if (!acc) {
                 acc = x;
             }
             return acc == x;
         },
-        [&acc](const AddPtr a) {
+        [&acc](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::all_of(args.begin(), args.end(), [&acc](const auto &arg) -> bool {
                 return arg->isUnivariate(acc);
             });
         },
-        [&acc](const MultPtr m) {
+        [&acc](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::all_of(args.begin(), args.end(), [&acc](const auto &arg) -> bool {
                 return arg->isUnivariate(acc);
             });
         },
-        [&acc](const ExpPtr e) {
+        [&acc](const ArithExpPtr e) {
             return e->getBase()->isUnivariate(acc) && e->getExponent()->isUnivariate(acc);
         });
 }
 
-bool ArithExpr::isMultivariate(std::optional<NumVarPtr> &acc) const {
+bool ArithExpr::isMultivariate(std::optional<ArithVarPtr> &acc) const {
     return map<bool>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return false;
         },
-        [&acc](const NumVarPtr x) {
+        [&acc](const ArithVarPtr x) {
             return !x->isUnivariate(acc);
         },
-        [&acc](const AddPtr a) {
+        [&acc](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::any_of(args.begin(), args.end(), [&acc](const auto &arg) -> bool {
                 return arg->isMultivariate(acc);
             });
         },
-        [&acc](const MultPtr m) {
+        [&acc](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::any_of(args.begin(), args.end(), [&acc](const auto &arg) -> bool {
                 return arg->isMultivariate(acc);
             });
         },
-        [&acc](const ExpPtr e) {
+        [&acc](const ArithExpPtr e) {
             return e->getBase()->isMultivariate(acc) || e->getExponent()->isMultivariate(acc);
         });
 }
 
-std::ostream& operator<<(std::ostream &s, const ExprPtr e) {
+std::ostream& operator<<(std::ostream &s, const ArithExprPtr e) {
     e->map<void>(
-        [&](const NumConstantPtr c) {
+        [&](const ArithValPtr c) {
             s << c->getValue();
         },
-        [&](const NumVarPtr x) {
+        [&](const ArithVarPtr x) {
             s << x->getName();
         },
-        [&](const AddPtr a) {
+        [&](const ArithAddPtr a) {
             auto fst {true};
             for (const auto &arg: a->getArgs()) {
                 if (fst) {
@@ -758,7 +758,7 @@ std::ostream& operator<<(std::ostream &s, const ExprPtr e) {
                 }
             }
         },
-        [&](const MultPtr a) {
+        [&](const ArithMultPtr a) {
             auto fst {true};
             for (const auto &arg: a->getArgs()) {
                 if (fst) {
@@ -769,12 +769,12 @@ std::ostream& operator<<(std::ostream &s, const ExprPtr e) {
                 }
             }
         },
-        [&](const ExpPtr a) {
+        [&](const ArithExpPtr a) {
             s << a->getBase() << " ^ " << a->getExponent();
         });
     return s;
 }
 
-std::ostream& operator<<(std::ostream &s, const NumVarPtr e) {
+std::ostream& operator<<(std::ostream &s, const ArithVarPtr e) {
     return s << e->getName();
 }

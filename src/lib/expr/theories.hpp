@@ -86,7 +86,7 @@ BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2);
 
 BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2);
 
-Arith theory(const NumVarPtr&);
+Arith theory(const ArithVarPtr&);
 
 Bools theory(const BoolVarPtr&);
 

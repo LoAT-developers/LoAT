@@ -28,7 +28,7 @@ z3::expr Z3Context::buildVar(const Var &var) {
     const auto name {theories::getName(var)};
     return std::visit(
         Overload{
-            [&](const NumVarPtr&) {
+            [&](const ArithVarPtr&) {
                 return ctx.int_const(name.c_str());
             },
             [&](const BoolVarPtr&) {

@@ -18,9 +18,9 @@ std::ostream& operator<<(std::ostream &s, const RelSet &set) {
     return s;
 }
 
-ArithLit::ArithLit(const ExprPtr l): l(l) { }
+ArithLit::ArithLit(const ArithExprPtr l): l(l) { }
 
-ExprPtr ArithLit::lhs() const {
+ArithExprPtr ArithLit::lhs() const {
     return l;
 }
 
@@ -28,11 +28,11 @@ bool ArithLit::isPoly() const {
     return l->isPoly();
 }
 
-bool ArithLit::isLinear(const std::optional<linked_hash_set<NumVarPtr>> &vars) const {
+bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars) const {
     return l->isLinear(vars);
 }
 
-std::pair<std::optional<ExprPtr>, std::optional<ExprPtr>> ArithLit::getBoundFromIneq(const NumVarPtr N) const {
+std::pair<std::optional<ArithExprPtr>, std::optional<ArithExprPtr>> ArithLit::getBoundFromIneq(const ArithVarPtr N) const {
     if (l->degree(N) != 1) return {};
     const auto geq {l - arith::mkConst(1)};
     const auto optSolved {arith::solveTermFor(geq, N)};
@@ -48,7 +48,7 @@ std::pair<std::optional<ExprPtr>, std::optional<ExprPtr>> ArithLit::getBoundFrom
     return {};
 }
 
-void ArithLit::getBounds(const NumVarPtr n, Bounds &res) const {
+void ArithLit::getBounds(const ArithVarPtr n, Bounds &res) const {
     if (has(n)) {
         const auto p {getBoundFromIneq(n)};
         if (p.first) {
@@ -100,11 +100,11 @@ std::optional<bool> ArithLit::checkTrivial() const {
     return {};
 }
 
-void ArithLit::collectVars(linked_hash_set<NumVarPtr> &res) const {
+void ArithLit::collectVars(linked_hash_set<ArithVarPtr> &res) const {
     l->collectVars(res);
 }
 
-bool ArithLit::has(const NumVarPtr x) const {
+bool ArithLit::has(const ArithVarPtr x) const {
     return l->has(x);
 }
 
@@ -112,35 +112,35 @@ ArithLit ArithLit::subs(const ArithSubs &map) const {
     return ArithLit(map(l));
 }
 
-linked_hash_set<NumVarPtr> ArithLit::vars() const {
+linked_hash_set<ArithVarPtr> ArithLit::vars() const {
     return l->vars();
 }
 
 std::size_t ArithLit::hash() const {
-    return std::hash<ExprPtr>{}(l);
+    return std::hash<ArithExprPtr>{}(l);
 }
 
 size_t hash_value(const ArithLit &rel) {
     return rel.hash();
 }
 
-ArithLit ArithLit::mkGeq(const ExprPtr x, const ExprPtr y) {
+ArithLit ArithLit::mkGeq(const ArithExprPtr x, const ArithExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
     return ArithLit(lhs_integral + arith::mkConst(1));
 }
 
-ArithLit ArithLit::mkLeq(const ExprPtr x, const ExprPtr y) {
+ArithLit ArithLit::mkLeq(const ArithExprPtr x, const ArithExprPtr y) {
     return mkGeq(-x, -y);
 }
 
-ArithLit ArithLit::mkGt(const ExprPtr x, const ExprPtr y) {
+ArithLit ArithLit::mkGt(const ArithExprPtr x, const ArithExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
     return ArithLit(lhs_integral);
 }
 
-ArithLit ArithLit::mkLt(const ExprPtr x, const ExprPtr y) {
+ArithLit ArithLit::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
     return mkGt(-x, -y);
 }
 

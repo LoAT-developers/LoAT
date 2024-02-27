@@ -3,14 +3,14 @@
 
 ArithSubs::ArithSubs() {}
 
-ArithSubs::ArithSubs(std::initializer_list<std::pair<const NumVarPtr, ExprPtr>> init): map(init) {}
+ArithSubs::ArithSubs(std::initializer_list<std::pair<const ArithVarPtr, ArithExprPtr>> init): map(init) {}
 
-ExprPtr ArithSubs::get(const NumVarPtr key) const {
+ArithExprPtr ArithSubs::get(const ArithVarPtr key) const {
     const auto res {map.get(key)};
     return res ? *res : key->toExpr();
 }
 
-void ArithSubs::put(const NumVarPtr key, const ExprPtr val) {
+void ArithSubs::put(const ArithVarPtr key, const ArithExprPtr val) {
     map.put(key, val);
 }
 
@@ -22,7 +22,7 @@ ArithSubs::const_iterator ArithSubs::end() const {
     return map.end();
 }
 
-bool ArithSubs::contains(const NumVarPtr e) const {
+bool ArithSubs::contains(const ArithVarPtr e) const {
     return map.contains(e);
 }
 
@@ -34,7 +34,7 @@ unsigned int ArithSubs::size() const {
     return map.size();
 }
 
-size_t ArithSubs::erase(const NumVarPtr key) {
+size_t ArithSubs::erase(const ArithVarPtr key) {
     return map.erase(key);
 }
 
@@ -60,7 +60,7 @@ ArithSubs ArithSubs::concat(const ArithSubs &that) const {
 }
 
 void ArithSubs::concatInPlace(const ArithSubs &that) {
-    std::vector<std::pair<NumVarPtr, ExprPtr>> changed;
+    std::vector<std::pair<ArithVarPtr, ArithExprPtr>> changed;
     for (const auto &[key, val]: *this) {
         const auto new_val {that(val)};
         if (val != new_val) {
@@ -86,7 +86,7 @@ ArithSubs ArithSubs::unite(const ArithSubs &that) const {
     return res;
 }
 
-ArithSubs ArithSubs::project(const linked_hash_set<NumVarPtr> &vars) const {
+ArithSubs ArithSubs::project(const linked_hash_set<ArithVarPtr> &vars) const {
     ArithSubs res;
     if (size() < vars.size()) {
         for (const auto &p: *this) {
@@ -105,7 +105,7 @@ ArithSubs ArithSubs::project(const linked_hash_set<NumVarPtr> &vars) const {
     return res;
 }
 
-bool ArithSubs::changes(const NumVarPtr key) const {
+bool ArithSubs::changes(const ArithVarPtr key) const {
     return contains(key) && get(key) != key;
 }
 
@@ -121,37 +121,37 @@ bool ArithSubs::isPoly() const {
     });
 }
 
-void ArithSubs::collectDomain(linked_hash_set<NumVarPtr> &vars) const {
+void ArithSubs::collectDomain(linked_hash_set<ArithVarPtr> &vars) const {
     for (const auto &p: *this) {
         vars.insert(p.first);
     }
 }
 
-void ArithSubs::collectCoDomainVars(linked_hash_set<NumVarPtr> &vars) const {
+void ArithSubs::collectCoDomainVars(linked_hash_set<ArithVarPtr> &vars) const {
     for (const auto &p: *this) {
         p.second->collectVars(vars);
     }
 }
 
-void ArithSubs::collectVars(linked_hash_set<NumVarPtr> &vars) const {
+void ArithSubs::collectVars(linked_hash_set<ArithVarPtr> &vars) const {
     collectCoDomainVars(vars);
     collectDomain(vars);
 }
 
-linked_hash_set<NumVarPtr> ArithSubs::domain() const {
-    linked_hash_set<NumVarPtr> res;
+linked_hash_set<ArithVarPtr> ArithSubs::domain() const {
+    linked_hash_set<ArithVarPtr> res;
     collectDomain(res);
     return res;
 }
 
-linked_hash_set<NumVarPtr> ArithSubs::coDomainVars() const {
-    linked_hash_set<NumVarPtr> res;
+linked_hash_set<ArithVarPtr> ArithSubs::coDomainVars() const {
+    linked_hash_set<ArithVarPtr> res;
     collectCoDomainVars(res);
     return res;
 }
 
-linked_hash_set<NumVarPtr> ArithSubs::allVars() const {
-    linked_hash_set<NumVarPtr> res;
+linked_hash_set<ArithVarPtr> ArithSubs::allVars() const {
+    linked_hash_set<ArithVarPtr> res;
     collectVars(res);
     return res;
 }
@@ -182,31 +182,31 @@ std::ostream& operator<<(std::ostream &s, const ArithSubs &map) {
     }
 }
 
-ExprPtr ArithSubs::operator()(const ExprPtr t) const {
-    return t->map<ExprPtr>(
-        [&](const NumConstantPtr) {
+ArithExprPtr ArithSubs::operator()(const ArithExprPtr t) const {
+    return t->map<ArithExprPtr>(
+        [&](const ArithValPtr) {
             return t;
         },
-        [&](const NumVarPtr x) {
+        [&](const ArithVarPtr x) {
             return get(x);
         },
-        [&](const AddPtr a) {
+        [&](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
-            std::vector<ExprPtr> new_args;
+            std::vector<ArithExprPtr> new_args;
             std::transform(args.begin(), args.end(), new_args.begin(), [&](const auto arg) {
                 return (*this)(arg);
             });
             return arith::mkPlus(new_args);
         },
-        [&](const MultPtr m) {
+        [&](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
-            std::vector<ExprPtr> new_args;
+            std::vector<ArithExprPtr> new_args;
             std::transform(args.begin(), args.end(), new_args.begin(), [&](const auto arg) {
                 return (*this)(arg);
             });
             return arith::mkTimes(new_args);
         },
-        [&](const ExpPtr e) {
+        [&](const ArithExpPtr e) {
             return arith::mkExp((*this)(e->getBase()), (*this)(e->getExponent()));
         });
 }

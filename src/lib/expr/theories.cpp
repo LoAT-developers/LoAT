@@ -24,7 +24,7 @@ ThExpr toExpr(const Var &var) {
 
 ThExpr subs(const ThExpr &expr, const Subs &subs) {
     return std::visit(Overload{
-                          [&subs](const ExprPtr expr) {
+                          [&subs](const ArithExprPtr expr) {
                               return ThExpr(subs.get<Arith>()(expr));
                           },
                           [&subs](const BoolExpr expr) {
@@ -35,8 +35,8 @@ ThExpr subs(const ThExpr &expr, const Subs &subs) {
 
 void collectVars(const ThExpr &expr, VarSet &vars) {
     std::visit(Overload{
-                   [&vars](const ExprPtr expr) {
-                       expr->collectVars(vars.get<NumVarPtr>());
+                   [&vars](const ArithExprPtr expr) {
+                       expr->collectVars(vars.get<ArithVarPtr>());
                    },
                    [&vars](const BoolExpr expr) {
                        expr->collectVars(vars);
@@ -112,10 +112,10 @@ BoolExpr subs(const Lit &lit, const Subs &s) {
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
         Overload {
-            [&e2](const ExprPtr &e1) {
+            [&e2](const ArithExprPtr &e1) {
                 return BExpression::mkAndFromLits(
-                    std::vector<Lit>{ArithLit::mkGeq(e1, std::get<ExprPtr>(e2)),
-                                     ArithLit::mkLeq(e1, std::get<ExprPtr>(e2))});
+                    std::vector<Lit>{ArithLit::mkGeq(e1, std::get<ArithExprPtr>(e2)),
+                                     ArithLit::mkLeq(e1, std::get<ArithExprPtr>(e2))});
             },
             [&e2](const BoolExpr lhs) {
                 const auto rhs = std::get<BoolExpr>(e2);
@@ -127,10 +127,10 @@ BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
 BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
         Overload {
-            [&e2](const ExprPtr &e1) {
+            [&e2](const ArithExprPtr &e1) {
                 return BExpression::mkOrFromLits(
-                    std::vector<Lit>{ArithLit::mkGt(e1, std::get<ExprPtr>(e2)),
-                                     ArithLit::mkLt(e1, std::get<ExprPtr>(e2))});
+                    std::vector<Lit>{ArithLit::mkGt(e1, std::get<ArithExprPtr>(e2)),
+                                     ArithLit::mkLt(e1, std::get<ArithExprPtr>(e2))});
             },
             [&e2](const BoolExpr lhs) {
                 const auto rhs = std::get<BoolExpr>(e2);
@@ -139,7 +139,7 @@ BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
         }, e1);
 }
 
-Arith theory(const NumVarPtr&) {
+Arith theory(const ArithVarPtr&) {
     return arith::t;
 }
 

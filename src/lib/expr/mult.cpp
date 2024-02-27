@@ -3,22 +3,22 @@
 
 #include <purrs.hh>
 
-ConsHash<ArithExpr, ArithMult, ArithMult::CacheHash, ArithMult::CacheEqual, linked_hash_set<ExprPtr>> ArithMult::cache;
+ConsHash<ArithExpr, ArithMult, ArithMult::CacheHash, ArithMult::CacheEqual, linked_hash_set<ArithExprPtr>> ArithMult::cache;
 
-ArithMult::ArithMult(const linked_hash_set<ExprPtr> &args): ArithExpr(arith::Kind::Times), args(args) {}
+ArithMult::ArithMult(const linked_hash_set<ArithExprPtr> &args): ArithExpr(arith::Kind::Times), args(args) {}
 
-bool ArithMult::CacheEqual::operator()(const std::tuple<linked_hash_set<ExprPtr>> &args1, const std::tuple<linked_hash_set<ExprPtr>> &args2) const noexcept {
+bool ArithMult::CacheEqual::operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args1, const std::tuple<linked_hash_set<ArithExprPtr>> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t ArithMult::CacheHash::operator()(const std::tuple<linked_hash_set<ExprPtr>> &args) const noexcept {
+size_t ArithMult::CacheHash::operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args) const noexcept {
     size_t hash {0};
     const auto &children {std::get<0>(args)};
     boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
     return hash;
 }
 
-ExprPtr arith::mkTimes(std::vector<ExprPtr> args) {
+ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args) {
     // remove neutral element
     std::remove(args.begin(), args.end(), mkConst(1));
     if (args.empty()) {
@@ -28,7 +28,7 @@ ExprPtr arith::mkTimes(std::vector<ExprPtr> args) {
         return args[0];
     }
     // pull up nested multiplications
-    std::vector<ExprPtr> insert;
+    std::vector<ArithExprPtr> insert;
     for (auto it = args.begin(); it != args.end();) {
         const auto mult {(*it)->isMult()};
         if (mult) {
@@ -44,7 +44,7 @@ ExprPtr arith::mkTimes(std::vector<ExprPtr> args) {
         args.push_back(x);
     }
     // transform t^p * t^q to t^{p+q}
-    linked_hash_map<ExprPtr, ExprPtr> map;
+    linked_hash_map<ArithExprPtr, ArithExprPtr> map;
     auto changed {false};
     for (const auto &arg: args) {
         const auto exp {arg->isPow()};
@@ -65,8 +65,8 @@ ExprPtr arith::mkTimes(std::vector<ExprPtr> args) {
     }
     // distribute
     changed = false;
-    std::vector<ExprPtr> todo {args.begin(), args.end()};
-    std::vector<std::vector<ExprPtr>> res;
+    std::vector<ArithExprPtr> todo {args.begin(), args.end()};
+    std::vector<std::vector<ArithExprPtr>> res;
     for (const auto &x: todo) {
         if (res.empty()) {
             const auto add {x->isAdd()};
@@ -80,7 +80,7 @@ ExprPtr arith::mkTimes(std::vector<ExprPtr> args) {
                 res.back().emplace_back(x);
             }
         } else {
-            std::vector<std::vector<ExprPtr>> next;
+            std::vector<std::vector<ArithExprPtr>> next;
             const auto add {x->isAdd()};
             if (add) {
                 changed = true;
@@ -109,10 +109,10 @@ ExprPtr arith::mkTimes(std::vector<ExprPtr> args) {
     if (args.size() == 1) {
         return args[0];
     }
-    linked_hash_set<ExprPtr> arg_set {args.begin(), args.end()};
+    linked_hash_set<ArithExprPtr> arg_set {args.begin(), args.end()};
     return ArithMult::cache.from_cache(arg_set);
 }
 
-const linked_hash_set<ExprPtr>& ArithMult::getArgs() const {
+const linked_hash_set<ArithExprPtr>& ArithMult::getArgs() const {
     return args;
 }

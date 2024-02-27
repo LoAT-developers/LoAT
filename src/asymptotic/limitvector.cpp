@@ -99,7 +99,7 @@ bool LimitVector::isApplicable(Direction dir) const {
 }
 
 
-bool LimitVector::makesSense(ExprPtr l, ExprPtr r) const {
+bool LimitVector::makesSense(ArithExprPtr l, ArithExprPtr r) const {
     InftyExpression inftyL(l, first);
     if (isTriviallyUnsatisfiable(inftyL)) {
         return false;

@@ -39,11 +39,11 @@ public:
 
     Transition syntacticImplicant(const Subs &subs) const;
 
-    Transition linearize(const NumVarPtr x) const;
+    Transition linearize(const ArithVarPtr x) const;
 
-    Transition toMinusInfinity(const NumVarPtr x) const;
+    Transition toMinusInfinity(const ArithVarPtr x) const;
 
-    Transition toInfinity(const NumVarPtr x) const;
+    Transition toInfinity(const ArithVarPtr x) const;
 
 };
 

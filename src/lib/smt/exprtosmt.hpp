@@ -31,7 +31,7 @@ public:
         return converter.convertBoolEx(e);
     }
 
-    static EXPR convert(const ExprPtr e, SmtContext<EXPR> &ctx) {
+    static EXPR convert(const ArithExprPtr e, SmtContext<EXPR> &ctx) {
         ExprToSmt<EXPR, Th...> converter(ctx);
         return converter.convertEx(e);
     }
@@ -68,31 +68,31 @@ protected:
         return res;
     }
 
-    EXPR convertEx(const ExprPtr e){
+    EXPR convertEx(const ArithExprPtr e){
         return e->map<EXPR>(
-            [this](const NumConstantPtr &r) {
+            [this](const ArithValPtr &r) {
                 return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
             },
-            [this](const NumVarPtr x) {
+            [this](const ArithVarPtr x) {
                 auto optVar = context.getVariable(x);
                 if (optVar) {
                     return *optVar;
                 }
                 return context.addNewVariable(x);
             },
-            [this](const AddPtr a) {
+            [this](const ArithAddPtr a) {
                 const auto args {a->getArgs()};
                 return std::accumulate(args.begin(), args.end(), context.getInt(0), [this](const auto &x, const auto y) {
                     return context.plus(x, convertEx(y));
                 });
             },
-            [this](const MultPtr m) {
+            [this](const ArithMultPtr m) {
                 const auto args {m->getArgs()};
                 return std::accumulate(args.begin(), args.end(), context.getInt(1), [this](const auto &x, const auto y) {
                     return context.times(x, convertEx(y));
                 });
             },
-            [this](const ExpPtr e) {
+            [this](const ArithExpPtr e) {
                 const auto base {e->getBase()};
                 const auto exp {e->getExponent()};
                 const auto int_exp {exp->isInt()};

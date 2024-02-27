@@ -122,30 +122,30 @@ std::ostream& operator<<(std::ostream &s, const Complexity &cpx) {
     return s << cpx.toString();
 }
 
-Complexity toComplexityRec(const ExprPtr term) {
+Complexity toComplexityRec(const ArithExprPtr term) {
     return term->map<Complexity>(
-        [](const NumConstantPtr) {
+        [](const ArithValPtr) {
             return Complexity::Const;
         },
-        [](const NumVarPtr) {
+        [](const ArithVarPtr) {
             return Complexity::Poly(1);
         },
-        [](const AddPtr a) {
+        [](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::accumulate(args.begin(), args.end(), Complexity::Const, [](const auto &x, const auto y) {
                 return x + toComplexityRec(y);
             });
         },
-        [](const MultPtr m) {
+        [](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::accumulate(args.begin(), args.end(), Complexity::Const, [](const auto &x, const auto y) {
                 return x * toComplexityRec(y);
             });
         },
-        [](const ExpPtr e) {
+        [](const ArithExpPtr e) {
             // If the exponent is at least polynomial (non-constant), complexity might be exponential
             if (toComplexityRec(e->getExponent()) > Complexity::Const) {
-                return map<NumConstantPtr, Complexity>(
+                return map<ArithValPtr, Complexity>(
                            e->getBase()->isRational(),
                            [](const auto c) {
                                return **c <= 1 ? Complexity::Const : Complexity::Exp;
@@ -160,6 +160,6 @@ Complexity toComplexityRec(const ExprPtr term) {
         });
 }
 
-Complexity toComplexity(const ExprPtr e) {
+Complexity toComplexity(const ArithExprPtr e) {
     return toComplexityRec(e);
 }

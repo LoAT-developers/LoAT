@@ -2,22 +2,22 @@
 
 #include <purrs.hh>
 
-ConsHash<ArithExpr, ArithExp, ArithExp::CacheHash, ArithExp::CacheEqual, ExprPtr, ExprPtr> ArithExp::cache;
+ConsHash<ArithExpr, ArithExp, ArithExp::CacheHash, ArithExp::CacheEqual, ArithExprPtr, ArithExprPtr> ArithExp::cache;
 
-ArithExp::ArithExp(const ExprPtr base, const ExprPtr exponent): ArithExpr(arith::Kind::Exp), base(base), exponent(exponent) {}
+ArithExp::ArithExp(const ArithExprPtr base, const ArithExprPtr exponent): ArithExpr(arith::Kind::Exp), base(base), exponent(exponent) {}
 
-bool ArithExp::CacheEqual::operator()(const std::tuple<ExprPtr, ExprPtr> &args1, const std::tuple<ExprPtr, ExprPtr> &args2) const noexcept {
+bool ArithExp::CacheEqual::operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args1, const std::tuple<ArithExprPtr, ArithExprPtr> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t ArithExp::CacheHash::operator()(const std::tuple<ExprPtr, ExprPtr> &args) const noexcept {
+size_t ArithExp::CacheHash::operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args) const noexcept {
     size_t hash {0};
     boost::hash_combine(hash, std::get<0>(args));
     boost::hash_combine(hash, std::get<1>(args));
     return hash;
 }
 
-ExprPtr arith::mkExp(const ExprPtr base, const ExprPtr exponent) {
+ArithExprPtr arith::mkExp(const ArithExprPtr base, const ArithExprPtr exponent) {
     const auto b_val {base->isInt()};
     const auto e_val {exponent->isInt()};
     if (b_val && e_val) {
@@ -39,10 +39,10 @@ ExprPtr arith::mkExp(const ExprPtr base, const ExprPtr exponent) {
     return ArithExp::cache.from_cache(base, exponent);
 }
 
-ExprPtr ArithExp::getBase() const {
+ArithExprPtr ArithExp::getBase() const {
     return base;
 }
 
-ExprPtr ArithExp::getExponent() const {
+ArithExprPtr ArithExp::getExponent() const {
     return exponent;
 }

@@ -3,7 +3,7 @@
 
 #include <purrs.hh>
 
-std::optional<ExprPtr> arith::solveTermFor(const ExprPtr e, const NumVarPtr var) {
+std::optional<ArithExprPtr> arith::solveTermFor(const ArithExprPtr e, const ArithVarPtr var) {
     // we can only solve linear expressions with rational coefficients
     const auto c {e->coeff(var)};
     if (!c) {
@@ -16,7 +16,7 @@ std::optional<ExprPtr> arith::solveTermFor(const ExprPtr e, const NumVarPtr var)
     return (e - (*c) * var->toExpr())->divide(-(***r));
 }
 
-ExprPtr arith::fromPurrs(const Purrs::Expr &e, const purrs_var_map &map) {
+ArithExprPtr arith::fromPurrs(const Purrs::Expr &e, const purrs_var_map &map) {
     Purrs::Number n;
     if (e.is_a_number(n)) {
         const Rational num {toString(n.numerator())};
@@ -28,14 +28,14 @@ ExprPtr arith::fromPurrs(const Purrs::Expr &e, const purrs_var_map &map) {
         return map.right.at(s)->toExpr();
     }
     if (e.is_a_add()) {
-        std::vector<ExprPtr> args;
+        std::vector<ArithExprPtr> args;
         for (unsigned i = 0; i < e.nops(); ++i) {
             args.push_back(fromPurrs(e.arg(i), map));
         }
         return mkPlus(args);
     }
     if (e.is_a_mul()) {
-        std::vector<ExprPtr> args;
+        std::vector<ArithExprPtr> args;
         for (unsigned i = 0; i < e.nops(); ++i) {
             args.push_back(fromPurrs(e.arg(i), map));
         }

@@ -59,15 +59,15 @@ Transition Transition::syntacticImplicant(const Subs &subs) const {
     return build(formula->syntacticImplicant(subs), vm);
 }
 
-Transition Transition::linearize(const NumVarPtr x) const {
+Transition Transition::linearize(const ArithVarPtr x) const {
     return build(formula->linearize(x), vm);
 }
 
-Transition Transition::toMinusInfinity(const NumVarPtr x) const {
+Transition Transition::toMinusInfinity(const ArithVarPtr x) const {
     return build(formula->toMinusInfinity(x), vm);
 }
 
-Transition Transition::toInfinity(const NumVarPtr x) const {
+Transition Transition::toInfinity(const ArithVarPtr x) const {
     return build(formula->toInfinity(x), vm);
 }
 

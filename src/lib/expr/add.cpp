@@ -3,22 +3,22 @@
 
 #include <purrs.hh>
 
-ConsHash<ArithExpr, ArithAdd, ArithAdd::CacheHash, ArithAdd::CacheEqual, linked_hash_set<ExprPtr>> ArithAdd::cache;
+ConsHash<ArithExpr, ArithAdd, ArithAdd::CacheHash, ArithAdd::CacheEqual, linked_hash_set<ArithExprPtr>> ArithAdd::cache;
 
-ArithAdd::ArithAdd(const linked_hash_set<ExprPtr> &args): ArithExpr(arith::Kind::Plus), args(args) {}
+ArithAdd::ArithAdd(const linked_hash_set<ArithExprPtr> &args): ArithExpr(arith::Kind::Plus), args(args) {}
 
-bool ArithAdd::CacheEqual::operator()(const std::tuple<linked_hash_set<ExprPtr>> &args1, const std::tuple<linked_hash_set<ExprPtr>> &args2) const noexcept {
+bool ArithAdd::CacheEqual::operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args1, const std::tuple<linked_hash_set<ArithExprPtr>> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t ArithAdd::CacheHash::operator()(const std::tuple<linked_hash_set<ExprPtr>> &args) const noexcept {
+size_t ArithAdd::CacheHash::operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args) const noexcept {
     size_t hash {0};
     const auto &children {std::get<0>(args)};
     boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
     return hash;
 }
 
-ExprPtr arith::mkPlus(std::vector<ExprPtr> args) {
+ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> args) {
     // remove neutral element
     std::remove(args.begin(), args.end(), mkConst(0));
     if (args.empty()) {
@@ -28,7 +28,7 @@ ExprPtr arith::mkPlus(std::vector<ExprPtr> args) {
         return args[0];
     }
     // pull up nested additions
-    std::vector<ExprPtr> insert;
+    std::vector<ArithExprPtr> insert;
     for (auto it = args.begin(); it != args.end();) {
         const auto add {(*it)->isAdd()};
         if (add) {
@@ -44,7 +44,7 @@ ExprPtr arith::mkPlus(std::vector<ExprPtr> args) {
         args.push_back(x);
     }
     // transform c*t + d*t to (c+d)*t
-    linked_hash_map<std::optional<ExprPtr>, Rational> map;
+    linked_hash_map<std::optional<ArithExprPtr>, Rational> map;
     auto changed {false};
     for (const auto &arg: args) {
         const auto [x,y] {arg->decompose()};
@@ -65,10 +65,10 @@ ExprPtr arith::mkPlus(std::vector<ExprPtr> args) {
     if (args.size() == 1) {
         return args[0];
     }
-    linked_hash_set<ExprPtr> arg_set {args.begin(), args.end()};
+    linked_hash_set<ArithExprPtr> arg_set {args.begin(), args.end()};
     return ArithAdd::cache.from_cache(arg_set);
 }
 
-const linked_hash_set<ExprPtr>& ArithAdd::getArgs() const {
+const linked_hash_set<ArithExprPtr>& ArithAdd::getArgs() const {
     return args;
 }

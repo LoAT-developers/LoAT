@@ -8,9 +8,9 @@
 struct Arith {
 
     using Lit = ArithLit;
-    using Var = NumVarPtr;
+    using Var = ArithVarPtr;
     using Subs = ArithSubs;
-    using Expr = ExprPtr;
+    using Expr = ArithExprPtr;
     using Val = Int;
 
     static Expr valToExpr(const Val &val) {

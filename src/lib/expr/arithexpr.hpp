@@ -41,12 +41,12 @@ class ArithVal;
 class ArithExp;
 class ArithAdd;
 class ArithMult;
-using ExprPtr = std::shared_ptr<const ArithExpr>;
-using NumVarPtr = std::shared_ptr<const ArithVar>;
-using NumConstantPtr = std::shared_ptr<const ArithVal>;
-using AddPtr = std::shared_ptr<const ArithAdd>;
-using MultPtr = std::shared_ptr<const ArithMult>;
-using ExpPtr = std::shared_ptr<const ArithExp>;
+using ArithExprPtr = std::shared_ptr<const ArithExpr>;
+using ArithVarPtr = std::shared_ptr<const ArithVar>;
+using ArithValPtr = std::shared_ptr<const ArithVal>;
+using ArithAddPtr = std::shared_ptr<const ArithAdd>;
+using ArithMultPtr = std::shared_ptr<const ArithMult>;
+using ArithExpPtr = std::shared_ptr<const ArithExp>;
 
 
 namespace mp = boost::multiprecision;
@@ -66,15 +66,15 @@ struct SymbolEqual {
 
 using Int = mp::cpp_int;
 using Rational = mp::cpp_rational;
-using purrs_var_map = boost::bimap<boost::bimaps::unordered_set_of<NumVarPtr>, boost::bimaps::unordered_set_of<Purrs::Symbol, SymbolHasher, SymbolEqual>>;
+using purrs_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArithVarPtr>, boost::bimaps::unordered_set_of<Purrs::Symbol, SymbolHasher, SymbolEqual>>;
 
 namespace arith {
 
-ExprPtr mkPlus(std::vector<ExprPtr> args);
-ExprPtr mkTimes(std::vector<ExprPtr> args);
-ExprPtr mkConst(const Rational &r);
-ExprPtr mkExp(const ExprPtr base, const ExprPtr exponent);
-ExprPtr mkVar(const int idx);
+ArithExprPtr mkPlus(std::vector<ArithExprPtr> args);
+ArithExprPtr mkTimes(std::vector<ArithExprPtr> args);
+ArithExprPtr mkConst(const Rational &r);
+ArithExprPtr mkExp(const ArithExprPtr base, const ArithExprPtr exponent);
+ArithExprPtr mkVar(const int idx);
 
 enum class Kind {
     Plus, Times, Exp, Constant, Variable
@@ -85,8 +85,8 @@ enum class Kind {
 class ArithExpr: public std::enable_shared_from_this<ArithExpr> {
 
     friend class ArithExp;
-    friend ExprPtr arith::mkPlus(std::vector<ExprPtr> args);
-    friend ExprPtr arith::mkTimes(std::vector<ExprPtr> args);
+    friend ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> args);
+    friend ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args);
 
 protected:
 
@@ -96,22 +96,22 @@ private:
 
     arith::Kind kind;
 
-    void exps(linked_hash_set<ExpPtr> &acc) const;
+    void exps(linked_hash_set<ArithExpPtr> &acc) const;
     /**
      * @return [a,b] s.t. a*b = *this
      */
-    std::pair<Rational, std::optional<ExprPtr>> decompose() const;
-    bool isUnivariate(std::optional<NumVarPtr> &) const;
-    bool isMultivariate(std::optional<NumVarPtr> &) const;
+    std::pair<Rational, std::optional<ArithExprPtr>> decompose() const;
+    bool isUnivariate(std::optional<ArithVarPtr> &) const;
+    bool isMultivariate(std::optional<ArithVarPtr> &) const;
 
 public:
 
     template <class T>
-    T map(const std::function<T(const NumConstantPtr)> &constant,
-          const std::function<T(const NumVarPtr)> &var,
-          const std::function<T(const AddPtr)> &add,
-          const std::function<T(const MultPtr)> &mult,
-          const std::function<T(const ExpPtr)> &exp) const {
+    T map(const std::function<T(const ArithValPtr)> &constant,
+          const std::function<T(const ArithVarPtr)> &var,
+          const std::function<T(const ArithAddPtr)> &add,
+          const std::function<T(const ArithMultPtr)> &mult,
+          const std::function<T(const ArithExpPtr)> &exp) const {
         const auto c {isRational()};
         if (c) {
             return constant(*c);
@@ -138,27 +138,27 @@ public:
     /**
      * @return True iff this is a variable.
      */
-    std::optional<NumVarPtr> isVar() const;
+    std::optional<ArithVarPtr> isVar() const;
 
     /**
      * @return True iff this is of the form x^y for some expressions x, y.
      */
-    std::optional<ExpPtr> isPow() const;
+    std::optional<ArithExpPtr> isPow() const;
 
     /**
      * @return True iff this is of the form x*y for some expressions x, y.
      */
-    const std::optional<MultPtr> isMult() const;
+    const std::optional<ArithMultPtr> isMult() const;
 
     /**
      * @return True iff this is of the form x+y for some expressions x, y.
      */
-    const std::optional<AddPtr> isAdd() const;
+    const std::optional<ArithAddPtr> isAdd() const;
 
     /**
      * @return The set of all variables that occur in this expression.
      */
-    linked_hash_set<NumVarPtr> vars() const;
+    linked_hash_set<ArithVarPtr> vars() const;
 
     /**
      * @return True iff this expression contains exactly one variable.
@@ -180,16 +180,16 @@ public:
     /**
      * @return True iff the expression contains the given variable.
      */
-    bool has(const NumVarPtr) const;
+    bool has(const ArithVarPtr) const;
 
-    ExprPtr divide(const Rational &d) const;
+    ArithExprPtr divide(const Rational &d) const;
 
     std::pair<Purrs::Expr, purrs_var_map> toPurrs() const;
 
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
      */
-    bool isLinear(const std::optional<linked_hash_set<NumVarPtr>> &vars = {}) const;
+    bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = {}) const;
 
     /**
      * @return True iff this expression is a polynomial.
@@ -201,21 +201,21 @@ public:
     /**
      * @brief Collects all variables that occur in this expression.
      */
-    void collectVars(linked_hash_set<NumVarPtr> &res) const;
+    void collectVars(linked_hash_set<ArithVarPtr> &res) const;
 
     /**
      * @return True iff this expression contains a variable that satisfies the given predicate.
      * @param A function of type `const Var & => bool`.
      */
-    bool hasVarWith(const std::function<bool(const NumVarPtr)> predicate) const;
+    bool hasVarWith(const std::function<bool(const ArithVarPtr)> predicate) const;
 
     /**
      * @return The degree wrt. var.
      * @note For polynomials only.
      */
-    std::optional<Int> degree(const NumVarPtr var) const;
+    std::optional<Int> degree(const ArithVarPtr var) const;
 
-    std::optional<NumConstantPtr> isRational() const;
+    std::optional<ArithValPtr> isRational() const;
 
     /**
      * @return True iff this expression is an integer value (and thus a constant).
@@ -227,43 +227,43 @@ public:
     /**
      * @return True iff this is a polynomial wrt. the given variable.
      */
-    bool isPoly(const NumVarPtr n) const;
+    bool isPoly(const ArithVarPtr n) const;
 
-    std::optional<NumVarPtr> someVar() const;
+    std::optional<ArithVarPtr> someVar() const;
 
-    linked_hash_set<ExpPtr> exps() const;
+    linked_hash_set<ArithExpPtr> exps() const;
 
     /**
      * @return The coefficient of the monomial where var occurs with the given degree (which defaults to 1).
      */
-    std::optional<ExprPtr> coeff(const NumVarPtr var, const Int &degree = 1) const;
+    std::optional<ArithExprPtr> coeff(const ArithVarPtr var, const Int &degree = 1) const;
 
     /**
      * @return The coefficient of the monomial whose degree wrt. var is minimal.
      */
-    std::optional<ExprPtr> lcoeff(const NumVarPtr var) const;
+    std::optional<ArithExprPtr> lcoeff(const ArithVarPtr var) const;
 
     bool isIntegral() const;
 
-    Rational eval(const std::function<Rational(const NumVarPtr)> &valuation) const;
+    Rational eval(const std::function<Rational(const ArithVarPtr)> &valuation) const;
 
     Purrs::Expr toPurrs(purrs_var_map &) const;
 
     /**
      * @brief exponentiation
      */
-    friend ExprPtr operator^(const ExprPtr x, const ExprPtr y);
-    friend ExprPtr operator-(const ExprPtr x);
-    friend ExprPtr operator-(const ExprPtr x, const ExprPtr y);
-    friend ExprPtr operator+(const ExprPtr x, const ExprPtr y);
-    friend ExprPtr operator*(const ExprPtr x, const ExprPtr y);
+    friend ArithExprPtr operator^(const ArithExprPtr x, const ArithExprPtr y);
+    friend ArithExprPtr operator-(const ArithExprPtr x);
+    friend ArithExprPtr operator-(const ArithExprPtr x, const ArithExprPtr y);
+    friend ArithExprPtr operator+(const ArithExprPtr x, const ArithExprPtr y);
+    friend ArithExprPtr operator*(const ArithExprPtr x, const ArithExprPtr y);
 
 };
 
 
 class ArithVal: public ArithExpr, public std::enable_shared_from_this<ArithVal> {
 
-    friend ExprPtr arith::mkConst(const Rational &r);
+    friend ArithExprPtr arith::mkConst(const Rational &r);
 
 private:
 
@@ -283,8 +283,8 @@ public:
 
     const Rational& operator*() const;
     const Rational& getValue() const;
-    const NumConstantPtr numerator() const;
-    const NumConstantPtr denominator() const;
+    const ArithValPtr numerator() const;
+    const ArithValPtr denominator() const;
     std::optional<Int> intValue() const;
 
 };
@@ -292,7 +292,7 @@ public:
 
 class ArithVar: public ArithExpr, public std::enable_shared_from_this<ArithVar> {
 
-    friend ExprPtr arith::mkVar(const int idx);
+    friend ArithExprPtr arith::mkVar(const int idx);
 
 private:
 
@@ -312,16 +312,16 @@ private:
     friend ConsHash<ArithExpr, ArithVar, CacheHash, CacheEqual, int>;
     static ConsHash<ArithExpr, ArithVar, CacheHash, CacheEqual, int> cache;
 
-    NumVarPtr toPtr() const;
+    ArithVarPtr toPtr() const;
 
 public:
 
-    static const NumVarPtr loc_var;
+    static const ArithVarPtr loc_var;
 
-    static NumVarPtr next();
-    static NumVarPtr nextProgVar();
+    static ArithVarPtr next();
+    static ArithVarPtr nextProgVar();
 
-    ExprPtr toExpr() const;
+    ArithExprPtr toExpr() const;
     int getIdx() const;
     std::string getName() const;
     bool isTempVar() const;
@@ -329,87 +329,87 @@ public:
 
 };
 
-std::ostream& operator<<(std::ostream &s, const NumVarPtr x);
+std::ostream& operator<<(std::ostream &s, const ArithVarPtr x);
 
 
 class ArithAdd: public ArithExpr, public std::enable_shared_from_this<ArithAdd> {
 
-    friend ExprPtr arith::mkPlus(std::vector<ExprPtr> args);
+    friend ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> args);
 
 public:
 
-    const linked_hash_set<ExprPtr>& getArgs() const;
+    const linked_hash_set<ArithExprPtr>& getArgs() const;
 
 private:
 
-    linked_hash_set<ExprPtr> args;
+    linked_hash_set<ArithExprPtr> args;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<linked_hash_set<ExprPtr>> &args1, const std::tuple<linked_hash_set<ExprPtr>> &args2) const noexcept;
+        bool operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args1, const std::tuple<linked_hash_set<ArithExprPtr>> &args2) const noexcept;
     };
     struct CacheHash {
-        size_t operator()(const std::tuple<linked_hash_set<ExprPtr>> &args) const noexcept;
+        size_t operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, linked_hash_set<ExprPtr>>;
-    static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, linked_hash_set<ExprPtr>> cache;
+    friend ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, linked_hash_set<ArithExprPtr>>;
+    static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, linked_hash_set<ArithExprPtr>> cache;
 
-    ArithAdd(const linked_hash_set<ExprPtr> &args);
+    ArithAdd(const linked_hash_set<ArithExprPtr> &args);
 
 };
 
 
 class ArithMult: public ArithExpr, public std::enable_shared_from_this<ArithMult> {
 
-    friend ExprPtr arith::mkTimes(std::vector<ExprPtr> args);
+    friend ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args);
 
 public:
 
-    const linked_hash_set<ExprPtr>& getArgs() const;
+    const linked_hash_set<ArithExprPtr>& getArgs() const;
 
 private:
 
-    linked_hash_set<ExprPtr> args;
+    linked_hash_set<ArithExprPtr> args;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<linked_hash_set<ExprPtr>> &args1, const std::tuple<linked_hash_set<ExprPtr>> &args2) const noexcept;
+        bool operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args1, const std::tuple<linked_hash_set<ArithExprPtr>> &args2) const noexcept;
     };
     struct CacheHash {
-        size_t operator()(const std::tuple<linked_hash_set<ExprPtr>> &args) const noexcept;
+        size_t operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, linked_hash_set<ExprPtr>>;
-    static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, linked_hash_set<ExprPtr>> cache;
+    friend ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, linked_hash_set<ArithExprPtr>>;
+    static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, linked_hash_set<ArithExprPtr>> cache;
 
-    ArithMult(const linked_hash_set<ExprPtr> &args);
+    ArithMult(const linked_hash_set<ArithExprPtr> &args);
 
 };
 
 
 class ArithExp: public ArithExpr, public std::enable_shared_from_this<ArithExp> {
 
-    friend ExprPtr arith::mkExp(const ExprPtr base, const ExprPtr exponent);
+    friend ArithExprPtr arith::mkExp(const ArithExprPtr base, const ArithExprPtr exponent);
 
 private:
 
-    ExprPtr base;
-    ExprPtr exponent;
+    ArithExprPtr base;
+    ArithExprPtr exponent;
 
-    ArithExp(const ExprPtr base, const ExprPtr exponent);
+    ArithExp(const ArithExprPtr base, const ArithExprPtr exponent);
 
     struct CacheEqual {
-        bool operator()(const std::tuple<ExprPtr, ExprPtr> &args1, const std::tuple<ExprPtr, ExprPtr> &args2) const noexcept;
+        bool operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args1, const std::tuple<ArithExprPtr, ArithExprPtr> &args2) const noexcept;
     };
     struct CacheHash {
-        size_t operator()(const std::tuple<ExprPtr, ExprPtr> &args) const noexcept;
+        size_t operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithExp, CacheHash, CacheEqual, ExprPtr, ExprPtr>;
-    static ConsHash<ArithExpr, ArithExp, CacheHash, CacheEqual, ExprPtr, ExprPtr> cache;
+    friend ConsHash<ArithExpr, ArithExp, CacheHash, CacheEqual, ArithExprPtr, ArithExprPtr>;
+    static ConsHash<ArithExpr, ArithExp, CacheHash, CacheEqual, ArithExprPtr, ArithExprPtr> cache;
 
 public:
 
-    ExprPtr getBase() const;
-    ExprPtr getExponent() const;
+    ArithExprPtr getBase() const;
+    ArithExprPtr getExponent() const;
 
 };
 
-std::ostream& operator<<(std::ostream &s, const ExprPtr e);
-std::ostream& operator<<(std::ostream &s, const NumVarPtr e);
+std::ostream& operator<<(std::ostream &s, const ArithExprPtr e);
+std::ostream& operator<<(std::ostream &s, const ArithVarPtr e);

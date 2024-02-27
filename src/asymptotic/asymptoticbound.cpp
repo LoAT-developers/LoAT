@@ -438,7 +438,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
     const auto d {it->second};
     const auto has_limit_vectors
         {e->map<bool>(
-              [&](const NumConstantPtr c) {
+              [&](const ArithValPtr c) {
                   if (c->denominator()->is(1)) {
                       l = c->numerator();
                       r = c->denominator();
@@ -447,10 +447,10 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   }
                   return false;
               },
-              [&](const NumVarPtr) {
+              [&](const ArithVarPtr) {
                   return false;
               },
-              [&](const AddPtr a) {
+              [&](const ArithAddPtr a) {
                   const auto &args {a->getArgs()};
                   auto arg_it {args.begin()};
                   l = *arg_it;
@@ -463,7 +463,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   limitVectors = &addition[d];
                   return true;
               },
-              [&](const MultPtr m) {
+              [&](const ArithMultPtr m) {
                   const auto &args {m->getArgs()};
                   auto arg_it {args.begin()};
                   l = *arg_it;
@@ -476,7 +476,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   limitVectors = &multiplication[d];
                   return true;
               },
-              [&](const ExpPtr e) {
+              [&](const ArithExpPtr e) {
                   return apply<Int>(
                              e->getExponent()->isInt(),
                              [&](const auto &power) {
@@ -501,16 +501,16 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
     const auto d {it->second};
     const auto has_limit_vectors
         {e->map<bool>(
-            [&](const NumConstantPtr) {
+            [&](const ArithValPtr) {
                 return false;
             },
-            [&](const NumVarPtr) {
+            [&](const ArithVarPtr) {
                 return false;
             },
-            [&](const AddPtr a) {
+            [&](const ArithAddPtr a) {
                 std::vector<Arith::Expr> l_args;
                 std::vector<Arith::Expr> r_args;
-                std::optional<NumVarPtr> oneVar;
+                std::optional<ArithVarPtr> oneVar;
                 for (const auto &ex: a->getArgs()) {
                     if (ex->isRational()) {
                         l_args.clear();
@@ -539,12 +539,12 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                 limitVectors = &addition[d];
                 return true;
             },
-            [&](const MultPtr m) {
+            [&](const ArithMultPtr m) {
                 std::vector<Arith::Expr> l_args;
                 std::vector<Arith::Expr> r_args;
                 l_args.emplace_back(arith::mkConst(1));
                 r_args.emplace_back(arith::mkConst(1));
-                std::optional<NumVarPtr> oneVar;
+                std::optional<ArithVarPtr> oneVar;
                 for (const auto &ex: m->getArgs()) {
                     const auto c {ex->isRational()};
                     if (c) {
@@ -574,7 +574,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                 limitVectors = &multiplication[d];
                 return true;
             },
-            [](const auto ExpPtr) {
+            [](const auto ArithExpPtr) {
                 return false;
             })};
     return has_limit_vectors ? applyLimitVectorsThatMakeSense(it, l, r, *limitVectors) : false;

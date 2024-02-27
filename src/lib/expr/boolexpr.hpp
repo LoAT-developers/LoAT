@@ -156,7 +156,7 @@ public:
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LS &res) const = 0;
     virtual size_t size() const = 0;
-    virtual void getBounds(const NumVarPtr n, Bounds &res) const = 0;
+    virtual void getBounds(const ArithVarPtr n, Bounds &res) const = 0;
 
     bool isTriviallyTrue() const {
         if (isTheoryLit()) {
@@ -188,13 +188,13 @@ public:
         }
     }
 
-    Bounds getBounds(const NumVarPtr n) const {
+    Bounds getBounds(const ArithVarPtr n) const {
         Bounds bounds;
         getBounds(n, bounds);
         return bounds;
     }
 
-    BE linearize(const NumVarPtr n) const {
+    BE linearize(const ArithVarPtr n) const {
         return map([&n](const Lit &lit){
             return std::visit(
                 Overload{
@@ -216,7 +216,7 @@ public:
         });
     }
 
-    BE toInfinity(const NumVarPtr n) const {
+    BE toInfinity(const ArithVarPtr n) const {
         return map([&n](const Lit &lit){
             return std::visit(
                 Overload{
@@ -239,7 +239,7 @@ public:
         });
     }
 
-    BE toMinusInfinity(const NumVarPtr n) const {
+    BE toMinusInfinity(const ArithVarPtr n) const {
         return map([&n](const Lit &lit){
             return std::visit(
                 Overload{
@@ -675,7 +675,7 @@ public:
         return 1;
     }
 
-    void getBounds(const NumVarPtr var, Bounds &res) const override {
+    void getBounds(const ArithVarPtr var, Bounds &res) const override {
         if (std::holds_alternative<ArithLit>(lit)) {
             std::get<ArithLit>(lit).getBounds(var, res);
         }
@@ -811,7 +811,7 @@ public:
         return res;
     }
 
-    void getBounds(const NumVarPtr n, Bounds &res) const override {
+    void getBounds(const ArithVarPtr n, Bounds &res) const override {
         if (isAnd()) {
             for (const auto &c: children) {
                 c->getBounds(n, res);

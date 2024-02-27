@@ -7,11 +7,11 @@
 using RelSet = linked_hash_set<ArithLit>;
 
 struct Bounds {
-    linked_hash_set<ExprPtr> upperBounds {};
-    linked_hash_set<ExprPtr> lowerBounds {};
+    linked_hash_set<ArithExprPtr> upperBounds {};
+    linked_hash_set<ArithExprPtr> lowerBounds {};
 
-    linked_hash_set<ExprPtr> equalities() const {
-        linked_hash_set<ExprPtr> res;
+    linked_hash_set<ArithExprPtr> equalities() const {
+        linked_hash_set<ArithExprPtr> res;
         for (const auto &b: lowerBounds) {
             if (upperBounds.contains(b)) {
                 res.insert(b);
@@ -35,19 +35,19 @@ public:
 
     class InvalidRelationalExpression: std::exception { };
 
-    ArithLit(const ExprPtr lhs);
+    ArithLit(const ArithExprPtr lhs);
 
-    ExprPtr lhs() const;
+    ArithExprPtr lhs() const;
     bool isPoly() const;
-    bool isLinear(const std::optional<linked_hash_set<NumVarPtr>> &vars = std::optional<linked_hash_set<NumVarPtr>>()) const;
-    void getBounds(const NumVarPtr n, Bounds &res) const;
+    bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = std::optional<linked_hash_set<ArithVarPtr>>()) const;
+    void getBounds(const ArithVarPtr n, Bounds &res) const;
 
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
-    void collectVars(linked_hash_set<NumVarPtr> &res) const;
-    bool has(const NumVarPtr) const;
+    void collectVars(linked_hash_set<ArithVarPtr> &res) const;
+    bool has(const ArithVarPtr) const;
     ArithLit subs(const ArithSubs &map) const;
-    linked_hash_set<NumVarPtr> vars() const;
+    linked_hash_set<ArithVarPtr> vars() const;
 
     template <typename P>
     bool hasVarWith(P predicate) const {
@@ -56,15 +56,15 @@ public:
 
     std::size_t hash() const;
 
-    static ArithLit mkGeq(const ExprPtr x, const ExprPtr y);
-    static ArithLit mkLeq(const ExprPtr x, const ExprPtr y);
-    static ArithLit mkGt(const ExprPtr x, const ExprPtr y);
-    static ArithLit mkLt(const ExprPtr x, const ExprPtr y);
+    static ArithLit mkGeq(const ArithExprPtr x, const ArithExprPtr y);
+    static ArithLit mkLeq(const ArithExprPtr x, const ArithExprPtr y);
+    static ArithLit mkGt(const ArithExprPtr x, const ArithExprPtr y);
+    static ArithLit mkLt(const ArithExprPtr x, const ArithExprPtr y);
 
     friend ArithLit operator!(const ArithLit &x);
     friend std::ostream& operator<<(std::ostream &s, const ArithLit &e);
 
-    std::pair<std::optional<ExprPtr>, std::optional<ExprPtr>> getBoundFromIneq(const NumVarPtr) const;
+    std::pair<std::optional<ArithExprPtr>, std::optional<ArithExprPtr>> getBoundFromIneq(const ArithVarPtr) const;
 
 private:
 
@@ -75,7 +75,7 @@ private:
      */
     std::optional<bool> checkTrivial() const;
 
-    ExprPtr l;
+    ArithExprPtr l;
 
 };
 

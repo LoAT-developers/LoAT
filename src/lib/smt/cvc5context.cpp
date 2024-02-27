@@ -10,7 +10,7 @@ CVC5Context::~CVC5Context() { }
 cvc5::Term CVC5Context::buildVar(const Var &var) {
     const auto name {theories::getName(var)};
     return std::visit(Overload{
-                          [&](const NumVarPtr&) {
+                          [&](const ArithVarPtr&) {
                               return ctx.mkConst(ctx.getIntegerSort(), name);
                           },
                           [&](const BoolVarPtr&) {

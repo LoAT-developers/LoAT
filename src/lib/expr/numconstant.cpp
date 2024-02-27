@@ -14,7 +14,7 @@ size_t ArithVal::CacheHash::operator()(const std::tuple<Rational> &args) const n
     return std::hash<Rational>{}(std::get<0>(args));
 }
 
-ExprPtr arith::mkConst(const Rational &r) {
+ArithExprPtr arith::mkConst(const Rational &r) {
     return ArithVal::cache.from_cache(r);
 }
 
@@ -36,10 +36,10 @@ const Rational& ArithVal::operator*() const {
     return t;
 }
 
-const NumConstantPtr ArithVal::denominator() const {
+const ArithValPtr ArithVal::denominator() const {
     return *arith::mkConst(mp::denominator(t))->isRational();
 }
 
-const NumConstantPtr ArithVal::numerator() const {
+const ArithValPtr ArithVal::numerator() const {
     return *arith::mkConst(mp::numerator(t))->isRational();
 }

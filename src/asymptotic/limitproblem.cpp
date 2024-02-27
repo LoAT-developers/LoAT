@@ -181,7 +181,7 @@ void LimitProblem::reduceExp(const InftyExpressionSet::const_iterator &it) {
     assert(dir == POS_INF || dir == POS);
     assert(exp->isUnivariate());
     const auto x {*exp->someVar()};
-    ExpPtr powerInExp;
+    ArithExpPtr powerInExp;
     const auto add {exp->isAdd()};
     if (add) {
         for (const auto &arg: (*add)->getArgs()) {
@@ -214,7 +214,7 @@ void LimitProblem::reduceExp(const InftyExpressionSet::const_iterator &it) {
 void LimitProblem::reduceGeneralExp(const InftyExpressionSet::const_iterator &it) {
     const auto &[exp,dir] {*it};
     assert(dir == POS_INF || dir == POS);
-    ExpPtr powerInExp;
+    ArithExpPtr powerInExp;
     const auto add {exp->isAdd()};
     if (add) {
         for (const auto &arg: (*add)->getArgs()) {
@@ -395,7 +395,7 @@ bool LimitProblem::reduceExpIsApplicable(const InftyExpressionSet::const_iterato
         return false;
     }
     const auto x {*ex->someVar()};
-    ExpPtr powerInExp;
+    ArithExpPtr powerInExp;
     const auto add {ex->isAdd()};
     if (add) {
         for (const auto &arg: (*add)->getArgs()) {

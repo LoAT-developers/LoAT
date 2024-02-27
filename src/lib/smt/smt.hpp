@@ -42,7 +42,7 @@ public:
         throw std::invalid_argument("add_soft not supported");
     }
 
-    virtual void add_objective(const ExprPtr e) {
+    virtual void add_objective(const ArithExprPtr e) {
         throw std::invalid_argument("add_objective not supported");
     }
 

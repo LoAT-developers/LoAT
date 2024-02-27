@@ -11,7 +11,7 @@ enum Direction { POS_INF = 0, NEG_INF, POS_CONS, NEG_CONS, POS };
 extern const int DirectionSize;
 extern const char* DirectionNames[];
 
-using InftyExpression = std::pair<ExprPtr, Direction>;
+using InftyExpression = std::pair<ArithExprPtr, Direction>;
 
 /**
  * Returns true if this InftyExpression is trivially unsatisfiable, e.g,
