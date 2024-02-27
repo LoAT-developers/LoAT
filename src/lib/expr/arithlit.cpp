@@ -124,23 +124,23 @@ size_t hash_value(const ArithLit &rel) {
     return rel.hash();
 }
 
-ArithLit ArithLit::mkGeq(const ArithExprPtr x, const ArithExprPtr y) {
+ArithLit arith::mkGeq(const ArithExprPtr x, const ArithExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
     return ArithLit(lhs_integral + arith::mkConst(1));
 }
 
-ArithLit ArithLit::mkLeq(const ArithExprPtr x, const ArithExprPtr y) {
+ArithLit arith::mkLeq(const ArithExprPtr x, const ArithExprPtr y) {
     return mkGeq(-x, -y);
 }
 
-ArithLit ArithLit::mkGt(const ArithExprPtr x, const ArithExprPtr y) {
+ArithLit arith::mkGt(const ArithExprPtr x, const ArithExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
     return ArithLit(lhs_integral);
 }
 
-ArithLit ArithLit::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
+ArithLit arith::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
     return mkGt(-x, -y);
 }
 

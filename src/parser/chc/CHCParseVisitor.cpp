@@ -399,10 +399,10 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
         switch (op) {
         case eq: return theories::mkEq(p1.t, p2.t);
         case neq: return theories::mkNeq(p1.t, p2.t);
-        case gt: return BExpression::mkLit(ArithLit::mkGt(p1.t, p2.t));
-        case geq: return BExpression::mkLit(ArithLit::mkGeq(p1.t, p2.t));
-        case lt: return BExpression::mkLit(ArithLit::mkLt(p1.t, p2.t));
-        case leq: return BExpression::mkLit(ArithLit::mkLeq(p1.t, p2.t));
+        case gt: return BExpression::mkLit(arith::mkGt(p1.t, p2.t));
+        case geq: return BExpression::mkLit(arith::mkGeq(p1.t, p2.t));
+        case lt: return BExpression::mkLit(arith::mkLt(p1.t, p2.t));
+        case leq: return BExpression::mkLit(arith::mkLeq(p1.t, p2.t));
         }
     } else {
         throw std::invalid_argument("wrong number of arguments: " + ctx->getText());
@@ -511,10 +511,10 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
                 }
             }
             if (!explicit_encoding) {
-                res.refinement.push_back(BExpression::mkLit(ArithLit::mkGeq(mod, 0))); // x mod y is non-negative
+                res.refinement.push_back(BExpression::mkLit(arith::mkGeq(mod, 0))); // x mod y is non-negative
                 res.refinement.push_back( // |y| > x mod y
-                    (BExpression::mkLit(ArithLit::mkGt(args[1], 0)) & ArithLit::mkGt(args[1], mod))
-                    | (BExpression::mkLit(ArithLit::mkLt(args[1], 0)) & ArithLit::mkGt(-args[1], mod)));
+                    (BExpression::mkLit(arith::mkGt(args[1], 0)) & arith::mkGt(args[1], mod))
+                    | (BExpression::mkLit(arith::mkLt(args[1], 0)) & arith::mkGt(-args[1], mod)));
             }
             if (op == Div) {
                 res.t = Arith::varToExpr(div);

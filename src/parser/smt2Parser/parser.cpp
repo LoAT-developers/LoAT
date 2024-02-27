@@ -145,13 +145,13 @@ namespace sexpressionparser {
         const auto fst {parseExpression(sexp[1])};
         const auto snd {parseExpression(sexp[2])};
         if (op == "<=") {
-            return BExpression::mkLit(negate ? ArithLit::mkGt(fst, snd) : ArithLit::mkLeq(fst, snd));
+            return BExpression::mkLit(negate ? arith::mkGt(fst, snd) : arith::mkLeq(fst, snd));
         } else if (sexp[0].str() == "<") {
-            return BExpression::mkLit(negate ? ArithLit::mkGeq(fst, snd) : ArithLit::mkLt(fst, snd));
+            return BExpression::mkLit(negate ? arith::mkGeq(fst, snd) : arith::mkLt(fst, snd));
         } else if (sexp[0].str() == ">=") {
-            return BExpression::mkLit(negate ? ArithLit::mkLt(fst, snd) : ArithLit::mkGeq(fst, snd));
+            return BExpression::mkLit(negate ? arith::mkLt(fst, snd) : arith::mkGeq(fst, snd));
         } else if (sexp[0].str() == ">") {
-            return BExpression::mkLit(negate ? ArithLit::mkLeq(fst, snd) : ArithLit::mkGt(fst, snd));
+            return BExpression::mkLit(negate ? arith::mkLeq(fst, snd) : arith::mkGt(fst, snd));
         } else if (sexp[0].str() == "=") {
             assert(!negate);
             return theories::mkEq(fst, snd);

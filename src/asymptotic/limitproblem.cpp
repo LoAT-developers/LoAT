@@ -328,9 +328,9 @@ std::vector<Theory<Arith>::Lit> LimitProblem::getQuery() const {
     std::vector<Theory<Arith>::Lit> query;
     for (const auto &[ex,d] : set) {
         if (d == NEG_INF || d == NEG_CONS) {
-            query.push_back(ArithLit::mkLt(ex, arith::mkConst(0)));
+            query.push_back(arith::mkLt(ex, arith::mkConst(0)));
         } else {
-            query.push_back(ArithLit::mkGt(ex, arith::mkConst(0)));
+            query.push_back(arith::mkGt(ex, arith::mkConst(0)));
         }
     }
     return query;

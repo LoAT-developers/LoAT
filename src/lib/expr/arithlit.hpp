@@ -56,11 +56,6 @@ public:
 
     std::size_t hash() const;
 
-    static ArithLit mkGeq(const ArithExprPtr x, const ArithExprPtr y);
-    static ArithLit mkLeq(const ArithExprPtr x, const ArithExprPtr y);
-    static ArithLit mkGt(const ArithExprPtr x, const ArithExprPtr y);
-    static ArithLit mkLt(const ArithExprPtr x, const ArithExprPtr y);
-
     friend ArithLit operator!(const ArithLit &x);
     friend std::ostream& operator<<(std::ostream &s, const ArithLit &e);
 
@@ -87,3 +82,12 @@ struct std::hash<ArithLit> {
 };
 
 size_t hash_value(const ArithLit &rel);
+
+namespace arith {
+
+ArithLit mkGeq(const ArithExprPtr x, const ArithExprPtr y);
+ArithLit mkLeq(const ArithExprPtr x, const ArithExprPtr y);
+ArithLit mkGt(const ArithExprPtr x, const ArithExprPtr y);
+ArithLit mkLt(const ArithExprPtr x, const ArithExprPtr y);
+
+}

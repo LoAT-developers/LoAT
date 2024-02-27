@@ -207,10 +207,10 @@ antlrcpp::Any KoatParseVisitor::visitLit(KoatParser::LitContext *ctx) {
     const auto op = any_cast<relop_type>(visit(children[1]));
     const auto arg2 = any_cast<expr_type>(visit(ctx->expr(1)));
     switch (op) {
-    case lt: return BExpression::mkLit(ArithLit::mkLt(arg1, arg2));
-    case leq: return BExpression::mkLit(ArithLit::mkLeq(arg1, arg2));
-    case gt: return BExpression::mkLit(ArithLit::mkGt(arg1, arg2));
-    case geq: return BExpression::mkLit(ArithLit::mkGeq(arg1, arg2));
+    case lt: return BExpression::mkLit(arith::mkLt(arg1, arg2));
+    case leq: return BExpression::mkLit(arith::mkLeq(arg1, arg2));
+    case gt: return BExpression::mkLit(arith::mkGt(arg1, arg2));
+    case geq: return BExpression::mkLit(arith::mkGeq(arg1, arg2));
     case eq: return theories::mkEq(arg1, arg2);
     case neq: return theories::mkNeq(arg1, arg2);
     }

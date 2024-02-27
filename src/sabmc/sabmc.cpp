@@ -499,7 +499,7 @@ void SABMC::handle_loop(const Range &range) {
         const auto post {std::get<Bools::Var>(var_map[x])};
         res.push_back(BExpression::mkLit(BoolLit(post, b)));
     }
-    res.push_back(BExpression::mkLit(ArithLit::mkGeq(n, arith::mkConst(prefix))));
+    res.push_back(BExpression::mkLit(arith::mkGeq(n, arith::mkConst(prefix))));
     std::vector<BoolExpr> disj;
     disj.push_back(BExpression::mkAnd(res));
     if (prefix > 1) {
@@ -522,7 +522,7 @@ void SABMC::add_blocking_clauses() {
         const auto s {get_subs(depth, b.length)};
         // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(ArithSubs({{n, 1}}))) << std::endl;
         const auto block {!b.trans->subs(theories::compose(Subs::build<Arith>(ArithSubs({{n, arith::mkConst(1)}})), s))};
-        solver->add(block | ArithLit::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id)));
+        solver->add(block | arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id)));
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
         const std::vector<BoolExpr> lits {theories::mkNeq(trace_var, arith::mkConst(b.id)), theories::mkNeq(trace_var, arith::mkConst(b.id))};

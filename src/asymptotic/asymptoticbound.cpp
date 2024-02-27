@@ -105,7 +105,7 @@ ArithSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
     solution = solution.compose(limitProblem.getSolution());
 
     Guard guardCopy = guard;
-    guardCopy.push_back(ArithLit::mkGt(cost, 0));
+    guardCopy.push_back(arith::mkGt(cost, 0));
     for (const auto &lit : guardCopy) {
         const ArithLit &rel = std::get<ArithLit>(lit);
         for (const auto &var : rel.vars()) {

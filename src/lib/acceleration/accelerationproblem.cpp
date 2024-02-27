@@ -129,23 +129,23 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             }
             for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
                 if (signs.at(i) > 0) {
-                    covered.insert(ArithLit::mkGeq(derivatives.at(i), 0));
+                    covered.insert(arith::mkGeq(derivatives.at(i), 0));
                 } else {
-                    covered.insert(ArithLit::mkLeq(derivatives.at(i), 0));
+                    covered.insert(arith::mkLeq(derivatives.at(i), 0));
                 }
                 if (signs.at(i+1) > 0) {
                     // the i-th derivative is monotonically increasing at the sampling point
                     if (signs.at(i) > 0) {
-                        guard.insert(ArithLit::mkGeq(derivatives.at(i), 0));
+                        guard.insert(arith::mkGeq(derivatives.at(i), 0));
                     } else {
-                        guard.insert(ArithLit::mkLeq(but_last(derivatives.at(i)), 0));
+                        guard.insert(arith::mkLeq(but_last(derivatives.at(i)), 0));
                     }
                 } else {
                     res.nonterm = false;
                     if (signs.at(i) > 0) {
-                        guard.insert(ArithLit::mkGeq(but_last(derivatives.at(i)), 0));
+                        guard.insert(arith::mkGeq(but_last(derivatives.at(i)), 0));
                     } else {
-                        guard.insert(ArithLit::mkLeq(derivatives.at(i), 0));
+                        guard.insert(arith::mkLeq(derivatives.at(i), 0));
                     }
                 }
             }
@@ -209,11 +209,11 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     auto success {false};
     const ArithLit &rel {std::get<ArithLit>(lit)};
     const auto updated {update.get<Arith>()(rel.lhs())};
-    const auto dec {ArithLit::mkGeq(rel.lhs(), updated)};
+    const auto dec {arith::mkGeq(rel.lhs(), updated)};
     solver->push();
     solver->add(BExpression::mkLit(dec));
     if (solver->check() == Sat) {
-        const auto inc {ArithLit::mkLt(updated, update.get<Arith>()(updated))};
+        const auto inc {arith::mkLt(updated, update.get<Arith>()(updated))};
         solver->add(BExpression::mkLit(inc));
         if (solver->check() == Unsat) {
             success = true;
@@ -238,13 +238,13 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     // up(t)
     const auto updated {update.get<Arith>()(rel.lhs())};
     // t <(=) up(t)
-    const auto i = strict ? ArithLit::mkLt(rel.lhs(), updated) : ArithLit::mkLeq(rel.lhs(), updated);
+    const auto i = strict ? arith::mkLt(rel.lhs(), updated) : arith::mkLeq(rel.lhs(), updated);
     const auto inc {BExpression::mkLit(i)};
     solver->push();
     solver->add(inc);
     if (solver->check() == Sat) {
         // up(t) >(=) up^2(t)
-        const auto d {strict ? ArithLit::mkGeq(updated, update.get<Arith>()(updated)) : ArithLit::mkGt(updated, update.get<Arith>()(updated))};
+        const auto d {strict ? arith::mkGeq(updated, update.get<Arith>()(updated)) : arith::mkGt(updated, update.get<Arith>()(updated))};
         const auto dec {BExpression::mkLit(d)};
         solver->push();
         solver->add(dec);
