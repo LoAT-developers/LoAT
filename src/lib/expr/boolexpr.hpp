@@ -3,7 +3,7 @@
 #include "itheory.hpp"
 #include "thset.hpp"
 #include "conjunction.hpp"
-#include "rel.hpp"
+#include "arithlit.hpp"
 #include "boollit.hpp"
 #include "literal.hpp"
 #include "conshash.hpp"
@@ -198,7 +198,7 @@ public:
         return map([&n](const Lit &lit){
             return std::visit(
                 Overload{
-                    [&n](const Rel &rel) {
+                    [&n](const ArithLit &rel) {
                         const auto ex {rel.lhs()};
                         const auto d {ex->degree(n)};
                         if (*d == 0) {
@@ -220,7 +220,7 @@ public:
         return map([&n](const Lit &lit){
             return std::visit(
                 Overload{
-                    [&n](const Rel &rel) {
+                    [&n](const ArithLit &rel) {
                         assert(rel.isLinear({{n}}));
                         if (!rel.has(n)) {
                             return mkLit(rel);
@@ -243,7 +243,7 @@ public:
         return map([&n](const Lit &lit){
             return std::visit(
                 Overload{
-                    [&n](const Rel &rel) {
+                    [&n](const ArithLit &rel) {
                         assert(rel.isLinear({{n}}));
                         if (!rel.has(n)) {
                             return mkLit(rel);
@@ -434,8 +434,8 @@ public:
 
     BE simplify() const {
         return map([](const Lit &lit) -> BE {
-            if (std::holds_alternative<Rel>(lit)) {
-                const auto &rel = std::get<Rel>(lit);
+            if (std::holds_alternative<ArithLit>(lit)) {
+                const auto &rel = std::get<ArithLit>(lit);
                 if (rel.isTriviallyTrue()) {
                     return top();
                 } else if (rel.isTriviallyFalse()) {
@@ -456,9 +456,9 @@ public:
 
     bool isLinear() const {
         return forall([](const auto &lit) {
-            if constexpr ((std::same_as<Rel, typename Th::Lit> || ...)) {
-                if (std::holds_alternative<Rel>(lit)) {
-                    return std::get<Rel>(lit).isLinear();
+            if constexpr ((std::same_as<ArithLit, typename Th::Lit> || ...)) {
+                if (std::holds_alternative<ArithLit>(lit)) {
+                    return std::get<ArithLit>(lit).isLinear();
                 }
             }
             if constexpr ((std::same_as<BoolLit, typename Th::Lit> || ...)) {
@@ -472,9 +472,9 @@ public:
 
     bool isPoly() const{
         return forall([](const auto &lit) {
-            if constexpr ((std::same_as<Rel, typename Th::Lit> || ...)) {
-                if (std::holds_alternative<Rel>(lit)) {
-                    return std::get<Rel>(lit).isPoly();
+            if constexpr ((std::same_as<ArithLit, typename Th::Lit> || ...)) {
+                if (std::holds_alternative<ArithLit>(lit)) {
+                    return std::get<ArithLit>(lit).isPoly();
                 }
             }
             if constexpr ((std::same_as<BoolLit, typename Th::Lit> || ...)) {
@@ -676,8 +676,8 @@ public:
     }
 
     void getBounds(const NumVarPtr var, Bounds &res) const override {
-        if (std::holds_alternative<Rel>(lit)) {
-            std::get<Rel>(lit).getBounds(var, res);
+        if (std::holds_alternative<ArithLit>(lit)) {
+            std::get<ArithLit>(lit).getBounds(var, res);
         }
     }
 

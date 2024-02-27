@@ -32,7 +32,7 @@ private:
     std::vector<Subs> subs {Subs::Empty};
     std::vector<Implicant> trace {};
     VarSet vars {};
-    Arith::Var n {NumVar::next()};
+    Arith::Var n {ArithVar::next()};
     std::unordered_map<Var, Var> post_vars {};
     std::unordered_map<Implicant, int> lang_map {};
     std::unordered_map<std::vector<int>, std::unordered_map<BoolExpr, std::optional<Loop>>> cache {};

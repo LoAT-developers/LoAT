@@ -33,10 +33,10 @@
 #include "string.hpp"
 #include "conshash.hpp"
 
-class NumVar;
+class ArithVar;
 class Recurrence;
-class Rel;
-class ExprSubs;
+class ArithLit;
+class ArithSubs;
 class Expr;
 class NumConstant;
 class Exp;
@@ -44,7 +44,7 @@ class ACApplication;
 class Add;
 class Mult;
 using ExprPtr = std::shared_ptr<const Expr>;
-using NumVarPtr = std::shared_ptr<const NumVar>;
+using NumVarPtr = std::shared_ptr<const ArithVar>;
 using NumConstantPtr = std::shared_ptr<const NumConstant>;
 using AddPtr = std::shared_ptr<const Add>;
 using MultPtr = std::shared_ptr<const Mult>;
@@ -293,7 +293,7 @@ public:
 };
 
 
-class NumVar: public Expr, public std::enable_shared_from_this<NumVar> {
+class ArithVar: public Expr, public std::enable_shared_from_this<ArithVar> {
 
     friend ExprPtr arith::mkVar(const int idx);
 
@@ -304,7 +304,7 @@ private:
 
     int idx;
 
-    explicit NumVar(const int idx);
+    explicit ArithVar(const int idx);
 
     struct CacheEqual {
         bool operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept;
@@ -312,8 +312,8 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<int> &args) const noexcept;
     };
-    friend ConsHash<Expr, NumVar, CacheHash, CacheEqual, int>;
-    static ConsHash<Expr, NumVar, CacheHash, CacheEqual, int> cache;
+    friend ConsHash<Expr, ArithVar, CacheHash, CacheEqual, int>;
+    static ConsHash<Expr, ArithVar, CacheHash, CacheEqual, int> cache;
 
     NumVarPtr toPtr() const;
 

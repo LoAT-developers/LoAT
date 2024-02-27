@@ -2,9 +2,9 @@
 
 #include <optional>
 
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 
-using RelSet = linked_hash_set<Rel>;
+using RelSet = linked_hash_set<ArithLit>;
 
 struct Bounds {
     linked_hash_set<ExprPtr> upperBounds {};
@@ -24,18 +24,18 @@ struct Bounds {
 
 std::ostream& operator<<(std::ostream &s, const RelSet &set);
 
-class Rel {
+class ArithLit {
 
 private:
 
-    friend auto operator<=>(const Rel &x, const Rel &y) = default;
-    friend bool operator==(const Rel &x, const Rel &y) = default;
+    friend auto operator<=>(const ArithLit &x, const ArithLit &y) = default;
+    friend bool operator==(const ArithLit &x, const ArithLit &y) = default;
 
 public:
 
     class InvalidRelationalExpression: std::exception { };
 
-    Rel(const ExprPtr lhs);
+    ArithLit(const ExprPtr lhs);
 
     ExprPtr lhs() const;
     bool isPoly() const;
@@ -46,7 +46,7 @@ public:
     bool isTriviallyFalse() const;
     void collectVars(linked_hash_set<NumVarPtr> &res) const;
     bool has(const NumVarPtr) const;
-    Rel subs(const ExprSubs &map) const;
+    ArithLit subs(const ArithSubs &map) const;
     linked_hash_set<NumVarPtr> vars() const;
 
     template <typename P>
@@ -56,13 +56,13 @@ public:
 
     std::size_t hash() const;
 
-    static Rel mkGeq(const ExprPtr x, const ExprPtr y);
-    static Rel mkLeq(const ExprPtr x, const ExprPtr y);
-    static Rel mkGt(const ExprPtr x, const ExprPtr y);
-    static Rel mkLt(const ExprPtr x, const ExprPtr y);
+    static ArithLit mkGeq(const ExprPtr x, const ExprPtr y);
+    static ArithLit mkLeq(const ExprPtr x, const ExprPtr y);
+    static ArithLit mkGt(const ExprPtr x, const ExprPtr y);
+    static ArithLit mkLt(const ExprPtr x, const ExprPtr y);
 
-    friend Rel operator!(const Rel &x);
-    friend std::ostream& operator<<(std::ostream &s, const Rel &e);
+    friend ArithLit operator!(const ArithLit &x);
+    friend std::ostream& operator<<(std::ostream &s, const ArithLit &e);
 
     std::pair<std::optional<ExprPtr>, std::optional<ExprPtr>> getBoundFromIneq(const NumVarPtr) const;
 
@@ -80,10 +80,10 @@ private:
 };
 
 template<>
-struct std::hash<Rel> {
-    std::size_t operator()(const Rel& x) const noexcept {
+struct std::hash<ArithLit> {
+    std::size_t operator()(const ArithLit& x) const noexcept {
         return x.hash();
     }
 };
 
-size_t hash_value(const Rel &rel);
+size_t hash_value(const ArithLit &rel);

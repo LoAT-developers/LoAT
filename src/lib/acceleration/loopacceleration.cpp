@@ -35,7 +35,7 @@ LoopAcceleration::LoopAcceleration(
     const AccelConfig &config)
     : rule(rule), sample_point(sample_point), config(config) {
     auto up {rule.getUpdate()};
-    up.put<Arith>(NumVar::loc_var, NumVar::loc_var->toExpr());
+    up.put<Arith>(ArithVar::loc_var, ArithVar::loc_var->toExpr());
     this->rule = rule.withUpdate(up);
 }
 

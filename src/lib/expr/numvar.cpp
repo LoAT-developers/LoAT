@@ -1,26 +1,26 @@
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 
 #include <purrs.hh>
 #include <assert.h>
 
-int NumVar::last_tmp_idx {0};
-int NumVar::last_prog_idx {1};
+int ArithVar::last_tmp_idx {0};
+int ArithVar::last_prog_idx {1};
 
-const NumVarPtr NumVar::loc_var {nextProgVar()};
+const NumVarPtr ArithVar::loc_var {nextProgVar()};
 
-ConsHash<Expr, NumVar, NumVar::CacheHash, NumVar::CacheEqual, int> NumVar::cache {};
+ConsHash<Expr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {};
 
 ExprPtr arith::mkVar(const int idx) {
-    return NumVar::cache.from_cache(idx);
+    return ArithVar::cache.from_cache(idx);
 }
 
-NumVar::NumVar(const int idx): Expr(arith::Kind::Variable), idx(idx) {}
+ArithVar::ArithVar(const int idx): Expr(arith::Kind::Variable), idx(idx) {}
 
-int NumVar::getIdx() const {
+int ArithVar::getIdx() const {
     return idx;
 }
 
-std::string NumVar::getName() const {
+std::string ArithVar::getName() const {
     if (idx > 0) {
         return "i" + std::to_string(idx);
     } else {
@@ -28,45 +28,45 @@ std::string NumVar::getName() const {
     }
 }
 
-std::ostream& operator<<(std::ostream &s, const NumVar &x) {
+std::ostream& operator<<(std::ostream &s, const ArithVar &x) {
     return s << x.getName();
 }
 
-NumVarPtr NumVar::next() {
+NumVarPtr ArithVar::next() {
     --last_tmp_idx;
     return (*arith::mkVar(last_tmp_idx)->someVar())->toPtr();
 }
 
-NumVarPtr NumVar::nextProgVar() {
+NumVarPtr ArithVar::nextProgVar() {
     ++last_prog_idx;
     return (*arith::mkVar(last_prog_idx)->someVar())->toPtr();
 }
 
-bool NumVar::isTempVar() const {
+bool ArithVar::isTempVar() const {
     return idx < 0;
 }
 
-size_t NumVar::hash() const {
+size_t ArithVar::hash() const {
     return std::hash<int>{}(idx);
 }
 
-std::size_t hash_value(const NumVar &x) {
+std::size_t hash_value(const ArithVar &x) {
     return x.hash();
 }
 
-NumVarPtr NumVar::toPtr() const {
-    return std::enable_shared_from_this<NumVar>::shared_from_this();
+NumVarPtr ArithVar::toPtr() const {
+    return std::enable_shared_from_this<ArithVar>::shared_from_this();
 }
 
-ExprPtr NumVar::toExpr() const {
+ExprPtr ArithVar::toExpr() const {
     return Expr::shared_from_this();
 }
 
-bool NumVar::CacheEqual::operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept {
+bool ArithVar::CacheEqual::operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t NumVar::CacheHash::operator()(const std::tuple<int> &args) const noexcept {
+size_t ArithVar::CacheHash::operator()(const std::tuple<int> &args) const noexcept {
     return std::hash<int>{}(std::get<0>(args));
 }
 

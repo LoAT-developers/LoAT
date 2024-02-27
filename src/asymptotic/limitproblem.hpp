@@ -85,7 +85,7 @@ public:
      * transformation rule (C)
      * @param sub must be a valid substitution
      */
-    void substitute(const ExprSubs &sub, int substitutionIndex);
+    void substitute(const ArithSubs &sub, int substitutionIndex);
 
     /**
      * Discards all but the leading term of the given univariate polynomial.
@@ -140,7 +140,7 @@ public:
      * Returns a solution for this LimitProblem.
      * This LimitProblem must be solved and must not be marked as unsolvable.
      */
-    ExprSubs getSolution() const;
+    ArithSubs getSolution() const;
 
     /**
      * Returns the variable that is used in the solution returned by getSolution().

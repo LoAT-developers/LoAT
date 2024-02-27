@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 #include "theory.hpp"
 #include "result.hpp"
 
@@ -54,7 +54,7 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    ResultBase<ExprSubs, Proof> propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow);
+    ResultBase<ArithSubs, Proof> propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow);
 
     ResultBase<BSubs, Proof> propagateBooleanEqualities(const BoolExpr e);
 
@@ -80,7 +80,7 @@ namespace GuardToolbox {
      */
     template<class T>
     bool containsTempVar(const T &x) {
-        return x.hasVarWith([](const NumVar &sym) {
+        return x.hasVarWith([](const ArithVar &sym) {
             return sym.isTempVar();
         });
     }

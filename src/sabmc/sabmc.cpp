@@ -38,9 +38,9 @@ SABMC::Loop::Loop(const BoolExpr trans, const unsigned length, const unsigned id
 SABMC::SABMC(SafetyProblem &t):
     t(t),
     var_map(*t.var_map()) {
-    var_map.emplace(trace_var, NumVar::next());
+    var_map.emplace(trace_var, ArithVar::next());
     vars.insert(trace_var);
-    var_map.emplace(n, NumVar::next());
+    var_map.emplace(n, ArithVar::next());
     vars.insert(n);
     for (const auto &[x,y]: var_map) {
         inverse_var_map.emplace(y, x);
@@ -51,8 +51,8 @@ SABMC::SABMC(SafetyProblem &t):
         }
     }
     for (const auto &x: t.pre_vars().get<Arith::Var>()) {
-        lower_vars.emplace(x, NumVar::next());
-        upper_vars.emplace(x, NumVar::next());
+        lower_vars.emplace(x, ArithVar::next());
+        upper_vars.emplace(x, ArithVar::next());
         reverse_low_up_vars.put(lower_vars[x], x);
         reverse_low_up_vars.put(upper_vars[x], x);
     }
@@ -140,24 +140,24 @@ std::optional<Arith::Expr> closest_bound(const linked_hash_set<Arith::Expr> &bou
 
 bool is_increasing(const Arith::Expr e, const Subs &model, const Arith::Var x) {
     const auto &current {model.get<Arith>()};
-    const auto next {ExprSubs{{x, x + arith::mkConst(1)}}.compose(current)};
+    const auto next {ArithSubs{{x, x + arith::mkConst(1)}}.compose(current)};
     const auto coeff {*e->coeff(x)};
     return *(current(coeff) - next(coeff))->isRational() < 0;
 }
 
 std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &update, const Subs &model) {
-    ExprSubs up;
+    ArithSubs up;
     std::unordered_set<Arith::Var> done_lower;
     std::unordered_set<Arith::Var> done_upper;
     auto changed {false};
-    ExprSubs dec_n {{n, n - arith::mkConst(1)}};
+    ArithSubs dec_n {{n, n - arith::mkConst(1)}};
     do {
         changed = false;
         for (const auto &[x,p]: update) {
             const auto &[lower,upper] {p};
             if (lower && !done_lower.contains(x)) {
                 const auto vars {(*lower)->vars()};
-                ExprSubs subs;
+                ArithSubs subs;
                 for (const auto &y: vars) {
                     if (y == x) {
                         subs.put(x, lower_vars[x]);
@@ -197,7 +197,7 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
             }
             UPPER: if (upper && !done_upper.contains(x)) {
                 const auto vars {(*upper)->vars()};
-                ExprSubs subs;
+                ArithSubs subs;
                 for (const auto &y: vars) {
                     if (y == x) {
                         subs.put(x, upper_vars[x]);
@@ -375,10 +375,10 @@ Transition SABMC::mbp(const Transition &trans, const Subs &model) const {
     return res;
 }
 
-void SABMC::handle_rel(const Rel &rel, const NondetSubs &update, const NondetSubs &closed, const Subs &model, std::vector<BoolExpr> &res) {
+void SABMC::handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Subs &model, std::vector<BoolExpr> &res) {
     const auto lhs {rel.lhs()};
     const auto vars {lhs->vars()};
-    ExprSubs init;
+    ArithSubs init;
     auto add_init {true};
     for (const auto &x: vars) {
         if (t.post_vars().contains(x)) {
@@ -412,9 +412,9 @@ void SABMC::handle_rel(const Rel &rel, const NondetSubs &update, const NondetSub
     if (add_init) {
         res.push_back(BExpression::mkLit(rel.subs(init)));
     }
-    auto dec_n {ExprSubs{{n, n - arith::mkConst(1)}}};
+    auto dec_n {ArithSubs{{n, n - arith::mkConst(1)}}};
     auto add_but_last {true};
-    ExprSubs but_last;
+    ArithSubs but_last;
     for (const auto &x: vars) {
         if (!t.post_vars().contains(x)) {
             Arith::Expr updated;
@@ -486,7 +486,7 @@ void SABMC::handle_loop(const Range &range) {
     for (const auto &lit: mbp_res.toBoolExpr()->lits()) {
         std::visit(
             Overload {
-                [&](const Rel &rel) {
+                [&](const Arith::Lit &rel) {
                     handle_rel(rel, int_update, closed, model, res);
                 },
                 [](const auto &){}
@@ -499,7 +499,7 @@ void SABMC::handle_loop(const Range &range) {
         const auto post {std::get<Bools::Var>(var_map[x])};
         res.push_back(BExpression::mkLit(BoolLit(post, b)));
     }
-    res.push_back(BExpression::mkLit(Rel::mkGeq(n, arith::mkConst(prefix))));
+    res.push_back(BExpression::mkLit(ArithLit::mkGeq(n, arith::mkConst(prefix))));
     std::vector<BoolExpr> disj;
     disj.push_back(BExpression::mkAnd(res));
     if (prefix > 1) {
@@ -520,9 +520,9 @@ BoolExpr SABMC::encode_transition(const Transition &t) {
 void SABMC::add_blocking_clauses() {
     for (const auto &b: blocked) {
         const auto s {get_subs(depth, b.length)};
-        // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(ExprSubs({{n, 1}}))) << std::endl;
-        const auto block {!b.trans->subs(theories::compose(Subs::build<Arith>(ExprSubs({{n, arith::mkConst(1)}})), s))};
-        solver->add(block | Rel::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id)));
+        // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(ArithSubs({{n, 1}}))) << std::endl;
+        const auto block {!b.trans->subs(theories::compose(Subs::build<Arith>(ArithSubs({{n, arith::mkConst(1)}})), s))};
+        solver->add(block | ArithLit::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id)));
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
         const std::vector<BoolExpr> lits {theories::mkNeq(trace_var, arith::mkConst(b.id)), theories::mkNeq(trace_var, arith::mkConst(b.id))};

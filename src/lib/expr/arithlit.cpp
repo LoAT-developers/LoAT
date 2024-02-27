@@ -1,6 +1,6 @@
-#include "rel.hpp"
-#include "exprsubs.hpp"
-#include "numexpressionutils.hpp"
+#include "arithlit.hpp"
+#include "arithsubs.hpp"
+#include "arithutil.hpp"
 
 #include <sstream>
 #include <assert.h>
@@ -18,21 +18,21 @@ std::ostream& operator<<(std::ostream &s, const RelSet &set) {
     return s;
 }
 
-Rel::Rel(const ExprPtr l): l(l) { }
+ArithLit::ArithLit(const ExprPtr l): l(l) { }
 
-ExprPtr Rel::lhs() const {
+ExprPtr ArithLit::lhs() const {
     return l;
 }
 
-bool Rel::isPoly() const {
+bool ArithLit::isPoly() const {
     return l->isPoly();
 }
 
-bool Rel::isLinear(const std::optional<linked_hash_set<NumVarPtr>> &vars) const {
+bool ArithLit::isLinear(const std::optional<linked_hash_set<NumVarPtr>> &vars) const {
     return l->isLinear(vars);
 }
 
-std::pair<std::optional<ExprPtr>, std::optional<ExprPtr>> Rel::getBoundFromIneq(const NumVarPtr N) const {
+std::pair<std::optional<ExprPtr>, std::optional<ExprPtr>> ArithLit::getBoundFromIneq(const NumVarPtr N) const {
     if (l->degree(N) != 1) return {};
     const auto geq {l - arith::mkConst(1)};
     const auto optSolved {arith::solveTermFor(geq, N)};
@@ -48,7 +48,7 @@ std::pair<std::optional<ExprPtr>, std::optional<ExprPtr>> Rel::getBoundFromIneq(
     return {};
 }
 
-void Rel::getBounds(const NumVarPtr n, Bounds &res) const {
+void ArithLit::getBounds(const NumVarPtr n, Bounds &res) const {
     if (has(n)) {
         const auto p {getBoundFromIneq(n)};
         if (p.first) {
@@ -82,17 +82,17 @@ void Rel::getBounds(const NumVarPtr n, Bounds &res) const {
     }
 }
 
-bool Rel::isTriviallyTrue() const {
+bool ArithLit::isTriviallyTrue() const {
     const auto optTrivial {checkTrivial()};
     return optTrivial && *optTrivial;
 }
 
-bool Rel::isTriviallyFalse() const {
+bool ArithLit::isTriviallyFalse() const {
     const auto optTrivial {checkTrivial()};
     return optTrivial && !*optTrivial;
 }
 
-std::optional<bool> Rel::checkTrivial() const {
+std::optional<bool> ArithLit::checkTrivial() const {
     const auto r {l->isRational()};
     if (r) {
         return *r > 0;
@@ -100,54 +100,54 @@ std::optional<bool> Rel::checkTrivial() const {
     return {};
 }
 
-void Rel::collectVars(linked_hash_set<NumVarPtr> &res) const {
+void ArithLit::collectVars(linked_hash_set<NumVarPtr> &res) const {
     l->collectVars(res);
 }
 
-bool Rel::has(const NumVarPtr x) const {
+bool ArithLit::has(const NumVarPtr x) const {
     return l->has(x);
 }
 
-Rel Rel::subs(const ExprSubs &map) const {
-    return Rel(map(l));
+ArithLit ArithLit::subs(const ArithSubs &map) const {
+    return ArithLit(map(l));
 }
 
-linked_hash_set<NumVarPtr> Rel::vars() const {
+linked_hash_set<NumVarPtr> ArithLit::vars() const {
     return l->vars();
 }
 
-std::size_t Rel::hash() const {
+std::size_t ArithLit::hash() const {
     return std::hash<ExprPtr>{}(l);
 }
 
-size_t hash_value(const Rel &rel) {
+size_t hash_value(const ArithLit &rel) {
     return rel.hash();
 }
 
-Rel Rel::mkGeq(const ExprPtr x, const ExprPtr y) {
+ArithLit ArithLit::mkGeq(const ExprPtr x, const ExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
-    return Rel(lhs_integral + arith::mkConst(1));
+    return ArithLit(lhs_integral + arith::mkConst(1));
 }
 
-Rel Rel::mkLeq(const ExprPtr x, const ExprPtr y) {
+ArithLit ArithLit::mkLeq(const ExprPtr x, const ExprPtr y) {
     return mkGeq(-x, -y);
 }
 
-Rel Rel::mkGt(const ExprPtr x, const ExprPtr y) {
+ArithLit ArithLit::mkGt(const ExprPtr x, const ExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
-    return Rel(lhs_integral);
+    return ArithLit(lhs_integral);
 }
 
-Rel Rel::mkLt(const ExprPtr x, const ExprPtr y) {
+ArithLit ArithLit::mkLt(const ExprPtr x, const ExprPtr y) {
     return mkGt(-x, -y);
 }
 
-Rel operator!(const Rel &x) { 
-    return Rel(arith::mkConst(1) - x.lhs());
+ArithLit operator!(const ArithLit &x) { 
+    return ArithLit(arith::mkConst(1) - x.lhs());
 }
 
-std::ostream& operator<<(std::ostream &s, const Rel &rel) {
+std::ostream& operator<<(std::ostream &s, const ArithLit &rel) {
     return s << rel.l << " > 0";
 }

@@ -56,10 +56,10 @@ private:
     VarSet vars {};
     linked_hash_map<Arith::Var, Arith::Var> lower_vars {};
     linked_hash_map<Arith::Var, Arith::Var> upper_vars {};
-    ExprSubs reverse_low_up_vars {};
+    ArithSubs reverse_low_up_vars {};
     std::unordered_map<Int, Transition> rule_map {};
-    const Arith::Var trace_var {NumVar::next()};
-    const Arith::Var n {NumVar::next()};
+    const Arith::Var trace_var {ArithVar::next()};
+    const Arith::Var n {ArithVar::next()};
     Proof proof {};
     DependencyGraph<Transition> dependency_graph {};
     unsigned depth {0};
@@ -81,7 +81,7 @@ private:
     NondetSubs bound_selection(const Transition &t, const Subs &model) const;
     linked_hash_map<Bools::Var, bool> value_selection(const Subs &model) const;
     std::pair<NondetSubs, unsigned> closed_form(const NondetSubs &update, const Subs &model);
-    void handle_rel(const Rel &rel, const NondetSubs &update, const NondetSubs &closed, const Subs &model, std::vector<BoolExpr> &res);
+    void handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Subs &model, std::vector<BoolExpr> &res);
 
 public:
 

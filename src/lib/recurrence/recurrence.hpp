@@ -56,7 +56,7 @@ private:
      */
     Subs closed_form_pre {};
 
-    std::optional<ExprSubs> inverse {ExprSubs()};
+    std::optional<ArithSubs> inverse {ArithSubs()};
 
     Result result {};
 

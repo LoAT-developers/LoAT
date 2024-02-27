@@ -1,4 +1,4 @@
-#include "booltheory.hpp"
+#include "bools.hpp"
 
 namespace bools {
 

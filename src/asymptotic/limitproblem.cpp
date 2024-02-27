@@ -6,14 +6,14 @@
 #include <utility>
 
 LimitProblem::LimitProblem()
-    : variableN(NumVar::next()), unsolvable(false), log(new std::ostringstream()) {
+    : variableN(ArithVar::next()), unsolvable(false), log(new std::ostringstream()) {
 }
 
 
 LimitProblem::LimitProblem(const Guard &normalizedGuard, const Arith::Expr cost)
     : LimitProblem() {
     for (const auto &lit : normalizedGuard) {
-        addExpression(InftyExpression(std::get<Rel>(lit).lhs(), POS));
+        addExpression(InftyExpression(std::get<ArithLit>(lit).lhs(), POS));
     }
     addExpression(InftyExpression(cost, POS_INF));
     (*log) << "Created initial limit problem:" << std::endl << *this << std::endl << std::endl;
@@ -21,9 +21,9 @@ LimitProblem::LimitProblem(const Guard &normalizedGuard, const Arith::Expr cost)
 
 
 LimitProblem::LimitProblem(const Guard &normalizedGuard)
-    : variableN(NumVar::next()), unsolvable(false), log(new std::ostringstream()) {
+    : variableN(ArithVar::next()), unsolvable(false), log(new std::ostringstream()) {
     for (const auto &lit : normalizedGuard) {
-        addExpression(InftyExpression(std::get<Rel>(lit).lhs(), POS));
+        addExpression(InftyExpression(std::get<ArithLit>(lit).lhs(), POS));
     }
     (*log) << "Created initial limit problem without cost:" << std::endl << *this << std::endl << std::endl;
 }
@@ -137,7 +137,7 @@ void LimitProblem::removeConstant(const InftyExpressionSet::const_iterator &it) 
 }
 
 
-void LimitProblem::substitute(const ExprSubs &sub, int substitutionIndex) {
+void LimitProblem::substitute(const ArithSubs &sub, int substitutionIndex) {
 #ifndef NDEBUG
     for (auto const &s : sub) {
         assert(!s.second->has(s.first));
@@ -274,9 +274,9 @@ bool LimitProblem::isSolved() const {
 }
 
 
-ExprSubs LimitProblem::getSolution() const {
+ArithSubs LimitProblem::getSolution() const {
     assert(isSolved());
-    ExprSubs solution;
+    ArithSubs solution;
     for (const auto &[ex,d] : set) {
         const auto x {*ex->isVar()};
         switch (d) {
@@ -328,9 +328,9 @@ std::vector<Theory<Arith>::Lit> LimitProblem::getQuery() const {
     std::vector<Theory<Arith>::Lit> query;
     for (const auto &[ex,d] : set) {
         if (d == NEG_INF || d == NEG_CONS) {
-            query.push_back(Rel::mkLt(ex, arith::mkConst(0)));
+            query.push_back(ArithLit::mkLt(ex, arith::mkConst(0)));
         } else {
-            query.push_back(Rel::mkGt(ex, arith::mkConst(0)));
+            query.push_back(ArithLit::mkGt(ex, arith::mkConst(0)));
         }
     }
     return query;

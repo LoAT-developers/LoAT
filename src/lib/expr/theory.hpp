@@ -2,7 +2,7 @@
 
 #include "itheory.hpp"
 #include "arith.hpp"
-#include "booltheory.hpp"
+#include "bools.hpp"
 #include "subs.hpp"
 
 #include <variant>

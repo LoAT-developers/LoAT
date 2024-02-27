@@ -59,7 +59,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     std::vector<Arith::Var> vars;
     std::vector<Bools::Var> bvars;
     for (unsigned i = 0; i < max_int_arity; ++i) {
-        vars.emplace_back(NumVar::nextProgVar());
+        vars.emplace_back(ArithVar::nextProgVar());
     }
     for (unsigned i = 0; i < max_bool_arity; ++i) {
         bvars.emplace_back(BoolVar::nextProgVar());
@@ -111,13 +111,13 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
                          }}, arg);
         }
         for (unsigned i = int_arg; i < max_int_arity; ++i) {
-            up.put<Arith>(vars[i], NumVar::next()->toExpr());
+            up.put<Arith>(vars[i], ArithVar::next()->toExpr());
         }
         for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
             up.put<Bools>(bvars[i], BExpression::mkLit(BoolLit(BoolVar::next())));
         }
-        up.put<Arith>(NumVar::loc_var, arith::mkConst(c.rhs.loc));
-        const auto guard {c.guard->subs(ren)->simplify() & theories::mkEq(NumVar::loc_var, arith::mkConst(c.lhs.loc))};
+        up.put<Arith>(ArithVar::loc_var, arith::mkConst(c.rhs.loc));
+        const auto guard {c.guard->subs(ren)->simplify() & theories::mkEq(ArithVar::loc_var, arith::mkConst(c.lhs.loc))};
         its->addRule(Rule(guard, up), c.lhs.loc);
     }
     return its;
@@ -299,7 +299,7 @@ Var CHCParseVisitor::var(const std::string &name, Sort sort) {
         std::optional<Var> var;
         switch (sort) {
         case IntType: {
-            var = NumVar::next();
+            var = ArithVar::next();
             break;
         }
         case BoolType: {
@@ -399,10 +399,10 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
         switch (op) {
         case eq: return theories::mkEq(p1.t, p2.t);
         case neq: return theories::mkNeq(p1.t, p2.t);
-        case gt: return BExpression::mkLit(Rel::mkGt(p1.t, p2.t));
-        case geq: return BExpression::mkLit(Rel::mkGeq(p1.t, p2.t));
-        case lt: return BExpression::mkLit(Rel::mkLt(p1.t, p2.t));
-        case leq: return BExpression::mkLit(Rel::mkLeq(p1.t, p2.t));
+        case gt: return BExpression::mkLit(ArithLit::mkGt(p1.t, p2.t));
+        case geq: return BExpression::mkLit(ArithLit::mkGeq(p1.t, p2.t));
+        case lt: return BExpression::mkLit(ArithLit::mkLt(p1.t, p2.t));
+        case leq: return BExpression::mkLit(ArithLit::mkLeq(p1.t, p2.t));
         }
     } else {
         throw std::invalid_argument("wrong number of arguments: " + ctx->getText());
@@ -449,7 +449,7 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
         std::visit(
             Overload {
                 [&](const Arith::Expr e) {
-                    const auto var {NumVar::next()};
+                    const auto var {ArithVar::next()};
                     res.t = var->toExpr();
                     res.refinement.push_back((r.t & theories::mkEq(var, e)) | ((!r.t) & theories::mkEq(var, std::get<Arith::Expr>(else_case.t))));
                 },
@@ -494,8 +494,8 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
             break;
         case Div:
         case Mod:
-            const auto div {NumVar::next()};
-            const auto mod {NumVar::next()};
+            const auto div {ArithVar::next()};
+            const auto mod {ArithVar::next()};
             res.refinement.push_back(theories::mkEq(args[0], args[1] * div + mod));
             res.refinement.push_back(theories::mkNeq(args[1], arith::mkConst(0))); // division by zero is undefined
             bool explicit_encoding = false;
@@ -511,10 +511,10 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
                 }
             }
             if (!explicit_encoding) {
-                res.refinement.push_back(BExpression::mkLit(Rel::mkGeq(mod, 0))); // x mod y is non-negative
+                res.refinement.push_back(BExpression::mkLit(ArithLit::mkGeq(mod, 0))); // x mod y is non-negative
                 res.refinement.push_back( // |y| > x mod y
-                    (BExpression::mkLit(Rel::mkGt(args[1], 0)) & Rel::mkGt(args[1], mod))
-                    | (BExpression::mkLit(Rel::mkLt(args[1], 0)) & Rel::mkGt(-args[1], mod)));
+                    (BExpression::mkLit(ArithLit::mkGt(args[1], 0)) & ArithLit::mkGt(args[1], mod))
+                    | (BExpression::mkLit(ArithLit::mkLt(args[1], 0)) & ArithLit::mkGt(-args[1], mod)));
             }
             if (op == Div) {
                 res.t = Arith::varToExpr(div);
@@ -539,7 +539,7 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
     } else if (ctx->ITE()) {
         const auto r = any_cast<formula_type>(visit(ctx->i_formula()));
         res.conjoin(r);
-        res.t = NumVar::next();
+        res.t = ArithVar::next();
         res.refinement.push_back((r.t & theories::mkEq(res.t, args[0])) | ((!r.t) & theories::mkEq(res.t, args[1])));
     } else if (ctx->var()) {
         const auto x = any_cast<Var>(visit(ctx->var()));

@@ -1,4 +1,4 @@
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 
 #include <purrs.hh>
 

@@ -1,45 +1,45 @@
-#include "exprsubs.hpp"
-#include "numexpression.hpp"
+#include "arithsubs.hpp"
+#include "arithexpr.hpp"
 
-ExprSubs::ExprSubs() {}
+ArithSubs::ArithSubs() {}
 
-ExprSubs::ExprSubs(std::initializer_list<std::pair<const NumVarPtr, ExprPtr>> init): map(init) {}
+ArithSubs::ArithSubs(std::initializer_list<std::pair<const NumVarPtr, ExprPtr>> init): map(init) {}
 
-ExprPtr ExprSubs::get(const NumVarPtr key) const {
+ExprPtr ArithSubs::get(const NumVarPtr key) const {
     const auto res {map.get(key)};
     return res ? *res : key->toExpr();
 }
 
-void ExprSubs::put(const NumVarPtr key, const ExprPtr val) {
+void ArithSubs::put(const NumVarPtr key, const ExprPtr val) {
     map.put(key, val);
 }
 
-ExprSubs::const_iterator ExprSubs::begin() const {
+ArithSubs::const_iterator ArithSubs::begin() const {
     return map.begin();
 }
 
-ExprSubs::const_iterator ExprSubs::end() const {
+ArithSubs::const_iterator ArithSubs::end() const {
     return map.end();
 }
 
-bool ExprSubs::contains(const NumVarPtr e) const {
+bool ArithSubs::contains(const NumVarPtr e) const {
     return map.contains(e);
 }
 
-bool ExprSubs::empty() const {
+bool ArithSubs::empty() const {
     return map.empty();
 }
 
-unsigned int ExprSubs::size() const {
+unsigned int ArithSubs::size() const {
     return map.size();
 }
 
-size_t ExprSubs::erase(const NumVarPtr key) {
+size_t ArithSubs::erase(const NumVarPtr key) {
     return map.erase(key);
 }
 
-ExprSubs ExprSubs::compose(const ExprSubs &that) const {
-    ExprSubs res;
+ArithSubs ArithSubs::compose(const ArithSubs &that) const {
+    ArithSubs res;
     for (const auto &p: *this) {
         res.put(p.first, that(p.second));
     }
@@ -51,15 +51,15 @@ ExprSubs ExprSubs::compose(const ExprSubs &that) const {
     return res;
 }
 
-ExprSubs ExprSubs::concat(const ExprSubs &that) const {
-    ExprSubs res;
+ArithSubs ArithSubs::concat(const ArithSubs &that) const {
+    ArithSubs res;
     for (const auto &p: *this) {
         res.put(p.first, that(p.second));
     }
     return res;
 }
 
-void ExprSubs::concatInPlace(const ExprSubs &that) {
+void ArithSubs::concatInPlace(const ArithSubs &that) {
     std::vector<std::pair<NumVarPtr, ExprPtr>> changed;
     for (const auto &[key, val]: *this) {
         const auto new_val {that(val)};
@@ -72,8 +72,8 @@ void ExprSubs::concatInPlace(const ExprSubs &that) {
     }
 }
 
-ExprSubs ExprSubs::unite(const ExprSubs &that) const {
-    ExprSubs res;
+ArithSubs ArithSubs::unite(const ArithSubs &that) const {
+    ArithSubs res;
     for (const auto &p: *this) {
         res.put(p.first, p.second);
     }
@@ -86,8 +86,8 @@ ExprSubs ExprSubs::unite(const ExprSubs &that) const {
     return res;
 }
 
-ExprSubs ExprSubs::project(const linked_hash_set<NumVarPtr> &vars) const {
-    ExprSubs res;
+ArithSubs ArithSubs::project(const linked_hash_set<NumVarPtr> &vars) const {
+    ArithSubs res;
     if (size() < vars.size()) {
         for (const auto &p: *this) {
             if (vars.contains(p.first)) {
@@ -105,66 +105,66 @@ ExprSubs ExprSubs::project(const linked_hash_set<NumVarPtr> &vars) const {
     return res;
 }
 
-bool ExprSubs::changes(const NumVarPtr key) const {
+bool ArithSubs::changes(const NumVarPtr key) const {
     return contains(key) && get(key) != key;
 }
 
-bool ExprSubs::isLinear() const {
+bool ArithSubs::isLinear() const {
     return std::all_of(begin(), end(), [](const auto &p) {
         return p.second->isLinear();
     });
 }
 
-bool ExprSubs::isPoly() const {
+bool ArithSubs::isPoly() const {
     return std::all_of(begin(), end(), [](const auto &p) {
         return p.second->isPoly();
     });
 }
 
-void ExprSubs::collectDomain(linked_hash_set<NumVarPtr> &vars) const {
+void ArithSubs::collectDomain(linked_hash_set<NumVarPtr> &vars) const {
     for (const auto &p: *this) {
         vars.insert(p.first);
     }
 }
 
-void ExprSubs::collectCoDomainVars(linked_hash_set<NumVarPtr> &vars) const {
+void ArithSubs::collectCoDomainVars(linked_hash_set<NumVarPtr> &vars) const {
     for (const auto &p: *this) {
         p.second->collectVars(vars);
     }
 }
 
-void ExprSubs::collectVars(linked_hash_set<NumVarPtr> &vars) const {
+void ArithSubs::collectVars(linked_hash_set<NumVarPtr> &vars) const {
     collectCoDomainVars(vars);
     collectDomain(vars);
 }
 
-linked_hash_set<NumVarPtr> ExprSubs::domain() const {
+linked_hash_set<NumVarPtr> ArithSubs::domain() const {
     linked_hash_set<NumVarPtr> res;
     collectDomain(res);
     return res;
 }
 
-linked_hash_set<NumVarPtr> ExprSubs::coDomainVars() const {
+linked_hash_set<NumVarPtr> ArithSubs::coDomainVars() const {
     linked_hash_set<NumVarPtr> res;
     collectCoDomainVars(res);
     return res;
 }
 
-linked_hash_set<NumVarPtr> ExprSubs::allVars() const {
+linked_hash_set<NumVarPtr> ArithSubs::allVars() const {
     linked_hash_set<NumVarPtr> res;
     collectVars(res);
     return res;
 }
 
-size_t ExprSubs::hash() const {
+size_t ArithSubs::hash() const {
     return boost::hash_unordered_range(map.begin(), map.end());
 }
 
-bool operator==(const ExprSubs &m1, const ExprSubs &m2) {
+bool operator==(const ArithSubs &m1, const ArithSubs &m2) {
     return m1.map == m2.map;
 }
 
-std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
+std::ostream& operator<<(std::ostream &s, const ArithSubs &map) {
     if (map.empty()) {
         return s << "{}";
     } else {
@@ -182,7 +182,7 @@ std::ostream& operator<<(std::ostream &s, const ExprSubs &map) {
     }
 }
 
-ExprPtr ExprSubs::operator()(const ExprPtr t) const {
+ExprPtr ArithSubs::operator()(const ExprPtr t) const {
     return t->map<ExprPtr>(
         [&](const NumConstantPtr) {
             return t;

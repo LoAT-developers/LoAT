@@ -16,7 +16,7 @@ using namespace Config::ABMC;
 
 ABMC::ABMC(ITSProblem &its):
     its(its),
-    trace_var(NumVar::next()) {
+    trace_var(ArithVar::next()) {
     vars.insert(trace_var);
     vars.insert(n);
     solver->enableModels();

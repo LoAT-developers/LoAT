@@ -24,7 +24,7 @@ AccelerationProblem::AccelerationProblem(
     const auto logic {SMT::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
-        const auto bound {BExpression::mkLit(Rel(config.n->toExpr() - arith::mkConst(1)))};
+        const auto bound {BExpression::mkLit(ArithLit(config.n->toExpr() - arith::mkConst(1)))};
         this->solver->add(bound);
         this->res.formula.push_back(bound);
     }
@@ -52,16 +52,16 @@ bool AccelerationProblem::unchanged(const Lit &lit) {
 }
 
 bool AccelerationProblem::polynomial(const Lit &lit) {
-    if (polyaccel == PolyAccelMode::None || !closed || closed->prefix > 0 || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
+    if (polyaccel == PolyAccelMode::None || !closed || closed->prefix > 0 || !config.tryAccel || !std::holds_alternative<Arith::Lit>(lit)) {
         return false;
     }
-    const auto &rel {std::get<Rel>(lit)};
+    const auto &rel {std::get<ArithLit>(lit)};
     const auto nfold {closed->closed_form.get<Arith>()(rel.lhs())};
     if (!nfold->has(config.n) || !nfold->isPoly(config.n)) {
         return false;
     }
     const auto &up {update.get<Arith>()};
-    const ExprSubs but_last {closed->closed_form.get<Arith>().compose({{config.n, config.n->toExpr() - arith::mkConst(1)}})};
+    const ArithSubs but_last {closed->closed_form.get<Arith>().compose({{config.n, config.n->toExpr() - arith::mkConst(1)}})};
     bool low_degree {false};
     RelSet guard;
     RelSet covered;
@@ -129,23 +129,23 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             }
             for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
                 if (signs.at(i) > 0) {
-                    covered.insert(Rel::mkGeq(derivatives.at(i), 0));
+                    covered.insert(ArithLit::mkGeq(derivatives.at(i), 0));
                 } else {
-                    covered.insert(Rel::mkLeq(derivatives.at(i), 0));
+                    covered.insert(ArithLit::mkLeq(derivatives.at(i), 0));
                 }
                 if (signs.at(i+1) > 0) {
                     // the i-th derivative is monotonically increasing at the sampling point
                     if (signs.at(i) > 0) {
-                        guard.insert(Rel::mkGeq(derivatives.at(i), 0));
+                        guard.insert(ArithLit::mkGeq(derivatives.at(i), 0));
                     } else {
-                        guard.insert(Rel::mkLeq(but_last(derivatives.at(i)), 0));
+                        guard.insert(ArithLit::mkLeq(but_last(derivatives.at(i)), 0));
                     }
                 } else {
                     res.nonterm = false;
                     if (signs.at(i) > 0) {
-                        guard.insert(Rel::mkGeq(but_last(derivatives.at(i)), 0));
+                        guard.insert(ArithLit::mkGeq(but_last(derivatives.at(i)), 0));
                     } else {
-                        guard.insert(Rel::mkLeq(derivatives.at(i), 0));
+                        guard.insert(ArithLit::mkLeq(derivatives.at(i), 0));
                     }
                 }
             }
@@ -203,17 +203,17 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
 }
 
 bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
-    if (!closed || !config.tryAccel || !std::holds_alternative<Rel>(lit)) {
+    if (!closed || !config.tryAccel || !std::holds_alternative<Arith::Lit>(lit)) {
         return false;
     }
     auto success {false};
-    const Rel &rel {std::get<Rel>(lit)};
+    const ArithLit &rel {std::get<ArithLit>(lit)};
     const auto updated {update.get<Arith>()(rel.lhs())};
-    const auto dec {Rel::mkGeq(rel.lhs(), updated)};
+    const auto dec {ArithLit::mkGeq(rel.lhs(), updated)};
     solver->push();
     solver->add(BExpression::mkLit(dec));
     if (solver->check() == Sat) {
-        const auto inc {Rel::mkLt(updated, update.get<Arith>()(updated))};
+        const auto inc {ArithLit::mkLt(updated, update.get<Arith>()(updated))};
         solver->add(BExpression::mkLit(inc));
         if (solver->check() == Unsat) {
             success = true;
@@ -230,21 +230,21 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
 }
 
 bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
-    if (!std::holds_alternative<Rel>(lit)) {
+    if (!std::holds_alternative<ArithLit>(lit)) {
         return false;
     }
     // t > 0
-    const auto &rel {std::get<Rel>(lit)};
+    const auto &rel {std::get<ArithLit>(lit)};
     // up(t)
     const auto updated {update.get<Arith>()(rel.lhs())};
     // t <(=) up(t)
-    const auto i = strict ? Rel::mkLt(rel.lhs(), updated) : Rel::mkLeq(rel.lhs(), updated);
+    const auto i = strict ? ArithLit::mkLt(rel.lhs(), updated) : ArithLit::mkLeq(rel.lhs(), updated);
     const auto inc {BExpression::mkLit(i)};
     solver->push();
     solver->add(inc);
     if (solver->check() == Sat) {
         // up(t) >(=) up^2(t)
-        const auto d {strict ? Rel::mkGeq(updated, update.get<Arith>()(updated)) : Rel::mkGt(updated, update.get<Arith>()(updated))};
+        const auto d {strict ? ArithLit::mkGeq(updated, update.get<Arith>()(updated)) : ArithLit::mkGt(updated, update.get<Arith>()(updated))};
         const auto dec {BExpression::mkLit(d)};
         solver->push();
         solver->add(dec);
@@ -258,7 +258,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
                     solver->pop();
                     return false;
                 }
-                const auto s {closed->closed_form.get<Arith>().compose(ExprSubs({{config.n, config.n->toExpr() - arith::mkConst(1)}}))};
+                const auto s {closed->closed_form.get<Arith>().compose(ArithSubs({{config.n, config.n->toExpr() - arith::mkConst(1)}}))};
                 g = BExpression::mkLit((!i).subs(s)) & rel.subs(s);
                 c = BExpression::mkLit((!i));
                 res.nonterm = false;

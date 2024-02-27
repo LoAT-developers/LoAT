@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 #include "inftyexpression.hpp"
 #include "limitproblem.hpp"
 #include "proof.hpp"
@@ -18,7 +18,7 @@ private:
             : upperBound(0), lowerBound(0), inftyVars(0) {
         }
 
-        ExprSubs solution{};
+        ArithSubs solution{};
         Complexity complexity;
         Int upperBound;
         Int lowerBound;
@@ -30,9 +30,9 @@ private:
     void initLimitVectors();
     void createInitialLimitProblem();
     void propagateBounds();
-    ExprSubs calcSolution(const LimitProblem &limitProblem);
-    Int findUpperBoundforSolution(const LimitProblem &limitProblem, const ExprSubs &solution);
-    Int findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ExprSubs &solution);
+    ArithSubs calcSolution(const LimitProblem &limitProblem);
+    Int findUpperBoundforSolution(const LimitProblem &limitProblem, const ArithSubs &solution);
+    Int findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ArithSubs &solution);
     void removeUnsatProblems();
     bool solveViaSMT(Complexity currentRes);
     bool solveLimitProblem();
@@ -67,7 +67,7 @@ private:
     std::vector<LimitProblem> solvedLimitProblems {};
     LimitProblem currentLP;
 
-    std::vector<ExprSubs> substitutions {};
+    std::vector<ArithSubs> substitutions {};
 
     std::vector<LimitVector> toApply {};
 

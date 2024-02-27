@@ -44,7 +44,7 @@ antlrcpp::Any KoatParseVisitor::visitVar(KoatParser::VarContext *ctx) {
     if (res) {
         return *res;
     } else {
-        const auto var {NumVar::next()};
+        const auto var {ArithVar::next()};
         vars.emplace(name, var);
         return var;
     }
@@ -65,7 +65,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }
-    cond = cond & theories::mkEq(NumVar::loc_var, arith::mkConst(lhsLoc));
+    cond = cond & theories::mkEq(ArithVar::loc_var, arith::mkConst(lhsLoc));
     auto up = rhss.at(0);
     if (Config::Analysis::complexity()) {
         up.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
@@ -76,7 +76,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     for (const auto &x: vars) {
         const auto var {std::get<Arith::Var>(x)};
         if (var->isTempVar()) {
-            varRenaming.put<Arith>(var, NumVar::next());
+            varRenaming.put<Arith>(var, ArithVar::next());
         }
     }
     rule = rule.subs(varRenaming);
@@ -88,7 +88,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
     static bool initVars = true;
     if (initVars) {
         for (const auto& c: ctx->var()) {
-            const auto var {NumVar::nextProgVar()};
+            const auto var {ArithVar::nextProgVar()};
             programVars.push_back(var);
             vars.emplace(c->getText(), var);
         }
@@ -126,7 +126,7 @@ antlrcpp::Any KoatParseVisitor::visitRhs(KoatParser::RhsContext *ctx) {
         }
     }
     const auto loc = any_cast<fs_type>(visit(ctx->fs()));
-    up.put<Arith>(NumVar::loc_var, arith::mkConst(loc));
+    up.put<Arith>(ArithVar::loc_var, arith::mkConst(loc));
     return up;
 }
 
@@ -207,10 +207,10 @@ antlrcpp::Any KoatParseVisitor::visitLit(KoatParser::LitContext *ctx) {
     const auto op = any_cast<relop_type>(visit(children[1]));
     const auto arg2 = any_cast<expr_type>(visit(ctx->expr(1)));
     switch (op) {
-    case lt: return BExpression::mkLit(Rel::mkLt(arg1, arg2));
-    case leq: return BExpression::mkLit(Rel::mkLeq(arg1, arg2));
-    case gt: return BExpression::mkLit(Rel::mkGt(arg1, arg2));
-    case geq: return BExpression::mkLit(Rel::mkGeq(arg1, arg2));
+    case lt: return BExpression::mkLit(ArithLit::mkLt(arg1, arg2));
+    case leq: return BExpression::mkLit(ArithLit::mkLeq(arg1, arg2));
+    case gt: return BExpression::mkLit(ArithLit::mkGt(arg1, arg2));
+    case geq: return BExpression::mkLit(ArithLit::mkGeq(arg1, arg2));
     case eq: return theories::mkEq(arg1, arg2);
     case neq: return theories::mkNeq(arg1, arg2);
     }

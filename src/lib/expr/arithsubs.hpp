@@ -1,19 +1,19 @@
 #pragma once
 
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 #include "map.hpp"
 
-class ExprSubs {
+class ArithSubs {
 
-    friend bool operator==(const ExprSubs &m1, const ExprSubs &m2);
+    friend bool operator==(const ArithSubs &m1, const ArithSubs &m2);
 
 public:
 
     typedef typename linked_hash_map<NumVarPtr, ExprPtr>::const_iterator const_iterator;
 
-    ExprSubs();
+    ArithSubs();
 
-    ExprSubs(std::initializer_list<std::pair<const NumVarPtr, ExprPtr>> init);
+    ArithSubs(std::initializer_list<std::pair<const NumVarPtr, ExprPtr>> init);
 
     ExprPtr get(const NumVarPtr key) const;
 
@@ -31,15 +31,15 @@ public:
 
     size_t erase(const NumVarPtr key);
 
-    ExprSubs compose(const ExprSubs &that) const;
+    ArithSubs compose(const ArithSubs &that) const;
 
-    ExprSubs concat(const ExprSubs &that) const;
+    ArithSubs concat(const ArithSubs &that) const;
 
-    void concatInPlace(const ExprSubs &that);
+    void concatInPlace(const ArithSubs &that);
 
-    ExprSubs unite(const ExprSubs &that) const;
+    ArithSubs unite(const ArithSubs &that) const;
 
-    ExprSubs project(const linked_hash_set<NumVarPtr> &vars) const;
+    ArithSubs project(const linked_hash_set<NumVarPtr> &vars) const;
 
     bool changes(const NumVarPtr key) const;
 
@@ -69,11 +69,11 @@ private:
 
 };
 
-std::ostream& operator<<(std::ostream &s, const ExprSubs &map);
+std::ostream& operator<<(std::ostream &s, const ArithSubs &map);
 
 template<>
-struct std::hash<ExprSubs> {
-    std::size_t operator()(const ExprSubs& x) const noexcept {
+struct std::hash<ArithSubs> {
+    std::size_t operator()(const ArithSubs& x) const noexcept {
         return x.hash();
     }
 };

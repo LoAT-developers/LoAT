@@ -1,7 +1,7 @@
 #pragma once
 
 #include "itheory.hpp"
-#include "rel.hpp"
+#include "arithlit.hpp"
 #include "thset.hpp"
 #include "literal.hpp"
 
@@ -64,7 +64,7 @@ Conjunction<Th...> operator&(const Conjunction<Th...> &fst, const Conjunction<Th
 }
 
 template <ITheory... Th>
-Conjunction<Th...> operator&(const Conjunction<Th...> &fst, const Rel &snd) {
+Conjunction<Th...> operator&(const Conjunction<Th...> &fst, const ArithLit &snd) {
     Conjunction res(fst);
     res.push_back(snd);
     return res;

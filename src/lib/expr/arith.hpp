@@ -1,15 +1,15 @@
 #pragma once
 
 #include "itheory.hpp"
-#include "numexpression.hpp"
-#include "rel.hpp"
-#include "exprsubs.hpp"
+#include "arithexpr.hpp"
+#include "arithlit.hpp"
+#include "arithsubs.hpp"
 
 struct Arith {
 
-    using Lit = Rel;
+    using Lit = ArithLit;
     using Var = NumVarPtr;
-    using Subs = ExprSubs;
+    using Subs = ArithSubs;
     using Expr = ExprPtr;
     using Val = Int;
 
@@ -26,7 +26,7 @@ struct Arith {
     }
 
     static Var next() {
-        return NumVar::next();
+        return ArithVar::next();
     }
 
 };

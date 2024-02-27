@@ -49,7 +49,7 @@ namespace sexpressionparser {
                     sexpresso::Sexp &scope = ex[2];
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
-                            vars.emplace(e[0].str(), NumVar::nextProgVar());
+                            vars.emplace(e[0].str(), ArithVar::nextProgVar());
                             preVars.push_back(e[0].str());
                         }
                     }
@@ -62,7 +62,7 @@ namespace sexpressionparser {
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
                             if (std::find(preVars.begin(), preVars.end(), e[0].str()) == preVars.end()) {
-                                vars.emplace(e[0].str(), NumVar::next());
+                                vars.emplace(e[0].str(), ArithVar::next());
                                 postVars.push_back(e[0].str());
                             }
                         }
@@ -81,12 +81,12 @@ namespace sexpressionparser {
                             Subs update;
                             std::vector<BoolExpr> guard;
                             parseCond(ruleExp[5], guard);
-                            guard.push_back(theories::mkEq(NumVar::loc_var, arith::mkConst(from)));
+                            guard.push_back(theories::mkEq(ArithVar::loc_var, arith::mkConst(from)));
                             const auto cond {BExpression::mkAnd(guard)};
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.put<Arith>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            update.put<Arith>(NumVar::loc_var, arith::mkConst(to));
+                            update.put<Arith>(ArithVar::loc_var, arith::mkConst(to));
                             if (Config::Analysis::complexity()) {
                                 update.put<Arith>(cost_var, cost_var + arith::mkConst(1));
                             }
@@ -97,7 +97,7 @@ namespace sexpressionparser {
                             Subs subs;
                             for (const auto &var: currTmpVars) {
                                 if (var->isTempVar()) {
-                                    subs.get<Arith>().put(var, NumVar::next());
+                                    subs.get<Arith>().put(var, ArithVar::next());
                                 }
                             }
                             res->addRule(rule.subs(subs), from);
@@ -126,7 +126,7 @@ namespace sexpressionparser {
             sexpresso::Sexp scope = sexp[1];
             for (sexpresso::Sexp &var: scope.arguments()) {
                 const std::string &varName = var[0].str();
-                vars.emplace(varName, NumVar::next());
+                vars.emplace(varName, ArithVar::next());
             }
             parseCond(sexp[2], guard);
         } else {
@@ -145,13 +145,13 @@ namespace sexpressionparser {
         const auto fst {parseExpression(sexp[1])};
         const auto snd {parseExpression(sexp[2])};
         if (op == "<=") {
-            return BExpression::mkLit(negate ? Rel::mkGt(fst, snd) : Rel::mkLeq(fst, snd));
+            return BExpression::mkLit(negate ? ArithLit::mkGt(fst, snd) : ArithLit::mkLeq(fst, snd));
         } else if (sexp[0].str() == "<") {
-            return BExpression::mkLit(negate ? Rel::mkGeq(fst, snd) : Rel::mkLt(fst, snd));
+            return BExpression::mkLit(negate ? ArithLit::mkGeq(fst, snd) : ArithLit::mkLt(fst, snd));
         } else if (sexp[0].str() == ">=") {
-            return BExpression::mkLit(negate ? Rel::mkLt(fst, snd) : Rel::mkGeq(fst, snd));
+            return BExpression::mkLit(negate ? ArithLit::mkLt(fst, snd) : ArithLit::mkGeq(fst, snd));
         } else if (sexp[0].str() == ">") {
-            return BExpression::mkLit(negate ? Rel::mkLeq(fst, snd) : Rel::mkGt(fst, snd));
+            return BExpression::mkLit(negate ? ArithLit::mkLeq(fst, snd) : ArithLit::mkGt(fst, snd));
         } else if (sexp[0].str() == "=") {
             assert(!negate);
             return theories::mkEq(fst, snd);
@@ -166,7 +166,7 @@ namespace sexpressionparser {
                 return arith::mkConst(Rational(str));
             } else {
                 if (vars.find(str) == vars.end()) {
-                    vars.emplace(str, NumVar::next());
+                    vars.emplace(str, ArithVar::next());
                 }
                 return vars.at(str);
             }

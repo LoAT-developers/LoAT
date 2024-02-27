@@ -15,7 +15,7 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses>.
  */
 
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 #include "optional.hpp"
 #include "map.hpp"
 
@@ -103,7 +103,7 @@ std::optional<Int> Expr::isInt() const {
 
 std::optional<NumVarPtr> Expr::isVar() const {
     if (kind == arith::Kind::Variable) {
-        return static_cast<const NumVar*>(this)->std::enable_shared_from_this<NumVar>::shared_from_this();
+        return static_cast<const ArithVar*>(this)->std::enable_shared_from_this<ArithVar>::shared_from_this();
     } else {
         return {};
     }

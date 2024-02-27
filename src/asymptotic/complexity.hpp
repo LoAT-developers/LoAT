@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 
 #include <assert.h>
 

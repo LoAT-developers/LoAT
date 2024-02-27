@@ -16,14 +16,14 @@
  */
 
 #include "guardtoolbox.hpp"
-#include "rel.hpp"
+#include "arithlit.hpp"
 
 #include <unordered_set>
 
 using namespace std;
 
-ResultBase<ExprSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow) {
-    ResultBase<ExprSubs, Proof> res;
+ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow) {
+    ResultBase<ArithSubs, Proof> res;
     for (const auto &var: e->vars().get<Arith::Var>()) {
         if (!allow(var)) continue;
         const auto bounds {e->getBounds(var)};
@@ -64,8 +64,8 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
     linked_hash_set<Arith::Var> tryVars;
     std::unordered_set<Arith::Var> eliminated;
     for (const auto &lit : guard) {
-        if (std::holds_alternative<Rel>(lit)) {
-            const auto &rel = std::get<Rel>(lit);
+        if (std::holds_alternative<ArithLit>(lit)) {
+            const auto &rel = std::get<ArithLit>(lit);
             if (!rel.isPoly()) continue;
             rel.collectVars(tryVars);
         }
@@ -89,8 +89,8 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
         size_t explosive_upper {0};
 
         for (const auto &lit: guard) {
-            if (std::holds_alternative<Rel>(lit)) {
-                const auto &rel = std::get<Rel>(lit);
+            if (std::holds_alternative<ArithLit>(lit)) {
+                const auto &rel = std::get<ArithLit>(lit);
                 //check if this guard must be used for var
                 if (!rel.has(var)) continue;
                 const auto bounds {rel.getBoundFromIneq(var)};
@@ -117,14 +117,14 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Boo
         if (!removeHalfBounds && (varLessThan.empty() || varGreaterThan.empty())) goto abort;
 
         //success: remove lower <= x and x <= upper as they will be replaced
-        for (const Rel &rel: guardTerms) {
+        for (const ArithLit &rel: guardTerms) {
             guard.erase(rel);
         }
 
         //add new transitive guard terms lower <= upper
         for (const auto &upper : varLessThan) {
             for (const auto &lower : varGreaterThan) {
-                guard.insert(Rel::mkLeq(lower, upper));
+                guard.insert(ArithLit::mkLeq(lower, upper));
             }
         }
         eliminated.insert(var);

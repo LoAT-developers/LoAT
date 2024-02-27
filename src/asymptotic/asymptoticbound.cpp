@@ -6,7 +6,7 @@
 #include <sstream>
 #include <optional>
 
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
 #include "limitsmt.hpp"
@@ -92,10 +92,10 @@ void AsymptoticBound::propagateBounds() {
     limitProblems.push_back(currentLP);
 }
 
-ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
+ArithSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
     assert(limitProblem.isSolved());
 
-    ExprSubs solution;
+    ArithSubs solution;
     for (int index : limitProblem.getSubstitutions()) {
         const auto &sub = substitutions[index];
 
@@ -105,9 +105,9 @@ ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
     solution = solution.compose(limitProblem.getSolution());
 
     Guard guardCopy = guard;
-    guardCopy.push_back(Rel::mkGt(cost, 0));
+    guardCopy.push_back(ArithLit::mkGt(cost, 0));
     for (const auto &lit : guardCopy) {
-        const Rel &rel = std::get<Rel>(lit);
+        const ArithLit &rel = std::get<ArithLit>(lit);
         for (const auto &var : rel.vars()) {
             if (!solution.contains(var)) {
                 solution = solution.compose({{var, 0}});
@@ -119,7 +119,7 @@ ExprSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
 }
 
 
-Int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem, const ExprSubs &solution) {
+Int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem, const ArithSubs &solution) {
     const auto n {limitProblem.getN()};
     Int upperBound {0};
     for (auto const &[x,sub] : solution) {
@@ -136,7 +136,7 @@ Int AsymptoticBound::findUpperBoundforSolution(const LimitProblem &limitProblem,
 }
 
 
-Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ExprSubs &solution) {
+Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ArithSubs &solution) {
     const auto solvedCost {solution(cost)};
     Int lowerBound;
     const auto n {limitProblem.getN()};
@@ -634,7 +634,7 @@ bool AsymptoticBound::tryInstantiatingVariable() {
 
         if (e->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const auto &query = currentLP.getQuery();
-            auto solver = SmtFactory::_modelBuildingSolver<Arith>(Smt<Arith>::chooseLogic<std::vector<Theory<Arith>::Lit>, ExprSubs>({query}, {}));
+            auto solver = SmtFactory::_modelBuildingSolver<Arith>(Smt<Arith>::chooseLogic<std::vector<Theory<Arith>::Lit>, ArithSubs>({query}, {}));
             solver->add(BoolExpression<Arith>::mkAndFromLits(query));
             SmtResult result = solver->check();
 
@@ -681,7 +681,7 @@ bool AsymptoticBound::trySubstitutingVariable() {
                         || (dir == NEG_INF && dir2 == NEG_INF)) {
                         assert(*it != *it2);
 
-                        ExprSubs sub{{*e_var, e2}};
+                        ArithSubs sub{{*e_var, e2}};
                         substitutions.push_back(sub);
 
                         createBacktrackingPoint(it, POS_CONS);

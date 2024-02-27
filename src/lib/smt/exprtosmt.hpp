@@ -19,7 +19,7 @@
 
 #include "smtcontext.hpp"
 #include "boolexpr.hpp"
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 
 #include <sstream>
 
@@ -44,8 +44,8 @@ protected:
         if (e->getTheoryLit()) {
             const auto lit = *e->getTheoryLit();
             if constexpr ((std::is_same_v<Arith, Th> || ...)) {
-                if (std::holds_alternative<Rel>(lit)) {
-                    return convertRelational(std::get<Rel>(lit));
+                if (std::holds_alternative<ArithLit>(lit)) {
+                    return convertRelational(std::get<ArithLit>(lit));
                 }
             }
             if constexpr ((std::is_same_v<Bools, Th> || ...)) {
@@ -111,7 +111,7 @@ protected:
             });
     }
 
-    EXPR convertRelational(const Rel &rel) {
+    EXPR convertRelational(const ArithLit &rel) {
         return context.gt(convertEx(rel.lhs()), context.getInt(0));
     }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "numexpression.hpp"
+#include "arithexpr.hpp"
 
 struct AccelConfig {
     bool tryNonterm {true};

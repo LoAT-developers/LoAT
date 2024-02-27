@@ -1,5 +1,5 @@
 #include "vareliminator.hpp"
-#include "rel.hpp"
+#include "arithlit.hpp"
 
 #include <assert.h>
 
@@ -49,14 +49,14 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
     dependencies.erase(N);
 }
 
-const std::vector<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDependency(const ExprSubs &subs, const BoolExpr guard) const {
+const std::vector<std::pair<ArithSubs, BoolExpr>> VarEliminator::eliminateDependency(const ArithSubs &subs, const BoolExpr guard) const {
     VarSet vars = guard->vars();
     for (auto it = dependencies.begin(); it != dependencies.end(); ++it) {
         if (!vars.contains(*it)) {
             continue;
         }
         const auto bounds {guard->getBounds(*it)};
-        std::vector<std::pair<ExprSubs, BoolExpr>> res;
+        std::vector<std::pair<ArithSubs, BoolExpr>> res;
         for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
             for (const auto &b: bb) {
                 if (b->isRational()) {
@@ -74,8 +74,8 @@ const std::vector<std::pair<ExprSubs, BoolExpr>> VarEliminator::eliminateDepende
 
 void VarEliminator::eliminateDependencies() {
     while (!todoDeps.empty()) {
-        const std::pair<ExprSubs, BoolExpr> current = todoDeps.top();
-        const std::vector<std::pair<ExprSubs, BoolExpr>> &res = eliminateDependency(current.first, current.second);
+        const std::pair<ArithSubs, BoolExpr> current = todoDeps.top();
+        const std::vector<std::pair<ArithSubs, BoolExpr>> &res = eliminateDependency(current.first, current.second);
         if (res.empty()) {
             todoN.push_back(current);
         }
@@ -95,7 +95,7 @@ void VarEliminator::eliminate() {
         auto bounds {guard->getBounds(N)};
         for (auto it = bounds.upperBounds.begin(); it != bounds.upperBounds.end();) {
             if (bounds.lowerBounds.contains(*it)) {
-                res.insert(subs.compose(ExprSubs{{N, *it}}));
+                res.insert(subs.compose(ArithSubs{{N, *it}}));
                 done = true;
                 break;
             }
@@ -120,13 +120,13 @@ void VarEliminator::eliminate() {
         }
         if (!done) {
             for (const auto &b: bounds.upperBounds) {
-                ExprSubs p{{N, b}};
+                ArithSubs p{{N, b}};
                 res.insert(subs.compose(p));
             }
         }
     }
 }
 
-const linked_hash_set<ExprSubs> VarEliminator::getRes() const {
+const linked_hash_set<ArithSubs> VarEliminator::getRes() const {
     return res;
 }

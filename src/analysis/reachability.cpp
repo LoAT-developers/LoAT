@@ -523,7 +523,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             return std::make_unique<Covered>();
         }
     }
-    const auto n {NumVar::next()};
+    const auto n {ArithVar::next()};
     const AccelConfig config {
         .tryNonterm = Config::Analysis::tryNonterm(),
         .n = n};

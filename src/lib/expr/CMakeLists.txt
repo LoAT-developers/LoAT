@@ -14,29 +14,29 @@ add_library(${PROJECT_NAME} STATIC
   boollit.cpp
   literal.hpp
   numvar.cpp
-  numexpression.cpp
-  numexpression.hpp
-  rel.cpp
-  rel.hpp
+  arithexpr.cpp
+  arithexpr.hpp
+  arithlit.cpp
+  arithlit.hpp
   conjunction.hpp
   boolexpr.hpp
   arith.hpp
   arith.cpp
-  booltheory.hpp
-  booltheory.cpp
+  bools.hpp
+  bools.cpp
   boolsubs.hpp
   theory.hpp
   theory.cpp
   theories.hpp
   theories.cpp
-  exprsubs.hpp
-  exprsubs.cpp
+  arithsubs.hpp
+  arithsubs.cpp
   numconstant.cpp
   exp.cpp
   mult.cpp
   add.cpp
-  numexpressionutils.hpp
-  numexpressionutils.cpp
+  arithutil.hpp
+  arithutil.cpp
 )
 
 find_library(GINAC ginac)
