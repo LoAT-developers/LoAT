@@ -119,7 +119,7 @@ BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
             },
             [&e2](const BoolExpr lhs) {
                 const auto rhs = std::get<BoolExpr>(e2);
-                return (lhs & rhs) | ((!lhs) & (!rhs));
+                return (lhs && rhs) || ((!lhs) && (!rhs));
             }
         }, e1);
 }
@@ -134,7 +134,7 @@ BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
             },
             [&e2](const BoolExpr lhs) {
                 const auto rhs = std::get<BoolExpr>(e2);
-                return (lhs & (!rhs)) | ((!lhs) & rhs);
+                return (lhs && (!rhs)) || ((!lhs) && rhs);
             }
         }, e1);
 }

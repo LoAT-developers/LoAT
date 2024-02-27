@@ -117,7 +117,7 @@ void SABMC::add_learned_clause(const Transition &accel, unsigned length) {
     if (Config::Analysis::log) std::cout << "learned transition: " << accel << std::endl;
     rule_map.emplace(accel.getId(), accel);
     blocked.emplace_back(accel.toBoolExpr()->subs(Subs::build<Arith>(n, arith::mkConst(1))), length, accel.getId());
-    step = step | encode_transition(accel);
+    step = step || encode_transition(accel);
 }
 
 std::optional<Arith::Expr> closest_bound(const linked_hash_set<Arith::Expr> &bounds, const Subs &model, const Arith::Var &x, const linked_hash_set<Arith::Expr> &chosen = {}) {
@@ -514,7 +514,7 @@ void SABMC::handle_loop(const Range &range) {
 }
 
 BoolExpr SABMC::encode_transition(const Transition &t) {
-    return t.toBoolExpr() & theories::mkEq(trace_var, arith::mkConst(t.getId()));
+    return t.toBoolExpr() && theories::mkEq(trace_var, arith::mkConst(t.getId()));
 }
 
 void SABMC::add_blocking_clauses() {
@@ -522,7 +522,7 @@ void SABMC::add_blocking_clauses() {
         const auto s {get_subs(depth, b.length)};
         // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(ArithSubs({{n, 1}}))) << std::endl;
         const auto block {!b.trans->subs(theories::compose(Subs::build<Arith>(ArithSubs({{n, arith::mkConst(1)}})), s))};
-        solver->add(block | arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id)));
+        solver->add(block || arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id)));
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
         const std::vector<BoolExpr> lits {theories::mkNeq(trace_var, arith::mkConst(b.id)), theories::mkNeq(trace_var, arith::mkConst(b.id))};

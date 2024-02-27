@@ -48,7 +48,7 @@ Rule Rule::withUpdate(const Subs &update) const {
 }
 
 Rule Rule::chain(const Rule &that) const {
-    return Rule(guard & that.getGuard()->subs(update), theories::compose(that.getUpdate(), update));
+    return Rule(guard && that.getGuard()->subs(update), theories::compose(that.getUpdate(), update));
 }
 
 const BoolExpr Rule::getGuard() const {

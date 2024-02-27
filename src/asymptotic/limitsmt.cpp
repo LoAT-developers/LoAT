@@ -141,7 +141,7 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
         const auto coefficients {getCoefficients(ex, n)};
         // add the required constraints (depending on the direction-label from the limit problem)
         if (direction == POS) {
-            solver->add(posConstraint(coefficients) | posInfConstraint(coefficients));
+            solver->add(posConstraint(coefficients) || posInfConstraint(coefficients));
         } else if (direction == POS_CONS) {
             solver->add(posConstraint(coefficients));
         } else if (direction == POS_INF) {
@@ -221,7 +221,7 @@ BExpr<Arith> encodeBoolExpr(const BExpr<Arith> expr, const ArithSubs &templateSu
         const auto lhs {std::get<ArithLit>(*lit).lhs()};
         const auto ex {templateSubs(lhs)};
         const auto coefficients {getCoefficients(ex, n)};
-        return posConstraint(coefficients) | posInfConstraint(coefficients);
+        return posConstraint(coefficients) || posInfConstraint(coefficients);
     }
 }
 

@@ -217,7 +217,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
         solver->add(BExpression::mkLit(inc));
         if (solver->check() == Unsat) {
             success = true;
-            const auto g {BExpression::mkLit(rel) & rel.subs(closed->closed_form.get<Arith>()).subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})};
+            const auto g {BExpression::mkLit(rel) && rel.subs(closed->closed_form.get<Arith>()).subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})};
             res.formula.push_back(g);
             res.proof.newline();
             res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
@@ -259,11 +259,11 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
                     return false;
                 }
                 const auto s {closed->closed_form.get<Arith>().compose(ArithSubs({{config.n, config.n->toExpr() - arith::mkConst(1)}}))};
-                g = BExpression::mkLit((!i).subs(s)) & rel.subs(s);
+                g = BExpression::mkLit((!i).subs(s)) && rel.subs(s);
                 c = BExpression::mkLit((!i));
                 res.nonterm = false;
             } else {
-                g = inc & rel;
+                g = inc && rel;
                 c = inc;
             }
             res.formula.push_back(g);
@@ -295,7 +295,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     if (c->isTriviallyFalse() || (samplePoint && !c->subs(*samplePoint)->isTriviallyTrue())) {
         return false;
     }
-    const auto g {c & lit};
+    const auto g {c && lit};
     solver->push();
     solver->add(g);
     if (solver->check() == Sat) {

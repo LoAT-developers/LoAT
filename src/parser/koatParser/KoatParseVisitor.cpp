@@ -65,7 +65,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }
-    cond = cond & theories::mkEq(ArithVar::loc_var, arith::mkConst(lhsLoc));
+    cond = cond && theories::mkEq(ArithVar::loc_var, arith::mkConst(lhsLoc));
     auto up = rhss.at(0);
     if (Config::Analysis::complexity()) {
         up.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
@@ -190,9 +190,9 @@ antlrcpp::Any KoatParseVisitor::visitFormula(KoatParser::FormulaContext *ctx) {
         const auto arg1 = any_cast<formula_type>(visit(ctx->formula(0)));
         const auto arg2 = any_cast<formula_type>(visit(ctx->formula(1)));
         if (ctx->AND()) {
-            return arg1 & arg2;
+            return arg1 && arg2;
         } else if (ctx->OR()) {
-            return arg1 | arg2;
+            return arg1 || arg2;
         }
     }
     throw std::invalid_argument("failed to parse formula " + ctx->getText());

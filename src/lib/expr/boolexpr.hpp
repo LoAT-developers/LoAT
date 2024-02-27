@@ -522,7 +522,7 @@ public:
                         const BE cand {mkOr(grandChildren)};
                         // we have     lit \/  cand
                         // search for !lit \/ !cand
-                        if (children.contains((!lit) | (!cand))) {
+                        if (children.contains((!lit) || (!cand))) {
                             // we have (lit \/ cand) /\ (!lit \/ !cand), i.e., lit <==> !cand
                             res.put(*elim, positive ? !cand : cand);
                         }
@@ -552,7 +552,7 @@ public:
                                 }
                                 grandChildren.erase(lit);
                                 const BE cand {mkAnd(grandChildren)};
-                                if (children.contains((!lit) & (!cand))) {
+                                if (children.contains((!lit) && (!cand))) {
                                     // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
                                     res.put(*elim, positive ? cand : !cand);
                                 }
@@ -850,29 +850,29 @@ template<IBaseTheory... Th>
 ConsHash<BoolExpression<Th...>, BoolJunction<Th...>, typename BoolJunction<Th...>::CacheHash, typename BoolJunction<Th...>::CacheEqual, linked_hash_set<BExpr<Th...>>, ConcatOperator> BoolJunction<Th...>::cache{};
 
 template <ITheory... Th>
-const BExpr<Th...> operator &(const BExpr<Th...> a, const BExpr<Th...> b) {
+const BExpr<Th...> operator&&(const BExpr<Th...> a, const BExpr<Th...> b) {
     const BoolExpressionSet<Th...> children{a, b};
     return BoolExpression<Th...>::mkAnd(children);
 }
 
 template <ITheory... Th>
-const BExpr<Th...> operator &(const BExpr<Th...> a, const typename Theory<Th...>::Lit &b) {
-    return a & BoolExpression<Th...>::mkLit(b);
+const BExpr<Th...> operator&&(const BExpr<Th...> a, const typename Theory<Th...>::Lit &b) {
+    return a && BoolExpression<Th...>::mkLit(b);
 }
 
 template <ITheory... Th>
-const BExpr<Th...> operator |(const BExpr<Th...> a, const BExpr<Th...> b) {
+const BExpr<Th...> operator||(const BExpr<Th...> a, const BExpr<Th...> b) {
     const BoolExpressionSet<Th...> children{a, b};
     return BoolExpression<Th...>::mkOr(children);
 }
 
 template <ITheory... Th>
-const BExpr<Th...> operator |(const BExpr<Th...> a, const typename Theory<Th...>::Lit b) {
-    return a | BoolExpression<Th...>::mkLit(b);
+const BExpr<Th...> operator||(const BExpr<Th...> a, const typename Theory<Th...>::Lit b) {
+    return a || BoolExpression<Th...>::mkLit(b);
 }
 
 template <ITheory... Th>
-const BExpr<Th...> operator !(const BExpr<Th...> a) {
+const BExpr<Th...> operator!(const BExpr<Th...> a) {
     return a->negation();
 }
 

@@ -152,7 +152,7 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
         post.insert(implicant->negation()->subs(s_current));
         post.insert(theories::mkNeq(trace_var, arith::mkConst(rule->getId())));
     }
-    return BExpression::mkOr(pre) & BExpression::mkOr(post);
+    return BExpression::mkOr(pre) && BExpression::mkOr(post);
 }
 
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
@@ -178,7 +178,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     }
     const auto nonterm_to_query = [this](const Rule &rule, const acceleration::Result &accel_res) {
         if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
-            query = query | accel_res.nonterm->certificate;
+            query = query || accel_res.nonterm->certificate;
             RuleProof nonterm_proof;
             std::stringstream ss;
             ss << "Original rule:" << std::endl;
@@ -412,7 +412,7 @@ void ABMC::analyze() {
         if (!shortcut) {
             solver->add(step->subs(s));
         } else {
-            solver->add((encode_transition(*shortcut) | step)->subs(s));
+            solver->add((encode_transition(*shortcut) || step)->subs(s));
         }
         ++depth;
         BoolExpr blocking_clause;

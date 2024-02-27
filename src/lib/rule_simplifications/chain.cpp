@@ -24,7 +24,7 @@ std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) 
 
 std::pair<Rule, Subs> Chaining::chain(const Rule &fst, const Rule &snd) {
     const auto [sigma, inverted] {computeVarRenaming(fst, snd)};
-    const auto guard {fst.getGuard() & snd.getGuard()->subs(theories::compose(sigma, fst.getUpdate()))};
+    const auto guard {fst.getGuard() && snd.getGuard()->subs(theories::compose(sigma, fst.getUpdate()))};
     const auto up {theories::compose(theories::concat(snd.getUpdate(), sigma), fst.getUpdate())};
     return {Rule(guard, up), inverted};
 }
@@ -46,5 +46,5 @@ std::tuple<Transition, Subs, Subs> Chaining::chain(const Transition &fst, const 
             renameVar(x, sigma2, inverted2);
         }
     }
-    return {Transition::build(fst.toBoolExpr()->subs(sigma1) & snd.toBoolExpr()->subs(sigma2), fst.var_map()), inverted1, inverted2};
+    return {Transition::build(fst.toBoolExpr()->subs(sigma1) && snd.toBoolExpr()->subs(sigma2), fst.var_map()), inverted1, inverted2};
 }
