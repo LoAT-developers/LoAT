@@ -18,18 +18,18 @@ public:
     Model(const typename TheTheory::Model &m): m(m) {}
 
     template <ITheory T>
-    typename T::Val get(const typename T::Var &var) const {
-        return std::get<linked_hash_map<typename T::Var, typename T::Val>>(m)[var];
+    typename T::Const get(const typename T::Var &var) const {
+        return std::get<linked_hash_map<typename T::Var, typename T::Const>>(m)[var];
     }
 
     template <ITheory T>
-    void put(const typename T::Var &var, const typename T::Val &val) {
-        std::get<linked_hash_map<typename T::Var, typename T::Val>>(m).emplace(var, val);
+    void put(const typename T::Var &var, const typename T::Const &val) {
+        std::get<linked_hash_map<typename T::Var, typename T::Const>>(m).emplace(var, val);
     }
 
     template <ITheory T>
     bool contains(const typename T::Var &var) const {
-        return std::get<linked_hash_map<typename T::Var, typename T::Val>>(m).contains(var);
+        return std::get<linked_hash_map<typename T::Var, typename T::Const>>(m).contains(var);
     }
 
 private:

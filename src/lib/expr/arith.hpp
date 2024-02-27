@@ -11,9 +11,9 @@ struct Arith {
     using Var = ArithVarPtr;
     using Subs = ArithSubs;
     using Expr = ArithExprPtr;
-    using Val = Int;
+    using Const = Int;
 
-    static Expr valToExpr(const Val &val) {
+    static Expr valToExpr(const Const &val) {
         return arith::mkConst(val);
     }
 

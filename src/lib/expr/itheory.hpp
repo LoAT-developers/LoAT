@@ -46,11 +46,11 @@ concept IBaseTheory = requires(T t) {
         requires IVar<typename T::Var>;
         requires ILit<typename T::Lit>;
         // requires IVars<typename T::Lit, typename T::Var>;
-        typename T::Val;
+        typename T::Const;
 };
 
 template <typename T>
-concept ITheory = requires(T t, typename T::Val val, typename T::Var var) {
+concept ITheory = requires(T t, typename T::Const val, typename T::Var var) {
         requires IBaseTheory<T>;
         typename T::Expr;
         typename T::Subs;
@@ -68,8 +68,8 @@ public:
     static const Theories theories;
     using Lit = std::variant<typename Th::Lit...>;
     using Var = std::variant<typename Th::Var...>;
-    using Val = std::variant<typename Th::Val...>;
-    using Model = std::tuple<linked_hash_map<typename Th::Var, typename Th::Val>...>;
+    using Const = std::variant<typename Th::Const...>;
+    using Model = std::tuple<linked_hash_map<typename Th::Var, typename Th::Const>...>;
     using Subs = std::tuple<typename Th::Subs...>;
     using Expr = std::variant<typename Th::Expr...>;
     using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expr>...>;

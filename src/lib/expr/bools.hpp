@@ -11,7 +11,7 @@
 struct BoolsBase {
     using Lit = BoolLit;
     using Var = BoolVarPtr;
-    using Val = bool;
+    using Const = bool;
 };
 
 struct Bools: public BoolsBase {
@@ -19,7 +19,7 @@ struct Bools: public BoolsBase {
     using Expr = std::shared_ptr<const BExpression>;
     using Subs = BoolSubs<Arith, Bools>;
 
-    static Expr valToExpr(const Val &val) {
+    static Expr valToExpr(const Const &val) {
         return val ? BExpression::top() : BExpression::bot();
     }
 
