@@ -42,25 +42,26 @@ concept IVar = requires(T x, unsigned idx) {
 };
 
 template <typename T>
-concept IBaseTheory = requires(T t) {
+concept IBaseTheory = requires(T t, typename T::Const val, typename T::Var var, typename T::Lit lit, linked_hash_map<typename T::Var, typename T::Const> m) {
         requires IVar<typename T::Var>;
         requires ILit<typename T::Lit>;
         // requires IVars<typename T::Lit, typename T::Var>;
         typename T::Const;
+        typename T::Expr;
+        {T::constToExpr(val)} -> std::same_as<typename T::Expr>;
+        {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
+        {T::anyValue()} -> std::same_as<typename T::Expr>;
+        {lit.eval(m)} -> std::same_as<bool>;
 };
 
 template <typename T>
 concept ITheory = requires(T t, typename T::Const val, typename T::Var var) {
         requires IBaseTheory<T>;
-        typename T::Expr;
         typename T::Subs;
-        {T::constToExpr(val)} -> std::same_as<typename T::Expr>;
-        {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
-        {T::anyValue()} -> std::same_as<typename T::Expr>;
 };
 
-template<ITheory... Th>
-class Theory {
+template<IBaseTheory... Th>
+class BaseTheory {
 
 public:
 
@@ -70,10 +71,8 @@ public:
     using Var = std::variant<typename Th::Var...>;
     using Const = std::variant<typename Th::Const...>;
     using Model = std::tuple<linked_hash_map<typename Th::Var, typename Th::Const>...>;
-    using Subs = std::tuple<typename Th::Subs...>;
     using Expr = std::variant<typename Th::Expr...>;
     using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expr>...>;
-    using Iterator = std::variant<typename Th::Subs::const_iterator...>;
 
 private:
 
@@ -116,6 +115,15 @@ public:
     static Expr anyValue(const size_t i) {
         return anyValueImpl<0>(i);
     }
+
+};
+
+template <ITheory... Th>
+class Theory: public BaseTheory<Th...> {
+
+public:
+
+    using Subs = std::tuple<typename Th::Subs...>;
 
 };
 

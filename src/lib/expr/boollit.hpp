@@ -2,6 +2,7 @@
 
 #include "boolvar.hpp"
 #include "set.hpp"
+#include "map.hpp"
 
 class BoolLit {
     BoolVarPtr var;
@@ -20,6 +21,7 @@ public:
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
     std::size_t hash() const;
+    bool eval(const linked_hash_map<BoolVarPtr, bool> &model) const;
 
 };
 

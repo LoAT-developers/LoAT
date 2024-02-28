@@ -51,8 +51,6 @@ public:
 
     linked_hash_set<ArithVarPtr> coDomainVars() const;
 
-    linked_hash_set<ArithVarPtr> allVars() const;
-
     void collectDomain(linked_hash_set<ArithVarPtr> &vars) const;
 
     void collectCoDomainVars(linked_hash_set<ArithVarPtr> &vars) const;

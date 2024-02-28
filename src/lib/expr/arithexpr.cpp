@@ -549,7 +549,7 @@ bool ArithExpr::isIntegral() const {
         });
 }
 
-Rational ArithExpr::eval(const std::function<Rational(const ArithVarPtr)> &valuation) const {
+Rational ArithExpr::eval(const std::function<Int(const ArithVarPtr)> &valuation) const {
     return apply<Rational>(
         [](const ArithConstPtr t) {
             return **t;

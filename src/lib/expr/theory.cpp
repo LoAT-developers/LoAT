@@ -22,15 +22,29 @@ ThExpr toExpr(const Var &var) {
     return TheTheory::varToExpr(var);
 }
 
+BoolSubs concat(const BoolSubs& s, const Subs &that) {
+    BoolSubs res;
+    for (const auto &p: s) {
+        res.put(p.first, subs(p.second, that));
+    }
+    return res;
+}
+
 ThExpr subs(const ThExpr &expr, const Subs &subs) {
     return std::visit(Overload{
-                          [&subs](const ArithExprPtr expr) {
+                          [&](const ArithExprPtr expr) {
                               return ThExpr(subs.get<Arith>()(expr));
                           },
-                          [&subs](const BoolExpr expr) {
-                              return ThExpr(expr->subs(subs));
+                          [&](const BoolExpr expr) {
+                              return ThExpr(theory::subs(expr, subs));
                           }
                       }, expr);
+}
+
+BoolExpr subs(const BoolExpr e, const Subs &subs) {
+    return e->map([&subs](const auto &lit) {
+        return theories::subs<Arith, Bools>(lit, subs);
+    });
 }
 
 void collectVars(const ThExpr &expr, VarSet &vars) {

@@ -8,10 +8,10 @@
 #include <variant>
 #include <vector>
 
-template <ITheory... Th>
+template <IBaseTheory... Th>
 class Conjunction : public std::vector<std::variant<typename Th::Lit...>> {
 
-    using T = Theory<Th...>;
+    using T = BaseTheory<Th...>;
     using Lit = typename T::Lit;
 
 public:
@@ -40,19 +40,19 @@ public:
 
 };
 
-template <ITheory... Th>
+template <IBaseTheory... Th>
 std::ostream& operator<<(std::ostream &s, const Conjunction<Th...> &l) {
     return s << mkAnd(l);
 }
 
-template <ITheory... Th>
+template <IBaseTheory... Th>
 Conjunction<Th...> operator&&(const Conjunction<Th...> &fst, const Conjunction<Th...> &snd) {
     Conjunction<Th...> res(fst);
     res.insert(res.end(), snd.begin(), snd.end());
     return res;
 }
 
-template <ITheory... Th>
+template <IBaseTheory... Th>
 Conjunction<Th...> operator&&(const Conjunction<Th...> &fst, const ArithLit &snd) {
     Conjunction res(fst);
     res.push_back(snd);

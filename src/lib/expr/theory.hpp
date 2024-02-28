@@ -30,6 +30,8 @@ void collectVars(const Subs &subs, VarSet &vars);
 
 VarSet vars(const Subs &e);
 
+BoolSubs concat(const BoolSubs& s, const Subs &that);
+
 template<std::size_t I = 0>
 inline void concatImpl(const Subs &fst, const Subs &snd, Subs &res) {
     if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
@@ -94,6 +96,8 @@ template <class ... Ts>
 auto apply(const Var &x, Ts... f) {
     return std::visit(Overload{f...}, x);
 }
+
+BoolExpr subs(const BoolExpr e, const Subs &subs);
 
 }
 

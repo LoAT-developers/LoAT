@@ -150,12 +150,6 @@ linked_hash_set<ArithVarPtr> ArithSubs::coDomainVars() const {
     return res;
 }
 
-linked_hash_set<ArithVarPtr> ArithSubs::allVars() const {
-    linked_hash_set<ArithVarPtr> res;
-    collectVars(res);
-    return res;
-}
-
 size_t ArithSubs::hash() const {
     return boost::hash_unordered_range(map.begin(), map.end());
 }

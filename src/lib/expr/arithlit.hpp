@@ -52,6 +52,7 @@ public:
     }
 
     std::size_t hash() const;
+    bool eval(const linked_hash_map<ArithVarPtr, Int>&) const;
 
     friend ArithLit operator!(const ArithLit &x);
     friend std::ostream& operator<<(std::ostream &s, const ArithLit &e);

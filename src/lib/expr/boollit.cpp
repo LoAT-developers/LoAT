@@ -56,3 +56,7 @@ std::ostream& operator<<(std::ostream &s, const BoolLit &l) {
     }
     return s << l.getBoolVar();
 }
+
+bool BoolLit::eval(const linked_hash_map<BoolVarPtr, bool> &model) const {
+    return negated != model[var];
+}

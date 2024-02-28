@@ -232,7 +232,7 @@ public:
 
     bool isIntegral() const;
 
-    Rational eval(const std::function<Rational(const ArithVarPtr)> &valuation) const;
+    Rational eval(const std::function<Int(const ArithVarPtr)> &valuation) const;
 
     Purrs::Expr toPurrs(purrs_var_map &) const;
 

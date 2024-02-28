@@ -15,7 +15,7 @@ class Subs {
     using VS = VarSet<Th...>;
     using Var = typename TheTheory::Var;
     using Lit = typename TheTheory::Lit;
-    using It = typename TheTheory::Iterator;
+    using It = typename std::variant<typename Th::Subs::const_iterator...>;
     using Expr = typename TheTheory::Expr;
 
     typename TheTheory::Subs t {};

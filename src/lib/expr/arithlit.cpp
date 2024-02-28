@@ -151,3 +151,7 @@ ArithLit operator!(const ArithLit &x) {
 std::ostream& operator<<(std::ostream &s, const ArithLit &rel) {
     return s << rel.l << " > 0";
 }
+
+bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
+    return l->eval([&](const auto x){return m[x];}) > 0;
+}

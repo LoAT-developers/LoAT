@@ -1,40 +1,27 @@
 #pragma once
 
+#include "itheory.hpp"
 #include "boollit.hpp"
 #include "boolvar.hpp"
-#include "boolsubs.hpp"
-#include "boolexpr.hpp"
-#include "arith.hpp"
 
 #include <memory>
+
+class BoolExpression;
+class BoolSubs;
 
 struct BoolsBase {
     using Lit = BoolLit;
     using Var = BoolVarPtr;
     using Const = bool;
+    using Expr = std::shared_ptr<const BoolExpression>;
+    static Expr constToExpr(const Const val);
+    static Expr varToExpr(const Var var);
+    static Expr anyValue();
+    static Var next();
 };
 
 struct Bools: public BoolsBase {
-    using BExpression = BoolExpression<Arith, Bools>;
-    using Expr = std::shared_ptr<const BExpression>;
-    using Subs = BoolSubs<Arith, Bools>;
-
-    static Expr constToExpr(const Const &val) {
-        return val ? BExpression::top() : BExpression::bot();
-    }
-
-    static Expr varToExpr(const Var &var) {
-        return BExpression::mkLit(Lit(var));
-    }
-
-    static Expr anyValue() {
-        return BExpression::bot();
-    }
-
-    static Var next() {
-        return BoolVar::next();
-    }
-
+    using Subs = BoolSubs;
 };
 
 namespace bools {

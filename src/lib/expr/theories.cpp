@@ -1,13 +1,13 @@
 #include "theories.hpp"
 
 const BoolExpr top() {
-    return BoolExpression<Arith, Bools>::top();
+    return BoolExpression::top();
 }
 
 const BoolExpr bot() {
-    return BoolExpression<Arith, Bools>::bot();
+    return BoolExpression::bot();
 }
 
 Bools::Expr bools::mkLit(const TheTheory::Lit &lit) {
-    return BoolExpression<Arith, Bools>::mkLit(lit);
+    return BoolExpression::mkLit(lit);
 }

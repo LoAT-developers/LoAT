@@ -8,10 +8,10 @@
 
 namespace theories {
 
-template <class VS, class VSI, class Var, ITheory... Th>
+template <class VS, class VSI, class Var, IBaseTheory... Th>
 class ThSet {
 
-    using TheTheory = Theory<Th...>;
+    using TheTheory = BaseTheory<Th...>;
     using Self = ThSet<VS, VSI, Var, Th...>;
 
     VS t{};
@@ -333,15 +333,15 @@ public:
 
 };
 
-template <class VS, class VSI, class Var, ITheory... Th>
+template <class VS, class VSI, class Var, IBaseTheory... Th>
 std::ostream& operator<<(std::ostream &s, const ThSet<VS, VSI, Var, Th...> &set) {
     return set.print(s);
 }
 
-template<ITheory... Th>
-using VarSet = ThSet<std::tuple<linked_hash_set<typename Th::Var>...>, std::variant<typename linked_hash_set<typename Th::Var>::const_iterator...>, typename Theory<Th...>::Var, Th...>;
+template<IBaseTheory... Th>
+using VarSet = ThSet<std::tuple<linked_hash_set<typename Th::Var>...>, std::variant<typename linked_hash_set<typename Th::Var>::const_iterator...>, typename BaseTheory<Th...>::Var, Th...>;
 
-template<ITheory... Th>
-using LitSet = ThSet<std::tuple<linked_hash_set<typename Th::Lit>...>, std::variant<typename linked_hash_set<typename Th::Lit>::const_iterator...>, typename Theory<Th...>::Lit, Th...>;
+template<IBaseTheory... Th>
+using LitSet = ThSet<std::tuple<linked_hash_set<typename Th::Lit>...>, std::variant<typename linked_hash_set<typename Th::Lit>::const_iterator...>, typename BaseTheory<Th...>::Lit, Th...>;
 
 }
