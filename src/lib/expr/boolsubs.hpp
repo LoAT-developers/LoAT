@@ -2,7 +2,6 @@
 
 #include "boolvar.hpp"
 #include "boolexpr.hpp"
-#include "itheory.hpp"
 #include "linkedhashmap.hpp"
 #include "theory.hpp"
 

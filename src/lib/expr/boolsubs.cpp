@@ -10,7 +10,7 @@ void BoolSubs::put(const BoolVarPtr key, const BoolExprPtr val) {
 
 BoolExprPtr BoolSubs::get(const BoolVarPtr var) const {
     const auto res {map.get(var)};
-    return res ? *res : BoolExpr::mkLit(BoolLit(var));
+    return res ? *res : bools::mkLit(BoolLit(var));
 }
 
 BoolExprPtr BoolSubs::subs(const BoolLit &lit) const {
@@ -37,7 +37,7 @@ BoolExprPtr BoolSubs::operator()(const BoolExprPtr e) const {
         for (const auto &c: e->getChildren()) {
             children.push_back((*this)(c));
         }
-        return e->isAnd() ? BoolExpr::mkAnd(children) : BoolExpr::mkOr(children);
+        return e->isAnd() ? bools::mkAnd(children) : bools::mkOr(children);
     } else {
         return e;
     }
@@ -80,7 +80,7 @@ bool BoolSubs::changes(const BoolVarPtr key) const {
     if (!contains(key)) {
         return false;
     }
-    return BoolExpr::mkLit(BoolLit(key)) != map.at(key);
+    return bools::mkLit(BoolLit(key)) != map.at(key);
 }
 
 linked_hash_set<BoolVarPtr> BoolSubs::domain() const {

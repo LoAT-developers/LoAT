@@ -396,7 +396,7 @@ private:
                 if constexpr (std::same_as<typename T::Var, Bools::Var>) {
                     return this->template get<T>().subs(std::get<I>(lit));
                 } else {
-                    return (*this)(BoolExpr::mkLit(std::get<I>(lit)));
+                    return (*this)(bools::mkLit(std::get<I>(lit)));
                 }
             } else {
                 return subsImpl<I+1>(lit);
