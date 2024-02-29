@@ -10,7 +10,7 @@ LimitProblem::LimitProblem()
 }
 
 
-LimitProblem::LimitProblem(const Guard &normalizedGuard, const Arith::Expr cost)
+LimitProblem::LimitProblem(const Conjunction &normalizedGuard, const Arith::Expr cost)
     : LimitProblem() {
     for (const auto &lit : normalizedGuard) {
         addExpression(InftyExpression(std::get<ArithLit>(lit).lhs(), POS));
@@ -20,7 +20,7 @@ LimitProblem::LimitProblem(const Guard &normalizedGuard, const Arith::Expr cost)
 }
 
 
-LimitProblem::LimitProblem(const Guard &normalizedGuard)
+LimitProblem::LimitProblem(const Conjunction &normalizedGuard)
     : variableN(ArithVar::next()), unsolvable(false), log(new std::ostringstream()) {
     for (const auto &lit : normalizedGuard) {
         addExpression(InftyExpression(std::get<ArithLit>(lit).lhs(), POS));

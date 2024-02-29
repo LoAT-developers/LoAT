@@ -111,7 +111,7 @@ std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
         var_renaming = subs[i].project(rule.vars()).compose(var_renaming);
     }
     auto vars {loop->vars()};
-    theory::collectCoDomainVars(var_renaming, vars);
+    var_renaming.collectCoDomainVars(vars);
     const auto model {solver->model(vars).composeBackwards(var_renaming)};
     const auto imp {model.syntacticImplicant(loop->getGuard())};
     const auto implicant {loop->withGuard(imp)};

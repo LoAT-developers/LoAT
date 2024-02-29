@@ -2,13 +2,9 @@
 
 #include "smt.hpp"
 #include "swinecontext.hpp"
+#include "theory.hpp"
 
 class Swine: public Smt {
-
-    using TheTheory = Theory<Arith, Bools>;
-    using BoolExpr = BExpr;
-    using BoolExprSet = BoolExpressionSet;
-    using Lit = typename TheTheory::Lit;
 
 public:
 

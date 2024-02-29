@@ -5,23 +5,18 @@
 #include "arith.hpp"
 #include "bools.hpp"
 #include "boolsubs.hpp"
+#include "theory.hpp"
 
 #include <boost/functional/hash.hpp>
 #include <utility>
 
-namespace theory {
-
 class Subs {
 
-    using TheTheory = Theory<Arith, Bools>;
-    using VS = theories::ThSet<Arith::Var, Bools::Var>;
-    using Var = typename TheTheory::Var;
-    using Lit = typename TheTheory::Lit;
     using It = std::variant<Arith::Subs::const_iterator, Bools::Subs::const_iterator>;
-    using Expr = typename TheTheory::Expr;
 
     typename TheTheory::Subs t {};
-    static const size_t variant_size = std::variant_size_v<Expr>;
+
+    static const size_t variant_size = std::variant_size_v<ThExpr>;
 
 public:
 
@@ -137,7 +132,7 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void projectImpl(Subs& res, const VS &vars) const {
+    inline void projectImpl(Subs& res, const VarSet &vars) const {
         if constexpr (I < variant_size) {
             std::get<I>(res.t) = std::get<I>(t).project(vars.template get<I>());
             projectImpl<I+1>(res, vars);
@@ -146,7 +141,7 @@ private:
 
 public:
 
-    Subs project(const VS &vars) const;
+    Subs project(const VarSet &vars) const;
 
 private:
 
@@ -169,7 +164,7 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void putImpl(const Var &x, const Expr &y) {
+    inline void putImpl(const Var &x, const ThExpr &y) {
         if constexpr (I < variant_size) {
             if (x.index() == I) {
                 std::get<I>(t).put(std::get<I>(x), std::get<I>(y));
@@ -181,7 +176,7 @@ private:
 
 public:
 
-    void put(const Var &x, const Expr &y);
+    void put(const Var &x, const ThExpr &y);
 
     template <ITheory T>
     void put(const typename T::Var &var, const typename T::Expr &expr) {
@@ -198,8 +193,6 @@ public:
         return subs;
     }
 
-    // Subs(typename Th::Subs... subs): t(subs...) {}
-
     template <ITheory T>
     static Subs build(typename T::Subs subs) {
         Subs res;
@@ -210,7 +203,7 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void domainImpl(VS &res) const {
+    inline void domainImpl(VarSet &res) const {
         if constexpr (I < variant_size) {
             res.template get<I>() = std::get<I>(t).domain();
             domainImpl<I+1>(res);
@@ -219,12 +212,12 @@ private:
 
 public:
 
-    VS domain() const;
+    VarSet domain() const;
 
 private:
 
     template<std::size_t I = 0>
-    inline Expr getImpl(const Var &var) const {
+    inline ThExpr getImpl(const Var &var) const {
         if constexpr (I >= variant_size) {
             throw std::invalid_argument("variable not found");
         } else if (var.index() == I) {
@@ -236,7 +229,7 @@ private:
 
 public:
 
-    Expr get(const Var &var) const;
+    ThExpr get(const Var &var) const;
 
     template <ITheory T>
     typename T::Expr get(const typename T::Var &var) const {
@@ -296,7 +289,7 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void eraseImpl(const VS &xs) {
+    inline void eraseImpl(const VarSet &xs) {
         if constexpr (I < variant_size) {
             auto &s = std::get<I>(t);
             for (const auto &x: xs.template get<I>()) {
@@ -308,7 +301,7 @@ private:
 
 public:
 
-    void erase(const VS &xs);
+    void erase(const VarSet &xs);
 
 private:
 
@@ -461,12 +454,47 @@ public:
 
     Subs compose(const Subs &that) const;
 
+    void collectCoDomainVars(VarSet &res) const;
+    void collectVars(VarSet &vars) const;
+    VarSet vars() const;
+    VarSet coDomainVars() const;
+
+    static Var first(const Pair &p);
+    static ThExpr second(const Pair &p);
+
     static Subs Empty;
 
 };
 
-typename Theory<Arith, Bools>::Var first(const typename Subs::Pair &p);
-typename Theory<Arith, Bools>::Expr second(const typename Subs::Pair &p);
 std::ostream& operator<<(std::ostream &s, const Subs &subs);
+
+
+namespace std {
+
+template<>
+struct tuple_size<Subs::Pair> {
+    static constexpr size_t value = 2;
+};
+
+
+template<>
+struct tuple_element<0, Subs::Pair> {
+    using type = Var;
+};
+
+template<>
+struct tuple_element<1, Subs::Pair> {
+    using type = ThExpr;
+};
+
+template<std::size_t Index>
+std::tuple_element_t<Index, Subs::Pair> get(const Subs::Pair& p) {
+    if constexpr (Index == 0) {
+        return Subs::first(p);
+    }
+    if constexpr (Index == 1) {
+        return Subs::second(p);
+    }
+}
 
 }

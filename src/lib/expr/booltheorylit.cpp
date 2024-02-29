@@ -1,5 +1,5 @@
 #include "boolexpr.hpp"
-#include "literal.hpp"
+#include "theory.hpp"
 
 ConsHash<BoolExpression, BoolTheoryLit, typename BoolTheoryLit::CacheHash, typename BoolTheoryLit::CacheEqual, typename BoolTheoryLit::Lit> BoolTheoryLit::cache;
 
@@ -8,7 +8,7 @@ bool BoolTheoryLit::CacheEqual::operator()(const std::tuple<Lit> &args1, const s
 }
 
 size_t BoolTheoryLit::CacheHash::operator()(const std::tuple<Lit> &args) const noexcept {
-    return theories::hash(std::get<0>(args));
+    return theory::hash(std::get<0>(args));
 }
 
 BoolTheoryLit::BoolTheoryLit(const Lit &lit) : lit(lit) {}
@@ -38,7 +38,7 @@ BoolExpressionSet BoolTheoryLit::getChildren() const {
 }
 
 const BExpr BoolTheoryLit::negation() const {
-    return BoolExpression::mkLit(theories::negate(lit));
+    return BoolExpression::mkLit(theory::negate(lit));
 }
 
 bool BoolTheoryLit::forall(const std::function<bool(const Lit&)> &pred) const {

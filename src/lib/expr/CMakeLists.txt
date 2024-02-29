@@ -13,8 +13,6 @@ add_library(${PROJECT_NAME} STATIC
   boolvar.cpp
   boollit.hpp
   boollit.cpp
-  literal.hpp
-  literal.cpp
   numvar.cpp
   arithexpr.cpp
   arithexpr.hpp
@@ -32,8 +30,6 @@ add_library(${PROJECT_NAME} STATIC
   bools.cpp
   boolsubs.hpp
   boolsubs.cpp
-  theories.hpp
-  theories.cpp
   theory.hpp
   theory.cpp
   arithsubs.hpp

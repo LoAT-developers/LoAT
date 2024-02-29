@@ -225,7 +225,7 @@ void Reachability::update_cpx() {
     if (max_cpx <= cpx && !cost->hasVarWith([](const auto &x){return theory::isTempVar(x);})) {
         return;
     }
-    const auto res = AsymptoticBound::determineComplexity(resolvent.getGuard()->conjunctionToGuard(), cost, false, cpx);
+    const auto res = AsymptoticBound::determineComplexity(Conjunction::fromBoolExpr(resolvent.getGuard()), cost, false, cpx);
     if (res.cpx > cpx) {
         cpx = res.cpx;
         std::cout << cpx.toWstString() << std::endl;
@@ -428,7 +428,7 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
 
 Automaton Reachability::get_language(const Step &step) {
     if (is_orig_clause(step.clause_idx)) {
-        return redundancy->get_singleton_language(step.clause_idx, step.implicant->conjunctionToGuard());
+        return redundancy->get_singleton_language(step.clause_idx, Conjunction::fromBoolExpr(step.implicant));
     } else {
         return *redundancy->get_language(step.clause_idx);
     }
@@ -461,7 +461,7 @@ std::pair<Rule, Model> Reachability::build_loop(const int backlink) {
     }
     auto vars {loop->vars()};
     var_renaming = var_renaming.project(vars);
-    theory::collectCoDomainVars(var_renaming, vars);
+    var_renaming.collectCoDomainVars(vars);
     const auto model {solver->model(vars).composeBackwards(var_renaming)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;

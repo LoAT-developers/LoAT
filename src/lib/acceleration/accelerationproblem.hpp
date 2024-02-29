@@ -4,7 +4,7 @@
 
 #include "rule.hpp"
 #include "smt.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "proof.hpp"
 #include "recurrence.hpp"
 #include "accelconfig.hpp"

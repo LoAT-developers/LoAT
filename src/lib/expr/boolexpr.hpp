@@ -2,7 +2,6 @@
 
 #include "itheory.hpp"
 #include "thset.hpp"
-#include "conjunction.hpp"
 #include "arithlit.hpp"
 #include "conshash.hpp"
 #include "set.hpp"
@@ -32,9 +31,8 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression> {
     using Var = typename T::Var;
     using Lit = typename T::Lit;
     using Model = typename T::Model;
-    using VS = theories::ThSet<Arith::Var, Bools::Var>;
-    using LS = theories::ThSet<Arith::Lit, Bools::Lit>;
-    using G = Conjunction;
+    using VS = theory::ThSet<Arith::Var, Bools::Var>;
+    using LS = theory::ThSet<Arith::Lit, Bools::Lit>;
     using BE = BExpr;
     using BES = BoolExpressionSet;
 
@@ -142,7 +140,6 @@ public:
     LS lits() const;
     bool isLinear() const;
     bool isPoly() const;
-    G conjunctionToGuard() const;
 
 };
 
@@ -152,9 +149,8 @@ class BoolTheoryLit: public BoolExpression {
     using T = BaseTheory<Arith, Bools>;
     using Var = typename T::Var;
     using Lit = typename T::Lit;
-    using VS = theories::ThSet<Arith::Var, Bools::Var>;
-    using LS = theories::ThSet<Arith::Lit, Bools::Lit>;
-    using G = Conjunction;
+    using VS = theory::ThSet<Arith::Var, Bools::Var>;
+    using LS = theory::ThSet<Arith::Lit, Bools::Lit>;
     using BE = BExpr;
     using BES = BoolExpressionSet;
 
@@ -195,9 +191,8 @@ class BoolJunction: public BoolExpression {
     using T = BaseTheory<Arith, Bools>;
     using Var = typename T::Var;
     using Lit = typename T::Lit;
-    using VS = theories::ThSet<Arith::Var, Bools::Var>;
-    using LS = theories::ThSet<Arith::Lit, Bools::Lit>;
-    using G = Conjunction;
+    using VS = theory::ThSet<Arith::Var, Bools::Var>;
+    using LS = theory::ThSet<Arith::Lit, Bools::Lit>;
     using BE = BExpr;
     using BES = BoolExpressionSet;
 
@@ -241,3 +236,10 @@ const BExpr operator||(const BExpr a, const BExpr b);
 const BExpr operator!(const BExpr a);
 
 std::ostream& operator<<(std::ostream &s, const BExpr e);
+
+template<>
+struct std::hash<BExpr> {
+    std::size_t operator()(const BExpr x) const noexcept {
+        return boost::hash_value(x);
+    }
+};

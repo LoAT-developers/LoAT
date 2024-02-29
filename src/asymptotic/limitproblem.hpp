@@ -7,7 +7,8 @@
 #include <memory>
 
 #include "arith.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
+#include "conjunction.hpp"
 #include "inftyexpression.hpp"
 #include "limitvector.hpp"
 
@@ -27,12 +28,12 @@ public:
      *                        of the form t > 0
      * @param cost a term
      */
-    LimitProblem(const Guard &normalizedGuard, const Arith::Expr cost);
+    LimitProblem(const Conjunction &normalizedGuard, const Arith::Expr cost);
 
     /**
      * Creates the initial LimitProblem without any cost term.
      */
-    LimitProblem(const Guard &normalizedGuard);
+    LimitProblem(const Conjunction &normalizedGuard);
 
     // copy constructor and assignment operator
     LimitProblem(const LimitProblem &other);

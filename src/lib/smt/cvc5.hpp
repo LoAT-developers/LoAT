@@ -2,15 +2,11 @@
 
 #include "smt.hpp"
 #include "cvc5context.hpp"
+#include "theory.hpp"
 
 #include <cvc5/cvc5.h>
 
 class CVC5 : public Smt {
-
-    using TheTheory = Theory<Arith, Bools>;
-    using BoolExpr = BExpr;
-    using BoolExprSet = BoolExpressionSet;
-    using Lit = typename TheTheory::Lit;
 
 public:
     CVC5();

@@ -8,7 +8,7 @@
 #include "limitproblem.hpp"
 #include "proof.hpp"
 #include "complexity.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 class AsymptoticBound {
 private:
@@ -25,7 +25,7 @@ private:
         int inftyVars;
     };
 
-    AsymptoticBound(Guard guard, Arith::Expr cost, bool finalCheck);
+    AsymptoticBound(Conjunction guard, Arith::Expr cost, bool finalCheck);
 
     void initLimitVectors();
     void createInitialLimitProblem();
@@ -53,7 +53,7 @@ private:
     bool trySubstitutingVariable();
     bool trySmtEncoding(Complexity currentRes);
 
-    const Guard guard;
+    const Conjunction guard;
     const Arith::Expr cost;
     bool finalCheck;
     ComplexityResult bestComplexity {};
@@ -96,7 +96,7 @@ public:
      * @param varMan the VariableManager instance is needed to get information about free variables
      * @param finalCheck enables more sophisticated backtracking and uses Timeout::hard
      */
-    static Result determineComplexity(const Guard &guard,
+    static Result determineComplexity(const Conjunction &guard,
                                       const Arith::Expr &cost,
                                       bool finalCheck = false,
                                       const Complexity &currentRes = Complexity::Const);

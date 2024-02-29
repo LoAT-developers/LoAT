@@ -18,6 +18,8 @@
 #include "guardtoolbox.hpp"
 #include "arithlit.hpp"
 #include "theory.hpp"
+#include "subs.hpp"
+#include "impliedequalities.hpp"
 
 #include <unordered_set>
 
@@ -45,9 +47,9 @@ ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e,
     return res;
 }
 
-ResultBase<BSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr e) {
-    ResultBase<BSubs, Proof> res;
-    const auto equiv {theory::impliedEqualities(e)};
+ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr e) {
+    ResultBase<BoolSubs, Proof> res;
+    const auto equiv {impliedEqualities(e)};
     if (!equiv.empty()) {
         res = equiv.get<Bools>();
         res.append(stringstream() << "propagated equivalences: " << equiv << std::endl);

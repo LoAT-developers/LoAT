@@ -5,7 +5,7 @@
 #include <optional>
 #include <ostream>
 
-namespace theories {
+namespace theory {
 
 template <class... S>
 class ThSet {

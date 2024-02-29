@@ -1,5 +1,5 @@
 #include "boolexpr.hpp"
-#include "literal.hpp"
+#include "theory.hpp"
 
 const BExpr BoolExpression::from_cache(const BES &children, ConcatOperator op) {
     return BoolJunction::from_cache(children, op);
@@ -21,7 +21,7 @@ const BExpr BoolExpression::mkLit(const Lit &lit) {
 
 bool BoolExpression::isTriviallyTrue() const {
     if (isTheoryLit()) {
-        return theories::isTriviallyTrue(*getTheoryLit());
+        return theory::isTriviallyTrue(*getTheoryLit());
     } else {
         const auto children = getChildren();
         if (isAnd()) {
@@ -36,7 +36,7 @@ bool BoolExpression::isTriviallyTrue() const {
 
 bool BoolExpression::isTriviallyFalse() const {
     if (isTheoryLit()) {
-        return theories::isTriviallyFalse(*getTheoryLit());
+        return theory::isTriviallyFalse(*getTheoryLit());
     } else {
         const auto children = getChildren();
         if (isAnd()) {
@@ -230,7 +230,7 @@ BExpr BoolExpression::map(const std::function<BE(const Lit&)> &f) const {
 
 void BoolExpression::collectVars(VS &vars) const {
     iter([&](const auto &lit) {
-        theories::collectVars(lit, vars);
+        theory::collectVars(lit, vars);
     });
 }
 
@@ -288,11 +288,6 @@ bool BoolExpression::isPoly() const {
                 }
             }, lit);
     });
-}
-
-BoolExpression::G BoolExpression::conjunctionToGuard() const {
-    const LS &lits = this->lits();
-    return G(lits.begin(), lits.end());
 }
 
 const BExpr operator&&(const BExpr a, const BExpr b) {

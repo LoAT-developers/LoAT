@@ -26,7 +26,7 @@ Rule::Rule(const BoolExpr guard, const Subs &update): guard(guard), update(updat
 
 void Rule::collectVars(VarSet &vars) const {
     guard->collectVars(vars);
-    theory::collectVars(update, vars);
+    update.collectVars(vars);
 }
 
 VarSet Rule::vars() const {

@@ -4,27 +4,24 @@
 #include "boolexpr.hpp"
 #include "itheory.hpp"
 #include "map.hpp"
+#include "theory.hpp"
 
 #include <boost/functional/hash.hpp>
 
 class BoolSubs {
 
-    using BoolExpr = BExpr;
-    using T = Theory<Arith, Bools>;
-    using VarSet = theories::ThSet<Arith::Var, Bools::Var>;
-
-    linked_hash_map<BoolVarPtr, BoolExpr> map{};
+    linked_hash_map<BoolVarPtr, BExpr> map{};
 
 public:
 
-    typedef typename linked_hash_map<BoolVarPtr, BoolExpr>::const_iterator const_iterator;
+    typedef typename linked_hash_map<BoolVarPtr, BExpr>::const_iterator const_iterator;
 
     BoolSubs();
-    BoolSubs(const BoolVarPtr key, const BoolExpr val);
-    void put(const BoolVarPtr key, const BoolExpr val);
-    BoolExpr get(const BoolVarPtr var) const;
-    BoolExpr subs(const BoolLit &lit) const;
-    BoolExpr operator()(const BoolExpr e) const;
+    BoolSubs(const BoolVarPtr key, const BExpr val);
+    void put(const BoolVarPtr key, const BExpr val);
+    BExpr get(const BoolVarPtr var) const;
+    BExpr subs(const BoolLit &lit) const;
+    BExpr operator()(const BExpr e) const;
     bool contains(const BoolVarPtr var) const;
     BoolSubs unite(const BoolSubs &t) const;
     BoolSubs project(const linked_hash_set<BoolVarPtr> &vars) const;

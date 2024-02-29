@@ -18,7 +18,7 @@
 #pragma once
 
 #include "arithexpr.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "result.hpp"
 
 #include <vector>
@@ -56,7 +56,7 @@ namespace GuardToolbox {
      */
     ResultBase<ArithSubs, Proof> propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow);
 
-    ResultBase<BSubs, Proof> propagateBooleanEqualities(const BoolExpr e);
+    ResultBase<BoolSubs, Proof> propagateBooleanEqualities(const BoolExpr e);
 
     /**
      * Tries to replace inequalities using their transitive closure,

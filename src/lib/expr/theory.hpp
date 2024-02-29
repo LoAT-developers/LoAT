@@ -1,69 +1,87 @@
 #pragma once
 
-#include "theories.hpp"
+#include "itheory.hpp"
+#include "arith.hpp"
+#include "bools.hpp"
+#include "boolexpr.hpp"
+
+#include <variant>
+#include <tuple>
+
+using TheTheory = Theory<Arith, Bools>;
+using BoolExpr = BExpr;
+using BoolExprSet = BoolExpressionSet;
+using Lit = TheTheory::Lit;
+using Var = TheTheory::Var;
+using ThExpr = TheTheory::Expr;
+using Theories = TheTheory::Theories;
+using VarSet = theory::ThSet<Arith::Var, Bools::Var>;
+using LitSet = theory::ThSet<Arith::Lit, Bools::Lit>;
+
+const BoolExpr top();
+const BoolExpr bot();
+
+namespace bools {
+
+template <class Lits>
+Bools::Expr mkAndFromLits(const Lits &lits) {
+    return BoolExpression::mkAndFromLits(lits);
+}
+
+Bools::Expr mkAndFromLits(const std::initializer_list<Lit> &lits);
+
+template <class Children>
+Bools::Expr mkAnd(const Children &lits) {
+    return BoolExpression::mkAnd(lits);
+}
+
+template <class Lits>
+Bools::Expr mkOrFromLits(const Lits &lits) {
+    return BoolExpression::mkOrFromLits(lits);
+}
+
+template <class Children>
+Bools::Expr mkOr(const Children &lits) {
+    return BoolExpression::mkOr(lits);
+}
+
+Bools::Expr mkLit(const TheTheory::Lit &lit);
+
+}
 
 namespace theory {
 
 std::string getName(const Var &var);
-
 bool isTempVar(const Var &var);
-
 bool isProgVar(const Var &var);
-
 Var next(const Var &var);
-
 ThExpr toExpr(const Var &var);
-
 void collectVars(const ThExpr &expr, VarSet &vars);
-
 VarSet vars(const ThExpr &e);
-
-using Pair = Subs::Pair;
-
-Var first(const Pair &p);
-
-ThExpr second(const Pair &p);
-
-void collectVars(const Subs &subs, VarSet &vars);
-
-VarSet vars(const Subs &e);
-
-template<std::size_t I = 0>
-inline void collectCoDomainVars(const Subs &subs, VarSet &res) {
-    if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-        if constexpr (theories::is<I, Bools>()) {
-            subs.get<I>().collectCoDomainVars(res);
-        } else {
-            subs.get<I>().collectCoDomainVars(res.get<I>());
-        }
-        collectCoDomainVars<I+1>(subs, res);
-    }
-}
-
-VarSet coDomainVars(const Subs &subs);
-
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2);
-
 BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2);
-
 Arith theory(const ArithVarPtr&);
-
 Bools theory(const BoolVarPtr&);
-
 Arith theory(const ArithExprPtr&);
-
 Bools theory(const BoolExpr&);
+bool isLinear(const Lit &lit);
+bool isPoly(const Lit &lit);
+void collectVars(const Lit &lit, VarSet &s);
+VarSet vars(const Lit &lit);
+bool isTriviallyTrue(const Lit &lit);
+bool isTriviallyFalse(const Lit &lit);
+Lit negate(const Lit &lit);
+size_t hash(const Lit lit);
 
 template <class ... Ts>
 auto apply(const Var &x, Ts... f) {
     return std::visit(Overload{f...}, x);
 }
 
-bool isLinear(const Lit &lit);
-
-bool isPoly(const Lit &lit);
-
-Subs impliedEqualities(const BoolExpr e);
+template <size_t I, ITheory T>
+constexpr bool is() {
+    return std::same_as<std::tuple_element_t<I, TheTheory::Theories>, T>;
+}
 
 }
 
@@ -72,33 +90,3 @@ std::ostream& operator<<(std::ostream &s, const Var &e);
 std::ostream& operator<<(std::ostream &s, const ThExpr &e);
 
 std::ostream& operator<<(std::ostream &s, const Lit &e);
-
-namespace std {
-
-template<>
-struct tuple_size<Subs::Pair> {
-    static constexpr size_t value = 2;
-};
-
-
-template<>
-struct tuple_element<0, Subs::Pair> {
-    using type = Var;
-};
-
-template<>
-struct tuple_element<1, Subs::Pair> {
-    using type = ThExpr;
-};
-
-template<std::size_t Index>
-std::tuple_element_t<Index, Subs::Pair> get(const Subs::Pair& p) {
-    if constexpr (Index == 0) {
-        return theory::first(p);
-    }
-    if constexpr (Index == 1) {
-        return theory::second(p);
-    }
-}
-
-}

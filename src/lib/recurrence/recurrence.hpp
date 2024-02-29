@@ -19,7 +19,8 @@
 
 #include <optional>
 
-#include "theories.hpp"
+#include "theory.hpp"
+#include "subs.hpp"
 
 class Recurrence {
 private:

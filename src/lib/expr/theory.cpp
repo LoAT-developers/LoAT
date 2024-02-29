@@ -1,7 +1,28 @@
 #include "theory.hpp"
-#include "literal.hpp"
+
+const BoolExpr top() {
+    return BoolExpression::top();
+}
+
+const BoolExpr bot() {
+    return BoolExpression::bot();
+}
+
+namespace bools {
+
+Bools::Expr mkLit(const TheTheory::Lit &lit) {
+    return BoolExpression::mkLit(lit);
+}
+
+Bools::Expr mkAndFromLits(const std::initializer_list<Lit> &lits) {
+    return BoolExpression::mkAndFromLits(lits);
+}
+
+}
 
 namespace theory {
+
+constexpr size_t num_theories {std::tuple_size_v<TheTheory::Theories>};
 
 std::string getName(const Var &var) {
     return std::visit([](const auto &var){return var->getName();}, var);
@@ -37,25 +58,6 @@ void collectVars(const ThExpr &expr, VarSet &vars) {
 VarSet vars(const ThExpr &e) {
     VarSet res;
     collectVars(e, res);
-    return res;
-}
-
-VarSet vars(const Subs &e) {
-    VarSet res;
-    collectVars(e, res);
-    return res;
-}
-
-void collectVars(const Subs &subs, VarSet &vars) {
-    for (const auto &[x,y]: subs) {
-        vars.insert(x);
-        theory::collectVars(y, vars);
-    }
-}
-
-VarSet coDomainVars(const Subs &subs) {
-    VarSet res;
-    collectCoDomainVars(subs, res);
     return res;
 }
 
@@ -107,7 +109,7 @@ Bools theory(const BoolExpr&) {
 
 template <size_t I = 0>
 inline bool isLinearImpl(const Lit &lit) {
-    if constexpr (I < std::variant_size_v<ThExpr>) {
+    if constexpr (I < num_theories) {
         if (lit.index() == I) {
             return std::get<I>(lit).isLinear();
         }
@@ -123,7 +125,7 @@ bool isLinear(const Lit &lit) {
 
 template <size_t I = 0>
 inline bool isPolyImpl(const Lit &lit) {
-    if constexpr (I < std::variant_size_v<ThExpr>) {
+    if constexpr (I < num_theories) {
         if (lit.index() == I) {
             return std::get<I>(lit).isPoly();
         }
@@ -137,92 +139,85 @@ bool isPoly(const Lit &lit) {
     return isPolyImpl<0>(lit);
 }
 
-Subs impliedEqualities(const BoolExpr e) {
-    Subs res;
-    std::vector<BoolExpr> todo;
-    const auto find_elim = [](const BoolExpr &c) {
-        std::optional<BoolVarPtr> elim;
-        const auto vars {c->vars().template get<BoolVarPtr>()};
-        for (const auto &x: vars) {
-            if (x->isTempVar()) {
-                if (elim) {
-                    return std::optional<BoolVarPtr>{};
-                } else {
-                    elim = x;
-                }
-            }
+template<std::size_t I = 0>
+inline void collectVarsImpl(const Lit &lit, VarSet &s) {
+    if constexpr (I < num_theories) {
+        if (lit.index() == I) {
+            return std::get<I>(lit).collectVars(s.template get<I>());
+        } else {
+            return collectVarsImpl<I+1>(lit, s);
         }
-        return elim;
-    };
-    if (e->isAnd()) {
-        const auto children {e->getChildren()};
-        for (const auto &c: children) {
-            if (c->isOr()) {
-                const auto elim {find_elim(c)};
-                if (elim) {
-                    auto grandChildren {c->getChildren()};
-                    auto lit {bools::mkLit(BoolLit(*elim))};
-                    bool positive {grandChildren.contains(lit)};
-                    if (!positive) {
-                        lit = !lit;
-                        if (!grandChildren.contains(lit)) {
-                            continue;
-                        }
-                    }
-                    grandChildren.erase(lit);
-                    const BoolExpr cand {bools::mkOr(grandChildren)};
-                    // we have     lit \/  cand
-                    // search for !lit \/ !cand
-                    if (children.contains((!lit) || (!cand))) {
-                        // we have (lit \/ cand) /\ (!lit \/ !cand), i.e., lit <==> !cand
-                        res.put(*elim, positive ? !cand : cand);
-                    }
-                }
-            }
-        }
-        todo.insert(todo.end(), children.begin(), children.end());
     } else {
-        todo.push_back(e);
+        throw std::logic_error("unknown theory");
     }
-    for (const auto &current: todo) {
-        if (current->isOr()) {
-            const auto children {current->getChildren()};
-            if (children.size() == 2) {
-                for (const auto &c: children) {
-                    if (c->isAnd()) {
-                        const auto elim {find_elim(c)};
-                        if (elim) {
-                            auto grandChildren {c->getChildren()};
-                            auto lit {bools::mkLit(BoolLit(*elim))};
-                            bool positive {grandChildren.contains(lit)};
-                            if (!positive) {
-                                lit = !lit;
-                                if (!grandChildren.contains(lit)) {
-                                    continue;
-                                }
-                            }
-                            grandChildren.erase(lit);
-                            const BoolExpr cand {bools::mkAnd(grandChildren)};
-                            if (children.contains((!lit) && (!cand))) {
-                                // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
-                                res.put(*elim, positive ? cand : !cand);
-                            }
-                        }
-                    }
-                }
-            }
-        } else if (current->isTheoryLit()) {
-            const auto lit {*current->getTheoryLit()};
-            if (std::holds_alternative<BoolLit>(lit)) {
-                const auto &bool_lit {std::get<BoolLit>(lit)};
-                const auto var {bool_lit.getBoolVar()};
-                if (var->isTempVar()) {
-                    res.put(var, bool_lit.isNegated() ? bot() : top());
-                }
-            }
-        }
-    }
+}
+
+
+void collectVars(const Lit &lit, VarSet &s) {
+    collectVarsImpl<0>(lit, s);
+}
+
+VarSet vars(const Lit &lit) {
+    VarSet res;
+    collectVars(lit, res);
     return res;
+}
+
+template <size_t I = 0>
+inline bool isTriviallyTrueImpl(const Lit &lit) {
+    if constexpr (I < num_theories) {
+        if (lit.index() == I) {
+            return std::get<I>(lit).isTriviallyTrue();
+        }
+        return isTriviallyTrueImpl<I+1>(lit);
+    } else {
+        throw std::logic_error("unknown theory");
+    }
+}
+
+bool isTriviallyTrue(const Lit &lit) {
+    return isTriviallyTrueImpl<0>(lit);
+}
+
+template <size_t I = 0>
+inline bool isTriviallyFalseImpl(const Lit &lit) {
+    if constexpr (I < num_theories) {
+        if (lit.index() == I) {
+            return std::get<I>(lit).isTriviallyFalse();
+        }
+        return isTriviallyFalseImpl<I+1>(lit);
+    } else {
+        throw std::logic_error("unknown theory");
+    }
+}
+
+bool isTriviallyFalse(const Lit &lit) {
+    return isTriviallyFalseImpl<0>(lit);
+}
+
+template <size_t I = 0>
+inline Lit negateImpl(const Lit &lit) {
+    if constexpr (I < num_theories) {
+        if (lit.index() == I) {
+            return !std::get<I>(lit);
+        }
+        return negateImpl<I+1>(lit);
+    } else {
+        throw std::logic_error("unknown theory");
+    }
+}
+
+Lit negate(const Lit &lit) {
+    return negateImpl<0>(lit);
+}
+
+size_t hash(const Lit lit) {
+    return std::visit(
+        Overload {
+            [](const auto &lit) {
+                return lit.hash();
+            }
+        }, lit);
 }
 
 }

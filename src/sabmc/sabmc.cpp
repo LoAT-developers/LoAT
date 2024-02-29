@@ -7,7 +7,7 @@
 #include "dependencygraph.hpp"
 #include "recurrence.hpp"
 #include "map.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "pair.hpp"
 #include "optional.hpp"
 
@@ -103,7 +103,7 @@ std::pair<Transition, Model> SABMC::build_loop(const Range &range) {
         }
     }
     auto vars {loop->vars()};
-    theory::collectCoDomainVars(var_renaming, vars);
+    var_renaming.collectCoDomainVars(vars);
     const auto model {solver->model(vars).composeBackwards(var_renaming)};
     if (Config::Analysis::log) {
         std::cout << "found loop from " << range.start() << " to " << range.end() << ":" << std::endl;

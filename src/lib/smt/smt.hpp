@@ -3,7 +3,7 @@
 #include "theory.hpp"
 #include "boolexpr.hpp"
 #include "model.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 namespace smt {
 

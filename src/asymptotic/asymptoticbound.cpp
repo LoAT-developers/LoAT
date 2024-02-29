@@ -19,7 +19,7 @@
 #include "string.hpp"
 
 
-AsymptoticBound::AsymptoticBound(Guard guard,
+AsymptoticBound::AsymptoticBound(Conjunction guard,
                                  Arith::Expr cost, bool finalCheck)
     : guard(guard), cost(cost), finalCheck(finalCheck),
       addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP() {}
@@ -104,7 +104,7 @@ ArithSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
 
     solution = solution.compose(limitProblem.getSolution());
 
-    Guard guardCopy = guard;
+    auto guardCopy = guard;
     guardCopy.push_back(arith::mkGt(cost, 0));
     for (const auto &lit : guardCopy) {
         const ArithLit &rel = std::get<ArithLit>(lit);
@@ -712,7 +712,7 @@ bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
 }
 
 
-AsymptoticBound::Result AsymptoticBound::determineComplexity(const Guard &guard,
+AsymptoticBound::Result AsymptoticBound::determineComplexity(const Conjunction &guard,
                                                              const Arith::Expr &cost,
                                                              bool finalCheck,
                                                              const Complexity &currentRes) {

@@ -1,6 +1,6 @@
 #include "ruleexport.hpp"
 #include "config.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "theory.hpp"
 
 using namespace std;

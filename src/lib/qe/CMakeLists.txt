@@ -7,6 +7,8 @@ project(loat_qe CXX)
 add_library(${PROJECT_NAME} STATIC
   vareliminator.hpp
   vareliminator.cpp
+  impliedequalities.cpp
+  impliedequalities.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

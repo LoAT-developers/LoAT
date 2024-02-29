@@ -1,6 +1,5 @@
 #include "conjunction.hpp"
-#include "theories.hpp"
-#include "literal.hpp"
+#include "string.hpp"
 
 bool Conjunction::isLinear() const {
     return std::all_of(this->begin(), this->end(), [](const auto &lit){
@@ -10,14 +9,14 @@ bool Conjunction::isLinear() const {
     });
 }
 
-void Conjunction::collectVars(VS &vars) const {
+void Conjunction::collectVars(VarSet &vars) const {
     for (const auto &lit: *this) {
-        theories::collectVars(lit, vars);
+        theory::collectVars(lit, vars);
     }
 }
 
-Conjunction::VS Conjunction::vars() const {
-    VS res;
+VarSet Conjunction::vars() const {
+    VarSet res;
     collectVars(res);
     return res;
 }
@@ -30,4 +29,12 @@ Conjunction operator&&(const Conjunction &fst, const Conjunction &snd) {
     Conjunction res(fst);
     res.insert(res.end(), snd.begin(), snd.end());
     return res;
+}
+
+Conjunction Conjunction::fromBoolExpr(const BExpr &e) {
+    if (!e->isConjunction()) {
+        throw std::invalid_argument(toString(e) + " is not a conjunction");
+    }
+    const auto lits {e->lits()};
+    return Conjunction{lits.begin(), lits.end()};
 }

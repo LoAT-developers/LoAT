@@ -7,6 +7,7 @@
 
 #include "smt.hpp"
 #include "yicescontext.hpp"
+#include "theory.hpp"
 
 namespace yices {
 
@@ -17,11 +18,6 @@ extern void exit();
 }
 
 class Yices : public Smt {
-
-    using TheTheory = Theory<Arith, Bools>;
-    using BoolExpr = BExpr;
-    using BoolExprSet = BoolExpressionSet;
-    using Lit = typename TheTheory::Lit;
 
 public:
 

@@ -1,5 +1,5 @@
 #include "bools.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 
 BoolsBase::Expr BoolsBase::constToExpr(const Const val) {
     return val ? top() : bot();

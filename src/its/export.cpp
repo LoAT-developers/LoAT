@@ -1,6 +1,6 @@
 #include "export.hpp"
 #include "config.hpp"
-#include "theories.hpp"
+#include "theory.hpp"
 #include "theory.hpp"
 #include "ruleexport.hpp"
 

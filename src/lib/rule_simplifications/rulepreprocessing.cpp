@@ -86,7 +86,7 @@ RuleResult eliminateTempVars(Rule rule) {
     if (res) {
         return res;
     }
-    auto varsInUpdate {theory::coDomainVars(rule.getUpdate())};
+    auto varsInUpdate {rule.getUpdate().coDomainVars()};
     GuardToolbox::SymbolAcceptor isTemp {theory::isTempVar};
     GuardToolbox::SymbolAcceptor isTempInUpdate {[&](const Var &sym) {
         return isTemp(sym) && varsInUpdate.contains(sym);
@@ -95,7 +95,7 @@ RuleResult eliminateTempVars(Rule rule) {
     if (res) {
         return res;
     }
-    varsInUpdate = theory::coDomainVars(rule.getUpdate());
+    varsInUpdate = rule.getUpdate().coDomainVars();
     res = propagateEqualities(rule, isTemp);
     if (res) {
         return res;

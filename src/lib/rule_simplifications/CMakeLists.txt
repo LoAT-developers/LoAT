@@ -26,12 +26,14 @@ add_library(${PROJECT_NAME} STATIC
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_util_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
+  ${loat_qe_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")
 
 target_link_libraries(${PROJECT_NAME}
-  loat_expr)
+  loat_expr
+  loat_qe)
 
 # Expose public includes to other
 # subprojects through cache variable.

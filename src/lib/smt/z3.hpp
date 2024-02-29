@@ -2,13 +2,9 @@
 
 #include "smt.hpp"
 #include "z3context.hpp"
+#include "theory.hpp"
 
 class Z3 : public Smt {
-
-    using TheTheory = Theory<Arith, Bools>;
-    using BoolExpr = BExpr;
-    using BoolExprSet = BoolExpressionSet;
-    using Lit = typename TheTheory::Lit;
 
 public:
 

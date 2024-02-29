@@ -4,7 +4,7 @@
 #include "theory.hpp"
 #include "boolexpr.hpp"
 #include "relevantvariables.hpp"
-#include "literal.hpp"
+#include "theory.hpp"
 
 AccelerationProblem::PolyAccelMode AccelerationProblem::polyaccel {PolyAccelMode::LowDegree};
 
@@ -171,7 +171,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     solver->push();
     solver->add(updated);
     if (solver->check() == Sat) {
-        solver->add(bools::mkLit(theories::negate(lit)));
+        solver->add(bools::mkLit(theory::negate(lit)));
         if (solver->check() == Unsat) {
             success = true;
             auto g {Subs::build<Arith>(config.n, config.n->toExpr() - arith::mkConst(1))(closed->closed_form(lit))};
@@ -283,7 +283,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         return false;
     }
     std::vector<BoolExpr> eqs;
-    const auto vars {util::RelevantVariables::find(theories::vars(lit), update)};
+    const auto vars {util::RelevantVariables::find(theory::vars(lit), update)};
     for (const auto& v: vars) {
         if (std::holds_alternative<Bools::Var>(v)) {
             // encoding equality for booleans introduces a disjunction

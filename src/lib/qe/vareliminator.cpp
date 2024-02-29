@@ -1,5 +1,6 @@
 #include "vareliminator.hpp"
 #include "arithlit.hpp"
+#include "subs.hpp"
 
 #include <assert.h>
 

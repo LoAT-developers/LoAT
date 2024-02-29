@@ -1,7 +1,5 @@
 #include "subs.hpp"
 
-namespace theory {
-
 Subs::It Subs::Iterator::begin(size_t i) const {
     return beginImpl(i);
 }
@@ -58,7 +56,7 @@ Subs::Iterator Subs::begin() const {
     return beginImpl();
 }
 
-Subs Subs::project(const VS &vars) const {
+Subs Subs::project(const VarSet &vars) const {
     Subs res;
     projectImpl(res, vars);
     return Subs(res);
@@ -68,7 +66,7 @@ void Subs::put(const Pair &p) {
     putImpl(p);
 }
 
-void Subs::put(const Var &x, const Expr &y) {
+void Subs::put(const Var &x, const ThExpr &y) {
     putImpl(x, y);
 }
 
@@ -78,13 +76,13 @@ Subs::Subs(Pair &p) {
     put(p);
 }
 
-Subs::VS Subs::domain() const {
-    VS res;
+VarSet Subs::domain() const {
+    VarSet res;
     domainImpl(res);
     return res;
 }
 
-Subs::Expr Subs::get(const Var &var) const {
+ThExpr Subs::get(const Var &var) const {
     return getImpl(var);
 }
 
@@ -102,7 +100,7 @@ void Subs::erase(const Var &x) {
     eraseImpl(x);
 }
 
-void Subs::erase(const VS &xs) {
+void Subs::erase(const VarSet &xs) {
     eraseImpl(xs);
 }
 
@@ -146,7 +144,7 @@ BExpr Subs::operator()(const BExpr e) const {
     });
 }
 
-Subs::TheTheory::Expr Subs::operator()(const TheTheory::Expr &expr) const {
+ThExpr Subs::operator()(const ThExpr &expr) const {
     return std::visit(
         Overload{
             [&](const Arith::Expr expr) {
@@ -181,25 +179,58 @@ Subs Subs::compose(const Subs &that) const {
     return res;
 }
 
+template<std::size_t I = 0>
+inline void collectCoDomainVarsImpl(const Subs &subs, VarSet &res) {
+    if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
+        if constexpr (theory::is<I, Bools>()) {
+            subs.get<I>().collectCoDomainVars(res);
+        } else {
+            subs.get<I>().collectCoDomainVars(res.get<I>());
+        }
+        collectCoDomainVarsImpl<I+1>(subs, res);
+    }
+}
+
+void Subs::collectCoDomainVars(VarSet &res) const {
+    collectCoDomainVarsImpl<0>(*this, res);
+}
+
+VarSet Subs::coDomainVars() const {
+    VarSet res;
+    collectCoDomainVars(res);
+    return res;
+}
+
+VarSet Subs::vars() const {
+    VarSet res;
+    collectVars(res);
+    return res;
+}
+
+void Subs::collectVars(VarSet &vars) const {
+    for (const auto &[x,y]: *this) {
+        vars.insert(x);
+        theory::collectVars(y, vars);
+    }
+}
+
 Subs Subs::Empty {};
 
-typename Theory<Arith, Bools>::Var first(const typename Subs::Pair &p) {
+Var Subs::first(const Pair &p) {
     return std::visit(
         [](const auto &p){
-            return typename Theory<Arith, Bools>::Var(p.first);
+            return Var(p.first);
         }, p);
 }
 
-typename Theory<Arith, Bools>::Expr second(const typename Subs::Pair &p) {
+ThExpr Subs::second(const Pair &p) {
     return std::visit(
         [](const auto &p) {
-            return typename Theory<Arith, Bools>::Expr(p.second);
+            return ThExpr(p.second);
         }, p);
 }
 
 std::ostream& operator<<(std::ostream &s, const Subs &subs) {
     subs.print(s);
     return s;
-}
-
 }
