@@ -15,8 +15,8 @@ using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;
 using ThExpr = TheTheory::Expr;
 using Theories = TheTheory::Theories;
-using VarSet = theory::ThSet<Arith::Var, Bools::Var>;
-using LitSet = theory::ThSet<Arith::Lit, Bools::Lit>;
+using VarSet = ThSet<Arith::Var, Bools::Var>;
+using LitSet = ThSet<Arith::Lit, Bools::Lit>;
 
 const BoolExpr top();
 const BoolExpr bot();

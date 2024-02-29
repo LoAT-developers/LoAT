@@ -104,10 +104,6 @@ private:
 public:
 
     Model composeBackwards(const Subs &subs) const;
-
-    /**
-     * Assumes that this->subs(subs) is a tautology.
-     */
     BoolExpr syntacticImplicant(const BoolExpr e) const;
 
 private:

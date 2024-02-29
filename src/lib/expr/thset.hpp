@@ -5,8 +5,6 @@
 #include <optional>
 #include <ostream>
 
-namespace theory {
-
 template <class... S>
 class ThSet {
 
@@ -337,6 +335,4 @@ public:
 template <class... T>
 std::ostream& operator<<(std::ostream &s, const ThSet<T...> &set) {
     return set.print(s);
-}
-
 }
