@@ -28,8 +28,8 @@
 #include <boost/bimap/unordered_set_of.hpp>
 #include <functional>
 
-#include "set.hpp"
-#include "map.hpp"
+#include "linkedhashset.hpp"
+#include "linkedhashmap.hpp"
 #include "string.hpp"
 #include "conshash.hpp"
 

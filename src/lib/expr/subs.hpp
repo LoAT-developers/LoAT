@@ -1,7 +1,7 @@
 #pragma once
 
 #include "itheory.hpp"
-#include "thset.hpp"
+#include "variantset.hpp"
 #include "arith.hpp"
 #include "bools.hpp"
 #include "boolsubs.hpp"

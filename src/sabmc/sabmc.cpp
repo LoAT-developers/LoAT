@@ -6,7 +6,7 @@
 #include "config.hpp"
 #include "dependencygraph.hpp"
 #include "recurrence.hpp"
-#include "map.hpp"
+#include "linkedhashmap.hpp"
 #include "theory.hpp"
 #include "pair.hpp"
 #include "optional.hpp"

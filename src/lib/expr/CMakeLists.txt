@@ -6,7 +6,6 @@ project(loat_expr CXX)
 
 add_library(${PROJECT_NAME} STATIC
   itheory.hpp
-  thset.hpp
   subs.hpp
   subs.cpp
   boolvar.hpp
@@ -51,10 +50,12 @@ target_link_libraries(${PROJECT_NAME} ${GINAC})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_util_INCLUDE_DIRS}
+  ${loat_container_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE
   ${loat_util_INCLUDE_DIRS}
+  ${loat_container_INCLUDE_DIRS}
   "."
 )
 

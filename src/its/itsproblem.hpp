@@ -20,7 +20,7 @@
 #include "rule.hpp"
 #include "dependencygraph.hpp"
 #include "types.hpp"
-#include "set.hpp"
+#include "linkedhashset.hpp"
 
 #include <optional>
 

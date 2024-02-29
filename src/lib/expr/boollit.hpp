@@ -1,8 +1,8 @@
 #pragma once
 
 #include "boolvar.hpp"
-#include "set.hpp"
-#include "map.hpp"
+#include "linkedhashset.hpp"
+#include "linkedhashmap.hpp"
 
 class BoolLit {
     BoolVarPtr var;

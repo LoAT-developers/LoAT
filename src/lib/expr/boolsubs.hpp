@@ -3,7 +3,7 @@
 #include "boolvar.hpp"
 #include "boolexpr.hpp"
 #include "itheory.hpp"
-#include "map.hpp"
+#include "linkedhashmap.hpp"
 #include "theory.hpp"
 
 #include <boost/functional/hash.hpp>

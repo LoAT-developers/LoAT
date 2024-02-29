@@ -7,7 +7,7 @@
 #include "smtfactory.hpp"
 #include "proof.hpp"
 #include "dependencygraph.hpp"
-#include "map.hpp"
+#include "linkedhashmap.hpp"
 
 
 class Range {

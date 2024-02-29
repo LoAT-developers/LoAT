@@ -12,7 +12,7 @@
 #include "limitsmt.hpp"
 #include "inftyexpression.hpp"
 #include "config.hpp"
-#include "set.hpp"
+#include "linkedhashset.hpp"
 #include "guardtoolbox.hpp"
 #include "theory.hpp"
 #include "optional.hpp"

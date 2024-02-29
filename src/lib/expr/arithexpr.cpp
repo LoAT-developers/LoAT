@@ -17,7 +17,7 @@
 
 #include "arithexpr.hpp"
 #include "optional.hpp"
-#include "map.hpp"
+#include "linkedhashmap.hpp"
 
 #include <purrs.hh>
 

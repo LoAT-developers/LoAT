@@ -1,6 +1,6 @@
 #include "z3.hpp"
 #include "exprtosmt.hpp"
-#include "thset.hpp"
+#include "variantset.hpp"
 
 void Z3::add(const BExpr e) {
     solver.add(ExprToSmt<z3::expr>::convert(e, ctx));

@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.13)
 project(loat_util CXX)
 
 add_library(${PROJECT_NAME} STATIC
-    set.hpp
-    map.hpp
     vector.hpp
     variant.hpp
     proof.hpp

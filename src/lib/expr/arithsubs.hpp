@@ -1,7 +1,7 @@
 #pragma once
 
 #include "arithexpr.hpp"
-#include "map.hpp"
+#include "linkedhashmap.hpp"
 
 class ArithSubs {
 

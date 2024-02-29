@@ -1,10 +1,10 @@
 #pragma once
 
 #include "itheory.hpp"
-#include "thset.hpp"
+#include "variantset.hpp"
 #include "arithlit.hpp"
 #include "conshash.hpp"
-#include "set.hpp"
+#include "linkedhashset.hpp"
 #include "bools.hpp"
 #include "arith.hpp"
 

@@ -1,5 +1,5 @@
 #include "arithexpr.hpp"
-#include "map.hpp"
+#include "linkedhashmap.hpp"
 
 #include <purrs.hh>
 
