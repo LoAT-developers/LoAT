@@ -36,7 +36,7 @@ VarSet Rule::vars() const {
 }
 
 Rule Rule::subs(const Subs &subs) const {
-    return Rule(theory::subs(guard, subs), theory::concat(update, subs));
+    return Rule(subs(guard), update.concat(subs));
 }
 
 Rule Rule::withGuard(const BoolExpr guard) const {
@@ -48,7 +48,7 @@ Rule Rule::withUpdate(const Subs &update) const {
 }
 
 Rule Rule::chain(const Rule &that) const {
-    return Rule(guard && that.getGuard()->subs(update), theory::compose(that.getUpdate(), update));
+    return Rule(guard && update(that.getGuard()), that.getUpdate().compose(update));
 }
 
 const BoolExpr Rule::getGuard() const {

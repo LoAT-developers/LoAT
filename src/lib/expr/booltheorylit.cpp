@@ -1,4 +1,5 @@
 #include "boolexpr.hpp"
+#include "literal.hpp"
 
 ConsHash<BoolExpression, BoolTheoryLit, typename BoolTheoryLit::CacheHash, typename BoolTheoryLit::CacheEqual, typename BoolTheoryLit::Lit> BoolTheoryLit::cache;
 

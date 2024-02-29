@@ -31,7 +31,7 @@ SafetyProblem::SafetyProblem(const ITSProblem &its) {
     std::vector<BoolExpr> err;
     for (const auto &r: its.getAllTransitions()) {
         if (its.isInitialTransition(&r)) {
-            init.emplace_back(rule_to_formula(r, var_map)->subs(init_map));
+            init.emplace_back(init_map(rule_to_formula(r, var_map)));
         } else if (its.isSinkTransition(&r)) {
             err.emplace_back(r.getGuard());
         } else {

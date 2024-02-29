@@ -23,16 +23,16 @@
 
 #include <sstream>
 
-template<typename EXPR, ITheory... Th> class ExprToSmt {
+template<typename EXPR> class ExprToSmt {
 public:
 
-    static EXPR convert(const BExpr<Th...> e, SmtContext<EXPR> &ctx) {
-        ExprToSmt<EXPR, Th...> converter(ctx);
+    static EXPR convert(const BoolExpr e, SmtContext<EXPR> &ctx) {
+        ExprToSmt<EXPR> converter(ctx);
         return converter.convertBoolEx(e);
     }
 
     static EXPR convert(const ArithExprPtr e, SmtContext<EXPR> &ctx) {
-        ExprToSmt<EXPR, Th...> converter(ctx);
+        ExprToSmt<EXPR> converter(ctx);
         return converter.convertEx(e);
     }
 
@@ -40,24 +40,21 @@ public:
 protected:
     ExprToSmt(SmtContext<EXPR> &context): context(context) {}
 
-    EXPR convertBoolEx(const BExpr<Th...> e) {
+    EXPR convertBoolEx(const BoolExpr e) {
         if (e->getTheoryLit()) {
-            const auto lit = *e->getTheoryLit();
-            if constexpr ((std::is_same_v<Arith, Th> || ...)) {
-                if (std::holds_alternative<ArithLit>(lit)) {
-                    return convertRelational(std::get<ArithLit>(lit));
-                }
-            }
-            if constexpr ((std::is_same_v<Bools, Th> || ...)) {
-                if (std::holds_alternative<BoolLit>(lit)) {
-                    return convertLit(std::get<BoolLit>(lit));
-                }
-            }
-            throw std::logic_error("unsupported theory in exprtosmt");
+            std::visit(
+                Overload {
+                    [&](const ArithLit &lit) {
+                        return convertRelational(lit);
+                    },
+                    [&](const BoolLit &lit) {
+                        return convertLit(lit);
+                    }
+                }, *e->getTheoryLit());
         }
         EXPR res = e->isAnd() ? context.bTrue() : context.bFalse();
         bool first = true;
-        for (const BExpr<Th...> &c: e->getChildren()) {
+        for (const BoolExpr &c: e->getChildren()) {
             if (first) {
                 res = convertBoolEx(c);
                 first = false;

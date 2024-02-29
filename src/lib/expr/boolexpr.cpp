@@ -123,29 +123,6 @@ BExpr BoolExpression::toMinusInfinity(const ArithVarPtr n) const {
     });
 }
 
-void BoolExpression::syntacticImplicant(const Model &subs, linked_hash_set<BE> &res) const {
-    if (isAnd() || isOr()) {
-        for (const auto &c: getChildren()) {
-            c->syntacticImplicant(subs, res);
-        }
-    } else {
-        const auto lit = getTheoryLit();
-        if (lit) {
-            if (theories::eval<Arith, Bools>(*lit, subs)) {
-                res.insert(this->shared_from_this());
-            }
-        } else {
-            throw std::invalid_argument("unknown kind of BoolExpr");
-        }
-    }
-}
-
-BExpr BoolExpression::syntacticImplicant(const Model &subs) const {
-    linked_hash_set<BE> res;
-    syntacticImplicant(subs, res);
-    return mkAnd(res);
-}
-
 void BoolExpression::iter(const std::function<void(const Lit&)> &f) const {
     if (isTheoryLit()) {
         f(*getTheoryLit());

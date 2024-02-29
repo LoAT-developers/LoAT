@@ -325,8 +325,8 @@ std::set<Arith::Var> LimitProblem::getVariables() const {
 }
 
 
-std::vector<Theory<Arith>::Lit> LimitProblem::getQuery() const {
-    std::vector<Theory<Arith>::Lit> query;
+std::vector<Arith::Lit> LimitProblem::getQuery() const {
+    std::vector<Arith::Lit> query;
     for (const auto &[ex,d] : set) {
         if (d == NEG_INF || d == NEG_CONS) {
             query.push_back(arith::mkLt(ex, arith::mkConst(0)));
@@ -339,7 +339,7 @@ std::vector<Theory<Arith>::Lit> LimitProblem::getQuery() const {
 
 
 bool LimitProblem::isUnsat() const {
-    return SmtFactory::_check(BoolExpression<Arith>::mkAndFromLits(getQuery())) == Unsat;
+    return SmtFactory::check(bools::mkAndFromLits(getQuery())) == Unsat;
 }
 
 

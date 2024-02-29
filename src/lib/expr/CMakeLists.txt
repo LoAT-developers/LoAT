@@ -8,6 +8,7 @@ add_library(${PROJECT_NAME} STATIC
   itheory.hpp
   thset.hpp
   subs.hpp
+  subs.cpp
   boolvar.hpp
   boolvar.cpp
   boollit.hpp
@@ -19,6 +20,7 @@ add_library(${PROJECT_NAME} STATIC
   arithlit.cpp
   arithlit.hpp
   conjunction.hpp
+  conjunction.cpp
   boolexpr.hpp
   boolexpr.cpp
   booltheorylit.cpp
@@ -41,6 +43,8 @@ add_library(${PROJECT_NAME} STATIC
   add.cpp
   arithutil.hpp
   arithutil.cpp
+  model.hpp
+  model.cpp
 )
 
 find_library(GINAC ginac)

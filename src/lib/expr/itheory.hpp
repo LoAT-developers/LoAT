@@ -42,7 +42,7 @@ concept IVar = requires(T x, unsigned idx) {
 };
 
 template <typename T>
-concept IBaseTheory = requires(T t, typename T::Const val, typename T::Var var, typename T::Lit lit, linked_hash_map<typename T::Var, typename T::Const> m) {
+concept IBaseTheory = requires(T t, typename T::Const val, typename T::Var var, typename T::Lit lit, typename T::Model m) {
         requires IVar<typename T::Var>;
         requires ILit<typename T::Lit>;
         // requires IVars<typename T::Lit, typename T::Var>;
@@ -70,7 +70,7 @@ public:
     using Lit = std::variant<typename Th::Lit...>;
     using Var = std::variant<typename Th::Var...>;
     using Const = std::variant<typename Th::Const...>;
-    using Model = std::tuple<linked_hash_map<typename Th::Var, typename Th::Const>...>;
+    using Model = std::tuple<typename Th::Model...>;
     using Expr = std::variant<typename Th::Expr...>;
     using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expr>...>;
 
@@ -126,27 +126,3 @@ public:
     using Subs = std::tuple<typename Th::Subs...>;
 
 };
-
-namespace theories {
-
-template <ITheory... Th>
-class Subs;
-
-
-template<ITheory... Th>
-std::ostream& operator<<(std::ostream &s, const Subs<Th...> &subs) {
-    subs.print(s);
-    return s;
-}
-
-template<ITheory... Th>
-std::enable_if_t<(sizeof...(Th) > 0), typename Theory<Th...>::Var> first(const typename Subs<Th...>::Pair &p) {
-    return std::visit([](const auto &p){return typename Theory<Th...>::Var(p.first);}, p);
-}
-
-template<ITheory... Th>
-std::enable_if_t<(sizeof...(Th) > 0), typename Theory<Th...>::Expr> second(const typename Subs<Th...>::Pair &p) {
-    return std::visit([](const auto &p){return typename Theory<Th...>::Expr(p.second);}, p);
-}
-
-}

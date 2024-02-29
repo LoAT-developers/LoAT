@@ -14,6 +14,8 @@ struct BoolsBase {
     using Var = BoolVarPtr;
     using Const = bool;
     using Expr = std::shared_ptr<const BoolExpression>;
+    using Model = linked_hash_map<Var, Const>;
+
     static Expr constToExpr(const Const val);
     static Expr varToExpr(const Var var);
     static Expr anyValue();

@@ -75,7 +75,7 @@ std::optional<Range> SABMC::has_looping_infix() {
     return {};
 }
 
-std::pair<Transition, Subs> SABMC::build_loop(const Range &range) {
+std::pair<Transition, Model> SABMC::build_loop(const Range &range) {
     std::optional<Transition> loop;
     Subs var_renaming;
     for (unsigned i = range.end(); i >= range.start(); --i) {
@@ -89,14 +89,14 @@ std::pair<Transition, Subs> SABMC::build_loop(const Range &range) {
             for (const auto &x: t.post_vars()) {
                 fst_vars.erase(x);
             }
-            const auto fst_var_renaming {theory::compose(sigma1, s).project(fst_vars)};
+            const auto fst_var_renaming {sigma1.compose(s).project(fst_vars)};
             auto snd_vars {t.post_vars()};
             loop->collectVars(snd_vars);
             for (const auto &x: t.pre_vars()) {
                 snd_vars.erase(x);
             }
-            auto snd_var_renaming {theory::compose(sigma2, var_renaming).project(snd_vars)};
-            var_renaming = theory::compose(fst_var_renaming, snd_var_renaming);
+            auto snd_var_renaming {sigma2.compose(var_renaming).project(snd_vars)};
+            var_renaming = fst_var_renaming.compose(snd_var_renaming);
         } else {
             loop = rule;
             var_renaming = s;
@@ -104,7 +104,7 @@ std::pair<Transition, Subs> SABMC::build_loop(const Range &range) {
     }
     auto vars {loop->vars()};
     theory::collectCoDomainVars(var_renaming, vars);
-    const auto model {theory::compose(var_renaming, solver->model(vars).toSubs())};
+    const auto model {solver->model(vars).composeBackwards(var_renaming)};
     if (Config::Analysis::log) {
         std::cout << "found loop from " << range.start() << " to " << range.end() << ":" << std::endl;
         std::cout << *loop << std::endl;
@@ -116,19 +116,19 @@ std::pair<Transition, Subs> SABMC::build_loop(const Range &range) {
 void SABMC::add_learned_clause(const Transition &accel, unsigned length) {
     if (Config::Analysis::log) std::cout << "learned transition: " << accel << std::endl;
     rule_map.emplace(accel.getId(), accel);
-    blocked.emplace_back(accel.toBoolExpr()->subs(Subs::build<Arith>(n, arith::mkConst(1))), length, accel.getId());
+    blocked.emplace_back(Subs::build<Arith>(n, arith::mkConst(1))(accel.toBoolExpr()), length, accel.getId());
     step = step || encode_transition(accel);
 }
 
-std::optional<Arith::Expr> closest_bound(const linked_hash_set<Arith::Expr> &bounds, const Subs &model, const Arith::Var &x, const linked_hash_set<Arith::Expr> &chosen = {}) {
+std::optional<Arith::Expr> closest_bound(const linked_hash_set<Arith::Expr> &bounds, const Model &model, const Arith::Var &x, const linked_hash_set<Arith::Expr> &chosen = {}) {
     std::optional<Arith::Expr> closest;
     Int dist;
-    const auto val {*model.get<Arith>(x)->isInt()};
+    const auto val {model.get<Arith>(x)};
     for (const auto &b: bounds) {
         if (chosen.contains(b)) {
             continue;
         }
-        const auto b_val {*model.get<Arith>()(b)->isInt()};
+        const auto b_val {model.eval<Arith>(b)};
         const auto d {mp::abs(val - b_val)};
         if (!closest || d < dist || (d == dist && b < *closest)) {
             dist = d;
@@ -138,14 +138,13 @@ std::optional<Arith::Expr> closest_bound(const linked_hash_set<Arith::Expr> &bou
     return closest;
 }
 
-bool is_increasing(const Arith::Expr e, const Subs &model, const Arith::Var x) {
-    const auto &current {model.get<Arith>()};
-    const auto next {ArithSubs{{x, x + arith::mkConst(1)}}.compose(current)};
+bool is_increasing(const Arith::Expr e, const Model &model, const Arith::Var x) {
+    const auto next {model.composeBackwards(Subs::build<Arith>(x, x + arith::mkConst(1)))};
     const auto coeff {*e->coeff(x)};
-    return *(current(coeff) - next(coeff))->isRational() < 0;
+    return model.eval<Arith>(coeff) - next.eval<Arith>(coeff) < 0;
 }
 
-std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &update, const Subs &model) {
+std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &update, const Model &model) {
     ArithSubs up;
     std::unordered_set<Arith::Var> done_lower;
     std::unordered_set<Arith::Var> done_upper;
@@ -255,18 +254,11 @@ std::pair<SABMC::NondetSubs, unsigned> SABMC::closed_form(const NondetSubs &upda
     return res;
 }
 
-linked_hash_map<Bools::Var, bool> SABMC::value_selection(const Subs &model) const {
-    linked_hash_map<Bools::Var, bool> res;
-    for (const auto &x: t.pre_vars()) {
-        if (std::holds_alternative<Bools::Var>(x)) {
-            const auto bv {std::get<Bools::Var>(x)};
-            res.emplace(bv, model.get(var_map[x]) == ThExpr(top()));
-        }
-    }
-    return res;
+linked_hash_map<Bools::Var, bool> SABMC::value_selection(const Model &model) const {
+    return model.get<Bools>();
 }
 
-SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Subs &model, const Arith::Var x, linked_hash_set<Arith::Expr> &chosen) const {
+SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Model &model, const Arith::Var x, linked_hash_set<Arith::Expr> &chosen) const {
     const auto post_var {std::get<Arith::Var>(var_map[x])};
     const auto bounds {trans.toBoolExpr()->getBounds(post_var)};
     const auto equalities {bounds.equalities()};
@@ -314,7 +306,7 @@ SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Subs &mod
     return {lower, upper};
 }
 
-SABMC::NondetSubs SABMC::bound_selection(const Transition &trans, const Subs &model) const {
+SABMC::NondetSubs SABMC::bound_selection(const Transition &trans, const Model &model) const {
     NondetSubs res;
     linked_hash_set<Arith::Expr> chosen;
     for (const auto &x: t.pre_vars()) {
@@ -326,11 +318,11 @@ SABMC::NondetSubs SABMC::bound_selection(const Transition &trans, const Subs &mo
     return res;
 }
 
-Transition mbp(const Transition &t, const Subs &model, const Bools::Var x) {
-    return t.subs(Subs::build<Bools>(x, model.get<Bools>(x)));
+Transition mbp(const Transition &t, const Model &model, const Bools::Var x) {
+    return t.subs(Subs::build<Bools>(x, Bools::constToExpr(model.get<Bools>(x))));
 }
 
-Transition mbp(const Transition &t, const Subs &model, const Arith::Var x) {
+Transition mbp(const Transition &t, const Model &model, const Arith::Var x) {
     const auto bounds {t.toBoolExpr()->getBounds(x)};
     const auto equalities {bounds.equalities()};
     if (!equalities.empty()) {
@@ -351,7 +343,7 @@ Transition mbp(const Transition &t, const Subs &model, const Arith::Var x) {
     }
 }
 
-Transition mbp(const Transition &t, const Subs &model, const Var &x) {
+Transition mbp(const Transition &t, const Model &model, const Var &x) {
     return std::visit(
         Overload{
             [&](const Bools::Var x) {
@@ -365,7 +357,7 @@ Transition mbp(const Transition &t, const Subs &model, const Var &x) {
         }, x);
 }
 
-Transition SABMC::mbp(const Transition &trans, const Subs &model) const {
+Transition SABMC::mbp(const Transition &trans, const Model &model) const {
     Transition res {trans};
     for (const auto &x: trans.vars()) {
         if (theory::isTempVar(x) && !t.post_vars().contains(x)) {
@@ -375,7 +367,7 @@ Transition SABMC::mbp(const Transition &trans, const Subs &model) const {
     return res;
 }
 
-void SABMC::handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Subs &model, std::vector<BoolExpr> &res) {
+void SABMC::handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Model &model, std::vector<BoolExpr> &res) {
     const auto lhs {rel.lhs()};
     const auto vars {lhs->vars()};
     ArithSubs init;
@@ -520,9 +512,9 @@ BoolExpr SABMC::encode_transition(const Transition &t) {
 void SABMC::add_blocking_clauses() {
     for (const auto &b: blocked) {
         const auto s {get_subs(depth, b.length)};
-        // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(ArithSubs({{n, 1}}))) << std::endl;
-        const auto block {!b.trans->subs(theory::compose(Subs::build<Arith>(ArithSubs({{n, arith::mkConst(1)}})), s))};
-        solver->add(block || arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id)));
+        // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(n, 1))) << std::endl;
+        const auto block {Subs::build<Arith>(n, arith::mkConst(1)).compose(s)(!b.trans)};
+        solver->add(block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id))));
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
         const std::vector<BoolExpr> lits {theory::mkNeq(trace_var, arith::mkConst(b.id)), theory::mkNeq(trace_var, arith::mkConst(b.id))};
@@ -547,15 +539,15 @@ void SABMC::sat() {
 
 void SABMC::build_trace() {
     trace.clear();
-    const auto model {solver->model().toSubs()};
+    const auto model {solver->model()};
     std::vector<Subs> run;
     std::optional<Transition> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s {get_subs(d, 1)};
-        const auto rule {rule_map.at(*(*model.get<Arith>(trace_var)->isRational())->intValue())};
-        const auto comp {theory::compose(s, model)};
+        const auto rule {rule_map.at(model.get<Arith>(trace_var))};
+        const auto comp {model.composeBackwards(s)};
         const auto imp {rule.syntacticImplicant(comp)};
-        run.push_back(comp.project(vars));
+        run.push_back(comp.toSubs().project(vars));
         if (prev) {
             dependency_graph.addEdge(*prev, imp);
         }
@@ -642,7 +634,7 @@ void SABMC::analyze() {
     while (true) {
         const auto &s {get_subs(depth, 1)};
         solver->push();
-        solver->add(t.err()->subs(s));
+        solver->add(s(t.err()));
         switch (solver->check()) {
         case SmtResult::Sat:
         case SmtResult::Unknown:
@@ -651,7 +643,7 @@ void SABMC::analyze() {
         case SmtResult::Unsat: {}
         }
         solver->pop();
-        solver->add(step->subs(s));
+        solver->add(s(step));
         add_blocking_clauses();
         ++depth;
         switch (solver->check()) {

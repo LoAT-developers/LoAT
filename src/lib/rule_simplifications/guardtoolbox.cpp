@@ -17,6 +17,7 @@
 
 #include "guardtoolbox.hpp"
 #include "arithlit.hpp"
+#include "theory.hpp"
 
 #include <unordered_set>
 
@@ -46,7 +47,7 @@ ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e,
 
 ResultBase<BSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr e) {
     ResultBase<BSubs, Proof> res;
-    const auto equiv {e->impliedEqualities()};
+    const auto equiv {theory::impliedEqualities(e)};
     if (!equiv.empty()) {
         res = equiv.get<Bools>();
         res.append(stringstream() << "propagated equivalences: " << equiv << std::endl);
@@ -143,7 +144,7 @@ ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr e) {
     ResultBase<BoolExpr, Proof> res {e};
     const auto subs {GuardToolbox::propagateBooleanEqualities(e)};
     if (subs) {
-        res = e->subs(Subs::build<Bools>(*subs));
+        res = Subs::build<Bools>(*subs)(e);
         res.append("Propagated Equivalences");
         res.storeSubProof(subs.getProof());
     }
@@ -153,7 +154,7 @@ ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr e) {
 ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, const GuardToolbox::SymbolAcceptor &allow) {
     ResultBase<BoolExpr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, allow)};
     if (subs) {
-        res = e->subs(Subs::build<Arith>(*subs));
+        res = Subs::build<Arith>(*subs)(e);
         res.append("Extracted Implied Equalities");
         res.storeSubProof(subs.getProof());
     }

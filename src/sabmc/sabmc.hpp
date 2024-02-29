@@ -69,19 +69,19 @@ private:
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
     void add_learned_clause(const Transition &accel, unsigned length);
-    std::pair<Transition, Subs> build_loop(const Range &range);
+    std::pair<Transition, Model> build_loop(const Range &range);
     void handle_loop(const Range &range);
     void unknown();
     void sat();
     void build_trace();
     const Subs& get_subs(const unsigned start, const unsigned steps);
 
-    Transition mbp(const Transition &trans, const Subs &model) const;
-    BoundPair bound_selection(const Transition &t, const Subs &model, const Arith::Var x, linked_hash_set<Arith::Expr> &chosen) const;
-    NondetSubs bound_selection(const Transition &t, const Subs &model) const;
-    linked_hash_map<Bools::Var, bool> value_selection(const Subs &model) const;
-    std::pair<NondetSubs, unsigned> closed_form(const NondetSubs &update, const Subs &model);
-    void handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Subs &model, std::vector<BoolExpr> &res);
+    Transition mbp(const Transition &trans, const Model &model) const;
+    BoundPair bound_selection(const Transition &t, const Model &model, const Arith::Var x, linked_hash_set<Arith::Expr> &chosen) const;
+    NondetSubs bound_selection(const Transition &t, const Model &model) const;
+    linked_hash_map<Bools::Var, bool> value_selection(const Model &model) const;
+    std::pair<NondetSubs, unsigned> closed_form(const NondetSubs &update, const Model &model);
+    void handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Model &model, std::vector<BoolExpr> &res);
 
 public:
 

@@ -168,7 +168,7 @@ public:
      * t (+), t (+!), t(+/+!) -> t > 0
      * t (-), t (-!) -> t < 0
      */
-    std::vector<typename Theory<Arith>::Lit> getQuery() const;
+    std::vector<Arith::Lit> getQuery() const;
 
     /**
      * Returns true if the result of getQuery() is unsatisfiable according to z3.

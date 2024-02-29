@@ -30,7 +30,7 @@ Recurrence::Recurrence(const Subs &equations, const Arith::Var n):
     equations(equations), n(n) {}
 
 bool Recurrence::solve(const Arith::Var lhs, const Arith::Expr rhs) {
-    auto [updated, map] {closed_form_pre.get<Arith>()(rhs)->toPurrs()};
+    auto [updated, map] {arith::toPurrs(closed_form_pre.get<Arith>()(rhs))};
     updated = updated.substitute(map.left.at(this->n), Purrs::Recurrence::n);
     const auto vars {rhs->vars()};
     auto prefix {0u};
@@ -71,7 +71,7 @@ bool Recurrence::solve(const Arith::Var lhs, const Arith::Expr rhs) {
 }
 
 bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr rhs) {
-    const auto updated {rhs->subs(closed_form_pre)};
+    const auto updated {closed_form_pre(rhs)};
     if (updated->lits().contains(BoolLit(lhs, true))) {
         return false;
     }

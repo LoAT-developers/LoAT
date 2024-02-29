@@ -10,8 +10,8 @@ add_library(${PROJECT_NAME} STATIC
   smt.hpp
   smtcontext.hpp
   exprtosmt.hpp
-  model.hpp
   z3.hpp
+  z3.cpp
   z3context.cpp
   z3context.hpp
   yices.hpp
@@ -19,9 +19,11 @@ add_library(${PROJECT_NAME} STATIC
   yicescontext.cpp
   yicescontext.hpp
   cvc5.hpp
+  cvc5.cpp
   cvc5context.hpp
   cvc5context.cpp
   swine.hpp
+  swine.cpp
   swinecontext.hpp
   swinecontext.cpp
   smtfactory.hpp

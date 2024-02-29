@@ -69,13 +69,13 @@ void AsymptoticBound::propagateBounds() {
         auto subs {GuardToolbox::propagateEqualities(g, [](const auto &x){return !theory::isTempVar(x);})};
         if (subs) {
             substitutions.push_back(*subs);
-            g = g->subs(Subs::build<Arith>(*subs));
+            g = Subs::build<Arith>(*subs)(g);
             changed = true;
         } else {
             subs = GuardToolbox::propagateEqualities(g, [](const auto &x){return theory::isTempVar(x);});
             if (subs) {
                 substitutions.push_back(*subs);
-                g = g->subs(Subs::build<Arith>(*subs));
+                g = Subs::build<Arith>(*subs)(g);
                 changed = true;
             }
         }
@@ -167,7 +167,7 @@ Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
 
 void AsymptoticBound::removeUnsatProblems() {
     for (int i = limitProblems.size() - 1; i >= 0; --i) {
-        auto result = SmtFactory::_check(BoolExpression<Arith>::mkAndFromLits(limitProblems[i].getQuery()));
+        auto result = SmtFactory::check(bools::mkAndFromLits(limitProblems[i].getQuery()));
 
         if (result == Unsat) {
             limitProblems.erase(limitProblems.begin() + i);
@@ -635,8 +635,8 @@ bool AsymptoticBound::tryInstantiatingVariable() {
 
         if (e->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
             const auto &query = currentLP.getQuery();
-            auto solver = SmtFactory::_modelBuildingSolver<Arith>(Smt<Arith>::chooseLogic<std::vector<Theory<Arith>::Lit>, ArithSubs>({query}, {}));
-            solver->add(BoolExpression<Arith>::mkAndFromLits(query));
+            auto solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Arith::Lit>, ArithSubs>({query}, {}));
+            solver->add(bools::mkAndFromLits(query));
             SmtResult result = solver->check();
 
             if (result == Unsat) {

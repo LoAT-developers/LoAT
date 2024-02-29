@@ -14,8 +14,6 @@ Var next(const Var &var);
 
 ThExpr toExpr(const Var &var);
 
-ThExpr subs(const ThExpr &expr, const Subs &subs);
-
 void collectVars(const ThExpr &expr, VarSet &vars);
 
 VarSet vars(const ThExpr &e);
@@ -29,36 +27,6 @@ ThExpr second(const Pair &p);
 void collectVars(const Subs &subs, VarSet &vars);
 
 VarSet vars(const Subs &e);
-
-BoolSubs concat(const BoolSubs& s, const Subs &that);
-
-template<std::size_t I = 0>
-inline void concatImpl(const Subs &fst, const Subs &snd, Subs &res) {
-    if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-        if constexpr (theories::is<I, Bools>()) {
-            res.get<I>() = fst.get<I>().concat(snd);
-        } else {
-            res.get<I>() = fst.get<I>().concat(snd.get<I>());
-        }
-        concatImpl<I+1>(fst, snd, res);
-    }
-}
-
-Subs concat(const Subs &fst, const Subs &snd);
-
-template<std::size_t I = 0>
-inline void composeImpl(const Subs &fst, const Subs &snd, Subs &res) {
-    if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-        if constexpr (theories::is<I, Bools>()) {
-            res.get<I>() = fst.get<I>().concat(snd).unite(snd.get<I>());
-        } else {
-            res.get<I>() = fst.get<I>().compose(snd.get<I>());
-        }
-        composeImpl<I+1>(fst, snd, res);
-    }
-}
-
-Subs compose(const Subs &fst, const Subs &snd);
 
 template<std::size_t I = 0>
 inline void collectCoDomainVars(const Subs &subs, VarSet &res) {
@@ -82,8 +50,6 @@ bool isTriviallyTrue(const Lit &lit);
 
 Lit negate(const Lit &lit);
 
-BoolExpr subs(const Lit &lit, const Subs &s);
-
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2);
 
 BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2);
@@ -92,12 +58,20 @@ Arith theory(const ArithVarPtr&);
 
 Bools theory(const BoolVarPtr&);
 
+Arith theory(const ArithExprPtr&);
+
+Bools theory(const BoolExpr&);
+
 template <class ... Ts>
 auto apply(const Var &x, Ts... f) {
     return std::visit(Overload{f...}, x);
 }
 
-BoolExpr subs(const BoolExpr e, const Subs &subs);
+bool isLinear(const Lit &lit);
+
+bool isPoly(const Lit &lit);
+
+Subs impliedEqualities(const BoolExpr e);
 
 }
 

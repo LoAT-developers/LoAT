@@ -12,6 +12,7 @@
 #include "theory.hpp"
 #include "config.hpp"
 #include "ruleexport.hpp"
+#include "variant.hpp"
 
 #include <numeric>
 #include <random>
@@ -175,7 +176,7 @@ Subs Reachability::handle_update(const TransIdx idx) {
         }
     }
     for (const auto &x: prog_vars) {
-        solver->add(theory::mkEq(new_var_renaming.get(x), theory::subs(up.get(x), last_var_renaming)));
+        solver->add(theory::mkEq(new_var_renaming.get(x), last_var_renaming(up.get(x))));
     }
     return new_var_renaming;
 }
@@ -264,12 +265,11 @@ bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
 }
 
 void Reachability::print_trace(std::ostream &s) {
-    const auto model {solver->model().toSubs()};
+    const auto model {solver->model()};
     s << "(";
     bool first {true};
     for (const auto &x: prog_vars) {
         const auto &y {model.get(x)};
-        if (TheTheory::varToExpr(x) == y) continue;
         if (first) {
             first = false;
         } else {
@@ -283,8 +283,7 @@ void Reachability::print_trace(std::ostream &s) {
         first = true;
         if (!chcs.isSinkTransition(step.clause_idx)) {
             for (const auto &x: prog_vars) {
-                const auto y {theory::subs(step.var_renaming.get(x), model)};
-                if (TheTheory::varToExpr(x) == y) continue;
+                const auto y {model.eval(step.var_renaming.get(x))};
                 if (first) {
                     first = false;
                 } else {
@@ -399,18 +398,18 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
         // a non-conjunctive clause where some variants are blocked
         // --> make sure that we use a non-blocked variant, if any
         for (const auto &b: block->second) {
-            solver->add(!b->subs(var_renaming));
+            solver->add(var_renaming(!b));
         }
     }
     const auto vars {idx->getGuard()->vars()};
     const auto projected_var_renaming {var_renaming.project(vars)};
-    const auto guard {idx->getGuard()->subs(projected_var_renaming)};
+    const auto guard {projected_var_renaming(idx->getGuard())};
     solver->add(guard);
     switch (solver->check()) {
     case Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
-        const auto model {solver->model(guard->vars()).toSubs()};
-        const auto implicant {idx->getGuard()->syntacticImplicant(theory::compose(projected_var_renaming, model))};
+        const auto model {solver->model(guard->vars())};
+        const auto implicant {model.composeBackwards(projected_var_renaming).syntacticImplicant(idx->getGuard())};
         return {idx->withGuard(implicant)};
     }
     case Unknown: {}
@@ -443,7 +442,7 @@ Automaton Reachability::build_language(const int backlink) {
     return lang;
 }
 
-std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
+std::pair<Rule, Model> Reachability::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
     for (int i = trace.size() - 1; i >= backlink; --i) {
@@ -452,18 +451,18 @@ std::pair<Rule, Subs> Reachability::build_loop(const int backlink) {
         if (loop) {
             const auto [chained, sigma] {Chaining::chain(rule, *loop)};
             loop = chained;
-            var_renaming = theory::compose(sigma, var_renaming);
+            var_renaming = sigma.compose(var_renaming);
         } else {
             loop = rule;
         }
         if (i > 0) {
-            var_renaming = theory::compose(trace[i-1].var_renaming.project(rule.vars()), var_renaming);
+            var_renaming = trace[i-1].var_renaming.project(rule.vars()).compose(var_renaming);
         }
     }
     auto vars {loop->vars()};
     var_renaming = var_renaming.project(vars);
     theory::collectCoDomainVars(var_renaming, vars);
-    const auto model {theory::compose(var_renaming, solver->model(vars).toSubs())};
+    const auto model {solver->model(vars).composeBackwards(var_renaming)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
         RuleExport::printRule(*loop, std::cout);
@@ -504,9 +503,9 @@ RuleResult Reachability::instantiate(const Arith::Var n, const Rule &rule) const
     return res;
 }
 
-std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Subs &model, const unsigned backlink) {
+std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Model &model, const unsigned backlink) {
     RuleResult simp = Preprocess::preprocessRule(rule);
-    if (Config::Analysis::reachability() && simp->getUpdate() == theory::concat(simp->getUpdate(), simp->getUpdate())) {
+    if (Config::Analysis::reachability() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;

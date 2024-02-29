@@ -93,7 +93,7 @@ int ABMC::get_language(unsigned i) {
     }
 }
 
-std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
+std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
     std::optional<Rule> loop;
     Subs var_renaming;
     for (long i = trace.size() - 1; i >= backlink; --i) {
@@ -104,16 +104,16 @@ std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
         if (loop) {
             const auto [chained, sigma] {Chaining::chain(rule, *loop)};
             loop = chained;
-            var_renaming = theory::compose(sigma, var_renaming);
+            var_renaming = sigma.compose(var_renaming);
         } else {
             loop = rule;
         }
-        var_renaming = theory::compose(subs[i].project(rule.vars()), var_renaming);
+        var_renaming = subs[i].project(rule.vars()).compose(var_renaming);
     }
     auto vars {loop->vars()};
     theory::collectCoDomainVars(var_renaming, vars);
-    const auto model {theory::compose(var_renaming, solver->model(vars).toSubs())};
-    const auto imp {loop->getGuard()->syntacticImplicant(model)};
+    const auto model {solver->model(vars).composeBackwards(var_renaming)};
+    const auto imp {model.syntacticImplicant(loop->getGuard())};
     const auto implicant {loop->withGuard(imp)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
@@ -132,14 +132,14 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     // or some implicant of the loop is violated
     BoolExprSet pre;
     const auto s {subs_at(depth + 1)};
-    const auto not_covered {!loop.covered->subs(s)};
+    const auto not_covered {s(!loop.covered)};
     pre.insert(theory::mkEq(trace_var, arith::mkConst((*shortcut)->getId())));
     pre.insert(not_covered);
     const auto length {depth - backlink + 1};
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 1)};
-        pre.insert(implicant->negation()->subs(s_current));
+        pre.insert(s_current(implicant->negation()));
         pre.insert(theory::mkNeq(trace_var, arith::mkConst(rule->getId())));
     }
     // we must not start another iteration of the loop after using the learned transition in the next step
@@ -149,7 +149,7 @@ BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     for (unsigned i = 0; i < length; ++i) {
         const auto &[rule, implicant] {trace[backlink + i]};
         const auto s_current {subs_at(depth + i + 2)};
-        post.insert(implicant->negation()->subs(s_current));
+        post.insert(s_current(implicant->negation()));
         post.insert(theory::mkNeq(trace_var, arith::mkConst(rule->getId())));
     }
     return bools::mkOr(pre) && bools::mkOr(post);
@@ -166,7 +166,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     auto simp {Preprocess::preprocessRule(loop)};
     auto &map {cache.emplace(lang, std::unordered_map<BoolExpr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
-        if (imp->subs(sample_point)->isTriviallyTrue()) {
+        if (sample_point.eval<Bools>(imp)) {
             if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
             if (loop) {
                 shortcut = loop->idx;
@@ -205,7 +205,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     const auto deterministic {simp->isDeterministic()};
     if (Config::Analysis::reachability() && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
-    } else if (Config::Analysis::reachability() && simp->getUpdate() == theory::concat(simp->getUpdate(), simp->getUpdate())) {
+    } else if (Config::Analysis::reachability() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
     } else if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
         if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
@@ -289,18 +289,18 @@ void ABMC::sat() {
 
 void ABMC::build_trace() {
     trace.clear();
-    const auto model {solver->model().toSubs()};
+    const auto model {solver->model()};
     std::vector<Subs> run;
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
         const auto s {subs.at(d)};
-        const auto rule {rule_map.at(*(*std::get<Arith::Expr>(model.get(trace_var))->isRational())->intValue())};
-        const auto comp {theory::compose(s, model)};
-        const auto imp {rule->getGuard()->syntacticImplicant(comp)};
+        const auto rule {rule_map.at(std::get<Arith::Const>(model.get(trace_var)))};
+        const auto comp {model.composeBackwards(s)};
+        const auto imp {comp.syntacticImplicant(rule->getGuard())};
         auto vars {rule->getUpdate().domain()};
         vars.insert(n);
         vars.insert(trace_var);
-        run.push_back(comp.project(vars));
+        run.push_back(comp.toSubs().project(vars));
         const Implicant i {rule, imp};
         if (prev) {
             dependency_graph.addEdge(*prev, i);
@@ -394,7 +394,7 @@ void ABMC::analyze() {
     while (true) {
         const auto &s {subs_at(depth + 1)};
         solver->push();
-        solver->add(query->subs(s));
+        solver->add(s(query));
         switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
@@ -410,9 +410,9 @@ void ABMC::analyze() {
         }
         solver->pop();
         if (!shortcut) {
-            solver->add(step->subs(s));
+            solver->add(s(step));
         } else {
-            solver->add((encode_transition(*shortcut) || step)->subs(s));
+            solver->add(s(encode_transition(*shortcut) || step));
         }
         ++depth;
         BoolExpr blocking_clause;

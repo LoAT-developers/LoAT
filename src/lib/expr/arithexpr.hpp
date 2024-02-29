@@ -26,15 +26,16 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
-#include <purrs.hh>
 #include <functional>
 
 #include "set.hpp"
+#include "map.hpp"
 #include "string.hpp"
 #include "conshash.hpp"
 
 class ArithVar;
 class ArithExpr;
+
 class ArithConst;
 class ArithExp;
 class ArithAdd;
@@ -48,23 +49,8 @@ using ArithExpPtr = std::shared_ptr<const ArithExp>;
 
 
 namespace mp = boost::multiprecision;
-namespace Purrs = Parma_Recurrence_Relation_Solver;
-
-struct SymbolHasher {
-    size_t operator()(const Purrs::Symbol &x) const {
-        return std::hash<std::string>{}(x.get_name());
-    }
-};
-
-struct SymbolEqual {
-    bool operator()(const Purrs::Symbol &x, const Purrs::Symbol &y) const {
-        return x.get_name() == y.get_name();
-    }
-};
-
 using Int = mp::cpp_int;
 using Rational = mp::cpp_rational;
-using purrs_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArithVarPtr>, boost::bimaps::unordered_set_of<Purrs::Symbol, SymbolHasher, SymbolEqual>>;
 
 namespace arith {
 
@@ -182,8 +168,6 @@ public:
 
     ArithExprPtr divide(const Rational &d) const;
 
-    std::pair<Purrs::Expr, purrs_var_map> toPurrs() const;
-
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
      */
@@ -232,9 +216,9 @@ public:
 
     bool isIntegral() const;
 
-    Rational eval(const std::function<Int(const ArithVarPtr)> &valuation) const;
+    Rational evalToRational(const linked_hash_map<ArithVarPtr, Int> &valuation) const;
 
-    Purrs::Expr toPurrs(purrs_var_map &) const;
+    Int eval(const linked_hash_map<ArithVarPtr, Int> &valuation) const;
 
     /**
      * @brief exponentiation

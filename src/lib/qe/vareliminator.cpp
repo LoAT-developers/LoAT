@@ -61,7 +61,7 @@ const std::vector<std::pair<ArithSubs, BoolExpr>> VarEliminator::eliminateDepend
             for (const auto &b: bb) {
                 if (b->isRational()) {
                     const auto newSubs {Subs::build<Arith>(*it, b)};
-                    res.push_back({subs.compose(newSubs.get<Arith>()), guard->subs(newSubs)});
+                    res.push_back({subs.compose(newSubs.get<Arith>()), newSubs(guard)});
                 }
             }
         }

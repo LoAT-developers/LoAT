@@ -1,6 +1,7 @@
 #pragma once
 
 #include "theories.hpp"
+#include "model.hpp"
 
 class Transition {
 
@@ -37,7 +38,7 @@ public:
 
     BoolExpr toBoolExpr() const;
 
-    Transition syntacticImplicant(const Subs &subs) const;
+    Transition syntacticImplicant(const Model &model) const;
 
     Transition linearize(const ArithVarPtr x) const;
 

@@ -2,107 +2,28 @@
 
 #include "smt.hpp"
 #include "cvc5context.hpp"
-#include "exprtosmt.hpp"
 
 #include <cvc5/cvc5.h>
 
-template <ITheory... Th>
-class CVC5 : public Smt<Th...> {
+class CVC5 : public Smt {
 
-    using TheTheory = Theory<Th...>;
-    using BoolExpr = BExpr<Th...>;
-    using BoolExprSet = BoolExpressionSet<Th...>;
+    using TheTheory = Theory<Arith, Bools>;
+    using BoolExpr = BExpr;
+    using BoolExprSet = BoolExpressionSet;
     using Lit = typename TheTheory::Lit;
 
 public:
-    CVC5(): solver(), ctx(solver) {
-        updateParams();
-    }
-
-    void add(const BExpr<Th...> e) override {
-        solver.assertFormula(ExprToSmt<cvc5::Term, Th...>::convert(e, ctx));
-        solver.assertFormula(ctx.clearRefinement());
-    }
-
-    void push() override {
-        solver.push();
-    }
-
-    void pop() override {
-        solver.pop();
-    }
-
-    SmtResult check() override {
-        const auto res {solver.checkSat()};
-        if (res.isSat()) {
-            return Sat;
-        } else if (res.isUnsat()) {
-            return Unsat;
-        } else {
-            return Unknown;
-        }
-    }
-
-    Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
-        assert(models);
-        Model<Th...> res;
-        const auto add = [&res, this](const auto &x, const auto &y) {
-            if constexpr ((std::is_same_v<Arith, Th> || ...)) {
-                if (std::holds_alternative<Arith::Var>(x)) {
-                    const auto var {std::get<Arith::Var>(x)};
-                    const auto val {getRealFromModel(y)};
-                    assert(mp::denominator(val) == 1);
-                    res.template put<Arith>(var, mp::numerator(val));
-                    return;
-                }
-            }
-            if constexpr ((std::is_same_v<Bools, Th> || ...)) {
-                if (std::holds_alternative<Bools::Var>(x)) {
-                    const auto var {std::get<Bools::Var>(x)};
-                    res.template put<Bools>(var, this->solver.getValue(y).getBooleanValue());
-                    return;
-                }
-            }
-            throw std::logic_error("unknown variable type");
-        };
-        const auto map = ctx.getSymbolMap();
-        if (vars) {
-            for (const auto &x: *vars) {
-                const auto res {map.get(x)};
-                if (res) {
-                    add(x, *res);
-                }
-            }
-        } else {
-            for (const auto &[x, y]: map) {
-                add(x, y);
-            }
-        }
-        return res;
-    }
-
-    void enableModels() override {
-        this->models = true;
-        updateParams();
-    }
-
-    void resetSolver() override {
-        solver.resetAssertions();
-        updateParams();
-    }
-
-    ~CVC5() override {}
-
-    std::ostream& print(std::ostream& os) const override {
-        for (const auto &t: solver.getAssertions()) {
-            os << t << std::endl;
-        }
-        return os;
-    }
-
-    void randomize(unsigned seed) override {
-        // TODO
-    }
+    CVC5();
+    void add(const BExpr e) override;
+    void push() override;
+    void pop() override;
+    SmtResult check() override;
+    Model model(const std::optional<const VarSet> &vars = {}) override;
+    void enableModels() override;
+    void resetSolver() override;
+    ~CVC5() override;
+    std::ostream& print(std::ostream& os) const override;
+    void randomize(unsigned seed) override;
 
 private:
     bool models = false;
@@ -110,28 +31,7 @@ private:
     CVC5Context ctx;
     unsigned seed = 42u;
 
-    Rational getRealFromModel(const cvc5::Term &symbol) {
-        const auto val {solver.getValue(symbol)};
-        if (val.isIntegerValue()) {
-            return Rational(val.getIntegerValue());
-        } else if (val.isRealValue()) {
-            if (val.isReal64Value()) {
-                const auto [num, denom] {val.getReal64Value()};
-                return Rational(num) / Rational(denom);
-            } else {
-                throw std::overflow_error((std::stringstream() << "overflow in CVC5::getRealFromModel: " << val).str());
-            }
-        } else {
-            throw std::logic_error((std::stringstream() << "CVC5::getRealFromModel: tried to convert " << val << " to real").str());
-        }
-    }
-
-    void updateParams() {
-        if (models) {
-            solver.setOption("produce-models", "true");
-        }
-        solver.setOption("seed", std::to_string(seed));
-        solver.setLogic("QF_NIRAT");
-    }
+    Rational getRealFromModel(const cvc5::Term &symbol);
+    void updateParams();
 
 };

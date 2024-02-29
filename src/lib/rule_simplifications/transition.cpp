@@ -1,4 +1,5 @@
 #include "transition.hpp"
+#include "theory.hpp"
 
 std::unordered_map<BoolExpr, Transition> Transition::cache {};
 
@@ -20,7 +21,7 @@ Transition Transition::build(const BoolExpr formula, std::shared_ptr<const linke
 }
 
 Transition Transition::subs(const Subs &subs) const {
-    return build(formula->subs(subs), vm);
+    return build(subs(formula), vm);
 }
 
 VarSet Transition::vars() const {
@@ -55,8 +56,8 @@ BoolExpr Transition::toBoolExpr() const {
     return formula;
 }
 
-Transition Transition::syntacticImplicant(const Subs &subs) const {
-    return build(formula->syntacticImplicant(subs), vm);
+Transition Transition::syntacticImplicant(const Model &model) const {
+    return build(model.syntacticImplicant(formula), vm);
 }
 
 Transition Transition::linearize(const ArithVarPtr x) const {

@@ -503,21 +503,19 @@ bool ArithExpr::isIntegral() const {
             }
             const auto e {arith::mkTimes(nonInt)};
             unsigned i {0};
-            linked_hash_map<ArithVarPtr, unsigned> vars;
+            linked_hash_map<ArithVarPtr, Int> valuation;
             // degrees, subs share indices with vars
             std::vector<Int> degrees;
-            std::vector<Int> subs;
+            std::vector<ArithVarPtr> vars;
             for (const auto &x: e->vars()) {
-                vars.emplace(x, i);
-                degrees.push_back(*e->isPoly(x));
-                subs.push_back(0);
+                vars.emplace_back(x);
+                degrees.emplace_back(*e->isPoly(x));
+                valuation.emplace(x, 0);
                 ++i;
             }
             while (true) {
                 // substitute every variable x_i by the integer subs[i] and check if the result is an integer
-                const auto res {a->eval([&vars, &subs](const auto x){
-                    return subs[vars.at(x)];
-                })};
+                const auto res {a->evalToRational(valuation)};
                 if (mp::denominator(res) != 1) {
                     return false;
                 }
@@ -525,10 +523,12 @@ bool ArithExpr::isIntegral() const {
                 // (the idea is that subs takes all possible combinations of 0,...,degree[i]+1 for every entry i)
                 bool foundNext = false;
                 for (unsigned int i = 0; i < degrees.size(); i++) {
-                    if (subs[i] >= degrees[i]+1) {
-                        subs[i] = 0;
+                    const auto x {vars[i]};
+                    const auto val {valuation[x]};
+                    if (val >= degrees[i]+1) {
+                        valuation.put(x, 0);
                     } else {
-                        subs[i] += 1;
+                        valuation.put(x, val + 1);
                         foundNext = true;
                         break;
                     }
@@ -549,66 +549,38 @@ bool ArithExpr::isIntegral() const {
         });
 }
 
-Rational ArithExpr::eval(const std::function<Int(const ArithVarPtr)> &valuation) const {
+Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
     return apply<Rational>(
         [](const ArithConstPtr t) {
             return **t;
         },
         [&valuation](const ArithVarPtr x) {
-            return valuation(x);
+            return valuation[x];
         },
         [&valuation](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::accumulate(args.begin(), args.end(), Rational{0}, [&valuation](const auto &x, const auto y) {
-                return x + y->eval(valuation);
+                return x + y->evalToRational(valuation);
             });
         },
         [&valuation](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::accumulate(args.begin(), args.end(), Rational{1}, [&valuation](const auto &x, const auto y) {
-                return x * y->eval(valuation);
+                return x * y->evalToRational(valuation);
             });
         },
         [&valuation](const ArithExpPtr e) {
-            return mp::pow(mp::numerator(e->getBase()->eval(valuation)), e->getExponent()->eval(valuation).convert_to<long>());
+            return mp::pow(mp::numerator(e->getBase()->evalToRational(valuation)), e->getExponent()->evalToRational(valuation).convert_to<long>());
         });
 }
 
-std::pair<Purrs::Expr, purrs_var_map> ArithExpr::toPurrs() const {
-    purrs_var_map m;
-    const auto res {toPurrs(m)};
-    return {res, m};
-}
-
-Purrs::Expr ArithExpr::toPurrs(purrs_var_map &m) const {
-    return apply<Purrs::Expr>(
-        [](const ArithConstPtr t) {
-            return Purrs::Number(t->numerator()->getValue().str().c_str()) / Purrs::Number(t->denominator()->getValue().str().c_str());
-        },
-        [&m](const ArithVarPtr x) {
-            const auto res {m.left.find(x)};
-            if (res == m.left.end()) {
-                Purrs::Symbol s {x->getName()};
-                m.left.insert(purrs_var_map::left_value_type(x, s));
-                return s;
-            }
-            return res->second;
-        },
-        [&m](const ArithAddPtr a) {
-            const auto &args {a->getArgs()};
-            return std::accumulate(args.begin(), args.end(), Purrs::Expr(0), [&m](const auto &x, const auto &y){
-                return x + y->toPurrs(m);
-            });
-        },
-        [&m](const ArithMultPtr mult) {
-            const auto &args {mult->getArgs()};
-            return std::accumulate(args.begin(), args.end(), Purrs::Expr(1), [&m](const auto &x, const auto &y){
-                return x * y->toPurrs(m);
-            });
-        },
-        [&m](const ArithExpPtr e) {
-            return Purrs::pwr(e->getBase()->toPurrs(m), e->getExponent()->toPurrs(m));
-        });
+Int ArithExpr::eval(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
+    assert(isIntegral());
+    const auto res {evalToRational(valuation)};
+    if (mp::denominator(res) != 1) {
+        throw std::invalid_argument(toString(shared_from_this()) + " is not integral");
+    }
+    return mp::numerator(res);
 }
 
 std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {

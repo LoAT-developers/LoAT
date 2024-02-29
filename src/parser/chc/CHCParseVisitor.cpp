@@ -117,7 +117,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             up.put<Bools>(bvars[i], bools::mkLit(BoolLit(BoolVar::next())));
         }
         up.put<Arith>(ArithVar::loc_var, arith::mkConst(c.rhs.loc));
-        const auto guard {c.guard->subs(ren)->simplify() && theory::mkEq(ArithVar::loc_var, arith::mkConst(c.lhs.loc))};
+        const auto guard {ren(c.guard)->simplify() && theory::mkEq(ArithVar::loc_var, arith::mkConst(c.lhs.loc))};
         its->addRule(Rule(guard, up), c.lhs.loc);
     }
     return its;
@@ -240,7 +240,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         const auto formula = any_cast<formula_type>(visit(ctx->i_formula(0)));
         res.conjoin(bindings);
         res.conjoin(formula);
-        res.t = formula.t->subs(bindings.t);
+        res.t = bindings.t(formula.t);
         res.subsRefinement(bindings.t);
         return res;
     }
@@ -432,10 +432,10 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
         res.t = std::visit(
             Overload{
                 [&](const Arith::Expr expr) {
-                    return TheTheory::Expr(bindings.t.get<Arith>()(expr));
+                    return TheTheory::Expr{bindings.t.get<Arith>()(expr)};
                 },
                 [&](const Bools::Expr expr) {
-                    return TheTheory::Expr(expr->subs(bindings.t));
+                    return TheTheory::Expr{bindings.t(expr)};
                 }
             }, expr.t);
         res.subsRefinement(bindings.t);
@@ -513,8 +513,8 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
             if (!explicit_encoding) {
                 res.refinement.push_back(bools::mkLit(arith::mkGeq(mod, 0))); // x mod y is non-negative
                 res.refinement.push_back( // |y| > x mod y
-                    (bools::mkLit(arith::mkGt(args[1], 0)) && arith::mkGt(args[1], mod))
-                    || (bools::mkLit(arith::mkLt(args[1], 0)) && arith::mkGt(-args[1], mod)));
+                    bools::mkAndFromLits({arith::mkGt(args[1], 0), arith::mkGt(args[1], mod)})
+                    || bools::mkAndFromLits({arith::mkLt(args[1], 0), arith::mkGt(-args[1], mod)}));
             }
             if (op == Div) {
                 res.t = Arith::varToExpr(div);

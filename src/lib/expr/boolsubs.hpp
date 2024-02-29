@@ -26,7 +26,6 @@ public:
     BoolExpr subs(const BoolLit &lit) const;
     BoolExpr operator()(const BoolExpr e) const;
     bool contains(const BoolVarPtr var) const;
-    BoolSubs concat(const theories::Subs<Arith, Bools> &that) const;
     BoolSubs unite(const BoolSubs &t) const;
     BoolSubs project(const linked_hash_set<BoolVarPtr> &vars) const;
     bool changes(const BoolVarPtr key) const;

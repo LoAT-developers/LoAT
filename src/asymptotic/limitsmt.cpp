@@ -14,7 +14,7 @@ using namespace std;
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a positive constant
  */
-static BExpr<Arith> posConstraint(const map<Int, Arith::Expr>& coefficients) {
+static BExpr posConstraint(const map<Int, Arith::Expr>& coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         if (degree > 0) {
@@ -24,7 +24,7 @@ static BExpr<Arith> posConstraint(const map<Int, Arith::Expr>& coefficients) {
             conjunction.push_back(arith::mkGt(c, arith::mkConst(0)));
         }
     }
-    return BoolExpression<Arith>::mkAndFromLits(conjunction);
+    return bools::mkAndFromLits(conjunction);
 }
 
 /**
@@ -32,7 +32,7 @@ static BExpr<Arith> posConstraint(const map<Int, Arith::Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a negative constant
  */
-static BExpr<Arith> negConstraint(const map<Int, Arith::Expr>& coefficients) {
+static BExpr negConstraint(const map<Int, Arith::Expr>& coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (const auto &[degree, c] : coefficients) {
         if (degree > 0) {
@@ -42,7 +42,7 @@ static BExpr<Arith> negConstraint(const map<Int, Arith::Expr>& coefficients) {
             conjunction.push_back(arith::mkLt(c, 0));
         }
     }
-    return BoolExpression<Arith>::mkAndFromLits(conjunction);
+    return bools::mkAndFromLits(conjunction);
 }
 
 /**
@@ -50,12 +50,12 @@ static BExpr<Arith> negConstraint(const map<Int, Arith::Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = -\infty
  */
-static BExpr<Arith> negInfConstraint(const map<Int, Arith::Expr>& coefficients) {
+static BExpr negInfConstraint(const map<Int, Arith::Expr>& coefficients) {
     Int maxDegree {0};
     for (const auto &[degree, _]: coefficients) {
         maxDegree = degree > maxDegree ? degree : maxDegree;
     }
-    std::vector<BExpr<Arith>> disjunction;
+    std::vector<BExpr> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
         std::vector<Arith::Lit> conjunction;
         for (const auto &[degree, c]: coefficients) {
@@ -66,9 +66,9 @@ static BExpr<Arith> negInfConstraint(const map<Int, Arith::Expr>& coefficients) 
                 conjunction.push_back(arith::mkLt(c, arith::mkConst(0)));
             }
         }
-        disjunction.push_back(BoolExpression<Arith>::mkAndFromLits(conjunction));
+        disjunction.push_back(bools::mkAndFromLits(conjunction));
     }
-    return BoolExpression<Arith>::mkOr(disjunction);
+    return bools::mkOr(disjunction);
 }
 
 /**
@@ -76,12 +76,12 @@ static BExpr<Arith> negInfConstraint(const map<Int, Arith::Expr>& coefficients) 
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = \infty
  */
-static BExpr<Arith> posInfConstraint(const map<Int, Arith::Expr>& coefficients) {
+static BExpr posInfConstraint(const map<Int, Arith::Expr>& coefficients) {
     Int maxDegree {0};
     for (const auto &[degree, _] : coefficients) {
         maxDegree = degree > maxDegree ? degree : maxDegree;
     }
-    std::vector<BExpr<Arith>> disjunction;
+    std::vector<BExpr> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
         std::vector<Arith::Lit> conjunction;
         for (const auto &[degree, c] : coefficients) {
@@ -92,9 +92,9 @@ static BExpr<Arith> posInfConstraint(const map<Int, Arith::Expr>& coefficients) 
                 conjunction.push_back(arith::mkGt(c, arith::mkConst(0)));
             }
         }
-        disjunction.push_back(BoolExpression<Arith>::mkAndFromLits(conjunction));
+        disjunction.push_back(bools::mkAndFromLits(conjunction));
     }
-    return BoolExpression<Arith>::mkOr(disjunction);
+    return bools::mkOr(disjunction);
 }
 
 /**
@@ -111,7 +111,7 @@ static map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::
 
 std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
-    const auto solver {SmtFactory::_modelBuildingSolver<Arith>(Smt<Arith>::chooseLogic<std::vector<Theory<Arith>::Lit>, ArithSubs>({currentLP.getQuery(), {arith::mkGt(cost, 0)}}, {}))};
+    const auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Arith::Lit>, ArithSubs>({currentLP.getQuery(), {arith::mkGt(cost, 0)}}, {}))};
     // the parameter of the desired family of solutions
     const auto n {currentLP.getN()};
     // get all relevant variables
@@ -207,15 +207,15 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
     return {smtSubs};
 }
 
-BExpr<Arith> encodeBoolExpr(const BExpr<Arith> expr, const ArithSubs &templateSubs, const Arith::Var n) {
-    BoolExpressionSet<Arith> newChildren;
+BExpr encodeBoolExpr(const BExpr expr, const ArithSubs &templateSubs, const Arith::Var n) {
+    BoolExpressionSet newChildren;
     for (const auto &c: expr->getChildren()) {
         newChildren.insert(encodeBoolExpr(c, templateSubs, n));
     }
     if (expr->isAnd()) {
-        return BoolExpression<Arith>::mkAnd(newChildren);
+        return bools::mkAnd(newChildren);
     } else if (expr->isOr()) {
-        return BoolExpression<Arith>::mkOr(newChildren);
+        return bools::mkOr(newChildren);
     } else {
         auto lit = expr->getTheoryLit();
         assert(lit);
@@ -226,9 +226,9 @@ BExpr<Arith> encodeBoolExpr(const BExpr<Arith> expr, const ArithSubs &templateSu
     }
 }
 
-std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<Arith> expr, const Arith::Expr cost, Complexity currentRes) {
+std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr expr, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
-    auto solver {SmtFactory::_modelBuildingSolver<Arith>(Smt<Arith>::chooseLogic(BoolExpressionSet<Arith>{expr, BoolExpression<Arith>::mkLit(arith::mkGt(cost, 0))}))};
+    auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExpressionSet{expr, bools::mkLit(arith::mkGt(cost, 0))}))};
     // the parameter of the desired family of solutions
     const auto n {ArithVar::next()};
     // get all relevant variables
@@ -260,7 +260,7 @@ std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const BExpr<Ari
     auto checkSolver = [&solver] {
         return solver->check() == Sat;
     };
-    auto model = [&solver, &vars, &varCoeff0, &varCoeff, &n] {
+    auto model = [&] {
         ArithSubs smtSubs;
         const auto model {solver->model()};
         for (const auto &var : vars) {

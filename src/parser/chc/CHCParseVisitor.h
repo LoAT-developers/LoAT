@@ -23,7 +23,7 @@ struct Res {
     void subsRefinement(const Subs &subs) {
         auto it {refinement.begin()};
         while (it != refinement.end()) {
-            *it = (*it)->subs(subs);
+            *it = subs(*it);
             ++it;
         }
     }

@@ -21,7 +21,7 @@ AccelerationProblem::AccelerationProblem(
         todo.insert(l);
     }
     const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
-    const auto logic {SMT::chooseLogic<LitSet, Subs>({todo}, subs)};
+    const auto logic {Smt::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
         const auto bound {bools::mkLit(ArithLit(config.n->toExpr() - arith::mkConst(1)))};
@@ -31,7 +31,7 @@ AccelerationProblem::AccelerationProblem(
 }
 
 bool AccelerationProblem::trivial(const Lit &lit) {
-    if (theory::subs(lit, update)->isTriviallyTrue()) {
+    if (update(lit)->isTriviallyTrue()) {
         res.formula.push_back(bools::mkLit(lit));
         res.proof.newline();
         res.proof.append(std::stringstream() << lit << ": trivial");
@@ -42,7 +42,7 @@ bool AccelerationProblem::trivial(const Lit &lit) {
 }
 
 bool AccelerationProblem::unchanged(const Lit &lit) {
-    if (bools::mkLit(lit) == theory::subs(lit, update)) {
+    if (bools::mkLit(lit) == update(lit)) {
         res.formula.push_back(bools::mkLit(lit));
         res.proof.newline();
         res.proof.append(std::stringstream() << lit << ": unchanged");
@@ -166,14 +166,14 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         return false;
     }
     auto success {false};
-    const auto updated {theory::subs(lit, update)};
+    const auto updated {update(lit)};
     solver->push();
     solver->add(updated);
     if (solver->check() == Sat) {
         solver->add(bools::mkLit(theory::negate(lit)));
         if (solver->check() == Unsat) {
             success = true;
-            auto g {theory::subs(lit, closed->closed_form)->subs(Subs::build<Arith>(config.n, config.n->toExpr() - arith::mkConst(1)))};
+            auto g {Subs::build<Arith>(config.n, config.n->toExpr() - arith::mkConst(1))(closed->closed_form(lit))};
             res.formula.push_back(g);
             res.proof.newline();
             res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
@@ -186,7 +186,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
 }
 
 bool AccelerationProblem::recurrence(const Lit &lit) {
-    const auto updated {theory::subs(lit, update)};
+    const auto updated {update(lit)};
     solver->push();
     solver->add(bools::mkLit(lit));
     solver->add(!updated);
@@ -216,7 +216,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
         solver->add(bools::mkLit(inc));
         if (solver->check() == Unsat) {
             success = true;
-            const auto g {bools::mkLit(rel) && rel.subs(closed->closed_form.get<Arith>()).subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})};
+            const auto g {bools::mkAndFromLits({rel, rel.subs(closed->closed_form.get<Arith>()).subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})})};
             res.formula.push_back(g);
             res.proof.newline();
             res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
@@ -258,11 +258,11 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
                     return false;
                 }
                 const auto s {closed->closed_form.get<Arith>().compose(ArithSubs({{config.n, config.n->toExpr() - arith::mkConst(1)}}))};
-                g = bools::mkLit((!i).subs(s)) && rel.subs(s);
+                g = bools::mkAndFromLits({(!i).subs(s), rel.subs(s)});
                 c = bools::mkLit((!i));
                 res.nonterm = false;
             } else {
-                g = inc && rel;
+                g = inc && bools::mkLit(rel);
                 c = inc;
             }
             res.formula.push_back(g);
@@ -291,10 +291,10 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         eqs.push_back(theory::mkEq(TheTheory::varToExpr(v), update.get(v)));
     }
     const auto c {bools::mkAnd(eqs)};
-    if (c->isTriviallyFalse() || (samplePoint && !c->subs(*samplePoint)->isTriviallyTrue())) {
+    if (c->isTriviallyFalse() || (samplePoint && !(*samplePoint)(c)->isTriviallyTrue())) {
         return false;
     }
-    const auto g {c && lit};
+    const auto g {c && bools::mkLit(lit)};
     solver->push();
     solver->add(g);
     if (solver->check() == Sat) {

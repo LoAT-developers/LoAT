@@ -98,7 +98,7 @@ void BMC::analyze() {
         }
         last_s = s;
         solver.push();
-        solver.add(query->subs(s));
+        solver.add(s(query));
         switch (solver.check()) {
         case SmtResult::Sat:
             unsat();
@@ -112,7 +112,7 @@ void BMC::analyze() {
         case SmtResult::Unsat: {}
         }
         solver.pop();
-        solver.add(step->subs(s));
+        solver.add(s(step));
         ++depth;
         if (solver.check() == SmtResult::Unsat) {
             if (!approx) {

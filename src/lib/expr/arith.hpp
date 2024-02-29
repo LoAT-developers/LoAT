@@ -12,6 +12,7 @@ struct Arith {
     using Subs = ArithSubs;
     using Expr = ArithExprPtr;
     using Const = Int;
+    using Model = linked_hash_map<Var, Const>;
 
     static Expr constToExpr(const Const &val) {
         return arith::mkConst(val);

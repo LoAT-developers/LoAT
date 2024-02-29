@@ -51,7 +51,7 @@ private:
     bool is_orig_clause(const TransIdx idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
-    std::pair<Rule, Subs> build_loop(const int backlink);
+    std::pair<Rule, Model> build_loop(const int backlink);
     BoolExpr build_blocking_clause(const int backlink, const Loop &loop);
     std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
     void unsat();

@@ -1,4 +1,5 @@
 #include "theory.hpp"
+#include "literal.hpp"
 
 namespace theory {
 
@@ -22,31 +23,6 @@ ThExpr toExpr(const Var &var) {
     return TheTheory::varToExpr(var);
 }
 
-BoolSubs concat(const BoolSubs& s, const Subs &that) {
-    BoolSubs res;
-    for (const auto &p: s) {
-        res.put(p.first, subs(p.second, that));
-    }
-    return res;
-}
-
-ThExpr subs(const ThExpr &expr, const Subs &subs) {
-    return std::visit(Overload{
-                          [&](const ArithExprPtr expr) {
-                              return ThExpr(subs.get<Arith>()(expr));
-                          },
-                          [&](const BoolExpr expr) {
-                              return ThExpr(theory::subs(expr, subs));
-                          }
-                      }, expr);
-}
-
-BoolExpr subs(const BoolExpr e, const Subs &subs) {
-    return e->map([&subs](const auto &lit) {
-        return theories::subs<Arith, Bools>(lit, subs);
-    });
-}
-
 void collectVars(const ThExpr &expr, VarSet &vars) {
     std::visit(Overload{
                    [&vars](const ArithExprPtr expr) {
@@ -64,14 +40,6 @@ VarSet vars(const ThExpr &e) {
     return res;
 }
 
-Var first(const Pair &p) {
-    return theories::first<Arith, Bools>(p);
-}
-
-ThExpr second(const Pair &p) {
-    return theories::second<Arith, Bools>(p);
-}
-
 VarSet vars(const Subs &e) {
     VarSet res;
     collectVars(e, res);
@@ -83,18 +51,6 @@ void collectVars(const Subs &subs, VarSet &vars) {
         vars.insert(x);
         theory::collectVars(y, vars);
     }
-}
-
-Subs compose(const Subs &fst, const Subs &snd) {
-    Subs res;
-    composeImpl(fst, snd, res);
-    return res;
-}
-
-Subs concat(const Subs &fst, const Subs &snd) {
-    Subs res;
-    concatImpl(fst, snd, res);
-    return res;
 }
 
 VarSet coDomainVars(const Subs &subs) {
@@ -117,10 +73,6 @@ bool isTriviallyTrue(const Lit &lit) {
 
 Lit negate(const Lit &lit) {
     return theories::negate<Arith, Bools>(lit);
-}
-
-BoolExpr subs(const Lit &lit, const Subs &s) {
-    return theories::subs<Arith, Bools>(lit, s);
 }
 
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
@@ -159,6 +111,134 @@ Arith theory(const ArithVarPtr&) {
 
 Bools theory(const BoolVarPtr&) {
     return bools::t;
+}
+
+Arith theory(const ArithExprPtr&) {
+    return arith::t;
+}
+
+Bools theory(const BoolExpr&) {
+    return bools::t;
+}
+
+template <size_t I = 0>
+inline bool isLinearImpl(const Lit &lit) {
+    if constexpr (I < std::variant_size_v<ThExpr>) {
+        if (lit.index() == I) {
+            return std::get<I>(lit).isLinear();
+        }
+        return isLinearImpl<I+1>(lit);
+    } else {
+        throw std::logic_error("unknown theory");
+    }
+}
+
+bool isLinear(const Lit &lit) {
+    return isLinearImpl<0>(lit);
+}
+
+template <size_t I = 0>
+inline bool isPolyImpl(const Lit &lit) {
+    if constexpr (I < std::variant_size_v<ThExpr>) {
+        if (lit.index() == I) {
+            return std::get<I>(lit).isPoly();
+        }
+        return isPolyImpl<I+1>(lit);
+    } else {
+        throw std::logic_error("unknown theory");
+    }
+}
+
+bool isPoly(const Lit &lit) {
+    return isPolyImpl<0>(lit);
+}
+
+Subs impliedEqualities(const BoolExpr e) {
+    Subs res;
+    std::vector<BoolExpr> todo;
+    const auto find_elim = [](const BoolExpr &c) {
+        std::optional<BoolVarPtr> elim;
+        const auto vars {c->vars().template get<BoolVarPtr>()};
+        for (const auto &x: vars) {
+            if (x->isTempVar()) {
+                if (elim) {
+                    return std::optional<BoolVarPtr>{};
+                } else {
+                    elim = x;
+                }
+            }
+        }
+        return elim;
+    };
+    if (e->isAnd()) {
+        const auto children {e->getChildren()};
+        for (const auto &c: children) {
+            if (c->isOr()) {
+                const auto elim {find_elim(c)};
+                if (elim) {
+                    auto grandChildren {c->getChildren()};
+                    auto lit {bools::mkLit(BoolLit(*elim))};
+                    bool positive {grandChildren.contains(lit)};
+                    if (!positive) {
+                        lit = !lit;
+                        if (!grandChildren.contains(lit)) {
+                            continue;
+                        }
+                    }
+                    grandChildren.erase(lit);
+                    const BoolExpr cand {bools::mkOr(grandChildren)};
+                    // we have     lit \/  cand
+                    // search for !lit \/ !cand
+                    if (children.contains((!lit) || (!cand))) {
+                        // we have (lit \/ cand) /\ (!lit \/ !cand), i.e., lit <==> !cand
+                        res.put(*elim, positive ? !cand : cand);
+                    }
+                }
+            }
+        }
+        todo.insert(todo.end(), children.begin(), children.end());
+    } else {
+        todo.push_back(e);
+    }
+    for (const auto &current: todo) {
+        if (current->isOr()) {
+            const auto children {current->getChildren()};
+            if (children.size() == 2) {
+                for (const auto &c: children) {
+                    if (c->isAnd()) {
+                        const auto elim {find_elim(c)};
+                        if (elim) {
+                            auto grandChildren {c->getChildren()};
+                            auto lit {bools::mkLit(BoolLit(*elim))};
+                            bool positive {grandChildren.contains(lit)};
+                            if (!positive) {
+                                lit = !lit;
+                                if (!grandChildren.contains(lit)) {
+                                    continue;
+                                }
+                            }
+                            grandChildren.erase(lit);
+                            const BoolExpr cand {bools::mkAnd(grandChildren)};
+                            if (children.contains((!lit) && (!cand))) {
+                                // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
+                                res.put(*elim, positive ? cand : !cand);
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (current->isTheoryLit()) {
+            const auto lit {*current->getTheoryLit()};
+            if (std::holds_alternative<BoolLit>(lit)) {
+                const auto &bool_lit {std::get<BoolLit>(lit)};
+                const auto var {bool_lit.getBoolVar()};
+                if (var->isTempVar()) {
+                    res.put(var, bool_lit.isNegated() ? bot() : top());
+                }
+            }
+        }
+    }
+    return res;
 }
 
 }

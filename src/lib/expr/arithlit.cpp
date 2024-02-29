@@ -153,5 +153,5 @@ std::ostream& operator<<(std::ostream &s, const ArithLit &rel) {
 }
 
 bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
-    return l->eval([&](const auto x){return m[x];}) > 0;
+    return l->eval(m) > 0;
 }

@@ -34,7 +34,7 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression> {
     using Model = typename T::Model;
     using VS = theories::VarSet<Arith, Bools>;
     using LS = theories::LitSet<Arith, Bools>;
-    using G = Conjunction<Arith, Bools>;
+    using G = Conjunction;
     using BE = BExpr;
     using BES = BoolExpressionSet;
 
@@ -123,17 +123,6 @@ public:
     BE linearize(const ArithVarPtr n) const;
     BE toInfinity(const ArithVarPtr n) const;
     BE toMinusInfinity(const ArithVarPtr n) const;
-
-private:
-
-    void syntacticImplicant(const Model &subs, linked_hash_set<BE> &res) const;
-
-public:
-
-    /**
-     * Assumes that this->subs(subs) is a tautology.
-     */
-    BE syntacticImplicant(const Model &subs) const;
     void iter(const std::function<void(const Lit&)> &f) const;
     BE map(const std::function<BE(const Lit&)> &f, std::unordered_map<BE, BE> &cache) const;
     BE map(const std::function<BE(const Lit&)> &f) const;
@@ -153,95 +142,6 @@ public:
     LS lits() const;
     bool isLinear() const;
     bool isPoly() const;
-
-    // Subs impliedEqualities() const {
-    //     Subs res;
-    //     std::vector<BE> todo;
-    //     const auto find_elim = [](const BE &c) {
-    //         std::optional<BoolVarPtr> elim;
-    //         const auto vars {c->vars().template get<BoolVarPtr>()};
-    //         for (const auto &x: vars) {
-    //             if (x->isTempVar()) {
-    //                 if (elim) {
-    //                     return std::optional<BoolVarPtr>{};
-    //                 } else {
-    //                     elim = x;
-    //                 }
-    //             }
-    //         }
-    //         return elim;
-    //     };
-    //     if (isAnd()) {
-    //         const auto children {getChildren()};
-    //         for (const auto &c: children) {
-    //             if (c->isOr()) {
-    //                 const auto elim {find_elim(c)};
-    //                 if (elim) {
-    //                     auto grandChildren {c->getChildren()};
-    //                     auto lit {mkLit(BoolLit(*elim))};
-    //                     bool positive {grandChildren.contains(lit)};
-    //                     if (!positive) {
-    //                         lit = !lit;
-    //                         if (!grandChildren.contains(lit)) {
-    //                             continue;
-    //                         }
-    //                     }
-    //                     grandChildren.erase(lit);
-    //                     const BE cand {mkOr(grandChildren)};
-    //                     // we have     lit \/  cand
-    //                     // search for !lit \/ !cand
-    //                     if (children.contains((!lit) || (!cand))) {
-    //                         // we have (lit \/ cand) /\ (!lit \/ !cand), i.e., lit <==> !cand
-    //                         res.put(*elim, positive ? !cand : cand);
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //         todo.insert(todo.end(), children.begin(), children.end());
-    //     } else {
-    //         todo.push_back(this->shared_from_this());
-    //     }
-    //     for (const auto &current: todo) {
-    //         if (current->isOr()) {
-    //             const auto children {current->getChildren()};
-    //             if (children.size() == 2) {
-    //                 for (const auto &c: children) {
-    //                     if (c->isAnd()) {
-    //                         const auto elim {find_elim(c)};
-    //                         if (elim) {
-    //                             auto grandChildren {c->getChildren()};
-    //                             auto lit {mkLit(BoolLit(*elim))};
-    //                             bool positive {grandChildren.contains(lit)};
-    //                             if (!positive) {
-    //                                 lit = !lit;
-    //                                 if (!grandChildren.contains(lit)) {
-    //                                     continue;
-    //                                 }
-    //                             }
-    //                             grandChildren.erase(lit);
-    //                             const BE cand {mkAnd(grandChildren)};
-    //                             if (children.contains((!lit) && (!cand))) {
-    //                                 // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
-    //                                 res.put(*elim, positive ? cand : !cand);
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         } else if (current->isTheoryLit()) {
-    //             const auto lit {*current->getTheoryLit()};
-    //             if (std::holds_alternative<BoolLit>(lit)) {
-    //                 const auto &bool_lit {std::get<BoolLit>(lit)};
-    //                 const auto var {bool_lit.getBoolVar()};
-    //                 if (var->isTempVar()) {
-    //                     res.put(var, bool_lit.isNegated() ? bot() : top());
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     return res;
-    // }
-
     G conjunctionToGuard() const;
 
 };
@@ -254,7 +154,7 @@ class BoolTheoryLit: public BoolExpression {
     using Lit = typename T::Lit;
     using VS = theories::VarSet<Arith, Bools>;
     using LS = theories::LitSet<Arith, Bools>;
-    using G = Conjunction<Arith, Bools>;
+    using G = Conjunction;
     using BE = BExpr;
     using BES = BoolExpressionSet;
 
@@ -297,7 +197,7 @@ class BoolJunction: public BoolExpression {
     using Lit = typename T::Lit;
     using VS = theories::VarSet<Arith, Bools>;
     using LS = theories::LitSet<Arith, Bools>;
-    using G = Conjunction<Arith, Bools>;
+    using G = Conjunction;
     using BE = BExpr;
     using BES = BoolExpressionSet;
 
