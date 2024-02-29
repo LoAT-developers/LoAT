@@ -6,11 +6,11 @@
 #include "arithsubs.hpp"
 
 struct Bounds {
-    linked_hash_set<ArithExprPtr> upperBounds {};
-    linked_hash_set<ArithExprPtr> lowerBounds {};
+    ArithExprSet upperBounds {};
+    ArithExprSet lowerBounds {};
 
-    linked_hash_set<ArithExprPtr> equalities() const {
-        linked_hash_set<ArithExprPtr> res;
+    ArithExprSet equalities() const {
+        ArithExprSet res;
         for (const auto &b: lowerBounds) {
             if (upperBounds.contains(b)) {
                 res.insert(b);

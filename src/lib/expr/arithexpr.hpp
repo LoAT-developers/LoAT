@@ -40,13 +40,14 @@ class ArithConst;
 class ArithExp;
 class ArithAdd;
 class ArithMult;
+
 using ArithExprPtr = std::shared_ptr<const ArithExpr>;
 using ArithVarPtr = std::shared_ptr<const ArithVar>;
 using ArithConstPtr = std::shared_ptr<const ArithConst>;
 using ArithAddPtr = std::shared_ptr<const ArithAdd>;
 using ArithMultPtr = std::shared_ptr<const ArithMult>;
 using ArithExpPtr = std::shared_ptr<const ArithExp>;
-
+using ArithExprSet = linked_hash_set<ArithExprPtr>;
 
 namespace mp = boost::multiprecision;
 using Int = mp::cpp_int;
@@ -309,22 +310,22 @@ class ArithAdd: public ArithExpr, public std::enable_shared_from_this<ArithAdd> 
 
 public:
 
-    const linked_hash_set<ArithExprPtr>& getArgs() const;
+    const ArithExprSet& getArgs() const;
 
 private:
 
-    linked_hash_set<ArithExprPtr> args;
+    ArithExprSet args;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args1, const std::tuple<linked_hash_set<ArithExprPtr>> &args2) const noexcept;
+        bool operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept;
     };
     struct CacheHash {
-        size_t operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args) const noexcept;
+        size_t operator()(const std::tuple<ArithExprSet> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, linked_hash_set<ArithExprPtr>>;
-    static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, linked_hash_set<ArithExprPtr>> cache;
+    friend ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprSet>;
+    static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprSet> cache;
 
-    ArithAdd(const linked_hash_set<ArithExprPtr> &args);
+    ArithAdd(const ArithExprSet &args);
 
 };
 
@@ -335,22 +336,22 @@ class ArithMult: public ArithExpr, public std::enable_shared_from_this<ArithMult
 
 public:
 
-    const linked_hash_set<ArithExprPtr>& getArgs() const;
+    const ArithExprSet& getArgs() const;
 
 private:
 
-    linked_hash_set<ArithExprPtr> args;
+    ArithExprSet args;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args1, const std::tuple<linked_hash_set<ArithExprPtr>> &args2) const noexcept;
+        bool operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept;
     };
     struct CacheHash {
-        size_t operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args) const noexcept;
+        size_t operator()(const std::tuple<ArithExprSet> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, linked_hash_set<ArithExprPtr>>;
-    static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, linked_hash_set<ArithExprPtr>> cache;
+    friend ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprSet>;
+    static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprSet> cache;
 
-    ArithMult(const linked_hash_set<ArithExprPtr> &args);
+    ArithMult(const ArithExprSet &args);
 
 };
 

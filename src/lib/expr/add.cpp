@@ -3,15 +3,15 @@
 
 #include <purrs.hh>
 
-ConsHash<ArithExpr, ArithAdd, ArithAdd::CacheHash, ArithAdd::CacheEqual, linked_hash_set<ArithExprPtr>> ArithAdd::cache;
+ConsHash<ArithExpr, ArithAdd, ArithAdd::CacheHash, ArithAdd::CacheEqual, ArithExprSet> ArithAdd::cache;
 
-ArithAdd::ArithAdd(const linked_hash_set<ArithExprPtr> &args): ArithExpr(arith::Kind::Plus), args(args) {}
+ArithAdd::ArithAdd(const ArithExprSet &args): ArithExpr(arith::Kind::Plus), args(args) {}
 
-bool ArithAdd::CacheEqual::operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args1, const std::tuple<linked_hash_set<ArithExprPtr>> &args2) const noexcept {
+bool ArithAdd::CacheEqual::operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t ArithAdd::CacheHash::operator()(const std::tuple<linked_hash_set<ArithExprPtr>> &args) const noexcept {
+size_t ArithAdd::CacheHash::operator()(const std::tuple<ArithExprSet> &args) const noexcept {
     size_t hash {0};
     const auto &children {std::get<0>(args)};
     boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
@@ -65,10 +65,10 @@ ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> args) {
     if (args.size() == 1) {
         return args[0];
     }
-    linked_hash_set<ArithExprPtr> arg_set {args.begin(), args.end()};
+    ArithExprSet arg_set {args.begin(), args.end()};
     return ArithAdd::cache.from_cache(arg_set);
 }
 
-const linked_hash_set<ArithExprPtr>& ArithAdd::getArgs() const {
+const ArithExprSet& ArithAdd::getArgs() const {
     return args;
 }
