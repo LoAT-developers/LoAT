@@ -6,12 +6,12 @@
 #include <ostream>
 
 template <class... S>
-class ThSet {
+class VariantSet {
 
     using VS = std::tuple<linked_hash_set<S>...>;
     using VSI = std::variant<typename linked_hash_set<S>::const_iterator...>;
     using Var = std::variant<S...>;
-    using Self = ThSet<S...>;
+    using Self = VariantSet<S...>;
 
     VS t{};
     static const size_t variant_size = std::variant_size_v<VSI>;
@@ -20,7 +20,7 @@ public:
 
     class Iterator {
 
-        friend class ThSet<S...>;
+        friend class VariantSet<S...>;
 
         template <size_t I = 0>
         inline VSI beginImpl(size_t i) const {
@@ -333,6 +333,6 @@ public:
 };
 
 template <class... T>
-std::ostream& operator<<(std::ostream &s, const ThSet<T...> &set) {
+std::ostream& operator<<(std::ostream &s, const VariantSet<T...> &set) {
     return set.print(s);
 }
