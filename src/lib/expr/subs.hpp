@@ -14,7 +14,7 @@ namespace theory {
 class Subs {
 
     using TheTheory = Theory<Arith, Bools>;
-    using VS = theories::VarSet<Arith, Bools>;
+    using VS = theories::ThSet<Arith::Var, Bools::Var>;
     using Var = typename TheTheory::Var;
     using Lit = typename TheTheory::Lit;
     using It = std::variant<Arith::Subs::const_iterator, Bools::Subs::const_iterator>;

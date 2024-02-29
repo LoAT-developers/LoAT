@@ -12,7 +12,7 @@ bool Conjunction::isLinear() const {
 
 void Conjunction::collectVars(VS &vars) const {
     for (const auto &lit: *this) {
-        theories::collectVars<Arith, Bools>(lit, vars);
+        theories::collectVars(lit, vars);
     }
 }
 

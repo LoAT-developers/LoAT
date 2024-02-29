@@ -32,8 +32,8 @@ class BoolExpression: public std::enable_shared_from_this<BoolExpression> {
     using Var = typename T::Var;
     using Lit = typename T::Lit;
     using Model = typename T::Model;
-    using VS = theories::VarSet<Arith, Bools>;
-    using LS = theories::LitSet<Arith, Bools>;
+    using VS = theories::ThSet<Arith::Var, Bools::Var>;
+    using LS = theories::ThSet<Arith::Lit, Bools::Lit>;
     using G = Conjunction;
     using BE = BExpr;
     using BES = BoolExpressionSet;
@@ -152,8 +152,8 @@ class BoolTheoryLit: public BoolExpression {
     using T = BaseTheory<Arith, Bools>;
     using Var = typename T::Var;
     using Lit = typename T::Lit;
-    using VS = theories::VarSet<Arith, Bools>;
-    using LS = theories::LitSet<Arith, Bools>;
+    using VS = theories::ThSet<Arith::Var, Bools::Var>;
+    using LS = theories::ThSet<Arith::Lit, Bools::Lit>;
     using G = Conjunction;
     using BE = BExpr;
     using BES = BoolExpressionSet;
@@ -195,8 +195,8 @@ class BoolJunction: public BoolExpression {
     using T = BaseTheory<Arith, Bools>;
     using Var = typename T::Var;
     using Lit = typename T::Lit;
-    using VS = theories::VarSet<Arith, Bools>;
-    using LS = theories::LitSet<Arith, Bools>;
+    using VS = theories::ThSet<Arith::Var, Bools::Var>;
+    using LS = theories::ThSet<Arith::Lit, Bools::Lit>;
     using G = Conjunction;
     using BE = BExpr;
     using BES = BoolExpressionSet;

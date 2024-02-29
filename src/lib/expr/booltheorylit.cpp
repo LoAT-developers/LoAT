@@ -8,7 +8,7 @@ bool BoolTheoryLit::CacheEqual::operator()(const std::tuple<Lit> &args1, const s
 }
 
 size_t BoolTheoryLit::CacheHash::operator()(const std::tuple<Lit> &args) const noexcept {
-    return theories::hash<Arith, Bools>(std::get<0>(args));
+    return theories::hash(std::get<0>(args));
 }
 
 BoolTheoryLit::BoolTheoryLit(const Lit &lit) : lit(lit) {}
@@ -38,7 +38,7 @@ BoolExpressionSet BoolTheoryLit::getChildren() const {
 }
 
 const BExpr BoolTheoryLit::negation() const {
-    return BoolExpression::mkLit(theories::negate<Arith, Bools>(lit));
+    return BoolExpression::mkLit(theories::negate(lit));
 }
 
 bool BoolTheoryLit::forall(const std::function<bool(const Lit&)> &pred) const {

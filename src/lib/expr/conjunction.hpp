@@ -13,7 +13,7 @@ using TheTheory = Theory<Arith, Bools>;
 class Conjunction : public std::vector<TheTheory::Lit> {
 
     using Lit = TheTheory::Lit;
-    using VS = theories::VarSet<Arith, Bools>;
+    using VS = theories::ThSet<Arith::Var, Bools::Var>;
 
 public:
     // inherit constructors of base class

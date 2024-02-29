@@ -11,7 +11,7 @@ class BoolSubs {
 
     using BoolExpr = BExpr;
     using T = Theory<Arith, Bools>;
-    using VarSet = theories::VarSet<Arith, Bools>;
+    using VarSet = theories::ThSet<Arith::Var, Bools::Var>;
 
     linked_hash_map<BoolVarPtr, BoolExpr> map{};
 

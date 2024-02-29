@@ -59,22 +59,6 @@ VarSet coDomainVars(const Subs &subs) {
     return res;
 }
 
-void collectVariables(VarSet &res, const Lit &e) {
-    theories::collectVars<Arith, Bools>(e, res);
-}
-
-VarSet variables(const Lit &e) {
-    return theories::vars<Arith, Bools>(e);
-}
-
-bool isTriviallyTrue(const Lit &lit) {
-    return theories::isTriviallyTrue<Arith, Bools>(lit);
-}
-
-Lit negate(const Lit &lit) {
-    return theories::negate<Arith, Bools>(lit);
-}
-
 BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
         Overload {

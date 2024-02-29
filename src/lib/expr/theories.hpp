@@ -18,8 +18,8 @@ using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;
 using ThExpr = TheTheory::Expr;
 using Theories = TheTheory::Theories;
-using VarSet = theories::VarSet<Arith, Bools>;
-using LitSet = theories::LitSet<Arith, Bools>;
+using VarSet = theories::ThSet<Arith::Var, Bools::Var>;
+using LitSet = theories::ThSet<Arith::Lit, Bools::Lit>;
 using Subs = theory::Subs;
 using BSubs = BoolSubs;
 

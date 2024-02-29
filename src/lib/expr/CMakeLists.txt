@@ -14,6 +14,7 @@ add_library(${PROJECT_NAME} STATIC
   boollit.hpp
   boollit.cpp
   literal.hpp
+  literal.cpp
   numvar.cpp
   arithexpr.cpp
   arithexpr.hpp

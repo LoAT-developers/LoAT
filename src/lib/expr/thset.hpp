@@ -1,6 +1,5 @@
 #pragma once
 
-#include "itheory.hpp"
 #include "set.hpp"
 
 #include <optional>
@@ -8,11 +7,13 @@
 
 namespace theories {
 
-template <class VS, class VSI, class Var, IBaseTheory... Th>
+template <class... S>
 class ThSet {
 
-    using TheTheory = BaseTheory<Th...>;
-    using Self = ThSet<VS, VSI, Var, Th...>;
+    using VS = std::tuple<linked_hash_set<S>...>;
+    using VSI = std::variant<typename linked_hash_set<S>::const_iterator...>;
+    using Var = std::variant<S...>;
+    using Self = ThSet<S...>;
 
     VS t{};
     static const size_t variant_size = std::variant_size_v<VSI>;
@@ -21,7 +22,7 @@ public:
 
     class Iterator {
 
-        friend class ThSet<VS, VSI, Var, Th...>;
+        friend class ThSet<S...>;
 
         template <size_t I = 0>
         inline VSI beginImpl(size_t i) const {
@@ -148,7 +149,7 @@ private:
 
     template<std::size_t I = 0>
     inline void eraseImpl(const Var &var) {
-        if constexpr (I < sizeof...(Th)) {
+        if constexpr (I < variant_size) {
             if (var.index() == I) {
                 std::get<I>(t).erase(std::get<I>(var));
             } else {
@@ -167,7 +168,7 @@ private:
 
     template<std::size_t I = 0>
     inline Iterator eraseImpl(const Iterator &it) {
-        if constexpr (I < sizeof...(Th)) {
+        if constexpr (I < variant_size) {
             if (it.ptr.index() == I) {
                 const auto res = std::get<I>(t).erase(std::get<I>(it.ptr));
                 if (res == std::get<I>(t).end()) {
@@ -192,7 +193,7 @@ private:
 
     template<std::size_t I = 0>
     inline void insertImpl(const Var &var) {
-        if constexpr (I < sizeof...(Th)) {
+        if constexpr (I < variant_size) {
             if (var.index() == I) {
                 std::get<I>(t).insert(std::get<I>(var));
             } else {
@@ -211,7 +212,7 @@ private:
 
     template<std::size_t I = 0>
     inline void insertAllImpl(const Self &that) {
-        if constexpr (I < sizeof...(Th)) {
+        if constexpr (I < variant_size) {
             const auto &s = std::get<I>(that.t);
             std::get<I>(t).insert(s.begin(), s.end());
             insertAllImpl<I+1>(that);
@@ -233,7 +234,7 @@ private:
 
     template<std::size_t I = 0>
     inline bool containsImpl(const Var &var) const {
-        if constexpr (I < sizeof...(Th)) {
+        if constexpr (I < variant_size) {
             if (var.index() == I) {
                 const auto &set = std::get<I>(t);
                 return set.contains(std::get<I>(var));
@@ -329,19 +330,13 @@ public:
         std::apply([](auto &... s){(..., s.clear());}, t);
     }
 
-    auto operator<=>(const ThSet<VS, VSI, Var, Th...> &) const = default;
+    auto operator<=>(const Self &) const = default;
 
 };
 
-template <class VS, class VSI, class Var, IBaseTheory... Th>
-std::ostream& operator<<(std::ostream &s, const ThSet<VS, VSI, Var, Th...> &set) {
+template <class... T>
+std::ostream& operator<<(std::ostream &s, const ThSet<T...> &set) {
     return set.print(s);
 }
-
-template<IBaseTheory... Th>
-using VarSet = ThSet<std::tuple<linked_hash_set<typename Th::Var>...>, std::variant<typename linked_hash_set<typename Th::Var>::const_iterator...>, typename BaseTheory<Th...>::Var, Th...>;
-
-template<IBaseTheory... Th>
-using LitSet = ThSet<std::tuple<linked_hash_set<typename Th::Lit>...>, std::variant<typename linked_hash_set<typename Th::Lit>::const_iterator...>, typename BaseTheory<Th...>::Lit, Th...>;
 
 }

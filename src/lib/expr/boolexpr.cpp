@@ -21,7 +21,7 @@ const BExpr BoolExpression::mkLit(const Lit &lit) {
 
 bool BoolExpression::isTriviallyTrue() const {
     if (isTheoryLit()) {
-        return theories::isTriviallyTrue<Arith, Bools>(*getTheoryLit());
+        return theories::isTriviallyTrue(*getTheoryLit());
     } else {
         const auto children = getChildren();
         if (isAnd()) {
@@ -36,7 +36,7 @@ bool BoolExpression::isTriviallyTrue() const {
 
 bool BoolExpression::isTriviallyFalse() const {
     if (isTheoryLit()) {
-        return theories::isTriviallyFalse<Arith, Bools>(*getTheoryLit());
+        return theories::isTriviallyFalse(*getTheoryLit());
     } else {
         const auto children = getChildren();
         if (isAnd()) {
@@ -229,8 +229,8 @@ BExpr BoolExpression::map(const std::function<BE(const Lit&)> &f) const {
 }
 
 void BoolExpression::collectVars(VS &vars) const {
-    iter([&vars](const auto &lit) {
-        theories::collectVars<Arith, Bools>(lit, vars);
+    iter([&](const auto &lit) {
+        theories::collectVars(lit, vars);
     });
 }
 
