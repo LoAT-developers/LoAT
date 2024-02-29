@@ -1,12 +1,12 @@
 #include "boolexpr.hpp"
 
-ConsHash<BoolExpression, BoolJunction, typename BoolJunction::CacheHash, typename BoolJunction::CacheEqual, linked_hash_set<BExpr>, ConcatOperator> BoolJunction::cache{};
+ConsHash<BoolExpression, BoolJunction, typename BoolJunction::CacheHash, typename BoolJunction::CacheEqual, linked_hash_set<BoolExpr>, ConcatOperator> BoolJunction::cache{};
 
-bool BoolJunction::CacheEqual::operator()(const std::tuple<BES, ConcatOperator> &args1, const std::tuple<BES, ConcatOperator> &args2) const noexcept {
+bool BoolJunction::CacheEqual::operator()(const std::tuple<BoolExpressionSet, ConcatOperator> &args1, const std::tuple<BoolExpressionSet, ConcatOperator> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t BoolJunction::CacheHash::operator()(const std::tuple<BES, ConcatOperator> &args) const noexcept {
+size_t BoolJunction::CacheHash::operator()(const std::tuple<BoolExpressionSet, ConcatOperator> &args) const noexcept {
     const auto &[children, op] {args};
     size_t hash {0};
     boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
@@ -14,11 +14,11 @@ size_t BoolJunction::CacheHash::operator()(const std::tuple<BES, ConcatOperator>
     return hash;
 }
 
-BExpr BoolJunction::from_cache(const BES &children, ConcatOperator op) {
+BoolExpr BoolJunction::from_cache(const BoolExpressionSet &children, ConcatOperator op) {
     return cache.from_cache(children, op);
 }
 
-BoolJunction::BoolJunction(const BES &children, ConcatOperator op): children(children), op(op) { }
+BoolJunction::BoolJunction(const BoolExpressionSet &children, ConcatOperator op): children(children), op(op) { }
 
 bool BoolJunction::isAnd() const {
     return op == ConcatAnd;
@@ -40,9 +40,9 @@ BoolExpressionSet BoolJunction::getChildren() const {
     return children;
 }
 
-const BExpr BoolJunction::negation() const {
-    BES newChildren;
-    for (const BE &c: children) {
+const BoolExpr BoolJunction::negation() const {
+    BoolExpressionSet newChildren;
+    for (const auto &c: children) {
         newChildren.insert(c->negation());
     }
     switch (op) {
@@ -53,7 +53,7 @@ const BExpr BoolJunction::negation() const {
 }
 
 bool BoolJunction::forall(const std::function<bool(const Lit&)> &pred) const {
-    for (const BE &e: children) {
+    for (const auto &e: children) {
         if (!e->forall(pred)) {
             return false;
         }
@@ -66,15 +66,15 @@ BoolJunction::~BoolJunction() {
 }
 
 bool BoolJunction::isConjunction() const {
-    return isAnd() && std::all_of(children.begin(), children.end(), [](const BE c){
+    return isAnd() && std::all_of(children.begin(), children.end(), [](const auto c){
                return c->isConjunction();
            });
 }
 
-BoolJunction::LS BoolJunction::universallyValidLits() const {
-    LS res;
+BoolJunction::LitSet BoolJunction::universallyValidLits() const {
+    LitSet res;
     if (isAnd()) {
-        for (const BE &c: children) {
+        for (const auto &c: children) {
             if (c->isTheoryLit()) {
                 res.insert(*c->getTheoryLit());
             }
@@ -83,15 +83,15 @@ BoolJunction::LS BoolJunction::universallyValidLits() const {
     return res;
 }
 
-void BoolJunction::collectLits(LS &res) const {
-    for (const BE &c: children) {
+void BoolJunction::collectLits(LitSet &res) const {
+    for (const auto &c: children) {
         c->collectLits(res);
     }
 }
 
 size_t BoolJunction::size() const {
     size_t res = 1;
-    for (const BE &c: children) {
+    for (const auto &c: children) {
         res += c->size();
     }
     return res;

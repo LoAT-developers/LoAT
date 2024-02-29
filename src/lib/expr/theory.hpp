@@ -9,7 +9,6 @@
 #include <tuple>
 
 using TheTheory = Theory<Arith, Bools>;
-using BoolExpr = BExpr;
 using BoolExprSet = BoolExpressionSet;
 using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;

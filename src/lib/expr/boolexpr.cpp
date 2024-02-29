@@ -1,21 +1,21 @@
 #include "boolexpr.hpp"
 #include "theory.hpp"
 
-const BExpr BoolExpression::from_cache(const BES &children, ConcatOperator op) {
+const BoolExpr BoolExpression::from_cache(const BoolExpressionSet &children, ConcatOperator op) {
     return BoolJunction::from_cache(children, op);
 }
 
-const BExpr BoolExpression::top() {
+const BoolExpr BoolExpression::top() {
     const static auto res {from_cache(BoolExpressionSet{}, ConcatAnd)};
     return res;
 }
 
-const BExpr BoolExpression::bot() {
+const BoolExpr BoolExpression::bot() {
     const static auto res {from_cache(BoolExpressionSet{}, ConcatOr)};
     return res;
 }
 
-const BExpr BoolExpression::mkLit(const Lit &lit) {
+const BoolExpr BoolExpression::mkLit(const Lit &lit) {
     return BoolTheoryLit::from_cache(lit);
 }
 
@@ -55,7 +55,7 @@ Bounds BoolExpression::getBounds(const ArithVarPtr n) const {
     return bounds;
 }
 
-BExpr BoolExpression::linearize(const ArithVarPtr n) const {
+BoolExpr BoolExpression::linearize(const ArithVarPtr n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -77,7 +77,7 @@ BExpr BoolExpression::linearize(const ArithVarPtr n) const {
     });
 }
 
-BExpr BoolExpression::toInfinity(const ArithVarPtr n) const {
+BoolExpr BoolExpression::toInfinity(const ArithVarPtr n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -100,7 +100,7 @@ BExpr BoolExpression::toInfinity(const ArithVarPtr n) const {
     });
 }
 
-BExpr BoolExpression::toMinusInfinity(const ArithVarPtr n) const {
+BoolExpr BoolExpression::toMinusInfinity(const ArithVarPtr n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -133,12 +133,12 @@ void BoolExpression::iter(const std::function<void(const Lit&)> &f) const {
     }
 }
 
-BExpr BoolExpression::map(const std::function<BE(const Lit&)> &f, std::unordered_map<BE, BE> &cache) const {
+BoolExpr BoolExpression::map(const std::function<BoolExpr(const Lit&)> &f, std::unordered_map<BoolExpr, BoolExpr> &cache) const {
     const auto it {cache.find(this->shared_from_this())};
     if (it != cache.end()) {
         return it->second;
     }
-    BE res;
+    BoolExpr res;
     if (isAnd()) {
         bool changed = false;
         BoolExpressionSet newChildren;
@@ -223,25 +223,25 @@ BExpr BoolExpression::map(const std::function<BE(const Lit&)> &f, std::unordered
     return res;
 }
 
-BExpr BoolExpression::map(const std::function<BE(const Lit&)> &f) const {
-    std::unordered_map<BE, BE> cache;
+BoolExpr BoolExpression::map(const std::function<BoolExpr(const Lit&)> &f) const {
+    std::unordered_map<BoolExpr, BoolExpr> cache;
     return map(f, cache);
 }
 
-void BoolExpression::collectVars(VS &vars) const {
+void BoolExpression::collectVars(VarSet &vars) const {
     iter([&](const auto &lit) {
         theory::collectVars(lit, vars);
     });
 }
 
-BoolExpression::VS BoolExpression::vars() const {
-    VS res;
+BoolExpression::VarSet BoolExpression::vars() const {
+    VarSet res;
     collectVars(res);
     return res;
 }
 
-BExpr BoolExpression::simplify() const {
-    return map([](const Lit &lit) -> BE {
+BoolExpr BoolExpression::simplify() const {
+    return map([](const Lit &lit) -> BoolExpr {
         if (std::holds_alternative<ArithLit>(lit)) {
             const auto &rel = std::get<ArithLit>(lit);
             if (rel.isTriviallyTrue()) {
@@ -256,8 +256,8 @@ BExpr BoolExpression::simplify() const {
 
 BoolExpression::~BoolExpression() {};
 
-BoolExpression::LS BoolExpression::lits() const {
-    LS res;
+BoolExpression::LitSet BoolExpression::lits() const {
+    LitSet res;
     collectLits(res);
     return res;
 }
@@ -290,21 +290,21 @@ bool BoolExpression::isPoly() const {
     });
 }
 
-const BExpr operator&&(const BExpr a, const BExpr b) {
+const BoolExpr operator&&(const BoolExpr a, const BoolExpr b) {
     const BoolExpressionSet children{a, b};
     return BoolExpression::mkAnd(children);
 }
 
-const BExpr operator||(const BExpr a, const BExpr b) {
+const BoolExpr operator||(const BoolExpr a, const BoolExpr b) {
     const BoolExpressionSet children{a, b};
     return BoolExpression::mkOr(children);
 }
 
-const BExpr operator!(const BExpr a) {
+const BoolExpr operator!(const BoolExpr a) {
     return a->negation();
 }
 
-std::ostream& operator<<(std::ostream &s, const BExpr e) {
+std::ostream& operator<<(std::ostream &s, const BoolExpr e) {
     if (e->isTheoryLit()) {
         std::visit([&s](const auto lit){s << lit;}, *e->getTheoryLit());
     } else if (e->getChildren().empty()) {

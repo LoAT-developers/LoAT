@@ -57,7 +57,7 @@ public:
 
     virtual ~Smt() {}
 
-    static Logic chooseLogic(const std::vector<BExpr> &xs, const std::vector<Subs> &up = {}) {
+    static Logic chooseLogic(const std::vector<BoolExpr> &xs, const std::vector<Subs> &up = {}) {
         Logic res = QF_LA;
         for (const auto &x: xs) {
             if (!(x->isLinear())) {

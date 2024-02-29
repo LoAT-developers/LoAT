@@ -13,7 +13,7 @@ size_t BoolTheoryLit::CacheHash::operator()(const std::tuple<Lit> &args) const n
 
 BoolTheoryLit::BoolTheoryLit(const Lit &lit) : lit(lit) {}
 
-BExpr BoolTheoryLit::from_cache(const Lit &lit) {
+BoolExpr BoolTheoryLit::from_cache(const Lit &lit) {
     return cache.from_cache(lit);
 }
 
@@ -37,7 +37,7 @@ BoolExpressionSet BoolTheoryLit::getChildren() const {
     return {};
 }
 
-const BExpr BoolTheoryLit::negation() const {
+const BoolExpr BoolTheoryLit::negation() const {
     return BoolExpression::mkLit(theory::negate(lit));
 }
 
@@ -53,13 +53,13 @@ bool BoolTheoryLit::isConjunction() const {
     return true;
 }
 
-BoolTheoryLit::LS BoolTheoryLit::universallyValidLits() const {
-    LS res;
+BoolTheoryLit::LitSet BoolTheoryLit::universallyValidLits() const {
+    LitSet res;
     res.insert(lit);
     return res;
 }
 
-void BoolTheoryLit::collectLits(LS &res) const {
+void BoolTheoryLit::collectLits(LitSet &res) const {
     res.insert(lit);
 }
 

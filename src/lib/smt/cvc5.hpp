@@ -10,7 +10,7 @@ class CVC5 : public Smt {
 
 public:
     CVC5();
-    void add(const BExpr e) override;
+    void add(const BoolExpr e) override;
     void push() override;
     void pop() override;
     SmtResult check() override;

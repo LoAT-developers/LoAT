@@ -2,22 +2,22 @@
 
 BoolSubs::BoolSubs() {}
 
-BoolSubs::BoolSubs(const BoolVarPtr key, const BExpr val): map({{key, val}}) {}
+BoolSubs::BoolSubs(const BoolVarPtr key, const BoolExpr val): map({{key, val}}) {}
 
-void BoolSubs::put(const BoolVarPtr key, const BExpr val) {
+void BoolSubs::put(const BoolVarPtr key, const BoolExpr val) {
     map.put(key, val);
 }
 
-BExpr BoolSubs::get(const BoolVarPtr var) const {
+BoolExpr BoolSubs::get(const BoolVarPtr var) const {
     const auto res {map.get(var)};
     return res ? *res : BoolExpression::mkLit(BoolLit(var));
 }
 
-BExpr BoolSubs::subs(const BoolLit &lit) const {
+BoolExpr BoolSubs::subs(const BoolLit &lit) const {
     return lit.isNegated() ? !get(lit.getBoolVar()) : get(lit.getBoolVar());
 }
 
-BExpr BoolSubs::operator()(const BExpr e) const {
+BoolExpr BoolSubs::operator()(const BoolExpr e) const {
     const auto lit = e->getTheoryLit();
     if (lit) {
         if (std::holds_alternative<BoolLit>(*lit)) {
@@ -33,7 +33,7 @@ BExpr BoolSubs::operator()(const BExpr e) const {
             return e;
         }
     } else if (e->isAnd() || e->isOr()) {
-        std::vector<BExpr> children;
+        std::vector<BoolExpr> children;
         for (const auto &c: e->getChildren()) {
             children.push_back((*this)(c));
         }
@@ -140,7 +140,7 @@ size_t BoolSubs::hash() const {
     size_t hash {0};
     for (const auto &[key, value]: map) {
         boost::hash_combine(hash, key->hash());
-        boost::hash_combine(hash, std::hash<BExpr>{}(value));
+        boost::hash_combine(hash, std::hash<BoolExpr>{}(value));
     }
     return hash;
 }

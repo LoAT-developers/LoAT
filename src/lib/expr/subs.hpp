@@ -391,7 +391,7 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline BExpr subsImpl(const Lit &lit) const {
+    inline BoolExpr subsImpl(const Lit &lit) const {
         if constexpr (I < variant_size) {
             if (lit.index() == I) {
                 using T = typename std::tuple_element_t<I, TheTheory::Theories>;
@@ -410,8 +410,8 @@ private:
 
 public:
 
-    BExpr operator()(const Lit &lit) const;
-    BExpr operator()(const BExpr e) const;
+    BoolExpr operator()(const Lit &lit) const;
+    BoolExpr operator()(const BoolExpr e) const;
     TheTheory::Expr operator()(const TheTheory::Expr &expr) const;
     /**
      * that.concat(this)
