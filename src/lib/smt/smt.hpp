@@ -30,9 +30,9 @@ class Smt {
 
 public:
 
-    virtual void add(const BoolExpr e) = 0;
+    virtual void add(const BoolExprPtr e) = 0;
 
-    virtual void add_soft(const BoolExpr e) {
+    virtual void add_soft(const BoolExprPtr e) {
         throw std::invalid_argument("add_soft not supported");
     }
 
@@ -57,7 +57,7 @@ public:
 
     virtual ~Smt() {}
 
-    static Logic chooseLogic(const std::vector<BoolExpr> &xs, const std::vector<Subs> &up = {}) {
+    static Logic chooseLogic(const std::vector<BoolExprPtr> &xs, const std::vector<Subs> &up = {}) {
         Logic res = QF_LA;
         for (const auto &x: xs) {
             if (!(x->isLinear())) {
@@ -78,7 +78,7 @@ public:
         return res;
     }
 
-    static Logic chooseLogic(const BoolExpressionSet &xs) {
+    static Logic chooseLogic(const BoolExprSet &xs) {
         Logic res = QF_LA;
         for (const auto &x: xs) {
             if (!(x->isLinear())) {

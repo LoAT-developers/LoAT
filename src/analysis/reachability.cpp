@@ -118,7 +118,7 @@ Reachability::Reachability(ITSProblem &chcs):
     solver->enableModels();
 }
 
-Step::Step(const TransIdx transition, const BoolExpr sat, const Subs &var_renaming, const Rule &resolvent):
+Step::Step(const TransIdx transition, const BoolExprPtr sat, const Subs &var_renaming, const Rule &resolvent):
     clause_idx(transition),
     implicant(sat),
     var_renaming(var_renaming),
@@ -233,7 +233,7 @@ void Reachability::update_cpx() {
     }
 }
 
-Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr implicant) const {
+Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExprPtr implicant) const {
     static Rule dummy(top(), Subs());
     if (!Config::Analysis::complexity()) {
         return dummy;

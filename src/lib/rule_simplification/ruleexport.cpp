@@ -16,7 +16,7 @@ void RuleExport::printColor(ostream &os, const std::string &s) {
     }
 }
 
-void RuleExport::printGuard(const BoolExpr guard, std::ostream &s, bool colors) {
+void RuleExport::printGuard(const BoolExprPtr guard, std::ostream &s, bool colors) {
     if (colors) printColor(s, Color::Guard);
     s << guard;
 }

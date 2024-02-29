@@ -1,7 +1,7 @@
 #include "boolexpr.hpp"
 #include "theory.hpp"
 
-ConsHash<BoolExpression, BoolTheoryLit, typename BoolTheoryLit::CacheHash, typename BoolTheoryLit::CacheEqual, typename BoolTheoryLit::Lit> BoolTheoryLit::cache;
+ConsHash<BoolExpr, BoolTheoryLit, typename BoolTheoryLit::CacheHash, typename BoolTheoryLit::CacheEqual, typename BoolTheoryLit::Lit> BoolTheoryLit::cache;
 
 bool BoolTheoryLit::CacheEqual::operator()(const std::tuple<Lit> &args1, const std::tuple<Lit> &args2) const noexcept {
     return args1 == args2;
@@ -13,7 +13,7 @@ size_t BoolTheoryLit::CacheHash::operator()(const std::tuple<Lit> &args) const n
 
 BoolTheoryLit::BoolTheoryLit(const Lit &lit) : lit(lit) {}
 
-BoolExpr BoolTheoryLit::from_cache(const Lit &lit) {
+BoolExprPtr BoolTheoryLit::from_cache(const Lit &lit) {
     return cache.from_cache(lit);
 }
 
@@ -33,12 +33,12 @@ const BoolTheoryLit::Lit* BoolTheoryLit::getTheoryLit() const {
     return &lit;
 }
 
-BoolExpressionSet BoolTheoryLit::getChildren() const {
+BoolExprSet BoolTheoryLit::getChildren() const {
     return {};
 }
 
-const BoolExpr BoolTheoryLit::negation() const {
-    return BoolExpression::mkLit(theory::negate(lit));
+const BoolExprPtr BoolTheoryLit::negation() const {
+    return BoolExpr::mkLit(theory::negate(lit));
 }
 
 bool BoolTheoryLit::forall(const std::function<bool(const Lit&)> &pred) const {

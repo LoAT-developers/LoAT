@@ -4,14 +4,14 @@
 
 #include <assert.h>
 
-VarEliminator::VarEliminator(const BoolExpr guard, const Arith::Var N, const std::function<bool(Arith::Var)> &keep): N(N), keep(keep) {
+VarEliminator::VarEliminator(const BoolExprPtr guard, const Arith::Var N, const std::function<bool(Arith::Var)> &keep): N(N), keep(keep) {
     assert(!keep(N));
     todoDeps.push({{}, guard});
     findDependencies(guard);
     eliminate();
 }
 
-void VarEliminator::findDependencies(const BoolExpr guard) {
+void VarEliminator::findDependencies(const BoolExprPtr guard) {
     dependencies.insert(N);
     bool changed;
     do {
@@ -50,14 +50,14 @@ void VarEliminator::findDependencies(const BoolExpr guard) {
     dependencies.erase(N);
 }
 
-const std::vector<std::pair<ArithSubs, BoolExpr>> VarEliminator::eliminateDependency(const ArithSubs &subs, const BoolExpr guard) const {
+const std::vector<std::pair<ArithSubs, BoolExprPtr>> VarEliminator::eliminateDependency(const ArithSubs &subs, const BoolExprPtr guard) const {
     VarSet vars = guard->vars();
     for (auto it = dependencies.begin(); it != dependencies.end(); ++it) {
         if (!vars.contains(*it)) {
             continue;
         }
         const auto bounds {guard->getBounds(*it)};
-        std::vector<std::pair<ArithSubs, BoolExpr>> res;
+        std::vector<std::pair<ArithSubs, BoolExprPtr>> res;
         for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
             for (const auto &b: bb) {
                 if (b->isRational()) {
@@ -75,8 +75,8 @@ const std::vector<std::pair<ArithSubs, BoolExpr>> VarEliminator::eliminateDepend
 
 void VarEliminator::eliminateDependencies() {
     while (!todoDeps.empty()) {
-        const std::pair<ArithSubs, BoolExpr> current = todoDeps.top();
-        const std::vector<std::pair<ArithSubs, BoolExpr>> &res = eliminateDependency(current.first, current.second);
+        const std::pair<ArithSubs, BoolExprPtr> current = todoDeps.top();
+        const std::vector<std::pair<ArithSubs, BoolExprPtr>> &res = eliminateDependency(current.first, current.second);
         if (res.empty()) {
             todoN.push_back(current);
         }

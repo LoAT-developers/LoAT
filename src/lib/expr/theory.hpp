@@ -9,7 +9,7 @@
 #include <tuple>
 
 using TheTheory = Theory<Arith, Bools>;
-using BoolExprSet = BoolExpressionSet;
+using BoolExprSet = BoolExprSet;
 using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;
 using ThExpr = TheTheory::Expr;
@@ -17,31 +17,31 @@ using Theories = TheTheory::Theories;
 using VarSet = VariantSet<Arith::Var, Bools::Var>;
 using LitSet = VariantSet<Arith::Lit, Bools::Lit>;
 
-const BoolExpr top();
-const BoolExpr bot();
+const BoolExprPtr top();
+const BoolExprPtr bot();
 
 namespace bools {
 
 template <class Lits>
 Bools::Expr mkAndFromLits(const Lits &lits) {
-    return BoolExpression::mkAndFromLits(lits);
+    return BoolExpr::mkAndFromLits(lits);
 }
 
 Bools::Expr mkAndFromLits(const std::initializer_list<Lit> &lits);
 
 template <class Children>
 Bools::Expr mkAnd(const Children &lits) {
-    return BoolExpression::mkAnd(lits);
+    return BoolExpr::mkAnd(lits);
 }
 
 template <class Lits>
 Bools::Expr mkOrFromLits(const Lits &lits) {
-    return BoolExpression::mkOrFromLits(lits);
+    return BoolExpr::mkOrFromLits(lits);
 }
 
 template <class Children>
 Bools::Expr mkOr(const Children &lits) {
-    return BoolExpression::mkOr(lits);
+    return BoolExpr::mkOr(lits);
 }
 
 Bools::Expr mkLit(const TheTheory::Lit &lit);
@@ -57,12 +57,12 @@ Var next(const Var &var);
 ThExpr toExpr(const Var &var);
 void collectVars(const ThExpr &expr, VarSet &vars);
 VarSet vars(const ThExpr &e);
-BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2);
-BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2);
+BoolExprPtr mkEq(const ThExpr &e1, const ThExpr &e2);
+BoolExprPtr mkNeq(const ThExpr &e1, const ThExpr &e2);
 Arith theory(const ArithVarPtr&);
 Bools theory(const BoolVarPtr&);
 Arith theory(const ArithExprPtr&);
-Bools theory(const BoolExpr&);
+Bools theory(const BoolExprPtr&);
 bool isLinear(const Lit &lit);
 bool isPoly(const Lit &lit);
 void collectVars(const Lit &lit, VarSet &s);

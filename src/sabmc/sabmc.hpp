@@ -38,11 +38,11 @@ private:
     void analyze();
 
     struct Loop {
-        BoolExpr trans;
+        BoolExprPtr trans;
         unsigned length;
         unsigned id;
 
-        Loop(const BoolExpr trans, const unsigned length, const unsigned id);
+        Loop(const BoolExprPtr trans, const unsigned length, const unsigned id);
 
     };
 
@@ -63,9 +63,9 @@ private:
     Proof proof {};
     DependencyGraph<Transition> dependency_graph {};
     unsigned depth {0};
-    BoolExpr step {};
+    BoolExprPtr step {};
 
-    BoolExpr encode_transition(const Transition &idx);
+    BoolExprPtr encode_transition(const Transition &idx);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
     void add_learned_clause(const Transition &accel, unsigned length);
@@ -81,7 +81,7 @@ private:
     NondetSubs bound_selection(const Transition &t, const Model &model) const;
     linked_hash_map<Bools::Var, bool> value_selection(const Model &model) const;
     std::pair<NondetSubs, unsigned> closed_form(const NondetSubs &update, const Model &model);
-    void handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Model &model, std::vector<BoolExpr> &res);
+    void handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Model &model, std::vector<BoolExprPtr> &res);
 
 public:
 

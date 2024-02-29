@@ -3,4 +3,4 @@
 #include "subs.hpp"
 #include "boolexpr.hpp"
 
-Subs impliedEqualities(const BoolExpr e);
+Subs impliedEqualities(const BoolExprPtr e);

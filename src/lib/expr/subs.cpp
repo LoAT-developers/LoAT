@@ -134,11 +134,11 @@ bool Subs::isPoly() const {
     return std::apply([](const auto&... x){return (true && ... && x.isPoly());}, t);
 }
 
-BoolExpr Subs::operator()(const Lit &lit) const {
+BoolExprPtr Subs::operator()(const Lit &lit) const {
     return subsImpl<0>(lit);
 }
 
-BoolExpr Subs::operator()(const BoolExpr e) const {
+BoolExprPtr Subs::operator()(const BoolExprPtr e) const {
     return e->map([&](const auto &lit) {
         return (*this)(lit);
     });

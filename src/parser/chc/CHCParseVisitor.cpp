@@ -17,11 +17,11 @@ using unaryop_type = UnaryOp;
 using binaryop_type = BinaryOp;
 using naryop_type = NAryOp;
 using pred_type = FunApp;
-using lit_type = Res<BoolExpr>;
+using lit_type = Res<BoolExprPtr>;
 using assert_type = Clause;
 using query_type = Clause;
 using symbol_type = std::string;
-using tail_type = std::pair<FunApp, BoolExpr>;
+using tail_type = std::pair<FunApp, BoolExprPtr>;
 using head_type = FunApp;
 using var_or_atom_type = std::variant<Bools::Var, FunApp>;
 using boolop_type = BoolOp;
@@ -177,7 +177,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_head(CHCParser::Chc_headContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
-    std::vector<BoolExpr> guards;
+    std::vector<BoolExprPtr> guards;
     for (const auto &c: ctx->i_formula()) {
         const auto r = any_cast<formula_type>(visit(c));
         guards.push_back(r.t);
@@ -233,8 +233,8 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
 }
 
 antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) {
-    std::vector<BoolExpr> args;
-    Res<BoolExpr> res;
+    std::vector<BoolExprPtr> args;
+    Res<BoolExprPtr> res;
     if (ctx->lets()) {
         const auto bindings = any_cast<lets_type>(visit(ctx->lets()));
         const auto formula = any_cast<formula_type>(visit(ctx->i_formula(0)));
@@ -262,7 +262,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         case Or: res.t = bools::mkOr(args);
             break;
         case Equiv: {
-            std::vector<BoolExpr> negated;
+            std::vector<BoolExprPtr> negated;
             for (const auto &a: args) {
                 negated.push_back(!a);
             }
@@ -365,7 +365,7 @@ antlrcpp::Any CHCParseVisitor::visitBoolop(CHCParser::BoolopContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
-    Res<BoolExpr> res;
+    Res<BoolExprPtr> res;
     if (ctx->formula_or_expr().size() == 2) {
         const auto p1 = any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr(0)));
         res.conjoin(p1);

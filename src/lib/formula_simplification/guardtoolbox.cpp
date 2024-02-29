@@ -25,7 +25,7 @@
 
 using namespace std;
 
-ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow) {
+ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const BoolExprPtr e, const SymbolAcceptor &allow) {
     ResultBase<ArithSubs, Proof> res;
     for (const auto &var: e->vars().get<Arith::Var>()) {
         if (!allow(var)) continue;
@@ -47,7 +47,7 @@ ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const BoolExpr e,
     return res;
 }
 
-ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExpr e) {
+ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExprPtr e) {
     ResultBase<BoolSubs, Proof> res;
     const auto equiv {impliedEqualities(e)};
     if (!equiv.empty()) {
@@ -57,8 +57,8 @@ ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolE
     return res;
 }
 
-ResultBase<BoolExpr, Proof> GuardToolbox::eliminateByTransitiveClosure(const BoolExpr e, bool removeHalfBounds, const SymbolAcceptor &allow) {
-    ResultBase<BoolExpr, Proof> res(e);
+ResultBase<BoolExprPtr, Proof> GuardToolbox::eliminateByTransitiveClosure(const BoolExprPtr e, bool removeHalfBounds, const SymbolAcceptor &allow) {
+    ResultBase<BoolExprPtr, Proof> res(e);
     if (!e->isConjunction()) {
         return res;
     }
@@ -142,8 +142,8 @@ abort:  ; //this symbol could not be eliminated, try the next one
     return res;
 }
 
-ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr e) {
-    ResultBase<BoolExpr, Proof> res {e};
+ResultBase<BoolExprPtr, Proof> _propagateBooleanEqualities(const BoolExprPtr e) {
+    ResultBase<BoolExprPtr, Proof> res {e};
     const auto subs {GuardToolbox::propagateBooleanEqualities(e)};
     if (subs) {
         res = Subs::build<Bools>(*subs)(e);
@@ -153,8 +153,8 @@ ResultBase<BoolExpr, Proof> _propagateBooleanEqualities(const BoolExpr e) {
     return res;
 }
 
-ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, const GuardToolbox::SymbolAcceptor &allow) {
-    ResultBase<BoolExpr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, allow)};
+ResultBase<BoolExprPtr, Proof> _propagateEqualities(const BoolExprPtr e, const GuardToolbox::SymbolAcceptor &allow) {
+    ResultBase<BoolExprPtr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, allow)};
     if (subs) {
         res = Subs::build<Arith>(*subs)(e);
         res.append("Extracted Implied Equalities");
@@ -163,8 +163,8 @@ ResultBase<BoolExpr, Proof> _propagateEqualities(const BoolExpr e, const GuardTo
     return res;
 }
 
-ResultBase<BoolExpr, Proof> GuardToolbox::simplify(BoolExpr e) {
-    ResultBase<BoolExpr, Proof> res {e};
+ResultBase<BoolExprPtr, Proof> GuardToolbox::simplify(BoolExprPtr e) {
+    ResultBase<BoolExprPtr, Proof> res {e};
     e = e->simplify();
     if (*res != e) {
         res = e;
@@ -173,7 +173,7 @@ ResultBase<BoolExpr, Proof> GuardToolbox::simplify(BoolExpr e) {
     return res;
 }
 
-ResultBase<BoolExpr, Proof> GuardToolbox::eliminateTempVars(BoolExpr e, const SymbolAcceptor &allow) {
+ResultBase<BoolExprPtr, Proof> GuardToolbox::eliminateTempVars(BoolExprPtr e, const SymbolAcceptor &allow) {
     auto res {_propagateBooleanEqualities(e)};
     if (res) {
         return res;
@@ -189,8 +189,8 @@ ResultBase<BoolExpr, Proof> GuardToolbox::eliminateTempVars(BoolExpr e, const Sy
     return GuardToolbox::eliminateByTransitiveClosure(e, true, allow);
 }
 
-ResultBase<BoolExpr, Proof> GuardToolbox::preprocessFormula(const BoolExpr e, const SymbolAcceptor &allow) {
-    ResultBase<BoolExpr, Proof> res {e};
+ResultBase<BoolExprPtr, Proof> GuardToolbox::preprocessFormula(const BoolExprPtr e, const SymbolAcceptor &allow) {
+    ResultBase<BoolExprPtr, Proof> res {e};
     auto changed {false};
     do {
         auto tmp {eliminateTempVars(*res, allow)};

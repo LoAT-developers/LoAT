@@ -10,6 +10,6 @@ namespace SmtFactory {
 
     SmtPtr modelBuildingSolver(Logic logic);
 
-    SmtResult check(const BoolExpr e);
+    SmtResult check(const BoolExprPtr e);
 
 }

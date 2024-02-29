@@ -38,7 +38,7 @@ TheTheory::Const Model::get(const Var &var) const {
         });
 }
 
-void syntacticImplicant(const BoolExpr e, const Model &m, linked_hash_set<BoolExpr> &res) {
+void syntacticImplicant(const BoolExprPtr e, const Model &m, BoolExprSet &res) {
     if (e->isAnd() || e->isOr()) {
         for (const auto &c: e->getChildren()) {
             syntacticImplicant(c, m, res);
@@ -55,8 +55,8 @@ void syntacticImplicant(const BoolExpr e, const Model &m, linked_hash_set<BoolEx
     }
 }
 
-BoolExpr Model::syntacticImplicant(const BoolExpr e) const {
-    linked_hash_set<BoolExpr> res;
+BoolExprPtr Model::syntacticImplicant(const BoolExprPtr e) const {
+    BoolExprSet res;
     ::syntacticImplicant(e, *this, res);
     return bools::mkAnd(res);
 }

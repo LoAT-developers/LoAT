@@ -1,9 +1,9 @@
 #include "impliedequalities.hpp"
 
-Subs impliedEqualities(const BoolExpr e) {
+Subs impliedEqualities(const BoolExprPtr e) {
     Subs res;
-    std::vector<BoolExpr> todo;
-    const auto find_elim = [](const BoolExpr &c) {
+    std::vector<BoolExprPtr> todo;
+    const auto find_elim = [](const BoolExprPtr &c) {
         std::optional<BoolVarPtr> elim;
         const auto vars {c->vars().template get<BoolVarPtr>()};
         for (const auto &x: vars) {
@@ -33,7 +33,7 @@ Subs impliedEqualities(const BoolExpr e) {
                         }
                     }
                     grandChildren.erase(lit);
-                    const BoolExpr cand {bools::mkOr(grandChildren)};
+                    const BoolExprPtr cand {bools::mkOr(grandChildren)};
                     // we have     lit \/  cand
                     // search for !lit \/ !cand
                     if (children.contains((!lit) || (!cand))) {
@@ -65,7 +65,7 @@ Subs impliedEqualities(const BoolExpr e) {
                                 }
                             }
                             grandChildren.erase(lit);
-                            const BoolExpr cand {bools::mkAnd(grandChildren)};
+                            const BoolExprPtr cand {bools::mkAnd(grandChildren)};
                             if (children.contains((!lit) && (!cand))) {
                                 // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
                                 res.put(*elim, positive ? cand : !cand);

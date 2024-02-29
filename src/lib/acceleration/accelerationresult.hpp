@@ -16,14 +16,14 @@ std::ostream& operator<<(std::ostream &s, const Status x);
 struct Accel {
     Rule rule;
     Proof proof {};
-    BoolExpr covered {};
+    BoolExprPtr covered {};
 
     Accel(const Rule &rule): rule(rule) {}
 
 };
 
 struct Nonterm {
-    BoolExpr certificate {bot()};
+    BoolExprPtr certificate {bot()};
     Proof proof {};
 };
 

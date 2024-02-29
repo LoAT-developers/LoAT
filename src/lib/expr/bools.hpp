@@ -6,14 +6,14 @@
 
 #include <memory>
 
-class BoolExpression;
+class BoolExpr;
 class BoolSubs;
 
 struct BoolsBase {
     using Lit = BoolLit;
     using Var = BoolVarPtr;
     using Const = bool;
-    using Expr = std::shared_ptr<const BoolExpression>;
+    using Expr = std::shared_ptr<const BoolExpr>;
     using Model = linked_hash_map<Var, Const>;
 
     static Expr constToExpr(const Const val);

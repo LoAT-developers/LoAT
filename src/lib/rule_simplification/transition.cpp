@@ -1,15 +1,15 @@
 #include "transition.hpp"
 #include "theory.hpp"
 
-std::unordered_map<BoolExpr, Transition> Transition::cache {};
+std::unordered_map<BoolExprPtr, Transition> Transition::cache {};
 
 unsigned Transition::next_id {0};
 
-Transition::Transition(const BoolExpr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm): formula(formula), vm(vm), id(next_id) {
+Transition::Transition(const BoolExprPtr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm): formula(formula), vm(vm), id(next_id) {
     ++next_id;
 }
 
-Transition Transition::build(const BoolExpr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm) {
+Transition Transition::build(const BoolExprPtr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm) {
     const auto it {cache.find(formula)};
     if (it == cache.end()) {
         const Transition res {formula, vm};
@@ -41,7 +41,7 @@ unsigned Transition::getId() const {
 }
 
 size_t Transition::hash() const {
-    return std::hash<BoolExpr>{}(formula);
+    return std::hash<BoolExprPtr>{}(formula);
 }
 
 size_t hash_value(const Transition &x) {
@@ -52,7 +52,7 @@ bool Transition::operator==(const Transition &that) const {
     return formula == that.formula;
 }
 
-BoolExpr Transition::toBoolExpr() const {
+BoolExprPtr Transition::toBoolExpr() const {
     return formula;
 }
 

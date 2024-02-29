@@ -48,8 +48,8 @@ SmtPtr modelBuildingSolver(Logic logic) {
     return res;
 }
 
-SmtResult check(const BoolExpr e) {
-    auto s {solver(Smt::chooseLogic(BoolExpressionSet{e}))};
+SmtResult check(const BoolExprPtr e) {
+    auto s {solver(Smt::chooseLogic(BoolExprSet{e}))};
     s->add(e);
     return s->check();
 }

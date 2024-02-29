@@ -15,14 +15,14 @@
 
 class BoolTheoryLit;
 class BoolJunction;
-class BoolExpression;
-using BoolExpr = std::shared_ptr<const BoolExpression>;
+class BoolExpr;
 
-using BoolExpressionSet = linked_hash_set<BoolExpr>;
+using BoolExprPtr = std::shared_ptr<const BoolExpr>;
+using BoolExprSet = linked_hash_set<BoolExprPtr>;
 
 enum ConcatOperator { ConcatAnd, ConcatOr };
 
-class BoolExpression: public std::enable_shared_from_this<BoolExpression> {
+class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
 
     friend class BoolTheoryLit;
     friend class BoolJunction;
@@ -38,11 +38,11 @@ protected:
 
 private:
 
-    static const BoolExpr from_cache(const BoolExpressionSet &children, ConcatOperator op);
+    static const BoolExprPtr from_cache(const BoolExprSet &children, ConcatOperator op);
 
     template <class Lits>
-    static const BoolExpr buildFromLits(const Lits &lits, ConcatOperator op) {
-        BoolExpressionSet children;
+    static const BoolExprPtr buildFromLits(const Lits &lits, ConcatOperator op) {
+        BoolExprSet children;
         for (const auto &lit: lits) {
             children.insert(mkLit(lit));
         }
@@ -50,18 +50,18 @@ private:
     }
 
     template <class Children>
-    static const BoolExpr build(const Children &lits, ConcatOperator op) {
-        std::stack<BoolExpr> todo;
+    static const BoolExprPtr build(const Children &lits, ConcatOperator op) {
+        std::stack<BoolExprPtr> todo;
         for (const auto &lit: lits) {
             todo.push(lit);
         }
-        BoolExpressionSet children;
+        BoolExprSet children;
         while (!todo.empty()) {
-            BoolExpr current = todo.top();
+            BoolExprPtr current = todo.top();
             if ((op == ConcatAnd && current->isAnd()) || (op == ConcatOr && current->isOr())) {
-                const BoolExpressionSet &currentChildren = current->getChildren();
+                const BoolExprSet &currentChildren = current->getChildren();
                 todo.pop();
-                for (const BoolExpr &c: currentChildren) {
+                for (const BoolExprPtr &c: currentChildren) {
                     todo.push(c);
                 }
             } else {
@@ -77,37 +77,37 @@ private:
 
 public:
 
-    static const BoolExpr top();
-    static const BoolExpr bot();
+    static const BoolExprPtr top();
+    static const BoolExprPtr bot();
 
     template <class Lits>
-    static const BoolExpr mkAndFromLits(const Lits &lits) {
+    static const BoolExprPtr mkAndFromLits(const Lits &lits) {
         return buildFromLits(lits, ConcatAnd);
     }
 
     template <class Children>
-    static const BoolExpr mkAnd(const Children &lits) {
+    static const BoolExprPtr mkAnd(const Children &lits) {
         return build(lits, ConcatAnd);
     }
 
     template <class Lits>
-    static const BoolExpr mkOrFromLits(const Lits &lits) {
+    static const BoolExprPtr mkOrFromLits(const Lits &lits) {
         return buildFromLits(lits, ConcatOr);
     }
 
     template <class Children>
-    static const BoolExpr mkOr(const Children &lits) {
+    static const BoolExprPtr mkOr(const Children &lits) {
         return build(lits, ConcatOr);
     }
 
-    static const BoolExpr mkLit(const Lit &lit);
+    static const BoolExprPtr mkLit(const Lit &lit);
 
     virtual bool isTheoryLit() const = 0;
     virtual const Lit* getTheoryLit() const = 0;
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
-    virtual BoolExpressionSet getChildren() const = 0;
-    virtual const BoolExpr negation() const = 0;
+    virtual BoolExprSet getChildren() const = 0;
+    virtual const BoolExprPtr negation() const = 0;
     virtual bool forall(const std::function<bool(const Lit&)> &pred) const = 0;
     virtual LitSet universallyValidLits() const = 0;
     virtual bool isConjunction() const = 0;
@@ -118,12 +118,12 @@ public:
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
     Bounds getBounds(const ArithVarPtr n) const;
-    BoolExpr linearize(const ArithVarPtr n) const;
-    BoolExpr toInfinity(const ArithVarPtr n) const;
-    BoolExpr toMinusInfinity(const ArithVarPtr n) const;
+    BoolExprPtr linearize(const ArithVarPtr n) const;
+    BoolExprPtr toInfinity(const ArithVarPtr n) const;
+    BoolExprPtr toMinusInfinity(const ArithVarPtr n) const;
     void iter(const std::function<void(const Lit&)> &f) const;
-    BoolExpr map(const std::function<BoolExpr(const Lit&)> &f, std::unordered_map<BoolExpr, BoolExpr> &cache) const;
-    BoolExpr map(const std::function<BoolExpr(const Lit&)> &f) const;
+    BoolExprPtr map(const std::function<BoolExprPtr(const Lit&)> &f, std::unordered_map<BoolExprPtr, BoolExprPtr> &cache) const;
+    BoolExprPtr map(const std::function<BoolExprPtr(const Lit&)> &f) const;
 
     void collectVars(VarSet &vars) const;
 
@@ -135,8 +135,8 @@ public:
     }
 
     VarSet vars() const;
-    BoolExpr simplify() const;
-    virtual ~BoolExpression();
+    BoolExprPtr simplify() const;
+    virtual ~BoolExpr();
     LitSet lits() const;
     bool isLinear() const;
     bool isPoly() const;
@@ -144,7 +144,7 @@ public:
 };
 
 
-class BoolTheoryLit: public BoolExpression {
+class BoolTheoryLit: public BoolExpr {
 
     const Lit lit;
 
@@ -156,18 +156,18 @@ class BoolTheoryLit: public BoolExpression {
         size_t operator()(const std::tuple<Lit> &args) const noexcept;
     };
 
-    static ConsHash<BoolExpression, BoolTheoryLit, CacheHash, CacheEqual, Lit> cache;
+    static ConsHash<BoolExpr, BoolTheoryLit, CacheHash, CacheEqual, Lit> cache;
 
 public:
 
     BoolTheoryLit(const Lit &lit);
-    static BoolExpr from_cache(const Lit &lit);
+    static BoolExprPtr from_cache(const Lit &lit);
     bool isAnd() const override;
     bool isOr() const override;
     bool isTheoryLit() const override;
     const Lit* getTheoryLit() const override;
-    BoolExpressionSet getChildren() const override;
-    const BoolExpr negation() const override;
+    BoolExprSet getChildren() const override;
+    const BoolExprPtr negation() const override;
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
     ~BoolTheoryLit() override;
     bool isConjunction() const override;
@@ -178,31 +178,31 @@ public:
 
 };
 
-class BoolJunction: public BoolExpression {
+class BoolJunction: public BoolExpr {
 
-    const BoolExpressionSet children;
+    const BoolExprSet children;
     const ConcatOperator op;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<BoolExpressionSet, ConcatOperator> &args1, const std::tuple<BoolExpressionSet, ConcatOperator> &args2) const noexcept;
+        bool operator()(const std::tuple<BoolExprSet, ConcatOperator> &args1, const std::tuple<BoolExprSet, ConcatOperator> &args2) const noexcept;
     };
 
     struct CacheHash {
-        size_t operator()(const std::tuple<BoolExpressionSet, ConcatOperator> &args) const noexcept;
+        size_t operator()(const std::tuple<BoolExprSet, ConcatOperator> &args) const noexcept;
     };
 
-    static ConsHash<BoolExpression, BoolJunction, CacheHash, CacheEqual, BoolExpressionSet, ConcatOperator> cache;
+    static ConsHash<BoolExpr, BoolJunction, CacheHash, CacheEqual, BoolExprSet, ConcatOperator> cache;
 
 public:
 
-    static BoolExpr from_cache(const BoolExpressionSet &children, ConcatOperator op);
-    BoolJunction(const BoolExpressionSet &children, ConcatOperator op);
+    static BoolExprPtr from_cache(const BoolExprSet &children, ConcatOperator op);
+    BoolJunction(const BoolExprSet &children, ConcatOperator op);
     bool isAnd() const override;
     bool isOr() const override;
     bool isTheoryLit() const override;
     const Lit* getTheoryLit() const override;
-    BoolExpressionSet getChildren() const override;
-    const BoolExpr negation() const override;
+    BoolExprSet getChildren() const override;
+    const BoolExprPtr negation() const override;
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
     ~BoolJunction() override;
     bool isConjunction() const override;
@@ -213,17 +213,17 @@ public:
 
 };
 
-const BoolExpr operator&&(const BoolExpr a, const BoolExpr b);
+const BoolExprPtr operator&&(const BoolExprPtr a, const BoolExprPtr b);
 
-const BoolExpr operator||(const BoolExpr a, const BoolExpr b);
+const BoolExprPtr operator||(const BoolExprPtr a, const BoolExprPtr b);
 
-const BoolExpr operator!(const BoolExpr a);
+const BoolExprPtr operator!(const BoolExprPtr a);
 
-std::ostream& operator<<(std::ostream &s, const BoolExpr e);
+std::ostream& operator<<(std::ostream &s, const BoolExprPtr e);
 
 template<>
-struct std::hash<BoolExpr> {
-    std::size_t operator()(const BoolExpr x) const noexcept {
+struct std::hash<BoolExprPtr> {
+    std::size_t operator()(const BoolExprPtr x) const noexcept {
         return boost::hash_value(x);
     }
 };

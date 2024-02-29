@@ -29,7 +29,7 @@ struct Step {
     /**
      * a conjunction that implies the condition of the clause
      */
-    const BoolExpr implicant;
+    const BoolExprPtr implicant;
 
     /**
      * renames the program variables to fresh variables that serve as input for the next step
@@ -38,7 +38,7 @@ struct Step {
 
     const Rule resolvent;
 
-    Step(const TransIdx transition, const BoolExpr sat, const Subs &var_renaming, const Rule &resolvent);
+    Step(const TransIdx transition, const BoolExprPtr sat, const Subs &var_renaming, const Rule &resolvent);
 
     Step(const Step &that);
 
@@ -172,7 +172,7 @@ class Reachability {
      * A conjunctive variant y of a non-conjunctive clause x is blocked if cond(y) implies an element of at(x).
      * Maybe it would be better to subdivide the blocking formulas w.r.t. pairs of predicates instead of clauses.
      */
-    std::vector<std::unordered_map<TransIdx, linked_hash_set<BoolExpr>>> blocked_clauses {{}};
+    std::vector<std::unordered_map<TransIdx, BoolExprSet>> blocked_clauses {{}};
 
     /**
      * Languages that correspond to non-linear learned clauses that are not used for resolution after a restart.
@@ -297,7 +297,7 @@ class Reachability {
 
     void add_to_trace(const Step &step);
 
-    Rule compute_resolvent(const TransIdx idx, const BoolExpr implicant) const;
+    Rule compute_resolvent(const TransIdx idx, const BoolExprPtr implicant) const;
 
     /**
      * Assumes that the trace can be resolved with the given clause.

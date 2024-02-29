@@ -123,9 +123,9 @@ std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
     return {implicant, model};
 }
 
-BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
+BoolExprPtr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
-        return BoolExpr();
+        return BoolExprPtr();
     }
     // we must not start another iteration of the loop in the next step,
     // so we require that we either use the learned transition,
@@ -164,7 +164,7 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
     auto [loop, sample_point] {build_loop(backlink)};
     auto simp {Preprocess::preprocessRule(loop)};
-    auto &map {cache.emplace(lang, std::unordered_map<BoolExpr, std::optional<Loop>>()).first->second};
+    auto &map {cache.emplace(lang, std::unordered_map<BoolExprPtr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
         if (sample_point.eval<Bools>(imp)) {
             if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
@@ -252,9 +252,9 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     return {};
 }
 
-BoolExpr ABMC::encode_transition(const TransIdx idx) {
+BoolExprPtr ABMC::encode_transition(const TransIdx idx) {
     const auto up {idx->getUpdate()};
-    std::vector<BoolExpr> res {idx->getGuard()};
+    std::vector<BoolExprPtr> res {idx->getGuard()};
     res.emplace_back(theory::mkEq(trace_var, arith::mkConst(idx->getId())));
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
@@ -353,7 +353,7 @@ void ABMC::analyze() {
         rule_map.emplace(r.getId(), &r);
         last_orig_clause = std::max(last_orig_clause, r.getId());
     }
-    std::vector<BoolExpr> inits;
+    std::vector<BoolExprPtr> inits;
     for (const auto &idx: its.getInitialTransitions()) {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
@@ -374,7 +374,7 @@ void ABMC::analyze() {
     }
     solver->add(bools::mkOr(inits));
 
-    std::vector<BoolExpr> steps;
+    std::vector<BoolExprPtr> steps;
     for (const auto &r: its.getAllTransitions()) {
         if (its.isInitialTransition(&r) || its.isSinkTransition(&r)) {
             continue;
@@ -383,7 +383,7 @@ void ABMC::analyze() {
     }
     const auto step {bools::mkOr(steps)};
 
-    std::vector<BoolExpr> queries;
+    std::vector<BoolExprPtr> queries;
     for (const auto &idx: its.getSinkTransitions()) {
         if (!its.isInitialTransition(idx)) {
             queries.push_back(idx->getGuard());
@@ -415,7 +415,7 @@ void ABMC::analyze() {
             solver->add(s(encode_transition(*shortcut) || step));
         }
         ++depth;
-        BoolExpr blocking_clause;
+        BoolExprPtr blocking_clause;
         switch (solver->check()) {
         case SmtResult::Unsat:
             if (!approx) {

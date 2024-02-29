@@ -8,12 +8,12 @@ using fs_type = LocationIdx;
 using lhs_type = LocationIdx;
 using to_type = Arith::Expr;
 using com_type = std::vector<Subs>;
-using cond_type = BoolExpr;
+using cond_type = BoolExprPtr;
 using rhs_type = Subs;
 using expr_type = Arith::Expr;
 using var_type = Arith::Var;
-using lit_type = BoolExpr;
-using formula_type = BoolExpr;
+using lit_type = BoolExprPtr;
+using formula_type = BoolExprPtr;
 
 antlrcpp::Any KoatParseVisitor::visitMain(KoatParser::MainContext *ctx) {
     visitChildren(ctx);
@@ -61,7 +61,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (rhss.size() > 1) {
         throw std::invalid_argument("Com-symbols are not supported");
     }
-    BoolExpr cond = top();
+    BoolExprPtr cond = top();
     if (ctx->cond()) {
         cond = any_cast<cond_type>(visit(ctx->cond()));
     }

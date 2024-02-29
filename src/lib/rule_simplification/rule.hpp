@@ -31,7 +31,7 @@
  */
 class Rule {
 private:
-    BoolExpr guard;
+    BoolExprPtr guard;
     Subs update;
     unsigned id;
 
@@ -39,9 +39,9 @@ private:
 
 public:
 
-    Rule(const BoolExpr guard, const Subs &update);
+    Rule(const BoolExprPtr guard, const Subs &update);
 
-    const BoolExpr getGuard() const;
+    const BoolExprPtr getGuard() const;
 
     template <ITheory Th>
     const typename Th::Subs& getUpdate() const {
@@ -52,7 +52,7 @@ public:
 
     Rule subs(const Subs &subs) const;
 
-    Rule withGuard(const BoolExpr guard) const;
+    Rule withGuard(const BoolExprPtr guard) const;
 
     Rule withUpdate(const Subs &up) const;
 
@@ -89,7 +89,7 @@ struct std::hash<Rule> {
 size_t hash_value(const Rule &r);
 
 using TransIdx = const Rule*;
-using Implicant = std::pair<TransIdx, BoolExpr>;
+using Implicant = std::pair<TransIdx, BoolExprPtr>;
 
 std::ostream& operator<<(std::ostream &s, const TransIdx &idx);
 std::ostream& operator<<(std::ostream &s, const Implicant &imp);

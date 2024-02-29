@@ -8,7 +8,7 @@ class Z3 : public Smt {
 
 public:
 
-    void add(const BoolExpr e) override;
+    void add(const BoolExprPtr e) override;
     void push() override;
     void pop() override;
     SmtResult check() override;

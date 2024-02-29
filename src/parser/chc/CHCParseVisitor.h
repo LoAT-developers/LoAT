@@ -6,7 +6,7 @@
 template<class T>
 struct Res {
     T t {};
-    std::vector<BoolExpr> refinement {};
+    std::vector<BoolExprPtr> refinement {};
     Res(const T &t);
     Res();
 
@@ -62,9 +62,9 @@ struct FunApp {
 struct Clause {
     const FunApp lhs;
     const FunApp rhs;
-    const BoolExpr guard;
+    const BoolExprPtr guard;
 
-    Clause(const FunApp &lhs, const FunApp &rhs, const BoolExpr guard): lhs(lhs), rhs(rhs), guard(guard) {}
+    Clause(const FunApp &lhs, const FunApp &rhs, const BoolExprPtr guard): lhs(lhs), rhs(rhs), guard(guard) {}
 
 };
 

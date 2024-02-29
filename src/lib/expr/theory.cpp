@@ -1,21 +1,21 @@
 #include "theory.hpp"
 
-const BoolExpr top() {
-    return BoolExpression::top();
+const BoolExprPtr top() {
+    return BoolExpr::top();
 }
 
-const BoolExpr bot() {
-    return BoolExpression::bot();
+const BoolExprPtr bot() {
+    return BoolExpr::bot();
 }
 
 namespace bools {
 
 Bools::Expr mkLit(const TheTheory::Lit &lit) {
-    return BoolExpression::mkLit(lit);
+    return BoolExpr::mkLit(lit);
 }
 
 Bools::Expr mkAndFromLits(const std::initializer_list<Lit> &lits) {
-    return BoolExpression::mkAndFromLits(lits);
+    return BoolExpr::mkAndFromLits(lits);
 }
 
 }
@@ -49,7 +49,7 @@ void collectVars(const ThExpr &expr, VarSet &vars) {
                    [&vars](const ArithExprPtr expr) {
                        expr->collectVars(vars.get<ArithVarPtr>());
                    },
-                   [&vars](const BoolExpr expr) {
+                   [&vars](const BoolExprPtr expr) {
                        expr->collectVars(vars);
                    }
                }, expr);
@@ -61,7 +61,7 @@ VarSet vars(const ThExpr &e) {
     return res;
 }
 
-BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
+BoolExprPtr mkEq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
         Overload {
             [&e2](const ArithExprPtr &e1) {
@@ -69,14 +69,14 @@ BoolExpr mkEq(const ThExpr &e1, const ThExpr &e2) {
                     std::vector<Lit>{arith::mkGeq(e1, std::get<ArithExprPtr>(e2)),
                                      arith::mkLeq(e1, std::get<ArithExprPtr>(e2))});
             },
-            [&e2](const BoolExpr lhs) {
-                const auto rhs = std::get<BoolExpr>(e2);
+            [&e2](const BoolExprPtr lhs) {
+                const auto rhs = std::get<BoolExprPtr>(e2);
                 return (lhs && rhs) || ((!lhs) && (!rhs));
             }
         }, e1);
 }
 
-BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
+BoolExprPtr mkNeq(const ThExpr &e1, const ThExpr &e2) {
     return std::visit(
         Overload {
             [&e2](const ArithExprPtr &e1) {
@@ -84,8 +84,8 @@ BoolExpr mkNeq(const ThExpr &e1, const ThExpr &e2) {
                     std::vector<Lit>{arith::mkGt(e1, std::get<ArithExprPtr>(e2)),
                                      arith::mkLt(e1, std::get<ArithExprPtr>(e2))});
             },
-            [&e2](const BoolExpr lhs) {
-                const auto rhs = std::get<BoolExpr>(e2);
+            [&e2](const BoolExprPtr lhs) {
+                const auto rhs = std::get<BoolExprPtr>(e2);
                 return (lhs && (!rhs)) || ((!lhs) && rhs);
             }
         }, e1);
@@ -103,7 +103,7 @@ Arith theory(const ArithExprPtr&) {
     return arith::t;
 }
 
-Bools theory(const BoolExpr&) {
+Bools theory(const BoolExprPtr&) {
     return bools::t;
 }
 

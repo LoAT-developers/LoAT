@@ -33,7 +33,7 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-SABMC::Loop::Loop(const BoolExpr trans, const unsigned length, const unsigned id): trans(trans), length(length), id(id) {}
+SABMC::Loop::Loop(const BoolExprPtr trans, const unsigned length, const unsigned id): trans(trans), length(length), id(id) {}
 
 SABMC::SABMC(SafetyProblem &t):
     t(t),
@@ -367,7 +367,7 @@ Transition SABMC::mbp(const Transition &trans, const Model &model) const {
     return res;
 }
 
-void SABMC::handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Model &model, std::vector<BoolExpr> &res) {
+void SABMC::handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Model &model, std::vector<BoolExprPtr> &res) {
     const auto lhs {rel.lhs()};
     const auto vars {lhs->vars()};
     ArithSubs init;
@@ -474,7 +474,7 @@ void SABMC::handle_loop(const Range &range) {
         std::cout << "closed form: " << closed << std::endl;
         std::cout << "prefix: " << prefix << std::endl;
     }
-    std::vector<BoolExpr> res;
+    std::vector<BoolExprPtr> res;
     for (const auto &lit: mbp_res.toBoolExpr()->lits()) {
         std::visit(
             Overload {
@@ -492,7 +492,7 @@ void SABMC::handle_loop(const Range &range) {
         res.push_back(bools::mkLit(BoolLit(post, b)));
     }
     res.push_back(bools::mkLit(arith::mkGeq(n, arith::mkConst(prefix))));
-    std::vector<BoolExpr> disj;
+    std::vector<BoolExprPtr> disj;
     disj.push_back(bools::mkAnd(res));
     if (prefix > 1) {
         auto chained {mbp_res};
@@ -505,7 +505,7 @@ void SABMC::handle_loop(const Range &range) {
     add_learned_clause(Transition::build(bools::mkOr(disj), t.var_map()), range.length());
 }
 
-BoolExpr SABMC::encode_transition(const Transition &t) {
+BoolExprPtr SABMC::encode_transition(const Transition &t) {
     return t.toBoolExpr() && theory::mkEq(trace_var, arith::mkConst(t.getId()));
 }
 
@@ -517,7 +517,7 @@ void SABMC::add_blocking_clauses() {
         solver->add(block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(b.id))));
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
-        const std::vector<BoolExpr> lits {theory::mkNeq(trace_var, arith::mkConst(b.id)), theory::mkNeq(trace_var, arith::mkConst(b.id))};
+        const std::vector<BoolExprPtr> lits {theory::mkNeq(trace_var, arith::mkConst(b.id)), theory::mkNeq(trace_var, arith::mkConst(b.id))};
         solver->add(bools::mkOr(lits));
     }
 }
@@ -622,7 +622,7 @@ void SABMC::analyze() {
             // ITSExport::printForProof(its, std::cout);
         }
     }
-    std::vector<BoolExpr> steps;
+    std::vector<BoolExprPtr> steps;
     for (const auto &trans: t.trans()) {
         rule_map.emplace(trans.getId(), trans);
         steps.push_back(encode_transition(trans));

@@ -391,14 +391,14 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline BoolExpr subsImpl(const Lit &lit) const {
+    inline BoolExprPtr subsImpl(const Lit &lit) const {
         if constexpr (I < variant_size) {
             if (lit.index() == I) {
                 using T = typename std::tuple_element_t<I, TheTheory::Theories>;
                 if constexpr (std::same_as<typename T::Var, Bools::Var>) {
                     return this->template get<T>().subs(std::get<I>(lit));
                 } else {
-                    return (*this)(BoolExpression::mkLit(std::get<I>(lit)));
+                    return (*this)(BoolExpr::mkLit(std::get<I>(lit)));
                 }
             } else {
                 return subsImpl<I+1>(lit);
@@ -410,8 +410,8 @@ private:
 
 public:
 
-    BoolExpr operator()(const Lit &lit) const;
-    BoolExpr operator()(const BoolExpr e) const;
+    BoolExprPtr operator()(const Lit &lit) const;
+    BoolExprPtr operator()(const BoolExprPtr e) const;
     TheTheory::Expr operator()(const TheTheory::Expr &expr) const;
     /**
      * that.concat(this)

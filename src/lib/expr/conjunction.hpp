@@ -16,7 +16,7 @@ public:
     bool isLinear() const;
     void collectVars(VarSet &vars) const;
     VarSet vars() const;
-    static Conjunction fromBoolExpr(const BoolExpr &);
+    static Conjunction fromBoolExpr(const BoolExprPtr &);
 
 };
 

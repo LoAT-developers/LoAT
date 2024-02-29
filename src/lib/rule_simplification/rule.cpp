@@ -22,7 +22,7 @@ using namespace std;
 
 unsigned Rule::next_id {0};
 
-Rule::Rule(const BoolExpr guard, const Subs &update): guard(guard), update(update), id(next_id++) {}
+Rule::Rule(const BoolExprPtr guard, const Subs &update): guard(guard), update(update), id(next_id++) {}
 
 void Rule::collectVars(VarSet &vars) const {
     guard->collectVars(vars);
@@ -39,7 +39,7 @@ Rule Rule::subs(const Subs &subs) const {
     return Rule(subs(guard), update.concat(subs));
 }
 
-Rule Rule::withGuard(const BoolExpr guard) const {
+Rule Rule::withGuard(const BoolExprPtr guard) const {
     return Rule(guard, update);
 }
 
@@ -51,7 +51,7 @@ Rule Rule::chain(const Rule &that) const {
     return Rule(guard && update(that.getGuard()), that.getUpdate().compose(update));
 }
 
-const BoolExpr Rule::getGuard() const {
+const BoolExprPtr Rule::getGuard() const {
     return guard;
 }
 
@@ -102,7 +102,7 @@ bool Rule::isDeterministic() const {
 
 size_t Rule::hash() const {
     size_t hash {0};
-    boost::hash_combine(hash, std::hash<BoolExpr>{}(guard));
+    boost::hash_combine(hash, std::hash<BoolExprPtr>{}(guard));
     boost::hash_combine(hash, update.hash());
     return hash;
 }

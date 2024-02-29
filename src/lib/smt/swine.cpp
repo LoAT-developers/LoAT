@@ -11,7 +11,7 @@ Swine::Swine(swine::Config config): solver(config, z3ctx), ctx(solver) {
     // config.set_rlimit(1000);
 }
 
-void Swine::add(const BoolExpr e) {
+void Swine::add(const BoolExprPtr e) {
     solver.add(ExprToSmt<z3::expr>::convert(e, ctx));
 }
 

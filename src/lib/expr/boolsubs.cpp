@@ -2,22 +2,22 @@
 
 BoolSubs::BoolSubs() {}
 
-BoolSubs::BoolSubs(const BoolVarPtr key, const BoolExpr val): map({{key, val}}) {}
+BoolSubs::BoolSubs(const BoolVarPtr key, const BoolExprPtr val): map({{key, val}}) {}
 
-void BoolSubs::put(const BoolVarPtr key, const BoolExpr val) {
+void BoolSubs::put(const BoolVarPtr key, const BoolExprPtr val) {
     map.put(key, val);
 }
 
-BoolExpr BoolSubs::get(const BoolVarPtr var) const {
+BoolExprPtr BoolSubs::get(const BoolVarPtr var) const {
     const auto res {map.get(var)};
-    return res ? *res : BoolExpression::mkLit(BoolLit(var));
+    return res ? *res : BoolExpr::mkLit(BoolLit(var));
 }
 
-BoolExpr BoolSubs::subs(const BoolLit &lit) const {
+BoolExprPtr BoolSubs::subs(const BoolLit &lit) const {
     return lit.isNegated() ? !get(lit.getBoolVar()) : get(lit.getBoolVar());
 }
 
-BoolExpr BoolSubs::operator()(const BoolExpr e) const {
+BoolExprPtr BoolSubs::operator()(const BoolExprPtr e) const {
     const auto lit = e->getTheoryLit();
     if (lit) {
         if (std::holds_alternative<BoolLit>(*lit)) {
@@ -33,11 +33,11 @@ BoolExpr BoolSubs::operator()(const BoolExpr e) const {
             return e;
         }
     } else if (e->isAnd() || e->isOr()) {
-        std::vector<BoolExpr> children;
+        std::vector<BoolExprPtr> children;
         for (const auto &c: e->getChildren()) {
             children.push_back((*this)(c));
         }
-        return e->isAnd() ? BoolExpression::mkAnd(children) : BoolExpression::mkOr(children);
+        return e->isAnd() ? BoolExpr::mkAnd(children) : BoolExpr::mkOr(children);
     } else {
         return e;
     }
@@ -80,7 +80,7 @@ bool BoolSubs::changes(const BoolVarPtr key) const {
     if (!contains(key)) {
         return false;
     }
-    return BoolExpression::mkLit(BoolLit(key)) != map.at(key);
+    return BoolExpr::mkLit(BoolLit(key)) != map.at(key);
 }
 
 linked_hash_set<BoolVarPtr> BoolSubs::domain() const {
@@ -140,7 +140,7 @@ size_t BoolSubs::hash() const {
     size_t hash {0};
     for (const auto &[key, value]: map) {
         boost::hash_combine(hash, key->hash());
-        boost::hash_combine(hash, std::hash<BoolExpr>{}(value));
+        boost::hash_combine(hash, std::hash<BoolExprPtr>{}(value));
     }
     return hash;
 }

@@ -54,9 +54,9 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    ResultBase<ArithSubs, Proof> propagateEqualities(const BoolExpr e, const SymbolAcceptor &allow);
+    ResultBase<ArithSubs, Proof> propagateEqualities(const BoolExprPtr e, const SymbolAcceptor &allow);
 
-    ResultBase<BoolSubs, Proof> propagateBooleanEqualities(const BoolExpr e);
+    ResultBase<BoolSubs, Proof> propagateBooleanEqualities(const BoolExprPtr e);
 
     /**
      * Tries to replace inequalities using their transitive closure,
@@ -71,9 +71,9 @@ namespace GuardToolbox {
      *
      * @return true if any changes have been made
      */
-    ResultBase<BoolExpr, Proof> eliminateByTransitiveClosure(const BoolExpr e, bool removeHalfBounds, const SymbolAcceptor &allow);
+    ResultBase<BoolExprPtr, Proof> eliminateByTransitiveClosure(const BoolExprPtr e, bool removeHalfBounds, const SymbolAcceptor &allow);
 
-    ResultBase<BoolExpr, Proof> simplify(const BoolExpr e);
+    ResultBase<BoolExprPtr, Proof> simplify(const BoolExprPtr e);
 
     /**
      * Returns true iff term contains a temporary variable
@@ -85,8 +85,8 @@ namespace GuardToolbox {
         });
     }
 
-    ResultBase<BoolExpr, Proof> eliminateTempVars(BoolExpr trans, const SymbolAcceptor &allow);
+    ResultBase<BoolExprPtr, Proof> eliminateTempVars(BoolExprPtr trans, const SymbolAcceptor &allow);
 
-    ResultBase<BoolExpr, Proof> preprocessFormula(const BoolExpr e, const SymbolAcceptor &allow);
+    ResultBase<BoolExprPtr, Proof> preprocessFormula(const BoolExprPtr e, const SymbolAcceptor &allow);
 
 }

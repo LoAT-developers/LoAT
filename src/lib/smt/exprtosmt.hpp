@@ -26,7 +26,7 @@
 template<typename EXPR> class ExprToSmt {
 public:
 
-    static EXPR convert(const BoolExpr e, SmtContext<EXPR> &ctx) {
+    static EXPR convert(const BoolExprPtr e, SmtContext<EXPR> &ctx) {
         ExprToSmt<EXPR> converter(ctx);
         return converter.convertBoolEx(e);
     }
@@ -40,7 +40,7 @@ public:
 protected:
     ExprToSmt(SmtContext<EXPR> &context): context(context) {}
 
-    EXPR convertBoolEx(const BoolExpr e) {
+    EXPR convertBoolEx(const BoolExprPtr e) {
         if (e->getTheoryLit()) {
             std::visit(
                 Overload {
@@ -54,7 +54,7 @@ protected:
         }
         EXPR res = e->isAnd() ? context.bTrue() : context.bFalse();
         bool first = true;
-        for (const BoolExpr &c: e->getChildren()) {
+        for (const BoolExprPtr &c: e->getChildren()) {
             if (first) {
                 res = convertBoolEx(c);
                 first = false;
