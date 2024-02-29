@@ -62,9 +62,9 @@ add_subdirectory(src)
 target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_util_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
-  ${loat_rule_simplifications_INCLUDE_DIRS}
+  ${loat_rule_simplification_INCLUDE_DIRS}
   ${loat_smt_INCLUDE_DIRS}
-  ${loat_qe_INCLUDE_DIRS}
+  ${loat_formula_simplification_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
   ${loat_acceleration_INCLUDE_DIRS}
 )
@@ -72,9 +72,9 @@ target_include_directories(${EXECUTABLE} PRIVATE
 target_link_libraries(${EXECUTABLE}
   loat_util
   loat_expr
-  loat_rule_simplifications
+  loat_rule_simplification
   loat_smt
-  loat_qe
+  loat_formula_simplification
   loat_recurrence
   loat_acceleration
   ${ANTLR4}

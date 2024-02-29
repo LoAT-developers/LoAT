@@ -2,23 +2,36 @@ cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_CXX_STANDARD 20)
 
-project(loat_qe CXX)
+project(loat_rule_simplification CXX)
 
 add_library(${PROJECT_NAME} STATIC
-  vareliminator.hpp
-  vareliminator.cpp
-  impliedequalities.cpp
-  impliedequalities.hpp
+  rule.hpp
+  rule.cpp
+  chain.hpp
+  chain.cpp
+  ruleproof.hpp
+  ruleproof.cpp
+  ruleresult.hpp
+  ruleresult.cpp
+  ruleexport.hpp
+  ruleexport.cpp
+  rulepreprocessing.cpp
+  rulepreprocessing.hpp
+  transition.hpp
+  transition.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
+  ${loat_util_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
+  ${loat_formula_simplification_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")
 
 target_link_libraries(${PROJECT_NAME}
-  loat_expr)
+  loat_expr
+  loat_formula_simplification)
 
 # Expose public includes to other
 # subprojects through cache variable.
