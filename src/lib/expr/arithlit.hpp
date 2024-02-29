@@ -90,6 +90,6 @@ ArithLit mkLt(const ArithExprPtr x, const ArithExprPtr y);
 
 }
 
-using RelSet = linked_hash_set<ArithLit>;
+using ArithLitSet = linked_hash_set<ArithLit>;
 
-std::ostream& operator<<(std::ostream &s, const RelSet &set);
+std::ostream& operator<<(std::ostream &s, const ArithLitSet &set);

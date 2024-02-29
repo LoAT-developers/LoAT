@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <boost/functional/hash.hpp>
 
-std::ostream& operator<<(std::ostream &s, const RelSet &set) {
+std::ostream& operator<<(std::ostream &s, const ArithLitSet &set) {
     s << "{";
     for (auto it = set.begin(); it != set.end(); ++it) {
         if (it != set.begin()) {

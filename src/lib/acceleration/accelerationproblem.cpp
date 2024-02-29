@@ -65,8 +65,8 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     const auto &up {update.get<Arith>()};
     const ArithSubs but_last {closed->closed_form.get<Arith>().compose({{config.n, config.n->toExpr() - arith::mkConst(1)}})};
     bool low_degree {false};
-    RelSet guard;
-    RelSet covered;
+    ArithLitSet guard;
+    ArithLitSet covered;
     if (d == 0) {
         return false;
     } else if (d == 1) {
