@@ -12,10 +12,13 @@ using TheTheory = Theory<Arith, Bools>;
 using BoolExprSet = BoolExprSet;
 using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;
-using ThExpr = TheTheory::Expr;
+using Expr = TheTheory::Expr;
+using Const = TheTheory::Const;
 using Theories = TheTheory::Theories;
 using VarSet = VariantSet<Arith::Var, Bools::Var>;
 using LitSet = VariantSet<Arith::Lit, Bools::Lit>;
+
+constexpr size_t num_theories {std::tuple_size_v<Theories>};
 
 const BoolExprPtr top();
 const BoolExprPtr bot();
@@ -44,7 +47,7 @@ Bools::Expr mkOr(const Children &lits) {
     return BoolExpr::mkOr(lits);
 }
 
-Bools::Expr mkLit(const TheTheory::Lit &lit);
+Bools::Expr mkLit(const Lit &lit);
 
 }
 
@@ -54,11 +57,11 @@ std::string getName(const Var &var);
 bool isTempVar(const Var &var);
 bool isProgVar(const Var &var);
 Var next(const Var &var);
-ThExpr toExpr(const Var &var);
-void collectVars(const ThExpr &expr, VarSet &vars);
-VarSet vars(const ThExpr &e);
-BoolExprPtr mkEq(const ThExpr &e1, const ThExpr &e2);
-BoolExprPtr mkNeq(const ThExpr &e1, const ThExpr &e2);
+Expr toExpr(const Var &var);
+void collectVars(const Expr &expr, VarSet &vars);
+VarSet vars(const Expr &e);
+BoolExprPtr mkEq(const Expr &e1, const Expr &e2);
+BoolExprPtr mkNeq(const Expr &e1, const Expr &e2);
 Arith theory(const ArithVarPtr&);
 Bools theory(const BoolVarPtr&);
 Arith theory(const ArithExprPtr&);
@@ -79,13 +82,13 @@ auto apply(const Var &x, Ts... f) {
 
 template <size_t I, ITheory T>
 constexpr bool is() {
-    return std::same_as<std::tuple_element_t<I, TheTheory::Theories>, T>;
+    return std::same_as<std::tuple_element_t<I, Theories>, T>;
 }
 
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e);
 
-std::ostream& operator<<(std::ostream &s, const ThExpr &e);
+std::ostream& operator<<(std::ostream &s, const Expr &e);
 
 std::ostream& operator<<(std::ostream &s, const Lit &e);

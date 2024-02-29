@@ -19,22 +19,22 @@ bool Model::eval(const Lit &lit) const {
     return evalImpl<0>(lit);
 }
 
-typename TheTheory::Const Model::eval(const ThExpr &e) const {
+Const Model::eval(const Expr &e) const {
     return std::visit(
         Overload {
             [&](const auto &e) {
                 using T = decltype(theory::theory(e));
-                return TheTheory::Const{eval<T>(e)};
+                return Const{eval<T>(e)};
             }
         }, e);
 }
 
-TheTheory::Const Model::get(const Var &var) const {
+Const Model::get(const Var &var) const {
     return theory::apply(
         var,
         [&](const auto& x) {
             using T = decltype(theory::theory(x));
-            return TheTheory::Const{std::get<typename T::Model>(m)[x]};
+            return Const{std::get<typename T::Model>(m)[x]};
         });
 }
 

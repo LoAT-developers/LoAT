@@ -15,7 +15,7 @@ public:
         return std::get<linked_hash_map<typename T::Var, typename T::Const>>(m)[var];
     }
 
-    TheTheory::Const get(const Var &var) const;
+    Const get(const Var &var) const;
 
     template <ITheory T>
     void put(const typename T::Var &var, const typename T::Const &val) {
@@ -37,7 +37,7 @@ private:
     template<std::size_t I = 0>
     inline void toSubsImpl(Subs &subs) const {
         using Pair = Subs::Pair;
-        if constexpr (I < std::tuple_size_v<Theories>) {
+        if constexpr (I < num_theories) {
             using T = std::tuple_element_t<I, Theories>;
             const auto &substitution {subs.get<T>()};
             const auto &model {std::get<I>(m)};
@@ -56,7 +56,7 @@ private:
 
     template <size_t I = 0>
     inline bool evalImpl(const Lit &lit) const {
-        if constexpr (I < std::tuple_size_v<Theories>) {
+        if constexpr (I < num_theories) {
             if (lit.index() == I) {
                 const auto &literal {std::get<I>(lit)};
                 const auto &model {std::get<I>(m)};
@@ -84,13 +84,13 @@ public:
         }
     }
 
-    typename TheTheory::Const eval(const ThExpr &e) const;
+    Const eval(const Expr &e) const;
 
 private:
 
     template <size_t I = 0>
     inline void composeBackwardsImpl(const Subs &subs, Model &res) const {
-        if constexpr (I < std::variant_size_v<ThExpr>) {
+        if constexpr (I < num_theories) {
             using Th = std::tuple_element_t<I, Theories>;
             const auto &substitution {subs.get<Th>()};
             const auto &model {std::get<I>(m)};

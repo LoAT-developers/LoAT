@@ -10,7 +10,7 @@ const BoolExprPtr bot() {
 
 namespace bools {
 
-Bools::Expr mkLit(const TheTheory::Lit &lit) {
+Bools::Expr mkLit(const Lit &lit) {
     return BoolExpr::mkLit(lit);
 }
 
@@ -21,8 +21,6 @@ Bools::Expr mkAndFromLits(const std::initializer_list<Lit> &lits) {
 }
 
 namespace theory {
-
-constexpr size_t num_theories {std::tuple_size_v<TheTheory::Theories>};
 
 std::string getName(const Var &var) {
     return std::visit([](const auto &var){return var->getName();}, var);
@@ -40,11 +38,11 @@ Var next(const Var &var) {
     return std::visit([](const auto x) {return Var(decltype(x)::element_type::next());}, var);
 }
 
-ThExpr toExpr(const Var &var) {
+Expr toExpr(const Var &var) {
     return TheTheory::varToExpr(var);
 }
 
-void collectVars(const ThExpr &expr, VarSet &vars) {
+void collectVars(const Expr &expr, VarSet &vars) {
     std::visit(Overload{
                    [&vars](const ArithExprPtr expr) {
                        expr->collectVars(vars.get<ArithVarPtr>());
@@ -55,13 +53,13 @@ void collectVars(const ThExpr &expr, VarSet &vars) {
                }, expr);
 }
 
-VarSet vars(const ThExpr &e) {
+VarSet vars(const Expr &e) {
     VarSet res;
     collectVars(e, res);
     return res;
 }
 
-BoolExprPtr mkEq(const ThExpr &e1, const ThExpr &e2) {
+BoolExprPtr mkEq(const Expr &e1, const Expr &e2) {
     return std::visit(
         Overload {
             [&e2](const ArithExprPtr &e1) {
@@ -76,7 +74,7 @@ BoolExprPtr mkEq(const ThExpr &e1, const ThExpr &e2) {
         }, e1);
 }
 
-BoolExprPtr mkNeq(const ThExpr &e1, const ThExpr &e2) {
+BoolExprPtr mkNeq(const Expr &e1, const Expr &e2) {
     return std::visit(
         Overload {
             [&e2](const ArithExprPtr &e1) {
@@ -227,7 +225,7 @@ std::ostream& operator<<(std::ostream &s, const Var &e) {
     return s;
 }
 
-std::ostream& operator<<(std::ostream &s, const ThExpr &e) {
+std::ostream& operator<<(std::ostream &s, const Expr &e) {
     std::visit([&s](const auto &e){s << e;}, e);
     return s;
 }

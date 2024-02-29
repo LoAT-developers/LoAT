@@ -16,8 +16,6 @@ class Subs {
 
     typename TheTheory::Subs t {};
 
-    static const size_t variant_size = std::variant_size_v<ThExpr>;
-
 public:
 
     using Pair = typename TheTheory::Pair;
@@ -26,7 +24,7 @@ public:
 
         template <size_t I = 0>
         inline It beginImpl(size_t i) const {
-            if constexpr (I < variant_size) {
+            if constexpr (I < num_theories) {
                 if (I == i) {
                     return It{std::get<I>(subs.t).begin()};;
                 } else {
@@ -41,7 +39,7 @@ public:
 
         template <size_t I = 0>
         inline It endImpl(size_t i) const {
-            if constexpr (I < variant_size) {
+            if constexpr (I < num_theories) {
                 if (I == i) {
                     return It(std::get<I>(subs.t).end());;
                 } else {
@@ -56,7 +54,7 @@ public:
 
         template <size_t I = 0>
         inline Pair getCurrentImpl() const {
-            if constexpr (I < variant_size) {
+            if constexpr (I < num_theories) {
                 if (ptr.index() == I) {
                     return Pair(*std::get<I>(ptr));
                 }
@@ -81,7 +79,7 @@ public:
 
         template <size_t I = 0>
         inline void incrementImpl() {
-            if constexpr (I < variant_size) {
+            if constexpr (I < num_theories) {
                 if (ptr.index() == I) {
                     std::get<I>(ptr)++;
                 } else {
@@ -113,7 +111,7 @@ private:
 
     template <size_t I = 0>
     inline Iterator beginImpl() const {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             const auto& x = std::get<I>(t);
             if (x.empty()) {
                 return beginImpl<I+1>();
@@ -133,7 +131,7 @@ private:
 
     template<std::size_t I = 0>
     inline void projectImpl(Subs& res, const VarSet &vars) const {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             std::get<I>(res.t) = std::get<I>(t).project(vars.template get<I>());
             projectImpl<I+1>(res, vars);
         }
@@ -147,7 +145,7 @@ private:
 
     template<std::size_t I = 0>
     inline void putImpl(const Pair &p) {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             if (p.index() == I) {
                 const auto &[x,y] = std::get<I>(p);
                 std::get<I>(t).put(x, y);
@@ -164,8 +162,8 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void putImpl(const Var &x, const ThExpr &y) {
-        if constexpr (I < variant_size) {
+    inline void putImpl(const Var &x, const Expr &y) {
+        if constexpr (I < num_theories) {
             if (x.index() == I) {
                 std::get<I>(t).put(std::get<I>(x), std::get<I>(y));
             } else {
@@ -176,7 +174,7 @@ private:
 
 public:
 
-    void put(const Var &x, const ThExpr &y);
+    void put(const Var &x, const Expr &y);
 
     template <ITheory T>
     void put(const typename T::Var &var, const typename T::Expr &expr) {
@@ -204,7 +202,7 @@ private:
 
     template<std::size_t I = 0>
     inline void domainImpl(VarSet &res) const {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             res.template get<I>() = std::get<I>(t).domain();
             domainImpl<I+1>(res);
         }
@@ -217,8 +215,8 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline ThExpr getImpl(const Var &var) const {
-        if constexpr (I >= variant_size) {
+    inline Expr getImpl(const Var &var) const {
+        if constexpr (I >= num_theories) {
             throw std::invalid_argument("variable not found");
         } else if (var.index() == I) {
             return std::get<I>(t).get(std::get<I>(var));
@@ -229,7 +227,7 @@ private:
 
 public:
 
-    ThExpr get(const Var &var) const;
+    Expr get(const Var &var) const;
 
     template <ITheory T>
     typename T::Expr get(const typename T::Var &var) const {
@@ -240,7 +238,7 @@ private:
 
     template<std::size_t I = 0>
     inline void uniteImpl(const Subs &that, Subs &res) const {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             std::get<I>(res.t) = std::get<I>(t).unite(std::get<I>(that.t));
             uniteImpl<I+1>(that, res);
         }
@@ -254,7 +252,7 @@ private:
 
     template<std::size_t I = 0>
     inline bool changesImpl(const Var &x) const {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             if (x.index() == I) {
                 return std::get<I>(t).changes(std::get<I>(x));
             } else {
@@ -273,7 +271,7 @@ private:
 
     template<std::size_t I = 0>
     inline void eraseImpl(const Var &x) {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             if (x.index() == I) {
                 std::get<I>(t).erase(std::get<I>(x));
             } else {
@@ -290,7 +288,7 @@ private:
 
     template<std::size_t I = 0>
     inline void eraseImpl(const VarSet &xs) {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             auto &s = std::get<I>(t);
             for (const auto &x: xs.template get<I>()) {
                 s.erase(x);
@@ -307,7 +305,7 @@ private:
 
     template<std::size_t I = 0>
     inline void printImpl(std::ostream &s, bool first = true) const {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             const auto &m {std::get<I>(t)};
             if (!m.empty()) {
                 if (first) {
@@ -317,7 +315,7 @@ private:
                 }
                 s << m;
             }
-            if constexpr (I + 1 < variant_size) {
+            if constexpr (I + 1 < num_theories) {
                 printImpl<I+1>(s, first);
             }
         }
@@ -331,9 +329,9 @@ private:
 
     template<std::size_t I = 0>
     inline void hashImpl(size_t &res) const {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             boost::hash_combine(res, t);
-            if constexpr (I + 1 < variant_size) {
+            if constexpr (I + 1 < num_theories) {
                 hashImpl<I+1>(res);
             }
         }
@@ -347,7 +345,7 @@ private:
 
     template<std::size_t I = 0>
     inline bool containsImpl(const Var &var) const {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             if (var.index() == I) {
                 const auto &subs = std::get<I>(t);
                 return subs.contains(std::get<I>(var));
@@ -392,9 +390,9 @@ private:
 
     template<std::size_t I = 0>
     inline BoolExprPtr subsImpl(const Lit &lit) const {
-        if constexpr (I < variant_size) {
+        if constexpr (I < num_theories) {
             if (lit.index() == I) {
-                using T = typename std::tuple_element_t<I, TheTheory::Theories>;
+                using T = typename std::tuple_element_t<I, Theories>;
                 if constexpr (std::same_as<typename T::Var, Bools::Var>) {
                     return this->template get<T>().subs(std::get<I>(lit));
                 } else {
@@ -412,7 +410,7 @@ public:
 
     BoolExprPtr operator()(const Lit &lit) const;
     BoolExprPtr operator()(const BoolExprPtr e) const;
-    TheTheory::Expr operator()(const TheTheory::Expr &expr) const;
+    Expr operator()(const Expr &expr) const;
     /**
      * that.concat(this)
      */
@@ -422,8 +420,8 @@ private:
 
     template<std::size_t I = 0>
     inline void concatImpl(const Subs &that, Subs &res) const {
-        if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-            if constexpr (std::same_as<std::tuple_element_t<I, TheTheory::Theories>, Bools>) {
+        if constexpr (I < num_theories) {
+            if constexpr (std::same_as<std::tuple_element_t<I, Theories>, Bools>) {
                 res.get<I>() = that.tac(get<I>());
             } else {
                 res.get<I>() = get<I>().concat(that.get<I>());
@@ -440,8 +438,8 @@ private:
 
     template<std::size_t I = 0>
     inline void composeImpl(const Subs &that, Subs &res) const {
-        if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
-            if constexpr (std::same_as<std::tuple_element_t<I, TheTheory::Theories>, Bools>) {
+        if constexpr (I < num_theories) {
+            if constexpr (std::same_as<std::tuple_element_t<I, Theories>, Bools>) {
                 res.get<I>() = that.tac(get<I>()).unite(that.get<I>());
             } else {
                 res.get<I>() = get<I>().compose(that.get<I>());
@@ -460,7 +458,7 @@ public:
     VarSet coDomainVars() const;
 
     static Var first(const Pair &p);
-    static ThExpr second(const Pair &p);
+    static Expr second(const Pair &p);
 
     static Subs Empty;
 
@@ -484,7 +482,7 @@ struct tuple_element<0, Subs::Pair> {
 
 template<>
 struct tuple_element<1, Subs::Pair> {
-    using type = ThExpr;
+    using type = Expr;
 };
 
 template<std::size_t Index>

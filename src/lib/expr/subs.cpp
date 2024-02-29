@@ -31,7 +31,7 @@ void Subs::Iterator::increment() {
 // Prefix increment
 Subs::Iterator& Subs::Iterator::operator++() {
     increment();
-    while (ptr.index() + 1 < variant_size && ptr == end(ptr.index())) {
+    while (ptr.index() + 1 < num_theories && ptr == end(ptr.index())) {
         ptr = begin(ptr.index() + 1);
     }
     return *this;
@@ -49,7 +49,7 @@ bool operator==(const Subs::Iterator& a, const Subs::Iterator& b) {
 };
 
 Subs::Iterator Subs::end() const {
-    return Subs::Iterator(*this, std::get<variant_size - 1>(t).end());
+    return Subs::Iterator(*this, std::get<num_theories - 1>(t).end());
 }
 
 Subs::Iterator Subs::begin() const {
@@ -66,7 +66,7 @@ void Subs::put(const Pair &p) {
     putImpl(p);
 }
 
-void Subs::put(const Var &x, const ThExpr &y) {
+void Subs::put(const Var &x, const Expr &y) {
     putImpl(x, y);
 }
 
@@ -82,7 +82,7 @@ VarSet Subs::domain() const {
     return res;
 }
 
-ThExpr Subs::get(const Var &var) const {
+Expr Subs::get(const Var &var) const {
     return getImpl(var);
 }
 
@@ -144,14 +144,14 @@ BoolExprPtr Subs::operator()(const BoolExprPtr e) const {
     });
 }
 
-ThExpr Subs::operator()(const ThExpr &expr) const {
+Expr Subs::operator()(const Expr &expr) const {
     return std::visit(
         Overload{
             [&](const Arith::Expr expr) {
-                return TheTheory::Expr{get<Arith>()(expr)};
+                return Expr{get<Arith>()(expr)};
             },
             [&](const Bools::Expr expr) {
-                return TheTheory::Expr{(*this)(expr)};
+                return Expr{(*this)(expr)};
             }
         }, expr);
 }
@@ -181,7 +181,7 @@ Subs Subs::compose(const Subs &that) const {
 
 template<std::size_t I = 0>
 inline void collectCoDomainVarsImpl(const Subs &subs, VarSet &res) {
-    if constexpr (I < std::tuple_size_v<TheTheory::Theories>) {
+    if constexpr (I < num_theories) {
         if constexpr (theory::is<I, Bools>()) {
             subs.get<I>().collectCoDomainVars(res);
         } else {
@@ -223,10 +223,10 @@ Var Subs::first(const Pair &p) {
         }, p);
 }
 
-ThExpr Subs::second(const Pair &p) {
+Expr Subs::second(const Pair &p) {
     return std::visit(
         [](const auto &p) {
-            return ThExpr(p.second);
+            return Expr(p.second);
         }, p);
 }
 

@@ -432,10 +432,10 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
         res.t = std::visit(
             Overload{
                 [&](const Arith::Expr expr) {
-                    return TheTheory::Expr{bindings.t.get<Arith>()(expr)};
+                    return Expr{bindings.t.get<Arith>()(expr)};
                 },
                 [&](const Bools::Expr expr) {
-                    return TheTheory::Expr{bindings.t(expr)};
+                    return Expr{bindings.t(expr)};
                 }
             }, expr.t);
         res.subsRefinement(bindings.t);

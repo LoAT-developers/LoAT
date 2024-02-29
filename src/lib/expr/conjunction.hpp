@@ -7,7 +7,7 @@
 #include <variant>
 #include <vector>
 
-class Conjunction : public std::vector<TheTheory::Lit> {
+class Conjunction : public std::vector<Lit> {
 
 public:
     // inherit constructors of base class
