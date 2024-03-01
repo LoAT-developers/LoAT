@@ -55,7 +55,7 @@ public:
     virtual bool isVar(const EXPR &e) const = 0;
     virtual bool isRationalConstant(const EXPR &e) const = 0;
     virtual bool isInt(const EXPR &e) const = 0;
-    virtual long toInt(const EXPR &e) const = 0;
+    virtual Int toInt(const EXPR &e) const = 0;
     virtual EXPR lhs(const EXPR &e) const = 0;
     virtual EXPR rhs(const EXPR &e) const = 0;
 

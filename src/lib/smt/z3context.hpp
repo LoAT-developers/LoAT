@@ -64,7 +64,7 @@ public:
     bool isVar(const z3::expr &e) const override;
     bool isRationalConstant(const z3::expr &e) const override;
     bool isInt(const z3::expr &e) const override;
-    long toInt(const z3::expr &e) const override;
+    Int toInt(const z3::expr &e) const override;
     z3::expr lhs(const z3::expr &e) const override;
     z3::expr rhs(const z3::expr &e) const override;
 

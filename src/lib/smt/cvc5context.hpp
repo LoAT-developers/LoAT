@@ -38,7 +38,7 @@ public:
     bool isVar(const cvc5::Term &e) const override;
     bool isRationalConstant(const cvc5::Term &e) const override;
     bool isInt(const cvc5::Term &e) const override;
-    long toInt(const cvc5::Term &e) const override;
+    Int toInt(const cvc5::Term &e) const override;
     cvc5::Term lhs(const cvc5::Term &e) const override;
     cvc5::Term rhs(const cvc5::Term &e) const override;
 

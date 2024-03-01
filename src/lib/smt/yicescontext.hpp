@@ -59,7 +59,7 @@ public:
     bool isVar(const term_t &e) const override;
     bool isRationalConstant(const term_t &e) const override;
     bool isInt(const term_t &e) const override;
-    long toInt(const term_t &e) const override;
+    Int toInt(const term_t &e) const override;
     term_t lhs(const term_t &e) const override;
     term_t rhs(const term_t &e) const override;
 
@@ -70,7 +70,7 @@ protected:
 
 private:
 
-    long numerator(const term_t &e) const;
-    long denominator(const term_t &e) const;
+    Int numerator(const term_t &e) const;
+    Int denominator(const term_t &e) const;
 
 };
