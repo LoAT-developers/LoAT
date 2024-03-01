@@ -25,6 +25,12 @@
 
 using namespace std;
 
+std::string to_string(const Num &val) {
+    stringstream ss;
+    ss << val;
+    return ss.str();
+}
+
 bool Expr::findAll(const Expr &pattern, linked_hash_set<Expr> &found) const {
     bool anyFound = false;
 

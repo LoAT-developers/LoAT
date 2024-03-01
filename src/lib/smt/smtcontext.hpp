@@ -28,8 +28,8 @@ class SmtContext {
 
 public:
 
-    virtual EXPR getInt(long val) = 0;
-    virtual EXPR getReal(long num, long denom) = 0;
+    virtual EXPR getInt(Num val) = 0;
+    virtual EXPR getReal(Num num, Num denom) = 0;
     virtual EXPR pow(const EXPR &base, const EXPR &exp) = 0;
     virtual EXPR plus(const EXPR &x, const EXPR &y) = 0;
     virtual EXPR times(const EXPR &x, const EXPR &y) = 0;
@@ -56,7 +56,7 @@ public:
     virtual bool isVar(const EXPR &e) const = 0;
     virtual bool isRationalConstant(const EXPR &e) const = 0;
     virtual bool isInt(const EXPR &e) const = 0;
-    virtual long toInt(const EXPR &e) const = 0;
+    virtual Num toInt(const EXPR &e) const = 0;
     virtual EXPR lhs(const EXPR &e) const = 0;
     virtual EXPR rhs(const EXPR &e) const = 0;
     virtual Rel::RelOp relOp(const EXPR &e) const = 0;
