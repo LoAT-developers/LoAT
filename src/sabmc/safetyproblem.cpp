@@ -1,8 +1,7 @@
 #include "safetyproblem.hpp"
-#include "theory.hpp"
 
-BoolExprPtr rule_to_formula(const Rule &r, const linked_hash_map<Var, Var> &var_map) {
-    std::vector<BoolExprPtr> conjuncts;
+Bools::Expr rule_to_formula(const Rule &r, const linked_hash_map<Var, Var> &var_map) {
+    std::vector<Bools::Expr> conjuncts;
     conjuncts.push_back(r.getGuard());
     for (const auto &[x,y]: var_map) {
         conjuncts.push_back(theory::mkEq(theory::toExpr(y), r.getUpdate().get(x)));
@@ -27,8 +26,8 @@ SafetyProblem::SafetyProblem(const ITSProblem &its) {
         init_map.put(y, theory::toExpr(x));
         init_map.put(x, theory::toExpr(theory::next(x)));
     }
-    std::vector<BoolExprPtr> init;
-    std::vector<BoolExprPtr> err;
+    std::vector<Bools::Expr> init;
+    std::vector<Bools::Expr> err;
     for (const auto &r: its.getAllTransitions()) {
         if (its.isInitialTransition(&r)) {
             init.emplace_back(init_map(rule_to_formula(r, var_map)));
@@ -66,11 +65,11 @@ VarSet SafetyProblem::vars() const {
     return res;
 }
 
-BoolExprPtr SafetyProblem::init() const {
+Bools::Expr SafetyProblem::init() const {
     return initial_states;
 }
 
-BoolExprPtr SafetyProblem::err() const {
+Bools::Expr SafetyProblem::err() const {
     return error_states;
 }
 
@@ -79,7 +78,7 @@ void SafetyProblem::replace_transition(const Transition &old_trans, const Transi
     transitions.insert(new_trans);
 }
 
-void SafetyProblem::set_init(const BoolExprPtr e) {
+void SafetyProblem::set_init(const Bools::Expr e) {
     initial_states = e;
 }
 

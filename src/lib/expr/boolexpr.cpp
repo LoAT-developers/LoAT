@@ -49,13 +49,13 @@ bool BoolExpr::isTriviallyFalse() const {
     }
 }
 
-Bounds BoolExpr::getBounds(const ArithVarPtr n) const {
+Bounds BoolExpr::getBounds(const Arith::Var n) const {
     Bounds bounds;
     getBounds(n, bounds);
     return bounds;
 }
 
-BoolExprPtr BoolExpr::linearize(const ArithVarPtr n) const {
+BoolExprPtr BoolExpr::linearize(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -77,7 +77,7 @@ BoolExprPtr BoolExpr::linearize(const ArithVarPtr n) const {
     });
 }
 
-BoolExprPtr BoolExpr::toInfinity(const ArithVarPtr n) const {
+BoolExprPtr BoolExpr::toInfinity(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -100,7 +100,7 @@ BoolExprPtr BoolExpr::toInfinity(const ArithVarPtr n) const {
     });
 }
 
-BoolExprPtr BoolExpr::toMinusInfinity(const ArithVarPtr n) const {
+BoolExprPtr BoolExpr::toMinusInfinity(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{

@@ -31,9 +31,9 @@ namespace sexpressionparser {
     private:
         void run(const std::string &filename);
 
-        void parseCond(sexpresso::Sexp &sexp, std::vector<BoolExprPtr> &guard);
+        void parseCond(sexpresso::Sexp &sexp, std::vector<Bools::Expr> &guard);
 
-        BoolExprPtr parseConstraint(sexpresso::Sexp &sexp, bool negate);
+        Bools::Expr parseConstraint(sexpresso::Sexp &sexp, bool negate);
 
         Arith::Expr parseExpression(sexpresso::Sexp &sexp);
 

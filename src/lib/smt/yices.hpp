@@ -27,7 +27,7 @@ public:
     Yices& operator=(Yices &&that) = delete;
 
     Yices(Logic logic);
-    void add(const BoolExprPtr e) override;
+    void add(const Bools::Expr e) override;
     void push() override;
     void pop() override;
     SmtResult processResult(smt_status status);

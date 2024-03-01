@@ -1,7 +1,5 @@
 #include "ruleexport.hpp"
 #include "config.hpp"
-#include "theory.hpp"
-#include "theory.hpp"
 
 using namespace std;
 namespace Color = Config::Color;
@@ -16,7 +14,7 @@ void RuleExport::printColor(ostream &os, const std::string &s) {
     }
 }
 
-void RuleExport::printGuard(const BoolExprPtr guard, std::ostream &s, bool colors) {
+void RuleExport::printGuard(const Bools::Expr guard, std::ostream &s, bool colors) {
     if (colors) printColor(s, Color::Guard);
     s << guard;
 }

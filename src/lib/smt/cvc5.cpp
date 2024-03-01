@@ -5,7 +5,7 @@ CVC5::CVC5(): solver(), ctx(solver) {
     updateParams();
 }
 
-void CVC5::add(const BoolExprPtr e) {
+void CVC5::add(const Bools::Expr e) {
     solver.assertFormula(ExprToSmt<cvc5::Term>::convert(e, ctx));
     solver.assertFormula(ctx.clearRefinement());
 }

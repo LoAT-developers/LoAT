@@ -29,7 +29,7 @@ struct Step {
     /**
      * a conjunction that implies the condition of the clause
      */
-    const BoolExprPtr implicant;
+    const Bools::Expr implicant;
 
     /**
      * renames the program variables to fresh variables that serve as input for the next step
@@ -38,7 +38,7 @@ struct Step {
 
     const Rule resolvent;
 
-    Step(const TransIdx transition, const BoolExprPtr sat, const Subs &var_renaming, const Rule &resolvent);
+    Step(const TransIdx transition, const Bools::Expr sat, const Subs &var_renaming, const Rule &resolvent);
 
     Step(const Step &that);
 
@@ -297,7 +297,7 @@ class Reachability {
 
     void add_to_trace(const Step &step);
 
-    Rule compute_resolvent(const TransIdx idx, const BoolExprPtr implicant) const;
+    Rule compute_resolvent(const TransIdx idx, const Bools::Expr implicant) const;
 
     /**
      * Assumes that the trace can be resolved with the given clause.

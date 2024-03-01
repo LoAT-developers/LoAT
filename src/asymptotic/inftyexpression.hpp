@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "arithexpr.hpp"
+#include "theory.hpp"
 
 /**
  * This enum represents a direction. POS stands for POS_INF or POS_CONS.
@@ -11,7 +11,7 @@ enum Direction { POS_INF = 0, NEG_INF, POS_CONS, NEG_CONS, POS };
 extern const int DirectionSize;
 extern const char* DirectionNames[];
 
-using InftyExpression = std::pair<ArithExprPtr, Direction>;
+using InftyExpression = std::pair<Arith::Expr, Direction>;
 
 /**
  * Returns true if this InftyExpression is trivially unsatisfiable, e.g,

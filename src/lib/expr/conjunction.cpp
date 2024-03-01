@@ -31,7 +31,7 @@ Conjunction operator&&(const Conjunction &fst, const Conjunction &snd) {
     return res;
 }
 
-Conjunction Conjunction::fromBoolExpr(const BoolExprPtr &e) {
+Conjunction Conjunction::fromBoolExpr(const Bools::Expr &e) {
     if (!e->isConjunction()) {
         throw std::invalid_argument(toString(e) + " is not a conjunction");
     }

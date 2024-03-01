@@ -31,10 +31,10 @@ YicesContext::~YicesContext() { }
 term_t YicesContext::buildVar(const Var &var) {
     type_t t {
         std::visit(Overload{
-                       [](const ArithVarPtr&) {
+                       [](const Arith::Var) {
                            return yices_int_type();
                        },
-                       [](const BoolVarPtr&) {
+                       [](const Bools::Var) {
                            return yices_bool_type();
                        }
                    }, var)};

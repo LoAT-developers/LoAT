@@ -1,17 +1,16 @@
 #include "vareliminator.hpp"
-#include "arithlit.hpp"
 #include "subs.hpp"
 
 #include <assert.h>
 
-VarEliminator::VarEliminator(const BoolExprPtr guard, const Arith::Var N, const std::function<bool(Arith::Var)> &keep): N(N), keep(keep) {
+VarEliminator::VarEliminator(const Bools::Expr guard, const Arith::Var N, const std::function<bool(Arith::Var)> &keep): N(N), keep(keep) {
     assert(!keep(N));
     todoDeps.push({{}, guard});
     findDependencies(guard);
     eliminate();
 }
 
-void VarEliminator::findDependencies(const BoolExprPtr guard) {
+void VarEliminator::findDependencies(const Bools::Expr guard) {
     dependencies.insert(N);
     bool changed;
     do {
@@ -50,14 +49,14 @@ void VarEliminator::findDependencies(const BoolExprPtr guard) {
     dependencies.erase(N);
 }
 
-const std::vector<std::pair<ArithSubs, BoolExprPtr>> VarEliminator::eliminateDependency(const ArithSubs &subs, const BoolExprPtr guard) const {
+const std::vector<std::pair<ArithSubs, Bools::Expr>> VarEliminator::eliminateDependency(const ArithSubs &subs, const Bools::Expr guard) const {
     VarSet vars = guard->vars();
     for (auto it = dependencies.begin(); it != dependencies.end(); ++it) {
         if (!vars.contains(*it)) {
             continue;
         }
         const auto bounds {guard->getBounds(*it)};
-        std::vector<std::pair<ArithSubs, BoolExprPtr>> res;
+        std::vector<std::pair<ArithSubs, Bools::Expr>> res;
         for (const auto &bb: {bounds.lowerBounds, bounds.upperBounds}) {
             for (const auto &b: bb) {
                 if (b->isRational()) {
@@ -75,8 +74,8 @@ const std::vector<std::pair<ArithSubs, BoolExprPtr>> VarEliminator::eliminateDep
 
 void VarEliminator::eliminateDependencies() {
     while (!todoDeps.empty()) {
-        const std::pair<ArithSubs, BoolExprPtr> current = todoDeps.top();
-        const std::vector<std::pair<ArithSubs, BoolExprPtr>> &res = eliminateDependency(current.first, current.second);
+        const std::pair<ArithSubs, Bools::Expr> current = todoDeps.top();
+        const std::vector<std::pair<ArithSubs, Bools::Expr>> &res = eliminateDependency(current.first, current.second);
         if (res.empty()) {
             todoN.push_back(current);
         }

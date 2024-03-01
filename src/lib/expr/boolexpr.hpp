@@ -113,14 +113,14 @@ public:
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LitSet &res) const = 0;
     virtual size_t size() const = 0;
-    virtual void getBounds(const ArithVarPtr n, Bounds &res) const = 0;
+    virtual void getBounds(const Arith::Var n, Bounds &res) const = 0;
 
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
-    Bounds getBounds(const ArithVarPtr n) const;
-    BoolExprPtr linearize(const ArithVarPtr n) const;
-    BoolExprPtr toInfinity(const ArithVarPtr n) const;
-    BoolExprPtr toMinusInfinity(const ArithVarPtr n) const;
+    Bounds getBounds(const Arith::Var n) const;
+    BoolExprPtr linearize(const Arith::Var n) const;
+    BoolExprPtr toInfinity(const Arith::Var n) const;
+    BoolExprPtr toMinusInfinity(const Arith::Var n) const;
     void iter(const std::function<void(const Lit&)> &f) const;
     BoolExprPtr map(const std::function<BoolExprPtr(const Lit&)> &f, std::unordered_map<BoolExprPtr, BoolExprPtr> &cache) const;
     BoolExprPtr map(const std::function<BoolExprPtr(const Lit&)> &f) const;
@@ -174,7 +174,7 @@ public:
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;
     size_t size() const override;
-    void getBounds(const ArithVarPtr var, Bounds &res) const override;
+    void getBounds(const Arith::Var var, Bounds &res) const override;
 
 };
 
@@ -209,7 +209,7 @@ public:
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;
     size_t size() const override;
-    void getBounds(const ArithVarPtr n, Bounds &res) const override;
+    void getBounds(const Arith::Var n, Bounds &res) const override;
 
 };
 

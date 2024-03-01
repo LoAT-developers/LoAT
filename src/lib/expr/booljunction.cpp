@@ -97,7 +97,7 @@ size_t BoolJunction::size() const {
     return res;
 }
 
-void BoolJunction::getBounds(const ArithVarPtr n, Bounds &res) const {
+void BoolJunction::getBounds(const Arith::Var n, Bounds &res) const {
     if (isAnd()) {
         for (const auto &c: children) {
             c->getBounds(n, res);

@@ -1,12 +1,13 @@
 #pragma once
 
 #include "itsproblem.hpp"
+#include "theory.hpp"
 #include "CHCVisitor.h"
 
 template<class T>
 struct Res {
     T t {};
-    std::vector<BoolExprPtr> refinement {};
+    std::vector<Bools::Expr> refinement {};
     Res(const T &t);
     Res();
 
@@ -62,9 +63,9 @@ struct FunApp {
 struct Clause {
     const FunApp lhs;
     const FunApp rhs;
-    const BoolExprPtr guard;
+    const Bools::Expr guard;
 
-    Clause(const FunApp &lhs, const FunApp &rhs, const BoolExprPtr guard): lhs(lhs), rhs(rhs), guard(guard) {}
+    Clause(const FunApp &lhs, const FunApp &rhs, const Bools::Expr guard): lhs(lhs), rhs(rhs), guard(guard) {}
 
 };
 

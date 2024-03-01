@@ -3,6 +3,7 @@
 #include <ostream>
 #include <string>
 
+#include "theory.hpp"
 #include "rule.hpp"
 
 
@@ -20,6 +21,6 @@ void printRule(const Rule &rule, std::ostream &s, bool colors = true);
      * Prints the given guard in a readable format (constraints separated by &&)
      * Note that colors are only used if colors is true and Config::Output::ColorInIts is true
      */
-void printGuard(const BoolExprPtr guard, std::ostream &s, bool colors = true);
+void printGuard(const Bools::Expr guard, std::ostream &s, bool colors = true);
 
 }

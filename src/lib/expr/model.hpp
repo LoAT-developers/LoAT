@@ -104,7 +104,7 @@ private:
 public:
 
     Model composeBackwards(const Subs &subs) const;
-    BoolExprPtr syntacticImplicant(const BoolExprPtr e) const;
+    Bools::Expr syntacticImplicant(const Bools::Expr e) const;
 
 private:
 

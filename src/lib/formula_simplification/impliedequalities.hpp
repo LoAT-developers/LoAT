@@ -1,6 +1,6 @@
 #pragma once
 
 #include "subs.hpp"
-#include "boolexpr.hpp"
+#include "theory.hpp"
 
-Subs impliedEqualities(const BoolExprPtr e);
+Subs impliedEqualities(const Bools::Expr e);

@@ -35,7 +35,7 @@ Yices::Yices(Logic logic): ctx(YicesContext()), config(yices_new_config()) {
     solver = yices_new_context(config);
 }
 
-void Yices::add(const BoolExprPtr e) {
+void Yices::add(const Bools::Expr e) {
     if (yices_assert_formula(solver, ExprToSmt<term_t>::convert(e, ctx)) < 0) {
         throw YicesError();
     }

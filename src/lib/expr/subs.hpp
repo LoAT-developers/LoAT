@@ -1,11 +1,7 @@
 #pragma once
 
-#include "itheory.hpp"
-#include "variantset.hpp"
-#include "arith.hpp"
-#include "bools.hpp"
-#include "boolsubs.hpp"
 #include "theory.hpp"
+#include "boolsubs.hpp"
 
 #include <boost/functional/hash.hpp>
 #include <utility>
@@ -179,8 +175,8 @@ public:
         return std::get<I>(t);
     }
 
-    BoolExprPtr operator()(const Lit &lit) const;
-    BoolExprPtr operator()(const BoolExprPtr e) const;
+    Bools::Expr operator()(const Lit &lit) const;
+    Bools::Expr operator()(const Bools::Expr e) const;
     Expr operator()(const Expr &expr) const;
     /**
      * that.concat(this)

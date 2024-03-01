@@ -21,9 +21,9 @@ void BMC::sat() {
     proof.print();
 }
 
-BoolExprPtr BMC::encode_transition(const TransIdx idx) {
+Bools::Expr BMC::encode_transition(const TransIdx idx) {
     const auto up {idx->getUpdate()};
-    std::vector<BoolExprPtr> res {idx->getGuard()};
+    std::vector<Bools::Expr> res {idx->getGuard()};
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
             res.push_back(theory::mkEq(theory::toExpr(post_vars.at(x)), up.get(x)));
@@ -50,7 +50,7 @@ void BMC::analyze() {
     for (const auto &var: vars) {
         post_vars.emplace(var, theory::next(var));
     }
-    std::vector<BoolExprPtr> inits;
+    std::vector<Bools::Expr> inits;
     for (const auto &idx: its.getInitialTransitions()) {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
@@ -71,7 +71,7 @@ void BMC::analyze() {
     }
     solver.add(bools::mkOr(inits));
 
-    std::vector<BoolExprPtr> steps;
+    std::vector<Bools::Expr> steps;
     for (const auto &r: its.getAllTransitions()) {
         if (its.isInitialTransition(&r) || its.isSinkTransition(&r)) {
             continue;
@@ -80,7 +80,7 @@ void BMC::analyze() {
     }
     const auto step {bools::mkOr(steps)};
 
-    std::vector<BoolExprPtr> queries;
+    std::vector<Bools::Expr> queries;
     for (const auto &idx: its.getSinkTransitions()) {
         if (!its.isInitialTransition(idx)) {
             queries.push_back(idx->getGuard());

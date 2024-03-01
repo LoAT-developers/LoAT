@@ -20,8 +20,8 @@ using LitSet = VariantSet<Arith::Lit, Bools::Lit>;
 
 constexpr size_t num_theories {std::tuple_size_v<Theories>};
 
-const BoolExprPtr top();
-const BoolExprPtr bot();
+const Bools::Expr top();
+const Bools::Expr bot();
 
 namespace bools {
 
@@ -60,12 +60,12 @@ Var next(const Var &var);
 Expr toExpr(const Var &var);
 void collectVars(const Expr &expr, VarSet &vars);
 VarSet vars(const Expr &e);
-BoolExprPtr mkEq(const Expr &e1, const Expr &e2);
-BoolExprPtr mkNeq(const Expr &e1, const Expr &e2);
-Arith theory(const ArithVarPtr&);
-Bools theory(const BoolVarPtr&);
-Arith theory(const ArithExprPtr&);
-Bools theory(const BoolExprPtr&);
+Bools::Expr mkEq(const Expr &e1, const Expr &e2);
+Bools::Expr mkNeq(const Expr &e1, const Expr &e2);
+Arith theory(const Arith::Var);
+Bools theory(const Bools::Var);
+Arith theory(const Arith::Expr);
+Bools theory(const Bools::Expr);
 bool isLinear(const Lit &lit);
 bool isPoly(const Lit &lit);
 void collectVars(const Lit &lit, VarSet &s);

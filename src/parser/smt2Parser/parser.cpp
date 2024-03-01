@@ -17,7 +17,6 @@
 
 #include "parser.hpp"
 #include "config.hpp"
-#include "theory.hpp"
 
 #include <fstream>
 #include <boost/algorithm/string.hpp>
@@ -79,7 +78,7 @@ namespace sexpressionparser {
                             LocationIdx from = locations[ruleExp[2].str()];
                             LocationIdx to = locations[ruleExp[4].str()];
                             Subs update;
-                            std::vector<BoolExprPtr> guard;
+                            std::vector<Bools::Expr> guard;
                             parseCond(ruleExp[5], guard);
                             guard.push_back(theory::mkEq(ArithVar::loc_var, arith::mkConst(from)));
                             const auto cond {bools::mkAnd(guard)};
@@ -108,7 +107,7 @@ namespace sexpressionparser {
         }
     }
 
-    void Self::parseCond(sexpresso::Sexp &sexp, std::vector<BoolExprPtr> &guard) {
+    void Self::parseCond(sexpresso::Sexp &sexp, std::vector<Bools::Expr> &guard) {
         if (sexp.isString()) {
             if (sexp.str() == "false") {
                 guard.push_back(bot());
@@ -135,7 +134,7 @@ namespace sexpressionparser {
 
     }
 
-    BoolExprPtr Self::parseConstraint(sexpresso::Sexp &sexp, bool negate) {
+    Bools::Expr Self::parseConstraint(sexpresso::Sexp &sexp, bool negate) {
         if (sexp.childCount() == 2) {
             assert(sexp[0].str() == "not");
             return parseConstraint(sexp[1], !negate);

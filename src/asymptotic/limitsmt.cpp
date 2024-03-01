@@ -14,7 +14,7 @@ using namespace std;
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a positive constant
  */
-static BoolExprPtr posConstraint(const map<Int, Arith::Expr>& coefficients) {
+static Bools::Expr posConstraint(const map<Int, Arith::Expr>& coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         if (degree > 0) {
@@ -32,7 +32,7 @@ static BoolExprPtr posConstraint(const map<Int, Arith::Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a negative constant
  */
-static BoolExprPtr negConstraint(const map<Int, Arith::Expr>& coefficients) {
+static Bools::Expr negConstraint(const map<Int, Arith::Expr>& coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (const auto &[degree, c] : coefficients) {
         if (degree > 0) {
@@ -50,12 +50,12 @@ static BoolExprPtr negConstraint(const map<Int, Arith::Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = -\infty
  */
-static BoolExprPtr negInfConstraint(const map<Int, Arith::Expr>& coefficients) {
+static Bools::Expr negInfConstraint(const map<Int, Arith::Expr>& coefficients) {
     Int maxDegree {0};
     for (const auto &[degree, _]: coefficients) {
         maxDegree = degree > maxDegree ? degree : maxDegree;
     }
-    std::vector<BoolExprPtr> disjunction;
+    std::vector<Bools::Expr> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
         std::vector<Arith::Lit> conjunction;
         for (const auto &[degree, c]: coefficients) {
@@ -76,12 +76,12 @@ static BoolExprPtr negInfConstraint(const map<Int, Arith::Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = \infty
  */
-static BoolExprPtr posInfConstraint(const map<Int, Arith::Expr>& coefficients) {
+static Bools::Expr posInfConstraint(const map<Int, Arith::Expr>& coefficients) {
     Int maxDegree {0};
     for (const auto &[degree, _] : coefficients) {
         maxDegree = degree > maxDegree ? degree : maxDegree;
     }
-    std::vector<BoolExprPtr> disjunction;
+    std::vector<Bools::Expr> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
         std::vector<Arith::Lit> conjunction;
         for (const auto &[degree, c] : coefficients) {
@@ -207,7 +207,7 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
     return {smtSubs};
 }
 
-BoolExprPtr encodeBoolExpr(const BoolExprPtr expr, const ArithSubs &templateSubs, const Arith::Var n) {
+Bools::Expr encodeBoolExpr(const Bools::Expr expr, const ArithSubs &templateSubs, const Arith::Var n) {
     BoolExprSet newChildren;
     for (const auto &c: expr->getChildren()) {
         newChildren.insert(encodeBoolExpr(c, templateSubs, n));
@@ -226,7 +226,7 @@ BoolExprPtr encodeBoolExpr(const BoolExprPtr expr, const ArithSubs &templateSubs
     }
 }
 
-std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const BoolExprPtr expr, const Arith::Expr cost, Complexity currentRes) {
+std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
     auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, 0))}))};
     // the parameter of the desired family of solutions

@@ -54,9 +54,9 @@ std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
     } else if (ctx->FALSE()) {
         return bot();
     } else {
-        const auto lhs = std::any_cast<BoolExprPtr>(visit(ctx->bool_expr(0)));
+        const auto lhs = std::any_cast<Bools::Expr>(visit(ctx->bool_expr(0)));
         if (ctx->bool_expr().size() == 2) {
-            const auto rhs = std::any_cast<BoolExprPtr>(visit(ctx->bool_expr(1)));
+            const auto rhs = std::any_cast<Bools::Expr>(visit(ctx->bool_expr(1)));
             if (ctx->AND()) {
                 return lhs && rhs;
             } else if (ctx->OR()) {
@@ -109,7 +109,7 @@ std::any CINTParseVisitor::visitRelop(CINTParser::RelopContext *ctx) {
 }
 
 std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
-    auto cond = std::any_cast<BoolExprPtr>(visit(ctx->bool_expr()));
+    auto cond = std::any_cast<Bools::Expr>(visit(ctx->bool_expr()));
     const auto pre = current;
     const auto cost_var = its->getCostVar();
     if (ctx->instructions()) {
@@ -159,7 +159,7 @@ std::any CINTParseVisitor::visitElse(CINTParser::ElseContext *ctx) {
 }
 
 std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
-    const auto cond = std::any_cast<BoolExprPtr>(visit(ctx->bool_expr()));
+    const auto cond = std::any_cast<Bools::Expr>(visit(ctx->bool_expr()));
     const auto pre = current;
     const auto post = its->addLocation();
     const auto cost_var = its->getCostVar();

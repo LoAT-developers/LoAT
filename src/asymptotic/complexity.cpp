@@ -122,7 +122,7 @@ std::ostream& operator<<(std::ostream &s, const Complexity &cpx) {
     return s << cpx.toString();
 }
 
-Complexity toComplexityRec(const ArithExprPtr term) {
+Complexity toComplexityRec(const Arith::Expr term) {
     return term->apply<Complexity>(
         [](const ArithConstPtr) {
             return Complexity::Const;
@@ -160,6 +160,6 @@ Complexity toComplexityRec(const ArithExprPtr term) {
         });
 }
 
-Complexity toComplexity(const ArithExprPtr e) {
+Complexity toComplexity(const Arith::Expr e) {
     return toComplexityRec(e);
 }

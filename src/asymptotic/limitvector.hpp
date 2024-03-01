@@ -57,7 +57,7 @@ public:
      * Returns false if applying this limit vector's directions to the expressions
      * would result in a trivially unsolvable limit problem.
      */
-    bool makesSense(ArithExprPtr l, ArithExprPtr r) const;
+    bool makesSense(Arith::Expr l, Arith::Expr r) const;
 
 private:
     const Direction type;

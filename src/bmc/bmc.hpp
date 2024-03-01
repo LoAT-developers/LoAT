@@ -23,7 +23,7 @@ private:
     unsigned depth {0};
     ITSProof proof {};
 
-    BoolExprPtr encode_transition(const TransIdx idx);
+    Bools::Expr encode_transition(const TransIdx idx);
     void unsat();
     void sat();
 

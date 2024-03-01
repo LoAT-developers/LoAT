@@ -28,10 +28,10 @@ z3::expr Z3Context::buildVar(const Var &var) {
     const auto name {theory::getName(var)};
     return std::visit(
         Overload{
-            [&](const ArithVarPtr&) {
+            [&](const Arith::Var) {
                 return ctx.int_const(name.c_str());
             },
-            [&](const BoolVarPtr&) {
+            [&](const Bools::Var) {
                 return ctx.bool_const(name.c_str());
             }
         }, var);

@@ -271,7 +271,7 @@ bool Subs::isPoly() const {
 }
 
 template<std::size_t I = 0>
-inline BoolExprPtr subsImpl(const Subs &s, const Lit &lit) {
+inline Bools::Expr subsImpl(const Subs &s, const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
             using T = typename std::tuple_element_t<I, Theories>;
@@ -288,11 +288,11 @@ inline BoolExprPtr subsImpl(const Subs &s, const Lit &lit) {
     }
 }
 
-BoolExprPtr Subs::operator()(const Lit &lit) const {
+Bools::Expr Subs::operator()(const Lit &lit) const {
     return subsImpl<0>(*this, lit);
 }
 
-BoolExprPtr Subs::operator()(const BoolExprPtr e) const {
+Bools::Expr Subs::operator()(const Bools::Expr e) const {
     return e->map([&](const auto &lit) {
         return (*this)(lit);
     });

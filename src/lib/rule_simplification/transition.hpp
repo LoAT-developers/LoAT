@@ -7,18 +7,18 @@ class Transition {
 
 private:
 
-    static std::unordered_map<BoolExprPtr, Transition> cache;
-    BoolExprPtr formula;
+    static std::unordered_map<Bools::Expr, Transition> cache;
+    Bools::Expr formula;
     std::shared_ptr<const linked_hash_map<Var, Var>> vm;
     unsigned id;
 
     static unsigned next_id;
 
-    explicit Transition(const BoolExprPtr formula, std::shared_ptr<const linked_hash_map<Var, Var>> var_map);
+    explicit Transition(const Bools::Expr formula, std::shared_ptr<const linked_hash_map<Var, Var>> var_map);
 
 public:
 
-    static Transition build(const BoolExprPtr formula, std::shared_ptr<const linked_hash_map<Var, Var>> var_map);
+    static Transition build(const Bools::Expr formula, std::shared_ptr<const linked_hash_map<Var, Var>> var_map);
 
     Transition subs(const Subs &subs) const;
 
@@ -36,15 +36,15 @@ public:
 
     bool operator==(const Transition &that) const;
 
-    BoolExprPtr toBoolExpr() const;
+    Bools::Expr toBoolExpr() const;
 
     Transition syntacticImplicant(const Model &model) const;
 
-    Transition linearize(const ArithVarPtr x) const;
+    Transition linearize(const Arith::Var x) const;
 
-    Transition toMinusInfinity(const ArithVarPtr x) const;
+    Transition toMinusInfinity(const Arith::Var x) const;
 
-    Transition toInfinity(const ArithVarPtr x) const;
+    Transition toInfinity(const Arith::Var x) const;
 
 };
 

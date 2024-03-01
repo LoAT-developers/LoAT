@@ -12,7 +12,7 @@ add_library(${PROJECT_NAME} STATIC
   boolvar.cpp
   boollit.hpp
   boollit.cpp
-  numvar.cpp
+  arithvar.cpp
   arithexpr.cpp
   arithexpr.hpp
   arithlit.cpp
@@ -33,7 +33,7 @@ add_library(${PROJECT_NAME} STATIC
   theory.cpp
   arithsubs.hpp
   arithsubs.cpp
-  numconstant.cpp
+  arithconstant.cpp
   exp.cpp
   mult.cpp
   add.cpp

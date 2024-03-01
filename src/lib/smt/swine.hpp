@@ -9,7 +9,7 @@ class Swine: public Smt {
 public:
 
     Swine(swine::Config config = swine::Config());
-    void add(const BoolExprPtr e) override;
+    void add(const Bools::Expr e) override;
     void push() override;
     void pop() override;
     SmtResult check() override;

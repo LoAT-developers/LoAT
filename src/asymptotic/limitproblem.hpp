@@ -6,7 +6,6 @@
 #include <string>
 #include <memory>
 
-#include "arith.hpp"
 #include "theory.hpp"
 #include "conjunction.hpp"
 #include "inftyexpression.hpp"

@@ -1,15 +1,14 @@
 #include "transition.hpp"
-#include "theory.hpp"
 
-std::unordered_map<BoolExprPtr, Transition> Transition::cache {};
+std::unordered_map<Bools::Expr, Transition> Transition::cache {};
 
 unsigned Transition::next_id {0};
 
-Transition::Transition(const BoolExprPtr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm): formula(formula), vm(vm), id(next_id) {
+Transition::Transition(const Bools::Expr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm): formula(formula), vm(vm), id(next_id) {
     ++next_id;
 }
 
-Transition Transition::build(const BoolExprPtr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm) {
+Transition Transition::build(const Bools::Expr formula, std::shared_ptr<const linked_hash_map<Var, Var>> vm) {
     const auto it {cache.find(formula)};
     if (it == cache.end()) {
         const Transition res {formula, vm};
@@ -41,7 +40,7 @@ unsigned Transition::getId() const {
 }
 
 size_t Transition::hash() const {
-    return std::hash<BoolExprPtr>{}(formula);
+    return std::hash<Bools::Expr>{}(formula);
 }
 
 size_t hash_value(const Transition &x) {
@@ -52,7 +51,7 @@ bool Transition::operator==(const Transition &that) const {
     return formula == that.formula;
 }
 
-BoolExprPtr Transition::toBoolExpr() const {
+Bools::Expr Transition::toBoolExpr() const {
     return formula;
 }
 
@@ -60,15 +59,15 @@ Transition Transition::syntacticImplicant(const Model &model) const {
     return build(model.syntacticImplicant(formula), vm);
 }
 
-Transition Transition::linearize(const ArithVarPtr x) const {
+Transition Transition::linearize(const Arith::Var x) const {
     return build(formula->linearize(x), vm);
 }
 
-Transition Transition::toMinusInfinity(const ArithVarPtr x) const {
+Transition Transition::toMinusInfinity(const Arith::Var x) const {
     return build(formula->toMinusInfinity(x), vm);
 }
 
-Transition Transition::toInfinity(const ArithVarPtr x) const {
+Transition Transition::toInfinity(const Arith::Var x) const {
     return build(formula->toInfinity(x), vm);
 }
 

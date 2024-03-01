@@ -448,7 +448,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   }
                   return false;
               },
-              [&](const ArithVarPtr) {
+              [&](const Arith::Var) {
                   return false;
               },
               [&](const ArithAddPtr a) {
@@ -505,13 +505,13 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
             [&](const ArithConstPtr) {
                 return false;
             },
-            [&](const ArithVarPtr) {
+            [&](const Arith::Var) {
                 return false;
             },
             [&](const ArithAddPtr a) {
                 std::vector<Arith::Expr> l_args;
                 std::vector<Arith::Expr> r_args;
-                std::optional<ArithVarPtr> oneVar;
+                std::optional<Arith::Var> oneVar;
                 for (const auto &ex: a->getArgs()) {
                     if (ex->isRational()) {
                         l_args.clear();
@@ -545,7 +545,7 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                 std::vector<Arith::Expr> r_args;
                 l_args.emplace_back(arith::mkConst(1));
                 r_args.emplace_back(arith::mkConst(1));
-                std::optional<ArithVarPtr> oneVar;
+                std::optional<Arith::Var> oneVar;
                 for (const auto &ex: m->getArgs()) {
                     const auto c {ex->isRational()};
                     if (c) {

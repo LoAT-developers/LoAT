@@ -20,9 +20,9 @@ public:
     static PolyAccelMode polyaccel;
 
     struct Accelerator {
-        std::vector<BoolExprPtr> formula{};
+        std::vector<Bools::Expr> formula{};
         Proof proof{};
-        std::vector<BoolExprPtr> covered{};
+        std::vector<Bools::Expr> covered{};
         bool nonterm {true};
         bool prependFirst {false};
     };
@@ -31,7 +31,7 @@ private:
 
     const std::optional<Recurrence::Result> closed;
     Subs update;
-    BoolExprPtr guard;
+    Bools::Expr guard;
     const AccelConfig config;
     LitSet todo {};
     Accelerator res {};

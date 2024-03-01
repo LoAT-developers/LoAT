@@ -24,7 +24,6 @@
 #include "ruleresult.hpp"
 #include "rulepreprocessing.hpp"
 
-#include <purrs.hh>
 #include <numeric>
 
 using namespace std;

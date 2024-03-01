@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "arithexpr.hpp"
+#include "theory.hpp"
 
 #include <assert.h>
 
@@ -80,4 +80,4 @@ private:
 
 std::ostream& operator<<(std::ostream &, const Complexity &);
 
-Complexity toComplexity(const ArithExprPtr e);
+Complexity toComplexity(const Arith::Expr e);

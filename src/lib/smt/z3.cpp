@@ -1,8 +1,7 @@
 #include "z3.hpp"
 #include "exprtosmt.hpp"
-#include "variantset.hpp"
 
-void Z3::add(const BoolExprPtr e) {
+void Z3::add(const Bools::Expr e) {
     solver.add(ExprToSmt<z3::expr>::convert(e, ctx));
 }
 

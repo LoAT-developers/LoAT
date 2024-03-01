@@ -20,7 +20,7 @@ private:
         TransIdx idx;
         unsigned prefix;
         unsigned period;
-        BoolExprPtr covered;
+        Bools::Expr covered;
         bool deterministic;
     };
 
@@ -28,14 +28,14 @@ private:
     SmtPtr solver {SmtFactory::solver()};
     bool approx {false};
     unsigned last_orig_clause {};
-    BoolExprPtr query {};
+    Bools::Expr query {};
     std::vector<Subs> subs {Subs::Empty};
     std::vector<Implicant> trace {};
     VarSet vars {};
     Arith::Var n {ArithVar::next()};
     std::unordered_map<Var, Var> post_vars {};
     std::unordered_map<Implicant, int> lang_map {};
-    std::unordered_map<std::vector<int>, std::unordered_map<BoolExprPtr, std::optional<Loop>>> cache {};
+    std::unordered_map<std::vector<int>, std::unordered_map<Bools::Expr, std::optional<Loop>>> cache {};
     std::unordered_set<std::vector<int>> nonterm_cache {};
     std::unordered_map<int, std::vector<int>> history {};
     Arith::Var trace_var;
@@ -47,12 +47,12 @@ private:
     unsigned depth {0};
 
     int get_language(unsigned i);
-    BoolExprPtr encode_transition(const TransIdx idx);
+    Bools::Expr encode_transition(const TransIdx idx);
     bool is_orig_clause(const TransIdx idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
     std::pair<Rule, Model> build_loop(const int backlink);
-    BoolExprPtr build_blocking_clause(const int backlink, const Loop &loop);
+    Bools::Expr build_blocking_clause(const int backlink, const Loop &loop);
     std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
     void unsat();
     void unknown();

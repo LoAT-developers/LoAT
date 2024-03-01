@@ -16,7 +16,6 @@
  */
 
 #include "guardtoolbox.hpp"
-#include "arithlit.hpp"
 #include "theory.hpp"
 #include "subs.hpp"
 #include "impliedequalities.hpp"
@@ -25,7 +24,7 @@
 
 using namespace std;
 
-ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const BoolExprPtr e, const SymbolAcceptor &allow) {
+ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr e, const SymbolAcceptor &allow) {
     ResultBase<ArithSubs, Proof> res;
     for (const auto &var: e->vars().get<Arith::Var>()) {
         if (!allow(var)) continue;
@@ -47,7 +46,7 @@ ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const BoolExprPtr
     return res;
 }
 
-ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolExprPtr e) {
+ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const Bools::Expr e) {
     ResultBase<BoolSubs, Proof> res;
     const auto equiv {impliedEqualities(e)};
     if (!equiv.empty()) {
@@ -57,8 +56,8 @@ ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const BoolE
     return res;
 }
 
-ResultBase<BoolExprPtr, Proof> GuardToolbox::eliminateByTransitiveClosure(const BoolExprPtr e, bool removeHalfBounds, const SymbolAcceptor &allow) {
-    ResultBase<BoolExprPtr, Proof> res(e);
+ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Bools::Expr e, bool removeHalfBounds, const SymbolAcceptor &allow) {
+    ResultBase<Bools::Expr, Proof> res(e);
     if (!e->isConjunction()) {
         return res;
     }
@@ -142,8 +141,8 @@ abort:  ; //this symbol could not be eliminated, try the next one
     return res;
 }
 
-ResultBase<BoolExprPtr, Proof> _propagateBooleanEqualities(const BoolExprPtr e) {
-    ResultBase<BoolExprPtr, Proof> res {e};
+ResultBase<Bools::Expr, Proof> _propagateBooleanEqualities(const Bools::Expr e) {
+    ResultBase<Bools::Expr, Proof> res {e};
     const auto subs {GuardToolbox::propagateBooleanEqualities(e)};
     if (subs) {
         res = Subs::build<Bools>(*subs)(e);
@@ -153,8 +152,8 @@ ResultBase<BoolExprPtr, Proof> _propagateBooleanEqualities(const BoolExprPtr e) 
     return res;
 }
 
-ResultBase<BoolExprPtr, Proof> _propagateEqualities(const BoolExprPtr e, const GuardToolbox::SymbolAcceptor &allow) {
-    ResultBase<BoolExprPtr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, allow)};
+ResultBase<Bools::Expr, Proof> _propagateEqualities(const Bools::Expr e, const GuardToolbox::SymbolAcceptor &allow) {
+    ResultBase<Bools::Expr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, allow)};
     if (subs) {
         res = Subs::build<Arith>(*subs)(e);
         res.append("Extracted Implied Equalities");
@@ -163,8 +162,8 @@ ResultBase<BoolExprPtr, Proof> _propagateEqualities(const BoolExprPtr e, const G
     return res;
 }
 
-ResultBase<BoolExprPtr, Proof> GuardToolbox::simplify(BoolExprPtr e) {
-    ResultBase<BoolExprPtr, Proof> res {e};
+ResultBase<Bools::Expr, Proof> GuardToolbox::simplify(Bools::Expr e) {
+    ResultBase<Bools::Expr, Proof> res {e};
     e = e->simplify();
     if (*res != e) {
         res = e;
@@ -173,7 +172,7 @@ ResultBase<BoolExprPtr, Proof> GuardToolbox::simplify(BoolExprPtr e) {
     return res;
 }
 
-ResultBase<BoolExprPtr, Proof> GuardToolbox::eliminateTempVars(BoolExprPtr e, const SymbolAcceptor &allow) {
+ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateTempVars(Bools::Expr e, const SymbolAcceptor &allow) {
     auto res {_propagateBooleanEqualities(e)};
     if (res) {
         return res;
@@ -189,8 +188,8 @@ ResultBase<BoolExprPtr, Proof> GuardToolbox::eliminateTempVars(BoolExprPtr e, co
     return GuardToolbox::eliminateByTransitiveClosure(e, true, allow);
 }
 
-ResultBase<BoolExprPtr, Proof> GuardToolbox::preprocessFormula(const BoolExprPtr e, const SymbolAcceptor &allow) {
-    ResultBase<BoolExprPtr, Proof> res {e};
+ResultBase<Bools::Expr, Proof> GuardToolbox::preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow) {
+    ResultBase<Bools::Expr, Proof> res {e};
     auto changed {false};
     do {
         auto tmp {eliminateTempVars(*res, allow)};

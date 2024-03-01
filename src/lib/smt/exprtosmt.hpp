@@ -18,20 +18,19 @@
 #pragma once
 
 #include "smtcontext.hpp"
-#include "boolexpr.hpp"
-#include "arithexpr.hpp"
+#include "theory.hpp"
 
 #include <sstream>
 
 template<typename EXPR> class ExprToSmt {
 public:
 
-    static EXPR convert(const BoolExprPtr e, SmtContext<EXPR> &ctx) {
+    static EXPR convert(const Bools::Expr e, SmtContext<EXPR> &ctx) {
         ExprToSmt<EXPR> converter(ctx);
         return converter.convertBoolEx(e);
     }
 
-    static EXPR convert(const ArithExprPtr e, SmtContext<EXPR> &ctx) {
+    static EXPR convert(const Arith::Expr e, SmtContext<EXPR> &ctx) {
         ExprToSmt<EXPR> converter(ctx);
         return converter.convertEx(e);
     }
@@ -40,7 +39,7 @@ public:
 protected:
     ExprToSmt(SmtContext<EXPR> &context): context(context) {}
 
-    EXPR convertBoolEx(const BoolExprPtr e) {
+    EXPR convertBoolEx(const Bools::Expr e) {
         if (e->getTheoryLit()) {
             std::visit(
                 Overload {
@@ -54,7 +53,7 @@ protected:
         }
         EXPR res = e->isAnd() ? context.bTrue() : context.bFalse();
         bool first = true;
-        for (const BoolExprPtr &c: e->getChildren()) {
+        for (const Bools::Expr &c: e->getChildren()) {
             if (first) {
                 res = convertBoolEx(c);
                 first = false;
@@ -65,12 +64,12 @@ protected:
         return res;
     }
 
-    EXPR convertEx(const ArithExprPtr e){
+    EXPR convertEx(const Arith::Expr e){
         return e->apply<EXPR>(
             [this](const ArithConstPtr &r) {
                 return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
             },
-            [this](const ArithVarPtr x) {
+            [this](const Arith::Var x) {
                 auto optVar = context.getVariable(x);
                 if (optVar) {
                     return *optVar;

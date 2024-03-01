@@ -12,7 +12,7 @@ namespace LimitSmtEncoding {
  */
 std::optional<ArithSubs> applyEncoding(const LimitProblem &currentLP, const Arith::Expr cost, Complexity currentRes);
 
-std::pair<ArithSubs, Complexity> applyEncoding(const BoolExprPtr exp, const Arith::Expr cost, Complexity currentRes);
+std::pair<ArithSubs, Complexity> applyEncoding(const Bools::Expr exp, const Arith::Expr cost, Complexity currentRes);
 
 }
 

@@ -251,8 +251,8 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         const auto success {solver->check() == Unsat};
         solver->pop();
         if (success) {
-            BoolExprPtr g;
-            BoolExprPtr c;
+            Bools::Expr g;
+            Bools::Expr c;
             if (samplePoint && i.subs(samplePoint->get<Arith>()).isTriviallyFalse()) {
                 if (!closed) {
                     solver->pop();
@@ -282,7 +282,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     if (config.tryAccel) {
         return false;
     }
-    std::vector<BoolExprPtr> eqs;
+    std::vector<Bools::Expr> eqs;
     const auto vars {util::RelevantVariables::find(theory::vars(lit), update)};
     for (const auto& v: vars) {
         if (std::holds_alternative<Bools::Var>(v)) {

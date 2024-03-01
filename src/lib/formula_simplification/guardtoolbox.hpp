@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include "arithexpr.hpp"
 #include "theory.hpp"
 #include "result.hpp"
 
@@ -54,9 +53,9 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    ResultBase<ArithSubs, Proof> propagateEqualities(const BoolExprPtr e, const SymbolAcceptor &allow);
+    ResultBase<ArithSubs, Proof> propagateEqualities(const Bools::Expr e, const SymbolAcceptor &allow);
 
-    ResultBase<BoolSubs, Proof> propagateBooleanEqualities(const BoolExprPtr e);
+    ResultBase<BoolSubs, Proof> propagateBooleanEqualities(const Bools::Expr e);
 
     /**
      * Tries to replace inequalities using their transitive closure,
@@ -71,9 +70,9 @@ namespace GuardToolbox {
      *
      * @return true if any changes have been made
      */
-    ResultBase<BoolExprPtr, Proof> eliminateByTransitiveClosure(const BoolExprPtr e, bool removeHalfBounds, const SymbolAcceptor &allow);
+    ResultBase<Bools::Expr, Proof> eliminateByTransitiveClosure(const Bools::Expr e, bool removeHalfBounds, const SymbolAcceptor &allow);
 
-    ResultBase<BoolExprPtr, Proof> simplify(const BoolExprPtr e);
+    ResultBase<Bools::Expr, Proof> simplify(const Bools::Expr e);
 
     /**
      * Returns true iff term contains a temporary variable
@@ -85,8 +84,8 @@ namespace GuardToolbox {
         });
     }
 
-    ResultBase<BoolExprPtr, Proof> eliminateTempVars(BoolExprPtr trans, const SymbolAcceptor &allow);
+    ResultBase<Bools::Expr, Proof> eliminateTempVars(Bools::Expr trans, const SymbolAcceptor &allow);
 
-    ResultBase<BoolExprPtr, Proof> preprocessFormula(const BoolExprPtr e, const SymbolAcceptor &allow);
+    ResultBase<Bools::Expr, Proof> preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow);
 
 }

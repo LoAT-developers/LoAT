@@ -38,7 +38,7 @@ Const Model::get(const Var &var) const {
         });
 }
 
-void syntacticImplicant(const BoolExprPtr e, const Model &m, BoolExprSet &res) {
+void syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
     if (e->isAnd() || e->isOr()) {
         for (const auto &c: e->getChildren()) {
             syntacticImplicant(c, m, res);
@@ -55,7 +55,7 @@ void syntacticImplicant(const BoolExprPtr e, const Model &m, BoolExprSet &res) {
     }
 }
 
-BoolExprPtr Model::syntacticImplicant(const BoolExprPtr e) const {
+Bools::Expr Model::syntacticImplicant(const Bools::Expr e) const {
     BoolExprSet res;
     ::syntacticImplicant(e, *this, res);
     return bools::mkAnd(res);
