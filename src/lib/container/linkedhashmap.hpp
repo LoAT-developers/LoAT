@@ -2,23 +2,9 @@
 
 #include <iostream>
 #include <ostream>
-#include <map>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
-
-template<class S, class T>
-std::ostream& operator<<(std::ostream &s, const std::map<S, T> &map) {
-    s << "{";
-    for (auto it = map.begin(); it != map.end(); ++it) {
-        if (it != map.begin()) {
-            s << ", ";
-        }
-        s << it->first << " -> " << it->second;
-    }
-    s << "}";
-    return s;
-}
 
 template <class S, class T>
 class linked_hash_map {
