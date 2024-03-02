@@ -29,6 +29,7 @@ benchmarks*
 .*
 !.vscode
 !.devcontainer
+!.github/
 
 # build stuff
 cmake-build-debug
