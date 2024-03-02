@@ -25,6 +25,12 @@
 
 using namespace std;
 
+std::string to_string(const Num &val) {
+    stringstream ss;
+    ss << val;
+    return ss.str();
+}
+
 bool Expr::findAll(const Expr &pattern, linked_hash_set<Expr> &found) const {
     bool anyFound = false;
 
@@ -801,12 +807,7 @@ linked_hash_set<NumVar> ExprSubs::allVars() const {
 }
 
 size_t ExprSubs::hash() const {
-    size_t hash {0};
-    for (const auto &[key, value]: map) {
-        boost::hash_combine(hash, key.hash());
-        boost::hash_combine(hash, value.hash());
-    }
-    return hash;
+    return boost::hash_unordered_range(map.begin(), map.end());
 }
 
 bool operator==(const ExprSubs &m1, const ExprSubs &m2) {

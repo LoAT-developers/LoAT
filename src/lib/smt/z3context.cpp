@@ -36,12 +36,12 @@ z3::expr Z3Context::buildVar(const Var &var) {
                       }, var);
 }
 
-z3::expr Z3Context::getInt(long val) {
-    return ctx.int_val(val);
+z3::expr Z3Context::getInt(Num val) {
+    return ctx.int_val(to_string(val).c_str());
 }
 
-z3::expr Z3Context::getReal(long num, long denom) {
-    return ctx.real_val(num, denom);
+z3::expr Z3Context::getReal(Num num, Num denom) {
+    return getInt(num) / getInt(denom);
 }
 
 z3::expr Z3Context::pow(const z3::expr &base, const z3::expr &exp) {
@@ -149,8 +149,8 @@ bool Z3Context::isInt(const z3::expr &e) const {
     return e.is_numeral() && e.is_int();
 }
 
-long Z3Context::toInt(const z3::expr &e) const {
-    return e.get_numeral_int64();
+Num Z3Context::toInt(const z3::expr &e) const {
+    return Num{e.to_string().c_str()};
 }
 
 z3::expr Z3Context::lhs(const z3::expr &e) const {

@@ -177,12 +177,7 @@ public:
     }
 
     size_t hash() const {
-        size_t hash {0};
-        for (const auto &[key, value]: map) {
-            boost::hash_combine(hash, key.hash());
-            boost::hash_combine(hash, std::hash<BoolExpr>{}(value));
-        }
-        return hash;
+        return boost::hash_unordered_range(map.begin(), map.end());
     }
 
 };

@@ -43,22 +43,25 @@ term_t YicesContext::buildVar(const Var &var) {
     return res;
 }
 
-term_t YicesContext::getInt(long val) {
-    return yices_int64(val);
+term_t YicesContext::getInt(Num val) {
+    mpz_t res;
+    mpz_init(res);
+    mpz_set_str(res, to_string(val).c_str(), 10);
+    return yices_mpz(res);
 }
 
-term_t YicesContext::getReal(long num, long denom) {
-    assert(denom != 0);
-    if (denom > 0) {
-        return yices_rational64(num, denom);
-    } else {
-        return yices_rational64(-num, -denom);
-    }
+term_t YicesContext::getReal(Num num, Num denom) {
+    return yices_rational64(getInt(num), getInt(denom));
 }
 
 term_t YicesContext::pow(const term_t &base, const term_t &exp) {
     assert(denominator(exp) == 1);
-    return yices_power(base, numerator(exp));
+    const auto exponent {numerator(exp)};
+    using bounds = std::numeric_limits<int>;
+    if (exponent < bounds::min() || bounds::max() < exponent) {
+        throw std::invalid_argument("overflow in YicesContext::pow");
+    }
+    return yices_power(base, exponent.to_int());
 }
 
 term_t YicesContext::plus(const term_t &x, const term_t &y) {
@@ -144,33 +147,39 @@ bool YicesContext::isInt(const term_t &e) const {
     return yices_is_int_atom(e);
 }
 
-long YicesContext::toInt(const term_t &e) const {
-    long res = numerator(e);
+Num YicesContext::toInt(const term_t &e) const {
     assert(denominator(e) == 1);
-    return res;
+    return numerator(e);
 }
 
-long YicesContext::numerator(const term_t &e) const {
+Num mpz_to_num(const mpz_t &m) {
+    const auto str {mpz_get_str(nullptr, 10, m)};
+    const Num ret {str};
+    free(str);
+    return ret;
+}
+
+Num YicesContext::numerator(const term_t &e) const {
     mpq_t frac;
     mpz_t res;
     mpq_init(frac);
     mpz_init(res);
     if (yices_rational_const_value(e, frac) == 0) {
         mpq_get_num(res, frac);
-        return mpz_get_si(res);
+        return mpz_to_num(res);
     } else {
         throw YicesError();
     }
 }
 
-long YicesContext::denominator(const term_t &e) const {
+Num YicesContext::denominator(const term_t &e) const {
     mpq_t frac;
     mpz_t res;
     mpq_init(frac);
     mpz_init(res);
     if (yices_rational_const_value(e, frac) == 0) {
         mpq_get_den(res, frac);
-        return mpz_get_si(res);
+        return mpz_to_num(res);
     } else {
         throw YicesError();
     }

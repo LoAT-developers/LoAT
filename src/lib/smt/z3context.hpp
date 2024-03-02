@@ -36,8 +36,8 @@ class Z3Context : public SmtContext<z3::expr> {
 public:
     Z3Context(z3::context& ctx);
     ~Z3Context() override;
-    z3::expr getInt(long val) override;
-    z3::expr getReal(long num, long denom) override;
+    z3::expr getInt(Num val) override;
+    z3::expr getReal(Num num, Num denom) override;
     z3::expr pow(const z3::expr &base, const z3::expr &exp) override;
     z3::expr plus(const z3::expr &x, const z3::expr &y) override;
     z3::expr times(const z3::expr &x, const z3::expr &y) override;
@@ -64,7 +64,7 @@ public:
     bool isVar(const z3::expr &e) const override;
     bool isRationalConstant(const z3::expr &e) const override;
     bool isInt(const z3::expr &e) const override;
-    long toInt(const z3::expr &e) const override;
+    Num toInt(const z3::expr &e) const override;
     z3::expr lhs(const z3::expr &e) const override;
     z3::expr rhs(const z3::expr &e) const override;
     Rel::RelOp relOp(const z3::expr &e) const override;

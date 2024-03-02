@@ -136,11 +136,11 @@ protected:
         try {
             // convert integer either as integer or as reals (depending on settings)
             if (num.is_integer()) {
-                return context.getInt(num.to_long());
+                return context.getInt(num);
             }
 
             // always convert real numbers as reals
-            return context.getReal(num.numer().to_long(), num.denom().to_long());
+            return context.getReal(num.numer(), num.denom());
 
         } catch (...) {
             throw std::invalid_argument("Numeric constant too large, cannot convert");

@@ -31,8 +31,8 @@ class YicesContext : public SmtContext<term_t> {
 
 public:
     ~YicesContext() override;
-    term_t getInt(long val) override;
-    term_t getReal(long num, long denom) override;
+    term_t getInt(Num val) override;
+    term_t getReal(Num num, Num denom) override;
     term_t pow(const term_t &base, const term_t &exp) override;
     term_t plus(const term_t &x, const term_t &y) override;
     term_t times(const term_t &x, const term_t &y) override;
@@ -59,7 +59,7 @@ public:
     bool isVar(const term_t &e) const override;
     bool isRationalConstant(const term_t &e) const override;
     bool isInt(const term_t &e) const override;
-    long toInt(const term_t &e) const override;
+    Num toInt(const term_t &e) const override;
     term_t lhs(const term_t &e) const override;
     term_t rhs(const term_t &e) const override;
     Rel::RelOp relOp(const term_t &e) const override;
@@ -71,7 +71,7 @@ protected:
 
 private:
 
-    long numerator(const term_t &e) const;
-    long denominator(const term_t &e) const;
+    Num numerator(const term_t &e) const;
+    Num denominator(const term_t &e) const;
 
 };

@@ -10,8 +10,8 @@ class CVC5Context : public SmtContext<cvc5::Term> {
 public:
     CVC5Context(cvc5::Solver& ctx);
     ~CVC5Context() override;
-    cvc5::Term getInt(long val) override;
-    cvc5::Term getReal(long num, long denom) override;
+    cvc5::Term getInt(Num val) override;
+    cvc5::Term getReal(Num num, Num denom) override;
     cvc5::Term pow(const cvc5::Term &base, const cvc5::Term &exp) override;
     cvc5::Term plus(const cvc5::Term &x, const cvc5::Term &y) override;
     cvc5::Term times(const cvc5::Term &x, const cvc5::Term &y) override;
@@ -38,7 +38,7 @@ public:
     bool isVar(const cvc5::Term &e) const override;
     bool isRationalConstant(const cvc5::Term &e) const override;
     bool isInt(const cvc5::Term &e) const override;
-    long toInt(const cvc5::Term &e) const override;
+    Num toInt(const cvc5::Term &e) const override;
     cvc5::Term lhs(const cvc5::Term &e) const override;
     cvc5::Term rhs(const cvc5::Term &e) const override;
     Rel::RelOp relOp(const cvc5::Term &e) const override;

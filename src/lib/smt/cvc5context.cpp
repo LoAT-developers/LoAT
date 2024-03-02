@@ -19,12 +19,12 @@ cvc5::Term CVC5Context::buildVar(const Var &var) {
                       }, var);
 }
 
-cvc5::Term CVC5Context::getInt(long val) {
-    return ctx.mkInteger(val);
+cvc5::Term CVC5Context::getInt(Num val) {
+    return ctx.mkInteger(to_string(val));
 }
 
-cvc5::Term CVC5Context::getReal(long num, long denom) {
-    return ctx.mkReal(num, denom);
+cvc5::Term CVC5Context::getReal(Num num, Num denom) {
+    return ctx.mkTerm(cvc5::Kind::DIVISION, {getInt(num), getInt(denom)});
 }
 
 cvc5::Term CVC5Context::pow(const cvc5::Term &base, const cvc5::Term &exp) {
@@ -142,8 +142,8 @@ bool CVC5Context::isInt(const cvc5::Term &e) const {
     return e.getKind() == cvc5::Kind::CONST_INTEGER;
 }
 
-long CVC5Context::toInt(const cvc5::Term &e) const {
-    return e.getInt64Value();
+Num CVC5Context::toInt(const cvc5::Term &e) const {
+    return Num{e.toString().c_str()};
 }
 
 cvc5::Term CVC5Context::lhs(const cvc5::Term &e) const {

@@ -41,6 +41,8 @@ enum SolvingLevel {
 
 using Num = GiNaC::numeric;
 
+std::string to_string(const Num &val);
+
 /**
  * Class for arithmetic expressions.
  * Just a wrapper for GiNaC expressions.

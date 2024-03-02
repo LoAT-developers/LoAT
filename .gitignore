@@ -30,6 +30,8 @@ benchmarks*
 
 # hidden files
 .*
+!.vscode
+!.devcontainer
 
 # build stuff
 cmake-build-debug
