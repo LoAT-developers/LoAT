@@ -247,7 +247,7 @@
 245 sat     timeout 
 246 sat     timeout 
 247 unsat   timeout 
-248 unsat   sat
+248 unsat   unsat
 249 unsat   timeout 
 250 unsat   timeout 
 251 unsat   unsat
