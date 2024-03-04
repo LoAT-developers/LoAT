@@ -1,8 +1,7 @@
 name: Run Benchmarks
 
-# Run on push for every branch including pull requests from forked repositories.
-# And also allow this action to be triggered manually via a button in the GitHub UI.
-on: [push, pull_request, workflow_dispatch]
+# Run this action when triggered manually through GitHub UI.
+on: [workflow_dispatch]
 
 jobs:
   build-loat-binary:
@@ -38,8 +37,15 @@ jobs:
         include:
           - repo: 'chc-comp22-benchmarks'
             directory: 'LIA-Lin'
+            mode: reachability
+            engine: adcl
+            format: horn
+
           - repo: 'chc-comp23-benchmarks'
             directory: 'LIA-lin'
+            mode: reachability
+            engine: adcl
+            format: horn
     steps:
       - name: Checkout Benchmark Repository
         uses: actions/checkout@v4
@@ -69,7 +75,7 @@ jobs:
             start=`date +%s`
 
             set +e
-            result=$(timeout 20 loat-static --mode reachability --format horn --proof-level 0 --engine adcl "${filename}")
+            result=$(timeout 20 loat-static --mode ${{ matrix.mode }} --format ${{ matrix.format }} --proof-level 0 --engine ${{ matrix.engine }} "${filename}")
             exit_status=$?
             set -e
 
