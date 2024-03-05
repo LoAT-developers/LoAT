@@ -16,7 +16,8 @@ class CVC5 : public Smt<Th...> {
 
 public:
     CVC5(): solver(), ctx(solver) {
-        updateParams();
+        solver.setOption("seed", std::to_string(seed));
+        solver.setLogic("QF_NIRAT");
     }
 
     void add(const BExpr<Th...> e) override {
@@ -44,7 +45,6 @@ public:
     }
 
     Model<Th...> model(const std::optional<const VarSet> &vars = {}) override {
-        assert(models);
         Model<Th...> res;
         const auto add = [&res, this](const auto &x, const auto &y) {
             if constexpr ((std::is_same_v<IntTheory, Th> || ...)) {
@@ -81,13 +81,11 @@ public:
     }
 
     void enableModels() override {
-        this->models = true;
-        updateParams();
+        solver.setOption("produce-models", "true");
     }
 
     void resetSolver() override {
         solver.resetAssertions();
-        updateParams();
     }
 
     ~CVC5() override {}
@@ -104,7 +102,6 @@ public:
     }
 
 private:
-    bool models = false;
     cvc5::Solver solver;
     CVC5Context ctx;
     unsigned seed = 42u;
@@ -123,14 +120,6 @@ private:
         } else {
             throw std::logic_error((std::stringstream() << "CVC5::getRealFromModel: tried to convert " << val << " to real").str());
         }
-    }
-
-    void updateParams() {
-        if (models) {
-            solver.setOption("produce-models", "true");
-        }
-        solver.setOption("seed", std::to_string(seed));
-        solver.setLogic("QF_NIRAT");
     }
 
 };

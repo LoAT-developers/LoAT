@@ -41,7 +41,7 @@ z3::expr Z3Context::getInt(Num val) {
 }
 
 z3::expr Z3Context::getReal(Num num, Num denom) {
-    return getInt(num) / getInt(denom);
+    return ctx.real_val((to_string(num) + " / " + to_string(denom)).c_str());
 }
 
 z3::expr Z3Context::pow(const z3::expr &base, const z3::expr &exp) {

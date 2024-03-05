@@ -51,7 +51,7 @@ term_t YicesContext::getInt(Num val) {
 }
 
 term_t YicesContext::getReal(Num num, Num denom) {
-    return yices_rational64(getInt(num), getInt(denom));
+    return yices_parse_rational((to_string(num) + " / " + to_string(denom)).c_str());
 }
 
 term_t YicesContext::pow(const term_t &base, const term_t &exp) {
