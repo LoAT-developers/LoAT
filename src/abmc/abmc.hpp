@@ -53,7 +53,7 @@ private:
     unsigned depth {0};
 
     int get_language(unsigned i);
-    BoolExpr encode_transition(const TransIdx idx);
+    BoolExpr encode_transition(const TransIdx idx, const bool with_id = true);
     bool is_orig_clause(const TransIdx idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
     TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
