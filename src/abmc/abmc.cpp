@@ -127,32 +127,30 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
         return Bools::Expr();
     }
+    const auto orig {loop.idx->subs(Subs::build<Arith>(n, arith::mkConst(1)))};
+    const auto length{depth - backlink + 1};
     // we must not start another iteration of the loop in the next step,
     // so we require that we either use the learned transition,
     // or some implicant of the loop is violated
+    VarSet pre_v;
+    VarSet post_v;
+    for (const auto &[x, y] : post_vars) {
+        pre_v.insert(x);
+        post_v.insert(y);
+     }
     BoolExprSet pre;
-    const auto s {subs_at(depth + 1)};
-    const auto not_covered {s(!loop.covered)};
-    pre.insert(theory::mkEq(trace_var, arith::mkConst((*shortcut)->getId())));
-    pre.insert(not_covered);
-    const auto length {depth - backlink + 1};
-    for (unsigned i = 0; i < length; ++i) {
-        const auto &[rule, implicant] {trace[backlink + i]};
-        const auto s_current {subs_at(depth + i + 1)};
-        pre.insert(s_current(implicant->negation()));
-        pre.insert(theory::mkNeq(trace_var, arith::mkConst(rule->getId())));
-    }
+    const auto s_next {subs_at(depth + 1).project(pre_v).compose(
+            subs_at(depth + length).project(post_v))};
+    pre.insert(theory::mkEq(s_next.get(trace_var), arith::mkConst((*shortcut)->getId())));
+    pre.insert(s_next(!encode_transition(&orig, false)));
     // we must not start another iteration of the loop after using the learned transition in the next step
     BoolExprSet post;
-    post.insert(theory::mkNeq(trace_var, arith::mkConst((*shortcut)->getId())));
-    post.insert(not_covered);
-    for (unsigned i = 0; i < length; ++i) {
-        const auto &[rule, implicant] {trace[backlink + i]};
-        const auto s_current {subs_at(depth + i + 2)};
-        post.insert(s_current(implicant->negation()));
-        post.insert(theory::mkNeq(trace_var, arith::mkConst(rule->getId())));
-    }
-    return bools::mkOr(pre) && bools::mkOr(post);
+    post.insert(theory::mkNeq(s_next.get(trace_var), arith::mkConst((*shortcut)->getId())));
+    const auto s_next_next {subs_at(depth + 2).project(pre_v).compose(
+            subs_at(depth + length + 1).project(post_v))};
+    post.insert(s_next_next(!encode_transition(&orig, false)));
+    const auto not_covered{s_next(!loop.covered)};
+    return not_covered || (bools::mkOr(pre) && bools::mkOr(post));
 }
 
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
@@ -252,10 +250,12 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     return {};
 }
 
-Bools::Expr ABMC::encode_transition(const TransIdx idx) {
+Bools::Expr ABMC::encode_transition(const TransIdx idx, const bool with_id) {
     const auto up {idx->getUpdate()};
     std::vector<Bools::Expr> res {idx->getGuard()};
-    res.emplace_back(theory::mkEq(trace_var, arith::mkConst(idx->getId())));
+    if (with_id) {
+        res.emplace_back(theory::mkEq(trace_var, arith::mkConst(idx->getId())));
+    }
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
             res.push_back(theory::mkEq(theory::toExpr(post_vars.at(x)), up.get(x)));
