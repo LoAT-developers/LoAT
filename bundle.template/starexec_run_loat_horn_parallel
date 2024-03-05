@@ -4,7 +4,7 @@ trap "" SIGRTMIN
 function check() {
     if [ -s $1 ]; then
         value=`cat $1`
-        if [[ "$value" = unsat* ]] || [[ "$value" = sat ]]; then
+        if [[ "$value" = unsat* ]] || [[ "$value" = sat* ]]; then
             echo "$value"
             exit 0
         fi
