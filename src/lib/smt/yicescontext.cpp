@@ -228,33 +228,20 @@ std::vector<term_t> YicesContext::getChildren(const term_t &e) const {
     if (yices_term_is_sum(e)) {
         for (int i = 0; i < children; ++i) {
             mpq_t coeff;
-            mpz_t numerator;
-            mpz_t denominator;
-            mpq_init(coeff);
-            mpz_init(numerator);
-            mpz_init(denominator);
             term_t child;
             if (yices_sum_component(e, i, coeff, &child) != 0) {
                 throw YicesError();
             }
-            mpq_get_num(numerator, coeff);
-            mpq_get_den(denominator, coeff);
-            long num = mpz_get_si(numerator);
-            long den = mpz_get_si(denominator);
-            if (den < 0) {
-                num = -num;
-                den = -den;
-            }
             if (children == 1) {
-                res.push_back(yices_rational64(num, den));
+                res.push_back(yices_mpq(coeff));
                 if (child != NULL_TERM) {
                     res.push_back(child);
                 }
             } else {
                 if (child == NULL_TERM) {
-                    res.push_back(yices_rational64(num, den));
+                    res.push_back(yices_mpq(coeff));
                 } else {
-                    res.push_back(yices_mul(yices_rational64(num, den), child));
+                    res.push_back(yices_mul(yices_mpq(coeff), child));
                 }
             }
         }
