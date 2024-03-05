@@ -15,9 +15,10 @@ function check() {
 ./loat-static --plain --proof-level 0 --mode reachability --format horn --engine adcl $1 2> /dev/null > res2.txt &
 ./loat-static --plain --proof-level 0 --mode reachability --format horn --engine bmc  $1 2> /dev/null > res3.txt &
 
-while wait -n; do
+while true; do
     check res1.txt
     check res2.txt
     check res3.txt
+    sleep 1
 done;
 
