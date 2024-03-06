@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 project(loat_expr CXX)
 
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} OBJECT
   itheory.hpp
   subs.hpp
   subs.cpp
@@ -42,11 +42,6 @@ add_library(${PROJECT_NAME} STATIC
   model.hpp
   model.cpp
 )
-
-find_library(GINAC ginac)
-message(STATUS "ginac: ${GINAC}")
-
-target_link_libraries(${PROJECT_NAME} ${GINAC})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_util_INCLUDE_DIRS}

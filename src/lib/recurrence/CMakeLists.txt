@@ -4,36 +4,20 @@ set(CMAKE_CXX_STANDARD 20)
 
 project(loat_recurrence CXX)
 
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} OBJECT
   recurrence.hpp
   recurrence.cpp
   dependencyorder.hpp
   dependencyorder.cpp
 )
 
-find_library(GINAC ginac)
-message(STATUS "ginac: ${GINAC}")
-find_library(PURRS purrs)
-message(STATUS "purrs: ${PURRS}")
-find_library(NTL ntl)
-message(STATUS "ntl: ${NTL}")
-find_library(CLN cln)
-message(STATUS "cln: ${CLN}")
-find_library(GMP gmp)
-message(STATUS "gmp: ${GMP}")
-
-target_include_directories(${PROJECT_NAME} PRIVATE ${loat_expr_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE
+  ${loat_expr_INCLUDE_DIRS}
+  ${loat_container_INCLUDE_DIRS}
+  ${loat_util_INCLUDE_DIRS}
+)
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")
-
-target_link_libraries(${PROJECT_NAME}
-  ${PURRS}
-  ${GINAC}
-  ${NTL}
-  ${CLN}
-  ${GMP}
-  loat_expr
-)
 
 # Expose public includes to other
 # subprojects through cache variable.

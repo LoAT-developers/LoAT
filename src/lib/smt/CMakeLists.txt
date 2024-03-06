@@ -6,7 +6,7 @@ project(loat_smt CXX)
 
 message(STATUS "loat_expr includes: ${loat_expr_INCLUDE_DIRS}")
 
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} OBJECT
   smt.hpp
   smtcontext.hpp
   exprtosmt.hpp
@@ -30,39 +30,10 @@ add_library(${PROJECT_NAME} STATIC
   smtfactory.cpp
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${loat_expr_INCLUDE_DIRS})
-target_include_directories(${PROJECT_NAME} INTERFACE ".")
-
-target_link_libraries(${PROJECT_NAME} loat_expr)
-
-message(STATUS "Searching libraries")
-find_library(Z3 z3)
-message(STATUS "z3: ${Z3}")
-find_library(YICES yices)
-message(STATUS "yices: ${YICES}")
-find_library(POLY poly)
-message(STATUS "poly: ${POLY}")
-find_library(POLYXX polyxx)
-message(STATUS "polyxx: ${POLYXX}")
-find_library(CUDD cudd)
-message(STATUS "cudd: ${CUDD}")
-find_library(CVC5 cvc5)
-message(STATUS "cvc5: ${CVC5}")
-find_library(CADICAL cadical)
-message(STATUS "cadical: ${CADICAL}")
-find_library(SWINE swine-z3)
-message(STATUS "swine: ${SWINE}")
-
-target_link_libraries(
-    ${PROJECT_NAME}
-    ${SWINE}
-    ${Z3}
-    ${CVC5}
-    ${CADICAL}
-    ${YICES}
-    ${POLYXX}
-    ${POLY}
-    ${CUDD}
+target_include_directories(${PROJECT_NAME} PRIVATE
+  ${loat_expr_INCLUDE_DIRS}
+  ${loat_container_INCLUDE_DIRS}
+  ${loat_util_INCLUDE_DIRS}
 )
 
 # Expose public includes to other

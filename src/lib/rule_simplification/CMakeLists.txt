@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 project(loat_rule_simplification CXX)
 
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} OBJECT
   rule.hpp
   rule.cpp
   chain.hpp
@@ -23,15 +23,12 @@ add_library(${PROJECT_NAME} STATIC
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_util_INCLUDE_DIRS}
+  ${loat_container_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
   ${loat_formula_simplification_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")
-
-target_link_libraries(${PROJECT_NAME}
-  loat_expr
-  loat_formula_simplification)
 
 # Expose public includes to other
 # subprojects through cache variable.
