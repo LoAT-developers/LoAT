@@ -9,6 +9,7 @@
 class CVC5 : public Smt {
 
 public:
+
     CVC5();
     void add(const Bools::Expr e) override;
     void push() override;
@@ -22,7 +23,6 @@ public:
     void randomize(unsigned seed) override;
 
 private:
-    bool models = false;
     cvc5::Solver solver;
     CVC5Context ctx;
     unsigned seed = 42u;

@@ -2,7 +2,8 @@
 #include "exprtosmt.hpp"
 
 CVC5::CVC5(): solver(), ctx(solver) {
-    updateParams();
+    solver.setOption("seed", std::to_string(seed));
+    solver.setLogic("QF_NIRAT");
 }
 
 void CVC5::add(const Bools::Expr e) {
@@ -62,13 +63,11 @@ Model CVC5::model(const std::optional<const VarSet> &vars) {
 }
 
 void CVC5::enableModels() {
-    this->models = true;
-    updateParams();
+    solver.setOption("produce-models", "true");
 }
 
 void CVC5::resetSolver() {
     solver.resetAssertions();
-    updateParams();
 }
 
 CVC5::~CVC5() {}
@@ -85,25 +84,13 @@ void CVC5::randomize(unsigned seed) {
 }
 
 Rational CVC5::getRealFromModel(const cvc5::Term &symbol) {
-    const auto val {solver.getValue(symbol)};
-    if (val.isIntegerValue()) {
-        return Rational(val.getIntegerValue());
-    } else if (val.isRealValue()) {
-        if (val.isReal64Value()) {
-            const auto [num, denom] {val.getReal64Value()};
-            return Rational(num) / Rational(denom);
+        const auto val {solver.getValue(symbol)};
+        if (val.isIntegerValue()) {
+            return Int(val.getIntegerValue());
+        } else if (val.isRealValue()) {
+            return Rational(val.getRealValue());
         } else {
-            throw std::overflow_error((std::stringstream() << "overflow in CVC5::getRealFromModel: " << val).str());
+            throw std::logic_error((std::stringstream() << "CVC5::getRealFromModel: tried to convert " << val << " to real").str());
         }
-    } else {
-        throw std::logic_error((std::stringstream() << "CVC5::getRealFromModel: tried to convert " << val << " to real").str());
     }
-}
 
-void CVC5::updateParams() {
-    if (models) {
-        solver.setOption("produce-models", "true");
-    }
-    solver.setOption("seed", std::to_string(seed));
-    solver.setLogic("QF_NIRAT");
-}

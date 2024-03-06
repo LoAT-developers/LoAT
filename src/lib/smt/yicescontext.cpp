@@ -51,12 +51,7 @@ term_t YicesContext::getInt(const Int &val) {
 }
 
 term_t YicesContext::getReal(const Int &num, const Int &denom) {
-    assert(denom != 0);
-    if (denom > 0) {
-        return yices_rational64(num.convert_to<int64_t>(), denom.convert_to<int64_t>());
-    } else {
-        return yices_rational64(getInt(num), getInt(denom));
-    }
+    return yices_parse_rational((num.str() + " / " + denom.str()).c_str());
 }
 
 term_t YicesContext::pow(const term_t &base, const term_t &exp) {
