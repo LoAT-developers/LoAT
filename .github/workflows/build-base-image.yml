@@ -48,5 +48,5 @@ jobs:
           # but also create tag the image with the current commit sha so old 
           # images can still be accessed later:
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/loat-base:latest            
-            ${{ secrets.DOCKERHUB_USERNAME }}/loat-base:${{ github.sha }}
+            ${{ vars.DOCKERHUB_USERNAME }}/loat-base:latest
+            ${{ vars.DOCKERHUB_USERNAME }}/loat-base:${{ github.sha }}
