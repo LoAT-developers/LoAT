@@ -150,7 +150,7 @@ jobs:
         with:
           name: LoAT Benchmarks
           # What benchmark tool the output.txt came from
-          tool: 'biggerIsBetter'
+          tool: 'customBiggerIsBetter'
           # Where the output from the benchmark tool is stored
           output-file-path: output.txt
           # Access token to deploy GitHub Pages branch
@@ -167,4 +167,4 @@ jobs:
       - name: Delete Benchmark Results
         uses: geekyeggo/delete-artifact@v4
         with:
-          name: ${{ matrix.repo }}-*
+          name: *-[0-9]
