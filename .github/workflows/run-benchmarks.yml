@@ -104,7 +104,7 @@ jobs:
       - name: Export Benchmark Results
         uses: actions/upload-artifact@master
         with:
-          name: ${{ matrix.repo }}-${{ matrix.ci_index }}-res
+          name: ${{ matrix.repo }}-${{ matrix.ci_index }}
           path: ${{ matrix.directory }}/*.res
 
   finalize-benchmark-results:
@@ -134,17 +134,39 @@ jobs:
             echo "$benchmark: $res" >> ${{ matrix.repo }}.txt
           done
           sort -o ${{ matrix.repo }}.txt ${{ matrix.repo }}.txt
-          echo "[" >> output.txt
           for res in ${!results[@]}; do
-              echo "{\"name\": \"${{ matrix.repo }} ${res}\", \"unit\": \"number\", \"value\": \"${results[${res}]}\"}," >> output.txt
+              echo "{\"name\": \"${{ matrix.repo }} ${res}\", \"unit\": \"number\", \"value\": \"${results[${res}]}\"}," >> ${{ matrix.repo }}.json
           done
-          echo "]" >> output.txt
       - name: Upload Benchmark Results
         id: upload-benchmark-results
         uses: actions/upload-artifact@master
         with:
-          name: ${{ matrix.repo }}.txt
-          path: ${{ matrix.repo }}.txt
+          name: ${{ matrix.repo }}
+          path: ${{ matrix.repo }}.*
+
+  delete-benchmark-results:
+    needs: [finalize-benchmark-results]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo: ['chc-comp22-benchmarks', 'chc-comp23-benchmarks']
+    name: Delete Benchmark Results
+      uses: geekyeggo/delete-artifact@v4
+      with:
+        name: ${{ matrix.repo }}-*
+
+  publish-benchmark-results:
+    needs: [finalize-benchmark-results]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Benchmark Results
+        id: download-benchmark-results
+        uses: actions/download-artifact@v4
+      - run: |
+          echo "[" >> output.json
+          cat chc-comp22-benchmarks.json >> output.json
+          cat chc-comp23-benchmarks.json >> output.json
+          echo "]:" >> output.json
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
@@ -152,11 +174,11 @@ jobs:
           # What benchmark tool the output.txt came from
           tool: 'customBiggerIsBetter'
           # Where the output from the benchmark tool is stored
-          output-file-path: output.txt
+          output-file-path: output.json
           # Access token to deploy GitHub Pages branch
           github-token: ${{ secrets.GITHUB_TOKEN }}
           # Push and deploy GitHub pages branch automatically
           auto-push: true
           gh-pages-branch: web
           benchmark-data-dir-path: /docs/dev/bench
-
+          
