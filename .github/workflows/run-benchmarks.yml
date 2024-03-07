@@ -68,6 +68,8 @@ jobs:
             fi
 
             printf "${result} after ${runtime}s\n"
+
+            echo ${result} > ${filename}.res
           }
 
           # make 'benchmark' available for 'parallel'
@@ -92,3 +94,9 @@ jobs:
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
           CI_INDEX: ${{ matrix.ci_index }}
+
+      - name: Export Benchmark Results
+        uses: actions/upload-artifact@master
+        with:
+          name: loat-static
+          path: ${{ matrix.directory }}/*.res
