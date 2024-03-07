@@ -102,6 +102,7 @@ jobs:
           path: ${{ matrix.directory }}/*.res
 
   finalize-benchmark-results:
+    needs: [chc-comp-benchmark]
     runs-on: ubuntu-latest
     strategy:
       matrix:
