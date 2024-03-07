@@ -160,11 +160,3 @@ jobs:
           gh-pages-branch: web
           benchmark-data-dir-path: /docs/dev/bench
 
-  delete-benchmark-results:
-    needs: [finalize-benchmark-results]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete Benchmark Results
-        uses: geekyeggo/delete-artifact@v4
-        with:
-          name: *-res
