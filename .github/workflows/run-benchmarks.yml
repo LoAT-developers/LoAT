@@ -127,9 +127,9 @@ jobs:
             benchmark=$(basename "$filename" .res)
             res=$(cat "$filename")
             if [[ -n "${results["$res"]}" ]]; then
-                results["$res"]=1
-            else
                 results["$res"]=$(( $results["$res"]+1 ))
+            else
+                results["$res"]=1
             fi
             echo "$benchmark: $res" >> ${{ matrix.repo }}.txt
           done
@@ -148,14 +148,11 @@ jobs:
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
+          name: LoAT Benchmarks
           # What benchmark tool the output.txt came from
           tool: 'biggerIsBetter'
           # Where the output from the benchmark tool is stored
           output-file-path: output.txt
-          # Where the previous data file is stored
-          external-data-json-path: ./cache/benchmark-data.json
-          # Workflow will fail when an alert happens
-          fail-on-alert: false
           # Access token to deploy GitHub Pages branch
           github-token: ${{ secrets.GITHUB_TOKEN }}
           # Push and deploy GitHub pages branch automatically
