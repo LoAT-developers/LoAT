@@ -110,7 +110,7 @@ jobs:
       - name: Download Benchmark Results
         id: download-benchmark-results
         uses: actions/action-download-artifact@v4
-      - name Merge Benchmark Results
+      - name: Merge Benchmark Results
         id: merge-benchmark-results
         run: |
           unzip ${{ matrix.repo }}*.zip
