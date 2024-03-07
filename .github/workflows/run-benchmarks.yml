@@ -74,7 +74,8 @@ jobs:
 
           let i=0
           for filename in *.smt2; do
-            if [[ $(($i % $CI_TOTAL)) -eq $CI_INDEX ]]; then
+            # if [[ $(($i % $CI_TOTAL)) -eq $CI_INDEX ]]; then
+            if [[ 0 -eq 0 ]]; then
               # printf "running ${filename} ... "
               # start=`date +%s`
 
