@@ -114,10 +114,10 @@ jobs:
       - name: Merge Benchmark Results
         id: merge-benchmark-results
         run: |
-          unzip ${{ matrix.repo }}*.zip
-          for filename in *.res; do
+          for filename in ${{ matrix.repo }}*/*.res; do
+            benchmark=$(basename "$filename" .res)
             res=$(cat "$filename")
-            echo "$filename: $res" >> ${{ matrix.repo }}.txt
+            echo "$benchmark: $res" >> ${{ matrix.repo }}.txt
           done
           sort -o ${{ matrix.repo }}.txt ${{ matrix.repo }}.txt
       - name: Upload Benchmark Results
