@@ -100,3 +100,28 @@ jobs:
         with:
           name: ${{ matrix.repo }}-${{ matrix.ci_index }}
           path: ${{ matrix.directory }}/*.res
+
+  finalize-benchmark-results:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo: ['chc-comp22-benchmarks', 'chc-comp23-benchmarks']
+    steps:
+      - name: Download Benchmark Results
+        id: download-benchmark-results
+        uses: actions/action-download-artifact@v4
+      - name Merge Benchmark Results
+        id: merge-benchmark-results
+        run: |
+          unzip ${{ matrix.repo }}*.zip
+          for filename in *.res; do
+            res=$(cat "$filename")
+            echo "$filename: $res" >> ${{ matrix.repo }}.txt
+          done
+          sort -o ${{ matrix.repo }}.txt ${{ matrix.repo }}.txt
+      - name: Upload Benchmark Results
+        id: upload-benchmark-results
+        uses: actions/upload-artifact@master
+        with:
+          name: ${{ matrix.repo }}.txt
+          path: ${{ matrix.repo }}.txt
