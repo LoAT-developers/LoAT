@@ -74,9 +74,7 @@ jobs:
 
           let i=0
           for filename in *.smt2; do
-            let "mod = $i % $CI_TOTAL"
-            let i++
-            if [[ $mod -eq $CI_INDEX ]]; then
+            if [[ $(($i % $CI_TOTAL)) -eq $CI_INDEX ]]; then
               printf "running ${filename} ... "
               start=`date +%s`
 
@@ -98,6 +96,7 @@ jobs:
 
               printf "${result} after ${runtime}s\n"
             fi
+            let i++
           done
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
