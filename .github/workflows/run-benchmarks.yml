@@ -126,12 +126,12 @@ jobs:
           for filename in ${{ matrix.repo }}*/*.res; do
             benchmark=$(basename "$filename" .res)
             res=$(cat "$filename")
-            # ((results[res]++))
+            $(( $results[$res]++ ))
             echo "$benchmark: $res" >> ${{ matrix.repo }}.txt
           done
           sort -o ${{ matrix.repo }}.txt ${{ matrix.repo }}.txt
           for res in ${!results[@]}; do
-              echo "{\"name\": \"${{ matrix.repo }} $res\", \"unit\": \"number\", \"value\": \"${results[res]}\"}," >> ${{ matrix.repo }}.json
+              echo "{\"name\": \"${{ matrix.repo }} $res\", \"unit\": \"number\", \"value\": \"${results[$res]}\"}," >> ${{ matrix.repo }}.json
           done
       - name: Upload Benchmark Results
         id: upload-benchmark-results
