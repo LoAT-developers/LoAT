@@ -66,38 +66,38 @@ jobs:
           path: /usr/local/bin/
      
       - name: Run Benchmark
-        run: |
-          # permissions are not preserved for artifacts:
-          chmod +x /usr/local/bin/loat-static
+        run: echo "index: $CI_INDEX, total: $CI_TOTAL"
+          # # permissions are not preserved for artifacts:
+          # chmod +x /usr/local/bin/loat-static
         
-          cd ${{ matrix.directory }}
+          # cd ${{ matrix.directory }}
 
-          let i=0
-          for filename in *.smt2; do
-            if [[ $(($i % $CI_TOTAL)) -eq $CI_INDEX ]]; then
-              printf "running ${filename} ... "
-              start=`date +%s`
+          # let i=0
+          # for filename in *.smt2; do
+          #   if [[ $(($i % $CI_TOTAL)) -eq $CI_INDEX ]]; then
+          #     printf "running ${filename} ... "
+          #     start=`date +%s`
 
-              set +e
-              result=$(timeout 20 loat-static --mode ${{ matrix.mode }} --format ${{ matrix.format }} --proof-level 0 --engine ${{ matrix.engine }} "${filename}")
-              exit_status=$?
-              set -e
+          #     set +e
+          #     result=$(timeout 20 loat-static --mode ${{ matrix.mode }} --format ${{ matrix.format }} --proof-level 0 --engine ${{ matrix.engine }} "${filename}")
+          #     exit_status=$?
+          #     set -e
 
-              end=`date +%s`
-              runtime=$((end-start))
+          #     end=`date +%s`
+          #     runtime=$((end-start))
 
-              if [[ $exit_status -eq 0 ]]; then
-                result=$(echo "$result" | head -n 1)
-              elif [[ $exit_status -eq 124 ]]; then
-                result="timeout"
-              else
-                result="error"
-              fi
+          #     if [[ $exit_status -eq 0 ]]; then
+          #       result=$(echo "$result" | head -n 1)
+          #     elif [[ $exit_status -eq 124 ]]; then
+          #       result="timeout"
+          #     else
+          #       result="error"
+          #     fi
 
-              printf "${result} after ${runtime}s\n"
-            fi
-            let i++
-          done
+          #     printf "${result} after ${runtime}s\n"
+          #   fi
+          #   let i++
+          # done
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
           CI_INDEX: ${{ matrix.ci_index }}
