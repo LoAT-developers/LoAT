@@ -126,7 +126,7 @@ jobs:
           for filename in ${{ matrix.repo }}*/*.res; do
             benchmark=$(basename "$filename" .res)
             res=$(cat "$filename")
-            ((results[res]++))
+#            ((results[res]++))
             echo "$benchmark: $res" >> ${{ matrix.repo }}.txt
           done
           sort -o ${{ matrix.repo }}.txt ${{ matrix.repo }}.txt
