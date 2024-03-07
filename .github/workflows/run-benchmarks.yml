@@ -11,6 +11,7 @@ jobs:
       matrix:
         ci_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
         ci_total: [20]
+        repo: ['chc-comp22-benchmarks', 'chc-comp23-benchmarks']
         include:
           - repo: 'chc-comp22-benchmarks'
             directory: 'LIA-Lin'
