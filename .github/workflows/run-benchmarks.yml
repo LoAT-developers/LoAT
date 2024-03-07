@@ -112,11 +112,11 @@ jobs:
         id: download-benchmark-results
         uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.repo }}*
+          pattern: ${{ matrix.repo }}*
       - name: Delete Benchmark Results
         uses: geekyeggo/delete-artifact@v4
         with:
-          name: ${{ matrix.repo }}*
+          pattern: ${{ matrix.repo }}*
       - name: Merge Benchmark Results
         id: merge-benchmark-results
         run: |
