@@ -151,7 +151,7 @@ jobs:
           cat chc-comp23-benchmarks/chc-comp23-benchmarks.json >> output.json
           # remove trailing comma
           sed -i 's/,$//g' output.json
-          echo "]:" >> output.json
+          echo "]" >> output.json
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
