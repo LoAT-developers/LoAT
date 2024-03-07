@@ -67,37 +67,50 @@ jobs:
      
       - name: Run Benchmark
         run: |
+          # function to run a single benchmark
+          function benchmark() {
+            filename=$1
+            printf "running ${filename} ... "
+            start=`date +%s`
+
+            set +e
+            result=$(timeout 20 loat-static --mode ${{ matrix.mode }} --format ${{ matrix.format }} --proof-level 0 --engine ${{ matrix.engine }} "${filename}")
+            exit_status=$?
+            set -e
+
+            end=`date +%s`
+            runtime=$((end-start))
+
+            if [[ $exit_status -eq 0 ]]; then
+              result=$(echo "$result" | head -n 1)
+            elif [[ $exit_status -eq 124 ]]; then
+              result="timeout"
+            else
+              result="error"
+            fi
+
+            printf "${result} after ${runtime}s\n"
+          }
+
+          # make 'benchmark' available for 'parallel'
+          export -f benchmark
+
           # permissions are not preserved for artifacts:
           chmod +x /usr/local/bin/loat-static
 
           cd ${{ matrix.directory }}
 
+          # remove benchmarks that are executed by other workers
           i=0
           for filename in *.smt2; do
-            if [[ $(( i % CI_TOTAL )) -eq $CI_INDEX ]]; then
-              printf "running ${filename} ... "
-              start=`date +%s`
-
-              set +e
-              result=$(timeout 20 loat-static --mode ${{ matrix.mode }} --format ${{ matrix.format }} --proof-level 0 --engine ${{ matrix.engine }} "${filename}")
-              exit_status=$?
-              set -e
-
-              end=`date +%s`
-              runtime=$((end-start))
-
-              if [[ $exit_status -eq 0 ]]; then
-                result=$(echo "$result" | head -n 1)
-              elif [[ $exit_status -eq 124 ]]; then
-                result="timeout"
-              else
-                result="error"
-              fi
-
-              printf "${result} after ${runtime}s\n"
+            if [[ $(( i % CI_TOTAL )) -neq $CI_INDEX ]]; then
+              rm ${filename}
             fi
             i=$(( i+1 ))
           done
+
+          # execute benchmarks in parallel
+          parallel benchmark ::: *.smt2
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
           CI_INDEX: ${{ matrix.ci_index }}
