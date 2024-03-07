@@ -3,6 +3,12 @@ name: Run Benchmarks
 # Run this action when triggered manually through GitHub UI.
 on: [workflow_dispatch]
 
+permissions:
+  # deployments permission to deploy GitHub pages website
+  deployments: write
+  # contents permission to update benchmark contents in gh-pages branch
+  contents: write
+
 jobs:
 
   chc-comp-benchmark:
@@ -113,22 +119,54 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: ${{ matrix.repo }}*
-      - name: Delete Benchmark Results
-        uses: geekyeggo/delete-artifact@v4
-        with:
-          name: ${{ matrix.repo }}*
       - name: Merge Benchmark Results
         id: merge-benchmark-results
         run: |
+          declare -A results
           for filename in ${{ matrix.repo }}*/*.res; do
             benchmark=$(basename "$filename" .res)
             res=$(cat "$filename")
+            if [[ -n "${results["$res"]}" ]]; then
+                results["$res"]=1
+            else
+                results["$res"]=$(( $results["$res"]+1 ))
+            fi
             echo "$benchmark: $res" >> ${{ matrix.repo }}.txt
           done
           sort -o ${{ matrix.repo }}.txt ${{ matrix.repo }}.txt
+          echo "[" >> output.txt
+          for res in ${!results[@]}; do
+              echo "{\"name\": \"${{ matrix.repo }} ${res}\", \"unit\": \"number\", \"value\": \"${results[${res}]}\"}," >> output.txt
+          done
+          echo "]" >> output.txt
       - name: Upload Benchmark Results
         id: upload-benchmark-results
         uses: actions/upload-artifact@master
         with:
           name: ${{ matrix.repo }}.txt
           path: ${{ matrix.repo }}.txt
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          # What benchmark tool the output.txt came from
+          tool: 'biggerIsBetter'
+          # Where the output from the benchmark tool is stored
+          output-file-path: output.txt
+          # Where the previous data file is stored
+          external-data-json-path: ./cache/benchmark-data.json
+          # Workflow will fail when an alert happens
+          fail-on-alert: false
+          # Access token to deploy GitHub Pages branch
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Push and deploy GitHub pages branch automatically
+          auto-push: true
+          gh-pages-branch: web
+
+  delete-benchmark-results:
+    needs: [finalize-benchmark-results]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete Benchmark Results
+        uses: geekyeggo/delete-artifact@v4
+        with:
+          name: ${{ matrix.repo }}-*
