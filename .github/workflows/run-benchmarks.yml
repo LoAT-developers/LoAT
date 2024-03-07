@@ -98,5 +98,5 @@ jobs:
       - name: Export Benchmark Results
         uses: actions/upload-artifact@master
         with:
-          name: loat-static
+          name: benchmark-results-${{ matrix.ci_index }}
           path: ${{ matrix.directory }}/*.res
