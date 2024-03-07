@@ -103,7 +103,7 @@ jobs:
           # remove benchmarks that are executed by other workers
           i=0
           for filename in *.smt2; do
-            if [[ $(( i % CI_TOTAL )) -neq $CI_INDEX ]]; then
+            if [[ $(( i % CI_TOTAL )) -ne $CI_INDEX ]]; then
               rm ${filename}
             fi
             i=$(( i+1 ))
