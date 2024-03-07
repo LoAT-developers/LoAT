@@ -72,7 +72,7 @@ jobs:
 
           cd ${{ matrix.directory }}
 
-          let i=0
+          # let i=0
           for filename in *.smt2; do
             # if [[ $(($i % $CI_TOTAL)) -eq $CI_INDEX ]]; then
             if [[ 0 -eq 0 ]]; then
@@ -97,7 +97,7 @@ jobs:
 
               # printf "${result} after ${runtime}s\n"
             fi
-            let i++
+            # let i++
           done
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
