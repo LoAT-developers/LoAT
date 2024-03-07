@@ -38,7 +38,7 @@ jobs:
         id: download-artifact
         uses: dawidd6/action-download-artifact@v3
         with:
-          workflow: build-loat
+          workflow: Build LoAT
           name: loat-static
           path: /usr/local/bin/
      
