@@ -144,17 +144,6 @@ jobs:
           name: ${{ matrix.repo }}
           path: ${{ matrix.repo }}.*
 
-  delete-benchmark-results:
-    needs: [finalize-benchmark-results]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        repo: ['chc-comp22-benchmarks', 'chc-comp23-benchmarks']
-    name: Delete Benchmark Results
-      uses: geekyeggo/delete-artifact@v4
-      with:
-        name: ${{ matrix.repo }}-*
-
   publish-benchmark-results:
     needs: [finalize-benchmark-results]
     runs-on: ubuntu-latest
