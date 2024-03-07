@@ -147,7 +147,7 @@ jobs:
   delete-benchmark-results:
     needs: [finalize-benchmark-results]
     runs-on: ubuntu-latest
-    steps
+    steps:
     - name: Delete Benchmark Results
       uses: geekyeggo/delete-artifact@v4
       with:
