@@ -104,7 +104,7 @@ jobs:
       - name: Export Benchmark Results
         uses: actions/upload-artifact@master
         with:
-          name: ${{ matrix.repo }}-${{ matrix.ci_index }}
+          name: ${{ matrix.repo }}-${{ matrix.ci_index }}-res
           path: ${{ matrix.directory }}/*.res
 
   finalize-benchmark-results:
@@ -151,7 +151,7 @@ jobs:
     - name: Delete Benchmark Results
       uses: geekyeggo/delete-artifact@v4
       with:
-        name: *-[0-9]
+        name: *-res
 
   publish-benchmark-results:
     needs: [finalize-benchmark-results]
