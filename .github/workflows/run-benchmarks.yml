@@ -32,8 +32,10 @@ jobs:
   chc-comp-benchmark:
     needs: [build-loat-binary]
     runs-on: ubuntu-latest
-    strategy: 
-      matrix: 
+    strategy:
+      matrix:
+        ci_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+        ci_total: [20]
         include:
           - repo: 'chc-comp22-benchmarks'
             directory: 'LIA-Lin'
@@ -70,25 +72,33 @@ jobs:
         
           cd ${{ matrix.directory }}
 
+          let i=0
           for filename in *.smt2; do
-            printf "running ${filename} ... "
-            start=`date +%s`
+            let "mod = $i % $CI_TOTAL"
+            let i++
+            if [[ $mod -eq $CI_INDEX ]]; then
+              printf "running ${filename} ... "
+              start=`date +%s`
 
-            set +e
-            result=$(timeout 20 loat-static --mode ${{ matrix.mode }} --format ${{ matrix.format }} --proof-level 0 --engine ${{ matrix.engine }} "${filename}")
-            exit_status=$?
-            set -e
+              set +e
+              result=$(timeout 20 loat-static --mode ${{ matrix.mode }} --format ${{ matrix.format }} --proof-level 0 --engine ${{ matrix.engine }} "${filename}")
+              exit_status=$?
+              set -e
 
-            end=`date +%s`
-            runtime=$((end-start))
+              end=`date +%s`
+              runtime=$((end-start))
 
-            if [[ $exit_status -eq 0 ]]; then
-              result=$(echo "$result" | head -n 1)
-            elif [[ $exit_status -eq 124 ]]; then
-              result="timeout"
-            else
-              result="error"
+              if [[ $exit_status -eq 0 ]]; then
+                result=$(echo "$result" | head -n 1)
+              elif [[ $exit_status -eq 124 ]]; then
+                result="timeout"
+              else
+                result="error"
+              fi
+
+              printf "${result} after ${runtime}s\n"
             fi
-
-            printf "${result} after ${runtime}s\n"
           done
+        env:
+          CI_TOTAL: ${{ matrix.ci_total }}
+          CI_INDEX: ${{ matrix.ci_index }}
