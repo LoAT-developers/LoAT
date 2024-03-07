@@ -6,7 +6,6 @@ on: [workflow_dispatch]
 jobs:
 
   chc-comp-benchmark:
-    needs: [build-loat-binary]
     runs-on: ubuntu-latest
     strategy:
       matrix:
