@@ -144,18 +144,6 @@ jobs:
           name: ${{ matrix.repo }}
           path: ${{ matrix.repo }}.*
 
-  delete-benchmark-results:
-    needs: [finalize-benchmark-results]
-    strategy:
-      matrix:
-        repo: ['chc-comp22-benchmarks', 'chc-comp23-benchmarks']
-    runs-on: ubuntu-latest
-    steps:
-    - name: Delete Benchmark Results
-      uses: geekyeggo/delete-artifact@v4
-      with:
-        name: ${{ matrix.repo }}-*
-
   publish-benchmark-results:
     needs: [finalize-benchmark-results]
     runs-on: ubuntu-latest
@@ -163,8 +151,10 @@ jobs:
       - uses: actions/download-artifact@v4
       - run: |
           echo "[" >> output.json
-          cat chc-comp22-benchmarks.json >> output.json
-          cat chc-comp23-benchmarks.json >> output.json
+          cat chc-comp22-benchmarks/chc-comp22-benchmarks.json >> output.json
+          cat chc-comp23-benchmarks/chc-comp23-benchmarks.json >> output.json
+          # remove trailing comma
+          sed -i 's/,$//g' output.json
           echo "]:" >> output.json
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
