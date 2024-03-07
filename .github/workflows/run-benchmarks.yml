@@ -116,7 +116,7 @@ jobs:
       - name: Delete Benchmark Results
         uses: geekyeggo/delete-artifact@v4
         with:
-          pattern: ${{ matrix.repo }}*
+          name: ${{ matrix.repo }}*
       - name: Merge Benchmark Results
         id: merge-benchmark-results
         run: |
