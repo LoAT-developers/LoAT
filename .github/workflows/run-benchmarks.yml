@@ -125,9 +125,6 @@ jobs:
           for res in ${!results[@]}; do
               echo "{\"name\": \"${{ matrix.repo }} $res\", \"unit\": \"number\", \"value\": \"${results[$res]}\"}," >> ${{ matrix.repo }}.json
           done
-      - uses: geekyeggo/delete-artifact@v4
-        with:
-          name: ${{ matrix.repo }}*
       - uses: actions/upload-artifact@master
         with:
           name: ${{ matrix.repo }}
