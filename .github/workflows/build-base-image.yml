@@ -65,13 +65,12 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: .
           # Push resulting image to Docker Hub so it can be used on any machine or other
           # or other pipelines:
           push: true
           # Directory where Dockerfile is located.
           # See: https://github.com/marketplace/actions/build-and-push-docker-images#git-context
-          context: "{{defaultContext}}:docker/loat-base-image"
+          context: "./docker/loat-base-image"
           # Overwrite the `latest` tag which is used to build the LoAT binaries:
           # but also create tag the image with the current commit sha so old 
           # images can still be accessed later:
