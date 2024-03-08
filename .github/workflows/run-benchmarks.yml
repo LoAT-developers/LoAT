@@ -124,30 +124,27 @@ jobs:
   finalize-benchmark-results:
     needs: [chc-comp-benchmark]
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        repo: ['chc-comp22-benchmarks', 'chc-comp23-benchmarks']
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: ${{ matrix.repo }}*
+          pattern: ${{ inputs.repo }}*
       - name: Merge Benchmark Results
         run: |
           declare -A results
-          for filename in ${{ matrix.repo }}*/*.res; do
+          for filename in ${{ inputs.repo }}*/*.res; do
             benchmark=$(basename "$filename" .res)
             res=$(cat "$filename")
             results["$res"]=$((results["$res"]+1))
-            echo "$benchmark: $res" >> ${{ matrix.repo }}.txt
+            echo "$benchmark: $res" >> ${{ inputs.repo }}.txt
           done
-          sort -o ${{ matrix.repo }}.txt ${{ matrix.repo }}.txt
+          sort -o ${{ inputs.repo }}.txt ${{ inputs.repo }}.txt
           for res in ${!results[@]}; do
-              echo "{\"name\": \"${{ matrix.repo }} $res\", \"unit\": \"number\", \"value\": \"${results[$res]}\"}," >> ${{ matrix.repo }}.json
+              echo "{\"name\": \"${{ inputs.repo }} $res\", \"unit\": \"number\", \"value\": \"${results[$res]}\"}," >> ${{ inputs.repo }}.json
           done
       - uses: actions/upload-artifact@master
         with:
-          name: ${{ matrix.repo }}
-          path: ${{ matrix.repo }}.*
+          name: ${{ inputs.repo }}
+          path: ${{ inputs.repo }}.*
 
   publish-benchmark-results:
     needs: [finalize-benchmark-results]
@@ -157,8 +154,7 @@ jobs:
       - uses: actions/download-artifact@v4
       - run: |
           echo "[" >> output.json
-          cat chc-comp22-benchmarks/chc-comp22-benchmarks.json >> output.json
-          cat chc-comp23-benchmarks/chc-comp23-benchmarks.json >> output.json
+          cat ${{ inputs.repo }}/${{ inputs.repo }}.json >> output.json
           # remove trailing comma
           sed -i '$ s/,$//g' output.json
           echo "]" >> output.json
