@@ -24,7 +24,10 @@ jobs:
     steps:
 
       - uses: actions/checkout@v4
-      - run: mkdir -p ${{ github.workspace }}/docker/loat-base-image/usr/local
+      - run: |
+          mkdir -p ${{ github.workspace }}/docker/loat-base-image/usr/local/include
+          mkdir -p ${{ github.workspace }}/docker/loat-base-image/usr/local/lib
+          mkdir -p ${{ github.workspace }}/docker/loat-base-image/usr/local/lib64
       - run: ./extract_antlr4.sh
         working-directory: ${{ github.workspace }}/scripts
       - run: ./extract_cln.sh
