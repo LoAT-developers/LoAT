@@ -17,7 +17,7 @@ WORKDIR /z3-z3-4.12.5
 RUN mkdir build
 WORKDIR /z3-z3-4.12.5/build
 RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release ..
-RUN make -j
+RUN make -j$(nproc)
 RUN make install
 
 # for building a binary
@@ -27,5 +27,5 @@ RUN make install
 # WORKDIR /z3-z3-4.12.5
 # RUN python scripts/mk_make.py --staticbin
 # WORKDIR /z3-z3-4.12.5/build
-# RUN make -j4
+# RUN make -j$(nproc)
 # RUN make install

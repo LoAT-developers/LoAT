@@ -22,5 +22,5 @@ WORKDIR /LoAT-purrs
 RUN autoreconf --install
 RUN automake
 RUN ./configure
-RUN make -j
+RUN make -j$(nproc)
 RUN make install

@@ -26,5 +26,5 @@ WORKDIR cvc5
 RUN git checkout cvc5-1.0.8-musl
 RUN ./configure.sh --static --no-statistics --auto-download --poly --cln --gpl --no-docs
 WORKDIR /cvc5/build
-RUN make -j4
+RUN make -j$(nproc)
 RUN make install

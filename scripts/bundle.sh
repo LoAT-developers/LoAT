@@ -41,7 +41,7 @@ fi
 print "building LoAT..."
 cd $BUILD
 cmake -DCMAKE_BUILD_TYPE=Release ../..
-make -j
+make -j$(nproc)
 cd $SCRIPT_DIR/..
 check "building LoAT"
 print "creating bundle..."

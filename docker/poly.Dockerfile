@@ -17,5 +17,5 @@ RUN wget https://github.com/SRI-CSL/libpoly/archive/refs/tags/v0.1.13.tar.gz
 RUN tar xf v0.1.13.tar.gz
 WORKDIR /libpoly-0.1.13/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
-RUN make -j
+RUN make -j$(nproc)
 RUN make install

@@ -17,5 +17,5 @@ RUN git checkout 4.11.1
 RUN mkdir /antlr4/runtime/Cpp/build
 WORKDIR /antlr4/runtime/Cpp/build
 RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR="/usr/local/lib"
-RUN make -j
+RUN make -j$(nproc)
 RUN make install

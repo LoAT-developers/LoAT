@@ -11,5 +11,5 @@ WORKDIR /cln
 RUN git checkout cln_1-3-6
 RUN ./autogen.sh
 RUN ./configure CXXFLAGS='-march=x86-64 -O3 -DNDEBUG' CFLAGS='-march=x86-64 -O3 -DNDEBUG'
-RUN make -j
+RUN make -j$(nproc)
 RUN make install

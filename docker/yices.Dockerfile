@@ -18,8 +18,8 @@ RUN lzip -d gmp-6.2.1.tar.lz
 RUN tar xf gmp-6.2.1.tar
 WORKDIR /gmp-6.2.1
 RUN ./configure ABI=64 CFLAGS="$CFLAGS -fPIC" CPPFLAGS="$CXXFLAGS -DPIC" --host=x86_64-pc-linux-gnu --enable-cxx --prefix /gmp/
-RUN make -j
-RUN make -j check
+RUN make -j$(nproc)
+RUN make -j$(nproc) check
 RUN make install
 
 
@@ -40,6 +40,6 @@ RUN git clone https://github.com/SRI-CSL/yices2.git
 WORKDIR /yices2
 RUN autoconf
 RUN ./configure --enable-mcsat --with-pic-gmp=/gmp/lib/libgmp.a
-RUN make -j
-RUN make -j static-lib
+RUN make -j$(nproc)
+RUN make -j$(nproc) static-lib
 RUN make install
