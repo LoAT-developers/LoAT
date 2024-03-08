@@ -65,6 +65,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
+          context: .
           # Push resulting image to Docker Hub so it can be used on any machine or other
           # or other pipelines:
           push: true
