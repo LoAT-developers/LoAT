@@ -127,7 +127,8 @@ jobs:
           done
       - uses: geekyeggo/delete-artifact@v4
         with:
-          name: *.res
+          name: |
+              *.res
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@master
         with:
