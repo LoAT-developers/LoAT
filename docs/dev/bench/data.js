@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1709883912498,
+  "lastUpdate": 1709933176153,
   "repoUrl": "https://github.com/LoAT-developers/LoAT",
   "entries": {
     "LoAT Benchmarks": [
@@ -51,6 +51,43 @@ window.BENCHMARK_DATA = {
           {
             "name": "chc-comp23-benchmarks timeout",
             "value": "245",
+            "unit": "number"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Florian Frohn",
+            "username": "ffrohn",
+            "email": "florian.frohn@cs.rwth-aachen.de"
+          },
+          "committer": {
+            "name": "Florian Frohn",
+            "username": "ffrohn",
+            "email": "florian.frohn@cs.rwth-aachen.de"
+          },
+          "id": "1bb24a9573df196923f26bdbfdc4c6d5d9399ed6",
+          "message": "just one benchmark set",
+          "timestamp": "2024-03-08T21:22:56Z",
+          "url": "https://github.com/LoAT-developers/LoAT/commit/1bb24a9573df196923f26bdbfdc4c6d5d9399ed6"
+        },
+        "date": 1709933174271,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "chc-comp22-benchmarks unknown",
+            "value": "157",
+            "unit": "number"
+          },
+          {
+            "name": "chc-comp22-benchmarks unsat",
+            "value": "86",
+            "unit": "number"
+          },
+          {
+            "name": "chc-comp22-benchmarks timeout",
+            "value": "256",
             "unit": "number"
           }
         ]
