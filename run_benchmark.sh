@@ -11,24 +11,18 @@ pushd build
 make -j4
 popd
 
-# 103 unsat   sat     
-# 247 unsat   sat     
-# 253 unsat   sat     
-# 256 unsat   sat     
-# 259 unsat   sat     
+# # gdb --args \
+# time ./build/loat-static \
+#    --mode reachability \
+#    --format horn \
+#    --proof-level 0 \
+#    "../chc-comp22-benchmarks/LIA/chc-LIA_076.smt2"
+#    # "../chc-comp23-benchmarks/LIA-nonlin/chc-LIA_075.smt2"
+#   # "../chc-comp22-benchmarks/LIA/chc-LIA_148_unknown.smt2"
+#    # "../chc-comp22-benchmarks/LIA/test3.smt2"
 
-# gdb --args \
-./build/loat-static \
-   --mode reachability \
-   --format horn \
-   --proof-level 0 \
-   "../chc-comp23-benchmarks/LIA-nonlin/chc-LIA_248.smt2"
-   # "../chc-comp22-benchmarks/LIA/chc-LIA_235.smt2"
-  # "../chc-comp22-benchmarks/LIA/chc-LIA_148_unknown.smt2"
-   # "../chc-comp22-benchmarks/LIA/test3.smt2"
-
-popd
-exit
+# popd
+# exit
 
 ##########################################################################
 
@@ -43,14 +37,14 @@ do
     continue
   else
     read idx z3_result adcl_result <<< "$line"
-    # file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
-    file="../chc-comp23-benchmarks/${benchmark}-nonlin/chc-${benchmark}_${idx}.smt2"
+    file="../chc-comp22-benchmarks/${benchmark}/chc-${benchmark}_${idx}.smt2"
+    # file="../chc-comp23-benchmarks/${benchmark}-nonlin/chc-${benchmark}_${idx}.smt2"
 
-    if true; then
+    # if true; then
     # if [[ "$z3_result" == "unsat" ]] && [[ "$adcl_result" == "timeout" ]]; then
     # if [[ "$z3_result" != "sat" ]] && [[ "$z3_result" != "timeout" ]]; then
     # if [[ "$z3_result" != "timeout" ]]; then
-    # if [[ "$z3_result" == "sat" ]]; then
+    if [[ "$z3_result" == "unsat" ]]; then
     # if [[ "$adcl_result" == "unsat" ]]; then
       set +e
       result=$(timeout 20 ./build/loat-static --mode reachability --format horn --proof-level 0 "$file")
@@ -76,8 +70,8 @@ do
     fi
 
   fi
-done < "./benchmarks/review23.txt"
-# done < "./benchmarks/${benchmark}.txt"
+# done < "./benchmarks/review23.txt"
+done < "./benchmarks/${benchmark}.txt"
 # done < "./benchmarks/comp23-${benchmark}-nonlin.txt"
 
 # "undo" pushd

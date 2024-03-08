@@ -50,7 +50,7 @@ public:
 
     const Clause renameWith(const Subs &renaming) const;
 
-    const std::optional<Clause> resolutionWith(const Clause &chc, unsigned pred_index) const;
+    const std::optional<std::tuple<Clause, BoolExpr>> resolutionWith(const Clause &chc, unsigned pred_index) const;
 
     const Clause normalize() const;
 

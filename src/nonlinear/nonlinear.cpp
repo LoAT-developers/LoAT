@@ -166,6 +166,8 @@ const std::set<Clause> all_resolvents(const std::set<Clause>& non_linear_chcs, c
             << std::endl;       
     }
 
+    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
+
     for (const auto& chc: non_linear_chcs) {
         if (dbg || Config::Analysis::log) {
             std::cout 
@@ -175,9 +177,14 @@ const std::set<Clause> all_resolvents(const std::set<Clause>& non_linear_chcs, c
                 << facts.size()
                 << " facts"                
                 << std::endl;
+
+            printSimple(std::cout << "NL: ", chc) << std::endl;
         }
 
-        all_resolvents_aux(chc, 0, facts, resolvents, redundant_resolvent_count);
+        solver->push();
+        solver->add(chc.guard);
+        all_resolvents_aux(chc, 0, facts, resolvents, redundant_resolvent_count, *solver);
+        solver->pop();
     }
 
     if (dbg || Config::Analysis::log) {
@@ -201,7 +208,14 @@ const std::set<Clause> all_resolvents(const std::set<Clause>& non_linear_chcs, c
 
     return resolvents;
 }
-void all_resolvents_aux(const Clause& chc, unsigned pred_index, const std::set<Clause>& facts, std::set<Clause>& resolvents, unsigned& redundant_resolvent_count) {
+void all_resolvents_aux(
+    const Clause& chc, 
+    unsigned pred_index, 
+    const std::set<Clause>& facts,
+    std::set<Clause>& resolvents, 
+    unsigned& redundant_resolvent_count,
+    Smt<IntTheory, BoolTheory>& solver
+) {
     // === Running example ===
     // `chc`        : F(x) /\ F(y) /\ F(z) ==> G(x,y,z)
     // `pred_index` :   ^---- index on first LHS predicate of `chc`
@@ -212,10 +226,12 @@ void all_resolvents_aux(const Clause& chc, unsigned pred_index, const std::set<C
     } else {
         // All resolvents that DO eliminate F(x)
         for (const auto& fact: facts) {
+            // printSimple(std::cout << "fact: ", fact) << std::endl;
             const auto optional_resolvent = fact.resolutionWith(chc, pred_index);
 
             if (optional_resolvent.has_value()) {
-                const auto resolvent = optional_resolvent.value();
+                // const auto resolvent = optional_resolvent.value();
+                const auto [resolvent, extra_constraints] = optional_resolvent.value();
                 // for fact = F(1) :      F(y) /\ F(z) ==> G(1,y,z)
                 //
                 // for fact = F(2) :      F(y) /\ F(z) ==> G(2,y,z)
@@ -231,25 +247,33 @@ void all_resolvents_aux(const Clause& chc, unsigned pred_index, const std::set<C
                     // redundant resolvent we can prune the recursive call, because all following
                     // resolvents are also redundant. 
                     redundant_resolvent_count++;
-                } else if (SmtFactory::check(resolvent.guard) == Sat) {
-                    resolvents.insert(resolvent);
+                } else {
+                    solver.push();
+                    solver.add(extra_constraints);
+                    
+                    // if (SmtFactory::check(resolvent.guard) == Sat) {
+                    if (solver.check() == Sat) {
+                        resolvents.insert(resolvent);
 
-                    all_resolvents_aux(resolvent, pred_index, facts, resolvents, redundant_resolvent_count);
-                    // for fact = F(1) :       F(y) ==> G(1,y,1)
-                    //                         F(y) ==> G(1,y,2)
-                    //                         F(z) ==> G(1,1,z)
-                    //                         F(z) ==> G(1,2,z)
-                    //
-                    // for fact = F(2) :       F(y) ==> G(2,y,1)
-                    //                         F(y) ==> G(2,y,2)
-                    //                         F(z) ==> G(2,1,z)
-                    //                         F(z) ==> G(2,2,z)
-                }
-            } 
+                        all_resolvents_aux(resolvent, pred_index, facts, resolvents, redundant_resolvent_count, solver);
+                        // for fact = F(1) :       F(y) ==> G(1,y,1)
+                        //                         F(y) ==> G(1,y,2)
+                        //                         F(z) ==> G(1,1,z)
+                        //                         F(z) ==> G(1,2,z)
+                        //
+                        // for fact = F(2) :       F(y) ==> G(2,y,1)
+                        //                         F(y) ==> G(2,y,2)
+                        //                         F(z) ==> G(2,1,z)
+                        //                         F(z) ==> G(2,2,z)
+                    }
+
+                    solver.pop();
+                } 
+            }
         }
         
         // All resolvents that DONT eliminate F(x)
-        all_resolvents_aux(chc, pred_index+1, facts, resolvents, redundant_resolvent_count);
+        all_resolvents_aux(chc, pred_index+1, facts, resolvents, redundant_resolvent_count, solver);
         // F(x) /\ F(y) ==> G(x,y,1)
         // F(x) /\ F(y) ==> G(x,y,2)
         //
@@ -390,7 +414,8 @@ const Clause eliminate_pred(const Clause& left, const Clause& right) {
     const auto& right_pred_index = right.indexOfLHSPred(left_pred.name);
 
     if (right_pred_index.has_value()) {
-        return eliminate_pred(left, left.resolutionWith(right, right_pred_index.value()).value());
+        const auto [resolvent, _] = left.resolutionWith(right, right_pred_index.value()).value();
+        return eliminate_pred(left, resolvent);
     } else {
         return right;
     }

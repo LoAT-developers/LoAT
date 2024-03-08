@@ -1,6 +1,7 @@
 #include "clause.hpp"
 #include "boolexpr.hpp"
 #include "expr.hpp"
+#include "smtfactory.hpp"
 #include "theory.hpp"
 #include <memory>
 #include <stdexcept>
@@ -164,6 +165,11 @@ const Clause Clause::renameWith(const Subs &renaming) const {
         lhs_renamed.push_back(pred.renameWith(renaming));
     }
 
+    // TODO: bottleneck applying large subsitution with 20_000 vars
+    if (renaming.size() > 15000) {
+        std::cout << "subs size: " << renaming.size() << std::endl;
+        std::cout << guard << std::endl;
+    }
     const auto guard_renamed = guard->subs(renaming);
 
     if (rhs.has_value()) {
@@ -219,7 +225,7 @@ const std::vector<FunApp> deletePredAt(const std::vector<FunApp>& preds, unsigne
  * 	 G(y) /\ F(z) /\ y < z ==> H(y,z)
  *
  */
-const std::optional<Clause> Clause::resolutionWith(const Clause &chc, unsigned pred_index) const {
+const std::optional<std::tuple<Clause, BoolExpr>> Clause::resolutionWith(const Clause &chc, unsigned pred_index) const {
     if (pred_index >= chc.lhs.size()) {
         throw std::logic_error("Clause::resolutionWith: `pred_index` out-of-bounds");
     }
@@ -253,23 +259,20 @@ const std::optional<Clause> Clause::resolutionWith(const Clause &chc, unsigned p
     }
 
     const Clause this_unified = this_with_disjoint_vars.renameWith(unifier.value());
-    const Clause chc_unified = Clause(deletePredAt(chc.lhs, pred_index), chc.rhs, chc.guard)
-        .renameWith(unifier.value());
 
     // LHS of resolvent is the union of the renamed LHS of `this` ...
     std::vector<FunApp> resolvent_lhs = this_unified.lhs;
     // ... and the LHS of `chc` where `pred` is removed.
-    for (const auto& pred: chc_unified.lhs) {
-        resolvent_lhs.push_back(pred);
+    for (unsigned i=0; i<chc.lhs.size(); i++) {
+        if (i != pred_index) {             
+            resolvent_lhs.push_back(chc.lhs.at(i));
+        }
     }
 
-    const auto new_guard = this_unified.guard & chc_unified.guard;
+    const auto new_guard = this_unified.guard & chc.guard;
+    const auto resolvent = Clause(resolvent_lhs, chc.rhs, new_guard);
 
-    return Clause(
-        resolvent_lhs, 
-        chc_unified.rhs, 
-        new_guard->simplify()
-    ).normalize();
+    return std::make_tuple(resolvent, this_unified.guard);
 }
 
 /**
@@ -296,11 +299,8 @@ const std::tuple<std::set<Clause>, std::set<Clause>> partitionByDegree(const std
  * values are the sets of clauses with that RHS predicate. The key is optional because clauses may have no 
  * RHS predicate (i.e. querys).
  */
-const std::map<std::optional<std::basic_string<char>>, std::vector<Clause>> partitionByRHS(const std::set<Clause>& chcs) {
-    std::map<
-        std::optional<std::basic_string<char>>, 
-        std::vector<Clause>
-    > partition;
+const std::map<std::optional<std::string>, std::vector<Clause>> partitionByRHS(const std::set<Clause>& chcs) {
+    std::map<std::optional<std::string>, std::vector<Clause>> partition;
 
     for (const auto& chc: chcs) {
         std::optional<std::basic_string<char>> rhs_name;

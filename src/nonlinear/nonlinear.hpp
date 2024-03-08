@@ -1,5 +1,6 @@
 #pragma once
 #include "linearsolver.hpp"
+#include "smt.hpp"
 
 class NonLinearSolver {
 
@@ -20,7 +21,8 @@ void all_resolvents_aux(
     unsigned pred_index, 
     const std::set<Clause>& facts, 
     std::set<Clause>& resolvents, 
-    unsigned& redundant_resolvent_count
+    unsigned& redundant_resolvent_count,
+    Smt<IntTheory, BoolTheory>& solver
 );
 
 const Clause merge_facts(const std::vector<Clause> facts);
