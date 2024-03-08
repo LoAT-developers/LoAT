@@ -99,7 +99,7 @@ jobs:
       - name: Upload Benchmark Results
         uses: actions/upload-artifact@master
         with:
-          name: ${{ matrix.repo }}-${{ matrix.ci_index }}.res
+          name: ${{ matrix.repo }}-${{ matrix.ci_index }}
           path: ${{ matrix.directory }}/*.res
 
   finalize-benchmark-results:
@@ -128,7 +128,7 @@ jobs:
       - uses: geekyeggo/delete-artifact@v4
         with:
           name: |
-              *.res
+            ${{ matrix.repo }}*
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@master
         with:
