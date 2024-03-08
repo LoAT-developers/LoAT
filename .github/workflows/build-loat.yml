@@ -19,8 +19,8 @@ jobs:
     steps:
       - name: Checkout LoAT Repository
         uses: actions/checkout@v4
-          with:
-            lfs: true
+        with:
+          lfs: true
 
       - name: Build LoAT Binary
         uses: addnab/docker-run-action@v3
@@ -40,3 +40,4 @@ jobs:
         with:
           name: loat-static
           path: build/release/loat-static
+
