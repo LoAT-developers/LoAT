@@ -5,7 +5,7 @@ docker build --target swine -t swine --no-cache-filter swine -f ../docker/swine.
 echo "create..."
 docker create -ti --name swine_dummy swine sh
 echo "cp..."
-mkdir -p ../include/swine
+mkdir -p $DEST/include/swine
 docker cp swine_dummy:/swine-z3/include/config.h $DEST/include/swine
 docker cp swine_dummy:/swine-z3/include/lemma_kind.h $DEST/include/swine
 docker cp swine_dummy:/swine-z3/include/preproc_kind.h $DEST/include/swine
