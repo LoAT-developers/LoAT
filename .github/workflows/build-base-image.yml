@@ -53,11 +53,6 @@ jobs:
       - run: ./extract_yices.sh
         working-directory: ${{ github.workspace }}/scripts
 
-      # not sure what this step is good for but is was part of the
-      # example config:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
