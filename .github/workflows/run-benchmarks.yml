@@ -127,9 +127,7 @@ jobs:
           done
       - uses: geekyeggo/delete-artifact@v4
         with:
-          name: |
-            ${{ matrix.repo }}*
-          token: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ matrix.repo }}*
       - uses: actions/upload-artifact@master
         with:
           name: ${{ matrix.repo }}
