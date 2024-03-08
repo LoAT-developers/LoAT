@@ -28,13 +28,15 @@ jobs:
           mkdir -p ${{ github.workspace }}/docker/loat-base-image/usr/local/include
           mkdir -p ${{ github.workspace }}/docker/loat-base-image/usr/local/lib
           mkdir -p ${{ github.workspace }}/docker/loat-base-image/usr/local/lib64
-      - run: ./extract_antlr4.sh
-        working-directory: ${{ github.workspace }}/scripts
-      - run: ./extract_cln.sh
-        working-directory: ${{ github.workspace }}/scripts
       - run: ./extract_cudd.sh
         working-directory: ${{ github.workspace }}/scripts
       - run: ./extract_poly.sh
+        working-directory: ${{ github.workspace }}/scripts
+      - run: ./extract_yices.sh
+        working-directory: ${{ github.workspace }}/scripts
+      - run: ./extract_antlr4.sh
+        working-directory: ${{ github.workspace }}/scripts
+      - run: ./extract_cln.sh
         working-directory: ${{ github.workspace }}/scripts
       - run: ./extract_cvc5.sh
         working-directory: ${{ github.workspace }}/scripts
@@ -49,8 +51,6 @@ jobs:
       - run: ./extract_z3.sh
         working-directory: ${{ github.workspace }}/scripts
       - run: ./extract_swine.sh
-        working-directory: ${{ github.workspace }}/scripts
-      - run: ./extract_yices.sh
         working-directory: ${{ github.workspace }}/scripts
 
       - name: Set up Docker Buildx
