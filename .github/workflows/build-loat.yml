@@ -19,9 +19,6 @@ jobs:
     steps:
       - name: Checkout LoAT Repository
         uses: actions/checkout@v4
-        with:
-          lfs: true
-      - run: git lfs pull
 
       - name: Build LoAT Binary
         uses: addnab/docker-run-action@v3

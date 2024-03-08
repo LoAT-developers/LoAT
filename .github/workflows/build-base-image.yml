@@ -21,6 +21,34 @@ jobs:
   build-base-image:
     runs-on: ubuntu-latest
     steps:
+
+      - uses: actions/checkout@v4
+
+      - run: ./extract_antlr4.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_cln.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_cudd.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_poly.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_cvc5.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_faudes.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_ginac.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_ntl.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_purrs.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_z3.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_swine.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+      - run: ./extract_yices.sh
+        working-directory: ${{ github.workspace }}:/LoAT/scripts
+
       # not sure what this step is good for but is was part of the
       # example config:
       - name: Set up QEMU

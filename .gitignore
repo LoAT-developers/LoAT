@@ -2,7 +2,8 @@
 *.o
 *.so
 *.a
-!/docker/loat-base-image/usr/**/*.a
+
+docker/loat-base-image/usr
 
 # latex build files
 *.synctex.gz

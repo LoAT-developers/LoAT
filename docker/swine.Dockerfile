@@ -11,8 +11,8 @@ RUN xbps-install -yS bash boost-devel cmake gcc git make
 
 FROM base as swine
 
-COPY ../lib/libz3.a /usr/local/lib/
-COPY ../include/ /usr/local/include/
+COPY ../docker/loat-base-image/usr/local/lib/libz3.a /usr/local/lib/
+COPY ../docker/loat-base-image/usr/local/include/ /usr/local/include/
 
 RUN git clone https://github.com/ffrohn/swine-z3
 WORKDIR /swine-z3/scripts

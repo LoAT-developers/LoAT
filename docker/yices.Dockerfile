@@ -30,11 +30,11 @@ RUN xbps-install -yS git gmp-devel gperf
 
 COPY --from=gmp /gmp /gmp
 
-COPY ../lib/libpoly.a /usr/local/lib/
-COPY ../include/poly /usr/local/include/poly
+COPY ../docker/loat-base-image/usr/local/lib/libpoly.a /usr/local/lib/
+COPY ../docker/loat-base-image/usr/local/include/poly /usr/local/include/poly
 
-COPY ../lib/libcudd.a /usr/local/lib/libcudd.a
-COPY ../include/cudd.h /usr/local/include/cudd.h
+COPY ../docker/loat-base-image/usr/local/lib/libcudd.a /usr/local/lib/libcudd.a
+COPY ../docker/loat-base-image/usr/local/include/cudd.h /usr/local/include/cudd.h
 
 RUN git clone https://github.com/SRI-CSL/yices2.git
 WORKDIR /yices2

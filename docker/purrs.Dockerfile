@@ -11,11 +11,11 @@ RUN xbps-install -yS autoconf automake cln-devel gcc git gmpxx-devel libtool mak
 
 FROM base as purrs
 
-COPY ../lib/libginac.a /usr/local/lib64/libginac.a
-COPY ../include/ginac /usr/local/include/ginac
+COPY ../docker/loat-base-image/usr/local/lib/libginac.a /usr/local/lib64/libginac.a
+COPY ../docker/loat-base-image/usr/local/include/ginac /usr/local/include/ginac
 
-COPY ../include/NTL /usr/local/include/NTL
-COPY ../lib/libntl.a /usr/local/lib/libntl.a
+COPY ../docker/loat-base-image/usr/local/include/NTL /usr/local/include/NTL
+COPY ../docker/loat-base-image/usr/local/lib/libntl.a /usr/local/lib/libntl.a
 
 RUN git clone https://github.com/aprove-developers/LoAT-purrs.git
 WORKDIR /LoAT-purrs
