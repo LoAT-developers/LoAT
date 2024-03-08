@@ -13,7 +13,7 @@ FROM base as gmp
 
 RUN xbps-install -yS lzip wget
 
-RUN wget https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz
+RUN wget https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.lz
 RUN lzip -d gmp-6.2.1.tar.lz
 RUN tar xf gmp-6.2.1.tar
 WORKDIR /gmp-6.2.1
