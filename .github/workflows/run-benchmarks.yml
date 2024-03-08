@@ -31,19 +31,14 @@ jobs:
             engine: adcl
             format: horn
     steps:
-      - name: Checkout Benchmark Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: chc-comp/${{ matrix.repo }}
           sparse-checkout: ${{ matrix.directory }}
 
-      - name: Unpack
-        run: gunzip ${{ matrix.directory }}/*.gz
+      - run: gunzip ${{ matrix.directory }}/*.gz
 
-      # retrieve previously built binary
-      - name: Import LoAT Binary
-        id: download-artifact
-        uses: dawidd6/action-download-artifact@v3
+      - uses: dawidd6/action-download-artifact@v3
         with:
           workflow: build-loat.yml
           name: loat-static
@@ -101,10 +96,10 @@ jobs:
           CI_TOTAL: ${{ matrix.ci_total }}
           CI_INDEX: ${{ matrix.ci_index }}
 
-      - name: Export Benchmark Results
+      - name: Upload Benchmark Results
         uses: actions/upload-artifact@master
         with:
-          name: ${{ matrix.repo }}-${{ matrix.ci_index }}
+          name: ${{ matrix.repo }}-${{ matrix.ci_index }}.res
           path: ${{ matrix.directory }}/*.res
 
   finalize-benchmark-results:
@@ -114,13 +109,10 @@ jobs:
       matrix:
         repo: ['chc-comp22-benchmarks', 'chc-comp23-benchmarks']
     steps:
-      - name: Download Benchmark Results
-        id: download-benchmark-results
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           pattern: ${{ matrix.repo }}*
       - name: Merge Benchmark Results
-        id: merge-benchmark-results
         run: |
           declare -A results
           for filename in ${{ matrix.repo }}*/*.res; do
@@ -133,9 +125,11 @@ jobs:
           for res in ${!results[@]}; do
               echo "{\"name\": \"${{ matrix.repo }} $res\", \"unit\": \"number\", \"value\": \"${results[$res]}\"}," >> ${{ matrix.repo }}.json
           done
-      - name: Upload Benchmark Results
-        id: upload-benchmark-results
-        uses: actions/upload-artifact@master
+      - uses: geekyeggo/delete-artifact@v4
+        with:
+          name: *.res
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@master
         with:
           name: ${{ matrix.repo }}
           path: ${{ matrix.repo }}.*
@@ -153,7 +147,7 @@ jobs:
           # remove trailing comma
           sed -i '$ s/,$//g' output.json
           echo "]" >> output.json
-      - name: Store benchmark result
+      - name: Publish benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: LoAT Benchmarks
