@@ -1,7 +1,21 @@
 name: Run Benchmarks
 
 # Run this action when triggered manually through GitHub UI.
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+    inputs:
+      timeout:
+        required: true
+        type: number
+        default: 20
+      engine:
+        required: true
+        type: choice
+        default: abmc
+        options:
+        - abmc
+        - adcl
+        - bmc
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -22,13 +36,11 @@ jobs:
           - repo: 'chc-comp22-benchmarks'
             directory: 'LIA-Lin'
             mode: reachability
-            engine: adcl
             format: horn
 
           - repo: 'chc-comp23-benchmarks'
             directory: 'LIA-lin'
             mode: reachability
-            engine: adcl
             format: horn
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +55,7 @@ jobs:
           workflow: build-loat.yml
           name: loat-static
           path: /usr/local/bin/
-     
+
       - name: Run Benchmark
         run: |
           # function to run a single benchmark
@@ -53,7 +65,7 @@ jobs:
             start=`date +%s`
 
             set +e
-            result=$(timeout 20 loat-static --mode ${{ matrix.mode }} --format ${{ matrix.format }} --proof-level 0 --engine ${{ matrix.engine }} "${filename}")
+            result=$(timeout ${{ inputs.timeout }} loat-static --mode ${{ matrix.mode }} --format ${{ matrix.format }} --proof-level 0 --engine ${{ inputs.engine }} "${filename}")
             exit_status=$?
             set -e
 
@@ -157,4 +169,3 @@ jobs:
           auto-push: true
           gh-pages-branch: web
           benchmark-data-dir-path: docs/dev/bench
-          
