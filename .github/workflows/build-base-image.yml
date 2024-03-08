@@ -9,7 +9,7 @@ on:
     branches: 
       - master
     paths:
-      - 'docker'
+      - 'docker/**'
       - '.github/workflows/build-base-image.yml'
 
   # Also allow this action to be triggered manually via a button in 
