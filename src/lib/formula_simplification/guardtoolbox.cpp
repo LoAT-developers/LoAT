@@ -26,7 +26,8 @@ using namespace std;
 
 ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr e, const SymbolAcceptor &allow) {
     ResultBase<ArithSubs, Proof> res;
-    for (const auto &var: e->vars().get<Arith::Var>()) {
+    const auto vars {e->vars().get<Arith::Var>()};
+    for (const auto &var: vars) {
         if (!allow(var)) continue;
         const auto bounds {e->getBounds(var)};
         for (const auto &b: bounds.upperBounds) {

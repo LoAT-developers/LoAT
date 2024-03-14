@@ -31,7 +31,6 @@ SmtResult CVC5::check() {
 }
 
 Model CVC5::model(const std::optional<const VarSet> &vars) {
-    assert(models);
     Model res;
     const auto add = [&](const auto &x, const auto &y) {
         std::visit(

@@ -6,8 +6,6 @@
 int ArithVar::last_tmp_idx {0};
 int ArithVar::last_prog_idx {1};
 
-const ArithVarPtr ArithVar::loc_var {nextProgVar()};
-
 ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {};
 
 ArithExprPtr arith::mkVar(const int idx) {
@@ -55,7 +53,7 @@ std::size_t hash_value(const ArithVar &x) {
 }
 
 ArithVarPtr ArithVar::toPtr() const {
-    return std::enable_shared_from_this<ArithVar>::shared_from_this();
+    return std::static_pointer_cast<const ArithVar>(shared_from_this());
 }
 
 ArithExprPtr ArithVar::toExpr() const {

@@ -172,7 +172,7 @@ public:
     /**
      * @return True iff this expression is a linear polynomial wrt. the given variables (resp. all variables, if vars is empty).
      */
-    bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = {}) const;
+    bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = std::nullopt) const;
 
     std::optional<Int> isPoly() const;
 
@@ -233,7 +233,7 @@ public:
 };
 
 
-class ArithConst: public ArithExpr, public std::enable_shared_from_this<ArithConst> {
+class ArithConst: public ArithExpr {
 
     friend ArithExprPtr arith::mkConst(const Rational &r);
 
@@ -262,7 +262,7 @@ public:
 };
 
 
-class ArithVar: public ArithExpr, public std::enable_shared_from_this<ArithVar> {
+class ArithVar: public ArithExpr {
 
     friend ArithExprPtr arith::mkVar(const int idx);
 
@@ -288,8 +288,6 @@ private:
 
 public:
 
-    static const ArithVarPtr loc_var;
-
     static ArithVarPtr next();
     static ArithVarPtr nextProgVar();
 
@@ -304,7 +302,7 @@ public:
 std::ostream& operator<<(std::ostream &s, const ArithVarPtr x);
 
 
-class ArithAdd: public ArithExpr, public std::enable_shared_from_this<ArithAdd> {
+class ArithAdd: public ArithExpr {
 
     friend ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> args);
 
@@ -330,7 +328,7 @@ private:
 };
 
 
-class ArithMult: public ArithExpr, public std::enable_shared_from_this<ArithMult> {
+class ArithMult: public ArithExpr {
 
     friend ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args);
 
@@ -356,7 +354,7 @@ private:
 };
 
 
-class ArithExp: public ArithExpr, public std::enable_shared_from_this<ArithExp> {
+class ArithExp: public ArithExpr {
 
     friend ArithExprPtr arith::mkExp(const ArithExprPtr base, const ArithExprPtr exponent);
 

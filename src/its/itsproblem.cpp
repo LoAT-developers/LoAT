@@ -96,7 +96,7 @@ TransIdx ITSProblem::addLearnedRule(const Rule &rule, const TransIdx same_preds,
 TransIdx ITSProblem::addQuery(const Bools::Expr guard, const TransIdx same_preds) {
     const auto start = getLhsLoc(same_preds);
     const auto preds = graph.getPredecessors(same_preds);
-    return addRule(Rule(guard, Subs::build<Arith>(ArithVar::loc_var, arith::mkConst(sink))), start, sink, preds, {});
+    return addRule(Rule(guard, Subs::build<Arith>(loc_var, arith::mkConst(sink))), start, sink, preds, {});
 }
 
 TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
@@ -181,15 +181,19 @@ void ITSProblem::print(std::ostream &s) const {
 }
 
 Arith::Expr ITSProblem::getCost(const Rule &rule) const {
-    return rule.getUpdate().get<Arith>(cost) - cost;
+    return rule.getUpdate().get<Arith>(cost_var) - cost_var;
 }
 
 Arith::Var ITSProblem::getCostVar() const {
-    return cost;
+    return cost_var;
+}
+
+Arith::Var ITSProblem::getLocVar() const {
+    return loc_var;
 }
 
 std::optional<LocationIdx> ITSProblem::getRhsLoc(const Rule &rule) const {
-    const auto res {rule.getUpdate().get<Arith>(ArithVar::loc_var)};
+    const auto res {rule.getUpdate().get<Arith>(loc_var)};
     const auto r {res->isInt()};
     if (r) {
         return r->convert_to<LocationIdx>();

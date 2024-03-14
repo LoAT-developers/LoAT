@@ -114,8 +114,8 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
             up.put<Bools>(bvars[i], bools::mkLit(BoolLit(BoolVar::next())));
         }
-        up.put<Arith>(ArithVar::loc_var, arith::mkConst(c.rhs.loc));
-        const auto guard {ren(c.guard)->simplify() && theory::mkEq(ArithVar::loc_var, arith::mkConst(c.lhs.loc))};
+        up.put<Arith>(its->getLocVar(), arith::mkConst(c.rhs.loc));
+        const auto guard {ren(c.guard)->simplify() && theory::mkEq(its->getLocVar(), arith::mkConst(c.lhs.loc))};
         its->addRule(Rule(guard, up), c.lhs.loc);
     }
     return its;
@@ -280,7 +280,8 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         }
         res.t = (args[0] && args[1]) || ((!args[0]) && args[2]);
     } else if (ctx->lit()) {
-        res = any_cast<lit_type>(visit(ctx->lit()));
+        const auto lit {visit(ctx->lit())};
+        res = any_cast<lit_type>(lit);
     } else if (ctx->var()) {
         const auto r = any_cast<Var>(visit(ctx->var()));
         res.t = bools::mkLit(BoolLit(std::get<Bools::Var>(r)));
@@ -400,13 +401,32 @@ antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
         res.conjoin(p2);
         const auto op = any_cast<relop_type>(visit(ctx->relop()));
         switch (op) {
-        case eq: return theory::mkEq(p1.t, p2.t);
-        case neq: return theory::mkNeq(p1.t, p2.t);
-        case gt: return bools::mkLit(arith::mkGt(p1.t, p2.t));
-        case geq: return bools::mkLit(arith::mkGeq(p1.t, p2.t));
-        case lt: return bools::mkLit(arith::mkLt(p1.t, p2.t));
-        case leq: return bools::mkLit(arith::mkLeq(p1.t, p2.t));
+        case eq: {
+            res.t = theory::mkEq(p1.t, p2.t);
+            break;
         }
+        case neq: {
+            res.t = theory::mkNeq(p1.t, p2.t);
+            break;
+        }
+        case gt: {
+            res.t = bools::mkLit(arith::mkGt(p1.t, p2.t));
+            break;
+        }
+        case geq: {
+            res.t = bools::mkLit(arith::mkGeq(p1.t, p2.t));
+            break;
+        }
+        case lt: {
+            res.t = bools::mkLit(arith::mkLt(p1.t, p2.t));
+            break;
+        }
+        case leq: {
+            res.t = bools::mkLit(arith::mkLeq(p1.t, p2.t));
+            break;
+        }
+        }
+        return res;
     } else {
         throw std::invalid_argument("wrong number of arguments: " + ctx->getText());
     }

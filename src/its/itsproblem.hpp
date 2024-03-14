@@ -81,6 +81,8 @@ public:
 
     Arith::Var getCostVar() const;
 
+    Arith::Var getLocVar() const;
+
     std::optional<LocationIdx> getRhsLoc(const Rule &rule) const;
 
     LocationIdx getLhsLoc(const TransIdx idx) const;
@@ -115,7 +117,8 @@ protected:
     LocationIdx nextUnusedLocation {0};
     LocationIdx initialLocation {0};
     LocationIdx sink {addNamedLocation("LoAT_sink")};
-    Arith::Var cost {ArithVar::nextProgVar()};
+    Arith::Var loc_var {ArithVar::nextProgVar()};
+    Arith::Var cost_var {ArithVar::nextProgVar()};
 
 };
 

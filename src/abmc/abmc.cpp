@@ -113,6 +113,7 @@ std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
     auto vars {loop->vars()};
     var_renaming.collectCoDomainVars(vars);
     const auto model {solver->model(vars).composeBackwards(var_renaming)};
+    auto up {loop->getUpdate()};
     const auto imp {model.syntacticImplicant(loop->getGuard())};
     const auto implicant {loop->withGuard(imp)};
     if (Config::Analysis::log) {
@@ -196,7 +197,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     };
     if (Config::Analysis::tryNonterm() && !nonterm_cache.contains(lang)) {
         const AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
-        const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};
+        const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
         nonterm_to_query(*simp, accel_res);
         nonterm_cache.emplace(lang);
     }
@@ -214,7 +215,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             std::cout << std::endl;
         }
         const AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
-        const auto accel_res {LoopAcceleration::accelerate(*simp, {}, config)};
+        const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
         nonterm_to_query(*simp, accel_res);
         if (accel_res.accel) {
             auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);

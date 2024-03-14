@@ -43,14 +43,17 @@ Purrs::Expr toPurrs(const ArithExprPtr e, purrs_var_map &m) {
 std::optional<ArithExprPtr> solveTermFor(const ArithExprPtr e, const ArithVarPtr var) {
     // we can only solve linear expressions with rational coefficients
     const auto c {e->coeff(var)};
-    if (!c) {
+    if (!c || (*c)->is(0)) {
         return {};
     }
     const auto r {(*c)->isRational()};
     if (!r) {
         return {};
     }
-    return (e - (*c) * var->toExpr())->divide(-(***r));
+    const auto monomial {(*c) * var->toExpr()};
+    const auto not_normalized {e - monomial};
+    const auto normalized {not_normalized->divide(-(***r))};
+    return normalized;
 }
 
 ArithExprPtr fromPurrs(const Purrs::Expr &e, const purrs_var_map &map) {

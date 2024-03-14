@@ -36,7 +36,7 @@ public:
 
     ArithExprPtr lhs() const;
     bool isPoly() const;
-    bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = std::optional<linked_hash_set<ArithVarPtr>>()) const;
+    bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = std::nullopt) const;
     void getBounds(const ArithVarPtr n, Bounds &res) const;
 
     bool isTriviallyTrue() const;

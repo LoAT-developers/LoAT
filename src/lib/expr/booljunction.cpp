@@ -61,9 +61,7 @@ bool BoolJunction::forall(const std::function<bool(const Lit&)> &pred) const {
     return true;
 }
 
-BoolJunction::~BoolJunction() {
-    cache.erase(children, op);
-}
+BoolJunction::~BoolJunction() {}
 
 bool BoolJunction::isConjunction() const {
     return isAnd() && std::all_of(children.begin(), children.end(), [](const auto c){
@@ -104,28 +102,34 @@ void BoolJunction::getBounds(const Arith::Var n, Bounds &res) const {
         }
     } else if (isOr()) {
         bool first = true;
+        Bounds intersection;
         for (const auto &c: children) {
+            Bounds current;
             if (first) {
-                c->getBounds(n, res);
+                c->getBounds(n, intersection);
                 first = false;
             } else {
-                Bounds cres = res;
-                c->getBounds(n, cres);
-                for (auto it = res.lowerBounds.begin(); it != res.lowerBounds.end();) {
-                    if (!cres.lowerBounds.contains(*it)) {
-                        it = res.lowerBounds.erase(it);
+                if (intersection.lowerBounds.empty() && intersection.upperBounds.empty()) {
+                    return;
+                }
+                const auto current {c->getBounds(n)};
+                for (auto it = intersection.lowerBounds.begin(); it != intersection.lowerBounds.end();) {
+                    if (!current.lowerBounds.contains(*it)) {
+                        it = intersection.lowerBounds.erase(it);
                     } else {
                         ++it;
                     }
                 }
-                for (auto it = res.upperBounds.begin(); it != res.upperBounds.end();) {
-                    if (!cres.upperBounds.contains(*it)) {
-                        it = res.upperBounds.erase(it);
+                for (auto it = intersection.upperBounds.begin(); it != intersection.upperBounds.end();) {
+                    if (!current.upperBounds.contains(*it)) {
+                        it = intersection.upperBounds.erase(it);
                     } else {
                         ++it;
                     }
                 }
             }
         }
+        res.lowerBounds.insert(intersection.lowerBounds.begin(), intersection.lowerBounds.end());
+        res.upperBounds.insert(intersection.upperBounds.begin(), intersection.upperBounds.end());
     }
 }

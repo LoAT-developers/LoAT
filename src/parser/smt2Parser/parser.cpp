@@ -80,12 +80,12 @@ namespace sexpressionparser {
                             Subs update;
                             std::vector<Bools::Expr> guard;
                             parseCond(ruleExp[5], guard);
-                            guard.push_back(theory::mkEq(ArithVar::loc_var, arith::mkConst(from)));
+                            guard.push_back(theory::mkEq(res->getLocVar(), arith::mkConst(from)));
                             const auto cond {bools::mkAnd(guard)};
                             for (unsigned int i = 0; i < preVars.size(); i++) {
                                 update.put<Arith>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            update.put<Arith>(ArithVar::loc_var, arith::mkConst(to));
+                            update.put<Arith>(res->getLocVar(), arith::mkConst(to));
                             if (Config::Analysis::complexity()) {
                                 update.put<Arith>(cost_var, cost_var + arith::mkConst(1));
                             }

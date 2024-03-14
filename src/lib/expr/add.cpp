@@ -1,5 +1,6 @@
 #include "arithexpr.hpp"
 #include "linkedhashmap.hpp"
+#include "vector.hpp"
 
 #include <purrs.hh>
 
@@ -19,53 +20,74 @@ size_t ArithAdd::CacheHash::operator()(const std::tuple<ArithExprSet> &args) con
 }
 
 ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> args) {
-    // remove neutral element
-    std::remove(args.begin(), args.end(), mkConst(0));
+    // std::cout << "+ " << args << std::endl;
+    {
+        // pull up nested additions
+        std::vector<ArithExprPtr> insert;
+        for (auto it = args.begin(); it != args.end();) {
+            const auto add {(*it)->isAdd()};
+            if (add) {
+                for (const auto &c: (*add)->getArgs()) {
+                    insert.emplace_back(c);
+                }
+                it = args.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        for (const auto &x: insert) {
+            args.push_back(x);
+        }
+    }
+    {
+        // transform c*t + d*t to (c+d)*t
+        linked_hash_map<std::optional<ArithExprPtr>, Rational> map;
+        auto changed {false};
+        for (const auto &arg: args) {
+            const auto [x,y] {arg->decompose()};
+            const auto val {map.get(y)};
+            changed = changed || val;
+            map.put(y, val.value_or(0) + x);
+        }
+        if (changed) {
+            args.clear();
+            for (const auto &[x,y]: map) {
+                if (!x) {
+                    args.emplace_back(mkConst(y));
+                } else {
+                    args.emplace_back(*x * mkConst(y));
+                }
+            }
+        }
+    }
+    {
+        // add constants
+        std::optional<ArithConstPtr> constant;
+        for (auto it = args.begin(); it != args.end();) {
+            const auto r {(*it)->isRational()};
+            if (r) {
+                if (!constant) {
+                    constant = *r;
+                } else {
+                    constant = *mkConst(***constant + ***r)->isRational();
+                }
+                it = args.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        if (constant && *constant != mkConst(0)) {
+            args.push_back(*constant);
+        }
+    }
     if (args.empty()) {
         return mkConst(0);
     }
     if (args.size() == 1) {
         return args[0];
     }
-    // pull up nested additions
-    std::vector<ArithExprPtr> insert;
-    for (auto it = args.begin(); it != args.end();) {
-        const auto add {(*it)->isAdd()};
-        if (add) {
-            for (const auto &c: (*add)->getArgs()) {
-                insert.emplace_back(c);
-            }
-            it = args.erase(it);
-        } else {
-            ++it;
-        }
-    }
-    for (const auto &x: insert) {
-        args.push_back(x);
-    }
-    // transform c*t + d*t to (c+d)*t
-    linked_hash_map<std::optional<ArithExprPtr>, Rational> map;
-    auto changed {false};
-    for (const auto &arg: args) {
-        const auto [x,y] {arg->decompose()};
-        const auto val {map.get(y)};
-        changed = changed || val;
-        map.put(y, val.value_or(0) + x);
-    }
-    if (changed) {
-        args.clear();
-        for (const auto &[x,y]: map) {
-            if (!x) {
-                args.emplace_back(mkConst(y));
-            } else {
-                args.emplace_back(*x * mkConst(y));
-            }
-        }
-    }
-    if (args.size() == 1) {
-        return args[0];
-    }
     ArithExprSet arg_set {args.begin(), args.end()};
+    // std::cout << "+ " << arg_set << std::endl;
     return ArithAdd::cache.from_cache(arg_set);
 }
 

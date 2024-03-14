@@ -32,11 +32,7 @@ LoopAcceleration::LoopAcceleration(
     const Rule &rule,
     const std::optional<Subs> &sample_point,
     const AccelConfig &config)
-    : rule(rule), sample_point(sample_point), config(config) {
-    auto up {rule.getUpdate()};
-    up.put<Arith>(ArithVar::loc_var, ArithVar::loc_var->toExpr());
-    this->rule = rule.withUpdate(up);
-}
+    : rule(rule), sample_point(sample_point), config(config) {}
 
 std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     auto changed {false};

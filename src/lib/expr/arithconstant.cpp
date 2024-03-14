@@ -37,7 +37,8 @@ const Rational& ArithConst::operator*() const {
 }
 
 const ArithConstPtr ArithConst::denominator() const {
-    return *arith::mkConst(mp::denominator(t))->isRational();
+    const auto denom {arith::mkConst(mp::denominator(t))};
+    return *denom->isRational();
 }
 
 const ArithConstPtr ArithConst::numerator() const {

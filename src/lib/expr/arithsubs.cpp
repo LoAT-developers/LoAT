@@ -187,7 +187,7 @@ ArithExprPtr ArithSubs::operator()(const ArithExprPtr t) const {
         [&](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             std::vector<ArithExprPtr> new_args;
-            std::transform(args.begin(), args.end(), new_args.begin(), [&](const auto arg) {
+            std::transform(args.begin(), args.end(), std::back_inserter(new_args), [&](const auto arg) {
                 return (*this)(arg);
             });
             return arith::mkPlus(new_args);
@@ -195,7 +195,7 @@ ArithExprPtr ArithSubs::operator()(const ArithExprPtr t) const {
         [&](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             std::vector<ArithExprPtr> new_args;
-            std::transform(args.begin(), args.end(), new_args.begin(), [&](const auto arg) {
+            std::transform(args.begin(), args.end(), std::back_inserter(new_args), [&](const auto arg) {
                 return (*this)(arg);
             });
             return arith::mkTimes(new_args);

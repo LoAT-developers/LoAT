@@ -1,6 +1,8 @@
 #include "arithexpr.hpp"
 #include "linkedhashmap.hpp"
 
+#include "vector.hpp"
+
 #include <purrs.hh>
 
 ConsHash<ArithExpr, ArithMult, ArithMult::CacheHash, ArithMult::CacheEqual, ArithExprSet> ArithMult::cache;
@@ -19,29 +21,55 @@ size_t ArithMult::CacheHash::operator()(const std::tuple<ArithExprSet> &args) co
 }
 
 ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args) {
-    // remove neutral element
-    std::remove(args.begin(), args.end(), mkConst(1));
+    // std::cout << "* " << args << std::endl;
+    {
+        // pull up nested multiplications
+        std::vector<ArithExprPtr> insert;
+        for (auto it = args.begin(); it != args.end();) {
+            const auto mult {(*it)->isMult()};
+            if (mult) {
+                for (const auto &c: (*mult)->getArgs()) {
+                    insert.emplace_back(c);
+                }
+                it = args.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        for (const auto &x: insert) {
+            args.push_back(x);
+        }
+    }
+    {
+        // multiply constants
+        std::optional<ArithConstPtr> constant;
+        for (auto it = args.begin(); it != args.end();) {
+            const auto r {(*it)->isRational()};
+            if (r) {
+                if (!constant) {
+                    constant = *r;
+                } else {
+                    constant = *mkConst(***constant * ***r)->isRational();
+                }
+                it = args.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        if (constant) {
+            if ((*constant)->is(0)) {
+                return mkConst(0);
+            }
+            if (!(*constant)->is(1)) {
+                args.push_back(*constant);
+            }
+        }
+    }
     if (args.empty()) {
         return mkConst(1);
     }
     if (args.size() == 1) {
         return args[0];
-    }
-    // pull up nested multiplications
-    std::vector<ArithExprPtr> insert;
-    for (auto it = args.begin(); it != args.end();) {
-        const auto mult {(*it)->isMult()};
-        if (mult) {
-            for (const auto &c: (*mult)->getArgs()) {
-                insert.emplace_back(c);
-            }
-            it = args.erase(it);
-        } else {
-            ++it;
-        }
-    }
-    for (const auto &x: insert) {
-        args.push_back(x);
     }
     // transform t^p * t^q to t^{p+q}
     linked_hash_map<ArithExprPtr, ArithExprPtr> map;
@@ -77,6 +105,7 @@ ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args) {
                     res.back().emplace_back(y);
                 }
             } else {
+                res.emplace_back();
                 res.back().emplace_back(x);
             }
         } else {
@@ -110,6 +139,7 @@ ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args) {
         return args[0];
     }
     ArithExprSet arg_set {args.begin(), args.end()};
+    // std::cout << "* " << arg_set << std::endl;
     return ArithMult::cache.from_cache(arg_set);
 }
 

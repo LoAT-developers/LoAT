@@ -13,7 +13,7 @@ public:
     void push() override;
     void pop() override;
     SmtResult check() override;
-    Model model(const std::optional<const VarSet> &vars = {}) override;
+    Model model(const std::optional<const VarSet> &vars = std::nullopt) override;
     void enableModels() override;
     void resetSolver() override;
     ~Swine() override;

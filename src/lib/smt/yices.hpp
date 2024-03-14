@@ -32,7 +32,7 @@ public:
     void pop() override;
     SmtResult processResult(smt_status status);
     SmtResult check() override;
-    Model model(const std::optional<const VarSet> &vars = {}) override;
+    Model model(const std::optional<const VarSet> &vars = std::nullopt) override;
     void randomize(unsigned seed) override;
     void enableModels() override;
     void resetSolver() override;

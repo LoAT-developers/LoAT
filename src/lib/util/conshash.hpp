@@ -19,17 +19,13 @@ public:
     const std::shared_ptr<const Abstract> from_cache(const Args&... args) {
         const auto ce {std::make_tuple(args...)};
         const auto it {cache.find(ce)};
-        if (it == cache.end()) {
+        if (it == cache.end() || it->second.expired()) {
             const std::shared_ptr<const Abstract> res {new Concrete(args...)};
-            cache.emplace(ce, res);
+            cache.insert_or_assign(ce, res);
             return res;
         } else {
             return it->second.lock();
         }
-    }
-
-    void erase(const Args&... args) {
-        cache.erase(std::make_tuple(args...));
     }
 
 };

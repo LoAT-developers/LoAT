@@ -3,6 +3,8 @@
 *.so
 *.a
 
+docker/loat-base-image/usr
+
 # latex build files
 *.synctex.gz
 *.blg
@@ -29,6 +31,8 @@ benchmarks*
 .*
 !.vscode
 !.devcontainer
+!.github/
+!.gitattributes
 
 # build stuff
 cmake-build-debug

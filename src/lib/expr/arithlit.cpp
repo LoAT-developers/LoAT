@@ -38,8 +38,8 @@ std::pair<std::optional<ArithExprPtr>, std::optional<ArithExprPtr>> ArithLit::ge
     const auto optSolved {arith::solveTermFor(geq, N)};
     if (optSolved) {
         const auto coeff {*geq->coeff(N)};
-        const auto r {coeff->isRational()};
-        if (*r > 0) {
+        const auto r {***coeff->isRational()};
+        if (r > 0) {
             return {{*optSolved}, {}};
         } else {
             return {{}, {*optSolved}};
@@ -144,7 +144,7 @@ ArithLit arith::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
     return mkGt(-x, -y);
 }
 
-ArithLit operator!(const ArithLit &x) { 
+ArithLit operator!(const ArithLit &x) {
     return ArithLit(arith::mkConst(1) - x.lhs());
 }
 
