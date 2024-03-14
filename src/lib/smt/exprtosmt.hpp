@@ -41,7 +41,7 @@ protected:
 
     EXPR convertBoolEx(const Bools::Expr e) {
         if (e->getTheoryLit()) {
-            std::visit(
+            return std::visit(
                 Overload {
                     [&](const ArithLit &lit) {
                         return convertRelational(lit);
@@ -66,29 +66,30 @@ protected:
 
     EXPR convertEx(const Arith::Expr e){
         return e->apply<EXPR>(
-            [this](const ArithConstPtr &r) {
+            [&](const ArithConstPtr &r) {
                 return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
             },
-            [this](const Arith::Var x) {
+            [&](const Arith::Var x) {
                 auto optVar = context.getVariable(x);
                 if (optVar) {
                     return *optVar;
                 }
                 return context.addNewVariable(x);
             },
-            [this](const ArithAddPtr a) {
+            [&](const ArithAddPtr a) {
                 const auto args {a->getArgs()};
-                return std::accumulate(args.begin(), args.end(), context.getInt(0), [this](const auto &x, const auto y) {
+                const auto res {std::accumulate(args.begin(), args.end(), context.getInt(0), [&](const auto &x, const auto y) {
                     return context.plus(x, convertEx(y));
-                });
+                })};
+                return res;
             },
-            [this](const ArithMultPtr m) {
+            [&](const ArithMultPtr m) {
                 const auto args {m->getArgs()};
-                return std::accumulate(args.begin(), args.end(), context.getInt(1), [this](const auto &x, const auto y) {
+                return std::accumulate(args.begin(), args.end(), context.getInt(1), [&](const auto &x, const auto y) {
                     return context.times(x, convertEx(y));
                 });
             },
-            [this](const ArithExpPtr e) {
+            [&](const ArithExpPtr e) {
                 const auto base {e->getBase()};
                 const auto exp {e->getExponent()};
                 const auto int_exp {exp->isInt()};
@@ -108,7 +109,8 @@ protected:
     }
 
     EXPR convertRelational(const ArithLit &rel) {
-        return context.gt(convertEx(rel.lhs()), context.getInt(0));
+        const auto res {context.gt(convertEx(rel.lhs()), context.getInt(0))};
+        return res;
     }
 
     EXPR convertLit(const BoolLit &lit) {
