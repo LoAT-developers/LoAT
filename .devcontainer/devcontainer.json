@@ -4,7 +4,7 @@
 	"name": "Alpine",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 //	"image": "mcr.microsoft.com/devcontainers/base:alpine-3.19",
-        "build": { "dockerfile": "Dockerfile" }
+	"build": { "dockerfile": "Dockerfile" },
 	"customizations": {
 		"vscode": {
 			"extensions": [
