@@ -8,17 +8,17 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/workspaces/LoAT-docker/build/debug/loat-static",
+            "program": "${workspaceFolder}/build/debug/loat-static",
             "args": [
                 "--format", "horn",
                 "--mode", "reachability",
                 "--engine", "adcl",
                 "--smt", "swine",
                 "--log", "--proof-level", "100",
-                "/workspaces/LoAT-docker/test.smt2"
+                "${workspaceFolder}/test.smt2"
             ],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}/build/debug/",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
