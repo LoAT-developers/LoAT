@@ -303,14 +303,14 @@ void Reachability::print_state() {
         return;
     }
     Proof state_p;
-    state_p.section("Trace");
+    state_p.headline("Trace");
     std::stringstream s;
     for (const auto &x: trace) {
         s << x << std::endl;
     }
     state_p.append(s);
     s.clear();
-    state_p.section("Blocked");
+    state_p.headline("Blocked");
     for (const auto &e: blocked_clauses) {
         s << "{";
         bool first_trans = true;
@@ -371,7 +371,7 @@ void Reachability::unsat() {
     }
     proof.headline("Refute");
     Proof subProof;
-    subProof.section("Counterexample");
+    subProof.headline("Counterexample");
     subProof.append(counterexample);
     proof.storeSubProof(subProof);
     proof.result(res);

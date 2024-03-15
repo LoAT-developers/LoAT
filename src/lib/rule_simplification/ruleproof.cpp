@@ -8,7 +8,7 @@ void RuleProof::ruleTransformationProof(const Rule &oldRule, const std::string &
     if (Proof::disabled()) {
         return;
     }
-    section(transformation);
+    headline(transformation);
     std::stringstream s;
     s << "Original rule:\n";
     RuleExport::printRule(oldRule, s);

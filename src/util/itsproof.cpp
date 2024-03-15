@@ -21,7 +21,7 @@ void ITSProof::deletionProof(const linked_hash_set<TransIdx> &rules) {
         return;
     }
     if (!rules.empty()) {
-        section("Applied Deletion");
+        headline("Applied Deletion");
         std::stringstream s;
         s << "Removed the following rules: ";
         bool first {true};
@@ -41,7 +41,7 @@ void ITSProof::chainingProof(const Rule &fst, const Rule &snd, const Rule &newRu
     if (Proof::disabled()) {
         return;
     }
-    section("Applied Chaining");
+    headline("Applied Chaining");
     std::stringstream s;
     s << "First rule:\n";
     RuleExport::printRule(fst, s);

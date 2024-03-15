@@ -11,7 +11,6 @@ bool Proof::disabled() {
     return proofLevel <= 0;
 }
 
-const std::string SectionColor = "\033[0;4;33m"; // underlined yellow
 const std::string HeadlineColor = "\033[1;4;33m"; // bold underlined yellow
 const std::string WarningColor = "\033[1;31m"; // bold red
 const std::string ResultColor = "\033[1;32m"; // bold green
@@ -42,8 +41,6 @@ void Proof::print(unsigned level) const {
                     case None: std::cout << NoColor;
                         break;
                     case Result: std::cout << ResultColor;
-                        break;
-                    case Section: std::cout << SectionColor;
                         break;
                     case Headline: std::cout << HeadlineColor;
                         break;
@@ -115,20 +112,6 @@ void Proof::headline(const std::ostream &s) {
     std::stringstream str;
     str << s.rdbuf();
     headline(str.str());
-}
-
-void Proof::section(const std::string &s) {
-    newline();
-    append(Section, s);
-}
-
-void Proof::section(const std::ostream &s) {
-    if (Proof::disabled()) {
-        return;
-    }
-    std::stringstream str;
-    str << s.rdbuf();
-    section(str.str());
 }
 
 void Proof::result(const std::string &s) {

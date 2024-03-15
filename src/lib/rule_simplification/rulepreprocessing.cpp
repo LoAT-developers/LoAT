@@ -74,9 +74,10 @@ RuleResult simplify(const Rule &rule) {
     RuleResult res {rule};
     const auto new_guard {GuardToolbox::simplify(rule.getGuard())};
     if (new_guard) {
-        res = rule.withGuard(*new_guard);
-        res.append("Simplified Guard");
+        res.headline("Simplified Guard");
+        res.appendAll("Original Guard:\n", rule.getGuard(), "\nNew Guard:\n", *new_guard);
         res.storeSubProof(new_guard.getProof());
+        res = rule.withGuard(*new_guard);
     }
     return res;
 }

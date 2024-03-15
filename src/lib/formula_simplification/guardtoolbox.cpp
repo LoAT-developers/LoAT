@@ -167,8 +167,9 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::simplify(Bools::Expr e) {
     ResultBase<Bools::Expr, Proof> res {e};
     e = e->simplify();
     if (*res != e) {
+        res.headline("Simplified Formula");
+        res.appendAll("Original Formula:\n", *res, "\nNew Formula:\n", e);
         res = e;
-        res.append("Simplified Formula");
     }
     return res;
 }

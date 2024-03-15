@@ -63,14 +63,6 @@ public:
         proof.headline(s);
     }
 
-    void section(const std::string &s) {
-        proof.section(s);
-    }
-
-    void section(const std::ostream &s) {
-        proof.section(s);
-    }
-
     void result(const std::string &s) {
         proof.result(s);
     }

@@ -33,7 +33,6 @@
 class Proof {
 public:
     enum Style {
-        Section,
         Headline,
         Result,
         None
@@ -54,10 +53,6 @@ public:
     void headline(const std::string &s);
 
     void headline(const std::ostream &s);
-
-    void section(const std::string &s);
-
-    void section(const std::ostream &s);
 
     void result(const std::string &s);
 
