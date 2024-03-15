@@ -19,12 +19,19 @@ public:
 
     template <ITheory T>
     void put(const typename T::Var &var, const typename T::Const &val) {
-        std::get<linked_hash_map<typename T::Var, typename T::Const>>(m).emplace(var, val);
+        std::get<linked_hash_map<typename T::Var, typename T::Const>>(m).put(var, val);
     }
 
     template <ITheory T>
     bool contains(const typename T::Var &var) const {
         return std::get<linked_hash_map<typename T::Var, typename T::Const>>(m).contains(var);
+    }
+
+    bool contains(const Var &var) const;
+
+    template <ITheory T>
+    typename T::Model& get() {
+        return std::get<typename T::Model>(m);
     }
 
     template <ITheory T>
@@ -36,13 +43,12 @@ private:
 
     template<std::size_t I = 0>
     inline void toSubsImpl(Subs &subs) const {
-        using Pair = Subs::Pair;
         if constexpr (I < num_theories) {
             using T = std::tuple_element_t<I, Theories>;
-            const auto &substitution {subs.get<T>()};
+            auto &substitution {subs.get<T>()};
             const auto &model {std::get<I>(m)};
-            for (const auto &[x,_]: substitution) {
-                subs.put(Pair(std::pair{x, T::constToExpr(model[x])}));
+            for (const auto &[x,_]: model) {
+                substitution.put(x, T::constToExpr(model[x]));
             }
             toSubsImpl<I+1>(subs);
         }
@@ -94,8 +100,14 @@ private:
             using Th = std::tuple_element_t<I, Theories>;
             const auto &substitution {subs.get<Th>()};
             const auto &model {std::get<I>(m)};
-            for (const auto &[key, _]: model) {
-                res.put<Th>(key, eval<Th>(substitution.get(key)));
+            auto &result {res.get<Th>()};
+            for (const auto &[key, _]: substitution) {
+                result.put(key, eval<Th>(substitution.get(key)));
+            }
+            for (const auto &[key, value]: model) {
+                if (!result.contains(key)) {
+                    result.put(key, value);
+                }
             }
             composeBackwardsImpl<I+1>(subs, res);
         }

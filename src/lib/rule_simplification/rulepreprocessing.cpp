@@ -111,28 +111,28 @@ RuleResult eliminateTempVars(Rule rule) {
     return eliminateByTransitiveClosure(rule, true, isTempOnlyInGuard);
 }
 
-bool removeTrivialUpdates(Subs &update) {
-    stack<Var> remove;
+RuleResult removeTrivialUpdates(const Rule &rule) {
+    RuleResult res{rule};
+    Subs update = rule.getUpdate();
+    VarSet remove;
     for (const auto &[x,v] : update) {
         if (TheTheory::varToExpr(x) == v) {
-            remove.push(x);
+            remove.insert(x);
         }
     }
-    if (remove.empty()) return false;
-    while (!remove.empty()) {
-        update.erase(remove.top());
-        remove.pop();
+    for (const auto &[x,v] : update.get<Arith>()) {
+        if (!remove.contains(x) && rule.getGuard()->getBounds(x).isEquality(v)) {
+            remove.insert(x);
+        }
     }
-    return true;
-}
-
-RuleResult removeTrivialUpdates(const Rule &rule) {
-    bool changed = false;
-    Subs up = rule.getUpdate();
-    changed |= removeTrivialUpdates(up);
-    RuleResult res{Rule(rule.getGuard(), up), changed};
-    if (res) {
-        res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
+    if (!remove.empty()) {
+        for (const auto &x: remove) {
+            update.erase(x);
+        }
+        res = Rule(rule.getGuard(), update);
+        if (res) {
+            res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
+        }
     }
     return res;
 }

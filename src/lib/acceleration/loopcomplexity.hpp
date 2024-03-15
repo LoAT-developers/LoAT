@@ -15,3 +15,5 @@ struct LoopComplexity {
 };
 
 std::strong_ordering operator <=>(const LoopComplexity &c1, const LoopComplexity &c2);
+
+std::ostream &operator<<(std::ostream &s, const LoopComplexity &c);

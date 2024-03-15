@@ -22,7 +22,7 @@ struct SymbolEqual {
 
 using purrs_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArithVarPtr>, boost::bimaps::unordered_set_of<Purrs::Symbol, SymbolHasher, SymbolEqual>>;
 
-std::pair<Purrs::Expr, purrs_var_map> toPurrs(const ArithExprPtr e);
+std::pair<Purrs::Expr, purrs_var_map> toPurrs(const ArithExprPtr e, const ArithVarPtr n);
 Purrs::Expr toPurrs(const ArithExprPtr e, purrs_var_map &);
 std::optional<ArithExprPtr> solveTermFor(const ArithExprPtr e, const ArithVarPtr var);
 ArithExprPtr fromPurrs(const Purrs::Expr &, const purrs_var_map &);

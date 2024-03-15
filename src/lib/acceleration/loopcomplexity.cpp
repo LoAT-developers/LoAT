@@ -3,10 +3,10 @@
 
 LoopComplexity LoopComplexity::compute(const Rule &rule) {
     LoopComplexity res;
-    for (const auto &[x,v]: rule.getUpdate()) {
-        const auto vars {theory::vars(v)};
+    for (const auto &[x, v] : rule.getUpdate()) {
+        const auto vars{theory::vars(v)};
         ++res.non_recursive;
-        for (const auto &y: vars) {
+        for (const auto &y : vars) {
             if (x == y) {
                 --res.non_recursive;
             } else if (theory::isTempVar(y)) {
@@ -16,21 +16,21 @@ LoopComplexity LoopComplexity::compute(const Rule &rule) {
             }
         }
     }
-    for (const auto &[x,v]: rule.getUpdate<Arith>()) {
-        const auto vars {v->vars()};
+    for (const auto &[x, v] : rule.getUpdate<Arith>()) {
+        const auto vars{v->vars()};
         if (vars.contains(x) && v->isPoly(x) == 1) {
-            const auto coeff {v->coeff(x)};
+            const auto coeff{v->coeff(x)};
             if (coeff) {
-                const auto c {(*coeff)->isRational()};
-                if (c && *c < 0) {
+                const auto c{(*coeff)->isRational()};
+                if (c && ***c < 0) {
                     ++res.negated;
                 }
             }
         }
     }
-    for (const auto &[x,v]: rule.getUpdate().get<Bools>()) {
-        const auto lits {v->lits()};
-        const auto lit {BoolLit(x)};
+    for (const auto &[x, v] : rule.getUpdate().get<Bools>()) {
+        const auto lits{v->lits()};
+        const auto lit{BoolLit(x)};
         if (lits.contains(!lit) && !lits.contains(lit)) {
             ++res.negated;
         }
@@ -38,8 +38,8 @@ LoopComplexity LoopComplexity::compute(const Rule &rule) {
     return res;
 }
 
-std::strong_ordering operator <=>(const LoopComplexity &c1, const LoopComplexity &c2) {
-    auto cmp {c1.non_recursive <=> c2.non_recursive};
+std::strong_ordering operator<=>(const LoopComplexity &c1, const LoopComplexity &c2) {
+    auto cmp{c1.non_recursive <=> c2.non_recursive};
     if (cmp != std::strong_ordering::equal) {
         return cmp;
     }
@@ -56,4 +56,14 @@ std::strong_ordering operator <=>(const LoopComplexity &c1, const LoopComplexity
 
 std::strong_ordering LoopComplexity::compare(const Rule &r1, const Rule &r2) {
     return compute(r1) <=> compute(r2);
+}
+
+std::ostream &operator<<(std::ostream &s, const LoopComplexity &c) {
+    return std::cout
+           << "{"
+           << "negated: " << c.negated
+           << ", non-recursive: " << c.non_recursive
+           << ", foreign vars: " << c.foreign_vars
+           << ", tmp vars: " << c.tmp_vars
+           << "}";
 }

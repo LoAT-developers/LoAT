@@ -103,7 +103,7 @@ void VarEliminator::eliminate() {
             for (auto it2 = std::next(it); it2 != bounds.upperBounds.end();) {
                 const auto diff {(*it - *it2)->isRational()};
                 if (diff) {
-                    if (*diff > 0) {
+                    if (***diff > 0) {
                         it = bounds.upperBounds.erase(it);
                         removed = true;
                         break;

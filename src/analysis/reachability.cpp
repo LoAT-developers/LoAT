@@ -269,6 +269,7 @@ void Reachability::print_trace(std::ostream &s) {
     s << "(";
     bool first {true};
     for (const auto &x: prog_vars) {
+        if (!model.contains(x)) continue;
         const auto &y {model.get(x)};
         if (first) {
             first = false;
@@ -408,8 +409,8 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     switch (solver->check()) {
     case Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
-        const auto model {solver->model(guard->vars())};
-        const auto implicant {model.composeBackwards(projected_var_renaming).syntacticImplicant(idx->getGuard())};
+        const auto model {solver->model(guard->vars()).composeBackwards(projected_var_renaming)};
+        const auto implicant {model.syntacticImplicant(idx->getGuard())};
         return {idx->withGuard(implicant)};
     }
     case Unknown: {}

@@ -56,7 +56,7 @@ void ArithLit::getBounds(const ArithVarPtr n, Bounds &res) const {
             for (const auto &b: res.lowerBounds) {
                 const auto diff {b - *p.first};
                 const auto r {diff->isRational()};
-                if (r && *r >= 0) {
+                if (r && ***r >= 0) {
                     add = false;
                     break;
                 }
@@ -70,7 +70,7 @@ void ArithLit::getBounds(const ArithVarPtr n, Bounds &res) const {
             for (const auto &b: res.upperBounds) {
                 const auto diff {b - *p.second};
                 const auto r {diff->isRational()};
-                if (r && *r <= 0) {
+                if (r && ***r <= 0) {
                     add = false;
                     break;
                 }
@@ -95,7 +95,7 @@ bool ArithLit::isTriviallyFalse() const {
 std::optional<bool> ArithLit::checkTrivial() const {
     const auto r {l->isRational()};
     if (r) {
-        return *r > 0;
+        return ***r > 0;
     }
     return {};
 }
@@ -154,4 +154,18 @@ std::ostream& operator<<(std::ostream &s, const ArithLit &rel) {
 
 bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
     return l->eval(m) > 0;
+}
+
+ArithExprSet Bounds::equalities() const {
+    ArithExprSet res;
+    for (const auto &b : lowerBounds) {
+        if (upperBounds.contains(b)) {
+            res.insert(b);
+        }
+    }
+    return res;
+}
+
+bool Bounds::isEquality(const ArithExprPtr ex) const {
+    return lowerBounds.contains(ex) && upperBounds.contains(ex);
 }

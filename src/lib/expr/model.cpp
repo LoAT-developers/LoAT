@@ -37,6 +37,14 @@ Const Model::get(const Var &var) const {
             return Const{std::get<typename T::Model>(m)[x]};
         });
 }
+bool Model::contains(const Var &var) const {
+    return theory::apply(
+        var,
+        [&](const auto& x) {
+            using T = decltype(theory::theory(x));
+            return contains<T>(std::get<typename T::Var>(var));
+        });
+}
 
 void syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
     if (e->isAnd() || e->isOr()) {

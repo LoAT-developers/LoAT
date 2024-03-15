@@ -9,15 +9,9 @@ struct Bounds {
     ArithExprSet upperBounds {};
     ArithExprSet lowerBounds {};
 
-    ArithExprSet equalities() const {
-        ArithExprSet res;
-        for (const auto &b: lowerBounds) {
-            if (upperBounds.contains(b)) {
-                res.insert(b);
-            }
-        }
-        return res;
-    }
+    ArithExprSet equalities() const;
+
+    bool isEquality(const ArithExprPtr ex) const;
 
 };
 

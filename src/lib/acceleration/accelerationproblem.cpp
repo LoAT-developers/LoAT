@@ -73,7 +73,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         const auto coeff {*nfold->coeff(config.n, 1)};
         const auto c {coeff->isRational()};
         if (c) {
-            if (*c > 0) {
+            if (***c > 0) {
                 guard.insert(rel);
             } else {
                 guard.insert(rel.subs(but_last));
@@ -89,7 +89,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         const auto coeff {*nfold->coeff(config.n, 2)};
         const auto c {coeff->isRational()};
         if (c) {
-            if (*c < 0) {
+            if (***c < 0) {
                 guard.insert(rel);
                 guard.insert(rel.subs(but_last));
                 res.nonterm = false;

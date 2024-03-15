@@ -12,9 +12,9 @@ bool isTriviallyUnsatisfiable(const InftyExpression &p) {
     if (r) {
         if (d == POS_INF || d == NEG_INF) {
             return true;
-        } else if ((d == POS_CONS || d == POS) && *r <= 0) {
+        } else if ((d == POS_CONS || d == POS) && ***r <= 0) {
             return true;
-        } else if (d == NEG_CONS && *r >= 0) {
+        } else if (d == NEG_CONS && ***r >= 0) {
             return true;
         }
     }

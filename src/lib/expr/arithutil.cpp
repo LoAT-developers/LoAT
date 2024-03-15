@@ -3,8 +3,9 @@
 
 namespace arith {
 
-std::pair<Purrs::Expr, purrs_var_map> toPurrs(const ArithExprPtr e) {
+std::pair<Purrs::Expr, purrs_var_map> toPurrs(const ArithExprPtr e, const ArithVarPtr n) {
     purrs_var_map m;
+    m.left.insert(purrs_var_map::left_value_type(n, Purrs::Recurrence::n));
     const auto res {toPurrs(e, m)};
     return {res, m};
 }
@@ -70,19 +71,19 @@ ArithExprPtr fromPurrs(const Purrs::Expr &e, const purrs_var_map &map) {
     if (e.is_a_add()) {
         std::vector<ArithExprPtr> args;
         for (unsigned i = 0; i < e.nops(); ++i) {
-            args.push_back(fromPurrs(e.arg(i), map));
+            args.push_back(fromPurrs(e.op(i), map));
         }
         return mkPlus(args);
     }
     if (e.is_a_mul()) {
         std::vector<ArithExprPtr> args;
         for (unsigned i = 0; i < e.nops(); ++i) {
-            args.push_back(fromPurrs(e.arg(i), map));
+            args.push_back(fromPurrs(e.op(i), map));
         }
         return mkTimes(args);
     }
     if (e.is_a_power()) {
-        return mkExp(fromPurrs(e.arg(0), map), fromPurrs(e.arg(1), map));
+        return mkExp(fromPurrs(e.op(0), map), fromPurrs(e.op(1), map));
     }
     throw std::invalid_argument("unknown purrs expression " + toString(e));
 }
