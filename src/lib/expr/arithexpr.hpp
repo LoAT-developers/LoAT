@@ -32,6 +32,7 @@
 #include "linkedhashmap.hpp"
 #include "string.hpp"
 #include "conshash.hpp"
+#include "notnull.hpp"
 
 class ArithVar;
 class ArithExpr;
@@ -41,12 +42,12 @@ class ArithExp;
 class ArithAdd;
 class ArithMult;
 
-using ArithExprPtr = std::shared_ptr<const ArithExpr>;
-using ArithVarPtr = std::shared_ptr<const ArithVar>;
-using ArithConstPtr = std::shared_ptr<const ArithConst>;
-using ArithAddPtr = std::shared_ptr<const ArithAdd>;
-using ArithMultPtr = std::shared_ptr<const ArithMult>;
-using ArithExpPtr = std::shared_ptr<const ArithExp>;
+using ArithExprPtr = cpp::not_null<std::shared_ptr<const ArithExpr>>;
+using ArithVarPtr = cpp::not_null<std::shared_ptr<const ArithVar>>;
+using ArithConstPtr = cpp::not_null<std::shared_ptr<const ArithConst>>;
+using ArithAddPtr = cpp::not_null<std::shared_ptr<const ArithAdd>>;
+using ArithMultPtr = cpp::not_null<std::shared_ptr<const ArithMult>>;
+using ArithExpPtr = cpp::not_null<std::shared_ptr<const ArithExp>>;
 using ArithExprSet = linked_hash_set<ArithExprPtr>;
 
 namespace mp = boost::multiprecision;
@@ -237,9 +238,10 @@ class ArithConst: public ArithExpr {
 
     friend ArithExprPtr arith::mkConst(const Rational &r);
 
-private:
-
+public:
     ArithConst(const Rational &t);
+
+private:
     Rational t;
 
     struct CacheEqual {
@@ -273,8 +275,10 @@ private:
 
     int idx;
 
+public:
     explicit ArithVar(const int idx);
 
+private:
     struct CacheEqual {
         bool operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept;
     };
@@ -323,6 +327,7 @@ private:
     friend ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprSet>;
     static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprSet> cache;
 
+public:
     ArithAdd(const ArithExprSet &args);
 
 };
@@ -349,6 +354,7 @@ private:
     friend ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprSet>;
     static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprSet> cache;
 
+public:
     ArithMult(const ArithExprSet &args);
 
 };
@@ -363,8 +369,10 @@ private:
     ArithExprPtr base;
     ArithExprPtr exponent;
 
+public:
     ArithExp(const ArithExprPtr base, const ArithExprPtr exponent);
 
+private:
     struct CacheEqual {
         bool operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args1, const std::tuple<ArithExprPtr, ArithExprPtr> &args2) const noexcept;
     };

@@ -63,7 +63,7 @@ private:
     Proof proof {};
     DependencyGraph<Transition> dependency_graph {};
     unsigned depth {0};
-    Bools::Expr step {};
+    Bools::Expr step {bot()};
 
     Bools::Expr encode_transition(const Transition &idx);
     void add_blocking_clauses();

@@ -37,7 +37,7 @@ public:
 
 };
 
-std::ostream& operator<<(std::ostream &s, const BoolVar &e);
+std::ostream& operator<<(std::ostream &s, const BoolVarPtr e);
 
 template<>
 struct std::hash<BoolVar> {

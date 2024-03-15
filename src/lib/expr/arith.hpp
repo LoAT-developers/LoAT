@@ -23,7 +23,7 @@ struct Arith {
     }
 
     static Expr anyValue() {
-        return 0;
+        return arith::mkConst(0);
     }
 
     static Var next() {

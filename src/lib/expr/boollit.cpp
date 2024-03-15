@@ -1,4 +1,5 @@
 #include "boollit.hpp"
+#include "optional.hpp"
 
 #include <stdexcept>
 #include <ostream>
@@ -58,5 +59,7 @@ std::ostream& operator<<(std::ostream &s, const BoolLit &l) {
 }
 
 bool BoolLit::eval(const linked_hash_map<BoolVarPtr, bool> &model) const {
-    return negated != model[var];
+    return map<bool, bool>(model.get(var), [&](const auto &b) {
+        return negated != b;
+    }).value_or(false);
 }

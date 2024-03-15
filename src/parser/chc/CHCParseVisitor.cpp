@@ -28,9 +28,6 @@ using sort_type = Sort;
 template<class T>
 Res<T>::Res(const T &t): t(t) {}
 
-template<class T>
-Res<T>::Res() {}
-
 LocationIdx CHCParseVisitor::loc(const std::string &name) {
     auto it = locations.find(name);
     if (it == locations.end()) {
@@ -237,7 +234,7 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
 
 antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) {
     std::vector<Bools::Expr> args;
-    Res<Bools::Expr> res;
+    Res<Bools::Expr> res {bot()};
     if (ctx->lets()) {
         const auto bindings = any_cast<lets_type>(visit(ctx->lets()));
         const auto formula = any_cast<formula_type>(visit(ctx->i_formula(0)));
@@ -321,7 +318,7 @@ Var CHCParseVisitor::var(const std::string &name, Sort sort) {
 
 antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
     const auto name = unescape(ctx->var()->getText());
-    let_type ret;
+    let_type ret {Subs()};
     if (ctx->formula_or_expr()) {
         const auto res = any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr()));
         ret.conjoin(res);
@@ -347,7 +344,7 @@ antlrcpp::Any CHCParseVisitor::visitLet(CHCParser::LetContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitLets(CHCParser::LetsContext *ctx) {
-    Res<Subs> res;
+    Res<Subs> res {Subs()};
     for (const auto &c: ctx->let()) {
         const auto r = any_cast<let_type>(visit(c));
         res.conjoin(r);
@@ -369,7 +366,7 @@ antlrcpp::Any CHCParseVisitor::visitBoolop(CHCParser::BoolopContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitLit(CHCParser::LitContext *ctx) {
-    Res<Bools::Expr> res;
+    Res<Bools::Expr> res {bot()};
     if (ctx->formula_or_expr().size() == 2) {
         const auto p1 = any_cast<formula_or_expr_type>(visit(ctx->formula_or_expr(0)));
         res.conjoin(p1);
@@ -444,7 +441,7 @@ antlrcpp::Any CHCParseVisitor::visitRelop(CHCParser::RelopContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprContext *ctx) {
-    formula_or_expr_type res;
+    formula_or_expr_type res {bot()};
     if (ctx->var()) {
         res.t = theory::toExpr(any_cast<Var>(visitVar(ctx->var())));
     } else if (ctx->lets()) {
@@ -485,7 +482,7 @@ antlrcpp::Any CHCParseVisitor::visitFormula_or_expr(CHCParser::Formula_or_exprCo
 }
 
 antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
-    Res<Arith::Expr> res;
+    Res<Arith::Expr> res {arith::mkConst(0)};
     std::vector<Arith::Expr> args;
     if (ctx->lets()) {
         const auto bindings = any_cast<lets_type>(visit(ctx->lets()));
@@ -534,10 +531,10 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
                 }
             }
             if (!explicit_encoding) {
-                res.refinement.push_back(bools::mkLit(arith::mkGeq(mod, 0))); // x mod y is non-negative
+                res.refinement.push_back(bools::mkLit(arith::mkGeq(mod, arith::mkConst(0)))); // x mod y is non-negative
                 res.refinement.push_back( // |y| > x mod y
-                    bools::mkAndFromLits({arith::mkGt(args[1], 0), arith::mkGt(args[1], mod)})
-                    || bools::mkAndFromLits({arith::mkLt(args[1], 0), arith::mkGt(-args[1], mod)}));
+                    bools::mkAndFromLits({arith::mkGt(args[1], arith::mkConst(0)), arith::mkGt(args[1], mod)})
+                    || bools::mkAndFromLits({arith::mkLt(args[1], arith::mkConst(0)), arith::mkGt(-args[1], mod)}));
             }
             if (op == Div) {
                 res.t = Arith::varToExpr(div);

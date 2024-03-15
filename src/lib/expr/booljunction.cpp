@@ -14,7 +14,7 @@ size_t BoolJunction::CacheHash::operator()(const std::tuple<BoolExprSet, ConcatO
     return hash;
 }
 
-BoolExprPtr BoolJunction::from_cache(const BoolExprSet &children, ConcatOperator op) {
+Bools::Expr BoolJunction::from_cache(const BoolExprSet &children, ConcatOperator op) {
     return cache.from_cache(children, op);
 }
 
@@ -40,7 +40,7 @@ BoolExprSet BoolJunction::getChildren() const {
     return children;
 }
 
-const BoolExprPtr BoolJunction::negation() const {
+const Bools::Expr BoolJunction::negation() const {
     BoolExprSet newChildren;
     for (const auto &c: children) {
         newChildren.insert(c->negation());

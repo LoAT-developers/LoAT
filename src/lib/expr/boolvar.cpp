@@ -27,8 +27,8 @@ int BoolVar::getIdx() const {
     return idx;
 }
 
-std::ostream& operator<<(std::ostream &s, const BoolVar &e) {
-    return s << e.getName();
+std::ostream& operator<<(std::ostream &s, const BoolVarPtr e) {
+    return s << e->getName();
 }
 
 BoolVarPtr BoolVar::next() {

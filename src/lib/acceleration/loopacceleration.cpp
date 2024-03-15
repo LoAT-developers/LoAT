@@ -97,7 +97,7 @@ void LoopAcceleration::compute_closed_form() {
                 for (const auto &z: vars) {
                     if (z->isTempVar()) {
                         const auto bounds {rule.getGuard()->getBounds(z)};
-                        const auto coeff {*(*y->coeff(z))->isRational()};
+                        const auto coeff {***(*y->coeff(z))->isRational()};
                         auto lower_bounded {false};
                         auto upper_bounded {false};
                         for (const auto &b: bounds.lowerBounds) {

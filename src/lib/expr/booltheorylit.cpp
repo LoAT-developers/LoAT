@@ -13,7 +13,7 @@ size_t BoolTheoryLit::CacheHash::operator()(const std::tuple<Lit> &args) const n
 
 BoolTheoryLit::BoolTheoryLit(const Lit &lit) : lit(lit) {}
 
-BoolExprPtr BoolTheoryLit::from_cache(const Lit &lit) {
+Bools::Expr BoolTheoryLit::from_cache(const Lit &lit) {
     return cache.from_cache(lit);
 }
 
@@ -37,7 +37,7 @@ BoolExprSet BoolTheoryLit::getChildren() const {
     return {};
 }
 
-const BoolExprPtr BoolTheoryLit::negation() const {
+const Bools::Expr BoolTheoryLit::negation() const {
     return BoolExpr::mkLit(theory::negate(lit));
 }
 

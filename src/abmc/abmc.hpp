@@ -28,7 +28,7 @@ private:
     SmtPtr solver {SmtFactory::solver()};
     bool approx {false};
     unsigned last_orig_clause {};
-    Bools::Expr query {};
+    Bools::Expr query {bot()};
     std::vector<Subs> subs {Subs::Empty};
     std::vector<Implicant> trace {};
     VarSet vars {};

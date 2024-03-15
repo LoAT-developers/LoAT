@@ -1,5 +1,7 @@
 #pragma once
 
+#include "notnull.hpp"
+
 #include <unordered_map>
 #include <memory>
 
@@ -16,15 +18,15 @@ protected:
 
 public:
 
-    const std::shared_ptr<const Abstract> from_cache(const Args&... args) {
+    const cpp::not_null<std::shared_ptr<const Abstract>> from_cache(const Args&... args) {
         const auto ce {std::make_tuple(args...)};
         const auto it {cache.find(ce)};
         if (it == cache.end() || it->second.expired()) {
-            const std::shared_ptr<const Abstract> res {new Concrete(args...)};
+            const auto res {std::make_shared<Concrete>(args...)};
             cache.insert_or_assign(ce, res);
-            return res;
+            return cpp::assume_not_null(res);
         } else {
-            return it->second.lock();
+            return cpp::assume_not_null(it->second.lock());
         }
     }
 

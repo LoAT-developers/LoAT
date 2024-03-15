@@ -10,8 +10,8 @@ class SafetyProblem {
     std::shared_ptr<const linked_hash_map<Var, Var>> variables;
     VarSet pre_variables;
     VarSet post_variables;
-    Bools::Expr initial_states;
-    Bools::Expr error_states;
+    Bools::Expr initial_states {bot()};
+    Bools::Expr error_states {bot()};
 
 public:
 

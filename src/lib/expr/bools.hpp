@@ -3,6 +3,7 @@
 #include "itheory.hpp"
 #include "boollit.hpp"
 #include "boolvar.hpp"
+#include "notnull.hpp"
 
 #include <memory>
 
@@ -13,7 +14,7 @@ struct BoolsBase {
     using Lit = BoolLit;
     using Var = BoolVarPtr;
     using Const = bool;
-    using Expr = std::shared_ptr<const BoolExpr>;
+    using Expr = cpp::not_null<std::shared_ptr<const BoolExpr>>;
     using Model = linked_hash_map<Var, Const>;
 
     static Expr constToExpr(const Const val);

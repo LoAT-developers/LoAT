@@ -39,7 +39,7 @@ static Bools::Expr negConstraint(const map<Int, Arith::Expr>& coefficients) {
             conjunction.push_back(arith::mkGeq(c, arith::mkConst(0)));
             conjunction.push_back(arith::mkLeq(c, arith::mkConst(0)));
         } else {
-            conjunction.push_back(arith::mkLt(c, 0));
+            conjunction.push_back(arith::mkLt(c, arith::mkConst(0)));
         }
     }
     return bools::mkAndFromLits(conjunction);
@@ -111,7 +111,7 @@ static map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::
 
 std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
-    const auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Arith::Lit>, ArithSubs>({currentLP.getQuery(), {arith::mkGt(cost, 0)}}, {}))};
+    const auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Arith::Lit>, ArithSubs>({currentLP.getQuery(), {arith::mkGt(cost, arith::mkConst(0))}}, {}))};
     // the parameter of the desired family of solutions
     const auto n {currentLP.getN()};
     // get all relevant variables
@@ -228,7 +228,7 @@ Bools::Expr encodeBoolExpr(const Bools::Expr expr, const ArithSubs &templateSubs
 
 std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
-    auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, 0))}))};
+    auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, arith::mkConst(0)))}))};
     // the parameter of the desired family of solutions
     const auto n {ArithVar::next()};
     // get all relevant variables

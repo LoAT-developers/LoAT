@@ -25,7 +25,7 @@ AccelerationProblem::AccelerationProblem(
     const auto logic {Smt::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
-        const auto bound {bools::mkLit(ArithLit(config.n->toExpr() - arith::mkConst(1)))};
+        const auto bound {bools::mkLit(ArithLit(config.n->toExpr()))};
         this->solver->add(bound);
         this->res.formula.push_back(bound);
     }
@@ -104,7 +104,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             auto sample_point {samplePoint->get<Arith>()};
             std::vector<Arith::Expr> derivatives {rel.lhs()};
             std::vector<Rational> signs {(*sample_point(rel.lhs())->isRational())->getValue()};
-            Arith::Expr diff;
+            Arith::Expr diff {arith::mkConst(0)};
             do {
                 const auto &last {derivatives.back()};
                 diff = up(last) - last;
@@ -129,23 +129,23 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             }
             for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
                 if (signs.at(i) > 0) {
-                    covered.insert(arith::mkGeq(derivatives.at(i), 0));
+                    covered.insert(arith::mkGeq(derivatives.at(i), arith::mkConst(0)));
                 } else {
-                    covered.insert(arith::mkLeq(derivatives.at(i), 0));
+                    covered.insert(arith::mkLeq(derivatives.at(i), arith::mkConst(0)));
                 }
                 if (signs.at(i+1) > 0) {
                     // the i-th derivative is monotonically increasing at the sampling point
                     if (signs.at(i) > 0) {
-                        guard.insert(arith::mkGeq(derivatives.at(i), 0));
+                        guard.insert(arith::mkGeq(derivatives.at(i), arith::mkConst(0)));
                     } else {
-                        guard.insert(arith::mkLeq(but_last(derivatives.at(i)), 0));
+                        guard.insert(arith::mkLeq(but_last(derivatives.at(i)), arith::mkConst(0)));
                     }
                 } else {
                     res.nonterm = false;
                     if (signs.at(i) > 0) {
-                        guard.insert(arith::mkGeq(but_last(derivatives.at(i)), 0));
+                        guard.insert(arith::mkGeq(but_last(derivatives.at(i)), arith::mkConst(0)));
                     } else {
-                        guard.insert(arith::mkLeq(derivatives.at(i), 0));
+                        guard.insert(arith::mkLeq(derivatives.at(i), arith::mkConst(0)));
                     }
                 }
             }
@@ -251,8 +251,8 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         const auto success {solver->check() == Unsat};
         solver->pop();
         if (success) {
-            Bools::Expr g;
-            Bools::Expr c;
+            Bools::Expr g {bot()};
+            Bools::Expr c {bot()};
             if (samplePoint && i.subs(samplePoint->get<Arith>()).isTriviallyFalse()) {
                 if (!closed) {
                     solver->pop();

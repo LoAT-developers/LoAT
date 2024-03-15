@@ -83,7 +83,7 @@ ArithExprPtr fromPurrs(const Purrs::Expr &e, const purrs_var_map &map) {
         return mkTimes(args);
     }
     if (e.is_a_power()) {
-        return mkExp(fromPurrs(e.op(0), map), fromPurrs(e.op(1), map));
+        return mkExp(fromPurrs(e.arg(0), map), fromPurrs(e.arg(1), map));
     }
     throw std::invalid_argument("unknown purrs expression " + toString(e));
 }

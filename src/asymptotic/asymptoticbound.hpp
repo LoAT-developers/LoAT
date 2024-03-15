@@ -87,7 +87,7 @@ public:
 
         Proof proof{};
 
-        explicit Result(Complexity c) : cpx(c), solvedCost(0), inftyVars(0) {}
+        explicit Result(Complexity c) : cpx(c), solvedCost(arith::mkConst(0)), inftyVars(0) {}
         Result(Complexity c, const Arith::Expr x, int v, Proof &proof) : cpx(c), solvedCost(x), inftyVars(v), proof(proof) {}
     };
 

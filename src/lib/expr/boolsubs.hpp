@@ -9,18 +9,18 @@
 
 class BoolSubs {
 
-    linked_hash_map<BoolVarPtr, BoolExprPtr> map{};
+    linked_hash_map<BoolVarPtr, Bools::Expr> map{};
 
 public:
 
-    typedef typename linked_hash_map<BoolVarPtr, BoolExprPtr>::const_iterator const_iterator;
+    typedef typename linked_hash_map<BoolVarPtr, Bools::Expr>::const_iterator const_iterator;
 
     BoolSubs();
-    BoolSubs(const BoolVarPtr key, const BoolExprPtr val);
-    void put(const BoolVarPtr key, const BoolExprPtr val);
-    BoolExprPtr get(const BoolVarPtr var) const;
-    BoolExprPtr subs(const BoolLit &lit) const;
-    BoolExprPtr operator()(const BoolExprPtr e) const;
+    BoolSubs(const BoolVarPtr key, const Bools::Expr val);
+    void put(const BoolVarPtr key, const Bools::Expr val);
+    Bools::Expr get(const BoolVarPtr var) const;
+    Bools::Expr subs(const BoolLit &lit) const;
+    Bools::Expr operator()(const Bools::Expr e) const;
     bool contains(const BoolVarPtr var) const;
     BoolSubs unite(const BoolSubs &t) const;
     BoolSubs project(const linked_hash_set<BoolVarPtr> &vars) const;

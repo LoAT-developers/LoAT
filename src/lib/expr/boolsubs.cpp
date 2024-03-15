@@ -2,22 +2,22 @@
 
 BoolSubs::BoolSubs() {}
 
-BoolSubs::BoolSubs(const BoolVarPtr key, const BoolExprPtr val): map({{key, val}}) {}
+BoolSubs::BoolSubs(const BoolVarPtr key, const Bools::Expr val): map({{key, val}}) {}
 
-void BoolSubs::put(const BoolVarPtr key, const BoolExprPtr val) {
+void BoolSubs::put(const BoolVarPtr key, const Bools::Expr val) {
     map.put(key, val);
 }
 
-BoolExprPtr BoolSubs::get(const BoolVarPtr var) const {
+Bools::Expr BoolSubs::get(const BoolVarPtr var) const {
     const auto res {map.get(var)};
     return res ? *res : bools::mkLit(BoolLit(var));
 }
 
-BoolExprPtr BoolSubs::subs(const BoolLit &lit) const {
+Bools::Expr BoolSubs::subs(const BoolLit &lit) const {
     return lit.isNegated() ? !get(lit.getBoolVar()) : get(lit.getBoolVar());
 }
 
-BoolExprPtr BoolSubs::operator()(const BoolExprPtr e) const {
+Bools::Expr BoolSubs::operator()(const Bools::Expr e) const {
     const auto lit = e->getTheoryLit();
     if (lit) {
         if (std::holds_alternative<BoolLit>(*lit)) {
@@ -33,7 +33,7 @@ BoolExprPtr BoolSubs::operator()(const BoolExprPtr e) const {
             return e;
         }
     } else if (e->isAnd() || e->isOr()) {
-        std::vector<BoolExprPtr> children;
+        std::vector<Bools::Expr> children;
         for (const auto &c: e->getChildren()) {
             children.push_back((*this)(c));
         }

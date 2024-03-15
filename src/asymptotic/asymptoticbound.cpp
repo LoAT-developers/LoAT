@@ -105,12 +105,12 @@ ArithSubs AsymptoticBound::calcSolution(const LimitProblem &limitProblem) {
     solution = solution.compose(limitProblem.getSolution());
 
     auto guardCopy = guard;
-    guardCopy.push_back(arith::mkGt(cost, 0));
+    guardCopy.push_back(arith::mkGt(cost, arith::mkConst(0)));
     for (const auto &lit : guardCopy) {
         const ArithLit &rel = std::get<ArithLit>(lit);
         for (const auto &var : rel.vars()) {
             if (!solution.contains(var)) {
-                solution = solution.compose({{var, 0}});
+                solution = solution.compose({{var, arith::mkConst(0)}});
             }
         }
     }
@@ -434,7 +434,8 @@ bool AsymptoticBound::tryReducingGeneralExp(const InftyExpressionSet::const_iter
 
 bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_iterator &it) {
     std::vector<LimitVector> *limitVectors;
-    Arith::Expr l, r;
+    Arith::Expr l {arith::mkConst(0)};
+    Arith::Expr r {arith::mkConst(0)};
     const auto e {it->first};
     const auto d {it->second};
     const auto has_limit_vectors
@@ -496,7 +497,8 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
 
 
 bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::const_iterator &it) {
-    Arith::Expr l, r;
+    Arith::Expr l {arith::mkConst(0)};
+    Arith::Expr r {arith::mkConst(0)};
     std::vector<LimitVector> *limitVectors;
     const auto e {it->first};
     const auto d {it->second};

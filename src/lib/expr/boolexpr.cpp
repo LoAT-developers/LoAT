@@ -1,21 +1,21 @@
 #include "boolexpr.hpp"
 #include "theory.hpp"
 
-const BoolExprPtr BoolExpr::from_cache(const BoolExprSet &children, ConcatOperator op) {
+const Bools::Expr BoolExpr::from_cache(const BoolExprSet &children, ConcatOperator op) {
     return BoolJunction::from_cache(children, op);
 }
 
-const BoolExprPtr BoolExpr::top() {
+const Bools::Expr BoolExpr::top() {
     const static auto res {from_cache(BoolExprSet{}, ConcatAnd)};
     return res;
 }
 
-const BoolExprPtr BoolExpr::bot() {
+const Bools::Expr BoolExpr::bot() {
     const static auto res {from_cache(BoolExprSet{}, ConcatOr)};
     return res;
 }
 
-const BoolExprPtr BoolExpr::mkLit(const Lit &lit) {
+const Bools::Expr BoolExpr::mkLit(const Lit &lit) {
     return BoolTheoryLit::from_cache(lit);
 }
 
@@ -55,7 +55,7 @@ Bounds BoolExpr::getBounds(const Arith::Var n) const {
     return bounds;
 }
 
-BoolExprPtr BoolExpr::linearize(const Arith::Var n) const {
+Bools::Expr BoolExpr::linearize(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -77,7 +77,7 @@ BoolExprPtr BoolExpr::linearize(const Arith::Var n) const {
     });
 }
 
-BoolExprPtr BoolExpr::toInfinity(const Arith::Var n) const {
+Bools::Expr BoolExpr::toInfinity(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -100,7 +100,7 @@ BoolExprPtr BoolExpr::toInfinity(const Arith::Var n) const {
     });
 }
 
-BoolExprPtr BoolExpr::toMinusInfinity(const Arith::Var n) const {
+Bools::Expr BoolExpr::toMinusInfinity(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -133,12 +133,13 @@ void BoolExpr::iter(const std::function<void(const Lit&)> &f) const {
     }
 }
 
-BoolExprPtr BoolExpr::map(const std::function<BoolExprPtr(const Lit&)> &f, std::unordered_map<BoolExprPtr, BoolExprPtr> &cache) const {
-    const auto it {cache.find(this->shared_from_this())};
+Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::unordered_map<Bools::Expr, Bools::Expr> &cache) const {
+    const auto self {cpp::assume_not_null(shared_from_this())};
+    const auto it {cache.find(self)};
     if (it != cache.end()) {
         return it->second;
     }
-    BoolExprPtr res;
+    std::optional<Bools::Expr> res;
     if (isAnd()) {
         bool changed = false;
         BoolExprSet newChildren;
@@ -146,7 +147,7 @@ BoolExprPtr BoolExpr::map(const std::function<BoolExprPtr(const Lit&)> &f, std::
             const auto simp = c->map(f, cache);
             changed |= simp.get() != c.get();
             if (simp == bot()) {
-                cache.emplace(this->shared_from_this(), bot());
+                cache.emplace(self, bot());
                 return bot();
             } else {
                 if (simp != top()) {
@@ -160,14 +161,14 @@ BoolExprPtr BoolExpr::map(const std::function<BoolExprPtr(const Lit&)> &f, std::
             }
         }
         if (!changed) {
-            res = this->shared_from_this();
+            res = self;
         } else if (newChildren.empty()) {
             res = top();
         } else {
             for (const auto &c: newChildren) {
                 if (c->isTheoryLit()) {
                     if (newChildren.contains(c->negation())) {
-                        cache.emplace(this->shared_from_this(), bot());
+                        cache.emplace(self, bot());
                         return bot();
                     }
                 }
@@ -181,7 +182,7 @@ BoolExprPtr BoolExpr::map(const std::function<BoolExprPtr(const Lit&)> &f, std::
             const auto simp = c->map(f, cache);
             changed |= simp.get() != c.get();
             if (simp == top()) {
-                cache.emplace(this->shared_from_this(), top());
+                cache.emplace(self, top());
                 return top();
             } else {
                 if (simp != bot()) {
@@ -195,14 +196,14 @@ BoolExprPtr BoolExpr::map(const std::function<BoolExprPtr(const Lit&)> &f, std::
             }
         }
         if (!changed) {
-            res = this->shared_from_this();
+            res = self;
         } else if (newChildren.empty()) {
             res = bot();
         } else {
             for (const auto &c: newChildren) {
                 if (c->isTheoryLit()) {
                     if (newChildren.contains(c->negation())) {
-                        cache.emplace(this->shared_from_this(), top());
+                        cache.emplace(self, top());
                         return top();
                     }
                 }
@@ -214,17 +215,17 @@ BoolExprPtr BoolExpr::map(const std::function<BoolExprPtr(const Lit&)> &f, std::
         const auto mapped = f(lit);
         const auto mappedLit = mapped->getTheoryLit();
         if (mappedLit && *mappedLit == lit) {
-            res = this->shared_from_this();
+            res = self;
         } else {
             res = mapped;
         }
     }
-    cache.emplace(this->shared_from_this(), res);
-    return res;
+    cache.emplace(self, *res);
+    return *res;
 }
 
-BoolExprPtr BoolExpr::map(const std::function<BoolExprPtr(const Lit&)> &f) const {
-    std::unordered_map<BoolExprPtr, BoolExprPtr> cache;
+Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f) const {
+    std::unordered_map<Bools::Expr, Bools::Expr> cache;
     return map(f, cache);
 }
 
@@ -240,8 +241,8 @@ BoolExpr::VarSet BoolExpr::vars() const {
     return res;
 }
 
-BoolExprPtr BoolExpr::simplify() const {
-    return map([](const Lit &lit) -> BoolExprPtr {
+Bools::Expr BoolExpr::simplify() const {
+    return map([](const Lit &lit) -> Bools::Expr {
         if (std::holds_alternative<ArithLit>(lit)) {
             const auto &rel = std::get<ArithLit>(lit);
             if (rel.isTriviallyTrue()) {
@@ -290,21 +291,21 @@ bool BoolExpr::isPoly() const {
     });
 }
 
-const BoolExprPtr operator&&(const BoolExprPtr a, const BoolExprPtr b) {
+const Bools::Expr operator&&(const Bools::Expr a, const Bools::Expr b) {
     const BoolExprSet children{a, b};
     return BoolExpr::mkAnd(children);
 }
 
-const BoolExprPtr operator||(const BoolExprPtr a, const BoolExprPtr b) {
+const Bools::Expr operator||(const Bools::Expr a, const Bools::Expr b) {
     const BoolExprSet children{a, b};
     return BoolExpr::mkOr(children);
 }
 
-const BoolExprPtr operator!(const BoolExprPtr a) {
+const Bools::Expr operator!(const Bools::Expr a) {
     return a->negation();
 }
 
-std::ostream& operator<<(std::ostream &s, const BoolExprPtr e) {
+std::ostream& operator<<(std::ostream &s, const Bools::Expr e) {
     if (e->isTheoryLit()) {
         std::visit([&s](const auto lit){s << lit;}, *e->getTheoryLit());
     } else if (e->getChildren().empty()) {

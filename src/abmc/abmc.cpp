@@ -89,7 +89,7 @@ int ABMC::get_language(unsigned i) {
         }
         return res.first->second;
     } else {
-        return lang_map.at({imp.first, {}});
+        return lang_map.at(imp);
     }
 }
 
@@ -126,7 +126,7 @@ std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
 
 Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
-        return Bools::Expr();
+        return top();
     }
     const auto orig {loop.idx->subs(Subs::build<Arith>(n, arith::mkConst(1)))};
     const auto length{depth - backlink + 1};
@@ -138,19 +138,22 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     for (const auto &[x, y] : post_vars) {
         pre_v.insert(x);
         post_v.insert(y);
-     }
-    BoolExprSet pre;
+    }
+    const auto not_trans {!encode_transition(&orig, false)};
+    std::vector<Bools::Expr> pre;
     const auto s_next {subs_at(depth + 1).project(pre_v).compose(
             subs_at(depth + length).project(post_v))};
-    pre.insert(theory::mkEq(s_next.get(trace_var), arith::mkConst((*shortcut)->getId())));
-    pre.insert(s_next(!encode_transition(&orig, false)));
+    pre.push_back(theory::mkEq(s_next.get(trace_var), arith::mkConst((*shortcut)->getId())));
+    pre.push_back(s_next(not_trans));
     // we must not start another iteration of the loop after using the learned transition in the next step
-    BoolExprSet post;
-    post.insert(theory::mkNeq(s_next.get(trace_var), arith::mkConst((*shortcut)->getId())));
+    std::vector<Bools::Expr> post;
+    post.push_back(theory::mkNeq(s_next.get(trace_var), arith::mkConst((*shortcut)->getId())));
     const auto s_next_next {subs_at(depth + 2).project(pre_v).compose(
             subs_at(depth + length + 1).project(post_v))};
-    post.insert(s_next_next(!encode_transition(&orig, false)));
+    post.push_back(s_next_next(not_trans));
     const auto not_covered{s_next(!loop.covered)};
+    std::cout << orig << std::endl;
+    std::cout << not_trans << std::endl;
     return not_covered || (bools::mkOr(pre) && bools::mkOr(post));
 }
 
@@ -223,7 +226,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                 const auto new_idx {add_learned_clause(*simplified, backlink)};
                 shortcut = new_idx;
                 history.emplace(next, lang);
-                lang_map.emplace(Implicant(new_idx, {}), next);
+                lang_map.emplace(Implicant(new_idx, new_idx->getGuard()), next);
                 ++next;
                 const Loop loop {.idx = new_idx,
                                 .prefix = accel_res.prefix,
@@ -294,14 +297,13 @@ void ABMC::build_trace() {
     std::vector<Subs> run;
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
-        const auto s {subs.at(d)};
-        const auto rule {rule_map.at(std::get<Arith::Const>(model.get(trace_var)))};
-        const auto comp {model.composeBackwards(s)};
-        const auto imp {comp.syntacticImplicant(rule->getGuard())};
+        const auto m {model.composeBackwards(subs.at(d))};
+        const auto rule {rule_map.at(m.get<Arith>(trace_var))};
+        const auto imp {m.syntacticImplicant(rule->getGuard())};
         auto vars {rule->getUpdate().domain()};
         vars.insert(n);
         vars.insert(trace_var);
-        run.push_back(comp.toSubs().project(vars));
+        run.push_back(m.toSubs().project(vars));
         const Implicant i {rule, imp};
         if (prev) {
             dependency_graph.addEdge(*prev, i);
@@ -416,7 +418,7 @@ void ABMC::analyze() {
             solver->add(s(encode_transition(*shortcut) || step));
         }
         ++depth;
-        Bools::Expr blocking_clause;
+        Bools::Expr blocking_clause {top()};
         switch (solver->check()) {
         case SmtResult::Unsat:
             if (!approx) {
@@ -445,7 +447,7 @@ void ABMC::analyze() {
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
         }
-        if (blocking_clause) {
+        if (blocking_clause != top()) {
             solver->add(blocking_clause);
         }
     }

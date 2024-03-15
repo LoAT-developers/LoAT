@@ -53,11 +53,11 @@ std::size_t hash_value(const ArithVar &x) {
 }
 
 ArithVarPtr ArithVar::toPtr() const {
-    return std::static_pointer_cast<const ArithVar>(shared_from_this());
+    return cpp::assume_not_null(std::static_pointer_cast<const ArithVar>(shared_from_this()));
 }
 
 ArithExprPtr ArithVar::toExpr() const {
-    return ArithExpr::shared_from_this();
+    return cpp::assume_not_null(shared_from_this());
 }
 
 bool ArithVar::CacheEqual::operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept {

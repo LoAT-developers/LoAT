@@ -14,6 +14,7 @@ add_library(${PROJECT_NAME} OBJECT
     pair.hpp
     optional.hpp
     string.hpp
+    notnull.hpp
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")

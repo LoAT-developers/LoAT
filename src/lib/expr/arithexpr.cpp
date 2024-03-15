@@ -85,7 +85,7 @@ ArithExprPtr operator*(const ArithExprPtr x, const ArithExprPtr y) {
 }
 
 ArithExprPtr ArithExpr::divide(const Rational &y) const {
-    return arith::mkTimes({arith::mkConst(Rational(mp::denominator(y), mp::numerator(y))), shared_from_this()});
+    return arith::mkTimes({arith::mkConst(Rational(mp::denominator(y), mp::numerator(y))), cpp::assume_not_null(shared_from_this())});
 }
 
 ArithExprPtr operator^(const ArithExprPtr x, const ArithExprPtr y) {
@@ -94,7 +94,7 @@ ArithExprPtr operator^(const ArithExprPtr x, const ArithExprPtr y) {
 
 std::optional<ArithConstPtr> ArithExpr::isRational() const {
     if (kind == arith::Kind::Constant) {
-        return static_pointer_cast<const ArithConst>(shared_from_this());
+        return cpp::assume_not_null(static_pointer_cast<const ArithConst>(shared_from_this()));
     } else {
         return {};
     }
@@ -108,7 +108,7 @@ std::optional<Int> ArithExpr::isInt() const {
 
 std::optional<ArithVarPtr> ArithExpr::isVar() const {
     if (kind == arith::Kind::Variable) {
-        return static_pointer_cast<const ArithVar>(shared_from_this());
+        return cpp::assume_not_null(static_pointer_cast<const ArithVar>(shared_from_this()));
     } else {
         return {};
     }
@@ -116,7 +116,7 @@ std::optional<ArithVarPtr> ArithExpr::isVar() const {
 
 std::optional<ArithExpPtr> ArithExpr::isPow() const {
     if (kind == arith::Kind::Exp) {
-        return static_pointer_cast<const ArithExp>(shared_from_this());
+        return cpp::assume_not_null(static_pointer_cast<const ArithExp>(shared_from_this()));
     } else {
         return {};
     }
@@ -124,7 +124,7 @@ std::optional<ArithExpPtr> ArithExpr::isPow() const {
 
 const std::optional<ArithMultPtr> ArithExpr::isMult() const {
     if (kind == arith::Kind::Times) {
-        return static_pointer_cast<const ArithMult>(shared_from_this());
+        return cpp::assume_not_null(static_pointer_cast<const ArithMult>(shared_from_this()));
     } else {
         return {};
     }
@@ -132,7 +132,7 @@ const std::optional<ArithMultPtr> ArithExpr::isMult() const {
 
 const std::optional<ArithAddPtr> ArithExpr::isAdd() const {
     if (kind == arith::Kind::Plus) {
-        return static_pointer_cast<const ArithAdd>(shared_from_this());
+        return cpp::assume_not_null(static_pointer_cast<const ArithAdd>(shared_from_this()));
     } else {
         return {};
     }
@@ -434,7 +434,7 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
             return opt{};
         },
         [&](const ArithExpPtr e) {
-            if (e->getBase()->isVar() == var && e->getExponent()->isInt() == degree) {
+            if (e->getBase()->isVar() == std::optional{var} && e->getExponent()->isInt() == std::optional{degree}) {
                 return opt{arith::mkConst(1)};
             }
             if (e->isPoly(var)) {
@@ -569,7 +569,7 @@ Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valu
             return **t;
         },
         [&](const ArithVarPtr x) {
-            return valuation[x];
+            return valuation.get(x).value_or(0);
         },
         [&](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
@@ -635,7 +635,7 @@ bool ArithExpr::isUnivariate(std::optional<ArithVarPtr> &acc) const {
             if (!acc) {
                 acc = x;
             }
-            return acc == x;
+            return acc == std::optional{x};
         },
         [&](const ArithAddPtr a) {
             const auto &args {a->getArgs()};

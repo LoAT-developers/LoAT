@@ -16,7 +16,7 @@ std::ostream& operator<<(std::ostream &s, const Status x);
 struct Accel {
     Rule rule;
     Proof proof {};
-    Bools::Expr covered {};
+    Bools::Expr covered {bot()};
 
     Accel(const Rule &rule): rule(rule) {}
 

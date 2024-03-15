@@ -182,7 +182,7 @@ void LimitProblem::reduceExp(const InftyExpressionSet::const_iterator &it) {
     assert(dir == POS_INF || dir == POS);
     assert(exp->isUnivariate());
     const auto x {*exp->someVar()};
-    ArithExpPtr powerInExp;
+    ArithExpPtr powerInExp {*exp->isPow()};
     const auto add {exp->isAdd()};
     if (add) {
         for (const auto &arg: (*add)->getArgs()) {
@@ -194,8 +194,6 @@ void LimitProblem::reduceExp(const InftyExpressionSet::const_iterator &it) {
                 }
             }
         }
-    } else {
-        powerInExp = *exp->isPow();
     }
     const auto b {exp - powerInExp};
     assert(b->isPoly(x));
@@ -215,7 +213,7 @@ void LimitProblem::reduceExp(const InftyExpressionSet::const_iterator &it) {
 void LimitProblem::reduceGeneralExp(const InftyExpressionSet::const_iterator &it) {
     const auto &[exp,dir] {*it};
     assert(dir == POS_INF || dir == POS);
-    ArithExpPtr powerInExp;
+    ArithExpPtr powerInExp {*exp->isPow()};
     const auto add {exp->isAdd()};
     if (add) {
         for (const auto &arg: (*add)->getArgs()) {
@@ -227,8 +225,6 @@ void LimitProblem::reduceGeneralExp(const InftyExpressionSet::const_iterator &it
                 }
             }
         }
-    } else {
-        powerInExp = *exp->isPow();
     }
     assert(!powerInExp->getExponent()->isPoly() || powerInExp->isMultivariate());
     const auto b {exp - powerInExp};
@@ -396,7 +392,7 @@ bool LimitProblem::reduceExpIsApplicable(const InftyExpressionSet::const_iterato
         return false;
     }
     const auto x {*ex->someVar()};
-    ArithExpPtr powerInExp;
+    std::optional<ArithExpPtr> powerInExp;
     const auto add {ex->isAdd()};
     if (add) {
         for (const auto &arg: (*add)->getArgs()) {
@@ -415,14 +411,14 @@ bool LimitProblem::reduceExpIsApplicable(const InftyExpressionSet::const_iterato
         }
         powerInExp = *p;
     }
-    const auto b = ex - powerInExp;
+    const auto b = ex - *powerInExp;
     if (!b->isPoly(x)) {
         return false;
     }
-    if (!(powerInExp->getBase()->isPoly(x) && powerInExp->getExponent()->isPoly(x))) {
+    if (!((*powerInExp)->getBase()->isPoly(x) && (*powerInExp)->getExponent()->isPoly(x))) {
         return false;
     }
-    return powerInExp->getExponent()->has(x);
+    return (*powerInExp)->getExponent()->has(x);
 }
 
 

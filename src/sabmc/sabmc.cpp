@@ -409,7 +409,7 @@ void SABMC::handle_rel(const ArithLit &rel, const NondetSubs &update, const Nond
     ArithSubs but_last;
     for (const auto &x: vars) {
         if (!t.post_vars().contains(x)) {
-            Arith::Expr updated;
+            Arith::Expr updated {arith::mkConst(0)};
             if (closed.contains(x)) {
                 const auto up {closed[x]};
                 if (is_increasing(lhs, model, x)) {
