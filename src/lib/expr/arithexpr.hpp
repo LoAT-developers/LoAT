@@ -250,7 +250,6 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<Rational> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithConst, CacheHash, CacheEqual, Rational>;
     static ConsHash<ArithExpr, ArithConst, CacheHash, CacheEqual, Rational> cache;
 
 public:
@@ -285,7 +284,6 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<int> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithVar, CacheHash, CacheEqual, int>;
     static ConsHash<ArithExpr, ArithVar, CacheHash, CacheEqual, int> cache;
 
     ArithVarPtr toPtr() const;
@@ -324,7 +322,6 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<ArithExprSet> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprSet>;
     static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprSet> cache;
 
 public:
@@ -351,7 +348,6 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<ArithExprSet> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprSet>;
     static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprSet> cache;
 
 public:
@@ -379,7 +375,6 @@ private:
     struct CacheHash {
         size_t operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args) const noexcept;
     };
-    friend ConsHash<ArithExpr, ArithExp, CacheHash, CacheEqual, ArithExprPtr, ArithExprPtr>;
     static ConsHash<ArithExpr, ArithExp, CacheHash, CacheEqual, ArithExprPtr, ArithExprPtr> cache;
 
 public:
