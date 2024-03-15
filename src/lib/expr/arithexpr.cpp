@@ -413,11 +413,11 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
         [&](const ArithAddPtr a) {
             for (const auto &arg: a->getArgs()) {
                 const auto res {arg->coeff(var, degree)};
-                if (res) {
+                if (res && !(*res)->is(0)) {
                     return opt{res};
                 }
             }
-            return opt{};
+            return opt{arith::mkConst(0)};
         },
         [&](const ArithMultPtr m) {
             const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
@@ -431,7 +431,7 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
                 }
                 return opt{arith::mkTimes(new_args)};
             }
-            return opt{};
+            return opt{arith::mkConst(0)};
         },
         [&](const ArithExpPtr e) {
             if (e->getBase()->isVar() == std::optional{var} && e->getExponent()->isInt() == std::optional{degree}) {

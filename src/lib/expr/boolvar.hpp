@@ -3,9 +3,11 @@
 #include <memory>
 #include <string>
 
+#include "notnull.hpp"
+
 class BoolVar;
 
-using BoolVarPtr = std::shared_ptr<BoolVar>;
+using BoolVarPtr = cpp::not_null<std::shared_ptr<BoolVar>>;
 
 class BoolVar {
 

@@ -33,12 +33,12 @@ std::ostream& operator<<(std::ostream &s, const BoolVarPtr e) {
 
 BoolVarPtr BoolVar::next() {
     --last_tmp_idx;
-    return std::make_shared<BoolVar>(last_tmp_idx);
+    return cpp::assume_not_null(std::make_shared<BoolVar>(last_tmp_idx));
 }
 
 BoolVarPtr BoolVar::nextProgVar() {
     ++last_prog_idx;
-    return std::make_shared<BoolVar>(last_prog_idx);
+    return cpp::assume_not_null(std::make_shared<BoolVar>(last_prog_idx));
 }
 
 bool BoolVar::isTempVar() const {
