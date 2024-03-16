@@ -39,7 +39,10 @@ if [[ -d $BUNDLE ]]; then
 fi
 
 print "building LoAT..."
-$SCRIPT_DIR/build.sh
+cd $BUILD
+cmake -DCMAKE_BUILD_TYPE=Release ../..
+make -j$(nproc)
+cd $SCRIPT_DIR/..
 check "building LoAT"
 print "creating bundle..."
 cp -r $TEMPLATE $BUNDLE

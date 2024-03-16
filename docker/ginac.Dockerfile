@@ -17,5 +17,5 @@ RUN git checkout release_1-8-7
 RUN mkdir build
 WORKDIR /ginac/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false ..
-RUN make -j
+RUN make -j$(nproc)
 RUN make install

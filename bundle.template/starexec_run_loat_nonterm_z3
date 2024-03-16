@@ -1,0 +1,3 @@
+#!/bin/bash
+trap "" SIGRTMIN
+./loat-static --plain --proof-level 0 --mode non_termination --format its --smt z3 $1 2> /dev/null

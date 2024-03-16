@@ -17,14 +17,14 @@ RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 RUN pip install tomli pyparsing
 
-COPY ../lib/libpoly.a /usr/local/lib/
-COPY ../lib/libpolyxx.a /usr/local/lib/
-COPY ../include/poly /usr/local/include/poly
+COPY ../docker/loat-base-image/usr/local/lib/libpoly.a /usr/local/lib/
+COPY ../docker/loat-base-image/usr/local/lib/libpolyxx.a /usr/local/lib/
+COPY ../docker/loat-base-image/usr/local/include/poly /usr/local/include/poly
 
 RUN git clone https://github.com/ffrohn/cvc5
 WORKDIR cvc5
 RUN git checkout cvc5-1.0.8-musl
 RUN ./configure.sh --static --no-statistics --auto-download --poly --cln --gpl --no-docs
 WORKDIR /cvc5/build
-RUN make -j4
+RUN make -j$(nproc)
 RUN make install

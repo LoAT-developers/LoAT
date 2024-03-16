@@ -177,8 +177,13 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
         throw std::invalid_argument("undeclared function symbol " + name);
     }
     std::vector<Var> args;
+    std::unordered_set<Var> arg_set;
     for (const auto &c: ctx->var()) {
-        args.push_back(any_cast<Var>(visit(c)));
+        const auto arg {any_cast<Var>(visit(c))};
+        args.push_back(arg);
+        if (!arg_set.insert(arg).second) {
+            throw std::invalid_argument("arguments of predicate are not distinct");
+        }
     }
     return FunApp(name, args);
 }

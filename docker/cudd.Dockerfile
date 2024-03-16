@@ -17,6 +17,6 @@ WORKDIR /cudd
 RUN ./configure CFLAGS="$CFLAGS -fPIC" CXXFLAGS="$CXXFLAGS -fPIC"
 RUN sed -i 's/aclocal-1.14/aclocal-1.16/g' Makefile
 RUN sed -i 's/automake-1.14/automake-1.16/g' Makefile
-RUN make -j
-RUN make -j check
+RUN make -j$(nproc)
+RUN make -j$(nproc) check
 RUN make install
