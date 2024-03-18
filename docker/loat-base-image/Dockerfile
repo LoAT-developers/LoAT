@@ -8,6 +8,6 @@ RUN xbps-install -ySu xbps
 RUN xbps-install -ySu
 RUN xbps-install -yS \ 
   make cmake gcc autoconf bash \
-  gmp-devel boost-devel
+  gmp-devel boost-devel git
 
 COPY ./usr /usr
