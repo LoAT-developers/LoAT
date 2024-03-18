@@ -65,78 +65,80 @@ ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args) {
             }
         }
     }
-    if (args.empty()) {
-        return mkConst(1);
-    }
-    if (args.size() == 1) {
-        return args[0];
-    }
-    // transform t^p * t^q to t^{p+q}
-    linked_hash_map<ArithExprPtr, ArithExprPtr> map;
-    auto changed {false};
-    for (const auto &arg: args) {
-        const auto exp {arg->isPow()};
-        if (exp) {
-            const auto base {(*exp)->getBase()};
-            const auto val {map.get(base)};
-            changed = changed || val;
-            map.put(base, val.value_or(mkConst(0)) + (*exp)->getExponent());
-        } else {
-            map.put(arg, mkConst(1));
+    {
+        // emtpy product
+        if (args.empty()) {
+            return mkConst(1);
         }
     }
-    if (changed) {
-        args.clear();
-        for (const auto &[x,y]: map) {
-            args.emplace_back(mkExp(x, y));
-        }
-    }
-    // distribute
-    changed = false;
-    std::vector<ArithExprPtr> todo {args.begin(), args.end()};
-    std::vector<std::vector<ArithExprPtr>> res;
-    for (const auto &x: todo) {
-        if (res.empty()) {
-            const auto add {x->isAdd()};
-            if (add) {
-                changed = true;
-                for (const auto &y: (*add)->getArgs()) {
+    {
+        // distribute
+        auto changed{false};
+        std::vector<ArithExprPtr> todo{args.begin(), args.end()};
+        std::vector<std::vector<ArithExprPtr>> res;
+        for (const auto &x : todo) {
+            if (res.empty()) {
+                if (const auto add {x->isAdd()}) {
+                    changed = true;
+                    for (const auto &y : (*add)->getArgs()) {
+                        res.emplace_back();
+                        res.back().emplace_back(y);
+                    }
+                } else {
                     res.emplace_back();
-                    res.back().emplace_back(y);
+                    res.back().emplace_back(x);
                 }
             } else {
-                res.emplace_back();
-                res.back().emplace_back(x);
-            }
-        } else {
-            std::vector<std::vector<ArithExprPtr>> next;
-            const auto add {x->isAdd()};
-            if (add) {
-                changed = true;
-                for (const auto &z: res) {
-                    for (const auto &y: (*add)->getArgs()) {
+                std::vector<std::vector<ArithExprPtr>> next;
+                if (const auto add{x->isAdd()}) {
+                    changed = true;
+                    for (const auto &z : res) {
+                        for (const auto &y : (*add)->getArgs()) {
+                            next.emplace_back(z);
+                            next.back().emplace_back(y);
+                        }
+                    }
+                } else {
+                    for (const auto &z : res) {
                         next.emplace_back(z);
-                        next.back().emplace_back(y);
+                        next.back().emplace_back(x);
                     }
                 }
-            } else {
-                for (const auto &z: res) {
-                    next.emplace_back(z);
-                    next.back().emplace_back(x);
-                }
+                res = next;
             }
-            res = next;
+        }
+        if (changed) {
+            args.clear();
+            for (auto &x : res) {
+                args.emplace_back(mkTimes(x));
+            }
+            return mkPlus(args);
         }
     }
-    if (changed) {
-        args.clear();
-        for (const auto &x: res) {
-            args.emplace_back(mkTimes(x));
+    {
+        // transform t^p * t^q to t^{p+q}
+        linked_hash_map<ArithExprPtr, ArithExprPtr> map;
+        auto changed{false};
+        for (const auto &arg : args) {
+            const auto exp {arg->isPow()};
+            const auto base {exp ? (*exp)->getBase() : arg};
+            const auto exponent {exp ? (*exp)->getExponent() : mkConst(1)};
+            const auto val {map.get(base)};
+            changed = changed || val;
+            map.put(base, val.value_or(mkConst(0)) + exponent);
         }
-        return mkPlus(args);
+        if (changed) {
+            args.clear();
+            for (const auto &[x, y] : map) {
+                args.emplace_back(mkExp(x, y));
+            }
+        }
     }
-    if (args.size() == 1) {
-        return args[0];
+    {
+        // singleton
+        if (args.size() == 1) {
+            return args[0];
+        }
     }
     ArithExprSet arg_set {args.begin(), args.end()};
     // std::cout << "* " << arg_set << std::endl;

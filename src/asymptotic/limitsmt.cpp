@@ -103,7 +103,7 @@ static Bools::Expr posInfConstraint(const map<Int, Arith::Expr>& coefficients) {
 static map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::Var n) {
     const auto maxDegree {*ex->isPoly(n)};
     map<Int, Arith::Expr> coefficients;
-    for (int i = 0; i <= maxDegree; i++) {
+    for (int i = 0; i <= maxDegree; ++i) {
         coefficients.emplace(i, *ex->coeff(n, i));
     }
     return coefficients;
@@ -129,7 +129,7 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
     // replace variables in the cost function with their linear templates
     const auto templateCost {templateSubs(cost)};
     // if the cost function is a constant, then we are bound to fail
-    const auto d {templateCost->isPoly()};
+    const auto d {templateCost->isPoly(n)};
     const auto maxPossibleFiniteRes = d ? Complexity::Poly(*d) : Complexity::NestedExp;
     if (maxPossibleFiniteRes == Complexity::Const) {
         return {};
@@ -174,11 +174,11 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
         // we failed to find a model -- drop all non-mandatory constraints
         solver->pop();
         if (maxPossibleFiniteRes.getType() == Complexity::CpxPolynomial && mp::denominator(maxPossibleFiniteRes.getPolynomialDegree()) == 1) {
-            const auto maxPossibleDegree {mp::denominator(maxPossibleFiniteRes.getPolynomialDegree())};
+            const auto maxPossibleDegree {mp::numerator(maxPossibleFiniteRes.getPolynomialDegree())};
             // try to find a witness for polynomial complexity with degree maxDeg,...,1
             const auto coefficients {getCoefficients(templateCost, n)};
             for (auto i = maxPossibleDegree; i > 0 && Complexity::Poly(i) > currentRes; --i) {
-                const auto c {coefficients.find(i)->second};
+                const auto c {coefficients.at(i)};
                 // remember the current state for backtracking
                 solver->push();
                 solver->add(arith::mkGt(c, arith::mkConst(0)));

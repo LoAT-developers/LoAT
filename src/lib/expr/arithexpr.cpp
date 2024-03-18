@@ -404,8 +404,8 @@ linked_hash_set<ArithExpPtr> ArithExpr::exps() const {
 std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &degree) const {
     using opt = std::optional<ArithExprPtr>;
     return apply<opt>(
-        [](const ArithConstPtr) {
-            return opt{arith::mkConst(0)};
+        [&](const ArithConstPtr c) {
+            return opt{degree == 0 ? c : arith::mkConst(0)};
         },
         [&](const ArithVarPtr x) {
             return opt{arith::mkConst(degree == 1 && var == x ? 1 : 0)};
@@ -744,7 +744,7 @@ std::ostream& operator<<(std::ostream &s, const ArithExprPtr e) {
         [&](const ArithExpPtr a) {
             const auto b {a->getBase()};
             const auto e {a->getExponent()};
-            if (!b->isRational() && b->isVar()) {
+            if (!b->isRational() && !b->isVar()) {
                 s << "(" << b << ")";
             } else {
                 s << b;

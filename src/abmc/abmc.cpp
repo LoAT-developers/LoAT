@@ -152,8 +152,6 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
             subs_at(depth + length + 1).project(post_v))};
     post.push_back(s_next_next(not_trans));
     const auto not_covered{s_next(!loop.covered)};
-    std::cout << orig << std::endl;
-    std::cout << not_trans << std::endl;
     return not_covered || (bools::mkOr(pre) && bools::mkOr(post));
 }
 

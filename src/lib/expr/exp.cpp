@@ -33,6 +33,13 @@ ArithExprPtr arith::mkExp(const ArithExprPtr base, const ArithExprPtr exponent) 
     if (b) {
         return mkExp((*b)->getBase(), (*b)->getExponent() * exponent);
     }
+    if (e_val && !base->isVar()) {
+        std::vector<ArithExprPtr> args;
+        for (Int i = 0; i < *e_val; ++i) {
+            args.push_back(base);
+        }
+        return mkTimes(args);
+    }
     if (!base->isIntegral() || !exponent->isIntegral()) {
         throw std::invalid_argument("attempt to create exp with non-int arguments");
     }
