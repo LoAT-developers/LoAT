@@ -153,8 +153,8 @@ In this constellation AProVE, LoAT, and T2 won the following awards:
   3. `cd LoAT/scripts`
   4. execute each script `./extract_*.sh` to build each dependency in a docker container and copy it to `$PATH_TO_LOAT/docker/usr` on your machine
   5. `mkdir -p $PATH_TO_LOAT/build/debug`
-  6. The configuration for the dev-container is in `$PATH_TO_LOAT/.devcontainer`, so in theory, you can use any IDE with support for dev-containers. For Visual Studio Code, open `$PATH_TO_LOAT` via `File -> Open Folder...`
-  7. Make sure that the user `vscode` in the  devcontainer has read and write permissions, see https://docs.docker.com/desktop/faqs/linuxfaqs/#how-do-i-enable-file-sharing. My current solution is that all project files belong to group 100999, which has all required permissions.
+  6. The configuration for the dev-container is in `$PATH_TO_LOAT/.devcontainer`, so in theory, you can use any IDE with support for dev-containers. For Visual Studio Code, open `$PATH_TO_LOAT` via `File -> Open Folder...`.
+  7. Make sure that the user `vscode` in the  devcontainer has read and write permissions, see [here](https://docs.docker.com/desktop/faqs/linuxfaqs/#how-do-i-enable-file-sharing). My current solution is that all project files belong to group 100999, which has all required permissions.
   8. press `F1` and type `Dev Containers: Reopen in Container`
   9. click `Build` on the bottom to trigger the build
 
