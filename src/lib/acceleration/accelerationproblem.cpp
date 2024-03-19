@@ -20,6 +20,7 @@ AccelerationProblem::AccelerationProblem(
     samplePoint(samplePoint) {
     for (const auto &l: guard->lits()) {
         std::visit(Overload {
+            // TODO think about a better handling of equalities
             [&](const ArithLit &l) {
                 if (l.isNeq()) {
                     throw std::invalid_argument("neq in acceleration problem");
