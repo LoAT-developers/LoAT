@@ -14,7 +14,19 @@ SmtPtr solver(Logic logic) {
         res = std::unique_ptr<Smt>(new Yices(logic));
         break;
     case QF_NA:
-        res = std::unique_ptr<Smt>(new Z3());
+        switch (Config::Analysis::smtSolver) {
+        case Config::Analysis::Z3:
+        [[fallthrough]];
+        case Config::Analysis::Swine:
+            res = std::unique_ptr<Smt>(new Z3());
+            break;
+        case Config::Analysis::CVC5:
+            res = std::unique_ptr<Smt>(new CVC5());
+            break;
+        case Config::Analysis::Yices:
+            res = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
+            break;
+        }
         break;
     case QF_NAT:
         res = std::unique_ptr<Smt>(new Swine());

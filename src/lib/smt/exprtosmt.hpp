@@ -67,7 +67,11 @@ protected:
     EXPR convertEx(const Arith::Expr e){
         return e->apply<EXPR>(
             [&](const ArithConstPtr &r) {
-                return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
+                if (const auto i{r->intValue()}) {
+                    return context.getInt(*i);
+                } else {
+                    return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
+                }
             },
             [&](const Arith::Var x) {
                 auto optVar = context.getVariable(x);
@@ -92,8 +96,7 @@ protected:
             [&](const ArithExpPtr e) {
                 const auto base {e->getBase()};
                 const auto exp {e->getExponent()};
-                const auto int_exp {exp->isInt()};
-                if (int_exp) {
+                if (const auto int_exp {exp->isInt()}) {
                     // Z3 still prefers x*x*...*x over x^c...
                     if (1 <= *int_exp && *int_exp <= 10) {
                         auto factor {convertEx(base)};
