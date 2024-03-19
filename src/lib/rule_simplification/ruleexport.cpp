@@ -32,7 +32,7 @@ void RuleExport::printRule(const Rule &rule, std::ostream &s, bool colors) {
         }
         if (colors) printColor(s, Color::Update);
         s << x << "'";
-        s << "=" << v;
+        s << " = " << v;
         if (colors) printColor(s, Color::None);
     }
 }

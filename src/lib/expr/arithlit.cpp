@@ -194,10 +194,28 @@ ArithLit operator!(const ArithLit &x) {
 }
 
 std::ostream& operator<<(std::ostream &s, const ArithLit &rel) {
+    std::string lhs;
+    std::string rhs;
+    if (const auto add {rel.lhs()->isAdd()}) {
+        std::vector<ArithExprPtr> lhs_args;
+        std::vector<ArithExprPtr> rhs_args;
+        for (const auto &arg: (*add)->getArgs()) {
+            if (arg->isNegated()) {
+                rhs_args.emplace_back(-arg);
+            } else {
+                lhs_args.emplace_back(arg);
+            }
+        }
+        lhs = toString(arith::mkPlus(std::move(lhs_args)));
+        rhs = toString(arith::mkPlus(std::move(rhs_args)));
+    } else {
+        lhs = toString(rel.lhs());
+        rhs = "0";
+    }
     switch (rel.kind) {
-        case ArithLit::Kind::Gt: return s << rel.l << " > 0";
-        case ArithLit::Kind::Eq: return s << rel.l << " = 0";
-        case ArithLit::Kind::Neq: return s << rel.l << " != 0";
+        case ArithLit::Kind::Gt: return s << lhs << " > " << rhs;
+        case ArithLit::Kind::Eq: return s << lhs << " = " << rhs;
+        case ArithLit::Kind::Neq: return s << lhs << " != " << rhs;
         default: throw std::invalid_argument("unexpected relation");
     }
 }

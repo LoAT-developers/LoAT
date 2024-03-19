@@ -112,7 +112,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             up.put<Bools>(bvars[i], bools::mkLit(BoolLit(BoolVar::next())));
         }
         up.put<Arith>(its->getLocVar(), arith::mkConst(c.rhs.loc));
-        const auto guard {ren(c.guard)->simplify() && theory::mkEq(its->getLocVar(), arith::mkConst(c.lhs.loc))};
+        const auto guard {ren(c.guard) && theory::mkEq(its->getLocVar(), arith::mkConst(c.lhs.loc))};
         its->addRule(Rule(guard, up), c.lhs.loc);
     }
     return its;

@@ -16,36 +16,12 @@ const Bools::Expr BoolExpr::bot() {
 }
 
 const Bools::Expr BoolExpr::mkLit(const Lit &lit) {
-    return BoolTheoryLit::from_cache(lit);
-}
-
-bool BoolExpr::isTriviallyTrue() const {
-    if (isTheoryLit()) {
-        return theory::isTriviallyTrue(*getTheoryLit());
+    if (theory::isTriviallyTrue(lit)) {
+        return top();
+    } else if (theory::isTriviallyFalse(lit)) {
+        return bot();
     } else {
-        const auto children = getChildren();
-        if (isAnd()) {
-            return std::all_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyTrue();});
-        } else if (isOr()) {
-            return std::any_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyTrue();});
-        } else {
-            throw std::logic_error("unknown junctor");
-        }
-    }
-}
-
-bool BoolExpr::isTriviallyFalse() const {
-    if (isTheoryLit()) {
-        return theory::isTriviallyFalse(*getTheoryLit());
-    } else {
-        const auto children = getChildren();
-        if (isAnd()) {
-            return std::any_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyFalse();});
-        } else if (isOr()) {
-            return std::all_of(children.begin(), children.end(), [](const auto &c){return c->isTriviallyFalse();});
-        } else {
-            throw std::logic_error("unknown junctor");
-        }
+        return BoolTheoryLit::from_cache(lit);
     }
 }
 
@@ -243,20 +219,6 @@ BoolExpr::VarSet BoolExpr::vars() const {
     return res;
 }
 
-Bools::Expr BoolExpr::simplify() const {
-    return map([](const Lit &lit) -> Bools::Expr {
-        if (std::holds_alternative<ArithLit>(lit)) {
-            const auto &rel = std::get<ArithLit>(lit);
-            if (rel.isTriviallyTrue()) {
-                return top();
-            } else if (rel.isTriviallyFalse()) {
-                return bot();
-            }
-        }
-        return mkLit(lit);
-    });
-}
-
 BoolExpr::~BoolExpr() {};
 
 BoolExpr::LitSet BoolExpr::lits() const {
@@ -318,10 +280,13 @@ std::ostream& operator<<(std::ostream &s, const Bools::Expr e) {
         }
     } else {
         bool first = true;
-        s << "(";
         for (const auto &c: e->getChildren()) {
             if (first) {
-                s << c;
+                if (c->getTheoryLit()) {
+                    s << c;
+                } else {
+                    s << "(" << c << ")";
+                }
                 first = false;
             } else {
                 if (e->isAnd()) {
@@ -329,10 +294,13 @@ std::ostream& operator<<(std::ostream &s, const Bools::Expr e) {
                 } else {
                     s << " \\/ ";
                 }
-                s << c;
+                if (c->getTheoryLit()) {
+                    s << c;
+                } else {
+                    s << "(" << c << ")";
+                }
             }
         }
-        s << ")";
     }
     return s;
 }

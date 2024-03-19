@@ -349,7 +349,7 @@ Transition mbp(const Transition &t, const Model &model, const Var &x) {
             },
             [&](const Arith::Var x) {
                 const auto res {mbp(t, model, x)};
-                assert(!res.toBoolExpr()->isTriviallyFalse());
+                assert(res.toBoolExpr() != bot());
                 return res;
             }
         }, x);

@@ -82,7 +82,7 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
                     res.succeed();
                     const auto chained {Chaining::chain(first, *second_idx).first};
                     its.addRule(chained, &first, second_idx);
-                    res.chainingProof(chained, first, *second_idx);
+                    res.chainingProof(first, *second_idx, chained);
                     linked_hash_set<TransIdx> deleted;
                     deleted.insert(&first);
                     if (its.getPredecessors(second_idx).size() == 1) {

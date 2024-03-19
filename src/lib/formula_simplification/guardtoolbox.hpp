@@ -72,8 +72,6 @@ namespace GuardToolbox {
      */
     ResultBase<Bools::Expr, Proof> eliminateByTransitiveClosure(const Bools::Expr e, bool removeHalfBounds, const SymbolAcceptor &allow);
 
-    ResultBase<Bools::Expr, Proof> simplify(const Bools::Expr e);
-
     /**
      * Returns true iff term contains a temporary variable
      */

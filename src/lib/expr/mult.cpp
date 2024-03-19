@@ -147,3 +147,10 @@ ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> &&args) {
 const ArithExprVec& ArithMult::getArgs() const {
     return args;
 }
+
+Rational ArithMult::getConstantFactor() const {
+    const auto it {std::find_if(args.begin(), args.end(), [](const auto arg) {
+        return arg->isRational();
+    })};
+    return it == args.end() ? 0 : (*(*it)->isRational())->getValue();;
+}

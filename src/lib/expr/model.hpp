@@ -84,7 +84,7 @@ public:
             return e->map(
                         [&](const auto &lit) {
                             return eval(lit) ? top() : bot();
-                        })->isTriviallyTrue();
+                        }) == top();
         } else {
             return e->eval(std::get<typename T::Model>(m));
         }

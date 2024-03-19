@@ -648,6 +648,26 @@ bool ArithExpr::isUnivariate(std::optional<ArithVarPtr> &acc) const {
         });
 }
 
+bool ArithExpr::isNegated() const {
+    return apply<bool>(
+        [](const ArithConstPtr c) {
+            return c->getValue() < 0;
+        },
+        [](const ArithVarPtr) {
+            return false;
+        },
+        [](const ArithAddPtr) {
+            return false;
+        },
+        [](const ArithMultPtr m) {
+            return m->getConstantFactor() < 0;
+        },
+        [](const ArithExpPtr) {
+            return false;
+        }
+    );
+}
+
 bool ArithExpr::isMultivariate(std::optional<ArithVarPtr> &acc) const {
     return apply<bool>(
         [](const ArithConstPtr) {
@@ -688,9 +708,8 @@ std::ostream& operator<<(std::ostream &s, const ArithExprPtr e) {
                     fst = false;
                     s << arg;
                 } else {
-                    const auto r {arg->isRational()};
-                    if (r && ***r < 0) {
-                        s << " - " << -***r;
+                    if (arg->isNegated()) {
+                        s << " - " << -arg;
                     } else {
                         s << " + " << arg;
                     }
@@ -702,17 +721,20 @@ std::ostream& operator<<(std::ostream &s, const ArithExprPtr e) {
             auto negative {false};
             auto count {a->getArgs().size()};
             std::stringstream ss;
-            for (const auto &arg: a->getArgs()) {
+            for (auto arg: a->getArgs()) {
                 std::stringstream as;
-                const auto r {arg->isRational()};
-                if (r && ***r < 0) {
+                if (arg->isNegated()) {
                     negative = !negative;
-                    if (***r == -1) {
-                        --count;
-                        continue;
-                    } else {
-                        as << -***r;
+                    if (const auto r {arg->isRational()}) {
+                        if (***r == -1) {
+                            --count;
+                            continue;
+                        }
                     }
+                    arg = -arg;
+                }
+                if (arg->isRational()) {
+                    as << arg;
                 } else if (arg->isAdd()) {
                     as << "(" << arg << ")";
                 } else {

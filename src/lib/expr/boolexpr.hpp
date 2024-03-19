@@ -43,7 +43,18 @@ private:
     static const Bools::Expr buildFromLits(const Lits &lits, ConcatOperator op) {
         BoolExprSet children;
         for (const auto &lit: lits) {
-            children.insert(mkLit(lit));
+            const auto l {mkLit(lit)};
+            if (l == top()) {
+                if (op == ConcatOr) {
+                    return top();
+                }
+            } else if (l == bot()) {
+                if (op == ConcatAnd) {
+                    return bot();
+                }
+            } else {
+                children.insert(l);
+            }
         }
         return from_cache(children, op);
     }
@@ -52,7 +63,17 @@ private:
     static const Bools::Expr build(const Children &lits, ConcatOperator op) {
         std::stack<Bools::Expr> todo;
         for (const auto &lit: lits) {
-            todo.push(lit);
+            if (lit == top()) {
+                if (op == ConcatOr) {
+                    return top();
+                }
+            } else if (lit == bot()) {
+                if (op == ConcatAnd) {
+                    return bot();
+                }
+            } else {
+                todo.push(lit);
+            }
         }
         BoolExprSet children;
         while (!todo.empty()) {
@@ -114,8 +135,6 @@ public:
     virtual size_t size() const = 0;
     virtual void getBounds(const Arith::Var n, Bounds &res) const = 0;
 
-    bool isTriviallyTrue() const;
-    bool isTriviallyFalse() const;
     Bounds getBounds(const Arith::Var n) const;
     Bools::Expr linearize(const Arith::Var n) const;
     Bools::Expr toInfinity(const Arith::Var n) const;
@@ -134,7 +153,6 @@ public:
     }
 
     VarSet vars() const;
-    Bools::Expr simplify() const;
     virtual ~BoolExpr();
     LitSet lits() const;
     bool isLinear() const;

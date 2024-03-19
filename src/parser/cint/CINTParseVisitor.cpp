@@ -48,7 +48,7 @@ std::any CINTParseVisitor::visitNum_expr(CINTParser::Num_exprContext *ctx) {
 
 std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
     if (ctx->lit()) {
-        return bools::mkLit(std::any_cast<ArithLit>(visit(ctx->lit())))->simplify();
+        return bools::mkLit(std::any_cast<ArithLit>(visit(ctx->lit())));
     } else if (ctx->TRUE()) {
         return top();
     } else if (ctx->FALSE()) {
@@ -65,7 +65,7 @@ std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
         } else {
             assert(ctx->bool_expr().size() == 1);
             if (ctx->NOT()) {
-                return (!lhs)->simplify();
+                return !lhs;
             } else {
                 return lhs;
             }
@@ -135,7 +135,7 @@ std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
         its->addRule(Rule(nonterm_cond, nonterm), pre);
     }
     const auto post = its->addLocation();
-    const auto exit_cond = (!cond)->simplify() && theory::mkEq(loc_var, arith::mkConst(pre));
+    const auto exit_cond = !cond && theory::mkEq(loc_var, arith::mkConst(pre));
     auto exit = Subs::build<Arith>(loc_var, arith::mkConst(post));
     if (Config::Analysis::complexity()) {
         exit.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
@@ -188,7 +188,7 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
     }
     if (ctx->else_()) {
         const auto loc = its->addLocation();
-        const auto alternative_cond = (!cond)->simplify() && theory::mkEq(loc_var, arith::mkConst(pre));
+        const auto alternative_cond = !cond && theory::mkEq(loc_var, arith::mkConst(pre));
         auto alternative = Subs::build<Arith>(loc_var, arith::mkConst(loc));
         if (Config::Analysis::complexity()) {
             alternative.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
@@ -200,7 +200,7 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
         auto exit = Subs::build<Arith>(loc_var, arith::mkConst(post));
         its->addRule(Rule(exit_cond, exit), current);
     } else {
-        const auto exit_cond = (!cond)->simplify() && theory::mkEq(loc_var, arith::mkConst(pre));
+        const auto exit_cond = !cond && theory::mkEq(loc_var, arith::mkConst(pre));
         auto exit = Subs::build<Arith>(loc_var, arith::mkConst(post));
         if (Config::Analysis::complexity()) {
             exit.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));

@@ -163,27 +163,12 @@ ResultBase<Bools::Expr, Proof> _propagateEqualities(const Bools::Expr e, const G
     return res;
 }
 
-ResultBase<Bools::Expr, Proof> GuardToolbox::simplify(Bools::Expr e) {
-    ResultBase<Bools::Expr, Proof> res {e};
-    e = e->simplify();
-    if (*res != e) {
-        res.headline("Simplified Formula");
-        res.appendAll("Original Formula:\n", *res, "\nNew Formula:\n", e);
-        res = e;
-    }
-    return res;
-}
-
 ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateTempVars(Bools::Expr e, const SymbolAcceptor &allow) {
     auto res {_propagateBooleanEqualities(e)};
     if (res) {
         return res;
     }
     res = _propagateEqualities(e, allow);
-    if (res) {
-        return res;
-    }
-    res = simplify(e);
     if (res) {
         return res;
     }

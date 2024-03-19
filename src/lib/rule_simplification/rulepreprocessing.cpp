@@ -70,18 +70,6 @@ RuleResult eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds,
     return res;
 }
 
-RuleResult simplify(const Rule &rule) {
-    RuleResult res {rule};
-    const auto new_guard {GuardToolbox::simplify(rule.getGuard())};
-    if (new_guard) {
-        res.headline("Simplified Guard");
-        res.appendAll("Original Guard:\n", rule.getGuard(), "\nNew Guard:\n", *new_guard);
-        res.storeSubProof(new_guard.getProof());
-        res = rule.withGuard(*new_guard);
-    }
-    return res;
-}
-
 RuleResult eliminateTempVars(Rule rule) {
     auto res {propagateBooleanEqualities(rule)};
     if (res) {
@@ -98,10 +86,6 @@ RuleResult eliminateTempVars(Rule rule) {
     }
     varsInUpdate = rule.getUpdate().coDomainVars();
     res = propagateEqualities(rule, isTemp);
-    if (res) {
-        return res;
-    }
-    res = simplify(rule);
     if (res) {
         return res;
     }

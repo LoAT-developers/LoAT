@@ -153,6 +153,8 @@ public:
      */
     std::optional<ArithVarPtr> isUnivariate() const;
 
+    bool isNegated() const;
+
     /**
      * @return True iff this expression contains at least two variable.
      */
@@ -340,6 +342,7 @@ class ArithMult: public ArithExpr {
 public:
 
     const ArithExprVec& getArgs() const;
+    Rational getConstantFactor() const;
 
 private:
 

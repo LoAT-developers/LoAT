@@ -47,7 +47,7 @@ AccelerationProblem::AccelerationProblem(
 }
 
 bool AccelerationProblem::trivial(const Lit &lit) {
-    if (update(lit)->isTriviallyTrue()) {
+    if (update(lit) == top()) {
         res.formula.push_back(bools::mkLit(lit));
         res.proof.newline();
         res.proof.append(std::stringstream() << lit << ": trivial");
@@ -307,7 +307,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         eqs.push_back(theory::mkEq(TheTheory::varToExpr(v), update.get(v)));
     }
     const auto c {bools::mkAnd(eqs)};
-    if (c->isTriviallyFalse() || (samplePoint && !(*samplePoint)(c)->isTriviallyTrue())) {
+    if (c == bot() || (samplePoint && (!(*samplePoint)(c)) == top())) {
         return false;
     }
     const auto g {c && bools::mkLit(lit)};

@@ -77,7 +77,7 @@ std::ostream& operator<<(std::ostream &s, const TransIdx &idx) {
 std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
     s << imp.first->getId() << ": ";
     const auto &up {imp.first->getUpdate()};
-    if (!imp.second->isTriviallyTrue()) {
+    if (imp.second != top()) {
         s << imp.second;
         if (!up.empty()) {
             s << " /\\ " << up;
