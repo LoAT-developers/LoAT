@@ -49,6 +49,7 @@ using ArithAddPtr = cpp::not_null<std::shared_ptr<const ArithAdd>>;
 using ArithMultPtr = cpp::not_null<std::shared_ptr<const ArithMult>>;
 using ArithExpPtr = cpp::not_null<std::shared_ptr<const ArithExp>>;
 using ArithExprSet = linked_hash_set<ArithExprPtr>;
+using ArithExprVec = std::vector<ArithExprPtr>;
 
 namespace mp = boost::multiprecision;
 using Int = mp::cpp_int;
@@ -56,9 +57,10 @@ using Rational = mp::cpp_rational;
 
 namespace arith {
 
-ArithExprPtr mkPlus(std::vector<ArithExprPtr> args);
-ArithExprPtr mkTimes(std::vector<ArithExprPtr> args);
+ArithExprPtr mkPlus(ArithExprVec &&args);
+ArithExprPtr mkTimes(ArithExprVec &&args);
 ArithExprPtr mkConst(const Rational &r);
+ArithExprPtr mkConst(const Rational &&r);
 ArithExprPtr mkExp(const ArithExprPtr base, const ArithExprPtr exponent);
 ArithExprPtr mkVar(const int idx);
 
@@ -71,8 +73,8 @@ enum class Kind {
 class ArithExpr: public std::enable_shared_from_this<ArithExpr> {
 
     friend class ArithExp;
-    friend ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> args);
-    friend ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args);
+    friend ArithExprPtr arith::mkPlus(ArithExprVec &&args);
+    friend ArithExprPtr arith::mkTimes(ArithExprVec &&args);
 
 protected:
 
@@ -237,6 +239,7 @@ public:
 class ArithConst: public ArithExpr {
 
     friend ArithExprPtr arith::mkConst(const Rational &r);
+    friend ArithExprPtr arith::mkConst(const Rational &&r);
 
 public:
     ArithConst(const Rational &t);
@@ -306,52 +309,52 @@ std::ostream& operator<<(std::ostream &s, const ArithVarPtr x);
 
 class ArithAdd: public ArithExpr {
 
-    friend ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> args);
+    friend ArithExprPtr arith::mkPlus(ArithExprVec &&args);
 
 public:
 
-    const ArithExprSet& getArgs() const;
+    const ArithExprVec& getArgs() const;
 
 private:
 
-    ArithExprSet args;
+    ArithExprVec args;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept;
+        bool operator()(const std::tuple<ArithExprVec> &args1, const std::tuple<ArithExprVec> &args2) const noexcept;
     };
     struct CacheHash {
-        size_t operator()(const std::tuple<ArithExprSet> &args) const noexcept;
+        size_t operator()(const std::tuple<ArithExprVec> &args) const noexcept;
     };
-    static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprSet> cache;
+    static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprVec> cache;
 
 public:
-    ArithAdd(const ArithExprSet &args);
+    ArithAdd(const ArithExprVec &args);
 
 };
 
 
 class ArithMult: public ArithExpr {
 
-    friend ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args);
+    friend ArithExprPtr arith::mkTimes(ArithExprVec &&args);
 
 public:
 
-    const ArithExprSet& getArgs() const;
+    const ArithExprVec& getArgs() const;
 
 private:
 
-    ArithExprSet args;
+    ArithExprVec args;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept;
+        bool operator()(const std::tuple<ArithExprVec> &args1, const std::tuple<ArithExprVec> &args2) const noexcept;
     };
     struct CacheHash {
-        size_t operator()(const std::tuple<ArithExprSet> &args) const noexcept;
+        size_t operator()(const std::tuple<ArithExprVec> &args) const noexcept;
     };
-    static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprSet> cache;
+    static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprVec> cache;
 
 public:
-    ArithMult(const ArithExprSet &args);
+    ArithMult(const ArithExprVec &args);
 
 };
 

@@ -421,15 +421,9 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
         },
         [&](const ArithMultPtr m) {
             const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
-            const auto &args {m->getArgs()};
-            if (args.contains(e)) {
-                std::vector<ArithExprPtr> new_args;
-                for (const auto &arg: args) {
-                    if (arg != e) {
-                        new_args.emplace_back(arg);
-                    }
-                }
-                return opt{arith::mkTimes(new_args)};
+            auto args {m->getArgs()};
+            if (std::erase(args, e) > 0) {
+                return opt{arith::mkTimes(std::move(args))};
             }
             return opt{arith::mkConst(0)};
         },
@@ -484,7 +478,7 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr var) const {
                 }
             }
             if (lcoeff) {
-                return opt{arith::mkTimes(new_args)};
+                return opt{arith::mkTimes(std::move(new_args))};
             } else {
                 return opt{};
             }
@@ -515,7 +509,7 @@ bool ArithExpr::isIntegral() const {
                     nonInt.emplace_back(arg);
                 }
             }
-            const auto e {arith::mkTimes(nonInt)};
+            const auto e {arith::mkTimes(std::move(nonInt))};
             unsigned i {0};
             linked_hash_map<ArithVarPtr, Int> valuation;
             // degrees, subs share indices with vars
@@ -616,7 +610,7 @@ std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
                 const auto val {arg->isRational()};
                 if (val) {
                     std::erase(non_const, arg);
-                    return pair{***val, {arith::mkTimes(non_const)}};
+                    return pair{***val, {arith::mkTimes(std::move(non_const))}};
                 }
             }
             return pair{1, {m}};

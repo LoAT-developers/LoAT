@@ -18,6 +18,10 @@ ArithExprPtr arith::mkConst(const Rational &r) {
     return ArithConst::cache.from_cache(r);
 }
 
+ArithExprPtr arith::mkConst(const Rational &&r) {
+    return ArithConst::cache.from_cache(r);
+}
+
 const Rational& ArithConst::getValue() const {
     return t;
 }

@@ -547,11 +547,11 @@ antlrcpp::Any CHCParseVisitor::visitExpr(CHCParser::ExprContext *ctx) {
         const auto op = any_cast<naryop_type>(visit(ctx->naryop()));
         switch (op) {
         case Plus: {
-            res.t = arith::mkPlus(args);
+            res.t = arith::mkPlus(std::move(args));
             break;
         }
         case Times: {
-            res.t = arith::mkTimes(args);
+            res.t = arith::mkTimes(std::move(args));
             break;
         }
         default: throw std::invalid_argument("unknown operator " + ctx->binaryop()->getText());

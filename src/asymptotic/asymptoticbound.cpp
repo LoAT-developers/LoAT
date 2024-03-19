@@ -461,7 +461,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   for (; arg_it != args.end(); ++arg_it) {
                       rhs_args.emplace_back(*arg_it);
                   }
-                  r = arith::mkPlus(rhs_args);
+                  r = arith::mkPlus(std::move(rhs_args));
                   limitVectors = &addition[d];
                   return true;
               },
@@ -474,7 +474,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
                   for (; arg_it != args.end(); ++arg_it) {
                       rhs_args.emplace_back(*arg_it);
                   }
-                  r = arith::mkTimes(rhs_args);
+                  r = arith::mkTimes(std::move(rhs_args));
                   limitVectors = &multiplication[d];
                   return true;
               },
@@ -534,8 +534,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                         r_args.push_back(ex);
                     }
                 }
-                l = arith::mkPlus(l_args);
-                r = arith::mkPlus(r_args);
+                l = arith::mkPlus(std::move(l_args));
+                r = arith::mkPlus(std::move(r_args));
                 if (l->is(0) || r->is(0)) {
                     return false;
                 }
@@ -569,8 +569,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                         r_args.emplace_back(ex);
                     }
                 }
-                l = arith::mkPlus(l_args);
-                r = arith::mkPlus(r_args);
+                l = arith::mkPlus(std::move(l_args));
+                r = arith::mkPlus(std::move(r_args));
                 if (l->is(1) || r->is(1)) {
                     return false;
                 }

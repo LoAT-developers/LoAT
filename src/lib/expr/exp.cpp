@@ -38,7 +38,7 @@ ArithExprPtr arith::mkExp(const ArithExprPtr base, const ArithExprPtr exponent) 
         for (Int i = 0; i < *e_val; ++i) {
             args.push_back(base);
         }
-        return mkTimes(args);
+        return mkTimes(std::move(args));
     }
     if (!base->isIntegral() || !exponent->isIntegral()) {
         throw std::invalid_argument("attempt to create exp with non-int arguments");

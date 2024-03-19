@@ -5,23 +5,22 @@
 
 #include <purrs.hh>
 
-ConsHash<ArithExpr, ArithMult, ArithMult::CacheHash, ArithMult::CacheEqual, ArithExprSet> ArithMult::cache;
+ConsHash<ArithExpr, ArithMult, ArithMult::CacheHash, ArithMult::CacheEqual, ArithExprVec> ArithMult::cache;
 
-ArithMult::ArithMult(const ArithExprSet &args): ArithExpr(arith::Kind::Times), args(args) {}
+ArithMult::ArithMult(const ArithExprVec &args): ArithExpr(arith::Kind::Times), args(args) {}
 
-bool ArithMult::CacheEqual::operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept {
+bool ArithMult::CacheEqual::operator()(const std::tuple<ArithExprVec> &args1, const std::tuple<ArithExprVec> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t ArithMult::CacheHash::operator()(const std::tuple<ArithExprSet> &args) const noexcept {
+size_t ArithMult::CacheHash::operator()(const std::tuple<ArithExprVec> &args) const noexcept {
     size_t hash {0};
     const auto &children {std::get<0>(args)};
     boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
     return hash;
 }
 
-ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args) {
-    // std::cout << "* " << args << std::endl;
+ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> &&args) {
     {
         // pull up nested multiplications
         std::vector<ArithExprPtr> insert;
@@ -110,9 +109,9 @@ ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args) {
         if (changed) {
             args.clear();
             for (auto &x : res) {
-                args.emplace_back(mkTimes(x));
+                args.emplace_back(mkTimes(std::move(x)));
             }
-            return mkPlus(args);
+            return mkPlus(std::move(args));
         }
     }
     {
@@ -140,11 +139,11 @@ ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> args) {
             return args[0];
         }
     }
-    ArithExprSet arg_set {args.begin(), args.end()};
-    // std::cout << "* " << arg_set << std::endl;
-    return ArithMult::cache.from_cache(arg_set);
+    std::sort(args.begin(), args.end());
+    // std::cout << "* " << args << " --> * " << arg_set << std::endl;
+    return ArithMult::cache.from_cache(std::move(args));
 }
 
-const ArithExprSet& ArithMult::getArgs() const {
+const ArithExprVec& ArithMult::getArgs() const {
     return args;
 }

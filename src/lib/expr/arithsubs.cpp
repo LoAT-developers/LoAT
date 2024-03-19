@@ -190,7 +190,7 @@ ArithExprPtr ArithSubs::operator()(const ArithExprPtr t) const {
             std::transform(args.begin(), args.end(), std::back_inserter(new_args), [&](const auto arg) {
                 return (*this)(arg);
             });
-            return arith::mkPlus(new_args);
+            return arith::mkPlus(std::move(new_args));
         },
         [&](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
@@ -198,7 +198,7 @@ ArithExprPtr ArithSubs::operator()(const ArithExprPtr t) const {
             std::transform(args.begin(), args.end(), std::back_inserter(new_args), [&](const auto arg) {
                 return (*this)(arg);
             });
-            return arith::mkTimes(new_args);
+            return arith::mkTimes(std::move(new_args));
         },
         [&](const ArithExpPtr e) {
             return arith::mkExp((*this)(e->getBase()), (*this)(e->getExponent()));
