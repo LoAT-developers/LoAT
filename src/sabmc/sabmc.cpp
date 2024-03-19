@@ -261,10 +261,9 @@ linked_hash_map<Bools::Var, bool> SABMC::value_selection(const Model &model) con
 SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Model &model, const Arith::Var x, linked_hash_set<Arith::Expr> &chosen) const {
     const auto post_var {std::get<Arith::Var>(var_map[x])};
     const auto bounds {trans.toBoolExpr()->getBounds(post_var)};
-    const auto equalities {bounds.equalities()};
-    if (!equalities.empty()) {
+    if (!bounds.equalities.empty()) {
         std::optional<Arith::Expr> res;
-        for (const auto &e: equalities) {
+        for (const auto &e: bounds.equalities) {
             if (!res) {
                 res = e;
             } else {
@@ -324,9 +323,8 @@ Transition mbp(const Transition &t, const Model &model, const Bools::Var x) {
 
 Transition mbp(const Transition &t, const Model &model, const Arith::Var x) {
     const auto bounds {t.toBoolExpr()->getBounds(x)};
-    const auto equalities {bounds.equalities()};
-    if (!equalities.empty()) {
-        return t.subs(Subs::build<Arith>(x, *equalities.begin()));
+    if (!bounds.equalities.empty()) {
+        return t.subs(Subs::build<Arith>(x, *bounds.equalities.begin()));
     } else {
         const auto closest =
             bounds.lowerBounds.size() <= bounds.upperBounds.size() ?
@@ -367,6 +365,7 @@ Transition SABMC::mbp(const Transition &trans, const Model &model) const {
     return res;
 }
 
+// TODO handle Eq / Neq
 void SABMC::handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Model &model, std::vector<Bools::Expr> &res) {
     const auto lhs {rel.lhs()};
     const auto vars {lhs->vars()};

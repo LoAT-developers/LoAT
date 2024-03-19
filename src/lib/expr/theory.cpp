@@ -63,9 +63,7 @@ Bools::Expr mkEq(const Expr &e1, const Expr &e2) {
     return std::visit(
         Overload {
             [&e2](const Arith::Expr &e1) {
-                return bools::mkAndFromLits(
-                    std::vector<Lit>{arith::mkGeq(e1, std::get<Arith::Expr>(e2)),
-                                     arith::mkLeq(e1, std::get<Arith::Expr>(e2))});
+                return bools::mkLit(arith::mkEq(e1, std::get<Arith::Expr>(e2)));
             },
             [&e2](const Bools::Expr lhs) {
                 const auto rhs = std::get<Bools::Expr>(e2);
@@ -78,9 +76,7 @@ Bools::Expr mkNeq(const Expr &e1, const Expr &e2) {
     return std::visit(
         Overload {
             [&e2](const Arith::Expr &e1) {
-                return bools::mkOrFromLits(
-                    std::vector<Lit>{arith::mkGt(e1, std::get<Arith::Expr>(e2)),
-                                     arith::mkLt(e1, std::get<Arith::Expr>(e2))});
+                return bools::mkLit(arith::mkNeq(e1, std::get<Arith::Expr>(e2)));
             },
             [&e2](const Bools::Expr lhs) {
                 const auto rhs = std::get<Bools::Expr>(e2);

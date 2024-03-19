@@ -1,25 +1,23 @@
 #include "limitsmt.hpp"
 
+#include "inftyexpression.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
-#include "inftyexpression.hpp"
 
 #include <map>
 
 using namespace std;
-
 
 /**
  * Given the (abstract) coefficients of a univariate polynomial p in n (where the key is the
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a positive constant
  */
-static Bools::Expr posConstraint(const map<Int, Arith::Expr>& coefficients) {
+static Bools::Expr posConstraint(const map<Int, Arith::Expr> &coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         if (degree > 0) {
-            conjunction.push_back(arith::mkGeq(c, arith::mkConst(0)));
-            conjunction.push_back(arith::mkLeq(c, arith::mkConst(0)));
+            conjunction.push_back(arith::mkEq(c, arith::mkConst(0)));
         } else {
             conjunction.push_back(arith::mkGt(c, arith::mkConst(0)));
         }
@@ -32,12 +30,11 @@ static Bools::Expr posConstraint(const map<Int, Arith::Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a negative constant
  */
-static Bools::Expr negConstraint(const map<Int, Arith::Expr>& coefficients) {
+static Bools::Expr negConstraint(const map<Int, Arith::Expr> &coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (const auto &[degree, c] : coefficients) {
         if (degree > 0) {
-            conjunction.push_back(arith::mkGeq(c, arith::mkConst(0)));
-            conjunction.push_back(arith::mkLeq(c, arith::mkConst(0)));
+            conjunction.push_back(arith::mkEq(c, arith::mkConst(0)));
         } else {
             conjunction.push_back(arith::mkLt(c, arith::mkConst(0)));
         }
@@ -50,18 +47,17 @@ static Bools::Expr negConstraint(const map<Int, Arith::Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = -\infty
  */
-static Bools::Expr negInfConstraint(const map<Int, Arith::Expr>& coefficients) {
-    Int maxDegree {0};
-    for (const auto &[degree, _]: coefficients) {
+static Bools::Expr negInfConstraint(const map<Int, Arith::Expr> &coefficients) {
+    Int maxDegree{0};
+    for (const auto &[degree, _] : coefficients) {
         maxDegree = degree > maxDegree ? degree : maxDegree;
     }
     std::vector<Bools::Expr> disjunction;
     for (int i = 1; i <= maxDegree; i++) {
         std::vector<Arith::Lit> conjunction;
-        for (const auto &[degree, c]: coefficients) {
+        for (const auto &[degree, c] : coefficients) {
             if (degree > i) {
-                conjunction.push_back(arith::mkGeq(c, arith::mkConst(0)));
-                conjunction.push_back(arith::mkLeq(c, arith::mkConst(0)));
+                conjunction.push_back(arith::mkEq(c, arith::mkConst(0)));
             } else if (degree == i) {
                 conjunction.push_back(arith::mkLt(c, arith::mkConst(0)));
             }
@@ -76,8 +72,8 @@ static Bools::Expr negInfConstraint(const map<Int, Arith::Expr>& coefficients) {
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = \infty
  */
-static Bools::Expr posInfConstraint(const map<Int, Arith::Expr>& coefficients) {
-    Int maxDegree {0};
+static Bools::Expr posInfConstraint(const map<Int, Arith::Expr> &coefficients) {
+    Int maxDegree{0};
     for (const auto &[degree, _] : coefficients) {
         maxDegree = degree > maxDegree ? degree : maxDegree;
     }
@@ -86,8 +82,7 @@ static Bools::Expr posInfConstraint(const map<Int, Arith::Expr>& coefficients) {
         std::vector<Arith::Lit> conjunction;
         for (const auto &[degree, c] : coefficients) {
             if (degree > i) {
-                conjunction.push_back(arith::mkGeq(c, arith::mkConst(0)));
-                conjunction.push_back(arith::mkLeq(c, arith::mkConst(0)));
+                conjunction.push_back(arith::mkEq(c, arith::mkConst(0)));
             } else if (degree == i) {
                 conjunction.push_back(arith::mkGt(c, arith::mkConst(0)));
             }
@@ -101,7 +96,7 @@ static Bools::Expr posInfConstraint(const map<Int, Arith::Expr>& coefficients) {
  * @return the (abstract) coefficients of 'n' in 'ex', where the key is the degree of the respective monomial
  */
 static map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::Var n) {
-    const auto maxDegree {*ex->isPoly(n)};
+    const auto maxDegree{*ex->isPoly(n)};
     map<Int, Arith::Expr> coefficients;
     for (int i = 0; i <= maxDegree; ++i) {
         coefficients.emplace(i, *ex->coeff(n, i));
@@ -111,25 +106,25 @@ static map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::
 
 std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &currentLP, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
-    const auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Arith::Lit>, ArithSubs>({currentLP.getQuery(), {arith::mkGt(cost, arith::mkConst(0))}}, {}))};
+    const auto solver{SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Arith::Lit>, ArithSubs>({currentLP.getQuery(), {arith::mkGt(cost, arith::mkConst(0))}}, {}))};
     // the parameter of the desired family of solutions
-    const auto n {currentLP.getN()};
+    const auto n{currentLP.getN()};
     // get all relevant variables
-    const auto vars {currentLP.getVariables()};
+    const auto vars{currentLP.getVariables()};
     // create linear templates for all variables
     ArithSubs templateSubs;
     std::map<Arith::Var, Arith::Var> varCoeff, varCoeff0;
     for (const auto &var : vars) {
-        const auto c0 {ArithVar::next()};
-        const auto c {ArithVar::next()};
+        const auto c0{ArithVar::next()};
+        const auto c{ArithVar::next()};
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
         templateSubs.put(var, c0 + (n->toExpr() * c));
     }
     // replace variables in the cost function with their linear templates
-    const auto templateCost {templateSubs(cost)};
+    const auto templateCost{templateSubs(cost)};
     // if the cost function is a constant, then we are bound to fail
-    const auto d {templateCost->isPoly(n)};
+    const auto d{templateCost->isPoly(n)};
     const auto maxPossibleFiniteRes = d ? Complexity::Poly(*d) : Complexity::NestedExp;
     if (maxPossibleFiniteRes == Complexity::Const) {
         return {};
@@ -137,9 +132,9 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
     // encode every entry of the limit problem
     for (auto it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
         // replace variables with their linear templates
-        const auto ex {templateSubs(it->first)};
-        const auto direction {it->second};
-        const auto coefficients {getCoefficients(ex, n)};
+        const auto ex{templateSubs(it->first)};
+        const auto direction{it->second};
+        const auto coefficients{getCoefficients(ex, n)};
         // add the required constraints (depending on the direction-label from the limit problem)
         if (direction == POS) {
             solver->add(posConstraint(coefficients) || posInfConstraint(coefficients));
@@ -163,8 +158,7 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
     // a model witnesses unbounded complexity
     for (const auto &var : vars) {
         if (!var->isTempVar()) {
-            solver->add(arith::mkGeq(varCoeff.at(var), arith::mkConst(0)));
-            solver->add(arith::mkLeq(varCoeff.at(var), arith::mkConst(0)));
+            solver->add(arith::mkEq(varCoeff.at(var), arith::mkConst(0)));
         }
     }
     if (!checkSolver()) {
@@ -174,11 +168,11 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
         // we failed to find a model -- drop all non-mandatory constraints
         solver->pop();
         if (maxPossibleFiniteRes.getType() == Complexity::CpxPolynomial && mp::denominator(maxPossibleFiniteRes.getPolynomialDegree()) == 1) {
-            const auto maxPossibleDegree {mp::numerator(maxPossibleFiniteRes.getPolynomialDegree())};
+            const auto maxPossibleDegree{mp::numerator(maxPossibleFiniteRes.getPolynomialDegree())};
             // try to find a witness for polynomial complexity with degree maxDeg,...,1
-            const auto coefficients {getCoefficients(templateCost, n)};
+            const auto coefficients{getCoefficients(templateCost, n)};
             for (auto i = maxPossibleDegree; i > 0 && Complexity::Poly(i) > currentRes; --i) {
-                const auto c {coefficients.at(i)};
+                const auto c{coefficients.at(i)};
                 // remember the current state for backtracking
                 solver->push();
                 solver->add(arith::mkGt(c, arith::mkConst(0)));
@@ -198,10 +192,10 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
     }
     // we found a model -- create the corresponding solution of the limit problem
     ArithSubs smtSubs;
-    const auto model {solver->model()};
+    const auto model{solver->model()};
     for (const auto &var : vars) {
-        const auto c0 {varCoeff0.at(var)};
-        const auto c {model.get<Arith>(varCoeff.at(var))};
+        const auto c0{varCoeff0.at(var)};
+        const auto c{model.get<Arith>(varCoeff.at(var))};
         smtSubs.put(var, model.contains<Arith>(c0) ? arith::mkConst(model.get<Arith>(c0) + c) * n : arith::mkConst(c) * n);
     }
     return {smtSubs};
@@ -209,7 +203,7 @@ std::optional<ArithSubs> LimitSmtEncoding::applyEncoding(const LimitProblem &cur
 
 Bools::Expr encodeBoolExpr(const Bools::Expr expr, const ArithSubs &templateSubs, const Arith::Var n) {
     BoolExprSet newChildren;
-    for (const auto &c: expr->getChildren()) {
+    for (const auto &c : expr->getChildren()) {
         newChildren.insert(encodeBoolExpr(c, templateSubs, n));
     }
     if (expr->isAnd()) {
@@ -217,44 +211,54 @@ Bools::Expr encodeBoolExpr(const Bools::Expr expr, const ArithSubs &templateSubs
     } else if (expr->isOr()) {
         return bools::mkOr(newChildren);
     } else {
-        auto lit = expr->getTheoryLit();
-        assert(lit);
-        const auto lhs {std::get<ArithLit>(*lit).lhs()};
-        const auto ex {templateSubs(lhs)};
-        const auto coefficients {getCoefficients(ex, n)};
-        return posConstraint(coefficients) || posInfConstraint(coefficients);
+        const auto lit{std::get<ArithLit>(*expr->getTheoryLit())};
+        const auto lhs{lit.lhs()};
+        const auto ex{templateSubs(lhs)};
+        const auto coefficients{getCoefficients(ex, n)};
+        if (lit.isGt()) {
+            return posConstraint(coefficients) || posInfConstraint(coefficients);
+        } else if (lit.isEq()) {
+            return lhs->has(n) ? bot() : bools::mkLit(arith::mkEq(lhs, arith::mkConst(0)));
+        } else if (lit.isNeq()) {
+            return posConstraint(coefficients) ||
+                   posInfConstraint(coefficients) ||
+                   negConstraint(coefficients) ||
+                   negInfConstraint(coefficients);
+        } else {
+            throw std::invalid_argument("unexpected relation");
+        }
     }
 }
 
 std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
-    auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, arith::mkConst(0)))}))};
+    auto solver{SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, arith::mkConst(0)))}))};
     // the parameter of the desired family of solutions
-    const auto n {ArithVar::next()};
+    const auto n{ArithVar::next()};
     // get all relevant variables
-    auto vars {expr->vars().get<Arith::Var>()};
+    auto vars{expr->vars().get<Arith::Var>()};
     cost->collectVars(vars);
-    auto hasTmpVars {false};
+    auto hasTmpVars{false};
     // create linear templates for all variables
     ArithSubs templateSubs;
     std::map<Arith::Var, Arith::Var> varCoeff, varCoeff0;
     for (const auto &var : vars) {
         hasTmpVars |= var->isTempVar();
-        const auto c0 {ArithVar::next()};
-        const auto c {ArithVar::next()};
+        const auto c0{ArithVar::next()};
+        const auto c{ArithVar::next()};
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
         templateSubs.put(var, c0 + (n->toExpr() * c));
     }
     // replace variables in the cost function with their linear templates
-    const auto templateCost {templateSubs(cost)};
+    const auto templateCost{templateSubs(cost)};
     // if the cost function is a constant, then we are bound to fail
-    const auto d {templateCost->isPoly()};
+    const auto d{templateCost->isPoly()};
     const auto maxPossibleFiniteRes = d ? Complexity::Poly(*d) : Complexity::NestedExp;
     if (maxPossibleFiniteRes == Complexity::Const) {
         return {{}, Complexity::Unknown};
     }
-    const auto encoding {encodeBoolExpr(expr, templateSubs, n)};
+    const auto encoding{encodeBoolExpr(expr, templateSubs, n)};
     solver->add(encoding);
     // auxiliary function that checks satisfiability wrt. the current state of the solver
     auto checkSolver = [&solver] {
@@ -262,10 +266,10 @@ std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const Bools::Ex
     };
     auto model = [&] {
         ArithSubs smtSubs;
-        const auto model {solver->model()};
+        const auto model{solver->model()};
         for (const auto &var : vars) {
-            const auto c0 {varCoeff0.at(var)};
-            const auto c {model.get<Arith>(varCoeff.at(var))};
+            const auto c0{varCoeff0.at(var)};
+            const auto c{model.get<Arith>(varCoeff.at(var))};
             smtSubs.put(var, model.contains<Arith>(c0) ? arith::mkConst(model.get<Arith>(c0) + c) * n : arith::mkConst(c) * n);
         }
         return smtSubs;
@@ -277,8 +281,7 @@ std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const Bools::Ex
         // a model witnesses unbounded complexity
         for (const auto &var : vars) {
             if (!var->isTempVar()) {
-                solver->add(arith::mkGeq(varCoeff.at(var), arith::mkConst(0)));
-                solver->add(arith::mkLeq(varCoeff.at(var), arith::mkConst(0)));
+                solver->add(arith::mkEq(varCoeff.at(var), arith::mkConst(0)));
             }
         }
         if (checkSolver()) {
@@ -291,11 +294,11 @@ std::pair<ArithSubs, Complexity> LimitSmtEncoding::applyEncoding(const Bools::Ex
     }
     // we failed to find a model -- drop all non-mandatory constraints
     if (maxPossibleFiniteRes.getType() == Complexity::CpxPolynomial && mp::denominator(maxPossibleFiniteRes.getPolynomialDegree()) == 1) {
-        const auto maxPossibleDegree {mp::denominator(maxPossibleFiniteRes.getPolynomialDegree())};
+        const auto maxPossibleDegree{mp::denominator(maxPossibleFiniteRes.getPolynomialDegree())};
         // try to find a witness for polynomial complexity with degree maxDeg,...,1
-        const auto coefficients {getCoefficients(templateCost, n)};
+        const auto coefficients{getCoefficients(templateCost, n)};
         for (auto i = maxPossibleDegree; i > 0 && Complexity::Poly(i) > currentRes; --i) {
-            const auto c {coefficients.find(i)->second};
+            const auto c{coefficients.find(i)->second};
             // remember the current state for backtracking
             solver->push();
             solver->add(arith::mkGt(c, arith::mkConst(0)));

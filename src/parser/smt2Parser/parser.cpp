@@ -152,8 +152,11 @@ namespace sexpressionparser {
         } else if (sexp[0].str() == ">") {
             return bools::mkLit(negate ? arith::mkLeq(fst, snd) : arith::mkGt(fst, snd));
         } else if (sexp[0].str() == "=") {
-            assert(!negate);
-            return theory::mkEq(fst, snd);
+            if (negate) {
+                return theory::mkNeq(fst, snd);
+            } else {
+                return theory::mkEq(fst, snd);
+            }
         }
         throw std::invalid_argument("");
     }

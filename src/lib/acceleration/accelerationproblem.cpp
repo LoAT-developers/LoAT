@@ -19,13 +19,27 @@ AccelerationProblem::AccelerationProblem(
     config(config),
     samplePoint(samplePoint) {
     for (const auto &l: guard->lits()) {
-        todo.insert(l);
+        std::visit(Overload {
+            [&](const ArithLit &l) {
+                if (l.isNeq()) {
+                    throw std::invalid_argument("neq in acceleration problem");
+                } else if (l.isEq()) {
+                    todo.insert(arith::mkGeq(l.lhs(), arith::mkConst(0)));
+                    todo.insert(arith::mkLeq(l.lhs(), arith::mkConst(0)));
+                } else {
+                    todo.insert(l);
+                }
+            },
+            [&](const auto &l) {
+                todo.insert(l);
+            }
+        }, l);
     }
     const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
     const auto logic {Smt::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
-        const auto bound {bools::mkLit(ArithLit(config.n->toExpr()))};
+        const auto bound {bools::mkLit(arith::mkGt(config.n->toExpr(), arith::mkConst(0)))};
         this->solver->add(bound);
         this->res.formula.push_back(bound);
     }

@@ -109,8 +109,16 @@ protected:
     }
 
     EXPR convertRelational(const ArithLit &rel) {
-        const auto res {context.gt(convertEx(rel.lhs()), context.getInt(0))};
-        return res;
+        const auto lhs {convertEx(rel.lhs())};
+        const auto rhs {context.getInt(0)};
+        if (rel.isGt()) {
+            return context.gt(lhs, rhs);
+        } else if (rel.isEq()) {
+            return context.eq(lhs, rhs);
+        } else if (rel.isNeq()) {
+            return context.neq(lhs, rhs);
+        }
+        throw std::invalid_argument("unknown relation");
     }
 
     EXPR convertLit(const BoolLit &lit) {

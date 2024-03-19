@@ -52,11 +52,30 @@ void syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
             syntacticImplicant(c, m, res);
         }
     } else {
-        const auto lit = e->getTheoryLit();
-        if (lit) {
-            if (m.eval(*lit)) {
-                res.insert(e);
-            }
+        if (const auto lit = e->getTheoryLit()) {
+            std::visit(
+                Overload{
+                    [&](const ArithLit &l) {
+                        if (l.isNeq()) {
+                            const auto lt{arith::mkLt(l.lhs(), arith::mkConst(0))};
+                            if (m.eval(lt)) {
+                                res.insert(bools::mkLit(lt));
+                            } else {
+                                const auto gt{arith::mkGt(l.lhs(), arith::mkConst(0))};
+                                if (m.eval(gt)) {
+                                    res.insert(bools::mkLit(gt));
+                                }
+                            }
+                        } else if (m.eval(l)) {
+                            res.insert(e);
+                        }
+                    },
+                    [&](const auto &l) {
+                        if (m.eval(l)) {
+                            res.insert(e);
+                        }
+                    }},
+                *lit);
         } else {
             throw std::invalid_argument("unknown kind of BoolExpr");
         }

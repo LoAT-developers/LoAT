@@ -82,6 +82,7 @@ Bools::Expr BoolExpr::toInfinity(const Arith::Var n) const {
         return std::visit(
             Overload{
                 [&n](const ArithLit &rel) {
+                    // TODO handle Eq / Neq
                     assert(rel.isLinear({{n}}));
                     if (!rel.has(n)) {
                         return mkLit(rel);
@@ -105,6 +106,7 @@ Bools::Expr BoolExpr::toMinusInfinity(const Arith::Var n) const {
         return std::visit(
             Overload{
                 [&n](const ArithLit &rel) {
+                    // TODO handle Eq / Neq
                     assert(rel.isLinear({{n}}));
                     if (!rel.has(n)) {
                         return mkLit(rel);

@@ -18,7 +18,7 @@ std::ostream& operator<<(std::ostream &s, const ArithLitSet &set) {
     return s;
 }
 
-ArithLit::ArithLit(const ArithExprPtr l): l(l) { }
+ArithLit::ArithLit(const ArithExprPtr l, const Kind kind): l(l), kind(kind) { }
 
 ArithExprPtr ArithLit::lhs() const {
     return l;
@@ -33,16 +33,23 @@ bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars)
 }
 
 std::pair<std::optional<ArithExprPtr>, std::optional<ArithExprPtr>> ArithLit::getBoundFromIneq(const ArithVarPtr N) const {
-    if (l->isPoly(N) != 1) return {};
-    const auto geq {l - arith::mkConst(1)};
-    const auto optSolved {arith::solveTermFor(geq, N)};
+    if (l->isPoly(N) != 1 || kind == Kind::Neq) return {};
+    const auto t = kind == Kind::Eq ? l : l - arith::mkConst(1);
+    const auto optSolved {arith::solveTermFor(t, N)};
     if (optSolved) {
-        const auto coeff {*geq->coeff(N)};
+        const auto coeff {*t->coeff(N)};
         const auto r {***coeff->isRational()};
-        if (r > 0) {
-            return {{*optSolved}, {}};
-        } else {
-            return {{}, {*optSolved}};
+        switch (kind) {
+        case Kind::Eq:
+            return {optSolved, optSolved};
+        case Kind::Gt:
+            if (r > 0) {
+                return {optSolved, {}};
+            } else {
+                return {{}, optSolved};
+            }
+        default:
+            throw std::invalid_argument("unexpected relation");
         }
     }
     return {};
@@ -52,6 +59,9 @@ void ArithLit::getBounds(const ArithVarPtr n, Bounds &res) const {
     if (has(n)) {
         const auto p {getBoundFromIneq(n)};
         if (p.first) {
+            if (p.first == p.second) {
+                res.equalities.insert(*p.first);
+            }
             auto add {true};
             for (const auto &b: res.lowerBounds) {
                 const auto diff {b - *p.first};
@@ -92,10 +102,25 @@ bool ArithLit::isTriviallyFalse() const {
     return optTrivial && !*optTrivial;
 }
 
+bool ArithLit::isGt() const {
+    return kind == Kind::Gt;
+}
+
+bool ArithLit::isEq() const {
+    return kind == Kind::Eq;
+}
+
+bool ArithLit::isNeq() const {
+    return kind == Kind::Neq;
+}
+
 std::optional<bool> ArithLit::checkTrivial() const {
-    const auto r {l->isRational()};
-    if (r) {
-        return ***r > 0;
+    if (const auto r {l->isRational()}) {
+        switch (kind) {
+            case Kind::Eq: return ***r == 0;
+            case Kind::Gt: return ***r > 0;
+            case Kind::Neq: return ***r != 0;
+        }
     }
     return {};
 }
@@ -109,7 +134,7 @@ bool ArithLit::has(const ArithVarPtr x) const {
 }
 
 ArithLit ArithLit::subs(const ArithSubs &map) const {
-    return ArithLit(map(l));
+    return ArithLit(map(l), kind);
 }
 
 linked_hash_set<ArithVarPtr> ArithLit::vars() const {
@@ -117,7 +142,10 @@ linked_hash_set<ArithVarPtr> ArithLit::vars() const {
 }
 
 std::size_t ArithLit::hash() const {
-    return std::hash<ArithExprPtr>{}(l);
+    size_t seed{0};
+    boost::hash_combine(seed, l);
+    boost::hash_combine(seed, kind);
+    return seed;
 }
 
 size_t hash_value(const ArithLit &rel) {
@@ -127,7 +155,7 @@ size_t hash_value(const ArithLit &rel) {
 ArithLit arith::mkGeq(const ArithExprPtr x, const ArithExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
-    return ArithLit(lhs_integral + arith::mkConst(1));
+    return ArithLit(lhs_integral + arith::mkConst(1), ArithLit::Kind::Gt);
 }
 
 ArithLit arith::mkLeq(const ArithExprPtr x, const ArithExprPtr y) {
@@ -137,7 +165,19 @@ ArithLit arith::mkLeq(const ArithExprPtr x, const ArithExprPtr y) {
 ArithLit arith::mkGt(const ArithExprPtr x, const ArithExprPtr y) {
     const auto lhs {x - y};
     const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
-    return ArithLit(lhs_integral);
+    return ArithLit(lhs_integral, ArithLit::Kind::Gt);
+}
+
+ArithLit arith::mkEq(const ArithExprPtr x, const ArithExprPtr y) {
+    const auto lhs {x - y};
+    const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
+    return ArithLit(lhs_integral, ArithLit::Kind::Eq);
+}
+
+ArithLit arith::mkNeq(const ArithExprPtr x, const ArithExprPtr y) {
+    const auto lhs {x - y};
+    const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
+    return ArithLit(lhs_integral, ArithLit::Kind::Neq);
 }
 
 ArithLit arith::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
@@ -145,27 +185,28 @@ ArithLit arith::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
 }
 
 ArithLit operator!(const ArithLit &x) {
-    return ArithLit(arith::mkConst(1) - x.lhs());
+    switch (x.kind) {
+        case ArithLit::Kind::Gt: return ArithLit(arith::mkConst(1) - x.lhs(), ArithLit::Kind::Gt);
+        case ArithLit::Kind::Eq: return ArithLit(x.lhs(), ArithLit::Kind::Neq);
+        case ArithLit::Kind::Neq: return ArithLit(x.lhs(), ArithLit::Kind::Eq);
+        default: throw std::invalid_argument("unexpected relation");
+    }
 }
 
 std::ostream& operator<<(std::ostream &s, const ArithLit &rel) {
-    return s << rel.l << " > 0";
+    switch (rel.kind) {
+        case ArithLit::Kind::Gt: return s << rel.l << " > 0";
+        case ArithLit::Kind::Eq: return s << rel.l << " = 0";
+        case ArithLit::Kind::Neq: return s << rel.l << " != 0";
+        default: throw std::invalid_argument("unexpected relation");
+    }
 }
 
 bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
-    return l->eval(m) > 0;
-}
-
-ArithExprSet Bounds::equalities() const {
-    ArithExprSet res;
-    for (const auto &b : lowerBounds) {
-        if (upperBounds.contains(b)) {
-            res.insert(b);
-        }
+    switch (kind) {
+        case Kind::Gt: return l->eval(m) > 0;
+        case Kind::Eq: return l->eval(m) == 0;
+        case Kind::Neq: return l->eval(m) != 0;
+        default: throw std::invalid_argument("unexpected relation");
     }
-    return res;
-}
-
-bool Bounds::isEquality(const ArithExprPtr ex) const {
-    return lowerBounds.contains(ex) && upperBounds.contains(ex);
 }
