@@ -225,7 +225,7 @@ void Reachability::update_cpx() {
     if (max_cpx <= cpx && !cost->hasVarWith([](const auto &x){return theory::isTempVar(x);})) {
         return;
     }
-    const auto res = AsymptoticBound::determineComplexity(Conjunction::fromBoolExpr(resolvent.getGuard()), cost, false, cpx);
+    const auto res = AsymptoticBound::determineComplexity(Conjunction::fromBoolExpr(resolvent.getGuard()), cost, cpx);
     if (res.cpx > cpx) {
         cpx = res.cpx;
         std::cout << cpx.toWstString() << std::endl;

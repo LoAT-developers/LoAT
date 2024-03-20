@@ -25,7 +25,7 @@ private:
         int inftyVars;
     };
 
-    AsymptoticBound(Conjunction guard, Arith::Expr cost, bool finalCheck);
+    AsymptoticBound(Conjunction guard, Arith::Expr cost);
 
     void initLimitVectors();
     void createInitialLimitProblem();
@@ -33,14 +33,12 @@ private:
     ArithSubs calcSolution(const LimitProblem &limitProblem);
     Int findUpperBoundforSolution(const LimitProblem &limitProblem, const ArithSubs &solution);
     Int findLowerBoundforSolvedCost(const LimitProblem &limitProblem, const ArithSubs &solution);
-    void removeUnsatProblems();
     bool solveViaSMT(Complexity currentRes);
     bool solveLimitProblem();
     ComplexityResult getComplexity(const LimitProblem &limitProblem);
     bool isAdequateSolution(const LimitProblem &limitProblem);
 
     void createBacktrackingPoint(const InftyExpressionSet::const_iterator &it, Direction dir);
-    bool tryRemovingConstant(const InftyExpressionSet::const_iterator &it);
     bool tryTrimmingPolynomial(const InftyExpressionSet::const_iterator &it);
     bool tryReducingExp(const InftyExpressionSet::const_iterator &it);
     bool tryReducingGeneralExp(const InftyExpressionSet::const_iterator &it);
@@ -52,7 +50,6 @@ private:
 
     const Conjunction guard;
     const Arith::Expr cost;
-    bool finalCheck;
     ComplexityResult bestComplexity {};
     Proof proof {};
 
@@ -91,11 +88,9 @@ public:
     /**
      * Analyzes the given guard and cost.
      * @param varMan the VariableManager instance is needed to get information about free variables
-     * @param finalCheck enables more sophisticated backtracking and uses Timeout::hard
      */
     static Result determineComplexity(const Conjunction &guard,
                                       const Arith::Expr &cost,
-                                      bool finalCheck = false,
                                       const Complexity &currentRes = Complexity::Const);
 
 };

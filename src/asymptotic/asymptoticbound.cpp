@@ -20,8 +20,8 @@
 
 
 AsymptoticBound::AsymptoticBound(Conjunction guard,
-                                 Arith::Expr cost, bool finalCheck)
-    : guard(guard), cost(cost), finalCheck(finalCheck),
+                                 Arith::Expr cost)
+    : guard(guard), cost(cost),
       addition(DirectionSize), multiplication(DirectionSize), division(DirectionSize), currentLP() {}
 
 
@@ -165,20 +165,6 @@ Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
     return lowerBound;
 }
 
-void AsymptoticBound::removeUnsatProblems() {
-    for (int i = limitProblems.size() - 1; i >= 0; --i) {
-        auto result = SmtFactory::check(bools::mkAndFromLits(limitProblems[i].getQuery()));
-
-        if (result == Unsat) {
-            limitProblems.erase(limitProblems.begin() + i);
-        } else if (result == Unknown
-                   && !finalCheck
-                   && limitProblems[i].getSize() >= Config::Limit::ProblemDiscardSize) {
-            limitProblems.erase(limitProblems.begin() + i);
-        }
-    }
-}
-
 
 bool AsymptoticBound::solveViaSMT(Complexity currentRes) {
     if (!currentLP.isPoly() || !trySmtEncoding(currentRes)) {
@@ -190,7 +176,7 @@ bool AsymptoticBound::solveViaSMT(Complexity currentRes) {
     proof.append("Solved the limit problem by the following transformations:");
     proof.append(currentLP.getProof());
 
-    isAdequateSolution(currentLP);
+    getComplexity(currentLP);
     return true;
 }
 
@@ -348,7 +334,7 @@ void AsymptoticBound::createBacktrackingPoint(const InftyExpressionSet::const_it
                                               Direction dir) {
     assert(dir == POS_INF || dir == POS_CONS);
 
-    if (finalCheck && it->second == POS) {
+    if (it->second == POS) {
         limitProblems.push_back(currentLP);
         limitProblems.back().addExpression(InftyExpression(it->first, dir));
     }
@@ -517,10 +503,9 @@ bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
 
 AsymptoticBound::Result AsymptoticBound::determineComplexity(const Conjunction &guard,
                                                              const Arith::Expr &cost,
-                                                             bool finalCheck,
                                                              const Complexity &currentRes) {
 
-    AsymptoticBound asymptoticBound(guard, cost, finalCheck);
+    AsymptoticBound asymptoticBound(guard, cost);
     asymptoticBound.initLimitVectors();
 
     asymptoticBound.createInitialLimitProblem();
@@ -530,7 +515,6 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(const Conjunction &
     if (!result) {
         // Otherwise perform limit calculus
         asymptoticBound.propagateBounds();
-        asymptoticBound.removeUnsatProblems();
         result = asymptoticBound.solveLimitProblem();
     }
 
