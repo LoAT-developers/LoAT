@@ -51,7 +51,7 @@ void printHelp(char *arg0) {
     cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << endl;
     cout << "  --log                                            Enable logging" << endl;
     cout << "  --abmc::blocking_clauses <true|false>            ABMC: En- or disable blocking clauses" << std::endl;
-    cout << "  --smt <z3|cvc5|swine>                            Choose the SMT solver" << std::endl;
+    cout << "  --smt <z3|cvc5|swine|yices|heuristic>            Choose the SMT solver" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
@@ -129,6 +129,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::smtSolver = Config::Analysis::Swine;
             } else if (boost::iequals("yices", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Yices;
+            } else if (boost::iequals("heuristic", str)) {
+                Config::Analysis::smtSolver = Config::Analysis::Heuristic;
             } else {
                 cout << "Error: unknown SMT solver " << str << std::endl;
                 exit(1);

@@ -408,16 +408,22 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
             return opt{degree == 0 ? c : arith::mkConst(0)};
         },
         [&](const ArithVarPtr x) {
-            return opt{arith::mkConst(degree == 1 && var == x ? 1 : 0)};
+            if (var == x && degree == 1) {
+                return opt{arith::mkConst(1)};
+            } else if (var != x && degree == 0) {
+                return opt{x};
+            } else {
+                return opt{arith::mkConst(0)};
+            }
         },
         [&](const ArithAddPtr a) {
+            ArithExprVec args;
             for (const auto &arg: a->getArgs()) {
-                const auto res {arg->coeff(var, degree)};
-                if (res && !(*res)->is(0)) {
-                    return opt{res};
+                if (const auto c {arg->coeff(var, degree)}) {
+                    args.emplace_back(*c);
                 }
             }
-            return opt{arith::mkConst(0)};
+            return opt{arith::mkPlus(std::move(args))};
         },
         [&](const ArithMultPtr m) {
             const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};

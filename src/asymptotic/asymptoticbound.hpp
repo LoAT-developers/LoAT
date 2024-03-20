@@ -49,8 +49,6 @@ private:
     bool applyLimitVectorsThatMakeSense(const InftyExpressionSet::const_iterator &it,
                                         const Arith::Expr l, const Arith::Expr r,
                                         const std::vector<LimitVector> &limitVectors);
-    bool tryInstantiatingVariable();
-    bool trySubstitutingVariable();
     bool trySmtEncoding(Complexity currentRes);
 
     const Conjunction guard;

@@ -25,6 +25,14 @@ static Bools::Expr posConstraint(const map<Int, Arith::Expr> &coefficients) {
     return bools::mkAndFromLits(conjunction);
 }
 
+static Bools::Expr zeroConstraint(const map<Int, Arith::Expr> &coefficients) {
+    std::vector<Arith::Lit> conjunction;
+    for (auto &[degree, c] : coefficients) {
+        conjunction.push_back(arith::mkEq(c, arith::mkConst(0)));
+    }
+    return bools::mkAndFromLits(conjunction);
+}
+
 /**
  * Given the (abstract) coefficients of a univariate polynomial p in n (where the key is the
  * degree of the respective monomial), builds an expression which implies that
@@ -218,7 +226,7 @@ Bools::Expr encodeBoolExpr(const Bools::Expr expr, const ArithSubs &templateSubs
         if (lit.isGt()) {
             return posConstraint(coefficients) || posInfConstraint(coefficients);
         } else if (lit.isEq()) {
-            return lhs->has(n) ? bot() : bools::mkLit(arith::mkEq(lhs, arith::mkConst(0)));
+            return zeroConstraint(coefficients);
         } else if (lit.isNeq()) {
             return posConstraint(coefficients) ||
                    posInfConstraint(coefficients) ||

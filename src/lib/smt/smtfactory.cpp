@@ -8,31 +8,23 @@
 namespace SmtFactory {
 
 SmtPtr solver(Logic logic) {
-    std::unique_ptr<Smt> res;
-    switch (logic) {
-    case QF_LA:
-        res = std::unique_ptr<Smt>(new Yices(logic));
-        break;
-    case QF_NA:
-        switch (Config::Analysis::smtSolver) {
-        case Config::Analysis::Z3:
-        [[fallthrough]];
-        case Config::Analysis::Swine:
+    if (Config::Analysis::smtSolver == Config::Analysis::Heuristic) {
+        std::unique_ptr<Smt> res;
+        switch (logic) {
+        case QF_LA:
+            res = std::unique_ptr<Smt>(new Yices(logic));
+            break;
+        case QF_NA:
             res = std::unique_ptr<Smt>(new Z3());
             break;
-        case Config::Analysis::CVC5:
-            res = std::unique_ptr<Smt>(new CVC5());
-            break;
-        case Config::Analysis::Yices:
-            res = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
+        case QF_NAT:
+            res = std::unique_ptr<Smt>(new Swine());
             break;
         }
-        break;
-    case QF_NAT:
-        res = std::unique_ptr<Smt>(new Swine());
-        break;
+        return res;
+    } else {
+        return solver();
     }
-    return res;
 }
 
 SmtPtr solver() {
@@ -48,6 +40,8 @@ SmtPtr solver() {
         solver = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
         break;
     case Config::Analysis::Swine:
+    [[fallthrough]];
+    case Config::Analysis::Heuristic:
         solver = std::unique_ptr<Smt>(new Swine());
         break;
     }

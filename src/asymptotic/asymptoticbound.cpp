@@ -227,10 +227,6 @@ bool AsymptoticBound::solveLimitProblem() {
             }
         }
 
-        if (trySubstitutingVariable()) {
-            goto start;
-        }
-
         for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
             if (tryReducingExp(it)) {
                 goto start;
@@ -241,10 +237,6 @@ bool AsymptoticBound::solveLimitProblem() {
             if (tryReducingGeneralExp(it)) {
                 goto start;
             }
-        }
-
-        if (tryInstantiatingVariable()) {
-            goto start;
         }
 
         for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
@@ -441,7 +433,7 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
     const auto has_limit_vectors
         {e->apply<bool>(
               [&](const ArithConstPtr c) {
-                  if (c->denominator()->is(1)) {
+                  if (!c->denominator()->is(1)) {
                       l = c->numerator();
                       r = c->denominator();
                       limitVectors = &division[d];
@@ -629,78 +621,6 @@ bool AsymptoticBound::applyLimitVectorsThatMakeSense(const InftyExpressionSet::c
         return false;
     }
 }
-
-
-bool AsymptoticBound::tryInstantiatingVariable() {
-    for (auto it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-        const auto [e,dir] {*it};
-
-        if (e->isUnivariate() && (dir == POS || dir == POS_CONS || dir == NEG_CONS)) {
-            const auto &query = currentLP.getQuery();
-            auto solver = SmtFactory::modelBuildingSolver(Smt::chooseLogic<std::vector<Arith::Lit>, ArithSubs>({query}, {}));
-            solver->add(bools::mkAndFromLits(query));
-            SmtResult result = solver->check();
-
-            if (result == Unsat) {
-                currentLP.setUnsolvable();
-
-            } else if (result == Sat) {
-                const auto model {solver->model()};
-                const auto var {*e->someVar()};
-
-                const auto rational {model.get<Arith>(var)};
-                substitutions.push_back({{var, arith::mkConst(rational)}});
-
-                createBacktrackingPoint(it, POS_INF);
-                currentLP.substitute(substitutions.back(), substitutions.size() - 1);
-
-            } else {
-
-                if (!finalCheck && currentLP.getSize() >= Config::Limit::ProblemDiscardSize) {
-                    currentLP.setUnsolvable();
-                }
-
-                return false;
-            }
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
-bool AsymptoticBound::trySubstitutingVariable() {
-    InftyExpressionSet::const_iterator it, it2;
-    for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-        const auto [e,dir] {*it};
-        const auto e_var {e->isVar()};
-        if (e_var) {
-            for (it2 = std::next(it); it2 != currentLP.cend(); ++it2) {
-                const auto [e2,dir2] {*it2};
-                if (e2->isVar()) {
-                    if (((dir == POS || dir == POS_INF) && (dir2 == POS || dir2 == POS_INF))
-                        || (dir == NEG_INF && dir2 == NEG_INF)) {
-                        assert(*it != *it2);
-
-                        ArithSubs sub{{*e_var, e2}};
-                        substitutions.push_back(sub);
-
-                        createBacktrackingPoint(it, POS_CONS);
-                        createBacktrackingPoint(it2, POS_CONS);
-                        currentLP.substitute(sub, substitutions.size() - 1);
-
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
 
 bool AsymptoticBound::trySmtEncoding(Complexity currentRes) {
     auto optSubs = LimitSmtEncoding::applyEncoding(currentLP, cost, currentRes);

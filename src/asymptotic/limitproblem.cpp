@@ -263,11 +263,6 @@ bool LimitProblem::isUnsolvable() const {
     return unsolvable;
 }
 
-
-void LimitProblem::setUnsolvable() {
-    unsolvable = true;
-}
-
 bool LimitProblem::isSolved() const {
     if (isUnsolvable()) {
         return false;

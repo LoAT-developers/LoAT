@@ -127,11 +127,6 @@ public:
     bool isUnsolvable() const;
 
     /**
-     * Marks this problem as unsolvable.
-     */
-    void setUnsolvable();
-
-    /**
      * Returns true iff this problem is solved and not marked as unsolvable.
      */
     bool isSolved() const;
