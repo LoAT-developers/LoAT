@@ -454,15 +454,14 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr var) const {
             return x->coeff(var);
         },
         [&](const ArithAddPtr a) {
-            std::optional<Int> degree;
+            Int degree {0};
             opt res;
             for (const auto &arg: a->getArgs()) {
-                const auto r {arg->lcoeff(var)};
-                if (res) {
+                if (const auto r {arg->lcoeff(var)}) {
                     const auto d {arg->isPoly(var)};
-                    if (!degree || d < *degree) {
-                        res = r;
-                        degree = d;
+                    if (d && *d > degree) {
+                        res = *r;
+                        degree = *d;
                     }
                 }
             }

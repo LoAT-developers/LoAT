@@ -45,7 +45,6 @@ private:
     bool tryReducingExp(const InftyExpressionSet::const_iterator &it);
     bool tryReducingGeneralExp(const InftyExpressionSet::const_iterator &it);
     bool tryApplyingLimitVector(const InftyExpressionSet::const_iterator &it);
-    bool tryApplyingLimitVectorSmartly(const InftyExpressionSet::const_iterator &it);
     bool applyLimitVectorsThatMakeSense(const InftyExpressionSet::const_iterator &it,
                                         const Arith::Expr l, const Arith::Expr r,
                                         const std::vector<LimitVector> &limitVectors);

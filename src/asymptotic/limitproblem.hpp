@@ -71,13 +71,6 @@ public:
                           const Arith::Expr l, const Arith::Expr r,
                           const LimitVector &lv);
 
-    /**
-     * Removes an integer from this LimitProblem.
-     * transformation rule (B)
-     * @param it must be a valid const_iterator of the underlying set and
-     *           must point to an integer whose sign matches its direction
-     */
-    void removeConstant(const InftyExpressionSet::const_iterator &it);
 
     /**
      * Applies the given substitution to this LimitProblem and stores the given number
@@ -181,12 +174,6 @@ public:
      * Returns true if all expressions of this limit problem are polynomial.
      */
     bool isPoly() const;
-
-
-    /**
-     * Returns true iff the conditions for calling removeConstant(it) are met.
-     */
-    bool removeConstantIsApplicable(const InftyExpressionSet::const_iterator &it);
 
 
     /**

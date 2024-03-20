@@ -208,12 +208,6 @@ bool AsymptoticBound::solveLimitProblem() {
 
         InftyExpressionSet::const_iterator it;
 
-        for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-            if (tryRemovingConstant(it)) {
-                goto start;
-            }
-        }
-
         //if the problem is polynomial, try a (max)SMT encoding
         if (currentLP.isPoly()) {
             if (trySmtEncoding(Complexity::Const)) {
@@ -235,18 +229,6 @@ bool AsymptoticBound::solveLimitProblem() {
 
         for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
             if (tryReducingGeneralExp(it)) {
-                goto start;
-            }
-        }
-
-        for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-            if (!it->first->isMultivariate() && tryApplyingLimitVector(it)) {
-                goto start;
-            }
-        }
-
-        for (it = currentLP.cbegin(); it != currentLP.cend(); ++it) {
-            if (it->first->isMultivariate() && tryApplyingLimitVectorSmartly(it)) {
                 goto start;
             }
         }
@@ -373,18 +355,6 @@ void AsymptoticBound::createBacktrackingPoint(const InftyExpressionSet::const_it
 }
 
 
-bool AsymptoticBound::tryRemovingConstant(const InftyExpressionSet::const_iterator &it) {
-    if (currentLP.removeConstantIsApplicable(it)) {
-
-        currentLP.removeConstant(it);
-        return true;
-
-    } else {
-        return false;
-    }
-}
-
-
 bool AsymptoticBound::tryTrimmingPolynomial(const InftyExpressionSet::const_iterator &it) {
     if (currentLP.trimPolynomialIsApplicable(it)) {
         createBacktrackingPoint(it, POS_CONS);
@@ -486,95 +456,6 @@ bool AsymptoticBound::tryApplyingLimitVector(const InftyExpressionSet::const_ite
               })};
     return has_limit_vectors ? applyLimitVectorsThatMakeSense(it, l, r, *limitVectors) : false;
 }
-
-
-bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::const_iterator &it) {
-    Arith::Expr l {arith::mkConst(0)};
-    Arith::Expr r {arith::mkConst(0)};
-    std::vector<LimitVector> *limitVectors;
-    const auto e {it->first};
-    const auto d {it->second};
-    const auto has_limit_vectors
-        {e->apply<bool>(
-            [&](const ArithConstPtr) {
-                return false;
-            },
-            [&](const Arith::Var) {
-                return false;
-            },
-            [&](const ArithAddPtr a) {
-                std::vector<Arith::Expr> l_args;
-                std::vector<Arith::Expr> r_args;
-                std::optional<Arith::Var> oneVar;
-                for (const auto &ex: a->getArgs()) {
-                    if (ex->isRational()) {
-                        l_args.clear();
-                        r_args.clear();
-                        l_args.emplace_back(ex);
-                        r_args.emplace_back(e - ex);
-                        break;
-                    } else if (ex->isUnivariate()) {
-                        if (!oneVar) {
-                            oneVar = ex->someVar();
-                        }
-                        if (oneVar == ex->someVar()) {
-                            l_args.push_back(ex);
-                        } else {
-                            r_args.push_back(ex);
-                        }
-                    } else {
-                        r_args.push_back(ex);
-                    }
-                }
-                l = arith::mkPlus(std::move(l_args));
-                r = arith::mkPlus(std::move(r_args));
-                if (l->is(0) || r->is(0)) {
-                    return false;
-                }
-                limitVectors = &addition[d];
-                return true;
-            },
-            [&](const ArithMultPtr m) {
-                std::vector<Arith::Expr> l_args;
-                std::vector<Arith::Expr> r_args;
-                l_args.emplace_back(arith::mkConst(1));
-                r_args.emplace_back(arith::mkConst(1));
-                std::optional<Arith::Var> oneVar;
-                for (const auto &ex: m->getArgs()) {
-                    const auto c {ex->isRational()};
-                    if (c) {
-                        l_args.clear();
-                        r_args.clear();
-                        l_args.push_back(ex);
-                        r_args.push_back(e->divide(***c));
-                        break;
-                    } else if (ex->isUnivariate()) {
-                        if (!oneVar) {
-                            oneVar = ex->someVar();
-                        }
-                        if (oneVar == ex->someVar()) {
-                            l_args.emplace_back(ex);
-                        } else {
-                            r_args.emplace_back(ex);
-                        }
-                    } else {
-                        r_args.emplace_back(ex);
-                    }
-                }
-                l = arith::mkTimes(std::move(l_args));
-                r = arith::mkTimes(std::move(r_args));
-                if (l->is(1) || r->is(1)) {
-                    return false;
-                }
-                limitVectors = &multiplication[d];
-                return true;
-            },
-            [](const auto ArithExpPtr) {
-                return false;
-            })};
-    return has_limit_vectors ? applyLimitVectorsThatMakeSense(it, l, r, *limitVectors) : false;
-}
-
 
 bool AsymptoticBound::applyLimitVectorsThatMakeSense(const InftyExpressionSet::const_iterator &it,
                                                      const Arith::Expr l, const Arith::Expr r,

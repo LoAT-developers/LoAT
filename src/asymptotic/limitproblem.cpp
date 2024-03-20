@@ -136,19 +136,6 @@ void LimitProblem::applyLimitVector(const InftyExpressionSet::const_iterator &it
 }
 
 
-void LimitProblem::removeConstant(const InftyExpressionSet::const_iterator &it) {
-    const auto &[e,d] {*it};
-    const auto i {e->isInt()};
-#ifndef NDEBUG
-    assert((*i > 0 && (d == POS_CONS || d == POS))
-           || (*i < 0 && d == NEG_CONS));
-#endif
-    (*log) << "applying transformation rule (B), deleting " << *it << std::endl;
-    set.erase(it);
-    (*log) << "resulting limit problem:" << std::endl << *this << std::endl << std::endl;
-}
-
-
 void LimitProblem::substitute(const ArithSubs &sub, int substitutionIndex) {
 #ifndef NDEBUG
     for (auto const &s : sub) {
@@ -175,7 +162,8 @@ void LimitProblem::trimPolynomial(const InftyExpressionSet::const_iterator &it) 
     const auto var {e->someVar()};
     if (e->isAdd()) {
         const auto d {*e->isPoly(*var)};
-        const auto leadingTerm {*e->lcoeff(*var) * arith::mkExp(*var, arith::mkConst(d))};
+        const auto lcoeff {*e->lcoeff(*var)};
+        const auto leadingTerm {lcoeff * arith::mkExp(*var, arith::mkConst(d))};
         if (dir == POS) {
             // Fix the direction
             dir = POS_INF;
@@ -364,15 +352,6 @@ bool LimitProblem::isPoly() const {
         }
     }
     return true;
-}
-
-bool LimitProblem::removeConstantIsApplicable(const InftyExpressionSet::const_iterator &it) {
-    const auto &[e,dir] {*it};
-    const auto i {e->isInt()};
-    if (!i) {
-        return false;
-    }
-    return (*i > 0 && (dir == POS_CONS || dir == POS)) || (*i < 0 && dir == NEG_CONS);
 }
 
 
