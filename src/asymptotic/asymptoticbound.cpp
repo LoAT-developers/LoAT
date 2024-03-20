@@ -569,8 +569,8 @@ bool AsymptoticBound::tryApplyingLimitVectorSmartly(const InftyExpressionSet::co
                         r_args.emplace_back(ex);
                     }
                 }
-                l = arith::mkPlus(std::move(l_args));
-                r = arith::mkPlus(std::move(r_args));
+                l = arith::mkTimes(std::move(l_args));
+                r = arith::mkTimes(std::move(r_args));
                 if (l->is(1) || r->is(1)) {
                     return false;
                 }
