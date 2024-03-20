@@ -634,17 +634,17 @@ bool ArithExpr::isUnivariate(std::optional<ArithVarPtr> &acc) const {
         [&](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::all_of(args.begin(), args.end(), [&](const auto &arg) -> bool {
-                return arg->isUnivariate(acc);
-            });
+                return !arg->isMultivariate(acc);
+            }) && acc;
         },
         [&](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
             return std::all_of(args.begin(), args.end(), [&](const auto &arg) -> bool {
-                return arg->isUnivariate(acc);
-            });
+                return !arg->isMultivariate(acc);
+            }) && acc;
         },
         [&](const ArithExpPtr e) {
-            return e->getBase()->isUnivariate(acc) && e->getExponent()->isUnivariate(acc);
+            return !e->getBase()->isMultivariate(acc) && !e->getExponent()->isMultivariate(acc) && acc;
         });
 }
 
@@ -674,7 +674,10 @@ bool ArithExpr::isMultivariate(std::optional<ArithVarPtr> &acc) const {
             return false;
         },
         [&](const ArithVarPtr x) {
-            return !x->isUnivariate(acc);
+            if (!acc) {
+                acc = x;
+            }
+            return acc != std::optional{x};
         },
         [&](const ArithAddPtr a) {
             const auto &args {a->getArgs()};

@@ -13,7 +13,13 @@ LimitProblem::LimitProblem()
 LimitProblem::LimitProblem(const Conjunction &normalizedGuard, const Arith::Expr cost)
     : LimitProblem() {
     for (const auto &lit : normalizedGuard) {
-        addExpression(InftyExpression(std::get<ArithLit>(lit).lhs(), POS));
+        const auto &l {std::get<ArithLit>(lit)};
+        if (l.isGt()) {
+            addExpression(InftyExpression(l.lhs(), POS));
+        } else if (l.isEq()) {
+            addExpression(InftyExpression(l.lhs() + arith::mkConst(1), POS_CONS));
+            addExpression(InftyExpression(l.lhs() - arith::mkConst(1), NEG_CONS));
+        }
     }
     addExpression(InftyExpression(cost, POS_INF));
     (*log) << "Created initial limit problem:" << std::endl << *this << std::endl << std::endl;
@@ -23,7 +29,13 @@ LimitProblem::LimitProblem(const Conjunction &normalizedGuard, const Arith::Expr
 LimitProblem::LimitProblem(const Conjunction &normalizedGuard)
     : variableN(ArithVar::next()), unsolvable(false), log(new std::ostringstream()) {
     for (const auto &lit : normalizedGuard) {
-        addExpression(InftyExpression(std::get<ArithLit>(lit).lhs(), POS));
+        const auto &l {std::get<ArithLit>(lit)};
+        if (l.isGt()) {
+            addExpression(InftyExpression(l.lhs(), POS));
+        } else if (l.isEq()) {
+            addExpression(InftyExpression(l.lhs() + arith::mkConst(1), POS_CONS));
+            addExpression(InftyExpression(l.lhs() - arith::mkConst(1), NEG_CONS));
+        }
     }
     (*log) << "Created initial limit problem without cost:" << std::endl << *this << std::endl << std::endl;
 }
@@ -182,26 +194,27 @@ void LimitProblem::reduceExp(const InftyExpressionSet::const_iterator &it) {
     assert(dir == POS_INF || dir == POS);
     assert(exp->isUnivariate());
     const auto x {*exp->someVar()};
-    ArithExpPtr powerInExp {*exp->isPow()};
-    const auto add {exp->isAdd()};
-    if (add) {
+    std::optional<ArithExpPtr> powerInExp;
+    if (const auto add {exp->isAdd()}) {
         for (const auto &arg: (*add)->getArgs()) {
-            const auto p {arg->isPow()};
-            if (p) {
+            if (const auto p {arg->isPow()}) {
                 if ((*p)->getExponent()->has(x)) {
                     powerInExp = *p;
                     break;
                 }
             }
         }
+    } else {
+        powerInExp = *exp->isPow();
     }
-    const auto b {exp - powerInExp};
+    const auto pie {*powerInExp};
+    const auto b {exp - pie};
     assert(b->isPoly(x));
-    assert(powerInExp->getBase()->isPoly(x));
-    assert(powerInExp->getExponent()->isPoly(x));
-    assert(powerInExp->getExponent()->has(x));
-    InftyExpression firstIE(powerInExp->getBase() - arith::mkConst(1), POS);
-    InftyExpression secondIE(powerInExp->getExponent(), POS_INF);
+    assert(pie->getBase()->isPoly(x));
+    assert(pie->getExponent()->isPoly(x));
+    assert(pie->getExponent()->has(x));
+    InftyExpression firstIE(pie->getBase() - arith::mkConst(1), POS);
+    InftyExpression secondIE(pie->getExponent(), POS_INF);
     (*log) << "applying transformation rule (E), replacing " << *it << " by " << firstIE << " and " << secondIE << std::endl;
     set.erase(it);
     addExpression(firstIE);
@@ -213,23 +226,24 @@ void LimitProblem::reduceExp(const InftyExpressionSet::const_iterator &it) {
 void LimitProblem::reduceGeneralExp(const InftyExpressionSet::const_iterator &it) {
     const auto &[exp,dir] {*it};
     assert(dir == POS_INF || dir == POS);
-    ArithExpPtr powerInExp {*exp->isPow()};
-    const auto add {exp->isAdd()};
-    if (add) {
+    std::optional<ArithExpPtr> powerInExp;
+    if (const auto add {exp->isAdd()}) {
         for (const auto &arg: (*add)->getArgs()) {
-            const auto p {arg->isPow()};
-            if (p) {
+            if (const auto p {arg->isPow()}) {
                 if (!(*p)->getExponent()->isPoly() || arg->isMultivariate()) {
                     powerInExp = *p;
                     break;
                 }
             }
         }
+    } else {
+        powerInExp = *exp->isPow();
     }
-    assert(!powerInExp->getExponent()->isPoly() || powerInExp->isMultivariate());
-    const auto b {exp - powerInExp};
-    InftyExpression firstIE(powerInExp->getBase() - arith::mkConst(1), POS);
-    InftyExpression secondIE(powerInExp->getExponent() + b, POS_INF);
+    const auto pie {*powerInExp};
+    assert(!pie->getExponent()->isPoly() || pie->isMultivariate());
+    const auto b {exp - pie};
+    InftyExpression firstIE(pie->getBase() - arith::mkConst(1), POS);
+    InftyExpression secondIE(pie->getExponent() + b, POS_INF);
     (*log) << "reducing general power, replacing " << *it << " by " << firstIE << " and " << secondIE << std::endl;
     set.erase(it);
     addExpression(firstIE);
@@ -393,11 +407,9 @@ bool LimitProblem::reduceExpIsApplicable(const InftyExpressionSet::const_iterato
     }
     const auto x {*ex->someVar()};
     std::optional<ArithExpPtr> powerInExp;
-    const auto add {ex->isAdd()};
-    if (add) {
+    if (const auto add {ex->isAdd()}) {
         for (const auto &arg: (*add)->getArgs()) {
-            const auto p {arg->isPow()};
-            if (p) {
+            if (const auto p {arg->isPow()}) {
                 if ((*p)->getExponent()->has(x)) {
                     powerInExp = *p;
                     break;
@@ -405,20 +417,20 @@ bool LimitProblem::reduceExpIsApplicable(const InftyExpressionSet::const_iterato
             }
         }
     } else {
-        const auto p {ex->isPow()};
-        if (!p) {
+        if (const auto p {ex->isPow()}) {
+            powerInExp = *p;
+        } else {
             return false;
         }
-        powerInExp = *p;
     }
-    const auto b = ex - *powerInExp;
-    if (!b->isPoly(x)) {
+    const auto pie {*powerInExp};
+    if (const auto b = ex - pie; !b->isPoly(x)) {
         return false;
     }
-    if (!((*powerInExp)->getBase()->isPoly(x) && (*powerInExp)->getExponent()->isPoly(x))) {
+    if (!(pie->getBase()->isPoly(x) && pie->getExponent()->isPoly(x))) {
         return false;
     }
-    return (*powerInExp)->getExponent()->has(x);
+    return pie->getExponent()->has(x);
 }
 
 
@@ -427,21 +439,18 @@ bool LimitProblem::reduceGeneralExpIsApplicable(const InftyExpressionSet::const_
     if (!(dir == POS_INF || dir == POS)) {
         return false;
     }
-    const auto add {ex->isAdd()};
-    if (add) {
+    if (const auto add {ex->isAdd()}) {
         for (const auto &arg: (*add)->getArgs()) {
-            const auto p {arg->isPow()};
-            if (p) {
-                if ((*p)->getExponent()->isPoly() || arg->isMultivariate()) {
+            if (const auto p {arg->isPow()}) {
+                if (!(*p)->getExponent()->isPoly() || arg->isMultivariate()) {
                     return true;
                 }
             }
         }
         return false;
     }
-    const auto p {ex->isPow()};
-    if (p) {
-        return (*p)->getExponent()->isPoly() || ex->isMultivariate();
+    if (const auto p {ex->isPow()}) {
+        return !(*p)->getExponent()->isPoly() || ex->isMultivariate();
     }
     return false;
 }
