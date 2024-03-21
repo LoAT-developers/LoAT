@@ -6,7 +6,7 @@
 #include "smt.hpp"
 #include "export.hpp"
 #include "vector.hpp"
-#include "asymptoticbound.hpp"
+#include "limitsmt.hpp"
 #include "vareliminator.hpp"
 #include "chain.hpp"
 #include "theory.hpp"
@@ -225,9 +225,9 @@ void Reachability::update_cpx() {
     if (max_cpx <= cpx && !cost->hasVarWith([](const auto &x){return theory::isTempVar(x);})) {
         return;
     }
-    const auto res = AsymptoticBound::determineComplexity(Conjunction::fromBoolExpr(resolvent.getGuard()), cost, cpx);
-    if (res.cpx > cpx) {
-        cpx = res.cpx;
+    const auto res {LimitSmtEncoding::applyEncoding(resolvent.getGuard(), cost, cpx)};
+    if (res > cpx) {
+        cpx = res;
         std::cout << cpx.toWstString() << std::endl;
         proof.result(cpx.toString());
     }

@@ -23,16 +23,10 @@
 const Complexity Complexity::Unknown = Complexity(CpxUnknown);
 const Complexity Complexity::Const = Complexity::Poly(0);
 const Complexity Complexity::Exp = Complexity(CpxExponential);
-const Complexity Complexity::NestedExp = Complexity(CpxNestedExponential);
 const Complexity Complexity::Unbounded = Complexity(CpxUnbounded);
-const Complexity Complexity::Nonterm = Complexity(CpxNonterm);
 
 Complexity Complexity::Poly(Int degree) {
     return Complexity(degree);
-}
-
-Complexity Complexity::Poly(Int numer, Int denom) {
-    return Complexity(numer / denom);
 }
 
 bool Complexity::operator==(const Complexity &other) const {
@@ -67,7 +61,7 @@ Complexity Complexity::operator*(const Complexity &other) const {
     return std::max(*this, other);
 }
 
-Complexity Complexity::operator^(const Rational &exponent) const {
+Complexity Complexity::operator^(const Int &exponent) const {
     assert(exponent >= 0);
 
     if (type == CpxPolynomial) {
@@ -87,22 +81,15 @@ std::string Complexity::toString() const {
             return "Poly(n^" + polyDegree.str() + ")";
         }
     case CpxExponential: return "Exp";
-    case CpxNestedExponential: return "ExpNested";
     case CpxUnbounded: return "Unbounded";
-    case CpxNonterm: return "Nonterm";
     }
     throw std::invalid_argument("unreachable");
 }
 
 std::string Complexity::toWstString() const {
-    if (type == CpxNonterm) {
-        return "NO";
-    }
-
     std::string res = "WORST_CASE(";
     switch (type) {
     case CpxExponential: res += "EXP"; break;
-    case CpxNestedExponential: res += "EXP"; break;
     case CpxUnbounded: res += "INF"; break;
     case CpxUnknown: res += "Omega(0)"; break;
     case CpxPolynomial:
