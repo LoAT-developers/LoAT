@@ -167,7 +167,7 @@ Int AsymptoticBound::findLowerBoundforSolvedCost(const LimitProblem &limitProble
 
 
 bool AsymptoticBound::solveViaSMT(Complexity currentRes) {
-    if (!currentLP.isPoly() || !trySmtEncoding(currentRes)) {
+    if (!trySmtEncoding(currentRes)) {
         return false;
     }
 
@@ -509,16 +509,7 @@ AsymptoticBound::Result AsymptoticBound::determineComplexity(const Conjunction &
     asymptoticBound.initLimitVectors();
 
     asymptoticBound.createInitialLimitProblem();
-    // first try the SMT encoding
-    bool polynomial = cost->isPoly() && asymptoticBound.currentLP.isPoly();
-    bool result = polynomial && asymptoticBound.solveViaSMT(currentRes);
-    if (!result) {
-        // Otherwise perform limit calculus
-        asymptoticBound.propagateBounds();
-        result = asymptoticBound.solveLimitProblem();
-    }
-
-    if (result) {
+    if (asymptoticBound.solveViaSMT(currentRes)) {
 
         // Print solution
         asymptoticBound.proof.append("Solution:");
