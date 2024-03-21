@@ -124,7 +124,6 @@ static Bools::Expr zeroConstraint(const Arith::Expr e, const Arith::Var n) {
     } else {
         return bot();
     }
-    throw std::logic_error(toString(e) + "is neither a polynoimal, nor an exponential, a product, or a sum");
 }
 
 static Bools::Expr posConstraint(const Arith::Expr e, const Arith::Var n) {
