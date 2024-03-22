@@ -68,6 +68,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_formula_simplification_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
   ${loat_acceleration_INCLUDE_DIRS}
+  ${loat_its_INCLUDE_DIRS}
 )
 
 message(STATUS "Searching libraries")
@@ -106,6 +107,7 @@ target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:loat_formula_simplification>
   $<TARGET_OBJECTS:loat_recurrence>
   $<TARGET_OBJECTS:loat_acceleration>
+  $<TARGET_OBJECTS:loat_its>
   ${ANTLR4}
   ${FAUDES}
   ${SWINE}

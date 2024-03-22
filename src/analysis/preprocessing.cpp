@@ -22,6 +22,7 @@
 #include "config.hpp"
 #include "theory.hpp"
 #include "guardtoolbox.hpp"
+#include "smtfactory.hpp"
 
 #include <numeric>
 #include <unordered_set>
@@ -142,7 +143,10 @@ ResultViaSideEffects unroll(ITSProblem &its) {
 
 ResultViaSideEffects refine_dependency_graph(ITSProblem &its) {
     ResultViaSideEffects res;
-    const auto removed {its.refineDependencyGraph()};
+    const auto is_edge = [](const TransIdx fst, const TransIdx snd){
+        return SmtFactory::check(Chaining::chain(*fst, *snd).first.getGuard()) == Sat;
+    };
+    const auto removed {its.refineDependencyGraph(is_edge)};
     if (!removed.empty()) {
         res.succeed();
         res.dependencyGraphRefinementProof(removed);

@@ -323,7 +323,6 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
                 solver->pop();
             }
         }
-        return Complexity::Unknown;
     } else {
         solver->add(cost_constraint);
         if (solver->check() == Sat) {
@@ -337,4 +336,5 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
             return getComplexity(n, cost, subs);
         }
     }
+    return Complexity::Unknown;
 }
