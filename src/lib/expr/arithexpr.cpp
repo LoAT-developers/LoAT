@@ -426,6 +426,9 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
             return opt{arith::mkPlus(std::move(args))};
         },
         [&](const ArithMultPtr m) {
+            if (degree == 0) {
+                return opt{m->has(var) ? arith::mkConst(0) : cpp::assume_not_null(shared_from_this())};
+            }
             const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
             auto args {m->getArgs()};
             if (std::erase(args, e) > 0) {

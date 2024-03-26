@@ -43,20 +43,9 @@ private:
     static const Bools::Expr buildFromLits(const Lits &lits, ConcatOperator op) {
         BoolExprSet children;
         for (const auto &lit: lits) {
-            const auto l {mkLit(lit)};
-            if (l == top()) {
-                if (op == ConcatOr) {
-                    return top();
-                }
-            } else if (l == bot()) {
-                if (op == ConcatAnd) {
-                    return bot();
-                }
-            } else {
-                children.insert(l);
-            }
+            children.insert(mkLit(lit));
         }
-        return from_cache(children, op);
+        return build(children, op);
     }
 
     template <class Children>
@@ -89,10 +78,11 @@ private:
                 todo.pop();
             }
         }
-        if (children.size() == 1) {
-            return *children.begin();
+        switch (children.size()) {
+            case 0: return op == ConcatAnd ? top() : bot();
+            case 1: return *children.begin();
+            default: return from_cache(children, op);
         }
-        return from_cache(children, op);
     }
 
 public:

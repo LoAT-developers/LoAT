@@ -188,7 +188,7 @@ static Bools::Expr posInfConstraint(const Arith::Expr e, const Arith::Var n) {
                 poly_args.push_back(arg);
             } else {
                 const auto pos {posConstraint(arg, n)};
-                const auto pos_inf {posConstraint(arg, n)};
+                const auto pos_inf {posInfConstraint(arg, n)};
                 non_poly_pos_or_inf_args.push_back(pos || pos_inf);
                 non_poly_pos_inf_args.push_back(pos_inf);
             }
@@ -210,7 +210,7 @@ static Bools::Expr posInfConstraint(const Arith::Expr e, const Arith::Var n) {
                 poly_args.push_back(arg);
             } else {
                 const auto constant {constConstraint(arg, n)};
-                const auto pos_inf {posConstraint(arg, n)};
+                const auto pos_inf {posInfConstraint(arg, n)};
                 non_poly_const_or_inf_args.push_back(constant || pos_inf);
                 non_poly_pos_inf_args.push_back(pos_inf);
             }
@@ -222,6 +222,52 @@ static Bools::Expr posInfConstraint(const Arith::Expr e, const Arith::Var n) {
         return (non_poly_const_or_inf && non_poly_pos_inf) || (non_poly_const_or_inf && poly_pos_inf);
     }
     throw std::logic_error(toString(e) + "is neither a polynoimal, nor an exponential, a product, or a sum");
+}
+
+static Bools::Expr expConstraint(const Arith::Expr e, const Arith::Var n) {
+    if (const auto exp {e->isPow()}) {
+        // b^e: require that b-1 and e are positive and e is increasing
+        const auto b {(*exp)->getBase() - arith::mkConst(1)};
+        const auto base_pos {posConstraint(b, n)};
+        const auto base_pos_inf {posInfConstraint(b, n)};
+        const auto exponent_pos_inf {posInfConstraint((*exp)->getExponent(), n)};
+        return (base_pos || base_pos_inf) && exponent_pos_inf;
+    } else if (const auto mult {e->isMult()}) {
+        std::vector<Arith::Expr> poly_args;
+        std::vector<Bools::Expr> non_poly_exp_args;
+        std::vector<Bools::Expr> non_poly_pos_or_pos_inf_args;
+        for (const auto &arg: (*mult)->getArgs()) {
+            if (arg->isPoly(n)) {
+                poly_args.push_back(arg);
+            } else {
+                non_poly_exp_args.push_back(expConstraint(arg, n));
+                non_poly_pos_or_pos_inf_args.push_back(posConstraint(arg, n) || posInfConstraint(arg, n));
+            }
+        }
+        const auto poly {arith::mkPlus(std::move(poly_args))};
+        const auto coeffs {getCoefficients(poly, n)};
+        const auto poly_pos_inf {posInfConstraint(coeffs)};
+        const auto poly_pos {posConstraint(coeffs)};
+        const auto non_poly_pos_or_pos_inf {bools::mkAnd(non_poly_pos_or_pos_inf_args)};
+        const auto non_poly_exp {bools::mkOr(non_poly_exp_args)};
+        return (poly_pos || poly_pos_inf) && non_poly_pos_or_pos_inf && non_poly_exp;
+    } else if (const auto add {e->isAdd()}) {
+        std::vector<Bools::Expr> non_poly_const_or_inf_args;
+        std::vector<Bools::Expr> non_poly_exp_args;
+        for (const auto &arg: (*add)->getArgs()) {
+            if (!arg->isPoly(n)) {
+                const auto constant {constConstraint(arg, n)};
+                const auto pos_inf {posInfConstraint(arg, n)};
+                non_poly_const_or_inf_args.push_back(constant || pos_inf);
+                non_poly_exp_args.push_back(expConstraint(arg, n));
+            }
+        }
+        const auto non_poly_const_or_inf {bools::mkAnd(non_poly_const_or_inf_args)};
+        const auto non_poly_exp {bools::mkOr(non_poly_exp_args)};
+        return non_poly_const_or_inf && non_poly_exp;
+    } else {
+        return bot();
+    }
 }
 
 Bools::Expr encodeBoolExpr(const Bools::Expr expr, const ArithSubs &templateSubs, const Arith::Var n) {
@@ -252,16 +298,6 @@ Bools::Expr encodeBoolExpr(const Bools::Expr expr, const ArithSubs &templateSubs
     }
 }
 
-Complexity getComplexity(const Arith::Var n, const Arith::Expr cost, const ArithSubs &solution) {
-    const auto solvedCost {solution(cost)};
-    assert(!solvedCost->isMultivariate());
-    if (const auto d {solvedCost->isPoly()}) {
-        return Complexity::Poly(*d);
-    } else {
-        return Complexity::Exp;
-    }
-}
-
 Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
     auto solver{SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, arith::mkConst(0)))}))};
@@ -284,15 +320,10 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
     }
     // replace variables in the cost function with their linear templates
     const auto templateCost{templateSubs(cost)};
-    // if the cost function is a constant, then we are bound to fail
-    if (!templateCost->has(n)) {
-        return Complexity::Const;
-    }
     solver->add(encodeBoolExpr(expr, templateSubs, n));
-    const auto cost_constraint {posInfConstraint(templateCost, n)};
     if (hasTmpVars) {
         solver->push();
-        solver->add(cost_constraint);
+        solver->add(posInfConstraint(templateCost, n));
         // first fix that all program variables have to be constants
         // a model witnesses unbounded complexity
         for (const auto &var : vars) {
@@ -305,36 +336,53 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
         }
         solver->pop();
     }
-    if (const auto d{templateCost->isPoly(n)}) {
-        if (Complexity::Poly(*d) <= currentRes) {
-            return Complexity::Unknown;
-        }
-        // try to find a witness for polynomial complexity with degree maxDeg,...,1
-        const auto coefficients{getCoefficients(templateCost, n)};
-        for (auto i = *d; i > 0 && Complexity::Poly(i) > currentRes; --i) {
-            const auto c{coefficients.find(i)->second};
-            // remember the current state for backtracking
-            solver->push();
-            solver->add(arith::mkGt(c, arith::mkConst(0)));
-            if (solver->check() == Sat) {
-                return Complexity::Poly(i);
-            } else {
-                // remove all non-mandatory constraints and retry with degree i-1
-                solver->pop();
-            }
-        }
+    if (currentRes >= Complexity::Exp) {
+        return Complexity::Unknown;
+    }
+    const auto is_poly {templateCost->isPoly(n)};
+    auto degree {is_poly.value_or(0)};
+    Arith::Expr polyCost {arith::mkConst(0)};
+    if (is_poly) {
+        polyCost = templateCost;
     } else {
-        solver->add(cost_constraint);
+        // non-polynomial cost, try to prove an exponential bound
+        solver->push();
+        solver->add(expConstraint(templateCost, n));
         if (solver->check() == Sat) {
-            ArithSubs subs;
-            const auto model{solver->model()};
-            for (const auto &var : vars) {
-                const auto c0{varCoeff0.at(var)};
-                const auto c{model.get<Arith>(varCoeff.at(var))};
-                subs.put(var, model.contains<Arith>(c0) ? arith::mkConst(model.get<Arith>(c0) + c) * n : arith::mkConst(c) * n);
-            }
-            return getComplexity(n, cost, subs);
+            return Complexity::Exp;
         }
+        solver->pop();
+        // failed to prove an exponential bound
+        if (const auto add {templateCost->isAdd()}) {
+            // the cost is a sum, split polynomial and non-polynomial addends
+            std::vector<Arith::Expr> poly_args;
+            std::vector<Arith::Expr> non_poly_args;
+            for (const auto &arg: (*add)->getArgs()) {
+                if (arg->isPoly(n)) {
+                    poly_args.push_back(arg);
+                } else {
+                    non_poly_args.push_back(arg);
+                }
+            }
+            const auto non_poly {arith::mkPlus(std::move(non_poly_args))};
+            // make sure that the limit of the non-polynomial addends is not -oo
+            solver->add(constConstraint(non_poly, n) || posInfConstraint(non_poly, n));
+            polyCost = arith::mkPlus(std::move(poly_args));
+            degree = *polyCost->isPoly(n);
+        } else {
+            degree = 0;
+        }
+    }
+    // try to find a witness for polynomial complexity with degree d,...,1
+    const auto coefficients {getCoefficients(polyCost, n)};
+    for (auto i = degree; i > 0 && Complexity::Poly(i) > currentRes; --i) {
+        const auto c {coefficients.at(i)};
+        solver->push();
+        solver->add(arith::mkGt(c, arith::mkConst(0)));
+        if (solver->check() == Sat) {
+            return Complexity::Poly(i);
+        }
+        solver->pop();
     }
     return Complexity::Unknown;
 }
