@@ -32,6 +32,10 @@ ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr
         const auto bounds {e->getBounds(var)};
         for (const auto &b: bounds.upperBounds) {
             if (bounds.lowerBounds.contains(b) && b->isIntegral()) {
+                const auto vars {b->vars()};
+                if (std::any_of(vars.begin(), vars.end(), [&](const auto x) {
+                    return res->contains(x);
+                })) continue;
                 //extend the substitution, use concat in case var occurs on some rhs of varSubs
                 res->put(var, b);
                 res->concatInPlace(*res);
