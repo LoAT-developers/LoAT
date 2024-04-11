@@ -517,7 +517,7 @@ bool ArithExpr::isIntegral() const {
                     nonInt.emplace_back(arg);
                 }
             }
-            const auto e {arith::mkTimes(std::move(nonInt))};
+            const auto e {arith::mkPlus(std::move(nonInt))};
             unsigned i {0};
             linked_hash_map<ArithVarPtr, Int> valuation;
             // degrees, subs share indices with vars
