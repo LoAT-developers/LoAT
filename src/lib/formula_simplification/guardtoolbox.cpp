@@ -19,6 +19,7 @@
 #include "theory.hpp"
 #include "subs.hpp"
 #include "impliedequalities.hpp"
+#include "vector.hpp"
 
 #include <unordered_set>
 
@@ -61,89 +62,102 @@ ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const Bools
     return res;
 }
 
+/**
+ * Fourier-Motzkin, restricted to the case thatall coefficients are 1 or -1, so that it can be used for integers.
+ */
 ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Bools::Expr e, const SymbolAcceptor &allow) {
     ResultBase<Bools::Expr, Proof> res(e);
     if (!e->isConjunction()) {
         return res;
     }
-    auto guard {e->lits()};
-    //get all variables that appear in an inequality
-    linked_hash_set<Arith::Var> tryVars;
-    std::unordered_set<Arith::Var> eliminated;
-    for (const auto &lit : guard) {
+    auto lits {e->lits()};
+
+    // get all variables that appear in an inequality
+    linked_hash_set<Arith::Var> candidates;
+    for (const auto &lit : lits) {
         if (std::holds_alternative<ArithLit>(lit)) {
             const auto &rel = std::get<ArithLit>(lit);
             if (rel.isGt()) {
-                rel.collectVars(tryVars);
+                rel.collectVars(candidates);
             }
         }
     }
 
-    const auto is_explosive = [&](const auto &var, const auto &target){
-        return target->hasVarWith([&](const auto x) {
-            return x != var && !eliminated.contains(x) && tryVars.contains(x);
+    std::unordered_set<Arith::Var> eliminated;
+    const auto is_explosive = [&](const auto &var, const auto &term){
+        return term->hasVarWith([&](const auto x) {
+            return x != var && !eliminated.contains(x) && candidates.contains(x);
         });
     };
 
-    //for each variable, try if we can eliminate every occurrence. Otherwise do nothing.
     bool changed = false;
-    for (const auto &var : tryVars) {
+    for (const auto &var: candidates) {
         if (!allow(var)) continue;
-
-        vector<Arith::Expr> varLessThan, varGreaterThan; //var <= expr and var >= expr
-        vector<Arith::Lit> guardTerms; //indices of guard terms that can be removed if successful
-
+        vector<Arith::Expr> upper_bounds;
+        vector<Arith::Expr> lower_bounds;
+        vector<Arith::Lit> eliminated_lits;
+        // used for heuristic for detecting cases where we get an exponential blow-up[]
         size_t explosive_lower {0};
         size_t explosive_upper {0};
-
-        for (const auto &lit: guard) {
-            if (std::holds_alternative<ArithLit>(lit)) {
-                const auto &rel {std::get<ArithLit>(lit)};
-                if (!rel.has(var)) continue;
-                if (!rel.isGt() || !rel.isLinear({{var}})) goto abort;
-                const auto target {rel.lhs()};
-                const auto c {*target->coeff(var)};
-                // only use this inequation if the coefficient is 1 or -1, otherwise it may encode information about divisibility
-                if (c->is(1) == 1) {
-                    varLessThan.push_back(-(target - var));
-                    if (is_explosive(var, target)) {
-                        ++explosive_upper;
+        for (const auto &lit: lits) {
+            if (theory::vars(lit).contains(var)) {
+                if (std::holds_alternative<ArithLit>(lit)) {
+                    const auto &rel {std::get<ArithLit>(lit)};
+                    if (!rel.isGt()) {
+                        // if the variable occurs in an equality, then it should be eliminated by equality propagation
+                        // if it occurs in a negated equality, then we cannot eliminate
+                        goto abort;
                     }
-                } else if (c->is(-1)) {
-                    varGreaterThan.push_back(target + var);
-                    if (is_explosive(var, target)) {
-                        ++explosive_lower;
+                    if (!rel.isLinear({{var}})) {
+                        // no variable elimination for non-linear arithmetic
+                        goto abort;
                     }
+                    const auto term {rel.lhs()};
+                    const auto coeff {*term->coeff(var)};
+                    if (coeff->is(1) == 1) {
+                        // we have var + p > 0, i.e., var >= -p+1
+                        lower_bounds.push_back(arith::mkPlus({-term, var, arith::mkConst(1)}));
+                        if (is_explosive(var, term)) {
+                            ++explosive_upper;
+                        }
+                    } else if (coeff->is(-1)) {
+                        // we have -var + p > 0, i.e., p-1 >= var
+                        upper_bounds.push_back(arith::mkPlus({term, var, arith::mkConst(-1)}));
+                        if (is_explosive(var, term)) {
+                            ++explosive_lower;
+                        }
+                    } else {
+                        // the coefficient is neither 1 nor -1, so we would need divisibility constraints to eliminate the variable
+                        goto abort;
+                    }
+                    if (explosive_upper > 1 && explosive_lower > 1) {
+                        // elimination might cause exponential blow-up
+                        goto abort;
+                    }
+                    eliminated_lits.push_back(rel);
                 } else {
+                    // variable occurs in a literal from another theory
                     goto abort;
                 }
-                if (explosive_upper > 1 && explosive_lower > 1) goto abort;
-                guardTerms.push_back(rel);
             }
         }
-
-        // abort if no eliminations can be performed
-        if (guardTerms.empty()) goto abort;
-
-        //success: remove lower <= x and x <= upper as they will be replaced
-        for (const ArithLit &rel: guardTerms) {
-            guard.erase(rel);
+        // perform the elimination
+        for (const ArithLit &rel: eliminated_lits) {
+            lits.erase(rel);
         }
-
-        //add new transitive guard terms lower <= upper
-        for (const auto &upper : varLessThan) {
-            for (const auto &lower : varGreaterThan) {
-                guard.insert(arith::mkLeq(lower, upper));
+        for (const auto &upper : upper_bounds) {
+            for (const auto &lower : lower_bounds) {
+                lits.insert(arith::mkLeq(lower, upper));
             }
         }
         eliminated.insert(var);
-        res.appendAll("elimiminated ", var);
+        res.appendAll("eliminated ", var, "; lower bounds: ", lower_bounds, "; upper bounds: ", upper_bounds);
         changed = true;
 
 abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (changed) {
-        res = bools::mkAndFromLits(guard);
+        res = bools::mkAndFromLits(lits);
     }
     return res;
 }
