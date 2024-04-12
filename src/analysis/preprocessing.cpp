@@ -89,10 +89,10 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
                     if (its.getPredecessors(second_idx).size() == 1) {
                         deleted.insert(second_idx);
                     }
+                    res.deletionProof(deleted);
                     for (const auto &idx: deleted) {
                         its.removeRule(idx);
                     }
-                    res.deletionProof(deleted);
                     changed = true;
                     break;
                 }
