@@ -96,6 +96,9 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const 
         vector<Arith::Expr> upper_bounds;
         vector<Arith::Expr> lower_bounds;
         vector<Arith::Lit> eliminated_lits;
+        auto may_be_dually_bounded {true};
+        auto lower_bounded {false};
+        auto upper_bounded {false};
         // used for heuristic for detecting cases where we get an exponential blow-up[]
         size_t explosive_lower {0};
         size_t explosive_upper {0};
@@ -117,17 +120,34 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const 
                     if (coeff->is(1) == 1) {
                         // we have var + p > 0, i.e., var >= -p+1
                         lower_bounds.push_back(arith::mkPlus({-term, var, arith::mkConst(1)}));
+                        lower_bounded = true;
                         if (is_explosive(var, term)) {
                             ++explosive_upper;
                         }
                     } else if (coeff->is(-1)) {
                         // we have -var + p > 0, i.e., p-1 >= var
                         upper_bounds.push_back(arith::mkPlus({term, var, arith::mkConst(-1)}));
+                        upper_bounded = true;
                         if (is_explosive(var, term)) {
                             ++explosive_lower;
                         }
                     } else {
-                        // the coefficient is neither 1 nor -1, so we would need divisibility constraints to eliminate the variable
+                        const auto int_coeff {coeff->isInt()};
+                        if (int_coeff) {
+                            // the coefficient is constant, but neither 1 nor -1
+                            // if the variable bounded from both sides, then we need divisibility constraints to eliminate it
+                            may_be_dually_bounded = false;
+                            if (*int_coeff > 0) {
+                                lower_bounded = true;
+                            } else {
+                                upper_bounded = true;
+                            }
+                        } else {
+                            // non-constant coefficient
+                            goto abort;
+                        }
+                    }
+                    if (!may_be_dually_bounded && lower_bounded && upper_bounded) {
                         goto abort;
                     }
                     if (explosive_upper > 1 && explosive_lower > 1) {
