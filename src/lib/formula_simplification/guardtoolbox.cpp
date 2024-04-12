@@ -61,7 +61,7 @@ ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const Bools
     return res;
 }
 
-ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Bools::Expr e, bool removeHalfBounds, const SymbolAcceptor &allow) {
+ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Bools::Expr e, const SymbolAcceptor &allow) {
     ResultBase<Bools::Expr, Proof> res(e);
     if (!e->isConjunction()) {
         return res;
@@ -99,39 +99,31 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const 
         for (const auto &lit: guard) {
             if (std::holds_alternative<ArithLit>(lit)) {
                 const auto &rel {std::get<ArithLit>(lit)};
-                if (rel.isGt()) {
-                    const auto target {rel.lhs()};
-                    // check if this inequation must be used for var
-                    if (!rel.isLinear({{var}})) {
-                        continue;
+                if (!rel.has(var)) continue;
+                if (!rel.isGt() || !rel.isLinear({{var}})) goto abort;
+                const auto target {rel.lhs()};
+                const auto c {*target->coeff(var)};
+                // only use this inequation if the coefficient is 1 or -1, otherwise it may encode information about divisibility
+                if (c->is(1) == 1) {
+                    varLessThan.push_back(-(target - var));
+                    if (is_explosive(var, target)) {
+                        ++explosive_upper;
                     }
-                    const auto c {rel.lhs()->coeff(var)};
-                    // only use this inequation if the coefficient is 1 or -1, otherwise it may encode information about divisibility
-                    if (!c || (!(*c)->is(1) && !(*c)->is(-1))) {
-                        goto abort;
+                } else if (c->is(-1)) {
+                    varGreaterThan.push_back(target + var);
+                    if (is_explosive(var, target)) {
+                        ++explosive_lower;
                     }
-                    if ((*c)->is(1) == 1) {
-                        varLessThan.push_back(-(target - var));
-                        if (is_explosive(var, target)) {
-                            ++explosive_upper;
-                        }
-                    } else {
-                        varGreaterThan.push_back(target + var);
-                        if (is_explosive(var, target)) {
-                            ++explosive_lower;
-                        }
-                    }
-                    // if (explosive_upper > 1 && explosive_lower > 1) goto abort;
-                    guardTerms.push_back(rel);
+                } else {
+                    goto abort;
                 }
+                if (explosive_upper > 1 && explosive_lower > 1) goto abort;
+                guardTerms.push_back(rel);
             }
         }
 
         // abort if no eliminations can be performed
         if (guardTerms.empty()) goto abort;
-        if (!removeHalfBounds && (varLessThan.empty() || varGreaterThan.empty())) {
-            goto abort;
-        }
 
         //success: remove lower <= x and x <= upper as they will be replaced
         for (const ArithLit &rel: guardTerms) {
@@ -186,7 +178,7 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateTempVars(Bools::Expr e, co
     if (res) {
         return res;
     }
-    return GuardToolbox::eliminateByTransitiveClosure(e, true, allow);
+    return GuardToolbox::eliminateByTransitiveClosure(e, allow);
 }
 
 ResultBase<Bools::Expr, Proof> GuardToolbox::preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow) {

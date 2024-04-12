@@ -59,9 +59,9 @@ RuleResult propagateEqualities(const Rule &rule, GuardToolbox::SymbolAcceptor &a
     return res;
 }
 
-RuleResult eliminateByTransitiveClosure(const Rule &rule, bool removeHalfBounds, const GuardToolbox::SymbolAcceptor &allow) {
+RuleResult eliminateByTransitiveClosure(const Rule &rule, const GuardToolbox::SymbolAcceptor &allow) {
     RuleResult res {rule};
-    const auto new_guard {GuardToolbox::eliminateByTransitiveClosure(rule.getGuard(), removeHalfBounds, allow)};
+    const auto new_guard {GuardToolbox::eliminateByTransitiveClosure(rule.getGuard(), allow)};
     if (new_guard) {
         res = res->withGuard(*new_guard);
         res.ruleTransformationProof(rule, "Eliminated Temporary Variables", *res);
@@ -93,7 +93,7 @@ RuleResult eliminateTempVars(Rule rule) {
         VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
         return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
-    return eliminateByTransitiveClosure(rule, true, isTempOnlyInGuard);
+    return eliminateByTransitiveClosure(rule, isTempOnlyInGuard);
 }
 
 RuleResult removeTrivialUpdates(const Rule &rule) {

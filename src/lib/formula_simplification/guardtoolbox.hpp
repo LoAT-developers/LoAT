@@ -65,12 +65,11 @@ namespace GuardToolbox {
      *
      * @note this is only sound for the resulting runtime, if only free variables are allowed to be eliminated!
      *
-     * @param removeHalfBounds if true, terms like a <= x (without x <= b) will also be removed!
      * @param allowFunc if lambda is false, the given variable may not be considered for elimination.
      *
      * @return true if any changes have been made
      */
-    ResultBase<Bools::Expr, Proof> eliminateByTransitiveClosure(const Bools::Expr e, bool removeHalfBounds, const SymbolAcceptor &allow);
+    ResultBase<Bools::Expr, Proof> eliminateByTransitiveClosure(const Bools::Expr e, const SymbolAcceptor &allow);
 
     /**
      * Returns true iff term contains a temporary variable
