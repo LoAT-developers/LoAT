@@ -31,8 +31,8 @@ ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr
     for (const auto &var: vars) {
         if (!allow(var)) continue;
         const auto bounds {e->getBounds(var)};
-        for (const auto &b: bounds.upperBounds) {
-            if (bounds.lowerBounds.contains(b) && b->isIntegral()) {
+        for (const auto &b: bounds.equalities) {
+            if (b->isIntegral()) {
                 const auto vars {b->vars()};
                 if (std::any_of(vars.begin(), vars.end(), [&](const auto x) {
                     return res->contains(x);

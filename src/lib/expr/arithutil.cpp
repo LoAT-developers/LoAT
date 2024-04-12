@@ -43,6 +43,9 @@ Purrs::Expr toPurrs(const ArithExprPtr e, purrs_var_map &m) {
 
 std::optional<ArithExprPtr> solveTermFor(const ArithExprPtr e, const ArithVarPtr var) {
     // we can only solve linear expressions with rational coefficients
+    if (!e->isLinear({{var}})) {
+        return {};
+    }
     const auto c {e->coeff(var)};
     if (!c || (*c)->is(0)) {
         return {};

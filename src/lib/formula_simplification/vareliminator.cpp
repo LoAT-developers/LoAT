@@ -91,34 +91,38 @@ void VarEliminator::eliminate() {
     for (const auto &p: todoN) {
         const auto &subs {p.first};
         const auto guard {p.second};
-        auto done {false};
         auto bounds {guard->getBounds(N)};
-        for (auto it = bounds.upperBounds.begin(); it != bounds.upperBounds.end();) {
-            if (bounds.lowerBounds.contains(*it)) {
-                res.insert(subs.compose(ArithSubs{{N, *it}}));
-                done = true;
-                break;
-            }
-            bool removed = false;
-            for (auto it2 = std::next(it); it2 != bounds.upperBounds.end();) {
-                const auto diff {(*it - *it2)->isRational()};
-                if (diff) {
-                    if (***diff > 0) {
-                        it = bounds.upperBounds.erase(it);
-                        removed = true;
-                        break;
-                    } else {
-                        it2 = bounds.upperBounds.erase(it2);
-                    }
+        if (!bounds.equalities.empty()) {
+            // if there's an equality, use it for instantiation
+            res.insert(subs.compose(ArithSubs{{N, *bounds.equalities.begin()}}));
+        } else {
+            // no equality, use upper bounds for instantiation
+            for (auto it = bounds.upperBounds.begin(); it != bounds.upperBounds.end();) {
+                if (!(*it)->isIntegral()) {
+                    // remove non-integral bounds
+                    it = bounds.upperBounds.erase(it);
                 } else {
-                    ++it2;
+                    // remove bounds that only differ from others by a constant
+                    bool removed = false;
+                    for (auto it2 = std::next(it); it2 != bounds.upperBounds.end();) {
+                        const auto diff {(*it - *it2)->isRational()};
+                        if (diff) {
+                            if (***diff > 0) {
+                                it = bounds.upperBounds.erase(it);
+                                removed = true;
+                                break;
+                            } else {
+                                it2 = bounds.upperBounds.erase(it2);
+                            }
+                        } else {
+                            ++it2;
+                        }
+                    }
+                    if (!removed) {
+                        ++it;
+                    }
                 }
             }
-            if (!removed) {
-                ++it;
-            }
-        }
-        if (!done) {
             for (const auto &b: bounds.upperBounds) {
                 ArithSubs p{{N, b}};
                 res.insert(subs.compose(p));
