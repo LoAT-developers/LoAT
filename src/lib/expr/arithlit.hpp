@@ -5,10 +5,34 @@
 #include "arithexpr.hpp"
 #include "arithsubs.hpp"
 
-struct Bounds {
-    ArithExprSet upperBounds {};
-    ArithExprSet lowerBounds {};
-    ArithExprSet equalities {};
+class Bounds {
+
+private:
+
+    ArithExprSet rUpperBounds {};
+    ArithExprSet rLowerBounds {};
+    ArithExprSet rEqualities {};
+    ArithExprSet iUpperBounds {};
+    ArithExprSet iLowerBounds {};
+    ArithExprSet iEqualities {};
+
+public:
+
+    void addUpperBound(const ArithExprPtr e);
+    void addLowerBound(const ArithExprPtr e);
+    void addEquality(const ArithExprPtr e);
+
+    const ArithExprSet& realUpperBounds() const;
+    const ArithExprSet& realLowerBounds() const;
+    const ArithExprSet& realEqualities() const;
+
+    const ArithExprSet& integralUpperBounds() const;
+    const ArithExprSet& integralLowerBounds() const;
+    const ArithExprSet& integralEqualities() const;
+
+    Bounds intersect(const Bounds &that) const;
+    bool empty() const;
+
 };
 
 class ArithLit;

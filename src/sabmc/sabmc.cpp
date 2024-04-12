@@ -261,9 +261,9 @@ linked_hash_map<Bools::Var, bool> SABMC::value_selection(const Model &model) con
 SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Model &model, const Arith::Var x, linked_hash_set<Arith::Expr> &chosen) const {
     const auto post_var {std::get<Arith::Var>(var_map[x])};
     const auto bounds {trans.toBoolExpr()->getBounds(post_var)};
-    if (!bounds.equalities.empty()) {
+    if (!bounds.realEqualities().empty()) {
         std::optional<Arith::Expr> res;
-        for (const auto &e: bounds.equalities) {
+        for (const auto &e: bounds.realEqualities()) {
             if (!res) {
                 res = e;
             } else {
@@ -294,8 +294,8 @@ SABMC::BoundPair SABMC::bound_selection(const Transition &trans, const Model &mo
             return {res, res};
         }
     }
-    const auto lower {closest_bound(bounds.lowerBounds, model, post_var, chosen)};
-    const auto upper {closest_bound(bounds.upperBounds, model, post_var, chosen)};
+    const auto lower {closest_bound(bounds.realLowerBounds(), model, post_var, chosen)};
+    const auto upper {closest_bound(bounds.realUpperBounds(), model, post_var, chosen)};
     if (lower) {
         chosen.emplace(*lower);
     }
@@ -323,17 +323,17 @@ Transition mbp(const Transition &t, const Model &model, const Bools::Var x) {
 
 Transition mbp(const Transition &t, const Model &model, const Arith::Var x) {
     const auto bounds {t.toBoolExpr()->getBounds(x)};
-    if (!bounds.equalities.empty()) {
-        return t.subs(Subs::build<Arith>(x, *bounds.equalities.begin()));
+    if (!bounds.realEqualities().empty()) {
+        return t.subs(Subs::build<Arith>(x, *bounds.realEqualities().begin()));
     } else {
         const auto closest =
-            bounds.lowerBounds.size() <= bounds.upperBounds.size() ?
-                                 closest_bound(bounds.lowerBounds, model, x) :
-                                 closest_bound(bounds.upperBounds, model, x);
+            bounds.realLowerBounds().size() <= bounds.realUpperBounds().size() ?
+                                 closest_bound(bounds.realLowerBounds(), model, x) :
+                                 closest_bound(bounds.realUpperBounds(), model, x);
         const auto lin {t.linearize(x)};
         if (closest) {
             return lin.subs(Subs::build<Arith>(x, *closest));
-        } else if (bounds.lowerBounds.size() <= bounds.upperBounds.size()) {
+        } else if (bounds.realLowerBounds().size() <= bounds.realUpperBounds().size()) {
             return lin.toMinusInfinity(x);
         } else {
             return lin.toInfinity(x);

@@ -31,22 +31,20 @@ ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr
     for (const auto &var: vars) {
         if (!allow(var)) continue;
         const auto bounds {e->getBounds(var)};
-        for (const auto &b: bounds.equalities) {
-            if (b->isIntegral()) {
-                const auto vars {b->vars()};
-                if (std::any_of(vars.begin(), vars.end(), [&](const auto x) {
-                    return res->contains(x);
-                })) continue;
-                //extend the substitution, use concat in case var occurs on some rhs of varSubs
-                res->put(var, b);
-                res->concatInPlace(*res);
-                res.succeed();
-                stringstream s;
-                s << "propagated equality " << var << " = " << b;
-                res.append(s.str());
-                res.newline();
-                break;
-            }
+        for (const auto &b: bounds.integralEqualities()) {
+            const auto vars {b->vars()};
+            if (std::any_of(vars.begin(), vars.end(), [&](const auto x) {
+                return res->contains(x);
+            })) continue;
+            //extend the substitution, use concat in case var occurs on some rhs of varSubs
+            res->put(var, b);
+            res->concatInPlace(*res);
+            res.succeed();
+            stringstream s;
+            s << "propagated equality " << var << " = " << b;
+            res.append(s.str());
+            res.newline();
+            break;
         }
     }
     return res;

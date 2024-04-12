@@ -5,6 +5,75 @@
 #include <sstream>
 #include <assert.h>
 #include <boost/functional/hash.hpp>
+#include <algorithm>
+
+void Bounds::addUpperBound(const ArithExprPtr e) {
+    rUpperBounds.insert(e);
+    if (e->isIntegral()) {
+        iUpperBounds.insert(e);
+    }
+}
+
+void Bounds::addLowerBound(const ArithExprPtr e) {
+    rLowerBounds.insert(e);
+    if (e->isIntegral()) {
+        iLowerBounds.insert(e);
+    }
+}
+void Bounds::addEquality(const ArithExprPtr e) {
+    rEqualities.insert(e);
+    if (e->isIntegral()) {
+        iEqualities.insert(e);
+    }
+}
+
+const ArithExprSet& Bounds::realUpperBounds() const {
+    return rUpperBounds;
+}
+
+const ArithExprSet& Bounds::realLowerBounds() const {
+    return rLowerBounds;
+}
+
+const ArithExprSet& Bounds::realEqualities() const {
+    return rEqualities;
+}
+
+const ArithExprSet& Bounds::integralUpperBounds() const {
+    return iUpperBounds;
+}
+
+const ArithExprSet& Bounds::integralLowerBounds() const {
+    return iLowerBounds;
+}
+
+const ArithExprSet& Bounds::integralEqualities() const {
+    return iEqualities;
+}
+
+Bounds Bounds::intersect(const Bounds &that) const {
+    Bounds res;
+    const auto intersect = [](const ArithExprSet &xs, const ArithExprSet &ys) {
+        ArithExprSet res;
+        for (const auto &x: xs) {
+            if (ys.contains(x)) {
+                res.insert(x);
+            }
+        }
+        return res;
+    };
+    res.rLowerBounds = intersect(rLowerBounds, that.rLowerBounds);
+    res.rUpperBounds = intersect(rUpperBounds, that.rUpperBounds);
+    res.rEqualities = intersect(rEqualities, that.rEqualities);
+    res.iLowerBounds = intersect(iLowerBounds, that.iLowerBounds);
+    res.iUpperBounds = intersect(iUpperBounds, that.iUpperBounds);
+    res.iEqualities = intersect(iEqualities, that.iEqualities);
+    return res;
+}
+
+bool Bounds::empty() const {
+    return rLowerBounds.empty() && rUpperBounds.empty() && rEqualities.empty();
+}
 
 std::ostream& operator<<(std::ostream &s, const ArithLitSet &set) {
     s << "{";
@@ -60,33 +129,33 @@ void ArithLit::getBounds(const ArithVarPtr n, Bounds &res) const {
         const auto p {getBoundFromIneq(n)};
         if (p.first) {
             if (p.first == p.second) {
-                res.equalities.insert(*p.first);
+                res.addEquality(*p.first);
             }
             auto add {true};
-            for (const auto &b: res.lowerBounds) {
+            for (const auto &b: res.realLowerBounds()) {
                 const auto diff {b - *p.first};
-                const auto r {diff->isRational()};
-                if (r && ***r >= 0) {
+                const auto r {diff->isInt()};
+                if (r && *r >= 0) {
                     add = false;
                     break;
                 }
             }
             if (add) {
-                res.lowerBounds.insert(*p.first);
+                res.addLowerBound(*p.first);
             }
         }
         if (p.second) {
             auto add {true};
-            for (const auto &b: res.upperBounds) {
+            for (const auto &b: res.realUpperBounds()) {
                 const auto diff {b - *p.second};
-                const auto r {diff->isRational()};
-                if (r && ***r <= 0) {
+                const auto r {diff->isInt()};
+                if (r && *r <= 0) {
                     add = false;
                     break;
                 }
             }
             if (add) {
-                res.upperBounds.insert(*p.second);
+                res.addUpperBound(*p.second);
             }
         }
     }

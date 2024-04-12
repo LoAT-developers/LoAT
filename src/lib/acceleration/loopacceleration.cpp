@@ -100,9 +100,9 @@ void LoopAcceleration::compute_closed_form() {
                         const auto coeff {***(*y->coeff(z))->isRational()};
                         auto lower_bounded {false};
                         auto upper_bounded {false};
-                        for (const auto &b: bounds.lowerBounds) {
+                        for (const auto &b: bounds.realLowerBounds()) {
                             if (!b->hasVarWith(is_temp_var)) {
-                                if (bounds.upperBounds.contains(b)) {
+                                if (bounds.realUpperBounds().contains(b)) {
                                     lower_bounded = true;
                                     upper_bounded = true;
                                 }
@@ -117,7 +117,7 @@ void LoopAcceleration::compute_closed_form() {
                             }
                         }
                         if (!lower_bounded || !upper_bounded) {
-                            for (const auto &b: bounds.upperBounds) {
+                            for (const auto &b: bounds.realUpperBounds()) {
                                 if (!b->hasVarWith(is_temp_var)) {
                                     if (coeff > 0) {
                                         upper_bounded = true;

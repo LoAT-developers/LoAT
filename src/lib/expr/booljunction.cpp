@@ -104,32 +104,16 @@ void BoolJunction::getBounds(const Arith::Var n, Bounds &res) const {
         bool first = true;
         Bounds intersection;
         for (const auto &c: children) {
-            Bounds current;
             if (first) {
                 c->getBounds(n, intersection);
                 first = false;
             } else {
-                if (intersection.lowerBounds.empty() && intersection.upperBounds.empty()) {
-                    return;
-                }
-                const auto current {c->getBounds(n)};
-                for (auto it = intersection.lowerBounds.begin(); it != intersection.lowerBounds.end();) {
-                    if (!current.lowerBounds.contains(*it)) {
-                        it = intersection.lowerBounds.erase(it);
-                    } else {
-                        ++it;
-                    }
-                }
-                for (auto it = intersection.upperBounds.begin(); it != intersection.upperBounds.end();) {
-                    if (!current.upperBounds.contains(*it)) {
-                        it = intersection.upperBounds.erase(it);
-                    } else {
-                        ++it;
-                    }
-                }
+                intersection = intersection.intersect(c->getBounds(n));
+            }
+            if (intersection.empty()) {
+                return;
             }
         }
-        res.lowerBounds.insert(intersection.lowerBounds.begin(), intersection.lowerBounds.end());
-        res.upperBounds.insert(intersection.upperBounds.begin(), intersection.upperBounds.end());
+        res = intersection;
     }
 }

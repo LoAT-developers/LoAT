@@ -106,7 +106,7 @@ RuleResult removeTrivialUpdates(const Rule &rule) {
         }
     }
     for (const auto &[x,v] : update.get<Arith>()) {
-        if (!remove.contains(x) && rule.getGuard()->getBounds(x).equalities.contains(v)) {
+        if (!remove.contains(x) && rule.getGuard()->getBounds(x).realEqualities().contains(v)) {
             remove.insert(x);
         }
     }
