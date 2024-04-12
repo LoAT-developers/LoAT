@@ -73,8 +73,9 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const 
     for (const auto &lit : guard) {
         if (std::holds_alternative<ArithLit>(lit)) {
             const auto &rel = std::get<ArithLit>(lit);
-            if (!rel.isPoly()) continue;
-            rel.collectVars(tryVars);
+            if (rel.isGt()) {
+                rel.collectVars(tryVars);
+            }
         }
     }
 
@@ -97,31 +98,40 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const 
 
         for (const auto &lit: guard) {
             if (std::holds_alternative<ArithLit>(lit)) {
-                const auto &rel = std::get<ArithLit>(lit);
-                //check if this guard must be used for var
-                if (!rel.has(var)) continue;
-                const auto bounds {rel.getBoundFromIneq(var)};
-                if (bounds.first) {
-                    varLessThan.push_back(*bounds.first);
-                    if (is_explosive(var, *bounds.first)) {
-                        ++explosive_upper;
+                const auto &rel {std::get<ArithLit>(lit)};
+                if (rel.isGt()) {
+                    const auto target {rel.lhs()};
+                    // check if this inequation must be used for var
+                    if (!rel.isLinear({{var}})) {
+                        continue;
                     }
-                } else if (bounds.second) {
-                    varGreaterThan.push_back(*bounds.second);
-                    if (is_explosive(var, *bounds.second)) {
-                        ++explosive_lower;
+                    const auto c {rel.lhs()->coeff(var)};
+                    // only use this inequation if the coefficient is 1 or -1, otherwise it may encode information about divisibility
+                    if (!c || (!(*c)->is(1) && !(*c)->is(-1))) {
+                        goto abort;
                     }
-                } else {
-                    goto abort;
+                    if ((*c)->is(1) == 1) {
+                        varLessThan.push_back(-(target - var));
+                        if (is_explosive(var, target)) {
+                            ++explosive_upper;
+                        }
+                    } else {
+                        varGreaterThan.push_back(target + var);
+                        if (is_explosive(var, target)) {
+                            ++explosive_lower;
+                        }
+                    }
+                    // if (explosive_upper > 1 && explosive_lower > 1) goto abort;
+                    guardTerms.push_back(rel);
                 }
-                if (explosive_upper > 1 && explosive_lower > 1) goto abort;
-                guardTerms.push_back(rel);
             }
         }
 
         // abort if no eliminations can be performed
         if (guardTerms.empty()) goto abort;
-        if (!removeHalfBounds && (varLessThan.empty() || varGreaterThan.empty())) goto abort;
+        if (!removeHalfBounds && (varLessThan.empty() || varGreaterThan.empty())) {
+            goto abort;
+        }
 
         //success: remove lower <= x and x <= upper as they will be replaced
         for (const ArithLit &rel: guardTerms) {
