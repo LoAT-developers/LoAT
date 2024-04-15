@@ -74,6 +74,8 @@ bool isTriviallyTrue(const Lit &lit);
 bool isTriviallyFalse(const Lit &lit);
 Lit negate(const Lit &lit);
 size_t hash(const Lit lit);
+void simplifyAnd(LitSet&);
+void simplifyOr(LitSet&);
 
 template <class ... Ts>
 auto apply(const Var &x, Ts... f) {

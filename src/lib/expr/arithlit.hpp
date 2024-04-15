@@ -30,7 +30,8 @@ public:
     const ArithExprSet& integralLowerBounds() const;
     const ArithExprSet& integralEqualities() const;
 
-    Bounds intersect(const Bounds &that) const;
+    void intersect(const Bounds &that);
+    void unite(const Bounds &that);
     bool empty() const;
 
 };
@@ -77,6 +78,8 @@ public:
     bool isPoly() const;
     bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = std::nullopt) const;
     void getBounds(const ArithVarPtr n, Bounds &res) const;
+    std::optional<ArithExprPtr> getEquality(const ArithVarPtr n) const;
+    void propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow) const;
 
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
@@ -97,6 +100,8 @@ public:
     bool eval(const linked_hash_map<ArithVarPtr, Int>&) const;
 
     std::pair<std::optional<ArithExprPtr>, std::optional<ArithExprPtr>> getBoundFromIneq(const ArithVarPtr) const;
+    static void simplifyAnd(linked_hash_set<ArithLit> &lits);
+    static void simplifyOr(linked_hash_set<ArithLit> &lits);
 
 private:
 

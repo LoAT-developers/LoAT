@@ -64,9 +64,3 @@ void BoolTheoryLit::collectLits(LitSet &res) const {
 size_t BoolTheoryLit::size() const {
     return 1;
 }
-
-void BoolTheoryLit::getBounds(const Arith::Var var, Bounds &res) const {
-    if (std::holds_alternative<ArithLit>(lit)) {
-        std::get<ArithLit>(lit).getBounds(var, res);
-    }
-}

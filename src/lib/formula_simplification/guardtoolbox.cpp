@@ -27,25 +27,10 @@ using namespace std;
 
 ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr e, const SymbolAcceptor &allow) {
     ResultBase<ArithSubs, Proof> res;
-    const auto vars {e->vars().get<Arith::Var>()};
-    for (const auto &var: vars) {
-        if (!allow(var)) continue;
-        const auto bounds {e->getBounds(var)};
-        for (const auto &b: bounds.integralEqualities()) {
-            const auto vars {b->vars()};
-            if (std::any_of(vars.begin(), vars.end(), [&](const auto x) {
-                return res->contains(x);
-            })) continue;
-            //extend the substitution, use concat in case var occurs on some rhs of varSubs
-            res->put(var, b);
-            res->concatInPlace(*res);
-            res.succeed();
-            stringstream s;
-            s << "propagated equality " << var << " = " << b;
-            res.append(s.str());
-            res.newline();
-            break;
-        }
+    const auto subs {e->propagateEqualities(allow)};
+    if (!subs.empty()) {
+        res = subs;
+        res.appendAll("propagated equlities: ", subs);
     }
     return res;
 }
@@ -55,7 +40,7 @@ ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const Bools
     const auto equiv {impliedEqualities(e)};
     if (!equiv.empty()) {
         res = equiv.get<Bools>();
-        res.append(stringstream() << "propagated equivalences: " << equiv << std::endl);
+        res.appendAll("propagated equivalences: ", equiv);
     }
     return res;
 }
@@ -192,7 +177,8 @@ ResultBase<Bools::Expr, Proof> _propagateBooleanEqualities(const Bools::Expr e) 
 }
 
 ResultBase<Bools::Expr, Proof> _propagateEqualities(const Bools::Expr e, const GuardToolbox::SymbolAcceptor &allow) {
-    ResultBase<Bools::Expr, Proof> res {e}; const auto subs {GuardToolbox::propagateEqualities(e, allow)};
+    ResultBase<Bools::Expr, Proof> res {e};
+    const auto subs {GuardToolbox::propagateEqualities(e, allow)};
     if (subs) {
         res = Subs::build<Arith>(*subs)(e);
         res.append("Extracted Implied Equalities");
@@ -217,8 +203,16 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::preprocessFormula(const Bools::Expr
     ResultBase<Bools::Expr, Proof> res {e};
     auto changed {false};
     do {
-        auto tmp {eliminateTempVars(*res, allow)};
+        const auto tmp {_propagateBooleanEqualities(*res)};
         changed = bool(tmp);
+        res.concat(tmp);
+    } while (changed);
+    do {
+        auto tmp {_propagateEqualities(*res, allow)};
+        changed = bool(tmp);
+        res.concat(tmp);
+        tmp = GuardToolbox::eliminateByTransitiveClosure(*res, allow);
+        changed |= bool(tmp);
         res.concat(tmp);
     } while (changed);
     return res;

@@ -123,9 +123,12 @@ public:
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LitSet &res) const = 0;
     virtual size_t size() const = 0;
-    virtual void getBounds(const Arith::Var n, Bounds &res) const = 0;
 
+    void getBounds(const Arith::Var n, Bounds &res) const;
     Bounds getBounds(const Arith::Var n) const;
+    std::optional<Arith::Expr> getEquality(const Arith::Var n) const;
+    void propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow) const;
+    Arith::Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;
     Bools::Expr linearize(const Arith::Var n) const;
     Bools::Expr toInfinity(const Arith::Var n) const;
     Bools::Expr toMinusInfinity(const Arith::Var n) const;
@@ -181,7 +184,6 @@ public:
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;
     size_t size() const override;
-    void getBounds(const Arith::Var var, Bounds &res) const override;
 
 };
 
@@ -216,7 +218,6 @@ public:
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;
     size_t size() const override;
-    void getBounds(const Arith::Var n, Bounds &res) const override;
 
 };
 

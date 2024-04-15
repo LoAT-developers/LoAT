@@ -27,7 +27,9 @@ std::ostream& operator<<(std::ostream &s, const Conjunction &l) {
 
 Conjunction operator&&(const Conjunction &fst, const Conjunction &snd) {
     Conjunction res(fst);
-    res.insert(res.end(), snd.begin(), snd.end());
+    for (const auto &x: snd) {
+        res.insert(x);
+    }
     return res;
 }
 
@@ -35,6 +37,7 @@ Conjunction Conjunction::fromBoolExpr(const Bools::Expr &e) {
     if (!e->isConjunction()) {
         throw std::invalid_argument(toString(e) + " is not a conjunction");
     }
-    const auto lits {e->lits()};
-    return Conjunction{lits.begin(), lits.end()};
+    Conjunction res;
+    e->collectLits(res);
+    return res;
 }

@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <boost/functional/hash.hpp>
 #include <algorithm>
+#include <unordered_set>
 
 void Bounds::addUpperBound(const ArithExprPtr e) {
     rUpperBounds.insert(e);
@@ -21,6 +22,8 @@ void Bounds::addLowerBound(const ArithExprPtr e) {
     }
 }
 void Bounds::addEquality(const ArithExprPtr e) {
+    addLowerBound(e);
+    addUpperBound(e);
     rEqualities.insert(e);
     if (e->isIntegral()) {
         iEqualities.insert(e);
@@ -51,24 +54,36 @@ const ArithExprSet& Bounds::integralEqualities() const {
     return iEqualities;
 }
 
-Bounds Bounds::intersect(const Bounds &that) const {
-    Bounds res;
-    const auto intersect = [](const ArithExprSet &xs, const ArithExprSet &ys) {
-        ArithExprSet res;
-        for (const auto &x: xs) {
-            if (ys.contains(x)) {
-                res.insert(x);
+void Bounds::intersect(const Bounds &that) {
+    const auto intersect = [](ArithExprSet &xs, const ArithExprSet &ys) {
+        for (auto it = xs.begin(); it != xs.end();) {
+            if (ys.contains(*it)) {
+                it = xs.erase(it);
+            } else {
+                ++it;
             }
         }
-        return res;
     };
-    res.rLowerBounds = intersect(rLowerBounds, that.rLowerBounds);
-    res.rUpperBounds = intersect(rUpperBounds, that.rUpperBounds);
-    res.rEqualities = intersect(rEqualities, that.rEqualities);
-    res.iLowerBounds = intersect(iLowerBounds, that.iLowerBounds);
-    res.iUpperBounds = intersect(iUpperBounds, that.iUpperBounds);
-    res.iEqualities = intersect(iEqualities, that.iEqualities);
-    return res;
+    intersect(rLowerBounds, that.rLowerBounds);
+    intersect(rUpperBounds, that.rUpperBounds);
+    intersect(rEqualities, that.rEqualities);
+    intersect(iLowerBounds, that.iLowerBounds);
+    intersect(iUpperBounds, that.iUpperBounds);
+    intersect(iEqualities, that.iEqualities);
+}
+
+void Bounds::unite(const Bounds &that) {
+    const auto unite = [](ArithExprSet &xs, const ArithExprSet &ys) {
+        for (const auto &y: ys) {
+            xs.insert(y);
+        }
+    };
+    unite(rLowerBounds, that.rLowerBounds);
+    unite(rUpperBounds, that.rUpperBounds);
+    unite(rEqualities, that.rEqualities);
+    unite(iLowerBounds, that.iLowerBounds);
+    unite(iUpperBounds, that.iUpperBounds);
+    unite(iEqualities, that.iEqualities);
 }
 
 bool Bounds::empty() const {
@@ -106,17 +121,18 @@ std::pair<std::optional<ArithExprPtr>, std::optional<ArithExprPtr>> ArithLit::ge
     const auto t = kind == Kind::Eq ? l : l - arith::mkConst(1);
     const auto optSolved {arith::solveTermFor(t, N)};
     if (optSolved) {
-        const auto coeff {*t->coeff(N)};
-        const auto r {***coeff->isRational()};
         switch (kind) {
         case Kind::Eq:
             return {optSolved, optSolved};
-        case Kind::Gt:
+        case Kind::Gt: {
+            const auto coeff {*t->coeff(N)};
+            const auto r {***coeff->isRational()};
             if (r > 0) {
                 return {optSolved, {}};
             } else {
                 return {{}, optSolved};
             }
+        }
         default:
             throw std::invalid_argument("unexpected relation");
         }
@@ -156,6 +172,31 @@ void ArithLit::getBounds(const ArithVarPtr n, Bounds &res) const {
             }
             if (add) {
                 res.addUpperBound(*p.second);
+            }
+        }
+    }
+}
+
+std::optional<ArithExprPtr> ArithLit::getEquality(const ArithVarPtr n) const {
+    if (isEq() && has(n) && isLinear({{n}})) {
+        const auto eq {getBoundFromIneq(n).first};
+        if (eq && (*eq)->isIntegral()) {
+            return eq;
+        }
+    }
+    return {};
+}
+
+void ArithLit::propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow) const {
+    if (isEq()) {
+        for (const auto &x: vars()) {
+            if (allow(x) && !subs.contains(x) && l->isLinear({{x}})) {
+                const auto coeff {l->coeff(x)};
+                if ((*coeff)->is(1) || (*coeff)->is(-1)) {
+                    const auto t {*arith::solveTermFor(l, x)};
+                    subs = subs.compose(ArithSubs{{x, t}});
+                    return;
+                }
             }
         }
     }
@@ -295,5 +336,47 @@ bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
         case Kind::Eq: return l->eval(m) == 0;
         case Kind::Neq: return l->eval(m) != 0;
         default: throw std::invalid_argument("unexpected relation");
+    }
+}
+
+void ArithLit::simplifyAnd(linked_hash_set<ArithLit> &lits) {
+    std::unordered_set<ArithLit> remove;
+    std::unordered_set<ArithLit> add;
+    for (const auto &rel: lits) {
+        if (rel.isGt() && !remove.contains(rel)) {
+            const auto converse {arith::mkLeq(rel.lhs(), arith::mkConst(1))};
+            if (lits.contains(converse)) {
+                remove.insert(rel);
+                remove.insert(converse);
+                add.insert(arith::mkEq(rel.lhs(), arith::mkConst(1)));
+            }
+        }
+    }
+    for (const auto &r: remove) {
+        lits.erase(r);
+    }
+    for (const auto &a: add) {
+        lits.insert(a);
+    }
+}
+
+void ArithLit::simplifyOr(linked_hash_set<ArithLit> &lits) {
+    std::unordered_set<ArithLit> remove;
+    std::unordered_set<ArithLit> add;
+    for (const auto &rel: lits) {
+        if (rel.isGt() && !remove.contains(rel)) {
+            const auto converse {arith::mkLt(rel.lhs(), arith::mkConst(0))};
+            if (lits.contains(converse)) {
+                remove.insert(rel);
+                remove.insert(converse);
+                add.insert(arith::mkNeq(rel.lhs(), arith::mkConst(0)));
+            }
+        }
+    }
+    for (const auto &r: remove) {
+        lits.erase(r);
+    }
+    for (const auto &a: add) {
+        lits.insert(a);
     }
 }

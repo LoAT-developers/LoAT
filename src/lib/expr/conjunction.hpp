@@ -4,13 +4,12 @@
 #include "theory.hpp"
 
 #include <variant>
-#include <vector>
 
-class Conjunction : public std::vector<Lit> {
+class Conjunction : public LitSet {
 
 public:
     // inherit constructors of base class
-    using std::vector<Lit>::vector;
+    using LitSet::LitSet;
 
     bool isLinear() const;
     void collectVars(VarSet &vars) const;

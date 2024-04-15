@@ -214,6 +214,38 @@ size_t hash(const Lit lit) {
         }, lit);
 }
 
+template <size_t I = 0>
+inline void simplifyAndImpl(LitSet &lits) {
+    if constexpr (I < num_theories) {
+        using Th = std::tuple_element_t<I, Theories>;
+        if constexpr (!std::is_same_v<Th, Bools>) {
+            using Lit = typename Th::Lit;
+            Lit::simplifyAnd(lits.get<Lit>());
+        }
+        simplifyAndImpl<I+1>(lits);
+    }
+}
+
+void simplifyAnd(LitSet &lits) {
+    return simplifyAndImpl(lits);
+}
+
+template <size_t I = 0>
+inline void simplifyOrImpl(LitSet &lits) {
+    if constexpr (I < num_theories) {
+        using Th = std::tuple_element_t<I, Theories>;
+        if constexpr (!std::is_same_v<Th, Bools>) {
+            using Lit = typename Th::Lit;
+            Lit::simplifyOr(lits.get<Lit>());
+        }
+        simplifyOrImpl<I+1>(lits);
+    }
+}
+
+void simplifyOr(LitSet &lits) {
+    simplifyOrImpl(lits);
+}
+
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e) {

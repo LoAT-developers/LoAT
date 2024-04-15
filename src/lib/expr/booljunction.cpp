@@ -94,26 +94,3 @@ size_t BoolJunction::size() const {
     }
     return res;
 }
-
-void BoolJunction::getBounds(const Arith::Var n, Bounds &res) const {
-    if (isAnd()) {
-        for (const auto &c: children) {
-            c->getBounds(n, res);
-        }
-    } else if (isOr()) {
-        bool first = true;
-        Bounds intersection;
-        for (const auto &c: children) {
-            if (first) {
-                c->getBounds(n, intersection);
-                first = false;
-            } else {
-                intersection = intersection.intersect(c->getBounds(n));
-            }
-            if (intersection.empty()) {
-                return;
-            }
-        }
-        res = intersection;
-    }
-}

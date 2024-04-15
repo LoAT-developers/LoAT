@@ -31,6 +31,70 @@ Bounds BoolExpr::getBounds(const Arith::Var n) const {
     return bounds;
 }
 
+void BoolExpr::getBounds(const Arith::Var var, Bounds &res) const {
+    const auto lit {getTheoryLit()};
+    if (lit) {
+        if (std::holds_alternative<ArithLit>(*lit)) {
+            std::get<ArithLit>(*lit).getBounds(var, res);
+        }
+    } else if (isAnd()) {
+        for (const auto &c: getChildren()) {
+            c->getBounds(var, res);
+        }
+    } else if (isOr()) {
+        bool first = true;
+        Bounds intersection;
+        for (const auto &c: getChildren()) {
+            if (first) {
+                c->getBounds(var, intersection);
+                first = false;
+            } else {
+                intersection.intersect(c->getBounds(var));
+            }
+            if (intersection.empty()) {
+                return;
+            }
+        }
+        res.unite(intersection);
+    }
+}
+
+std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var var) const {
+    const auto lit {getTheoryLit()};
+    if (lit) {
+        if (std::holds_alternative<ArithLit>(*lit)) {
+            return std::get<ArithLit>(*lit).getEquality(var);
+        }
+    } else if (isAnd()) {
+        for (const auto &c: getChildren()) {
+            const auto eq {c->getEquality(var)};
+            if (eq) {
+                return eq;
+            }
+        }
+    }
+    return {};
+}
+
+void BoolExpr::propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow) const {
+    const auto lit {getTheoryLit()};
+    if (lit) {
+        if (std::holds_alternative<Arith::Lit>(*lit)) {
+            std::get<Arith::Lit>(*lit).subs(subs).propagateEquality(subs, allow);
+        }
+    } else if (isAnd()) {
+        for (const auto &c: getChildren()) {
+            c->propagateEqualities(subs, allow);
+        }
+    }
+}
+
+Arith::Subs BoolExpr::propagateEqualities(const std::function<bool(const Var &)> &allow) const {
+    Arith::Subs subs;
+    propagateEqualities(subs, allow);
+    return subs;
+}
+
 Bools::Expr BoolExpr::linearize(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(
