@@ -341,6 +341,45 @@ Int ArithExpr::denomLcm() const {
         });
 }
 
+Rational ArithExpr::getConstantFactor() const {
+    return apply<Rational>(
+        [](const ArithConstPtr t) {
+            return t->getValue();
+        },
+        [](const ArithVarPtr) {
+            return 1;
+        },
+        [](const ArithAddPtr a) {
+            const auto &args{a->getArgs()};
+            auto it{args.begin()};
+            Rational res{(*it)->getConstantFactor()};
+            for (++it; it != args.end(); ++it) {
+                if (res == 1) {
+                    return res;
+                }
+                const auto factor {(*it)->getConstantFactor()};
+                if (factor != res) {
+                    if (mp::denominator(factor) == 1 && mp::denominator(res) == 1) {
+                        res = mp::gcd(mp::numerator(factor), mp::numerator(res));
+                    } else {
+                        return Rational(1);
+                    }
+                }
+            }
+            return res;
+        },
+        [](const ArithMultPtr m) {
+            const auto &args{m->getArgs()};
+            const auto it{std::find_if(args.begin(), args.end(), [](const auto arg) {
+                return arg->isRational();
+            })};
+            return it == args.end() ? 0 : (*(*it)->isRational())->getValue();
+        },
+        [](const ArithExprPtr) {
+            return 1;
+        });
+}
+
 std::optional<ArithVarPtr> ArithExpr::someVar() const {
     using opt = std::optional<ArithVarPtr>;
     return apply<opt>(

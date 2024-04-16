@@ -56,19 +56,12 @@ private:
     friend auto operator<=>(const ArithLit &x, const ArithLit &y) = default;
     friend bool operator==(const ArithLit &x, const ArithLit &y) = default;
 
-    friend ArithLit arith::mkEq(const ArithExprPtr x, const ArithExprPtr y);
-    friend ArithLit arith::mkNeq(const ArithExprPtr x, const ArithExprPtr y);
-    friend ArithLit arith::mkGeq(const ArithExprPtr x, const ArithExprPtr y);
-    friend ArithLit arith::mkLeq(const ArithExprPtr x, const ArithExprPtr y);
-    friend ArithLit arith::mkGt(const ArithExprPtr x, const ArithExprPtr y);
-    friend ArithLit arith::mkLt(const ArithExprPtr x, const ArithExprPtr y);
-
     friend ArithLit operator!(const ArithLit &x);
     friend std::ostream& operator<<(std::ostream &s, const ArithLit &e);
 
-    enum class Kind {Gt, Eq, Neq};
-
 public:
+
+    enum class Kind {Gt, Eq, Neq};
 
     class InvalidRelationalExpression: std::exception { };
 

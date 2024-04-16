@@ -201,6 +201,8 @@ public:
 
     Int denomLcm() const;
 
+    Rational getConstantFactor() const;
+
     /**
      * @return True iff this is a polynomial wrt. the given variable.
      */
@@ -342,7 +344,6 @@ class ArithMult: public ArithExpr {
 public:
 
     const ArithExprVec& getArgs() const;
-    Rational getConstantFactor() const;
 
 private:
 

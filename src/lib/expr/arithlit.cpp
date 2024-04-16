@@ -104,6 +104,15 @@ std::ostream& operator<<(std::ostream &s, const ArithLitSet &set) {
 
 ArithLit::ArithLit(const ArithExprPtr l, const Kind kind): l(l), kind(kind) { }
 
+ArithLit mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
+    auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
+    const auto factor {lhs_integral->getConstantFactor()};
+    if (factor > 1) {
+        lhs_integral = lhs_integral->divide(factor);
+    }
+    return ArithLit(lhs_integral, kind);
+}
+
 ArithExprPtr ArithLit::lhs() const {
     return l;
 }
@@ -244,7 +253,7 @@ bool ArithLit::has(const ArithVarPtr x) const {
 }
 
 ArithLit ArithLit::subs(const ArithSubs &map) const {
-    return ArithLit(map(l), kind);
+    return mk(map(l), kind);
 }
 
 linked_hash_set<ArithVarPtr> ArithLit::vars() const {
@@ -264,7 +273,11 @@ size_t hash_value(const ArithLit &rel) {
 
 ArithLit arith::mkGeq(const ArithExprPtr x, const ArithExprPtr y) {
     const auto lhs {x - y};
-    const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
+    auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
+    const auto factor {lhs_integral->getConstantFactor()};
+    if (factor > 1) {
+        lhs_integral = lhs_integral->divide(factor);
+    }
     return ArithLit(lhs_integral + arith::mkConst(1), ArithLit::Kind::Gt);
 }
 
@@ -273,32 +286,26 @@ ArithLit arith::mkLeq(const ArithExprPtr x, const ArithExprPtr y) {
 }
 
 ArithLit arith::mkGt(const ArithExprPtr x, const ArithExprPtr y) {
-    const auto lhs {x - y};
-    const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
-    return ArithLit(lhs_integral, ArithLit::Kind::Gt);
+    return mk(x - y, ArithLit::Kind::Gt);
 }
 
 ArithLit arith::mkEq(const ArithExprPtr x, const ArithExprPtr y) {
-    const auto lhs {x - y};
-    const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
-    return ArithLit(lhs_integral, ArithLit::Kind::Eq);
+    return mk(x - y, ArithLit::Kind::Eq);
 }
 
 ArithLit arith::mkNeq(const ArithExprPtr x, const ArithExprPtr y) {
-    const auto lhs {x - y};
-    const auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
-    return ArithLit(lhs_integral, ArithLit::Kind::Neq);
+    return mk(x - y, ArithLit::Kind::Neq);
 }
 
 ArithLit arith::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
-    return mkGt(-x, -y);
+    return mk(y - x, ArithLit::Kind::Gt);
 }
 
 ArithLit operator!(const ArithLit &x) {
     switch (x.kind) {
-        case ArithLit::Kind::Gt: return ArithLit(arith::mkConst(1) - x.lhs(), ArithLit::Kind::Gt);
-        case ArithLit::Kind::Eq: return ArithLit(x.lhs(), ArithLit::Kind::Neq);
-        case ArithLit::Kind::Neq: return ArithLit(x.lhs(), ArithLit::Kind::Eq);
+        case ArithLit::Kind::Gt: return mk(arith::mkConst(1) - x.lhs(), ArithLit::Kind::Gt);
+        case ArithLit::Kind::Eq: return mk(x.lhs(), ArithLit::Kind::Neq);
+        case ArithLit::Kind::Neq: return mk(x.lhs(), ArithLit::Kind::Eq);
         default: throw std::invalid_argument("unexpected relation");
     }
 }
