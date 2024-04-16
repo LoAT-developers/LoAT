@@ -20,6 +20,7 @@
 #include <optional>
 
 #include "theory.hpp"
+#include "subs.hpp"
 
 /**
  * Functions to compute an ordering on updated variables,

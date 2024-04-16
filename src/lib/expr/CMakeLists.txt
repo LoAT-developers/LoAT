@@ -4,44 +4,53 @@ set(CMAKE_CXX_STANDARD 20)
 
 project(loat_expr CXX)
 
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} OBJECT
   itheory.hpp
-  thset.hpp
   subs.hpp
+  subs.cpp
   boolvar.hpp
   boolvar.cpp
   boollit.hpp
   boollit.cpp
-  literal.hpp
-  numvar.hpp
-  numvar.cpp
-  numexpression.cpp
-  numexpression.hpp
-  rel.cpp
-  rel.hpp
+  arithvar.cpp
+  arithexpr.cpp
+  arithexpr.hpp
+  arithlit.cpp
+  arithlit.hpp
   conjunction.hpp
+  conjunction.cpp
   boolexpr.hpp
-  inttheory.hpp
-  booltheory.hpp
-  boolexpression.hpp
+  boolexpr.cpp
+  booltheorylit.cpp
+  booljunction.cpp
+  arith.hpp
+  arith.cpp
+  bools.hpp
+  bools.cpp
   boolsubs.hpp
+  boolsubs.cpp
   theory.hpp
   theory.cpp
-  expr.hpp
-  expr.cpp
+  arithsubs.hpp
+  arithsubs.cpp
+  arithconstant.cpp
+  exp.cpp
+  mult.cpp
+  add.cpp
+  arithutil.hpp
+  arithutil.cpp
+  model.hpp
+  model.cpp
 )
-
-find_library(GINAC ginac)
-message(STATUS "ginac: ${GINAC}")
-
-target_link_libraries(${PROJECT_NAME} ${GINAC})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_util_INCLUDE_DIRS}
+  ${loat_container_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE
   ${loat_util_INCLUDE_DIRS}
+  ${loat_container_INCLUDE_DIRS}
   "."
 )
 

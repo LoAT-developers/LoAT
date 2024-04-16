@@ -15,3 +15,10 @@ std::ostream& operator<<(std::ostream &s, const std::vector<T> &v) {
     s << "]";
     return s;
 }
+
+template<>
+struct std::hash<std::vector<int>> {
+    std::size_t operator()(const std::vector<int> &x) const noexcept {
+        return boost::hash_value(x);
+    }
+};

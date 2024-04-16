@@ -20,6 +20,9 @@
 #include "loopacceleration.hpp"
 #include "chain.hpp"
 #include "config.hpp"
+#include "theory.hpp"
+#include "guardtoolbox.hpp"
+#include "smtfactory.hpp"
 
 #include <numeric>
 #include <unordered_set>
@@ -80,16 +83,16 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
                     res.succeed();
                     const auto chained {Chaining::chain(first, *second_idx).first};
                     its.addRule(chained, &first, second_idx);
-                    res.chainingProof(chained, first, *second_idx);
+                    res.chainingProof(first, *second_idx, chained);
                     linked_hash_set<TransIdx> deleted;
                     deleted.insert(&first);
                     if (its.getPredecessors(second_idx).size() == 1) {
                         deleted.insert(second_idx);
                     }
+                    res.deletionProof(deleted);
                     for (const auto &idx: deleted) {
                         its.removeRule(idx);
                     }
-                    res.deletionProof(deleted);
                     changed = true;
                     break;
                 }
@@ -140,7 +143,10 @@ ResultViaSideEffects unroll(ITSProblem &its) {
 
 ResultViaSideEffects refine_dependency_graph(ITSProblem &its) {
     ResultViaSideEffects res;
-    const auto removed {its.refineDependencyGraph()};
+    const auto is_edge = [](const TransIdx fst, const TransIdx snd){
+        return SmtFactory::check(Chaining::chain(*fst, *snd).first.getGuard()) == Sat;
+    };
+    const auto removed {its.refineDependencyGraph(is_edge)};
     if (!removed.empty()) {
         res.succeed();
         res.dependencyGraphRefinementProof(removed);
@@ -213,6 +219,37 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
                 res.succeed();
                 res.majorProofStep("Refined Dependency Graph", sub_res.getProof(), its);
             }
+        }
+    }
+    return res;
+}
+
+ResultBase<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
+    ResultBase<SafetyProblem, Proof> res {p};
+
+    const auto post_vars {p.post_vars()};
+    const auto allow = [&post_vars](const auto &x) {
+        return theory::isTempVar(x) && !post_vars.contains(x);
+    };
+    ResultBase<Bools::Expr, Proof> init {GuardToolbox::preprocessFormula(p.init(), allow)};
+    if (init) {
+        res.append("Preprocessed Initial States");
+        res.appendAll(*init);
+        res.succeed();
+        res->set_init(*init);
+        res.storeSubProof(init.getProof());
+    }
+    auto first {true};
+    for (const auto &t: p.trans()) {
+        const auto preproc {Preprocess::preprocessTransition(t)};
+        if (preproc) {
+            if (first) {
+                res.append("Preprocessed Transitions");
+                first = false;
+            }
+            res.succeed();
+            res->replace_transition(t, *preproc);
+            res.storeSubProof(preproc.getProof());
         }
     }
     return res;

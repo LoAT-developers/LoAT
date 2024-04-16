@@ -23,11 +23,20 @@ public:
 
     ResultBase(): success(false) {}
 
-    ResultBase(const T &t, bool success = false): success(success), res(t) {}
+    explicit ResultBase(const T &t, bool success = false): success(success), res(t) {}
 
     ResultBase& operator=(const T &t) {
         set(t);
         return *this;
+    }
+
+    template <class... Args>
+    void appendAll(const Args ...args) {
+        std::stringstream ss;
+        ([&]{
+            ss << args;
+        } (), ...);
+        proof.append(ss);
     }
 
     void append(const std::string &s) {
@@ -52,14 +61,6 @@ public:
 
     void headline(const std::ostream &s) {
         proof.headline(s);
-    }
-
-    void section(const std::string &s) {
-        proof.section(s);
-    }
-
-    void section(const std::ostream &s) {
-        proof.section(s);
     }
 
     void result(const std::string &s) {

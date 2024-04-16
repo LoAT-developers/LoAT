@@ -16,7 +16,7 @@
  */
 
 #include "z3context.hpp"
-#include "expr.hpp"
+#include "theory.hpp"
 
 using namespace std;
 
@@ -25,23 +25,24 @@ Z3Context::Z3Context(z3::context& ctx): ctx(ctx) {}
 Z3Context::~Z3Context() { }
 
 z3::expr Z3Context::buildVar(const Var &var) {
-    const auto name {expr::getName(var)};
-    return std::visit(Overload{
-                          [&](const NumVar&) {
-                              return ctx.int_const(name.c_str());
-                          },
-                          [&](const BoolVar&) {
-                              return ctx.bool_const(name.c_str());
-                          }
-                      }, var);
+    const auto name {theory::getName(var)};
+    return std::visit(
+        Overload{
+            [&](const Arith::Var) {
+                return ctx.int_const(name.c_str());
+            },
+            [&](const Bools::Var) {
+                return ctx.bool_const(name.c_str());
+            }
+        }, var);
 }
 
-z3::expr Z3Context::getInt(Num val) {
-    return ctx.int_val(to_string(val).c_str());
+z3::expr Z3Context::getInt(const Int &val) {
+    return ctx.int_val(val.str().c_str());
 }
 
-z3::expr Z3Context::getReal(Num num, Num denom) {
-    return ctx.real_val((to_string(num) + " / " + to_string(denom)).c_str());
+z3::expr Z3Context::getReal(const Int &num, const Int &denom) {
+    return ctx.real_val((num.str() + " / " + denom.str()).c_str());
 }
 
 z3::expr Z3Context::pow(const z3::expr &base, const z3::expr &exp) {
@@ -149,8 +150,8 @@ bool Z3Context::isInt(const z3::expr &e) const {
     return e.is_numeral() && e.is_int();
 }
 
-Num Z3Context::toInt(const z3::expr &e) const {
-    return Num{e.to_string().c_str()};
+Int Z3Context::toInt(const z3::expr &e) const {
+    return Int{e.to_string().c_str()};
 }
 
 z3::expr Z3Context::lhs(const z3::expr &e) const {
@@ -161,17 +162,6 @@ z3::expr Z3Context::lhs(const z3::expr &e) const {
 z3::expr Z3Context::rhs(const z3::expr &e) const {
     assert(e.num_args() == 2);
     return e.arg(1);
-}
-
-Rel::RelOp Z3Context::relOp(const z3::expr &e) const {
-    switch (e.decl().decl_kind()) {
-    case Z3_OP_EQ: return Rel::RelOp::eq;
-    case Z3_OP_GT: return Rel::RelOp::gt;
-    case Z3_OP_GE: return Rel::RelOp::geq;
-    case Z3_OP_LT: return Rel::RelOp::lt;
-    case Z3_OP_LE: return Rel::RelOp::leq;
-    default: throw std::invalid_argument("unknown relation");
-    }
 }
 
 void Z3Context::printStderr(const z3::expr &e) const {

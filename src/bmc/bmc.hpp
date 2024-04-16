@@ -16,14 +16,14 @@ private:
     void analyze();
 
     ITSProblem &its;
-    Z3<IntTheory, BoolTheory> solver{};
+    Z3 solver{};
     bool approx {false};
     VarSet vars {};
     std::unordered_map<Var, Var> post_vars {};
     unsigned depth {0};
     ITSProof proof {};
 
-    BoolExpr encode_transition(const TransIdx idx);
+    Bools::Expr encode_transition(const TransIdx idx);
     void unsat();
     void sat();
 

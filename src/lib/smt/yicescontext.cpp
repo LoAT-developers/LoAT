@@ -16,7 +16,7 @@
  */
 
 #include "yicescontext.hpp"
-#include "expr.hpp"
+#include "theory.hpp"
 
 #include <assert.h>
 
@@ -31,27 +31,27 @@ YicesContext::~YicesContext() { }
 term_t YicesContext::buildVar(const Var &var) {
     type_t t {
         std::visit(Overload{
-                       [](const NumVar&) {
+                       [](const Arith::Var) {
                            return yices_int_type();
                        },
-                       [](const BoolVar&) {
+                       [](const Bools::Var) {
                            return yices_bool_type();
                        }
                    }, var)};
     term_t res = yices_new_uninterpreted_term(t);
-    yices_set_term_name(res, expr::getName(var).c_str());
+    yices_set_term_name(res, theory::getName(var).c_str());
     return res;
 }
 
-term_t YicesContext::getInt(Num val) {
+term_t YicesContext::getInt(const Int &val) {
     mpz_t res;
     mpz_init(res);
-    mpz_set_str(res, to_string(val).c_str(), 10);
+    mpz_set_str(res, val.str().c_str(), 10);
     return yices_mpz(res);
 }
 
-term_t YicesContext::getReal(Num num, Num denom) {
-    return yices_parse_rational((to_string(num) + " / " + to_string(denom)).c_str());
+term_t YicesContext::getReal(const Int &num, const Int &denom) {
+    return yices_parse_rational((num.str() + " / " + denom.str()).c_str());
 }
 
 term_t YicesContext::pow(const term_t &base, const term_t &exp) {
@@ -61,7 +61,7 @@ term_t YicesContext::pow(const term_t &base, const term_t &exp) {
     if (exponent < bounds::min() || bounds::max() < exponent) {
         throw std::invalid_argument("overflow in YicesContext::pow");
     }
-    return yices_power(base, exponent.to_int());
+    return yices_power(base, exponent.convert_to<int>());
 }
 
 term_t YicesContext::plus(const term_t &x, const term_t &y) {
@@ -147,39 +147,39 @@ bool YicesContext::isInt(const term_t &e) const {
     return yices_is_int_atom(e);
 }
 
-Num YicesContext::toInt(const term_t &e) const {
+Int YicesContext::toInt(const term_t &e) const {
     assert(denominator(e) == 1);
     return numerator(e);
 }
 
-Num mpz_to_num(const mpz_t &m) {
+Int mpz_to_int(const mpz_t &m) {
     const auto str {mpz_get_str(nullptr, 10, m)};
-    const Num ret {str};
+    const Int ret {str};
     free(str);
     return ret;
 }
 
-Num YicesContext::numerator(const term_t &e) const {
+Int YicesContext::numerator(const term_t &e) const {
     mpq_t frac;
     mpz_t res;
     mpq_init(frac);
     mpz_init(res);
     if (yices_rational_const_value(e, frac) == 0) {
         mpq_get_num(res, frac);
-        return mpz_to_num(res);
+        return mpz_to_int(res);
     } else {
         throw YicesError();
     }
 }
 
-Num YicesContext::denominator(const term_t &e) const {
+Int YicesContext::denominator(const term_t &e) const {
     mpq_t frac;
     mpz_t res;
     mpq_init(frac);
     mpz_init(res);
     if (yices_rational_const_value(e, frac) == 0) {
         mpq_get_den(res, frac);
-        return mpz_to_num(res);
+        return mpz_to_int(res);
     } else {
         throw YicesError();
     }
@@ -257,14 +257,6 @@ std::vector<term_t> YicesContext::getChildren(const term_t &e) const {
         }
     }
     return res;
-}
-
-Rel::RelOp YicesContext::relOp(const term_t &e) const {
-    switch (yices_term_constructor(e)) {
-    case YICES_ARITH_GE_ATOM: return Rel::RelOp::geq;
-    case YICES_EQ_TERM: return Rel::RelOp::eq;
-    default: throw std::invalid_argument("unknown relation"); // yices normalizes all other relations to >= or =
-    }
 }
 
 void YicesContext::printStderr(const term_t &e) const {

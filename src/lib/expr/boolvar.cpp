@@ -27,18 +27,18 @@ int BoolVar::getIdx() const {
     return idx;
 }
 
-std::ostream& operator<<(std::ostream &s, const BoolVar &e) {
-    return s << e.getName();
+std::ostream& operator<<(std::ostream &s, const BoolVarPtr e) {
+    return s << e->getName();
 }
 
-BoolVar BoolVar::next() {
+BoolVarPtr BoolVar::next() {
     --last_tmp_idx;
-    return BoolVar(last_tmp_idx);
+    return cpp::assume_not_null(std::make_shared<BoolVar>(last_tmp_idx));
 }
 
-BoolVar BoolVar::nextProgVar() {
+BoolVarPtr BoolVar::nextProgVar() {
     ++last_prog_idx;
-    return BoolVar(last_prog_idx);
+    return cpp::assume_not_null(std::make_shared<BoolVar>(last_prog_idx));
 }
 
 bool BoolVar::isTempVar() const {

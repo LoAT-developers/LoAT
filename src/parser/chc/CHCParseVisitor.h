@@ -1,12 +1,13 @@
 #pragma once
 
 #include "itsproblem.hpp"
+#include "theory.hpp"
 #include "CHCVisitor.h"
 
 template<class T>
 struct Res {
     T t {};
-    std::vector<BoolExpr> refinement {};
+    std::vector<Bools::Expr> refinement {};
     Res(const T &t);
     Res();
 
@@ -23,7 +24,7 @@ struct Res {
     void subsRefinement(const Subs &subs) {
         auto it {refinement.begin()};
         while (it != refinement.end()) {
-            *it = (*it)->subs(subs);
+            *it = subs(*it);
             ++it;
         }
     }
@@ -47,7 +48,7 @@ enum BoolOp {
 };
 
 enum Sort {
-    Int, Bool
+    IntType, BoolType
 };
 
 struct FunApp {
@@ -62,9 +63,9 @@ struct FunApp {
 struct Clause {
     const FunApp lhs;
     const FunApp rhs;
-    const BoolExpr guard;
+    const Bools::Expr guard;
 
-    Clause(const FunApp &lhs, const FunApp &rhs, const BoolExpr &guard): lhs(lhs), rhs(rhs), guard(guard) {}
+    Clause(const FunApp &lhs, const FunApp &rhs, const Bools::Expr guard): lhs(lhs), rhs(rhs), guard(guard) {}
 
 };
 

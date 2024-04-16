@@ -1,6 +1,7 @@
 #pragma once
 
 #include "theory.hpp"
+#include "conjunction.hpp"
 #include "rule.hpp"
 
 #include <faudes/libfaudes.h>
@@ -36,8 +37,8 @@ public:
 };
 
 template<>
-struct std::hash<std::pair<TransIdx, Guard>> {
-    std::size_t operator()(const std::pair<TransIdx, Guard>& x) const noexcept {
+struct std::hash<std::pair<TransIdx, Conjunction>> {
+    std::size_t operator()(const std::pair<TransIdx, Conjunction>& x) const noexcept {
         std::size_t seed {0};
         boost::hash_combine(seed, x.first);
         boost::hash_combine(seed, x.second);
@@ -49,7 +50,7 @@ class RedundanceViaAutomata {
 
 public:
 
-    Automaton get_singleton_language(const TransIdx idx, const Guard &guard);
+    Automaton get_singleton_language(const TransIdx idx, const Conjunction &guard);
     std::optional<Automaton> get_language(const TransIdx idx);
     void set_language(const TransIdx idx, const Automaton &t);
     void delete_language(const TransIdx idx);
@@ -64,7 +65,7 @@ public:
 private:
 
     long next_char {0};
-    std::unordered_map<std::pair<TransIdx, Guard>, Automaton> alphabet {};
+    std::unordered_map<std::pair<TransIdx, Conjunction>, Automaton> alphabet {};
     std::unordered_map<TransIdx, Automaton> regexes {};
 
 };

@@ -24,7 +24,6 @@
 #include "ruleresult.hpp"
 #include "rulepreprocessing.hpp"
 
-#include <purrs.hh>
 #include <numeric>
 
 using namespace std;
@@ -33,11 +32,7 @@ LoopAcceleration::LoopAcceleration(
     const Rule &rule,
     const std::optional<Subs> &sample_point,
     const AccelConfig &config)
-    : rule(rule), sample_point(sample_point), config(config) {
-    auto up {rule.getUpdate()};
-    up.put<IntTheory>(NumVar::loc_var, Expr(NumVar::loc_var));
-    this->rule = rule.withUpdate(up);
-}
+    : rule(rule), sample_point(sample_point), config(config) {}
 
 std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     auto changed {false};
@@ -66,7 +61,7 @@ void LoopAcceleration::store_nonterm(const AccelerationProblem::Accelerator &acc
     if (accelerator.nonterm) {
         res.nonterm = acceleration::Nonterm();
         res.nonterm->proof = accelerator.proof;
-        res.nonterm->certificate = BExpression::buildAnd(accelerator.formula);
+        res.nonterm->certificate = bools::mkAnd(accelerator.formula);
     }
 }
 
@@ -85,31 +80,32 @@ void LoopAcceleration::compute_closed_form() {
     rec = Recurrence::solve(rule.getUpdate(), config.n);
     if (rec) {
         res.prefix = rec->prefix;
-        const auto is_temp_var = [](const auto &z){
-            return z.isTempVar();
+        const auto is_temp_var = [](const auto z){
+            return z->isTempVar();
         };
-        for (const auto &[x,y]: rule.getUpdate().get<IntTheory>()) {
-            if (y.has(x) && y != Expr(x)) {
-                if (!y.hasVarWith(is_temp_var)) {
+        for (const auto &[x,y]: rule.getUpdate().get<Arith>()) {
+            if (y->has(x) && y != x->toExpr()) {
+                if (!y->hasVarWith(is_temp_var)) {
                     return;
                 }
-                if (!y.isLinear()) {
+                if (!y->isLinear()) {
                     continue;
                 }
-                const auto vars {y.vars()};
+                const auto vars {y->vars()};
                 auto all_lower_bounded {true};
                 auto all_upper_bounded {true};
                 for (const auto &z: vars) {
-                    if (z.isTempVar()) {
+                    if (z->isTempVar()) {
                         const auto bounds {rule.getGuard()->getBounds(z)};
-                        const auto coeff {y.coeff(z).toNum()};
-                        if (bounds.equality && !bounds.equality->hasVarWith(is_temp_var)) {
-                            continue;
-                        }
+                        const auto coeff {***(*y->coeff(z))->isRational()};
                         auto lower_bounded {false};
                         auto upper_bounded {false};
-                        for (const auto &b: bounds.lowerBounds) {
-                            if (!b.hasVarWith(is_temp_var)) {
+                        for (const auto &b: bounds.realLowerBounds()) {
+                            if (!b->hasVarWith(is_temp_var)) {
+                                if (bounds.realUpperBounds().contains(b)) {
+                                    lower_bounded = true;
+                                    upper_bounded = true;
+                                }
                                 if (coeff > 0) {
                                     lower_bounded = true;
                                 } else {
@@ -121,8 +117,8 @@ void LoopAcceleration::compute_closed_form() {
                             }
                         }
                         if (!lower_bounded || !upper_bounded) {
-                            for (const auto &b: bounds.upperBounds) {
-                                if (!b.hasVarWith(is_temp_var)) {
+                            for (const auto &b: bounds.realUpperBounds()) {
+                                if (!b->hasVarWith(is_temp_var)) {
                                     if (coeff > 0) {
                                         upper_bounded = true;
                                     } else {
@@ -156,9 +152,9 @@ void LoopAcceleration::accelerate() {
     if (rec && config.tryAccel) {
         const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
         if (accelerator) {
-            res.accel = acceleration::Accel(Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form));
+            res.accel = acceleration::Accel(Rule(bools::mkAnd(accelerator->formula), rec->closed_form));
             res.accel->proof = accelerator->proof;
-            res.accel->covered = BExpression::buildAnd(accelerator->covered);
+            res.accel->covered = bools::mkAnd(accelerator->covered);
             store_nonterm(*accelerator);
         }
     }

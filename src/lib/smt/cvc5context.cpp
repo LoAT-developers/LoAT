@@ -1,5 +1,5 @@
 #include "cvc5context.hpp"
-#include "expr.hpp"
+#include "theory.hpp"
 
 using namespace std;
 
@@ -8,22 +8,22 @@ CVC5Context::CVC5Context(cvc5::Solver& ctx): ctx(ctx), refinement(ctx.mkBoolean(
 CVC5Context::~CVC5Context() { }
 
 cvc5::Term CVC5Context::buildVar(const Var &var) {
-    const auto name {expr::getName(var)};
+    const auto name {theory::getName(var)};
     return std::visit(Overload{
-                          [&](const NumVar&) {
+                          [&](const Arith::Var) {
                               return ctx.mkConst(ctx.getIntegerSort(), name);
                           },
-                          [&](const BoolVar&) {
+                          [&](const Bools::Var) {
                               return ctx.mkConst(ctx.getBooleanSort(), name);
                           }
                       }, var);
 }
 
-cvc5::Term CVC5Context::getInt(Num val) {
-    return ctx.mkInteger(to_string(val));
+cvc5::Term CVC5Context::getInt(const Int &val) {
+    return ctx.mkInteger(val.str());
 }
 
-cvc5::Term CVC5Context::getReal(Num num, Num denom) {
+cvc5::Term CVC5Context::getReal(const Int &num, const Int &denom) {
     return ctx.mkTerm(cvc5::Kind::DIVISION, {getInt(num), getInt(denom)});
 }
 
@@ -142,8 +142,8 @@ bool CVC5Context::isInt(const cvc5::Term &e) const {
     return e.getKind() == cvc5::Kind::CONST_INTEGER;
 }
 
-Num CVC5Context::toInt(const cvc5::Term &e) const {
-    return Num{e.toString().c_str()};
+Int CVC5Context::toInt(const cvc5::Term &e) const {
+    return Int{e.toString().c_str()};
 }
 
 cvc5::Term CVC5Context::lhs(const cvc5::Term &e) const {
@@ -154,18 +154,6 @@ cvc5::Term CVC5Context::lhs(const cvc5::Term &e) const {
 cvc5::Term CVC5Context::rhs(const cvc5::Term &e) const {
     assert(e.getNumChildren() == 2);
     return *(++e.begin());
-}
-
-Rel::RelOp CVC5Context::relOp(const cvc5::Term &e) const {
-
-    switch (e.getKind()) {
-    case cvc5::Kind::EQUAL: return Rel::RelOp::eq;
-    case cvc5::Kind::GT: return Rel::RelOp::gt;
-    case cvc5::Kind::GEQ: return Rel::RelOp::geq;
-    case cvc5::Kind::LT: return Rel::RelOp::lt;
-    case cvc5::Kind::LEQ: return Rel::RelOp::leq;
-    default: throw std::invalid_argument("unknown relation");
-    }
 }
 
 void CVC5Context::printStderr(const cvc5::Term &e) const {

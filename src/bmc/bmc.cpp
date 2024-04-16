@@ -1,5 +1,5 @@
 #include "bmc.hpp"
-#include "expr.hpp"
+#include "theory.hpp"
 #include "preprocessing.hpp"
 #include "smtfactory.hpp"
 #include "config.hpp"
@@ -21,15 +21,15 @@ void BMC::sat() {
     proof.print();
 }
 
-BoolExpr BMC::encode_transition(const TransIdx idx) {
+Bools::Expr BMC::encode_transition(const TransIdx idx) {
     const auto up {idx->getUpdate()};
-    std::vector<BoolExpr> res {idx->getGuard()};
+    std::vector<Bools::Expr> res {idx->getGuard()};
     for (const auto &x: vars) {
-        if (expr::isProgVar(x)) {
-            res.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
+        if (theory::isProgVar(x)) {
+            res.push_back(theory::mkEq(theory::toExpr(post_vars.at(x)), up.get(x)));
         }
     }
-    return BExpression::buildAnd(res);
+    return bools::mkAnd(res);
 }
 
 void BMC::analyze() {
@@ -48,9 +48,9 @@ void BMC::analyze() {
     }
     vars.insertAll(its.getVars());
     for (const auto &var: vars) {
-        post_vars.emplace(var, expr::next(var));
+        post_vars.emplace(var, theory::next(var));
     }
-    std::vector<BoolExpr> inits;
+    std::vector<Bools::Expr> inits;
     for (const auto &idx: its.getInitialTransitions()) {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
@@ -69,24 +69,24 @@ void BMC::analyze() {
             inits.push_back(encode_transition(idx));
         }
     }
-    solver.add(BExpression::buildOr(inits));
+    solver.add(bools::mkOr(inits));
 
-    std::vector<BoolExpr> steps;
+    std::vector<Bools::Expr> steps;
     for (const auto &r: its.getAllTransitions()) {
         if (its.isInitialTransition(&r) || its.isSinkTransition(&r)) {
             continue;
         }
         steps.push_back(encode_transition(&r));
     }
-    const auto step {BExpression::buildOr(steps)};
+    const auto step {bools::mkOr(steps)};
 
-    std::vector<BoolExpr> queries;
+    std::vector<Bools::Expr> queries;
     for (const auto &idx: its.getSinkTransitions()) {
         if (!its.isInitialTransition(idx)) {
             queries.push_back(idx->getGuard());
         }
     }
-    const auto query {BExpression::buildOr(queries)};
+    const auto query {bools::mkOr(queries)};
 
     Subs last_s;
     while (true) {
@@ -94,11 +94,11 @@ void BMC::analyze() {
         for (const auto &var: vars) {
             const auto &post_var {post_vars.at(var)};
             s.put(var, last_s.get(post_var));
-            s.put(post_var, expr::toExpr(expr::next(post_var)));
+            s.put(post_var, theory::toExpr(theory::next(post_var)));
         }
         last_s = s;
         solver.push();
-        solver.add(query->subs(s));
+        solver.add(s(query));
         switch (solver.check()) {
         case SmtResult::Sat:
             unsat();
@@ -112,7 +112,7 @@ void BMC::analyze() {
         case SmtResult::Unsat: {}
         }
         solver.pop();
-        solver.add(step->subs(s));
+        solver.add(s(step));
         ++depth;
         if (solver.check() == SmtResult::Unsat) {
             if (!approx) {

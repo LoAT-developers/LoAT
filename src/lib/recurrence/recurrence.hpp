@@ -20,7 +20,7 @@
 #include <optional>
 
 #include "theory.hpp"
-#include "numexpression.hpp"
+#include "subs.hpp"
 
 class Recurrence {
 private:
@@ -32,23 +32,23 @@ public:
         unsigned int prefix {0};
     };
 
-    static std::optional<Result> solve(const Subs &equations, const NumVar &n);
+    static std::optional<Result> solve(const Subs &equations, const Arith::Var n);
 
     static void solve(const std::string &eq);
 
 private:
 
-    Recurrence(const Subs &subs, const NumVar &n);
+    Recurrence(const Subs &subs, const Arith::Var n);
 
     bool solve();
 
-    bool solve(const NumVar &lhs, const Expr &rhs);
+    bool solve(const Arith::Var lhs, const Arith::Expr rhs);
 
-    bool solve(const BoolVar &lhs, const BoolExpr &rhs);
+    bool solve(const Bools::Var &lhs, const Bools::Expr rhs);
 
     Subs equations;
 
-    const NumVar &n;
+    const Arith::Var n;
 
     /**
      * Substitution map, mapping variables to their recurrence equations
@@ -57,7 +57,7 @@ private:
      */
     Subs closed_form_pre {};
 
-    std::optional<ExprSubs> inverse {ExprSubs()};
+    std::optional<ArithSubs> inverse {ArithSubs()};
 
     Result result {};
 

@@ -20,7 +20,6 @@
 #include <optional>
 #include <assert.h>
 
-#include "rel.hpp"
 #include "theory.hpp"
 
 template<class EXPR>
@@ -28,8 +27,8 @@ class SmtContext {
 
 public:
 
-    virtual EXPR getInt(Num val) = 0;
-    virtual EXPR getReal(Num num, Num denom) = 0;
+    virtual EXPR getInt(const Int &val) = 0;
+    virtual EXPR getReal(const Int &num, const Int &denom) = 0;
     virtual EXPR pow(const EXPR &base, const EXPR &exp) = 0;
     virtual EXPR plus(const EXPR &x, const EXPR &y) = 0;
     virtual EXPR times(const EXPR &x, const EXPR &y) = 0;
@@ -56,10 +55,9 @@ public:
     virtual bool isVar(const EXPR &e) const = 0;
     virtual bool isRationalConstant(const EXPR &e) const = 0;
     virtual bool isInt(const EXPR &e) const = 0;
-    virtual Num toInt(const EXPR &e) const = 0;
+    virtual Int toInt(const EXPR &e) const = 0;
     virtual EXPR lhs(const EXPR &e) const = 0;
     virtual EXPR rhs(const EXPR &e) const = 0;
-    virtual Rel::RelOp relOp(const EXPR &e) const = 0;
 
     virtual void printStderr(const EXPR &e) const = 0;
 

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "numvar.hpp"
+#include "theory.hpp"
 
 struct AccelConfig {
     bool tryNonterm {true};
     bool tryAccel {true};
-    NumVar n;
+    Arith::Var n;
 };

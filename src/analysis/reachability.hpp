@@ -29,7 +29,7 @@ struct Step {
     /**
      * a conjunction that implies the condition of the clause
      */
-    const BoolExpr implicant;
+    const Bools::Expr implicant;
 
     /**
      * renames the program variables to fresh variables that serve as input for the next step
@@ -38,7 +38,7 @@ struct Step {
 
     const Rule resolvent;
 
-    Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent);
+    Step(const TransIdx transition, const Bools::Expr sat, const Subs &var_renaming, const Rule &resolvent);
 
     Step(const Step &that);
 
@@ -161,7 +161,7 @@ class Reachability {
 
     ITSProof proof {};
 
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
+    SmtPtr solver {SmtFactory::solver()};
 
     const bool drop;
 
@@ -172,7 +172,7 @@ class Reachability {
      * A conjunctive variant y of a non-conjunctive clause x is blocked if cond(y) implies an element of at(x).
      * Maybe it would be better to subdivide the blocking formulas w.r.t. pairs of predicates instead of clauses.
      */
-    std::vector<std::unordered_map<TransIdx, linked_hash_set<BoolExpr>>> blocked_clauses {{}};
+    std::vector<std::unordered_map<TransIdx, BoolExprSet>> blocked_clauses {{}};
 
     /**
      * Languages that correspond to non-linear learned clauses that are not used for resolution after a restart.
@@ -208,7 +208,7 @@ class Reachability {
 
     void update_cpx();
 
-    RuleResult instantiate(const NumVar &n, const Rule &rule) const;
+    RuleResult instantiate(const Arith::Var n, const Rule &rule) const;
 
     /**
      * initializes all data structures after preprocessing
@@ -247,7 +247,7 @@ class Reachability {
      * computes a clause that is equivalent to the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    std::pair<Rule, Subs> build_loop(const int backlink);
+    std::pair<Rule, Model> build_loop(const int backlink);
 
     /**
      * adds a learned clause to all relevant data structures
@@ -259,7 +259,7 @@ class Reachability {
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Subs &model, const unsigned backlink);
+    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Model &model, const unsigned backlink);
 
     bool check_consistency();
 
@@ -297,7 +297,7 @@ class Reachability {
 
     void add_to_trace(const Step &step);
 
-    Rule compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const;
+    Rule compute_resolvent(const TransIdx idx, const Bools::Expr implicant) const;
 
     /**
      * Assumes that the trace can be resolved with the given clause.

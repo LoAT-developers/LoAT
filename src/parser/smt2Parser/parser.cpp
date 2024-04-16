@@ -48,7 +48,7 @@ namespace sexpressionparser {
                     sexpresso::Sexp &scope = ex[2];
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
-                            vars.emplace(e[0].str(), NumVar::nextProgVar());
+                            vars.emplace(e[0].str(), ArithVar::nextProgVar());
                             preVars.push_back(e[0].str());
                         }
                     }
@@ -61,14 +61,14 @@ namespace sexpressionparser {
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
                             if (std::find(preVars.begin(), preVars.end(), e[0].str()) == preVars.end()) {
-                                vars.emplace(e[0].str(), NumVar::next());
+                                vars.emplace(e[0].str(), ArithVar::next());
                                 postVars.push_back(e[0].str());
                             }
                         }
                     }
                     assert(preVars.size() == postVars.size());
                     sexpresso::Sexp ruleExps = ex[4];
-                    linked_hash_set<NumVar> tmpVars;
+                    linked_hash_set<Arith::Var> tmpVars;
                     for (const std::string &str: postVars) {
                         tmpVars.insert(vars.at(str));
                     }
@@ -78,25 +78,25 @@ namespace sexpressionparser {
                             LocationIdx from = locations[ruleExp[2].str()];
                             LocationIdx to = locations[ruleExp[4].str()];
                             Subs update;
-                            Guard guard;
+                            std::vector<Bools::Expr> guard;
                             parseCond(ruleExp[5], guard);
-                            guard.push_back(Rel::buildEq(NumVar::loc_var, from));
-                            BoolExpr cond = BExpression::buildAndFromLits(guard);
+                            guard.push_back(theory::mkEq(res->getLocVar(), arith::mkConst(from)));
+                            const auto cond {bools::mkAnd(guard)};
                             for (unsigned int i = 0; i < preVars.size(); i++) {
-                                update.put<IntTheory>(vars.at(preVars[i]), vars.at(postVars[i]));
+                                update.put<Arith>(vars.at(preVars[i]), vars.at(postVars[i]));
                             }
-                            update.put<IntTheory>(NumVar::loc_var, to);
+                            update.put<Arith>(res->getLocVar(), arith::mkConst(to));
                             if (Config::Analysis::complexity()) {
-                                update.put(cost_var, Expr(cost_var) + 1);
+                                update.put<Arith>(cost_var, cost_var + arith::mkConst(1));
                             }
                             Rule rule(cond, update);
                             // make sure that the temporary variables are unique
-                            linked_hash_set<NumVar> currTmpVars(tmpVars.begin(), tmpVars.end());
-                            cond->collectVars<IntTheory>(currTmpVars);
+                            linked_hash_set<Arith::Var> currTmpVars(tmpVars.begin(), tmpVars.end());
+                            cond->collectVars<Arith>(currTmpVars);
                             Subs subs;
-                            for (const NumVar &var: currTmpVars) {
-                                if (var.isTempVar()) {
-                                    subs.get<IntTheory>().put(var, NumVar::next());
+                            for (const auto &var: currTmpVars) {
+                                if (var->isTempVar()) {
+                                    subs.get<Arith>().put(var, ArithVar::next());
                                 }
                             }
                             res->addRule(rule.subs(subs), from);
@@ -107,10 +107,10 @@ namespace sexpressionparser {
         }
     }
 
-    void Self::parseCond(sexpresso::Sexp &sexp, Guard &guard) {
+    void Self::parseCond(sexpresso::Sexp &sexp, std::vector<Bools::Expr> &guard) {
         if (sexp.isString()) {
             if (sexp.str() == "false") {
-                guard.push_back(Rel(0, Rel::lt, 0));
+                guard.push_back(bot());
             } else {
                 assert(sexp.str() == "true");
                 return;
@@ -125,7 +125,7 @@ namespace sexpressionparser {
             sexpresso::Sexp scope = sexp[1];
             for (sexpresso::Sexp &var: scope.arguments()) {
                 const std::string &varName = var[0].str();
-                vars.emplace(varName, NumVar::next());
+                vars.emplace(varName, ArithVar::next());
             }
             parseCond(sexp[2], guard);
         } else {
@@ -134,47 +134,49 @@ namespace sexpressionparser {
 
     }
 
-    Rel Self::parseConstraint(sexpresso::Sexp &sexp, bool negate) {
+    Bools::Expr Self::parseConstraint(sexpresso::Sexp &sexp, bool negate) {
         if (sexp.childCount() == 2) {
             assert(sexp[0].str() == "not");
             return parseConstraint(sexp[1], !negate);
         }
         assert(sexp.childCount() == 3);
-        const std::string &op = sexp[0].str();
-        const Expr &fst = parseExpression(sexp[1]);
-        const Expr &snd = parseExpression(sexp[2]);
+        const std::string &op {sexp[0].str()};
+        const auto fst {parseExpression(sexp[1])};
+        const auto snd {parseExpression(sexp[2])};
         if (op == "<=") {
-            return negate ? Rel::buildGt(fst, snd) : Rel::buildLeq(fst, snd);
+            return bools::mkLit(negate ? arith::mkGt(fst, snd) : arith::mkLeq(fst, snd));
         } else if (sexp[0].str() == "<") {
-            return negate ? Rel::buildGeq(fst, snd) : Rel::buildLt(fst, snd);
+            return bools::mkLit(negate ? arith::mkGeq(fst, snd) : arith::mkLt(fst, snd));
         } else if (sexp[0].str() == ">=") {
-            return negate ? Rel::buildLt(fst, snd) : Rel::buildGeq(fst, snd);
+            return bools::mkLit(negate ? arith::mkLt(fst, snd) : arith::mkGeq(fst, snd));
         } else if (sexp[0].str() == ">") {
-            return negate ? Rel::buildLeq(fst, snd) : Rel::buildGt(fst, snd);
+            return bools::mkLit(negate ? arith::mkLeq(fst, snd) : arith::mkGt(fst, snd));
         } else if (sexp[0].str() == "=") {
-            assert(!negate);
-            return Rel::buildEq(fst, snd);
+            if (negate) {
+                return theory::mkNeq(fst, snd);
+            } else {
+                return theory::mkEq(fst, snd);
+            }
         }
         throw std::invalid_argument("");
     }
 
-    Expr Self::parseExpression(sexpresso::Sexp &sexp) {
+    Arith::Expr Self::parseExpression(sexpresso::Sexp &sexp) {
         if (sexp.childCount() == 1) {
-            const std::string &str = sexp.str();
+            const auto &str {sexp.str()};
             if (std::isdigit(str[0]) || str[0] == '-') {
-                GiNaC::parser parser;
-                return Expr(parser(str));
+                return arith::mkConst(Rational(str));
             } else {
                 if (vars.find(str) == vars.end()) {
-                    vars.emplace(str, NumVar::next());
+                    vars.emplace(str, ArithVar::next());
                 }
                 return vars.at(str);
             }
         }
-        const std::string &op = sexp[0].str();
-        const Expr &fst = parseExpression(sexp[1]);
+        const auto &op {sexp[0].str()};
+        const auto fst {parseExpression(sexp[1])};
         if (sexp.childCount() == 3) {
-            const Expr &snd = parseExpression(sexp[2]);
+            const auto snd {parseExpression(sexp[2])};
             if (op == "+") {
                 return fst + snd;
             } else if (op == "-") {

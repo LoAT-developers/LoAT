@@ -12,8 +12,8 @@ class  KoatParseVisitor : public KoatVisitor {
 
     ITSPtr its {std::make_shared<ITSProblem>()};
     std::unordered_map<std::string, LocationIdx> locations;
-    linked_hash_map<std::string, NumVar> vars;
-    std::vector<NumVar> programVars;
+    linked_hash_map<std::string, Arith::Var> vars;
+    std::vector<Arith::Var> programVars;
 
     enum ArithOp {
         Plus, Minus, Times, Exp

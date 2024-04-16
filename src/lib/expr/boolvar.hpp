@@ -1,6 +1,13 @@
 #pragma once
 
+#include <memory>
 #include <string>
+
+#include "notnull.hpp"
+
+class BoolVar;
+
+using BoolVarPtr = cpp::not_null<std::shared_ptr<BoolVar>>;
 
 class BoolVar {
 
@@ -22,9 +29,9 @@ public:
 
     int getIdx() const;
 
-    static BoolVar next();
+    static BoolVarPtr next();
 
-    static BoolVar nextProgVar();
+    static BoolVarPtr nextProgVar();
 
     bool isTempVar() const;
 
@@ -32,7 +39,7 @@ public:
 
 };
 
-std::ostream& operator<<(std::ostream &s, const BoolVar &e);
+std::ostream& operator<<(std::ostream &s, const BoolVarPtr e);
 
 template<>
 struct std::hash<BoolVar> {

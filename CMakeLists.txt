@@ -31,7 +31,7 @@ if(${SANITIZE})
     add_compile_options(-fsanitize=undefined)
 endif()
 
-add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter)
+add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter -fconcepts-diagnostics-depth=100)
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
 
@@ -61,22 +61,67 @@ add_subdirectory(src)
 
 target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_util_INCLUDE_DIRS}
+  ${loat_container_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
-  ${loat_rule_simplifications_INCLUDE_DIRS}
+  ${loat_rule_simplification_INCLUDE_DIRS}
   ${loat_smt_INCLUDE_DIRS}
-  ${loat_qe_INCLUDE_DIRS}
+  ${loat_formula_simplification_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
   ${loat_acceleration_INCLUDE_DIRS}
+  ${loat_its_INCLUDE_DIRS}
 )
 
+message(STATUS "Searching libraries")
+find_library(Z3 z3)
+message(STATUS "z3: ${Z3}")
+find_library(YICES yices)
+message(STATUS "yices: ${YICES}")
+find_library(POLY poly)
+message(STATUS "poly: ${POLY}")
+find_library(POLYXX polyxx)
+message(STATUS "polyxx: ${POLYXX}")
+find_library(CUDD cudd)
+message(STATUS "cudd: ${CUDD}")
+find_library(CVC5 cvc5)
+message(STATUS "cvc5: ${CVC5}")
+find_library(CADICAL cadical)
+message(STATUS "cadical: ${CADICAL}")
+find_library(SWINE swine-z3)
+message(STATUS "swine: ${SWINE}")
+find_library(GINAC ginac)
+message(STATUS "ginac: ${GINAC}")
+find_library(PURRS purrs)
+message(STATUS "purrs: ${PURRS}")
+find_library(NTL ntl)
+message(STATUS "ntl: ${NTL}")
+find_library(CLN cln)
+message(STATUS "cln: ${CLN}")
+find_library(GMP gmp)
+message(STATUS "gmp: ${GMP}")
+
 target_link_libraries(${EXECUTABLE}
-  loat_util
-  loat_expr
-  loat_rule_simplifications
-  loat_smt
-  loat_qe
-  loat_recurrence
-  loat_acceleration
+  $<TARGET_OBJECTS:loat_util>
+  $<TARGET_OBJECTS:loat_expr>
+  $<TARGET_OBJECTS:loat_rule_simplification>
+  $<TARGET_OBJECTS:loat_smt>
+  $<TARGET_OBJECTS:loat_formula_simplification>
+  $<TARGET_OBJECTS:loat_recurrence>
+  $<TARGET_OBJECTS:loat_acceleration>
+  $<TARGET_OBJECTS:loat_its>
   ${ANTLR4}
   ${FAUDES}
-  ${LINKER_OPTIONS})
+  ${SWINE}
+  ${Z3}
+  ${CVC5}
+  ${CADICAL}
+  ${YICES}
+  ${POLYXX}
+  ${POLY}
+  ${CUDD}
+  ${PURRS}
+  ${GINAC}
+  ${NTL}
+  ${CLN}
+  ${GMP}
+  ${LINKER_OPTIONS}
+)
