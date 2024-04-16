@@ -25,5 +25,6 @@ namespace Preprocess {
 
     RuleResult preprocessRule(const Rule &rule);
     ResultBase<Transition, Proof> preprocessTransition(const Transition &trans);
+    RuleResult removeTrivialUpdates(const Rule &rule);
 
 }

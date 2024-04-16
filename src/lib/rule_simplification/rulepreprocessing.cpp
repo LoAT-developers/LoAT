@@ -96,7 +96,7 @@ RuleResult eliminateTempVars(Rule rule) {
     return eliminateByTransitiveClosure(rule, isTempOnlyInGuard);
 }
 
-RuleResult removeTrivialUpdates(const Rule &rule) {
+RuleResult removeIdUpdates(const Rule &rule) {
     RuleResult res{rule};
     Subs update = rule.getUpdate();
     VarSet remove;
@@ -105,19 +105,27 @@ RuleResult removeTrivialUpdates(const Rule &rule) {
             remove.insert(x);
         }
     }
-    for (const auto &[x,v] : update.get<Arith>()) {
+    if (!remove.empty()) {
+        update.erase(remove);
+        res = rule.withUpdate(update);
+        res.ruleTransformationProof(rule, "Removed Identity Updates", res.get());
+    }
+    return res;
+}
+
+RuleResult Preprocess::removeTrivialUpdates(const Rule &rule) {
+    RuleResult res{rule};
+    Subs update = rule.getUpdate();
+    VarSet remove;
+    for (const auto &[x, v] : update.get<Arith>()) {
         if (!remove.contains(x) && rule.getGuard()->getEquality(x) == std::optional{v}) {
             remove.insert(x);
         }
     }
     if (!remove.empty()) {
-        for (const auto &x: remove) {
-            update.erase(x);
-        }
-        res = Rule(rule.getGuard(), update);
-        if (res) {
-            res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
-        }
+        update.erase(remove);
+        res = rule.withUpdate(update);
+        res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
     }
     return res;
 }
@@ -125,7 +133,7 @@ RuleResult removeTrivialUpdates(const Rule &rule) {
 RuleResult simplifyRule(const Rule &rule) {
     RuleResult res(rule);
     res.concat(eliminateTempVars(*res));
-    res.concat(removeTrivialUpdates(*res));
+    res.concat(removeIdUpdates(*res));
     return res;
 }
 

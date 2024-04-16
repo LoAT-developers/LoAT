@@ -37,6 +37,7 @@ private:
     LoopAcceleration(const Rule &rule, const std::optional<Subs> &sample_point, const AccelConfig &config);
 
     void chain();
+    void removeTrivialUpdates();
     void run();
     void store_nonterm(const AccelerationProblem::Accelerator &accel);
     void try_nonterm();

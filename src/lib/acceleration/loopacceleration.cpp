@@ -76,6 +76,13 @@ void LoopAcceleration::try_nonterm() {
     }
 }
 
+void LoopAcceleration::removeTrivialUpdates() {
+    const auto res {Preprocess::removeTrivialUpdates(rule)};
+    if (res) {
+        rule = *res;
+    }
+}
+
 void LoopAcceleration::compute_closed_form() {
     rec = Recurrence::solve(rule.getUpdate(), config.n);
     if (rec) {
