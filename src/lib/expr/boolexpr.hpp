@@ -40,50 +40,10 @@ private:
     static const Bools::Expr from_cache(const BoolExprSet &children, ConcatOperator op);
 
     template <class Lits>
-    static const Bools::Expr buildFromLits(const Lits &lits, ConcatOperator op) {
-        BoolExprSet children;
-        for (const auto &lit: lits) {
-            children.insert(mkLit(lit));
-        }
-        return build(children, op);
-    }
+    static const Bools::Expr buildFromLits(const Lits &lits, ConcatOperator op);
 
     template <class Children>
-    static const Bools::Expr build(const Children &lits, ConcatOperator op) {
-        std::stack<Bools::Expr> todo;
-        for (const auto &lit: lits) {
-            if (lit == top()) {
-                if (op == ConcatOr) {
-                    return top();
-                }
-            } else if (lit == bot()) {
-                if (op == ConcatAnd) {
-                    return bot();
-                }
-            } else {
-                todo.push(lit);
-            }
-        }
-        BoolExprSet children;
-        while (!todo.empty()) {
-            Bools::Expr current = todo.top();
-            if ((op == ConcatAnd && current->isAnd()) || (op == ConcatOr && current->isOr())) {
-                const BoolExprSet &currentChildren = current->getChildren();
-                todo.pop();
-                for (const Bools::Expr &c: currentChildren) {
-                    todo.push(c);
-                }
-            } else {
-                children.insert(current);
-                todo.pop();
-            }
-        }
-        switch (children.size()) {
-            case 0: return op == ConcatAnd ? top() : bot();
-            case 1: return *children.begin();
-            default: return from_cache(children, op);
-        }
-    }
+    static const Bools::Expr build(const Children &lits, ConcatOperator op);
 
 public:
 
@@ -91,24 +51,13 @@ public:
     static const Bools::Expr bot();
 
     template <class Lits>
-    static const Bools::Expr mkAndFromLits(const Lits &lits) {
-        return buildFromLits(lits, ConcatAnd);
-    }
+    static const Bools::Expr mkAndFromLits(const Lits &lits);
 
     template <class Children>
-    static const Bools::Expr mkAnd(const Children &lits) {
-        return build(lits, ConcatAnd);
-    }
-
-    template <class Lits>
-    static const Bools::Expr mkOrFromLits(const Lits &lits) {
-        return buildFromLits(lits, ConcatOr);
-    }
+    static const Bools::Expr mkAnd(const Children &lits);
 
     template <class Children>
-    static const Bools::Expr mkOr(const Children &lits) {
-        return build(lits, ConcatOr);
-    }
+    static const Bools::Expr mkOr(const Children &lits);
 
     static const Bools::Expr mkLit(const Lit &lit);
 

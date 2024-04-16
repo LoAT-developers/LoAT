@@ -37,11 +37,6 @@ Bools::Expr mkAnd(const Children &lits) {
     return BoolExpr::mkAnd(lits);
 }
 
-template <class Lits>
-Bools::Expr mkOrFromLits(const Lits &lits) {
-    return BoolExpr::mkOrFromLits(lits);
-}
-
 template <class Children>
 Bools::Expr mkOr(const Children &lits) {
     return BoolExpr::mkOr(lits);

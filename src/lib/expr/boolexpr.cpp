@@ -1,8 +1,73 @@
 #include "boolexpr.hpp"
 #include "theory.hpp"
+#include "conjunction.hpp"
 
 const Bools::Expr BoolExpr::from_cache(const BoolExprSet &children, ConcatOperator op) {
     return BoolJunction::from_cache(children, op);
+}
+
+template <class Lits>
+const Bools::Expr BoolExpr::buildFromLits(const Lits &lits, ConcatOperator op) {
+    BoolExprSet children;
+    for (const auto &lit : lits) {
+        children.insert(mkLit(lit));
+    }
+    return build(children, op);
+}
+
+template <class Children>
+const Bools::Expr BoolExpr::build(const Children &lits, ConcatOperator op) {
+    std::stack<Bools::Expr> todo;
+    for (const auto &lit : lits) {
+        if (lit == top()) {
+            if (op == ConcatOr) {
+                return top();
+            }
+        } else if (lit == bot()) {
+            if (op == ConcatAnd) {
+                return bot();
+            }
+        } else {
+            todo.push(lit);
+        }
+    }
+    BoolExprSet children;
+    LitSet lit_set;
+    while (!todo.empty()) {
+        Bools::Expr current = todo.top();
+        if ((op == ConcatAnd && current->isAnd()) || (op == ConcatOr && current->isOr())) {
+            const BoolExprSet &currentChildren = current->getChildren();
+            todo.pop();
+            for (const Bools::Expr &c : currentChildren) {
+                todo.push(c);
+            }
+        } else {
+            const auto lit {current->getTheoryLit()};
+            if (lit) {
+                lit_set.insert(*lit);
+            } else {
+                children.insert(current);
+            }
+            todo.pop();
+        }
+    }
+    switch (op) {
+        case ConcatAnd: theory::simplifyAnd(lit_set);
+        break;
+        case ConcatOr: theory::simplifyOr(lit_set);
+        break;
+    }
+    for (const auto &lit: lit_set) {
+        children.insert(mkLit(lit));
+    }
+    switch (children.size()) {
+    case 0:
+        return op == ConcatAnd ? top() : bot();
+    case 1:
+        return *children.begin();
+    default:
+        return from_cache(children, op);
+    }
 }
 
 const Bools::Expr BoolExpr::top() {
@@ -14,6 +79,33 @@ const Bools::Expr BoolExpr::bot() {
     const static auto res {from_cache(BoolExprSet{}, ConcatOr)};
     return res;
 }
+
+template <class Lits>
+const Bools::Expr BoolExpr::mkAndFromLits(const Lits &lits) {
+    return buildFromLits(lits, ConcatAnd);
+}
+
+template const Bools::Expr BoolExpr::mkAndFromLits<std::vector<ArithLit>>(const std::vector<ArithLit> &lits);
+template const Bools::Expr BoolExpr::mkAndFromLits<linked_hash_set<ArithLit>>(const linked_hash_set<ArithLit> &lits);
+template const Bools::Expr BoolExpr::mkAndFromLits<Conjunction>(const Conjunction &lits);
+template const Bools::Expr BoolExpr::mkAndFromLits<LitSet>(const LitSet &lits);
+template const Bools::Expr BoolExpr::mkAndFromLits<std::initializer_list<Lit>>(const std::initializer_list<Lit> &lits);
+
+template <class Children>
+const Bools::Expr BoolExpr::mkAnd(const Children &lits) {
+    return build(lits, ConcatAnd);
+}
+
+template const Bools::Expr BoolExpr::mkAnd<std::vector<Bools::Expr>>(const std::vector<Bools::Expr> &lits);
+template const Bools::Expr BoolExpr::mkAnd<linked_hash_set<Bools::Expr>>(const linked_hash_set<Bools::Expr> &lits);
+
+template <class Children>
+const Bools::Expr BoolExpr::mkOr(const Children &lits) {
+    return build(lits, ConcatOr);
+}
+
+template const Bools::Expr BoolExpr::mkOr<std::vector<Bools::Expr>>(const std::vector<Bools::Expr> &lits);
+template const Bools::Expr BoolExpr::mkOr<linked_hash_set<Bools::Expr>>(const linked_hash_set<Bools::Expr> &lits);
 
 const Bools::Expr BoolExpr::mkLit(const Lit &lit) {
     if (theory::isTriviallyTrue(lit)) {
