@@ -317,22 +317,22 @@ class ArithAdd: public ArithExpr {
 
 public:
 
-    const ArithExprVec& getArgs() const;
+    const ArithExprSet& getArgs() const;
 
 private:
 
-    ArithExprVec args;
+    ArithExprSet args;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<ArithExprVec> &args1, const std::tuple<ArithExprVec> &args2) const noexcept;
+        bool operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept;
     };
     struct CacheHash {
-        size_t operator()(const std::tuple<ArithExprVec> &args) const noexcept;
+        size_t operator()(const std::tuple<ArithExprSet> &args) const noexcept;
     };
-    static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprVec> cache;
+    static ConsHash<ArithExpr, ArithAdd, CacheHash, CacheEqual, ArithExprSet> cache;
 
 public:
-    ArithAdd(const ArithExprVec &args);
+    ArithAdd(const ArithExprSet &args);
 
 };
 
@@ -343,22 +343,22 @@ class ArithMult: public ArithExpr {
 
 public:
 
-    const ArithExprVec& getArgs() const;
+    const ArithExprSet& getArgs() const;
 
 private:
 
-    ArithExprVec args;
+    ArithExprSet args;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<ArithExprVec> &args1, const std::tuple<ArithExprVec> &args2) const noexcept;
+        bool operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept;
     };
     struct CacheHash {
-        size_t operator()(const std::tuple<ArithExprVec> &args) const noexcept;
+        size_t operator()(const std::tuple<ArithExprSet> &args) const noexcept;
     };
-    static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprVec> cache;
+    static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprSet> cache;
 
 public:
-    ArithMult(const ArithExprVec &args);
+    ArithMult(const ArithExprSet &args);
 
 };
 

@@ -470,8 +470,9 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
             }
             const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
             auto args {m->getArgs()};
-            if (std::erase(args, e) > 0) {
-                return opt{arith::mkTimes(std::move(args))};
+            if (args.erase(e) > 0) {
+                ArithExprVec arg_vec {args.begin(), args.end()};
+                return opt{arith::mkTimes(std::move(arg_vec))};
             }
             return opt{arith::mkConst(0)};
         },

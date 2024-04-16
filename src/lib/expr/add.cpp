@@ -4,16 +4,16 @@
 
 #include <purrs.hh>
 
-ConsHash<ArithExpr, ArithAdd, ArithAdd::CacheHash, ArithAdd::CacheEqual, ArithExprVec> ArithAdd::cache;
+ConsHash<ArithExpr, ArithAdd, ArithAdd::CacheHash, ArithAdd::CacheEqual, ArithExprSet> ArithAdd::cache;
 
-ArithAdd::ArithAdd(const ArithExprVec &args): ArithExpr(arith::Kind::Plus), args(args) {}
+ArithAdd::ArithAdd(const ArithExprSet &args): ArithExpr(arith::Kind::Plus), args(args) {}
 
-bool ArithAdd::CacheEqual::operator()(const std::tuple<ArithExprVec> &args1, const std::tuple<ArithExprVec> &args2) const noexcept {
+bool ArithAdd::CacheEqual::operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t ArithAdd::CacheHash::operator()(const std::tuple<ArithExprVec> &args) const noexcept {
-    size_t hash {0};
+size_t ArithAdd::CacheHash::operator()(const std::tuple<ArithExprSet> &args) const noexcept {
+    size_t hash {42};
     const auto &children {std::get<0>(args)};
     boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
     return hash;
@@ -84,11 +84,11 @@ ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> &&args) {
     if (args.size() == 1) {
         return args[0];
     }
-    std::sort(args.begin(), args.end());
+    const ArithExprSet arg_set {args.begin(), args.end()};
     // std::cout << "+ " << args << " --> + " << arg_set << std::endl;
-    return ArithAdd::cache.from_cache(std::move(args));
+    return ArithAdd::cache.from_cache(std::move(arg_set));
 }
 
-const ArithExprVec& ArithAdd::getArgs() const {
+const ArithExprSet& ArithAdd::getArgs() const {
     return args;
 }
