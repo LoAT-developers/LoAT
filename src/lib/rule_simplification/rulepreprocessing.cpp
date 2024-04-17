@@ -25,21 +25,9 @@
 
 using namespace std;
 
-/**
- * Returns the set of all variables that appear in the rhs of some update.
- * For an update x := a and x := x+a, this is {a} and {x,a}, respectively.
- */
-static VarSet collectVarsInUpdateRhs(const Rule &rule) {
-    VarSet varsInUpdate;
-    for (const auto &[_, v] : rule.getUpdate()) {
-        theory::collectVars(v, varsInUpdate);
-    }
-    return varsInUpdate;
-}
-
-RuleResult propagateBooleanEqualities(const Rule &rule) {
-    RuleResult res {rule};
-    const auto subs {GuardToolbox::propagateBooleanEqualities(rule.getGuard())};
+RuleResult propagateEquivalences(const Rule &rule) {
+    RuleResult res{rule};
+    const auto subs{GuardToolbox::propagateBooleanEqualities(rule.getGuard())};
     if (subs) {
         res = res->subs(Subs::build<Bools>(*subs));
         res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
@@ -48,59 +36,11 @@ RuleResult propagateBooleanEqualities(const Rule &rule) {
     return res;
 }
 
-RuleResult propagateEqualities(const Rule &rule, GuardToolbox::SymbolAcceptor &allow) {
-    RuleResult res {rule};
-    const auto subs {GuardToolbox::propagateEqualities(rule.getGuard(), allow)};
-    if (subs) {
-        res = res->subs(Subs::build<Arith>(*subs));
-        res.ruleTransformationProof(rule, "Extracted Implied Equalities", *res);
-        res.storeSubProof(subs.getProof());
-    }
-    return res;
-}
-
-RuleResult eliminateByTransitiveClosure(const Rule &rule, const GuardToolbox::SymbolAcceptor &allow) {
-    RuleResult res {rule};
-    const auto new_guard {GuardToolbox::eliminateByTransitiveClosure(rule.getGuard(), allow)};
-    if (new_guard) {
-        res = res->withGuard(*new_guard);
-        res.ruleTransformationProof(rule, "Eliminated Temporary Variables", *res);
-        res.storeSubProof(new_guard.getProof());
-    }
-    return res;
-}
-
-RuleResult eliminateTempVars(Rule rule) {
-    auto res {propagateBooleanEqualities(rule)};
-    if (res) {
-        return res;
-    }
-    auto varsInUpdate {rule.getUpdate().coDomainVars()};
-    GuardToolbox::SymbolAcceptor isTemp {theory::isTempVar};
-    GuardToolbox::SymbolAcceptor isTempInUpdate {[&](const Var &sym) {
-        return isTemp(sym) && varsInUpdate.contains(sym);
-    }};
-    res = propagateEqualities(rule, isTempInUpdate);
-    if (res) {
-        return res;
-    }
-    varsInUpdate = rule.getUpdate().coDomainVars();
-    res = propagateEqualities(rule, isTemp);
-    if (res) {
-        return res;
-    }
-    auto isTempOnlyInGuard = [&](const Var &sym) {
-        VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
-        return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
-    };
-    return eliminateByTransitiveClosure(rule, isTempOnlyInGuard);
-}
-
-RuleResult removeIdUpdates(const Rule &rule) {
+RuleResult eliminateIdentities(const Rule &rule) {
     RuleResult res{rule};
     Subs update = rule.getUpdate();
     VarSet remove;
-    for (const auto &[x,v] : update) {
+    for (const auto &[x, v] : update) {
         if (TheTheory::varToExpr(x) == v) {
             remove.insert(x);
         }
@@ -110,6 +50,80 @@ RuleResult removeIdUpdates(const Rule &rule) {
         res = rule.withUpdate(update);
         res.ruleTransformationProof(rule, "Removed Identity Updates", res.get());
     }
+    return res;
+}
+
+RuleResult propagateEqualitiesImpl(const Rule &rule, const GuardToolbox::SymbolAcceptor &allow) {
+    RuleResult res{rule};
+    const auto subs{GuardToolbox::propagateEqualities(rule.getGuard(), allow)};
+    if (subs) {
+        res = res->subs(Subs::build<Arith>(*subs));
+        res.ruleTransformationProof(rule, "Extracted Implied Equalities", *res);
+        res.storeSubProof(subs.getProof());
+    }
+    return res;
+}
+
+RuleResult propagateEqualities(const Rule &rule) {
+    return propagateEqualitiesImpl(rule, theory::isTempVar);
+}
+
+RuleResult propagateEqualitiesPickily(const Rule &rule) {
+    auto varsInUpdate{rule.getUpdate().coDomainVars()};
+    GuardToolbox::SymbolAcceptor isTempInUpdate{[&](const Var &sym) {
+        return theory::isTempVar(sym) && varsInUpdate.contains(sym);
+    }};
+    return propagateEqualitiesImpl(rule, isTempInUpdate);
+}
+
+/**
+ * Returns the set of all variables that appear in the rhs of some update.
+ * For an update x := a and x := x+a, this is {a} and {x,a}, respectively.
+ */
+VarSet collectVarsInUpdateRhs(const Rule &rule) {
+    VarSet varsInUpdate;
+    for (const auto &[_, v] : rule.getUpdate()) {
+        theory::collectVars(v, varsInUpdate);
+    }
+    return varsInUpdate;
+}
+
+RuleResult fourierMotzkinElimination(const Rule &rule) {
+    RuleResult res{rule};
+    VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
+    auto isTempOnlyInGuard = [&](const Var &sym) {
+        return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
+    };
+    const auto new_guard{GuardToolbox::eliminateByTransitiveClosure(rule.getGuard(), isTempOnlyInGuard)};
+    if (new_guard) {
+        res = res->withGuard(*new_guard);
+        res.ruleTransformationProof(rule, "Eliminated Temporary Variables", *res);
+        res.storeSubProof(new_guard.getProof());
+    }
+    return res;
+}
+
+RuleResult eliminateArithVars(const Rule &rule) {
+    auto res{propagateEqualitiesPickily(rule)};
+    if (res) {
+        return res;
+    }
+    res = propagateEqualities(rule);
+    if (res) {
+        return res;
+    }
+    return fourierMotzkinElimination(rule);
+}
+
+RuleResult Preprocess::preprocessRule(const Rule &rule) {
+    auto res{propagateEquivalences(rule)};
+    res.concat(eliminateIdentities(*res));
+    bool changed;
+    do {
+        const auto tmp{eliminateArithVars(*res)};
+        changed = bool(tmp);
+        res.concat(tmp);
+    } while (changed);
     return res;
 }
 
@@ -127,24 +141,6 @@ RuleResult Preprocess::removeTrivialUpdates(const Rule &rule) {
         res = rule.withUpdate(update);
         res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
     }
-    return res;
-}
-
-RuleResult simplifyRule(const Rule &rule) {
-    RuleResult res(rule);
-    res.concat(eliminateTempVars(*res));
-    res.concat(removeIdUpdates(*res));
-    return res;
-}
-
-RuleResult Preprocess::preprocessRule(const Rule &rule) {
-    RuleResult res {rule};
-    auto changed {false};
-    do {
-        auto tmp {simplifyRule(*res)};
-        changed = bool(tmp);
-        res.concat(tmp);
-    } while (changed);
     return res;
 }
 
