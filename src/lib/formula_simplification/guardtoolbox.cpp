@@ -30,7 +30,7 @@ ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr
     const auto subs {e->propagateEqualities(allow)};
     if (!subs.empty()) {
         res = subs;
-        res.appendAll("propagated equlities: ", subs);
+        res.appendAll("propagated equalities: ", subs);
     }
     return res;
 }
