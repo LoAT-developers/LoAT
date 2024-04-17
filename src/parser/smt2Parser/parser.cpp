@@ -90,16 +90,7 @@ namespace sexpressionparser {
                                 update.put<Arith>(cost_var, cost_var + arith::mkConst(1));
                             }
                             Rule rule(cond, update);
-                            // make sure that the temporary variables are unique
-                            linked_hash_set<Arith::Var> currTmpVars(tmpVars.begin(), tmpVars.end());
-                            cond->collectVars<Arith>(currTmpVars);
-                            Subs subs;
-                            for (const auto &var: currTmpVars) {
-                                if (var->isTempVar()) {
-                                    subs.get<Arith>().put(var, ArithVar::next());
-                                }
-                            }
-                            res->addRule(rule.subs(subs), from);
+                            res->addRule(rule, from);
                         }
                     }
                 }
@@ -113,14 +104,14 @@ namespace sexpressionparser {
                 guard.push_back(bot());
             } else {
                 assert(sexp.str() == "true");
-                return;
             }
+            return;
         }
         const std::string op = sexp[0].str();
         if (op == "and") {
             for (unsigned int i = 1; i < sexp.childCount(); i++) {
                 parseCond(sexp[i], guard);
-            }
+                }
         } else if (op == "exists") {
             sexpresso::Sexp scope = sexp[1];
             for (sexpresso::Sexp &var: scope.arguments()) {
