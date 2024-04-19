@@ -1,13 +1,11 @@
 #pragma once
 
-#include "transition.hpp"
 #include "theory.hpp"
 #include "itsproblem.hpp"
 
 class SafetyProblem {
 
-    linked_hash_set<Transition> transitions;
-    std::shared_ptr<const linked_hash_map<Var, Var>> variables;
+    linked_hash_set<Bools::Expr> transitions;
     VarSet pre_variables;
     VarSet post_variables;
     Bools::Expr initial_states {bot()};
@@ -17,9 +15,8 @@ public:
 
     SafetyProblem(const ITSProblem &its);
 
-    const linked_hash_set<Transition> &trans() const;
-    std::shared_ptr<const linked_hash_map<Var, Var>> var_map() const;
-    void replace_transition(const Transition &old_trans, const Transition &new_trans);
+    const linked_hash_set<Bools::Expr> &trans() const;
+    void replace_transition(const Bools::Expr &old_trans, const Bools::Expr &new_trans);
     const VarSet& pre_vars() const;
     const VarSet& post_vars() const;
     VarSet vars() const;

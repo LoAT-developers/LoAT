@@ -51,7 +51,10 @@ namespace theory {
 std::string getName(const Var &var);
 bool isTempVar(const Var &var);
 bool isProgVar(const Var &var);
+bool isPostVar(const Var &var);
 Var next(const Var &var);
+Var postVar(const Var &var);
+Var progVar(const Var &var);
 Expr toExpr(const Var &var);
 void collectVars(const Expr &expr, VarSet &vars);
 VarSet vars(const Expr &e);

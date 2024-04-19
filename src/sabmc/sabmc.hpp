@@ -1,6 +1,8 @@
 #pragma once
 
 #include <limits>
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
 
 #include "safetyproblem.hpp"
 #include "smt.hpp"
@@ -40,48 +42,42 @@ private:
     struct Loop {
         Bools::Expr trans;
         unsigned length;
-        unsigned id;
 
-        Loop(const Bools::Expr trans, const unsigned length, const unsigned id);
+        Loop(const Bools::Expr trans, const unsigned length);
 
     };
 
     SafetyProblem &t;
     SmtPtr solver {SmtFactory::solver()};
     std::vector<std::vector<Subs>> subs {};
-    std::vector<Transition> trace {};
+    std::vector<Bools::Expr> trace {};
     std::vector<Loop> blocked {};
-    linked_hash_map<Var, Var> var_map {};
-    linked_hash_map<Var, Var> inverse_var_map {};
     VarSet vars {};
-    linked_hash_map<Arith::Var, Arith::Var> lower_vars {};
-    linked_hash_map<Arith::Var, Arith::Var> upper_vars {};
-    ArithSubs reverse_low_up_vars {};
-    std::unordered_map<Int, Transition> rule_map {};
+
+    Int next_id {0};
+
+    using rule_map_t = boost::bimap<boost::bimaps::unordered_set_of<Int>, boost::bimaps::unordered_set_of<Bools::Expr>>;
+
+    rule_map_t rule_map {};
     const Arith::Var trace_var {ArithVar::next()};
     const Arith::Var n {ArithVar::next()};
     Proof proof {};
-    DependencyGraph<Transition> dependency_graph {};
+    DependencyGraph<Bools::Expr> dependency_graph {};
     unsigned depth {0};
     Bools::Expr step {bot()};
 
-    Bools::Expr encode_transition(const Transition &idx);
+    Bools::Expr encode_transition(const Bools::Expr &idx);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
-    void add_learned_clause(const Transition &accel, unsigned length);
-    std::pair<Transition, Model> build_loop(const Range &range);
+    void add_learned_clause(const Bools::Expr &accel, unsigned length);
+    std::pair<Bools::Expr, Model> build_loop(const Range &range);
     void handle_loop(const Range &range);
     void unknown();
     void sat();
     void build_trace();
     const Subs& get_subs(const unsigned start, const unsigned steps);
 
-    Transition mbp(const Transition &trans, const Model &model) const;
-    BoundPair bound_selection(const Transition &t, const Model &model, const Arith::Var x, linked_hash_set<Arith::Expr> &chosen) const;
-    NondetSubs bound_selection(const Transition &t, const Model &model) const;
-    linked_hash_map<Bools::Var, bool> value_selection(const Model &model) const;
-    std::pair<NondetSubs, unsigned> closed_form(const NondetSubs &update, const Model &model);
-    void handle_rel(const ArithLit &rel, const NondetSubs &update, const NondetSubs &closed, const Model &model, std::vector<Bools::Expr> &res);
+    Bools::Expr mbp(const Bools::Expr &trans, const Model &model) const;
 
 public:
 
@@ -89,4 +85,4 @@ public:
 
 };
 
-std::ostream& operator<<(std::ostream &s, const std::vector<Transition> &trace);
+std::ostream& operator<<(std::ostream &s, const std::vector<Bools::Expr> &trace);

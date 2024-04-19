@@ -1,28 +1,28 @@
 #include "safetyproblem.hpp"
 
-Bools::Expr rule_to_formula(const Rule &r, const linked_hash_map<Var, Var> &var_map) {
+Bools::Expr rule_to_formula(const Rule &r, const VarSet &prog_vars) {
     std::vector<Bools::Expr> conjuncts;
     conjuncts.push_back(r.getGuard());
-    for (const auto &[x,y]: var_map) {
-        conjuncts.push_back(theory::mkEq(theory::toExpr(y), r.getUpdate().get(x)));
+    for (const auto &x: prog_vars) {
+        conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), r.getUpdate().get(x)));
     }
     return bools::mkAnd(conjuncts);
 }
 
 SafetyProblem::SafetyProblem(const ITSProblem &its) {
-    linked_hash_map<Var, Var> var_map;
     const auto vars {its.getVars()};
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
-            const auto post {theory::next(x)};
             pre_variables.insert(x);
-            post_variables.insert(post);
-            var_map.emplace(x, post);
+            post_variables.insert(theory::postVar(x));
+        } else if (theory::isPostVar(x)) {
+            pre_variables.insert(theory::progVar(x));
+            post_variables.insert(x);
         }
     }
-    this->variables = std::make_shared<const linked_hash_map<Var, Var>>(var_map);
     Subs init_map;
-    for (const auto &[x,y]: var_map) {
+    for (const auto &y: post_variables) {
+        const auto x {theory::progVar(y)};
         init_map.put(y, theory::toExpr(x));
         init_map.put(x, theory::toExpr(theory::next(x)));
     }
@@ -30,23 +30,19 @@ SafetyProblem::SafetyProblem(const ITSProblem &its) {
     std::vector<Bools::Expr> err;
     for (const auto &r: its.getAllTransitions()) {
         if (its.isInitialTransition(&r)) {
-            init.emplace_back(init_map(rule_to_formula(r, var_map)));
+            init.emplace_back(init_map(rule_to_formula(r, pre_variables)));
         } else if (its.isSinkTransition(&r)) {
             err.emplace_back(r.getGuard());
         } else {
-            transitions.emplace(Transition::build(rule_to_formula(r, var_map), this->variables));
+            transitions.emplace(rule_to_formula(r, pre_variables));
         }
     }
     initial_states = bools::mkOr(init);
     error_states = bools::mkOr(err);
 }
 
-const linked_hash_set<Transition>& SafetyProblem::trans() const {
+const linked_hash_set<Bools::Expr>& SafetyProblem::trans() const {
     return transitions;
-}
-
-std::shared_ptr<const linked_hash_map<Var, Var>> SafetyProblem::var_map() const {
-    return variables;
 }
 
 const VarSet& SafetyProblem::pre_vars() const {
@@ -60,7 +56,7 @@ const VarSet& SafetyProblem::post_vars() const {
 VarSet SafetyProblem::vars() const {
     VarSet res;
     for (const auto &t: transitions) {
-        t.collectVars(res);
+        t->collectVars(res);
     }
     return res;
 }
@@ -73,7 +69,7 @@ Bools::Expr SafetyProblem::err() const {
     return error_states;
 }
 
-void SafetyProblem::replace_transition(const Transition &old_trans, const Transition &new_trans) {
+void SafetyProblem::replace_transition(const Bools::Expr &old_trans, const Bools::Expr &new_trans) {
     transitions.erase(old_trans);
     transitions.insert(new_trans);
 }

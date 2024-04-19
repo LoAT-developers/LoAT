@@ -2,6 +2,8 @@
 
 #include "arithexpr.hpp"
 
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
 #include <purrs.hh>
 
 namespace Purrs = Parma_Recurrence_Relation_Solver;

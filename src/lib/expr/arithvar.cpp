@@ -36,12 +36,28 @@ ArithVarPtr ArithVar::next() {
 }
 
 ArithVarPtr ArithVar::nextProgVar() {
-    ++last_prog_idx;
+    last_prog_idx += 2;
     return (*arith::mkVar(last_prog_idx)->someVar())->toPtr();
+}
+
+ArithVarPtr ArithVar::postVar(const ArithVarPtr &x) {
+    return (*arith::mkVar(x->getIdx() + 1)->someVar())->toPtr();
+}
+
+ArithVarPtr ArithVar::progVar(const ArithVarPtr &x) {
+    return (*arith::mkVar(x->getIdx() - 1)->someVar())->toPtr();
 }
 
 bool ArithVar::isTempVar() const {
     return idx < 0;
+}
+
+bool ArithVar::isProgVar() const {
+    return idx > 0 && idx % 2 == 1;
+}
+
+bool ArithVar::isPostVar() const {
+    return idx > 0 && idx % 2 == 0;
 }
 
 size_t ArithVar::hash() const {

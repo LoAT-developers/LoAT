@@ -187,28 +187,6 @@ Arith::Subs BoolExpr::propagateEqualities(const std::function<bool(const Var &)>
     return subs;
 }
 
-Bools::Expr BoolExpr::linearize(const Arith::Var n) const {
-    return map([&n](const Lit &lit){
-        return std::visit(
-            Overload{
-                [&n](const ArithLit &rel) {
-                    const auto ex {rel.lhs()};
-                    const auto d {ex->isPoly(n)};
-                    if (d == 0) {
-                        return mkLit(rel);
-                    } else if (d == 1 && (*ex->coeff(n))->isRational()) {
-                        return mkLit(rel);
-                    } else {
-                        return top();
-                    }
-                },
-                [](const auto &lit) {
-                    return mkLit(lit);
-                }
-            }, lit);
-    });
-}
-
 Bools::Expr BoolExpr::toInfinity(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(

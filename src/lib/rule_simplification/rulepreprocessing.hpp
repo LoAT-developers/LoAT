@@ -19,12 +19,11 @@
 
 #include "rule.hpp"
 #include "ruleresult.hpp"
-#include "transition.hpp"
 
 namespace Preprocess {
 
     RuleResult preprocessRule(const Rule &rule);
-    ResultBase<Transition, Proof> preprocessTransition(const Transition &trans);
+    ResultBase<Bools::Expr, Proof> preprocessTransition(const Bools::Expr &trans);
     RuleResult removeTrivialUpdates(const Rule &rule);
 
 }

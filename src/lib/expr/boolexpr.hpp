@@ -78,7 +78,6 @@ public:
     std::optional<Arith::Expr> getEquality(const Arith::Var n) const;
     void propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow) const;
     Arith::Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;
-    Bools::Expr linearize(const Arith::Var n) const;
     Bools::Expr toInfinity(const Arith::Var n) const;
     Bools::Expr toMinusInfinity(const Arith::Var n) const;
     void iter(const std::function<void(const Lit&)> &f) const;

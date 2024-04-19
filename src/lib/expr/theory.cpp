@@ -31,11 +31,23 @@ bool isTempVar(const Var &var) {
 }
 
 bool isProgVar(const Var &var) {
-    return !isTempVar(var);
+    return std::visit([](const auto &var){return var->isProgVar();}, var);
+}
+
+bool isPostVar(const Var &var) {
+    return std::visit([](const auto &var){return var->isPostVar();}, var);
 }
 
 Var next(const Var &var) {
     return std::visit([](const auto x) {return Var(decltype(x)::element_type::next());}, var);
+}
+
+Var postVar(const Var &var) {
+    return std::visit([](const auto x) {return Var(decltype(x)::element_type::postVar(x));}, var);
+}
+
+Var progVar(const Var &var) {
+    return std::visit([](const auto x) {return Var(decltype(x)::element_type::progVar(x));}, var);
 }
 
 Expr toExpr(const Var &var) {

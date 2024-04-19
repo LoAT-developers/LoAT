@@ -33,7 +33,15 @@ public:
 
     static BoolVarPtr nextProgVar();
 
+    static BoolVarPtr postVar(const BoolVarPtr&);
+
+    static BoolVarPtr progVar(const BoolVarPtr&);
+
     bool isTempVar() const;
+
+    bool isProgVar() const;
+
+    bool isPostVar() const;
 
     std::size_t hash() const;
 

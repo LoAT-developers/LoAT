@@ -88,7 +88,7 @@ VarSet collectVarsInUpdateRhs(const Rule &rule) {
     return varsInUpdate;
 }
 
-RuleResult fourierMotzkinElimination(const Rule &rule) {
+RuleResult fourierMotzkin(const Rule &rule) {
     RuleResult res{rule};
     VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
     auto isTempOnlyInGuard = [&](const Var &sym) {
@@ -112,7 +112,7 @@ RuleResult eliminateArithVars(const Rule &rule) {
     if (res) {
         return res;
     }
-    return fourierMotzkinElimination(rule);
+    return fourierMotzkin(rule);
 }
 
 RuleResult Preprocess::preprocessRule(const Rule &rule) {
@@ -144,30 +144,11 @@ RuleResult Preprocess::removeTrivialUpdates(const Rule &rule) {
     return res;
 }
 
-ResultBase<Transition, Proof> eliminateTempVars(const Transition &trans) {
-    std::unordered_set<Var> post_vars;
-    for (const auto &[_,y]: *trans.var_map()) {
-        post_vars.emplace(y);
-    }
-    const auto allow = [&post_vars](const auto &x) {
-        return theory::isTempVar(x) && !post_vars.contains(x);
-    };
-    const auto res {GuardToolbox::eliminateTempVars(trans.toBoolExpr(), allow)};
-    ResultBase<Transition, Proof> ret {trans};
-    if (res) {
-        ret = Transition::build(*res, trans.var_map());
-        ret.append("Eliminated Temporary Variables from Transition:");
-        ret.appendAll(*res);
-        ret.storeSubProof(res.getProof());
-    }
-    return ret;
-}
-
-ResultBase<Transition, Proof> Preprocess::preprocessTransition(const Transition &trans) {
-    ResultBase<Transition, Proof> res {trans};
+ResultBase<Bools::Expr, Proof> Preprocess::preprocessTransition(const Bools::Expr &trans) {
+    ResultBase<Bools::Expr, Proof> res {trans};
     auto changed {false};
     do {
-        auto tmp {eliminateTempVars(*res)};
+        auto tmp {GuardToolbox::eliminateTempVars(*res, theory::isTempVar)};
         changed = bool(tmp);
         res.concat(tmp);
     } while (changed);

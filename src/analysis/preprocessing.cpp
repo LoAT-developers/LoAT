@@ -226,12 +226,7 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
 
 ResultBase<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
     ResultBase<SafetyProblem, Proof> res {p};
-
-    const auto post_vars {p.post_vars()};
-    const auto allow = [&post_vars](const auto &x) {
-        return theory::isTempVar(x) && !post_vars.contains(x);
-    };
-    ResultBase<Bools::Expr, Proof> init {GuardToolbox::preprocessFormula(p.init(), allow)};
+    ResultBase<Bools::Expr, Proof> init {GuardToolbox::preprocessFormula(p.init(), theory::isTempVar)};
     if (init) {
         res.append("Preprocessed Initial States");
         res.appendAll(*init);

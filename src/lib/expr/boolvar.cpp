@@ -37,12 +37,28 @@ BoolVarPtr BoolVar::next() {
 }
 
 BoolVarPtr BoolVar::nextProgVar() {
-    ++last_prog_idx;
+    last_prog_idx += 2;
     return cpp::assume_not_null(std::make_shared<BoolVar>(last_prog_idx));
+}
+
+BoolVarPtr BoolVar::postVar(const BoolVarPtr &var) {
+    return cpp::assume_not_null(std::make_shared<BoolVar>(var->getIdx() + 1));
+}
+
+BoolVarPtr BoolVar::progVar(const BoolVarPtr &var) {
+    return cpp::assume_not_null(std::make_shared<BoolVar>(var->getIdx() - 1));
 }
 
 bool BoolVar::isTempVar() const {
     return idx < 0;
+}
+
+bool BoolVar::isProgVar() const {
+    return idx > 0 && idx % 2 == 1;
+}
+
+bool BoolVar::isPostVar() const {
+    return idx > 0 && idx % 2 == 0;
 }
 
 std::size_t BoolVar::hash() const {

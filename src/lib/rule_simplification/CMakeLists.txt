@@ -17,8 +17,6 @@ add_library(${PROJECT_NAME} OBJECT
   ruleexport.cpp
   rulepreprocessing.cpp
   rulepreprocessing.hpp
-  transition.hpp
-  transition.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

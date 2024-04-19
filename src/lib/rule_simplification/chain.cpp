@@ -29,22 +29,31 @@ std::pair<Rule, Subs> Chaining::chain(const Rule &fst, const Rule &snd) {
     return {Rule(guard, up), inverted};
 }
 
-std::tuple<Transition, Subs, Subs> Chaining::chain(const Transition &fst, const Transition &snd) {
+std::tuple<Bools::Expr, Subs, Subs> Chaining::chain(const Bools::Expr &fst, const Bools::Expr &snd) {
     Subs sigma1, inverted1;
     Subs sigma2, inverted2;
-    auto first_vars {fst.vars()};
-    auto var_map {fst.var_map()};
+    auto first_vars {fst->vars()};
+    auto second_vars {snd->vars()};
     VarSet post_vars;
-    for (const auto &[pre,post]: *var_map) {
+    for (const auto &vars : {first_vars, second_vars}) {
+        for (const auto &x : vars) {
+            if (theory::isProgVar(x)) {
+                post_vars.insert(theory::postVar(x));
+            } else if (theory::isPostVar(x)) {
+                post_vars.insert(x);
+            }
+        }
+    }
+    for (const auto &post: post_vars) {
+        const auto pre {theory::progVar(post)};
         const auto x {renameVar(post, sigma1, inverted1)};
         sigma2.put(pre, theory::toExpr(x));
         inverted2.put(x, theory::toExpr(pre));
-        post_vars.insert(post);
     }
-    for (const auto &x: snd.vars()) {
-        if (theory::isTempVar(x) && first_vars.contains(x) && !post_vars.contains(x)) {
+    for (const auto &x: second_vars) {
+        if (theory::isTempVar(x) && first_vars.contains(x)) {
             renameVar(x, sigma2, inverted2);
         }
     }
-    return {Transition::build(sigma1(fst.toBoolExpr()) && sigma2(snd.toBoolExpr()), fst.var_map()), inverted1, inverted2};
+    return {sigma1(fst) && sigma2(snd), inverted1, inverted2};
 }

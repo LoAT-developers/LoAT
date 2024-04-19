@@ -24,8 +24,6 @@
 #undef EOF
 #define EOF (-1)
 #include <boost/multiprecision/cpp_int.hpp>
-#include <boost/bimap.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
 #include <functional>
 
 #include "linkedhashset.hpp"
@@ -299,11 +297,15 @@ public:
 
     static ArithVarPtr next();
     static ArithVarPtr nextProgVar();
+    static ArithVarPtr postVar(const ArithVarPtr&);
+    static ArithVarPtr progVar(const ArithVarPtr&);
 
     ArithExprPtr toExpr() const;
     int getIdx() const;
     std::string getName() const;
     bool isTempVar() const;
+    bool isProgVar() const;
+    bool isPostVar() const;
     size_t hash() const;
 
 };
