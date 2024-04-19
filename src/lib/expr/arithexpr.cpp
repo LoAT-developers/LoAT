@@ -362,7 +362,7 @@ Rational ArithExpr::getConstantFactor() const {
                     if (mp::denominator(factor) == 1 && mp::denominator(res) == 1) {
                         res = mp::gcd(mp::numerator(factor), mp::numerator(res));
                     } else {
-                        return Rational(1);
+                        return 1;
                     }
                 }
             }
@@ -373,7 +373,7 @@ Rational ArithExpr::getConstantFactor() const {
             const auto it{std::find_if(args.begin(), args.end(), [](const auto arg) {
                 return arg->isRational();
             })};
-            return it == args.end() ? 0 : (*(*it)->isRational())->getValue();
+            return it == args.end() ? 1 : (*(*it)->isRational())->getValue();
         },
         [](const ArithExprPtr) {
             return 1;
