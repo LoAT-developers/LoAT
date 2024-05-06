@@ -2,8 +2,6 @@
 #include "linkedhashmap.hpp"
 #include "vector.hpp"
 
-#include <purrs.hh>
-
 ConsHash<ArithExpr, ArithAdd, ArithAdd::CacheHash, ArithAdd::CacheEqual, ArithExprSet> ArithAdd::cache;
 
 ArithAdd::ArithAdd(const ArithExprSet &args): ArithExpr(arith::Kind::Plus), args(args) {}

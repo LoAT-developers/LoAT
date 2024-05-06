@@ -57,12 +57,10 @@ const std::vector<std::pair<ArithSubs, Bools::Expr>> VarEliminator::eliminateDep
         }
         const auto bounds {guard->getBounds(*it)};
         std::vector<std::pair<ArithSubs, Bools::Expr>> res;
-        for (const auto &bb: {bounds.integralLowerBounds(), bounds.integralUpperBounds()}) {
-            for (const auto &b: bb) {
-                if (b->isRational()) {
-                    const auto newSubs {Subs::build<Arith>(*it, b)};
-                    res.push_back({subs.compose(newSubs.get<Arith>()), newSubs(guard)});
-                }
+        for (const auto &b : bounds) {
+            if (b.bound->isInt()) {
+                const auto newSubs{Subs::build<Arith>(*it, b.bound)};
+                res.push_back({subs.compose(newSubs.get<Arith>()), newSubs(guard)});
             }
         }
         if (!res.empty()) {
@@ -93,12 +91,17 @@ void VarEliminator::eliminate() {
         const auto guard {p.second};
         auto bounds {guard->getBounds(N)};
         // if there's an equality, use it for instantiation
-        if (!bounds.integralEqualities().empty()) {
-            res.insert(subs.compose(ArithSubs{{N, *bounds.integralEqualities().begin()}}));
+        const auto it {std::find_if(bounds.begin(), bounds.end(), [](const auto &b) {
+            return b.kind == BoundKind::Equality && b.bound->isIntegral();
+        })};
+        if (it != bounds.end()) {
+            res.insert(subs.compose(ArithSubs{{N, it->bound}}));
         } else {
-            for (const auto &b : bounds.integralUpperBounds()) {
-                ArithSubs p {{N, b}};
-                res.insert(subs.compose(p));
+            for (const auto &b : bounds) {
+                if (b.kind == BoundKind::Upper && b.bound->isIntegral()) {
+                    ArithSubs p{{N, b.bound}};
+                    res.insert(subs.compose(p));
+                }
             }
         }
     }

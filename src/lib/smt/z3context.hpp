@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "smtcontext.hpp"
+#include "exprconversioncontext.hpp"
 
 #include <z3++.h>
 
@@ -31,7 +31,7 @@
  * For convenience, it is also possible to create z3 symbols not associated to any GiNaC symbol,
  * but these symbols cannot be looked up later (as they are not associated to any GiNaC symbol).
  */
-class Z3Context : public SmtContext<z3::expr> {
+class Z3Context : public ExprConversionContext<z3::expr, z3::expr> {
 
 public:
     Z3Context(z3::context& ctx);
@@ -53,27 +53,13 @@ public:
     z3::expr bFalse() const override;
     z3::expr negate(const z3::expr &x) override;
 
-    bool isTrue(const z3::expr &e) const override;
-    bool isFalse(const z3::expr &e) const override;
-    bool isNot(const z3::expr &e) const override;
-    std::vector<z3::expr> getChildren(const z3::expr &e) const override;
-    bool isAnd(const z3::expr &e) const override;
-    bool isAdd(const z3::expr &e) const override;
-    bool isMul(const z3::expr &e) const override;
-    bool isPow(const z3::expr &e) const override;
-    bool isVar(const z3::expr &e) const override;
-    bool isRationalConstant(const z3::expr &e) const override;
-    bool isInt(const z3::expr &e) const override;
-    Int toInt(const z3::expr &e) const override;
-    z3::expr lhs(const z3::expr &e) const override;
-    z3::expr rhs(const z3::expr &e) const override;
-
     void printStderr(const z3::expr &e) const override;
 
 private:
 
     z3::context &ctx;
 
-    z3::expr buildVar(const Var &var) override;
+    z3::expr buildVar(const Arith::Var &var) override;
+    z3::expr buildVar(const Bools::Var &var) override;
 
 };

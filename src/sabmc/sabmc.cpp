@@ -10,6 +10,7 @@
 #include "theory.hpp"
 #include "pair.hpp"
 #include "optional.hpp"
+#include "crabcfg.hpp"
 
 Range::Range(const unsigned s, const unsigned e): s(s), e(e) {}
 
@@ -23,6 +24,10 @@ unsigned Range::end() const {
 
 unsigned Range::length() const {
     return e - s + 1;
+}
+
+bool Range::empty() const {
+    return length() == 0;
 }
 
 Range Range::from_length(const unsigned start, const unsigned length) {
@@ -48,10 +53,10 @@ SABMC::SABMC(SafetyProblem &t):
 }
 
 std::optional<Range> SABMC::has_looping_infix() {
-    auto start {trace.size() - 1};
-    auto end {trace.size() - 1};
-    while (end > 0) {
-        while (start > 0) {
+    long start {((long)trace.size()) - 1};
+    long end {((long)trace.size()) - 1};
+    while (end >= 0) {
+        while (start >= 0) {
             if (dependency_graph.hasEdge(trace[end], trace[start])) {
                 return {Range::from_interval(start, end)};
             }
@@ -63,10 +68,10 @@ std::optional<Range> SABMC::has_looping_infix() {
     return {};
 }
 
-std::pair<Bools::Expr, Model> SABMC::build_loop(const Range &range) {
+std::pair<Bools::Expr, Model> SABMC::compress(const Bools::Expr pre, const Range &range) {
     std::optional<Bools::Expr> loop;
     Subs var_renaming;
-    for (unsigned i = range.end(); i >= range.start(); --i) {
+    for (int i = range.end(); i >= 0 && i >= range.start(); --i) {
         const auto rule {trace[i]};
         const auto s {get_subs(i, 1)};
         if (loop) {
@@ -92,36 +97,31 @@ std::pair<Bools::Expr, Model> SABMC::build_loop(const Range &range) {
     }
     auto vars {(*loop)->vars()};
     var_renaming.collectCoDomainVars(vars);
+    pre->collectVars(vars);
     const auto model {solver->model(vars).composeBackwards(var_renaming)};
-    if (Config::Analysis::log) {
-        std::cout << "found loop from " << range.start() << " to " << range.end() << ":" << std::endl;
-        std::cout << *loop << std::endl;
-        std::cout << std::endl;
-    }
-    return {*loop, model};
+    return {pre && *loop, model};
 }
 
 void SABMC::add_learned_clause(const Bools::Expr &accel, unsigned length) {
     if (Config::Analysis::log) std::cout << "learned transition: " << accel << std::endl;
     rule_map.left.insert(rule_map_t::left_value_type(next_id, accel));
     ++next_id;
-    blocked.emplace_back(Subs::build<Arith>(n, arith::mkConst(1))(accel), length);
+    blocked.emplace_back(accel, length);
     step = step || encode_transition(accel);
 }
 
-std::optional<Arith::Expr> closest_bound(const linked_hash_set<Arith::Expr> &bounds, const Model &model, const Arith::Var &x, const linked_hash_set<Arith::Expr> &chosen = {}) {
+std::optional<Arith::Expr> closest_lower_bound(const linked_hash_set<Bound> &bounds, const Arith::Model &model, const Arith::Var &x) {
     std::optional<Arith::Expr> closest;
-    Int dist;
-    const auto val {model.get<Arith>(x)};
+    Rational dist;
+    const auto val {x->eval(model)};
     for (const auto &b: bounds) {
-        if (chosen.contains(b)) {
-            continue;
-        }
-        const auto b_val {model.eval<Arith>(b)};
-        const auto d {mp::abs(val - b_val)};
-        if (!closest || d < dist || (d == dist && b < *closest)) {
-            dist = d;
-            closest = b;
+        if (b.kind == BoundKind::Lower) {
+            const auto b_val{b.bound->evalToRational(model)};
+            const auto d{mp::abs(val - b_val)};
+            if (!closest || d < dist || (d == dist && b.bound < *closest)) {
+                dist = d;
+                closest = b.bound;
+            }
         }
     }
     return closest;
@@ -138,20 +138,18 @@ Bools::Expr mbp(const Bools::Expr &t, const Model &model, const Bools::Var x) {
 }
 
 Bools::Expr mbp(const Bools::Expr &t, const Model &model, const Arith::Var x) {
-    const auto bounds {t->getBounds(x)};
-    if (!bounds.realEqualities().empty()) {
-        return Subs::build<Arith>(x, *bounds.realEqualities().begin())(t);
+    auto bounds {t->getBounds(x)};
+    const auto it {std::find_if(bounds.begin(), bounds.end(), [](const auto &b) {
+        return b.kind == BoundKind::Equality;
+    })};
+    if (it != bounds.end()) {
+        return Subs::build<Arith>(x, it->bound)(t);
     } else {
-        const auto closest =
-            bounds.realLowerBounds().size() <= bounds.realUpperBounds().size() ?
-                                 closest_bound(bounds.realLowerBounds(), model, x) :
-                                 closest_bound(bounds.realUpperBounds(), model, x);
+        const auto closest {closest_lower_bound(bounds, model.get<Arith>(), x)};
         if (closest) {
             return Subs::build<Arith>(x, *closest)(t);
-        } else if (bounds.realLowerBounds().size() <= bounds.realUpperBounds().size()) {
-            return t->toMinusInfinity(x);
         } else {
-            return t->toInfinity(x);
+            return t->toMinusInfinity(x);
         }
     }
 }
@@ -170,37 +168,216 @@ Bools::Expr mbp(const Bools::Expr &t, const Model &model, const Var &x) {
         }, x);
 }
 
-Bools::Expr SABMC::mbp(const Bools::Expr &trans, const Model &model) const {
+Bools::Expr SABMC::mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const {
     Bools::Expr res {trans};
     for (const auto &x: trans->vars()) {
-        if (theory::isTempVar(x)) {
+        if (eliminate(x)) {
             res = ::mbp(res, model, x);
         }
     }
     return res;
 }
 
-void SABMC::handle_loop(const Range &range) {
-    const auto lm {build_loop(range)};
-    const auto loop {lm.first};
-    const auto model {lm.second};
+Bools::Expr SABMC::specialize(const Bools::Expr e, const Model &model, const std::function<bool(const Var&)> &eliminate) {
+    const auto sip {model.syntacticImplicant(e)};
     if (Config::Analysis::log) {
-        std::cout << "model: " << model << std::endl;
+        std::cout << "sip: " << sip << std::endl;
     }
-    const auto sip_res {model.syntacticImplicant(loop)};
-    if (Config::Analysis::log) {
-        std::cout << "sip: " << sip_res << std::endl;
-    }
-    auto simp {Preprocess::preprocessTransition(sip_res)};
+    auto simp {Preprocess::preprocessTransition(sip)};
     if (Config::Analysis::log && simp) {
-        std::cout << "simplified: " << *simp << std::endl;
+        std::cout << "simp: " << *simp << std::endl;
     }
-    const auto mbp_res {mbp(*simp, model)};
+    const auto mbp_res {mbp(*simp, model, eliminate)};
     if (Config::Analysis::log) {
         std::cout << "mbp: " << mbp_res << std::endl;
     }
-    // TODO
-    // add_learned_clause(bools::mkOr(disj), range.length());
+    return mbp_res;
+}
+
+Bools::Expr SABMC::specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate) {
+    if (range.empty()) {
+        return top();
+    }
+    const auto [transition, model] {compress(pre, range)};
+    if (Config::Analysis::log) {
+        std::cout << "compressed:" << std::endl;
+        std::cout << transition << std::endl;
+        std::cout << "model: " << model << std::endl;
+    }
+    return specialize(transition, model, eliminate);
+}
+
+Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
+    // find recurrent equations and inequations
+    linked_hash_map<Arith::Var, Int> eqs;
+    linked_hash_map<Arith::Var, Int> lbs;
+    linked_hash_map<Arith::Var, Int> ubs;
+    const auto lits {loop->lits().get<Arith::Lit>()};
+    for (const auto &rel: lits) {
+        if (!rel.isLinear() || rel.isNeq()) {
+            continue;
+        }
+        const auto vars {rel.vars()};
+        if (vars.size() != 2) {
+            continue;
+        }
+        const auto x {*vars.begin()};
+        const auto y {*(++vars.begin())};
+        const auto [pre, post] = x->isProgVar() ? std::pair{x, y} : std::pair{y, x};
+        if (!pre->isProgVar() || post != ArithVar::postVar(pre)) {
+            continue;
+        }
+        if (eqs.contains(pre)) {
+            continue;
+        }
+        const auto t {rel.lhs()};
+        const auto pre_coeff_term {*t->coeff(pre)};
+        const auto post_coeff_term {*t->coeff(post)};
+        const auto pre_coeff {*pre_coeff_term->isInt()};
+        const auto post_coeff {*post_coeff_term->isInt()};
+        if (mp::abs(pre_coeff) != 1 || mp::abs(post_coeff) != 1) {
+            continue;
+        }
+        if ((pre_coeff > 0) == (post_coeff > 0)) {
+            continue;
+        }
+        const auto constant_term {t - pre_coeff_term * pre - post_coeff_term * post};
+        auto constant {*constant_term->isInt()};
+        if (rel.isEq()) {
+            eqs.emplace(pre, post_coeff > 0 ? -constant : constant);
+            lbs.erase(pre);
+            ubs.erase(pre);
+        } else {
+            if (post_coeff > 0) {
+                constant = -constant + 1;
+                auto it{lbs.emplace(pre, constant).first};
+                if (it->second < constant) {
+                    lbs.put(pre, constant);
+                }
+            } else {
+                constant = constant - 1;
+                auto it{ubs.emplace(pre, constant).first};
+                if (it->second > constant) {
+                    ubs.put(pre, constant);
+                }
+            }
+            const auto lb {lbs.get(pre)};
+            const auto ub {ubs.get(pre)};
+            if (lb == ub) {
+                eqs.emplace(pre, *lb);
+                lbs.erase(pre);
+                ubs.erase(pre);
+            }
+        }
+    }
+    if (eqs.empty() && lbs.empty() && ubs.empty()) {
+        return top();
+    }
+    // the loop counter is bounded by 0
+    const auto n_term {Arith::varToExpr(n)};
+    std::vector<Arith::Lit> res {arith::mkGt(n_term, arith::mkConst(0))};
+    // each recurrent (in)equation gives rise to a new literal
+    Arith::Subs subs_first;
+    Arith::Subs subs_last;
+    for (const auto &[pre, c] : eqs) {
+        const auto c_term{arith::mkConst(c)};
+        const auto post{ArithVar::postVar(pre)};
+        subs_first.put(post, pre + c_term);
+        const auto rhs{pre + c_term * n_term};
+        subs_last.put(pre, rhs - c_term);
+        subs_last.put(post, rhs);
+        res.push_back(arith::mkEq(ArithVar::postVar(pre), rhs));
+    }
+    for (const auto &[pre,c]: lbs) {
+        res.push_back(arith::mkGeq(ArithVar::postVar(pre), pre + arith::mkConst(c) * n_term));
+    }
+    for (const auto &[pre,c]: ubs) {
+        res.push_back(arith::mkLeq(ArithVar::postVar(pre), pre + arith::mkConst(c) * n_term));
+    }
+    for (const auto &rel: lits) {
+        const auto vars {rel.vars()};
+        // keep literals that only refer to post-vars
+        if (std::all_of(vars.begin(), vars.end(), theory::isPostVar)) {
+            res.push_back(rel);
+        }
+        if (!rel.isLinear()) {
+            continue;
+        }
+        if (std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
+            continue;
+        }
+        {
+            // construct literal for the but-last iteration
+            auto s{subs_last};
+            auto fail {false};
+            for (const auto &x : vars) {
+                const auto pre = x->isProgVar() ? x : ArithVar::progVar(x);
+                if (!eqs.contains(pre)) {
+                    const auto bounds = *(*rel.lhs()->coeff(x))->isInt() > 0 ? ubs : lbs;
+                    const auto c{bounds.get(pre)};
+                    if (c) {
+                        const auto c_term {arith::mkConst(*c)};
+                        const auto rhs{pre + c_term * n_term};
+                        s.put(x, x->isProgVar() ? rhs - c_term : rhs);
+                    } else {
+                        fail = true;
+                        break;
+                    }
+                }
+            }
+            if (!fail) {
+                res.push_back(rel.subs(s));
+            }
+        }
+        {
+            // construct literal for the first iteration
+            auto s{subs_first};
+            auto fail {false};
+            for (const auto &post : vars) {
+                if (!post->isPostVar()) {
+                    continue;
+                }
+                const auto pre{ArithVar::progVar(post)};
+                if (!eqs.contains(pre)) {
+                    const auto bounds = *(*rel.lhs()->coeff(post))->isInt() > 0 ? ubs : lbs;
+                    const auto c{bounds.get(pre)};
+                    if (c) {
+                        s.put(post, pre + arith::mkConst(*c));
+                    } else {
+                        fail = true;
+                        break;
+                    }
+                }
+            }
+            if (!fail) {
+                res.push_back(rel.subs(s));
+            }
+        }
+    }
+    const auto ret {bools::mkAndFromLits(res)};
+    std::cout << "recurrence analysis:" << std::endl << ret << std::endl << "loop counter:" << n << std::endl;
+    return ret;
+}
+
+void SABMC::handle_loop(const Range &range) {
+    std::cout << "computing init" << std::endl;
+    const auto init {specialize(t.init(), solver->model(t.init()->vars()), theory::isTempVar)};
+    std::cout << "computing stem" << std::endl;
+    // const auto stem {specialize(init, Range::from_length(0, range.start()), [](const auto &x) {
+    //     return !theory::isPostVar(x);
+    // })};
+    std::cout << "computing loop" << std::endl;
+    const auto loop {specialize(top(), range, theory::isTempVar)};
+    Subs post_to_pre;
+    for (const auto &x: vars) {
+        if (theory::isProgVar(x)) {
+            post_to_pre.put(theory::postVar(x), theory::toExpr(x));
+        }
+    }
+    // const auto inv {CrabCfg::compute_invariants(post_to_pre(stem), loop)};
+    const auto inv {CrabCfg::compute_invariants(top(), loop)};
+    const auto rec {recurrence_analysis(loop)};
+    add_learned_clause(inv && rec, range.length());
 }
 
 Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
@@ -208,16 +385,24 @@ Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
 }
 
 void SABMC::add_blocking_clauses() {
-    for (const auto &b: blocked) {
+    // std::cout << "BLOCKING CLAUSES" << std::endl;
+    // std::cout << "depth: " << depth << std::endl;
+    for (const auto &b : blocked) {
         const auto s {get_subs(depth, b.length)};
-        // std::cout << "blocking clause: " << b.trans->subs(Subs::build<IntTheory>(n, 1))) << std::endl;
-        const auto block {Subs::build<Arith>(n, arith::mkConst(1)).compose(s)(!b.trans)};
+        const auto n_subs {Subs::build<Arith>(n, arith::mkConst(1))};
+        const auto block {s(n_subs(!b.trans))};
         const auto id {arith::mkConst(rule_map.right.at(b.trans))};
         solver->add(block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id)));
+        // std::cout << "length: " << b.length << std::endl;
+        // std::cout << "s: " << s << std::endl;
+        // std::cout << "first blocking clause: " << (block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id))) << std::endl;
         const auto cur {get_subs(depth, 1)};
         const auto next {get_subs(depth + 1, 1)};
-        const std::vector<Bools::Expr> lits {theory::mkNeq(trace_var, id), theory::mkNeq(trace_var, id)};
+        // std::cout << "cur: " << cur << std::endl;
+        // std::cout << "next: " << next << std::endl;
+        const std::vector<Bools::Expr> lits {theory::mkNeq(cur.get<Arith>(trace_var), id), theory::mkNeq(next.get<Arith>(trace_var), id)};
         solver->add(bools::mkOr(lits));
+        // std::cout << "second blocking clause: " << bools::mkOr(lits) << std::endl;
     }
 }
 
@@ -243,7 +428,7 @@ void SABMC::build_trace() {
     std::optional<Bools::Expr> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s {get_subs(d, 1)};
-        const auto rule {rule_map.left.at(model.get<Arith>(trace_var))};
+        const auto rule {rule_map.left.at(model.eval<Arith>(s.get<Arith>(trace_var)))};
         const auto comp {model.composeBackwards(s)};
         const auto imp {comp.syntacticImplicant(rule)};
         run.push_back(comp.toSubs().project(vars));
@@ -265,17 +450,7 @@ void SABMC::build_trace() {
 
 const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
     if (subs.empty()) {
-        Subs s;
-        for (const auto &x: vars) {
-            if (theory::isProgVar(x)) {
-                const auto y {theory::postVar(x)};
-                theory::apply(y, [&](const auto &y) {
-                    const auto th{theory::theory(y)};
-                    s.put<decltype(th)>(y, th.varToExpr(th.next()));
-                });
-            }
-        }
-        subs.push_back({s});
+        subs.push_back({Subs()});
     }
     while (subs.size() < start + steps) {
         Subs s;
@@ -346,6 +521,10 @@ void SABMC::analyze() {
         case SmtResult::Unsat: {}
         }
         solver->pop();
+        // std::cout << "TRANSITION FORMULA" << std::endl;
+        // std::cout << "depth: " << depth << std::endl;
+        // std::cout << "s: " << s << std::endl;
+        // std::cout << "formula: " << s(step) << std::endl;
         solver->add(s(step));
         add_blocking_clauses();
         ++depth;
@@ -355,6 +534,7 @@ void SABMC::analyze() {
             return;
         case SmtResult::Sat:
         case SmtResult::Unknown: {
+            // std::cout << "model: " << solver->model() << std::endl;
             build_trace();
             if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
             const auto range {has_looping_infix()};

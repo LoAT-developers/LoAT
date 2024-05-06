@@ -1,8 +1,8 @@
 #include "z3.hpp"
-#include "exprtosmt.hpp"
+#include "exprconverter.hpp"
 
 void Z3::add(const Bools::Expr e) {
-    solver.add(ExprToSmt<z3::expr>::convert(e, ctx));
+    solver.add(ExprConverter<z3::expr, z3::expr>::convert(e, ctx));
 }
 
 void Z3::push() {
@@ -25,38 +25,44 @@ SmtResult Z3::check() {
 Model Z3::model(const std::optional<const VarSet> &vars) {
     const z3::model &m = solver.get_model();
     Model res;
-    const auto add = [&](const auto &x, const auto &y) {
+    const auto add = [&](const Var &x) {
         std::visit(
-            Overload {
+            Overload{
                 [&](const Arith::Var var) {
-                    const auto val {getRealFromModel(m, y)};
-                    assert(mp::denominator(val) == 1);
-                    res.template put<Arith>(var, mp::numerator(val));
+                    const auto y {ctx.getArithSymbolMap().get(var)};
+                    if (y) {
+                        const auto val{getRealFromModel(m, *y)};
+                        assert(mp::denominator(val) == 1);
+                        res.template put<Arith>(var, mp::numerator(val));
+                    }
                 },
                 [&](const Bools::Var var) {
-                    switch (m.eval(y).bool_value()) {
-                    case Z3_L_FALSE:
-                        res.template put<Bools>(var, false);
-                        break;
-                    case Z3_L_TRUE:
-                        res.template put<Bools>(var, true);
-                        break;
-                    default: break;
+                    const auto y{ctx.getBoolSymbolMap().get(var)};
+                    if (y) {
+                        switch (m.eval(*y).bool_value()) {
+                        case Z3_L_FALSE:
+                            res.template put<Bools>(var, false);
+                            break;
+                        case Z3_L_TRUE:
+                            res.template put<Bools>(var, true);
+                            break;
+                        default:
+                            break;
+                        }
                     }
-                }
-            }, x);
+                }},
+            x);
     };
-    const auto map = ctx.getSymbolMap();
     if (vars) {
         for (const auto &x: *vars) {
-            const auto res {map.get(x)};
-            if (res) {
-                add(x, *res);
-            }
+            add(x);
         }
     } else {
-        for (const auto &[x, y]: map) {
-            add(x, y);
+        for (const auto &[x, _] : ctx.getArithSymbolMap()) {
+            add(x);
+        }
+        for (const auto &[x, _] : ctx.getBoolSymbolMap()) {
+            add(x);
         }
     }
     return res;

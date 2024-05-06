@@ -37,10 +37,10 @@ add_library(${PROJECT_NAME} OBJECT
   exp.cpp
   mult.cpp
   add.cpp
-  arithutil.hpp
-  arithutil.cpp
   model.hpp
   model.cpp
+  exprconverter.hpp
+  exprconversioncontext.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

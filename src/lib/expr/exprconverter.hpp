@@ -17,29 +17,30 @@
 
 #pragma once
 
-#include "smtcontext.hpp"
+#include "exprconversioncontext.hpp"
 #include "theory.hpp"
 
 #include <sstream>
 
-template<typename EXPR> class ExprToSmt {
+template<class Expr, class Formula>
+class ExprConverter {
 public:
 
-    static EXPR convert(const Bools::Expr e, SmtContext<EXPR> &ctx) {
-        ExprToSmt<EXPR> converter(ctx);
+    static Formula convert(const Bools::Expr e, ExprConversionContext<Expr, Formula> &ctx) {
+        ExprConverter<Expr, Formula> converter(ctx);
         return converter.convertBoolEx(e);
     }
 
-    static EXPR convert(const Arith::Expr e, SmtContext<EXPR> &ctx) {
-        ExprToSmt<EXPR> converter(ctx);
+    static Expr convert(const Arith::Expr e, ExprConversionContext<Expr, Formula> &ctx) {
+        ExprConverter<Expr, Formula> converter(ctx);
         return converter.convertEx(e);
     }
 
 
 protected:
-    ExprToSmt(SmtContext<EXPR> &context): context(context) {}
+    ExprConverter(ExprConversionContext<Expr, Formula> &context): context(context) {}
 
-    EXPR convertBoolEx(const Bools::Expr e) {
+    Formula convertBoolEx(const Bools::Expr e) {
         if (e->getTheoryLit()) {
             return std::visit(
                 Overload {
@@ -51,9 +52,9 @@ protected:
                     }
                 }, *e->getTheoryLit());
         }
-        EXPR res = e->isAnd() ? context.bTrue() : context.bFalse();
-        bool first = true;
-        for (const Bools::Expr &c: e->getChildren()) {
+        auto res = e->isAnd() ? context.bTrue() : context.bFalse();
+        auto first = true;
+        for (const auto &c: e->getChildren()) {
             if (first) {
                 res = convertBoolEx(c);
                 first = false;
@@ -64,8 +65,8 @@ protected:
         return res;
     }
 
-    EXPR convertEx(const Arith::Expr e){
-        return e->apply<EXPR>(
+    Expr convertEx(const Arith::Expr e){
+        return e->apply<Expr>(
             [&](const ArithConstPtr &r) {
                 if (const auto i{r->intValue()}) {
                     return context.getInt(*i);
@@ -74,11 +75,7 @@ protected:
                 }
             },
             [&](const Arith::Var x) {
-                auto optVar = context.getVariable(x);
-                if (optVar) {
-                    return *optVar;
-                }
-                return context.addNewVariable(x);
+                return context.getVariable(x);
             },
             [&](const ArithAddPtr a) {
                 const auto args {a->getArgs()};
@@ -111,7 +108,7 @@ protected:
             });
     }
 
-    EXPR convertRelational(const ArithLit &rel) {
+    Formula convertRelational(const ArithLit &rel) {
         const auto lhs {convertEx(rel.lhs())};
         const auto rhs {context.getInt(0)};
         if (rel.isGt()) {
@@ -124,14 +121,11 @@ protected:
         throw std::invalid_argument("unknown relation");
     }
 
-    EXPR convertLit(const BoolLit &lit) {
-        auto optVar = context.getVariable(lit.getBoolVar());
-        if (!optVar) {
-            optVar = context.addNewVariable(lit.getBoolVar());
-        }
-        return lit.isNegated() ? context.negate(*optVar) : *optVar;
+    Formula convertLit(const BoolLit &lit) {
+        auto var {context.getVariable(lit.getBoolVar())};
+        return lit.isNegated() ? context.negate(var) : var;
     }
 
 private:
-    SmtContext<EXPR> &context;
+    ExprConversionContext<Expr, Formula> &context;
 };

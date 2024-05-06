@@ -24,17 +24,12 @@ Z3Context::Z3Context(z3::context& ctx): ctx(ctx) {}
 
 Z3Context::~Z3Context() { }
 
-z3::expr Z3Context::buildVar(const Var &var) {
-    const auto name {theory::getName(var)};
-    return std::visit(
-        Overload{
-            [&](const Arith::Var) {
-                return ctx.int_const(name.c_str());
-            },
-            [&](const Bools::Var) {
-                return ctx.bool_const(name.c_str());
-            }
-        }, var);
+z3::expr Z3Context::buildVar(const Arith::Var &var) {
+    return ctx.int_const(var->getName().c_str());
+}
+
+z3::expr Z3Context::buildVar(const Bools::Var &var) {
+    return ctx.bool_const(var->getName().c_str());
 }
 
 z3::expr Z3Context::getInt(const Int &val) {
@@ -99,69 +94,6 @@ z3::expr Z3Context::bFalse() const {
 
 z3::expr Z3Context::negate(const z3::expr &x) {
     return !x;
-}
-
-bool Z3Context::isTrue(const z3::expr &e) const {
-    return e.is_true();
-}
-
-bool Z3Context::isFalse(const z3::expr &e) const {
-    return e.is_false();
-}
-
-bool Z3Context::isNot(const z3::expr &e) const {
-    return e.is_not();
-}
-
-std::vector<z3::expr> Z3Context::getChildren(const z3::expr &e) const {
-    std::vector<z3::expr> res;
-    unsigned arity = e.num_args();
-    for (unsigned i = 0; i < arity; ++i) {
-        res.push_back(e.arg(i));
-    }
-    return res;
-}
-
-bool Z3Context::isAnd(const z3::expr &e) const {
-    return e.is_and();
-}
-
-bool Z3Context::isAdd(const z3::expr &e) const {
-    return e.is_app() && e.decl().decl_kind() == Z3_OP_ADD;
-}
-
-bool Z3Context::isMul(const z3::expr &e) const {
-    return e.is_app() && e.decl().decl_kind() == Z3_OP_MUL;
-}
-
-bool Z3Context::isPow(const z3::expr &e) const  {
-    return e.is_app() && e.decl().decl_kind() == Z3_OP_POWER;
-}
-
-bool Z3Context::isVar(const z3::expr &e) const  {
-    return e.is_const() && !e.is_numeral();
-}
-
-bool Z3Context::isRationalConstant(const z3::expr &e) const {
-    return e.is_numeral();
-}
-
-bool Z3Context::isInt(const z3::expr &e) const {
-    return e.is_numeral() && e.is_int();
-}
-
-Int Z3Context::toInt(const z3::expr &e) const {
-    return Int{e.to_string().c_str()};
-}
-
-z3::expr Z3Context::lhs(const z3::expr &e) const {
-    assert(e.num_args() == 2);
-    return e.arg(0);
-}
-
-z3::expr Z3Context::rhs(const z3::expr &e) const {
-    assert(e.num_args() == 2);
-    return e.arg(1);
 }
 
 void Z3Context::printStderr(const z3::expr &e) const {

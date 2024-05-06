@@ -7,16 +7,12 @@ CVC5Context::CVC5Context(cvc5::Solver& ctx): ctx(ctx), refinement(ctx.mkBoolean(
 
 CVC5Context::~CVC5Context() { }
 
-cvc5::Term CVC5Context::buildVar(const Var &var) {
-    const auto name {theory::getName(var)};
-    return std::visit(Overload{
-                          [&](const Arith::Var) {
-                              return ctx.mkConst(ctx.getIntegerSort(), name);
-                          },
-                          [&](const Bools::Var) {
-                              return ctx.mkConst(ctx.getBooleanSort(), name);
-                          }
-                      }, var);
+cvc5::Term CVC5Context::buildVar(const Arith::Var &var) {
+    return ctx.mkConst(ctx.getIntegerSort(), var->getName());
+}
+
+cvc5::Term CVC5Context::buildVar(const Bools::Var &var) {
+    return ctx.mkConst(ctx.getBooleanSort(), var->getName());
 }
 
 cvc5::Term CVC5Context::getInt(const Int &val) {
@@ -95,65 +91,6 @@ cvc5::Term CVC5Context::bFalse() const {
 
 cvc5::Term CVC5Context::negate(const cvc5::Term &x) {
     return ctx.mkTerm(cvc5::Kind::NOT, {x});
-}
-
-bool CVC5Context::isTrue(const cvc5::Term &e) const {
-    return e.isBooleanValue() && e.getBooleanValue();
-}
-
-bool CVC5Context::isFalse(const cvc5::Term &e) const {
-    return !e.isBooleanValue() || !e.getBooleanValue();
-}
-
-bool CVC5Context::isNot(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::NOT;
-}
-
-std::vector<cvc5::Term> CVC5Context::getChildren(const cvc5::Term &e) const {
-    std::vector<cvc5::Term> res {e.begin(), e.end()};
-    return res;
-}
-
-bool CVC5Context::isAnd(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::AND;
-}
-
-bool CVC5Context::isAdd(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::ADD;
-}
-
-bool CVC5Context::isMul(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::MULT;
-}
-
-bool CVC5Context::isPow(const cvc5::Term &e) const  {
-    return e.getKind() == cvc5::Kind::POW;
-}
-
-bool CVC5Context::isVar(const cvc5::Term &e) const  {
-    return e.getKind() == cvc5::Kind::CONSTANT;
-}
-
-bool CVC5Context::isRationalConstant(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::CONST_RATIONAL;
-}
-
-bool CVC5Context::isInt(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::CONST_INTEGER;
-}
-
-Int CVC5Context::toInt(const cvc5::Term &e) const {
-    return Int{e.toString().c_str()};
-}
-
-cvc5::Term CVC5Context::lhs(const cvc5::Term &e) const {
-    assert(e.getNumChildren() == 2);
-    return *e.begin();
-}
-
-cvc5::Term CVC5Context::rhs(const cvc5::Term &e) const {
-    assert(e.getNumChildren() == 2);
-    return *(++e.begin());
 }
 
 void CVC5Context::printStderr(const cvc5::Term &e) const {

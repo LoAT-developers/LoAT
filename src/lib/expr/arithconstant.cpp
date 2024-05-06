@@ -1,7 +1,5 @@
 #include "arithexpr.hpp"
 
-#include <purrs.hh>
-
 ConsHash<ArithExpr, ArithConst, ArithConst::CacheHash, ArithConst::CacheEqual, Rational> ArithConst::cache;
 
 ArithConst::ArithConst(const Rational &t): ArithExpr(arith::Kind::Constant), t(t) {}

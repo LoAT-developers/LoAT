@@ -9,6 +9,8 @@ add_library(${PROJECT_NAME} OBJECT
   recurrence.cpp
   dependencyorder.hpp
   dependencyorder.cpp
+  purrsutil.hpp
+  purrsutil.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

@@ -18,7 +18,7 @@
 #include "recurrence.hpp"
 #include "dependencyorder.hpp"
 #include "arith.hpp"
-#include "arithutil.hpp"
+#include "purrsutil.hpp"
 #include "theory.hpp"
 
 #include <purrs.hh>

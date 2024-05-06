@@ -1,6 +1,5 @@
 #include "arithlit.hpp"
 #include "arithsubs.hpp"
-#include "arithutil.hpp"
 
 #include <sstream>
 #include <assert.h>
@@ -8,86 +7,11 @@
 #include <algorithm>
 #include <unordered_set>
 
-void Bounds::addUpperBound(const ArithExprPtr e) {
-    rUpperBounds.insert(e);
-    if (e->isIntegral()) {
-        iUpperBounds.insert(e);
-    }
-}
-
-void Bounds::addLowerBound(const ArithExprPtr e) {
-    rLowerBounds.insert(e);
-    if (e->isIntegral()) {
-        iLowerBounds.insert(e);
-    }
-}
-void Bounds::addEquality(const ArithExprPtr e) {
-    addLowerBound(e);
-    addUpperBound(e);
-    rEqualities.insert(e);
-    if (e->isIntegral()) {
-        iEqualities.insert(e);
-    }
-}
-
-const ArithExprSet& Bounds::realUpperBounds() const {
-    return rUpperBounds;
-}
-
-const ArithExprSet& Bounds::realLowerBounds() const {
-    return rLowerBounds;
-}
-
-const ArithExprSet& Bounds::realEqualities() const {
-    return rEqualities;
-}
-
-const ArithExprSet& Bounds::integralUpperBounds() const {
-    return iUpperBounds;
-}
-
-const ArithExprSet& Bounds::integralLowerBounds() const {
-    return iLowerBounds;
-}
-
-const ArithExprSet& Bounds::integralEqualities() const {
-    return iEqualities;
-}
-
-void Bounds::intersect(const Bounds &that) {
-    const auto intersect = [](ArithExprSet &xs, const ArithExprSet &ys) {
-        for (auto it = xs.begin(); it != xs.end();) {
-            if (ys.contains(*it)) {
-                it = xs.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    };
-    intersect(rLowerBounds, that.rLowerBounds);
-    intersect(rUpperBounds, that.rUpperBounds);
-    intersect(rEqualities, that.rEqualities);
-    intersect(iLowerBounds, that.iLowerBounds);
-    intersect(iUpperBounds, that.iUpperBounds);
-    intersect(iEqualities, that.iEqualities);
-}
-
-void Bounds::unite(const Bounds &that) {
-    const auto unite = [](ArithExprSet &xs, const ArithExprSet &ys) {
-        for (const auto &y: ys) {
-            xs.insert(y);
-        }
-    };
-    unite(rLowerBounds, that.rLowerBounds);
-    unite(rUpperBounds, that.rUpperBounds);
-    unite(rEqualities, that.rEqualities);
-    unite(iLowerBounds, that.iLowerBounds);
-    unite(iUpperBounds, that.iUpperBounds);
-    unite(iEqualities, that.iEqualities);
-}
-
-bool Bounds::empty() const {
-    return rLowerBounds.empty() && rUpperBounds.empty() && rEqualities.empty();
+std::size_t hash_value(const Bound &bound) {
+    std::size_t hash {42};
+    boost::hash_combine(hash, bound.bound);
+    boost::hash_combine(hash, bound.kind);
+    return hash;
 }
 
 std::ostream& operator<<(std::ostream &s, const ArithLitSet &set) {
@@ -125,73 +49,35 @@ bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars)
     return l->isLinear(vars);
 }
 
-std::pair<std::optional<ArithExprPtr>, std::optional<ArithExprPtr>> ArithLit::getBoundFromIneq(const ArithVarPtr N) const {
-    if (l->isPoly(N) != 1 || kind == Kind::Neq) return {};
-    const auto t = kind == Kind::Eq ? l : l - arith::mkConst(1);
-    const auto optSolved {arith::solveTermFor(t, N)};
-    if (optSolved) {
-        switch (kind) {
-        case Kind::Eq:
-            return {optSolved, optSolved};
-        case Kind::Gt: {
-            const auto coeff {*t->coeff(N)};
-            const auto r {***coeff->isRational()};
-            if (r > 0) {
-                return {optSolved, {}};
-            } else {
-                return {{}, optSolved};
-            }
-        }
-        default:
-            throw std::invalid_argument("unexpected relation");
-        }
-    }
-    return {};
-}
-
-void ArithLit::getBounds(const ArithVarPtr n, Bounds &res) const {
-    if (has(n)) {
-        const auto p {getBoundFromIneq(n)};
-        if (p.first) {
-            if (p.first == p.second) {
-                res.addEquality(*p.first);
-            }
-            auto add {true};
-            for (const auto &b: res.realLowerBounds()) {
-                const auto diff {b - *p.first};
-                const auto r {diff->isInt()};
-                if (r && *r >= 0) {
-                    add = false;
-                    break;
+void ArithLit::getBounds(const ArithVarPtr n, linked_hash_set<Bound> &res) const {
+    if (l->isPoly(n) == 1 && kind != Kind::Neq) {
+        const auto t = kind == Kind::Eq ? l : l - arith::mkConst(1);
+        const auto coeff{*t->coeff(n)};
+        const auto optSolved{t->solve(n)};
+        if (optSolved) {
+            switch (kind) {
+            case Kind::Eq:
+                res.emplace(*optSolved, BoundKind::Equality);
+                break;
+            case Kind::Gt: {
+                const auto r{***coeff->isRational()};
+                if (r > 0) {
+                    res.emplace(*optSolved, BoundKind::Lower);
+                } else {
+                    res.emplace(*optSolved, BoundKind::Upper);
                 }
+                break;
             }
-            if (add) {
-                res.addLowerBound(*p.first);
-            }
-        }
-        if (p.second) {
-            auto add {true};
-            for (const auto &b: res.realUpperBounds()) {
-                const auto diff {b - *p.second};
-                const auto r {diff->isInt()};
-                if (r && *r <= 0) {
-                    add = false;
-                    break;
-                }
-            }
-            if (add) {
-                res.addUpperBound(*p.second);
+            default:
+                throw std::invalid_argument("unexpected relation");
             }
         }
     }
 }
 
 std::optional<ArithExprPtr> ArithLit::getEquality(const ArithVarPtr n) const {
-    if (isEq() && has(n) && isLinear({{n}})) {
-        const auto eq {getBoundFromIneq(n).first};
-        if (eq && (*eq)->isIntegral()) {
-            return eq;
-        }
+    if (isEq()) {
+        return l->solve(n);
     }
     return {};
 }
@@ -202,7 +88,7 @@ void ArithLit::propagateEquality(ArithSubs &subs, const std::function<bool(const
             if (allow(x) && !subs.contains(x) && l->isLinear({{x}})) {
                 const auto coeff {l->coeff(x)};
                 if ((*coeff)->is(1) || (*coeff)->is(-1)) {
-                    const auto t {*arith::solveTermFor(l, x)};
+                    const auto t {*l->solve(x)};
                     subs = subs.compose(ArithSubs{{x, t}});
                     return;
                 }

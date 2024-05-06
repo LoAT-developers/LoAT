@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "smtcontext.hpp"
+#include "exprconversioncontext.hpp"
 
 #include <gmp.h>
 #include <yices.h>
@@ -27,7 +27,7 @@ public:
     YicesError();
 };
 
-class YicesContext : public SmtContext<term_t> {
+class YicesContext : public ExprConversionContext<term_t, term_t> {
 
 public:
     ~YicesContext() override;
@@ -48,25 +48,11 @@ public:
     term_t bFalse() const override;
     term_t negate(const term_t &x) override;
 
-    bool isTrue(const term_t &e) const override;
-    bool isFalse(const term_t &e) const override;
-    bool isNot(const term_t &e) const override;
-    std::vector<term_t> getChildren(const term_t &e) const override;
-    bool isAnd(const term_t &e) const override;
-    bool isAdd(const term_t &e) const override;
-    bool isMul(const term_t &e) const override;
-    bool isPow(const term_t &e) const override;
-    bool isVar(const term_t &e) const override;
-    bool isRationalConstant(const term_t &e) const override;
-    bool isInt(const term_t &e) const override;
-    Int toInt(const term_t &e) const override;
-    term_t lhs(const term_t &e) const override;
-    term_t rhs(const term_t &e) const override;
-
     void printStderr(const term_t &e) const override;
 
 protected:
-    term_t buildVar(const Var &var) override;
+    term_t buildVar(const Arith::Var &var) override;
+    term_t buildVar(const Bools::Var &var) override;
 
 private:
 

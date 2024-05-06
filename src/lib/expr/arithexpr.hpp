@@ -226,6 +226,10 @@ public:
 
     Int eval(const linked_hash_map<ArithVarPtr, Int> &valuation) const;
 
+    std::optional<ArithExprPtr> solve(const ArithVarPtr var) const;
+
+    ArithExprPtr toPtr() const;
+
     /**
      * @brief exponentiation
      */

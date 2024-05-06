@@ -77,75 +77,88 @@ void LoopAcceleration::try_nonterm() {
 }
 
 void LoopAcceleration::compute_closed_form() {
-    rec = Recurrence::solve(rule.getUpdate(), config.n);
-    if (rec) {
-        res.prefix = rec->prefix;
-        const auto is_temp_var = [](const auto z){
-            return z->isTempVar();
-        };
-        for (const auto &[x,y]: rule.getUpdate().get<Arith>()) {
-            if (y->has(x) && y != x->toExpr()) {
-                if (!y->hasVarWith(is_temp_var)) {
-                    return;
-                }
-                if (!y->isLinear()) {
-                    continue;
-                }
-                const auto vars {y->vars()};
-                auto all_lower_bounded {true};
-                auto all_upper_bounded {true};
-                for (const auto &z: vars) {
-                    if (z->isTempVar()) {
-                        const auto bounds {rule.getGuard()->getBounds(z)};
-                        const auto coeff {***(*y->coeff(z))->isRational()};
-                        auto lower_bounded {false};
-                        auto upper_bounded {false};
-                        for (const auto &b: bounds.realLowerBounds()) {
-                            if (!b->hasVarWith(is_temp_var)) {
-                                if (bounds.realUpperBounds().contains(b)) {
-                                    lower_bounded = true;
-                                    upper_bounded = true;
-                                }
+    const auto fail = [&]() {
+        res.prefix = 0;
+        rec = {};
+        res.status = acceleration::ClosedFormFailed;
+    };
+    const auto is_temp_var = [](const auto z) {
+        return z->isTempVar();
+    };
+    // Heuristic: Search for updates x = x + p where p contains temporary variables without lower bounds
+    // and temporary variables without upper bounds. Such updates are pretty much equivalent to x = *,
+    // but accelerating them sometimes yields quite complex expressions. Hence, we do not accelerate them.
+    for (const auto &[x, y] : rule.getUpdate().get<Arith>()) {
+        if (y->has(x) && y->hasVarWith(is_temp_var)) {
+            const auto vars{y->vars()};
+            auto all_lower_bounded{true};
+            auto all_upper_bounded{true};
+            for (const auto &z : vars) {
+                // check all temporary variables
+                if (z->isTempVar()) {
+                    // we can only check boundedness for linear expressions
+                    if (!y->isLinear({{z}})) {
+                        fail();
+                        return;
+                    }
+                    // we can only check boundedness if z's coefficient is a constant
+                    const auto c {(*y->coeff(z))->isRational()};
+                    if (!c) {
+                        fail();
+                        return;
+                    }
+                    const auto coeff{***c};
+                    const auto bounds{rule.getGuard()->getBounds(z)};
+                    auto lower_bounded{false};
+                    auto upper_bounded{false};
+                    // check if z is bounded
+                    for (const auto &b : bounds) {
+                        // early exit
+                        if (lower_bounded && upper_bounded) {
+                            break;
+                        }
+                        // only consider bounds without temporary variables to keep things simple
+                        if (!b.bound->hasVarWith(is_temp_var)) {
+                            switch (b.kind) {
+                            case BoundKind::Equality:
+                                lower_bounded = true;
+                                upper_bounded = true;
+                                break;
+                            case BoundKind::Lower:
                                 if (coeff > 0) {
                                     lower_bounded = true;
                                 } else {
                                     upper_bounded = true;
                                 }
-                                if (lower_bounded && upper_bounded) {
-                                    break;
+                                break;
+                            case BoundKind::Upper:
+                                if (coeff > 0) {
+                                    upper_bounded = true;
+                                } else {
+                                    lower_bounded = true;
                                 }
+                                break;
                             }
-                        }
-                        if (!lower_bounded || !upper_bounded) {
-                            for (const auto &b: bounds.realUpperBounds()) {
-                                if (!b->hasVarWith(is_temp_var)) {
-                                    if (coeff > 0) {
-                                        upper_bounded = true;
-                                    } else {
-                                        lower_bounded = true;
-                                    }
-                                    if (lower_bounded && upper_bounded) {
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        all_lower_bounded &= lower_bounded;
-                        all_upper_bounded &= upper_bounded;
-                        if (!all_lower_bounded && !all_upper_bounded) {
-                            break;
                         }
                     }
-                }
-                if (all_lower_bounded || all_upper_bounded) {
-                    return;
+                    all_lower_bounded &= lower_bounded;
+                    all_upper_bounded &= upper_bounded;
+                    // fail if at least one temporary variable has no lower bound,
+                    // and at least one temporary variable has no upper bound
+                    if (!all_lower_bounded && !all_upper_bounded) {
+                        fail();
+                        return;
+                    }
                 }
             }
         }
     }
-    res.prefix = 0;
-    rec = {};
-    res.status = acceleration::ClosedFormFailed;
+    rec = Recurrence::solve(rule.getUpdate(), config.n);
+    if (rec) {
+        res.prefix = rec->prefix;
+    } else {
+        fail();
+    }
 }
 
 void LoopAcceleration::accelerate() {

@@ -1,7 +1,5 @@
 #include "arithexpr.hpp"
 
-#include <purrs.hh>
-
 ConsHash<ArithExpr, ArithExp, ArithExp::CacheHash, ArithExp::CacheEqual, ArithExprPtr, ArithExprPtr> ArithExp::cache;
 
 ArithExp::ArithExp(const ArithExprPtr base, const ArithExprPtr exponent): ArithExpr(arith::Kind::Exp), base(base), exponent(exponent) {}

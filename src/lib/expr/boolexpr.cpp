@@ -117,13 +117,13 @@ const Bools::Expr BoolExpr::mkLit(const Lit &lit) {
     }
 }
 
-Bounds BoolExpr::getBounds(const Arith::Var n) const {
-    Bounds bounds;
+linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var n) const {
+    linked_hash_set<Bound> bounds;
     getBounds(n, bounds);
     return bounds;
 }
 
-void BoolExpr::getBounds(const Arith::Var var, Bounds &res) const {
+void BoolExpr::getBounds(const Arith::Var var, linked_hash_set<Bound> &res) const {
     const auto lit {getTheoryLit()};
     if (lit) {
         if (std::holds_alternative<ArithLit>(*lit)) {
@@ -135,19 +135,26 @@ void BoolExpr::getBounds(const Arith::Var var, Bounds &res) const {
         }
     } else if (isOr()) {
         bool first = true;
-        Bounds intersection;
+        linked_hash_set<Bound> intersection;
         for (const auto &c: getChildren()) {
             if (first) {
                 c->getBounds(var, intersection);
                 first = false;
             } else {
-                intersection.intersect(c->getBounds(var));
+                const auto other {c->getBounds(var)};
+                for (auto it = intersection.begin(); it != intersection.end(); ++it) {
+                    if (other.contains(*it)) {
+                        ++it;
+                    } else {
+                        it = intersection.erase(it);
+                    }
+                }
             }
             if (intersection.empty()) {
                 return;
             }
         }
-        res.unite(intersection);
+        res.insert(intersection.begin(), intersection.end());
     }
 }
 

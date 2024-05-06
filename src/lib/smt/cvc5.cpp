@@ -1,5 +1,5 @@
 #include "cvc5.hpp"
-#include "exprtosmt.hpp"
+#include "exprconverter.hpp"
 
 CVC5::CVC5(): solver(), ctx(solver) {
     solver.setOption("seed", std::to_string(seed));
@@ -7,7 +7,7 @@ CVC5::CVC5(): solver(), ctx(solver) {
 }
 
 void CVC5::add(const Bools::Expr e) {
-    solver.assertFormula(ExprToSmt<cvc5::Term>::convert(e, ctx));
+    solver.assertFormula(ExprConverter<cvc5::Term, cvc5::Term>::convert(e, ctx));
     solver.assertFormula(ctx.clearRefinement());
 }
 
@@ -32,30 +32,35 @@ SmtResult CVC5::check() {
 
 Model CVC5::model(const std::optional<const VarSet> &vars) {
     Model res;
-    const auto add = [&](const auto &x, const auto &y) {
+    const auto add = [&](const Var &x) {
         std::visit(
-            Overload {
+            Overload{
                 [&](const Arith::Var var) {
-                    const auto val {getRealFromModel(y)};
-                    assert(mp::denominator(val) == 1);
-                    res.template put<Arith>(var, mp::numerator(val));
+                    const auto y{ctx.getArithSymbolMap().get(var)};
+                    if (y) {
+                        const auto val{getRealFromModel(*y)};
+                        assert(mp::denominator(val) == 1);
+                        res.template put<Arith>(var, mp::numerator(val));
+                    }
                 },
                 [&](const Bools::Var var) {
-                    res.template put<Bools>(var, this->solver.getValue(y).getBooleanValue());
-                }
-            }, x);
+                    const auto y{ctx.getBoolSymbolMap().get(var)};
+                    if (y) {
+                        res.template put<Bools>(var, this->solver.getValue(*y).getBooleanValue());
+                    }
+                }},
+            x);
     };
-    const auto map = ctx.getSymbolMap();
     if (vars) {
-        for (const auto &x: *vars) {
-            const auto res {map.get(x)};
-            if (res) {
-                add(x, *res);
-            }
+        for (const auto &x : *vars) {
+            add(x);
         }
     } else {
-        for (const auto &[x, y]: map) {
-            add(x, y);
+        for (const auto &[x, _] : ctx.getArithSymbolMap()) {
+            add(x);
+        }
+        for (const auto &[x, _] : ctx.getBoolSymbolMap()) {
+            add(x);
         }
     }
     return res;

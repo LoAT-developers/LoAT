@@ -1,5 +1,5 @@
 #include "yices.hpp"
-#include "exprtosmt.hpp"
+#include "exprconverter.hpp"
 
 namespace yices {
 
@@ -36,7 +36,7 @@ Yices::Yices(Logic logic): ctx(YicesContext()), config(yices_new_config()) {
 }
 
 void Yices::add(const Bools::Expr e) {
-    if (yices_assert_formula(solver, ExprToSmt<term_t>::convert(e, ctx)) < 0) {
+    if (yices_assert_formula(solver, ExprConverter<term_t, term_t>::convert(e, ctx)) < 0) {
         throw YicesError();
     }
 }
@@ -69,39 +69,42 @@ SmtResult Yices::check() {
 }
 
 Model Yices::model(const std::optional<const VarSet> &vars) {
-    if (ctx.getSymbolMap().empty()) {
+    if (ctx.getArithSymbolMap().empty() && ctx.getBoolSymbolMap().empty()) {
         return Model();
     }
     model_t *m = yices_get_model(solver, true);
     Model res;
-    const auto add = [&res, this, m](const auto &x, const auto &y) {
-        std::visit(
-            Overload {
-                [&](const Arith::Var x) {
-                    const auto val {getRealFromModel(m, y)};
+    const auto add = [&](const Var &x) {
+        std::visit(Overload{
+            [&](const Arith::Var x) {
+                const auto y{ctx.getArithSymbolMap().get(x)};
+                if (y) {
+                    const auto val{getRealFromModel(m, *y)};
                     assert(mp::denominator(val) == 1);
                     res.template put<Arith>(x, mp::numerator(val));
-                },
-                [&](const Bools::Var x) {
+                }
+            },
+            [&](const Bools::Var x) {
+                const auto y{ctx.getBoolSymbolMap().get(x)};
+                if (y) {
                     int32_t val;
-                    if (yices_get_bool_value(m, y, &val) != 0) {
+                    if (yices_get_bool_value(m, *y, &val) != 0) {
                         throw YicesError();
                     }
                     res.template put<Bools>(x, val);
                 }
-            }, x);
+            }}, x);
     };
-    const auto map = ctx.getSymbolMap();
     if (vars) {
         for (const auto &x: *vars) {
-            const auto res {map.get(x)};
-            if (res) {
-                add(x, *res);
-            }
+            add(x);
         }
     } else {
-        for (const auto &[x,y]: map) {
-            add(x, y);
+        for (const auto &[x,_]: ctx.getArithSymbolMap()) {
+            add(x);
+        }
+        for (const auto &[x,_]: ctx.getBoolSymbolMap()) {
+            add(x);
         }
     }
     yices_free_model(m);

@@ -5,36 +5,17 @@
 #include "arithexpr.hpp"
 #include "arithsubs.hpp"
 
-class Bounds {
-
-private:
-
-    ArithExprSet rUpperBounds {};
-    ArithExprSet rLowerBounds {};
-    ArithExprSet rEqualities {};
-    ArithExprSet iUpperBounds {};
-    ArithExprSet iLowerBounds {};
-    ArithExprSet iEqualities {};
-
-public:
-
-    void addUpperBound(const ArithExprPtr e);
-    void addLowerBound(const ArithExprPtr e);
-    void addEquality(const ArithExprPtr e);
-
-    const ArithExprSet& realUpperBounds() const;
-    const ArithExprSet& realLowerBounds() const;
-    const ArithExprSet& realEqualities() const;
-
-    const ArithExprSet& integralUpperBounds() const;
-    const ArithExprSet& integralLowerBounds() const;
-    const ArithExprSet& integralEqualities() const;
-
-    void intersect(const Bounds &that);
-    void unite(const Bounds &that);
-    bool empty() const;
-
+enum class BoundKind {
+    Lower, Upper, Equality
 };
+
+struct Bound {
+    friend bool operator==(const Bound&, const Bound&) = default;
+    const ArithExprPtr bound;
+    const BoundKind kind;
+};
+
+std::size_t hash_value(const Bound&);
 
 class ArithLit;
 
@@ -70,7 +51,7 @@ public:
     ArithExprPtr lhs() const;
     bool isPoly() const;
     bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = std::nullopt) const;
-    void getBounds(const ArithVarPtr n, Bounds &res) const;
+    void getBounds(const ArithVarPtr n, linked_hash_set<Bound> &res) const;
     std::optional<ArithExprPtr> getEquality(const ArithVarPtr n) const;
     void propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow) const;
 
@@ -92,7 +73,6 @@ public:
     std::size_t hash() const;
     bool eval(const linked_hash_map<ArithVarPtr, Int>&) const;
 
-    std::pair<std::optional<ArithExprPtr>, std::optional<ArithExprPtr>> getBoundFromIneq(const ArithVarPtr) const;
     static void simplifyAnd(linked_hash_set<ArithLit> &lits);
     static void simplifyOr(linked_hash_set<ArithLit> &lits);
 

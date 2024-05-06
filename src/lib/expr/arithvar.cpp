@@ -1,6 +1,5 @@
 #include "arithexpr.hpp"
 
-#include <purrs.hh>
 #include <assert.h>
 
 int ArithVar::last_tmp_idx {0};

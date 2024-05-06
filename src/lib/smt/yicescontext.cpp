@@ -28,18 +28,15 @@ YicesError::YicesError() : std::exception() {
 
 YicesContext::~YicesContext() { }
 
-term_t YicesContext::buildVar(const Var &var) {
-    type_t t {
-        std::visit(Overload{
-                       [](const Arith::Var) {
-                           return yices_int_type();
-                       },
-                       [](const Bools::Var) {
-                           return yices_bool_type();
-                       }
-                   }, var)};
-    term_t res = yices_new_uninterpreted_term(t);
-    yices_set_term_name(res, theory::getName(var).c_str());
+term_t YicesContext::buildVar(const Arith::Var &var) {
+    term_t res = yices_new_uninterpreted_term(yices_int_type());
+    yices_set_term_name(res, var->getName().c_str());
+    return res;
+}
+
+term_t YicesContext::buildVar(const Bools::Var &var) {
+    term_t res = yices_new_uninterpreted_term(yices_bool_type());
+    yices_set_term_name(res, var->getName().c_str());
     return res;
 }
 
@@ -116,42 +113,6 @@ term_t YicesContext::negate(const term_t &x) {
     return yices_not(x);
 }
 
-bool YicesContext::isAnd(const term_t &e) const {
-    return false; // yices represents x /\ y as !(x \/ y)
-}
-
-bool YicesContext::isAdd(const term_t &e) const {
-    return yices_term_is_sum(e) && yices_term_num_children(e) > 1;
-}
-
-bool YicesContext::isMul(const term_t &e) const {
-    return yices_term_is_product(e) || (yices_term_num_children(e) == 1 && yices_term_is_sum(e));
-}
-
-bool YicesContext::isPow(const term_t &e) const {
-    // yices does not support exponentiation
-    // it has a special internal representation for polynomials, though
-    // I'm not sure if we need special handling for that
-    return false;
-}
-
-bool YicesContext::isVar(const term_t &e) const {
-    return yices_term_constructor(e) == YICES_UNINTERPRETED_TERM;
-}
-
-bool YicesContext::isRationalConstant(const term_t &e) const {
-    return yices_term_constructor(e) == YICES_ARITH_CONSTANT;
-}
-
-bool YicesContext::isInt(const term_t &e) const {
-    return yices_is_int_atom(e);
-}
-
-Int YicesContext::toInt(const term_t &e) const {
-    assert(denominator(e) == 1);
-    return numerator(e);
-}
-
 Int mpz_to_int(const mpz_t &m) {
     const auto str {mpz_get_str(nullptr, 10, m)};
     const Int ret {str};
@@ -183,80 +144,6 @@ Int YicesContext::denominator(const term_t &e) const {
     } else {
         throw YicesError();
     }
-}
-
-term_t YicesContext::lhs(const term_t &e) const {
-    return yices_term_child(e, 0);
-}
-
-term_t YicesContext::rhs(const term_t &e) const {
-    return yices_term_child(e, 1);
-}
-
-bool YicesContext::isTrue(const term_t &e) const {
-    if (yices_term_is_atomic(e) && yices_term_is_bool(e)) {
-        int32_t res;
-        yices_bool_const_value(e, &res);
-        return res;
-    } else {
-        return false;
-    }
-}
-
-bool YicesContext::isFalse(const term_t &e) const {
-    if (yices_term_is_atomic(e) && yices_term_is_bool(e)) {
-        int32_t res;
-        yices_bool_const_value(e, &res);
-        return !res;
-    } else {
-        return false;
-    }
-}
-
-bool YicesContext::isNot(const term_t &e) const {
-    return yices_term_constructor(e) == YICES_NOT_TERM;
-}
-
-std::vector<term_t> YicesContext::getChildren(const term_t &e) const {
-    int children = yices_term_num_children(e);
-    std::vector<term_t> res;
-    if (yices_term_is_sum(e)) {
-        for (int i = 0; i < children; ++i) {
-            mpq_t coeff;
-            term_t child;
-            if (yices_sum_component(e, i, coeff, &child) != 0) {
-                throw YicesError();
-            }
-            if (children == 1) {
-                res.push_back(yices_mpq(coeff));
-                if (child != NULL_TERM) {
-                    res.push_back(child);
-                }
-            } else {
-                if (child == NULL_TERM) {
-                    res.push_back(yices_mpq(coeff));
-                } else {
-                    res.push_back(yices_mul(yices_mpq(coeff), child));
-                }
-            }
-        }
-    } else if (yices_term_is_product(e)) {
-        for (int i = 0; i < children; ++i) {
-            uint32_t exp;
-            term_t child;
-            if (yices_product_component(e, i, &child, &exp) != 0) {
-                throw YicesError();
-            }
-            for (unsigned int j = 0; j < exp; ++j) {
-                res.push_back(child);
-            }
-        }
-    } else {
-        for (int i = 0; i < children; ++i) {
-            res.push_back(yices_term_child(e, i));
-        }
-    }
-    return res;
 }
 
 void YicesContext::printStderr(const term_t &e) const {

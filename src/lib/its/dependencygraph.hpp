@@ -163,7 +163,8 @@ public:
     }
 
     bool hasEdge(Node from, Node to) const {
-        return successors.at(from).contains(to);
+        const auto it {successors.find(from)};
+        return it != successors.end() && it->second.contains(to);
     }
 
     const linked_hash_set<Node>& getNodes() const {

@@ -8,8 +8,6 @@ message(STATUS "loat_expr includes: ${loat_expr_INCLUDE_DIRS}")
 
 add_library(${PROJECT_NAME} OBJECT
   smt.hpp
-  smtcontext.hpp
-  exprtosmt.hpp
   z3.hpp
   z3.cpp
   z3context.cpp

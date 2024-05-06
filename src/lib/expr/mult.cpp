@@ -3,8 +3,6 @@
 
 #include "vector.hpp"
 
-#include <purrs.hh>
-
 ConsHash<ArithExpr, ArithMult, ArithMult::CacheHash, ArithMult::CacheEqual, ArithExprSet> ArithMult::cache;
 
 ArithMult::ArithMult(const ArithExprSet &args): ArithExpr(arith::Kind::Times), args(args) {}

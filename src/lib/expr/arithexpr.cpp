@@ -19,7 +19,6 @@
 #include "optional.hpp"
 #include "linkedhashmap.hpp"
 
-#include <purrs.hh>
 #include <sstream>
 
 ArithExpr::ArithExpr(const arith::Kind kind): kind(kind) {}
@@ -85,7 +84,7 @@ ArithExprPtr operator*(const ArithExprPtr x, const ArithExprPtr y) {
 }
 
 ArithExprPtr ArithExpr::divide(const Rational &y) const {
-    return arith::mkTimes({arith::mkConst(Rational(mp::denominator(y), mp::numerator(y))), cpp::assume_not_null(shared_from_this())});
+    return arith::mkTimes({arith::mkConst(Rational(mp::denominator(y), mp::numerator(y))), toPtr()});
 }
 
 ArithExprPtr operator^(const ArithExprPtr x, const ArithExprPtr y) {
@@ -362,7 +361,7 @@ Rational ArithExpr::getConstantFactor() const {
                     if (mp::denominator(factor) == 1 && mp::denominator(res) == 1) {
                         res = mp::gcd(mp::numerator(factor), mp::numerator(res));
                     } else {
-                        return 1;
+                        return Rational(1);
                     }
                 }
             }
@@ -466,7 +465,7 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
         },
         [&](const ArithMultPtr m) {
             if (degree == 0) {
-                return opt{m->has(var) ? arith::mkConst(0) : cpp::assume_not_null(shared_from_this())};
+                return opt{m->has(var) ? arith::mkConst(0) : toPtr()};
             }
             const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
             auto args {m->getArgs()};
@@ -634,9 +633,32 @@ Int ArithExpr::eval(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
     assert(isIntegral());
     const auto res {evalToRational(valuation)};
     if (mp::denominator(res) != 1) {
-        throw std::invalid_argument(toString(shared_from_this()) + " is not integral");
+        throw std::invalid_argument(toString(toPtr()) + " is not integral");
     }
     return mp::numerator(res);
+}
+
+std::optional<ArithExprPtr> ArithExpr::solve(const ArithVarPtr var) const {
+    // we can only solve linear expressions with rational coefficients
+    if (!isLinear({{var}})) {
+        return {};
+    }
+    const auto c {coeff(var)};
+    if (!c || (*c)->is(0)) {
+        return {};
+    }
+    const auto r {(*c)->isRational()};
+    if (!r) {
+        return {};
+    }
+    const auto monomial {(*c) * var->toExpr()};
+    const auto not_normalized {toPtr() - monomial};
+    const auto normalized {not_normalized->divide(-(***r))};
+    return normalized;
+}
+
+ArithExprPtr ArithExpr::toPtr() const {
+    return cpp::assume_not_null(shared_from_this());
 }
 
 std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {

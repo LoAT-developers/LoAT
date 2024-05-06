@@ -73,8 +73,8 @@ public:
     virtual void collectLits(LitSet &res) const = 0;
     virtual size_t size() const = 0;
 
-    void getBounds(const Arith::Var n, Bounds &res) const;
-    Bounds getBounds(const Arith::Var n) const;
+    void getBounds(const Arith::Var n, linked_hash_set<Bound> &res) const;
+    linked_hash_set<Bound> getBounds(const Arith::Var n) const;
     std::optional<Arith::Expr> getEquality(const Arith::Var n) const;
     void propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow) const;
     Arith::Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;

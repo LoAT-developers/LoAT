@@ -10,7 +10,6 @@ public:
     SwineContext(swine::Swine &solver);
 
     z3::expr pow(const z3::expr &base, const z3::expr &exp) override;
-    bool isPow(const z3::expr &e) const override;
 
 private:
 
