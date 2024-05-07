@@ -52,6 +52,10 @@ z3::expr Z3Context::times(const z3::expr &x, const z3::expr &y) {
     return x * y;
 }
 
+z3::expr Z3Context::mod(const z3::expr &x, const z3::expr &y) {
+    return x % y;
+}
+
 z3::expr Z3Context::eq(const z3::expr &x, const z3::expr &y) {
     return x == y;
 }

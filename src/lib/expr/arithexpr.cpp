@@ -129,6 +129,14 @@ const std::optional<ArithMultPtr> ArithExpr::isMult() const {
     }
 }
 
+const std::optional<ArithModPtr> ArithExpr::isMod() const {
+    if (kind == arith::Kind::Mod) {
+        return cpp::assume_not_null(static_pointer_cast<const ArithMod>(shared_from_this()));
+    } else {
+        return {};
+    }
+}
+
 const std::optional<ArithAddPtr> ArithExpr::isAdd() const {
     if (kind == arith::Kind::Plus) {
         return cpp::assume_not_null(static_pointer_cast<const ArithAdd>(shared_from_this()));
@@ -174,6 +182,9 @@ bool ArithExpr::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars
             }
             return true;
         },
+        [](const ArithModPtr) {
+            return false;
+        },
         [&](const ArithExpPtr e) {
             return is_constant(e);
         });
@@ -210,6 +221,9 @@ std::optional<Int> ArithExpr::isPoly() const {
             }
             return opt{res};
         },
+        [](const ArithModPtr) {
+            return false;
+        },
         [](const ArithExpPtr e) {
             const auto exp {e->getExponent()->isInt()};
             if (exp) {
@@ -238,6 +252,10 @@ void ArithExpr::collectVars(linked_hash_set<ArithVarPtr> &res) const {
                 arg->collectVars(res);
             }
         },
+        [&](const ArithModPtr m) {
+            m->getLhs()->collectVars(res);
+            m->getRhs()->collectVars(res);
+        },
         [&](const ArithExpPtr e) {
             e->getBase()->collectVars(res);
             e->getExponent()->collectVars(res);
@@ -263,6 +281,9 @@ bool ArithExpr::hasVarWith(const std::function<bool(const ArithVarPtr)> predicat
             return std::any_of(args.begin(), args.end(), [&](const auto &arg) -> bool {
                 return arg->hasVarWith(predicate);
             });
+        },
+        [&](const ArithModPtr m) {
+            return m->getLhs()->hasVarWith(predicate) || m->getRhs()->hasVarWith(predicate);
         },
         [&](const ArithExpPtr e) {
             return e->getBase()->hasVarWith(predicate) || e->getExponent()->hasVarWith(predicate);
@@ -300,6 +321,9 @@ std::optional<Int> ArithExpr::isPoly(const ArithVarPtr var) const {
             }
             return opt{res};
         },
+        [&](const ArithModPtr m) {
+            return !m->getLhs()->has(var) && !m->getRhs()->has(var);
+        },
         [&](const ArithExpPtr e) {
             if (!e->has(var)) {
                 return opt{0};
@@ -334,6 +358,9 @@ Int ArithExpr::denomLcm() const {
             return std::accumulate(args.begin(), args.end(), Int{1}, [](const auto &x, const auto &y) {
                 return x * y->denomLcm();
             });
+        },
+        [](const ArithModPtr m) {
+            return m->getLhs()->denomLcm() * m->getRhs()->denomLcm();
         },
         [](const ArithExpPtr) {
             return 1;
@@ -374,8 +401,41 @@ Rational ArithExpr::getConstantFactor() const {
             })};
             return it == args.end() ? 1 : (*(*it)->isRational())->getValue();
         },
+        [](const ArithModPtr m) {
+            return 1;
+        },
         [](const ArithExprPtr) {
             return 1;
+        });
+}
+
+Rational ArithExpr::getConstantAddend() const {
+    return apply<Rational>(
+        [](const ArithConstPtr t) {
+            return t->getValue();
+        },
+        [](const ArithVarPtr) {
+            return 0;
+        },
+        [](const ArithAddPtr a) {
+            Rational res {0};
+            for (const auto &arg: a->getArgs()) {
+                res += arg->getConstantAddend();
+            }
+            return res;
+        },
+        [](const ArithMultPtr m) {
+            Rational res {0};
+            for (const auto &arg: m->getArgs()) {
+                res *= arg->getConstantAddend();
+            }
+            return res;
+        },
+        [](const ArithModPtr m) {
+            return 0;
+        },
+        [](const ArithExprPtr) {
+            return 0;
         });
 }
 
@@ -406,8 +466,12 @@ std::optional<ArithVarPtr> ArithExpr::someVar() const {
             }
             return opt{};
         },
+        [](const ArithModPtr m) {
+            const auto res {m->getLhs()->someVar()};
+            return res ? res : m->getRhs()->someVar();
+        },
         [](const ArithExpPtr e) {
-            auto res {e->getBase()->someVar()};
+            const auto res {e->getBase()->someVar()};
             return res ? res : e->getExponent()->someVar();
         });
 }
@@ -425,6 +489,10 @@ void ArithExpr::exps(linked_hash_set<ArithExpPtr> &acc) const {
             for (const auto &arg: m->getArgs()) {
                 arg->exps(acc);
             }
+        },
+        [&](const ArithModPtr m) {
+            m->getLhs()->exps(acc);
+            m->getRhs()->exps(acc);
         },
         [&](const ArithExpPtr e) {
             e->getBase()->exps(acc);
@@ -474,6 +542,13 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
                 return opt{arith::mkTimes(std::move(arg_vec))};
             }
             return opt{arith::mkConst(0)};
+        },
+        [&](const ArithModPtr m) {
+            if (has(var)) {
+                return opt{};
+            } else {
+                return opt{arith::mkConst(0)};
+            }
         },
         [&](const ArithExpPtr e) {
             if (e->getBase()->isVar() == std::optional{var} && e->getExponent()->isInt() == std::optional{degree}) {
@@ -528,6 +603,13 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr var) const {
                 return opt{arith::mkTimes(std::move(new_args))};
             } else {
                 return opt{};
+            }
+        },
+        [&](const ArithModPtr m) {
+            if (has(var)) {
+                return opt{};
+            } else {
+                return opt{arith::mkConst(0)};
             }
         },
         [&](const ArithExpPtr e) {
@@ -599,6 +681,9 @@ bool ArithExpr::isIntegral() const {
                 return arg->isIntegral();
             });
         },
+        [](const ArithModPtr m) {
+            return m->getLhs()->isIntegral() && m->getRhs()->isIntegral();
+        },
         [](const ArithExpPtr e) {
             return true;
         });
@@ -623,6 +708,18 @@ Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valu
             return std::accumulate(args.begin(), args.end(), Rational{1}, [&](const auto &x, const auto y) {
                 return x * y->evalToRational(valuation);
             });
+        },
+        [&](const ArithModPtr m) {
+            const Int x {m->getLhs()->eval(valuation)};
+            const Int y {m->getRhs()->eval(valuation)};
+            const Int x_abs {mp::abs(x)};
+            const Int y_abs {mp::abs(x)};
+            const Rational mod {x_abs % y_abs};
+            if (x >= 0) {
+                return mod;
+            } else {
+                return Rational(y_abs) - mod;
+            }
         },
         [&](const ArithExpPtr e) {
             return mp::pow(mp::numerator(e->getBase()->evalToRational(valuation)), e->getExponent()->evalToRational(valuation).convert_to<long>());
@@ -685,6 +782,9 @@ std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
             }
             return pair{1, {m}};
         },
+        [](const ArithModPtr m) {
+            return pair {1, {m}};
+        },
         [](const ArithExpPtr e) {
             return pair {1, {e}};
         });
@@ -713,6 +813,9 @@ bool ArithExpr::isUnivariate(std::optional<ArithVarPtr> &acc) const {
                 return !arg->isMultivariate(acc);
             }) && acc;
         },
+        [&](const ArithModPtr m) {
+            return !m->getLhs()->isMultivariate(acc) && !m->getRhs()->isMultivariate(acc) && acc;
+        },
         [&](const ArithExpPtr e) {
             return !e->getBase()->isMultivariate(acc) && !e->getExponent()->isMultivariate(acc) && acc;
         });
@@ -731,6 +834,9 @@ bool ArithExpr::isNegated() const {
         },
         [](const ArithMultPtr m) {
             return m->getConstantFactor() < 0;
+        },
+        [](const ArithModPtr m) {
+            return false;
         },
         [](const ArithExpPtr) {
             return false;
@@ -760,6 +866,9 @@ bool ArithExpr::isMultivariate(std::optional<ArithVarPtr> &acc) const {
             return std::any_of(args.begin(), args.end(), [&](const auto &arg) -> bool {
                 return arg->isMultivariate(acc);
             });
+        },
+        [&](const ArithModPtr m) {
+            return m->getLhs()->isMultivariate(acc) || m->getRhs()->isMultivariate(acc);
         },
         [&](const ArithExpPtr e) {
             return e->getBase()->isMultivariate(acc) || e->getExponent()->isMultivariate(acc);
@@ -828,6 +937,21 @@ std::ostream& operator<<(std::ostream &s, const ArithExprPtr e) {
                 }
             } else {
                 s << ss.str();
+            }
+        },
+        [&](const ArithModPtr m) {
+            const auto lhs {m->getLhs()};
+            const auto rhs {m->getRhs()};
+            if (lhs->isRational() || lhs->isVar()) {
+                s << m->getLhs();
+            } else {
+                s << "(" << m->getLhs() << ")";
+            }
+            s << " % ";
+            if (rhs->isRational() || rhs->isVar()) {
+                s << m->getRhs();
+            } else {
+                s << "(" << m->getRhs() << ")";
             }
         },
         [&](const ArithExpPtr a) {

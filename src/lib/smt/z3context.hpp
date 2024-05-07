@@ -41,6 +41,7 @@ public:
     z3::expr pow(const z3::expr &base, const z3::expr &exp) override;
     z3::expr plus(const z3::expr &x, const z3::expr &y) override;
     z3::expr times(const z3::expr &x, const z3::expr &y) override;
+    z3::expr mod(const z3::expr &x, const z3::expr &y) override;
     z3::expr eq(const z3::expr &x, const z3::expr &y) override;
     z3::expr lt(const z3::expr &x, const z3::expr &y) override;
     z3::expr le(const z3::expr &x, const z3::expr &y) override;

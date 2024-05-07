@@ -21,8 +21,9 @@
 #include <variant>
 #include <initializer_list>
 #include <optional>
-#undef EOF
+#ifndef EOF
 #define EOF (-1)
+#endif
 #include <boost/multiprecision/cpp_int.hpp>
 #include <functional>
 
@@ -39,12 +40,14 @@ class ArithConst;
 class ArithExp;
 class ArithAdd;
 class ArithMult;
+class ArithMod;
 
 using ArithExprPtr = cpp::not_null<std::shared_ptr<const ArithExpr>>;
 using ArithVarPtr = cpp::not_null<std::shared_ptr<const ArithVar>>;
 using ArithConstPtr = cpp::not_null<std::shared_ptr<const ArithConst>>;
 using ArithAddPtr = cpp::not_null<std::shared_ptr<const ArithAdd>>;
 using ArithMultPtr = cpp::not_null<std::shared_ptr<const ArithMult>>;
+using ArithModPtr = cpp::not_null<std::shared_ptr<const ArithMod>>;
 using ArithExpPtr = cpp::not_null<std::shared_ptr<const ArithExp>>;
 using ArithExprSet = linked_hash_set<ArithExprPtr>;
 using ArithExprVec = std::vector<ArithExprPtr>;
@@ -57,13 +60,14 @@ namespace arith {
 
 ArithExprPtr mkPlus(ArithExprVec &&args);
 ArithExprPtr mkTimes(ArithExprVec &&args);
+ArithExprPtr mkMod(ArithExprPtr x, ArithExprPtr y);
 ArithExprPtr mkConst(const Rational &r);
 ArithExprPtr mkConst(const Rational &&r);
 ArithExprPtr mkExp(const ArithExprPtr base, const ArithExprPtr exponent);
 ArithExprPtr mkVar(const int idx);
 
 enum class Kind {
-    Plus, Times, Exp, Constant, Variable
+    Plus, Times, Mod, Exp, Constant, Variable
 };
 
 }
@@ -97,6 +101,7 @@ public:
           const std::function<T(const ArithVarPtr)> &var,
           const std::function<T(const ArithAddPtr)> &add,
           const std::function<T(const ArithMultPtr)> &mult,
+          const std::function<T(const ArithModPtr)> &mod,
           const std::function<T(const ArithExpPtr)> &exp) const {
         const auto c {isRational()};
         if (c) {
@@ -113,6 +118,10 @@ public:
         const auto m {isMult()};
         if (m) {
             return mult(*m);
+        }
+        const auto mo {isMod()};
+        if (mo) {
+            return mod(*mo);
         }
         const auto e {isPow()};
         if (e) {
@@ -135,6 +144,8 @@ public:
      * @return True iff this is of the form x*y for some expressions x, y.
      */
     const std::optional<ArithMultPtr> isMult() const;
+
+    const std::optional<ArithModPtr> isMod() const;
 
     /**
      * @return True iff this is of the form x+y for some expressions x, y.
@@ -200,6 +211,8 @@ public:
     Int denomLcm() const;
 
     Rational getConstantFactor() const;
+
+    Rational getConstantAddend() const;
 
     /**
      * @return True iff this is a polynomial wrt. the given variable.
@@ -365,6 +378,33 @@ private:
 
 public:
     ArithMult(const ArithExprSet &args);
+
+};
+
+class ArithMod: public ArithExpr {
+
+    friend ArithExprPtr arith::mkMod(ArithExprPtr x, ArithExprPtr y);
+
+public:
+
+    const ArithExprPtr getLhs() const;
+    const ArithExprPtr getRhs() const;
+
+private:
+
+    ArithExprPtr lhs;
+    ArithExprPtr rhs;
+
+    struct CacheEqual {
+        bool operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args1, const std::tuple<ArithExprPtr, ArithExprPtr> &args2) const noexcept;
+    };
+    struct CacheHash {
+        size_t operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args) const noexcept;
+    };
+    static ConsHash<ArithExpr, ArithMod, CacheHash, CacheEqual, ArithExprPtr, ArithExprPtr> cache;
+
+public:
+    ArithMod(const ArithExprPtr, const ArithExprPtr);
 
 };
 

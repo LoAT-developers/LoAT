@@ -36,6 +36,7 @@ public:
     term_t pow(const term_t &base, const term_t &exp) override;
     term_t plus(const term_t &x, const term_t &y) override;
     term_t times(const term_t &x, const term_t &y) override;
+    term_t mod(const term_t &x, const term_t &y) override;
     term_t eq(const term_t &x, const term_t &y) override;
     term_t lt(const term_t &x, const term_t &y) override;
     term_t le(const term_t &x, const term_t &y) override;

@@ -32,6 +32,7 @@ public:
     virtual Expr pow(const Expr &base, const Expr &exp) = 0;
     virtual Expr plus(const Expr &x, const Expr &y) = 0;
     virtual Expr times(const Expr &x, const Expr &y) = 0;
+    virtual Expr mod(const Expr &x, const Expr &y) = 0;
     virtual Formula eq(const Expr &x, const Expr &y) = 0;
     virtual Formula lt(const Expr &x, const Expr &y) = 0;
     virtual Formula le(const Expr &x, const Expr &y) = 0;

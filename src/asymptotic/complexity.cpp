@@ -129,6 +129,9 @@ Complexity toComplexityRec(const Arith::Expr term) {
                 return x * toComplexityRec(y);
             });
         },
+        [](const ArithModPtr m) {
+            return Complexity::Const;
+        },
         [](const ArithExpPtr e) {
             // If the exponent is at least polynomial (non-constant), complexity might be exponential
             if (toComplexityRec(e->getExponent()) > Complexity::Const) {

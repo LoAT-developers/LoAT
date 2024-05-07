@@ -23,6 +23,7 @@ public:
     z_lin_exp_t pow(const z_lin_exp_t &base, const z_lin_exp_t &exp) override;
     z_lin_exp_t plus(const z_lin_exp_t &x, const z_lin_exp_t &y) override;
     z_lin_exp_t times(const z_lin_exp_t &x, const z_lin_exp_t &y) override;
+    z_lin_exp_t mod(const z_lin_exp_t &x, const z_lin_exp_t &y) override;
     CrabConjunction eq(const z_lin_exp_t &x, const z_lin_exp_t &y) override;
     CrabConjunction lt(const z_lin_exp_t &x, const z_lin_exp_t &y) override;
     CrabConjunction le(const z_lin_exp_t &x, const z_lin_exp_t &y) override;

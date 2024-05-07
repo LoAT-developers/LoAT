@@ -200,6 +200,9 @@ ArithExprPtr ArithSubs::operator()(const ArithExprPtr t) const {
             });
             return arith::mkTimes(std::move(new_args));
         },
+        [&](const ArithModPtr m) {
+            return arith::mkMod((*this)(m->getLhs()), (*this)(m->getRhs()));
+        },
         [&](const ArithExpPtr e) {
             return arith::mkExp((*this)(e->getBase()), (*this)(e->getExponent()));
         });

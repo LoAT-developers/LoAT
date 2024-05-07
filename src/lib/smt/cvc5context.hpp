@@ -15,6 +15,7 @@ public:
     cvc5::Term pow(const cvc5::Term &base, const cvc5::Term &exp) override;
     cvc5::Term plus(const cvc5::Term &x, const cvc5::Term &y) override;
     cvc5::Term times(const cvc5::Term &x, const cvc5::Term &y) override;
+    cvc5::Term mod(const cvc5::Term &x, const cvc5::Term &y) override;
     cvc5::Term eq(const cvc5::Term &x, const cvc5::Term &y) override;
     cvc5::Term lt(const cvc5::Term &x, const cvc5::Term &y) override;
     cvc5::Term le(const cvc5::Term &x, const cvc5::Term &y) override;

@@ -37,6 +37,7 @@ add_library(${PROJECT_NAME} OBJECT
   exp.cpp
   mult.cpp
   add.cpp
+  mod.cpp
   model.hpp
   model.cpp
   exprconverter.hpp

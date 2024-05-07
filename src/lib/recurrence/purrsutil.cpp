@@ -15,7 +15,7 @@ Purrs::Expr toPurrs(const ArithExprPtr e, purrs_var_map &m) {
         [](const ArithConstPtr t) {
             return Purrs::Number(t->numerator()->getValue().str().c_str()) / Purrs::Number(t->denominator()->getValue().str().c_str());
         },
-        [&m](const ArithVarPtr x) {
+        [&](const ArithVarPtr x) {
             const auto res {m.left.find(x)};
             if (res == m.left.end()) {
                 Purrs::Symbol s {x->getName()};
@@ -24,19 +24,22 @@ Purrs::Expr toPurrs(const ArithExprPtr e, purrs_var_map &m) {
             }
             return res->second;
         },
-        [&m](const ArithAddPtr a) {
+        [&](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
             return std::accumulate(args.begin(), args.end(), Purrs::Expr(0), [&m](const auto &x, const auto &y){
                 return x + toPurrs(y, m);
             });
         },
-        [&m](const ArithMultPtr mult) {
+        [&](const ArithMultPtr mult) {
             const auto &args {mult->getArgs()};
             return std::accumulate(args.begin(), args.end(), Purrs::Expr(1), [&m](const auto &x, const auto &y){
                 return x * toPurrs(y, m);
             });
         },
-        [&m](const ArithExpPtr e) {
+        [&](const ArithModPtr mod) {
+            return Purrs::mod(toPurrs(mod->getLhs(), m), toPurrs(mod->getRhs(), m));
+        },
+        [&](const ArithExpPtr e) {
             return Purrs::pwr(toPurrs(e->getBase(), m), toPurrs(e->getExponent(), m));
         });
 }

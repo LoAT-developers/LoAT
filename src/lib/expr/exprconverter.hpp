@@ -90,6 +90,9 @@ protected:
                     return context.times(x, convertEx(y));
                 });
             },
+            [&](const ArithModPtr m) {
+                return context.mod(convertEx(m->getLhs()), convertEx(m->getRhs()));
+            },
             [&](const ArithExpPtr e) {
                 const auto base {e->getBase()};
                 const auto exp {e->getExponent()};

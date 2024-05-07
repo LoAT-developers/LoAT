@@ -38,6 +38,10 @@ z_lin_exp_t CrabContext::times(const z_lin_exp_t &x, const z_lin_exp_t &y) {
     }
 }
 
+z_lin_exp_t CrabContext::mod(const z_lin_exp_t &x, const z_lin_exp_t &y) {
+    throw std::invalid_argument("crabcontext::mod not supported");
+}
+
 CrabConjunction CrabContext::eq(const z_lin_exp_t &x, const z_lin_exp_t &y) {
     return {.constraints = {x == y}};
 }
