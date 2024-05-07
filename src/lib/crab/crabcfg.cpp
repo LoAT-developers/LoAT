@@ -53,7 +53,14 @@ void CrabCfg::transition_to_bb(const Bools::Expr t, z_basic_block_t &b) {
     for (const auto &[x, y] : var_map) {
         if (theory::isProgVar(x)) {
             const auto post{var_map.left.at(theory::postVar(x))};
-            b.assign(y, post);
+            std::visit(
+                Overload{
+                    [&](const Arith::Var) {
+                        b.assign(y, post);
+                    },
+                    [&](const Bools::Var) {
+                        b.bool_assign(y, post);
+                    }}, x);
         }
     }
     for (const auto &[x, y] : var_map) {
@@ -73,7 +80,14 @@ std::shared_ptr<cfg_impl::z_cfg_t> CrabCfg::lasso_to_cfg(const Bools::Expr stem,
     loop >> ret;
     assume(stem, entry);
     for (const auto &[s,x]: snapshots) {
-        entry.assign(var_map.left.at(s), var_map.left.at(x));
+        std::visit(
+            Overload{
+                [&](const Arith::Var) {
+                    entry.assign(var_map.left.at(s), var_map.left.at(x));
+                },
+                [&](const Bools::Var) {
+                    entry.bool_assign(var_map.left.at(s), var_map.left.at(x));
+                }}, s);
     }
     transition_to_bb(cycle, loop);
     return cfg;
