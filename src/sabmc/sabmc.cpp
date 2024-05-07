@@ -682,7 +682,7 @@ void SABMC::analyze() {
             }
             if (Config::Analysis::log) std::cout << "done with loop handling" << std::endl;
             break;
-        }}
+        }
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
         }
