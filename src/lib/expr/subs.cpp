@@ -275,7 +275,7 @@ inline Bools::Expr subsImpl(const Subs &s, const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
             using T = typename std::tuple_element_t<I, Theories>;
-            if constexpr (std::same_as<typename T::Var, Bools::Var>) {
+            if constexpr (std::same_as<T, Bools>) {
                 return s.template get<T>().subs(std::get<I>(lit));
             } else {
                 return bools::mkLit(std::get<I>(lit).subs(s.template get<T>()));
