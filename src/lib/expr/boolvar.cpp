@@ -4,7 +4,7 @@
 #include <functional>
 
 int BoolVar::last_tmp_idx {0};
-int BoolVar::last_prog_idx {0};
+int BoolVar::last_prog_idx {1};
 
 
 BoolVar::BoolVar(const int idx): idx(idx) {
