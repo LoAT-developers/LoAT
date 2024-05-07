@@ -45,7 +45,9 @@ SABMC::SABMC(SafetyProblem &t):
     vars.insert(trace_var);
     vars.insert(n);
     for (const auto &x: t.vars()) {
-        if (!theory::isPostVar(x)) {
+        if (theory::isPostVar(x)) {
+            vars.insert(theory::progVar(x));
+        } else {
             vars.insert(x);
         }
     }
@@ -208,11 +210,150 @@ Bools::Expr SABMC::specialize(const Bools::Expr pre, const Range &range, const s
 }
 
 Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
+    // the loop counter is bounded by 0
+    const auto n_term {Arith::varToExpr(n)};
+    BoolExprSet res {bools::mkLit(arith::mkGt(n_term, arith::mkConst(0)))};
+    const auto lits {loop->lits().get<Arith::Lit>()};
+    // find "toggling" vars:
+    // x' = -x + c
+    linked_hash_map<Arith::Var, Arith::Expr> toggling;
+    bool changed;
+    do {
+        changed = false;
+        for (const auto &rel : lits) {
+            if (!rel.isLinear() || !rel.isEq()) {
+                continue;
+            }
+            const auto vars {rel.vars()};
+            if (vars.size() != 2) {
+                continue;
+            }
+            const auto x {*vars.begin()};
+            const auto y {*(++vars.begin())};
+            const auto [pre, post] = x->isProgVar() ? std::pair{x, y} : std::pair{y, x};
+            if (!pre->isProgVar() || post != ArithVar::postVar(pre)) {
+                continue;
+            }
+            if (toggling.contains(pre)) {
+                continue;
+            }
+            const auto t{rel.lhs()};
+            const auto pre_coeff_term{*t->coeff(pre)};
+            const auto post_coeff_term{*t->coeff(post)};
+            const auto pre_coeff{*pre_coeff_term->isInt()};
+            const auto post_coeff{*post_coeff_term->isInt()};
+            if (mp::abs(pre_coeff) != 1 || mp::abs(post_coeff) != 1) {
+                continue;
+            }
+            const auto addend {t - pre_coeff_term * pre - post_coeff_term * post};
+            if ((pre_coeff > 0) == (post_coeff > 0)) {
+                changed = true;
+                toggling.emplace(pre, addend);
+                const auto premise_even{bools::mkLit(arith::mkEq(
+                    arith::mkMod(
+                        n_term,
+                        arith::mkConst(2)),
+                    arith::mkConst(1)))};
+                const auto conclusion_even{bools::mkLit(arith::mkEq(post, pre))};
+                const auto premise_odd{bools::mkLit(arith::mkEq(
+                    arith::mkMod(
+                        n_term,
+                        arith::mkConst(2)),
+                    arith::mkConst(0)))};
+                const auto conclusion_odd{bools::mkLit(arith::mkEq(post, -pre + addend))};
+                res.insert(bools::mkOr(std::vector{premise_even, conclusion_even}));
+                res.insert(bools::mkOr(std::vector{premise_odd, conclusion_odd}));
+            }
+        }
+    } while (changed);
+    // find vars that only depend on toggling vars:
+    // x' = -x + c
+    // y' = y + x + d
+    // z' = z + x' + k
+    for (const auto &rel : lits) {
+        if (!rel.isLinear() || !rel.isEq()) {
+            continue;
+        }
+        const auto vars{rel.vars()};
+        std::optional<Arith::Var> pre;
+        std::optional<Arith::Var> post;
+        auto all_toggling {true};
+        auto some_toggling {false};
+        Arith::Subs even;
+        Arith::Subs odd;
+        const auto t{rel.lhs()};
+        for (const auto &x : vars) {
+            const auto p = x->isProgVar() ? x : x->progVar(x);
+            if (toggling.contains(p)) {
+                some_toggling = true;
+                const auto c {toggling.at(p)};
+                if (x->isProgVar()) {
+                    // y' = y + x + ...
+                    // y(1)=y+x, y(2)=(y-x+c)+x=y+c, y(3)=y+x+c y(4)=(y-x+c)+x+c=y+2c, ...
+                    // we can ignore sign and coefficient here, they are taken into account by applying the substitutions
+                    // e.g., with y' = y - 2x, we get the following for the case that n is odd:
+                    // y' = y - 2 * (x + (n-1) * c) = y - 2 * x - 2 * (n-1) * c
+                    // y(1) = y-2x = (y - 2 * x - 2 * (n-1) * c/2)[n/1]
+                    // y(2) = y-2(-x+c)-2x = y-2c
+                    // y(3) = y-2x-2c = (y - 2 * x - 2 * (n-1) * c/2)[n/3]
+                    // ...
+                    odd.put(x, x + (n_term - arith::mkConst(1)) * c->divide(2));
+                    even.put(x, n_term * c->divide(2));
+                } else {
+                    // y' = y + x' + ...
+                    // y(0)=y, y(1)=y-x+c, y(2)=(y+x)-x+c=y+c, y(3)=(y-x+c)+c=y-x+2c y(4)=(y+x)-x+2c=y+2c, ...
+                    odd.put(x, -x + (n_term + arith::mkConst(1)) * c->divide(2));
+                    even.put(x, n_term * c->divide(2));
+                }
+                continue;
+            } else if (x->isProgVar()) {
+                if (pre) {
+                    all_toggling = false;
+                    break;
+                }
+                pre = x;
+            } else {
+                if (post) {
+                    all_toggling = false;
+                    break;
+                }
+                post = x;
+            }
+        }
+        if (!some_toggling || !all_toggling || !pre || !post || *post != (*pre)->postVar(*pre)) {
+            continue;
+        }
+        const auto pre_coeff_term{*t->coeff(*pre)};
+        const auto post_coeff_term{*t->coeff(*post)};
+        const auto pre_coeff{*pre_coeff_term->isInt()};
+        const auto post_coeff{*post_coeff_term->isInt()};
+        if (mp::abs(pre_coeff) != 1 || mp::abs(post_coeff) != 1) {
+            continue;
+        }
+        if ((pre_coeff > 0) == (post_coeff > 0)) {
+            continue;
+        }
+        const auto constant_addend {arith::mkConst(t->getConstantAddend())};
+        const auto var_addend {t - pre_coeff_term * *pre - post_coeff_term * *post - constant_addend};
+        const auto premise_even {bools::mkLit(arith::mkEq(
+            arith::mkMod(
+                n_term,
+                arith::mkConst(2)),
+            arith::mkConst(1)))};
+        const auto conclusion_even {bools::mkLit(arith::mkEq(*post, *pre + even(var_addend) + n_term * constant_addend))};
+        const auto premise_odd {bools::mkLit(arith::mkEq(
+            arith::mkMod(
+                n_term,
+                arith::mkConst(2)),
+            arith::mkConst(0)))};
+        const auto conclusion_odd {bools::mkLit(arith::mkEq(*post, *pre + odd(var_addend) + n_term * constant_addend))};
+        res.insert(bools::mkOr(std::vector{premise_even, conclusion_even}));
+        res.insert(bools::mkOr(std::vector{premise_odd, conclusion_odd}));
+    }
     // find recurrent equations and inequations
     linked_hash_map<Arith::Var, Int> eqs;
     linked_hash_map<Arith::Var, Int> lbs;
     linked_hash_map<Arith::Var, Int> ubs;
-    const auto lits {loop->lits().get<Arith::Lit>()};
     for (const auto &rel: lits) {
         if (!rel.isLinear() || rel.isNeq()) {
             continue;
@@ -238,10 +379,10 @@ Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
         if (mp::abs(pre_coeff) != 1 || mp::abs(post_coeff) != 1) {
             continue;
         }
+        const auto constant_term {t - pre_coeff_term * pre - post_coeff_term * post};
         if ((pre_coeff > 0) == (post_coeff > 0)) {
             continue;
         }
-        const auto constant_term {t - pre_coeff_term * pre - post_coeff_term * post};
         auto constant {*constant_term->isInt()};
         if (rel.isEq()) {
             eqs.emplace(pre, post_coeff > 0 ? -constant : constant);
@@ -270,103 +411,97 @@ Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
             }
         }
     }
-    if (eqs.empty() && lbs.empty() && ubs.empty()) {
-        return top();
-    }
-    // the loop counter is bounded by 0
-    const auto n_term {Arith::varToExpr(n)};
-    std::vector<Arith::Lit> res {arith::mkGt(n_term, arith::mkConst(0))};
-    // each recurrent (in)equation gives rise to a new literal
-    Arith::Subs subs_first;
-    Arith::Subs subs_last;
-    for (const auto &[pre, c] : eqs) {
-        const auto c_term{arith::mkConst(c)};
-        const auto post{ArithVar::postVar(pre)};
-        subs_first.put(post, pre + c_term);
-        const auto rhs{pre + c_term * n_term};
-        subs_last.put(pre, rhs - c_term);
-        subs_last.put(post, rhs);
-        res.push_back(arith::mkEq(ArithVar::postVar(pre), rhs));
-    }
-    for (const auto &[pre,c]: lbs) {
-        res.push_back(arith::mkGeq(ArithVar::postVar(pre), pre + arith::mkConst(c) * n_term));
-    }
-    for (const auto &[pre,c]: ubs) {
-        res.push_back(arith::mkLeq(ArithVar::postVar(pre), pre + arith::mkConst(c) * n_term));
-    }
-    for (const auto &rel: lits) {
-        const auto vars {rel.vars()};
-        // keep literals that only refer to post-vars
-        if (std::all_of(vars.begin(), vars.end(), theory::isPostVar)) {
-            res.push_back(rel);
+    if (!eqs.empty() || !lbs.empty() || ubs.empty()) {
+        // each recurrent (in)equation gives rise to a new literal
+        Arith::Subs subs_first;
+        Arith::Subs subs_last;
+        for (const auto &[pre, c] : eqs) {
+            const auto c_term{arith::mkConst(c)};
+            const auto post{ArithVar::postVar(pre)};
+            subs_first.put(post, pre + c_term);
+            const auto rhs{pre + c_term * n_term};
+            subs_last.put(pre, rhs - c_term);
+            subs_last.put(post, rhs);
+            res.insert(bools::mkLit(arith::mkEq(ArithVar::postVar(pre), rhs)));
         }
-        if (!rel.isLinear()) {
-            continue;
+        for (const auto &[pre, c] : lbs) {
+            res.insert(bools::mkLit(arith::mkGeq(ArithVar::postVar(pre), pre + arith::mkConst(c) * n_term)));
         }
-        if (std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
-            continue;
+        for (const auto &[pre, c] : ubs) {
+            res.insert(bools::mkLit(arith::mkLeq(ArithVar::postVar(pre), pre + arith::mkConst(c) * n_term)));
         }
-        {
-            // construct literal for the but-last iteration
-            auto s{subs_last};
-            auto fail {false};
-            for (const auto &x : vars) {
-                const auto pre = x->isProgVar() ? x : ArithVar::progVar(x);
-                if (!eqs.contains(pre)) {
-                    const auto bounds = *(*rel.lhs()->coeff(x))->isInt() > 0 ? ubs : lbs;
-                    const auto c{bounds.get(pre)};
-                    if (c) {
-                        const auto c_term {arith::mkConst(*c)};
-                        const auto rhs{pre + c_term * n_term};
-                        s.put(x, x->isProgVar() ? rhs - c_term : rhs);
-                    } else {
-                        fail = true;
-                        break;
+        for (const auto &rel : lits) {
+            const auto vars{rel.vars()};
+            // keep literals that only refer to post-vars
+            if (std::all_of(vars.begin(), vars.end(), theory::isPostVar)) {
+                res.insert(bools::mkLit(rel));
+            }
+            if (!rel.isLinear()) {
+                continue;
+            }
+            if (std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
+                continue;
+            }
+            {
+                // construct literal for the but-last iteration
+                auto s{subs_last};
+                auto fail{false};
+                for (const auto &x : vars) {
+                    const auto pre = x->isProgVar() ? x : ArithVar::progVar(x);
+                    if (!eqs.contains(pre)) {
+                        const auto bounds = *(*rel.lhs()->coeff(x))->isInt() > 0 ? ubs : lbs;
+                        const auto c{bounds.get(pre)};
+                        if (c) {
+                            const auto c_term{arith::mkConst(*c)};
+                            const auto rhs{pre + c_term * n_term};
+                            s.put(x, x->isProgVar() ? rhs - c_term : rhs);
+                        } else {
+                            fail = true;
+                            break;
+                        }
                     }
                 }
-            }
-            if (!fail) {
-                res.push_back(rel.subs(s));
-            }
-        }
-        {
-            // construct literal for the first iteration
-            auto s{subs_first};
-            auto fail {false};
-            for (const auto &post : vars) {
-                if (!post->isPostVar()) {
-                    continue;
+                if (!fail) {
+                    res.insert(bools::mkLit(rel.subs(s)));
                 }
-                const auto pre{ArithVar::progVar(post)};
-                if (!eqs.contains(pre)) {
-                    const auto bounds = *(*rel.lhs()->coeff(post))->isInt() > 0 ? ubs : lbs;
-                    const auto c{bounds.get(pre)};
-                    if (c) {
-                        s.put(post, pre + arith::mkConst(*c));
-                    } else {
-                        fail = true;
-                        break;
+            }
+            {
+                // construct literal for the first iteration
+                auto s{subs_first};
+                auto fail{false};
+                for (const auto &post : vars) {
+                    if (!post->isPostVar()) {
+                        continue;
+                    }
+                    const auto pre{ArithVar::progVar(post)};
+                    if (!eqs.contains(pre)) {
+                        const auto bounds = *(*rel.lhs()->coeff(post))->isInt() > 0 ? ubs : lbs;
+                        const auto c{bounds.get(pre)};
+                        if (c) {
+                            s.put(post, pre + arith::mkConst(*c));
+                        } else {
+                            fail = true;
+                            break;
+                        }
                     }
                 }
-            }
-            if (!fail) {
-                res.push_back(rel.subs(s));
+                if (!fail) {
+                    res.insert(bools::mkLit(rel.subs(s)));
+                }
             }
         }
     }
-    const auto ret {bools::mkAndFromLits(res)};
-    std::cout << "recurrence analysis:" << std::endl << ret << std::endl << "loop counter:" << n << std::endl;
+    const auto ret {bools::mkAnd(res)};
     return ret;
 }
 
 void SABMC::handle_loop(const Range &range) {
-    std::cout << "computing init" << std::endl;
-    const auto init {specialize(t.init(), solver->model(t.init()->vars()), theory::isTempVar)};
-    std::cout << "computing stem" << std::endl;
+    // std::cout << "computing init" << std::endl;
+    // const auto init {specialize(t.init(), solver->model(t.init()->vars()), theory::isTempVar)};
+    // std::cout << "computing stem" << std::endl;
     // const auto stem {specialize(init, Range::from_length(0, range.start()), [](const auto &x) {
     //     return !theory::isPostVar(x);
     // })};
-    std::cout << "computing loop" << std::endl;
     const auto loop {specialize(top(), range, theory::isTempVar)};
     Subs post_to_pre;
     for (const auto &x: vars) {
@@ -496,7 +631,7 @@ void SABMC::analyze() {
         t = *res;
         if (Config::Analysis::log) {
             std::cout << "Simplified Problem" << std::endl;
-            // ITSExport::printForProof(its, std::cout);
+            std::cout << t <<std::endl;
         }
     }
     std::vector<Bools::Expr> steps;
