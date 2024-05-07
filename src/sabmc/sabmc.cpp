@@ -667,9 +667,10 @@ void SABMC::analyze() {
         case SmtResult::Unsat:
             sat();
             return;
+        case SmtResult::Unknown:
+            unknown();
+            return;
         case SmtResult::Sat:
-        case SmtResult::Unknown: {
-            // std::cout << "model: " << solver->model() << std::endl;
             build_trace();
             if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
             const auto range {has_looping_infix()};
