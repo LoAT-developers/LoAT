@@ -358,6 +358,18 @@ Subs Subs::compose(const Subs &that) const {
 }
 
 template<std::size_t I = 0>
+inline void collectDomainImpl(const Subs &subs, VarSet &res) {
+    if constexpr (I < num_theories) {
+        subs.get<I>().collectDomain(res.get<I>());
+        collectDomainImpl<I+1>(subs, res);
+    }
+}
+
+void Subs::collectDomain(VarSet &res) const {
+    collectDomainImpl<0>(*this, res);
+}
+
+template<std::size_t I = 0>
 inline void collectCoDomainVarsImpl(const Subs &subs, VarSet &res) {
     if constexpr (I < num_theories) {
         if constexpr (theory::is<I, Bools>()) {

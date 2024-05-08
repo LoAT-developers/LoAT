@@ -184,6 +184,7 @@ public:
     BoolSubs tac(const BoolSubs &that) const;
     Subs concat(const Subs &that) const;
     Subs compose(const Subs &that) const;
+    void collectDomain(VarSet &res) const;
     void collectCoDomainVars(VarSet &res) const;
     void collectVars(VarSet &vars) const;
     VarSet vars() const;

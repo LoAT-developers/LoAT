@@ -77,21 +77,33 @@ std::pair<Bools::Expr, Model> SABMC::compress(const Bools::Expr pre, const Range
         const auto rule {trace[i]};
         const auto s {get_subs(i, 1)};
         if (loop) {
+            // sigma1 maps vars from chained to the corresponding vars from rule
+            // sigma2 maps vars from chained to the corresponding vars from loop
+            // temporary variables in rule remain unchanged
+            // temporary variables in loop that clash with rule are renamed
             const auto [chained, sigma1, sigma2] {Chaining::chain(rule, *loop)};
-            loop = chained;
+            // all pre-vars and temp vars that already occured in rule correspond to vars from rule
             auto fst_vars {t.pre_vars()};
             rule->collectVars(fst_vars);
             for (const auto &x: t.post_vars()) {
                 fst_vars.erase(x);
             }
+            // map them to the corresponding SMT vars by taking sigma1 and s (the var renaming that
+            // was used for the step with rule) into account
             const auto fst_var_renaming {sigma1.compose(s).project(fst_vars)};
+            // all post-vars and all other variables that occur in chained, but not in rule, correspond
+            // to variables from loop
             auto snd_vars {t.post_vars()};
-            (*loop)->collectVars(snd_vars);
-            for (const auto &x: t.pre_vars()) {
+            chained->collectVars(snd_vars);
+            for (const auto &x: fst_vars) {
                 snd_vars.erase(x);
             }
+            // map them to SMT vars by taking sigma2 and the variable renaming that has been constructed
+            // so far into account
             auto snd_var_renaming {sigma2.compose(var_renaming).project(snd_vars)};
-            var_renaming = fst_var_renaming.compose(snd_var_renaming);
+            // both var renamings are disjoint by construction
+            var_renaming = fst_var_renaming.unite(snd_var_renaming);
+            loop = chained;
         } else {
             loop = rule;
             var_renaming = s;
