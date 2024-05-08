@@ -48,6 +48,10 @@ docker cp elina_dummy:/usr/local/include/opt_zones.h $DEST/include
 docker cp elina_dummy:/usr/local/include/opt_zones_internal.h $DEST/include
 docker cp elina_dummy:/usr/local/include/opt_mat.h $DEST/include
 docker cp elina_dummy:/usr/local/include/comp_list.h $DEST/include
+
+docker cp elina_dummy:/usr/include/mpfr.h $DEST/include
+docker cp elina_dummy:/usr/include/mpf2mpfr.h $DEST/include
+docker cp elina_dummy:/usr/lib/libmpfr.a $DEST/lib
 echo "rm..."
 docker rm -f elina_dummy
 echo "done!"

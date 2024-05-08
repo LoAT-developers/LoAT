@@ -5,4 +5,4 @@ ENV CXXFLAGS $CFLAGS
 ENV LD_LIBRARY_PATH=/workspaces/LoAT-docker/docker/loat-base-image/usr/local/lib
 ENV CPATH=/workspaces/LoAT-docker/docker/loat-base-image/usr/local/include
 
-RUN apk add cmake gmp-dev libgmpxx boost-dev gdb mpfr-dev
+RUN apk add cmake boost-dev gdb
