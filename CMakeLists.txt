@@ -33,6 +33,7 @@ endif()
 
 add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter -fconcepts-diagnostics-depth=100)
 
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
 
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
