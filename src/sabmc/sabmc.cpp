@@ -157,13 +157,39 @@ Bools::Expr mbp(const Bools::Expr &t, const Model &model, const Arith::Var x) {
         return b.kind == BoundKind::Equality;
     })};
     if (it != bounds.end()) {
-        return Subs::build<Arith>(x, it->bound)(t);
+        auto res {Subs::build<Arith>(x, it->bound)(t)};
+        const auto factor {it->bound->getConstantFactor()};
+        const auto denom {mp::denominator(factor)};
+        if (denom != 1) {
+            res = res && bools::mkLit(arith::mkEq(arith::mkMod(it->bound * arith::mkConst(denom), arith::mkConst(denom)), arith::mkConst(0)));
+        }
+        return res;
     } else {
+        auto div {t->getDivisibility(x)};
+        Int flcm {1};
+        Int mlcm {1};
+        for (const auto &b: bounds) {
+            flcm = mp::lcm(flcm, mp::denominator(b.bound->getConstantFactor()));
+        }
+        for (const auto &d: div) {
+            flcm = mp::lcm(flcm, d.factor);
+            mlcm = mp::lcm(mlcm, d.modulo);
+        }
+        mlcm = mp::lcm(mlcm, flcm);
         const auto closest {closest_lower_bound(bounds, model.get<Arith>(), x)};
         if (closest) {
-            return Subs::build<Arith>(x, *closest)(t);
+            // (x - closest) % mlcm
+            const auto mod {arith::mkMod(arith::mkConst(mlcm) * (x - *closest), arith::mkConst(mlcm))};
+            const auto addend {arith::mkConst(model.eval<Arith>(mod))};
+            auto res {Subs::build<Arith>(x, *closest + addend)(t)};
+            if (mlcm > 1) {
+               res = res && bools::mkLit(arith::mkEq(arith::mkMod(*closest * arith::mkConst(mlcm), arith::mkConst(mlcm)), arith::mkConst(0)));
+            }
+            return res;
         } else {
-            return t->toMinusInfinity(x);
+            const auto mod {arith::mkMod(arith::mkConst(mlcm) * x, arith::mkConst(mlcm))};
+            const auto val {arith::mkConst(model.eval<Arith>(mod))};
+            return Subs::build<Arith>(x, val)(t->toMinusInfinity(x));
         }
     }
 }
@@ -208,9 +234,9 @@ Bools::Expr SABMC::specialize(const Bools::Expr e, const Model &model, const std
     return mbp_res;
 }
 
-Bools::Expr SABMC::specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate) {
+std::pair<Bools::Expr, Model> SABMC::specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate) {
     if (range.empty()) {
-        return top();
+        return {top(), Model()};
     }
     const auto [transition, model] {compress(pre, range)};
     if (Config::Analysis::log) {
@@ -218,7 +244,7 @@ Bools::Expr SABMC::specialize(const Bools::Expr pre, const Range &range, const s
         std::cout << transition << std::endl;
         std::cout << "model: " << model << std::endl;
     }
-    return specialize(transition, model, eliminate);
+    return {specialize(transition, model, eliminate), model};
 }
 
 Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
@@ -514,7 +540,7 @@ void SABMC::handle_loop(const Range &range) {
     // const auto stem {specialize(init, Range::from_length(0, range.start()), [](const auto &x) {
     //     return !theory::isPostVar(x);
     // })};
-    const auto loop {specialize(top(), range, theory::isTempVar)};
+    auto [loop, model] {specialize(top(), range, theory::isTempVar)};
     Subs post_to_pre;
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
@@ -524,7 +550,9 @@ void SABMC::handle_loop(const Range &range) {
     // const auto inv {CrabCfg::compute_invariants(post_to_pre(stem), loop)};
     const auto inv {CrabCfg::compute_invariants(top(), loop)};
     const auto rec {recurrence_analysis(loop)};
-    add_learned_clause(inv && rec, range.length());
+    model.put<Arith>(n, 1);
+    const auto rec_projected {::mbp(rec, model, n)};
+    add_learned_clause(inv && rec_projected, range.length());
 }
 
 Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
@@ -533,13 +561,12 @@ Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
 
 void SABMC::add_blocking_clauses() {
     // std::cout << "BLOCKING CLAUSES" << std::endl;
-    // std::cout << "depth: " << depth << std::endl;
     for (const auto &b : blocked) {
         const auto s {get_subs(depth, b.length)};
-        const auto n_subs {Subs::build<Arith>(n, arith::mkConst(1))};
-        const auto block {s(n_subs(!b.trans))};
+        const auto block {s(!b.trans)};
         const auto id {arith::mkConst(rule_map.right.at(b.trans))};
         solver->add(block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id)));
+        // std::cout << "trans: " << b.trans << std::endl;
         // std::cout << "length: " << b.length << std::endl;
         // std::cout << "s: " << s << std::endl;
         // std::cout << "first blocking clause: " << (block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id))) << std::endl;
@@ -571,6 +598,7 @@ void SABMC::sat() {
 void SABMC::build_trace() {
     trace.clear();
     const auto model {solver->model()};
+    // std::cout << "model: " << model << std::endl;
     std::vector<Subs> run;
     std::optional<Bools::Expr> prev;
     for (unsigned d = 0; d < depth; ++d) {
@@ -613,21 +641,29 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
         subs.push_back({s});
     }
     auto &pre_vec {subs.at(start)};
-    auto &post {subs.at(start + steps - 1).front()};
     while (pre_vec.size() < steps) {
+        auto &post {subs.at(start + pre_vec.size()).front()};
         Subs s;
         for (const auto &var: vars) {
+            s.put(var, pre_vec.front().get(var));
             if (theory::isProgVar(var)) {
                 const auto post_var {theory::postVar(var)};
-                s.put(var, pre_vec.front().get(var));
                 s.put(post_var, post.get(post_var));
-            } else {
-                s.put(var, theory::toExpr(theory::next(var)));
             }
         }
         pre_vec.push_back(s);
     }
-    // std::cout << "get_subs(" << start << ", " << steps << "): " << pre_vec.at(steps - 1) << std::endl;
+    // if (changed) {
+    //     int from{0};
+    //     for (const auto &vec : subs) {
+    //         int to{from + 1};
+    //         for (const auto &s : vec) {
+    //             std::cout << from << " to " << to << ": " << s << std::endl;
+    //             ++to;
+    //         }
+    //         ++from;
+    //     }
+    // }
     return pre_vec.at(steps - 1);
 }
 
@@ -687,6 +723,7 @@ void SABMC::analyze() {
             if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
             const auto range {has_looping_infix()};
             if (range) {
+                // std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                 handle_loop(*range);
                 solver->pop();
                 solver->push();

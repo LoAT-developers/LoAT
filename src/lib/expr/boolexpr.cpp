@@ -158,6 +158,47 @@ void BoolExpr::getBounds(const Arith::Var var, linked_hash_set<Bound> &res) cons
     }
 }
 
+linked_hash_set<Divisibility> BoolExpr::getDivisibility(const Arith::Var n) const {
+    linked_hash_set<Divisibility> res;
+    getDivisibility(n, res);
+    return res;
+}
+
+void BoolExpr::getDivisibility(const Arith::Var var, linked_hash_set<Divisibility> &res) const {
+    const auto lit {getTheoryLit()};
+    if (lit) {
+        if (std::holds_alternative<ArithLit>(*lit)) {
+            std::get<ArithLit>(*lit).getDivisibility(var, res);
+        }
+    } else if (isAnd()) {
+        for (const auto &c: getChildren()) {
+            c->getDivisibility(var, res);
+        }
+    } else if (isOr()) {
+        bool first = true;
+        linked_hash_set<Divisibility> intersection;
+        for (const auto &c: getChildren()) {
+            if (first) {
+                c->getDivisibility(var, intersection);
+                first = false;
+            } else {
+                const auto other {c->getDivisibility(var)};
+                for (auto it = intersection.begin(); it != intersection.end(); ++it) {
+                    if (other.contains(*it)) {
+                        ++it;
+                    } else {
+                        it = intersection.erase(it);
+                    }
+                }
+            }
+            if (intersection.empty()) {
+                return;
+            }
+        }
+        res.insert(intersection.begin(), intersection.end());
+    }
+}
+
 std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var var) const {
     const auto lit {getTheoryLit()};
     if (lit) {
@@ -227,6 +268,12 @@ Bools::Expr BoolExpr::toMinusInfinity(const Arith::Var n) const {
                     assert(rel.isLinear({{n}}));
                     if (!rel.has(n)) {
                         return mkLit(rel);
+                    }
+                    if (rel.isEq()) {
+                        return bot();
+                    }
+                    if (rel.isNeq()) {
+                        return top();
                     }
                     const auto ex {rel.lhs()};
                     if (***(*ex->coeff(n))->isRational() < 0) {

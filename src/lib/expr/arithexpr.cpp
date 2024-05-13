@@ -380,17 +380,10 @@ Rational ArithExpr::getConstantFactor() const {
             auto it{args.begin()};
             Rational res{(*it)->getConstantFactor()};
             for (++it; it != args.end(); ++it) {
-                if (res == 1) {
-                    return res;
-                }
                 const auto factor {(*it)->getConstantFactor()};
-                if (factor != res) {
-                    if (mp::denominator(factor) == 1 && mp::denominator(res) == 1) {
-                        res = mp::gcd(mp::numerator(factor), mp::numerator(res));
-                    } else {
-                        return Rational(1);
-                    }
-                }
+                const auto num {mp::gcd(mp::numerator(factor), mp::numerator(res))};
+                const auto denom {mp::lcm(mp::denominator(factor), mp::denominator(res))};
+                res = Rational(num, denom);
             }
             return res;
         },
@@ -399,7 +392,7 @@ Rational ArithExpr::getConstantFactor() const {
             const auto it{std::find_if(args.begin(), args.end(), [](const auto arg) {
                 return arg->isRational();
             })};
-            return it == args.end() ? 1 : (*(*it)->isRational())->getValue();
+            return it == args.end() ? Rational(1) : mp::abs((*(*it)->isRational())->getValue());
         },
         [](const ArithModPtr m) {
             return 1;
@@ -713,7 +706,7 @@ Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valu
             const Int x {m->getLhs()->eval(valuation)};
             const Int y {m->getRhs()->eval(valuation)};
             const Int x_abs {mp::abs(x)};
-            const Int y_abs {mp::abs(x)};
+            const Int y_abs {mp::abs(y)};
             const Rational mod {x_abs % y_abs};
             if (x >= 0) {
                 return mod;
