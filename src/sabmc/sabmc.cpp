@@ -12,6 +12,7 @@
 #include "optional.hpp"
 #include "crabcfg.hpp"
 #include "realmbp.hpp"
+#include "intmbp.hpp"
 
 Range::Range(const unsigned s, const unsigned e): s(s), e(e) {}
 
@@ -40,6 +41,8 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 }
 
 SABMC::Loop::Loop(const Bools::Expr trans, const unsigned length): trans(trans), length(length) {}
+
+mbp_kind SABMC::m_mbp {INT_MBP};
 
 SABMC::SABMC(SafetyProblem &t):
     t(t) {
@@ -125,6 +128,14 @@ void SABMC::add_learned_clause(const Bools::Expr &accel, unsigned length) {
     step = step || encode_transition(accel);
 }
 
+Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) {
+    switch (SABMC::m_mbp) {
+        case REAL_MBP: return mbp::real_mbp(trans, model, eliminate);
+        case INT_MBP: return mbp::int_mbp(trans, model, eliminate);
+        default: throw std::invalid_argument("unknown mbp kind");
+    }
+}
+
 Bools::Expr SABMC::specialize(const Bools::Expr e, const Model &model, const std::function<bool(const Var&)> &eliminate) {
     const auto sip {model.syntacticImplicant(e)};
     if (Config::Analysis::log) {
@@ -134,7 +145,7 @@ Bools::Expr SABMC::specialize(const Bools::Expr e, const Model &model, const std
     if (Config::Analysis::log && simp) {
         std::cout << "simp: " << *simp << std::endl;
     }
-    const auto mbp_res {mbp::real_mbp(*simp, model, eliminate)};
+    const auto mbp_res {mbp_impl(*simp, model, eliminate)};
     if (Config::Analysis::log) {
         std::cout << "mbp: " << mbp_res << std::endl;
     }
@@ -458,7 +469,10 @@ void SABMC::handle_loop(const Range &range) {
     const auto inv {CrabCfg::compute_invariants(top(), loop)};
     const auto rec {recurrence_analysis(loop)};
     model.put<Arith>(n, 1);
-    const auto rec_projected {mbp::real_mbp(rec, model, n)};
+    const auto is_n {[&](const Var &x){
+        return x == Var(n);
+    }};
+    const auto rec_projected {mbp_impl(rec, model, is_n)};
     add_learned_clause(inv && rec_projected, range.length());
 }
 
