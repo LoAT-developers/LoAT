@@ -561,22 +561,26 @@ Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
 
 void SABMC::add_blocking_clauses() {
     // std::cout << "BLOCKING CLAUSES" << std::endl;
-    for (const auto &b : blocked) {
-        const auto s {get_subs(depth, b.length)};
-        const auto block {s(!b.trans)};
-        const auto id {arith::mkConst(rule_map.right.at(b.trans))};
-        solver->add(block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id)));
-        // std::cout << "trans: " << b.trans << std::endl;
-        // std::cout << "length: " << b.length << std::endl;
-        // std::cout << "s: " << s << std::endl;
-        // std::cout << "first blocking clause: " << (block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id))) << std::endl;
-        const auto cur {get_subs(depth, 1)};
-        const auto next {get_subs(depth + 1, 1)};
-        // std::cout << "cur: " << cur << std::endl;
-        // std::cout << "next: " << next << std::endl;
-        const std::vector<Bools::Expr> lits {theory::mkNeq(cur.get<Arith>(trace_var), id), theory::mkNeq(next.get<Arith>(trace_var), id)};
-        solver->add(bools::mkOr(lits));
-        // std::cout << "second blocking clause: " << bools::mkOr(lits) << std::endl;
+    for (auto from = 0; from <= depth; ++from) {
+        for (const auto &b : blocked) {
+            const auto id {arith::mkConst(rule_map.right.at(b.trans))};
+            for (auto to = from + 1; to <= depth + 1; ++to) {
+                const auto s {get_subs(from, to - from)};
+                const auto block {s(!b.trans)};
+                solver->add(block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id)));
+                // std::cout << "trans: " << b.trans << std::endl;
+                // std::cout << "length: " << b.length << std::endl;
+                // std::cout << "s: " << s << std::endl;
+                // std::cout << "first blocking clause: " << (block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id))) << std::endl;
+            }
+            const auto cur {get_subs(from, 1)};
+            const auto next {get_subs(from + 1, 1)};
+            // std::cout << "cur: " << cur << std::endl;
+            // std::cout << "next: " << next << std::endl;
+            const std::vector<Bools::Expr> lits {theory::mkNeq(cur.get<Arith>(trace_var), id), theory::mkNeq(next.get<Arith>(trace_var), id)};
+            solver->add(bools::mkOr(lits));
+            // std::cout << "second blocking clause: " << bools::mkOr(lits) << std::endl;
+        }
     }
 }
 
