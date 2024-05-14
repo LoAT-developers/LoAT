@@ -703,7 +703,9 @@ void SABMC::analyze() {
             if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
             const auto range {has_looping_infix()};
             if (range) {
-                // std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
+                if (Config::Analysis::log) {
+                    std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
+                }
                 handle_loop(*range);
                 solver->pop();
                 solver->push();
