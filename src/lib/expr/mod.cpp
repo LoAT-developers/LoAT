@@ -27,13 +27,6 @@ ArithExprPtr arith::mkMod(ArithExprPtr lhs, ArithExprPtr rhs) {
     if (rhs->isInt() && rhs->isNegated()) {
         rhs = -rhs;
     }
-    const auto c2 {rhs->isInt()};
-    if (c2) {
-        const auto c1 {lhs->getConstantFactor()};
-        if (mp::denominator(c1) == 1 && mp::numerator(c1) % *c2 == 0) {
-            lhs = lhs->divide(*c2);
-        }
-    }
     return ArithMod::cache.from_cache(lhs, rhs);
 }
 
