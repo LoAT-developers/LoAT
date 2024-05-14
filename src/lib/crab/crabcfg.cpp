@@ -114,9 +114,6 @@ Bools::Expr CrabCfg::get_invariants(const Bools::Expr stem, const Bools::Expr cy
     domain init;
     auto absval_fac = init.make_top();
     crab::fixpoint_parameters fixpo_params;
-    fixpo_params.get_descending_iterations() = 2;
-    fixpo_params.get_widening_delay() = 3;
-    fixpo_params.get_max_thresholds() = 20;
     const auto cfg {lasso_to_cfg(stem, cycle)};
     intra_fwd_analyzer_t a(*cfg, absval_fac, nullptr, fixpo_params);
     typename intra_fwd_analyzer_t::assumption_map_t assumptions;
