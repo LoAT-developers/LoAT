@@ -75,6 +75,8 @@ public:
 
     void getBounds(const Arith::Var n, linked_hash_set<Bound> &res) const;
     linked_hash_set<Bound> getBounds(const Arith::Var n) const;
+    void getDivisibility(const Arith::Var n, linked_hash_set<Divisibility> &res) const;
+    linked_hash_set<Divisibility> getDivisibility(const Arith::Var n) const;
     std::optional<Arith::Expr> getEquality(const Arith::Var n) const;
     void propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow) const;
     Arith::Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;

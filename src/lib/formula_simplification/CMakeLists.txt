@@ -13,6 +13,10 @@ add_library(${PROJECT_NAME} OBJECT
   impliedequalities.cpp
   realmbp.hpp
   realmbp.cpp
+  intmbp.hpp
+  intmbp.cpp
+  mbputil.hpp
+  mbputil.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

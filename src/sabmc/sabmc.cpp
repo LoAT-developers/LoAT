@@ -141,9 +141,9 @@ Bools::Expr SABMC::specialize(const Bools::Expr e, const Model &model, const std
     return mbp_res;
 }
 
-Bools::Expr SABMC::specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate) {
+std::pair<Bools::Expr, Model> SABMC::specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate) {
     if (range.empty()) {
-        return top();
+        return {top(), Model()};
     }
     const auto [transition, model] {compress(pre, range)};
     if (Config::Analysis::log) {
@@ -151,7 +151,7 @@ Bools::Expr SABMC::specialize(const Bools::Expr pre, const Range &range, const s
         std::cout << transition << std::endl;
         std::cout << "model: " << model << std::endl;
     }
-    return specialize(transition, model, eliminate);
+    return {specialize(transition, model, eliminate), model};;
 }
 
 Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
@@ -447,7 +447,7 @@ void SABMC::handle_loop(const Range &range) {
     // const auto stem {specialize(init, Range::from_length(0, range.start()), [](const auto &x) {
     //     return !theory::isPostVar(x);
     // })};
-    const auto loop {specialize(top(), range, theory::isTempVar)};
+    auto [loop, model] {specialize(top(), range, theory::isTempVar)};
     Subs post_to_pre;
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
@@ -457,7 +457,9 @@ void SABMC::handle_loop(const Range &range) {
     // const auto inv {CrabCfg::compute_invariants(post_to_pre(stem), loop)};
     const auto inv {CrabCfg::compute_invariants(top(), loop)};
     const auto rec {recurrence_analysis(loop)};
-    add_learned_clause(inv && rec, range.length());
+    model.put<Arith>(n, 1);
+    const auto rec_projected {mbp::real_mbp(rec, model, n)};
+    add_learned_clause(inv && rec_projected, range.length());
 }
 
 Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
@@ -471,8 +473,7 @@ void SABMC::add_blocking_clauses() {
             const auto id {arith::mkConst(rule_map.right.at(b.trans))};
             for (auto to = from + 1; to <= depth + 1; ++to) {
                 const auto s {get_subs(from, to - from)};
-                const auto n_subs {Subs::build<Arith>(n, arith::mkConst(1))};
-                auto block {s(n_subs(!b.trans))};
+                auto block {s(!b.trans)};
                 if (to == from + 1) {
                     block = block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id));
                 }
