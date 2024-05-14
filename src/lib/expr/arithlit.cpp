@@ -14,14 +14,6 @@ std::size_t hash_value(const Bound &bound) {
     return hash;
 }
 
-std::size_t hash_value(const Divisibility &d) {
-    std::size_t hash {42};
-    boost::hash_combine(hash, d.factor);
-    boost::hash_combine(hash, d.modulo);
-    boost::hash_combine(hash, d.res);
-    return hash;
-}
-
 std::ostream& operator<<(std::ostream &s, const ArithLitSet &set) {
     s << "{";
     for (auto it = set.begin(); it != set.end(); ++it) {
@@ -78,59 +70,6 @@ void ArithLit::getBounds(const ArithVarPtr n, linked_hash_set<Bound> &res) const
             }
             default:
                 throw std::invalid_argument("unexpected relation");
-            }
-        }
-    }
-}
-
-void ArithLit::getDivisibility(const ArithVarPtr n, linked_hash_set<Divisibility> &res) const {
-    if (kind == Kind::Eq) {
-        if (const auto mod{l->isMod()}) {
-            if (const auto modulo{(*mod)->getRhs()->isInt()}) {
-                if ((*mod)->getLhs() == n) {
-                    // n % modulo == 0
-                    res.emplace(1, *modulo, arith::mkConst(0));
-                } else if (const auto sum{(*mod)->getLhs()->isAdd()}) {
-                    auto args{(*sum)->getArgs()};
-                    std::optional<Int> factor;
-                    if (args.contains(n)) {
-                        factor = 1;
-                    } else {
-                        for (const auto &arg : args) {
-                            if (arg->has(n)) {
-                                if (const auto mul{arg->isMult()}) {
-                                    auto mul_args{(*mul)->getArgs()};
-                                    if (mul_args.size() == 2 && mul_args.contains(n)) {
-                                        mul_args.erase(n);
-                                        factor = (*mul_args.begin())->isInt();
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }
-                    if (!factor) {
-                        return;
-                    }
-                    args.erase(arith::mkConst(*factor) * n);
-                    const auto mres{arith::mkPlus(std::vector<ArithExprPtr>(args.begin(), args.end()))};
-                    if (mres->has(n)) {
-                        return;
-                    }
-                    // (factor * n + mres) % modulo = 0
-                    // ==> n % modulo = -mres
-                    res.emplace(1, *modulo, -mres);
-                    return;
-                } else if (const auto mul{(*mod)->getLhs()->isMult()}) {
-                    auto mul_args{(*mul)->getArgs()};
-                    if (mul_args.contains(n) && mul_args.contains(n)) {
-                        mul_args.erase(n);
-                        if (const auto factor{(*mul_args.begin())->isInt()}) {
-                            // factor * n % modulo = 0
-                            res.emplace(*factor, *modulo, arith::mkConst(0));
-                        }
-                    }
-                }
             }
         }
     }

@@ -157,39 +157,13 @@ Bools::Expr mbp(const Bools::Expr &t, const Model &model, const Arith::Var x) {
         return b.kind == BoundKind::Equality;
     })};
     if (it != bounds.end()) {
-        auto res {Subs::build<Arith>(x, it->bound)(t)};
-        const auto factor {it->bound->getConstantFactor()};
-        const auto denom {mp::denominator(factor)};
-        if (denom != 1) {
-            res = res && bools::mkLit(arith::mkEq(arith::mkMod(it->bound * arith::mkConst(denom), arith::mkConst(denom)), arith::mkConst(0)));
-        }
-        return res;
+        return Subs::build<Arith>(x, it->bound)(t);
     } else {
-        auto div {t->getDivisibility(x)};
-        Int flcm {1};
-        Int mlcm {1};
-        for (const auto &b: bounds) {
-            flcm = mp::lcm(flcm, mp::denominator(b.bound->getConstantFactor()));
-        }
-        for (const auto &d: div) {
-            flcm = mp::lcm(flcm, d.factor);
-            mlcm = mp::lcm(mlcm, d.modulo);
-        }
-        mlcm = mp::lcm(mlcm, flcm);
         const auto closest {closest_lower_bound(bounds, model.get<Arith>(), x)};
         if (closest) {
-            // (x - closest) % mlcm
-            const auto mod {arith::mkMod(arith::mkConst(mlcm) * (x - *closest), arith::mkConst(mlcm))};
-            const auto addend {arith::mkConst(model.eval<Arith>(mod))};
-            auto res {Subs::build<Arith>(x, *closest + addend)(t)};
-            if (mlcm > 1) {
-               res = res && bools::mkLit(arith::mkEq(arith::mkMod(*closest * arith::mkConst(mlcm), arith::mkConst(mlcm)), arith::mkConst(0)));
-            }
-            return res;
+            return Subs::build<Arith>(x, *closest)(t);
         } else {
-            const auto mod {arith::mkMod(arith::mkConst(mlcm) * x, arith::mkConst(mlcm))};
-            const auto val {arith::mkConst(model.eval<Arith>(mod))};
-            return Subs::build<Arith>(x, val)(t->toMinusInfinity(x));
+            return t->toMinusInfinity(x);
         }
     }
 }
@@ -234,9 +208,9 @@ Bools::Expr SABMC::specialize(const Bools::Expr e, const Model &model, const std
     return mbp_res;
 }
 
-std::pair<Bools::Expr, Model> SABMC::specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate) {
+Bools::Expr SABMC::specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate) {
     if (range.empty()) {
-        return {top(), Model()};
+        return top();
     }
     const auto [transition, model] {compress(pre, range)};
     if (Config::Analysis::log) {
@@ -244,7 +218,7 @@ std::pair<Bools::Expr, Model> SABMC::specialize(const Bools::Expr pre, const Ran
         std::cout << transition << std::endl;
         std::cout << "model: " << model << std::endl;
     }
-    return {specialize(transition, model, eliminate), model};
+    return specialize(transition, model, eliminate);
 }
 
 Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
@@ -540,7 +514,7 @@ void SABMC::handle_loop(const Range &range) {
     // const auto stem {specialize(init, Range::from_length(0, range.start()), [](const auto &x) {
     //     return !theory::isPostVar(x);
     // })};
-    auto [loop, model] {specialize(top(), range, theory::isTempVar)};
+    const auto loop {specialize(top(), range, theory::isTempVar)};
     Subs post_to_pre;
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
@@ -550,9 +524,7 @@ void SABMC::handle_loop(const Range &range) {
     // const auto inv {CrabCfg::compute_invariants(post_to_pre(stem), loop)};
     const auto inv {CrabCfg::compute_invariants(top(), loop)};
     const auto rec {recurrence_analysis(loop)};
-    model.put<Arith>(n, 1);
-    const auto rec_projected {::mbp(rec, model, n)};
-    add_learned_clause(inv && rec_projected, range.length());
+    add_learned_clause(inv && rec, range.length());
 }
 
 Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {

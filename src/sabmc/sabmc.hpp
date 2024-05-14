@@ -73,7 +73,7 @@ private:
     void add_learned_clause(const Bools::Expr &accel, unsigned length);
     std::pair<Bools::Expr, Model> compress(const Bools::Expr pre, const Range &range);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
-    std::pair<Bools::Expr, Model> specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate);
+    Bools::Expr specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate);
     Bools::Expr recurrence_analysis(const Bools::Expr loop);
     void handle_loop(const Range &range);
     void unknown();

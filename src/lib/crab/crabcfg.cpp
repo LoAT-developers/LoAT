@@ -36,17 +36,7 @@ void CrabCfg::assume(const Bools::Expr t, z_basic_block_t &b) {
     if (!t->isConjunction()) {
         throw std::invalid_argument("crab only supports conjunctions");
     }
-    auto literals {t->lits()};
-    auto it {literals.begin()};
-    while (it != literals.end()) {
-        if (!theory::isLinear(*it)) {
-            it = literals.erase(it);
-        } else {
-            ++it;
-        }
-    }
-    const auto t_lin {bools::mkAndFromLits(literals)};
-    auto conjunction {ExprConverter<z_lin_exp_t, CrabConjunction>::convert(t_lin, ctx)};
+    auto conjunction {ExprConverter<z_lin_exp_t, CrabConjunction>::convert(t, ctx)};
     for (const auto &lit : conjunction.constraints) {
         b.assume(lit);
     }

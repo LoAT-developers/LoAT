@@ -17,16 +17,6 @@ struct Bound {
 
 std::size_t hash_value(const Bound&);
 
-// represents a costraint of the form: (factor * x) % modulo = res
-struct Divisibility {
-    friend bool operator==(const Divisibility&, const Divisibility&) = default;
-    const Int factor;
-    const Int modulo;
-    const ArithExprPtr res;
-};
-
-std::size_t hash_value(const Divisibility&);
-
 class ArithLit;
 
 namespace arith {
@@ -62,7 +52,6 @@ public:
     bool isPoly() const;
     bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = std::nullopt) const;
     void getBounds(const ArithVarPtr n, linked_hash_set<Bound> &res) const;
-    void getDivisibility(const ArithVarPtr n, linked_hash_set<Divisibility> &res) const;
     std::optional<ArithExprPtr> getEquality(const ArithVarPtr n) const;
     void propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow) const;
 
