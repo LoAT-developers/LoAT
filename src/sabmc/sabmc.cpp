@@ -538,12 +538,15 @@ void SABMC::add_blocking_clauses() {
             const auto id {arith::mkConst(rule_map.right.at(b.trans))};
             for (auto to = from + 1; to <= depth + 1; ++to) {
                 const auto s {get_subs(from, to - from)};
-                const auto block {s(!b.trans)};
-                solver->add(block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id)));
-                // std::cout << "trans: " << b.trans << std::endl;
-                // std::cout << "length: " << b.length << std::endl;
-                // std::cout << "s: " << s << std::endl;
-                // std::cout << "first blocking clause: " << (block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id))) << std::endl;
+                const auto n_subs {Subs::build<Arith>(n, arith::mkConst(1))};
+                auto block {s(n_subs(!b.trans))};
+                if (to == from + 1) {
+                    block = block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id));
+                }
+                solver->add(block);
+                    // std::cout << "trans: " << b.trans << std::endl;
+                    // std::cout << "s: " << s << std::endl;
+                    // std::cout << "first blocking clause: " << (block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id))) << std::endl;
             }
             const auto cur {get_subs(from, 1)};
             const auto next {get_subs(from + 1, 1)};
@@ -579,9 +582,10 @@ void SABMC::build_trace() {
     std::optional<Bools::Expr> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s {get_subs(d, 1)};
-        const auto rule {rule_map.left.at(model.eval<Arith>(s.get<Arith>(trace_var)))};
+        const auto id {model.eval<Arith>(s.get<Arith>(trace_var))};
+        const auto rule {rule_map.left.at(id)};
         const auto comp {model.composeBackwards(s)};
-        const auto imp {comp.syntacticImplicant(rule)};
+        const auto imp {comp.syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
         run.push_back(comp.toSubs().project(vars));
         if (prev) {
             dependency_graph.addEdge(*prev, imp);
