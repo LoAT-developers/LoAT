@@ -392,7 +392,7 @@ Rational ArithExpr::getConstantFactor() const {
             const auto it{std::find_if(args.begin(), args.end(), [](const auto arg) {
                 return arg->isRational();
             })};
-            return it == args.end() ? Rational(1) : mp::abs((*(*it)->isRational())->getValue());
+            return it == args.end() ? Rational(1) : (*(*it)->isRational())->getValue();
         },
         [](const ArithModPtr m) {
             return 1;
