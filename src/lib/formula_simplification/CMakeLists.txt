@@ -11,6 +11,8 @@ add_library(${PROJECT_NAME} OBJECT
   vareliminator.cpp
   impliedequalities.hpp
   impliedequalities.cpp
+  realmbp.hpp
+  realmbp.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
