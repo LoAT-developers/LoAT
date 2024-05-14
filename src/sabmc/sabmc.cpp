@@ -468,11 +468,17 @@ void SABMC::handle_loop(const Range &range) {
     // const auto inv {CrabCfg::compute_invariants(post_to_pre(stem), loop)};
     const auto inv {CrabCfg::compute_invariants(top(), loop)};
     const auto rec {recurrence_analysis(loop)};
+    if (Config::Analysis::log) {
+        std::cout << "recurrence analysis: " << rec << std::endl;
+    }
     model.put<Arith>(n, 1);
     const auto is_n {[&](const Var &x){
         return x == Var(n);
     }};
     const auto rec_projected {mbp_impl(rec, model, is_n)};
+    if (Config::Analysis::log) {
+        std::cout << "projection of recurrence analysis: " << rec_projected << std::endl;
+    }
     add_learned_clause(inv && rec_projected, range.length());
 }
 
