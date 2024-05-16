@@ -40,7 +40,7 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-SABMC::Loop::Loop(const Bools::Expr trans, const unsigned length): trans(trans), length(length) {}
+SABMC::Loop::Loop(const Bools::Expr trans, const unsigned mod): trans(trans), mod(mod) {}
 
 mbp_kind SABMC::m_mbp {INT_MBP};
 
@@ -120,11 +120,11 @@ std::pair<Bools::Expr, Model> SABMC::compress(const Bools::Expr pre, const Range
     return {pre && *loop, model};
 }
 
-void SABMC::add_learned_clause(const Bools::Expr &accel, unsigned length) {
+void SABMC::add_learned_clause(const Bools::Expr &accel, unsigned mod) {
     if (Config::Analysis::log) std::cout << "learned transition: " << accel << std::endl;
     rule_map.left.insert(rule_map_t::left_value_type(next_id, accel));
     ++next_id;
-    blocked.emplace_back(accel, length);
+    blocked.emplace_back(accel, mod);
     step = step || encode_transition(accel);
 }
 
@@ -165,7 +165,7 @@ std::pair<Bools::Expr, Model> SABMC::specialize(const Bools::Expr pre, const Ran
     return {specialize(transition, model, eliminate), model};;
 }
 
-Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
+std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr loop) {
     // the loop counter is bounded by 0
     const auto n_term {Arith::varToExpr(n)};
     BoolExprSet res {bools::mkLit(arith::mkGt(n_term, arith::mkConst(0)))};
@@ -205,20 +205,12 @@ Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
             if ((pre_coeff > 0) == (post_coeff > 0)) {
                 changed = true;
                 toggling.emplace(pre, addend);
-                const auto premise_even{bools::mkLit(arith::mkEq(
+                res.insert(bools::mkLit(arith::mkEq(
                     arith::mkMod(
                         n_term,
                         arith::mkConst(2)),
-                    arith::mkConst(1)))};
-                const auto conclusion_even{bools::mkLit(arith::mkEq(post, pre))};
-                const auto premise_odd{bools::mkLit(arith::mkEq(
-                    arith::mkMod(
-                        n_term,
-                        arith::mkConst(2)),
-                    arith::mkConst(0)))};
-                const auto conclusion_odd{bools::mkLit(arith::mkEq(post, -pre + addend))};
-                res.insert(bools::mkOr(std::vector{premise_even, conclusion_even}));
-                res.insert(bools::mkOr(std::vector{premise_odd, conclusion_odd}));
+                    arith::mkConst(1))));
+                res.insert(bools::mkLit(arith::mkEq(post, -pre + addend)));
             }
         }
     } while (changed);
@@ -235,7 +227,6 @@ Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
         std::optional<Arith::Var> post;
         auto all_toggling {true};
         auto some_toggling {false};
-        Arith::Subs even;
         Arith::Subs odd;
         const auto t{rel.lhs()};
         for (const auto &x : vars) {
@@ -254,12 +245,10 @@ Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
                     // y(3) = y-2x-2c = (y - 2 * x - 2 * (n-1) * c/2)[n/3]
                     // ...
                     odd.put(x, x + (n_term - arith::mkConst(1)) * c->divide(2));
-                    even.put(x, n_term * c->divide(2));
                 } else {
                     // y' = y + x' + ...
                     // y(0)=y, y(1)=y-x+c, y(2)=(y+x)-x+c=y+c, y(3)=(y-x+c)+c=y-x+2c y(4)=(y+x)-x+2c=y+2c, ...
                     odd.put(x, -x + (n_term + arith::mkConst(1)) * c->divide(2));
-                    even.put(x, n_term * c->divide(2));
                 }
                 continue;
             } else if (x->isProgVar()) {
@@ -291,20 +280,12 @@ Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
         }
         const auto constant_addend {arith::mkConst(t->getConstantAddend())};
         const auto var_addend {t - pre_coeff_term * *pre - post_coeff_term * *post - constant_addend};
-        const auto premise_even {bools::mkLit(arith::mkEq(
+        res.insert(bools::mkLit(arith::mkEq(
             arith::mkMod(
                 n_term,
                 arith::mkConst(2)),
-            arith::mkConst(1)))};
-        const auto conclusion_even {bools::mkLit(arith::mkEq(*post, *pre + even(var_addend) + n_term * constant_addend))};
-        const auto premise_odd {bools::mkLit(arith::mkEq(
-            arith::mkMod(
-                n_term,
-                arith::mkConst(2)),
-            arith::mkConst(0)))};
-        const auto conclusion_odd {bools::mkLit(arith::mkEq(*post, *pre + odd(var_addend) + n_term * constant_addend))};
-        res.insert(bools::mkOr(std::vector{premise_even, conclusion_even}));
-        res.insert(bools::mkOr(std::vector{premise_odd, conclusion_odd}));
+            arith::mkConst(1))));
+        res.insert(bools::mkLit(arith::mkEq(*post, *pre + odd(var_addend) + n_term * constant_addend)));
     }
     // find recurrent equations and inequations
     linked_hash_map<Arith::Var, Int> eqs;
@@ -448,7 +429,7 @@ Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
         }
     }
     const auto ret {bools::mkAnd(res)};
-    return ret;
+    return {ret, toggling.empty() ? 1 : 2};
 }
 
 void SABMC::handle_loop(const Range &range) {
@@ -467,7 +448,10 @@ void SABMC::handle_loop(const Range &range) {
     }
     // const auto inv {CrabCfg::compute_invariants(post_to_pre(stem), loop)};
     const auto inv {CrabCfg::compute_invariants(top(), loop)};
-    const auto rec {recurrence_analysis(loop)};
+    if (Config::Analysis::log) {
+        std::cout << "invariants: " << inv << std::endl;
+    }
+    const auto [rec, mod] {recurrence_analysis(loop)};
     if (Config::Analysis::log) {
         std::cout << "recurrence analysis: " << rec << std::endl;
     }
@@ -479,7 +463,7 @@ void SABMC::handle_loop(const Range &range) {
     if (Config::Analysis::log) {
         std::cout << "projection of recurrence analysis: " << rec_projected << std::endl;
     }
-    add_learned_clause(inv && rec_projected, range.length());
+    add_learned_clause(inv && rec_projected, mod);
 }
 
 Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
@@ -502,11 +486,10 @@ void SABMC::add_blocking_clauses() {
                     // std::cout << "s: " << s << std::endl;
                     // std::cout << "first blocking clause: " << (block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id))) << std::endl;
             }
-            const auto cur {get_subs(from, 1)};
-            const auto next {get_subs(from + 1, 1)};
-            // std::cout << "cur: " << cur << std::endl;
-            // std::cout << "next: " << next << std::endl;
-            const std::vector<Bools::Expr> lits {theory::mkNeq(cur.get<Arith>(trace_var), id), theory::mkNeq(next.get<Arith>(trace_var), id)};
+            std::vector<Bools::Expr> lits;
+            for (unsigned i = 0; i <= b.mod; ++i) {
+                lits.push_back(theory::mkNeq(get_subs(from + i, 1).get<Arith>(trace_var), id));
+            }
             solver->add(bools::mkOr(lits));
             // std::cout << "second blocking clause: " << bools::mkOr(lits) << std::endl;
         }
@@ -533,7 +516,7 @@ void SABMC::build_trace() {
     const auto model {solver->model()};
     // std::cout << "model: " << model << std::endl;
     std::vector<Subs> run;
-    std::optional<Bools::Expr> prev;
+    std::optional<std::pair<Bools::Expr, Int>> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s {get_subs(d, 1)};
         const auto id {model.eval<Arith>(s.get<Arith>(trace_var))};
@@ -541,10 +524,10 @@ void SABMC::build_trace() {
         const auto comp {model.composeBackwards(s)};
         const auto imp {comp.syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
         run.push_back(comp.toSubs().project(vars));
-        if (prev) {
-            dependency_graph.addEdge(*prev, imp);
+        if (prev && (prev->second <= last_orig_clause || prev->second != id)) {
+            dependency_graph.addEdge(prev->first, imp);
         }
-        prev = imp;
+        prev = {imp, id};
         trace.emplace_back(imp);
     }
     if (Config::Analysis::log) {
@@ -622,6 +605,7 @@ void SABMC::analyze() {
         ++next_id;
         steps.push_back(encode_transition(trans));
     }
+    last_orig_clause = next_id - 1;
     step = bools::mkOr(steps);
     solver->add(t.init());
     solver->push();

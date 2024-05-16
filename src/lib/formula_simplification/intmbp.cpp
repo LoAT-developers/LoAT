@@ -2,44 +2,81 @@
 #include "mbputil.hpp"
 
 Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x) {
-    auto bounds{t->getBounds(x)};
-    const auto it{std::find_if(bounds.begin(), bounds.end(), [](const auto &b) {
-        return b.kind == BoundKind::Equality;
-    })};
-    if (it != bounds.end()) {
-        auto res{Subs::build<Arith>(x, it->bound)(t)};
-        const auto factor{it->bound->getConstantFactor()};
+    assert(t->isConjunction());
+    std::cout << "eliminating " << x << " from " << t << std::endl;
+    std::cout << "model: " << x << model << std::endl;
+    if (auto eq{t->getEquality(x)}) {
+        // easy case: we found an equality involving n
+        const auto factor{(*eq)->getConstantFactor()};
+        // we have n = eq = factor * p where factor = num/denom, i.e., denom * n = num * p
+        const auto num{mp::numerator(factor)};
         const auto denom{mp::denominator(factor)};
+        // replace n by num/denom * p ...
+        auto res{Subs::build<Arith>(x, *eq)(t)};
         if (denom != 1) {
-            res = res && bools::mkLit(arith::mkEq(arith::mkMod(it->bound * arith::mkConst(denom), arith::mkConst(denom)), arith::mkConst(0)));
+            // and enforce that num * p = eq * denom is divisble by denom, if necessary
+            res = res && bools::mkLit(arith::mkEq(arith::mkMod(*eq * arith::mkConst(denom), arith::mkConst(denom)), arith::mkConst(0)));
         }
         return res;
     } else {
-        auto div{t->getDivisibility(x)};
+        std::optional<std::pair<Arith::Expr, Rational>> closest_lb;
+        linked_hash_set<Divisibility> divs;
         Int flcm{1};
         Int mlcm{1};
-        for (const auto &b : bounds) {
-            flcm = mp::lcm(flcm, mp::denominator(b.bound->getConstantFactor()));
-        }
-        for (const auto &d : div) {
-            flcm = mp::lcm(flcm, d.factor);
-            mlcm = mp::lcm(mlcm, d.modulo);
-        }
-        mlcm = mp::lcm(mlcm, flcm);
-        const auto closest{mbp::closest_lower_bound(bounds, model.get<Arith>(), x)};
-        if (closest) {
-            // (x - closest) % mlcm
-            const auto mod{arith::mkMod(arith::mkConst(mlcm) * (x - *closest), arith::mkConst(mlcm))};
-            const auto addend{arith::mkConst(model.eval<Arith>(mod))};
-            auto res{Subs::build<Arith>(x, *closest + addend)(t)};
-            if (mlcm > 1) {
-                res = res && bools::mkLit(arith::mkEq(arith::mkMod(*closest * arith::mkConst(mlcm), arith::mkConst(mlcm)), arith::mkConst(0)));
+        const auto lits {t->lits().get<Arith::Lit>()};
+        for (const auto &l: lits) {
+            if (l.has(x)) {
+                if (const auto div{l.isDivisibility(x)}) {
+                    flcm = mp::lcm(flcm, div->factor);
+                    divs.insert(*div);
+                } else {
+                    assert(l.isLinear());
+                    assert(l.isGt());
+                    const auto lhs{l.lhs()};
+                    const auto coeff{*lhs->coeff(x)};
+                    const auto coeff_val{*coeff->isInt()};
+                    flcm = mp::lcm(flcm, mp::abs(coeff_val));
+                    if (coeff_val > 0) {
+                        const auto dist{lhs->evalToRational(model.get<Arith>()) / coeff_val};
+                        if (!closest_lb || dist < closest_lb->second) {
+                            closest_lb = {{lhs, dist}};
+                        }
+                    }
+                }
             }
-            return res;
+        }
+        if (closest_lb) {
+            for (const auto &d : divs) {
+                mlcm = mp::lcm(mlcm, d.modulo * flcm / d.factor);
+            }
+            const auto bound {closest_lb->first};
+            const auto coeff {*bound->coeff(x)};
+            const auto coeff_val {*coeff->isInt()};
+            const auto scaled_bound {bound * arith::mkConst(mlcm / coeff_val)};
+            const auto scaled_x {arith::mkConst(mlcm) * x};
+            const auto rhs {-(scaled_bound - scaled_x)};
+            const auto substitute {rhs + arith::mkConst(model.eval<Arith>(arith::mkMod(scaled_x - (rhs + arith::mkConst(1)), arith::mkConst(mlcm))) + 1)->divide(mlcm)};
+            const auto subs {ArithSubs({{x, substitute}})};
+            return Subs::build<Arith>(subs)(t);
         } else {
-            const auto mod{arith::mkMod(arith::mkConst(mlcm) * x, arith::mkConst(mlcm))};
-            const auto val{arith::mkConst(model.eval<Arith>(mod))};
-            return Subs::build<Arith>(x, val)(t->toMinusInfinity(x));
+            // easy case: no lower bound, so all constraints involving x can
+            // be satisfied by choosing a sufficiently small value for x
+            return t->map(
+                [&](const auto &lit){
+                    return std::visit(
+                        Overload{
+                            [&](const ArithLit &l) {
+                                if (l.has((x))) {
+                                    return top();
+                                } else {
+                                    return bools::mkLit(lit);
+                                }
+                            },
+                            [&](const BoolLit&) {
+                                return bools::mkLit(lit);
+                            }
+                        }, lit);
+                    });
         }
     }
 }

@@ -50,9 +50,9 @@ private:
 
     struct Loop {
         Bools::Expr trans;
-        unsigned length;
+        unsigned mod;
 
-        Loop(const Bools::Expr trans, const unsigned length);
+        Loop(const Bools::Expr trans, const unsigned mod);
 
     };
 
@@ -62,6 +62,7 @@ private:
     std::vector<Bools::Expr> trace {};
     std::vector<Loop> blocked {};
     VarSet vars {};
+    Int last_orig_clause;
 
     Int next_id {0};
 
@@ -78,11 +79,11 @@ private:
     Bools::Expr encode_transition(const Bools::Expr &idx);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
-    void add_learned_clause(const Bools::Expr &accel, unsigned length);
+    void add_learned_clause(const Bools::Expr &accel, unsigned mod);
     std::pair<Bools::Expr, Model> compress(const Bools::Expr pre, const Range &range);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate);
-    Bools::Expr recurrence_analysis(const Bools::Expr loop);
+    std::pair<Bools::Expr, unsigned> recurrence_analysis(const Bools::Expr loop);
     void handle_loop(const Range &range);
     void unknown();
     void sat();

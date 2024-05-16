@@ -83,6 +83,13 @@ void ArithLit::getBounds(const ArithVarPtr n, linked_hash_set<Bound> &res) const
     }
 }
 
+std::optional<Divisibility> ArithLit::isDivisibility(const ArithVarPtr n) const {
+    linked_hash_set<Divisibility> res;
+    getDivisibility(n, res);
+    using opt = std::optional<Divisibility>;
+    return res.empty() ? opt{} : opt{*res.begin()};
+}
+
 void ArithLit::getDivisibility(const ArithVarPtr n, linked_hash_set<Divisibility> &res) const {
     if (kind == Kind::Eq) {
         if (const auto mod{l->isMod()}) {
@@ -295,7 +302,7 @@ bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
 
 void ArithLit::simplifyAnd(linked_hash_set<ArithLit> &lits) {
     std::unordered_set<ArithLit> remove;
-    std::unordered_set<ArithLit> add;
+    linked_hash_set<ArithLit> add;
     for (const auto &rel: lits) {
         if (rel.isGt() && !remove.contains(rel)) {
             const auto converse {arith::mkLeq(rel.lhs(), arith::mkConst(1))};
