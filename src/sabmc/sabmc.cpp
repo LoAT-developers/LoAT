@@ -473,13 +473,12 @@ Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
 void SABMC::add_blocking_clauses() {
     // std::cout << "BLOCKING CLAUSES" << std::endl;
     for (auto from = 0; from <= depth; ++from) {
-        for (const auto &b : blocked) {
-            const auto id {arith::mkConst(rule_map.right.at(b.trans))};
-            for (auto to = from + 1; to <= depth + 1; ++to) {
+        for (const auto &[id,trans] : rule_map) {
+            for (auto to = id <= last_orig_clause ? from + 2 : from + 1; to <= depth + 1; ++to) {
                 const auto s {get_subs(from, to - from)};
-                auto block {s(!b.trans)};
+                auto block {s(!trans)};
                 if (to == from + 1) {
-                    block = block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id));
+                    block = block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id)));
                 }
                 solver->add(block);
                     // std::cout << "trans: " << b.trans << std::endl;
