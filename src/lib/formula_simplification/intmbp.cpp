@@ -3,8 +3,8 @@
 
 Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x) {
     assert(t->isConjunction());
-    std::cout << "eliminating " << x << " from " << t << std::endl;
-    std::cout << "model: " << x << model << std::endl;
+    // std::cout << "eliminating " << x << " from " << t << std::endl;
+    // std::cout << "model: " << x << model << std::endl;
     if (auto eq{t->getEquality(x)}) {
         // easy case: we found an equality involving n
         const auto factor{(*eq)->getConstantFactor()};
