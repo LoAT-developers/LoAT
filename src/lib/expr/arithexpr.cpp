@@ -707,7 +707,12 @@ Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valu
             const Int y {m->getRhs()->eval(valuation)};
             const Int x_abs {mp::abs(x)};
             const Int y_abs {mp::abs(y)};
-            return x_abs % y_abs;
+            const Rational mod {x_abs % y_abs};
+            if (mod == 0 || x >= 0) {
+                return mod;
+            } else {
+                return Rational(y_abs) - mod;
+            }
         },
         [&](const ArithExpPtr e) {
             return mp::pow(mp::numerator(e->getBase()->evalToRational(valuation)), e->getExponent()->evalToRational(valuation).convert_to<long>());

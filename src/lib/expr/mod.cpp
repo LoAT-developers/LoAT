@@ -29,7 +29,12 @@ ArithExprPtr arith::mkMod(ArithExprPtr lhs, ArithExprPtr rhs) {
     }
     if (const auto c2 {rhs->isInt()}) {
         if (const auto c1 {lhs->isInt()}) {
-            return arith::mkConst(mp::abs(*c1) % *c2);
+            const auto mod {mp::abs(*c1) % *c2};
+            if (mod == 0 || *c1 >= 0) {
+                return arith::mkConst(mod);
+            } else {
+                return arith::mkConst(*c2 - mod);
+            }
         }
         const auto c1 {lhs->getConstantFactor()};
         if (mp::denominator(c1) == 1 && mp::numerator(c1) >= *c2) {
