@@ -486,12 +486,6 @@ void SABMC::add_blocking_clauses() {
                     // std::cout << "s: " << s << std::endl;
                     // std::cout << "first blocking clause: " << (block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id))) << std::endl;
             }
-            std::vector<Bools::Expr> lits;
-            for (unsigned i = 0; i <= b.mod; ++i) {
-                lits.push_back(theory::mkNeq(get_subs(from + i, 1).get<Arith>(trace_var), id));
-            }
-            solver->add(bools::mkOr(lits));
-            // std::cout << "second blocking clause: " << bools::mkOr(lits) << std::endl;
         }
     }
 }
