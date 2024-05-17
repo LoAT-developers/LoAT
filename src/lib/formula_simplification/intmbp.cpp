@@ -50,12 +50,18 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
                 mlcm = mp::lcm(mlcm, d.modulo * flcm / d.factor);
             }
             const auto bound {closest_lb->first};
+            // std::cout << "bound: " << bound << std::endl;
             const auto coeff {*bound->coeff(x)};
+            // std::cout << "coeff: " << coeff << std::endl;
             const auto coeff_val {*coeff->isInt()};
             const auto scaled_bound {bound * arith::mkConst(mlcm / coeff_val)};
+            // std::cout << "scaled bound: " << scaled_bound << std::endl;
             const auto scaled_x {arith::mkConst(mlcm) * x};
+            // std::cout << "scaled x: " << scaled_x << std::endl;
             const auto rhs {-(scaled_bound - scaled_x)};
-            const auto substitute {rhs + arith::mkConst(model.eval<Arith>(arith::mkMod(scaled_x - (rhs + arith::mkConst(1)), arith::mkConst(mlcm))) + 1)->divide(mlcm)};
+            // std::cout << "rhs: " << rhs << std::endl;
+            const auto substitute {(rhs + arith::mkConst(model.eval<Arith>(arith::mkMod(scaled_x - (rhs + arith::mkConst(1)), arith::mkConst(mlcm))) + 1))->divide(mlcm)};
+            // std::cout << "substitute: " << substitute << std::endl;
             const auto subs {ArithSubs({{x, substitute}})};
             return Subs::build<Arith>(subs)(t);
         } else {
