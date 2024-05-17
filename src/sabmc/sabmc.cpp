@@ -207,9 +207,9 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
                 toggling.emplace(pre, addend);
                 res.insert(bools::mkLit(arith::mkEq(
                     arith::mkMod(
-                        n_term,
+                        n_term + arith::mkConst(1),
                         arith::mkConst(2)),
-                    arith::mkConst(1))));
+                    arith::mkConst(0))));
                 res.insert(bools::mkLit(arith::mkEq(post, -pre + addend)));
             }
         }
@@ -282,9 +282,9 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
         const auto var_addend {t - pre_coeff_term * *pre - post_coeff_term * *post - constant_addend};
         res.insert(bools::mkLit(arith::mkEq(
             arith::mkMod(
-                n_term,
+                n_term + arith::mkConst(1),
                 arith::mkConst(2)),
-            arith::mkConst(1))));
+            arith::mkConst(0))));
         res.insert(bools::mkLit(arith::mkEq(*post, *pre + odd(var_addend) + n_term * constant_addend)));
     }
     // find recurrent equations and inequations

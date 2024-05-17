@@ -21,17 +21,20 @@ ArithExprPtr arith::mkMod(ArithExprPtr lhs, ArithExprPtr rhs) {
     if (rhs->is(0)) {
         throw std::invalid_argument("mod 0");
     }
-    if (rhs->is(1)) {
-        return arith::mkConst(0);
-    }
     if (rhs->isInt() && rhs->isNegated()) {
         rhs = -rhs;
     }
-    const auto c2 {rhs->isInt()};
-    if (c2) {
+    if (rhs->is(1)) {
+        return arith::mkConst(0);
+    }
+    if (const auto c2 {rhs->isInt()}) {
+        if (const auto c1 {lhs->isInt()}) {
+            return arith::mkConst(mp::abs(*c1) % *c2);
+        }
         const auto c1 {lhs->getConstantFactor()};
-        if (mp::denominator(c1) == 1 && mp::numerator(c1) % *c2 == 0) {
-            lhs = lhs->divide(*c2);
+        if (mp::denominator(c1) == 1 && mp::numerator(c1) >= *c2) {
+            const Int div {mp::numerator(c1) / *c2};
+            lhs = lhs - arith::mkConst(div) * rhs;
         }
     }
     return ArithMod::cache.from_cache(lhs, rhs);
