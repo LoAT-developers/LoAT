@@ -48,7 +48,7 @@ std::any CINTParseVisitor::visitNum_expr(CINTParser::Num_exprContext *ctx) {
 
 std::any CINTParseVisitor::visitBool_expr(CINTParser::Bool_exprContext *ctx) {
     if (ctx->lit()) {
-        return bools::mkLit(std::any_cast<ArithLit>(visit(ctx->lit())));
+        return bools::mkLit(std::any_cast<Arith::Lit>(visit(ctx->lit())));
     } else if (ctx->TRUE()) {
         return top();
     } else if (ctx->FALSE()) {

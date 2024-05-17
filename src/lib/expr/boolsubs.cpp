@@ -10,22 +10,22 @@ void BoolSubs::put(const BoolVarPtr key, const Bools::Expr val) {
 
 Bools::Expr BoolSubs::get(const BoolVarPtr var) const {
     const auto res {map.get(var)};
-    return res ? *res : bools::mkLit(BoolLit(var));
+    return res ? *res : bools::mkLit(bools::mk(var));
 }
 
-Bools::Expr BoolSubs::subs(const BoolLit &lit) const {
-    return lit.isNegated() ? !get(lit.getBoolVar()) : get(lit.getBoolVar());
+Bools::Expr BoolSubs::subs(const Bools::Lit lit) const {
+    return lit->isNegated() ? !get(lit->getBoolVar()) : get(lit->getBoolVar());
 }
 
 Bools::Expr BoolSubs::operator()(const Bools::Expr e) const {
     const auto lit = e->getTheoryLit();
     if (lit) {
-        if (std::holds_alternative<BoolLit>(*lit)) {
-            const auto &blit {std::get<BoolLit>(*lit)};
-            const auto var {blit.getBoolVar()};
+        if (std::holds_alternative<Bools::Lit>(*lit)) {
+            const auto &blit {std::get<Bools::Lit>(*lit)};
+            const auto var {blit->getBoolVar()};
             const auto res {map.get(var)};
             if (res) {
-                return blit.isNegated() ? !*res : *res;
+                return blit->isNegated() ? !*res : *res;
             } else {
                 return e;
             }
@@ -80,7 +80,7 @@ bool BoolSubs::changes(const BoolVarPtr key) const {
     if (!contains(key)) {
         return false;
     }
-    return bools::mkLit(BoolLit(key)) != map.at(key);
+    return bools::mkLit(bools::mk(key)) != map.at(key);
 }
 
 linked_hash_set<BoolVarPtr> BoolSubs::domain() const {

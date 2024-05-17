@@ -177,10 +177,10 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
     do {
         changed = false;
         for (const auto &rel : lits) {
-            if (!rel.isLinear() || !rel.isEq()) {
+            if (!rel->isLinear() || !rel->isEq()) {
                 continue;
             }
-            const auto vars {rel.vars()};
+            const auto vars {rel->vars()};
             if (vars.size() != 2) {
                 continue;
             }
@@ -193,7 +193,7 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
             if (toggling.contains(pre)) {
                 continue;
             }
-            const auto t{rel.lhs()};
+            const auto t{rel->lhs()};
             const auto pre_coeff_term{*t->coeff(pre)};
             const auto post_coeff_term{*t->coeff(post)};
             const auto pre_coeff{*pre_coeff_term->isInt()};
@@ -219,16 +219,16 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
     // y' = y + x + d
     // z' = z + x' + k
     for (const auto &rel : lits) {
-        if (!rel.isLinear() || !rel.isEq()) {
+        if (!rel->isLinear() || !rel->isEq()) {
             continue;
         }
-        const auto vars{rel.vars()};
+        const auto vars{rel->vars()};
         std::optional<Arith::Var> pre;
         std::optional<Arith::Var> post;
         auto all_toggling {true};
         auto some_toggling {false};
         Arith::Subs odd;
-        const auto t{rel.lhs()};
+        const auto t{rel->lhs()};
         for (const auto &x : vars) {
             const auto p = x->isProgVar() ? x : x->progVar(x);
             if (toggling.contains(p)) {
@@ -292,10 +292,10 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
     linked_hash_map<Arith::Var, Int> lbs;
     linked_hash_map<Arith::Var, Int> ubs;
     for (const auto &rel: lits) {
-        if (!rel.isLinear() || rel.isNeq()) {
+        if (!rel->isLinear() || rel->isNeq()) {
             continue;
         }
-        const auto vars {rel.vars()};
+        const auto vars {rel->vars()};
         if (vars.size() != 2) {
             continue;
         }
@@ -308,7 +308,7 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
         if (eqs.contains(pre)) {
             continue;
         }
-        const auto t {rel.lhs()};
+        const auto t {rel->lhs()};
         const auto pre_coeff_term {*t->coeff(pre)};
         const auto post_coeff_term {*t->coeff(post)};
         const auto pre_coeff {*pre_coeff_term->isInt()};
@@ -321,7 +321,7 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
             continue;
         }
         auto constant {*constant_term->isInt()};
-        if (rel.isEq()) {
+        if (rel->isEq()) {
             eqs.emplace(pre, post_coeff > 0 ? -constant : constant);
             lbs.erase(pre);
             ubs.erase(pre);
@@ -368,12 +368,12 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
             res.insert(bools::mkLit(arith::mkLeq(ArithVar::postVar(pre), pre + arith::mkConst(c) * n_term)));
         }
         for (const auto &rel : lits) {
-            const auto vars{rel.vars()};
+            const auto vars{rel->vars()};
             // keep literals that only refer to post-vars
             if (std::all_of(vars.begin(), vars.end(), theory::isPostVar)) {
                 res.insert(bools::mkLit(rel));
             }
-            if (!rel.isLinear()) {
+            if (!rel->isLinear()) {
                 continue;
             }
             if (std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
@@ -386,7 +386,7 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
                 for (const auto &x : vars) {
                     const auto pre = x->isProgVar() ? x : ArithVar::progVar(x);
                     if (!eqs.contains(pre)) {
-                        const auto bounds = *(*rel.lhs()->coeff(x))->isInt() > 0 ? ubs : lbs;
+                        const auto bounds = *(*rel->lhs()->coeff(x))->isInt() > 0 ? ubs : lbs;
                         const auto c{bounds.get(pre)};
                         if (c) {
                             const auto c_term{arith::mkConst(*c)};
@@ -399,7 +399,7 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
                     }
                 }
                 if (!fail) {
-                    res.insert(bools::mkLit(rel.subs(s)));
+                    res.insert(bools::mkLit(rel->subs(s)));
                 }
             }
             {
@@ -412,7 +412,7 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
                     }
                     const auto pre{ArithVar::progVar(post)};
                     if (!eqs.contains(pre)) {
-                        const auto bounds = *(*rel.lhs()->coeff(post))->isInt() > 0 ? ubs : lbs;
+                        const auto bounds = *(*rel->lhs()->coeff(post))->isInt() > 0 ? ubs : lbs;
                         const auto c{bounds.get(pre)};
                         if (c) {
                             s.put(post, pre + arith::mkConst(*c));
@@ -423,7 +423,7 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
                     }
                 }
                 if (!fail) {
-                    res.insert(bools::mkLit(rel.subs(s)));
+                    res.insert(bools::mkLit(rel->subs(s)));
                 }
             }
         }

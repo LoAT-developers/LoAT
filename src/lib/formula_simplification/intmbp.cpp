@@ -25,14 +25,14 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
         Int mlcm{1};
         const auto lits {t->lits().get<Arith::Lit>()};
         for (const auto &l: lits) {
-            if (l.has(x)) {
-                if (const auto div{l.isDivisibility(x)}) {
+            if (l->has(x)) {
+                if (const auto div{l->isDivisibility(x)}) {
                     flcm = mp::lcm(flcm, div->factor);
                     divs.insert(*div);
                 } else {
-                    assert(l.isLinear());
-                    assert(l.isGt());
-                    const auto lhs{l.lhs()};
+                    assert(l->isLinear());
+                    assert(l->isGt());
+                    const auto lhs{l->lhs()};
                     const auto coeff{*lhs->coeff(x)};
                     const auto coeff_val{*coeff->isInt()};
                     flcm = mp::lcm(flcm, mp::abs(coeff_val));
@@ -65,14 +65,14 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
                 [&](const auto &lit){
                     return std::visit(
                         Overload{
-                            [&](const ArithLit &l) {
-                                if (l.has((x))) {
+                            [&](const Arith::Lit &l) {
+                                if (l->has((x))) {
                                     return top();
                                 } else {
                                     return bools::mkLit(lit);
                                 }
                             },
-                            [&](const BoolLit&) {
+                            [&](const Bools::Lit&) {
                                 return bools::mkLit(lit);
                             }
                         }, lit);

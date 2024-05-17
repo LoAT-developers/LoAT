@@ -29,10 +29,9 @@ concept IVars = requires(T x, linked_hash_set<Var> res) {
 
 template <typename T>
 concept ILit = requires(T x, T y) {
-        {x.isTriviallyTrue()} -> std::same_as<bool>;
-        {x.isPoly()} -> std::same_as<bool>;
-        {x.isLinear()} -> std::same_as<bool>;
-        {x.hash()} -> std::same_as<std::size_t>;
+        {x->isTriviallyTrue()} -> std::same_as<bool>;
+        {x->isPoly()} -> std::same_as<bool>;
+        {x->isLinear()} -> std::same_as<bool>;
 };
 
 template <typename T>
@@ -53,7 +52,7 @@ concept IBaseTheory = requires(T t, typename T::Const val, typename T::Var var, 
         {T::constToExpr(val)} -> std::same_as<typename T::Expr>;
         {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
         {T::anyValue()} -> std::same_as<typename T::Expr>;
-        {lit.eval(m)} -> std::same_as<bool>;
+        {lit->eval(m)} -> std::same_as<bool>;
 };
 
 template <typename T>

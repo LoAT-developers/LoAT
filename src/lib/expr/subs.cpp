@@ -278,7 +278,7 @@ inline Bools::Expr subsImpl(const Subs &s, const Lit &lit) {
             if constexpr (std::same_as<T, Bools>) {
                 return s.template get<T>().subs(std::get<I>(lit));
             } else {
-                return bools::mkLit(std::get<I>(lit).subs(s.template get<T>()));
+                return bools::mkLit(std::get<I>(lit)->subs(s.template get<T>()));
             }
         } else {
             return subsImpl<I+1>(s, lit);

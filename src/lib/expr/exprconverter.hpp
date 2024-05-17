@@ -44,10 +44,10 @@ protected:
         if (e->getTheoryLit()) {
             return std::visit(
                 Overload {
-                    [&](const ArithLit &lit) {
+                    [&](const Arith::Lit &lit) {
                         return convertRelational(lit);
                     },
-                    [&](const BoolLit &lit) {
+                    [&](const Bools::Lit &lit) {
                         return convertLit(lit);
                     }
                 }, *e->getTheoryLit());
@@ -111,22 +111,22 @@ protected:
             });
     }
 
-    Formula convertRelational(const ArithLit &rel) {
-        const auto lhs {convertEx(rel.lhs())};
+    Formula convertRelational(const Arith::Lit &rel) {
+        const auto lhs {convertEx(rel->lhs())};
         const auto rhs {context.getInt(0)};
-        if (rel.isGt()) {
+        if (rel->isGt()) {
             return context.gt(lhs, rhs);
-        } else if (rel.isEq()) {
+        } else if (rel->isEq()) {
             return context.eq(lhs, rhs);
-        } else if (rel.isNeq()) {
+        } else if (rel->isNeq()) {
             return context.neq(lhs, rhs);
         }
         throw std::invalid_argument("unknown relation");
     }
 
-    Formula convertLit(const BoolLit &lit) {
-        auto var {context.getVariable(lit.getBoolVar())};
-        return lit.isNegated() ? context.negate(var) : var;
+    Formula convertLit(const Bools::Lit &lit) {
+        auto var {context.getVariable(lit->getBoolVar())};
+        return lit->isNegated() ? context.negate(var) : var;
     }
 
 private:

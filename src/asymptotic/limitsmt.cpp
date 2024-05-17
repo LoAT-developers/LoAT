@@ -280,14 +280,14 @@ Bools::Expr encodeBoolExpr(const Bools::Expr expr, const ArithSubs &templateSubs
     } else if (expr->isOr()) {
         return bools::mkOr(newChildren);
     } else {
-        const auto lit{std::get<ArithLit>(*expr->getTheoryLit())};
-        const auto lhs{lit.lhs()};
+        const auto lit{std::get<Arith::Lit>(*expr->getTheoryLit())};
+        const auto lhs{lit->lhs()};
         const auto ex{templateSubs(lhs)};
-        if (lit.isGt()) {
+        if (lit->isGt()) {
             return posConstraint(ex, n) || posInfConstraint(ex, n);
-        } else if (lit.isEq()) {
+        } else if (lit->isEq()) {
             return zeroConstraint(ex, n);
-        } else if (lit.isNeq()) {
+        } else if (lit->isNeq()) {
             return posConstraint(ex, n) ||
                    posInfConstraint(ex, n) ||
                    posConstraint(-ex, n) ||

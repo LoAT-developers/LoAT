@@ -71,7 +71,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
                              ++int_arg;
                          },
                          [&](const Bools::Var x) {
-                             ren.put<Bools>(x, bools::mkLit(BoolLit(bvars[bool_arg])));
+                             ren.put<Bools>(x, bools::mkLit(bools::mk(bvars[bool_arg])));
                              ++bool_arg;
                          }}
                 , x);
@@ -109,7 +109,7 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
             up.put<Arith>(vars[i], ArithVar::next()->toExpr());
         }
         for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
-            up.put<Bools>(bvars[i], bools::mkLit(BoolLit(BoolVar::next())));
+            up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
         }
         up.put<Arith>(its->getLocVar(), arith::mkConst(c.rhs.loc));
         const auto guard {ren(c.guard) && theory::mkEq(its->getLocVar(), arith::mkConst(c.lhs.loc))};
@@ -184,7 +184,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
         std::visit(
             Overload {
                 [&](const Bools::Var x) {
-                    guards.push_back(bools::mkLit(BoolLit(x)));
+                    guards.push_back(bools::mkLit(bools::mk(x)));
                 },
                 [&](const FunApp &v) {
                     if (lhs) {
@@ -281,7 +281,7 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
         res = any_cast<lit_type>(lit);
     } else if (ctx->var()) {
         const auto r = any_cast<Var>(visit(ctx->var()));
-        res.t = bools::mkLit(BoolLit(std::get<Bools::Var>(r)));
+        res.t = bools::mkLit(bools::mk(std::get<Bools::Var>(r)));
     } else if (args.size() == 1) {
         res.t = args[0];
     } else if (ctx->TRUE()) {

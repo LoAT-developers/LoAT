@@ -11,7 +11,7 @@ class BoolExpr;
 class BoolSubs;
 
 struct BoolsBase {
-    using Lit = BoolLit;
+    using Lit = BoolLitPtr;
     using Var = BoolVarPtr;
     using Const = bool;
     using Expr = cpp::not_null<std::shared_ptr<const BoolExpr>>;

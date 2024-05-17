@@ -117,7 +117,7 @@ template <size_t I = 0>
 inline bool isLinearImpl(const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
-            return std::get<I>(lit).isLinear();
+            return std::get<I>(lit)->isLinear();
         }
         return isLinearImpl<I+1>(lit);
     } else {
@@ -133,7 +133,7 @@ template <size_t I = 0>
 inline bool isPolyImpl(const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
-            return std::get<I>(lit).isPoly();
+            return std::get<I>(lit)->isPoly();
         }
         return isPolyImpl<I+1>(lit);
     } else {
@@ -149,7 +149,7 @@ template<std::size_t I = 0>
 inline void collectVarsImpl(const Lit &lit, VarSet &s) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
-            return std::get<I>(lit).collectVars(s.template get<I>());
+            return std::get<I>(lit)->collectVars(s.template get<I>());
         } else {
             return collectVarsImpl<I+1>(lit, s);
         }
@@ -173,7 +173,7 @@ template <size_t I = 0>
 inline bool isTriviallyTrueImpl(const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
-            return std::get<I>(lit).isTriviallyTrue();
+            return std::get<I>(lit)->isTriviallyTrue();
         }
         return isTriviallyTrueImpl<I+1>(lit);
     } else {
@@ -189,7 +189,7 @@ template <size_t I = 0>
 inline bool isTriviallyFalseImpl(const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
-            return std::get<I>(lit).isTriviallyFalse();
+            return std::get<I>(lit)->isTriviallyFalse();
         }
         return isTriviallyFalseImpl<I+1>(lit);
     } else {
@@ -217,11 +217,11 @@ Lit negate(const Lit &lit) {
     return negateImpl<0>(lit);
 }
 
-size_t hash(const Lit lit) {
+size_t hash(const Lit &lit) {
     return std::visit(
         Overload {
             [](const auto &lit) {
-                return lit.hash();
+                return lit->hash();
             }
         }, lit);
 }
@@ -231,8 +231,10 @@ inline void simplifyAndImpl(LitSet &lits) {
     if constexpr (I < num_theories) {
         using Th = std::tuple_element_t<I, Theories>;
         if constexpr (!std::is_same_v<Th, Bools>) {
-            using Lit = typename Th::Lit;
-            Lit::simplifyAnd(lits.get<Lit>());
+            auto &ls {lits.get<typename Th::Lit>()};
+            if (!ls.empty()) {
+                (*ls.begin())->simplifyAnd(ls);
+            }
         }
         simplifyAndImpl<I+1>(lits);
     }
@@ -247,8 +249,10 @@ inline void simplifyOrImpl(LitSet &lits) {
     if constexpr (I < num_theories) {
         using Th = std::tuple_element_t<I, Theories>;
         if constexpr (!std::is_same_v<Th, Bools>) {
-            using Lit = typename Th::Lit;
-            Lit::simplifyOr(lits.get<Lit>());
+            auto &ls {lits.get<typename Th::Lit>()};
+            if (!ls.empty()) {
+                (*ls.begin())->simplifyOr(ls);
+            }
         }
         simplifyOrImpl<I+1>(lits);
     }

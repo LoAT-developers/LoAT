@@ -167,9 +167,9 @@ Bools::Expr CrabCfg::get_invariants(const Bools::Expr stem, const Bools::Expr cy
                 if (c == 1) {
                     const auto var {std::get<Bools::Var>(var_map.right.at(x))};
                     if (lit.constant() == 1) {
-                        lits.insert(BoolLit(var, negated));
+                        lits.insert(bools::mk(var, negated));
                     } else if (lit.constant() == 0) {
-                        lits.insert(BoolLit(var, !negated));
+                        lits.insert(bools::mk(var, !negated));
                     }
                 }
             }

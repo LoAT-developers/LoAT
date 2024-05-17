@@ -6,6 +6,23 @@
 #include <boost/functional/hash.hpp>
 #include <functional>
 
+ConsHash<BoolLit, BoolLit, BoolLit::CacheHash, BoolLit::CacheEqual, BoolVarPtr, bool> BoolLit::cache {};
+
+bool BoolLit::CacheEqual::operator()(const std::tuple<BoolVarPtr, bool> &args1, const std::tuple<BoolVarPtr, bool> &args2) const noexcept {
+    return args1 == args2;
+}
+
+size_t BoolLit::CacheHash::operator()(const std::tuple<BoolVarPtr, bool> &args) const noexcept {
+    size_t seed {42};
+    boost::hash_combine(seed, std::get<0>(args));
+    boost::hash_combine(seed, std::get<1>(args));
+    return seed;
+}
+
+BoolLitPtr bools::mk(const BoolVarPtr var, bool negated) {
+    return BoolLit::cache.from_cache(var, negated);
+}
+
 BoolLit::BoolLit(const BoolVarPtr var, bool negated): var(var), negated(negated) {}
 
 bool BoolLit::isNegated() const {
@@ -36,8 +53,8 @@ void BoolLit::collectVars(linked_hash_set<BoolVarPtr> &res) const {
     res.insert(var);
 }
 
-BoolLit operator!(const BoolLit &l) {
-    return BoolLit(l.getBoolVar(), !l.isNegated());
+BoolLitPtr operator!(const BoolLitPtr &l) {
+    return bools::mk(l->getBoolVar(), !l->isNegated());
 }
 
 std::size_t BoolLit::hash() const {

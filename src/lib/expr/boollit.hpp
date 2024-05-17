@@ -4,15 +4,32 @@
 #include "linkedhashset.hpp"
 #include "linkedhashmap.hpp"
 
+class BoolLit;
+
+using BoolLitPtr = cpp::not_null<std::shared_ptr<const BoolLit>>;
+
+namespace bools {
+    BoolLitPtr mk(const BoolVarPtr var, bool negated = false);
+}
+
 class BoolLit {
+
+    friend BoolLitPtr bools::mk(const BoolVarPtr var, bool negated);
+
     BoolVarPtr var;
     bool negated;
 
-    friend auto operator<=>(const BoolLit &x, const BoolLit &y) = default;
+    struct CacheEqual {
+        bool operator()(const std::tuple<BoolVarPtr, bool> &args1, const std::tuple<BoolVarPtr, bool> &args2) const noexcept;
+    };
+    struct CacheHash {
+        size_t operator()(const std::tuple<BoolVarPtr, bool> &args) const noexcept;
+    };
+    static ConsHash<BoolLit, BoolLit, CacheHash, CacheEqual, BoolVarPtr, bool> cache;
 
 public:
 
-    explicit BoolLit(const BoolVarPtr var, bool negated = false);
+    BoolLit(const BoolVarPtr var, bool negated);
     bool isNegated() const;
     bool isPoly() const;
     bool isLinear() const;
@@ -25,7 +42,7 @@ public:
 
 };
 
-BoolLit operator!(const BoolLit &l);
+BoolLitPtr operator!(const BoolLitPtr &l);
 
 std::ostream& operator<<(std::ostream &s, const BoolLit &e);
 

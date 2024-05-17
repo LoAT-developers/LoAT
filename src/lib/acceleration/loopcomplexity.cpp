@@ -30,7 +30,7 @@ LoopComplexity LoopComplexity::compute(const Rule &rule) {
     }
     for (const auto &[x, v] : rule.getUpdate().get<Bools>()) {
         const auto lits{v->lits()};
-        const auto lit{BoolLit(x)};
+        const auto lit{bools::mk(x)};
         if (lits.contains(!lit) && !lits.contains(lit)) {
             ++res.negated;
         }

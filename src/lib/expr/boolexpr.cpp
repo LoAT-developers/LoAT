@@ -85,8 +85,8 @@ const Bools::Expr BoolExpr::mkAndFromLits(const Lits &lits) {
     return buildFromLits(lits, ConcatAnd);
 }
 
-template const Bools::Expr BoolExpr::mkAndFromLits<std::vector<ArithLit>>(const std::vector<ArithLit> &lits);
-template const Bools::Expr BoolExpr::mkAndFromLits<linked_hash_set<ArithLit>>(const linked_hash_set<ArithLit> &lits);
+template const Bools::Expr BoolExpr::mkAndFromLits<std::vector<Arith::Lit>>(const std::vector<Arith::Lit> &lits);
+template const Bools::Expr BoolExpr::mkAndFromLits<linked_hash_set<Arith::Lit>>(const linked_hash_set<Arith::Lit> &lits);
 template const Bools::Expr BoolExpr::mkAndFromLits<Conjunction>(const Conjunction &lits);
 template const Bools::Expr BoolExpr::mkAndFromLits<LitSet>(const LitSet &lits);
 template const Bools::Expr BoolExpr::mkAndFromLits<std::initializer_list<Lit>>(const std::initializer_list<Lit> &lits);
@@ -126,8 +126,8 @@ linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var n) const {
 void BoolExpr::getBounds(const Arith::Var var, linked_hash_set<Bound> &res) const {
     const auto lit {getTheoryLit()};
     if (lit) {
-        if (std::holds_alternative<ArithLit>(*lit)) {
-            std::get<ArithLit>(*lit).getBounds(var, res);
+        if (std::holds_alternative<Arith::Lit>(*lit)) {
+            std::get<Arith::Lit>(*lit)->getBounds(var, res);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
@@ -167,8 +167,8 @@ linked_hash_set<Divisibility> BoolExpr::getDivisibility(const Arith::Var n) cons
 void BoolExpr::getDivisibility(const Arith::Var var, linked_hash_set<Divisibility> &res) const {
     const auto lit {getTheoryLit()};
     if (lit) {
-        if (std::holds_alternative<ArithLit>(*lit)) {
-            std::get<ArithLit>(*lit).getDivisibility(var, res);
+        if (std::holds_alternative<Arith::Lit>(*lit)) {
+            std::get<Arith::Lit>(*lit)->getDivisibility(var, res);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
@@ -202,8 +202,8 @@ void BoolExpr::getDivisibility(const Arith::Var var, linked_hash_set<Divisibilit
 std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var var) const {
     const auto lit {getTheoryLit()};
     if (lit) {
-        if (std::holds_alternative<ArithLit>(*lit)) {
-            return std::get<ArithLit>(*lit).getEquality(var);
+        if (std::holds_alternative<Arith::Lit>(*lit)) {
+            return std::get<Arith::Lit>(*lit)->getEquality(var);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
@@ -220,7 +220,7 @@ void BoolExpr::propagateEqualities(Arith::Subs &subs, const std::function<bool(c
     const auto lit {getTheoryLit()};
     if (lit) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
-            std::get<Arith::Lit>(*lit).subs(subs).propagateEquality(subs, allow);
+            std::get<Arith::Lit>(*lit)->subs(subs)->propagateEquality(subs, allow);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
@@ -239,13 +239,13 @@ Bools::Expr BoolExpr::toInfinity(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
-                [&n](const ArithLit &rel) {
+                [&n](const Arith::Lit &rel) {
                     // TODO handle Eq / Neq
-                    assert(rel.isLinear({{n}}));
-                    if (!rel.has(n)) {
+                    assert(rel->isLinear({{n}}));
+                    if (!rel->has(n)) {
                         return mkLit(rel);
                     }
-                    const auto ex {rel.lhs()};
+                    const auto ex {rel->lhs()};
                     if (***(*ex->coeff(n))->isRational() > 0) {
                         return top();
                     } else {
@@ -263,18 +263,18 @@ Bools::Expr BoolExpr::toMinusInfinity(const Arith::Var n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
-                [&n](const ArithLit &rel) {
-                    assert(rel.isLinear({{n}}));
-                    if (!rel.has(n)) {
+                [&n](const Arith::Lit &rel) {
+                    assert(rel->isLinear({{n}}));
+                    if (!rel->has(n)) {
                         return mkLit(rel);
                     }
-                    if (rel.isEq()) {
+                    if (rel->isEq()) {
                         return bot();
                     }
-                    if (rel.isNeq()) {
+                    if (rel->isNeq()) {
                         return top();
                     }
-                    const auto ex {rel.lhs()};
+                    const auto ex {rel->lhs()};
                     if (***(*ex->coeff(n))->isRational() < 0) {
                         return top();
                     } else {
@@ -418,10 +418,10 @@ bool BoolExpr::isLinear() const {
     return forall([](const auto &lit) {
         return std::visit(
             Overload {
-                [](const ArithLit &lit) {
-                    return lit.isLinear();
+                [](const Arith::Lit &lit) {
+                    return lit->isLinear();
                 },
-                [](const BoolLit&) {
+                [](const Bools::Lit&) {
                     return true;
                 }
             }, lit);
@@ -432,10 +432,10 @@ bool BoolExpr::isPoly() const {
     return forall([](const auto &lit) {
         return std::visit(
             Overload {
-                [](const ArithLit &lit) {
-                    return lit.isPoly();
+                [](const Arith::Lit &lit) {
+                    return lit->isPoly();
                 },
-                [](const BoolLit&) {
+                [](const Bools::Lit&) {
                     return true;
                 }
             }, lit);

@@ -55,13 +55,13 @@ void syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
         if (const auto lit = e->getTheoryLit()) {
             std::visit(
                 Overload{
-                    [&](const ArithLit &l) {
-                        if (l.isNeq()) {
-                            const auto lt{arith::mkLt(l.lhs(), arith::mkConst(0))};
+                    [&](const Arith::Lit &l) {
+                        if (l->isNeq()) {
+                            const auto lt{arith::mkLt(l->lhs(), arith::mkConst(0))};
                             if (m.eval(lt)) {
                                 res.insert(bools::mkLit(lt));
                             } else {
-                                const auto gt{arith::mkGt(l.lhs(), arith::mkConst(0))};
+                                const auto gt{arith::mkGt(l->lhs(), arith::mkConst(0))};
                                 if (m.eval(gt)) {
                                     res.insert(bools::mkLit(gt));
                                 }

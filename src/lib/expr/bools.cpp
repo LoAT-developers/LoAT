@@ -6,7 +6,7 @@ BoolsBase::Expr BoolsBase::constToExpr(const Const val) {
 }
 
 BoolsBase::Expr BoolsBase::varToExpr(const Var var) {
-    return bools::mkLit(BoolLit{var});
+    return bools::mkLit(bools::mk(var));
 }
 
 BoolsBase::Expr BoolsBase::anyValue() {

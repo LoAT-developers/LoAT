@@ -21,7 +21,7 @@ void VarEliminator::findDependencies(const Bools::Expr guard) {
             for (const auto &lit: guard->lits()) {
                 if (std::holds_alternative<Arith::Lit>(lit)) {
                     const auto &rel {std::get<Arith::Lit>(lit)};
-                    const auto ex {rel.lhs()};
+                    const auto ex {rel->lhs()};
                     if (ex->isPoly(var) == 1) {
                         // we found a constraint which is linear in var, check all variables in var's coefficient
                         const auto coeff {*ex->coeff(var)};

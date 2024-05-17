@@ -24,7 +24,7 @@ Subs impliedEqualities(const Bools::Expr e) {
                 const auto elim {find_elim(c)};
                 if (elim) {
                     auto grandChildren {c->getChildren()};
-                    auto lit {bools::mkLit(BoolLit(*elim))};
+                    auto lit {bools::mkLit(bools::mk(*elim))};
                     bool positive {grandChildren.contains(lit)};
                     if (!positive) {
                         lit = !lit;
@@ -56,7 +56,7 @@ Subs impliedEqualities(const Bools::Expr e) {
                         const auto elim {find_elim(c)};
                         if (elim) {
                             auto grandChildren {c->getChildren()};
-                            auto lit {bools::mkLit(BoolLit(*elim))};
+                            auto lit {bools::mkLit(bools::mk(*elim))};
                             bool positive {grandChildren.contains(lit)};
                             if (!positive) {
                                 lit = !lit;
@@ -76,11 +76,11 @@ Subs impliedEqualities(const Bools::Expr e) {
             }
         } else if (current->isTheoryLit()) {
             const auto lit {*current->getTheoryLit()};
-            if (std::holds_alternative<BoolLit>(lit)) {
-                const auto &bool_lit {std::get<BoolLit>(lit)};
-                const auto var {bool_lit.getBoolVar()};
+            if (std::holds_alternative<Bools::Lit>(lit)) {
+                const auto &bool_lit {std::get<Bools::Lit>(lit)};
+                const auto var {bool_lit->getBoolVar()};
                 if (var->isTempVar()) {
-                    res.put(var, bool_lit.isNegated() ? bot() : top());
+                    res.put(var, bool_lit->isNegated() ? bot() : top());
                 }
             }
         }

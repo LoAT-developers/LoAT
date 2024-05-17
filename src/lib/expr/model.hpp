@@ -66,7 +66,7 @@ private:
             if (lit.index() == I) {
                 const auto &literal {std::get<I>(lit)};
                 const auto &model {std::get<I>(m)};
-                return literal.eval(model);
+                return literal->eval(model);
             }
             return evalImpl<I+1>(lit);
         } else {

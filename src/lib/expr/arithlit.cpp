@@ -34,15 +34,28 @@ std::ostream& operator<<(std::ostream &s, const ArithLitSet &set) {
     return s;
 }
 
+ConsHash<ArithLit, ArithLit, ArithLit::CacheHash, ArithLit::CacheEqual, ArithExprPtr, ArithLit::Kind> ArithLit::cache {};
+
+bool ArithLit::CacheEqual::operator()(const std::tuple<ArithExprPtr, ArithLit::Kind> &args1, const std::tuple<ArithExprPtr, ArithLit::Kind> &args2) const noexcept {
+    return args1 == args2;
+}
+
+size_t ArithLit::CacheHash::operator()(const std::tuple<ArithExprPtr, ArithLit::Kind> &args) const noexcept {
+    size_t seed {42};
+    boost::hash_combine(seed, std::get<0>(args));
+    boost::hash_combine(seed, std::get<1>(args));
+    return seed;
+}
+
 ArithLit::ArithLit(const ArithExprPtr l, const Kind kind): l(l), kind(kind) { }
 
-ArithLit mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
+ArithLitPtr ArithLit::mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
     auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
     const auto factor {lhs_integral->getConstantFactor()};
     if (factor > 1) {
         lhs_integral = lhs_integral->divide(factor);
     }
-    return ArithLit(lhs_integral, kind);
+    return cache.from_cache(lhs_integral, kind);
 }
 
 ArithExprPtr ArithLit::lhs() const {
@@ -206,7 +219,7 @@ bool ArithLit::has(const ArithVarPtr x) const {
     return l->has(x);
 }
 
-ArithLit ArithLit::subs(const ArithSubs &map) const {
+ArithLitPtr ArithLit::subs(const ArithSubs &map) const {
     return mk(map(l), kind);
 }
 
@@ -225,49 +238,49 @@ size_t hash_value(const ArithLit &rel) {
     return rel.hash();
 }
 
-ArithLit arith::mkGeq(const ArithExprPtr x, const ArithExprPtr y) {
+ArithLitPtr arith::mkGeq(const ArithExprPtr x, const ArithExprPtr y) {
     const auto lhs {x - y};
     auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
     const auto factor {lhs_integral->getConstantFactor()};
     if (factor > 1) {
         lhs_integral = lhs_integral->divide(factor);
     }
-    return ArithLit(lhs_integral + arith::mkConst(1), ArithLit::Kind::Gt);
+    return ArithLit::cache.from_cache(lhs_integral + arith::mkConst(1), ArithLit::Kind::Gt);
 }
 
-ArithLit arith::mkLeq(const ArithExprPtr x, const ArithExprPtr y) {
+ArithLitPtr arith::mkLeq(const ArithExprPtr x, const ArithExprPtr y) {
     return mkGeq(-x, -y);
 }
 
-ArithLit arith::mkGt(const ArithExprPtr x, const ArithExprPtr y) {
-    return mk(x - y, ArithLit::Kind::Gt);
+ArithLitPtr arith::mkGt(const ArithExprPtr x, const ArithExprPtr y) {
+    return ArithLit::mk(x - y, ArithLit::Kind::Gt);
 }
 
-ArithLit arith::mkEq(const ArithExprPtr x, const ArithExprPtr y) {
-    return mk(x - y, ArithLit::Kind::Eq);
+ArithLitPtr arith::mkEq(const ArithExprPtr x, const ArithExprPtr y) {
+    return ArithLit::mk(x - y, ArithLit::Kind::Eq);
 }
 
-ArithLit arith::mkNeq(const ArithExprPtr x, const ArithExprPtr y) {
-    return mk(x - y, ArithLit::Kind::Neq);
+ArithLitPtr arith::mkNeq(const ArithExprPtr x, const ArithExprPtr y) {
+    return ArithLit::mk(x - y, ArithLit::Kind::Neq);
 }
 
-ArithLit arith::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
-    return mk(y - x, ArithLit::Kind::Gt);
+ArithLitPtr arith::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
+    return ArithLit::mk(y - x, ArithLit::Kind::Gt);
 }
 
-ArithLit operator!(const ArithLit &x) {
-    switch (x.kind) {
-        case ArithLit::Kind::Gt: return mk(arith::mkConst(1) - x.lhs(), ArithLit::Kind::Gt);
-        case ArithLit::Kind::Eq: return mk(x.lhs(), ArithLit::Kind::Neq);
-        case ArithLit::Kind::Neq: return mk(x.lhs(), ArithLit::Kind::Eq);
+ArithLitPtr operator!(const ArithLitPtr &x) {
+    switch (x->kind) {
+        case ArithLit::Kind::Gt: return ArithLit::mk(arith::mkConst(1) - x->lhs(), ArithLit::Kind::Gt);
+        case ArithLit::Kind::Eq: return ArithLit::mk(x->lhs(), ArithLit::Kind::Neq);
+        case ArithLit::Kind::Neq: return ArithLit::mk(x->lhs(), ArithLit::Kind::Eq);
         default: throw std::invalid_argument("unexpected relation");
     }
 }
 
-std::ostream& operator<<(std::ostream &s, const ArithLit &rel) {
+std::ostream& operator<<(std::ostream &s, const ArithLitPtr &rel) {
     std::string lhs;
     std::string rhs;
-    if (const auto add {rel.lhs()->isAdd()}) {
+    if (const auto add {rel->lhs()->isAdd()}) {
         std::vector<ArithExprPtr> lhs_args;
         std::vector<ArithExprPtr> rhs_args;
         for (const auto &arg: (*add)->getArgs()) {
@@ -280,10 +293,10 @@ std::ostream& operator<<(std::ostream &s, const ArithLit &rel) {
         lhs = toString(arith::mkPlus(std::move(lhs_args)));
         rhs = toString(arith::mkPlus(std::move(rhs_args)));
     } else {
-        lhs = toString(rel.lhs());
+        lhs = toString(rel->lhs());
         rhs = "0";
     }
-    switch (rel.kind) {
+    switch (rel->kind) {
         case ArithLit::Kind::Gt: return s << lhs << " > " << rhs;
         case ArithLit::Kind::Eq: return s << lhs << " = " << rhs;
         case ArithLit::Kind::Neq: return s << lhs << " != " << rhs;
@@ -300,16 +313,16 @@ bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
     }
 }
 
-void ArithLit::simplifyAnd(linked_hash_set<ArithLit> &lits) {
-    std::unordered_set<ArithLit> remove;
-    linked_hash_set<ArithLit> add;
+void ArithLit::simplifyAnd(linked_hash_set<ArithLitPtr> &lits) {
+    std::unordered_set<ArithLitPtr> remove;
+    linked_hash_set<ArithLitPtr> add;
     for (const auto &rel: lits) {
-        if (rel.isGt() && !remove.contains(rel)) {
-            const auto converse {arith::mkLeq(rel.lhs(), arith::mkConst(1))};
+        if (rel->isGt() && !remove.contains(rel)) {
+            const auto converse {arith::mkLeq(rel->lhs(), arith::mkConst(1))};
             if (lits.contains(converse)) {
                 remove.insert(rel);
                 remove.insert(converse);
-                add.insert(arith::mkEq(rel.lhs(), arith::mkConst(1)));
+                add.insert(arith::mkEq(rel->lhs(), arith::mkConst(1)));
             }
         }
     }
@@ -321,16 +334,16 @@ void ArithLit::simplifyAnd(linked_hash_set<ArithLit> &lits) {
     }
 }
 
-void ArithLit::simplifyOr(linked_hash_set<ArithLit> &lits) {
-    std::unordered_set<ArithLit> remove;
-    std::unordered_set<ArithLit> add;
+void ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
+    std::unordered_set<ArithLitPtr> remove;
+    std::unordered_set<ArithLitPtr> add;
     for (const auto &rel: lits) {
-        if (rel.isGt() && !remove.contains(rel)) {
-            const auto converse {arith::mkLt(rel.lhs(), arith::mkConst(0))};
+        if (rel->isGt() && !remove.contains(rel)) {
+            const auto converse {arith::mkLt(rel->lhs(), arith::mkConst(0))};
             if (lits.contains(converse)) {
                 remove.insert(rel);
                 remove.insert(converse);
-                add.insert(arith::mkNeq(rel.lhs(), arith::mkConst(0)));
+                add.insert(arith::mkNeq(rel->lhs(), arith::mkConst(0)));
             }
         }
     }

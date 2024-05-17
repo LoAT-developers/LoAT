@@ -19,7 +19,7 @@ public:
     BoolSubs(const BoolVarPtr key, const Bools::Expr val);
     void put(const BoolVarPtr key, const Bools::Expr val);
     Bools::Expr get(const BoolVarPtr var) const;
-    Bools::Expr subs(const BoolLit &lit) const;
+    Bools::Expr subs(const Bools::Lit lit) const;
     Bools::Expr operator()(const Bools::Expr e) const;
     bool contains(const BoolVarPtr var) const;
     BoolSubs unite(const BoolSubs &t) const;

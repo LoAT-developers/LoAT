@@ -29,14 +29,16 @@ std::size_t hash_value(const Divisibility&);
 
 class ArithLit;
 
+using ArithLitPtr = cpp::not_null<std::shared_ptr<const ArithLit>>;
+
 namespace arith {
 
-ArithLit mkEq(const ArithExprPtr x, const ArithExprPtr y);
-ArithLit mkNeq(const ArithExprPtr x, const ArithExprPtr y);
-ArithLit mkGeq(const ArithExprPtr x, const ArithExprPtr y);
-ArithLit mkLeq(const ArithExprPtr x, const ArithExprPtr y);
-ArithLit mkGt(const ArithExprPtr x, const ArithExprPtr y);
-ArithLit mkLt(const ArithExprPtr x, const ArithExprPtr y);
+ArithLitPtr mkEq(const ArithExprPtr x, const ArithExprPtr y);
+ArithLitPtr mkNeq(const ArithExprPtr x, const ArithExprPtr y);
+ArithLitPtr mkGeq(const ArithExprPtr x, const ArithExprPtr y);
+ArithLitPtr mkLeq(const ArithExprPtr x, const ArithExprPtr y);
+ArithLitPtr mkGt(const ArithExprPtr x, const ArithExprPtr y);
+ArithLitPtr mkLt(const ArithExprPtr x, const ArithExprPtr y);
 
 }
 
@@ -44,17 +46,30 @@ class ArithLit {
 
 private:
 
-    friend auto operator<=>(const ArithLit &x, const ArithLit &y) = default;
-    friend bool operator==(const ArithLit &x, const ArithLit &y) = default;
-
-    friend ArithLit operator!(const ArithLit &x);
-    friend std::ostream& operator<<(std::ostream &s, const ArithLit &e);
-
-public:
+    friend ArithLitPtr operator!(const ArithLitPtr &x);
+    friend std::ostream& operator<<(std::ostream &s, const ArithLitPtr &e);
+    friend ArithLitPtr arith::mkEq(const ArithExprPtr x, const ArithExprPtr y);
+    friend ArithLitPtr arith::mkNeq(const ArithExprPtr x, const ArithExprPtr y);
+    friend ArithLitPtr arith::mkGeq(const ArithExprPtr x, const ArithExprPtr y);
+    friend ArithLitPtr arith::mkLeq(const ArithExprPtr x, const ArithExprPtr y);
+    friend ArithLitPtr arith::mkGt(const ArithExprPtr x, const ArithExprPtr y);
+    friend ArithLitPtr arith::mkLt(const ArithExprPtr x, const ArithExprPtr y);
 
     enum class Kind {Gt, Eq, Neq};
 
     class InvalidRelationalExpression: std::exception { };
+
+    struct CacheEqual {
+        bool operator()(const std::tuple<ArithExprPtr, Kind> &args1, const std::tuple<ArithExprPtr, Kind> &args2) const noexcept;
+    };
+    struct CacheHash {
+        size_t operator()(const std::tuple<ArithExprPtr, Kind> &args) const noexcept;
+    };
+    static ConsHash<ArithLit, ArithLit, CacheHash, CacheEqual, ArithExprPtr, Kind> cache;
+
+    static ArithLitPtr mk(const ArithExprPtr lhs, const Kind kind);
+
+public:
 
     ArithLit(const ArithExprPtr lhs, const Kind kind);
 
@@ -74,7 +89,7 @@ public:
     bool isGt() const;
     bool isEq() const;
     bool isNeq() const;
-    ArithLit subs(const ArithSubs &map) const;
+    ArithLitPtr subs(const ArithSubs &map) const;
     linked_hash_set<ArithVarPtr> vars() const;
 
     template <typename P>
@@ -85,8 +100,8 @@ public:
     std::size_t hash() const;
     bool eval(const linked_hash_map<ArithVarPtr, Int>&) const;
 
-    static void simplifyAnd(linked_hash_set<ArithLit> &lits);
-    static void simplifyOr(linked_hash_set<ArithLit> &lits);
+    static void simplifyAnd(linked_hash_set<ArithLitPtr> &lits);
+    static void simplifyOr(linked_hash_set<ArithLitPtr> &lits);
 
 private:
 
@@ -111,6 +126,6 @@ struct std::hash<ArithLit> {
 
 size_t hash_value(const ArithLit &rel);
 
-using ArithLitSet = linked_hash_set<ArithLit>;
+using ArithLitSet = linked_hash_set<ArithLitPtr>;
 
 std::ostream& operator<<(std::ostream &s, const ArithLitSet &set);

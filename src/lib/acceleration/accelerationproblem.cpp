@@ -21,12 +21,12 @@ AccelerationProblem::AccelerationProblem(
     for (const auto &l: guard->lits()) {
         std::visit(Overload {
             // TODO think about a better handling of equalities
-            [&](const ArithLit &l) {
-                if (l.isNeq()) {
+            [&](const Arith::Lit &l) {
+                if (l->isNeq()) {
                     throw std::invalid_argument("neq in acceleration problem");
-                } else if (l.isEq()) {
-                    todo.insert(arith::mkGeq(l.lhs(), arith::mkConst(0)));
-                    todo.insert(arith::mkLeq(l.lhs(), arith::mkConst(0)));
+                } else if (l->isEq()) {
+                    todo.insert(arith::mkGeq(l->lhs(), arith::mkConst(0)));
+                    todo.insert(arith::mkLeq(l->lhs(), arith::mkConst(0)));
                 } else {
                     todo.insert(l);
                 }
@@ -71,8 +71,8 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     if (polyaccel == PolyAccelMode::None || !closed || closed->prefix > 0 || !config.tryAccel || !std::holds_alternative<Arith::Lit>(lit)) {
         return false;
     }
-    const auto &rel {std::get<ArithLit>(lit)};
-    const auto nfold {closed->closed_form.get<Arith>()(rel.lhs())};
+    const auto &rel {std::get<Arith::Lit>(lit)};
+    const auto nfold {closed->closed_form.get<Arith>()(rel->lhs())};
     const auto d {nfold->isPoly(config.n)};
     if (!d || d == 0) {
         return false;
@@ -91,12 +91,12 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             if (***c > 0) {
                 guard.insert(rel);
             } else {
-                guard.insert(rel.subs(but_last));
+                guard.insert(rel->subs(but_last));
                 res.nonterm = false;
             }
         } else {
             guard.insert(rel);
-            guard.insert(rel.subs(but_last));
+            guard.insert(rel->subs(but_last));
             res.nonterm = false;
         }
         low_degree = true;
@@ -106,7 +106,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         if (c) {
             if (***c < 0) {
                 guard.insert(rel);
-                guard.insert(rel.subs(but_last));
+                guard.insert(rel->subs(but_last));
                 res.nonterm = false;
                 low_degree = true;
             }
@@ -117,8 +117,8 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             return false;
         } else {
             auto sample_point {samplePoint->get<Arith>()};
-            std::vector<Arith::Expr> derivatives {rel.lhs()};
-            std::vector<Rational> signs {(*sample_point(rel.lhs())->isRational())->getValue()};
+            std::vector<Arith::Expr> derivatives {rel->lhs()};
+            std::vector<Rational> signs {(*sample_point(rel->lhs())->isRational())->getValue()};
             Arith::Expr diff {arith::mkConst(0)};
             do {
                 const auto &last {derivatives.back()};
@@ -139,7 +139,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             if (signs.at(1) > 0) {
                 guard.insert(rel);
             } else {
-                guard.insert(rel.subs(but_last));
+                guard.insert(rel->subs(but_last));
                 res.nonterm = false;
             }
             for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
@@ -224,9 +224,9 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
         return false;
     }
     auto success {false};
-    const ArithLit &rel {std::get<ArithLit>(lit)};
-    const auto updated {update.get<Arith>()(rel.lhs())};
-    const auto dec {arith::mkGeq(rel.lhs(), updated)};
+    const auto &rel {std::get<Arith::Lit>(lit)};
+    const auto updated {update.get<Arith>()(rel->lhs())};
+    const auto dec {arith::mkGeq(rel->lhs(), updated)};
     solver->push();
     solver->add(bools::mkLit(dec));
     if (solver->check() == Sat) {
@@ -234,7 +234,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
         solver->add(bools::mkLit(inc));
         if (solver->check() == Unsat) {
             success = true;
-            const auto g {bools::mkAndFromLits({rel, rel.subs(closed->closed_form.get<Arith>()).subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})})};
+            const auto g {bools::mkAndFromLits({rel, rel->subs(closed->closed_form.get<Arith>())->subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})})};
             res.formula.push_back(g);
             res.proof.newline();
             res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
@@ -246,15 +246,15 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
 }
 
 bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
-    if (!std::holds_alternative<ArithLit>(lit)) {
+    if (!std::holds_alternative<Arith::Lit>(lit)) {
         return false;
     }
     // t > 0
-    const auto &rel {std::get<ArithLit>(lit)};
+    const auto &rel {std::get<Arith::Lit>(lit)};
     // up(t)
-    const auto updated {update.get<Arith>()(rel.lhs())};
+    const auto updated {update.get<Arith>()(rel->lhs())};
     // t <(=) up(t)
-    const auto i = strict ? arith::mkLt(rel.lhs(), updated) : arith::mkLeq(rel.lhs(), updated);
+    const auto i = strict ? arith::mkLt(rel->lhs(), updated) : arith::mkLeq(rel->lhs(), updated);
     const auto inc {bools::mkLit(i)};
     solver->push();
     solver->add(inc);
@@ -269,13 +269,13 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         if (success) {
             Bools::Expr g {bot()};
             Bools::Expr c {bot()};
-            if (samplePoint && i.subs(samplePoint->get<Arith>()).isTriviallyFalse()) {
+            if (samplePoint && i->subs(samplePoint->get<Arith>())->isTriviallyFalse()) {
                 if (!closed) {
                     solver->pop();
                     return false;
                 }
                 const auto s {closed->closed_form.get<Arith>().compose(ArithSubs({{config.n, config.n->toExpr() - arith::mkConst(1)}}))};
-                g = bools::mkAndFromLits({(!i).subs(s), rel.subs(s)});
+                g = bools::mkAndFromLits({(!i)->subs(s), rel->subs(s)});
                 c = bools::mkLit((!i));
                 res.nonterm = false;
             } else {

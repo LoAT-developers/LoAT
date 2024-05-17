@@ -7,7 +7,7 @@
 
 struct Arith {
 
-    using Lit = ArithLit;
+    using Lit = ArithLitPtr;
     using Var = ArithVarPtr;
     using Subs = ArithSubs;
     using Expr = ArithExprPtr;

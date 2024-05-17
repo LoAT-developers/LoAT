@@ -73,7 +73,7 @@ bool Recurrence::solve(const Arith::Var lhs, const Arith::Expr rhs) {
 
 bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr rhs) {
     const auto updated {closed_form_pre(rhs)};
-    if (updated->lits().contains(BoolLit(lhs, true))) {
+    if (updated->lits().contains(bools::mk(lhs, true))) {
         return false;
     }
     const auto &vars {updated->vars()};

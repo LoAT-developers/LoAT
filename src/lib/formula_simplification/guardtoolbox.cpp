@@ -58,10 +58,10 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const 
     // get all variables that appear in an inequality
     linked_hash_set<Arith::Var> candidates;
     for (const auto &lit : lits) {
-        if (std::holds_alternative<ArithLit>(lit)) {
-            const auto &rel = std::get<ArithLit>(lit);
-            if (rel.isGt()) {
-                rel.collectVars(candidates);
+        if (std::holds_alternative<Arith::Lit>(lit)) {
+            const auto &rel = std::get<Arith::Lit>(lit);
+            if (rel->isGt()) {
+                rel->collectVars(candidates);
             }
         }
     }
@@ -87,18 +87,18 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const 
         size_t explosive_upper {0};
         for (const auto &lit: lits) {
             if (theory::vars(lit).contains(var)) {
-                if (std::holds_alternative<ArithLit>(lit)) {
-                    const auto &rel {std::get<ArithLit>(lit)};
-                    if (!rel.isGt()) {
+                if (std::holds_alternative<Arith::Lit>(lit)) {
+                    const auto &rel {std::get<Arith::Lit>(lit)};
+                    if (!rel->isGt()) {
                         // if the variable occurs in an equality, then it should be eliminated by equality propagation
                         // if it occurs in a negated equality, then we cannot eliminate
                         goto abort;
                     }
-                    if (!rel.isLinear({{var}})) {
+                    if (!rel->isLinear({{var}})) {
                         // no variable elimination for non-linear arithmetic
                         goto abort;
                     }
-                    const auto term {rel.lhs()};
+                    const auto term {rel->lhs()};
                     const auto coeff {*term->coeff(var)};
                     if (coeff->is(1) == 1) {
                         // we have var + p > 0, i.e., var >= -p+1
@@ -145,7 +145,7 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const 
             }
         }
         // perform the elimination
-        for (const ArithLit &rel: eliminated_lits) {
+        for (const Arith::Lit &rel: eliminated_lits) {
             lits.erase(rel);
         }
         for (const auto &upper : upper_bounds) {
