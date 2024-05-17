@@ -44,7 +44,7 @@ public:
 
 BoolLitPtr operator!(const BoolLitPtr &l);
 
-std::ostream& operator<<(std::ostream &s, const BoolLit &e);
+std::ostream& operator<<(std::ostream &s, const BoolLitPtr &e);
 
 template<>
 struct std::hash<BoolLit> {

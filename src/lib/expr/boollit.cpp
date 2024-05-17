@@ -68,11 +68,11 @@ size_t hash_value(const BoolLit &lit) {
     return lit.hash();
 }
 
-std::ostream& operator<<(std::ostream &s, const BoolLit &l) {
-    if (l.isNegated()) {
+std::ostream& operator<<(std::ostream &s, const BoolLitPtr &l) {
+    if (l->isNegated()) {
         s << "!";
     }
-    return s << l.getBoolVar();
+    return s << l->getBoolVar();
 }
 
 bool BoolLit::eval(const linked_hash_map<BoolVarPtr, bool> &model) const {
