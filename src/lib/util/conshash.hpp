@@ -18,6 +18,10 @@ protected:
 
 public:
 
+    bool contains(const Args&... args) const {
+        return cache.contains(std::make_tuple(args...));
+    }
+
     const cpp::not_null<std::shared_ptr<const Abstract>> from_cache(const Args&&... args) {
         const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const Abstract>())};
         if (b || it->second.expired()) {

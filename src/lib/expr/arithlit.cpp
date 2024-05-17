@@ -55,7 +55,11 @@ ArithLitPtr ArithLit::mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
     if (factor > 1) {
         lhs_integral = lhs_integral->divide(factor);
     }
-    return cache.from_cache(lhs_integral, kind);
+    if ((kind == Kind::Eq || kind == Kind::Neq) && cache.contains(-lhs_integral, kind)) {
+        return cache.from_cache(-lhs_integral, kind);
+    } else {
+        return cache.from_cache(lhs_integral, kind);
+    }
 }
 
 ArithExprPtr ArithLit::lhs() const {
