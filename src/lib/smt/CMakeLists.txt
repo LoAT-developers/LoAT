@@ -29,6 +29,7 @@ add_library(${PROJECT_NAME} OBJECT
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
+  ${loat_formula_simplification_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
   ${loat_container_INCLUDE_DIRS}
   ${loat_util_INCLUDE_DIRS}

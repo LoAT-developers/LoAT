@@ -32,11 +32,16 @@ public:
 
     cvc5::Term clearRefinement();
 
+    Arith::Var getArithVar(const cvc5::Term&) const;
+    Bools::Var getBoolVar(const cvc5::Term&) const;
+
 private:
 
     cvc5::Solver &ctx;
     cvc5::Term buildVar(const Arith::Var &var) override;
     cvc5::Term buildVar(const Bools::Var &var) override;
     cvc5::Term refinement;
+    std::unordered_map<cvc5::Term, Arith::Var> reverseArithVarMap;
+    std::unordered_map<cvc5::Term, Bools::Var> reverseBoolVarMap;
 
 };

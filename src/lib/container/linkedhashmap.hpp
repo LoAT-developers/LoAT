@@ -73,6 +73,10 @@ public:
         return boost::multi_index::get<hash>(c).erase(key);
     }
 
+    auto erase(const const_iterator &it) {
+        return boost::multi_index::get<list>(c).erase(it);
+    }
+
     const T& operator[](const S &key) const {
         return boost::multi_index::get<hash>(c).find(key)->second;
     }
@@ -100,6 +104,16 @@ public:
 
     size_t size() const {
         return c.size();
+    }
+
+    void project(const linked_hash_set<S> &vars) {
+        for (auto it = begin(); it != end();) {
+            if (vars.contains(it->first)) {
+                ++it;
+            } else {
+                it = erase(it);
+            }
+        }
     }
 
 };

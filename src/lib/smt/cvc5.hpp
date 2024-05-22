@@ -22,6 +22,8 @@ public:
     std::ostream& print(std::ostream& os) const override;
     void randomize(unsigned seed) override;
 
+    static Bools::Expr getInterpolant(const Bools::Expr premise, const Bools::Expr conclusion);
+
 private:
     cvc5::Solver solver;
     CVC5Context ctx;

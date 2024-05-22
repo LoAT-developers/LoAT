@@ -5,7 +5,6 @@
 #include "rulepreprocessing.hpp"
 #include "config.hpp"
 #include "dependencygraph.hpp"
-#include "recurrence.hpp"
 #include "linkedhashmap.hpp"
 #include "theory.hpp"
 #include "pair.hpp"
@@ -13,6 +12,7 @@
 #include "crabcfg.hpp"
 #include "realmbp.hpp"
 #include "intmbp.hpp"
+#include "cvc5.hpp"
 
 Range::Range(const unsigned s, const unsigned e): s(s), e(e) {}
 
@@ -40,8 +40,6 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-SABMC::Loop::Loop(const Bools::Expr trans, const unsigned mod): trans(trans), mod(mod) {}
-
 mbp_kind SABMC::m_mbp {INT_MBP};
 
 SABMC::SABMC(SafetyProblem &t):
@@ -63,7 +61,7 @@ std::optional<Range> SABMC::has_looping_infix() {
     long end {((long)trace.size()) - 1};
     while (end >= 0) {
         while (start >= 0) {
-            if (dependency_graph.hasEdge(trace[end], trace[start])) {
+            if (dependency_graph.hasEdge(trace[end].implicant, trace[start].implicant)) {
                 return {Range::from_interval(start, end)};
             }
             --start;
@@ -74,11 +72,11 @@ std::optional<Range> SABMC::has_looping_infix() {
     return {};
 }
 
-std::pair<Bools::Expr, Model> SABMC::compress(const Bools::Expr pre, const Range &range) {
+std::pair<Bools::Expr, Model> SABMC::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Subs var_renaming;
     for (int i = range.end(); i >= 0 && i >= range.start(); --i) {
-        const auto rule {trace[i]};
+        const auto rule {trace[i].implicant};
         const auto s {get_subs(i, 1)};
         if (loop) {
             // sigma1 maps vars from chained to the corresponding vars from rule
@@ -115,17 +113,18 @@ std::pair<Bools::Expr, Model> SABMC::compress(const Bools::Expr pre, const Range
     }
     auto vars {(*loop)->vars()};
     var_renaming.collectCoDomainVars(vars);
-    pre->collectVars(vars);
     const auto model {solver->model(vars).composeBackwards(var_renaming)};
-    return {pre && *loop, model};
+    return {*loop, model};
 }
 
-void SABMC::add_learned_clause(const Bools::Expr &accel, unsigned mod) {
+Int SABMC::add_learned_clause(const Bools::Expr &accel) {
     if (Config::Analysis::log) std::cout << "learned transition: " << accel << std::endl;
-    rule_map.left.insert(rule_map_t::left_value_type(next_id, accel));
+    const auto id = next_id;
     ++next_id;
-    blocked.emplace_back(accel, mod);
+    rule_map.left.insert(rule_map_t::left_value_type(id, accel));
+    blocked.emplace(id, accel);
     step = step || encode_transition(accel);
+    return id;
 }
 
 Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) {
@@ -152,11 +151,11 @@ Bools::Expr SABMC::specialize(const Bools::Expr e, const Model &model, const std
     return mbp_res;
 }
 
-std::pair<Bools::Expr, Model> SABMC::specialize(const Bools::Expr pre, const Range &range, const std::function<bool(const Var&)> &eliminate) {
+std::pair<Bools::Expr, Model> SABMC::specialize(const Range &range, const std::function<bool(const Var&)> &eliminate) {
     if (range.empty()) {
         return {top(), Model()};
     }
-    const auto [transition, model] {compress(pre, range)};
+    const auto [transition, model] {compress(range)};
     if (Config::Analysis::log) {
         std::cout << "compressed:" << std::endl;
         std::cout << transition << std::endl;
@@ -165,7 +164,7 @@ std::pair<Bools::Expr, Model> SABMC::specialize(const Bools::Expr pre, const Ran
     return {specialize(transition, model, eliminate), model};;
 }
 
-std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr loop) {
+Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
     // the loop counter is bounded by 0
     const auto n_term {Arith::varToExpr(n)};
     BoolExprSet res {bools::mkLit(arith::mkGt(n_term, arith::mkConst(0)))};
@@ -428,18 +427,11 @@ std::pair<Bools::Expr, unsigned> SABMC::recurrence_analysis(const Bools::Expr lo
             }
         }
     }
-    const auto ret {bools::mkAnd(res)};
-    return {ret, toggling.empty() ? 1 : 2};
+    return bools::mkAnd(res);
 }
 
 void SABMC::handle_loop(const Range &range) {
-    // std::cout << "computing init" << std::endl;
-    // const auto init {specialize(t.init(), solver->model(t.init()->vars()), theory::isTempVar)};
-    // std::cout << "computing stem" << std::endl;
-    // const auto stem {specialize(init, Range::from_length(0, range.start()), [](const auto &x) {
-    //     return !theory::isPostVar(x);
-    // })};
-    auto [loop, model] {specialize(top(), range, theory::isTempVar)};
+    auto [loop, model] {specialize(range, theory::isTempVar)};
     Subs post_to_pre;
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
@@ -451,7 +443,7 @@ void SABMC::handle_loop(const Range &range) {
     if (Config::Analysis::log) {
         std::cout << "invariants: " << inv << std::endl;
     }
-    const auto [rec, mod] {recurrence_analysis(loop)};
+    const auto rec {recurrence_analysis(loop)};
     if (Config::Analysis::log) {
         std::cout << "recurrence analysis: " << rec << std::endl;
     }
@@ -463,7 +455,12 @@ void SABMC::handle_loop(const Range &range) {
     if (Config::Analysis::log) {
         std::cout << "projection of recurrence analysis: " << rec_projected << std::endl;
     }
-    add_learned_clause(inv && rec_projected, mod);
+    const auto id {add_learned_clause(inv && rec_projected)};
+    std::vector<Int> expanded;
+    for (unsigned i = range.start(); i <= range.end(); ++i) {
+        expanded.push_back(trace.at(i).id);
+    }
+    loops.emplace(id, Loop{.expanded=expanded, .compressed=loop});
 }
 
 Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
@@ -472,14 +469,13 @@ Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
 
 void SABMC::add_blocking_clauses() {
     // std::cout << "BLOCKING CLAUSES" << std::endl;
-    for (auto from = 0; from <= depth; ++from) {
-        for (const auto &b : blocked) {
-            const auto id {arith::mkConst(rule_map.right.at(b.trans))};
-            for (auto to = from + 1; to <= depth + 1; ++to) {
+    for (unsigned from = 0; from <= depth; ++from) {
+        for (const auto &[id,b] : blocked) {
+            for (unsigned to = from + 1; to <= depth + 1; ++to) {
                 const auto s {get_subs(from, to - from)};
-                auto block {s(!b.trans)};
+                auto block {s(!b)};
                 if (to == from + 1) {
-                    block = block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id));
+                    block = block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id)));
                 }
                 solver->add(block);
                     // std::cout << "trans: " << b.trans << std::endl;
@@ -509,7 +505,6 @@ void SABMC::build_trace() {
     trace.clear();
     const auto model {solver->model()};
     // std::cout << "model: " << model << std::endl;
-    std::vector<Subs> run;
     std::optional<std::pair<Bools::Expr, Int>> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s {get_subs(d, 1)};
@@ -517,19 +512,22 @@ void SABMC::build_trace() {
         const auto rule {rule_map.left.at(id)};
         const auto comp {model.composeBackwards(s)};
         const auto imp {comp.syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
-        run.push_back(comp.toSubs().project(vars));
+        const auto projected_model {comp.project(vars)};
         if (prev && (prev->second <= last_orig_clause || prev->second != id)) {
             dependency_graph.addEdge(prev->first, imp);
         }
         prev = {imp, id};
-        trace.emplace_back(imp);
+        trace.emplace_back(TraceElem{.id=id, .implicant=imp, .model=projected_model});
     }
     if (Config::Analysis::log) {
-        std::cout << "trace:" << std::endl << trace;
+        std::cout << "trace:" << std::endl;
+        for (const auto &t: trace) {
+            std::cout << t.implicant << std::endl;
+        }
         std::cout << "trace var: " << trace_var << std::endl;
         std::cout << "run:" << std::endl;
-        for (const auto &s: run) {
-            std::cout << s << std::endl;
+        for (const auto &t: trace) {
+            std::cout << t.model << std::endl;
         }
     }
 }
@@ -578,6 +576,94 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
     return pre_vec.at(steps - 1);
 }
 
+SABMC::RefinementResult SABMC::refine() {
+    Subs pre_to_post;
+    for (const auto &x: vars) {
+        pre_to_post.put(x, theory::toExpr(theory::postVar(x)));
+    }
+    auto unsat {true};
+    build_trace();
+    std::vector<RefinementJob> todo;
+    for (unsigned i = 0; i < trace.size(); ++i) {
+        const auto step {trace.at(i)};
+        if (step.id > last_orig_clause) {
+            const auto pre {specialize(Range::from_interval(0, i-1), [&](const auto &x) {
+                return !theory::isProgVar(x);
+            }).first};
+            const auto loop {loops.at(step.id)};
+            const auto post {specialize(Range::from_interval(i+1, trace.size() - 1), [&](const auto &x) {
+                return !theory::isPostVar(x);
+            }).first};
+            todo.push_back(RefinementJob{.id=step.id, .pre=pre && t.init(), .loop=loop, .post=post && pre_to_post(t.err()), .unrolling=loop.compressed});
+        }
+    }
+    for (auto it = todo.begin(); it != todo.end();) {
+        auto &job {*it};
+        std::cout << "pre: " << job.pre << std::endl;
+        std::cout << "post: " << job.post << std::endl;
+        std::cout << "unrolling: " << job.unrolling << std::endl;
+        auto smt_res {SmtFactory::check(job.pre && job.post && job.unrolling)};
+        switch (smt_res) {
+            case Sat: {
+                it = todo.erase(it);
+                break;
+            }
+            case Unknown: {
+                it = todo.erase(it);
+                unsat = false;
+                break;
+            }
+            case Unsat: {
+                auto interpolant {CVC5::getInterpolant(job.pre && job.post, job.unrolling)};
+                const auto inductive_step {std::get<0>(Chaining::chain(interpolant, job.loop.compressed))};
+                smt_res = SmtFactory::check(job.pre && inductive_step && !interpolant);
+                switch (smt_res) {
+                    case Unknown:
+                    [[fallthrough]];
+                    case Sat: {
+                        job.unrolling = std::get<0>(Chaining::chain(job.unrolling, job.loop.compressed));
+                        break;
+                    }
+                    case Unsat: {
+                        replace(job.id, rule_map.left.at(job.id) && interpolant);
+                        solver->pop();
+                        solver->push();
+                        depth = 0;
+                        return Refined;
+                    }
+                }
+            }
+        }
+    }
+    if (unsat) {
+        return Unsat;
+    } else {
+        return Failed;
+    }
+}
+
+void SABMC::replace(const Int id, const Bools::Expr replacement) {
+    std::stack<Int> todo;
+    todo.push(id);
+    do {
+        const auto current {todo.top()};
+        todo.pop();
+        for (const auto &x: forward_deps.getSuccessors(current)) {
+            todo.push(x);
+        }
+        forward_deps.removeNode(current);
+        rule_map.left.erase(current);
+        blocked.erase(current);
+    } while (!todo.empty());
+    rule_map.left.insert(rule_map_t::left_value_type(id, replacement));
+    blocked.put(id, replacement);
+    std::vector<Bools::Expr> steps;
+    for (const auto &[_,t]: rule_map) {
+        steps.push_back(encode_transition(t));
+    }
+    step = bools::mkOr(steps);
+}
+
 void SABMC::analyze() {
     if (Config::Analysis::log) {
         std::cout << "initial problem" << std::endl;
@@ -610,41 +696,47 @@ void SABMC::analyze() {
         solver->add(s(t.err()));
         switch (solver->check()) {
         case SmtResult::Sat:
-        case SmtResult::Unknown:
-            unknown();
-            return;
-        case SmtResult::Unsat: {}
-        }
-        solver->pop();
-        // std::cout << "TRANSITION FORMULA" << std::endl;
-        // std::cout << "depth: " << depth << std::endl;
-        // std::cout << "s: " << s << std::endl;
-        // std::cout << "formula: " << s(step) << std::endl;
-        solver->add(s(step));
-        add_blocking_clauses();
-        ++depth;
-        switch (solver->check()) {
-        case SmtResult::Unsat:
-            sat();
-            return;
-        case SmtResult::Unknown:
-            unknown();
-            return;
-        case SmtResult::Sat:
-            build_trace();
-            if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
-            const auto range {has_looping_infix()};
-            if (range) {
-                if (Config::Analysis::log) {
-                    std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
-                }
-                handle_loop(*range);
-                solver->pop();
-                solver->push();
-                depth = 0;
+            if (refine() != Refined) {
+                unknown();
+                return;
             }
-            if (Config::Analysis::log) std::cout << "done with loop handling" << std::endl;
             break;
+        case SmtResult::Unknown:
+            unknown();
+            return;
+        case SmtResult::Unsat: {
+            solver->pop();
+            // std::cout << "TRANSITION FORMULA" << std::endl;
+            // std::cout << "depth: " << depth << std::endl;
+            // std::cout << "s: " << s << std::endl;
+            // std::cout << "formula: " << s(step) << std::endl;
+            solver->add(s(step));
+            add_blocking_clauses();
+            ++depth;
+            switch (solver->check()) {
+            case SmtResult::Unsat:
+                sat();
+                return;
+            case SmtResult::Unknown:
+                unknown();
+                return;
+            case SmtResult::Sat:
+                build_trace();
+                if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
+                const auto range {has_looping_infix()};
+                if (range) {
+                    if (Config::Analysis::log) {
+                        std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
+                    }
+                    handle_loop(*range);
+                    solver->pop();
+                    solver->push();
+                    depth = 0;
+                }
+                if (Config::Analysis::log) std::cout << "done with loop handling" << std::endl;
+                break;
+            }
+        }
         }
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
@@ -654,11 +746,4 @@ void SABMC::analyze() {
 
 void SABMC::analyze(SafetyProblem &its) {
     SABMC(its).analyze();
-}
-
-std::ostream& operator<<(std::ostream &s, const std::vector<Bools::Expr> &trace) {
-    for (const auto &imp: trace) {
-        s << imp << std::endl;
-    }
-    return s;
 }

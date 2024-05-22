@@ -120,6 +120,25 @@ public:
 
 private:
 
+    template <size_t I = 0>
+    void projectImpl(Model &model, const VarSet &vars) const {
+        if constexpr (I < num_theories) {
+            using Th = std::tuple_element_t<I, Theories>;
+            model.get<Th>().project(vars.get<I>());
+            projectImpl<I+1>(model, vars);
+        }
+    }
+
+public:
+
+    Model project(const VarSet &vars) const {
+        Model res {*this};
+        projectImpl(res, vars);
+        return res;
+    }
+
+private:
+
     typename TheTheory::Model m{};
 
 };

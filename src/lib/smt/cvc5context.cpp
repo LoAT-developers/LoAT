@@ -8,11 +8,15 @@ CVC5Context::CVC5Context(cvc5::Solver& ctx): ctx(ctx), refinement(ctx.mkBoolean(
 CVC5Context::~CVC5Context() { }
 
 cvc5::Term CVC5Context::buildVar(const Arith::Var &var) {
-    return ctx.mkConst(ctx.getIntegerSort(), var->getName());
+    const auto res {ctx.mkConst(ctx.getIntegerSort(), var->getName())};
+    reverseArithVarMap.emplace(res, var);
+    return res;
 }
 
 cvc5::Term CVC5Context::buildVar(const Bools::Var &var) {
-    return ctx.mkConst(ctx.getBooleanSort(), var->getName());
+    const auto res {ctx.mkConst(ctx.getBooleanSort(), var->getName())};
+    reverseBoolVarMap.emplace(res, var);
+    return res;
 }
 
 cvc5::Term CVC5Context::getInt(const Int &val) {
@@ -105,4 +109,12 @@ cvc5::Term CVC5Context::clearRefinement() {
     const auto res {refinement};
     refinement = bTrue();
     return res;
+}
+
+Arith::Var CVC5Context::getArithVar(const cvc5::Term &symbol) const {
+    return reverseArithVarMap.at(symbol);
+}
+
+Bools::Var CVC5Context::getBoolVar(const cvc5::Term &symbol) const {
+    return reverseBoolVarMap.at(symbol);
 }

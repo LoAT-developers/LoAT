@@ -330,6 +330,14 @@ public:
 
     auto operator<=>(const Self &) const = default;
 
+    VariantSet(const std::initializer_list<Var> &xs) {
+        for (const auto &x: xs) {
+            insert(x);
+        }
+    }
+
+    VariantSet() {}
+
 };
 
 template <class... T>
