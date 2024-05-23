@@ -614,9 +614,12 @@ SABMC::RefinementResult SABMC::refine() {
                 break;
             }
             case Unsat: {
-                auto interpolant {CVC5::getInterpolant(job.pre && job.post, job.unrolling)};
+                auto interpolant {CVC5::getInterpolant(job.pre && job.post, !job.unrolling)};
                 const auto inductive_step {std::get<0>(Chaining::chain(interpolant, job.loop.compressed))};
                 smt_res = SmtFactory::check(job.pre && inductive_step && !interpolant);
+                if (smt_res != SmtResult::Unsat) {
+                    smt_res = SmtFactory::check(job.post && inductive_step && !interpolant);
+                }
                 switch (smt_res) {
                     case Unknown:
                     [[fallthrough]];
@@ -625,7 +628,7 @@ SABMC::RefinementResult SABMC::refine() {
                         break;
                     }
                     case Unsat: {
-                        replace(job.id, rule_map.left.at(job.id) && interpolant);
+                        replace(job.id, interpolant);
                         solver->pop();
                         solver->push();
                         depth = 0;
@@ -643,25 +646,17 @@ SABMC::RefinementResult SABMC::refine() {
 }
 
 void SABMC::replace(const Int id, const Bools::Expr replacement) {
-    std::stack<Int> todo;
-    todo.push(id);
-    do {
-        const auto current {todo.top()};
-        todo.pop();
-        for (const auto &x: forward_deps.getSuccessors(current)) {
-            todo.push(x);
-        }
-        forward_deps.removeNode(current);
-        rule_map.left.erase(current);
-        blocked.erase(current);
-    } while (!todo.empty());
-    rule_map.left.insert(rule_map_t::left_value_type(id, replacement));
-    blocked.put(id, replacement);
+    const auto old_trans {rule_map.left.at(id)};
+    const auto new_trans {old_trans && !replacement};
+    rule_map.left.erase(id);
+    rule_map.left.insert(rule_map_t::left_value_type(id, new_trans));
+    blocked.put(id, new_trans);
     std::vector<Bools::Expr> steps;
     for (const auto &[_,t]: rule_map) {
         steps.push_back(encode_transition(t));
     }
     step = bools::mkOr(steps);
+    add_learned_clause(old_trans && replacement);
 }
 
 void SABMC::analyze() {

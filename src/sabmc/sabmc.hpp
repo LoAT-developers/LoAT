@@ -89,7 +89,6 @@ private:
     const Arith::Var n {ArithVar::next()};
     Proof proof {};
     DependencyGraph<Bools::Expr> dependency_graph {};
-    DependencyGraph<Int> forward_deps {};
     unsigned depth {0};
     Bools::Expr step {bot()};
 
