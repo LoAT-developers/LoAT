@@ -1,6 +1,6 @@
 #include "cvc5.hpp"
 #include "exprconverter.hpp"
-#include "guardtoolbox.hpp"
+#include "config.hpp"
 
 CVC5::CVC5(): solver(), ctx(solver) {
     solver.setOption("seed", std::to_string(seed));
@@ -234,15 +234,15 @@ Rational CVC5::getRealFromModel(const cvc5::Term &symbol) {
 }
 
 Bools::Expr CVC5::getInterpolant(const Bools::Expr premise, const Bools::Expr conclusion) {
-    const auto arith_subs {*GuardToolbox::propagateEqualities(conclusion, theory::isTempVar)};
-    const auto subs {Subs::build<Arith>(arith_subs)};
-    const auto premise_prop {premise};
-    const auto conclusion_prop {subs(conclusion)};
-    std::cout << "searching interpolant for " << premise_prop << " ==> " << !conclusion_prop << std::endl;
+    if (Config::Analysis::log) {
+        std::cout << "searching interpolant for " << premise << " ==> " << conclusion << std::endl;
+    }
     CVC5 solver;
-    solver.add(premise_prop);
-    const auto interpolant {solver.solver.getInterpolant(ExprConverter<cvc5::Term, cvc5::Term>::convert(!conclusion_prop, solver.ctx))};
+    solver.add(premise);
+    const auto interpolant {solver.solver.getInterpolant(ExprConverter<cvc5::Term, cvc5::Term>::convert(conclusion, solver.ctx))};
     const auto res {convertFormula(interpolant, solver.ctx)};
-    std::cout << "found interpolant " << res << std::endl;
+    if (Config::Analysis::log) {
+        std::cout << "found interpolant " << res << std::endl;
+    }
     return res;
 }
