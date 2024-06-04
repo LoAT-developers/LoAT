@@ -430,6 +430,30 @@ Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
     return bools::mkAnd(res);
 }
 
+Bools::Expr SABMC::project_transition_invariant(const Bools::Expr ti, Model model) {
+    model.put<Arith>(n, 1);
+    const auto is_n {[&](const Var &x){
+        return x == Var(n);
+    }};
+    const auto projected {mbp_impl(ti, model, is_n)};
+    if (Config::Analysis::log) {
+        std::cout << "projected ti: " << projected << std::endl;
+    }
+    return projected;
+}
+
+Bools::Expr SABMC::compute_transition_invariant(const Bools::Expr loop) {
+    const auto inv {CrabCfg::compute_invariants(top(), loop)};
+    if (Config::Analysis::log) {
+        std::cout << "invariants: " << inv << std::endl;
+    }
+    const auto rec {recurrence_analysis(loop)};
+    if (Config::Analysis::log) {
+        std::cout << "recurrence analysis: " << rec << std::endl;
+    }
+    return inv && rec;
+}
+
 void SABMC::handle_loop(const Range &range) {
     auto [loop, model] {specialize(range, theory::isTempVar)};
     Subs post_to_pre;
@@ -439,23 +463,9 @@ void SABMC::handle_loop(const Range &range) {
         }
     }
     // const auto inv {CrabCfg::compute_invariants(post_to_pre(stem), loop)};
-    const auto inv {CrabCfg::compute_invariants(top(), loop)};
-    if (Config::Analysis::log) {
-        std::cout << "invariants: " << inv << std::endl;
-    }
-    const auto rec {recurrence_analysis(loop)};
-    if (Config::Analysis::log) {
-        std::cout << "recurrence analysis: " << rec << std::endl;
-    }
-    model.put<Arith>(n, 1);
-    const auto is_n {[&](const Var &x){
-        return x == Var(n);
-    }};
-    const auto rec_projected {mbp_impl(rec, model, is_n)};
-    if (Config::Analysis::log) {
-        std::cout << "projection of recurrence analysis: " << rec_projected << std::endl;
-    }
-    const auto id {add_learned_clause(inv && rec_projected)};
+    auto ti {compute_transition_invariant(loop)};
+    ti = project_transition_invariant(ti, model);
+    const auto id {add_learned_clause(ti)};
     std::vector<Int> expanded;
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         expanded.push_back(trace.at(i).id);
@@ -512,7 +522,12 @@ void SABMC::build_trace() {
         const auto rule {rule_map.left.at(id)};
         const auto comp {model.composeBackwards(s)};
         const auto imp {comp.syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
-        const auto projected_model {comp.project(vars)};
+        auto relevant_vars {vars};
+        for (const auto &x: vars) {
+            relevant_vars.insert(theory::postVar(x));
+        }
+        imp->collectVars(relevant_vars);
+        const auto projected_model {comp.project(relevant_vars)};
         if (prev && (prev->second <= last_orig_clause || prev->second != id)) {
             dependency_graph.addEdge(prev->first, imp);
         }
@@ -578,57 +593,47 @@ const Subs& SABMC::get_subs(const unsigned start, const unsigned steps) {
 
 SABMC::RefinementResult SABMC::refine() {
     Subs pre_to_post;
+    Subs post_to_pre;
     for (const auto &x: vars) {
         pre_to_post.put(x, theory::toExpr(theory::postVar(x)));
+        post_to_pre.put(theory::postVar(x), theory::toExpr(x));
     }
-    auto unsat {true};
+    const auto model {solver->model()};
+    const auto err_model {model.composeBackwards(get_subs(depth, 1))};
+    auto err {t.err()};
+    err = err_model.syntacticImplicant(err);
+    err = mbp_impl(err, err_model, theory::isTempVar);
     build_trace();
-    std::vector<RefinementJob> todo;
     for (unsigned i = 0; i < trace.size(); ++i) {
         const auto step {trace.at(i)};
         if (step.id > last_orig_clause) {
-            const auto pre {specialize(Range::from_interval(0, i-1), [&](const auto &x) {
+            auto pre {specialize(Range::from_interval(0, i-1), [&](const auto &x) {
                 return !theory::isProgVar(x);
             }).first};
+            pre = t.init() && pre;
             const auto loop {loops.at(step.id)};
-            const auto post {specialize(Range::from_interval(i+1, trace.size() - 1), [&](const auto &x) {
+            auto [post,post_model] {specialize(Range::from_interval(i+1, trace.size() - 1), [&](const auto &x) {
                 return !theory::isPostVar(x);
-            }).first};
-            todo.push_back(RefinementJob{.id=step.id, .pre=pre && t.init(), .loop=loop, .post=post && pre_to_post(t.err()), .unrolling=loop.compressed});
-        }
-    }
-    for (auto it = todo.begin(); it != todo.end();) {
-        auto &job {*it};
-        std::cout << "pre: " << job.pre << std::endl;
-        std::cout << "post: " << job.post << std::endl;
-        std::cout << "unrolling: " << job.unrolling << std::endl;
-        auto smt_res {SmtFactory::check(job.pre && job.post && job.unrolling)};
-        switch (smt_res) {
-            case Sat: {
-                it = todo.erase(it);
-                break;
-            }
-            case Unknown: {
-                it = todo.erase(it);
-                unsat = false;
-                break;
-            }
-            case Unsat: {
-                auto interpolant {CVC5::getInterpolant(job.pre && job.post, !job.unrolling)};
-                const auto inductive_step {std::get<0>(Chaining::chain(interpolant, job.loop.compressed))};
-                smt_res = SmtFactory::check(job.pre && inductive_step && !interpolant);
-                if (smt_res != SmtResult::Unsat) {
-                    smt_res = SmtFactory::check(job.post && inductive_step && !interpolant);
-                }
-                switch (smt_res) {
-                    case Unknown:
-                    [[fallthrough]];
-                    case Sat: {
-                        job.unrolling = std::get<0>(Chaining::chain(job.unrolling, job.loop.compressed));
-                        break;
-                    }
-                    case Unsat: {
-                        replace(job.id, interpolant);
+            })};
+            post = err && post_to_pre(post);
+            const auto lits {err->lits().get<Arith::Lit>()};
+            for (const auto &lit: lits) {
+                if (lit->isLinear()) {
+                    const auto lhs_pre {lit->lhs()};
+                    const auto lhs_post {pre_to_post.get<Arith>()(lhs_pre)};
+                    const auto pre_val {step.model.eval<Arith>(lhs_pre)};
+                    const auto post_val {step.model.eval<Arith>(lhs_post)};
+                    const auto lit = pre_val == post_val ? arith::mkEq : (pre_val < post_val ? arith::mkLt : arith::mkGt);
+                    auto ti{compute_transition_invariant(loop.compressed && bools::mkLit(lit(lhs_pre, lhs_post)))};
+                    ti = project_transition_invariant(ti, step.model);
+                    const auto smt_res{SmtFactory::check(step.model.toSubs()(ti))};
+                    if (smt_res == SmtResult::Unsat) {
+                        if (Config::Analysis::log) {
+                            std::cout << "refinement:" << std::endl;
+                            std::cout << "old: " << step.implicant << std::endl;
+                            std::cout << "new: " << ti << std::endl;
+                        }
+                        replace(step.id, ti);
                         solver->pop();
                         solver->push();
                         depth = 0;
@@ -638,25 +643,18 @@ SABMC::RefinementResult SABMC::refine() {
             }
         }
     }
-    if (unsat) {
-        return Unsat;
-    } else {
-        return Failed;
-    }
+    return Failed;
 }
 
 void SABMC::replace(const Int id, const Bools::Expr replacement) {
-    const auto old_trans {rule_map.left.at(id)};
-    const auto new_trans {old_trans && !replacement};
     rule_map.left.erase(id);
-    rule_map.left.insert(rule_map_t::left_value_type(id, new_trans));
-    blocked.put(id, new_trans);
+    rule_map.left.insert(rule_map_t::left_value_type(id, replacement));
+    blocked.put(id, replacement);
     std::vector<Bools::Expr> steps;
     for (const auto &[_,t]: rule_map) {
         steps.push_back(encode_transition(t));
     }
     step = bools::mkOr(steps);
-    add_learned_clause(old_trans && replacement);
 }
 
 void SABMC::analyze() {
