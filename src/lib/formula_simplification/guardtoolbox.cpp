@@ -220,7 +220,6 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::preprocessFormula(const Bools::Expr
 }
 
 Bools::Expr GuardToolbox::removeRedundantInequations(const Bools::Expr e) {
-    std::cout << "removing redundant constraints from " << e << std::endl;
     if (!e->isConjunction()) {
         return e;
     }
@@ -270,7 +269,6 @@ Bools::Expr GuardToolbox::removeRedundantInequations(const Bools::Expr e) {
         }
         solver->add(arith::mkGeq(arith::mkConst((*it)->getConstantAddend()), arith::mkPlus(std::move(addends))));
         if (solver->check() == SmtResult::Sat) {
-            std::cout << *it << " is redundant" << std::endl;
             it = bounded.erase(it);
         } else {
             arith_lits.insert(arith::mkGeq(*it, arith::mkConst(0)));

@@ -126,19 +126,9 @@ Int SABMC::add_learned_clause(const Bools::Expr &accel) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     const auto id = next_id;
     ++next_id;
-    std::cout << "rule map before" << std::endl;
-    for (const auto &[k, v] : rule_map.left) {
-        std::cout << k << " -> " << v << std::endl;
-    }
     rule_map.left.insert(rule_map_t::left_value_type(id, accel));
-    std::cout << "rule map after" << std::endl;
-    for (const auto &[k, v] : rule_map.left) {
-        std::cout << k << " -> " << v << std::endl;
-    }
     blocked.emplace(id, accel);
-    std::cout << "step before: " << step << std::endl;
     step = step || encode_transition(accel);
-    std::cout << "step after: " << step << std::endl;
     return id;
 }
 
@@ -326,11 +316,13 @@ Bools::Expr SABMC::compute_transition_invariant(const Bools::Expr loop, Model mo
         return !theory::isProgVar(x);
     })};
     auto step{recurrence_analysis(loop)};
-    std::cout << "recurrence analysis: " << step << std::endl;
     model.put<Arith>(n, 1);
     step = mbp_impl(step, model, [&](const auto &x) {
         return x == Var(n);
     });
+    if (Config::Analysis::log) {
+        std::cout << "recurrence analysis: " << step << std::endl;
+    }
     const auto post{mbp_impl(loop, model, [](const auto &x) {
         return !theory::isPostVar(x);
     })};

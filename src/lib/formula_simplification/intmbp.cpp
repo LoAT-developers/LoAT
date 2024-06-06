@@ -3,8 +3,6 @@
 
 Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x) {
     assert(t->isConjunction());
-    std::cout << "eliminating " << x << " from " << t << std::endl;
-    std::cout << "model: " << model << std::endl;
     if (auto eq{t->getEquality(x)}) {
         // easy case: we found an equality involving n
         const auto factor{(*eq)->getConstantFactor()};
@@ -50,9 +48,9 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
             ++it;
         }
     }
-    if (lb.empty()) {
-        // easy case: no lower bound, so all constraints involving x can
-        // be satisfied by choosing a sufficiently small value for x
+    if (lb.empty() || ub.empty()) {
+        // easy case: no lower (or upper) bound, so all constraints involving x can
+        // be satisfied by choosing a sufficiently small (large) value for x
         return t->map(
             [&](const auto &lit) {
                 return std::visit(
@@ -77,16 +75,12 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
         const auto coeff{*l->coeff(x)};
         const auto coeff_val{*coeff->isInt()};
         const auto scaled_l {-(l - coeff * x) * arith::mkConst(flcm / mp::abs(coeff_val))};
-        std::cout << "lower bound: " << l << std::endl;
-        std::cout << "scaled lower bound: " << scaled_l << std::endl;
         scaled_lb.insert(scaled_l);
     }
     for (const auto &u : ub) {
         const auto coeff{*u->coeff(x)};
         const auto coeff_val{*coeff->isInt()};
         const auto scaled_u {(u - coeff * x) * arith::mkConst(flcm / mp::abs(coeff_val))};
-        std::cout << "upper bound: " << u << std::endl;
-        std::cout << "scaled upper bound: " << scaled_u << std::endl;
         scaled_ub.insert(scaled_u);
     }
     for (const auto &d : divs) {
@@ -109,12 +103,6 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     const auto i_l{arith::mkMod(arith::mkConst(flcm) * x - (closest_bound + arith::mkConst(1)), arith::mkConst(mlcm))};
     const auto i_l_val {i_l->eval(model.get<Arith>())};
     const auto substitute{closest_bound + arith::mkConst(1 + i_l_val)};
-    std::cout << "flcm: " << flcm << std::endl;
-    std::cout << "mlcm: " << mlcm << std::endl;
-    std::cout << "closest bound: " << closest_bound << std::endl;
-    std::cout << "i_l: " << i_l << std::endl;
-    std::cout << "i_l_val: " << i_l_val << std::endl;
-    std::cout << "substitue: " << substitute << std::endl;
     for (const auto &l : scaled_lb) {
         arith_lits.insert(arith::mkGt(substitute, l));
     }
