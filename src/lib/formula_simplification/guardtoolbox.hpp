@@ -85,4 +85,6 @@ namespace GuardToolbox {
 
     ResultBase<Bools::Expr, Proof> preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow);
 
+    Bools::Expr removeRedundantInequations(const Bools::Expr e);
+
 }

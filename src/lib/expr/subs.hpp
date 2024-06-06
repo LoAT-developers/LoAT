@@ -104,6 +104,7 @@ public:
     Iterator end() const;
     Iterator begin() const;
     Subs project(const VarSet &vars) const;
+    Subs project(const std::function<bool(Var)> &keep) const;
     void put(const Pair &p);
     void put(const Var &x, const Expr &y);
 

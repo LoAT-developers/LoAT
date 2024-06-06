@@ -85,6 +85,22 @@ Subs Subs::project(const VarSet &vars) const {
 }
 
 template<std::size_t I = 0>
+inline void projectImpl(const Subs &s, Subs& res, const std::function<bool(Var)> &keep) {
+    if constexpr (I < num_theories) {
+        res.get<I>() = s.get<I>().project([&](const auto &x) {
+            return keep(x);
+        });
+        projectImpl<I+1>(s, res, keep);
+    }
+}
+
+Subs Subs::project(const std::function<bool(Var)> &keep) const {
+    Subs res;
+    projectImpl(*this, res, keep);
+    return Subs(res);
+}
+
+template<std::size_t I = 0>
 inline void putImpl(Subs &s, const Subs::Pair &p) {
     if constexpr (I < num_theories) {
         if (p.index() == I) {

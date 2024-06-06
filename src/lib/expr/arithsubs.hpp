@@ -41,6 +41,8 @@ public:
 
     ArithSubs project(const linked_hash_set<ArithVarPtr> &vars) const;
 
+    ArithSubs project(const std::function<bool(ArithVarPtr)> &keep) const;
+
     bool changes(const ArithVarPtr key) const;
 
     bool isLinear() const;

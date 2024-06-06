@@ -24,6 +24,7 @@ public:
     bool contains(const BoolVarPtr var) const;
     BoolSubs unite(const BoolSubs &t) const;
     BoolSubs project(const linked_hash_set<BoolVarPtr> &vars) const;
+    BoolSubs project(const std::function<bool(BoolVarPtr)> &keep) const;
     bool changes(const BoolVarPtr key) const;
     linked_hash_set<BoolVarPtr> domain() const;
     void collectDomain(linked_hash_set<BoolVarPtr> &vars) const;

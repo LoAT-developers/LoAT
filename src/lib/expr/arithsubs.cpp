@@ -105,6 +105,16 @@ ArithSubs ArithSubs::project(const linked_hash_set<ArithVarPtr> &vars) const {
     return res;
 }
 
+ArithSubs ArithSubs::project(const std::function<bool(ArithVarPtr)> &keep) const {
+    ArithSubs res;
+    for (const auto &p : *this) {
+        if (keep(p.first)) {
+            res.put(p.first, p.second);
+        }
+    }
+    return res;
+}
+
 bool ArithSubs::changes(const ArithVarPtr key) const {
     return contains(key) && get(key) != key;
 }

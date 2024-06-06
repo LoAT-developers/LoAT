@@ -75,8 +75,10 @@ private:
     SmtPtr solver {SmtFactory::solver()};
     std::vector<std::vector<Subs>> subs {};
     std::vector<TraceElem> trace {};
+    Model model;
     linked_hash_map<Int, Bools::Expr> blocked {};
     VarSet vars {};
+    VarSet pre_vars {};
     Int last_orig_clause;
 
     Int next_id {0};
@@ -100,8 +102,7 @@ private:
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
     Bools::Expr recurrence_analysis(const Bools::Expr loop);
-    Bools::Expr project_transition_invariant(const Bools::Expr ti, Model model);
-    Bools::Expr compute_transition_invariant(const Bools::Expr loop);
+    Bools::Expr compute_transition_invariant(const Bools::Expr loop, Model model);
     void handle_loop(const Range &range);
     void unknown();
     void sat();

@@ -112,9 +112,10 @@ void ArithLit::getDivisibility(const ArithVarPtr n, linked_hash_set<Divisibility
         if (const auto mod{l->isMod()}) {
             if (const auto modulo{(*mod)->getRhs()->isInt()}) {
                 if ((*mod)->getLhs() == n) {
-                    // n % modulo == 0
+                    // modulo | n
                     res.emplace(1, *modulo, arith::mkConst(0));
                 } else if (const auto sum{(*mod)->getLhs()->isAdd()}) {
+                    std::cout << "getDiv " << (*mod)->getLhs() << std::endl;
                     auto args{(*sum)->getArgs()};
                     std::optional<Int> factor;
                     if (args.contains(n)) {
@@ -142,15 +143,15 @@ void ArithLit::getDivisibility(const ArithVarPtr n, linked_hash_set<Divisibility
                         return;
                     }
                     // (factor * n + mres) % modulo = 0
-                    // ==> n % modulo = -mres
-                    res.emplace(1, *modulo, -mres);
+                    // ==> modulo | factor * n + mres
+                    res.emplace(*factor, *modulo, mres);
                     return;
                 } else if (const auto mul{(*mod)->getLhs()->isMult()}) {
                     auto mul_args{(*mul)->getArgs()};
                     if (mul_args.contains(n) && mul_args.contains(n)) {
                         mul_args.erase(n);
                         if (const auto factor{(*mul_args.begin())->isInt()}) {
-                            // factor * n % modulo = 0
+                            // modulo | factor * n
                             res.emplace(*factor, *modulo, arith::mkConst(0));
                         }
                     }

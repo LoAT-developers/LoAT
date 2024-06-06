@@ -76,6 +76,16 @@ BoolSubs BoolSubs::project(const linked_hash_set<BoolVarPtr> &vars) const {
     return res;
 }
 
+BoolSubs BoolSubs::project(const std::function<bool(BoolVarPtr)> &keep) const {
+    BoolSubs res;
+    for (const auto &p : *this) {
+        if (keep(p.first)) {
+            res.put(p.first, p.second);
+        }
+    }
+    return res;
+}
+
 bool BoolSubs::changes(const BoolVarPtr key) const {
     if (!contains(key)) {
         return false;
