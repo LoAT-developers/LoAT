@@ -5,7 +5,7 @@ add_subdirectory(parser)
 add_subdirectory(util)
 add_subdirectory(redundance)
 add_subdirectory(abmc)
-add_subdirectory(sabmc)
+add_subdirectory(til)
 add_subdirectory(bmc)
 
 target_sources(${EXECUTABLE}

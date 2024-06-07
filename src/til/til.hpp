@@ -33,7 +33,7 @@ enum mbp_kind {
     INT_MBP, REAL_MBP
 };
 
-class SABMC {
+class TIL {
 
 public:
 
@@ -44,7 +44,7 @@ private:
     using BoundPair = std::pair<std::optional<Arith::Expr>, std::optional<Arith::Expr>>;
     using NondetSubs = linked_hash_map<Arith::Var, BoundPair>;
 
-    explicit SABMC(SafetyProblem &t);
+    explicit TIL(SafetyProblem &t);
 
     void analyze();
 

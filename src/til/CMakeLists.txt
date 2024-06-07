@@ -1,7 +1,7 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-    sabmc.hpp
-    sabmc.cpp
+    til.hpp
+    til.cpp
     safetyproblem.cpp
     safetyproblem.hpp
 )

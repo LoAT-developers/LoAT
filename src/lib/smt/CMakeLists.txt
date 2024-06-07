@@ -4,8 +4,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 project(loat_smt CXX)
 
-message(STATUS "loat_expr includes: ${loat_expr_INCLUDE_DIRS}")
-
 add_library(${PROJECT_NAME} OBJECT
   smt.hpp
   z3.hpp

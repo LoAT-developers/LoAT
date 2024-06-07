@@ -1,4 +1,4 @@
-#include "sabmc.hpp"
+#include "til.hpp"
 #include "chain.hpp"
 #include "config.hpp"
 #include "crabcfg.hpp"
@@ -40,9 +40,9 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-mbp_kind SABMC::m_mbp{INT_MBP};
+mbp_kind TIL::m_mbp{INT_MBP};
 
-SABMC::SABMC(SafetyProblem &t) : t(t) {
+TIL::TIL(SafetyProblem &t) : t(t) {
     vars.insert(trace_var);
     vars.insert(n);
     for (const auto &x : t.vars()) {
@@ -60,7 +60,7 @@ SABMC::SABMC(SafetyProblem &t) : t(t) {
     solver->enableModels();
 }
 
-std::optional<Range> SABMC::has_looping_infix() {
+std::optional<Range> TIL::has_looping_infix() {
     long start{((long)trace.size()) - 1};
     long end{((long)trace.size()) - 1};
     while (end >= 0) {
@@ -76,7 +76,7 @@ std::optional<Range> SABMC::has_looping_infix() {
     return {};
 }
 
-std::pair<Bools::Expr, Model> SABMC::compress(const Range &range) {
+std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Subs var_renaming;
     for (int i = range.end(); i >= 0 && i >= range.start(); --i) {
@@ -121,7 +121,7 @@ std::pair<Bools::Expr, Model> SABMC::compress(const Range &range) {
     return {*loop, m};
 }
 
-Int SABMC::add_learned_clause(const Bools::Expr &accel) {
+Int TIL::add_learned_clause(const Bools::Expr &accel) {
     if (Config::Analysis::log)
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     const auto id = next_id;
@@ -133,7 +133,7 @@ Int SABMC::add_learned_clause(const Bools::Expr &accel) {
 }
 
 Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
-    switch (SABMC::m_mbp) {
+    switch (TIL::m_mbp) {
     case REAL_MBP:
         return mbp::real_mbp(trans, model, eliminate);
     case INT_MBP:
@@ -143,7 +143,7 @@ Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::fu
     }
 }
 
-Bools::Expr SABMC::specialize(const Bools::Expr e, const Model &model, const std::function<bool(const Var &)> &eliminate) {
+Bools::Expr TIL::specialize(const Bools::Expr e, const Model &model, const std::function<bool(const Var &)> &eliminate) {
     const auto sip{model.syntacticImplicant(e)};
     if (Config::Analysis::log) {
         std::cout << "sip: " << sip << std::endl;
@@ -159,7 +159,7 @@ Bools::Expr SABMC::specialize(const Bools::Expr e, const Model &model, const std
     return mbp_res;
 }
 
-std::pair<Bools::Expr, Model> SABMC::specialize(const Range &range, const std::function<bool(const Var &)> &eliminate) {
+std::pair<Bools::Expr, Model> TIL::specialize(const Range &range, const std::function<bool(const Var &)> &eliminate) {
     if (range.empty()) {
         return {top(), Model()};
     }
@@ -173,7 +173,7 @@ std::pair<Bools::Expr, Model> SABMC::specialize(const Range &range, const std::f
     ;
 }
 
-Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
+Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop) {
     assert(loop->isConjunction());
     LitSet res;
     // collect bounds of the form b >= 0
@@ -311,7 +311,7 @@ Bools::Expr SABMC::recurrence_analysis(const Bools::Expr loop) {
     return bools::mkAndFromLits(res);
 }
 
-Bools::Expr SABMC::compute_transition_invariant(const Bools::Expr loop, Model model) {
+Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model model) {
     const auto pre{mbp_impl(loop, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
@@ -330,7 +330,7 @@ Bools::Expr SABMC::compute_transition_invariant(const Bools::Expr loop, Model mo
     return GuardToolbox::removeRedundantInequations(res);
 }
 
-void SABMC::handle_loop(const Range &range) {
+void TIL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
     Subs post_to_pre;
     for (const auto &x : vars) {
@@ -348,11 +348,11 @@ void SABMC::handle_loop(const Range &range) {
     loops.emplace(id, Loop{.expanded = expanded, .compressed = loop});
 }
 
-Bools::Expr SABMC::encode_transition(const Bools::Expr &t) {
+Bools::Expr TIL::encode_transition(const Bools::Expr &t) {
     return t && theory::mkEq(trace_var, arith::mkConst(rule_map.right.at(t)));
 }
 
-void SABMC::add_blocking_clauses() {
+void TIL::add_blocking_clauses() {
     // std::cout << "BLOCKING CLAUSES" << std::endl;
     for (unsigned from = 0; from <= depth; ++from) {
         for (const auto &[id, b] : blocked) {
@@ -371,14 +371,14 @@ void SABMC::add_blocking_clauses() {
     }
 }
 
-void SABMC::unknown() {
+void TIL::unknown() {
     const auto str{"unknown"};
     std::cout << str << std::endl;
     proof.result(str);
     proof.print();
 }
 
-void SABMC::sat() {
+void TIL::sat() {
     const auto str{"sat"};
     std::cout << str << std::endl;
     proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
@@ -386,7 +386,7 @@ void SABMC::sat() {
     proof.print();
 }
 
-void SABMC::build_trace() {
+void TIL::build_trace() {
     trace.clear();
     model = solver->model();
     // std::cout << "model: " << model << std::endl;
@@ -422,7 +422,7 @@ void SABMC::build_trace() {
     }
 }
 
-const Subs &SABMC::get_subs(const unsigned start, const unsigned steps) {
+const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
     if (subs.empty()) {
         subs.push_back({Subs()});
     }
@@ -466,7 +466,7 @@ const Subs &SABMC::get_subs(const unsigned start, const unsigned steps) {
     return pre_vec.at(steps - 1);
 }
 
-SABMC::RefinementResult SABMC::refine() {
+TIL::RefinementResult TIL::refine() {
     Subs pre_to_post;
     for (const auto &x : vars) {
         pre_to_post.put(x, theory::toExpr(theory::postVar(x)));
@@ -540,7 +540,7 @@ SABMC::RefinementResult SABMC::refine() {
     return Failed;
 }
 
-void SABMC::replace(const Int id, const Bools::Expr replacement) {
+void TIL::replace(const Int id, const Bools::Expr replacement) {
     std::cout << "replacing " << id << " with " << replacement << std::endl;
     rule_map.left.erase(id);
     rule_map.left.insert(rule_map_t::left_value_type(id, replacement));
@@ -552,7 +552,7 @@ void SABMC::replace(const Int id, const Bools::Expr replacement) {
     step = bools::mkOr(steps);
 }
 
-void SABMC::analyze() {
+void TIL::analyze() {
     if (Config::Analysis::log) {
         std::cout << "initial problem" << std::endl;
         std::cout << t << std::endl;
@@ -652,6 +652,6 @@ void SABMC::analyze() {
     }
 }
 
-void SABMC::analyze(SafetyProblem &its) {
-    SABMC(its).analyze();
+void TIL::analyze(SafetyProblem &its) {
+    TIL(its).analyze();
 }
