@@ -176,6 +176,7 @@ std::pair<Bools::Expr, Model> TIL::specialize(const Range &range, const std::fun
 Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop) {
     assert(loop->isConjunction());
     LitSet res;
+    res.insert(arith::mkGt(n, arith::mkConst(0)));
     // collect bounds of the form b >= 0
     const auto lits {loop->lits().get<Arith::Lit>()};
     ArithExprVec bounded;
