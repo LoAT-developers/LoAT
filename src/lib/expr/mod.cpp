@@ -24,22 +24,44 @@ ArithExprPtr arith::mkMod(ArithExprPtr lhs, ArithExprPtr rhs) {
     if (rhs->isInt() && rhs->isNegated()) {
         rhs = -rhs;
     }
-    if (rhs->is(1)) {
+    if (lhs->is(0) || rhs->is(1)) {
         return arith::mkConst(0);
     }
     if (const auto c2 {rhs->isInt()}) {
-        if (const auto c1 {lhs->isInt()}) {
-            const auto mod {mp::abs(*c1) % *c2};
-            if (mod == 0 || *c1 >= 0) {
-                return arith::mkConst(mod);
+        const auto eval = [](const Int &c1, const Int &c2) -> Int {
+            const Int mod {mp::abs(c1) % c2};
+            if (mod == 0 || c1 >= 0) {
+                return mod;
             } else {
-                return arith::mkConst(*c2 - mod);
+                return c2 - mod;
             }
-        }
-        const auto c1 {lhs->getConstantFactor()};
-        if (mp::denominator(c1) == 1 && mp::numerator(c1) >= *c2) {
-            const Int div {mp::numerator(c1) / *c2};
-            lhs = lhs - arith::mkConst(div) * rhs;
+        };
+        if (const auto c1 {lhs->isInt()}) {
+            // both arguments are integers --> evaluate
+            return arith::mkConst(eval(*c1, *c2));
+        } else if (lhs->isMult()) {
+            const auto c1 {lhs->getConstantFactor()};
+            const auto mod {eval(mp::numerator(c1), *c2)};
+            if (mp::denominator(c1) == 1 && mod != c1) {
+                lhs = lhs->divide(c1) * arith::mkConst(mod);
+                return mkMod(lhs, rhs);
+            }
+        } else if (const auto add {lhs->isAdd()}) {
+            std::vector<ArithExprPtr> addends;
+            auto changed {false};
+            for (const auto &a: (*add)->getArgs()) {
+                const auto c1 {a->getConstantFactor()};
+                const auto mod {eval(mp::numerator(c1), *c2)};
+                if (mp::denominator(c1) == 1 && mod != c1) {
+                    addends.push_back(a->divide(c1) * arith::mkConst(mod));
+                    changed = true;
+                } else {
+                    addends.push_back(a);
+                }
+            }
+            if (changed) {
+                return mkMod(arith::mkPlus(std::move(addends)), rhs);
+            }
         }
     }
     return ArithMod::cache.from_cache(lhs, rhs);
