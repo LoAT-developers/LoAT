@@ -227,15 +227,22 @@ Bools::Expr GuardToolbox::removeRedundantInequations(const Bools::Expr e) {
     auto lits {e->lits()};
     auto &arith_lits {lits.get<Arith::Lit>()};
     ArithExprVec bounded;
-    for (const auto &l: arith_lits) {
-        const auto lhs {l->lhs()};
+    for (auto it = arith_lits.begin(); it != arith_lits.end();) {
+        const auto lit {*it};
+        const auto lhs {lit->lhs()};
         if (lhs->isLinear()) {
-            if (l->isGt()) {
+            if (lit->isGt()) {
                 bounded.push_back(lhs - arith::mkConst(1));
-            } else if (l->isEq()) {
+                it = arith_lits.erase(it);
+            } else if (lit->isEq()) {
                 bounded.push_back(lhs);
                 bounded.push_back(-lhs);
+                it = arith_lits.erase(it);
+            } else {
+                ++it;
             }
+        } else {
+            ++it;
         }
     }
     // set up one non-negative multiplier for each bound
@@ -247,7 +254,6 @@ Bools::Expr GuardToolbox::removeRedundantInequations(const Bools::Expr e) {
         solver->add(arith::mkGeq(f, arith::mkConst(0)));
     }
     const auto arith_vars {e->vars().get<Arith::Var>()};
-    arith_lits.clear();
     for (auto it = bounded.begin(); it != bounded.end();) {
         solver->push();
         // set up one equation for each variable
