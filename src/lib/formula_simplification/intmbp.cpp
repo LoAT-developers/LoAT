@@ -3,20 +3,6 @@
 
 Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x) {
     assert(t->isConjunction());
-    if (auto eq{t->getEquality(x)}) {
-        // easy case: we found an equality involving n
-        const auto factor{(*eq)->getConstantFactor()};
-        // we have n = eq = factor * p where factor = num/denom, i.e., denom * n = num * p
-        const auto num{mp::numerator(factor)};
-        const auto denom{mp::denominator(factor)};
-        // replace n by num/denom * p ...
-        auto res{Subs::build<Arith>(x, *eq)(t)};
-        if (denom != 1) {
-            // and enforce that num * p = eq * denom is divisble by denom, if necessary
-            res = res && bools::mkLit(arith::mkEq(arith::mkMod(*eq * arith::mkConst(denom), arith::mkConst(denom)), arith::mkConst(0)));
-        }
-        return res;
-    }
     linked_hash_set<Divisibility> divs;
     linked_hash_set<Arith::Expr> lb;
     linked_hash_set<Arith::Expr> ub;
@@ -31,16 +17,25 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
                 flcm = mp::lcm(flcm, div->factor);
                 divs.insert(*div);
             } else {
-                assert(l->isLinear());
-                assert(l->isGt());
-                const auto lhs{l->lhs()};
-                const auto coeff{*lhs->coeff(x)};
-                const auto coeff_val{*coeff->isInt()};
-                flcm = mp::lcm(flcm, mp::abs(coeff_val));
-                if (coeff_val > 0) {
-                    lb.insert(lhs);
-                } else {
-                    ub.insert(lhs);
+                if (!l->isLinear()) {
+                    std::cerr << l << " is neither linear nor a divisibility constraint for " << x << std::endl;
+                    assert(false);
+                }
+                const auto handle_gt = [&](const auto lhs) {
+                    const auto coeff{*lhs->coeff(x)};
+                    const auto coeff_val{*coeff->isInt()};
+                    flcm = mp::lcm(flcm, mp::abs(coeff_val));
+                    if (coeff_val > 0) {
+                        lb.insert(lhs);
+                    } else {
+                        ub.insert(lhs);
+                    }
+                };
+                if (l->isGt()) {
+                    handle_gt(l->lhs());
+                } else if (l->isEq()) {
+                    handle_gt(l->lhs() + arith::mkConst(1));
+                    handle_gt(-l->lhs() + arith::mkConst(1));
                 }
             }
             it = arith_lits.erase(it);
