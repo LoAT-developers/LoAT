@@ -40,6 +40,6 @@ jobs:
       - name: Export LoAT Binary
         uses: actions/upload-artifact@master
         with:
-          name: loat-static
+          name: loat-static-${{ ref_name }}
           path: build/release/loat-static
 
