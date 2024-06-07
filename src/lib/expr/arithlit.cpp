@@ -115,7 +115,6 @@ void ArithLit::getDivisibility(const ArithVarPtr n, linked_hash_set<Divisibility
                     // modulo | n
                     res.emplace(1, *modulo, arith::mkConst(0));
                 } else if (const auto sum{(*mod)->getLhs()->isAdd()}) {
-                    std::cout << "getDiv " << (*mod)->getLhs() << std::endl;
                     auto args{(*sum)->getArgs()};
                     std::optional<Int> factor;
                     if (args.contains(n)) {
