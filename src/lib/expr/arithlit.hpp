@@ -78,6 +78,7 @@ public:
     bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = std::nullopt) const;
     void getBounds(const ArithVarPtr n, linked_hash_set<Bound> &res) const;
     void getDivisibility(const ArithVarPtr n, linked_hash_set<Divisibility> &res) const;
+    std::optional<std::pair<ArithExprPtr, Int>> isDivisibility() const;
     std::optional<Divisibility> isDivisibility(const ArithVarPtr n) const;
     std::optional<ArithExprPtr> getEquality(const ArithVarPtr n) const;
     void propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow) const;

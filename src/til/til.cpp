@@ -182,8 +182,8 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
     ArithExprVec bounded;
     std::vector<std::pair<Arith::Expr, Arith::Expr>> pseudo_recurrent;
     for (const auto &l: lits) {
-        auto lhs {l->lhs()};
-        if (lhs->isLinear()) {
+        if (l->lhs()->isLinear()) {
+            auto lhs {l->lhs()};
             if (l->isGt() || l->isEq()) {
                 std::vector<Arith::Expr> recurrent_addends;
                 std::vector<Arith::Expr> non_recurrent_addends;
@@ -223,7 +223,7 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                 } else {
                     if (l->isGt()) {
                         bounded.push_back(lhs - arith::mkConst(1));
-                    } else if (l->isEq()) {
+                    } else {
                         bounded.push_back(lhs);
                         bounded.push_back(-lhs);
                     }
@@ -238,6 +238,42 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                         }
                     }
                 }
+            }
+        } else if (const auto div {l->isDivisibility()}) {
+            const auto &[t,mod] {*div};
+            auto is_recurrent {true};
+            const auto vars {t->vars()};
+            for (const auto &x: vars) {
+                if (x->isProgVar()) {
+                    const auto pre_coeff {*(*t->coeff(x))->isInt()};
+                    const auto post {ArithVar::postVar(x)};
+                    if (vars.contains(post)) {
+                        const auto post_coeff {*(*t->coeff(post))->isInt()};
+                        // due to our normalization of mod-terms, the coefficients should be positive
+                        assert(pre_coeff > 0);
+                        assert(post_coeff > 0);
+                        if (mod == pre_coeff + post_coeff) {
+                            // we have:
+                            //   pre_coeff * x + post_coeff * x'              % mod
+                            // = pre_coeff * x + post_coeff * x' - mod * x'   % mod (as -mod % mod = 0)
+                            // = pre_coeff * x + (post_coeff - mod) * x'      % mod
+                            // = pre_coeff * x - pre_coeff * x'               % mod (as mod == pre_coeff + post_coeff)
+                            continue;
+                        }
+                    }
+                    is_recurrent = false;
+                    break;
+                } else {
+                    const auto pre {ArithVar::progVar(x)};
+                    if (!vars.contains(pre)) {
+                        is_recurrent = false;
+                        break;
+                    }
+                }
+            }
+            if (is_recurrent) {
+                const auto constant {arith::mkConst(t->getConstantAddend())};
+                res.insert(arith::mkEq(arith::mkMod(t - constant + n * constant, arith::mkConst(mod)), arith::mkConst(0)));
             }
         }
     }

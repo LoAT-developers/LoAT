@@ -100,6 +100,20 @@ void ArithLit::getBounds(const ArithVarPtr n, linked_hash_set<Bound> &res) const
     }
 }
 
+std::optional<std::pair<ArithExprPtr, Int>> ArithLit::isDivisibility() const {
+    if (kind == Kind::Eq) {
+        if (const auto mod{l->isMod()}) {
+            if (const auto modulo{(*mod)->getRhs()->isInt()}) {
+                const auto lhs {(*mod)->getLhs()};
+                if (lhs->isLinear() && !lhs->isRational()) {
+                    return {{lhs, *modulo}};
+                }
+            }
+        }
+    }
+    return {};
+}
+
 std::optional<Divisibility> ArithLit::isDivisibility(const ArithVarPtr n) const {
     linked_hash_set<Divisibility> res;
     getDivisibility(n, res);
