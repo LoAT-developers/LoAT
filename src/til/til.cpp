@@ -133,6 +133,7 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
 }
 
 Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
+    assert(model.eval<Bools>(trans));
     switch (TIL::m_mbp) {
     case REAL_MBP:
         return mbp::real_mbp(trans, model, eliminate);
@@ -170,34 +171,46 @@ std::pair<Bools::Expr, Model> TIL::specialize(const Range &range, const std::fun
         std::cout << "model: " << model << std::endl;
     }
     return {specialize(transition, model, eliminate), model};
-    ;
 }
 
-Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop) {
+Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model) {
     assert(loop->isConjunction());
     LitSet res;
     res.insert(arith::mkGt(n, arith::mkConst(0)));
     // collect bounds of the form b >= 0
     const auto lits {loop->lits().get<Arith::Lit>()};
     ArithExprVec bounded;
+    std::vector<std::pair<Arith::Expr, Arith::Expr>> pseudo_recurrent;
     for (const auto &l: lits) {
         auto lhs {l->lhs()};
         if (lhs->isLinear()) {
             if (l->isGt() || l->isEq()) {
-                auto is_recurrent {true};
+                std::vector<Arith::Expr> recurrent_addends;
+                std::vector<Arith::Expr> non_recurrent_addends;
+                non_recurrent_addends.push_back(arith::mkConst(lhs->getConstantAddend()));
                 const auto vars {lhs->vars()};
-                unsigned num_vars {0};
                 for (const auto &x: vars) {
                     if (x->isProgVar()) {
+                        const auto pre_coeff {*lhs->coeff(x)};
                         const auto post {ArithVar::postVar(x)};
-                        ++num_vars;
-                        if (!vars.contains(post) || *lhs->coeff(x) != -*lhs->coeff(post)) {
-                            is_recurrent = false;
-                            break;
+                        if (vars.contains(post)) {
+                            const auto post_coeff {*lhs->coeff(post)};
+                            if (pre_coeff == -post_coeff) {
+                                recurrent_addends.push_back(pre_coeff * x);
+                                recurrent_addends.push_back(post_coeff * post);
+                                continue;
+                            }
+                        }
+                        non_recurrent_addends.push_back(pre_coeff * x);
+                    } else {
+                        const auto pre {ArithVar::progVar(x)};
+                        if (!vars.contains(pre)) {
+                            non_recurrent_addends.push_back(*lhs->coeff(x) * x);
                         }
                     }
                 }
-                is_recurrent &= vars.size() == 2 * num_vars;
+                const auto is_recurrent {recurrent_addends.size() > 0 && non_recurrent_addends.size() == 1};
+                const auto is_pseudo_recurrent {recurrent_addends.size() > 0 && non_recurrent_addends.size() > 1};
                 if (is_recurrent) {
                     if (l->isEq()) {
                         const auto constant {lhs->getConstantAddend()};
@@ -213,6 +226,16 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop) {
                     } else if (l->isEq()) {
                         bounded.push_back(lhs);
                         bounded.push_back(-lhs);
+                    }
+                    if (is_pseudo_recurrent) {
+                        const auto recurrent {arith::mkPlus(std::move(recurrent_addends))};
+                        const auto non_recurrent {arith::mkPlus(std::move(non_recurrent_addends))};
+                        if (l->isGt()) {
+                            pseudo_recurrent.push_back({recurrent, non_recurrent - arith::mkConst(1)});
+                        } else {
+                            pseudo_recurrent.push_back({recurrent, non_recurrent});
+                            pseudo_recurrent.push_back({-recurrent, -non_recurrent});
+                        }
                     }
                 }
             }
@@ -262,18 +285,17 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop) {
         }
         solver->add(bools::mkOr(disjuncts));
     }
-    // enumerate solutions
-    while (solver->check() == SmtResult::Sat) {
+    const auto build_sum = [&](const Model &model) {
+        ArithExprVec addends;
+        for (unsigned idx = 0; idx < bounded.size(); ++idx) {
+            addends.push_back(bounded[idx] * arith::mkConst(model.get<Arith>(factors[idx])));
+        }
+        return arith::mkPlus(std::move(addends));
+    };
+    const auto process_solution = [&]() {
         auto model{solver->model()};
         // construct the recurrent inequation that corresponds to the current solution
-        const auto build_sum = [&]() {
-            ArithExprVec addends;
-            for (unsigned idx = 0; idx < bounded.size(); ++idx) {
-                addends.push_back(bounded[idx] * arith::mkConst(model.get<Arith>(factors[idx])));
-            }
-            return arith::mkPlus(std::move(addends));
-        };
-        auto sum = build_sum();
+        auto sum = build_sum(model);
         auto constant {sum->getConstantAddend()};
         // minimze constant
         solver->push();
@@ -287,7 +309,7 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop) {
             if (solver->check() == SmtResult::Sat) {
                 sat = true;
                 model = solver->model();
-                sum = build_sum();
+                sum = build_sum(model);
                 constant = sum->getConstantAddend();
             }
         } while (sat);
@@ -307,22 +329,50 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop) {
             }
         }
         solver->add(bools::mkOr(disjuncts));
+    };
+    // enumerate solutions
+    for (const auto &[recurrent, non_recurrent]: pseudo_recurrent) {
+        solver->push();
+        for (const auto &pre: arith_vars) {
+            if (recurrent->has(pre)) {
+                solver->add(arith::mkNeq(pre, arith::mkConst(0)));
+            } else {
+                solver->add(arith::mkEq(pre, arith::mkConst(0)));
+            }
+        }
+        if (solver->check() == SmtResult::Sat) {
+            process_solution();
+        } else {
+            const auto val {model.eval<Arith>(non_recurrent)};
+            if (val == 0) {
+                res.insert(arith::mkGeq(recurrent, arith::mkConst(0)));
+            } else if (val < 0) {
+                res.insert(arith::mkGeq(recurrent - n, arith::mkConst(0)));
+            }
+        }
+        solver->pop();
+    }
+    while (solver->check() == SmtResult::Sat) {
+        process_solution();
     }
     // construct transition invariants
     return bools::mkAndFromLits(res);
 }
 
-Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model model) {
+Bools::Expr TIL::compute_transition_invariant(const Bools::Expr pre_ctx, const Bools::Expr loop, const Bools::Expr post_ctx, Model model) {
     const auto pre{mbp_impl(loop, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
-    auto step{recurrence_analysis(loop)};
+    auto step{recurrence_analysis(pre_ctx && loop && post_ctx, model)};
+    if (Config::Analysis::log) {
+        std::cout << "recurrence analysis: " << step << std::endl;
+    }
     model.put<Arith>(n, 1);
     step = mbp_impl(step, model, [&](const auto &x) {
         return x == Var(n);
     });
     if (Config::Analysis::log) {
-        std::cout << "recurrence analysis: " << step << std::endl;
+        std::cout << "recurrence analysis projected: " << step << std::endl;
     }
     const auto post{mbp_impl(loop, model, [](const auto &x) {
         return !theory::isPostVar(x);
@@ -332,15 +382,23 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model mode
 }
 
 void TIL::handle_loop(const Range &range) {
+    // Subs post_to_pre;
+    // for (const auto &x : vars) {
+    //     if (theory::isProgVar(x)) {
+    //         post_to_pre.put(theory::postVar(x), theory::toExpr(x));
+    //     }
+    // }
+    // auto [stem, stem_model]{specialize(Range::from_interval(0, range.end() - 1), theory::isTempVar)};
+    // auto init {stem_model.syntacticImplicant(t.init())};
+    // stem = init && stem;
+    // stem = mbp_impl(stem, stem_model, [](const auto &x) {
+    //     return !theory::isPostVar(x);
+    // });
+    // stem = post_to_pre(stem);
+    // std::cout << "stem: " << stem << std::endl;
     auto [loop, model]{specialize(range, theory::isTempVar)};
-    Subs post_to_pre;
-    for (const auto &x : vars) {
-        if (theory::isProgVar(x)) {
-            post_to_pre.put(theory::postVar(x), theory::toExpr(x));
-        }
-    }
-    // const auto inv {CrabCfg::compute_invariants(post_to_pre(stem), loop)};
-    const auto ti{compute_transition_invariant(loop, model)};
+    // const auto ti{compute_transition_invariant(stem, loop, top(), model)};
+    const auto ti{compute_transition_invariant(top(), loop, top(), model)};
     const auto id{add_learned_clause(ti)};
     std::vector<Int> expanded;
     for (unsigned i = range.start(); i <= range.end(); ++i) {
@@ -350,7 +408,8 @@ void TIL::handle_loop(const Range &range) {
 }
 
 Bools::Expr TIL::encode_transition(const Bools::Expr &t) {
-    return t && theory::mkEq(trace_var, arith::mkConst(rule_map.right.at(t)));
+    const auto id {rule_map.right.at(t)};
+    return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
 void TIL::add_blocking_clauses() {
@@ -469,71 +528,66 @@ const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
 
 TIL::RefinementResult TIL::refine() {
     Subs pre_to_post;
+    Subs post_to_pre;
     for (const auto &x : vars) {
         pre_to_post.put(x, theory::toExpr(theory::postVar(x)));
+        post_to_pre.put(theory::postVar(x), theory::toExpr(x));
     }
     const auto model{solver->model()};
+    auto init{t.init()};
+    init = model.syntacticImplicant(init);
+    init = mbp_impl(init, model, theory::isTempVar);
     const auto err_model{model.composeBackwards(get_subs(depth, 1))};
-    std::cout << "err model: " << err_model << std::endl;
     auto err{t.err()};
-    std::cout << "err1: " << err << std::endl;
     err = err_model.syntacticImplicant(err);
-    std::cout << "err2: " << err << std::endl;
     err = mbp_impl(err, err_model, theory::isTempVar);
-    std::cout << "err3: " << err << std::endl;
     err = pre_to_post(err);
-    std::cout << "err4: " << err << std::endl;
     build_trace();
     for (unsigned i = 0; i < trace.size(); ++i) {
         const auto step{trace.at(i)};
         if (step.id > last_orig_clause) {
-            const auto partial_model{step.model.toSubs().project(theory::isProgVar)};
-            const auto loop{rule_map.left.at(step.id)};
-            const auto post_loop{partial_model(loop)};
+            const auto loop{loops.at(step.id)};
+            Bools::Expr pre{top()};
+            if (i == trace.size() - 1) {
+                pre = init;
+            } else {
+                auto [p, pre_model]{specialize(Range::from_interval(0, i - 1), theory::isTempVar)};
+                pre = p && init;
+                pre = mbp_impl(pre, pre_model, [](const auto &x) {
+                    return !theory::isPostVar(x);
+                });
+                pre = post_to_pre(pre);
+            }
+            assert(step.model.eval<Bools>(pre));
+            std::cout << "pre: " << pre << std::endl;
             Bools::Expr post{top()};
             if (i == trace.size() - 1) {
                 post = err;
             } else {
                 auto [p, post_model]{specialize(Range::from_interval(i + 1, trace.size() - 1), theory::isTempVar)};
-                post = p;
-                std::cout << "post1: " << post << std::endl;
-                post = post && err;
-                std::cout << "post2: " << post << std::endl;
+                post = p && err;
                 post = mbp_impl(post, post_model, [](const auto &x) {
                     return !theory::isProgVar(x);
                 });
-                std::cout << "post3: " << post << std::endl;
                 post = pre_to_post(post);
-                std::cout << "post4: " << post << std::endl;
             }
-            if (!step.model.eval<Bools>(post)) {
-                std::cout << "model: " << step.model << std::endl;
-                std::cout << "post: " << post << std::endl;
-            }
+            std::cout << "post: " << post << std::endl;
+            std::cout << "loop: " << loop.compressed << std::endl;
             assert(step.model.eval<Bools>(post));
-            const auto lits{post->lits()};
-            for (const auto &lit : lits) {
-                const auto negated{bools::mkLit(theory::negate(lit))};
-                std::cout << "trying to refine " << lit << std::endl;
-                auto tmp_solver{SmtFactory::solver()};
-                tmp_solver->add(post_loop);
-                tmp_solver->add(negated);
-                for (const auto &[id, b] : blocked) {
-                    if (id != step.id) {
-                        tmp_solver->add(!partial_model(b));
-                    }
+            auto tmp_solver {SmtFactory::modelBuildingSolver(QF_LA)};
+            tmp_solver->add(pre);
+            tmp_solver->add(loop.compressed);
+            tmp_solver->check();
+            const auto model {tmp_solver->model()};
+            const auto refinement{compute_transition_invariant(top(), pre && loop.compressed, top(), model)};
+            if (!step.model.eval<Bools>(refinement)) {
+                if (Config::Analysis::log) {
+                    std::cout << "refinement:" << std::endl;
+                    std::cout << "old: " << step.implicant << std::endl;
+                    std::cout << "new: " << refinement << std::endl;
                 }
-                const auto smt_res{tmp_solver->check()};
-                if (smt_res == SmtResult::Sat) {
-                    const auto refinement{compute_transition_invariant(loop && negated, tmp_solver->model())};
-                    if (Config::Analysis::log) {
-                        std::cout << "refinement:" << std::endl;
-                        std::cout << "old: " << loop << std::endl;
-                        std::cout << "new: " << refinement << std::endl;
-                    }
-                    replace(step.id, refinement);
-                    return Refined;
-                }
+                replace(step.id, refinement);
+                return Refined;
             }
         }
     }

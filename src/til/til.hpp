@@ -101,8 +101,8 @@ private:
     std::pair<Bools::Expr, Model> compress(const Range &range);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
-    Bools::Expr recurrence_analysis(const Bools::Expr loop);
-    Bools::Expr compute_transition_invariant(const Bools::Expr loop, Model model);
+    Bools::Expr recurrence_analysis(const Bools::Expr loop, const Model &model);
+    Bools::Expr compute_transition_invariant(const Bools::Expr pre, const Bools::Expr loop, const Bools::Expr post, Model model);
     void handle_loop(const Range &range);
     void unknown();
     void sat();
