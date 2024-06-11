@@ -186,7 +186,9 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
     // collect bounds of the form b >= 0
     const auto lits {loop->lits().get<Arith::Lit>()};
     ArithExprVec bounded;
-    std::vector<std::pair<Arith::Expr, Arith::Expr>> pseudo_recurrent;
+    std::vector<std::tuple<Arith::Expr, Arith::Expr, unsigned>> pseudo_recurrent;
+    // variables x where the relation between x and x' is fully determined by the information we've inferred so far
+    linked_hash_set<Arith::Var> fully_known;
     for (const auto &l: lits) {
         if (l->lhs()->isLinear()) {
             auto lhs {l->lhs()};
@@ -215,6 +217,12 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                     if (l->isEq()) {
                         const auto constant {lhs->getConstantAddend()};
                         res.insert(arith::mkEq(lhs - arith::mkConst(constant) + n * arith::mkConst(constant), arith::mkConst(0)));
+                        const auto vars {lhs->vars()};
+                        if (vars.size() == 2) {
+                            for (const auto &x: vars) {
+                                fully_known.insert(x);
+                            }
+                        }
                     } else {
                         lhs = lhs - arith::mkConst(1);
                         const auto constant {lhs->getConstantAddend()};
@@ -229,10 +237,10 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                     }
                     if (is_pseudo_recurrent) {
                         if (l->isGt()) {
-                            pseudo_recurrent.push_back({recurrent, non_recurrent - arith::mkConst(1)});
+                            pseudo_recurrent.emplace_back(recurrent, non_recurrent - arith::mkConst(1), bounded.size() - 1);
                         } else {
-                            pseudo_recurrent.push_back({recurrent, non_recurrent});
-                            pseudo_recurrent.push_back({-recurrent, -non_recurrent});
+                            pseudo_recurrent.emplace_back(recurrent, non_recurrent, bounded.size() - 1);
+                            pseudo_recurrent.emplace_back(-recurrent, -non_recurrent, bounded.size() - 2);
                         }
                     }
                 }
@@ -302,6 +310,36 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
         // enforce that the result corresponds to a *recurrent* inequation
         solver->add(arith::mkEq(pre, -post));
     }
+    // saturate fully_known
+    auto changed {false};
+    const auto known = [&](const auto &x) {
+        return fully_known.contains(x);
+    };
+    do {
+        changed = false;
+        for (const auto &pre: arith_vars) {
+            const auto post {ArithVar::postVar(pre)};
+            if (!fully_known.contains(pre)) {
+                if (const auto pre_eq {loop->getEquality(pre)}) {
+                    const auto pre_vars {(*pre_eq)->vars()};
+                    if (std::all_of(pre_vars.begin(), pre_vars.end(), known)) {
+                        if (const auto post_eq {loop->getEquality(post)}) {
+                            const auto post_vars {(*post_eq)->vars()};
+                            if (std::all_of(post_vars.begin(), post_vars.end(), known)) {
+                                fully_known.insert(pre);
+                                fully_known.insert(post);
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } while (changed);
+    // force coefficients of fully known variables to 0
+    for (const auto &x: fully_known) {
+        solver->add(arith::mkEq(x, arith::mkConst(0)));
+    }
     const auto const_var {ArithVar::next()};
     {
         // and one equation for the constant part
@@ -310,6 +348,15 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
             addends.push_back(arith::mkConst(bounded[idx]->getConstantAddend()) * factors[idx]);
         }
         solver->add(arith::mkEq(arith::mkPlus(std::move(addends)), const_var));
+    }
+    {
+        // require that at least one pseudo-recurrent relation is used
+        ArithExprVec addends;
+        for (const auto &t: pseudo_recurrent) {
+            const auto idx {std::get<2>(t)};
+            addends.push_back(factors[idx]);
+        }
+        solver->add(arith::mkGt(arith::mkPlus(std::move(addends)), arith::mkConst(0)));
     }
     // block trivial solutions
     {
@@ -348,7 +395,8 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
             }
         } while (sat);
         solver->pop();
-        res.insert(arith::mkGeq(sum - arith::mkConst(constant) + n * arith::mkConst(constant), arith::mkConst(0)));
+        const auto lit {arith::mkGeq(sum - arith::mkConst(constant) + n * arith::mkConst(constant), arith::mkConst(0))};
+        res.insert(lit);
         // block current solution
         BoolExprSet disjuncts;
         // allow coefficients with different signs
@@ -365,7 +413,7 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
         solver->add(bools::mkOr(disjuncts));
     };
     // enumerate solutions
-    for (const auto &[recurrent, non_recurrent]: pseudo_recurrent) {
+    for (const auto &[recurrent, non_recurrent, _]: pseudo_recurrent) {
         solver->push();
         for (const auto &pre: arith_vars) {
             if (recurrent->has(pre)) {
