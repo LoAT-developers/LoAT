@@ -37,8 +37,8 @@ jobs:
             cmake -DCMAKE_BUILD_TYPE=Release ../../
             make -j$(nproc)
             echo $SHA > VERSION
-          env:
-            SHA: ${{ github.sha }}
+        env:
+          SHA: ${{ github.sha }}
 
       - name: Export LoAT Binary
         uses: actions/upload-artifact@master
