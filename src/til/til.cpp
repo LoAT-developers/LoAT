@@ -127,7 +127,7 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
     const auto id = next_id;
     ++next_id;
     rule_map.left.insert(rule_map_t::left_value_type(id, accel));
-    blocked.emplace(id, std::pair{accel, depth - 1});
+    blocked.emplace_back(id, accel, depth);
     step = step || encode_transition(accel);
     return id;
 }
@@ -448,9 +448,8 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t) {
 void TIL::add_blocking_clauses() {
     // std::cout << "BLOCKING CLAUSES" << std::endl;
     for (unsigned from = 0; from <= depth; ++from) {
-        for (const auto &[id, p] : blocked) {
-            const auto &[b,f] {p};
-            if (f >= from) {
+        for (const auto &[id, b, f] : blocked) {
+            if (f > from) {
                 continue;
             }
             for (unsigned to = from + 1; to <= depth + 1; ++to) {
@@ -562,6 +561,17 @@ const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
     // }
     return pre_vec.at(steps - 1);
 }
+void TIL::luby_next() {
+    for (auto &t: blocked) {
+        std::get<2>(t) = 0;
+    }
+    const auto [u,v] {luby};
+    luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
+    solver->pop();
+    solver->push();
+    depth = 0;
+    lookback = 0;
+}
 
 void TIL::analyze() {
     if (Config::Analysis::log) {
@@ -599,6 +609,7 @@ void TIL::analyze() {
         solver->pop();
     }
     while (true) {
+        size_t next_restart = luby_unit * luby.second;
         s = get_subs(depth, 1);
         solver->add(s(step));
         add_blocking_clauses();
@@ -630,6 +641,7 @@ void TIL::analyze() {
                 // depth = 0;
                 // break;
             case SmtResult::Unknown:
+                std::cerr << "unknown from SMT solver" << std::endl;
                 unknown();
                 return;
             case SmtResult::Unsat: {
@@ -644,7 +656,12 @@ void TIL::analyze() {
                         std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                     }
                     handle_loop(*range);
-                    lookback = depth;
+                    if (depth >= next_restart) {
+                        if (Config::Analysis::log) std::cout << "restarting after " << depth << " iterations" << std::endl;
+                        luby_next();
+                    } else {
+                        lookback = depth;
+                    }
                 }
                 if (Config::Analysis::log) {
                     std::cout << "done with loop handling" << std::endl;
