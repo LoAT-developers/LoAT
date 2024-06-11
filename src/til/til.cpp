@@ -133,7 +133,12 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
 }
 
 Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
-    assert(model.eval<Bools>(trans));
+    if (!model.eval<Bools>(trans)) {
+        std::cout << "mbp: not a model" << std::endl;
+        std::cout << "trans: " << trans << std::endl;
+        std::cout << "model: " << model << std::endl;
+        assert(false);
+    }
     switch (TIL::m_mbp) {
     case REAL_MBP:
         return mbp::real_mbp(trans, model, eliminate);
@@ -186,8 +191,6 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
             auto lhs {l->lhs()};
             if (l->isGt() || l->isEq()) {
                 std::vector<Arith::Expr> recurrent_addends;
-                std::vector<Arith::Expr> non_recurrent_addends;
-                non_recurrent_addends.push_back(arith::mkConst(lhs->getConstantAddend()));
                 const auto vars {lhs->vars()};
                 for (const auto &x: vars) {
                     if (x->isProgVar()) {
@@ -201,16 +204,12 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                                 continue;
                             }
                         }
-                        non_recurrent_addends.push_back(pre_coeff * x);
-                    } else {
-                        const auto pre {ArithVar::progVar(x)};
-                        if (!vars.contains(pre)) {
-                            non_recurrent_addends.push_back(*lhs->coeff(x) * x);
-                        }
                     }
                 }
-                const auto is_recurrent {recurrent_addends.size() > 0 && non_recurrent_addends.size() == 1};
-                const auto is_pseudo_recurrent {recurrent_addends.size() > 0 && non_recurrent_addends.size() > 1};
+                const auto recurrent {arith::mkPlus(std::move(recurrent_addends))};
+                const auto non_recurrent {lhs - recurrent};
+                const auto is_recurrent {!recurrent->isRational() && non_recurrent->isRational()};
+                const auto is_pseudo_recurrent {!recurrent->isRational() && !non_recurrent->isRational()};
                 if (is_recurrent) {
                     if (l->isEq()) {
                         const auto constant {lhs->getConstantAddend()};
@@ -228,8 +227,6 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                         bounded.push_back(-lhs);
                     }
                     if (is_pseudo_recurrent) {
-                        const auto recurrent {arith::mkPlus(std::move(recurrent_addends))};
-                        const auto non_recurrent {arith::mkPlus(std::move(non_recurrent_addends))};
                         if (l->isGt()) {
                             pseudo_recurrent.push_back({recurrent, non_recurrent - arith::mkConst(1)});
                         } else {
