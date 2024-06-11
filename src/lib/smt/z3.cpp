@@ -94,7 +94,7 @@ Z3::Z3(): ctx(z3Ctx), solver(z3Ctx) {
     solver.set("sat.random_seed", 42u);
     solver.set("seed", 42u);
     solver.set("nlsat.seed", 42u);
-    solver.set("rlimit", 10000000u);
+    // solver.set("rlimit", 10000000u);
 }
 
 Rational Z3::getRealFromModel(const z3::model &model, const z3::expr &symbol) {
