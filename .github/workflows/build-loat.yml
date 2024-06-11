@@ -36,7 +36,7 @@ jobs:
             cd /LoAT/build/release
             cmake -DCMAKE_BUILD_TYPE=Release ../../
             make -j$(nproc)
-            git rev-parse --short HEAD > VERSION
+            echo $GITHUB_WORKFLOW_SHA > VERSION
 
       - name: Export LoAT Binary
         uses: actions/upload-artifact@master
