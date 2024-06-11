@@ -11,8 +11,8 @@
             "program": "${workspaceFolder}/build/debug/loat-static",
             "args": [
                 "--format", "horn",
-                "--mode", "reachability",
-                "--engine", "adcl",
+                "--mode", "safety",
+                "--engine", "til",
                 "--smt", "swine",
                 "--log", "--proof-level", "100",
                 "${workspaceFolder}/test.smt2"
