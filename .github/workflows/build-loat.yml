@@ -31,15 +31,20 @@ jobs:
           image: ${{ vars.DOCKERHUB_USERNAME }}/loat-base:latest
           options: -v ${{ github.workspace }}:/LoAT
           shell: bash
+          env:
+            SHA: ${{ github.sha }}
           run: |
             mkdir -p /LoAT/build/release
             cd /LoAT/build/release
             cmake -DCMAKE_BUILD_TYPE=Release ../../
             make -j$(nproc)
+            echo $SHA > VERSION
 
       - name: Export LoAT Binary
         uses: actions/upload-artifact@master
         with:
           name: loat-static-${{ github.ref_name }}
-          path: build/release/loat-static
+          path: |
+            build/release/loat-static
+            build/release/VERSION
 
