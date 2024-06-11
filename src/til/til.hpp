@@ -98,7 +98,7 @@ private:
     Bools::Expr encode_transition(const Bools::Expr &idx);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
-    Int add_learned_clause(const Bools::Expr &accel);
+    Int add_learned_clause(const Bools::Expr &accel, const unsigned available_from);
     std::pair<Bools::Expr, Model> compress(const Range &range);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
@@ -109,8 +109,7 @@ private:
     void sat();
     void build_trace();
     const Subs& get_subs(const unsigned start, const unsigned steps);
-    RefinementResult refine();
-    void replace(const Int id, const Bools::Expr replacement);
+    void pop();
 
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
 

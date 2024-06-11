@@ -121,13 +121,14 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     return {*loop, m};
 }
 
-Int TIL::add_learned_clause(const Bools::Expr &accel) {
-    if (Config::Analysis::log)
+Int TIL::add_learned_clause(const Bools::Expr &accel, const unsigned available_from) {
+    if (Config::Analysis::log) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
+    }
     const auto id = next_id;
     ++next_id;
     rule_map.left.insert(rule_map_t::left_value_type(id, accel));
-    blocked.emplace_back(id, accel, depth);
+    blocked.emplace_back(id, accel, available_from);
     step = step || encode_transition(accel);
     return id;
 }
@@ -432,7 +433,7 @@ void TIL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
     // const auto ti{compute_transition_invariant(stem, loop, top(), model)};
     const auto ti{compute_transition_invariant(top(), loop, top(), model)};
-    const auto id{add_learned_clause(ti)};
+    const auto id{add_learned_clause(ti, range.start())};
     std::vector<Int> expanded;
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         expanded.push_back(trace.at(i).id);
@@ -448,10 +449,10 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t) {
 void TIL::add_blocking_clauses() {
     // std::cout << "BLOCKING CLAUSES" << std::endl;
     for (unsigned from = 0; from <= depth; ++from) {
-        for (const auto &[id, b, f] : blocked) {
-            // if (f > from) {
-            //     continue;
-            // }
+        for (const auto &[id, b, available_from] : blocked) {
+            if (available_from > from) {
+                continue;
+            }
             const auto to {depth + 1};
             const auto s{get_subs(from, to - from)};
             auto block{s(!b)};
@@ -558,6 +559,11 @@ const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
     return pre_vec.at(steps - 1);
 }
 
+void TIL::pop() {
+    solver->pop();
+    --depth;
+}
+
 void TIL::analyze() {
     if (Config::Analysis::log) {
         std::cout << "initial problem" << std::endl;
@@ -594,6 +600,7 @@ void TIL::analyze() {
         solver->pop();
     }
     while (true) {
+        solver->push();
         s = get_subs(depth, 1);
         solver->add(s(step));
         add_blocking_clauses();
@@ -639,11 +646,17 @@ void TIL::analyze() {
                     if (Config::Analysis::log) {
                         std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                     }
-                    handle_loop(*range);
-                    // lookback = depth;
-                    solver->pop();
-                    solver->push();
-                    depth = 0;
+                    if (range->start() >= lookback) {
+                        handle_loop(*range);
+                    }
+                    while (depth > range->start()) {
+                        pop();
+                    }
+                    lookback = range->start();
+                    for (auto &t: blocked) {
+                        auto &available_from {std::get<2>(t)};
+                        available_from = std::min(available_from, range->start());
+                    }
                 }
                 if (Config::Analysis::log) {
                     std::cout << "done with loop handling" << std::endl;
