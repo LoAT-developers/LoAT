@@ -36,7 +36,6 @@ jobs:
             cd /LoAT/build/release
             cmake -DCMAKE_BUILD_TYPE=Release ../../
             make -j$(nproc)
-            echo $GITHUB_WORKFLOW_SHA > VERSION
 
       - name: Export LoAT Binary
         uses: actions/upload-artifact@master
@@ -44,5 +43,4 @@ jobs:
           name: loat-static-${{ github.ref_name }}
           path: |
             build/release/loat-static
-            build/release/VERSION
 

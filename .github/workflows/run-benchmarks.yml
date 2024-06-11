@@ -136,7 +136,6 @@ jobs:
           name: ${{ inputs.repo }}-${{ matrix.ci_index }}
           path: |
             ${{ inputs.directory }}/*.res
-            /usr/local/bin/VERSION
 
   finalize-benchmark-results:
     needs: [chc-comp-benchmark]
@@ -147,7 +146,6 @@ jobs:
           pattern: ${{ inputs.repo }}*
       - name: Merge Benchmark Results
         run: |
-          echo $VERSION > ${{ inputs.repo }}.txt
           declare -A results
           for filename in ${{ inputs.repo }}*/*.res; do
             benchmark=$(basename "$filename" .res)
