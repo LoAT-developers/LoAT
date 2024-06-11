@@ -63,8 +63,8 @@ TIL::TIL(SafetyProblem &t) : t(t) {
 std::optional<Range> TIL::has_looping_infix() {
     long start{((long)trace.size()) - 1};
     long end{((long)trace.size()) - 1};
-    while (end >= 0) {
-        while (start >= 0) {
+    while (end >= lookback) {
+        while (start >= lookback) {
             if (dependency_graph.hasEdge(trace[end].implicant, trace[start].implicant)) {
                 return {Range::from_interval(start, end)};
             }
@@ -127,7 +127,7 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
     const auto id = next_id;
     ++next_id;
     rule_map.left.insert(rule_map_t::left_value_type(id, accel));
-    blocked.emplace(id, accel);
+    blocked.emplace(id, std::pair{accel, depth - 1});
     step = step || encode_transition(accel);
     return id;
 }
@@ -448,7 +448,11 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t) {
 void TIL::add_blocking_clauses() {
     // std::cout << "BLOCKING CLAUSES" << std::endl;
     for (unsigned from = 0; from <= depth; ++from) {
-        for (const auto &[id, b] : blocked) {
+        for (const auto &[id, p] : blocked) {
+            const auto &[b,f] {p};
+            if (f >= from) {
+                continue;
+            }
             for (unsigned to = from + 1; to <= depth + 1; ++to) {
                 const auto s{get_subs(from, to - from)};
                 auto block{s(!b)};
@@ -559,87 +563,6 @@ const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
     return pre_vec.at(steps - 1);
 }
 
-TIL::RefinementResult TIL::refine() {
-    Subs pre_to_post;
-    Subs post_to_pre;
-    for (const auto &x : vars) {
-        pre_to_post.put(x, theory::toExpr(theory::postVar(x)));
-        post_to_pre.put(theory::postVar(x), theory::toExpr(x));
-    }
-    const auto model{solver->model()};
-    auto init{t.init()};
-    init = model.syntacticImplicant(init);
-    init = mbp_impl(init, model, theory::isTempVar);
-    const auto err_model{model.composeBackwards(get_subs(depth, 1))};
-    auto err{t.err()};
-    err = err_model.syntacticImplicant(err);
-    err = mbp_impl(err, err_model, theory::isTempVar);
-    err = pre_to_post(err);
-    build_trace();
-    for (unsigned i = 0; i < trace.size(); ++i) {
-        const auto step{trace.at(i)};
-        if (step.id > last_orig_clause) {
-            const auto loop{loops.at(step.id)};
-            Bools::Expr pre{top()};
-            if (i == trace.size() - 1) {
-                pre = init;
-            } else {
-                auto [p, pre_model]{specialize(Range::from_interval(0, i - 1), theory::isTempVar)};
-                pre = p && init;
-                pre = mbp_impl(pre, pre_model, [](const auto &x) {
-                    return !theory::isPostVar(x);
-                });
-                pre = post_to_pre(pre);
-            }
-            assert(step.model.eval<Bools>(pre));
-            std::cout << "pre: " << pre << std::endl;
-            Bools::Expr post{top()};
-            if (i == trace.size() - 1) {
-                post = err;
-            } else {
-                auto [p, post_model]{specialize(Range::from_interval(i + 1, trace.size() - 1), theory::isTempVar)};
-                post = p && err;
-                post = mbp_impl(post, post_model, [](const auto &x) {
-                    return !theory::isProgVar(x);
-                });
-                post = pre_to_post(post);
-            }
-            std::cout << "post: " << post << std::endl;
-            std::cout << "loop: " << loop.compressed << std::endl;
-            assert(step.model.eval<Bools>(post));
-            auto tmp_solver {SmtFactory::modelBuildingSolver(QF_LA)};
-            tmp_solver->add(pre);
-            tmp_solver->add(loop.compressed);
-            tmp_solver->check();
-            const auto model {tmp_solver->model()};
-            const auto refinement{compute_transition_invariant(top(), pre && loop.compressed, top(), model)};
-            if (!step.model.eval<Bools>(refinement)) {
-                if (Config::Analysis::log) {
-                    std::cout << "refinement:" << std::endl;
-                    std::cout << "old: " << step.implicant << std::endl;
-                    std::cout << "new: " << refinement << std::endl;
-                }
-                replace(step.id, refinement);
-                return Refined;
-            }
-        }
-    }
-    std::cout << "refinement failed" << std::endl;
-    return Failed;
-}
-
-void TIL::replace(const Int id, const Bools::Expr replacement) {
-    std::cout << "replacing " << id << " with " << replacement << std::endl;
-    rule_map.left.erase(id);
-    rule_map.left.insert(rule_map_t::left_value_type(id, replacement));
-    blocked.put(id, replacement);
-    std::vector<Bools::Expr> steps;
-    for (const auto &[_, t] : rule_map) {
-        steps.push_back(encode_transition(t));
-    }
-    step = bools::mkOr(steps);
-}
-
 void TIL::analyze() {
     if (Config::Analysis::log) {
         std::cout << "initial problem" << std::endl;
@@ -721,10 +644,7 @@ void TIL::analyze() {
                         std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                     }
                     handle_loop(*range);
-                    // pop steps
-                    solver->pop();
-                    solver->push();
-                    depth = 0;
+                    lookback = depth;
                 }
                 if (Config::Analysis::log) {
                     std::cout << "done with loop handling" << std::endl;

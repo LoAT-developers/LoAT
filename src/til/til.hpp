@@ -76,10 +76,11 @@ private:
     std::vector<std::vector<Subs>> subs {};
     std::vector<TraceElem> trace {};
     Model model;
-    linked_hash_map<Int, Bools::Expr> blocked {};
+    linked_hash_map<Int, std::pair<Bools::Expr, unsigned>> blocked {};
     VarSet vars {};
     VarSet pre_vars {};
     Int last_orig_clause;
+    unsigned lookback {0};
 
     Int next_id {0};
 
