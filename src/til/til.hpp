@@ -82,12 +82,6 @@ private:
     Int last_orig_clause;
     unsigned lookback {0};
 
-    std::pair<int, int> luby {1,1};
-
-    unsigned luby_unit {10};
-
-    void luby_next();
-
     Int next_id {0};
 
     using rule_map_t = boost::bimap<boost::bimaps::unordered_set_of<Int>, boost::bimaps::unordered_set_of<Bools::Expr>>;

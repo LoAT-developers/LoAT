@@ -449,20 +449,16 @@ void TIL::add_blocking_clauses() {
     // std::cout << "BLOCKING CLAUSES" << std::endl;
     for (unsigned from = 0; from <= depth; ++from) {
         for (const auto &[id, b, f] : blocked) {
-            if (f > from) {
-                continue;
+            // if (f > from) {
+            //     continue;
+            // }
+            const auto to {depth + 1};
+            const auto s{get_subs(from, to - from)};
+            auto block{s(!b)};
+            if (to == from + 1) {
+                block = block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id)));
             }
-            for (unsigned to = from + 1; to <= depth + 1; ++to) {
-                const auto s{get_subs(from, to - from)};
-                auto block{s(!b)};
-                if (to == from + 1) {
-                    block = block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id)));
-                }
-                solver->add(block);
-                // std::cout << "trans: " << b.trans << std::endl;
-                // std::cout << "s: " << s << std::endl;
-                // std::cout << "first blocking clause: " << (block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), id))) << std::endl;
-            }
+            solver->add(block);
         }
     }
 }
@@ -561,17 +557,6 @@ const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
     // }
     return pre_vec.at(steps - 1);
 }
-void TIL::luby_next() {
-    for (auto &t: blocked) {
-        std::get<2>(t) = 0;
-    }
-    const auto [u,v] {luby};
-    luby = (u & -u) == v ? std::pair<unsigned, unsigned>(u+1, 1) : std::pair<unsigned, unsigned>(u, 2 * v);
-    solver->pop();
-    solver->push();
-    depth = 0;
-    lookback = 0;
-}
 
 void TIL::analyze() {
     if (Config::Analysis::log) {
@@ -609,7 +594,6 @@ void TIL::analyze() {
         solver->pop();
     }
     while (true) {
-        size_t next_restart = luby_unit * luby.second;
         s = get_subs(depth, 1);
         solver->add(s(step));
         add_blocking_clauses();
@@ -656,12 +640,10 @@ void TIL::analyze() {
                         std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                     }
                     handle_loop(*range);
-                    if (depth >= next_restart) {
-                        if (Config::Analysis::log) std::cout << "restarting after " << depth << " iterations" << std::endl;
-                        luby_next();
-                    } else {
-                        lookback = depth;
-                    }
+                    // lookback = depth;
+                    solver->pop();
+                    solver->push();
+                    depth = 0;
                 }
                 if (Config::Analysis::log) {
                     std::cout << "done with loop handling" << std::endl;
