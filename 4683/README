@@ -1,4 +1,4 @@
-***** TACAS '24 Artefact for "Accelerated Bounded Model Checking" *****
+***** FM '24 Artefact for "Accelerated Bounded Model Checking" *****
 
 ===== Download Instructions =====
 
@@ -33,7 +33,8 @@ spacer tested successfully
 z3_bmc tested successfully
 golem_tpa tested successfully
 golem_bmc tested successfully
-eldarica tested successfully
+eldarica_cegar tested successfully
+eldarica_sym tested successfully
 
 To perform a short evaluation of the artefact, please run
 
@@ -51,19 +52,20 @@ benchmark in seconds. The available solvers are:
 * z3_bmc
 * golem_tpa
 * golem_bmc
-* eldarica
+* eldarica_cegar
+* eldarica_sym
 
 We recommend to test at least one version of each tool, e.g.,
 
 * loat_abmc_block,
 * spacer,
 * golem_tpa, and
-* eldarica.
+* eldarica_cegar.
 
 (Note that Spacer is part of Z3.)
 
-Regarding the timeout, we recommend 2 second for all solvers but eldarica. For
-eldarica, we recommend 6 seconds. The reason is that eldarica is implemented in
+Regarding the timeout, we recommend 2 second for all solvers but Eldarica. For
+Eldarica, we recommend 6 seconds. The reason is that Eldarica is implemented in
 Java, and hence it can hardly solve any benchmarks within two seconds due to the
 startup time of the Java Virtual Machine.
 
@@ -72,10 +74,10 @@ Thus, we recommend to execute the following commands for a short evaluation:
 ./run_all loat_abmc_block short 2
 ./run_all spacer short 2
 ./run_all golem_tpa short 2
-./run_all eldarica short 6
+./run_all eldarica_cegar short 6
 
 Below, we provide the expected results for each solver, where we used a timeout
-of 6 seconds for eldarica, and 2 second for all other solvers.
+of 6 seconds for Eldarica, and 2 second for all other solvers.
 
 * loat_abmc_block
   - unsat: 18
@@ -117,10 +119,15 @@ of 6 seconds for eldarica, and 2 second for all other solvers.
   - sat: 0
   - unknown: 44
 
-* eldarica
-  - unsat: 3
-  - sat: 8
-  - unknown: 40
+* eldarica_cegar
+  - unsat: ?
+  - sat: ?
+  - unknown: ?
+
+* eldarica_sym
+  - unsat: ?
+  - sat: ?
+  - unknown: ?
 
 These results were obtained on StarExec, see 4683/machine_specs.txt for
 details. Of course, you might get slightly different results, depending on the
@@ -130,25 +137,21 @@ results:
 
 results/solved_light.txt
 
-Rerun those benchmarks via
+Then rerun the benchmarks where the results differ via
 
 ./run_$solver $benchmark
 
 which runs the given solver with a timeout of 5 minutes. For example, on my
-laptop, Eldarica only proves satisfiability of 7 instead of 8 benchmarks, so I
-rerun the failing benchmark via
+laptop, eldarica_cegar only proves satisfiability of 7 instead of 8 benchmarks,
+so I rerun the failing benchmark via
 
-./run_eldarica ../examples/short/chc-LIA-Lin_006.smt2
+./run_eldarica_cegar ../examples/short/chc-LIA-Lin_006.smt2
 
 and get the expected result "sat" after ~8s.
 
 If you obtain the expected results, then everything is fine, your machine is
 just significantly slower than StarExec in these specific cases. Please take
 that into account when you judge the results of further tests.
-
-In our tests, the runtimes of Eldarica varied considerably, depending on various
-factors, including the version of the JRE and whether we tested in the TACAS-AEC
-virtual machine or not.
 
 
 ===== Detailed Instructions =====
@@ -162,26 +165,24 @@ cd ./4683/bin
 
 The artefact allows you to run the following solvers:
 
-* loat_abmc_block -- LoAT's  implementation of ABMC with blocking clauses
-* loat_abmc       -- LoAT's  implementation of ABMC without blocking clauses
-* loat_bmc        -- LoAT's  implementation of BMC
-* loat_adcl       -- LoAT's  implementation of ADCL
-* spacer          -- Z3's    implementation of the Spacer algorithm
-* z3_bmc          -- Z3's    implementation of BMC
-* golem_tpa       -- Golem's implementation of Transition Power Abstraction
-* golem_bmc       -- Golem's implementation of BMC
-* eldarica        -- Eldarica's default configuration
+* loat_abmc_block -- LoAT's     implementation of ABMC with blocking clauses
+* loat_abmc       -- LoAT's     implementation of ABMC without blocking clauses
+* loat_bmc        -- LoAT's     implementation of BMC
+* loat_adcl       -- LoAT's     implementation of ADCL
+* spacer          -- Z3's       implementation of the Spacer algorithm
+* z3_bmc          -- Z3's       implementation of BMC
+* golem_tpa       -- Golem's    implementation of Transition Power Abstraction
+* golem_bmc       -- Golem's    implementation of BMC
+* eldarica_cegar  -- Eldarica's CEGAR engine
+* eldarica_sym    -- Eldarica's implementation of symbolic execution
 
 
 ----- available benchmarks -----
 
-The artefact provides the following collections of benchmarks:
-
-* 2022  -- the benchmarks from the CHC Competition 2022, category LIA-Lin
-* 2023  -- the benchmarks from the CHC Competition 2023, category LIA-Lin
-
-The benchmarks are located in the directories 4683/examples/2022 and
-4683/examples/2023. The format of the benchmarks is described here:
+The artefact contains the examples that were used for our evaluation: the
+benchmarks from the CHC Competition 2023, category LIA-Lin. They are located in
+the directory 4683/examples/2023. The format of the benchmarks is described
+here:
 
 https://chc-comp.github.io/format.html
 
@@ -194,14 +195,14 @@ You can run a single solver on a single benchmark via
 
 For example,
 
-./run_loat_abmc_block ../examples/2022/chc-LIA-Lin_052.smt2 5
+./run_loat_abmc_block ../examples/2023/chc-LIA-Lin_???.smt2 5
 
-runs LoAT's implementation of ABMC with blocking clauses on benchmark number 52
-from the CHC competition 2022 with a timeout of 5 seconds. If the timeout is
+runs LoAT's implementation of ABMC with blocking clauses on benchmark number ???
+from the CHC competition 2023 with a timeout of 5 seconds. If the timeout is
 omitted, then it defaults to 300.
 
 
------ running a benchmark collection -----
+----- running all benchmarks -----
 
 You can run a single solver on one of the provided collections of benchmarks via
 
@@ -209,11 +210,11 @@ run_all $solver $benchmarks $timeout.
 
 For example,
 
-./run_all loat_abmc_block 2023 5
+./run_all loat_abmc_block 5
 
-runs LoAT's implementation of ABMC with blocking clauses on all examples from
-the benchmark collection 2023 with a timeout of 5 seconds. If the timeout is
-omitted, then it defaults to 300.
+runs LoAT's implementation of ABMC with blocking clauses on all benchmarks with
+a timeout of 5 seconds per example. If the timeout is omitted, then it defaults
+to 300.
 
 When run_all finishes, it provides the number of benchmarks where sat or unsat
 was proven. For example, the command above may finish with:
@@ -240,21 +241,18 @@ smaller timeout (e.g., 5 seconds):
 ./run_all $solver $benchmarks $timeout
 
 To allow for comparing the obtained results with the results from our
-evaluation, we provide four csv-files:
+evaluation, we provide two csv-files:
 
-results/unsat_2022.csv
-results/sat_2022.csv
-results/unsat_2023.csv
-results/sat_2023.csv
+results/unsat.csv
+results/sat.csv
 
-For each solver, they contain the number of examples from 2022 and 2023,
-respectively, where (un)satisfiability could be proven within $timeout seconds
-(where 1 <= $timeout <= 300). So after running
+For each solver, they contain the number of examples where (un)satisfiability
+could be proven within $timeout seconds (where 1 <= $timeout <= 300). So after
+running
 
 ./run_all $solver $benchmarks $timeout,
 
-- open the file results/(un)sat_$benchmarks.csv (e.g., with MS Excel or
-  LibreOffice Calc),
+- open the file results/(un)sat.csv (e.g., with MS Excel or LibreOffice Calc),
 - within this file, search for the column $solver,
 - within this column, search for the row $timeout, and
 - compare the entry with the result of your run.
