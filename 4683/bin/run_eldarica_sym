@@ -12,9 +12,9 @@ if [ "$1" = "--help" ]; then
     HELP=1
 fi
 if (( $HELP == 1 )); then
-    echo "usage: run_loat INPUT [TIMEOUT]"
+    echo "usage: run_eldarica_sym INPUT [TIMEOUT]"
     echo "       The timeout is given in seconds."
     echo "       If no timeout is specified, then it defaults to 300s."
 else
-    timeout --foreground $TO ./loat-static --mode reachability --format horn --proof-level 0 --engine abmc $1
+    timeout --foreground $TO ./eld -splitClauses:1 -sym $1
 fi

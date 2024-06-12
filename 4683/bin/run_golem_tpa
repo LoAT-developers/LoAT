@@ -12,7 +12,7 @@ if [ "$1" = "--help" ]; then
     HELP=1
 fi
 if (( $HELP == 1 )); then
-    echo "usage: run_loat INPUT [TIMEOUT]"
+    echo "usage: run_golem_tpa INPUT [TIMEOUT]"
     echo "       The timeout is given in seconds."
     echo "       If no timeout is specified, then it defaults to 300s."
 else
