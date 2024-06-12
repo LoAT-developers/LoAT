@@ -212,9 +212,6 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                         has_post_var = true;
                     }
                 }
-                if (has_pre_var && has_post_var) {
-                    std::cout << "mixed: " << lhs << std::endl;
-                }
                 const auto recurrent {arith::mkPlus(std::move(recurrent_addends))};
                 const auto non_recurrent {lhs - recurrent};
                 const auto is_recurrent {!recurrent->isRational() && non_recurrent->isRational()};
@@ -419,7 +416,6 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
         } while (sat);
         solver->pop();
         const auto lit {arith::mkGeq(sum - arith::mkConst(constant) + n * arith::mkConst(constant), arith::mkConst(0))};
-        std::cout << "deduced " << lit << std::endl;
         res_lits.insert(lit);
         // block current solution
         BoolExprSet disjuncts;
