@@ -1,25 +1,30 @@
 ***** FM '24 Artefact for "Accelerated Bounded Model Checking" *****
 
-===== Download Instructions =====
+===== Getting Started =====
 
 You can find our artefact here:
 
 TODO insert download link
 
+It contains a file fm24.tar, which is an archived docker image. You can load it
+via:
 
-===== Additional Requirements =====
+docker image load < fm24.tar
 
-None -- the artefact is self-contained and it does not require specific
-hardware.
+Afterwards, please run
+
+docker run -ti loat/fm24 /bin/bash
+
+to start a terminal that runs in the docker container.
 
 
 ===== Instructions for Light Reviewing =====
 
-Please unzip the artefact and execute:
+To make sure that the artifact is functional, please execute:
 
-cd ./abmc/bin
+cd /artifact/bin
 
-To verify that the artefact can properly run, please execute:
+To verify that the solvers can properly run, please execute:
 
 ./test
 
@@ -36,7 +41,7 @@ golem_bmc tested successfully
 eldarica_cegar tested successfully
 eldarica_sym tested successfully
 
-To perform a short evaluation of the artefact, please run
+To perform a short evaluation of the artifact, please run
 
 ./run_all $solver $timeout short
 
@@ -129,43 +134,22 @@ of 6 seconds for Eldarica, and 2 second for all other solvers.
   - sat: 5
   - unknown: 38
 
-These results were obtained on StarExec, see abmc/machine_specs.txt for
+These results were obtained on StarExec, see /artifact/machine_specs.txt for
 details. Of course, you might get slightly different results, depending on the
-machine that you are using. If you obtain results that are significantly worse
-for some solvers, then please compare your results with the detailed expected
-results:
-
-results/solved_light.txt
-
-Then rerun the benchmarks where the results differ via
-
-./run_$solver $benchmark
-
-which runs the given solver with a timeout of 5 minutes. For example, on my
-laptop, eldarica_cegar only proves satisfiability of 7 instead of 8 benchmarks,
-so I rerun the failing benchmark via
-
-./run_eldarica_cegar ../examples/short/chc-LIA-Lin_006.smt2
-
-and get the expected result "sat" after ~8s.
-
-TODO check that
-
-If you obtain the expected results, then everything is fine, your machine is
-just significantly slower than StarExec in these specific cases. Please take
-that into account when you judge the results of further tests.
+machine that you are using. For example, golem_tpa can prove satisfiability of
+5 instead of 4 instances on my machine.
 
 
 ===== Detailed Instructions =====
 
-Please unzip the artefact and execute:
+Please execute:
 
-cd ./abmc/bin
+cd /artifact/bin
 
 
 ----- available solvers -----
 
-The artefact allows you to run the following solvers:
+The artifact allows you to run the following solvers:
 
 * loat_abmc_b    -- LoAT's     implementation of ABMC with blocking clauses
 * loat_abmc      -- LoAT's     implementation of ABMC without blocking clauses
@@ -181,9 +165,9 @@ The artefact allows you to run the following solvers:
 
 ----- available benchmarks -----
 
-The artefact contains the examples that were used for our evaluation: the
+The artifact contains the examples that were used for our evaluation: the
 benchmarks from the CHC Competition 2023, category LIA-Lin. They are located in
-the directory abmc/examples/2023. The format of the benchmarks is described
+the directory /artifact/examples/2023. The format of the benchmarks is described
 here:
 
 https://chc-comp.github.io/format.html
@@ -208,7 +192,7 @@ omitted, then it defaults to 300.
 
 You can run a single solver on the provided collections of benchmarks via
 
-run_all $solver $timeout.
+./run_all $solver $timeout.
 
 For example,
 
@@ -244,8 +228,8 @@ smaller timeout, e.g., 5 seconds:
 To allow for comparing the obtained results with the results from our
 evaluation, we provide two csv-files:
 
-results/unsat.csv
-results/sat.csv
+/artifact/results/unsat.csv
+/artifact/results/sat.csv
 
 For each solver, they contain the number of examples where (un)satisfiability
 could be proven within $timeout seconds (where 1 <= $timeout <= 300). So after
@@ -259,6 +243,22 @@ running
 - compare the entry with the result of your run.
 
 Of course, you might get slightly different results, depending on the machine
-that you are using. We ran our tests on StarExec, see abmc/machine_specs.txt for
+that you are using. We ran our tests on StarExec, see /artifact/machine_specs.txt for
 details.
 
+
+----- Building LoAT -----
+
+The sources of LoAT are available in the directory /artifact/LoAT. To build LoAT
+from source, please run
+
+cd /artifact/LoAT/build
+make
+
+resulting in the new binary:
+
+/artifact/LoAT/build/loat-static
+
+The entrypoint of the ABMC implementation is:
+
+/artifact/LoAT/src/abmc/abmc.cpp
