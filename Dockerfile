@@ -40,25 +40,25 @@ FROM base as faudes
 
 RUN xbps-install -yS readline-devel
 
-RUN wget https://fgdes.tf.fau.de/archive/libfaudes-2_30b.tar.gz
-RUN tar xf libfaudes-2_30b.tar.gz
-WORKDIR /libfaudes-2_30b
+RUN wget https://fgdes.tf.fau.de/archive/libfaudes-2_32a.tar.gz
+RUN tar xf libfaudes-2_32a.tar.gz
+WORKDIR /libfaudes-2_32a
 RUN sed -i 's/MAINOPTS += -std=gnu++98 -D_GLIBCXX_USE_CXX11_ABI=0/MAINOPTS += -std=c++11/g' Makefile
 RUN FAUDES_LINKING=static make -j
-RUN cp /libfaudes-2_30b/libfaudes.a /usr/local/lib/
-RUN cp -r /libfaudes-2_30b/include /usr/local/include/faudes
+RUN cp /libfaudes-2_32a/libfaudes.a /usr/local/lib/
+RUN cp -r /libfaudes-2_32a/include /usr/local/include/faudes
 
 
 
 FROM base as ginac
 
-RUN xbps-install -yS cln-devel
+RUN xbps-install -yS cln-devel git openssh
 
-RUN wget https://www.ginac.de/ginac-1.8.7.tar.bz2
-RUN tar xf ginac-1.8.7.tar.bz2
-WORKDIR /ginac-1.8.7
+RUN git clone git://www.ginac.de/ginac.git
+WORKDIR /ginac
+RUN git checkout release_1-8-6
 RUN mkdir build
-WORKDIR /ginac-1.8.7/build
+WORKDIR /ginac/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=false -DCMAKE_C_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
@@ -152,11 +152,11 @@ FROM base as z3
 RUN xbps-install -yS xbps
 RUN xbps-install -yS python3-devel
 
-RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.2.tar.gz
-RUN tar xf z3-4.12.2.tar.gz
-WORKDIR /z3-z3-4.12.2
+RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.9.1.tar.gz
+RUN tar xf z3-4.9.1.tar.gz
+WORKDIR /z3-z3-4.9.1
 RUN mkdir build
-WORKDIR /z3-z3-4.12.2/build
+WORKDIR /z3-z3-4.9.1/build
 RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-march=x86-64 -O3 -DNDEBUG" ..
 RUN make -j
 RUN make install
