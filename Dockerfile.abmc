@@ -1,0 +1,20 @@
+FROM docker.io/library/loat
+
+RUN xbps-install -yS openjdk
+
+RUN mkdir /artifact
+WORKDIR /artifact
+COPY abmc .
+
+RUN mkdir LoAT
+WORKDIR LoAT
+COPY CMakeLists.txt .
+COPY cmake ./cmake
+COPY src ./src
+RUN mkdir build
+WORKDIR build
+RUN cmake -DCMAKE_BUILD_TYPE=Release ..
+RUN make -j
+RUN rm loat-static
+
+WORKDIR /artifact
