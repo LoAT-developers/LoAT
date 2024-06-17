@@ -1,4 +1,4 @@
-***** FM '24 Artifact for "Accelerated Bounded Model Checking" *****
+***** FM '24 Artifact for "Integrating Loop Acceleration into Bounded Model Checking" *****
 
 ===== Getting Started =====
 
@@ -107,7 +107,7 @@ of 6 seconds for Eldarica, and 2 second for all other solvers.
 * spacer
   - unsat: 5
   - sat: 3
-  - unknown: 39
+  - unknown: 42
 
 * z3_bmc
   - unsat: 5
@@ -190,7 +190,7 @@ omitted, then it defaults to 300.
 
 ----- running all benchmarks -----
 
-You can run a single solver on the provided collections of benchmarks via
+You can run a single solver on the provided collection of benchmarks via
 
 ./run_all $solver $timeout.
 
@@ -259,6 +259,17 @@ resulting in the new binary:
 
 /artifact/LoAT/build/loat-static
 
-The entrypoint of the ABMC implementation is:
+To run loat-static on the CHC examples in SMTLIB format, it has to be called
+with the flag --format horn. Moreover, the flag --engine abmc is required to
+instruct LoAT to use our implementation of ABMC. So for example, you can call:
+
+/artifact/LoAT/build/loat-static --format horn --engine abmc /artifact/examples/2023/chc-LIA-Lin_046.smt2
+
+See
+
+/artifact/LoAT/build/loat-static --help
+
+for more information about LoAT's command-line flags. The entrypoint of the ABMC
+implementation is:
 
 /artifact/LoAT/src/abmc/abmc.cpp
