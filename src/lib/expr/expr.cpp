@@ -14,6 +14,42 @@ bool isProgVar(const Var &var) {
     return !isTempVar(var);
 }
 
+/**
+ * If the given expression is a simple (non-negated) variable, 
+ * it is returned. For compound expressions, we return nullopt.
+ */
+const std::optional<Var> toVar(const ThExpr &expr) {
+    return std::visit(Overload{
+        [](const Expr &num_expr) -> std::optional<Var> {
+            if (num_expr.isVar()) {
+                return Var(num_expr.toVar());
+            } else {
+                return {};
+            }
+        },
+        [](const BoolExpr &bool_expr) -> std::optional<Var> {
+            if (bool_expr->isTheoryLit()) {
+                const auto theory_lit = bool_expr->getTheoryLit();
+
+                return std::visit(Overload{
+                    [](const BoolLit &lit) -> std::optional<Var> {
+                        if (lit.isNegated()) {
+                            return {};
+                        } else {
+                            return Var(lit.getBoolVar());
+                        }
+                    },
+                    [](const Rel &rel) -> std::optional<Var> {
+                        return {};
+                    }
+                }, *theory_lit);
+            } else {
+                return {};
+            }
+        }
+    }, expr);
+} 
+
 Var next(const Var &var) {
     return std::visit(Overload{
                           [](const NumVar&) {

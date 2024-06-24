@@ -1,6 +1,7 @@
 #include "CHCParseVisitor.h"
 #include "boollit.hpp"
 #include "expr.hpp"
+#include "clause.hpp"
 
 #include <variant>
 #include <algorithm>
@@ -20,7 +21,7 @@ using lit_type = Res<BoolExpr>;
 using assert_type = Clause;
 using query_type = Clause;
 using symbol_type = std::string;
-using tail_type = std::pair<FunApp, BoolExpr>;
+using tail_type = std::pair<std::vector<FunApp>, BoolExpr>;
 using head_type = FunApp;
 using var_or_atom_type = std::variant<BoolVar, FunApp>;
 using boolop_type = BoolOp;
@@ -32,19 +33,19 @@ Res<T>::Res(const T &t): t(t) {}
 template<class T>
 Res<T>::Res() {}
 
-LocationIdx CHCParseVisitor::loc(const std::string &name) {
-    auto it = locations.find(name);
-    if (it == locations.end()) {
-        auto idx = its->addNamedLocation(name);
-        locations[name] = idx;
-        return idx;
-    } else {
-        return it->second;
-    }
-}
+// LocationIdx CHCParseVisitor::loc(const std::string &name) {
+//     auto it = locations.find(name);
+//     if (it == locations.end()) {
+//         auto idx = its->addNamedLocation(name);
+//         locations[name] = idx;
+//         return idx;
+//     } else {
+//         return it->second;
+//     }
+// }
 
 antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
-    its->setInitialLocation(its->addNamedLocation("LoAT_init"));
+    // its->setInitialLocation(its->addNamedLocation("LoAT_init"));
     for (const auto &c: ctx->fun_decl()) {
         visit(c);
     }
@@ -55,72 +56,24 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
     for (const auto &c: ctx->chc_query()) {
         clauses.push_back(any_cast<query_type>(visit(c)));
     }
-    std::vector<NumVar> vars;
-    std::vector<BoolVar> bvars;
-    for (unsigned i = 0; i < max_int_arity; ++i) {
-        vars.emplace_back(NumVar::nextProgVar());
-    }
-    for (unsigned i = 0; i < max_bool_arity; ++i) {
-        bvars.emplace_back(BoolVar::nextProgVar());
-    }
-    for (const Clause &c: clauses) {
-        Subs ren;
-        // replace the arguments of the body predicate with the corresponding program variables
-        unsigned bool_arg {0};
-        unsigned int_arg {0};
-        for (unsigned i = 0; i < c.lhs.args.size(); ++i) {
-            if (std::holds_alternative<NumVar>(c.lhs.args[i])) {
-                ren.put<IntTheory>(std::get<NumVar>(c.lhs.args[i]), vars[int_arg]);
-                ++int_arg;
-            } else {
-                ren.put<BoolTheory>(std::get<BoolVar>(c.lhs.args[i]), BExpression::buildTheoryLit(BoolLit(bvars[bool_arg])));
-                ++bool_arg;
-            }
-        }
-        VarSet cVars;
-        for (const auto &var: c.rhs.args) {
-            cVars.insert(var);
-        }
-        c.guard->collectVars(cVars);
-        // replace all other variables from the clause with temporary variables
-        for (const auto &x: cVars) {
-            if (!ren.contains(x)) {
-                if (std::holds_alternative<NumVar>(x)) {
-                    const auto &var = std::get<NumVar>(x);
-                    ren.put<IntTheory>(var, NumVar::next());
-                } else if (std::holds_alternative<BoolVar>(x)) {
-                    const auto &var = std::get<BoolVar>(x);
-                    ren.put<BoolTheory>(var, BExpression::buildTheoryLit(BoolLit(BoolVar::next())));
-                } else {
-                    throw std::logic_error("unsupported theory in CHCParseVisitor");
-                }
-            }
-        }
-        bool_arg = 0;
-        int_arg = 0;
-        Subs up;
-        for (unsigned i = 0; i < c.rhs.args.size(); ++i) {
-            if (std::holds_alternative<NumVar>(c.rhs.args[i])) {
-                up.put<IntTheory>(vars[int_arg], ren.get<IntTheory>(std::get<NumVar>(c.rhs.args[i])));
-                ++int_arg;
-            } else if (std::holds_alternative<BoolVar>(c.rhs.args[i])) {
-                up.put<BoolTheory>(bvars[bool_arg], ren.get<BoolTheory>(std::get<BoolVar>(c.rhs.args[i])));
-                ++bool_arg;
-            } else {
-                throw std::logic_error("unsupported theory in CHCParseVisitor");
-            }
-        }
-        for (unsigned i = int_arg; i < max_int_arity; ++i) {
-            up.put<IntTheory>(vars[i], NumVar::next());
-        }
-        for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
-            up.put<BoolTheory>(bvars[i], BExpression::buildTheoryLit(BoolLit(BoolVar::next())));
-        }
-        up.put(NumVar::loc_var, c.rhs.loc);
-        const BoolExpr guard = c.guard->subs(ren)->simplify() & Rel::buildEq(NumVar::loc_var, c.lhs.loc);
-        its->addRule(Rule(guard, up), c.lhs.loc);
-    }
-    return its;
+
+    // std::vector<NumVar> vars;
+    // for (unsigned i = 0; i < max_int_arity; ++i) {
+    //     vars.emplace_back(NumVar::nextProgVar());
+    // }
+    // its->numProgVars = vars;
+
+    // std::vector<BoolVar> bvars;
+    // for (unsigned i = 0; i < max_bool_arity; ++i) {
+    //     bvars.emplace_back(BoolVar::nextProgVar());
+    // }
+    // its->boolProgVars = bvars;
+
+    // for (const Clause &c: clauses) {
+    //     its->addClause(c);
+    // }
+
+    return clauses;
 }
 
 std::string unescape(std::string name) {
@@ -132,24 +85,25 @@ std::string unescape(std::string name) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitFun_decl(CHCParser::Fun_declContext *ctx) {
-    unsigned long int_arity {0};
-    unsigned long bool_arity {0};
-    for (const auto &s: ctx->sort()) {
-        switch (std::any_cast<sort_type>(visit(s))) {
-        case Int:
-            ++int_arity;
-            break;
-        case Bool:
-            ++bool_arity;
-            break;
-        }
-    }
-    max_int_arity = std::max(max_int_arity, int_arity);
-    max_bool_arity = std::max(max_bool_arity, bool_arity);
+    // unsigned long int_arity {0};
+    // unsigned long bool_arity {0};
+    // for (const auto &s: ctx->sort()) {
+    //     switch (std::any_cast<sort_type>(visit(s))) {
+    //     case Int:
+    //         ++int_arity;
+    //         break;
+    //     case Bool:
+    //         ++bool_arity;
+    //         break;
+    //     }
+    // }
+    // max_int_arity = std::max(max_int_arity, int_arity);
+    // max_bool_arity = std::max(max_bool_arity, bool_arity);
     const auto name = any_cast<symbol_type>(visit(ctx->symbol()));
-    const LocationIdx idx = its->addNamedLocation(name);
-    locations[name] = idx;
-    return idx;
+    // const LocationIdx idx = its->addNamedLocation(name);
+    // locations[name] = idx;
+    fun_names.insert(name);
+    return name;
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert(CHCParser::Chc_assertContext *ctx) {
@@ -169,7 +123,7 @@ antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headCo
 antlrcpp::Any CHCParseVisitor::visitChc_assert_body(CHCParser::Chc_assert_bodyContext *ctx) {
     const auto lhs = any_cast<tail_type>(visit(ctx->chc_tail()));
     const auto rhs = any_cast<head_type>(visit(ctx->chc_head()));
-    return Clause(lhs.first, rhs, lhs.second);
+    return Clause(lhs.first, rhs, lhs.second).normalize();
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_head(CHCParser::Chc_headContext *ctx) {
@@ -183,18 +137,18 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
         guards.push_back(r.t);
         guards.insert(guards.end(), r.refinement.begin(), r.refinement.end());
     }
-    std::optional<FunApp> lhs;
+
+    std::vector<FunApp> predicates;
     for (const auto &c: ctx->var_or_atom()) {
         const auto v = any_cast<var_or_atom_type>(visit(c));
         if (std::holds_alternative<BoolVar>(v)) {
             guards.push_back(BExpression::buildTheoryLit(BoolLit(std::get<BoolVar>(v))));
-        } else if (lhs) {
-            throw std::invalid_argument("non-linear clause " + ctx->getText());
         } else {
-            lhs = std::get<FunApp>(v);
+            predicates.push_back(std::get<FunApp>(v));
         }
     }
-    return std::pair(lhs.value_or(FunApp(its->getInitialLocation(), {})), BExpression::buildAnd(guards));
+
+    return std::pair(predicates, BExpression::buildAnd(guards));
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) {
@@ -203,7 +157,9 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
     }
     const auto lhs = any_cast<tail_type>(visit(ctx->chc_tail()));
     vars.clear();
-    return Clause(lhs.first, FunApp(its->getSink(), {}), lhs.second);
+
+    // const auto sink_name = its->getLocationNames().at(its->getSink());
+    return Clause(lhs.first, {}, lhs.second).normalize();
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
@@ -215,8 +171,9 @@ antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *ctx) {
     const auto name = any_cast<symbol_type>(visit(ctx->symbol()));
-    const std::optional<LocationIdx> loc = its->getLocationIdx(name);
-    if (!loc) {
+    // const std::optional<LocationIdx> loc = its->getLocationIdx(name);
+    // TODO: 
+    if (!fun_names.contains(name)) {
         throw std::invalid_argument("undeclared function symbol " + name);
     }
     std::vector<Var> args;
@@ -228,7 +185,7 @@ antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *c
             throw std::invalid_argument("arguments of predicate are not distinct");
         }
     }
-    return FunApp(*loc, args);
+    return FunApp(name, args);
 }
 
 antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) {
@@ -575,9 +532,9 @@ antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *ctx) {
     if (ctx->var()) {
-        const std::optional<LocationIdx> loc = its->getLocationIdx(unescape(ctx->getText()));
-        if (loc) {
-            return std::variant<BoolVar, FunApp>(FunApp(*loc, {}));
+        const auto name = unescape(ctx->getText());
+        if (fun_names.contains(name)) { // its->getLocationIdx(name).has_value()) {
+            return std::variant<BoolVar, FunApp>(FunApp(name, {}));
         } else {
             return std::variant<BoolVar, FunApp>(std::get<BoolVar>(any_cast<Var>(visit(ctx->var()))));
         }

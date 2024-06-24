@@ -26,6 +26,9 @@ benchlog
 benchscores
 koat-examples
 benchmarks*
+# Actually I find it kind of important to track benchmark results
+# in git, to see how they are affected by changes in the codebase.
+!benchmarks/
 
 # hidden files
 .*
@@ -40,6 +43,7 @@ build
 build-static
 bundle
 CMakeFiles
+CMakeCache.txt
 compile_commands.json
 loat-static
 LoAT.*

@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <memory>
 #include <boost/functional/hash.hpp>
+#include <variant>
 
 
 
@@ -448,12 +449,10 @@ public:
             std::optional<BoolVar> elim;
             const auto vars {c->vars().template get<BoolVar>()};
             for (const auto &x: vars) {
-                if (x.isTempVar()) {
-                    if (elim) {
-                        return std::optional<BoolVar>{};
-                    } else {
-                        elim = x;
-                    }
+                if (elim) {
+                    return std::optional<BoolVar>{};
+                } else {
+                    elim = x;
                 }
             }
             return elim;
@@ -520,9 +519,7 @@ public:
                 if (std::holds_alternative<BoolLit>(lit)) {
                     const auto &bool_lit {std::get<BoolLit>(lit)};
                     const auto var {bool_lit.getBoolVar()};
-                    if (var.isTempVar()) {
-                        res.put(var, bool_lit.isNegated() ? bot() : top());
-                    }
+                    res.put(var, bool_lit.isNegated() ? bot() : top());
                 }
             }
         }

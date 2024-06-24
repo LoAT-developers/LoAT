@@ -1,4 +1,6 @@
 #include "reachability.hpp"
+#include "config.hpp"
+#include "linearsolver.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
@@ -111,10 +113,26 @@ ITSProof* ProvedUnsat::operator->() {
     return &proof;
 }
 
-Reachability::Reachability(ITSProblem &chcs):
+Reachability::Reachability(ITSProblem &chcs, bool incremental_mode):
     chcs(chcs),
-    drop(true) {
+    drop(true),
+    analysis_result(LinearSolver::Result::Pending),
+    incremental_mode(incremental_mode) {
     solver->enableModels();
+    proof.majorProofStep("Initial ITS", ITSProof(), chcs);
+    if (Config::Analysis::log) {
+        std::cout << "Initial ITS" << std::endl;
+        ITSExport::printForProof(chcs, std::cout);
+    }
+    const auto res {Preprocess::preprocess(chcs, incremental_mode)};
+    if (res) {
+        proof.concat(res.getProof());
+        if (Config::Analysis::log) {
+            std::cout << "Simplified ITS" << std::endl;
+            ITSExport::printForProof(chcs, std::cout);
+        }
+    }
+    init();
 }
 
 Step::Step(const TransIdx transition, const BoolExpr &sat, const Subs &var_renaming, const Rule &resolvent):
@@ -227,10 +245,6 @@ void Reachability::update_cpx() {
 }
 
 Rule Reachability::compute_resolvent(const TransIdx idx, const BoolExpr &implicant) const {
-    static Rule dummy(top(), Subs());
-    if (!Config::Analysis::complexity()) {
-        return dummy;
-    }
     auto resolvent = idx->withGuard(implicant);
     if (!trace.empty()) {
         resolvent = Chaining::chain(trace.back().resolvent, resolvent).first;
@@ -322,15 +336,13 @@ void Reachability::print_state() {
     proof.storeSubProof(state_p);
 }
 
+// TODO: do we need this function? ITS also has the function `getProgVars` now.
 void Reachability::init() {
     srand(42);
     for (const auto &x: chcs.getVars()) {
         if (!expr::isTempVar(x)) {
             prog_vars.insert(x);
         }
-    }
-    for (const auto &r: chcs.getAllTransitions()) {
-        last_orig_clause = std::max(last_orig_clause, r.getId());
     }
 }
 
@@ -349,7 +361,7 @@ void Reachability::luby_next() {
 
 void Reachability::unsat() {
     const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
-    std::cout << res << std::endl << std::endl;
+    analysis_result = analysis_result_from(res);
     if (!Config::Analysis::log && Proof::disabled()) {
         return;
     }
@@ -373,7 +385,7 @@ void Reachability::unsat() {
 }
 
 void Reachability::unknown() {
-    std::cout << "unknown" << std::endl << std::endl;
+    analysis_result = analysis_result_from("unknown");
     if (!Config::Analysis::log && Proof::disabled()) {
         return;
     }
@@ -470,15 +482,16 @@ TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned back
     const auto fst = trace.at(backlink).clause_idx;
     const auto last = trace.back().clause_idx;
     const auto loop_idx = chcs.addLearnedRule(accel, fst, last);
+    learned_clause_ids.insert(loop_idx->getId());
     return loop_idx;
 }
 
 bool Reachability::is_learned_clause(const TransIdx idx) const {
-    return idx->getId() > last_orig_clause;
+    return learned_clause_ids.contains(idx->getId());
 }
 
 bool Reachability::is_orig_clause(const TransIdx idx) const {
-    return idx->getId() <= last_orig_clause;
+    return !is_learned_clause(idx);
 }
 
 RuleResult Reachability::instantiate(const NumVar &n, const Rule &rule) const {
@@ -541,7 +554,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (accel_res.accel) {
         // acceleration succeeded, simplify the result
-        auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
+        auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);          
         if (simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
@@ -594,7 +607,7 @@ void Reachability::drop_until(const int new_size) {
     }
 }
 
-std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
+std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink, LinearSolver::ConstraintTier max_constr_tier) {
     const auto lang {build_language(backlink)};
     auto closure {lang};
     redundancy->transitive_closure(closure);
@@ -635,7 +648,18 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
     const auto accel_state {*state->succeeded()};
     const auto learned_clauses {**accel_state};
+
     bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix <= 1 && learned_clauses.period == 1)};
+
+    // To respect `max_constraint_tier` we don't replace the recursive suffix with a 
+    // learned clause if at least one of the learned clauses has a higher constraint tier
+    // then the maximum dictated by `max_constraint_tier` right now. 
+    for (const auto idx: learned_clauses.res) {
+        if (constraint_tier_of(idx) > max_constr_tier) {
+            do_drop = false;
+        }
+    }
+
     if (do_drop) {
         drop_until(backlink);
     }
@@ -686,6 +710,24 @@ bool Reachability::try_to_finish() {
     return false;
 }
 
+LinearSolver::Result Reachability::analysis_result_from(std::string res) const {
+    if (res == "sat") {
+        return LinearSolver::Result::Sat;
+    } else if (res == "unsat") {
+        return LinearSolver::Result::Unsat;
+    } else if (res == "unknown") {
+        return LinearSolver::Result::Unknown;
+    } else if (res == "pending") {
+        return LinearSolver::Result::Pending;           
+    } else {
+        throw std::logic_error("undefined analysis result");
+    }       
+}
+
+LinearSolver::Result Reachability::get_analysis_result() const {
+    return analysis_result;
+}
+
 unsigned Reachability::get_penalty(const TransIdx idx) const {
     const auto it {penalty.find(idx)};
     if (it != penalty.end()) {
@@ -699,26 +741,76 @@ void Reachability::bump_penalty(const TransIdx idx) {
     penalty.emplace(idx, 0).first->second++;
 }
 
-void Reachability::analyze() {
-    proof.majorProofStep("Initial ITS", ITSProof(), chcs);
-    if (Config::Analysis::log) {
-        std::cout << "Initial ITS" << std::endl;
-        ITSExport::printForProof(chcs, std::cout);
+/**
+ * The resolvent of the entire current trace represents a fact,
+ * that can be converted into a `Clause`. If the trace is empty,
+ * this function returns nullopt.
+ */
+const std::optional<Clause> Reachability::trace_as_fact() {
+    if (trace.empty()) {
+        return {};
+    } else {
+        const Step step = trace.back();
+        return chcs.clauseFrom(
+            chcs.getInitialLocation(), 
+            chcs.getRhsLoc(step.clause_idx),
+            step.resolvent
+        );
     }
-    const auto res {Preprocess::preprocess(chcs)};
-    if (res) {
-        proof.concat(res.getProof());
-        if (Config::Analysis::log) {
-            std::cout << "Simplified ITS" << std::endl;
-            ITSExport::printForProof(chcs, std::cout);
+}
+
+LinearSolver::ConstraintTier Reachability::constraint_tier_of(TransIdx rule) const {    
+    if (rule->isLinear()) {
+        return LinearSolver::ConstraintTier::Linear;
+    } else if (rule->isPoly()) {
+        return LinearSolver::ConstraintTier::Polynomial;
+    } else {
+        return LinearSolver::ConstraintTier::Exponential;
+    }
+}
+
+void Reachability::analyze() {
+    // First only derive "easy" to handle rules with linear guard. If that's not enough
+    // also try rules with polynomial guard. Otherwise also consider exponential 
+    // (arbitrary) guards.
+    for (const auto tier: LinearSolver::constraint_tiers) {
+        derive_new_facts(tier);
+
+        if (get_analysis_result() == LinearSolver::Result::Unsat) {
+            break;
         }
     }
-    init();
+
+    switch (get_analysis_result()) {
+        case LinearSolver::Result::Sat:
+            std::cout << "sat";
+            break;
+        case LinearSolver::Result::Unsat:
+            std::cout << "unsat";
+            break;
+        case LinearSolver::Result::Unknown:
+            std::cout << "unknown";
+            break;
+        case LinearSolver::Result::Pending:
+            throw std::logic_error("exited main loop although analysis result is pending");
+    }
+
+    std::cout << std::endl << std::endl << std::endl;
+}
+
+const std::set<Clause> Reachability::derive_new_facts(LinearSolver::ConstraintTier max_constr_tier) {
+    luby_count = 0;
+    luby = {1,1};
+    restart();
+
+    std::set<Clause> derived_facts;
+
     if (try_to_finish()) {
-        return;
+        return derived_facts;
     }
     blocked_clauses[0].clear();
     do {
+        // QUESTION: still correct handling luby this way in incremental mode?
         ++luby_count;
         size_t next_restart = luby_unit * luby.second;
         std::unique_ptr<LearningState> state;
@@ -729,7 +821,7 @@ void Reachability::analyze() {
                  backlink = has_looping_suffix(*backlink - 1)) {
                 auto step {trace[*backlink]};
                 auto simple_loop {*backlink == trace.size() - 1};
-                state = handle_loop(*backlink);
+                state = handle_loop(*backlink, max_constr_tier);
                 if (state->restart()) {
                     break;
                 } else if (state->covered()) {
@@ -744,7 +836,7 @@ void Reachability::analyze() {
                     proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
                     print_state();
                     if ((drop || simple_loop) && try_to_finish()) {
-                        return;
+                        return derived_facts;
                     }
                 } else if (state->dropped()) {
                     if (simple_loop) {
@@ -752,36 +844,40 @@ void Reachability::analyze() {
                     }
                     proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
                     print_state();
+
                     break;
                 } else if (state->unsat()) {
                     proof.majorProofStep("Nonterm", **state->unsat(), chcs);
                     proof.headline("Step with " + std::to_string(trace.back().clause_idx->getId()));
                     print_state();
                     unsat();
-                    return;
+
+                    return derived_facts;
                 } else if (state->unroll() && state->unroll()->acceleration_failed()) {
-                    // stop searching for longer loops if the current one was already too complicated
                     break;
                 }
             }
         }
         if (luby_count >= next_restart || (state && state->restart()) || !check_consistency()) {
             if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
-            // restart
-            while (!trace.empty()) {
-                pop();
-            }
-            luby_next();
-            proof.headline("Restart");
+            restart();
         }
+
         auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
         for (auto it = try_set.begin(); it != try_set.end();) {
-            if (is_learned_clause(*it) && locked.contains(*redundancy->get_language(*it))) {
+            // Only consider rules for "Step" whose guard has at most the constraint tier
+            // configured for the current run. For example if `max_constr_tier` is `Polynomial`,
+            // we only consider rules with `Linear` or `Polynomial` guard but ignore rules with
+            // `Exponential` guard.
+            if (constraint_tier_of(*it) > max_constr_tier) {
+                it = try_set.erase(it);
+            } else if (is_learned_clause(*it) && locked.contains(*redundancy->get_language(*it))) {
                 it = try_set.erase(it);
             } else {
                 ++it;
             }
         }
+
         std::vector<TransIdx> to_try(try_set.begin(), try_set.end());
         std::sort(to_try.begin(), to_try.end(), [this](const TransIdx x, const TransIdx y){
             const auto p1 {get_penalty(x)};
@@ -798,37 +894,98 @@ void Reachability::analyze() {
             const auto implicant {resolve(idx)};
             solver->pop();
             if (implicant && store_step(idx, *implicant)) {
-                proof.headline("Step with " + std::to_string(idx->getId()));
-                print_state();
-                update_cpx();
-                all_failed = false;
-                break;
+                // Additional redundnacy check: if resolvent of trace (after step) is 
+                // syntactially equivalent (up to renaming) to an already derived fact, 
+                // then backtrack and try a different step. 
+                if (derived_facts.contains(trace_as_fact().value())) {
+                    backtrack();
+                } else {
+                    proof.headline("Step with " + std::to_string(idx->getId()));
+                    print_state();
+                    update_cpx();
+                    all_failed = false;
+                    break;
+                }
             } else {
                 bump_penalty(idx);
             }
         }
         if (trace.empty()) {
-            break;
+            // TODO: is this the only place where we break out of the main loop with SAT?
+            proof.headline("Accept");
+            if (Config::Analysis::complexity()) {
+                proof.result(cpx.toString());
+                proof.print();
+            } else {
+                unknown();
+            }
+
+            return derived_facts;
         } else if (all_failed) {
+            // Using a crude (additional) redundancy criterion for facts here. We identify facts by the trace that lead to them.
+            // This is only sufficient because equivalent facts can have multiple traces. We don't need to memoize the entire                    
+            // trace structure. It's enough to store clause_idx/implicant for each trace step.
+            std::vector<std::pair<TransIdx, BoolExpr>> trace_id;
+            for (const auto &step: trace) {
+                trace_id.push_back(std::make_pair(
+                    step.clause_idx, 
+                    step.implicant
+                ));
+            }
+
+            // Assume non-linear solver already nows about facts that are initially part of the CHC problem,
+            // so don't forward them eihter:
+            bool is_initial_fact = trace.size() == 1 && chcs.isInitialTransition(trace[0].clause_idx);
+
+            if (!seen_traces.contains(trace_id) && !is_initial_fact) {
+                derived_facts.insert(trace_as_fact().value());
+                seen_traces.insert(trace_id);
+            }
+
             backtrack();
             proof.headline("Backtrack");
             print_state();
         } else if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
-            return;
+            return derived_facts;
         }
     } while (true);
-    proof.headline("Accept");
-    if (Config::Analysis::complexity()) {
-        proof.result(cpx.toString());
-        proof.print();
-    } else {
-        unknown();
+}
+
+void Reachability::restart() {
+    while (!trace.empty()) {
+        pop();
     }
-    std::cout << std::endl;
+    luby_next();
+    proof.headline("Restart");
+
+    analysis_result = LinearSolver::Result::Pending;
+}
+
+void Reachability::add_clauses(const std::set<Clause> &clauses) {
+    for (const auto &chc: clauses) {
+        if (chc.isLinear()) {
+            chcs.addClause(chc);
+        } else {
+            throw std::logic_error("Reachability::add_clauses: tried to add non-linear CHC");
+        }
+    }
+
+    // only start preprocessing again if at least one new clause was added.
+    if (!clauses.empty()) {
+        // TODO: are other preprocessing steps also unsound when in non-linear context? 
+        const auto res {Preprocess::preprocess(chcs, incremental_mode)};
+        if (res) {
+            proof.concat(res.getProof());
+            if (Config::Analysis::log) {
+                std::cout << "Simplified ITS" << std::endl;
+                ITSExport::printForProof(chcs, std::cout);
+            }
+        }
+    }
 }
 
 void Reachability::analyze(ITSProblem &its) {
-    Reachability(its).analyze();
+    Reachability(its, false).analyze();
 }
 
 }

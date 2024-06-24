@@ -13,7 +13,7 @@ public:
      * @param path The file to load
      * @return The resulting ITSProblem (a FileError is thrown if parsing fails)
      */
-    static ITSPtr loadFromFile(const std::string &path);
+    static std::vector<Clause> loadFromFile(const std::string &path);
 
 };
 

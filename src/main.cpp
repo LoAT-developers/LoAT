@@ -18,6 +18,7 @@
 #include "main.hpp"
 
 #include "itsparser.hpp"
+#include "itsproblem.hpp"
 #include "parser.hpp"
 #include "chcparser.hpp"
 #include "cintparser.hpp"
@@ -29,6 +30,7 @@
 #include "abmc.hpp"
 #include "yices.hpp"
 #include "recurrence.hpp"
+#include "nonlinear.hpp"
 #include "accelerationproblem.hpp"
 
 #include <iostream>
@@ -189,6 +191,8 @@ int main(int argc, char *argv[]) {
     }
 
     ITSPtr its;
+    std::vector<Clause> clauses;
+
     switch (Config::Input::format) {
     case Config::Input::Koat:
         its = parser::ITSParser::loadFromFile(filename);
@@ -197,7 +201,7 @@ int main(int argc, char *argv[]) {
         its = sexpressionparser::Parser::loadFromFile(filename);
         break;
     case Config::Input::Horn:
-        its = hornParser::HornParser::loadFromFile(filename);
+        clauses = hornParser::HornParser::loadFromFile(filename);
         break;
     case Config::Input::C:
         its = cintParser::CIntParser::loadFromFile(filename);
@@ -210,7 +214,12 @@ int main(int argc, char *argv[]) {
     yices::init();
     switch (Config::Analysis::engine) {
     case Config::Analysis::ADCL:
-        reachability::Reachability::analyze(*its);
+        if (allLinear(clauses)) {
+            its = ITSProblem::fromClauses(clauses);
+            reachability::Reachability::analyze(*its);
+        } else {
+            NonLinearSolver::analyze(clauses);
+        }
         break;
     case Config::Analysis::BMC:
         BMC::analyze(*its);

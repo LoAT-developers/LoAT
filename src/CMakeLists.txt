@@ -7,6 +7,7 @@ add_subdirectory(util)
 add_subdirectory(redundance)
 add_subdirectory(abmc)
 add_subdirectory(bmc)
+add_subdirectory(nonlinear)
 
 target_sources(${EXECUTABLE}
     PRIVATE
