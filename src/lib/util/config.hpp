@@ -75,6 +75,7 @@ namespace Config {
         extern Engine engine;
         extern SmtSolver smtSolver;
         extern bool log;
+        extern bool reverse;
 
         std::string modeName(const Mode mode);
 

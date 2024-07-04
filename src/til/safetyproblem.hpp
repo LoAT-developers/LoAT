@@ -14,6 +14,7 @@ class SafetyProblem {
 public:
 
     SafetyProblem(const ITSProblem &its);
+    SafetyProblem();
 
     const linked_hash_set<Bools::Expr> &trans() const;
     void replace_transition(const Bools::Expr &old_trans, const Bools::Expr &new_trans);
@@ -23,6 +24,7 @@ public:
     Bools::Expr init() const;
     Bools::Expr err() const;
     void set_init(const Bools::Expr e);
+    SafetyProblem reverse() const;
 
 };
 

@@ -9,6 +9,8 @@ Bools::Expr rule_to_formula(const Rule &r, const VarSet &prog_vars) {
     return bools::mkAnd(conjuncts);
 }
 
+SafetyProblem::SafetyProblem() {}
+
 SafetyProblem::SafetyProblem(const ITSProblem &its) {
     const auto vars {its.getVars()};
     for (const auto &x: vars) {
@@ -87,4 +89,21 @@ std::ostream& operator<<(std::ostream& s, const SafetyProblem& sp) {
         s << t << std::endl;
     }
     return s;
+}
+
+SafetyProblem SafetyProblem::reverse() const {
+    SafetyProblem res;
+    res.initial_states = error_states;
+    res.error_states = initial_states;
+    res.pre_variables = pre_variables;
+    res.post_variables = post_variables;
+    Subs swap;
+    for (const auto &x: pre_variables) {
+        swap.put(x, theory::toExpr(theory::postVar(x)));
+        swap.put(theory::postVar(x), theory::toExpr(x));
+    }
+    for (const auto &t: transitions) {
+        res.transitions.insert(swap(t));
+    }
+    return res;
 }

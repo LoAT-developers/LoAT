@@ -71,6 +71,7 @@ namespace Config {
         Engine engine = ADCL;
         SmtSolver smtSolver = Heuristic;
         bool log = false;
+        bool reverse = false;
 
         std::string modeName(const Mode mode) {
             switch (mode) {

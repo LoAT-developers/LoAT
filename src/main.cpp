@@ -52,6 +52,7 @@ void printHelp(char *arg0) {
     cout << "  --log                                            Enable logging" << endl;
     cout << "  --abmc::blocking_clauses <true|false>            ABMC: En- or disable blocking clauses" << std::endl;
     cout << "  --smt <z3|cvc5|swine|yices|heuristic>            Choose the SMT solver" << std::endl;
+    cout << "  --reverse                                        Reverse the transition system (safety only)" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
@@ -163,6 +164,8 @@ void parseFlags(int argc, char *argv[]) {
             }
         } else if (strcmp("--abmc::blocking_clauses", argv[arg]) == 0) {
             setBool(getNext(), Config::ABMC::blocking_clauses);
+        } else if (strcmp("--reverse", argv[arg]) == 0) {
+            Config::Analysis::reverse = true;
         } else {
             if (!filename.empty()) {
                 cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << endl;
@@ -224,7 +227,10 @@ int main(int argc, char *argv[]) {
         ABMC::analyze(*its);
         break;
     case Config::Analysis::TIL:
-        SafetyProblem sp {*its};
+        SafetyProblem sp{*its};
+        if (Config::Analysis::reverse) {
+            sp = sp.reverse();
+        }
         TIL::analyze(sp);
         break;
     }
