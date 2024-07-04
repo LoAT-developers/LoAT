@@ -34,6 +34,9 @@ on:
         - horn
         - its
         - koat
+      reverse:
+        required: true
+        type: boolean
       repo:
         required: true
         type: choice
@@ -87,7 +90,12 @@ jobs:
             start=`date +%s`
 
             set +e
-            result=$(timeout ${{ inputs.timeout }} loat-static --mode ${{ inputs.mode }} --format ${{ inputs.format }} --proof-level 0 --engine ${{ inputs.engine }} "${filename}")
+            if [ ${{ inputs.reverse }} = true ]; then
+              reverse="--reverse"
+            else
+              reverse=""
+            fi
+            result=$(timeout ${{ inputs.timeout }} loat-static --mode ${{ inputs.mode }} --format ${{ inputs.format }} --proof-level 0 --engine ${{ inputs.engine }} $reverse "${filename}")
             exit_status=$?
             set -e
 
