@@ -127,9 +127,10 @@ Int TIL::add_learned_clause(const Bools::Expr &accel, const unsigned available_f
     }
     const auto id = next_id;
     ++next_id;
-    rule_map.left.insert(rule_map_t::left_value_type(id, accel));
+    const auto encoded {encode_transition(accel, id)};
+    rule_map.left.insert(rule_map_t::left_value_type(id, encoded));
     blocked.emplace_back(id, accel, available_from);
-    step = step || encode_transition(accel);
+    step = step || encoded;
     return id;
 }
 
@@ -552,8 +553,7 @@ void TIL::handle_loop(const Range &range) {
     loops.emplace(id, Loop{.expanded = expanded, .compressed = loop});
 }
 
-Bools::Expr TIL::encode_transition(const Bools::Expr &t) {
-    const auto id {rule_map.right.at(t)};
+Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
     return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
@@ -692,9 +692,10 @@ void TIL::analyze() {
     }
     std::vector<Bools::Expr> steps;
     for (const auto &trans : t.trans()) {
-        rule_map.left.insert(rule_map_t::left_value_type(next_id, trans));
+        const auto encoded {encode_transition(trans, next_id)};
+        rule_map.left.insert(rule_map_t::left_value_type(next_id, encoded));
+        steps.push_back(encoded);
         ++next_id;
-        steps.push_back(encode_transition(trans));
     }
     last_orig_clause = next_id - 1;
     step = bools::mkOr(steps);

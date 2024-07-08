@@ -95,7 +95,7 @@ private:
     unsigned depth {0};
     Bools::Expr step {bot()};
 
-    Bools::Expr encode_transition(const Bools::Expr &idx);
+    Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
     Int add_learned_clause(const Bools::Expr &accel, const unsigned available_from);
