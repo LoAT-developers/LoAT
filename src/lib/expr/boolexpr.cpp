@@ -200,15 +200,13 @@ void BoolExpr::getDivisibility(const Arith::Var var, linked_hash_set<Divisibilit
 }
 
 std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var var) const {
-    const auto lit {getTheoryLit()};
-    if (lit) {
+    if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
             return std::get<Arith::Lit>(*lit)->getEquality(var);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
-            const auto eq {c->getEquality(var)};
-            if (eq) {
+            if (const auto eq {c->getEquality(var)}) {
                 return eq;
             }
         }
