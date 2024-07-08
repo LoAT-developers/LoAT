@@ -194,11 +194,8 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
             if (l->isGt() || l->isEq()) {
                 std::vector<Arith::Expr> recurrent_addends;
                 const auto vars {lhs->vars()};
-                auto has_pre_var {false};
-                auto has_post_var {false};
                 for (const auto &x: vars) {
                     if (x->isProgVar()) {
-                        has_pre_var = true;
                         const auto pre_coeff {*lhs->coeff(x)};
                         const auto post {ArithVar::postVar(x)};
                         if (vars.contains(post)) {
@@ -209,8 +206,6 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                                 continue;
                             }
                         }
-                    } else if (x->isPostVar()) {
-                        has_post_var = true;
                     }
                 }
                 const auto recurrent {arith::mkPlus(std::move(recurrent_addends))};
@@ -350,19 +345,52 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                     continue;
                 }
                 const auto post {ArithVar::postVar(pre)};
-                if (!fully_known.contains(pre)) {
-                    if (const auto pre_eq {loop->getEquality(pre)}) {
-                        const auto pre_vars {(*pre_eq)->vars()};
-                        if (std::all_of(pre_vars.begin(), pre_vars.end(), known)) {
-                            if (const auto post_eq {loop->getEquality(post)}) {
-                                const auto post_vars {(*post_eq)->vars()};
-                                if (std::all_of(post_vars.begin(), post_vars.end(), known)) {
-                                    fully_known.insert(pre);
-                                    fully_known.insert(post);
-                                    solver->add(arith::mkEq(pre, arith::mkConst(0)));
-                                    changed = true;
-                                }
+                if (const auto pre_eq{loop->getEquality(pre)}) {
+                    auto pre_vars{(*pre_eq)->vars()};
+                    if (std::all_of(pre_vars.begin(), pre_vars.end(), known)) {
+                        if (const auto post_eq{loop->getEquality(post)}) {
+                            const auto post_vars{(*post_eq)->vars()};
+                            if (std::all_of(post_vars.begin(), post_vars.end(), known)) {
+                                fully_known.insert(pre);
+                                fully_known.insert(post);
+                                solver->add(arith::mkEq(pre, arith::mkConst(0)));
+                                changed = true;
+                                continue;
                             }
+                        }
+                    }
+                    pre_vars.erase(pre);
+                    if (pre_vars.size() != 1) {
+                        continue;
+                    }
+                    auto eq{pre_eq};
+                    auto other{*pre_vars.begin()};
+                    auto other_coeff{*(*eq)->coeff(other)};
+                    auto other_sign{***other_coeff->isRational() > 0};
+                    linked_hash_set<std::pair<Arith::Var, bool>> seen;
+                    while (other->isPostVar() && !seen.contains({other, other_sign})) {
+                        if (other == post && other_coeff->is(1)) {
+                            const auto constant{arith::mkConst((*eq)->getConstantAddend())};
+                            const auto rhs_cycle_plus_one_steps{ArithSubs({{post, pre}})(*pre_eq) + constant * n};
+                            res_lits.insert(arith::mkEq(post, rhs_cycle_plus_one_steps));
+                            fully_known.insert(pre);
+                            fully_known.insert(post);
+                            changed = true;
+                            break;
+                        } else {
+                            seen.emplace(other, other_sign);
+                            const auto other_eq {loop->getEquality(ArithVar::progVar(other))};
+                            if (!other_eq) {
+                                break;
+                            }
+                            eq = ArithSubs({{other, *other_eq}})(*eq);
+                            pre_vars = (*other_eq)->vars();
+                            if (pre_vars.size() != 1) {
+                                break;
+                            }
+                            other = *pre_vars.begin();
+                            other_coeff = *(*eq)->coeff(other);
+                            other_sign = ***other_coeff->isRational() > 0;
                         }
                     }
                 }
