@@ -61,17 +61,12 @@ TIL::TIL(SafetyProblem &t) : t(t) {
 }
 
 std::optional<Range> TIL::has_looping_infix() {
-    long start{((long)trace.size()) - 1};
-    long end{((long)trace.size()) - 1};
-    while (end >= lookback) {
-        while (start >= lookback) {
-            if (dependency_graph.hasEdge(trace[end].implicant, trace[start].implicant)) {
-                return {Range::from_interval(start, end)};
+    for (int i = 0; i < trace.size(); ++i) {
+        for (int start = 0; start + i < trace.size(); ++start) {
+            if ((i > 1 || trace[start].id <= last_orig_clause) && dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant)) {
+                return {Range::from_interval(start, start + i)};
             }
-            --start;
         }
-        --end;
-        start = end;
     }
     return {};
 }
@@ -121,7 +116,7 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     return {*loop, m};
 }
 
-Int TIL::add_learned_clause(const Bools::Expr &accel, const unsigned available_from) {
+Int TIL::add_learned_clause(const Bools::Expr &accel) {
     if (Config::Analysis::log) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     }
@@ -129,7 +124,7 @@ Int TIL::add_learned_clause(const Bools::Expr &accel, const unsigned available_f
     ++next_id;
     const auto encoded {encode_transition(accel, id)};
     rule_map.left.insert(rule_map_t::left_value_type(id, encoded));
-    blocked.emplace_back(id, accel, available_from);
+    blocked.emplace_back(id, accel);
     step = step || encoded;
     return id;
 }
@@ -571,9 +566,13 @@ void TIL::handle_loop(const Range &range) {
     // stem = post_to_pre(stem);
     // std::cout << "stem: " << stem << std::endl;
     auto [loop, model]{specialize(range, theory::isTempVar)};
+    if (add_blocking_clauses(range, model)) {
+        return;
+    }
     // const auto ti{compute_transition_invariant(stem, loop, top(), model)};
     const auto ti{compute_transition_invariant(top(), loop, top(), model)};
-    const auto id{add_learned_clause(ti, range.start())};
+    const auto id{add_learned_clause(ti)};
+    add_blocking_clause(range, id, ti);
     std::vector<Int> expanded;
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         expanded.push_back(trace.at(i).id);
@@ -585,21 +584,41 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
     return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
-void TIL::add_blocking_clauses() {
-    // std::cout << "BLOCKING CLAUSES" << std::endl;
-    for (unsigned from = 0; from <= depth; ++from) {
-        for (const auto &[id, b, available_from] : blocked) {
-            if (available_from > from) {
-                continue;
-            }
-            const auto to {depth + 1};
-            const auto s{get_subs(from, to - from)};
-            auto block{s(!b)};
-            if (to == from + 1) {
-                block = block || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id)));
-            }
-            solver->add(block);
+void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
+    if (range.length() <= 2) {
+        return;
+    }
+    const auto s{get_subs(range.start(), range.length())};
+    auto it {blocked_per_step.emplace(range.start(), top()).first};
+    it->second = it->second && s(!loop);
+}
+
+bool TIL::add_blocking_clauses(const Range &range, const Model &model) {
+    if (range.length() <= 2) {
+        return false;
+    }
+    for (const auto &[id, b] : blocked) {
+        const auto s{get_subs(range.start(), range.length())};
+        auto block{s(!b)};
+        if (!model.eval<Bools>(block)) {
+            auto it {blocked_per_step.emplace(range.start(), top()).first};
+            it->second = it->second && block;
+            return true;
         }
+    }
+    return false;
+}
+
+void TIL::add_blocking_clauses() {
+    const auto s1 {get_subs(depth, 1)};
+    const auto s2 {get_subs(depth, 2)};
+    for (const auto &[id, b] : blocked) {
+        solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
+        solver->add(s2(!b));
+    }
+    const auto it {blocked_per_step.find(depth)};
+    if (it != blocked_per_step.end()) {
+        solver->add(it->second);
     }
 }
 
@@ -786,16 +805,9 @@ void TIL::analyze() {
                     if (Config::Analysis::log) {
                         std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                     }
-                    if (range->start() >= lookback) {
-                        handle_loop(*range);
-                    }
+                    handle_loop(*range);
                     while (depth > range->start()) {
                         pop();
-                    }
-                    lookback = range->start();
-                    for (auto &t: blocked) {
-                        auto &available_from {std::get<2>(t)};
-                        available_from = std::min(available_from, range->start());
                     }
                 }
                 if (Config::Analysis::log) {

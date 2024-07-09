@@ -76,11 +76,11 @@ private:
     std::vector<std::vector<Subs>> subs {};
     std::vector<TraceElem> trace {};
     Model model;
-    std::vector<std::tuple<Int, Bools::Expr, unsigned>> blocked {};
+    std::vector<std::pair<Int, Bools::Expr>> blocked {};
+    std::unordered_map<Int, Bools::Expr> blocked_per_step {};
     VarSet vars {};
     VarSet pre_vars {};
     Int last_orig_clause;
-    unsigned lookback {0};
 
     Int next_id {0};
 
@@ -96,9 +96,11 @@ private:
     Bools::Expr step {bot()};
 
     Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
+    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop);
+    bool add_blocking_clauses(const Range &range, const Model &model);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
-    Int add_learned_clause(const Bools::Expr &accel, const unsigned available_from);
+    Int add_learned_clause(const Bools::Expr &accel);
     std::pair<Bools::Expr, Model> compress(const Range &range);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
