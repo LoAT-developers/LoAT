@@ -87,7 +87,6 @@ private:
     using rule_map_t = boost::bimap<boost::bimaps::unordered_set_of<Int>, boost::bimaps::unordered_set_of<Bools::Expr>>;
 
     rule_map_t rule_map {};
-    linked_hash_map<Int, Loop> loops;
     const Arith::Var trace_var {ArithVar::next()};
     const Arith::Var n {ArithVar::next()};
     Proof proof {};

@@ -63,7 +63,7 @@ TIL::TIL(SafetyProblem &t) : t(t) {
 std::optional<Range> TIL::has_looping_infix() {
     for (int i = 0; i < trace.size(); ++i) {
         for (int start = 0; start + i < trace.size(); ++start) {
-            if ((i > 1 || trace[start].id <= last_orig_clause) && dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant)) {
+            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant)) {
                 return {Range::from_interval(start, start + i)};
             }
         }
@@ -573,11 +573,6 @@ void TIL::handle_loop(const Range &range) {
     const auto ti{compute_transition_invariant(top(), loop, top(), model)};
     const auto id{add_learned_clause(ti)};
     add_blocking_clause(range, id, ti);
-    std::vector<Int> expanded;
-    for (unsigned i = range.start(); i <= range.end(); ++i) {
-        expanded.push_back(trace.at(i).id);
-    }
-    loops.emplace(id, Loop{.expanded = expanded, .compressed = loop});
 }
 
 Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
