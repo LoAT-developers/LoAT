@@ -1,7 +1,7 @@
 #pragma once
 
-#include "itsproblem.hpp"
 #include "CHCVisitor.h"
+#include "theory.hpp"
 
 template<class T>
 struct Res {
@@ -50,37 +50,16 @@ enum Sort {
     Int, Bool
 };
 
-struct FunApp {
-
-    LocationIdx loc;
-    std::vector<Var> args;
-
-    FunApp(const LocationIdx loc, const std::vector<Var> args): loc(loc), args(args) {}
-
-};
-
-struct Clause {
-    const FunApp lhs;
-    const FunApp rhs;
-    const BoolExpr guard;
-
-    Clause(const FunApp &lhs, const FunApp &rhs, const BoolExpr &guard): lhs(lhs), rhs(rhs), guard(guard) {}
-
-};
-
 /**
  * This class provides an empty implementation of CHCVisitor, which can be
  * extended to create a visitor which only needs to handle a subset of the available methods.
  */
 class  CHCParseVisitor : public CHCVisitor {
 
-    ITSPtr its {std::make_shared<ITSProblem>()};
-    std::unordered_map<std::string, LocationIdx> locations;
-    std::unordered_map<std::string, Var> vars;
-    unsigned long max_int_arity {0};
-    unsigned long max_bool_arity {0};
+    std::map<std::string, Var> vars;
+    std::set<std::basic_string<char>> fun_names;
 
-    LocationIdx loc(const std::string &name);
+    // LocationIdx loc(const std::string &name);
     Var var(const std::string &name, Sort sort);
 
 public:

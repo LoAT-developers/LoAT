@@ -26,7 +26,16 @@
 
 using namespace std;
 
+// FIXME: for trivial ITS with no (reachable) initial locations or no (reachable) sinks, 
+// we should return SAT, but due to this preprocessing step we will throw an error instead.
 ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its, bool forward) {
+    if (its.getInitialTransitions().size() == 0) {
+        throw std::logic_error("remove_irrelevant_clauses: ITS has no initial transitions");
+    }
+    if (its.getSinkTransitions().size() == 0) {
+        throw std::logic_error("remove_irrelevant_clauses: ITS has no sink transitions");
+    }
+ 
     std::unordered_set<TransIdx> keep;
     std::stack<TransIdx> todo;
     for (const auto x: forward ? its.getInitialTransitions() : its.getSinkTransitions()) {
@@ -148,13 +157,18 @@ ResultViaSideEffects refine_dependency_graph(ITSProblem &its) {
     return res;
 }
 
-ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
+ResultViaSideEffects Preprocess::preprocess(ITSProblem &its, bool incremental_mode) {
     ResultViaSideEffects res;
     ResultViaSideEffects sub_res;
     if (Config::Analysis::log) {
         std::cout << "starting preprocesing..." << std::endl;
     }
-    if (Config::Analysis::reachability()) {
+    if (Config::Analysis::reachability() && !incremental_mode) {
+        // In this preprocessing step we remove transitions that are not "forward reachable"
+        // from an initial location or "backward reachable" from a sink. Note, that this step
+        // is not valid if the ITS contains non-linear CHCs. For example, a sink appears to 
+        // be unreachable if it is only reachable via a non-linear CHC (which are not accounted 
+        // for in the dependency graph).
         if (Config::Analysis::log) {
             std::cout << "removing irrelevant clauses..." << std::endl;
         }
@@ -166,17 +180,49 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
             res.succeed();
             res.majorProofStep("Removed Irrelevant Clauses", sub_res.getProof(), its);
         }
-    }
-    if (Config::Analysis::log) {
-        std::cout << "chaining linear paths..." << std::endl;
-    }
-    sub_res = chainLinearPaths(its);
-    if (Config::Analysis::log) {
-        std::cout << "finished chaining linear paths" << std::endl;
-    }
-    if (sub_res) {
-        res.succeed();
-        res.majorProofStep("Chained Linear Paths", sub_res.getProof(), its);
+
+        /* 
+            Chaining linear paths is also problematic in incremental mode because
+            we remove the chained rules/facts, which cuts-off paths that might be        
+            reachable via a non-linear rule. For example, consider the CHC problem:
+
+                fib(1,1)
+                fib(2,1)
+                fib(a,c) /\ fib(b,d) /\ b=a+1 ==> f(b+1,c+d)
+                fib(5,5) ==> false
+
+            The fact `fib(5,5)` is reachable so the problem should be UNSAT.
+            However, when we compute the resolvents of the non-linear clause with 
+            all facts we get:
+
+                fib(0,c) ==> fib(2,c+1)              (R1)
+                fib(1,c) ==> fib(3,c+1)              (R2)
+                fib(2,d) ==> fib(3,d+1)              (R3)
+                fib(3,y) ==> fib(4,d+1)              (R4)
+
+            If we now chain linear paths we get:
+
+                [fib(1,1), R2] = fib(3,2)
+                [fib(2,1), R3] = fib(3,2)
+
+                [fib(3,2), R4] = fib(4,3)
+
+            At this point we remove all facts except `fib(4,3)` because in the
+            linear context we can assume that all paths from these facts lead
+            to `fib(4,3)` anyway. However in the non-linear context we need to
+            keep `fib(3,2)` to derive `fib(5,5)`.
+        */
+        if (Config::Analysis::log) {
+            std::cout << "chaining linear paths..." << std::endl;
+        }
+        sub_res = chainLinearPaths(its);
+        if (Config::Analysis::log) {
+            std::cout << "finished chaining linear paths" << std::endl;
+        }
+        if (sub_res) {
+            res.succeed();
+            res.majorProofStep("Chained Linear Paths", sub_res.getProof(), its);
+        }
     }
     if (Config::Analysis::log) {
         std::cout << "preprocessing rules..." << std::endl;

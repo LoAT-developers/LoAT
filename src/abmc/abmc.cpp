@@ -341,7 +341,8 @@ void ABMC::analyze() {
         its.print(std::cout);
     }
     proof.majorProofStep("Initial ITS", ITSProof(), its);
-    const auto res{Preprocess::preprocess(its)};
+    const auto res {Preprocess::preprocess(its)};
+    const auto res{Preprocess::preprocess(its, false)};
     if (res) {
         proof.concat(res.getProof());
         if (Config::Analysis::log) {

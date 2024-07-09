@@ -16,6 +16,7 @@
  */
 
 #include "guardtoolbox.hpp"
+#include "expr.hpp"
 #include "rule.hpp"
 #include "rel.hpp"
 #include "ruleresult.hpp"
@@ -86,19 +87,43 @@ RuleResult GuardToolbox::propagateEqualities(const Rule &rule, SolvingLevel maxl
     return res;
 }
 
-
 RuleResult GuardToolbox::propagateBooleanEqualities(const Rule &rule) {
     RuleResult res(rule);
     Proof subproof;
     Subs equiv;
+
+    // If the value of program variables is implied by the guard, 
+    // we remove them during propagating, which looses information.
+    // Thus we collect implied program variable equalities and re-add 
+    // them to the guard at the end.
+    std::vector<BoolExpr> program_var_equalities;
     do {
         equiv = res->getGuard()->impliedEqualities();
+
+        // collect implied program variable equalities:
+        for (const auto &var: equiv.domain()) {
+            if (expr::isProgVar(var)) {
+                program_var_equalities.push_back(
+                    expr::mkEq(expr::toExpr(var), equiv.get(var))->simplify()
+                );
+            }
+        }
+
         if (!equiv.empty()) {
             res = res->subs(equiv);
             subproof.append(stringstream() << "propagated equivalences: " << equiv << std::endl);
         }
     } while (!equiv.empty());
     if (res) {
+        // re-add program variable equalities to guard:
+        program_var_equalities.push_back(res->getGuard());
+        const auto new_guard = BExpression::buildAnd(program_var_equalities);
+
+        if (rule.getGuard() == new_guard) {
+            return RuleResult(rule);
+        } 
+
+        res = res->withGuard(new_guard);
         res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
         res.storeSubProof(subproof);
     }

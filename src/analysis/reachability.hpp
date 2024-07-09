@@ -1,6 +1,7 @@
 #pragma once
 
 #include "itsproblem.hpp"
+#include "linearsolver.hpp"
 #include "itsresult.hpp"
 #include "ruleresult.hpp"
 #include "redundanceviaautomata.hpp"
@@ -155,7 +156,7 @@ class Restart final: public LearningState {
     std::optional<Restart> restart() override;
 };
 
-class Reachability {
+class Reachability : public ILinearSolver  {
 
     ITSProblem &chcs;
 
@@ -182,11 +183,6 @@ class Reachability {
 
     VarSet prog_vars {};
 
-    /**
-     * clauses up to this one are original ones, all other clauses are learned
-     */
-    unsigned last_orig_clause {0};
-
     std::pair<int, int> luby {1,1};
 
     unsigned luby_unit {10};
@@ -210,9 +206,6 @@ class Reachability {
 
     RuleResult instantiate(const NumVar &n, const Rule &rule) const;
 
-    /**
-     * initializes all data structures after preprocessing
-     */
     void init();
 
     /**
@@ -268,7 +261,7 @@ class Reachability {
     /**
      * does everything that needs to be done if the trace has a looping suffix
      */
-    std::unique_ptr<LearningState> handle_loop(const unsigned backlink);
+    std::unique_ptr<LearningState> handle_loop(const unsigned backlink, LinearSolver::ConstraintTier max_constr_tier);
 
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
@@ -311,11 +304,33 @@ class Reachability {
 
     bool try_to_finish();
 
-    Reachability(ITSProblem &its);
-
     void analyze();
 
+    void restart();
+
+    LinearSolver::Result analysis_result = LinearSolver::Result::Pending;
+
+    LinearSolver::Result analysis_result_from(std::string res) const;
+
+    const bool incremental_mode;
+
+    std::set<std::vector<std::pair<TransIdx, BoolExpr>>> seen_traces;
+
+    const std::optional<Clause> trace_as_fact();
+
+    std::set<unsigned> learned_clause_ids;
+
+    LinearSolver::ConstraintTier constraint_tier_of(TransIdx rule) const;
+
 public:
+
+    Reachability(ITSProblem &chcs, bool incremental_mode);
+
+    LinearSolver::Result get_analysis_result() const override;
+
+    void add_clauses(const std::set<Clause> &chc) override;
+
+    const std::set<Clause> derive_new_facts(LinearSolver::ConstraintTier max_constr_type) override;
 
     static void analyze(ITSProblem &its);
 
