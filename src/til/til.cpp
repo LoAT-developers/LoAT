@@ -249,7 +249,7 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                             }
                             if (pre_coeff < 0) {
                                 const auto val {model.get<Arith>(pre)};
-                                if (-post_coeff > pre_coeff) {
+                                if (post_coeff < -pre_coeff) {
                                     if (val >= 0) {
                                         // x' = 2x ~> x' >= 2x for non-negative x
                                         res_lits.insert(arith::mkGeq(pre, arith::mkConst(0)));
@@ -512,10 +512,12 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
             process_solution();
         } else {
             const auto val {model.eval<Arith>(non_recurrent)};
-            if (val == 0) {
-                res_lits.insert(arith::mkGeq(recurrent, arith::mkConst(0)));
-            } else if (val < 0) {
-                res_lits.insert(arith::mkGeq(recurrent - n, arith::mkConst(0)));
+            if (val <= 0) {
+                res_lits.insert(arith::mkLeq(non_recurrent, arith::mkConst(0)));
+                res_lits.insert(arith::mkGeq(recurrent + non_recurrent, arith::mkConst(0)));
+                if (val < 0) {
+                    res_lits.insert(arith::mkGeq(recurrent - n, arith::mkConst(0)));
+                }
             }
         }
         solver->pop();
@@ -806,6 +808,7 @@ void TIL::analyze() {
             sat();
             return;
         case SmtResult::Unknown:
+            std::cerr << "unknown from SMT solver" << std::endl;
             unknown();
             return;
         case SmtResult::Sat: {
@@ -816,17 +819,9 @@ void TIL::analyze() {
             solver->add(s(t.err()));
             switch (solver->check()) {
             case SmtResult::Sat:
-                // if (refine() != Refined) {
-                    unknown();
-                    return;
-                // }
-                // // pop error states
-                // solver->pop();
-                // // pop steps
-                // solver->pop();
-                // solver->push();
-                // depth = 0;
-                // break;
+                build_trace();
+                unknown();
+                return;
             case SmtResult::Unknown:
                 std::cerr << "unknown from SMT solver" << std::endl;
                 unknown();
