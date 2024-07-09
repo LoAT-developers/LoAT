@@ -781,6 +781,7 @@ void TIL::analyze() {
         const auto encoded {encode_transition(trans, next_id)};
         rule_map.left.insert(rule_map_t::left_value_type(next_id, encoded));
         steps.push_back(encoded);
+        blocked.emplace_back(next_id, trans);
         ++next_id;
     }
     last_orig_clause = next_id - 1;
