@@ -231,6 +231,48 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
                             pseudo_recurrent.emplace_back(-recurrent, -non_recurrent);
                         }
                     }
+                    if (l->isEq() && vars.size() == 2) {
+                        auto pre {*vars.begin()};
+                        auto post {*std::next(vars.begin())};
+                        if (!pre->isProgVar()) {
+                            const auto tmp {pre};
+                            pre = post;
+                            post = tmp;
+                        }
+                        if (pre->isProgVar() && post == ArithVar::postVar(pre)) {
+                            auto pre_coeff {***(*lhs->coeff(pre))->isRational()};
+                            auto post_coeff {***(*lhs->coeff(post))->isRational()};
+                            if (post_coeff < 0) {
+                                lhs = -lhs;
+                                pre_coeff = -pre_coeff;
+                                post_coeff = -post_coeff;
+                            }
+                            if (pre_coeff < 0) {
+                                const auto val {model.get<Arith>(pre)};
+                                if (-post_coeff > pre_coeff) {
+                                    if (val >= 0) {
+                                        // x' = 2x ~> x' >= 2x for non-negative x
+                                        res_lits.insert(arith::mkGeq(pre, arith::mkConst(0)));
+                                        res_lits.insert(arith::mkGeq(lhs, arith::mkConst(0)));
+                                    } else {
+                                        // x' = 2x ~> x' <= 2x for negative x
+                                        res_lits.insert(arith::mkLt(pre, arith::mkConst(0)));
+                                        res_lits.insert(arith::mkLeq(lhs, arith::mkConst(0)));
+                                    }
+                                } else {
+                                    if (val >= 0) {
+                                        // 2x' = x ~> 2x' <= x for non-negative x
+                                        res_lits.insert(arith::mkGeq(pre, arith::mkConst(0)));
+                                        res_lits.insert(arith::mkLeq(lhs, arith::mkConst(0)));
+                                    } else {
+                                        // 2x' = x ~> 2x' >= x for negative x
+                                        res_lits.insert(arith::mkLt(pre, arith::mkConst(0)));
+                                        res_lits.insert(arith::mkGeq(lhs, arith::mkConst(0)));
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         } else if (const auto div {l->isDivisibility()}) {
