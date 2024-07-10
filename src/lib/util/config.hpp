@@ -70,12 +70,14 @@ namespace Config {
         enum Mode { Complexity, NonTermination, Reachability, Safety, Recurrence };
         enum Engine { ADCL, BMC, ABMC, TIL };
         enum SmtSolver { Z3, CVC5, Swine, Yices, Heuristic };
+        enum TILMode {Forward, Backward, Interleaved};
         extern std::vector<Mode> modes;
         extern Mode mode;
         extern Engine engine;
         extern SmtSolver smtSolver;
         extern bool log;
         extern bool reverse;
+        extern TILMode tilMode;
 
         std::string modeName(const Mode mode);
 

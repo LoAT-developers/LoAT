@@ -44,10 +44,6 @@ private:
     using BoundPair = std::pair<std::optional<Arith::Expr>, std::optional<Arith::Expr>>;
     using NondetSubs = linked_hash_map<Arith::Var, BoundPair>;
 
-    explicit TIL(SafetyProblem &t);
-
-    void analyze();
-
     struct Loop {
         std::vector<Int> expanded;
         Bools::Expr compressed;
@@ -111,7 +107,6 @@ private:
     Bools::Expr compute_transition_invariant(const Bools::Expr pre, const Bools::Expr loop, const Bools::Expr post, Model model);
     void handle_loop(const Range &range);
     void unknown();
-    void sat();
     void build_trace();
     const Subs& get_subs(const unsigned start, const unsigned steps);
     void pop();
@@ -120,6 +115,11 @@ private:
 
 public:
 
+    void sat();
+    explicit TIL(SafetyProblem &t);
+    bool setup();
+    std::optional<SmtResult> do_step();
+    void analyze();
     static void analyze(SafetyProblem &its);
 
 };

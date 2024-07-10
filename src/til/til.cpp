@@ -815,7 +815,7 @@ void TIL::pop() {
     --depth;
 }
 
-void TIL::analyze() {
+bool TIL::setup() {
     if (Config::Analysis::log) {
         std::cout << "initial problem" << std::endl;
         std::cout << t << std::endl;
@@ -847,66 +847,82 @@ void TIL::analyze() {
         solver->push();
         solver->add(s(t.err()));
         if (solver->check() != SmtResult::Unsat) {
-            unknown();
-            return;
+            return false;
         }
         solver->pop();
     }
-    while (true) {
-        solver->push();
+    return true;
+}
+
+std::optional<SmtResult> TIL::do_step() {
+    solver->push();
+    auto s{get_subs(depth, 1)};
+    solver->add(s(step));
+    add_blocking_clauses();
+    ++depth;
+    switch (solver->check()) {
+    case SmtResult::Unsat:
+        return SmtResult::Sat;
+    case SmtResult::Unknown:
+        std::cerr << "unknown from SMT solver" << std::endl;
+        return SmtResult::Unknown;
+    case SmtResult::Sat: {
+        build_trace();
         s = get_subs(depth, 1);
-        solver->add(s(step));
-        add_blocking_clauses();
-        ++depth;
+        // push error states
+        solver->push();
+        solver->add(s(t.err()));
         switch (solver->check()) {
-        case SmtResult::Unsat:
-            sat();
-            return;
+        case SmtResult::Sat:
+            build_trace();
+            return SmtResult::Unknown;
         case SmtResult::Unknown:
             std::cerr << "unknown from SMT solver" << std::endl;
-            unknown();
+            return SmtResult::Unknown;
+        case SmtResult::Unsat: {
+            // pop error states
+            solver->pop();
+            if (Config::Analysis::log) {
+                std::cout << "starting loop handling" << std::endl;
+            }
+            const auto range{has_looping_infix()};
+            if (range) {
+                if (Config::Analysis::log) {
+                    std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
+                }
+                handle_loop(*range);
+                while (depth > range->start()) {
+                    pop();
+                }
+            }
+            if (Config::Analysis::log) {
+                std::cout << "done with loop handling" << std::endl;
+            }
+            break;
+        }
+        }
+    }
+    }
+    if (Config::Analysis::log) {
+        std::cout << "depth: " << depth << std::endl;
+    }
+    return {};
+}
+
+void TIL::analyze() {
+    if (!setup()) {
+        unknown();
+        return;
+    }
+    while (true) {
+        const auto res {do_step()};
+        if (res) {
+            if (res == SmtResult::Sat) {
+                sat();
+            } else {
+                unknown();
+            }
             return;
-        case SmtResult::Sat: {
-            build_trace();
-            s = get_subs(depth, 1);
-            // push error states
-            solver->push();
-            solver->add(s(t.err()));
-            switch (solver->check()) {
-            case SmtResult::Sat:
-                build_trace();
-                unknown();
-                return;
-            case SmtResult::Unknown:
-                std::cerr << "unknown from SMT solver" << std::endl;
-                unknown();
-                return;
-            case SmtResult::Unsat: {
-                // pop error states
-                solver->pop();
-                if (Config::Analysis::log) {
-                    std::cout << "starting loop handling" << std::endl;
-                }
-                const auto range{has_looping_infix()};
-                if (range) {
-                    if (Config::Analysis::log) {
-                        std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
-                    }
-                    handle_loop(*range);
-                    while (depth > range->start()) {
-                        pop();
-                    }
-                }
-                if (Config::Analysis::log) {
-                    std::cout << "done with loop handling" << std::endl;
-                }
-                break;
-            }
-            }
-        }
-        }
-        if (Config::Analysis::log) {
-            std::cout << "depth: " << depth << std::endl;
         }
     }
 }
