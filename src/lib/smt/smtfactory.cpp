@@ -8,8 +8,9 @@
 namespace SmtFactory {
 
 SmtPtr solver(Logic logic) {
-    if (Config::Analysis::smtSolver == Config::Analysis::Heuristic) {
-        std::unique_ptr<Smt> res;
+    std::unique_ptr<Smt> res;
+    switch (Config::Analysis::smtSolver) {
+    case Config::Analysis::Heuristic: {
         switch (logic) {
         case QF_LA:
             res = std::unique_ptr<Smt>(new Yices(logic));
@@ -21,10 +22,18 @@ SmtPtr solver(Logic logic) {
             res = std::unique_ptr<Smt>(new Swine());
             break;
         }
-        return res;
-    } else {
-        return solver();
+        break;
     }
+    case Config::Analysis::Yices: {
+        res = std::unique_ptr<Smt>(new Yices(logic));
+        break;
+    }
+    default: {
+        res = solver();
+        break;
+    }
+    }
+    return res;
 }
 
 SmtPtr solver() {
@@ -40,7 +49,7 @@ SmtPtr solver() {
         solver = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
         break;
     case Config::Analysis::Swine:
-    [[fallthrough]];
+        [[fallthrough]];
     case Config::Analysis::Heuristic:
         solver = std::unique_ptr<Smt>(new Swine());
         break;

@@ -68,7 +68,7 @@ private:
     };
 
     SafetyProblem &t;
-    SmtPtr solver {SmtFactory::solver()};
+    SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<std::vector<Subs>> subs {};
     std::vector<TraceElem> trace {};
     Model model;
