@@ -70,14 +70,12 @@ namespace Config {
         enum Mode { Complexity, NonTermination, Reachability, Safety, Recurrence };
         enum Engine { ADCL, BMC, ABMC, TIL };
         enum SmtSolver { Z3, CVC5, Swine, Yices, Heuristic };
-        enum TILMode {Forward, Backward, Interleaved};
         extern std::vector<Mode> modes;
         extern Mode mode;
         extern Engine engine;
         extern SmtSolver smtSolver;
         extern bool log;
         extern bool reverse;
-        extern TILMode tilMode;
 
         std::string modeName(const Mode mode);
 
@@ -87,6 +85,17 @@ namespace Config {
         bool safety();
         bool complexity();
 
+    }
+
+    namespace TIL {
+        enum Mode {Forward, Backward, Interleaved};
+        enum MbpKind {IntMbp, RealMbp};
+        extern Mode mode;
+        extern MbpKind mbpKind;
+        extern bool recurrent_cycles;
+        extern bool recurrent_exps;
+        extern bool recurrent_divs;
+        extern bool recurrent_bounds;
     }
 
     namespace ABMC {

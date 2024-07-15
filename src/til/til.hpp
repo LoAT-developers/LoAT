@@ -29,15 +29,9 @@ public:
 
 };
 
-enum mbp_kind {
-    INT_MBP, REAL_MBP
-};
-
 class TIL {
 
 public:
-
-static mbp_kind m_mbp;
 
 private:
 

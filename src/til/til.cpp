@@ -40,8 +40,6 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-mbp_kind TIL::m_mbp{INT_MBP};
-
 TIL::TIL(SafetyProblem &t) : t(t) {
     vars.insert(trace_var);
     vars.insert(n);
@@ -136,10 +134,10 @@ Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::fu
         std::cout << "model: " << model << std::endl;
         assert(false);
     }
-    switch (TIL::m_mbp) {
-    case REAL_MBP:
+    switch (Config::TIL::mbpKind) {
+    case Config::TIL::RealMbp:
         return mbp::real_mbp(trans, model, eliminate);
-    case INT_MBP:
+    case Config::TIL::IntMbp:
         return mbp::int_mbp(trans, model, eliminate);
     default:
         throw std::invalid_argument("unknown mbp kind");
@@ -176,6 +174,9 @@ std::pair<Bools::Expr, Model> TIL::specialize(const Range &range, const std::fun
 }
 
 void TIL::recurrent_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
+    if (!Config::TIL::recurrent_divs) {
+        return;
+    }
     assert(loop->isConjunction());
     const auto lits {loop->lits().get<Arith::Lit>()};
     for (const auto &l: lits) {
@@ -223,6 +224,9 @@ void TIL::recurrent_divisibility(const Bools::Expr loop, const Model &model, Lit
  * handles constraints like x' = 2x
  */
 void recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
+    if (!Config::TIL::recurrent_exps) {
+        return;
+    }
     assert(loop->isConjunction());
     // collect bounds of the form b >= 0
     const auto lits{loop->lits().get<Arith::Lit>()};
@@ -283,6 +287,9 @@ void recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits
  * handles constraints like x' = -x or x' = y /\ y' = x
  */
 void TIL::recurrent_cycles(const Bools::Expr loop, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known) {
+    if (!Config::TIL::recurrent_cycles) {
+        return;
+    }
     const auto arith_vars{pre_vars.get<Arith::Var>()};
     for (const auto &pre : arith_vars) {
         if (fully_known.contains(pre)) {
@@ -392,6 +399,9 @@ void TIL::force_fully_known_to_zero(const Bools::Expr &loop, linked_hash_set<Ari
 };
 
 void TIL::recurrent_bounds(const Bools::Expr loop, const Model &model, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known) {
+    if (!Config::TIL::recurrent_bounds) {
+        return;
+    }
     assert(loop->isConjunction());
     // collect bounds of the form b >= 0
     const auto lits {loop->lits().get<Arith::Lit>()};

@@ -54,6 +54,11 @@ void printHelp(char *arg0) {
     cout << "  --abmc::blocking_clauses <true|false>            ABMC: En- or disable blocking clauses" << std::endl;
     cout << "  --smt <z3|cvc5|swine|yices|heuristic>            Choose the SMT solver" << std::endl;
     cout << "  --til::mode <forward|backward|interleaved>       TIL: run the analysis forward, backward, or both directions interleaved" << std::endl;
+    cout << "  --til::recurrent_exps <true|false>               TIL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
+    cout << "  --til::recurrent_cycles <true|false>             TIL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
+    cout << "  --til::recurrent_divs <true|false>               TIL: En- or disable search for recurrent divisibility constraints" << std::endl;
+    cout << "  --til::recurrent_bounds <true|false>             TIL: En- or disable search for recurrent bounds" << std::endl;
+    cout << "  --til::mbp_kind <int|real>                       TIL: use model based projection for LIA or LRA" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
@@ -168,13 +173,31 @@ void parseFlags(int argc, char *argv[]) {
         } else if (strcmp("--til::mode", argv[arg]) == 0) {
             const auto str {getNext()};
             if (boost::iequals("forward", str)) {
-                Config::Analysis::tilMode = Config::Analysis::TILMode::Forward;
+                Config::TIL::mode = Config::TIL::Mode::Forward;
             } else if (boost::iequals("backward", str)) {
-                Config::Analysis::tilMode = Config::Analysis::TILMode::Backward;
+                Config::TIL::mode = Config::TIL::Mode::Backward;
             } else if (boost::iequals("interleaved", str)) {
-                Config::Analysis::tilMode = Config::Analysis::TILMode::Interleaved;
+                Config::TIL::mode = Config::TIL::Mode::Interleaved;
             } else {
                 cout << "Error: unknown TIL mode " << str << std::endl;
+                exit(1);
+            }
+        } else if (strcmp("--til::recurrent_exps", argv[arg]) == 0) {
+            setBool(getNext(), Config::TIL::recurrent_exps);
+        } else if (strcmp("--til::recurrent_cycles", argv[arg]) == 0) {
+            setBool(getNext(), Config::TIL::recurrent_cycles);
+        } else if (strcmp("--til::recurrent_divs", argv[arg]) == 0) {
+            setBool(getNext(), Config::TIL::recurrent_divs);
+        } else if (strcmp("--til::recurrent_bounds", argv[arg]) == 0) {
+            setBool(getNext(), Config::TIL::recurrent_bounds);
+        } else if (strcmp("--til::mbp_kind", argv[arg]) == 0) {
+            const auto str {getNext()};
+            if (boost::iequals("int", str)) {
+                Config::TIL::mbpKind = Config::TIL::MbpKind::IntMbp;
+            } else if (boost::iequals("real", str)) {
+                Config::TIL::mbpKind = Config::TIL::MbpKind::RealMbp;
+            } else {
+                cout << "Error: unknown MBP kind " << str << std::endl;
                 exit(1);
             }
         } else {
@@ -239,17 +262,17 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Analysis::TIL:
         SafetyProblem f{*its};
-        switch (Config::Analysis::tilMode) {
-            case Config::Analysis::Forward: {
+        switch (Config::TIL::mode) {
+            case Config::TIL::Mode::Forward: {
                 TIL::analyze(f);
                 break;
             }
-            case Config::Analysis::Backward: {
+            case Config::TIL::Mode::Backward: {
                 auto b {f.reverse()};
                 TIL::analyze(b);
                 break;
             }
-            case Config::Analysis::Interleaved: {
+            case Config::TIL::Mode::Interleaved: {
                 ForwardBackwardDriver::analyze(f);
                 break;
             }

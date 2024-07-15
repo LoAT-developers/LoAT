@@ -71,7 +71,6 @@ namespace Config {
         Engine engine = ADCL;
         SmtSolver smtSolver = Heuristic;
         bool log = false;
-        TILMode tilMode = Forward;
 
         std::string modeName(const Mode mode) {
             switch (mode) {
@@ -106,6 +105,15 @@ namespace Config {
             return nonTermination() || complexity();
         }
 
+    }
+
+    namespace TIL {
+        Mode mode {Forward};
+        bool recurrent_cycles {false};
+        bool recurrent_exps {false};
+        bool recurrent_divs {true};
+        bool recurrent_bounds {true};
+        MbpKind mbpKind {IntMbp};
     }
 
     namespace ABMC {
