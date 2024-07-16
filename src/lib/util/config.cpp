@@ -110,7 +110,7 @@ namespace Config {
     namespace TIL {
         Mode mode {Forward};
         bool recurrent_cycles {false};
-        bool recurrent_exps {false};
+        bool recurrent_exps {true};
         bool recurrent_divs {true};
         bool recurrent_bounds {true};
         MbpKind mbpKind {IntMbp};
