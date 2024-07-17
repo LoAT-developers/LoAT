@@ -1,9 +1,28 @@
 #include "forwardbackwarddriver.hpp"
+#include "config.hpp"
 
 void ForwardBackwardDriver::analyze(SafetyProblem p) {
     auto q {p.reverse()};
-    TIL f {p};
-    TIL b {q};
+    Config::TILConfig forwardConfig {
+        .mode = Config::TILConfig::Forward,
+        .mbpKind = Config::TILConfig::IntMbp,
+        .recurrent_cycles = false,
+        .recurrent_exps = true,
+        .recurrent_divs = true,
+        .recurrent_bounds = true,
+        .context_sensitive = true
+    };
+    Config::TILConfig backwardConfig {
+        .mode = Config::TILConfig::Backward,
+        .mbpKind = Config::TILConfig::RealMbp,
+        .recurrent_cycles = false,
+        .recurrent_exps = false,
+        .recurrent_divs = false,
+        .recurrent_bounds = true,
+        .context_sensitive = false
+    };
+    TIL f {p, forwardConfig};
+    TIL b {q, backwardConfig};
     if (!f.setup()) {
         b.analyze();
         return;

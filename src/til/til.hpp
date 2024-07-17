@@ -10,6 +10,7 @@
 #include "proof.hpp"
 #include "dependencygraph.hpp"
 #include "linkedhashmap.hpp"
+#include "config.hpp"
 
 
 class Range {
@@ -61,6 +62,7 @@ private:
         Model model;
     };
 
+    Config::TILConfig config;
     SafetyProblem &t;
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<std::vector<Subs>> subs {};
@@ -93,6 +95,7 @@ private:
     std::pair<Bools::Expr, Model> compress(const Range &range);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
+    void recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits);
     void recurrent_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits);
     void recurrent_cycles(const Bools::Expr loop, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known);
     void recurrent_bounds(const Bools::Expr loop, const Model &model, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known);
@@ -105,12 +108,13 @@ private:
     const Subs& get_subs(const unsigned start, const unsigned steps);
     void pop();
 
+    Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
 
 public:
 
     void sat();
-    explicit TIL(SafetyProblem &t);
+    explicit TIL(SafetyProblem &t, const Config::TILConfig &config);
     bool setup();
     std::optional<SmtResult> do_step();
     void analyze();

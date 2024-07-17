@@ -1,6 +1,5 @@
 #include "til.hpp"
 #include "chain.hpp"
-#include "config.hpp"
 // #include "crabcfg.hpp"
 #include "cvc5.hpp"
 #include "dependencygraph.hpp"
@@ -40,7 +39,7 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-TIL::TIL(SafetyProblem &t) : t(t) {
+TIL::TIL(SafetyProblem &t, const Config::TILConfig &config) : t(t), config(config) {
     vars.insert(trace_var);
     vars.insert(n);
     for (const auto &x : t.vars()) {
@@ -127,17 +126,17 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
     return id;
 }
 
-Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
+Bools::Expr TIL::mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
     if (!model.eval<Bools>(trans)) {
         std::cout << "mbp: not a model" << std::endl;
         std::cout << "trans: " << trans << std::endl;
         std::cout << "model: " << model << std::endl;
         assert(false);
     }
-    switch (Config::TIL::mbpKind) {
-    case Config::TIL::RealMbp:
+    switch (config.mbpKind) {
+    case Config::TILConfig::RealMbp:
         return mbp::real_mbp(trans, model, eliminate);
-    case Config::TIL::IntMbp:
+    case Config::TILConfig::IntMbp:
         return mbp::int_mbp(trans, model, eliminate);
     default:
         throw std::invalid_argument("unknown mbp kind");
@@ -174,7 +173,7 @@ std::pair<Bools::Expr, Model> TIL::specialize(const Range &range, const std::fun
 }
 
 void TIL::recurrent_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
-    if (!Config::TIL::recurrent_divs) {
+    if (!config.recurrent_divs) {
         return;
     }
     assert(loop->isConjunction());
@@ -223,8 +222,8 @@ void TIL::recurrent_divisibility(const Bools::Expr loop, const Model &model, Lit
 /**
  * handles constraints like x' = 2x
  */
-void recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
-    if (!Config::TIL::recurrent_exps) {
+void TIL::recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
+    if (!config.recurrent_exps) {
         return;
     }
     assert(loop->isConjunction());
@@ -287,7 +286,7 @@ void recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits
  * handles constraints like x' = -x or x' = y /\ y' = x
  */
 void TIL::recurrent_cycles(const Bools::Expr loop, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known) {
-    if (!Config::TIL::recurrent_cycles) {
+    if (!config.recurrent_cycles) {
         return;
     }
     const auto arith_vars{pre_vars.get<Arith::Var>()};
@@ -399,7 +398,7 @@ void TIL::force_fully_known_to_zero(const Bools::Expr &loop, linked_hash_set<Ari
 };
 
 void TIL::recurrent_bounds(const Bools::Expr loop, const Model &model, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known) {
-    if (!Config::TIL::recurrent_bounds) {
+    if (!config.recurrent_bounds) {
         return;
     }
     assert(loop->isConjunction());
@@ -640,6 +639,9 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr pre_ctx, const B
     const auto pre{mbp_impl(loop, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
+    if (Config::Analysis::log) {
+        std::cout << "pre: " << pre << std::endl;
+    }
     auto step{recurrence_analysis(pre_ctx && loop && post_ctx, model)};
     if (Config::Analysis::log) {
         std::cout << "recurrence analysis: " << step << std::endl;
@@ -659,26 +661,69 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr pre_ctx, const B
 }
 
 void TIL::handle_loop(const Range &range) {
-    // Subs post_to_pre;
-    // for (const auto &x : vars) {
-    //     if (theory::isProgVar(x)) {
-    //         post_to_pre.put(theory::postVar(x), theory::toExpr(x));
-    //     }
-    // }
-    // auto [stem, stem_model]{specialize(Range::from_interval(0, range.end() - 1), theory::isTempVar)};
-    // auto init {stem_model.syntacticImplicant(t.init())};
-    // stem = init && stem;
-    // stem = mbp_impl(stem, stem_model, [](const auto &x) {
-    //     return !theory::isPostVar(x);
-    // });
-    // stem = post_to_pre(stem);
-    // std::cout << "stem: " << stem << std::endl;
     auto [loop, model]{specialize(range, theory::isTempVar)};
+    auto context{top()};
+    if (config.context_sensitive) {
+        Subs post_to_pre;
+        for (const auto &x : vars) {
+            if (theory::isProgVar(x)) {
+                post_to_pre.put(theory::postVar(x), theory::toExpr(x));
+            }
+        }
+        auto [stem, stem_model]{specialize(Range::from_length(0, range.start()), theory::isTempVar)};
+        if (range.start() == 0) {
+            stem_model = model;
+        }
+        auto init{stem_model.syntacticImplicant(t.init())};
+        stem = init && stem;
+        stem = mbp_impl(stem, stem_model, [](const auto &x) {
+            return !theory::isPostVar(x);
+        });
+        stem = post_to_pre(stem);
+        auto solver{SmtFactory::solver(QF_LA)};
+        const auto subs1{get_subs(0, 1)};
+        const auto subs2{get_subs(1, 1)};
+        solver->add(subs1(loop) && subs2(loop));
+        if (solver->check() != SmtResult::Sat) {
+            const auto id{add_learned_clause(loop)};
+            add_blocking_clause(range, id, loop);
+            return;
+        }
+        const auto orig_lits{stem->lits()};
+        std::vector<Lit> lits;
+        for (const auto &lit : orig_lits) {
+            std::visit(Overload{
+                           [&](const Arith::Lit &l) {
+                               if (l->isEq() && !l->isDivisibility()) {
+                                   lits.push_back(arith::mkLeq(l->lhs(), arith::mkConst(0)));
+                                   lits.push_back(arith::mkGeq(l->lhs(), arith::mkConst(0)));
+                               } else {
+                                   lits.push_back(l);
+                               }
+                           },
+                           [&](const auto &) {
+                               lits.push_back(lit);
+                           }},
+                       lit);
+        }
+        LitSet context_lits;
+        for (const auto &lit : lits) {
+            solver->push();
+            solver->add(subs1(lit));
+            solver->add(subs2(lit));
+            if (solver->check() == SmtResult::Sat) {
+                context_lits.insert(lit);
+            } else {
+                solver->pop();
+            }
+        }
+        context = bools::mkAndFromLits(context_lits);
+    }
+    // const auto ti{compute_transition_invariant(stem, loop, top(), model)};
     if (add_blocking_clauses(range, model)) {
         return;
     }
-    // const auto ti{compute_transition_invariant(stem, loop, top(), model)};
-    const auto ti{compute_transition_invariant(top(), loop, top(), model)};
+    const auto ti{compute_transition_invariant(context, loop, top(), model)};
     const auto id{add_learned_clause(ti)};
     add_blocking_clause(range, id, ti);
 }
@@ -938,5 +983,5 @@ void TIL::analyze() {
 }
 
 void TIL::analyze(SafetyProblem &its) {
-    TIL(its).analyze();
+    TIL(its, Config::til).analyze();
 }

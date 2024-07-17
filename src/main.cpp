@@ -35,6 +35,7 @@
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
+#include <chrono>
 
 using namespace std;
 
@@ -58,6 +59,7 @@ void printHelp(char *arg0) {
     cout << "  --til::recurrent_cycles <true|false>             TIL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
     cout << "  --til::recurrent_divs <true|false>               TIL: En- or disable search for recurrent divisibility constraints" << std::endl;
     cout << "  --til::recurrent_bounds <true|false>             TIL: En- or disable search for recurrent bounds" << std::endl;
+    cout << "  --til::context_sensitive <true|false>            TIL: En- or disable context sensitivity" << std::endl;
     cout << "  --til::mbp_kind <int|real>                       TIL: use model based projection for LIA or LRA" << std::endl;
 }
 
@@ -173,29 +175,31 @@ void parseFlags(int argc, char *argv[]) {
         } else if (strcmp("--til::mode", argv[arg]) == 0) {
             const auto str {getNext()};
             if (boost::iequals("forward", str)) {
-                Config::TIL::mode = Config::TIL::Mode::Forward;
+                Config::til.mode = Config::TILConfig::Mode::Forward;
             } else if (boost::iequals("backward", str)) {
-                Config::TIL::mode = Config::TIL::Mode::Backward;
+                Config::til.mode = Config::TILConfig::Mode::Backward;
             } else if (boost::iequals("interleaved", str)) {
-                Config::TIL::mode = Config::TIL::Mode::Interleaved;
+                Config::til.mode = Config::TILConfig::Mode::Interleaved;
             } else {
                 cout << "Error: unknown TIL mode " << str << std::endl;
                 exit(1);
             }
         } else if (strcmp("--til::recurrent_exps", argv[arg]) == 0) {
-            setBool(getNext(), Config::TIL::recurrent_exps);
+            setBool(getNext(), Config::til.recurrent_exps);
         } else if (strcmp("--til::recurrent_cycles", argv[arg]) == 0) {
-            setBool(getNext(), Config::TIL::recurrent_cycles);
+            setBool(getNext(), Config::til.recurrent_cycles);
         } else if (strcmp("--til::recurrent_divs", argv[arg]) == 0) {
-            setBool(getNext(), Config::TIL::recurrent_divs);
+            setBool(getNext(), Config::til.recurrent_divs);
         } else if (strcmp("--til::recurrent_bounds", argv[arg]) == 0) {
-            setBool(getNext(), Config::TIL::recurrent_bounds);
+            setBool(getNext(), Config::til.recurrent_bounds);
+        } else if (strcmp("--til::context_sensitive", argv[arg]) == 0) {
+            setBool(getNext(), Config::til.context_sensitive);
         } else if (strcmp("--til::mbp_kind", argv[arg]) == 0) {
             const auto str {getNext()};
             if (boost::iequals("int", str)) {
-                Config::TIL::mbpKind = Config::TIL::MbpKind::IntMbp;
+                Config::til.mbpKind = Config::TILConfig::MbpKind::IntMbp;
             } else if (boost::iequals("real", str)) {
-                Config::TIL::mbpKind = Config::TIL::MbpKind::RealMbp;
+                Config::til.mbpKind = Config::TILConfig::MbpKind::RealMbp;
             } else {
                 cout << "Error: unknown MBP kind " << str << std::endl;
                 exit(1);
@@ -231,6 +235,7 @@ int main(int argc, char *argv[]) {
     }
 
     ITSPtr its;
+    const auto start {std::chrono::steady_clock::now()};
     switch (Config::Input::format) {
     case Config::Input::Koat:
         its = parser::ITSParser::loadFromFile(filename);
@@ -248,6 +253,10 @@ int main(int argc, char *argv[]) {
         std::cout << "Error: unknown format" << std::endl;
         exit(1);
     }
+    const auto end {std::chrono::steady_clock::now()};
+    if (Config::Analysis::log) {
+        std::cout << "parsing took " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
+    }
 
     yices::init();
     switch (Config::Analysis::engine) {
@@ -262,17 +271,17 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Analysis::TIL:
         SafetyProblem f{*its};
-        switch (Config::TIL::mode) {
-            case Config::TIL::Mode::Forward: {
+        switch (Config::til.mode) {
+            case Config::TILConfig::Mode::Forward: {
                 TIL::analyze(f);
                 break;
             }
-            case Config::TIL::Mode::Backward: {
+            case Config::TILConfig::Mode::Backward: {
                 auto b {f.reverse()};
                 TIL::analyze(b);
                 break;
             }
-            case Config::TIL::Mode::Interleaved: {
+            case Config::TILConfig::Mode::Interleaved: {
                 ForwardBackwardDriver::analyze(f);
                 break;
             }

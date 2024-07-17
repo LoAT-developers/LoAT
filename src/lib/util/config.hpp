@@ -87,16 +87,19 @@ namespace Config {
 
     }
 
-    namespace TIL {
+    struct TILConfig {
         enum Mode {Forward, Backward, Interleaved};
         enum MbpKind {IntMbp, RealMbp};
-        extern Mode mode;
-        extern MbpKind mbpKind;
-        extern bool recurrent_cycles;
-        extern bool recurrent_exps;
-        extern bool recurrent_divs;
-        extern bool recurrent_bounds;
-    }
+        Mode mode {Forward};
+        MbpKind mbpKind {IntMbp};
+        bool recurrent_cycles {false};
+        bool recurrent_exps {true};
+        bool recurrent_divs {true};
+        bool recurrent_bounds {true};
+        bool context_sensitive {false};
+    };
+
+    extern TILConfig til;
 
     namespace ABMC {
         extern bool blocking_clauses;
