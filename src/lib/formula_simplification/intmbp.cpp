@@ -86,18 +86,18 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     for (const auto &d : scaled_divs) {
         mlcm = mp::lcm(mlcm, d.modulo);
     }
-    auto closest_bound{*scaled_lb.begin()};
-    auto max_val{closest_bound->eval(model.get<Arith>())};
-    for (const auto &l : scaled_lb) {
-        const auto val{l->eval(model.get<Arith>())};
-        if (val > max_val) {
-            closest_bound = l;
-            max_val = val;
+    auto closest_bound{*scaled_ub.begin()};
+    auto min_val{closest_bound->eval(model.get<Arith>())};
+    for (const auto &u : scaled_ub) {
+        const auto val{u->eval(model.get<Arith>())};
+        if (val < min_val) {
+            closest_bound = u;
+            min_val = val;
         }
     }
-    const auto i_l{arith::mkMod(arith::mkConst(flcm) * x - (closest_bound + arith::mkConst(1)), arith::mkConst(mlcm))};
+    const auto i_l{arith::mkMod(closest_bound - arith::mkConst(1) - arith::mkConst(flcm) * x, arith::mkConst(mlcm))};
     const auto i_l_val {i_l->eval(model.get<Arith>())};
-    const auto substitute{closest_bound + arith::mkConst(1 + i_l_val)};
+    const auto substitute{closest_bound - arith::mkConst(1 + i_l_val)};
     for (const auto &l : scaled_lb) {
         arith_lits.insert(arith::mkGt(substitute, l));
     }
