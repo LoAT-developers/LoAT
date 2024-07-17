@@ -86,21 +86,52 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     for (const auto &d : scaled_divs) {
         mlcm = mp::lcm(mlcm, d.modulo);
     }
-    auto closest_bound{*scaled_ub.begin()};
-    auto min_val{closest_bound->eval(model.get<Arith>())};
+    auto closest_lower{*scaled_lb.begin()};
+    auto max_val{closest_lower->eval(model.get<Arith>())};
+    for (const auto &l : scaled_lb) {
+        const auto val{l->eval(model.get<Arith>())};
+        if (val > max_val) {
+            closest_lower = l;
+            max_val = val;
+        }
+    }
+    auto closest_upper{*scaled_ub.begin()};
+    auto min_val{closest_upper->eval(model.get<Arith>())};
     for (const auto &u : scaled_ub) {
         const auto val{u->eval(model.get<Arith>())};
         if (val < min_val) {
-            closest_bound = u;
+            closest_upper = u;
             min_val = val;
         }
     }
-    const auto i_l{arith::mkMod(closest_bound - arith::mkConst(1) - arith::mkConst(flcm) * x, arith::mkConst(mlcm))};
-    const auto i_l_val {i_l->eval(model.get<Arith>())};
-    const auto substitute{closest_bound - arith::mkConst(1 + i_l_val)};
-    for (const auto &l : scaled_lb) {
-        arith_lits.insert(arith::mkGt(substitute, l));
+    bool use_upper {true};
+    if (const auto up {closest_upper->isRational()}) {
+        if (const auto low {closest_lower->isRational()}) {
+            if (mp::abs(***up) > mp::abs(***low)) {
+                use_upper = false;
+            }
+        } else {
+            use_upper = false;
+        }
+    } else if (!closest_lower->isRational()) {
+        const auto x_val {model.get<Arith>(x)};
+        if (x_val - max_val < min_val - x_val) {
+            use_upper = false;
+        }
     }
+    Arith::Expr substitute {arith::mkConst(0)};
+    if (use_upper) {
+        const auto i_l{arith::mkMod(closest_upper - arith::mkConst(1) - arith::mkConst(flcm) * x, arith::mkConst(mlcm))};
+        const auto i_l_val {i_l->eval(model.get<Arith>())};
+        substitute = closest_upper - arith::mkConst(1 + i_l_val);
+    } else {
+        const auto i_l{arith::mkMod(arith::mkConst(flcm) * x - (closest_lower + arith::mkConst(1)), arith::mkConst(mlcm))};
+        const auto i_l_val {i_l->eval(model.get<Arith>())};
+        substitute = closest_lower + arith::mkConst(1 + i_l_val);
+    }
+    for (const auto &l : scaled_lb) {
+            arith_lits.insert(arith::mkGt(substitute, l));
+        }
     for (const auto &u : scaled_ub) {
         arith_lits.insert(arith::mkLt(substitute, u));
     }
