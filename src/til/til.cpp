@@ -60,7 +60,7 @@ TIL::TIL(SafetyProblem &t, const Config::TILConfig &config) : t(t), config(confi
 std::optional<Range> TIL::has_looping_infix() {
     for (int i = 0; i < trace.size(); ++i) {
         for (int start = 0; start + i < trace.size(); ++start) {
-            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant)) {
+            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 return {Range::from_interval(start, start + i)};
             }
         }
@@ -646,13 +646,6 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr pre_ctx, const B
     if (Config::Analysis::log) {
         std::cout << "recurrence analysis: " << step << std::endl;
     }
-    model.put<Arith>(n, 1);
-    step = mbp_impl(step, model, [&](const auto &x) {
-        return x == Var(n);
-    });
-    if (Config::Analysis::log) {
-        std::cout << "recurrence analysis projected: " << step << std::endl;
-    }
     const auto post{mbp_impl(loop, model, [](const auto &x) {
         return !theory::isPostVar(x);
     })};
@@ -662,6 +655,9 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr pre_ctx, const B
 
 void TIL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
+    if (add_blocking_clauses(range, model)) {
+        return;
+    }
     auto context{top()};
     if (config.context_sensitive) {
         Subs post_to_pre;
@@ -719,13 +715,17 @@ void TIL::handle_loop(const Range &range) {
         }
         context = bools::mkAndFromLits(context_lits);
     }
-    // const auto ti{compute_transition_invariant(stem, loop, top(), model)};
-    if (add_blocking_clauses(range, model)) {
-        return;
-    }
     const auto ti{compute_transition_invariant(context, loop, top(), model)};
     const auto id{add_learned_clause(ti)};
-    add_blocking_clause(range, id, ti);
+    model.put<Arith>(n, 1);
+    const auto projected {mbp_impl(loop, model, [&](const auto &x) {
+        return x == Var(n);
+    })};
+    if (range.length() == 1) {
+        projections.emplace_back(id, projected);
+    } else {
+        add_blocking_clause(range, id, projected);
+    }
 }
 
 Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
@@ -733,36 +733,50 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
 }
 
 void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
-    if (range.length() <= 2) {
-        return;
-    }
     const auto s{get_subs(range.start(), range.length())};
     auto it {blocked_per_step.emplace(range.start(), top()).first};
-    it->second = it->second && s(!loop);
+    if (range.length() == 1) {
+        it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
+    } else {
+        it->second = it->second && s(!loop);
+    }
 }
 
-bool TIL::add_blocking_clauses(const Range &range, const Model &model) {
-    if (range.length() <= 2) {
-        return false;
-    }
+bool TIL::add_blocking_clauses(const Range &range, Model model) {
+    Subs m {model.toSubs()};
+    const auto s{get_subs(range.start(), range.length())};
+    const auto nn {*s.get<Arith>(n)->isVar()};
+    m.erase(nn);
+    auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
     for (const auto &[id, b] : blocked) {
-        const auto s{get_subs(range.start(), range.length())};
-        auto block{s(!b)};
-        if (!model.eval<Bools>(block)) {
-            auto it {blocked_per_step.emplace(range.start(), top()).first};
-            it->second = it->second && block;
-            return true;
+        if (range.length() == 1 && id <= last_orig_clause) {
+            continue;
+        }
+        auto block{s(b)};
+        if (b->vars().contains(n)) {
+            solver->push();
+            solver->add(m(block));
+            if (solver->check() == SmtResult::Sat) {
+                const auto n_val {solver->model({{nn}}).get<Arith>(nn)};
+                model.put<Arith>(nn, n_val);
+                const auto projected {mbp_impl(block, model, [&](const auto &x) {
+                    return x == Var(nn);
+                })};
+                add_blocking_clause(range, id, projected);
+                return true;
+            }
+            solver->pop();
+        } else if (model.eval<Bools>(block)) {
+            add_blocking_clause(range, id, block);
         }
     }
     return false;
 }
 
 void TIL::add_blocking_clauses() {
-    const auto s1 {get_subs(depth, 1)};
-    const auto s2 {get_subs(depth, 2)};
-    for (const auto &[id, b] : blocked) {
-        solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
-        solver->add(s2(!b));
+    const auto s {get_subs(depth, 1)};
+    for (const auto &[id, b] : projections) {
+        solver->add(s(!b) || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id))));
     }
     const auto it {blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
@@ -788,7 +802,6 @@ void TIL::sat() {
 void TIL::build_trace() {
     trace.clear();
     model = solver->model();
-    // std::cout << "model: " << model << std::endl;
     std::optional<std::pair<Bools::Expr, Int>> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{get_subs(d, 1)};
@@ -802,7 +815,7 @@ void TIL::build_trace() {
         }
         imp->collectVars(relevant_vars);
         const auto projected_model{comp.project(relevant_vars)};
-        if (prev && (prev->second <= last_orig_clause || prev->second != id)) {
+        if (prev) {
             dependency_graph.addEdge(prev->first, imp);
         }
         prev = {imp, id};

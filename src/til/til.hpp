@@ -69,6 +69,7 @@ private:
     std::vector<TraceElem> trace {};
     Model model;
     std::vector<std::pair<Int, Bools::Expr>> blocked {};
+    std::vector<std::pair<Int, Bools::Expr>> projections {};
     std::unordered_map<Int, Bools::Expr> blocked_per_step {};
     VarSet vars {};
     VarSet pre_vars {};
@@ -88,7 +89,7 @@ private:
 
     Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
     void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop);
-    bool add_blocking_clauses(const Range &range, const Model &model);
+    bool add_blocking_clauses(const Range &range, Model model);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
     Int add_learned_clause(const Bools::Expr &accel);
