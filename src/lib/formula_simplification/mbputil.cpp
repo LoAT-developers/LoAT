@@ -8,7 +8,7 @@ std::optional<Arith::Expr> mbp::closest_lower_bound(const linked_hash_set<Bound>
         if (b.kind == BoundKind::Lower) {
             const auto b_val{b.bound->evalToRational(model)};
             const auto d{mp::abs(val - b_val)};
-            if (!closest || d < dist || (d == dist && b.bound < *closest)) {
+            if (!closest || d < dist || (d == dist && (*closest)->isRational() && !b.bound->isRational()) || (d == dist && b.bound < *closest)) {
                 dist = d;
                 closest = b.bound;
             }

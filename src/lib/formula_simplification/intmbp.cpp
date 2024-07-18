@@ -92,7 +92,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
         auto min_val{closest_upper->eval(model.get<Arith>())};
         for (const auto &u : scaled_ub) {
             const auto val{u->eval(model.get<Arith>())};
-            if (val < min_val || (val == min_val && closest_upper->isRational() && !u->isRational())) {
+            if (val < min_val || (val == min_val && closest_upper->isRational() && !u->isRational()) || (val == min_val && u < closest_upper)) {
                 closest_upper = u;
                 min_val = val;
             }
@@ -105,7 +105,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
         auto max_val{closest_lower->eval(model.get<Arith>())};
         for (const auto &l : scaled_lb) {
             const auto val{l->eval(model.get<Arith>())};
-            if (val > max_val || (val == max_val && closest_lower->isRational() && !l->isRational())) {
+            if (val > max_val || (val == max_val && closest_lower->isRational() && !l->isRational()) || (val == max_val && l < closest_lower)) {
                 closest_lower = l;
                 max_val = val;
             }
