@@ -11,7 +11,7 @@ void ForwardBackwardDriver::analyze(SafetyProblem p) {
         .recurrent_divs = true,
         .recurrent_pseudo_divs = true,
         .recurrent_bounds = true,
-        .context_sensitive = true
+        .context_sensitive = false
     };
     Config::TILConfig backwardConfig {
         .mode = Config::TILConfig::Backward,
