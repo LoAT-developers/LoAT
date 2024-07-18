@@ -233,6 +233,10 @@ public:
      */
     std::optional<ArithExprPtr> lcoeff(const ArithVarPtr var) const;
 
+    Rational max_coeff() const;
+
+    Rational coeff_sum() const;
+
     bool isIntegral() const;
 
     Rational evalToRational(const linked_hash_map<ArithVarPtr, Int> &valuation) const;
