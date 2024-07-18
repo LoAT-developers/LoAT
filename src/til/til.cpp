@@ -642,6 +642,7 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr pre_ctx, const B
         return !theory::isProgVar(x);
     })};
     if (Config::Analysis::log) {
+        std::cout << "pre_ctx: " << pre_ctx << std::endl;
         std::cout << "pre: " << pre << std::endl;
     }
     auto step{recurrence_analysis(pre_ctx && loop && post_ctx, model)};
@@ -717,12 +718,15 @@ void TIL::handle_loop(const Range &range) {
         }
         context = bools::mkAndFromLits(context_lits);
     }
-    const auto ti{compute_transition_invariant(context, loop, top(), model)};
-    const auto id{add_learned_clause(ti)};
+    auto ti{compute_transition_invariant(context, loop, top(), model)};
     model.put<Arith>(n, 1);
-    const auto projected {mbp_impl(loop, model, [&](const auto &x) {
+    const auto projected {mbp_impl(ti, model, [&](const auto &x) {
         return x == Var(n);
     })};
+    if (SmtFactory::check(bools::mkAnd(std::vector{ti, projected, bools::mkLit(arith::mkGt(n, arith::mkConst(1)))})) == SmtResult::Sat) {
+        ti = projected;
+    }
+    const auto id{add_learned_clause(ti)};
     if (range.length() == 1) {
         projections.emplace_back(id, projected);
     } else {
