@@ -39,7 +39,7 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-TIL::TIL(SafetyProblem &t, const Config::TILConfig &config) : t(t), config(config) {
+TIL::TIL(SafetyProblem &t, const Config::TILConfig &config) : config(config), t(t) {
     vars.insert(trace_var);
     vars.insert(n);
     for (const auto &x : t.vars()) {
@@ -669,16 +669,23 @@ void TIL::handle_loop(const Range &range) {
                 post_to_pre.put(theory::postVar(x), theory::toExpr(x));
             }
         }
-        auto [stem, stem_model]{specialize(Range::from_length(0, range.start()), theory::isTempVar)};
-        if (range.start() == 0) {
-            stem_model = model;
-        }
-        auto init{stem_model.syntacticImplicant(t.init())};
-        stem = init && stem;
-        stem = mbp_impl(stem, stem_model, [](const auto &x) {
-            return !theory::isPostVar(x);
+        auto init{this->model.syntacticImplicant(t.init())};
+        init = mbp_impl(init, this->model, [](const auto &x) {
+            return !theory::isProgVar(x);
         });
-        stem = post_to_pre(stem);
+        auto stem {top()};
+        if (range.start() == 0) {
+            stem = init;
+        } else {
+            const auto p{specialize(Range::from_length(0, range.start()), theory::isTempVar)};
+            stem = p.first;
+            const auto stem_model {p.second};
+            stem = init && stem;
+            stem = mbp_impl(stem, stem_model, [](const auto &x) {
+                return !theory::isPostVar(x);
+            });
+            stem = post_to_pre(stem);
+        }
         auto solver{SmtFactory::solver(QF_LA)};
         const auto subs1{get_subs(0, 1)};
         const auto subs2{get_subs(1, 1)};
