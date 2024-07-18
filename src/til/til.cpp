@@ -227,6 +227,9 @@ void TIL::recurrent_divisibility(const Bools::Expr loop, const Model &model, Lit
 }
 
 void TIL::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
+    if (!config.recurrent_pseudo_divs) {
+        return;
+    }
     assert(loop->isConjunction());
     const auto lits {loop->lits().get<Arith::Lit>()};
     for (const auto &l: lits) {
