@@ -57,9 +57,11 @@ const VarSet& SafetyProblem::post_vars() const {
 
 VarSet SafetyProblem::vars() const {
     VarSet res;
+    initial_states->collectVars(res);
     for (const auto &t: transitions) {
         t->collectVars(res);
     }
+    error_states->collectVars(res);
     return res;
 }
 
