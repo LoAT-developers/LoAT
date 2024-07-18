@@ -14,10 +14,10 @@ void ForwardBackwardDriver::analyze(SafetyProblem p) {
     };
     Config::TILConfig backwardConfig {
         .mode = Config::TILConfig::Backward,
-        .mbpKind = Config::TILConfig::UpperIntMbp,
+        .mbpKind = Config::TILConfig::RealMbp,
         .recurrent_cycles = false,
         .recurrent_exps = true,
-        .recurrent_divs = true,
+        .recurrent_divs = false,
         .recurrent_bounds = true,
         .context_sensitive = false
     };

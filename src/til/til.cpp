@@ -723,9 +723,6 @@ void TIL::handle_loop(const Range &range) {
     const auto projected {mbp_impl(ti, model, [&](const auto &x) {
         return x == Var(n);
     })};
-    if (SmtFactory::check(bools::mkAnd(std::vector{ti, projected, bools::mkLit(arith::mkGt(n, arith::mkConst(1)))})) == SmtResult::Sat) {
-        ti = projected;
-    }
     const auto id{add_learned_clause(ti)};
     if (range.length() == 1) {
         projections.emplace_back(id, projected);
