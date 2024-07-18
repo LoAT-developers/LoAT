@@ -136,8 +136,10 @@ Bools::Expr TIL::mbp_impl(const Bools::Expr &trans, const Model &model, const st
     switch (config.mbpKind) {
     case Config::TILConfig::RealMbp:
         return mbp::real_mbp(trans, model, eliminate);
-    case Config::TILConfig::IntMbp:
-        return mbp::int_mbp(trans, model, eliminate);
+    case Config::TILConfig::LowerIntMbp:
+        return mbp::int_mbp(trans, model, eliminate, false);
+    case Config::TILConfig::UpperIntMbp:
+        return mbp::int_mbp(trans, model, eliminate, true);
     default:
         throw std::invalid_argument("unknown mbp kind");
     }

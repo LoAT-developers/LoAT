@@ -196,8 +196,10 @@ void parseFlags(int argc, char *argv[]) {
             setBool(getNext(), Config::til.context_sensitive);
         } else if (strcmp("--til::mbp_kind", argv[arg]) == 0) {
             const auto str {getNext()};
-            if (boost::iequals("int", str)) {
-                Config::til.mbpKind = Config::TILConfig::MbpKind::IntMbp;
+            if (boost::iequals("lower_int", str)) {
+                Config::til.mbpKind = Config::TILConfig::MbpKind::LowerIntMbp;
+            } else if (boost::iequals("upper_int", str)) {
+                Config::til.mbpKind = Config::TILConfig::MbpKind::UpperIntMbp;
             } else if (boost::iequals("real", str)) {
                 Config::til.mbpKind = Config::TILConfig::MbpKind::RealMbp;
             } else {

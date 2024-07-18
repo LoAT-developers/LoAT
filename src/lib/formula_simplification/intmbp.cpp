@@ -1,7 +1,7 @@
 #include "intmbp.hpp"
 #include "mbputil.hpp"
 
-Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x) {
+Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x, const bool upper) {
     assert(t->isConjunction());
     linked_hash_set<Divisibility> divs;
     linked_hash_set<Arith::Expr> lb;
@@ -86,52 +86,37 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     for (const auto &d : scaled_divs) {
         mlcm = mp::lcm(mlcm, d.modulo);
     }
-    auto closest_lower{*scaled_lb.begin()};
-    auto max_val{closest_lower->eval(model.get<Arith>())};
-    for (const auto &l : scaled_lb) {
-        const auto val{l->eval(model.get<Arith>())};
-        if (val > max_val) {
-            closest_lower = l;
-            max_val = val;
-        }
-    }
-    auto closest_upper{*scaled_ub.begin()};
-    auto min_val{closest_upper->eval(model.get<Arith>())};
-    for (const auto &u : scaled_ub) {
-        const auto val{u->eval(model.get<Arith>())};
-        if (val < min_val) {
-            closest_upper = u;
-            min_val = val;
-        }
-    }
-    bool use_upper {true};
-    if (const auto up {closest_upper->isRational()}) {
-        if (const auto low {closest_lower->isRational()}) {
-            if (mp::abs(***up) > mp::abs(***low)) {
-                use_upper = false;
-            }
-        } else {
-            use_upper = false;
-        }
-    } else if (!closest_lower->isRational()) {
-        const auto x_val {model.get<Arith>(x)};
-        if (x_val - max_val < min_val - x_val) {
-            use_upper = false;
-        }
-    }
     Arith::Expr substitute {arith::mkConst(0)};
-    if (use_upper) {
+    if (upper) {
+        auto closest_upper{*scaled_ub.begin()};
+        auto min_val{closest_upper->eval(model.get<Arith>())};
+        for (const auto &u : scaled_ub) {
+            const auto val{u->eval(model.get<Arith>())};
+            if (val < min_val || (val == min_val && closest_upper->isRational() && !u->isRational())) {
+                closest_upper = u;
+                min_val = val;
+            }
+        }
         const auto i_l{arith::mkMod(closest_upper - arith::mkConst(1) - arith::mkConst(flcm) * x, arith::mkConst(mlcm))};
-        const auto i_l_val {i_l->eval(model.get<Arith>())};
+        const auto i_l_val{i_l->eval(model.get<Arith>())};
         substitute = closest_upper - arith::mkConst(1 + i_l_val);
     } else {
+        auto closest_lower{*scaled_lb.begin()};
+        auto max_val{closest_lower->eval(model.get<Arith>())};
+        for (const auto &l : scaled_lb) {
+            const auto val{l->eval(model.get<Arith>())};
+            if (val > max_val || (val == max_val && closest_lower->isRational() && !l->isRational())) {
+                closest_lower = l;
+                max_val = val;
+            }
+        }
         const auto i_l{arith::mkMod(arith::mkConst(flcm) * x - (closest_lower + arith::mkConst(1)), arith::mkConst(mlcm))};
-        const auto i_l_val {i_l->eval(model.get<Arith>())};
+        const auto i_l_val{i_l->eval(model.get<Arith>())};
         substitute = closest_lower + arith::mkConst(1 + i_l_val);
     }
     for (const auto &l : scaled_lb) {
-            arith_lits.insert(arith::mkGt(substitute, l));
-        }
+        arith_lits.insert(arith::mkGt(substitute, l));
+    }
     for (const auto &u : scaled_ub) {
         arith_lits.insert(arith::mkLt(substitute, u));
     }
@@ -141,25 +126,25 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     return bools::mkAndFromLits(lits);
 }
 
-Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Var &x) {
+Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Var &x, const bool upper) {
     return std::visit(
         Overload{
             [&](const Bools::Var x) {
                 return mbp::bool_mbp(t, model, x);
             },
             [&](const Arith::Var x) {
-                const auto res{int_mbp(t, model, x)};
+                const auto res{int_mbp(t, model, x, upper)};
                 assert(res != bot());
                 return res;
             }},
         x);
 }
 
-Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
+Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate, const bool upper) {
     Bools::Expr res{trans};
     for (const auto &x : trans->vars()) {
         if (eliminate(x)) {
-            res = ::int_mbp(res, model, x);
+            res = ::int_mbp(res, model, x, upper);
         }
     }
     return res;
