@@ -74,6 +74,8 @@ private:
     VarSet vars {};
     VarSet pre_vars {};
     Int last_orig_clause;
+    Subs post_to_pre {};
+    Subs pre_to_post {};
 
     Int next_id {0};
 
@@ -98,6 +100,7 @@ private:
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
     void recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits);
     void recurrent_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits);
+    void recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits);
     void recurrent_cycles(const Bools::Expr loop, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known);
     void recurrent_bounds(const Bools::Expr loop, const Model &model, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known);
     void force_fully_known_to_zero(const Bools::Expr &t, linked_hash_set<Arith::Var> &fully_known, SmtPtr &solver);

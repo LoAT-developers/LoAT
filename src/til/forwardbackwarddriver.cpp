@@ -9,6 +9,7 @@ void ForwardBackwardDriver::analyze(SafetyProblem p) {
         .recurrent_cycles = false,
         .recurrent_exps = true,
         .recurrent_divs = true,
+        .recurrent_pseudo_divs = true,
         .recurrent_bounds = true,
         .context_sensitive = true
     };
@@ -18,6 +19,7 @@ void ForwardBackwardDriver::analyze(SafetyProblem p) {
         .recurrent_cycles = false,
         .recurrent_exps = true,
         .recurrent_divs = false,
+        .recurrent_pseudo_divs = false,
         .recurrent_bounds = true,
         .context_sensitive = false
     };

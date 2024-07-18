@@ -47,9 +47,14 @@ TIL::TIL(SafetyProblem &t, const Config::TILConfig &config) : config(config), t(
             const auto pre {theory::progVar(x)};
             pre_vars.insert(pre);
             vars.insert(pre);
+            post_to_pre.put(x, theory::toExpr(pre));
+            pre_to_post.put(pre, theory::toExpr(x));
         } else {
             if (theory::isProgVar(x)) {
+                const auto post {theory::postVar(x)};
                 pre_vars.insert(x);
+                post_to_pre.put(post, theory::toExpr(x));
+                pre_to_post.put(x, theory::toExpr(post));
             }
             vars.insert(x);
         }
@@ -216,6 +221,30 @@ void TIL::recurrent_divisibility(const Bools::Expr loop, const Model &model, Lit
             if (is_recurrent) {
                 const auto constant {arith::mkConst(t->getConstantAddend())};
                 res_lits.insert(arith::mkEq(arith::mkMod(t - constant + n * constant, arith::mkConst(mod)), arith::mkConst(0)));
+            }
+        }
+    }
+}
+
+void TIL::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
+    assert(loop->isConjunction());
+    const auto lits {loop->lits().get<Arith::Lit>()};
+    for (const auto &l: lits) {
+        if (const auto div {l->isDivisibility()}) {
+            const auto &[t,mod] {*div};
+            const auto vars {t->vars()};
+            if (std::all_of(vars.begin(), vars.end(), theory::isProgVar)) {
+                const auto post {pre_to_post.get<Arith>()(t)};
+                auto diff {model.eval<Arith>(t) - model.eval<Arith>(post)};
+                if (diff % mod == 0) {
+                    res_lits.insert(arith::mkEq(arith::mkMod(post, arith::mkConst(mod)), arith::mkConst(0)));
+                }
+            } else if (std::all_of(vars.begin(), vars.end(), theory::isPostVar)) {
+                const auto pre {post_to_pre.get<Arith>()(t)};
+                auto diff {model.eval<Arith>(t) - model.eval<Arith>(pre)};
+                if (diff % mod == 0) {
+                    res_lits.insert(arith::mkEq(arith::mkMod(pre, arith::mkConst(mod)), arith::mkConst(0)));
+                }
             }
         }
     }
@@ -630,6 +659,7 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
     LitSet res_lits;
     res_lits.insert(arith::mkGt(n, arith::mkConst(0)));
     recurrent_divisibility(loop, model, res_lits);
+    recurrent_pseudo_divisibility(loop, model, res_lits);
     recurrent_exps(loop, model, res_lits);
     linked_hash_set<Arith::Var> fully_known;
     recurrent_cycles(loop, res_lits, fully_known);
@@ -663,12 +693,6 @@ void TIL::handle_loop(const Range &range) {
     }
     auto context{top()};
     if (config.context_sensitive) {
-        Subs post_to_pre;
-        for (const auto &x : vars) {
-            if (theory::isProgVar(x)) {
-                post_to_pre.put(theory::postVar(x), theory::toExpr(x));
-            }
-        }
         auto init{this->model.syntacticImplicant(t.init())};
         init = mbp_impl(init, this->model, [](const auto &x) {
             return !theory::isProgVar(x);
