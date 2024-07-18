@@ -69,13 +69,13 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     for (const auto &l : lb) {
         const auto coeff{*l->coeff(x)};
         const auto coeff_val{*coeff->isInt()};
-        const auto scaled_l{-(l - coeff * x) * arith::mkConst(flcm / mp::abs(coeff_val))};
+        const auto scaled_l {-(l - coeff * x) * arith::mkConst(flcm / mp::abs(coeff_val))};
         scaled_lb.insert(scaled_l);
     }
     for (const auto &u : ub) {
         const auto coeff{*u->coeff(x)};
         const auto coeff_val{*coeff->isInt()};
-        const auto scaled_u{(u - coeff * x) * arith::mkConst(flcm / mp::abs(coeff_val))};
+        const auto scaled_u {(u - coeff * x) * arith::mkConst(flcm / mp::abs(coeff_val))};
         scaled_ub.insert(scaled_u);
     }
     for (const auto &d : divs) {
@@ -86,13 +86,13 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     for (const auto &d : scaled_divs) {
         mlcm = mp::lcm(mlcm, d.modulo);
     }
-    Arith::Expr substitute{arith::mkConst(0)};
+    Arith::Expr substitute {arith::mkConst(0)};
     if (upper) {
         auto closest_upper{*scaled_ub.begin()};
         auto min_val{closest_upper->eval(model.get<Arith>())};
         for (const auto &u : scaled_ub) {
             const auto val{u->eval(model.get<Arith>())};
-            if (val < min_val || (val == min_val && mbp::break_tie(closest_upper, u))) {
+            if (val < min_val || (val == min_val && closest_upper->isRational() && !u->isRational()) || (val == min_val && u < closest_upper)) {
                 closest_upper = u;
                 min_val = val;
             }
@@ -105,7 +105,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
         auto max_val{closest_lower->eval(model.get<Arith>())};
         for (const auto &l : scaled_lb) {
             const auto val{l->eval(model.get<Arith>())};
-            if (val > max_val || (val == max_val && mbp::break_tie(closest_lower, l))) {
+            if (val > max_val || (val == max_val && closest_lower->isRational() && !l->isRational()) || (val == max_val && l < closest_lower)) {
                 closest_lower = l;
                 max_val = val;
             }
