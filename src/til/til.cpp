@@ -808,11 +808,9 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
 }
 
 void TIL::add_blocking_clauses() {
-    const auto s1 {get_subs(depth, 1)};
-    const auto s2 {get_subs(depth, 2)};
+    const auto s {get_subs(depth, 1)};
     for (const auto &[id, b] : projections) {
-        solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
-        solver->add(s2(!b));
+        solver->add(s(!b) || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id))));
     }
     const auto it {blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
