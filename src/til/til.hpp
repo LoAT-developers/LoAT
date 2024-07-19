@@ -68,9 +68,11 @@ private:
     std::vector<std::vector<Subs>> subs {};
     std::vector<TraceElem> trace {};
     Model model;
-    std::vector<std::pair<Int, Bools::Expr>> blocked {};
-    std::vector<std::pair<Int, Bools::Expr>> projections {};
+    linked_hash_map<Int, Bools::Expr> blocked {};
+    linked_hash_map<Int, Bools::Expr> projections {};
     std::unordered_map<Int, Bools::Expr> blocked_per_step {};
+    std::unordered_map<Int, std::unordered_set<Int>> dependencies {};
+    linked_hash_set<Bools::Expr> predicates {};
     VarSet vars {};
     VarSet pre_vars {};
     Int last_orig_clause;
@@ -107,6 +109,7 @@ private:
     Bools::Expr recurrence_analysis(const Bools::Expr loop, const Model &model);
     Bools::Expr compute_transition_invariant(const Bools::Expr pre, const Bools::Expr loop, const Bools::Expr post, Model model);
     void handle_loop(const Range &range);
+    bool refine();
     void unknown();
     void build_trace();
     const Subs& get_subs(const unsigned start, const unsigned steps);

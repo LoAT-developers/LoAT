@@ -126,7 +126,7 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
     ++next_id;
     const auto encoded {encode_transition(accel, id)};
     rule_map.left.insert(rule_map_t::left_value_type(id, encoded));
-    blocked.emplace_back(id, accel);
+    blocked.emplace(id, accel);
     step = step || encoded;
     return id;
 }
@@ -671,18 +671,30 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
 }
 
 Bools::Expr TIL::compute_transition_invariant(const Bools::Expr pre_ctx, const Bools::Expr loop, const Bools::Expr post_ctx, Model model) {
-    const auto pre{mbp_impl(loop, model, [](const auto &x) {
+    BoolExprSet pre_predicates {};
+    BoolExprSet post_predicates {};
+    for (const auto &pre: predicates) {
+        if (model.eval<Bools>(pre)) {
+            pre_predicates.insert(pre);
+        }
+        const auto post {pre_to_post(pre)};
+        if (model.eval<Bools>(post)) {
+            post_predicates.insert(post);
+        }
+    }
+    const auto l {bools::mkAnd(pre_predicates) && loop && bools::mkAnd(post_predicates)};
+    const auto pre{mbp_impl(l, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
     if (Config::Analysis::log) {
         std::cout << "pre_ctx: " << pre_ctx << std::endl;
         std::cout << "pre: " << pre << std::endl;
     }
-    auto step{recurrence_analysis(pre_ctx && loop && post_ctx, model)};
+    auto step{recurrence_analysis(pre_ctx && l && post_ctx, model)};
     if (Config::Analysis::log) {
         std::cout << "recurrence analysis: " << step << std::endl;
     }
-    const auto post{mbp_impl(loop, model, [](const auto &x) {
+    const auto post{mbp_impl(l, model, [](const auto &x) {
         return !theory::isPostVar(x);
     })};
     auto res {pre && step && post};
@@ -758,8 +770,15 @@ void TIL::handle_loop(const Range &range) {
         return x == Var(n);
     })};
     const auto id{add_learned_clause(ti)};
+    std::unordered_set<Int> deps;
+    for (int i = range.start(); i <= range.end(); ++i) {
+        if (trace[i].id > last_orig_clause) {
+            deps.insert(trace[i].id);
+        }
+    }
+    dependencies.emplace(id, deps);
     if (range.length() == 1) {
-        projections.emplace_back(id, projected);
+        projections.emplace(id, projected);
     } else {
         add_blocking_clause(range, id, projected);
     }
@@ -940,7 +959,7 @@ bool TIL::setup() {
         const auto encoded {encode_transition(trans, next_id)};
         rule_map.left.insert(rule_map_t::left_value_type(next_id, encoded));
         steps.push_back(encoded);
-        blocked.emplace_back(next_id, trans);
+        blocked.emplace(next_id, trans);
         ++next_id;
     }
     last_orig_clause = next_id - 1;
@@ -957,6 +976,160 @@ bool TIL::setup() {
         solver->pop();
     }
     return true;
+}
+
+bool TIL::refine() {
+    if (Config::Analysis::log) {
+        std::cout << "refinement..." << std::endl;
+    }
+    auto success {false};
+    std::stack<Int> do_refine;
+    for (int i = 0; i < trace.size(); ++i) {
+        const auto frame {trace[i]};
+        if (frame.id > last_orig_clause) {
+            do_refine.push(frame.id);
+            auto init {t.init()};
+            init = model.syntacticImplicant(init);
+            init = mbp_impl(init, model, theory::isTempVar);
+            if (i > 0) {
+                auto p{specialize(Range::from_interval(0, i - 1), theory::isTempVar)};
+                init = init && p.first;
+                init = mbp_impl(init, p.second, [](const auto &x) {
+                    return !theory::isProgVar(x);
+                });
+            }
+            for (const auto &lit: init->lits()) {
+                std::visit(
+                    Overload{
+                        [&](const Arith::Lit &l) {
+                            std::vector<Arith::Lit> preds;
+                            if (l->isLinear()) {
+                                if (l->isEq()) {
+                                    // preds.push_back(arith::mkLeq(l->lhs(), arith::mkConst(0)));
+                                    // preds.push_back(arith::mkGeq(l->lhs(), arith::mkConst(0)));
+                                } else if (l->isNeq()) {
+                                    // preds.push_back(arith::mkLt(l->lhs(), arith::mkConst(0)));
+                                    // preds.push_back(arith::mkGt(l->lhs(), arith::mkConst(0)));
+                                } else {
+                                    preds.push_back(l);
+                                }
+                            } else {
+                                preds.push_back(l);
+                            }
+                            for (const auto &lit : preds) {
+                                const auto p{bools::mkLit(lit)};
+                                if (predicates.insert(p).second) {
+                                    if (Config::Analysis::log) {
+                                        std::cout << "found new predicate " << p << std::endl;
+                                    }
+                                    success = true;
+                                }
+                            }
+                        },
+                        [&](const auto &l) {
+                            const auto p{bools::mkLit(lit)};
+                            if (predicates.insert(p).second) {
+                                if (Config::Analysis::log) {
+                                    std::cout << "found new predicate " << p << std::endl;
+                                }
+                                success = true;
+                            }
+                        }},
+                    lit);
+            }
+            auto m {model.composeBackwards(get_subs(trace.size(), 1))};
+            auto err {t.err()};
+            err = m.syntacticImplicant(err);
+            err = mbp_impl(err, m, theory::isTempVar);
+            if (i < trace.size() - 1) {
+                auto p{specialize(Range::from_interval(i + 1, trace.size() - 1), theory::isTempVar)};
+                err = p.first && pre_to_post(err);
+                err = mbp_impl(err, p.second, [](const auto &x) {
+                    return !theory::isPostVar(x);
+                });
+                err = post_to_pre(err);
+            }
+            for (const auto &lit: err->lits()) {
+                std::visit(
+                    Overload{
+                        [&](const Arith::Lit &l) {
+                            if (l->isLinear()) {
+                                std::vector<Arith::Lit> preds;
+                                if (l->isEq()) {
+                                    // preds.push_back(arith::mkLt(l->lhs(), arith::mkConst(0)));
+                                    // preds.push_back(arith::mkGt(l->lhs(), arith::mkConst(0)));
+                                } else if (l->isNeq()) {
+                                    // preds.push_back(arith::mkEq(l->lhs(), arith::mkConst(0)));
+                                } else {
+                                    preds.push_back(arith::mkLeq(l->lhs(), arith::mkConst(0)));
+                                }
+                                for (const auto &lit : preds) {
+                                    const auto p{bools::mkLit(lit)};
+                                    if (predicates.insert(p).second) {
+                                        if (Config::Analysis::log) {
+                                            std::cout << "found new predicate " << p << std::endl;
+                                        }
+                                        success = true;
+                                    }
+                                }
+                            }
+                        },
+                        [&](const auto &l) {
+                            const auto p{!bools::mkLit(lit)};
+                            if (predicates.insert(p).second) {
+                                if (Config::Analysis::log) {
+                                    std::cout << "found new predicate " << p << std::endl;
+                                }
+                                success = true;
+                            }
+                        }},
+                    lit);
+            }
+        }
+    }
+    if (success) {
+        while (depth > 0) {
+            pop();
+        }
+        // while (!do_refine.empty()) {
+        //     const auto current {do_refine.top()};
+        //     do_refine.pop();
+        //     const auto it {dependencies.find(current)};
+        //     if (it != dependencies.end()) {
+        //         for (const auto &dep: dependencies.at(current)) {
+        //             do_refine.push(dep);
+        //         }
+        //         blocked.erase(current);
+        //         projections.erase(current);
+        //         dependencies.erase(current);
+        //         rule_map.left.erase(current);
+        //         if (Config::Analysis::log) {
+        //             std::cout << "removed learned transition " << current << std::endl;
+        //         }
+        //     }
+        // }
+        std::vector<Int> erase;
+        for (const auto &[id,_]: rule_map.left) {
+            if (id > last_orig_clause) {
+                erase.push_back(id);
+            }
+        }
+        for (const auto &id: erase) {
+            rule_map.left.erase(id);
+        }
+        dependencies.clear();
+        blocked = {};
+        projections = {};
+        blocked_per_step.clear();
+        std::vector<Bools::Expr> steps;
+        for (const auto &[_,t]: rule_map) {
+            steps.emplace_back(t);
+        }
+        step = bools::mkOr(steps);
+    } else if (Config::Analysis::log) {
+        std::cout << "refinement failed" << std::endl;
+    }
+    return success;
 }
 
 std::optional<SmtResult> TIL::do_step() {
@@ -980,6 +1153,10 @@ std::optional<SmtResult> TIL::do_step() {
         switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
+            solver->pop();
+            if (refine()) {
+                break;
+            }
             return SmtResult::Unknown;
         case SmtResult::Unknown:
             std::cerr << "unknown from SMT solver" << std::endl;
