@@ -46,34 +46,52 @@ bool Model::contains(const Var &var) const {
         });
 }
 
-void syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
-    if (e->isAnd() || e->isOr()) {
+bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
+    if (e->isAnd()) {
+        BoolExprSet sub;
         for (const auto &c: e->getChildren()) {
-            syntacticImplicant(c, m, res);
+            if (!syntacticImplicant(c, m, sub)) {
+                return false;
+            }
         }
+        res.insert(sub.begin(), sub.end());
+        return true;
+    } else if (e->isAnd() || e->isOr()) {
+        for (const auto &c: e->getChildren()) {
+            if (syntacticImplicant(c, m, res)) {
+                return true;
+            }
+        }
+        return false;
     } else {
         if (const auto lit = e->getTheoryLit()) {
-            std::visit(
+            return std::visit(
                 Overload{
                     [&](const Arith::Lit &l) {
                         if (l->isNeq()) {
                             const auto lt{arith::mkLt(l->lhs(), arith::mkConst(0))};
                             if (m.eval(lt)) {
                                 res.insert(bools::mkLit(lt));
+                                return true;
                             } else {
                                 const auto gt{arith::mkGt(l->lhs(), arith::mkConst(0))};
                                 if (m.eval(gt)) {
                                     res.insert(bools::mkLit(gt));
+                                    return true;
                                 }
                             }
                         } else if (m.eval(l)) {
                             res.insert(e);
+                            return true;
                         }
+                        return false;
                     },
                     [&](const auto &l) {
                         if (m.eval(l)) {
                             res.insert(e);
+                            return true;
                         }
+                        return false;
                     }},
                 *lit);
         } else {
