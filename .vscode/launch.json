@@ -13,7 +13,6 @@
                 "--format", "horn",
                 "--mode", "safety",
                 "--engine", "til",
-                "--smt", "swine",
                 "--log", "--proof-level", "100",
                 "${workspaceFolder}/test.smt2"
             ],
