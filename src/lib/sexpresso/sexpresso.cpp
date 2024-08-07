@@ -26,10 +26,14 @@ namespace sexpresso {
     Sexp::Sexp(std::string const& strval) {
         this->kind = SexpValueKind::STRING;
         this->value.str = escape(strval);
+        this->count = 1;
     }
     Sexp::Sexp(std::vector<Sexp> const& sexpval) {
         this->kind = SexpValueKind::SEXP;
         this->value.sexp = sexpval;
+        for (const auto &x: sexpval) {
+            count += x.count;
+        }
     }
 
     auto Sexp::addChild(Sexp sexp) -> void {
@@ -38,6 +42,7 @@ namespace sexpresso {
             this->value.sexp.emplace_back(Sexp{this->value.str});
         }
         this->value.sexp.push_back(std::move(sexp));
+        count += sexp.count;
     }
 
     auto Sexp::addChild(std::string str) -> void {
@@ -188,30 +193,53 @@ namespace sexpresso {
         return ('"' + escape(s) + '"');
     }
 
-    static auto toStringImpl(Sexp const& sexp, std::ostringstream& ostream) -> void {
-        switch(sexp.kind) {
-            case SexpValueKind::STRING:
-                ostream << stringValToString(sexp.value.str);
-                break;
-            case SexpValueKind::SEXP:
-                switch(sexp.value.sexp.size()) {
-                    case 0:
-                        ostream << "()";
-                        break;
-                    case 1:
-                        ostream << '(';
-                        toStringImpl(sexp.value.sexp[0], ostream);
-                        ostream <<  ')';
-                        break;
-                    default:
-                        ostream << '(';
-                        for(auto i = sexp.value.sexp.begin(); i != sexp.value.sexp.end(); ++i) {
-                            toStringImpl(*i, ostream);
-                            if(i != sexp.value.sexp.end()-1) ostream << ' ';
-                        }
-                        ostream << ')';
+    static auto toStringImpl(Sexp const &sexp, std::ostringstream &ostream, unsigned indent, bool freshline) -> bool {
+        switch (sexp.kind) {
+        case SexpValueKind::STRING:
+            ostream << stringValToString(sexp.value.str);
+            return false;
+        case SexpValueKind::SEXP:
+            if (sexp.count >= 15) {
+                if (!freshline) {
+                    ostream << '\n';
+                    for (unsigned i = 0; i < indent; ++i) {
+                        ostream << ' ';
+                    }
                 }
+                indent += 2;
+                ostream << '(';
+                auto i = sexp.value.sexp.begin();
+                freshline = toStringImpl(*i, ostream, indent, false);
+                for (++i; i != sexp.value.sexp.end(); ++i) {
+                    if (!freshline) {
+                        ostream << '\n';
+                        for (unsigned i = 0; i < indent; ++i) {
+                            ostream << ' ';
+                        }
+                    }
+                    freshline = toStringImpl(*i, ostream, indent, true);
+                }
+                ostream << ')';
+                indent -= 2;
+                ostream << '\n';
+                for (unsigned i = 0; i < indent; ++i) {
+                    ostream << ' ';
+                }
+                return true;
+            } else {
+                ostream << '(';
+                auto freshline = false;
+                for (auto i = sexp.value.sexp.begin(); i != sexp.value.sexp.end(); ++i) {
+                    freshline = toStringImpl(*i, ostream, indent + 2, freshline);
+                    if (!freshline && i != sexp.value.sexp.end() - 1) {
+                        ostream << ' ';
+                    }
+                }
+                ostream << ')';
+                return false;
+            }
         }
+        return false;
     }
 
     auto Sexp::toString() const -> std::string {
@@ -223,8 +251,8 @@ namespace sexpresso {
                 break;
             case SexpValueKind::SEXP:
                 for(auto i = this->value.sexp.begin(); i != this->value.sexp.end(); ++i) {
-                    toStringImpl(*i, ostream);
-                    if(i != this->value.sexp.end()-1) ostream << ' ';
+                    const auto freshline = toStringImpl(*i, ostream, 0, true);
+                    if(!freshline && i != this->value.sexp.end()-1) ostream << '\n';
                 }
         }
         return ostream.str();

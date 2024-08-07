@@ -5,6 +5,7 @@
 
 #include "notnull.hpp"
 #include "conshash.hpp"
+#include "sexpresso.hpp"
 
 class BoolVar;
 
@@ -59,6 +60,8 @@ public:
     bool isPostVar() const;
 
     std::size_t hash() const;
+
+    sexpresso::Sexp to_smtlib() const;
 
 };
 

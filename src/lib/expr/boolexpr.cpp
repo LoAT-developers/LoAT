@@ -117,6 +117,22 @@ const Bools::Expr BoolExpr::mkLit(const Lit &lit) {
     }
 }
 
+sexpresso::Sexp BoolExpr::to_smtlib() const {
+    if (const auto lit {getTheoryLit()}) {
+        return theory::to_smtlib(*lit);
+    }
+    sexpresso::Sexp res;
+    if (isAnd()) {
+        res = sexpresso::Sexp("and");
+    } else {
+        res = sexpresso::Sexp("or");
+    }
+    for (const auto &c: getChildren()) {
+        res.addChild(c->to_smtlib());
+    }
+    return res;
+}
+
 linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var n) const {
     linked_hash_set<Bound> bounds;
     getBounds(n, bounds);

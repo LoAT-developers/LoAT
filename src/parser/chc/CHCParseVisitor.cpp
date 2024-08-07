@@ -19,7 +19,7 @@ using lit_type = Res<Bools::Expr>;
 using assert_type = Clause;
 using query_type = Clause;
 using symbol_type = std::string;
-using tail_type = std::pair<FunApp, Bools::Expr>;
+using tail_type = std::pair<std::optional<FunApp>, Bools::Expr>;
 using head_type = FunApp;
 using var_or_atom_type = std::variant<Bools::Var, FunApp>;
 using boolop_type = BoolOp;
@@ -28,97 +28,20 @@ using sort_type = Sort;
 template<class T>
 Res<T>::Res(const T &t): t(t) {}
 
-LocationIdx CHCParseVisitor::loc(const std::string &name) {
-    auto it = locations.find(name);
-    if (it == locations.end()) {
-        auto idx = its->addNamedLocation(name);
-        locations[name] = idx;
-        return idx;
-    } else {
-        return it->second;
-    }
-}
-
 antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
-    its->setInitialLocation(its->addNamedLocation("LoAT_init"));
     for (const auto &c: ctx->fun_decl()) {
         visit(c);
     }
     std::vector<Clause> clauses;
     for (const auto &c: ctx->chc_assert()) {
-        clauses.push_back(any_cast<assert_type>(visit(c)));
+        visit(c);
+        chcs.add_clause(current_clause);
     }
     for (const auto &c: ctx->chc_query()) {
-        clauses.push_back(any_cast<query_type>(visit(c)));
+        visit(c);
+        chcs.add_clause(current_clause);
     }
-    std::vector<Arith::Var> vars;
-    std::vector<Bools::Var> bvars;
-    for (unsigned i = 0; i < max_int_arity; ++i) {
-        vars.emplace_back(ArithVar::nextProgVar());
-    }
-    for (unsigned i = 0; i < max_bool_arity; ++i) {
-        bvars.emplace_back(BoolVar::nextProgVar());
-    }
-    for (const Clause &c: clauses) {
-        const auto disjuncts = c.guard->isOr() ? c.guard->getChildren() : BoolExprSet{c.guard};
-        for (const auto &g: disjuncts) {
-            Subs ren;
-            // replace the arguments of the body predicate with the corresponding program variables
-            unsigned bool_arg {0};
-            unsigned int_arg {0};
-            for (const auto &x: c.lhs.args) {
-                std::visit(
-                    Overload{[&](const Arith::Var x) {
-                                ren.put<Arith>(x, vars[int_arg]);
-                                ++int_arg;
-                            },
-                            [&](const Bools::Var x) {
-                                ren.put<Bools>(x, bools::mkLit(bools::mk(bvars[bool_arg])));
-                                ++bool_arg;
-                            }}
-                    , x);
-            }
-            VarSet cVars;
-            for (const auto &var: c.rhs.args) {
-                cVars.insert(var);
-            }
-            g->collectVars(cVars);
-            // replace all other variables from the clause with temporary variables
-            for (const auto &x: cVars) {
-                if (!ren.contains(x)) {
-                    std::visit(
-                        Overload{[&](const auto var) {
-                            const auto th {theory::theory(var)};
-                            ren.put<decltype(th)>(var, th.varToExpr(var->next()));
-                        }}, x);
-                }
-            }
-            bool_arg = 0;
-            int_arg = 0;
-            Subs up;
-            for (const auto &arg: c.rhs.args) {
-                std::visit(
-                    Overload{[&](const Arith::Var var) {
-                                up.put<Arith>(vars[int_arg], ren.get<Arith>(var));
-                                ++int_arg;
-                            },
-                            [&](const Bools::Var var) {
-                                up.put<Bools>(bvars[bool_arg], ren.get<Bools>(var));
-                                ++bool_arg;
-                            }}, arg);
-            }
-            for (unsigned i = int_arg; i < max_int_arity; ++i) {
-                up.put<Arith>(vars[i], ArithVar::next()->toExpr());
-            }
-            for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
-                up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
-            }
-            up.put<Arith>(its->getLocVar(), arith::mkConst(c.rhs.loc));
-            const auto guard {ren(g) && theory::mkEq(its->getLocVar(), arith::mkConst(c.lhs.loc))};
-            its->addRule(Rule(guard, up), c.lhs.loc);
-        }
-    }
-    return its;
+    return chcs;
 }
 
 std::string unescape(std::string name) {
@@ -130,31 +53,15 @@ std::string unescape(std::string name) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitFun_decl(CHCParser::Fun_declContext *ctx) {
-    unsigned long int_arity {0};
-    unsigned long bool_arity {0};
-    for (const auto &s: ctx->sort()) {
-        switch (std::any_cast<sort_type>(visit(s))) {
-        case IntType:
-            ++int_arity;
-            break;
-        case BoolType:
-            ++bool_arity;
-            break;
-        }
-    }
-    max_int_arity = std::max(max_int_arity, int_arity);
-    max_bool_arity = std::max(max_bool_arity, bool_arity);
     const auto name = any_cast<symbol_type>(visit(ctx->symbol()));
-    const LocationIdx idx = its->addNamedLocation(name);
-    locations[name] = idx;
-    return idx;
+    return name;
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert(CHCParser::Chc_assertContext *ctx) {
+    current_clause = Clause();
     visit(ctx->chc_assert_head());
-    const auto res = visit(ctx->chc_assert_body());
-    vars.clear();
-    return res;
+    visit(ctx->chc_assert_body());
+    return {};
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headContext *ctx) {
@@ -165,9 +72,11 @@ antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headCo
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert_body(CHCParser::Chc_assert_bodyContext *ctx) {
-    const auto lhs = any_cast<tail_type>(visit(ctx->chc_tail()));
-    const auto rhs = any_cast<head_type>(visit(ctx->chc_head()));
-    return Clause(lhs.first, rhs, lhs.second);
+    const auto [premise, constraint] {any_cast<tail_type>(visit(ctx->chc_tail()))};
+    current_clause.premise = premise;
+    current_clause.constraint = constraint;
+    current_clause.conclusion = any_cast<head_type>(visit(ctx->chc_head()));
+    return {};
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_head(CHCParser::Chc_headContext *ctx) {
@@ -198,16 +107,18 @@ antlrcpp::Any CHCParseVisitor::visitChc_tail(CHCParser::Chc_tailContext *ctx) {
                 }
             }, v);
     }
-    return std::pair(lhs.value_or(FunApp(its->getInitialLocation(), {})), bools::mkAnd(guards));
+    return std::pair(lhs, bools::mkAnd(guards));
 }
 
 antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) {
+    current_clause = Clause();
     for (const auto &c: ctx->var_decl()) {
         visit(c);
     }
-    const auto lhs = any_cast<tail_type>(visit(ctx->chc_tail()));
-    vars.clear();
-    return Clause(lhs.first, FunApp(its->getSink(), {}), lhs.second);
+    const auto [premise, constraint] {any_cast<tail_type>(visit(ctx->chc_tail()))};
+    current_clause.premise = premise;
+    current_clause.constraint = constraint;
+    return {};
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
@@ -218,21 +129,13 @@ antlrcpp::Any CHCParseVisitor::visitVar_decl(CHCParser::Var_declContext *ctx) {
 }
 
 antlrcpp::Any CHCParseVisitor::visitU_pred_atom(CHCParser::U_pred_atomContext *ctx) {
-    const auto name = any_cast<symbol_type>(visit(ctx->symbol()));
-    const std::optional<LocationIdx> loc = its->getLocationIdx(name);
-    if (!loc) {
-        throw std::invalid_argument("undeclared function symbol " + name);
-    }
+    const auto pred {any_cast<symbol_type>(visit(ctx->symbol()))};
     std::vector<Var> args;
-    std::unordered_set<Var> arg_set;
     for (const auto &c: ctx->var()) {
         const auto arg {any_cast<Var>(visit(c))};
         args.push_back(arg);
-        if (!arg_set.insert(arg).second) {
-            throw std::invalid_argument("arguments of predicate are not distinct");
-        }
     }
-    return FunApp(*loc, args);
+    return FunApp(pred, args);
 }
 
 antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) {
@@ -298,8 +201,8 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
 }
 
 Var CHCParseVisitor::var(const std::string &name, Sort sort) {
-    const auto it = vars.find(name);
-    if (it == vars.end()) {
+    const auto it = current_clause.vars.find(name);
+    if (it == current_clause.vars.end()) {
         std::optional<Var> var;
         switch (sort) {
         case IntType: {
@@ -312,7 +215,7 @@ Var CHCParseVisitor::var(const std::string &name, Sort sort) {
         }
         default: throw std::invalid_argument("unsupported type");
         }
-        vars.emplace(name, *var);
+        current_clause.vars.emplace(name, *var);
         return *var;
     } else {
         return it->second;
@@ -609,11 +512,12 @@ antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
 
 antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *ctx) {
     if (ctx->var()) {
-        const std::optional<LocationIdx> loc = its->getLocationIdx(unescape(ctx->getText()));
-        if (loc) {
-            return std::variant<Bools::Var, FunApp>(FunApp(*loc, {}));
+        const auto name {unescape(ctx->getText())};
+        const auto it {current_clause.vars.find(name)};
+        if (it == current_clause.vars.end()) {
+            return std::variant<Bools::Var, FunApp>(FunApp(name, {}));
         } else {
-            return std::variant<Bools::Var, FunApp>(std::get<Bools::Var>(any_cast<Var>(visit(ctx->var()))));
+            return std::variant<Bools::Var, FunApp>(std::get<Bools::Var>(it->second));
         }
     } else {
         const auto f = any_cast<pred_type>(visit(ctx->u_pred_atom()));
@@ -622,9 +526,9 @@ antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *c
 }
 
 antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
-    const std::string name = unescape(ctx->getText());
-    const auto res = vars.find(name);
-    if (res != vars.end()) {
+    const std::string name {unescape(ctx->getText())};
+    const auto res {current_clause.vars.find(name)};
+    if (res != current_clause.vars.end()) {
         return res->second;
     }
     throw std::invalid_argument("unknown variable " + name);

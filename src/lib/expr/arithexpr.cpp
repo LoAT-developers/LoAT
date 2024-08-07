@@ -751,6 +751,65 @@ ArithExprPtr ArithExpr::toPtr() const {
     return cpp::assume_not_null(shared_from_this());
 }
 
+sexpresso::Sexp ArithExpr::to_smtlib() const {
+    return apply<sexpresso::Sexp>(
+        [](const ArithConstPtr t) {
+            if (const auto val {t->isInt()}) {
+                if (*val < 0) {
+                    sexpresso::Sexp res{"-"};
+                    const Int neg {-*val};
+                    res.addChild(neg.str());
+                    return res;
+                } else {
+                    return sexpresso::Sexp(val->str());
+                }
+            } else {
+                sexpresso::Sexp div{"/"};
+                const Int num {mp::abs(mp::numerator(**t))};
+                const Int denom {mp::abs(mp::denominator(**t))};
+                div.addChild(num.str());
+                div.addChild(denom.str());
+                if (**t >= 0) {
+                    return div;
+                } else {
+                    sexpresso::Sexp res{"-"};
+                    res.addChild(div);
+                    return res;
+                }
+            }
+        },
+        [](const ArithVarPtr x) {
+            return x->to_smtlib();
+        },
+        [](const ArithAddPtr a) {
+            sexpresso::Sexp res{"+"};
+            for (const auto &arg: a->getArgs()) {
+                res.addChild(arg->to_smtlib());
+            }
+            return res;
+        },
+        [](const ArithMultPtr m) {
+            sexpresso::Sexp res{"*"};
+            for (const auto &arg: m->getArgs()) {
+                res.addChild(arg->to_smtlib());
+            }
+            return res;
+        },
+        [](const ArithModPtr m) {
+            sexpresso::Sexp res{"mod"};
+            res.addChild(m->getLhs()->to_smtlib());
+            res.addChild(m->getRhs()->to_smtlib());
+            return res;
+        },
+        [](const ArithExpPtr e) {
+            sexpresso::Sexp res{"exp"};
+            res.addChild(e->getBase()->to_smtlib());
+            res.addChild(e->getExponent()->to_smtlib());
+            return res;
+        }
+    );
+}
+
 std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
     using pair = std::pair<Rational, std::optional<ArithExprPtr>>;
     return apply<pair>(

@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "itsproblem.hpp"
+#include "chcproblem.hpp"
 
 namespace hornParser {
 
@@ -13,7 +13,7 @@ public:
      * @param path The file to load
      * @return The resulting ITSProblem (a FileError is thrown if parsing fails)
      */
-    static ITSPtr loadFromFile(const std::string &path);
+    static CHCProblem loadFromFile(const std::string &path);
 
 };
 

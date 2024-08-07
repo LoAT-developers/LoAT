@@ -17,25 +17,28 @@
 
 #include "main.hpp"
 
-#include "itsparser.hpp"
-#include "parser.hpp"
+#include "abmc.hpp"
+#include "accelerationproblem.hpp"
+#include "bmc.hpp"
 #include "chcparser.hpp"
+#include "chctoitsproblem.hpp"
+#include "chctosafetyproblem.hpp"
 #include "cintparser.hpp"
 #include "config.hpp"
-#include "proof.hpp"
-#include "version.hpp"
-#include "reachability.hpp"
-#include "til.hpp"
 #include "forwardbackwarddriver.hpp"
-#include "bmc.hpp"
-#include "abmc.hpp"
-#include "yices.hpp"
+#include "itsparser.hpp"
+#include "parser.hpp"
+#include "proof.hpp"
+#include "reachability.hpp"
 #include "recurrence.hpp"
-#include "accelerationproblem.hpp"
+#include "safetyproblem.hpp"
+#include "til.hpp"
+#include "version.hpp"
+#include "yices.hpp"
 
-#include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <chrono>
+#include <iostream>
 
 using namespace std;
 
@@ -73,10 +76,10 @@ void setBool(const char *str, bool &b) {
 }
 
 void parseFlags(int argc, char *argv[]) {
-    int arg=0;
+    int arg = 0;
 
     auto getNext = [&]() {
-        if (arg < argc-1) {
+        if (arg < argc - 1) {
             return argv[++arg];
         } else {
             cout << "Error: Argument missing for " << argv[arg] << endl;
@@ -85,27 +88,27 @@ void parseFlags(int argc, char *argv[]) {
     };
 
     while (++arg < argc) {
-        if (strcmp("--help",argv[arg]) == 0) {
+        if (strcmp("--help", argv[arg]) == 0) {
             printHelp(argv[0]);
             exit(1);
-        } else if (strcmp("--proof-level",argv[arg]) == 0) {
+        } else if (strcmp("--proof-level", argv[arg]) == 0) {
             int proofLevel = atoi(getNext());
             if (proofLevel < 0) {
                 cerr << "proof level must be non-negative, ignoring value " << proofLevel << endl;
             } else {
                 Proof::setProofLevel(proofLevel);
             }
-        } else if (strcmp("--plain",argv[arg]) == 0) {
+        } else if (strcmp("--plain", argv[arg]) == 0) {
             Config::Output::Colors = false;
             Proof::disableColors();
-        } else if (strcmp("--print_dep_graph",argv[arg]) == 0) {
+        } else if (strcmp("--print_dep_graph", argv[arg]) == 0) {
             Config::Output::PrintDependencyGraph = true;
         } else if (strcmp("--log", argv[arg]) == 0) {
             Config::Analysis::log = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
             bool found = false;
             std::string str = getNext();
-            for (const Config::Analysis::Mode mode: Config::Analysis::modes) {
+            for (const Config::Analysis::Mode mode : Config::Analysis::modes) {
                 if (boost::iequals(str, Config::Analysis::modeName(mode))) {
                     Config::Analysis::mode = mode;
                     found = true;
@@ -174,7 +177,7 @@ void parseFlags(int argc, char *argv[]) {
         } else if (strcmp("--abmc::blocking_clauses", argv[arg]) == 0) {
             setBool(getNext(), Config::ABMC::blocking_clauses);
         } else if (strcmp("--til::mode", argv[arg]) == 0) {
-            const auto str {getNext()};
+            const auto str{getNext()};
             if (boost::iequals("forward", str)) {
                 Config::til.mode = Config::TILConfig::Mode::Forward;
             } else if (boost::iequals("backward", str)) {
@@ -198,7 +201,7 @@ void parseFlags(int argc, char *argv[]) {
         } else if (strcmp("--til::context_sensitive", argv[arg]) == 0) {
             setBool(getNext(), Config::til.context_sensitive);
         } else if (strcmp("--til::mbp_kind", argv[arg]) == 0) {
-            const auto str {getNext()};
+            const auto str{getNext()};
             if (boost::iequals("lower_int", str)) {
                 Config::til.mbpKind = Config::TILConfig::MbpKind::LowerIntMbp;
             } else if (boost::iequals("upper_int", str)) {
@@ -239,8 +242,10 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    ITSPtr its;
-    const auto start {std::chrono::steady_clock::now()};
+    std::optional<ITSPtr> its{};
+    std::optional<CHCProblem> chcs{};
+    std::optional<SafetyProblem> sp{};
+    const auto start{std::chrono::steady_clock::now()};
     switch (Config::Input::format) {
     case Config::Input::Koat:
         its = parser::ITSParser::loadFromFile(filename);
@@ -249,7 +254,7 @@ int main(int argc, char *argv[]) {
         its = sexpressionparser::Parser::loadFromFile(filename);
         break;
     case Config::Input::Horn:
-        its = hornParser::HornParser::loadFromFile(filename);
+        chcs = hornParser::HornParser::loadFromFile(filename);
         break;
     case Config::Input::C:
         its = cintParser::CIntParser::loadFromFile(filename);
@@ -258,38 +263,47 @@ int main(int argc, char *argv[]) {
         std::cout << "Error: unknown format" << std::endl;
         exit(1);
     }
-    const auto end {std::chrono::steady_clock::now()};
+    const auto end{std::chrono::steady_clock::now()};
     if (Config::Analysis::log) {
         std::cout << "parsing took " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
     }
 
     yices::init();
+    if (chcs) {
+        switch (Config::Analysis::engine) {
+        case Config::Analysis::TIL:
+            sp = chc_to_safetyproblem(*chcs);
+            break;
+        default:
+            its = chcs_to_its(*chcs);
+            break;
+        }
+    }
     switch (Config::Analysis::engine) {
     case Config::Analysis::ADCL:
-        reachability::Reachability::analyze(*its);
+        reachability::Reachability::analyze(**its);
         break;
     case Config::Analysis::BMC:
-        BMC::analyze(*its);
+        BMC::analyze(**its);
         break;
     case Config::Analysis::ABMC:
-        ABMC::analyze(*its);
+        ABMC::analyze(**its);
         break;
     case Config::Analysis::TIL:
-        SafetyProblem f{*its};
         switch (Config::til.mode) {
-            case Config::TILConfig::Mode::Forward: {
-                TIL::analyze(f);
-                break;
-            }
-            case Config::TILConfig::Mode::Backward: {
-                auto b {f.reverse()};
-                TIL::analyze(b);
-                break;
-            }
-            case Config::TILConfig::Mode::Interleaved: {
-                ForwardBackwardDriver::analyze(f);
-                break;
-            }
+        case Config::TILConfig::Mode::Forward: {
+            TIL::analyze(*sp);
+            break;
+        }
+        case Config::TILConfig::Mode::Backward: {
+            auto b{sp->reverse()};
+            TIL::analyze(b);
+            break;
+        }
+        case Config::TILConfig::Mode::Interleaved: {
+            ForwardBackwardDriver::analyze(*sp);
+            break;
+        }
         }
         break;
     }

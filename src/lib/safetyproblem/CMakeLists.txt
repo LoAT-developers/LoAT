@@ -2,21 +2,18 @@ cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_CXX_STANDARD 20)
 
-project(loat_its CXX)
+project(loat_safetyproblem CXX)
 
 add_library(${PROJECT_NAME} OBJECT
-    export.cpp
-    export.hpp
-    itsproblem.cpp
-    itsproblem.hpp
-    dependencygraph.hpp
+    safetyproblem.hpp
+    safetyproblem.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
+  ${sexpresso_INCLUDE_DIRS}
   ${loat_util_INCLUDE_DIRS}
   ${loat_container_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
-  ${loat_rule_simplification_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")

@@ -1,4 +1,5 @@
 #include "arithexpr.hpp"
+#include "sexpresso.hpp"
 
 #include <assert.h>
 
@@ -73,6 +74,10 @@ ArithVarPtr ArithVar::toPtr() const {
 
 ArithExprPtr ArithVar::toExpr() const {
     return cpp::assume_not_null(shared_from_this());
+}
+
+sexpresso::Sexp ArithVar::to_smtlib() const {
+    return sexpresso::Sexp(getName());
 }
 
 bool ArithVar::CacheEqual::operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept {

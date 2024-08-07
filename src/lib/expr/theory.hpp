@@ -56,6 +56,7 @@ Var next(const Var &var);
 Var postVar(const Var &var);
 Var progVar(const Var &var);
 Expr toExpr(const Var &var);
+sexpresso::Sexp to_smtlib(const Var &var);
 void collectVars(const Expr &expr, VarSet &vars);
 VarSet vars(const Expr &e);
 Bools::Expr mkEq(const Expr &e1, const Expr &e2);
@@ -72,6 +73,7 @@ bool isTriviallyTrue(const Lit &lit);
 bool isTriviallyFalse(const Lit &lit);
 Lit negate(const Lit &lit);
 size_t hash(const Lit &lit);
+sexpresso::Sexp to_smtlib(const Lit &l);
 void simplifyAnd(LitSet&);
 void simplifyOr(LitSet&);
 

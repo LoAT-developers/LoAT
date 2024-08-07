@@ -61,6 +61,7 @@ add_executable(${EXECUTABLE} "")
 add_subdirectory(src)
 
 target_include_directories(${EXECUTABLE} PRIVATE
+  ${sexpresso_INCLUDE_DIRS}
   ${loat_util_INCLUDE_DIRS}
   ${loat_container_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
@@ -70,7 +71,10 @@ target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_formula_simplification_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
   ${loat_acceleration_INCLUDE_DIRS}
-  ${loat_its_INCLUDE_DIRS}
+  ${loat_itsproblem_INCLUDE_DIRS}
+  ${loat_chcproblem_INCLUDE_DIRS}
+  ${loat_safetyproblem_INCLUDE_DIRS}
+  ${loat_transformations_INCLUDE_DIRS}
 )
 
 message(STATUS "Searching libraries")
@@ -124,6 +128,7 @@ message(STATUS "gmp: ${GMP}")
 # message(STATUS "mpfr: ${MPFR}")
 
 target_link_libraries(${EXECUTABLE}
+  $<TARGET_OBJECTS:sexpresso>
   $<TARGET_OBJECTS:loat_util>
   $<TARGET_OBJECTS:loat_expr>
   # $<TARGET_OBJECTS:loat_crab>
@@ -132,7 +137,10 @@ target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:loat_formula_simplification>
   $<TARGET_OBJECTS:loat_recurrence>
   $<TARGET_OBJECTS:loat_acceleration>
-  $<TARGET_OBJECTS:loat_its>
+  $<TARGET_OBJECTS:loat_itsproblem>
+  $<TARGET_OBJECTS:loat_chcproblem>
+  $<TARGET_OBJECTS:loat_safetyproblem>
+  $<TARGET_OBJECTS:loat_transformations>
   # ${CRAB}
   # ${OPTPOLY}
   # ${OPTOCT}

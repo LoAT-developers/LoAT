@@ -32,6 +32,7 @@
 #include "string.hpp"
 #include "conshash.hpp"
 #include "notnull.hpp"
+#include "sexpresso.hpp"
 
 class ArithVar;
 class ArithExpr;
@@ -243,6 +244,8 @@ public:
 
     ArithExprPtr toPtr() const;
 
+    sexpresso::Sexp to_smtlib() const;
+
     /**
      * @brief exponentiation
      */
@@ -324,6 +327,7 @@ public:
     bool isProgVar() const;
     bool isPostVar() const;
     size_t hash() const;
+    sexpresso::Sexp to_smtlib() const;
 
 };
 

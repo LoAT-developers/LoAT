@@ -1,46 +1,15 @@
 #include "safetyproblem.hpp"
-
-Bools::Expr rule_to_formula(const Rule &r, const VarSet &prog_vars) {
-    std::vector<Bools::Expr> conjuncts;
-    conjuncts.push_back(r.getGuard());
-    for (const auto &x: prog_vars) {
-        conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), r.getUpdate().get(x)));
-    }
-    return bools::mkAnd(conjuncts);
-}
+#include "subs.hpp"
 
 SafetyProblem::SafetyProblem() {}
 
-SafetyProblem::SafetyProblem(const ITSProblem &its) {
-    const auto vars {its.getVars()};
-    for (const auto &x: vars) {
-        if (theory::isProgVar(x)) {
-            pre_variables.insert(x);
-            post_variables.insert(theory::postVar(x));
-        } else if (theory::isPostVar(x)) {
-            pre_variables.insert(theory::progVar(x));
-            post_variables.insert(x);
-        }
-    }
-    Subs init_map;
-    for (const auto &y: post_variables) {
-        const auto x {theory::progVar(y)};
-        init_map.put(y, theory::toExpr(x));
-        init_map.put(x, theory::toExpr(theory::next(x)));
-    }
-    std::vector<Bools::Expr> init;
-    std::vector<Bools::Expr> err;
-    for (const auto &r: its.getAllTransitions()) {
-        if (its.isInitialTransition(&r)) {
-            init.emplace_back(init_map(rule_to_formula(r, pre_variables)));
-        } else if (its.isSinkTransition(&r)) {
-            err.emplace_back(r.getGuard());
-        } else {
-            transitions.emplace(rule_to_formula(r, pre_variables));
-        }
-    }
-    initial_states = bools::mkOr(init);
-    error_states = bools::mkOr(err);
+void SafetyProblem::add_pre_var(const Var &x) {
+    pre_variables.insert(x);
+}
+
+void SafetyProblem::add_post_var(const Var &x) {
+    post_variables.insert(x);
+
 }
 
 const linked_hash_set<Bools::Expr>& SafetyProblem::trans() const {
@@ -78,8 +47,16 @@ void SafetyProblem::replace_transition(const Bools::Expr &old_trans, const Bools
     transitions.insert(new_trans);
 }
 
+void SafetyProblem::add_transition(const Bools::Expr e) {
+    transitions.insert(e);
+}
+
 void SafetyProblem::set_init(const Bools::Expr e) {
     initial_states = e;
+}
+
+void SafetyProblem::set_err(const Bools::Expr e) {
+    error_states = e;
 }
 
 std::ostream& operator<<(std::ostream& s, const SafetyProblem& sp) {

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "theory.hpp"
-#include "itsproblem.hpp"
 
 class SafetyProblem {
 
@@ -13,7 +12,6 @@ class SafetyProblem {
 
 public:
 
-    SafetyProblem(const ITSProblem &its);
     SafetyProblem();
 
     const linked_hash_set<Bools::Expr> &trans() const;
@@ -23,7 +21,11 @@ public:
     VarSet vars() const;
     Bools::Expr init() const;
     Bools::Expr err() const;
+    void add_transition(const Bools::Expr e);
     void set_init(const Bools::Expr e);
+    void set_err(const Bools::Expr e);
+    void add_pre_var(const Var &x);
+    void add_post_var(const Var &x);
     SafetyProblem reverse() const;
 
 };

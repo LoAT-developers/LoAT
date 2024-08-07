@@ -190,20 +190,22 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void insertImpl(const Var &var) {
+    inline bool insertImpl(const Var &var) {
         if constexpr (I < variant_size) {
             if (var.index() == I) {
-                std::get<I>(t).insert(std::get<I>(var));
+                return std::get<I>(t).insert(std::get<I>(var)).second;
             } else {
-                insertImpl<I+1>(var);
+                return insertImpl<I+1>(var);
             }
+        } else {
+            return false;
         }
     }
 
 public:
 
-    void insert(const Var &var) {
-        insertImpl(var);
+    bool insert(const Var &var) {
+        return insertImpl(var);
     }
 
 private:

@@ -68,6 +68,7 @@ public:
     // Mutation for Locations
     LocationIdx addLocation();
     LocationIdx addNamedLocation(std::string name);
+    LocationIdx getOrAddLocation(const std::string &name);
 
     // Required for printing (see ITSExport)
     linked_hash_set<LocationIdx> getLocations() const;

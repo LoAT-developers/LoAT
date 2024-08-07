@@ -331,6 +331,25 @@ bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
     }
 }
 
+sexpresso::Sexp ArithLit::to_smtlib() const {
+    std::string op;
+    switch (kind) {
+    case Kind::Gt:
+        op = ">";
+        break;
+    case Kind::Eq:
+        op = "=";
+        break;
+    case Kind::Neq:
+        op = "distinct";
+        break;
+    }
+    sexpresso::Sexp res {op};
+    res.addChild(l->to_smtlib());
+    res.addChild("0");
+    return res;
+}
+
 void ArithLit::simplifyAnd(linked_hash_set<ArithLitPtr> &lits) {
     std::unordered_set<ArithLitPtr> remove;
     linked_hash_set<ArithLitPtr> add;

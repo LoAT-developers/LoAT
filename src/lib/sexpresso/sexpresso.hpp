@@ -7,8 +7,7 @@
  * adapted by: Florian Frohn, 2019
  */
 
-#ifndef LOAT_SEXPRESSO_H
-#define LOAT_SEXPRESSO_H
+#pragma once
 
 #include <vector>
 #include <string>
@@ -24,6 +23,7 @@ namespace sexpresso {
 		explicit Sexp(std::string const& strval);
 		explicit Sexp(std::vector<Sexp> const& sexpval);
         SexpValueKind kind {};
+		unsigned count {0};
         struct { std::vector<Sexp> sexp {}; std::string str {}; } value {};
 		auto addChild(Sexp sexp) -> void;
 		auto addChild(std::string str) -> void;
@@ -65,4 +65,3 @@ namespace sexpresso {
 	};
 }
 
-#endif //LOAT_SEXPRESSO_H

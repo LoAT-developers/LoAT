@@ -146,6 +146,14 @@ LocationIdx ITSProblem::addNamedLocation(std::string name) {
     return loc;
 }
 
+LocationIdx ITSProblem::getOrAddLocation(const std::string &name) {
+    if (const auto res {getLocationIdx(name)}) {
+        return *res;
+    } else {
+        return addNamedLocation(name);
+    }
+}
+
 linked_hash_set<LocationIdx> ITSProblem::getLocations() const {
     return locations;
 }

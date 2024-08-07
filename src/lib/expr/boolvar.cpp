@@ -66,6 +66,10 @@ std::size_t BoolVar::hash() const {
     return std::hash<int>{}(idx);
 }
 
+sexpresso::Sexp BoolVar::to_smtlib() const {
+    return sexpresso::Sexp(getName());
+}
+
 size_t hash_value(const BoolVar &x) {
     return x.hash();
 }

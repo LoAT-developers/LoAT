@@ -80,3 +80,12 @@ bool BoolLit::eval(const linked_hash_map<BoolVarPtr, bool> &model) const {
         return negated != b;
     }).value_or(false);
 }
+
+sexpresso::Sexp BoolLit::to_smtlib() const {
+    sexpresso::Sexp res;
+    if (negated) {
+        res.addChild("not");
+    }
+    res.addChild(var->to_smtlib());
+    return res;
+}
