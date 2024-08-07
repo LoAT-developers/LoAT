@@ -331,7 +331,7 @@ bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
     }
 }
 
-sexpresso::Sexp ArithLit::to_smtlib() const {
+sexpresso::Sexp ArithLit::to_smtlib(const std::function<std::string(const ArithVarPtr)> &var_map) const {
     std::string op;
     switch (kind) {
     case Kind::Gt:
@@ -345,7 +345,7 @@ sexpresso::Sexp ArithLit::to_smtlib() const {
         break;
     }
     sexpresso::Sexp res {op};
-    res.addChild(l->to_smtlib());
+    res.addChild(l->to_smtlib(var_map));
     res.addChild("0");
     return res;
 }

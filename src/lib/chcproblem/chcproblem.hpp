@@ -13,7 +13,7 @@ struct FunApp {
     FunApp(const std::string &pred, const std::vector<Var> &args);
 
     bool is_linear() const;
-    sexpresso::Sexp to_smtlib() const;
+    sexpresso::Sexp to_smtlib(const var_map &vars) const;
 
     template <ITheory T>
     unsigned max_arity() const {
@@ -27,17 +27,29 @@ struct FunApp {
     }
 };
 
-struct Clause {
-    std::unordered_map<std::string, Var> vars {};
+class Clause {
+
+private:
+    var_map vars {};
     std::optional<FunApp> premise {};
     Bools::Expr constraint {top()};
     std::optional<FunApp> conclusion {};
+
+public:
 
     bool is_fact() const;
     bool is_query() const;
     bool is_left_linear() const;
     bool is_right_linear() const;
     sexpresso::Sexp to_smtlib() const;
+    void add_var(const std::string &name, const Var &x);
+    const std::optional<FunApp> &get_premise() const;
+    const std::optional<FunApp> &get_conclusion() const;
+    void set_premise(const std::optional<FunApp> &premise);
+    void set_conclusion(const std::optional<FunApp> &conclusion);
+    void set_constraint(const Bools::Expr e);
+    Bools::Expr get_constraint() const;
+    const var_map &get_vars() const;
 
     template <ITheory T>
     unsigned max_arity() const {

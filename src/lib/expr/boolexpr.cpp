@@ -117,9 +117,9 @@ const Bools::Expr BoolExpr::mkLit(const Lit &lit) {
     }
 }
 
-sexpresso::Sexp BoolExpr::to_smtlib() const {
+sexpresso::Sexp BoolExpr::to_smtlib(const std::function<std::string(const Var &)> &var_map) const {
     if (const auto lit {getTheoryLit()}) {
-        return theory::to_smtlib(*lit);
+        return theory::to_smtlib(*lit, var_map);
     }
     sexpresso::Sexp res;
     if (isAnd()) {
@@ -128,7 +128,7 @@ sexpresso::Sexp BoolExpr::to_smtlib() const {
         res = sexpresso::Sexp("or");
     }
     for (const auto &c: getChildren()) {
-        res.addChild(c->to_smtlib());
+        res.addChild(c->to_smtlib(var_map));
     }
     return res;
 }

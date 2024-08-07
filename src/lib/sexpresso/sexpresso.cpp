@@ -22,11 +22,12 @@
 namespace sexpresso {
     Sexp::Sexp() {
         this->kind = SexpValueKind::SEXP;
+        this->count = 2; // for parantheses
     }
     Sexp::Sexp(std::string const& strval) {
         this->kind = SexpValueKind::STRING;
         this->value.str = escape(strval);
-        this->count = 1;
+        this->count = strval.size();
     }
     Sexp::Sexp(std::vector<Sexp> const& sexpval) {
         this->kind = SexpValueKind::SEXP;
@@ -34,6 +35,8 @@ namespace sexpresso {
         for (const auto &x: sexpval) {
             count += x.count;
         }
+        count += sexpval.size() - 1; // for whitespace
+        count += 2; // for parantheses
     }
 
     auto Sexp::addChild(Sexp sexp) -> void {
@@ -43,6 +46,7 @@ namespace sexpresso {
         }
         this->value.sexp.push_back(std::move(sexp));
         count += sexp.count;
+        ++count; // for whitespace
     }
 
     auto Sexp::addChild(std::string str) -> void {
@@ -199,7 +203,7 @@ namespace sexpresso {
             ostream << stringValToString(sexp.value.str);
             return false;
         case SexpValueKind::SEXP:
-            if (sexp.count >= 15) {
+            if (sexp.count > 80) {
                 if (!freshline) {
                     ostream << '\n';
                     for (unsigned i = 0; i < indent; ++i) {

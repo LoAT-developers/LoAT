@@ -7,7 +7,7 @@ FunApp linearize(const FunApp &f, Clause &c, std::vector<Bools::Expr> &constr) {
         if (!arg_set.insert(x)) {
             const auto next {theory::next(x)};
             args.push_back(next);
-            c.vars.emplace(theory::getName(next), next);
+            c.add_var(theory::getName(next), next);
             constr.push_back(theory::mkEq(theory::toExpr(x), theory::toExpr(next)));
         }
     }
@@ -16,14 +16,14 @@ FunApp linearize(const FunApp &f, Clause &c, std::vector<Bools::Expr> &constr) {
 
 Clause linearize(const Clause &c) {
     Clause res;
-    std::vector<Bools::Expr> constraints {c.constraint};
-    if (c.premise) {
-        res.premise = linearize(*c.premise, res, constraints);
+    std::vector<Bools::Expr> constraints {c.get_constraint()};
+    if (c.get_premise()) {
+        res.set_premise(linearize(*c.get_premise(), res, constraints));
     }
-    if (c.conclusion) {
-        res.conclusion = linearize(*c.conclusion, res, constraints);
+    if (c.get_conclusion()) {
+        res.set_conclusion(linearize(*c.get_conclusion(), res, constraints));
     }
-    res.constraint = bools::mkAnd(constraints);
+    res.set_constraint(bools::mkAnd(constraints));
     return res;
 }
 

@@ -54,12 +54,8 @@ Expr toExpr(const Var &var) {
     return TheTheory::varToExpr(var);
 }
 
-sexpresso::Sexp to_smtlib(const Var &var) {
-    return std::visit([](const auto x) {return x->to_smtlib();}, var);
-}
-
-sexpresso::Sexp to_smtlib(const Lit &l) {
-    return std::visit([](const auto x) {return x->to_smtlib();}, l);
+sexpresso::Sexp to_smtlib(const Lit &l, const std::function<std::string(const Var &)> &var_map) {
+    return std::visit([&](const auto x) {return x->to_smtlib(var_map);}, l);
 }
 
 void collectVars(const Expr &expr, VarSet &vars) {

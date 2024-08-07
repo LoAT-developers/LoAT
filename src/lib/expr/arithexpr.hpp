@@ -244,7 +244,7 @@ public:
 
     ArithExprPtr toPtr() const;
 
-    sexpresso::Sexp to_smtlib() const;
+    sexpresso::Sexp to_smtlib(const std::function<std::string(const ArithVarPtr)> &var_map) const;
 
     /**
      * @brief exponentiation

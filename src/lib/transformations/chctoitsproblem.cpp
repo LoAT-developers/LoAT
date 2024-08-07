@@ -17,14 +17,14 @@ ITSPtr chcs_to_its(CHCProblem chcs) {
         bvars.emplace_back(BoolVar::nextProgVar());
     }
     for (const Clause &c: chcs.get_clauses()) {
-        const auto disjuncts = c.constraint->isOr() ? c.constraint->getChildren() : BoolExprSet{c.constraint};
+        const auto disjuncts = c.get_constraint()->isOr() ? c.get_constraint()->getChildren() : BoolExprSet{c.get_constraint()};
         for (const auto &g: disjuncts) {
             Subs ren;
             // replace the arguments of the body predicate with the corresponding program variables
             unsigned bool_arg {0};
             unsigned int_arg {0};
-            if (c.premise) {
-                for (const auto &x: c.premise->args) {
+            if (c.get_premise()) {
+                for (const auto &x: c.get_premise()->args) {
                     std::visit(
                         Overload{
                             [&](const Arith::Var x) {
@@ -39,8 +39,8 @@ ITSPtr chcs_to_its(CHCProblem chcs) {
                 }
             }
             VarSet cVars;
-            if (c.conclusion) {
-                for (const auto &var: c.conclusion->args) {
+            if (c.get_conclusion()) {
+                for (const auto &var: c.get_conclusion()->args) {
                     cVars.insert(var);
                 }
             }
@@ -60,8 +60,8 @@ ITSPtr chcs_to_its(CHCProblem chcs) {
             bool_arg = 0;
             int_arg = 0;
             Subs up;
-            if (c.conclusion) {
-                for (const auto &arg: c.conclusion->args) {
+            if (c.get_conclusion()) {
+                for (const auto &arg: c.get_conclusion()->args) {
                     std::visit(
                         Overload{
                             [&](const Arith::Var var) {
@@ -81,8 +81,8 @@ ITSPtr chcs_to_its(CHCProblem chcs) {
             for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
                 up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
             }
-            const auto lhs_loc = c.premise ? its->getOrAddLocation(c.premise->pred) : its->getInitialLocation();
-            const auto rhs_loc = c.conclusion ? its->getOrAddLocation(c.conclusion->pred) : its->getSink();
+            const auto lhs_loc = c.get_premise() ? its->getOrAddLocation(c.get_premise()->pred) : its->getInitialLocation();
+            const auto rhs_loc = c.get_conclusion() ? its->getOrAddLocation(c.get_conclusion()->pred) : its->getSink();
             up.put<Arith>(its->getLocVar(), arith::mkConst(rhs_loc));
             const auto guard {ren(g) && theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc))};
             its->addRule(Rule(guard, up), lhs_loc);

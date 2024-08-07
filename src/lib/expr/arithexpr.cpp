@@ -751,7 +751,7 @@ ArithExprPtr ArithExpr::toPtr() const {
     return cpp::assume_not_null(shared_from_this());
 }
 
-sexpresso::Sexp ArithExpr::to_smtlib() const {
+sexpresso::Sexp ArithExpr::to_smtlib(const std::function<std::string(const ArithVarPtr)> &var_map) const {
     return apply<sexpresso::Sexp>(
         [](const ArithConstPtr t) {
             if (const auto val {t->isInt()}) {
@@ -778,33 +778,33 @@ sexpresso::Sexp ArithExpr::to_smtlib() const {
                 }
             }
         },
-        [](const ArithVarPtr x) {
-            return x->to_smtlib();
+        [&](const ArithVarPtr x) {
+            return sexpresso::Sexp(var_map(x));
         },
-        [](const ArithAddPtr a) {
+        [&](const ArithAddPtr a) {
             sexpresso::Sexp res{"+"};
             for (const auto &arg: a->getArgs()) {
-                res.addChild(arg->to_smtlib());
+                res.addChild(arg->to_smtlib(var_map));
             }
             return res;
         },
-        [](const ArithMultPtr m) {
+        [&](const ArithMultPtr m) {
             sexpresso::Sexp res{"*"};
             for (const auto &arg: m->getArgs()) {
-                res.addChild(arg->to_smtlib());
+                res.addChild(arg->to_smtlib(var_map));
             }
             return res;
         },
-        [](const ArithModPtr m) {
+        [&](const ArithModPtr m) {
             sexpresso::Sexp res{"mod"};
-            res.addChild(m->getLhs()->to_smtlib());
-            res.addChild(m->getRhs()->to_smtlib());
+            res.addChild(m->getLhs()->to_smtlib(var_map));
+            res.addChild(m->getRhs()->to_smtlib(var_map));
             return res;
         },
-        [](const ArithExpPtr e) {
+        [&](const ArithExpPtr e) {
             sexpresso::Sexp res{"exp"};
-            res.addChild(e->getBase()->to_smtlib());
-            res.addChild(e->getExponent()->to_smtlib());
+            res.addChild(e->getBase()->to_smtlib(var_map));
+            res.addChild(e->getExponent()->to_smtlib(var_map));
             return res;
         }
     );

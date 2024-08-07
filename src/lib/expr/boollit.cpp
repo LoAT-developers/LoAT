@@ -81,11 +81,11 @@ bool BoolLit::eval(const linked_hash_map<BoolVarPtr, bool> &model) const {
     }).value_or(false);
 }
 
-sexpresso::Sexp BoolLit::to_smtlib() const {
+sexpresso::Sexp BoolLit::to_smtlib(const std::function<std::string(const BoolVarPtr)> &var_map) const {
     sexpresso::Sexp res;
     if (negated) {
         res.addChild("not");
     }
-    res.addChild(var->to_smtlib());
+    res.addChild(var_map(var));
     return res;
 }

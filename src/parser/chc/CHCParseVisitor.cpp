@@ -73,9 +73,9 @@ antlrcpp::Any CHCParseVisitor::visitChc_assert_head(CHCParser::Chc_assert_headCo
 
 antlrcpp::Any CHCParseVisitor::visitChc_assert_body(CHCParser::Chc_assert_bodyContext *ctx) {
     const auto [premise, constraint] {any_cast<tail_type>(visit(ctx->chc_tail()))};
-    current_clause.premise = premise;
-    current_clause.constraint = constraint;
-    current_clause.conclusion = any_cast<head_type>(visit(ctx->chc_head()));
+    current_clause.set_premise(premise);
+    current_clause.set_constraint(constraint);
+    current_clause.set_conclusion(any_cast<head_type>(visit(ctx->chc_head())));
     return {};
 }
 
@@ -116,8 +116,8 @@ antlrcpp::Any CHCParseVisitor::visitChc_query(CHCParser::Chc_queryContext *ctx) 
         visit(c);
     }
     const auto [premise, constraint] {any_cast<tail_type>(visit(ctx->chc_tail()))};
-    current_clause.premise = premise;
-    current_clause.constraint = constraint;
+    current_clause.set_premise(premise);
+    current_clause.set_constraint(constraint);
     return {};
 }
 
@@ -201,8 +201,8 @@ antlrcpp::Any CHCParseVisitor::visitI_formula(CHCParser::I_formulaContext *ctx) 
 }
 
 Var CHCParseVisitor::var(const std::string &name, Sort sort) {
-    const auto it = current_clause.vars.find(name);
-    if (it == current_clause.vars.end()) {
+    const auto it = current_clause.get_vars().left.find(name);
+    if (it == current_clause.get_vars().left.end()) {
         std::optional<Var> var;
         switch (sort) {
         case IntType: {
@@ -215,7 +215,7 @@ Var CHCParseVisitor::var(const std::string &name, Sort sort) {
         }
         default: throw std::invalid_argument("unsupported type");
         }
-        current_clause.vars.emplace(name, *var);
+        current_clause.add_var(name, *var);
         return *var;
     } else {
         return it->second;
@@ -513,8 +513,8 @@ antlrcpp::Any CHCParseVisitor::visitSort(CHCParser::SortContext *ctx) {
 antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *ctx) {
     if (ctx->var()) {
         const auto name {unescape(ctx->getText())};
-        const auto it {current_clause.vars.find(name)};
-        if (it == current_clause.vars.end()) {
+        const auto it {current_clause.get_vars().left.find(name)};
+        if (it == current_clause.get_vars().left.end()) {
             return std::variant<Bools::Var, FunApp>(FunApp(name, {}));
         } else {
             return std::variant<Bools::Var, FunApp>(std::get<Bools::Var>(it->second));
@@ -527,8 +527,8 @@ antlrcpp::Any CHCParseVisitor::visitVar_or_atom(CHCParser::Var_or_atomContext *c
 
 antlrcpp::Any CHCParseVisitor::visitVar(CHCParser::VarContext *ctx) {
     const std::string name {unescape(ctx->getText())};
-    const auto res {current_clause.vars.find(name)};
-    if (res != current_clause.vars.end()) {
+    const auto res {current_clause.get_vars().left.find(name)};
+    if (res != current_clause.get_vars().left.end()) {
         return res->second;
     }
     throw std::invalid_argument("unknown variable " + name);
