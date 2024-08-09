@@ -901,17 +901,6 @@ const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
         }
         pre_vec.push_back(s);
     }
-    // if (changed) {
-    //     int from{0};
-    //     for (const auto &vec : subs) {
-    //         int to{from + 1};
-    //         for (const auto &s : vec) {
-    //             std::cout << from << " to " << to << ": " << s << std::endl;
-    //             ++to;
-    //         }
-    //         ++from;
-    //     }
-    // }
     return pre_vec.at(steps - 1);
 }
 
@@ -1012,6 +1001,24 @@ std::optional<SmtResult> TIL::do_step() {
         std::cout << "depth: " << depth << std::endl;
     }
     return {};
+}
+
+Bools::Expr TIL::get_model() {
+    std::vector<Bools::Expr> res {t.init()};
+    Bools::Expr last {t.init()};
+    for (unsigned i = 0; i < depth; ++i) {
+        const auto s1 {get_subs(i, 1)};
+        last = last && s1(step);
+        Subs s2;
+        for (const auto &x: vars) {
+            if (theory::isProgVar(x)) {
+                s2.put(*theory::vars(s1.get(theory::postVar(x))).begin(), theory::toExpr(x));
+                s2.put(x, theory::toExpr(theory::next(x)));
+            }
+        }
+        res.push_back(*GuardToolbox::preprocessFormula(s2(last), theory::isTempVar));
+    }
+    return bools::mkOr(res);
 }
 
 void TIL::analyze() {

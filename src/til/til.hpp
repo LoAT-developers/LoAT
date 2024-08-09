@@ -111,6 +111,7 @@ private:
     void build_trace();
     const Subs& get_subs(const unsigned start, const unsigned steps);
     void pop();
+    Bools::Expr get_model();
 
     Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
