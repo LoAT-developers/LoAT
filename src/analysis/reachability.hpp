@@ -98,13 +98,13 @@ class Succeeded final: public LearningState {
     /**
      * the indices of the learned clause
      */
-    Result<LearnedClauses> learned;
+    ITSResult<LearnedClauses> learned;
 
 public:
-    Succeeded(const Result<LearnedClauses> &learned);
+    Succeeded(const ITSResult<LearnedClauses> &learned);
     std::optional<Succeeded> succeeded() override;
-    const Result<LearnedClauses>& operator*() const;
-    const Result<LearnedClauses>* operator->() const;
+    const ITSResult<LearnedClauses>& operator*() const;
+    const ITSResult<LearnedClauses>* operator->() const;
 };
 
 class Covered final: public LearningState {

@@ -93,17 +93,17 @@ sexpresso::Sexp Clause::to_smtlib() const {
     }
     forall.addChild(variables);
     sexpresso::Sexp imp{"=>"};
+    const auto constr{constraint->to_smtlib([&](const auto &x) {
+        const auto it{vars.right.find(x)};
+        return it == vars.right.end() ? theory::getName(x) : it->second;
+    })};
     if (premise) {
         sexpresso::Sexp band{"and"};
         band.addChild(premise->to_smtlib(vars));
-        band.addChild(constraint->to_smtlib([&](const auto &x) {
-            return vars.right.at(x);
-        }));
+        band.addChild(constr);
         imp.addChild(band);
     } else {
-        imp.addChild(constraint->to_smtlib([&](const auto &x) {
-            return vars.right.at(x);
-        }));
+        imp.addChild(constr);
     }
     if (conclusion) {
         imp.addChild(conclusion->to_smtlib(vars));
@@ -177,6 +177,17 @@ sexpresso::Sexp CHCProblem::to_smtlib() const {
     }
     for (const auto &c: clauses) {
         res.addChild(c.to_smtlib());
+    }
+    return res;
+}
+
+CHCProblem CHCProblem::reverse() const {
+    CHCProblem res;
+    for (const auto &c: clauses) {
+        auto reversed {c};
+        reversed.set_conclusion(c.get_premise());
+        reversed.set_premise(c.get_conclusion());
+        res.add_clause(reversed);
     }
     return res;
 }

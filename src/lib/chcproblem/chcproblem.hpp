@@ -70,6 +70,7 @@ public:
     bool is_right_linear() const;
     bool is_left_and_right_linear() const;
     sexpresso::Sexp to_smtlib() const;
+    CHCProblem reverse() const;
 
     template <ITheory T>
     unsigned max_arity() const {

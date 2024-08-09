@@ -270,16 +270,6 @@ int main(int argc, char *argv[]) {
     }
 
     yices::init();
-    if (chcs) {
-        switch (Config::Analysis::engine) {
-        case Config::Analysis::TIL:
-            sp = chc_to_safetyproblem(*chcs);
-            break;
-        default:
-            its = chcs_to_its(*chcs);
-            break;
-        }
-    }
     switch (Config::Analysis::engine) {
     case Config::Analysis::ADCL:
         reachability::Reachability::analyze(**its);
@@ -293,16 +283,16 @@ int main(int argc, char *argv[]) {
     case Config::Analysis::TIL:
         switch (Config::til.mode) {
         case Config::TILConfig::Mode::Forward: {
-            TIL::analyze(*sp);
+            TIL::analyze(*chcs);
             break;
         }
         case Config::TILConfig::Mode::Backward: {
-            auto b{sp->reverse()};
+            auto b{chcs->reverse()};
             TIL::analyze(b);
             break;
         }
         case Config::TILConfig::Mode::Interleaved: {
-            ForwardBackwardDriver::analyze(*sp);
+            ForwardBackwardDriver::analyze(*chcs);
             break;
         }
         }

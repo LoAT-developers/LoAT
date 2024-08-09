@@ -4,13 +4,13 @@
 #include "itsproof.hpp"
 
 template <class T>
-class Result: public ResultBase<T, ITSProof> {
+class ITSResult: public Result<T, ITSProof> {
 
 public:
 
-    Result(): ResultBase<T, ITSProof>(false) {}
+    ITSResult(): Result<T, ITSProof>(false) {}
 
-    Result(const T &t, bool success = false): ResultBase<T, ITSProof>(t, success) {}
+    ITSResult(const T &t, bool success = false): Result<T, ITSProof>(t, success) {}
 
     void majorProofStep(const std::string &step, const ITSProof &subproof, const ITSProblem &its) {
         this->proof.majorProofStep(step, subproof, its);
@@ -30,10 +30,10 @@ public:
 
 };
 
-class ResultViaSideEffects: public Result<std::monostate> {
+class ResultViaSideEffects: public ITSResult<std::monostate> {
 
 public:
 
-    ResultViaSideEffects(): Result<std::monostate>(std::monostate()) {}
+    ResultViaSideEffects(): ITSResult<std::monostate>(std::monostate()) {}
 
 };

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "til.hpp"
+#include "chcproblem.hpp"
 
 namespace ForwardBackwardDriver {
 
-void analyze(SafetyProblem p);
+void analyze(CHCProblem p);
 
 }

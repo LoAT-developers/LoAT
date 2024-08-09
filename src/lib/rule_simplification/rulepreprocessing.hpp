@@ -23,7 +23,7 @@
 namespace Preprocess {
 
     RuleResult preprocessRule(const Rule &rule);
-    ResultBase<Bools::Expr, Proof> preprocessTransition(const Bools::Expr &trans);
+    Result<Bools::Expr, Proof> preprocessTransition(const Bools::Expr &trans);
     RuleResult removeTrivialUpdates(const Rule &rule);
 
 }

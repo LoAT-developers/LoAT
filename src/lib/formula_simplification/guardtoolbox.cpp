@@ -26,8 +26,8 @@
 
 using namespace std;
 
-ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr e, const SymbolAcceptor &allow) {
-    ResultBase<ArithSubs, Proof> res;
+Result<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr e, const SymbolAcceptor &allow) {
+    Result<ArithSubs, Proof> res;
     const auto subs {e->propagateEqualities(allow)};
     if (!subs.empty()) {
         res = subs;
@@ -36,8 +36,8 @@ ResultBase<ArithSubs, Proof> GuardToolbox::propagateEqualities(const Bools::Expr
     return res;
 }
 
-ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const Bools::Expr e) {
-    ResultBase<BoolSubs, Proof> res;
+Result<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const Bools::Expr e) {
+    Result<BoolSubs, Proof> res;
     const auto equiv {impliedEqualities(e)};
     if (!equiv.empty()) {
         res = equiv.get<Bools>();
@@ -49,8 +49,8 @@ ResultBase<BoolSubs, Proof> GuardToolbox::propagateBooleanEqualities(const Bools
 /**
  * Fourier-Motzkin, restricted to the case thatall coefficients are 1 or -1, so that it can be used for integers.
  */
-ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Bools::Expr e, const SymbolAcceptor &allow) {
-    ResultBase<Bools::Expr, Proof> res(e);
+Result<Bools::Expr, Proof> GuardToolbox::eliminateByTransitiveClosure(const Bools::Expr e, const SymbolAcceptor &allow) {
+    Result<Bools::Expr, Proof> res(e);
     if (!e->isConjunction()) {
         return res;
     }
@@ -166,8 +166,8 @@ abort:  ; //this symbol could not be eliminated, try the next one
     return res;
 }
 
-ResultBase<Bools::Expr, Proof> _propagateBooleanEqualities(const Bools::Expr e) {
-    ResultBase<Bools::Expr, Proof> res {e};
+Result<Bools::Expr, Proof> _propagateBooleanEqualities(const Bools::Expr e) {
+    Result<Bools::Expr, Proof> res {e};
     const auto subs {GuardToolbox::propagateBooleanEqualities(e)};
     if (subs) {
         res = Subs::build<Bools>(*subs)(e);
@@ -177,8 +177,8 @@ ResultBase<Bools::Expr, Proof> _propagateBooleanEqualities(const Bools::Expr e) 
     return res;
 }
 
-ResultBase<Bools::Expr, Proof> _propagateEqualities(const Bools::Expr e, const GuardToolbox::SymbolAcceptor &allow) {
-    ResultBase<Bools::Expr, Proof> res {e};
+Result<Bools::Expr, Proof> _propagateEqualities(const Bools::Expr e, const GuardToolbox::SymbolAcceptor &allow) {
+    Result<Bools::Expr, Proof> res {e};
     const auto subs {GuardToolbox::propagateEqualities(e, allow)};
     if (subs) {
         res = Subs::build<Arith>(*subs)(e);
@@ -188,7 +188,7 @@ ResultBase<Bools::Expr, Proof> _propagateEqualities(const Bools::Expr e, const G
     return res;
 }
 
-ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateTempVars(Bools::Expr e, const SymbolAcceptor &allow) {
+Result<Bools::Expr, Proof> GuardToolbox::eliminateTempVars(Bools::Expr e, const SymbolAcceptor &allow) {
     auto res {_propagateBooleanEqualities(e)};
     if (res) {
         return res;
@@ -200,8 +200,8 @@ ResultBase<Bools::Expr, Proof> GuardToolbox::eliminateTempVars(Bools::Expr e, co
     return GuardToolbox::eliminateByTransitiveClosure(e, allow);
 }
 
-ResultBase<Bools::Expr, Proof> GuardToolbox::preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow) {
-    ResultBase<Bools::Expr, Proof> res {e};
+Result<Bools::Expr, Proof> GuardToolbox::preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow) {
+    Result<Bools::Expr, Proof> res {e};
     auto changed {false};
     do {
         const auto tmp {_propagateBooleanEqualities(*res)};

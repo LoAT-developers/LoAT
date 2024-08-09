@@ -26,7 +26,6 @@ public:
     void set_err(const Bools::Expr e);
     void add_pre_var(const Var &x);
     void add_post_var(const Var &x);
-    SafetyProblem reverse() const;
 
 };
 

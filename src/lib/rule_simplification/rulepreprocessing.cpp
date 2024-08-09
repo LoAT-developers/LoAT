@@ -144,8 +144,8 @@ RuleResult Preprocess::removeTrivialUpdates(const Rule &rule) {
     return res;
 }
 
-ResultBase<Bools::Expr, Proof> Preprocess::preprocessTransition(const Bools::Expr &trans) {
-    ResultBase<Bools::Expr, Proof> res {trans};
+Result<Bools::Expr, Proof> Preprocess::preprocessTransition(const Bools::Expr &trans) {
+    Result<Bools::Expr, Proof> res {trans};
     auto changed {false};
     do {
         auto tmp {GuardToolbox::eliminateTempVars(*res, theory::isTempVar)};

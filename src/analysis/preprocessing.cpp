@@ -224,9 +224,9 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
     return res;
 }
 
-ResultBase<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
-    ResultBase<SafetyProblem, Proof> res {p};
-    ResultBase<Bools::Expr, Proof> init {GuardToolbox::preprocessFormula(p.init(), theory::isTempVar)};
+Result<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
+    Result<SafetyProblem, Proof> res {p};
+    Result<Bools::Expr, Proof> init {GuardToolbox::preprocessFormula(p.init(), theory::isTempVar)};
     if (init) {
         res.append("Preprocessed Initial States");
         res.appendAll(*init);
@@ -247,7 +247,7 @@ ResultBase<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) 
             res.storeSubProof(preproc.getProof());
         }
     }
-    ResultBase<Bools::Expr, Proof> err {GuardToolbox::preprocessFormula(p.err(), theory::isTempVar)};
+    Result<Bools::Expr, Proof> err {GuardToolbox::preprocessFormula(p.err(), theory::isTempVar)};
     if (err) {
         res.append("Preprocessed Error States");
         res.appendAll(*err);

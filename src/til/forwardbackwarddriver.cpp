@@ -1,7 +1,8 @@
 #include "forwardbackwarddriver.hpp"
 #include "config.hpp"
+#include "til.hpp"
 
-void ForwardBackwardDriver::analyze(SafetyProblem p) {
+void ForwardBackwardDriver::analyze(CHCProblem p) {
     auto q {p.reverse()};
     Config::TILConfig forwardConfig {
         .mode = Config::TILConfig::Forward,

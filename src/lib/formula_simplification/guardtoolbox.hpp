@@ -53,9 +53,9 @@ namespace GuardToolbox {
      *
      * @return true if any progpagation was performed.
      */
-    ResultBase<ArithSubs, Proof> propagateEqualities(const Bools::Expr e, const SymbolAcceptor &allow);
+    Result<ArithSubs, Proof> propagateEqualities(const Bools::Expr e, const SymbolAcceptor &allow);
 
-    ResultBase<BoolSubs, Proof> propagateBooleanEqualities(const Bools::Expr e);
+    Result<BoolSubs, Proof> propagateBooleanEqualities(const Bools::Expr e);
 
     /**
      * Tries to replace inequalities using their transitive closure,
@@ -69,7 +69,7 @@ namespace GuardToolbox {
      *
      * @return true if any changes have been made
      */
-    ResultBase<Bools::Expr, Proof> eliminateByTransitiveClosure(const Bools::Expr e, const SymbolAcceptor &allow);
+    Result<Bools::Expr, Proof> eliminateByTransitiveClosure(const Bools::Expr e, const SymbolAcceptor &allow);
 
     /**
      * Returns true iff term contains a temporary variable
@@ -81,9 +81,9 @@ namespace GuardToolbox {
         });
     }
 
-    ResultBase<Bools::Expr, Proof> eliminateTempVars(Bools::Expr trans, const SymbolAcceptor &allow);
+    Result<Bools::Expr, Proof> eliminateTempVars(Bools::Expr trans, const SymbolAcceptor &allow);
 
-    ResultBase<Bools::Expr, Proof> preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow);
+    Result<Bools::Expr, Proof> preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow);
 
     Bools::Expr removeRedundantInequations(const Bools::Expr e);
 

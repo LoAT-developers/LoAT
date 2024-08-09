@@ -1,6 +1,6 @@
 #include "ruleresult.hpp"
 
-RuleResult::RuleResult(const Rule &t, bool success): ResultBase<Rule, RuleProof>(t, success) {}
+RuleResult::RuleResult(const Rule &t, bool success): Result<Rule, RuleProof>(t, success) {}
 
 void RuleResult::operator=(const Rule &t) {
     set(t);

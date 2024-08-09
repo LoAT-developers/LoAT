@@ -60,17 +60,17 @@ std::optional<ProvedUnsat> LearningState::unsat() {
 
 LearningState::~LearningState() {}
 
-Succeeded::Succeeded(const Result<LearnedClauses> &learned): learned(learned) {}
+Succeeded::Succeeded(const ITSResult<LearnedClauses> &learned): learned(learned) {}
 
 std::optional<Succeeded> Succeeded::succeeded() {
     return *this;
 }
 
-const Result<LearnedClauses>& Succeeded::operator*() const {
+const ITSResult<LearnedClauses>& Succeeded::operator*() const {
     return learned;
 }
 
-const Result<LearnedClauses>* Succeeded::operator->() const {
+const ITSResult<LearnedClauses>* Succeeded::operator->() const {
     return &learned;
 }
 
@@ -531,7 +531,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
-    Result<LearnedClauses> res{{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period}};
+    ITSResult<LearnedClauses> res{{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period}};
     if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
         res.succeed();
         const auto idx = chcs.addQuery(accel_res.nonterm->certificate, trace.at(backlink).clause_idx);

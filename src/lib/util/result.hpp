@@ -9,7 +9,7 @@
  * encapsulates the result of some computation, together with a proof
  */
 template<class T, class P>
-class ResultBase
+class Result
 {
 
     bool success;
@@ -21,11 +21,11 @@ protected:
 
 public:
 
-    ResultBase(): success(false) {}
+    Result(): success(false) {}
 
-    explicit ResultBase(const T &t, bool success = false): success(success), res(t) {}
+    explicit Result(const T &t, bool success = false): success(success), res(t) {}
 
-    ResultBase& operator=(const T &t) {
+    Result& operator=(const T &t) {
         set(t);
         return *this;
     }
@@ -83,7 +83,7 @@ public:
         proof.concat(that);
     }
 
-    void concat(const ResultBase<T, P> &that) {
+    void concat(const Result<T, P> &that) {
         if (that) {
             proof.concat(that.proof);
             res = that.res;

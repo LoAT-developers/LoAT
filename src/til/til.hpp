@@ -4,6 +4,7 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
 
+#include "chcproblem.hpp"
 #include "safetyproblem.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
@@ -63,7 +64,7 @@ private:
     };
 
     Config::TILConfig config;
-    SafetyProblem &t;
+    SafetyProblem t;
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<std::vector<Subs>> subs {};
     std::vector<TraceElem> trace {};
@@ -119,11 +120,11 @@ private:
 public:
 
     void sat();
-    explicit TIL(SafetyProblem &t, const Config::TILConfig &config);
+    explicit TIL(CHCProblem &chcs, const Config::TILConfig &config);
     bool setup();
     std::optional<SmtResult> do_step();
     void analyze();
-    static void analyze(SafetyProblem &its);
+    static void analyze(CHCProblem &chcs);
 
 };
 

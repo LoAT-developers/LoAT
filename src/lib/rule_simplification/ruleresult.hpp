@@ -4,7 +4,7 @@
 #include "rule.hpp"
 #include "ruleproof.hpp"
 
-class RuleResult: public ResultBase<Rule, RuleProof> {
+class RuleResult: public Result<Rule, RuleProof> {
 
 public:
 

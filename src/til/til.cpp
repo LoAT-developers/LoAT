@@ -12,6 +12,7 @@
 #include "rulepreprocessing.hpp"
 #include "theory.hpp"
 #include "guardtoolbox.hpp"
+#include "chctosafetyproblem.hpp"
 
 Range::Range(const unsigned s, const unsigned e) : s(s), e(e) {}
 
@@ -39,7 +40,8 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-TIL::TIL(SafetyProblem &t, const Config::TILConfig &config) : config(config), t(t) {
+TIL::TIL(CHCProblem &chcs, const Config::TILConfig &config) : config(config) {
+    t = chc_to_safetyproblem(chcs);
     vars.insert(trace_var);
     vars.insert(n);
     for (const auto &x : t.vars()) {
@@ -1016,7 +1018,7 @@ Bools::Expr TIL::get_model() {
                 s2.put(x, theory::toExpr(theory::next(x)));
             }
         }
-        res.push_back(*GuardToolbox::preprocessFormula(s2(last), theory::isTempVar));
+        res.push_back(s2(last));
     }
     return bools::mkOr(res);
 }
@@ -1031,6 +1033,7 @@ void TIL::analyze() {
         if (res) {
             if (res == SmtResult::Sat) {
                 sat();
+                std::cout << get_model() << std::endl;
             } else {
                 unknown();
             }
@@ -1039,6 +1042,6 @@ void TIL::analyze() {
     }
 }
 
-void TIL::analyze(SafetyProblem &its) {
-    TIL(its, Config::til).analyze();
+void TIL::analyze(CHCProblem &chcs) {
+    TIL(chcs, Config::til).analyze();
 }
