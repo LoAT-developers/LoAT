@@ -247,5 +247,13 @@ ResultBase<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) 
             res.storeSubProof(preproc.getProof());
         }
     }
+    ResultBase<Bools::Expr, Proof> err {GuardToolbox::preprocessFormula(p.err(), theory::isTempVar)};
+    if (err) {
+        res.append("Preprocessed Error States");
+        res.appendAll(*err);
+        res.succeed();
+        res->set_init(*err);
+        res.storeSubProof(err.getProof());
+    }
     return res;
 }
