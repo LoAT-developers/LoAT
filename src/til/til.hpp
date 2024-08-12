@@ -80,6 +80,7 @@ private:
     Subs post_to_pre {};
     Subs pre_to_post {};
     ReversibleCHCToSafety reversible;
+    bool produce_model {false};
 
     Int next_id {0};
 

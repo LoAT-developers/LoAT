@@ -206,3 +206,11 @@ linked_hash_map<std::string, std::vector<Var>> CHCProblem::get_signature() const
     }
     return preds;
 }
+
+void CHCProblem::do_produce_model() {
+    produce_model = true;
+}
+
+bool CHCProblem::get_produce_model() const {
+    return produce_model;
+}

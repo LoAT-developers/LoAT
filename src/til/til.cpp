@@ -40,7 +40,12 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-TIL::TIL(CHCProblem &chcs, const Config::TILConfig &config) : config(config), reversible(chc_to_safetyproblem(chcs)) {
+TIL::TIL(
+    CHCProblem &chcs,
+    const Config::TILConfig &config)
+    : config(config),
+      reversible(chc_to_safetyproblem(chcs)),
+      produce_model(chcs.get_produce_model()) {
     t = *reversible;
     vars.insert(trace_var);
     vars.insert(n);
@@ -1034,7 +1039,9 @@ void TIL::analyze() {
         if (res) {
             if (res == SmtResult::Sat) {
                 sat();
-                std::cout << get_model().to_smtlib().toString() << std::endl;
+                if (produce_model) {
+                    std::cout << get_model().to_smtlib().toString() << std::endl;
+                }
             } else {
                 unknown();
             }

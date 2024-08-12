@@ -12,11 +12,12 @@
 class  CHCLexer : public antlr4::Lexer {
 public:
   enum {
-    LOGIC = 1, ASSERT = 2, CHECK_SAT = 3, EXIT = 4, DECLARE_FUN = 5, BOOL_SORT = 6, 
-    INT_SORT = 7, FORALL = 8, LET = 9, IMPLIES = 10, FALSE = 11, TRUE = 12, 
-    PLUS = 13, MINUS = 14, TIMES = 15, MOD = 16, DIV = 17, LPAR = 18, RPAR = 19, 
-    AND = 20, OR = 21, NOT = 22, ITE = 23, LT = 24, LEQ = 25, EQ = 26, NEQ = 27, 
-    GEQ = 28, GT = 29, ID = 30, INT = 31, WS = 32, COMMENT = 33, OTHER = 34
+    LOGIC = 1, ASSERT = 2, CHECK_SAT = 3, GET_MODEL = 4, EXIT = 5, DECLARE_FUN = 6, 
+    BOOL_SORT = 7, INT_SORT = 8, FORALL = 9, LET = 10, IMPLIES = 11, FALSE = 12, 
+    TRUE = 13, PLUS = 14, MINUS = 15, TIMES = 16, MOD = 17, DIV = 18, LPAR = 19, 
+    RPAR = 20, AND = 21, OR = 22, NOT = 23, ITE = 24, LT = 25, LEQ = 26, 
+    EQ = 27, NEQ = 28, GEQ = 29, GT = 30, ID = 31, INT = 32, WS = 33, COMMENT = 34, 
+    OTHER = 35
   };
 
   explicit CHCLexer(antlr4::CharStream *input);

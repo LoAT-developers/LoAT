@@ -6,6 +6,7 @@ main:              LPAR LOGIC RPAR
                    (LPAR ASSERT chc_assert RPAR)*
                    (LPAR ASSERT chc_query RPAR)*
                    LPAR CHECK_SAT RPAR
+                   (LPAR GET_MODEL RPAR)?
                    (LPAR EXIT RPAR)?;
 
 fun_decl:          LPAR DECLARE_FUN symbol LPAR sort* RPAR BOOL_SORT RPAR;
@@ -85,6 +86,7 @@ var:               ID;
 LOGIC:             'set-logic HORN';
 ASSERT:            'assert';
 CHECK_SAT:         'check-sat';
+GET_MODEL:         'get-model';
 EXIT:              'exit';
 DECLARE_FUN:       'declare-fun';
 BOOL_SORT:         'Bool';

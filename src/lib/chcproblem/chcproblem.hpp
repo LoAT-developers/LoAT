@@ -70,6 +70,7 @@ public:
 class CHCProblem {
 
     std::vector<Clause> clauses;
+    bool produce_model {false};
 
 public:
     void add_clause(const Clause &c);
@@ -80,6 +81,8 @@ public:
     sexpresso::Sexp to_smtlib() const;
     CHCProblem reverse() const;
     linked_hash_map<std::string, std::vector<Var>> get_signature() const;
+    void do_produce_model();
+    bool get_produce_model() const;
 
     template <ITheory T>
     unsigned max_arity() const {

@@ -41,6 +41,9 @@ antlrcpp::Any CHCParseVisitor::visitMain(CHCParser::MainContext *ctx) {
         visit(c);
         chcs.add_clause(current_clause);
     }
+    if (ctx->GET_MODEL()) {
+        chcs.do_produce_model();
+    }
     return chcs;
 }
 

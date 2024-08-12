@@ -50,130 +50,133 @@ void chcParserInitialize() {
       "i_formula", "boolop", "lit", "relop", "symbol", "sort", "var"
     },
     std::vector<std::string>{
-      "", "'set-logic HORN'", "'assert'", "'check-sat'", "'exit'", "'declare-fun'", 
-      "'Bool'", "'Int'", "'forall'", "'let'", "'=>'", "'false'", "'true'", 
-      "'+'", "'-'", "'*'", "'mod'", "'div'", "'('", "')'", "'and'", "'or'", 
-      "'not'", "'ite'", "'<'", "'<='", "'='", "'!='", "'>='", "'>'"
+      "", "'set-logic HORN'", "'assert'", "'check-sat'", "'get-model'", 
+      "'exit'", "'declare-fun'", "'Bool'", "'Int'", "'forall'", "'let'", 
+      "'=>'", "'false'", "'true'", "'+'", "'-'", "'*'", "'mod'", "'div'", 
+      "'('", "')'", "'and'", "'or'", "'not'", "'ite'", "'<'", "'<='", "'='", 
+      "'!='", "'>='", "'>'"
     },
     std::vector<std::string>{
-      "", "LOGIC", "ASSERT", "CHECK_SAT", "EXIT", "DECLARE_FUN", "BOOL_SORT", 
-      "INT_SORT", "FORALL", "LET", "IMPLIES", "FALSE", "TRUE", "PLUS", "MINUS", 
-      "TIMES", "MOD", "DIV", "LPAR", "RPAR", "AND", "OR", "NOT", "ITE", 
-      "LT", "LEQ", "EQ", "NEQ", "GEQ", "GT", "ID", "INT", "WS", "COMMENT", 
-      "OTHER"
+      "", "LOGIC", "ASSERT", "CHECK_SAT", "GET_MODEL", "EXIT", "DECLARE_FUN", 
+      "BOOL_SORT", "INT_SORT", "FORALL", "LET", "IMPLIES", "FALSE", "TRUE", 
+      "PLUS", "MINUS", "TIMES", "MOD", "DIV", "LPAR", "RPAR", "AND", "OR", 
+      "NOT", "ITE", "LT", "LEQ", "EQ", "NEQ", "GEQ", "GT", "ID", "INT", 
+      "WS", "COMMENT", "OTHER"
     }
   );
   static const int32_t serializedATNSegment[] = {
-  	4,1,34,338,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,
+  	4,1,35,343,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,
   	7,7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,
   	14,2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,7,20,2,21,7,
   	21,2,22,7,22,2,23,7,23,2,24,7,24,1,0,1,0,1,0,1,0,4,0,55,8,0,11,0,12,0,
   	56,1,0,1,0,1,0,1,0,1,0,5,0,64,8,0,10,0,12,0,67,9,0,1,0,1,0,1,0,1,0,1,
-  	0,5,0,74,8,0,10,0,12,0,77,9,0,1,0,1,0,1,0,1,0,1,0,1,0,3,0,85,8,0,1,1,
-  	1,1,1,1,1,1,1,1,5,1,92,8,1,10,1,12,1,95,9,1,1,1,1,1,1,1,1,1,1,2,1,2,1,
-  	2,1,2,1,2,1,3,1,3,1,3,4,3,109,8,3,11,3,12,3,110,1,3,1,3,1,4,1,4,1,4,1,
-  	4,1,4,1,4,1,4,3,4,122,8,4,1,5,1,5,1,5,4,5,127,8,5,11,5,12,5,128,1,5,5,
-  	5,132,8,5,10,5,12,5,135,9,5,1,5,1,5,1,5,1,5,1,5,3,5,142,8,5,1,6,1,6,1,
-  	7,1,7,1,7,1,7,4,7,150,8,7,11,7,12,7,151,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,
-  	7,1,8,1,8,1,8,1,8,1,8,1,9,1,9,3,9,169,8,9,1,10,1,10,1,10,5,10,174,8,10,
-  	10,10,12,10,177,9,10,1,10,1,10,1,10,3,10,182,8,10,1,11,1,11,1,11,1,11,
-  	1,11,3,11,189,8,11,1,11,1,11,1,12,1,12,1,12,4,12,196,8,12,11,12,12,12,
-  	197,1,12,1,12,1,13,1,13,1,13,1,13,1,13,1,13,1,13,1,13,1,13,1,13,1,13,
-  	1,13,1,13,1,13,1,13,1,13,1,13,3,13,219,8,13,1,14,1,14,1,14,1,14,1,14,
-  	1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,4,14,235,8,14,11,14,12,14,
-  	236,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,
-  	1,14,1,14,1,14,1,14,1,14,1,14,1,14,3,14,259,8,14,1,15,1,15,1,16,1,16,
-  	1,17,1,17,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,4,18,276,8,18,
-  	11,18,12,18,277,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,
-  	1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,3,18,301,8,18,1,19,
-  	1,19,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,
-  	1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,3,20,326,8,20,1,20,1,20,1,21,
-  	1,21,1,22,1,22,1,23,1,23,1,24,1,24,1,24,0,0,25,0,2,4,6,8,10,12,14,16,
-  	18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,0,5,2,0,14,14,16,17,2,
-  	0,13,13,15,15,2,0,20,21,26,27,1,0,24,29,1,0,6,7,355,0,50,1,0,0,0,2,86,
-  	1,0,0,0,4,100,1,0,0,0,6,105,1,0,0,0,8,121,1,0,0,0,10,141,1,0,0,0,12,143,
-  	1,0,0,0,14,145,1,0,0,0,16,161,1,0,0,0,18,168,1,0,0,0,20,181,1,0,0,0,22,
-  	183,1,0,0,0,24,192,1,0,0,0,26,218,1,0,0,0,28,258,1,0,0,0,30,260,1,0,0,
-  	0,32,262,1,0,0,0,34,264,1,0,0,0,36,300,1,0,0,0,38,302,1,0,0,0,40,304,
-  	1,0,0,0,42,329,1,0,0,0,44,331,1,0,0,0,46,333,1,0,0,0,48,335,1,0,0,0,50,
-  	51,5,18,0,0,51,52,5,1,0,0,52,54,5,19,0,0,53,55,3,2,1,0,54,53,1,0,0,0,
-  	55,56,1,0,0,0,56,54,1,0,0,0,56,57,1,0,0,0,57,65,1,0,0,0,58,59,5,18,0,
-  	0,59,60,5,2,0,0,60,61,3,4,2,0,61,62,5,19,0,0,62,64,1,0,0,0,63,58,1,0,
-  	0,0,64,67,1,0,0,0,65,63,1,0,0,0,65,66,1,0,0,0,66,75,1,0,0,0,67,65,1,0,
-  	0,0,68,69,5,18,0,0,69,70,5,2,0,0,70,71,3,14,7,0,71,72,5,19,0,0,72,74,
-  	1,0,0,0,73,68,1,0,0,0,74,77,1,0,0,0,75,73,1,0,0,0,75,76,1,0,0,0,76,78,
-  	1,0,0,0,77,75,1,0,0,0,78,79,5,18,0,0,79,80,5,3,0,0,80,84,5,19,0,0,81,
-  	82,5,18,0,0,82,83,5,4,0,0,83,85,5,19,0,0,84,81,1,0,0,0,84,85,1,0,0,0,
-  	85,1,1,0,0,0,86,87,5,18,0,0,87,88,5,5,0,0,88,89,3,44,22,0,89,93,5,18,
-  	0,0,90,92,3,46,23,0,91,90,1,0,0,0,92,95,1,0,0,0,93,91,1,0,0,0,93,94,1,
-  	0,0,0,94,96,1,0,0,0,95,93,1,0,0,0,96,97,5,19,0,0,97,98,5,6,0,0,98,99,
-  	5,19,0,0,99,3,1,0,0,0,100,101,5,18,0,0,101,102,3,6,3,0,102,103,3,8,4,
-  	0,103,104,5,19,0,0,104,5,1,0,0,0,105,106,5,8,0,0,106,108,5,18,0,0,107,
-  	109,3,16,8,0,108,107,1,0,0,0,109,110,1,0,0,0,110,108,1,0,0,0,110,111,
-  	1,0,0,0,111,112,1,0,0,0,112,113,5,19,0,0,113,7,1,0,0,0,114,115,5,18,0,
-  	0,115,116,5,10,0,0,116,117,3,10,5,0,117,118,3,12,6,0,118,119,5,19,0,0,
-  	119,122,1,0,0,0,120,122,3,12,6,0,121,114,1,0,0,0,121,120,1,0,0,0,122,
-  	9,1,0,0,0,123,124,5,18,0,0,124,126,5,20,0,0,125,127,3,18,9,0,126,125,
-  	1,0,0,0,127,128,1,0,0,0,128,126,1,0,0,0,128,129,1,0,0,0,129,133,1,0,0,
-  	0,130,132,3,36,18,0,131,130,1,0,0,0,132,135,1,0,0,0,133,131,1,0,0,0,133,
-  	134,1,0,0,0,134,136,1,0,0,0,135,133,1,0,0,0,136,137,5,19,0,0,137,142,
-  	1,0,0,0,138,142,3,18,9,0,139,142,3,36,18,0,140,142,3,20,10,0,141,123,
-  	1,0,0,0,141,138,1,0,0,0,141,139,1,0,0,0,141,140,1,0,0,0,142,11,1,0,0,
-  	0,143,144,3,20,10,0,144,13,1,0,0,0,145,146,5,18,0,0,146,147,5,8,0,0,147,
-  	149,5,18,0,0,148,150,3,16,8,0,149,148,1,0,0,0,150,151,1,0,0,0,151,149,
-  	1,0,0,0,151,152,1,0,0,0,152,153,1,0,0,0,153,154,5,19,0,0,154,155,5,18,
-  	0,0,155,156,5,10,0,0,156,157,3,10,5,0,157,158,5,11,0,0,158,159,5,19,0,
-  	0,159,160,5,19,0,0,160,15,1,0,0,0,161,162,5,18,0,0,162,163,3,48,24,0,
-  	163,164,3,46,23,0,164,165,5,19,0,0,165,17,1,0,0,0,166,169,3,48,24,0,167,
-  	169,3,20,10,0,168,166,1,0,0,0,168,167,1,0,0,0,169,19,1,0,0,0,170,171,
-  	5,18,0,0,171,175,3,44,22,0,172,174,3,48,24,0,173,172,1,0,0,0,174,177,
-  	1,0,0,0,175,173,1,0,0,0,175,176,1,0,0,0,176,178,1,0,0,0,177,175,1,0,0,
-  	0,178,179,5,19,0,0,179,182,1,0,0,0,180,182,3,44,22,0,181,170,1,0,0,0,
-  	181,180,1,0,0,0,182,21,1,0,0,0,183,184,5,18,0,0,184,188,3,48,24,0,185,
-  	189,3,26,13,0,186,189,3,36,18,0,187,189,3,28,14,0,188,185,1,0,0,0,188,
-  	186,1,0,0,0,188,187,1,0,0,0,189,190,1,0,0,0,190,191,5,19,0,0,191,23,1,
-  	0,0,0,192,193,5,9,0,0,193,195,5,18,0,0,194,196,3,22,11,0,195,194,1,0,
-  	0,0,196,197,1,0,0,0,197,195,1,0,0,0,197,198,1,0,0,0,198,199,1,0,0,0,199,
-  	200,5,19,0,0,200,25,1,0,0,0,201,219,3,48,24,0,202,203,5,18,0,0,203,204,
-  	3,26,13,0,204,205,5,19,0,0,205,219,1,0,0,0,206,207,5,18,0,0,207,208,3,
-  	24,12,0,208,209,3,26,13,0,209,210,5,19,0,0,210,219,1,0,0,0,211,212,5,
-  	18,0,0,212,213,5,23,0,0,213,214,3,36,18,0,214,215,3,26,13,0,215,216,3,
-  	26,13,0,216,217,5,19,0,0,217,219,1,0,0,0,218,201,1,0,0,0,218,202,1,0,
-  	0,0,218,206,1,0,0,0,218,211,1,0,0,0,219,27,1,0,0,0,220,221,5,18,0,0,221,
-  	222,3,30,15,0,222,223,3,28,14,0,223,224,5,19,0,0,224,259,1,0,0,0,225,
-  	226,5,18,0,0,226,227,3,32,16,0,227,228,3,28,14,0,228,229,3,28,14,0,229,
-  	230,5,19,0,0,230,259,1,0,0,0,231,232,5,18,0,0,232,234,3,34,17,0,233,235,
-  	3,28,14,0,234,233,1,0,0,0,235,236,1,0,0,0,236,234,1,0,0,0,236,237,1,0,
-  	0,0,237,238,1,0,0,0,238,239,5,19,0,0,239,259,1,0,0,0,240,241,5,18,0,0,
-  	241,242,5,23,0,0,242,243,3,36,18,0,243,244,3,28,14,0,244,245,3,28,14,
-  	0,245,246,5,19,0,0,246,259,1,0,0,0,247,259,3,48,24,0,248,259,5,31,0,0,
-  	249,250,5,18,0,0,250,251,3,28,14,0,251,252,5,19,0,0,252,259,1,0,0,0,253,
-  	254,5,18,0,0,254,255,3,24,12,0,255,256,3,28,14,0,256,257,5,19,0,0,257,
-  	259,1,0,0,0,258,220,1,0,0,0,258,225,1,0,0,0,258,231,1,0,0,0,258,240,1,
-  	0,0,0,258,247,1,0,0,0,258,248,1,0,0,0,258,249,1,0,0,0,258,253,1,0,0,0,
-  	259,29,1,0,0,0,260,261,5,14,0,0,261,31,1,0,0,0,262,263,7,0,0,0,263,33,
-  	1,0,0,0,264,265,7,1,0,0,265,35,1,0,0,0,266,267,5,18,0,0,267,268,5,22,
-  	0,0,268,269,3,36,18,0,269,270,5,19,0,0,270,301,1,0,0,0,271,301,3,40,20,
-  	0,272,273,5,18,0,0,273,275,3,38,19,0,274,276,3,36,18,0,275,274,1,0,0,
-  	0,276,277,1,0,0,0,277,275,1,0,0,0,277,278,1,0,0,0,278,279,1,0,0,0,279,
-  	280,5,19,0,0,280,301,1,0,0,0,281,282,5,18,0,0,282,283,5,23,0,0,283,284,
-  	3,36,18,0,284,285,3,36,18,0,285,286,3,36,18,0,286,287,5,19,0,0,287,301,
-  	1,0,0,0,288,289,5,18,0,0,289,290,3,24,12,0,290,291,3,36,18,0,291,292,
-  	5,19,0,0,292,301,1,0,0,0,293,294,5,18,0,0,294,295,3,36,18,0,295,296,5,
-  	19,0,0,296,301,1,0,0,0,297,301,5,12,0,0,298,301,5,11,0,0,299,301,3,48,
-  	24,0,300,266,1,0,0,0,300,271,1,0,0,0,300,272,1,0,0,0,300,281,1,0,0,0,
-  	300,288,1,0,0,0,300,293,1,0,0,0,300,297,1,0,0,0,300,298,1,0,0,0,300,299,
-  	1,0,0,0,301,37,1,0,0,0,302,303,7,2,0,0,303,39,1,0,0,0,304,325,5,18,0,
-  	0,305,306,5,26,0,0,306,307,3,26,13,0,307,308,3,26,13,0,308,326,1,0,0,
-  	0,309,310,5,27,0,0,310,311,3,26,13,0,311,312,3,26,13,0,312,326,1,0,0,
-  	0,313,314,5,26,0,0,314,315,3,36,18,0,315,316,3,36,18,0,316,326,1,0,0,
-  	0,317,318,5,27,0,0,318,319,3,36,18,0,319,320,3,36,18,0,320,326,1,0,0,
-  	0,321,322,3,42,21,0,322,323,3,28,14,0,323,324,3,28,14,0,324,326,1,0,0,
-  	0,325,305,1,0,0,0,325,309,1,0,0,0,325,313,1,0,0,0,325,317,1,0,0,0,325,
-  	321,1,0,0,0,326,327,1,0,0,0,327,328,5,19,0,0,328,41,1,0,0,0,329,330,7,
-  	3,0,0,330,43,1,0,0,0,331,332,5,30,0,0,332,45,1,0,0,0,333,334,7,4,0,0,
-  	334,47,1,0,0,0,335,336,5,30,0,0,336,49,1,0,0,0,22,56,65,75,84,93,110,
-  	121,128,133,141,151,168,175,181,188,197,218,236,258,277,300,325
+  	0,5,0,74,8,0,10,0,12,0,77,9,0,1,0,1,0,1,0,1,0,1,0,1,0,3,0,85,8,0,1,0,
+  	1,0,1,0,3,0,90,8,0,1,1,1,1,1,1,1,1,1,1,5,1,97,8,1,10,1,12,1,100,9,1,1,
+  	1,1,1,1,1,1,1,1,2,1,2,1,2,1,2,1,2,1,3,1,3,1,3,4,3,114,8,3,11,3,12,3,115,
+  	1,3,1,3,1,4,1,4,1,4,1,4,1,4,1,4,1,4,3,4,127,8,4,1,5,1,5,1,5,4,5,132,8,
+  	5,11,5,12,5,133,1,5,5,5,137,8,5,10,5,12,5,140,9,5,1,5,1,5,1,5,1,5,1,5,
+  	3,5,147,8,5,1,6,1,6,1,7,1,7,1,7,1,7,4,7,155,8,7,11,7,12,7,156,1,7,1,7,
+  	1,7,1,7,1,7,1,7,1,7,1,7,1,8,1,8,1,8,1,8,1,8,1,9,1,9,3,9,174,8,9,1,10,
+  	1,10,1,10,5,10,179,8,10,10,10,12,10,182,9,10,1,10,1,10,1,10,3,10,187,
+  	8,10,1,11,1,11,1,11,1,11,1,11,3,11,194,8,11,1,11,1,11,1,12,1,12,1,12,
+  	4,12,201,8,12,11,12,12,12,202,1,12,1,12,1,13,1,13,1,13,1,13,1,13,1,13,
+  	1,13,1,13,1,13,1,13,1,13,1,13,1,13,1,13,1,13,1,13,1,13,3,13,224,8,13,
+  	1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,
+  	4,14,240,8,14,11,14,12,14,241,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,
+  	1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,3,14,264,
+  	8,14,1,15,1,15,1,16,1,16,1,17,1,17,1,18,1,18,1,18,1,18,1,18,1,18,1,18,
+  	1,18,1,18,4,18,281,8,18,11,18,12,18,282,1,18,1,18,1,18,1,18,1,18,1,18,
+  	1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,1,18,
+  	1,18,3,18,306,8,18,1,19,1,19,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,
+  	1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,20,3,20,
+  	331,8,20,1,20,1,20,1,21,1,21,1,22,1,22,1,23,1,23,1,24,1,24,1,24,0,0,25,
+  	0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,
+  	0,5,2,0,15,15,17,18,2,0,14,14,16,16,2,0,21,22,27,28,1,0,25,30,1,0,7,8,
+  	361,0,50,1,0,0,0,2,91,1,0,0,0,4,105,1,0,0,0,6,110,1,0,0,0,8,126,1,0,0,
+  	0,10,146,1,0,0,0,12,148,1,0,0,0,14,150,1,0,0,0,16,166,1,0,0,0,18,173,
+  	1,0,0,0,20,186,1,0,0,0,22,188,1,0,0,0,24,197,1,0,0,0,26,223,1,0,0,0,28,
+  	263,1,0,0,0,30,265,1,0,0,0,32,267,1,0,0,0,34,269,1,0,0,0,36,305,1,0,0,
+  	0,38,307,1,0,0,0,40,309,1,0,0,0,42,334,1,0,0,0,44,336,1,0,0,0,46,338,
+  	1,0,0,0,48,340,1,0,0,0,50,51,5,19,0,0,51,52,5,1,0,0,52,54,5,20,0,0,53,
+  	55,3,2,1,0,54,53,1,0,0,0,55,56,1,0,0,0,56,54,1,0,0,0,56,57,1,0,0,0,57,
+  	65,1,0,0,0,58,59,5,19,0,0,59,60,5,2,0,0,60,61,3,4,2,0,61,62,5,20,0,0,
+  	62,64,1,0,0,0,63,58,1,0,0,0,64,67,1,0,0,0,65,63,1,0,0,0,65,66,1,0,0,0,
+  	66,75,1,0,0,0,67,65,1,0,0,0,68,69,5,19,0,0,69,70,5,2,0,0,70,71,3,14,7,
+  	0,71,72,5,20,0,0,72,74,1,0,0,0,73,68,1,0,0,0,74,77,1,0,0,0,75,73,1,0,
+  	0,0,75,76,1,0,0,0,76,78,1,0,0,0,77,75,1,0,0,0,78,79,5,19,0,0,79,80,5,
+  	3,0,0,80,84,5,20,0,0,81,82,5,19,0,0,82,83,5,4,0,0,83,85,5,20,0,0,84,81,
+  	1,0,0,0,84,85,1,0,0,0,85,89,1,0,0,0,86,87,5,19,0,0,87,88,5,5,0,0,88,90,
+  	5,20,0,0,89,86,1,0,0,0,89,90,1,0,0,0,90,1,1,0,0,0,91,92,5,19,0,0,92,93,
+  	5,6,0,0,93,94,3,44,22,0,94,98,5,19,0,0,95,97,3,46,23,0,96,95,1,0,0,0,
+  	97,100,1,0,0,0,98,96,1,0,0,0,98,99,1,0,0,0,99,101,1,0,0,0,100,98,1,0,
+  	0,0,101,102,5,20,0,0,102,103,5,7,0,0,103,104,5,20,0,0,104,3,1,0,0,0,105,
+  	106,5,19,0,0,106,107,3,6,3,0,107,108,3,8,4,0,108,109,5,20,0,0,109,5,1,
+  	0,0,0,110,111,5,9,0,0,111,113,5,19,0,0,112,114,3,16,8,0,113,112,1,0,0,
+  	0,114,115,1,0,0,0,115,113,1,0,0,0,115,116,1,0,0,0,116,117,1,0,0,0,117,
+  	118,5,20,0,0,118,7,1,0,0,0,119,120,5,19,0,0,120,121,5,11,0,0,121,122,
+  	3,10,5,0,122,123,3,12,6,0,123,124,5,20,0,0,124,127,1,0,0,0,125,127,3,
+  	12,6,0,126,119,1,0,0,0,126,125,1,0,0,0,127,9,1,0,0,0,128,129,5,19,0,0,
+  	129,131,5,21,0,0,130,132,3,18,9,0,131,130,1,0,0,0,132,133,1,0,0,0,133,
+  	131,1,0,0,0,133,134,1,0,0,0,134,138,1,0,0,0,135,137,3,36,18,0,136,135,
+  	1,0,0,0,137,140,1,0,0,0,138,136,1,0,0,0,138,139,1,0,0,0,139,141,1,0,0,
+  	0,140,138,1,0,0,0,141,142,5,20,0,0,142,147,1,0,0,0,143,147,3,18,9,0,144,
+  	147,3,36,18,0,145,147,3,20,10,0,146,128,1,0,0,0,146,143,1,0,0,0,146,144,
+  	1,0,0,0,146,145,1,0,0,0,147,11,1,0,0,0,148,149,3,20,10,0,149,13,1,0,0,
+  	0,150,151,5,19,0,0,151,152,5,9,0,0,152,154,5,19,0,0,153,155,3,16,8,0,
+  	154,153,1,0,0,0,155,156,1,0,0,0,156,154,1,0,0,0,156,157,1,0,0,0,157,158,
+  	1,0,0,0,158,159,5,20,0,0,159,160,5,19,0,0,160,161,5,11,0,0,161,162,3,
+  	10,5,0,162,163,5,12,0,0,163,164,5,20,0,0,164,165,5,20,0,0,165,15,1,0,
+  	0,0,166,167,5,19,0,0,167,168,3,48,24,0,168,169,3,46,23,0,169,170,5,20,
+  	0,0,170,17,1,0,0,0,171,174,3,48,24,0,172,174,3,20,10,0,173,171,1,0,0,
+  	0,173,172,1,0,0,0,174,19,1,0,0,0,175,176,5,19,0,0,176,180,3,44,22,0,177,
+  	179,3,48,24,0,178,177,1,0,0,0,179,182,1,0,0,0,180,178,1,0,0,0,180,181,
+  	1,0,0,0,181,183,1,0,0,0,182,180,1,0,0,0,183,184,5,20,0,0,184,187,1,0,
+  	0,0,185,187,3,44,22,0,186,175,1,0,0,0,186,185,1,0,0,0,187,21,1,0,0,0,
+  	188,189,5,19,0,0,189,193,3,48,24,0,190,194,3,26,13,0,191,194,3,36,18,
+  	0,192,194,3,28,14,0,193,190,1,0,0,0,193,191,1,0,0,0,193,192,1,0,0,0,194,
+  	195,1,0,0,0,195,196,5,20,0,0,196,23,1,0,0,0,197,198,5,10,0,0,198,200,
+  	5,19,0,0,199,201,3,22,11,0,200,199,1,0,0,0,201,202,1,0,0,0,202,200,1,
+  	0,0,0,202,203,1,0,0,0,203,204,1,0,0,0,204,205,5,20,0,0,205,25,1,0,0,0,
+  	206,224,3,48,24,0,207,208,5,19,0,0,208,209,3,26,13,0,209,210,5,20,0,0,
+  	210,224,1,0,0,0,211,212,5,19,0,0,212,213,3,24,12,0,213,214,3,26,13,0,
+  	214,215,5,20,0,0,215,224,1,0,0,0,216,217,5,19,0,0,217,218,5,24,0,0,218,
+  	219,3,36,18,0,219,220,3,26,13,0,220,221,3,26,13,0,221,222,5,20,0,0,222,
+  	224,1,0,0,0,223,206,1,0,0,0,223,207,1,0,0,0,223,211,1,0,0,0,223,216,1,
+  	0,0,0,224,27,1,0,0,0,225,226,5,19,0,0,226,227,3,30,15,0,227,228,3,28,
+  	14,0,228,229,5,20,0,0,229,264,1,0,0,0,230,231,5,19,0,0,231,232,3,32,16,
+  	0,232,233,3,28,14,0,233,234,3,28,14,0,234,235,5,20,0,0,235,264,1,0,0,
+  	0,236,237,5,19,0,0,237,239,3,34,17,0,238,240,3,28,14,0,239,238,1,0,0,
+  	0,240,241,1,0,0,0,241,239,1,0,0,0,241,242,1,0,0,0,242,243,1,0,0,0,243,
+  	244,5,20,0,0,244,264,1,0,0,0,245,246,5,19,0,0,246,247,5,24,0,0,247,248,
+  	3,36,18,0,248,249,3,28,14,0,249,250,3,28,14,0,250,251,5,20,0,0,251,264,
+  	1,0,0,0,252,264,3,48,24,0,253,264,5,32,0,0,254,255,5,19,0,0,255,256,3,
+  	28,14,0,256,257,5,20,0,0,257,264,1,0,0,0,258,259,5,19,0,0,259,260,3,24,
+  	12,0,260,261,3,28,14,0,261,262,5,20,0,0,262,264,1,0,0,0,263,225,1,0,0,
+  	0,263,230,1,0,0,0,263,236,1,0,0,0,263,245,1,0,0,0,263,252,1,0,0,0,263,
+  	253,1,0,0,0,263,254,1,0,0,0,263,258,1,0,0,0,264,29,1,0,0,0,265,266,5,
+  	15,0,0,266,31,1,0,0,0,267,268,7,0,0,0,268,33,1,0,0,0,269,270,7,1,0,0,
+  	270,35,1,0,0,0,271,272,5,19,0,0,272,273,5,23,0,0,273,274,3,36,18,0,274,
+  	275,5,20,0,0,275,306,1,0,0,0,276,306,3,40,20,0,277,278,5,19,0,0,278,280,
+  	3,38,19,0,279,281,3,36,18,0,280,279,1,0,0,0,281,282,1,0,0,0,282,280,1,
+  	0,0,0,282,283,1,0,0,0,283,284,1,0,0,0,284,285,5,20,0,0,285,306,1,0,0,
+  	0,286,287,5,19,0,0,287,288,5,24,0,0,288,289,3,36,18,0,289,290,3,36,18,
+  	0,290,291,3,36,18,0,291,292,5,20,0,0,292,306,1,0,0,0,293,294,5,19,0,0,
+  	294,295,3,24,12,0,295,296,3,36,18,0,296,297,5,20,0,0,297,306,1,0,0,0,
+  	298,299,5,19,0,0,299,300,3,36,18,0,300,301,5,20,0,0,301,306,1,0,0,0,302,
+  	306,5,13,0,0,303,306,5,12,0,0,304,306,3,48,24,0,305,271,1,0,0,0,305,276,
+  	1,0,0,0,305,277,1,0,0,0,305,286,1,0,0,0,305,293,1,0,0,0,305,298,1,0,0,
+  	0,305,302,1,0,0,0,305,303,1,0,0,0,305,304,1,0,0,0,306,37,1,0,0,0,307,
+  	308,7,2,0,0,308,39,1,0,0,0,309,330,5,19,0,0,310,311,5,27,0,0,311,312,
+  	3,26,13,0,312,313,3,26,13,0,313,331,1,0,0,0,314,315,5,28,0,0,315,316,
+  	3,26,13,0,316,317,3,26,13,0,317,331,1,0,0,0,318,319,5,27,0,0,319,320,
+  	3,36,18,0,320,321,3,36,18,0,321,331,1,0,0,0,322,323,5,28,0,0,323,324,
+  	3,36,18,0,324,325,3,36,18,0,325,331,1,0,0,0,326,327,3,42,21,0,327,328,
+  	3,28,14,0,328,329,3,28,14,0,329,331,1,0,0,0,330,310,1,0,0,0,330,314,1,
+  	0,0,0,330,318,1,0,0,0,330,322,1,0,0,0,330,326,1,0,0,0,331,332,1,0,0,0,
+  	332,333,5,20,0,0,333,41,1,0,0,0,334,335,7,3,0,0,335,43,1,0,0,0,336,337,
+  	5,31,0,0,337,45,1,0,0,0,338,339,7,4,0,0,339,47,1,0,0,0,340,341,5,31,0,
+  	0,341,49,1,0,0,0,23,56,65,75,84,89,98,115,126,133,138,146,156,173,180,
+  	186,193,202,223,241,263,282,305,330
   };
   staticData->serializedATN = antlr4::atn::SerializedATNView(serializedATNSegment, sizeof(serializedATNSegment) / sizeof(serializedATNSegment[0]));
 
@@ -282,6 +285,10 @@ std::vector<CHCParser::Chc_queryContext *> CHCParser::MainContext::chc_query() {
 
 CHCParser::Chc_queryContext* CHCParser::MainContext::chc_query(size_t i) {
   return getRuleContext<CHCParser::Chc_queryContext>(i);
+}
+
+tree::TerminalNode* CHCParser::MainContext::GET_MODEL() {
+  return getToken(CHCParser::GET_MODEL, 0);
 }
 
 tree::TerminalNode* CHCParser::MainContext::EXIT() {
@@ -397,13 +404,30 @@ CHCParser::MainContext* CHCParser::main() {
     setState(84);
     _errHandler->sync(this);
 
-    _la = _input->LA(1);
-    if (_la == CHCParser::LPAR) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 3, _ctx)) {
+    case 1: {
       setState(81);
       match(CHCParser::LPAR);
       setState(82);
-      match(CHCParser::EXIT);
+      match(CHCParser::GET_MODEL);
       setState(83);
+      match(CHCParser::RPAR);
+      break;
+    }
+
+    default:
+      break;
+    }
+    setState(89);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CHCParser::LPAR) {
+      setState(86);
+      match(CHCParser::LPAR);
+      setState(87);
+      match(CHCParser::EXIT);
+      setState(88);
       match(CHCParser::RPAR);
     }
    
@@ -498,31 +522,31 @@ CHCParser::Fun_declContext* CHCParser::fun_decl() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(86);
+    setState(91);
     match(CHCParser::LPAR);
-    setState(87);
+    setState(92);
     match(CHCParser::DECLARE_FUN);
-    setState(88);
-    symbol();
-    setState(89);
-    match(CHCParser::LPAR);
     setState(93);
+    symbol();
+    setState(94);
+    match(CHCParser::LPAR);
+    setState(98);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == CHCParser::BOOL_SORT
 
     || _la == CHCParser::INT_SORT) {
-      setState(90);
-      sort();
       setState(95);
+      sort();
+      setState(100);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-    setState(96);
+    setState(101);
     match(CHCParser::RPAR);
-    setState(97);
+    setState(102);
     match(CHCParser::BOOL_SORT);
-    setState(98);
+    setState(103);
     match(CHCParser::RPAR);
    
   }
@@ -595,13 +619,13 @@ CHCParser::Chc_assertContext* CHCParser::chc_assert() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(100);
+    setState(105);
     match(CHCParser::LPAR);
-    setState(101);
+    setState(106);
     chc_assert_head();
-    setState(102);
+    setState(107);
     chc_assert_body();
-    setState(103);
+    setState(108);
     match(CHCParser::RPAR);
    
   }
@@ -679,21 +703,21 @@ CHCParser::Chc_assert_headContext* CHCParser::chc_assert_head() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(105);
+    setState(110);
     match(CHCParser::FORALL);
-    setState(106);
+    setState(111);
     match(CHCParser::LPAR);
-    setState(108); 
+    setState(113); 
     _errHandler->sync(this);
     _la = _input->LA(1);
     do {
-      setState(107);
+      setState(112);
       var_decl();
-      setState(110); 
+      setState(115); 
       _errHandler->sync(this);
       _la = _input->LA(1);
     } while (_la == CHCParser::LPAR);
-    setState(112);
+    setState(117);
     match(CHCParser::RPAR);
    
   }
@@ -769,27 +793,27 @@ CHCParser::Chc_assert_bodyContext* CHCParser::chc_assert_body() {
     exitRule();
   });
   try {
-    setState(121);
+    setState(126);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 6, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 7, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
-      setState(114);
+      setState(119);
       match(CHCParser::LPAR);
-      setState(115);
+      setState(120);
       match(CHCParser::IMPLIES);
-      setState(116);
+      setState(121);
       chc_tail();
-      setState(117);
+      setState(122);
       chc_head();
-      setState(118);
+      setState(123);
       match(CHCParser::RPAR);
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
-      setState(120);
+      setState(125);
       chc_head();
       break;
     }
@@ -885,22 +909,22 @@ CHCParser::Chc_tailContext* CHCParser::chc_tail() {
   });
   try {
     size_t alt;
-    setState(141);
+    setState(146);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 9, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 10, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
-      setState(123);
+      setState(128);
       match(CHCParser::LPAR);
-      setState(124);
+      setState(129);
       match(CHCParser::AND);
-      setState(126); 
+      setState(131); 
       _errHandler->sync(this);
       alt = 1;
       do {
         switch (alt) {
           case 1: {
-                setState(125);
+                setState(130);
                 var_or_atom();
                 break;
               }
@@ -908,43 +932,43 @@ CHCParser::Chc_tailContext* CHCParser::chc_tail() {
         default:
           throw NoViableAltException(this);
         }
-        setState(128); 
+        setState(133); 
         _errHandler->sync(this);
-        alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 7, _ctx);
+        alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 8, _ctx);
       } while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER);
-      setState(133);
+      setState(138);
       _errHandler->sync(this);
       _la = _input->LA(1);
       while (((_la & ~ 0x3fULL) == 0) &&
-        ((1ULL << _la) & 1074010112) != 0) {
-        setState(130);
-        i_formula();
+        ((1ULL << _la) & 2148020224) != 0) {
         setState(135);
+        i_formula();
+        setState(140);
         _errHandler->sync(this);
         _la = _input->LA(1);
       }
-      setState(136);
+      setState(141);
       match(CHCParser::RPAR);
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
-      setState(138);
+      setState(143);
       var_or_atom();
       break;
     }
 
     case 3: {
       enterOuterAlt(_localctx, 3);
-      setState(139);
+      setState(144);
       i_formula();
       break;
     }
 
     case 4: {
       enterOuterAlt(_localctx, 4);
-      setState(140);
+      setState(145);
       u_pred_atom();
       break;
     }
@@ -1011,7 +1035,7 @@ CHCParser::Chc_headContext* CHCParser::chc_head() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(143);
+    setState(148);
     u_pred_atom();
    
   }
@@ -1109,35 +1133,35 @@ CHCParser::Chc_queryContext* CHCParser::chc_query() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(145);
+    setState(150);
     match(CHCParser::LPAR);
-    setState(146);
+    setState(151);
     match(CHCParser::FORALL);
-    setState(147);
+    setState(152);
     match(CHCParser::LPAR);
-    setState(149); 
+    setState(154); 
     _errHandler->sync(this);
     _la = _input->LA(1);
     do {
-      setState(148);
+      setState(153);
       var_decl();
-      setState(151); 
+      setState(156); 
       _errHandler->sync(this);
       _la = _input->LA(1);
     } while (_la == CHCParser::LPAR);
-    setState(153);
-    match(CHCParser::RPAR);
-    setState(154);
-    match(CHCParser::LPAR);
-    setState(155);
-    match(CHCParser::IMPLIES);
-    setState(156);
-    chc_tail();
-    setState(157);
-    match(CHCParser::FALSE);
     setState(158);
     match(CHCParser::RPAR);
     setState(159);
+    match(CHCParser::LPAR);
+    setState(160);
+    match(CHCParser::IMPLIES);
+    setState(161);
+    chc_tail();
+    setState(162);
+    match(CHCParser::FALSE);
+    setState(163);
+    match(CHCParser::RPAR);
+    setState(164);
     match(CHCParser::RPAR);
    
   }
@@ -1210,13 +1234,13 @@ CHCParser::Var_declContext* CHCParser::var_decl() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(161);
+    setState(166);
     match(CHCParser::LPAR);
-    setState(162);
+    setState(167);
     var();
-    setState(163);
+    setState(168);
     sort();
-    setState(164);
+    setState(169);
     match(CHCParser::RPAR);
    
   }
@@ -1280,19 +1304,19 @@ CHCParser::Var_or_atomContext* CHCParser::var_or_atom() {
     exitRule();
   });
   try {
-    setState(168);
+    setState(173);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 11, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 12, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
-      setState(166);
+      setState(171);
       var();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
-      setState(167);
+      setState(172);
       u_pred_atom();
       break;
     }
@@ -1375,33 +1399,33 @@ CHCParser::U_pred_atomContext* CHCParser::u_pred_atom() {
     exitRule();
   });
   try {
-    setState(181);
+    setState(186);
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CHCParser::LPAR: {
         enterOuterAlt(_localctx, 1);
-        setState(170);
-        match(CHCParser::LPAR);
-        setState(171);
-        symbol();
         setState(175);
+        match(CHCParser::LPAR);
+        setState(176);
+        symbol();
+        setState(180);
         _errHandler->sync(this);
         _la = _input->LA(1);
         while (_la == CHCParser::ID) {
-          setState(172);
-          var();
           setState(177);
+          var();
+          setState(182);
           _errHandler->sync(this);
           _la = _input->LA(1);
         }
-        setState(178);
+        setState(183);
         match(CHCParser::RPAR);
         break;
       }
 
       case CHCParser::ID: {
         enterOuterAlt(_localctx, 2);
-        setState(180);
+        setState(185);
         symbol();
         break;
       }
@@ -1488,27 +1512,27 @@ CHCParser::LetContext* CHCParser::let() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(183);
-    match(CHCParser::LPAR);
-    setState(184);
-    var();
     setState(188);
+    match(CHCParser::LPAR);
+    setState(189);
+    var();
+    setState(193);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 14, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 15, _ctx)) {
     case 1: {
-      setState(185);
+      setState(190);
       formula_or_expr();
       break;
     }
 
     case 2: {
-      setState(186);
+      setState(191);
       i_formula();
       break;
     }
 
     case 3: {
-      setState(187);
+      setState(192);
       expr();
       break;
     }
@@ -1516,7 +1540,7 @@ CHCParser::LetContext* CHCParser::let() {
     default:
       break;
     }
-    setState(190);
+    setState(195);
     match(CHCParser::RPAR);
    
   }
@@ -1594,21 +1618,21 @@ CHCParser::LetsContext* CHCParser::lets() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(192);
+    setState(197);
     match(CHCParser::LET);
-    setState(193);
+    setState(198);
     match(CHCParser::LPAR);
-    setState(195); 
+    setState(200); 
     _errHandler->sync(this);
     _la = _input->LA(1);
     do {
-      setState(194);
+      setState(199);
       let();
-      setState(197); 
+      setState(202); 
       _errHandler->sync(this);
       _la = _input->LA(1);
     } while (_la == CHCParser::LPAR);
-    setState(199);
+    setState(204);
     match(CHCParser::RPAR);
    
   }
@@ -1696,33 +1720,20 @@ CHCParser::Formula_or_exprContext* CHCParser::formula_or_expr() {
     exitRule();
   });
   try {
-    setState(218);
+    setState(223);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 16, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 17, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
-      setState(201);
+      setState(206);
       var();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
-      setState(202);
-      match(CHCParser::LPAR);
-      setState(203);
-      formula_or_expr();
-      setState(204);
-      match(CHCParser::RPAR);
-      break;
-    }
-
-    case 3: {
-      enterOuterAlt(_localctx, 3);
-      setState(206);
-      match(CHCParser::LPAR);
       setState(207);
-      lets();
+      match(CHCParser::LPAR);
       setState(208);
       formula_or_expr();
       setState(209);
@@ -1730,19 +1741,32 @@ CHCParser::Formula_or_exprContext* CHCParser::formula_or_expr() {
       break;
     }
 
-    case 4: {
-      enterOuterAlt(_localctx, 4);
+    case 3: {
+      enterOuterAlt(_localctx, 3);
       setState(211);
       match(CHCParser::LPAR);
       setState(212);
-      match(CHCParser::ITE);
+      lets();
       setState(213);
-      i_formula();
+      formula_or_expr();
       setState(214);
-      formula_or_expr();
-      setState(215);
-      formula_or_expr();
+      match(CHCParser::RPAR);
+      break;
+    }
+
+    case 4: {
+      enterOuterAlt(_localctx, 4);
       setState(216);
+      match(CHCParser::LPAR);
+      setState(217);
+      match(CHCParser::ITE);
+      setState(218);
+      i_formula();
+      setState(219);
+      formula_or_expr();
+      setState(220);
+      formula_or_expr();
+      setState(221);
       match(CHCParser::RPAR);
       break;
     }
@@ -1853,110 +1877,110 @@ CHCParser::ExprContext* CHCParser::expr() {
     exitRule();
   });
   try {
-    setState(258);
+    setState(263);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 18, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 19, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
-      setState(220);
+      setState(225);
       match(CHCParser::LPAR);
-      setState(221);
+      setState(226);
       unaryop();
-      setState(222);
+      setState(227);
       expr();
-      setState(223);
+      setState(228);
       match(CHCParser::RPAR);
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
-      setState(225);
+      setState(230);
       match(CHCParser::LPAR);
-      setState(226);
+      setState(231);
       binaryop();
-      setState(227);
+      setState(232);
       expr();
-      setState(228);
+      setState(233);
       expr();
-      setState(229);
+      setState(234);
       match(CHCParser::RPAR);
       break;
     }
 
     case 3: {
       enterOuterAlt(_localctx, 3);
-      setState(231);
+      setState(236);
       match(CHCParser::LPAR);
-      setState(232);
+      setState(237);
       naryop();
-      setState(234); 
+      setState(239); 
       _errHandler->sync(this);
       _la = _input->LA(1);
       do {
-        setState(233);
+        setState(238);
         expr();
-        setState(236); 
+        setState(241); 
         _errHandler->sync(this);
         _la = _input->LA(1);
       } while (((_la & ~ 0x3fULL) == 0) &&
-        ((1ULL << _la) & 3221487616) != 0);
-      setState(238);
+        ((1ULL << _la) & 6442975232) != 0);
+      setState(243);
       match(CHCParser::RPAR);
       break;
     }
 
     case 4: {
       enterOuterAlt(_localctx, 4);
-      setState(240);
-      match(CHCParser::LPAR);
-      setState(241);
-      match(CHCParser::ITE);
-      setState(242);
-      i_formula();
-      setState(243);
-      expr();
-      setState(244);
-      expr();
       setState(245);
+      match(CHCParser::LPAR);
+      setState(246);
+      match(CHCParser::ITE);
+      setState(247);
+      i_formula();
+      setState(248);
+      expr();
+      setState(249);
+      expr();
+      setState(250);
       match(CHCParser::RPAR);
       break;
     }
 
     case 5: {
       enterOuterAlt(_localctx, 5);
-      setState(247);
+      setState(252);
       var();
       break;
     }
 
     case 6: {
       enterOuterAlt(_localctx, 6);
-      setState(248);
+      setState(253);
       match(CHCParser::INT);
       break;
     }
 
     case 7: {
       enterOuterAlt(_localctx, 7);
-      setState(249);
+      setState(254);
       match(CHCParser::LPAR);
-      setState(250);
+      setState(255);
       expr();
-      setState(251);
+      setState(256);
       match(CHCParser::RPAR);
       break;
     }
 
     case 8: {
       enterOuterAlt(_localctx, 8);
-      setState(253);
+      setState(258);
       match(CHCParser::LPAR);
-      setState(254);
+      setState(259);
       lets();
-      setState(255);
+      setState(260);
       expr();
-      setState(256);
+      setState(261);
       match(CHCParser::RPAR);
       break;
     }
@@ -2023,7 +2047,7 @@ CHCParser::UnaryopContext* CHCParser::unaryop() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(260);
+    setState(265);
     match(CHCParser::MINUS);
    
   }
@@ -2093,10 +2117,10 @@ CHCParser::BinaryopContext* CHCParser::binaryop() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(262);
+    setState(267);
     _la = _input->LA(1);
     if (!(((_la & ~ 0x3fULL) == 0) &&
-      ((1ULL << _la) & 212992) != 0)) {
+      ((1ULL << _la) & 425984) != 0)) {
     _errHandler->recoverInline(this);
     }
     else {
@@ -2167,7 +2191,7 @@ CHCParser::NaryopContext* CHCParser::naryop() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(264);
+    setState(269);
     _la = _input->LA(1);
     if (!(_la == CHCParser::PLUS
 
@@ -2281,74 +2305,61 @@ CHCParser::I_formulaContext* CHCParser::i_formula() {
     exitRule();
   });
   try {
-    setState(300);
+    setState(305);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 20, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 21, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
-      setState(266);
+      setState(271);
       match(CHCParser::LPAR);
-      setState(267);
+      setState(272);
       match(CHCParser::NOT);
-      setState(268);
+      setState(273);
       i_formula();
-      setState(269);
+      setState(274);
       match(CHCParser::RPAR);
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
-      setState(271);
+      setState(276);
       lit();
       break;
     }
 
     case 3: {
       enterOuterAlt(_localctx, 3);
-      setState(272);
+      setState(277);
       match(CHCParser::LPAR);
-      setState(273);
+      setState(278);
       boolop();
-      setState(275); 
+      setState(280); 
       _errHandler->sync(this);
       _la = _input->LA(1);
       do {
-        setState(274);
+        setState(279);
         i_formula();
-        setState(277); 
+        setState(282); 
         _errHandler->sync(this);
         _la = _input->LA(1);
       } while (((_la & ~ 0x3fULL) == 0) &&
-        ((1ULL << _la) & 1074010112) != 0);
-      setState(279);
+        ((1ULL << _la) & 2148020224) != 0);
+      setState(284);
       match(CHCParser::RPAR);
       break;
     }
 
     case 4: {
       enterOuterAlt(_localctx, 4);
-      setState(281);
-      match(CHCParser::LPAR);
-      setState(282);
-      match(CHCParser::ITE);
-      setState(283);
-      i_formula();
-      setState(284);
-      i_formula();
-      setState(285);
-      i_formula();
       setState(286);
-      match(CHCParser::RPAR);
-      break;
-    }
-
-    case 5: {
-      enterOuterAlt(_localctx, 5);
-      setState(288);
       match(CHCParser::LPAR);
+      setState(287);
+      match(CHCParser::ITE);
+      setState(288);
+      i_formula();
       setState(289);
-      lets();
+      i_formula();
       setState(290);
       i_formula();
       setState(291);
@@ -2356,34 +2367,47 @@ CHCParser::I_formulaContext* CHCParser::i_formula() {
       break;
     }
 
-    case 6: {
-      enterOuterAlt(_localctx, 6);
+    case 5: {
+      enterOuterAlt(_localctx, 5);
       setState(293);
       match(CHCParser::LPAR);
       setState(294);
-      i_formula();
+      lets();
       setState(295);
+      i_formula();
+      setState(296);
+      match(CHCParser::RPAR);
+      break;
+    }
+
+    case 6: {
+      enterOuterAlt(_localctx, 6);
+      setState(298);
+      match(CHCParser::LPAR);
+      setState(299);
+      i_formula();
+      setState(300);
       match(CHCParser::RPAR);
       break;
     }
 
     case 7: {
       enterOuterAlt(_localctx, 7);
-      setState(297);
+      setState(302);
       match(CHCParser::TRUE);
       break;
     }
 
     case 8: {
       enterOuterAlt(_localctx, 8);
-      setState(298);
+      setState(303);
       match(CHCParser::FALSE);
       break;
     }
 
     case 9: {
       enterOuterAlt(_localctx, 9);
-      setState(299);
+      setState(304);
       var();
       break;
     }
@@ -2463,10 +2487,10 @@ CHCParser::BoolopContext* CHCParser::boolop() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(302);
+    setState(307);
     _la = _input->LA(1);
     if (!(((_la & ~ 0x3fULL) == 0) &&
-      ((1ULL << _la) & 204472320) != 0)) {
+      ((1ULL << _la) & 408944640) != 0)) {
     _errHandler->recoverInline(this);
     }
     else {
@@ -2572,57 +2596,57 @@ CHCParser::LitContext* CHCParser::lit() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(304);
+    setState(309);
     match(CHCParser::LPAR);
-    setState(325);
+    setState(330);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 21, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 22, _ctx)) {
     case 1: {
-      setState(305);
+      setState(310);
       match(CHCParser::EQ);
-      setState(306);
+      setState(311);
       formula_or_expr();
-      setState(307);
+      setState(312);
       formula_or_expr();
       break;
     }
 
     case 2: {
-      setState(309);
+      setState(314);
       match(CHCParser::NEQ);
-      setState(310);
+      setState(315);
       formula_or_expr();
-      setState(311);
+      setState(316);
       formula_or_expr();
       break;
     }
 
     case 3: {
-      setState(313);
+      setState(318);
       match(CHCParser::EQ);
-      setState(314);
+      setState(319);
       i_formula();
-      setState(315);
+      setState(320);
       i_formula();
       break;
     }
 
     case 4: {
-      setState(317);
+      setState(322);
       match(CHCParser::NEQ);
-      setState(318);
+      setState(323);
       i_formula();
-      setState(319);
+      setState(324);
       i_formula();
       break;
     }
 
     case 5: {
-      setState(321);
+      setState(326);
       relop();
-      setState(322);
+      setState(327);
       expr();
-      setState(323);
+      setState(328);
       expr();
       break;
     }
@@ -2630,7 +2654,7 @@ CHCParser::LitContext* CHCParser::lit() {
     default:
       break;
     }
-    setState(327);
+    setState(332);
     match(CHCParser::RPAR);
    
   }
@@ -2712,10 +2736,10 @@ CHCParser::RelopContext* CHCParser::relop() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(329);
+    setState(334);
     _la = _input->LA(1);
     if (!(((_la & ~ 0x3fULL) == 0) &&
-      ((1ULL << _la) & 1056964608) != 0)) {
+      ((1ULL << _la) & 2113929216) != 0)) {
     _errHandler->recoverInline(this);
     }
     else {
@@ -2781,7 +2805,7 @@ CHCParser::SymbolContext* CHCParser::symbol() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(331);
+    setState(336);
     match(CHCParser::ID);
    
   }
@@ -2847,7 +2871,7 @@ CHCParser::SortContext* CHCParser::sort() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(333);
+    setState(338);
     _la = _input->LA(1);
     if (!(_la == CHCParser::BOOL_SORT
 
@@ -2917,7 +2941,7 @@ CHCParser::VarContext* CHCParser::var() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(335);
+    setState(340);
     match(CHCParser::ID);
    
   }
