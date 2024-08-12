@@ -15,6 +15,29 @@ sexpresso::Sexp FunApp::to_smtlib(const var_map &vars) const {
     return res;
 }
 
+std::ostream& operator<<(std::ostream &s, const FunApp &f) {
+    s << f.pred << " ::";
+    for (const auto &x: f.args) {
+        s << " " << theory::var_to_type(x);
+    }
+    return s;
+}
+
+std::size_t hash_value(const FunApp &f) {
+    size_t seed {42};
+    boost::hash_combine(seed, f.pred);
+    boost::hash_combine(seed, boost::hash_range(f.args.begin(), f.args.end()));
+    return seed;
+}
+
+const std::string& FunApp::get_pred() const {
+    return pred;
+}
+
+const std::vector<Var>& FunApp::get_args() const {
+    return args;
+}
+
 bool Clause::is_fact() const {
     return !premise.has_value();
 }
@@ -63,19 +86,6 @@ const var_map& Clause::get_vars() const {
     return vars;
 }
 
-sexpresso::Sexp var_to_type(const Var &x) {
-    return sexpresso::Sexp{
-        std::visit(
-            Overload{
-                [&](const Arith::Var &) {
-                    return "Int";
-                },
-                [&](const Bools::Var &) {
-                    return "Bool";
-                }},
-            x)};
-}
-
 sexpresso::Sexp Clause::to_smtlib() const {
     sexpresso::Sexp assertion{"assert"};
     sexpresso::Sexp forall{"forall"};
@@ -83,7 +93,7 @@ sexpresso::Sexp Clause::to_smtlib() const {
     std::map<std::string, sexpresso::Sexp> var_map;
     for (const auto &[_,x]: vars) {
         const auto var {vars.right.at(x)};
-        const auto type {var_to_type(x)};
+        const auto type {theory::var_to_type(x)};
         var_map.emplace(var, type);
     }
     for (const auto &[name, type]: var_map) {
@@ -151,15 +161,7 @@ bool CHCProblem::is_left_and_right_linear() const {
 }
 
 sexpresso::Sexp CHCProblem::to_smtlib() const {
-    linked_hash_map<std::string, std::vector<Var>> preds;
-    for (const auto &c: clauses) {
-        if (c.get_premise()) {
-            preds.put(c.get_premise()->pred, c.get_premise()->args);
-        }
-        if (c.get_conclusion()) {
-            preds.put(c.get_conclusion()->pred, c.get_conclusion()->args);
-        }
-    }
+    const auto preds {get_signature()};
     sexpresso::Sexp res;
     sexpresso::Sexp set_logic {"set-logic"};
     set_logic.addChild("HORN");
@@ -169,7 +171,7 @@ sexpresso::Sexp CHCProblem::to_smtlib() const {
         decl.addChild(f);
         sexpresso::Sexp types;
         for (const auto &x: args) {
-            types.addChild(var_to_type(x));
+            types.addChild(theory::var_to_type(x));
         }
         decl.addChild(types);
         decl.addChild("Bool");
@@ -190,4 +192,17 @@ CHCProblem CHCProblem::reverse() const {
         res.add_clause(reversed);
     }
     return res;
+}
+
+linked_hash_map<std::string, std::vector<Var>> CHCProblem::get_signature() const {
+    linked_hash_map<std::string, std::vector<Var>> preds;
+    for (const auto &c: clauses) {
+        if (c.get_premise()) {
+            preds.put(c.get_premise()->get_pred(), c.get_premise()->get_args());
+        }
+        if (c.get_conclusion()) {
+            preds.put(c.get_conclusion()->get_pred(), c.get_conclusion()->get_args());
+        }
+    }
+    return preds;
 }

@@ -248,17 +248,7 @@ namespace sexpresso {
 
     auto Sexp::toString() const -> std::string {
         auto ostream = std::ostringstream{};
-        // outer sexp does not get surrounded by ()
-        switch(this->kind) {
-            case SexpValueKind::STRING:
-                ostream << stringValToString(this->value.str);
-                break;
-            case SexpValueKind::SEXP:
-                for(auto i = this->value.sexp.begin(); i != this->value.sexp.end(); ++i) {
-                    const auto freshline = toStringImpl(*i, ostream, 0, true);
-                    if(!freshline && i != this->value.sexp.end()-1) ostream << '\n';
-                }
-        }
+        toStringImpl(*this, ostream, 0, true);
         return ostream.str();
     }
 

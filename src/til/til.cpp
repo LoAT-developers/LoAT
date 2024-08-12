@@ -40,8 +40,8 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-TIL::TIL(CHCProblem &chcs, const Config::TILConfig &config) : config(config) {
-    t = chc_to_safetyproblem(chcs);
+TIL::TIL(CHCProblem &chcs, const Config::TILConfig &config) : config(config), reversible(chc_to_safetyproblem(chcs)) {
+    t = *reversible;
     vars.insert(trace_var);
     vars.insert(n);
     for (const auto &x : t.vars()) {
@@ -1005,10 +1005,10 @@ std::optional<SmtResult> TIL::do_step() {
     return {};
 }
 
-Bools::Expr TIL::get_model() {
+CHCModel TIL::get_model() {
     std::vector<Bools::Expr> res {t.init()};
     Bools::Expr last {t.init()};
-    for (unsigned i = 0; i < depth; ++i) {
+    for (unsigned i = 0; i < depth - 1; ++i) {
         const auto s1 {get_subs(i, 1)};
         last = last && s1(step);
         Subs s2;
@@ -1020,7 +1020,8 @@ Bools::Expr TIL::get_model() {
         }
         res.push_back(s2(last));
     }
-    return bools::mkOr(res);
+    const auto sp_model {bools::mkOr(res)};
+    return reversible.revert_model(sp_model);
 }
 
 void TIL::analyze() {
@@ -1033,7 +1034,7 @@ void TIL::analyze() {
         if (res) {
             if (res == SmtResult::Sat) {
                 sat();
-                std::cout << get_model() << std::endl;
+                std::cout << get_model().to_smtlib().toString() << std::endl;
             } else {
                 unknown();
             }

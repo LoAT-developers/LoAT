@@ -9,6 +9,8 @@ add_library(${PROJECT_NAME} OBJECT
     chcproblem.cpp
     linearize.hpp
     linearize.cpp
+    chcmodel.hpp
+    chcmodel.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

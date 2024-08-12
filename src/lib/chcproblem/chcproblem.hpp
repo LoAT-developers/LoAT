@@ -6,14 +6,22 @@
 #include "sexpresso.hpp"
 #include "theory.hpp"
 
-struct FunApp {
+class FunApp {
     std::string pred;
     std::vector<Var> args;
+
+public:
 
     FunApp(const std::string &pred, const std::vector<Var> &args);
 
     bool is_linear() const;
     sexpresso::Sexp to_smtlib(const var_map &vars) const;
+    const std::string& get_pred() const;
+    const std::vector<Var>& get_args() const;
+
+    friend auto operator<=>(const FunApp &, const FunApp&) = default;
+    friend std::ostream& operator<<(std::ostream &s, const FunApp &f);
+    friend std::size_t hash_value(const FunApp &f);
 
     template <ITheory T>
     unsigned max_arity() const {
@@ -71,6 +79,7 @@ public:
     bool is_left_and_right_linear() const;
     sexpresso::Sexp to_smtlib() const;
     CHCProblem reverse() const;
+    linked_hash_map<std::string, std::vector<Var>> get_signature() const;
 
     template <ITheory T>
     unsigned max_arity() const {

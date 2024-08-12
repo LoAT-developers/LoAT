@@ -12,6 +12,8 @@
 #include "dependencygraph.hpp"
 #include "linkedhashmap.hpp"
 #include "config.hpp"
+#include "chcmodel.hpp"
+#include "chctosafetyproblem.hpp"
 
 
 class Range {
@@ -77,6 +79,7 @@ private:
     Int last_orig_clause;
     Subs post_to_pre {};
     Subs pre_to_post {};
+    ReversibleCHCToSafety reversible;
 
     Int next_id {0};
 
@@ -112,7 +115,7 @@ private:
     void build_trace();
     const Subs& get_subs(const unsigned start, const unsigned steps);
     void pop();
-    Bools::Expr get_model();
+    CHCModel get_model();
 
     Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;

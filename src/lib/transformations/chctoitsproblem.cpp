@@ -1,7 +1,47 @@
 #include "chctoitsproblem.hpp"
 #include "linearize.hpp"
 
-ITSPtr chcs_to_its(CHCProblem chcs) {
+ReversibleCHCToITS::ReversibleCHCToITS(
+    const ITSPtr its,
+    const linked_hash_map<std::string, std::vector<Var>> &signature,
+    const std::vector<Arith::Var> &arith_vars,
+    const std::vector<Bools::Var> &bool_vars):
+    Reversible<ITSPtr, ITSModel, CHCModel>(its),
+    signature(signature),
+    arith_vars(arith_vars),
+    bool_vars(bool_vars) {}
+
+CHCModel ReversibleCHCToITS::revert_model(const ITSModel& its_m) const {
+    CHCModel chc_m;
+    for (const auto loc : res->getLocations()) {
+        if (res->getInitialLocation() == loc || res->getSink() == loc) {
+            continue;
+        }
+        const auto inv{its_m.get_invariant(loc)};
+        const auto pred{res->getPrintableLocationName(loc)};
+        const auto sig{signature.at(pred)};
+        unsigned next_int_var{0};
+        unsigned next_bool_var{0};
+        Subs s;
+        for (const auto &x : sig) {
+            std::visit(
+                Overload{
+                    [&](const Arith::Var &x) {
+                        s.put<Arith>(arith_vars.at(next_int_var), Arith::varToExpr(x));
+                        ++next_int_var;
+                    },
+                    [&](const Bools::Var &x) {
+                        s.put<Bools>(bool_vars.at(next_bool_var), Bools::varToExpr(x));
+                        ++next_bool_var;
+                    }},
+                x);
+        }
+        chc_m.set_interpretation(FunApp(pred, sig), s(inv));
+    }
+    return chc_m;
+}
+
+ReversibleCHCToITS chcs_to_its(CHCProblem chcs) {
     if (!chcs.is_left_and_right_linear()) {
         chcs = linearize(chcs);
     }
@@ -24,7 +64,7 @@ ITSPtr chcs_to_its(CHCProblem chcs) {
             unsigned bool_arg {0};
             unsigned int_arg {0};
             if (c.get_premise()) {
-                for (const auto &x: c.get_premise()->args) {
+                for (const auto &x: c.get_premise()->get_args()) {
                     std::visit(
                         Overload{
                             [&](const Arith::Var x) {
@@ -40,7 +80,7 @@ ITSPtr chcs_to_its(CHCProblem chcs) {
             }
             VarSet cVars;
             if (c.get_conclusion()) {
-                for (const auto &var: c.get_conclusion()->args) {
+                for (const auto &var: c.get_conclusion()->get_args()) {
                     cVars.insert(var);
                 }
             }
@@ -61,7 +101,7 @@ ITSPtr chcs_to_its(CHCProblem chcs) {
             int_arg = 0;
             Subs up;
             if (c.get_conclusion()) {
-                for (const auto &arg: c.get_conclusion()->args) {
+                for (const auto &arg: c.get_conclusion()->get_args()) {
                     std::visit(
                         Overload{
                             [&](const Arith::Var var) {
@@ -81,12 +121,12 @@ ITSPtr chcs_to_its(CHCProblem chcs) {
             for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
                 up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
             }
-            const auto lhs_loc = c.get_premise() ? its->getOrAddLocation(c.get_premise()->pred) : its->getInitialLocation();
-            const auto rhs_loc = c.get_conclusion() ? its->getOrAddLocation(c.get_conclusion()->pred) : its->getSink();
+            const auto lhs_loc = c.get_premise() ? its->getOrAddLocation(c.get_premise()->get_pred()) : its->getInitialLocation();
+            const auto rhs_loc = c.get_conclusion() ? its->getOrAddLocation(c.get_conclusion()->get_pred()) : its->getSink();
             up.put<Arith>(its->getLocVar(), arith::mkConst(rhs_loc));
             const auto guard {ren(g) && theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc))};
             its->addRule(Rule(guard, up), lhs_loc);
         }
     }
-    return its;
+    return ReversibleCHCToITS(its, chcs.get_signature(), vars, bvars);
 }

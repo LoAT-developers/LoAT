@@ -78,6 +78,7 @@ size_t hash(const Lit &lit);
 sexpresso::Sexp to_smtlib(const Lit &l, const std::function<std::string(const Var &)> &);
 void simplifyAnd(LitSet&);
 void simplifyOr(LitSet&);
+std::string var_to_type(const Var &x);
 
 template <class ... Ts>
 auto apply(const Var &x, Ts... f) {

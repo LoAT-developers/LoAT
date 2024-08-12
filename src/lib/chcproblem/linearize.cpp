@@ -3,7 +3,7 @@
 FunApp linearize(const FunApp &f, Clause &c, std::vector<Bools::Expr> &constr) {
     std::vector<Var> args;
     VarSet arg_set;
-    for (const auto &x: f.args) {
+    for (const auto &x: f.get_args()) {
         if (!arg_set.insert(x)) {
             const auto next {theory::next(x)};
             args.push_back(next);
@@ -11,7 +11,7 @@ FunApp linearize(const FunApp &f, Clause &c, std::vector<Bools::Expr> &constr) {
             constr.push_back(theory::mkEq(theory::toExpr(x), theory::toExpr(next)));
         }
     }
-    return FunApp(f.pred, args);
+    return FunApp(f.get_pred(), args);
 }
 
 Clause linearize(const Clause &c) {

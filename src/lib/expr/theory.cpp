@@ -54,6 +54,18 @@ Expr toExpr(const Var &var) {
     return TheTheory::varToExpr(var);
 }
 
+std::string var_to_type(const Var &x) {
+    return std::visit(
+        Overload{
+            [&](const Arith::Var &) {
+                return "Int";
+            },
+            [&](const Bools::Var &) {
+                return "Bool";
+            }},
+        x);
+}
+
 sexpresso::Sexp to_smtlib(const Lit &l, const std::function<std::string(const Var &)> &var_map) {
     return std::visit([&](const auto x) {return x->to_smtlib(var_map);}, l);
 }

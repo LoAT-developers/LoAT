@@ -10,6 +10,8 @@ add_library(${PROJECT_NAME} OBJECT
     itsproblem.cpp
     itsproblem.hpp
     dependencygraph.hpp
+    itsmodel.cpp
+    itsmodel.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
