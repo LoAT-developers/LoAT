@@ -648,12 +648,9 @@ void TIL::recurrent_bounds(const Bools::Expr loop, const Model &model, LitSet &r
                         has_post = true;
                     }
                     if (has_pre && has_post) {
-                        break;
+                        addends.push_back(factors[i]);
                     }
                 }
-            }
-            if (has_pre && has_post) {
-                addends.push_back(factors[i]);
             }
         }
         solver->add(arith::mkGt(arith::mkPlus(std::move(addends)), arith::mkConst(0)));
