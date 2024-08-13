@@ -78,13 +78,7 @@ ReversibleCHCToITS chcs_to_its(CHCProblem chcs) {
                         x);
                 }
             }
-            VarSet cVars;
-            if (c.get_conclusion()) {
-                for (const auto &var: c.get_conclusion()->get_args()) {
-                    cVars.insert(var);
-                }
-            }
-            g->collectVars(cVars);
+            VarSet cVars {g->vars()};
             // replace all other variables from the clause with temporary variables
             for (const auto &x: cVars) {
                 if (!ren.contains(x)) {
