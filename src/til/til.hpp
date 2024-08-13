@@ -122,11 +122,11 @@ private:
 public:
 
     void sat();
-    explicit TIL(CHCProblem &chcs, const Config::TILConfig &config);
+    explicit TIL(const CHCProblem &chcs, const Config::TILConfig &config);
     bool setup();
     std::optional<SmtResult> do_step();
     void analyze();
-    static void analyze(CHCProblem &chcs);
+    static void analyze(const CHCProblem &chcs);
 
 };
 

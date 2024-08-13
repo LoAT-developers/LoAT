@@ -41,7 +41,7 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 }
 
 TIL::TIL(
-    CHCProblem &chcs,
+    const CHCProblem &chcs,
     const Config::TILConfig &config)
     : config(config),
       reversible(chc_to_safetyproblem(chcs)),
@@ -811,6 +811,6 @@ void TIL::analyze() {
     }
 }
 
-void TIL::analyze(CHCProblem &chcs) {
+void TIL::analyze(const CHCProblem &chcs) {
     TIL(chcs, Config::til).analyze();
 }
