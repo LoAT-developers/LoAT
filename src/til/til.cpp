@@ -359,12 +359,15 @@ void TIL::recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits
                 const auto constant{arith::mkConst(numerator->getConstantAddend())};
                 res_lits.insert(arith::mkEq(arith::mkMod(numerator - constant + n * constant, arith::mkConst(denominator)), arith::mkConst(0)));
             } else {
-                const auto old_lhs{lit->lhs()};
+                auto old_lhs{lit->lhs()};
+                if (lit->isGt()) {
+                    old_lhs = old_lhs - arith::mkConst(1);
+                }
                 const auto constant{arith::mkConst(old_lhs->getConstantAddend())};
                 const auto new_lhs{old_lhs - constant + n * constant};
                 const auto rhs{arith::mkConst(0)};
                 if (lit->isGt()) {
-                    res_lits.insert(arith::mkGt(new_lhs, rhs));
+                    res_lits.insert(arith::mkGeq(new_lhs, rhs));
                 } else if (lit->isEq()) {
                     res_lits.insert(arith::mkEq(new_lhs, rhs));
                 }
