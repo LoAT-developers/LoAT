@@ -252,7 +252,7 @@ Result<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
         res.append("Preprocessed Error States");
         res.appendAll(*err);
         res.succeed();
-        res->set_init(*err);
+        res->set_err(*err);
         res.storeSubProof(err.getProof());
     }
     return res;

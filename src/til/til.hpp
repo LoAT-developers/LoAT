@@ -104,11 +104,9 @@ private:
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
     void recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits);
-    void recurrent_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits);
     void recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits);
-    void recurrent_cycles(const Bools::Expr loop, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known);
-    void recurrent_bounds(const Bools::Expr loop, const Model &model, LitSet &res_lits, linked_hash_set<Arith::Var> &fully_known);
-    void force_fully_known_to_zero(const Bools::Expr &t, linked_hash_set<Arith::Var> &fully_known, SmtPtr &solver);
+    void recurrent_cycles(const Bools::Expr loop, LitSet &res_lits);
+    void recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits);
     Bools::Expr recurrence_analysis(const Bools::Expr loop, const Model &model);
     Bools::Expr compute_transition_invariant(const Bools::Expr pre, const Bools::Expr loop, const Bools::Expr post, Model model);
     void handle_loop(const Range &range);

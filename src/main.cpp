@@ -255,7 +255,6 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Input::Horn:
         chcs = hornParser::HornParser::loadFromFile(filename);
-        std::cout << chcs->to_smtlib().toString() << std::endl;
         break;
     case Config::Input::C:
         its = cintParser::CIntParser::loadFromFile(filename);
