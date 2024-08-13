@@ -1,6 +1,7 @@
 #include "forwardbackwarddriver.hpp"
 #include "config.hpp"
 #include "til.hpp"
+#include "chctosafetyproblem.hpp"
 
 void ForwardBackwardDriver::analyze(CHCProblem p) {
     auto q {p.reverse()};
@@ -27,10 +28,16 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
     TIL f {p, forwardConfig};
     TIL b {q, backwardConfig};
     if (!f.setup()) {
+        if (Config::Analysis::log) {
+            std::cout << "\n===== FORWARD SETUP FAILED =====" << std::endl;
+        }
         b.analyze();
         return;
     }
     if (!b.setup()) {
+        if (Config::Analysis::log) {
+            std::cout << "\n===== BACKWARD SETUP FAILED =====" << std::endl;
+        }
         while (true) {
             const auto res{f.do_step()};
             if (res) {
@@ -45,12 +52,31 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
     }
     TIL *active {&f};
     TIL *passive {&b};
+    auto forward {true};
     while (true) {
+        if (Config::Analysis::log) {
+            if (forward) {
+                std::cout << "\n===== FORWARD =====" << std::endl;
+            } else {
+                std::cout << "\n===== BACKWARD =====" << std::endl;
+            }
+            forward = !forward;
+        }
         auto res {active->do_step()};
         if (res) {
             if (res == SmtResult::Sat) {
+                if (forward) {
+                    std::cout << "\n===== FORWARD SUCCEEDED =====" << std::endl;
+                } else {
+                    std::cout << "\n===== BACKWARD SUCCEEDED =====" << std::endl;
+                }
                 active->sat();
                 return;
+            }
+            if (forward) {
+                std::cout << "\n===== FORWARD FAILED =====" << std::endl;
+            } else {
+                std::cout << "\n===== BACKWARD FAILED =====" << std::endl;
             }
             while (true) {
                 const auto res {passive->do_step()};
