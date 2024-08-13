@@ -8,13 +8,7 @@ int BoolVar::last_prog_idx {1};
 
 ConsHash<BoolVar, BoolVar, BoolVar::CacheHash, BoolVar::CacheEqual, int> BoolVar::cache {};
 
-BoolVar::BoolVar(const int idx): idx(idx) {
-    if (idx > 0) {
-        last_prog_idx = std::max(last_prog_idx, idx);
-    } else {
-        last_tmp_idx = std::min(last_tmp_idx, idx);
-    }
-}
+BoolVar::BoolVar(const int idx): idx(idx) {}
 
 std::string BoolVar::getName() const {
     if (idx > 0) {
