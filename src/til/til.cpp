@@ -358,7 +358,7 @@ void TIL::recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits
                 const auto denominator{div->second};
                 const auto constant{arith::mkConst(numerator->getConstantAddend())};
                 res_lits.insert(arith::mkEq(arith::mkMod(numerator - constant + n * constant, arith::mkConst(denominator)), arith::mkConst(0)));
-            } else {
+            } else if (l->isLinear() && (l->isEq() || l->isGt())) {
                 auto old_lhs{lit->lhs()};
                 if (lit->isGt()) {
                     old_lhs = old_lhs - arith::mkConst(1);
@@ -384,7 +384,7 @@ void TIL::recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits
         for (const auto &pseudo : std::vector{pseudo_pre, pseudo_post}) {
             const auto lits{pseudo->lits().get<Arith::Lit>()};
             for (const auto &l : lits) {
-                if (l->isEq() || l->isGt()) {
+                if (l->isLinear() && (l->isEq() || l->isGt())) {
                     const auto vars{l->vars()};
                     if (std::any_of(vars.begin(), vars.end(), [&](const auto x) {
                             return !deltas.contains(x);
