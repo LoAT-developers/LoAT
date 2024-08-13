@@ -60,7 +60,6 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
             } else {
                 std::cout << "\n===== BACKWARD =====" << std::endl;
             }
-            forward = !forward;
         }
         auto res {active->do_step()};
         if (res) {
@@ -93,5 +92,6 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
         auto *tmp {active};
         active = passive;
         passive = tmp;
+        forward = !forward;
     }
 }
