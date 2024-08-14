@@ -328,7 +328,6 @@ public:
     bool isTempVar() const;
     bool isProgVar() const;
     bool isPostVar() const;
-    size_t hash() const;
     sexpresso::Sexp to_smtlib() const;
 
 };
