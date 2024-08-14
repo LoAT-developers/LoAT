@@ -155,44 +155,46 @@ jobs:
       - name: Merge Benchmark Results
         run: |
           declare -A results
+          results="${{ inputs.repo }}-${{ GITHUB_SHA }}.json"
+          echo "{\n" >> $results
+          echo "\t\"branch\": \"${{ GITHUB_REF }}\",\n" >> $results
+          echo "\t\"sha\": \"${{ GITHUB_SHA }}\",\n" >> $results
+          echo "\t\"results\": [\n" >> $results
           for filename in ${{ inputs.repo }}*/*.res; do
             benchmark=$(basename "$filename" .res)
             res=$(cat "$filename")
-            results["$res"]=$((results["$res"]+1))
-            echo "$benchmark: $res" >> ${{ inputs.repo }}.txt
+            echo "\t\t{\"name\": \"$benchmark\", \"result\": \"$res\"},\n" >> $results
           done
-          sort -o ${{ inputs.repo }}.txt ${{ inputs.repo }}.txt
-          for res in ${!results[@]}; do
-              echo "{\"name\": \"${{ inputs.repo }} $res\", \"unit\": \"number\", \"value\": \"${results[$res]}\"}," >> ${{ inputs.repo }}.json
-          done
+          echo "\t]\n" >> $results
+          echo "}\n" >> $results
       - uses: actions/upload-artifact@master
         with:
           name: ${{ inputs.repo }}
-          path: ${{ inputs.repo }}.*
+          path: ${{ inputs.repo }}-${{ GITHUB_SHA }}.json
 
-  publish-benchmark-results:
-    needs: [finalize-benchmark-results]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-      - run: |
-          echo "[" >> output.json
-          cat ${{ inputs.repo }}/${{ inputs.repo }}.json >> output.json
-          # remove trailing comma
-          sed -i '$ s/,$//g' output.json
-          echo "]" >> output.json
-      - name: Publish benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: LoAT Benchmarks
-          # What benchmark tool the output.txt came from
-          tool: 'customBiggerIsBetter'
-          # Where the output from the benchmark tool is stored
-          output-file-path: output.json
-          # Access token to deploy GitHub Pages branch
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Push and deploy GitHub pages branch automatically
-          auto-push: true
-          gh-pages-branch: web
-          benchmark-data-dir-path: docs/dev/bench
+  # publish-benchmark-results:
+  #   needs: [finalize-benchmark-results]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/download-artifact@v4
+  #     - run: |
+  #         echo "[" >> output.json
+  #         cat ${{ inputs.repo }}/${{ inputs.repo }}.json >> output.json
+  #         # remove trailing comma
+  #         sed -i '$ s/,$//g' output.json
+  #         echo "]" >> output.json
+  #     - name: Publish benchmark result
+  #       uses: benchmark-action/github-action-benchmark@v1
+  #       with:
+  #         name: LoAT Benchmarks
+  #         # What benchmark tool the output.txt came from
+  #         tool: 'customBiggerIsBetter'
+  #         # Where the output from the benchmark tool is stored
+  #         output-file-path: output.json
+  #         # Access token to deploy GitHub Pages branch
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         # Push and deploy GitHub pages branch automatically
+  #         auto-push: true
+  #         gh-pages-branch: web
+  #         benchmark-data-dir-path: docs/dev/bench
