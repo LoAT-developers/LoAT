@@ -10,7 +10,6 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
         .mbpKind = Config::TILConfig::LowerIntMbp,
         .recurrent_cycles = false,
         .recurrent_exps = true,
-        .recurrent_divs = true,
         .recurrent_pseudo_divs = true,
         .recurrent_bounds = true,
         .context_sensitive = false
@@ -20,7 +19,6 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
         .mbpKind = Config::TILConfig::RealMbp,
         .recurrent_cycles = false,
         .recurrent_exps = true,
-        .recurrent_divs = false,
         .recurrent_pseudo_divs = false,
         .recurrent_bounds = true,
         .context_sensitive = false

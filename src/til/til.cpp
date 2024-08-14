@@ -325,113 +325,6 @@ void TIL::recurrent_cycles(const Bools::Expr loop, LitSet &res_lits) {
     }
 }
 
-void TIL::recurrent_equations(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
-    if (!config.recurrent_bounds) {
-        return;
-    }
-    assert(loop->isConjunction());
-    // collect bounds of the form b >= 0
-    const auto lits{loop->lits().get<Arith::Lit>()};
-    ArithExprVec bounded;
-    for (const auto &l : lits) {
-        if (l->lhs()->isLinear()) {
-            auto lhs{l->lhs()};
-            if (l->isGt()) {
-                bounded.push_back(lhs - arith::mkConst(1));
-            } else {
-                bounded.push_back(lhs);
-                bounded.push_back(-lhs);
-            }
-        }
-    }
-    // set up one non-negative multiplier for each bound
-    auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
-    ArithExprVec leq_factors;
-    ArithExprVec geq_factors;
-    for (auto factors : std::vector{&leq_factors, &geq_factors}) {
-        for (const auto &b : bounded) {
-            const auto f{Arith::next()};
-            factors->push_back(f);
-            solver->add(arith::mkGeq(f, arith::mkConst(0)));
-        }
-    }
-    // set up one equation for each pre and post variable, respectively
-    const auto arith_vars{pre_vars.get<Arith::Var>()};
-    for (auto factors : std::vector{&leq_factors, &geq_factors}) {
-        for (const auto &pre : arith_vars) {
-            const auto post{ArithVar::postVar(pre)};
-            ArithExprVec pre_addends;
-            ArithExprVec post_addends;
-            for (unsigned idx = 0; idx < bounded.size(); ++idx) {
-                if (bounded[idx]->has(pre)) {
-                    pre_addends.push_back(*bounded[idx]->coeff(pre) * (*factors)[idx]);
-                }
-                if (bounded[idx]->has(post)) {
-                    post_addends.push_back(*bounded[idx]->coeff(post) * (*factors)[idx]);
-                }
-            }
-            if (factors == &geq_factors) {
-                solver->add(arith::mkEq(pre, arith::mkPlus(std::move(pre_addends))));
-                solver->add(arith::mkEq(post, arith::mkPlus(std::move(post_addends))));
-            } else {
-                solver->add(arith::mkEq(pre, -arith::mkPlus(std::move(pre_addends))));
-                solver->add(arith::mkEq(post, -arith::mkPlus(std::move(post_addends))));
-            }
-            // enforce that the result corresponds to a *recurrent* inequation
-            solver->add(arith::mkEq(pre, -post));
-        }
-    }
-    const auto const_var{ArithVar::next()};
-    for (auto factors : std::vector{&leq_factors, &geq_factors}) {
-        // and one equation for the constant part
-        ArithExprVec addends;
-        for (unsigned idx = 0; idx < bounded.size(); ++idx) {
-            addends.push_back(arith::mkConst(bounded[idx]->getConstantAddend()) * (*factors)[idx]);
-        }
-        if (factors == &geq_factors) {
-            solver->add(arith::mkEq(arith::mkPlus(std::move(addends)), const_var));
-        } else {
-            solver->add(arith::mkEq(-arith::mkPlus(std::move(addends)), const_var));
-        }
-    }
-    {
-        // block trivial solutions
-        BoolExprSet disjuncts;
-        for (const auto &pre : arith_vars) {
-            disjuncts.insert(bools::mkLit(arith::mkNeq(pre, arith::mkConst(0))));
-        }
-        solver->add(bools::mkOr(disjuncts));
-    }
-    const auto build_sum = [&](const Model &model) {
-        ArithExprVec addends;
-        for (unsigned idx = 0; idx < bounded.size(); ++idx) {
-            addends.push_back(bounded[idx] * arith::mkConst(model.eval<Arith>(geq_factors[idx])));
-        }
-        return arith::mkPlus(std::move(addends));
-    };
-    const auto process_solution = [&]() {
-        auto model{solver->model()};
-        // construct the recurrent equation that corresponds to the current solution
-        auto sum = build_sum(model);
-        auto constant{sum->getConstantAddend()};
-        const auto lit{arith::mkEq(sum - arith::mkConst(constant) + n * arith::mkConst(constant), arith::mkConst(0))};
-        res_lits.insert(lit);
-        // block supersets of current solution
-        BoolExprSet disjuncts;
-        for (const auto &pre : arith_vars) {
-            const auto sign{model.get<Arith>(pre)};
-            if (sign != 0) {
-                disjuncts.insert(bools::mkLit(arith::mkEq(pre, arith::mkConst(0))));
-            }
-        }
-        solver->add(bools::mkOr(disjuncts));
-    };
-    // enumerate solutions
-    while (solver->check() == SmtResult::Sat) {
-        process_solution();
-    }
-}
-
 void TIL::recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits) {
     if (!config.recurrent_bounds) {
         return;
@@ -542,7 +435,6 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
     recurrent_pseudo_divisibility(loop, model, res_lits);
     recurrent_exps(loop, model, res_lits);
     recurrent_cycles(loop, res_lits);
-    recurrent_equations(loop, model, res_lits);
     recurrent_bounds(loop, model, res_lits);
     return bools::mkAndFromLits(res_lits);
 }

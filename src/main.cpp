@@ -60,7 +60,6 @@ void printHelp(char *arg0) {
     cout << "  --til::mode <forward|backward|interleaved>       TIL: run the analysis forward, backward, or both directions interleaved" << std::endl;
     cout << "  --til::recurrent_exps <true|false>               TIL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
     cout << "  --til::recurrent_cycles <true|false>             TIL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
-    cout << "  --til::recurrent_divs <true|false>               TIL: En- or disable search for recurrent divisibility constraints" << std::endl;
     cout << "  --til::recurrent_pseudo_divs <true|false>        TIL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
     cout << "  --til::recurrent_bounds <true|false>             TIL: En- or disable search for recurrent bounds" << std::endl;
     cout << "  --til::context_sensitive <true|false>            TIL: En- or disable context sensitivity" << std::endl;
@@ -192,8 +191,6 @@ void parseFlags(int argc, char *argv[]) {
             setBool(getNext(), Config::til.recurrent_exps);
         } else if (strcmp("--til::recurrent_cycles", argv[arg]) == 0) {
             setBool(getNext(), Config::til.recurrent_cycles);
-        } else if (strcmp("--til::recurrent_divs", argv[arg]) == 0) {
-            setBool(getNext(), Config::til.recurrent_divs);
         } else if (strcmp("--til::recurrent_pseudo_divs", argv[arg]) == 0) {
             setBool(getNext(), Config::til.recurrent_pseudo_divs);
         } else if (strcmp("--til::recurrent_bounds", argv[arg]) == 0) {

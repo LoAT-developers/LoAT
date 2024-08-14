@@ -106,7 +106,6 @@ private:
     void recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits);
     void recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits);
     void recurrent_cycles(const Bools::Expr loop, LitSet &res_lits);
-    void recurrent_equations(const Bools::Expr loop, const Model &model, LitSet &res_lits);
     void recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits);
     Bools::Expr recurrence_analysis(const Bools::Expr loop, const Model &model);
     Bools::Expr compute_transition_invariant(const Bools::Expr pre, const Bools::Expr loop, const Bools::Expr post, Model model);
