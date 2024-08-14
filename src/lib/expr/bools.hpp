@@ -33,5 +33,7 @@ extern Bools t;
 
 }
 
+std::size_t hash_value(const Bools::Expr &x);
+
 static_assert(IBaseTheory<BoolsBase>);
 static_assert(ITheory<Bools>);

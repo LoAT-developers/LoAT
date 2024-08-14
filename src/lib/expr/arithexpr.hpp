@@ -257,6 +257,8 @@ public:
 
 };
 
+std::size_t hash_value(const ArithExprPtr&);
+std::size_t hash_value(const ArithVarPtr&);
 
 class ArithConst: public ArithExpr {
 

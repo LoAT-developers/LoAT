@@ -16,6 +16,7 @@ add_library(${PROJECT_NAME} OBJECT
     string.hpp
     notnull.hpp
     reversible.hpp
+    hash.hpp
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")

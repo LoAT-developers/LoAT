@@ -1,5 +1,6 @@
 #include "conjunction.hpp"
 #include "string.hpp"
+#include "hash.hpp"
 
 bool Conjunction::isLinear() const {
     return std::all_of(this->begin(), this->end(), [](const auto &lit){
@@ -40,4 +41,8 @@ Conjunction Conjunction::fromBoolExpr(const Bools::Expr &e) {
     Conjunction res;
     e->collectLits(res);
     return res;
+}
+
+size_t hash_value(const Conjunction &c) {
+    return hash_unordered_range(c.begin(), c.end());
 }

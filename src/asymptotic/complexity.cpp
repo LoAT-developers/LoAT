@@ -19,6 +19,7 @@
 #include "optional.hpp"
 
 #include <limits>
+#include <numeric>
 
 const Complexity Complexity::Unknown = Complexity(CpxUnknown);
 const Complexity Complexity::Const = Complexity::Poly(0);

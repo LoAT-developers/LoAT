@@ -20,6 +20,15 @@
 #include "linkedhashmap.hpp"
 
 #include <sstream>
+#include <numeric>
+
+std::size_t hash_value(const ArithExprPtr &x) {
+    return std::hash<std::shared_ptr<const ArithExpr>>{}(x.as_nullable());
+}
+
+std::size_t hash_value(const ArithVarPtr &x) {
+    return std::hash<std::shared_ptr<const ArithVar>>{}(x.as_nullable());
+}
 
 ArithExpr::ArithExpr(const arith::Kind kind): kind(kind) {}
 

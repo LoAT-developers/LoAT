@@ -18,5 +18,6 @@ public:
 
 };
 
+size_t hash_value(const Conjunction&);
 std::ostream& operator<<(std::ostream &s, const Conjunction &l);
 Conjunction operator&&(const Conjunction &fst, const Conjunction &snd);

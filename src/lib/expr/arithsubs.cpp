@@ -1,5 +1,6 @@
 #include "arithsubs.hpp"
 #include "arithexpr.hpp"
+#include "hash.hpp"
 
 ArithSubs::ArithSubs() {}
 
@@ -161,7 +162,11 @@ linked_hash_set<ArithVarPtr> ArithSubs::coDomainVars() const {
 }
 
 size_t ArithSubs::hash() const {
-    return boost::hash_unordered_range(map.begin(), map.end());
+    return hash_unordered_range(map.begin(), map.end());
+}
+
+size_t hash_value(const ArithSubs &x) {
+    return x.hash();
 }
 
 bool operator==(const ArithSubs &m1, const ArithSubs &m2) {

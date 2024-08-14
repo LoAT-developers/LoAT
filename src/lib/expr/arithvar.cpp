@@ -60,12 +60,8 @@ bool ArithVar::isPostVar() const {
     return idx > 0 && idx % 2 == 0;
 }
 
-size_t ArithVar::hash() const {
-    return std::hash<int>{}(idx);
-}
-
 std::size_t hash_value(const ArithVar &x) {
-    return x.hash();
+    return std::hash<int>{}(x.getIdx());
 }
 
 ArithVarPtr ArithVar::toPtr() const {

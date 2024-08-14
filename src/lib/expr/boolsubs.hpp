@@ -44,4 +44,6 @@ public:
 
 };
 
+size_t hash_value(const BoolSubs&);
+
 std::ostream& operator<<(std::ostream &s, const BoolSubs &e);

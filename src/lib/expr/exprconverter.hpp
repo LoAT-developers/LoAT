@@ -21,6 +21,7 @@
 #include "theory.hpp"
 
 #include <sstream>
+#include <numeric>
 
 template<class Expr, class Formula>
 class ExprConverter {

@@ -77,3 +77,5 @@ struct std::hash<ArithSubs> {
         return x.hash();
     }
 };
+
+size_t hash_value(const ArithSubs&);

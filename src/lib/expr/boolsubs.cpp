@@ -1,4 +1,5 @@
 #include "boolsubs.hpp"
+#include "hash.hpp"
 
 BoolSubs::BoolSubs() {}
 
@@ -147,11 +148,15 @@ bool BoolSubs::isPoly() const {
 }
 
 size_t BoolSubs::hash() const {
-    return boost::hash_unordered_range(map.begin(), map.end());
+    return hash_unordered_range(map.begin(), map.end());
 }
 
 bool operator==(const BoolSubs &e1, const BoolSubs &e2) {
     return e1.map == e2.map;
+}
+
+size_t hash_value(const BoolSubs &x) {
+    return x.hash();
 }
 
 std::ostream& operator<<(std::ostream &s, const BoolSubs &e) {

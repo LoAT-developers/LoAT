@@ -1,6 +1,8 @@
 #include "purrsutil.hpp"
 #include "string.hpp"
 
+#include <numeric>
+
 namespace arith {
 
 std::pair<Purrs::Expr, purrs_var_map> toPurrs(const ArithExprPtr e, const ArithVarPtr n) {

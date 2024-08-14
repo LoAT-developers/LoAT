@@ -17,6 +17,10 @@ BoolsBase::Var BoolsBase::next() {
     return BoolVar::next();
 }
 
+std::size_t hash_value(const Bools::Expr &x) {
+    return std::hash<std::shared_ptr<const BoolExpr>>{}(x.as_nullable());
+}
+
 namespace bools {
 
 Bools t {};

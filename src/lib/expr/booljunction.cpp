@@ -1,4 +1,5 @@
 #include "boolexpr.hpp"
+#include "hash.hpp"
 
 ConsHash<BoolExpr, BoolJunction, typename BoolJunction::CacheHash, typename BoolJunction::CacheEqual, BoolExprSet, ConcatOperator> BoolJunction::cache{};
 
@@ -9,7 +10,7 @@ bool BoolJunction::CacheEqual::operator()(const std::tuple<BoolExprSet, ConcatOp
 size_t BoolJunction::CacheHash::operator()(const std::tuple<BoolExprSet, ConcatOperator> &args) const noexcept {
     const auto &[children, op] {args};
     size_t hash {0};
-    boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
+    boost::hash_combine(hash, hash_unordered_range(children.begin(), children.end()));
     boost::hash_combine(hash, op);
     return hash;
 }
