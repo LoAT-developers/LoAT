@@ -1,6 +1,5 @@
 #include "arithexpr.hpp"
 #include "linkedhashmap.hpp"
-#include "hash.hpp"
 #include "vector.hpp"
 
 ConsHash<ArithExpr, ArithMult, ArithMult::CacheHash, ArithMult::CacheEqual, ArithExprSet> ArithMult::cache;
@@ -14,7 +13,7 @@ bool ArithMult::CacheEqual::operator()(const std::tuple<ArithExprSet> &args1, co
 size_t ArithMult::CacheHash::operator()(const std::tuple<ArithExprSet> &args) const noexcept {
     size_t hash {23};
     const auto &children {std::get<0>(args)};
-    boost::hash_combine(hash, hash_unordered_range(children.begin(), children.end()));
+    boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
     return hash;
 }
 
