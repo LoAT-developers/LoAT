@@ -12,7 +12,6 @@ bool Proof::disabled() {
 }
 
 const std::string HeadlineColor = "\033[1;4;33m"; // bold underlined yellow
-const std::string WarningColor = "\033[1;31m"; // bold red
 const std::string ResultColor = "\033[1;32m"; // bold green
 const std::string NoColor = "\033[0m"; // reset color
 

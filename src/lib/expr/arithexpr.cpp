@@ -641,7 +641,6 @@ bool ArithExpr::isIntegral() const {
                 }
             }
             const auto e {arith::mkPlus(std::move(nonInt))};
-            unsigned i {0};
             linked_hash_map<ArithVarPtr, Int> valuation;
             // degrees, subs share indices with vars
             std::vector<Int> degrees;
@@ -650,7 +649,6 @@ bool ArithExpr::isIntegral() const {
                 vars.emplace_back(x);
                 degrees.emplace_back(*e->isPoly(x));
                 valuation.emplace(x, 0);
-                ++i;
             }
             while (true) {
                 // substitute every variable x_i by the integer subs[i] and check if the result is an integer

@@ -64,7 +64,6 @@ public:
 
 private:
 
-    long next_char {0};
     std::unordered_map<std::pair<TransIdx, Conjunction>, Automaton> alphabet {};
     std::unordered_map<TransIdx, Automaton> regexes {};
 

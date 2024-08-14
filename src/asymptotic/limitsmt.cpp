@@ -71,12 +71,15 @@ static Bools::Expr posInfConstraint(const map<Int, Arith::Expr> &coefficients) {
  * @return the (abstract) coefficients of 'n' in 'ex', where the key is the degree of the respective monomial
  */
 static map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::Var n) {
-    const auto maxDegree{*ex->isPoly(n)};
-    map<Int, Arith::Expr> coefficients;
-    for (int i = 0; i <= maxDegree; ++i) {
-        coefficients.emplace(i, *ex->coeff(n, i));
+    if (const auto maxDegree{ex->isPoly(n)}) {
+        map<Int, Arith::Expr> coefficients;
+        for (int i = 0; i <= *maxDegree; ++i) {
+            coefficients.emplace(i, *ex->coeff(n, i));
+        }
+        return coefficients;
+    } else {
+        throw std::invalid_argument("not a polynomial");
     }
-    return coefficients;
 }
 
 static Bools::Expr constConstraint(const Arith::Expr e, const Arith::Var n) {

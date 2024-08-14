@@ -48,12 +48,6 @@ namespace Config {
         const std::string Update = "\033[0;36m"; // cyan
         const std::string Guard = "\033[0;32m"; // green
         const std::string Cost = "\033[0;35m"; // bold magenta
-
-        const std::string BoldBlue = "\033[0;34m"; // blue
-        const std::string Gray = "\033[0;90m"; // gray/bright black (avoid distraction)
-        const std::string BoldyYellow = "\033[1;33m"; // bold yellow
-        const std::string BoldRed = "\033[1;31m"; // bold red
-        const std::string Cyan = "\033[0;36m"; // cyan
     }
 
     // Asymptotic complexity computation using limit problems

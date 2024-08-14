@@ -46,8 +46,8 @@ class ArithLit {
 
 private:
 
-    friend ArithLitPtr operator!(const ArithLitPtr &x);
-    friend std::ostream& operator<<(std::ostream &s, const ArithLitPtr &e);
+    friend ArithLitPtr operator!(const ArithLitPtr x);
+    friend std::ostream& operator<<(std::ostream &s, const ArithLitPtr e);
     friend ArithLitPtr arith::mkEq(const ArithExprPtr x, const ArithExprPtr y);
     friend ArithLitPtr arith::mkNeq(const ArithExprPtr x, const ArithExprPtr y);
     friend ArithLitPtr arith::mkGeq(const ArithExprPtr x, const ArithExprPtr y);

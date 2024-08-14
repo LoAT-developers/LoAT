@@ -1,3 +1,6 @@
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+
 cmake_minimum_required(VERSION 3.13)
 
 project(LoAT)
@@ -27,11 +30,19 @@ endif()
 
 if(${SANITIZE})
     message(STATUS "Sanitizer enabled")
-    add_link_options(-fsanitize=undefined)
-    add_compile_options(-fsanitize=undefined)
+
+    # run "ulimit -n 2048", otherwise the resulting binary will hang
+
+    add_link_options(-fsanitize=undefined,address -fsanitize-recover=undefined,address)
+    add_compile_options(-fsanitize=undefined,address -fsanitize-recover=undefined,address)
+
+    # MemorySanitizer is currently useless due to false positives
+    # add_link_options(-fsanitize=memory -fsanitize-recover=memory -fsanitize-memory-track-origins)
+    # add_compile_options(-fsanitize=memory -fsanitize-recover=memory -fsanitize-memory-track-origins)
+    # add_compile_options(-fPIE -pie -fno-omit-frame-pointer)
 endif()
 
-add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter -fconcepts-diagnostics-depth=100)
+add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter) # for GCC: -fconcepts-diagnostics-depth=100
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")

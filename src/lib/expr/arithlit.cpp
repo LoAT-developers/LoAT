@@ -286,7 +286,7 @@ ArithLitPtr arith::mkLt(const ArithExprPtr x, const ArithExprPtr y) {
     return ArithLit::mk(y - x, ArithLit::Kind::Gt);
 }
 
-ArithLitPtr operator!(const ArithLitPtr &x) {
+ArithLitPtr operator!(const ArithLitPtr x) {
     switch (x->kind) {
         case ArithLit::Kind::Gt: return ArithLit::mk(arith::mkConst(1) - x->lhs(), ArithLit::Kind::Gt);
         case ArithLit::Kind::Eq: return ArithLit::mk(x->lhs(), ArithLit::Kind::Neq);
@@ -295,7 +295,7 @@ ArithLitPtr operator!(const ArithLitPtr &x) {
     }
 }
 
-std::ostream& operator<<(std::ostream &s, const ArithLitPtr &rel) {
+std::ostream& operator<<(std::ostream &s, const ArithLitPtr rel) {
     std::string lhs;
     std::string rhs;
     if (const auto add {rel->lhs()->isAdd()}) {

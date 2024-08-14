@@ -11,6 +11,7 @@ struct Res {
     std::vector<Bools::Expr> refinement {};
     Res(const T &t);
     Res();
+    Res(const Res<T> &that) = default;
 
     template<class S>
     void conjoin(const Res<S> &that) {

@@ -23,12 +23,15 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
                 }
                 const auto handle_gt = [&](const auto lhs) {
                     const auto coeff{*lhs->coeff(x)};
-                    const auto coeff_val{*coeff->isInt()};
-                    flcm = mp::lcm(flcm, mp::abs(coeff_val));
-                    if (coeff_val > 0) {
-                        lb.insert(lhs);
+                    if (const auto coeff_val{coeff->isInt()}) {
+                        flcm = mp::lcm(flcm, mp::abs(*coeff_val));
+                        if (coeff_val > 0) {
+                            lb.insert(lhs);
+                        } else {
+                            ub.insert(lhs);
+                        }
                     } else {
-                        ub.insert(lhs);
+                        throw std::invalid_argument("not a LIA expression");
                     }
                 };
                 if (l->isGt()) {
