@@ -70,8 +70,8 @@ TIL::TIL(
 }
 
 std::optional<Range> TIL::has_looping_infix() {
-    for (int i = 0; i < trace.size(); ++i) {
-        for (int start = 0; start + i < trace.size(); ++start) {
+    for (unsigned i = 0; i < trace.size(); ++i) {
+        for (unsigned start = 0; start + i < trace.size(); ++start) {
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 return {Range::from_interval(start, start + i)};
             }
@@ -83,7 +83,7 @@ std::optional<Range> TIL::has_looping_infix() {
 std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Subs var_renaming;
-    for (int i = range.end(); i >= 0 && i >= range.start(); --i) {
+    for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
         const auto rule{trace[i].implicant};
         const auto s{get_subs(i, 1)};
         if (loop) {
@@ -605,19 +605,20 @@ void TIL::handle_loop(const Range &range) {
         const auto orig_lits{stem->lits()};
         std::vector<Lit> lits;
         for (const auto &lit : orig_lits) {
-            std::visit(Overload{
-                           [&](const Arith::Lit &l) {
-                               if (l->isEq() && !l->isDivisibility()) {
-                                   lits.push_back(arith::mkLeq(l->lhs(), arith::mkConst(0)));
-                                   lits.push_back(arith::mkGeq(l->lhs(), arith::mkConst(0)));
-                               } else {
-                                   lits.push_back(l);
-                               }
-                           },
-                           [&](const auto &) {
-                               lits.push_back(lit);
-                           }},
-                       lit);
+            std::visit(
+                Overload{
+                    [&](const Arith::Lit &l) {
+                        if (l->isEq() && !l->isDivisibility()) {
+                            lits.push_back(arith::mkLeq(l->lhs(), arith::mkConst(0)));
+                            lits.push_back(arith::mkGeq(l->lhs(), arith::mkConst(0)));
+                        } else {
+                            lits.push_back(l);
+                        }
+                    },
+                    [&](const auto &) {
+                        lits.push_back(lit);
+                    }},
+                lit);
         }
         LitSet context_lits;
         for (const auto &lit : lits) {
