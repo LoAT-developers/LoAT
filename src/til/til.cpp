@@ -455,7 +455,7 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr pre_ctx, const B
         return !theory::isPostVar(x);
     })};
     if (Config::Analysis::log) {
-        std::cout << "post: " << pre << std::endl;
+        std::cout << "post: " << post << std::endl;
     }
     auto res{pre && step && post};
     return GuardToolbox::removeRedundantInequations(res);
