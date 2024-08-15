@@ -56,10 +56,10 @@ bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
         }
         res.insert(sub.begin(), sub.end());
         return true;
-    } else if (e->isAnd() || e->isOr()) {
+    } else if (e->isOr()) {
         for (const auto &c: e->getChildren()) {
             if (syntacticImplicant(c, m, res)) {
-                return true;
+                    return true;
             }
         }
         return false;
