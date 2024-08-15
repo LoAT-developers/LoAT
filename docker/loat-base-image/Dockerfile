@@ -1,9 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/base:alpine-3.19
 
-ENV CFLAGS -march=x86-64 -02
-ENV CXXFLAGS $CFLAGS
-ENV LD_LIBRARY_PATH=/workspaces/LoAT-docker/docker/loat-base-image/usr/local/lib
-ENV CPATH=/workspaces/LoAT-docker/docker/loat-base-image/usr/local/include
+ENV CFLAGS -march=x86-64 -O2
+xENV CXXFLAGS $CFLAGS
 
 RUN apk add cmake boost-dev gdb
 RUN apk add clang clang-dev
