@@ -546,7 +546,7 @@ void TIL::add_blocking_clause(const Range &range, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
     auto it{blocked_per_step.emplace(range.start(), top()).first};
     if (range.length() == 1) {
-        it->second = it->second && s(!loop || bools::mkLit(arith::mkGt(trace_var, arith::mkConst(0))));
+        it->second = it->second && s(!loop || bools::mkLit(arith::mkGt(trace_var, arith::mkConst(last_orig_clause))));
     } else {
         it->second = it->second && s(!loop);
     }
@@ -582,9 +582,15 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
 }
 
 void TIL::add_blocking_clauses() {
-    const auto s{get_subs(depth, 1)};
+    const auto s1{get_subs(depth, 1)};
+    const auto s2{get_subs(depth + 1, 1)};
     for (const auto &[id, b] : projections) {
-        solver->add(s(!b) || bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id))));
+        solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
+    }
+    for (const auto &[id, _] : blocked) {
+        if (id > last_orig_clause) {
+            solver->add(bools::mkLit(arith::mkNeq(s1.get<Arith>(trace_var), arith::mkConst(id))) || bools::mkLit(arith::mkNeq(s2.get<Arith>(trace_var), arith::mkConst(id))));
+        }
     }
     const auto it{blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
