@@ -491,7 +491,7 @@ void TIL::handle_loop(const Range &range) {
         solver->add(subs1(loop) && subs2(loop));
         if (solver->check() != SmtResult::Sat) {
             const auto id{add_learned_clause(loop)};
-            add_blocking_clause(range, id, loop);
+            add_blocking_clause(range, loop);
             return;
         }
         const auto orig_lits{stem->lits()};
@@ -534,7 +534,7 @@ void TIL::handle_loop(const Range &range) {
     if (range.length() == 1) {
         projections.emplace_back(id, projected);
     } else {
-        add_blocking_clause(range, id, projected);
+        add_blocking_clause(range, projected);
     }
 }
 
@@ -542,11 +542,11 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
     return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
-void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
+void TIL::add_blocking_clause(const Range &range, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
     auto it{blocked_per_step.emplace(range.start(), top()).first};
     if (range.length() == 1) {
-        it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
+        it->second = it->second && s(!loop || bools::mkLit(arith::mkGt(trace_var, arith::mkConst(0))));
     } else {
         it->second = it->second && s(!loop);
     }
@@ -569,12 +569,12 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
                 const auto projected{mbp_impl(b, model, [&](const auto &x) {
                     return x == Var(n);
                 })};
-                add_blocking_clause(range, id, projected);
+                add_blocking_clause(range, projected);
                 return true;
             }
             solver->pop();
         } else if (model.eval<Bools>(b)) {
-            add_blocking_clause(range, id, b);
+            add_blocking_clause(range, b);
             return true;
         }
     }
