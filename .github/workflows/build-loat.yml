@@ -17,6 +17,8 @@ on:
     types:
       - completed
 
+  workflow_call:
+
 jobs:
   build-loat-binary:
     runs-on: ubuntu-latest

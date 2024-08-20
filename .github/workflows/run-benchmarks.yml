@@ -27,6 +27,10 @@ on:
         options:
         - chc22-lia-lin
         - chc23-lia-lin
+      build:
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -48,20 +52,22 @@ jobs:
       - name: Checkout LoAT Repository
         uses: actions/checkout@v4
         with:
-          sparse-checkout: .github/actions
-          path: actions
+          sparse-checkout: .github
+
+      - if: ${{ inputs.build }}
+        uses: ./.github/workflows/{filename}
 
       - if: ${{ inputs.benchmarks == 'chc23-lia-lin' }}
-        uses: ./actions/.github/actions/chc23-lia-lin
+        uses: ./.github/actions/chc23-lia-lin
 
       - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
-        uses: ./actions/.github/actions/chc22-lia-lin
+        uses: ./.github/actions/chc22-lia-lin
 
       - if: ${{ startsWith(inputs.config, 'loat') }}
-        uses: ./actions/.github/actions/get-loat
+        uses: ./.github/actions/get-loat
 
       - if: ${{ startsWith(inputs.config, 'z3') }}
-        uses: ./actions/.github/actions/get-z3
+        uses: ./.github/actions/get-z3
 
       - name: Run Benchmark
         run: |
