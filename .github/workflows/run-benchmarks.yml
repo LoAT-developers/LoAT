@@ -147,14 +147,24 @@ jobs:
     needs: [chc-comp-benchmark]
     runs-on: ubuntu-latest
     steps:
+
+      - name: Checkout LoAT Repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: benchmarks
+
+      - run: mkdir -p benchmarks/${{ inputs.benchmarks }}
+
       - uses: actions/download-artifact@v4
         with:
           pattern: ${{ inputs.benchmarks }}*
+
       - name: Merge Benchmark Results
         run: |
           declare -A results
           VERSION=$(cat ${{ inputs.benchmarks }}-0/solver.version)
-          results="${{ inputs.benchmarks }}-${{ inputs.config }}-$VERSION.json"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.config }}-$VERSION.json"
           echo -e "{\n" >> $results
           echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
           echo -e "\t\"config\": \"${{ inputs.config }}\"," >> $results
@@ -167,34 +177,11 @@ jobs:
           done
           echo -e "\t]" >> $results
           echo -e "}" >> $results
-      - uses: actions/upload-artifact@master
-        with:
-          name: ${{ inputs.benchmarks }}
-          path: ${{ inputs.benchmarks }}-*.json
 
-  # publish-benchmark-results:
-  #   needs: [finalize-benchmark-results]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/download-artifact@v4
-  #     - run: |
-  #         echo "[" >> output.json
-  #         cat ${{ inputs.repo }}/${{ inputs.repo }}.json >> output.json
-  #         # remove trailing comma
-  #         sed -i '$ s/,$//g' output.json
-  #         echo "]" >> output.json
-  #     - name: Publish benchmark result
-  #       uses: benchmark-action/github-action-benchmark@v1
-  #       with:
-  #         name: LoAT Benchmarks
-  #         # What benchmark tool the output.txt came from
-  #         tool: 'customBiggerIsBetter'
-  #         # Where the output from the benchmark tool is stored
-  #         output-file-path: output.json
-  #         # Access token to deploy GitHub Pages branch
-  #         github-token: ${{ secrets.GITHUB_TOKEN }}
-  #         # Push and deploy GitHub pages branch automatically
-  #         auto-push: true
-  #         gh-pages-branch: web
-  #         benchmark-data-dir-path: docs/dev/bench
+      -  uses: EndBug/add-and-commit@v9
+         with:
+           add: 'benchmarks'
+           author_name: Florian Frohn
+           author_email: florian.frohn@cs.rwth-aachen.de
+           fetch: false
+           message: 'benchmark results; config ${{ inputs.config }}; benchmarks: ${{ inputs.benchmarks }}'
