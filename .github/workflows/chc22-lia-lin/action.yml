@@ -5,8 +5,8 @@ runs:
 
     - uses: actions/checkout@v4
       with:
-      repository: chc-comp/chc-comp22-benchmarks
-      sparse-checkout: LIA-Lin
+        repository: chc-comp/chc-comp22-benchmarks
+        sparse-checkout: LIA-Lin
 
     - run: |
         gunzip LIA-Lin/*.gz

@@ -45,7 +45,7 @@ jobs:
       - name: Checkout LoAT Repository
         uses: actions/checkout@v4
         with:
-        sparse-checkout: .github
+          sparse-checkout: .github
 
       - if: ${{ inputs.benchmarks == 'chc23-lia-lin' }}
         uses: ./chc23-lia-lin
