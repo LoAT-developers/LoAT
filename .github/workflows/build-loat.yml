@@ -35,7 +35,7 @@ jobs:
             mkdir -p /LoAT/build/release
             cd /LoAT/build/release
             cmake -DCMAKE_BUILD_TYPE=Release ../../
-            make -j$(nproc)
+            make -j4
 
       - name: Export LoAT Binary
         uses: actions/upload-artifact@master
