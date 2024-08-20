@@ -169,6 +169,7 @@ jobs:
 
   finalize-benchmark-results:
     needs: [chc-comp-benchmark]
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
 
