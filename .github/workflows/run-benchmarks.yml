@@ -154,7 +154,7 @@ jobs:
         with:
           sparse-checkout: benchmarks
 
-      - run: mkdir -p benchmarks/${{ inputs.benchmarks }}
+      - run: mkdir -p benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}
 
       - uses: actions/download-artifact@v4
         with:
