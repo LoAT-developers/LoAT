@@ -105,7 +105,8 @@ jobs:
               result=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer "${filename}")
             elif [ ${{ inputs.config }} = "z3_bmc" ]; then
               result=$(timeout ${{ inputs.timeout }} solver fp.engine=bmc "${filename}")
-            elif [[ ${{ inputs.config }} == golem* ]]
+            elif [[ ${{ inputs.config }} == golem* ]]; then
+              config=${{ inputs.config }}
               engine=${config:6:100}
               result=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
             fi
