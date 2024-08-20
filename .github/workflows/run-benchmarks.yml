@@ -71,11 +71,11 @@ jobs:
             set +e
             if [ ${{ inputs.config }} = "sat" ]; then
               result=$(timeout ${{ inputs.timeout }} loat-static --mode safety --format horn --proof-level 0 --engine til --til::mode interleaved "${filename}")
-            else if [ ${{ inputs.config }} = "unsat" ]; then
+            elif [ ${{ inputs.config }} = "unsat" ]; then
               result=$(timeout ${{ inputs.timeout }} loat-static --mode reachability --format horn --proof-level 0 --engine abmc "${filename}")
-            else if [ ${{ inputs.config }} = "nonterm" ]; then
+            elif [ ${{ inputs.config }} = "nonterm" ]; then
               result=$(timeout ${{ inputs.timeout }} loat-static --mode non_termination --format its --proof-level 0 --engine adcl "${filename}")
-            else if [ ${{ inputs.config }} = "cpx" ]; then
+            elif [ ${{ inputs.config }} = "cpx" ]; then
               result=$(timeout ${{ inputs.timeout }} loat-static --mode complexity --format koat --proof-level 0 --engine adcl "${filename}")
             fi
 
