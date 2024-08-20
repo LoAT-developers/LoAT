@@ -219,7 +219,7 @@ void parseFlags(int argc, char *argv[]) {
             }
         } else if (strcmp("--version", argv[arg]) == 0) {
             print_version();
-            0);
+            exit(0);
         } else {
             if (!filename.empty()) {
                 cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << endl;
