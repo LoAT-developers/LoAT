@@ -104,7 +104,7 @@ jobs:
 
             printf "${result} after ${runtime}s\n"
 
-            echo ${result} > ${filename}.res
+            echo -e "{\"name\": \"$filename\", \"result\": \"$result\", \"runtime\": \"$runtime\"}," >> ${filename}.json
           }
 
           # make 'benchmark' available for 'parallel'
@@ -136,7 +136,7 @@ jobs:
         with:
           name: ${{ inputs.benchmarks }}-${{ matrix.ci_index }}
           path: |
-            benchmarks/*.res
+            benchmarks/*.json
 
   finalize-benchmark-results:
     needs: [chc-comp-benchmark]
@@ -155,10 +155,9 @@ jobs:
           echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
           echo -e "\t\"sha\": \"$version\"," >> $results
           echo -e "\t\"results\": [" >> $results
-          for filename in ${{ inputs.benchmarks }}*/*.res; do
-            benchmark=$(basename "$filename" .res)
-            res=$(cat "$filename")
-            echo -e "\t\t{\"name\": \"$benchmark\", \"result\": \"$res\"}," >> $results
+          for filename in ${{ inputs.benchmarks }}*/*.json; do
+            json=$(cat $filename)
+            echo -e "\t\t$json," >> $results
           done
           echo -e "\t]" >> $results
           echo -e "}" >> $results
