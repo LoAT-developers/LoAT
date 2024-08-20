@@ -106,7 +106,7 @@ jobs:
             elif [ ${{ inputs.config }} = "z3_bmc" ]; then
               result=$(timeout ${{ inputs.timeout }} solver fp.engine=bmc "${filename}")
             elif [ startsWith(inputs.config, 'golem') ]
-              engine{=$config:6:100}
+              engine=${config:6:100}
               result=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
             fi
 
