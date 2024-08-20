@@ -132,6 +132,10 @@ jobs:
             i=$(( i+1 ))
           done
 
+          if [[ 0 -eq $CI_INDEX ]]; then
+             loat-static --version > loat.version
+          fi
+
           # execute benchmarks in parallel
           parallel benchmark ::: *.smt2
         env:
@@ -144,6 +148,7 @@ jobs:
           name: ${{ inputs.repo }}-${{ matrix.ci_index }}
           path: |
             ${{ inputs.directory }}/*.res
+            ${{ inputs.directory }}/*.version
 
   finalize-benchmark-results:
     needs: [chc-comp-benchmark]
@@ -155,7 +160,7 @@ jobs:
       - name: Merge Benchmark Results
         run: |
           declare -A results
-          version=$(loat-static --version)
+          version=$(cat ${{ inputs.repo }}-0/loat.version)
           results="${{ inputs.repo }}-$version.json"
           echo "{\n" >> $results
           echo "\t\"branch\": \"${{ github.ref_name }}\",\n" >> $results
