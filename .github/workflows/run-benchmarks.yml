@@ -166,7 +166,7 @@ jobs:
           VERSION=$(cat ${{ inputs.benchmarks }}-0/solver.version)
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/${{ inputs.config }}-$VERSION.json"
-          echo -e "{" >> $results
+          echo -e "{" > $results
           echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
           echo -e "\t\"config\": \"${{ inputs.config }}\"," >> $results
           echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
