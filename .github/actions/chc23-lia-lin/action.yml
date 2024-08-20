@@ -7,9 +7,10 @@ runs:
       with:
         repository: chc-comp/chc-comp23-benchmarks
         sparse-checkout: LIA-lin
+      path: chc-comp23-benchmarks
 
     - run: |
-        gunzip LIA-lin/*.gz
+        gunzip chc-comp23-benchmarks/LIA-lin/*.gz
         mkdir benchmarks
-        mv LIA-lin/*.smt2 benchmarks
+        mv chc-comp23-benchmarks/LIA-lin/*.smt2 benchmarks
       shell: bash
