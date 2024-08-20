@@ -41,9 +41,8 @@ permissions:
 jobs:
 
   build:
-    runs-on: ubuntu-latest
-
     if: ${{ inputs.build }}
+    runs-on: ubuntu-latest
     uses: ./.github/workflows/build-loat.yml
 
   chc-comp-benchmark:
