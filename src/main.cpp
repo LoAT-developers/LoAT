@@ -74,6 +74,14 @@ void setBool(const char *str, bool &b) {
     }
 }
 
+void print_version() {
+    cout << Version::GIT_SHA;
+    if (Version::GIT_DIRTY != "CLEAN") {
+        cout << "_DIRTY";
+    }
+    cout << endl;
+}
+
 void parseFlags(int argc, char *argv[]) {
     int arg = 0;
 
@@ -209,6 +217,9 @@ void parseFlags(int argc, char *argv[]) {
                 cout << "Error: unknown MBP kind " << str << std::endl;
                 exit(1);
             }
+        } else if (strcmp("--version", argv[arg]) == 0) {
+            print_version();
+            exit(1);
         } else {
             if (!filename.empty()) {
                 cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << endl;
@@ -296,7 +307,7 @@ int main(int argc, char *argv[]) {
     }
     yices::exit();
 
-    cout << "Build SHA: " << Version::GIT_SHA << " (" << Version::GIT_DIRTY << ")" << endl;
+    print_version();
 
     return 0;
 }
