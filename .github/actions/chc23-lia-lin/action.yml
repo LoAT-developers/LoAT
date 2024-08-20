@@ -7,7 +7,7 @@ runs:
       with:
         repository: chc-comp/chc-comp23-benchmarks
         sparse-checkout: LIA-lin
-      path: chc-comp23-benchmarks
+        path: chc-comp23-benchmarks
 
     - run: |
         gunzip chc-comp23-benchmarks/LIA-lin/*.gz
