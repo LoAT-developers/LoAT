@@ -165,12 +165,13 @@ jobs:
           declare -A results
           VERSION=$(cat ${{ inputs.benchmarks }}-0/solver.version)
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.config }}-$VERSION.json"
+          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/${{ inputs.config }}-$VERSION.json"
           echo -e "{\n" >> $results
           echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
           echo -e "\t\"config\": \"${{ inputs.config }}\"," >> $results
           echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
-          echo -e "\t\"sha\": \"$version\"," >> $results
+          echo -e "\t\"version\": \"$VERSION\"," >> $results
+          echo -e "\t\"timeout\": \"${{ inputs.timeout }}\"," >> $results
           echo -e "\t\"results\": [" >> $results
           for filename in ${{ inputs.benchmarks }}*/*.json; do
             json=$(cat $filename)
