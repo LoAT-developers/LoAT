@@ -9,6 +9,6 @@ runs:
         name: loat-static-${{ github.ref_name }}
         path: /usr/local/bin/
 
-    - run: mv /usr/local/bin/loat-static /usr/loca/bin/solver
+    - run: mv /usr/local/bin/loat-static /usr/local/bin/solver
       shell: bash
 
