@@ -49,10 +49,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           sparse-checkout: .github/workflows
-          path: workflows
 
       - if: ${{ inputs.build }}
-        uses: ./workflows/.github/workflows/build-loat.yml
+        uses: ./.github/workflows/build-loat.yml
 
   chc-comp-benchmark:
     runs-on: ubuntu-latest
