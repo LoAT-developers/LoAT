@@ -1,0 +1,19 @@
+name: 'CHC 22 LIA Lin'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        repository: 'usi-verification-and-security/golem'
+        tag: v0.5.0
+        fileName:  golem-0.5.0-x64-linux.tar.bz2
+        out-file-path: 'golem'
+        extract: true
+
+    - run: |
+        mv ./golem/golem /usr/local/bin/solver
+        VERSION='0.5.0'
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      shell: bash
+

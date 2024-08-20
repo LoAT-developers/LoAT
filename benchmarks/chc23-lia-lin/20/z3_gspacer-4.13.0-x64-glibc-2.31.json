@@ -2,7 +2,7 @@
 	"benchmarks": "chc23-lia-lin",
 	"config": "z3_gspacer",
 	"branch": "transition-invariants",
-	"version": "z3-4.13.0-x64-glibc-2.31",
+	"version": "4.13.0-x64-glibc-2.31",
 	"timeout": "20",
 	"results": [
 		{"name": "chc-LIA-Lin_000.smt2", "result": "sat", "runtime": "748"},

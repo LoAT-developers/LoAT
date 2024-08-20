@@ -20,6 +20,12 @@ on:
         - z3_gspacer
         - z3_spacer
         - z3_bmc
+        - golem_spacer
+        - golem_lawi
+        - golem_split_tpa
+        - golem_bmc
+        - golem_imc
+        - golem_kind
       benchmarks:
         required: true
         type: choice
@@ -72,6 +78,9 @@ jobs:
       - if: ${{ startsWith(inputs.config, 'z3') }}
         uses: ./actions/.github/actions/get-z3
 
+      - if: ${{ startsWith(inputs.config, 'golem') }}
+        uses: ./actions/.github/actions/get-golem
+
       - name: Run Benchmark
         run: |
           # function to run a single benchmark
@@ -95,6 +104,9 @@ jobs:
               result=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer "${filename}")
             elif [ ${{ inputs.config }} = "z3_bmc" ]; then
               result=$(timeout ${{ inputs.timeout }} solver fp.engine=bmc "${filename}")
+            elif [ startsWith(inputs.config, 'golem') ]
+              engine{=$config:6:100}
+              result=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
             fi
 
             exit_status=$?
