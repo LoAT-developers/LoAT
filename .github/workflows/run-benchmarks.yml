@@ -46,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           sparse-checkout: .github/actions
-        path: actions
+          path: actions
 
       - if: ${{ inputs.benchmarks == 'chc23-lia-lin' }}
         uses: ./actions/.github/actions/chc23-lia-lin
