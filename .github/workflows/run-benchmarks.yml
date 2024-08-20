@@ -155,10 +155,11 @@ jobs:
       - name: Merge Benchmark Results
         run: |
           declare -A results
-          results="${{ inputs.repo }}-${{ GITHUB_SHA }}.json"
+          version=$(loat-static --version)
+          results="${{ inputs.repo }}-$version.json"
           echo "{\n" >> $results
           echo "\t\"branch\": \"${{ GITHUB_REF }}\",\n" >> $results
-          echo "\t\"sha\": \"${{ GITHUB_SHA }}\",\n" >> $results
+          echo "\t\"sha\": \"$version\",\n" >> $results
           echo "\t\"results\": [\n" >> $results
           for filename in ${{ inputs.repo }}*/*.res; do
             benchmark=$(basename "$filename" .res)
@@ -170,7 +171,7 @@ jobs:
       - uses: actions/upload-artifact@master
         with:
           name: ${{ inputs.repo }}
-          path: ${{ inputs.repo }}-${{ GITHUB_SHA }}.json
+          path: ${{ inputs.repo }}-*.json
 
   # publish-benchmark-results:
   #   needs: [finalize-benchmark-results]
