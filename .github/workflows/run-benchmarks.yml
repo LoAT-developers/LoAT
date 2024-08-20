@@ -41,10 +41,10 @@ jobs:
         ci_total: [20]
 
     steps:
-      - if: inputs.benchmarks == "chc23-lia-lin"
+      - if: ${{ inputs.benchmarks == "chc23-lia-lin" }}
         uses: ./chc23-lia-lin
 
-      - if: inputs.benchmarks == "chc22-lia-lin"
+      - if: ${{ inputs.benchmarks == "chc22-lia-lin" }}
         uses: ./chc22-lia-lin
 
       - uses: dawidd6/action-download-artifact@v3
