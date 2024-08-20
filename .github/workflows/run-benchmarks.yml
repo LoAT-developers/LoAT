@@ -40,8 +40,23 @@ permissions:
 
 jobs:
 
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout LoAT Repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/workflows
+          path: workflows
+
+      - if: ${{ inputs.build }}
+        uses: ./workflows/.github/workflows/build-loat.yml
+
   chc-comp-benchmark:
     runs-on: ubuntu-latest
+    needs: [build]
     strategy:
       matrix:
         ci_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
@@ -52,23 +67,20 @@ jobs:
       - name: Checkout LoAT Repository
         uses: actions/checkout@v4
         with:
-          sparse-checkout: .github
-          path: repo
-
-      - if: ${{ inputs.build }}
-        uses: ./repo/.github/workflows/build-loat.yml
+          sparse-checkout: .github/actions
+          path: actions
 
       - if: ${{ inputs.benchmarks == 'chc23-lia-lin' }}
-        uses: ./repo/.github/actions/chc23-lia-lin
+        uses: ./actions/.github/actions/chc23-lia-lin
 
       - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
-        uses: ./repo/.github/actions/chc22-lia-lin
+        uses: ./actions/.github/actions/chc22-lia-lin
 
       - if: ${{ startsWith(inputs.config, 'loat') }}
-        uses: ./repo/.github/actions/get-loat
+        uses: ./actions/.github/actions/get-loat
 
       - if: ${{ startsWith(inputs.config, 'z3') }}
-        uses: ./repo/.github/actions/get-z3
+        uses: ./actions/.github/actions/get-z3
 
       - name: Run Benchmark
         run: |
