@@ -97,7 +97,7 @@ void parseFlags(int argc, char *argv[]) {
     while (++arg < argc) {
         if (strcmp("--help", argv[arg]) == 0) {
             printHelp(argv[0]);
-            exit(1);
+            exit(0);
         } else if (strcmp("--proof-level", argv[arg]) == 0) {
             int proofLevel = atoi(getNext());
             if (proofLevel < 0) {
@@ -219,7 +219,7 @@ void parseFlags(int argc, char *argv[]) {
             }
         } else if (strcmp("--version", argv[arg]) == 0) {
             print_version();
-            exit(1);
+            0);
         } else {
             if (!filename.empty()) {
                 cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << endl;
