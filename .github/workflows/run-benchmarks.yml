@@ -104,7 +104,7 @@ jobs:
           # permissions are not preserved for artifacts:
           chmod +x /usr/local/bin/loat-static
 
-          cd benchmarks
+          pushd benchmarks
 
           # remove benchmarks that are executed by other workers
           i=0
@@ -121,6 +121,9 @@ jobs:
 
           # execute benchmarks in parallel
           parallel benchmark ::: *.smt2
+
+          popd
+
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
           CI_INDEX: ${{ matrix.ci_index }}
