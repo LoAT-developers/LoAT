@@ -587,7 +587,6 @@ void TIL::add_blocking_clauses() {
     for (const auto &[id, b] : projections) {
         solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
     }
-    // solver->add(bools::mkLit(arith::mkLeq(s1.get<Arith>(trace_var), arith::mkConst(last_orig_clause))) || bools::mkLit(arith::mkNeq(s1.get<Arith>(trace_var), s2.get<Arith>(trace_var))));
     const auto it{blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
         solver->add(it->second);
