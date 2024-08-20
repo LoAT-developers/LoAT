@@ -53,21 +53,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           sparse-checkout: .github
+          path: repo
 
       - if: ${{ inputs.build }}
-        uses: ./.github/workflows/{filename}
+        uses: ./repo/.github/workflows/build-loat.yml
 
       - if: ${{ inputs.benchmarks == 'chc23-lia-lin' }}
-        uses: ./.github/actions/chc23-lia-lin
+        uses: ./repo/.github/actions/chc23-lia-lin
 
       - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
-        uses: ./.github/actions/chc22-lia-lin
+        uses: ./repo/.github/actions/chc22-lia-lin
 
       - if: ${{ startsWith(inputs.config, 'loat') }}
-        uses: ./.github/actions/get-loat
+        uses: ./repo/.github/actions/get-loat
 
       - if: ${{ startsWith(inputs.config, 'z3') }}
-        uses: ./.github/actions/get-z3
+        uses: ./repo/.github/actions/get-z3
 
       - name: Run Benchmark
         run: |
