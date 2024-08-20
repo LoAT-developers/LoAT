@@ -43,15 +43,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    steps:
-
-      - name: Checkout LoAT Repository
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/workflows
-
-      - if: ${{ inputs.build }}
-        uses: ./.github/workflows/build-loat.yml
+    if: ${{ inputs.build }}
+    uses: ./.github/workflows/build-loat.yml
 
   chc-comp-benchmark:
     runs-on: ubuntu-latest
