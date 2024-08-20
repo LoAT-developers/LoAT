@@ -148,7 +148,7 @@ jobs:
       - name: Merge Benchmark Results
         run: |
           declare -A results
-          results="${{ inputs.benchmarks }}-${{ inputs.config }}-$VERSION.json"
+          results="${{ inputs.benchmarks }}-${{ inputs.config }}-${{ env.VERSION }}.json"
           echo -e "{\n" >> $results
           echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
           echo -e "\t\"config\": \"${{ inputs.config }}\"," >> $results
