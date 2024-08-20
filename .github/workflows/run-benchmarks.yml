@@ -8,49 +8,22 @@ on:
         required: true
         type: number
         default: 20
-      engine:
+      config:
         required: true
         type: choice
-        default: abmc
+        default: safety
         options:
-        - abmc
-        - adcl
-        - bmc
-        - til
-      mode:
+        - sat
+        - unsat
+        - nonterm
+        - cpx
+      benchmarks:
         required: true
         type: choice
-        default: reachability
+        default: chc23-lia-lin
         options:
-        - reachability
-        - non_termination
-        - complexity
-        - safety
-      format:
-        required: true
-        type: choice
-        default: horn
-        options:
-        - horn
-        - its
-        - koat
-      reverse:
-        required: true
-        type: boolean
-      repo:
-        required: true
-        type: choice
-        default: chc-comp22-benchmarks
-        options:
-        - chc-comp22-benchmarks
-        - chc-comp23-benchmarks
-      directory:
-          required: true
-          type: choice
-          default: LIA-Lin
-          options:
-          - LIA-Lin
-          - LIA-lin
+        - chc22-lia-lin
+        - chc23-lia-lin
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -68,12 +41,11 @@ jobs:
         ci_total: [20]
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: chc-comp/${{ inputs.repo }}
-          sparse-checkout: ${{ inputs.directory }}
+      - if: inputs.benchmarks == "chc23-lia-lin"
+        uses: ./chc23-lia-lin
 
-      - run: gunzip ${{ inputs.directory }}/*.gz
+      - if: inputs.benchmarks == "chc22-lia-lin"
+        uses: ./chc22-lia-lin
 
       - uses: dawidd6/action-download-artifact@v3
         with:
@@ -90,12 +62,16 @@ jobs:
             start=`date +%s`
 
             set +e
-            if [ ${{ inputs.reverse }} = true ]; then
-              reverse="--reverse"
-            else
-              reverse=""
+            if [ ${{ inputs.config }} = "sat" ]; then
+              result=$(timeout ${{ inputs.timeout }} loat-static --mode safety --format horn --proof-level 0 --engine til --til::mode interleaved "${filename}")
+            else if [ ${{ inputs.config }} = "unsat" ]; then
+              result=$(timeout ${{ inputs.timeout }} loat-static --mode reachability --format horn --proof-level 0 --engine abmc "${filename}")
+            else if [ ${{ inputs.config }} = "nonterm" ]; then
+              result=$(timeout ${{ inputs.timeout }} loat-static --mode non_termination --format its --proof-level 0 --engine adcl "${filename}")
+            else if [ ${{ inputs.config }} = "cpx" ]; then
+              result=$(timeout ${{ inputs.timeout }} loat-static --mode complexity --format koat --proof-level 0 --engine adcl "${filename}")
             fi
-            result=$(timeout ${{ inputs.timeout }} loat-static --mode ${{ inputs.mode }} --format ${{ inputs.format }} --proof-level 0 --engine ${{ inputs.engine }} $reverse "${filename}")
+
             exit_status=$?
             set -e
 
@@ -121,7 +97,7 @@ jobs:
           # permissions are not preserved for artifacts:
           chmod +x /usr/local/bin/loat-static
 
-          cd ${{ inputs.directory }}
+          cd benchmarks
 
           # remove benchmarks that are executed by other workers
           i=0
@@ -145,10 +121,10 @@ jobs:
       - name: Upload Benchmark Results
         uses: actions/upload-artifact@master
         with:
-          name: ${{ inputs.repo }}-${{ matrix.ci_index }}
+          name: ${{ inputs.benchmarks }}-${{ matrix.ci_index }}
           path: |
-            ${{ inputs.directory }}/*.res
-            ${{ inputs.directory }}/*.version
+            benchmarks/*.res
+            benchmarks/*.version
 
   finalize-benchmark-results:
     needs: [chc-comp-benchmark]
@@ -156,27 +132,27 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: ${{ inputs.repo }}*
+          pattern: ${{ inputs.benchmarks }}*
       - name: Merge Benchmark Results
         run: |
           declare -A results
-          version=$(cat ${{ inputs.repo }}-0/loat.version)
-          results="${{ inputs.repo }}-$version.json"
-          echo "{\n" >> $results
-          echo "\t\"branch\": \"${{ github.ref_name }}\",\n" >> $results
-          echo "\t\"sha\": \"$version\",\n" >> $results
-          echo "\t\"results\": [\n" >> $results
-          for filename in ${{ inputs.repo }}*/*.res; do
+          version=$(cat ${{ inputs.benchmarks }}-0/loat.version)
+          results="${{ inputs.benchmarks }}-$version.json"
+          echo -e "{\n" >> $results
+          echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
+          echo -e "\t\"sha\": \"$version\"," >> $results
+          echo -e "\t\"results\": [" >> $results
+          for filename in ${{ inputs.benchmarks }}*/*.res; do
             benchmark=$(basename "$filename" .res)
             res=$(cat "$filename")
-            echo "\t\t{\"name\": \"$benchmark\", \"result\": \"$res\"},\n" >> $results
+            echo -e "\t\t{\"name\": \"$benchmark\", \"result\": \"$res\"}," >> $results
           done
-          echo "\t]\n" >> $results
-          echo "}\n" >> $results
+          echo -e "\t]" >> $results
+          echo -e "}" >> $results
       - uses: actions/upload-artifact@master
         with:
-          name: ${{ inputs.repo }}
-          path: ${{ inputs.repo }}-*.json
+          name: ${{ inputs.benchmarks }}
+          path: ${{ inputs.benchmarks }}-*.json
 
   # publish-benchmark-results:
   #   needs: [finalize-benchmark-results]
