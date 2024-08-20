@@ -41,6 +41,11 @@ jobs:
         ci_total: [20]
 
     steps:
+
+      - name: Checkout LoAT Repository
+        uses: actions/checkout@v4
+        sparse-checkout: .github
+
       - if: ${{ inputs.benchmarks == 'chc23-lia-lin' }}
         uses: ./chc23-lia-lin
 
