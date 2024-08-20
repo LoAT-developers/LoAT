@@ -158,7 +158,7 @@ jobs:
           version=$(loat-static --version)
           results="${{ inputs.repo }}-$version.json"
           echo "{\n" >> $results
-          echo "\t\"branch\": \"${{ GITHUB_REF }}\",\n" >> $results
+          echo "\t\"branch\": \"${{ github.ref_name }}\",\n" >> $results
           echo "\t\"sha\": \"$version\",\n" >> $results
           echo "\t\"results\": [\n" >> $results
           for filename in ${{ inputs.repo }}*/*.res; do
