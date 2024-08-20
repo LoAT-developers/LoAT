@@ -92,8 +92,8 @@ jobs:
             set -e
 
             end=`date +%s.%N`
-            runtime=$( echo "$end - $start" | bc -l )
-            runtime=$( printf %.2f $runtime )
+            runtime=$( echo "1000 * ($end - $start)" | bc -l )
+            runtime=$( printf %.0f $runtime )
 
             if [[ $exit_status -eq 0 ]]; then
               result=$(echo "$result" | head -n 1)
@@ -103,7 +103,7 @@ jobs:
               result="error"
             fi
 
-            printf "${result} after ${runtime}s\n"
+            printf "${result} after ${runtime}ms\n"
 
             echo -e "{\"name\": \"$filename\", \"result\": \"$result\", \"runtime\": \"$runtime\"}" >> ${filename}.json
           }
