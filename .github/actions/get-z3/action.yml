@@ -1,0 +1,16 @@
+name: 'CHC 22 LIA Lin'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        repository: 'Z3Prover/z3'
+        tag: z3-4.13.0
+        fileName: z3-4.13.0-x64-glibc-2.31.zip
+        out-file-path: 'z3'
+        extract: true
+
+    - run: mv ./z3/z3-4.13.0-x64-glibc-2.31/bin/z3 /usr/loca/bin/solver
+      shell: bash
+

@@ -1,0 +1,14 @@
+name: 'CHC 22 LIA Lin'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: dawidd6/action-download-artifact@v3
+      with:
+        workflow: build-loat.yml
+        name: loat-static-${{ github.ref_name }}
+        path: /usr/local/bin/
+
+    - run: mv /usr/local/bin/loat-static /usr/loca/bin/solver
+      shell: bash
+

@@ -11,12 +11,15 @@ on:
       config:
         required: true
         type: choice
-        default: safety
+        default: loat_sat
         options:
-        - sat
-        - unsat
-        - nonterm
-        - cpx
+        - loat_sat
+        - loat_unsat
+        - loat_nonterm
+        - loat_lb
+        - z3_gspacer
+        - z3_spacer
+        - z3_bmc
       benchmarks:
         required: true
         type: choice
@@ -54,11 +57,11 @@ jobs:
       - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
         uses: ./actions/.github/actions/chc22-lia-lin
 
-      - uses: dawidd6/action-download-artifact@v3
-        with:
-          workflow: build-loat.yml
-          name: loat-static-${{ github.ref_name }}
-          path: /usr/local/bin/
+      - if: ${{ startsWith(inputs.config, 'loat') }}
+        uses: ./actions/.github/actions/get-loat
+
+      - if: ${{ startsWith(inputs.config, 'z3') }}
+        uses: ./actions/.github/actions/get-z3
 
       - name: Run Benchmark
         run: |
@@ -69,14 +72,20 @@ jobs:
             start=`date +%s`
 
             set +e
-            if [ ${{ inputs.config }} = "sat" ]; then
-              result=$(timeout ${{ inputs.timeout }} loat-static --mode safety --format horn --proof-level 0 --engine til --til::mode interleaved "${filename}")
-            elif [ ${{ inputs.config }} = "unsat" ]; then
-              result=$(timeout ${{ inputs.timeout }} loat-static --mode reachability --format horn --proof-level 0 --engine abmc "${filename}")
-            elif [ ${{ inputs.config }} = "nonterm" ]; then
-              result=$(timeout ${{ inputs.timeout }} loat-static --mode non_termination --format its --proof-level 0 --engine adcl "${filename}")
-            elif [ ${{ inputs.config }} = "cpx" ]; then
-              result=$(timeout ${{ inputs.timeout }} loat-static --mode complexity --format koat --proof-level 0 --engine adcl "${filename}")
+            if [ ${{ inputs.config }} = "loat_sat" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --proof-level 0 --engine til --til::mode interleaved "${filename}")
+            elif [ ${{ inputs.config }} = "loat_unsat" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver --mode reachability --format horn --proof-level 0 --engine abmc "${filename}")
+            elif [ ${{ inputs.config }} = "loat_nonterm" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver --mode non_termination --format its --proof-level 0 --engine adcl "${filename}")
+            elif [ ${{ inputs.config }} = "loat_lb" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --proof-level 0 --engine adcl "${filename}")
+            elif [ ${{ inputs.config }} = "z3_gspacer" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer fp.spacer.global=true "${filename}")
+            elif [ ${{ inputs.config }} = "z3_spacer" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer "${filename}")
+            elif [ ${{ inputs.config }} = "z3_bmc" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver fp.engine=bmc "${filename}")
             fi
 
             exit_status=$?
@@ -102,7 +111,7 @@ jobs:
           export -f benchmark
 
           # permissions are not preserved for artifacts:
-          chmod +x /usr/local/bin/loat-static
+          chmod +x /usr/local/bin/solver
 
           cd benchmarks
 
@@ -116,7 +125,7 @@ jobs:
           done
 
           if [[ 0 -eq $CI_INDEX ]]; then
-             loat-static --version > loat.version
+             solver --version > solver.version
           fi
 
           # execute benchmarks in parallel
@@ -144,9 +153,11 @@ jobs:
       - name: Merge Benchmark Results
         run: |
           declare -A results
-          version=$(cat ${{ inputs.benchmarks }}-0/loat.version)
-          results="${{ inputs.benchmarks }}-$version.json"
+          version=$(cat ${{ inputs.benchmarks }}-0/solver.version)
+          results="${{ inputs.benchmarks }}-${{ inputs.config }}-$version.json"
           echo -e "{\n" >> $results
+          echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
+          echo -e "\t\"config\": \"${{ inputs.config }}\"," >> $results
           echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
           echo -e "\t\"sha\": \"$version\"," >> $results
           echo -e "\t\"results\": [" >> $results
