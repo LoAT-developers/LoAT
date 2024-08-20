@@ -12,4 +12,5 @@ runs:
         gunzip LIA-Lin/*.gz
         mkdir benchmarks
         mv LIA-Lin/*.smt2 benchmarks
+      shell: bash
 
