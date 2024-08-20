@@ -1,4 +1,3 @@
-name: 'CHC 22 LIA Lin'
 runs:
   using: "composite"
   steps:
