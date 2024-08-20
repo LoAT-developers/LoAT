@@ -124,6 +124,10 @@ jobs:
             i=$(( i+1 ))
           done
 
+          if [[ 0 -eq $CI_INDEX ]]; then
+             echo $VERSION > solver.version
+          fi
+
           # execute benchmarks in parallel
           parallel benchmark ::: *.smt2
 
@@ -137,6 +141,7 @@ jobs:
           name: ${{ inputs.benchmarks }}-${{ matrix.ci_index }}
           path: |
             benchmarks/*.json
+            benchmarks/*.version
 
   finalize-benchmark-results:
     needs: [chc-comp-benchmark]
@@ -148,7 +153,8 @@ jobs:
       - name: Merge Benchmark Results
         run: |
           declare -A results
-          results="${{ inputs.benchmarks }}-${{ inputs.config }}-${{ env.VERSION }}.json"
+          VERSION=$(cat ${{ inputs.benchmarks }}-0/solver.version)
+          results="${{ inputs.benchmarks }}-${{ inputs.config }}-$VERSION.json"
           echo -e "{\n" >> $results
           echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
           echo -e "\t\"config\": \"${{ inputs.config }}\"," >> $results
