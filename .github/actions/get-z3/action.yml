@@ -11,6 +11,9 @@ runs:
         out-file-path: 'z3'
         extract: true
 
-    - run: mv ./z3/z3-4.13.0-x64-glibc-2.31/bin/z3 /usr/local/bin/solver
+    - run: |
+        mv ./z3/z3-4.13.0-x64-glibc-2.31/bin/z3 /usr/local/bin/solver
+        VERSION='z3-4.13.0-x64-glibc-2.31'
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
       shell: bash
 
