@@ -11,7 +11,8 @@ runs:
 
     - run: |
         mv /usr/local/bin/loat-static /usr/local/bin/solver
-        VERSION=$(solver --version)
-        echo "VERSION=loat_${VERSION}" >> $GITHUB_ENV
+        sha=$(solver --version)
+        VERSION="loat_$sha"
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
       shell: bash
 
