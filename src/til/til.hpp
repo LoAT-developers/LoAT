@@ -2,7 +2,7 @@
 
 #include <limits>
 #include <boost/bimap.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
+#include <boost/bimap/set_of.hpp>
 
 #include "chcproblem.hpp"
 #include "safetyproblem.hpp"
@@ -71,10 +71,9 @@ private:
     std::vector<std::vector<Subs>> subs {};
     std::vector<TraceElem> trace {};
     Model model;
-    std::vector<std::pair<Int, Bools::Expr>> blocked {};
     std::vector<std::pair<Int, Bools::Expr>> projections {};
     // step -> ID of corresponding transition formula -> blocked transition
-    std::unordered_map<Int, std::unordered_map<Int, Bools::Expr>> blocked_per_step {};
+    std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
     VarSet vars {};
     VarSet pre_vars {};
     Int last_orig_clause;
@@ -85,11 +84,12 @@ private:
 
     Int next_id {0};
 
-    using rule_map_t = boost::bimap<boost::bimaps::unordered_set_of<Int>, boost::bimaps::unordered_set_of<Bools::Expr>>;
+    using rule_map_t = boost::bimap<boost::bimaps::set_of<Int>, boost::bimaps::set_of<Bools::Expr>>;
 
     rule_map_t rule_map {};
     linked_hash_map<Int, LitSet> learned_clauses;
     std::unordered_map<Int, linked_hash_set<Int>> dependents;
+    // LitSet important;
     const Arith::Var trace_var {ArithVar::next()};
     const Arith::Var n {ArithVar::next()};
     Proof proof {};

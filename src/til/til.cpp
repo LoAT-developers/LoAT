@@ -131,10 +131,16 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
     }
     const auto id = next_id;
     ++next_id;
-    const auto encoded{theory::mkEq(trace_var, arith::mkConst(id))};
-    rule_map.left.insert(rule_map_t::left_value_type(id, encoded));
-    blocked.emplace_back(id, top());
-    step = step || encoded;
+    // LitSet abstraction_lits;
+    // for (const auto &l: accel->lits()) {
+    //     if (important.contains(l)) {
+    //         abstraction_lits.insert(l);
+    //     }
+    // }
+    // const auto abstraction {bools::mkAndFromLits(abstraction_lits)};
+    const auto abstraction {top()};
+    rule_map.left.insert(rule_map_t::left_value_type(id, abstraction));
+    step = step || encode_transition(abstraction, id);
     const auto lits {accel->lits()};
     learned_clauses.emplace(id, lits);
     dependents.emplace(id, linked_hash_set<Int>());
@@ -535,15 +541,18 @@ void TIL::handle_loop(const Range &range) {
     }
     auto ti{compute_transition_invariant(context, loop, top(), model)};
     model.put<Arith>(n, 1);
+    const auto id{add_learned_clause(ti)};
+    if (range.length() == 1) {
+        const auto projected{mbp_impl(ti, model, [&](const auto &x) {
+            return x == Var(n);
+        })};
+        projections.emplace_back(id, projected);
+    }
+    ti = rule_map.left.at(id);
     const auto projected{mbp_impl(ti, model, [&](const auto &x) {
         return x == Var(n);
     })};
-    const auto id{add_learned_clause(ti)};
-    // if (range.length() == 1) {
-        // projections.emplace_back(id, projected);
-    // } else {
-        add_blocking_clause(range, id, projected);
-    // }
+    add_blocking_clause(range, id, projected);
 }
 
 Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
@@ -552,7 +561,7 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
 
 void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
-    auto &map{blocked_per_step.emplace(range.start(), std::unordered_map<Int, Bools::Expr>()).first->second};
+    auto &map{blocked_per_step.emplace(range.end(), std::map<Int, Bools::Expr>()).first->second};
     auto it {map.emplace(id, top()).first};
     if (range.length() == 1) {
         it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
@@ -565,7 +574,7 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
     Subs m{model.toSubs()};
     m.erase(n);
     auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
-    for (const auto &[id, b] : blocked) {
+    for (const auto &[id, b] : rule_map) {
         if (range.length() == 1 && id <= last_orig_clause) {
             continue;
         }
@@ -626,7 +635,7 @@ void TIL::build_trace() {
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{get_subs(d, 1)};
         const auto id{model.eval<Arith>(s.get<Arith>(trace_var))};
-        const auto rule{rule_map.left.at(id)};
+        const auto rule{encode_transition(rule_map.left.at(id), id)};
         const auto comp{model.composeBackwards(s)};
         const auto imp{comp.syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
         auto relevant_vars{vars};
@@ -709,10 +718,8 @@ bool TIL::setup() {
     }
     std::vector<Bools::Expr> steps;
     for (const auto &trans : t.trans()) {
-        const auto encoded{encode_transition(trans, next_id)};
-        rule_map.left.insert(rule_map_t::left_value_type(next_id, encoded));
-        steps.push_back(encoded);
-        blocked.emplace_back(next_id, trans);
+        rule_map.left.insert(rule_map_t::left_value_type(next_id, trans));
+        steps.push_back(encode_transition(trans, next_id));
         ++next_id;
     }
     last_orig_clause = next_id - 1;
@@ -739,9 +746,9 @@ void TIL::forget(const Int id) {
         forget(d);
     }
     dependents.erase(id);
-    for (auto it = blocked.begin(); it != blocked.end(); ++it) {
+    for (auto it = projections.begin(); it != projections.end(); ++it) {
         if (it->first == id) {
-            blocked.erase(it);
+            projections.erase(it);
             break;
         }
     }
@@ -765,18 +772,13 @@ bool TIL::refine() {
             const auto current_lits{current->lits()};
             for (const auto &l : learned_clauses.at(e.id)) {
                 if (!current_lits.contains(l) && !model.eval<Bools>(subs(l))) {
+                    // important.insert(l);
                     for (const auto &id : dependents.at(e.id)) {
                         forget(id);
                     }
                     const auto refined{current && bools::mkLit(l)};
                     rule_map.left.erase(e.id);
                     rule_map.left.insert(TIL::rule_map_t::left_value_type(e.id, refined));
-                    for (auto it = blocked.begin(); it != blocked.end(); ++it) {
-                        if (it->first == e.id) {
-                            it->second = it->second && bools::mkLit(l);
-                            break;
-                        }
-                    }
                     for (auto &[_, m] : blocked_per_step) {
                         for (auto it = m.begin(); it != m.end(); ++it) {
                             if (it->first == e.id) {
@@ -787,8 +789,8 @@ bool TIL::refine() {
                     }
                     dependents[e.id] = linked_hash_set<Int>();
                     std::vector<Bools::Expr> steps;
-                    for (const auto &[_, s] : rule_map) {
-                        steps.emplace_back(s);
+                    for (const auto &[id, s] : rule_map) {
+                        steps.emplace_back(encode_transition(s, id));
                     }
                     step = bools::mkOr(steps);
                     if (Config::Analysis::log) {
