@@ -84,7 +84,7 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Subs var_renaming;
     for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
-        const auto rule{trace[i].implicant};
+        const auto rule = trace[i].id <= last_orig_clause ? trace[i].implicant : bools::mkAndFromLits(learned_clauses[trace[i].id]);
         const auto s{get_subs(i, 1)};
         if (loop) {
             // sigma1 maps vars from chained to the corresponding vars from rule
@@ -448,15 +448,14 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
     return bools::mkAndFromLits(res_lits);
 }
 
-Bools::Expr TIL::compute_transition_invariant(const Bools::Expr pre_ctx, const Bools::Expr loop, const Bools::Expr post_ctx, Model model) {
+Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model model) {
     const auto pre{mbp_impl(loop, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
     if (Config::Analysis::log) {
-        std::cout << "pre_ctx: " << pre_ctx << std::endl;
         std::cout << "pre: " << pre << std::endl;
     }
-    auto step{recurrence_analysis(pre_ctx && loop && post_ctx, model)};
+    auto step{recurrence_analysis(loop, model)};
     if (Config::Analysis::log) {
         std::cout << "recurrence analysis: " << step << std::endl;
     }
@@ -475,71 +474,7 @@ void TIL::handle_loop(const Range &range) {
     if (add_blocking_clauses(range, model)) {
         return;
     }
-    auto context{top()};
-    if (config.context_sensitive) {
-        auto init{this->model.syntacticImplicant(t.init())};
-        init = mbp_impl(init, this->model, [](const auto &x) {
-            return !theory::isProgVar(x);
-        });
-        auto stem{top()};
-        if (range.start() == 0) {
-            stem = init;
-        } else {
-            const auto p{specialize(Range::from_length(0, range.start()), theory::isTempVar)};
-            stem = p.first;
-            const auto stem_model{p.second};
-            stem = init && stem;
-            stem = mbp_impl(stem, stem_model, [](const auto &x) {
-                return !theory::isPostVar(x);
-            });
-            stem = post_to_pre(stem);
-        }
-        auto solver{SmtFactory::solver(QF_LA)};
-        const auto subs1{get_subs(0, 1)};
-        const auto subs2{get_subs(1, 1)};
-        solver->add(subs1(loop) && subs2(loop));
-        if (solver->check() != SmtResult::Sat) {
-            const auto id{add_learned_clause(loop)};
-            for (unsigned i = range.start(); i <= range.end(); ++i) {
-                if (trace.at(i).id > last_orig_clause) {
-                    dependents.at(trace.at(i).id).insert(id);
-                }
-            }
-            add_blocking_clause(range, id, loop);
-            return;
-        }
-        const auto orig_lits{stem->lits()};
-        std::vector<Lit> lits;
-        for (const auto &lit : orig_lits) {
-            std::visit(
-                Overload{
-                    [&](const Arith::Lit &l) {
-                        if (l->isEq() && !l->isDivisibility()) {
-                            lits.push_back(arith::mkLeq(l->lhs(), arith::mkConst(0)));
-                            lits.push_back(arith::mkGeq(l->lhs(), arith::mkConst(0)));
-                        } else {
-                            lits.push_back(l);
-                        }
-                    },
-                    [&](const auto &) {
-                        lits.push_back(lit);
-                    }},
-                lit);
-        }
-        LitSet context_lits;
-        for (const auto &lit : lits) {
-            solver->push();
-            solver->add(subs1(lit));
-            solver->add(subs2(lit));
-            if (solver->check() == SmtResult::Sat) {
-                context_lits.insert(lit);
-            } else {
-                solver->pop();
-            }
-        }
-        context = bools::mkAndFromLits(context_lits);
-    }
-    auto ti{compute_transition_invariant(context, loop, top(), model)};
+    auto ti{compute_transition_invariant(loop, model)};
     model.put<Arith>(n, 1);
     const auto id{add_learned_clause(ti)};
     if (range.length() == 1) {
@@ -763,8 +698,8 @@ void TIL::forget(const Int id) {
     learned_clauses.erase(id);
 }
 
-bool TIL::refine() {
-    for (unsigned i = 0; i < trace.size(); ++i) {
+bool TIL::refine(const Range &range) {
+    for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto e{trace.at(i)};
         if (e.id > last_orig_clause) {
             const auto subs{get_subs(i, 1)};
@@ -828,7 +763,7 @@ bool TIL::refine() {
             switch (solver->check()) {
             case SmtResult::Sat:
                 build_trace();
-                if (refine()) {
+                if (refine(Range::from_length(0, trace.size()))) {
                     solver->pop();
                     return {};
                 }
@@ -847,9 +782,11 @@ bool TIL::refine() {
                     if (Config::Analysis::log) {
                         std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                     }
-                    handle_loop(*range);
-                    while (depth > range->start()) {
-                        pop();
+                    if (!refine(*range)) {
+                        handle_loop(*range);
+                        while (depth > range->start()) {
+                            pop();
+                        }
                     }
                 }
                 if (Config::Analysis::log) {

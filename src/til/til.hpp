@@ -111,7 +111,7 @@ private:
     void recurrent_cycles(const Bools::Expr loop, LitSet &res_lits);
     void recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits);
     Bools::Expr recurrence_analysis(const Bools::Expr loop, const Model &model);
-    Bools::Expr compute_transition_invariant(const Bools::Expr pre, const Bools::Expr loop, const Bools::Expr post, Model model);
+    Bools::Expr compute_transition_invariant(const Bools::Expr loop, Model model);
     void handle_loop(const Range &range);
     void unknown();
     void build_trace();
@@ -122,7 +122,7 @@ private:
     Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
     void forget(const Int id);
-    bool refine();
+    bool refine(const Range &range);
 
 public:
 
