@@ -73,8 +73,11 @@ jobs:
       - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
         uses: ./actions/.github/actions/chc22-lia-lin
 
-      - if: ${{ startsWith(inputs.config, 'loat') }}
+      - if: ${{ !inputs.build && startsWith(inputs.config, 'loat') }}
         uses: ./actions/.github/actions/get-loat
+
+      - if: ${{ inputs.build && startsWith(inputs.config, 'loat') }}
+        uses: ./actions/.github/actions/get-loat-build
 
       - if: ${{ startsWith(inputs.config, 'z3') }}
         uses: ./actions/.github/actions/get-z3
