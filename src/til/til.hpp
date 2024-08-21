@@ -73,7 +73,8 @@ private:
     Model model;
     std::vector<std::pair<Int, Bools::Expr>> blocked {};
     std::vector<std::pair<Int, Bools::Expr>> projections {};
-    std::unordered_map<Int, Bools::Expr> blocked_per_step {};
+    // step -> ID of corresponding transition formula -> blocked transition
+    std::unordered_map<Int, std::unordered_map<Int, Bools::Expr>> blocked_per_step {};
     VarSet vars {};
     VarSet pre_vars {};
     Int last_orig_clause;
@@ -87,6 +88,8 @@ private:
     using rule_map_t = boost::bimap<boost::bimaps::unordered_set_of<Int>, boost::bimaps::unordered_set_of<Bools::Expr>>;
 
     rule_map_t rule_map {};
+    linked_hash_map<Int, LitSet> learned_clauses;
+    std::unordered_map<Int, linked_hash_set<Int>> dependents;
     const Arith::Var trace_var {ArithVar::next()};
     const Arith::Var n {ArithVar::next()};
     Proof proof {};
@@ -118,6 +121,8 @@ private:
 
     Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
+    void forget(const Int id);
+    bool refine();
 
 public:
 

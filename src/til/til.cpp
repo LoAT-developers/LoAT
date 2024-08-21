@@ -131,10 +131,13 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
     }
     const auto id = next_id;
     ++next_id;
-    const auto encoded{encode_transition(accel, id)};
+    const auto encoded{theory::mkEq(trace_var, arith::mkConst(id))};
     rule_map.left.insert(rule_map_t::left_value_type(id, encoded));
-    blocked.emplace_back(id, accel);
+    blocked.emplace_back(id, top());
     step = step || encoded;
+    const auto lits {accel->lits()};
+    learned_clauses.emplace(id, lits);
+    dependents.emplace(id, linked_hash_set<Int>());
     return id;
 }
 
@@ -491,6 +494,11 @@ void TIL::handle_loop(const Range &range) {
         solver->add(subs1(loop) && subs2(loop));
         if (solver->check() != SmtResult::Sat) {
             const auto id{add_learned_clause(loop)};
+            for (unsigned i = range.start(); i <= range.end(); ++i) {
+                if (trace.at(i).id > last_orig_clause) {
+                    dependents.at(trace.at(i).id).insert(id);
+                }
+            }
             add_blocking_clause(range, id, loop);
             return;
         }
@@ -532,7 +540,7 @@ void TIL::handle_loop(const Range &range) {
     })};
     const auto id{add_learned_clause(ti)};
     if (range.length() == 1) {
-        projections.emplace_back(id, projected);
+        // projections.emplace_back(id, projected);
     } else {
         add_blocking_clause(range, id, projected);
     }
@@ -544,7 +552,8 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
 
 void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
-    auto it{blocked_per_step.emplace(range.start(), top()).first};
+    auto &map{blocked_per_step.emplace(range.start(), std::unordered_map<Int, Bools::Expr>()).first->second};
+    auto it {map.emplace(id, top()).first};
     if (range.length() == 1) {
         it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
     } else {
@@ -589,7 +598,9 @@ void TIL::add_blocking_clauses() {
     }
     const auto it{blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
-        solver->add(it->second);
+        for (const auto &[_,b]: it->second) {
+            solver->add(b);
+        }
     }
 }
 
@@ -720,6 +731,67 @@ bool TIL::setup() {
     return true;
 }
 
+void TIL::forget(const Int id) {
+    if (!rule_map.left.erase(id)) {
+        return;
+    }
+    for (const auto &d: dependents.at(id)) {
+        forget(d);
+    }
+    dependents.erase(id);
+    for (auto it = blocked.begin(); it != blocked.end(); ++it) {
+        if (it->first == id) {
+            blocked.erase(it);
+            break;
+        }
+    }
+    for (auto &[_,m]: blocked_per_step) {
+        for (auto it = m.begin(); it != m.end(); ++it) {
+            if (it->first == id) {
+                m.erase(it);
+                break;
+            }
+        }
+    }
+    learned_clauses.erase(id);
+}
+
+bool TIL::refine() {
+    for (unsigned i = 0; i < trace.size(); ++i) {
+        const auto e {trace.at(i)};
+        if (e.id > last_orig_clause) {
+            const auto subs {get_subs(i, 1)};
+            const auto current {rule_map.left.at(e.id)};
+            const auto current_lits {current->lits()};
+            for (const auto &l: learned_clauses.at(e.id)) {
+                if (!current_lits.contains(l) && !model.eval<Bools>(subs(l))) {
+                    for (const auto &id: dependents.at(e.id)) {
+                        forget(id);
+                    }
+                    const auto refined {current && bools::mkLit(l)};
+                    rule_map.left.erase(e.id);
+                    rule_map.left.insert(TIL::rule_map_t::left_value_type(e.id, refined));
+                    blocked.emplace_back(e.id, refined);
+                    dependents[e.id] = linked_hash_set<Int>();
+                    std::vector<Bools::Expr> steps;
+                    for (const auto &[_,s]: rule_map) {
+                        steps.emplace_back(s);
+                    }
+                    step = bools::mkOr(steps);
+                    if (Config::Analysis::log) {
+                        std::cout << "refined " << current << " to " << refined << ", restart" << std::endl;
+                    }
+                    while (depth > 0) {
+                        pop();
+                    }
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 std::optional<SmtResult> TIL::do_step() {
     solver->push();
     auto s{get_subs(depth, 1)};
@@ -741,6 +813,9 @@ std::optional<SmtResult> TIL::do_step() {
         switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
+            if (refine()) {
+                return {};
+            }
             return SmtResult::Unknown;
         case SmtResult::Unknown:
             std::cerr << "unknown from SMT solver" << std::endl;
