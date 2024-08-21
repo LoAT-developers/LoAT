@@ -829,6 +829,7 @@ bool TIL::refine() {
             case SmtResult::Sat:
                 build_trace();
                 if (refine()) {
+                    solver->pop();
                     return {};
                 }
                 return SmtResult::Unknown;
