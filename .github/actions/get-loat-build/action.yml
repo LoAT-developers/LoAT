@@ -2,7 +2,7 @@ runs:
   using: "composite"
   steps:
 
-    - uses: dawidd6/action-download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: loat-static-${{ github.ref_name }}
         path: /usr/local/bin/
