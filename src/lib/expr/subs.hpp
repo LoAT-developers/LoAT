@@ -22,7 +22,7 @@ public:
         inline It beginImpl(size_t i) const {
             if constexpr (I < num_theories) {
                 if (I == i) {
-                    return It{std::get<I>(subs.t).begin()};;
+                    return It{std::get<I>(subs.t).begin()};
                 } else {
                     return beginImpl<I + 1>(i);
                 }
@@ -37,7 +37,7 @@ public:
         inline It endImpl(size_t i) const {
             if constexpr (I < num_theories) {
                 if (I == i) {
-                    return It(std::get<I>(subs.t).end());;
+                    return It(std::get<I>(subs.t).end());
                 } else {
                     return endImpl<I + 1>(i);
                 }

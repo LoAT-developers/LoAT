@@ -69,17 +69,10 @@ namespace Config {
         std::string modeName(const Mode mode) {
             switch (mode) {
             case Complexity: return "complexity";
-                break;
             case NonTermination: return "non_termination";
-                break;
             case Reachability: return "reachability";
-                break;
             case Recurrence: return "recurrence";
-                break;
             case Safety: return "safety";
-                break;
-            default:
-                throw std::invalid_argument("unknown mode");
             }
         }
 

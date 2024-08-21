@@ -26,7 +26,7 @@ public:
         inline VSI beginImpl(size_t i) const {
             if constexpr (I < variant_size) {
                 if (I == i) {
-                    return VSI(std::get<I>(set->t).begin());;
+                    return VSI(std::get<I>(set->t).begin());
                 } else {
                     return beginImpl<I + 1>(i);
                 }
@@ -43,7 +43,7 @@ public:
         inline VSI endImpl(size_t i) const {
             if constexpr (I < variant_size) {
                 if (I == i) {
-                    return VSI(std::get<I>(set->t).end());;
+                    return VSI(std::get<I>(set->t).end());
                 } else {
                     return endImpl<I + 1>(i);
                 }

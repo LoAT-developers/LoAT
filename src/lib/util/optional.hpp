@@ -31,5 +31,5 @@ std::optional<T> flat_map(const std::optional<S> &opt, const std::function<std::
 
 template<class T>
 std::optional<T> or_else(const std::optional<T> &opt, const std::function<std::optional<T>()> f) {
-    return opt ? opt : f();;
+    return opt ? opt : f();
 }
