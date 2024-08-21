@@ -87,9 +87,6 @@ private:
     using rule_map_t = boost::bimap<boost::bimaps::set_of<Int>, boost::bimaps::set_of<Bools::Expr>>;
 
     rule_map_t rule_map {};
-    linked_hash_map<Int, LitSet> learned_clauses;
-    std::unordered_map<Int, linked_hash_set<Int>> dependents;
-    // LitSet important;
     const Arith::Var trace_var {ArithVar::next()};
     const Arith::Var n {ArithVar::next()};
     Proof proof {};
@@ -121,8 +118,6 @@ private:
 
     Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
-    void forget(const Int id);
-    bool refine(const Range &range);
 
 public:
 

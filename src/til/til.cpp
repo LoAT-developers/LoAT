@@ -84,7 +84,7 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Subs var_renaming;
     for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
-        const auto rule = trace[i].id <= last_orig_clause ? trace[i].implicant : bools::mkAndFromLits(learned_clauses[trace[i].id]);
+        const auto rule {trace[i].implicant};
         const auto s{get_subs(i, 1)};
         if (loop) {
             // sigma1 maps vars from chained to the corresponding vars from rule
@@ -131,19 +131,9 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
     }
     const auto id = next_id;
     ++next_id;
-    // LitSet abstraction_lits;
-    // for (const auto &l: accel->lits()) {
-    //     if (important.contains(l)) {
-    //         abstraction_lits.insert(l);
-    //     }
-    // }
-    // const auto abstraction {bools::mkAndFromLits(abstraction_lits)};
-    const auto abstraction {top()};
-    rule_map.left.insert(rule_map_t::left_value_type(id, abstraction));
-    step = step || encode_transition(abstraction, id);
+    rule_map.left.insert(rule_map_t::left_value_type(id, accel));
+    step = step || encode_transition(accel, id);
     const auto lits {accel->lits()};
-    learned_clauses.emplace(id, lits);
-    dependents.emplace(id, linked_hash_set<Int>());
     return id;
 }
 
@@ -477,17 +467,14 @@ void TIL::handle_loop(const Range &range) {
     auto ti{compute_transition_invariant(loop, model)};
     model.put<Arith>(n, 1);
     const auto id{add_learned_clause(ti)};
-    if (range.length() == 1) {
-        const auto projected{mbp_impl(ti, model, [&](const auto &x) {
-            return x == Var(n);
-        })};
-        projections.emplace_back(id, projected);
-    }
-    ti = rule_map.left.at(id);
     const auto projected{mbp_impl(ti, model, [&](const auto &x) {
         return x == Var(n);
     })};
-    add_blocking_clause(range, id, projected);
+    if (range.length() == 1) {
+        projections.emplace_back(id, projected);
+    } else {
+        add_blocking_clause(range, id, projected);
+    }
 }
 
 Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
@@ -673,176 +660,101 @@ bool TIL::setup() {
     return true;
 }
 
-void TIL::forget(const Int id) {
-    if (!rule_map.left.erase(id)) {
-        return;
-    }
-    for (const auto &d: dependents.at(id)) {
-        forget(d);
-    }
-    dependents.erase(id);
-    for (auto it = projections.begin(); it != projections.end(); ++it) {
-        if (it->first == id) {
-            projections.erase(it);
-            break;
-        }
-    }
-    for (auto &[_,m]: blocked_per_step) {
-        for (auto it = m.begin(); it != m.end(); ++it) {
-            if (it->first == id) {
-                m.erase(it);
-                break;
-            }
-        }
-    }
-    learned_clauses.erase(id);
-}
-
-bool TIL::refine(const Range &range) {
-    for (unsigned i = range.start(); i <= range.end(); ++i) {
-        const auto e{trace.at(i)};
-        if (e.id > last_orig_clause) {
-            const auto subs{get_subs(i, 1)};
-            const auto current{rule_map.left.at(e.id)};
-            const auto current_lits{current->lits()};
-            for (const auto &l : learned_clauses.at(e.id)) {
-                if (!current_lits.contains(l) && !model.eval<Bools>(subs(l))) {
-                    // important.insert(l);
-                    for (const auto &id : dependents.at(e.id)) {
-                        forget(id);
-                    }
-                    const auto refined{current && bools::mkLit(l)};
-                    rule_map.left.erase(e.id);
-                    rule_map.left.insert(TIL::rule_map_t::left_value_type(e.id, refined));
-                    for (auto &[_, m] : blocked_per_step) {
-                        for (auto it = m.begin(); it != m.end(); ++it) {
-                            if (it->first == e.id) {
-                                m.erase(it);
-                                break;
-                            }
-                        }
-                    }
-                    dependents[e.id] = linked_hash_set<Int>();
-                    std::vector<Bools::Expr> steps;
-                    for (const auto &[id, s] : rule_map) {
-                        steps.emplace_back(encode_transition(s, id));
-                    }
-                    step = bools::mkOr(steps);
-                    if (Config::Analysis::log) {
-                        std::cout << "REFINEMENT: " << current << " to " << refined << ", restart" << std::endl;
-                    }
-                    while (depth > 0) {
-                        pop();
-                    }
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-    std::optional<SmtResult> TIL::do_step() {
+std::optional<SmtResult> TIL::do_step() {
+    solver->push();
+    auto s{get_subs(depth, 1)};
+    solver->add(s(step));
+    add_blocking_clauses();
+    ++depth;
+    switch (solver->check()) {
+    case SmtResult::Unsat:
+        return SmtResult::Sat;
+    case SmtResult::Unknown:
+        std::cerr << "unknown from SMT solver" << std::endl;
+        return SmtResult::Unknown;
+    case SmtResult::Sat: {
+        build_trace();
+        s = get_subs(depth, 1);
+        // push error states
         solver->push();
-        auto s{get_subs(depth, 1)};
-        solver->add(s(step));
-        add_blocking_clauses();
-        ++depth;
+        solver->add(s(t.err()));
         switch (solver->check()) {
-        case SmtResult::Unsat:
-            return SmtResult::Sat;
+        case SmtResult::Sat:
+            build_trace();
+            return SmtResult::Unknown;
         case SmtResult::Unknown:
             std::cerr << "unknown from SMT solver" << std::endl;
             return SmtResult::Unknown;
-        case SmtResult::Sat: {
-            build_trace();
-            s = get_subs(depth, 1);
-            // push error states
-            solver->push();
-            solver->add(s(t.err()));
-            switch (solver->check()) {
-            case SmtResult::Sat:
-                build_trace();
-                if (refine(Range::from_length(0, trace.size()))) {
-                    solver->pop();
-                    return {};
-                }
-                return SmtResult::Unknown;
-            case SmtResult::Unknown:
-                std::cerr << "unknown from SMT solver" << std::endl;
-                return SmtResult::Unknown;
-            case SmtResult::Unsat: {
-                // pop error states
-                solver->pop();
+        case SmtResult::Unsat: {
+            // pop error states
+            solver->pop();
+            if (Config::Analysis::log) {
+                std::cout << "starting loop handling" << std::endl;
+            }
+            const auto range{has_looping_infix()};
+            if (range) {
                 if (Config::Analysis::log) {
-                    std::cout << "starting loop handling" << std::endl;
+                    std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                 }
-                const auto range{has_looping_infix()};
-                if (range) {
-                    if (Config::Analysis::log) {
-                        std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
-                    }
-                    if (!refine(*range)) {
-                        handle_loop(*range);
-                        while (depth > range->start()) {
-                            pop();
-                        }
-                    }
+                handle_loop(*range);
+                while (depth > range->start()) {
+                    pop();
                 }
-                if (Config::Analysis::log) {
-                    std::cout << "done with loop handling" << std::endl;
-                }
-                break;
             }
+            if (Config::Analysis::log) {
+                std::cout << "done with loop handling" << std::endl;
             }
+            break;
         }
         }
-        if (Config::Analysis::log) {
-            std::cout << "depth: " << depth << std::endl;
-        }
-        return {};
     }
-
-    CHCModel TIL::get_model() {
-        std::vector<Bools::Expr> res{t.init()};
-        Bools::Expr last{t.init()};
-        for (unsigned i = 0; i < depth - 1; ++i) {
-            const auto s1{get_subs(i, 1)};
-            last = last && s1(step);
-            Subs s2;
-            for (const auto &x : vars) {
-                if (theory::isProgVar(x)) {
-                    s2.put(*theory::vars(s1.get(theory::postVar(x))).begin(), theory::toExpr(x));
-                    s2.put(x, theory::toExpr(theory::next(x)));
-                }
-            }
-            res.push_back(s2(last));
-        }
-        const auto sp_model{bools::mkOr(res)};
-        return reversible.revert_model(sp_model);
     }
+    if (Config::Analysis::log) {
+        std::cout << "depth: " << depth << std::endl;
+    }
+    return {};
+}
 
-    void TIL::analyze() {
-        if (!setup()) {
-            unknown();
+CHCModel TIL::get_model() {
+    std::vector<Bools::Expr> res{t.init()};
+    Bools::Expr last{t.init()};
+    for (unsigned i = 0; i < depth - 1; ++i) {
+        const auto s1{get_subs(i, 1)};
+        last = last && s1(step);
+        Subs s2;
+        for (const auto &x : vars) {
+            if (theory::isProgVar(x)) {
+                s2.put(*theory::vars(s1.get(theory::postVar(x))).begin(), theory::toExpr(x));
+                s2.put(x, theory::toExpr(theory::next(x)));
+            }
+        }
+        res.push_back(s2(last));
+    }
+    const auto sp_model{bools::mkOr(res)};
+    return reversible.revert_model(sp_model);
+}
+
+void TIL::analyze() {
+    if (!setup()) {
+        unknown();
+        return;
+    }
+    while (true) {
+        const auto res{do_step()};
+        if (res) {
+            if (res == SmtResult::Sat) {
+                sat();
+                if (produce_model) {
+                    std::cout << get_model().to_smtlib().toString() << std::endl;
+                }
+            } else {
+                unknown();
+            }
             return;
         }
-        while (true) {
-            const auto res{do_step()};
-            if (res) {
-                if (res == SmtResult::Sat) {
-                    sat();
-                    if (produce_model) {
-                        std::cout << get_model().to_smtlib().toString() << std::endl;
-                    }
-                } else {
-                    unknown();
-                }
-                return;
-            }
-        }
     }
+}
 
-    void TIL::analyze(const CHCProblem &chcs) {
-        TIL(chcs, Config::til).analyze();
-    }
+void TIL::analyze(const CHCProblem &chcs) {
+    TIL(chcs, Config::til).analyze();
+}
