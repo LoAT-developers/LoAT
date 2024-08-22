@@ -92,10 +92,24 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::uno
             const auto mod {ArithVar::next()};
             c.add_constraint(theory::mkEq(fst, snd * div + mod));
             c.add_constraint(theory::mkNeq(snd, arith::mkConst(0)));
-            c.add_constraint(bools::mkLit(arith::mkGeq(mod, arith::mkConst(0)))); // x mod y is non-negative
-            c.add_constraint( // |y| > x mod y
-                bools::mkAndFromLits({arith::mkGt(snd, arith::mkConst(0)), arith::mkGt(snd, mod)})
-                || bools::mkAndFromLits({arith::mkLt(snd, arith::mkConst(0)), arith::mkGt(-snd, mod)}));
+            bool explicit_encoding = false;
+            const auto y {snd->isInt()};
+            if (y) {
+                if (*y > 0 && *y <= 10) {
+                    explicit_encoding = true;
+                    std::vector<Bools::Expr> refinement;
+                    for (int i = 0; i < *y; i++) {
+                        refinement.push_back(theory::mkEq(mod, arith::mkConst(i)));
+                    }
+                    c.add_constraint(bools::mkOr(refinement));
+                }
+            }
+            if (!explicit_encoding) {
+                c.add_constraint(bools::mkLit(arith::mkGeq(mod, arith::mkConst(0)))); // x mod y is non-negative
+                c.add_constraint( // |y| > x mod y
+                    bools::mkAndFromLits({arith::mkGt(snd, arith::mkConst(0)), arith::mkGt(snd, mod)})
+                    || bools::mkAndFromLits({arith::mkLt(snd, arith::mkConst(0)), arith::mkGt(-snd, mod)}));
+            }
             if (name == "div") {
                 return Arith::varToExpr(div);
             } else {
