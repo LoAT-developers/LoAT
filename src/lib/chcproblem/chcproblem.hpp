@@ -48,6 +48,7 @@ private:
 
     friend size_t hash_value(const Clause &);
     friend bool operator==(const Clause&, const Clause&);
+    friend std::ostream& operator<<(std::ostream &s, const Clause &f);
 
 public:
 

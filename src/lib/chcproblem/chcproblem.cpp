@@ -31,6 +31,27 @@ std::ostream& operator<<(std::ostream &s, const FunApp &f) {
     return s;
 }
 
+std::ostream& operator<<(std::ostream &s, const Clause &c) {
+    if (c.premise) {
+        s << "( " << c.premise->get_pred();
+        for (const auto &arg: c.premise->get_args()) {
+            s << arg << " ";
+        }
+        s << ") /\\ ";
+    }
+    s << c.constraint << " ==> ";
+    if (c.conclusion) {
+        s << "( " << c.conclusion->get_pred();
+        for (const auto &arg: c.conclusion->get_args()) {
+            s << arg << " ";
+        }
+        s << ")";
+    } else {
+        s << "_|_";
+    }
+    return s;
+}
+
 std::size_t hash_value(const FunApp &f) {
     size_t seed {42};
     boost::hash_combine(seed, f.pred);

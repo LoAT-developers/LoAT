@@ -43,9 +43,11 @@ ReversibleITSToSafety its_to_safetyproblem(const ITSPtr its) {
     for (const auto &r: its->getAllTransitions()) {
         if (its->isInitialTransition(&r)) {
             init.emplace_back(init_map(rule_to_formula(r, sp.pre_vars())));
-        } else if (its->isSinkTransition(&r)) {
+        }
+        if (its->isSinkTransition(&r)) {
             err.emplace_back(r.getGuard());
-        } else {
+        }
+        if (!its->isInitialTransition(&r) && !its->isSinkTransition(&r)) {
             sp.add_transition(rule_to_formula(r, sp.pre_vars()));
         }
     }
