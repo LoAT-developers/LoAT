@@ -56,6 +56,7 @@ public:
     void set_premise(const std::optional<FunApp> &premise);
     void set_conclusion(const std::optional<FunApp> &conclusion);
     void set_constraint(const Bools::Expr e);
+    void add_constraint(const Bools::Expr e);
     Bools::Expr get_constraint() const;
     const var_map &get_vars() const;
 

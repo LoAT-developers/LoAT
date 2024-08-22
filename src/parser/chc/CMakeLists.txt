@@ -12,6 +12,8 @@ target_sources(${EXECUTABLE}
         CHCVisitor.h
         chcparser.cpp
         chcparser.hpp
+        sexpressoparser.hpp
+        sexpressoparser.cpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

@@ -70,6 +70,10 @@ void Clause::set_constraint(const Bools::Expr e) {
     this->constraint = e;
 }
 
+void Clause::add_constraint(const Bools::Expr e) {
+    this->constraint = this->constraint && e;
+}
+
 const std::optional<FunApp>& Clause::get_premise() const {
     return premise;
 }
