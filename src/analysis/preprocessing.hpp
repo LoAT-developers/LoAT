@@ -20,11 +20,14 @@
 #include "itsresult.hpp"
 #include "itsproblem.hpp"
 #include "safetyproblem.hpp"
+#include "chcproblem.hpp"
 
 namespace Preprocess {
 
 ResultViaSideEffects preprocess(ITSProblem &its);
 
 Result<SafetyProblem, Proof> preprocess(const SafetyProblem &);
+
+bool chainLinearPaths(CHCProblem &chcs);
 
 }

@@ -35,6 +35,7 @@
 #include "til.hpp"
 #include "version.hpp"
 #include "yices.hpp"
+#include "preprocessing.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <chrono>
@@ -289,6 +290,18 @@ int main(int argc, char *argv[]) {
         ABMC::analyze(**its);
         break;
     case Config::Analysis::TIL:
+        const auto old_size {chcs->get_clauses().size()};
+        if (Config::Analysis::log) {
+            std::cout << "trying to chain linear paths" << std::endl;
+        }
+        if (Preprocess::chainLinearPaths(*chcs)) {
+            const auto new_size {chcs->get_clauses().size()};
+            if (Config::Analysis::log) {
+                std::cout << "chained linear paths; old size: " << old_size << ", new size: " << new_size << std::endl;
+            }
+        } else if (Config::Analysis::log) {
+            std::cout << "no linear paths to chain" << std::endl;
+        }
         switch (Config::til.mode) {
         case Config::TILConfig::Mode::Forward: {
             TIL::analyze(*chcs);

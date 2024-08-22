@@ -5,6 +5,7 @@
 
 #include "sexpresso.hpp"
 #include "theory.hpp"
+#include "subs.hpp"
 
 class FunApp {
     std::string pred;
@@ -22,6 +23,8 @@ public:
     friend auto operator<=>(const FunApp &, const FunApp&) = default;
     friend std::ostream& operator<<(std::ostream &s, const FunApp &f);
     friend std::size_t hash_value(const FunApp &f);
+    friend bool operator==(const FunApp&, const FunApp&) = default;
+    FunApp subs(const Subs &subs) const;
 
     template <ITheory T>
     unsigned max_arity() const {
@@ -38,10 +41,13 @@ public:
 class Clause {
 
 private:
-    var_map vars {};
+    var_map m_vars {};
     std::optional<FunApp> premise {};
     Bools::Expr constraint {top()};
     std::optional<FunApp> conclusion {};
+
+    friend size_t hash_value(const Clause &);
+    friend bool operator==(const Clause&, const Clause&);
 
 public:
 
@@ -59,6 +65,8 @@ public:
     void add_constraint(const Bools::Expr e);
     Bools::Expr get_constraint() const;
     const var_map &get_vars() const;
+    VarSet vars() const;
+    Clause subs(const Subs &subs) const;
 
     template <ITheory T>
     unsigned max_arity() const {
@@ -70,12 +78,13 @@ public:
 
 class CHCProblem {
 
-    std::vector<Clause> clauses;
+    linked_hash_set<Clause> clauses;
     bool produce_model {false};
 
 public:
-    void add_clause(const Clause &c);
-    const std::vector<Clause> &get_clauses() const;
+    const Clause* add_clause(const Clause &c);
+    void remove_clause(const Clause &c);
+    const linked_hash_set<Clause> &get_clauses() const;
     bool is_left_linear() const;
     bool is_right_linear() const;
     bool is_left_and_right_linear() const;

@@ -15,6 +15,14 @@ sexpresso::Sexp FunApp::to_smtlib(const var_map &vars) const {
     return res;
 }
 
+FunApp FunApp::subs(const Subs &subs) const {
+    std::vector<Var> new_args;
+    for (const auto &arg: args) {
+        new_args.push_back(*theory::vars(subs.get(arg)).begin());
+    }
+    return FunApp(pred, new_args);
+}
+
 std::ostream& operator<<(std::ostream &s, const FunApp &f) {
     s << f.pred << " ::";
     for (const auto &x: f.args) {
@@ -28,6 +36,18 @@ std::size_t hash_value(const FunApp &f) {
     boost::hash_combine(seed, f.pred);
     boost::hash_combine(seed, boost::hash_range(f.args.begin(), f.args.end()));
     return seed;
+}
+
+std::size_t hash_value(const Clause &c) {
+    size_t seed {42};
+    boost::hash_combine(seed, c.premise);
+    boost::hash_combine(seed, c.constraint);
+    boost::hash_combine(seed, c.conclusion);
+    return seed;
+}
+
+bool operator==(const Clause& c1, const Clause& c2) {
+    return c1.premise == c2.premise && c1.constraint == c2.constraint && c1.conclusion == c2.conclusion;
 }
 
 const std::string& FunApp::get_pred() const {
@@ -55,7 +75,7 @@ bool Clause::is_right_linear() const {
 }
 
 void Clause::add_var(const std::string &name, const Var &x) {
-    vars.left.insert(var_map::left_value_type(name, x));
+    m_vars.left.insert(var_map::left_value_type(name, x));
 }
 
 void Clause::set_premise(const std::optional<FunApp> &premise) {
@@ -87,7 +107,35 @@ Bools::Expr Clause::get_constraint() const {
 }
 
 const var_map& Clause::get_vars() const {
-    return vars;
+    return m_vars;
+}
+
+Clause Clause::subs(const Subs &subs) const {
+    Clause res;
+    if (premise) {
+        res.set_premise(premise->subs(subs));
+    }
+    if (conclusion) {
+        res.set_conclusion(conclusion->subs(subs));
+    }
+    res.set_constraint(subs(constraint));
+    return res;
+}
+
+VarSet Clause::vars() const {
+    VarSet res;
+    if (premise) {
+        for (const auto &x: premise->get_args()) {
+            res.insert(x);
+        }
+    }
+    if (conclusion) {
+        for (const auto &x: conclusion->get_args()) {
+            res.insert(x);
+        }
+    }
+    constraint->collectVars(res);
+    return res;
 }
 
 sexpresso::Sexp Clause::to_smtlib() const {
@@ -95,8 +143,8 @@ sexpresso::Sexp Clause::to_smtlib() const {
     sexpresso::Sexp forall{"forall"};
     sexpresso::Sexp variables;
     std::map<std::string, sexpresso::Sexp> var_map;
-    for (const auto &[_,x]: vars) {
-        const auto var {vars.right.at(x)};
+    for (const auto &[_,x]: m_vars) {
+        const auto var {m_vars.right.at(x)};
         const auto type {theory::var_to_type(x)};
         var_map.emplace(var, type);
     }
@@ -108,19 +156,19 @@ sexpresso::Sexp Clause::to_smtlib() const {
     forall.addChild(variables);
     sexpresso::Sexp imp{"=>"};
     const auto constr{constraint->to_smtlib([&](const auto &x) {
-        const auto it{vars.right.find(x)};
-        return it == vars.right.end() ? theory::getName(x) : it->second;
+        const auto it{m_vars.right.find(x)};
+        return it == m_vars.right.end() ? theory::getName(x) : it->second;
     })};
     if (premise) {
         sexpresso::Sexp band{"and"};
-        band.addChild(premise->to_smtlib(vars));
+        band.addChild(premise->to_smtlib(m_vars));
         band.addChild(constr);
         imp.addChild(band);
     } else {
         imp.addChild(constr);
     }
     if (conclusion) {
-        imp.addChild(conclusion->to_smtlib(vars));
+        imp.addChild(conclusion->to_smtlib(m_vars));
     } else {
         imp.addChild("false");
     }
@@ -129,11 +177,15 @@ sexpresso::Sexp Clause::to_smtlib() const {
     return assertion;
 }
 
-void CHCProblem::add_clause(const Clause &c) {
-    clauses.push_back(c);
+const Clause* CHCProblem::add_clause(const Clause &c) {
+    return &*clauses.insert(c).first;
 }
 
-const std::vector<Clause>& CHCProblem::get_clauses() const {
+void CHCProblem::remove_clause(const Clause &c) {
+    clauses.erase(c);
+}
+
+const linked_hash_set<Clause>& CHCProblem::get_clauses() const {
     return clauses;
 }
 

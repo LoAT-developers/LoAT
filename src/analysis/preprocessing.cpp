@@ -102,6 +102,78 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
     return res;
 }
 
+Clause chain(const Clause &c1, const Clause &c2) {
+    assert(c1.get_conclusion() && c1.get_conclusion()->get_pred() == c2.get_premise()->get_pred());
+    Subs subs1;
+    for (const auto &x: c2.vars()) {
+        subs1.put(x, theory::toExpr(theory::next(x)));
+    }
+    const Clause c3 {c2.subs(subs1)};
+    Subs subs2;
+    const auto &c1_args {c1.get_conclusion()->get_args()};
+    const auto &c3_args {c3.get_premise()->get_args()};
+    for (unsigned i = 0; i < c3_args.size(); ++i) {
+        subs2.put(c3_args[i], theory::toExpr(c1_args[i]));
+    }
+    Clause res;
+    if (const auto p {c1.get_premise()}) {
+        res.set_premise(p->subs(subs2));
+    }
+    if (const auto c {c3.get_conclusion()}) {
+        res.set_conclusion(c->subs(subs2));
+    }
+    res.set_constraint(subs2(c1.get_constraint()) && subs2(c3.get_constraint()));
+    return res;
+}
+
+bool Preprocess::chainLinearPaths(CHCProblem &chcs) {
+    auto success {false};
+    DependencyGraph<const Clause*> dg;
+    const auto &clauses {chcs.get_clauses()};
+    for (auto it1 = clauses.begin(); it1 != clauses.end(); ++it1) {
+        for (auto it2 = it1; it2 != clauses.end(); ++it2) {
+            if (it1->get_conclusion() && it1->get_conclusion()->get_pred() == it2->get_premise()->get_pred()) {
+                dg.addEdge(&*it1, &*it2);
+            }
+            if (it2->get_conclusion() && it2->get_conclusion()->get_pred() == it1->get_premise()->get_pred()) {
+                dg.addEdge(&*it2, &*it1);
+            }
+        }
+    }
+    bool changed {false};
+    do {
+        changed = false;
+        for (const auto &first: chcs.get_clauses()) {
+            const auto succ {dg.getSuccessors(&first)};
+            if (succ.size() == 1 && !succ.contains(&first)) {
+                const auto second_idx {*succ.begin()};
+                if (!dg.hasEdge(second_idx, second_idx)) {
+                    success = true;
+                    const auto chained {chcs.add_clause(chain(first, *second_idx))};
+                    for (const auto &s: dg.getSuccessors(second_idx)) {
+                        dg.addEdge(chained, s);
+                    }
+                    for (const auto &p: dg.getPredecessors(&first)) {
+                        dg.addEdge(p, chained);
+                    }
+                    linked_hash_set<const Clause *> deleted;
+                    deleted.insert(&first);
+                    if (dg.getPredecessors(second_idx).size() == 1) {
+                        deleted.insert(second_idx);
+                    }
+                    for (const auto idx: deleted) {
+                        dg.removeNode(idx);
+                        chcs.remove_clause(*idx);
+                    }
+                    changed = true;
+                    break;
+                }
+            }
+        }
+    } while (changed);
+    return success;
+}
+
 ResultViaSideEffects preprocessRules(ITSProblem &its) {
     ResultViaSideEffects ret;
     linked_hash_map<TransIdx, Rule> replacements;
