@@ -362,11 +362,20 @@ namespace sexpresso {
                     for(; nextiter != str.end() && *nextiter != '\n' && *nextiter != '\r'; ++nextiter) {}
                     for(; nextiter != str.end() && (*nextiter == '\n' || *nextiter == '\r'); ++nextiter) {}
                     break;
-                default:
+                case '|': {
+                    ++iter;
+                    auto symend = std::find_if(iter, str.end(), [](char const& c) { return c == '|'; });
+                    auto& top = sexprstack.top();
+                    top.addChild(Sexp{std::string{iter, symend}});
+                    nextiter = std::next(symend);
+                    break;
+                }
+                default: {
                     auto symend = std::find_if(iter, str.end(), [](char const& c) { return std::isspace(c) || c == ')'; });
                     auto& top = sexprstack.top();
                     top.addChild(Sexp{std::string{iter, symend}});
                     nextiter = symend;
+                }
             }
         }
         if(sexprstack.size() != 1) {
