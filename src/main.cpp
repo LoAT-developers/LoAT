@@ -20,7 +20,6 @@
 #include "abmc.hpp"
 #include "accelerationproblem.hpp"
 #include "bmc.hpp"
-#include "chcparser.hpp"
 #include "sexpressoparser.hpp"
 #include "chctoitsproblem.hpp"
 #include "chctosafetyproblem.hpp"
@@ -263,7 +262,6 @@ int main(int argc, char *argv[]) {
         its = sexpressionparser::Parser::loadFromFile(filename);
         break;
     case Config::Input::Horn: {
-        // chcs = hornParser::HornParser::loadFromFile(filename);
         chcs = SexpressoParser::loadFromFile(filename);
         break;
     }
