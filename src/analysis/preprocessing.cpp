@@ -21,7 +21,7 @@
 #include "chain.hpp"
 #include "config.hpp"
 #include "theory.hpp"
-#include "guardtoolbox.hpp"
+#include "formulapreprocessing.hpp"
 #include "smtfactory.hpp"
 
 #include <numeric>
@@ -298,7 +298,7 @@ ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
 
 Result<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
     Result<SafetyProblem, Proof> res {p};
-    Result<Bools::Expr, Proof> init {GuardToolbox::preprocessFormula(p.init(), theory::isTempVar)};
+    Result<Bools::Expr, Proof> init {Preprocess::preprocessFormula(p.init(), theory::isTempVar)};
     if (init) {
         res.append("Preprocessed Initial States");
         res.appendAll(*init);
@@ -308,8 +308,7 @@ Result<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
     }
     auto first {true};
     for (const auto &t: p.trans()) {
-        const auto preproc {Preprocess::preprocessTransition(t)};
-        if (preproc) {
+        if (const auto preproc {Preprocess::preprocessFormula(t, theory::isTempVar)}) {
             if (first) {
                 res.append("Preprocessed Transitions");
                 first = false;
@@ -319,7 +318,7 @@ Result<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
             res.storeSubProof(preproc.getProof());
         }
     }
-    Result<Bools::Expr, Proof> err {GuardToolbox::preprocessFormula(p.err(), theory::isTempVar)};
+    Result<Bools::Expr, Proof> err {Preprocess::preprocessFormula(p.err(), theory::isTempVar)};
     if (err) {
         res.append("Preprocessed Error States");
         res.appendAll(*err);

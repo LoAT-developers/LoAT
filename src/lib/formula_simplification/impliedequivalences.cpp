@@ -1,6 +1,6 @@
-#include "impliedequalities.hpp"
+#include "impliedequivalences.hpp"
 
-Subs impliedEqualities(const Bools::Expr e) {
+Subs impliedEquivalences(const Bools::Expr e) {
     Subs res;
     std::vector<Bools::Expr> todo;
     const auto find_elim = [](const Bools::Expr &c) {

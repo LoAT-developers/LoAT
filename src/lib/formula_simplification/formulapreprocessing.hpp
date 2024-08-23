@@ -17,12 +17,24 @@
 
 #pragma once
 
-#include "rule.hpp"
-#include "ruleresult.hpp"
+#include "theory.hpp"
+#include "result.hpp"
 
+#include <vector>
+
+/**
+ * Namespace for several functions operating on guards (list of relational expressions) and related helpers.
+ * Note: We never allow != in relations.
+ */
 namespace Preprocess {
 
-    RuleResult preprocessRule(const Rule &rule);
-    RuleResult removeTrivialUpdates(const Rule &rule);
+    // Shorthand for lambdas that check if a given symbol is accepted/allowed (depending on the context)
+    using SymbolAcceptor = std::function<bool(const Var &)>;
+
+    Result<ArithSubs, Proof> propagateEqualities(const Bools::Expr e, const SymbolAcceptor &allow);
+
+    Result<BoolSubs, Proof> propagateEquivalences(const Bools::Expr e);
+
+    Result<Bools::Expr, Proof> preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow);
 
 }

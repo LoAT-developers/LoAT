@@ -17,8 +17,9 @@
 
 #include "rulepreprocessing.hpp"
 #include "theory.hpp"
-#include "guardtoolbox.hpp"
+#include "formulapreprocessing.hpp"
 #include "theory.hpp"
+#include "intfm.hpp"
 
 #include <unordered_set>
 #include <numeric>
@@ -27,7 +28,7 @@ using namespace std;
 
 RuleResult propagateEquivalences(const Rule &rule) {
     RuleResult res{rule};
-    const auto subs{GuardToolbox::propagateBooleanEqualities(rule.getGuard())};
+    const auto subs{Preprocess::propagateEquivalences(rule.getGuard())};
     if (subs) {
         res = res->subs(Subs::build<Bools>(*subs));
         res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
@@ -53,9 +54,9 @@ RuleResult eliminateIdentities(const Rule &rule) {
     return res;
 }
 
-RuleResult propagateEqualitiesImpl(const Rule &rule, const GuardToolbox::SymbolAcceptor &allow) {
+RuleResult propagateEqualitiesImpl(const Rule &rule, const Preprocess::SymbolAcceptor &allow) {
     RuleResult res{rule};
-    const auto subs{GuardToolbox::propagateEqualities(rule.getGuard(), allow)};
+    const auto subs{Preprocess::propagateEqualities(rule.getGuard(), allow)};
     if (subs) {
         res = res->subs(Subs::build<Arith>(*subs));
         res.ruleTransformationProof(rule, "Extracted Implied Equalities", *res);
@@ -70,7 +71,7 @@ RuleResult propagateEqualities(const Rule &rule) {
 
 RuleResult propagateEqualitiesPickily(const Rule &rule) {
     auto varsInUpdate{rule.getUpdate().coDomainVars()};
-    GuardToolbox::SymbolAcceptor isTempInUpdate{[&](const Var &sym) {
+    Preprocess::SymbolAcceptor isTempInUpdate{[&](const Var &sym) {
         return theory::isTempVar(sym) && varsInUpdate.contains(sym);
     }};
     return propagateEqualitiesImpl(rule, isTempInUpdate);
@@ -94,7 +95,7 @@ RuleResult fourierMotzkin(const Rule &rule) {
     auto isTempOnlyInGuard = [&](const Var &sym) {
         return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
-    const auto new_guard{GuardToolbox::eliminateByTransitiveClosure(rule.getGuard(), isTempOnlyInGuard)};
+    const auto new_guard{integerFourierMotzkin(rule.getGuard(), isTempOnlyInGuard)};
     if (new_guard) {
         res = res->withGuard(*new_guard);
         res.ruleTransformationProof(rule, "Eliminated Temporary Variables", *res);
@@ -141,16 +142,5 @@ RuleResult Preprocess::removeTrivialUpdates(const Rule &rule) {
         res = rule.withUpdate(update);
         res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
     }
-    return res;
-}
-
-Result<Bools::Expr, Proof> Preprocess::preprocessTransition(const Bools::Expr &trans) {
-    Result<Bools::Expr, Proof> res {trans};
-    auto changed {false};
-    do {
-        auto tmp {GuardToolbox::eliminateTempVars(*res, theory::isTempVar)};
-        changed = bool(tmp);
-        res.concat(tmp);
-    } while (changed);
     return res;
 }

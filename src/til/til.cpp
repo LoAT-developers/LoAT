@@ -1,10 +1,10 @@
 #include "til.hpp"
 #include "chain.hpp"
-// #include "crabcfg.hpp"
+#include "redundantinequations.hpp"
 #include "chctosafetyproblem.hpp"
 #include "cvc5.hpp"
 #include "dependencygraph.hpp"
-#include "guardtoolbox.hpp"
+#include "formulapreprocessing.hpp"
 #include "intmbp.hpp"
 #include "linkedhashmap.hpp"
 #include "optional.hpp"
@@ -161,7 +161,7 @@ Bools::Expr TIL::specialize(const Bools::Expr e, const Model &model, const std::
     if (Config::Analysis::log) {
         std::cout << "sip: " << sip << std::endl;
     }
-    auto simp{Preprocess::preprocessTransition(sip)};
+    auto simp{Preprocess::preprocessFormula(sip, theory::isTempVar)};
     if (Config::Analysis::log && simp) {
         std::cout << "simp: " << *simp << std::endl;
     }
@@ -456,7 +456,7 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model mode
         std::cout << "post: " << post << std::endl;
     }
     auto res{pre && step && post};
-    return GuardToolbox::removeRedundantInequations(res);
+    return removeRedundantInequations(res);
 }
 
 void TIL::handle_loop(const Range &range) {

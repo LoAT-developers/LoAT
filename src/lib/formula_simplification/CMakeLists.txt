@@ -5,18 +5,22 @@ set(CMAKE_CXX_STANDARD 20)
 project(loat_formula_simplification CXX)
 
 add_library(${PROJECT_NAME} OBJECT
-  guardtoolbox.hpp
-  guardtoolbox.cpp
+  formulapreprocessing.hpp
+  formulapreprocessing.cpp
   vareliminator.hpp
   vareliminator.cpp
-  impliedequalities.hpp
-  impliedequalities.cpp
+  redundantinequations.hpp
+  redundantinequations.cpp
+  impliedequivalences.hpp
+  impliedequivalences.cpp
   realmbp.hpp
   realmbp.cpp
   intmbp.hpp
   intmbp.cpp
   mbputil.hpp
   mbputil.cpp
+  intfm.hpp
+  intfm.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
