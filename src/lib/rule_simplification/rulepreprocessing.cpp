@@ -89,7 +89,7 @@ VarSet collectVarsInUpdateRhs(const Rule &rule) {
     return varsInUpdate;
 }
 
-RuleResult fourierMotzkin(const Rule &rule) {
+RuleResult integerFourierMotzkin(const Rule &rule) {
     RuleResult res{rule};
     VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
     auto isTempOnlyInGuard = [&](const Var &sym) {
@@ -113,7 +113,7 @@ RuleResult eliminateArithVars(const Rule &rule) {
     if (res) {
         return res;
     }
-    return fourierMotzkin(rule);
+    return integerFourierMotzkin(rule);
 }
 
 RuleResult Preprocess::preprocessRule(const Rule &rule) {
@@ -125,22 +125,5 @@ RuleResult Preprocess::preprocessRule(const Rule &rule) {
         changed = bool(tmp);
         res.concat(tmp);
     } while (changed);
-    return res;
-}
-
-RuleResult Preprocess::removeTrivialUpdates(const Rule &rule) {
-    RuleResult res{rule};
-    Subs update = rule.getUpdate();
-    VarSet remove;
-    for (const auto &[x, v] : update.get<Arith>()) {
-        if (!remove.contains(x) && rule.getGuard()->getEquality(x) == std::optional{v}) {
-            remove.insert(x);
-        }
-    }
-    if (!remove.empty()) {
-        update.erase(remove);
-        res = rule.withUpdate(update);
-        res.ruleTransformationProof(rule, "Removed Trivial Updates", res.get());
-    }
     return res;
 }

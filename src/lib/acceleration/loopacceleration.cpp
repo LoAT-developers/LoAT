@@ -212,6 +212,20 @@ void LoopAcceleration::prepend_prefix() {
     }
 }
 
+void LoopAcceleration::removeTrivialUpdates() {
+    Subs update = rule.getUpdate();
+    VarSet remove;
+    for (const auto &[x, v] : update.get<Arith>()) {
+        if (!remove.contains(x) && rule.getGuard()->getEquality(x) == std::optional{v}) {
+            remove.insert(x);
+        }
+    }
+    if (!remove.empty()) {
+        update.erase(remove);
+        rule = rule.withUpdate(update);
+    }
+}
+
 void LoopAcceleration::run() {
     res.status = acceleration::AccelerationFailed;
     if (!rule.getGuard()->isConjunction()) {
@@ -224,7 +238,7 @@ void LoopAcceleration::run() {
         case Unknown: res.status = acceleration::NotSat;
             return;
         case Sat: {
-            rule = *Preprocess::removeTrivialUpdates(rule);
+            removeTrivialUpdates();
             compute_closed_form();
             accelerate();
             if (config.tryNonterm && !res.nonterm) {

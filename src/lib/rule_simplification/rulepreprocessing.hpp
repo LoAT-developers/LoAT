@@ -23,6 +23,5 @@
 namespace Preprocess {
 
     RuleResult preprocessRule(const Rule &rule);
-    RuleResult removeTrivialUpdates(const Rule &rule);
 
 }
