@@ -6,11 +6,9 @@
 #include "smtfactory.hpp"
 #include "loopacceleration.hpp"
 #include "config.hpp"
-#include "export.hpp"
 #include "vector.hpp"
 #include "rule.hpp"
 #include "dependencygraph.hpp"
-#include "ruleexport.hpp"
 
 using namespace Config::ABMC;
 
@@ -116,9 +114,7 @@ std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
     const auto imp {model.syntacticImplicant(loop->getGuard())};
     const auto implicant {loop->withGuard(imp)};
     if (Config::Analysis::log) {
-        std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
-        RuleExport::printRule(implicant, std::cout);
-        std::cout << std::endl;
+        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << implicant << std::endl;
     }
     return {implicant, model};
 }
@@ -198,9 +194,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
     } else {
         if (Config::Analysis::log && simp) {
-            std::cout << "simplified loop:" << std::endl;
-            RuleExport::printRule(*simp, std::cout);
-            std::cout << std::endl;
+            std::cout << "simplified loop:\n" << *simp << std::endl;
         }
         const AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
         const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
@@ -221,9 +215,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                     .deterministic = deterministic};
                 map.emplace(accel_res.accel->covered, loop);
                 if (Config::Analysis::log) {
-                    std::cout << "accelerated rule, idx " << new_idx->getId() << std::endl;
-                    RuleExport::printRule(*simplified, std::cout);
-                    std::cout << std::endl;
+                    std::cout << "accelerated rule, idx " << new_idx->getId() << "\n" << *simplified << std::endl;
                 }
                 return loop;
             }
@@ -306,12 +298,10 @@ const Subs &ABMC::subs_at(const unsigned i) {
 
 void ABMC::analyze() {
     if (Config::Analysis::log) {
-        std::cout << "initial ITS" << std::endl;
-        its.print(std::cout);
+        std::cout << "initial ITS\n" << its << std::endl;
     }
     if (Preprocess::preprocess(its) && Config::Analysis::log) {
-        std::cout << "Simplified ITS" << std::endl;
-        ITSExport::printForProof(its, std::cout);
+        std::cout << "Simplified ITS\n" << its << std::endl;
     }
     vars.insertAll(its.getVars());
     for (const auto &var: vars) {

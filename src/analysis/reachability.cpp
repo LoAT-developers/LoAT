@@ -3,14 +3,12 @@
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
 #include "smt.hpp"
-#include "export.hpp"
 #include "vector.hpp"
 #include "limitsmt.hpp"
 #include "vareliminator.hpp"
 #include "chain.hpp"
 #include "theory.hpp"
 #include "config.hpp"
-#include "ruleexport.hpp"
 #include "variant.hpp"
 
 #include <numeric>
@@ -344,8 +342,7 @@ void Reachability::unsat() {
         print_trace(counterexample);
         std::stringstream trace_stream;
         trace_stream << trace;
-        std::cout << "final ITS:" << std::endl;
-        ITSExport::printForProof(chcs, std::cout);
+        std::cout << "final ITS:\n" << chcs << std::endl;
         std::cout << std::endl << "final trace:" << trace_stream.str() << std::endl << std::endl;
         std::cout << "counterexample: " << counterexample.str();
     }
@@ -432,9 +429,7 @@ std::pair<Rule, Model> Reachability::build_loop(const int backlink) {
     var_renaming.collectCoDomainVars(vars);
     const auto model {solver->model(vars).composeBackwards(var_renaming)};
     if (Config::Analysis::log) {
-        std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
-        RuleExport::printRule(*loop, std::cout);
-        std::cout << std::endl;
+        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << *loop << std::endl;
     }
     return {*loop, model};
 }
@@ -479,9 +474,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
         return std::make_unique<Unroll>(1);
     }
     if (Config::Analysis::log && simp) {
-        std::cout << "simplified loop:" << std::endl;
-        RuleExport::printRule(*simp, std::cout);
-        std::cout << std::endl;
+        std::cout << "simplified loop:\n" << *simp << std::endl;
     }
     if (Config::Analysis::reachability()) {
         if (simp->getUpdate().empty()) {
@@ -519,9 +512,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             const auto loop_idx {add_learned_clause(*simplified, backlink)};
             res.res.emplace_back(loop_idx);
             if (Config::Analysis::log) {
-                std::cout << "accelerated rule, idx " << loop_idx << std::endl;
-                RuleExport::printRule(*simplified, std::cout);
-                std::cout << std::endl;
+                std::cout << "accelerated rule, idx " << loop_idx << "\n" << *simplified << std::endl;
             }
         }
     }
@@ -663,12 +654,10 @@ void Reachability::bump_penalty(const TransIdx idx) {
 
 void Reachability::analyze() {
     if (Config::Analysis::log) {
-        std::cout << "Initial ITS" << std::endl;
-        ITSExport::printForProof(chcs, std::cout);
+        std::cout << "Initial ITS\n" << chcs << std::endl;
     }
     if (Preprocess::preprocess(chcs) && Config::Analysis::log) {
-        std::cout << "Simplified ITS" << std::endl;
-        ITSExport::printForProof(chcs, std::cout);
+        std::cout << "Simplified ITS\n" << chcs << std::endl;
     }
     init();
     if (try_to_finish()) {

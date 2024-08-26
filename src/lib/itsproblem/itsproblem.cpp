@@ -1,6 +1,6 @@
 #include "itsproblem.hpp"
-#include "export.hpp"
 #include "chain.hpp"
+#include "config.hpp"
 
 using namespace std;
 
@@ -166,10 +166,6 @@ VarSet ITSProblem::getVars() const {
     return res;
 }
 
-void ITSProblem::print(std::ostream &s) const {
-    ITSExport::printForProof(*this, s);
-}
-
 Arith::Expr ITSProblem::getCost(const Rule &rule) const {
     return rule.getUpdate().get<Arith>(cost_var) - cost_var;
 }
@@ -230,4 +226,33 @@ linked_hash_set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph(const st
 
 size_t ITSProblem::size() const {
     return graph.size();
+}
+
+std::ostream& operator<<(std::ostream &s, const ITSProblem &its) {
+    s << "Start location: ";
+    s << its.getPrintableLocationName(its.getInitialLocation());
+    s << endl << endl;
+    if (!its.getLocations().empty()) {
+        s << "Location map:" << std::endl;
+        for (const auto p: its.getLocations()) {
+            s << its.getPrintableLocationName(p);
+            s << " -> " << p << std::endl;
+        }
+    }
+    s << endl << endl;
+    s << "Rules:" << endl;
+    if (its.isEmpty()) {
+        s << "  <empty>" << endl;
+    } else {
+        for (const auto &idx : its.getAllTransitions()) {
+            s << setw(4);
+            s << idx;
+            s << endl;
+        }
+    }
+    if (Config::Output::PrintDependencyGraph) {
+        s << endl << "Dependency graph:" << endl;
+        s << its.getDependencyGraph() << endl;
+    }
+    return s;
 }

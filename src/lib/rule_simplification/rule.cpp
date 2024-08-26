@@ -46,7 +46,20 @@ unsigned Rule::getId() const {
 }
 
 ostream& operator<<(ostream &s, const Rule &rule) {
-    return s << rule.getId() << ": " << rule.getGuard() << " /\\ " << rule.getUpdate();
+    s << rule.getId() << ": ";
+    s << rule.getGuard();
+    s << " /\\ ";
+    bool first = true;
+    for (const auto &[x,v] : rule.getUpdate()) {
+        if (first) {
+            first = false;
+        } else {
+            s << ", ";
+        }
+        s << x << "'";
+        s << " = " << v;
+    }
+    return s;
 }
 
 bool Rule::isPoly() const {

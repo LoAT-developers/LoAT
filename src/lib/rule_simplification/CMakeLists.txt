@@ -9,8 +9,6 @@ add_library(${PROJECT_NAME} OBJECT
   rule.cpp
   chain.hpp
   chain.cpp
-  ruleexport.hpp
-  ruleexport.cpp
   rulepreprocessing.cpp
   rulepreprocessing.hpp
 )

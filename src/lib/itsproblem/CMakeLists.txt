@@ -5,8 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 project(loat_itsproblem CXX)
 
 add_library(${PROJECT_NAME} OBJECT
-    export.cpp
-    export.hpp
     itsproblem.cpp
     itsproblem.hpp
     dependencygraph.hpp

@@ -59,9 +59,6 @@ public:
 
     VarSet getVars() const;
 
-    // Print the ITSProblem in a simple, but user-friendly format
-    void print(std::ostream &s) const;
-
     Arith::Expr getCost(const Rule &rule) const;
 
     Arith::Var getCostVar() const;
@@ -108,3 +105,5 @@ protected:
 };
 
 using ITSPtr = std::shared_ptr<ITSProblem>;
+
+std::ostream& operator<<(std::ostream &s, const ITSProblem &its);

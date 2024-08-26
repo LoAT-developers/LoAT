@@ -3,7 +3,6 @@
 #include "preprocessing.hpp"
 #include "smtfactory.hpp"
 #include "config.hpp"
-#include "export.hpp"
 
 BMC::BMC(ITSProblem &its): its(its) {}
 
@@ -34,12 +33,10 @@ Bools::Expr BMC::encode_transition(const TransIdx idx) {
 
 void BMC::analyze() {
     if (Config::Analysis::log) {
-        std::cout << "initial ITS" << std::endl;
-        its.print(std::cout);
+        std::cout << "initial ITS\n" << its << std::endl;
     }
     if (Preprocess::preprocess(its) && Config::Analysis::log) {
-            std::cout << "Simplified ITS" << std::endl;
-            ITSExport::printForProof(its, std::cout);
+            std::cout << "Simplified ITS\n" << its << std::endl;
     }
     vars.insertAll(its.getVars());
     for (const auto &var: vars) {
