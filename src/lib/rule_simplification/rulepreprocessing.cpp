@@ -9,8 +9,6 @@
 #include <unordered_set>
 #include <numeric>
 
-using namespace std;
-
 std::optional<Rule> propagateEquivalences(const Rule &rule) {
     const auto subs{impliedEquivalences(rule.getGuard())};
     if (subs.empty()) {

@@ -12,8 +12,6 @@
 #include <numeric>
 #include <unordered_set>
 
-using namespace std;
-
 bool remove_irrelevant_clauses(ITSProblem &its, bool forward) {
     std::unordered_set<TransIdx> keep;
     std::stack<TransIdx> todo;

@@ -5,14 +5,12 @@
 
 #include <map>
 
-using namespace std;
-
 /**
  * Given the (abstract) coefficients of a univariate polynomial p in n (where the key is the
  * degree of the respective monomial), builds an expression which implies that
  * lim_{n->\infty} p is a positive constant
  */
-static Bools::Expr posConstraint(const map<Int, Arith::Expr> &coefficients) {
+static Bools::Expr posConstraint(const std::map<Int, Arith::Expr> &coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         if (degree > 0) {
@@ -24,7 +22,7 @@ static Bools::Expr posConstraint(const map<Int, Arith::Expr> &coefficients) {
     return bools::mkAndFromLits(conjunction);
 }
 
-static Bools::Expr constConstraint(const map<Int, Arith::Expr> &coefficients) {
+static Bools::Expr constConstraint(const std::map<Int, Arith::Expr> &coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         if (degree > 0) {
@@ -34,7 +32,7 @@ static Bools::Expr constConstraint(const map<Int, Arith::Expr> &coefficients) {
     return bools::mkAndFromLits(conjunction);
 }
 
-static Bools::Expr zeroConstraint(const map<Int, Arith::Expr> &coefficients) {
+static Bools::Expr zeroConstraint(const std::map<Int, Arith::Expr> &coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         conjunction.push_back(arith::mkEq(c, arith::mkConst(0)));
@@ -47,7 +45,7 @@ static Bools::Expr zeroConstraint(const map<Int, Arith::Expr> &coefficients) {
  * degree of the respective monomial), builds an expression which implies
  * lim_{n->\infty} p = \infty
  */
-static Bools::Expr posInfConstraint(const map<Int, Arith::Expr> &coefficients) {
+static Bools::Expr posInfConstraint(const std::map<Int, Arith::Expr> &coefficients) {
     Int maxDegree{0};
     for (const auto &[degree, _] : coefficients) {
         maxDegree = degree > maxDegree ? degree : maxDegree;
@@ -70,9 +68,9 @@ static Bools::Expr posInfConstraint(const map<Int, Arith::Expr> &coefficients) {
 /**
  * @return the (abstract) coefficients of 'n' in 'ex', where the key is the degree of the respective monomial
  */
-static map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::Var n) {
+static std::map<Int, Arith::Expr> getCoefficients(const Arith::Expr ex, const Arith::Var n) {
     if (const auto maxDegree{ex->isPoly(n)}) {
-        map<Int, Arith::Expr> coefficients;
+        std::map<Int, Arith::Expr> coefficients;
         for (int i = 0; i <= *maxDegree; ++i) {
             coefficients.emplace(i, *ex->coeff(n, i));
         }

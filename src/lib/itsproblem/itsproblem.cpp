@@ -2,8 +2,6 @@
 #include "chain.hpp"
 #include "config.hpp"
 
-using namespace std;
-
 bool ITSProblem::isEmpty() const {
     return rules.empty();
 }
@@ -150,12 +148,12 @@ std::optional<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) c
     return {};
 }
 
-string ITSProblem::getPrintableLocationName(LocationIdx idx) const {
+std::string ITSProblem::getPrintableLocationName(LocationIdx idx) const {
     auto it = locationNames.find(idx);
     if (it != locationNames.end()) {
         return it->second;
     }
-    return (stringstream() << "[" << idx << "]").str();
+    return (std::stringstream() << "[" << idx << "]").str();
 }
 
 VarSet ITSProblem::getVars() const {
@@ -230,8 +228,7 @@ size_t ITSProblem::size() const {
 
 std::ostream& operator<<(std::ostream &s, const ITSProblem &its) {
     s << "Start location: ";
-    s << its.getPrintableLocationName(its.getInitialLocation());
-    s << endl << endl;
+    s << its.getPrintableLocationName(its.getInitialLocation()) << "\n\n";
     if (!its.getLocations().empty()) {
         s << "Location map:" << std::endl;
         for (const auto p: its.getLocations()) {
@@ -239,20 +236,19 @@ std::ostream& operator<<(std::ostream &s, const ITSProblem &its) {
             s << " -> " << p << std::endl;
         }
     }
-    s << endl << endl;
-    s << "Rules:" << endl;
+    s << "\n\nRules:\n";
     if (its.isEmpty()) {
-        s << "  <empty>" << endl;
+        s << "  <empty>\n";
     } else {
         for (const auto &idx : its.getAllTransitions()) {
-            s << setw(4);
+            s << std::setw(4);
             s << idx;
-            s << endl;
+            s << std::endl;
         }
     }
     if (Config::Output::PrintDependencyGraph) {
-        s << endl << "Dependency graph:" << endl;
-        s << its.getDependencyGraph() << endl;
+        s << "\nDependency graph:\n";
+        s << its.getDependencyGraph() << std::endl;
     }
     return s;
 }

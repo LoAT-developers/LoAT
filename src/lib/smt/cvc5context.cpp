@@ -1,8 +1,6 @@
 #include "cvc5context.hpp"
 #include "theory.hpp"
 
-using namespace std;
-
 CVC5Context::CVC5Context(cvc5::Solver& ctx): ctx(ctx), refinement(ctx.mkBoolean(true)) { }
 
 CVC5Context::~CVC5Context() { }

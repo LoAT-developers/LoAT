@@ -1,7 +1,5 @@
 #include "rule.hpp"
 
-using namespace std;
-
 unsigned Rule::next_id {0};
 
 Rule::Rule(const Bools::Expr guard, const Subs &update): guard(guard), update(update), id(next_id++) {}
@@ -45,7 +43,7 @@ unsigned Rule::getId() const {
     return id;
 }
 
-ostream& operator<<(ostream &s, const Rule &rule) {
+std::ostream& operator<<(std::ostream &s, const Rule &rule) {
     s << rule.getId() << ": ";
     s << rule.getGuard();
     s << " /\\ ";

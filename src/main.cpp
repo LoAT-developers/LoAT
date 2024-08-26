@@ -23,28 +23,26 @@
 #include <chrono>
 #include <iostream>
 
-using namespace std;
-
 // Variables for command line flags
-string filename;
+std::string filename;
 
 void printHelp(char *arg0) {
-    cout << "Usage: " << arg0 << " [options] <file>" << endl;
-    cout << "Options:" << endl;
-    cout << "  --print_dep_graph                                Print the dependency graph in the proof output (can be very verbose)" << endl;
-    cout << "  --mode <complexity|non_termination|reachability> Analysis mode" << endl;
-    cout << "  --format <koat|its|horn|c>                       Input format" << endl;
-    cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << endl;
-    cout << "  --log                                            Enable logging" << endl;
-    cout << "  --abmc::blocking_clauses <true|false>            ABMC: En- or disable blocking clauses" << std::endl;
-    cout << "  --smt <z3|cvc5|swine|yices|heuristic>            Choose the SMT solver" << std::endl;
-    cout << "  --til::mode <forward|backward|interleaved>       TIL: run the analysis forward, backward, or both directions interleaved" << std::endl;
-    cout << "  --til::recurrent_exps <true|false>               TIL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
-    cout << "  --til::recurrent_cycles <true|false>             TIL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
-    cout << "  --til::recurrent_pseudo_divs <true|false>        TIL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
-    cout << "  --til::recurrent_bounds <true|false>             TIL: En- or disable search for recurrent bounds" << std::endl;
-    cout << "  --til::context_sensitive <true|false>            TIL: En- or disable context sensitivity" << std::endl;
-    cout << "  --til::mbp_kind <int|real>                       TIL: use model based projection for LIA or LRA" << std::endl;
+    std::cout << "Usage: " << arg0 << " [options] <file>" << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "  --print_dep_graph                                Print the dependency graph in the proof output (can be very verbose)" << std::endl;
+    std::cout << "  --mode <complexity|non_termination|reachability> Analysis mode" << std::endl;
+    std::cout << "  --format <koat|its|horn|c>                       Input format" << std::endl;
+    std::cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << std::endl;
+    std::cout << "  --log                                            Enable logging" << std::endl;
+    std::cout << "  --abmc::blocking_clauses <true|false>            ABMC: En- or disable blocking clauses" << std::endl;
+    std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>            Choose the SMT solver" << std::endl;
+    std::cout << "  --til::mode <forward|backward|interleaved>       TIL: run the analysis forward, backward, or both directions interleaved" << std::endl;
+    std::cout << "  --til::recurrent_exps <true|false>               TIL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
+    std::cout << "  --til::recurrent_cycles <true|false>             TIL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
+    std::cout << "  --til::recurrent_pseudo_divs <true|false>        TIL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
+    std::cout << "  --til::recurrent_bounds <true|false>             TIL: En- or disable search for recurrent bounds" << std::endl;
+    std::cout << "  --til::context_sensitive <true|false>            TIL: En- or disable context sensitivity" << std::endl;
+    std::cout << "  --til::mbp_kind <int|real>                       TIL: use model based projection for LIA or LRA" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
@@ -56,11 +54,11 @@ void setBool(const char *str, bool &b) {
 }
 
 void print_version() {
-    cout << Version::GIT_SHA;
+    std::cout << Version::GIT_SHA;
     if (Version::GIT_DIRTY != "CLEAN") {
-        cout << "_DIRTY";
+        std::cout << "_DIRTY";
     }
-    cout << endl;
+    std::cout << std::endl;
 }
 
 void parseFlags(int argc, char *argv[]) {
@@ -70,7 +68,7 @@ void parseFlags(int argc, char *argv[]) {
         if (arg < argc - 1) {
             return argv[++arg];
         } else {
-            cout << "Error: Argument missing for " << argv[arg] << endl;
+            std::cout << "Error: Argument missing for " << argv[arg] << std::endl;
             exit(1);
         }
     };
@@ -94,7 +92,7 @@ void parseFlags(int argc, char *argv[]) {
                 }
             }
             if (!found) {
-                cerr << "Unknown mode " << str << ", defaulting to " << Config::Analysis::modeName(Config::Analysis::mode) << endl;
+                std::cerr << "Unknown mode " << str << ", defaulting to " << Config::Analysis::modeName(Config::Analysis::mode) << std::endl;
             }
         } else if (strcmp("--engine", argv[arg]) == 0) {
             std::string str = getNext();
@@ -107,7 +105,7 @@ void parseFlags(int argc, char *argv[]) {
             } else if (boost::iequals("til", str)) {
                 Config::Analysis::engine = Config::Analysis::TIL;
             } else {
-                cout << "Error: unknown engine " << str << std::endl;
+                std::cout << "Error: unknown engine " << str << std::endl;
                 exit(1);
             }
         } else if (strcmp("--smt", argv[arg]) == 0) {
@@ -123,7 +121,7 @@ void parseFlags(int argc, char *argv[]) {
             } else if (boost::iequals("heuristic", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Heuristic;
             } else {
-                cout << "Error: unknown SMT solver " << str << std::endl;
+                std::cout << "Error: unknown SMT solver " << str << std::endl;
                 exit(1);
             }
         } else if (strcmp("--polyaccel", argv[arg]) == 0) {
@@ -135,7 +133,7 @@ void parseFlags(int argc, char *argv[]) {
             } else if (boost::iequals("none", str)) {
                 AccelerationProblem::polyaccel = AccelerationProblem::PolyAccelMode::None;
             } else {
-                cout << "Error: unknown mode " << str << " for polynomial acceleration" << std::endl;
+                std::cout << "Error: unknown mode " << str << " for polynomial acceleration" << std::endl;
                 exit(1);
             }
         } else if (strcmp("--format", argv[arg]) == 0) {
@@ -149,7 +147,7 @@ void parseFlags(int argc, char *argv[]) {
             } else if (boost::iequals("c", str)) {
                 Config::Input::format = Config::Input::C;
             } else {
-                cout << "Error: unknown format " << str << std::endl;
+                std::cout << "Error: unknown format " << str << std::endl;
                 exit(1);
             }
         } else if (strcmp("--abmc::blocking_clauses", argv[arg]) == 0) {
@@ -163,7 +161,7 @@ void parseFlags(int argc, char *argv[]) {
             } else if (boost::iequals("interleaved", str)) {
                 Config::til.mode = Config::TILConfig::Mode::Interleaved;
             } else {
-                cout << "Error: unknown TIL mode " << str << std::endl;
+                std::cout << "Error: unknown TIL mode " << str << std::endl;
                 exit(1);
             }
         } else if (strcmp("--til::recurrent_exps", argv[arg]) == 0) {
@@ -185,7 +183,7 @@ void parseFlags(int argc, char *argv[]) {
             } else if (boost::iequals("real", str)) {
                 Config::til.mbpKind = Config::TILConfig::MbpKind::RealMbp;
             } else {
-                cout << "Error: unknown MBP kind " << str << std::endl;
+                std::cout << "Error: unknown MBP kind " << str << std::endl;
                 exit(1);
             }
         } else if (strcmp("--version", argv[arg]) == 0) {
@@ -193,7 +191,7 @@ void parseFlags(int argc, char *argv[]) {
             exit(0);
         } else {
             if (!filename.empty()) {
-                cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << endl;
+                std::cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << std::endl;
                 exit(1);
             }
             filename = argv[arg];
@@ -212,7 +210,7 @@ int main(int argc, char *argv[]) {
 
     // Start parsing
     if (filename.empty()) {
-        cerr << "Error: missing filename" << endl;
+        std::cerr << "Error: missing filename" << std::endl;
         return 1;
     }
 

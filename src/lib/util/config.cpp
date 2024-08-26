@@ -1,8 +1,6 @@
 #include "config.hpp"
 #include <iostream>
 
-using namespace std;
-
 /**
  * Global settings and constants.
  *

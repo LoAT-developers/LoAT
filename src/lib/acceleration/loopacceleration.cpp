@@ -8,8 +8,6 @@
 
 #include <numeric>
 
-using namespace std;
-
 LoopAcceleration::LoopAcceleration(
     const Rule &rule,
     const std::optional<Subs> &sample_point,

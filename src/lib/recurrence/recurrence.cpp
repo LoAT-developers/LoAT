@@ -7,8 +7,6 @@
 #include <purrs.hh>
 #include <boost/algorithm/string.hpp>
 
-using namespace std;
-
 Recurrence::Recurrence(const Subs &equations, const Arith::Var n):
     equations(equations), n(n) {}
 

@@ -1,8 +1,6 @@
 #include "z3context.hpp"
 #include "theory.hpp"
 
-using namespace std;
-
 Z3Context::Z3Context(z3::context& ctx): ctx(ctx) {}
 
 Z3Context::~Z3Context() { }
