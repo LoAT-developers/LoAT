@@ -3,7 +3,7 @@
 
 ReversibleCHCToITS::ReversibleCHCToITS(
     const ITSPtr its,
-    const linked_hash_map<std::string, std::vector<Var>> &signature,
+    const linked_hash_map<std::string, std::vector<theory::Types>> &signature,
     const std::vector<Arith::Var> &arith_vars,
     const std::vector<Bools::Var> &bool_vars):
     Reversible<ITSPtr, ITSModel, CHCModel>(its),
@@ -22,27 +22,26 @@ CHCModel ReversibleCHCToITS::revert_model(const ITSModel& its_m) const {
         const auto sig{signature.at(pred)};
         unsigned next_int_var{0};
         unsigned next_bool_var{0};
-        Subs s;
+        std::vector<Var> args;
         for (const auto &x : sig) {
-            std::visit(
-                Overload{
-                    [&](const Arith::Var &x) {
-                        s.put<Arith>(arith_vars.at(next_int_var), Arith::varToExpr(x));
-                        ++next_int_var;
-                    },
-                    [&](const Bools::Var &x) {
-                        s.put<Bools>(bool_vars.at(next_bool_var), Bools::varToExpr(x));
-                        ++next_bool_var;
-                    }},
-                x);
+            switch (x) {
+                case theory::Types::Int:
+                    args.emplace_back(arith_vars.at(next_int_var));
+                    ++next_int_var;
+                    break;
+                case theory::Types::Bool:
+                    args.emplace_back(bool_vars.at(next_bool_var));
+                    ++next_bool_var;
+                    break;
+            }
         }
-        chc_m.set_interpretation(FunApp(pred, sig), s(inv));
+        chc_m.set_interpretation(Lhs(pred, args), inv);
     }
     return chc_m;
 }
 
 ReversibleCHCToITS chcs_to_its(CHCProblem chcs) {
-    if (!chcs.is_left_and_right_linear()) {
+    if (!chcs.is_left_linear()) {
         chcs = linearize(chcs);
     }
     ITSPtr its {std::make_shared<ITSProblem>()};
@@ -98,12 +97,12 @@ ReversibleCHCToITS chcs_to_its(CHCProblem chcs) {
                 for (const auto &arg: c.get_conclusion()->get_args()) {
                     std::visit(
                         Overload{
-                            [&](const Arith::Var var) {
-                                up.put<Arith>(vars[int_arg], ren.get<Arith>(var));
+                            [&](const Arith::Expr var) {
+                                up.put<Arith>(vars[int_arg], ren.get<Arith>()(var));
                                 ++int_arg;
                             },
-                            [&](const Bools::Var var) {
-                                up.put<Bools>(bvars[bool_arg], ren.get<Bools>(var));
+                            [&](const Bools::Expr var) {
+                                up.put<Bools>(bvars[bool_arg], ren(var));
                                 ++bool_arg;
                             }},
                         arg);

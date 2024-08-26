@@ -51,10 +51,13 @@ Bools::Expr mkLit(const Lit &lit);
 
 namespace theory {
 
+enum class Types {Int, Bool};
+
 std::string getName(const Var &var);
 bool isTempVar(const Var &var);
 bool isProgVar(const Var &var);
 bool isPostVar(const Var &var);
+Var next(const Expr &var);
 Var next(const Var &var);
 Var postVar(const Var &var);
 Var progVar(const Var &var);
@@ -76,9 +79,12 @@ bool isTriviallyFalse(const Lit &lit);
 Lit negate(const Lit &lit);
 size_t hash(const Lit &lit);
 sexpresso::Sexp to_smtlib(const Lit &l, const std::function<std::string(const Var &)> &);
+sexpresso::Sexp to_smtlib(const Expr &e, const std::function<std::string(const Var &)> &);
 void simplifyAnd(LitSet&);
 void simplifyOr(LitSet&);
-std::string var_to_type(const Var &x);
+Types to_type(const Expr &x);
+Types to_type(const Var &x);
+std::optional<Var> is_var(const Expr &x);
 
 template <class ... Ts>
 auto apply(const Var &x, Ts... f) {
@@ -89,6 +95,8 @@ template <size_t I, ITheory T>
 constexpr bool is() {
     return std::same_as<std::tuple_element_t<I, Theories>, T>;
 }
+
+std::ostream& operator<<(std::ostream &s, const theory::Types &e);
 
 }
 

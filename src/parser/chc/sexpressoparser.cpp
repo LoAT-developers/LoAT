@@ -8,14 +8,26 @@ CHCProblem SexpressoParser::loadFromFile(const std::string &filename) {
     return parser.chcs;
 }
 
-FunApp parsePred(sexpresso::Sexp &exp, Clause &c) {
+Lhs parseLhs(sexpresso::Sexp &exp, Clause &c) {
     const auto &vars {c.get_vars()};
     std::vector<Var> args;
+    if (exp.isString()) {
+        return Lhs(exp.str(), args);
+    }
+    for (unsigned i = 1; i < exp.childCount(); ++i) {
+        args.push_back(vars.left.at(exp[i].str()));
+    }
+    return Lhs(exp[0].str(), args);
+}
+
+FunApp parsePred(sexpresso::Sexp &exp, Clause &c) {
+    const auto &vars {c.get_vars()};
+    std::vector<Expr> args;
     if (exp.isString()) {
         return FunApp(exp.str(), args);
     }
     for (unsigned i = 1; i < exp.childCount(); ++i) {
-        args.push_back(vars.left.at(exp[i].str()));
+        args.push_back(theory::toExpr(vars.left.at(exp[i].str())));
     }
     return FunApp(exp[0].str(), args);
 }
@@ -191,7 +203,7 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unor
                     return std::get<Bools::Expr>(it->second);
                 }
             }
-            c.set_premise(parsePred(exp, c));
+            c.set_premise(parseLhs(exp, c));
             return top();
         }
     }
@@ -274,7 +286,7 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unor
         }
         return bools::mkAnd(lits);
     } else {
-        c.set_premise(parsePred(exp, c));
+        c.set_premise(parseLhs(exp, c));
         return top();
     }
 }

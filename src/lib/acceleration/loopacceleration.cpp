@@ -2,7 +2,6 @@
 #include "smtfactory.hpp"
 #include "recurrence.hpp"
 #include "accelerationproblem.hpp"
-#include "chain.hpp"
 #include "loopcomplexity.hpp"
 #include "rulepreprocessing.hpp"
 
@@ -20,7 +19,7 @@ std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     unsigned period {1};
     do {
         changed = false;
-        const auto chained {Chaining::chain(res, res).first};
+        const auto chained {Preprocess::chain(res, res).first};
         if (LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
             res = chained;
             period *= 2;
@@ -208,7 +207,7 @@ void LoopAcceleration::run() {
         res.status = acceleration::Disjunctive;
     } else {
         chain();
-        switch (SmtFactory::check(Chaining::chain(rule, rule).first.getGuard())) {
+        switch (SmtFactory::check(Preprocess::chain(rule, rule).first.getGuard())) {
         case Unsat: res.status = acceleration::PseudoLoop;
             return;
         case Unknown: res.status = acceleration::NotSat;

@@ -1,5 +1,4 @@
 #include "abmc.hpp"
-#include "chain.hpp"
 #include "theory.hpp"
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
@@ -100,7 +99,7 @@ std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
                             ->withGuard(imp.second)
                             .subs(Subs::build<Arith>(n, subs.at(i).get<Arith>(n)))};
         if (loop) {
-            const auto [chained, sigma]{Chaining::chain(rule, *loop)};
+            const auto [chained, sigma]{Preprocess::chain(rule, *loop)};
             loop = chained;
             var_renaming = sigma.compose(var_renaming);
         } else {

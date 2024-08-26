@@ -6,7 +6,6 @@
 #include "vector.hpp"
 #include "limitsmt.hpp"
 #include "vareliminator.hpp"
-#include "chain.hpp"
 #include "theory.hpp"
 #include "config.hpp"
 #include "variant.hpp"
@@ -227,7 +226,7 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const Bools::Expr impli
     }
     auto resolvent = idx->withGuard(implicant);
     if (!trace.empty()) {
-        resolvent = Chaining::chain(trace.back().resolvent, resolvent).first;
+        resolvent = Preprocess::chain(trace.back().resolvent, resolvent).first;
     }
     return *Preprocess::preprocessRule(resolvent);
 }
@@ -414,7 +413,7 @@ std::pair<Rule, Model> Reachability::build_loop(const int backlink) {
         const auto &step {trace[i]};
         const auto rule {step.clause_idx->withGuard(step.implicant)};
         if (loop) {
-            const auto [chained, sigma] {Chaining::chain(rule, *loop)};
+            const auto [chained, sigma] {Preprocess::chain(rule, *loop)};
             loop = chained;
             var_renaming = sigma.compose(var_renaming);
         } else {

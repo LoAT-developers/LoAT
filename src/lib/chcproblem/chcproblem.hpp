@@ -3,28 +3,28 @@
 #include <optional>
 #include <string>
 
-#include "sexpresso.hpp"
 #include "theory.hpp"
+#include "sexpresso.hpp"
 #include "subs.hpp"
 
-class FunApp {
+class Lhs {
     std::string pred;
     std::vector<Var> args;
 
 public:
 
-    FunApp(const std::string &pred, const std::vector<Var> &args);
+    Lhs(const std::string &pred, const std::vector<Var> &args);
 
     bool is_linear() const;
     sexpresso::Sexp to_smtlib(const var_map &vars) const;
     const std::string& get_pred() const;
     const std::vector<Var>& get_args() const;
 
-    friend auto operator<=>(const FunApp &, const FunApp&) = default;
-    friend std::ostream& operator<<(std::ostream &s, const FunApp &f);
-    friend std::size_t hash_value(const FunApp &f);
-    friend bool operator==(const FunApp&, const FunApp&) = default;
-    FunApp subs(const Subs &subs) const;
+    friend auto operator<=>(const Lhs &, const Lhs&) = default;
+    friend std::ostream& operator<<(std::ostream &s, const Lhs &f);
+    friend std::size_t hash_value(const Lhs &f);
+    friend bool operator==(const Lhs&, const Lhs&) = default;
+    Lhs subs(const Subs &subs) const;
 
     template <ITheory T>
     unsigned max_arity() const {
@@ -38,11 +38,41 @@ public:
     }
 };
 
+class FunApp {
+    std::string pred;
+    std::vector<Expr> args;
+
+public:
+
+    FunApp(const std::string &pred, const std::vector<Expr> &args);
+
+    sexpresso::Sexp to_smtlib(const var_map &vars) const;
+    const std::string& get_pred() const;
+    const std::vector<Expr>& get_args() const;
+
+    friend auto operator<=>(const FunApp &, const FunApp&) = default;
+    friend std::ostream& operator<<(std::ostream &s, const FunApp &f);
+    friend std::size_t hash_value(const FunApp &f);
+    friend bool operator==(const FunApp&, const FunApp&) = default;
+    FunApp subs(const Subs &subs) const;
+
+    template <ITheory T>
+    unsigned max_arity() const {
+        unsigned res{0};
+        for (const auto &x : args) {
+            if (std::holds_alternative<typename T::Expr>(x)) {
+                ++res;
+            }
+        }
+        return res;
+    }
+};
+
 class Clause {
 
 private:
     var_map m_vars {};
-    std::optional<FunApp> premise {};
+    std::optional<Lhs> premise {};
     Bools::Expr constraint {top()};
     std::optional<FunApp> conclusion {};
 
@@ -55,12 +85,11 @@ public:
     bool is_fact() const;
     bool is_query() const;
     bool is_left_linear() const;
-    bool is_right_linear() const;
     sexpresso::Sexp to_smtlib() const;
     void add_var(const std::string &name, const Var &x);
-    const std::optional<FunApp> &get_premise() const;
+    const std::optional<Lhs> &get_premise() const;
     const std::optional<FunApp> &get_conclusion() const;
-    void set_premise(const std::optional<FunApp> &premise);
+    void set_premise(const std::optional<Lhs> &premise);
     void set_conclusion(const std::optional<FunApp> &conclusion);
     void set_constraint(const Bools::Expr e);
     void add_constraint(const Bools::Expr e);
@@ -87,11 +116,9 @@ public:
     void remove_clause(const Clause &c);
     const linked_hash_set<Clause> &get_clauses() const;
     bool is_left_linear() const;
-    bool is_right_linear() const;
-    bool is_left_and_right_linear() const;
     sexpresso::Sexp to_smtlib() const;
     CHCProblem reverse() const;
-    linked_hash_map<std::string, std::vector<Var>> get_signature() const;
+    linked_hash_map<std::string, std::vector<theory::Types>> get_signature() const;
     void do_produce_model();
     bool get_produce_model() const;
 

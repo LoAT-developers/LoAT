@@ -39,7 +39,11 @@ bool isPostVar(const Var &var) {
 }
 
 Var next(const Var &var) {
-    return std::visit([](const auto x) {return Var(decltype(x)::element_type::next());}, var);
+    return std::visit([](const auto x) {return Var(theory(x).next());}, var);
+}
+
+Var next(const Expr &x) {
+    return std::visit([](const auto x) {return Var(theory(x).next());}, x);
 }
 
 Var postVar(const Var &var) {
@@ -54,20 +58,60 @@ Expr toExpr(const Var &var) {
     return TheTheory::varToExpr(var);
 }
 
-std::string var_to_type(const Var &x) {
+theory::Types to_type(const Expr &x) {
+    return std::visit(
+        Overload{
+            [&](const Arith::Expr &) {
+                return Types::Int;
+            },
+            [&](const Bools::Expr &) {
+                return Types::Bool;
+            }},
+        x);
+}
+
+theory::Types to_type(const Var &x) {
     return std::visit(
         Overload{
             [&](const Arith::Var &) {
-                return "Int";
+                return Types::Int;
             },
             [&](const Bools::Var &) {
-                return "Bool";
+                return Types::Bool;
+            }},
+        x);
+}
+
+std::optional<Var> is_var(const Expr &x) {
+    return std::visit(
+        Overload{
+            [&](const Arith::Expr &e) {
+                return std::optional<Var>{*e->isVar()};
+            },
+            [&](const Bools::Expr &e) {
+                if (const auto lit {e->getTheoryLit()}) {
+                    return std::visit(
+                        Overload{
+                            [&](const Arith::Lit&) {
+                                return std::optional<Var>{};
+                            },
+                            [&](const Bools::Lit &l) {
+                                return l->isNegated() ? std::optional<Var>{} : std::optional<Var>{l->getBoolVar()};
+                            }
+                        }, *lit);
+                } else {
+                    return std::optional<Var>{};
+                }
             }},
         x);
 }
 
 sexpresso::Sexp to_smtlib(const Lit &l, const std::function<std::string(const Var &)> &var_map) {
     return std::visit([&](const auto x) {return x->to_smtlib(var_map);}, l);
+}
+
+sexpresso::Sexp to_smtlib(const Expr &e, const std::function<std::string(const Var &)> &var_map) {
+    return std::visit([&](const auto x) {return x->to_smtlib(var_map);}, e);
 }
 
 void collectVars(const Expr &expr, VarSet &vars) {
@@ -292,5 +336,17 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 
 std::ostream& operator<<(std::ostream &s, const Lit &e) {
     std::visit([&s](const auto &e){s << e;}, e);
+    return s;
+}
+
+std::ostream& theory::operator<<(std::ostream &s, const theory::Types &e) {
+    switch (e) {
+        case theory::Types::Int:
+            s << "Int";
+            break;
+        case theory::Types::Bool:
+            s << "Bool";
+            break;
+    }
     return s;
 }

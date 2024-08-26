@@ -1,5 +1,4 @@
 #include "itsproblem.hpp"
-#include "chain.hpp"
 #include "config.hpp"
 
 bool ITSProblem::isEmpty() const {

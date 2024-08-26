@@ -1,6 +1,7 @@
 #pragma once
 
 #include "theory.hpp"
+#include "subs.hpp"
 
 #include <vector>
 
@@ -14,5 +15,7 @@ namespace Preprocess {
     using SymbolAcceptor = std::function<bool(const Var &)>;
 
     Bools::Expr preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow);
+
+    std::tuple<Bools::Expr, Subs, Subs> chain(const Bools::Expr &fst, const Bools::Expr &snd);
 
 }

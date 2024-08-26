@@ -5,18 +5,22 @@ set(CMAKE_CXX_STANDARD 20)
 project(loat_itsproblem CXX)
 
 add_library(${PROJECT_NAME} OBJECT
+    rule.hpp
+    rule.cpp
     itsproblem.cpp
     itsproblem.hpp
     dependencygraph.hpp
     itsmodel.cpp
     itsmodel.hpp
+    rulepreprocessing.hpp
+    rulepreprocessing.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_util_INCLUDE_DIRS}
   ${loat_container_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
-  ${loat_rule_simplification_INCLUDE_DIRS}
+  ${loat_preprocessing_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")

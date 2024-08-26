@@ -1,13 +1,13 @@
 #include "chcproblem.hpp"
 
-FunApp::FunApp(const std::string &pred, const std::vector<Var> &args): pred(pred), args(args) {}
+Lhs::Lhs(const std::string &pred, const std::vector<Var> &args): pred(pred), args(args) {}
 
-bool FunApp::is_linear() const {
+bool Lhs::is_linear() const {
     linked_hash_set<Var> set {args.begin(), args.end()};
     return set.size() == args.size();
 }
 
-sexpresso::Sexp FunApp::to_smtlib(const var_map &vars) const {
+sexpresso::Sexp Lhs::to_smtlib(const var_map &vars) const {
     sexpresso::Sexp res {pred};
     for (const auto &arg: args) {
         res.addChild(vars.right.at(arg));
@@ -15,18 +15,18 @@ sexpresso::Sexp FunApp::to_smtlib(const var_map &vars) const {
     return res;
 }
 
-FunApp FunApp::subs(const Subs &subs) const {
+Lhs Lhs::subs(const Subs &subs) const {
     std::vector<Var> new_args;
     for (const auto &arg: args) {
         new_args.push_back(*theory::vars(subs.get(arg)).begin());
     }
-    return FunApp(pred, new_args);
+    return Lhs(pred, new_args);
 }
 
-std::ostream& operator<<(std::ostream &s, const FunApp &f) {
+std::ostream& operator<<(std::ostream &s, const Lhs &f) {
     s << f.pred << " ::";
     for (const auto &x: f.args) {
-        s << " " << theory::var_to_type(x);
+        s << " " << theory::to_type(theory::toExpr(x));
     }
     return s;
 }
@@ -52,6 +52,47 @@ std::ostream& operator<<(std::ostream &s, const Clause &c) {
     return s;
 }
 
+std::size_t hash_value(const Lhs &f) {
+    size_t seed {42};
+    boost::hash_combine(seed, f.pred);
+    boost::hash_combine(seed, boost::hash_range(f.args.begin(), f.args.end()));
+    return seed;
+}
+
+const std::string& Lhs::get_pred() const {
+    return pred;
+}
+
+const std::vector<Var>& Lhs::get_args() const {
+    return args;
+}
+
+FunApp::FunApp(const std::string &pred, const std::vector<Expr> &args): pred(pred), args(args) {}
+
+sexpresso::Sexp FunApp::to_smtlib(const var_map &vars) const {
+    sexpresso::Sexp res {pred};
+    for (const auto &arg: args) {
+        res.addChild(theory::to_smtlib(arg, [&](const auto &x) {return vars.right.at(x);}));
+    }
+    return res;
+}
+
+FunApp FunApp::subs(const Subs &subs) const {
+    std::vector<Expr> new_args;
+    for (const auto &arg: args) {
+        new_args.push_back(subs(arg));
+    }
+    return FunApp(pred, new_args);
+}
+
+std::ostream& operator<<(std::ostream &s, const FunApp &f) {
+    s << f.pred << " ::";
+    for (const auto &x: f.args) {
+        s << " " << theory::to_type(x);
+    }
+    return s;
+}
+
 std::size_t hash_value(const FunApp &f) {
     size_t seed {42};
     boost::hash_combine(seed, f.pred);
@@ -59,23 +100,11 @@ std::size_t hash_value(const FunApp &f) {
     return seed;
 }
 
-std::size_t hash_value(const Clause &c) {
-    size_t seed {42};
-    boost::hash_combine(seed, c.premise);
-    boost::hash_combine(seed, c.constraint);
-    boost::hash_combine(seed, c.conclusion);
-    return seed;
-}
-
-bool operator==(const Clause& c1, const Clause& c2) {
-    return c1.premise == c2.premise && c1.constraint == c2.constraint && c1.conclusion == c2.conclusion;
-}
-
 const std::string& FunApp::get_pred() const {
     return pred;
 }
 
-const std::vector<Var>& FunApp::get_args() const {
+const std::vector<Expr>& FunApp::get_args() const {
     return args;
 }
 
@@ -91,15 +120,11 @@ bool Clause::is_left_linear() const {
     return !premise || premise->is_linear();
 }
 
-bool Clause::is_right_linear() const {
-    return !conclusion || conclusion->is_linear();
-}
-
 void Clause::add_var(const std::string &name, const Var &x) {
     m_vars.left.insert(var_map::left_value_type(name, x));
 }
 
-void Clause::set_premise(const std::optional<FunApp> &premise) {
+void Clause::set_premise(const std::optional<Lhs> &premise) {
     this->premise = premise;
 }
 
@@ -115,7 +140,7 @@ void Clause::add_constraint(const Bools::Expr e) {
     this->constraint = this->constraint && e;
 }
 
-const std::optional<FunApp>& Clause::get_premise() const {
+const std::optional<Lhs>& Clause::get_premise() const {
     return premise;
 }
 
@@ -152,7 +177,7 @@ VarSet Clause::vars() const {
     }
     if (conclusion) {
         for (const auto &x: conclusion->get_args()) {
-            res.insert(x);
+            theory::collectVars(x, res);
         }
     }
     constraint->collectVars(res);
@@ -166,7 +191,7 @@ sexpresso::Sexp Clause::to_smtlib() const {
     std::map<std::string, sexpresso::Sexp> var_map;
     for (const auto &[_,x]: m_vars) {
         const auto var {m_vars.right.at(x)};
-        const auto type {theory::var_to_type(x)};
+        const auto type {toString(theory::to_type(x))};
         var_map.emplace(var, type);
     }
     for (const auto &[name, type]: var_map) {
@@ -198,6 +223,18 @@ sexpresso::Sexp Clause::to_smtlib() const {
     return assertion;
 }
 
+std::size_t hash_value(const Clause &c) {
+    size_t seed {42};
+    boost::hash_combine(seed, c.premise);
+    boost::hash_combine(seed, c.constraint);
+    boost::hash_combine(seed, c.conclusion);
+    return seed;
+}
+
+bool operator==(const Clause& c1, const Clause& c2) {
+    return c1.premise == c2.premise && c1.constraint == c2.constraint && c1.conclusion == c2.conclusion;
+}
+
 const Clause* CHCProblem::add_clause(const Clause &c) {
     return &*clauses.insert(c).first;
 }
@@ -219,24 +256,6 @@ bool CHCProblem::is_left_linear() const {
     return true;
 }
 
-bool CHCProblem::is_right_linear() const {
-    for (const auto &c: clauses) {
-        if (!c.is_right_linear()) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool CHCProblem::is_left_and_right_linear() const {
-    for (const auto &c: clauses) {
-        if (!c.is_right_linear() || !c.is_right_linear()) {
-            return false;
-        }
-    }
-    return true;
-}
-
 sexpresso::Sexp CHCProblem::to_smtlib() const {
     const auto preds {get_signature()};
     sexpresso::Sexp res;
@@ -248,7 +267,7 @@ sexpresso::Sexp CHCProblem::to_smtlib() const {
         decl.addChild(f);
         sexpresso::Sexp types;
         for (const auto &x: args) {
-            types.addChild(theory::var_to_type(x));
+            types.addChild(toString(x));
         }
         decl.addChild(types);
         decl.addChild("Bool");
@@ -263,22 +282,50 @@ sexpresso::Sexp CHCProblem::to_smtlib() const {
 CHCProblem CHCProblem::reverse() const {
     CHCProblem res;
     for (const auto &c: clauses) {
-        auto reversed {c};
-        reversed.set_conclusion(c.get_premise());
-        reversed.set_premise(c.get_conclusion());
+        std::vector<Bools::Expr> constr {c.get_constraint()};
+        Clause reversed;
+        if (const auto conc {c.get_conclusion()}) {
+            std::vector<Var> lhs_args;
+            for (const auto &arg: conc->get_args()) {
+                if (const auto &x {theory::is_var(arg)}) {
+                    lhs_args.emplace_back(*x);
+                } else {
+                    const auto y {theory::next(arg)};
+                    lhs_args.emplace_back(y);
+                    constr.push_back(theory::mkEq(theory::toExpr(y), arg));
+                }
+            }
+            reversed.set_premise(Lhs(conc->get_pred(), lhs_args));
+        }
+        if (const auto prem {c.get_premise()}) {
+            std::vector<Expr> rhs_args;
+            for (const auto &x: prem->get_args()) {
+                rhs_args.emplace_back(theory::toExpr(x));
+            }
+            reversed.set_conclusion(FunApp(prem->get_pred(), rhs_args));
+        }
+        reversed.set_constraint(bools::mkAnd(constr));
         res.add_clause(reversed);
     }
     return res;
 }
 
-linked_hash_map<std::string, std::vector<Var>> CHCProblem::get_signature() const {
-    linked_hash_map<std::string, std::vector<Var>> preds;
+linked_hash_map<std::string, std::vector<theory::Types>> CHCProblem::get_signature() const {
+    linked_hash_map<std::string, std::vector<theory::Types>> preds;
     for (const auto &c: clauses) {
         if (c.get_premise()) {
-            preds.put(c.get_premise()->get_pred(), c.get_premise()->get_args());
+            std::vector<theory::Types> types;
+            for (const auto &x: c.get_premise()->get_args()) {
+                types.emplace_back(theory::to_type(x));
+            }
+            preds.put(c.get_premise()->get_pred(), types);
         }
         if (c.get_conclusion()) {
-            preds.put(c.get_conclusion()->get_pred(), c.get_conclusion()->get_args());
+            std::vector<theory::Types> types;
+            for (const auto &x: c.get_conclusion()->get_args()) {
+                types.emplace_back(theory::to_type(x));
+            }
+            preds.put(c.get_conclusion()->get_pred(), types);
         }
     }
     return preds;

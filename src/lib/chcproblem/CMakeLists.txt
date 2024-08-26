@@ -11,6 +11,8 @@ add_library(${PROJECT_NAME} OBJECT
     linearize.cpp
     chcmodel.hpp
     chcmodel.cpp
+    chcpreprocessing.hpp
+    chcpreprocessing.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -18,6 +20,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_util_INCLUDE_DIRS}
   ${loat_container_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
+  ${loat_preprocessing_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")

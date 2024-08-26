@@ -1,5 +1,4 @@
 #include "til.hpp"
-#include "chain.hpp"
 #include "redundantinequations.hpp"
 #include "chctosafetyproblem.hpp"
 #include "cvc5.hpp"
@@ -91,7 +90,7 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
             // sigma2 maps vars from chained to the corresponding vars from loop
             // temporary variables in rule remain unchanged
             // temporary variables in loop that clash with rule are renamed
-            const auto [chained, sigma1, sigma2]{Chaining::chain(rule, *loop)};
+            const auto [chained, sigma1, sigma2]{Preprocess::chain(rule, *loop)};
             // all pre-vars and temp vars that already occured in rule correspond to vars from rule
             auto fst_vars{t.pre_vars()};
             rule->collectVars(fst_vars);

@@ -1,6 +1,6 @@
 #include "linearize.hpp"
 
-FunApp linearize(const FunApp &f, Clause &c, std::vector<Bools::Expr> &constr) {
+Lhs linearize(const Lhs &f, Clause &c, std::vector<Bools::Expr> &constr) {
     std::vector<Var> args;
     VarSet arg_set;
     for (const auto &x: f.get_args()) {
@@ -9,6 +9,22 @@ FunApp linearize(const FunApp &f, Clause &c, std::vector<Bools::Expr> &constr) {
             args.push_back(next);
             c.add_var(theory::getName(next), next);
             constr.push_back(theory::mkEq(theory::toExpr(x), theory::toExpr(next)));
+        }
+    }
+    return Lhs(f.get_pred(), args);
+}
+
+FunApp linearize(const FunApp &f, Clause &c, std::vector<Bools::Expr> &constr) {
+    std::vector<Expr> args;
+    VarSet arg_set;
+    for (const auto &x: f.get_args()) {
+        const auto var {theory::is_var(x)};
+        if (!var || !arg_set.insert(*var)) {
+            const auto next {theory::next(x)};
+            const auto next_arg {theory::toExpr(next)};
+            args.push_back(next_arg);
+            c.add_var(theory::getName(next), next);
+            constr.push_back(theory::mkEq(next_arg, x));
         }
     }
     return FunApp(f.get_pred(), args);

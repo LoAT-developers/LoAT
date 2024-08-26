@@ -67,20 +67,8 @@ std::optional<Rule> propagateEqualitiesPickily(const Rule &rule) {
     return propagateEqualitiesImpl(rule, isTempInUpdate);
 }
 
-/**
- * Returns the set of all variables that appear in the rhs of some update.
- * For an update x := a and x := x+a, this is {a} and {x,a}, respectively.
- */
-VarSet collectVarsInUpdateRhs(const Rule &rule) {
-    VarSet varsInUpdate;
-    for (const auto &[_, v] : rule.getUpdate()) {
-        theory::collectVars(v, varsInUpdate);
-    }
-    return varsInUpdate;
-}
-
 std::optional<Rule> integerFourierMotzkin(const Rule &rule) {
-    VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
+    auto varsInUpdate{rule.getUpdate().coDomainVars()};
     auto isTempOnlyInGuard = [&](const Var &sym) {
         return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
@@ -97,12 +85,10 @@ std::optional<Rule> integerFourierMotzkin(const Rule &rule) {
 }
 
 std::optional<Rule> eliminateArithVars(const Rule &rule) {
-    auto res{propagateEqualitiesPickily(rule)};
-    if (res) {
+    if (const auto res{propagateEqualitiesPickily(rule)}) {
         return res;
     }
-    res = propagateEqualities(rule);
-    if (res) {
+    if (const auto res{propagateEqualities(rule)}) {
         return res;
     }
     return integerFourierMotzkin(rule);
@@ -129,4 +115,22 @@ std::optional<Rule> Preprocess::preprocessRule(const Rule &rule) {
         }
     } while (changed);
     return success ? current: std::optional<Rule>{};
+}
+
+std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) {
+    Subs sigma, inverted;
+    auto first_vars {first.vars()};
+    for (const auto &x: second.vars()) {
+        if (theory::isTempVar(x) && first_vars.contains(x)) {
+            Subs::renameVar(x, sigma, inverted);
+        }
+    }
+    return {sigma, inverted};
+}
+
+std::pair<Rule, Subs> Preprocess::chain(const Rule &fst, const Rule &snd) {
+    const auto [sigma, inverted] {computeVarRenaming(fst, snd)};
+    const auto guard {fst.getGuard() && sigma.compose(fst.getUpdate())(snd.getGuard())};
+    const auto up {snd.getUpdate().concat(sigma).compose(fst.getUpdate())};
+    return {Rule(guard, up), inverted};
 }

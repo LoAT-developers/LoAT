@@ -76,10 +76,8 @@ target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_util_INCLUDE_DIRS}
   ${loat_container_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
-  # ${loat_crab_INCLUDE_DIRS}
-  ${loat_rule_simplification_INCLUDE_DIRS}
+  ${loat_preprocessing_INCLUDE_DIRS}
   ${loat_smt_INCLUDE_DIRS}
-  ${loat_formula_simplification_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
   ${loat_acceleration_INCLUDE_DIRS}
   ${loat_itsproblem_INCLUDE_DIRS}
@@ -143,9 +141,8 @@ target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:loat_util>
   $<TARGET_OBJECTS:loat_expr>
   # $<TARGET_OBJECTS:loat_crab>
-  $<TARGET_OBJECTS:loat_rule_simplification>
+  $<TARGET_OBJECTS:loat_preprocessing>
   $<TARGET_OBJECTS:loat_smt>
-  $<TARGET_OBJECTS:loat_formula_simplification>
   $<TARGET_OBJECTS:loat_recurrence>
   $<TARGET_OBJECTS:loat_acceleration>
   $<TARGET_OBJECTS:loat_itsproblem>

@@ -11,7 +11,7 @@ sexpresso::Sexp CHCModel::to_smtlib() const {
             for (const auto &arg: args) {
                 sexpresso::Sexp decl;
                 decl.addChild(theory::getName(arg));
-                decl.addChild(theory::var_to_type(arg));
+                decl.addChild(toString(theory::to_type(arg)));
                 decls.addChild(decl);
             }
             fun.addChild(decls);
@@ -24,7 +24,7 @@ sexpresso::Sexp CHCModel::to_smtlib() const {
                 if (std::find(args.begin(), args.end(), x) == args.end()) {
                     sexpresso::Sexp decl;
                     decl.addChild(theory::getName(x));
-                    decl.addChild(theory::var_to_type(x));
+                    decl.addChild(toString(theory::to_type(x)));
                     decls.addChild(decl);
                 }
             }
@@ -52,6 +52,6 @@ std::ostream& operator<<(std::ostream &s, const CHCModel &m) {
     return s;
 }
 
-void CHCModel::set_interpretation(const FunApp &f, const Bools::Expr interp) {
+void CHCModel::set_interpretation(const Lhs &f, const Bools::Expr interp) {
     interpretations.emplace(f, interp);
 }

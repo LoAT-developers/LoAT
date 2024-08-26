@@ -1,11 +1,11 @@
 #include "pair.hpp"
 #include "dependencygraph.hpp"
 #include "preprocessing.hpp"
-#include "chain.hpp"
 #include "config.hpp"
 #include "formulapreprocessing.hpp"
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
+#include "chcpreprocessing.hpp"
 #include "smtfactory.hpp"
 #include "theory.hpp"
 
@@ -64,7 +64,7 @@ bool chainLinearPaths(ITSProblem &its) {
                 const auto second_idx{*succ.begin()};
                 if (!its.isSimpleLoop(second_idx)) {
                     success = true;
-                    const auto chained{Chaining::chain(first, *second_idx).first};
+                    const auto chained{Preprocess::chain(first, *second_idx).first};
                     its.addRule(chained, &first, second_idx);
                     linked_hash_set<TransIdx> deleted;
                     deleted.insert(&first);
@@ -85,30 +85,6 @@ bool chainLinearPaths(ITSProblem &its) {
         }
     } while (changed);
     return success;
-}
-
-Clause chain(const Clause &c1, const Clause &c2) {
-    assert(c1.get_conclusion() && c1.get_conclusion()->get_pred() == c2.get_premise()->get_pred());
-    Subs subs1;
-    for (const auto &x : c2.vars()) {
-        subs1.put(x, theory::toExpr(theory::next(x)));
-    }
-    const Clause c3{c2.subs(subs1)};
-    Subs subs2;
-    const auto &c1_args{c1.get_conclusion()->get_args()};
-    const auto &c3_args{c3.get_premise()->get_args()};
-    for (unsigned i = 0; i < c3_args.size(); ++i) {
-        subs2.put(c3_args[i], theory::toExpr(c1_args[i]));
-    }
-    Clause res;
-    if (const auto p{c1.get_premise()}) {
-        res.set_premise(p->subs(subs2));
-    }
-    if (const auto c{c3.get_conclusion()}) {
-        res.set_conclusion(c->subs(subs2));
-    }
-    res.set_constraint(subs2(c1.get_constraint()) && subs2(c3.get_constraint()));
-    return res;
 }
 
 bool Preprocess::chainLinearPaths(CHCProblem &chcs) {
@@ -134,7 +110,7 @@ bool Preprocess::chainLinearPaths(CHCProblem &chcs) {
                 const auto second_idx{*succ.begin()};
                 if (!dg.hasEdge(second_idx, second_idx)) {
                     success = true;
-                    const auto chained{chcs.add_clause(chain(first, *second_idx))};
+                    const auto chained{chcs.add_clause(Preprocess::chain(first, *second_idx))};
                     for (const auto &s : dg.getSuccessors(second_idx)) {
                         dg.addEdge(chained, s);
                     }
@@ -201,7 +177,7 @@ bool unroll(ITSProblem &its) {
 
 bool refine_dependency_graph(ITSProblem &its) {
     const auto is_edge = [](const TransIdx fst, const TransIdx snd) {
-        return SmtFactory::check(Chaining::chain(*fst, *snd).first.getGuard()) == Sat;
+        return SmtFactory::check(Preprocess::chain(*fst, *snd).first.getGuard()) == Sat;
     };
     const auto removed{its.refineDependencyGraph(is_edge)};
     if (removed.empty()) {
