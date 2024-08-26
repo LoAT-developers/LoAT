@@ -1,20 +1,3 @@
-/*  This file is part of LoAT.
- *  Copyright (c) 2015-2016 Matthias Naaf, RWTH Aachen University, Germany
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses>.
- */
-
 #include "main.hpp"
 
 #include "abmc.hpp"
@@ -28,7 +11,6 @@
 #include "forwardbackwarddriver.hpp"
 #include "itsparser.hpp"
 #include "parser.hpp"
-#include "proof.hpp"
 #include "reachability.hpp"
 #include "recurrence.hpp"
 #include "safetyproblem.hpp"
@@ -49,8 +31,6 @@ string filename;
 void printHelp(char *arg0) {
     cout << "Usage: " << arg0 << " [options] <file>" << endl;
     cout << "Options:" << endl;
-    cout << "  --proof-level <n>                                Detail level for proof output" << endl;
-    cout << "  --plain                                          Disable colored output" << endl;
     cout << "  --print_dep_graph                                Print the dependency graph in the proof output (can be very verbose)" << endl;
     cout << "  --mode <complexity|non_termination|reachability> Analysis mode" << endl;
     cout << "  --format <koat|its|horn|c>                       Input format" << endl;
@@ -99,16 +79,6 @@ void parseFlags(int argc, char *argv[]) {
         if (strcmp("--help", argv[arg]) == 0) {
             printHelp(argv[0]);
             exit(0);
-        } else if (strcmp("--proof-level", argv[arg]) == 0) {
-            int proofLevel = atoi(getNext());
-            if (proofLevel < 0) {
-                cerr << "proof level must be non-negative, ignoring value " << proofLevel << endl;
-            } else {
-                Proof::setProofLevel(proofLevel);
-            }
-        } else if (strcmp("--plain", argv[arg]) == 0) {
-            Config::Output::Colors = false;
-            Proof::disableColors();
         } else if (strcmp("--print_dep_graph", argv[arg]) == 0) {
             Config::Output::PrintDependencyGraph = true;
         } else if (strcmp("--log", argv[arg]) == 0) {

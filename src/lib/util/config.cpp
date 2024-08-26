@@ -1,20 +1,3 @@
-/*  This file is part of LoAT.
- *  Copyright (c) 2015-2016 Matthias Naaf, RWTH Aachen University, Germany
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses>.
- */
-
 #include "config.hpp"
 #include <iostream>
 
@@ -41,15 +24,6 @@ namespace Config {
         Format format = Koat;
     }
 
-    namespace Color {
-        const std::string None = "\033[0m";
-        // ITS Output
-        const std::string Location = "\033[1;34m"; // bold blue
-        const std::string Update = "\033[0;36m"; // cyan
-        const std::string Guard = "\033[0;32m"; // green
-        const std::string Cost = "\033[0;35m"; // bold magenta
-    }
-
     // Asymptotic complexity computation using limit problems
     namespace Limit {
         // Discard a limit problem of size >= ProblemDiscardSize in a non-final check if z3 yields "unknown"
@@ -65,6 +39,8 @@ namespace Config {
         Engine engine = ADCL;
         SmtSolver smtSolver = Heuristic;
         bool log = false;
+        bool logPreproc = false;
+        bool logAccel = false;
 
         std::string modeName(const Mode mode) {
             switch (mode) {
@@ -90,6 +66,14 @@ namespace Config {
 
         bool tryNonterm() {
             return nonTermination() || complexity();
+        }
+
+        bool doLogAccel() {
+            return log || logAccel;
+        }
+
+        bool doLogPreproc() {
+            return log || logPreproc;
         }
 
     }

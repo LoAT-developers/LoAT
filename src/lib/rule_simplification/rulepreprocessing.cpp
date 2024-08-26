@@ -1,75 +1,67 @@
-/*  This file is part of LoAT.
- *  Copyright (c) 2015-2016 Matthias Naaf, RWTH Aachen University, Germany
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses>.
- */
-
 #include "rulepreprocessing.hpp"
 #include "theory.hpp"
 #include "formulapreprocessing.hpp"
 #include "theory.hpp"
 #include "intfm.hpp"
+#include "config.hpp"
+#include "impliedequivalences.hpp"
 
 #include <unordered_set>
 #include <numeric>
 
 using namespace std;
 
-RuleResult propagateEquivalences(const Rule &rule) {
-    RuleResult res{rule};
-    const auto subs{Preprocess::propagateEquivalences(rule.getGuard())};
-    if (subs) {
-        res = res->subs(Subs::build<Bools>(*subs));
-        res.ruleTransformationProof(rule, "Propagated Equivalences", *res);
-        res.storeSubProof(subs.getProof());
+std::optional<Rule> propagateEquivalences(const Rule &rule) {
+    const auto subs{impliedEquivalences(rule.getGuard())};
+    if (subs.empty()) {
+        return {};
+    } else {
+        const auto res {rule.subs(Subs::build<Bools>(subs))};
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "propagated equivalences: " << res << std::endl;
+        }
+        return res;
     }
-    return res;
 }
 
-RuleResult eliminateIdentities(const Rule &rule) {
-    RuleResult res{rule};
-    Subs update = rule.getUpdate();
+std::optional<Rule> eliminateIdentities(const Rule &rule) {
     VarSet remove;
-    for (const auto &[x, v] : update) {
+    for (const auto &[x, v] : rule.getUpdate()) {
         if (TheTheory::varToExpr(x) == v) {
             remove.insert(x);
         }
     }
-    if (!remove.empty()) {
-        update.erase(remove);
-        res = rule.withUpdate(update);
-        res.ruleTransformationProof(rule, "Removed Identity Updates", res.get());
+    if (remove.empty()) {
+        return {};
+    } else {
+        auto new_update {rule.getUpdate()};
+        new_update.erase(remove);
+        const auto res {rule.withUpdate(new_update)};
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "removed identity updates: " << res << std::endl;
+        }
+        return res;
     }
-    return res;
 }
 
-RuleResult propagateEqualitiesImpl(const Rule &rule, const Preprocess::SymbolAcceptor &allow) {
-    RuleResult res{rule};
-    const auto subs{Preprocess::propagateEqualities(rule.getGuard(), allow)};
-    if (subs) {
-        res = res->subs(Subs::build<Arith>(*subs));
-        res.ruleTransformationProof(rule, "Extracted Implied Equalities", *res);
-        res.storeSubProof(subs.getProof());
+std::optional<Rule> propagateEqualitiesImpl(const Rule &rule, const Preprocess::SymbolAcceptor &allow) {
+    const auto subs{rule.getGuard()->propagateEqualities(allow)};
+    if (subs.empty()) {
+        return {};
+    } else {
+        const auto res {rule.subs(Subs::build<Arith>(subs))};
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "extracted implied equalities: " << res << std::endl;
+        }
+        return res;
     }
-    return res;
 }
 
-RuleResult propagateEqualities(const Rule &rule) {
+std::optional<Rule> propagateEqualities(const Rule &rule) {
     return propagateEqualitiesImpl(rule, theory::isTempVar);
 }
 
-RuleResult propagateEqualitiesPickily(const Rule &rule) {
+std::optional<Rule> propagateEqualitiesPickily(const Rule &rule) {
     auto varsInUpdate{rule.getUpdate().coDomainVars()};
     Preprocess::SymbolAcceptor isTempInUpdate{[&](const Var &sym) {
         return theory::isTempVar(sym) && varsInUpdate.contains(sym);
@@ -89,22 +81,24 @@ VarSet collectVarsInUpdateRhs(const Rule &rule) {
     return varsInUpdate;
 }
 
-RuleResult integerFourierMotzkin(const Rule &rule) {
-    RuleResult res{rule};
+std::optional<Rule> integerFourierMotzkin(const Rule &rule) {
     VarSet varsInUpdate = collectVarsInUpdateRhs(rule);
     auto isTempOnlyInGuard = [&](const Var &sym) {
         return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
     const auto new_guard{integerFourierMotzkin(rule.getGuard(), isTempOnlyInGuard)};
-    if (new_guard) {
-        res = res->withGuard(*new_guard);
-        res.ruleTransformationProof(rule, "Eliminated Temporary Variables", *res);
-        res.storeSubProof(new_guard.getProof());
+    if (new_guard == rule.getGuard()) {
+        return {};
+    } else {
+        const auto res {rule.withGuard(new_guard)};
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "eliminated temporary variables: " << res << std::endl;
+        }
+        return res;
     }
-    return res;
 }
 
-RuleResult eliminateArithVars(const Rule &rule) {
+std::optional<Rule> eliminateArithVars(const Rule &rule) {
     auto res{propagateEqualitiesPickily(rule)};
     if (res) {
         return res;
@@ -116,14 +110,25 @@ RuleResult eliminateArithVars(const Rule &rule) {
     return integerFourierMotzkin(rule);
 }
 
-RuleResult Preprocess::preprocessRule(const Rule &rule) {
-    auto res{propagateEquivalences(rule)};
-    res.concat(eliminateIdentities(*res));
-    bool changed;
+std::optional<Rule> Preprocess::preprocessRule(const Rule &rule) {
+    auto current {rule};
+    auto success {false};
+    if (const auto res{propagateEquivalences(current)}) {
+        current = *res;
+        success = true;
+    }
+    if (const auto res {eliminateIdentities(current)}) {
+        current = *res;
+        success = true;
+    }
+    auto changed {false};
     do {
-        const auto tmp{eliminateArithVars(*res)};
-        changed = bool(tmp);
-        res.concat(tmp);
+        changed = false;
+        if (const auto res {eliminateArithVars(current)}) {
+            changed = true;
+            success = true;
+            current = *res;
+        }
     } while (changed);
-    return res;
+    return success ? current: std::optional<Rule>{};
 }

@@ -9,16 +9,16 @@ BMC::BMC(ITSProblem &its): its(its) {}
 
 void BMC::unsat() {
     std::cout << "unsat" << std::endl;
-    proof.append("reached error location at depth " + std::to_string(depth));
-    proof.result("unsat");
-    proof.print();
+    if (Config::Analysis::log) {
+        std::cout << "reached error location at depth " << depth << std::endl;
+    }
 }
 
 void BMC::sat() {
     std::cout << "sat" << std::endl;
-    proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
-    proof.result("sat");
-    proof.print();
+    if (Config::Analysis::log) {
+        std::cout << depth << "-fold unrolling of the transition relation is unsatisfiable" << std::endl;
+    }
 }
 
 Bools::Expr BMC::encode_transition(const TransIdx idx) {
@@ -37,14 +37,9 @@ void BMC::analyze() {
         std::cout << "initial ITS" << std::endl;
         its.print(std::cout);
     }
-    proof.majorProofStep("Initial ITS", ITSProof(), its);
-    const auto res {Preprocess::preprocess(its)};
-    if (res) {
-        proof.concat(res.getProof());
-        if (Config::Analysis::log) {
+    if (Preprocess::preprocess(its) && Config::Analysis::log) {
             std::cout << "Simplified ITS" << std::endl;
             ITSExport::printForProof(its, std::cout);
-        }
     }
     vars.insertAll(its.getVars());
     for (const auto &var: vars) {

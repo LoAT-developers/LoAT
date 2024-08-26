@@ -1,5 +1,4 @@
-/* This file is part of LoAT.
- *
+/*
  * adapted version of https://github.com/BitPuffin/sexpresso
  *
  * Author: Isak Andersson 2016 bitpuffin dot com

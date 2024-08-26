@@ -5,10 +5,7 @@ project(loat_util CXX)
 add_library(${PROJECT_NAME} OBJECT
     vector.hpp
     variant.hpp
-    proof.hpp
-    proof.cpp
     conshash.hpp
-    result.hpp
     config.cpp
     config.hpp
     pair.hpp

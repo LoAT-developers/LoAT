@@ -1,15 +1,15 @@
 #include "intfm.hpp"
 #include "vector.hpp"
+#include "config.hpp"
 
 #include <unordered_set>
 
 /**
  * Fourier-Motzkin, restricted to the case that all coefficients are 1 or -1, so that it can be used for integers.
  */
-Result<Bools::Expr, Proof> integerFourierMotzkin(const Bools::Expr e, const std::function<bool(const Var &)> &allow) {
-    Result<Bools::Expr, Proof> res(e);
+Bools::Expr integerFourierMotzkin(Bools::Expr e, const std::function<bool(const Var &)> &allow) {
     if (!e->isConjunction()) {
-        return res;
+        return e;
     }
     auto lits {e->lits()};
 
@@ -31,7 +31,6 @@ Result<Bools::Expr, Proof> integerFourierMotzkin(const Bools::Expr e, const std:
         });
     };
 
-    bool changed = false;
     for (const auto &var: candidates) {
         if (!allow(var)) continue;
         std::vector<Arith::Expr> upper_bounds;
@@ -112,13 +111,15 @@ Result<Bools::Expr, Proof> integerFourierMotzkin(const Bools::Expr e, const std:
             }
         }
         eliminated.insert(var);
-        res.appendAll("eliminated ", var, "; lower bounds: ", lower_bounds, "; upper bounds: ", upper_bounds);
-        changed = true;
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "eliminated " << var << "; lower bounds: " << lower_bounds << "; upper bounds: " << upper_bounds;
+        }
 
 abort:  ; //this symbol could not be eliminated, try the next one
     }
-    if (changed) {
-        res = bools::mkAndFromLits(lits);
+    if (eliminated.empty()) {
+        return e;
+    } else {
+        return bools::mkAndFromLits(lits);
     }
-    return res;
 }

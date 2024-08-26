@@ -2,7 +2,6 @@
 #include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
-#include "result.hpp"
 #include "smt.hpp"
 #include "export.hpp"
 #include "vector.hpp"
@@ -36,11 +35,7 @@ std::optional<Dropped> LearningState::dropped() {
     return {};
 }
 
-Dropped::Dropped(const ITSProof &proof): proof(proof) {}
-
-const ITSProof& Dropped::get_proof() const {
-    return proof;
-}
+Dropped::Dropped() {}
 
 std::optional<Dropped> Dropped::dropped() {
     return *this;
@@ -60,17 +55,17 @@ std::optional<ProvedUnsat> LearningState::unsat() {
 
 LearningState::~LearningState() {}
 
-Succeeded::Succeeded(const ITSResult<LearnedClauses> &learned): learned(learned) {}
+Succeeded::Succeeded(const LearnedClauses &learned): learned(learned) {}
 
 std::optional<Succeeded> Succeeded::succeeded() {
     return *this;
 }
 
-const ITSResult<LearnedClauses>& Succeeded::operator*() const {
+const LearnedClauses& Succeeded::operator*() const {
     return learned;
 }
 
-const ITSResult<LearnedClauses>* Succeeded::operator->() const {
+const LearnedClauses* Succeeded::operator->() const {
     return &learned;
 }
 
@@ -102,15 +97,7 @@ std::optional<ProvedUnsat> ProvedUnsat::unsat() {
     return *this;
 }
 
-ProvedUnsat::ProvedUnsat(const ITSProof &proof): proof(proof) {}
-
-ITSProof& ProvedUnsat::operator*() {
-    return proof;
-}
-
-ITSProof* ProvedUnsat::operator->() {
-    return &proof;
-}
+ProvedUnsat::ProvedUnsat() {}
 
 Reachability::Reachability(ITSProblem &chcs):
     chcs(chcs),
@@ -229,7 +216,9 @@ void Reachability::update_cpx() {
     if (res > cpx) {
         cpx = res;
         std::cout << cpx.toWstString() << std::endl;
-        proof.result(cpx.toString());
+        if (Config::Analysis::log) {
+            std::cout << cpx.toString() << std::endl;
+        }
     }
 }
 
@@ -299,20 +288,15 @@ void Reachability::print_trace(std::ostream &s) {
 }
 
 void Reachability::print_state() {
-    if (Proof::disabled()) {
-        return;
-    }
-    Proof state_p;
-    state_p.headline("Trace");
+    std::cout << "trace";
     std::stringstream s;
     for (const auto &x: trace) {
-        s << x << std::endl;
+        std::cout << "\n\t" << x;
     }
-    state_p.append(s);
-    s.clear();
-    state_p.headline("Blocked");
+    std::cout << "\n";
+    std::cout << "blocked";
     for (const auto &e: blocked_clauses) {
-        s << "{";
+        std::cout << "\n\t{";
         bool first_trans = true;
         for (const auto &[idx,blocked]: e) {
             if (first_trans) {
@@ -324,8 +308,7 @@ void Reachability::print_state() {
         }
         s << "}" << std::endl;
     }
-    state_p.append(s);
-    proof.storeSubProof(state_p);
+    std::cout << std::endl;
 }
 
 void Reachability::init() {
@@ -356,12 +339,9 @@ void Reachability::luby_next() {
 void Reachability::unsat() {
     const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
     std::cout << res << std::endl << std::endl;
-    if (!Config::Analysis::log && Proof::disabled()) {
-        return;
-    }
-    std::stringstream counterexample;
-    print_trace(counterexample);
     if (Config::Analysis::log) {
+        std::stringstream counterexample;
+        print_trace(counterexample);
         std::stringstream trace_stream;
         trace_stream << trace;
         std::cout << "final ITS:" << std::endl;
@@ -369,23 +349,10 @@ void Reachability::unsat() {
         std::cout << std::endl << "final trace:" << trace_stream.str() << std::endl << std::endl;
         std::cout << "counterexample: " << counterexample.str();
     }
-    proof.headline("Refute");
-    Proof subProof;
-    subProof.headline("Counterexample");
-    subProof.append(counterexample);
-    proof.storeSubProof(subProof);
-    proof.result(res);
-    proof.print();
 }
 
 void Reachability::unknown() {
     std::cout << "unknown" << std::endl << std::endl;
-    if (!Config::Analysis::log && Proof::disabled()) {
-        return;
-    }
-    proof.headline("Prove");
-    proof.result("unknown");
-    proof.print();
 }
 
 std::optional<Rule> Reachability::resolve(const TransIdx idx) {
@@ -487,8 +454,8 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-RuleResult Reachability::instantiate(const Arith::Var n, const Rule &rule) const {
-    RuleResult res(rule);
+std::optional<Rule> Reachability::instantiate(const Arith::Var n, const Rule &rule) const {
+    std::optional<Rule> res{};
     VarEliminator ve(rule.getGuard(), n, theory::isProgVar);
     if (ve.getRes().empty() || ve.getRes().size() > 1) {
         return res;
@@ -496,16 +463,15 @@ RuleResult Reachability::instantiate(const Arith::Var n, const Rule &rule) const
     for (const auto &s : ve.getRes()) {
         if (s.get(n)->isRational()) continue;
         if (res) {
-            return RuleResult(rule);
+            return {};
         }
         res = rule.subs(Subs::build<Arith>(s));
-        res.ruleTransformationProof(rule, "Instantiation", *res);
     }
     return res;
 }
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Model &model, const unsigned backlink) {
-    RuleResult simp = Preprocess::preprocessRule(rule);
+    const auto simp {Preprocess::preprocessRule(rule)};
     if (Config::Analysis::reachability() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
@@ -531,37 +497,27 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
-    ITSResult<LearnedClauses> res{{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period}};
-    if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
-        res.succeed();
-        const auto idx = chcs.addQuery(accel_res.nonterm->certificate, trace.at(backlink).clause_idx);
-        res->res.emplace_back(idx);
-        RuleProof nonterm_proof;
-        nonterm_proof.ruleTransformationProof(*simp, "Certificate of Non-Termination", *idx);
-        nonterm_proof.storeSubProof(accel_res.nonterm->proof);
-        res.concat(nonterm_proof);
+    LearnedClauses res{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period};
+    if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
+        const auto idx = chcs.addQuery(accel_res.nonterm, trace.at(backlink).clause_idx);
+        res.res.emplace_back(idx);
         if (Config::Analysis::log) {
             std::cout << "found certificate of non-termination, idx " << idx << std::endl;
-            std::cout << accel_res.nonterm->certificate << std::endl;
+            std::cout << accel_res.nonterm << std::endl;
         }
     }
     if (accel_res.accel) {
         // acceleration succeeded, simplify the result
-        auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
-        if (simplified->getUpdate() != simp->getUpdate()) {
+        auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)};
+        if (simplified && simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
-                simplified.concat(instantiate(n, *simplified));
+                if (const auto inst {instantiate(n, *simplified)}) {
+                    simplified = inst;
+                }
             }
-            res.succeed();
             const auto loop_idx {add_learned_clause(*simplified, backlink)};
-            res->res.emplace_back(loop_idx);
-            RuleProof acceleration_proof;
-            acceleration_proof.storeSubProof(simp.getProof());
-            acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
-            acceleration_proof.storeSubProof(accel_res.accel->proof);
-            res.concat(acceleration_proof);
-            res.concat(simplified.getProof());
+            res.res.emplace_back(loop_idx);
             if (Config::Analysis::log) {
                 std::cout << "accelerated rule, idx " << loop_idx << std::endl;
                 RuleExport::printRule(*simplified, std::cout);
@@ -569,13 +525,14 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
             }
         }
     }
-    if (!res) {
+    if (res.res.empty()) {
         if (Config::Analysis::log) {
             std::cout << "acceleration failed, status: " << accel_res.status << std::endl;
         }
         return std::make_unique<Unroll>(1, true);
+    } else {
+        return std::make_unique<Succeeded>(res);
     }
-    return std::make_unique<Succeeded>(res);
 }
 
 bool Reachability::check_consistency() {
@@ -640,7 +597,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         return state;
     }
     const auto accel_state {*state->succeeded()};
-    const auto learned_clauses {**accel_state};
+    const auto learned_clauses {*accel_state};
     bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix <= 1 && learned_clauses.period == 1)};
     if (do_drop) {
         drop_until(backlink);
@@ -654,7 +611,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         if (!done && store_step(idx, *idx)) {
             update_cpx();
             if (chcs.isSinkTransition(idx)) {
-                return std::make_unique<ProvedUnsat>(accel_state->getProof());
+                return std::make_unique<ProvedUnsat>();
             } else {
                 done = true;
             }
@@ -668,7 +625,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
         redundancy->concat(closure, closure);
         redundancy->mark_as_redundant(closure);
         if (Config::Analysis::log) std::cout << "applying accelerated rule failed" << std::endl;
-        return std::make_unique<Dropped>(accel_state->getProof());
+        return std::make_unique<Dropped>();
     }
 }
 
@@ -681,7 +638,6 @@ bool Reachability::try_to_finish() {
             if (implicant) {
                 // no need to compute a variable renaming for the next step, as we are done
                 add_to_trace(Step(q, implicant->getGuard(), Subs(), compute_resolvent(q, implicant->getGuard())));
-                proof.headline("Step with " + std::to_string(q->getId()));
                 print_state();
                 unsat();
                 return true;
@@ -706,18 +662,13 @@ void Reachability::bump_penalty(const TransIdx idx) {
 }
 
 void Reachability::analyze() {
-    proof.majorProofStep("Initial ITS", ITSProof(), chcs);
     if (Config::Analysis::log) {
         std::cout << "Initial ITS" << std::endl;
         ITSExport::printForProof(chcs, std::cout);
     }
-    const auto res {Preprocess::preprocess(chcs)};
-    if (res) {
-        proof.concat(res.getProof());
-        if (Config::Analysis::log) {
-            std::cout << "Simplified ITS" << std::endl;
-            ITSExport::printForProof(chcs, std::cout);
-        }
+    if (Preprocess::preprocess(chcs) && Config::Analysis::log) {
+        std::cout << "Simplified ITS" << std::endl;
+        ITSExport::printForProof(chcs, std::cout);
     }
     init();
     if (try_to_finish()) {
@@ -740,14 +691,12 @@ void Reachability::analyze() {
                     break;
                 } else if (state->covered()) {
                     backtrack();
-                    proof.headline("Covered");
                     print_state();
                     break;
                 } else if (state->succeeded()) {
                     if (simple_loop) {
                         block(step);
                     }
-                    proof.majorProofStep("Accelerate", (*state->succeeded())->getProof(), chcs);
                     print_state();
                     if ((drop || simple_loop) && try_to_finish()) {
                         return;
@@ -756,12 +705,9 @@ void Reachability::analyze() {
                     if (simple_loop) {
                         block(step);
                     }
-                    proof.majorProofStep("Accelerate and Drop", state->dropped()->get_proof(), chcs);
                     print_state();
                     break;
                 } else if (state->unsat()) {
-                    proof.majorProofStep("Nonterm", **state->unsat(), chcs);
-                    proof.headline("Step with " + std::to_string(trace.back().clause_idx->getId()));
                     print_state();
                     unsat();
                     return;
@@ -778,7 +724,6 @@ void Reachability::analyze() {
                 pop();
             }
             luby_next();
-            proof.headline("Restart");
         }
         auto try_set = trace.empty() ? chcs.getInitialTransitions() : chcs.getSuccessors(trace.back().clause_idx);
         for (auto it = try_set.begin(); it != try_set.end();) {
@@ -804,7 +749,6 @@ void Reachability::analyze() {
             const auto implicant {resolve(idx)};
             solver->pop();
             if (implicant && store_step(idx, *implicant)) {
-                proof.headline("Step with " + std::to_string(idx->getId()));
                 print_state();
                 update_cpx();
                 all_failed = false;
@@ -817,17 +761,12 @@ void Reachability::analyze() {
             break;
         } else if (all_failed) {
             backtrack();
-            proof.headline("Backtrack");
             print_state();
         } else if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
             return;
         }
     } while (true);
-    proof.headline("Accept");
-    if (Config::Analysis::complexity()) {
-        proof.result(cpx.toString());
-        proof.print();
-    } else {
+    if (!Config::Analysis::complexity()) {
         unknown();
     }
     std::cout << std::endl;

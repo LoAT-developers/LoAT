@@ -1,27 +1,9 @@
-/*  This file is part of LoAT.
- *  Copyright (c) 2018-2019 Florian Frohn
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses>.
- */
-
 #include "loopacceleration.hpp"
 #include "smtfactory.hpp"
 #include "recurrence.hpp"
 #include "accelerationproblem.hpp"
 #include "chain.hpp"
 #include "loopcomplexity.hpp"
-#include "ruleresult.hpp"
 #include "rulepreprocessing.hpp"
 
 #include <numeric>
@@ -40,10 +22,9 @@ std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     unsigned period {1};
     do {
         changed = false;
-        RuleResult chained {Chaining::chain(res, res).first};
-        chained.concat(Preprocess::preprocessRule(*chained));
-        if (LoopComplexity::compute(res) > LoopComplexity::compute(*chained)) {
-            res = *chained;
+        const auto chained {Chaining::chain(res, res).first};
+        if (LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
+            res = chained;
             period *= 2;
             changed = true;
         }
@@ -59,9 +40,7 @@ void LoopAcceleration::chain() {
 
 void LoopAcceleration::store_nonterm(const AccelerationProblem::Accelerator &accelerator) {
     if (accelerator.nonterm) {
-        res.nonterm = acceleration::Nonterm();
-        res.nonterm->proof = accelerator.proof;
-        res.nonterm->certificate = bools::mkAnd(accelerator.formula);
+        res.nonterm = bools::mkAnd(accelerator.formula);
     }
 }
 
@@ -166,7 +145,6 @@ void LoopAcceleration::accelerate() {
         const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
         if (accelerator) {
             res.accel = acceleration::Accel(Rule(bools::mkAnd(accelerator->formula), rec->closed_form));
-            res.accel->proof = accelerator->proof;
             res.accel->covered = bools::mkAnd(accelerator->covered);
             store_nonterm(*accelerator);
         }
@@ -241,13 +219,13 @@ void LoopAcceleration::run() {
             removeTrivialUpdates();
             compute_closed_form();
             accelerate();
-            if (config.tryNonterm && !res.nonterm) {
+            if (config.tryNonterm && res.nonterm == bot()) {
                 try_nonterm();
             }
             prepend_prefix();
             if (res.accel) {
                 res.status = acceleration::Success;
-            } else if (res.nonterm) {
+            } else if (res.nonterm != bot()) {
                 res.status = acceleration::Nonterminating;
             }
         }

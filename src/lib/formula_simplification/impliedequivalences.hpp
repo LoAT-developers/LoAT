@@ -1,6 +1,6 @@
 #pragma once
 
-#include "subs.hpp"
+#include "boolsubs.hpp"
 #include "theory.hpp"
 
-Subs impliedEquivalences(const Bools::Expr e);
+BoolSubs impliedEquivalences(const Bools::Expr e);

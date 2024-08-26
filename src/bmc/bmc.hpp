@@ -4,7 +4,6 @@
 
 #include "itsproblem.hpp"
 #include "z3.hpp"
-#include "itsproof.hpp"
 #include "smtfactory.hpp"
 
 class BMC {
@@ -21,7 +20,6 @@ private:
     VarSet vars {};
     std::unordered_map<Var, Var> post_vars {};
     unsigned depth {0};
-    ITSProof proof {};
 
     Bools::Expr encode_transition(const TransIdx idx);
     void unsat();

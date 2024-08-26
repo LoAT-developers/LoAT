@@ -5,7 +5,6 @@
 #include "itsproblem.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
-#include "itsproof.hpp"
 #include "vector.hpp"
 
 class ABMC {
@@ -42,7 +41,6 @@ private:
     std::optional<TransIdx> shortcut {};
     std::unordered_map<Int, TransIdx> rule_map {};
     int next {0};
-    ITSProof proof {};
     DependencyGraph<Implicant> dependency_graph {};
     unsigned depth {0};
 

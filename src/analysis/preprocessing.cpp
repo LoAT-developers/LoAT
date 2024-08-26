@@ -1,96 +1,83 @@
-/*  This file is part of LoAT.
- *  Copyright (c) 2015-2016 Matthias Naaf, RWTH Aachen University, Germany
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses>.
- */
-
+#include "pair.hpp"
+#include "dependencygraph.hpp"
 #include "preprocessing.hpp"
-#include "rulepreprocessing.hpp"
-#include "loopacceleration.hpp"
 #include "chain.hpp"
 #include "config.hpp"
-#include "theory.hpp"
 #include "formulapreprocessing.hpp"
+#include "loopacceleration.hpp"
+#include "rulepreprocessing.hpp"
 #include "smtfactory.hpp"
+#include "theory.hpp"
 
 #include <numeric>
 #include <unordered_set>
 
 using namespace std;
 
-ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its, bool forward) {
+bool remove_irrelevant_clauses(ITSProblem &its, bool forward) {
     std::unordered_set<TransIdx> keep;
     std::stack<TransIdx> todo;
-    for (const auto x: forward ? its.getInitialTransitions() : its.getSinkTransitions()) {
+    for (const auto x : forward ? its.getInitialTransitions() : its.getSinkTransitions()) {
         todo.push(x);
     }
     do {
         const TransIdx current = todo.top();
         todo.pop();
         keep.insert(current);
-        for (const auto p: forward ? its.getSuccessors(current) : its.getPredecessors(current)) {
+        for (const auto p : forward ? its.getSuccessors(current) : its.getPredecessors(current)) {
             if (keep.find(p) == keep.end()) {
                 todo.push(p);
             }
         }
     } while (!todo.empty());
     std::vector<TransIdx> to_delete;
-    for (const auto &r: its.getAllTransitions()) {
+    for (const auto &r : its.getAllTransitions()) {
         if (keep.find(&r) == keep.end()) {
             to_delete.push_back(&r);
         }
     }
     linked_hash_set<TransIdx> deleted;
-    for (const auto idx: to_delete) {
+    for (const auto idx : to_delete) {
         its.removeRule(idx);
         deleted.insert(idx);
     }
-    ResultViaSideEffects ret;
-    if (!deleted.empty()) {
-        ret.succeed();
-        ret.deletionProof(deleted);
+    if (deleted.empty()) {
+        return false;
+    } else {
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "removed the following irrelevant transitions: " << deleted << std::endl;
+        }
+        return true;
     }
-    return ret;
 }
 
-ResultViaSideEffects remove_irrelevant_clauses(ITSProblem &its) {
-    auto res {remove_irrelevant_clauses(its, true)};
-    res.concat(remove_irrelevant_clauses(its, false));
-    return res;
+bool remove_irrelevant_clauses(ITSProblem &its) {
+    return remove_irrelevant_clauses(its, true) || remove_irrelevant_clauses(its, false);
 }
 
-ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
-    ResultViaSideEffects res;
-    bool changed {false};
+bool chainLinearPaths(ITSProblem &its) {
+    auto success{false};
+    bool changed{false};
     do {
         changed = false;
-        for (const auto &first: its.getAllTransitions()) {
-            const auto succ {its.getSuccessors(&first)};
+        for (const auto &first : its.getAllTransitions()) {
+            const auto succ{its.getSuccessors(&first)};
             if (succ.size() == 1 && !succ.contains(&first)) {
-                const auto second_idx {*succ.begin()};
+                const auto second_idx{*succ.begin()};
                 if (!its.isSimpleLoop(second_idx)) {
-                    res.succeed();
-                    const auto chained {Chaining::chain(first, *second_idx).first};
+                    success = true;
+                    const auto chained{Chaining::chain(first, *second_idx).first};
                     its.addRule(chained, &first, second_idx);
-                    res.chainingProof(first, *second_idx, chained);
                     linked_hash_set<TransIdx> deleted;
                     deleted.insert(&first);
                     if (its.getPredecessors(second_idx).size() == 1) {
                         deleted.insert(second_idx);
                     }
-                    res.deletionProof(deleted);
-                    for (const auto &idx: deleted) {
+                    if (Config::Analysis::doLogPreproc()) {
+                        std::cout << "chaining\n\trule 1: " << first << "\n\trule 2: " << *second_idx << "\n\tresult: " << chained << std::endl;
+                        std::cout << "removed the following rules after chaining: " << deleted << std::endl;
+                    }
+                    for (const auto &idx : deleted) {
                         its.removeRule(idx);
                     }
                     changed = true;
@@ -99,27 +86,27 @@ ResultViaSideEffects chainLinearPaths(ITSProblem &its) {
             }
         }
     } while (changed);
-    return res;
+    return success;
 }
 
 Clause chain(const Clause &c1, const Clause &c2) {
     assert(c1.get_conclusion() && c1.get_conclusion()->get_pred() == c2.get_premise()->get_pred());
     Subs subs1;
-    for (const auto &x: c2.vars()) {
+    for (const auto &x : c2.vars()) {
         subs1.put(x, theory::toExpr(theory::next(x)));
     }
-    const Clause c3 {c2.subs(subs1)};
+    const Clause c3{c2.subs(subs1)};
     Subs subs2;
-    const auto &c1_args {c1.get_conclusion()->get_args()};
-    const auto &c3_args {c3.get_premise()->get_args()};
+    const auto &c1_args{c1.get_conclusion()->get_args()};
+    const auto &c3_args{c3.get_premise()->get_args()};
     for (unsigned i = 0; i < c3_args.size(); ++i) {
         subs2.put(c3_args[i], theory::toExpr(c1_args[i]));
     }
     Clause res;
-    if (const auto p {c1.get_premise()}) {
+    if (const auto p{c1.get_premise()}) {
         res.set_premise(p->subs(subs2));
     }
-    if (const auto c {c3.get_conclusion()}) {
+    if (const auto c{c3.get_conclusion()}) {
         res.set_conclusion(c->subs(subs2));
     }
     res.set_constraint(subs2(c1.get_constraint()) && subs2(c3.get_constraint()));
@@ -127,9 +114,9 @@ Clause chain(const Clause &c1, const Clause &c2) {
 }
 
 bool Preprocess::chainLinearPaths(CHCProblem &chcs) {
-    auto success {false};
-    DependencyGraph<const Clause*> dg;
-    const auto &clauses {chcs.get_clauses()};
+    auto success{false};
+    DependencyGraph<const Clause *> dg;
+    const auto &clauses{chcs.get_clauses()};
     for (auto it1 = clauses.begin(); it1 != clauses.end(); ++it1) {
         for (auto it2 = it1; it2 != clauses.end(); ++it2) {
             if (it1->get_conclusion() && it1->get_conclusion()->get_pred() == it2->get_premise()->get_pred()) {
@@ -140,20 +127,20 @@ bool Preprocess::chainLinearPaths(CHCProblem &chcs) {
             }
         }
     }
-    bool changed {false};
+    bool changed{false};
     do {
         changed = false;
-        for (const auto &first: chcs.get_clauses()) {
-            const auto succ {dg.getSuccessors(&first)};
+        for (const auto &first : chcs.get_clauses()) {
+            const auto succ{dg.getSuccessors(&first)};
             if (succ.size() == 1 && !succ.contains(&first)) {
-                const auto second_idx {*succ.begin()};
+                const auto second_idx{*succ.begin()};
                 if (!dg.hasEdge(second_idx, second_idx)) {
                     success = true;
-                    const auto chained {chcs.add_clause(chain(first, *second_idx))};
-                    for (const auto &s: dg.getSuccessors(second_idx)) {
+                    const auto chained{chcs.add_clause(chain(first, *second_idx))};
+                    for (const auto &s : dg.getSuccessors(second_idx)) {
                         dg.addEdge(chained, s);
                     }
-                    for (const auto &p: dg.getPredecessors(&first)) {
+                    for (const auto &p : dg.getPredecessors(&first)) {
                         dg.addEdge(p, chained);
                     }
                     linked_hash_set<const Clause *> deleted;
@@ -161,7 +148,7 @@ bool Preprocess::chainLinearPaths(CHCProblem &chcs) {
                     if (dg.getPredecessors(second_idx).size() == 1) {
                         deleted.insert(second_idx);
                     }
-                    for (const auto idx: deleted) {
+                    for (const auto idx : deleted) {
                         dg.removeNode(idx);
                         chcs.remove_clause(*idx);
                     }
@@ -174,157 +161,146 @@ bool Preprocess::chainLinearPaths(CHCProblem &chcs) {
     return success;
 }
 
-ResultViaSideEffects preprocessRules(ITSProblem &its) {
-    ResultViaSideEffects ret;
+bool preprocessRules(ITSProblem &its) {
+    auto success{false};
     linked_hash_map<TransIdx, Rule> replacements;
-    for (const auto &r: its.getAllTransitions()) {
-        const auto res = Preprocess::preprocessRule(r);
-        if (res) {
-            ret.succeed();
+    for (const auto &r : its.getAllTransitions()) {
+        if (const auto res {Preprocess::preprocessRule(r)}) {
+            success = true;
             replacements.emplace(&r, *res);
-            ret.storeSubProof(res.getProof());
         }
     }
-    for (const auto &[idx, replacement]: replacements) {
+    for (const auto &[idx, replacement] : replacements) {
         its.replaceRule(idx, replacement);
     }
-    return ret;
+    return success;
 }
 
 /**
  * Motivating example: f(x,y) -> f(-x,z) :|: (y=0 /\ z=1) \/ (y=1 /\ z=0)
  * In contrast to its implicants, it can be unrolled to obtain simpler closed forms.
  */
-ResultViaSideEffects unroll(ITSProblem &its) {
-    ResultViaSideEffects ret;
-    for (const auto &r: its.getAllTransitions()) {
+bool unroll(ITSProblem &its) {
+    auto success{false};
+    for (const auto &r : its.getAllTransitions()) {
         if (its.isSimpleLoop(&r) && !r.getGuard()->isConjunction()) {
             const auto [res, period] = LoopAcceleration::chain(r);
             if (period > 1) {
-                RuleResult rr {res};
-                rr.ruleTransformationProof(r, "Unrolling", res);
-                rr.concat(Preprocess::preprocessRule(res));
-                ret.succeed();
-                ret.storeSubProof(rr.getProof());
-                its.addRule(*rr, &r, &r);
+                success = true;
+                if (Config::Analysis::doLogPreproc()) {
+                    std::cout
+                        << "unrolled the following rule " << period << " times:\n"
+                        << r
+                        << "\nresult:\n"
+                        << res << std::endl;
+                }
+                its.addRule(res, &r, &r);
             }
         }
     }
-    return ret;
+    return success;
 }
 
-ResultViaSideEffects refine_dependency_graph(ITSProblem &its) {
-    ResultViaSideEffects res;
-    const auto is_edge = [](const TransIdx fst, const TransIdx snd){
+bool refine_dependency_graph(ITSProblem &its) {
+    const auto is_edge = [](const TransIdx fst, const TransIdx snd) {
         return SmtFactory::check(Chaining::chain(*fst, *snd).first.getGuard()) == Sat;
     };
-    const auto removed {its.refineDependencyGraph(is_edge)};
-    if (!removed.empty()) {
-        res.succeed();
-        res.dependencyGraphRefinementProof(removed);
+    const auto removed{its.refineDependencyGraph(is_edge)};
+    if (removed.empty()) {
+        return false;
+    } else {
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "removed the following edges from the dependency graph: " << removed << std::endl;
+        }
+        return true;
     }
-    return res;
 }
 
-ResultViaSideEffects Preprocess::preprocess(ITSProblem &its) {
-    ResultViaSideEffects res;
-    ResultViaSideEffects sub_res;
-    if (Config::Analysis::log) {
+bool Preprocess::preprocess(ITSProblem &its) {
+    auto success {false};
+    if (Config::Analysis::doLogPreproc()) {
         std::cout << "starting preprocesing..." << std::endl;
     }
     if (Config::Analysis::reachability()) {
-        if (Config::Analysis::log) {
+        if (Config::Analysis::doLogPreproc()) {
             std::cout << "removing irrelevant clauses..." << std::endl;
         }
-        sub_res = remove_irrelevant_clauses(its);
-        if (Config::Analysis::log) {
+        success |= remove_irrelevant_clauses(its);
+        if (Config::Analysis::doLogPreproc()) {
             std::cout << "finished removing irrelevant clauses" << std::endl;
         }
-        if (sub_res) {
-            res.succeed();
-            res.majorProofStep("Removed Irrelevant Clauses", sub_res.getProof(), its);
-        }
     }
-    if (Config::Analysis::log) {
+    if (Config::Analysis::doLogPreproc()) {
         std::cout << "chaining linear paths..." << std::endl;
     }
-    sub_res = chainLinearPaths(its);
-    if (Config::Analysis::log) {
+    success |= chainLinearPaths(its);
+    if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished chaining linear paths" << std::endl;
     }
-    if (sub_res) {
-        res.succeed();
-        res.majorProofStep("Chained Linear Paths", sub_res.getProof(), its);
-    }
-    if (Config::Analysis::log) {
+    if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing rules..." << std::endl;
     }
-    sub_res = preprocessRules(its);
-    if (Config::Analysis::log) {
+    success |= preprocessRules(its);
+    if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished preprocessing rules" << std::endl;
     }
-    if (sub_res) {
-        res.succeed();
-        res.majorProofStep("Preprocessed Transitions", sub_res.getProof(), its);
-    }
     if (Config::Analysis::engine == Config::Analysis::ADCL) {
-            if (Config::Analysis::log) {
-                std::cout << "unrolling..." << std::endl;
-            }
-            sub_res = unroll(its);
-            if (Config::Analysis::log) {
-                std::cout << "finished unrolling" << std::endl;
-            }
-            if (sub_res) {
-                res.succeed();
-                res.majorProofStep("Unrolled Loops", sub_res.getProof(), its);
-            }
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "unrolling..." << std::endl;
+        }
+        success |= unroll(its);
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "finished unrolling" << std::endl;
+        }
         if (its.size() <= 1000) {
-            if (Config::Analysis::log) {
+            if (Config::Analysis::doLogPreproc()) {
                 std::cout << "refining the dependency graph..." << std::endl;
             }
-            sub_res = refine_dependency_graph(its);
-            if (Config::Analysis::log) {
+            success |= refine_dependency_graph(its);
+            if (Config::Analysis::doLogPreproc()) {
                 std::cout << "finished refining the dependency graph" << std::endl;
             }
-            if (sub_res) {
-                res.succeed();
-                res.majorProofStep("Refined Dependency Graph", sub_res.getProof(), its);
-            }
         }
     }
-    return res;
+    return success;
 }
 
-Result<SafetyProblem, Proof> Preprocess::preprocess(const SafetyProblem &p) {
-    Result<SafetyProblem, Proof> res {p};
-    Result<Bools::Expr, Proof> init {Preprocess::preprocessFormula(p.init(), theory::isTempVar)};
-    if (init) {
-        res.append("Preprocessed Initial States");
-        res.appendAll(*init);
-        res.succeed();
-        res->set_init(*init);
-        res.storeSubProof(init.getProof());
+bool Preprocess::preprocess(SafetyProblem &p) {
+    auto success {false};
+    const auto init{Preprocess::preprocessFormula(p.init(), theory::isTempVar)};
+    if (init != p.init()) {
+        success = true;
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "preprocessed initial states\n\told: " << p.init() << "\n\tnew: " << init << std::endl;
+        }
+        p.set_init(init);
     }
-    auto first {true};
-    for (const auto &t: p.trans()) {
-        if (const auto preproc {Preprocess::preprocessFormula(t, theory::isTempVar)}) {
-            if (first) {
-                res.append("Preprocessed Transitions");
-                first = false;
-            }
-            res.succeed();
-            res->replace_transition(t, *preproc);
-            res.storeSubProof(preproc.getProof());
+    linked_hash_map<Bools::Expr, Bools::Expr> replacements;
+    for (const auto &t : p.trans()) {
+        const auto trans{Preprocess::preprocessFormula(t, theory::isTempVar)};
+        if (trans != t) {
+            replacements.emplace(t, trans);
         }
     }
-    Result<Bools::Expr, Proof> err {Preprocess::preprocessFormula(p.err(), theory::isTempVar)};
-    if (err) {
-        res.append("Preprocessed Error States");
-        res.appendAll(*err);
-        res.succeed();
-        res->set_err(*err);
-        res.storeSubProof(err.getProof());
+    if (!replacements.empty()) {
+        success = true;
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "preprocessed transitions\n";
+        }
+        for (const auto &[o,n]: replacements) {
+            if (Config::Analysis::doLogPreproc()) {
+               std::cout << "\told: " << o << "\n\tnew: " << n << std::endl;
+            }
+            p.replace_transition(o, n);
+        }
     }
-    return res;
+    const auto err{Preprocess::preprocessFormula(p.err(), theory::isTempVar)};
+    if (err != p.err()) {
+        success = true;
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "preprocessed error states\n\told: " << p.err() << "\n\tnew: " << err << std::endl;
+        }
+        p.set_err(err);
+    }
+    return success;
 }

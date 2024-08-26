@@ -1,7 +1,7 @@
 #include "impliedequivalences.hpp"
 
-Subs impliedEquivalences(const Bools::Expr e) {
-    Subs res;
+BoolSubs impliedEquivalences(const Bools::Expr e) {
+    BoolSubs res;
     std::vector<Bools::Expr> todo;
     const auto find_elim = [](const Bools::Expr &c) {
         std::optional<Bools::Var> elim;

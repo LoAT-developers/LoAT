@@ -1,8 +1,6 @@
 #pragma once
 
 #include "itsproblem.hpp"
-#include "itsresult.hpp"
-#include "ruleresult.hpp"
 #include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
 #include "smt.hpp"
@@ -98,13 +96,13 @@ class Succeeded final: public LearningState {
     /**
      * the indices of the learned clause
      */
-    ITSResult<LearnedClauses> learned;
+    LearnedClauses learned;
 
 public:
-    Succeeded(const ITSResult<LearnedClauses> &learned);
+    Succeeded(const LearnedClauses &learned);
     std::optional<Succeeded> succeeded() override;
-    const ITSResult<LearnedClauses>& operator*() const;
-    const ITSResult<LearnedClauses>* operator->() const;
+    const LearnedClauses& operator*() const;
+    const LearnedClauses* operator->() const;
 };
 
 class Covered final: public LearningState {
@@ -113,12 +111,9 @@ class Covered final: public LearningState {
 
 class Dropped final: public LearningState {
 
-    ITSProof proof;
-
 public:
-    Dropped(const ITSProof &proof);
+    Dropped();
     std::optional<Dropped> dropped() override;
-    const ITSProof& get_proof() const;
 };
 
 class Unroll final: public LearningState {
@@ -142,13 +137,10 @@ public:
 };
 
 class ProvedUnsat final: public LearningState {
-    ITSProof proof;
 
 public:
-    ProvedUnsat(const ITSProof &proof);
+    ProvedUnsat();
     std::optional<ProvedUnsat> unsat() override;
-    ITSProof& operator*();
-    ITSProof* operator->();
 };
 
 class Restart final: public LearningState {
@@ -158,8 +150,6 @@ class Restart final: public LearningState {
 class Reachability {
 
     ITSProblem &chcs;
-
-    ITSProof proof {};
 
     SmtPtr solver {SmtFactory::solver()};
 
@@ -208,7 +198,7 @@ class Reachability {
 
     void update_cpx();
 
-    RuleResult instantiate(const Arith::Var n, const Rule &rule) const;
+    std::optional<Rule> instantiate(const Arith::Var n, const Rule &rule) const;
 
     /**
      * initializes all data structures after preprocessing

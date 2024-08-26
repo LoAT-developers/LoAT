@@ -6,25 +6,22 @@
 
 using namespace RuleExport;
 using namespace std;
-namespace Color = Config::Color;
 
 /**
  * Helper that prints the location's name or (if it has no name) its index to the given stream
  */
-static void printLocation(LocationIdx loc, const ITSProblem &its, std::ostream &s, bool colors) {
-    if (colors) printColor(s, Color::Location);
+static void printLocation(LocationIdx loc, const ITSProblem &its, std::ostream &s) {
     s << its.getPrintableLocationName(loc);
-    if (colors) printColor(s, Color::None);
 }
 
 void ITSExport::printForProof(const ITSProblem &its, std::ostream &s) {
     s << "Start location: ";
-    printLocation(its.getInitialLocation(), its, s, true);
+    printLocation(its.getInitialLocation(), its, s);
     s << endl << endl;
     if (!its.getLocations().empty()) {
         s << "Location map:" << std::endl;
         for (const auto p: its.getLocations()) {
-            printLocation(p, its, s, true);
+            printLocation(p, its, s);
             s << " -> " << p << std::endl;
         }
     }

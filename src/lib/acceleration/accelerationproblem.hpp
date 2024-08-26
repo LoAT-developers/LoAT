@@ -5,7 +5,6 @@
 #include "rule.hpp"
 #include "smt.hpp"
 #include "theory.hpp"
-#include "proof.hpp"
 #include "recurrence.hpp"
 #include "accelconfig.hpp"
 
@@ -21,7 +20,6 @@ public:
 
     struct Accelerator {
         std::vector<Bools::Expr> formula{};
-        Proof proof{};
         std::vector<Bools::Expr> covered{};
         bool nonterm {true};
     };

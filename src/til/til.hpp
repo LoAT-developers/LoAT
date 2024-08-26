@@ -8,7 +8,6 @@
 #include "safetyproblem.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
-#include "proof.hpp"
 #include "dependencygraph.hpp"
 #include "linkedhashmap.hpp"
 #include "config.hpp"
@@ -89,7 +88,6 @@ private:
     rule_map_t rule_map {};
     const Arith::Var trace_var {ArithVar::next()};
     const Arith::Var n {ArithVar::next()};
-    Proof proof {};
     DependencyGraph<Bools::Expr> dependency_graph {};
     unsigned depth {0};
     Bools::Expr step {bot()};

@@ -5,6 +5,7 @@
 #include "boolexpr.hpp"
 #include "relevantvariables.hpp"
 #include "theory.hpp"
+#include "config.hpp"
 
 AccelerationProblem::PolyAccelMode AccelerationProblem::polyaccel {PolyAccelMode::LowDegree};
 
@@ -49,8 +50,9 @@ AccelerationProblem::AccelerationProblem(
 bool AccelerationProblem::trivial(const Lit &lit) {
     if (update(lit) == top()) {
         res.formula.push_back(bools::mkLit(lit));
-        res.proof.newline();
-        res.proof.append(std::stringstream() << lit << ": trivial");
+        if (Config::Analysis::doLogAccel()) {
+            std::cout << lit << ": trivial" << std::endl;
+        }
         solver->add(bools::mkLit(lit));
         return true;
     }
@@ -60,8 +62,9 @@ bool AccelerationProblem::trivial(const Lit &lit) {
 bool AccelerationProblem::unchanged(const Lit &lit) {
     if (bools::mkLit(lit) == update(lit)) {
         res.formula.push_back(bools::mkLit(lit));
-        res.proof.newline();
-        res.proof.append(std::stringstream() << lit << ": unchanged");
+        if (Config::Analysis::doLogAccel()) {
+            std::cout << lit << ": unchanged" << std::endl;
+        }
         return true;
     }
     return false;
@@ -170,9 +173,10 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     const auto c {bools::mkAndFromLits(covered)};
     res.formula.push_back(g);
     res.covered.push_back(c);
-    res.proof.newline();
-    res.proof.append(std::stringstream() << lit << ": polynomial acceleration yields " << g << std::endl);
-    res.proof.append(std::stringstream() << "covered: " << c);
+    if (Config::Analysis::doLogAccel()) {
+        std::cout << lit << ": polynomial acceleration yields " << g << std::endl;
+        std::cout << "covered: " << c << std::endl;
+    }
     solver->add(bools::mkLit(lit));
     return true;
 }
@@ -194,8 +198,9 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
                 g = g && bools::mkLit(lit);
             }
             res.formula.push_back(g);
-            res.proof.newline();
-            res.proof.append(std::stringstream() << lit << ": montonic decrease yields " << g);
+            if (Config::Analysis::doLogAccel()) {
+                std::cout << lit << ": montonic decrease yields " << g << std::endl;
+            }
             res.nonterm = false;
         }
     }
@@ -212,8 +217,9 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
     if (success) {
         const auto g {bools::mkLit(lit)};
         res.formula.push_back(g);
-        res.proof.newline();
-        res.proof.append(std::stringstream() << lit << ": montonic increase yields " << g);
+        if (Config::Analysis::doLogAccel()) {
+            std::cout << lit << ": montonic increase yields " << g << std::endl;
+        }
     }
     solver->pop();
     return success;
@@ -236,8 +242,9 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
             success = true;
             const auto g {bools::mkAndFromLits({rel, rel->subs(closed->closed_form.get<Arith>())->subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})})};
             res.formula.push_back(g);
-            res.proof.newline();
-            res.proof.append(std::stringstream() << rel << ": eventual decrease yields " << g);
+            if (Config::Analysis::doLogAccel()) {
+                std::cout << rel << ": eventual decrease yields " << g << std::endl;
+            }
             res.nonterm = false;
         }
     }
@@ -284,9 +291,10 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
             }
             res.formula.push_back(g);
             res.covered.push_back(c);
-            res.proof.newline();
-            res.proof.append(std::stringstream() << rel << ": eventual increase yields " << g);
-            res.proof.append(std::stringstream() << "covered: " << c);
+            if (Config::Analysis::doLogAccel()) {
+                std::cout << rel << ": eventual increase yields " << g << std::endl;
+                std::cout << "covered: " << c << std::endl;
+            }
             return true;
         }
     }
@@ -317,9 +325,10 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     if (solver->check() == Sat) {
         res.formula.push_back(g);
         res.covered.push_back(c);
-        res.proof.newline();
-        res.proof.append(std::stringstream() << lit << ": fixpoint yields " << g);
-        res.proof.append(std::stringstream() << "covered: " << c);
+        if (Config::Analysis::doLogAccel()) {
+            std::cout << lit << ": fixpoint yields " << g << std::endl;
+            std::cout << "covered: " << c << std::endl;
+        }
         return true;
     }
     solver->pop();

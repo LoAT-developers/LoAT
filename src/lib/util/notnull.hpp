@@ -424,7 +424,7 @@ inline namespace bitwizeshift {
     /// \brief Contextually convertible to bool
     ///
     /// This is always true
-    constexpr explicit operator bool() const noexcept;
+    // constexpr explicit operator bool() const noexcept;
 
     //-------------------------------------------------------------------------
 
@@ -801,13 +801,13 @@ auto NOT_NULL_NS_IMPL::not_null<T>::get()
   return detail::mark_nonnull(detail::not_null_to_address(m_pointer));
 }
 
-template <typename T>
-inline constexpr NOT_NULL_INLINE_VISIBILITY
-NOT_NULL_NS_IMPL::not_null<T>::operator bool()
-  const noexcept
-{
-  return true;
-}
+// template <typename T>
+// inline constexpr NOT_NULL_INLINE_VISIBILITY
+// NOT_NULL_NS_IMPL::not_null<T>::operator bool()
+//   const noexcept
+// {
+//   return true;
+// }
 
 //-----------------------------------------------------------------------------
 

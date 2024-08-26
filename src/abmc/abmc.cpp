@@ -176,22 +176,10 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         }
     }
     const auto nonterm_to_query = [this](const Rule &rule, const acceleration::Result &accel_res) {
-        if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
-            query = query || accel_res.nonterm->certificate;
-            RuleProof nonterm_proof;
-            std::stringstream ss;
-            ss << "Original rule:" << std::endl;
-            RuleExport::printRule(rule, ss);
-            ss << std::endl;
-            nonterm_proof.append(ss);
-            ss << "Certificate:" << std::endl;
-            ss << accel_res.nonterm->certificate;
-            nonterm_proof.append(ss);
-            nonterm_proof.storeSubProof(accel_res.nonterm->proof);
-            proof.majorProofStep("Certificate of non-termination", nonterm_proof, its);
+        if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
+            query = query || accel_res.nonterm;
             if (Config::Analysis::log) {
-                std::cout << "found certificate of non-termination" << std::endl;
-                std::cout << accel_res.nonterm->certificate << std::endl;
+                std::cout << "found certificate of non-termination\n" << accel_res.nonterm << std::endl;
             }
         }
     };
@@ -232,13 +220,6 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                     .covered = accel_res.accel->covered,
                     .deterministic = deterministic};
                 map.emplace(accel_res.accel->covered, loop);
-                RuleProof sub_proof, acceleration_proof;
-                acceleration_proof.storeSubProof(simp.getProof());
-                acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
-                acceleration_proof.storeSubProof(accel_res.accel->proof);
-                sub_proof.concat(acceleration_proof);
-                sub_proof.concat(simplified.getProof());
-                proof.majorProofStep("Accelerate", sub_proof, its);
                 if (Config::Analysis::log) {
                     std::cout << "accelerated rule, idx " << new_idx->getId() << std::endl;
                     RuleExport::printRule(*simplified, std::cout);
@@ -269,24 +250,16 @@ Bools::Expr ABMC::encode_transition(const TransIdx idx, const bool with_id) {
 void ABMC::unknown() {
     const auto str = Config::Analysis::reachability() ? "unknown" : "MAYBE";
     std::cout << str << std::endl;
-    proof.result(str);
-    proof.print();
 }
 
 void ABMC::unsat() {
     const auto str = Config::Analysis::reachability() ? "unsat" : "NO";
     std::cout << str << std::endl;
-    proof.append("reached error location at depth " + std::to_string(depth));
-    proof.result(str);
-    proof.print();
 }
 
 void ABMC::sat() {
     const auto str = Config::Analysis::reachability() ? "sat" : "MAYBE";
     std::cout << str << std::endl;
-    proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
-    proof.result(str);
-    proof.print();
 }
 
 void ABMC::build_trace() {
@@ -336,14 +309,9 @@ void ABMC::analyze() {
         std::cout << "initial ITS" << std::endl;
         its.print(std::cout);
     }
-    proof.majorProofStep("Initial ITS", ITSProof(), its);
-    const auto res{Preprocess::preprocess(its)};
-    if (res) {
-        proof.concat(res.getProof());
-        if (Config::Analysis::log) {
-            std::cout << "Simplified ITS" << std::endl;
-            ITSExport::printForProof(its, std::cout);
-        }
+    if (Preprocess::preprocess(its) && Config::Analysis::log) {
+        std::cout << "Simplified ITS" << std::endl;
+        ITSExport::printForProof(its, std::cout);
     }
     vars.insertAll(its.getVars());
     for (const auto &var: vars) {
