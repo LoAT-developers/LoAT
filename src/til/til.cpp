@@ -456,8 +456,7 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model mode
         std::cout << "post: " << post << std::endl;
     }
     auto res{pre && step && post};
-    // return removeRedundantInequations(res);
-    return res;
+    return removeRedundantInequations(res);
 }
 
 void TIL::handle_loop(const Range &range) {
