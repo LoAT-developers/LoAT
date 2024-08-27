@@ -56,7 +56,7 @@ ReversibleCHCToITS chcs_to_its(CHCProblem chcs) {
         bvars.emplace_back(BoolVar::nextProgVar());
     }
     for (const Clause &c: chcs.get_clauses()) {
-        const auto disjuncts = c.get_constraint()->isOr() ? c.get_constraint()->getChildren() : BoolExprSet{c.get_constraint()};
+        const auto disjuncts {c.get_constraint()->get_disjuncts()};
         for (const auto &g: disjuncts) {
             Subs ren;
             // replace the arguments of the body predicate with the corresponding program variables

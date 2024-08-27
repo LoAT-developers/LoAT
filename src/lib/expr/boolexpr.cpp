@@ -133,6 +133,38 @@ sexpresso::Sexp BoolExpr::to_smtlib(const std::function<std::string(const Var &)
     return res;
 }
 
+BoolExprSet BoolExpr::get_disjuncts() const {
+    if (isOr()) {
+        return getChildren();
+    } else if (isAnd()) {
+        const auto children {getChildren()};
+        std::optional<Bools::Expr> disj;
+        BoolExprSet lits;
+        for (const auto &x: children) {
+            if (x->isOr()) {
+                if (disj) {
+                    return BoolExprSet({cpp::assume_not_null(shared_from_this())});
+                } else {
+                    disj = x;
+                }
+            } else {
+                assert(x->isTheoryLit());
+                lits.insert(x);
+            }
+        }
+        if (disj) {
+            BoolExprSet res;
+            const auto l {bools::mkAnd(lits)};
+            for (const auto &x: (*disj)->getChildren()) {
+                res.insert(l && x);
+            }
+            return res;
+        } else {
+            return BoolExprSet({cpp::assume_not_null(shared_from_this())});
+        }
+    }
+}
+
 linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var n) const {
     linked_hash_set<Bound> bounds;
     getBounds(n, bounds);
