@@ -143,12 +143,14 @@ bool refine_dependency_graph(ITSProblem &its) {
 
 std::optional<SmtResult> check_sat(ITSProblem &its) {
     std::vector<TransIdx> remove;
-    for (const auto &r: its.getAllTransitions()) {
-        const auto smt_res {SmtFactory::check(r.getGuard())};
-        if (smt_res == SmtResult::Unsat) {
-            remove.push_back(&r);
-        } else if (smt_res == SmtResult::Sat && its.isInitialTransition(&r) && its.isSinkTransition(&r)) {
+    for (const auto &r: its.getInitialTransitions()) {
+        if (its.isSinkTransition(r)) {
+            const auto smt_res {SmtFactory::check(r->getGuard())};
+            if (smt_res == SmtResult::Sat) {
                 return SmtResult::Unsat;
+            } else if (smt_res == SmtResult::Unsat) {
+                remove.emplace_back(r);
+            }
         }
     }
     for (const auto &r: remove) {
