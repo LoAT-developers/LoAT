@@ -113,53 +113,19 @@ find_library(CLN cln)
 message(STATUS "cln: ${CLN}")
 find_library(GMP gmp)
 message(STATUS "gmp: ${GMP}")
-# find_library(CRAB Crab)
-# message(STATUS "crab: ${CRAB}")
-# find_library(OPTPOLY optpoly)
-# message(STATUS "otppoly: ${OPTPOLY}")
-# find_library(OPTOCT optoct)
-# message(STATUS "otpoct: ${OPTOCT}")
-# find_library(ELINAUX elinaux)
-# message(STATUS "elinaux: ${ELINAUX}")
-# find_library(ELINALINEARIZE elinalinearize)
-# message(STATUS "elinalinearize: ${ELINALINEARIZE}")
-# find_library(PARTITIONS partitions)
-# message(STATUS "partitions: ${PARTITIONS}")
-# find_library(APRONXX apronxx)
-# message(STATUS "apronxx: ${APRONXX}")
-# find_library(APRON apron)
-# message(STATUS "apron: ${APRON}")
-# find_library(POLKAMPQ polkaMPQ)
-# message(STATUS "polkaMPQ: ${POLKAMPQ}")
-# find_library(GMPXX gmpxx)
-# message(STATUS "gmpxx: ${GMPXX}")
-# find_library(MPFR mpfr)
-# message(STATUS "mpfr: ${MPFR}")
 
 target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:sexpresso>
   $<TARGET_OBJECTS:loat_util>
   $<TARGET_OBJECTS:loat_expr>
-  # $<TARGET_OBJECTS:loat_crab>
   $<TARGET_OBJECTS:loat_preprocessing>
   $<TARGET_OBJECTS:loat_smt>
   $<TARGET_OBJECTS:loat_recurrence>
-  $<TARGET_OBJECTS:loat_acceleration>
   $<TARGET_OBJECTS:loat_itsproblem>
+  $<TARGET_OBJECTS:loat_acceleration>
   $<TARGET_OBJECTS:loat_chcproblem>
   $<TARGET_OBJECTS:loat_safetyproblem>
   $<TARGET_OBJECTS:loat_transformations>
-  # ${CRAB}
-  # ${OPTPOLY}
-  # ${OPTOCT}
-  # ${PARTITIONS}
-  # ${ELINALINEARIZE}
-  # ${ELINAUX}
-  # ${APRONXX}
-  # ${GMPXX}
-  # ${POLKAMPQ}
-  # ${APRON}
-  # ${MPFR}
   ${ANTLR4}
   ${FAUDES}
   ${SWINE}
