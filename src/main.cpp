@@ -17,6 +17,7 @@
 #include "version.hpp"
 #include "yices.hpp"
 #include "preprocessing.hpp"
+#include "reverse.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <chrono>
@@ -234,7 +235,7 @@ int main(int argc, char *argv[]) {
         chcs = SexpressoParser::loadFromFile(filename);
         Config::Analysis::model = chcs->get_produce_model();
         if (Config::Analysis::engine == Config::Analysis::TIL && Config::til.mode == Config::TILConfig::Mode::Backward) {
-            chcs = chcs->reverse();
+            chcs = reverse(*chcs);
         }
         chc2its = chcs_to_its(*chcs);
         its = **chc2its;
@@ -285,7 +286,7 @@ int main(int argc, char *argv[]) {
                 break;
             }
             case Config::TILConfig::Mode::Interleaved: {
-                auto reversed_chc2its{chcs_to_its(chcs->reverse())};
+                auto reversed_chc2its{chcs_to_its(reverse(*chcs))};
                 auto reversed{*reversed_chc2its};
                 if (Preprocess::preprocess(*reversed) && Config::Analysis::log) {
                     std::cout << "Simplified reversed ITS\n"
