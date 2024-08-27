@@ -13,6 +13,8 @@
                 "--format", "horn",
                 "--mode", "safety",
                 "--engine", "til",
+                "--til::mode", "interleaved",
+                "--log",
                 "${workspaceFolder}/test.smt2"
             ],
             "stopAtEntry": false,

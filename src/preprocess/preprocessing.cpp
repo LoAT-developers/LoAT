@@ -128,7 +128,7 @@ bool unroll(ITSProblem &its) {
 
 bool refine_dependency_graph(ITSProblem &its) {
     const auto is_edge = [](const TransIdx fst, const TransIdx snd) {
-        return SmtFactory::check(Preprocess::chain(*fst, *snd).first.getGuard()) == Sat;
+        return SmtFactory::check(Preprocess::chain(*fst, *snd).first.getGuard()) == SmtResult::Sat;
     };
     const auto removed{its.refineDependencyGraph(is_edge)};
     if (removed.empty()) {
@@ -154,7 +154,13 @@ std::optional<SmtResult> check_sat(ITSProblem &its) {
     for (const auto &r: remove) {
         its.removeRule(r);
     }
-    return remove.empty() ? std::optional<SmtResult>{} : std::optional{SmtResult::Unknown};
+    if (its.isEmpty()) {
+        return SmtResult::Sat;
+    } else if (remove.empty()) {
+        std::optional<SmtResult>{};
+    } else {
+        return SmtResult::Unknown;
+    }
 }
 
 std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {

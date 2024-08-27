@@ -15,9 +15,9 @@ void Z3::pop() {
 
 SmtResult Z3::check() {
     switch (solver.check()) {
-    case z3::unsat: return Unsat;
-    case z3::unknown: return Unknown;
-    case z3::sat: return Sat;
+    case z3::unsat: return SmtResult::Unsat;
+    case z3::unknown: return SmtResult::Unknown;
+    case z3::sat: return SmtResult::Sat;
     }
     throw std::logic_error("unknown result from SMT solver");
 }

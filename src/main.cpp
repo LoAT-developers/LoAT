@@ -255,18 +255,18 @@ int main(int argc, char *argv[]) {
         std::cout << "Initial ITS\n"
                   << **its << std::endl;
     }
+    yices::init();
     const auto sat_res{Preprocess::preprocess(**its)};
     if (sat_res && sat_res != SmtResult::Unknown && Config::Analysis::safety()) {
-        std::cout << *sat_res << std::endl;
         if (Config::Analysis::log) {
             std::cout << "solved by preprocessing" << std::endl;
         }
+        std::cout << *sat_res << std::endl;
     } else {
         if (Preprocess::preprocess(**its) && Config::Analysis::log) {
             std::cout << "Simplified ITS\n"
                       << **its << std::endl;
         }
-        yices::init();
         switch (Config::Analysis::engine) {
         case Config::Analysis::ADCL:
             reachability::Reachability::analyze(**its);
@@ -285,8 +285,8 @@ int main(int argc, char *argv[]) {
                 break;
             }
             case Config::TILConfig::Mode::Interleaved: {
-                const auto reversed_chc2its{chcs_to_its(chcs->reverse())};
-                auto reversed{**chc2its};
+                auto reversed_chc2its{chcs_to_its(chcs->reverse())};
+                auto reversed{*reversed_chc2its};
                 if (Preprocess::preprocess(*reversed) && Config::Analysis::log) {
                     std::cout << "Simplified reversed ITS\n"
                               << *reversed << std::endl;

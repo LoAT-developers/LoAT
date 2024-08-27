@@ -52,15 +52,15 @@ void Yices::pop() {
 SmtResult Yices::processResult(smt_status status) {
     switch (status) {
     case STATUS_SAT:
-        return Sat;
+        return SmtResult::Sat;
     case STATUS_UNSAT:
-        return Unsat;
+        return SmtResult::Unsat;
     case STATUS_ERROR: {
         std::cerr << yices_error_string() << std::endl;
         throw std::logic_error("error from yices");
     }
     default:
-        return Unknown;
+        return SmtResult::Unknown;
     }
 }
 

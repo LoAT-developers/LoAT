@@ -26,11 +26,11 @@ void Swine::pop() {
 SmtResult Swine::check() {
     switch (solver.check()) {
     case z3::unsat:
-        return Unsat;
+        return SmtResult::Unsat;
     case z3::unknown:
-        return Unknown;
+        return SmtResult::Unknown;
     case z3::sat:
-        return Sat;
+        return SmtResult::Sat;
     }
     throw std::logic_error("unknown result from SMT solver");
 }

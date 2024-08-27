@@ -11,7 +11,10 @@ extern const unsigned default_timeout;
 
 }
 
-enum SmtResult {Sat, Unknown, Unsat};
+enum class SmtResult {Sat, Unknown, Unsat};
+
+std::ostream& operator<<(std::ostream &s, const SmtResult&);
+
 enum Logic {
     /**
      * linear arithmetic

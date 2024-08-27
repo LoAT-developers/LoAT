@@ -24,11 +24,11 @@ void CVC5::pop() {
 SmtResult CVC5::check() {
     const auto res {solver.checkSat()};
     if (res.isSat()) {
-        return Sat;
+        return SmtResult::Sat;
     } else if (res.isUnsat()) {
-        return Unsat;
+        return SmtResult::Unsat;
     } else {
-        return Unknown;
+        return SmtResult::Unknown;
     }
 }
 

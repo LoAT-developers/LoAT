@@ -234,7 +234,7 @@ bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
     solver->push();
     const auto imp {trace.empty() ? implicant : implicant.subs(trace.back().var_renaming)};
     solver->add(imp.getGuard());
-    if (solver->check() == Sat) {
+    if (solver->check() == SmtResult::Sat) {
         const auto new_var_renaming {handle_update(idx)};
         const Step step(idx, implicant.getGuard(), new_var_renaming, compute_resolvent(idx, implicant.getGuard()));
         add_to_trace(step);
@@ -369,15 +369,15 @@ std::optional<Rule> Reachability::resolve(const TransIdx idx) {
     const auto guard {projected_var_renaming(idx->getGuard())};
     solver->add(guard);
     switch (solver->check()) {
-    case Sat: {
+    case SmtResult::Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
         const auto model {solver->model(guard->vars()).composeBackwards(projected_var_renaming)};
         const auto implicant {model.syntacticImplicant(idx->getGuard())};
         return {idx->withGuard(implicant)};
     }
-    case Unknown: {}
+    case SmtResult::Unknown: {}
     [[fallthrough]];
-    case Unsat: {
+    case SmtResult::Unsat: {
         if (block == blocked_clauses.back().end()) {
             blocked_clauses.back()[idx] = {};
         } else {
@@ -528,13 +528,13 @@ bool Reachability::check_consistency() {
     // make sure that a model is available
     bool res {true};
     switch (solver->check()) {
-    case Unsat:
+    case SmtResult::Unsat:
         throw std::logic_error("trace is contradictory");
-    case Unknown:
+    case SmtResult::Unknown:
         std::cerr << "consistency of trace cannot be proven" << std::endl;
         res = false;
         break;
-    case Sat:
+    case SmtResult::Sat:
         break;
     }
     return res;

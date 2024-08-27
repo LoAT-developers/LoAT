@@ -208,11 +208,11 @@ void LoopAcceleration::run() {
     } else {
         chain();
         switch (SmtFactory::check(Preprocess::chain(rule, rule).first.getGuard())) {
-        case Unsat: res.status = acceleration::PseudoLoop;
+        case SmtResult::Unsat: res.status = acceleration::PseudoLoop;
             return;
-        case Unknown: res.status = acceleration::NotSat;
+        case SmtResult::Unknown: res.status = acceleration::NotSat;
             return;
-        case Sat: {
+        case SmtResult::Sat: {
             removeTrivialUpdates();
             compute_closed_form();
             accelerate();

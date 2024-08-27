@@ -189,9 +189,9 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
     const auto updated {update(lit)};
     solver->push();
     solver->add(updated);
-    if (solver->check() == Sat) {
+    if (solver->check() == SmtResult::Sat) {
         solver->add(bools::mkLit(theory::negate(lit)));
-        if (solver->check() == Unsat) {
+        if (solver->check() == SmtResult::Unsat) {
             success = true;
             auto g {Subs::build<Arith>(config.n, config.n->toExpr() - arith::mkConst(1))(closed->closed_form(lit))};
             if (closed->prefix > 0) {
@@ -213,7 +213,7 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
     solver->push();
     solver->add(bools::mkLit(lit));
     solver->add(!updated);
-    const auto success {solver->check() == Unsat};
+    const auto success {solver->check() == SmtResult::Unsat};
     if (success) {
         const auto g {bools::mkLit(lit)};
         res.formula.push_back(g);
@@ -235,10 +235,10 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     const auto dec {arith::mkGeq(rel->lhs(), updated)};
     solver->push();
     solver->add(bools::mkLit(dec));
-    if (solver->check() == Sat) {
+    if (solver->check() == SmtResult::Sat) {
         const auto inc {arith::mkLt(updated, update.get<Arith>()(updated))};
         solver->add(bools::mkLit(inc));
-        if (solver->check() == Unsat) {
+        if (solver->check() == SmtResult::Unsat) {
             success = true;
             const auto g {bools::mkAndFromLits({rel, rel->subs(closed->closed_form.get<Arith>())->subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})})};
             res.formula.push_back(g);
@@ -265,13 +265,13 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     const auto inc {bools::mkLit(i)};
     solver->push();
     solver->add(inc);
-    if (solver->check() == Sat) {
+    if (solver->check() == SmtResult::Sat) {
         // up(t) >(=) up^2(t)
         const auto d {strict ? arith::mkGeq(updated, update.get<Arith>()(updated)) : arith::mkGt(updated, update.get<Arith>()(updated))};
         const auto dec {bools::mkLit(d)};
         solver->push();
         solver->add(dec);
-        const auto success {solver->check() == Unsat};
+        const auto success {solver->check() == SmtResult::Unsat};
         solver->pop();
         if (success) {
             Bools::Expr g {bot()};
@@ -322,7 +322,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
     const auto g {c && bools::mkLit(lit)};
     solver->push();
     solver->add(g);
-    if (solver->check() == Sat) {
+    if (solver->check() == SmtResult::Sat) {
         res.formula.push_back(g);
         res.covered.push_back(c);
         if (Config::Analysis::doLogAccel()) {
@@ -344,7 +344,7 @@ std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes(
             for (auto it = todo.begin(); it != todo.end();) {
                 solver->push();
                 solver->add(bools::mkLit(*it));
-                if (solver->check() != Sat) {
+                if (solver->check() != SmtResult::Sat) {
                     return {};
                 }
                 solver->pop();
@@ -366,7 +366,7 @@ std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes(
         for (auto it = todo.begin(); !progress && it != todo.end();) {
             solver->push();
             solver->add(bools::mkLit(*it));
-            if (solver->check() != Sat) {
+            if (solver->check() != SmtResult::Sat) {
                 return {};
             }
             solver->pop();
@@ -382,7 +382,7 @@ std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes(
         for (auto it = todo.begin(); !progress && it != todo.end();) {
             solver->push();
             solver->add(bools::mkLit(*it));
-            if (solver->check() != Sat) {
+            if (solver->check() != SmtResult::Sat) {
                 return {};
             }
             solver->pop();

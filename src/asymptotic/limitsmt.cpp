@@ -332,7 +332,7 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
                 solver->add(arith::mkEq(varCoeff.at(var), arith::mkConst(0)));
             }
         }
-        if (solver->check() == Sat) {
+        if (solver->check() == SmtResult::Sat) {
             return Complexity::Unbounded;
         }
         solver->pop();
@@ -349,7 +349,7 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
         // non-polynomial cost, try to prove an exponential bound
         solver->push();
         solver->add(expConstraint(templateCost, n));
-        if (solver->check() == Sat) {
+        if (solver->check() == SmtResult::Sat) {
             return Complexity::Exp;
         }
         solver->pop();
@@ -380,7 +380,7 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
         const auto c {coefficients.at(i)};
         solver->push();
         solver->add(arith::mkGt(c, arith::mkConst(0)));
-        if (solver->check() == Sat) {
+        if (solver->check() == SmtResult::Sat) {
             return Complexity::Poly(i);
         }
         solver->pop();

@@ -6,6 +6,7 @@ project(loat_smt CXX)
 
 add_library(${PROJECT_NAME} OBJECT
   smt.hpp
+  smt.cpp
   z3.hpp
   z3.cpp
   z3context.cpp
