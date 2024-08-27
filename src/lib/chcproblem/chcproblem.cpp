@@ -33,7 +33,7 @@ std::ostream& operator<<(std::ostream &s, const Lhs &f) {
 
 std::ostream& operator<<(std::ostream &s, const Clause &c) {
     if (c.premise) {
-        s << "( " << c.premise->get_pred();
+        s << "( " << c.premise->get_pred() << " ";
         for (const auto &arg: c.premise->get_args()) {
             s << arg << " ";
         }
@@ -337,4 +337,11 @@ void CHCProblem::do_produce_model() {
 
 bool CHCProblem::get_produce_model() const {
     return produce_model;
+}
+
+std::ostream& operator<<(std::ostream &s, const CHCProblem &t) {
+    for (const auto &c: t.get_clauses()) {
+        s << c << std::endl;
+    }
+    return s;
 }

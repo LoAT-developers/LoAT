@@ -148,7 +148,7 @@ std::optional<SmtResult> check_sat(ITSProblem &its) {
         if (smt_res == SmtResult::Unsat) {
             remove.push_back(&r);
         } else if (smt_res == SmtResult::Sat && its.isInitialTransition(&r) && its.isSinkTransition(&r)) {
-            return SmtResult::Unsat;
+                return SmtResult::Unsat;
         }
     }
     for (const auto &r: remove) {
@@ -157,7 +157,7 @@ std::optional<SmtResult> check_sat(ITSProblem &its) {
     if (its.isEmpty()) {
         return SmtResult::Sat;
     } else if (remove.empty()) {
-        std::optional<SmtResult>{};
+        return std::optional<SmtResult>{};
     } else {
         return SmtResult::Unknown;
     }

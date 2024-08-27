@@ -14,11 +14,10 @@ std::optional<Rule> propagateEquivalences(const Rule &rule) {
     if (subs.empty()) {
         return {};
     } else {
-        const auto res {rule.subs(Subs::build<Bools>(subs))};
         if (Config::Analysis::doLogPreproc()) {
-            std::cout << "propagated equivalences: " << res << std::endl;
+            std::cout << "propagated equivalences: " << subs << std::endl;
         }
-        return res;
+        return rule.subs(Subs::build<Bools>(subs));
     }
 }
 
@@ -27,11 +26,10 @@ std::optional<Rule> propagateEqualitiesImpl(const Rule &rule, const Preprocess::
     if (subs.empty()) {
         return {};
     } else {
-        const auto res {rule.subs(Subs::build<Arith>(subs))};
         if (Config::Analysis::doLogPreproc()) {
-            std::cout << "extracted implied equalities: " << res << std::endl;
+            std::cout << "extracted implied equalities: " << subs << std::endl;
         }
-        return res;
+        return rule.subs(Subs::build<Arith>(subs));
     }
 }
 
@@ -56,17 +54,16 @@ std::optional<Rule> integerFourierMotzkin(const Rule &rule) {
     if (new_guard == rule.getGuard()) {
         return {};
     } else {
-        const auto res {rule.withGuard(new_guard)};
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "eliminated temporary variables: " << res << std::endl;
-        }
-        return res;
+        return rule.withGuard(new_guard);
     }
 }
 
 std::optional<Rule> eliminateArithVars(const Rule &rule) {
-    if (const auto res{propagateEqualitiesPickily(rule)}) {
-        return res;
+    // this makes only sense for acceleraion-based techniques
+    if (Config::Analysis::engine == Config::Analysis::ABMC || Config::Analysis::engine == Config::Analysis::ADCL) {
+        if (const auto res{propagateEqualitiesPickily(rule)}) {
+            return res;
+        }
     }
     if (const auto res{propagateEqualities(rule)}) {
         return res;
@@ -75,6 +72,9 @@ std::optional<Rule> eliminateArithVars(const Rule &rule) {
 }
 
 std::optional<Rule> Preprocess::preprocessRule(const Rule &rule) {
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "preprocessing " << rule << std::endl;
+    }
     auto current {rule};
     auto success {false};
     if (const auto res{propagateEquivalences(current)}) {
@@ -90,6 +90,9 @@ std::optional<Rule> Preprocess::preprocessRule(const Rule &rule) {
             current = *res;
         }
     } while (changed);
+    if (success && Config::Analysis::doLogPreproc()) {
+        std::cout << "got " << current << std::endl;
+    }
     return success ? current: std::optional<Rule>{};
 }
 

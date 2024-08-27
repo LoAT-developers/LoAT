@@ -143,7 +143,8 @@ BoolExprSet BoolExpr::get_disjuncts() const {
         for (const auto &x: children) {
             if (x->isOr()) {
                 if (disj) {
-                    return BoolExprSet({cpp::assume_not_null(shared_from_this())});
+                    disj.reset();
+                    break;
                 } else {
                     disj = x;
                 }
@@ -159,10 +160,9 @@ BoolExprSet BoolExpr::get_disjuncts() const {
                 res.insert(l && x);
             }
             return res;
-        } else {
-            return BoolExprSet({cpp::assume_not_null(shared_from_this())});
         }
     }
+    return BoolExprSet({cpp::assume_not_null(shared_from_this())});
 }
 
 linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var n) const {

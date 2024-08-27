@@ -110,6 +110,7 @@ class CHCProblem {
 
     linked_hash_set<Clause> clauses;
     bool produce_model {false};
+    friend std::ostream& operator<<(std::ostream &s, const CHCProblem&);
 
 public:
     const Clause* add_clause(const Clause &c);

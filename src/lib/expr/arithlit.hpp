@@ -42,7 +42,7 @@ ArithLitPtr mkLt(const ArithExprPtr x, const ArithExprPtr y);
 
 }
 
-class ArithLit {
+class ArithLit: public std::enable_shared_from_this<ArithLit> {
 
 private:
 
