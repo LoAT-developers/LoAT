@@ -121,8 +121,8 @@ target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:loat_preprocessing>
   $<TARGET_OBJECTS:loat_smt>
   $<TARGET_OBJECTS:loat_recurrence>
-  $<TARGET_OBJECTS:loat_itsproblem>
   $<TARGET_OBJECTS:loat_acceleration>
+  $<TARGET_OBJECTS:loat_itsproblem>
   $<TARGET_OBJECTS:loat_chcproblem>
   $<TARGET_OBJECTS:loat_safetyproblem>
   $<TARGET_OBJECTS:loat_transformations>
