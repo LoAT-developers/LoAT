@@ -3,9 +3,10 @@
 #include "itsproblem.hpp"
 #include "safetyproblem.hpp"
 #include "chcproblem.hpp"
+#include "smt.hpp"
 
 namespace Preprocess {
 
-bool preprocess(ITSProblem &its);
+std::optional<SmtResult> preprocess(ITSProblem &its);
 
 }

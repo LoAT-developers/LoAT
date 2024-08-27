@@ -255,41 +255,48 @@ int main(int argc, char *argv[]) {
         std::cout << "Initial ITS\n"
                   << **its << std::endl;
     }
-    if (Preprocess::preprocess(**its) && Config::Analysis::log) {
-        std::cout << "Simplified ITS\n"
-                  << **its << std::endl;
-    }
-
-    yices::init();
-    switch (Config::Analysis::engine) {
-    case Config::Analysis::ADCL:
-        reachability::Reachability::analyze(**its);
-        break;
-    case Config::Analysis::BMC:
-        BMC::analyze(**its);
-        break;
-    case Config::Analysis::ABMC:
-        ABMC::analyze(**its);
-        break;
-    case Config::Analysis::TIL:
-        switch (Config::til.mode) {
-        case Config::TILConfig::Mode::Forward:
-        case Config::TILConfig::Mode::Backward: {
-            TIL::analyze(**its);
-            break;
+    const auto sat_res{Preprocess::preprocess(**its)};
+    if (sat_res && sat_res != SmtResult::Unknown && Config::Analysis::safety()) {
+        std::cout << *sat_res << std::endl;
+        if (Config::Analysis::log) {
+            std::cout << "solved by preprocessing" << std::endl;
         }
-        case Config::TILConfig::Mode::Interleaved: {
-            const auto reversed_chc2its {chcs_to_its(chcs->reverse())};
-            auto reversed {**chc2its};
-            if (Preprocess::preprocess(*reversed) && Config::Analysis::log) {
-                std::cout << "Simplified reversed ITS\n"
-                          << *reversed << std::endl;
+    } else {
+        if (Preprocess::preprocess(**its) && Config::Analysis::log) {
+            std::cout << "Simplified ITS\n"
+                      << **its << std::endl;
+        }
+        yices::init();
+        switch (Config::Analysis::engine) {
+        case Config::Analysis::ADCL:
+            reachability::Reachability::analyze(**its);
+            break;
+        case Config::Analysis::BMC:
+            BMC::analyze(**its);
+            break;
+        case Config::Analysis::ABMC:
+            ABMC::analyze(**its);
+            break;
+        case Config::Analysis::TIL:
+            switch (Config::til.mode) {
+            case Config::TILConfig::Mode::Forward:
+            case Config::TILConfig::Mode::Backward: {
+                TIL::analyze(**its);
+                break;
             }
-            ForwardBackwardDriver::analyze(**its, *reversed);
+            case Config::TILConfig::Mode::Interleaved: {
+                const auto reversed_chc2its{chcs_to_its(chcs->reverse())};
+                auto reversed{**chc2its};
+                if (Preprocess::preprocess(*reversed) && Config::Analysis::log) {
+                    std::cout << "Simplified reversed ITS\n"
+                              << *reversed << std::endl;
+                }
+                ForwardBackwardDriver::analyze(**its, *reversed);
+                break;
+            }
+            }
             break;
         }
-        }
-        break;
     }
     yices::exit();
 

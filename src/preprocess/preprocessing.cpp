@@ -141,12 +141,28 @@ bool refine_dependency_graph(ITSProblem &its) {
     }
 }
 
-bool Preprocess::preprocess(ITSProblem &its) {
+std::optional<SmtResult> check_sat(ITSProblem &its) {
+    std::vector<TransIdx> remove;
+    for (const auto &r: its.getAllTransitions()) {
+        const auto smt_res {SmtFactory::check(r.getGuard())};
+        if (smt_res == SmtResult::Unsat) {
+            remove.push_back(&r);
+        } else if (smt_res == SmtResult::Sat && its.isInitialTransition(&r) && its.isSinkTransition(&r)) {
+            return SmtResult::Unsat;
+        }
+    }
+    for (const auto &r: remove) {
+        its.removeRule(r);
+    }
+    return remove.empty() ? std::optional<SmtResult>{} : std::optional{SmtResult::Unknown};
+}
+
+std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
     auto success {false};
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "starting preprocesing..." << std::endl;
     }
-    if (Config::Analysis::reachability()) {
+    if (Config::Analysis::safety()) {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "removing irrelevant clauses..." << std::endl;
         }
@@ -162,6 +178,17 @@ bool Preprocess::preprocess(ITSProblem &its) {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished chaining linear paths" << std::endl;
     }
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "checking satisfiability of guards..." << std::endl;
+    }
+    const auto sat_res {check_sat(its)};
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "finished checking satisfiability" << std::endl;
+    }
+    if (sat_res && sat_res != SmtResult::Unknown) {
+        return sat_res;
+    }
+    success |= bool(sat_res);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing rules..." << std::endl;
     }
@@ -187,5 +214,5 @@ bool Preprocess::preprocess(ITSProblem &its) {
             }
         }
     }
-    return success;
+    return success ? std::optional<SmtResult>{} : std::optional{SmtResult::Unknown};
 }
