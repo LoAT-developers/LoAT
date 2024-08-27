@@ -97,9 +97,9 @@ jobs:
             if [ ${{ inputs.config }} = "loat_sat" ]; then
               result=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine til --til::mode interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_unsat" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode reachability --format horn --engine abmc "${filename}")
+              result=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode non_termination --format its --engine adcl "${filename}")
+              result=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               result=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "z3_gspacer" ]; then

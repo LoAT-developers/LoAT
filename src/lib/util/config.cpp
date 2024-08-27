@@ -31,7 +31,7 @@ namespace Config {
 
     namespace Analysis {
 
-        std::vector<Mode> modes { Complexity, NonTermination, Reachability, Recurrence, Safety };
+        std::vector<Mode> modes { Complexity, Termination, Recurrence, Safety };
 
         Mode mode = Complexity;
         Engine engine = ADCL;
@@ -44,27 +44,26 @@ namespace Config {
         std::string modeName(const Mode mode) {
             switch (mode) {
             case Complexity: return "complexity";
-            case NonTermination: return "non_termination";
-            case Reachability: return "reachability";
+            case Termination: return "termination";
             case Recurrence: return "recurrence";
             case Safety: return "safety";
             }
         }
 
-        bool nonTermination() {
-            return mode == NonTermination;
-        }
-
-        bool reachability() {
-            return mode == Reachability;
+        bool termination() {
+            return mode == Termination;
         }
 
         bool complexity() {
             return mode == Complexity;
         }
 
+        bool safety() {
+            return mode == Safety;
+        }
+
         bool tryNonterm() {
-            return nonTermination() || complexity();
+            return termination() || complexity();
         }
 
         bool doLogAccel() {

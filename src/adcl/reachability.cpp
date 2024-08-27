@@ -333,7 +333,7 @@ void Reachability::luby_next() {
 }
 
 void Reachability::unsat() {
-    const auto res = Config::Analysis::reachability() ? "unsat" : "NO";
+    const auto res = Config::Analysis::safety() ? "unsat" : "NO";
     std::cout << res << std::endl << std::endl;
     if (Config::Analysis::log) {
         std::stringstream counterexample;
@@ -465,7 +465,7 @@ std::optional<Rule> Reachability::instantiate(const Arith::Var n, const Rule &ru
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Model &model, const unsigned backlink) {
     const auto simp {Preprocess::preprocessRule(rule)};
-    if (Config::Analysis::reachability() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
+    if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
@@ -474,7 +474,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     if (Config::Analysis::log && simp) {
         std::cout << "simplified loop:\n" << *simp << std::endl;
     }
-    if (Config::Analysis::reachability()) {
+    if (Config::Analysis::safety()) {
         if (simp->getUpdate().empty()) {
             if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
             return std::make_unique<Covered>();

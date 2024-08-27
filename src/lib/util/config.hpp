@@ -33,7 +33,7 @@ namespace Config {
     // Main algorithm
     namespace Analysis {
 
-        enum Mode { Complexity, NonTermination, Reachability, Safety, Recurrence };
+        enum Mode { Complexity, Termination, Safety, Recurrence };
         enum Engine { ADCL, BMC, ABMC, TIL };
         enum SmtSolver { Z3, CVC5, Swine, Yices, Heuristic };
         extern std::vector<Mode> modes;
@@ -47,9 +47,8 @@ namespace Config {
 
         std::string modeName(const Mode mode);
 
-        bool nonTermination();
+        bool termination();
         bool tryNonterm();
-        bool reachability();
         bool safety();
         bool complexity();
         bool doLogAccel();

@@ -29,7 +29,7 @@ void printHelp(char *arg0) {
     std::cout << "Usage: " << arg0 << " [options] <file>" << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "  --print_dep_graph                                Print the dependency graph in the proof output (can be very verbose)" << std::endl;
-    std::cout << "  --mode <complexity|non_termination|reachability> Analysis mode" << std::endl;
+    std::cout << "  --mode <complexity|termination|safety>           Analysis mode" << std::endl;
     std::cout << "  --format <koat|its|horn|c>                       Input format" << std::endl;
     std::cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << std::endl;
     std::cout << "  --log                                            Enable logging" << std::endl;

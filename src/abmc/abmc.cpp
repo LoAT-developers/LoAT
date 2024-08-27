@@ -184,11 +184,11 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         nonterm_cache.emplace(lang);
     }
     const auto deterministic{simp->isDeterministic()};
-    if (Config::Analysis::reachability() && !deterministic) {
+    if (Config::Analysis::safety() && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
-    } else if (Config::Analysis::reachability() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
+    } else if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
-    } else if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
+    } else if (Config::Analysis::safety() && simp->getUpdate().empty()) {
         if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
     } else {
         if (Config::Analysis::log && simp) {
@@ -238,17 +238,17 @@ Bools::Expr ABMC::encode_transition(const TransIdx idx, const bool with_id) {
 }
 
 void ABMC::unknown() {
-    const auto str = Config::Analysis::reachability() ? "unknown" : "MAYBE";
+    const auto str = Config::Analysis::safety() ? "unknown" : "MAYBE";
     std::cout << str << std::endl;
 }
 
 void ABMC::unsat() {
-    const auto str = Config::Analysis::reachability() ? "unsat" : "NO";
+    const auto str = Config::Analysis::safety() ? "unsat" : "NO";
     std::cout << str << std::endl;
 }
 
 void ABMC::sat() {
-    const auto str = Config::Analysis::reachability() ? "sat" : "MAYBE";
+    const auto str = Config::Analysis::safety() ? "sat" : "MAYBE";
     std::cout << str << std::endl;
 }
 
