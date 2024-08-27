@@ -263,7 +263,7 @@ int main(int argc, char *argv[]) {
         }
         std::cout << *sat_res << std::endl;
     } else {
-        if (Preprocess::preprocess(**its) && Config::Analysis::log) {
+        if (sat_res && Config::Analysis::log) {
             std::cout << "Simplified ITS\n"
                       << **its << std::endl;
         }
