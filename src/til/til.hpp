@@ -4,15 +4,14 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/set_of.hpp>
 
-#include "chcproblem.hpp"
 #include "safetyproblem.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
 #include "dependencygraph.hpp"
 #include "linkedhashmap.hpp"
 #include "config.hpp"
-#include "chcmodel.hpp"
-#include "chctosafetyproblem.hpp"
+#include "chctoitsproblem.hpp"
+#include "itstosafetyproblem.hpp"
 
 
 class Range {
@@ -65,7 +64,6 @@ private:
     };
 
     Config::TILConfig config;
-    SafetyProblem t;
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<std::vector<Subs>> subs {};
     std::vector<TraceElem> trace {};
@@ -78,7 +76,8 @@ private:
     Int last_orig_clause;
     Subs post_to_pre {};
     Subs pre_to_post {};
-    ReversibleCHCToSafety reversible;
+    ReversibleITSToSafety its2safety;
+    SafetyProblem t;
     bool produce_model {false};
 
     Int next_id {0};
@@ -112,7 +111,7 @@ private:
     void build_trace();
     const Subs& get_subs(const unsigned start, const unsigned steps);
     void pop();
-    CHCModel get_model();
+    ITSModel get_model();
 
     Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
@@ -120,11 +119,11 @@ private:
 public:
 
     void sat();
-    explicit TIL(const CHCProblem &chcs, const Config::TILConfig &config);
+    explicit TIL(const ITSProblem &its, const Config::TILConfig &config);
     bool setup();
     std::optional<SmtResult> do_step();
     void analyze();
-    static void analyze(const CHCProblem &chcs);
+    static void analyze(const ITSProblem &its);
 
 };
 

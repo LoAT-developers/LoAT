@@ -8,9 +8,9 @@
 
 class ReversibleCHCToITS : public Reversible<ITSPtr, ITSModel, CHCModel> {
 
-    const linked_hash_map<std::string, std::vector<theory::Types>> signature;
-    const std::vector<Arith::Var> arith_vars;
-    const std::vector<Bools::Var> bool_vars;
+    linked_hash_map<std::string, std::vector<theory::Types>> signature;
+    std::vector<Arith::Var> arith_vars;
+    std::vector<Bools::Var> bool_vars;
 
 public:
     ReversibleCHCToITS(
@@ -20,6 +20,7 @@ public:
         const std::vector<Bools::Var> &bool_vars);
 
     CHCModel revert_model(const ITSModel &) const override;
+
 };
 
 ReversibleCHCToITS chcs_to_its(CHCProblem chcs);

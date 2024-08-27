@@ -1,9 +1,9 @@
 #pragma once
 
-#include "chcproblem.hpp"
+#include "itsproblem.hpp"
 
 namespace ForwardBackwardDriver {
 
-void analyze(CHCProblem p);
+void analyze(const ITSProblem &forward, const ITSProblem &backward);
 
 }

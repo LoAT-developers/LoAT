@@ -7,8 +7,6 @@ project(loat_transformations CXX)
 add_library(${PROJECT_NAME} OBJECT
     chctoitsproblem.hpp
     chctoitsproblem.cpp
-    chctosafetyproblem.hpp
-    chctosafetyproblem.cpp
     itstosafetyproblem.hpp
     itstosafetyproblem.cpp
 )
@@ -18,7 +16,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_util_INCLUDE_DIRS}
   ${loat_container_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
-  ${loat_rule_simplification_INCLUDE_DIRS}
+  ${loat_preprocessing_INCLUDE_DIRS}
   ${loat_itsproblem_INCLUDE_DIRS}
   ${loat_safetyproblem_INCLUDE_DIRS}
   ${loat_chcproblem_INCLUDE_DIRS}

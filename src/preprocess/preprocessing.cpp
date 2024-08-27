@@ -5,7 +5,6 @@
 #include "formulapreprocessing.hpp"
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
-#include "chcpreprocessing.hpp"
 #include "smtfactory.hpp"
 #include "theory.hpp"
 
@@ -77,54 +76,6 @@ bool chainLinearPaths(ITSProblem &its) {
                     }
                     for (const auto &idx : deleted) {
                         its.removeRule(idx);
-                    }
-                    changed = true;
-                    break;
-                }
-            }
-        }
-    } while (changed);
-    return success;
-}
-
-bool Preprocess::chainLinearPaths(CHCProblem &chcs) {
-    auto success{false};
-    DependencyGraph<const Clause *> dg;
-    const auto &clauses{chcs.get_clauses()};
-    for (auto it1 = clauses.begin(); it1 != clauses.end(); ++it1) {
-        for (auto it2 = it1; it2 != clauses.end(); ++it2) {
-            if (it1->get_conclusion() && it1->get_conclusion()->get_pred() == it2->get_premise()->get_pred()) {
-                dg.addEdge(&*it1, &*it2);
-            }
-            if (it2->get_conclusion() && it2->get_conclusion()->get_pred() == it1->get_premise()->get_pred()) {
-                dg.addEdge(&*it2, &*it1);
-            }
-        }
-    }
-    bool changed{false};
-    do {
-        changed = false;
-        for (const auto &first : chcs.get_clauses()) {
-            const auto succ{dg.getSuccessors(&first)};
-            if (succ.size() == 1 && !succ.contains(&first)) {
-                const auto second_idx{*succ.begin()};
-                if (!dg.hasEdge(second_idx, second_idx)) {
-                    success = true;
-                    const auto chained{chcs.add_clause(Preprocess::chain(first, *second_idx))};
-                    for (const auto &s : dg.getSuccessors(second_idx)) {
-                        dg.addEdge(chained, s);
-                    }
-                    for (const auto &p : dg.getPredecessors(&first)) {
-                        dg.addEdge(p, chained);
-                    }
-                    linked_hash_set<const Clause *> deleted;
-                    deleted.insert(&first);
-                    if (dg.getPredecessors(second_idx).size() == 1) {
-                        deleted.insert(second_idx);
-                    }
-                    for (const auto idx : deleted) {
-                        dg.removeNode(idx);
-                        chcs.remove_clause(*idx);
                     }
                     changed = true;
                     break;
@@ -235,46 +186,6 @@ bool Preprocess::preprocess(ITSProblem &its) {
                 std::cout << "finished refining the dependency graph" << std::endl;
             }
         }
-    }
-    return success;
-}
-
-bool Preprocess::preprocess(SafetyProblem &p) {
-    auto success {false};
-    const auto init{Preprocess::preprocessFormula(p.init(), theory::isTempVar)};
-    if (init != p.init()) {
-        success = true;
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "preprocessed initial states\n\told: " << p.init() << "\n\tnew: " << init << std::endl;
-        }
-        p.set_init(init);
-    }
-    linked_hash_map<Bools::Expr, Bools::Expr> replacements;
-    for (const auto &t : p.trans()) {
-        const auto trans{Preprocess::preprocessFormula(t, theory::isTempVar)};
-        if (trans != t) {
-            replacements.emplace(t, trans);
-        }
-    }
-    if (!replacements.empty()) {
-        success = true;
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "preprocessed transitions\n";
-        }
-        for (const auto &[o,n]: replacements) {
-            if (Config::Analysis::doLogPreproc()) {
-               std::cout << "\told: " << o << "\n\tnew: " << n << std::endl;
-            }
-            p.replace_transition(o, n);
-        }
-    }
-    const auto err{Preprocess::preprocessFormula(p.err(), theory::isTempVar)};
-    if (err != p.err()) {
-        success = true;
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "preprocessed error states\n\told: " << p.err() << "\n\tnew: " << err << std::endl;
-        }
-        p.set_err(err);
     }
     return success;
 }

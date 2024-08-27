@@ -22,26 +22,6 @@ std::optional<Rule> propagateEquivalences(const Rule &rule) {
     }
 }
 
-std::optional<Rule> eliminateIdentities(const Rule &rule) {
-    VarSet remove;
-    for (const auto &[x, v] : rule.getUpdate()) {
-        if (TheTheory::varToExpr(x) == v) {
-            remove.insert(x);
-        }
-    }
-    if (remove.empty()) {
-        return {};
-    } else {
-        auto new_update {rule.getUpdate()};
-        new_update.erase(remove);
-        const auto res {rule.withUpdate(new_update)};
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "removed identity updates: " << res << std::endl;
-        }
-        return res;
-    }
-}
-
 std::optional<Rule> propagateEqualitiesImpl(const Rule &rule, const Preprocess::SymbolAcceptor &allow) {
     const auto subs{rule.getGuard()->propagateEqualities(allow)};
     if (subs.empty()) {
@@ -98,10 +78,6 @@ std::optional<Rule> Preprocess::preprocessRule(const Rule &rule) {
     auto current {rule};
     auto success {false};
     if (const auto res{propagateEquivalences(current)}) {
-        current = *res;
-        success = true;
-    }
-    if (const auto res {eliminateIdentities(current)}) {
         current = *res;
         success = true;
     }

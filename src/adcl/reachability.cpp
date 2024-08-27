@@ -1,5 +1,4 @@
 #include "reachability.hpp"
-#include "preprocessing.hpp"
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
 #include "smt.hpp"
@@ -652,12 +651,6 @@ void Reachability::bump_penalty(const TransIdx idx) {
 }
 
 void Reachability::analyze() {
-    if (Config::Analysis::log) {
-        std::cout << "Initial ITS\n" << chcs << std::endl;
-    }
-    if (Preprocess::preprocess(chcs) && Config::Analysis::log) {
-        std::cout << "Simplified ITS\n" << chcs << std::endl;
-    }
     init();
     if (try_to_finish()) {
         return;

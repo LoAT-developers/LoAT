@@ -96,7 +96,7 @@ protected:
     linked_hash_map<TransIdx, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations {};
     linked_hash_set<TransIdx> initialTransitions {};
     linked_hash_set<TransIdx> sinkTransitions {};
-    LocationIdx nextUnusedLocation {0};
+    LocationIdx nextUnusedLocation {1};
     LocationIdx initialLocation {0};
     LocationIdx sink {addNamedLocation("LoAT_sink")};
     Arith::Var loc_var {ArithVar::nextProgVar()};

@@ -11,8 +11,6 @@ add_library(${PROJECT_NAME} OBJECT
     linearize.cpp
     chcmodel.hpp
     chcmodel.cpp
-    chcpreprocessing.hpp
-    chcpreprocessing.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

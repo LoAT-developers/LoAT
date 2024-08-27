@@ -5,7 +5,6 @@
 #include "bmc.hpp"
 #include "sexpressoparser.hpp"
 #include "chctoitsproblem.hpp"
-#include "chctosafetyproblem.hpp"
 #include "cintparser.hpp"
 #include "config.hpp"
 #include "forwardbackwarddriver.hpp"
@@ -222,6 +221,7 @@ int main(int argc, char *argv[]) {
     std::optional<ITSPtr> its{};
     std::optional<CHCProblem> chcs{};
     std::optional<SafetyProblem> sp{};
+    std::optional<ReversibleCHCToITS> chc2its{};
     const auto start{std::chrono::steady_clock::now()};
     switch (Config::Input::format) {
     case Config::Input::Koat:
@@ -232,6 +232,12 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Input::Horn: {
         chcs = SexpressoParser::loadFromFile(filename);
+        Config::Analysis::model = chcs->get_produce_model();
+        if (Config::Analysis::engine == Config::Analysis::TIL && Config::til.mode == Config::TILConfig::Mode::Backward) {
+            chcs = chcs->reverse();
+        }
+        chc2its = chcs_to_its(*chcs);
+        its = **chc2its;
         break;
     }
     case Config::Input::C:
@@ -244,6 +250,14 @@ int main(int argc, char *argv[]) {
     const auto end{std::chrono::steady_clock::now()};
     if (Config::Analysis::log) {
         std::cout << "parsing took " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
+    }
+    if (Config::Analysis::log) {
+        std::cout << "Initial ITS\n"
+                  << **its << std::endl;
+    }
+    if (Preprocess::preprocess(**its) && Config::Analysis::log) {
+        std::cout << "Simplified ITS\n"
+                  << **its << std::endl;
     }
 
     yices::init();
@@ -258,30 +272,20 @@ int main(int argc, char *argv[]) {
         ABMC::analyze(**its);
         break;
     case Config::Analysis::TIL:
-        const auto old_size {chcs->get_clauses().size()};
-        if (Config::Analysis::log) {
-            std::cout << "trying to chain linear paths" << std::endl;
-        }
-        if (Preprocess::chainLinearPaths(*chcs)) {
-            const auto new_size {chcs->get_clauses().size()};
-            if (Config::Analysis::log) {
-                std::cout << "chained linear paths; old size: " << old_size << ", new size: " << new_size << std::endl;
-            }
-        } else if (Config::Analysis::log) {
-            std::cout << "no linear paths to chain" << std::endl;
-        }
         switch (Config::til.mode) {
-        case Config::TILConfig::Mode::Forward: {
-            TIL::analyze(*chcs);
-            break;
-        }
+        case Config::TILConfig::Mode::Forward:
         case Config::TILConfig::Mode::Backward: {
-            auto b{chcs->reverse()};
-            TIL::analyze(b);
+            TIL::analyze(**its);
             break;
         }
         case Config::TILConfig::Mode::Interleaved: {
-            ForwardBackwardDriver::analyze(*chcs);
+            const auto reversed_chc2its {chcs_to_its(chcs->reverse())};
+            auto reversed {**chc2its};
+            if (Preprocess::preprocess(*reversed) && Config::Analysis::log) {
+                std::cout << "Simplified reversed ITS\n"
+                          << *reversed << std::endl;
+            }
+            ForwardBackwardDriver::analyze(**its, *reversed);
             break;
         }
         }

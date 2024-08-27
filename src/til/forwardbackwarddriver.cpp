@@ -1,10 +1,8 @@
 #include "forwardbackwarddriver.hpp"
 #include "config.hpp"
 #include "til.hpp"
-#include "chctosafetyproblem.hpp"
 
-void ForwardBackwardDriver::analyze(CHCProblem p) {
-    auto q {p.reverse()};
+void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem &backward) {
     Config::TILConfig forwardConfig {
         .mode = Config::TILConfig::Forward,
         .mbpKind = Config::TILConfig::LowerIntMbp,
@@ -23,8 +21,8 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
         .recurrent_bounds = true,
         .context_sensitive = false
     };
-    TIL f {p, forwardConfig};
-    TIL b {q, backwardConfig};
+    TIL f {forward, forwardConfig};
+    TIL b {backward, backwardConfig};
     if (!f.setup()) {
         if (Config::Analysis::log) {
             std::cout << "\n===== FORWARD SETUP FAILED =====" << std::endl;
@@ -50,10 +48,10 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
     }
     TIL *active {&f};
     TIL *passive {&b};
-    auto forward {true};
+    auto is_forward {true};
     while (true) {
         if (Config::Analysis::log) {
-            if (forward) {
+            if (is_forward) {
                 std::cout << "\n===== FORWARD =====" << std::endl;
             } else {
                 std::cout << "\n===== BACKWARD =====" << std::endl;
@@ -63,7 +61,7 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
         if (res) {
             if (res == SmtResult::Sat) {
                 if (Config::Analysis::log) {
-                    if (forward) {
+                    if (is_forward) {
                         std::cout << "\n===== FORWARD SUCCEEDED =====" << std::endl;
                     } else {
                         std::cout << "\n===== BACKWARD SUCCEEDED =====" << std::endl;
@@ -73,7 +71,7 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
                 return;
             }
             if (Config::Analysis::log) {
-                if (forward) {
+                if (is_forward) {
                     std::cout << "\n===== FORWARD FAILED =====" << std::endl;
                 } else {
                     std::cout << "\n===== BACKWARD FAILED =====" << std::endl;
@@ -94,6 +92,6 @@ void ForwardBackwardDriver::analyze(CHCProblem p) {
         auto *tmp {active};
         active = passive;
         passive = tmp;
-        forward = !forward;
+        is_forward = !is_forward;
     }
 }

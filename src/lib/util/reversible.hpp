@@ -12,6 +12,7 @@ public:
     Reversible(const Result &res): res(res) {};
 
     virtual To revert_model(const From&) const = 0;
+    virtual ~Reversible() = default;
 
     const Result& operator*() const {
         return res;

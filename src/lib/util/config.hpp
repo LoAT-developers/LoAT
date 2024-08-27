@@ -43,7 +43,7 @@ namespace Config {
         extern bool log;
         extern bool logAccel;
         extern bool logPreproc;
-        extern bool reverse;
+        extern bool model;
 
         std::string modeName(const Mode mode);
 

@@ -19,4 +19,4 @@ public:
     ITSModel revert_model(const Bools::Expr&) const override;
 };
 
-ReversibleITSToSafety its_to_safetyproblem(const ITSPtr its);
+ReversibleITSToSafety its_to_safetyproblem(const ITSProblem &its);

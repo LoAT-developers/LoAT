@@ -8,8 +8,4 @@ namespace Preprocess {
 
 bool preprocess(ITSProblem &its);
 
-bool preprocess(SafetyProblem &);
-
-bool chainLinearPaths(CHCProblem &chcs);
-
 }

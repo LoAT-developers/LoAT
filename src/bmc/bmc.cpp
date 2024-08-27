@@ -1,6 +1,5 @@
 #include "bmc.hpp"
 #include "theory.hpp"
-#include "preprocessing.hpp"
 #include "smtfactory.hpp"
 #include "config.hpp"
 
@@ -32,12 +31,6 @@ Bools::Expr BMC::encode_transition(const TransIdx idx) {
 }
 
 void BMC::analyze() {
-    if (Config::Analysis::log) {
-        std::cout << "initial ITS\n" << its << std::endl;
-    }
-    if (Preprocess::preprocess(its) && Config::Analysis::log) {
-            std::cout << "Simplified ITS\n" << its << std::endl;
-    }
     vars.insertAll(its.getVars());
     for (const auto &var: vars) {
         post_vars.emplace(var, theory::next(var));

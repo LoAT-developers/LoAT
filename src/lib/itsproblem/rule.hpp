@@ -5,13 +5,6 @@
 #include "theory.hpp"
 #include "subs.hpp"
 
-/**
- * A general rule, consisting of a left-hand side with location, guard and cost
- * and several (but at least one) right-hand sides, each with location and update.
- *
- * The lhs/rhs locations must not (and cannot) be changed, as they are tied to the graph in ITSProblem.
- * The content of the rule (guard/cost/update) may be modified (e.g. via getGuardMut()).
- */
 class Rule {
 private:
     Bools::Expr guard;

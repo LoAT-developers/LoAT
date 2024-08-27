@@ -1,6 +1,5 @@
 #include "til.hpp"
 #include "redundantinequations.hpp"
-#include "chctosafetyproblem.hpp"
 #include "cvc5.hpp"
 #include "dependencygraph.hpp"
 #include "formulapreprocessing.hpp"
@@ -8,10 +7,10 @@
 #include "linkedhashmap.hpp"
 #include "optional.hpp"
 #include "pair.hpp"
-#include "preprocessing.hpp"
 #include "realmbp.hpp"
 #include "rulepreprocessing.hpp"
 #include "theory.hpp"
+#include "itstosafetyproblem.hpp"
 
 Range::Range(const unsigned s, const unsigned e) : s(s), e(e) {}
 
@@ -40,12 +39,14 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 }
 
 TIL::TIL(
-    const CHCProblem &chcs,
+    const ITSProblem &its,
     const Config::TILConfig &config)
     : config(config),
-      reversible(chc_to_safetyproblem(chcs)),
-      produce_model(chcs.get_produce_model()) {
-    t = *reversible;
+      its2safety(its_to_safetyproblem(its)),
+      t(*its2safety) {
+    if (Config::Analysis::log) {
+        std::cout << "safetyproblem:\n" << t << std::endl;
+    }
     vars.insert(trace_var);
     vars.insert(n);
     for (const auto &x : t.vars()) {
@@ -621,14 +622,6 @@ void TIL::pop() {
 }
 
 bool TIL::setup() {
-    if (Config::Analysis::log) {
-        std::cout << "initial problem" << std::endl;
-        std::cout << t << std::endl;
-    }
-    if (Preprocess::preprocess(t) && Config::Analysis::log) {
-        std::cout << "Simplified Problem" << std::endl;
-        std::cout << t << std::endl;
-    }
     std::vector<Bools::Expr> steps;
     for (const auto &trans : t.trans()) {
         rule_map.left.insert(rule_map_t::left_value_type(next_id, trans));
@@ -706,7 +699,7 @@ std::optional<SmtResult> TIL::do_step() {
     return {};
 }
 
-CHCModel TIL::get_model() {
+ITSModel TIL::get_model() {
     std::vector<Bools::Expr> res{t.init()};
     Bools::Expr last{t.init()};
     for (unsigned i = 0; i < depth - 1; ++i) {
@@ -722,7 +715,7 @@ CHCModel TIL::get_model() {
         res.push_back(s2(last));
     }
     const auto sp_model{bools::mkOr(res)};
-    return reversible.revert_model(sp_model);
+    return its2safety.revert_model(sp_model);
 }
 
 void TIL::analyze() {
@@ -735,9 +728,6 @@ void TIL::analyze() {
         if (res) {
             if (res == SmtResult::Sat) {
                 sat();
-                if (produce_model) {
-                    std::cout << get_model().to_smtlib().toString() << std::endl;
-                }
             } else {
                 unknown();
             }
@@ -746,6 +736,6 @@ void TIL::analyze() {
     }
 }
 
-void TIL::analyze(const CHCProblem &chcs) {
+void TIL::analyze(const ITSProblem &chcs) {
     TIL(chcs, Config::til).analyze();
 }
