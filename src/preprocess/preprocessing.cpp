@@ -7,7 +7,6 @@
 #include "rulepreprocessing.hpp"
 #include "smtfactory.hpp"
 #include "theory.hpp"
-#include "redundantinequations.hpp"
 
 #include <numeric>
 #include <unordered_set>
@@ -94,22 +93,6 @@ bool preprocessRules(ITSProblem &its) {
         if (const auto res {Preprocess::preprocessRule(r)}) {
             success = true;
             replacements.emplace(&r, *res);
-        }
-    }
-    for (const auto &[idx, replacement] : replacements) {
-        its.replaceRule(idx, replacement);
-    }
-    return success;
-}
-
-bool removeRedundantInequations(ITSProblem &its) {
-    auto success{false};
-    linked_hash_map<TransIdx, Rule> replacements;
-    for (const auto &r : its.getAllTransitions()) {
-        const auto res {removeRedundantInequations(r.getGuard())};
-        if (res != r.getGuard()) {
-            success = true;
-            replacements.emplace(&r, r.withGuard(res));
         }
     }
     for (const auto &[idx, replacement] : replacements) {
@@ -220,13 +203,6 @@ std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
     success |= preprocessRules(its);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished preprocessing rules" << std::endl;
-    }
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "removing redundant inequations..." << std::endl;
-    }
-    success |= removeRedundantInequations(its);
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "finished removing redundant inequations" << std::endl;
     }
     if (Config::Analysis::engine == Config::Analysis::ADCL) {
         if (Config::Analysis::doLogPreproc()) {
