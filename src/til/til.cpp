@@ -470,7 +470,7 @@ void TIL::handle_loop(const Range &range) {
     const auto projected{mbp_impl(ti, model, [&](const auto &x) {
         return x == Var(n);
     })};
-    if (range.length() == 1) {
+    if (range.length() == 1 && loop != rule_map.left.at(trace.at(range.start()).id)) {
         projections.emplace_back(id, projected);
     } else {
         add_blocking_clause(range, id, projected);
@@ -486,7 +486,13 @@ void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
     auto &map{blocked_per_step.emplace(range.end(), std::map<Int, Bools::Expr>()).first->second};
     auto it {map.emplace(id, top()).first};
     if (range.length() == 1) {
-        it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
+        const auto trace_elem {trace.at(range.start())};
+        const auto encoded {encode_transition(rule_map.left.at(trace_elem.id), trace_elem.id)};
+        if (encoded == trace_elem.implicant) {
+            it->second = it->second && bools::mkLit(arith::mkNeq(s.get<Arith>(trace_var), arith::mkConst(trace_elem.id)));
+        } else {
+            it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
+        }
     } else {
         it->second = it->second && s(!loop);
     }
