@@ -184,7 +184,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           sparse-checkout: benchmarks
-          ref: ${{ github.ref_name }}
 
       - run: mkdir -p benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}
 
@@ -217,5 +216,5 @@ jobs:
            add: 'benchmarks'
            author_name: Florian Frohn
            author_email: florian.frohn@cs.rwth-aachen.de
-           fetch: false
+           fetch: true
            message: 'benchmark results; config ${{ inputs.config }}; benchmarks: ${{ inputs.benchmarks }}'
