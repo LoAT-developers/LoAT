@@ -40,23 +40,6 @@ private:
     using BoundPair = std::pair<std::optional<Arith::Expr>, std::optional<Arith::Expr>>;
     using NondetSubs = linked_hash_map<Arith::Var, BoundPair>;
 
-    struct Loop {
-        std::vector<Int> expanded;
-        Bools::Expr compressed;
-    };
-
-    struct RefinementJob {
-        Int id;
-        Bools::Expr pre;
-        Loop loop;
-        Bools::Expr post;
-        Bools::Expr unrolling;
-    };
-
-    enum RefinementResult {
-        Refined, Failed, Unsat
-    };
-
     struct TraceElem {
         Int id;
         Bools::Expr implicant;
@@ -67,6 +50,7 @@ private:
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<std::vector<Subs>> subs {};
     std::vector<TraceElem> trace {};
+    std::vector<BoolExprSet> active {};
     Model model;
     std::vector<std::pair<Int, Bools::Expr>> projections {};
     // step -> ID of corresponding transition formula -> blocked transition
@@ -89,14 +73,13 @@ private:
     const Arith::Var n {ArithVar::next()};
     DependencyGraph<Bools::Expr> dependency_graph {};
     unsigned depth {0};
-    Bools::Expr step {bot()};
 
     Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
     void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop);
     bool add_blocking_clauses(const Range &range, Model model);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
-    Int add_learned_clause(const Bools::Expr &accel);
+    Int add_learned_clause(const Range &range, const Bools::Expr &accel);
     std::pair<Bools::Expr, Model> compress(const Range &range);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);

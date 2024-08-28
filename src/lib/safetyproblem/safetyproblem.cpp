@@ -42,9 +42,21 @@ Bools::Expr SafetyProblem::err() const {
     return error_states;
 }
 
-void SafetyProblem::replace_transition(const Bools::Expr &old_trans, const Bools::Expr &new_trans) {
-    transitions.erase(old_trans);
-    transitions.insert(new_trans);
+void SafetyProblem::add_edge(const Bools::Expr e1, const Bools::Expr e2) {
+    graph.addEdge(e1, e2);
+}
+
+BoolExprSet SafetyProblem::get_successors(const BoolExprSet &nodes) const {
+    BoolExprSet res;
+    for (const auto &n: nodes) {
+        const auto succs {graph.getSuccessors(n)};
+        res.insert(succs.begin(), succs.end());
+    }
+    return res;
+}
+
+const DependencyGraph<Bools::Expr>& SafetyProblem::get_dependency_graph() const {
+    return graph;
 }
 
 void SafetyProblem::add_transition(const Bools::Expr e) {
