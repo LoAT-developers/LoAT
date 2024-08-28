@@ -33,6 +33,7 @@ on:
         options:
         - chc22-lia-lin
         - chc23-lia-lin
+        - chc24-lia-lin
       build:
         required: true
         type: boolean
@@ -66,6 +67,9 @@ jobs:
         with:
           sparse-checkout: .github/actions
           path: actions
+
+      - if: ${{ inputs.benchmarks == 'chc24-lia-lin' }}
+        uses: ./actions/.github/actions/chc24-lia-lin
 
       - if: ${{ inputs.benchmarks == 'chc23-lia-lin' }}
         uses: ./actions/.github/actions/chc23-lia-lin
