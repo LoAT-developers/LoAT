@@ -279,7 +279,7 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unor
             }
         } else {
             for (unsigned i = 0; i < args.size() - 1; ++i) {
-                for (unsigned j = i + 1; i < args.size(); ++i) {
+                for (unsigned j = i + 1; j < args.size(); ++j) {
                     lits.push_back(theory::mkNeq(args[i], args[j]));
                 }
             }

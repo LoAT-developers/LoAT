@@ -41,7 +41,7 @@ std::ostream& operator<<(std::ostream &s, const Clause &c) {
     }
     s << c.constraint << " ==> ";
     if (c.conclusion) {
-        s << "( " << c.conclusion->get_pred();
+        s << "( " << c.conclusion->get_pred() << " ";
         for (const auto &arg: c.conclusion->get_args()) {
             s << arg << " ";
         }
