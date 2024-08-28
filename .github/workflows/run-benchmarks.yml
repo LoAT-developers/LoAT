@@ -216,5 +216,6 @@ jobs:
            add: 'benchmarks'
            author_name: Florian Frohn
            author_email: florian.frohn@cs.rwth-aachen.de
-           fetch: true
+           fetch: false
+           pull: '--rebase --autostash'
            message: 'benchmark results; config ${{ inputs.config }}; benchmarks: ${{ inputs.benchmarks }}'
