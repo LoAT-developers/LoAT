@@ -17,48 +17,14 @@ const Bools::Expr BoolExpr::buildFromLits(const Lits &lits, ConcatOperator op) {
 
 template <class Children>
 const Bools::Expr BoolExpr::build(const Children &lits, ConcatOperator op) {
-    std::stack<Bools::Expr> todo;
-    for (const auto &lit : lits) {
-        if (lit == top()) {
-            if (op == ConcatOr) {
-                return top();
-            }
-        } else if (lit == bot()) {
-            if (op == ConcatAnd) {
-                return bot();
-            }
-        } else {
-            todo.push(lit);
-        }
-    }
     BoolExprSet children;
-    LitSet lit_set;
-    while (!todo.empty()) {
-        Bools::Expr current = todo.top();
-        if ((op == ConcatAnd && current->isAnd()) || (op == ConcatOr && current->isOr())) {
-            const BoolExprSet &currentChildren = current->getChildren();
-            todo.pop();
-            for (const Bools::Expr &c : currentChildren) {
-                todo.push(c);
-            }
+    for (const auto &x: lits) {
+        if (op == ConcatAnd && x->isAnd() || op == ConcatOr && x->isOr()) {
+            const auto cs {x->getChildren()};
+            children.insert(cs.begin(), cs.end());
         } else {
-            const auto lit {current->getTheoryLit()};
-            if (lit) {
-                lit_set.insert(*lit);
-            } else {
-                children.insert(current);
-            }
-            todo.pop();
+            children.insert(x);
         }
-    }
-    switch (op) {
-        case ConcatAnd: theory::simplifyAnd(lit_set);
-        break;
-        case ConcatOr: theory::simplifyOr(lit_set);
-        break;
-    }
-    for (const auto &lit: lit_set) {
-        children.insert(mkLit(lit));
     }
     switch (children.size()) {
     case 0:
