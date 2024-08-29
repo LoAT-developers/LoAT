@@ -51,7 +51,7 @@ permissions:
 jobs:
 
   build:
-    if: ${{ inputs.build && startsWith(inputs.config, 'loat') }}
+    if: ${{ inputs.build && startsWith(inputs.config, 'loat') && !startsWith(inputs.config, 'loat_release') }}
     uses: ./.github/workflows/build-loat.yml
 
   chc-comp-benchmark:
