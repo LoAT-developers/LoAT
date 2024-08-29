@@ -115,9 +115,9 @@ jobs:
               result=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               result=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
-            elif [[ ${{ inputs.config }} == loat_chc_comp_2024_abmc_* ]; then
+            elif [[ ${{ inputs.config }} == loat_release_chc_comp_2024_* ]]; then
               config=${{ inputs.config }}
-              engine=${config:25:100}
+              engine=${config:28:100}
               result=$(timeout ${{ inputs.timeout }} solver --mode reachability --format horn --engine $engine --plain --proof-level 0 "${filename}")
             elif [ ${{ inputs.config }} = "z3_gspacer" ]; then
               result=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer fp.spacer.global=true "${filename}")
