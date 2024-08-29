@@ -6,9 +6,10 @@ runs:
       with:
         tag: chc-comp-2024
         fileName: loat-static
-        out-file-path: '/usr/local/bin'
+        out-file-path: '/usr/local/bin/'
 
     - run: |
+        mv /usr/local/bin/loat-static /usr/local/bin/solver
         VERSION='489a2b9a3f5d3b0905b4722dbb01bba1902cdd41'
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
       shell: bash
