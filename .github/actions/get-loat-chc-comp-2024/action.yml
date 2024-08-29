@@ -4,7 +4,6 @@ runs:
 
     - uses: robinraju/release-downloader@v1
       with:
-        repository: 'Z3Prover/z3'
         tag: chc-comp-2024
         fileName: loat-static
         out-file-path: '/usr/local/bin'
