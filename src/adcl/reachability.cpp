@@ -227,7 +227,7 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const Bools::Expr impli
     if (!trace.empty()) {
         resolvent = Preprocess::chain(trace.back().resolvent, resolvent).first;
     }
-    return *Preprocess::preprocessRule(resolvent);
+    return Preprocess::preprocessRule(resolvent).value_or(resolvent);
 }
 
 bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
@@ -464,18 +464,18 @@ std::optional<Rule> Reachability::instantiate(const Arith::Var n, const Rule &ru
 }
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, const Model &model, const unsigned backlink) {
-    const auto simp {Preprocess::preprocessRule(rule)};
-    if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
+    const auto simp {Preprocess::preprocessRule(rule).value_or(rule)};
+    if (Config::Analysis::safety() && simp.getUpdate() == simp.getUpdate().concat(simp.getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
         return std::make_unique<Unroll>(1);
     }
-    if (Config::Analysis::log && simp) {
-        std::cout << "simplified loop:\n" << *simp << std::endl;
+    if (Config::Analysis::log && simp.getId() != rule.getId()) {
+        std::cout << "simplified loop:\n" << simp << std::endl;
     }
     if (Config::Analysis::safety()) {
-        if (simp->getUpdate().empty()) {
+        if (simp.getUpdate().empty()) {
             if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
             return std::make_unique<Covered>();
         }
@@ -484,7 +484,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     const AccelConfig config {
         .tryNonterm = Config::Analysis::tryNonterm(),
         .n = n};
-    const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
+    const auto accel_res {LoopAcceleration::accelerate(simp, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
@@ -499,18 +499,18 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const Rule &rule, cons
     }
     if (accel_res.accel) {
         // acceleration succeeded, simplify the result
-        auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)};
-        if (simplified && simplified->getUpdate() != simp->getUpdate()) {
+        auto simplified {Preprocess::preprocessRule(accel_res.accel->rule).value_or(accel_res.accel->rule)};
+        if (simplified.getUpdate() != simp.getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
-                if (const auto inst {instantiate(n, *simplified)}) {
-                    simplified = inst;
+                if (const auto inst {instantiate(n, simplified)}) {
+                    simplified = *inst;
                 }
             }
-            const auto loop_idx {add_learned_clause(*simplified, backlink)};
+            const auto loop_idx {add_learned_clause(simplified, backlink)};
             res.res.emplace_back(loop_idx);
             if (Config::Analysis::log) {
-                std::cout << "accelerated rule, idx " << loop_idx << "\n" << *simplified << std::endl;
+                std::cout << "accelerated rule, idx " << loop_idx << "\n" << simplified << std::endl;
             }
         }
     }

@@ -156,7 +156,7 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
     auto [loop, sample_point] {build_loop(backlink)};
-    auto simp {Preprocess::preprocessRule(loop)};
+    auto simp {Preprocess::preprocessRule(loop).value_or(loop)};
     auto &map {cache.emplace(lang, std::unordered_map<Bools::Expr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
         if (sample_point.eval<Bools>(imp)) {
@@ -179,28 +179,28 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     };
     if (Config::Analysis::tryNonterm() && !nonterm_cache.contains(lang)) {
         const AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
-        const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
-        nonterm_to_query(*simp, accel_res);
+        const auto accel_res {LoopAcceleration::accelerate(simp, config)};
+        nonterm_to_query(simp, accel_res);
         nonterm_cache.emplace(lang);
     }
-    const auto deterministic{simp->isDeterministic()};
+    const auto deterministic{simp.isDeterministic()};
     if (Config::Analysis::safety() && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
-    } else if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
+    } else if (Config::Analysis::safety() && simp.getUpdate() == simp.getUpdate().concat(simp.getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
-    } else if (Config::Analysis::safety() && simp->getUpdate().empty()) {
+    } else if (Config::Analysis::safety() && simp.getUpdate().empty()) {
         if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
     } else {
-        if (Config::Analysis::log && simp) {
-            std::cout << "simplified loop:\n" << *simp << std::endl;
+        if (Config::Analysis::log && simp.getId() != loop.getId()) {
+            std::cout << "simplified loop:\n" << simp << std::endl;
         }
         const AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
-        const auto accel_res {LoopAcceleration::accelerate(*simp, config)};
-        nonterm_to_query(*simp, accel_res);
+        const auto accel_res {LoopAcceleration::accelerate(simp, config)};
+        nonterm_to_query(simp, accel_res);
         if (accel_res.accel) {
-            auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
-            if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
-                const auto new_idx{add_learned_clause(*simplified, backlink)};
+            auto simplified {Preprocess::preprocessRule(accel_res.accel->rule).value_or(accel_res.accel->rule)};
+            if (simplified.getUpdate() != simp.getUpdate() && simplified.isPoly()) {
+                const auto new_idx{add_learned_clause(simplified, backlink)};
                 shortcut = new_idx;
                 history.emplace(next, lang);
                 lang_map.emplace(Implicant(new_idx, new_idx->getGuard()), next);
@@ -213,7 +213,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                     .deterministic = deterministic};
                 map.emplace(accel_res.accel->covered, loop);
                 if (Config::Analysis::log) {
-                    std::cout << "accelerated rule, idx " << new_idx->getId() << "\n" << *simplified << std::endl;
+                    std::cout << "accelerated rule, idx " << new_idx->getId() << "\n" << simplified << std::endl;
                 }
                 return loop;
             }
