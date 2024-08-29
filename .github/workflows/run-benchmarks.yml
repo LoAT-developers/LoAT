@@ -17,6 +17,8 @@ on:
         - loat_unsat
         - loat_nonterm
         - loat_lb
+        - loat_release_chc_comp_2024_bmc
+        - loat_release_chc_comp_2024_abmc
         - z3_gspacer
         - z3_spacer
         - z3_bmc
@@ -78,10 +80,13 @@ jobs:
       - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
         uses: ./actions/.github/actions/chc22-lia-lin
 
-      - if: ${{ !inputs.build && startsWith(inputs.config, 'loat') }}
+      - if: ${{ startsWith(inputs.config, 'loat_release_chc_comp_2024') }}
+        uses: ./actions/.github/actions/get-loat-chc-comp-2024
+
+      - if: ${{ !inputs.build && startsWith(inputs.config, 'loat') && !startsWith(inputs.config, 'loat_release') }}
         uses: ./actions/.github/actions/get-loat
 
-      - if: ${{ inputs.build && startsWith(inputs.config, 'loat') }}
+      - if: ${{ inputs.build && startsWith(inputs.config, 'loat') && !startsWith(inputs.config, 'loat_release') }}
         uses: ./actions/.github/actions/get-loat-build
 
       - if: ${{ startsWith(inputs.config, 'z3') }}
@@ -110,6 +115,10 @@ jobs:
               result=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               result=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
+            elif [[ ${{ inputs.config }} == loat_chc_comp_2024_abmc_* ]; then
+              config=${{ inputs.config }}
+              engine=${config:25:100}
+              result=$(timeout ${{ inputs.timeout }} solver --mode reachability --format horn --engine $engine --plain --proof-level 0 "${filename}")
             elif [ ${{ inputs.config }} = "z3_gspacer" ]; then
               result=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer fp.spacer.global=true "${filename}")
             elif [ ${{ inputs.config }} = "z3_spacer" ]; then

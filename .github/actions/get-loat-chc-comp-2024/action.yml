@@ -1,0 +1,16 @@
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        repository: 'Z3Prover/z3'
+        tag: chc-comp-2024
+        fileName: loat-static
+        out-file-path: '/usr/local/bin'
+
+    - run: |
+        VERSION='489a2b9a3f5d3b0905b4722dbb01bba1902cdd41'
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      shell: bash
+
