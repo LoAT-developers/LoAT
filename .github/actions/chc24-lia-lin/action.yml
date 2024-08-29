@@ -10,7 +10,6 @@ runs:
         path: chc-comp24-benchmarks
 
     - run: |
-        gunzip chc-comp24-benchmarks/LIA-Lin/*.gz
         mkdir benchmarks
         mv chc-comp24-benchmarks/LIA-Lin/*.smt2 benchmarks
       shell: bash
