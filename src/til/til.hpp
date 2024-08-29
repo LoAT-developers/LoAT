@@ -119,8 +119,9 @@ private:
 public:
 
     void sat();
+    void unsat();
     explicit TIL(const ITSProblem &its, const Config::TILConfig &config);
-    bool setup();
+    std::optional<SmtResult> setup();
     std::optional<SmtResult> do_step();
     void analyze();
     static void analyze(const ITSProblem &its);

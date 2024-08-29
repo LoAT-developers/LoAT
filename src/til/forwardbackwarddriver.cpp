@@ -23,28 +23,55 @@ void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem 
     };
     TIL f {forward, forwardConfig};
     TIL b {backward, backwardConfig};
-    if (!f.setup()) {
+    const auto f_setup {f.setup()};
+    if (!f_setup) {
         if (Config::Analysis::log) {
             std::cout << "\n===== FORWARD SETUP FAILED =====" << std::endl;
         }
         b.analyze();
         return;
     }
-    if (!b.setup()) {
+    switch (*f_setup) {
+    case SmtResult::Sat:
+        f.sat();
+        return;
+    case SmtResult::Unsat:
+        f.unsat();
+        return;
+    case SmtResult::Unknown:
+        break;
+    }
+    const auto b_setup {b.setup()};
+    if (!b_setup) {
         if (Config::Analysis::log) {
             std::cout << "\n===== BACKWARD SETUP FAILED =====" << std::endl;
         }
         while (true) {
             const auto res{f.do_step()};
             if (res) {
-                if (res == SmtResult::Sat) {
+                switch (*res) {
+                case SmtResult::Sat:
                     f.sat();
-                } else {
+                    return;
+                case SmtResult::Unsat:
+                    f.unsat();
+                    return;
+                default:
                     std::cout << "unknown" << std::endl;
+                    return;
                 }
-                return;
             }
         }
+    }
+    switch (*b_setup) {
+    case SmtResult::Sat:
+        b.sat();
+        return;
+    case SmtResult::Unsat:
+        b.unsat();
+        return;
+    case SmtResult::Unknown:
+        break;
     }
     TIL *active {&f};
     TIL *passive {&b};
@@ -59,7 +86,7 @@ void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem 
         }
         auto res{active->do_step()};
         if (res) {
-            if (res == SmtResult::Sat) {
+            if (res != SmtResult::Unknown) {
                 if (Config::Analysis::log) {
                     if (is_forward) {
                         std::cout << "\n===== FORWARD SUCCEEDED =====" << std::endl;
@@ -67,8 +94,17 @@ void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem 
                         std::cout << "\n===== BACKWARD SUCCEEDED =====" << std::endl;
                     }
                 }
-                active->sat();
-                return;
+                switch (*res) {
+                case SmtResult::Sat:
+                    active->sat();
+                    return;
+                case SmtResult::Unsat:
+                    active->unsat();
+                    return;
+                default:
+                    std::cout << "unknown" << std::endl;
+                    return;
+                }
             }
             if (Config::Analysis::log) {
                 if (is_forward) {
@@ -78,14 +114,19 @@ void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem 
                 }
             }
             while (true) {
-                const auto res {passive->do_step()};
+                const auto res{passive->do_step()};
                 if (res) {
-                    if (res == SmtResult::Sat) {
+                    switch (*res) {
+                    case SmtResult::Sat:
                         passive->sat();
-                    } else {
+                        return;
+                    case SmtResult::Unsat:
+                        passive->unsat();
+                        return;
+                    default:
                         std::cout << "unknown" << std::endl;
+                        return;
                     }
-                    return;
                 }
             }
         }

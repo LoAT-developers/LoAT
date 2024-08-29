@@ -156,7 +156,6 @@ TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
 
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
     auto [loop, sample_point] {build_loop(backlink)};
-    auto simp {Preprocess::preprocessRule(loop).value_or(loop)};
     auto &map {cache.emplace(lang, std::unordered_map<Bools::Expr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
         if (sample_point.eval<Bools>(imp)) {
@@ -169,6 +168,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             }
         }
     }
+    auto simp {Preprocess::preprocessRule(loop).value_or(loop)};
     const auto nonterm_to_query = [this](const Rule &rule, const acceleration::Result &accel_res) {
         if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
             query = query || accel_res.nonterm;

@@ -548,6 +548,14 @@ void TIL::sat() {
     }
 }
 
+void TIL::unsat() {
+    const auto str{"unsat"};
+    std::cout << str << std::endl;
+    if (Config::Analysis::log) {
+        std::cout << "found counterexample at depth " << depth << std::endl;
+    }
+}
+
 void TIL::build_trace() {
     trace.clear();
     model = solver->model();
@@ -621,7 +629,7 @@ void TIL::pop() {
     --depth;
 }
 
-bool TIL::setup() {
+std::optional<SmtResult> TIL::setup() {
     std::vector<Bools::Expr> steps;
     for (const auto &trans : t.trans()) {
         rule_map.left.insert(rule_map_t::left_value_type(next_id, trans));
@@ -636,12 +644,18 @@ bool TIL::setup() {
     {
         solver->push();
         solver->add(s(t.err()));
-        if (solver->check() != SmtResult::Unsat) {
-            return false;
-        }
+        const auto smt_res {solver->check()};
         solver->pop();
+        switch (smt_res) {
+        case SmtResult::Sat:
+            return SmtResult::Unsat;
+        case SmtResult::Unsat:
+            return SmtResult::Unknown;
+        case SmtResult::Unknown:
+            return {};
+        }
     }
-    return true;
+    return SmtResult::Unknown;
 }
 
 std::optional<SmtResult> TIL::do_step() {
@@ -665,7 +679,13 @@ std::optional<SmtResult> TIL::do_step() {
         switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
-            return SmtResult::Unknown;
+            if (std::all_of(trace.begin(), trace.end(), [&](const auto &t) {
+                return t.id <= last_orig_clause;
+            })) {
+                return SmtResult::Unsat;
+            } else {
+                return SmtResult::Unknown;
+            }
         case SmtResult::Unknown:
             std::cerr << "unknown from SMT solver" << std::endl;
             return SmtResult::Unknown;
@@ -719,20 +739,34 @@ ITSModel TIL::get_model() {
 }
 
 void TIL::analyze() {
-    if (!setup()) {
-        unknown();
-        return;
-    }
-    while (true) {
-        const auto res{do_step()};
-        if (res) {
-            if (res == SmtResult::Sat) {
-                sat();
-            } else {
-                unknown();
-            }
+    if (const auto setup_res{setup()}) {
+        switch (*setup_res) {
+        case SmtResult::Sat:
+            sat();
             return;
+        case SmtResult::Unsat:
+            unsat();
+            return;
+        case SmtResult::Unknown:
+            while (true) {
+                const auto res{do_step()};
+                if (res) {
+                    switch (*res) {
+                    case SmtResult::Sat:
+                        sat();
+                        return;
+                    case SmtResult::Unsat:
+                        unsat();
+                        return;
+                    default:
+                        unknown();
+                        return;
+                    }
+                }
+            }
         }
+    } else {
+        unknown();
     }
 }
 
