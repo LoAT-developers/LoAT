@@ -134,13 +134,14 @@ Int TIL::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     rule_map.left.insert(rule_map_t::left_value_type(id, accel));
     t.add_transition(accel);
     const auto fst {rule_map.left.at(trace.at(range.start()).id)};
-    const auto last {rule_map.left.at(trace.at(range.end()).id)};
+    const auto last {rule_map.left.at(trace.at(range.start()).id)};
     for (const auto &pred: t.get_dependency_graph().getPredecessors(fst)) {
         t.add_edge(pred, accel);
     }
     for (const auto &succ: t.get_dependency_graph().getSuccessors(last)) {
-        t.add_edge(accel, succ);
+        t.add_edge(succ, accel);
     }
+    const auto lits {accel->lits()};
     return id;
 }
 
