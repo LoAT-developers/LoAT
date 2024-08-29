@@ -267,7 +267,7 @@ ArithLitPtr arith::mkGeq(const ArithExprPtr x, const ArithExprPtr y) {
 }
 
 ArithLitPtr arith::mkLeq(const ArithExprPtr x, const ArithExprPtr y) {
-    return mkGeq(-x, -y);
+    return mkGeq(y, x);
 }
 
 ArithLitPtr arith::mkGt(const ArithExprPtr x, const ArithExprPtr y) {
