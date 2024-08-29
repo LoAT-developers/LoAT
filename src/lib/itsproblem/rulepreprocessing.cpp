@@ -77,17 +77,18 @@ std::optional<Rule> Preprocess::preprocessRule(const Rule &rule) {
     }
     auto current {rule};
     auto success {false};
-    if (const auto res{propagateEquivalences(current)}) {
-        current = *res;
-        success = true;
-    }
-    auto changed {false};
+    auto changed{false};
     do {
         changed = false;
-        if (const auto res {eliminateArithVars(current)}) {
-            changed = true;
+        if (const auto res{propagateEquivalences(current)}) {
             success = true;
             current = *res;
+            changed = true;
+        }
+        if (const auto res{eliminateArithVars(current)}) {
+            success = true;
+            current = *res;
+            changed = true;
         }
     } while (changed);
     if (success && Config::Analysis::doLogPreproc()) {

@@ -86,19 +86,31 @@ bool chainLinearPaths(ITSProblem &its) {
     return success;
 }
 
-bool preprocessRules(ITSProblem &its) {
+std::optional<SmtResult> preprocessRules(ITSProblem &its) {
     auto success{false};
+    std::vector<TransIdx> remove;
     linked_hash_map<TransIdx, Rule> replacements;
     for (const auto &r : its.getAllTransitions()) {
         if (const auto res {Preprocess::preprocessRule(r)}) {
             success = true;
-            replacements.emplace(&r, *res);
+            if (res->getGuard() == bot()) {
+                remove.push_back(&r);
+            } else {
+                replacements.emplace(&r, *res);
+            }
         }
     }
     for (const auto &[idx, replacement] : replacements) {
         its.replaceRule(idx, replacement);
     }
-    return success;
+    for (const auto &idx: remove) {
+        its.removeRule(idx);
+    }
+    if (success) {
+        return its.isEmpty() ? std::optional{SmtResult::Sat} : std::optional{SmtResult::Unknown};
+    } else {
+        return {};
+    }
 }
 
 /**
@@ -141,7 +153,7 @@ bool refine_dependency_graph(ITSProblem &its) {
     }
 }
 
-std::optional<SmtResult> check_sat(ITSProblem &its) {
+std::optional<SmtResult> check_empty_clauses(ITSProblem &its) {
     std::vector<TransIdx> remove;
     for (const auto &r: its.getInitialTransitions()) {
         if (its.isSinkTransition(r)) {
@@ -151,6 +163,25 @@ std::optional<SmtResult> check_sat(ITSProblem &its) {
             } else if (smt_res == SmtResult::Unsat) {
                 remove.emplace_back(r);
             }
+        }
+    }
+    for (const auto &r: remove) {
+        its.removeRule(r);
+    }
+    if (its.isEmpty()) {
+        return SmtResult::Sat;
+    } else if (remove.empty()) {
+        return std::optional<SmtResult>{};
+    } else {
+        return SmtResult::Unknown;
+    }
+}
+
+std::optional<SmtResult> check_bot(ITSProblem &its) {
+    std::vector<TransIdx> remove;
+    for (const auto &r: its.getAllTransitions()) {
+        if (r.getGuard()== bot()) {
+            remove.emplace_back(&r);
         }
     }
     for (const auto &r: remove) {
@@ -187,11 +218,11 @@ std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
         std::cout << "finished chaining linear paths" << std::endl;
     }
     if (Config::Analysis::doLogPreproc()) {
-        std::cout << "checking satisfiability of guards..." << std::endl;
+        std::cout << "checking empty clauses..." << std::endl;
     }
-    const auto sat_res {check_sat(its)};
+    auto sat_res {check_empty_clauses(its)};
     if (Config::Analysis::doLogPreproc()) {
-        std::cout << "finished checking satisfiability" << std::endl;
+        std::cout << "finished checking empty clauses" << std::endl;
     }
     if (sat_res && sat_res != SmtResult::Unknown) {
         return sat_res;
@@ -200,7 +231,11 @@ std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing rules..." << std::endl;
     }
-    success |= preprocessRules(its);
+    sat_res = preprocessRules(its);
+    if (sat_res && sat_res != SmtResult::Unknown) {
+        return sat_res;
+    }
+    success |= bool(sat_res);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished preprocessing rules" << std::endl;
     }
@@ -222,5 +257,5 @@ std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
             }
         }
     }
-    return success ? std::optional<SmtResult>{} : std::optional{SmtResult::Unknown};
+    return success ? std::optional{SmtResult::Unknown} : std::optional<SmtResult>{};
 }
