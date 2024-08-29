@@ -26,6 +26,7 @@ on:
         - golem_bmc
         - golem_imc
         - golem_kind
+        - eld
       benchmarks:
         required: true
         type: choice
@@ -86,6 +87,9 @@ jobs:
       - if: ${{ startsWith(inputs.config, 'z3') }}
         uses: ./actions/.github/actions/get-z3
 
+      - if: ${{ startsWith(inputs.config, 'eld') }}
+        uses: ./actions/.github/actions/get-eld
+
       - if: ${{ startsWith(inputs.config, 'golem') }}
         uses: ./actions/.github/actions/get-golem
 
@@ -116,6 +120,8 @@ jobs:
               config=${{ inputs.config }}
               engine=${config:6:100}
               result=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
+            elif [ ${{ inputs.config }} = "eld" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver "${filename}")
             fi
 
             exit_status=$?
