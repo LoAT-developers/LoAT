@@ -6,7 +6,7 @@
 #include <functional>
 #include <ostream>
 
-#include "linkedhashset.hpp"
+#include "rule.hpp" // for TransIdx
 
 template <class Node>
 class DependencyGraph {

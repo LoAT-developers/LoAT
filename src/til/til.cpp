@@ -125,22 +125,14 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     return {*loop, m};
 }
 
-Int TIL::add_learned_clause(const Range &range, const Bools::Expr &accel) {
+Int TIL::add_learned_clause(const Bools::Expr &accel) {
     if (Config::Analysis::log) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     }
     const auto id = next_id;
     ++next_id;
     rule_map.left.insert(rule_map_t::left_value_type(id, accel));
-    t.add_transition(accel);
-    const auto fst {rule_map.left.at(trace.at(range.start()).id)};
-    const auto last {rule_map.left.at(trace.at(range.start()).id)};
-    for (const auto &pred: t.get_dependency_graph().getPredecessors(fst)) {
-        t.add_edge(pred, accel);
-    }
-    for (const auto &succ: t.get_dependency_graph().getSuccessors(last)) {
-        t.add_edge(succ, accel);
-    }
+    step = step || encode_transition(accel, id);
     const auto lits {accel->lits()};
     return id;
 }
@@ -474,7 +466,7 @@ void TIL::handle_loop(const Range &range) {
     }
     auto ti{compute_transition_invariant(loop, model)};
     model.put<Arith>(n, 1);
-    const auto id{add_learned_clause(range, ti)};
+    const auto id{add_learned_clause(ti)};
     const auto projected{mbp_impl(ti, model, [&](const auto &x) {
         return x == Var(n);
     })};
@@ -533,16 +525,12 @@ void TIL::add_blocking_clauses() {
     const auto s1{get_subs(depth, 1)};
     const auto s2{get_subs(depth + 1, 1)};
     for (const auto &[id, b] : projections) {
-        if (active.back().contains(rule_map.left.at(id))) {
-            solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
-        }
+        solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
     }
     const auto it{blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
-        for (const auto &[id,b]: it->second) {
-            if (active.back().contains(rule_map.left.at(id))) {
-                solver->add(b);
-            }
+        for (const auto &[_,b]: it->second) {
+            solver->add(b);
         }
     }
 }
@@ -630,7 +618,6 @@ const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
 
 void TIL::pop() {
     solver->pop();
-    active.pop_back();
     --depth;
 }
 
@@ -638,9 +625,11 @@ bool TIL::setup() {
     std::vector<Bools::Expr> steps;
     for (const auto &trans : t.trans()) {
         rule_map.left.insert(rule_map_t::left_value_type(next_id, trans));
+        steps.push_back(encode_transition(trans, next_id));
         ++next_id;
     }
     last_orig_clause = next_id - 1;
+    step = bools::mkOr(steps);
     solver->add(t.init());
     solver->push();
     auto s{get_subs(depth, 1)};
@@ -656,17 +645,9 @@ bool TIL::setup() {
 }
 
 std::optional<SmtResult> TIL::do_step() {
-    const auto last_active = active.empty() ? BoolExprSet{t.init()} : active.back();
-    active.push_back(t.get_successors(last_active));
     solver->push();
     auto s{get_subs(depth, 1)};
-    BoolExprSet disjuncts;
-    for (const auto &a : active.back()) {
-        if (a != t.err()) {
-            disjuncts.insert(encode_transition(a, rule_map.right.at(a)));
-        }
-    }
-    solver->add(s(bools::mkOr(disjuncts)));
+    solver->add(s(step));
     add_blocking_clauses();
     ++depth;
     switch (solver->check()) {
@@ -679,37 +660,36 @@ std::optional<SmtResult> TIL::do_step() {
         build_trace();
         s = get_subs(depth, 1);
         // push error states
-        if (active.back().contains(t.err())) {
-            solver->push();
-            solver->add(s(t.err()));
-            switch (solver->check()) {
-            case SmtResult::Sat:
-                build_trace();
-                return SmtResult::Unknown;
-            case SmtResult::Unknown:
-                std::cerr << "unknown from SMT solver" << std::endl;
-                return SmtResult::Unknown;
-            case SmtResult::Unsat:
-                // do nothing
-                break;
-            }
+        solver->push();
+        solver->add(s(t.err()));
+        switch (solver->check()) {
+        case SmtResult::Sat:
+            build_trace();
+            return SmtResult::Unknown;
+        case SmtResult::Unknown:
+            std::cerr << "unknown from SMT solver" << std::endl;
+            return SmtResult::Unknown;
+        case SmtResult::Unsat: {
+            // pop error states
             solver->pop();
-        }
-        if (Config::Analysis::log) {
-            std::cout << "starting loop handling" << std::endl;
-        }
-        const auto range{has_looping_infix()};
-        if (range) {
             if (Config::Analysis::log) {
-                std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
+                std::cout << "starting loop handling" << std::endl;
             }
-            handle_loop(*range);
-            while (depth > range->start()) {
-                pop();
+            const auto range{has_looping_infix()};
+            if (range) {
+                if (Config::Analysis::log) {
+                    std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
+                }
+                handle_loop(*range);
+                while (depth > range->start()) {
+                    pop();
+                }
             }
+            if (Config::Analysis::log) {
+                std::cout << "done with loop handling" << std::endl;
+            }
+            break;
         }
-        if (Config::Analysis::log) {
-            std::cout << "done with loop handling" << std::endl;
         }
     }
     }
@@ -724,7 +704,7 @@ ITSModel TIL::get_model() {
     Bools::Expr last{t.init()};
     for (unsigned i = 0; i < depth - 1; ++i) {
         const auto s1{get_subs(i, 1)};
-        last = last && s1(bools::mkOr(active.at(i)));
+        last = last && s1(step);
         Subs s2;
         for (const auto &x : vars) {
             if (theory::isProgVar(x)) {

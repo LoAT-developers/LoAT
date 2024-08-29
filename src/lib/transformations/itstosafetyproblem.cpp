@@ -48,7 +48,6 @@ ReversibleITSToSafety its_to_safetyproblem(const ITSProblem &its) {
     }
     std::vector<Bools::Expr> init;
     std::vector<Bools::Expr> err;
-    std::unordered_map<TransIdx, Bools::Expr> map;
     for (const auto &r: its.getAllTransitions()) {
         if (its.isInitialTransition(&r)) {
             init.emplace_back(Preprocess::preprocessFormula(init_map(rule_to_formula(r, sp.pre_vars())), theory::isTempVar));
@@ -57,22 +56,10 @@ ReversibleITSToSafety its_to_safetyproblem(const ITSProblem &its) {
             err.emplace_back(Preprocess::preprocessFormula(r.getGuard(), theory::isTempVar));
         }
         if (!its.isInitialTransition(&r) && !its.isSinkTransition(&r)) {
-            const auto t {rule_to_formula(r, sp.pre_vars())};
-            sp.add_transition(t);
-            map.emplace(&r, t);
+            sp.add_transition(rule_to_formula(r, sp.pre_vars()));
         }
     }
     sp.set_init(bools::mkOr(init));
     sp.set_err(bools::mkOr(err));
-    for (const auto &r1: its.getAllTransitions()) {
-        if (its.isSinkTransition(&r1)) {
-            continue;
-        }
-        const auto t1 = its.isInitialTransition(&r1) ? sp.init() : map.at(&r1);
-        for (const auto &r2: its.getSuccessors(&r1)) {
-            const auto t2 = its.isSinkTransition(r2) ? sp.err() : map.at(r2);
-            sp.add_edge(t1, t2);
-        }
-    }
     return ReversibleITSToSafety(sp, its.getLocations(), its.getLocVar());
 }
