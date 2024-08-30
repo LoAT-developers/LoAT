@@ -101,16 +101,18 @@ Reachability::Reachability(ITSProblem &chcs):
     solver->enableModels();
 }
 
-Step::Step(const TransIdx transition, const Bools::Expr sat, const Subs &var_renaming, const Rule &resolvent):
+Step::Step(const TransIdx transition, const Bools::Expr sat, const Subs &var_renaming, const Subs &tmp_var_renaming, const Rule &resolvent):
     clause_idx(transition),
     implicant(sat),
     var_renaming(var_renaming),
+    tmp_var_renaming(tmp_var_renaming),
     resolvent(resolvent) {}
 
 Step::Step(const Step &that):
     clause_idx(that.clause_idx),
     implicant(that.implicant),
     var_renaming(that.var_renaming),
+    tmp_var_renaming(that.tmp_var_renaming),
     resolvent(that.resolvent) {}
 
 std::ostream& operator<<(std::ostream &s, const Step &step) {
@@ -136,32 +138,34 @@ std::optional<unsigned> Reachability::has_looping_suffix(int start) {
     return {};
 }
 
-Subs Reachability::handle_update(const TransIdx idx) {
-    if (chcs.isSinkTransition(idx)) {
-        // no need to compute a new variable renaming if we just applied a query
-        return {};
-    }
+std::pair<Subs, Subs> Reachability::handle_update(const TransIdx idx) {
     const auto &last_var_renaming = trace.empty() ? Subs::Empty : trace.back().var_renaming;
     Subs new_var_renaming {last_var_renaming};
+    Subs new_tmp_var_renaming;
+    if (chcs.isSinkTransition(idx)) {
+        // no need to compute a new variable renaming if we just applied a query
+        return {new_var_renaming, new_tmp_var_renaming};
+    }
     const Subs up = idx->getUpdate();
     for (const auto &x: prog_vars) {
-        theory::apply(x, [&new_var_renaming](const auto &x) {
+        theory::apply(x, [&](const auto &x) {
             const auto th {theory::theory(x)};
             new_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
         });
     }
     for (const auto &var: idx->vars()) {
         if (theory::isTempVar(var)) {
-            theory::apply(var, [&new_var_renaming](const auto &x) {
+            theory::apply(var, [&](const auto &x) {
                 const auto th {theory::theory(x)};
                 new_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
+                new_tmp_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
             });
         }
     }
     for (const auto &x: prog_vars) {
         solver->add(theory::mkEq(new_var_renaming.get(x), last_var_renaming(up.get(x))));
     }
-    return new_var_renaming;
+    return {new_var_renaming, new_tmp_var_renaming};
 }
 
 void Reachability::block(const Step &step) {
@@ -218,14 +222,14 @@ void Reachability::update_cpx() {
     }
 }
 
-Rule Reachability::compute_resolvent(const TransIdx idx, const Bools::Expr implicant) const {
+Rule Reachability::compute_resolvent(const TransIdx idx, const Bools::Expr implicant, const Subs &tmp_var_renaming) const {
     static Rule dummy(top(), Subs());
     if (!Config::Analysis::complexity()) {
         return dummy;
     }
-    auto resolvent = idx->withGuard(implicant);
+    auto resolvent = idx->withGuard(implicant).subs(tmp_var_renaming);
     if (!trace.empty()) {
-        resolvent = Preprocess::chain(trace.back().resolvent, resolvent).first;
+        resolvent = Preprocess::chain({trace.back().resolvent, resolvent});
     }
     return Preprocess::preprocessRule(resolvent).value_or(resolvent);
 }
@@ -235,8 +239,8 @@ bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
     const auto imp {trace.empty() ? implicant : implicant.subs(trace.back().var_renaming)};
     solver->add(imp.getGuard());
     if (solver->check() == SmtResult::Sat) {
-        const auto new_var_renaming {handle_update(idx)};
-        const Step step(idx, implicant.getGuard(), new_var_renaming, compute_resolvent(idx, implicant.getGuard()));
+        const auto [new_var_renaming, new_tmp_var_renaming] {handle_update(idx)};
+        const Step step(idx, implicant.getGuard(), new_var_renaming, new_tmp_var_renaming, compute_resolvent(idx, implicant.getGuard(), new_tmp_var_renaming));
         add_to_trace(step);
         // block learned clauses after adding them to the trace
         if (is_learned_clause(idx)) {
@@ -406,30 +410,19 @@ Automaton Reachability::build_language(const int backlink) {
 }
 
 std::pair<Rule, Model> Reachability::build_loop(const int backlink) {
-    std::optional<Rule> loop;
-    Subs var_renaming;
-    for (int i = trace.size() - 1; i >= backlink; --i) {
-        const auto &step {trace[i]};
-        const auto rule {step.clause_idx->withGuard(step.implicant)};
-        if (loop) {
-            const auto [chained, sigma] {Preprocess::chain(rule, *loop)};
-            loop = chained;
-            var_renaming = sigma.compose(var_renaming);
-        } else {
-            loop = rule;
-        }
-        if (i > 0) {
-            var_renaming = trace[i-1].var_renaming.project(rule.vars()).compose(var_renaming);
-        }
+    std::vector<Rule> rules;
+    for (long i = backlink; i < trace.size(); ++i) {
+        rules.emplace_back(trace[i].clause_idx->withGuard(trace[i].implicant).subs(trace[i].tmp_var_renaming));
     }
-    auto vars {loop->vars()};
-    var_renaming = var_renaming.project(vars);
-    var_renaming.collectCoDomainVars(vars);
-    const auto model {solver->model(vars).composeBackwards(var_renaming)};
+    const auto loop {Preprocess::chain(rules)};
+    const auto s {trace[backlink].var_renaming};
+    auto vars {loop.vars()};
+    s.collectCoDomainVars(vars);
+    auto model {solver->model(vars).composeBackwards(s)};
     if (Config::Analysis::log) {
-        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << *loop << std::endl;
+        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << loop << std::endl;
     }
-    return {*loop, model};
+    return {loop, model};
 }
 
 TransIdx Reachability::add_learned_clause(const Rule &accel, const unsigned backlink) {
@@ -626,7 +619,7 @@ bool Reachability::try_to_finish() {
             const auto implicant {resolve(q)};
             if (implicant) {
                 // no need to compute a variable renaming for the next step, as we are done
-                add_to_trace(Step(q, implicant->getGuard(), Subs(), compute_resolvent(q, implicant->getGuard())));
+                add_to_trace(Step(q, implicant->getGuard(), Subs(), Subs(), Rule(top(), Subs())));
                 print_state();
                 unsat();
                 return true;

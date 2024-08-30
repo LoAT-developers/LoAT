@@ -90,27 +90,17 @@ int ABMC::get_language(unsigned i) {
 }
 
 std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
-    std::optional<Rule> loop;
-    Subs var_renaming;
-    for (long i = trace.size() - 1; i >= backlink; --i) {
-        const auto imp{trace[i]};
-        const auto rule{imp.first
-                            ->withGuard(imp.second)
-                            .subs(Subs::build<Arith>(n, subs.at(i).get<Arith>(n)))};
-        if (loop) {
-            const auto [chained, sigma]{Preprocess::chain(rule, *loop)};
-            loop = chained;
-            var_renaming = sigma.compose(var_renaming);
-        } else {
-            loop = rule;
-        }
-        var_renaming = subs[i].project(rule.vars()).compose(var_renaming);
+    std::vector<Rule> rules;
+    for (long i = backlink; i < trace.size(); ++i) {
+        rules.emplace_back(trace[i].first->withGuard(trace[i].second).subs(subsTmp.at(i)));
     }
-    auto vars {loop->vars()};
-    var_renaming.collectCoDomainVars(vars);
-    const auto model {solver->model(vars).composeBackwards(var_renaming)};
-    const auto imp {model.syntacticImplicant(loop->getGuard())};
-    const auto implicant {loop->withGuard(imp)};
+    const auto loop {Preprocess::chain(rules)};
+    const auto s {subs.at(backlink)};
+    auto vars {loop.vars()};
+    s.collectCoDomainVars(vars);
+    auto model {solver->model(vars).composeBackwards(s)};
+    const auto imp {model.syntacticImplicant(loop.getGuard())};
+    const auto implicant {loop.withGuard(imp)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << implicant << std::endl;
     }
@@ -283,13 +273,20 @@ void ABMC::build_trace() {
 
 const Subs &ABMC::subs_at(const unsigned i) {
     while (subs.size() <= i) {
-        Subs s;
+        Subs s, sTmp;
         for (const auto &var : vars) {
             const auto &post_var{post_vars.at(var)};
-            s.put(var, subs.back().get(post_var));
-            s.put(post_var, theory::toExpr(theory::next(post_var)));
+            const auto current {subs.back().get(post_var)};
+            const auto next {theory::toExpr(theory::next(post_var))};
+            s.put(var, current);
+            s.put(post_var, next);
+            if (theory::isTempVar(var)) {
+                sTmp.put(var, current);
+                sTmp.put(post_var, next);
+            }
         }
         subs.push_back(s);
+        subsTmp.push_back(sTmp);
     }
     return subs.at(i);
 }

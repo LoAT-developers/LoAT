@@ -29,6 +29,7 @@ private:
     unsigned last_orig_clause {};
     Bools::Expr query {bot()};
     std::vector<Subs> subs {Subs::Empty};
+    std::vector<Subs> subsTmp {Subs::Empty};
     std::vector<Implicant> trace {};
     VarSet vars {};
     Arith::Var n {ArithVar::next()};

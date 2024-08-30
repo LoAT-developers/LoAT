@@ -44,6 +44,8 @@ public:
 
     bool isDeterministic() const;
 
+    Rule renameTmpVars() const;
+
     size_t hash() const;
 
     bool operator==(const Rule &that) const = default;

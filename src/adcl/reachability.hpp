@@ -33,10 +33,11 @@ struct Step {
      * renames the program variables to fresh variables that serve as input for the next step
      */
     const Subs var_renaming;
+    const Subs tmp_var_renaming;
 
     const Rule resolvent;
 
-    Step(const TransIdx transition, const Bools::Expr sat, const Subs &var_renaming, const Rule &resolvent);
+    Step(const TransIdx transition, const Bools::Expr sat, const Subs &var_renaming, const Subs &tmp_var_renaming, const Rule &resolvent);
 
     Step(const Step &that);
 
@@ -270,7 +271,7 @@ class Reachability {
      * given clause by adding corresponding constraints to the SMT solver.
      * @return a variable renaming from the program variables to the fresh copy
      */
-    Subs handle_update(const TransIdx idx);
+    std::pair<Subs, Subs> handle_update(const TransIdx idx);
 
     /**
      * blocks the given step
@@ -287,7 +288,7 @@ class Reachability {
 
     void add_to_trace(const Step &step);
 
-    Rule compute_resolvent(const TransIdx idx, const Bools::Expr implicant) const;
+    Rule compute_resolvent(const TransIdx idx, const Bools::Expr implicant, const Subs &tmp_var_renaming) const;
 
     /**
      * Assumes that the trace can be resolved with the given clause.

@@ -63,7 +63,7 @@ bool chainLinearPaths(ITSProblem &its) {
                 const auto second_idx{*succ.begin()};
                 if (!its.isSimpleLoop(second_idx)) {
                     success = true;
-                    const auto chained{Preprocess::chain(first, *second_idx).first};
+                    const auto chained{Preprocess::chain({first, second_idx->renameTmpVars()})};
                     its.addRule(chained, &first, second_idx);
                     linked_hash_set<TransIdx> deleted;
                     deleted.insert(&first);
@@ -140,7 +140,7 @@ bool unroll(ITSProblem &its) {
 
 bool refine_dependency_graph(ITSProblem &its) {
     const auto is_edge = [](const TransIdx fst, const TransIdx snd) {
-        return SmtFactory::check(Preprocess::chain(*fst, *snd).first.getGuard()) == SmtResult::Sat;
+        return SmtFactory::check(Preprocess::chain({*fst, snd->renameTmpVars()}).getGuard()) == SmtResult::Sat;
     };
     const auto removed{its.refineDependencyGraph(is_edge)};
     if (removed.empty()) {

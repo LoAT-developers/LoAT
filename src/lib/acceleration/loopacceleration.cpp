@@ -19,7 +19,7 @@ std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
     unsigned period {1};
     do {
         changed = false;
-        const auto chained {Preprocess::chain(res, res).first};
+        const auto chained {Preprocess::chain({res, res.renameTmpVars()})};
         if (LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
             res = chained;
             period *= 2;
@@ -207,7 +207,7 @@ void LoopAcceleration::run() {
         res.status = acceleration::Disjunctive;
     } else {
         chain();
-        switch (SmtFactory::check(Preprocess::chain(rule, rule).first.getGuard())) {
+        switch (SmtFactory::check(Preprocess::chain({rule, rule.renameTmpVars()}).getGuard())) {
         case SmtResult::Unsat: res.status = acceleration::PseudoLoop;
             return;
         case SmtResult::Unknown: res.status = acceleration::NotSat;

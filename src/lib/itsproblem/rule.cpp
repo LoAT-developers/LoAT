@@ -103,3 +103,13 @@ size_t Rule::hash() const {
 size_t hash_value(const Rule &r) {
     return r.hash();
 }
+
+Rule Rule::renameTmpVars() const {
+    Subs s;
+    for (const auto &x: vars()) {
+        if (theory::isTempVar(x)) {
+            s.put(x, theory::toExpr(theory::next(x)));
+        }
+    }
+    return subs(s);
+}

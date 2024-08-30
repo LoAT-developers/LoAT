@@ -97,20 +97,12 @@ std::optional<Rule> Preprocess::preprocessRule(const Rule &rule) {
     return success ? current: std::optional<Rule>{};
 }
 
-std::pair<Subs, Subs> computeVarRenaming(const Rule &first, const Rule &second) {
-    Subs sigma, inverted;
-    auto first_vars {first.vars()};
-    for (const auto &x: second.vars()) {
-        if (theory::isTempVar(x) && first_vars.contains(x)) {
-            Subs::renameVar(x, sigma, inverted);
-        }
+Rule Preprocess::chain(const std::vector<Rule> &rules) {
+    std::vector<Bools::Expr> guards;
+    Subs up;
+    for (const auto &r: rules) {
+        guards.push_back(up(r.getGuard()));
+        up = r.getUpdate().compose(up);
     }
-    return {sigma, inverted};
-}
-
-std::pair<Rule, Subs> Preprocess::chain(const Rule &fst, const Rule &snd) {
-    const auto [sigma, inverted] {computeVarRenaming(fst, snd)};
-    const auto guard {fst.getGuard() && sigma.compose(fst.getUpdate())(snd.getGuard())};
-    const auto up {snd.getUpdate().concat(sigma).compose(fst.getUpdate())};
-    return {Rule(guard, up), inverted};
+    return Rule(bools::mkAnd(guards), up);
 }
