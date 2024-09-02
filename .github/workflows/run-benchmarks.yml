@@ -7,7 +7,7 @@ on:
       timeout:
         required: true
         type: number
-        default: 60
+        default: 50
       config:
         required: true
         type: choice
