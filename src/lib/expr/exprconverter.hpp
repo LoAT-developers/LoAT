@@ -85,7 +85,7 @@ protected:
                     if (1 <= *int_exp && *int_exp <= 10) {
                         auto factor {convertEx(base)};
                         auto vec {context.exprVec()};
-                        for (unsigned i = 1; i < *int_exp; ++i) {
+                        for (unsigned i = 0; i < *int_exp; ++i) {
                             vec.push_back(factor);
                         }
                         return context.times(vec);
