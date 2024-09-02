@@ -10,15 +10,15 @@ public:
     YicesError();
 };
 
-class YicesContext : public ExprConversionContext<term_t, term_t> {
+class YicesContext : public ExprConversionContext<term_t, term_t, std::vector<term_t>, std::vector<term_t>> {
 
 public:
     ~YicesContext() override;
     term_t getInt(const Int &val) override;
     term_t getReal(const Int &num, const Int &denom) override;
     term_t pow(const term_t &base, const term_t &exp) override;
-    term_t plus(const term_t &x, const term_t &y) override;
-    term_t times(const term_t &x, const term_t &y) override;
+    term_t plus(const std::vector<term_t> &args) override;
+    term_t times(const std::vector<term_t> &args) override;
     term_t mod(const term_t &x, const term_t &y) override;
     term_t eq(const term_t &x, const term_t &y) override;
     term_t lt(const term_t &x, const term_t &y) override;
@@ -26,11 +26,13 @@ public:
     term_t gt(const term_t &x, const term_t &y) override;
     term_t ge(const term_t &x, const term_t &y) override;
     term_t neq(const term_t &x, const term_t &y) override;
-    term_t bAnd(const term_t &x, const term_t &y) override;
-    term_t bOr(const term_t &x, const term_t &y) override;
+    term_t bAnd(std::vector<term_t> &args) override;
+    term_t bOr(std::vector<term_t> &args) override;
     term_t bTrue() const override;
     term_t bFalse() const override;
     term_t negate(const term_t &x) override;
+    std::vector<term_t> exprVec() override;
+    std::vector<term_t> formulaVec() override;
 
     void printStderr(const term_t &e) const override;
 

@@ -37,12 +37,12 @@ cvc5::Term CVC5Context::pow(const cvc5::Term &base, const cvc5::Term &exp) {
     }
 }
 
-cvc5::Term CVC5Context::plus(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::ADD, {x, y});
+cvc5::Term CVC5Context::plus(const std::vector<cvc5::Term> &args) {
+    return ctx.mkTerm(cvc5::Kind::ADD, args);
 }
 
-cvc5::Term CVC5Context::times(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::MULT, {x, y});
+cvc5::Term CVC5Context::times(const std::vector<cvc5::Term> &args) {
+    return ctx.mkTerm(cvc5::Kind::MULT, args);
 }
 
 cvc5::Term CVC5Context::mod(const cvc5::Term &x, const cvc5::Term &y) {
@@ -79,12 +79,12 @@ cvc5::Term CVC5Context::neq(const cvc5::Term &x, const cvc5::Term &y) {
     return ctx.mkTerm(cvc5::Kind::NOT, {eq(x, y)});
 }
 
-cvc5::Term CVC5Context::bAnd(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::AND, {x, y});
+cvc5::Term CVC5Context::bAnd(std::vector<cvc5::Term> &args) {
+    return ctx.mkTerm(cvc5::Kind::AND, args);
 }
 
-cvc5::Term CVC5Context::bOr(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::OR, {x, y});
+cvc5::Term CVC5Context::bOr(std::vector<cvc5::Term> &args) {
+    return ctx.mkTerm(cvc5::Kind::OR, args);
 }
 
 cvc5::Term CVC5Context::bTrue() const {
@@ -97,6 +97,14 @@ cvc5::Term CVC5Context::bFalse() const {
 
 cvc5::Term CVC5Context::negate(const cvc5::Term &x) {
     return ctx.mkTerm(cvc5::Kind::NOT, {x});
+}
+
+std::vector<cvc5::Term> CVC5Context::exprVec() {
+    return {};
+}
+
+std::vector<cvc5::Term> CVC5Context::formulaVec() {
+    return {};
 }
 
 void CVC5Context::printStderr(const cvc5::Term &e) const {

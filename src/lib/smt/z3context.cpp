@@ -25,12 +25,17 @@ z3::expr Z3Context::pow(const z3::expr &base, const z3::expr &exp) {
     return z3::pw(base, exp);
 }
 
-z3::expr Z3Context::plus(const z3::expr &x, const z3::expr &y) {
-    return x + y;
+z3::expr Z3Context::plus(const z3::expr_vector &args) {
+    return z3::sum(args);
 }
 
-z3::expr Z3Context::times(const z3::expr &x, const z3::expr &y) {
-    return x * y;
+z3::expr Z3Context::times(const z3::expr_vector &args) {
+    auto it {args.begin()};
+    z3::expr res {*it};
+    for (++it; it != args.end(); ++it) {
+        res = res * *it;
+    }
+    return res;
 }
 
 z3::expr Z3Context::mod(const z3::expr &x, const z3::expr &y) {
@@ -61,12 +66,12 @@ z3::expr Z3Context::neq(const z3::expr &x, const z3::expr &y) {
     return x != y;
 }
 
-z3::expr Z3Context::bAnd(const z3::expr &x, const z3::expr &y) {
-    return x && y;
+z3::expr Z3Context::bAnd(z3::expr_vector &args) {
+    return z3::mk_and(args);
 }
 
-z3::expr Z3Context::bOr(const z3::expr &x, const z3::expr &y) {
-    return x || y;
+z3::expr Z3Context::bOr(z3::expr_vector &args) {
+    return z3::mk_or(args);
 }
 
 z3::expr Z3Context::bTrue() const {
@@ -79,6 +84,14 @@ z3::expr Z3Context::bFalse() const {
 
 z3::expr Z3Context::negate(const z3::expr &x) {
     return !x;
+}
+
+z3::expr_vector Z3Context::exprVec() {
+    return z3::expr_vector(ctx);
+}
+
+z3::expr_vector Z3Context::formulaVec() {
+    return z3::expr_vector(ctx);
 }
 
 void Z3Context::printStderr(const z3::expr &e) const {

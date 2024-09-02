@@ -12,7 +12,7 @@ Swine::Swine(swine::Config config): solver(config, z3ctx), ctx(solver) {
 }
 
 void Swine::add(const Bools::Expr e) {
-    solver.add(ExprConverter<z3::expr, z3::expr>::convert(e, ctx));
+    solver.add(ExprConverter<z3::expr, z3::expr, z3::expr_vector, z3::expr_vector>::convert(e, ctx));
 }
 
 void Swine::push() {

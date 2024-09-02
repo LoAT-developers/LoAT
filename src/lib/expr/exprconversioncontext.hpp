@@ -5,7 +5,7 @@
 
 #include "theory.hpp"
 
-template<class Expr, class Formula>
+template<class Expr, class Formula, class ExprVec, class FormulaVec>
 class ExprConversionContext {
 
 public:
@@ -13,8 +13,8 @@ public:
     virtual Expr getInt(const Int &val) = 0;
     virtual Expr getReal(const Int &num, const Int &denom) = 0;
     virtual Expr pow(const Expr &base, const Expr &exp) = 0;
-    virtual Expr plus(const Expr &x, const Expr &y) = 0;
-    virtual Expr times(const Expr &x, const Expr &y) = 0;
+    virtual Expr plus(const ExprVec &args) = 0;
+    virtual Expr times(const ExprVec &args) = 0;
     virtual Expr mod(const Expr &x, const Expr &y) = 0;
     virtual Formula eq(const Expr &x, const Expr &y) = 0;
     virtual Formula lt(const Expr &x, const Expr &y) = 0;
@@ -22,11 +22,13 @@ public:
     virtual Formula gt(const Expr &x, const Expr &y) = 0;
     virtual Formula ge(const Expr &x, const Expr &y) = 0;
     virtual Formula neq(const Expr &x, const Expr &y) = 0;
-    virtual Formula bAnd(const Formula &x, const Formula &y) = 0;
-    virtual Formula bOr(const Formula &x, const Formula &y) = 0;
+    virtual Formula bAnd(FormulaVec &args) = 0;
+    virtual Formula bOr(FormulaVec &args) = 0;
     virtual Formula bTrue() const = 0;
     virtual Formula bFalse() const = 0;
     virtual Formula negate(const Formula &x) = 0;
+    virtual ExprVec exprVec() = 0;
+    virtual FormulaVec formulaVec() = 0;
 
     virtual void printStderr(const Expr &e) const = 0;
 

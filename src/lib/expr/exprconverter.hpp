@@ -6,23 +6,23 @@
 #include <sstream>
 #include <numeric>
 
-template<class Expr, class Formula>
+template<class Expr, class Formula, class ExprVec, class FormulaVec>
 class ExprConverter {
 public:
 
-    static Formula convert(const Bools::Expr e, ExprConversionContext<Expr, Formula> &ctx) {
-        ExprConverter<Expr, Formula> converter(ctx);
+    static Formula convert(const Bools::Expr e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
+        ExprConverter<Expr, Formula, ExprVec, FormulaVec> converter(ctx);
         return converter.convertBoolEx(e);
     }
 
-    static Expr convert(const Arith::Expr e, ExprConversionContext<Expr, Formula> &ctx) {
-        ExprConverter<Expr, Formula> converter(ctx);
+    static Expr convert(const Arith::Expr e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
+        ExprConverter<Expr, Formula, ExprVec, FormulaVec> converter(ctx);
         return converter.convertEx(e);
     }
 
 
 protected:
-    ExprConverter(ExprConversionContext<Expr, Formula> &context): context(context) {}
+    ExprConverter(ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &context): context(context) {}
 
     Formula convertBoolEx(const Bools::Expr e) {
         if (e->getTheoryLit()) {
@@ -36,17 +36,16 @@ protected:
                     }
                 }, *e->getTheoryLit());
         }
-        auto res = e->isAnd() ? context.bTrue() : context.bFalse();
-        auto first = true;
+        auto vec {context.formulaVec()};
         for (const auto &c: e->getChildren()) {
-            if (first) {
-                res = convertBoolEx(c);
-                first = false;
-            } else {
-                res = e->isAnd() ? context.bAnd(res, convertBoolEx(c)) : context.bOr(res, convertBoolEx(c));
-            }
+            vec.push_back(convertBoolEx(c));
         }
-        return res;
+        if (e->isAnd()) {
+            return context.bAnd(vec);
+        } else {
+            assert(e->isOr());
+            return context.bOr(vec);
+        }
     }
 
     Expr convertEx(const Arith::Expr e){
@@ -62,17 +61,18 @@ protected:
                 return context.getVariable(x);
             },
             [&](const ArithAddPtr a) {
-                const auto args {a->getArgs()};
-                const auto res {std::accumulate(args.begin(), args.end(), context.getInt(0), [&](const auto &x, const auto y) {
-                    return context.plus(x, convertEx(y));
-                })};
-                return res;
+                auto vec {context.exprVec()};
+                for (const auto &c: a->getArgs()) {
+                    vec.push_back(convertEx(c));
+                }
+                return context.plus(vec);
             },
             [&](const ArithMultPtr m) {
-                const auto args {m->getArgs()};
-                return std::accumulate(args.begin(), args.end(), context.getInt(1), [&](const auto &x, const auto y) {
-                    return context.times(x, convertEx(y));
-                });
+                auto vec {context.exprVec()};
+                for (const auto &c: m->getArgs()) {
+                    vec.push_back(convertEx(c));
+                }
+                return context.times(vec);
             },
             [&](const ArithModPtr m) {
                 return context.mod(convertEx(m->getLhs()), convertEx(m->getRhs()));
@@ -84,11 +84,11 @@ protected:
                     // Z3 still prefers x*x*...*x over x^c...
                     if (1 <= *int_exp && *int_exp <= 10) {
                         auto factor {convertEx(base)};
-                        auto res {factor};
+                        auto vec {context.exprVec()};
                         for (unsigned i = 1; i < *int_exp; ++i) {
-                            res = context.times(res, factor);
+                            vec.push_back(factor);
                         }
-                        return res;
+                        return context.times(vec);
                     }
                 }
                 return context.pow(convertEx(base), convertEx(exp));
@@ -114,5 +114,5 @@ protected:
     }
 
 private:
-    ExprConversionContext<Expr, Formula> &context;
+    ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &context;
 };

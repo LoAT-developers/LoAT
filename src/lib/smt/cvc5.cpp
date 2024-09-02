@@ -9,7 +9,7 @@ CVC5::CVC5(): solver(), ctx(solver) {
 }
 
 void CVC5::add(const Bools::Expr e) {
-    solver.assertFormula(ExprConverter<cvc5::Term, cvc5::Term>::convert(e, ctx));
+    solver.assertFormula(ExprConverter<cvc5::Term, cvc5::Term, std::vector<cvc5::Term>, std::vector<cvc5::Term>>::convert(e, ctx));
     solver.assertFormula(ctx.clearRefinement());
 }
 
@@ -231,18 +231,4 @@ Rational CVC5::getRealFromModel(const cvc5::Term &symbol) {
     } else {
         throw std::logic_error((std::stringstream() << "CVC5::getRealFromModel: tried to convert " << val << " to real").str());
     }
-}
-
-Bools::Expr CVC5::getInterpolant(const Bools::Expr premise, const Bools::Expr conclusion) {
-    if (Config::Analysis::log) {
-        std::cout << "searching interpolant for " << premise << " ==> " << conclusion << std::endl;
-    }
-    CVC5 solver;
-    solver.add(premise);
-    const auto interpolant {solver.solver.getInterpolant(ExprConverter<cvc5::Term, cvc5::Term>::convert(conclusion, solver.ctx))};
-    const auto res {convertFormula(interpolant, solver.ctx)};
-    if (Config::Analysis::log) {
-        std::cout << "found interpolant " << res << std::endl;
-    }
-    return res;
 }

@@ -2,7 +2,7 @@
 #include "exprconverter.hpp"
 
 void Z3::add(const Bools::Expr e) {
-    solver.add(ExprConverter<z3::expr, z3::expr>::convert(e, ctx));
+    solver.add(ExprConverter<z3::expr, z3::expr, z3::expr_vector, z3::expr_vector>::convert(e, ctx));
 }
 
 void Z3::push() {

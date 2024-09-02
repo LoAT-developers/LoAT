@@ -42,12 +42,12 @@ term_t YicesContext::pow(const term_t &base, const term_t &exp) {
     return yices_power(base, exponent.convert_to<int>());
 }
 
-term_t YicesContext::plus(const term_t &x, const term_t &y) {
-    return yices_add(x, y);
+term_t YicesContext::plus(const std::vector<term_t> &args) {
+    return yices_sum(args.size(), &*args.begin());
 }
 
-term_t YicesContext::times(const term_t &x, const term_t &y) {
-    return yices_mul(x, y);
+term_t YicesContext::times(const std::vector<term_t> &args) {
+    return yices_product(args.size(), &*args.begin());
 }
 
 term_t YicesContext::mod(const term_t &x, const term_t &y) {
@@ -78,12 +78,12 @@ term_t YicesContext::neq(const term_t &x, const term_t &y) {
     return yices_arith_neq_atom(x, y);
 }
 
-term_t YicesContext::bAnd(const term_t &x, const term_t &y) {
-    return yices_and2(x, y);
+term_t YicesContext::bAnd(std::vector<term_t> &args) {
+    return yices_and(args.size(), &*args.begin());
 }
 
-term_t YicesContext::bOr(const term_t &x, const term_t &y) {
-    return yices_or2(x, y);
+term_t YicesContext::bOr(std::vector<term_t> &args) {
+    return yices_or(args.size(), &*args.begin());
 }
 
 term_t YicesContext::bTrue() const {
@@ -96,6 +96,14 @@ term_t YicesContext::bFalse() const {
 
 term_t YicesContext::negate(const term_t &x) {
     return yices_not(x);
+}
+
+std::vector<term_t> YicesContext::exprVec() {
+    return {};
+}
+
+std::vector<term_t> YicesContext::formulaVec() {
+    return {};
 }
 
 Int mpz_to_int(const mpz_t &m) {
