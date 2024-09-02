@@ -95,7 +95,7 @@ std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
         rules.emplace_back(trace[i].first->withGuard(trace[i].second).subs(subsTmp.at(i)));
     }
     const auto loop {Preprocess::chain(rules)};
-    const auto s {subs.at(backlink)};
+    const auto s {subsProg.at(backlink)};
     auto vars {loop.vars()};
     s.collectCoDomainVars(vars);
     auto model {solver->model(vars).composeBackwards(s)};
@@ -276,7 +276,7 @@ void ABMC::build_trace() {
 
 const Subs &ABMC::subs_at(const unsigned i) {
     while (subs.size() <= i) {
-        Subs s, sTmp;
+        Subs s, sTmp, sProg;
         for (const auto &var : vars) {
             const auto &post_var{post_vars.at(var)};
             const auto current {subs.back().get(post_var)};
@@ -286,10 +286,14 @@ const Subs &ABMC::subs_at(const unsigned i) {
             if (theory::isTempVar(var)) {
                 sTmp.put(var, current);
                 sTmp.put(post_var, next);
+            } else {
+                sProg.put(var, current);
+                sProg.put(post_var, next);
             }
         }
         subs.push_back(s);
         subsTmp.push_back(sTmp);
+        subsProg.push_back(sProg);
     }
     return subs.at(i);
 }
