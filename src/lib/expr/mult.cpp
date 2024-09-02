@@ -164,7 +164,13 @@ ArithExprPtr arith::mkTimes(ArithExprPtr fst, ArithExprPtr snd) {
             } else {
                 const auto new_c {arith::mkConst(c * ***(*it)->isRational())};
                 args.erase(it);
-                args.insert(new_c);
+                if (new_c->is(1)) {
+                    if (args.size() == 1) {
+                        return *args.begin();
+                    }
+                } else {
+                    args.insert(new_c);
+                }
             }
             return ArithMult::cache.from_cache(args);
         } else if (const auto a {fst->isAdd()}) {

@@ -105,11 +105,18 @@ ArithExprPtr arith::mkPlus(ArithExprPtr fst, ArithExprPtr snd) {
                 return x->isRational();
             })};
             if (it == args.end()) {
+
                 args.insert(snd);
             } else {
                 const auto new_c {arith::mkConst(c + ***(*it)->isRational())};
                 args.erase(it);
-                args.insert(new_c);
+                if (new_c->is(0)) {
+                    if (args.size() == 1) {
+                        return *args.begin();
+                    }
+                } else {
+                    args.insert(new_c);
+                }
             }
             return ArithAdd::cache.from_cache(args);
         } else {
