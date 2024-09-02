@@ -7,7 +7,7 @@ on:
       timeout:
         required: true
         type: number
-        default: 50
+        default: 30
       config:
         required: true
         type: choice
@@ -17,6 +17,7 @@ on:
         - loat_unsat
         - loat_nonterm
         - loat_lb
+        - loat_bmc
         - loat_release_chc_comp_2024_bmc
         - loat_release_chc_comp_2024_abmc
         - z3_gspacer
@@ -115,6 +116,8 @@ jobs:
               result=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               result=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
+            elif [ ${{ inputs.config }} = "loat_bmc" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine bmc "${filename}")
             elif [[ ${{ inputs.config }} == loat_release_chc_comp_2024_* ]]; then
               config=${{ inputs.config }}
               engine=${config:27:100}
