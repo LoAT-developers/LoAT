@@ -43,10 +43,8 @@ Model Z3::model(const std::optional<const VarSet> &vars) {
                         case Z3_L_FALSE:
                             res.template put<Bools>(var, false);
                             break;
-                        case Z3_L_TRUE:
-                            res.template put<Bools>(var, true);
-                            break;
                         default:
+                            res.template put<Bools>(var, true);
                             break;
                         }
                     }
