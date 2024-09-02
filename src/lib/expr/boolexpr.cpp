@@ -17,6 +17,11 @@ const Bools::Expr BoolExpr::buildFromLits(const Lits &lits, ConcatOperator op) {
 
 template <class Children>
 const Bools::Expr BoolExpr::build(const Children &lits, ConcatOperator op) {
+    if (op == ConcatAnd && std::find(lits.begin(), lits.end(), bot()) != lits.end()) {
+        return bot();
+    } else if (op == ConcatOr && std::find(lits.begin(), lits.end(), top()) != lits.end()) {
+        return top();
+    }
     BoolExprSet children;
     for (const auto &x: lits) {
         if (op == ConcatAnd && x->isAnd() || op == ConcatOr && x->isOr()) {
@@ -342,14 +347,6 @@ Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::
         } else if (newChildren.empty()) {
             res = top();
         } else {
-            for (const auto &c: newChildren) {
-                if (c->isTheoryLit()) {
-                    if (newChildren.contains(c->negation())) {
-                        cache.emplace(self, bot());
-                        return bot();
-                    }
-                }
-            }
             res = mkAnd(newChildren);
         }
     } else if (isOr()) {
@@ -377,14 +374,14 @@ Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::
         } else if (newChildren.empty()) {
             res = bot();
         } else {
-            for (const auto &c: newChildren) {
-                if (c->isTheoryLit()) {
-                    if (newChildren.contains(c->negation())) {
-                        cache.emplace(self, top());
-                        return top();
-                    }
-                }
-            }
+            // for (const auto &c: newChildren) {
+            //     if (c->isTheoryLit()) {
+            //         if (newChildren.contains(c->negation())) {
+            //             cache.emplace(self, top());
+            //             return top();
+            //         }
+            //     }
+            // }
             res = mkOr(newChildren);
         }
     } else if (isTheoryLit()) {

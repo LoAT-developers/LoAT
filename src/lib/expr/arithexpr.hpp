@@ -42,8 +42,12 @@ using Rational = mp::cpp_rational;
 
 namespace arith {
 
+ArithExprPtr mkPlusImpl(ArithExprVec &&args);
 ArithExprPtr mkPlus(ArithExprVec &&args);
+ArithExprPtr mkPlus(ArithExprPtr, ArithExprPtr);
+ArithExprPtr mkTimesImpl(ArithExprVec &&args);
 ArithExprPtr mkTimes(ArithExprVec &&args);
+ArithExprPtr mkTimes(const ArithExprPtr, const ArithExprPtr);
 ArithExprPtr mkMod(ArithExprPtr x, ArithExprPtr y);
 ArithExprPtr mkConst(const Rational &r);
 ArithExprPtr mkConst(const Rational &&r);
@@ -59,8 +63,8 @@ enum class Kind {
 class ArithExpr: public std::enable_shared_from_this<ArithExpr> {
 
     friend class ArithExp;
-    friend ArithExprPtr arith::mkPlus(ArithExprVec &&args);
-    friend ArithExprPtr arith::mkTimes(ArithExprVec &&args);
+    friend ArithExprPtr arith::mkPlusImpl(ArithExprVec &&args);
+    friend ArithExprPtr arith::mkTimesImpl(ArithExprVec &&args);
 
 protected:
 
@@ -320,7 +324,9 @@ std::ostream& operator<<(std::ostream &s, const ArithVarPtr x);
 
 class ArithAdd: public ArithExpr {
 
-    friend ArithExprPtr arith::mkPlus(ArithExprVec &&args);
+    friend ArithExprPtr arith::mkPlusImpl(ArithExprVec &&args);
+    friend ArithExprPtr arith::mkPlus(ArithExprPtr, ArithExprPtr);
+    friend ArithExprPtr arith::mkTimes(ArithExprPtr, ArithExprPtr);
 
 public:
 
@@ -346,7 +352,8 @@ public:
 
 class ArithMult: public ArithExpr {
 
-    friend ArithExprPtr arith::mkTimes(ArithExprVec &&args);
+    friend ArithExprPtr arith::mkTimesImpl(ArithExprVec &&args);
+    friend ArithExprPtr arith::mkTimes(ArithExprPtr, ArithExprPtr);
 
 public:
 

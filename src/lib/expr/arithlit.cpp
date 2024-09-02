@@ -50,16 +50,20 @@ size_t ArithLit::CacheHash::operator()(const std::tuple<ArithExprPtr, ArithLit::
 ArithLit::ArithLit(const ArithExprPtr l, const Kind kind): l(l), kind(kind) { }
 
 ArithLitPtr ArithLit::mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
-    auto lhs_integral {lhs * arith::mkConst(lhs->denomLcm())};
+    const auto lcm {lhs->denomLcm()};
+    auto lhs_integral = lcm == 1 ? lhs : lhs * arith::mkConst(lcm);
     const auto factor {lhs_integral->getConstantFactor()};
     if (factor > 1) {
         lhs_integral = lhs_integral->divide(factor);
     }
-    if ((kind == Kind::Eq || kind == Kind::Neq) && cache.contains(-lhs_integral, kind)) {
-        return cache.from_cache(-lhs_integral, kind);
-    } else {
-        return cache.from_cache(lhs_integral, kind);
+    if ((kind == Kind::Eq || kind == Kind::Neq)) {
+        if (cache.contains(lhs_integral, kind)) {
+            return cache.from_cache(lhs_integral, kind);
+        } else if (const auto neg{-lhs_integral}; cache.contains(neg, kind)) {
+            return cache.from_cache(neg, kind);
+        }
     }
+    return cache.from_cache(lhs_integral, kind);
 }
 
 ArithExprPtr ArithLit::lhs() const {

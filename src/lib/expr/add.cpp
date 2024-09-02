@@ -17,7 +17,7 @@ size_t ArithAdd::CacheHash::operator()(const std::tuple<ArithExprSet> &args) con
     return hash;
 }
 
-ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> &&args) {
+ArithExprPtr arith::mkPlusImpl(std::vector<ArithExprPtr> &&args) {
     {
         // pull up nested additions
         std::vector<ArithExprPtr> insert;
@@ -50,9 +50,9 @@ ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> &&args) {
             args.clear();
             for (const auto &[x,y]: map) {
                 if (x) {
-                    args.emplace_back(*x * mkConst(y));
+                    args.emplace_back(*x * arith::mkConst(y));
                 } else {
-                    args.emplace_back(mkConst(y));
+                    args.emplace_back(arith::mkConst(y));
                 }
             }
         }
@@ -73,11 +73,11 @@ ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> &&args) {
             }
         }
         if (constant && *constant != 0) {
-            args.push_back(mkConst(*constant));
+            args.push_back(arith::mkConst(*constant));
         }
     }
     if (args.empty()) {
-        return mkConst(0);
+        return arith::mkConst(0);
     }
     if (args.size() == 1) {
         return args[0];
@@ -85,6 +85,47 @@ ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> &&args) {
     const ArithExprSet arg_set {args.begin(), args.end()};
     // std::cout << "+ " << args << " --> + " << arg_set << std::endl;
     return ArithAdd::cache.from_cache(std::move(arg_set));
+}
+
+ArithExprPtr arith::mkPlus(ArithExprPtr fst, ArithExprPtr snd) {
+    if (const auto f {fst->isRational()}) {
+        if (const auto s {snd->isRational()}) {
+            return arith::mkConst(***f + ***s);
+        }
+        std::swap(fst, snd);
+    }
+    if (const auto s {snd->isRational()}) {
+        const auto c {***s};
+        if (c == 0) {
+            return fst;
+        }
+        if (const auto a {fst->isAdd()}) {
+            auto args {(*a)->getArgs()};
+            const auto it {std::find_if(args.begin(), args.end(), [](const auto &x) {
+                return x->isRational();
+            })};
+            if (it == args.end()) {
+                args.insert(snd);
+            } else {
+                const auto new_c {arith::mkConst(c + ***(*it)->isRational())};
+                args.erase(it);
+                args.insert(new_c);
+            }
+            return ArithAdd::cache.from_cache(args);
+        } else {
+            return ArithAdd::cache.from_cache(ArithExprSet{fst, snd});
+        }
+    } else {
+        return mkPlusImpl({fst, snd});
+    }
+}
+
+ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> &&args) {
+    if (args.size() == 2) {
+        return mkPlus(args.front(), args.back());
+    } else {
+        return mkPlusImpl(std::move(args));
+    }
 }
 
 const ArithExprSet& ArithAdd::getArgs() const {

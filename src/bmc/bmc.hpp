@@ -15,7 +15,7 @@ private:
     void analyze();
 
     ITSProblem &its;
-    Z3 solver{};
+    SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     bool approx {false};
     VarSet vars {};
     std::unordered_map<Var, Var> post_vars {};

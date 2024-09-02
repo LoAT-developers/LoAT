@@ -244,17 +244,20 @@ void ABMC::sat() {
 
 void ABMC::build_trace() {
     trace.clear();
-    const auto model {solver->model()};
     std::vector<Subs> run;
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
-        const auto m {model.composeBackwards(subs.at(d))};
+        const auto s {subs.at(d)};
+        const auto vars = d == 0 ? this->vars : s.coDomainVars();
+        const auto m {solver->model(vars).composeBackwards(s)};
         const auto rule {rule_map.at(m.get<Arith>(trace_var))};
         const auto imp {m.syntacticImplicant(rule->getGuard())};
-        auto vars {rule->getUpdate().domain()};
-        vars.insert(n);
-        vars.insert(trace_var);
-        run.push_back(m.toSubs().project(vars));
+        if (Config::Analysis::log) {
+            auto run_vars {rule->getUpdate().domain()};
+            run_vars.insert(n);
+            run_vars.insert(trace_var);
+            run.push_back(m.project(run_vars).toSubs());
+        }
         const Implicant i {rule, imp};
         if (prev) {
             dependency_graph.addEdge(*prev, i);

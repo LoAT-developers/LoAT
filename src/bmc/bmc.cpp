@@ -54,7 +54,7 @@ void BMC::analyze() {
             inits.push_back(encode_transition(idx));
         }
     }
-    solver.add(bools::mkOr(inits));
+    solver->add(bools::mkOr(inits));
 
     std::vector<Bools::Expr> steps;
     for (const auto &r: its.getAllTransitions()) {
@@ -82,9 +82,9 @@ void BMC::analyze() {
             s.put(post_var, theory::toExpr(theory::next(post_var)));
         }
         last_s = s;
-        solver.push();
-        solver.add(s(query));
-        switch (solver.check()) {
+        solver->push();
+        solver->add(s(query));
+        switch (solver->check()) {
         case SmtResult::Sat:
             unsat();
             return;
@@ -96,10 +96,10 @@ void BMC::analyze() {
             break;
         case SmtResult::Unsat: {}
         }
-        solver.pop();
-        solver.add(s(step));
+        solver->pop();
+        solver->add(s(step));
         ++depth;
-        if (solver.check() == SmtResult::Unsat) {
+        if (solver->check() == SmtResult::Unsat) {
             if (!approx) {
                 sat();
             }

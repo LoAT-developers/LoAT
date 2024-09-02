@@ -17,7 +17,7 @@ size_t ArithMult::CacheHash::operator()(const std::tuple<ArithExprSet> &args) co
     return hash;
 }
 
-ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> &&args) {
+ArithExprPtr arith::mkTimesImpl(std::vector<ArithExprPtr> &&args) {
     {
         // pull up nested multiplications
         std::vector<ArithExprPtr> insert;
@@ -106,7 +106,7 @@ ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> &&args) {
         if (changed) {
             args.clear();
             for (auto &x : res) {
-                args.emplace_back(mkTimes(std::move(x)));
+                args.emplace_back(mkTimesImpl(std::move(x)));
             }
             return mkPlus(std::move(args));
         }
@@ -138,6 +138,55 @@ ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> &&args) {
     }
     const ArithExprSet arg_set {args.begin(), args.end()};
     return ArithMult::cache.from_cache(std::move(arg_set));
+}
+
+ArithExprPtr arith::mkTimes(ArithExprPtr fst, ArithExprPtr snd) {
+    if (const auto f {fst->isRational()}) {
+        if (const auto s {snd->isRational()}) {
+            return arith::mkConst(***f * ***s);
+        }
+        std::swap(fst, snd);
+    }
+    if (const auto s {snd->isRational()}) {
+        const auto c {***s};
+        if (c == 0) {
+            return snd;
+        } else if (c == 1) {
+            return fst;
+        }
+        if (const auto m {fst->isMult()}) {
+            auto args {(*m)->getArgs()};
+            const auto it {std::find_if(args.begin(), args.end(), [](const auto &x) {
+                return x->isRational();
+            })};
+            if (it == args.end()) {
+                args.insert(snd);
+            } else {
+                const auto new_c {arith::mkConst(c * ***(*it)->isRational())};
+                args.erase(it);
+                args.insert(new_c);
+            }
+            return ArithMult::cache.from_cache(args);
+        } else if (const auto a {fst->isAdd()}) {
+            const auto args {(*a)->getArgs()};
+            ArithExprSet new_args;
+            for (const auto &x: args) {
+                new_args.insert(mkTimes(x, snd));
+            }
+            return ArithAdd::cache.from_cache(std::move(new_args));
+        } else {
+            return ArithMult::cache.from_cache(ArithExprSet{fst, snd});
+        }
+    }
+    return mkTimesImpl({fst, snd});
+}
+
+ArithExprPtr arith::mkTimes(std::vector<ArithExprPtr> &&args) {
+    if (args.size() == 2) {
+        return mkTimes(args.front(), args.back());
+    } else {
+        return mkTimesImpl(std::move(args));
+    }
 }
 
 const ArithExprSet& ArithMult::getArgs() const {

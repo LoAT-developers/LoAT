@@ -60,23 +60,23 @@ bool ArithExpr::has(const ArithVarPtr x) const {
 }
 
 ArithExprPtr operator-(const ArithExprPtr x) {
-    return arith::mkTimes({arith::mkConst(-1),x});
+    return arith::mkTimes(x, arith::mkConst(-1));
 }
 
 ArithExprPtr operator-(const ArithExprPtr x, const ArithExprPtr y) {
-    return arith::mkPlus({x,-y});
+    return arith::mkPlus(x,-y);
 }
 
 ArithExprPtr operator+(const ArithExprPtr x, const ArithExprPtr y) {
-    return arith::mkPlus({x,y});
+    return arith::mkPlus(x, y);
 }
 
 ArithExprPtr operator*(const ArithExprPtr x, const ArithExprPtr y) {
-    return arith::mkTimes({x,y});
+    return arith::mkTimes(x,y);
 }
 
 ArithExprPtr ArithExpr::divide(const Rational &y) const {
-    return arith::mkTimes({arith::mkConst(Rational(mp::denominator(y), mp::numerator(y))), toPtr()});
+    return arith::mkTimes(arith::mkConst(Rational(mp::denominator(y), mp::numerator(y))), toPtr());
 }
 
 ArithExprPtr operator^(const ArithExprPtr x, const ArithExprPtr y) {
