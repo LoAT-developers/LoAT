@@ -201,7 +201,7 @@ jobs:
         with:
           name: ${{ inputs.benchmarks }}-${{ matrix.ci_index }}
           path: |
-            benchmarks/*.json
+            benchmarks/**/*.json
             benchmarks/*.version
 
   finalize-benchmark-results:
@@ -234,7 +234,7 @@ jobs:
           echo -e "\t\"version\": \"$VERSION\"," >> $results
           echo -e "\t\"timeout\": \"${{ inputs.timeout }}\"," >> $results
           echo -e "\t\"results\": [" >> $results
-          for filename in ${{ inputs.benchmarks }}*/*.json; do
+          for filename in ${{ inputs.benchmarks }}*/**/*.json; do
             json=$(cat $filename)
             echo -e "\t\t$json," >> $results
           done
