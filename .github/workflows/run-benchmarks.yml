@@ -190,7 +190,7 @@ jobs:
           fi
 
           # execute benchmarks in parallel
-          parallel benchmark ::: @{my_bench[@]}
+          parallel benchmark ::: ${my_bench[@]}
 
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
