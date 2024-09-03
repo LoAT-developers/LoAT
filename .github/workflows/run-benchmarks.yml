@@ -38,6 +38,8 @@ on:
         - chc22-lia-lin
         - chc23-lia-lin
         - chc24-lia-lin
+        - tpdb-termination
+        - tpdb-complexity
       build:
         required: true
         type: boolean
@@ -80,6 +82,12 @@ jobs:
 
       - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
         uses: ./actions/.github/actions/chc22-lia-lin
+
+      - if: ${{ inputs.benchmarks == 'tpdb-termination' }}
+        uses: ./actions/.github/actions/tpdb-termination
+
+      - if: ${{ inputs.benchmarks == 'tpdb-complexity' }}
+        uses: ./actions/.github/actions/tpdb-complexity
 
       - if: ${{ startsWith(inputs.config, 'loat_release_chc_comp_2024') }}
         uses: ./actions/.github/actions/get-loat-chc-comp-2024
@@ -163,14 +171,18 @@ jobs:
           chmod +x /usr/local/bin/solver
 
           cd benchmarks
+          bench=()
+          if [ ${{ inputs.benchmarks }} = "tpdb-complexity" ]; then
+            readarray -d '' bench < <(find . -name "*.koat" -print0)
+          else
+            readarray -d '' bench < <(find . -name "*.smt2" -print0)
+          fi
 
-          # remove benchmarks that are executed by other workers
-          i=0
-          for filename in *.smt2; do
-            if [[ $(( i % CI_TOTAL )) -ne $CI_INDEX ]]; then
-              rm ${filename}
-            fi
-            i=$(( i+1 ))
+          my_bench=()
+          i=$CI_INDEX
+          while [[ $i -lt ${#bench[@]} ]]; do
+            my_bench+=(${bench[i]})
+            i=$(( i+CI_TOTAL ))
           done
 
           if [[ 0 -eq $CI_INDEX ]]; then
@@ -178,7 +190,7 @@ jobs:
           fi
 
           # execute benchmarks in parallel
-          parallel benchmark ::: *.smt2
+          parallel benchmark ::: @{my_bench[@]}
 
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
