@@ -89,3 +89,12 @@ sexpresso::Sexp BoolLit::to_smtlib(const std::function<std::string(const BoolVar
     res.addChild(var_map(var));
     return res;
 }
+
+BoolLitPtr BoolLit::renameVars(const bool_var_map &map) const {
+    const auto it {map.left.find(var)};
+    if (it == map.left.end()) {
+        return cpp::assume_not_null(shared_from_this());
+    } else {
+        return bools::mk(it->second, negated);
+    }
+}

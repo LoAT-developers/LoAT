@@ -59,17 +59,12 @@ ArithSubs ArithSubs::concat(const ArithSubs &that) const {
     return res;
 }
 
-void ArithSubs::concatInPlace(const ArithSubs &that) {
-    std::vector<std::pair<ArithVarPtr, ArithExprPtr>> changed;
-    for (const auto &[key, val]: *this) {
-        const auto new_val {that(val)};
-        if (val != new_val) {
-            changed.emplace_back(key, new_val);
-        }
+ArithSubs ArithSubs::concat(const arith_var_map &that) const {
+    ArithSubs res;
+    for (const auto &p: *this) {
+        res.put(p.first, p.second->renameVars(that));
     }
-    for (const auto &[key, val]: changed) {
-        put(key, val);
-    }
+    return res;
 }
 
 ArithSubs ArithSubs::unite(const ArithSubs &that) const {

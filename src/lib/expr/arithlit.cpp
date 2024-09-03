@@ -57,11 +57,14 @@ ArithLitPtr ArithLit::mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
         lhs_integral = lhs_integral->divide(factor);
     }
     if ((kind == Kind::Eq || kind == Kind::Neq)) {
-        if (cache.contains(lhs_integral, kind)) {
-            return cache.from_cache(lhs_integral, kind);
-        } else if (const auto neg{-lhs_integral}; cache.contains(neg, kind)) {
-            return cache.from_cache(neg, kind);
+        if (lhs_integral->isNegated()) {
+            return cache.from_cache(-lhs_integral, kind);
+        } else if (const auto add {lhs_integral->isAdd()}) {
+            if ((*(*add)->getArgs().begin())->isNegated()) {
+                return cache.from_cache(-lhs_integral, kind);
+            }
         }
+        return cache.from_cache(lhs_integral, kind);
     }
     return cache.from_cache(lhs_integral, kind);
 }
@@ -243,6 +246,10 @@ bool ArithLit::has(const ArithVarPtr x) const {
 
 ArithLitPtr ArithLit::subs(const ArithSubs &map) const {
     return mk(map(l), kind);
+}
+
+ArithLitPtr ArithLit::renameVars(const arith_var_map &map) const {
+    return mk(l->renameVars(map), kind);
 }
 
 linked_hash_set<ArithVarPtr> ArithLit::vars() const {

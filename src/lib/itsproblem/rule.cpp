@@ -19,6 +19,10 @@ Rule Rule::subs(const Subs &subs) const {
     return Rule(subs(guard), update.concat(subs));
 }
 
+Rule Rule::renameVars(const Renaming &subs) const {
+    return Rule(subs(guard), update.concat(subs));
+}
+
 Rule Rule::withGuard(const Bools::Expr guard) const {
     return Rule(guard, update);
 }
@@ -105,11 +109,11 @@ size_t hash_value(const Rule &r) {
 }
 
 Rule Rule::renameTmpVars() const {
-    Subs s;
+    Renaming s;
     for (const auto &x: vars()) {
         if (theory::isTempVar(x)) {
-            s.put(x, theory::toExpr(theory::next(x)));
+            s.insert(x, theory::next(x));
         }
     }
-    return subs(s);
+    return renameVars(s);
 }

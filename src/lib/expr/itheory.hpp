@@ -46,9 +46,9 @@ template <typename T>
 concept IBaseTheory = requires(T t, typename T::Const val, typename T::Var var, typename T::Lit lit, typename T::Model m) {
         requires IVar<typename T::Var>;
         requires ILit<typename T::Lit>;
-        // requires IVars<typename T::Lit, typename T::Var>;
         typename T::Const;
         typename T::Expr;
+        typename T::Renaming;
         {T::constToExpr(val)} -> std::same_as<typename T::Expr>;
         {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
         {T::anyValue()} -> std::same_as<typename T::Expr>;
@@ -73,7 +73,9 @@ public:
     using Const = std::variant<typename Th::Const...>;
     using Model = std::tuple<typename Th::Model...>;
     using Expr = std::variant<typename Th::Expr...>;
+    using Renaming = std::tuple<typename Th::Renaming...>;
     using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expr>...>;
+    using VarPair = std::variant<std::pair<typename Th::Var, typename Th::Var>...>;
 
 private:
 

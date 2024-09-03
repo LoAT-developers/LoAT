@@ -4,6 +4,11 @@
 #include "linkedhashset.hpp"
 #include "linkedhashmap.hpp"
 
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
+
+using bool_var_map = boost::bimap<boost::bimaps::unordered_set_of<BoolVarPtr>, boost::bimaps::unordered_set_of<BoolVarPtr>>;
+
 class BoolLit;
 
 using BoolLitPtr = cpp::not_null<std::shared_ptr<const BoolLit>>;
@@ -12,7 +17,7 @@ namespace bools {
     BoolLitPtr mk(const BoolVarPtr var, bool negated = false);
 }
 
-class BoolLit {
+class BoolLit: public std::enable_shared_from_this<BoolLit> {
 
     friend BoolLitPtr bools::mk(const BoolVarPtr var, bool negated);
 
@@ -40,6 +45,7 @@ public:
     std::size_t hash() const;
     bool eval(const linked_hash_map<BoolVarPtr, bool> &model) const;
     sexpresso::Sexp to_smtlib(const std::function<std::string(const BoolVarPtr)> &var_map) const;
+    BoolLitPtr renameVars(const bool_var_map &map) const;
 
 };
 

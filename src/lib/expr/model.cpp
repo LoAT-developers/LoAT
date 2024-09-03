@@ -9,6 +9,12 @@ Subs Model::toSubs() const {
     return res;
 }
 
+Model Model::composeBackwards(const Renaming &subs) const {
+    Model res;
+    composeBackwardsImpl(subs, res);
+    return res;
+}
+
 Model Model::composeBackwards(const Subs &subs) const {
     Model res;
     composeBackwardsImpl(subs, res);

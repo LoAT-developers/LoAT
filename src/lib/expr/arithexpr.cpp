@@ -710,7 +710,9 @@ Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valu
 }
 
 Int ArithExpr::eval(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
+    #if DEBUG
     assert(isIntegral());
+    #endif
     const auto res {evalToRational(valuation)};
     if (mp::denominator(res) != 1) {
         throw std::invalid_argument(toString(toPtr()) + " is not integral");
@@ -796,6 +798,43 @@ sexpresso::Sexp ArithExpr::to_smtlib(const std::function<std::string(const Arith
             res.addChild(e->getBase()->to_smtlib(var_map));
             res.addChild(e->getExponent()->to_smtlib(var_map));
             return res;
+        }
+    );
+}
+
+ArithExprPtr ArithExpr::renameVars(const arith_var_map &map) const {
+    return apply<ArithExprPtr>(
+        [&](const ArithConstPtr t) {
+            return toPtr();
+        },
+        [&](const ArithVarPtr x) {
+            const auto it {map.left.find(x)};
+            if (it == map.left.end()) {
+                assert(map.right.find(x) == map.right.end());
+                return toPtr();
+            } else {
+                return it->second->toPtr();
+            }
+        },
+        [&](const ArithAddPtr a) {
+            ArithExprSet args;
+            for (const auto &arg: a->getArgs()) {
+                args.insert(arg->renameVars(map));
+            }
+            return ArithAdd::cache.from_cache(args);
+        },
+        [&](const ArithMultPtr m) {
+            ArithExprSet args;
+            for (const auto &arg: m->getArgs()) {
+                args.insert(arg->renameVars(map));
+            }
+            return ArithMult::cache.from_cache(args);
+        },
+        [&](const ArithModPtr m) {
+            return ArithMod::cache.from_cache(m->getLhs()->renameVars(map), m->getRhs()->renameVars(map));
+        },
+        [&](const ArithExpPtr e) {
+            return ArithExp::cache.from_cache(e->getBase()->renameVars(map), e->getExponent()->renameVars(map));
         }
     );
 }

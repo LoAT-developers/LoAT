@@ -9,6 +9,8 @@
 #endif
 #include <boost/multiprecision/cpp_int.hpp>
 #include <functional>
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
 
 #include "linkedhashset.hpp"
 #include "linkedhashmap.hpp"
@@ -39,6 +41,8 @@ using ArithExprVec = std::vector<ArithExprPtr>;
 namespace mp = boost::multiprecision;
 using Int = mp::cpp_int;
 using Rational = mp::cpp_rational;
+
+using arith_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArithVarPtr>, boost::bimaps::unordered_set_of<ArithVarPtr>>;
 
 namespace arith {
 
@@ -233,6 +237,8 @@ public:
 
     sexpresso::Sexp to_smtlib(const std::function<std::string(const ArithVarPtr)> &var_map) const;
 
+    ArithExprPtr renameVars(const arith_var_map &map) const;
+
     /**
      * @brief exponentiation
      */
@@ -251,6 +257,7 @@ class ArithConst: public ArithExpr {
 
     friend ArithExprPtr arith::mkConst(const Rational &r);
     friend ArithExprPtr arith::mkConst(const Rational &&r);
+    friend class ArithExpr;
 
 public:
     ArithConst(const Rational &t);
@@ -280,6 +287,7 @@ public:
 class ArithVar: public ArithExpr {
 
     friend ArithExprPtr arith::mkVar(const int idx);
+    friend class ArithExpr;
 
 private:
 
@@ -300,7 +308,7 @@ private:
     };
     static ConsHash<ArithExpr, ArithVar, CacheHash, CacheEqual, int> cache;
 
-    ArithVarPtr toPtr() const;
+    ArithVarPtr toVarPtr() const;
 
 public:
 
@@ -327,6 +335,7 @@ class ArithAdd: public ArithExpr {
     friend ArithExprPtr arith::mkPlusImpl(ArithExprVec &&args);
     friend ArithExprPtr arith::mkPlus(ArithExprPtr, ArithExprPtr);
     friend ArithExprPtr arith::mkTimes(ArithExprPtr, ArithExprPtr);
+    friend class ArithExpr;
 
 public:
 
@@ -354,6 +363,7 @@ class ArithMult: public ArithExpr {
 
     friend ArithExprPtr arith::mkTimesImpl(ArithExprVec &&args);
     friend ArithExprPtr arith::mkTimes(ArithExprPtr, ArithExprPtr);
+    friend class ArithExpr;
 
 public:
 
@@ -379,6 +389,7 @@ public:
 class ArithMod: public ArithExpr {
 
     friend ArithExprPtr arith::mkMod(ArithExprPtr x, ArithExprPtr y);
+    friend class ArithExpr;
 
 public:
 
@@ -407,6 +418,7 @@ public:
 class ArithExp: public ArithExpr {
 
     friend ArithExprPtr arith::mkExp(const ArithExprPtr base, const ArithExprPtr exponent);
+    friend class ArithExpr;
 
 private:
 

@@ -42,6 +42,8 @@ add_library(${PROJECT_NAME} OBJECT
   model.cpp
   exprconverter.hpp
   exprconversioncontext.hpp
+  renaming.hpp
+  renaming.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

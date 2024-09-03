@@ -32,20 +32,20 @@ std::ostream& operator<<(std::ostream &s, const ArithVar &x) {
 
 ArithVarPtr ArithVar::next() {
     --last_tmp_idx;
-    return (*arith::mkVar(last_tmp_idx)->someVar())->toPtr();
+    return (*arith::mkVar(last_tmp_idx)->someVar())->toVarPtr();
 }
 
 ArithVarPtr ArithVar::nextProgVar() {
     last_prog_idx += 2;
-    return (*arith::mkVar(last_prog_idx)->someVar())->toPtr();
+    return (*arith::mkVar(last_prog_idx)->someVar())->toVarPtr();
 }
 
 ArithVarPtr ArithVar::postVar(const ArithVarPtr &x) {
-    return (*arith::mkVar(x->getIdx() + 1)->someVar())->toPtr();
+    return (*arith::mkVar(x->getIdx() + 1)->someVar())->toVarPtr();
 }
 
 ArithVarPtr ArithVar::progVar(const ArithVarPtr &x) {
-    return (*arith::mkVar(x->getIdx() - 1)->someVar())->toPtr();
+    return (*arith::mkVar(x->getIdx() - 1)->someVar())->toVarPtr();
 }
 
 bool ArithVar::isTempVar() const {
@@ -64,7 +64,7 @@ std::size_t hash_value(const ArithVar &x) {
     return std::hash<int>{}(x.getIdx());
 }
 
-ArithVarPtr ArithVar::toPtr() const {
+ArithVarPtr ArithVar::toVarPtr() const {
     return cpp::assume_not_null(std::static_pointer_cast<const ArithVar>(shared_from_this()));
 }
 

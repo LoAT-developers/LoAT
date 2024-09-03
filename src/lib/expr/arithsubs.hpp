@@ -35,7 +35,7 @@ public:
 
     ArithSubs concat(const ArithSubs &that) const;
 
-    void concatInPlace(const ArithSubs &that);
+    ArithSubs concat(const arith_var_map &that) const;
 
     ArithSubs unite(const ArithSubs &that) const;
 

@@ -2,6 +2,7 @@
 #include "theory.hpp"
 #include "smtfactory.hpp"
 #include "config.hpp"
+#include "renaming.hpp"
 
 BMC::BMC(ITSProblem &its): its(its) {}
 
@@ -73,13 +74,13 @@ void BMC::analyze() {
     }
     const auto query {bools::mkOr(queries)};
 
-    Subs last_s;
+    Renaming last_s;
     while (true) {
-        Subs s;
+        Renaming s;
         for (const auto &var: vars) {
             const auto &post_var {post_vars.at(var)};
-            s.put(var, last_s.get(post_var));
-            s.put(post_var, theory::toExpr(theory::next(post_var)));
+            s.insert(var, last_s.get(post_var));
+            s.insert(post_var, theory::next(post_var));
         }
         last_s = s;
         solver->push();

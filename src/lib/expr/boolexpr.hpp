@@ -16,6 +16,7 @@
 class BoolTheoryLit;
 class BoolJunction;
 class BoolExpr;
+class Renaming;
 
 using BoolExprSet = linked_hash_set<Bools::Expr>;
 
@@ -25,6 +26,7 @@ class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
 
     friend class BoolTheoryLit;
     friend class BoolJunction;
+    friend class Renaming;
 
 protected:
 

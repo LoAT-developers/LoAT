@@ -4,6 +4,7 @@
 
 #include "theory.hpp"
 #include "subs.hpp"
+#include "renaming.hpp"
 
 class Rule {
 private:
@@ -27,6 +28,8 @@ public:
     const Subs& getUpdate() const;
 
     Rule subs(const Subs &subs) const;
+
+    Rule renameVars(const Renaming &subs) const;
 
     Rule withGuard(const Bools::Expr guard) const;
 

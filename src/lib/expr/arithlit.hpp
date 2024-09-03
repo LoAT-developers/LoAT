@@ -91,6 +91,7 @@ public:
     bool isEq() const;
     bool isNeq() const;
     ArithLitPtr subs(const ArithSubs &map) const;
+    ArithLitPtr renameVars(const arith_var_map &map) const;
     linked_hash_set<ArithVarPtr> vars() const;
 
     template <typename P>

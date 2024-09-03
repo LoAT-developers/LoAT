@@ -92,7 +92,7 @@ int ABMC::get_language(unsigned i) {
 std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
     std::vector<Rule> rules;
     for (long i = backlink; i < trace.size(); ++i) {
-        rules.emplace_back(trace[i].first->withGuard(trace[i].second).subs(subsTmp.at(i)));
+        rules.emplace_back(trace[i].first->withGuard(trace[i].second).renameVars(subsTmp.at(i)));
     }
     const auto loop {Preprocess::chain(rules)};
     const auto s {subsProg.at(backlink)};
@@ -126,11 +126,11 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     std::vector<Bools::Expr> pre;
     const auto s_next {subs_at(depth + 1).project(pre_v).compose(
             subs_at(depth + length).project(post_v))};
-    pre.push_back(theory::mkEq(s_next.get(trace_var), arith::mkConst((*shortcut)->getId())));
+    pre.push_back(theory::mkEq(theory::toExpr(s_next.get(trace_var)), arith::mkConst((*shortcut)->getId())));
     pre.push_back(s_next(not_trans));
     // we must not start another iteration of the loop after using the learned transition in the next step
     std::vector<Bools::Expr> post;
-    post.push_back(theory::mkNeq(s_next.get(trace_var), arith::mkConst((*shortcut)->getId())));
+    post.push_back(theory::mkNeq(theory::toExpr(s_next.get(trace_var)), arith::mkConst((*shortcut)->getId())));
     const auto s_next_next {subs_at(depth + 2).project(pre_v).compose(
             subs_at(depth + length + 1).project(post_v))};
     post.push_back(s_next_next(not_trans));
@@ -274,21 +274,21 @@ void ABMC::build_trace() {
     }
 }
 
-const Subs &ABMC::subs_at(const unsigned i) {
+const Renaming &ABMC::subs_at(const unsigned i) {
     while (subs.size() <= i) {
-        Subs s, sTmp, sProg;
+        Renaming s, sTmp, sProg;
         for (const auto &var : vars) {
             const auto &post_var{post_vars.at(var)};
             const auto current {subs.back().get(post_var)};
-            const auto next {theory::toExpr(theory::next(post_var))};
-            s.put(var, current);
-            s.put(post_var, next);
+            const auto next {theory::next(post_var)};
+            s.insert(var, current);
+            s.insert(post_var, next);
             if (theory::isTempVar(var)) {
-                sTmp.put(var, current);
-                sTmp.put(post_var, next);
+                sTmp.insert(var, current);
+                sTmp.insert(post_var, next);
             } else {
-                sProg.put(var, current);
-                sProg.put(post_var, next);
+                sProg.insert(var, current);
+                sProg.insert(post_var, next);
             }
         }
         subs.push_back(s);

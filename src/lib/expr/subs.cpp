@@ -81,7 +81,7 @@ inline void projectImpl(const Subs &s, Subs& res, const VarSet &vars) {
 Subs Subs::project(const VarSet &vars) const {
     Subs res;
     projectImpl(*this, res, vars);
-    return Subs(res);
+    return res;
 }
 
 template<std::size_t I = 0>
@@ -350,6 +350,32 @@ inline void concatImpl(const Subs &fst, const Subs &snd, Subs &res) {
 }
 
 Subs Subs::concat(const Subs &that) const {
+    Subs res;
+    concatImpl(*this, that, res);
+    return res;
+}
+
+BoolSubs concat(const BoolSubs &fst, const Renaming &snd) {
+    BoolSubs res;
+    for (const auto &[k,v]: fst) {
+        res.put(k, snd(v));
+    }
+    return res;
+}
+
+template<std::size_t I = 0>
+inline void concatImpl(const Subs &fst, const Renaming &snd, Subs &res) {
+    if constexpr (I < num_theories) {
+        if constexpr (std::same_as<std::tuple_element_t<I, Theories>, Bools>) {
+            res.get<I>() = concat(fst.get<I>(), snd);
+        } else {
+            res.get<I>() = fst.get<I>().concat(snd.get<I>());
+        }
+        concatImpl<I+1>(fst, snd, res);
+    }
+}
+
+Subs Subs::concat(const Renaming &that) const {
     Subs res;
     concatImpl(*this, that, res);
     return res;

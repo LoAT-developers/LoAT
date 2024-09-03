@@ -6,6 +6,7 @@
 #include "smt.hpp"
 #include "smtfactory.hpp"
 #include "vector.hpp"
+#include "renaming.hpp"
 
 class ABMC {
 
@@ -28,9 +29,9 @@ private:
     bool approx {false};
     unsigned last_orig_clause {};
     Bools::Expr query {bot()};
-    std::vector<Subs> subs {Subs::Empty};
-    std::vector<Subs> subsTmp {Subs::Empty};
-    std::vector<Subs> subsProg {Subs::Empty};
+    std::vector<Renaming> subs {Renaming::Empty};
+    std::vector<Renaming> subsTmp {Renaming::Empty};
+    std::vector<Renaming> subsProg {Renaming::Empty};
     std::vector<Implicant> trace {};
     VarSet vars {};
     Arith::Var n {ArithVar::next()};
@@ -59,7 +60,7 @@ private:
     void sat();
     void build_trace();
     bool is_redundant(const std::vector<int> &w) const;
-    const Subs& subs_at(const unsigned i);
+    const Renaming& subs_at(const unsigned i);
 
 public:
 

@@ -13,6 +13,7 @@ struct Arith {
     using Expr = ArithExprPtr;
     using Const = Int;
     using Model = linked_hash_map<Var, Const>;
+    using Renaming = arith_var_map;
 
     static Expr constToExpr(const Const &val) {
         return arith::mkConst(val);

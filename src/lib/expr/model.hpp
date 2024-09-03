@@ -12,7 +12,9 @@ public:
 
     template <ITheory T>
     typename T::Const get(const typename T::Var &var) const {
-        return std::get<linked_hash_map<typename T::Var, typename T::Const>>(m)[var];
+        const auto map {std::get<linked_hash_map<typename T::Var, typename T::Const>>(m)};
+        assert(map.contains(var));
+        return map[var];
     }
 
     Const get(const Var &var) const;
@@ -110,8 +112,27 @@ private:
             const auto &substitution {subs.get<Th>()};
             const auto &model {std::get<I>(m)};
             auto &result {res.get<Th>()};
-            for (const auto &[key, _]: substitution) {
-                result.put(key, eval<Th>(substitution.get(key)));
+            for (const auto &[key, v]: substitution) {
+                result.put(key, eval<Th>(v));
+            }
+            for (const auto &[key, value]: model) {
+                if (!result.contains(key)) {
+                    result.put(key, value);
+                }
+            }
+            composeBackwardsImpl<I+1>(subs, res);
+        }
+    }
+
+    template <size_t I = 0>
+    inline void composeBackwardsImpl(const Renaming &subs, Model &res) const {
+        if constexpr (I < num_theories) {
+            using Th = std::tuple_element_t<I, Theories>;
+            const auto &substitution {subs.get<Th>()};
+            const auto &model {std::get<I>(m)};
+            auto &result {res.get<Th>()};
+            for (const auto &[key, v]: substitution) {
+                result.put(key, eval<Th>(Th::varToExpr(v)));
             }
             for (const auto &[key, value]: model) {
                 if (!result.contains(key)) {
@@ -125,6 +146,7 @@ private:
 public:
 
     Model composeBackwards(const Subs &subs) const;
+    Model composeBackwards(const Renaming &subs) const;
     Bools::Expr syntacticImplicant(const Bools::Expr e) const;
 
 private:
