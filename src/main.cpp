@@ -72,7 +72,7 @@ void parseFlags(int argc, char *argv[]) {
             exit(1);
         }
     };
-
+    auto has_engine {false};
     while (++arg < argc) {
         if (strcmp("--help", argv[arg]) == 0) {
             printHelp(argv[0]);
@@ -95,6 +95,7 @@ void parseFlags(int argc, char *argv[]) {
                 std::cerr << "Unknown mode " << str << ", defaulting to " << Config::Analysis::modeName(Config::Analysis::mode) << std::endl;
             }
         } else if (strcmp("--engine", argv[arg]) == 0) {
+            has_engine = true;
             std::string str = getNext();
             if (boost::iequals("adcl", str)) {
                 Config::Analysis::engine = Config::Analysis::ADCL;
@@ -195,6 +196,16 @@ void parseFlags(int argc, char *argv[]) {
                 exit(1);
             }
             filename = argv[arg];
+        }
+    }
+    if (!has_engine) {
+        switch (Config::Analysis::mode) {
+        case Config::Analysis::Safety:
+            Config::Analysis::engine = Config::Analysis::ABMC;
+            break;
+        default:
+            Config::Analysis::engine = Config::Analysis::ADCL;
+            break;
         }
     }
 }

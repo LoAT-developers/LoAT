@@ -101,7 +101,7 @@ Reachability::Reachability(ITSProblem &chcs):
     solver->enableModels();
 }
 
-Step::Step(const TransIdx transition, const Bools::Expr sat, const Subs &var_renaming, const Subs &tmp_var_renaming, const Rule &resolvent):
+Step::Step(const TransIdx transition, const Bools::Expr sat, const Renaming &var_renaming, const Renaming &tmp_var_renaming, const Rule &resolvent):
     clause_idx(transition),
     implicant(sat),
     var_renaming(var_renaming),
@@ -138,32 +138,33 @@ std::optional<unsigned> Reachability::has_looping_suffix(int start) {
     return {};
 }
 
-std::pair<Subs, Subs> Reachability::handle_update(const TransIdx idx) {
-    const auto &last_var_renaming = trace.empty() ? Subs::Empty : trace.back().var_renaming;
-    Subs new_var_renaming {last_var_renaming};
-    Subs new_tmp_var_renaming;
+std::pair<Renaming, Renaming> Reachability::handle_update(const TransIdx idx) {
+    const auto &last_var_renaming = trace.empty() ? Renaming::Empty : trace.back().var_renaming;
+    Renaming new_var_renaming;
+    Renaming new_tmp_var_renaming;
     if (chcs.isSinkTransition(idx)) {
         // no need to compute a new variable renaming if we just applied a query
         return {new_var_renaming, new_tmp_var_renaming};
     }
-    const Subs up = idx->getUpdate();
+    const auto up {idx->getUpdate()};
     for (const auto &x: prog_vars) {
         theory::apply(x, [&](const auto &x) {
             const auto th {theory::theory(x)};
-            new_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
+            new_var_renaming.insert<decltype(th)>(x, th.next());
         });
     }
     for (const auto &var: idx->vars()) {
         if (theory::isTempVar(var)) {
             theory::apply(var, [&](const auto &x) {
                 const auto th {theory::theory(x)};
-                new_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
-                new_tmp_var_renaming.put<decltype(th)>(x, th.varToExpr(th.next()));
+                const auto next {th.next()};
+                new_var_renaming.insert<decltype(th)>(x, next);
+                new_tmp_var_renaming.insert<decltype(th)>(x, next);
             });
         }
     }
     for (const auto &x: prog_vars) {
-        solver->add(theory::mkEq(new_var_renaming.get(x), last_var_renaming(up.get(x))));
+        solver->add(theory::mkEq(theory::toExpr(new_var_renaming.get(x)), last_var_renaming(up.get(x))));
     }
     return {new_var_renaming, new_tmp_var_renaming};
 }
@@ -222,12 +223,12 @@ void Reachability::update_cpx() {
     }
 }
 
-Rule Reachability::compute_resolvent(const TransIdx idx, const Bools::Expr implicant, const Subs &tmp_var_renaming) const {
+Rule Reachability::compute_resolvent(const TransIdx idx, const Bools::Expr implicant, const Renaming &tmp_var_renaming) const {
     static Rule dummy(top(), Subs());
     if (!Config::Analysis::complexity()) {
         return dummy;
     }
-    auto resolvent = idx->withGuard(implicant).subs(tmp_var_renaming);
+    auto resolvent = idx->withGuard(implicant).renameVars(tmp_var_renaming);
     if (!trace.empty()) {
         resolvent = Preprocess::chain({trace.back().resolvent, resolvent});
     }
@@ -236,7 +237,7 @@ Rule Reachability::compute_resolvent(const TransIdx idx, const Bools::Expr impli
 
 bool Reachability::store_step(const TransIdx idx, const Rule &implicant) {
     solver->push();
-    const auto imp {trace.empty() ? implicant : implicant.subs(trace.back().var_renaming)};
+    const auto imp {trace.empty() ? implicant : implicant.renameVars(trace.back().var_renaming)};
     solver->add(imp.getGuard());
     if (solver->check() == SmtResult::Sat) {
         const auto [new_var_renaming, new_tmp_var_renaming] {handle_update(idx)};
@@ -273,7 +274,7 @@ void Reachability::print_trace(std::ostream &s) {
         first = true;
         if (!chcs.isSinkTransition(step.clause_idx)) {
             for (const auto &x: prog_vars) {
-                const auto y {model.eval(step.var_renaming.get(x))};
+                const auto y {model.eval(theory::toExpr(step.var_renaming.get(x)))};
                 if (first) {
                     first = false;
                 } else {
@@ -289,7 +290,6 @@ void Reachability::print_trace(std::ostream &s) {
 
 void Reachability::print_state() {
     std::cout << "trace";
-    std::stringstream s;
     for (const auto &x: trace) {
         std::cout << "\n\t" << x;
     }
@@ -302,11 +302,11 @@ void Reachability::print_state() {
             if (first_trans) {
                 first_trans = false;
             } else {
-                s << ", ";
+                std::cout << ", ";
             }
-            s << idx << "[" << bools::mkAnd(blocked) << "]";
+            std::cout << idx << "[" << bools::mkAnd(blocked) << "]";
         }
-        s << "}" << std::endl;
+        std::cout << "}";
     }
     std::cout << std::endl;
 }
@@ -355,7 +355,7 @@ void Reachability::unknown() {
 }
 
 std::optional<Rule> Reachability::resolve(const TransIdx idx) {
-    const auto &var_renaming = trace.empty() ? Subs::Empty : trace.back().var_renaming;
+    const auto &var_renaming = trace.empty() ? Renaming::Empty : trace.back().var_renaming;
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
         // empty means all variants are blocked --> fail
@@ -412,7 +412,7 @@ Automaton Reachability::build_language(const int backlink) {
 std::pair<Rule, Model> Reachability::build_loop(const int backlink) {
     std::vector<Rule> rules;
     for (long i = backlink; i < trace.size(); ++i) {
-        rules.emplace_back(trace[i].clause_idx->withGuard(trace[i].implicant).subs(trace[i].tmp_var_renaming));
+        rules.emplace_back(trace[i].clause_idx->withGuard(trace[i].implicant).renameVars(trace[i].tmp_var_renaming));
     }
     const auto loop {Preprocess::chain(rules)};
     const auto s {trace[backlink].var_renaming};
@@ -619,7 +619,7 @@ bool Reachability::try_to_finish() {
             const auto implicant {resolve(q)};
             if (implicant) {
                 // no need to compute a variable renaming for the next step, as we are done
-                add_to_trace(Step(q, implicant->getGuard(), Subs(), Subs(), Rule(top(), Subs())));
+                add_to_trace(Step(q, implicant->getGuard(), Renaming(), Renaming(), Rule(top(), Subs())));
                 print_state();
                 unsat();
                 return true;
@@ -653,7 +653,6 @@ void Reachability::analyze() {
         ++luby_count;
         size_t next_restart = luby_unit * luby.second;
         std::unique_ptr<LearningState> state;
-        if (Config::Analysis::log) std::cout << "trace: " << trace << std::endl;
         if (!trace.empty()) {
             for (auto backlink = has_looping_suffix(trace.size() - 1);
                  backlink;

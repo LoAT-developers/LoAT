@@ -34,7 +34,7 @@ namespace Config {
         std::vector<Mode> modes { Complexity, Termination, Recurrence, Safety };
 
         Mode mode = Complexity;
-        Engine engine = ADCL;
+        Engine engine;
         SmtSolver smtSolver = Heuristic;
         bool log = false;
         bool logPreproc = false;
