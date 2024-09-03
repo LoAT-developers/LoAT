@@ -289,26 +289,28 @@ void Reachability::print_trace(std::ostream &s) {
 }
 
 void Reachability::print_state() {
-    std::cout << "trace";
-    for (const auto &x: trace) {
-        std::cout << "\n\t" << x;
-    }
-    std::cout << "\n";
-    std::cout << "blocked";
-    for (const auto &e: blocked_clauses) {
-        std::cout << "\n\t{";
-        bool first_trans = true;
-        for (const auto &[idx,blocked]: e) {
-            if (first_trans) {
-                first_trans = false;
-            } else {
-                std::cout << ", ";
-            }
-            std::cout << idx << "[" << bools::mkAnd(blocked) << "]";
+    if (Config::Analysis::log) {
+        std::cout << "trace";
+        for (const auto &x: trace) {
+            std::cout << "\n\t" << x;
         }
-        std::cout << "}";
+        std::cout << "\n";
+        std::cout << "blocked";
+        for (const auto &e: blocked_clauses) {
+            std::cout << "\n\t{";
+            bool first_trans = true;
+            for (const auto &[idx,blocked]: e) {
+                if (first_trans) {
+                    first_trans = false;
+                } else {
+                    std::cout << ", ";
+                }
+                std::cout << idx << "[" << bools::mkAnd(blocked) << "]";
+            }
+            std::cout << "}";
+        }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 }
 
 void Reachability::init() {
