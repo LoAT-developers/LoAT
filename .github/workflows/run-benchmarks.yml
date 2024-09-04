@@ -20,6 +20,8 @@ on:
         - loat_bmc
         - loat_release_chc_comp_2024_bmc
         - loat_release_chc_comp_2024_abmc
+        - loat_release_termcomp_2023_nonterm
+        - loat_release_termcomp_2023_lb
         - z3_gspacer
         - z3_spacer
         - z3_bmc
@@ -92,6 +94,9 @@ jobs:
       - if: ${{ startsWith(inputs.config, 'loat_release_chc_comp_2024') }}
         uses: ./actions/.github/actions/get-loat-chc-comp-2024
 
+      - if: ${{ startsWith(inputs.config, 'loat_release_termcomp_2023') }}
+        uses: ./actions/.github/actions/get-loat-termcomp-2023
+
       - if: ${{ !inputs.build && startsWith(inputs.config, 'loat') && !startsWith(inputs.config, 'loat_release') }}
         uses: ./actions/.github/actions/get-loat
 
@@ -130,6 +135,10 @@ jobs:
               config=${{ inputs.config }}
               engine=${config:27:100}
               result=$(timeout ${{ inputs.timeout }} solver --mode reachability --format horn --engine $engine --plain --proof-level 0 "${filename}")
+            elif [ ${{ inputs.config }} = loat_release_termcomp_2023_nonterm ]; then
+              result=$(timeout ${{ inputs.timeout }} solver --mode non_termination --format its --plain --proof-level 0 "${filename}")
+            elif [ ${{ inputs.config }} = loat_release_termcomp_2023_lb ]; then
+              result=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --plain --proof-level 0 "${filename}")
             elif [ ${{ inputs.config }} = "z3_gspacer" ]; then
               result=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer fp.spacer.global=true "${filename}")
             elif [ ${{ inputs.config }} = "z3_spacer" ]; then
