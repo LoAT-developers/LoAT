@@ -361,7 +361,7 @@ sexpresso::Sexp ArithLit::to_smtlib(const std::function<std::string(const ArithV
     return res;
 }
 
-void ArithLit::simplifyAnd(linked_hash_set<ArithLitPtr> &lits) {
+bool ArithLit::simplifyAnd(linked_hash_set<ArithLitPtr> &lits) {
     std::unordered_set<ArithLitPtr> remove;
     linked_hash_set<ArithLitPtr> add;
     for (const auto &rel: lits) {
@@ -380,9 +380,10 @@ void ArithLit::simplifyAnd(linked_hash_set<ArithLitPtr> &lits) {
     for (const auto &a: add) {
         lits.insert(a);
     }
+    return !add.empty();
 }
 
-void ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
+bool ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
     std::unordered_set<ArithLitPtr> remove;
     std::unordered_set<ArithLitPtr> add;
     for (const auto &rel: lits) {
@@ -401,4 +402,5 @@ void ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
     for (const auto &a: add) {
         lits.insert(a);
     }
+    return !add.empty();
 }

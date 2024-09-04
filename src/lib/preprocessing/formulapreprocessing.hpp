@@ -14,6 +14,8 @@ namespace Preprocess {
     // Shorthand for lambdas that check if a given symbol is accepted/allowed (depending on the context)
     using SymbolAcceptor = std::function<bool(const Var &)>;
 
+    Bools::Expr simplifyAnd(const Bools::Expr e);
+
     Bools::Expr preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow);
 
     std::tuple<Bools::Expr, Subs, Subs> chain(const Bools::Expr &fst, const Bools::Expr &snd);

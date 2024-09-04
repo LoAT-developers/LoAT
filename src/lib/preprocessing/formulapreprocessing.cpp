@@ -14,6 +14,16 @@ Bools::Expr propagateEqualities(const Bools::Expr e, const Preprocess::SymbolAcc
 
 }
 
+Bools::Expr Preprocess::simplifyAnd(const Bools::Expr e) {
+    if (e->isConjunction()) {
+        auto lits{e->lits()};
+        if (ArithLit::simplifyAnd(lits.get<Arith::Lit>())) {
+            return bools::mkAndFromLits(lits);
+        }
+    }
+    return e;
+}
+
 Bools::Expr Preprocess::preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow) {
     Bools::Expr res {e};
     auto changed {false};
@@ -25,17 +35,18 @@ Bools::Expr Preprocess::preprocessFormula(const Bools::Expr e, const SymbolAccep
             res = tmp;
         }
     } while (changed);
+    res = simplifyAnd(res);
     do {
         changed = false;
         auto tmp {::propagateEqualities(res, allow)};
         if (tmp != res) {
             changed = true;
-            res = tmp;
+            res = simplifyAnd(tmp);
         }
         tmp = integerFourierMotzkin(res, allow);
         if (tmp != res) {
             changed = true;
-            res = tmp;
+            res = simplifyAnd(tmp);
         }
     } while (changed);
     return res;
