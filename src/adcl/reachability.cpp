@@ -140,6 +140,7 @@ std::optional<unsigned> Reachability::has_looping_suffix(int start) {
 
 std::pair<Renaming, Renaming> Reachability::handle_update(const TransIdx idx) {
     const auto &last_var_renaming = trace.empty() ? Renaming::Empty : trace.back().var_renaming;
+    const auto &last_tmp_var_renaming = trace.empty() ? Renaming::Empty : trace.back().tmp_var_renaming;
     Renaming new_var_renaming;
     Renaming new_tmp_var_renaming;
     if (chcs.isSinkTransition(idx)) {
@@ -155,6 +156,16 @@ std::pair<Renaming, Renaming> Reachability::handle_update(const TransIdx idx) {
     }
     for (const auto &var: idx->vars()) {
         if (theory::isTempVar(var)) {
+            theory::apply(var, [&](const auto &x) {
+                const auto th {theory::theory(x)};
+                const auto next {th.next()};
+                new_var_renaming.insert<decltype(th)>(x, next);
+                new_tmp_var_renaming.insert<decltype(th)>(x, next);
+            });
+        }
+    }
+    for (const auto &[var,_]: last_tmp_var_renaming) {
+        if (!new_tmp_var_renaming.contains(var)) {
             theory::apply(var, [&](const auto &x) {
                 const auto th {theory::theory(x)};
                 const auto next {th.next()};
