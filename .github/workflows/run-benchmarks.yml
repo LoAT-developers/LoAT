@@ -187,10 +187,14 @@ jobs:
             readarray -d '' bench < <(find . -name "*.smt2" -print0)
           fi
 
+          # sort the array of benchmarks
+          IFS=$'\n' sorted=($(sort <<<"${bench[*]}"))
+          unset IFS
+
           my_bench=()
           i=$CI_INDEX
-          while [[ $i -lt ${#bench[@]} ]]; do
-            my_bench+=(${bench[i]})
+          while [[ $i -lt ${#sorted[@]} ]]; do
+            my_bench+=(${sorted[i]})
             i=$(( i+CI_TOTAL ))
           done
 
