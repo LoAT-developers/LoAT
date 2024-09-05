@@ -123,37 +123,37 @@ jobs:
 
             set +e
             if [ ${{ inputs.config }} = "loat_sat" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine til --til::mode interleaved "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine til --til::mode interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_unsat" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm_abmc" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_bmc" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine bmc "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine bmc "${filename}")
             elif [[ ${{ inputs.config }} == loat_release_chc_comp_2024_* ]]; then
               config=${{ inputs.config }}
               engine=${config:27:100}
-              result=$(timeout ${{ inputs.timeout }} solver --mode reachability --format horn --engine $engine --plain --proof-level 0 "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode reachability --format horn --engine $engine --plain --proof-level 0 "${filename}")
             elif [ ${{ inputs.config }} = loat_release_termcomp_2023_nonterm ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode non_termination --format its --plain --proof-level 0 "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode non_termination --format its --plain --proof-level 0 "${filename}")
             elif [ ${{ inputs.config }} = loat_release_termcomp_2023_lb ]; then
-              result=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --plain --proof-level 0 "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --plain --proof-level 0 "${filename}")
             elif [ ${{ inputs.config }} = "z3_gspacer" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer fp.spacer.global=true "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer fp.spacer.global=true "${filename}")
             elif [ ${{ inputs.config }} = "z3_spacer" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer "${filename}")
             elif [ ${{ inputs.config }} = "z3_bmc" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver fp.engine=bmc "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver fp.engine=bmc "${filename}")
             elif [[ ${{ inputs.config }} == golem* ]]; then
               config=${{ inputs.config }}
               engine=${config:6:100}
-              result=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
             elif [ ${{ inputs.config }} = "eld" ]; then
-              result=$(timeout ${{ inputs.timeout }} solver "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver "${filename}")
             fi
 
             exit_status=$?
@@ -164,7 +164,12 @@ jobs:
             runtime=$( printf %.0f $runtime )
 
             if [[ $exit_status -eq 0 ]]; then
-              result=$(echo "$result" | head -n 1)
+              result="unknown"
+              for res in $result; do
+                if [[ $res == *sat || $res == YES || $res == NO || res == WORST_CASE* ]]; then
+                  result=$res
+                fi
+              done
             elif [[ $exit_status -eq 124 ]]; then
               result="timeout"
             else
