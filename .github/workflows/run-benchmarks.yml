@@ -250,7 +250,8 @@ jobs:
           echo -e "\t\"version\": \"$VERSION\"," >> $results
           echo -e "\t\"timeout\": \"${{ inputs.timeout }}\"," >> $results
           echo -e "\t\"results\": [" >> $results
-          for filename in ${{ inputs.benchmarks }}*/**/*.json; do
+          filenames=$(find ${{ inputs.benchmarks }}* -name *.json)
+          for filename in $filenames; do
             json=$(cat $filename)
             echo -e "\t\t$json," >> $results
           done
