@@ -16,6 +16,7 @@ on:
         - loat_sat
         - loat_unsat
         - loat_nonterm
+        - loat_nonterm_abmc
         - loat_lb
         - loat_bmc
         - loat_release_chc_comp_2024_bmc
@@ -127,6 +128,8 @@ jobs:
               result=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm" ]; then
               result=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
+            elif [ ${{ inputs.config }} = "loat_nonterm_abmc" ]; then
+              result=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               result=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_bmc" ]; then
