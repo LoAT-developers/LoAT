@@ -79,12 +79,6 @@ std::optional<Rule> integerFourierMotzkin(const Rule &rule) {
 }
 
 std::optional<Rule> eliminateArithVars(const Rule &rule) {
-    // this makes only sense for acceleraion-based techniques
-    // if (Config::Analysis::engine == Config::Analysis::ABMC || Config::Analysis::engine == Config::Analysis::ADCL) {
-    //     if (const auto res{propagateEqualitiesPickily(rule)}) {
-    //         return res;
-    //     }
-    // }
     if (const auto res{propagateEqualities(rule)}) {
         return res;
     }

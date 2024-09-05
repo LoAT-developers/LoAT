@@ -141,6 +141,11 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     const auto idx{its.addLearnedRule(accel, trace.at(backlink).first, trace.back().first)};
     rule_map.emplace(idx->getId(), idx);
+    const auto new_vars {idx->vars()};
+    vars.insertAll(idx->vars());
+    for (const auto &x: new_vars) {
+        post_vars.emplace(x, theory::next(x));
+    }
     return idx;
 }
 
