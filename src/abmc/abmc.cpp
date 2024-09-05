@@ -141,15 +141,21 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
 TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
     const auto idx{its.addLearnedRule(accel, trace.at(backlink).first, trace.back().first)};
     rule_map.emplace(idx->getId(), idx);
-    const auto new_vars {idx->vars()};
-    vars.insertAll(idx->vars());
-    for (const auto &x: new_vars) {
-        post_vars.emplace(x, theory::next(x));
-    }
     return idx;
 }
 
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
+    const auto update_subs = [&](const TransIdx loop) {
+        subs_at(depth + 1);
+        const auto new_vars {loop->vars()};
+        for (const auto &x: new_vars) {
+            if (theory::isTempVar(x) && !vars.contains(x)) {
+                const auto next {theory::next(x)};
+                subs[depth + 1].insert(x, next);
+                subsTmp[depth + 1].insert(x, next);
+            }
+        }
+    };
     auto [loop, sample_point] {build_loop(backlink)};
     auto &map {cache.emplace(lang, std::unordered_map<Bools::Expr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
@@ -157,6 +163,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
             if (loop) {
                 shortcut = loop->idx;
+                update_subs(loop->idx);
                 return loop;
             } else {
                 return {};
@@ -210,6 +217,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                 if (Config::Analysis::log) {
                     std::cout << "accelerated rule, idx " << new_idx->getId() << "\n" << simplified << std::endl;
                 }
+                update_subs(new_idx);
                 return loop;
             }
         }
