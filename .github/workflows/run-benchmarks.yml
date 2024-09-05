@@ -163,15 +163,17 @@ jobs:
             runtime=$( echo "1000 * ($end - $start)" | bc -l )
             runtime=$( printf %.0f $runtime )
 
-            if [[ $exit_status -eq 0 ]]; then
-              result="unknown"
+            if [[ $exit_status -eq 0 || $exit_status -eq 124 ]]; then
+              if [[ $exit_status -eq 0 ]]; then
+                result="unknown"
+              else
+                result="timeout"
+              fi
               for res in $output; do
                 if [[ $res == *sat || $res == YES || $res == NO || $res == WORST_CASE* ]]; then
                   result=$res
                 fi
               done
-            elif [[ $exit_status -eq 124 ]]; then
-              result="timeout"
             else
               result="error"
             fi
