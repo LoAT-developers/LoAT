@@ -165,8 +165,8 @@ jobs:
 
             if [[ $exit_status -eq 0 ]]; then
               result="unknown"
-              for res in $result; do
-                if [[ $res == *sat || $res == YES || $res == NO || res == WORST_CASE* ]]; then
+              for res in $output; do
+                if [[ $res == *sat || $res == YES || $res == NO || $res == WORST_CASE* ]]; then
                   result=$res
                 fi
               done
