@@ -117,6 +117,7 @@ jobs:
 
       - if: ${{ startsWith(inputs.config, 'verymax') }}
         uses: ./actions/.github/actions/get-verymax
+        secrets: inherit
 
       - name: Run Benchmark
         run: |
