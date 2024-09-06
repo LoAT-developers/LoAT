@@ -18,7 +18,7 @@ runs:
     - run: |
         mv ./irankfinder/* /usr/local/bin
         chmod +x /usr/local/bin/solver
-        chmod +x /usr/local/bin/genericparser/bin/*
+        chmod +x /usr/local/bin/**/bin/*
         chmod +x /usr/local/bin/irankfinder
         VERSION='termcomp22'
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
