@@ -1,3 +1,7 @@
+inputs:
+  token:
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -7,7 +11,7 @@ runs:
         repository: 'LoAT-developers/termtools'
         tag: verymax
         fileName: '*'
-        token: ${{ secrets.TERMTOOLS }}
+        token: ${{ inputs.token }}
         out-file-path: '/usr/local/bin'
 
     - run: |
