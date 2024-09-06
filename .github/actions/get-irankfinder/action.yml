@@ -9,13 +9,14 @@ runs:
     - uses: robinraju/release-downloader@v1
       with:
         repository: 'LoAT-developers/termtools'
-        tag: irankfiner
-        fileName: '*'
+        tag: irankfinder
+        fileName: 'irankfinder.zipx'
         token: ${{ inputs.token }}
-        out-file-path: 'irankfinder'
+        out-file-path: '.'
+        extract: true
 
     - run: |
-        mv irankfiner/irankfinder /usr/local/irankfinder
+        mv ./irankfiner/irankfinder /usr/local/irankfinder
         mv irankfinder/bin/calls.sh /usr/local/solver
         chmod +x /usr/local/bin/solver
         chmod +x /usr/local/irankfinder/genericparser/bin/*
