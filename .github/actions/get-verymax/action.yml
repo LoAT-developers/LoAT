@@ -4,7 +4,7 @@ runs:
 
     - uses: robinraju/release-downloader@v1
       with:
-        repository: 'loat-developers/termtools'
+        repository: 'LoAT-developers/termtools'
         tag: verymax
         fileName: '*'
         out-file-path: '/usr/local/bin'
