@@ -165,6 +165,7 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
             elif [ ${{ inputs.config }} = "verymax" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
+              echo $output
             fi
 
             exit_status=$?
