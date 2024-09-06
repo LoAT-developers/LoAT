@@ -34,6 +34,7 @@ on:
         - golem_imc
         - golem_kind
         - eld
+        - verymax
       benchmarks:
         required: true
         type: choice
@@ -114,6 +115,9 @@ jobs:
       - if: ${{ startsWith(inputs.config, 'golem') }}
         uses: ./actions/.github/actions/get-golem
 
+      - if: ${{ startsWith(inputs.config, 'verymax') }}
+        uses: ./actions/.github/actions/get-verymax
+
       - name: Run Benchmark
         run: |
           # function to run a single benchmark
@@ -156,6 +160,8 @@ jobs:
               engine=${config:6:100}
               output=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
             elif [ ${{ inputs.config }} = "eld" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver "${filename}")
+            elif [ ${{ inputs.config }} = "verymax" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
             fi
 
