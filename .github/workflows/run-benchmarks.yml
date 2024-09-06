@@ -169,7 +169,7 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
             elif [ ${{ inputs.config }} = "eld" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
-            elif [ ${{ inputs.config }} = "verymax" || ${{ inputs.config }} = "irankfinder" ]; then
+            elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
             fi
 
