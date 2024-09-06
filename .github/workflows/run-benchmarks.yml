@@ -177,6 +177,7 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
             elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]  || [ ${{ inputs.config }} = "t2" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
+              echo "$output"
             fi
 
             exit_status=$?
