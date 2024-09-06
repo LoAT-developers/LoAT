@@ -10,7 +10,7 @@ runs:
       with:
         repository: 'LoAT-developers/termtools'
         tag: irankfinder
-        fileName: 'irankfinder.zipx'
+        fileName: 'irankfinder.zip'
         token: ${{ inputs.token }}
         out-file-path: '.'
         extract: true
