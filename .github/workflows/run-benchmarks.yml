@@ -118,7 +118,7 @@ jobs:
       - if: ${{ startsWith(inputs.config, 'verymax') }}
         uses: ./actions/.github/actions/get-verymax
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.TERMTOOLS }}
 
       - name: Run Benchmark
         run: |
