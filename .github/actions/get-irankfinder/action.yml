@@ -16,11 +16,10 @@ runs:
         extract: true
 
     - run: |
-        mv ./irankfinder/irankfinder /usr/local/irankfinder
-        mv ./irankfinder/bin/calls.sh /usr/local/solver
+        mv ./irankfinder/* /usr/local/bin
         chmod +x /usr/local/bin/solver
-        chmod +x /usr/local/irankfinder/genericparser/bin/*
-        chmod +x /usr/local/irankfinder/irankfinder
+        chmod +x /usr/local/genericparser/bin/*
+        chmod +x /usr/local/irankfinder
         VERSION='termcomp22'
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
       shell: bash
