@@ -16,8 +16,8 @@ runs:
         extract: true
 
     - run: |
-        mv ./irankfiner/irankfinder /usr/local/irankfinder
-        mv irankfinder/bin/calls.sh /usr/local/solver
+        mv ./irankfinder/irankfinder /usr/local/irankfinder
+        mv ./irankfinder/bin/calls.sh /usr/local/solver
         chmod +x /usr/local/bin/solver
         chmod +x /usr/local/irankfinder/genericparser/bin/*
         chmod +x /usr/local/irankfinder/irankfinder
