@@ -7,7 +7,7 @@ runs:
         repository: 'LoAT-developers/termtools'
         tag: verymax
         fileName: '*'
-        token: ${{ secrets.MY_TOKEN }}
+        token: ${{ secrets.TERMTOOLS }}
         out-file-path: '/usr/local/bin'
 
     - run: |
