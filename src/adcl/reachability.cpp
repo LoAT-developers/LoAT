@@ -456,9 +456,6 @@ bool Reachability::is_orig_clause(const TransIdx idx) const {
 std::optional<Rule> Reachability::instantiate(const Arith::Var n, const Rule &rule) const {
     std::optional<Rule> res{};
     VarEliminator ve(rule.getGuard(), n, theory::isProgVar);
-    if (ve.getRes().empty() || ve.getRes().size() > 1) {
-        return res;
-    }
     for (const auto &s : ve.getRes()) {
         if (s.get(n)->isRational()) continue;
         if (res) {
