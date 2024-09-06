@@ -133,7 +133,7 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
-            elif [ ${{ inputs.config }} = "loat_lb" ]; then
+            elif [ ${{ inputs.config }} = "loat_lb_z3" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl --smt z3 "${filename}")
             elif [ ${{ inputs.config }} = "loat_bmc" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine bmc "${filename}")
