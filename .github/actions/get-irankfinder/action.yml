@@ -1,0 +1,26 @@
+inputs:
+  token:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        repository: 'LoAT-developers/termtools'
+        tag: irankfiner
+        fileName: '*'
+        token: ${{ inputs.token }}
+        out-file-path: 'irankfinder'
+
+    - run: |
+        mv irankfiner/irankfinder /usr/local/irankfinder
+        mv irankfinder/bin/calls.sh /usr/local/solver
+        chmod +x /usr/local/bin/solver
+        chmod +x /usr/local/irankfinder/genericparser/bin/*
+        chmod +x /usr/local/irankfinder/irankfinder
+        VERSION='termcomp22'
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      shell: bash
+
