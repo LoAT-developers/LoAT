@@ -6,7 +6,7 @@ runs:
       with:
         repository: 'loat-developers/termtools'
         tag: verymax
-        fileName: *
+        fileName: '*'
         out-file-path: '/usr/local/bin'
 
     - run: |
