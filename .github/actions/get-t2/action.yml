@@ -18,7 +18,6 @@ runs:
     - run: |
         chmod +x t2/bin/*
         mv t2/bin/* /usr/local/bin
-        mv t2/lib/* /usr/local/bin
         VERSION='termcomp15'
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
       shell: bash
