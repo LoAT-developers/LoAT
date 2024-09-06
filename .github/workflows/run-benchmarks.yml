@@ -36,6 +36,7 @@ on:
         - eld
         - verymax
         - irankfinder
+        - t2
       benchmarks:
         required: true
         type: choice
@@ -126,6 +127,11 @@ jobs:
         with:
           token: ${{ secrets.TERMTOOLS }}
 
+      - if: ${{ startsWith(inputs.config, 't2') }}
+        uses: ./actions/.github/actions/get-t2
+        with:
+          token: ${{ secrets.TERMTOOLS }}
+
       - name: Run Benchmark
         run: |
           # function to run a single benchmark
@@ -169,9 +175,8 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
             elif [ ${{ inputs.config }} = "eld" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
-            elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]; then
+            elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]  || [ ${{ inputs.config }} = "t2" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
-              echo $output
             fi
 
             exit_status=$?

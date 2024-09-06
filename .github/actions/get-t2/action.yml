@@ -1,0 +1,25 @@
+inputs:
+  token:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        repository: 'LoAT-developers/termtools'
+        tag: t2
+        fileName: 't2.zip'
+        token: ${{ inputs.token }}
+        extract: true
+        out-file-path: '.'
+
+    - run: |
+        chmod +x t2/bin/*
+        mv t2/bin/* /usr/local/bin
+        mv t2/lib/* /usr/local/lib
+        VERSION='termcomp15'
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      shell: bash
+
