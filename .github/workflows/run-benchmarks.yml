@@ -184,7 +184,6 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver analyse --cfr=pe --local=mprf,twn -d5 --timeout=$to -r termcomp -i "${filename}")
             elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]  || [ ${{ inputs.config }} = "t2" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
-              echo "$output"
             fi
 
             exit_status=$?
@@ -200,7 +199,7 @@ jobs:
               else
                 result="timeout"
               fi
-              for res in $output; do
+              for res in "$output"; do
                 if [[ $res == *sat || $res == YES || $res == NO || $res == WORST_CASE* ]]; then
                   result=$res
                 fi
