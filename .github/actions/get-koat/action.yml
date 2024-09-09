@@ -6,7 +6,7 @@ runs:
       with:
         repository: 'aprove-developers/KoAT2-Releases'
         tag: koat2-prob-cfr-initial
-        fileName: koat2-static
+        fileName: koat2_static
         out-file-path: '/usr/local/bin/solver'
         extract: true
 
