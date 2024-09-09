@@ -181,7 +181,7 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
             elif [ ${{ inputs.config }} = "koat" ]; then
               to="$((${{ inputs.timeout }}-2))"
-              output=$(timeout ${{ inputs.timeout }} analyse --cfr=pe --local=mprf,twn -d5 --timeout=$to -r termcomp -i "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver analyse --cfr=pe --local=mprf,twn -d5 --timeout=$to -r termcomp -i "${filename}")
             elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]  || [ ${{ inputs.config }} = "t2" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
               echo "$output"
