@@ -37,6 +37,7 @@ on:
         - verymax
         - irankfinder
         - t2
+        - koat
       benchmarks:
         required: true
         type: choice
@@ -117,6 +118,9 @@ jobs:
       - if: ${{ startsWith(inputs.config, 'golem') }}
         uses: ./actions/.github/actions/get-golem
 
+      - if: ${{ startsWith(inputs.config, 'koat') }}
+        uses: ./actions/.github/actions/get-koat
+
       - if: ${{ startsWith(inputs.config, 'verymax') }}
         uses: ./actions/.github/actions/get-verymax
         with:
@@ -175,6 +179,9 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
             elif [ ${{ inputs.config }} = "eld" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
+            elif [ ${{ inputs.config }} = "koat" ]; then
+              to=$((${{ inputs.timeout }}-2))"
+              output=$(timeout ${{ inputs.timeout }} analyse --cfr=pe --local=mprf,twn -d5 --timeout=$to -r termcomp -i "${filename}")
             elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]  || [ ${{ inputs.config }} = "t2" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
               echo "$output"

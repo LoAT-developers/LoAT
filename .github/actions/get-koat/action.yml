@@ -1,0 +1,18 @@
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        repository: 'aprove-developers/KoAT2-Releases'
+        tag: koat2-prob-cfr-initial
+        fileName: koat2-static
+        out-file-path: '/usr/local/bin/solver'
+        extract: true
+
+    - run: |
+        chmod +x /usr/local/bin/solver
+        VERSION='koat2-prob-cfr-initial'
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      shell: bash
+
