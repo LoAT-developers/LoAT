@@ -180,8 +180,9 @@ jobs:
             elif [ ${{ inputs.config }} = "eld" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
             elif [ ${{ inputs.config }} = "koat" ]; then
-              to="$((${{ inputs.timeout }}-2))"
-              output=$(timeout --kill-after=2 ${{ inputs.timeout }} solver analyse --cfr=pe --local=mprf,twn -d5 --timeout=$to -r termcomp -i "${filename}")
+              # to="$((${{ inputs.timeout }}-2))"
+              # output=$(timeout --kill-after=2 ${{ inputs.timeout }} solver analyse --cfr=pe --local=mprf,twn -d5 --timeout=$to -r termcomp -i "${filename}")
+              output=$(timeout --kill-after=2 ${{ inputs.timeout }} solver analyse --cfr=pe --local=mprf,twn -d5 -r termcomp -i "${filename}")
             elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]  || [ ${{ inputs.config }} = "t2" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
             fi
@@ -242,15 +243,8 @@ jobs:
              echo $VERSION > solver.version
           fi
 
-          if [[ ${{ inputs.config }} == koat* ]]; then
-            # no parallelism for koat
-            for b in "${my_bench[@]}"; do
-              benchmark $b
-            done
-          else
-            # execute benchmarks in parallel
-            parallel benchmark ::: ${my_bench[@]}
-          fi
+          # execute benchmarks in parallel
+          parallel benchmark ::: ${my_bench[@]}
 
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
