@@ -192,7 +192,7 @@ jobs:
             set -e
 
             if [ ${{ inputs.config }} = "koat" ]; then
-              killall -q solver
+              killall solver
             fi
 
             end=`date +%s.%N`
