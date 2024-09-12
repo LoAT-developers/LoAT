@@ -189,11 +189,10 @@ jobs:
             fi
 
             exit_status=$?
-            set -e
-
             if [ ${{ inputs.config }} = "koat" ]; then
-              killall solver
+              killall -q solver
             fi
+            set -e
 
             end=`date +%s.%N`
             runtime=$( echo "1000 * ($end - $start)" | bc -l )
