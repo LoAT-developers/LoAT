@@ -182,6 +182,7 @@ jobs:
             elif [ ${{ inputs.config }} = "koat" ]; then
               # to="$((${{ inputs.timeout }}-2))"
               # output=$(timeout --kill-after=2 ${{ inputs.timeout }} solver analyse --cfr=pe --local=mprf,twn -d5 --timeout=$to -r termcomp -i "${filename}")
+              ulimit -v 1000000
               output=$(timeout --kill-after=2 ${{ inputs.timeout }} solver analyse --cfr=pe --local=mprf,twn -d5 -r termcomp -i "${filename}")
             elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]  || [ ${{ inputs.config }} = "t2" ]; then
               output=$(timeout ${{ inputs.timeout }} solver "${filename}")
