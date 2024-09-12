@@ -244,8 +244,15 @@ jobs:
              echo $VERSION > solver.version
           fi
 
-          # execute benchmarks in parallel
-          parallel benchmark ::: ${my_bench[@]}
+          if [[ ${{ inputs.config }} == koat* ]]; then
+            # no parallelism for koat
+            for b in "${my_bench[@]}"; do
+              benchmark $b
+            done
+          else
+            # execute benchmarks in parallel
+            parallel benchmark ::: ${my_bench[@]}
+          fi
 
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
