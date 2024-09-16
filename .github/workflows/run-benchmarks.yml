@@ -189,9 +189,6 @@ jobs:
             fi
 
             exit_status=$?
-            if [ ${{ inputs.config }} = "koat" ]; then
-              killall -q solver
-            fi
             set -e
 
             end=`date +%s.%N`
