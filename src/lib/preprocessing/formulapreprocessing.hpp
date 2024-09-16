@@ -18,6 +18,6 @@ namespace Preprocess {
 
     Bools::Expr preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow);
 
-    std::tuple<Bools::Expr, Subs, Subs> chain(const Bools::Expr &fst, const Bools::Expr &snd);
+    std::tuple<Bools::Expr, Renaming, Renaming> chain(const Bools::Expr &fst, const Bools::Expr &snd);
 
 }

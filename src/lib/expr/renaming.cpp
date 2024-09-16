@@ -126,6 +126,23 @@ Var Renaming::get(const Var &var) const {
 }
 
 template<std::size_t I = 0>
+inline void uniteImpl(const Renaming &fst, const Renaming &snd, Renaming &res) {
+    if constexpr (I < num_theories) {
+        auto &r {res.get<I>()};
+        r = fst.get<I>();
+        const auto &s {snd.get<I>()};
+        r.insert(s.begin(), s.end());
+        uniteImpl<I+1>(fst, snd, res);
+    }
+}
+
+Renaming Renaming::unite(const Renaming &that) const {
+    Renaming res;
+    uniteImpl(*this, that, res);
+    return res;
+}
+
+template<std::size_t I = 0>
 inline bool changesImpl(const Renaming &s, const Var &x) {
     if constexpr (I < num_theories) {
         if (x.index() == I) {

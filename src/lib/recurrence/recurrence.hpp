@@ -40,8 +40,6 @@ private:
      */
     Subs closed_form_pre {};
 
-    std::optional<ArithSubs> inverse {ArithSubs()};
-
     Result result {};
 
     std::unordered_map<Var, unsigned> prefixes {};

@@ -54,14 +54,14 @@ TIL::TIL(
             const auto pre{theory::progVar(x)};
             pre_vars.insert(pre);
             vars.insert(pre);
-            post_to_pre.put(x, theory::toExpr(pre));
-            pre_to_post.put(pre, theory::toExpr(x));
+            post_to_pre.insert(x, pre);
+            pre_to_post.insert(pre, x);
         } else {
             if (theory::isProgVar(x)) {
                 const auto post{theory::postVar(x)};
                 pre_vars.insert(x);
-                post_to_pre.put(post, theory::toExpr(x));
-                pre_to_post.put(x, theory::toExpr(post));
+                post_to_pre.insert(post, x);
+                pre_to_post.insert(x, post);
             }
             vars.insert(x);
         }
@@ -82,7 +82,7 @@ std::optional<Range> TIL::has_looping_infix() {
 
 std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
-    Subs var_renaming;
+    Renaming var_renaming;
     for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
         const auto rule {trace[i].implicant};
         const auto s{get_subs(i, 1)};
@@ -100,7 +100,7 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
             }
             // map them to the corresponding SMT vars by taking sigma1 and s (the var renaming that
             // was used for the step with rule) into account
-            const auto fst_var_renaming{sigma1.compose(s).project(fst_vars)};
+            auto fst_var_renaming{sigma1.compose(s).project(fst_vars)};
             // all post-vars and all other variables that occur in chained, but not in rule, correspond
             // to variables from loop
             auto snd_vars{t.post_vars()};
@@ -196,13 +196,13 @@ void TIL::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &mod
             const auto &[t, mod]{*div};
             const auto vars{t->vars()};
             if (std::all_of(vars.begin(), vars.end(), theory::isProgVar)) {
-                const auto post{pre_to_post.get<Arith>()(t)};
+                const auto post{t->renameVars(pre_to_post.get<Arith>())};
                 auto diff{model.eval<Arith>(t) - model.eval<Arith>(post)};
                 if (diff % mod == 0) {
                     res_lits.insert(arith::mkEq(arith::mkMod(post, arith::mkConst(mod)), arith::mkConst(0)));
                 }
             } else if (std::all_of(vars.begin(), vars.end(), theory::isPostVar)) {
-                const auto pre{post_to_pre.get<Arith>()(t)};
+                const auto pre{t->renameVars(post_to_pre.get<Arith>())};
                 auto diff{model.eval<Arith>(t) - model.eval<Arith>(pre)};
                 if (diff % mod == 0) {
                     res_lits.insert(arith::mkEq(arith::mkMod(pre, arith::mkConst(mod)), arith::mkConst(0)));
@@ -301,7 +301,9 @@ void TIL::recurrent_cycles(const Bools::Expr loop, LitSet &res_lits) {
             while (other->isPostVar() && !seen.contains({other, other_sign})) {
                 if (other == post && other_coeff->is(1)) {
                     const auto constant{arith::mkConst(eq->getConstantAddend())};
-                    const auto rhs_cycle_plus_one_steps{ArithSubs({{post, pre}})(*orig_eq + constant * n)};
+                    arith_var_map post_to_pre;
+                    post_to_pre.left.insert(arith_var_map::left_value_type(post, pre));
+                    const auto rhs_cycle_plus_one_steps{(*orig_eq + constant * n)->renameVars(post_to_pre)};
                     res_lits.insert(arith::mkEq(post, rhs_cycle_plus_one_steps));
                     break;
                 } else {
@@ -591,19 +593,19 @@ void TIL::build_trace() {
     }
 }
 
-const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
+const Renaming &TIL::get_subs(const unsigned start, const unsigned steps) {
     if (subs.empty()) {
-        subs.push_back({Subs()});
+        subs.push_back({Renaming()});
     }
     while (subs.size() < start + steps) {
-        Subs s;
+        Renaming s;
         for (const auto &var : vars) {
             if (theory::isProgVar(var)) {
                 const auto post_var{theory::postVar(var)};
-                s.put(var, subs.back()[0].get(post_var));
-                s.put(post_var, theory::toExpr(theory::next(post_var)));
+                s.insert(var, subs.back()[0].get(post_var));
+                s.insert(post_var, theory::next(post_var));
             } else {
-                s.put(var, theory::toExpr(theory::next(var)));
+                s.insert(var, theory::next(var));
             }
         }
         subs.push_back({s});
@@ -611,12 +613,12 @@ const Subs &TIL::get_subs(const unsigned start, const unsigned steps) {
     auto &pre_vec{subs.at(start)};
     while (pre_vec.size() < steps) {
         auto &post{subs.at(start + pre_vec.size()).front()};
-        Subs s;
+        Renaming s;
         for (const auto &var : vars) {
-            s.put(var, pre_vec.front().get(var));
+            s.insert(var, pre_vec.front().get(var));
             if (theory::isProgVar(var)) {
                 const auto post_var{theory::postVar(var)};
-                s.put(post_var, post.get(post_var));
+                s.insert(post_var, post.get(post_var));
             }
         }
         pre_vec.push_back(s);
@@ -725,11 +727,11 @@ ITSModel TIL::get_model() {
     for (unsigned i = 0; i < depth - 1; ++i) {
         const auto s1{get_subs(i, 1)};
         last = last && s1(step);
-        Subs s2;
+        Renaming s2;
         for (const auto &x : vars) {
             if (theory::isProgVar(x)) {
-                s2.put(*theory::vars(s1.get(theory::postVar(x))).begin(), theory::toExpr(x));
-                s2.put(x, theory::toExpr(theory::next(x)));
+                s2.insert(s1.get(theory::postVar(x)), x);
+                s2.insert(x, theory::next(x));
             }
         }
         res.push_back(s2(last));

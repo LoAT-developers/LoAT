@@ -133,9 +133,12 @@ public:
 
     template <ITheory T>
     typename T::Var get(const typename T::Var &var) const {
-        return std::get<typename T::Renaming>(t).get(var);
+        const auto &m {std::get<typename T::Renaming>(t).left};
+        const auto it {m.find(var)};
+        return it == m.end() ? var : it->second;
     }
 
+    Renaming unite(const Renaming &that) const;
     bool changes(const Var &x) const;
     void erase(const Var &x);
     void erase(const VarSet &xs);

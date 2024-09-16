@@ -65,7 +65,7 @@ private:
 
     Config::TILConfig config;
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
-    std::vector<std::vector<Subs>> subs {};
+    std::vector<std::vector<Renaming>> subs {};
     std::vector<TraceElem> trace {};
     Model model;
     std::vector<std::pair<Int, Bools::Expr>> projections {};
@@ -74,8 +74,8 @@ private:
     VarSet vars {};
     VarSet pre_vars {};
     Int last_orig_clause;
-    Subs post_to_pre {};
-    Subs pre_to_post {};
+    Renaming post_to_pre {};
+    Renaming pre_to_post {};
     ReversibleITSToSafety its2safety;
     SafetyProblem t;
     bool produce_model {false};
@@ -109,7 +109,7 @@ private:
     void handle_loop(const Range &range);
     void unknown();
     void build_trace();
-    const Subs& get_subs(const unsigned start, const unsigned steps);
+    const Renaming& get_subs(const unsigned start, const unsigned steps);
     void pop();
     ITSModel get_model();
 
