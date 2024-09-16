@@ -91,7 +91,7 @@ int ABMC::get_language(unsigned i) {
 
 std::pair<Rule, Model> ABMC::build_loop(const int backlink) {
     std::vector<Rule> rules;
-    for (long i = backlink; i < trace.size(); ++i) {
+    for (size_t i = backlink; i < trace.size(); ++i) {
         rules.emplace_back(trace[i].first->withGuard(trace[i].second).renameVars(subsTmp.at(i)));
     }
     const auto loop {Preprocess::chain(rules)};

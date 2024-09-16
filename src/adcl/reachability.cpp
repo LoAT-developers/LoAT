@@ -424,7 +424,7 @@ Automaton Reachability::build_language(const int backlink) {
 
 std::pair<Rule, Model> Reachability::build_loop(const int backlink) {
     std::vector<Rule> rules;
-    for (long i = backlink; i < trace.size(); ++i) {
+    for (size_t i = backlink; i < trace.size(); ++i) {
         rules.emplace_back(trace[i].clause_idx->withGuard(trace[i].implicant).renameVars(trace[i].tmp_var_renaming));
     }
     const auto loop {Preprocess::chain(rules)};
