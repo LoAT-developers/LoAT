@@ -474,7 +474,7 @@ void TIL::handle_loop(const Range &range) {
     auto ti{compute_transition_invariant(loop, model)};
     model.put<Arith>(n, 1);
     const auto id{add_learned_clause(ti)};
-    const auto projected{mbp_impl(ti, model, [&](const auto &x) {
+    const auto projected{mbp::int_mbp(ti, model, [&](const auto &x) {
         return x == Var(n);
     })};
     if (range.length() == 1) {
@@ -546,7 +546,7 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
                     }
                 }
                 const auto sip = is_orig_clause ? model.syntacticImplicant(renamed) : renamed;
-                const auto mbp{mbp_impl(sip, model, theory::isTempVar)};
+                const auto mbp{mbp::int_mbp(sip, model, theory::isTempVar)};
                 add_blocking_clause(range, id, mbp);
                 return true;
             }
