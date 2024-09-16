@@ -1,16 +1,16 @@
 #include "til.hpp"
-#include "redundantinequations.hpp"
 #include "cvc5.hpp"
 #include "dependencygraph.hpp"
 #include "formulapreprocessing.hpp"
 #include "intmbp.hpp"
+#include "itstosafetyproblem.hpp"
 #include "linkedhashmap.hpp"
 #include "optional.hpp"
 #include "pair.hpp"
 #include "realmbp.hpp"
+#include "redundantinequations.hpp"
 #include "rulepreprocessing.hpp"
 #include "theory.hpp"
-#include "itstosafetyproblem.hpp"
 
 Range::Range(const unsigned s, const unsigned e) : s(s), e(e) {}
 
@@ -45,7 +45,8 @@ TIL::TIL(
       its2safety(its_to_safetyproblem(its)),
       t(*its2safety) {
     if (Config::Analysis::log) {
-        std::cout << "safetyproblem:\n" << t << std::endl;
+        std::cout << "safetyproblem:\n"
+                  << t << std::endl;
     }
     vars.insert(trace_var);
     vars.insert(n);
@@ -84,7 +85,7 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Renaming var_renaming;
     for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
-        const auto rule {trace[i].implicant};
+        const auto rule{trace[i].implicant};
         const auto s{get_subs(i, 1)};
         if (loop) {
             // sigma1 maps vars from chained to the corresponding vars from rule
@@ -133,7 +134,7 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
     ++next_id;
     rule_map.left.insert(rule_map_t::left_value_type(id, accel));
     step = step || encode_transition(accel, id);
-    const auto lits {accel->lits()};
+    const auto lits{accel->lits()};
     return id;
 }
 
@@ -432,12 +433,16 @@ void TIL::recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits
 Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model) {
     assert(loop->isConjunction());
     LitSet res_lits;
-    res_lits.insert(arith::mkGt(n, arith::mkConst(0)));
     recurrent_pseudo_divisibility(loop, model, res_lits);
     recurrent_exps(loop, model, res_lits);
     recurrent_cycles(loop, res_lits);
     recurrent_bounds(loop, model, res_lits);
-    return bools::mkAndFromLits(res_lits);
+    const auto res {bools::mkAndFromLits(res_lits)};
+    if (res->vars().contains(n)) {
+        return res && bools::mkLit(arith::mkGt(n, arith::mkConst(0)));
+    } else {
+        return res;
+    }
 }
 
 Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model model) {
@@ -486,7 +491,7 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
 void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
     auto &map{blocked_per_step.emplace(range.end(), std::map<Int, Bools::Expr>()).first->second};
-    auto it {map.emplace(id, top()).first};
+    auto it{map.emplace(id, top()).first};
     if (range.length() == 1) {
         it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
     } else {
@@ -499,25 +504,53 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
     m.erase(n);
     auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
     for (const auto &[id, b] : rule_map) {
-        if (range.length() == 1 && id <= last_orig_clause) {
+        const auto is_orig_clause {id <= last_orig_clause};
+        if (range.length() == 1 && is_orig_clause) {
             continue;
         }
-        if (b->vars().contains(n)) {
+        VarSet tmp_vars;
+        Renaming renaming;
+        for (const auto &x: b->vars()) {
+            if (theory::isTempVar(x)) {
+                const auto y {theory::next(x)};
+                renaming.insert(x, y);
+                tmp_vars.insert(y);
+            }
+        }
+        if (renaming.empty()) {
+            if (model.eval<Bools>(b)) {
+                if (Config::Analysis::log) {
+                    std::cout << "blocked by " << b << std::endl;
+                }
+                const auto sip = is_orig_clause ? model.syntacticImplicant(b) : b;
+                add_blocking_clause(range, id, sip);
+                return true;
+            }
+        } else {
+            const auto renamed {renaming(b)};
             solver->push();
-            solver->add(m(b));
+            solver->add(m(renamed));
             if (solver->check() == SmtResult::Sat) {
-                const auto n_val{solver->model({{n}}).get<Arith>(n)};
-                model.put<Arith>(n, n_val);
-                const auto projected{mbp_impl(b, model, [&](const auto &x) {
-                    return x == Var(n);
-                })};
-                add_blocking_clause(range, id, projected);
+                if (Config::Analysis::log) {
+                    std::cout << "blocked by " << b << std::endl;
+                }
+                const auto tmp_model {solver->model(tmp_vars)};
+                for (const auto &x: tmp_vars) {
+                    if (tmp_model.contains(x)) {
+                        std::visit(Overload{
+                            [&](const auto &x) {
+                                using T = decltype(theory::theory(x));
+                                model.put<T>(x, tmp_model.get<T>(x));
+                            }
+                        }, x);
+                    }
+                }
+                const auto sip = is_orig_clause ? model.syntacticImplicant(renamed) : renamed;
+                const auto mbp{mbp_impl(sip, model, theory::isTempVar)};
+                add_blocking_clause(range, id, mbp);
                 return true;
             }
             solver->pop();
-        } else if (model.eval<Bools>(b)) {
-            add_blocking_clause(range, id, b);
-            return true;
         }
     }
     return false;
@@ -531,7 +564,7 @@ void TIL::add_blocking_clauses() {
     }
     const auto it{blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
-        for (const auto &[_,b]: it->second) {
+        for (const auto &[_, b] : it->second) {
             solver->add(b);
         }
     }
@@ -646,7 +679,7 @@ std::optional<SmtResult> TIL::setup() {
     {
         solver->push();
         solver->add(s(t.err()));
-        const auto smt_res {solver->check()};
+        const auto smt_res{solver->check()};
         solver->pop();
         switch (smt_res) {
         case SmtResult::Sat:
@@ -682,8 +715,8 @@ std::optional<SmtResult> TIL::do_step() {
         case SmtResult::Sat:
             build_trace();
             if (std::all_of(trace.begin(), trace.end(), [&](const auto &t) {
-                return t.id <= last_orig_clause;
-            })) {
+                    return t.id <= last_orig_clause;
+                })) {
                 return SmtResult::Unsat;
             } else {
                 return SmtResult::Unknown;
