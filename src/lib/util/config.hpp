@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <ostream>
+#include <optional>
 
 /**
  * Global settings and constants.
@@ -66,6 +67,7 @@ namespace Config {
         bool recurrent_pseudo_divs {true};
         bool recurrent_bounds {true};
         bool context_sensitive {false};
+        std::optional<Analysis::SmtSolver> smtSolver;
     };
 
     extern TILConfig til;
