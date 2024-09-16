@@ -111,7 +111,6 @@ private:
     void build_trace();
     const Renaming& get_subs(const unsigned start, const unsigned steps);
     void pop();
-    ITSModel get_model();
 
     Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
@@ -123,8 +122,8 @@ public:
     explicit TIL(const ITSProblem &its, const Config::TILConfig &config);
     std::optional<SmtResult> setup();
     std::optional<SmtResult> do_step();
-    void analyze();
-    static void analyze(const ITSProblem &its);
+    SmtResult analyze();
+    ITSModel get_model();
 
 };
 

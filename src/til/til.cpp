@@ -9,7 +9,6 @@
 #include "pair.hpp"
 #include "realmbp.hpp"
 #include "redundantinequations.hpp"
-#include "rulepreprocessing.hpp"
 #include "theory.hpp"
 
 Range::Range(const unsigned s, const unsigned e) : s(s), e(e) {}
@@ -750,15 +749,15 @@ ITSModel TIL::get_model() {
     return its2safety.revert_model(sp_model);
 }
 
-void TIL::analyze() {
+SmtResult TIL::analyze() {
     if (const auto setup_res{setup()}) {
         switch (*setup_res) {
         case SmtResult::Sat:
             sat();
-            return;
+            return SmtResult::Sat;
         case SmtResult::Unsat:
             unsat();
-            return;
+            return SmtResult::Unsat;
         case SmtResult::Unknown:
             while (true) {
                 const auto res{do_step()};
@@ -766,22 +765,19 @@ void TIL::analyze() {
                     switch (*res) {
                     case SmtResult::Sat:
                         sat();
-                        return;
+                        return SmtResult::Sat;
                     case SmtResult::Unsat:
                         unsat();
-                        return;
+                        return SmtResult::Unsat;
                     default:
                         unknown();
-                        return;
+                        return SmtResult::Unknown;
                     }
                 }
             }
         }
     } else {
         unknown();
+        return SmtResult::Unknown;
     }
-}
-
-void TIL::analyze(const ITSProblem &chcs) {
-    TIL(chcs, Config::til).analyze();
 }

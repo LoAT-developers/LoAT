@@ -30,7 +30,7 @@ Bools::Expr removeRedundantInequations(const Bools::Expr e) {
     // set up one non-negative multiplier for each bound
     auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
     std::vector<Arith::Var> factors;
-    for (const auto &b: bounded) {
+    for (size_t i = 0; i < bounded.size(); ++i) {
         const auto f {Arith::next()};
         factors.push_back(f);
         solver->add(arith::mkGeq(f, arith::mkConst(0)));

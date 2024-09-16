@@ -1,9 +1,25 @@
 #pragma once
 
 #include "itsproblem.hpp"
+#include "til.hpp"
 
-namespace ForwardBackwardDriver {
+class ForwardBackwardDriver {
 
-void analyze(const ITSProblem &forward, const ITSProblem &backward);
+private:
 
-}
+TIL f;
+TIL b;
+TIL *active;
+TIL *passive;
+
+public:
+
+    ForwardBackwardDriver(const ITSProblem &forward, const ITSProblem &backward);
+
+    SmtResult analyze();
+
+    ITSModel get_model();
+
+    bool is_forward() const;
+
+};

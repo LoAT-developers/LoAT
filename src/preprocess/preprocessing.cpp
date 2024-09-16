@@ -52,40 +52,6 @@ bool remove_irrelevant_clauses(ITSProblem &its) {
     return remove_irrelevant_clauses(its, true) || remove_irrelevant_clauses(its, false);
 }
 
-bool chainLinearPaths(ITSProblem &its) {
-    auto success{false};
-    bool changed{false};
-    do {
-        changed = false;
-        for (const auto &first : its.getAllTransitions()) {
-            const auto succ{its.getSuccessors(&first)};
-            if (succ.size() == 1 && !succ.contains(&first)) {
-                const auto second_idx{*succ.begin()};
-                if (!its.isSimpleLoop(second_idx)) {
-                    success = true;
-                    const auto chained{Preprocess::chain({first, second_idx->renameTmpVars()})};
-                    its.addRule(chained, &first, second_idx);
-                    linked_hash_set<TransIdx> deleted;
-                    deleted.insert(&first);
-                    if (its.getPredecessors(second_idx).size() == 1) {
-                        deleted.insert(second_idx);
-                    }
-                    if (Config::Analysis::doLogPreproc()) {
-                        std::cout << "chaining\n\trule 1: " << first << "\n\trule 2: " << *second_idx << "\n\tresult: " << chained << std::endl;
-                        std::cout << "removed the following rules after chaining: " << deleted << std::endl;
-                    }
-                    for (const auto &idx : deleted) {
-                        its.removeRule(idx);
-                    }
-                    changed = true;
-                    break;
-                }
-            }
-        }
-    } while (changed);
-    return success;
-}
-
 std::optional<SmtResult> preprocessRules(ITSProblem &its) {
     auto success{false};
     std::vector<TransIdx> remove;
@@ -196,8 +162,8 @@ std::optional<SmtResult> check_bot(ITSProblem &its) {
     }
 }
 
-std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
-    auto success {false};
+Preprocess::Result Preprocess::preprocess(ITSProblem &its) {
+    Preprocess::Result res;
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "starting preprocesing..." << std::endl;
     }
@@ -205,7 +171,7 @@ std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "removing irrelevant clauses..." << std::endl;
         }
-        success |= remove_irrelevant_clauses(its);
+        res.success |= remove_irrelevant_clauses(its);
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "finished removing irrelevant clauses" << std::endl;
         }
@@ -213,7 +179,11 @@ std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "chaining linear paths..." << std::endl;
     }
-    success |= chainLinearPaths(its);
+    const auto chaining_res {chainLinearPaths(its)};
+    res.reverse = std::make_shared<ReversibleChaining>(chaining_res);
+    if (*chaining_res) {
+        res.success |= true;
+    }
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished chaining linear paths" << std::endl;
     }
@@ -225,17 +195,21 @@ std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
         std::cout << "finished checking empty clauses" << std::endl;
     }
     if (sat_res && sat_res != SmtResult::Unknown) {
-        return sat_res;
+        res.success = true;
+        res.status = *sat_res;
+        return res;
     }
-    success |= bool(sat_res);
+    res.success |= bool(sat_res);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing rules..." << std::endl;
     }
     sat_res = preprocessRules(its);
     if (sat_res && sat_res != SmtResult::Unknown) {
-        return sat_res;
+        res.success = true;
+        res.status = *sat_res;
+        return res;
     }
-    success |= bool(sat_res);
+    res.success |= bool(sat_res);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished preprocessing rules" << std::endl;
     }
@@ -243,7 +217,7 @@ std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "unrolling..." << std::endl;
         }
-        success |= unroll(its);
+        res.success |= unroll(its);
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "finished unrolling" << std::endl;
         }
@@ -251,11 +225,11 @@ std::optional<SmtResult> Preprocess::preprocess(ITSProblem &its) {
             if (Config::Analysis::doLogPreproc()) {
                 std::cout << "refining the dependency graph..." << std::endl;
             }
-            success |= refine_dependency_graph(its);
+            res.success |= refine_dependency_graph(its);
             if (Config::Analysis::doLogPreproc()) {
                 std::cout << "finished refining the dependency graph" << std::endl;
             }
         }
     }
-    return success ? std::optional{SmtResult::Unknown} : std::optional<SmtResult>{};
+    return res;
 }

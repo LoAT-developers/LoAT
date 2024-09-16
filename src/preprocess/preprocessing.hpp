@@ -4,9 +4,16 @@
 #include "safetyproblem.hpp"
 #include "chcproblem.hpp"
 #include "smt.hpp"
+#include "chain.hpp"
 
 namespace Preprocess {
 
-std::optional<SmtResult> preprocess(ITSProblem &its);
+struct Result {
+    bool success = false;
+    SmtResult status = SmtResult::Unknown;
+    std::shared_ptr<ReversiblePreprocessing> reverse;
+};
+
+Result preprocess(ITSProblem &its);
 
 }

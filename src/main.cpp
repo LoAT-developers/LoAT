@@ -34,6 +34,7 @@ void printHelp(char *arg0) {
     std::cout << "  --format <koat|its|horn|c>                       Input format" << std::endl;
     std::cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << std::endl;
     std::cout << "  --log                                            Enable logging" << std::endl;
+    std::cout << "  --proof                                          Print model/counterexample/recurrent set/..." << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>            ABMC: En- or disable blocking clauses" << std::endl;
     std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>            Choose the SMT solver" << std::endl;
     std::cout << "  --til::mode <forward|backward|interleaved>       TIL: run the analysis forward, backward, or both directions interleaved" << std::endl;
@@ -42,7 +43,7 @@ void printHelp(char *arg0) {
     std::cout << "  --til::recurrent_pseudo_divs <true|false>        TIL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
     std::cout << "  --til::recurrent_bounds <true|false>             TIL: En- or disable search for recurrent bounds" << std::endl;
     std::cout << "  --til::context_sensitive <true|false>            TIL: En- or disable context sensitivity" << std::endl;
-    std::cout << "  --til::mbp_kind <int|real>                       TIL: use model based projection for LIA or LRA" << std::endl;
+    std::cout << "  --til::mbp_kind <lower_int|upper_int|real>       TIL: use model based projection for LIA or LRA" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
@@ -81,6 +82,8 @@ void parseFlags(int argc, char *argv[]) {
             Config::Output::PrintDependencyGraph = true;
         } else if (strcmp("--log", argv[arg]) == 0) {
             Config::Analysis::log = true;
+        } else if (strcmp("--model", argv[arg]) == 0) {
+            Config::Analysis::model = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
             bool found = false;
             std::string str = getNext();
@@ -244,7 +247,7 @@ int main(int argc, char *argv[]) {
         break;
     case Config::Input::Horn: {
         chcs = SexpressoParser::loadFromFile(filename);
-        Config::Analysis::model = chcs->get_produce_model();
+        Config::Analysis::model |= chcs->get_produce_model();
         if (Config::Analysis::engine == Config::Analysis::TIL && Config::til.mode == Config::TILConfig::Mode::Backward) {
             chcs = reverse(*chcs);
         }
@@ -268,14 +271,14 @@ int main(int argc, char *argv[]) {
                   << **its << std::endl;
     }
     yices::init();
-    const auto sat_res{Preprocess::preprocess(**its)};
-    if (sat_res && sat_res != SmtResult::Unknown && Config::Analysis::safety()) {
+    auto preproc_res{Preprocess::preprocess(**its)};
+    if (preproc_res.status != SmtResult::Unknown && Config::Analysis::safety()) {
         if (Config::Analysis::log) {
             std::cout << "solved by preprocessing" << std::endl;
         }
-        std::cout << *sat_res << std::endl;
+        std::cout << preproc_res.status << std::endl;
     } else {
-        if (sat_res && Config::Analysis::log) {
+        if (preproc_res.success && Config::Analysis::log) {
             std::cout << "Simplified ITS\n"
                       << **its << std::endl;
         }
@@ -290,22 +293,39 @@ int main(int argc, char *argv[]) {
             ABMC::analyze(**its);
             break;
         case Config::Analysis::TIL:
+            std::optional<ITSModel> its_model;
             switch (Config::til.mode) {
             case Config::TILConfig::Mode::Forward:
             case Config::TILConfig::Mode::Backward: {
-                TIL::analyze(**its);
+                TIL til(**its, Config::til);
+                if (til.analyze() == SmtResult::Sat && Config::Analysis::model) {
+                    its_model = til.get_model();
+                }
                 break;
             }
             case Config::TILConfig::Mode::Interleaved: {
                 auto reversed_chc2its{chcs_to_its(reverse(*chcs))};
                 auto reversed{*reversed_chc2its};
-                if (Preprocess::preprocess(*reversed) && Config::Analysis::log) {
+                auto reversed_preproc_res {Preprocess::preprocess(*reversed)};
+                if (reversed_preproc_res.success && Config::Analysis::log) {
                     std::cout << "Simplified reversed ITS\n"
                               << *reversed << std::endl;
                 }
-                ForwardBackwardDriver::analyze(**its, *reversed);
+                ForwardBackwardDriver fb(**its, *reversed);
+                if (fb.analyze() == SmtResult::Sat && Config::Analysis::model) {
+                    its_model = fb.get_model();
+                    if (!fb.is_forward()) {
+                        chc2its = reversed_chc2its;
+                        preproc_res = reversed_preproc_res;
+                    }
+                }
                 break;
             }
+            }
+            if (its_model) {
+                its_model = preproc_res.reverse->revert_model(*its_model);
+                const auto chc_model{chc2its->revert_model(*its_model)};
+                std::cout << chc_model.to_smtlib().toString() << std::endl;
             }
             break;
         }

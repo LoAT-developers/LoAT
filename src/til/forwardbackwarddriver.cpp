@@ -1,75 +1,81 @@
 #include "forwardbackwarddriver.hpp"
 #include "config.hpp"
-#include "til.hpp"
 
-void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem &backward) {
-    Config::TILConfig forwardConfig {
-        .mode = Config::TILConfig::Forward,
-        .mbpKind = Config::TILConfig::LowerIntMbp,
-        .recurrent_cycles = false,
-        .recurrent_exps = true,
-        .recurrent_pseudo_divs = true,
-        .recurrent_bounds = true,
-        .context_sensitive = false
-    };
-    Config::TILConfig backwardConfig {
-        .mode = Config::TILConfig::Backward,
-        .mbpKind = Config::TILConfig::RealMbp,
-        .recurrent_cycles = false,
-        .recurrent_exps = true,
-        .recurrent_pseudo_divs = false,
-        .recurrent_bounds = true,
-        .context_sensitive = false
-    };
-    TIL f {forward, forwardConfig};
-    TIL b {backward, backwardConfig};
-    const auto f_setup {f.setup()};
+Config::TILConfig forwardConfig{
+    .mode = Config::TILConfig::Forward,
+    .mbpKind = Config::TILConfig::LowerIntMbp,
+    .recurrent_cycles = false,
+    .recurrent_exps = true,
+    .recurrent_pseudo_divs = true,
+    .recurrent_bounds = true,
+    .context_sensitive = false};
+
+Config::TILConfig backwardConfig{
+    .mode = Config::TILConfig::Backward,
+    .mbpKind = Config::TILConfig::RealMbp,
+    .recurrent_cycles = false,
+    .recurrent_exps = true,
+    .recurrent_pseudo_divs = false,
+    .recurrent_bounds = true,
+    .context_sensitive = false};
+
+ForwardBackwardDriver::ForwardBackwardDriver(
+    const ITSProblem &forward,
+    const ITSProblem &backward):
+    f(forward, forwardConfig),
+    b(backward, backwardConfig) {}
+
+SmtResult ForwardBackwardDriver::analyze() {
+    active = &f;
+    const auto f_setup {active->setup()};
     if (!f_setup) {
         if (Config::Analysis::log) {
             std::cout << "\n===== FORWARD SETUP FAILED =====" << std::endl;
         }
-        b.analyze();
-        return;
+        active = &b;
+        return active->analyze();
     }
     switch (*f_setup) {
     case SmtResult::Sat:
-        f.sat();
-        return;
+        active->sat();
+        return SmtResult::Sat;
     case SmtResult::Unsat:
-        f.unsat();
-        return;
+        active->unsat();
+        return SmtResult::Unsat;
     case SmtResult::Unknown:
         break;
     }
-    const auto b_setup {b.setup()};
+    active = &b;
+    const auto b_setup {active->setup()};
     if (!b_setup) {
         if (Config::Analysis::log) {
             std::cout << "\n===== BACKWARD SETUP FAILED =====" << std::endl;
         }
+        active = &f;
         while (true) {
-            const auto res{f.do_step()};
+            const auto res{active->do_step()};
             if (res) {
                 switch (*res) {
                 case SmtResult::Sat:
-                    f.sat();
-                    return;
+                    active->sat();
+                    return SmtResult::Sat;
                 case SmtResult::Unsat:
-                    f.unsat();
-                    return;
+                    active->unsat();
+                    return SmtResult::Unsat;
                 default:
                     std::cout << "unknown" << std::endl;
-                    return;
+                    return SmtResult::Unknown;
                 }
             }
         }
     }
     switch (*b_setup) {
     case SmtResult::Sat:
-        b.sat();
-        return;
+        active->sat();
+        return SmtResult::Sat;
     case SmtResult::Unsat:
-        b.unsat();
-        return;
+        active->unsat();
+        return SmtResult::Unsat;
     case SmtResult::Unknown:
         break;
     }
@@ -97,13 +103,12 @@ void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem 
                 switch (*res) {
                 case SmtResult::Sat:
                     active->sat();
-                    return;
+                    return SmtResult::Sat;
                 case SmtResult::Unsat:
                     active->unsat();
-                    return;
+                    return SmtResult::Unsat;
                 default:
-                    std::cout << "unknown" << std::endl;
-                    return;
+                    throw std::logic_error("must not be unknown here");
                 }
             }
             if (Config::Analysis::log) {
@@ -113,19 +118,20 @@ void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem 
                     std::cout << "\n===== BACKWARD FAILED =====" << std::endl;
                 }
             }
+            active = passive;
             while (true) {
-                const auto res{passive->do_step()};
+                const auto res{active->do_step()};
                 if (res) {
                     switch (*res) {
                     case SmtResult::Sat:
-                        passive->sat();
-                        return;
+                        active->sat();
+                        return SmtResult::Sat;
                     case SmtResult::Unsat:
-                        passive->unsat();
-                        return;
+                        active->unsat();
+                        return SmtResult::Unsat;
                     default:
                         std::cout << "unknown" << std::endl;
-                        return;
+                        return SmtResult::Unknown;
                     }
                 }
             }
@@ -135,4 +141,12 @@ void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem 
         passive = tmp;
         is_forward = !is_forward;
     }
+}
+
+ITSModel ForwardBackwardDriver::get_model() {
+    return active->get_model();
+}
+
+bool ForwardBackwardDriver::is_forward() const {
+    return active == &f;
 }
