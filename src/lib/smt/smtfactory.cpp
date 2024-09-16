@@ -8,33 +8,8 @@
 namespace SmtFactory {
 
 SmtPtr solver(Logic logic) {
-    return solver(logic, Config::Analysis::smtSolver);
-}
-
-SmtPtr solver() {
-    std::unique_ptr<Smt> solver;
-    switch (Config::Analysis::smtSolver) {
-    case Config::Analysis::Z3:
-        solver = std::unique_ptr<Smt>(new Z3());
-        break;
-    case Config::Analysis::CVC5:
-        solver = std::unique_ptr<Smt>(new CVC5());
-        break;
-    case Config::Analysis::Yices:
-        solver = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
-        break;
-    case Config::Analysis::Swine:
-        [[fallthrough]];
-    case Config::Analysis::Heuristic:
-        solver = std::unique_ptr<Smt>(new Swine());
-        break;
-    }
-    return solver;
-}
-
-SmtPtr solver(const Logic logic, const Config::Analysis::SmtSolver which) {
     std::unique_ptr<Smt> res;
-    switch (which) {
+    switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Heuristic: {
         switch (logic) {
         case QF_LA:
@@ -59,6 +34,27 @@ SmtPtr solver(const Logic logic, const Config::Analysis::SmtSolver which) {
     }
     }
     return res;
+}
+
+SmtPtr solver() {
+    std::unique_ptr<Smt> solver;
+    switch (Config::Analysis::smtSolver) {
+    case Config::Analysis::Z3:
+        solver = std::unique_ptr<Smt>(new Z3());
+        break;
+    case Config::Analysis::CVC5:
+        solver = std::unique_ptr<Smt>(new CVC5());
+        break;
+    case Config::Analysis::Yices:
+        solver = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
+        break;
+    case Config::Analysis::Swine:
+        [[fallthrough]];
+    case Config::Analysis::Heuristic:
+        solver = std::unique_ptr<Smt>(new Swine());
+        break;
+    }
+    return solver;
 }
 
 SmtPtr modelBuildingSolver(Logic logic) {

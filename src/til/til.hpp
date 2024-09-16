@@ -64,7 +64,7 @@ private:
     };
 
     Config::TILConfig config;
-    SmtPtr solver {SmtFactory::solver(Logic::QF_LA, config.smtSolver.value_or(Config::Analysis::Heuristic))};
+    SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<std::vector<Renaming>> subs {};
     std::vector<TraceElem> trace {};
     Model model;

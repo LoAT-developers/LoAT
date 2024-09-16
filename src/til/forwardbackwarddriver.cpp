@@ -10,8 +10,7 @@ void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem 
         .recurrent_exps = true,
         .recurrent_pseudo_divs = true,
         .recurrent_bounds = true,
-        .context_sensitive = false,
-        .smtSolver = Config::Analysis::Yices
+        .context_sensitive = false
     };
     Config::TILConfig backwardConfig {
         .mode = Config::TILConfig::Backward,
@@ -20,8 +19,7 @@ void ForwardBackwardDriver::analyze(const ITSProblem &forward, const ITSProblem 
         .recurrent_exps = true,
         .recurrent_pseudo_divs = false,
         .recurrent_bounds = true,
-        .context_sensitive = false,
-        .smtSolver = Config::Analysis::Z3
+        .context_sensitive = false
     };
     TIL f {forward, forwardConfig};
     TIL b {backward, backwardConfig};
