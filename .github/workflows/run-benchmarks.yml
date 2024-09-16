@@ -224,9 +224,9 @@ jobs:
           cd benchmarks
           bench=()
           if [ ${{ inputs.benchmarks }} = "tpdb-complexity" ]; then
-            readarray -d '' bench < <(find . -name "*.koat" -print0)
+            readarray -d '' bench < <(find * -name "*.koat" -print0)
           else
-            readarray -d '' bench < <(find . -name "*.smt2" -print0)
+            readarray -d '' bench < <(find * -name "*.smt2" -print0)
           fi
 
           # sort the array of benchmarks
