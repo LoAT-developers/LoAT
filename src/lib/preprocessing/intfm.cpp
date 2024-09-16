@@ -112,7 +112,7 @@ Bools::Expr integerFourierMotzkin(Bools::Expr e, const std::function<bool(const 
         }
         eliminated.insert(var);
         if (Config::Analysis::doLogPreproc()) {
-            std::cout << "eliminated " << var << "; lower bounds: " << lower_bounds << "; upper bounds: " << upper_bounds;
+            std::cout << "eliminated " << var << "; lower bounds: " << lower_bounds << "; upper bounds: " << upper_bounds << std::endl;
         }
 
 abort:  ; //this symbol could not be eliminated, try the next one
