@@ -91,10 +91,6 @@ std::optional<Rule> Preprocess::preprocessRule(const Rule &rule) {
     }
     auto current {rule};
     auto success {false};
-    if (const auto res {eliminateIdentities(current)}) {
-        current = *res;
-        success = true;
-    }
     if (const auto g{Preprocess::simplifyAnd(current.getGuard())}; g != current.getGuard()) {
         success = true;
         current = current.withGuard(g);
@@ -113,6 +109,10 @@ std::optional<Rule> Preprocess::preprocessRule(const Rule &rule) {
             changed = true;
         }
     } while (changed);
+    if (const auto res {eliminateIdentities(current)}) {
+        current = *res;
+        success = true;
+    }
     if (success && Config::Analysis::doLogPreproc()) {
         std::cout << "got " << current << std::endl;
     }
