@@ -508,49 +508,26 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
         if (range.length() == 1 && is_orig_clause) {
             continue;
         }
-        VarSet tmp_vars;
-        Renaming renaming;
-        for (const auto &x: b->vars()) {
-            if (theory::isTempVar(x)) {
-                const auto y {theory::next(x)};
-                renaming.insert(x, y);
-                tmp_vars.insert(y);
-            }
+        const auto vars {b->vars()};
+        if (is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
+            continue;
         }
-        if (renaming.empty()) {
-            if (model.eval<Bools>(b)) {
-                if (Config::Analysis::log) {
-                    std::cout << "blocked by " << b << std::endl;
-                }
-                const auto sip = is_orig_clause ? model.syntacticImplicant(b) : b;
-                add_blocking_clause(range, id, sip);
-                return true;
-            }
-        } else {
-            const auto renamed {renaming(b)};
+        if (vars.contains(n)) {
             solver->push();
-            solver->add(m(renamed));
+            solver->add(m(b));
             if (solver->check() == SmtResult::Sat) {
-                if (Config::Analysis::log) {
-                    std::cout << "blocked by " << b << std::endl;
-                }
-                const auto tmp_model {solver->model(tmp_vars)};
-                for (const auto &x: tmp_vars) {
-                    if (tmp_model.contains(x)) {
-                        std::visit(Overload{
-                            [&](const auto &x) {
-                                using T = decltype(theory::theory(x));
-                                model.put<T>(x, tmp_model.get<T>(x));
-                            }
-                        }, x);
-                    }
-                }
-                const auto sip = is_orig_clause ? model.syntacticImplicant(renamed) : renamed;
-                const auto mbp{mbp::int_mbp(sip, model, theory::isTempVar)};
-                add_blocking_clause(range, id, mbp);
+                const auto n_val{solver->model({{n}}).get<Arith>(n)};
+                model.put<Arith>(n, n_val);
+                const auto projected{mbp_impl(b, model, [&](const auto &x) {
+                    return x == Var(n);
+                })};
+                add_blocking_clause(range, id, projected);
                 return true;
             }
             solver->pop();
+        } else if (model.eval<Bools>(b)) {
+            add_blocking_clause(range, id, b);
+            return true;
         }
     }
     return false;
