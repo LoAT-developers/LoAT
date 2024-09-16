@@ -201,7 +201,7 @@ jobs:
               else
                 result="timeout"
               fi
-              for res in "$output"; do
+              for res in $output; do
                 if [[ $res == *sat || $res == YES || $res == NO || $res == WORST_CASE* ]]; then
                   result=$res
                 fi
