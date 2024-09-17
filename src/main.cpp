@@ -236,7 +236,7 @@ int main(int argc, char *argv[]) {
     std::optional<ITSPtr> its{};
     std::optional<CHCProblem> chcs{};
     std::optional<SafetyProblem> sp{};
-    std::optional<ReversibleCHCToITS> chc2its{};
+    std::optional<CHCToITS> chc2its{};
     const auto start{std::chrono::steady_clock::now()};
     switch (Config::Input::format) {
         case Config::Input::Koat:
@@ -251,8 +251,8 @@ int main(int argc, char *argv[]) {
             if (Config::Analysis::engine == Config::Analysis::TIL && Config::til.mode == Config::TILConfig::Mode::Backward) {
                 chcs = reverse(*chcs);
             }
-            chc2its = chcs_to_its(*chcs);
-            its = **chc2its;
+            chc2its = CHCToITS(*chcs);
+            its = chc2its->transform();
             break;
         }
         case Config::Input::C:
@@ -315,8 +315,8 @@ int main(int argc, char *argv[]) {
                         break;
                     }
                     case Config::TILConfig::Mode::Interleaved: {
-                        auto reversed_chc2its{chcs_to_its(reverse(*chcs))};
-                        auto reversed{*reversed_chc2its};
+                        CHCToITS reversed_chc2its{reverse(*chcs)};
+                        auto reversed{reversed_chc2its.transform()};
                         auto backward_preprocessor{std::make_shared<Preprocessor>(*reversed)};
                         if (const auto status{backward_preprocessor->preprocess()}; status != SmtResult::Unknown && Config::Analysis::safety()) {
                             if (Config::Analysis::log) {
@@ -351,7 +351,7 @@ int main(int argc, char *argv[]) {
     }
     if (its_model) {
         its_model = preprocessor->transform_model(*its_model);
-        const auto chc_model{chc2its->revert_model(*its_model)};
+        const auto chc_model{chc2its->transform_model(*its_model)};
         std::cout << chc_model.to_smtlib().toString() << std::endl;
     }
     yices::exit();

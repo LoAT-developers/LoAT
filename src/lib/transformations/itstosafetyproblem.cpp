@@ -1,23 +1,16 @@
 #include "itstosafetyproblem.hpp"
 #include "formulapreprocessing.hpp"
 
-ReversibleITSToSafety::ReversibleITSToSafety(
-    const SafetyProblem &sp,
-    const linked_hash_set<LocationIdx> &locations,
-    const LocationIdx &initial_location,
-    const Arith::Var &loc_var)
-    : Reversible<SafetyProblem, Bools::Expr, ITSModel>(sp),
-      locations(locations),
-      initial_location(initial_location),
-      loc_var(loc_var) {}
+ITSToSafety::ITSToSafety(const ITSProblem &its): its(its) {}
 
-ITSModel ReversibleITSToSafety::revert_model(const Bools::Expr &e) const {
+ITSModel ITSToSafety::transform_model(const Bools::Expr &e) const {
     ITSModel res;
-    for (const auto &x : locations) {
+    const auto loc_var {its.getLocVar()};
+    for (const auto &x : its.getLocations()) {
         Subs s{Subs::build<Arith>(loc_var, arith::mkConst(x))};
         res.set_invariant(x, s(e));
     }
-    res.set_invariant(initial_location, top());
+    res.set_invariant(its.getInitialLocation(), top());
     return res;
 }
 
@@ -37,7 +30,7 @@ Bools::Expr rule_to_formula(const Rule &r, const VarSet &prog_vars) {
     return subs(bools::mkAnd(conjuncts));
 }
 
-ReversibleITSToSafety its_to_safetyproblem(const ITSProblem &its) {
+SafetyProblem ITSToSafety::transform() {
     SafetyProblem sp;
     const auto vars {its.getVars()};
     for (const auto &x: vars) {
@@ -70,5 +63,5 @@ ReversibleITSToSafety its_to_safetyproblem(const ITSProblem &its) {
     }
     sp.set_init(bools::mkOr(init));
     sp.set_err(bools::mkOr(err));
-    return ReversibleITSToSafety(sp, its.getLocations(), its.getInitialLocation(), its.getLocVar());
+    return sp;
 }

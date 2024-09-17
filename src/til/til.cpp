@@ -41,8 +41,8 @@ TIL::TIL(
     const ITSProblem &its,
     const Config::TILConfig &config)
     : config(config),
-      its2safety(its_to_safetyproblem(its)),
-      t(*its2safety) {
+      its2safety(its),
+      t(its2safety.transform()) {
     if (Config::Analysis::log) {
         std::cout << "safetyproblem:\n"
                   << t << std::endl;
@@ -746,7 +746,7 @@ ITSModel TIL::get_model() {
         res.push_back(s2(last));
     }
     const auto sp_model{bools::mkOr(res)};
-    return its2safety.revert_model(sp_model);
+    return its2safety.transform_model(sp_model);
 }
 
 SmtResult TIL::analyze() {

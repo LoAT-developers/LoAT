@@ -76,7 +76,7 @@ private:
     Int last_orig_clause;
     Renaming post_to_pre {};
     Renaming pre_to_post {};
-    ReversibleITSToSafety its2safety;
+    ITSToSafety its2safety;
     SafetyProblem t;
     bool produce_model {false};
 

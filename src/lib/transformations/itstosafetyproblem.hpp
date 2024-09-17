@@ -2,23 +2,20 @@
 
 #include "itsproblem.hpp"
 #include "safetyproblem.hpp"
-#include "reversible.hpp"
 #include "itsmodel.hpp"
 
-class ReversibleITSToSafety : public Reversible<SafetyProblem, Bools::Expr, ITSModel> {
+class ITSToSafety {
 
-    const linked_hash_set<LocationIdx> locations;
-    const LocationIdx initial_location;
-    const Arith::Var loc_var;
+private:
+
+    const ITSProblem &its;
 
 public:
-    ReversibleITSToSafety(
-        const SafetyProblem &sp,
-        const linked_hash_set<LocationIdx> &locations,
-        const LocationIdx &initial_location,
-        const Arith::Var &loc_var);
 
-    ITSModel revert_model(const Bools::Expr&) const override;
+    ITSToSafety(const ITSProblem &its);
+
+    ITSModel transform_model(const Bools::Expr&) const;
+
+    SafetyProblem transform();
+
 };
-
-ReversibleITSToSafety its_to_safetyproblem(const ITSProblem &its);
