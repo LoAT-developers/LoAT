@@ -311,7 +311,7 @@ const Renaming &ABMC::subs_at(const unsigned i) {
     return subs.at(i);
 }
 
-void ABMC::analyze() {
+SmtResult ABMC::analyze() {
     vars.insertAll(its.getVars());
     for (const auto &var: vars) {
         post_vars.emplace(var, theory::next(var));
@@ -327,7 +327,7 @@ void ABMC::analyze() {
             switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
                 unsat();
-                return;
+                return SmtResult::Unsat;
             case SmtResult::Unknown:
                 if (Config::Analysis::log) {
                     std::cout << "got unknown from SMT solver -- approximating" << std::endl;
@@ -367,7 +367,7 @@ void ABMC::analyze() {
         case SmtResult::Sat:
             build_trace();
             unsat();
-            return;
+            return SmtResult::Unsat;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
                 std::cout << "got unknown from SMT solver -- approximating" << std::endl;
@@ -378,18 +378,26 @@ void ABMC::analyze() {
         }
         solver->pop();
         if (!shortcut) {
+            if (Config::Analysis::model) {
+                transitions.emplace_back(step);
+            }
             solver->add(s(step));
         } else {
+            if (Config::Analysis::model) {
+                transitions.emplace_back(encode_transition(*shortcut, false) || step);
+            }
             solver->add(s(encode_transition(*shortcut) || step));
         }
         ++depth;
         Bools::Expr blocking_clause {top()};
         switch (solver->check()) {
         case SmtResult::Unsat:
-            if (!approx) {
+            if (approx) {
+                return SmtResult::Unknown;
+            } else {
                 sat();
+                return SmtResult::Sat;
             }
-            return;
         case SmtResult::Sat: {
             shortcut.reset();
             build_trace();
@@ -418,8 +426,33 @@ void ABMC::analyze() {
     }
 }
 
-void ABMC::analyze(ITSProblem &its) {
-    ABMC(its).analyze();
+ITSModel ABMC::get_model() const {
+    std::vector<Bools::Expr> inits;
+    for (const auto &t: its.getInitialTransitions()) {
+        inits.push_back(t->getGuard());
+    }
+    const auto init {bools::mkOr(inits)};
+    std::vector<Bools::Expr> res{init};
+    Bools::Expr last{init};
+    for (unsigned i = 0; i + 1 < depth; ++i) {
+        const auto s1{subs.at(i)};
+        last = last && s1(transitions.at(i));
+        Renaming s2;
+        for (const auto &[pre,post]: post_vars) {
+            if (theory::isProgVar(pre)) {
+                s2.insert(s1.get(post), pre);
+                s2.insert(pre, theory::next(pre));
+            }
+        }
+        res.push_back(s2(last));
+    }
+    ITSModel model;
+    const auto m {bools::mkOr(res)};
+    for (const auto &l: its.getLocations()) {
+        model.set_invariant(l, Subs::build<Arith>(its.getLocVar(), arith::mkConst(l))(m));
+    }
+    model.set_invariant(its.getInitialLocation(), top());
+    return model;
 }
 
 std::ostream &operator<<(std::ostream &s, const std::vector<Implicant> &trace) {

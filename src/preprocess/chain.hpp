@@ -1,26 +1,21 @@
 #pragma once
 
-#include "itsproblem.hpp"
-#include "reversible.hpp"
 #include "itsmodel.hpp"
+#include "itsproblem.hpp"
 
-namespace Preprocess {
-
-using ReversiblePreprocessing = Reversible<bool, ITSModel, ITSModel>;
-
-class ReversibleChaining: public ReversiblePreprocessing {
+class Chain {
 
 private:
 
-    const linked_hash_set<std::tuple<LocationIdx, Rule, LocationIdx>> predecessors;
+    ITSProblem &its;
+
+    linked_hash_set<std::tuple<LocationIdx, Rule, LocationIdx>> predecessors;
 
 public:
 
-    ReversibleChaining(const linked_hash_set<std::tuple<LocationIdx, Rule, LocationIdx>> &predecessors);
-    ITSModel revert_model(const ITSModel&) const override;
+    Chain(ITSProblem &its);
 
+    ITSModel transform_model(const ITSModel &) const;
+
+    bool chainLinearPaths();
 };
-
-    ReversibleChaining chainLinearPaths(ITSProblem &its);
-
-}

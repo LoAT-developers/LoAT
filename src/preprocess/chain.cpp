@@ -2,12 +2,9 @@
 #include "rulepreprocessing.hpp"
 #include "config.hpp"
 
-namespace Preprocess {
+Chain::Chain(ITSProblem &its): its(its) {}
 
-ReversibleChaining::ReversibleChaining(const linked_hash_set<std::tuple<LocationIdx, Rule, LocationIdx>> &predecessors):
-    ReversiblePreprocessing(!predecessors.empty()), predecessors(predecessors) {}
-
-ITSModel ReversibleChaining::revert_model(const ITSModel &m) const {
+ITSModel Chain::transform_model(const ITSModel &m) const {
     ITSModel res {m};
     for (const auto &[from,rule,to]: predecessors) {
         const auto r {rule.renameTmpVars()};
@@ -16,8 +13,7 @@ ITSModel ReversibleChaining::revert_model(const ITSModel &m) const {
     return res;
 }
 
-ReversibleChaining chainLinearPaths(ITSProblem &its) {
-    linked_hash_set<std::tuple<LocationIdx, Rule, LocationIdx>> predecessors;
+bool Chain::chainLinearPaths() {
     bool changed{false};
     do {
         changed = false;
@@ -47,7 +43,5 @@ ReversibleChaining chainLinearPaths(ITSProblem &its) {
             }
         }
     } while (changed);
-    return ReversibleChaining(predecessors);
-}
-
+    return !predecessors.empty();
 }

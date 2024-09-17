@@ -7,14 +7,11 @@
 #include "smtfactory.hpp"
 #include "vector.hpp"
 #include "renaming.hpp"
+#include "itsmodel.hpp"
 
 class ABMC {
 
 private:
-
-    explicit ABMC(ITSProblem &its);
-
-    void analyze();
 
     struct Loop {
         TransIdx idx;
@@ -33,6 +30,7 @@ private:
     std::vector<Renaming> subsTmp {Renaming::Empty};
     std::vector<Renaming> subsProg {Renaming::Empty};
     std::vector<Implicant> trace {};
+    std::vector<Bools::Expr> transitions {};
     VarSet vars {};
     Arith::Var n {ArithVar::next()};
     std::unordered_map<Var, Var> post_vars {};
@@ -64,7 +62,9 @@ private:
 
 public:
 
-    static void analyze(ITSProblem &its);
+    explicit ABMC(ITSProblem &its);
+    SmtResult analyze();
+    ITSModel get_model() const;
 
 };
 
