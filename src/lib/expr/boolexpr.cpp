@@ -94,9 +94,17 @@ sexpresso::Sexp BoolExpr::to_smtlib(const std::function<std::string(const Var &)
     }
     sexpresso::Sexp res;
     if (isAnd()) {
-        res = sexpresso::Sexp("and");
+        if (getChildren().empty()) {
+            res = sexpresso::Sexp("true");
+        } else {
+            res = sexpresso::Sexp("and");
+        }
     } else {
-        res = sexpresso::Sexp("or");
+        if (getChildren().empty()) {
+            res = sexpresso::Sexp("false");
+        } else {
+            res = sexpresso::Sexp("or");
+        }
     }
     for (const auto &c: getChildren()) {
         res.addChild(c->to_smtlib(var_map));

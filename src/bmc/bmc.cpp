@@ -4,7 +4,11 @@
 #include "config.hpp"
 #include "renaming.hpp"
 
-BMC::BMC(ITSProblem &its): its(its) {}
+BMC::BMC(ITSProblem &its): its(its), vars(its.getVars()) {
+    for (const auto &var: vars) {
+        post_vars.emplace(var, theory::next(var));
+    }
+}
 
 void BMC::unsat() {
     std::cout << "unsat" << std::endl;
@@ -31,18 +35,14 @@ Bools::Expr BMC::encode_transition(const TransIdx idx) {
     return bools::mkAnd(res);
 }
 
-void BMC::analyze() {
-    vars.insertAll(its.getVars());
-    for (const auto &var: vars) {
-        post_vars.emplace(var, theory::next(var));
-    }
+SmtResult BMC::analyze() {
     std::vector<Bools::Expr> inits;
     for (const auto &idx: its.getInitialTransitions()) {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
                 unsat();
-                return;
+                return SmtResult::Unsat;
             case SmtResult::Unknown:
                 if (Config::Analysis::log) {
                     std::cout << "got unknown from SMT solver -- approximating" << std::endl;
@@ -82,13 +82,16 @@ void BMC::analyze() {
             s.insert(var, last_s.get(post_var));
             s.insert(post_var, theory::next(post_var));
         }
+        if (Config::Analysis::model) {
+            renamings.emplace_back(last_s);
+        }
         last_s = s;
         solver->push();
         solver->add(s(query));
         switch (solver->check()) {
         case SmtResult::Sat:
             unsat();
-            return;
+            return SmtResult::Unsat;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
                 std::cout << "got unknown from SMT solver -- approximating" << std::endl;
@@ -101,10 +104,12 @@ void BMC::analyze() {
         solver->add(s(step));
         ++depth;
         if (solver->check() == SmtResult::Unsat) {
-            if (!approx) {
+            if (approx) {
+                return SmtResult::Unknown;
+            } else {
                 sat();
+                return SmtResult::Sat;
             }
-            return;
         }
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
@@ -113,6 +118,48 @@ void BMC::analyze() {
 
 }
 
-void BMC::analyze(ITSProblem &its) {
-    BMC(its).analyze();
+ITSModel BMC::get_model() const {
+    std::vector<Bools::Expr> steps;
+    std::vector<Bools::Expr> inits;
+    for (const auto &t: its.getAllTransitions()) {
+        if (its.isInitialTransition(&t)) {
+            inits.push_back(t.getGuard());
+            continue;
+        }
+        if (its.isSinkTransition(&t)) {
+            continue;
+        }
+        std::vector<Bools::Expr> conjuncts;
+        conjuncts.emplace_back(t.getGuard());
+        const auto &up {t.getUpdate()};
+        for (const auto &[pre,post]: post_vars) {
+            if (theory::isProgVar(pre)) {
+                conjuncts.push_back(theory::mkEq(theory::toExpr(post), up.get(pre)));
+            }
+        }
+        steps.push_back(bools::mkAnd(std::move(conjuncts)));
+    }
+    const auto step {bools::mkOr(steps)};
+    const auto init {bools::mkOr(inits)};
+    std::vector<Bools::Expr> res{init};
+    Bools::Expr last{init};
+    for (unsigned i = 0; i + 1 < depth; ++i) {
+        const auto s1{renamings.at(i)};
+        last = last && s1(step);
+        Renaming s2;
+        for (const auto &[pre,post]: post_vars) {
+            if (theory::isProgVar(pre)) {
+                s2.insert(s1.get(post), pre);
+                s2.insert(pre, theory::next(pre));
+            }
+        }
+        res.push_back(s2(last));
+    }
+    ITSModel model;
+    const auto m {bools::mkOr(res)};
+    for (const auto &l: its.getLocations()) {
+        model.set_invariant(l, Subs::build<Arith>(its.getLocVar(), arith::mkConst(l))(m));
+    }
+    model.set_invariant(its.getInitialLocation(), top());
+    return model;
 }

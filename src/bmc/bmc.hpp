@@ -5,21 +5,19 @@
 #include "itsproblem.hpp"
 #include "z3.hpp"
 #include "smtfactory.hpp"
+#include "itsmodel.hpp"
 
 class BMC {
 
 private:
 
-    explicit BMC(ITSProblem &its);
-
-    void analyze();
-
     ITSProblem &its;
     SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     bool approx {false};
-    VarSet vars {};
+    VarSet vars;
     std::unordered_map<Var, Var> post_vars {};
     unsigned depth {0};
+    std::vector<Renaming> renamings;
 
     Bools::Expr encode_transition(const TransIdx idx);
     void unsat();
@@ -27,6 +25,8 @@ private:
 
 public:
 
-    static void analyze(ITSProblem &its);
+    explicit BMC(ITSProblem &its);
+    SmtResult analyze();
+    ITSModel get_model() const;
 
 };

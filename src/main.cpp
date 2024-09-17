@@ -282,18 +282,22 @@ int main(int argc, char *argv[]) {
             std::cout << "Simplified ITS\n"
                       << **its << std::endl;
         }
+        std::optional<ITSModel> its_model;
         switch (Config::Analysis::engine) {
         case Config::Analysis::ADCL:
             reachability::Reachability::analyze(**its);
             break;
-        case Config::Analysis::BMC:
-            BMC::analyze(**its);
+        case Config::Analysis::BMC: {
+            BMC bmc{**its};
+            if (bmc.analyze() == SmtResult::Sat && Config::Analysis::model) {
+                its_model = bmc.get_model();
+            }
             break;
+        }
         case Config::Analysis::ABMC:
             ABMC::analyze(**its);
             break;
-        case Config::Analysis::TIL:
-            std::optional<ITSModel> its_model;
+        case Config::Analysis::TIL: {
             switch (Config::til.mode) {
             case Config::TILConfig::Mode::Forward:
             case Config::TILConfig::Mode::Backward: {
@@ -322,12 +326,13 @@ int main(int argc, char *argv[]) {
                 break;
             }
             }
-            if (its_model) {
-                its_model = preproc_res.reverse->revert_model(*its_model);
-                const auto chc_model{chc2its->revert_model(*its_model)};
-                std::cout << chc_model.to_smtlib().toString() << std::endl;
-            }
             break;
+        }
+        }
+        if (its_model) {
+            its_model = preproc_res.reverse->revert_model(*its_model);
+            const auto chc_model{chc2its->revert_model(*its_model)};
+            std::cout << chc_model.to_smtlib().toString() << std::endl;
         }
     }
     yices::exit();
