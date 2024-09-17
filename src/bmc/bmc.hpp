@@ -20,8 +20,6 @@ private:
     std::vector<Renaming> renamings;
 
     Bools::Expr encode_transition(const TransIdx idx);
-    void unsat();
-    void sat();
 
 public:
 

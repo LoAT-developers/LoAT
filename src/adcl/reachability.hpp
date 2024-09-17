@@ -211,8 +211,6 @@ class Reachability {
      */
     void unsat();
 
-    void unknown();
-
     unsigned get_penalty(const TransIdx idx) const;
 
     void bump_penalty(const TransIdx idx);
@@ -304,11 +302,11 @@ class Reachability {
 
     Reachability(ITSProblem &its);
 
-    void analyze();
+    SmtResult analyze();
 
 public:
 
-    static void analyze(ITSProblem &its);
+    static SmtResult analyze(ITSProblem &its);
 
 };
 

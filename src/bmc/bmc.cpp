@@ -10,20 +10,6 @@ BMC::BMC(ITSProblem &its): its(its), vars(its.getVars()) {
     }
 }
 
-void BMC::unsat() {
-    std::cout << "unsat" << std::endl;
-    if (Config::Analysis::log) {
-        std::cout << "reached error location at depth " << depth << std::endl;
-    }
-}
-
-void BMC::sat() {
-    std::cout << "sat" << std::endl;
-    if (Config::Analysis::log) {
-        std::cout << depth << "-fold unrolling of the transition relation is unsatisfiable" << std::endl;
-    }
-}
-
 Bools::Expr BMC::encode_transition(const TransIdx idx) {
     const auto up {idx->getUpdate()};
     std::vector<Bools::Expr> res {idx->getGuard()};
@@ -41,7 +27,6 @@ SmtResult BMC::analyze() {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
-                unsat();
                 return SmtResult::Unsat;
             case SmtResult::Unknown:
                 if (Config::Analysis::log) {
@@ -90,7 +75,6 @@ SmtResult BMC::analyze() {
         solver->add(s(query));
         switch (solver->check()) {
         case SmtResult::Sat:
-            unsat();
             return SmtResult::Unsat;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
@@ -107,7 +91,6 @@ SmtResult BMC::analyze() {
             if (approx) {
                 return SmtResult::Unknown;
             } else {
-                sat();
                 return SmtResult::Sat;
             }
         }

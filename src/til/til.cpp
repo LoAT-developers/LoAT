@@ -546,26 +546,6 @@ void TIL::add_blocking_clauses() {
     }
 }
 
-void TIL::unknown() {
-    const auto str{"unknown"};
-    std::cout << str << std::endl;
-}
-
-void TIL::sat() {
-    const auto str{"sat"};
-    std::cout << str << std::endl;
-    if (Config::Analysis::log) {
-        std::cout << depth << "-fold unrolling of the transition relation is unsatisfiable" << std::endl;
-    }
-}
-
-void TIL::unsat() {
-    const auto str{"unsat"};
-    std::cout << str << std::endl;
-    if (Config::Analysis::log) {
-        std::cout << "found counterexample at depth " << depth << std::endl;
-    }
-}
 
 void TIL::build_trace() {
     trace.clear();
@@ -750,34 +730,13 @@ ITSModel TIL::get_model() {
 }
 
 SmtResult TIL::analyze() {
-    if (const auto setup_res{setup()}) {
-        switch (*setup_res) {
-        case SmtResult::Sat:
-            sat();
-            return SmtResult::Sat;
-        case SmtResult::Unsat:
-            unsat();
-            return SmtResult::Unsat;
-        case SmtResult::Unknown:
-            while (true) {
-                const auto res{do_step()};
-                if (res) {
-                    switch (*res) {
-                    case SmtResult::Sat:
-                        sat();
-                        return SmtResult::Sat;
-                    case SmtResult::Unsat:
-                        unsat();
-                        return SmtResult::Unsat;
-                    default:
-                        unknown();
-                        return SmtResult::Unknown;
-                    }
-                }
+    if (const auto setup_res{setup()}; setup_res == SmtResult::Unknown) {
+        while (true) {
+            if (const auto res{do_step()}) {
+                return *res;
             }
         }
     } else {
-        unknown();
-        return SmtResult::Unknown;
+        return setup_res.value_or(SmtResult::Unknown);
     }
 }

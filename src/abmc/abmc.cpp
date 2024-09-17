@@ -240,21 +240,6 @@ Bools::Expr ABMC::encode_transition(const TransIdx idx, const bool with_id) {
     return bools::mkAnd(res);
 }
 
-void ABMC::unknown() {
-    const auto str = Config::Analysis::safety() ? "unknown" : "MAYBE";
-    std::cout << str << std::endl;
-}
-
-void ABMC::unsat() {
-    const auto str = Config::Analysis::safety() ? "unsat" : "NO";
-    std::cout << str << std::endl;
-}
-
-void ABMC::sat() {
-    const auto str = Config::Analysis::safety() ? "sat" : "MAYBE";
-    std::cout << str << std::endl;
-}
-
 void ABMC::build_trace() {
     trace.clear();
     std::vector<Subs> run;
@@ -326,7 +311,6 @@ SmtResult ABMC::analyze() {
         if (its.isSinkTransition(idx)) {
             switch (SmtFactory::check(idx->getGuard())) {
             case SmtResult::Sat:
-                unsat();
                 return SmtResult::Unsat;
             case SmtResult::Unknown:
                 if (Config::Analysis::log) {
@@ -365,8 +349,7 @@ SmtResult ABMC::analyze() {
         solver->add(s(query));
         switch (solver->check()) {
         case SmtResult::Sat:
-            build_trace();
-            unsat();
+            // build_trace();
             return SmtResult::Unsat;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
@@ -395,7 +378,6 @@ SmtResult ABMC::analyze() {
             if (approx) {
                 return SmtResult::Unknown;
             } else {
-                sat();
                 return SmtResult::Sat;
             }
         case SmtResult::Sat: {

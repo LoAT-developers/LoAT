@@ -213,6 +213,25 @@ void parseFlags(int argc, char *argv[]) {
     }
 }
 
+void print_result(const SmtResult res) {
+    std::string str;
+    switch (res) {
+        case SmtResult::Sat: {
+            str = Config::Analysis::safety() ? "sat" : "MAYBE";
+            break;
+        }
+        case SmtResult::Unsat: {
+            str = Config::Analysis::safety() ? "unsat" : "NO";
+            break;
+        }
+        case SmtResult::Unknown: {
+            str = Config::Analysis::safety() ? "unknown" : "MAYBE";
+            break;
+        }
+    }
+    std::cout << str << std::endl;
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printHelp(argv[0]);
@@ -273,33 +292,34 @@ int main(int argc, char *argv[]) {
     yices::init();
     std::optional<ITSModel> its_model;
     auto preprocessor{std::make_shared<Preprocessor>(**its)};
-    if (const auto status{preprocessor->preprocess()}; status != SmtResult::Unknown && Config::Analysis::safety()) {
+    auto res {preprocessor->preprocess()};
+    if (res != SmtResult::Unknown) {
         if (Config::Analysis::log) {
             std::cout << "solved by preprocessing" << std::endl;
         }
-        if (Config::Analysis::model) {
+        if (res == SmtResult::Sat && Config::Analysis::model) {
             its_model = preprocessor->get_model();
         }
-        std::cout << status << std::endl;
     } else {
         if (preprocessor->successful() && Config::Analysis::log) {
-            std::cout << "Simplified ITS\n"
-                      << **its << std::endl;
+            std::cout << "Simplified ITS\n" << **its << std::endl;
         }
         switch (Config::Analysis::engine) {
             case Config::Analysis::ADCL:
-                reachability::Reachability::analyze(**its);
+                res = reachability::Reachability::analyze(**its);
                 break;
             case Config::Analysis::BMC: {
                 BMC bmc{**its};
-                if (bmc.analyze() == SmtResult::Sat && Config::Analysis::model) {
+                res = bmc.analyze();
+                if (res == SmtResult::Sat && Config::Analysis::model) {
                     its_model = bmc.get_model();
                 }
                 break;
             }
             case Config::Analysis::ABMC: {
                 ABMC abmc{**its};
-                if (abmc.analyze() == SmtResult::Sat && Config::Analysis::model) {
+                res = abmc.analyze();
+                if (res == SmtResult::Sat && Config::Analysis::model) {
                     its_model = abmc.get_model();
                 }
                 break;
@@ -309,7 +329,8 @@ int main(int argc, char *argv[]) {
                     case Config::TILConfig::Mode::Forward:
                     case Config::TILConfig::Mode::Backward: {
                         TIL til(**its, Config::til);
-                        if (til.analyze() == SmtResult::Sat && Config::Analysis::model) {
+                        res = til.analyze();
+                        if (res == SmtResult::Sat && Config::Analysis::model) {
                             its_model = til.get_model();
                         }
                         break;
@@ -318,23 +339,23 @@ int main(int argc, char *argv[]) {
                         CHCToITS reversed_chc2its{reverse(*chcs)};
                         auto reversed{reversed_chc2its.transform()};
                         auto backward_preprocessor{std::make_shared<Preprocessor>(*reversed)};
-                        if (const auto status{backward_preprocessor->preprocess()}; status != SmtResult::Unknown && Config::Analysis::safety()) {
+                        res = backward_preprocessor->preprocess();
+                        if (res != SmtResult::Unknown) {
                             if (Config::Analysis::log) {
                                 std::cout << "solved by backward preprocessing" << std::endl;
                             }
-                            if (Config::Analysis::model) {
+                            if (res == SmtResult::Sat && Config::Analysis::model) {
                                 its_model = backward_preprocessor->get_model();
                                 chc2its = reversed_chc2its;
                                 preprocessor = backward_preprocessor;
                             }
-                            std::cout << status << std::endl;
                         } else {
                             if (backward_preprocessor->successful() && Config::Analysis::log) {
-                                std::cout << "Simplified reversed ITS\n"
-                                          << *reversed << std::endl;
+                                std::cout << "Simplified reversed ITS\n" << *reversed << std::endl;
                             }
                             ForwardBackwardDriver fb(**its, *reversed);
-                            if (fb.analyze() == SmtResult::Sat && Config::Analysis::model) {
+                            res = fb.analyze();
+                            if (res == SmtResult::Sat && Config::Analysis::model) {
                                 its_model = fb.get_model();
                                 if (!fb.is_forward()) {
                                     chc2its = reversed_chc2its;
@@ -349,6 +370,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+    print_result(res);
     if (its_model) {
         its_model = preprocessor->transform_model(*its_model);
         const auto chc_model{chc2its->transform_model(*its_model)};

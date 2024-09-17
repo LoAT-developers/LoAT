@@ -53,9 +53,6 @@ private:
     std::pair<Rule, Model> build_loop(const int backlink);
     Bools::Expr build_blocking_clause(const int backlink, const Loop &loop);
     std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
-    void unsat();
-    void unknown();
-    void sat();
     void build_trace();
     bool is_redundant(const std::vector<int> &w) const;
     const Renaming& subs_at(const unsigned i);

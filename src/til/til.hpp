@@ -107,7 +107,6 @@ private:
     Bools::Expr recurrence_analysis(const Bools::Expr loop, const Model &model);
     Bools::Expr compute_transition_invariant(const Bools::Expr loop, Model model);
     void handle_loop(const Range &range);
-    void unknown();
     void build_trace();
     const Renaming& get_subs(const unsigned start, const unsigned steps);
     void pop();
@@ -117,8 +116,6 @@ private:
 
 public:
 
-    void sat();
-    void unsat();
     explicit TIL(const ITSProblem &its, const Config::TILConfig &config);
     std::optional<SmtResult> setup();
     std::optional<SmtResult> do_step();

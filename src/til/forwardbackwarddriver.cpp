@@ -35,15 +35,8 @@ SmtResult ForwardBackwardDriver::analyze() {
         active = &b;
         return active->analyze();
     }
-    switch (*f_setup) {
-    case SmtResult::Sat:
-        active->sat();
-        return SmtResult::Sat;
-    case SmtResult::Unsat:
-        active->unsat();
-        return SmtResult::Unsat;
-    case SmtResult::Unknown:
-        break;
+    if (*f_setup != SmtResult::Unknown) {
+        return *f_setup;
     }
     active = &b;
     const auto b_setup {active->setup()};
@@ -55,29 +48,12 @@ SmtResult ForwardBackwardDriver::analyze() {
         while (true) {
             const auto res{active->do_step()};
             if (res) {
-                switch (*res) {
-                case SmtResult::Sat:
-                    active->sat();
-                    return SmtResult::Sat;
-                case SmtResult::Unsat:
-                    active->unsat();
-                    return SmtResult::Unsat;
-                default:
-                    std::cout << "unknown" << std::endl;
-                    return SmtResult::Unknown;
-                }
+                return *res;
             }
         }
     }
-    switch (*b_setup) {
-    case SmtResult::Sat:
-        active->sat();
-        return SmtResult::Sat;
-    case SmtResult::Unsat:
-        active->unsat();
-        return SmtResult::Unsat;
-    case SmtResult::Unknown:
-        break;
+    if (*b_setup != SmtResult::Unknown) {
+        return *b_setup;
     }
     TIL *active {&f};
     TIL *passive {&b};
@@ -100,16 +76,7 @@ SmtResult ForwardBackwardDriver::analyze() {
                         std::cout << "\n===== BACKWARD SUCCEEDED =====" << std::endl;
                     }
                 }
-                switch (*res) {
-                case SmtResult::Sat:
-                    active->sat();
-                    return SmtResult::Sat;
-                case SmtResult::Unsat:
-                    active->unsat();
-                    return SmtResult::Unsat;
-                default:
-                    throw std::logic_error("must not be unknown here");
-                }
+                return *res;
             }
             if (Config::Analysis::log) {
                 if (is_forward) {
@@ -122,17 +89,7 @@ SmtResult ForwardBackwardDriver::analyze() {
             while (true) {
                 const auto res{active->do_step()};
                 if (res) {
-                    switch (*res) {
-                    case SmtResult::Sat:
-                        active->sat();
-                        return SmtResult::Sat;
-                    case SmtResult::Unsat:
-                        active->unsat();
-                        return SmtResult::Unsat;
-                    default:
-                        std::cout << "unknown" << std::endl;
-                        return SmtResult::Unknown;
-                    }
+                    return *res;
                 }
             }
         }

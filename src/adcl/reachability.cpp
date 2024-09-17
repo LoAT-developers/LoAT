@@ -350,8 +350,6 @@ void Reachability::luby_next() {
 }
 
 void Reachability::unsat() {
-    const auto res = Config::Analysis::safety() ? "unsat" : "NO";
-    std::cout << res << std::endl << std::endl;
     if (Config::Analysis::log) {
         std::stringstream counterexample;
         print_trace(counterexample);
@@ -361,10 +359,6 @@ void Reachability::unsat() {
         std::cout << std::endl << "final trace:" << trace_stream.str() << std::endl << std::endl;
         std::cout << "counterexample: " << counterexample.str();
     }
-}
-
-void Reachability::unknown() {
-    std::cout << "unknown" << std::endl << std::endl;
 }
 
 std::optional<Rule> Reachability::resolve(const TransIdx idx) {
@@ -653,10 +647,10 @@ void Reachability::bump_penalty(const TransIdx idx) {
     penalty.emplace(idx, 0).first->second++;
 }
 
-void Reachability::analyze() {
+SmtResult Reachability::analyze() {
     init();
     if (try_to_finish()) {
-        return;
+        return SmtResult::Unsat;
     }
     blocked_clauses[0].clear();
     do {
@@ -682,7 +676,7 @@ void Reachability::analyze() {
                     }
                     print_state();
                     if ((drop || simple_loop) && try_to_finish()) {
-                        return;
+                        return SmtResult::Unsat;
                     }
                 } else if (state->dropped()) {
                     if (simple_loop) {
@@ -693,7 +687,7 @@ void Reachability::analyze() {
                 } else if (state->unsat()) {
                     print_state();
                     unsat();
-                    return;
+                    return SmtResult::Unsat;
                 } else if (state->unroll() && state->unroll()->acceleration_failed()) {
                     // stop searching for longer loops if the current one was already too complicated
                     break;
@@ -746,17 +740,14 @@ void Reachability::analyze() {
             backtrack();
             print_state();
         } else if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
-            return;
+            return SmtResult::Unsat;
         }
     } while (true);
-    if (!Config::Analysis::complexity()) {
-        unknown();
-    }
-    std::cout << std::endl;
+    return SmtResult::Unknown;
 }
 
-void Reachability::analyze(ITSProblem &its) {
-    Reachability(its).analyze();
+SmtResult Reachability::analyze(ITSProblem &its) {
+    return Reachability(its).analyze();
 }
 
 }
