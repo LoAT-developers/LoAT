@@ -73,6 +73,7 @@ class Clause {
 private:
     var_map m_vars {};
     std::optional<Lhs> premise {};
+    std::vector<Bools::Expr> constraints;
     Bools::Expr constraint {top()};
     std::optional<FunApp> conclusion {};
 
@@ -97,6 +98,7 @@ public:
     const var_map &get_vars() const;
     VarSet vars() const;
     Clause subs(const Subs &subs) const;
+    void finalize();
 
     template <ITheory T>
     unsigned max_arity() const {

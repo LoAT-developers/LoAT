@@ -89,12 +89,8 @@ std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
 }
 
 bool Rule::isDeterministic() const {
-    for (const auto &x: vars()) {
-        if (theory::isTempVar(x)) {
-            return false;
-        }
-    }
-    return true;
+    const auto vs {vars()};
+    return !std::any_of(vs.begin(), vs.end(), theory::isTempVar);
 }
 
 size_t Rule::hash() const {

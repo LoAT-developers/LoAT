@@ -323,6 +323,7 @@ void SexpressoParser::run(const std::string &filename) {
                 const auto pred {parsePred(conclusion, c)};
                 c.set_conclusion(pred);
             }
+            c.finalize();
             chcs.add_clause(c);
         }
     }

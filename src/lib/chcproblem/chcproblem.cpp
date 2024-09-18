@@ -39,7 +39,7 @@ std::ostream& operator<<(std::ostream &s, const Clause &c) {
         }
         s << ") /\\ ";
     }
-    s << c.constraint << " ==> ";
+    s << c.get_constraint() << " ==> ";
     if (c.conclusion) {
         s << "( " << c.conclusion->get_pred() << " ";
         for (const auto &arg: c.conclusion->get_args()) {
@@ -133,11 +133,13 @@ void Clause::set_conclusion(const std::optional<FunApp> &conclusion) {
 }
 
 void Clause::set_constraint(const Bools::Expr e) {
+    this->constraints.clear();
     this->constraint = e;
 }
 
 void Clause::add_constraint(const Bools::Expr e) {
-    this->constraint = this->constraint && e;
+    assert(constraint == top());
+    this->constraints.emplace_back(e);
 }
 
 const std::optional<Lhs>& Clause::get_premise() const {
@@ -149,7 +151,14 @@ const std::optional<FunApp>& Clause::get_conclusion() const {
 }
 
 Bools::Expr Clause::get_constraint() const {
+    assert(constraints.empty());
     return constraint;
+}
+
+void Clause::finalize() {
+    assert(constraint == top());
+    constraint = bools::mkAnd(constraints);
+    constraints.clear();
 }
 
 const var_map& Clause::get_vars() const {
@@ -164,7 +173,7 @@ Clause Clause::subs(const Subs &subs) const {
     if (conclusion) {
         res.set_conclusion(conclusion->subs(subs));
     }
-    res.set_constraint(subs(constraint));
+    res.set_constraint(subs(get_constraint()));
     return res;
 }
 
@@ -180,7 +189,7 @@ VarSet Clause::vars() const {
             theory::collectVars(x, res);
         }
     }
-    constraint->collectVars(res);
+    get_constraint()->collectVars(res);
     return res;
 }
 
@@ -201,7 +210,7 @@ sexpresso::Sexp Clause::to_smtlib() const {
     }
     forall.addChild(variables);
     sexpresso::Sexp imp{"=>"};
-    const auto constr{constraint->to_smtlib([&](const auto &x) {
+    const auto constr{get_constraint()->to_smtlib([&](const auto &x) {
         const auto it{m_vars.right.find(x)};
         return it == m_vars.right.end() ? theory::getName(x) : it->second;
     })};
@@ -226,13 +235,13 @@ sexpresso::Sexp Clause::to_smtlib() const {
 std::size_t hash_value(const Clause &c) {
     size_t seed {42};
     boost::hash_combine(seed, c.premise);
-    boost::hash_combine(seed, c.constraint);
+    boost::hash_combine(seed, c.get_constraint());
     boost::hash_combine(seed, c.conclusion);
     return seed;
 }
 
 bool operator==(const Clause& c1, const Clause& c2) {
-    return c1.premise == c2.premise && c1.constraint == c2.constraint && c1.conclusion == c2.conclusion;
+    return c1.premise == c2.premise && c1.get_constraint() == c2.get_constraint() && c1.conclusion == c2.conclusion;
 }
 
 const Clause* CHCProblem::add_clause(const Clause &c) {
