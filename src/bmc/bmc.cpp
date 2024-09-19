@@ -24,21 +24,8 @@ Bools::Expr BMC::encode_transition(const TransIdx idx) {
 SmtResult BMC::analyze() {
     std::vector<Bools::Expr> inits;
     for (const auto &idx: its.getInitialTransitions()) {
-        if (its.isSinkTransition(idx)) {
-            switch (SmtFactory::check(idx->getGuard())) {
-            case SmtResult::Sat:
-                return SmtResult::Unsat;
-            case SmtResult::Unknown:
-                if (Config::Analysis::log) {
-                    std::cout << "got unknown from SMT solver -- approximating" << std::endl;
-                }
-                approx = true;
-                break;
-            case SmtResult::Unsat: {}
-            }
-        } else {
-            inits.push_back(encode_transition(idx));
-        }
+        assert (!its.isSinkTransition(idx));
+        inits.push_back(encode_transition(idx));
     }
     solver->add(bools::mkOr(inits));
 
@@ -53,9 +40,7 @@ SmtResult BMC::analyze() {
 
     std::vector<Bools::Expr> queries;
     for (const auto &idx: its.getSinkTransitions()) {
-        if (!its.isInitialTransition(idx)) {
-            queries.push_back(idx->getGuard());
-        }
+        queries.push_back(idx->getGuard());
     }
     const auto query {bools::mkOr(queries)};
 
@@ -75,6 +60,7 @@ SmtResult BMC::analyze() {
         solver->add(s(query));
         switch (solver->check()) {
         case SmtResult::Sat:
+            renamings.emplace_back(s);
             return SmtResult::Unsat;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
@@ -127,7 +113,7 @@ ITSModel BMC::get_model() const {
     std::vector<Bools::Expr> res{init};
     Bools::Expr last{init};
     for (unsigned i = 0; i + 1 < depth; ++i) {
-        const auto s1{renamings.at(i)};
+        const auto &s1{renamings.at(i)};
         last = last && s1(step);
         Renaming s2;
         for (const auto &[pre,post]: post_vars) {
@@ -145,4 +131,24 @@ ITSModel BMC::get_model() const {
     }
     model.set_invariant(its.getInitialLocation(), top());
     return model;
+}
+
+
+ITSCex BMC::get_cex() const {
+    ITSCex res(its);
+    const auto model {solver->model()};
+    std::optional<TransIdx> last;
+    for (size_t i = 0; i <= depth; ++i) {
+        auto m{model.composeBackwards(renamings.at(i))};
+        const auto candidates = last ? its.getSuccessors(*last) : its.getInitialTransitions();
+        const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
+            return res.try_step(m, c);
+        })};
+        if (it == candidates.end()) {
+            throw std::logic_error("get_cex failed");
+        }
+        last = *it;
+    }
+    res.add_final_state(model.composeBackwards(renamings.at(depth + 1)));
+    return res;
 }

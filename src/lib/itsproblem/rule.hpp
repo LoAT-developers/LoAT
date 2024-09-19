@@ -55,9 +55,6 @@ public:
 
 };
 
-/**
- * For debugging output (not very readable)
- */
 std::ostream& operator<<(std::ostream &s, const Rule &rule);
 
 template<>

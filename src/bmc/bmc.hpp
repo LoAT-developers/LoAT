@@ -6,6 +6,7 @@
 #include "z3.hpp"
 #include "smtfactory.hpp"
 #include "itsmodel.hpp"
+#include "itscex.hpp"
 
 class BMC {
 
@@ -26,5 +27,6 @@ public:
     explicit BMC(ITSProblem &its);
     SmtResult analyze();
     ITSModel get_model() const;
+    ITSCex get_cex() const;
 
 };

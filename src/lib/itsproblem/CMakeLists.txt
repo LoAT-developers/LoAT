@@ -7,11 +7,13 @@ project(loat_itsproblem CXX)
 add_library(${PROJECT_NAME} OBJECT
     rule.hpp
     rule.cpp
-    itsproblem.cpp
     itsproblem.hpp
+    itsproblem.cpp
     dependencygraph.hpp
-    itsmodel.cpp
     itsmodel.hpp
+    itsmodel.cpp
+    itscex.hpp
+    itscex.cpp
     rulepreprocessing.hpp
     rulepreprocessing.cpp
 )

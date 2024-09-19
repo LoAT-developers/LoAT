@@ -311,8 +311,12 @@ int main(int argc, char *argv[]) {
             case Config::Analysis::BMC: {
                 BMC bmc{**its};
                 res = bmc.analyze();
-                if (res == SmtResult::Sat && Config::Analysis::model) {
-                    its_model = bmc.get_model();
+                if (Config::Analysis::model) {
+                    if (res == SmtResult::Sat) {
+                        its_model = bmc.get_model();
+                    } else if (res == SmtResult::Unsat) {
+                        std::cout << bmc.get_cex() << std::endl;
+                    }
                 }
                 break;
             }
