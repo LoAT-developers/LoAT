@@ -7,13 +7,13 @@ class Chain {
 
 private:
 
-    ITSProblem &its;
+    ITSPtr its;
 
-    linked_hash_set<std::tuple<LocationIdx, Rule, LocationIdx>> predecessors;
+    linked_hash_set<std::tuple<LocationIdx, RulePtr, LocationIdx>> predecessors;
 
 public:
 
-    Chain(ITSProblem &its);
+    Chain(ITSPtr its);
 
     ITSModel transform_model(const ITSModel &) const;
 

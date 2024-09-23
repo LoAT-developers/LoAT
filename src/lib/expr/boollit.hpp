@@ -35,6 +35,7 @@ class BoolLit: public std::enable_shared_from_this<BoolLit> {
 public:
 
     BoolLit(const BoolVarPtr var, bool negated);
+    ~BoolLit();
     bool isNegated() const;
     bool isPoly() const;
     bool isLinear() const;

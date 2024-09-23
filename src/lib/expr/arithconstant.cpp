@@ -4,6 +4,10 @@ ConsHash<ArithExpr, ArithConst, ArithConst::CacheHash, ArithConst::CacheEqual, R
 
 ArithConst::ArithConst(const Rational &t): ArithExpr(arith::Kind::Constant), t(t) {}
 
+ArithConst::~ArithConst() {
+    cache.erase(t);
+}
+
 bool ArithConst::CacheEqual::operator()(const std::tuple<Rational> &args1, const std::tuple<Rational> &args2) const noexcept {
     return args1 == args2;
 }

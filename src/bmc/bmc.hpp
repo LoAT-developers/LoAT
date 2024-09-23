@@ -12,7 +12,7 @@ class BMC {
 
 private:
 
-    ITSProblem &its;
+    ITSPtr its;
     SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     bool approx {false};
     VarSet vars;
@@ -20,11 +20,11 @@ private:
     unsigned depth {0};
     std::vector<Renaming> renamings;
 
-    Bools::Expr encode_transition(const TransIdx idx);
+    Bools::Expr encode_transition(const RulePtr idx);
 
 public:
 
-    explicit BMC(ITSProblem &its);
+    explicit BMC(ITSPtr its);
     SmtResult analyze();
     ITSModel get_model() const;
     ITSCex get_cex() const;

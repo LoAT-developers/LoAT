@@ -87,27 +87,27 @@ bool operator==(const Automaton &x, const Automaton &y) {
     return x.to_string() == y.to_string();
 }
 
-Automaton RedundanceViaAutomata::get_singleton_language(const TransIdx idx, const Conjunction &g) {
+Automaton RedundanceViaAutomata::get_singleton_language(const RulePtr idx, const Conjunction &g) {
     const auto it = alphabet.find({idx, g});
     if (it == alphabet.end()) {
         const auto res = Automaton::singleton();
-        alphabet.emplace(std::pair<TransIdx, Conjunction>(idx, g), res);
+        alphabet.emplace(std::pair<RulePtr, Conjunction>(idx, g), res);
         return res;
     } else {
         return it->second;
     }
 }
 
-std::optional<Automaton> RedundanceViaAutomata::get_language(const TransIdx idx) {
+std::optional<Automaton> RedundanceViaAutomata::get_language(const RulePtr idx) {
     const auto it {regexes.find(idx)};
     return it == regexes.end() ? std::optional<Automaton>() : it->second;
 }
 
-void RedundanceViaAutomata::set_language(const TransIdx idx, const Automaton &t) {
+void RedundanceViaAutomata::set_language(const RulePtr idx, const Automaton &t) {
     regexes.emplace(idx, t);
 }
 
-void RedundanceViaAutomata::delete_language(const TransIdx idx) {
+void RedundanceViaAutomata::delete_language(const RulePtr idx) {
     regexes.erase(idx);
 }
 

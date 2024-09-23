@@ -120,19 +120,19 @@ std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
         if (Config::Analysis::complexity()) {
             body.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
         }
-        its->addRule(Rule(continue_cond, body), pre);
+        its->addRule(Rule::mk(continue_cond, body), pre);
         current = loc;
         visit(ctx->instructions());
         const auto backjump_cond = theory::mkEq(loc_var, arith::mkConst(current));
         const auto backjump = Subs::build<Arith>(loc_var, arith::mkConst(pre));
-        its->addRule(Rule(backjump_cond, backjump), current);
+        its->addRule(Rule::mk(backjump_cond, backjump), current);
     } else {
         const auto nonterm_cond = theory::mkEq(loc_var, arith::mkConst(pre));
         Subs nonterm;
         if (Config::Analysis::complexity()) {
             nonterm.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
         }
-        its->addRule(Rule(nonterm_cond, nonterm), pre);
+        its->addRule(Rule::mk(nonterm_cond, nonterm), pre);
     }
     const auto post = its->addLocation();
     const auto exit_cond = !cond && theory::mkEq(loc_var, arith::mkConst(pre));
@@ -140,7 +140,7 @@ std::any CINTParseVisitor::visitLoop(CINTParser::LoopContext *ctx) {
     if (Config::Analysis::complexity()) {
         exit.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
     }
-    its->addRule(Rule(exit_cond, exit), pre);
+    its->addRule(Rule::mk(exit_cond, exit), pre);
     current = post;
     return {};
 }
@@ -172,19 +172,19 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
         if (Config::Analysis::complexity()) {
             consequence.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
         }
-        its->addRule(Rule(consequence_cond, consequence), pre);
+        its->addRule(Rule::mk(consequence_cond, consequence), pre);
         current = loc;
         visit(ctx->then());
         const auto exit_cond = cond && theory::mkEq(loc_var, arith::mkConst(current));
         auto exit = Subs::build<Arith>(loc_var, arith::mkConst(post));
-        its->addRule(Rule(exit_cond, exit), current);
+        its->addRule(Rule::mk(exit_cond, exit), current);
     } else {
         const auto exit_cond = cond && theory::mkEq(loc_var, arith::mkConst(pre));
         auto exit = Subs::build<Arith>(loc_var, arith::mkConst(post));
         if (Config::Analysis::complexity()) {
             exit.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
         }
-        its->addRule(Rule(exit_cond, exit), pre);
+        its->addRule(Rule::mk(exit_cond, exit), pre);
     }
     if (ctx->else_()) {
         const auto loc = its->addLocation();
@@ -193,19 +193,19 @@ std::any CINTParseVisitor::visitCondition(CINTParser::ConditionContext *ctx) {
         if (Config::Analysis::complexity()) {
             alternative.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
         }
-        its->addRule(Rule(alternative_cond, alternative), pre);
+        its->addRule(Rule::mk(alternative_cond, alternative), pre);
         current = loc;
         visit(ctx->else_());
         const auto exit_cond = cond && theory::mkEq(loc_var, arith::mkConst(current));
         auto exit = Subs::build<Arith>(loc_var, arith::mkConst(post));
-        its->addRule(Rule(exit_cond, exit), current);
+        its->addRule(Rule::mk(exit_cond, exit), current);
     } else {
         const auto exit_cond = !cond && theory::mkEq(loc_var, arith::mkConst(pre));
         auto exit = Subs::build<Arith>(loc_var, arith::mkConst(post));
         if (Config::Analysis::complexity()) {
             exit.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
         }
-        its->addRule(Rule(exit_cond, exit), pre);
+        its->addRule(Rule::mk(exit_cond, exit), pre);
     }
     current = post;
     return {};
@@ -223,7 +223,7 @@ std::any CINTParseVisitor::visitAssignment(CINTParser::AssignmentContext *ctx) {
         const auto cost_var = its->getCostVar();
         up.put<Arith>(cost_var, cost_var->toExpr() + arith::mkConst(1));
     }
-    const Rule rule{cond, up};
+    const auto rule{Rule::mk(cond, up)};
     its->addRule(rule, current);
     current = loc;
     return {};

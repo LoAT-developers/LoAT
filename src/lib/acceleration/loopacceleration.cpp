@@ -8,18 +8,18 @@
 #include <numeric>
 
 LoopAcceleration::LoopAcceleration(
-    const Rule &rule,
+    const RulePtr rule,
     const std::optional<Subs> &sample_point,
     const AccelConfig &config)
     : rule(rule), sample_point(sample_point), config(config) {}
 
-std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
+std::pair<RulePtr, unsigned> LoopAcceleration::chain(const RulePtr rule) {
     auto changed {false};
     auto res {rule};
     unsigned period {1};
     do {
         changed = false;
-        const auto chained {Preprocess::chain({res, res.renameTmpVars()})};
+        const auto chained {Preprocess::chain({res, res->renameTmpVars()})};
         if (LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
             res = chained;
             period *= 2;
@@ -64,7 +64,7 @@ void LoopAcceleration::compute_closed_form() {
     // Heuristic: Search for updates x = x + p where p contains temporary variables without lower bounds
     // and temporary variables without upper bounds. Such updates are pretty much equivalent to x = *,
     // but accelerating them sometimes yields quite complex expressions. Hence, we do not accelerate them.
-    for (const auto &[x, y] : rule.getUpdate().get<Arith>()) {
+    for (const auto &[x, y] : rule->getUpdate().get<Arith>()) {
         if (y->has(x) && y->hasVarWith(is_temp_var)) {
             const auto vars{y->vars()};
             auto all_lower_bounded{true};
@@ -84,7 +84,7 @@ void LoopAcceleration::compute_closed_form() {
                         return;
                     }
                     const auto coeff{***c};
-                    const auto bounds{rule.getGuard()->getBounds(z)};
+                    const auto bounds{rule->getGuard()->getBounds(z)};
                     auto lower_bounded{false};
                     auto upper_bounded{false};
                     // check if z is bounded
@@ -129,7 +129,7 @@ void LoopAcceleration::compute_closed_form() {
             }
         }
     }
-    rec = Recurrence::solve(rule.getUpdate(), config.n);
+    rec = Recurrence::solve(rule->getUpdate(), config.n);
     if (rec) {
         res.prefix = rec->prefix;
     } else {
@@ -141,7 +141,7 @@ void LoopAcceleration::accelerate() {
     if (rec && config.tryAccel) {
         const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
         if (accelerator) {
-            res.accel = acceleration::Accel(Rule(bools::mkAnd(accelerator->formula), rec->closed_form));
+            res.accel = acceleration::Accel(Rule::mk(bools::mkAnd(accelerator->formula), rec->closed_form));
             res.accel->covered = bools::mkAnd(accelerator->covered);
             store_nonterm(*accelerator);
         }
@@ -178,36 +178,36 @@ void LoopAcceleration::prepend_prefix() {
     if (res.prefix > 1 && res.accel) {
         auto prefix {rule};
         for (unsigned i = 1; i < res.prefix; ++i) {
-            prefix = prefix.chain(rule);
+            prefix = prefix->chain(rule);
         }
-        res.accel->rule = prefix.chain(res.accel->rule);
-        if (SmtFactory::check(res.accel->rule.getGuard()) != SmtResult::Sat) {
+        res.accel->rule = prefix->chain(res.accel->rule);
+        if (SmtFactory::check(res.accel->rule->getGuard()) != SmtResult::Sat) {
             res.accel = {};
         }
     }
 }
 
 void LoopAcceleration::removeTrivialUpdates() {
-    Subs update = rule.getUpdate();
+    Subs update = rule->getUpdate();
     VarSet remove;
     for (const auto &[x, v] : update.get<Arith>()) {
-        if (!remove.contains(x) && rule.getGuard()->getEquality(x) == std::optional{v}) {
+        if (!remove.contains(x) && rule->getGuard()->getEquality(x) == std::optional{v}) {
             remove.insert(x);
         }
     }
     if (!remove.empty()) {
         update.erase(remove);
-        rule = rule.withUpdate(update);
+        rule = rule->withUpdate(update);
     }
 }
 
 void LoopAcceleration::run() {
     res.status = acceleration::AccelerationFailed;
-    if (!rule.getGuard()->isConjunction()) {
+    if (!rule->getGuard()->isConjunction()) {
         res.status = acceleration::Disjunctive;
     } else {
         chain();
-        switch (SmtFactory::check(Preprocess::chain({rule, rule.renameTmpVars()}).getGuard())) {
+        switch (SmtFactory::check(Preprocess::chain({rule, rule->renameTmpVars()})->getGuard())) {
         case SmtResult::Unsat: res.status = acceleration::PseudoLoop;
             return;
         case SmtResult::Unknown: res.status = acceleration::NotSat;
@@ -231,7 +231,7 @@ void LoopAcceleration::run() {
 }
 
 acceleration::Result LoopAcceleration::accelerate(
-    const Rule &rule,
+    const RulePtr rule,
     const Subs &sample_point,
     const AccelConfig &config) {
     LoopAcceleration accel{rule, sample_point, config};
@@ -240,7 +240,7 @@ acceleration::Result LoopAcceleration::accelerate(
 }
 
 acceleration::Result LoopAcceleration::accelerate(
-    const Rule &rule,
+    const RulePtr rule,
     const AccelConfig &config) {
     LoopAcceleration accel{rule, std::optional<Subs>(), config};
     accel.run();

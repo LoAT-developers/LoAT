@@ -8,11 +8,11 @@ class ITSToSafety {
 
 private:
 
-    const ITSProblem &its;
+    const ITSPtr its;
 
 public:
 
-    ITSToSafety(const ITSProblem &its);
+    ITSToSafety(const ITSPtr its);
 
     ITSModel transform_model(const Bools::Expr&) const;
 

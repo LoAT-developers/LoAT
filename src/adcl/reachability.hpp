@@ -22,7 +22,7 @@ namespace reachability {
  */
 struct Step {
 
-    const TransIdx clause_idx;
+    const RulePtr clause_idx;
 
     /**
      * a conjunction that implies the condition of the clause
@@ -35,9 +35,9 @@ struct Step {
     const Renaming var_renaming;
     const Renaming tmp_var_renaming;
 
-    const Rule resolvent;
+    const RulePtr resolvent;
 
-    Step(const TransIdx transition, const Bools::Expr sat, const Renaming &var_renaming, const Renaming &tmp_var_renaming, const Rule &resolvent);
+    Step(const RulePtr transition, const Bools::Expr sat, const Renaming &var_renaming, const Renaming &tmp_var_renaming, const RulePtr resolvent);
 
     Step(const Step &that);
 
@@ -88,7 +88,7 @@ public:
 };
 
 struct LearnedClauses {
-    std::vector<TransIdx> res;
+    std::vector<RulePtr> res;
     const unsigned prefix;
     const unsigned period;
 };
@@ -150,7 +150,7 @@ class Restart final: public LearningState {
 
 class Reachability {
 
-    ITSProblem &chcs;
+    ITSPtr chcs;
 
     SmtPtr solver {SmtFactory::solver()};
 
@@ -163,7 +163,7 @@ class Reachability {
      * A conjunctive variant y of a non-conjunctive clause x is blocked if cond(y) implies an element of at(x).
      * Maybe it would be better to subdivide the blocking formulas w.r.t. pairs of predicates instead of clauses.
      */
-    std::vector<std::unordered_map<TransIdx, BoolExprSet>> blocked_clauses {{}};
+    std::vector<std::unordered_map<RulePtr, BoolExprSet>> blocked_clauses {{}};
 
     /**
      * Languages that correspond to non-linear learned clauses that are not used for resolution after a restart.
@@ -186,20 +186,20 @@ class Reachability {
 
     void luby_next();
 
-    std::unordered_map<TransIdx, unsigned> penalty {};
+    std::unordered_map<RulePtr, unsigned> penalty {};
 
     using Red = RedundanceViaAutomata;
     std::unique_ptr<Red> redundancy {std::make_unique<Red>()};
 
     Complexity cpx = Complexity::Const;
 
-    bool is_learned_clause(const TransIdx idx) const;
+    bool is_learned_clause(const RulePtr idx) const;
 
-    bool is_orig_clause(const TransIdx idx) const;
+    bool is_orig_clause(const RulePtr idx) const;
 
     void update_cpx();
 
-    std::optional<Rule> instantiate(const Arith::Var n, const Rule &rule) const;
+    std::optional<RulePtr> instantiate(const Arith::Var n, const RulePtr rule) const;
 
     /**
      * initializes all data structures after preprocessing
@@ -211,14 +211,14 @@ class Reachability {
      */
     void unsat();
 
-    unsigned get_penalty(const TransIdx idx) const;
+    unsigned get_penalty(const RulePtr idx) const;
 
-    void bump_penalty(const TransIdx idx);
+    void bump_penalty(const RulePtr idx);
 
     /**
      * tries to resolve the trace with the given clause
      */
-    std::optional<Rule> resolve(const TransIdx idx);
+    std::optional<RulePtr> resolve(const RulePtr idx);
 
     /**
      * computes (an approximation of) the language associated with the clause used for the given step
@@ -236,19 +236,19 @@ class Reachability {
      * computes a clause that is equivalent to the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    std::pair<Rule, Model> build_loop(const int backlink);
+    std::pair<RulePtr, Model> build_loop(const int backlink);
 
     /**
      * adds a learned clause to all relevant data structures
      * @param lang (an approximation of) the language associated with the learned clause
      */
-    TransIdx add_learned_clause(const Rule &clause, const unsigned backlink);
+    void add_learned_clause(const RulePtr clause, const unsigned backlink);
 
     /**
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const Rule &rule, const Model &model, const unsigned backlink);
+    std::unique_ptr<LearningState> learn_clause(const RulePtr rule, const Model &model, const unsigned backlink);
 
     bool check_consistency();
 
@@ -269,7 +269,7 @@ class Reachability {
      * given clause by adding corresponding constraints to the SMT solver.
      * @return a variable renaming from the program variables to the fresh copy
      */
-    std::pair<Renaming, Renaming> handle_update(const TransIdx idx);
+    std::pair<Renaming, Renaming> handle_update(const RulePtr idx);
 
     /**
      * blocks the given step
@@ -286,13 +286,13 @@ class Reachability {
 
     void add_to_trace(const Step &step);
 
-    Rule compute_resolvent(const TransIdx idx, const Bools::Expr implicant, const Renaming &tmp_var_renaming) const;
+    RulePtr compute_resolvent(const RulePtr idx, const Bools::Expr implicant, const Renaming &tmp_var_renaming) const;
 
     /**
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const TransIdx idx, const Rule &resolvent);
+    bool store_step(const RulePtr idx, const RulePtr resolvent);
 
     void print_trace(std::ostream &s);
 
@@ -300,13 +300,13 @@ class Reachability {
 
     bool try_to_finish();
 
-    Reachability(ITSProblem &its);
+    Reachability(ITSPtr its);
 
     SmtResult analyze();
 
 public:
 
-    static SmtResult analyze(ITSProblem &its);
+    static SmtResult analyze(ITSPtr its);
 
 };
 

@@ -261,6 +261,7 @@ class ArithConst: public ArithExpr {
 
 public:
     ArithConst(const Rational &t);
+    ~ArithConst();
 
 private:
     Rational t;
@@ -298,6 +299,7 @@ private:
 
 public:
     explicit ArithVar(const int idx);
+    ~ArithVar();
 
 private:
     struct CacheEqual {
@@ -355,6 +357,7 @@ private:
 
 public:
     ArithAdd(const ArithExprSet &args);
+    ~ArithAdd();
 
 };
 
@@ -383,6 +386,7 @@ private:
 
 public:
     ArithMult(const ArithExprSet &args);
+    ~ArithMult();
 
 };
 
@@ -411,6 +415,7 @@ private:
 
 public:
     ArithMod(const ArithExprPtr, const ArithExprPtr);
+    ~ArithMod();
 
 };
 
@@ -427,6 +432,7 @@ private:
 
 public:
     ArithExp(const ArithExprPtr base, const ArithExprPtr exponent);
+    ~ArithExp();
 
 private:
     struct CacheEqual {

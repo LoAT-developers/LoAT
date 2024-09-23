@@ -1,9 +1,9 @@
 #include "loopcomplexity.hpp"
 #include "theory.hpp"
 
-LoopComplexity LoopComplexity::compute(const Rule &rule) {
+LoopComplexity LoopComplexity::compute(const RulePtr rule) {
     LoopComplexity res;
-    for (const auto &[x, v] : rule.getUpdate()) {
+    for (const auto &[x, v] : rule->getUpdate()) {
         const auto vars{theory::vars(v)};
         ++res.non_recursive;
         for (const auto &y : vars) {
@@ -16,7 +16,7 @@ LoopComplexity LoopComplexity::compute(const Rule &rule) {
             }
         }
     }
-    for (const auto &[x, v] : rule.getUpdate<Arith>()) {
+    for (const auto &[x, v] : rule->getUpdate<Arith>()) {
         const auto vars{v->vars()};
         if (vars.contains(x) && v->isPoly(x) == 1) {
             const auto coeff{v->coeff(x)};
@@ -28,7 +28,7 @@ LoopComplexity LoopComplexity::compute(const Rule &rule) {
             }
         }
     }
-    for (const auto &[x, v] : rule.getUpdate().get<Bools>()) {
+    for (const auto &[x, v] : rule->getUpdate().get<Bools>()) {
         const auto lits{v->lits()};
         const auto lit{bools::mk(x)};
         if (lits.contains(!lit) && !lits.contains(lit)) {
@@ -54,7 +54,7 @@ std::strong_ordering operator<=>(const LoopComplexity &c1, const LoopComplexity 
     return c1.negated <=> c2.negated;
 }
 
-std::strong_ordering LoopComplexity::compare(const Rule &r1, const Rule &r2) {
+std::strong_ordering LoopComplexity::compare(const RulePtr r1, const RulePtr r2) {
     return compute(r1) <=> compute(r2);
 }
 

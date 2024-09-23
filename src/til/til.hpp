@@ -116,7 +116,7 @@ private:
 
 public:
 
-    explicit TIL(const ITSProblem &its, const Config::TILConfig &config);
+    explicit TIL(const ITSPtr its, const Config::TILConfig &config);
     std::optional<SmtResult> setup();
     std::optional<SmtResult> do_step();
     SmtResult analyze();

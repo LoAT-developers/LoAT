@@ -14,6 +14,10 @@ ArithExprPtr arith::mkVar(const int idx) {
 
 ArithVar::ArithVar(const int idx): ArithExpr(arith::Kind::Variable), idx(idx) {}
 
+ArithVar::~ArithVar() {
+    cache.erase(idx);
+}
+
 int ArithVar::getIdx() const {
     return idx;
 }

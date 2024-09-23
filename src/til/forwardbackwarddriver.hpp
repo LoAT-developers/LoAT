@@ -14,7 +14,7 @@ TIL *passive;
 
 public:
 
-    ForwardBackwardDriver(const ITSProblem &forward, const ITSProblem &backward);
+    ForwardBackwardDriver(const ITSPtr forward, const ITSPtr backward);
 
     SmtResult analyze();
 

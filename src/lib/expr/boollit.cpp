@@ -25,6 +25,10 @@ BoolLitPtr bools::mk(const BoolVarPtr var, bool negated) {
 
 BoolLit::BoolLit(const BoolVarPtr var, bool negated): var(var), negated(negated) {}
 
+BoolLit::~BoolLit() {
+    cache.erase(var, negated);
+}
+
 bool BoolLit::isNegated() const {
     return negated;
 }

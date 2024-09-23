@@ -72,7 +72,7 @@ namespace sexpressionparser {
                             if (Config::Analysis::complexity()) {
                                 update.put<Arith>(cost_var, cost_var + arith::mkConst(1));
                             }
-                            Rule rule(cond, update);
+                            const auto rule {Rule::mk(cond, update)};
                             res->addRule(rule, from);
                         }
                     }

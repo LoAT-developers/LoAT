@@ -10,13 +10,13 @@
 AccelerationProblem::PolyAccelMode AccelerationProblem::polyaccel {PolyAccelMode::LowDegree};
 
 AccelerationProblem::AccelerationProblem(
-        const Rule &r,
+        const RulePtr r,
         const std::optional<Recurrence::Result> &closed,
         const std::optional<Subs> &samplePoint,
         const AccelConfig &config):
     closed(closed),
-    update(r.getUpdate()),
-    guard(r.getGuard()),
+    update(r->getUpdate()),
+    guard(r->getGuard()),
     config(config),
     samplePoint(samplePoint) {
     for (const auto &l: guard->lits()) {

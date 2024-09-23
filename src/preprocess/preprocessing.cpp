@@ -12,7 +12,7 @@
 #include <numeric>
 #include <unordered_set>
 
-Preprocessor::Preprocessor(ITSProblem &its): its(its), chain(its) {}
+Preprocessor::Preprocessor(ITSPtr its): its(its), chain(its) {}
 
 bool Preprocessor::successful() const {
     return success;
@@ -24,35 +24,35 @@ ITSModel Preprocessor::transform_model(const ITSModel &model) const {
 
 ITSModel Preprocessor::get_model() const {
     ITSModel model;
-    model.set_invariant(its.getInitialLocation(), top());
+    model.set_invariant(its->getInitialLocation(), top());
     return model;
 }
 
-bool remove_irrelevant_clauses(ITSProblem &its, bool forward) {
-    std::unordered_set<TransIdx> keep;
-    std::stack<TransIdx> todo;
-    for (const auto x : forward ? its.getInitialTransitions() : its.getSinkTransitions()) {
+bool remove_irrelevant_clauses(ITSPtr its, bool forward) {
+    std::unordered_set<RulePtr> keep;
+    std::stack<RulePtr> todo;
+    for (const auto &x : forward ? its->getInitialTransitions() : its->getSinkTransitions()) {
         todo.push(x);
     }
     do {
-        const TransIdx current = todo.top();
+        const auto current {todo.top()};
         todo.pop();
         keep.insert(current);
-        for (const auto p : forward ? its.getSuccessors(current) : its.getPredecessors(current)) {
+        for (const auto &p : forward ? its->getSuccessors(current) : its->getPredecessors(current)) {
             if (keep.find(p) == keep.end()) {
                 todo.push(p);
             }
         }
     } while (!todo.empty());
-    std::vector<TransIdx> to_delete;
-    for (const auto &r : its.getAllTransitions()) {
-        if (keep.find(&r) == keep.end()) {
-            to_delete.push_back(&r);
+    std::vector<RulePtr> to_delete;
+    for (const auto &r : its->getAllTransitions()) {
+        if (keep.find(r) == keep.end()) {
+            to_delete.push_back(r);
         }
     }
-    linked_hash_set<TransIdx> deleted;
-    for (const auto idx : to_delete) {
-        its.removeRule(idx);
+    linked_hash_set<RulePtr> deleted;
+    for (const auto &idx : to_delete) {
+        its->removeRule(idx);
         deleted.insert(idx);
     }
     if (deleted.empty()) {
@@ -65,32 +65,32 @@ bool remove_irrelevant_clauses(ITSProblem &its, bool forward) {
     }
 }
 
-bool remove_irrelevant_clauses(ITSProblem &its) {
+bool remove_irrelevant_clauses(ITSPtr its) {
     return remove_irrelevant_clauses(its, true) || remove_irrelevant_clauses(its, false);
 }
 
-std::optional<SmtResult> preprocessRules(ITSProblem &its) {
+std::optional<SmtResult> preprocessRules(ITSPtr its) {
     auto success{false};
-    std::vector<TransIdx> remove;
-    linked_hash_map<TransIdx, Rule> replacements;
-    for (const auto &r : its.getAllTransitions()) {
+    std::vector<RulePtr> remove;
+    linked_hash_map<RulePtr, RulePtr> replacements;
+    for (const auto &r : its->getAllTransitions()) {
         if (const auto res {Preprocess::preprocessRule(r)}) {
             success = true;
-            if (res->getGuard() == bot()) {
-                remove.push_back(&r);
+            if ((*res)->getGuard() == bot()) {
+                remove.push_back(r);
             } else {
-                replacements.emplace(&r, *res);
+                replacements.emplace(r, *res);
             }
         }
     }
     for (const auto &[idx, replacement] : replacements) {
-        its.replaceRule(idx, replacement);
+        its->replaceRule(idx, replacement);
     }
     for (const auto &idx: remove) {
-        its.removeRule(idx);
+        its->removeRule(idx);
     }
     if (success) {
-        return its.isEmpty() ? std::optional{SmtResult::Sat} : std::optional{SmtResult::Unknown};
+        return its->isEmpty() ? std::optional{SmtResult::Sat} : std::optional{SmtResult::Unknown};
     } else {
         return {};
     }
@@ -100,10 +100,10 @@ std::optional<SmtResult> preprocessRules(ITSProblem &its) {
  * Motivating example: f(x,y) -> f(-x,z) :|: (y=0 /\ z=1) \/ (y=1 /\ z=0)
  * In contrast to its implicants, it can be unrolled to obtain simpler closed forms.
  */
-bool unroll(ITSProblem &its) {
+bool unroll(ITSPtr its) {
     auto success{false};
-    for (const auto &r : its.getAllTransitions()) {
-        if (its.isSimpleLoop(&r) && !r.getGuard()->isConjunction()) {
+    for (const auto &r : its->getAllTransitions()) {
+        if (its->isSimpleLoop(r) && !r->getGuard()->isConjunction()) {
             const auto [res, period] = LoopAcceleration::chain(r);
             if (period > 1) {
                 success = true;
@@ -114,18 +114,18 @@ bool unroll(ITSProblem &its) {
                         << "\nresult:\n"
                         << res << std::endl;
                 }
-                its.addRule(res, &r, &r);
+                its->addRule(res, r, r);
             }
         }
     }
     return success;
 }
 
-bool refine_dependency_graph(ITSProblem &its) {
-    const auto is_edge = [](const TransIdx fst, const TransIdx snd) {
-        return SmtFactory::check(Preprocess::chain({*fst, snd->renameTmpVars()}).getGuard()) == SmtResult::Sat;
+bool refine_dependency_graph(ITSPtr its) {
+    const auto is_edge = [](const RulePtr fst, const RulePtr snd) {
+        return SmtFactory::check(Preprocess::chain({fst, snd->renameTmpVars()})->getGuard()) == SmtResult::Sat;
     };
-    const auto removed{its.refineDependencyGraph(is_edge)};
+    const auto removed{its->refineDependencyGraph(is_edge)};
     if (removed.empty()) {
         return false;
     } else {
@@ -136,10 +136,10 @@ bool refine_dependency_graph(ITSProblem &its) {
     }
 }
 
-std::optional<SmtResult> check_empty_clauses(ITSProblem &its) {
-    std::vector<TransIdx> remove;
-    for (const auto &r: its.getInitialTransitions()) {
-        if (its.isSinkTransition(r)) {
+std::optional<SmtResult> check_empty_clauses(ITSPtr its) {
+    std::vector<RulePtr> remove;
+    for (const auto &r: its->getInitialTransitions()) {
+        if (its->isSinkTransition(r)) {
             const auto smt_res {SmtFactory::check(r->getGuard())};
             if (smt_res == SmtResult::Sat) {
                 return SmtResult::Unsat;
@@ -149,9 +149,9 @@ std::optional<SmtResult> check_empty_clauses(ITSProblem &its) {
         }
     }
     for (const auto &r: remove) {
-        its.removeRule(r);
+        its->removeRule(r);
     }
-    if (its.isEmpty()) {
+    if (its->isEmpty()) {
         return SmtResult::Sat;
     } else if (remove.empty()) {
         return std::optional<SmtResult>{};
@@ -160,17 +160,17 @@ std::optional<SmtResult> check_empty_clauses(ITSProblem &its) {
     }
 }
 
-std::optional<SmtResult> check_bot(ITSProblem &its) {
-    std::vector<TransIdx> remove;
-    for (const auto &r: its.getAllTransitions()) {
-        if (r.getGuard()== bot()) {
-            remove.emplace_back(&r);
+std::optional<SmtResult> check_bot(ITSPtr its) {
+    std::vector<RulePtr> remove;
+    for (const auto &r: its->getAllTransitions()) {
+        if (r->getGuard() == bot()) {
+            remove.emplace_back(r);
         }
     }
     for (const auto &r: remove) {
-        its.removeRule(r);
+        its->removeRule(r);
     }
-    if (its.isEmpty()) {
+    if (its->isEmpty()) {
         return SmtResult::Sat;
     } else if (remove.empty()) {
         return std::optional<SmtResult>{};
@@ -231,7 +231,7 @@ SmtResult Preprocessor::preprocess() {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "finished unrolling" << std::endl;
         }
-        if (its.size() <= 1000) {
+        if (its->size() <= 1000) {
             if (Config::Analysis::doLogPreproc()) {
                 std::cout << "refining the dependency graph..." << std::endl;
             }

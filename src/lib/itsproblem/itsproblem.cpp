@@ -21,32 +21,32 @@ LocationIdx ITSProblem::getSink() const {
     return sink;
 }
 
-const linked_hash_set<Rule>& ITSProblem::getAllTransitions() const {
+const linked_hash_set<RulePtr>& ITSProblem::getAllTransitions() const {
     return rules;
 }
 
-linked_hash_set<TransIdx> ITSProblem::getSuccessors(const TransIdx loc) const {
+linked_hash_set<RulePtr> ITSProblem::getSuccessors(const RulePtr loc) const {
     return graph.getSuccessors(loc);
 }
 
-linked_hash_set<TransIdx> ITSProblem::getPredecessors(const TransIdx loc) const {
+linked_hash_set<RulePtr> ITSProblem::getPredecessors(const RulePtr loc) const {
     return graph.getPredecessors(loc);
 }
 
-bool ITSProblem::areAdjacent(const TransIdx first, const TransIdx second) const {
+bool ITSProblem::areAdjacent(const RulePtr first, const RulePtr second) const {
     return graph.hasEdge(first, second);
 }
 
-void ITSProblem::removeRule(TransIdx transition) {
+void ITSProblem::removeRule(RulePtr transition) {
     graph.removeNode(transition);
     startAndTargetLocations.erase(transition);
     initialTransitions.erase(transition);
     sinkTransitions.erase(transition);
-    rules.erase(*transition);
+    rules.erase(transition);
 }
 
-TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const linked_hash_set<TransIdx> &preds, const linked_hash_set<TransIdx> &succs) {
-    const auto idx {&*rules.emplace(rule).first};
+RulePtr ITSProblem::addRule(const RulePtr rule, const LocationIdx start, const LocationIdx target, const linked_hash_set<RulePtr> &preds, const linked_hash_set<RulePtr> &succs) {
+    const auto idx {*rules.emplace(rule).first};
     startAndTargetLocations.emplace(idx, std::pair<LocationIdx, LocationIdx>(start, target));
     graph.addNode(idx, preds, succs, start == target);
     if (start == initialLocation) {
@@ -58,30 +58,30 @@ TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start, const Lo
     return idx;
 }
 
-TransIdx ITSProblem::addRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs) {
+void ITSProblem::addRule(const RulePtr rule, const RulePtr same_preds, const RulePtr same_succs) {
     const auto start = getLhsLoc(same_preds);
     const auto target = getRhsLoc(same_succs);
     const auto preds = graph.getPredecessors(same_preds);
     const auto succs = graph.getSuccessors(same_succs);
-    return addRule(rule, start, target, preds, succs);
+    addRule(rule, start, target, preds, succs);
 }
 
-TransIdx ITSProblem::addLearnedRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs) {
-    const auto res = addRule(rule, same_preds, same_succs);
-    graph.removeEdge(res, res);
+void ITSProblem::addLearnedRule(const RulePtr rule, const RulePtr same_preds, const RulePtr same_succs) {
+    addRule(rule, same_preds, same_succs);
+    graph.removeEdge(rule, rule);
+}
+
+RulePtr ITSProblem::addQuery(const Bools::Expr guard, const RulePtr same_preds) {
+    const auto start = getLhsLoc(same_preds);
+    const auto preds = graph.getPredecessors(same_preds);
+    const auto res {Rule::mk(guard, Subs::build<Arith>(loc_var, arith::mkConst(sink)))};
+    addRule(res, start, sink, preds, {});
     return res;
 }
 
-TransIdx ITSProblem::addQuery(const Bools::Expr guard, const TransIdx same_preds) {
-    const auto start = getLhsLoc(same_preds);
-    const auto preds = graph.getPredecessors(same_preds);
-    return addRule(Rule(guard, Subs::build<Arith>(loc_var, arith::mkConst(sink))), start, sink, preds, {});
-}
-
-TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
-    const auto target_opt = getRhsLoc(rule);
-    const auto target = target_opt ? *target_opt : start;
-    linked_hash_set<TransIdx> preds, succs;
+void ITSProblem::addRule(const RulePtr rule, const LocationIdx start) {
+    const auto target {rule->getUpdate().get<Arith>(loc_var)->isInt().value_or(start).convert_to<LocationIdx>()};
+    linked_hash_set<RulePtr> preds, succs;
     for (const auto &e: startAndTargetLocations) {
         if (e.second.first == target) {
             succs.insert(e.first);
@@ -90,27 +90,26 @@ TransIdx ITSProblem::addRule(const Rule &rule, const LocationIdx start) {
             preds.insert(e.first);
         }
     }
-    return addRule(rule, start, target, preds, succs);
+    addRule(rule, start, target, preds, succs);
 }
 
-TransIdx ITSProblem::replaceRule(const TransIdx toReplace, const Rule &replacement) {
-    const auto idx {&*rules.emplace(replacement).first};
-    startAndTargetLocations.emplace(idx, startAndTargetLocations[toReplace]);
+void ITSProblem::replaceRule(const RulePtr toReplace, const RulePtr replacement) {
+    rules.emplace(replacement);
+    startAndTargetLocations.emplace(replacement, startAndTargetLocations[toReplace]);
     startAndTargetLocations.erase(toReplace);
-    graph.replaceNode(toReplace, idx);
+    graph.replaceNode(toReplace, replacement);
     if (isInitialTransition(toReplace)) {
-        initialTransitions.insert(idx);
+        initialTransitions.insert(replacement);
         initialTransitions.erase(toReplace);
     }
     if (isSinkTransition(toReplace)) {
-        sinkTransitions.insert(idx);
+        sinkTransitions.insert(replacement);
         sinkTransitions.erase(toReplace);
     }
-    rules.erase(*toReplace);
-    return idx;
+    rules.erase(toReplace);
 }
 
-void ITSProblem::removeEdge(const TransIdx from, const TransIdx to) {
+void ITSProblem::removeEdge(const RulePtr from, const RulePtr to) {
     graph.removeEdge(from, to);
 }
 
@@ -158,13 +157,13 @@ std::string ITSProblem::getPrintableLocationName(LocationIdx idx) const {
 VarSet ITSProblem::getVars() const {
     VarSet res;
     for (const auto &r: rules) {
-        r.collectVars(res);
+        r->collectVars(res);
     }
     return res;
 }
 
-Arith::Expr ITSProblem::getCost(const Rule &rule) const {
-    return rule.getUpdate().get<Arith>(cost_var) - cost_var;
+Arith::Expr ITSProblem::getCost(const RulePtr rule) const {
+    return rule->getUpdate().get<Arith>(cost_var) - cost_var;
 }
 
 Arith::Var ITSProblem::getCostVar() const {
@@ -175,41 +174,31 @@ Arith::Var ITSProblem::getLocVar() const {
     return loc_var;
 }
 
-std::optional<LocationIdx> ITSProblem::getRhsLoc(const Rule &rule) const {
-    const auto res {rule.getUpdate().get<Arith>(loc_var)};
-    const auto r {res->isInt()};
-    if (r) {
-        return r->convert_to<LocationIdx>();
-    } else {
-        return {};
-    }
-}
-
-LocationIdx ITSProblem::getLhsLoc(const TransIdx idx) const {
+LocationIdx ITSProblem::getLhsLoc(const RulePtr idx) const {
     return startAndTargetLocations[idx].first;
 }
 
-LocationIdx ITSProblem::getRhsLoc(const TransIdx idx) const {
+LocationIdx ITSProblem::getRhsLoc(const RulePtr idx) const {
     return startAndTargetLocations[idx].second;
 }
 
-const linked_hash_set<TransIdx>& ITSProblem::getInitialTransitions() const {
+const linked_hash_set<RulePtr>& ITSProblem::getInitialTransitions() const {
     return initialTransitions;
 }
 
-const linked_hash_set<TransIdx>& ITSProblem::getSinkTransitions() const {
+const linked_hash_set<RulePtr>& ITSProblem::getSinkTransitions() const {
     return sinkTransitions;
 }
 
-bool ITSProblem::isSimpleLoop(const TransIdx idx) const {
+bool ITSProblem::isSimpleLoop(const RulePtr idx) const {
     return graph.hasEdge(idx, idx);
 }
 
-bool ITSProblem::isSinkTransition(const TransIdx idx) const {
+bool ITSProblem::isSinkTransition(const RulePtr idx) const {
     return sinkTransitions.contains(idx);
 }
 
-bool ITSProblem::isInitialTransition(const TransIdx idx) const {
+bool ITSProblem::isInitialTransition(const RulePtr idx) const {
     return initialTransitions.contains(idx);
 }
 
@@ -217,7 +206,7 @@ const ITSProblem::DG& ITSProblem::getDependencyGraph() const {
     return graph;
 }
 
-linked_hash_set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph(const std::function<bool(const TransIdx, const TransIdx)> &is_edge) {
+linked_hash_set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph(const std::function<bool(const RulePtr, const RulePtr)> &is_edge) {
     return graph.refine(is_edge);
 }
 
@@ -241,7 +230,7 @@ std::ostream& operator<<(std::ostream &s, const ITSProblem &its) {
     } else {
         for (const auto &idx : its.getAllTransitions()) {
             s << std::setw(4);
-            s << idx;
+            s << *idx;
             s << std::endl;
         }
     }

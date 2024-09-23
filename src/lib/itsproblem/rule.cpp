@@ -1,8 +1,29 @@
 #include "rule.hpp"
 
+ConsHash<Rule, Rule, Rule::CacheHash, Rule::CacheEqual, Bools::Expr, Subs> Rule::cache;
+
 unsigned Rule::next_id {0};
 
 Rule::Rule(const Bools::Expr guard, const Subs &update): guard(guard), update(update), id(next_id++) {}
+
+size_t Rule::CacheHash::operator()(const std::tuple<Bools::Expr, Subs> &args) const noexcept {
+    size_t seed {42};
+    boost::hash_combine(seed, std::get<0>(args));
+    boost::hash_combine(seed, std::get<1>(args));
+    return seed;
+}
+
+bool Rule::CacheEqual::operator()(const std::tuple<Bools::Expr, Subs> &args1, const std::tuple<Bools::Expr, Subs> &args2) const noexcept {
+    return args1 == args2;
+}
+
+Rule::~Rule() {
+    cache.erase(guard, update);
+}
+
+RulePtr Rule::mk(const Bools::Expr guard, const Subs up) {
+    return cache.from_cache(guard, up);
+}
 
 void Rule::collectVars(VarSet &vars) const {
     guard->collectVars(vars);
@@ -15,24 +36,24 @@ VarSet Rule::vars() const {
     return res;
 }
 
-Rule Rule::subs(const Subs &subs) const {
-    return Rule(subs(guard), update.concat(subs));
+RulePtr Rule::subs(const Subs &subs) const {
+    return mk(subs(guard), update.concat(subs));
 }
 
-Rule Rule::renameVars(const Renaming &subs) const {
-    return Rule(subs(guard), update.concat(subs));
+RulePtr Rule::renameVars(const Renaming &subs) const {
+    return mk(subs(guard), update.concat(subs));
 }
 
-Rule Rule::withGuard(const Bools::Expr guard) const {
-    return Rule(guard, update);
+RulePtr Rule::withGuard(const Bools::Expr guard) const {
+    return mk(guard, update);
 }
 
-Rule Rule::withUpdate(const Subs &update) const {
-    return Rule(guard, update);
+RulePtr Rule::withUpdate(const Subs &update) const {
+    return mk(guard, update);
 }
 
-Rule Rule::chain(const Rule &that) const {
-    return Rule(guard && update(that.getGuard()), that.getUpdate().compose(update));
+RulePtr Rule::chain(const RulePtr &that) const {
+    return mk(guard && update(that->getGuard()), that->getUpdate().compose(update));
 }
 
 const Bools::Expr Rule::getGuard() const {
@@ -68,7 +89,7 @@ bool Rule::isPoly() const {
     return guard->isPoly() && update.isPoly();
 }
 
-std::ostream& operator<<(std::ostream &s, const TransIdx &idx) {
+std::ostream& operator<<(std::ostream &s, const RulePtr &idx) {
     return s << idx->getId();
 }
 
@@ -104,7 +125,7 @@ size_t hash_value(const Rule &r) {
     return r.hash();
 }
 
-Rule Rule::renameTmpVars() const {
+RulePtr Rule::renameTmpVars() const {
     Renaming s;
     for (const auto &x: vars()) {
         if (theory::isTempVar(x)) {

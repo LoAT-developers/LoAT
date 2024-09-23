@@ -20,8 +20,8 @@ Config::TILConfig backwardConfig{
     .context_sensitive = false};
 
 ForwardBackwardDriver::ForwardBackwardDriver(
-    const ITSProblem &forward,
-    const ITSProblem &backward):
+    const ITSPtr forward,
+    const ITSPtr backward):
     f(forward, forwardConfig),
     b(backward, backwardConfig) {}
 

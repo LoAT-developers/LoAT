@@ -13,10 +13,10 @@ enum Status {
 std::ostream& operator<<(std::ostream &s, const Status x);
 
 struct Accel {
-    Rule rule;
+    RulePtr rule;
     Bools::Expr covered {bot()};
 
-    Accel(const Rule &rule): rule(rule) {}
+    Accel(const RulePtr rule): rule(rule) {}
 
 };
 

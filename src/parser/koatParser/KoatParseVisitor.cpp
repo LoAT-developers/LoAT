@@ -70,8 +70,8 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     if (Config::Analysis::complexity()) {
         up.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
     }
-    Rule rule(cond, up);
-    auto vars = rule.vars();
+    auto rule{Rule::mk(cond, up)};
+    auto vars = rule->vars();
     Subs varRenaming;
     for (const auto &x: vars) {
         const auto var {std::get<Arith::Var>(x)};
@@ -79,7 +79,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
             varRenaming.put<Arith>(var, ArithVar::next());
         }
     }
-    rule = rule.subs(varRenaming);
+    rule = rule->subs(varRenaming);
     its->addRule(rule, lhsLoc);
     return {};
 }

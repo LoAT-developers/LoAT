@@ -1,21 +1,21 @@
 #include "itscex.hpp"
 #include <assert.h>
 
-ITSCex::ITSCex(const ITSProblem &its): its(its) {}
+ITSCex::ITSCex(ITSPtr its): its(its) {}
 
 bool ITSCex::is_valid_step(const Model &m) const {
     if (states.size() != transitions.size()) {
         return false;
     }
     if (transitions.empty()) {
-        const auto &init{its.getInitialTransitions()};
+        const auto &init{its->getInitialTransitions()};
         return std::any_of(init.begin(), init.end(), [&](const auto &i) {
             return m.eval<Bools>(i->getGuard());
         });
     } else {
         const auto &up{transitions.back()->getUpdate()};
         const auto &last{states.back()};
-        for (const auto &x : its.getVars()) {
+        for (const auto &x : its->getVars()) {
             if (theory::isProgVar(x) && m.get(x) != last.eval(up.get(x))) {
                 return false;
             }
@@ -24,7 +24,7 @@ bool ITSCex::is_valid_step(const Model &m) const {
     }
 }
 
-bool ITSCex::try_step(const Model &m, const TransIdx trans) {
+bool ITSCex::try_step(const Model &m, const RulePtr trans) {
     if (!m.eval<Bools>(trans->getGuard()) || !is_valid_step(m)) {
         return false;
     }
@@ -36,7 +36,7 @@ bool ITSCex::try_step(const Model &m, const TransIdx trans) {
 
 void ITSCex::add_final_state(const Model &m) {
     assert(is_valid_step(m));
-    const auto &err{its.getSinkTransitions()};
+    const auto &err{its->getSinkTransitions()};
     const auto it{std::find_if(err.begin(), err.end(), [&](const auto &e) {
         return m.eval<Bools>(e->getGuard());
     })};
@@ -49,4 +49,8 @@ std::ostream& operator<<(std::ostream &s, const ITSCex &cex) {
         s << cex.states.at(i) << "\n-" << cex.transitions.at(i)->getId() << "->\n";
     }
     return s << cex.states.back();
+}
+
+void ITSCex::add_accel(const std::vector<RulePtr> &loop, const RulePtr res) {
+    accel.emplace(res, loop);
 }

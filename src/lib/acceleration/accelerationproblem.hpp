@@ -47,7 +47,7 @@ private:
 public:
 
     AccelerationProblem(
-            const Rule &rule,
+            const RulePtr rule,
             const std::optional<Recurrence::Result> &closed,
             const std::optional<Subs> &samplePoint,
             const AccelConfig &config);

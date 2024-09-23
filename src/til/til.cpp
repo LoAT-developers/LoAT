@@ -38,7 +38,7 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 }
 
 TIL::TIL(
-    const ITSProblem &its,
+    const ITSPtr its,
     const Config::TILConfig &config)
     : config(config),
       its2safety(its),

@@ -4,8 +4,8 @@
 
 namespace Preprocess {
 
-    std::optional<Rule> preprocessRule(const Rule &rule);
+    std::optional<RulePtr> preprocessRule(const RulePtr &rule);
 
-    Rule chain(const std::vector<Rule> &);
+    RulePtr chain(const std::vector<RulePtr> &);
 
 }

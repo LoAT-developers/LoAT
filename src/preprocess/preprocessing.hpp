@@ -12,12 +12,12 @@ private:
 
     SmtResult status{SmtResult::Unknown};
 
-    ITSProblem &its;
+    ITSPtr its;
 
     Chain chain;
 
 public:
-    Preprocessor(ITSProblem &its);
+    Preprocessor(ITSPtr its);
 
     ITSModel transform_model(const ITSModel &) const;
 

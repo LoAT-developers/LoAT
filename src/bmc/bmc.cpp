@@ -4,13 +4,13 @@
 #include "config.hpp"
 #include "renaming.hpp"
 
-BMC::BMC(ITSProblem &its): its(its), vars(its.getVars()) {
+BMC::BMC(ITSPtr its): its(its), vars(its->getVars()) {
     for (const auto &var: vars) {
         post_vars.emplace(var, theory::next(var));
     }
 }
 
-Bools::Expr BMC::encode_transition(const TransIdx idx) {
+Bools::Expr BMC::encode_transition(const RulePtr idx) {
     const auto up {idx->getUpdate()};
     std::vector<Bools::Expr> res {idx->getGuard()};
     for (const auto &x: vars) {
@@ -23,23 +23,23 @@ Bools::Expr BMC::encode_transition(const TransIdx idx) {
 
 SmtResult BMC::analyze() {
     std::vector<Bools::Expr> inits;
-    for (const auto &idx: its.getInitialTransitions()) {
-        assert (!its.isSinkTransition(idx));
+    for (const auto &idx: its->getInitialTransitions()) {
+        assert (!its->isSinkTransition(idx));
         inits.push_back(encode_transition(idx));
     }
     solver->add(bools::mkOr(inits));
 
     std::vector<Bools::Expr> steps;
-    for (const auto &r: its.getAllTransitions()) {
-        if (its.isInitialTransition(&r) || its.isSinkTransition(&r)) {
+    for (const auto &r: its->getAllTransitions()) {
+        if (its->isInitialTransition(r) || its->isSinkTransition(r)) {
             continue;
         }
-        steps.push_back(encode_transition(&r));
+        steps.push_back(encode_transition(r));
     }
     const auto step {bools::mkOr(steps)};
 
     std::vector<Bools::Expr> queries;
-    for (const auto &idx: its.getSinkTransitions()) {
+    for (const auto &idx: its->getSinkTransitions()) {
         queries.push_back(idx->getGuard());
     }
     const auto query {bools::mkOr(queries)};
@@ -90,17 +90,17 @@ SmtResult BMC::analyze() {
 ITSModel BMC::get_model() const {
     std::vector<Bools::Expr> steps;
     std::vector<Bools::Expr> inits;
-    for (const auto &t: its.getAllTransitions()) {
-        if (its.isInitialTransition(&t)) {
-            inits.push_back(t.getGuard());
+    for (const auto &t: its->getAllTransitions()) {
+        if (its->isInitialTransition(t)) {
+            inits.push_back(t->getGuard());
             continue;
         }
-        if (its.isSinkTransition(&t)) {
+        if (its->isSinkTransition(t)) {
             continue;
         }
         std::vector<Bools::Expr> conjuncts;
-        conjuncts.emplace_back(t.getGuard());
-        const auto &up {t.getUpdate()};
+        conjuncts.emplace_back(t->getGuard());
+        const auto &up {t->getUpdate()};
         for (const auto &[pre,post]: post_vars) {
             if (theory::isProgVar(pre)) {
                 conjuncts.push_back(theory::mkEq(theory::toExpr(post), up.get(pre)));
@@ -126,10 +126,10 @@ ITSModel BMC::get_model() const {
     }
     ITSModel model;
     const auto m {bools::mkOr(res)};
-    for (const auto &l: its.getLocations()) {
-        model.set_invariant(l, Subs::build<Arith>(its.getLocVar(), arith::mkConst(l))(m));
+    for (const auto &l: its->getLocations()) {
+        model.set_invariant(l, Subs::build<Arith>(its->getLocVar(), arith::mkConst(l))(m));
     }
-    model.set_invariant(its.getInitialLocation(), top());
+    model.set_invariant(its->getInitialLocation(), top());
     return model;
 }
 
@@ -137,10 +137,10 @@ ITSModel BMC::get_model() const {
 ITSCex BMC::get_cex() const {
     ITSCex res(its);
     const auto model {solver->model()};
-    std::optional<TransIdx> last;
+    std::optional<RulePtr> last;
     for (size_t i = 0; i <= depth; ++i) {
         auto m{model.composeBackwards(renamings.at(i))};
-        const auto candidates = last ? its.getSuccessors(*last) : its.getInitialTransitions();
+        const auto candidates = last ? its->getSuccessors(*last) : its->getInitialTransitions();
         const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
             return res.try_step(m, c);
         })};

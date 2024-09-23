@@ -8,20 +8,21 @@
 #include "vector.hpp"
 #include "renaming.hpp"
 #include "itsmodel.hpp"
+#include "itscex.hpp"
 
 class ABMC {
 
 private:
 
     struct Loop {
-        TransIdx idx;
+        RulePtr idx;
         unsigned prefix;
         unsigned period;
         Bools::Expr covered;
         bool deterministic;
     };
 
-    ITSProblem &its;
+    ITSPtr its;
     SmtPtr solver {SmtFactory::solver()};
     bool approx {false};
     unsigned last_orig_clause {};
@@ -39,18 +40,18 @@ private:
     std::unordered_set<std::vector<int>> nonterm_cache {};
     std::unordered_map<int, std::vector<int>> history {};
     Arith::Var trace_var;
-    std::optional<TransIdx> shortcut {};
-    std::unordered_map<Int, TransIdx> rule_map {};
+    std::optional<RulePtr> shortcut {};
+    std::unordered_map<Int, RulePtr> rule_map {};
     int next {0};
     DependencyGraph<Implicant> dependency_graph {};
     unsigned depth {0};
 
     int get_language(unsigned i);
-    Bools::Expr encode_transition(const TransIdx idx, const bool with_id = true);
-    bool is_orig_clause(const TransIdx idx) const;
+    Bools::Expr encode_transition(const RulePtr idx, const bool with_id = true);
+    bool is_orig_clause(const RulePtr idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
-    TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
-    std::pair<Rule, Model> build_loop(const int backlink);
+    void add_learned_clause(const RulePtr accel, const unsigned backlink);
+    std::pair<RulePtr, Model> build_loop(const int backlink);
     Bools::Expr build_blocking_clause(const int backlink, const Loop &loop);
     std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
     void build_trace();
@@ -59,9 +60,10 @@ private:
 
 public:
 
-    explicit ABMC(ITSProblem &its);
+    explicit ABMC(ITSPtr its);
     SmtResult analyze();
     ITSModel get_model() const;
+    ITSCex get_cex() const;
 
 };
 

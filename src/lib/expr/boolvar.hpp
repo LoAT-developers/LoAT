@@ -40,6 +40,7 @@ public:
     friend bool operator==(const BoolVar &x, const BoolVar &y) = default;
 
     BoolVar(const int idx);
+    ~BoolVar();
 
     std::string getName() const;
 

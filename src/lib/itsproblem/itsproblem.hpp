@@ -12,7 +12,7 @@ class ITSProblem {
 
 public:
 
-    using DG = DependencyGraph<TransIdx>;
+    using DG = DependencyGraph<RulePtr>;
 
     // Creates an empty ITS problem. The initialLocation is set to 0
     ITSProblem() = default;
@@ -27,26 +27,26 @@ public:
     LocationIdx getSink() const;
     std::optional<LocationIdx> getLocationIdx(const std::string &name) const;
 
-    const linked_hash_set<Rule>& getAllTransitions() const;
-    linked_hash_set<TransIdx> getSuccessors(const TransIdx loc) const;
-    linked_hash_set<TransIdx> getPredecessors(const TransIdx loc) const;
-    bool areAdjacent(const TransIdx first, const TransIdx second) const;
+    const linked_hash_set<RulePtr>& getAllTransitions() const;
+    linked_hash_set<RulePtr> getSuccessors(const RulePtr loc) const;
+    linked_hash_set<RulePtr> getPredecessors(const RulePtr loc) const;
+    bool areAdjacent(const RulePtr first, const RulePtr second) const;
 
     // Mutation of Rules
-    void removeRule(TransIdx transition);
+    void removeRule(RulePtr transition);
 
 private:
 
-    TransIdx addRule(const Rule &rule, const LocationIdx start, const LocationIdx target, const linked_hash_set<TransIdx> &preds, const linked_hash_set<TransIdx> &succs);
+    RulePtr addRule(const RulePtr rule, const LocationIdx start, const LocationIdx target, const linked_hash_set<RulePtr> &preds, const linked_hash_set<RulePtr> &succs);
 
 public:
 
-    TransIdx addRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs);
-    TransIdx addLearnedRule(const Rule &rule, const TransIdx same_preds, const TransIdx same_succs);
-    TransIdx addRule(const Rule &rule, const LocationIdx start);
-    TransIdx addQuery(const Bools::Expr guard, const TransIdx same_preds);
-    TransIdx replaceRule(const TransIdx toReplace, const Rule &replacement);
-    void removeEdge(const TransIdx from, const TransIdx to);
+    void addRule(const RulePtr rule, const RulePtr same_preds, const RulePtr same_succs);
+    void addLearnedRule(const RulePtr rule, const RulePtr same_preds, const RulePtr same_succs);
+    void addRule(const RulePtr rule, const LocationIdx start);
+    RulePtr addQuery(const Bools::Expr guard, const RulePtr same_preds);
+    void replaceRule(const RulePtr toReplace, const RulePtr replacement);
+    void removeEdge(const RulePtr from, const RulePtr to);
 
     // Mutation for Locations
     LocationIdx addLocation();
@@ -59,43 +59,41 @@ public:
 
     VarSet getVars() const;
 
-    Arith::Expr getCost(const Rule &rule) const;
+    Arith::Expr getCost(const RulePtr rule) const;
 
     Arith::Var getCostVar() const;
 
     Arith::Var getLocVar() const;
 
-    std::optional<LocationIdx> getRhsLoc(const Rule &rule) const;
+    LocationIdx getLhsLoc(const RulePtr idx) const;
 
-    LocationIdx getLhsLoc(const TransIdx idx) const;
+    LocationIdx getRhsLoc(const RulePtr idx) const;
 
-    LocationIdx getRhsLoc(const TransIdx idx) const;
+    const linked_hash_set<RulePtr>& getInitialTransitions() const;
 
-    const linked_hash_set<TransIdx>& getInitialTransitions() const;
+    const linked_hash_set<RulePtr>& getSinkTransitions() const;
 
-    const linked_hash_set<TransIdx>& getSinkTransitions() const;
+    bool isSimpleLoop(const RulePtr idx) const;
 
-    bool isSimpleLoop(const TransIdx idx) const;
+    bool isSinkTransition(const RulePtr idx) const;
 
-    bool isSinkTransition(const TransIdx idx) const;
-
-    bool isInitialTransition(const TransIdx idx) const;
+    bool isInitialTransition(const RulePtr idx) const;
 
     const DG& getDependencyGraph() const;
 
-    linked_hash_set<DG::Edge> refineDependencyGraph(const std::function<bool(const TransIdx, const TransIdx)> &is_edge);
+    linked_hash_set<DG::Edge> refineDependencyGraph(const std::function<bool(const RulePtr, const RulePtr)> &is_edge);
 
     size_t size() const;
 
 protected:
 
     DG graph {};
-    linked_hash_set<Rule> rules {};
+    linked_hash_set<RulePtr> rules {};
     linked_hash_set<LocationIdx> locations {};
     std::unordered_map<LocationIdx, std::string> locationNames {};
-    linked_hash_map<TransIdx, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations {};
-    linked_hash_set<TransIdx> initialTransitions {};
-    linked_hash_set<TransIdx> sinkTransitions {};
+    linked_hash_map<RulePtr, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations {};
+    linked_hash_set<RulePtr> initialTransitions {};
+    linked_hash_set<RulePtr> sinkTransitions {};
     LocationIdx nextUnusedLocation {1};
     LocationIdx initialLocation {0};
     LocationIdx sink {addNamedLocation("LoAT_sink")};

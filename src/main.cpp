@@ -291,7 +291,8 @@ int main(int argc, char *argv[]) {
     }
     yices::init();
     std::optional<ITSModel> its_model;
-    auto preprocessor{std::make_shared<Preprocessor>(**its)};
+    std::optional<ITSCex> its_cex;
+    auto preprocessor{std::make_shared<Preprocessor>(*its)};
     auto res {preprocessor->preprocess()};
     if (res != SmtResult::Unknown) {
         if (Config::Analysis::log) {
@@ -306,25 +307,29 @@ int main(int argc, char *argv[]) {
         }
         switch (Config::Analysis::engine) {
             case Config::Analysis::ADCL:
-                res = reachability::Reachability::analyze(**its);
+                res = reachability::Reachability::analyze(*its);
                 break;
             case Config::Analysis::BMC: {
-                BMC bmc{**its};
+                BMC bmc{*its};
                 res = bmc.analyze();
                 if (Config::Analysis::model) {
                     if (res == SmtResult::Sat) {
                         its_model = bmc.get_model();
                     } else if (res == SmtResult::Unsat) {
-                        std::cout << bmc.get_cex() << std::endl;
+                        its_cex = bmc.get_cex();
                     }
                 }
                 break;
             }
             case Config::Analysis::ABMC: {
-                ABMC abmc{**its};
+                ABMC abmc{*its};
                 res = abmc.analyze();
-                if (res == SmtResult::Sat && Config::Analysis::model) {
-                    its_model = abmc.get_model();
+                if (Config::Analysis::model) {
+                    if (res == SmtResult::Sat) {
+                        its_model = abmc.get_model();
+                    } else if (res == SmtResult::Unsat) {
+                        its_cex = abmc.get_cex();
+                    }
                 }
                 break;
             }
@@ -332,7 +337,7 @@ int main(int argc, char *argv[]) {
                 switch (Config::til.mode) {
                     case Config::TILConfig::Mode::Forward:
                     case Config::TILConfig::Mode::Backward: {
-                        TIL til(**its, Config::til);
+                        TIL til(*its, Config::til);
                         res = til.analyze();
                         if (res == SmtResult::Sat && Config::Analysis::model) {
                             its_model = til.get_model();
@@ -342,7 +347,7 @@ int main(int argc, char *argv[]) {
                     case Config::TILConfig::Mode::Interleaved: {
                         CHCToITS reversed_chc2its{reverse(*chcs)};
                         auto reversed{reversed_chc2its.transform()};
-                        auto backward_preprocessor{std::make_shared<Preprocessor>(*reversed)};
+                        auto backward_preprocessor{std::make_shared<Preprocessor>(reversed)};
                         res = backward_preprocessor->preprocess();
                         if (res != SmtResult::Unknown) {
                             if (Config::Analysis::log) {
@@ -357,7 +362,7 @@ int main(int argc, char *argv[]) {
                             if (backward_preprocessor->successful() && Config::Analysis::log) {
                                 std::cout << "Simplified reversed ITS\n" << *reversed << std::endl;
                             }
-                            ForwardBackwardDriver fb(**its, *reversed);
+                            ForwardBackwardDriver fb(*its, reversed);
                             res = fb.analyze();
                             if (res == SmtResult::Sat && Config::Analysis::model) {
                                 its_model = fb.get_model();
@@ -379,6 +384,8 @@ int main(int argc, char *argv[]) {
         its_model = preprocessor->transform_model(*its_model);
         const auto chc_model{chc2its->transform_model(*its_model)};
         std::cout << chc_model.to_smtlib().toString() << std::endl;
+    } else if (its_cex) {
+        std::cout << *its_cex << std::endl;
     }
     yices::exit();
 

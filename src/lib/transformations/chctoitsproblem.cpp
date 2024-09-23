@@ -108,7 +108,7 @@ ITSPtr CHCToITS::transform() {
             const auto rhs_loc = c.get_conclusion() ? its->getOrAddLocation(c.get_conclusion()->get_pred()) : its->getSink();
             up.put<Arith>(its->getLocVar(), arith::mkConst(rhs_loc));
             const auto guard {ren(g) && theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc))};
-            its->addRule(Rule(guard, up), lhs_loc);
+            its->addRule(Rule::mk(guard, up), lhs_loc);
         }
     }
     return its;

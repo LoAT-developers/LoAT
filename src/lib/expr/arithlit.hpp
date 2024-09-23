@@ -72,6 +72,7 @@ private:
 public:
 
     ArithLit(const ArithExprPtr lhs, const Kind kind);
+    ~ArithLit();
 
     ArithExprPtr lhs() const;
     bool isPoly() const;
