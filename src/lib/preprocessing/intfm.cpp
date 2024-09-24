@@ -4,10 +4,9 @@
 
 #include <unordered_set>
 
-/**
- * Fourier-Motzkin, restricted to the case that all coefficients are 1 or -1, so that it can be used for integers.
- */
-Bools::Expr integerFourierMotzkin(Bools::Expr e, const std::function<bool(const Var &)> &allow) {
+IntegerFourierMotzkin::IntegerFourierMotzkin(const std::function<bool(const Var &)> &allow): allow(allow) {}
+
+Bools::Expr IntegerFourierMotzkin::run(Bools::Expr e) {
     if (!e->isConjunction()) {
         return e;
     }
@@ -39,7 +38,7 @@ Bools::Expr integerFourierMotzkin(Bools::Expr e, const std::function<bool(const 
         auto may_be_dually_bounded {true};
         auto lower_bounded {false};
         auto upper_bounded {false};
-        // used for heuristic for detecting cases where we get an exponential blow-up[]
+        // used for heuristic for detecting cases where we get an exponential blow-up
         size_t explosive_lower {0};
         size_t explosive_upper {0};
         for (const auto &lit: lits) {
@@ -110,6 +109,12 @@ Bools::Expr integerFourierMotzkin(Bools::Expr e, const std::function<bool(const 
                 lits.insert(arith::mkLeq(lower, upper));
             }
         }
+        if (lower_bounds.size() == 1) {
+            subs.put(var, lower_bounds.front());
+        } else {
+            assert(upper_bounds.size() == 1);
+            subs.put(var, upper_bounds.front());
+        }
         eliminated.insert(var);
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "eliminated " << var << "; lower bounds: " << lower_bounds << "; upper bounds: " << upper_bounds << std::endl;
@@ -122,4 +127,12 @@ abort:  ; //this symbol could not be eliminated, try the next one
     } else {
         return bools::mkAndFromLits(lits);
     }
+}
+
+const ArithSubs& IntegerFourierMotzkin::get_subs() const {
+    return subs;
+}
+
+bool IntegerFourierMotzkin::changed() const {
+    return !subs.empty();
 }

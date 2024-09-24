@@ -83,24 +83,14 @@ theory::Types to_type(const Var &x) {
 }
 
 std::optional<Var> is_var(const Expr &x) {
+    using opt = std::optional<Var>;
     return std::visit(
         Overload{
-            [&](const Arith::Expr &e) {
-                return std::optional<Var>{*e->isVar()};
-            },
-            [&](const Bools::Expr &e) {
-                if (const auto lit {e->getTheoryLit()}) {
-                    return std::visit(
-                        Overload{
-                            [&](const Arith::Lit&) {
-                                return std::optional<Var>{};
-                            },
-                            [&](const Bools::Lit &l) {
-                                return l->isNegated() ? std::optional<Var>{} : std::optional<Var>{l->getBoolVar()};
-                            }
-                        }, *lit);
+            [&](const auto &e) {
+                if (const auto &x {e->isVar()}) {
+                    return opt{*x};
                 } else {
-                    return std::optional<Var>{};
+                    return opt{};
                 }
             }},
         x);

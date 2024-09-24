@@ -10,6 +10,7 @@
 #include "realmbp.hpp"
 #include "redundantinequations.hpp"
 #include "theory.hpp"
+#include "safetycex.hpp"
 
 Range::Range(const unsigned s, const unsigned e) : s(s), e(e) {}
 
@@ -161,7 +162,7 @@ Bools::Expr TIL::specialize(const Bools::Expr e, const Model &model, const std::
     if (Config::Analysis::log) {
         std::cout << "sip: " << sip << std::endl;
     }
-    auto simp{Preprocess::preprocessFormula(sip, theory::isTempVar)};
+    auto simp{FormulaPreprocessor(theory::isTempVar).run(sip)};
     if (Config::Analysis::log && simp != sip) {
         std::cout << "simp: " << simp << std::endl;
     }
@@ -620,7 +621,7 @@ void TIL::pop() {
     --depth;
 }
 
-std::optional<SmtResult> TIL::setup() {
+void TIL::setup() {
     std::vector<Bools::Expr> steps;
     for (const auto &trans : t.trans()) {
         rule_map.left.insert(rule_map_t::left_value_type(next_id, trans));
@@ -630,44 +631,14 @@ std::optional<SmtResult> TIL::setup() {
     last_orig_clause = next_id - 1;
     step = bools::mkOr(steps);
     solver->add(t.init());
-    solver->push();
-    auto s{get_subs(depth, 1)};
-    {
-        solver->push();
-        solver->add(s(t.err()));
-        const auto smt_res{solver->check()};
-        solver->pop();
-        switch (smt_res) {
-        case SmtResult::Sat:
-            return SmtResult::Unsat;
-        case SmtResult::Unsat:
-            return SmtResult::Unknown;
-        case SmtResult::Unknown:
-            return {};
-        }
-    }
-    return SmtResult::Unknown;
 }
 
 std::optional<SmtResult> TIL::do_step() {
-    solver->push();
     auto s{get_subs(depth, 1)};
-    solver->add(s(step));
-    add_blocking_clauses();
-    ++depth;
+    // push error states
+    solver->push();
+    solver->add(s(t.err()));
     switch (solver->check()) {
-    case SmtResult::Unsat:
-        return SmtResult::Sat;
-    case SmtResult::Unknown:
-        std::cerr << "unknown from SMT solver" << std::endl;
-        return SmtResult::Unknown;
-    case SmtResult::Sat: {
-        build_trace();
-        s = get_subs(depth, 1);
-        // push error states
-        solver->push();
-        solver->add(s(t.err()));
-        switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
             if (std::all_of(trace.begin(), trace.end(), [&](const auto &t) {
@@ -683,26 +654,38 @@ std::optional<SmtResult> TIL::do_step() {
         case SmtResult::Unsat: {
             // pop error states
             solver->pop();
-            if (Config::Analysis::log) {
-                std::cout << "starting loop handling" << std::endl;
-            }
-            const auto range{has_looping_infix()};
-            if (range) {
-                if (Config::Analysis::log) {
-                    std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
+            solver->push();
+            solver->add(s(step));
+            add_blocking_clauses();
+            switch (solver->check()) {
+                case SmtResult::Unsat:
+                    return SmtResult::Sat;
+                case SmtResult::Unknown:
+                    std::cerr << "unknown from SMT solver" << std::endl;
+                    return SmtResult::Unknown;
+                case SmtResult::Sat: {
+                    ++depth;
+                    build_trace();
+                    if (Config::Analysis::log) {
+                        std::cout << "starting loop handling" << std::endl;
+                    }
+                    const auto range{has_looping_infix()};
+                    if (range) {
+                        if (Config::Analysis::log) {
+                            std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
+                        }
+                        handle_loop(*range);
+                        while (depth > range->start()) {
+                            pop();
+                        }
+                    }
+                    if (Config::Analysis::log) {
+                        std::cout << "done with loop handling" << std::endl;
+                    }
+                    break;
                 }
-                handle_loop(*range);
-                while (depth > range->start()) {
-                    pop();
-                }
             }
-            if (Config::Analysis::log) {
-                std::cout << "done with loop handling" << std::endl;
-            }
-            break;
         }
-        }
-    }
     }
     if (Config::Analysis::log) {
         std::cout << "depth: " << depth << std::endl;
@@ -729,14 +712,27 @@ ITSModel TIL::get_model() {
     return its2safety.transform_model(sp_model);
 }
 
-SmtResult TIL::analyze() {
-    if (const auto setup_res{setup()}; setup_res == SmtResult::Unknown) {
-        while (true) {
-            if (const auto res{do_step()}) {
-                return *res;
-            }
+ITSCex TIL::get_cex() {
+    SafetyCex res{t};
+    const auto model {solver->model()};
+    const auto &trans {t.trans()};
+    for (size_t i = 0; i < depth; ++i) {
+        auto m{model.composeBackwards(get_subs(i, 1))};
+        const auto it{std::find_if(trans.begin(), trans.end(), [&](const auto &c) {
+            return res.try_step(m, c);
+        })};
+        if (it == trans.end()) {
+            throw std::logic_error("get_cex failed");
         }
-    } else {
-        return setup_res.value_or(SmtResult::Unknown);
+    }
+    return its2safety.transform_cex(res);
+}
+
+SmtResult TIL::analyze() {
+    setup();
+    while (true) {
+        if (const auto res{do_step()}) {
+            return *res;
+        }
     }
 }

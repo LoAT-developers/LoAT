@@ -198,8 +198,6 @@ public:
 
     static Subs Empty;
 
-    static Var renameVar(const Var &x, Subs &sigma, Subs &inverted);
-
 };
 
 std::ostream& operator<<(std::ostream &s, const Subs &subs);

@@ -466,13 +466,3 @@ std::ostream& operator<<(std::ostream &s, const Subs &subs) {
     subs.print(s);
     return s;
 }
-
-Var Subs::renameVar(const Var &x, Subs &sigma, Subs &inverted) {
-    return theory::apply(x, [&sigma, &inverted](const auto &x) {
-        const auto th {theory::theory(x)};
-        const auto next {th.next()};
-        sigma.put<decltype(th)>(x, th.varToExpr(next));
-        inverted.put<decltype(th)>(next, th.varToExpr(x));
-        return Var(next);
-    });
-}

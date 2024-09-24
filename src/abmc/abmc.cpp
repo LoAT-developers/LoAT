@@ -12,7 +12,8 @@ using namespace Config::ABMC;
 
 ABMC::ABMC(ITSPtr its):
     its(its),
-    trace_var(ArithVar::next()) {
+    trace_var(ArithVar::next()),
+    cex(its) {
     vars.insert(trace_var);
     vars.insert(n);
     solver->enableModels();
@@ -138,7 +139,29 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     return not_covered || (bools::mkOr(pre) && bools::mkOr(post));
 }
 
-void ABMC::add_learned_clause(const RulePtr accel, const unsigned backlink) {
+void ABMC::add_learned_clause(const RulePtr loop, const RulePtr accel, const unsigned backlink) {
+    if (Config::Analysis::model) {
+        if (backlink == trace.size() - 1) {
+            const auto &[rule, guard] {trace.back()};
+            if (rule->getGuard() != guard) {
+                cex.add_implicant(rule, rule->withGuard(guard));
+            }
+        } else {
+            std::vector<RulePtr> rules;
+            for (size_t i = backlink; i < trace.size(); ++i) {
+                const auto &[rule,guard] {trace.at(i)};
+                if (rule->getGuard() == guard) {
+                    rules.emplace_back(rule);
+                } else {
+                    const auto imp {rule->withGuard(guard)};
+                    cex.add_implicant(rule, imp);
+                    rules.emplace_back(imp);
+                }
+            }
+            cex.add_resolvent(rules, loop);
+        }
+        cex.add_accel(loop, accel);
+    }
     its->addLearnedRule(accel, trace.at(backlink).first, trace.back().first);
     rule_map.emplace(accel->getId(), accel);
 }
@@ -201,7 +224,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         if (accel_res.accel) {
             auto simplified {Preprocess::preprocessRule(accel_res.accel->rule).value_or(accel_res.accel->rule)};
             if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
-                add_learned_clause(simplified, backlink);
+                add_learned_clause(loop, simplified, backlink);
                 shortcut = simplified;
                 history.emplace(next, lang);
                 lang_map.emplace(Implicant(simplified, simplified->getGuard()), next);
@@ -307,21 +330,8 @@ SmtResult ABMC::analyze() {
     }
     std::vector<Bools::Expr> inits;
     for (const auto &idx: its->getInitialTransitions()) {
-        if (its->isSinkTransition(idx)) {
-            switch (SmtFactory::check(idx->getGuard())) {
-            case SmtResult::Sat:
-                return SmtResult::Unsat;
-            case SmtResult::Unknown:
-                if (Config::Analysis::log) {
-                    std::cout << "got unknown from SMT solver -- approximating" << std::endl;
-                }
-                approx = true;
-                break;
-            case SmtResult::Unsat: {}
-            }
-        } else {
-            inits.push_back(encode_transition(idx));
-        }
+        assert(!its->isSinkTransition(idx));
+        inits.push_back(encode_transition(idx));
     }
     solver->add(bools::mkOr(inits));
 
@@ -337,18 +347,19 @@ SmtResult ABMC::analyze() {
     std::vector<Bools::Expr> queries;
     for (const auto &idx: its->getSinkTransitions()) {
         if (!its->isInitialTransition(idx)) {
-            queries.push_back(idx->getGuard());
+            queries.push_back(encode_transition(idx));
         }
     }
     query = bools::mkOr(queries);
 
     while (true) {
-        const auto &s{subs_at(depth + 1)};
+        ++depth;
+        const auto &s{subs_at(depth)};
         solver->push();
         solver->add(s(query));
         switch (solver->check()) {
         case SmtResult::Sat:
-            // build_trace();
+            build_trace();
             return SmtResult::Unsat;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
@@ -370,7 +381,6 @@ SmtResult ABMC::analyze() {
             }
             solver->add(s(encode_transition(*shortcut) || step));
         }
-        ++depth;
         Bools::Expr blocking_clause {top()};
         switch (solver->check()) {
         case SmtResult::Unsat:
@@ -436,21 +446,16 @@ ITSModel ABMC::get_model() const {
     return model;
 }
 
-ITSCex ABMC::get_cex() const {
-    ITSCex res(its);
+ITSCex ABMC::get_cex() {
     const auto model {solver->model()};
     for (size_t i = 0; i <= depth; ++i) {
         auto m{model.composeBackwards(subs.at(i))};
         const auto trans {trace.at(i).first};
-        if (!res.try_step(m, trans)) {
+        if (!cex.try_step(m, trans)) {
             throw std::logic_error("get_cex failed");
         }
-        // if (trans->getId() > last_orig_clause) {
-        //     res.add_accel()
-        // }
     }
-    res.add_final_state(model.composeBackwards(subs.at(depth + 1)));
-    return res;
+    return cex;
 }
 
 std::ostream &operator<<(std::ostream &s, const std::vector<Implicant> &trace) {

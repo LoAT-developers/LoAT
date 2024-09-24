@@ -182,13 +182,14 @@ public:
     void collectCoDomainVars(VarSet &res) const;
     Renaming compose(const Renaming &that) const;
     Renaming project(const VarSet &vars) const;
+    Renaming invert() const;
 
     static Var first(const Pair &p);
     static Var second(const Pair &p);
 
     static Renaming Empty;
 
-    static Var renameVar(const Var &x, Renaming &sigma, Renaming &inverted);
+    static Var renameVar(const Var &x, Renaming &sigma);
 
 };
 

@@ -144,6 +144,23 @@ BoolExprSet BoolExpr::get_disjuncts() const {
     return BoolExprSet({cpp::assume_not_null(shared_from_this())});
 }
 
+std::optional<Bools::Var> BoolExpr::isVar() const {
+    using opt = std::optional<Bools::Var>;
+    if (const auto lit{getTheoryLit()}) {
+        return std::visit(
+            Overload{
+                [&](const Bools::Lit &l) {
+                    return l->isNegated() ? opt{} : opt{l->getBoolVar()};
+                },
+                [&](const auto &) {
+                    return opt{};
+                }},
+            *lit);
+    } else {
+        return opt{};
+    }
+}
+
 linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var n) const {
     linked_hash_set<Bound> bounds;
     getBounds(n, bounds);

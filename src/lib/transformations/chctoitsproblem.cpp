@@ -97,12 +97,12 @@ ITSPtr CHCToITS::transform() {
                             }},
                         arg);
                 }
-            }
-            for (unsigned i = int_arg; i < max_int_arity; ++i) {
-                up.put<Arith>(vars[i], ArithVar::next()->toExpr());
-            }
-            for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
-                up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
+                for (unsigned i = int_arg; i < max_int_arity; ++i) {
+                    up.put<Arith>(vars[i], ArithVar::next()->toExpr());
+                }
+                for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
+                    up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
+                }
             }
             const auto lhs_loc = c.get_premise() ? its->getOrAddLocation(c.get_premise()->get_pred()) : its->getInitialLocation();
             const auto rhs_loc = c.get_conclusion() ? its->getOrAddLocation(c.get_conclusion()->get_pred()) : its->getSink();

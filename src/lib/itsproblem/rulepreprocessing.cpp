@@ -41,7 +41,7 @@ std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
     }
 }
 
-std::optional<RulePtr> propagateEqualitiesImpl(const RulePtr &rule, const Preprocess::SymbolAcceptor &allow) {
+std::optional<RulePtr> propagateEqualitiesImpl(const RulePtr &rule, const std::function<bool(const Var&)> &allow) {
     const auto subs{rule->getGuard()->propagateEqualities(allow)};
     if (subs.empty()) {
         return {};
@@ -59,7 +59,7 @@ std::optional<RulePtr> propagateEqualities(const RulePtr &rule) {
 
 std::optional<RulePtr> propagateEqualitiesPickily(const RulePtr &rule) {
     auto varsInUpdate{rule->getUpdate().coDomainVars()};
-    Preprocess::SymbolAcceptor isTempInUpdate{[&](const Var &sym) {
+    const auto isTempInUpdate{[&](const Var &sym) {
         return theory::isTempVar(sym) && varsInUpdate.contains(sym);
     }};
     return propagateEqualitiesImpl(rule, isTempInUpdate);
@@ -70,7 +70,7 @@ std::optional<RulePtr> integerFourierMotzkin(const RulePtr &rule) {
     auto isTempOnlyInGuard = [&](const Var &sym) {
         return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
-    const auto new_guard{integerFourierMotzkin(rule->getGuard(), isTempOnlyInGuard)};
+    const auto new_guard{IntegerFourierMotzkin(isTempOnlyInGuard).run(rule->getGuard())};
     if (new_guard == rule->getGuard()) {
         return {};
     } else {

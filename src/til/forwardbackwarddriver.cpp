@@ -26,37 +26,10 @@ ForwardBackwardDriver::ForwardBackwardDriver(
     b(backward, backwardConfig) {}
 
 SmtResult ForwardBackwardDriver::analyze() {
+    f.setup();
+    b.setup();
     active = &f;
-    const auto f_setup {active->setup()};
-    if (!f_setup) {
-        if (Config::Analysis::log) {
-            std::cout << "\n===== FORWARD SETUP FAILED =====" << std::endl;
-        }
-        active = &b;
-        return active->analyze();
-    }
-    if (*f_setup != SmtResult::Unknown) {
-        return *f_setup;
-    }
-    active = &b;
-    const auto b_setup {active->setup()};
-    if (!b_setup) {
-        if (Config::Analysis::log) {
-            std::cout << "\n===== BACKWARD SETUP FAILED =====" << std::endl;
-        }
-        active = &f;
-        while (true) {
-            const auto res{active->do_step()};
-            if (res) {
-                return *res;
-            }
-        }
-    }
-    if (*b_setup != SmtResult::Unknown) {
-        return *b_setup;
-    }
-    TIL *active {&f};
-    TIL *passive {&b};
+    passive = &b;
     auto is_forward {true};
     while (true) {
         if (Config::Analysis::log) {
@@ -102,6 +75,10 @@ SmtResult ForwardBackwardDriver::analyze() {
 
 ITSModel ForwardBackwardDriver::get_model() {
     return active->get_model();
+}
+
+ITSCex ForwardBackwardDriver::get_cex() {
+    return active->get_cex();
 }
 
 bool ForwardBackwardDriver::is_forward() const {

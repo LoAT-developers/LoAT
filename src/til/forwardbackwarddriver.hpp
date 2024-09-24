@@ -20,6 +20,8 @@ public:
 
     ITSModel get_model();
 
+    ITSCex get_cex();
+
     bool is_forward() const;
 
 };

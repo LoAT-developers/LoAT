@@ -3,15 +3,26 @@
 #include "impliedequivalences.hpp"
 #include "intfm.hpp"
 
-Bools::Expr propagateEquivalences(const Bools::Expr e) {
-    const auto subs {impliedEquivalences(e)};
-    return subs.empty() ? e : Subs::build<Bools>(subs)(e);
+bool FormulaPreprocessor::propagateEquivalences() {
+    if (const auto subs {impliedEquivalences(e)}; subs.empty()) {
+        return false;
+    } else {
+        auto &bool_equiv {equiv.get<Bools>()};
+        bool_equiv = bool_equiv.unite(subs);
+        e = subs(e);
+        return true;
+    }
 }
 
-Bools::Expr propagateEqualities(const Bools::Expr e, const Preprocess::SymbolAcceptor &allow) {
-    const auto subs {e->propagateEqualities(allow)};
-    return subs.empty() ? e : Subs::build<Arith>(subs)(e);
-
+bool FormulaPreprocessor::propagateEqualities() {
+    if (const auto subs {e->propagateEqualities(allow)}; subs.empty()) {
+        return false;
+    } else {
+        auto &arith_equiv {equiv.get<Arith>()};
+        arith_equiv = arith_equiv.unite(subs);
+        e = Subs::build<Arith>(subs)(e);
+        return true;
+    }
 }
 
 Bools::Expr Preprocess::simplifyAnd(const Bools::Expr e) {
@@ -24,37 +35,49 @@ Bools::Expr Preprocess::simplifyAnd(const Bools::Expr e) {
     return e;
 }
 
-Bools::Expr Preprocess::preprocessFormula(const Bools::Expr e, const SymbolAcceptor &allow) {
-    Bools::Expr res {e};
+FormulaPreprocessor::FormulaPreprocessor(const std::function<bool(const Var &)> &allow): allow(allow) {}
+
+Bools::Expr FormulaPreprocessor::run(const Bools::Expr in) {
+    equiv = Subs();
+    e = in;
     auto changed {false};
+    while (propagateEquivalences());
+    e = Preprocess::simplifyAnd(e);
     do {
-        changed = false;
-        const auto tmp {::propagateEquivalences(res)};
-        if (tmp != res) {
-            changed = true;
-            res = tmp;
+        if ((changed = propagateEqualities())) {
+            e = Preprocess::simplifyAnd(e);
+        }
+        IntegerFourierMotzkin intfm(allow);
+        e = intfm.run(e);
+        if (intfm.changed()) {
+            auto &arith_equiv {equiv.get<Arith>()};
+            arith_equiv = arith_equiv.unite(intfm.get_subs());
+            e = Preprocess::simplifyAnd(e);
         }
     } while (changed);
-    res = simplifyAnd(res);
-    do {
-        changed = false;
-        auto tmp {::propagateEqualities(res, allow)};
-        if (tmp != res) {
-            changed = true;
-            res = simplifyAnd(tmp);
-        }
-        tmp = integerFourierMotzkin(res, allow);
-        if (tmp != res) {
-            changed = true;
-            res = simplifyAnd(tmp);
-        }
-    } while (changed);
+    return e;
+}
+
+Model FormulaPreprocessor::transform_model(const Model &m) const {
+    Model res {m};
+    std::cout << equiv << std::endl;
+    for (const auto &p: equiv) {
+        std::visit(
+            Overload{
+                [&](const auto &p) {
+                    const auto &[var,ex] {p};
+                    using Th = decltype(theory::theory(var));
+                    res.put<Th>(var, m.eval<Th>(ex));
+                }
+            }, p
+        );
+    }
     return res;
 }
 
 std::tuple<Bools::Expr, Renaming, Renaming> Preprocess::chain(const Bools::Expr &fst, const Bools::Expr &snd) {
-    Renaming sigma1, inverted1;
-    Renaming sigma2, inverted2;
+    Renaming sigma1;
+    Renaming sigma2;
     auto first_vars {fst->vars()};
     auto second_vars {snd->vars()};
     VarSet post_vars;
@@ -69,14 +92,13 @@ std::tuple<Bools::Expr, Renaming, Renaming> Preprocess::chain(const Bools::Expr 
     }
     for (const auto &post: post_vars) {
         const auto pre {theory::progVar(post)};
-        const auto x {Renaming::renameVar(post, sigma1, inverted1)};
+        const auto x {Renaming::renameVar(post, sigma1)};
         sigma2.insert(pre, x);
-        inverted2.insert(x, pre);
     }
     for (const auto &x: second_vars) {
         if (theory::isTempVar(x) && first_vars.contains(x)) {
-            Renaming::renameVar(x, sigma2, inverted2);
+            Renaming::renameVar(x, sigma2);
         }
     }
-    return {sigma1(fst) && sigma2(snd), inverted1, inverted2};
+    return {sigma1(fst) && sigma2(snd), sigma1.invert(), sigma2.invert()};
 }

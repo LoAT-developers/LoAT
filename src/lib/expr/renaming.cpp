@@ -205,8 +205,8 @@ inline void printImpl(const Renaming &subs, std::ostream &s, bool first = true) 
             for (const auto &[l,r]: m.left) {
                 if (!inner_first) {
                     s << ", ";
-                    inner_first = false;
                 }
+                inner_first = false;
                 s << l << "=" << r;
             }
         }
@@ -361,6 +361,24 @@ Renaming Renaming::project(const VarSet &vars) const {
     return res;
 }
 
+template<std::size_t I = 0>
+inline void invertImpl(const Renaming &s, Renaming& res) {
+    if constexpr (I < num_theories) {
+        using Th = std::tuple_element_t<I, Theories>;
+        auto &map {res.get<I>()};
+        for (const auto &[x,y]: s.get<I>()) {
+            map.insert(typename Th::Renaming::value_type(y, x));
+        }
+        invertImpl<I+1>(s, res);
+    }
+}
+
+Renaming Renaming::invert() const {
+    Renaming res;
+    invertImpl(*this, res);
+    return res;
+}
+
 Renaming Renaming::Empty {};
 
 Var Renaming::first(const Pair &p) {
@@ -382,12 +400,11 @@ std::ostream& operator<<(std::ostream &s, const Renaming &subs) {
     return s;
 }
 
-Var Renaming::renameVar(const Var &x, Renaming &sigma, Renaming &inverted) {
-    return theory::apply(x, [&sigma, &inverted](const auto &x) {
+Var Renaming::renameVar(const Var &x, Renaming &sigma) {
+    return theory::apply(x, [&](const auto &x) {
         const auto th {theory::theory(x)};
         const auto next {th.next()};
         sigma.insert<decltype(th)>(x, next);
-        inverted.insert<decltype(th)>(next, x);
         return Var(next);
     });
 }

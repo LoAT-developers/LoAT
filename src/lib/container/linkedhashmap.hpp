@@ -116,6 +116,16 @@ public:
         }
     }
 
+    void project(const std::function<bool(const S)> &p) {
+        for (auto it = begin(); it != end();) {
+            if (p(it->first)) {
+                ++it;
+            } else {
+                it = erase(it);
+            }
+        }
+    }
+
 };
 
 template <class S, class T>

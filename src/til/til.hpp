@@ -12,7 +12,7 @@
 #include "config.hpp"
 #include "chctoitsproblem.hpp"
 #include "itstosafetyproblem.hpp"
-
+#include "itscex.hpp"
 
 class Range {
     unsigned s;
@@ -117,10 +117,11 @@ private:
 public:
 
     explicit TIL(const ITSPtr its, const Config::TILConfig &config);
-    std::optional<SmtResult> setup();
+    void setup();
     std::optional<SmtResult> do_step();
     SmtResult analyze();
     ITSModel get_model();
+    ITSCex get_cex();
 
 };
 

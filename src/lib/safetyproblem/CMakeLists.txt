@@ -7,6 +7,8 @@ project(loat_safetyproblem CXX)
 add_library(${PROJECT_NAME} OBJECT
     safetyproblem.hpp
     safetyproblem.cpp
+    safetycex.hpp
+    safetycex.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

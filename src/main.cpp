@@ -286,8 +286,7 @@ int main(int argc, char *argv[]) {
         std::cout << "parsing took " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
     }
     if (Config::Analysis::log) {
-        std::cout << "Initial ITS\n"
-                  << **its << std::endl;
+        std::cout << "Initial ITS\n" << **its << std::endl;
     }
     yices::init();
     std::optional<ITSModel> its_model;
@@ -339,8 +338,12 @@ int main(int argc, char *argv[]) {
                     case Config::TILConfig::Mode::Backward: {
                         TIL til(*its, Config::til);
                         res = til.analyze();
-                        if (res == SmtResult::Sat && Config::Analysis::model) {
-                            its_model = til.get_model();
+                        if (Config::Analysis::model) {
+                            if (res == SmtResult::Sat) {
+                                its_model = til.get_model();
+                            } else if (res == SmtResult::Unsat) {
+                                its_cex = til.get_cex();
+                            }
                         }
                         break;
                     }
@@ -364,8 +367,12 @@ int main(int argc, char *argv[]) {
                             }
                             ForwardBackwardDriver fb(*its, reversed);
                             res = fb.analyze();
-                            if (res == SmtResult::Sat && Config::Analysis::model) {
-                                its_model = fb.get_model();
+                            if (Config::Analysis::model) {
+                                if (res == SmtResult::Sat) {
+                                    its_model = fb.get_model();
+                                } else if (res == SmtResult::Unsat) {
+                                    its_cex = fb.get_cex();
+                                }
                                 if (!fb.is_forward()) {
                                     chc2its = reversed_chc2its;
                                     preprocessor = backward_preprocessor;

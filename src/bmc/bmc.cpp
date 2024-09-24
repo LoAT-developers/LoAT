@@ -138,7 +138,7 @@ ITSCex BMC::get_cex() const {
     ITSCex res(its);
     const auto model {solver->model()};
     std::optional<RulePtr> last;
-    for (size_t i = 0; i <= depth; ++i) {
+    for (size_t i = 0; i <= depth + 1; ++i) {
         auto m{model.composeBackwards(renamings.at(i))};
         const auto candidates = last ? its->getSuccessors(*last) : its->getInitialTransitions();
         const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
@@ -149,6 +149,5 @@ ITSCex BMC::get_cex() const {
         }
         last = *it;
     }
-    res.add_final_state(model.composeBackwards(renamings.at(depth + 1)));
     return res;
 }

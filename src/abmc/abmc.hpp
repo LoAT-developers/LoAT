@@ -45,12 +45,13 @@ private:
     int next {0};
     DependencyGraph<Implicant> dependency_graph {};
     unsigned depth {0};
+    ITSCex cex;
 
     int get_language(unsigned i);
     Bools::Expr encode_transition(const RulePtr idx, const bool with_id = true);
     bool is_orig_clause(const RulePtr idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
-    void add_learned_clause(const RulePtr accel, const unsigned backlink);
+    void add_learned_clause(const RulePtr loop, const RulePtr accel, const unsigned backlink);
     std::pair<RulePtr, Model> build_loop(const int backlink);
     Bools::Expr build_blocking_clause(const int backlink, const Loop &loop);
     std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
@@ -63,7 +64,7 @@ public:
     explicit ABMC(ITSPtr its);
     SmtResult analyze();
     ITSModel get_model() const;
-    ITSCex get_cex() const;
+    ITSCex get_cex();
 
 };
 
