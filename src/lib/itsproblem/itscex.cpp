@@ -3,29 +3,25 @@
 
 ITSCex::ITSCex(ITSPtr its): its(its) {}
 
-bool ITSCex::is_valid_step(const Model &m) const {
-    if (states.size() != transitions.size()) {
+bool ITSCex::is_valid_step(const Model &next, const RulePtr trans) const {
+    if (states.size() != transitions.size() + 1) {
         return false;
     }
-    if (transitions.empty()) {
-        const auto &init{its->getInitialTransitions()};
-        return std::any_of(init.begin(), init.end(), [&](const auto &i) {
-            return m.eval<Bools>(i->getGuard());
-        });
-    } else {
-        const auto &up{transitions.back()->getUpdate()};
-        const auto &last{states.back()};
-        for (const auto &x : its->getVars()) {
-            if (theory::isProgVar(x) && m.get(x) != last.eval(up.get(x))) {
-                return false;
-            }
-        }
-        return true;
+    const auto m {states.back()};
+    if (!m.eval<Bools>(trans->getGuard())) {
+        return false;
     }
+    const auto &up{trans->getUpdate()};
+    for (const auto &x : its->getVars()) {
+        if (theory::isProgVar(x) && m.eval(up.get(x)) != next.get(x)) {
+            return false;
+        }
+    }
+    return true;
 }
 
-bool ITSCex::try_step(const Model &m, const RulePtr trans) {
-    if (!m.eval<Bools>(trans->getGuard()) || !is_valid_step(m)) {
+bool ITSCex::try_step(const RulePtr trans, const Model &m) {
+    if (!is_valid_step(m, trans)) {
         return false;
     }
     states.push_back(m);
@@ -33,28 +29,55 @@ bool ITSCex::try_step(const Model &m, const RulePtr trans) {
     return true;
 }
 
+void ITSCex::set_initial_state(const Model &m) {
+    assert(transitions.empty());
+    states.clear();
+    states.push_back(m);
+}
+
+bool ITSCex::try_final_transition(const RulePtr trans) {
+    assert(its->isSinkTransition(trans));
+    if (states.back().eval<Bools>(trans->getGuard())) {
+        transitions.push_back(trans);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void ITSCex::replace_state(const Model &m) {
+    assert(!states.empty());
+    states.pop_back();
+    assert(transitions.empty() || is_valid_step(m, transitions.back()));
+    states.push_back(m);
+}
+
+enum DerivedRuleKind {
+    RESOLVENT, ACCEL, IMPLICANT
+};
+
 std::ostream& operator<<(std::ostream &s, const ITSCex &cex) {
     linked_hash_set<RulePtr> done;
     std::stack<RulePtr> todo;
-    linked_hash_set<RulePtr> imp;
-    for (const auto &t: cex.transitions) {
-        todo.push(t);
+    std::vector<std::pair<RulePtr, DerivedRuleKind>> derived;
+    for (auto it = cex.transitions.rbegin(); it != cex.transitions.rend(); ++it) {
+        todo.push(*it);
     }
-    s << "input:" << std::endl;
-    s << "\tinit: " << cex.its->getLocVar() << " = " << cex.its->getInitialLocation() << std::endl;
-    s << "\terr: " << cex.its->getLocVar() << " = " << cex.its->getSink() << std::endl;
-    auto has_learned_transitions {false};
+    s << "init: " << cex.its->getLocVar() << " = " << cex.its->getInitialLocation();
+    s << "\n\nerr: " << cex.its->getLocVar() << " = " << cex.its->getSink();
+    s << "\n\nunsat core:" << std::endl;
     while (!todo.empty()) {
         const auto t {todo.top()};
         todo.pop();
         if (done.insert(t).second) {
             if (const auto loop {cex.accel.get(t)}) {
-                has_learned_transitions = true;
+                derived.emplace_back(t, ACCEL);
                 todo.push(*loop);
             } else if (const auto orig {cex.implicants.get(t)}) {
-                imp.insert(t);
+                derived.emplace_back(t, IMPLICANT);
                 todo.push(*orig);
             } else if (const auto rules {cex.resolvents.get(t)}) {
+                derived.emplace_back(t, RESOLVENT);
                 for (const auto &r: *rules) {
                     todo.push(r);
                 }
@@ -63,17 +86,22 @@ std::ostream& operator<<(std::ostream &s, const ITSCex &cex) {
             }
         }
     }
-    if (has_learned_transitions) {
+    if (!derived.empty()) {
         s << "\nderived:" << std::endl;
-        for (const auto &t : imp) {
-            s << "\t" << cex.implicants.at(t) << " implies " << *t << std::endl;
-        }
-        for (const auto &t : cex.transitions) {
-            if (const auto loop{cex.accel.get(t)}) {
-                if (const auto rules{cex.resolvents.get(*loop)}) {
-                    s << "\t" << "resolve(";
+        for (auto it = derived.rbegin(); it != derived.rend(); ++it) {
+            const auto &[t,kind] {*it};
+            s << "\t" << *t << std::endl;
+            switch (kind) {
+                case IMPLICANT:
+                    s << "\t\t-" << t << "-> is subset of -" << cex.implicants.at(t) << "->\n";
+                    break;
+                case ACCEL:
+                    s << "\t\t-" << t << "-> is subset of -" << cex.accel.at(t) << "->^+" << std::endl;
+                    break;
+                case RESOLVENT:
+                    s << "\t\t" << "resolve(";
                     auto first{true};
-                    for (const auto &r : *rules) {
+                    for (const auto &r : cex.resolvents.at(t)) {
                         if (first) {
                             s << r;
                             first = false;
@@ -81,9 +109,8 @@ std::ostream& operator<<(std::ostream &s, const ITSCex &cex) {
                             s << ", " << r;
                         }
                     }
-                    s << ") = " << **loop << std::endl;
-                }
-                s << "\t" << "accel(" << *loop << ") = " << *t << std::endl;
+                    s << ") = " << t << std::endl;
+                    break;
             }
         }
     }
@@ -112,6 +139,10 @@ void ITSCex::add_implicant(const RulePtr rule, const RulePtr imp) {
     implicants.emplace(imp, rule);
 }
 
-size_t ITSCex::size() const {
+size_t ITSCex::num_states() const {
     return states.size();
+}
+
+size_t ITSCex::num_transitions() const {
+    return transitions.size();
 }

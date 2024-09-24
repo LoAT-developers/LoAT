@@ -55,18 +55,17 @@ TIL::TIL(
             const auto pre{theory::progVar(x)};
             pre_vars.insert(pre);
             vars.insert(pre);
-            post_to_pre.insert(x, pre);
             pre_to_post.insert(pre, x);
         } else {
             if (theory::isProgVar(x)) {
                 const auto post{theory::postVar(x)};
                 pre_vars.insert(x);
-                post_to_pre.insert(post, x);
                 pre_to_post.insert(x, post);
             }
             vars.insert(x);
         }
     }
+    post_to_pre = pre_to_post.invert();
     solver->enableModels();
 }
 
@@ -725,6 +724,7 @@ ITSCex TIL::get_cex() {
             throw std::logic_error("get_cex failed");
         }
     }
+    res.set_final_state(model.composeBackwards(get_subs(depth, 1)));
     return its2safety.transform_cex(res);
 }
 

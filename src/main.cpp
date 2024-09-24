@@ -229,7 +229,7 @@ void print_result(const SmtResult res) {
             break;
         }
     }
-    std::cout << str << std::endl;
+    std::cout << str << std::endl << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -390,9 +390,9 @@ int main(int argc, char *argv[]) {
     if (its_model) {
         its_model = preprocessor->transform_model(*its_model);
         const auto chc_model{chc2its->transform_model(*its_model)};
-        std::cout << chc_model.to_smtlib().toString() << std::endl;
+        std::cout << chc_model.to_smtlib().toString() << std::endl << std::endl;
     } else if (its_cex) {
-        std::cout << *its_cex << std::endl;
+        std::cout << preprocessor->transform_cex(*its_cex) << std::endl << std::endl;
     }
     yices::exit();
 

@@ -22,6 +22,10 @@ ITSModel Preprocessor::transform_model(const ITSModel &model) const {
     return chain.transform_model(model);
 }
 
+ITSCex Preprocessor::transform_cex(const ITSCex &cex) const {
+    return chain.transform_cex(cex);
+}
+
 ITSModel Preprocessor::get_model() const {
     ITSModel model;
     model.set_invariant(its->getInitialLocation(), top());

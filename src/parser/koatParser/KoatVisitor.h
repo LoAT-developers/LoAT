@@ -29,6 +29,8 @@ public:
 
     virtual std::any visitStart(KoatParser::StartContext *context) = 0;
 
+    virtual std::any visitSink(KoatParser::SinkContext *context) = 0;
+
     virtual std::any visitVardecl(KoatParser::VardeclContext *context) = 0;
 
     virtual std::any visitTranss(KoatParser::TranssContext *context) = 0;

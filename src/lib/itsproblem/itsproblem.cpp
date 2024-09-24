@@ -17,6 +17,10 @@ void ITSProblem::setInitialLocation(LocationIdx loc) {
     initialLocation = loc;
 }
 
+void ITSProblem::setSinkLocation(LocationIdx loc) {
+    sink = loc;
+}
+
 LocationIdx ITSProblem::getSink() const {
     return sink;
 }

@@ -12,11 +12,11 @@
 class  KoatLexer : public antlr4::Lexer {
 public:
   enum {
-    COM = 1, GOAL = 2, CPX = 3, TERM = 4, START = 5, FS = 6, VAR = 7, RULES = 8, 
-    PLUS = 9, MINUS = 10, TIMES = 11, EXP = 12, LPAR = 13, RPAR = 14, RBRACK = 15, 
-    LBRACK = 16, LCURL = 17, RCURL = 18, TO = 19, COMMA = 20, AND = 21, 
-    OR = 22, LT = 23, LEQ = 24, EQ = 25, NEQ = 26, GEQ = 27, GT = 28, CONDSEP = 29, 
-    ID = 30, INT = 31, WS = 32, COMMENT = 33
+    COM = 1, GOAL = 2, CPX = 3, TERM = 4, START = 5, SINK = 6, FS = 7, VAR = 8, 
+    RULES = 9, PLUS = 10, MINUS = 11, TIMES = 12, EXP = 13, LPAR = 14, RPAR = 15, 
+    RBRACK = 16, LBRACK = 17, LCURL = 18, RCURL = 19, TO = 20, COMMA = 21, 
+    AND = 22, OR = 23, LT = 24, LEQ = 25, EQ = 26, NEQ = 27, GEQ = 28, GT = 29, 
+    CONDSEP = 30, ID = 31, INT = 32, WS = 33, COMMENT = 34
   };
 
   explicit KoatLexer(antlr4::CharStream *input);

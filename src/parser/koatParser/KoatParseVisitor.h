@@ -35,6 +35,7 @@ public:
     virtual antlrcpp::Any visitMain(KoatParser::MainContext *ctx) override;
     virtual antlrcpp::Any visitGoal(KoatParser::GoalContext *ctx) override;
     virtual antlrcpp::Any visitStart(KoatParser::StartContext *ctx) override;
+    virtual antlrcpp::Any visitSink(KoatParser::SinkContext *ctx) override;
     virtual antlrcpp::Any visitVardecl(KoatParser::VardeclContext *ctx) override;
     virtual antlrcpp::Any visitTranss(KoatParser::TranssContext *ctx) override;
     virtual antlrcpp::Any visitVar(KoatParser::VarContext *ctx) override;

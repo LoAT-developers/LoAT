@@ -24,6 +24,7 @@ public:
     LocationIdx getInitialLocation() const;
     bool isInitialLocation(LocationIdx loc) const;
     void setInitialLocation(LocationIdx loc);
+    void setSinkLocation(LocationIdx loc);
     LocationIdx getSink() const;
     std::optional<LocationIdx> getLocationIdx(const std::string &name) const;
 

@@ -119,7 +119,7 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     // or some implicant of the loop is violated
     VarSet pre_v;
     VarSet post_v;
-    for (const auto &[x, y] : post_vars) {
+    for (const auto &[x, y] : pre_to_post) {
         pre_v.insert(x);
         post_v.insert(y);
     }
@@ -256,7 +256,7 @@ Bools::Expr ABMC::encode_transition(const RulePtr idx, const bool with_id) {
     }
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
-            res.push_back(theory::mkEq(theory::toExpr(post_vars.at(x)), up.get(x)));
+            res.push_back(theory::mkEq(theory::toExpr(pre_to_post.get(x)), up.get(x)));
         }
     }
     return bools::mkAnd(res);
@@ -298,7 +298,7 @@ const Renaming &ABMC::subs_at(const unsigned i) {
     while (subs.size() <= i) {
         Renaming s, sTmp, sProg;
         for (const auto &var : vars) {
-            const auto &post_var{post_vars.at(var)};
+            const auto &post_var{pre_to_post.get(var)};
             const auto current {subs.back().get(post_var)};
             const auto next {theory::next(post_var)};
             s.insert(var, current);
@@ -321,7 +321,7 @@ const Renaming &ABMC::subs_at(const unsigned i) {
 SmtResult ABMC::analyze() {
     vars.insertAll(its->getVars());
     for (const auto &var: vars) {
-        post_vars.emplace(var, theory::next(var));
+        pre_to_post.insert(var, theory::next(var));
     }
     last_orig_clause = 0;
     for (const auto &r : its->getAllTransitions()) {
@@ -429,7 +429,7 @@ ITSModel ABMC::get_model() const {
         const auto s1{subs.at(i)};
         last = last && s1(transitions.at(i));
         Renaming s2;
-        for (const auto &[pre,post]: post_vars) {
+        for (const auto &[pre,post]: pre_to_post) {
             if (theory::isProgVar(pre)) {
                 s2.insert(s1.get(post), pre);
                 s2.insert(pre, theory::next(pre));
@@ -448,12 +448,17 @@ ITSModel ABMC::get_model() const {
 
 ITSCex ABMC::get_cex() {
     const auto model {solver->model()};
-    for (size_t i = 0; i <= depth; ++i) {
-        auto m{model.composeBackwards(subs.at(i))};
+    cex.set_initial_state(model.composeBackwards(subs.front()));
+    for (size_t i = 0; i < depth; ++i) {
+        const auto r {subs.at(i + 1)};
+        const auto current {model.composeBackwards(r)};
         const auto trans {trace.at(i).first};
-        if (!cex.try_step(m, trans)) {
+        if (!cex.try_step(trans, current)) {
             throw std::logic_error("get_cex failed");
         }
+    }
+    if (!cex.try_final_transition(trace.back().first)) {
+        throw std::logic_error("get_cex failed");
     }
     return cex;
 }

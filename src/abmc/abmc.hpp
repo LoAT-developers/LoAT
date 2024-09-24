@@ -34,7 +34,7 @@ private:
     std::vector<Bools::Expr> transitions {};
     VarSet vars {};
     Arith::Var n {ArithVar::next()};
-    std::unordered_map<Var, Var> post_vars {};
+    Renaming pre_to_post {};
     std::unordered_map<Implicant, int> lang_map {};
     std::unordered_map<std::vector<int>, std::unordered_map<Bools::Expr, std::optional<Loop>>> cache {};
     std::unordered_set<std::vector<int>> nonterm_cache {};

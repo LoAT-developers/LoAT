@@ -44,91 +44,95 @@ void koatParserInitialize() {
   assert(koatParserStaticData == nullptr);
   auto staticData = std::make_unique<KoatParserStaticData>(
     std::vector<std::string>{
-      "main", "fs", "var", "goal", "start", "vardecl", "transs", "trans", 
-      "lhs", "com", "rhs", "to", "lb", "ub", "cond", "expr", "formula", 
+      "main", "fs", "var", "goal", "start", "sink", "vardecl", "transs", 
+      "trans", "lhs", "com", "rhs", "to", "lb", "ub", "cond", "expr", "formula", 
       "lit", "relop"
     },
     std::vector<std::string>{
       "", "", "'GOAL'", "'COMPLEXITY'", "'TERMINATION'", "'STARTTERM'", 
-      "'FUNCTIONSYMBOLS'", "'VAR'", "'RULES'", "'+'", "'-'", "'*'", "", 
-      "'('", "')'", "']'", "'['", "'{'", "'}'", "'->'", "','", "", "", "'<'", 
-      "'<='", "", "'!='", "'>='", "'>'", "':|:'"
+      "'SINKTERM'", "'FUNCTIONSYMBOLS'", "'VAR'", "'RULES'", "'+'", "'-'", 
+      "'*'", "", "'('", "')'", "']'", "'['", "'{'", "'}'", "'->'", "','", 
+      "", "", "'<'", "'<='", "", "'!='", "'>='", "'>'", "':|:'"
     },
     std::vector<std::string>{
-      "", "COM", "GOAL", "CPX", "TERM", "START", "FS", "VAR", "RULES", "PLUS", 
-      "MINUS", "TIMES", "EXP", "LPAR", "RPAR", "RBRACK", "LBRACK", "LCURL", 
-      "RCURL", "TO", "COMMA", "AND", "OR", "LT", "LEQ", "EQ", "NEQ", "GEQ", 
-      "GT", "CONDSEP", "ID", "INT", "WS", "COMMENT"
+      "", "COM", "GOAL", "CPX", "TERM", "START", "SINK", "FS", "VAR", "RULES", 
+      "PLUS", "MINUS", "TIMES", "EXP", "LPAR", "RPAR", "RBRACK", "LBRACK", 
+      "LCURL", "RCURL", "TO", "COMMA", "AND", "OR", "LT", "LEQ", "EQ", "NEQ", 
+      "GEQ", "GT", "CONDSEP", "ID", "INT", "WS", "COMMENT"
     }
   );
   static const int32_t serializedATNSegment[] = {
-  	4,1,33,214,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,
+  	4,1,34,227,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,
   	7,7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,
-  	14,2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,1,0,3,0,40,8,0,1,0,1,0,1,0,
-  	1,0,1,1,1,1,1,2,1,2,1,3,1,3,1,3,1,3,1,3,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,
-  	4,1,5,1,5,1,5,4,5,66,8,5,11,5,12,5,67,1,5,1,5,1,6,1,6,1,6,5,6,75,8,6,
-  	10,6,12,6,78,9,6,1,6,1,6,1,7,1,7,1,7,1,7,3,7,86,8,7,1,8,1,8,1,8,1,8,1,
-  	8,5,8,93,8,8,10,8,12,8,96,9,8,3,8,98,8,8,1,8,1,8,1,9,1,9,1,9,1,9,1,9,
-  	5,9,107,8,9,10,9,12,9,110,9,9,3,9,112,8,9,1,9,1,9,3,9,116,8,9,1,10,1,
-  	10,1,10,1,10,1,10,5,10,123,8,10,10,10,12,10,126,9,10,3,10,128,8,10,1,
-  	10,1,10,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,
-  	11,1,11,1,11,3,11,147,8,11,1,12,1,12,1,13,1,13,1,14,1,14,1,14,1,14,1,
-  	14,1,14,3,14,159,8,14,1,15,1,15,1,15,1,15,1,15,1,15,1,15,1,15,1,15,3,
-  	15,170,8,15,1,15,1,15,1,15,1,15,1,15,1,15,1,15,1,15,1,15,1,15,1,15,1,
-  	15,5,15,184,8,15,10,15,12,15,187,9,15,1,16,1,16,1,16,1,16,1,16,1,16,3,
-  	16,195,8,16,1,16,1,16,1,16,1,16,1,16,1,16,5,16,203,8,16,10,16,12,16,206,
-  	9,16,1,17,1,17,1,17,1,17,1,18,1,18,1,18,0,2,30,32,19,0,2,4,6,8,10,12,
-  	14,16,18,20,22,24,26,28,30,32,34,36,0,2,1,0,3,4,1,0,23,28,218,0,39,1,
-  	0,0,0,2,45,1,0,0,0,4,47,1,0,0,0,6,49,1,0,0,0,8,54,1,0,0,0,10,62,1,0,0,
-  	0,12,71,1,0,0,0,14,81,1,0,0,0,16,87,1,0,0,0,18,115,1,0,0,0,20,117,1,0,
-  	0,0,22,146,1,0,0,0,24,148,1,0,0,0,26,150,1,0,0,0,28,158,1,0,0,0,30,169,
-  	1,0,0,0,32,194,1,0,0,0,34,207,1,0,0,0,36,211,1,0,0,0,38,40,3,6,3,0,39,
-  	38,1,0,0,0,39,40,1,0,0,0,40,41,1,0,0,0,41,42,3,8,4,0,42,43,3,10,5,0,43,
-  	44,3,12,6,0,44,1,1,0,0,0,45,46,5,30,0,0,46,3,1,0,0,0,47,48,5,30,0,0,48,
-  	5,1,0,0,0,49,50,5,13,0,0,50,51,5,2,0,0,51,52,7,0,0,0,52,53,5,14,0,0,53,
-  	7,1,0,0,0,54,55,5,13,0,0,55,56,5,5,0,0,56,57,5,13,0,0,57,58,5,6,0,0,58,
-  	59,3,2,1,0,59,60,5,14,0,0,60,61,5,14,0,0,61,9,1,0,0,0,62,63,5,13,0,0,
-  	63,65,5,7,0,0,64,66,5,30,0,0,65,64,1,0,0,0,66,67,1,0,0,0,67,65,1,0,0,
-  	0,67,68,1,0,0,0,68,69,1,0,0,0,69,70,5,14,0,0,70,11,1,0,0,0,71,72,5,13,
-  	0,0,72,76,5,8,0,0,73,75,3,14,7,0,74,73,1,0,0,0,75,78,1,0,0,0,76,74,1,
-  	0,0,0,76,77,1,0,0,0,77,79,1,0,0,0,78,76,1,0,0,0,79,80,5,14,0,0,80,13,
-  	1,0,0,0,81,82,3,16,8,0,82,83,3,22,11,0,83,85,3,18,9,0,84,86,3,28,14,0,
-  	85,84,1,0,0,0,85,86,1,0,0,0,86,15,1,0,0,0,87,88,3,2,1,0,88,97,5,13,0,
-  	0,89,94,3,4,2,0,90,91,5,20,0,0,91,93,3,4,2,0,92,90,1,0,0,0,93,96,1,0,
-  	0,0,94,92,1,0,0,0,94,95,1,0,0,0,95,98,1,0,0,0,96,94,1,0,0,0,97,89,1,0,
-  	0,0,97,98,1,0,0,0,98,99,1,0,0,0,99,100,5,14,0,0,100,17,1,0,0,0,101,102,
-  	5,1,0,0,102,111,5,13,0,0,103,108,3,20,10,0,104,105,5,20,0,0,105,107,3,
-  	20,10,0,106,104,1,0,0,0,107,110,1,0,0,0,108,106,1,0,0,0,108,109,1,0,0,
-  	0,109,112,1,0,0,0,110,108,1,0,0,0,111,103,1,0,0,0,111,112,1,0,0,0,112,
-  	113,1,0,0,0,113,116,5,14,0,0,114,116,3,20,10,0,115,101,1,0,0,0,115,114,
-  	1,0,0,0,116,19,1,0,0,0,117,118,3,2,1,0,118,127,5,13,0,0,119,124,3,30,
-  	15,0,120,121,5,20,0,0,121,123,3,30,15,0,122,120,1,0,0,0,123,126,1,0,0,
-  	0,124,122,1,0,0,0,124,125,1,0,0,0,125,128,1,0,0,0,126,124,1,0,0,0,127,
-  	119,1,0,0,0,127,128,1,0,0,0,128,129,1,0,0,0,129,130,5,14,0,0,130,21,1,
-  	0,0,0,131,147,5,19,0,0,132,133,5,10,0,0,133,134,5,17,0,0,134,135,3,24,
-  	12,0,135,136,5,20,0,0,136,137,3,26,13,0,137,138,5,18,0,0,138,139,5,28,
-  	0,0,139,147,1,0,0,0,140,141,5,10,0,0,141,142,5,17,0,0,142,143,3,24,12,
-  	0,143,144,5,18,0,0,144,145,5,28,0,0,145,147,1,0,0,0,146,131,1,0,0,0,146,
-  	132,1,0,0,0,146,140,1,0,0,0,147,23,1,0,0,0,148,149,3,30,15,0,149,25,1,
-  	0,0,0,150,151,3,30,15,0,151,27,1,0,0,0,152,153,5,29,0,0,153,159,3,32,
-  	16,0,154,155,5,16,0,0,155,156,3,32,16,0,156,157,5,15,0,0,157,159,1,0,
-  	0,0,158,152,1,0,0,0,158,154,1,0,0,0,159,29,1,0,0,0,160,161,6,15,-1,0,
-  	161,162,5,13,0,0,162,163,3,30,15,0,163,164,5,14,0,0,164,170,1,0,0,0,165,
-  	166,5,10,0,0,166,170,3,30,15,7,167,170,3,4,2,0,168,170,5,31,0,0,169,160,
-  	1,0,0,0,169,165,1,0,0,0,169,167,1,0,0,0,169,168,1,0,0,0,170,185,1,0,0,
-  	0,171,172,10,6,0,0,172,173,5,12,0,0,173,184,3,30,15,7,174,175,10,5,0,
-  	0,175,176,5,11,0,0,176,184,3,30,15,6,177,178,10,4,0,0,178,179,5,9,0,0,
-  	179,184,3,30,15,5,180,181,10,3,0,0,181,182,5,10,0,0,182,184,3,30,15,4,
-  	183,171,1,0,0,0,183,174,1,0,0,0,183,177,1,0,0,0,183,180,1,0,0,0,184,187,
-  	1,0,0,0,185,183,1,0,0,0,185,186,1,0,0,0,186,31,1,0,0,0,187,185,1,0,0,
-  	0,188,189,6,16,-1,0,189,190,5,13,0,0,190,191,3,32,16,0,191,192,5,14,0,
-  	0,192,195,1,0,0,0,193,195,3,34,17,0,194,188,1,0,0,0,194,193,1,0,0,0,195,
-  	204,1,0,0,0,196,197,10,3,0,0,197,198,5,21,0,0,198,203,3,32,16,4,199,200,
-  	10,2,0,0,200,201,5,22,0,0,201,203,3,32,16,3,202,196,1,0,0,0,202,199,1,
-  	0,0,0,203,206,1,0,0,0,204,202,1,0,0,0,204,205,1,0,0,0,205,33,1,0,0,0,
-  	206,204,1,0,0,0,207,208,3,30,15,0,208,209,3,36,18,0,209,210,3,30,15,0,
-  	210,35,1,0,0,0,211,212,7,1,0,0,212,37,1,0,0,0,19,39,67,76,85,94,97,108,
-  	111,115,124,127,146,158,169,183,185,194,202,204
+  	14,2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,1,0,3,0,42,8,0,1,
+  	0,1,0,3,0,46,8,0,1,0,1,0,1,0,1,1,1,1,1,2,1,2,1,3,1,3,1,3,1,3,1,3,1,4,
+  	1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,5,1,5,1,5,1,5,1,5,1,5,1,5,1,5,1,6,1,6,1,
+  	6,4,6,79,8,6,11,6,12,6,80,1,6,1,6,1,7,1,7,1,7,5,7,88,8,7,10,7,12,7,91,
+  	9,7,1,7,1,7,1,8,1,8,1,8,1,8,3,8,99,8,8,1,9,1,9,1,9,1,9,1,9,5,9,106,8,
+  	9,10,9,12,9,109,9,9,3,9,111,8,9,1,9,1,9,1,10,1,10,1,10,1,10,1,10,5,10,
+  	120,8,10,10,10,12,10,123,9,10,3,10,125,8,10,1,10,1,10,3,10,129,8,10,1,
+  	11,1,11,1,11,1,11,1,11,5,11,136,8,11,10,11,12,11,139,9,11,3,11,141,8,
+  	11,1,11,1,11,1,12,1,12,1,12,1,12,1,12,1,12,1,12,1,12,1,12,1,12,1,12,1,
+  	12,1,12,1,12,1,12,3,12,160,8,12,1,13,1,13,1,14,1,14,1,15,1,15,1,15,1,
+  	15,1,15,1,15,3,15,172,8,15,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,
+  	16,3,16,183,8,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,
+  	16,1,16,5,16,197,8,16,10,16,12,16,200,9,16,1,17,1,17,1,17,1,17,1,17,1,
+  	17,3,17,208,8,17,1,17,1,17,1,17,1,17,1,17,1,17,5,17,216,8,17,10,17,12,
+  	17,219,9,17,1,18,1,18,1,18,1,18,1,19,1,19,1,19,0,2,32,34,20,0,2,4,6,8,
+  	10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,0,2,1,0,3,4,1,0,24,29,231,
+  	0,41,1,0,0,0,2,50,1,0,0,0,4,52,1,0,0,0,6,54,1,0,0,0,8,59,1,0,0,0,10,67,
+  	1,0,0,0,12,75,1,0,0,0,14,84,1,0,0,0,16,94,1,0,0,0,18,100,1,0,0,0,20,128,
+  	1,0,0,0,22,130,1,0,0,0,24,159,1,0,0,0,26,161,1,0,0,0,28,163,1,0,0,0,30,
+  	171,1,0,0,0,32,182,1,0,0,0,34,207,1,0,0,0,36,220,1,0,0,0,38,224,1,0,0,
+  	0,40,42,3,6,3,0,41,40,1,0,0,0,41,42,1,0,0,0,42,43,1,0,0,0,43,45,3,8,4,
+  	0,44,46,3,10,5,0,45,44,1,0,0,0,45,46,1,0,0,0,46,47,1,0,0,0,47,48,3,12,
+  	6,0,48,49,3,14,7,0,49,1,1,0,0,0,50,51,5,31,0,0,51,3,1,0,0,0,52,53,5,31,
+  	0,0,53,5,1,0,0,0,54,55,5,14,0,0,55,56,5,2,0,0,56,57,7,0,0,0,57,58,5,15,
+  	0,0,58,7,1,0,0,0,59,60,5,14,0,0,60,61,5,5,0,0,61,62,5,14,0,0,62,63,5,
+  	7,0,0,63,64,3,2,1,0,64,65,5,15,0,0,65,66,5,15,0,0,66,9,1,0,0,0,67,68,
+  	5,14,0,0,68,69,5,6,0,0,69,70,5,14,0,0,70,71,5,7,0,0,71,72,3,2,1,0,72,
+  	73,5,15,0,0,73,74,5,15,0,0,74,11,1,0,0,0,75,76,5,14,0,0,76,78,5,8,0,0,
+  	77,79,5,31,0,0,78,77,1,0,0,0,79,80,1,0,0,0,80,78,1,0,0,0,80,81,1,0,0,
+  	0,81,82,1,0,0,0,82,83,5,15,0,0,83,13,1,0,0,0,84,85,5,14,0,0,85,89,5,9,
+  	0,0,86,88,3,16,8,0,87,86,1,0,0,0,88,91,1,0,0,0,89,87,1,0,0,0,89,90,1,
+  	0,0,0,90,92,1,0,0,0,91,89,1,0,0,0,92,93,5,15,0,0,93,15,1,0,0,0,94,95,
+  	3,18,9,0,95,96,3,24,12,0,96,98,3,20,10,0,97,99,3,30,15,0,98,97,1,0,0,
+  	0,98,99,1,0,0,0,99,17,1,0,0,0,100,101,3,2,1,0,101,110,5,14,0,0,102,107,
+  	3,4,2,0,103,104,5,21,0,0,104,106,3,4,2,0,105,103,1,0,0,0,106,109,1,0,
+  	0,0,107,105,1,0,0,0,107,108,1,0,0,0,108,111,1,0,0,0,109,107,1,0,0,0,110,
+  	102,1,0,0,0,110,111,1,0,0,0,111,112,1,0,0,0,112,113,5,15,0,0,113,19,1,
+  	0,0,0,114,115,5,1,0,0,115,124,5,14,0,0,116,121,3,22,11,0,117,118,5,21,
+  	0,0,118,120,3,22,11,0,119,117,1,0,0,0,120,123,1,0,0,0,121,119,1,0,0,0,
+  	121,122,1,0,0,0,122,125,1,0,0,0,123,121,1,0,0,0,124,116,1,0,0,0,124,125,
+  	1,0,0,0,125,126,1,0,0,0,126,129,5,15,0,0,127,129,3,22,11,0,128,114,1,
+  	0,0,0,128,127,1,0,0,0,129,21,1,0,0,0,130,131,3,2,1,0,131,140,5,14,0,0,
+  	132,137,3,32,16,0,133,134,5,21,0,0,134,136,3,32,16,0,135,133,1,0,0,0,
+  	136,139,1,0,0,0,137,135,1,0,0,0,137,138,1,0,0,0,138,141,1,0,0,0,139,137,
+  	1,0,0,0,140,132,1,0,0,0,140,141,1,0,0,0,141,142,1,0,0,0,142,143,5,15,
+  	0,0,143,23,1,0,0,0,144,160,5,20,0,0,145,146,5,11,0,0,146,147,5,18,0,0,
+  	147,148,3,26,13,0,148,149,5,21,0,0,149,150,3,28,14,0,150,151,5,19,0,0,
+  	151,152,5,29,0,0,152,160,1,0,0,0,153,154,5,11,0,0,154,155,5,18,0,0,155,
+  	156,3,26,13,0,156,157,5,19,0,0,157,158,5,29,0,0,158,160,1,0,0,0,159,144,
+  	1,0,0,0,159,145,1,0,0,0,159,153,1,0,0,0,160,25,1,0,0,0,161,162,3,32,16,
+  	0,162,27,1,0,0,0,163,164,3,32,16,0,164,29,1,0,0,0,165,166,5,30,0,0,166,
+  	172,3,34,17,0,167,168,5,17,0,0,168,169,3,34,17,0,169,170,5,16,0,0,170,
+  	172,1,0,0,0,171,165,1,0,0,0,171,167,1,0,0,0,172,31,1,0,0,0,173,174,6,
+  	16,-1,0,174,175,5,14,0,0,175,176,3,32,16,0,176,177,5,15,0,0,177,183,1,
+  	0,0,0,178,179,5,11,0,0,179,183,3,32,16,7,180,183,3,4,2,0,181,183,5,32,
+  	0,0,182,173,1,0,0,0,182,178,1,0,0,0,182,180,1,0,0,0,182,181,1,0,0,0,183,
+  	198,1,0,0,0,184,185,10,6,0,0,185,186,5,13,0,0,186,197,3,32,16,7,187,188,
+  	10,5,0,0,188,189,5,12,0,0,189,197,3,32,16,6,190,191,10,4,0,0,191,192,
+  	5,10,0,0,192,197,3,32,16,5,193,194,10,3,0,0,194,195,5,11,0,0,195,197,
+  	3,32,16,4,196,184,1,0,0,0,196,187,1,0,0,0,196,190,1,0,0,0,196,193,1,0,
+  	0,0,197,200,1,0,0,0,198,196,1,0,0,0,198,199,1,0,0,0,199,33,1,0,0,0,200,
+  	198,1,0,0,0,201,202,6,17,-1,0,202,203,5,14,0,0,203,204,3,34,17,0,204,
+  	205,5,15,0,0,205,208,1,0,0,0,206,208,3,36,18,0,207,201,1,0,0,0,207,206,
+  	1,0,0,0,208,217,1,0,0,0,209,210,10,3,0,0,210,211,5,22,0,0,211,216,3,34,
+  	17,4,212,213,10,2,0,0,213,214,5,23,0,0,214,216,3,34,17,3,215,209,1,0,
+  	0,0,215,212,1,0,0,0,216,219,1,0,0,0,217,215,1,0,0,0,217,218,1,0,0,0,218,
+  	35,1,0,0,0,219,217,1,0,0,0,220,221,3,32,16,0,221,222,3,38,19,0,222,223,
+  	3,32,16,0,223,37,1,0,0,0,224,225,7,1,0,0,225,39,1,0,0,0,20,41,45,80,89,
+  	98,107,110,121,124,128,137,140,159,171,182,196,198,207,215,217
   };
   staticData->serializedATN = antlr4::atn::SerializedATNView(serializedATNSegment, sizeof(serializedATNSegment) / sizeof(serializedATNSegment[0]));
 
@@ -199,6 +203,10 @@ KoatParser::GoalContext* KoatParser::MainContext::goal() {
   return getRuleContext<KoatParser::GoalContext>(0);
 }
 
+KoatParser::SinkContext* KoatParser::MainContext::sink() {
+  return getRuleContext<KoatParser::SinkContext>(0);
+}
+
 
 size_t KoatParser::MainContext::getRuleIndex() const {
   return KoatParser::RuleMain;
@@ -237,12 +245,12 @@ KoatParser::MainContext* KoatParser::main() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(39);
+    setState(41);
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 0, _ctx)) {
     case 1: {
-      setState(38);
+      setState(40);
       goal();
       break;
     }
@@ -250,11 +258,24 @@ KoatParser::MainContext* KoatParser::main() {
     default:
       break;
     }
-    setState(41);
-    start();
-    setState(42);
-    vardecl();
     setState(43);
+    start();
+    setState(45);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 1, _ctx)) {
+    case 1: {
+      setState(44);
+      sink();
+      break;
+    }
+
+    default:
+      break;
+    }
+    setState(47);
+    vardecl();
+    setState(48);
     transs();
    
   }
@@ -315,7 +336,7 @@ KoatParser::FsContext* KoatParser::fs() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(45);
+    setState(50);
     match(KoatParser::ID);
    
   }
@@ -376,7 +397,7 @@ KoatParser::VarContext* KoatParser::var() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(47);
+    setState(52);
     match(KoatParser::ID);
    
   }
@@ -454,11 +475,11 @@ KoatParser::GoalContext* KoatParser::goal() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(49);
+    setState(54);
     match(KoatParser::LPAR);
-    setState(50);
+    setState(55);
     match(KoatParser::GOAL);
-    setState(51);
+    setState(56);
     _la = _input->LA(1);
     if (!(_la == KoatParser::CPX
 
@@ -469,7 +490,7 @@ KoatParser::GoalContext* KoatParser::goal() {
       _errHandler->reportMatch(this);
       consume();
     }
-    setState(52);
+    setState(57);
     match(KoatParser::RPAR);
    
   }
@@ -554,19 +575,116 @@ KoatParser::StartContext* KoatParser::start() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(54);
-    match(KoatParser::LPAR);
-    setState(55);
-    match(KoatParser::START);
-    setState(56);
-    match(KoatParser::LPAR);
-    setState(57);
-    match(KoatParser::FS);
-    setState(58);
-    fs();
     setState(59);
-    match(KoatParser::RPAR);
+    match(KoatParser::LPAR);
     setState(60);
+    match(KoatParser::START);
+    setState(61);
+    match(KoatParser::LPAR);
+    setState(62);
+    match(KoatParser::FS);
+    setState(63);
+    fs();
+    setState(64);
+    match(KoatParser::RPAR);
+    setState(65);
+    match(KoatParser::RPAR);
+   
+  }
+  catch (RecognitionException &e) {
+    _errHandler->reportError(this, e);
+    _localctx->exception = std::current_exception();
+    _errHandler->recover(this, _localctx->exception);
+  }
+
+  return _localctx;
+}
+
+//----------------- SinkContext ------------------------------------------------------------------
+
+KoatParser::SinkContext::SinkContext(ParserRuleContext *parent, size_t invokingState)
+  : ParserRuleContext(parent, invokingState) {
+}
+
+std::vector<tree::TerminalNode *> KoatParser::SinkContext::LPAR() {
+  return getTokens(KoatParser::LPAR);
+}
+
+tree::TerminalNode* KoatParser::SinkContext::LPAR(size_t i) {
+  return getToken(KoatParser::LPAR, i);
+}
+
+tree::TerminalNode* KoatParser::SinkContext::SINK() {
+  return getToken(KoatParser::SINK, 0);
+}
+
+tree::TerminalNode* KoatParser::SinkContext::FS() {
+  return getToken(KoatParser::FS, 0);
+}
+
+KoatParser::FsContext* KoatParser::SinkContext::fs() {
+  return getRuleContext<KoatParser::FsContext>(0);
+}
+
+std::vector<tree::TerminalNode *> KoatParser::SinkContext::RPAR() {
+  return getTokens(KoatParser::RPAR);
+}
+
+tree::TerminalNode* KoatParser::SinkContext::RPAR(size_t i) {
+  return getToken(KoatParser::RPAR, i);
+}
+
+
+size_t KoatParser::SinkContext::getRuleIndex() const {
+  return KoatParser::RuleSink;
+}
+
+void KoatParser::SinkContext::enterRule(tree::ParseTreeListener *listener) {
+  auto parserListener = dynamic_cast<KoatListener *>(listener);
+  if (parserListener != nullptr)
+    parserListener->enterSink(this);
+}
+
+void KoatParser::SinkContext::exitRule(tree::ParseTreeListener *listener) {
+  auto parserListener = dynamic_cast<KoatListener *>(listener);
+  if (parserListener != nullptr)
+    parserListener->exitSink(this);
+}
+
+
+std::any KoatParser::SinkContext::accept(tree::ParseTreeVisitor *visitor) {
+  if (auto parserVisitor = dynamic_cast<KoatVisitor*>(visitor))
+    return parserVisitor->visitSink(this);
+  else
+    return visitor->visitChildren(this);
+}
+
+KoatParser::SinkContext* KoatParser::sink() {
+  SinkContext *_localctx = _tracker.createInstance<SinkContext>(_ctx, getState());
+  enterRule(_localctx, 10, KoatParser::RuleSink);
+
+#if __cplusplus > 201703L
+  auto onExit = finally([=, this] {
+#else
+  auto onExit = finally([=] {
+#endif
+    exitRule();
+  });
+  try {
+    enterOuterAlt(_localctx, 1);
+    setState(67);
+    match(KoatParser::LPAR);
+    setState(68);
+    match(KoatParser::SINK);
+    setState(69);
+    match(KoatParser::LPAR);
+    setState(70);
+    match(KoatParser::FS);
+    setState(71);
+    fs();
+    setState(72);
+    match(KoatParser::RPAR);
+    setState(73);
     match(KoatParser::RPAR);
    
   }
@@ -632,7 +750,7 @@ std::any KoatParser::VardeclContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::VardeclContext* KoatParser::vardecl() {
   VardeclContext *_localctx = _tracker.createInstance<VardeclContext>(_ctx, getState());
-  enterRule(_localctx, 10, KoatParser::RuleVardecl);
+  enterRule(_localctx, 12, KoatParser::RuleVardecl);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -644,21 +762,21 @@ KoatParser::VardeclContext* KoatParser::vardecl() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(62);
+    setState(75);
     match(KoatParser::LPAR);
-    setState(63);
+    setState(76);
     match(KoatParser::VAR);
-    setState(65); 
+    setState(78); 
     _errHandler->sync(this);
     _la = _input->LA(1);
     do {
-      setState(64);
+      setState(77);
       match(KoatParser::ID);
-      setState(67); 
+      setState(80); 
       _errHandler->sync(this);
       _la = _input->LA(1);
     } while (_la == KoatParser::ID);
-    setState(69);
+    setState(82);
     match(KoatParser::RPAR);
    
   }
@@ -724,7 +842,7 @@ std::any KoatParser::TranssContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::TranssContext* KoatParser::transs() {
   TranssContext *_localctx = _tracker.createInstance<TranssContext>(_ctx, getState());
-  enterRule(_localctx, 12, KoatParser::RuleTranss);
+  enterRule(_localctx, 14, KoatParser::RuleTranss);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -736,21 +854,21 @@ KoatParser::TranssContext* KoatParser::transs() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(71);
+    setState(84);
     match(KoatParser::LPAR);
-    setState(72);
+    setState(85);
     match(KoatParser::RULES);
-    setState(76);
+    setState(89);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == KoatParser::ID) {
-      setState(73);
+      setState(86);
       trans();
-      setState(78);
+      setState(91);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-    setState(79);
+    setState(92);
     match(KoatParser::RPAR);
    
   }
@@ -812,7 +930,7 @@ std::any KoatParser::TransContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::TransContext* KoatParser::trans() {
   TransContext *_localctx = _tracker.createInstance<TransContext>(_ctx, getState());
-  enterRule(_localctx, 14, KoatParser::RuleTrans);
+  enterRule(_localctx, 16, KoatParser::RuleTrans);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -824,20 +942,20 @@ KoatParser::TransContext* KoatParser::trans() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(81);
+    setState(94);
     lhs();
-    setState(82);
+    setState(95);
     to();
-    setState(83);
+    setState(96);
     com();
-    setState(85);
+    setState(98);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == KoatParser::LBRACK
 
     || _la == KoatParser::CONDSEP) {
-      setState(84);
+      setState(97);
       cond();
     }
    
@@ -912,7 +1030,7 @@ std::any KoatParser::LhsContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::LhsContext* KoatParser::lhs() {
   LhsContext *_localctx = _tracker.createInstance<LhsContext>(_ctx, getState());
-  enterRule(_localctx, 16, KoatParser::RuleLhs);
+  enterRule(_localctx, 18, KoatParser::RuleLhs);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -924,31 +1042,31 @@ KoatParser::LhsContext* KoatParser::lhs() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(87);
+    setState(100);
     fs();
-    setState(88);
+    setState(101);
     match(KoatParser::LPAR);
-    setState(97);
+    setState(110);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == KoatParser::ID) {
-      setState(89);
+      setState(102);
       var();
-      setState(94);
+      setState(107);
       _errHandler->sync(this);
       _la = _input->LA(1);
       while (_la == KoatParser::COMMA) {
-        setState(90);
+        setState(103);
         match(KoatParser::COMMA);
-        setState(91);
+        setState(104);
         var();
-        setState(96);
+        setState(109);
         _errHandler->sync(this);
         _la = _input->LA(1);
       }
     }
-    setState(99);
+    setState(112);
     match(KoatParser::RPAR);
    
   }
@@ -1022,7 +1140,7 @@ std::any KoatParser::ComContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::ComContext* KoatParser::com() {
   ComContext *_localctx = _tracker.createInstance<ComContext>(_ctx, getState());
-  enterRule(_localctx, 18, KoatParser::RuleCom);
+  enterRule(_localctx, 20, KoatParser::RuleCom);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -1033,43 +1151,43 @@ KoatParser::ComContext* KoatParser::com() {
     exitRule();
   });
   try {
-    setState(115);
+    setState(128);
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case KoatParser::COM: {
         enterOuterAlt(_localctx, 1);
-        setState(101);
+        setState(114);
         match(KoatParser::COM);
-        setState(102);
+        setState(115);
         match(KoatParser::LPAR);
-        setState(111);
+        setState(124);
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == KoatParser::ID) {
-          setState(103);
+          setState(116);
           rhs();
-          setState(108);
+          setState(121);
           _errHandler->sync(this);
           _la = _input->LA(1);
           while (_la == KoatParser::COMMA) {
-            setState(104);
+            setState(117);
             match(KoatParser::COMMA);
-            setState(105);
+            setState(118);
             rhs();
-            setState(110);
+            setState(123);
             _errHandler->sync(this);
             _la = _input->LA(1);
           }
         }
-        setState(113);
+        setState(126);
         match(KoatParser::RPAR);
         break;
       }
 
       case KoatParser::ID: {
         enterOuterAlt(_localctx, 2);
-        setState(114);
+        setState(127);
         rhs();
         break;
       }
@@ -1149,7 +1267,7 @@ std::any KoatParser::RhsContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::RhsContext* KoatParser::rhs() {
   RhsContext *_localctx = _tracker.createInstance<RhsContext>(_ctx, getState());
-  enterRule(_localctx, 20, KoatParser::RuleRhs);
+  enterRule(_localctx, 22, KoatParser::RuleRhs);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -1161,32 +1279,32 @@ KoatParser::RhsContext* KoatParser::rhs() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(117);
+    setState(130);
     fs();
-    setState(118);
+    setState(131);
     match(KoatParser::LPAR);
-    setState(127);
+    setState(140);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (((_la & ~ 0x3fULL) == 0) &&
-      ((1ULL << _la) & 3221234688) != 0) {
-      setState(119);
+      ((1ULL << _la) & 6442469376) != 0) {
+      setState(132);
       expr(0);
-      setState(124);
+      setState(137);
       _errHandler->sync(this);
       _la = _input->LA(1);
       while (_la == KoatParser::COMMA) {
-        setState(120);
+        setState(133);
         match(KoatParser::COMMA);
-        setState(121);
+        setState(134);
         expr(0);
-        setState(126);
+        setState(139);
         _errHandler->sync(this);
         _la = _input->LA(1);
       }
     }
-    setState(129);
+    setState(142);
     match(KoatParser::RPAR);
    
   }
@@ -1264,7 +1382,7 @@ std::any KoatParser::ToContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::ToContext* KoatParser::to() {
   ToContext *_localctx = _tracker.createInstance<ToContext>(_ctx, getState());
-  enterRule(_localctx, 22, KoatParser::RuleTo);
+  enterRule(_localctx, 24, KoatParser::RuleTo);
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -1274,46 +1392,46 @@ KoatParser::ToContext* KoatParser::to() {
     exitRule();
   });
   try {
-    setState(146);
+    setState(159);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 11, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 12, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
-      setState(131);
+      setState(144);
       match(KoatParser::TO);
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
-      setState(132);
+      setState(145);
       match(KoatParser::MINUS);
-      setState(133);
+      setState(146);
       match(KoatParser::LCURL);
-      setState(134);
+      setState(147);
       lb();
-      setState(135);
+      setState(148);
       match(KoatParser::COMMA);
-      setState(136);
+      setState(149);
       ub();
-      setState(137);
+      setState(150);
       match(KoatParser::RCURL);
-      setState(138);
+      setState(151);
       match(KoatParser::GT);
       break;
     }
 
     case 3: {
       enterOuterAlt(_localctx, 3);
-      setState(140);
+      setState(153);
       match(KoatParser::MINUS);
-      setState(141);
+      setState(154);
       match(KoatParser::LCURL);
-      setState(142);
+      setState(155);
       lb();
-      setState(143);
+      setState(156);
       match(KoatParser::RCURL);
-      setState(144);
+      setState(157);
       match(KoatParser::GT);
       break;
     }
@@ -1369,7 +1487,7 @@ std::any KoatParser::LbContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::LbContext* KoatParser::lb() {
   LbContext *_localctx = _tracker.createInstance<LbContext>(_ctx, getState());
-  enterRule(_localctx, 24, KoatParser::RuleLb);
+  enterRule(_localctx, 26, KoatParser::RuleLb);
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -1380,7 +1498,7 @@ KoatParser::LbContext* KoatParser::lb() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(148);
+    setState(161);
     expr(0);
    
   }
@@ -1430,7 +1548,7 @@ std::any KoatParser::UbContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::UbContext* KoatParser::ub() {
   UbContext *_localctx = _tracker.createInstance<UbContext>(_ctx, getState());
-  enterRule(_localctx, 26, KoatParser::RuleUb);
+  enterRule(_localctx, 28, KoatParser::RuleUb);
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -1441,7 +1559,7 @@ KoatParser::UbContext* KoatParser::ub() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(150);
+    setState(163);
     expr(0);
    
   }
@@ -1503,7 +1621,7 @@ std::any KoatParser::CondContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::CondContext* KoatParser::cond() {
   CondContext *_localctx = _tracker.createInstance<CondContext>(_ctx, getState());
-  enterRule(_localctx, 28, KoatParser::RuleCond);
+  enterRule(_localctx, 30, KoatParser::RuleCond);
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -1513,25 +1631,25 @@ KoatParser::CondContext* KoatParser::cond() {
     exitRule();
   });
   try {
-    setState(158);
+    setState(171);
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case KoatParser::CONDSEP: {
         enterOuterAlt(_localctx, 1);
-        setState(152);
+        setState(165);
         match(KoatParser::CONDSEP);
-        setState(153);
+        setState(166);
         formula(0);
         break;
       }
 
       case KoatParser::LBRACK: {
         enterOuterAlt(_localctx, 2);
-        setState(154);
+        setState(167);
         match(KoatParser::LBRACK);
-        setState(155);
+        setState(168);
         formula(0);
-        setState(156);
+        setState(169);
         match(KoatParser::RBRACK);
         break;
       }
@@ -1632,8 +1750,8 @@ KoatParser::ExprContext* KoatParser::expr(int precedence) {
   KoatParser::ExprContext *_localctx = _tracker.createInstance<ExprContext>(_ctx, parentState);
   KoatParser::ExprContext *previousContext = _localctx;
   (void)previousContext; // Silence compiler, in case the context is not used by generated code.
-  size_t startState = 30;
-  enterRecursionRule(_localctx, 30, KoatParser::RuleExpr, precedence);
+  size_t startState = 32;
+  enterRecursionRule(_localctx, 32, KoatParser::RuleExpr, precedence);
 
     
 
@@ -1647,35 +1765,35 @@ KoatParser::ExprContext* KoatParser::expr(int precedence) {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
-    setState(169);
+    setState(182);
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case KoatParser::LPAR: {
-        setState(161);
+        setState(174);
         match(KoatParser::LPAR);
-        setState(162);
+        setState(175);
         expr(0);
-        setState(163);
+        setState(176);
         match(KoatParser::RPAR);
         break;
       }
 
       case KoatParser::MINUS: {
-        setState(165);
+        setState(178);
         match(KoatParser::MINUS);
-        setState(166);
+        setState(179);
         expr(7);
         break;
       }
 
       case KoatParser::ID: {
-        setState(167);
+        setState(180);
         var();
         break;
       }
 
       case KoatParser::INT: {
-        setState(168);
+        setState(181);
         match(KoatParser::INT);
         break;
       }
@@ -1684,26 +1802,26 @@ KoatParser::ExprContext* KoatParser::expr(int precedence) {
       throw NoViableAltException(this);
     }
     _ctx->stop = _input->LT(-1);
-    setState(185);
+    setState(198);
     _errHandler->sync(this);
-    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 15, _ctx);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 16, _ctx);
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
         if (!_parseListeners.empty())
           triggerExitRuleEvent();
         previousContext = _localctx;
-        setState(183);
+        setState(196);
         _errHandler->sync(this);
-        switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 14, _ctx)) {
+        switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 15, _ctx)) {
         case 1: {
           _localctx = _tracker.createInstance<ExprContext>(parentContext, parentState);
           pushNewRecursionContext(_localctx, startState, RuleExpr);
-          setState(171);
+          setState(184);
 
           if (!(precpred(_ctx, 6))) throw FailedPredicateException(this, "precpred(_ctx, 6)");
-          setState(172);
+          setState(185);
           match(KoatParser::EXP);
-          setState(173);
+          setState(186);
           expr(7);
           break;
         }
@@ -1711,12 +1829,12 @@ KoatParser::ExprContext* KoatParser::expr(int precedence) {
         case 2: {
           _localctx = _tracker.createInstance<ExprContext>(parentContext, parentState);
           pushNewRecursionContext(_localctx, startState, RuleExpr);
-          setState(174);
+          setState(187);
 
           if (!(precpred(_ctx, 5))) throw FailedPredicateException(this, "precpred(_ctx, 5)");
-          setState(175);
+          setState(188);
           match(KoatParser::TIMES);
-          setState(176);
+          setState(189);
           expr(6);
           break;
         }
@@ -1724,12 +1842,12 @@ KoatParser::ExprContext* KoatParser::expr(int precedence) {
         case 3: {
           _localctx = _tracker.createInstance<ExprContext>(parentContext, parentState);
           pushNewRecursionContext(_localctx, startState, RuleExpr);
-          setState(177);
+          setState(190);
 
           if (!(precpred(_ctx, 4))) throw FailedPredicateException(this, "precpred(_ctx, 4)");
-          setState(178);
+          setState(191);
           match(KoatParser::PLUS);
-          setState(179);
+          setState(192);
           expr(5);
           break;
         }
@@ -1737,12 +1855,12 @@ KoatParser::ExprContext* KoatParser::expr(int precedence) {
         case 4: {
           _localctx = _tracker.createInstance<ExprContext>(parentContext, parentState);
           pushNewRecursionContext(_localctx, startState, RuleExpr);
-          setState(180);
+          setState(193);
 
           if (!(precpred(_ctx, 3))) throw FailedPredicateException(this, "precpred(_ctx, 3)");
-          setState(181);
+          setState(194);
           match(KoatParser::MINUS);
-          setState(182);
+          setState(195);
           expr(4);
           break;
         }
@@ -1751,9 +1869,9 @@ KoatParser::ExprContext* KoatParser::expr(int precedence) {
           break;
         } 
       }
-      setState(187);
+      setState(200);
       _errHandler->sync(this);
-      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 15, _ctx);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 16, _ctx);
     }
   }
   catch (RecognitionException &e) {
@@ -1834,8 +1952,8 @@ KoatParser::FormulaContext* KoatParser::formula(int precedence) {
   KoatParser::FormulaContext *_localctx = _tracker.createInstance<FormulaContext>(_ctx, parentState);
   KoatParser::FormulaContext *previousContext = _localctx;
   (void)previousContext; // Silence compiler, in case the context is not used by generated code.
-  size_t startState = 32;
-  enterRecursionRule(_localctx, 32, KoatParser::RuleFormula, precedence);
+  size_t startState = 34;
+  enterRecursionRule(_localctx, 34, KoatParser::RuleFormula, precedence);
 
     
 
@@ -1849,21 +1967,21 @@ KoatParser::FormulaContext* KoatParser::formula(int precedence) {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
-    setState(194);
+    setState(207);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 16, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 17, _ctx)) {
     case 1: {
-      setState(189);
+      setState(202);
       match(KoatParser::LPAR);
-      setState(190);
+      setState(203);
       formula(0);
-      setState(191);
+      setState(204);
       match(KoatParser::RPAR);
       break;
     }
 
     case 2: {
-      setState(193);
+      setState(206);
       lit();
       break;
     }
@@ -1872,26 +1990,26 @@ KoatParser::FormulaContext* KoatParser::formula(int precedence) {
       break;
     }
     _ctx->stop = _input->LT(-1);
-    setState(204);
+    setState(217);
     _errHandler->sync(this);
-    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 18, _ctx);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 19, _ctx);
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
         if (!_parseListeners.empty())
           triggerExitRuleEvent();
         previousContext = _localctx;
-        setState(202);
+        setState(215);
         _errHandler->sync(this);
-        switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 17, _ctx)) {
+        switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 18, _ctx)) {
         case 1: {
           _localctx = _tracker.createInstance<FormulaContext>(parentContext, parentState);
           pushNewRecursionContext(_localctx, startState, RuleFormula);
-          setState(196);
+          setState(209);
 
           if (!(precpred(_ctx, 3))) throw FailedPredicateException(this, "precpred(_ctx, 3)");
-          setState(197);
+          setState(210);
           match(KoatParser::AND);
-          setState(198);
+          setState(211);
           formula(4);
           break;
         }
@@ -1899,12 +2017,12 @@ KoatParser::FormulaContext* KoatParser::formula(int precedence) {
         case 2: {
           _localctx = _tracker.createInstance<FormulaContext>(parentContext, parentState);
           pushNewRecursionContext(_localctx, startState, RuleFormula);
-          setState(199);
+          setState(212);
 
           if (!(precpred(_ctx, 2))) throw FailedPredicateException(this, "precpred(_ctx, 2)");
-          setState(200);
+          setState(213);
           match(KoatParser::OR);
-          setState(201);
+          setState(214);
           formula(3);
           break;
         }
@@ -1913,9 +2031,9 @@ KoatParser::FormulaContext* KoatParser::formula(int precedence) {
           break;
         } 
       }
-      setState(206);
+      setState(219);
       _errHandler->sync(this);
-      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 18, _ctx);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 19, _ctx);
     }
   }
   catch (RecognitionException &e) {
@@ -1971,7 +2089,7 @@ std::any KoatParser::LitContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::LitContext* KoatParser::lit() {
   LitContext *_localctx = _tracker.createInstance<LitContext>(_ctx, getState());
-  enterRule(_localctx, 34, KoatParser::RuleLit);
+  enterRule(_localctx, 36, KoatParser::RuleLit);
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -1982,11 +2100,11 @@ KoatParser::LitContext* KoatParser::lit() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(207);
+    setState(220);
     expr(0);
-    setState(208);
+    setState(221);
     relop();
-    setState(209);
+    setState(222);
     expr(0);
    
   }
@@ -2056,7 +2174,7 @@ std::any KoatParser::RelopContext::accept(tree::ParseTreeVisitor *visitor) {
 
 KoatParser::RelopContext* KoatParser::relop() {
   RelopContext *_localctx = _tracker.createInstance<RelopContext>(_ctx, getState());
-  enterRule(_localctx, 36, KoatParser::RuleRelop);
+  enterRule(_localctx, 38, KoatParser::RuleRelop);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -2068,10 +2186,10 @@ KoatParser::RelopContext* KoatParser::relop() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(211);
+    setState(224);
     _la = _input->LA(1);
     if (!(((_la & ~ 0x3fULL) == 0) &&
-      ((1ULL << _la) & 528482304) != 0)) {
+      ((1ULL << _la) & 1056964608) != 0)) {
     _errHandler->recoverInline(this);
     }
     else {
@@ -2091,8 +2209,8 @@ KoatParser::RelopContext* KoatParser::relop() {
 
 bool KoatParser::sempred(RuleContext *context, size_t ruleIndex, size_t predicateIndex) {
   switch (ruleIndex) {
-    case 15: return exprSempred(antlrcpp::downCast<ExprContext *>(context), predicateIndex);
-    case 16: return formulaSempred(antlrcpp::downCast<FormulaContext *>(context), predicateIndex);
+    case 16: return exprSempred(antlrcpp::downCast<ExprContext *>(context), predicateIndex);
+    case 17: return formulaSempred(antlrcpp::downCast<FormulaContext *>(context), predicateIndex);
 
   default:
     break;

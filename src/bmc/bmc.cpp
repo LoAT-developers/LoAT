@@ -6,7 +6,7 @@
 
 BMC::BMC(ITSPtr its): its(its), vars(its->getVars()) {
     for (const auto &var: vars) {
-        post_vars.emplace(var, theory::next(var));
+        pre_to_post.insert(var, theory::next(var));
     }
 }
 
@@ -15,7 +15,7 @@ Bools::Expr BMC::encode_transition(const RulePtr idx) {
     std::vector<Bools::Expr> res {idx->getGuard()};
     for (const auto &x: vars) {
         if (theory::isProgVar(x)) {
-            res.push_back(theory::mkEq(theory::toExpr(post_vars.at(x)), up.get(x)));
+            res.push_back(theory::mkEq(theory::toExpr(pre_to_post.get(x)), up.get(x)));
         }
     }
     return bools::mkAnd(res);
@@ -48,7 +48,7 @@ SmtResult BMC::analyze() {
     while (true) {
         Renaming s;
         for (const auto &var: vars) {
-            const auto &post_var {post_vars.at(var)};
+            const auto &post_var {pre_to_post.get(var)};
             s.insert(var, last_s.get(post_var));
             s.insert(post_var, theory::next(post_var));
         }
@@ -101,7 +101,7 @@ ITSModel BMC::get_model() const {
         std::vector<Bools::Expr> conjuncts;
         conjuncts.emplace_back(t->getGuard());
         const auto &up {t->getUpdate()};
-        for (const auto &[pre,post]: post_vars) {
+        for (const auto &[pre,post]: pre_to_post) {
             if (theory::isProgVar(pre)) {
                 conjuncts.push_back(theory::mkEq(theory::toExpr(post), up.get(pre)));
             }
@@ -116,7 +116,7 @@ ITSModel BMC::get_model() const {
         const auto &s1{renamings.at(i)};
         last = last && s1(step);
         Renaming s2;
-        for (const auto &[pre,post]: post_vars) {
+        for (const auto &[pre,post]: pre_to_post) {
             if (theory::isProgVar(pre)) {
                 s2.insert(s1.get(post), pre);
                 s2.insert(pre, theory::next(pre));
@@ -138,16 +138,24 @@ ITSCex BMC::get_cex() const {
     ITSCex res(its);
     const auto model {solver->model()};
     std::optional<RulePtr> last;
-    for (size_t i = 0; i <= depth + 1; ++i) {
-        auto m{model.composeBackwards(renamings.at(i))};
+    res.set_initial_state(model.composeBackwards(renamings.front()));
+    for (size_t i = 0; i <= depth; ++i) {
+        const auto current {model.composeBackwards(renamings.at(i + 1))};
         const auto candidates = last ? its->getSuccessors(*last) : its->getInitialTransitions();
         const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
-            return res.try_step(m, c);
+            return res.try_step(c, current);
         })};
         if (it == candidates.end()) {
             throw std::logic_error("get_cex failed");
         }
         last = *it;
+    }
+    const auto candidates {its->getSinkTransitions()};
+    const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
+        return res.try_final_transition(c);
+    })};
+    if (it == candidates.end()) {
+        throw std::logic_error("get_cex failed");
     }
     return res;
 }

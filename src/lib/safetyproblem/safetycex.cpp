@@ -28,6 +28,11 @@ bool SafetyCex::try_step(const Model &m, const Bools::Expr trans) {
     return true;
 }
 
+void SafetyCex::set_final_state(const Model &m) {
+    assert(m.eval<Bools>(sp.err()));
+    states.push_back(m);
+}
+
 std::ostream& operator<<(std::ostream &s, const SafetyCex &cex) {
     unsigned id {0};
     std::unordered_map<Bools::Expr, unsigned> transitions;
@@ -36,9 +41,9 @@ std::ostream& operator<<(std::ostream &s, const SafetyCex &cex) {
             ++id;
         }
     }
-    s << "input:" << std::endl;
-    s << "\tinit: " << cex.sp.init() << std::endl;
-    s << "\terr: " << cex.sp.err() << std::endl;
+    s << "init: " << cex.sp.init();
+    s << "\n\nerr: " << cex.sp.err();
+    s << "\n\nunsat core:" << std::endl;
     for (const auto &[t,id]: transitions) {
         s << "\t" << id << ": " << t << std::endl;
     }
@@ -55,10 +60,18 @@ std::ostream& operator<<(std::ostream &s, const SafetyCex &cex) {
     return s << "\terr";
 }
 
-std::pair<const Model&, Bools::Expr> SafetyCex::get_step(size_t i) const {
+std::pair<const Model&, Bools::Expr> SafetyCex::get_step(const size_t i) const {
     return {states.at(i), transitions.at(i)};
 }
 
-size_t SafetyCex::size() const {
+const Model& SafetyCex::get_state(const size_t i) const {
+    return states.at(i);
+}
+
+size_t SafetyCex::num_states() const {
     return states.size();
+}
+
+size_t SafetyCex::num_transitions() const {
+    return transitions.size();
 }

@@ -72,9 +72,9 @@ SafetyProblem ITSToSafety::transform() {
 
 ITSCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
     ITSCex res{its};
-    const auto &init_model{cex.get_step(0).first};
+    const auto &init_model{cex.get_state(0)};
     auto transformed_init_model{init_model};
-    transformed_init_model = init_preprocessor.transform_model(transformed_init_model.composeBackwards(init_map));
+    transformed_init_model = init_preprocessor.transform_model(transformed_init_model).composeBackwards(init_map);
     const auto incorporate_update = [](const Subs &up, Model &m) {
         for (const auto &p : up) {
             std::visit(
@@ -92,29 +92,35 @@ ITSCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
     for (const auto &init: its->getInitialTransitions()) {
         auto transformed {transformed_init_model};
         incorporate_update(init->getUpdate(), transformed);
-        if (res.try_step(transformed, init)) {
+        res.set_initial_state(transformed);
+        if (res.try_step(init, init_model)) {
             break;
         }
     }
-    assert(res.size() > 0);
-    const auto size{cex.size()};
-    for (size_t i = 0; i < size; ++i) {
+    assert(res.num_transitions() == 1);
+    const auto steps{cex.num_transitions()};
+    Renaming pre_to_post;
+    for (const auto &x: its->getVars()) {
+        if (theory::isProgVar(x)) {
+            pre_to_post.insert(x, theory::postVar(x));
+        }
+    }
+    for (size_t i = 0; i < steps; ++i) {
         const auto &[model, transition]{cex.get_step(i)};
+        const auto next{model.composeBackwards(pre_to_post)};
         const auto rule{rev_map.at(transition)};
         Model transformed{model};
         incorporate_update(rule->getUpdate(), transformed);
-        if (!res.try_step(transformed, rule)) {
-            std::cerr << "transformed: " << transformed << std::endl;
-            std::cerr << "rule: " << *rule << std::endl;
+        res.replace_state(transformed);
+        if (!res.try_step(rule, next)) {
             throw std::logic_error("transform_cex failed");
         }
     }
-    const auto &last {cex.get_step(size - 1).first};
-    const auto transformed {err_preprocessor.transform_model(last)};
-    for (const auto &t: its->getSinkTransitions()) {
-        if (transformed.eval<Bools>(t->getGuard()) && !res.try_step(transformed, t)) {
-            throw std::logic_error("transform_cex failed");
-        }
+    const auto sinks{its->getSinkTransitions()};
+    if (!std::any_of(sinks.begin(), sinks.end(), [&](const auto &t) {
+            return res.try_final_transition(t);
+        })) {
+        throw std::logic_error("transform_cex failed");
     }
     return res;
 }

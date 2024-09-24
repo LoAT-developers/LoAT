@@ -29,6 +29,9 @@ public:
   virtual void enterStart(KoatParser::StartContext *ctx) = 0;
   virtual void exitStart(KoatParser::StartContext *ctx) = 0;
 
+  virtual void enterSink(KoatParser::SinkContext *ctx) = 0;
+  virtual void exitSink(KoatParser::SinkContext *ctx) = 0;
+
   virtual void enterVardecl(KoatParser::VardeclContext *ctx) = 0;
   virtual void exitVardecl(KoatParser::VardeclContext *ctx) = 0;
 

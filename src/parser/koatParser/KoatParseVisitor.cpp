@@ -29,6 +29,11 @@ antlrcpp::Any KoatParseVisitor::visitStart(KoatParser::StartContext *ctx) {
     return {};
 }
 
+antlrcpp::Any KoatParseVisitor::visitSink(KoatParser::SinkContext *ctx) {
+    its->setSinkLocation(any_cast<fs_type>(visit(ctx->fs())));
+    return {};
+}
+
 antlrcpp::Any KoatParseVisitor::visitVardecl(KoatParser::VardeclContext *ctx) {
     return {};
 }

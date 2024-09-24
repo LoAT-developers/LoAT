@@ -16,7 +16,7 @@ private:
     SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     bool approx {false};
     VarSet vars;
-    std::unordered_map<Var, Var> post_vars {};
+    Renaming pre_to_post {};
     unsigned depth {0};
     std::vector<Renaming> renamings;
 

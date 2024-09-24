@@ -6,9 +6,17 @@ Chain::Chain(ITSPtr its): its(its) {}
 
 ITSModel Chain::transform_model(const ITSModel &m) const {
     ITSModel res {m};
-    for (const auto &[from,rule,to]: predecessors) {
+    for (const auto &[from,rule,to]: removed) {
         const auto r {rule->renameTmpVars()};
         res.set_invariant(to, res.get_invariant(to) || (r->getGuard() && r->getUpdate()(res.get_invariant(from))));
+    }
+    return res;
+}
+
+ITSCex Chain::transform_cex(const ITSCex &cex) const {
+    ITSCex res {cex};
+    for (const auto &[c,p]: chained) {
+        res.add_resolvent({p.first, p.second}, c);
     }
     return res;
 }
@@ -22,20 +30,17 @@ bool Chain::chainLinearPaths() {
             if (succ.size() == 1 && !succ.contains(first)) {
                 const auto second_idx{*succ.begin()};
                 if (!its->isSimpleLoop(second_idx)) {
-                    predecessors.emplace(its->getLhsLoc(first), first, its->getRhsLoc(first));
-                    const auto chained{Preprocess::chain({first, second_idx->renameTmpVars()})};
-                    its->addRule(chained, first, second_idx);
-                    linked_hash_set<RulePtr> deleted;
-                    deleted.insert(first);
+                    const auto c{Preprocess::chain({first, second_idx->renameTmpVars()})};
+                    its->addRule(c, first, second_idx);
+                    chained.emplace(c, std::pair{first, second_idx});
+                    its->removeRule(first);
+                    removed.emplace(its->getLhsLoc(first), first, its->getRhsLoc(first));
                     if (its->getPredecessors(second_idx).size() == 1) {
-                        deleted.insert(second_idx);
+                        its->removeRule(second_idx);
+                        removed.emplace(its->getLhsLoc(second_idx), second_idx, its->getRhsLoc(second_idx));
                     }
                     if (Config::Analysis::doLogPreproc()) {
-                        std::cout << "chaining\n\trule 1: " << first << "\n\trule 2: " << second_idx << "\n\tresult: " << chained << std::endl;
-                        std::cout << "removed the following rules after chaining: " << deleted << std::endl;
-                    }
-                    for (const auto &idx : deleted) {
-                        its->removeRule(idx);
+                        std::cout << "chaining\n\trule 1: " << first << "\n\trule 2: " << second_idx << "\n\tresult: " << c << std::endl;
                     }
                     changed = true;
                     break;
@@ -43,5 +48,5 @@ bool Chain::chainLinearPaths() {
             }
         }
     } while (changed);
-    return !predecessors.empty();
+    return !removed.empty();
 }
