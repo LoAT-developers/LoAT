@@ -2,43 +2,41 @@
 
 #include <fstream>
 
-CHCProblem SexpressoParser::loadFromFile(const std::string &filename) {
+CHCPtr SexpressoParser::loadFromFile(const std::string &filename) {
     SexpressoParser parser;
     parser.run(filename);
     return parser.chcs;
 }
 
-Lhs parseLhs(sexpresso::Sexp &exp, Clause &c) {
-    const auto &vars {c.get_vars()};
+LhsPtr parseLhs(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars) {
     std::vector<Var> args;
     if (exp.isString()) {
-        return Lhs(exp.str(), args);
+        return Lhs::mk(exp.str(), args);
     }
     for (unsigned i = 1; i < exp.childCount(); ++i) {
-        args.push_back(vars.left.at(exp[i].str()));
+        args.push_back(vars.at(exp[i].str()));
     }
-    return Lhs(exp[0].str(), args);
+    return Lhs::mk(exp[0].str(), args);
 }
 
-FunApp parsePred(sexpresso::Sexp &exp, Clause &c) {
-    const auto &vars {c.get_vars()};
+FunAppPtr parsePred(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars) {
     std::vector<Expr> args;
     if (exp.isString()) {
-        return FunApp(exp.str(), args);
+        return FunApp::mk(exp.str(), args);
     }
     for (unsigned i = 1; i < exp.childCount(); ++i) {
-        args.push_back(theory::toExpr(vars.left.at(exp[i].str())));
+        args.push_back(theory::toExpr(vars.at(exp[i].str())));
     }
-    return FunApp(exp[0].str(), args);
+    return FunApp::mk(exp[0].str(), args);
 }
 
 bool isInt(const std::string &s) {
     return !s.empty() && (s[0] == '-' || std::isdigit(s[0])) && std::all_of(std::next(s.begin()), s.end(), ::isdigit);
 }
 
-Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unordered_map<std::string, Expr>> &bindings);
+Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &refinement, std::vector<std::unordered_map<std::string, Expr>> &bindings);
 
-Arith::Expr parseArithExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
+Arith::Expr parseArithExpr(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &refinement, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
     if (exp.isString()) {
         const auto name {exp.str()};
         if (isInt(name)) {
@@ -50,16 +48,16 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::uno
                     return std::get<Arith::Expr>(it->second);
                 }
             }
-            return std::get<Arith::Var>(c.get_vars().left.at(name));
+            return std::get<Arith::Var>(vars.at(name));
         }
     } else {
         const auto name {exp[0].str()};
         if (name == "ite") {
-            const auto r{parseBoolExpr(exp[1], c, bindings)};
-            const auto then_case{parseArithExpr(exp[2], c, bindings)};
-            const auto else_case{parseArithExpr(exp[3], c, bindings)};
+            const auto r{parseBoolExpr(exp[1], vars, refinement, bindings)};
+            const auto then_case{parseArithExpr(exp[2], vars, refinement, bindings)};
+            const auto else_case{parseArithExpr(exp[3], vars, refinement, bindings)};
             const auto var {ArithVar::next()};
-            c.add_constraint((r && bools::mkLit(arith::mkEq(var, then_case))) || ((!r) && bools::mkLit(arith::mkEq(var, else_case))));
+            refinement.emplace_back((r && bools::mkLit(arith::mkEq(var, then_case))) || ((!r) && bools::mkLit(arith::mkEq(var, else_case))));
             return var;
         } else if (name == "let") {
             auto declarations{exp[1]};
@@ -67,39 +65,39 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::uno
             for (unsigned i = 0; i < declarations.childCount(); ++i) {
                 auto decl{declarations[i]};
                 const auto declName{decl[0].str()};
-                newBindings.emplace(declName, parseArithExpr(decl[1], c, bindings));
+                newBindings.emplace(declName, parseArithExpr(decl[1], vars, refinement, bindings));
             }
             bindings.push_back(newBindings);
-            auto res{parseArithExpr(exp[2], c, bindings)};
+            auto res{parseArithExpr(exp[2], vars, refinement, bindings)};
             bindings.pop_back();
             return res;
         } else if (name == "+") {
             std::vector<Arith::Expr> args;
             for (unsigned i = 1; i < exp.childCount(); ++i) {
-                args.push_back(parseArithExpr(exp[i], c, bindings));
+                args.push_back(parseArithExpr(exp[i], vars, refinement, bindings));
             }
             return arith::mkPlus(std::move(args));
         } else if (name == "*") {
             std::vector<Arith::Expr> args;
             for (unsigned i = 1; i < exp.childCount(); ++i) {
-                args.push_back(parseArithExpr(exp[i], c, bindings));
+                args.push_back(parseArithExpr(exp[i], vars, refinement, bindings));
             }
             return arith::mkTimes(std::move(args));
         } else if (name == "-") {
             if (exp.childCount() == 2) {
                 // unary minus
-                return -parseArithExpr(exp[1], c, bindings);
+                return -parseArithExpr(exp[1], vars, refinement, bindings);
             } else {
                 std::vector<Arith::Expr> args;
-                args.push_back(parseArithExpr(exp[1], c, bindings));
+                args.push_back(parseArithExpr(exp[1], vars, refinement, bindings));
                 for (unsigned i = 2; i < exp.childCount(); ++i) {
-                    args.push_back(-parseArithExpr(exp[i], c, bindings));
+                    args.push_back(-parseArithExpr(exp[i], vars, refinement, bindings));
                 }
                 return arith::mkPlus(std::move(args));
             }
         } else if (name == "mod" || name == "div") {
-            const auto fst {parseArithExpr(exp[1], c, bindings)};
-            const auto snd {parseArithExpr(exp[2], c, bindings)};
+            const auto fst {parseArithExpr(exp[1], vars, refinement, bindings)};
+            const auto snd {parseArithExpr(exp[2], vars, refinement, bindings)};
             const auto div {ArithVar::next()};
             const auto mod {ArithVar::next()};
             std::vector<Bools::Expr> constr;
@@ -123,7 +121,7 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::uno
                     bools::mkAndFromLits({arith::mkGt(snd, arith::mkConst(0)), arith::mkGt(snd, mod)})
                     || bools::mkAndFromLits({arith::mkLt(snd, arith::mkConst(0)), arith::mkGt(-snd, mod)}));
             }
-            c.add_constraint(bools::mkAnd(constr));
+            refinement.emplace_back(bools::mkAnd(constr));
             if (name == "div") {
                 return Arith::varToExpr(div);
             } else {
@@ -135,7 +133,7 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::uno
     }
 }
 
-std::string getType(sexpresso::Sexp &exp, Clause &c, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
+std::string getType(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
     auto child{exp};
     while (!child.isString() && (child[0].str() == "ite" || child[0].str() == "let")) {
         child = child[2];
@@ -148,7 +146,6 @@ std::string getType(sexpresso::Sexp &exp, Clause &c, std::vector<std::unordered_
         } else if (isInt(name)) {
             return "Int";
         } else {
-            const auto &vars{c.get_vars().left};
             if (vars.find(name) != vars.end()) {
                 const Var var{vars.at(name)};
                 return std::visit(
@@ -185,8 +182,7 @@ std::string getType(sexpresso::Sexp &exp, Clause &c, std::vector<std::unordered_
     }
 }
 
-Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
-    const auto &vars{c.get_vars().left};
+Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &refinement, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
     if (exp.isString()) {
         const auto name {exp.str()};
         if (name == "true") {
@@ -203,15 +199,14 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unor
                     return std::get<Bools::Expr>(it->second);
                 }
             }
-            c.set_premise(parseLhs(exp, c));
-            return top();
+            throw std::invalid_argument("unknwon bool expression");
         }
     }
     const auto f {exp[0].str()};
     if (f == "ite") {
-        const auto r{parseBoolExpr(exp[1], c, bindings)};
-        const auto then_case{parseBoolExpr(exp[2], c, bindings)};
-        const auto else_case{parseBoolExpr(exp[3], c, bindings)};
+        const auto r{parseBoolExpr(exp[1], vars, refinement, bindings)};
+        const auto then_case{parseBoolExpr(exp[2], vars, refinement, bindings)};
+        const auto else_case{parseBoolExpr(exp[3], vars, refinement, bindings)};
         return (r && then_case) || ((!r) && else_case);
     } else if (f == "let") {
         auto declarations {exp[1]};
@@ -219,35 +214,35 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unor
         for (unsigned i = 0; i < declarations.childCount(); ++i) {
             auto decl {declarations[i]};
             const auto declName {decl[0].str()};
-            const auto type {getType(decl[1], c, bindings)};
+            const auto type {getType(decl[1], vars, bindings)};
             if (type == "Int") {
-                newBindings.emplace(declName, parseArithExpr(decl[1], c, bindings));
+                newBindings.emplace(declName, parseArithExpr(decl[1], vars, refinement, bindings));
             } else {
-                newBindings.emplace(declName, parseBoolExpr(decl[1], c, bindings));
+                newBindings.emplace(declName, parseBoolExpr(decl[1], vars, refinement, bindings));
             }
         }
         bindings.push_back(newBindings);
-        auto res {parseBoolExpr(exp[2], c, bindings)};
+        auto res {parseBoolExpr(exp[2], vars, refinement, bindings)};
         bindings.pop_back();
         return res;
     } else if (f == "and") {
         std::vector<Bools::Expr> args;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
-            args.push_back(parseBoolExpr(exp[i], c, bindings));
+            args.push_back(parseBoolExpr(exp[i], vars, refinement, bindings));
         }
         return bools::mkAnd(args);
     } else if (f == "or") {
         std::vector<Bools::Expr> args;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
-            args.push_back(parseBoolExpr(exp[i], c, bindings));
+            args.push_back(parseBoolExpr(exp[i], vars, refinement, bindings));
         }
         return bools::mkOr(args);
     } else if (f == "not") {
-        return !parseBoolExpr(exp[1], c, bindings);
+        return !parseBoolExpr(exp[1], vars, refinement, bindings);
     } else if (f == "<" || f == "<=" || f == ">" || f == ">=") {
         std::vector<Arith::Expr> args;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
-            args.push_back(parseArithExpr(exp[i], c, bindings));
+            args.push_back(parseArithExpr(exp[i], vars, refinement, bindings));
         }
         LitSet lits;
         for (unsigned i = 1; i < args.size(); ++i) {
@@ -263,13 +258,13 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unor
         }
         return bools::mkAndFromLits(lits);
     } else if (f == "=" || f == "distinct") {
-        std::string type {getType(exp[1], c, bindings)};
+        std::string type {getType(exp[1], vars, bindings)};
         std::vector<Expr> args;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
             if (type == "Int") {
-                args.push_back(parseArithExpr(exp[i], c, bindings));
+                args.push_back(parseArithExpr(exp[i], vars, refinement, bindings));
             } else {
-                args.push_back(parseBoolExpr(exp[i], c, bindings));
+                args.push_back(parseBoolExpr(exp[i], vars, refinement, bindings));
             }
         }
         std::vector<Bools::Expr> lits;
@@ -286,8 +281,38 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, Clause &c, std::vector<std::unor
         }
         return bools::mkAnd(lits);
     } else {
-        c.set_premise(parseLhs(exp, c));
-        return top();
+        throw std::invalid_argument("unknwon bool expression");
+    }
+}
+
+std::optional<LhsPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &result, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
+    if (exp.isString()) {
+        const auto name {exp.str()};
+        if (name == "true" || name == "false" || vars.find(name) != vars.end() || std::any_of(bindings.rbegin(), bindings.rend(), [&](const auto &b) {
+            return b.contains(name);
+        })) {
+            result.emplace_back(parseBoolExpr(exp, vars, result, bindings));
+            return {};
+        } else {
+            return parseLhs(exp, vars);
+        }
+    }
+    const auto f {exp[0].str()};
+    if (f == "and") {
+        std::optional<LhsPtr> lhs;
+        for (unsigned i = 1; i < exp.childCount(); ++i) {
+            const auto l {parseTopLevelBoolExpr(exp[i], vars, result, bindings)};
+            if (l) {
+                assert(!lhs);
+                lhs = l;
+            }
+        }
+        return lhs;
+    } else if (f == "ite" || f == "let" || f == "or" || f == "not" || f == "<" || f == "<=" || f == ">" || f == ">=" || f == "=" || f == "distinct") {
+        result.emplace_back(parseBoolExpr(exp, vars, result, bindings));
+        return {};
+    } else {
+        return parseLhs(exp, vars);
     }
 }
 
@@ -299,32 +324,31 @@ void SexpressoParser::run(const std::string &filename) {
     sexpresso::Sexp sexp = sexpresso::parse(content);
     for (auto &ex: sexp.arguments()) {
         if (ex[0].str() == "assert") {
-            Clause c;
+            std::unordered_map<std::string, Var> var_map;
             auto forall {ex[1]};
             auto vars {forall[1]};
             for (unsigned i = 0; i < vars.childCount(); ++i) {
                 const auto name {vars[i][0].str()};
                 const auto type {vars[i][1].str()};
                 if (type == "Int") {
-                    c.add_var(name, ArithVar::next());
+                    var_map.emplace(name, ArithVar::next());
                 } else if (type == "Bool") {
-                    c.add_var(name, BoolVar::next());
+                    var_map.emplace(name, BoolVar::next());
                 } else {
                     throw std::invalid_argument("unknown type " + type);
                 }
             }
             auto imp {forall[2]};
-            auto premise {imp[1]};
+            auto prem {imp[1]};
             std::vector<std::unordered_map<std::string, Expr>> bindings;
-            const auto constraint {parseBoolExpr(premise, c, bindings)};
-            c.add_constraint(constraint);
-            auto conclusion {imp[2]};
-            if (!conclusion.isString() || conclusion.str() != "false") {
-                const auto pred {parsePred(conclusion, c)};
-                c.set_conclusion(pred);
+            std::vector<Bools::Expr> constraints;
+            const auto premise {parseTopLevelBoolExpr(prem, var_map, constraints, bindings)};
+            std::optional<FunAppPtr> conclusion;
+            auto conc {imp[2]};
+            if (!conc.isString() || conc.str() != "false") {
+                conclusion = parsePred(conc, var_map);
             }
-            c.finalize();
-            chcs.add_clause(c);
+            chcs->add_clause(Clause::mk(premise, bools::mkAnd(constraints), conclusion));
         }
     }
 }

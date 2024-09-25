@@ -96,12 +96,12 @@ std::optional<Var> is_var(const Expr &x) {
         x);
 }
 
-sexpresso::Sexp to_smtlib(const Lit &l, const std::function<std::string(const Var &)> &var_map) {
-    return std::visit([&](const auto x) {return x->to_smtlib(var_map);}, l);
+sexpresso::Sexp to_smtlib(const Lit &l) {
+    return std::visit([&](const auto x) {return x->to_smtlib();}, l);
 }
 
-sexpresso::Sexp to_smtlib(const Expr &e, const std::function<std::string(const Var &)> &var_map) {
-    return std::visit([&](const auto x) {return x->to_smtlib(var_map);}, e);
+sexpresso::Sexp to_smtlib(const Expr &e) {
+    return std::visit([&](const auto x) {return x->to_smtlib();}, e);
 }
 
 void collectVars(const Expr &expr, VarSet &vars) {

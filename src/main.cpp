@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::optional<ITSPtr> its{};
-    std::optional<CHCProblem> chcs{};
+    std::optional<CHCPtr> chcs{};
     std::optional<SafetyProblem> sp{};
     std::optional<CHCToITS> chc2its{};
     const auto start{std::chrono::steady_clock::now()};
@@ -266,7 +266,6 @@ int main(int argc, char *argv[]) {
             break;
         case Config::Input::Horn: {
             chcs = SexpressoParser::loadFromFile(filename);
-            Config::Analysis::model |= chcs->get_produce_model();
             if (Config::Analysis::engine == Config::Analysis::TIL && Config::til.mode == Config::TILConfig::Mode::Backward) {
                 chcs = reverse(*chcs);
             }
@@ -389,10 +388,22 @@ int main(int argc, char *argv[]) {
     print_result(res);
     if (its_model) {
         its_model = preprocessor->transform_model(*its_model);
-        const auto chc_model{chc2its->transform_model(*its_model)};
-        std::cout << chc_model.to_smtlib().toString() << std::endl << std::endl;
+        if (chc2its) {
+            const auto chc_model{chc2its->transform_model(*its_model)};
+            std::cout << chc_model.to_smtlib().toString();
+        } else {
+            std::cout << *its_model;
+        }
+        std::cout << std::endl << std::endl;
     } else if (its_cex) {
-        std::cout << preprocessor->transform_cex(*its_cex) << std::endl << std::endl;
+        its_cex = preprocessor->transform_cex(*its_cex);
+        if (chc2its) {
+            const auto chc_cex{chc2its->transform_cex(*its_cex)};
+            std::cout << chc_cex;
+        } else {
+            std::cout << *its_cex;
+        }
+        std::cout << std::endl << std::endl;
     }
     yices::exit();
 

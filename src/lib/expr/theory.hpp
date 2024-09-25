@@ -19,7 +19,6 @@ using Const = TheTheory::Const;
 using Theories = TheTheory::Theories;
 using VarSet = VariantSet<Arith::Var, Bools::Var>;
 using LitSet = VariantSet<Arith::Lit, Bools::Lit>;
-using var_map = boost::bimap<boost::bimaps::unordered_set_of<std::string>, boost::bimaps::unordered_set_of<Var>>;
 
 constexpr size_t num_theories {std::tuple_size_v<Theories>};
 
@@ -78,8 +77,8 @@ bool isTriviallyTrue(const Lit &lit);
 bool isTriviallyFalse(const Lit &lit);
 Lit negate(const Lit &lit);
 size_t hash(const Lit &lit);
-sexpresso::Sexp to_smtlib(const Lit &l, const std::function<std::string(const Var &)> &);
-sexpresso::Sexp to_smtlib(const Expr &e, const std::function<std::string(const Var &)> &);
+sexpresso::Sexp to_smtlib(const Lit &l);
+sexpresso::Sexp to_smtlib(const Expr &e);
 void simplifyAnd(LitSet&);
 void simplifyOr(LitSet&);
 Types to_type(const Expr &x);

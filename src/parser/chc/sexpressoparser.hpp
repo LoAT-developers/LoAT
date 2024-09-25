@@ -4,12 +4,12 @@
 
 class SexpressoParser {
 
-    CHCProblem chcs;
+    CHCPtr chcs {std::make_shared<CHCProblem>()};
 
     void run(const std::string &filename);
 
 public:
 
-    static CHCProblem loadFromFile(const std::string &filename);
+    static CHCPtr loadFromFile(const std::string &filename);
 
 };

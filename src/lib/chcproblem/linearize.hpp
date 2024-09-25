@@ -2,4 +2,4 @@
 
 #include "chcproblem.hpp"
 
-CHCProblem linearize(const CHCProblem &chcs);
+CHCPtr linearize(const CHCPtr chcs);

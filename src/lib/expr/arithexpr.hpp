@@ -235,7 +235,7 @@ public:
 
     ArithExprPtr toPtr() const;
 
-    sexpresso::Sexp to_smtlib(const std::function<std::string(const ArithVarPtr)> &var_map) const;
+    sexpresso::Sexp to_smtlib() const;
 
     ArithExprPtr renameVars(const arith_var_map &map) const;
 

@@ -59,19 +59,32 @@ Bools::Expr FormulaPreprocessor::run(const Bools::Expr in) {
 }
 
 Model FormulaPreprocessor::transform_model(const Model &m) const {
+    return transform_model(m, equiv);
+}
+
+Model FormulaPreprocessor::transform_model(const Model &m, const Subs &equiv) {
     Model res {m};
-    std::cout << equiv << std::endl;
-    for (const auto &p: equiv) {
-        std::visit(
-            Overload{
-                [&](const auto &p) {
-                    const auto &[var,ex] {p};
-                    using Th = decltype(theory::theory(var));
-                    res.put<Th>(var, m.eval<Th>(ex));
-                }
-            }, p
-        );
-    }
+    bool done;
+    do {
+        done = true;
+        for (const auto &p : equiv) {
+            std::visit(
+                Overload{
+                    [&](const auto &p) {
+                        const auto &[var, ex]{p};
+                        using Th = decltype(theory::theory(var));
+                        const auto vars{ex->vars()};
+                        if (std::all_of(vars.begin(), vars.end(), [&](const auto &x) {
+                            return m.contains(x);
+                        })) {
+                            res.put<Th>(var, m.eval<Th>(ex));
+                        } else {
+                            done = false;
+                        }
+                    }},
+                p);
+        }
+    } while (!done);
     return res;
 }
 

@@ -102,7 +102,7 @@ public:
 
     std::size_t hash() const;
     bool eval(const linked_hash_map<ArithVarPtr, Int>&) const;
-    sexpresso::Sexp to_smtlib(const std::function<std::string(const ArithVarPtr)> &var_map) const;
+    sexpresso::Sexp to_smtlib() const;
 
     static bool simplifyAnd(linked_hash_set<ArithLitPtr> &lits);
     static bool simplifyOr(linked_hash_set<ArithLitPtr> &lits);

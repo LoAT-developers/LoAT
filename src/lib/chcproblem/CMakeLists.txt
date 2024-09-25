@@ -13,6 +13,8 @@ add_library(${PROJECT_NAME} OBJECT
     chcmodel.cpp
     reverse.hpp
     reverse.cpp
+    chccex.hpp
+    chccex.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

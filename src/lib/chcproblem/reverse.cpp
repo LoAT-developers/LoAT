@@ -1,13 +1,13 @@
 #include "reverse.hpp"
 
-CHCProblem reverse(const CHCProblem &chcs) {
-    CHCProblem res;
-    for (const auto &c: chcs.get_clauses()) {
-        std::vector<Bools::Expr> constr {c.get_constraint()};
-        Clause reversed;
-        if (const auto conc {c.get_conclusion()}) {
+CHCPtr reverse(const CHCPtr chcs) {
+    auto res {std::make_shared<CHCProblem>()};
+    for (const auto &c: chcs->get_clauses()) {
+        std::vector<Bools::Expr> constr {c->get_constraint()};
+        std::optional<LhsPtr> premise;
+        if (const auto conc {c->get_conclusion()}) {
             std::vector<Var> lhs_args;
-            for (const auto &arg: conc->get_args()) {
+            for (const auto &arg: (*conc)->get_args()) {
                 if (const auto &x {theory::is_var(arg)}) {
                     lhs_args.emplace_back(*x);
                 } else {
@@ -16,17 +16,17 @@ CHCProblem reverse(const CHCProblem &chcs) {
                     constr.push_back(theory::mkEq(theory::toExpr(y), arg));
                 }
             }
-            reversed.set_premise(Lhs(conc->get_pred(), lhs_args));
+            premise = Lhs::mk((*conc)->get_pred(), lhs_args);
         }
-        if (const auto prem {c.get_premise()}) {
+        std::optional<FunAppPtr> conclusion;
+        if (const auto prem {c->get_premise()}) {
             std::vector<Expr> rhs_args;
-            for (const auto &x: prem->get_args()) {
+            for (const auto &x: (*prem)->get_args()) {
                 rhs_args.emplace_back(theory::toExpr(x));
             }
-            reversed.set_conclusion(FunApp(prem->get_pred(), rhs_args));
+            conclusion = FunApp::mk((*prem)->get_pred(), rhs_args);
         }
-        reversed.set_constraint(bools::mkAnd(constr));
-        res.add_clause(reversed);
+        res->add_clause(Clause::mk(premise, bools::mkAnd(constr), conclusion));
     }
     return res;
 }

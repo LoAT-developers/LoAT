@@ -5,6 +5,7 @@
 #include "itscex.hpp"
 #include "smt.hpp"
 #include "chain.hpp"
+#include "rulepreprocessor.hpp"
 
 class Preprocessor {
 
@@ -16,6 +17,8 @@ private:
     ITSPtr its;
 
     Chain chain;
+
+    RulePreprocessor rule_preproc;
 
 public:
     Preprocessor(ITSPtr its);

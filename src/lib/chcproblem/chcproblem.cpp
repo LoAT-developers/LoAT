@@ -1,62 +1,97 @@
 #include "chcproblem.hpp"
+#include "optional.hpp"
+
+bool Lhs::CacheEqual::operator()(const std::tuple<std::string, std::vector<Var>> &args1, const std::tuple<std::string, std::vector<Var>> &args2) const noexcept {
+    return args1 == args2;
+}
+
+size_t Lhs::CacheHash::operator()(const std::tuple<std::string, std::vector<Var>> &args) const noexcept {
+    size_t seed {0};
+    boost::hash_combine(seed, std::get<0>(args));
+    boost::hash_combine(seed, std::get<1>(args));
+    return seed;
+}
+
+ConsHash<Lhs, Lhs, Lhs::CacheHash, Lhs::CacheEqual, std::string, std::vector<Var>> Lhs::cache;
 
 Lhs::Lhs(const std::string &pred, const std::vector<Var> &args): pred(pred), args(args) {}
+
+LhsPtr Lhs::mk(const std::string &pred, const std::vector<Var> &args) {
+    return cache.from_cache(pred, args);
+}
+
+Lhs::~Lhs() {
+    cache.erase(pred, args);
+}
 
 bool Lhs::is_linear() const {
     linked_hash_set<Var> set {args.begin(), args.end()};
     return set.size() == args.size();
 }
 
-sexpresso::Sexp Lhs::to_smtlib(const var_map &vars) const {
+sexpresso::Sexp Lhs::to_smtlib() const {
     sexpresso::Sexp res {pred};
     for (const auto &arg: args) {
-        res.addChild(vars.right.at(arg));
+        res.addChild(theory::getName(arg));
     }
     return res;
 }
 
-Lhs Lhs::subs(const Subs &subs) const {
+LhsPtr Lhs::subs(const Subs &subs) const {
     std::vector<Var> new_args;
     for (const auto &arg: args) {
         new_args.push_back(*theory::vars(subs.get(arg)).begin());
     }
-    return Lhs(pred, new_args);
+    return Lhs::mk(pred, new_args);
 }
 
-std::ostream& operator<<(std::ostream &s, const Lhs &f) {
-    s << f.pred << " ::";
-    for (const auto &x: f.args) {
+LhsPtr Lhs::rename_vars(const Renaming &subs) const {
+    std::vector<Var> new_args;
+    for (const auto &arg: args) {
+        new_args.push_back(subs.get(arg));
+    }
+    return Lhs::mk(pred, new_args);
+}
+
+std::ostream& operator<<(std::ostream &s, const LhsPtr f) {
+    s << f->pred << " ::";
+    for (const auto &x: f->args) {
         s << " " << theory::to_type(theory::toExpr(x));
     }
     return s;
 }
 
-std::ostream& operator<<(std::ostream &s, const Clause &c) {
-    if (c.premise) {
-        s << "( " << c.premise->get_pred() << " ";
-        for (const auto &arg: c.premise->get_args()) {
-            s << arg << " ";
+std::ostream& operator<<(std::ostream &s, const ClausePtr c) {
+    if (c->premise) {
+        s << (*c->premise)->get_pred() << "(";
+        auto first {true};
+        for (const auto &arg: (*c->premise)->get_args()) {
+            if (first) {
+                first = false;
+            } else {
+                s << ", ";
+            }
+            s << arg;
         }
         s << ") /\\ ";
     }
-    s << c.get_constraint() << " ==> ";
-    if (c.conclusion) {
-        s << "( " << c.conclusion->get_pred() << " ";
-        for (const auto &arg: c.conclusion->get_args()) {
-            s << arg << " ";
+    s << c->get_constraint() << " ==> ";
+    if (c->conclusion) {
+        s << (*c->conclusion)->get_pred() << "(";
+        auto first {true};
+        for (const auto &arg: (*c->conclusion)->get_args()) {
+            if (first) {
+                first = false;
+            } else {
+                s << ", ";
+            }
+            s << arg;
         }
         s << ")";
     } else {
         s << "_|_";
     }
     return s;
-}
-
-std::size_t hash_value(const Lhs &f) {
-    size_t seed {42};
-    boost::hash_combine(seed, f.pred);
-    boost::hash_combine(seed, boost::hash_range(f.args.begin(), f.args.end()));
-    return seed;
 }
 
 const std::string& Lhs::get_pred() const {
@@ -67,37 +102,59 @@ const std::vector<Var>& Lhs::get_args() const {
     return args;
 }
 
+bool FunApp::CacheEqual::operator()(const std::tuple<std::string, std::vector<Expr>> &args1, const std::tuple<std::string, std::vector<Expr>> &args2) const noexcept {
+    return args1 == args2;
+}
+
+size_t FunApp::CacheHash::operator()(const std::tuple<std::string, std::vector<Expr>> &args) const noexcept {
+    size_t seed {0};
+    boost::hash_combine(seed, std::get<0>(args));
+    boost::hash_combine(seed, std::get<1>(args));
+    return seed;
+}
+
+ConsHash<FunApp, FunApp, FunApp::CacheHash, FunApp::CacheEqual, std::string, std::vector<Expr>> FunApp::cache;
+
 FunApp::FunApp(const std::string &pred, const std::vector<Expr> &args): pred(pred), args(args) {}
 
-sexpresso::Sexp FunApp::to_smtlib(const var_map &vars) const {
+FunApp::~FunApp() {
+    cache.erase(pred, args);
+}
+
+FunAppPtr FunApp::mk(const std::string &pred, const std::vector<Expr> &args) {
+    return cache.from_cache(pred, args);
+}
+
+sexpresso::Sexp FunApp::to_smtlib() const {
     sexpresso::Sexp res {pred};
     for (const auto &arg: args) {
-        res.addChild(theory::to_smtlib(arg, [&](const auto &x) {return vars.right.at(x);}));
+        res.addChild(theory::to_smtlib(arg));
     }
     return res;
 }
 
-FunApp FunApp::subs(const Subs &subs) const {
+FunAppPtr FunApp::subs(const Subs &subs) const {
     std::vector<Expr> new_args;
     for (const auto &arg: args) {
         new_args.push_back(subs(arg));
     }
-    return FunApp(pred, new_args);
+    return FunApp::mk(pred, new_args);
 }
 
-std::ostream& operator<<(std::ostream &s, const FunApp &f) {
-    s << f.pred << " ::";
-    for (const auto &x: f.args) {
+FunAppPtr FunApp::rename_vars(const Renaming &subs) const {
+    std::vector<Expr> new_args;
+    for (const auto &arg: args) {
+        new_args.push_back(subs(arg));
+    }
+    return FunApp::mk(pred, new_args);
+}
+
+std::ostream& operator<<(std::ostream &s, const FunAppPtr f) {
+    s << f->pred << " ::";
+    for (const auto &x: f->args) {
         s << " " << theory::to_type(x);
     }
     return s;
-}
-
-std::size_t hash_value(const FunApp &f) {
-    size_t seed {42};
-    boost::hash_combine(seed, f.pred);
-    boost::hash_combine(seed, boost::hash_range(f.args.begin(), f.args.end()));
-    return seed;
 }
 
 const std::string& FunApp::get_pred() const {
@@ -106,6 +163,30 @@ const std::string& FunApp::get_pred() const {
 
 const std::vector<Expr>& FunApp::get_args() const {
     return args;
+}
+
+bool Clause::CacheEqual::operator()(const Clause::Args &args1, const Clause::Args &args2) const noexcept {
+    return args1 == args2;
+}
+
+size_t Clause::CacheHash::operator()(const Clause::Args &args) const noexcept {
+    size_t seed {0};
+    boost::hash_combine(seed, std::get<0>(args));
+    boost::hash_combine(seed, std::get<1>(args));
+    boost::hash_combine(seed, std::get<2>(args));
+    return seed;
+}
+
+ConsHash<Clause, Clause, Clause::CacheHash, Clause::CacheEqual, std::optional<LhsPtr>, Bools::Expr, std::optional<FunAppPtr>> Clause::cache;
+
+Clause::Clause(const std::optional<LhsPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion): premise(premise), constraint(constraint), conclusion(conclusion) {}
+
+Clause::~Clause() {
+    cache.erase(premise, constraint, conclusion);
+}
+
+ClausePtr Clause::mk(const std::optional<LhsPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion) {
+    return cache.from_cache(premise, constraint, conclusion);
 }
 
 bool Clause::is_fact() const {
@@ -117,75 +198,50 @@ bool Clause::is_query() const {
 }
 
 bool Clause::is_left_linear() const {
-    return !premise || premise->is_linear();
+    return !premise || (*premise)->is_linear();
 }
 
-void Clause::add_var(const std::string &name, const Var &x) {
-    m_vars.left.insert(var_map::left_value_type(name, x));
-}
-
-void Clause::set_premise(const std::optional<Lhs> &premise) {
-    this->premise = premise;
-}
-
-void Clause::set_conclusion(const std::optional<FunApp> &conclusion) {
-    this->conclusion = conclusion;
-}
-
-void Clause::set_constraint(const Bools::Expr e) {
-    this->constraints.clear();
-    this->constraint = e;
-}
-
-void Clause::add_constraint(const Bools::Expr e) {
-    assert(constraint == top());
-    this->constraints.emplace_back(e);
-}
-
-const std::optional<Lhs>& Clause::get_premise() const {
+std::optional<LhsPtr> Clause::get_premise() const {
     return premise;
 }
 
-const std::optional<FunApp>& Clause::get_conclusion() const {
+std::optional<FunAppPtr> Clause::get_conclusion() const {
     return conclusion;
 }
 
 Bools::Expr Clause::get_constraint() const {
-    assert(constraints.empty());
     return constraint;
 }
 
-void Clause::finalize() {
-    assert(constraint == top());
-    constraint = bools::mkAnd(constraints);
-    constraints.clear();
+ClausePtr Clause::subs(const Subs &subs) const {
+    const auto prem {map<LhsPtr, LhsPtr>(premise, [&](const auto p) {
+        return p->subs(subs);
+    })};
+    const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto c) {
+        return c->subs(subs);
+    })};
+    return Clause::mk(prem, subs(constraint), concl);
 }
 
-const var_map& Clause::get_vars() const {
-    return m_vars;
-}
-
-Clause Clause::subs(const Subs &subs) const {
-    Clause res;
-    if (premise) {
-        res.set_premise(premise->subs(subs));
-    }
-    if (conclusion) {
-        res.set_conclusion(conclusion->subs(subs));
-    }
-    res.set_constraint(subs(get_constraint()));
-    return res;
+ClausePtr Clause::rename_vars(const Renaming &subs) const {
+    const auto prem {map<LhsPtr, LhsPtr>(premise, [&](const auto p) {
+        return p->rename_vars(subs);
+    })};
+    const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto c) {
+        return c->rename_vars(subs);
+    })};
+    return Clause::mk(prem, subs(constraint), concl);
 }
 
 VarSet Clause::vars() const {
     VarSet res;
     if (premise) {
-        for (const auto &x: premise->get_args()) {
+        for (const auto &x: (*premise)->get_args()) {
             res.insert(x);
         }
     }
     if (conclusion) {
-        for (const auto &x: conclusion->get_args()) {
+        for (const auto &x: (*conclusion)->get_args()) {
             theory::collectVars(x, res);
         }
     }
@@ -193,15 +249,35 @@ VarSet Clause::vars() const {
     return res;
 }
 
+void CHCProblem::add_clause(const ClausePtr c) {
+    clauses.insert(c);
+}
+
+void CHCProblem::remove_clause(const ClausePtr c) {
+    clauses.erase(c);
+}
+
+const linked_hash_set<ClausePtr>& CHCProblem::get_clauses() const {
+    return clauses;
+}
+
+bool CHCProblem::is_left_linear() const {
+    for (const auto &c: clauses) {
+        if (!c->is_left_linear()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 sexpresso::Sexp Clause::to_smtlib() const {
     sexpresso::Sexp assertion{"assert"};
     sexpresso::Sexp forall{"forall"};
     sexpresso::Sexp variables;
     std::map<std::string, sexpresso::Sexp> var_map;
-    for (const auto &[_,x]: m_vars) {
-        const auto var {m_vars.right.at(x)};
+    for (const auto &x: vars()) {
         const auto type {toString(theory::to_type(x))};
-        var_map.emplace(var, type);
+        var_map.emplace(theory::getName(x), type);
     }
     for (const auto &[name, type]: var_map) {
         sexpresso::Sexp var {name};
@@ -210,59 +286,23 @@ sexpresso::Sexp Clause::to_smtlib() const {
     }
     forall.addChild(variables);
     sexpresso::Sexp imp{"=>"};
-    const auto constr{get_constraint()->to_smtlib([&](const auto &x) {
-        const auto it{m_vars.right.find(x)};
-        return it == m_vars.right.end() ? theory::getName(x) : it->second;
-    })};
+    const auto constr{constraint->to_smtlib()};
     if (premise) {
         sexpresso::Sexp band{"and"};
-        band.addChild(premise->to_smtlib(m_vars));
+        band.addChild((*premise)->to_smtlib());
         band.addChild(constr);
         imp.addChild(band);
     } else {
         imp.addChild(constr);
     }
     if (conclusion) {
-        imp.addChild(conclusion->to_smtlib(m_vars));
+        imp.addChild((*conclusion)->to_smtlib());
     } else {
         imp.addChild("false");
     }
     forall.addChild(imp);
     assertion.addChild(forall);
     return assertion;
-}
-
-std::size_t hash_value(const Clause &c) {
-    size_t seed {42};
-    boost::hash_combine(seed, c.premise);
-    boost::hash_combine(seed, c.get_constraint());
-    boost::hash_combine(seed, c.conclusion);
-    return seed;
-}
-
-bool operator==(const Clause& c1, const Clause& c2) {
-    return c1.premise == c2.premise && c1.get_constraint() == c2.get_constraint() && c1.conclusion == c2.conclusion;
-}
-
-const Clause* CHCProblem::add_clause(const Clause &c) {
-    return &*clauses.insert(c).first;
-}
-
-void CHCProblem::remove_clause(const Clause &c) {
-    clauses.erase(c);
-}
-
-const linked_hash_set<Clause>& CHCProblem::get_clauses() const {
-    return clauses;
-}
-
-bool CHCProblem::is_left_linear() const {
-    for (const auto &c: clauses) {
-        if (!c.is_left_linear()) {
-            return false;
-        }
-    }
-    return true;
 }
 
 sexpresso::Sexp CHCProblem::to_smtlib() const {
@@ -283,7 +323,7 @@ sexpresso::Sexp CHCProblem::to_smtlib() const {
         res.addChild(decl);
     }
     for (const auto &c: clauses) {
-        res.addChild(c.to_smtlib());
+        res.addChild(c->to_smtlib());
     }
     return res;
 }
@@ -291,34 +331,26 @@ sexpresso::Sexp CHCProblem::to_smtlib() const {
 linked_hash_map<std::string, std::vector<theory::Types>> CHCProblem::get_signature() const {
     linked_hash_map<std::string, std::vector<theory::Types>> preds;
     for (const auto &c: clauses) {
-        if (c.get_premise()) {
+        if (const auto prem {c->get_premise()}) {
             std::vector<theory::Types> types;
-            for (const auto &x: c.get_premise()->get_args()) {
+            for (const auto &x: (*prem)->get_args()) {
                 types.emplace_back(theory::to_type(x));
             }
-            preds.put(c.get_premise()->get_pred(), types);
+            preds.put((*prem)->get_pred(), types);
         }
-        if (c.get_conclusion()) {
+        if (const auto conc {c->get_conclusion()}) {
             std::vector<theory::Types> types;
-            for (const auto &x: c.get_conclusion()->get_args()) {
+            for (const auto &x: (*conc)->get_args()) {
                 types.emplace_back(theory::to_type(x));
             }
-            preds.put(c.get_conclusion()->get_pred(), types);
+            preds.put((*conc)->get_pred(), types);
         }
     }
     return preds;
 }
 
-void CHCProblem::do_produce_model() {
-    produce_model = true;
-}
-
-bool CHCProblem::get_produce_model() const {
-    return produce_model;
-}
-
-std::ostream& operator<<(std::ostream &s, const CHCProblem &t) {
-    for (const auto &c: t.get_clauses()) {
+std::ostream& operator<<(std::ostream &s, const CHCPtr t) {
+    for (const auto &c: t->get_clauses()) {
         s << c << std::endl;
     }
     return s;

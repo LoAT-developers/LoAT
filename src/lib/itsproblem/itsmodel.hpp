@@ -5,6 +5,8 @@
 
 class ITSModel {
 
+    friend std::ostream& operator<<(std::ostream &s, const ITSModel &);
+
     linked_hash_map<LocationIdx, Bools::Expr> invariants;
 
 public:

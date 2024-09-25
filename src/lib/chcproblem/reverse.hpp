@@ -2,4 +2,4 @@
 
 #include "chcproblem.hpp"
 
-CHCProblem reverse(const CHCProblem&);
+CHCPtr reverse(const CHCPtr);

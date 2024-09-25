@@ -9,14 +9,16 @@
 #include <unordered_set>
 #include <numeric>
 
-std::optional<RulePtr> propagateEquivalences(const RulePtr &rule) {
+RulePtr SingleRulePreprocessor::propagateEquivalences(const RulePtr &rule) {
     const auto subs{impliedEquivalences(rule->getGuard())};
     if (subs.empty()) {
-        return {};
+        return rule;
     } else {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "propagated equivalences: " << subs << std::endl;
         }
+        auto &map {equiv.get<Bools>()};
+        map = map.unite(subs);
         return rule->subs(Subs::build<Bools>(subs));
     }
 }
@@ -41,82 +43,72 @@ std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
     }
 }
 
-std::optional<RulePtr> propagateEqualitiesImpl(const RulePtr &rule, const std::function<bool(const Var&)> &allow) {
-    const auto subs{rule->getGuard()->propagateEqualities(allow)};
+RulePtr SingleRulePreprocessor::propagateEqualities(const RulePtr &rule) {
+    const auto subs{rule->getGuard()->propagateEqualities(theory::isTempVar)};
     if (subs.empty()) {
-        return {};
+        return rule;
     } else {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "extracted implied equalities: " << subs << std::endl;
         }
+        auto &map {equiv.get<Arith>()};
+        map = map.unite(subs);
         return rule->subs(Subs::build<Arith>(subs));
     }
 }
 
-std::optional<RulePtr> propagateEqualities(const RulePtr &rule) {
-    return propagateEqualitiesImpl(rule, theory::isTempVar);
-}
-
-std::optional<RulePtr> propagateEqualitiesPickily(const RulePtr &rule) {
-    auto varsInUpdate{rule->getUpdate().coDomainVars()};
-    const auto isTempInUpdate{[&](const Var &sym) {
-        return theory::isTempVar(sym) && varsInUpdate.contains(sym);
-    }};
-    return propagateEqualitiesImpl(rule, isTempInUpdate);
-}
-
-std::optional<RulePtr> integerFourierMotzkin(const RulePtr &rule) {
+RulePtr SingleRulePreprocessor::integerFourierMotzkin(const RulePtr &rule) {
     auto varsInUpdate{rule->getUpdate().coDomainVars()};
     auto isTempOnlyInGuard = [&](const Var &sym) {
         return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
-    const auto new_guard{IntegerFourierMotzkin(isTempOnlyInGuard).run(rule->getGuard())};
+    IntegerFourierMotzkin ifm {isTempOnlyInGuard};
+    const auto new_guard {ifm.run(rule->getGuard())};
     if (new_guard == rule->getGuard()) {
-        return {};
+        return rule;
     } else {
+        auto &map {equiv.get<Arith>()};
+        map = map.unite(ifm.get_subs());
         return rule->withGuard(new_guard);
     }
 }
 
-std::optional<RulePtr> eliminateArithVars(const RulePtr &rule) {
-    if (const auto res{propagateEqualities(rule)}) {
+RulePtr SingleRulePreprocessor::eliminateArithVars(const RulePtr &rule) {
+    if (const auto res{propagateEqualities(rule)}; res != rule) {
         return res;
     }
     return integerFourierMotzkin(rule);
 }
 
-std::optional<RulePtr> Preprocess::preprocessRule(const RulePtr &rule) {
+RulePtr SingleRulePreprocessor::run(const RulePtr &rule) {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing " << rule << std::endl;
     }
     auto current {rule};
-    auto success {false};
     if (const auto g{Preprocess::simplifyAnd(current->getGuard())}; g != current->getGuard()) {
-        success = true;
         current = current->withGuard(g);
     }
     auto changed{false};
     do {
-        changed = false;
-        if (const auto res{propagateEquivalences(current)}) {
-            success = true;
-            current = *res;
+        const auto prop {propagateEquivalences(current)};
+        changed = prop != current;
+        current = eliminateArithVars(prop);
+        if (current != prop) {
             changed = true;
-        }
-        if (const auto res{eliminateArithVars(current)}) {
-            success = true;
-            current = (*res)->withGuard(Preprocess::simplifyAnd((*res)->getGuard()));
-            changed = true;
+            current = current->withGuard(Preprocess::simplifyAnd(current->getGuard()));
         }
     } while (changed);
     if (const auto res {eliminateIdentities(current)}) {
         current = *res;
-        success = true;
     }
-    if (success && Config::Analysis::doLogPreproc()) {
+    if (current != rule && Config::Analysis::doLogPreproc()) {
         std::cout << "got " << current << std::endl;
     }
-    return success ? current: std::optional<RulePtr>{};
+    return current;
+}
+
+const Subs& SingleRulePreprocessor::get_subs() const {
+    return equiv;
 }
 
 RulePtr Preprocess::chain(const std::vector<RulePtr> &rules) {

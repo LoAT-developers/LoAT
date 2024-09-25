@@ -87,7 +87,7 @@ public:
     void iter(const std::function<void(const Lit&)> &f) const;
     Bools::Expr map(const std::function<Bools::Expr(const Lit&)> &f, std::unordered_map<Bools::Expr, Bools::Expr> &cache) const;
     Bools::Expr map(const std::function<Bools::Expr(const Lit&)> &f) const;
-    sexpresso::Sexp to_smtlib(const std::function<std::string(const Var &)>&) const;
+    sexpresso::Sexp to_smtlib() const;
     BoolExprSet get_disjuncts() const;
     std::optional<Bools::Var> isVar() const;
 

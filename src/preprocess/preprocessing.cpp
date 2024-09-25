@@ -7,12 +7,11 @@
 #include "rulepreprocessing.hpp"
 #include "smtfactory.hpp"
 #include "theory.hpp"
-#include "chain.hpp"
 
 #include <numeric>
 #include <unordered_set>
 
-Preprocessor::Preprocessor(ITSPtr its): its(its), chain(its) {}
+Preprocessor::Preprocessor(ITSPtr its): its(its), chain(its), rule_preproc(its) {}
 
 bool Preprocessor::successful() const {
     return success;
@@ -23,7 +22,9 @@ ITSModel Preprocessor::transform_model(const ITSModel &model) const {
 }
 
 ITSCex Preprocessor::transform_cex(const ITSCex &cex) const {
-    return chain.transform_cex(cex);
+    auto transformed {chain.transform_cex(cex)};
+    transformed = rule_preproc.transform_cex(transformed);
+    return transformed;
 }
 
 ITSModel Preprocessor::get_model() const {
@@ -71,33 +72,6 @@ bool remove_irrelevant_clauses(ITSPtr its, bool forward) {
 
 bool remove_irrelevant_clauses(ITSPtr its) {
     return remove_irrelevant_clauses(its, true) || remove_irrelevant_clauses(its, false);
-}
-
-std::optional<SmtResult> preprocessRules(ITSPtr its) {
-    auto success{false};
-    std::vector<RulePtr> remove;
-    linked_hash_map<RulePtr, RulePtr> replacements;
-    for (const auto &r : its->getAllTransitions()) {
-        if (const auto res {Preprocess::preprocessRule(r)}) {
-            success = true;
-            if ((*res)->getGuard() == bot()) {
-                remove.push_back(r);
-            } else {
-                replacements.emplace(r, *res);
-            }
-        }
-    }
-    for (const auto &[idx, replacement] : replacements) {
-        its->replaceRule(idx, replacement);
-    }
-    for (const auto &idx: remove) {
-        its->removeRule(idx);
-    }
-    if (success) {
-        return its->isEmpty() ? std::optional{SmtResult::Sat} : std::optional{SmtResult::Unknown};
-    } else {
-        return {};
-    }
 }
 
 /**
@@ -218,7 +192,7 @@ SmtResult Preprocessor::preprocess() {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing rules..." << std::endl;
     }
-    sat_res = preprocessRules(its);
+    sat_res = rule_preproc.run();
     if (sat_res && sat_res != SmtResult::Unknown) {
         success = true;
         return *sat_res;
