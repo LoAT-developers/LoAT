@@ -140,3 +140,23 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
     }
     return s << "\terr";
 }
+
+const linked_hash_map<ClausePtr, ClausePtr>& CHCCex::get_accel() const {
+    return accel;
+}
+
+const linked_hash_map<ClausePtr, ClausePtr>& CHCCex::get_implicants() const {
+    return implicants;
+}
+
+const linked_hash_map<ClausePtr, std::vector<ClausePtr>>& CHCCex::get_resolvents() const {
+    return resolvents;
+}
+
+const std::vector<ClausePtr>& CHCCex::get_transitions() const {
+    return transitions;
+}
+
+const std::vector<Model>& CHCCex::get_states() const {
+    return states;
+}

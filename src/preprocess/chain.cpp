@@ -33,16 +33,16 @@ bool Chain::chainLinearPaths() {
                 if (!its->isSimpleLoop(second_idx)) {
                     const auto c{Preprocess::chain({first, second_idx->renameTmpVars()})};
                     its->addRule(c, first, second_idx);
-                    its->removeRule(first);
                     if (Config::Analysis::model) {
                         chained.emplace(c, std::pair{first, second_idx});
                         removed.emplace(its->getLhsLoc(first), first, its->getRhsLoc(first));
                     }
+                    its->removeRule(first);
                     if (its->getPredecessors(second_idx).size() == 1) {
-                        its->removeRule(second_idx);
                         if (Config::Analysis::model) {
                             removed.emplace(its->getLhsLoc(second_idx), second_idx, its->getRhsLoc(second_idx));
                         }
+                        its->removeRule(second_idx);
                     }
                     if (Config::Analysis::doLogPreproc()) {
                         std::cout << "chaining\n\trule 1: " << first << "\n\trule 2: " << second_idx << "\n\tresult: " << c << std::endl;

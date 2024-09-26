@@ -13,7 +13,7 @@ class CHCModel {
 public:
 
     void set_interpretation(const LhsPtr f, const Bools::Expr interp);
-
+    const linked_hash_map<LhsPtr, Bools::Expr> get_interpretations() const;
     sexpresso::Sexp to_smtlib() const;
 
 };

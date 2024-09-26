@@ -55,3 +55,7 @@ std::ostream& operator<<(std::ostream &s, const CHCModel &m) {
 void CHCModel::set_interpretation(const LhsPtr f, const Bools::Expr interp) {
     interpretations.emplace(f, interp);
 }
+
+const linked_hash_map<LhsPtr, Bools::Expr> CHCModel::get_interpretations() const {
+    return interpretations;
+}

@@ -256,6 +256,7 @@ int main(int argc, char *argv[]) {
     std::optional<CHCPtr> chcs{};
     std::optional<SafetyProblem> sp{};
     std::optional<CHCToITS> chc2its{};
+    std::optional<Reverse> reverse{};
     const auto start{std::chrono::steady_clock::now()};
     switch (Config::Input::format) {
         case Config::Input::Koat:
@@ -267,7 +268,8 @@ int main(int argc, char *argv[]) {
         case Config::Input::Horn: {
             chcs = SexpressoParser::loadFromFile(filename);
             if (Config::Analysis::engine == Config::Analysis::TIL && Config::til.mode == Config::TILConfig::Mode::Backward) {
-                chcs = reverse(*chcs);
+                reverse = Reverse(*chcs);
+                chcs = reverse->reverse();
             }
             chc2its = CHCToITS(*chcs);
             its = chc2its->transform();
@@ -347,7 +349,7 @@ int main(int argc, char *argv[]) {
                         break;
                     }
                     case Config::TILConfig::Mode::Interleaved: {
-                        CHCToITS reversed_chc2its{reverse(*chcs)};
+                        CHCToITS reversed_chc2its{reverse->reverse()};
                         auto reversed{reversed_chc2its.transform()};
                         auto backward_preprocessor{std::make_shared<Preprocessor>(reversed)};
                         res = backward_preprocessor->preprocess();
@@ -372,7 +374,9 @@ int main(int argc, char *argv[]) {
                                 } else if (res == SmtResult::Unsat) {
                                     its_cex = fb.get_cex();
                                 }
-                                if (!fb.is_forward()) {
+                                if (fb.is_forward()) {
+                                    reverse.reset();
+                                } else {
                                     chc2its = reversed_chc2its;
                                     preprocessor = backward_preprocessor;
                                 }
@@ -389,7 +393,10 @@ int main(int argc, char *argv[]) {
     if (its_model) {
         its_model = preprocessor->transform_model(*its_model);
         if (chc2its) {
-            const auto chc_model{chc2its->transform_model(*its_model)};
+            auto chc_model{chc2its->transform_model(*its_model)};
+            if (reverse) {
+                chc_model = reverse->transform_model(chc_model);
+            }
             std::cout << chc_model.to_smtlib().toString();
         } else {
             std::cout << *its_model;
@@ -398,7 +405,10 @@ int main(int argc, char *argv[]) {
     } else if (its_cex) {
         its_cex = preprocessor->transform_cex(*its_cex);
         if (chc2its) {
-            const auto chc_cex{chc2its->transform_cex(*its_cex)};
+            auto chc_cex{chc2its->transform_cex(*its_cex)};
+            if (reverse) {
+                chc_cex = reverse->transform_cex(chc_cex);
+            }
             std::cout << chc_cex;
         } else {
             std::cout << *its_cex;

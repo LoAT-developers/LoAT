@@ -1,5 +1,6 @@
 #include "itscex.hpp"
 #include "formulapreprocessing.hpp"
+#include "vector.hpp"
 
 #include <assert.h>
 
@@ -209,13 +210,13 @@ ITSCex ITSCex::replace_rules(const linked_hash_map<RulePtr, std::pair<RulePtr, S
     }
     for (const auto &[x,ys]: resolvents) {
         std::vector<RulePtr> transformed;
-        std::transform(ys.begin(), ys.end(), transformed.begin(), [&](const auto &y) {
+        for (const auto &y: ys) {
             std::optional<RulePtr> y_opt;
             if (const auto opt{map.get(y)}) {
                 y_opt = opt->first;
             }
-            return y_opt.value_or(y);
-        });
+            transformed.emplace_back(y_opt.value_or(y));
+        }
         std::optional<RulePtr> x_opt;
         if (const auto opt {map.get(x)}) {
             x_opt = opt->first;

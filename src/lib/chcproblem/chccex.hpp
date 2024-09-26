@@ -26,6 +26,11 @@ public:
     void add_accel(const ClausePtr &loop, const ClausePtr &res);
     void add_resolvent(const std::vector<ClausePtr> &rules, const ClausePtr &res);
     void add_implicant(const ClausePtr &rule, const ClausePtr &imp);
+    const linked_hash_map<ClausePtr, ClausePtr>& get_accel() const;
+    const linked_hash_map<ClausePtr, ClausePtr>& get_implicants() const;
+    const linked_hash_map<ClausePtr, std::vector<ClausePtr>>& get_resolvents() const;
+    const std::vector<ClausePtr>& get_transitions() const;
+    const std::vector<Model>& get_states() const;
     std::vector<std::pair<ClausePtr, ProofStepKind>> get_used_clauses() const;
 
 };
