@@ -349,6 +349,7 @@ int main(int argc, char *argv[]) {
                         break;
                     }
                     case Config::TILConfig::Mode::Interleaved: {
+                        reverse = Reverse(*chcs);
                         CHCToITS reversed_chc2its{reverse->reverse()};
                         auto reversed{reversed_chc2its.transform()};
                         auto backward_preprocessor{std::make_shared<Preprocessor>(reversed)};
