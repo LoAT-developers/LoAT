@@ -112,6 +112,38 @@ sexpresso::Sexp BoolExpr::to_smtlib() const {
     return res;
 }
 
+BoolExprSet BoolExpr::get_disjuncts() const {
+    if (isOr()) {
+        return getChildren();
+    } else if (isAnd()) {
+        const auto children {getChildren()};
+        std::optional<Bools::Expr> disj;
+        BoolExprSet lits;
+        for (const auto &x: children) {
+            if (x->isOr()) {
+                if (disj) {
+                    disj.reset();
+                    break;
+                } else {
+                    disj = x;
+                }
+            } else {
+                assert(x->isTheoryLit());
+                lits.insert(x);
+            }
+        }
+        if (disj) {
+            BoolExprSet res;
+            const auto l {bools::mkAnd(lits)};
+            for (const auto &x: (*disj)->getChildren()) {
+                res.insert(l && x);
+            }
+            return res;
+        }
+    }
+    return BoolExprSet({cpp::assume_not_null(shared_from_this())});
+}
+
 std::optional<Bools::Var> BoolExpr::isVar() const {
     using opt = std::optional<Bools::Var>;
     if (const auto lit{getTheoryLit()}) {
