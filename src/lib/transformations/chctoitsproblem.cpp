@@ -1,5 +1,6 @@
 #include "chctoitsproblem.hpp"
 #include "linearize.hpp"
+#include "config.hpp"
 
 CHCToITS::CHCToITS(CHCPtr chcs): chcs(chcs) {}
 
@@ -217,7 +218,9 @@ ITSPtr CHCToITS::transform() {
         up.put<Arith>(its->getLocVar(), arith::mkConst(rhs_loc));
         const auto guard{ren(c->get_constraint()) && theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc))};
         const auto rule {Rule::mk(guard, up)};
-        clause_map.emplace(rule, c);
+        if (Config::Analysis::model) {
+            clause_map.emplace(rule, c);
+        }
         its->addRule(rule, lhs_loc);
     }
     return its;

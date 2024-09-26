@@ -1,5 +1,6 @@
 #include "itstosafetyproblem.hpp"
 #include "formulapreprocessing.hpp"
+#include "config.hpp"
 
 ITSToSafety::ITSToSafety(const ITSPtr its)
     : its(its),
@@ -31,7 +32,9 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr r, const VarSet &prog_var
         conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), r->getUpdate().get(x)));
     }
     const auto res {subs(bools::mkAnd(conjuncts))};
-    rev_map.emplace(res, r);
+    if (Config::Analysis::model) {
+        rev_map.emplace(res, r);
+    }
     return res;
 }
 

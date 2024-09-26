@@ -2,13 +2,16 @@
 #include "subs.hpp"
 #include "impliedequivalences.hpp"
 #include "intfm.hpp"
+#include "config.hpp"
 
 bool FormulaPreprocessor::propagateEquivalences() {
     if (const auto subs {impliedEquivalences(e)}; subs.empty()) {
         return false;
     } else {
-        auto &bool_equiv {equiv.get<Bools>()};
-        bool_equiv = bool_equiv.unite(subs);
+        if (Config::Analysis::model) {
+            auto &bool_equiv {equiv.get<Bools>()};
+            bool_equiv = bool_equiv.unite(subs);
+        }
         e = subs(e);
         return true;
     }
@@ -18,8 +21,10 @@ bool FormulaPreprocessor::propagateEqualities() {
     if (const auto subs {e->propagateEqualities(allow)}; subs.empty()) {
         return false;
     } else {
-        auto &arith_equiv {equiv.get<Arith>()};
-        arith_equiv = arith_equiv.unite(subs);
+        if (Config::Analysis::model) {
+            auto &arith_equiv {equiv.get<Arith>()};
+            arith_equiv = arith_equiv.unite(subs);
+        }
         e = Subs::build<Arith>(subs)(e);
         return true;
     }
@@ -50,8 +55,10 @@ Bools::Expr FormulaPreprocessor::run(const Bools::Expr in) {
         IntegerFourierMotzkin intfm(allow);
         e = intfm.run(e);
         if (intfm.changed()) {
-            auto &arith_equiv {equiv.get<Arith>()};
-            arith_equiv = arith_equiv.unite(intfm.get_subs());
+            if (Config::Analysis::model) {
+                auto &arith_equiv {equiv.get<Arith>()};
+                arith_equiv = arith_equiv.unite(intfm.get_subs());
+            }
             e = Preprocess::simplifyAnd(e);
         }
     } while (changed);
