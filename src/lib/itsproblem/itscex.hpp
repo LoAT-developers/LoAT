@@ -22,7 +22,6 @@ public:
 
     ITSCex(ITSPtr its);
 
-    bool is_valid_step(const RulePtr trans, const Model &m) const;
     bool try_step(const RulePtr trans, const Model &m);
     void set_initial_state(const Model &m);
     bool try_final_transition(const RulePtr trans);
@@ -38,6 +37,6 @@ public:
     const linked_hash_map<RulePtr, RulePtr> &get_implicants() const;
     const linked_hash_map<RulePtr, std::vector<RulePtr>> &get_resolvents() const;
     std::vector<std::pair<RulePtr, ProofStepKind>> get_used_rules() const;
-    ITSCex replace_rules(const linked_hash_map<RulePtr, std::pair<RulePtr, Subs>>&) const;
+    ITSCex replace_rules(const linked_hash_map<RulePtr, RulePtr>&) const;
 
 };

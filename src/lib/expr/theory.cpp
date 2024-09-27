@@ -58,6 +58,10 @@ Expr toExpr(const Var &var) {
     return TheTheory::varToExpr(var);
 }
 
+Expr toExpr(const Const &c) {
+    return TheTheory::constToExpr(c);
+}
+
 theory::Types to_type(const Expr &x) {
     return std::visit(
         Overload{

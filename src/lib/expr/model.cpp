@@ -3,6 +3,12 @@
 Model::Model() {}
 Model::Model(const typename TheTheory::Model &m): m(m) {}
 
+Model Model::unite(const Model &m) const {
+    auto res {*this};
+    uniteImpl(res, m);
+    return res;
+}
+
 Subs Model::toSubs() const {
     Subs res;
     toSubsImpl(res);
@@ -40,7 +46,7 @@ Const Model::get(const Var &var) const {
         var,
         [&](const auto& x) {
             using T = decltype(theory::theory(x));
-            return Const{std::get<typename T::Model>(m)[x]};
+            return Const{std::get<typename T::Model>(m).at(x)};
         });
 }
 bool Model::contains(const Var &var) const {

@@ -11,7 +11,7 @@ bool SafetyCex::is_valid_step(const Model &m) const {
     } else {
         const auto &last {states.back()};
         for (const auto &x: sp.pre_vars()) {
-            if (theory::isProgVar(x) && last.get(theory::postVar(x)) != m.get(x)) {
+            if (theory::isProgVar(x) && (!m.contains(x) || last.get(theory::postVar(x)) != m.get(x))) {
                 return false;
             }
         }
@@ -29,6 +29,10 @@ bool SafetyCex::try_step(const Model &m, const Bools::Expr trans) {
 }
 
 void SafetyCex::set_final_state(const Model &m) {
+    const auto vars {sp.err()->vars()};
+    assert(std::all_of(vars.begin(), vars.end(), [&](const auto &x) {
+        return vars.contains(x);
+    }));
     assert(m.eval<Bools>(sp.err()));
     states.push_back(m);
 }

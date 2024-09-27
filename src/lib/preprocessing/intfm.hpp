@@ -12,16 +12,11 @@ class IntegerFourierMotzkin {
 private:
 
     std::function<bool(const Var &)> allow;
-    ArithSubs subs;
 
 public:
 
     IntegerFourierMotzkin(const std::function<bool(const Var &)> &allow);
 
     Bools::Expr run(Bools::Expr e);
-
-    const ArithSubs& get_subs() const;
-
-    bool changed() const;
 
 };

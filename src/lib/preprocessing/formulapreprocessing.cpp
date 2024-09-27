@@ -8,10 +8,6 @@ bool FormulaPreprocessor::propagateEquivalences() {
     if (const auto subs {impliedEquivalences(e)}; subs.empty()) {
         return false;
     } else {
-        if (Config::Analysis::model) {
-            auto &bool_equiv {equiv.get<Bools>()};
-            bool_equiv = bool_equiv.unite(subs);
-        }
         e = subs(e);
         return true;
     }
@@ -21,10 +17,6 @@ bool FormulaPreprocessor::propagateEqualities() {
     if (const auto subs {e->propagateEqualities(allow)}; subs.empty()) {
         return false;
     } else {
-        if (Config::Analysis::model) {
-            auto &arith_equiv {equiv.get<Arith>()};
-            arith_equiv = arith_equiv.unite(subs);
-        }
         e = Subs::build<Arith>(subs)(e);
         return true;
     }
@@ -43,7 +35,6 @@ Bools::Expr Preprocess::simplifyAnd(const Bools::Expr e) {
 FormulaPreprocessor::FormulaPreprocessor(const std::function<bool(const Var &)> &allow): allow(allow) {}
 
 Bools::Expr FormulaPreprocessor::run(const Bools::Expr in) {
-    equiv = Subs();
     e = in;
     auto changed {false};
     while (propagateEquivalences());
@@ -53,46 +44,11 @@ Bools::Expr FormulaPreprocessor::run(const Bools::Expr in) {
             e = Preprocess::simplifyAnd(e);
         }
         IntegerFourierMotzkin intfm(allow);
-        e = intfm.run(e);
-        if (intfm.changed()) {
-            if (Config::Analysis::model) {
-                auto &arith_equiv {equiv.get<Arith>()};
-                arith_equiv = arith_equiv.unite(intfm.get_subs());
-            }
-            e = Preprocess::simplifyAnd(e);
+        if (const auto fm_res {intfm.run(e)}; fm_res != e) {
+            e = Preprocess::simplifyAnd(fm_res);
         }
     } while (changed);
     return e;
-}
-
-Model FormulaPreprocessor::transform_model(const Model &m) const {
-    return transform_model(m, equiv);
-}
-
-Model FormulaPreprocessor::transform_model(const Model &m, const Subs &equiv) {
-    Model res {m};
-    bool done;
-    do {
-        done = true;
-        for (const auto &p : equiv) {
-            std::visit(
-                Overload{
-                    [&](const auto &p) {
-                        const auto &[var, ex]{p};
-                        using Th = decltype(theory::theory(var));
-                        const auto vars{ex->vars()};
-                        if (std::all_of(vars.begin(), vars.end(), [&](const auto &x) {
-                            return m.contains(x);
-                        })) {
-                            res.put<Th>(var, m.eval<Th>(ex));
-                        } else {
-                            done = false;
-                        }
-                    }},
-                p);
-        }
-    } while (!done);
-    return res;
 }
 
 std::tuple<Bools::Expr, Renaming, Renaming> Preprocess::chain(const Bools::Expr &fst, const Bools::Expr &snd) {

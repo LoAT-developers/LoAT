@@ -109,12 +109,6 @@ Bools::Expr IntegerFourierMotzkin::run(Bools::Expr e) {
                 lits.insert(arith::mkLeq(lower, upper));
             }
         }
-        if (lower_bounds.size() == 1) {
-            subs.put(var, lower_bounds.front());
-        } else {
-            assert(upper_bounds.size() == 1);
-            subs.put(var, upper_bounds.front());
-        }
         eliminated.insert(var);
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "eliminated " << var << "; lower bounds: " << lower_bounds << "; upper bounds: " << upper_bounds << std::endl;
@@ -127,12 +121,4 @@ abort:  ; //this symbol could not be eliminated, try the next one
     } else {
         return bools::mkAndFromLits(lits);
     }
-}
-
-const ArithSubs& IntegerFourierMotzkin::get_subs() const {
-    return subs;
-}
-
-bool IntegerFourierMotzkin::changed() const {
-    return !subs.empty();
 }

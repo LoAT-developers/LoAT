@@ -5,19 +5,19 @@ RulePreprocessor::RulePreprocessor(const ITSPtr its): its(its) {}
 
 std::optional<SmtResult> RulePreprocessor::run() {
     std::vector<RulePtr> remove;
+    SingleRulePreprocessor srp;
     for (const auto &r : its->getAllTransitions()) {
-        SingleRulePreprocessor srp;
         const auto res {srp.run(r)};
         if (r != res) {
             if (res->getGuard() == bot()) {
                 remove.push_back(r);
             } else {
-                replacements.emplace(res, std::pair(r, srp.get_subs()));
+                replacements.emplace(res, r);
             }
         }
     }
-    for (const auto &[replacement, p] : replacements) {
-        its->replaceRule(p.first, replacement);
+    for (const auto &[replacement, orig] : replacements) {
+        its->replaceRule(orig, replacement);
     }
     for (const auto &idx: remove) {
         its->removeRule(idx);

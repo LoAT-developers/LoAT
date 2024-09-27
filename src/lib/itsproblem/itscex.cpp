@@ -1,32 +1,44 @@
 #include "itscex.hpp"
 #include "formulapreprocessing.hpp"
 #include "vector.hpp"
+#include "smtfactory.hpp"
 
 #include <assert.h>
 
 ITSCex::ITSCex(ITSPtr its): its(its) {}
 
-bool ITSCex::is_valid_step(const RulePtr trans, const Model &next) const {
-    const auto m {states.back()};
-    if (!m.eval<Bools>(trans->getGuard())) {
-        return false;
-    }
+bool ITSCex::try_step(const RulePtr trans, const Model &next) {
+    const auto last {states.back()};
+    auto solver {SmtFactory::modelBuildingSolver(Logic::QF_NAT)};
+    const auto last_subs {last.toSubs()};
+    solver->add(last_subs(trans->getGuard()));
     const auto &up{trans->getUpdate()};
     for (const auto &x : its->getVars()) {
-        if (theory::isProgVar(x) && m.eval(up.get(x)) != next.get(x)) {
-            return false;
+        if (theory::isProgVar(x) && next.contains(x)) {
+            solver->add(theory::mkEq(theory::toExpr(next.get(x)), last_subs(up.get(x))));
         }
     }
-    return true;
-}
-
-bool ITSCex::try_step(const RulePtr trans, const Model &m) {
-    if (!is_valid_step(trans, m)) {
-        return false;
+    if (solver->check() == SmtResult::Sat) {
+        const auto new_last{last.unite(solver->model())};
+        states.pop_back();
+        states.push_back(new_last);
+        auto new_next{next};
+        for (const auto &x : its->getVars()) {
+            if (theory::isProgVar(x) && !new_next.contains(x)) {
+                std::visit(
+                    Overload{
+                        [&](const auto &x) {
+                            using Th = decltype(theory::theory(x));
+                            new_next.put<Th>(x, new_last.eval<Th>(up.get<Th>(x)));
+                        }},
+                    x);
+            }
+        }
+        states.push_back(new_next);
+        transitions.push_back(trans);
+        return true;
     }
-    states.push_back(m);
-    transitions.push_back(trans);
-    return true;
+    return false;
 }
 
 void ITSCex::set_initial_state(const Model &m) {
@@ -48,8 +60,11 @@ bool ITSCex::try_final_transition(const RulePtr trans) {
 void ITSCex::replace_state(const Model &m) {
     assert(!states.empty());
     states.pop_back();
-    assert(transitions.empty() || is_valid_step(transitions.back(), m));
-    states.push_back(m);
+    const auto trans {transitions.back()};
+    transitions.pop_back();
+    if (!try_step(trans, m)) {
+        throw std::logic_error("replace_state failed");
+    }
 }
 
 std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules() const {
@@ -184,67 +199,31 @@ const linked_hash_map<RulePtr, std::vector<RulePtr>> &ITSCex::get_resolvents() c
     return resolvents;
 }
 
-ITSCex ITSCex::replace_rules(const linked_hash_map<RulePtr, std::pair<RulePtr, Subs>> &map) const {
+ITSCex ITSCex::replace_rules(const linked_hash_map<RulePtr, RulePtr> &map) const {
     ITSCex res(its);
-    for (const auto &[x,y]: implicants) {
-        std::optional<RulePtr> y_opt;
-        if (const auto opt {map.get(y)}) {
-            y_opt = opt->first;
-        }
-        std::optional<RulePtr> x_opt;
-        if (const auto opt {map.get(x)}) {
-            x_opt = opt->first;
-        }
-        res.add_implicant(y_opt.value_or(y), x_opt.value_or(x));
+    for (const auto &[x, y] : implicants) {
+        res.add_implicant(map.get(y).value_or(y), map.get(x).value_or(x));
     }
-    for (const auto &[x,y]: accel) {
-        std::optional<RulePtr> y_opt;
-        if (const auto opt {map.get(y)}) {
-            y_opt = opt->first;
-        }
-        std::optional<RulePtr> x_opt;
-        if (const auto opt {map.get(x)}) {
-            x_opt = opt->first;
-        }
-        res.add_accel(y_opt.value_or(y), x_opt.value_or(x));
+    for (const auto &[x, y] : accel) {
+        res.add_accel(map.get(y).value_or(y), map.get(x).value_or(x));
     }
-    for (const auto &[x,ys]: resolvents) {
+    for (const auto &[x, ys] : resolvents) {
         std::vector<RulePtr> transformed;
-        for (const auto &y: ys) {
-            std::optional<RulePtr> y_opt;
-            if (const auto opt{map.get(y)}) {
-                y_opt = opt->first;
-            }
-            transformed.emplace_back(y_opt.value_or(y));
+        for (const auto &y : ys) {
+            transformed.emplace_back(map.get(y).value_or(y));
         }
-        std::optional<RulePtr> x_opt;
-        if (const auto opt {map.get(x)}) {
-            x_opt = opt->first;
-        }
-        res.add_resolvent(transformed, x_opt.value_or(x));
+        res.add_resolvent(transformed, map.get(x).value_or(x));
     }
     res.set_initial_state(states.front());
     for (size_t i = 1; i < num_states(); ++i) {
-        const auto trans {transitions.at(i - 1)};
-        auto state {states.at(i)};
-        if (const auto opt {map.get(trans)}) {
-            auto transformed {FormulaPreprocessor::transform_model(res.states.back(), opt->second)};
-            res.replace_state(transformed);
-            if (!res.try_step(opt->first, state)) {
-                throw std::logic_error("replace_rules failed");
-            }
-        } else if (!res.try_step(trans, state)) {
+        const auto trans{transitions.at(i - 1)};
+        auto state{states.at(i)};
+        if (!res.try_step(map.get(trans).value_or(trans), state)) {
             throw std::logic_error("replace_rules failed");
         }
     }
-    const auto trans {transitions.back()};
-    if (const auto opt {map.get(trans)}) {
-        auto transformed {FormulaPreprocessor::transform_model(states.back(), opt->second)};
-        res.replace_state(transformed);
-        if (!res.try_final_transition(opt->first)) {
-            throw std::logic_error("replace_rules failed");
-        }
-    } else if (!res.try_final_transition(trans)) {
+    const auto trans{transitions.back()};
+    if (!res.try_final_transition(map.get(trans).value_or(trans))) {
         throw std::logic_error("replace_rules failed");
     }
     return res;

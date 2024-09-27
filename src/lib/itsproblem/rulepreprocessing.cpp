@@ -17,8 +17,6 @@ RulePtr SingleRulePreprocessor::propagateEquivalences(const RulePtr &rule) {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "propagated equivalences: " << subs << std::endl;
         }
-        auto &map {equiv.get<Bools>()};
-        map = map.unite(subs);
         return rule->subs(Subs::build<Bools>(subs));
     }
 }
@@ -51,8 +49,6 @@ RulePtr SingleRulePreprocessor::propagateEqualities(const RulePtr &rule) {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "extracted implied equalities: " << subs << std::endl;
         }
-        auto &map {equiv.get<Arith>()};
-        map = map.unite(subs);
         return rule->subs(Subs::build<Arith>(subs));
     }
 }
@@ -67,8 +63,6 @@ RulePtr SingleRulePreprocessor::integerFourierMotzkin(const RulePtr &rule) {
     if (new_guard == rule->getGuard()) {
         return rule;
     } else {
-        auto &map {equiv.get<Arith>()};
-        map = map.unite(ifm.get_subs());
         return rule->withGuard(new_guard);
     }
 }
@@ -105,10 +99,6 @@ RulePtr SingleRulePreprocessor::run(const RulePtr &rule) {
         std::cout << "got " << current << std::endl;
     }
     return current;
-}
-
-const Subs& SingleRulePreprocessor::get_subs() const {
-    return equiv;
 }
 
 RulePtr Preprocess::chain(const std::vector<RulePtr> &rules) {

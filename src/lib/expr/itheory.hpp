@@ -101,6 +101,27 @@ public:
 private:
 
     template <size_t I = 0>
+    inline static Expr constToExprImpl(const Const &c) {
+        if constexpr (I < sizeof...(Th)) {
+            if (c.index() == I) {
+                return std::tuple_element_t<I, Theories>::constToExpr(std::get<I>(c));
+            } else {
+                return constToExprImpl<I+1>(c);
+            }
+        } else {
+            throw std::logic_error("I too large");
+        }
+    }
+
+public:
+
+    static Expr constToExpr(const Const &c) {
+        return constToExprImpl<0>(c);
+    }
+
+private:
+
+    template <size_t I = 0>
     inline static Expr anyValueImpl(const size_t i) {
         if constexpr (I < sizeof...(Th)) {
             if (i == I) {

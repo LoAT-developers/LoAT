@@ -7,8 +7,6 @@ class SingleRulePreprocessor {
 
 private:
 
-    Subs equiv;
-
     RulePtr propagateEquivalences(const RulePtr &rule);
     RulePtr propagateEqualities(const RulePtr &rule);
     RulePtr eliminateArithVars(const RulePtr &rule);
@@ -17,7 +15,6 @@ private:
 public:
 
     RulePtr run(const RulePtr &rule);
-    const Subs& get_subs() const;
 
 };
 

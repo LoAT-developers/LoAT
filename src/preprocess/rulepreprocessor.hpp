@@ -9,7 +9,7 @@ class RulePreprocessor {
 private:
 
     ITSPtr its;
-    linked_hash_map<RulePtr, std::pair<RulePtr, Subs>> replacements;
+    linked_hash_map<RulePtr, RulePtr> replacements;
 
 public:
 

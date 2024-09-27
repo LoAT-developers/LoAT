@@ -61,6 +61,7 @@ Var next(const Var &var);
 Var postVar(const Var &var);
 Var progVar(const Var &var);
 Expr toExpr(const Var &var);
+Expr toExpr(const Const &var);
 void collectVars(const Expr &expr, VarSet &vars);
 VarSet vars(const Expr &e);
 Bools::Expr mkEq(const Expr &e1, const Expr &e2);

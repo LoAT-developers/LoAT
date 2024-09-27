@@ -10,6 +10,23 @@ public:
     Model();
     Model(const typename TheTheory::Model &m);
 
+private:
+
+    template<std::size_t I = 0>
+    static inline void uniteImpl(Model &res, const Model &that) {
+        if constexpr (I < num_theories) {
+            auto &r {std::get<I>(res.m)};
+            for (const auto &[x,c]: std::get<I>(that.m)) {
+                r.put(x,c);
+            }
+            uniteImpl<I+1>(res, that);
+        }
+    }
+
+public:
+
+    Model unite(const Model &m) const;
+
     template <ITheory T>
     typename T::Const get(const typename T::Var &var) const {
         const auto map {std::get<linked_hash_map<typename T::Var, typename T::Const>>(m)};

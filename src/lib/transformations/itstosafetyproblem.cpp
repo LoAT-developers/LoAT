@@ -75,28 +75,10 @@ SafetyProblem ITSToSafety::transform() {
 
 ITSCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
     ITSCex res{its};
-    const auto &init_model{cex.get_state(0)};
-    auto transformed_init_model{init_model};
-    transformed_init_model = init_preprocessor.transform_model(transformed_init_model).composeBackwards(init_map);
-    const auto incorporate_update = [](const Subs &up, Model &m) {
-        for (const auto &p : up) {
-            std::visit(
-                Overload{
-                    [&](const auto &p) {
-                        const auto [x,t]{p};
-                        using Th = decltype(theory::theory(x));
-                        if (const auto y{t->isVar()}; y && (*y)->isTempVar() && !m.contains<Th>(*y)) {
-                            m.put<Th>(*y, m.get<Th>(x->postVar(x)));
-                        }
-                    }},
-                p);
-        }
-    };
+    auto init_model{cex.get_state(0).composeBackwards(init_map)};
+    res.set_initial_state(init_model);
     for (const auto &init: its->getInitialTransitions()) {
-        auto transformed {transformed_init_model};
-        incorporate_update(init->getUpdate(), transformed);
-        res.set_initial_state(transformed);
-        if (res.try_step(init, init_model)) {
+        if (res.try_step(init, cex.get_state(0))) {
             break;
         }
     }
@@ -112,9 +94,6 @@ ITSCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
         const auto &[model, transition]{cex.get_step(i)};
         const auto next{model.composeBackwards(pre_to_post)};
         const auto rule{rev_map.at(transition)};
-        Model transformed{model};
-        incorporate_update(rule->getUpdate(), transformed);
-        res.replace_state(transformed);
         if (!res.try_step(rule, next)) {
             throw std::logic_error("transform_cex failed");
         }
