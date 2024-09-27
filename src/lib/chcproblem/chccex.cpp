@@ -105,7 +105,7 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
         s << "\t" << next << ": " << t << std::endl;
         switch (kind) {
             case ProofStepKind::ORIG:
-                s << "\t\toriginal rule (modulo variable renaming)" << std::endl;
+                s << "\t\toriginal clause (modulo variable renaming)" << std::endl;
                 break;
             case ProofStepKind::IMPLICANT:
                 s << "\t\t-" << next << "-> is subset of -" << indices.at(cex.implicants.at(t)) << "->\n";
@@ -114,7 +114,7 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
                 s << "\t\t-" << next << "-> is subset of -" << indices.at(cex.accel.at(t)) << "->^+" << std::endl;
                 break;
             case ProofStepKind::RESOLVENT:
-                s << "\t\t" << "chain(";
+                s << "\t\t" << "resolve(";
                 auto first{true};
                 for (const auto &r : cex.resolvents.at(t)) {
                     if (first) {
