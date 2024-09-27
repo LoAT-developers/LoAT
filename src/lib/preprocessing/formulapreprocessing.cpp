@@ -35,12 +35,15 @@ Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<boo
         e = prop;
     }
     e = Preprocess::simplifyAnd(e);
-    auto changed {false};
+    bool changed;
     do {
+        changed = false;
         if (const auto prop {propagateEqualities(e, allow)}; prop != e) {
-            e = Preprocess::simplifyAnd(e);
+            changed = true;
+            e = Preprocess::simplifyAnd(prop);
         }
         if (const auto fm_res {integerFourierMotzkin(e, allow)}; fm_res != e) {
+            changed = true;
             e = Preprocess::simplifyAnd(fm_res);
         }
     } while (changed);
