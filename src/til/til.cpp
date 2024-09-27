@@ -695,7 +695,7 @@ std::optional<SmtResult> TIL::do_step() {
 ITSModel TIL::get_model() {
     std::vector<Bools::Expr> res{t.init()};
     Bools::Expr last{t.init()};
-    for (unsigned i = 0; i + 1 < depth; ++i) {
+    for (unsigned i = 0; i < depth; ++i) {
         const auto s1{get_subs(i, 1)};
         last = last && s1(step);
         Renaming s2;

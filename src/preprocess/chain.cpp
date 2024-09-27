@@ -38,7 +38,7 @@ bool Chain::chainLinearPaths() {
                         removed.emplace(its->getLhsLoc(first), first, its->getRhsLoc(first));
                     }
                     its->removeRule(first);
-                    if (its->getPredecessors(second_idx).size() == 1) {
+                    if (its->getPredecessors(second_idx).empty()) {
                         if (Config::Analysis::model) {
                             removed.emplace(its->getLhsLoc(second_idx), second_idx, its->getRhsLoc(second_idx));
                         }
