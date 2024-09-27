@@ -161,7 +161,7 @@ Bools::Expr TIL::specialize(const Bools::Expr e, const Model &model, const std::
     if (Config::Analysis::log) {
         std::cout << "sip: " << sip << std::endl;
     }
-    auto simp{FormulaPreprocessor(theory::isTempVar).run(sip)};
+    auto simp{Preprocess::preprocessFormula(sip)};
     if (Config::Analysis::log && simp != sip) {
         std::cout << "simp: " << simp << std::endl;
     }

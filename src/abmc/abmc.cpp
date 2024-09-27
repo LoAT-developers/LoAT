@@ -192,7 +192,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             }
         }
     }
-    auto simp {SingleRulePreprocessor().run(loop)};
+    auto simp {Preprocess::preprocessRule(loop)};
     const auto nonterm_to_query = [this](const RulePtr rule, const acceleration::Result &accel_res) {
         if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
             query = query || accel_res.nonterm;
@@ -222,7 +222,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         const auto accel_res {LoopAcceleration::accelerate(simp, config)};
         nonterm_to_query(simp, accel_res);
         if (accel_res.accel) {
-            auto simplified {SingleRulePreprocessor().run(accel_res.accel->rule)};
+            auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)};
             if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
                 add_learned_clause(loop, simplified, backlink);
                 shortcut = simplified;

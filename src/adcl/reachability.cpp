@@ -243,7 +243,7 @@ RulePtr Reachability::compute_resolvent(const RulePtr idx, const Bools::Expr imp
     if (!trace.empty()) {
         resolvent = Preprocess::chain({trace.back().resolvent, resolvent});
     }
-    return SingleRulePreprocessor().run(resolvent);
+    return Preprocess::preprocessRule(resolvent);
 }
 
 bool Reachability::store_step(const RulePtr idx, const RulePtr implicant) {
@@ -460,7 +460,7 @@ std::optional<RulePtr> Reachability::instantiate(const Arith::Var n, const RuleP
 }
 
 std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, const Model &model, const unsigned backlink) {
-    const auto simp {SingleRulePreprocessor().run(rule)};
+    const auto simp {Preprocess::preprocessRule(rule)};
     if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
@@ -494,7 +494,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, co
     }
     if (accel_res.accel) {
         // acceleration succeeded, simplify the result
-        auto simplified {SingleRulePreprocessor().run(accel_res.accel->rule)};
+        auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)};
         if (simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {

@@ -3,9 +3,7 @@
 #include "config.hpp"
 
 ITSToSafety::ITSToSafety(const ITSPtr its)
-    : its(its),
-      init_preprocessor(theory::isTempVar),
-      err_preprocessor(theory::isTempVar) {}
+    : its(its) {}
 
 ITSModel ITSToSafety::transform_model(const Bools::Expr &e) const {
     ITSModel res;
@@ -59,10 +57,10 @@ SafetyProblem ITSToSafety::transform() {
     std::vector<Bools::Expr> err;
     for (const auto &r: its->getAllTransitions()) {
         if (its->isInitialTransition(r)) {
-            init.emplace_back(init_preprocessor.run(init_map(rule_to_formula(r, sp.pre_vars()))));
+            init.emplace_back(Preprocess::preprocessFormula(init_map(rule_to_formula(r, sp.pre_vars()))));
         }
         if (its->isSinkTransition(r)) {
-            err.emplace_back(err_preprocessor.run(r->getGuard()));
+            err.emplace_back(Preprocess::preprocessFormula(r->getGuard()));
         }
         if (!its->isInitialTransition(r) && !its->isSinkTransition(r)) {
             sp.add_transition(rule_to_formula(r, sp.pre_vars()));

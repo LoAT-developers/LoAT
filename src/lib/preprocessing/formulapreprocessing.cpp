@@ -4,21 +4,19 @@
 #include "intfm.hpp"
 #include "config.hpp"
 
-bool FormulaPreprocessor::propagateEquivalences() {
+Bools::Expr propagateEquivalences(const Bools::Expr e) {
     if (const auto subs {impliedEquivalences(e)}; subs.empty()) {
-        return false;
+        return e;
     } else {
-        e = subs(e);
-        return true;
+        return subs(e);
     }
 }
 
-bool FormulaPreprocessor::propagateEqualities() {
+Bools::Expr propagateEqualities(const Bools::Expr e, const std::function<bool(const Var &)> &allow) {
     if (const auto subs {e->propagateEqualities(allow)}; subs.empty()) {
-        return false;
+        return e;
     } else {
-        e = Subs::build<Arith>(subs)(e);
-        return true;
+        return Subs::build<Arith>(subs)(e);
     }
 }
 
@@ -32,19 +30,17 @@ Bools::Expr Preprocess::simplifyAnd(const Bools::Expr e) {
     return e;
 }
 
-FormulaPreprocessor::FormulaPreprocessor(const std::function<bool(const Var &)> &allow): allow(allow) {}
-
-Bools::Expr FormulaPreprocessor::run(const Bools::Expr in) {
-    e = in;
-    auto changed {false};
-    while (propagateEquivalences());
+Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<bool(const Var &)> &allow) {
+    for (const auto prop = propagateEquivalences(e); prop != e;) {
+        e = prop;
+    }
     e = Preprocess::simplifyAnd(e);
+    auto changed {false};
     do {
-        if ((changed = propagateEqualities())) {
+        if (const auto prop {propagateEqualities(e, allow)}; prop != e) {
             e = Preprocess::simplifyAnd(e);
         }
-        IntegerFourierMotzkin intfm(allow);
-        if (const auto fm_res {intfm.run(e)}; fm_res != e) {
+        if (const auto fm_res {integerFourierMotzkin(e, allow)}; fm_res != e) {
             e = Preprocess::simplifyAnd(fm_res);
         }
     } while (changed);

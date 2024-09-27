@@ -14,8 +14,6 @@ private:
     const ITSPtr its;
     std::unordered_map<Bools::Expr, RulePtr> rev_map;
     Renaming init_map;
-    FormulaPreprocessor init_preprocessor;
-    FormulaPreprocessor err_preprocessor;
 
 public:
 

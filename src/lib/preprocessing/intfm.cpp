@@ -4,9 +4,7 @@
 
 #include <unordered_set>
 
-IntegerFourierMotzkin::IntegerFourierMotzkin(const std::function<bool(const Var &)> &allow): allow(allow) {}
-
-Bools::Expr IntegerFourierMotzkin::run(Bools::Expr e) {
+Bools::Expr integerFourierMotzkin(const Bools::Expr e, const std::function<bool(const Var &)> &allow) {
     if (!e->isConjunction()) {
         return e;
     }

@@ -6,25 +6,9 @@
 
 #include <vector>
 
-class FormulaPreprocessor {
-
-private:
-
-    Bools::Expr e {top()};
-    std::function<bool(const Var &)> allow;
-
-    bool propagateEquivalences();
-    bool propagateEqualities();
-
-public:
-
-    FormulaPreprocessor(const std::function<bool(const Var &)> &allow);
-
-    Bools::Expr run(const Bools::Expr);
-
-};
-
 namespace Preprocess {
+
+    Bools::Expr preprocessFormula(Bools::Expr, const std::function<bool(const Var &)> &allow = theory::isTempVar);
 
     Bools::Expr simplifyAnd(const Bools::Expr e);
 

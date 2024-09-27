@@ -5,9 +5,8 @@ RulePreprocessor::RulePreprocessor(const ITSPtr its): its(its) {}
 
 std::optional<SmtResult> RulePreprocessor::run() {
     std::vector<RulePtr> remove;
-    SingleRulePreprocessor srp;
     for (const auto &r : its->getAllTransitions()) {
-        const auto res {srp.run(r)};
+        const auto res {Preprocess::preprocessRule(r)};
         if (r != res) {
             if (res->getGuard() == bot()) {
                 remove.push_back(r);

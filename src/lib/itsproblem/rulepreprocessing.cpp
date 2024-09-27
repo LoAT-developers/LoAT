@@ -9,7 +9,7 @@
 #include <unordered_set>
 #include <numeric>
 
-RulePtr SingleRulePreprocessor::propagateEquivalences(const RulePtr &rule) {
+RulePtr propagateEquivalences(const RulePtr &rule) {
     const auto subs{impliedEquivalences(rule->getGuard())};
     if (subs.empty()) {
         return rule;
@@ -41,7 +41,7 @@ std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
     }
 }
 
-RulePtr SingleRulePreprocessor::propagateEqualities(const RulePtr &rule) {
+RulePtr propagateEqualities(const RulePtr &rule) {
     const auto subs{rule->getGuard()->propagateEqualities(theory::isTempVar)};
     if (subs.empty()) {
         return rule;
@@ -53,28 +53,26 @@ RulePtr SingleRulePreprocessor::propagateEqualities(const RulePtr &rule) {
     }
 }
 
-RulePtr SingleRulePreprocessor::integerFourierMotzkin(const RulePtr &rule) {
+RulePtr integerFourierMotzkin(const RulePtr &rule) {
     auto varsInUpdate{rule->getUpdate().coDomainVars()};
     auto isTempOnlyInGuard = [&](const Var &sym) {
         return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
-    IntegerFourierMotzkin ifm {isTempOnlyInGuard};
-    const auto new_guard {ifm.run(rule->getGuard())};
-    if (new_guard == rule->getGuard()) {
+    if (const auto new_guard {integerFourierMotzkin(rule->getGuard(), isTempOnlyInGuard)}; new_guard == rule->getGuard()) {
         return rule;
     } else {
         return rule->withGuard(new_guard);
     }
 }
 
-RulePtr SingleRulePreprocessor::eliminateArithVars(const RulePtr &rule) {
+RulePtr eliminateArithVars(const RulePtr &rule) {
     if (const auto res{propagateEqualities(rule)}; res != rule) {
         return res;
     }
     return integerFourierMotzkin(rule);
 }
 
-RulePtr SingleRulePreprocessor::run(const RulePtr &rule) {
+RulePtr Preprocess::preprocessRule(const RulePtr &rule) {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing " << rule << std::endl;
     }
