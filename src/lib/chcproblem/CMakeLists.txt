@@ -7,8 +7,6 @@ project(loat_chcproblem CXX)
 add_library(${PROJECT_NAME} OBJECT
     chcproblem.hpp
     chcproblem.cpp
-    linearize.hpp
-    linearize.cpp
     chcmodel.hpp
     chcmodel.cpp
     reverse.hpp

@@ -2,10 +2,10 @@
 
 sexpresso::Sexp CHCModel::to_smtlib() const {
     sexpresso::Sexp res;
-    for (const auto &[sig, interp]: interpretations) {
+    for (const auto &[f, p]: interpretations) {
+        const auto &[args, interp] {p};
         sexpresso::Sexp fun {"define-fun"};
-        fun.addChild(sig->get_pred());
-        const auto &args {sig->get_args()};
+        fun.addChild(f);
         { // bound variables
             sexpresso::Sexp decls;
             for (const auto &arg: args) {
@@ -42,9 +42,10 @@ sexpresso::Sexp CHCModel::to_smtlib() const {
 }
 
 std::ostream& operator<<(std::ostream &s, const CHCModel &m) {
-    for (const auto &[sig,interp]: m.interpretations) {
-        s << sig->get_pred();
-        for (const auto &x: sig->get_args()) {
+    for (const auto &[f,p]: m.interpretations) {
+        const auto &[args, interp] {p};
+        s << f;
+        for (const auto &x: args) {
             s << " " << x;
         }
         s << " := " << interp << "\n";
@@ -52,10 +53,10 @@ std::ostream& operator<<(std::ostream &s, const CHCModel &m) {
     return s;
 }
 
-void CHCModel::set_interpretation(const LhsPtr f, const Bools::Expr interp) {
-    interpretations.emplace(f, interp);
+void CHCModel::set_interpretation(const std::string &f, const std::vector<Var> &args, const Bools::Expr interp) {
+    interpretations.emplace(f, std::pair(args, interp));
 }
 
-const linked_hash_map<LhsPtr, Bools::Expr> CHCModel::get_interpretations() const {
+const linked_hash_map<std::string, std::pair<std::vector<Var>, Bools::Expr>> CHCModel::get_interpretations() const {
     return interpretations;
 }

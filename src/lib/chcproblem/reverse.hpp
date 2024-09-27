@@ -16,7 +16,7 @@ public:
     Reverse(const CHCPtr);
 
     CHCPtr reverse();
-    CHCCex transform_cex(const CHCCex&) const;
+    CHCCex transform_cex(const CHCCex&);
     CHCModel transform_model(const CHCModel&) const;
 
 };

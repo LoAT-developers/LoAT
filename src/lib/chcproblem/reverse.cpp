@@ -3,39 +3,14 @@
 
 Reverse::Reverse(const CHCPtr orig): orig(orig) {}
 
-std::pair<ClausePtr, Subs> rev(const ClausePtr c) {
-    std::vector<Bools::Expr> constr{c->get_constraint()};
-    std::optional<LhsPtr> premise;
-    Subs subs;
-    if (const auto conc{c->get_conclusion()}) {
-        std::vector<Var> lhs_args;
-        for (const auto &arg : (*conc)->get_args()) {
-            if (const auto &x{theory::is_var(arg)}) {
-                lhs_args.emplace_back(*x);
-            } else {
-                const auto y{theory::next(arg)};
-                lhs_args.emplace_back(y);
-                subs.put(y, arg);
-                constr.push_back(theory::mkEq(theory::toExpr(y), arg));
-            }
-        }
-        premise = Lhs::mk((*conc)->get_pred(), lhs_args);
-    }
-    std::optional<FunAppPtr> conclusion;
-    if (const auto prem{c->get_premise()}) {
-        std::vector<Expr> rhs_args;
-        for (const auto &x : (*prem)->get_args()) {
-            rhs_args.emplace_back(theory::toExpr(x));
-        }
-        conclusion = FunApp::mk((*prem)->get_pred(), rhs_args);
-    }
-    return {Clause::mk(premise, bools::mkAnd(constr), conclusion), subs};
+ClausePtr rev(const ClausePtr c) {
+    return Clause::mk(c->get_conclusion(), c->get_constraint(), c->get_premise());
 }
 
 CHCPtr Reverse::reverse() {
     auto res {std::make_shared<CHCProblem>()};
     for (const auto &c: orig->get_clauses()) {
-        const auto reversed {rev(c).first};
+        const auto reversed {rev(c)};
         if (Config::Analysis::model) {
             rev_map.emplace(reversed, c);
         }
@@ -46,27 +21,22 @@ CHCPtr Reverse::reverse() {
 
 CHCModel Reverse::transform_model(const CHCModel &model) const {
     CHCModel res;
-    for (const auto &[f,i]: model.get_interpretations()) {
-        res.set_interpretation(f, !i);
+    for (const auto &[f,p]: model.get_interpretations()) {
+        const auto &[args, i] {p};
+        res.set_interpretation(f, args, !i);
     }
     return res;
 }
 
-CHCCex Reverse::transform_cex(const CHCCex &cex) const {
+CHCCex Reverse::transform_cex(const CHCCex &cex) {
     CHCCex res {orig};
-    std::unordered_map<ClausePtr, std::pair<ClausePtr, Subs>> learned_rev_map;
+    std::unordered_map<ClausePtr, ClausePtr> learned_rev_map;
     const auto lookup = [&](const ClausePtr x) {
-        const auto it1 {rev_map.find(x)};
-        if (it1 == rev_map.end()) {
-            const auto it2 {learned_rev_map.find(x)};
-            if (it2 == learned_rev_map.end()) {
-                const auto p {rev(x)};
-                learned_rev_map.emplace(x, p);
-                return p.first;
-            }
-            return it2->second.first;
+        auto it {rev_map.find(x)};
+        if (it == rev_map.end()) {
+            it = rev_map.emplace(x, rev(x)).first;
         }
-        return it1->second;
+        return it->second;
     };
     for (const auto &[x,y]: cex.get_implicants()) {
         res.add_implicant(lookup(y), lookup(x));
@@ -87,13 +57,7 @@ CHCCex Reverse::transform_cex(const CHCCex &cex) const {
     for (int i = states.size() - 1; i >= 0; --i) {
         const auto &s {states.at(i)};
         const auto &t {transitions.at(i)};
-        const auto it {rev_map.find(t)};
-        if (it == rev_map.end()) {
-            const auto &[trans,subs] {learned_rev_map.at(t)};
-            if (!res.try_step(s.composeBackwards(subs), trans)) {
-                throw std::logic_error("transform_cex failed");
-            }
-        } else if (!res.try_step(s, it->second)) {
+        if (!res.try_step(s, rev_map.at(t))) {
             throw std::logic_error("transform_cex failed");
         }
     }

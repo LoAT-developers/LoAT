@@ -8,17 +8,6 @@ CHCPtr SexpressoParser::loadFromFile(const std::string &filename) {
     return parser.chcs;
 }
 
-LhsPtr parseLhs(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars) {
-    std::vector<Var> args;
-    if (exp.isString()) {
-        return Lhs::mk(exp.str(), args);
-    }
-    for (unsigned i = 1; i < exp.childCount(); ++i) {
-        args.push_back(vars.at(exp[i].str()));
-    }
-    return Lhs::mk(exp[0].str(), args);
-}
-
 FunAppPtr parsePred(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars) {
     std::vector<Expr> args;
     if (exp.isString()) {
@@ -285,7 +274,7 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::st
     }
 }
 
-std::optional<LhsPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &result, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
+std::optional<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &result, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
     if (exp.isString()) {
         const auto name {exp.str()};
         if (name == "true" || name == "false" || vars.find(name) != vars.end() || std::any_of(bindings.rbegin(), bindings.rend(), [&](const auto &b) {
@@ -294,12 +283,12 @@ std::optional<LhsPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, const std::uno
             result.emplace_back(parseBoolExpr(exp, vars, result, bindings));
             return {};
         } else {
-            return parseLhs(exp, vars);
+            return parsePred(exp, vars);
         }
     }
     const auto f {exp[0].str()};
     if (f == "and") {
-        std::optional<LhsPtr> lhs;
+        std::optional<FunAppPtr> lhs;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
             const auto l {parseTopLevelBoolExpr(exp[i], vars, result, bindings)};
             if (l) {
@@ -312,7 +301,7 @@ std::optional<LhsPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, const std::uno
         result.emplace_back(parseBoolExpr(exp, vars, result, bindings));
         return {};
     } else {
-        return parseLhs(exp, vars);
+        return parsePred(exp, vars);
     }
 }
 

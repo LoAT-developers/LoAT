@@ -21,7 +21,7 @@ bool CHCCex::is_valid_step(const Model &m, const ClausePtr &c) const {
     const auto &last_args {last_pred->get_args()};
     const auto &last_state {states.back()};
     for (size_t i = 0; i < last_args.size(); ++i) {
-        if (last_state.eval(last_args.at(i)) != m.eval(theory::toExpr(new_args.at(i)))) {
+        if (last_state.eval(last_args.at(i)) != m.eval(new_args.at(i))) {
             return false;
         }
     }
