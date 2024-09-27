@@ -298,8 +298,12 @@ int main(int argc, char *argv[]) {
         if (Config::Analysis::log) {
             std::cout << "solved by preprocessing" << std::endl;
         }
-        if (res == SmtResult::Sat && Config::Analysis::model) {
-            its_model = preprocessor->get_model();
+        if (Config::Analysis::model) {
+            if (res == SmtResult::Sat) {
+                its_model = preprocessor->get_model();
+            } else {
+                its_cex = preprocessor->get_cex();
+            }
         }
     } else {
         if (preprocessor->successful() && Config::Analysis::log) {
@@ -358,10 +362,14 @@ int main(int argc, char *argv[]) {
                             if (Config::Analysis::log) {
                                 std::cout << "solved by backward preprocessing" << std::endl;
                             }
-                            if (res == SmtResult::Sat && Config::Analysis::model) {
-                                its_model = backward_preprocessor->get_model();
+                            if (Config::Analysis::model) {
                                 chc2its = reversed_chc2its;
                                 preprocessor = backward_preprocessor;
+                                if (res == SmtResult::Sat) {
+                                    its_model = backward_preprocessor->get_model();
+                                } else {
+                                    its_cex = backward_preprocessor->get_cex();
+                                }
                             }
                         } else {
                             if (backward_preprocessor->successful() && Config::Analysis::log) {

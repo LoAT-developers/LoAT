@@ -20,6 +20,8 @@ private:
 
     RulePreprocessor rule_preproc;
 
+    ITSCex cex;
+
 public:
     Preprocessor(ITSPtr its);
 
@@ -32,5 +34,9 @@ public:
     bool successful() const;
 
     ITSModel get_model() const;
+
+    const ITSCex& get_cex() const;
+
+    std::optional<SmtResult> check_empty_clauses(ITSPtr its);
 
 };

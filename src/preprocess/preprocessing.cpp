@@ -11,7 +11,7 @@
 #include <numeric>
 #include <unordered_set>
 
-Preprocessor::Preprocessor(ITSPtr its): its(its), chain(its), rule_preproc(its) {}
+Preprocessor::Preprocessor(ITSPtr its): its(its), chain(its), rule_preproc(its), cex(its) {}
 
 bool Preprocessor::successful() const {
     return success;
@@ -31,6 +31,10 @@ ITSModel Preprocessor::get_model() const {
     ITSModel model;
     model.set_invariant(its->getInitialLocation(), top());
     return model;
+}
+
+const ITSCex& Preprocessor::get_cex() const {
+    return cex;
 }
 
 bool remove_irrelevant_clauses(ITSPtr its, bool forward) {
@@ -114,12 +118,20 @@ bool refine_dependency_graph(ITSPtr its) {
     }
 }
 
-std::optional<SmtResult> check_empty_clauses(ITSPtr its) {
+std::optional<SmtResult> Preprocessor::check_empty_clauses(ITSPtr its) {
     std::vector<RulePtr> remove;
     for (const auto &r: its->getInitialTransitions()) {
         if (its->isSinkTransition(r)) {
-            const auto smt_res {SmtFactory::check(r->getGuard())};
+            const auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
+            solver->add(r->getGuard());
+            const auto smt_res {solver->check()};
             if (smt_res == SmtResult::Sat) {
+                if (Config::Analysis::model) {
+                cex.set_initial_state(solver->model());
+                    if (!cex.try_final_transition(r)) {
+                        throw std::logic_error("constructing cex failed");
+                    }
+                }
                 return SmtResult::Unsat;
             } else if (smt_res == SmtResult::Unsat) {
                 remove.emplace_back(r);
