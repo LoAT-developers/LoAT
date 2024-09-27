@@ -48,22 +48,16 @@ void ITSCex::set_initial_state(const Model &m) {
 }
 
 bool ITSCex::try_final_transition(const RulePtr trans) {
-    assert(its->isSinkTransition(trans));
-    if (states.back().eval<Bools>(trans->getGuard())) {
+    assert(trans->getUpdate().get<Arith>(its->getLocVar()) == arith::mkConst(its->getSink()));
+    auto solver {SmtFactory::modelBuildingSolver(Logic::QF_NAT)};
+    auto &last {states.back()};
+    solver->add(last.toSubs()(trans->getGuard()));
+    if (solver->check() == SmtResult::Sat) {
+        last = last.unite(solver->model());
         transitions.push_back(trans);
         return true;
     } else {
         return false;
-    }
-}
-
-void ITSCex::replace_state(const Model &m) {
-    assert(!states.empty());
-    states.pop_back();
-    const auto trans {transitions.back()};
-    transitions.pop_back();
-    if (!try_step(trans, m)) {
-        throw std::logic_error("replace_state failed");
     }
 }
 
