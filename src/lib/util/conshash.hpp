@@ -19,9 +19,7 @@ private:
 public:
 
     void erase(const Args&... args) {
-#ifdef LOAT_GC
         cache.erase(std::make_tuple(args...));
-#endif
     }
 
     bool contains(const Args&... args) const {
