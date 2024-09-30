@@ -30,12 +30,7 @@ public:
 
     const cpp::not_null<std::shared_ptr<const Abstract>> from_cache(const Args&&... args) {
         const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const Abstract>())};
-#ifdef LOAT_GC
-        if (b)
-#else
-        if (b || it->second.expired())
-#endif
-        {
+        if (b) {
             const auto res {std::make_shared<Concrete>(args...)};
             it->second = res;
             return cpp::assume_not_null(res);
@@ -45,12 +40,7 @@ public:
 
     const cpp::not_null<std::shared_ptr<const Abstract>> from_cache(const Args&... args) {
         const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const Abstract>())};
-#ifdef LOAT_GC
-        if (b)
-#else
-        if (b || it->second.expired())
-#endif
-        {
+        if (b) {
             const auto res {std::make_shared<Concrete>(args...)};
             it->second = res;
             return cpp::assume_not_null(res);
