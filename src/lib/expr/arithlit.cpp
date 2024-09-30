@@ -34,7 +34,7 @@ std::ostream& operator<<(std::ostream &s, const ArithLitSet &set) {
     return s;
 }
 
-ConsHash<ArithLit, ArithLit, ArithLit::CacheHash, ArithLit::CacheEqual, ArithExprPtr, ArithLit::Kind> ArithLit::cache {};
+ConsHash<ArithLit, ArithLit, ArithLit::CacheHash, ArithLit::CacheEqual, ArithExprPtr, ArithLit::Kind> ArithLit::cache {16384};
 
 bool ArithLit::CacheEqual::operator()(const std::tuple<ArithExprPtr, ArithLit::Kind> &args1, const std::tuple<ArithExprPtr, ArithLit::Kind> &args2) const noexcept {
     return args1 == args2;

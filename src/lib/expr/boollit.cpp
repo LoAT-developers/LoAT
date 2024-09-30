@@ -6,7 +6,7 @@
 #include <boost/functional/hash.hpp>
 #include <functional>
 
-ConsHash<BoolLit, BoolLit, BoolLit::CacheHash, BoolLit::CacheEqual, BoolVarPtr, bool> BoolLit::cache {};
+ConsHash<BoolLit, BoolLit, BoolLit::CacheHash, BoolLit::CacheEqual, BoolVarPtr, bool> BoolLit::cache {16384};
 
 bool BoolLit::CacheEqual::operator()(const std::tuple<BoolVarPtr, bool> &args1, const std::tuple<BoolVarPtr, bool> &args2) const noexcept {
     return args1 == args2;

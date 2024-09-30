@@ -1,6 +1,6 @@
 #include "arithexpr.hpp"
 
-ConsHash<ArithExpr, ArithConst, ArithConst::CacheHash, ArithConst::CacheEqual, Rational> ArithConst::cache;
+ConsHash<ArithExpr, ArithConst, ArithConst::CacheHash, ArithConst::CacheEqual, Rational> ArithConst::cache{16384};
 
 ArithConst::ArithConst(const Rational &t): ArithExpr(arith::Kind::Constant), t(t) {}
 

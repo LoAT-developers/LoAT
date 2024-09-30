@@ -1,6 +1,6 @@
 #include "arithexpr.hpp"
 
-ConsHash<ArithExpr, ArithExp, ArithExp::CacheHash, ArithExp::CacheEqual, ArithExprPtr, ArithExprPtr> ArithExp::cache;
+ConsHash<ArithExpr, ArithExp, ArithExp::CacheHash, ArithExp::CacheEqual, ArithExprPtr, ArithExprPtr> ArithExp::cache{8192};
 
 ArithExp::ArithExp(const ArithExprPtr base, const ArithExprPtr exponent): ArithExpr(arith::Kind::Exp), base(base), exponent(exponent) {}
 

@@ -1,6 +1,6 @@
 #include "arithexpr.hpp"
 
-ConsHash<ArithExpr, ArithMod, ArithMod::CacheHash, ArithMod::CacheEqual, ArithExprPtr, ArithExprPtr> ArithMod::cache;
+ConsHash<ArithExpr, ArithMod, ArithMod::CacheHash, ArithMod::CacheEqual, ArithExprPtr, ArithExprPtr> ArithMod::cache{8192};
 
 ArithMod::ArithMod(const ArithExprPtr lhs, ArithExprPtr rhs): ArithExpr(arith::Kind::Mod), lhs(lhs), rhs(rhs) {}
 
