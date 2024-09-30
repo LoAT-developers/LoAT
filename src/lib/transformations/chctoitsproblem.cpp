@@ -144,58 +144,60 @@ ITSPtr CHCToITS::transform() {
         bvars.emplace_back(BoolVar::nextProgVar());
     }
     for (const auto &c: chcs->get_clauses()) {
-        std::vector<Bools::Expr> constraints{c->get_constraint()};
-        const auto lhs_loc = c->get_premise() ? its->getOrAddLocation((*c->get_premise())->get_pred()) : its->getInitialLocation();
-        constraints.emplace_back(theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
-        // replace the arguments of the body predicate with the corresponding program variables
-        unsigned bool_arg{0};
-        unsigned int_arg{0};
-        if (const auto prem {c->get_premise()}) {
-            for (const auto &ex : (*prem)->get_args()) {
-                std::visit(
-                    Overload{
-                        [&](const Arith::Expr x) {
-                            constraints.emplace_back(theory::mkEq(x, vars[int_arg]));
-                            ++int_arg;
-                        },
-                        [&](const Bools::Expr x) {
-                            constraints.emplace_back(theory::mkEq(x, theory::toExpr(bvars[bool_arg])));
-                            ++bool_arg;
-                        }},
-                    ex);
+        for (const auto &g: c->get_constraint()->get_disjuncts()) {
+            std::vector<Bools::Expr> constraints{g};
+            const auto lhs_loc = c->get_premise() ? its->getOrAddLocation((*c->get_premise())->get_pred()) : its->getInitialLocation();
+            constraints.emplace_back(theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
+            // replace the arguments of the body predicate with the corresponding program variables
+            unsigned bool_arg{0};
+            unsigned int_arg{0};
+            if (const auto prem {c->get_premise()}) {
+                for (const auto &ex : (*prem)->get_args()) {
+                    std::visit(
+                        Overload{
+                            [&](const Arith::Expr x) {
+                                constraints.emplace_back(theory::mkEq(x, vars[int_arg]));
+                                ++int_arg;
+                            },
+                            [&](const Bools::Expr x) {
+                                constraints.emplace_back(theory::mkEq(x, theory::toExpr(bvars[bool_arg])));
+                                ++bool_arg;
+                            }},
+                        ex);
+                }
             }
+            bool_arg = 0;
+            int_arg = 0;
+            Subs up;
+            if (const auto conc {c->get_conclusion()}) {
+                for (const auto &arg : (*conc)->get_args()) {
+                    std::visit(
+                        Overload{
+                            [&](const Arith::Expr var) {
+                                up.put<Arith>(vars[int_arg], var);
+                                ++int_arg;
+                            },
+                            [&](const Bools::Expr var) {
+                                up.put<Bools>(bvars[bool_arg], var);
+                                ++bool_arg;
+                            }},
+                        arg);
+                }
+                for (unsigned i = int_arg; i < max_int_arity; ++i) {
+                    up.put<Arith>(vars[i], ArithVar::next()->toExpr());
+                }
+                for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
+                    up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
+                }
+            }
+            const auto rhs_loc = c->get_conclusion() ? its->getOrAddLocation((*c->get_conclusion())->get_pred()) : its->getSink();
+            up.put<Arith>(its->getLocVar(), arith::mkConst(rhs_loc));
+            const auto rule {Rule::mk(bools::mkAnd(constraints), up)};
+            if (Config::Analysis::model) {
+                clause_map.emplace(rule, c);
+            }
+            its->addRule(rule, lhs_loc);
         }
-        bool_arg = 0;
-        int_arg = 0;
-        Subs up;
-        if (const auto conc {c->get_conclusion()}) {
-            for (const auto &arg : (*conc)->get_args()) {
-                std::visit(
-                    Overload{
-                        [&](const Arith::Expr var) {
-                            up.put<Arith>(vars[int_arg], var);
-                            ++int_arg;
-                        },
-                        [&](const Bools::Expr var) {
-                            up.put<Bools>(bvars[bool_arg], var);
-                            ++bool_arg;
-                        }},
-                    arg);
-            }
-            for (unsigned i = int_arg; i < max_int_arity; ++i) {
-                up.put<Arith>(vars[i], ArithVar::next()->toExpr());
-            }
-            for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
-                up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
-            }
-        }
-        const auto rhs_loc = c->get_conclusion() ? its->getOrAddLocation((*c->get_conclusion())->get_pred()) : its->getSink();
-        up.put<Arith>(its->getLocVar(), arith::mkConst(rhs_loc));
-        const auto rule {Rule::mk(bools::mkAnd(constraints), up)};
-        if (Config::Analysis::model) {
-            clause_map.emplace(rule, c);
-        }
-        its->addRule(rule, lhs_loc);
     }
     return its;
 }
