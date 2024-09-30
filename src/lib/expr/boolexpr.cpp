@@ -141,7 +141,7 @@ BoolExprSet BoolExpr::get_disjuncts() const {
             return res;
         }
     }
-    return BoolExprSet({cpp::assume_not_null(this)});
+    return BoolExprSet({cpp::assume_not_null(shared_from_this())});
 }
 
 std::optional<Bools::Var> BoolExpr::isVar() const {
@@ -341,7 +341,7 @@ void BoolExpr::iter(const std::function<void(const Lit&)> &f) const {
 }
 
 Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::unordered_map<Bools::Expr, Bools::Expr> &cache) const {
-    const auto self {cpp::assume_not_null(this)};
+    const auto self {cpp::assume_not_null(shared_from_this())};
     const auto it {cache.find(self)};
     if (it != cache.end()) {
         return it->second;

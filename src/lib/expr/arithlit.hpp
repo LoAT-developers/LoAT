@@ -29,7 +29,7 @@ std::size_t hash_value(const Divisibility&);
 
 class ArithLit;
 
-using ArithLitPtr = cpp::not_null<const ArithLit*>;
+using ArithLitPtr = cpp::not_null<std::shared_ptr<const ArithLit>>;
 
 namespace arith {
 
@@ -72,6 +72,7 @@ private:
 public:
 
     ArithLit(const ArithExprPtr lhs, const Kind kind);
+    ~ArithLit();
 
     ArithExprPtr lhs() const;
     bool isPoly() const;

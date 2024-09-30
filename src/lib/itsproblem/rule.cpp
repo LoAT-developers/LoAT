@@ -17,6 +17,10 @@ bool Rule::CacheEqual::operator()(const std::tuple<Bools::Expr, Subs> &args1, co
     return args1 == args2;
 }
 
+Rule::~Rule() {
+    cache.erase(guard, update);
+}
+
 RulePtr Rule::mk(const Bools::Expr guard, const Subs up) {
     return cache.from_cache(guard, up);
 }

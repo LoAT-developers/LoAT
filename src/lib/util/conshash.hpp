@@ -8,13 +8,11 @@
 template<class Abstract, class Concrete, class Hash, class Eq, class... Args>
 class ConsHash {
 
-using Ptr = cpp::not_null<const Abstract*>;
-
 private:
 
     std::unordered_map<
         std::tuple<const Args...>,
-        const Abstract*,
+        std::weak_ptr<const Abstract>,
         Hash,
         Eq> cache{};
 
@@ -22,34 +20,44 @@ public:
 
     ConsHash(const size_t capacity): cache(capacity) {}
 
-    ~ConsHash() {
-        for (const auto &[_,v]: cache) {
-            delete v;
-        }
+    void erase(const Args&... args) {
+#ifdef LOAT_GC
+        cache.erase(std::make_tuple(args...));
+#endif
     }
 
     bool contains(const Args&... args) const {
         return cache.contains(std::make_tuple(args...));
     }
 
-    const Ptr from_cache(const Args&&... args) {
-        const auto [it,b] {cache.emplace(std::make_tuple(args...), nullptr)};
-        if (b) {
-            const auto res {new Concrete(args...)};
+    const cpp::not_null<std::shared_ptr<const Abstract>> from_cache(const Args&&... args) {
+        const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const Abstract>())};
+#ifdef LOAT_GC
+        if (b)
+#else
+        if (b || it->second.expired())
+#endif
+        {
+            const auto res {std::make_shared<Concrete>(args...)};
             it->second = res;
             return cpp::assume_not_null(res);
         }
-        return cpp::assume_not_null(it->second);
+        return cpp::assume_not_null(it->second.lock());
     }
 
-    const Ptr from_cache(const Args&... args) {
-        const auto [it,b] {cache.emplace(std::make_tuple(args...), nullptr)};
-        if (b) {
-            const auto res {new Concrete(args...)};
+    const cpp::not_null<std::shared_ptr<const Abstract>> from_cache(const Args&... args) {
+        const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const Abstract>())};
+#ifdef LOAT_GC
+        if (b)
+#else
+        if (b || it->second.expired())
+#endif
+        {
+            const auto res {std::make_shared<Concrete>(args...)};
             it->second = res;
             return cpp::assume_not_null(res);
         }
-        return cpp::assume_not_null(it->second);
+        return cpp::assume_not_null(it->second.lock());
     }
 
 };
