@@ -6,7 +6,7 @@
 int ArithVar::last_tmp_idx {0};
 int ArithVar::last_prog_idx {1};
 
-ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {16384};
+ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {};
 
 ArithExprPtr arith::mkVar(const int idx) {
     return ArithVar::cache.from_cache(idx);

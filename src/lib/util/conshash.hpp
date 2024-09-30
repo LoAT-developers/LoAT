@@ -18,8 +18,6 @@ private:
 
 public:
 
-    ConsHash(const size_t capacity): cache(capacity) {}
-
     void erase(const Args&... args) {
 #ifdef LOAT_GC
         cache.erase(std::make_tuple(args...));

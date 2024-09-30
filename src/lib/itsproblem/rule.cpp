@@ -1,6 +1,6 @@
 #include "rule.hpp"
 
-ConsHash<Rule, Rule, Rule::CacheHash, Rule::CacheEqual, Bools::Expr, Subs> Rule::cache{8192};
+ConsHash<Rule, Rule, Rule::CacheHash, Rule::CacheEqual, Bools::Expr, Subs> Rule::cache;
 
 unsigned Rule::next_id {0};
 
