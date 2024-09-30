@@ -6,10 +6,6 @@ ConsHash<ArithExpr, ArithAdd, ArithAdd::CacheHash, ArithAdd::CacheEqual, ArithEx
 
 ArithAdd::ArithAdd(const ArithExprSet &args): ArithExpr(arith::Kind::Plus), args(args) {}
 
-ArithAdd::~ArithAdd() {
-    cache.erase(args);
-}
-
 bool ArithAdd::CacheEqual::operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept {
     return args1 == args2;
 }

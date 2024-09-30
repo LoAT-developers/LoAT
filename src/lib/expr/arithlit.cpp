@@ -49,10 +49,6 @@ size_t ArithLit::CacheHash::operator()(const std::tuple<ArithExprPtr, ArithLit::
 
 ArithLit::ArithLit(const ArithExprPtr l, const Kind kind): l(l), kind(kind) { }
 
-ArithLit::~ArithLit() {
-    cache.erase(l, kind);
-}
-
 ArithLitPtr ArithLit::mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
     const auto lcm {lhs->denomLcm()};
     auto lhs_integral = lcm == 1 ? lhs : lhs * arith::mkConst(lcm);

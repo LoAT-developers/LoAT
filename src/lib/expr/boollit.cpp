@@ -25,10 +25,6 @@ BoolLitPtr bools::mk(const BoolVarPtr var, bool negated) {
 
 BoolLit::BoolLit(const BoolVarPtr var, bool negated): var(var), negated(negated) {}
 
-BoolLit::~BoolLit() {
-    cache.erase(var, negated);
-}
-
 bool BoolLit::isNegated() const {
     return negated;
 }
@@ -97,7 +93,7 @@ sexpresso::Sexp BoolLit::to_smtlib() const {
 BoolLitPtr BoolLit::renameVars(const bool_var_map &map) const {
     const auto it {map.left.find(var)};
     if (it == map.left.end()) {
-        return cpp::assume_not_null(shared_from_this());
+        return cpp::assume_not_null(this);
     } else {
         return bools::mk(it->second, negated);
     }

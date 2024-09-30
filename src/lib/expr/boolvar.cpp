@@ -10,10 +10,6 @@ ConsHash<BoolVar, BoolVar, BoolVar::CacheHash, BoolVar::CacheEqual, int> BoolVar
 
 BoolVar::BoolVar(const int idx): idx(idx) {}
 
-BoolVar::~BoolVar() {
-    cache.erase(idx);
-}
-
 std::string BoolVar::getName() const {
     if (idx > 0) {
         return "b" + std::to_string(idx);

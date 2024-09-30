@@ -61,10 +61,6 @@ bool BoolJunction::forall(const std::function<bool(const Lit&)> &pred) const {
     return true;
 }
 
-BoolJunction::~BoolJunction() {
-    cache.erase(children, op);
-}
-
 bool BoolJunction::isConjunction() const {
     return isAnd() && std::all_of(children.begin(), children.end(), [](const auto c){
                return c->isConjunction();
