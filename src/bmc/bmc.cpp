@@ -51,9 +51,6 @@ SmtResult BMC::analyze() {
     const auto query {bools::mkOr(queries)};
     const auto query_vars {query->vars()};
     const auto do_kind {std::none_of(query_vars.begin(), query_vars.end(), theory::isTempVar)};
-    if (do_kind) {
-        kind->add(query);
-    }
 
     Renaming last_s;
     while (true) {
@@ -83,11 +80,14 @@ SmtResult BMC::analyze() {
         }
         solver->pop();
         if (do_kind) {
-            kind->add(s(pre_to_post(!query)));
+            kind->add(s(!query));
             kind->add(s(step));
+            kind->push();
+            kind->add(s(pre_to_post(query)));
             if (kind->check() == SmtResult::Unsat) {
                 return SmtResult::Sat;
             }
+            kind->pop();
         }
         if (do_bkind) {
             bkind->add(s(pre_to_post(!init)));
