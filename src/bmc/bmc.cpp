@@ -8,11 +8,9 @@ BMC::BMC(ITSPtr its): to_safety(its) {
     sp = to_safety.transform();
     vars = sp.vars();
     for (const auto &var: vars) {
-        if (theory::isTempVar(var)) {
-            pre_to_post.insert(var, theory::next(var));
-        } else if (theory::isProgVar(var)) {
+        if (theory::isProgVar(var)) {
             pre_to_post.insert(var, theory::postVar(var));
-        } else {
+        } else if (theory::isPostVar(var)) {
             pre_to_post.insert(theory::progVar(var), var);
         }
     }
@@ -49,10 +47,14 @@ SmtResult BMC::analyze() {
         }
         solver->pop();
         Renaming s;
+        for (const auto &[pre,post]: pre_to_post) {
+            s.insert(pre, last_s.get(post));
+            s.insert(post, theory::next(post));
+        }
         for (const auto &var: vars) {
-            const auto &post_var {pre_to_post.get(var)};
-            s.insert(var, last_s.get(post_var));
-            s.insert(post_var, theory::next(post_var));
+            if (theory::isTempVar(var)) {
+                s.insert(var, theory::next(var));
+            }
         }
         if (Config::Analysis::model) {
             renamings.emplace_back(last_s);
