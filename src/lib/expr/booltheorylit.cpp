@@ -1,7 +1,7 @@
 #include "boolexpr.hpp"
 #include "theory.hpp"
 
-ConsHash<BoolExpr, BoolTheoryLit, typename BoolTheoryLit::CacheHash, typename BoolTheoryLit::CacheEqual, typename BoolTheoryLit::Lit> BoolTheoryLit::cache {16384};
+ConsHash<BoolExpr, BoolTheoryLit, typename BoolTheoryLit::CacheHash, typename BoolTheoryLit::CacheEqual, typename BoolTheoryLit::Lit> BoolTheoryLit::cache;
 
 bool BoolTheoryLit::CacheEqual::operator()(const std::tuple<Lit> &args1, const std::tuple<Lit> &args2) const noexcept {
     return args1 == args2;
@@ -43,6 +43,10 @@ const Bools::Expr BoolTheoryLit::negation() const {
 
 bool BoolTheoryLit::forall(const std::function<bool(const Lit&)> &pred) const {
     return pred(lit);
+}
+
+BoolTheoryLit::~BoolTheoryLit() {
+    cache.erase(lit);
 }
 
 bool BoolTheoryLit::isConjunction() const {

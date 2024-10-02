@@ -6,7 +6,7 @@
 #include <boost/functional/hash.hpp>
 #include <functional>
 
-ConsHash<BoolLit, BoolLit, BoolLit::CacheHash, BoolLit::CacheEqual, BoolVarPtr, bool> BoolLit::cache {16384};
+ConsHash<BoolLit, BoolLit, BoolLit::CacheHash, BoolLit::CacheEqual, BoolVarPtr, bool> BoolLit::cache {};
 
 bool BoolLit::CacheEqual::operator()(const std::tuple<BoolVarPtr, bool> &args1, const std::tuple<BoolVarPtr, bool> &args2) const noexcept {
     return args1 == args2;
@@ -24,6 +24,10 @@ BoolLitPtr bools::mk(const BoolVarPtr var, bool negated) {
 }
 
 BoolLit::BoolLit(const BoolVarPtr var, bool negated): var(var), negated(negated) {}
+
+BoolLit::~BoolLit() {
+    cache.erase(var, negated);
+}
 
 bool BoolLit::isNegated() const {
     return negated;
@@ -93,7 +97,7 @@ sexpresso::Sexp BoolLit::to_smtlib() const {
 BoolLitPtr BoolLit::renameVars(const bool_var_map &map) const {
     const auto it {map.left.find(var)};
     if (it == map.left.end()) {
-        return cpp::assume_not_null(this);
+        return cpp::assume_not_null(shared_from_this());
     } else {
         return bools::mk(it->second, negated);
     }

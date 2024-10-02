@@ -1,6 +1,6 @@
 #include "boolexpr.hpp"
 
-ConsHash<BoolExpr, BoolJunction, typename BoolJunction::CacheHash, typename BoolJunction::CacheEqual, BoolExprSet, ConcatOperator> BoolJunction::cache{16384};
+ConsHash<BoolExpr, BoolJunction, typename BoolJunction::CacheHash, typename BoolJunction::CacheEqual, BoolExprSet, ConcatOperator> BoolJunction::cache{};
 
 bool BoolJunction::CacheEqual::operator()(const std::tuple<BoolExprSet, ConcatOperator> &args1, const std::tuple<BoolExprSet, ConcatOperator> &args2) const noexcept {
     return args1 == args2;
@@ -59,6 +59,10 @@ bool BoolJunction::forall(const std::function<bool(const Lit&)> &pred) const {
         }
     }
     return true;
+}
+
+BoolJunction::~BoolJunction() {
+    cache.erase(children, op);
 }
 
 bool BoolJunction::isConjunction() const {

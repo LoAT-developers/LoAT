@@ -6,13 +6,17 @@
 int ArithVar::last_tmp_idx {0};
 int ArithVar::last_prog_idx {1};
 
-ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {16384};
+ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {};
 
 ArithExprPtr arith::mkVar(const int idx) {
     return ArithVar::cache.from_cache(idx);
 }
 
 ArithVar::ArithVar(const int idx): ArithExpr(arith::Kind::Variable), idx(idx) {}
+
+ArithVar::~ArithVar() {
+    cache.erase(idx);
+}
 
 int ArithVar::getIdx() const {
     return idx;
@@ -65,11 +69,11 @@ std::size_t hash_value(const ArithVar &x) {
 }
 
 ArithVarPtr ArithVar::toVarPtr() const {
-    return cpp::assume_not_null(this);
+    return cpp::assume_not_null(std::static_pointer_cast<const ArithVar>(shared_from_this()));
 }
 
 ArithExprPtr ArithVar::toExpr() const {
-    return cpp::assume_not_null(this);
+    return cpp::assume_not_null(shared_from_this());
 }
 
 sexpresso::Sexp ArithVar::to_smtlib() const {

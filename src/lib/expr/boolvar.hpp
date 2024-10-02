@@ -9,7 +9,7 @@
 
 class BoolVar;
 
-using BoolVarPtr = cpp::not_null<const BoolVar*>;
+using BoolVarPtr = cpp::not_null<std::shared_ptr<const BoolVar>>;
 
 namespace bools {
     BoolVarPtr mkVar(const int idx);
@@ -40,6 +40,7 @@ public:
     friend bool operator==(const BoolVar &x, const BoolVar &y) = default;
 
     BoolVar(const int idx);
+    ~BoolVar();
 
     std::string getName() const;
 
