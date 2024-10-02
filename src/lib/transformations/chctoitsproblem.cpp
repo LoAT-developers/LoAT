@@ -125,7 +125,10 @@ CHCCex CHCToITS::transform_cex(const ITSCex &cex) {
     }
     for (size_t i = 0; i < cex.num_transitions(); ++i) {
         const auto trans {cex.get_transition(i)};
-        const auto state {cex.get_state(i)};
+        auto state {cex.get_state(i)};
+        if (const auto it {renamings.find(trans)}; it != renamings.end()) {
+            state = state.composeBackwards(it->second);
+        }
         const auto clause {clause_map.at(trans)};
         if (!res.try_step(state, clause)) {
             throw std::logic_error("transform_cex failed");
@@ -144,60 +147,68 @@ ITSPtr CHCToITS::transform() {
         bvars.emplace_back(BoolVar::nextProgVar());
     }
     for (const auto &c: chcs->get_clauses()) {
-        for (const auto &g: c->get_constraint()->get_disjuncts()) {
-            std::vector<Bools::Expr> constraints{g};
-            const auto lhs_loc = c->get_premise() ? its->getOrAddLocation((*c->get_premise())->get_pred()) : its->getInitialLocation();
-            constraints.emplace_back(theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
-            // replace the arguments of the body predicate with the corresponding program variables
-            unsigned bool_arg{0};
-            unsigned int_arg{0};
-            if (const auto prem {c->get_premise()}) {
-                for (const auto &ex : (*prem)->get_args()) {
-                    std::visit(
-                        Overload{
-                            [&](const Arith::Expr x) {
+        Renaming renaming;
+        std::vector<Bools::Expr> constraints{c->get_constraint()};
+        const auto lhs_loc = c->get_premise() ? its->getOrAddLocation((*c->get_premise())->get_pred()) : its->getInitialLocation();
+        constraints.emplace_back(theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
+        // replace the arguments of the body predicate with the corresponding program variables
+        unsigned bool_arg{0};
+        unsigned int_arg{0};
+        if (const auto prem{c->get_premise()}) {
+            for (const auto &ex : (*prem)->get_args()) {
+                std::visit(
+                    Overload{
+                        [&](const Arith::Expr x) {
+                            if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
+                                renaming.insert<Arith>(*var, vars[int_arg]);
+                            } else {
                                 constraints.emplace_back(theory::mkEq(x, vars[int_arg]));
-                                ++int_arg;
-                            },
-                            [&](const Bools::Expr x) {
+                            }
+                            ++int_arg;
+                        },
+                        [&](const Bools::Expr x) {
+                            if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
+                                renaming.insert<Bools>(*var, bvars[bool_arg]);
+                            } else {
                                 constraints.emplace_back(theory::mkEq(x, theory::toExpr(bvars[bool_arg])));
-                                ++bool_arg;
-                            }},
-                        ex);
-                }
+                            }
+                            ++bool_arg;
+                        }},
+                    ex);
             }
-            bool_arg = 0;
-            int_arg = 0;
-            Subs up;
-            if (const auto conc {c->get_conclusion()}) {
-                for (const auto &arg : (*conc)->get_args()) {
-                    std::visit(
-                        Overload{
-                            [&](const Arith::Expr var) {
-                                up.put<Arith>(vars[int_arg], var);
-                                ++int_arg;
-                            },
-                            [&](const Bools::Expr var) {
-                                up.put<Bools>(bvars[bool_arg], var);
-                                ++bool_arg;
-                            }},
-                        arg);
-                }
-                for (unsigned i = int_arg; i < max_int_arity; ++i) {
-                    up.put<Arith>(vars[i], ArithVar::next()->toExpr());
-                }
-                for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
-                    up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
-                }
-            }
-            const auto rhs_loc = c->get_conclusion() ? its->getOrAddLocation((*c->get_conclusion())->get_pred()) : its->getSink();
-            up.put<Arith>(its->getLocVar(), arith::mkConst(rhs_loc));
-            const auto rule {Rule::mk(bools::mkAnd(constraints), up)};
-            if (Config::Analysis::model) {
-                clause_map.emplace(rule, c);
-            }
-            its->addRule(rule, lhs_loc);
         }
+        bool_arg = 0;
+        int_arg = 0;
+        Subs up;
+        if (const auto conc{c->get_conclusion()}) {
+            for (const auto &arg : (*conc)->get_args()) {
+                std::visit(
+                    Overload{
+                        [&](const Arith::Expr var) {
+                            up.put<Arith>(vars[int_arg], var);
+                            ++int_arg;
+                        },
+                        [&](const Bools::Expr var) {
+                            up.put<Bools>(bvars[bool_arg], var);
+                            ++bool_arg;
+                        }},
+                    arg);
+            }
+            for (unsigned i = int_arg; i < max_int_arity; ++i) {
+                up.put<Arith>(vars[i], ArithVar::next()->toExpr());
+            }
+            for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
+                up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
+            }
+        }
+        const auto rhs_loc = c->get_conclusion() ? its->getOrAddLocation((*c->get_conclusion())->get_pred()) : its->getSink();
+        up.put<Arith>(its->getLocVar(), arith::mkConst(rhs_loc));
+        const auto rule{Rule::mk(bools::mkAnd(constraints), up)->renameVars(renaming)};
+        if (Config::Analysis::model) {
+            clause_map.emplace(rule, c);
+            renamings.emplace(rule, renaming);
+        }
+        its->addRule(rule, lhs_loc);
     }
     return its;
 }

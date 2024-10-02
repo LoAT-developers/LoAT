@@ -16,6 +16,7 @@ private:
     std::vector<Arith::Var> vars;
     std::vector<Bools::Var> bvars;
     std::unordered_map<RulePtr, ClausePtr> clause_map;
+    std::unordered_map<RulePtr, Renaming> renamings;
 
 public:
     CHCToITS(CHCPtr chcs);
