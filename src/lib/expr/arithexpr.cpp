@@ -810,7 +810,6 @@ ArithExprPtr ArithExpr::renameVars(const arith_var_map &map) const {
         [&](const ArithVarPtr x) {
             const auto it {map.left.find(x)};
             if (it == map.left.end()) {
-                assert(map.right.find(x) == map.right.end());
                 return toPtr();
             } else {
                 return it->second->toPtr();

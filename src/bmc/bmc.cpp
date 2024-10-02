@@ -23,11 +23,17 @@ Bools::Expr BMC::encode_transition(const RulePtr idx) {
 
 SmtResult BMC::analyze() {
     std::vector<Bools::Expr> inits;
+    auto do_bkind {true};
     for (const auto &idx: its->getInitialTransitions()) {
         assert (!its->isSinkTransition(idx));
         inits.push_back(encode_transition(idx));
+        do_bkind &= idx->isDeterministic();
     }
-    solver->add(bools::mkOr(inits));
+    const auto init {bools::mkOr(inits)};
+    solver->add(init);
+    if (do_bkind) {
+        bkind->add(init);
+    }
 
     std::vector<Bools::Expr> steps;
     for (const auto &r: its->getAllTransitions()) {
@@ -43,6 +49,11 @@ SmtResult BMC::analyze() {
         queries.push_back(idx->getGuard());
     }
     const auto query {bools::mkOr(queries)};
+    const auto query_vars {query->vars()};
+    const auto do_kind {std::none_of(query_vars.begin(), query_vars.end(), theory::isTempVar)};
+    if (do_kind) {
+        kind->add(query);
+    }
 
     Renaming last_s;
     while (true) {
@@ -71,6 +82,20 @@ SmtResult BMC::analyze() {
         case SmtResult::Unsat: {}
         }
         solver->pop();
+        if (do_kind) {
+            kind->add(s(pre_to_post(!query)));
+            kind->add(s(step));
+            if (kind->check() == SmtResult::Unsat) {
+                return SmtResult::Sat;
+            }
+        }
+        if (do_bkind) {
+            bkind->add(s(pre_to_post(!init)));
+            bkind->add(s(step));
+            if (bkind->check() == SmtResult::Unsat) {
+                return SmtResult::Sat;
+            }
+        }
         solver->add(s(step));
         ++depth;
         if (solver->check() == SmtResult::Unsat) {

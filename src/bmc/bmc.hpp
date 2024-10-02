@@ -14,6 +14,8 @@ private:
 
     ITSPtr its;
     SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
+    SmtPtr kind {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
+    SmtPtr bkind {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     bool approx {false};
     VarSet vars;
     Renaming pre_to_post {};
