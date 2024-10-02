@@ -7,12 +7,14 @@
 #include "smtfactory.hpp"
 #include "itsmodel.hpp"
 #include "itscex.hpp"
+#include "itstosafetyproblem.hpp"
 
 class BMC {
 
 private:
 
-    ITSPtr its;
+    ITSToSafety to_safety;
+    SafetyProblem sp;
     SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     SmtPtr kind {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     SmtPtr bkind {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
@@ -21,8 +23,6 @@ private:
     Renaming pre_to_post {};
     unsigned depth {0};
     std::vector<Renaming> renamings;
-
-    Bools::Expr encode_transition(const RulePtr idx);
 
 public:
 
