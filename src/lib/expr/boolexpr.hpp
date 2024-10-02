@@ -134,7 +134,6 @@ public:
     BoolExprSet getChildren() const override;
     const Bools::Expr negation() const override;
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
-    ~BoolTheoryLit() override;
     bool isConjunction() const override;
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;
@@ -168,7 +167,6 @@ public:
     BoolExprSet getChildren() const override;
     const Bools::Expr negation() const override;
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
-    ~BoolJunction() override;
     bool isConjunction() const override;
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;

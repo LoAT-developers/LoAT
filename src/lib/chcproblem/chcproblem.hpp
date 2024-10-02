@@ -10,7 +10,7 @@
 
 class FunApp;
 
-using FunAppPtr = cpp::not_null<std::shared_ptr<const FunApp>>;
+using FunAppPtr = cpp::not_null<const FunApp*>;
 
 class FunApp {
     std::string pred;
@@ -27,7 +27,6 @@ class FunApp {
 public:
 
     FunApp(const std::string &pred, const std::vector<Expr> &args);
-    ~FunApp();
 
     static FunAppPtr mk(const std::string &pred, const std::vector<Expr> &args);
 
@@ -53,7 +52,7 @@ public:
 
 class Clause;
 
-using ClausePtr = cpp::not_null<std::shared_ptr<const Clause>>;
+using ClausePtr = cpp::not_null<const Clause*>;
 
 class Clause {
 
@@ -78,7 +77,6 @@ private:
 public:
 
     Clause(const std::optional<FunAppPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion);
-    ~Clause();
 
     static ClausePtr mk(const std::optional<FunAppPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion);
 

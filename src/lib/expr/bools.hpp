@@ -16,7 +16,7 @@ struct BoolsBase {
     using Lit = BoolLitPtr;
     using Var = BoolVarPtr;
     using Const = bool;
-    using Expr = cpp::not_null<std::shared_ptr<const BoolExpr>>;
+    using Expr = cpp::not_null<const BoolExpr*>;
     using Model = linked_hash_map<Var, Const>;
     using Renaming = boost::bimap<boost::bimaps::unordered_set_of<Var>, boost::bimaps::unordered_set_of<Var>>;
 

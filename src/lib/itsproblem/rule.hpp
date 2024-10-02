@@ -8,7 +8,7 @@
 
 class Rule;
 
-using RulePtr = cpp::not_null<std::shared_ptr<const Rule>>;
+using RulePtr = cpp::not_null<const Rule*>;
 
 class Rule {
 private:
@@ -31,8 +31,6 @@ private:
 public:
 
     Rule(const Bools::Expr guard, const Subs &update);
-
-    ~Rule();
 
     static RulePtr mk(const Bools::Expr guard, const Subs up);
 

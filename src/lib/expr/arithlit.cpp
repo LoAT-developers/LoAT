@@ -34,7 +34,7 @@ std::ostream& operator<<(std::ostream &s, const ArithLitSet &set) {
     return s;
 }
 
-ConsHash<ArithLit, ArithLit, ArithLit::CacheHash, ArithLit::CacheEqual, ArithExprPtr, ArithLit::Kind> ArithLit::cache {};
+ConsHash<ArithLit, ArithLit, ArithLit::CacheHash, ArithLit::CacheEqual, ArithExprPtr, ArithLit::Kind> ArithLit::cache {16384};
 
 bool ArithLit::CacheEqual::operator()(const std::tuple<ArithExprPtr, ArithLit::Kind> &args1, const std::tuple<ArithExprPtr, ArithLit::Kind> &args2) const noexcept {
     return args1 == args2;
@@ -48,10 +48,6 @@ size_t ArithLit::CacheHash::operator()(const std::tuple<ArithExprPtr, ArithLit::
 }
 
 ArithLit::ArithLit(const ArithExprPtr l, const Kind kind): l(l), kind(kind) { }
-
-ArithLit::~ArithLit() {
-    cache.erase(l, kind);
-}
 
 ArithLitPtr ArithLit::mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
     const auto lcm {lhs->denomLcm()};

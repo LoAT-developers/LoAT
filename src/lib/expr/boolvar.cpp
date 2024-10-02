@@ -6,13 +6,9 @@
 int BoolVar::last_tmp_idx {0};
 int BoolVar::last_prog_idx {1};
 
-ConsHash<BoolVar, BoolVar, BoolVar::CacheHash, BoolVar::CacheEqual, int> BoolVar::cache {};
+ConsHash<BoolVar, BoolVar, BoolVar::CacheHash, BoolVar::CacheEqual, int> BoolVar::cache {16384};
 
 BoolVar::BoolVar(const int idx): idx(idx) {}
-
-BoolVar::~BoolVar() {
-    cache.erase(idx);
-}
 
 std::string BoolVar::getName() const {
     if (idx > 0) {

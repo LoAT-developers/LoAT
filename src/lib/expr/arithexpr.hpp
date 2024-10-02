@@ -28,13 +28,13 @@ class ArithAdd;
 class ArithMult;
 class ArithMod;
 
-using ArithExprPtr = cpp::not_null<std::shared_ptr<const ArithExpr>>;
-using ArithVarPtr = cpp::not_null<std::shared_ptr<const ArithVar>>;
-using ArithConstPtr = cpp::not_null<std::shared_ptr<const ArithConst>>;
-using ArithAddPtr = cpp::not_null<std::shared_ptr<const ArithAdd>>;
-using ArithMultPtr = cpp::not_null<std::shared_ptr<const ArithMult>>;
-using ArithModPtr = cpp::not_null<std::shared_ptr<const ArithMod>>;
-using ArithExpPtr = cpp::not_null<std::shared_ptr<const ArithExp>>;
+using ArithExprPtr = cpp::not_null<const ArithExpr*>;
+using ArithVarPtr = cpp::not_null<const ArithVar*>;
+using ArithConstPtr = cpp::not_null<const ArithConst*>;
+using ArithAddPtr = cpp::not_null<const ArithAdd*>;
+using ArithMultPtr = cpp::not_null<const ArithMult*>;
+using ArithModPtr = cpp::not_null<const ArithMod*>;
+using ArithExpPtr = cpp::not_null<const ArithExp*>;
 using ArithExprSet = linked_hash_set<ArithExprPtr>;
 using ArithExprVec = std::vector<ArithExprPtr>;
 
@@ -250,9 +250,6 @@ public:
 
 };
 
-std::size_t hash_value(const ArithExprPtr&);
-std::size_t hash_value(const ArithVarPtr&);
-
 class ArithConst: public ArithExpr {
 
     friend ArithExprPtr arith::mkConst(const Rational &r);
@@ -261,7 +258,6 @@ class ArithConst: public ArithExpr {
 
 public:
     ArithConst(const Rational &t);
-    ~ArithConst();
 
 private:
     Rational t;
@@ -299,7 +295,6 @@ private:
 
 public:
     explicit ArithVar(const int idx);
-    ~ArithVar();
 
 private:
     struct CacheEqual {
@@ -357,7 +352,6 @@ private:
 
 public:
     ArithAdd(const ArithExprSet &args);
-    ~ArithAdd();
 
 };
 
@@ -386,7 +380,6 @@ private:
 
 public:
     ArithMult(const ArithExprSet &args);
-    ~ArithMult();
 
 };
 
@@ -415,7 +408,6 @@ private:
 
 public:
     ArithMod(const ArithExprPtr, const ArithExprPtr);
-    ~ArithMod();
 
 };
 
@@ -432,7 +424,6 @@ private:
 
 public:
     ArithExp(const ArithExprPtr base, const ArithExprPtr exponent);
-    ~ArithExp();
 
 private:
     struct CacheEqual {
