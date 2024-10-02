@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <unordered_set>
 
 #include "arithexpr.hpp"
 #include "arithsubs.hpp"
@@ -82,7 +83,7 @@ public:
     std::optional<std::pair<ArithExprPtr, Int>> isDivisibility() const;
     std::optional<Divisibility> isDivisibility(const ArithVarPtr n) const;
     std::optional<ArithExprPtr> getEquality(const ArithVarPtr n) const;
-    void propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow) const;
+    void propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const;
 
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;

@@ -80,7 +80,7 @@ public:
     void getDivisibility(const Arith::Var n, linked_hash_set<Divisibility> &res) const;
     linked_hash_set<Divisibility> getDivisibility(const Arith::Var n) const;
     std::optional<Arith::Expr> getEquality(const Arith::Var n) const;
-    void propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow) const;
+    void propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow, std::unordered_set<Arith::Var> &blocked) const;
     Arith::Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;
     Bools::Expr toInfinity(const Arith::Var n) const;
     Bools::Expr toMinusInfinity(const Arith::Var n) const;

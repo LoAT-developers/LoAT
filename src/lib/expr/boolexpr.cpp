@@ -258,22 +258,23 @@ std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var var) const {
     return {};
 }
 
-void BoolExpr::propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow) const {
+void BoolExpr::propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow, std::unordered_set<Arith::Var> &blocked) const {
     const auto lit {getTheoryLit()};
     if (lit) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
-            std::get<Arith::Lit>(*lit)->subs(subs)->propagateEquality(subs, allow);
+            std::get<Arith::Lit>(*lit)->propagateEquality(subs, allow, blocked);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
-            c->propagateEqualities(subs, allow);
+            c->propagateEqualities(subs, allow, blocked);
         }
     }
 }
 
 Arith::Subs BoolExpr::propagateEqualities(const std::function<bool(const Var &)> &allow) const {
     Arith::Subs subs;
-    propagateEqualities(subs, allow);
+    std::unordered_set<Arith::Var> blocked;
+    propagateEqualities(subs, allow, blocked);
     return subs;
 }
 
