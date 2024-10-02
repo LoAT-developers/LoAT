@@ -97,7 +97,8 @@ ProvedUnsat::ProvedUnsat() {}
 
 Reachability::Reachability(ITSPtr chcs):
     chcs(chcs),
-    drop(true) {
+    drop(true),
+    cex(chcs) {
     solver->enableModels();
 }
 
@@ -488,6 +489,9 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, co
     if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
         const auto query {chcs->addQuery(accel_res.nonterm, trace.at(backlink).clause_idx)};
         res.res.emplace_back(query);
+        if (Config::Analysis::model) {
+            cex.add_recurrent_set(rule, query);
+        }
         if (Config::Analysis::log) {
             std::cout << "found certificate of non-termination: " << query << std::endl;
         }
@@ -504,6 +508,9 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, co
             }
             add_learned_clause(simplified, backlink);
             res.res.emplace_back(simplified);
+            if (Config::Analysis::model) {
+                cex.add_accel(rule, simplified);
+            }
             if (Config::Analysis::log) {
                 std::cout << "accelerated rule: " << simplified << std::endl;
             }
@@ -515,6 +522,22 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, co
         }
         return std::make_unique<Unroll>(1, true);
     } else {
+        if (Config::Analysis::model) {
+            std::vector<RulePtr> rules;
+            for (unsigned i = backlink; i < trace.size(); ++i) {
+                const auto e{trace.at(i)};
+                if (is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx->getGuard()) {
+                    const auto imp{e.clause_idx->withGuard(e.implicant)->renameVars(e.tmp_var_renaming)};
+                    cex.add_implicant(e.clause_idx, imp);
+                    rules.emplace_back(imp);
+                } else {
+                    rules.emplace_back(e.clause_idx);
+                }
+            }
+            if (rules.size() > 1) {
+                cex.add_resolvent(rules, rule);
+            }
+        }
         return std::make_unique<Succeeded>(res);
     }
 }
@@ -632,6 +655,22 @@ bool Reachability::try_to_finish() {
     return false;
 }
 
+ITSCex Reachability::get_cex() {
+    const auto model {solver->model()};
+    cex.set_initial_state(model);
+    for (size_t i = 0; i + 1 < trace.size(); ++i) {
+        const auto &t {trace.at(i)};
+        if (!cex.try_step(t.clause_idx->withGuard(t.implicant), model.composeBackwards(t.var_renaming))) {
+            throw std::logic_error("get_cex failed");
+        }
+    }
+    const auto &last {trace.back()};
+    if (!cex.try_final_transition(last.clause_idx->withGuard(last.implicant))) {
+        throw std::logic_error("get_cex failed");
+    }
+    return cex;
+}
+
 unsigned Reachability::get_penalty(const RulePtr idx) const {
     const auto it {penalty.find(idx)};
     if (it != penalty.end()) {
@@ -742,10 +781,6 @@ SmtResult Reachability::analyze() {
         }
     } while (true);
     return SmtResult::Unknown;
-}
-
-SmtResult Reachability::analyze(ITSPtr its) {
-    return Reachability(its).analyze();
 }
 
 }

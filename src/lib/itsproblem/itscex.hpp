@@ -14,7 +14,9 @@ private:
     ITSPtr its;
     linked_hash_map<RulePtr, RulePtr> accel;
     linked_hash_map<RulePtr, RulePtr> implicants;
+    linked_hash_map<RulePtr, RulePtr> recurrent_set;
     linked_hash_map<RulePtr, std::vector<RulePtr>> resolvents;
+
     std::vector<RulePtr> transitions;
     std::vector<Model> states;
 
@@ -26,6 +28,7 @@ public:
     void set_initial_state(const Model &m);
     bool try_final_transition(const RulePtr trans);
     void add_accel(const RulePtr loop, const RulePtr res);
+    void add_recurrent_set(const RulePtr loop, const RulePtr res);
     void add_resolvent(const std::vector<RulePtr> &rules, const RulePtr res);
     void add_implicant(const RulePtr rule, const RulePtr imp);
     size_t num_states() const;

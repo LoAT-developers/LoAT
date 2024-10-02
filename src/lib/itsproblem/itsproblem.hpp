@@ -105,4 +105,4 @@ protected:
 
 using ITSPtr = std::shared_ptr<ITSProblem>;
 
-std::ostream& operator<<(std::ostream &s, const ITSProblem &its);
+std::ostream& operator<<(std::ostream &s, const ITSPtr its);

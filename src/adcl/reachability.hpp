@@ -5,6 +5,7 @@
 #include "complexity.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
+#include "itscex.hpp"
 
 #include <limits>
 #include <list>
@@ -178,6 +179,8 @@ class Reachability {
      */
     unsigned last_orig_clause {0};
 
+    ITSCex cex;
+
     std::pair<int, int> luby {1,1};
 
     unsigned luby_unit {10};
@@ -242,7 +245,7 @@ class Reachability {
      * adds a learned clause to all relevant data structures
      * @param lang (an approximation of) the language associated with the learned clause
      */
-    void add_learned_clause(const RulePtr clause, const unsigned backlink);
+    void add_learned_clause(const RulePtr accel, const unsigned backlink);
 
     /**
      * tries to accelerate the given clause
@@ -300,13 +303,13 @@ class Reachability {
 
     bool try_to_finish();
 
+public:
+
     Reachability(ITSPtr its);
 
     SmtResult analyze();
 
-public:
-
-    static SmtResult analyze(ITSPtr its);
+    ITSCex get_cex();
 
 };
 

@@ -121,6 +121,9 @@ CHCCex CHCToITS::transform_cex(const ITSCex &cex) {
             case ProofStepKind::ORIG: {
                 break;
             }
+            case ProofStepKind::RECURRENT_SET: {
+                throw std::logic_error("recurrent sets are not supported for CHCs");
+            }
         }
     }
     for (size_t i = 0; i < cex.num_transitions(); ++i) {

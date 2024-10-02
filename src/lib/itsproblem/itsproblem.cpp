@@ -218,21 +218,21 @@ size_t ITSProblem::size() const {
     return graph.size();
 }
 
-std::ostream& operator<<(std::ostream &s, const ITSProblem &its) {
+std::ostream& operator<<(std::ostream &s, const ITSPtr its) {
     s << "Start location: ";
-    s << its.getPrintableLocationName(its.getInitialLocation()) << "\n\n";
-    if (!its.getLocations().empty()) {
+    s << its->getPrintableLocationName(its->getInitialLocation()) << "\n\n";
+    if (!its->getLocations().empty()) {
         s << "Location map:" << std::endl;
-        for (const auto p: its.getLocations()) {
-            s << its.getPrintableLocationName(p);
+        for (const auto p: its->getLocations()) {
+            s << its->getPrintableLocationName(p);
             s << " -> " << p << std::endl;
         }
     }
     s << "\n\nRules:\n";
-    if (its.isEmpty()) {
+    if (its->isEmpty()) {
         s << "  <empty>\n";
     } else {
-        for (const auto &idx : its.getAllTransitions()) {
+        for (const auto &idx : its->getAllTransitions()) {
             s << std::setw(4);
             s << *idx;
             s << std::endl;
@@ -240,7 +240,7 @@ std::ostream& operator<<(std::ostream &s, const ITSProblem &its) {
     }
     if (Config::Output::PrintDependencyGraph) {
         s << "\nDependency graph:\n";
-        s << its.getDependencyGraph() << std::endl;
+        s << its->getDependencyGraph() << std::endl;
     }
     return s;
 }

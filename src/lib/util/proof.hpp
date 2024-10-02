@@ -4,5 +4,6 @@ enum class ProofStepKind {
     ORIG,
     RESOLVENT,
     ACCEL,
-    IMPLICANT
+    IMPLICANT,
+    RECURRENT_SET
 };

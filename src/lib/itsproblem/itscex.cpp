@@ -94,6 +94,12 @@ std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules() const {
                 if (ready) {
                     derived.emplace_back(t, ProofStepKind::RESOLVENT);
                 }
+            } else if (const auto loop{recurrent_set.get(t)}) {
+                if ((ready = done.contains(*loop))) {
+                    derived.emplace_back(t, ProofStepKind::RECURRENT_SET);
+                } else {
+                    todo.push(*loop);
+                }
             } else {
                 derived.emplace_back(t, ProofStepKind::ORIG);
             }
@@ -115,16 +121,19 @@ std::ostream& operator<<(std::ostream &s, const ITSCex &cex) {
         for (const auto &[t,kind]: derived) {
             s << "\t" << *t << std::endl;
             switch (kind) {
-                case ProofStepKind::ORIG:
+                case ProofStepKind::ORIG: {
                     s << "\t\toriginal rule" << std::endl;
                     break;
-                case ProofStepKind::IMPLICANT:
+                }
+                case ProofStepKind::IMPLICANT: {
                     s << "\t\t-" << t << "-> is subset of -" << cex.implicants.at(t) << "->\n";
                     break;
-                case ProofStepKind::ACCEL:
+                }
+                case ProofStepKind::ACCEL: {
                     s << "\t\t-" << t << "-> is subset of -" << cex.accel.at(t) << "->^+" << std::endl;
                     break;
-                case ProofStepKind::RESOLVENT:
+                }
+                case ProofStepKind::RESOLVENT: {
                     s << "\t\t" << "chain(";
                     auto first{true};
                     for (const auto &r : cex.resolvents.at(t)) {
@@ -137,6 +146,11 @@ std::ostream& operator<<(std::ostream &s, const ITSCex &cex) {
                     }
                     s << ") = " << t << std::endl;
                     break;
+                }
+                case ProofStepKind::RECURRENT_SET: {
+                    s << "\t\tguard(" << t << ") is a recurrent set of " << cex.recurrent_set.at(t) << std::endl;
+                    break;
+                }
             }
         }
         s << "\ncounterexample:" << std::endl;
@@ -151,6 +165,10 @@ std::ostream& operator<<(std::ostream &s, const ITSCex &cex) {
         s << "\terr";
     }
     return s;
+}
+
+void ITSCex::add_recurrent_set(const RulePtr loop, const RulePtr res) {
+    recurrent_set.emplace(res, loop);
 }
 
 void ITSCex::add_accel(const RulePtr loop, const RulePtr res) {
@@ -208,10 +226,13 @@ ITSCex ITSCex::replace_rules(const linked_hash_map<RulePtr, RulePtr> &map) const
         }
         res.add_resolvent(transformed, map.get(x).value_or(x));
     }
+    for (const auto &[x, y] : recurrent_set) {
+        res.add_recurrent_set(map.get(y).value_or(y), map.get(x).value_or(x));
+    }
     res.set_initial_state(states.front());
     for (size_t i = 1; i < num_states(); ++i) {
-        const auto trans{transitions.at(i - 1)};
-        auto state{states.at(i)};
+        auto trans{transitions.at(i - 1)};
+        auto state{states.at(i).project(trans->vars())};
         if (!res.try_step(map.get(trans).value_or(trans), state)) {
             throw std::logic_error("replace_rules failed");
         }

@@ -287,7 +287,7 @@ int main(int argc, char *argv[]) {
         std::cout << "parsing took " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
     }
     if (Config::Analysis::log) {
-        std::cout << "Initial ITS\n" << **its << std::endl;
+        std::cout << "Initial ITS\n" << *its << std::endl;
     }
     yices::init();
     std::optional<ITSModel> its_model;
@@ -307,12 +307,17 @@ int main(int argc, char *argv[]) {
         }
     } else {
         if (preprocessor->successful() && Config::Analysis::log) {
-            std::cout << "Simplified ITS\n" << **its << std::endl;
+            std::cout << "Simplified ITS\n" << *its << std::endl;
         }
         switch (Config::Analysis::engine) {
-            case Config::Analysis::ADCL:
-                res = reachability::Reachability::analyze(*its);
+            case Config::Analysis::ADCL: {
+                reachability::Reachability r {*its};
+                res = r.analyze();
+                if (Config::Analysis::model && res == SmtResult::Unsat) {
+                    its_cex = r.get_cex();
+                }
                 break;
+            }
             case Config::Analysis::BMC: {
                 BMC bmc{*its};
                 res = bmc.analyze();
@@ -373,7 +378,7 @@ int main(int argc, char *argv[]) {
                             }
                         } else {
                             if (backward_preprocessor->successful() && Config::Analysis::log) {
-                                std::cout << "Simplified reversed ITS\n" << *reversed << std::endl;
+                                std::cout << "Simplified reversed ITS\n" << reversed << std::endl;
                             }
                             ForwardBackwardDriver fb(*its, reversed);
                             res = fb.analyze();

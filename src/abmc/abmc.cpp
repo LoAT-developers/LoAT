@@ -139,29 +139,7 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     return not_covered || (bools::mkOr(pre) && bools::mkOr(post));
 }
 
-void ABMC::add_learned_clause(const RulePtr loop, const RulePtr accel, const unsigned backlink) {
-    if (Config::Analysis::model) {
-        if (backlink == trace.size() - 1) {
-            const auto &[rule, guard] {trace.back()};
-            if (rule != loop) {
-                cex.add_implicant(rule, loop);
-            }
-        } else {
-            std::vector<RulePtr> rules;
-            for (size_t i = backlink; i < trace.size(); ++i) {
-                const auto &[rule,guard] {trace.at(i)};
-                if (rule->getGuard() == guard) {
-                    rules.emplace_back(rule);
-                } else {
-                    const auto imp {rule->withGuard(guard)};
-                    cex.add_implicant(rule, imp);
-                    rules.emplace_back(imp);
-                }
-            }
-            cex.add_resolvent(rules, loop);
-        }
-        cex.add_accel(loop, accel);
-    }
+void ABMC::add_learned_clause(const RulePtr accel, const unsigned backlink) {
     its->addLearnedRule(accel, trace.at(backlink).first, trace.back().first);
     rule_map.emplace(accel->getId(), accel);
 }
@@ -193,9 +171,16 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         }
     }
     auto simp {Preprocess::preprocessRule(loop)};
-    const auto nonterm_to_query = [this](const RulePtr rule, const acceleration::Result &accel_res) {
+    auto success {false};
+    const auto nonterm_to_query = [&](const RulePtr rule, const acceleration::Result &accel_res) {
         if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
-            query = query || accel_res.nonterm;
+            const auto q {its->addQuery(accel_res.nonterm, trace.at(backlink).first)};
+            rule_map.emplace(q->getId(), q);
+            if (Config::Analysis::model) {
+                cex.add_recurrent_set(loop, q);
+            }
+            success = true;
+            query = query || encode_transition(q);
             if (Config::Analysis::log) {
                 std::cout << "found certificate of non-termination\n" << accel_res.nonterm << std::endl;
             }
@@ -207,6 +192,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         nonterm_to_query(simp, accel_res);
         nonterm_cache.emplace(lang);
     }
+    std::optional<Loop> res {};
+    auto covered {top()};
     const auto deterministic{simp->isDeterministic()};
     if (Config::Analysis::safety() && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
@@ -224,28 +211,52 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         if (accel_res.accel) {
             auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)};
             if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
-                add_learned_clause(loop, simplified, backlink);
+                success = true;
+                add_learned_clause(simplified, backlink);
+                if (Config::Analysis::model) {
+                    cex.add_accel(loop, simplified);
+                }
                 shortcut = simplified;
                 history.emplace(next, lang);
                 lang_map.emplace(Implicant(simplified, simplified->getGuard()), next);
                 ++next;
-                const Loop loop{
+                res = {
                     .idx = simplified,
                     .prefix = accel_res.prefix,
                     .period = accel_res.period,
                     .covered = accel_res.accel->covered,
                     .deterministic = deterministic};
-                map.emplace(accel_res.accel->covered, loop);
+                covered = accel_res.accel->covered;
                 if (Config::Analysis::log) {
                     std::cout << "accelerated rule, idx " << simplified->getId() << "\n" << simplified << std::endl;
                 }
                 update_subs(simplified);
-                return loop;
             }
         }
     }
-    map.emplace(top(), std::optional<Loop>());
-    return {};
+    if (success && Config::Analysis::model) {
+        if (backlink + 1 == trace.size()) {
+            const auto rule {trace.back().first};
+            if (rule != loop) {
+                cex.add_implicant(rule, loop);
+            }
+        } else {
+            std::vector<RulePtr> rules;
+            for (size_t i = backlink; i < trace.size(); ++i) {
+                const auto &[rule, guard]{trace.at(i)};
+                if (rule->getGuard() == guard) {
+                    rules.emplace_back(rule);
+                } else {
+                    const auto imp{rule->withGuard(guard)};
+                    cex.add_implicant(rule, imp);
+                    rules.emplace_back(imp);
+                }
+            }
+            cex.add_resolvent(rules, loop);
+        }
+    }
+    map.emplace(covered, res);
+    return res;
 }
 
 Bools::Expr ABMC::encode_transition(const RulePtr idx, const bool with_id) {

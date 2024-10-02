@@ -13,9 +13,14 @@ std::ostream& operator<<(std::ostream &s, const ClausePtr c) {
             }
             s << arg;
         }
-        s << ") /\\ ";
+        s << ")";
+        if (c->get_constraint() != top()) {
+            s << " /\\ " << c->get_constraint();
+        }
+    } else {
+        s << c->get_constraint();
     }
-    s << c->get_constraint() << " ==> ";
+    s << " ==> ";
     if (c->conclusion) {
         s << (*c->conclusion)->get_pred() << "(";
         auto first {true};

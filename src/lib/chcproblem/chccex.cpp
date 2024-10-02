@@ -99,21 +99,24 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
     const auto derived{cex.get_used_clauses()};
     std::unordered_map<ClausePtr, unsigned> indices;
     unsigned next {0};
-    s << "rules:" << std::endl;
+    s << "clauses:" << std::endl;
     for (const auto &[t, kind]: derived) {
         indices.emplace(t, next);
         s << "\t" << next << ": " << t << std::endl;
         switch (kind) {
-            case ProofStepKind::ORIG:
+            case ProofStepKind::ORIG: {
                 s << "\t\toriginal clause (modulo variable renaming)" << std::endl;
                 break;
-            case ProofStepKind::IMPLICANT:
-                s << "\t\t-" << next << "-> is subset of -" << indices.at(cex.implicants.at(t)) << "->\n";
+            }
+            case ProofStepKind::IMPLICANT: {
+                s << "\t\tderived from " << indices.at(cex.implicants.at(t)) << " (implicant)\n";
                 break;
-            case ProofStepKind::ACCEL:
-                s << "\t\t-" << next << "-> is subset of -" << indices.at(cex.accel.at(t)) << "->^+" << std::endl;
+            }
+            case ProofStepKind::ACCEL: {
+                s << "\t\tderived from " << indices.at(cex.accel.at(t)) << " (acceleration)" << std::endl;
                 break;
-            case ProofStepKind::RESOLVENT:
+            }
+            case ProofStepKind::RESOLVENT: {
                 s << "\t\t" << "resolve(";
                 auto first{true};
                 for (const auto &r : cex.resolvents.at(t)) {
@@ -126,19 +129,23 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
                 }
                 s << ") = " << next << std::endl;
                 break;
+            }
+            case ProofStepKind::RECURRENT_SET: {
+                throw std::logic_error("recurrent sets are not supported for CHCs");
+            }
         }
         ++next;
     }
-    s << "\ncounterexample:" << std::endl;
+    s << "\nproof:" << std::endl;
     for (size_t i = 0; i < cex.transitions.size(); ++i) {
-        const auto &trans{cex.transitions.at(i)};
-        const auto vars{trans->vars()};
+        const auto &clause{cex.transitions.at(i)};
+        const auto vars{clause->vars()};
         const auto projection{cex.states.at(i).project([&](const auto &x) {
             return theory::isProgVar(x) || vars.contains(x);
         })};
-        s << "\t" << projection << "\n\t-" << indices.at(trans) << "->\n";
+        s << "\t" << clause->subs(projection.toSubs()) << " by " << indices.at(clause) << "\n";
     }
-    return s << "\terr";
+    return s;
 }
 
 const linked_hash_map<ClausePtr, ClausePtr>& CHCCex::get_accel() const {
