@@ -19,17 +19,17 @@ SmtResult BMC::analyze() {
         bkind->add(init);
     }
 
-    auto step {bools::mkOr(sp.trans())};
-    // auto step {top()};
-    // if (do_kind) {
-    //     std::vector<Bools::Expr> disjuncts;
-    //     for (const auto &x: sp.trans()) {
-    //         disjuncts.emplace_back(mbp::int_qe(x));
-    //     }
-    //     step = bools::mkOr(disjuncts);
-    // } else {
-    //    step = bools::mkOr(sp.trans());
-    // }
+    // auto step {bools::mkOr(sp.trans())};
+    auto step {top()};
+    if (do_kind) {
+        std::vector<Bools::Expr> disjuncts;
+        for (const auto &x: sp.trans()) {
+            disjuncts.emplace_back(mbp::int_qe(x));
+        }
+        step = bools::mkOr(disjuncts);
+    } else {
+       step = bools::mkOr(sp.trans());
+    }
 
     const auto err = do_kind ? mbp::int_qe(sp.err()) : sp.err();
 
