@@ -262,7 +262,7 @@ void BoolExpr::propagateEqualities(Arith::Subs &subs, const std::function<bool(c
     const auto lit {getTheoryLit()};
     if (lit) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
-            std::get<Arith::Lit>(*lit)->propagateEquality(subs, allow, blocked);
+            std::get<Arith::Lit>(*lit)->subs(subs)->propagateEquality(subs, allow, blocked);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
@@ -400,14 +400,6 @@ Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::
         } else if (newChildren.empty()) {
             res = bot();
         } else {
-            // for (const auto &c: newChildren) {
-            //     if (c->isTheoryLit()) {
-            //         if (newChildren.contains(c->negation())) {
-            //             cache.emplace(self, top());
-            //             return top();
-            //         }
-            //     }
-            // }
             res = mkOr(newChildren);
         }
     } else if (isTheoryLit()) {

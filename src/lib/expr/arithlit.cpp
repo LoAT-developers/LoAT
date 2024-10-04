@@ -195,18 +195,14 @@ std::optional<ArithExprPtr> ArithLit::getEquality(const ArithVarPtr n) const {
 void ArithLit::propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const {
     if (isEq()) {
         const auto vs {vars()};
-        if (std::none_of(vs.begin(), vs.end(), [&](const auto &x) {
-            return blocked.contains(x);
-        })) {
-            for (const auto &x: vs) {
-                if (allow(x) && l->isLinear({{x}})) {
-                    const auto coeff {l->coeff(x)};
-                    if ((*coeff)->is(1) || (*coeff)->is(-1)) {
-                        const auto t {*l->solve(x)};
-                        subs.put(x, t);
-                        blocked.insert(vs.begin(), vs.end());
-                        return;
-                    }
+        for (const auto &x: vs) {
+            if (!blocked.contains(x) && allow(x) && l->isLinear({{x}})) {
+                const auto coeff {l->coeff(x)};
+                if ((*coeff)->is(1) || (*coeff)->is(-1)) {
+                    const auto t {*l->solve(x)};
+                    subs.put(x, t);
+                    blocked.insert(vs.begin(), vs.end());
+                    return;
                 }
             }
         }
