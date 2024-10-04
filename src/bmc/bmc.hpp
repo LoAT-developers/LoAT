@@ -23,10 +23,11 @@ private:
     Renaming pre_to_post {};
     unsigned depth {0};
     std::vector<Renaming> renamings;
+    bool do_kind;
 
 public:
 
-    explicit BMC(ITSPtr its);
+    BMC(ITSPtr its, const bool do_kind = true);
     SmtResult analyze();
     ITSModel get_model() const;
     ITSCex get_cex() const;

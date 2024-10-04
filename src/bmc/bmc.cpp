@@ -3,10 +3,38 @@
 #include "smtfactory.hpp"
 #include "config.hpp"
 #include "renaming.hpp"
+#include "intmbp.hpp"
 
-BMC::BMC(ITSPtr its): to_safety(its) {
+BMC::BMC(ITSPtr its, const bool do_kind): to_safety(its), do_kind(do_kind) {
     sp = to_safety.transform();
-    vars = sp.vars();
+}
+
+SmtResult BMC::analyze() {
+    if (Config::Analysis::log) {
+        std::cout << "safety problem:\n" << sp << std::endl;
+    }
+    const auto init = do_kind ? mbp::int_qe(sp.init()) : sp.init();
+    solver->add(init);
+    if (do_kind) {
+        bkind->add(init);
+    }
+
+    auto step {bools::mkOr(sp.trans())};
+    // if (do_kind) {
+    //     std::vector<Bools::Expr> disjuncts;
+    //     for (const auto &x: sp.trans()) {
+    //         disjuncts.emplace_back(mbp::int_qe(x));
+    //     }
+    //     step = bools::mkOr(disjuncts);
+    // } else {
+    //    step = bools::mkOr(sp.trans());
+    // }
+
+    const auto err = do_kind ? mbp::int_qe(sp.err()) : sp.err();
+
+    init->collectVars(vars);
+    step->collectVars(vars);
+    err->collectVars(vars);
     for (const auto &var: vars) {
         if (theory::isProgVar(var)) {
             pre_to_post.insert(var, theory::postVar(var));
@@ -14,26 +42,11 @@ BMC::BMC(ITSPtr its): to_safety(its) {
             pre_to_post.insert(theory::progVar(var), var);
         }
     }
-}
-
-SmtResult BMC::analyze() {
-    if (Config::Analysis::log) {
-        std::cout << "safety problem:\n" << sp << std::endl;
-    }
-    solver->add(sp.init());
-    const auto init_vars {sp.init()->vars()};
-    const auto do_bkind {std::none_of(init_vars.begin(), init_vars.end(), theory::isTempVar)};
-    if (do_bkind) {
-        bkind->add(sp.init());
-    }
-    const auto step {bools::mkOr(sp.trans())};
-    const auto query_vars {sp.err()->vars()};
-    const auto do_kind {std::none_of(query_vars.begin(), query_vars.end(), theory::isTempVar)};
 
     Renaming last_s;
     while (true) {
         solver->push();
-        solver->add(last_s(sp.err()));
+        solver->add(last_s(err));
         switch (solver->check()) {
         case SmtResult::Sat:
             return SmtResult::Unsat;
@@ -60,10 +73,10 @@ SmtResult BMC::analyze() {
             renamings.emplace_back(last_s);
         }
         if (do_kind) {
-            kind->add(last_s(!sp.err()));
+            kind->add(last_s(!err));
             kind->add(last_s(step));
             kind->push();
-            kind->add(s(sp.err()));
+            kind->add(s(err));
             if (kind->check() == SmtResult::Unsat) {
                 if (Config::Analysis::log) {
                     std::cout << "forward k-induction" << std::endl;
@@ -71,9 +84,7 @@ SmtResult BMC::analyze() {
                 return SmtResult::Sat;
             }
             kind->pop();
-        }
-        if (do_bkind) {
-            bkind->add(s(!sp.init()));
+            bkind->add(s(!init));
             bkind->add(last_s(step));
             if (bkind->check() == SmtResult::Unsat) {
                 if (Config::Analysis::log) {
