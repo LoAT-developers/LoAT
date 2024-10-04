@@ -34,7 +34,7 @@ namespace Config {
     namespace Analysis {
 
         enum Mode { Complexity, Termination, Safety, Recurrence };
-        enum Engine { ADCL, BMC, ABMC, TIL };
+        enum Engine { ADCL, BMC, ABMC, TIL, KIND };
         enum SmtSolver { Z3, CVC5, Swine, Yices, Heuristic };
         extern std::vector<Mode> modes;
         extern Mode mode;

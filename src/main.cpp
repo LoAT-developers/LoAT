@@ -32,7 +32,7 @@ void printHelp(char *arg0) {
     std::cout << "  --print_dep_graph                                Print the dependency graph in the proof output (can be very verbose)" << std::endl;
     std::cout << "  --mode <complexity|termination|safety>           Analysis mode" << std::endl;
     std::cout << "  --format <koat|its|horn|c>                       Input format" << std::endl;
-    std::cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << std::endl;
+    std::cout << "  --engine <adcl|bmc|abmc|til|kind>                Analysis engine" << std::endl;
     std::cout << "  --log                                            Enable logging" << std::endl;
     std::cout << "  --proof                                          Print model/counterexample/recurrent set/..." << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>            ABMC: En- or disable blocking clauses" << std::endl;
@@ -106,6 +106,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::engine = Config::Analysis::ABMC;
             } else if (boost::iequals("bmc", str)) {
                 Config::Analysis::engine = Config::Analysis::BMC;
+            } else if (boost::iequals("kind", str)) {
+                Config::Analysis::engine = Config::Analysis::KIND;
             } else if (boost::iequals("til", str)) {
                 Config::Analysis::engine = Config::Analysis::TIL;
             } else {
@@ -318,8 +320,9 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             }
-            case Config::Analysis::BMC: {
-                BMC bmc{*its};
+            case Config::Analysis::BMC:
+            case Config::Analysis::KIND: {
+                BMC bmc{*its, Config::Analysis::engine == Config::Analysis::KIND};
                 res = bmc.analyze();
                 if (Config::Analysis::model) {
                     if (res == SmtResult::Sat) {
