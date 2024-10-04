@@ -20,6 +20,7 @@ SmtResult BMC::analyze() {
     }
 
     auto step {bools::mkOr(sp.trans())};
+    // auto step {top()};
     // if (do_kind) {
     //     std::vector<Bools::Expr> disjuncts;
     //     for (const auto &x: sp.trans()) {
