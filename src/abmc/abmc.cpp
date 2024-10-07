@@ -430,8 +430,20 @@ SmtResult ABMC::analyze() {
 
 ITSModel ABMC::get_model() const {
     std::vector<Bools::Expr> inits;
+    Renaming post_to_pre;
+    Renaming init_renaming;
+    for (const auto &x: its->getVars()) {
+        if (theory::isProgVar(x)) {
+            init_renaming.insert(x, theory::next(x));
+        }
+    }
     for (const auto &t: its->getInitialTransitions()) {
-        inits.push_back(t->getGuard());
+        std::vector<Bools::Expr> conjuncts {init_renaming(t->getGuard())};
+        const auto &up {t->getUpdate()};
+        for (const auto &[x,_]: init_renaming) {
+            conjuncts.emplace_back(theory::mkEq(theory::toExpr(x), init_renaming(up.get(x))));
+        }
+        inits.emplace_back(bools::mkAnd(conjuncts));
     }
     const auto init {bools::mkOr(inits)};
     std::vector<Bools::Expr> res{init};

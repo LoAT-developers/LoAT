@@ -19,17 +19,7 @@ SmtResult BMC::analyze() {
         bkind->add(init);
     }
 
-    // auto step {bools::mkOr(sp.trans())};
-    auto step {top()};
-    if (do_kind) {
-        std::vector<Bools::Expr> disjuncts;
-        for (const auto &x: sp.trans()) {
-            disjuncts.emplace_back(mbp::int_qe(x));
-        }
-        step = bools::mkOr(disjuncts);
-    } else {
-       step = bools::mkOr(sp.trans());
-    }
+    auto step {bools::mkOr(sp.trans())};
 
     const auto err = do_kind ? mbp::int_qe(sp.err()) : sp.err();
 
@@ -46,6 +36,9 @@ SmtResult BMC::analyze() {
 
     Renaming last_s;
     while (true) {
+        if (Config::Analysis::model) {
+            renamings.emplace_back(last_s);
+        }
         solver->push();
         solver->add(last_s(err));
         switch (solver->check()) {
@@ -70,10 +63,8 @@ SmtResult BMC::analyze() {
                 s.insert(var, theory::next(var));
             }
         }
-        if (Config::Analysis::model) {
-            renamings.emplace_back(last_s);
-        }
-        if (do_kind) {
+        ++depth;
+        if (!approx && do_kind) {
             kind->add(last_s(!err));
             kind->add(last_s(step));
             kind->push();
@@ -82,6 +73,7 @@ SmtResult BMC::analyze() {
                 if (Config::Analysis::log) {
                     std::cout << "forward k-induction" << std::endl;
                 }
+                winner = Winner::KIND;
                 return SmtResult::Sat;
             }
             kind->pop();
@@ -91,11 +83,11 @@ SmtResult BMC::analyze() {
                 if (Config::Analysis::log) {
                     std::cout << "backward k-induction" << std::endl;
                 }
+                winner = Winner::BKIND;
                 return SmtResult::Sat;
             }
         }
         solver->add(last_s(step));
-        ++depth;
         if (solver->check() == SmtResult::Unsat) {
             if (approx) {
                 return SmtResult::Unknown;
@@ -111,74 +103,48 @@ SmtResult BMC::analyze() {
 }
 
 ITSModel BMC::get_model() const {
-    // std::vector<Bools::Expr> steps;
-    // std::vector<Bools::Expr> inits;
-    // for (const auto &t: its->getAllTransitions()) {
-    //     if (its->isInitialTransition(t)) {
-    //         inits.push_back(t->getGuard());
-    //         continue;
-    //     }
-    //     if (its->isSinkTransition(t)) {
-    //         continue;
-    //     }
-    //     std::vector<Bools::Expr> conjuncts;
-    //     conjuncts.emplace_back(t->getGuard());
-    //     const auto &up {t->getUpdate()};
-    //     for (const auto &[pre,post]: pre_to_post) {
-    //         if (theory::isProgVar(pre)) {
-    //             conjuncts.push_back(theory::mkEq(theory::toExpr(post), up.get(pre)));
-    //         }
-    //     }
-    //     steps.push_back(bools::mkAnd(std::move(conjuncts)));
-    // }
-    // const auto step {bools::mkOr(steps)};
-    // const auto init {bools::mkOr(inits)};
-    // std::vector<Bools::Expr> res{init};
-    // Bools::Expr last{init};
-    // for (unsigned i = 0; i + 1 < depth; ++i) {
-    //     const auto &s1{renamings.at(i)};
-    //     last = last && s1(step);
-    //     Renaming s2;
-    //     for (const auto &[pre,post]: pre_to_post) {
-    //         if (theory::isProgVar(pre)) {
-    //             s2.insert(s1.get(post), pre);
-    //             s2.insert(pre, theory::next(pre));
-    //         }
-    //     }
-    //     res.push_back(s2(last));
-    // }
-    // ITSModel model;
-    // const auto m {bools::mkOr(res)};
-    // for (const auto &l: its->getLocations()) {
-    //     model.set_invariant(l, Subs::build<Arith>(its->getLocVar(), arith::mkConst(l))(m));
-    // }
-    // model.set_invariant(its->getInitialLocation(), top());
-    // return model;
+    const auto step {bools::mkOr(sp.trans())};
+    switch (winner) {
+        case Winner::BMC: {
+            std::vector<Bools::Expr> res{sp.init()};
+            Bools::Expr last{sp.init()};
+            for (unsigned i = 0; i + 1 < depth; ++i) {
+                const auto &s1{renamings.at(i)};
+                last = last && s1(step);
+                Renaming s2;
+                for (const auto &[pre,post]: pre_to_post) {
+                    if (theory::isProgVar(pre)) {
+                        s2.insert(s1.get(post), pre);
+                        s2.insert(pre, theory::next(pre));
+                    }
+                }
+                res.push_back(s2(last));
+            }
+            return to_safety.transform_model(bools::mkOr(res));
+        }
+        case Winner::KIND:
+        case Winner::BKIND: {
+            throw std::invalid_argument("models for k-induction are not yet supported");
+        }
+    }
 }
 
 
 ITSCex BMC::get_cex() const {
-    // ITSCex res(its);
-    // const auto model {solver->model()};
-    // std::optional<RulePtr> last;
-    // res.set_initial_state(model.composeBackwards(renamings.front()));
-    // for (size_t i = 0; i <= depth; ++i) {
-    //     const auto current {model.composeBackwards(renamings.at(i + 1))};
-    //     const auto candidates = last ? its->getSuccessors(*last) : its->getInitialTransitions();
-    //     const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
-    //         return res.try_step(c, current);
-    //     })};
-    //     if (it == candidates.end()) {
-    //         throw std::logic_error("get_cex failed");
-    //     }
-    //     last = *it;
-    // }
-    // const auto candidates {its->getSinkTransitions()};
-    // const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
-    //     return res.try_final_transition(c);
-    // })};
-    // if (it == candidates.end()) {
-    //     throw std::logic_error("get_cex failed");
-    // }
-    // return res;
+    SafetyCex res {sp};
+    const auto candidates = sp.trans();
+    const auto model {solver->model()};
+    std::optional<Bools::Expr> last;
+    for (size_t i = 0; i < depth; ++i) {
+        const auto current {model.composeBackwards(renamings.at(i))};
+        const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
+            return res.try_step(current, c);
+        })};
+        if (it == candidates.end()) {
+            throw std::logic_error("get_cex failed");
+        }
+        last = *it;
+    }
+    res.set_final_state(model.composeBackwards(renamings.at(depth)));
+    return to_safety.transform_cex(res);
 }

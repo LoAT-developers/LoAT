@@ -13,6 +13,10 @@ class BMC {
 
 private:
 
+    enum class Winner {
+        BMC, BKIND, KIND
+    };
+
     ITSToSafety to_safety;
     SafetyProblem sp;
     SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
@@ -24,6 +28,7 @@ private:
     unsigned depth {0};
     std::vector<Renaming> renamings;
     bool do_kind;
+    Winner winner {Winner::BMC};
 
 public:
 
