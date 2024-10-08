@@ -218,11 +218,18 @@ void Reachability::add_to_trace(const Step &step) {
 }
 
 void Reachability::set_cpx_witness(const RulePtr witness, const ArithSubs &subs, const Arith::Var &param) {
-    std::vector<RulePtr> rules;
-    for (const auto &t: trace) {
-        rules.emplace_back(t.clause_idx->withGuard(t.implicant));
+    if (trace.size() > 1) {
+        std::vector<RulePtr> rules;
+        for (const auto &t: trace) {
+            rules.emplace_back(t.clause_idx->withGuard(t.implicant));
+        }
+        cpx_cex.add_resolvent(rules, witness);
+    } else {
+        const auto &t {trace.back()};
+        if (t.implicant != t.clause_idx->getGuard()) {
+            cpx_cex.add_implicant(t.clause_idx, t.clause_idx->withGuard(t.implicant));
+        }
     }
-    cpx_cex.add_resolvent(rules, witness);
     cpx_cex.set_witness(witness, subs, param);
     std::cout << std::endl;
     print_cpx_cex(cpx_cex);
