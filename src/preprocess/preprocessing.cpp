@@ -21,19 +21,13 @@ ITSModel Preprocessor::transform_model(const ITSModel &model) const {
     return chain.transform_model(model);
 }
 
-ITSCex Preprocessor::transform_cex(const ITSCex &cex) const {
-    auto transformed {chain.transform_cex(cex)};
-    transformed = rule_preproc.transform_cex(transformed);
-    return transformed;
-}
-
 ITSModel Preprocessor::get_model() const {
     ITSModel model;
     model.set_invariant(its->getInitialLocation(), top());
     return model;
 }
 
-const ITSCex& Preprocessor::get_cex() const {
+const ITSSafetyCex& Preprocessor::get_cex() const {
     return cex;
 }
 

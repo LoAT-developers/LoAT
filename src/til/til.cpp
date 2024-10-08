@@ -711,7 +711,7 @@ ITSModel TIL::get_model() {
     return its2safety.transform_model(sp_model);
 }
 
-ITSCex TIL::get_cex() {
+ITSSafetyCex TIL::get_cex() {
     SafetyCex res{t};
     const auto model {solver->model()};
     const auto &trans {t.trans()};

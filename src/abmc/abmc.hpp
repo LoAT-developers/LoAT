@@ -8,7 +8,7 @@
 #include "vector.hpp"
 #include "renaming.hpp"
 #include "itsmodel.hpp"
-#include "itscex.hpp"
+#include "itssafetycex.hpp"
 
 class ABMC {
 
@@ -45,7 +45,7 @@ private:
     int next {0};
     DependencyGraph<Implicant> dependency_graph {};
     unsigned depth {0};
-    ITSCex cex;
+    ITSSafetyCex cex;
 
     int get_language(unsigned i);
     Bools::Expr encode_transition(const RulePtr idx, const bool with_id = true);
@@ -64,7 +64,7 @@ public:
     explicit ABMC(ITSPtr its);
     SmtResult analyze();
     ITSModel get_model() const;
-    ITSCex get_cex();
+    ITSSafetyCex get_cex();
 
 };
 

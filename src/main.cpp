@@ -293,7 +293,7 @@ int main(int argc, char *argv[]) {
     }
     yices::init();
     std::optional<ITSModel> its_model;
-    std::optional<ITSCex> its_cex;
+    std::optional<ITSSafetyCex> its_cex;
     auto preprocessor{std::make_shared<Preprocessor>(*its)};
     auto res {preprocessor->preprocess()};
     if (res != SmtResult::Unknown) {
@@ -313,9 +313,15 @@ int main(int argc, char *argv[]) {
         }
         switch (Config::Analysis::engine) {
             case Config::Analysis::ADCL: {
-                reachability::Reachability r {*its};
+                reachability::Reachability r {
+                    *its,
+                    [&](const ITSCpxCex &cex) {
+                        if (Config::Analysis::complexity()) {
+                            std::cout << preprocessor->transform_cex(cex);
+                        }
+                    }};
                 res = r.analyze();
-                if (Config::Analysis::model && res == SmtResult::Unsat) {
+                if (Config::Analysis::model && !Config::Analysis::complexity() && res == SmtResult::Unsat) {
                     its_cex = r.get_cex();
                 }
                 break;
@@ -406,7 +412,10 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    print_result(res);
+    // unsat means nonterm, so we also print it in complexity mode
+    if (!Config::Analysis::complexity()) {
+        print_result(res);
+    }
     if (its_model) {
         its_model = preprocessor->transform_model(*its_model);
         if (chc2its) {

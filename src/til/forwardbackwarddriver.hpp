@@ -20,7 +20,7 @@ public:
 
     ITSModel get_model();
 
-    ITSCex get_cex();
+    ITSSafetyCex get_cex();
 
     bool is_forward() const;
 

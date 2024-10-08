@@ -5,7 +5,8 @@
 #include "complexity.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
-#include "itscex.hpp"
+#include "itssafetycex.hpp"
+#include "itscpxcex.hpp"
 
 #include <limits>
 #include <list>
@@ -179,7 +180,8 @@ class Reachability {
      */
     unsigned last_orig_clause {0};
 
-    ITSCex cex;
+    ITSSafetyCex cex;
+    ITSCpxCex cpx_cex;
 
     std::pair<int, int> luby {1,1};
 
@@ -196,9 +198,13 @@ class Reachability {
 
     Complexity cpx = Complexity::Const;
 
+    const std::function<void(const ITSCpxCex&)> &print_cpx_cex;
+
     bool is_learned_clause(const RulePtr idx) const;
 
     bool is_orig_clause(const RulePtr idx) const;
+
+    void set_cpx_witness(const RulePtr witness, const ArithSubs &subs, const Arith::Var &param);
 
     void update_cpx();
 
@@ -289,7 +295,7 @@ class Reachability {
 
     void add_to_trace(const Step &step);
 
-    RulePtr compute_resolvent(const RulePtr idx, const Bools::Expr implicant, const Renaming &tmp_var_renaming) const;
+    RulePtr compute_resolvent(const RulePtr idx, const Bools::Expr implicant) const;
 
     /**
      * Assumes that the trace can be resolved with the given clause.
@@ -303,13 +309,15 @@ class Reachability {
 
     bool try_to_finish();
 
+    ITSCex* the_cex();
+
 public:
 
-    Reachability(ITSPtr its);
+    Reachability(ITSPtr its, const std::function<void(const ITSCpxCex&)> &print_cpx_cex);
 
     SmtResult analyze();
 
-    ITSCex get_cex();
+    ITSSafetyCex get_cex();
 
 };
 

@@ -27,7 +27,3 @@ std::optional<SmtResult> RulePreprocessor::run() {
         return {};
     }
 }
-
-ITSCex RulePreprocessor::transform_cex(const ITSCex &cex) const {
-    return cex.replace_rules(replacements);
-}

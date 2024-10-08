@@ -77,7 +77,7 @@ ITSModel ForwardBackwardDriver::get_model() {
     return active->get_model();
 }
 
-ITSCex ForwardBackwardDriver::get_cex() {
+ITSSafetyCex ForwardBackwardDriver::get_cex() {
     return active->get_cex();
 }
 

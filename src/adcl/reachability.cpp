@@ -95,10 +95,12 @@ std::optional<ProvedUnsat> ProvedUnsat::unsat() {
 
 ProvedUnsat::ProvedUnsat() {}
 
-Reachability::Reachability(ITSPtr chcs):
+Reachability::Reachability(ITSPtr chcs, const std::function<void(const ITSCpxCex&)> &print_cpx_cex):
     chcs(chcs),
     drop(true),
-    cex(chcs) {
+    cex(chcs),
+    cpx_cex(chcs),
+    print_cpx_cex(print_cpx_cex) {
     solver->enableModels();
 }
 
@@ -215,6 +217,18 @@ void Reachability::add_to_trace(const Step &step) {
     blocked_clauses.emplace_back();
 }
 
+void Reachability::set_cpx_witness(const RulePtr witness, const ArithSubs &subs, const Arith::Var &param) {
+    std::vector<RulePtr> rules;
+    for (const auto &t: trace) {
+        rules.emplace_back(t.clause_idx->withGuard(t.implicant));
+    }
+    cpx_cex.add_resolvent(rules, witness);
+    cpx_cex.set_witness(witness, subs, param);
+    std::cout << std::endl;
+    print_cpx_cex(cpx_cex);
+    std::cout << std::endl;
+}
+
 void Reachability::update_cpx() {
     if (!Config::Analysis::complexity()) {
         return;
@@ -225,21 +239,25 @@ void Reachability::update_cpx() {
     if (max_cpx <= cpx && !cost->hasVarWith([](const auto &x){return theory::isTempVar(x);})) {
         return;
     }
-    const auto res {LimitSmtEncoding::applyEncoding(resolvent->getGuard(), cost, cpx)};
-    if (res > cpx) {
-        cpx = res;
+    const auto witness {LimitSmtEncoding::applyEncoding(resolvent->getGuard(), cost, cpx)};
+    if (witness.cpx > cpx) {
+        cpx = witness.cpx;
         std::cout << cpx.toWstString() << std::endl;
+        if (Config::Analysis::model) {
+            set_cpx_witness(resolvent, witness.subs, witness.param);
+        }
         if (Config::Analysis::log) {
             std::cout << cpx.toString() << std::endl;
         }
     }
 }
 
-RulePtr Reachability::compute_resolvent(const RulePtr idx, const Bools::Expr implicant, const Renaming &tmp_var_renaming) const {
+RulePtr Reachability::compute_resolvent(const RulePtr idx, const Bools::Expr implicant) const {
     static auto dummy {Rule::mk(top(), Subs())};
     if (!Config::Analysis::complexity()) {
         return dummy;
     }
+    const auto tmp_var_renaming = trace.empty() ? Renaming() : trace.back().tmp_var_renaming;
     auto resolvent = idx->withGuard(implicant)->renameVars(tmp_var_renaming);
     if (!trace.empty()) {
         resolvent = Preprocess::chain({trace.back().resolvent, resolvent});
@@ -253,7 +271,7 @@ bool Reachability::store_step(const RulePtr idx, const RulePtr implicant) {
     solver->add(imp->getGuard());
     if (solver->check() == SmtResult::Sat) {
         const auto [new_var_renaming, new_tmp_var_renaming] {handle_update(idx)};
-        const Step step(idx, implicant->getGuard(), new_var_renaming, new_tmp_var_renaming, compute_resolvent(idx, implicant->getGuard(), new_tmp_var_renaming));
+        const Step step(idx, implicant->getGuard(), new_var_renaming, new_tmp_var_renaming, compute_resolvent(idx, implicant->getGuard()));
         add_to_trace(step);
         // block learned clauses after adding them to the trace
         if (is_learned_clause(idx)) {
@@ -351,6 +369,9 @@ void Reachability::luby_next() {
 }
 
 void Reachability::unsat() {
+    if (Config::Analysis::complexity()) {
+        std::cout << "NO" << std::endl;
+    }
     if (Config::Analysis::log) {
         std::stringstream counterexample;
         print_trace(counterexample);
@@ -460,6 +481,14 @@ std::optional<RulePtr> Reachability::instantiate(const Arith::Var n, const RuleP
     return res;
 }
 
+ITSCex* Reachability::the_cex() {
+    if (Config::Analysis::mode == Config::Analysis::Complexity) {
+        return &cpx_cex;
+    } else {
+        return &cex;
+    }
+}
+
 std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, const Model &model, const unsigned backlink) {
     const auto simp {Preprocess::preprocessRule(rule)};
     if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
@@ -490,7 +519,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, co
         const auto query {chcs->addQuery(accel_res.nonterm, trace.at(backlink).clause_idx)};
         res.res.emplace_back(query);
         if (Config::Analysis::model) {
-            cex.add_recurrent_set(rule, query);
+            the_cex()->add_recurrent_set(rule, query);
         }
         if (Config::Analysis::log) {
             std::cout << "found certificate of non-termination: " << query << std::endl;
@@ -509,7 +538,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, co
             add_learned_clause(simplified, backlink);
             res.res.emplace_back(simplified);
             if (Config::Analysis::model) {
-                cex.add_accel(rule, simplified);
+                the_cex()->add_accel(rule, simplified);
             }
             if (Config::Analysis::log) {
                 std::cout << "accelerated rule: " << simplified << std::endl;
@@ -528,14 +557,14 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, co
                 const auto e{trace.at(i)};
                 if (is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx->getGuard()) {
                     const auto imp{e.clause_idx->withGuard(e.implicant)->renameVars(e.tmp_var_renaming)};
-                    cex.add_implicant(e.clause_idx, imp);
+                    the_cex()->add_implicant(e.clause_idx, imp);
                     rules.emplace_back(imp);
                 } else {
                     rules.emplace_back(e.clause_idx);
                 }
             }
             if (rules.size() > 1) {
-                cex.add_resolvent(rules, rule);
+                the_cex()->add_resolvent(rules, rule);
             }
         }
         return std::make_unique<Succeeded>(res);
@@ -616,10 +645,13 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     for (const auto &idx: learned_clauses.res) {
         redundancy->set_language(idx, closure);
         if (!done && store_step(idx, idx)) {
-            update_cpx();
             if (chcs->isSinkTransition(idx)) {
+                if (Config::Analysis::complexity() && Config::Analysis::model) {
+                    set_cpx_witness(trace.back().resolvent, solver->model().toSubs().get<Arith>(), Arith::next());
+                }
                 return std::make_unique<ProvedUnsat>();
             } else {
+                update_cpx();
                 done = true;
             }
         }
@@ -643,7 +675,10 @@ bool Reachability::try_to_finish() {
             solver->push();
             const auto implicant {resolve(q)};
             if (implicant) {
-                // no need to compute a variable renaming for the next step, as we are done
+                if (Config::Analysis::complexity() && Config::Analysis::model) {
+                    const auto resolvent {compute_resolvent(q, (*implicant)->getGuard())};
+                    set_cpx_witness(resolvent, solver->model().toSubs().get<Arith>(), Arith::next());
+                }
                 add_to_trace(Step(q, (*implicant)->getGuard(), Renaming(), Renaming(), Rule::mk(top(), Subs())));
                 print_state();
                 unsat();
@@ -655,7 +690,7 @@ bool Reachability::try_to_finish() {
     return false;
 }
 
-ITSCex Reachability::get_cex() {
+ITSSafetyCex Reachability::get_cex() {
     const auto model {solver->model()};
     cex.set_initial_state(model);
     for (size_t i = 0; i + 1 < trace.size(); ++i) {

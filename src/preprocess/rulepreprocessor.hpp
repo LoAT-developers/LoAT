@@ -2,7 +2,7 @@
 
 #include "itsproblem.hpp"
 #include "smt.hpp"
-#include "itscex.hpp"
+#include "itssafetycex.hpp"
 
 class RulePreprocessor {
 
@@ -15,6 +15,10 @@ public:
 
     RulePreprocessor(const ITSPtr its);
     std::optional<SmtResult> run();
-    ITSCex transform_cex(const ITSCex&) const;
+
+    template <class CEX>
+    CEX transform_cex(const CEX &cex) const {
+        return cex.replace_rules(replacements);
+    }
 
 };

@@ -6,7 +6,7 @@
 #include "z3.hpp"
 #include "smtfactory.hpp"
 #include "itsmodel.hpp"
-#include "itscex.hpp"
+#include "itssafetycex.hpp"
 #include "itstosafetyproblem.hpp"
 
 class BMC {
@@ -35,6 +35,6 @@ public:
     BMC(ITSPtr its, const bool do_kind = true);
     SmtResult analyze();
     ITSModel get_model() const;
-    ITSCex get_cex() const;
+    ITSSafetyCex get_cex() const;
 
 };

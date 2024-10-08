@@ -4,7 +4,7 @@
 #include "safetyproblem.hpp"
 #include "itsmodel.hpp"
 #include "safetycex.hpp"
-#include "itscex.hpp"
+#include "itssafetycex.hpp"
 #include "formulapreprocessing.hpp"
 
 class ITSToSafety {
@@ -23,7 +23,7 @@ public:
 
     ITSModel transform_model(const Bools::Expr&) const;
 
-    ITSCex transform_cex(const SafetyCex &) const;
+    ITSSafetyCex transform_cex(const SafetyCex &) const;
 
     SafetyProblem transform();
 

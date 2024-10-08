@@ -130,7 +130,7 @@ ITSModel BMC::get_model() const {
 }
 
 
-ITSCex BMC::get_cex() const {
+ITSSafetyCex BMC::get_cex() const {
     SafetyCex res {sp};
     const auto candidates = sp.trans();
     const auto model {solver->model()};

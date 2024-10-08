@@ -1,7 +1,8 @@
 #pragma once
 
 #include "itsmodel.hpp"
-#include "itscex.hpp"
+#include "itssafetycex.hpp"
+#include "itscpxcex.hpp"
 #include "itsproblem.hpp"
 
 class Chain {
@@ -20,7 +21,14 @@ public:
 
     ITSModel transform_model(const ITSModel &) const;
 
-    ITSCex transform_cex(const ITSCex &) const;
+    template <class CEX>
+    CEX transform_cex(const CEX &cex) const {
+        CEX res {cex};
+        for (const auto &[c,p]: chained) {
+            res.add_resolvent({p.first, p.second}, c);
+        }
+        return res;
+    }
 
     bool chainLinearPaths();
 };

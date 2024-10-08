@@ -14,6 +14,10 @@ add_library(${PROJECT_NAME} OBJECT
     itsmodel.cpp
     itscex.hpp
     itscex.cpp
+    itssafetycex.hpp
+    itssafetycex.cpp
+    itscpxcex.hpp
+    itscpxcex.cpp
     rulepreprocessing.hpp
     rulepreprocessing.cpp
 )

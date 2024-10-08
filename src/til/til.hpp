@@ -12,7 +12,7 @@
 #include "config.hpp"
 #include "chctoitsproblem.hpp"
 #include "itstosafetyproblem.hpp"
-#include "itscex.hpp"
+#include "itssafetycex.hpp"
 
 class Range {
     unsigned s;
@@ -121,7 +121,7 @@ public:
     std::optional<SmtResult> do_step();
     SmtResult analyze();
     ITSModel get_model();
-    ITSCex get_cex();
+    ITSSafetyCex get_cex();
 
 };
 

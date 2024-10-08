@@ -469,7 +469,7 @@ ITSModel ABMC::get_model() const {
     return model;
 }
 
-ITSCex ABMC::get_cex() {
+ITSSafetyCex ABMC::get_cex() {
     const auto model {solver->model()};
     cex.set_initial_state(model.composeBackwards(subs.front()));
     for (size_t i = 0; i < depth; ++i) {

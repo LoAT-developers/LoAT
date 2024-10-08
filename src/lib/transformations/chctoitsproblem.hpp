@@ -2,7 +2,7 @@
 
 #include "chcmodel.hpp"
 #include "chccex.hpp"
-#include "itscex.hpp"
+#include "itssafetycex.hpp"
 #include "chcproblem.hpp"
 #include "itsmodel.hpp"
 #include "itsproblem.hpp"
@@ -25,7 +25,7 @@ public:
 
     ClausePtr rule_to_clause(const RulePtr rule, const ClausePtr prototype) const;
 
-    CHCCex transform_cex(const ITSCex &);
+    CHCCex transform_cex(const ITSSafetyCex &);
 
     ITSPtr transform();
 };

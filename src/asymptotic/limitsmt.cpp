@@ -2,6 +2,7 @@
 
 #include "smt.hpp"
 #include "smtfactory.hpp"
+#include "config.hpp"
 
 #include <map>
 
@@ -299,7 +300,7 @@ Bools::Expr encodeBoolExpr(const Bools::Expr expr, const ArithSubs &templateSubs
     }
 }
 
-Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::Expr cost, Complexity currentRes) {
+LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::Expr cost, Complexity currentRes) {
     // initialize z3
     auto solver{SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, arith::mkConst(0)))}))};
     // the parameter of the desired family of solutions
@@ -319,6 +320,10 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
         varCoeff0.emplace(var, c0);
         templateSubs.put(var, c0 + (n->toExpr() * c));
     }
+    const auto buildRes = [&](const Complexity &cpx) {
+        const auto subs = Config::Analysis::model && cpx != Complexity::Unknown ? templateSubs.compose(solver->model().toSubs().get<Arith>()) : ArithSubs();
+        return ComplexityWitness{.cpx = cpx, .subs = subs, .param = n};
+    };
     // replace variables in the cost function with their linear templates
     const auto templateCost{templateSubs(cost)};
     solver->add(encodeBoolExpr(expr, templateSubs, n));
@@ -333,12 +338,12 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
             }
         }
         if (solver->check() == SmtResult::Sat) {
-            return Complexity::Unbounded;
+            return buildRes(Complexity::Unbounded);
         }
         solver->pop();
     }
     if (currentRes >= Complexity::Exp) {
-        return Complexity::Unknown;
+        return buildRes(Complexity::Unknown);
     }
     const auto is_poly {templateCost->isPoly(n)};
     auto degree {is_poly.value_or(0)};
@@ -350,7 +355,7 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
         solver->push();
         solver->add(expConstraint(templateCost, n));
         if (solver->check() == SmtResult::Sat) {
-            return Complexity::Exp;
+            return buildRes(Complexity::Exp);
         }
         solver->pop();
         // failed to prove an exponential bound
@@ -381,9 +386,9 @@ Complexity LimitSmtEncoding::applyEncoding(const Bools::Expr expr, const Arith::
         solver->push();
         solver->add(arith::mkGt(c, arith::mkConst(0)));
         if (solver->check() == SmtResult::Sat) {
-            return Complexity::Poly(i);
+            return buildRes(Complexity::Poly(i));
         }
         solver->pop();
     }
-    return Complexity::Unknown;
+    return buildRes(Complexity::Unknown);
 }

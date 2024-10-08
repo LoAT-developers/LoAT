@@ -13,14 +13,6 @@ ITSModel Chain::transform_model(const ITSModel &m) const {
     return res;
 }
 
-ITSCex Chain::transform_cex(const ITSCex &cex) const {
-    ITSCex res {cex};
-    for (const auto &[c,p]: chained) {
-        res.add_resolvent({p.first, p.second}, c);
-    }
-    return res;
-}
-
 bool Chain::chainLinearPaths() {
     bool changed{false};
     bool success{false};

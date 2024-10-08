@@ -82,7 +82,7 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr rule, const ClausePtr prototype
     return Clause::mk(premise, rule->getGuard(), conclusion);
 }
 
-CHCCex CHCToITS::transform_cex(const ITSCex &cex) {
+CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
     CHCCex res {chcs};
     for (const auto &[rule, kind]: cex.get_used_rules()) {
         switch (kind) {

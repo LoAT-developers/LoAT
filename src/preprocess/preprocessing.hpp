@@ -2,7 +2,7 @@
 
 #include "itsproblem.hpp"
 #include "itsmodel.hpp"
-#include "itscex.hpp"
+#include "itssafetycex.hpp"
 #include "smt.hpp"
 #include "chain.hpp"
 #include "rulepreprocessor.hpp"
@@ -20,14 +20,19 @@ private:
 
     RulePreprocessor rule_preproc;
 
-    ITSCex cex;
+    ITSSafetyCex cex;
 
 public:
     Preprocessor(ITSPtr its);
 
     ITSModel transform_model(const ITSModel &) const;
 
-    ITSCex transform_cex(const ITSCex &) const;
+    template <class CEX>
+    CEX transform_cex(const CEX &cex) const {
+        auto transformed {chain.transform_cex(cex)};
+        transformed = rule_preproc.transform_cex(transformed);
+        return transformed;
+    }
 
     SmtResult preprocess();
 
@@ -35,7 +40,7 @@ public:
 
     ITSModel get_model() const;
 
-    const ITSCex& get_cex() const;
+    const ITSSafetyCex& get_cex() const;
 
     std::optional<SmtResult> check_empty_clauses(ITSPtr its);
 

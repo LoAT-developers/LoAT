@@ -6,7 +6,13 @@
 
 namespace LimitSmtEncoding {
 
-Complexity applyEncoding(const Bools::Expr exp, const Arith::Expr cost, Complexity currentRes);
+struct ComplexityWitness {
+    Complexity cpx;
+    ArithSubs subs;
+    Arith::Var param;
+};
+
+ComplexityWitness applyEncoding(const Bools::Expr exp, const Arith::Expr cost, Complexity currentRes);
 
 }
 
