@@ -468,7 +468,8 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model mode
 std::optional<Arith::Expr> TIL::prove_term(const Bools::Expr loop, Model model) {
     const auto &m {model.get<Arith>()};
     const auto &ptp {pre_to_post.get<Arith>()};
-    for (const auto &l: loop->lits().get<Arith::Lit>()) {
+    const auto lits {loop->lits().get<Arith::Lit>()};
+    for (const auto &l: lits) {
         if (l->isGt()) {
             const auto lhs {l->lhs()};
             const auto vars {lhs->vars()};
@@ -480,17 +481,35 @@ std::optional<Arith::Expr> TIL::prove_term(const Bools::Expr loop, Model model) 
             }
         }
     }
-    if (Config::Analysis::log) {
-        std::cout << "failed to prove termination" << std::endl;
+    auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
+    std::vector<Arith::Expr> bounded;
+    std::vector<Arith::Expr> decreasing;
+    std::unordered_map<Arith::Var, Arith::Var> coeffs;
+    for (const auto &[pre,post]: ptp) {
+        const auto &coeff {ArithVar::next()};
+        coeffs.emplace(pre, coeff);
+        const auto pre_val {arith::mkConst(m.at(pre))};
+        const auto post_val {arith::mkConst(m.at(post))};
+        bounded.emplace_back(coeff->toExpr() * pre_val);
+        decreasing.emplace_back(coeff->toExpr() * pre_val - coeff->toExpr() * post_val);
+    }
+    solver->add(arith::mkGt(arith::mkPlus(std::move(bounded)), arith::mkConst(0)));
+    solver->add(arith::mkGt(arith::mkPlus(std::move(decreasing)), arith::mkConst(0)));
+    if (solver->check() == SmtResult::Sat) {
+        const auto rf_model {solver->model().get<Arith>()};
+        std::vector<Arith::Expr> addends;
+        for (const auto &[x,coeff]: coeffs) {
+            if (const auto val {rf_model.get(coeff)}) {
+                addends.emplace_back(arith::mkConst(*val) * x->toExpr());
+            }
+        }
+        return arith::mkPlus(std::move(addends));
     }
     return {};
 }
 
 bool TIL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
-    if (add_blocking_clauses(range, model)) {
-        return true;
-    }
     Bools::Expr ranking_function {top()};
     if (Config::Analysis::termination()) {
         if (const auto rf {prove_term(loop, model)}) {
@@ -499,6 +518,9 @@ bool TIL::handle_loop(const Range &range) {
         } else {
             return false;
         }
+    }
+    if (add_blocking_clauses(range, model)) {
+        return true;
     }
     auto ti{compute_transition_invariant(loop, model)};
     if (Config::Analysis::termination()) {
@@ -529,9 +551,23 @@ void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
         it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
     } else {
         if (Config::Analysis::termination()) {
-            const auto ss{get_subs(range.end(), 1)};
-            const auto last {trace.at(range.end()).implicant};
-            it->second = it->second && (s(!loop) || (bools::mkLit(arith::mkLeq(ss.get<Arith>(trace_var), arith::mkConst(last_orig_clause))) && ss(!last)));
+            std::vector<Bools::Expr> disjuncts;
+            disjuncts.emplace_back(s(!loop));
+            for (auto i = range.start(); i <= range.end(); ++i) {
+                const auto ss{get_subs(i, 1)};
+                std::vector<Bools::Expr> conjuncts;
+                conjuncts.emplace_back(bools::mkLit(arith::mkLeq(ss.get<Arith>(trace_var), arith::mkConst(last_orig_clause))));
+                const auto &t {trace.at(i)};
+                if (t.id <= last_orig_clause) {
+                    const auto last {trace.at(i).implicant};
+                    conjuncts.emplace_back(bools::mkLit(arith::mkNeq(ss.get<Arith>(trace_var), arith::mkConst(t.id))));
+                    if (last != rule_map.left.at(t.id)) {
+                        conjuncts.emplace_back(ss(!last));
+                    }
+                }
+                disjuncts.emplace_back(bools::mkAnd(conjuncts));
+            }
+            it->second = it->second && bools::mkOr(disjuncts);
         } else {
             it->second = it->second && s(!loop);
         }
