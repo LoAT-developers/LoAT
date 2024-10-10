@@ -17,6 +17,7 @@ on:
         - loat_unsat
         - loat_nonterm
         - loat_nonterm_abmc
+        - loat_term
         - loat_lb
         - loat_lb_z3
         - loat_bmc
@@ -154,6 +155,8 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm_abmc" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
+            elif [ ${{ inputs.config }} = "loat_term" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb_z3" ]; then
