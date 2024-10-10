@@ -219,7 +219,7 @@ void print_result(const SmtResult res) {
     std::string str;
     switch (res) {
         case SmtResult::Sat: {
-            str = Config::Analysis::safety() ? "sat" : "MAYBE";
+            str = Config::Analysis::safety() ? "sat" : "YES";
             break;
         }
         case SmtResult::Unsat: {

@@ -465,12 +465,45 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model mode
     return removeRedundantInequations(res);
 }
 
-void TIL::handle_loop(const Range &range) {
+std::optional<Arith::Expr> TIL::prove_term(const Bools::Expr loop, Model model) {
+    const auto &m {model.get<Arith>()};
+    const auto &ptp {pre_to_post.get<Arith>()};
+    for (const auto &l: loop->lits().get<Arith::Lit>()) {
+        if (l->isGt()) {
+            const auto lhs {l->lhs()};
+            const auto vars {lhs->vars()};
+            if (std::all_of(vars.begin(), vars.end(), theory::isProgVar) && lhs->eval(m) > lhs->renameVars(ptp)->eval(m)) {
+                if (Config::Analysis::log) {
+                    std::cout << "found ranking function " << lhs << std::endl;
+                }
+                return lhs;
+            }
+        }
+    }
+    if (Config::Analysis::log) {
+        std::cout << "failed to prove termination" << std::endl;
+    }
+    return {};
+}
+
+bool TIL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
     if (add_blocking_clauses(range, model)) {
-        return;
+        return true;
+    }
+    Bools::Expr ranking_function {top()};
+    if (Config::Analysis::termination()) {
+        if (const auto rf {prove_term(loop, model)}) {
+            ranking_function = bools::mkLit(arith::mkGt(*rf, (*rf)->renameVars(pre_to_post.get<Arith>())));
+            loop = loop && ranking_function;
+        } else {
+            return false;
+        }
     }
     auto ti{compute_transition_invariant(loop, model)};
+    if (Config::Analysis::termination()) {
+        ti = ti && ranking_function;
+    }
     model.put<Arith>(n, 1);
     const auto id{add_learned_clause(ti)};
     const auto projected{mbp::int_mbp(ti, model, [&](const auto &x) {
@@ -481,6 +514,7 @@ void TIL::handle_loop(const Range &range) {
     } else {
         add_blocking_clause(range, id, projected);
     }
+    return true;
 }
 
 Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
@@ -494,7 +528,13 @@ void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
     if (range.length() == 1) {
         it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
     } else {
-        it->second = it->second && s(!loop);
+        if (Config::Analysis::termination()) {
+            const auto ss{get_subs(range.end(), 1)};
+            const auto last {trace.at(range.end()).implicant};
+            it->second = it->second && (s(!loop) || (bools::mkLit(arith::mkLeq(ss.get<Arith>(trace_var), arith::mkConst(last_orig_clause))) && ss(!last)));
+        } else {
+            it->second = it->second && s(!loop);
+        }
     }
 }
 
@@ -673,7 +713,9 @@ std::optional<SmtResult> TIL::do_step() {
                         if (Config::Analysis::log) {
                             std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                         }
-                        handle_loop(*range);
+                        if (!handle_loop(*range)) {
+                            return SmtResult::Unknown;
+                        }
                         while (depth > range->start()) {
                             pop();
                         }

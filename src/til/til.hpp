@@ -106,7 +106,8 @@ private:
     void recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits);
     Bools::Expr recurrence_analysis(const Bools::Expr loop, const Model &model);
     Bools::Expr compute_transition_invariant(const Bools::Expr loop, Model model);
-    void handle_loop(const Range &range);
+    std::optional<Arith::Expr> prove_term(const Bools::Expr loop, Model model);
+    bool handle_loop(const Range &range);
     void build_trace();
     const Renaming& get_subs(const unsigned start, const unsigned steps);
     void pop();
