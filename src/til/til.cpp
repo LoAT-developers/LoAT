@@ -60,8 +60,8 @@ const Config::TILConfig TIL::intTermConfig{
     .mode = Config::TILConfig::Forward,
     .mbpKind = Config::TILConfig::LowerIntMbp,
     .recurrent_cycles = false,
-    .recurrent_exps = true,
-    .recurrent_pseudo_divs = true,
+    .recurrent_exps = false,
+    .recurrent_pseudo_divs = false,
     .recurrent_bounds = true,
     .context_sensitive = false};
 
@@ -69,9 +69,9 @@ const Config::TILConfig TIL::realTermConfig{
     .mode = Config::TILConfig::Forward,
     .mbpKind = Config::TILConfig::RealMbp,
     .recurrent_cycles = false,
-    .recurrent_exps = true,
+    .recurrent_exps = false,
     .recurrent_pseudo_divs = false,
-    .recurrent_bounds = true,
+    .recurrent_bounds = false,
     .context_sensitive = false};
 
 TIL::TIL(
