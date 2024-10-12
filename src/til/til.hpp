@@ -35,6 +35,11 @@ class TIL {
 
 public:
 
+    static const Config::TILConfig forwardConfig;
+    static const Config::TILConfig backwardConfig;
+    static const Config::TILConfig intTermConfig;
+    static const Config::TILConfig realTermConfig;
+
 private:
 
     using BoundPair = std::pair<std::optional<Arith::Expr>, std::optional<Arith::Expr>>;

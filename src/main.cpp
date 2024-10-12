@@ -6,7 +6,7 @@
 #include "chctoitsproblem.hpp"
 #include "cintparser.hpp"
 #include "config.hpp"
-#include "forwardbackwarddriver.hpp"
+#include "interleaved.hpp"
 #include "itsparser.hpp"
 #include "parser.hpp"
 #include "preprocessing.hpp"
@@ -367,41 +367,47 @@ int main(int argc, char *argv[]) {
                         break;
                     }
                     case Config::TILConfig::Mode::Interleaved: {
-                        reverse = Reverse(*chcs);
-                        CHCToITS reversed_chc2its{reverse->reverse()};
-                        auto reversed{reversed_chc2its.transform()};
-                        auto backward_preprocessor{std::make_shared<Preprocessor>(reversed)};
-                        res = backward_preprocessor->preprocess();
-                        if (res != SmtResult::Unknown) {
-                            if (Config::Analysis::log) {
-                                std::cout << "solved by backward preprocessing" << std::endl;
-                            }
-                            if (Config::Analysis::model) {
-                                chc2its = reversed_chc2its;
-                                preprocessor = backward_preprocessor;
-                                if (res == SmtResult::Sat) {
-                                    its_model = backward_preprocessor->get_model();
-                                } else {
-                                    its_cex = backward_preprocessor->get_cex();
-                                }
-                            }
+                        if (Config::Analysis::termination()) {
+                            Interleaved interleaved(*its, *its, TIL::intTermConfig, TIL::realTermConfig);
+                            res = interleaved.analyze();
                         } else {
-                            if (backward_preprocessor->successful() && Config::Analysis::log) {
-                                std::cout << "Simplified reversed ITS\n" << reversed << std::endl;
-                            }
-                            ForwardBackwardDriver fb(*its, reversed);
-                            res = fb.analyze();
-                            if (Config::Analysis::model) {
-                                if (res == SmtResult::Sat) {
-                                    its_model = fb.get_model();
-                                } else if (res == SmtResult::Unsat) {
-                                    its_cex = fb.get_cex();
+                            reverse = Reverse(*chcs);
+                            CHCToITS reversed_chc2its{reverse->reverse()};
+                            auto reversed{reversed_chc2its.transform()};
+                            auto backward_preprocessor{std::make_shared<Preprocessor>(reversed)};
+                            res = backward_preprocessor->preprocess();
+                            if (res != SmtResult::Unknown) {
+                                if (Config::Analysis::log) {
+                                    std::cout << "solved by backward preprocessing" << std::endl;
                                 }
-                                if (fb.is_forward()) {
-                                    reverse.reset();
-                                } else {
+                                if (Config::Analysis::model) {
                                     chc2its = reversed_chc2its;
                                     preprocessor = backward_preprocessor;
+                                    if (res == SmtResult::Sat) {
+                                        its_model = backward_preprocessor->get_model();
+                                    } else {
+                                        its_cex = backward_preprocessor->get_cex();
+                                    }
+                                }
+                            } else {
+                                if (backward_preprocessor->successful() && Config::Analysis::log) {
+                                    std::cout << "Simplified reversed ITS\n"
+                                              << reversed << std::endl;
+                                }
+                                Interleaved fb(*its, reversed, TIL::forwardConfig, TIL::backwardConfig);
+                                res = fb.analyze();
+                                if (Config::Analysis::model) {
+                                    if (res == SmtResult::Sat) {
+                                        its_model = fb.get_model();
+                                    } else if (res == SmtResult::Unsat) {
+                                        its_cex = fb.get_cex();
+                                    }
+                                    if (fb.is_forward()) {
+                                        reverse.reset();
+                                    } else {
+                                        chc2its = reversed_chc2its;
+                                        preprocessor = backward_preprocessor;
+                                    }
                                 }
                             }
                         }

@@ -1,31 +1,15 @@
-#include "forwardbackwarddriver.hpp"
+#include "interleaved.hpp"
 #include "config.hpp"
 
-Config::TILConfig forwardConfig{
-    .mode = Config::TILConfig::Forward,
-    .mbpKind = Config::TILConfig::LowerIntMbp,
-    .recurrent_cycles = false,
-    .recurrent_exps = true,
-    .recurrent_pseudo_divs = true,
-    .recurrent_bounds = true,
-    .context_sensitive = false};
-
-Config::TILConfig backwardConfig{
-    .mode = Config::TILConfig::Backward,
-    .mbpKind = Config::TILConfig::RealMbp,
-    .recurrent_cycles = false,
-    .recurrent_exps = true,
-    .recurrent_pseudo_divs = false,
-    .recurrent_bounds = true,
-    .context_sensitive = false};
-
-ForwardBackwardDriver::ForwardBackwardDriver(
+Interleaved::Interleaved(
     const ITSPtr forward,
-    const ITSPtr backward):
-    f(forward, forwardConfig),
-    b(backward, backwardConfig) {}
+    const ITSPtr backward,
+    const Config::TILConfig &f_conf,
+    const Config::TILConfig &b_conf):
+    f(forward, f_conf),
+    b(backward, b_conf) {}
 
-SmtResult ForwardBackwardDriver::analyze() {
+SmtResult Interleaved::analyze() {
     f.setup();
     b.setup();
     active = &f;
@@ -73,14 +57,14 @@ SmtResult ForwardBackwardDriver::analyze() {
     }
 }
 
-ITSModel ForwardBackwardDriver::get_model() {
+ITSModel Interleaved::get_model() {
     return active->get_model();
 }
 
-ITSSafetyCex ForwardBackwardDriver::get_cex() {
+ITSSafetyCex Interleaved::get_cex() {
     return active->get_cex();
 }
 
-bool ForwardBackwardDriver::is_forward() const {
+bool Interleaved::is_forward() const {
     return active == &f;
 }

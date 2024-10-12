@@ -3,7 +3,7 @@
 #include "itsproblem.hpp"
 #include "til.hpp"
 
-class ForwardBackwardDriver {
+class Interleaved {
 
 private:
 
@@ -14,7 +14,7 @@ TIL *passive;
 
 public:
 
-    ForwardBackwardDriver(const ITSPtr forward, const ITSPtr backward);
+    Interleaved(const ITSPtr f, const ITSPtr b, const Config::TILConfig &f_conf, const Config::TILConfig &b_conf);
 
     SmtResult analyze();
 
