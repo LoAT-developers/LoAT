@@ -156,7 +156,7 @@ jobs:
             elif [ ${{ inputs.config }} = "loat_nonterm_abmc" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_term" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::mode interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb_z3" ]; then
