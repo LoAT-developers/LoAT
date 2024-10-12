@@ -539,7 +539,7 @@ bool TIL::handle_loop(const Range &range) {
     const auto projected{mbp::int_mbp(ti, model, [&](const auto &x) {
         return x == Var(n);
     })};
-    if (range.length() == 1 && !Config::Analysis::termination()) {
+    if (range.length() == 1) {
         projections.emplace_back(id, projected);
     } else {
         const auto is_safety_loop {this->model.get<Arith>(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0};
