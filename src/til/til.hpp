@@ -95,8 +95,8 @@ private:
 
     Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
     Bools::Expr get_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop);
-    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop, const bool safety_loop, const Bools::Expr termination_argument);
-    bool add_blocking_clauses(const Range &range, Model model, const Bools::Expr termination_argument);
+    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop, const bool safety_loop);
+    bool add_blocking_clauses(const Range &range, Model model);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
     Int add_learned_clause(const Bools::Expr &accel);
