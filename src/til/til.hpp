@@ -87,13 +87,16 @@ private:
     rule_map_t rule_map {};
     const Arith::Var trace_var {ArithVar::next()};
     const Arith::Var n {ArithVar::next()};
+    const Arith::Var safety_var {ArithVar::next()};
     DependencyGraph<Bools::Expr> dependency_graph {};
+    DependencyGraph<Bools::Expr> independence_graph {};
     unsigned depth {0};
     Bools::Expr step {bot()};
 
     Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
-    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop);
-    bool add_blocking_clauses(const Range &range, Model model);
+    Bools::Expr get_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop);
+    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop, const bool safety_loop, const Bools::Expr termination_argument);
+    bool add_blocking_clauses(const Range &range, Model model, const Bools::Expr termination_argument);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
     Int add_learned_clause(const Bools::Expr &accel);

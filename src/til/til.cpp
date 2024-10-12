@@ -50,6 +50,9 @@ TIL::TIL(
     }
     vars.insert(trace_var);
     vars.insert(n);
+    if (Config::Analysis::termination()) {
+        vars.insert(safety_var);
+    }
     for (const auto &x : t.vars()) {
         if (theory::isPostVar(x)) {
             const auto pre{theory::progVar(x)};
@@ -72,6 +75,12 @@ TIL::TIL(
 std::optional<Range> TIL::has_looping_infix() {
     for (unsigned i = 0; i < trace.size(); ++i) {
         for (unsigned start = 0; start + i < trace.size(); ++start) {
+            if (Config::Analysis::termination() &&
+                i > 0 &&
+                model.get<Arith>(get_subs(start, 1).get<Arith>(safety_var)) >= 0 &&
+                model.get<Arith>(get_subs(start + i, 1).get<Arith>(safety_var)) < 0) {
+                continue;
+            }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 return {Range::from_interval(start, start + i)};
             }
@@ -133,7 +142,6 @@ Int TIL::add_learned_clause(const Bools::Expr &accel) {
     ++next_id;
     rule_map.left.insert(rule_map_t::left_value_type(id, accel));
     step = step || encode_transition(accel, id);
-    const auto lits{accel->lits()};
     return id;
 }
 
@@ -510,31 +518,32 @@ std::optional<Arith::Expr> TIL::prove_term(const Bools::Expr loop, Model model) 
 
 bool TIL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
-    Bools::Expr ranking_function {top()};
+    Bools::Expr termination_argument {top()};
+    if (add_blocking_clauses(range, model, termination_argument)) {
+        return true;
+    }
     if (Config::Analysis::termination()) {
         if (const auto rf {prove_term(loop, model)}) {
-            ranking_function = bools::mkLit(arith::mkGt(*rf, (*rf)->renameVars(pre_to_post.get<Arith>())));
-            loop = loop && ranking_function;
+            termination_argument = bools::mkAndFromLits({arith::mkGt(*rf, arith::mkConst(0)), arith::mkGt(*rf, (*rf)->renameVars(pre_to_post.get<Arith>()))});
+            loop = loop && termination_argument;
         } else {
             return false;
         }
     }
-    if (add_blocking_clauses(range, model)) {
-        return true;
-    }
     auto ti{compute_transition_invariant(loop, model)};
     if (Config::Analysis::termination()) {
-        ti = ti && ranking_function;
+        ti = ti && termination_argument;
     }
     model.put<Arith>(n, 1);
     const auto id{add_learned_clause(ti)};
     const auto projected{mbp::int_mbp(ti, model, [&](const auto &x) {
         return x == Var(n);
     })};
-    if (range.length() == 1) {
+    if (range.length() == 1 && !Config::Analysis::termination()) {
         projections.emplace_back(id, projected);
     } else {
-        add_blocking_clause(range, id, projected);
+        const auto is_safety_loop {this->model.get<Arith>(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0};
+        add_blocking_clause(range, id, projected, is_safety_loop, termination_argument);
     }
     return true;
 }
@@ -543,38 +552,48 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
     return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
-void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
+void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop, const bool safety_loop, const Bools::Expr termination_argument) {
     const auto s{get_subs(range.start(), range.length())};
     auto &map{blocked_per_step.emplace(range.end(), std::map<Int, Bools::Expr>()).first->second};
     auto it{map.emplace(id, top()).first};
-    if (range.length() == 1) {
+    if (Config::Analysis::termination()) {
+        const auto first_s {get_subs(range.start(), 1)};
+        const auto last_s {get_subs(range.end(), 1)};
+        std::vector<Bools::Expr> disjuncts;
+        disjuncts.emplace_back(s(!termination_argument));
+        if (safety_loop) {
+            const auto no_safety_loop{bools::mkLit(arith::mkLt(last_s.get<Arith>(safety_var), arith::mkConst(0)))};
+            disjuncts.emplace_back(no_safety_loop);
+            disjuncts.emplace_back(s(!loop));
+            if (range.length() == 1) {
+                disjuncts.emplace_back(bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id))));
+            }
+        } else {
+            const auto no_term_loop{bools::mkLit(arith::mkGeq(first_s.get<Arith>(safety_var), arith::mkConst(0)))};
+            disjuncts.emplace_back(no_term_loop);
+            const auto &first {trace.at(range.start())};
+            const auto &last {trace.at(range.end())};
+            if (first.implicant == rule_map.left.at(first.id)) {
+                disjuncts.emplace_back(bools::mkLit(arith::mkNeq(first_s.get<Arith>(trace_var), arith::mkConst(first.id))));
+            } else {
+                disjuncts.emplace_back(first_s(!first.implicant));
+            }
+            if (last.implicant == rule_map.left.at(last.id)) {
+                disjuncts.emplace_back(bools::mkLit(arith::mkNeq(last_s.get<Arith>(trace_var), arith::mkConst(last.id))));
+            } else {
+                disjuncts.emplace_back(last_s(!last.implicant));
+            }
+        }
+        it->second = it->second && bools::mkOr(disjuncts);
+    } else if (range.length() == 1) {
         it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
     } else {
-        if (Config::Analysis::termination()) {
-            std::vector<Bools::Expr> disjuncts;
-            disjuncts.emplace_back(s(!loop));
-            for (auto i = range.start(); i <= range.end(); ++i) {
-                const auto ss{get_subs(i, 1)};
-                std::vector<Bools::Expr> conjuncts;
-                conjuncts.emplace_back(bools::mkLit(arith::mkLeq(ss.get<Arith>(trace_var), arith::mkConst(last_orig_clause))));
-                const auto &t {trace.at(i)};
-                if (t.id <= last_orig_clause) {
-                    const auto last {trace.at(i).implicant};
-                    conjuncts.emplace_back(bools::mkLit(arith::mkNeq(ss.get<Arith>(trace_var), arith::mkConst(t.id))));
-                    if (last != rule_map.left.at(t.id)) {
-                        conjuncts.emplace_back(ss(!last));
-                    }
-                }
-                disjuncts.emplace_back(bools::mkAnd(conjuncts));
-            }
-            it->second = it->second && bools::mkOr(disjuncts);
-        } else {
-            it->second = it->second && s(!loop);
-        }
+        it->second = it->second && s(!loop);
     }
 }
 
-bool TIL::add_blocking_clauses(const Range &range, Model model) {
+bool TIL::add_blocking_clauses(const Range &range, Model model, const Bools::Expr termination_argument) {
+    const auto is_safety_loop {this->model.get<Arith>(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0};
     Subs m{model.toSubs()};
     m.erase(n);
     auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
@@ -596,12 +615,12 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
                 const auto projected{mbp_impl(b, model, [&](const auto &x) {
                     return x == Var(n);
                 })};
-                add_blocking_clause(range, id, projected);
+                add_blocking_clause(range, id, projected, is_safety_loop, termination_argument);
                 return true;
             }
             solver->pop();
         } else if (model.eval<Bools>(b)) {
-            add_blocking_clause(range, id, b);
+            add_blocking_clause(range, id, b, is_safety_loop, termination_argument);
             return true;
         }
     }
@@ -651,6 +670,9 @@ void TIL::build_trace() {
             std::cout << t.implicant << std::endl;
         }
         std::cout << "trace var: " << trace_var << std::endl;
+        if (Config::Analysis::termination()) {
+            std::cout << "safety var: " << safety_var << std::endl;
+        }
         std::cout << "run:" << std::endl;
         for (const auto &t : trace) {
             std::cout << t.model << std::endl;
@@ -731,6 +753,9 @@ std::optional<SmtResult> TIL::do_step() {
             solver->pop();
             solver->push();
             solver->add(s(step));
+            if (Config::Analysis::termination() && depth > 0) {
+                solver->add(bools::mkLit(arith::mkGeq(get_subs(depth - 1, 1).get<Arith>(safety_var), s.get<Arith>(safety_var))));
+            }
             add_blocking_clauses();
             switch (solver->check()) {
                 case SmtResult::Unsat:
