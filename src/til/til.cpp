@@ -510,7 +510,7 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model mode
     return removeRedundantInequations(res);
 }
 
-std::optional<Arith::Expr> TIL::prove_term(const Bools::Expr loop, Model model) {
+std::optional<Arith::Expr> TIL::prove_term(const Bools::Expr loop, const Model &model) {
     const auto &m {model.get<Arith>()};
     const auto &ptp {pre_to_post.get<Arith>()};
     const auto lits {loop->lits().get<Arith::Lit>()};
@@ -531,10 +531,10 @@ std::optional<Arith::Expr> TIL::prove_term(const Bools::Expr loop, Model model) 
     std::vector<Arith::Expr> decreasing;
     std::unordered_map<Arith::Var, Arith::Var> coeffs;
     for (const auto &[pre,post]: ptp) {
-        if (pre == its->getLocVar()) {
+        if (pre == its->getLocVar() || !m.contains(pre) || !m.contains(post)) {
             continue;
         }
-        const auto &coeff {ArithVar::next()};
+        const auto coeff {ArithVar::next()};
         coeffs.emplace(pre, coeff);
         const auto pre_val {arith::mkConst(m.at(pre))};
         const auto post_val {arith::mkConst(m.at(post))};
@@ -754,30 +754,29 @@ void TIL::pop() {
 
 void TIL::setup() {
     std::vector<Bools::Expr> steps;
+    const auto linearize{
+        [&](const auto &lit) { return std::visit(
+                                   Overload{
+                                       [](const Arith::Lit &l) {
+                                           if (!l->isLinear()) {
+                                               return top();
+                                           } else {
+                                               return bools::mkLit(l);
+                                           }
+                                       },
+                                       [](const auto &l) {
+                                           return bools::mkLit(l);
+                                       }},
+                                   lit); }};
     for (const auto &trans : t.trans()) {
-        const auto lin{
-            trans->map([](const auto &lit) {
-                return std::visit(
-                    Overload{
-                        [](const Arith::Lit &l) {
-                            if (!l->isLinear()) {
-                                return top();
-                            } else {
-                                return bools::mkLit(l);
-                            }
-                        },
-                        [](const auto &l) {
-                            return bools::mkLit(l);
-                        }},
-                    lit);
-            })};
+        const auto lin {trans->map(linearize)};
         rule_map.left.insert(rule_map_t::left_value_type(next_id, lin));
         steps.push_back(encode_transition(lin, next_id));
         ++next_id;
     }
     last_orig_clause = next_id - 1;
     step = bools::mkOr(steps);
-    solver->add(t.init());
+    solver->add(t.init()->map(linearize));
 }
 
 std::optional<SmtResult> TIL::do_step() {
