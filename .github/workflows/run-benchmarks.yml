@@ -20,8 +20,6 @@ on:
         - loat_term
         - loat_term_int_mbp
         - loat_term_real_mbp
-        - loat_term_int_mbp_z3
-        - loat_term_real_mbp_z3
         - loat_lb
         - loat_lb_z3
         - loat_bmc
@@ -162,13 +160,9 @@ jobs:
             elif [ ${{ inputs.config }} = "loat_term" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::mode interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_term_int_mbp" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false --til::recurrent_pseudo_bounds false "${filename}")
             elif [ ${{ inputs.config }} = "loat_term_real_mbp" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false --til::mbp_kind real "${filename}")
-            elif [ ${{ inputs.config }} = "loat_term_int_mbp_z3" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false --smt z3 "${filename}")
-            elif [ ${{ inputs.config }} = "loat_term_real_mbp_z3" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false --til::mbp_kind real --smt z3 "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false --til::mbp_kind real --til::recurrent_pseudo_bounds false "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb_z3" ]; then

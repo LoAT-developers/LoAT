@@ -44,6 +44,7 @@ const Config::TILConfig TIL::forwardConfig{
     .recurrent_cycles = false,
     .recurrent_exps = true,
     .recurrent_pseudo_divs = true,
+    .recurrent_pseudo_bounds = true,
     .recurrent_bounds = true,
     .context_sensitive = false};
 
@@ -53,6 +54,7 @@ const Config::TILConfig TIL::backwardConfig{
     .recurrent_cycles = false,
     .recurrent_exps = true,
     .recurrent_pseudo_divs = false,
+    .recurrent_pseudo_bounds = true,
     .recurrent_bounds = true,
     .context_sensitive = false};
 
@@ -62,6 +64,7 @@ const Config::TILConfig TIL::intTermConfig{
     .recurrent_cycles = false,
     .recurrent_exps = false,
     .recurrent_pseudo_divs = false,
+    .recurrent_pseudo_bounds = false,
     .recurrent_bounds = true,
     .context_sensitive = false};
 
@@ -71,6 +74,7 @@ const Config::TILConfig TIL::realTermConfig{
     .recurrent_cycles = false,
     .recurrent_exps = false,
     .recurrent_pseudo_divs = false,
+    .recurrent_pseudo_bounds = false,
     .recurrent_bounds = false,
     .context_sensitive = false};
 
@@ -420,7 +424,7 @@ void TIL::recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits
             }
         }
     }
-    {
+    if (config.recurrent_pseudo_bounds) {
         const auto pseudo_pre{mbp_impl(with_deltas, model, [&](const auto &x) {
             return !theory::isProgVar(x) && !deltas.contains(x);
         })};

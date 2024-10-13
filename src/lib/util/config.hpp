@@ -64,6 +64,7 @@ namespace Config {
         bool recurrent_cycles {false};
         bool recurrent_exps {true};
         bool recurrent_pseudo_divs {true};
+        bool recurrent_pseudo_bounds {true};
         bool recurrent_bounds {true};
         bool context_sensitive {false};
     };

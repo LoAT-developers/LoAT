@@ -176,6 +176,8 @@ void parseFlags(int argc, char *argv[]) {
             setBool(getNext(), Config::til.recurrent_cycles);
         } else if (strcmp("--til::recurrent_pseudo_divs", argv[arg]) == 0) {
             setBool(getNext(), Config::til.recurrent_pseudo_divs);
+        } else if (strcmp("--til::recurrent_pseudo_bounds", argv[arg]) == 0) {
+            setBool(getNext(), Config::til.recurrent_pseudo_bounds);
         } else if (strcmp("--til::recurrent_bounds", argv[arg]) == 0) {
             setBool(getNext(), Config::til.recurrent_bounds);
         } else if (strcmp("--til::context_sensitive", argv[arg]) == 0) {
