@@ -18,6 +18,8 @@ on:
         - loat_nonterm
         - loat_nonterm_abmc
         - loat_term
+        - loat_term_int_mbp
+        - loat_term_real_mbp
         - loat_lb
         - loat_lb_z3
         - loat_bmc
@@ -157,6 +159,10 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_term" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::mode interleaved "${filename}")
+            elif [ ${{ inputs.config }} = "loat_term_int_mbp" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false "${filename}")
+            elif [ ${{ inputs.config }} = "loat_term_real_mbp" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false --til::mbp_kind real "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb_z3" ]; then

@@ -83,6 +83,7 @@ private:
     Renaming pre_to_post {};
     ITSToSafety its2safety;
     SafetyProblem t;
+    ITSPtr its;
     bool produce_model {false};
 
     Int next_id {0};
