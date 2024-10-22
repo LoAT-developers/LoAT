@@ -774,9 +774,10 @@ void TIL::setup() {
                                    lit); }};
     for (const auto &trans : t.trans()) {
         const auto lin {trans->map(linearize)};
-        rule_map.left.insert(rule_map_t::left_value_type(next_id, lin));
-        steps.push_back(encode_transition(lin, next_id));
-        ++next_id;
+        if (rule_map.left.insert(rule_map_t::left_value_type(next_id, lin)).second) {
+            steps.push_back(encode_transition(lin, next_id));
+            ++next_id;
+        }
     }
     last_orig_clause = next_id - 1;
     step = bools::mkOr(steps);
