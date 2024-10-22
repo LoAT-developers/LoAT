@@ -590,8 +590,7 @@ bool TIL::handle_loop(const Range &range) {
     if (range.length() == 1) {
         projections.emplace_back(id, projected);
     } else {
-        const auto is_safety_loop {this->model.get<Arith>(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0};
-        add_blocking_clause(range, id, projected, is_safety_loop);
+        add_blocking_clause(range, id, projected);
     }
     return true;
 }
@@ -600,7 +599,7 @@ Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
     return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
-void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop, const bool safety_loop) {
+void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
     auto &map{blocked_per_step.emplace(range.end(), std::map<Int, Bools::Expr>()).first->second};
     auto it{map.emplace(id, top()).first};
@@ -610,6 +609,7 @@ void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
         if (range.length() == 1) {
             disjuncts.emplace_back(bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id))));
         }
+        const auto safety_loop {this->model.get<Arith>(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0};
         if (safety_loop) {
             const auto last_s {get_subs(range.end(), 1)};
             const auto no_safety_loop{bools::mkLit(arith::mkLt(last_s.get<Arith>(safety_var), arith::mkConst(0)))};
@@ -628,7 +628,6 @@ void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
 }
 
 bool TIL::add_blocking_clauses(const Range &range, Model model) {
-    const auto is_safety_loop {this->model.get<Arith>(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0};
     Subs m{model.toSubs()};
     m.erase(n);
     auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
@@ -650,15 +649,15 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
             if (solver->check() == SmtResult::Sat) {
                 const auto n_val{solver->model({{n}}).get<Arith>(n)};
                 model.put<Arith>(n, n_val);
-                const auto projected{mbp_impl(b, model, [&](const auto &x) {
+                const auto projected{mbp::int_mbp(b, model, [&](const auto &x) {
                     return x == Var(n);
                 })};
-                add_blocking_clause(range, id, projected, is_safety_loop);
+                add_blocking_clause(range, id, projected);
                 return true;
             }
             solver->pop();
         } else if (model.eval<Bools>(b)) {
-            add_blocking_clause(range, id, b, is_safety_loop);
+            add_blocking_clause(range, id, b);
             return true;
         }
     }
