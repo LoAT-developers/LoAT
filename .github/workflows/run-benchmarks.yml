@@ -33,7 +33,7 @@ on:
         - z3_bmc
         - golem_spacer
         - golem_lawi
-        - golem_split_tpa
+        - golem_split-tpa
         - golem_bmc
         - golem_imc
         - golem_kind
