@@ -37,6 +37,8 @@ on:
         - golem_bmc
         - golem_imc
         - golem_kind
+        - golem_pa
+        - golem_pdkind
         - eld
         - verymax
         - irankfinder
