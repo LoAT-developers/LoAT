@@ -116,6 +116,10 @@ find_library(CLN cln)
 message(STATUS "cln: ${CLN}")
 find_library(GMP gmp)
 message(STATUS "gmp: ${GMP}")
+find_library(SMTRAT_COMMON smtrat-common)
+message(STATUS "smtrat-common: ${SMTRAT_COMMON}")
+find_library(SMTRAT_QE smtrat-qe)
+message(STATUS "smtrat-qe: ${SMTRAT_QE}")
 
 target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:sexpresso>
@@ -129,6 +133,8 @@ target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:loat_chcproblem>
   $<TARGET_OBJECTS:loat_safetyproblem>
   $<TARGET_OBJECTS:loat_transformations>
+  ${SMTRAT_QE}
+  ${SMTRAT_COMMON}
   ${ANTLR4}
   ${FAUDES}
   ${SWINE}
