@@ -6,6 +6,6 @@ ENV CXXFLAGS $CFLAGS
 RUN apk add cmake boost-dev gdb
 RUN apk add clang clang-dev
 RUN apk add compiler-rt lld
-RUN apk add eigen
+RUN apk add eigen-dev
 
 COPY ./usr /usr
