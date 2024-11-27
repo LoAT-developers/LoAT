@@ -461,37 +461,6 @@ std::optional<ArithVarPtr> ArithExpr::someVar() const {
         });
 }
 
-void ArithExpr::exps(linked_hash_set<ArithExpPtr> &acc) const {
-    return apply<void>(
-        [](const ArithConstPtr) {},
-        [](const ArithVarPtr) {},
-        [&](const ArithAddPtr a) {
-            for (const auto &arg: a->getArgs()) {
-                arg->exps(acc);
-            }
-        },
-        [&](const ArithMultPtr m) {
-            for (const auto &arg: m->getArgs()) {
-                arg->exps(acc);
-            }
-        },
-        [&](const ArithModPtr m) {
-            m->getLhs()->exps(acc);
-            m->getRhs()->exps(acc);
-        },
-        [&](const ArithExpPtr e) {
-            e->getBase()->exps(acc);
-            e->getExponent()->exps(acc);
-            acc.emplace(e);
-        });
-}
-
-linked_hash_set<ArithExpPtr> ArithExpr::exps() const {
-    linked_hash_set<ArithExpPtr> acc;
-    exps(acc);
-    return acc;
-}
-
 std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &degree) const {
     using opt = std::optional<ArithExprPtr>;
     return apply<opt>(

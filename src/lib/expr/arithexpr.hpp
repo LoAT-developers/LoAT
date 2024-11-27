@@ -78,7 +78,6 @@ private:
 
     arith::Kind kind;
 
-    void exps(linked_hash_set<ArithExpPtr> &acc) const;
     /**
      * @return [a,b] s.t. a*b = *this
      */
@@ -212,8 +211,6 @@ public:
     std::optional<Int> isPoly(const ArithVarPtr n) const;
 
     std::optional<ArithVarPtr> someVar() const;
-
-    linked_hash_set<ArithExpPtr> exps() const;
 
     /**
      * @return The coefficient of the monomial where var occurs with the given degree (which defaults to 1).
