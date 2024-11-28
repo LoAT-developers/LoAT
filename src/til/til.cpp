@@ -50,7 +50,7 @@ const Config::TILConfig TIL::forwardConfig{
     .context_sensitive = false};
 
 const Config::TILConfig TIL::backwardConfig{
-    .mbpKind = Config::TILConfig::RealQe,
+    .mbpKind = Config::TILConfig::RealMbp,
     .recurrent_cycles = false,
     .recurrent_exps = true,
     .recurrent_pseudo_divs = false,
