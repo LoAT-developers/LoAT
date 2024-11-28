@@ -219,10 +219,10 @@ inline void gcd_normalize(std::vector<typename Matrix::RowEntry>& row) {
         gcd = mp::gcd(gcd, mp::numerator(e.value));
         lcm = mp::lcm(lcm, mp::denominator(e.value));
     }
-    if (gcd != 0) {
-        Rational scale = lcm/gcd;
-        if (scale != 1) {
-            for (auto& e : row) e.value *= scale;
+    Rational scale = Rational(lcm) / Rational(gcd);
+    if (scale != 1) {
+        for (auto &e : row) {
+            e.value *= scale;
         }
     }
 }
