@@ -612,7 +612,7 @@ bool TIL::handle_loop(const Range &range) {
     } else {
         ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
         id = add_learned_clause(ti);
-        auto projected = mbp::int_mbp(ti, model, [&](const auto &x) {
+        projected = mbp::int_mbp(ti, model, [&](const auto &x) {
             return x == Var(n);
         });
     }
