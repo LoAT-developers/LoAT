@@ -79,6 +79,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_util_INCLUDE_DIRS}
   ${loat_container_INCLUDE_DIRS}
   ${loat_expr_INCLUDE_DIRS}
+  ${loat_fmplex_INCLUDE_DIRS}
   ${loat_preprocessing_INCLUDE_DIRS}
   ${loat_smt_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
@@ -121,6 +122,7 @@ target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:sexpresso>
   $<TARGET_OBJECTS:loat_util>
   $<TARGET_OBJECTS:loat_expr>
+  $<TARGET_OBJECTS:loat_fmplex>
   $<TARGET_OBJECTS:loat_preprocessing>
   $<TARGET_OBJECTS:loat_smt>
   $<TARGET_OBJECTS:loat_recurrence>

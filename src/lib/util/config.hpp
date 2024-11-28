@@ -58,7 +58,7 @@ namespace Config {
 
     struct TILConfig {
         enum Mode {Forward, Backward, Interleaved};
-        enum MbpKind {LowerIntMbp, UpperIntMbp, RealMbp};
+        enum MbpKind {LowerIntMbp, UpperIntMbp, RealMbp, RealQe};
         Mode mode {Forward};
         MbpKind mbpKind {LowerIntMbp};
         bool recurrent_cycles {false};

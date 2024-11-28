@@ -190,6 +190,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::til.mbpKind = Config::TILConfig::MbpKind::UpperIntMbp;
             } else if (boost::iequals("real", str)) {
                 Config::til.mbpKind = Config::TILConfig::MbpKind::RealMbp;
+            } else if (boost::iequals("real_qe", str)) {
+                Config::til.mbpKind = Config::TILConfig::MbpKind::RealQe;
             } else {
                 std::cout << "Error: unknown MBP kind " << str << std::endl;
                 exit(1);

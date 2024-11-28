@@ -11,6 +11,8 @@
 #include "redundantinequations.hpp"
 #include "theory.hpp"
 #include "safetycex.hpp"
+#include "eliminate.h"
+#include "realqe.hpp"
 
 Range::Range(const unsigned s, const unsigned e) : s(s), e(e) {}
 
@@ -200,6 +202,8 @@ Bools::Expr TIL::mbp_impl(const Bools::Expr &trans, const Model &model, const st
         return mbp::int_mbp(trans, model, eliminate, false);
     case Config::TILConfig::UpperIntMbp:
         return mbp::int_mbp(trans, model, eliminate, true);
+    case Config::TILConfig::RealQe:
+        return qe::real_qe(trans, model, eliminate);
     default:
         throw std::invalid_argument("unknown mbp kind");
     }
@@ -583,10 +587,22 @@ bool TIL::handle_loop(const Range &range) {
         ti = ti && termination_argument;
     }
     model.put<Arith>(n, 1);
-    const auto id{add_learned_clause(ti)};
-    const auto projected{mbp::int_mbp(ti, model, [&](const auto &x) {
-        return x == Var(n);
-    })};
+
+    Int id;
+    Bools::Expr projected{top()};
+    if (config.mbpKind == Config::TILConfig::RealQe) {
+        projected = qe::real_qe(ti, model, [&](const auto &x) {
+            return x == Var(n);
+        });
+        projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
+        id = add_learned_clause(projected);
+    } else {
+        ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
+        id = add_learned_clause(ti);
+        auto projected = mbp::int_mbp(ti, model, [&](const auto &x) {
+            return x == Var(n);
+        });
+    }
     if (range.length() == 1) {
         projections.emplace_back(id, projected);
     } else {

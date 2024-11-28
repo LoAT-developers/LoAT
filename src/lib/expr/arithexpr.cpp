@@ -410,11 +410,7 @@ Rational ArithExpr::getConstantAddend() const {
             return res;
         },
         [](const ArithMultPtr m) {
-            Rational res {0};
-            for (const auto &arg: m->getArgs()) {
-                res *= arg->getConstantAddend();
-            }
-            return res;
+            return 0;
         },
         [](const ArithModPtr m) {
             return 0;
