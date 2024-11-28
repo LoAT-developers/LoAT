@@ -152,7 +152,7 @@ jobs:
 
             set +e
             if [ ${{ inputs.config }} = "loat_sat" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine til --til::mode interleaved "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine til --direction interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_unsat" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm" ]; then
