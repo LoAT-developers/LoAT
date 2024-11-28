@@ -1,5 +1,6 @@
 add_subdirectory(lib)
 add_subdirectory(preprocess)
+add_subdirectory(interleaved)
 add_subdirectory(adcl)
 add_subdirectory(asymptotic)
 add_subdirectory(parser)

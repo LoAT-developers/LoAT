@@ -1,20 +1,20 @@
 #pragma once
 
 #include "itsproblem.hpp"
-#include "til.hpp"
+#include "stepwise.hpp"
 
 class Interleaved {
 
 private:
 
-TIL f;
-TIL b;
-TIL *active;
-TIL *passive;
+StepwiseAnalysis &f;
+StepwiseAnalysis &b;
+StepwiseAnalysis *active;
+StepwiseAnalysis *passive;
 
 public:
 
-    Interleaved(const ITSPtr f, const ITSPtr b, const Config::TILConfig &f_conf, const Config::TILConfig &b_conf);
+    Interleaved(StepwiseAnalysis &f, StepwiseAnalysis &b);
 
     SmtResult analyze();
 

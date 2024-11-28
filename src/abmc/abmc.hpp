@@ -9,8 +9,9 @@
 #include "renaming.hpp"
 #include "itsmodel.hpp"
 #include "itssafetycex.hpp"
+#include "stepwise.hpp"
 
-class ABMC {
+class ABMC: public StepwiseAnalysis {
 
 private:
 
@@ -46,6 +47,7 @@ private:
     DependencyGraph<Implicant> dependency_graph {};
     unsigned depth {0};
     ITSSafetyCex cex;
+    Bools::Expr step {top()};
 
     int get_language(unsigned i);
     Bools::Expr encode_transition(const RulePtr idx, const bool with_id = true);
@@ -62,9 +64,9 @@ private:
 public:
 
     explicit ABMC(ITSPtr its);
-    SmtResult analyze();
-    ITSModel get_model() const;
-    ITSSafetyCex get_cex();
+    std::optional<SmtResult> do_step() override;
+    ITSModel get_model() override;
+    ITSSafetyCex get_cex() override;
 
 };
 

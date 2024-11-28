@@ -37,7 +37,7 @@ void printHelp(char *arg0) {
     std::cout << "  --proof                                          Print model/counterexample/recurrent set/..." << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>            ABMC: En- or disable blocking clauses" << std::endl;
     std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>            Choose the SMT solver" << std::endl;
-    std::cout << "  --til::mode <forward|backward|interleaved>       TIL: run the analysis forward, backward, or both directions interleaved" << std::endl;
+    std::cout << "  --direction <forward|backward|interleaved>       run the analysis forward, backward, or both directions interleaved (if supported)" << std::endl;
     std::cout << "  --til::recurrent_exps <true|false>               TIL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
     std::cout << "  --til::recurrent_cycles <true|false>             TIL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
     std::cout << "  --til::recurrent_pseudo_divs <true|false>        TIL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
@@ -158,14 +158,14 @@ void parseFlags(int argc, char *argv[]) {
             }
         } else if (strcmp("--abmc::blocking_clauses", argv[arg]) == 0) {
             setBool(getNext(), Config::ABMC::blocking_clauses);
-        } else if (strcmp("--til::mode", argv[arg]) == 0) {
+        } else if (strcmp("--direction", argv[arg]) == 0) {
             const auto str{getNext()};
             if (boost::iequals("forward", str)) {
-                Config::til.mode = Config::TILConfig::Mode::Forward;
+                Config::Analysis::dir = Config::Analysis::Direction::Forward;
             } else if (boost::iequals("backward", str)) {
-                Config::til.mode = Config::TILConfig::Mode::Backward;
+                Config::Analysis::dir = Config::Analysis::Direction::Backward;
             } else if (boost::iequals("interleaved", str)) {
-                Config::til.mode = Config::TILConfig::Mode::Interleaved;
+                Config::Analysis::dir = Config::Analysis::Direction::Interleaved;
             } else {
                 std::cout << "Error: unknown TIL mode " << str << std::endl;
                 exit(1);
@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
             break;
         case Config::Input::Horn: {
             chcs = SexpressoParser::loadFromFile(filename);
-            if (Config::Analysis::engine == Config::Analysis::TIL && Config::til.mode == Config::TILConfig::Mode::Backward) {
+            if (Config::Analysis::dir == Config::Analysis::Direction::Backward) {
                 reverse = Reverse(*chcs);
                 chcs = reverse->reverse();
             }
@@ -315,110 +315,116 @@ int main(int argc, char *argv[]) {
         if (preprocessor->successful() && Config::Analysis::log) {
             std::cout << "Simplified ITS\n" << *its << std::endl;
         }
-        switch (Config::Analysis::engine) {
-            case Config::Analysis::ADCL: {
-                reachability::Reachability r {
-                    *its,
-                    [&](const ITSCpxCex &cex) {
-                        if (Config::Analysis::complexity()) {
-                            std::cout << preprocessor->transform_cex(cex);
-                        }
-                    }};
-                res = r.analyze();
-                if (Config::Analysis::model && !Config::Analysis::complexity() && res == SmtResult::Unsat) {
-                    its_cex = r.get_cex();
+        if (Config::Analysis::dir == Config::Analysis::Direction::Interleaved) {
+            reverse = Reverse(*chcs);
+            CHCToITS reversed_chc2its{reverse->reverse()};
+            auto reversed{reversed_chc2its.transform()};
+            auto backward_preprocessor{std::make_shared<Preprocessor>(reversed)};
+            res = backward_preprocessor->preprocess();
+            if (res != SmtResult::Unknown) {
+                if (Config::Analysis::log) {
+                    std::cout << "solved by backward preprocessing" << std::endl;
                 }
-                break;
-            }
-            case Config::Analysis::BMC:
-            case Config::Analysis::KIND: {
-                BMC bmc{*its, Config::Analysis::engine == Config::Analysis::KIND};
-                res = bmc.analyze();
                 if (Config::Analysis::model) {
+                    chc2its = reversed_chc2its;
+                    preprocessor = backward_preprocessor;
                     if (res == SmtResult::Sat) {
-                        its_model = bmc.get_model();
-                    } else if (res == SmtResult::Unsat) {
-                        its_cex = bmc.get_cex();
+                        its_model = backward_preprocessor->get_model();
+                    } else {
+                        its_cex = backward_preprocessor->get_cex();
                     }
                 }
-                break;
-            }
-            case Config::Analysis::ABMC: {
-                ABMC abmc{*its};
-                res = abmc.analyze();
-                if (Config::Analysis::model) {
-                    if (res == SmtResult::Sat) {
-                        its_model = abmc.get_model();
-                    } else if (res == SmtResult::Unsat) {
-                        its_cex = abmc.get_cex();
-                    }
+            } else {
+                if (backward_preprocessor->successful() && Config::Analysis::log) {
+                    std::cout << "Simplified reversed ITS\n"
+                              << reversed << std::endl;
                 }
-                break;
-            }
-            case Config::Analysis::TIL: {
-                switch (Config::til.mode) {
-                    case Config::TILConfig::Mode::Forward:
-                    case Config::TILConfig::Mode::Backward: {
-                        TIL til(*its, Config::til);
-                        res = til.analyze();
-                        if (Config::Analysis::model) {
-                            if (res == SmtResult::Sat) {
-                                its_model = til.get_model();
-                            } else if (res == SmtResult::Unsat) {
-                                its_cex = til.get_cex();
-                            }
-                        }
+                std::unique_ptr<StepwiseAnalysis> f, b;
+                switch (Config::Analysis::engine) {
+                    case Config::Analysis::TIL: {
+                        f = std::make_unique<TIL>(*its, TIL::forwardConfig);
+                        b = std::make_unique<TIL>(reversed, TIL::backwardConfig);
                         break;
                     }
-                    case Config::TILConfig::Mode::Interleaved: {
-                        if (Config::Analysis::termination()) {
-                            Interleaved interleaved(*its, *its, TIL::intTermConfig, TIL::realTermConfig);
-                            res = interleaved.analyze();
-                        } else {
-                            reverse = Reverse(*chcs);
-                            CHCToITS reversed_chc2its{reverse->reverse()};
-                            auto reversed{reversed_chc2its.transform()};
-                            auto backward_preprocessor{std::make_shared<Preprocessor>(reversed)};
-                            res = backward_preprocessor->preprocess();
-                            if (res != SmtResult::Unknown) {
-                                if (Config::Analysis::log) {
-                                    std::cout << "solved by backward preprocessing" << std::endl;
-                                }
-                                if (Config::Analysis::model) {
-                                    chc2its = reversed_chc2its;
-                                    preprocessor = backward_preprocessor;
-                                    if (res == SmtResult::Sat) {
-                                        its_model = backward_preprocessor->get_model();
-                                    } else {
-                                        its_cex = backward_preprocessor->get_cex();
-                                    }
-                                }
-                            } else {
-                                if (backward_preprocessor->successful() && Config::Analysis::log) {
-                                    std::cout << "Simplified reversed ITS\n"
-                                              << reversed << std::endl;
-                                }
-                                Interleaved fb(*its, reversed, TIL::forwardConfig, TIL::backwardConfig);
-                                res = fb.analyze();
-                                if (Config::Analysis::model) {
-                                    if (res == SmtResult::Sat) {
-                                        its_model = fb.get_model();
-                                    } else if (res == SmtResult::Unsat) {
-                                        its_cex = fb.get_cex();
-                                    }
-                                    if (fb.is_forward()) {
-                                        reverse.reset();
-                                    } else {
-                                        chc2its = reversed_chc2its;
-                                        preprocessor = backward_preprocessor;
-                                    }
-                                }
-                            }
-                        }
+                    case Config::Analysis::ABMC: {
+                        f = std::make_unique<ABMC>(*its);
+                        b = std::make_unique<ABMC>(reversed);
                         break;
                     }
+                    default: {
+                        std::cerr << "interleaved analysis is only supported by TIL and ABMC" << std::endl;
+                        exit(-1);
+                    }
                 }
-                break;
+                Interleaved fb(*f, *b);
+                res = fb.analyze();
+                if (Config::Analysis::model) {
+                    if (res == SmtResult::Sat) {
+                        its_model = fb.get_model();
+                    } else if (res == SmtResult::Unsat) {
+                        its_cex = fb.get_cex();
+                    }
+                    if (fb.is_forward()) {
+                        reverse.reset();
+                    } else {
+                        chc2its = reversed_chc2its;
+                        preprocessor = backward_preprocessor;
+                    }
+                }
+            }
+        } else {
+            switch (Config::Analysis::engine) {
+                case Config::Analysis::ADCL: {
+                    reachability::Reachability r{
+                        *its,
+                        [&](const ITSCpxCex &cex) {
+                            if (Config::Analysis::complexity()) {
+                                std::cout << preprocessor->transform_cex(cex);
+                            }
+                        }};
+                    res = r.analyze();
+                    if (Config::Analysis::model && !Config::Analysis::complexity() && res == SmtResult::Unsat) {
+                        its_cex = r.get_cex();
+                    }
+                    break;
+                }
+                case Config::Analysis::BMC:
+                case Config::Analysis::KIND: {
+                    BMC bmc{*its, Config::Analysis::engine == Config::Analysis::KIND};
+                    res = bmc.analyze();
+                    if (Config::Analysis::model) {
+                        if (res == SmtResult::Sat) {
+                            its_model = bmc.get_model();
+                        } else if (res == SmtResult::Unsat) {
+                            its_cex = bmc.get_cex();
+                        }
+                    }
+                    break;
+                }
+                case Config::Analysis::ABMC: {
+                    ABMC abmc{*its};
+                    res = abmc.analyze();
+                    if (Config::Analysis::model) {
+                        if (res == SmtResult::Sat) {
+                            its_model = abmc.get_model();
+                        } else if (res == SmtResult::Unsat) {
+                            its_cex = abmc.get_cex();
+                        }
+                    }
+                    break;
+                }
+                case Config::Analysis::TIL: {
+                    TIL til(*its, Config::til);
+                    res = til.analyze();
+                    if (Config::Analysis::model) {
+                        if (res == SmtResult::Sat) {
+                            its_model = til.get_model();
+                        } else if (res == SmtResult::Unsat) {
+                            its_cex = til.get_cex();
+                        }
+                    }
+                    break;
+                }
             }
         }
     }

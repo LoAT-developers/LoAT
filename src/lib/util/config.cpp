@@ -40,6 +40,7 @@ namespace Config {
         bool logPreproc = false;
         bool logAccel = false;
         bool model = false;
+        Direction dir = Forward;
 
         std::string modeName(const Mode mode) {
             switch (mode) {

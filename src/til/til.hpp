@@ -13,6 +13,7 @@
 #include "chctoitsproblem.hpp"
 #include "itstosafetyproblem.hpp"
 #include "itssafetycex.hpp"
+#include "stepwise.hpp"
 
 class Range {
     unsigned s;
@@ -31,7 +32,7 @@ public:
 
 };
 
-class TIL {
+class TIL: public StepwiseAnalysis {
 
 public:
 
@@ -127,11 +128,9 @@ private:
 public:
 
     explicit TIL(const ITSPtr its, const Config::TILConfig &config);
-    void setup();
-    std::optional<SmtResult> do_step();
-    SmtResult analyze();
-    ITSModel get_model();
-    ITSSafetyCex get_cex();
+    std::optional<SmtResult> do_step() override;
+    ITSModel get_model() override;
+    ITSSafetyCex get_cex() override;
 
 };
 

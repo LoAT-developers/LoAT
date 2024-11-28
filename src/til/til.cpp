@@ -41,7 +41,6 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 }
 
 const Config::TILConfig TIL::forwardConfig{
-    .mode = Config::TILConfig::Forward,
     .mbpKind = Config::TILConfig::LowerIntMbp,
     .recurrent_cycles = false,
     .recurrent_exps = true,
@@ -51,33 +50,12 @@ const Config::TILConfig TIL::forwardConfig{
     .context_sensitive = false};
 
 const Config::TILConfig TIL::backwardConfig{
-    .mode = Config::TILConfig::Backward,
-    .mbpKind = Config::TILConfig::RealMbp,
+    .mbpKind = Config::TILConfig::RealQe,
     .recurrent_cycles = false,
     .recurrent_exps = true,
     .recurrent_pseudo_divs = false,
     .recurrent_pseudo_bounds = true,
     .recurrent_bounds = true,
-    .context_sensitive = false};
-
-const Config::TILConfig TIL::intTermConfig{
-    .mode = Config::TILConfig::Forward,
-    .mbpKind = Config::TILConfig::LowerIntMbp,
-    .recurrent_cycles = false,
-    .recurrent_exps = false,
-    .recurrent_pseudo_divs = false,
-    .recurrent_pseudo_bounds = false,
-    .recurrent_bounds = true,
-    .context_sensitive = false};
-
-const Config::TILConfig TIL::realTermConfig{
-    .mode = Config::TILConfig::Forward,
-    .mbpKind = Config::TILConfig::RealMbp,
-    .recurrent_cycles = false,
-    .recurrent_exps = false,
-    .recurrent_pseudo_divs = false,
-    .recurrent_pseudo_bounds = false,
-    .recurrent_bounds = false,
     .context_sensitive = false};
 
 TIL::TIL(
@@ -113,6 +91,41 @@ TIL::TIL(
     }
     post_to_pre = pre_to_post.invert();
     solver->enableModels();
+    std::vector<Bools::Expr> steps;
+    if (Config::Analysis::termination()) {
+        const auto linearize{
+            [&](const auto &lit) { return std::visit(
+                                       Overload{
+                                           [](const Arith::Lit &l) {
+                                               if (!l->isLinear()) {
+                                                   return top();
+                                               } else {
+                                                   return bools::mkLit(l);
+                                               }
+                                           },
+                                           [](const auto &l) {
+                                               return bools::mkLit(l);
+                                           }},
+                                       lit); }};
+        for (const auto &trans : t.trans()) {
+            const auto lin{trans->map(linearize)};
+            if (rule_map.left.insert(rule_map_t::left_value_type(next_id, lin)).second) {
+                steps.push_back(encode_transition(lin, next_id));
+                ++next_id;
+            }
+        }
+        solver->add(t.init()->map(linearize));
+    } else {
+        for (const auto &trans : t.trans()) {
+            if (rule_map.left.insert(rule_map_t::left_value_type(next_id, trans)).second) {
+                steps.push_back(encode_transition(trans, next_id));
+                ++next_id;
+            }
+        }
+        solver->add(t.init());
+    }
+    last_orig_clause = next_id - 1;
+    step = bools::mkOr(steps);
 }
 
 std::optional<Range> TIL::has_looping_infix() {
@@ -771,34 +784,6 @@ void TIL::pop() {
     --depth;
 }
 
-void TIL::setup() {
-    std::vector<Bools::Expr> steps;
-    const auto linearize{
-        [&](const auto &lit) { return std::visit(
-                                   Overload{
-                                       [](const Arith::Lit &l) {
-                                           if (!l->isLinear()) {
-                                               return top();
-                                           } else {
-                                               return bools::mkLit(l);
-                                           }
-                                       },
-                                       [](const auto &l) {
-                                           return bools::mkLit(l);
-                                       }},
-                                   lit); }};
-    for (const auto &trans : t.trans()) {
-        const auto lin {trans->map(linearize)};
-        if (rule_map.left.insert(rule_map_t::left_value_type(next_id, lin)).second) {
-            steps.push_back(encode_transition(lin, next_id));
-            ++next_id;
-        }
-    }
-    last_orig_clause = next_id - 1;
-    step = bools::mkOr(steps);
-    solver->add(t.init()->map(linearize));
-}
-
 std::optional<SmtResult> TIL::do_step() {
     auto s{get_subs(depth, 1)};
     // push error states
@@ -898,13 +883,4 @@ ITSSafetyCex TIL::get_cex() {
     }
     res.set_final_state(model.composeBackwards(get_subs(depth, 1)));
     return its2safety.transform_cex(res);
-}
-
-SmtResult TIL::analyze() {
-    setup();
-    while (true) {
-        if (const auto res{do_step()}) {
-            return *res;
-        }
-    }
 }

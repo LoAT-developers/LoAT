@@ -1,17 +1,11 @@
 #include "interleaved.hpp"
 #include "config.hpp"
 
-Interleaved::Interleaved(
-    const ITSPtr forward,
-    const ITSPtr backward,
-    const Config::TILConfig &f_conf,
-    const Config::TILConfig &b_conf):
-    f(forward, f_conf),
-    b(backward, b_conf) {}
+Interleaved::Interleaved(StepwiseAnalysis &f, StepwiseAnalysis &b):
+    f(f),
+    b(b) {}
 
 SmtResult Interleaved::analyze() {
-    f.setup();
-    b.setup();
     active = &f;
     passive = &b;
     auto is_forward {true};

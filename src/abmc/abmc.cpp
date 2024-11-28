@@ -17,6 +17,38 @@ ABMC::ABMC(ITSPtr its):
     vars.insert(trace_var);
     vars.insert(n);
     solver->enableModels();
+    vars.insertAll(its->getVars());
+    for (const auto &var: vars) {
+        pre_to_post.insert(var, theory::next(var));
+    }
+    last_orig_clause = 0;
+    for (const auto &r : its->getAllTransitions()) {
+        rule_map.emplace(r->getId(), r);
+        last_orig_clause = std::max(last_orig_clause, r->getId());
+    }
+    std::vector<Bools::Expr> inits;
+    for (const auto &idx: its->getInitialTransitions()) {
+        assert(!its->isSinkTransition(idx));
+        inits.push_back(encode_transition(idx));
+    }
+    solver->add(bools::mkOr(inits));
+
+    std::vector<Bools::Expr> steps;
+    for (const auto &r: its->getAllTransitions()) {
+        if (its->isInitialTransition(r) || its->isSinkTransition(r)) {
+            continue;
+        }
+        steps.push_back(encode_transition(r));
+    }
+    step = bools::mkOr(steps);
+
+    std::vector<Bools::Expr> queries;
+    for (const auto &idx: its->getSinkTransitions()) {
+        if (!its->isInitialTransition(idx)) {
+            queries.push_back(encode_transition(idx));
+        }
+    }
+    query = bools::mkOr(queries);
 }
 
 bool ABMC::is_orig_clause(const RulePtr idx) const {
@@ -329,46 +361,12 @@ const Renaming &ABMC::subs_at(const unsigned i) {
     return subs.at(i);
 }
 
-SmtResult ABMC::analyze() {
-    vars.insertAll(its->getVars());
-    for (const auto &var: vars) {
-        pre_to_post.insert(var, theory::next(var));
-    }
-    last_orig_clause = 0;
-    for (const auto &r : its->getAllTransitions()) {
-        rule_map.emplace(r->getId(), r);
-        last_orig_clause = std::max(last_orig_clause, r->getId());
-    }
-    std::vector<Bools::Expr> inits;
-    for (const auto &idx: its->getInitialTransitions()) {
-        assert(!its->isSinkTransition(idx));
-        inits.push_back(encode_transition(idx));
-    }
-    solver->add(bools::mkOr(inits));
-
-    std::vector<Bools::Expr> steps;
-    for (const auto &r: its->getAllTransitions()) {
-        if (its->isInitialTransition(r) || its->isSinkTransition(r)) {
-            continue;
-        }
-        steps.push_back(encode_transition(r));
-    }
-    const auto step {bools::mkOr(steps)};
-
-    std::vector<Bools::Expr> queries;
-    for (const auto &idx: its->getSinkTransitions()) {
-        if (!its->isInitialTransition(idx)) {
-            queries.push_back(encode_transition(idx));
-        }
-    }
-    query = bools::mkOr(queries);
-
-    while (true) {
-        ++depth;
-        const auto &s{subs_at(depth)};
-        solver->push();
-        solver->add(s(query));
-        switch (solver->check()) {
+std::optional<SmtResult> ABMC::do_step() {
+    ++depth;
+    const auto &s{subs_at(depth)};
+    solver->push();
+    solver->add(s(query));
+    switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
             return SmtResult::Unsat;
@@ -378,22 +376,23 @@ SmtResult ABMC::analyze() {
             }
             approx = true;
             break;
-        case SmtResult::Unsat: {}
+        case SmtResult::Unsat:
+            break;
+    }
+    solver->pop();
+    if (!shortcut) {
+        if (Config::Analysis::model) {
+            transitions.emplace_back(step);
         }
-        solver->pop();
-        if (!shortcut) {
-            if (Config::Analysis::model) {
-                transitions.emplace_back(step);
-            }
-            solver->add(s(step));
-        } else {
-            if (Config::Analysis::model) {
-                transitions.emplace_back(encode_transition(*shortcut, false) || step);
-            }
-            solver->add(s(encode_transition(*shortcut) || step));
+        solver->add(s(step));
+    } else {
+        if (Config::Analysis::model) {
+            transitions.emplace_back(encode_transition(*shortcut, false) || step);
         }
-        Bools::Expr blocking_clause {top()};
-        switch (solver->check()) {
+        solver->add(s(encode_transition(*shortcut) || step));
+    }
+    Bools::Expr blocking_clause{top()};
+    switch (solver->check()) {
         case SmtResult::Unsat:
             if (approx) {
                 return SmtResult::Unknown;
@@ -404,7 +403,8 @@ SmtResult ABMC::analyze() {
             shortcut.reset();
             build_trace();
             std::vector<int> lang;
-            if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
+            if (Config::Analysis::log)
+                std::cout << "starting loop handling" << std::endl;
             const auto backlink = has_looping_suffix(trace.size() - 1, lang);
             if (backlink) {
                 const auto loop{handle_loop(*backlink, lang)};
@@ -412,23 +412,24 @@ SmtResult ABMC::analyze() {
                     blocking_clause = build_blocking_clause(*backlink, *loop);
                 }
             }
-            if (Config::Analysis::log) std::cout << "done with loop handling" << std::endl;
+            if (Config::Analysis::log)
+                std::cout << "done with loop handling" << std::endl;
             break;
         }
         case SmtResult::Unknown:
             shortcut.reset();
             trace.clear();
-        }
-        if (Config::Analysis::log) {
-            std::cout << "depth: " << depth << std::endl;
-        }
-        if (blocking_clause != top()) {
-            solver->add(blocking_clause);
-        }
     }
+    if (Config::Analysis::log) {
+        std::cout << "depth: " << depth << std::endl;
+    }
+    if (blocking_clause != top()) {
+        solver->add(blocking_clause);
+    }
+    return {};
 }
 
-ITSModel ABMC::get_model() const {
+ITSModel ABMC::get_model() {
     std::vector<Bools::Expr> inits;
     Renaming post_to_pre;
     Renaming init_renaming;
