@@ -15,6 +15,7 @@ on:
         options:
         - loat_sat
         - loat_unsat
+        - loat_abmc_interleaved
         - loat_nonterm
         - loat_nonterm_abmc
         - loat_term_int_mbp
@@ -155,6 +156,8 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine til --direction interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_unsat" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc "${filename}")
+            elif [ ${{ inputs.config }} = "loat_abmc_interleaved" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc --direction interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm_abmc" ]; then
