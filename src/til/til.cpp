@@ -793,6 +793,9 @@ void TIL::pop() {
 }
 
 bool TIL::build_cex() const {
+    if (trace.empty()) {
+        return SmtFactory::check(t.init() && t.err()) == SmtResult::Sat;
+    }
     linked_hash_map<Int, Bools::Expr> accel;
     std::stack<Int> todo;
     for (const auto &e: trace) {
