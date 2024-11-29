@@ -40,11 +40,11 @@
     "name": "chc-LIA-Lin_180.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_200.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_220.smt2"
   },
   {
@@ -56,7 +56,7 @@
     "name": "chc-LIA-Lin_260.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_280.smt2"
   },
   {
@@ -72,7 +72,7 @@
     "name": "chc-LIA-Lin_340.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_360.smt2"
   },
   {
@@ -96,7 +96,7 @@
     "name": "chc-LIA-Lin_021.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_041.smt2"
   },
   {
@@ -104,7 +104,7 @@
     "name": "chc-LIA-Lin_061.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_081.smt2"
   },
   {
@@ -132,7 +132,7 @@
     "name": "chc-LIA-Lin_201.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_221.smt2"
   },
   {
@@ -172,7 +172,7 @@
     "name": "chc-LIA-Lin_401.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_421.smt2"
   },
   {
@@ -184,7 +184,7 @@
     "name": "chc-LIA-Lin_030.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_050.smt2"
   },
   {
@@ -192,7 +192,7 @@
     "name": "chc-LIA-Lin_070.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_090.smt2"
   },
   {
@@ -216,7 +216,7 @@
     "name": "chc-LIA-Lin_190.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_210.smt2"
   },
   {
@@ -248,7 +248,7 @@
     "name": "chc-LIA-Lin_350.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_370.smt2"
   },
   {
@@ -264,11 +264,11 @@
     "name": "chc-LIA-Lin_011.smt2"
   },
   {
-    "result": "unknown",
+    "result": "unsat",
     "name": "chc-LIA-Lin_031.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_051.smt2"
   },
   {
@@ -284,7 +284,7 @@
     "name": "chc-LIA-Lin_111.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_131.smt2"
   },
   {
@@ -300,11 +300,11 @@
     "name": "chc-LIA-Lin_191.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_211.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_231.smt2"
   },
   {
@@ -348,7 +348,7 @@
     "name": "chc-LIA-Lin_012.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_032.smt2"
   },
   {
@@ -412,7 +412,7 @@
     "name": "chc-LIA-Lin_332.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_352.smt2"
   },
   {
@@ -428,11 +428,11 @@
     "name": "chc-LIA-Lin_412.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_013.smt2"
   },
   {
-    "result": "unknown",
+    "result": "unsat",
     "name": "chc-LIA-Lin_033.smt2"
   },
   {
@@ -448,11 +448,11 @@
     "name": "chc-LIA-Lin_093.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_113.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_133.smt2"
   },
   {
@@ -464,7 +464,7 @@
     "name": "chc-LIA-Lin_173.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_193.smt2"
   },
   {
@@ -532,7 +532,7 @@
     "name": "chc-LIA-Lin_094.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_114.smt2"
   },
   {
@@ -552,15 +552,15 @@
     "name": "chc-LIA-Lin_194.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_214.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_234.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_254.smt2"
   },
   {
@@ -616,7 +616,7 @@
     "name": "chc-LIA-Lin_095.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_115.smt2"
   },
   {
@@ -632,15 +632,15 @@
     "name": "chc-LIA-Lin_175.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_195.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_215.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_235.smt2"
   },
   {
@@ -668,7 +668,7 @@
     "name": "chc-LIA-Lin_355.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_375.smt2"
   },
   {
@@ -680,11 +680,11 @@
     "name": "chc-LIA-Lin_415.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_016.smt2"
   },
   {
-    "result": "unknown",
+    "result": "unsat",
     "name": "chc-LIA-Lin_036.smt2"
   },
   {
@@ -716,7 +716,7 @@
     "name": "chc-LIA-Lin_176.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_196.smt2"
   },
   {
@@ -768,7 +768,7 @@
     "name": "chc-LIA-Lin_017.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_037.smt2"
   },
   {
@@ -804,11 +804,11 @@
     "name": "chc-LIA-Lin_197.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_217.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_237.smt2"
   },
   {
@@ -852,7 +852,7 @@
     "name": "chc-LIA-Lin_018.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_038.smt2"
   },
   {
@@ -884,11 +884,11 @@
     "name": "chc-LIA-Lin_178.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_198.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_218.smt2"
   },
   {
@@ -896,11 +896,11 @@
     "name": "chc-LIA-Lin_238.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_258.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_278.smt2"
   },
   {
@@ -936,7 +936,7 @@
     "name": "chc-LIA-Lin_019.smt2"
   },
   {
-    "result": "unknown",
+    "result": "unsat",
     "name": "chc-LIA-Lin_039.smt2"
   },
   {
@@ -976,7 +976,7 @@
     "name": "chc-LIA-Lin_219.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_239.smt2"
   },
   {
@@ -984,7 +984,7 @@
     "name": "chc-LIA-Lin_259.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_279.smt2"
   },
   {
@@ -1024,15 +1024,15 @@
     "name": "chc-LIA-Lin_022.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_042.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_062.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_082.smt2"
   },
   {
@@ -1044,7 +1044,7 @@
     "name": "chc-LIA-Lin_122.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_142.smt2"
   },
   {
@@ -1060,7 +1060,7 @@
     "name": "chc-LIA-Lin_202.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_222.smt2"
   },
   {
@@ -1068,7 +1068,7 @@
     "name": "chc-LIA-Lin_242.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_262.smt2"
   },
   {
@@ -1092,7 +1092,7 @@
     "name": "chc-LIA-Lin_362.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_382.smt2"
   },
   {
@@ -1112,11 +1112,11 @@
     "name": "chc-LIA-Lin_043.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_063.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_083.smt2"
   },
   {
@@ -1140,11 +1140,11 @@
     "name": "chc-LIA-Lin_183.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_203.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_223.smt2"
   },
   {
@@ -1192,7 +1192,7 @@
     "name": "chc-LIA-Lin_024.smt2"
   },
   {
-    "result": "unknown",
+    "result": "unsat",
     "name": "chc-LIA-Lin_044.smt2"
   },
   {
@@ -1228,7 +1228,7 @@
     "name": "chc-LIA-Lin_204.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_224.smt2"
   },
   {
@@ -1276,7 +1276,7 @@
     "name": "chc-LIA-Lin_025.smt2"
   },
   {
-    "result": "sat",
+    "result": "unsat",
     "name": "chc-LIA-Lin_045.smt2"
   },
   {
@@ -1284,7 +1284,7 @@
     "name": "chc-LIA-Lin_065.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_085.smt2"
   },
   {
@@ -1292,7 +1292,7 @@
     "name": "chc-LIA-Lin_105.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_125.smt2"
   },
   {
@@ -1308,11 +1308,11 @@
     "name": "chc-LIA-Lin_185.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_205.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_225.smt2"
   },
   {
@@ -1340,7 +1340,7 @@
     "name": "chc-LIA-Lin_345.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_365.smt2"
   },
   {
@@ -1360,7 +1360,7 @@
     "name": "chc-LIA-Lin_026.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_046.smt2"
   },
   {
@@ -1368,7 +1368,7 @@
     "name": "chc-LIA-Lin_066.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_086.smt2"
   },
   {
@@ -1380,7 +1380,7 @@
     "name": "chc-LIA-Lin_126.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_146.smt2"
   },
   {
@@ -1392,7 +1392,7 @@
     "name": "chc-LIA-Lin_186.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_206.smt2"
   },
   {
@@ -1444,7 +1444,7 @@
     "name": "chc-LIA-Lin_027.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_047.smt2"
   },
   {
@@ -1472,7 +1472,7 @@
     "name": "chc-LIA-Lin_167.smt2"
   },
   {
-    "result": "unknown",
+    "result": "unsat",
     "name": "chc-LIA-Lin_187.smt2"
   },
   {
@@ -1508,7 +1508,7 @@
     "name": "chc-LIA-Lin_347.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_367.smt2"
   },
   {
@@ -1524,7 +1524,7 @@
     "name": "chc-LIA-Lin_008.smt2"
   },
   {
-    "result": "unknown",
+    "result": "unsat",
     "name": "chc-LIA-Lin_028.smt2"
   },
   {
@@ -1536,7 +1536,7 @@
     "name": "chc-LIA-Lin_068.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_088.smt2"
   },
   {
@@ -1548,7 +1548,7 @@
     "name": "chc-LIA-Lin_128.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_148.smt2"
   },
   {
@@ -1556,7 +1556,7 @@
     "name": "chc-LIA-Lin_168.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_188.smt2"
   },
   {
@@ -1568,7 +1568,7 @@
     "name": "chc-LIA-Lin_228.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_248.smt2"
   },
   {
@@ -1588,7 +1588,7 @@
     "name": "chc-LIA-Lin_328.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_348.smt2"
   },
   {
@@ -1608,11 +1608,11 @@
     "name": "chc-LIA-Lin_009.smt2"
   },
   {
-    "result": "unknown",
+    "result": "unsat",
     "name": "chc-LIA-Lin_029.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_049.smt2"
   },
   {
@@ -1620,7 +1620,7 @@
     "name": "chc-LIA-Lin_069.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_089.smt2"
   },
   {
@@ -1644,11 +1644,11 @@
     "name": "chc-LIA-Lin_189.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_209.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_229.smt2"
   },
   {
