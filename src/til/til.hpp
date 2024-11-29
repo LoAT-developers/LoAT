@@ -69,6 +69,7 @@ private:
         Model model;
     };
 
+    linked_hash_map<Int, std::vector<std::pair<Int, Bools::Expr>>> learned_to_loop;
     Config::TILConfig config;
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<std::vector<Renaming>> subs {};
@@ -105,7 +106,7 @@ private:
     bool add_blocking_clauses(const Range &range, Model model);
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
-    Int add_learned_clause(const Bools::Expr &accel);
+    Int add_learned_clause(const Range &range, const Bools::Expr &accel);
     std::pair<Bools::Expr, Model> compress(const Range &range);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
@@ -123,6 +124,7 @@ private:
 
     Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
     Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
+    bool build_cex() const;
 
 public:
 

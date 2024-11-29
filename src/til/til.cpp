@@ -13,6 +13,8 @@
 #include "safetycex.hpp"
 #include "eliminate.h"
 #include "realqe.hpp"
+#include "loopacceleration.hpp"
+#include "rulepreprocessing.hpp"
 
 Range::Range(const unsigned s, const unsigned e) : s(s), e(e) {}
 
@@ -190,13 +192,19 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     return {*loop, m};
 }
 
-Int TIL::add_learned_clause(const Bools::Expr &accel) {
+Int TIL::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     if (Config::Analysis::log) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     }
     const auto id = next_id;
     ++next_id;
     rule_map.left.insert(rule_map_t::left_value_type(id, accel));
+    std::vector<std::pair<Int, Bools::Expr>> loop;
+    for (size_t i = range.start(); i <= range.end(); ++i) {
+        const auto &e {trace.at(i)};
+        loop.emplace_back(e.id, e.implicant);
+    }
+    learned_to_loop.emplace(id, loop);
     step = step || encode_transition(accel, id);
     return id;
 }
@@ -607,10 +615,10 @@ bool TIL::handle_loop(const Range &range) {
             return x == Var(n);
         });
         projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
-        id = add_learned_clause(projected);
+        id = add_learned_clause(range, projected);
     } else {
         ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
-        id = add_learned_clause(ti);
+        id = add_learned_clause(range, ti);
         model.put<Arith>(n, 1);
         projected = mbp::int_mbp(ti, model, [&](const auto &x) {
             return x == Var(n);
@@ -784,6 +792,86 @@ void TIL::pop() {
     --depth;
 }
 
+bool TIL::build_cex() const {
+    linked_hash_map<Int, Bools::Expr> accel;
+    std::stack<Int> todo;
+    for (const auto &e: trace) {
+        if (e.id > last_orig_clause) {
+            todo.push(e.id);
+        }
+    }
+    Subs up;
+    Renaming post_to_tmp;
+    for (const auto &[pre, post]: pre_to_post) {
+        const auto tmp {theory::next(post)};
+        up.put(pre, theory::toExpr(tmp));
+        post_to_tmp.insert(post, tmp);
+    }
+    Renaming tmp_to_post {post_to_tmp.invert()};
+    while (!todo.empty()) {
+        const auto current {todo.top()};
+        const auto &loop {learned_to_loop.at(current)};
+        auto ready {true};
+        for (const auto &[id,t]: loop) {
+            if (id > last_orig_clause && !accel.contains(id)) {
+                todo.push(id);
+                ready = false;
+            }
+        }
+        if (!ready) {
+            continue;
+        }
+        todo.pop();
+        std::optional<Bools::Expr> trans;
+        for (const auto &[next_id, next_t]: loop) {
+            const auto next = next_id > last_orig_clause ? accel.at(next_id) : next_t;
+            trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
+        }
+        if (SmtFactory::check(*trans) != SmtResult::Sat) {
+            if (Config::Analysis::log) {
+                std::cout << "loop is unsat" << std::endl;
+            }
+            return false;
+        }
+        const auto guard {post_to_tmp(*trans)};
+        const auto rule {Preprocess::preprocessRule(Rule::mk(guard, up))};
+        if (Config::Analysis::log) {
+            std::cout << "accelerating " << *rule << std::endl;
+        }
+        const auto accel_res {LoopAcceleration::accelerate(rule, AccelConfig{
+            .tryNonterm=false,
+            .tryAccel=true,
+            .n=ArithVar::next()
+        })};
+        if (accel_res.accel) {
+            if (Config::Analysis::log) {
+                std::cout << "got " << *accel_res.accel->rule << std::endl;
+            }
+            std::vector<Bools::Expr> conjuncts {accel_res.accel->rule->getGuard()};
+            const auto &accel_up {accel_res.accel->rule->getUpdate()};
+            for (const auto &[pre,post]: pre_to_post) {
+                if (accel_up.contains(pre)) {
+                    conjuncts.push_back(theory::mkEq(theory::toExpr(post), accel_up.get(pre)));
+                } else {
+                    conjuncts.push_back(theory::mkEq(theory::toExpr(post), theory::toExpr(pre)));
+                }
+            }
+            accel.put(current, tmp_to_post(bools::mkAnd(conjuncts)));
+        } else {
+            if (Config::Analysis::log) {
+                std::cout << "acceleration failed" << std::endl;
+            }
+            accel.put(current, *trans);
+        }
+    }
+    std::optional<Bools::Expr> trans;
+    for (const auto &e: trace) {
+        const auto next = e.id > last_orig_clause ? accel.at(e.id) : e.implicant;
+        trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
+    }
+    return SmtFactory::check(t.init() && *trans && pre_to_post(t.err())) == SmtResult::Sat;
+}
+
 std::optional<SmtResult> TIL::do_step() {
     auto s{get_subs(depth, 1)};
     // push error states
@@ -791,14 +879,11 @@ std::optional<SmtResult> TIL::do_step() {
     solver->add(s(t.err()));
     switch (solver->check()) {
         case SmtResult::Sat:
-            build_trace();
-            if (std::all_of(trace.begin(), trace.end(), [&](const auto &t) {
-                    return t.id <= last_orig_clause;
-                })) {
-                return SmtResult::Unsat;
-            } else {
-                return SmtResult::Unknown;
+            if (Config::Analysis::log) {
+                std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
             }
+            build_trace();
+            return build_cex() ? SmtResult::Unsat : SmtResult::Unknown;
         case SmtResult::Unknown:
             std::cerr << "unknown from SMT solver" << std::endl;
             return SmtResult::Unknown;
