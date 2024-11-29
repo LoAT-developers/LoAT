@@ -599,7 +599,6 @@ bool TIL::handle_loop(const Range &range) {
     if (Config::Analysis::termination()) {
         ti = ti && termination_argument;
     }
-    model.put<Arith>(n, 1);
 
     Int id;
     Bools::Expr projected{top()};
@@ -612,6 +611,7 @@ bool TIL::handle_loop(const Range &range) {
     } else {
         ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
         id = add_learned_clause(ti);
+        model.put<Arith>(n, 1);
         projected = mbp::int_mbp(ti, model, [&](const auto &x) {
             return x == Var(n);
         });

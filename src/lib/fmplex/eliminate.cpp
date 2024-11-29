@@ -184,7 +184,6 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
         conjuncts.emplace(arith::mkLeq(lhs, arith::mkConst(0)));
     }
 
-    ArithLit::simplifyAnd(conjuncts);
     return bools::mkAndFromLits(conjuncts);
 }
 

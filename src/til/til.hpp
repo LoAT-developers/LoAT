@@ -96,7 +96,6 @@ private:
     const Arith::Var n {ArithVar::next()};
     const Arith::Var safety_var {ArithVar::next()};
     DependencyGraph<Bools::Expr> dependency_graph {};
-    DependencyGraph<Bools::Expr> independence_graph {};
     unsigned depth {0};
     Bools::Expr step {bot()};
 
