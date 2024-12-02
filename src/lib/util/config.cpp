@@ -77,7 +77,7 @@ namespace Config {
 
     }
 
-    Config::TRLConfig trl;
+    Config::TRPConfig trp;
 
     namespace ABMC {
         bool blocking_clauses {true};

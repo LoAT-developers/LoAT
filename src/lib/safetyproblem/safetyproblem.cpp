@@ -5,11 +5,12 @@ SafetyProblem::SafetyProblem() {}
 
 void SafetyProblem::add_pre_var(const Var &x) {
     pre_variables.insert(x);
+    m_pre_to_post.insert(x, theory::postVar(x));
 }
 
 void SafetyProblem::add_post_var(const Var &x) {
     post_variables.insert(x);
-
+    m_pre_to_post.insert(theory::progVar(x), x);
 }
 
 const linked_hash_set<Bools::Expr>& SafetyProblem::trans() const {
@@ -22,6 +23,10 @@ const VarSet& SafetyProblem::pre_vars() const {
 
 const VarSet& SafetyProblem::post_vars() const {
     return post_variables;
+}
+
+const Renaming& SafetyProblem::pre_to_post() const {
+    return m_pre_to_post;
 }
 
 VarSet SafetyProblem::vars() const {

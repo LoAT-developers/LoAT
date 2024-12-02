@@ -84,6 +84,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   ${loat_smt_INCLUDE_DIRS}
   ${loat_recurrence_INCLUDE_DIRS}
   ${loat_acceleration_INCLUDE_DIRS}
+  ${loat_trp_INCLUDE_DIRS}
   ${loat_itsproblem_INCLUDE_DIRS}
   ${loat_chcproblem_INCLUDE_DIRS}
   ${loat_safetyproblem_INCLUDE_DIRS}
@@ -127,6 +128,7 @@ target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:loat_smt>
   $<TARGET_OBJECTS:loat_recurrence>
   $<TARGET_OBJECTS:loat_acceleration>
+  $<TARGET_OBJECTS:loat_trp>
   $<TARGET_OBJECTS:loat_itsproblem>
   $<TARGET_OBJECTS:loat_chcproblem>
   $<TARGET_OBJECTS:loat_safetyproblem>

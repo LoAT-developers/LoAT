@@ -14,6 +14,7 @@
 #include "itstosafetyproblem.hpp"
 #include "itssafetycex.hpp"
 #include "stepwise.hpp"
+#include "trp.hpp"
 
 class Range {
     unsigned s;
@@ -36,10 +37,10 @@ class TRL: public StepwiseAnalysis {
 
 public:
 
-    static const Config::TRLConfig forwardConfig;
-    static const Config::TRLConfig backwardConfig;
-    static const Config::TRLConfig intTermConfig;
-    static const Config::TRLConfig realTermConfig;
+    static const Config::TRPConfig forwardConfig;
+    static const Config::TRPConfig backwardConfig;
+    static const Config::TRPConfig intTermConfig;
+    static const Config::TRPConfig realTermConfig;
 
 private:
 
@@ -70,7 +71,7 @@ private:
     };
 
     linked_hash_map<Int, std::vector<std::pair<Int, Bools::Expr>>> learned_to_loop;
-    Config::TRLConfig config;
+    const Config::TRPConfig::MbpKind mbp_kind;
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<std::vector<Renaming>> subs {};
     std::vector<TraceElem> trace {};
@@ -79,14 +80,12 @@ private:
     // step -> ID of corresponding transition formula -> blocked transition
     std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
     VarSet vars {};
-    VarSet pre_vars {};
     Int last_orig_clause;
-    Renaming post_to_pre {};
-    Renaming pre_to_post {};
     ITSToSafety its2safety;
     SafetyProblem t;
     ITSPtr its;
     bool produce_model {false};
+    TRP trp;
 
     Int next_id {0};
 
@@ -94,7 +93,6 @@ private:
 
     rule_map_t rule_map {};
     const Arith::Var trace_var {ArithVar::next()};
-    const Arith::Var n {ArithVar::next()};
     const Arith::Var safety_var {ArithVar::next()};
     DependencyGraph<Bools::Expr> dependency_graph {};
     unsigned depth {0};
@@ -110,11 +108,7 @@ private:
     std::pair<Bools::Expr, Model> compress(const Range &range);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
-    void recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits);
-    void recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits);
-    void recurrent_cycles(const Bools::Expr loop, LitSet &res_lits);
-    void recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits);
-    Bools::Expr recurrence_analysis(const Bools::Expr loop, const Model &model);
+
     Bools::Expr compute_transition_invariant(const Bools::Expr loop, Model model);
     std::optional<Arith::Expr> prove_term(const Bools::Expr loop, const Model &model);
     bool handle_loop(const Range &range);
@@ -122,13 +116,11 @@ private:
     const Renaming& get_subs(const unsigned start, const unsigned steps);
     void pop();
 
-    Bools::Expr mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate);
-    Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) const;
     bool build_cex() const;
 
 public:
 
-    explicit TRL(const ITSPtr its, const Config::TRLConfig &config);
+    explicit TRL(const ITSPtr its, const Config::TRPConfig &config);
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;
     ITSSafetyCex get_cex() override;

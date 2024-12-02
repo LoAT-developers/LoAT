@@ -1,12 +1,14 @@
 #pragma once
 
 #include "theory.hpp"
+#include "renaming.hpp"
 
 class SafetyProblem {
 
     linked_hash_set<Bools::Expr> transitions;
     VarSet pre_variables;
     VarSet post_variables;
+    Renaming m_pre_to_post;
     Bools::Expr initial_states {bot()};
     Bools::Expr error_states {bot()};
 
@@ -18,6 +20,7 @@ public:
     void replace_transition(const Bools::Expr &old_trans, const Bools::Expr &new_trans);
     const VarSet& pre_vars() const;
     const VarSet& post_vars() const;
+    const Renaming& pre_to_post() const;
     VarSet vars() const;
     Bools::Expr init() const;
     Bools::Expr err() const;

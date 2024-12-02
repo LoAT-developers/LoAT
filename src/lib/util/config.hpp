@@ -58,7 +58,7 @@ namespace Config {
 
     }
 
-    struct TRLConfig {
+    struct TRPConfig {
         enum MbpKind {LowerIntMbp, UpperIntMbp, RealMbp, RealQe};
         MbpKind mbpKind {LowerIntMbp};
         bool recurrent_cycles {false};
@@ -66,10 +66,9 @@ namespace Config {
         bool recurrent_pseudo_divs {true};
         bool recurrent_pseudo_bounds {true};
         bool recurrent_bounds {true};
-        bool context_sensitive {false};
     };
 
-    extern TRLConfig trl;
+    extern TRPConfig trp;
 
     namespace ABMC {
         extern bool blocking_clauses;

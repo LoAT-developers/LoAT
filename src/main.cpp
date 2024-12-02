@@ -42,7 +42,6 @@ void printHelp(char *arg0) {
     std::cout << "  --trl::recurrent_cycles <true|false>               TRL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
     std::cout << "  --trl::recurrent_pseudo_divs <true|false>          TRL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
     std::cout << "  --trl::recurrent_bounds <true|false>               TRL: En- or disable search for recurrent bounds" << std::endl;
-    std::cout << "  --trl::context_sensitive <true|false>              TRL: En- or disable context sensitivity" << std::endl;
     std::cout << "  --trl::mbp_kind <lower_int|upper_int|real|real_qe> TRL: use model based projection for LIA or LRA, or QF for LRA" << std::endl;
 }
 
@@ -171,27 +170,25 @@ void parseFlags(int argc, char *argv[]) {
                 exit(1);
             }
         } else if (strcmp("--trl::recurrent_exps", argv[arg]) == 0) {
-            setBool(getNext(), Config::trl.recurrent_exps);
+            setBool(getNext(), Config::trp.recurrent_exps);
         } else if (strcmp("--trl::recurrent_cycles", argv[arg]) == 0) {
-            setBool(getNext(), Config::trl.recurrent_cycles);
+            setBool(getNext(), Config::trp.recurrent_cycles);
         } else if (strcmp("--trl::recurrent_pseudo_divs", argv[arg]) == 0) {
-            setBool(getNext(), Config::trl.recurrent_pseudo_divs);
+            setBool(getNext(), Config::trp.recurrent_pseudo_divs);
         } else if (strcmp("--trl::recurrent_pseudo_bounds", argv[arg]) == 0) {
-            setBool(getNext(), Config::trl.recurrent_pseudo_bounds);
+            setBool(getNext(), Config::trp.recurrent_pseudo_bounds);
         } else if (strcmp("--trl::recurrent_bounds", argv[arg]) == 0) {
-            setBool(getNext(), Config::trl.recurrent_bounds);
-        } else if (strcmp("--trl::context_sensitive", argv[arg]) == 0) {
-            setBool(getNext(), Config::trl.context_sensitive);
+            setBool(getNext(), Config::trp.recurrent_bounds);
         } else if (strcmp("--trl::mbp_kind", argv[arg]) == 0) {
             const auto str{getNext()};
             if (boost::iequals("lower_int", str)) {
-                Config::trl.mbpKind = Config::TRLConfig::MbpKind::LowerIntMbp;
+                Config::trp.mbpKind = Config::TRPConfig::MbpKind::LowerIntMbp;
             } else if (boost::iequals("upper_int", str)) {
-                Config::trl.mbpKind = Config::TRLConfig::MbpKind::UpperIntMbp;
+                Config::trp.mbpKind = Config::TRPConfig::MbpKind::UpperIntMbp;
             } else if (boost::iequals("real", str)) {
-                Config::trl.mbpKind = Config::TRLConfig::MbpKind::RealMbp;
+                Config::trp.mbpKind = Config::TRPConfig::MbpKind::RealMbp;
             } else if (boost::iequals("real_qe", str)) {
-                Config::trl.mbpKind = Config::TRLConfig::MbpKind::RealQe;
+                Config::trp.mbpKind = Config::TRPConfig::MbpKind::RealQe;
             } else {
                 std::cout << "Error: unknown MBP kind " << str << std::endl;
                 exit(1);
@@ -414,7 +411,7 @@ int main(int argc, char *argv[]) {
                     break;
                 }
                 case Config::Analysis::TRL: {
-                    TRL trl(*its, Config::trl);
+                    TRL trl(*its, Config::trp);
                     res = trl.analyze();
                     if (Config::Analysis::model) {
                         if (res == SmtResult::Sat) {
