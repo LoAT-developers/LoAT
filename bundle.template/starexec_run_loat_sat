@@ -1,3 +1,8 @@
 #!/bin/bash
 trap "" SIGRTMIN
-./loat-static --plain --proof-level 0 --mode safety --format horn $1 2> /dev/null
+res=`timeout 150 ./loat-static --plain --proof-level 0 --mode safety --format horn --engine til $1 2> /dev/null | head -n 1`
+if [ "$res" == "sat" ]; then
+    echo $res
+    exit 0
+fi
+./loat-static --plain --proof-level 0 --mode safety --format horn --engine til --reverse $1 2> /dev/null | head -n 1

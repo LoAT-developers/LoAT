@@ -1,0 +1,15 @@
+name: 'TPDB Termination'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/checkout@v4
+      with:
+        repository: TermCOMP/TPDB
+        sparse-checkout: Integer_Transition_Systems
+        path: tpdb
+
+    - run: |
+        mv tpdb/Integer_Transition_Systems benchmarks
+      shell: bash
+

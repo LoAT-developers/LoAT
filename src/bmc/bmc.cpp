@@ -1,108 +1,49 @@
 #include "bmc.hpp"
-#include "expr.hpp"
-#include "preprocessing.hpp"
+#include "theory.hpp"
 #include "smtfactory.hpp"
 #include "config.hpp"
-#include "export.hpp"
+#include "renaming.hpp"
+#include "intmbp.hpp"
 
-BMC::BMC(ITSProblem &its): its(its) {}
-
-void BMC::unsat() {
-    std::cout << "unsat" << std::endl;
-    proof.append("reached error location at depth " + std::to_string(depth));
-    proof.result("unsat");
-    proof.print();
+BMC::BMC(ITSPtr its, const bool do_kind): to_safety(its), do_kind(do_kind) {
+    sp = to_safety.transform();
 }
 
-void BMC::sat() {
-    std::cout << "sat" << std::endl;
-    proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
-    proof.result("sat");
-    proof.print();
-}
-
-BoolExpr BMC::encode_transition(const TransIdx idx) {
-    const auto up {idx->getUpdate()};
-    std::vector<BoolExpr> res {idx->getGuard()};
-    for (const auto &x: vars) {
-        if (expr::isProgVar(x)) {
-            res.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
-        }
-    }
-    return BExpression::buildAnd(res);
-}
-
-void BMC::analyze() {
+SmtResult BMC::analyze() {
     if (Config::Analysis::log) {
-        std::cout << "initial ITS" << std::endl;
-        its.print(std::cout);
+        std::cout << "safety problem:\n" << sp << std::endl;
     }
-    proof.majorProofStep("Initial ITS", ITSProof(), its);
-    const auto res {Preprocess::preprocess(its)};
-    if (res) {
-        proof.concat(res.getProof());
-        if (Config::Analysis::log) {
-            std::cout << "Simplified ITS" << std::endl;
-            ITSExport::printForProof(its, std::cout);
-        }
+    const auto init = do_kind ? mbp::int_qe(sp.init()) : sp.init();
+    solver->add(init);
+    if (do_kind) {
+        bkind->add(init);
     }
-    vars.insertAll(its.getVars());
+
+    auto step {bools::mkOr(sp.trans())};
+
+    const auto err = do_kind ? mbp::int_qe(sp.err()) : sp.err();
+
+    init->collectVars(vars);
+    step->collectVars(vars);
+    err->collectVars(vars);
     for (const auto &var: vars) {
-        post_vars.emplace(var, expr::next(var));
-    }
-    std::vector<BoolExpr> inits;
-    for (const auto &idx: its.getInitialTransitions()) {
-        if (its.isSinkTransition(idx)) {
-            switch (SmtFactory::check(idx->getGuard())) {
-            case SmtResult::Sat:
-                unsat();
-                return;
-            case SmtResult::Unknown:
-                if (Config::Analysis::log) {
-                    std::cout << "got unknown from SMT solver -- approximating" << std::endl;
-                }
-                approx = true;
-                break;
-            case SmtResult::Unsat: {}
-            }
-        } else {
-            inits.push_back(encode_transition(idx));
+        if (theory::isProgVar(var)) {
+            pre_to_post.insert(var, theory::postVar(var));
+        } else if (theory::isPostVar(var)) {
+            pre_to_post.insert(theory::progVar(var), var);
         }
     }
-    solver.add(BExpression::buildOr(inits));
 
-    std::vector<BoolExpr> steps;
-    for (const auto &r: its.getAllTransitions()) {
-        if (its.isInitialTransition(&r) || its.isSinkTransition(&r)) {
-            continue;
-        }
-        steps.push_back(encode_transition(&r));
-    }
-    const auto step {BExpression::buildOr(steps)};
-
-    std::vector<BoolExpr> queries;
-    for (const auto &idx: its.getSinkTransitions()) {
-        if (!its.isInitialTransition(idx)) {
-            queries.push_back(idx->getGuard());
-        }
-    }
-    const auto query {BExpression::buildOr(queries)};
-
-    Subs last_s;
+    Renaming last_s;
     while (true) {
-        Subs s;
-        for (const auto &var: vars) {
-            const auto &post_var {post_vars.at(var)};
-            s.put(var, last_s.get(post_var));
-            s.put(post_var, expr::toExpr(expr::next(post_var)));
+        if (Config::Analysis::model) {
+            renamings.emplace_back(last_s);
         }
-        last_s = s;
-        solver.push();
-        solver.add(query->subs(s));
-        switch (solver.check()) {
+        solver->push();
+        solver->add(last_s(err));
+        switch (solver->check()) {
         case SmtResult::Sat:
-            unsat();
-            return;
+            return SmtResult::Unsat;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
                 std::cout << "got unknown from SMT solver -- approximating" << std::endl;
@@ -111,22 +52,99 @@ void BMC::analyze() {
             break;
         case SmtResult::Unsat: {}
         }
-        solver.pop();
-        solver.add(step->subs(s));
-        ++depth;
-        if (solver.check() == SmtResult::Unsat) {
-            if (!approx) {
-                sat();
+        solver->pop();
+        Renaming s;
+        for (const auto &[pre,post]: pre_to_post) {
+            s.insert(pre, last_s.get(post));
+            s.insert(post, theory::next(post));
+        }
+        for (const auto &var: vars) {
+            if (theory::isTempVar(var)) {
+                s.insert(var, theory::next(var));
             }
-            return;
+        }
+        ++depth;
+        if (!approx && do_kind) {
+            kind->add(last_s(!err));
+            kind->add(last_s(step));
+            kind->push();
+            kind->add(s(err));
+            if (kind->check() == SmtResult::Unsat) {
+                if (Config::Analysis::log) {
+                    std::cout << "forward k-induction" << std::endl;
+                }
+                winner = Winner::KIND;
+                return SmtResult::Sat;
+            }
+            kind->pop();
+            bkind->add(s(!init));
+            bkind->add(last_s(step));
+            if (bkind->check() == SmtResult::Unsat) {
+                if (Config::Analysis::log) {
+                    std::cout << "backward k-induction" << std::endl;
+                }
+                winner = Winner::BKIND;
+                return SmtResult::Sat;
+            }
+        }
+        solver->add(last_s(step));
+        if (solver->check() == SmtResult::Unsat) {
+            if (approx) {
+                return SmtResult::Unknown;
+            } else {
+                return SmtResult::Sat;
+            }
         }
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
         }
+        last_s = s;
     }
-
 }
 
-void BMC::analyze(ITSProblem &its) {
-    BMC(its).analyze();
+ITSModel BMC::get_model() const {
+    const auto step {bools::mkOr(sp.trans())};
+    switch (winner) {
+        case Winner::BMC: {
+            std::vector<Bools::Expr> res{sp.init()};
+            Bools::Expr last{sp.init()};
+            for (unsigned i = 0; i + 1 < depth; ++i) {
+                const auto &s1{renamings.at(i)};
+                last = last && s1(step);
+                Renaming s2;
+                for (const auto &[pre,post]: pre_to_post) {
+                    if (theory::isProgVar(pre)) {
+                        s2.insert(s1.get(post), pre);
+                        s2.insert(pre, theory::next(pre));
+                    }
+                }
+                res.push_back(s2(last));
+            }
+            return to_safety.transform_model(bools::mkOr(res));
+        }
+        case Winner::KIND:
+        case Winner::BKIND: {
+            throw std::invalid_argument("models for k-induction are not yet supported");
+        }
+    }
+}
+
+
+ITSSafetyCex BMC::get_cex() const {
+    SafetyCex res {sp};
+    const auto candidates = sp.trans();
+    const auto model {solver->model()};
+    std::optional<Bools::Expr> last;
+    for (size_t i = 0; i < depth; ++i) {
+        const auto current {model.composeBackwards(renamings.at(i))};
+        const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
+            return res.try_step(current, c);
+        })};
+        if (it == candidates.end()) {
+            throw std::logic_error("get_cex failed");
+        }
+        last = *it;
+    }
+    res.set_final_state(model.composeBackwards(renamings.at(depth)));
+    return to_safety.transform_cex(res);
 }

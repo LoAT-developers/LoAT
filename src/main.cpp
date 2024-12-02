@@ -1,56 +1,49 @@
-/*  This file is part of LoAT.
- *  Copyright (c) 2015-2016 Matthias Naaf, RWTH Aachen University, Germany
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses>.
- */
-
 #include "main.hpp"
 
-#include "itsparser.hpp"
-#include "parser.hpp"
-#include "chcparser.hpp"
+#include "abmc.hpp"
+#include "accelerationproblem.hpp"
+#include "bmc.hpp"
+#include "chctoitsproblem.hpp"
 #include "cintparser.hpp"
 #include "config.hpp"
-#include "proof.hpp"
-#include "version.hpp"
-#include "reachability.hpp"
-#include "bmc.hpp"
-#include "abmc.hpp"
-#include "yices.hpp"
+#include "interleaved.hpp"
+#include "itsparser.hpp"
+#include "parser.hpp"
+#include "preprocessing.hpp"
+#include "adcl.hpp"
 #include "recurrence.hpp"
-#include "accelerationproblem.hpp"
+#include "reverse.hpp"
+#include "safetyproblem.hpp"
+#include "sexpressoparser.hpp"
+#include "trl.hpp"
+#include "version.hpp"
+#include "yices.hpp"
 
-#include <iostream>
 #include <boost/algorithm/string.hpp>
-
-using namespace std;
+#include <chrono>
+#include <iostream>
 
 // Variables for command line flags
-string filename;
+std::string filename;
 
 void printHelp(char *arg0) {
-    cout << "Usage: " << arg0 << " [options] <file>" << endl;
-    cout << "Options:" << endl;
-    cout << "  --proof-level <n>                                Detail level for proof output" << endl;
-    cout << "  --plain                                          Disable colored output" << endl;
-    cout << "  --print_dep_graph                                Print the dependency graph in the proof output (can be very verbose)" << endl;
-    cout << "  --mode <complexity|non_termination|reachability> Analysis mode" << endl;
-    cout << "  --format <koat|its|horn|c>                       Input format" << endl;
-    cout << "  --engine <adcl|bmc|abmc>                         Analysis engine" << endl;
-    cout << "  --log                                            Enable logging" << endl;
-    cout << "  --abmc::blocking_clauses <true|false>            ABMC: En- or disable blocking clauses" << std::endl;
-    cout << "  --smt <z3|cvc5|swine>                            Choose the SMT solver" << std::endl;
+    std::cout << "Usage: " << arg0 << " [options] <file>" << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "  --print_dep_graph                                  Print the dependency graph in the proof output (can be very verbose)" << std::endl;
+    std::cout << "  --mode <complexity|termination|safety>             Analysis mode" << std::endl;
+    std::cout << "  --format <koat|its|horn|c>                         Input format" << std::endl;
+    std::cout << "  --engine <adcl|bmc|abmc|trl|kind>                  Analysis engine" << std::endl;
+    std::cout << "  --log                                              Enable logging" << std::endl;
+    std::cout << "  --proof                                            Print model/counterexample/recurrent set/..." << std::endl;
+    std::cout << "  --abmc::blocking_clauses <true|false>              ABMC: En- or disable blocking clauses" << std::endl;
+    std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>              Choose the SMT solver" << std::endl;
+    std::cout << "  --direction <forward|backward|interleaved>         run the analysis forward, backward, or both directions interleaved (if supported)" << std::endl;
+    std::cout << "  --trl::recurrent_exps <true|false>                 TRL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
+    std::cout << "  --trl::recurrent_cycles <true|false>               TRL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
+    std::cout << "  --trl::recurrent_pseudo_divs <true|false>          TRL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
+    std::cout << "  --trl::recurrent_bounds <true|false>               TRL: En- or disable search for recurrent bounds" << std::endl;
+    std::cout << "  --trl::context_sensitive <true|false>              TRL: En- or disable context sensitivity" << std::endl;
+    std::cout << "  --trl::mbp_kind <lower_int|upper_int|real|real_qe> TRL: use model based projection for LIA or LRA, or QF for LRA" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
@@ -61,40 +54,40 @@ void setBool(const char *str, bool &b) {
     }
 }
 
+void print_version() {
+    std::cout << Version::GIT_SHA;
+    if (Version::GIT_DIRTY != "CLEAN") {
+        std::cout << "_DIRTY";
+    }
+    std::cout << std::endl;
+}
+
 void parseFlags(int argc, char *argv[]) {
-    int arg=0;
+    int arg = 0;
 
     auto getNext = [&]() {
-        if (arg < argc-1) {
+        if (arg < argc - 1) {
             return argv[++arg];
         } else {
-            cout << "Error: Argument missing for " << argv[arg] << endl;
+            std::cout << "Error: Argument missing for " << argv[arg] << std::endl;
             exit(1);
         }
     };
-
+    auto has_engine{false};
     while (++arg < argc) {
-        if (strcmp("--help",argv[arg]) == 0) {
+        if (strcmp("--help", argv[arg]) == 0) {
             printHelp(argv[0]);
-            exit(1);
-        } else if (strcmp("--proof-level",argv[arg]) == 0) {
-            int proofLevel = atoi(getNext());
-            if (proofLevel < 0) {
-                cerr << "proof level must be non-negative, ignoring value " << proofLevel << endl;
-            } else {
-                Proof::setProofLevel(proofLevel);
-            }
-        } else if (strcmp("--plain",argv[arg]) == 0) {
-            Config::Output::Colors = false;
-            Proof::disableColors();
-        } else if (strcmp("--print_dep_graph",argv[arg]) == 0) {
+            exit(0);
+        } else if (strcmp("--print_dep_graph", argv[arg]) == 0) {
             Config::Output::PrintDependencyGraph = true;
         } else if (strcmp("--log", argv[arg]) == 0) {
             Config::Analysis::log = true;
+        } else if (strcmp("--model", argv[arg]) == 0) {
+            Config::Analysis::model = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
             bool found = false;
             std::string str = getNext();
-            for (const Config::Analysis::Mode mode: Config::Analysis::modes) {
+            for (const Config::Analysis::Mode mode : Config::Analysis::modes) {
                 if (boost::iequals(str, Config::Analysis::modeName(mode))) {
                     Config::Analysis::mode = mode;
                     found = true;
@@ -102,9 +95,10 @@ void parseFlags(int argc, char *argv[]) {
                 }
             }
             if (!found) {
-                cerr << "Unknown mode " << str << ", defaulting to " << Config::Analysis::modeName(Config::Analysis::mode) << endl;
+                std::cerr << "Unknown mode " << str << ", defaulting to " << Config::Analysis::modeName(Config::Analysis::mode) << std::endl;
             }
         } else if (strcmp("--engine", argv[arg]) == 0) {
+            has_engine = true;
             std::string str = getNext();
             if (boost::iequals("adcl", str)) {
                 Config::Analysis::engine = Config::Analysis::ADCL;
@@ -112,8 +106,12 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::engine = Config::Analysis::ABMC;
             } else if (boost::iequals("bmc", str)) {
                 Config::Analysis::engine = Config::Analysis::BMC;
+            } else if (boost::iequals("kind", str)) {
+                Config::Analysis::engine = Config::Analysis::KIND;
+            } else if (boost::iequals("trl", str)) {
+                Config::Analysis::engine = Config::Analysis::TRL;
             } else {
-                cout << "Error: unknown engine " << str << std::endl;
+                std::cout << "Error: unknown engine " << str << std::endl;
                 exit(1);
             }
         } else if (strcmp("--smt", argv[arg]) == 0) {
@@ -126,8 +124,10 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::smtSolver = Config::Analysis::Swine;
             } else if (boost::iequals("yices", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Yices;
+            } else if (boost::iequals("heuristic", str)) {
+                Config::Analysis::smtSolver = Config::Analysis::Heuristic;
             } else {
-                cout << "Error: unknown SMT solver " << str << std::endl;
+                std::cout << "Error: unknown SMT solver " << str << std::endl;
                 exit(1);
             }
         } else if (strcmp("--polyaccel", argv[arg]) == 0) {
@@ -139,7 +139,7 @@ void parseFlags(int argc, char *argv[]) {
             } else if (boost::iequals("none", str)) {
                 AccelerationProblem::polyaccel = AccelerationProblem::PolyAccelMode::None;
             } else {
-                cout << "Error: unknown mode " << str << " for polynomial acceleration" << std::endl;
+                std::cout << "Error: unknown mode " << str << " for polynomial acceleration" << std::endl;
                 exit(1);
             }
         } else if (strcmp("--format", argv[arg]) == 0) {
@@ -153,19 +153,89 @@ void parseFlags(int argc, char *argv[]) {
             } else if (boost::iequals("c", str)) {
                 Config::Input::format = Config::Input::C;
             } else {
-                cout << "Error: unknown format " << str << std::endl;
+                std::cout << "Error: unknown format " << str << std::endl;
                 exit(1);
             }
         } else if (strcmp("--abmc::blocking_clauses", argv[arg]) == 0) {
             setBool(getNext(), Config::ABMC::blocking_clauses);
+        } else if (strcmp("--direction", argv[arg]) == 0) {
+            const auto str{getNext()};
+            if (boost::iequals("forward", str)) {
+                Config::Analysis::dir = Config::Analysis::Direction::Forward;
+            } else if (boost::iequals("backward", str)) {
+                Config::Analysis::dir = Config::Analysis::Direction::Backward;
+            } else if (boost::iequals("interleaved", str)) {
+                Config::Analysis::dir = Config::Analysis::Direction::Interleaved;
+            } else {
+                std::cout << "Error: unknown direction " << str << std::endl;
+                exit(1);
+            }
+        } else if (strcmp("--trl::recurrent_exps", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_exps);
+        } else if (strcmp("--trl::recurrent_cycles", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_cycles);
+        } else if (strcmp("--trl::recurrent_pseudo_divs", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_pseudo_divs);
+        } else if (strcmp("--trl::recurrent_pseudo_bounds", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_pseudo_bounds);
+        } else if (strcmp("--trl::recurrent_bounds", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_bounds);
+        } else if (strcmp("--trl::context_sensitive", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.context_sensitive);
+        } else if (strcmp("--trl::mbp_kind", argv[arg]) == 0) {
+            const auto str{getNext()};
+            if (boost::iequals("lower_int", str)) {
+                Config::trl.mbpKind = Config::TRLConfig::MbpKind::LowerIntMbp;
+            } else if (boost::iequals("upper_int", str)) {
+                Config::trl.mbpKind = Config::TRLConfig::MbpKind::UpperIntMbp;
+            } else if (boost::iequals("real", str)) {
+                Config::trl.mbpKind = Config::TRLConfig::MbpKind::RealMbp;
+            } else if (boost::iequals("real_qe", str)) {
+                Config::trl.mbpKind = Config::TRLConfig::MbpKind::RealQe;
+            } else {
+                std::cout << "Error: unknown MBP kind " << str << std::endl;
+                exit(1);
+            }
+        } else if (strcmp("--version", argv[arg]) == 0) {
+            print_version();
+            exit(0);
         } else {
             if (!filename.empty()) {
-                cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << endl;
+                std::cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << std::endl;
                 exit(1);
             }
             filename = argv[arg];
         }
     }
+    if (!has_engine) {
+        switch (Config::Analysis::mode) {
+            case Config::Analysis::Safety:
+                Config::Analysis::engine = Config::Analysis::ABMC;
+                break;
+            default:
+                Config::Analysis::engine = Config::Analysis::ADCL;
+                break;
+        }
+    }
+}
+
+void print_result(const SmtResult res) {
+    std::string str;
+    switch (res) {
+        case SmtResult::Sat: {
+            str = Config::Analysis::safety() ? "sat" : "YES";
+            break;
+        }
+        case SmtResult::Unsat: {
+            str = Config::Analysis::safety() ? "unsat" : "NO";
+            break;
+        }
+        case SmtResult::Unknown: {
+            str = Config::Analysis::safety() ? "unknown" : "MAYBE";
+            break;
+        }
+    }
+    std::cout << str << std::endl << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -179,7 +249,7 @@ int main(int argc, char *argv[]) {
 
     // Start parsing
     if (filename.empty()) {
-        cerr << "Error: missing filename" << endl;
+        std::cerr << "Error: missing filename" << std::endl;
         return 1;
     }
 
@@ -188,40 +258,208 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    ITSPtr its;
+    std::optional<ITSPtr> its{};
+    std::optional<CHCPtr> chcs{};
+    std::optional<SafetyProblem> sp{};
+    std::optional<CHCToITS> chc2its{};
+    std::optional<Reverse> reverse{};
+    const auto start{std::chrono::steady_clock::now()};
     switch (Config::Input::format) {
-    case Config::Input::Koat:
-        its = parser::ITSParser::loadFromFile(filename);
-        break;
-    case Config::Input::Its:
-        its = sexpressionparser::Parser::loadFromFile(filename);
-        break;
-    case Config::Input::Horn:
-        its = hornParser::HornParser::loadFromFile(filename);
-        break;
-    case Config::Input::C:
-        its = cintParser::CIntParser::loadFromFile(filename);
-        break;
-    default:
-        std::cout << "Error: unknown format" << std::endl;
-        exit(1);
+        case Config::Input::Koat:
+            its = parser::ITSParser::loadFromFile(filename);
+            break;
+        case Config::Input::Its:
+            its = sexpressionparser::Parser::loadFromFile(filename);
+            break;
+        case Config::Input::Horn: {
+            chcs = SexpressoParser::loadFromFile(filename);
+            if (Config::Analysis::dir == Config::Analysis::Direction::Backward) {
+                reverse = Reverse(*chcs);
+                chcs = reverse->reverse();
+            }
+            chc2its = CHCToITS(*chcs);
+            its = chc2its->transform();
+            break;
+        }
+        case Config::Input::C:
+            its = cintParser::CIntParser::loadFromFile(filename);
+            break;
+        default:
+            std::cout << "Error: unknown format" << std::endl;
+            exit(1);
     }
-
+    const auto end{std::chrono::steady_clock::now()};
+    if (Config::Analysis::log) {
+        std::cout << "parsing took " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
+    }
+    if (Config::Analysis::log) {
+        std::cout << "Initial ITS\n" << *its << std::endl;
+    }
     yices::init();
-    switch (Config::Analysis::engine) {
-    case Config::Analysis::ADCL:
-        reachability::Reachability::analyze(*its);
-        break;
-    case Config::Analysis::BMC:
-        BMC::analyze(*its);
-        break;
-    case Config::Analysis::ABMC:
-        ABMC::analyze(*its);
-        break;
+    std::optional<ITSModel> its_model;
+    std::optional<ITSSafetyCex> its_cex;
+    auto preprocessor{std::make_shared<Preprocessor>(*its)};
+    auto res {preprocessor->preprocess()};
+    if (res != SmtResult::Unknown) {
+        if (Config::Analysis::log) {
+            std::cout << "solved by preprocessing" << std::endl;
+        }
+        if (Config::Analysis::model) {
+            if (res == SmtResult::Sat) {
+                its_model = preprocessor->get_model();
+            } else {
+                its_cex = preprocessor->get_cex();
+            }
+        }
+    } else {
+        if (preprocessor->successful() && Config::Analysis::log) {
+            std::cout << "Simplified ITS\n" << *its << std::endl;
+        }
+        if (Config::Analysis::dir == Config::Analysis::Direction::Interleaved) {
+            reverse = Reverse(*chcs);
+            CHCToITS reversed_chc2its{reverse->reverse()};
+            auto reversed{reversed_chc2its.transform()};
+            auto backward_preprocessor{std::make_shared<Preprocessor>(reversed)};
+            res = backward_preprocessor->preprocess();
+            if (res != SmtResult::Unknown) {
+                if (Config::Analysis::log) {
+                    std::cout << "solved by backward preprocessing" << std::endl;
+                }
+                if (Config::Analysis::model) {
+                    chc2its = reversed_chc2its;
+                    preprocessor = backward_preprocessor;
+                    if (res == SmtResult::Sat) {
+                        its_model = backward_preprocessor->get_model();
+                    } else {
+                        its_cex = backward_preprocessor->get_cex();
+                    }
+                }
+            } else {
+                if (backward_preprocessor->successful() && Config::Analysis::log) {
+                    std::cout << "Simplified reversed ITS\n"
+                              << reversed << std::endl;
+                }
+                std::unique_ptr<StepwiseAnalysis> f, b;
+                switch (Config::Analysis::engine) {
+                    case Config::Analysis::TRL: {
+                        f = std::make_unique<TRL>(*its, TRL::forwardConfig);
+                        b = std::make_unique<TRL>(reversed, TRL::backwardConfig);
+                        break;
+                    }
+                    case Config::Analysis::ABMC: {
+                        f = std::make_unique<ABMC>(*its);
+                        b = std::make_unique<ABMC>(reversed);
+                        break;
+                    }
+                    default: {
+                        std::cerr << "interleaved analysis is only supported by TRL and ABMC" << std::endl;
+                        exit(-1);
+                    }
+                }
+                Interleaved fb(*f, *b);
+                res = fb.analyze();
+                if (Config::Analysis::model) {
+                    if (res == SmtResult::Sat) {
+                        its_model = fb.get_model();
+                    } else if (res == SmtResult::Unsat) {
+                        its_cex = fb.get_cex();
+                    }
+                    if (fb.is_forward()) {
+                        reverse.reset();
+                    } else {
+                        chc2its = reversed_chc2its;
+                        preprocessor = backward_preprocessor;
+                    }
+                }
+            }
+        } else {
+            switch (Config::Analysis::engine) {
+                case Config::Analysis::ADCL: {
+                    adcl::ADCL r{
+                        *its,
+                        [&](const ITSCpxCex &cex) {
+                            if (Config::Analysis::complexity()) {
+                                std::cout << preprocessor->transform_cex(cex);
+                            }
+                        }};
+                    res = r.analyze();
+                    if (Config::Analysis::model && !Config::Analysis::complexity() && res == SmtResult::Unsat) {
+                        its_cex = r.get_cex();
+                    }
+                    break;
+                }
+                case Config::Analysis::BMC:
+                case Config::Analysis::KIND: {
+                    BMC bmc{*its, Config::Analysis::engine == Config::Analysis::KIND};
+                    res = bmc.analyze();
+                    if (Config::Analysis::model) {
+                        if (res == SmtResult::Sat) {
+                            its_model = bmc.get_model();
+                        } else if (res == SmtResult::Unsat) {
+                            its_cex = bmc.get_cex();
+                        }
+                    }
+                    break;
+                }
+                case Config::Analysis::ABMC: {
+                    ABMC abmc{*its};
+                    res = abmc.analyze();
+                    if (Config::Analysis::model) {
+                        if (res == SmtResult::Sat) {
+                            its_model = abmc.get_model();
+                        } else if (res == SmtResult::Unsat) {
+                            its_cex = abmc.get_cex();
+                        }
+                    }
+                    break;
+                }
+                case Config::Analysis::TRL: {
+                    TRL trl(*its, Config::trl);
+                    res = trl.analyze();
+                    if (Config::Analysis::model) {
+                        if (res == SmtResult::Sat) {
+                            its_model = trl.get_model();
+                        } else if (res == SmtResult::Unsat) {
+                            its_cex = trl.get_cex();
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    // unsat means nonterm, so we also print it in complexity mode
+    if (!Config::Analysis::complexity()) {
+        print_result(res);
+    }
+    if (its_model) {
+        its_model = preprocessor->transform_model(*its_model);
+        if (chc2its) {
+            auto chc_model{chc2its->transform_model(*its_model)};
+            if (reverse) {
+                chc_model = reverse->transform_model(chc_model);
+            }
+            std::cout << chc_model.to_smtlib().toString();
+        } else {
+            std::cout << *its_model;
+        }
+        std::cout << std::endl << std::endl;
+    } else if (its_cex) {
+        its_cex = preprocessor->transform_cex(*its_cex);
+        if (chc2its) {
+            auto chc_cex{chc2its->transform_cex(*its_cex)};
+            if (reverse) {
+                chc_cex = reverse->transform_cex(chc_cex);
+            }
+            std::cout << chc_cex;
+        } else {
+            std::cout << *its_cex;
+        }
+        std::cout << std::endl << std::endl;
     }
     yices::exit();
 
-    cout << "Build SHA: " << Version::GIT_SHA << " (" << Version::GIT_DIRTY << ")" << endl;
+    print_version();
 
     return 0;
 }

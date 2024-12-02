@@ -1,71 +1,23 @@
 #pragma once
 
-#include "itheory.hpp"
-#include "rel.hpp"
-#include "thset.hpp"
-#include "literal.hpp"
+#include "boolexpr.hpp"
+#include "theory.hpp"
 
 #include <variant>
-#include <vector>
 
-template <ITheory... Th>
-class Conjunction : public std::vector<std::variant<typename Th::Lit...>> {
-
-    using T = Theory<Th...>;
-    using Lit = typename T::Lit;
+class Conjunction : public LitSet {
 
 public:
     // inherit constructors of base class
-    using std::vector<typename T::Lit>::vector;
+    using LitSet::LitSet;
 
-    /**
-     * Returns true iff all guard terms are relational without the use of !=
-     */
-    bool isWellformed() const {
-        return std::all_of(this->begin(), this->end(), [](const auto &lit){
-            return std::visit([](const auto &lit){
-                return lit.isWellformed();
-            }, lit);
-        });
-    }
-
-    bool isLinear() const {
-        return std::all_of(this->begin(), this->end(), [](const auto &lit){
-            return std::visit([](const auto &lit){
-                return lit.isLinear();
-            }, lit);
-        });
-    }
-
-    void collectVars(theory::VarSet<Th...> &vars) const {
-        for (const auto &lit: *this) {
-            literal::collectVars<Th...>(lit, vars);
-        }
-    }
-
-    theory::VarSet<Th...> vars() const {
-        theory::VarSet<Th...> res;
-        collectVars(res);
-        return res;
-    }
+    bool isLinear() const;
+    void collectVars(VarSet &vars) const;
+    VarSet vars() const;
+    static Conjunction fromBoolExpr(const Bools::Expr &);
 
 };
 
-template <ITheory... Th>
-std::ostream& operator<<(std::ostream &s, const Conjunction<Th...> &l) {
-    return s << buildAnd(l);
-}
-
-template <ITheory... Th>
-Conjunction<Th...> operator&(const Conjunction<Th...> &fst, const Conjunction<Th...> &snd) {
-    Conjunction<Th...> res(fst);
-    res.insert(res.end(), snd.begin(), snd.end());
-    return res;
-}
-
-template <ITheory... Th>
-Conjunction<Th...> operator&(const Conjunction<Th...> &fst, const Rel &snd) {
-    Conjunction res(fst);
-    res.push_back(snd);
-    return res;
-}
+size_t hash_value(const Conjunction&);
+std::ostream& operator<<(std::ostream &s, const Conjunction &l);
+Conjunction operator&&(const Conjunction &fst, const Conjunction &snd);

@@ -1,29 +1,27 @@
 #include "cvc5context.hpp"
-#include "expr.hpp"
-
-using namespace std;
+#include "theory.hpp"
 
 CVC5Context::CVC5Context(cvc5::Solver& ctx): ctx(ctx), refinement(ctx.mkBoolean(true)) { }
 
 CVC5Context::~CVC5Context() { }
 
-cvc5::Term CVC5Context::buildVar(const Var &var) {
-    const auto name {expr::getName(var)};
-    return std::visit(Overload{
-                          [&](const NumVar&) {
-                              return ctx.mkConst(ctx.getIntegerSort(), name);
-                          },
-                          [&](const BoolVar&) {
-                              return ctx.mkConst(ctx.getBooleanSort(), name);
-                          }
-                      }, var);
+cvc5::Term CVC5Context::buildVar(const Arith::Var &var) {
+    const auto res {ctx.mkConst(ctx.getIntegerSort(), var->getName())};
+    reverseArithVarMap.emplace(res, var);
+    return res;
 }
 
-cvc5::Term CVC5Context::getInt(Num val) {
-    return ctx.mkInteger(to_string(val));
+cvc5::Term CVC5Context::buildVar(const Bools::Var &var) {
+    const auto res {ctx.mkConst(ctx.getBooleanSort(), var->getName())};
+    reverseBoolVarMap.emplace(res, var);
+    return res;
 }
 
-cvc5::Term CVC5Context::getReal(Num num, Num denom) {
+cvc5::Term CVC5Context::getInt(const Int &val) {
+    return ctx.mkInteger(val.str());
+}
+
+cvc5::Term CVC5Context::getReal(const Int &num, const Int &denom) {
     return ctx.mkTerm(cvc5::Kind::DIVISION, {getInt(num), getInt(denom)});
 }
 
@@ -39,12 +37,16 @@ cvc5::Term CVC5Context::pow(const cvc5::Term &base, const cvc5::Term &exp) {
     }
 }
 
-cvc5::Term CVC5Context::plus(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::ADD, {x, y});
+cvc5::Term CVC5Context::plus(const std::vector<cvc5::Term> &args) {
+    return ctx.mkTerm(cvc5::Kind::ADD, args);
 }
 
-cvc5::Term CVC5Context::times(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::MULT, {x, y});
+cvc5::Term CVC5Context::times(const std::vector<cvc5::Term> &args) {
+    return ctx.mkTerm(cvc5::Kind::MULT, args);
+}
+
+cvc5::Term CVC5Context::mod(const cvc5::Term &x, const cvc5::Term &y) {
+    return ctx.mkTerm(cvc5::Kind::INTS_MODULUS, {x, y});
 }
 
 cvc5::Term CVC5Context::eq(const cvc5::Term &x, const cvc5::Term &y) {
@@ -77,12 +79,12 @@ cvc5::Term CVC5Context::neq(const cvc5::Term &x, const cvc5::Term &y) {
     return ctx.mkTerm(cvc5::Kind::NOT, {eq(x, y)});
 }
 
-cvc5::Term CVC5Context::bAnd(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::AND, {x, y});
+cvc5::Term CVC5Context::bAnd(std::vector<cvc5::Term> &args) {
+    return ctx.mkTerm(cvc5::Kind::AND, args);
 }
 
-cvc5::Term CVC5Context::bOr(const cvc5::Term &x, const cvc5::Term &y) {
-    return ctx.mkTerm(cvc5::Kind::OR, {x, y});
+cvc5::Term CVC5Context::bOr(std::vector<cvc5::Term> &args) {
+    return ctx.mkTerm(cvc5::Kind::OR, args);
 }
 
 cvc5::Term CVC5Context::bTrue() const {
@@ -97,75 +99,12 @@ cvc5::Term CVC5Context::negate(const cvc5::Term &x) {
     return ctx.mkTerm(cvc5::Kind::NOT, {x});
 }
 
-bool CVC5Context::isTrue(const cvc5::Term &e) const {
-    return e.isBooleanValue() && e.getBooleanValue();
+std::vector<cvc5::Term> CVC5Context::exprVec() {
+    return {};
 }
 
-bool CVC5Context::isFalse(const cvc5::Term &e) const {
-    return !e.isBooleanValue() || !e.getBooleanValue();
-}
-
-bool CVC5Context::isNot(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::NOT;
-}
-
-std::vector<cvc5::Term> CVC5Context::getChildren(const cvc5::Term &e) const {
-    std::vector<cvc5::Term> res {e.begin(), e.end()};
-    return res;
-}
-
-bool CVC5Context::isAnd(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::AND;
-}
-
-bool CVC5Context::isAdd(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::ADD;
-}
-
-bool CVC5Context::isMul(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::MULT;
-}
-
-bool CVC5Context::isPow(const cvc5::Term &e) const  {
-    return e.getKind() == cvc5::Kind::POW;
-}
-
-bool CVC5Context::isVar(const cvc5::Term &e) const  {
-    return e.getKind() == cvc5::Kind::CONSTANT;
-}
-
-bool CVC5Context::isRationalConstant(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::CONST_RATIONAL;
-}
-
-bool CVC5Context::isInt(const cvc5::Term &e) const {
-    return e.getKind() == cvc5::Kind::CONST_INTEGER;
-}
-
-Num CVC5Context::toInt(const cvc5::Term &e) const {
-    return Num{e.toString().c_str()};
-}
-
-cvc5::Term CVC5Context::lhs(const cvc5::Term &e) const {
-    assert(e.getNumChildren() == 2);
-    return *e.begin();
-}
-
-cvc5::Term CVC5Context::rhs(const cvc5::Term &e) const {
-    assert(e.getNumChildren() == 2);
-    return *(++e.begin());
-}
-
-Rel::RelOp CVC5Context::relOp(const cvc5::Term &e) const {
-
-    switch (e.getKind()) {
-    case cvc5::Kind::EQUAL: return Rel::RelOp::eq;
-    case cvc5::Kind::GT: return Rel::RelOp::gt;
-    case cvc5::Kind::GEQ: return Rel::RelOp::geq;
-    case cvc5::Kind::LT: return Rel::RelOp::lt;
-    case cvc5::Kind::LEQ: return Rel::RelOp::leq;
-    default: throw std::invalid_argument("unknown relation");
-    }
+std::vector<cvc5::Term> CVC5Context::formulaVec() {
+    return {};
 }
 
 void CVC5Context::printStderr(const cvc5::Term &e) const {
@@ -176,4 +115,12 @@ cvc5::Term CVC5Context::clearRefinement() {
     const auto res {refinement};
     refinement = bTrue();
     return res;
+}
+
+Arith::Var CVC5Context::getArithVar(const cvc5::Term &symbol) const {
+    return reverseArithVarMap.at(symbol);
+}
+
+Bools::Var CVC5Context::getBoolVar(const cvc5::Term &symbol) const {
+    return reverseBoolVarMap.at(symbol);
 }

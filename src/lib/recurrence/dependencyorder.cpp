@@ -1,5 +1,5 @@
 #include "dependencyorder.hpp"
-#include "expr.hpp"
+#include "theory.hpp"
 
 namespace DependencyOrder {
 
@@ -20,14 +20,12 @@ static void findOrderUntilConflicting(const Subs &update, PartialResult &res) {
     while (changed && res.ordering.size() < update.size()) {
         changed = false;
 
-        for (const auto &up : update) {
-            const auto var = expr::first(up);
-            const auto ex = expr::second(up);
+        for (const auto &[var, ex] : update) {
             if (res.ordered.contains(var)) continue;
 
             //check if all variables on update rhs are already processed
             bool ready = true;
-            for (const auto &x : expr::vars(ex)) {
+            for (const auto &x : theory::vars(ex)) {
                 if (x != var && update.contains(x) && !res.ordered.contains(x)) {
                     ready = false;
                     break;

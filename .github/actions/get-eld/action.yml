@@ -1,0 +1,19 @@
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        repository: 'uuverifiers/eldarica'
+        tag: v2.1
+        fileName: eldarica-bin-2.1.zip
+        out-file-path: 'eld'
+        extract: true
+
+    - run: |
+        mv ./eld/eldarica/* /usr/local/bin
+        mv /usr/local/bin/eld /usr/local/bin/solver
+        VERSION='2.1'
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      shell: bash
+

@@ -4,31 +4,37 @@
 
 #include "itsproblem.hpp"
 #include "z3.hpp"
-#include "itsproof.hpp"
 #include "smtfactory.hpp"
+#include "itsmodel.hpp"
+#include "itssafetycex.hpp"
+#include "itstosafetyproblem.hpp"
 
 class BMC {
 
 private:
 
-    explicit BMC(ITSProblem &its);
+    enum class Winner {
+        BMC, BKIND, KIND
+    };
 
-    void analyze();
-
-    ITSProblem &its;
-    Z3<IntTheory, BoolTheory> solver{};
+    ITSToSafety to_safety;
+    SafetyProblem sp;
+    SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
+    SmtPtr kind {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
+    SmtPtr bkind {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     bool approx {false};
-    VarSet vars {};
-    std::unordered_map<Var, Var> post_vars {};
+    VarSet vars;
+    Renaming pre_to_post {};
     unsigned depth {0};
-    ITSProof proof {};
-
-    BoolExpr encode_transition(const TransIdx idx);
-    void unsat();
-    void sat();
+    std::vector<Renaming> renamings;
+    bool do_kind;
+    Winner winner {Winner::BMC};
 
 public:
 
-    static void analyze(ITSProblem &its);
+    BMC(ITSPtr its, const bool do_kind = true);
+    SmtResult analyze();
+    ITSModel get_model() const;
+    ITSSafetyCex get_cex() const;
 
 };

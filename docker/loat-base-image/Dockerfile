@@ -1,13 +1,11 @@
-FROM voidlinux/voidlinux-musl:latest as loat-base
+FROM mcr.microsoft.com/devcontainers/base:alpine-3.19
 
 ENV CFLAGS -march=x86-64 -O2
 ENV CXXFLAGS $CFLAGS
-RUN echo noextract=/etc/hosts > /etc/xbps.d/test.conf
-RUN echo "repository=https://repo-default.voidlinux.org/current/musl" > /etc/xbps.d/00-repository-main.conf
-RUN xbps-install -ySu xbps
-RUN xbps-install -ySu
-RUN xbps-install -yS \ 
-  make cmake gcc autoconf bash \
-  gmp-devel boost-devel git
+
+RUN apk add cmake boost-dev gdb
+RUN apk add clang clang-dev
+RUN apk add compiler-rt lld
+RUN apk add eigen-dev
 
 COPY ./usr /usr

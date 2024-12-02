@@ -5,71 +5,68 @@
 #include "itsproblem.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
-#include "itsproof.hpp"
+#include "vector.hpp"
+#include "renaming.hpp"
+#include "itsmodel.hpp"
+#include "itssafetycex.hpp"
+#include "stepwise.hpp"
 
-template<>
-struct std::hash<std::vector<int>> {
-    std::size_t operator()(const std::vector<int> &x) const noexcept {
-        return boost::hash_value(x);
-    }
-};
-
-class ABMC {
+class ABMC: public StepwiseAnalysis {
 
 private:
 
-    explicit ABMC(ITSProblem &its);
-
-    void analyze();
-
     struct Loop {
-        TransIdx idx;
+        RulePtr idx;
         unsigned prefix;
         unsigned period;
-        BoolExpr covered;
+        Bools::Expr covered;
         bool deterministic;
     };
 
-    ITSProblem &its;
-    std::unique_ptr<Smt<IntTheory, BoolTheory>> solver {SmtFactory::solver<IntTheory, BoolTheory>()};
+    ITSPtr its;
+    SmtPtr solver {SmtFactory::solver()};
     bool approx {false};
     unsigned last_orig_clause {};
-    BoolExpr query {};
-    std::vector<Subs> subs {Subs::Empty};
+    Bools::Expr query {bot()};
+    std::vector<Renaming> subs {Renaming::Empty};
+    std::vector<Renaming> subsTmp {Renaming::Empty};
+    std::vector<Renaming> subsProg {Renaming::Empty};
     std::vector<Implicant> trace {};
+    std::vector<Bools::Expr> transitions {};
     VarSet vars {};
-    NumVar n {NumVar::next()};
-    std::unordered_map<Var, Var> post_vars {};
+    Arith::Var n {ArithVar::next()};
+    Renaming pre_to_post {};
     std::unordered_map<Implicant, int> lang_map {};
-    std::unordered_map<std::vector<int>, std::unordered_map<BoolExpr, std::optional<Loop>>> cache {};
+    std::unordered_map<std::vector<int>, std::unordered_map<Bools::Expr, std::optional<Loop>>> cache {};
     std::unordered_set<std::vector<int>> nonterm_cache {};
     std::unordered_map<int, std::vector<int>> history {};
-    NumVar trace_var;
-    std::optional<TransIdx> shortcut {};
-    std::unordered_map<unsigned, TransIdx> rule_map {};
+    Arith::Var trace_var;
+    std::optional<RulePtr> shortcut {};
+    std::unordered_map<Int, RulePtr> rule_map {};
     int next {0};
-    ITSProof proof {};
     DependencyGraph<Implicant> dependency_graph {};
     unsigned depth {0};
+    ITSSafetyCex cex;
+    Bools::Expr step {top()};
 
     int get_language(unsigned i);
-    BoolExpr encode_transition(const TransIdx idx, const bool with_id = true);
-    bool is_orig_clause(const TransIdx idx) const;
+    Bools::Expr encode_transition(const RulePtr idx, const bool with_id = true);
+    bool is_orig_clause(const RulePtr idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
-    TransIdx add_learned_clause(const Rule &accel, const unsigned backlink);
-    std::pair<Rule, Subs> build_loop(const int backlink);
-    BoolExpr build_blocking_clause(const int backlink, const Loop &loop);
+    void add_learned_clause(const RulePtr accel, const unsigned backlink);
+    std::pair<RulePtr, Model> build_loop(const int backlink);
+    Bools::Expr build_blocking_clause(const int backlink, const Loop &loop);
     std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
-    void unsat();
-    void unknown();
-    void sat();
     void build_trace();
     bool is_redundant(const std::vector<int> &w) const;
-    const Subs& subs_at(const unsigned i);
+    const Renaming& subs_at(const unsigned i);
 
 public:
 
-    static void analyze(ITSProblem &its);
+    explicit ABMC(ITSPtr its);
+    std::optional<SmtResult> do_step() override;
+    ITSModel get_model() override;
+    ITSSafetyCex get_cex() override;
 
 };
 

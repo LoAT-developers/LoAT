@@ -12,8 +12,8 @@ class  KoatParseVisitor : public KoatVisitor {
 
     ITSPtr its {std::make_shared<ITSProblem>()};
     std::unordered_map<std::string, LocationIdx> locations;
-    linked_hash_map<std::string, NumVar> vars;
-    std::vector<NumVar> programVars;
+    linked_hash_map<std::string, Arith::Var> vars;
+    std::vector<Arith::Var> programVars;
 
     enum ArithOp {
         Plus, Minus, Times, Exp
@@ -35,6 +35,7 @@ public:
     virtual antlrcpp::Any visitMain(KoatParser::MainContext *ctx) override;
     virtual antlrcpp::Any visitGoal(KoatParser::GoalContext *ctx) override;
     virtual antlrcpp::Any visitStart(KoatParser::StartContext *ctx) override;
+    virtual antlrcpp::Any visitSink(KoatParser::SinkContext *ctx) override;
     virtual antlrcpp::Any visitVardecl(KoatParser::VardeclContext *ctx) override;
     virtual antlrcpp::Any visitTranss(KoatParser::TranssContext *ctx) override;
     virtual antlrcpp::Any visitVar(KoatParser::VarContext *ctx) override;

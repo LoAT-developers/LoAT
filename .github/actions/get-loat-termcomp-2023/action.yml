@@ -1,0 +1,16 @@
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        tag: v0.6.0
+        fileName: loat-static
+        out-file-path: '/usr/local/bin/'
+
+    - run: |
+        mv /usr/local/bin/loat-static /usr/local/bin/solver
+        VERSION='6b55ffa0f2e04038cf304ba1a3fdb6d4d62c77f7'
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      shell: bash
+

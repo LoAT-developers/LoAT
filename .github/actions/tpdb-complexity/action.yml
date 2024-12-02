@@ -1,0 +1,15 @@
+name: 'TPDB Complexity'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/checkout@v4
+      with:
+        repository: TermCOMP/TPDB
+        sparse-checkout: Complexity_ITS
+        path: tpdb
+
+    - run: |
+        mv tpdb/Complexity_ITS benchmarks
+      shell: bash
+

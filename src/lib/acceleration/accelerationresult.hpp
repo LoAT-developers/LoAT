@@ -1,6 +1,5 @@
 #pragma once
 
-#include "proof.hpp"
 #include "rule.hpp"
 
 #include <optional>
@@ -14,23 +13,17 @@ enum Status {
 std::ostream& operator<<(std::ostream &s, const Status x);
 
 struct Accel {
-    Rule rule;
-    Proof proof {};
-    BoolExpr covered {};
+    RulePtr rule;
+    Bools::Expr covered {bot()};
 
-    Accel(const Rule &rule): rule(rule) {}
+    Accel(const RulePtr rule): rule(rule) {}
 
-};
-
-struct Nonterm {
-    BoolExpr certificate {bot()};
-    Proof proof {};
 };
 
 struct Result {
     Status status {};
     std::optional<Accel> accel {};
-    std::optional<Nonterm> nonterm {};
+    Bools::Expr nonterm {bot()};
     unsigned prefix {0};
     unsigned period {1};
 

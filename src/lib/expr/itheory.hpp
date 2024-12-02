@@ -7,8 +7,8 @@
 #include <variant>
 #include <tuple>
 
-#include "set.hpp"
-#include "map.hpp"
+#include "linkedhashset.hpp"
+#include "linkedhashmap.hpp"
 
 template<typename ... Ts>
 struct Overload : Ts ... {
@@ -29,41 +29,40 @@ concept IVars = requires(T x, linked_hash_set<Var> res) {
 
 template <typename T>
 concept ILit = requires(T x, T y) {
-        {x.normalize()} -> std::same_as<T>;
-        {x.isTriviallyTrue()} -> std::same_as<bool>;
-        {x.isWellformed()} -> std::same_as<bool>;
-        {x.isPoly()} -> std::same_as<bool>;
-        {x.isLinear()} -> std::same_as<bool>;
-        {x.hash()} -> std::same_as<std::size_t>;
+        {x->isTriviallyTrue()} -> std::same_as<bool>;
+        {x->isPoly()} -> std::same_as<bool>;
+        {x->isLinear()} -> std::same_as<bool>;
 };
 
 template <typename T>
 concept IVar = requires(T x, unsigned idx) {
         requires IComparable<T>;
-        {T(idx)} -> std::same_as<T>;
-        {T::next()} -> std::same_as<T>;
+        {x->next()} -> std::same_as<T>;
+        {x->nextProgVar()} -> std::same_as<T>;
+        {x->postVar(x)} -> std::same_as<T>;
 };
 
 template <typename T>
-concept IBaseTheory = requires(T t) {
+concept IBaseTheory = requires(T t, typename T::Const val, typename T::Var var, typename T::Lit lit, typename T::Model m) {
         requires IVar<typename T::Var>;
         requires ILit<typename T::Lit>;
-        requires IVars<typename T::Lit, typename T::Var>;
-        typename T::Val;
+        typename T::Const;
+        typename T::Expr;
+        typename T::Renaming;
+        {T::constToExpr(val)} -> std::same_as<typename T::Expr>;
+        {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
+        {T::anyValue()} -> std::same_as<typename T::Expr>;
+        {lit->eval(m)} -> std::same_as<bool>;
 };
 
 template <typename T>
-concept ITheory = requires(T t, typename T::Val val, typename T::Var var) {
+concept ITheory = requires(T t, typename T::Const val, typename T::Var var) {
         requires IBaseTheory<T>;
-        typename T::Expression;
         typename T::Subs;
-        {T::valToExpr(val)} -> std::same_as<typename T::Expression>;
-        {T::varToExpr(var)} -> std::same_as<typename T::Expression>;
-        {T::anyValue()} -> std::same_as<typename T::Expression>;
 };
 
-template<ITheory... Th>
-class Theory {
+template<IBaseTheory... Th>
+class BaseTheory {
 
 public:
 
@@ -71,17 +70,17 @@ public:
     static const Theories theories;
     using Lit = std::variant<typename Th::Lit...>;
     using Var = std::variant<typename Th::Var...>;
-    using Val = std::variant<typename Th::Val...>;
-    using Model = std::tuple<linked_hash_map<typename Th::Var, typename Th::Val>...>;
-    using Subs = std::tuple<typename Th::Subs...>;
-    using Expression = std::variant<typename Th::Expression...>;
-    using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expression>...>;
-    using Iterator = std::variant<typename Th::Subs::const_iterator...>;
+    using Const = std::variant<typename Th::Const...>;
+    using Model = std::tuple<typename Th::Model...>;
+    using Expr = std::variant<typename Th::Expr...>;
+    using Renaming = std::tuple<typename Th::Renaming...>;
+    using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expr>...>;
+    using VarPair = std::variant<std::pair<typename Th::Var, typename Th::Var>...>;
 
 private:
 
     template <size_t I = 0>
-    inline static Expression varToExprImpl(const Var &var) {
+    inline static Expr varToExprImpl(const Var &var) {
         if constexpr (I < sizeof...(Th)) {
             if (var.index() == I) {
                 return std::tuple_element_t<I, Theories>::varToExpr(std::get<I>(var));
@@ -95,14 +94,35 @@ private:
 
 public:
 
-    static Expression varToExpr(const Var &var) {
+    static Expr varToExpr(const Var &var) {
         return varToExprImpl<0>(var);
     }
 
 private:
 
     template <size_t I = 0>
-    inline static Expression anyValueImpl(const size_t i) {
+    inline static Expr constToExprImpl(const Const &c) {
+        if constexpr (I < sizeof...(Th)) {
+            if (c.index() == I) {
+                return std::tuple_element_t<I, Theories>::constToExpr(std::get<I>(c));
+            } else {
+                return constToExprImpl<I+1>(c);
+            }
+        } else {
+            throw std::logic_error("I too large");
+        }
+    }
+
+public:
+
+    static Expr constToExpr(const Const &c) {
+        return constToExprImpl<0>(c);
+    }
+
+private:
+
+    template <size_t I = 0>
+    inline static Expr anyValueImpl(const size_t i) {
         if constexpr (I < sizeof...(Th)) {
             if (i == I) {
                 return std::tuple_element_t<I, Theories>::anyValue();
@@ -116,32 +136,17 @@ private:
 
 public:
 
-    static Expression anyValue(const size_t i) {
+    static Expr anyValue(const size_t i) {
         return anyValueImpl<0>(i);
     }
 
 };
 
-namespace theory {
-
 template <ITheory... Th>
-class Subs;
+class Theory: public BaseTheory<Th...> {
 
+public:
 
-template<ITheory... Th>
-std::ostream& operator<<(std::ostream &s, const Subs<Th...> &subs) {
-    subs.print(s);
-    return s;
-}
+    using Subs = std::tuple<typename Th::Subs...>;
 
-template<ITheory... Th>
-std::enable_if_t<(sizeof...(Th) > 0), typename Theory<Th...>::Var> first(const typename Subs<Th...>::Pair &p) {
-    return std::visit([](const auto &p){return typename Theory<Th...>::Var(p.first);}, p);
-}
-
-template<ITheory... Th>
-std::enable_if_t<(sizeof...(Th) > 0), typename Theory<Th...>::Expression> second(const typename Subs<Th...>::Pair &p) {
-    return std::visit([](const auto &p){return typename Theory<Th...>::Expression(p.second);}, p);
-}
-
-}
+};

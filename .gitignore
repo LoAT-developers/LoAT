@@ -25,7 +25,6 @@ src/koatToT2
 benchlog
 benchscores
 koat-examples
-benchmarks*
 
 # hidden files
 .*

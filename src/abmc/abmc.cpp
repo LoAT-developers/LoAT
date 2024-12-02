@@ -1,28 +1,57 @@
 #include "abmc.hpp"
-#include "chain.hpp"
-#include "expr.hpp"
-#include "preprocessing.hpp"
+#include "theory.hpp"
 #include "rulepreprocessing.hpp"
 #include "smtfactory.hpp"
 #include "loopacceleration.hpp"
 #include "config.hpp"
-#include "export.hpp"
 #include "vector.hpp"
 #include "rule.hpp"
 #include "dependencygraph.hpp"
-#include "ruleexport.hpp"
 
 using namespace Config::ABMC;
 
-ABMC::ABMC(ITSProblem &its):
+ABMC::ABMC(ITSPtr its):
     its(its),
-                              trace_var(NumVar::next()) {
+    trace_var(ArithVar::next()),
+    cex(its) {
     vars.insert(trace_var);
     vars.insert(n);
     solver->enableModels();
+    vars.insertAll(its->getVars());
+    for (const auto &var: vars) {
+        pre_to_post.insert(var, theory::next(var));
+    }
+    last_orig_clause = 0;
+    for (const auto &r : its->getAllTransitions()) {
+        rule_map.emplace(r->getId(), r);
+        last_orig_clause = std::max(last_orig_clause, r->getId());
+    }
+    std::vector<Bools::Expr> inits;
+    for (const auto &idx: its->getInitialTransitions()) {
+        assert(!its->isSinkTransition(idx));
+        inits.push_back(encode_transition(idx));
+    }
+    solver->add(bools::mkOr(inits));
+
+    std::vector<Bools::Expr> steps;
+    for (const auto &r: its->getAllTransitions()) {
+        if (its->isInitialTransition(r) || its->isSinkTransition(r)) {
+            continue;
+        }
+        steps.push_back(encode_transition(r));
+    }
+    step = bools::mkOr(steps);
+
+    std::vector<Bools::Expr> queries;
+    for (const auto &idx: its->getSinkTransitions()) {
+        if (!its->isInitialTransition(idx)) {
+            queries.push_back(encode_transition(idx));
+        }
+    }
+    query = bools::mkOr(queries);
 }
 
-bool ABMC::is_orig_clause(const TransIdx idx) const {
+bool ABMC::is_orig_clause(const RulePtr idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
@@ -89,224 +118,210 @@ int ABMC::get_language(unsigned i) {
         }
         return res.first->second;
     } else {
-        return lang_map.at({imp.first, {}});
+        return lang_map.at(imp);
     }
 }
 
-std::pair<Rule, Subs> ABMC::build_loop(const int backlink) {
-    std::optional<Rule> loop;
-    Subs var_renaming;
-    for (long i = trace.size() - 1; i >= backlink; --i) {
-        const auto imp{trace[i]};
-        const auto rule{imp.first
-                            ->withGuard(imp.second)
-                            .subs(Subs::build<IntTheory>(n, subs.at(i).get<IntTheory>(n)))};
-        if (loop) {
-            const auto [chained, sigma]{Chaining::chain(rule, *loop)};
-            loop = chained;
-            var_renaming = expr::compose(sigma, var_renaming);
-        } else {
-            loop = rule;
-        }
-        var_renaming = expr::compose(subs[i].project(rule.vars()), var_renaming);
+std::pair<RulePtr, Model> ABMC::build_loop(const int backlink) {
+    std::vector<RulePtr> rules;
+    for (size_t i = backlink; i < trace.size(); ++i) {
+        rules.emplace_back(trace[i].first->withGuard(trace[i].second)->renameVars(subsTmp.at(i)));
     }
-    auto vars{loop->vars()};
-    expr::collectCoDomainVars(var_renaming, vars);
-    const auto model{expr::compose(var_renaming, solver->model(vars).toSubs())};
-    const auto imp{loop->getGuard()->syntacticImplicant(model)};
-    const auto implicant{loop->withGuard(imp)};
+    const auto loop {Preprocess::chain(rules)};
+    const auto s {subsProg.at(backlink)};
+    auto vars {loop->vars()};
+    s.collectCoDomainVars(vars);
+    auto model {solver->model(vars).composeBackwards(s)};
+    const auto imp {model.syntacticImplicant(loop->getGuard())};
+    const auto implicant {loop->withGuard(imp)};
     if (Config::Analysis::log) {
-        std::cout << "found loop of length " << (trace.size() - backlink) << ":" << std::endl;
-        RuleExport::printRule(implicant, std::cout);
-        std::cout << std::endl;
+        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << implicant << std::endl;
     }
     return {implicant, model};
 }
 
-BoolExpr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
+Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
-        return BoolExpr();
+        return top();
     }
-    const auto orig {loop.idx->subs(Subs::build<IntTheory>(n, 1))};
+    const auto orig {loop.idx->subs(Subs::build<Arith>(n, arith::mkConst(1)))};
     const auto length{depth - backlink + 1};
     // we must not start another iteration of the loop in the next step,
     // so we require that we either use the learned transition,
     // or some implicant of the loop is violated
     VarSet pre_v;
     VarSet post_v;
-    for (const auto &[x, y] : post_vars) {
+    for (const auto &[x, y] : pre_to_post) {
         pre_v.insert(x);
         post_v.insert(y);
     }
-    BoolExprSet pre;
-    const auto s_next {
-        expr::compose(
-            subs_at(depth + 1).project(pre_v),
+    const auto not_trans {!encode_transition(orig, false)};
+    std::vector<Bools::Expr> pre;
+    const auto s_next {subs_at(depth + 1).project(pre_v).compose(
             subs_at(depth + length).project(post_v))};
-    pre.insert(BExpression::buildTheoryLit(Rel::buildEq(s_next.get<IntTheory>(trace_var), (*shortcut)->getId())));
-    pre.insert(!encode_transition(&orig, false)->subs(s_next));
+    pre.push_back(theory::mkEq(theory::toExpr(s_next.get(trace_var)), arith::mkConst((*shortcut)->getId())));
+    pre.push_back(s_next(not_trans));
     // we must not start another iteration of the loop after using the learned transition in the next step
-    BoolExprSet post;
-    post.insert(BExpression::buildTheoryLit(Rel::buildNeq(s_next.get<IntTheory>(trace_var), (*shortcut)->getId())));
-    const auto s_next_next{
-        expr::compose(
-            subs_at(depth + 2).project(pre_v),
+    std::vector<Bools::Expr> post;
+    post.push_back(theory::mkNeq(theory::toExpr(s_next.get(trace_var)), arith::mkConst((*shortcut)->getId())));
+    const auto s_next_next {subs_at(depth + 2).project(pre_v).compose(
             subs_at(depth + length + 1).project(post_v))};
-    post.insert(!encode_transition(&orig, false)->subs(s_next_next));
-    const auto not_covered{!loop.covered->subs(s_next)};
-    return not_covered | (BExpression::buildOr(pre) & BExpression::buildOr(post));
+    post.push_back(s_next_next(not_trans));
+    const auto not_covered{s_next(!loop.covered)};
+    return not_covered || (bools::mkOr(pre) && bools::mkOr(post));
 }
 
-TransIdx ABMC::add_learned_clause(const Rule &accel, const unsigned backlink) {
-    const auto idx{its.addLearnedRule(accel, trace.at(backlink).first, trace.back().first)};
-    rule_map.emplace(idx->getId(), idx);
-    return idx;
+void ABMC::add_learned_clause(const RulePtr accel, const unsigned backlink) {
+    its->addLearnedRule(accel, trace.at(backlink).first, trace.back().first);
+    rule_map.emplace(accel->getId(), accel);
 }
 
 std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
-    auto [loop, sample_point]{build_loop(backlink)};
-    auto simp{Preprocess::preprocessRule(loop)};
-    auto &map{cache.emplace(lang, std::unordered_map<BoolExpr, std::optional<Loop>>()).first->second};
-    for (const auto &[imp, loop] : map) {
-        if (imp->subs(sample_point)->isTriviallyTrue()) {
+    const auto update_subs = [&](const RulePtr loop) {
+        subs_at(depth + 1);
+        const auto new_vars {loop->vars()};
+        for (const auto &x: new_vars) {
+            if (theory::isTempVar(x) && !vars.contains(x)) {
+                const auto next {theory::next(x)};
+                subs[depth + 1].insert(x, next);
+                subsTmp[depth + 1].insert(x, next);
+            }
+        }
+    };
+    auto [loop, sample_point] {build_loop(backlink)};
+    auto &map {cache.emplace(lang, std::unordered_map<Bools::Expr, std::optional<Loop>>()).first->second};
+    for (const auto &[imp, loop]: map) {
+        if (sample_point.eval<Bools>(imp)) {
             if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
             if (loop) {
                 shortcut = loop->idx;
+                update_subs(loop->idx);
                 return loop;
             } else {
                 return {};
             }
         }
     }
-    const auto nonterm_to_query = [this](const Rule &rule, const acceleration::Result &accel_res) {
-        if (Config::Analysis::tryNonterm() && accel_res.nonterm) {
-            query = query | accel_res.nonterm->certificate;
-            RuleProof nonterm_proof;
-            std::stringstream ss;
-            ss << "Original rule:" << std::endl;
-            RuleExport::printRule(rule, ss);
-            ss << std::endl;
-            nonterm_proof.append(ss);
-            ss << "Certificate:" << std::endl;
-            ss << accel_res.nonterm->certificate;
-            nonterm_proof.append(ss);
-            nonterm_proof.storeSubProof(accel_res.nonterm->proof);
-            proof.majorProofStep("Certificate of non-termination", nonterm_proof, its);
+    auto simp {Preprocess::preprocessRule(loop)};
+    auto success {false};
+    const auto nonterm_to_query = [&](const RulePtr rule, const acceleration::Result &accel_res) {
+        if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
+            const auto q {its->addQuery(accel_res.nonterm, trace.at(backlink).first)};
+            rule_map.emplace(q->getId(), q);
+            if (Config::Analysis::model) {
+                cex.add_recurrent_set(loop, q);
+            }
+            success = true;
+            query = query || encode_transition(q);
             if (Config::Analysis::log) {
-                std::cout << "found certificate of non-termination" << std::endl;
-                std::cout << accel_res.nonterm->certificate << std::endl;
+                std::cout << "found certificate of non-termination\n" << accel_res.nonterm << std::endl;
             }
         }
     };
     if (Config::Analysis::tryNonterm() && !nonterm_cache.contains(lang)) {
-        const AccelConfig config{.tryNonterm = true, .tryAccel = false, .n = n};
-        const auto accel_res{LoopAcceleration::accelerate(*simp, {}, config)};
-        nonterm_to_query(*simp, accel_res);
+        const AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
+        const auto accel_res {LoopAcceleration::accelerate(simp, config)};
+        nonterm_to_query(simp, accel_res);
         nonterm_cache.emplace(lang);
     }
+    std::optional<Loop> res {};
+    auto covered {top()};
     const auto deterministic{simp->isDeterministic()};
-    if (Config::Analysis::reachability() && !deterministic) {
+    if (Config::Analysis::safety() && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
-    } else if (Config::Analysis::reachability() && simp->getUpdate() == expr::concat(simp->getUpdate(), simp->getUpdate())) {
+    } else if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
-    } else if (Config::Analysis::reachability() && simp->getUpdate().empty()) {
+    } else if (Config::Analysis::safety() && simp->getUpdate().empty()) {
         if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
     } else {
-        if (Config::Analysis::log && simp) {
-            std::cout << "simplified loop:" << std::endl;
-            RuleExport::printRule(*simp, std::cout);
-            std::cout << std::endl;
+        if (Config::Analysis::log && simp->getId() != loop->getId()) {
+            std::cout << "simplified loop:\n" << simp << std::endl;
         }
-        const AccelConfig config{.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
-        const auto accel_res{LoopAcceleration::accelerate(*simp, {}, config)};
-        nonterm_to_query(*simp, accel_res);
+        const AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
+        const auto accel_res {LoopAcceleration::accelerate(simp, config)};
+        nonterm_to_query(simp, accel_res);
         if (accel_res.accel) {
-            auto simplified = Preprocess::preprocessRule(accel_res.accel->rule);
+            auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)};
             if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
-                const auto new_idx{add_learned_clause(*simplified, backlink)};
-                shortcut = new_idx;
+                success = true;
+                add_learned_clause(simplified, backlink);
+                if (Config::Analysis::model) {
+                    cex.add_accel(loop, simplified);
+                }
+                shortcut = simplified;
                 history.emplace(next, lang);
-                lang_map.emplace(Implicant(new_idx, {}), next);
+                lang_map.emplace(Implicant(simplified, simplified->getGuard()), next);
                 ++next;
-                const Loop loop{
-                    .idx = new_idx,
+                res = {
+                    .idx = simplified,
                     .prefix = accel_res.prefix,
                     .period = accel_res.period,
                     .covered = accel_res.accel->covered,
                     .deterministic = deterministic};
-                map.emplace(accel_res.accel->covered, loop);
-                RuleProof sub_proof, acceleration_proof;
-                acceleration_proof.storeSubProof(simp.getProof());
-                acceleration_proof.ruleTransformationProof(*simp, "Loop Acceleration", accel_res.accel->rule);
-                acceleration_proof.storeSubProof(accel_res.accel->proof);
-                sub_proof.concat(acceleration_proof);
-                sub_proof.concat(simplified.getProof());
-                proof.majorProofStep("Accelerate", sub_proof, its);
+                covered = accel_res.accel->covered;
                 if (Config::Analysis::log) {
-                    std::cout << "accelerated rule, idx " << new_idx->getId() << std::endl;
-                    RuleExport::printRule(*simplified, std::cout);
-                    std::cout << std::endl;
+                    std::cout << "accelerated rule, idx " << simplified->getId() << "\n" << simplified << std::endl;
                 }
-                return loop;
+                update_subs(simplified);
             }
         }
     }
-    map.emplace(BExpression::top(), std::optional<Loop>());
-    return {};
-}
-
-BoolExpr ABMC::encode_transition(const TransIdx idx, const bool with_id) {
-    const auto up{idx->getUpdate()};
-    std::vector<BoolExpr> res{idx->getGuard()};
-    if (with_id) {
-        res.emplace_back(BExpression::buildTheoryLit(Rel::buildEq(trace_var, idx->getId())));
-    }
-    for (const auto &x : vars) {
-        if (expr::isProgVar(x)) {
-            res.push_back(expr::mkEq(expr::toExpr(post_vars.at(x)), up.get(x)));
+    if (success && Config::Analysis::model) {
+        if (backlink + 1 == trace.size()) {
+            const auto rule {trace.back().first};
+            if (rule != loop) {
+                cex.add_implicant(rule, loop);
+            }
+        } else {
+            std::vector<RulePtr> rules;
+            for (size_t i = backlink; i < trace.size(); ++i) {
+                const auto &[rule, guard]{trace.at(i)};
+                if (rule->getGuard() == guard) {
+                    rules.emplace_back(rule);
+                } else {
+                    const auto imp{rule->withGuard(guard)};
+                    cex.add_implicant(rule, imp);
+                    rules.emplace_back(imp);
+                }
+            }
+            cex.add_resolvent(rules, loop);
         }
     }
-    return BExpression::buildAnd(res);
+    map.emplace(covered, res);
+    return res;
 }
 
-void ABMC::unknown() {
-    const auto str = Config::Analysis::reachability() ? "unknown" : "MAYBE";
-    std::cout << str << std::endl;
-    proof.result(str);
-    proof.print();
-}
-
-void ABMC::unsat() {
-    const auto str = Config::Analysis::reachability() ? "unsat" : "NO";
-    std::cout << str << std::endl;
-    proof.append("reached error location at depth " + std::to_string(depth));
-    proof.result(str);
-    proof.print();
-}
-
-void ABMC::sat() {
-    const auto str = Config::Analysis::reachability() ? "sat" : "MAYBE";
-    std::cout << str << std::endl;
-    proof.append(std::to_string(depth) + "-fold unrolling of the transition relation is unsatisfiable");
-    proof.result(str);
-    proof.print();
+Bools::Expr ABMC::encode_transition(const RulePtr idx, const bool with_id) {
+    const auto up {idx->getUpdate()};
+    std::vector<Bools::Expr> res {idx->getGuard()};
+    if (with_id) {
+        res.emplace_back(theory::mkEq(trace_var, arith::mkConst(idx->getId())));
+    }
+    for (const auto &x: vars) {
+        if (theory::isProgVar(x)) {
+            res.push_back(theory::mkEq(theory::toExpr(pre_to_post.get(x)), up.get(x)));
+        }
+    }
+    return bools::mkAnd(res);
 }
 
 void ABMC::build_trace() {
     trace.clear();
-    const auto model{solver->model().toSubs()};
     std::vector<Subs> run;
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
-        const auto s{subs.at(d)};
-        const auto rule{rule_map.at(s.get<IntTheory>(trace_var).subs(model.get<IntTheory>()).toNum().to_int())};
-        const auto comp{expr::compose(s, model)};
-        const auto imp{rule->getGuard()->syntacticImplicant(comp)};
-        auto vars{rule->getUpdate().domain()};
-        vars.insert(n);
-        vars.insert(trace_var);
-        run.push_back(comp.project(vars));
-        const Implicant i{rule, imp};
+        const auto s {subs.at(d)};
+        const auto vars = d == 0 ? this->vars : s.coDomainVars();
+        const auto m {solver->model(vars).composeBackwards(s)};
+        const auto rule {rule_map.at(m.get<Arith>(trace_var))};
+        const auto imp {m.syntacticImplicant(rule->getGuard())};
+        if (Config::Analysis::log) {
+            auto run_vars {rule->getUpdate().domain()};
+            run_vars.insert(n);
+            run_vars.insert(trace_var);
+            run.push_back(m.project(run_vars).toSubs());
+        }
+        const Implicant i {rule, imp};
         if (prev) {
             dependency_graph.addEdge(*prev, i);
         }
@@ -322,116 +337,74 @@ void ABMC::build_trace() {
     }
 }
 
-const Subs &ABMC::subs_at(const unsigned i) {
+const Renaming &ABMC::subs_at(const unsigned i) {
     while (subs.size() <= i) {
-        Subs s;
+        Renaming s, sTmp, sProg;
         for (const auto &var : vars) {
-            const auto &post_var{post_vars.at(var)};
-            s.put(var, subs.back().get(post_var));
-            s.put(post_var, expr::toExpr(expr::next(post_var)));
+            const auto &post_var{pre_to_post.get(var)};
+            const auto current {subs.back().get(post_var)};
+            const auto next {theory::next(post_var)};
+            s.insert(var, current);
+            s.insert(post_var, next);
+            if (theory::isTempVar(var)) {
+                sTmp.insert(var, current);
+                sTmp.insert(post_var, next);
+            } else {
+                sProg.insert(var, current);
+                sProg.insert(post_var, next);
+            }
         }
         subs.push_back(s);
+        subsTmp.push_back(sTmp);
+        subsProg.push_back(sProg);
     }
     return subs.at(i);
 }
 
-void ABMC::analyze() {
-    if (Config::Analysis::log) {
-        std::cout << "initial ITS" << std::endl;
-        its.print(std::cout);
-    }
-    proof.majorProofStep("Initial ITS", ITSProof(), its);
-    const auto res{Preprocess::preprocess(its)};
-    if (res) {
-        proof.concat(res.getProof());
-        if (Config::Analysis::log) {
-            std::cout << "Simplified ITS" << std::endl;
-            ITSExport::printForProof(its, std::cout);
-        }
-    }
-    vars.insertAll(its.getVars());
-    for (const auto &var : vars) {
-        post_vars.emplace(var, expr::next(var));
-    }
-    last_orig_clause = 0;
-    for (const auto &r : its.getAllTransitions()) {
-        rule_map.emplace(r.getId(), &r);
-        last_orig_clause = std::max(last_orig_clause, r.getId());
-    }
-    std::vector<BoolExpr> inits;
-    for (const auto &idx : its.getInitialTransitions()) {
-        if (its.isSinkTransition(idx)) {
-            switch (SmtFactory::check(idx->getGuard())) {
-            case SmtResult::Sat:
-                unsat();
-                return;
-            case SmtResult::Unknown:
-                if (Config::Analysis::log) {
-                    std::cout << "got unknown from SMT solver -- approximating" << std::endl;
-                }
-                approx = true;
-                break;
-            case SmtResult::Unsat: {}
-            }
-        } else {
-            inits.push_back(encode_transition(idx));
-        }
-    }
-    solver->add(BExpression::buildOr(inits));
-
-    std::vector<BoolExpr> steps;
-    for (const auto &r : its.getAllTransitions()) {
-        if (its.isInitialTransition(&r) || its.isSinkTransition(&r)) {
-            continue;
-        }
-        steps.push_back(encode_transition(&r));
-    }
-    const auto step{BExpression::buildOr(steps)};
-
-    std::vector<BoolExpr> queries;
-    for (const auto &idx : its.getSinkTransitions()) {
-        if (!its.isInitialTransition(idx)) {
-            queries.push_back(idx->getGuard());
-        }
-    }
-    query = BExpression::buildOr(queries);
-
-    while (true) {
-        const auto &s{subs_at(depth + 1)};
-        solver->push();
-        solver->add(query->subs(s));
-        switch (solver->check()) {
+std::optional<SmtResult> ABMC::do_step() {
+    ++depth;
+    const auto &s{subs_at(depth)};
+    solver->push();
+    solver->add(s(query));
+    switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
-            unsat();
-            return;
+            return SmtResult::Unsat;
         case SmtResult::Unknown:
             if (Config::Analysis::log && !approx) {
                 std::cout << "got unknown from SMT solver -- approximating" << std::endl;
             }
             approx = true;
             break;
-        case SmtResult::Unsat: {}
-        }
-        solver->pop();
-        if (!shortcut) {
-            solver->add(step->subs(s));
-        } else {
-            solver->add((encode_transition(*shortcut) | step)->subs(s));
-        }
-        ++depth;
-        BoolExpr blocking_clause;
-        switch (solver->check()) {
         case SmtResult::Unsat:
-            if (!approx) {
-                sat();
+            break;
+    }
+    solver->pop();
+    if (!shortcut) {
+        if (Config::Analysis::model) {
+            transitions.emplace_back(step);
+        }
+        solver->add(s(step));
+    } else {
+        if (Config::Analysis::model) {
+            transitions.emplace_back(encode_transition(*shortcut, false) || step);
+        }
+        solver->add(s(encode_transition(*shortcut) || step));
+    }
+    Bools::Expr blocking_clause{top()};
+    switch (solver->check()) {
+        case SmtResult::Unsat:
+            if (approx) {
+                return SmtResult::Unknown;
+            } else {
+                return SmtResult::Sat;
             }
-            return;
         case SmtResult::Sat: {
             shortcut.reset();
             build_trace();
             std::vector<int> lang;
-            if (Config::Analysis::log) std::cout << "starting loop handling" << std::endl;
+            if (Config::Analysis::log)
+                std::cout << "starting loop handling" << std::endl;
             const auto backlink = has_looping_suffix(trace.size() - 1, lang);
             if (backlink) {
                 const auto loop{handle_loop(*backlink, lang)};
@@ -439,24 +412,79 @@ void ABMC::analyze() {
                     blocking_clause = build_blocking_clause(*backlink, *loop);
                 }
             }
-            if (Config::Analysis::log) std::cout << "done with loop handling" << std::endl;
+            if (Config::Analysis::log)
+                std::cout << "done with loop handling" << std::endl;
             break;
         }
         case SmtResult::Unknown:
             shortcut.reset();
             trace.clear();
-        }
-        if (Config::Analysis::log) {
-            std::cout << "depth: " << depth << std::endl;
-        }
-        if (blocking_clause) {
-            solver->add(blocking_clause);
-        }
     }
+    if (Config::Analysis::log) {
+        std::cout << "depth: " << depth << std::endl;
+    }
+    if (blocking_clause != top()) {
+        solver->add(blocking_clause);
+    }
+    return {};
 }
 
-void ABMC::analyze(ITSProblem &its) {
-    ABMC(its).analyze();
+ITSModel ABMC::get_model() {
+    std::vector<Bools::Expr> inits;
+    Renaming post_to_pre;
+    Renaming init_renaming;
+    for (const auto &x: its->getVars()) {
+        if (theory::isProgVar(x)) {
+            init_renaming.insert(x, theory::next(x));
+        }
+    }
+    for (const auto &t: its->getInitialTransitions()) {
+        std::vector<Bools::Expr> conjuncts {init_renaming(t->getGuard())};
+        const auto &up {t->getUpdate()};
+        for (const auto &[x,_]: init_renaming) {
+            conjuncts.emplace_back(theory::mkEq(theory::toExpr(x), init_renaming(up.get(x))));
+        }
+        inits.emplace_back(bools::mkAnd(conjuncts));
+    }
+    const auto init {bools::mkOr(inits)};
+    std::vector<Bools::Expr> res{init};
+    Bools::Expr last{init};
+    for (unsigned i = 0; i + 1 < depth; ++i) {
+        const auto s1{subs.at(i)};
+        last = last && s1(transitions.at(i));
+        Renaming s2;
+        for (const auto &[pre,post]: pre_to_post) {
+            if (theory::isProgVar(pre)) {
+                s2.insert(s1.get(post), pre);
+                s2.insert(pre, theory::next(pre));
+            }
+        }
+        res.push_back(s2(last));
+    }
+    ITSModel model;
+    const auto m {bools::mkOr(res)};
+    for (const auto &l: its->getLocations()) {
+        model.set_invariant(l, Subs::build<Arith>(its->getLocVar(), arith::mkConst(l))(m));
+    }
+    model.set_invariant(its->getInitialLocation(), top());
+    return model;
+}
+
+ITSSafetyCex ABMC::get_cex() {
+    const auto model {solver->model()};
+    cex.set_initial_state(model.composeBackwards(subs.front()));
+    for (size_t i = 0; i < depth; ++i) {
+        const auto r {subs.at(i + 1)};
+        const auto current {model.composeBackwards(r)};
+        const auto trans {trace.at(i).first};
+        if (!cex.try_step(trans, current)) {
+            throw std::logic_error("get_cex failed");
+        }
+    }
+    if (!cex.try_final_transition(trace.back().first)) {
+        throw std::logic_error("get_cex failed");
+    }
+    return cex;
 }
 
 std::ostream &operator<<(std::ostream &s, const std::vector<Implicant> &trace) {

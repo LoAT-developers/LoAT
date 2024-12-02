@@ -1,7 +1,7 @@
 grammar Koat;
 
 // entry point
-main    :       goal? start vardecl transs;
+main    :       goal? start sink? vardecl transs;
 
 // aliases for ID
 fs      :       ID;
@@ -10,6 +10,7 @@ var     :       ID;
 // top-level elements
 goal    :       LPAR GOAL (CPX | TERM) RPAR;
 start   :       LPAR START LPAR FS fs RPAR RPAR;
+sink    :       LPAR SINK LPAR FS fs RPAR RPAR;
 vardecl :       LPAR VAR ID+ RPAR;
 transs  :       LPAR RULES trans* RPAR;
 
@@ -37,6 +38,7 @@ GOAL    :       'GOAL';
 CPX     :       'COMPLEXITY';
 TERM    :       'TERMINATION';
 START   :       'STARTTERM';
+SINK    :       'SINKTERM';
 FS      :       'FUNCTIONSYMBOLS';
 VAR     :       'VAR';
 RULES   :       'RULES';

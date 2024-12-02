@@ -1,39 +1,21 @@
-/*  This file is part of LoAT.
- *  Copyright (c) 2015-2016 Matthias Naaf, RWTH Aachen University, Germany
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses>.
- */
-
 #include "recurrence.hpp"
 #include "dependencyorder.hpp"
-#include "inttheory.hpp"
+#include "arith.hpp"
+#include "purrsutil.hpp"
+#include "theory.hpp"
 
 #include <purrs.hh>
 #include <boost/algorithm/string.hpp>
 
-using namespace std;
-namespace Purrs = Parma_Recurrence_Relation_Solver;
-
-Recurrence::Recurrence(const Subs &equations, const NumVar &n):
+Recurrence::Recurrence(const Subs &equations, const Arith::Var n):
     equations(equations), n(n) {}
 
-bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
-    const auto n {Purrs::Expr(Purrs::Recurrence::n).toGiNaC()};
-    const auto updated {rhs.subs(closed_form_pre.get<IntTheory>()).ex.subs(*this->n == n)};
-    const auto &vars {rhs.vars()};
-    unsigned prefix {0};
-    GiNaC::ex closed_form;
+bool Recurrence::solve(const Arith::Var lhs, const Arith::Expr rhs) {
+    auto [updated, map] {arith::toPurrs(closed_form_pre.get<Arith>()(rhs), this->n)};
+    updated = updated.substitute(map.left.at(this->n), Purrs::Recurrence::n);
+    const auto vars {rhs->vars()};
+    auto prefix {0u};
+    Purrs::Expr closed_form;
     for (const auto &x: vars) {
         const auto it {prefixes.find(x)};
         if (it != prefixes.end()) {
@@ -42,44 +24,41 @@ bool Recurrence::solve(const NumVar &lhs, const Expr &rhs) {
     }
     if (!vars.contains(lhs)) {
         ++prefix;
-
         closed_form = updated;
     } else {
         if (prefix > 0) {
             ++prefix;
         }
-        auto last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
-        Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(updated.subs({{*lhs, last}}))};
+        auto last {Purrs::x(Purrs::Recurrence::n - 1)};
+        Purrs::Recurrence rec {updated.substitute(map.left.at(lhs), last)};
         auto status {Purrs::Recurrence::Solver_Status::TOO_COMPLEX};
         try {
-            rec.set_initial_conditions({ {0, Purrs::Expr::fromGiNaC(*lhs)} });
             status = rec.compute_exact_solution();
         } catch (...) {
             //purrs throws a runtime exception if the recurrence is too difficult
             return false;
         }
         if (status == Purrs::Recurrence::SUCCESS) {
-            Purrs::Expr exact;
-            rec.exact_solution(exact);
-            closed_form = exact.toGiNaC();
+            rec.exact_solution(closed_form);
+            closed_form = closed_form.substitute(Purrs::x(0), map.left.at(lhs));
         } else {
             return false;
         }
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    closed_form_pre.put<IntTheory>(lhs, Expr(closed_form.subs(n == *this->n-1)));
-    result.closed_form.put<IntTheory>(lhs, Expr(closed_form.subs(n == *this->n)));
+    closed_form_pre.put<Arith>(lhs, arith::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)-1), map));
+    result.closed_form.put<Arith>(lhs, arith::fromPurrs(closed_form.substitute(Purrs::Recurrence::n, map.left.at(this->n)), map));
     return true;
 }
 
-bool Recurrence::solve(const BoolVar &lhs, const BoolExpr &rhs) {
-    const auto updated {rhs->subs(closed_form_pre)};
-    if (updated->lits().contains(BoolLit(lhs, true))) {
+bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr rhs) {
+    const auto updated {closed_form_pre(rhs)};
+    if (updated->lits().contains(bools::mk(lhs, true))) {
         return false;
     }
     const auto &vars {updated->vars()};
-    if (vars.contains(lhs) && vars.size() != vars.get<BoolVar>().size()) {
+    if (vars.contains(lhs) && vars.size() != vars.get<Bools::Var>().size()) {
         return false;
     }
     unsigned prefix {1};
@@ -91,8 +70,8 @@ bool Recurrence::solve(const BoolVar &lhs, const BoolExpr &rhs) {
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    closed_form_pre.put<BoolTheory>(lhs, updated);
-    result.closed_form.put<BoolTheory>(lhs, updated);
+    closed_form_pre.put<Bools>(lhs, updated);
+    result.closed_form.put<Bools>(lhs, updated);
     return true;
 }
 
@@ -102,16 +81,11 @@ bool Recurrence::solve() {
         return false;
     }
     for (const auto &lhs : *order) {
-        const auto success {
-            std::visit(
-                        Overload{
-                            [&](const NumVar &lhs) {
-                                return solve(lhs, equations.get<IntTheory>(lhs));
-                            },
-                            [&](const BoolVar &lhs) {
-                                return solve(lhs, equations.get<BoolTheory>(lhs));
-                            }
-                        }, lhs)
+        const auto success {std::visit(
+                [&](const auto lhs) {
+                    const auto th {theory::theory(lhs)};
+                    return solve(lhs, equations.get<decltype(th)>(lhs));
+                }, lhs)
         };
         if (!success) {
             return false;
@@ -121,7 +95,7 @@ bool Recurrence::solve() {
 }
 
 
-std::optional<Recurrence::Result> Recurrence::solve(const Subs &update, const NumVar &n) {
+std::optional<Recurrence::Result> Recurrence::solve(const Subs &update, const Arith::Var n) {
     Recurrence rec {update, n};
     if (rec.solve()) {
         return rec.result;
@@ -142,7 +116,6 @@ void Recurrence::solve(const std::string &eq) {
     GiNaC::parser parser{table};
     const GiNaC::ex lhs {parser(strs[0])};
     const GiNaC::ex rhs {parser(strs[1])};
-    assert(Expr(lhs).isVar());
     auto last {Purrs::x(Purrs::Recurrence::n - 1).toGiNaC()};
     Purrs::Recurrence rec {Purrs::Expr::fromGiNaC(rhs.subs({{lhs, last}}))};
     auto status {Purrs::Recurrence::Solver_Status::TOO_COMPLEX};

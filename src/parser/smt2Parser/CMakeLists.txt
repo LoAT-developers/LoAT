@@ -1,5 +1,3 @@
-add_subdirectory(sexpresso)
-
 target_sources(${EXECUTABLE}
     PRIVATE
         parser.cpp

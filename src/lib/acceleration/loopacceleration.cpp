@@ -1,54 +1,27 @@
-/*  This file is part of LoAT.
- *  Copyright (c) 2018-2019 Florian Frohn
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses>.
- */
-
 #include "loopacceleration.hpp"
 #include "smtfactory.hpp"
 #include "recurrence.hpp"
 #include "accelerationproblem.hpp"
-#include "chain.hpp"
 #include "loopcomplexity.hpp"
-#include "ruleresult.hpp"
 #include "rulepreprocessing.hpp"
 
-#include <purrs.hh>
 #include <numeric>
 
-using namespace std;
-
 LoopAcceleration::LoopAcceleration(
-    const Rule &rule,
+    const RulePtr rule,
     const std::optional<Subs> &sample_point,
     const AccelConfig &config)
-    : rule(rule), sample_point(sample_point), config(config) {
-    auto up {rule.getUpdate()};
-    up.put<IntTheory>(NumVar::loc_var, Expr(NumVar::loc_var));
-    this->rule = rule.withUpdate(up);
-}
+    : rule(rule), sample_point(sample_point), config(config) {}
 
-std::pair<Rule, unsigned> LoopAcceleration::chain(const Rule &rule) {
+std::pair<RulePtr, unsigned> LoopAcceleration::chain(const RulePtr rule) {
     auto changed {false};
     auto res {rule};
     unsigned period {1};
     do {
         changed = false;
-        RuleResult chained {Chaining::chain(res, res).first};
-        chained.concat(Preprocess::preprocessRule(*chained));
-        if (LoopComplexity::compute(res) > LoopComplexity::compute(*chained)) {
-            res = *chained;
+        const auto chained {Preprocess::chain({res, res->renameTmpVars()})};
+        if (LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
+            res = chained;
             period *= 2;
             changed = true;
         }
@@ -64,9 +37,7 @@ void LoopAcceleration::chain() {
 
 void LoopAcceleration::store_nonterm(const AccelerationProblem::Accelerator &accelerator) {
     if (accelerator.nonterm) {
-        res.nonterm = acceleration::Nonterm();
-        res.nonterm->proof = accelerator.proof;
-        res.nonterm->certificate = BExpression::buildAnd(accelerator.formula);
+        res.nonterm = bools::mkAnd(accelerator.formula);
     }
 }
 
@@ -82,83 +53,96 @@ void LoopAcceleration::try_nonterm() {
 }
 
 void LoopAcceleration::compute_closed_form() {
-    rec = Recurrence::solve(rule.getUpdate(), config.n);
-    if (rec) {
-        res.prefix = rec->prefix;
-        const auto is_temp_var = [](const auto &z){
-            return z.isTempVar();
-        };
-        for (const auto &[x,y]: rule.getUpdate().get<IntTheory>()) {
-            if (y.has(x) && y != Expr(x)) {
-                if (!y.hasVarWith(is_temp_var)) {
-                    return;
-                }
-                if (!y.isLinear()) {
-                    continue;
-                }
-                const auto vars {y.vars()};
-                auto all_lower_bounded {true};
-                auto all_upper_bounded {true};
-                for (const auto &z: vars) {
-                    if (z.isTempVar()) {
-                        const auto bounds {rule.getGuard()->getBounds(z)};
-                        const auto coeff {y.coeff(z).toNum()};
-                        if (bounds.equality && !bounds.equality->hasVarWith(is_temp_var)) {
-                            continue;
+    const auto fail = [&]() {
+        res.prefix = 0;
+        rec = {};
+        res.status = acceleration::ClosedFormFailed;
+    };
+    const auto is_temp_var = [](const auto z) {
+        return z->isTempVar();
+    };
+    // Heuristic: Search for updates x = x + p where p contains temporary variables without lower bounds
+    // and temporary variables without upper bounds. Such updates are pretty much equivalent to x = *,
+    // but accelerating them sometimes yields quite complex expressions. Hence, we do not accelerate them.
+    for (const auto &[x, y] : rule->getUpdate().get<Arith>()) {
+        if (y->has(x) && y->hasVarWith(is_temp_var)) {
+            const auto vars{y->vars()};
+            auto all_lower_bounded{true};
+            auto all_upper_bounded{true};
+            for (const auto &z : vars) {
+                // check all temporary variables
+                if (z->isTempVar()) {
+                    // we can only check boundedness for linear expressions
+                    if (!y->isLinear({{z}})) {
+                        fail();
+                        return;
+                    }
+                    // we can only check boundedness if z's coefficient is a constant
+                    const auto c {(*y->coeff(z))->isRational()};
+                    if (!c) {
+                        fail();
+                        return;
+                    }
+                    const auto coeff{***c};
+                    const auto bounds{rule->getGuard()->getBounds(z)};
+                    auto lower_bounded{false};
+                    auto upper_bounded{false};
+                    // check if z is bounded
+                    for (const auto &b : bounds) {
+                        // early exit
+                        if (lower_bounded && upper_bounded) {
+                            break;
                         }
-                        auto lower_bounded {false};
-                        auto upper_bounded {false};
-                        for (const auto &b: bounds.lowerBounds) {
-                            if (!b.hasVarWith(is_temp_var)) {
+                        // only consider bounds without temporary variables to keep things simple
+                        if (!b.bound->hasVarWith(is_temp_var)) {
+                            switch (b.kind) {
+                            case BoundKind::Equality:
+                                lower_bounded = true;
+                                upper_bounded = true;
+                                break;
+                            case BoundKind::Lower:
                                 if (coeff > 0) {
                                     lower_bounded = true;
                                 } else {
                                     upper_bounded = true;
                                 }
-                                if (lower_bounded && upper_bounded) {
-                                    break;
+                                break;
+                            case BoundKind::Upper:
+                                if (coeff > 0) {
+                                    upper_bounded = true;
+                                } else {
+                                    lower_bounded = true;
                                 }
+                                break;
                             }
-                        }
-                        if (!lower_bounded || !upper_bounded) {
-                            for (const auto &b: bounds.upperBounds) {
-                                if (!b.hasVarWith(is_temp_var)) {
-                                    if (coeff > 0) {
-                                        upper_bounded = true;
-                                    } else {
-                                        lower_bounded = true;
-                                    }
-                                    if (lower_bounded && upper_bounded) {
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        all_lower_bounded &= lower_bounded;
-                        all_upper_bounded &= upper_bounded;
-                        if (!all_lower_bounded && !all_upper_bounded) {
-                            break;
                         }
                     }
-                }
-                if (all_lower_bounded || all_upper_bounded) {
-                    return;
+                    all_lower_bounded &= lower_bounded;
+                    all_upper_bounded &= upper_bounded;
+                    // fail if at least one temporary variable has no lower bound,
+                    // and at least one temporary variable has no upper bound
+                    if (!all_lower_bounded && !all_upper_bounded) {
+                        fail();
+                        return;
+                    }
                 }
             }
         }
     }
-    res.prefix = 0;
-    rec = {};
-    res.status = acceleration::ClosedFormFailed;
+    rec = Recurrence::solve(rule->getUpdate(), config.n);
+    if (rec) {
+        res.prefix = rec->prefix;
+    } else {
+        fail();
+    }
 }
 
 void LoopAcceleration::accelerate() {
     if (rec && config.tryAccel) {
         const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
         if (accelerator) {
-            res.accel = acceleration::Accel(Rule(BExpression::buildAnd(accelerator->formula), rec->closed_form));
-            res.accel->proof = accelerator->proof;
-            res.accel->covered = BExpression::buildAnd(accelerator->covered);
+            res.accel = acceleration::Accel(Rule::mk(bools::mkAnd(accelerator->formula), rec->closed_form));
+            res.accel->covered = bools::mkAnd(accelerator->covered);
             store_nonterm(*accelerator);
         }
     }
@@ -194,36 +178,51 @@ void LoopAcceleration::prepend_prefix() {
     if (res.prefix > 1 && res.accel) {
         auto prefix {rule};
         for (unsigned i = 1; i < res.prefix; ++i) {
-            prefix = prefix.chain(rule);
+            prefix = prefix->chain(rule);
         }
-        res.accel->rule = prefix.chain(res.accel->rule);
-        if (SmtFactory::check(res.accel->rule.getGuard()) != SmtResult::Sat) {
+        res.accel->rule = prefix->chain(res.accel->rule);
+        if (SmtFactory::check(res.accel->rule->getGuard()) != SmtResult::Sat) {
             res.accel = {};
         }
     }
 }
 
+void LoopAcceleration::removeTrivialUpdates() {
+    Subs update = rule->getUpdate();
+    VarSet remove;
+    for (const auto &[x, v] : update.get<Arith>()) {
+        if (!remove.contains(x) && rule->getGuard()->getEquality(x) == std::optional{v}) {
+            remove.insert(x);
+        }
+    }
+    if (!remove.empty()) {
+        update.erase(remove);
+        rule = rule->withUpdate(update);
+    }
+}
+
 void LoopAcceleration::run() {
     res.status = acceleration::AccelerationFailed;
-    if (!rule.getGuard()->isConjunction()) {
+    if (!rule->getGuard()->isConjunction()) {
         res.status = acceleration::Disjunctive;
     } else {
         chain();
-        switch (SmtFactory::check(Chaining::chain(rule, rule).first.getGuard())) {
-        case Unsat: res.status = acceleration::PseudoLoop;
+        switch (SmtFactory::check(Preprocess::chain({rule, rule->renameTmpVars()})->getGuard())) {
+        case SmtResult::Unsat: res.status = acceleration::PseudoLoop;
             return;
-        case Unknown: res.status = acceleration::NotSat;
+        case SmtResult::Unknown: res.status = acceleration::NotSat;
             return;
-        case Sat: {
+        case SmtResult::Sat: {
+            removeTrivialUpdates();
             compute_closed_form();
             accelerate();
-            if (config.tryNonterm && !res.nonterm) {
+            if (config.tryNonterm && res.nonterm == bot()) {
                 try_nonterm();
             }
             prepend_prefix();
             if (res.accel) {
                 res.status = acceleration::Success;
-            } else if (res.nonterm) {
+            } else if (res.nonterm != bot()) {
                 res.status = acceleration::Nonterminating;
             }
         }
@@ -232,7 +231,7 @@ void LoopAcceleration::run() {
 }
 
 acceleration::Result LoopAcceleration::accelerate(
-    const Rule &rule,
+    const RulePtr rule,
     const Subs &sample_point,
     const AccelConfig &config) {
     LoopAcceleration accel{rule, sample_point, config};
@@ -241,7 +240,7 @@ acceleration::Result LoopAcceleration::accelerate(
 }
 
 acceleration::Result LoopAcceleration::accelerate(
-    const Rule &rule,
+    const RulePtr rule,
     const AccelConfig &config) {
     LoopAcceleration accel{rule, std::optional<Subs>(), config};
     accel.run();

@@ -1,33 +1,58 @@
 #pragma once
 
 #include "boolvar.hpp"
-#include "set.hpp"
+#include "linkedhashset.hpp"
+#include "linkedhashmap.hpp"
 
-class BoolLit {
-    BoolVar var;
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
+
+using bool_var_map = boost::bimap<boost::bimaps::unordered_set_of<BoolVarPtr>, boost::bimaps::unordered_set_of<BoolVarPtr>>;
+
+class BoolLit;
+
+using BoolLitPtr = cpp::not_null<std::shared_ptr<const BoolLit>>;
+
+namespace bools {
+    BoolLitPtr mk(const BoolVarPtr var, bool negated = false);
+}
+
+class BoolLit: public std::enable_shared_from_this<BoolLit> {
+
+    friend BoolLitPtr bools::mk(const BoolVarPtr var, bool negated);
+
+    BoolVarPtr var;
     bool negated;
 
-    friend auto operator<=>(const BoolLit &x, const BoolLit &y) = default;
+    struct CacheEqual {
+        bool operator()(const std::tuple<BoolVarPtr, bool> &args1, const std::tuple<BoolVarPtr, bool> &args2) const noexcept;
+    };
+    struct CacheHash {
+        size_t operator()(const std::tuple<BoolVarPtr, bool> &args) const noexcept;
+    };
+    static ConsHash<BoolLit, BoolLit, CacheHash, CacheEqual, BoolVarPtr, bool> cache;
 
 public:
 
-    explicit BoolLit(const BoolVar &var, bool negated = false);
+    BoolLit(const BoolVarPtr var, bool negated);
+    ~BoolLit();
     bool isNegated() const;
     bool isPoly() const;
     bool isLinear() const;
-    bool isWellformed() const;
-    BoolVar getBoolVar() const;
-    void collectVars(linked_hash_set<BoolVar> &res) const;
-    BoolLit normalize() const;
+    BoolVarPtr getBoolVar() const;
+    void collectVars(linked_hash_set<BoolVarPtr> &res) const;
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
     std::size_t hash() const;
+    bool eval(const linked_hash_map<BoolVarPtr, bool> &model) const;
+    sexpresso::Sexp to_smtlib() const;
+    BoolLitPtr renameVars(const bool_var_map &map) const;
 
 };
 
-BoolLit operator!(const BoolLit &l);
+BoolLitPtr operator!(const BoolLitPtr &l);
 
-std::ostream& operator<<(std::ostream &s, const BoolLit &e);
+std::ostream& operator<<(std::ostream &s, const BoolLitPtr &e);
 
 template<>
 struct std::hash<BoolLit> {

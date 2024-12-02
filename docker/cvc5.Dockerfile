@@ -21,9 +21,9 @@ COPY ../docker/loat-base-image/usr/local/lib/libpoly.a /usr/local/lib/
 COPY ../docker/loat-base-image/usr/local/lib/libpolyxx.a /usr/local/lib/
 COPY ../docker/loat-base-image/usr/local/include/poly /usr/local/include/poly
 
-RUN git clone https://github.com/ffrohn/cvc5
+RUN git clone https://github.com/cvc5/cvc5.git
 WORKDIR cvc5
-RUN git checkout cvc5-1.0.8-musl
+RUN git checkout cvc5-1.1.2
 RUN ./configure.sh --static --no-statistics --auto-download --poly --cln --gpl --no-docs
 WORKDIR /cvc5/build
 RUN make -j$(nproc)

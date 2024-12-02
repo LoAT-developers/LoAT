@@ -1,0 +1,23 @@
+inputs:
+  token:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        repository: 'LoAT-developers/termtools'
+        tag: verymax
+        fileName: '*'
+        token: ${{ inputs.token }}
+        out-file-path: '/usr/local/bin'
+
+    - run: |
+        chmod +x /usr/local/bin/solver
+        chmod +x /usr/local/bin/verymax
+        VERSION='termcomp19'
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      shell: bash
+

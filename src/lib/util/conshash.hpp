@@ -1,12 +1,14 @@
 #pragma once
 
+#include "notnull.hpp"
+
 #include <unordered_map>
 #include <memory>
 
 template<class Abstract, class Concrete, class Hash, class Eq, class... Args>
 class ConsHash {
 
-protected:
+private:
 
     std::unordered_map<
         std::tuple<const Args...>,
@@ -16,20 +18,32 @@ protected:
 
 public:
 
-    const std::shared_ptr<const Abstract> from_cache(const Args&... args) {
-        const auto ce {std::make_tuple(args...)};
-        const auto it {cache.find(ce)};
-        if (it == cache.end()) {
-            const std::shared_ptr<const Abstract> res {new Concrete(args...)};
-            cache.emplace(ce, res);
-            return res;
-        } else {
-            return it->second.lock();
-        }
-    }
-
     void erase(const Args&... args) {
         cache.erase(std::make_tuple(args...));
+    }
+
+    bool contains(const Args&... args) const {
+        return cache.contains(std::make_tuple(args...));
+    }
+
+    const cpp::not_null<std::shared_ptr<const Abstract>> from_cache(const Args&&... args) {
+        const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const Abstract>())};
+        if (b) {
+            const auto res {std::make_shared<Concrete>(args...)};
+            it->second = res;
+            return cpp::assume_not_null(res);
+        }
+        return cpp::assume_not_null(it->second.lock());
+    }
+
+    const cpp::not_null<std::shared_ptr<const Abstract>> from_cache(const Args&... args) {
+        const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const Abstract>())};
+        if (b) {
+            const auto res {std::make_shared<Concrete>(args...)};
+            it->second = res;
+            return cpp::assume_not_null(res);
+        }
+        return cpp::assume_not_null(it->second.lock());
     }
 
 };

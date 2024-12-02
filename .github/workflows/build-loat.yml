@@ -17,6 +17,8 @@ on:
     types:
       - completed
 
+  workflow_call:
+
 jobs:
   build-loat-binary:
     runs-on: ubuntu-latest
@@ -28,7 +30,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           # Build LoAT binary inside the latest pushed base image:
-          image: ${{ vars.DOCKERHUB_USERNAME }}/loat-base:latest
+          image: ${{ vars.DOCKERHUB_USERNAME }}/loat-base:751acb2d
           options: -v ${{ github.workspace }}:/LoAT
           shell: bash
           run: |
@@ -40,6 +42,7 @@ jobs:
       - name: Export LoAT Binary
         uses: actions/upload-artifact@master
         with:
-          name: loat-static
-          path: build/release/loat-static
+          name: loat-static-${{ github.ref_name }}
+          path: |
+            build/release/loat-static
 

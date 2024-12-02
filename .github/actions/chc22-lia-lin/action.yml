@@ -1,0 +1,17 @@
+name: 'CHC 22 LIA Lin'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/checkout@v4
+      with:
+        repository: chc-comp/chc-comp22-benchmarks
+        sparse-checkout: LIA-Lin
+        path: chc-comp22-benchmarks
+
+    - run: |
+        gunzip chc-comp22-benchmarks/LIA-Lin/*.gz
+        mkdir benchmarks
+        mv chc-comp22-benchmarks/LIA-Lin/*.smt2 benchmarks
+      shell: bash
+

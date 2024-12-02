@@ -1,6 +1,6 @@
 #pragma once
 
-#include "itheory.hpp"
+#include "theory.hpp"
 #include "boolexpr.hpp"
 #include "model.hpp"
 #include "theory.hpp"
@@ -11,7 +11,10 @@ extern const unsigned default_timeout;
 
 }
 
-enum SmtResult {Sat, Unknown, Unsat};
+enum class SmtResult {Sat, Unknown, Unsat};
+
+std::ostream& operator<<(std::ostream &s, const SmtResult&);
+
 enum Logic {
     /**
      * linear arithmetic
@@ -26,28 +29,22 @@ enum Logic {
      */
     QF_NAT};
 
-template <ITheory... Th>
 class Smt {
 
 public:
 
-    using TheTheory = Theory<Th...>;
-    using BoolExpr = BExpr<Th...>;
-    using BoolExprSet = BoolExpressionSet<Th...>;
-    using Lit = typename TheTheory::Lit;
+    virtual void add(const Bools::Expr e) = 0;
 
-    virtual void add(const BoolExpr e) = 0;
-
-    virtual void add_soft(const BoolExpr e) {
+    virtual void add_soft(const Bools::Expr e) {
         throw std::invalid_argument("add_soft not supported");
     }
 
-    virtual void add_objective(const Expr e) {
+    virtual void add_objective(const Arith::Expr e) {
         throw std::invalid_argument("add_objective not supported");
     }
 
     void add(const Lit &e) {
-        return this->add(BoolExpression<Th...>::buildTheoryLit(e));
+        return this->add(bools::mkLit(e));
     }
 
     virtual void push() = 0;
@@ -55,7 +52,7 @@ public:
     virtual void pop() = 0;
 
     virtual SmtResult check() = 0;
-    virtual Model<Th...> model(const std::optional<const VarSet> &vars = {}) = 0;
+    virtual Model model(const std::optional<const VarSet> &vars = std::nullopt) = 0;
     virtual void enableModels() = 0;
     virtual void resetSolver() = 0;
 
@@ -63,7 +60,7 @@ public:
 
     virtual ~Smt() {}
 
-    static Logic chooseLogic(const std::vector<BExpr<Th...>> &xs, const std::vector<Subs> &up = {}) {
+    static Logic chooseLogic(const std::vector<Bools::Expr> &xs, const std::vector<Subs> &up = {}) {
         Logic res = QF_LA;
         for (const auto &x: xs) {
             if (!(x->isLinear())) {
@@ -84,7 +81,7 @@ public:
         return res;
     }
 
-    static Logic chooseLogic(const BoolExpressionSet<Th...> &xs) {
+    static Logic chooseLogic(const BoolExprSet &xs) {
         Logic res = QF_LA;
         for (const auto &x: xs) {
             if (!(x->isLinear())) {
@@ -102,8 +99,8 @@ public:
         Logic res = QF_LA;
         for (const RELS &rels: g) {
             for (const auto &lit: rels) {
-                if (!literal::isLinear<Th...>(lit)) {
-                    if (!literal::isPoly<Th...>(lit)) {
+                if (!theory::isLinear(lit)) {
+                    if (!theory::isPoly(lit)) {
                         return QF_NAT;
                     }
                     res = QF_NA;
@@ -124,3 +121,5 @@ public:
     virtual std::ostream& print(std::ostream& os) const = 0;
 
 };
+
+using SmtPtr = std::unique_ptr<Smt>;

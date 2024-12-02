@@ -12,18 +12,18 @@
 class  KoatParser : public antlr4::Parser {
 public:
   enum {
-    COM = 1, GOAL = 2, CPX = 3, TERM = 4, START = 5, FS = 6, VAR = 7, RULES = 8, 
-    PLUS = 9, MINUS = 10, TIMES = 11, EXP = 12, LPAR = 13, RPAR = 14, RBRACK = 15, 
-    LBRACK = 16, LCURL = 17, RCURL = 18, TO = 19, COMMA = 20, AND = 21, 
-    OR = 22, LT = 23, LEQ = 24, EQ = 25, NEQ = 26, GEQ = 27, GT = 28, CONDSEP = 29, 
-    ID = 30, INT = 31, WS = 32, COMMENT = 33
+    COM = 1, GOAL = 2, CPX = 3, TERM = 4, START = 5, SINK = 6, FS = 7, VAR = 8, 
+    RULES = 9, PLUS = 10, MINUS = 11, TIMES = 12, EXP = 13, LPAR = 14, RPAR = 15, 
+    RBRACK = 16, LBRACK = 17, LCURL = 18, RCURL = 19, TO = 20, COMMA = 21, 
+    AND = 22, OR = 23, LT = 24, LEQ = 25, EQ = 26, NEQ = 27, GEQ = 28, GT = 29, 
+    CONDSEP = 30, ID = 31, INT = 32, WS = 33, COMMENT = 34
   };
 
   enum {
     RuleMain = 0, RuleFs = 1, RuleVar = 2, RuleGoal = 3, RuleStart = 4, 
-    RuleVardecl = 5, RuleTranss = 6, RuleTrans = 7, RuleLhs = 8, RuleCom = 9, 
-    RuleRhs = 10, RuleTo = 11, RuleLb = 12, RuleUb = 13, RuleCond = 14, 
-    RuleExpr = 15, RuleFormula = 16, RuleLit = 17, RuleRelop = 18
+    RuleSink = 5, RuleVardecl = 6, RuleTranss = 7, RuleTrans = 8, RuleLhs = 9, 
+    RuleCom = 10, RuleRhs = 11, RuleTo = 12, RuleLb = 13, RuleUb = 14, RuleCond = 15, 
+    RuleExpr = 16, RuleFormula = 17, RuleLit = 18, RuleRelop = 19
   };
 
   explicit KoatParser(antlr4::TokenStream *input);
@@ -48,6 +48,7 @@ public:
   class VarContext;
   class GoalContext;
   class StartContext;
+  class SinkContext;
   class VardeclContext;
   class TranssContext;
   class TransContext;
@@ -71,6 +72,7 @@ public:
     VardeclContext *vardecl();
     TranssContext *transs();
     GoalContext *goal();
+    SinkContext *sink();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -150,6 +152,27 @@ public:
   };
 
   StartContext* start();
+
+  class  SinkContext : public antlr4::ParserRuleContext {
+  public:
+    SinkContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<antlr4::tree::TerminalNode *> LPAR();
+    antlr4::tree::TerminalNode* LPAR(size_t i);
+    antlr4::tree::TerminalNode *SINK();
+    antlr4::tree::TerminalNode *FS();
+    FsContext *fs();
+    std::vector<antlr4::tree::TerminalNode *> RPAR();
+    antlr4::tree::TerminalNode* RPAR(size_t i);
+
+    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
+    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  SinkContext* sink();
 
   class  VardeclContext : public antlr4::ParserRuleContext {
   public:
