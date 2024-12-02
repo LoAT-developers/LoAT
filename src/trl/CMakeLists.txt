@@ -1,7 +1,7 @@
 target_sources(${EXECUTABLE}
     PRIVATE
-    til.hpp
-    til.cpp
+    trl.hpp
+    trl.cpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

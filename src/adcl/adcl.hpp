@@ -17,7 +17,7 @@
  * - remove original clauses that are subsumed by learned clauses
  * - allow disjunctive clauses on the trace and project wrt. the current model before acceleration, not after every step
  */
-namespace reachability {
+namespace adcl {
 
 /**
  * Represents a resolution step, i.e., an element of the trace.
@@ -150,7 +150,7 @@ class Restart final: public LearningState {
     std::optional<Restart> restart() override;
 };
 
-class Reachability {
+class ADCL {
 
     ITSPtr chcs;
 
@@ -313,7 +313,7 @@ class Reachability {
 
 public:
 
-    Reachability(ITSPtr its, const std::function<void(const ITSCpxCex&)> &print_cpx_cex);
+    ADCL(ITSPtr its, const std::function<void(const ITSCpxCex&)> &print_cpx_cex);
 
     SmtResult analyze();
 

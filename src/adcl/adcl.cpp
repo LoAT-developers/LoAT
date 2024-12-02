@@ -1,4 +1,4 @@
-#include "reachability.hpp"
+#include "adcl.hpp"
 #include "rulepreprocessing.hpp"
 #include "loopacceleration.hpp"
 #include "smt.hpp"
@@ -13,7 +13,7 @@
 #include <random>
 #include <unordered_set>
 
-namespace reachability {
+namespace adcl {
 
 using ::operator<<;
 
@@ -95,7 +95,7 @@ std::optional<ProvedUnsat> ProvedUnsat::unsat() {
 
 ProvedUnsat::ProvedUnsat() {}
 
-Reachability::Reachability(ITSPtr chcs, const std::function<void(const ITSCpxCex&)> &print_cpx_cex):
+ADCL::ADCL(ITSPtr chcs, const std::function<void(const ITSCpxCex&)> &print_cpx_cex):
     chcs(chcs),
     drop(true),
     cex(chcs),
@@ -122,7 +122,7 @@ std::ostream& operator<<(std::ostream &s, const Step &step) {
     return s << step.clause_idx << "[" << step.implicant << "]";
 }
 
-std::optional<unsigned> Reachability::has_looping_suffix(int start) {
+std::optional<unsigned> ADCL::has_looping_suffix(int start) {
     if (trace.empty()) {
         return {};
     }
@@ -141,7 +141,7 @@ std::optional<unsigned> Reachability::has_looping_suffix(int start) {
     return {};
 }
 
-std::pair<Renaming, Renaming> Reachability::handle_update(const RulePtr idx) {
+std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr idx) {
     const auto &last_var_renaming = trace.empty() ? Renaming::Empty : trace.back().var_renaming;
     const auto &last_tmp_var_renaming = trace.empty() ? Renaming::Empty : trace.back().tmp_var_renaming;
     Renaming new_var_renaming;
@@ -183,7 +183,7 @@ std::pair<Renaming, Renaming> Reachability::handle_update(const RulePtr idx) {
     return {new_var_renaming, new_tmp_var_renaming};
 }
 
-void Reachability::block(const Step &step) {
+void ADCL::block(const Step &step) {
     if (Config::Analysis::log) std::cout << "blocking " << step.clause_idx << ", " << step.implicant << std::endl;
     if (step.clause_idx->getGuard()->isConjunction()) {
         blocked_clauses.back()[step.clause_idx] = {};
@@ -197,14 +197,14 @@ void Reachability::block(const Step &step) {
     }
 }
 
-void Reachability::pop() {
+void ADCL::pop() {
     bump_penalty(trace.back().clause_idx);
     blocked_clauses.pop_back();
     trace.pop_back();
     solver->pop();
 }
 
-void Reachability::backtrack() {
+void ADCL::backtrack() {
     if (Config::Analysis::log) std::cout << "backtracking" << std::endl;
     // copy the last step before popping it
     const Step step = trace.back();
@@ -212,12 +212,12 @@ void Reachability::backtrack() {
     block(step);
 }
 
-void Reachability::add_to_trace(const Step &step) {
+void ADCL::add_to_trace(const Step &step) {
     trace.emplace_back(step);
     blocked_clauses.emplace_back();
 }
 
-void Reachability::set_cpx_witness(const RulePtr witness, const ArithSubs &subs, const Arith::Var &param) {
+void ADCL::set_cpx_witness(const RulePtr witness, const ArithSubs &subs, const Arith::Var &param) {
     if (trace.size() > 1) {
         std::vector<RulePtr> rules;
         for (const auto &t: trace) {
@@ -236,7 +236,7 @@ void Reachability::set_cpx_witness(const RulePtr witness, const ArithSubs &subs,
     std::cout << std::endl;
 }
 
-void Reachability::update_cpx() {
+void ADCL::update_cpx() {
     if (!Config::Analysis::complexity()) {
         return;
     }
@@ -259,7 +259,7 @@ void Reachability::update_cpx() {
     }
 }
 
-RulePtr Reachability::compute_resolvent(const RulePtr idx, const Bools::Expr implicant) const {
+RulePtr ADCL::compute_resolvent(const RulePtr idx, const Bools::Expr implicant) const {
     static auto dummy {Rule::mk(top(), Subs())};
     if (!Config::Analysis::complexity()) {
         return dummy;
@@ -272,7 +272,7 @@ RulePtr Reachability::compute_resolvent(const RulePtr idx, const Bools::Expr imp
     return Preprocess::preprocessRule(resolvent);
 }
 
-bool Reachability::store_step(const RulePtr idx, const RulePtr implicant) {
+bool ADCL::store_step(const RulePtr idx, const RulePtr implicant) {
     solver->push();
     const auto imp {trace.empty() ? implicant : implicant->renameVars(trace.back().var_renaming)};
     solver->add(imp->getGuard());
@@ -291,7 +291,7 @@ bool Reachability::store_step(const RulePtr idx, const RulePtr implicant) {
     }
 }
 
-void Reachability::print_trace(std::ostream &s) {
+void ADCL::print_trace(std::ostream &s) {
     const auto model {solver->model()};
     s << "(";
     bool first {true};
@@ -325,7 +325,7 @@ void Reachability::print_trace(std::ostream &s) {
     s << std::endl;
 }
 
-void Reachability::print_state() {
+void ADCL::print_state() {
     if (Config::Analysis::log) {
         std::cout << "trace";
         for (const auto &x: trace) {
@@ -350,7 +350,7 @@ void Reachability::print_state() {
     }
 }
 
-void Reachability::init() {
+void ADCL::init() {
     srand(42);
     for (const auto &x: chcs->getVars()) {
         if (!theory::isTempVar(x)) {
@@ -362,7 +362,7 @@ void Reachability::init() {
     }
 }
 
-void Reachability::luby_next() {
+void ADCL::luby_next() {
     for (const auto &x: chcs->getAllTransitions()) {
         if (is_learned_clause(x) && !x->isPoly()) {
             locked.insert(*redundancy->get_language(x));
@@ -375,7 +375,7 @@ void Reachability::luby_next() {
     luby_count = 0;
 }
 
-void Reachability::unsat() {
+void ADCL::unsat() {
     if (Config::Analysis::complexity()) {
         std::cout << "NO" << std::endl;
     }
@@ -390,7 +390,7 @@ void Reachability::unsat() {
     }
 }
 
-std::optional<RulePtr> Reachability::resolve(const RulePtr idx) {
+std::optional<RulePtr> ADCL::resolve(const RulePtr idx) {
     const auto &var_renaming = trace.empty() ? Renaming::Empty : trace.back().var_renaming;
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
@@ -429,7 +429,7 @@ std::optional<RulePtr> Reachability::resolve(const RulePtr idx) {
     return {};
 }
 
-Automaton Reachability::get_language(const Step &step) {
+Automaton ADCL::get_language(const Step &step) {
     if (is_orig_clause(step.clause_idx)) {
         return redundancy->get_singleton_language(step.clause_idx, Conjunction::fromBoolExpr(step.implicant));
     } else {
@@ -437,7 +437,7 @@ Automaton Reachability::get_language(const Step &step) {
     }
 }
 
-Automaton Reachability::build_language(const int backlink) {
+Automaton ADCL::build_language(const int backlink) {
     auto lang = get_language(trace[backlink]);
     for (size_t i = backlink + 1; i < trace.size(); ++i) {
         redundancy->concat(lang, get_language(trace[i]));
@@ -445,7 +445,7 @@ Automaton Reachability::build_language(const int backlink) {
     return lang;
 }
 
-std::pair<RulePtr, Model> Reachability::build_loop(const int backlink) {
+std::pair<RulePtr, Model> ADCL::build_loop(const int backlink) {
     std::vector<RulePtr> rules;
     for (size_t i = backlink; i < trace.size(); ++i) {
         rules.emplace_back(trace[i].clause_idx->withGuard(trace[i].implicant)->renameVars(trace[i].tmp_var_renaming));
@@ -461,21 +461,21 @@ std::pair<RulePtr, Model> Reachability::build_loop(const int backlink) {
     return {loop, model};
 }
 
-void Reachability::add_learned_clause(const RulePtr accel, const unsigned backlink) {
+void ADCL::add_learned_clause(const RulePtr accel, const unsigned backlink) {
     const auto fst = trace.at(backlink).clause_idx;
     const auto last = trace.back().clause_idx;
     chcs->addLearnedRule(accel, fst, last);
 }
 
-bool Reachability::is_learned_clause(const RulePtr idx) const {
+bool ADCL::is_learned_clause(const RulePtr idx) const {
     return idx->getId() > last_orig_clause;
 }
 
-bool Reachability::is_orig_clause(const RulePtr idx) const {
+bool ADCL::is_orig_clause(const RulePtr idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-std::optional<RulePtr> Reachability::instantiate(const Arith::Var n, const RulePtr rule) const {
+std::optional<RulePtr> ADCL::instantiate(const Arith::Var n, const RulePtr rule) const {
     std::optional<RulePtr> res{};
     VarEliminator ve(rule->getGuard(), n, theory::isProgVar);
     for (const auto &s : ve.getRes()) {
@@ -488,7 +488,7 @@ std::optional<RulePtr> Reachability::instantiate(const Arith::Var n, const RuleP
     return res;
 }
 
-ITSCex* Reachability::the_cex() {
+ITSCex* ADCL::the_cex() {
     if (Config::Analysis::mode == Config::Analysis::Complexity) {
         return &cpx_cex;
     } else {
@@ -496,7 +496,7 @@ ITSCex* Reachability::the_cex() {
     }
 }
 
-std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, const Model &model, const unsigned backlink) {
+std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr rule, const Model &model, const unsigned backlink) {
     const auto simp {Preprocess::preprocessRule(rule)};
     if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -578,7 +578,7 @@ std::unique_ptr<LearningState> Reachability::learn_clause(const RulePtr rule, co
     }
 }
 
-bool Reachability::check_consistency() {
+bool ADCL::check_consistency() {
     // make sure that a model is available
     bool res {true};
     switch (solver->check()) {
@@ -594,13 +594,13 @@ bool Reachability::check_consistency() {
     return res;
 }
 
-void Reachability::drop_until(const int new_size) {
+void ADCL::drop_until(const int new_size) {
     while (trace.size() > static_cast<unsigned>(new_size)) {
         pop();
     }
 }
 
-std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink) {
+std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
     const auto lang {build_language(backlink)};
     auto closure {lang};
     redundancy->transitive_closure(closure);
@@ -675,7 +675,7 @@ std::unique_ptr<LearningState> Reachability::handle_loop(const unsigned backlink
     }
 }
 
-bool Reachability::try_to_finish() {
+bool ADCL::try_to_finish() {
     const auto clauses = trace.empty() ? chcs->getInitialTransitions() : chcs->getSuccessors(trace.back().clause_idx);
     for (const auto &q: clauses) {
         if (chcs->isSinkTransition(q)) {
@@ -697,7 +697,7 @@ bool Reachability::try_to_finish() {
     return false;
 }
 
-ITSSafetyCex Reachability::get_cex() {
+ITSSafetyCex ADCL::get_cex() {
     const auto model {solver->model()};
     cex.set_initial_state(model);
     for (size_t i = 0; i + 1 < trace.size(); ++i) {
@@ -713,7 +713,7 @@ ITSSafetyCex Reachability::get_cex() {
     return cex;
 }
 
-unsigned Reachability::get_penalty(const RulePtr idx) const {
+unsigned ADCL::get_penalty(const RulePtr idx) const {
     const auto it {penalty.find(idx)};
     if (it != penalty.end()) {
         return it->second;
@@ -722,11 +722,11 @@ unsigned Reachability::get_penalty(const RulePtr idx) const {
     }
 }
 
-void Reachability::bump_penalty(const RulePtr idx) {
+void ADCL::bump_penalty(const RulePtr idx) {
     penalty.emplace(idx, 0).first->second++;
 }
 
-SmtResult Reachability::analyze() {
+SmtResult ADCL::analyze() {
     init();
     if (try_to_finish()) {
         return SmtResult::Unsat;

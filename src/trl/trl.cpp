@@ -1,4 +1,4 @@
-#include "til.hpp"
+#include "trl.hpp"
 #include "cvc5.hpp"
 #include "dependencygraph.hpp"
 #include "formulapreprocessing.hpp"
@@ -42,8 +42,8 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
-const Config::TILConfig TIL::forwardConfig{
-    .mbpKind = Config::TILConfig::LowerIntMbp,
+const Config::TRLConfig TRL::forwardConfig{
+    .mbpKind = Config::TRLConfig::LowerIntMbp,
     .recurrent_cycles = false,
     .recurrent_exps = true,
     .recurrent_pseudo_divs = true,
@@ -51,8 +51,8 @@ const Config::TILConfig TIL::forwardConfig{
     .recurrent_bounds = true,
     .context_sensitive = false};
 
-const Config::TILConfig TIL::backwardConfig{
-    .mbpKind = Config::TILConfig::RealMbp,
+const Config::TRLConfig TRL::backwardConfig{
+    .mbpKind = Config::TRLConfig::RealMbp,
     .recurrent_cycles = false,
     .recurrent_exps = true,
     .recurrent_pseudo_divs = false,
@@ -60,9 +60,9 @@ const Config::TILConfig TIL::backwardConfig{
     .recurrent_bounds = true,
     .context_sensitive = false};
 
-TIL::TIL(
+TRL::TRL(
     const ITSPtr its,
-    const Config::TILConfig &config)
+    const Config::TRLConfig &config)
     : config(config),
       its2safety(its),
       t(its2safety.transform()),
@@ -130,7 +130,7 @@ TIL::TIL(
     step = bools::mkOr(steps);
 }
 
-std::optional<Range> TIL::has_looping_infix() {
+std::optional<Range> TRL::has_looping_infix() {
     for (unsigned i = 0; i < trace.size(); ++i) {
         for (unsigned start = 0; start + i < trace.size(); ++start) {
             if (Config::Analysis::termination() &&
@@ -147,7 +147,7 @@ std::optional<Range> TIL::has_looping_infix() {
     return {};
 }
 
-std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
+std::pair<Bools::Expr, Model> TRL::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Renaming var_renaming;
     for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
@@ -192,7 +192,7 @@ std::pair<Bools::Expr, Model> TIL::compress(const Range &range) {
     return {*loop, m};
 }
 
-Int TIL::add_learned_clause(const Range &range, const Bools::Expr &accel) {
+Int TRL::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     if (Config::Analysis::log) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     }
@@ -209,7 +209,7 @@ Int TIL::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     return id;
 }
 
-Bools::Expr TIL::mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
+Bools::Expr TRL::mbp_impl(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
     if (!model.eval<Bools>(trans)) {
         std::cout << "mbp: not a model" << std::endl;
         std::cout << "trans: " << trans << std::endl;
@@ -217,20 +217,20 @@ Bools::Expr TIL::mbp_impl(const Bools::Expr &trans, const Model &model, const st
         assert(false);
     }
     switch (config.mbpKind) {
-    case Config::TILConfig::RealMbp:
+    case Config::TRLConfig::RealMbp:
         return mbp::real_mbp(trans, model, eliminate);
-    case Config::TILConfig::LowerIntMbp:
+    case Config::TRLConfig::LowerIntMbp:
         return mbp::int_mbp(trans, model, eliminate, false);
-    case Config::TILConfig::UpperIntMbp:
+    case Config::TRLConfig::UpperIntMbp:
         return mbp::int_mbp(trans, model, eliminate, true);
-    case Config::TILConfig::RealQe:
+    case Config::TRLConfig::RealQe:
         return qe::real_qe(trans, model, eliminate);
     default:
         throw std::invalid_argument("unknown mbp kind");
     }
 }
 
-Bools::Expr TIL::specialize(const Bools::Expr e, const Model &model, const std::function<bool(const Var &)> &eliminate) {
+Bools::Expr TRL::specialize(const Bools::Expr e, const Model &model, const std::function<bool(const Var &)> &eliminate) {
     const auto sip{model.syntacticImplicant(e)};
     if (Config::Analysis::log) {
         std::cout << "sip: " << sip << std::endl;
@@ -246,7 +246,7 @@ Bools::Expr TIL::specialize(const Bools::Expr e, const Model &model, const std::
     return mbp_res;
 }
 
-std::pair<Bools::Expr, Model> TIL::specialize(const Range &range, const std::function<bool(const Var &)> &eliminate) {
+std::pair<Bools::Expr, Model> TRL::specialize(const Range &range, const std::function<bool(const Var &)> &eliminate) {
     if (range.empty()) {
         return {top(), Model()};
     }
@@ -259,7 +259,7 @@ std::pair<Bools::Expr, Model> TIL::specialize(const Range &range, const std::fun
     return {specialize(transition, model, eliminate), model};
 }
 
-void TIL::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
+void TRL::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
     if (!config.recurrent_pseudo_divs) {
         return;
     }
@@ -289,7 +289,7 @@ void TIL::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &mod
 /**
  * handles constraints like x' = 2x
  */
-void TIL::recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
+void TRL::recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res_lits) {
     if (!config.recurrent_exps) {
         return;
     }
@@ -351,7 +351,7 @@ void TIL::recurrent_exps(const Bools::Expr loop, const Model &model, LitSet &res
 /**
  * handles constraints like x' = -x or x' = y /\ y' = x
  */
-void TIL::recurrent_cycles(const Bools::Expr loop, LitSet &res_lits) {
+void TRL::recurrent_cycles(const Bools::Expr loop, LitSet &res_lits) {
     if (!config.recurrent_cycles) {
         return;
     }
@@ -400,7 +400,7 @@ void TIL::recurrent_cycles(const Bools::Expr loop, LitSet &res_lits) {
     }
 }
 
-void TIL::recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits) {
+void TRL::recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits) {
     if (!config.recurrent_bounds) {
         return;
     }
@@ -503,7 +503,7 @@ void TIL::recurrent_bounds(const Bools::Expr loop, Model model, LitSet &res_lits
     }
 }
 
-Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model) {
+Bools::Expr TRL::recurrence_analysis(const Bools::Expr loop, const Model &model) {
     assert(loop->isConjunction());
     LitSet res_lits;
     recurrent_pseudo_divisibility(loop, model, res_lits);
@@ -518,7 +518,7 @@ Bools::Expr TIL::recurrence_analysis(const Bools::Expr loop, const Model &model)
     }
 }
 
-Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model model) {
+Bools::Expr TRL::compute_transition_invariant(const Bools::Expr loop, Model model) {
     const auto pre{mbp_impl(loop, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
@@ -539,7 +539,7 @@ Bools::Expr TIL::compute_transition_invariant(const Bools::Expr loop, Model mode
     return removeRedundantInequations(res);
 }
 
-std::optional<Arith::Expr> TIL::prove_term(const Bools::Expr loop, const Model &model) {
+std::optional<Arith::Expr> TRL::prove_term(const Bools::Expr loop, const Model &model) {
     const auto &m {model.get<Arith>()};
     const auto &ptp {pre_to_post.get<Arith>()};
     const auto lits {loop->lits().get<Arith::Lit>()};
@@ -589,7 +589,7 @@ std::optional<Arith::Expr> TIL::prove_term(const Bools::Expr loop, const Model &
     return {};
 }
 
-bool TIL::handle_loop(const Range &range) {
+bool TRL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
@@ -610,7 +610,7 @@ bool TIL::handle_loop(const Range &range) {
 
     Int id;
     Bools::Expr projected{top()};
-    if (config.mbpKind == Config::TILConfig::RealQe) {
+    if (config.mbpKind == Config::TRLConfig::RealQe) {
         projected = qe::real_qe(ti, model, [&](const auto &x) {
             return x == Var(n);
         });
@@ -632,11 +632,11 @@ bool TIL::handle_loop(const Range &range) {
     return true;
 }
 
-Bools::Expr TIL::encode_transition(const Bools::Expr &t, const Int &id) {
+Bools::Expr TRL::encode_transition(const Bools::Expr &t, const Int &id) {
     return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
-void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
+void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
     auto &map{blocked_per_step.emplace(range.end(), std::map<Int, Bools::Expr>()).first->second};
     auto it{map.emplace(id, top()).first};
@@ -664,7 +664,7 @@ void TIL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
     }
 }
 
-bool TIL::add_blocking_clauses(const Range &range, Model model) {
+bool TRL::add_blocking_clauses(const Range &range, Model model) {
     Subs m{model.toSubs()};
     m.erase(n);
     auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
@@ -701,7 +701,7 @@ bool TIL::add_blocking_clauses(const Range &range, Model model) {
     return false;
 }
 
-void TIL::add_blocking_clauses() {
+void TRL::add_blocking_clauses() {
     const auto s1{get_subs(depth, 1)};
     const auto s2{get_subs(depth + 1, 1)};
     for (const auto &[id, b] : projections) {
@@ -716,7 +716,7 @@ void TIL::add_blocking_clauses() {
 }
 
 
-void TIL::build_trace() {
+void TRL::build_trace() {
     trace.clear();
     model = solver->model();
     std::optional<std::pair<Bools::Expr, Int>> prev;
@@ -754,7 +754,7 @@ void TIL::build_trace() {
     }
 }
 
-const Renaming &TIL::get_subs(const unsigned start, const unsigned steps) {
+const Renaming &TRL::get_subs(const unsigned start, const unsigned steps) {
     if (subs.empty()) {
         subs.push_back({Renaming()});
     }
@@ -787,12 +787,12 @@ const Renaming &TIL::get_subs(const unsigned start, const unsigned steps) {
     return pre_vec.at(steps - 1);
 }
 
-void TIL::pop() {
+void TRL::pop() {
     solver->pop();
     --depth;
 }
 
-bool TIL::build_cex() const {
+bool TRL::build_cex() const {
     if (trace.empty()) {
         return SmtFactory::check(t.init() && t.err()) == SmtResult::Sat;
     }
@@ -875,7 +875,7 @@ bool TIL::build_cex() const {
     return SmtFactory::check(t.init() && *trans && pre_to_post(t.err())) == SmtResult::Sat;
 }
 
-std::optional<SmtResult> TIL::do_step() {
+std::optional<SmtResult> TRL::do_step() {
     auto s{get_subs(depth, 1)};
     // push error states
     solver->push();
@@ -937,7 +937,7 @@ std::optional<SmtResult> TIL::do_step() {
     return {};
 }
 
-ITSModel TIL::get_model() {
+ITSModel TRL::get_model() {
     std::vector<Bools::Expr> res{t.init()};
     Bools::Expr last{t.init()};
     for (unsigned i = 0; i < depth; ++i) {
@@ -956,7 +956,7 @@ ITSModel TIL::get_model() {
     return its2safety.transform_model(sp_model);
 }
 
-ITSSafetyCex TIL::get_cex() {
+ITSSafetyCex TRL::get_cex() {
     SafetyCex res{t};
     const auto model {solver->model()};
     const auto &trans {t.trans()};

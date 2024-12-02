@@ -34,7 +34,7 @@ namespace Config {
     namespace Analysis {
 
         enum Mode { Complexity, Termination, Safety, Recurrence };
-        enum Engine { ADCL, BMC, ABMC, TIL, KIND };
+        enum Engine { ADCL, BMC, ABMC, TRL, KIND };
         enum SmtSolver { Z3, CVC5, Swine, Yices, Heuristic };
         enum Direction {Forward, Backward, Interleaved};
         extern Mode mode;
@@ -58,7 +58,7 @@ namespace Config {
 
     }
 
-    struct TILConfig {
+    struct TRLConfig {
         enum MbpKind {LowerIntMbp, UpperIntMbp, RealMbp, RealQe};
         MbpKind mbpKind {LowerIntMbp};
         bool recurrent_cycles {false};
@@ -69,7 +69,7 @@ namespace Config {
         bool context_sensitive {false};
     };
 
-    extern TILConfig til;
+    extern TRLConfig trl;
 
     namespace ABMC {
         extern bool blocking_clauses;

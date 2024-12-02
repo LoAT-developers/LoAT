@@ -5,7 +5,7 @@ add_subdirectory(adcl)
 add_subdirectory(asymptotic)
 add_subdirectory(parser)
 add_subdirectory(abmc)
-add_subdirectory(til)
+add_subdirectory(trl)
 add_subdirectory(bmc)
 
 target_sources(${EXECUTABLE}

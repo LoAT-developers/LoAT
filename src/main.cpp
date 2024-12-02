@@ -10,12 +10,12 @@
 #include "itsparser.hpp"
 #include "parser.hpp"
 #include "preprocessing.hpp"
-#include "reachability.hpp"
+#include "adcl.hpp"
 #include "recurrence.hpp"
 #include "reverse.hpp"
 #include "safetyproblem.hpp"
 #include "sexpressoparser.hpp"
-#include "til.hpp"
+#include "trl.hpp"
 #include "version.hpp"
 #include "yices.hpp"
 
@@ -32,18 +32,18 @@ void printHelp(char *arg0) {
     std::cout << "  --print_dep_graph                                  Print the dependency graph in the proof output (can be very verbose)" << std::endl;
     std::cout << "  --mode <complexity|termination|safety>             Analysis mode" << std::endl;
     std::cout << "  --format <koat|its|horn|c>                         Input format" << std::endl;
-    std::cout << "  --engine <adcl|bmc|abmc|til|kind>                  Analysis engine" << std::endl;
+    std::cout << "  --engine <adcl|bmc|abmc|trl|kind>                  Analysis engine" << std::endl;
     std::cout << "  --log                                              Enable logging" << std::endl;
     std::cout << "  --proof                                            Print model/counterexample/recurrent set/..." << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>              ABMC: En- or disable blocking clauses" << std::endl;
     std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>              Choose the SMT solver" << std::endl;
     std::cout << "  --direction <forward|backward|interleaved>         run the analysis forward, backward, or both directions interleaved (if supported)" << std::endl;
-    std::cout << "  --til::recurrent_exps <true|false>                 TIL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
-    std::cout << "  --til::recurrent_cycles <true|false>               TIL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
-    std::cout << "  --til::recurrent_pseudo_divs <true|false>          TIL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
-    std::cout << "  --til::recurrent_bounds <true|false>               TIL: En- or disable search for recurrent bounds" << std::endl;
-    std::cout << "  --til::context_sensitive <true|false>              TIL: En- or disable context sensitivity" << std::endl;
-    std::cout << "  --til::mbp_kind <lower_int|upper_int|real|real_qe> TIL: use model based projection for LIA or LRA, or QF for LRA" << std::endl;
+    std::cout << "  --trl::recurrent_exps <true|false>                 TRL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
+    std::cout << "  --trl::recurrent_cycles <true|false>               TRL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
+    std::cout << "  --trl::recurrent_pseudo_divs <true|false>          TRL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
+    std::cout << "  --trl::recurrent_bounds <true|false>               TRL: En- or disable search for recurrent bounds" << std::endl;
+    std::cout << "  --trl::context_sensitive <true|false>              TRL: En- or disable context sensitivity" << std::endl;
+    std::cout << "  --trl::mbp_kind <lower_int|upper_int|real|real_qe> TRL: use model based projection for LIA or LRA, or QF for LRA" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
@@ -108,8 +108,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::engine = Config::Analysis::BMC;
             } else if (boost::iequals("kind", str)) {
                 Config::Analysis::engine = Config::Analysis::KIND;
-            } else if (boost::iequals("til", str)) {
-                Config::Analysis::engine = Config::Analysis::TIL;
+            } else if (boost::iequals("trl", str)) {
+                Config::Analysis::engine = Config::Analysis::TRL;
             } else {
                 std::cout << "Error: unknown engine " << str << std::endl;
                 exit(1);
@@ -167,31 +167,31 @@ void parseFlags(int argc, char *argv[]) {
             } else if (boost::iequals("interleaved", str)) {
                 Config::Analysis::dir = Config::Analysis::Direction::Interleaved;
             } else {
-                std::cout << "Error: unknown TIL mode " << str << std::endl;
+                std::cout << "Error: unknown direction " << str << std::endl;
                 exit(1);
             }
-        } else if (strcmp("--til::recurrent_exps", argv[arg]) == 0) {
-            setBool(getNext(), Config::til.recurrent_exps);
-        } else if (strcmp("--til::recurrent_cycles", argv[arg]) == 0) {
-            setBool(getNext(), Config::til.recurrent_cycles);
-        } else if (strcmp("--til::recurrent_pseudo_divs", argv[arg]) == 0) {
-            setBool(getNext(), Config::til.recurrent_pseudo_divs);
-        } else if (strcmp("--til::recurrent_pseudo_bounds", argv[arg]) == 0) {
-            setBool(getNext(), Config::til.recurrent_pseudo_bounds);
-        } else if (strcmp("--til::recurrent_bounds", argv[arg]) == 0) {
-            setBool(getNext(), Config::til.recurrent_bounds);
-        } else if (strcmp("--til::context_sensitive", argv[arg]) == 0) {
-            setBool(getNext(), Config::til.context_sensitive);
-        } else if (strcmp("--til::mbp_kind", argv[arg]) == 0) {
+        } else if (strcmp("--trl::recurrent_exps", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_exps);
+        } else if (strcmp("--trl::recurrent_cycles", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_cycles);
+        } else if (strcmp("--trl::recurrent_pseudo_divs", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_pseudo_divs);
+        } else if (strcmp("--trl::recurrent_pseudo_bounds", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_pseudo_bounds);
+        } else if (strcmp("--trl::recurrent_bounds", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.recurrent_bounds);
+        } else if (strcmp("--trl::context_sensitive", argv[arg]) == 0) {
+            setBool(getNext(), Config::trl.context_sensitive);
+        } else if (strcmp("--trl::mbp_kind", argv[arg]) == 0) {
             const auto str{getNext()};
             if (boost::iequals("lower_int", str)) {
-                Config::til.mbpKind = Config::TILConfig::MbpKind::LowerIntMbp;
+                Config::trl.mbpKind = Config::TRLConfig::MbpKind::LowerIntMbp;
             } else if (boost::iequals("upper_int", str)) {
-                Config::til.mbpKind = Config::TILConfig::MbpKind::UpperIntMbp;
+                Config::trl.mbpKind = Config::TRLConfig::MbpKind::UpperIntMbp;
             } else if (boost::iequals("real", str)) {
-                Config::til.mbpKind = Config::TILConfig::MbpKind::RealMbp;
+                Config::trl.mbpKind = Config::TRLConfig::MbpKind::RealMbp;
             } else if (boost::iequals("real_qe", str)) {
-                Config::til.mbpKind = Config::TILConfig::MbpKind::RealQe;
+                Config::trl.mbpKind = Config::TRLConfig::MbpKind::RealQe;
             } else {
                 std::cout << "Error: unknown MBP kind " << str << std::endl;
                 exit(1);
@@ -341,9 +341,9 @@ int main(int argc, char *argv[]) {
                 }
                 std::unique_ptr<StepwiseAnalysis> f, b;
                 switch (Config::Analysis::engine) {
-                    case Config::Analysis::TIL: {
-                        f = std::make_unique<TIL>(*its, TIL::forwardConfig);
-                        b = std::make_unique<TIL>(reversed, TIL::backwardConfig);
+                    case Config::Analysis::TRL: {
+                        f = std::make_unique<TRL>(*its, TRL::forwardConfig);
+                        b = std::make_unique<TRL>(reversed, TRL::backwardConfig);
                         break;
                     }
                     case Config::Analysis::ABMC: {
@@ -352,7 +352,7 @@ int main(int argc, char *argv[]) {
                         break;
                     }
                     default: {
-                        std::cerr << "interleaved analysis is only supported by TIL and ABMC" << std::endl;
+                        std::cerr << "interleaved analysis is only supported by TRL and ABMC" << std::endl;
                         exit(-1);
                     }
                 }
@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
         } else {
             switch (Config::Analysis::engine) {
                 case Config::Analysis::ADCL: {
-                    reachability::Reachability r{
+                    adcl::ADCL r{
                         *its,
                         [&](const ITSCpxCex &cex) {
                             if (Config::Analysis::complexity()) {
@@ -413,14 +413,14 @@ int main(int argc, char *argv[]) {
                     }
                     break;
                 }
-                case Config::Analysis::TIL: {
-                    TIL til(*its, Config::til);
-                    res = til.analyze();
+                case Config::Analysis::TRL: {
+                    TRL trl(*its, Config::trl);
+                    res = trl.analyze();
                     if (Config::Analysis::model) {
                         if (res == SmtResult::Sat) {
-                            its_model = til.get_model();
+                            its_model = trl.get_model();
                         } else if (res == SmtResult::Unsat) {
-                            its_cex = til.get_cex();
+                            its_cex = trl.get_cex();
                         }
                     }
                     break;

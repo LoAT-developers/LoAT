@@ -32,14 +32,14 @@ public:
 
 };
 
-class TIL: public StepwiseAnalysis {
+class TRL: public StepwiseAnalysis {
 
 public:
 
-    static const Config::TILConfig forwardConfig;
-    static const Config::TILConfig backwardConfig;
-    static const Config::TILConfig intTermConfig;
-    static const Config::TILConfig realTermConfig;
+    static const Config::TRLConfig forwardConfig;
+    static const Config::TRLConfig backwardConfig;
+    static const Config::TRLConfig intTermConfig;
+    static const Config::TRLConfig realTermConfig;
 
 private:
 
@@ -70,7 +70,7 @@ private:
     };
 
     linked_hash_map<Int, std::vector<std::pair<Int, Bools::Expr>>> learned_to_loop;
-    Config::TILConfig config;
+    Config::TRLConfig config;
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<std::vector<Renaming>> subs {};
     std::vector<TraceElem> trace {};
@@ -128,7 +128,7 @@ private:
 
 public:
 
-    explicit TIL(const ITSPtr its, const Config::TILConfig &config);
+    explicit TRL(const ITSPtr its, const Config::TRLConfig &config);
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;
     ITSSafetyCex get_cex() override;
