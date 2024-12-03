@@ -64,7 +64,8 @@ TRL::TRL(
       its2safety(its),
       t(its2safety.transform()),
       its(its),
-      trp(t.pre_to_post(), config) {
+      trp(t.pre_to_post(), config),
+      post_to_pre(t.pre_to_post().invert()) {
     if (Config::Analysis::log) {
         std::cout << "safetyproblem:\n"
                   << t << std::endl;
@@ -241,6 +242,11 @@ std::optional<Arith::Expr> TRL::prove_term(const Bools::Expr loop, const Model &
                     std::cout << "found ranking function " << lhs << std::endl;
                 }
                 return lhs;
+            } else if (std::all_of(vars.begin(), vars.end(), theory::isPostVar) && lhs->renameVars(post_to_pre.get<Arith>())->eval(m) > lhs->eval(m)) {
+                if (Config::Analysis::log) {
+                    std::cout << "found ranking function " << lhs << std::endl;
+                }
+                return lhs;
             }
         }
     }
@@ -283,7 +289,7 @@ bool TRL::handle_loop(const Range &range) {
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
         if (const auto rf {prove_term(loop, model)}) {
-            termination_argument = bools::mkAndFromLits({arith::mkGt(*rf, arith::mkConst(0)), arith::mkGt(*rf, (*rf)->renameVars(t.pre_to_post().get<Arith>()))});
+            termination_argument = bools::mkAndFromLits({arith::mkGt(*rf, arith::mkConst(0)), arith::mkGt((*rf)->renameVars(post_to_pre.get<Arith>()), (*rf)->renameVars(t.pre_to_post().get<Arith>()))});
             loop = loop && termination_argument;
         } else {
             return false;

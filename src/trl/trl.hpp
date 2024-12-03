@@ -86,6 +86,7 @@ private:
     ITSPtr its;
     bool produce_model {false};
     TRP trp;
+    Renaming post_to_pre;
 
     Int next_id {0};
 
