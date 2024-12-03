@@ -51,7 +51,7 @@ const Config::TRPConfig TRL::forwardConfig{
     .recurrent_bounds = true};
 
 const Config::TRPConfig TRL::backwardConfig{
-    .mbpKind = Config::TRPConfig::RealMbp,
+    .mbpKind = Config::TRPConfig::RealQe,
     .recurrent_cycles = false,
     .recurrent_exps = true,
     .recurrent_pseudo_divs = false,
