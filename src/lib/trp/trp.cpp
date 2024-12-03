@@ -283,7 +283,7 @@ Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
     if (Config::Analysis::log) {
         std::cout << "post: " << post << std::endl;
     }
-    return pre && step && post;
+    return removeRedundantInequations(pre && step && post);
 }
 
 Arith::Var TRP::get_n() const {
@@ -309,10 +309,10 @@ Bools::Expr TRP::mbp(const Bools::Expr &trans, const Model &model, const std::fu
         res = mbp::int_mbp(trans, model, eliminate, true);
         break;
     case Config::TRPConfig::RealQe:
-        res = qe::real_qe(trans, model, eliminate);
+        res = removeRedundantInequations(qe::real_qe(trans, model, eliminate));
         break;
     default:
         throw std::invalid_argument("unknown mbp kind");
     }
-    return removeRedundantInequations(res);
+    return res;
 }
