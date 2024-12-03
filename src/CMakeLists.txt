@@ -7,6 +7,7 @@ add_subdirectory(parser)
 add_subdirectory(abmc)
 add_subdirectory(trl)
 add_subdirectory(bmc)
+add_subdirectory(pbsa)
 
 target_sources(${EXECUTABLE}
     PRIVATE

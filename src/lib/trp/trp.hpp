@@ -16,6 +16,7 @@ class TRP {
     void recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model);
     void recurrent_cycles(const Bools::Expr loop, const Model &model);
     void recurrent_bounds(const Bools::Expr loop, Model model);
+    Bools::Expr recurrent(const Bools::Expr loop, const Model &model);
 
 public:
 

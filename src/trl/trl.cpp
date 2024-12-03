@@ -8,7 +8,6 @@
 #include "optional.hpp"
 #include "pair.hpp"
 #include "realmbp.hpp"
-#include "redundantinequations.hpp"
 #include "theory.hpp"
 #include "safetycex.hpp"
 #include "eliminate.h"
@@ -229,27 +228,6 @@ std::pair<Bools::Expr, Model> TRL::specialize(const Range &range, const std::fun
     return {specialize(transition, model, eliminate), model};
 }
 
-Bools::Expr TRL::compute_transition_invariant(const Bools::Expr loop, Model model) {
-    const auto pre{trp.mbp(loop, model, [](const auto &x) {
-        return !theory::isProgVar(x);
-    })};
-    if (Config::Analysis::log) {
-        std::cout << "pre: " << pre << std::endl;
-    }
-    auto step{trp.compute(loop, model)};
-    if (Config::Analysis::log) {
-        std::cout << "recurrence analysis: " << step << std::endl;
-    }
-    const auto post{trp.mbp(loop, model, [](const auto &x) {
-        return !theory::isPostVar(x);
-    })};
-    if (Config::Analysis::log) {
-        std::cout << "post: " << post << std::endl;
-    }
-    auto res{pre && step && post};
-    return removeRedundantInequations(res);
-}
-
 std::optional<Arith::Expr> TRL::prove_term(const Bools::Expr loop, const Model &model) {
     const auto &m {model.get<Arith>()};
     const auto &ptp {t.pre_to_post().get<Arith>()};
@@ -314,7 +292,7 @@ bool TRL::handle_loop(const Range &range) {
     if (add_blocking_clauses(range, model)) {
         return true;
     }
-    auto ti{compute_transition_invariant(loop, model)};
+    auto ti{trp.compute(loop, model)};
     if (Config::Analysis::termination()) {
         ti = ti && termination_argument;
     }

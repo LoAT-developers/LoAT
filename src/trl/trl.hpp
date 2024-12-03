@@ -109,7 +109,6 @@ private:
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
 
-    Bools::Expr compute_transition_invariant(const Bools::Expr loop, Model model);
     std::optional<Arith::Expr> prove_term(const Bools::Expr loop, const Model &model);
     bool handle_loop(const Range &range);
     void build_trace();

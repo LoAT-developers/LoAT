@@ -2,6 +2,7 @@
 #include "intmbp.hpp"
 #include "realmbp.hpp"
 #include "realqe.hpp"
+#include "redundantinequations.hpp"
 
 TRP::TRP(const Renaming &pre_to_post, const Config::TRPConfig &config):
     pre_to_post(pre_to_post),
@@ -250,7 +251,7 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
     }
 }
 
-Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
+Bools::Expr TRP::recurrent(const Bools::Expr loop, const Model &model) {
     assert(loop->isConjunction());
     recurrent_pseudo_divisibility(loop, model);
     recurrent_exps(loop, model);
@@ -265,6 +266,26 @@ Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
     }
 }
 
+Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
+    const auto pre{mbp(loop, model, [](const auto &x) {
+        return !theory::isProgVar(x);
+    })};
+    if (Config::Analysis::log) {
+        std::cout << "pre: " << pre << std::endl;
+    }
+    auto step{recurrent(loop, model)};
+    if (Config::Analysis::log) {
+        std::cout << "recurrence analysis: " << step << std::endl;
+    }
+    const auto post{mbp(loop, model, [](const auto &x) {
+        return !theory::isPostVar(x);
+    })};
+    if (Config::Analysis::log) {
+        std::cout << "post: " << post << std::endl;
+    }
+    return pre && step && post;
+}
+
 Arith::Var TRP::get_n() const {
     return n;
 }
@@ -276,16 +297,22 @@ Bools::Expr TRP::mbp(const Bools::Expr &trans, const Model &model, const std::fu
         std::cout << "model: " << model << std::endl;
         assert(false);
     }
+    Bools::Expr res {top()};
     switch (config.mbpKind) {
     case Config::TRPConfig::RealMbp:
-        return mbp::real_mbp(trans, model, eliminate);
+        res = mbp::real_mbp(trans, model, eliminate);
+        break;
     case Config::TRPConfig::LowerIntMbp:
-        return mbp::int_mbp(trans, model, eliminate, false);
+        res = mbp::int_mbp(trans, model, eliminate, false);
+        break;
     case Config::TRPConfig::UpperIntMbp:
-        return mbp::int_mbp(trans, model, eliminate, true);
+        res = mbp::int_mbp(trans, model, eliminate, true);
+        break;
     case Config::TRPConfig::RealQe:
-        return qe::real_qe(trans, model, eliminate);
+        res = qe::real_qe(trans, model, eliminate);
+        break;
     default:
         throw std::invalid_argument("unknown mbp kind");
     }
+    return removeRedundantInequations(res);
 }

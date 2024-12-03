@@ -18,6 +18,7 @@
 #include "trl.hpp"
 #include "version.hpp"
 #include "yices.hpp"
+#include "pbsa.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <chrono>
@@ -109,6 +110,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::engine = Config::Analysis::KIND;
             } else if (boost::iequals("trl", str)) {
                 Config::Analysis::engine = Config::Analysis::TRL;
+            } else if (boost::iequals("pbsa", str)) {
+                Config::Analysis::engine = Config::Analysis::PBSA;
             } else {
                 std::cout << "Error: unknown engine " << str << std::endl;
                 exit(1);
@@ -420,6 +423,18 @@ int main(int argc, char *argv[]) {
                             its_cex = trl.get_cex();
                         }
                     }
+                    break;
+                }
+                case Config::Analysis::PBSA: {
+                    PBSA pbsa(*its);
+                    res = pbsa.analyze();
+                    // if (Config::Analysis::model) {
+                    //     if (res == SmtResult::Sat) {
+                    //         its_model = trl.get_model();
+                    //     } else if (res == SmtResult::Unsat) {
+                    //         its_cex = trl.get_cex();
+                    //     }
+                    // }
                     break;
                 }
             }
