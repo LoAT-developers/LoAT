@@ -63,7 +63,8 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
     assert(f->isConjunction());
 
     // transform formula to matrix
-    const auto constraints = f->lits().get<Arith::Lit>();
+    auto lits = f->lits();
+    const auto constraints = lits.get<Arith::Lit>();
     // TODO: equality substitution, filtering
     const auto vs = f->vars().get<Arith::Var>();
     std::vector<Arith::Var> var_idx {vars.begin(), vars.end()};
@@ -184,7 +185,8 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
         conjuncts.emplace(arith::mkLeq(lhs, arith::mkConst(0)));
     }
 
-    return bools::mkAndFromLits(conjuncts);
+    lits.get<Arith::Lit>() = conjuncts;
+    return bools::mkAndFromLits(lits);
 }
 
 
