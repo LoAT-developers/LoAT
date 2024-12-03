@@ -13,10 +13,8 @@ const Config::TRPConfig config {
 PBSA::PBSA(const ITSPtr its)
     : its_to_safety(its),
       t(its_to_safety.transform()),
-      reachable(t.init()),
       post_to_pre(t.pre_to_post().invert()),
       trp(t.pre_to_post(), config) {
-    assert(t.vars().get<Bools::Var>().empty());
     Int id = 0;
     for (const auto &t : t.trans()) {
         transitions.emplace(id, mbp::real_qe(t, theory::isTempVar));
@@ -31,10 +29,15 @@ PBSA::PBSA(const ITSPtr its)
     intermediate_to_pre = pre_to_intermediate.invert();
     post_to_intermediate = intermediate_to_post.invert();
     std::vector<Bools::Expr> disjuncts;
+    std::vector<Bools::Expr> reach_disjuncts {reachable};
     for (Int i = 0; i < transitions.size(); ++i) {
         disjuncts.emplace_back(transitions[i] && theory::mkEq(theory::toExpr(trace_var), arith::mkConst(i)));
+        reach_disjuncts.emplace_back(mbp::real_qe(transitions[i], [](const auto &x) {
+            return !theory::isProgVar(x);
+        }));
     }
     step = bools::mkOr(disjuncts);
+    reachable = bools::mkOr(reach_disjuncts);
     const auto reachable_intermediate{pre_to_intermediate(reachable)};
     const auto reachable_post{intermediate_to_post(reachable_intermediate)};
     solver->add(!reachable_intermediate);
