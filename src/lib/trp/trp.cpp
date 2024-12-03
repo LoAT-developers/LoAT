@@ -309,7 +309,7 @@ Bools::Expr TRP::mbp(const Bools::Expr &trans, const Model &model, const std::fu
         res = mbp::int_mbp(trans, model, eliminate, true);
         break;
     case Config::TRPConfig::RealQe:
-        res = removeRedundantInequations(qe::real_qe(trans, model, eliminate));
+        res = qe::real_qe(trans, model, eliminate);
         break;
     default:
         throw std::invalid_argument("unknown mbp kind");
