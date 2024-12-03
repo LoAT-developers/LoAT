@@ -13,6 +13,7 @@ const Config::TRPConfig config {
 PBSA::PBSA(const ITSPtr its)
     : its_to_safety(its),
       t(its_to_safety.transform()),
+      reachable(t.init()),
       post_to_pre(t.pre_to_post().invert()),
       trp(t.pre_to_post(), config) {
     Int id = 0;
@@ -29,15 +30,10 @@ PBSA::PBSA(const ITSPtr its)
     intermediate_to_pre = pre_to_intermediate.invert();
     post_to_intermediate = intermediate_to_post.invert();
     std::vector<Bools::Expr> disjuncts;
-    std::vector<Bools::Expr> reach_disjuncts {reachable};
     for (Int i = 0; i < transitions.size(); ++i) {
         disjuncts.emplace_back(transitions[i] && theory::mkEq(theory::toExpr(trace_var), arith::mkConst(i)));
-        reach_disjuncts.emplace_back(mbp::real_qe(transitions[i], [](const auto &x) {
-            return !theory::isProgVar(x);
-        }));
     }
     step = bools::mkOr(disjuncts);
-    reachable = bools::mkOr(reach_disjuncts);
     const auto reachable_intermediate{pre_to_intermediate(reachable)};
     const auto reachable_post{intermediate_to_post(reachable_intermediate)};
     solver->add(!reachable_intermediate);
@@ -50,12 +46,15 @@ std::optional<SmtResult> PBSA::do_step() {
     solver->add(post_to_intermediate(step));
     solver->add(pre_to_intermediate(step));
     switch (solver->check()) {
-        case SmtResult::Unsat:
-            if (SmtFactory::check(reachable && t.err()) == SmtResult::Unsat) {
+        case SmtResult::Unsat: {
+            const auto zero_steps {reachable && t.err()};
+            const auto one_step {reachable && step && t.pre_to_post()(t.err())};
+            if (SmtFactory::check(zero_steps) == SmtResult::Unsat && SmtFactory::check(one_step) == SmtResult::Unsat) {
                 return SmtResult::Sat;
             } else {
                 return SmtResult::Unknown;
             }
+        }
         case SmtResult::Unknown:
             return SmtResult::Unknown;
         case SmtResult::Sat:

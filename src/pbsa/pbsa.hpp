@@ -9,7 +9,7 @@ class PBSA: public StepwiseAnalysis {
 
     ITSToSafety its_to_safety;
     SafetyProblem t;
-    Bools::Expr reachable {top()};
+    Bools::Expr reachable;
     Bools::Expr step {top()};
     linked_hash_map<Int, Bools::Expr> transitions;
     Renaming pre_to_intermediate;
