@@ -25,6 +25,7 @@ on:
         - loat_lb_z3
         - loat_bmc
         - loat_kind
+        - loat_pbsa
         - loat_release_chc_comp_2024_bmc
         - loat_release_chc_comp_2024_abmc
         - loat_release_termcomp_2023_nonterm
@@ -153,7 +154,7 @@ jobs:
 
             set +e
             if [ ${{ inputs.config }} = "loat_sat" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine til --direction interleaved "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine trl --direction interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_unsat" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_abmc_interleaved" ]; then
@@ -163,11 +164,11 @@ jobs:
             elif [ ${{ inputs.config }} = "loat_nonterm_abmc" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_term_real_qe" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false --til::mbp_kind real_qe --til::recurrent_pseudo_bounds false  "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine trl --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::mbp_kind real_qe --trl::recurrent_pseudo_bounds false  "${filename}")
             elif [ ${{ inputs.config }} = "loat_term_int_mbp" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false --til::recurrent_pseudo_bounds false "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine trl --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::recurrent_pseudo_bounds false "${filename}")
             elif [ ${{ inputs.config }} = "loat_term_real_mbp" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine til --til::recurrent_exps false --til::recurrent_pseudo_divs false --til::mbp_kind real --til::recurrent_pseudo_bounds false "${filename}")
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine trl --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::mbp_kind real --trl::recurrent_pseudo_bounds false "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb_z3" ]; then
@@ -176,6 +177,8 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine bmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_kind" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine kind "${filename}")
+            elif [ ${{ inputs.config }} = "loat_pbsa" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine pbsa "${filename}")
             elif [[ ${{ inputs.config }} == loat_release_chc_comp_2024_* ]]; then
               config=${{ inputs.config }}
               engine=${config:27:100}
