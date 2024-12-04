@@ -85,10 +85,28 @@ bool ADCLSat::handle_loop(const unsigned start) {
     if (Config::Analysis::termination()) {
         ti = ti && termination_argument;
     }
+    Int id;
+    Bools::Expr projected{top()};
     const auto n {trp.get_n()};
-    ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
-    const auto id {add_learned_clause(range, ti)};
-    add_blocking_clause(range, id, ti);
+    if (mbp_kind == Config::TRPConfig::RealQe) {
+        projected = qe::real_qe(ti, model, [&](const auto &x) {
+            return x == Var(n);
+        });
+        projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
+        id = add_learned_clause(range, projected);
+    } else {
+        ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
+        id = add_learned_clause(range, ti);
+        model.put<Arith>(n, 1);
+        projected = mbp::int_mbp(ti, model, [&](const auto &x) {
+            return x == Var(n);
+        });
+    }
+    if (range.length() == 1) {
+        projections.emplace_back(id, projected);
+    } else {
+        add_blocking_clause(range, id, ti);
+    }
     trace.pop_back();
     return true;
 }
@@ -128,6 +146,9 @@ std::optional<SmtResult> ADCLSat::do_step() {
     solver->add(subs(step));
     if (!trace.empty() && trace.back().id > last_orig_clause) {
         solver->add(subs(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))));
+    }
+    for (const auto &[id, b] : projections) {
+        solver->add(subs(!b) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
     }
     switch (solver->check()) {
         case SmtResult::Unknown:

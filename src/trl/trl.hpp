@@ -20,7 +20,6 @@ class TRL: public TRPUtil {
 
 private:
 
-    std::vector<std::pair<Int, Bools::Expr>> projections {};
     // step -> ID of corresponding transition formula -> blocked transition
     std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
 

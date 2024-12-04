@@ -351,8 +351,13 @@ int main(int argc, char *argv[]) {
                         b = std::make_unique<ABMC>(reversed);
                         break;
                     }
+                    case Config::Analysis::ADCLSAT: {
+                        f = std::make_unique<ADCLSat>(*its, TRL::forwardConfig);
+                        b = std::make_unique<ADCLSat>(reversed, TRL::backwardConfig);
+                        break;
+                    }
                     default: {
-                        std::cerr << "interleaved analysis is only supported by TRL and ABMC" << std::endl;
+                        std::cerr << "interleaved analysis is only supported by TRL, ABMC, and ADCL-SAT" << std::endl;
                         exit(-1);
                     }
                 }

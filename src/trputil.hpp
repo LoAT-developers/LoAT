@@ -56,6 +56,7 @@ protected:
     Int last_orig_clause;
     const Arith::Var safety_var {ArithVar::next()};
     DependencyGraph<Bools::Expr> dependency_graph {};
+    std::vector<std::pair<Int, Bools::Expr>> projections {};
 
     TRPUtil(const ITSPtr its, const Config::TRPConfig &config);
 
