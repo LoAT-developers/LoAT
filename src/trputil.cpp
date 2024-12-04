@@ -205,7 +205,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     std::vector<std::pair<Int, Bools::Expr>> loop;
     for (size_t i = range.start(); i <= range.end(); ++i) {
         const auto &e {trace.at(i)};
-        loop.emplace_back(e.id, e.model.syntacticImplicant(rule_map.left.at(e.id)));
+        loop.emplace_back(e.id, e.implicant);
     }
     learned_to_loop.emplace(id, loop);
     step = step || encode_transition(accel, id);
@@ -373,12 +373,7 @@ bool TRPUtil::build_cex() const {
     }
     std::optional<Bools::Expr> trans;
     for (const auto &e: trace) {
-        Bools::Expr next {top()};
-        if (e.id > last_orig_clause) {
-            next = accel.at(e.id);
-        } else {
-            next = e.model.syntacticImplicant(rule_map.left.at(e.id));
-        }
+        const auto next = e.id > last_orig_clause ? accel.at(e.id) : e.implicant;
         trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
     }
     return SmtFactory::check(t.init() && *trans && t.pre_to_post()(t.err())) == SmtResult::Sat;

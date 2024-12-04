@@ -157,11 +157,11 @@ std::optional<SmtResult> ADCLSat::do_step() {
             if (trace.empty()) {
                 return SmtResult::Sat;
             }
-            const auto imp{trace.back().implicant};
+            const auto projection{trp.mbp(trace.back().implicant, trace.back().model, theory::isTempVar)};
             solver->pop(); // current step
             solver->pop(); // backtracking
             trace.pop_back();
-            const auto b {!get_subs(trace.size(), 1)(imp)};
+            const auto b {!get_subs(trace.size(), 1)(projection)};
             if (Config::Analysis::log) {
                 std::cout << "***** Backtrack *****" << std::endl;
             }
@@ -181,14 +181,13 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto trans{rule_map.left.at(id)};
     const auto m{model.composeBackwards(subs)};
     const auto imp{m.syntacticImplicant(trans)};
-    const auto projected{trp.mbp(imp, m, theory::isTempVar)};
     solver->push();
-    solver->add(subs(projected));
+    solver->add(subs(imp));
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
-    trace.emplace_back(id, projected, m);
+    trace.emplace_back(id, imp, m);
     if (trace.size() > 1) {
-        dependency_graph.addEdge(trace.at(trace.size() - 2).implicant, projected);
+        dependency_graph.addEdge(trace.at(trace.size() - 2).implicant, imp);
     }
     return {};
 }
