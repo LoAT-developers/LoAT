@@ -1068,7 +1068,7 @@
     "name": "chc-LIA-Lin_242.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_262.smt2"
   },
   {
