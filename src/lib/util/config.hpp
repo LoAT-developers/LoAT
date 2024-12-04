@@ -34,7 +34,7 @@ namespace Config {
     namespace Analysis {
 
         enum Mode { Complexity, Termination, Safety, Recurrence };
-        enum Engine { ADCL, BMC, ABMC, TRL, KIND };
+        enum Engine { ADCL, BMC, ABMC, TRL, KIND, ADCLSAT };
         enum SmtSolver { Z3, CVC5, Swine, Yices, Heuristic };
         enum Direction {Forward, Backward, Interleaved};
         extern Mode mode;

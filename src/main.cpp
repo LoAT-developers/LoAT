@@ -18,6 +18,7 @@
 #include "trl.hpp"
 #include "version.hpp"
 #include "yices.hpp"
+#include "adclsat.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <chrono>
@@ -109,6 +110,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::engine = Config::Analysis::KIND;
             } else if (boost::iequals("trl", str)) {
                 Config::Analysis::engine = Config::Analysis::TRL;
+            } else if (boost::iequals("adcl_sat", str)) {
+                Config::Analysis::engine = Config::Analysis::ADCLSAT;
             } else {
                 std::cout << "Error: unknown engine " << str << std::endl;
                 exit(1);
@@ -207,7 +210,7 @@ void parseFlags(int argc, char *argv[]) {
     if (!has_engine) {
         switch (Config::Analysis::mode) {
             case Config::Analysis::Safety:
-                Config::Analysis::engine = Config::Analysis::ABMC;
+                Config::Analysis::engine = Config::Analysis::TRL;
                 break;
             default:
                 Config::Analysis::engine = Config::Analysis::ADCL;
@@ -418,6 +421,18 @@ int main(int argc, char *argv[]) {
                             its_model = trl.get_model();
                         } else if (res == SmtResult::Unsat) {
                             its_cex = trl.get_cex();
+                        }
+                    }
+                    break;
+                }
+                case Config::Analysis::ADCLSAT: {
+                    ADCLSat adcl(*its, Config::trp);
+                    res = adcl.analyze();
+                    if (Config::Analysis::model) {
+                        if (res == SmtResult::Sat) {
+                            its_model = adcl.get_model();
+                        } else if (res == SmtResult::Unsat) {
+                            its_cex = adcl.get_cex();
                         }
                     }
                     break;
