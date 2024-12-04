@@ -22,6 +22,7 @@ on:
         - loat_term_int_mbp
         - loat_term_real_mbp
         - loat_term_real_qe
+        - loat_term_adcl_sat
         - loat_lb
         - loat_lb_z3
         - loat_bmc
@@ -167,6 +168,8 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_term_real_qe" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine trl --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::mbp_kind real_qe --trl::recurrent_pseudo_bounds false  "${filename}")
+            elif [ ${{ inputs.config }} = "loat_term_adcl_sat" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl_sat --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::mbp_kind real_qe --trl::recurrent_pseudo_bounds false  "${filename}")
             elif [ ${{ inputs.config }} = "loat_term_int_mbp" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine trl --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::recurrent_pseudo_bounds false "${filename}")
             elif [ ${{ inputs.config }} = "loat_term_real_mbp" ]; then
