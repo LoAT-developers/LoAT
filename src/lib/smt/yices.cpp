@@ -133,8 +133,9 @@ std::ostream& Yices::print(std::ostream& os) const {
 Rational Yices::getRealFromModel(model_t *model, type_t symbol) {
     int64_t num;
     uint64_t denom;
-    if (yices_get_rational64_value(model, symbol, &num, &denom) == EVAL_OVERFLOW) {
-        throw std::overflow_error("overflow during conversion of model");
+    if (yices_get_rational64_value(model, symbol, &num, &denom) != NO_ERROR) {
+        std::cerr << yices_error_string() << std::endl;
+        throw std::logic_error("error during conversion of model");
     }
     assert(denom != 0);
     Rational res {num};
