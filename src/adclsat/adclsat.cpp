@@ -186,7 +186,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     solver->add(subs(projected));
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
-    trace.emplace_back(id, projected, Model());
+    trace.emplace_back(id, projected, m);
     if (trace.size() > 1) {
         dependency_graph.addEdge(trace.at(trace.size() - 2).implicant, projected);
     }
