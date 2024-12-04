@@ -171,7 +171,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
             return SmtResult::Unknown;
         case SmtResult::Unsat: {
             if (trace.empty()) {
-                return safe ? SmtResult::Sat : SmtResult::Unsat;
+                return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;
             const auto projection{trp.mbp(trace.back().implicant, trace.back().model, theory::isTempVar)};
