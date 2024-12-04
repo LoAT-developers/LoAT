@@ -18,9 +18,16 @@
 ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its, config) {}
 
 std::optional<unsigned> ADCLSat::has_looping_suffix() {
-    for (unsigned start = trace.size() - 1; start + 1 > 0; --start) {
-        if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start + 1 < trace.size() || trace[start].id <= last_orig_clause)) {
-            if (start + 1 == trace.size()) {
+    const auto last {trace.size() - 1};
+    for (unsigned start = last; start + 1 > 0; --start) {
+        if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || trace[start].id <= last_orig_clause)) {
+            if (Config::Analysis::termination() &&
+                start < last &&
+                model.get<Arith>(get_subs(start, 1).get<Arith>(safety_var)) >= 0 &&
+                model.get<Arith>(get_subs(last, 1).get<Arith>(safety_var)) < 0) {
+                continue;
+            }
+            if (start == last) {
                 const auto loop{trace[start].implicant};
                 if (SmtFactory::check(get_subs(0, 1)(loop) && get_subs(1, 1)(loop)) == SmtResult::Unsat) {
                     continue;
@@ -118,23 +125,29 @@ std::optional<SmtResult> ADCLSat::do_step() {
             std::cout << e.implicant << std::endl;
         }
     }
-    solver->push();
-    solver->add(get_subs(trace.size(), 1)(t.err()));
-    switch (solver->check()) {
-        case SmtResult::Sat:
-        case SmtResult::Unknown:
-            if (Config::Analysis::log) {
-                std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
-            }
-            return build_cex() ? SmtResult::Unsat : SmtResult::Unknown;
-        case SmtResult::Unsat:
-            break;
+    if (!backtracking) {
+        solver->push();
+        solver->add(get_subs(trace.size(), 1)(t.err()));
+        switch (solver->check()) {
+            case SmtResult::Sat:
+            case SmtResult::Unknown:
+                if (Config::Analysis::log) {
+                    std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
+                }
+                if (build_cex()) {
+                    return SmtResult::Unsat;
+                }
+                break;
+            case SmtResult::Unsat:
+                break;
+        }
+        solver->pop();
     }
-    solver->pop();
     if (const auto start{has_looping_suffix()}) {
         if (Config::Analysis::log) {
             std::cout << "found loop starting at " << start << std::endl;
         }
+        backtracking = true;
         if (!handle_loop(*start)) {
             return SmtResult::Unknown;
         } else {
@@ -147,6 +160,9 @@ std::optional<SmtResult> ADCLSat::do_step() {
     if (!trace.empty() && trace.back().id > last_orig_clause) {
         solver->add(subs(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))));
     }
+    if (Config::Analysis::termination() && !trace.empty()) {
+        solver->add(bools::mkLit(arith::mkGeq(get_subs(trace.size() - 1, 1).get<Arith>(safety_var), subs.get<Arith>(safety_var))));
+    }
     for (const auto &[id, b] : projections) {
         solver->add(subs(!b) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
     }
@@ -155,8 +171,9 @@ std::optional<SmtResult> ADCLSat::do_step() {
             return SmtResult::Unknown;
         case SmtResult::Unsat: {
             if (trace.empty()) {
-                return SmtResult::Sat;
+                return safe ? SmtResult::Sat : SmtResult::Unsat;
             }
+            backtracking = true;
             const auto projection{trp.mbp(trace.back().implicant, trace.back().model, theory::isTempVar)};
             solver->pop(); // current step
             solver->pop(); // backtracking
@@ -171,6 +188,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
         case SmtResult::Sat:
             break;
     }
+    backtracking = false;
     model = solver->model();
     solver->pop();
     const auto id{model.get<Arith>(subs.get<Arith>(trace_var))};

@@ -299,14 +299,14 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr loop, const Mod
     return {};
 }
 
-bool TRPUtil::build_cex() const {
+bool TRPUtil::build_cex() {
+    safe = false;
     if (trace.empty()) {
         return SmtFactory::check(t.init() && t.err()) == SmtResult::Sat;
     }
-    linked_hash_map<Int, Bools::Expr> accel;
     std::stack<Int> todo;
     for (const auto &e: trace) {
-        if (e.id > last_orig_clause) {
+        if (e.id > last_orig_clause && !accel.contains(e.id)) {
             todo.push(e.id);
         }
     }

@@ -57,6 +57,8 @@ protected:
     const Arith::Var safety_var {ArithVar::next()};
     DependencyGraph<Bools::Expr> dependency_graph {};
     std::vector<std::pair<Int, Bools::Expr>> projections {};
+    linked_hash_map<Int, Bools::Expr> accel;
+    bool safe {true};
 
     TRPUtil(const ITSPtr its, const Config::TRPConfig &config);
 
@@ -67,7 +69,7 @@ protected:
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
     std::optional<Arith::Expr> prove_term(const Bools::Expr loop, const Model &model);
-    bool build_cex() const;
+    bool build_cex();
     virtual void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) = 0;
     bool add_blocking_clauses(const Range &range, Model model);
 
