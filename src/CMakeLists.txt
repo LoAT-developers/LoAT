@@ -14,6 +14,8 @@ target_sources(${EXECUTABLE}
         main.hpp
         version.cpp
         version.hpp
+        trputil.cpp
+        trputil.hpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")
