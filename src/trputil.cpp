@@ -94,7 +94,7 @@ TRPUtil::TRPUtil(
                                        lit); }};
         for (const auto &trans : t.trans()) {
             const auto lin{trans->map(linearize)};
-            if (rule_map.left.insert(rule_map_t::left_value_type(next_id, lin)).second) {
+            if (rule_map.emplace(next_id, lin).second) {
                 steps.push_back(encode_transition(lin, next_id));
                 ++next_id;
             }
@@ -102,7 +102,7 @@ TRPUtil::TRPUtil(
         solver->add(t.init()->map(linearize));
     } else {
         for (const auto &trans : t.trans()) {
-            if (rule_map.left.insert(rule_map_t::left_value_type(next_id, trans)).second) {
+            if (rule_map.emplace(next_id, trans).second) {
                 steps.push_back(encode_transition(trans, next_id));
                 ++next_id;
             }
@@ -201,7 +201,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     }
     const auto id = next_id;
     ++next_id;
-    rule_map.left.insert(rule_map_t::left_value_type(id, accel));
+    rule_map.emplace(id, accel);
     std::vector<std::pair<Int, Bools::Expr>> loop;
     for (size_t i = range.start(); i <= range.end(); ++i) {
         const auto &e {trace.at(i)};

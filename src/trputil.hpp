@@ -35,7 +35,7 @@ protected:
         Model model;
     };
 
-    using rule_map_t = boost::bimap<boost::bimaps::set_of<Int>, boost::bimaps::set_of<Bools::Expr>>;
+    using rule_map_t = linked_hash_map<Int, Bools::Expr>;
 
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<TraceElem> trace {};

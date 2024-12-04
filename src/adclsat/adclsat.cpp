@@ -196,7 +196,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
         std::cout << "***** Step *****" << std::endl;
         std::cout << "with " << id << std::endl;
     }
-    const auto trans{rule_map.left.at(id)};
+    const auto trans{rule_map.at(id)};
     const auto m{model.composeBackwards(subs)};
     const auto imp{m.syntacticImplicant(trans)};
     solver->push();
