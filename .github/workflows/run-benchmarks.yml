@@ -155,8 +155,8 @@ jobs:
             set +e
             if [ ${{ inputs.config }} = "loat_sat" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine trl --direction interleaved "${filename}")
-            if [ ${{ inputs.config }} = "loat_adcl_sat" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine adcl_sat "${filename}")
+            elif [ ${{ inputs.config }} = "loat_adcl_sat" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine adcl_sat --direction interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_unsat" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_abmc_interleaved" ]; then
