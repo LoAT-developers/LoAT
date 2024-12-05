@@ -209,9 +209,6 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     }
     learned_to_loop.emplace(id, loop);
     step = step || encode_transition(accel, id);
-    const auto preds {dependency_graph.getPredecessors(trace.at(range.start()).implicant)};
-    const auto succs {dependency_graph.getSuccessors(trace.at(range.end()).implicant)};
-    dependency_graph.addNode(accel, preds, succs, false);
     return id;
 }
 
