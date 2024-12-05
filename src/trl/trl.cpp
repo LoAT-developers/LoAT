@@ -27,12 +27,6 @@ std::optional<Range> TRL::has_looping_infix() {
                 continue;
             }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
-                if (i == 0) {
-                    const auto loop {trace[start].implicant};
-                    if (SmtFactory::check(get_subs(0,1)(loop) && get_subs(1,1)(loop)) == SmtResult::Unsat) {
-                        continue;
-                    }
-                }
                 return {Range::from_interval(start, start + i)};
             }
         }
