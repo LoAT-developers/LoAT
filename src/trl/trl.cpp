@@ -28,7 +28,7 @@ std::optional<Range> TRL::has_looping_infix() {
             }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 if (i == 0) {
-                    const auto loop {trace[start].implicant};
+                    const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempVar)};
                     if (SmtFactory::check(get_subs(0,1)(loop) && get_subs(1,1)(loop)) == SmtResult::Unsat) {
                         continue;
                     }
