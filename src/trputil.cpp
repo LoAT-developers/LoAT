@@ -8,7 +8,7 @@
 #include "safetycex.hpp"
 
 const Config::TRPConfig TRPUtil::forwardConfig{
-    .mbpKind = Config::TRPConfig::IntMbp,
+    .mbpKind = Config::TRPConfig::LowerIntMbp,
     .recurrent_cycles = false,
     .recurrent_exps = true,
     .recurrent_pseudo_divs = true,
