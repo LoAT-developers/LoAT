@@ -132,7 +132,7 @@
     "name": "chc-LIA-Lin_201.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_221.smt2"
   },
   {
@@ -1144,7 +1144,7 @@
     "name": "chc-LIA-Lin_203.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "chc-LIA-Lin_223.smt2"
   },
   {
