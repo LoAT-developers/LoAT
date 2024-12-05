@@ -3,11 +3,18 @@
 #include "realmbp.hpp"
 #include "realqe.hpp"
 #include "redundantinequations.hpp"
+#include "smtfactory.hpp"
 
 TRP::TRP(const Renaming &pre_to_post, const Config::TRPConfig &config):
     pre_to_post(pre_to_post),
     post_to_pre(pre_to_post.invert()),
-    config(config) {}
+    config(config) {
+        for (const auto &[pre,post]: pre_to_post) {
+            const auto i {theory::next(pre)};
+            pre_to_intermediate.insert(pre, i);
+            post_to_intermediate.insert(post, i);
+        }
+    }
 
 void TRP::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model) {
     if (!config.recurrent_pseudo_divs) {
@@ -267,21 +274,24 @@ Bools::Expr TRP::recurrent(const Bools::Expr loop, const Model &model) {
 }
 
 Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
+    if (SmtFactory::check(post_to_intermediate(loop) && pre_to_intermediate(loop) && !loop) == SmtResult::Unsat) {
+        return loop;
+    }
     const auto pre{mbp(loop, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
     if (Config::Analysis::log) {
         std::cout << "pre: " << pre << std::endl;
     }
+    auto step{recurrent(loop, model)};
+    if (Config::Analysis::log) {
+        std::cout << "recurrence analysis: " << step << std::endl;
+    }
     const auto post{mbp(loop, model, [](const auto &x) {
         return !theory::isPostVar(x);
     })};
     if (Config::Analysis::log) {
         std::cout << "post: " << post << std::endl;
-    }
-    auto step{recurrent(loop, model)};
-    if (Config::Analysis::log) {
-        std::cout << "recurrence analysis: " << step << std::endl;
     }
     return removeRedundantInequations(pre && step && post);
 }

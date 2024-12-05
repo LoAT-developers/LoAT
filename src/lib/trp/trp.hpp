@@ -8,6 +8,8 @@ class TRP {
 
     const Renaming &pre_to_post;
     const Renaming post_to_pre;
+    Renaming post_to_intermediate;
+    Renaming pre_to_intermediate;
     const Config::TRPConfig &config;
     LitSet res_lits;
     const Arith::Var n {ArithVar::next()};
