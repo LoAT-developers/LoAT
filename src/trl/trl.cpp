@@ -17,7 +17,7 @@
 
 TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {}
 
-std::optional<std::tuple<Range, Bools::Expr, Model>> TRL::has_looping_infix() {
+std::optional<Range> TRL::has_looping_infix() {
     for (unsigned i = 0; i < trace.size(); ++i) {
         for (unsigned start = 0; start + i < trace.size(); ++start) {
             if (Config::Analysis::termination() &&
@@ -27,19 +27,21 @@ std::optional<std::tuple<Range, Bools::Expr, Model>> TRL::has_looping_infix() {
                 continue;
             }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
-                const auto range {Range::from_interval(start, start + i)};
-                const auto [loop,model] {specialize(range, theory::isTempVar)};
-                if (SmtFactory::check(get_subs(0, 1)(loop) && get_subs(1, 1)(loop)) == SmtResult::Unsat) {
-                    continue;
+                if (i == 0) {
+                    const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempVar)};
+                    if (SmtFactory::check(get_subs(0,1)(loop) && get_subs(1,1)(loop)) == SmtResult::Unsat) {
+                        continue;
+                    }
                 }
-                return {{range, loop, model}};
+                return {Range::from_interval(start, start + i)};
             }
         }
     }
     return {};
 }
 
-bool TRL::handle_loop(const Range &range, Bools::Expr loop, Model model) {
+bool TRL::handle_loop(const Range &range) {
+    auto [loop, model]{specialize(range, theory::isTempVar)};
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
         if (const auto rf {prove_term(loop, model)}) {
@@ -201,16 +203,15 @@ std::optional<SmtResult> TRL::do_step() {
                     if (Config::Analysis::log) {
                         std::cout << "starting loop handling" << std::endl;
                     }
-                    const auto opt{has_looping_infix()};
-                    if (opt) {
-                        const auto &[range, loop, model] {*opt};
+                    const auto range{has_looping_infix()};
+                    if (range) {
                         if (Config::Analysis::log) {
-                            std::cout << "found loop: " << range.start() << " to " << range.end() << std::endl;
+                            std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                         }
-                        if (!handle_loop(range, loop, model)) {
+                        if (!handle_loop(*range)) {
                             return SmtResult::Unknown;
                         }
-                        while (depth > range.start()) {
+                        while (depth > range->start()) {
                             pop();
                         }
                     }

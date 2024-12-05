@@ -28,9 +28,9 @@ private:
 
     void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) override;
     void add_blocking_clauses();
-    std::optional<std::tuple<Range, Bools::Expr, Model>> has_looping_infix();
+    std::optional<Range> has_looping_infix();
 
-    bool handle_loop(const Range &range, Bools::Expr loop, Model model);
+    bool handle_loop(const Range &range);
     void build_trace();
     void pop();
 
