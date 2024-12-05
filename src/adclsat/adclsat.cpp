@@ -70,7 +70,7 @@ bool ADCLSat::handle_loop(const unsigned start) {
         ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
         id = add_learned_clause(range, ti);
         model.put<Arith>(n, 1);
-        projected = mbp::int_mbp(ti, model, [&](const auto &x) {
+        projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
             return x == Var(n);
         });
     }

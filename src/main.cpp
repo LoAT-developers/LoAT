@@ -30,20 +30,20 @@ std::string filename;
 void printHelp(char *arg0) {
     std::cout << "Usage: " << arg0 << " [options] <file>" << std::endl;
     std::cout << "Options:" << std::endl;
-    std::cout << "  --print_dep_graph                                  Print the dependency graph in the proof output (can be very verbose)" << std::endl;
-    std::cout << "  --mode <complexity|termination|safety>             Analysis mode" << std::endl;
-    std::cout << "  --format <koat|its|horn|c>                         Input format" << std::endl;
-    std::cout << "  --engine <adcl|bmc|abmc|trl|kind>                  Analysis engine" << std::endl;
-    std::cout << "  --log                                              Enable logging" << std::endl;
-    std::cout << "  --proof                                            Print model/counterexample/recurrent set/..." << std::endl;
-    std::cout << "  --abmc::blocking_clauses <true|false>              ABMC: En- or disable blocking clauses" << std::endl;
-    std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>              Choose the SMT solver" << std::endl;
-    std::cout << "  --direction <forward|backward|interleaved>         run the analysis forward, backward, or both directions interleaved (if supported)" << std::endl;
-    std::cout << "  --trl::recurrent_exps <true|false>                 TRL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
-    std::cout << "  --trl::recurrent_cycles <true|false>               TRL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
-    std::cout << "  --trl::recurrent_pseudo_divs <true|false>          TRL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
-    std::cout << "  --trl::recurrent_bounds <true|false>               TRL: En- or disable search for recurrent bounds" << std::endl;
-    std::cout << "  --trl::mbp_kind <lower_int|upper_int|real|real_qe> TRL: use model based projection for LIA or LRA, or QF for LRA" << std::endl;
+    std::cout << "  --print_dep_graph                                      Print the dependency graph in the proof output (can be very verbose)" << std::endl;
+    std::cout << "  --mode <complexity|termination|safety>                 Analysis mode" << std::endl;
+    std::cout << "  --format <koat|its|horn|c>                             Input format" << std::endl;
+    std::cout << "  --engine <adcl|bmc|abmc|trl|kind>                      Analysis engine" << std::endl;
+    std::cout << "  --log                                                  Enable logging" << std::endl;
+    std::cout << "  --proof                                                Print model/counterexample/recurrent set/..." << std::endl;
+    std::cout << "  --abmc::blocking_clauses <true|false>                  ABMC: En- or disable blocking clauses" << std::endl;
+    std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>                  Choose the SMT solver" << std::endl;
+    std::cout << "  --direction <forward|backward|interleaved>             run the analysis forward, backward, or both directions interleaved (if supported)" << std::endl;
+    std::cout << "  --trl::recurrent_exps <true|false>                     TRL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
+    std::cout << "  --trl::recurrent_cycles <true|false>                   TRL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
+    std::cout << "  --trl::recurrent_pseudo_divs <true|false>              TRL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
+    std::cout << "  --trl::recurrent_bounds <true|false>                   TRL: En- or disable search for recurrent bounds" << std::endl;
+    std::cout << "  --trl::mbp_kind <int|lower_int|upper_int|real|real_qe> TRL: use model based projection for LIA or LRA, or QF for LRA" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
@@ -188,6 +188,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::trp.mbpKind = Config::TRPConfig::MbpKind::LowerIntMbp;
             } else if (boost::iequals("upper_int", str)) {
                 Config::trp.mbpKind = Config::TRPConfig::MbpKind::UpperIntMbp;
+            } else if (boost::iequals("int", str)) {
+                Config::trp.mbpKind = Config::TRPConfig::MbpKind::IntMbp;
             } else if (boost::iequals("real", str)) {
                 Config::trp.mbpKind = Config::TRPConfig::MbpKind::RealMbp;
             } else if (boost::iequals("real_qe", str)) {

@@ -8,7 +8,7 @@
 #include "safetycex.hpp"
 
 const Config::TRPConfig TRPUtil::forwardConfig{
-    .mbpKind = Config::TRPConfig::LowerIntMbp,
+    .mbpKind = Config::TRPConfig::IntMbp,
     .recurrent_cycles = false,
     .recurrent_exps = true,
     .recurrent_pseudo_divs = true,
@@ -402,7 +402,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
             if (solver->check() == SmtResult::Sat) {
                 const auto n_val{solver->model({{n}}).get<Arith>(n)};
                 model.put<Arith>(n, n_val);
-                Bools::Expr projected{mbp::int_mbp(b, model, [&](const auto &x) {
+                Bools::Expr projected{mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
                     return x == Var(n);
                 })};
                 add_blocking_clause(range, id, projected);

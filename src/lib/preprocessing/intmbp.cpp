@@ -2,7 +2,7 @@
 #include "mbputil.hpp"
 #include "smtfactory.hpp"
 
-Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x, const bool upper) {
+Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x, const Config::TRPConfig::MbpKind mode) {
     assert(t->isConjunction());
     linked_hash_set<Divisibility> divs;
     linked_hash_set<Arith::Expr> lb;
@@ -91,7 +91,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
         mlcm = mp::lcm(mlcm, d.modulo);
     }
     Arith::Expr substitute {arith::mkConst(0)};
-    if (upper) {
+    if (mode == Config::TRPConfig::UpperIntMbp || (mode == Config::TRPConfig::IntMbp && scaled_ub.size() < scaled_lb.size())) {
         auto closest_upper{*scaled_ub.begin()};
         auto min_val{closest_upper->eval(model.get<Arith>())};
         for (const auto &u : scaled_ub) {
@@ -140,25 +140,25 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     return bools::mkAndFromLits(lits);
 }
 
-Bools::Expr do_mbp(const Bools::Expr &t, const Model &model, const Var &x, const bool upper) {
+Bools::Expr do_mbp(const Bools::Expr &t, const Model &model, const Var &x, const Config::TRPConfig::MbpKind mode) {
     return std::visit(
         Overload{
             [&](const Bools::Var x) {
                 return mbp::bool_mbp(t, model, x);
             },
             [&](const Arith::Var x) {
-                const auto res{int_mbp(t, model, x, upper)};
+                const auto res{int_mbp(t, model, x, mode)};
                 assert(res != bot());
                 return res;
             }},
         x);
 }
 
-Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate, const bool upper) {
+Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const Model &model, const Config::TRPConfig::MbpKind mode, const std::function<bool(const Var &)> &eliminate) {
     Bools::Expr res{trans};
     for (const auto &x : trans->vars()) {
         if (eliminate(x)) {
-            res = do_mbp(res, model, x, upper);
+            res = do_mbp(res, model, x, mode);
         }
     }
     return res;
@@ -171,7 +171,7 @@ Bools::Expr mbp::int_qe(const Bools::Expr &t, const std::function<bool(const Var
     SmtResult smt_res;
     while ((smt_res = solver->check()) == SmtResult::Sat) {
         const auto model {solver->model()};
-        const auto next {int_mbp(solver->model().syntacticImplicant(t), model, eliminate)};
+        const auto next {int_mbp(solver->model().syntacticImplicant(t), model, Config::TRPConfig::IntMbp, eliminate)};
         disjuncts.push_back(next);
         solver->add(!next);
     }

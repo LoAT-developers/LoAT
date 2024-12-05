@@ -312,11 +312,10 @@ Bools::Expr TRP::mbp(const Bools::Expr &trans, const Model &model, const std::fu
     case Config::TRPConfig::RealMbp:
         res = mbp::real_mbp(trans, model, eliminate);
         break;
+    case Config::TRPConfig::IntMbp:
     case Config::TRPConfig::LowerIntMbp:
-        res = mbp::int_mbp(trans, model, eliminate, false);
-        break;
     case Config::TRPConfig::UpperIntMbp:
-        res = mbp::int_mbp(trans, model, eliminate, true);
+        res = mbp::int_mbp(trans, model, config.mbpKind, eliminate);
         break;
     case Config::TRPConfig::RealQe:
         res = qe::real_qe(trans, model, eliminate);
