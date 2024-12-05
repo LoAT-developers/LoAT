@@ -3,7 +3,6 @@
 #include "realmbp.hpp"
 #include "realqe.hpp"
 #include "redundantinequations.hpp"
-#include "smtfactory.hpp"
 
 TRP::TRP(const Renaming &pre_to_post, const Config::TRPConfig &config):
     pre_to_post(pre_to_post),
@@ -279,9 +278,6 @@ Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
     })};
     if (Config::Analysis::log) {
         std::cout << "post: " << post << std::endl;
-    }
-    if (SmtFactory::check(post_to_pre(post) && pre) == SmtResult::Unsat) {
-        return loop;
     }
     auto step{recurrent(loop, model)};
     if (Config::Analysis::log) {
