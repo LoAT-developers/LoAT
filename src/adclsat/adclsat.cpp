@@ -21,12 +21,6 @@ std::optional<unsigned> ADCLSat::has_looping_suffix() {
     const auto last {trace.size() - 1};
     for (unsigned start = last; start + 1 > 0; --start) {
         if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || trace[start].id <= last_orig_clause)) {
-            if (Config::Analysis::termination() &&
-                start < last &&
-                model.get<Arith>(get_subs(start, 1).get<Arith>(safety_var)) >= 0 &&
-                model.get<Arith>(get_subs(last, 1).get<Arith>(safety_var)) < 0) {
-                continue;
-            }
             if (start == last) {
                 const auto loop{trace[start].implicant};
                 if (SmtFactory::check(get_subs(0, 1)(loop) && get_subs(1, 1)(loop)) == SmtResult::Unsat) {
@@ -41,24 +35,7 @@ std::optional<unsigned> ADCLSat::has_looping_suffix() {
 
 void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
-    if (Config::Analysis::termination()) {
-        std::vector<Bools::Expr> disjuncts;
-        disjuncts.emplace_back(s(!loop));
-        if (range.length() == 1) {
-            disjuncts.emplace_back(bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id))));
-        }
-        const auto safety_loop {this->model.get<Arith>(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0};
-        if (safety_loop) {
-            const auto last_s {get_subs(range.end(), 1)};
-            const auto no_safety_loop{bools::mkLit(arith::mkLt(last_s.get<Arith>(safety_var), arith::mkConst(0)))};
-            disjuncts.emplace_back(no_safety_loop);
-        } else {
-            const auto first_s {get_subs(range.start(), 1)};
-            const auto no_term_loop{bools::mkLit(arith::mkGeq(first_s.get<Arith>(safety_var), arith::mkConst(0)))};
-            disjuncts.emplace_back(no_term_loop);
-        }
-        solver->add(bools::mkOr(disjuncts));
-    } else if (range.length() == 1) {
+    if (range.length() == 1) {
         solver->add(s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id)))));
     } else {
         solver->add(s(!loop));
@@ -68,15 +45,6 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 bool ADCLSat::handle_loop(const unsigned start) {
     const auto range {Range::from_interval(start, trace.size() - 1)};
     auto [loop, model]{specialize(range, theory::isTempVar)};
-    Bools::Expr termination_argument {top()};
-    if (Config::Analysis::termination()) {
-        if (const auto rf {prove_term(loop, model)}) {
-            termination_argument = bools::mkAndFromLits({arith::mkGt(*rf, arith::mkConst(0)), arith::mkGt((*rf)->renameVars(post_to_pre.get<Arith>()), (*rf)->renameVars(t.pre_to_post().get<Arith>()))});
-            loop = loop && termination_argument;
-        } else {
-            return false;
-        }
-    }
     solver->pop();
     if (TRPUtil::add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
@@ -89,9 +57,6 @@ bool ADCLSat::handle_loop(const unsigned start) {
         std::cout << "***** Accelerate *****" << std::endl;
     }
     auto ti{trp.compute(loop, model)};
-    if (Config::Analysis::termination()) {
-        ti = ti && termination_argument;
-    }
     Int id;
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};
@@ -159,9 +124,6 @@ std::optional<SmtResult> ADCLSat::do_step() {
     solver->add(subs(step));
     if (!trace.empty() && trace.back().id > last_orig_clause) {
         solver->add(subs(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))));
-    }
-    if (Config::Analysis::termination() && !trace.empty()) {
-        solver->add(bools::mkLit(arith::mkGeq(get_subs(trace.size() - 1, 1).get<Arith>(safety_var), subs.get<Arith>(safety_var))));
     }
     for (const auto &[id, b] : projections) {
         solver->add(subs(!b) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
