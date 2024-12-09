@@ -134,7 +134,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
         trace.empty()
             ? std::optional<Bools::Expr>{}
             : std::optional{encode_transition(rule_map.at(trace.back().id), trace.back().id)};
-    if (!backtracking && last && dg_over_approx.getSinks().contains(*last)) {
+    if (!backtracking && (!last || dg_over_approx.getSinks().contains(*last))) {
         solver->push();
         solver->add(get_subs(trace.size(), 1)(t.err()));
         switch (solver->check()) {
