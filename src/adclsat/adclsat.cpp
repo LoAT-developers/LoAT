@@ -112,7 +112,7 @@ bool ADCLSat::handle_loop(const unsigned start) {
         dg_over_approx.markRoot(node);
     }
     if (dg_over_approx.getSinks().contains(last)) {
-        dg_over_approx.markSink(ti);
+        dg_over_approx.markSink(node);
     }
     if (range.length() == 1) {
         projections.emplace_back(id, projected);
