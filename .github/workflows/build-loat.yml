@@ -1,13 +1,13 @@
 name: Build LoAT
 
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - 'src/**'
-      - 'CMakeLists.txt'
-      - '.github/workflows/build-loat.yml'
+  # push:
+  #   branches:
+  #     - master
+  #   paths:
+  #     - 'src/**'
+  #     - 'CMakeLists.txt'
+  #     - '.github/workflows/build-loat.yml'
 
   # Also allow this action to be triggered manually via a button in
   # the GitHub UI.
