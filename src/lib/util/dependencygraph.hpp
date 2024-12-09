@@ -6,7 +6,7 @@
 #include <functional>
 #include <ostream>
 
-#include "rule.hpp" // for TransIdx
+#include "linkedhashset.hpp"
 
 template <class Node>
 class DependencyGraph {
@@ -64,7 +64,31 @@ public:
         nodes.insert(node);
     }
 
+    void markRoot(const Node n) {
+        roots.insert(n);
+    }
+
+    void markSink(const Node n) {
+        sinks.insert(n);
+    }
+
+    const linked_hash_set<Node> &getRoots() const {
+        return roots;
+    }
+
+    const linked_hash_set<Node> &getSinks() const {
+        return sinks;
+    }
+
     void replaceNode(Node to_replace, Node replacement) {
+        if (roots.contains(to_replace)){
+            roots.erase(to_replace);
+            roots.insert(replacement);
+        }
+        if (sinks.contains(to_replace)){
+            sinks.erase(to_replace);
+            sinks.insert(replacement);
+        }
         nodes.insert(replacement);
         nodes.erase(to_replace);
         // all predecessors of to_replace get replacement as successor
@@ -173,6 +197,8 @@ public:
     }
 
     void removeNode(Node node) {
+        roots.erase(node);
+        sinks.erase(node);
         nodes.erase(node);
         for (const auto &s: successors.at(node)) {
             predecessors.at(s).erase(node);
@@ -192,6 +218,8 @@ public:
 
 private:
 
+    linked_hash_set<Node> roots {};
+    linked_hash_set<Node> sinks {};
     linked_hash_set<Node> nodes {};
     std::unordered_map<Node, linked_hash_set<Node>> successors {};
     std::unordered_map<Node, linked_hash_set<Node>> predecessors {};

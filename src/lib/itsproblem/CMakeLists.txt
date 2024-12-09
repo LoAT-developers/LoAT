@@ -9,7 +9,6 @@ add_library(${PROJECT_NAME} OBJECT
     rule.cpp
     itsproblem.hpp
     itsproblem.cpp
-    dependencygraph.hpp
     itsmodel.hpp
     itsmodel.cpp
     itscex.hpp

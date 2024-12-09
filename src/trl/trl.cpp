@@ -15,7 +15,13 @@
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
 
-TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {}
+TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
+    std::vector<Bools::Expr> steps;
+    for (const auto &[id,t]: rule_map) {
+        steps.emplace_back(encode_transition(t, id));
+    }
+    step = bools::mkOr(steps);
+}
 
 std::optional<Range> TRL::has_looping_infix() {
     for (unsigned i = 0; i < trace.size(); ++i) {
@@ -67,7 +73,8 @@ bool TRL::handle_loop(const Range &range) {
             return x == Var(n);
         });
         projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
-        id = add_learned_clause(range, projected);
+        ti = projected;
+        id = add_learned_clause(range, ti);
     } else {
         ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
         id = add_learned_clause(range, ti);
@@ -76,6 +83,7 @@ bool TRL::handle_loop(const Range &range) {
             return x == Var(n);
         });
     }
+    step = step || encode_transition(ti, id);
     if (range.length() == 1) {
         projections.emplace_back(id, projected);
     } else {
@@ -227,4 +235,23 @@ std::optional<SmtResult> TRL::do_step() {
         std::cout << "depth: " << depth << std::endl;
     }
     return {};
+}
+
+ITSModel TRL::get_model() {
+    std::vector<Bools::Expr> res{t.init()};
+    Bools::Expr last{t.init()};
+    for (unsigned i = 0; i < trace.size(); ++i) {
+        const auto s1{get_subs(i, 1)};
+        last = last && s1(step);
+        Renaming s2;
+        for (const auto &x : vars) {
+            if (theory::isProgVar(x)) {
+                s2.insert(s1.get(theory::postVar(x)), x);
+                s2.insert(x, theory::next(x));
+            }
+        }
+        res.push_back(s2(last));
+    }
+    const auto sp_model{bools::mkOr(res)};
+    return its2safety.transform_model(sp_model);
 }

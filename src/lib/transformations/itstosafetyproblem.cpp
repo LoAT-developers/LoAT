@@ -55,6 +55,7 @@ SafetyProblem ITSToSafety::transform() {
     }
     std::vector<Bools::Expr> init;
     std::vector<Bools::Expr> err;
+    linked_hash_map<RulePtr, Bools::Expr> map;
     for (const auto &r: its->getAllTransitions()) {
         if (its->isInitialTransition(r)) {
             init.emplace_back(Preprocess::preprocessFormula(init_map(rule_to_formula(r, sp.pre_vars()))));
@@ -63,7 +64,25 @@ SafetyProblem ITSToSafety::transform() {
             err.emplace_back(Preprocess::preprocessFormula(r->getGuard()));
         }
         if (!its->isInitialTransition(r) && !its->isSinkTransition(r)) {
-            sp.add_transition(rule_to_formula(r, sp.pre_vars()));
+            const auto t {rule_to_formula(r, sp.pre_vars())};
+            map.emplace(r, t);
+            sp.add_transition(t);
+            const auto preds {its->getPredecessors(r)};
+            for (const auto &p: preds) {
+                if (its->isInitialTransition(p)) {
+                    sp.mark_initial_transition(t);
+                } else if (map.contains(p)) {
+                    sp.add_edge(map.at(p), t);
+                }
+            }
+            const auto succs {its->getSuccessors(r)};
+            for (const auto &s: succs) {
+                if (its->isSinkTransition(s)) {
+                    sp.mark_sink_transition(t);
+                } else if (map.contains(s)) {
+                    sp.add_edge(t, map.at(s));
+                }
+            }
         }
     }
     sp.set_init(bools::mkOr(init));

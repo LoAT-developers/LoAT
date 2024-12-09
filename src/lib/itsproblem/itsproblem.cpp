@@ -44,8 +44,6 @@ bool ITSProblem::areAdjacent(const RulePtr first, const RulePtr second) const {
 void ITSProblem::removeRule(RulePtr transition) {
     graph.removeNode(transition);
     startAndTargetLocations.erase(transition);
-    initialTransitions.erase(transition);
-    sinkTransitions.erase(transition);
     rules.erase(transition);
 }
 
@@ -54,10 +52,10 @@ RulePtr ITSProblem::addRule(const RulePtr rule, const LocationIdx start, const L
     startAndTargetLocations.emplace(idx, std::pair<LocationIdx, LocationIdx>(start, target));
     graph.addNode(idx, preds, succs, start == target);
     if (start == initialLocation) {
-        initialTransitions.insert(idx);
+        graph.markRoot(idx);
     }
     if (target == sink) {
-        sinkTransitions.insert(idx);
+        graph.markSink(idx);
     }
     return idx;
 }
@@ -102,19 +100,7 @@ void ITSProblem::replaceRule(const RulePtr toReplace, const RulePtr replacement)
     startAndTargetLocations.emplace(replacement, startAndTargetLocations[toReplace]);
     startAndTargetLocations.erase(toReplace);
     graph.replaceNode(toReplace, replacement);
-    if (isInitialTransition(toReplace)) {
-        initialTransitions.insert(replacement);
-        initialTransitions.erase(toReplace);
-    }
-    if (isSinkTransition(toReplace)) {
-        sinkTransitions.insert(replacement);
-        sinkTransitions.erase(toReplace);
-    }
     rules.erase(toReplace);
-}
-
-void ITSProblem::removeEdge(const RulePtr from, const RulePtr to) {
-    graph.removeEdge(from, to);
 }
 
 LocationIdx ITSProblem::addLocation() {
@@ -187,11 +173,11 @@ LocationIdx ITSProblem::getRhsLoc(const RulePtr idx) const {
 }
 
 const linked_hash_set<RulePtr>& ITSProblem::getInitialTransitions() const {
-    return initialTransitions;
+    return graph.getRoots();
 }
 
 const linked_hash_set<RulePtr>& ITSProblem::getSinkTransitions() const {
-    return sinkTransitions;
+    return graph.getSinks();
 }
 
 bool ITSProblem::isSimpleLoop(const RulePtr idx) const {
@@ -199,11 +185,11 @@ bool ITSProblem::isSimpleLoop(const RulePtr idx) const {
 }
 
 bool ITSProblem::isSinkTransition(const RulePtr idx) const {
-    return sinkTransitions.contains(idx);
+    return graph.getSinks().contains(idx);
 }
 
 bool ITSProblem::isInitialTransition(const RulePtr idx) const {
-    return initialTransitions.contains(idx);
+    return graph.getRoots().contains(idx);
 }
 
 const ITSProblem::DG& ITSProblem::getDependencyGraph() const {

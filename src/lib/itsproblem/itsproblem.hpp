@@ -47,7 +47,6 @@ public:
     void addRule(const RulePtr rule, const LocationIdx start);
     RulePtr addQuery(const Bools::Expr guard, const RulePtr same_preds);
     void replaceRule(const RulePtr toReplace, const RulePtr replacement);
-    void removeEdge(const RulePtr from, const RulePtr to);
 
     // Mutation for Locations
     LocationIdx addLocation();
@@ -93,8 +92,6 @@ protected:
     linked_hash_set<LocationIdx> locations {};
     std::unordered_map<LocationIdx, std::string> locationNames {};
     linked_hash_map<RulePtr, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations {};
-    linked_hash_set<RulePtr> initialTransitions {};
-    linked_hash_set<RulePtr> sinkTransitions {};
     LocationIdx nextUnusedLocation {1};
     LocationIdx initialLocation {0};
     LocationIdx sink {addNamedLocation("LoAT_sink")};

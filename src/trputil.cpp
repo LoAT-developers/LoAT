@@ -57,7 +57,8 @@ TRPUtil::TRPUtil(
       t(its2safety.transform()),
       its(its),
       trp(t.pre_to_post(), config),
-      post_to_pre(t.pre_to_post().invert()) {
+      post_to_pre(t.pre_to_post().invert()),
+      last_orig_clause(t.trans().size() - 1) {
     if (Config::Analysis::log) {
         std::cout << "safetyproblem:\n"
                   << t << std::endl;
@@ -76,7 +77,6 @@ TRPUtil::TRPUtil(
         }
     }
     solver->enableModels();
-    std::vector<Bools::Expr> steps;
     if (Config::Analysis::termination()) {
         const auto linearize{
             [&](const auto &lit) { return std::visit(
@@ -95,7 +95,6 @@ TRPUtil::TRPUtil(
         for (const auto &trans : t.trans()) {
             const auto lin{trans->map(linearize)};
             if (rule_map.emplace(next_id, lin).second) {
-                steps.push_back(encode_transition(lin, next_id));
                 ++next_id;
             }
         }
@@ -103,14 +102,11 @@ TRPUtil::TRPUtil(
     } else {
         for (const auto &trans : t.trans()) {
             if (rule_map.emplace(next_id, trans).second) {
-                steps.push_back(encode_transition(trans, next_id));
                 ++next_id;
             }
         }
         solver->add(t.init());
     }
-    last_orig_clause = next_id - 1;
-    step = bools::mkOr(steps);
 }
 
 const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
@@ -208,7 +204,6 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
         loop.emplace_back(e.id, e.implicant);
     }
     learned_to_loop.emplace(id, loop);
-    step = step || encode_transition(accel, id);
     return id;
 }
 
@@ -415,25 +410,6 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
         }
     }
     return false;
-}
-
-ITSModel TRPUtil::get_model() {
-    std::vector<Bools::Expr> res{t.init()};
-    Bools::Expr last{t.init()};
-    for (unsigned i = 0; i < trace.size(); ++i) {
-        const auto s1{get_subs(i, 1)};
-        last = last && s1(step);
-        Renaming s2;
-        for (const auto &x : vars) {
-            if (theory::isProgVar(x)) {
-                s2.insert(s1.get(theory::postVar(x)), x);
-                s2.insert(x, theory::next(x));
-            }
-        }
-        res.push_back(s2(last));
-    }
-    const auto sp_model{bools::mkOr(res)};
-    return its2safety.transform_model(sp_model);
 }
 
 ITSSafetyCex TRPUtil::get_cex() {

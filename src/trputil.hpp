@@ -49,7 +49,6 @@ protected:
     linked_hash_map<Int, std::vector<std::pair<Int, Bools::Expr>>> learned_to_loop;
     Int next_id {0};
     rule_map_t rule_map {};
-    Bools::Expr step {bot()};
     ITSPtr its;
     TRP trp;
     Renaming post_to_pre;
@@ -78,7 +77,6 @@ public:
     static const Config::TRPConfig forwardConfig;
     static const Config::TRPConfig backwardConfig;
 
-    ITSModel get_model() override;
     ITSSafetyCex get_cex() override;
 
 };

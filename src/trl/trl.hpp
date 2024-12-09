@@ -20,10 +20,9 @@ class TRL: public TRPUtil {
 
 private:
 
+    Bools::Expr step {bot()};
     // step -> ID of corresponding transition formula -> blocked transition
     std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
-
-
     unsigned depth {0};
 
     void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) override;
@@ -38,5 +37,6 @@ public:
 
     explicit TRL(const ITSPtr its, const Config::TRPConfig &config);
     std::optional<SmtResult> do_step() override;
+    ITSModel get_model() override;
 
 };

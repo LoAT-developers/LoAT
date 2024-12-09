@@ -64,6 +64,22 @@ void SafetyProblem::set_err(const Bools::Expr e) {
     error_states = e;
 }
 
+void SafetyProblem::add_edge(const Bools::Expr from, const Bools::Expr to) {
+    graph.addEdge(from, to);
+}
+
+void SafetyProblem::mark_initial_transition(const Bools::Expr t) {
+    graph.markRoot(t);
+}
+
+void SafetyProblem::mark_sink_transition(const Bools::Expr t) {
+    graph.markSink(t);
+}
+
+const DependencyGraph<Bools::Expr>& SafetyProblem::get_dg() const {
+    return graph;
+}
+
 std::ostream& operator<<(std::ostream& s, const SafetyProblem& sp) {
     s << "pre vars: " << sp.pre_vars() << std::endl;
     s << "post vars: " << sp.post_vars() << std::endl;
