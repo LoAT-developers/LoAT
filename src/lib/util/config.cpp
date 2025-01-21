@@ -1,25 +1,14 @@
 #include "config.hpp"
 #include <iostream>
 
-/**
- * Global settings and constants.
- *
- * Variables which are "const" should mostly not be changed.
- * The other variables may be changed (e.g., to choose which heuristics are used)
- * and may be controlled via command line options.
- *
- * See the source file for documentation (since this is also where the default values are defined)
- */
 namespace Config {
 
     namespace Output {
-        // Whether to enable colors in the proof output
-        bool Colors {true};
         bool PrintDependencyGraph {false};
     }
 
     namespace Input {
-        Format format = Koat;
+        Format format = Horn;
     }
 
     // Asymptotic complexity computation using limit problems
@@ -33,14 +22,14 @@ namespace Config {
 
         std::vector<Mode> modes { Complexity, Termination, Recurrence, Safety };
 
-        Mode mode = Complexity;
+        Mode mode;
         Engine engine;
         SmtSolver smtSolver = Heuristic;
         bool log = false;
         bool logPreproc = false;
         bool logAccel = false;
         bool model = false;
-        Direction dir = Forward;
+        Direction dir;
 
         std::string modeName(const Mode mode) {
             switch (mode) {
