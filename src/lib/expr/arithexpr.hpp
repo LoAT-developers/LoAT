@@ -181,6 +181,8 @@ public:
 
     std::optional<Int> isPoly() const;
 
+    bool isExponential() const;
+
     /**
      * @brief Collects all variables that occur in this expression.
      */

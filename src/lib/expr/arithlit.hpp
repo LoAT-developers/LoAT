@@ -77,6 +77,7 @@ public:
 
     ArithExprPtr lhs() const;
     bool isPoly() const;
+    bool isExponential() const;
     bool isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars = std::nullopt) const;
     void getBounds(const ArithVarPtr n, linked_hash_set<Bound> &res) const;
     void getDivisibility(const ArithVarPtr n, linked_hash_set<Divisibility> &res) const;

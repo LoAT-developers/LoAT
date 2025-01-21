@@ -105,6 +105,7 @@ public:
     LitSet lits() const;
     bool isLinear() const;
     bool isPoly() const;
+    bool isExponential() const;
 
 };
 

@@ -228,6 +228,38 @@ std::optional<Int> ArithExpr::isPoly() const {
         });
 }
 
+bool ArithExpr::isExponential() const {
+    return apply<bool>(
+        [](const ArithConstPtr) {
+            return false;
+        },
+        [](const ArithVarPtr) {
+            return false;
+        },
+        [](const ArithAddPtr a) {
+            for (const auto &arg: a->getArgs()) {
+                if (arg->isExponential()) {
+                    return true;
+                }
+            }
+            return false;
+        },
+        [](const ArithMultPtr m) {
+            for (const auto &arg: m->getArgs()) {
+                if (arg->isExponential()) {
+                    return true;
+                }
+            }
+            return false;
+        },
+        [](const ArithModPtr m) {
+            return m->getLhs()->isExponential() || m->getRhs()->isExponential();
+        },
+        [](const ArithExpPtr e) {
+            return !e->getExponent()->isRational() || e->getBase()->isExponential();
+        });
+}
+
 void ArithExpr::collectVars(linked_hash_set<ArithVarPtr> &res) const {
     apply<void>(
         [](const ArithConstPtr&) {},

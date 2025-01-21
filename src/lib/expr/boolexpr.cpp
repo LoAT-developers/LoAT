@@ -469,6 +469,20 @@ bool BoolExpr::isPoly() const {
     });
 }
 
+bool BoolExpr::isExponential() const {
+    return !forall([](const auto &lit) {
+        return std::visit(
+            Overload {
+                [](const Arith::Lit &lit) {
+                    return !lit->isExponential();
+                },
+                [](const Bools::Lit&) {
+                    return true;
+                }
+            }, lit);
+    });
+}
+
 const Bools::Expr operator&&(const Bools::Expr a, const Bools::Expr b) {
     const BoolExprSet children{a, b};
     return BoolExpr::mkAnd(children);

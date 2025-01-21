@@ -1,35 +1,74 @@
 #include "swine.hpp"
 #include "exprconverter.hpp"
+#include "config.hpp"
 
-Swine::Swine(swine::Config config): solver(config, z3ctx), ctx(solver) {
+#include <iostream>
+#include <fstream>
+#include <cstdio>
+
+unsigned Swine::counter {0};
+
+Swine::Swine(swine::Config config): solver(config, z3ctx), printer(config, z3ctx), ctx(solver) {
     auto &s {solver.get_solver()};
     s.set("random_seed", 42u);
     s.set("seed", 42u);
     s.set("sat.random_seed", 42u);
     s.set("nlsat.seed", 42u);
-    // s.set("rlimit", 10000000u);
-    // config.set_rlimit(1000);
 }
 
 void Swine::add(const Bools::Expr e) {
-    solver.add(ExprConverter<z3::expr, z3::expr, z3::expr_vector, z3::expr_vector>::convert(e, ctx));
+    if (exp < 0 && e->isExponential()) {
+        std::cout << e << std::endl;
+        exp = level;
+    }
+    const auto to_add {ExprConverter<z3::expr, z3::expr, z3::expr_vector, z3::expr_vector>::convert(e, ctx)};
+    solver.add(to_add);
+    printer.add(to_add);
 }
 
 void Swine::push() {
+    ++level;
     solver.push();
+    printer.push();
 }
 
 void Swine::pop() {
+    --level;
+    if (level < exp) {
+        exp = -1;
+    }
     solver.pop();
+    printer.pop();
 }
 
 SmtResult Swine::check() {
+    std::string name{"./benchmarks/" + Config::Analysis::filename + "_" + std::to_string(counter) + ".smt2"};
+    if (exp >= 0) {
+        std::ofstream out;
+        out.open(name);
+        out << printer;
+        out.close();
+    }
     switch (solver.check()) {
     case z3::unsat:
+        if (exp >= 0) {
+            if (std::remove(name.c_str())) {
+                std::cout << "failed removing " << name << std::endl;
+            }
+        }
         return SmtResult::Unsat;
     case z3::unknown:
+        if (exp >= 0) {
+            ++counter;
+            std::cout << "wrote " << name << std::endl;
+        }
         return SmtResult::Unknown;
     case z3::sat:
+    if (exp >= 0) {
+            if (std::remove(name.c_str())) {
+                std::cout << "failed removing " << name << std::endl;
+            }
+        }
         return SmtResult::Sat;
     }
     throw std::logic_error("unknown result from SMT solver");
@@ -82,7 +121,10 @@ Model Swine::model(const std::optional<const VarSet> &vars) {
 void Swine::enableModels() {}
 
 void Swine::resetSolver() {
+    level = 0;
+    exp = -1;
     solver.reset();
+    printer.reset();
 }
 
 Swine::~Swine() {}

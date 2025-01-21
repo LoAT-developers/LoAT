@@ -454,9 +454,10 @@ std::pair<RulePtr, Model> ADCL::build_loop(const int backlink) {
     const auto s {trace[backlink].var_renaming};
     auto vars {loop->vars()};
     s.collectCoDomainVars(vars);
-    auto model {solver->model(vars).composeBackwards(s)};
+    const auto m {solver->model(vars)};
+    const auto model {m.composeBackwards(s)};
     if (Config::Analysis::log) {
-        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << loop << std::endl;
+        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << *loop << std::endl;
     }
     return {loop, model};
 }
@@ -505,7 +506,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr rule, const Mode
         return std::make_unique<Unroll>(1);
     }
     if (Config::Analysis::log && simp->getId() != rule->getId()) {
-        std::cout << "simplified loop:\n" << simp << std::endl;
+        std::cout << "simplified loop:\n" << *simp << std::endl;
     }
     if (Config::Analysis::safety()) {
         if (simp->getUpdate().empty()) {
@@ -583,11 +584,8 @@ bool ADCL::check_consistency() {
     bool res {true};
     switch (solver->check()) {
     case SmtResult::Unsat:
-        throw std::logic_error("trace is contradictory");
     case SmtResult::Unknown:
-        std::cerr << "consistency of trace cannot be proven" << std::endl;
-        res = false;
-        break;
+        throw std::logic_error("trace is contradictory");
     case SmtResult::Sat:
         break;
     }

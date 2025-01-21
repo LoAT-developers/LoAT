@@ -294,6 +294,8 @@ int main(int argc, char *argv[]) {
     if (Config::Analysis::log) {
         std::cout << "parsing took " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
     }
+    auto startpos = filename.find_last_of('/') + 1;
+    Config::Analysis::filename = filename.substr(startpos);
     if (Config::Analysis::log) {
         std::cout << "Initial ITS\n" << *its << std::endl;
     }

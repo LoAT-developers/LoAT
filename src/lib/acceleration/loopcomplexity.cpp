@@ -16,18 +16,18 @@ LoopComplexity LoopComplexity::compute(const RulePtr rule) {
             }
         }
     }
-    for (const auto &[x, v] : rule->getUpdate<Arith>()) {
-        const auto vars{v->vars()};
-        if (vars.contains(x) && v->isPoly(x) == 1) {
-            const auto coeff{v->coeff(x)};
-            if (coeff) {
-                const auto c{(*coeff)->isRational()};
-                if (c && ***c < 0) {
-                    ++res.negated;
-                }
-            }
-        }
-    }
+    // for (const auto &[x, v] : rule->getUpdate<Arith>()) {
+    //     const auto vars{v->vars()};
+    //     if (vars.contains(x) && v->isPoly(x) == 1) {
+    //         const auto coeff{v->coeff(x)};
+    //         if (coeff) {
+    //             const auto c{(*coeff)->isRational()};
+    //             if (c && ***c < 0) {
+    //                 ++res.negated;
+    //             }
+    //         }
+    //     }
+    // }
     for (const auto &[x, v] : rule->getUpdate().get<Bools>()) {
         const auto lits{v->lits()};
         const auto lit{bools::mk(x)};

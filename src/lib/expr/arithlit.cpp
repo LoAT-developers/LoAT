@@ -81,6 +81,10 @@ bool ArithLit::isPoly() const {
     return l->isPoly().has_value();
 }
 
+bool ArithLit::isExponential() const {
+    return l->isExponential();
+}
+
 bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars) const {
     return l->isLinear(vars);
 }
