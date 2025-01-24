@@ -31,7 +31,9 @@ jobs:
         uses: actions/download-artifact@v4
 
       - run: |
-          mv loat-static-${{ github.sha }}/* .
+          mv loat-static-${{ github.sha }}/loat-static loat-static
+          rm -r loat-static-${{ github.sha }}
+          mv loat-static loat-static-${{ github.sha }}
         shell: bash
 
       - uses: pyTooling/Actions/releaser@r0
