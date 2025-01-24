@@ -16,4 +16,5 @@ COPY ../docker/loat-base-image/usr/local/include/ /usr/local/include/
 
 RUN git clone https://github.com/ffrohn/swine-z3
 WORKDIR /swine-z3/scripts
+RUN git checkout fb7ae5c
 RUN ./configure_and_build.sh

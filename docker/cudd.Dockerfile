@@ -13,6 +13,7 @@ FROM base as cudd
 
 RUN git clone https://github.com/ivmai/cudd.git
 WORKDIR /cudd
+RUN git checkout f54f533
 # make check fails when compiled with -DNDEBUG
 RUN ./configure CFLAGS="$CFLAGS -fPIC" CXXFLAGS="$CXXFLAGS -fPIC"
 RUN sed -i 's/aclocal-1.14/aclocal-1.16/g' Makefile

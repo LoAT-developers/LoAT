@@ -55,11 +55,17 @@ void setBool(const char *str, bool &b) {
 }
 
 void print_version() {
-    std::cout << Version::GIT_SHA;
+    std::cout << "LoAT:  " << Version::GIT_SHA;
     if (Version::GIT_DIRTY != "CLEAN") {
         std::cout << "_DIRTY";
     }
     std::cout << std::endl;
+    std::cout << "Yices: " << std::string(yices_version) << std::endl;
+    std::cout << "       build mode: " << std::string(yices_build_mode) << std::endl;
+    std::cout << "       build arch: " << std::string(yices_build_arch) << std::endl;
+    std::cout << "       build date: " << std::string(yices_build_date) << std::endl;
+    std::string z3_version {Z3_get_full_version()};
+    std::cout << "Z3:    " << z3_version << std::endl;
 }
 
 void parseFlags(int argc, char *argv[]) {
