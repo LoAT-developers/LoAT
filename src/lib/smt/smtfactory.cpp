@@ -52,7 +52,9 @@ SmtPtr solver() {
         [[fallthrough]];
     case Config::Analysis::Heuristic:
         auto config {swine::Config()};
-        config.deactivate(swine::LemmaKind::Modulo);
+        config.deactivate(swine::LemmaKind::Prime);
+        config.deactivate(swine::LemmaKind::Induction);
+        config.toggle_mode = false;
         solver = std::unique_ptr<Smt>(new Swine(config));
         break;
     }
