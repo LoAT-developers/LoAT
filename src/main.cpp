@@ -23,6 +23,7 @@
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <iostream>
+#include <swine/version.h>
 
 // Variables for command line flags
 std::string filename;
@@ -66,6 +67,7 @@ void print_version() {
     std::cout << "       build date: " << std::string(yices_build_date) << std::endl;
     std::string z3_version {Z3_get_full_version()};
     std::cout << "Z3:    " << z3_version << std::endl;
+    std::cout << "SwInE: " << swine::Version::GIT_SHA << std::endl;
 }
 
 void parseFlags(int argc, char *argv[]) {
