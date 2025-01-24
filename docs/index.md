@@ -15,9 +15,9 @@ LoAT is based on a variety of techniques:
   Loop acceleration transforms certain simple relations into first-order formulas that describe their transitive closure.
 * To lift loop acceleration to more complex formalisms (like transition systems or CHCs), earlier versions of LoAT used the framework described in [this paper](https://doi.org/10.1145/3410331).
 * Current versions use
-  * [*ADCL*](https://arxiv.org/abs/2303.01827) (default for lower bounds and non-termination),
-  * [*ABMC*](https://arxiv.org/abs/2401.09973) (satisfiability and non-termination only), and
-  * TRL (default for satisfiability, more information will be available soon).
+  * [ADCL](https://arxiv.org/abs/2303.01827) (default for lower bounds and non-termination),
+  * [ABMC](https://arxiv.org/abs/2401.09973) (only available for satisfiability and non-termination), and
+  * TRL (only available, and the default for satisfiability -- more information will be available soon).
 * Apart from that, LoAT also implements
   * Bounded Model Checking and
   * k-Induction.
@@ -80,34 +80,34 @@ A link to this release, as well as further information about using it, can be fo
 
 The techniques implemented in LoAT are described in the following publications (in chronological order):
 
-* [Lower Runtime Bounds for Integer Programs](http://aprove.informatik.rwth-aachen.de/eval/integerLower/compl-paper.pdf)\
-  F. Frohn, M. Naaf, J. Hensel, M. Brockschmidt, and J. Giesl\
-  IJCAR '16
-* [Proving Non-Termination via Loop Acceleration](https://arxiv.org/abs/1905.11187)\
+* [Integrating Loop Acceleration into Bounded Model Checking](https://arxiv.org/abs/2401.09973)\
   F. Frohn and J. Giesl\
-  FMCAD '19
-* [Inferring Lower Runtime Bounds for Integer Programs](https://doi.org/10.1145/3410331)\
-  F. Frohn, M. Naaf, M. Brockschmidt, and J. Giesl\
-  ACM Transactions on Programming Languages and Systems, 42(3), 2020
+  IJCAR '24
+* [ADCL: Acceleration Driven Clause Learning for Constrained Horn Clauses](https://arxiv.org/abs/2303.01827)\
+  F. Frohn and J. Giesl\
+  SAS '23
+* [Proving Non-Termination by Acceleration Driven Clause Learning](https://arxiv.org/abs/2304.10166)\
+  F. Frohn and J. Giesl\
+  CADE '23
+* [Proving Non-Termination and Lower Runtime Bounds with LoAT (System Description)](https://doi.org/10.1007/978-3-031-10769-6_41)\
+  F. Frohn and J. Giesl\
+  IJCAR '22
+* [A Calculus for Modular Loop Acceleration and Non-Termination Proofs](https://doi.org/10.1007/s10009-022-00670-2)\
+  F. Frohn and C. Fuhs\
+  International Journal on Software Tools for Technology Transfer, 24(5), 2022
 * [A Calculus for Modular Loop Acceleration](https://doi.org/10.1007/978-3-030-45190-5_4)\
   F. Frohn\
   TACAS '20\
   Winner of the EASST Best Paper Award
-* [A Calculus for Modular Loop Acceleration and Non-Termination Proofs](https://doi.org/10.1007/s10009-022-00670-2)\
-  F. Frohn and C. Fuhs\
-  International Journal on Software Tools for Technology Transfer, 24(5), 2022
-* [Proving Non-Termination and Lower Runtime Bounds with LoAT (System Description)](https://doi.org/10.1007/978-3-031-10769-6_41)\
+* [Inferring Lower Runtime Bounds for Integer Programs](https://doi.org/10.1145/3410331)\
+  F. Frohn, M. Naaf, M. Brockschmidt, and J. Giesl\
+  ACM Transactions on Programming Languages and Systems, 42(3), 2020
+* [Proving Non-Termination via Loop Acceleration](https://arxiv.org/abs/1905.11187)\
   F. Frohn and J. Giesl\
-  IJCAR '22
-* [Proving Non-Termination by Acceleration Driven Clause Learning](https://arxiv.org/abs/2304.10166)\
-  F. Frohn and J. Giesl\
-  CADE '23
-* [ADCL: Acceleration Driven Clause Learning for Constrained Horn Clauses](https://arxiv.org/abs/2303.01827)\
-  F. Frohn and J. Giesl\
-  SAS '23
-* [Integrating Loop Acceleration into Bounded Model Checking](https://arxiv.org/abs/2401.09973)\
-  F. Frohn and J. Giesl\
-  IJCAR '24
+  FMCAD '19
+* [Lower Runtime Bounds for Integer Programs](http://aprove.informatik.rwth-aachen.de/eval/integerLower/compl-paper.pdf)\
+  F. Frohn, M. Naaf, J. Hensel, M. Brockschmidt, and J. Giesl\
+  IJCAR '16
 
 # Citing LoAT
 
@@ -117,31 +117,31 @@ If you refer to LoAT in your paper, please cite our [IJCAR '22 system descriptio
 
 In 2020, LoAT competed as standalone tool at the [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition) for the first time.
 
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2020*](http://termination-portal.org/wiki/Termination_Competition_2020)
-* 2nd place in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2020*](http://termination-portal.org/wiki/Termination_Competition_2020)
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2021*](http://termination-portal.org/wiki/Termination_Competition_2021)
-* 2nd place in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2021*](http://termination-portal.org/wiki/Termination_Competition_2021)
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
 * best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
+* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
+* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
+* 2nd place in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2021*](http://termination-portal.org/wiki/Termination_Competition_2021)
+* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2021*](http://termination-portal.org/wiki/Termination_Competition_2021)
+* 2nd place in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2020*](http://termination-portal.org/wiki/Termination_Competition_2020)
+* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2020*](http://termination-portal.org/wiki/Termination_Competition_2020)
 
 From 2016 until the last run of this category in 2019, [AProVE](http://aprove.informatik.rwth-aachen.de/) was using LoAT as backend to prove lower bounds on the runtime complexity of integer transition systems.
 In this constellation, AProVE and LoAT won the following awards:
 
-* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2016*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2016)
-* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2017*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2017)
-* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2018*](http://group-mmm.org/termination/competitions/Y2018/)
 * 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2019*](http://group-mmm.org/termination/competitions/Y2019/)
+* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2018*](http://group-mmm.org/termination/competitions/Y2018/)
+* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2017*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2017)
+* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2016*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2016)
 
 Since 2021, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in its backend to prove non-termination of C programs (besides [T2](http://mmjb.github.io/T2/)).
 In this constellation AProVE, LoAT, and T2 won the following awards:
 
-* 2nd place in the Category Termination at the [*Competition on Software Verification 2022*](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
-* 1st place in the Category *Termination of C programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
-* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
-* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
-* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
 * 3rd place in the Category Termination at the [*Competition on Software Verification 2025*](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
+* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
+* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
+* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
+* 1st place in the Category *Termination of C programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
+* 2nd place in the Category Termination at the [*Competition on Software Verification 2022*](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
 
 # Build
 
