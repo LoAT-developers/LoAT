@@ -43,4 +43,4 @@ jobs:
           tag: nightly
           rm: true
           files: |
-            loat-static
+            loat-static-${{ github.sha }}

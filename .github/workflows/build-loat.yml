@@ -38,7 +38,7 @@ jobs:
       - name: Export LoAT Binary
         uses: actions/upload-artifact@master
         with:
-          name: loat-static-${{ github.ref_name }}
+          name: loat-static-${{ github.sha }}
           path: |
             build/release/loat-static
 
