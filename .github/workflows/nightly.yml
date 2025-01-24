@@ -1,0 +1,45 @@
+name: Nightly build
+
+on:
+
+  # Also allow this action to be triggered manually via a button in
+  # the GitHub UI.
+  workflow_dispatch:
+
+  workflow_call:
+
+  schedule:
+    - cron: '0 0 * * 5'
+
+jobs:
+  # build-linux:
+  #   uses: ./.github/workflows/build-linux.yml
+  build-linux-static:
+    uses: ./.github/workflows/build-loat.yml
+  # build-osx:
+  #   uses: ./.github/workflows/build-osx.yml
+  # build-windows:
+  #   uses: ./.github/workflows/build-windows.yml
+
+  upload-build:
+    # needs: [build-linux, build-linux-static, build-osx, build-windows]
+    needs: [build-linux-static]
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: download builds
+        uses: actions/download-artifact@v4
+
+      - run: |
+          mv loat-static-${{ github.sha }}/loat-static loat-static
+          rm -r loat-static-${{ github.sha }}
+          mv loat-static loat-static-${{ github.sha }}
+        shell: bash
+
+      - uses: pyTooling/Actions/releaser@r0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: nightly
+          rm: true
+          files: |
+            loat-static-${{ github.sha }}

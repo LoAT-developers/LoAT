@@ -4,15 +4,6 @@
 #include <vector>
 #include <ostream>
 
-/**
- * Global settings and constants.
- *
- * Variables which are "const" should mostly not be changed.
- * The other variables may be changed (e.g., to choose which heuristics are used)
- * and may be controlled via command line options.
- *
- * See the source file for documentation (since this is also where the default values are defined)
- */
 namespace Config {
 
     namespace Output {

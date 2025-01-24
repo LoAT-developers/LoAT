@@ -23,6 +23,7 @@
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <iostream>
+#include <swine/version.h>
 
 // Variables for command line flags
 std::string filename;
@@ -55,11 +56,18 @@ void setBool(const char *str, bool &b) {
 }
 
 void print_version() {
-    std::cout << Version::GIT_SHA;
+    std::cout << "LoAT:  " << Version::GIT_SHA;
     if (Version::GIT_DIRTY != "CLEAN") {
         std::cout << "_DIRTY";
     }
     std::cout << std::endl;
+    std::cout << "Yices: " << std::string(yices_version) << std::endl;
+    std::cout << "       build mode: " << std::string(yices_build_mode) << std::endl;
+    std::cout << "       build arch: " << std::string(yices_build_arch) << std::endl;
+    std::cout << "       build date: " << std::string(yices_build_date) << std::endl;
+    std::string z3_version {Z3_get_full_version()};
+    std::cout << "Z3:    " << z3_version << std::endl;
+    std::cout << "SwInE: " << swine::Version::GIT_SHA << std::endl;
 }
 
 void parseFlags(int argc, char *argv[]) {
@@ -74,6 +82,8 @@ void parseFlags(int argc, char *argv[]) {
         }
     };
     auto has_engine{false};
+    auto has_mode{false};
+    auto has_direction{false};
     while (++arg < argc) {
         if (strcmp("--help", argv[arg]) == 0) {
             printHelp(argv[0]);
@@ -85,16 +95,15 @@ void parseFlags(int argc, char *argv[]) {
         } else if (strcmp("--model", argv[arg]) == 0) {
             Config::Analysis::model = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
-            bool found = false;
             std::string str = getNext();
             for (const Config::Analysis::Mode mode : Config::Analysis::modes) {
                 if (boost::iequals(str, Config::Analysis::modeName(mode))) {
                     Config::Analysis::mode = mode;
-                    found = true;
+                    has_mode = true;
                     break;
                 }
             }
-            if (!found) {
+            if (!has_mode) {
                 std::cerr << "Unknown mode " << str << ", defaulting to " << Config::Analysis::modeName(Config::Analysis::mode) << std::endl;
             }
         } else if (strcmp("--engine", argv[arg]) == 0) {
@@ -161,6 +170,7 @@ void parseFlags(int argc, char *argv[]) {
         } else if (strcmp("--abmc::blocking_clauses", argv[arg]) == 0) {
             setBool(getNext(), Config::ABMC::blocking_clauses);
         } else if (strcmp("--direction", argv[arg]) == 0) {
+            has_direction = true;
             const auto str{getNext()};
             if (boost::iequals("forward", str)) {
                 Config::Analysis::dir = Config::Analysis::Direction::Forward;
@@ -209,15 +219,15 @@ void parseFlags(int argc, char *argv[]) {
             filename = argv[arg];
         }
     }
+    if (!has_mode) {
+        std::cout << "Error: no mode given" << std::endl;
+        exit(1);
+    }
     if (!has_engine) {
-        switch (Config::Analysis::mode) {
-            case Config::Analysis::Safety:
-                Config::Analysis::engine = Config::Analysis::TRL;
-                break;
-            default:
-                Config::Analysis::engine = Config::Analysis::ADCL;
-                break;
-        }
+        Config::Analysis::engine = Config::Analysis::safety() ? Config::Analysis::TRL : Config::Analysis::ADCL;
+    }
+    if (!has_direction) {
+        Config::Analysis::dir = Config::Analysis::engine == Config::Analysis::TRL ? Config::Analysis::Interleaved : Config::Analysis::Forward;
     }
 }
 

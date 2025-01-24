@@ -38,6 +38,7 @@ COPY ../docker/loat-base-image/usr/local/include/cudd.h /usr/local/include/cudd.
 
 RUN git clone https://github.com/SRI-CSL/yices2.git
 WORKDIR /yices2
+RUN git checkout 0ef16375
 RUN autoconf
 RUN ./configure --enable-mcsat --with-pic-gmp=/gmp/lib/libgmp.a
 RUN make -j$(nproc)

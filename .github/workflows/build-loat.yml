@@ -12,10 +12,6 @@ on:
   # Also allow this action to be triggered manually via a button in
   # the GitHub UI.
   workflow_dispatch:
-  workflow_run:
-    workflows: [Build LoAT Base Image]
-    types:
-      - completed
 
   workflow_call:
 
@@ -42,7 +38,7 @@ jobs:
       - name: Export LoAT Binary
         uses: actions/upload-artifact@master
         with:
-          name: loat-static-${{ github.ref_name }}
+          name: loat-static-${{ github.sha }}
           path: |
             build/release/loat-static
 

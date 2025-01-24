@@ -19,6 +19,7 @@ COPY ../docker/loat-base-image/usr/local/lib/libntl.a /usr/local/lib/libntl.a
 
 RUN git clone https://github.com/aprove-developers/LoAT-purrs.git
 WORKDIR /LoAT-purrs
+RUN git checkout 1dadc7d
 RUN autoreconf --install
 RUN automake
 RUN ./configure
