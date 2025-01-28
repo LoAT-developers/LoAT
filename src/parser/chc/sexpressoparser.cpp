@@ -8,17 +8,6 @@ CHCPtr SexpressoParser::loadFromFile(const std::string &filename) {
     return parser.chcs;
 }
 
-FunAppPtr parsePred(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars) {
-    std::vector<Expr> args;
-    if (exp.isString()) {
-        return FunApp::mk(exp.str(), args);
-    }
-    for (unsigned i = 1; i < exp.childCount(); ++i) {
-        args.push_back(theory::toExpr(vars.at(exp[i].str())));
-    }
-    return FunApp::mk(exp[0].str(), args);
-}
-
 bool isInt(const std::string &s) {
     return !s.empty() && (s[0] == '-' || std::isdigit(s[0])) && std::all_of(std::next(s.begin()), s.end(), ::isdigit);
 }
@@ -171,6 +160,15 @@ std::string getType(sexpresso::Sexp &exp, const std::unordered_map<std::string, 
     }
 }
 
+Expr parseExpr(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &refinement, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
+    const auto type{getType(exp, vars, bindings)};
+    if (type == "Int") {
+        return parseArithExpr(exp, vars, refinement, bindings);
+    } else {
+        return parseBoolExpr(exp, vars, refinement, bindings);
+    }
+}
+
 Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &refinement, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
     if (exp.isString()) {
         const auto name {exp.str()};
@@ -203,12 +201,7 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::st
         for (unsigned i = 0; i < declarations.childCount(); ++i) {
             auto decl {declarations[i]};
             const auto declName {decl[0].str()};
-            const auto type {getType(decl[1], vars, bindings)};
-            if (type == "Int") {
-                newBindings.emplace(declName, parseArithExpr(decl[1], vars, refinement, bindings));
-            } else {
-                newBindings.emplace(declName, parseBoolExpr(decl[1], vars, refinement, bindings));
-            }
+            newBindings.emplace(declName, parseExpr(decl[1], vars, refinement, bindings));
         }
         bindings.push_back(newBindings);
         auto res {parseBoolExpr(exp[2], vars, refinement, bindings)};
@@ -274,6 +267,17 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::st
     }
 }
 
+FunAppPtr parsePred(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &refinement, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
+    std::vector<Expr> args;
+    if (exp.isString()) {
+        return FunApp::mk(exp.str(), args);
+    }
+    for (unsigned i = 1; i < exp.childCount(); ++i) {
+        args.push_back(parseExpr(exp[i], vars, refinement, bindings));
+    }
+    return FunApp::mk(exp[0].str(), args);
+}
+
 std::optional<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, const std::unordered_map<std::string, Var> &vars, std::vector<Bools::Expr> &result, std::vector<std::unordered_map<std::string, Expr>> &bindings) {
     if (exp.isString()) {
         const auto name {exp.str()};
@@ -283,7 +287,7 @@ std::optional<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, const std::
             result.emplace_back(parseBoolExpr(exp, vars, result, bindings));
             return {};
         } else {
-            return parsePred(exp, vars);
+            return parsePred(exp, vars, result, bindings);
         }
     }
     const auto f {exp[0].str()};
@@ -301,7 +305,7 @@ std::optional<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, const std::
         result.emplace_back(parseBoolExpr(exp, vars, result, bindings));
         return {};
     } else {
-        return parsePred(exp, vars);
+        return parsePred(exp, vars, result, bindings);
     }
 }
 
@@ -335,7 +339,7 @@ void SexpressoParser::run(const std::string &filename) {
             std::optional<FunAppPtr> conclusion;
             auto conc {imp[2]};
             if (!conc.isString() || conc.str() != "false") {
-                conclusion = parsePred(conc, var_map);
+                conclusion = parsePred(conc, var_map, constraints, bindings);
             }
             chcs->add_clause(Clause::mk(premise, bools::mkAnd(constraints), conclusion));
         }
