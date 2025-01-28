@@ -4,7 +4,7 @@ runs:
 
     - uses: actions/download-artifact@v4
       with:
-        name: loat-static-${{ github.ref_name }}
+        name: loat-static-${{ github.sha }}
         path: /usr/local/bin/
 
     - run: |
