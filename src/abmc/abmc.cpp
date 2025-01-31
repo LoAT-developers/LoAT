@@ -242,7 +242,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         nonterm_to_query(simp, accel_res);
         if (accel_res.accel) {
             auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)};
-            if (simplified->getUpdate() != simp->getUpdate() && simplified->isPoly()) {
+            if (simplified->getUpdate() != simp->getUpdate()) {
                 success = true;
                 add_learned_clause(simplified, backlink);
                 if (Config::Analysis::model) {
