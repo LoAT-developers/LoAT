@@ -1,5 +1,5 @@
 #!/bin/bash
 trap "" SIGRTMIN
 TO=`expr $STAREXEC_WALLCLOCK_LIMIT - 3`
-RES=`timeout $TO ./loat-static --plain --proof-level 0 $1 2> /dev/null`
+RES=`timeout $TO ./loat-static --format koat --mode complexity --engine adcl $1 2> /dev/null`
 echo "$RES" | grep "WORST_CASE\|NO" | tac | head -n 1
