@@ -11,11 +11,11 @@ RUN xbps-install -yS cmake gcc make wget python3-devel
 
 FROM base as z3
 
-RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.5.tar.gz
-RUN tar xf z3-4.12.5.tar.gz
-WORKDIR /z3-z3-4.12.5
+RUN wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.13.4.tar.gz
+RUN tar xf z3-4.13.4.tar.gz
+WORKDIR /z3-z3-4.13.4
 RUN mkdir build
-WORKDIR /z3-z3-4.12.5/build
+WORKDIR /z3-z3-4.13.4/build
 RUN cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -DCMAKE_BUILD_TYPE=Release ..
 RUN make -j$(nproc)
 RUN make install

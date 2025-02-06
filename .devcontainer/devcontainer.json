@@ -3,7 +3,7 @@
 {
 	"name": "Alpine",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "loat/loat-base:d31fb363",
+	"image": "loat/loat-base:c53809ab",
 //	"build": { "dockerfile": "Dockerfile" },
 	"customizations": {
 		"vscode": {
