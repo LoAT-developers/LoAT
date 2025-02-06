@@ -208,6 +208,8 @@ void parseFlags(int argc, char *argv[]) {
                 std::cout << "Error: unknown MBP kind " << str << std::endl;
                 exit(1);
             }
+        } else if (strcmp("--purrs", argv[arg]) == 0) {
+            Config::Analysis::usePurrs = true;
         } else if (strcmp("--version", argv[arg]) == 0) {
             print_version();
             exit(0);

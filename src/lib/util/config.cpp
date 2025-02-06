@@ -29,6 +29,7 @@ namespace Config {
         bool logPreproc = false;
         bool logAccel = false;
         bool model = false;
+        bool usePurrs = false;
         Direction dir;
 
         std::string modeName(const Mode mode) {

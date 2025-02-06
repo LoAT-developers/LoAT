@@ -548,7 +548,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr rule, const Mode
                 the_cex()->add_accel(rule, simplified);
             }
             if (Config::Analysis::log) {
-                std::cout << "accelerated rule: " << simplified << std::endl;
+                std::cout << "accelerated rule: " << *simplified << std::endl;
             }
         }
     }

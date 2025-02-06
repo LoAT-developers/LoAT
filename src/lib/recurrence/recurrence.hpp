@@ -23,9 +23,15 @@ private:
 
     Recurrence(const Subs &subs, const Arith::Var n);
 
+    std::optional<std::tuple<Int, Int, Arith::Expr>> handle_exp(const ArithExpPtr &pow);
+
+    Arith::Expr compute_r(const Arith::Expr cs, const Rational &c);
+
     bool solve();
 
     bool solve(const Arith::Var lhs, const Arith::Expr rhs);
+
+    bool solve_purrs(const Arith::Var lhs, const Arith::Expr rhs);
 
     bool solve(const Bools::Var &lhs, const Bools::Expr rhs);
 
@@ -38,7 +44,7 @@ private:
      * @note the recurrence equations are valid *before* the transition is taken,
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
-    Subs closed_form_pre {};
+    Subs closed_form_n_minus_one {};
 
     Result result {};
 
