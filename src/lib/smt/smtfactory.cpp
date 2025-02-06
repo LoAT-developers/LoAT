@@ -13,8 +13,8 @@ SmtPtr solver(Logic logic) {
     case Config::Analysis::Heuristic: {
         switch (logic) {
         case QF_LA:
-            // res = std::unique_ptr<Smt>(new Yices(logic));
-            // break;
+            res = std::unique_ptr<Smt>(new Yices(logic));
+            break;
         case QF_NA:
             res = std::unique_ptr<Smt>(new Z3());
             break;
