@@ -95,18 +95,12 @@ bool Recurrence::solve(const Arith::Var x, const Arith::Expr rhs) {
         }
         auto m{*coeff_x->isInt()};
         assert(m >= 1);
-        if (Config::Analysis::log) {
-            std::cout << "coefficient of " << x << ": " << m << std::endl;
-        }
         const auto q {(m_x_plus_q - arith::mkConst(m) * x)};
         ArithExprSet q_addends;
         if (const auto add{q->isAdd()}) {
             q_addends = (*add)->getArgs();
         } else {
             q_addends.insert(q);
-        }
-        if (Config::Analysis::log) {
-            std::cout << "q_addends: " << q_addends << std::endl;
         }
         using Key = std::pair<Int, Int>;
         using Val = std::vector<Arith::Expr>;
@@ -194,9 +188,6 @@ bool Recurrence::solve(const Arith::Var x, const Arith::Expr rhs) {
             const auto &[a, b] {db};
             const auto r {compute_r(arith::mkExp(n, arith::mkConst(a)), Rational(m, b))};
             const auto alpha {arith::mkPlus(std::move(coeff))};
-            if (Config::Analysis::log) {
-                std::cout << "degree: " << a << ", base: " << b << ", coefficient: " << alpha << ", r: " << r << std::endl;
-            }
             const auto alpha_divided {alpha->divide(b)};
             // first addend of the last line from (10)
             const auto fst {alpha_divided * r * arith::mkExp(arith::mkConst(b), n)};
