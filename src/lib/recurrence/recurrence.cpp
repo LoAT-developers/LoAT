@@ -75,6 +75,9 @@ bool Recurrence::solve(const Arith::Var x, const Arith::Expr rhs) {
     if (Config::Analysis::usePurrs) {
         return solve_purrs(x, rhs);
     }
+    if (!rhs->isLinear({{x}})) {
+        return false;
+    }
     auto m_x_plus_q{closed_form_n_minus_one.get<Arith>()(rhs)};
     const auto vars{m_x_plus_q->vars()};
     auto prefix{0u};
@@ -91,9 +94,12 @@ bool Recurrence::solve(const Arith::Var x, const Arith::Expr rhs) {
         if (prefix > 0) {
             ++prefix;
         }
-        auto m_opt{(*m_x_plus_q->coeff(x))->isInt()};
-        assert(m_opt && *m_opt >= 1);
-        const auto m {*m_opt};
+        const auto coeff_x {*m_x_plus_q->coeff(x)};
+        if (!coeff_x->isInt()) {
+            return false;
+        }
+        auto m{*coeff_x->isInt()};
+        assert(m >= 1);
         if (Config::Analysis::log) {
             std::cout << "coefficient of " << x << ": " << m << std::endl;
         }
