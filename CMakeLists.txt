@@ -108,12 +108,6 @@ find_library(CADICAL cadical)
 message(STATUS "cadical: ${CADICAL}")
 find_library(SWINE swine-z3)
 message(STATUS "swine: ${SWINE}")
-find_library(GINAC ginac)
-message(STATUS "ginac: ${GINAC}")
-find_library(PURRS purrs)
-message(STATUS "purrs: ${PURRS}")
-find_library(NTL ntl)
-message(STATUS "ntl: ${NTL}")
 find_library(CLN cln)
 message(STATUS "cln: ${CLN}")
 find_library(GMP gmp)
@@ -143,9 +137,6 @@ target_link_libraries(${EXECUTABLE}
   ${POLYXX}
   ${POLY}
   ${CUDD}
-  ${PURRS}
-  ${GINAC}
-  ${NTL}
   ${CLN}
   ${GMP}
   ${LINKER_OPTIONS}

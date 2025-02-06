@@ -11,7 +11,6 @@
 #include "parser.hpp"
 #include "preprocessing.hpp"
 #include "adcl.hpp"
-#include "recurrence.hpp"
 #include "reverse.hpp"
 #include "safetyproblem.hpp"
 #include "sexpressoparser.hpp"
@@ -208,8 +207,6 @@ void parseFlags(int argc, char *argv[]) {
                 std::cout << "Error: unknown MBP kind " << str << std::endl;
                 exit(1);
             }
-        } else if (strcmp("--purrs", argv[arg]) == 0) {
-            Config::Analysis::usePurrs = true;
         } else if (strcmp("--version", argv[arg]) == 0) {
             print_version();
             exit(0);
@@ -265,11 +262,6 @@ int main(int argc, char *argv[]) {
     if (filename.empty()) {
         std::cerr << "Error: missing filename" << std::endl;
         return 1;
-    }
-
-    if (Config::Analysis::mode == Config::Analysis::Recurrence) {
-        Recurrence::solve(filename);
-        return 0;
     }
 
     std::optional<ITSPtr> its{};

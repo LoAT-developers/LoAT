@@ -10,6 +10,7 @@
 
 #include <numeric>
 #include <unordered_set>
+#include <stack>
 
 Preprocessor::Preprocessor(ITSPtr its): its(its), chain(its), rule_preproc(its), cex(its) {}
 

@@ -16,6 +16,8 @@
 #include "trp.hpp"
 #include "trputil.hpp"
 
+#include <map>
+
 class TRL: public TRPUtil {
 
 private:

@@ -5,15 +5,6 @@
 #include <z3++.h>
 
 
-/**
- * Wrapper around z3 context to allow convenient variable handling.
- *
- * Note that z3 identifies symbols with the same name, whereas GiNaC considers two symbols with the same name
- * as different. This context does thus map GiNaC symbols to z3 symbols (instead of mapping names to z3 symbols).
- *
- * For convenience, it is also possible to create z3 symbols not associated to any GiNaC symbol,
- * but these symbols cannot be looked up later (as they are not associated to any GiNaC symbol).
- */
 class Z3Context : public ExprConversionContext<z3::expr, z3::expr, z3::expr_vector, z3::expr_vector> {
 
 public:

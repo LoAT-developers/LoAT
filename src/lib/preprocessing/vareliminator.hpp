@@ -3,6 +3,7 @@
 #include "theory.hpp"
 
 #include <functional>
+#include <stack>
 
 /**
  * Computes substitutions that are suitable to eliminate the given temporary variable from the rule by replacing it with its bounds.

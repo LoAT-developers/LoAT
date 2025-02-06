@@ -7,6 +7,8 @@
 #include "realqe.hpp"
 #include "safetycex.hpp"
 
+#include <stack>
+
 const Config::TRPConfig TRPUtil::forwardConfig{
     .mbpKind = Config::TRPConfig::LowerIntMbp,
     .recurrent_cycles = false,

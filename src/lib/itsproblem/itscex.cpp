@@ -4,6 +4,7 @@
 #include "smtfactory.hpp"
 
 #include <assert.h>
+#include <stack>
 
 ITSCex::ITSCex(ITSPtr its): its(its) {}
 

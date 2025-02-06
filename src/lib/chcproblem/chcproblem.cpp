@@ -1,6 +1,8 @@
 #include "chcproblem.hpp"
 #include "optional.hpp"
 
+#include <map>
+
 std::ostream& operator<<(std::ostream &s, const ClausePtr c) {
     if (c->premise) {
         s << (*c->premise)->get_pred() << "(";

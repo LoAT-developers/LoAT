@@ -1,5 +1,7 @@
 #include "chccex.hpp"
 
+#include <stack>
+
 CHCCex::CHCCex(CHCPtr chcs): chcs(chcs) {}
 
 bool CHCCex::is_valid_step(const Model &m, const ClausePtr &c) const {

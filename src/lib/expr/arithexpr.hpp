@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ginac/ginac.h>
 #include <variant>
 #include <initializer_list>
 #include <optional>

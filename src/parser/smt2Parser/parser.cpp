@@ -3,7 +3,6 @@
 
 #include <fstream>
 #include <boost/algorithm/string.hpp>
-#include <ginac/ginac.h>
 
 namespace sexpressionparser {
 

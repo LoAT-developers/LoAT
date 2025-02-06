@@ -31,8 +31,6 @@ private:
 
     bool solve(const Arith::Var lhs, const Arith::Expr rhs);
 
-    bool solve_purrs(const Arith::Var lhs, const Arith::Expr rhs);
-
     bool solve(const Bools::Var &lhs, const Bools::Expr rhs);
 
     Subs equations;

@@ -20,7 +20,7 @@ namespace Config {
 
     namespace Analysis {
 
-        std::vector<Mode> modes { Complexity, Termination, Recurrence, Safety };
+        std::vector<Mode> modes { Complexity, Termination, Safety };
 
         Mode mode;
         Engine engine;
@@ -29,14 +29,12 @@ namespace Config {
         bool logPreproc = false;
         bool logAccel = false;
         bool model = false;
-        bool usePurrs = false;
         Direction dir;
 
         std::string modeName(const Mode mode) {
             switch (mode) {
             case Complexity: return "complexity";
             case Termination: return "termination";
-            case Recurrence: return "recurrence";
             case Safety: return "safety";
             }
         }
