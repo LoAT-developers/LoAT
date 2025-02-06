@@ -4,9 +4,6 @@
 Swine::Swine(swine::Config config): solver(config, z3ctx), ctx(solver) {
     auto &s {solver.get_solver()};
     s.set("random_seed", 42u);
-    s.set("seed", 42u);
-    s.set("sat.random_seed", 42u);
-    s.set("nlsat.seed", 42u);
     // s.set("rlimit", 10000000u);
     // config.set_rlimit(1000);
 }
@@ -94,9 +91,6 @@ std::ostream& Swine::print(std::ostream& os) const {
 void Swine::randomize(unsigned seed) {
     auto &s {solver.get_solver()};
     s.set("random_seed", seed);
-    s.set("seed", seed);
-    s.set("sat.random_seed", seed);
-    s.set("nlsat.seed", seed);
 }
 
 Rational Swine::getRealFromModel(const z3::model &model, const z3::expr &symbol) {

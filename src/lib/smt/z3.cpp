@@ -82,16 +82,10 @@ std::ostream& Z3::print(std::ostream& os) const {
 
 void Z3::randomize(unsigned seed) {
     solver.set("random_seed", seed);
-    solver.set("sat.random_seed", seed);
-    solver.set("seed", seed);
-    solver.set("nlsat.seed", seed);
 }
 
 Z3::Z3(): ctx(z3Ctx), solver(z3Ctx) {
     solver.set("random_seed", 42u);
-    solver.set("sat.random_seed", 42u);
-    solver.set("seed", 42u);
-    solver.set("nlsat.seed", 42u);
     // solver.set("rlimit", 10000000u);
 }
 

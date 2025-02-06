@@ -1,4 +1,4 @@
-FROM loat/loat-base:6281a8a0
+FROM loat/loat-base:b37623ce
 
 RUN git clone https://github.com/LoAT-developers/LoAT.git
 WORKDIR /LoAT

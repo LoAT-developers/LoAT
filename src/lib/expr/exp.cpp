@@ -23,7 +23,12 @@ ArithExprPtr arith::mkExp(const ArithExprPtr base, const ArithExprPtr exponent) 
     const auto b_val {base->isInt()};
     const auto e_val {exponent->isInt()};
     if (b_val && e_val) {
-        return mkConst(mp::pow(*b_val, std::stoi(e_val->str())));
+        if (*e_val < 0) {
+            const Int e_pos {-*e_val};
+            return mkConst(Rational(1, mp::pow(*b_val, std::stoi(e_pos.str()))));
+        } else {
+            return mkConst(mp::pow(*b_val, std::stoi(e_val->str())));
+        }
     }
     if (exponent->is(0) || base->is(1)) {
         return mkConst(1);
