@@ -44,7 +44,7 @@ void printHelp(char *arg0) {
     std::cout << "  --trl::recurrent_cycles <true|false>                   TRL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
     std::cout << "  --trl::recurrent_pseudo_divs <true|false>              TRL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
     std::cout << "  --trl::recurrent_bounds <true|false>                   TRL: En- or disable search for recurrent bounds" << std::endl;
-    std::cout << "  --trl::mbp_kind <int|lower_int|upper_int|real|real_qe> TRL: use model based projection for LIA or LRA, or QF for LRA" << std::endl;
+    std::cout << "  --trl::mbp_kind <int|lower_int|upper_int|real|real_qe> TRL: use model based projection for LIA or LRA, or QE for LRA" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
