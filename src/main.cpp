@@ -4,7 +4,6 @@
 #include "accelerationproblem.hpp"
 #include "bmc.hpp"
 #include "chctoitsproblem.hpp"
-#include "cintparser.hpp"
 #include "config.hpp"
 #include "interleaved.hpp"
 #include "itsparser.hpp"
@@ -32,7 +31,7 @@ void printHelp(char *arg0) {
     std::cout << "Options:" << std::endl;
     std::cout << "  --print_dep_graph                                      Print the dependency graph in the proof output (can be very verbose)" << std::endl;
     std::cout << "  --mode <complexity|termination|safety>                 Analysis mode" << std::endl;
-    std::cout << "  --format <koat|its|horn|c>                             Input format" << std::endl;
+    std::cout << "  --format <koat|its|horn>                               Input format" << std::endl;
     std::cout << "  --engine <adcl|bmc|abmc|trl|kind>                      Analysis engine" << std::endl;
     std::cout << "  --log                                                  Enable logging" << std::endl;
     std::cout << "  --proof                                                Print model/counterexample/recurrent set/..." << std::endl;
@@ -160,8 +159,6 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Input::format = Config::Input::Its;
             } else if (boost::iequals("horn", str)) {
                 Config::Input::format = Config::Input::Horn;
-            } else if (boost::iequals("c", str)) {
-                Config::Input::format = Config::Input::C;
             } else {
                 std::cout << "Error: unknown format " << str << std::endl;
                 exit(1);
@@ -287,9 +284,6 @@ int main(int argc, char *argv[]) {
             its = chc2its->transform();
             break;
         }
-        case Config::Input::C:
-            its = cintParser::CIntParser::loadFromFile(filename);
-            break;
         default:
             std::cout << "Error: unknown format" << std::endl;
             exit(1);
