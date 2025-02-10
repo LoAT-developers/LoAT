@@ -17,7 +17,7 @@ LoAT is based on a variety of techniques:
 * Current versions use
   * [ADCL](https://arxiv.org/abs/2303.01827) (default for lower bounds and non-termination),
   * [ABMC](https://arxiv.org/abs/2401.09973) (only available for satisfiability and non-termination), and
-  * TRL (only available, and the default for satisfiability -- more information will be available soon).
+  * [TRL](https://arxiv.org/abs/2502.04761) (only available, and the default for satisfiability).
 * Apart from that, LoAT also implements
   * Bounded Model Checking and
   * k-Induction.
