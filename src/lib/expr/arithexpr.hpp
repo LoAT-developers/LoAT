@@ -81,8 +81,6 @@ private:
      * @return [a,b] s.t. a*b = *this
      */
     std::pair<Rational, std::optional<ArithExprPtr>> decompose() const;
-    bool isUnivariate(std::optional<ArithVarPtr> &) const;
-    bool isMultivariate(std::optional<ArithVarPtr> &) const;
 
 public:
 
@@ -147,17 +145,7 @@ public:
      */
     linked_hash_set<ArithVarPtr> vars() const;
 
-    /**
-     * @return True iff this expression contains exactly one variable.
-     */
-    std::optional<ArithVarPtr> isUnivariate() const;
-
     bool isNegated() const;
-
-    /**
-     * @return True iff this expression contains at least two variable.
-     */
-    bool isMultivariate() const;
 
     bool is(const Rational &val) const;
 

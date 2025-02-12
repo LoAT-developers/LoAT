@@ -21,20 +21,6 @@ linked_hash_set<ArithVarPtr> ArithExpr::vars() const {
     return res;
 }
 
-std::optional<ArithVarPtr> ArithExpr::isUnivariate() const {
-    std::optional<ArithVarPtr> var;
-    if (isUnivariate(var)) {
-        return var;
-    } else {
-        return {};
-    }
-}
-
-bool ArithExpr::isMultivariate() const {
-    std::optional<ArithVarPtr> var;
-    return isMultivariate(var);
-}
-
 bool ArithExpr::is(const Rational &val) const {
     const auto c {isRational()};
     return c && ***c == val;
@@ -835,37 +821,6 @@ std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
         });
 }
 
-bool ArithExpr::isUnivariate(std::optional<ArithVarPtr> &acc) const {
-    return apply<bool>(
-        [](const ArithConstPtr) {
-            return false;
-        },
-        [&](const ArithVarPtr x) {
-            if (!acc) {
-                acc = x;
-            }
-            return acc == std::optional{x};
-        },
-        [&](const ArithAddPtr a) {
-            const auto &args {a->getArgs()};
-            return std::all_of(args.begin(), args.end(), [&](const auto &arg) -> bool {
-                return !arg->isMultivariate(acc);
-            }) && acc;
-        },
-        [&](const ArithMultPtr m) {
-            const auto &args {m->getArgs()};
-            return std::all_of(args.begin(), args.end(), [&](const auto &arg) -> bool {
-                return !arg->isMultivariate(acc);
-            }) && acc;
-        },
-        [&](const ArithModPtr m) {
-            return !m->getLhs()->isMultivariate(acc) && !m->getRhs()->isMultivariate(acc) && acc;
-        },
-        [&](const ArithExpPtr e) {
-            return !e->getBase()->isMultivariate(acc) && !e->getExponent()->isMultivariate(acc) && acc;
-        });
-}
-
 bool ArithExpr::isNegated() const {
     return apply<bool>(
         [](const ArithConstPtr c) {
@@ -887,37 +842,6 @@ bool ArithExpr::isNegated() const {
             return false;
         }
     );
-}
-
-bool ArithExpr::isMultivariate(std::optional<ArithVarPtr> &acc) const {
-    return apply<bool>(
-        [](const ArithConstPtr) {
-            return false;
-        },
-        [&](const ArithVarPtr x) {
-            if (!acc) {
-                acc = x;
-            }
-            return acc != std::optional{x};
-        },
-        [&](const ArithAddPtr a) {
-            const auto &args {a->getArgs()};
-            return std::any_of(args.begin(), args.end(), [&](const auto &arg) -> bool {
-                return arg->isMultivariate(acc);
-            });
-        },
-        [&](const ArithMultPtr m) {
-            const auto &args {m->getArgs()};
-            return std::any_of(args.begin(), args.end(), [&](const auto &arg) -> bool {
-                return arg->isMultivariate(acc);
-            });
-        },
-        [&](const ArithModPtr m) {
-            return m->getLhs()->isMultivariate(acc) || m->getRhs()->isMultivariate(acc);
-        },
-        [&](const ArithExpPtr e) {
-            return e->getBase()->isMultivariate(acc) || e->getExponent()->isMultivariate(acc);
-        });
 }
 
 std::ostream& operator<<(std::ostream &s, const ArithExprPtr e) {
