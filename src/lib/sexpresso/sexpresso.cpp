@@ -255,6 +255,10 @@ namespace sexpresso {
         return this->kind == SexpValueKind::STRING;
     }
 
+    auto Sexp::isString(const std::string &s) const -> bool {
+        return this->kind == SexpValueKind::STRING && this->value.str == s;
+    }
+
     auto Sexp::isSexp() const -> bool {
         return this->kind == SexpValueKind::SEXP;
     }

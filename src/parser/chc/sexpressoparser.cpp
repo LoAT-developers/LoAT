@@ -316,29 +316,37 @@ void SexpressoParser::run(const std::string &filename) {
         (std::istreambuf_iterator<char>()));
     sexpresso::Sexp sexp = sexpresso::parse(content);
     for (auto &ex: sexp.arguments()) {
-        if (ex[0].str() == "assert") {
+        if (ex[0].isString("assert")) {
             std::unordered_map<std::string, Var> var_map;
-            auto forall {ex[1]};
-            auto vars {forall[1]};
-            for (unsigned i = 0; i < vars.childCount(); ++i) {
-                const auto name {vars[i][0].str()};
-                const auto type {vars[i][1].str()};
-                if (type == "Int") {
-                    var_map.emplace(name, ArithVar::next());
-                } else if (type == "Bool") {
-                    var_map.emplace(name, BoolVar::next());
-                } else {
-                    throw std::invalid_argument("unknown type " + type);
+            sexpresso::Sexp imp;
+            if (ex[1].childCount() > 0 && ex[1][0].isString("forall")) {
+                auto vars {ex[1][1]};
+                for (unsigned i = 0; i < vars.childCount(); ++i) {
+                    const auto name {vars[i][0].str()};
+                    const auto type {vars[i][1].str()};
+                    if (type == "Int") {
+                        var_map.emplace(name, ArithVar::next());
+                    } else if (type == "Bool") {
+                        var_map.emplace(name, BoolVar::next());
+                    } else {
+                        throw std::invalid_argument("unknown type " + type);
+                    }
                 }
+                imp = ex[1][2];
+            } else {
+                imp = ex[1];
             }
-            auto imp {forall[2]};
-            auto prem {imp[1]};
             std::vector<std::unordered_map<std::string, Expr>> bindings;
             std::vector<Bools::Expr> constraints;
-            const auto premise {parseTopLevelBoolExpr(prem, var_map, constraints, bindings)};
-            std::optional<FunAppPtr> conclusion;
-            auto conc {imp[2]};
-            if (!conc.isString() || conc.str() != "false") {
+            std::optional<FunAppPtr> premise, conclusion;
+            sexpresso::Sexp conc;
+            if (imp[0].isString("=>")) {
+                premise = parseTopLevelBoolExpr(imp[1], var_map, constraints, bindings);
+                conc = imp[2];
+            } else {
+                conc = imp[0];
+            }
+            if (!conc.isString("false")) {
                 conclusion = parsePred(conc, var_map, constraints, bindings);
             }
             chcs->add_clause(Clause::mk(premise, bools::mkAnd(constraints), conclusion));

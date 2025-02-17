@@ -37,6 +37,7 @@ namespace sexpresso {
 		auto createPath(std::string const& path) -> Sexp&;
 		auto toString() const -> std::string;
 		auto isString() const -> bool;
+		auto isString(const std::string&) const -> bool;
 		auto isSexp() const -> bool;
 		auto isNil() const -> bool;
 		auto equal(Sexp const& other) const -> bool;
