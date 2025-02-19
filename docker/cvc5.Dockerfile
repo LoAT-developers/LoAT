@@ -1,7 +1,8 @@
-FROM voidlinux/voidlinux-musl:latest as base
+ARG PLATFORM=linux/arm64
+FROM --platform=${PLATFORM} voidlinux/voidlinux-musl:latest AS base
 
-ENV CFLAGS -march=x86-64 -O2
-ENV CXXFLAGS $CFLAGS
+ENV CFLAGS=-march=x86-64 -O2
+ENV CXXFLAGS=$CFLAGS
 RUN echo noextract=/etc/hosts > /etc/xbps.d/test.conf
 RUN echo "repository=https://repo-default.voidlinux.org/current/musl" > /etc/xbps.d/00-repository-main.conf
 RUN xbps-install -ySu xbps
@@ -9,7 +10,7 @@ RUN xbps-install -ySu
 RUN xbps-install -yS autoconf bash cln-devel cmake gcc git libtool make python3-devel python3-pip texinfo
 
 
-FROM base as cvc5
+FROM base AS cvc5
 
 RUN xbps-install -yS 
 ENV VIRTUAL_ENV=/opt/venv

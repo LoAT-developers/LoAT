@@ -32,6 +32,7 @@ koat-examples
 !.devcontainer
 !.github/
 !.gitattributes
+.DS_Store
 
 # build stuff
 cmake-build-debug
