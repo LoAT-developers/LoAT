@@ -48,7 +48,7 @@ std::optional<std::tuple<Int, Int, Arith::Expr>> Recurrence::handle_exp(const Ar
 
 // compute_r from [CAV19]
 Arith::Expr Recurrence::compute_r(const Arith::Expr q, const Rational &c) {
-    assert(!q->vars().size() <= 1);
+    assert(q->vars().size() <= 1);
     if (const auto c0 {q->isRational()}) {
         return c == 1 ? *c0 * n : arith::mkConst(***c0 / (1 - c));
     } else {
