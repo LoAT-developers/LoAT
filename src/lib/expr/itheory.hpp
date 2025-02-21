@@ -43,26 +43,21 @@ concept IVar = requires(T x, unsigned idx) {
 };
 
 template <typename T>
-concept IBaseTheory = requires(T t, typename T::Const val, typename T::Var var, typename T::Lit lit, typename T::Model m) {
+concept ITheory = requires(T t, typename T::Const val, typename T::Var var, typename T::Lit lit, typename T::Model m) {
         requires IVar<typename T::Var>;
         requires ILit<typename T::Lit>;
         typename T::Const;
         typename T::Expr;
         typename T::Renaming;
+        typename T::Subs;
         {T::constToExpr(val)} -> std::same_as<typename T::Expr>;
         {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
         {T::anyValue()} -> std::same_as<typename T::Expr>;
         {lit->eval(m)} -> std::same_as<bool>;
 };
 
-template <typename T>
-concept ITheory = requires(T t, typename T::Const val, typename T::Var var) {
-        requires IBaseTheory<T>;
-        typename T::Subs;
-};
-
-template<IBaseTheory... Th>
-class BaseTheory {
+template<ITheory... Th>
+class Theory {
 
 public:
 
@@ -76,6 +71,7 @@ public:
     using Renaming = std::tuple<typename Th::Renaming...>;
     using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expr>...>;
     using VarPair = std::variant<std::pair<typename Th::Var, typename Th::Var>...>;
+    using Subs = std::tuple<typename Th::Subs...>;
 
 private:
 
@@ -139,14 +135,5 @@ public:
     static Expr anyValue(const size_t i) {
         return anyValueImpl<0>(i);
     }
-
-};
-
-template <ITheory... Th>
-class Theory: public BaseTheory<Th...> {
-
-public:
-
-    using Subs = std::tuple<typename Th::Subs...>;
 
 };

@@ -30,7 +30,7 @@ class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
 
 protected:
 
-    using TheTheory = BaseTheory<Arith, Bools>;
+    using TheTheory = Theory<Arith, Bools>;
     using Var = typename TheTheory::Var;
     using Lit = typename TheTheory::Lit;
     using Model = typename TheTheory::Model;

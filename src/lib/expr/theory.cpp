@@ -298,24 +298,6 @@ void simplifyAnd(LitSet &lits) {
     return simplifyAndImpl(lits);
 }
 
-template <size_t I = 0>
-inline void simplifyOrImpl(LitSet &lits) {
-    if constexpr (I < num_theories) {
-        using Th = std::tuple_element_t<I, Theories>;
-        if constexpr (!std::is_same_v<Th, Bools>) {
-            auto &ls {lits.get<typename Th::Lit>()};
-            if (!ls.empty()) {
-                (*ls.begin())->simplifyOr(ls);
-            }
-        }
-        simplifyOrImpl<I+1>(lits);
-    }
-}
-
-void simplifyOr(LitSet &lits) {
-    simplifyOrImpl(lits);
-}
-
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e) {

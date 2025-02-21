@@ -3,9 +3,13 @@
 #include "boolvar.hpp"
 #include "boolexpr.hpp"
 #include "linkedhashmap.hpp"
-#include "theory.hpp"
 
 #include <boost/functional/hash.hpp>
+
+template<class... T> class VariantSet;
+class ArithVar;
+using ArithVarPtr = cpp::not_null<std::shared_ptr<const ArithVar>>;
+using VarSet = VariantSet<ArithVarPtr, Bools::Var>;
 
 class BoolSubs {
 

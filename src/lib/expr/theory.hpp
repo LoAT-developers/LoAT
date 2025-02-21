@@ -81,7 +81,6 @@ size_t hash(const Lit &lit);
 sexpresso::Sexp to_smtlib(const Lit &l);
 sexpresso::Sexp to_smtlib(const Expr &e);
 void simplifyAnd(LitSet&);
-void simplifyOr(LitSet&);
 Types to_type(const Expr &x);
 Types to_type(const Var &x);
 std::optional<Var> is_var(const Expr &x);

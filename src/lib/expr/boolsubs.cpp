@@ -1,4 +1,5 @@
 #include "boolsubs.hpp"
+#include "theory.hpp"
 
 BoolSubs::BoolSubs() {}
 
