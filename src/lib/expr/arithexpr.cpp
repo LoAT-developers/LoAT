@@ -15,6 +15,8 @@ std::size_t hash_value(const ArithVarPtr &x) {
 
 ArithExpr::ArithExpr(const arith::Kind kind): kind(kind) {}
 
+ArithExpr::ArithExpr(): kind(arith::Kind::Variable) {}
+
 linked_hash_set<ArithVarPtr> ArithExpr::vars() const {
     linked_hash_set<ArithVarPtr> res;
     collectVars(res);
@@ -471,7 +473,7 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr var, const Int &d
             if (degree == 0) {
                 return opt{m->has(var) ? arith::mkConst(0) : toPtr()};
             }
-            const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
+            const auto e {arith::mkExp(arith::toExpr(var), arith::mkConst(degree))};
             auto args {m->getArgs()};
             if (args.erase(e) > 0) {
                 ArithExprVec arg_vec {args.begin(), args.end()};
@@ -684,7 +686,7 @@ std::optional<ArithExprPtr> ArithExpr::solve(const ArithVarPtr var) const {
     if (!r) {
         return {};
     }
-    const auto monomial {(*c) * var->toExpr()};
+    const auto monomial {(*c) * arith::toExpr(var)};
     const auto not_normalized {toPtr() - monomial};
     const auto normalized {not_normalized->divide(-(***r))};
     return normalized;
@@ -796,7 +798,7 @@ std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
             return pair{**t, {}};
         },
         [](const ArithVarPtr x) {
-            return pair{1, {x->toExpr()}};
+            return pair{1, {arith::toExpr(x)}};
         },
         [](const ArithAddPtr a) {
             return pair{1, {a}};
@@ -842,6 +844,10 @@ bool ArithExpr::isNegated() const {
             return false;
         }
     );
+}
+
+ArithExprPtr arith::toExpr(const ArithVarPtr &x) {
+    return cpp::assume_not_null(x->shared_from_this());
 }
 
 std::ostream& operator<<(std::ostream &s, const ArithExprPtr e) {

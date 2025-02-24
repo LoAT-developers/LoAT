@@ -20,7 +20,7 @@ struct Arith {
     }
 
     static Expr varToExpr(const Var &var) {
-        return var->toExpr();
+        return arith::toExpr(var);
     }
 
     static Expr anyValue() {

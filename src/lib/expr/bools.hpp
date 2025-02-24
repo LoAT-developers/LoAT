@@ -2,7 +2,6 @@
 
 #include "itheory.hpp"
 #include "boollit.hpp"
-#include "boolvar.hpp"
 #include "notnull.hpp"
 
 #include <boost/bimap.hpp>

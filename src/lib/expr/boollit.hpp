@@ -1,12 +1,16 @@
 #pragma once
 
-#include "boolvar.hpp"
+#include "var.hpp"
 #include "linkedhashset.hpp"
 #include "linkedhashmap.hpp"
 
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
 
+class Empty{};
+
+using BoolVar = TVar<theory::Type::Bool, Empty>;
+using BoolVarPtr = BoolVar::ptr;
 using bool_var_map = boost::bimap<boost::bimaps::unordered_set_of<BoolVarPtr>, boost::bimaps::unordered_set_of<BoolVarPtr>>;
 
 class BoolLit;
@@ -49,6 +53,12 @@ public:
     BoolLitPtr renameVars(const bool_var_map &map) const;
 
 };
+
+namespace bools {
+
+BoolVarPtr mkVar(const int idx);
+
+}
 
 BoolLitPtr operator!(const BoolLitPtr &l);
 
