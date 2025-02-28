@@ -204,58 +204,58 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
             }
         }
     }
-    if (config.recurrent_pseudo_bounds) {
-        const auto pseudo_pre{mbp(with_deltas, model, [&](const auto &x) {
-            return !theory::isProgVar(x) && !deltas.contains(x);
-        })};
-        const auto pseudo_post{mbp(with_deltas, model, [&](const auto &x) {
-            return !theory::isPostVar(x) && !deltas.contains(x);
-        })};
-        for (const auto &pseudo : std::vector{pseudo_pre, pseudo_post}) {
-            const auto lits{pseudo->lits().get<Arith::Lit>()};
-            for (const auto &l : lits) {
-                if (l->isLinear() && (l->isEq() || l->isGt())) {
-                    const auto vars{l->vars()};
-                    if (std::any_of(vars.begin(), vars.end(), [&](const auto x) {
-                            return !deltas.contains(x);
-                        }) &&
-                        std::any_of(vars.begin(), vars.end(), [&](const auto x) {
-                            return deltas.contains(x);
-                        }) &&
-                        std::all_of(vars.begin(), vars.end(), [&](const auto x) {
-                            const auto it{deltas.find(x)};
-                            return it == deltas.end() || (!vars.contains(it->second) && !vars.contains(ArithVar::postVar(it->second)));
-                        })) {
-                        auto non_recurrent{zeros(l->lhs())};
-                        auto recurrent{subs(l->lhs() - non_recurrent)};
-                        auto val{model.eval<Arith>(non_recurrent)};
-                        if (l->isGt()) {
-                            non_recurrent = non_recurrent - arith::mkConst(1);
-                            val = val - 1;
-                        } else if (val > 0) {
-                            recurrent = -recurrent;
-                            non_recurrent = -non_recurrent;
-                            val = -val;
-                        }
-                        const auto rhs{arith::mkConst(0)};
-                        if (val == 0) {
-                            if (l->isEq()) {
-                                res_lits.insert(arith::mkEq(recurrent, rhs));
-                                res_lits.insert(arith::mkEq(non_recurrent, rhs));
-                            } else {
-                                res_lits.insert(arith::mkGeq(recurrent, rhs));
-                                res_lits.insert(arith::mkGeq(non_recurrent, rhs));
-                            }
-                        } else if (val < 0) {
-                            res_lits.insert(arith::mkLt(non_recurrent, rhs));
-                            res_lits.insert(arith::mkGeq(recurrent + non_recurrent, rhs));
-                            res_lits.insert(arith::mkGeq(recurrent - n, rhs));
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // if (config.recurrent_pseudo_bounds) {
+    //     const auto pseudo_pre{mbp(with_deltas, model, [&](const auto &x) {
+    //         return !theory::isProgVar(x) && !deltas.contains(x);
+    //     })};
+    //     const auto pseudo_post{mbp(with_deltas, model, [&](const auto &x) {
+    //         return !theory::isPostVar(x) && !deltas.contains(x);
+    //     })};
+    //     for (const auto &pseudo : std::vector{pseudo_pre, pseudo_post}) {
+    //         const auto lits{pseudo->lits().get<Arith::Lit>()};
+    //         for (const auto &l : lits) {
+    //             if (l->isLinear() && (l->isEq() || l->isGt())) {
+    //                 const auto vars{l->vars()};
+    //                 if (std::any_of(vars.begin(), vars.end(), [&](const auto x) {
+    //                         return !deltas.contains(x);
+    //                     }) &&
+    //                     std::any_of(vars.begin(), vars.end(), [&](const auto x) {
+    //                         return deltas.contains(x);
+    //                     }) &&
+    //                     std::all_of(vars.begin(), vars.end(), [&](const auto x) {
+    //                         const auto it{deltas.find(x)};
+    //                         return it == deltas.end() || (!vars.contains(it->second) && !vars.contains(ArithVar::postVar(it->second)));
+    //                     })) {
+    //                     auto non_recurrent{zeros(l->lhs())};
+    //                     auto recurrent{subs(l->lhs() - non_recurrent)};
+    //                     auto val{model.eval<Arith>(non_recurrent)};
+    //                     if (l->isGt()) {
+    //                         non_recurrent = non_recurrent - arith::mkConst(1);
+    //                         val = val - 1;
+    //                     } else if (val > 0) {
+    //                         recurrent = -recurrent;
+    //                         non_recurrent = -non_recurrent;
+    //                         val = -val;
+    //                     }
+    //                     const auto rhs{arith::mkConst(0)};
+    //                     if (val == 0) {
+    //                         if (l->isEq()) {
+    //                             res_lits.insert(arith::mkEq(recurrent, rhs));
+    //                             res_lits.insert(arith::mkEq(non_recurrent, rhs));
+    //                         } else {
+    //                             res_lits.insert(arith::mkGeq(recurrent, rhs));
+    //                             res_lits.insert(arith::mkGeq(non_recurrent, rhs));
+    //                         }
+    //                     } else if (val < 0) {
+    //                         res_lits.insert(arith::mkLt(non_recurrent, rhs));
+    //                         res_lits.insert(arith::mkGeq(recurrent + non_recurrent, rhs));
+    //                         res_lits.insert(arith::mkGeq(recurrent - n, rhs));
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 Bools::Expr TRP::recurrent(const Bools::Expr loop, const Model &model) {
@@ -280,16 +280,16 @@ Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
     const auto pre{mbp(loop, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
-    if (Config::Analysis::log) {
-        std::cout << "pre: " << pre << std::endl;
-    }
-    auto step{recurrent(loop, model)};
-    if (Config::Analysis::log) {
-        std::cout << "recurrence analysis: " << step << std::endl;
-    }
     const auto post{mbp(loop, model, [](const auto &x) {
         return !theory::isPostVar(x);
     })};
+    if (Config::Analysis::log) {
+        std::cout << "pre: " << pre << std::endl;
+    }
+    auto step{recurrent(bools::mkAnd(std::vector{pre, loop, post}), model)};
+    if (Config::Analysis::log) {
+        std::cout << "recurrence analysis: " << step << std::endl;
+    }
     if (Config::Analysis::log) {
         std::cout << "post: " << post << std::endl;
     }
