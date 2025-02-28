@@ -3,8 +3,7 @@
 #include <memory>
 #include <string>
 
-#include "notnull.hpp"
-#include "conshash.hpp"
+#include "exprfwd.hpp"
 #include "sexpresso.hpp"
 
 namespace theory {
