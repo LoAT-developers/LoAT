@@ -54,8 +54,7 @@ std::string getName(const Var &var);
 bool isTempVar(const Var &var);
 bool isProgVar(const Var &var);
 bool isPostVar(const Var &var);
-Var next(const Expr &var);
-Var next(const Var &var);
+Var next(const Type t, const unsigned dimension);
 Var postVar(const Var &var);
 Var progVar(const Var &var);
 Expr toExpr(const Var &var);
@@ -79,8 +78,8 @@ size_t hash(const Lit &lit);
 sexpresso::Sexp to_smtlib(const Lit &l);
 sexpresso::Sexp to_smtlib(const Expr &e);
 void simplifyAnd(LitSet&);
-Type to_type(const Expr &x);
-Type to_type(const Var &x);
+ArrayType to_type(const Expr &x);
+ArrayType to_type(const Var &x);
 std::optional<Var> is_var(const Expr &x);
 
 template <class ... Ts>

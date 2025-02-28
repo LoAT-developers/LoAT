@@ -57,7 +57,7 @@ public:
 
 namespace bools {
 
-BoolVarPtr mkVar(const int idx);
+BoolVarPtr mkVar(const int idx, const unsigned d);
 
 }
 

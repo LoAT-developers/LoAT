@@ -12,7 +12,7 @@ class TRP {
     Renaming pre_to_intermediate;
     const Config::TRPConfig &config;
     LitSet res_lits;
-    const Arith::Var n {ArithVar::next()};
+    const Arith::Var n {ArithVar::next(0)};
 
     void recurrent_exps(const Bools::Expr loop, const Model &model);
     void recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model);

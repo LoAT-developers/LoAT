@@ -13,8 +13,8 @@ Arith::Expr Arith::anyValue() {
     return arith::mkConst(0);
 }
 
-Arith::Var Arith::next() {
-    return ArithVar::next();
+Arith::Var Arith::next(const unsigned d) {
+    return ArithVar::next(d);
 }
 
 namespace arith {

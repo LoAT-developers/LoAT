@@ -95,8 +95,8 @@ protected:
     LocationIdx nextUnusedLocation {1};
     LocationIdx initialLocation {0};
     LocationIdx sink {addNamedLocation("LoAT_sink")};
-    Arith::Var loc_var {ArithVar::nextProgVar()};
-    Arith::Var cost_var {ArithVar::nextProgVar()};
+    Arith::Var loc_var {ArithVar::nextProgVar(0)};
+    Arith::Var cost_var {ArithVar::nextProgVar(0)};
 
 };
 

@@ -10,9 +10,15 @@ TRP::TRP(const Renaming &pre_to_post, const Config::TRPConfig &config):
     post_to_pre(pre_to_post.invert()),
     config(config) {
         for (const auto &[pre,post]: pre_to_post) {
-            const auto i {theory::next(pre)};
-            pre_to_intermediate.insert(pre, i);
-            post_to_intermediate.insert(post, i);
+            std::visit(
+                Overload{
+                    [&](const auto pre) {
+                        const auto i {pre->next(pre->getDimension())};
+                        pre_to_intermediate.insert(pre, i);
+                        post_to_intermediate.insert(post, i);
+                    }
+                }, pre
+            );
         }
     }
 
@@ -167,7 +173,7 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
     Arith::Subs zeros;
     for (const auto &[pre,_] : pre_to_post.get<Arith>()) {
         const auto post{ArithVar::postVar(pre)};
-        const auto d{Arith::next()};
+        const auto d{Arith::next(0)};
         const auto diff{Arith::varToExpr(post) - Arith::varToExpr(pre)};
         delta_eqs.insert(bools::mkLit(arith::mkEq(d, diff)));
         model.put<Arith>(d, model.eval<Arith>(post - pre));

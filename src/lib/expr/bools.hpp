@@ -19,7 +19,7 @@ struct Bools {
     static Expr constToExpr(const Const val);
     static Expr varToExpr(const Var var);
     static Expr anyValue();
-    static Var next();
+    static Var next(const unsigned d);
 };
 
 namespace bools {

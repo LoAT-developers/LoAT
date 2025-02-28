@@ -104,6 +104,12 @@ const std::vector<Expr>& FunApp::get_args() const {
     return args;
 }
 
+void FunApp::max_arity(std::unordered_map<ArrayType, unsigned> &res) const {
+    for (const auto &x : args) {
+        ++res.emplace(theory::to_type(x), 0).first->second;
+    }
+}
+
 bool Clause::CacheEqual::operator()(const Clause::Args &args1, const Clause::Args &args2) const noexcept {
     return args1 == args2;
 }
@@ -231,6 +237,15 @@ sexpresso::Sexp Clause::to_smtlib() const {
     return assertion;
 }
 
+void Clause::max_arity(std::unordered_map<ArrayType, unsigned> &res) const {
+    if (premise) {
+        (*premise)->max_arity(res);
+    }
+    if (conclusion) {
+        (*conclusion)->max_arity(res);
+    }
+}
+
 sexpresso::Sexp CHCProblem::to_smtlib() const {
     const auto preds {get_signature()};
     sexpresso::Sexp res;
@@ -254,18 +269,18 @@ sexpresso::Sexp CHCProblem::to_smtlib() const {
     return res;
 }
 
-linked_hash_map<std::string, std::vector<theory::Type>> CHCProblem::get_signature() const {
-    linked_hash_map<std::string, std::vector<theory::Type>> preds;
+linked_hash_map<std::string, std::vector<ArrayType>> CHCProblem::get_signature() const {
+    linked_hash_map<std::string, std::vector<ArrayType>> preds;
     for (const auto &c: clauses) {
         if (const auto prem {c->get_premise()}) {
-            std::vector<theory::Type> types;
+            std::vector<ArrayType> types;
             for (const auto &x: (*prem)->get_args()) {
                 types.emplace_back(theory::to_type(x));
             }
             preds.put((*prem)->get_pred(), types);
         }
         if (const auto conc {c->get_conclusion()}) {
-            std::vector<theory::Type> types;
+            std::vector<ArrayType> types;
             for (const auto &x: (*conc)->get_args()) {
                 types.emplace_back(theory::to_type(x));
             }
@@ -273,6 +288,14 @@ linked_hash_map<std::string, std::vector<theory::Type>> CHCProblem::get_signatur
         }
     }
     return preds;
+}
+
+std::unordered_map<ArrayType, unsigned> CHCProblem::max_arity() const {
+    std::unordered_map<ArrayType, unsigned> res;
+    for (const auto &c : clauses) {
+        c->max_arity(res);
+    }
+    return res;
 }
 
 std::ostream& operator<<(std::ostream &s, const CHCPtr t) {

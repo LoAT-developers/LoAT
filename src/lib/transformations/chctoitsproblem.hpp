@@ -1,20 +1,21 @@
 #pragma once
 
-#include "chcmodel.hpp"
-#include "chccex.hpp"
-#include "itssafetycex.hpp"
-#include "chcproblem.hpp"
-#include "itsmodel.hpp"
-#include "itsproblem.hpp"
+#include "chcfwd.hpp"
+#include "itsfwd.hpp"
+#include "theory.hpp"
+#include "arraytype.hpp"
+
+#include <memory>
+#include <unordered_map>
+
+class ArrayType;
 
 class CHCToITS {
 
 private:
-
     CHCPtr chcs;
-    ITSPtr its {std::make_shared<ITSProblem>()};
-    std::vector<Arith::Var> vars;
-    std::vector<Bools::Var> bvars;
+    ITSPtr its{std::make_shared<ITSProblem>()};
+    std::unordered_map<ArrayType, std::vector<Var>> vars;
     std::unordered_map<RulePtr, ClausePtr> clause_map;
     std::unordered_map<RulePtr, Renaming> renamings;
 

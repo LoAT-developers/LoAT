@@ -104,6 +104,6 @@ BoolLitPtr BoolLit::renameVars(const bool_var_map &map) const {
     }
 }
 
-BoolVarPtr bools::mkVar(const int idx) {
-    return theory::mkVar<theory::Type::Bool, Empty>(idx);
+BoolVarPtr bools::mkVar(const int idx, const unsigned d) {
+    return theory::mkVar<theory::Type::Bool, Empty>(idx, d);
 }

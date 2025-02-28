@@ -403,7 +403,7 @@ std::ostream& operator<<(std::ostream &s, const Renaming &subs) {
 Var Renaming::renameVar(const Var &x, Renaming &sigma) {
     return theory::apply(x, [&](const auto &x) {
         const auto th {theory::theory(x)};
-        const auto next {th.next()};
+        const auto next {th.next(x->getDimension())};
         sigma.insert<decltype(th)>(x, next);
         return Var(next);
     });

@@ -39,16 +39,7 @@ public:
     FunAppPtr subs(const Subs &subs) const;
     FunAppPtr rename_vars(const Renaming &) const;
 
-    template <ITheory T>
-    unsigned max_arity() const {
-        unsigned res{0};
-        for (const auto &x : args) {
-            if (std::holds_alternative<typename T::Expr>(x)) {
-                ++res;
-            }
-        }
-        return res;
-    }
+    void max_arity(std::unordered_map<ArrayType, unsigned>&) const;
 };
 
 class Clause;
@@ -93,12 +84,7 @@ public:
     ClausePtr rename_vars(const Renaming &) const;
     sexpresso::Sexp to_smtlib() const;
 
-    template <ITheory T>
-    unsigned max_arity() const {
-        const auto p_arity = premise ? (*premise)->max_arity<T>() : 0;
-        const auto c_arity = conclusion ? (*conclusion)->max_arity<T>() : 0;
-        return std::max(p_arity, c_arity);
-    }
+    void max_arity(std::unordered_map<ArrayType, unsigned>&) const;
 };
 
 class CHCProblem {
@@ -118,16 +104,9 @@ public:
     const linked_hash_set<ClausePtr> &get_clauses() const;
     sexpresso::Sexp to_smtlib() const;
     CHCProblem reverse() const;
-    linked_hash_map<std::string, std::vector<theory::Type>> get_signature() const;
+    linked_hash_map<std::string, std::vector<ArrayType>> get_signature() const;
 
-    template <ITheory T>
-    unsigned max_arity() const {
-        unsigned res{0};
-        for (const auto &c : clauses) {
-            res = std::max(res, c->max_arity<T>());
-        }
-        return res;
-    }
+    std::unordered_map<ArrayType, unsigned> max_arity() const;
 };
 
 using CHCPtr = std::shared_ptr<CHCProblem>;

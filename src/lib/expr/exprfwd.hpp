@@ -8,6 +8,8 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
 
+#include "type.hpp"
+
 namespace sexpresso {
 struct Sexp;
 }
@@ -33,13 +35,6 @@ template <class S, class T> class linked_hash_map;
 template <class T>
 using ptr = cpp::not_null<std::shared_ptr<const T>>;
 
-namespace theory {
-    enum class Type {
-        Int,
-        Bool
-    };
-}
-
 template<theory::Type T, class S> class TVar;
 
 class ArithLit;
@@ -56,3 +51,5 @@ using arith_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArithVarPtr>,
 namespace mp = boost::multiprecision;
 using Int = mp::cpp_int;
 using Rational = mp::cpp_rational;
+
+class ArrayType;

@@ -13,8 +13,8 @@ Bools::Expr Bools::anyValue() {
     return bot();
 }
 
-Bools::Var Bools::next() {
-    return BoolVar::next();
+Bools::Var Bools::next(const unsigned d) {
+    return BoolVar::next(d);
 }
 
 std::size_t hash_value(const Bools::Expr &x) {

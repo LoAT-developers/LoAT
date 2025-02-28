@@ -31,7 +31,7 @@ Bools::Expr removeRedundantInequations(const Bools::Expr e) {
     auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
     std::vector<Arith::Var> factors;
     for (size_t i = 0; i < bounded.size(); ++i) {
-        const auto f {Arith::next()};
+        const auto f {Arith::next(0)};
         factors.push_back(f);
         solver->add(arith::mkGeq(f, arith::mkConst(0)));
     }

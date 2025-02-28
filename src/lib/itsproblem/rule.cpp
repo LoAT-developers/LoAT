@@ -128,9 +128,15 @@ size_t hash_value(const Rule &r) {
 RulePtr Rule::renameTmpVars() const {
     Renaming s;
     for (const auto &x: vars()) {
-        if (theory::isTempVar(x)) {
-            s.insert(x, theory::next(x));
-        }
+        std::visit(
+            Overload{
+                [&](const auto x) {
+                    if (x->isTempVar()) {
+                        s.insert(x, x->next(x->getDimension()));
+                    }
+                }
+            }, x
+        );
     }
     return renameVars(s);
 }

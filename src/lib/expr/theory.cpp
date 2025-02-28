@@ -38,12 +38,11 @@ bool isPostVar(const Var &var) {
     return std::visit([](const auto &var){return var->isPostVar();}, var);
 }
 
-Var next(const Var &var) {
-    return std::visit([](const auto x) {return Var(theory(x).next());}, var);
-}
-
-Var next(const Expr &x) {
-    return std::visit([](const auto x) {return Var(theory(x).next());}, x);
+Var next(const Type t, const unsigned dimension) {
+    switch (t) {
+        case Type::Int: return Arith::next(dimension);
+        case Type::Bool: return Bools::next(dimension);
+    }
 }
 
 Var postVar(const Var &var) {
@@ -62,26 +61,23 @@ Expr toExpr(const Const &c) {
     return TheTheory::constToExpr(c);
 }
 
-theory::Type to_type(const Expr &x) {
+ArrayType to_type(const Expr &x) {
     return std::visit(
         Overload{
-            [&](const Arith::Expr &) {
-                return Type::Int;
+            [](const Arith::Expr &) {
+                return ArrayType(Type::Int, 0);
             },
-            [&](const Bools::Expr &) {
-                return Type::Bool;
+            [](const Bools::Expr &) {
+                return ArrayType(Type::Bool, 0);
             }},
         x);
 }
 
-theory::Type to_type(const Var &x) {
+ArrayType to_type(const Var &x) {
     return std::visit(
         Overload{
-            [&](const Arith::Var &) {
-                return Type::Int;
-            },
-            [&](const Bools::Var &) {
-                return Type::Bool;
+            [](const auto &x) {
+                return x->get_type();
             }},
         x);
 }

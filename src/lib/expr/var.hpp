@@ -2,12 +2,11 @@
 
 #include <memory>
 #include <string>
+#include <boost/functional/hash.hpp>
 
 #include "exprfwd.hpp"
 #include "sexpresso.hpp"
-
-namespace theory {
-}
+#include "arraytype.hpp"
 
 template <theory::Type T, class S>
 class TVar;
@@ -17,7 +16,7 @@ using VarPtr = cpp::not_null<std::shared_ptr<const TVar<T, S>>>;
 
 namespace theory {
 template <Type T, class S>
-VarPtr<T, S> mkVar(const int idx);
+VarPtr<T, S> mkVar(const int idx, const unsigned dimension);
 }
 
 template <theory::Type T, class S>
@@ -26,7 +25,7 @@ class TVar: public S {
 public:
     using ptr = VarPtr<T, S>;
 
-    friend ptr theory::mkVar(const int idx);
+    friend ptr theory::mkVar(const int idx, const unsigned dimension);
 
 private:
 
@@ -34,10 +33,11 @@ private:
     static int last_tmp_idx;
 
     int idx;
+    unsigned dimension;
 
     struct CacheEqual {
 
-        bool operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept {
+        bool operator()(const std::tuple<int, unsigned> &args1, const std::tuple<int, unsigned> &args2) const noexcept {
             return args1 == args2;
         }
 
@@ -45,53 +45,65 @@ private:
 
     struct CacheHash {
 
-        size_t operator()(const std::tuple<int> &args) const noexcept {
-            return std::hash<int>{}(std::get<0>(args));
+        size_t operator()(const std::tuple<int, unsigned> &args) const noexcept {
+            size_t seed {42};
+            boost::hash_combine(seed, std::get<0>(args));
+            boost::hash_combine(seed, std::get<1>(args));
+            return seed;
         }
 
     };
 
-    static ConsHash<TVar<T, S>, TVar<T, S>, CacheHash, CacheEqual, int> cache;
+    static ConsHash<TVar<T, S>, TVar<T, S>, CacheHash, CacheEqual, int, unsigned> cache;
 
 public:
 
     friend auto operator<=>(const TVar<T, S> &x, const TVar<T, S> &y) = default;
     friend bool operator==(const TVar<T, S> &x, const TVar<T, S> &y) = default;
 
-    TVar(const int idx): idx(idx) {}
+    TVar(const int idx, const unsigned dimension): idx(idx), dimension(dimension) {}
 
     ~TVar() {
-        cache.erase(idx);
+        cache.erase(idx, dimension);
     }
 
     std::string getName() const {
+        auto res {theory::abbreviate(T)};
         if (idx > 0) {
-            return "b" + std::to_string(idx);
+            res += std::to_string(idx);
         } else {
-            return "bt" + std::to_string(-idx);
+            res += "t" + std::to_string(-idx);
         }
+        for (unsigned i = 0; i < dimension; ++i) {
+            res += "[]";
+        }
+        return res;
     }
 
     int getIdx() const {
         return idx;
     }
 
-    static ptr next() {
-        --last_tmp_idx;
-        return theory::mkVar<T, S>(last_tmp_idx);
+    unsigned getDimension() const {
+        return dimension;
     }
 
-    static ptr nextProgVar() {
+    static ptr next(const unsigned dimension) {
+        --last_tmp_idx;
+        return theory::mkVar<T, S>(last_tmp_idx, dimension);
+    }
+
+    static ptr nextProgVar(const unsigned dimension) {
         last_prog_idx += 2;
-        return theory::mkVar<T, S>(last_prog_idx);
+        return theory::mkVar<T, S>(last_prog_idx, dimension);
     }
 
     static ptr postVar(const ptr &var) {
-        return theory::mkVar<T, S>(var->getIdx() + 1);
+        return theory::mkVar<T, S>(var->getIdx() + 1, var->dimension);
     }
 
     static ptr progVar(const ptr &var) {
-        return theory::mkVar<T, S>(var->getIdx() - 1);
+        return theory::mkVar<T, S>(var->getIdx() - 1, var->dimension);
     }
 
     bool isTempVar() const {
@@ -107,11 +119,18 @@ public:
     }
 
     std::size_t hash() const {
-        return std::hash<int>{}(idx);
+        size_t seed {42};
+            boost::hash_combine(seed, idx);
+            boost::hash_combine(seed, dimension);
+            return seed;
     }
 
     sexpresso::Sexp to_smtlib() const {
         return sexpresso::Sexp(getName());
+    }
+
+    ArrayType get_type() const {
+        return ArrayType(T, dimension);
     }
 
 };
@@ -123,12 +142,12 @@ template<theory::Type T, class S>
 int TVar<T, S>::last_tmp_idx {0};
 
 template<theory::Type T, class S>
-ConsHash<TVar<T, S>, TVar<T, S>, typename TVar<T, S>::CacheHash, typename TVar<T, S>::CacheEqual, int> TVar<T, S>::cache {};
+ConsHash<TVar<T, S>, TVar<T, S>, typename TVar<T, S>::CacheHash, typename TVar<T, S>::CacheEqual, int, unsigned> TVar<T, S>::cache {};
 
 namespace theory {
     template <Type T, class S>
-    VarPtr<T, S> mkVar(const int idx) {
-        return TVar<T, S>::cache.from_cache(idx);
+    VarPtr<T, S> mkVar(const int idx, const unsigned d) {
+        return TVar<T, S>::cache.from_cache(idx, d);
     }
 }
 
