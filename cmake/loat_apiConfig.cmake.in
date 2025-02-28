@@ -1,6 +1,0 @@
-@PACKAGE_INIT@
-
-include("${CMAKE_CURRENT_LIST_DIR}/@STATIC_LIBRARY_NAME@Targets.cmake")
-
-set(LoAT_API_Static_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/include")
-set(LoAT_API_Static_LIBRARIES "${PACKAGE_PREFIX_DIR}/lib")
