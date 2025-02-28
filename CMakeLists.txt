@@ -13,6 +13,7 @@ option(SANITIZE "sanitize" OFF)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
 set(CMAKE_LIBRARY_PATH $ENV{LD_LIBRARY_PATH})
+set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install")
 
 add_link_options(-pthread)
 
@@ -58,10 +59,40 @@ message(STATUS "Compiler cxx relwithdebinfo flags:" ${CMAKE_CXX_FLAGS_RELWITHDEB
 message(STATUS "Compiler cxx min size flags:" ${CMAKE_CXX_FLAGS_MINSIZEREL})
 message(STATUS "Compiler cxx flags:" ${CMAKE_CXX_FLAGS})
 
+# ------------------------------------------------------------------------------
+# Find external libraries required by the project.
+# ------------------------------------------------------------------------------
+
+message(STATUS "Searching external libraries")
+
 find_library(ANTLR4 antlr4-runtime)
-message(STATUS "antlr4: ${ANTLR4}")
 find_library(FAUDES faudes)
+find_library(Z3 z3)
+find_library(YICES yices)
+find_library(POLY poly)
+find_library(POLYXX polyxx)
+find_library(CUDD cudd)
+find_library(CVC5 cvc5)
+find_library(CADICAL cadical)
+find_library(SWINE swine-z3)
+find_library(CLN cln)
+find_library(GMP gmp)
+
+# ------------------------------------------------------------------------------
+# Output the found paths to the libraries for debugging purposes.
+# ------------------------------------------------------------------------------
+message(STATUS "antlr4: ${ANTLR4}")
 message(STATUS "faudes: ${FAUDES}")
+message(STATUS "z3: ${Z3}")
+message(STATUS "yices: ${YICES}")
+message(STATUS "poly: ${POLY}")
+message(STATUS "polyxx: ${POLYXX}")
+message(STATUS "cudd: ${CUDD}")
+message(STATUS "cvc5: ${CVC5}")
+message(STATUS "cadical: ${CADICAL}")
+message(STATUS "swine: ${SWINE}")
+message(STATUS "cln: ${CLN}")
+message(STATUS "gmp: ${GMP}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 include(GetGitRevisionDescription)
@@ -72,48 +103,33 @@ git_local_changes(DIRTY)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp" @ONLY)
 
 add_executable(${EXECUTABLE} "")
+
+set(Loat_API LoATAPI)
+
+add_library(${Loat_API} STATIC)
+
 add_subdirectory(src)
 
-target_include_directories(${EXECUTABLE} PRIVATE
-  ${sexpresso_INCLUDE_DIRS}
-  ${loat_util_INCLUDE_DIRS}
-  ${loat_container_INCLUDE_DIRS}
-  ${loat_expr_INCLUDE_DIRS}
-  ${loat_fmplex_INCLUDE_DIRS}
-  ${loat_preprocessing_INCLUDE_DIRS}
-  ${loat_smt_INCLUDE_DIRS}
-  ${loat_recurrence_INCLUDE_DIRS}
-  ${loat_acceleration_INCLUDE_DIRS}
-  ${loat_trp_INCLUDE_DIRS}
-  ${loat_itsproblem_INCLUDE_DIRS}
-  ${loat_chcproblem_INCLUDE_DIRS}
-  ${loat_safetyproblem_INCLUDE_DIRS}
-  ${loat_transformations_INCLUDE_DIRS}
+target_include_directories(${Loat_API} PUBLIC
+  $<BUILD_INTERFACE:
+    ${sexpresso_INCLUDE_DIRS}
+    ${loat_util_INCLUDE_DIRS}
+    ${loat_container_INCLUDE_DIRS}
+    ${loat_expr_INCLUDE_DIRS}
+    ${loat_fmplex_INCLUDE_DIRS}
+    ${loat_preprocessing_INCLUDE_DIRS}
+    ${loat_smt_INCLUDE_DIRS}
+    ${loat_recurrence_INCLUDE_DIRS}
+    ${loat_acceleration_INCLUDE_DIRS}
+    ${loat_trp_INCLUDE_DIRS}
+    ${loat_itsproblem_INCLUDE_DIRS}
+    ${loat_chcproblem_INCLUDE_DIRS}
+    ${loat_safetyproblem_INCLUDE_DIRS}
+    ${loat_transformations_INCLUDE_DIRS}
+  >
 )
 
-message(STATUS "Searching libraries")
-find_library(Z3 z3)
-message(STATUS "z3: ${Z3}")
-find_library(YICES yices)
-message(STATUS "yices: ${YICES}")
-find_library(POLY poly)
-message(STATUS "poly: ${POLY}")
-find_library(POLYXX polyxx)
-message(STATUS "polyxx: ${POLYXX}")
-find_library(CUDD cudd)
-message(STATUS "cudd: ${CUDD}")
-find_library(CVC5 cvc5)
-message(STATUS "cvc5: ${CVC5}")
-find_library(CADICAL cadical)
-message(STATUS "cadical: ${CADICAL}")
-find_library(SWINE swine-z3)
-message(STATUS "swine: ${SWINE}")
-find_library(CLN cln)
-message(STATUS "cln: ${CLN}")
-find_library(GMP gmp)
-message(STATUS "gmp: ${GMP}")
-
-target_link_libraries(${EXECUTABLE}
+target_link_libraries(${Loat_API}
   $<TARGET_OBJECTS:sexpresso>
   $<TARGET_OBJECTS:loat_util>
   $<TARGET_OBJECTS:loat_expr>
@@ -141,3 +157,34 @@ target_link_libraries(${EXECUTABLE}
   ${GMP}
   ${LINKER_OPTIONS}
 )
+
+target_link_libraries(${EXECUTABLE} PRIVATE ${Loat_API})
+
+include(GNUInstallDirs)
+install(TARGETS ${Loat_API}
+  EXPORT ${Loat_API}Targets
+  ARCHIVE DESTINATION lib
+)
+install(EXPORT ${Loat_API}Targets
+  FILE ${Loat_API}Targets.cmake
+  DESTINATION lib/cmake/${Loat_API}
+)    
+
+file(GLOB_RECURSE ALL_HEADERS "${CMAKE_SOURCE_DIR}/src/*.hpp" "${CMAKE_SOURCE_DIR}/src/*.h")
+install(FILES ${ALL_HEADERS} DESTINATION include/LoAT)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+  "${CMAKE_SOURCE_DIR}/cmake/${Loat_API}Config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/${Loat_API}Config.cmake"
+    INSTALL_DESTINATION lib/cmake/${Loat_API}
+)
+
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/${Loat_API}Config.cmake"
+  DESTINATION lib/cmake/${Loat_API}
+)
+
+target_include_directories(${Loat_API} PUBLIC $<INSTALL_INTERFACE:include/LoAT>)
+
