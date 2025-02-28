@@ -1,5 +1,6 @@
 #include "arithlit.hpp"
 #include "arithsubs.hpp"
+#include "var.hpp"
 
 #include <sstream>
 #include <assert.h>

@@ -1,14 +1,11 @@
 #pragma once
 
 #include <concepts>
-#include <type_traits>
 #include <stdexcept>
-#include <string>
 #include <variant>
 #include <tuple>
 
-#include "linkedhashset.hpp"
-#include "linkedhashmap.hpp"
+#include "exprfwd.hpp"
 
 template<typename ... Ts>
 struct Overload : Ts ... {
@@ -23,7 +20,7 @@ concept IComparable = requires(T x1, T x2) {
 };
 
 template <typename T, typename Var>
-concept IVars = requires(T x, linked_hash_set<Var> res) {
+concept IVars = requires(T x, linked_hash_set<Var> &res) {
         x.collectVars(res);
 };
 

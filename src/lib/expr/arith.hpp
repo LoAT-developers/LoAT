@@ -1,9 +1,9 @@
 #pragma once
 
 #include "itheory.hpp"
-#include "arithexpr.hpp"
 #include "arithlit.hpp"
-#include "arithsubs.hpp"
+#include "exprfwd.hpp"
+#include "var.hpp"
 
 struct Arith {
 
@@ -15,21 +15,10 @@ struct Arith {
     using Model = linked_hash_map<Var, Const>;
     using Renaming = arith_var_map;
 
-    static Expr constToExpr(const Const &val) {
-        return arith::mkConst(val);
-    }
-
-    static Expr varToExpr(const Var &var) {
-        return arith::toExpr(var);
-    }
-
-    static Expr anyValue() {
-        return arith::mkConst(0);
-    }
-
-    static Var next() {
-        return ArithVar::next();
-    }
+    static Expr constToExpr(const Const &val);
+    static Expr varToExpr(const Var &var);
+    static Expr anyValue();
+    static Var next();
 
 };
 

@@ -1,26 +1,11 @@
 #pragma once
 
-#include <variant>
-#include <initializer_list>
 #include <optional>
-#ifndef EOF
-#define EOF (-1)
-#endif
-#include <boost/multiprecision/cpp_int.hpp>
-#include <functional>
-#include <boost/bimap.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
 
 #include "linkedhashset.hpp"
-#include "linkedhashmap.hpp"
 #include "string.hpp"
 #include "conshash.hpp"
-#include "notnull.hpp"
-#include "sexpresso.hpp"
-#include "var.hpp"
-
-class ArithExpr;
-using ArithVar = TVar<theory::Type::Int, ArithExpr>;
+#include "exprfwd.hpp"
 
 class ArithConst;
 class ArithExp;
@@ -37,12 +22,6 @@ using ArithModPtr = cpp::not_null<std::shared_ptr<const ArithMod>>;
 using ArithExpPtr = cpp::not_null<std::shared_ptr<const ArithExp>>;
 using ArithExprSet = linked_hash_set<ArithExprPtr>;
 using ArithExprVec = std::vector<ArithExprPtr>;
-
-namespace mp = boost::multiprecision;
-using Int = mp::cpp_int;
-using Rational = mp::cpp_rational;
-
-using arith_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArithVarPtr>, boost::bimaps::unordered_set_of<ArithVarPtr>>;
 
 namespace arith {
 

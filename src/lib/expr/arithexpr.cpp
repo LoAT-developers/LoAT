@@ -1,6 +1,7 @@
 #include "arithexpr.hpp"
 #include "optional.hpp"
 #include "linkedhashmap.hpp"
+#include "var.hpp"
 
 #include <sstream>
 #include <numeric>

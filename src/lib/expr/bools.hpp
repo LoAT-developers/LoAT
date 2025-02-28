@@ -2,11 +2,7 @@
 
 #include "itheory.hpp"
 #include "boollit.hpp"
-#include "notnull.hpp"
-
-#include <boost/bimap.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
-#include <memory>
+#include "exprfwd.hpp"
 
 class BoolExpr;
 class BoolSubs;
