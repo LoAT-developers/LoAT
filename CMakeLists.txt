@@ -65,34 +65,68 @@ message(STATUS "Compiler cxx flags:" ${CMAKE_CXX_FLAGS})
 
 message(STATUS "Searching external libraries")
 
-find_library(ANTLR4 antlr4-runtime)
-find_library(FAUDES faudes)
-find_library(Z3 z3)
-find_library(YICES yices)
-find_library(POLY poly)
-find_library(POLYXX polyxx)
-find_library(CUDD cudd)
-find_library(CVC5 cvc5)
-find_library(CADICAL cadical)
-find_library(SWINE swine-z3)
-find_library(CLN cln)
-find_library(GMP gmp)
+function(find_required_library var libname displayname)
+  find_library(${var} ${libname})
+  if(NOT ${var})
+    message(FATAL_ERROR "${displayname} not found. Please install ${displayname}.")
+  else()
+    message(STATUS "${displayname}: ${${var}}")
+  endif()
+endfunction()
+
+function(find_required_package pkg_name displayname)
+  find_package(${pkg_name} REQUIRED)
+  if(NOT ${pkg_name}_FOUND)
+    message(FATAL_ERROR "${displayname} not found. Please install ${displayname}.")
+  else()
+    message(STATUS "${displayname} found.")
+  endif()
+endfunction()
+
+find_required_library(ANTLR4 antlr4-runtime "ANTLR4 runtime")
+find_required_library(FAUDES faudes "Faudes")
+find_required_library(Z3 z3 "Z3")
+find_required_library(YICES yices "Yices")
+find_required_library(POLY poly "Poly")
+find_required_library(POLYXX polyxx "PolyXX")
+find_required_library(CUDD cudd "CUDD")
+find_required_library(CVC5 cvc5 "CVC5")
+find_required_library(CADICAL cadical "Cadical")
+find_required_library(SWINE swine-z3 "Swine Z3")
+find_required_library(CLN cln "CLN")
+find_required_library(GMP gmp "GMP")
+
+find_required_package(Boost "Boost")
+
+
+# find_library(ANTLR4 antlr4-runtime)
+# find_library(FAUDES faudes)
+# find_library(Z3 z3)
+# find_library(YICES yices)
+# find_library(POLY poly)
+# find_library(POLYXX polyxx)
+# find_library(CUDD cudd)
+# find_library(CVC5 cvc5)
+# find_library(CADICAL cadical)
+# find_library(SWINE swine-z3)
+# find_library(CLN cln)
+# find_library(GMP gmp)
 
 # ------------------------------------------------------------------------------
 # Output the found paths to the libraries for debugging purposes.
 # ------------------------------------------------------------------------------
-message(STATUS "antlr4: ${ANTLR4}")
-message(STATUS "faudes: ${FAUDES}")
-message(STATUS "z3: ${Z3}")
-message(STATUS "yices: ${YICES}")
-message(STATUS "poly: ${POLY}")
-message(STATUS "polyxx: ${POLYXX}")
-message(STATUS "cudd: ${CUDD}")
-message(STATUS "cvc5: ${CVC5}")
-message(STATUS "cadical: ${CADICAL}")
-message(STATUS "swine: ${SWINE}")
-message(STATUS "cln: ${CLN}")
-message(STATUS "gmp: ${GMP}")
+# message(STATUS "antlr4: ${ANTLR4}")
+# message(STATUS "faudes: ${FAUDES}")
+# message(STATUS "z3: ${Z3}")
+# message(STATUS "yices: ${YICES}")
+# message(STATUS "poly: ${POLY}")
+# message(STATUS "polyxx: ${POLYXX}")
+# message(STATUS "cudd: ${CUDD}")
+# message(STATUS "cvc5: ${CVC5}")
+# message(STATUS "cadical: ${CADICAL}")
+# message(STATUS "swine: ${SWINE}")
+# message(STATUS "cln: ${CLN}")
+# message(STATUS "gmp: ${GMP}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 include(GetGitRevisionDescription)
@@ -110,8 +144,16 @@ add_library(${Loat_API} STATIC)
 
 add_subdirectory(src)
 
-target_include_directories(${Loat_API} PUBLIC
+if(NOT TARGET Boost::boost)
+  add_library(Boost::boost INTERFACE IMPORTED)
+  set_target_properties(Boost::boost PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
+  )
+endif()
+
+target_include_directories(${EXECUTABLE} PRIVATE
   $<BUILD_INTERFACE:
+    ${Boost_INCLUDE_DIRS}
     ${sexpresso_INCLUDE_DIRS}
     ${loat_util_INCLUDE_DIRS}
     ${loat_container_INCLUDE_DIRS}
@@ -129,20 +171,49 @@ target_include_directories(${Loat_API} PUBLIC
   >
 )
 
-target_link_libraries(${Loat_API}
-  $<TARGET_OBJECTS:sexpresso>
-  $<TARGET_OBJECTS:loat_util>
-  $<TARGET_OBJECTS:loat_expr>
-  $<TARGET_OBJECTS:loat_fmplex>
-  $<TARGET_OBJECTS:loat_preprocessing>
-  $<TARGET_OBJECTS:loat_smt>
-  $<TARGET_OBJECTS:loat_recurrence>
-  $<TARGET_OBJECTS:loat_acceleration>
-  $<TARGET_OBJECTS:loat_trp>
-  $<TARGET_OBJECTS:loat_itsproblem>
-  $<TARGET_OBJECTS:loat_chcproblem>
-  $<TARGET_OBJECTS:loat_safetyproblem>
-  $<TARGET_OBJECTS:loat_transformations>
+set(OBJECT_LIBRARIES 
+  sexpresso
+  loat_util
+  loat_expr
+  loat_fmplex
+  loat_preprocessing
+  loat_smt
+  loat_recurrence
+  loat_acceleration
+  loat_trp
+  loat_itsproblem
+  loat_chcproblem
+  loat_safetyproblem
+  loat_transformations
+)
+
+foreach(LIB ${OBJECT_LIBRARIES})
+  target_sources(${Loat_API} PRIVATE $<TARGET_OBJECTS:${LIB}>)
+endforeach()
+
+target_include_directories(${Loat_API} PUBLIC $<INSTALL_INTERFACE:include/LoAT>)
+
+target_include_directories(${Loat_API} PRIVATE
+  $<BUILD_INTERFACE:
+    ${Boost_INCLUDE_DIRS}
+    ${sexpresso_INCLUDE_DIRS}
+    ${loat_util_INCLUDE_DIRS}
+    ${loat_container_INCLUDE_DIRS}
+    ${loat_expr_INCLUDE_DIRS}
+    ${loat_fmplex_INCLUDE_DIRS}
+    ${loat_preprocessing_INCLUDE_DIRS}
+    ${loat_smt_INCLUDE_DIRS}
+    ${loat_recurrence_INCLUDE_DIRS}
+    ${loat_acceleration_INCLUDE_DIRS}
+    ${loat_trp_INCLUDE_DIRS}
+    ${loat_itsproblem_INCLUDE_DIRS}
+    ${loat_chcproblem_INCLUDE_DIRS}
+    ${loat_safetyproblem_INCLUDE_DIRS}
+    ${loat_transformations_INCLUDE_DIRS}
+  >
+)
+
+target_link_libraries(${Loat_API} PUBLIC Boost::boost
   ${ANTLR4}
   ${FAUDES}
   ${SWINE}
@@ -185,6 +256,4 @@ install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/${Loat_API}Config.cmake"
   DESTINATION lib/cmake/${Loat_API}
 )
-
-target_include_directories(${Loat_API} PUBLIC $<INSTALL_INTERFACE:include/LoAT>)
 
