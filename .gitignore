@@ -28,7 +28,7 @@ koat-examples
 
 # hidden files
 .*
-!.vscode
+.vscode/
 !.devcontainer
 !.github/
 !.gitattributes
