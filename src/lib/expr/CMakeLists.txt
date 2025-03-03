@@ -47,6 +47,7 @@ add_library(${PROJECT_NAME} OBJECT
   arraytype.cpp
   type.hpp
   type.cpp
+  visit.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

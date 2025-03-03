@@ -1,4 +1,5 @@
 #include "renaming.hpp"
+#include "visit.hpp"
 
 Renaming::It Renaming::Iterator::begin(size_t i) const {
     return beginImpl(i);
@@ -381,14 +382,14 @@ Renaming Renaming::invert() const {
 Renaming Renaming::Empty {};
 
 Var Renaming::first(const Pair &p) {
-    return std::visit(
+    return visit1(
         [](const auto &p){
             return Var(p.first);
         }, p);
 }
 
 Var Renaming::second(const Pair &p) {
-    return std::visit(
+    return visit1(
         [](const auto &p) {
             return Var(p.second);
         }, p);

@@ -4,6 +4,7 @@
 #include "arith.hpp"
 #include "bools.hpp"
 #include "boolexpr.hpp"
+#include "visit.hpp"
 
 #include <variant>
 #include <tuple>
@@ -84,17 +85,17 @@ std::optional<Var> is_var(const Expr &x);
 
 template <class ... Ts>
 auto apply(const Var &x, Ts... f) {
-    return std::visit(Overload{f...}, x);
+    return visit1(Overload{f...}, x);
 }
 
 template <class ... Ts>
 auto apply(const Expr &x, Ts... f) {
-    return std::visit(Overload{f...}, x);
+    return visit1(Overload{f...}, x);
 }
 
 template <class ... Ts>
 auto apply(const Lit &x, Ts... f) {
-    return std::visit(Overload{f...}, x);
+    return visit1(Overload{f...}, x);
 }
 
 template <size_t I, ITheory T>

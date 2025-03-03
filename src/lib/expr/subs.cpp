@@ -448,14 +448,14 @@ void Subs::collectVars(VarSet &vars) const {
 Subs Subs::Empty {};
 
 Var Subs::first(const Pair &p) {
-    return std::visit(
+    return visit1(
         [](const auto &p){
             return Var(p.first);
         }, p);
 }
 
 Expr Subs::second(const Pair &p) {
-    return std::visit(
+    return visit1(
         [](const auto &p) {
             return Expr(p.second);
         }, p);
