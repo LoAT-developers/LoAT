@@ -85,7 +85,7 @@ std::optional<Var> is_var(const Expr &x);
 
 template <class Int, class Bool, class ... Ts>
 auto apply(const std::variant<Int, Bool> &x, Ts... f) {
-    return visit1(Overload{f...}, x);
+    return std::visit(Overload{f...}, x);
 }
 
 template <size_t I, ITheory T>

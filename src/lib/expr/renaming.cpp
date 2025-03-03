@@ -366,14 +366,14 @@ Renaming Renaming::invert() const {
 Renaming Renaming::Empty {};
 
 Var Renaming::first(const Pair &p) {
-    return visit1(
+    return std::visit(
         [](const auto &p){
             return Var(p.first);
         }, p);
 }
 
 Var Renaming::second(const Pair &p) {
-    return visit1(
+    return std::visit(
         [](const auto &p) {
             return Var(p.second);
         }, p);
