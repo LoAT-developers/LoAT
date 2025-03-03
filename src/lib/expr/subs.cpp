@@ -448,17 +448,15 @@ void Subs::collectVars(VarSet &vars) const {
 Subs Subs::Empty {};
 
 Var Subs::first(const Pair &p) {
-    return std::visit(
-        [](const auto &p){
-            return Var(p.first);
-        }, p);
+    return theory::apply(p, [](const auto &p) {
+        return Var(p.first);
+    });
 }
 
 Expr Subs::second(const Pair &p) {
-    return std::visit(
-        [](const auto &p) {
-            return Expr(p.second);
-        }, p);
+    return theory::apply(p, [](const auto &p) {
+        return Expr(p.second);
+    });
 }
 
 std::ostream& operator<<(std::ostream &s, const Subs &subs) {

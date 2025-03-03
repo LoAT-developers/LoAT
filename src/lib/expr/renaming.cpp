@@ -366,17 +366,15 @@ Renaming Renaming::invert() const {
 Renaming Renaming::Empty {};
 
 Var Renaming::first(const Pair &p) {
-    return std::visit(
-        [](const auto &p){
-            return Var(p.first);
-        }, p);
+    return theory::apply(p, [](const auto &p) {
+        return Var(p.first);
+    });
 }
 
 Var Renaming::second(const Pair &p) {
-    return std::visit(
-        [](const auto &p) {
-            return Var(p.second);
-        }, p);
+    return theory::apply(p, [](const auto &p) {
+        return Var(p.second);
+    });
 }
 
 std::ostream& operator<<(std::ostream &s, const Renaming &subs) {
