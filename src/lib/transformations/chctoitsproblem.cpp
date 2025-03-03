@@ -182,7 +182,6 @@ ITSPtr CHCToITS::transform() {
                 theory::apply(vec[next], [&](const auto &x) {
                     using T = decltype(theory::theory(x));
                     const auto d{array_type.get_dimension()};
-                    const auto t{array_type.get_type()};
                     for (; next < arity; ++next) {
                         up.put<T>(x, T::varToExpr(T::next(d)));
                     }

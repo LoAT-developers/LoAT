@@ -23,7 +23,6 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr r, const VarSet &prog_var
     for (const auto &x : prog_vars) {
         theory::apply(x, [&](const auto &x) {
             using T = decltype(theory::theory(x));
-            auto add_eq {true};
             if (const auto y {r->getUpdate().get<T>(x)->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
                 subs.put<T>(*y, T::varToExpr(x->postVar()));
             } else {
