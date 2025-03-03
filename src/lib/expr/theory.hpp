@@ -84,8 +84,12 @@ ArrayType to_type(const Var &x);
 std::optional<Var> is_var(const Expr &x);
 
 template <class Int, class Bool, class ... Ts>
-auto apply(const std::variant<Int, Bool> &x, Ts... f) {
-    return std::visit(Overload{f...}, x);
+inline auto apply(const std::variant<Int, Bool> &x, Ts... f) noexcept {
+    if (std::holds_alternative<Int>(x)) {
+        return Overload{f...}(*std::get_if<Int>(&x));
+    } else {
+        return Overload{f...}(*std::get_if<Bool>(&x));
+    }
 }
 
 template <size_t I, ITheory T>
