@@ -38,7 +38,7 @@ private:
     struct CacheEqual {
 
         bool operator()(const std::tuple<int, unsigned> &args1, const std::tuple<int, unsigned> &args2) const noexcept {
-            return args1 == args2;
+            return std::get<int>(args1) == std::get<int>(args2);
         }
 
     };
@@ -46,10 +46,7 @@ private:
     struct CacheHash {
 
         size_t operator()(const std::tuple<int, unsigned> &args) const noexcept {
-            size_t seed {42};
-            boost::hash_combine(seed, std::get<0>(args));
-            boost::hash_combine(seed, std::get<1>(args));
-            return seed;
+            return std::hash<int>()(std::get<int>(args));
         }
 
     };
@@ -58,8 +55,13 @@ private:
 
 public:
 
-    friend auto operator<=>(const TVar<T, S> &x, const TVar<T, S> &y) = default;
-    friend bool operator==(const TVar<T, S> &x, const TVar<T, S> &y) = default;
+    friend auto operator<=>(const TVar<T, S> &x, const TVar<T, S> &y) {
+        return x.idx <=> y.idx;
+    }
+
+    friend bool operator==(const TVar<T, S> &x, const TVar<T, S> &y) {
+        return x.idx == y.idx;
+    }
 
     TVar(const int idx, const unsigned dimension): idx(idx), dimension(dimension) {}
 
@@ -119,10 +121,7 @@ public:
     }
 
     std::size_t hash() const {
-        size_t seed {42};
-            boost::hash_combine(seed, idx);
-            boost::hash_combine(seed, dimension);
-            return seed;
+        return std::hash<int>()(idx);
     }
 
     sexpresso::Sexp to_smtlib() const {

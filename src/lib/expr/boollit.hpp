@@ -55,12 +55,6 @@ public:
 
 };
 
-namespace bools {
-
-BoolVarPtr mkVar(const int idx, const unsigned d);
-
-}
-
 BoolLitPtr operator!(const BoolLitPtr &l);
 
 std::ostream& operator<<(std::ostream &s, const BoolLitPtr &e);

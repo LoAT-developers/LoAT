@@ -35,7 +35,6 @@ ArithExprPtr mkMod(ArithExprPtr x, ArithExprPtr y);
 ArithExprPtr mkConst(const Rational &r);
 ArithExprPtr mkConst(const Rational &&r);
 ArithExprPtr mkExp(const ArithExprPtr base, const ArithExprPtr exponent);
-ArithExprPtr mkVar(const int idx);
 
 enum class Kind {
     Plus, Times, Mod, Exp, Constant, Variable
