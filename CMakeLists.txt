@@ -42,7 +42,7 @@ if(${SANITIZE})
     # add_compile_options(-fPIE -pie -fno-omit-frame-pointer)
 endif()
 
-add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter) # for GCC: -fconcepts-diagnostics-depth=100
+add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter -Wfatal-errors) # for GCC: -fconcepts-diagnostics-depth=100
 
 
 
