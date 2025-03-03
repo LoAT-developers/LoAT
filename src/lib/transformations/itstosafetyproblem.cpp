@@ -21,13 +21,15 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr r, const VarSet &prog_var
     std::vector<Bools::Expr> conjuncts;
     conjuncts.push_back(r->getGuard());
     for (const auto &x : prog_vars) {
-        if (const auto y {theory::is_var(r->getUpdate().get(x))}) {
-            if (theory::isTempVar(*y) && !subs.contains(*y)) {
-                subs.put(*y, theory::toExpr(theory::postVar(x)));
-                continue;
+        theory::apply(x, [&](const auto &x) {
+            using T = decltype(theory::theory(x));
+            auto add_eq {true};
+            if (const auto y {r->getUpdate().get<T>(x)->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
+                subs.put<T>(*y, T::varToExpr(x->postVar()));
+            } else {
+                conjuncts.push_back(theory::mkEq(T::varToExpr(x->postVar()), r->getUpdate().get(x)));
             }
-        }
-        conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), r->getUpdate().get(x)));
+        });
     }
     const auto res {subs(bools::mkAnd(conjuncts))};
     if (Config::Analysis::model) {

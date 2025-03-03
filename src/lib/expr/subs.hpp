@@ -107,7 +107,6 @@ public:
     Subs project(const VarSet &vars) const;
     Subs project(const std::function<bool(Var)> &keep) const;
     void put(const Pair &p);
-    void put(const Var &x, const Expr &y);
 
     template <ITheory T>
     void put(const typename T::Var &var, const typename T::Expr &expr) {

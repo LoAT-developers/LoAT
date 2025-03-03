@@ -166,27 +166,27 @@ ITSPtr CHCToITS::transform() {
         Subs up;
         if (const auto conc{c->get_conclusion()}) {
             for (const auto &arg : (*conc)->get_args()) {
-                const auto type {theory::to_type(arg)};
-                const auto &vec {vars.at(type)};
-                auto &next {next_by_type.emplace(type, 0).first->second};
-                up.put(vec[next], arg);
-                ++next;
+                theory::apply(arg, [&](const auto &arg) {
+                    using T = decltype(theory::theory(arg));
+                    const auto type{theory::to_type(arg)};
+                    const auto &vec{vars.at(type)};
+                    auto &next{next_by_type.emplace(type, 0).first->second};
+                    const auto &x{std::get<typename T::Var>(vec[next])};
+                    up.put<T>(x, arg);
+                    ++next;
+                });
             }
             for (const auto &[array_type, arity] : max_arity) {
                 const auto &vec{vars.at(array_type)};
                 auto next{next_by_type.emplace(array_type, 0).first->second};
-                const auto d{array_type.get_dimension()};
-                const auto t{array_type.get_type()};
-                for (; next < arity; ++next) {
-                    switch (t) {
-                        case theory::Type::Int:
-                            up.put(vec[next], ArithVar::next(d));
-                            break;
-                        case theory::Type::Bool:
-                            up.put(vec[next], Bools::varToExpr(BoolVar::next(d)));
-                            break;
+                theory::apply(vec[next], [&](const auto &x) {
+                    using T = decltype(theory::theory(x));
+                    const auto d{array_type.get_dimension()};
+                    const auto t{array_type.get_type()};
+                    for (; next < arity; ++next) {
+                        up.put<T>(x, T::varToExpr(T::next(d)));
                     }
-                }
+                });
             }
         }
         const auto rhs_loc = c->get_conclusion() ? its->getOrAddLocation((*c->get_conclusion())->get_pred()) : its->getSink();

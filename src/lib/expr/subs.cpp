@@ -115,21 +115,6 @@ void Subs::put(const Pair &p) {
     putImpl(*this, p);
 }
 
-template<std::size_t I = 0>
-inline void putImpl(Subs &s, const Var &x, const Expr &y) {
-    if constexpr (I < num_theories) {
-        if (x.index() == I) {
-            s.get<I>().put(std::get<I>(x), std::get<I>(y));
-        } else {
-            putImpl<I+1>(s, x, y);
-        }
-    }
-}
-
-void Subs::put(const Var &x, const Expr &y) {
-    putImpl(*this, x, y);
-}
-
 Subs::Subs(){}
 
 Subs::Subs(Pair &p) {

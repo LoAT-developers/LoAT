@@ -318,7 +318,7 @@ bool TRPUtil::build_cex() {
             const auto &[pre, post] {p};
             using T = decltype(theory::theory(pre));
             const auto tmp{T::next(pre->getDimension())};
-            up.put(pre, T::varToExpr(tmp));
+            up.put<T>(pre, T::varToExpr(tmp));
             post_to_tmp.insert<T>(post, tmp);
         });
     }
