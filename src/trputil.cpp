@@ -123,10 +123,10 @@ const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
                 using T = decltype(theory::theory(var));
                 if (var->isProgVar()) {
                     const auto post_var{var->postVar()};
-                    s.insert(var, subs.back()[0].get(post_var));
-                    s.insert(post_var, T::next(var->getDimension()));
+                    s.insert<T>(var, subs.back()[0].get<T>(post_var));
+                    s.insert<T>(post_var, T::next(var->getDimension()));
                 } else {
-                    s.insert(var, T::next(var->getDimension()));
+                    s.insert<T>(var, T::next(var->getDimension()));
                 }
             });
         }
@@ -137,11 +137,14 @@ const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
         auto &post{subs.at(start + pre_vec.size()).front()};
         Renaming s;
         for (const auto &var : vars) {
-            s.insert(var, pre_vec.front().get(var));
-            if (theory::isProgVar(var)) {
-                const auto post_var{theory::postVar(var)};
-                s.insert(post_var, post.get(post_var));
-            }
+            theory::apply(var, [&](const auto &var) {
+                using T = decltype(theory::theory(var));
+                s.insert<T>(var, pre_vec.front().get<T>(var));
+                if (var->isProgVar()) {
+                    const auto post_var{var->postVar()};
+                    s.insert<T>(post_var, post.get<T>(post_var));
+                }
+            });
         }
         pre_vec.push_back(s);
     }
@@ -310,12 +313,13 @@ bool TRPUtil::build_cex() {
     }
     Subs up;
     Renaming post_to_tmp;
-    for (const auto &[pre, post]: t.pre_to_post()) {
-        theory::apply(pre, [&](const auto pre) {
+    for (const auto &p: t.pre_to_post()) {
+        theory::apply(p, [&](const auto &p) {
+            const auto &[pre, post] {p};
             using T = decltype(theory::theory(pre));
             const auto tmp{T::next(pre->getDimension())};
             up.put(pre, T::varToExpr(tmp));
-            post_to_tmp.insert(post, tmp);
+            post_to_tmp.insert<T>(post, tmp);
         });
     }
     Renaming tmp_to_post {post_to_tmp.invert()};

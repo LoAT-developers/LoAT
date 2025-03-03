@@ -50,9 +50,10 @@ SafetyProblem ITSToSafety::transform() {
     }
     for (const auto &y: sp.post_vars()) {
         theory::apply(y, [&](const auto y) {
+            using T = decltype(theory::theory(y));
             const auto x{y->progVar()};
-            init_map.insert(y, x);
-            init_map.insert(x, x->next(y->getDimension()));
+            init_map.insert<T>(y, x);
+            init_map.insert<T>(x, x->next(y->getDimension()));
         });
     }
     std::vector<Bools::Expr> init;
@@ -105,9 +106,12 @@ ITSSafetyCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
     const auto steps{cex.num_transitions()};
     Renaming pre_to_post;
     for (const auto &x: its->getVars()) {
-        if (theory::isProgVar(x)) {
-            pre_to_post.insert(x, theory::postVar(x));
-        }
+        theory::apply(x, [&](const auto &x) {
+            using T = decltype(theory::theory(x));
+            if (x->isProgVar()) {
+                pre_to_post.insert<T>(x, x->postVar());
+            }
+        });
     }
     for (size_t i = 0; i < steps; ++i) {
         const auto &[model, transition]{cex.get_step(i)};

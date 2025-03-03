@@ -87,22 +87,6 @@ void Renaming::insert(const Pair &p) {
     insertImpl(*this, p);
 }
 
-template<std::size_t I = 0>
-inline void insertImpl(Renaming &s, const Var &x, const Var &y) {
-    if constexpr (I < num_theories) {
-        if (x.index() == I) {
-            using value_t = typename std::tuple_element_t<I, Theories>::Renaming::left_value_type;
-            s.get<I>().left.insert(value_t(std::get<I>(x), std::get<I>(y)));
-        } else {
-            insertImpl<I+1>(s, x, y);
-        }
-    }
-}
-
-void Renaming::insert(const Var &x, const Var &y) {
-    insertImpl(*this, x, y);
-}
-
 Renaming::Renaming(){}
 
 Renaming::Renaming(Pair &p) {
@@ -402,9 +386,7 @@ std::ostream& operator<<(std::ostream &s, const Renaming &subs) {
 
 Var Renaming::renameVar(const Var &x, Renaming &sigma) {
     return theory::apply(x, [&](const auto &x) {
-        const auto th {theory::theory(x)};
-        const auto next {th.next(x->getDimension())};
-        sigma.insert<decltype(th)>(x, next);
-        return Var(next);
+        using T = decltype(theory::theory(x));
+        return Var(renameVar<T>(x, sigma));
     });
 }

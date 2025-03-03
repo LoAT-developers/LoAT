@@ -9,11 +9,13 @@ TRP::TRP(const Renaming &pre_to_post, const Config::TRPConfig &config):
     pre_to_post(pre_to_post),
     post_to_pre(pre_to_post.invert()),
     config(config) {
-        for (const auto &[pre,post]: pre_to_post) {
-            theory::apply(pre, [&](const auto pre) {
+        for (const auto &p: pre_to_post) {
+            theory::apply(p, [&](const auto &p) {
+                const auto &[pre,post] {p};
+                using T = decltype(theory::theory(pre));
                 const auto i{pre->next(pre->getDimension())};
-                pre_to_intermediate.insert(pre, i);
-                post_to_intermediate.insert(post, i);
+                pre_to_intermediate.insert<T>(pre, i);
+                post_to_intermediate.insert<T>(post, i);
             });
         }
     }

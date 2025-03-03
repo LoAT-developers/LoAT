@@ -58,17 +58,22 @@ std::tuple<Bools::Expr, Renaming, Renaming> Preprocess::chain(const Bools::Expr 
     VarSet post_vars;
     for (const auto &vars : {first_vars, second_vars}) {
         for (const auto &x : vars) {
-            if (theory::isProgVar(x)) {
-                post_vars.insert(theory::postVar(x));
-            } else if (theory::isPostVar(x)) {
-                post_vars.insert(x);
-            }
+            theory::apply(x, [&](const auto &x) {
+                if (x->isProgVar()) {
+                    post_vars.insert(x->postVar());
+                } else if (x->isPostVar()) {
+                    post_vars.insert(x);
+                }
+            });
         }
     }
     for (const auto &post: post_vars) {
-        const auto pre {theory::progVar(post)};
-        const auto x {Renaming::renameVar(post, sigma1)};
-        sigma2.insert(pre, x);
+        theory::apply(post, [&](const auto &post) {
+            using T = decltype(theory::theory(post));
+            const auto pre {post->progVar()};
+            const auto x {Renaming::renameVar<T>(post, sigma1)};
+            sigma2.insert<T>(pre, x);
+        });
     }
     for (const auto &x: second_vars) {
         if (theory::isTempVar(x) && first_vars.contains(x)) {

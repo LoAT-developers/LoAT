@@ -27,11 +27,14 @@ SmtResult BMC::analyze() {
     step->collectVars(vars);
     err->collectVars(vars);
     for (const auto &var: vars) {
-        if (theory::isProgVar(var)) {
-            pre_to_post.insert(var, theory::postVar(var));
-        } else if (theory::isPostVar(var)) {
-            pre_to_post.insert(theory::progVar(var), var);
-        }
+        theory::apply(var, [&](const auto &var) {
+            using T = decltype(theory::theory(var));
+            if (var->isProgVar()) {
+                pre_to_post.insert<T>(var, var->postVar());
+            } else if (var->isPostVar()) {
+                pre_to_post.insert<T>(var->progVar(), var);
+            }
+        });
     }
 
     Renaming last_s;
@@ -54,18 +57,19 @@ SmtResult BMC::analyze() {
         }
         solver->pop();
         Renaming s;
-        for (const auto &[pre,post]: pre_to_post) {
-            theory::apply(pre, [&](const auto &pre) {
+        for (const auto &p: pre_to_post) {
+            theory::apply(p, [&](const auto &p) {
+                const auto &[pre,post] {p};
                 using T = decltype(theory::theory(pre));
-                s.insert(pre, last_s.get(post));
-                s.insert(post, T::next(pre->getDimension()));
+                s.insert<T>(pre, last_s.get<T>(post));
+                s.insert<T>(post, T::next(pre->getDimension()));
             });
         }
         for (const auto &var: vars) {
             theory::apply(var, [&](const auto &var) {
                 using T = decltype(theory::theory(var));
                 if (var->isTempVar()) {
-                    s.insert(var, T::next(var->getDimension()));
+                    s.insert<T>(var, T::next(var->getDimension()));
                 }
             });
         }
@@ -118,12 +122,13 @@ ITSModel BMC::get_model() const {
                 const auto &s1{renamings.at(i)};
                 last = last && s1(step);
                 Renaming s2;
-                for (const auto &[pre,post]: pre_to_post) {
-                    theory::apply(pre, [&](const auto &pre) {
+                for (const auto &p: pre_to_post) {
+                    theory::apply(p, [&](const auto &p) {
+                        const auto &[pre,post] {p};
                         using T = decltype(theory::theory(pre));
                         if (pre->isProgVar()) {
-                            s2.insert(s1.get(post), pre);
-                            s2.insert(pre, T::next(pre->getDimension()));
+                            s2.insert<T>(s1.get<T>(post), pre);
+                            s2.insert<T>(pre, T::next(pre->getDimension()));
                         }
                     });
                 }

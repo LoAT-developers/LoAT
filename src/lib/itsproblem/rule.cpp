@@ -129,8 +129,9 @@ RulePtr Rule::renameTmpVars() const {
     Renaming s;
     for (const auto &x : vars()) {
         theory::apply(x, [&](const auto x) {
+            using T = decltype(theory::theory(x));
             if (x->isTempVar()) {
-                s.insert(x, x->next(x->getDimension()));
+                s.insert<T>(x, x->next(x->getDimension()));
             }
         });
     }

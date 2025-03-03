@@ -104,7 +104,6 @@ public:
     Iterator end() const;
     Iterator begin() const;
     void insert(const Pair &p);
-    void insert(const Var &x, const Var &y);
 
     template <ITheory T>
     void insert(const typename T::Var &var, const typename T::Var &expr) {
@@ -190,6 +189,13 @@ public:
     static Renaming Empty;
 
     static Var renameVar(const Var &x, Renaming &sigma);
+
+    template<ITheory T>
+    static T::Var renameVar(const T::Var &x, Renaming &sigma) {
+        const auto next {T::next(x->getDimension())};
+        sigma.insert<T>(x, next);
+        return next;
+    }
 
 };
 

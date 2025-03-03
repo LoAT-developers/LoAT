@@ -4,13 +4,19 @@
 SafetyProblem::SafetyProblem() {}
 
 void SafetyProblem::add_pre_var(const Var &x) {
-    pre_variables.insert(x);
-    m_pre_to_post.insert(x, theory::postVar(x));
+    theory::apply(x, [&](const auto &x) {
+        using T = decltype(theory::theory(x));
+        pre_variables.insert(x);
+        m_pre_to_post.insert<T>(x, x->postVar());
+    });
 }
 
 void SafetyProblem::add_post_var(const Var &x) {
-    post_variables.insert(x);
-    m_pre_to_post.insert(theory::progVar(x), x);
+    theory::apply(x, [&](const auto &x) {
+        using T = decltype(theory::theory(x));
+        post_variables.insert(x);
+        m_pre_to_post.insert<T>(x->progVar(), x);
+    });
 }
 
 const linked_hash_set<Bools::Expr>& SafetyProblem::trans() const {

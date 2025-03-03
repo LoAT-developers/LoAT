@@ -147,15 +147,19 @@ ITSPtr CHCToITS::transform() {
         std::unordered_map<ArrayType, unsigned> next_by_type;
         if (const auto prem{c->get_premise()}) {
             for (const auto &ex : (*prem)->get_args()) {
-                const auto type {theory::to_type(ex)};
-                const auto &vec {vars.at(type)};
-                auto &next {next_by_type.emplace(type, 0).first->second};
-                if (const auto var{theory::is_var(ex)}; var && !renaming.contains(*var)) {
-                    renaming.insert(*var, vec[next]);
-                } else {
-                    constraints.emplace_back(theory::mkEq(ex, theory::toExpr(vec[next])));
-                }
-                ++next;
+                theory::apply(ex, [&](const auto &ex) {
+                    using T = decltype(theory::theory(ex));
+                    const auto type{theory::to_type(ex)};
+                    const auto &vec{vars.at(type)};
+                    auto &next{next_by_type.emplace(type, 0).first->second};
+                    const auto &x {std::get<typename T::Var>(vec[next])};
+                    if (const auto var{ex->isVar()}; var && !renaming.contains(*var)) {
+                        renaming.insert<T>(*var, x);
+                    } else {
+                        constraints.emplace_back(theory::mkEq(ex, T::varToExpr(x)));
+                    }
+                    ++next;
+                });
             }
         }
         next_by_type.clear();

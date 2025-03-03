@@ -83,18 +83,8 @@ ArrayType to_type(const Expr &x);
 ArrayType to_type(const Var &x);
 std::optional<Var> is_var(const Expr &x);
 
-template <class ... Ts>
-auto apply(const Var &x, Ts... f) {
-    return visit1(Overload{f...}, x);
-}
-
-template <class ... Ts>
-auto apply(const Expr &x, Ts... f) {
-    return visit1(Overload{f...}, x);
-}
-
-template <class ... Ts>
-auto apply(const Lit &x, Ts... f) {
+template <class Int, class Bool, class ... Ts>
+auto apply(const std::variant<Int, Bool> &x, Ts... f) {
     return visit1(Overload{f...}, x);
 }
 

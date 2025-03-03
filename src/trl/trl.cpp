@@ -248,8 +248,8 @@ ITSModel TRL::get_model() {
             theory::apply(x, [&](const auto &x) {
                 using T = decltype(theory::theory(x));
                 if (x->isProgVar()) {
-                    s2.insert(s1.get(x->postVar()), x);
-                    s2.insert(x, T::next(x->getDimension()));
+                    s2.insert<T>(s1.get<T>(x->postVar()), x);
+                    s2.insert<T>(x, T::next(x->getDimension()));
                 }
             });
         }

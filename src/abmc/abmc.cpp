@@ -21,7 +21,7 @@ ABMC::ABMC(ITSPtr its):
     for (const auto &var : vars) {
         theory::apply(var, [&](const auto &var) {
             using T = decltype(theory::theory(var));
-            pre_to_post.insert(var, T::next(var->getDimension()));
+            pre_to_post.insert<T>(var, T::next(var->getDimension()));
         });
     }
     last_orig_clause = 0;
@@ -188,8 +188,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                     using T = decltype(theory::theory(x));
                     if (x->isTempVar() && !vars.contains(x)) {
                         const auto next{T::next(x->getDimension())};
-                        subs[depth + 1].insert(x, next);
-                        subsTmp[depth + 1].insert(x, next);
+                        subs[depth + 1].insert<T>(x, next);
+                        subsTmp[depth + 1].insert<T>(x, next);
                     }
                 });
         }
@@ -349,17 +349,17 @@ const Renaming &ABMC::subs_at(const unsigned i) {
         for (const auto &var : vars) {
             theory::apply(var, [&](const auto &var) {
                 using T = decltype(theory::theory(var));
-                const auto &post_var{pre_to_post.get(var)};
-                const auto current{subs.back().get(post_var)};
+                const auto &post_var{pre_to_post.get<T>(var)};
+                const auto current{subs.back().get<T>(post_var)};
                 const auto next{T::next(var->getDimension())};
-                s.insert(var, current);
-                s.insert(post_var, next);
+                s.insert<T>(var, current);
+                s.insert<T>(post_var, next);
                 if (var->isTempVar()) {
-                    sTmp.insert(var, current);
-                    sTmp.insert(post_var, next);
+                    sTmp.insert<T>(var, current);
+                    sTmp.insert<T>(post_var, next);
                 } else {
-                    sProg.insert(var, current);
-                    sProg.insert(post_var, next);
+                    sProg.insert<T>(var, current);
+                    sProg.insert<T>(post_var, next);
                 }
             });
         }
@@ -446,7 +446,7 @@ ITSModel ABMC::get_model() {
         theory::apply(x, [&](const auto &x) {
             using T = decltype(theory::theory(x));
             if (x->isProgVar()) {
-                init_renaming.insert(x, T::next(x->getDimension()));
+                init_renaming.insert<T>(x, T::next(x->getDimension()));
             }
         });
     }
@@ -465,12 +465,13 @@ ITSModel ABMC::get_model() {
         const auto s1{subs.at(i)};
         last = last && s1(transitions.at(i));
         Renaming s2;
-        for (const auto &[pre,post]: pre_to_post) {
-            theory::apply(pre, [&](const auto &pre) {
+        for (const auto &p: pre_to_post) {
+            theory::apply(p, [&](const auto &p) {
+                const auto &[pre,post] {p};
                 using T = decltype(theory::theory(pre));
                 if (pre->isProgVar()) {
-                    s2.insert(s1.get(post), pre);
-                    s2.insert(pre, T::next(pre->getDimension()));
+                    s2.insert<T>(s1.get<T>(post), pre);
+                    s2.insert<T>(pre, T::next(pre->getDimension()));
                 }
             });
         }
