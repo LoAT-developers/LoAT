@@ -304,7 +304,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
     // initialize z3
     auto solver{SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, arith::mkConst(0)))}))};
     // the parameter of the desired family of solutions
-    const auto n{ArithVar::next()};
+    const auto n{ArithVar::next(0)};
     // get all relevant variables
     auto vars{expr->vars().get<Arith::Var>()};
     cost->collectVars(vars);
@@ -314,8 +314,8 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
     std::map<Arith::Var, Arith::Var> varCoeff, varCoeff0;
     for (const auto &var : vars) {
         hasTmpVars |= var->isTempVar();
-        const auto c0{ArithVar::next()};
-        const auto c{ArithVar::next()};
+        const auto c0{ArithVar::next(0)};
+        const auto c{ArithVar::next(0)};
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
         templateSubs.put(var, c0 + (arith::toExpr(n) * c));

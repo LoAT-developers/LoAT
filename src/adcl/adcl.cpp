@@ -153,27 +153,27 @@ std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr idx) {
     const auto up {idx->getUpdate()};
     for (const auto &x: prog_vars) {
         theory::apply(x, [&](const auto &x) {
-            const auto th {theory::theory(x)};
-            new_var_renaming.insert<decltype(th)>(x, th.next());
+            using T = decltype(theory::theory(x));
+            new_var_renaming.insert<T>(x, T::next(x->getDimension()));
         });
     }
     for (const auto &var: idx->vars()) {
         if (theory::isTempVar(var)) {
             theory::apply(var, [&](const auto &x) {
-                const auto th {theory::theory(x)};
-                const auto next {th.next()};
-                new_var_renaming.insert<decltype(th)>(x, next);
-                new_tmp_var_renaming.insert<decltype(th)>(x, next);
+                using T = decltype(theory::theory(x));
+                const auto next {T::next(x->getDimension())};
+                new_var_renaming.insert<T>(x, next);
+                new_tmp_var_renaming.insert<T>(x, next);
             });
         }
     }
     for (const auto &[var,_]: last_tmp_var_renaming) {
         if (!new_tmp_var_renaming.contains(var)) {
             theory::apply(var, [&](const auto &x) {
-                const auto th {theory::theory(x)};
-                const auto next {th.next()};
-                new_var_renaming.insert<decltype(th)>(x, next);
-                new_tmp_var_renaming.insert<decltype(th)>(x, next);
+                using T = decltype(theory::theory(x));
+                const auto next {T::next(x->getDimension())};
+                new_var_renaming.insert<T>(x, next);
+                new_tmp_var_renaming.insert<T>(x, next);
             });
         }
     }
@@ -513,7 +513,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr rule, const Mode
             return std::make_unique<Covered>();
         }
     }
-    const auto n {ArithVar::next()};
+    const auto n {ArithVar::next(0)};
     const AccelConfig config {
         .tryNonterm = Config::Analysis::tryNonterm(),
         .n = n};
@@ -654,7 +654,7 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
         if (!done && store_step(idx, idx)) {
             if (chcs->isSinkTransition(idx)) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
-                    set_cpx_witness(trace.back().resolvent, solver->model().toSubs().get<Arith>(), Arith::next());
+                    set_cpx_witness(trace.back().resolvent, solver->model().toSubs().get<Arith>(), Arith::next(0));
                 }
                 return std::make_unique<ProvedUnsat>();
             } else {
@@ -684,7 +684,7 @@ bool ADCL::try_to_finish() {
             if (implicant) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
                     const auto resolvent {compute_resolvent(q, (*implicant)->getGuard())};
-                    set_cpx_witness(resolvent, solver->model().toSubs().get<Arith>(), Arith::next());
+                    set_cpx_witness(resolvent, solver->model().toSubs().get<Arith>(), Arith::next(0));
                 }
                 add_to_trace(Step(q, (*implicant)->getGuard(), Renaming(), Renaming(), Rule::mk(top(), Subs())));
                 print_state();

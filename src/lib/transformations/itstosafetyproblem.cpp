@@ -49,15 +49,11 @@ SafetyProblem ITSToSafety::transform() {
         }
     }
     for (const auto &y: sp.post_vars()) {
-        std::visit(
-            Overload{
-                [&](const auto y) {
-                    const auto x {y->progVar(y)};
-                    init_map.insert(y, x);
-                    init_map.insert(x, x->next(y->getDimension()));
-                }
-            }, y
-        );
+        theory::apply(y, [&](const auto y) {
+            const auto x{y->progVar()};
+            init_map.insert(y, x);
+            init_map.insert(x, x->next(y->getDimension()));
+        });
     }
     std::vector<Bools::Expr> init;
     std::vector<Bools::Expr> err;

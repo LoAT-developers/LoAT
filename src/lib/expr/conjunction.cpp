@@ -3,9 +3,9 @@
 
 bool Conjunction::isLinear() const {
     return std::all_of(this->begin(), this->end(), [](const auto &lit){
-        return std::visit([](const auto &lit){
+        return theory::apply(lit, [](const auto &lit){
             return lit->isLinear();
-        }, lit);
+        });
     });
 }
 

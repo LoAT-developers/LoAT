@@ -25,13 +25,10 @@ bool ITSSafetyCex::try_step(const RulePtr trans, const Model &next) {
         auto new_next{next};
         for (const auto &x : its->getVars()) {
             if (theory::isProgVar(x) && !new_next.contains(x)) {
-                std::visit(
-                    Overload{
-                        [&](const auto &x) {
-                            using Th = decltype(theory::theory(x));
-                            new_next.put<Th>(x, new_last.eval<Th>(up.get<Th>(x)));
-                        }},
-                    x);
+                theory::apply(x, [&](const auto &x) {
+                    using Th = decltype(theory::theory(x));
+                    new_next.put<Th>(x, new_last.eval<Th>(up.get<Th>(x)));
+                });
             }
         }
         states.push_back(new_next);

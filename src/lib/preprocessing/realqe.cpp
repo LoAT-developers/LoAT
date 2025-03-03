@@ -7,15 +7,14 @@ Bools::Expr qe::real_qe(const Bools::Expr &trans, const Model &model, const std:
     linked_hash_set<Arith::Var> arith_vars;
     for (const auto &x : trans->vars()) {
         if (eliminate(x)) {
-            std::visit(
-                Overload{
-                    [&](const Bools::Var x) {
-                        res = mbp::bool_mbp(res, model, x);
-                    },
-                    [&](const Arith::Var x) {
-                        arith_vars.emplace(x);
-                    }},
-                x);
+            theory::apply(
+                x,
+                [&](const Bools::Var x) {
+                    res = mbp::bool_mbp(res, model, x);
+                },
+                [&](const Arith::Var x) {
+                    arith_vars.emplace(x);
+                });
         }
     }
     if (!arith_vars.empty()) {

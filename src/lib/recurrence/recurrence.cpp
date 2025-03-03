@@ -237,10 +237,11 @@ bool Recurrence::solve() {
         return false;
     }
     for (const auto &lhs : *order) {
-        const auto success{std::visit(
+        const auto success{theory::apply(
+            lhs,
             [&](const auto lhs) {
                 const auto th{theory::theory(lhs)};
-                const auto rhs {equations.get<decltype(th)>(lhs)};
+                const auto rhs{equations.get<decltype(th)>(lhs)};
                 if (Config::Analysis::log) {
                     std::cout << "solving recurrence " << lhs << " = " << rhs << std::endl;
                 }
@@ -255,8 +256,7 @@ bool Recurrence::solve() {
                     return false;
                 }
                 return true;
-            },
-            lhs)};
+            })};
         if (!success) {
             return false;
         }

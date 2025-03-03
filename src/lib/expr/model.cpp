@@ -32,30 +32,23 @@ bool Model::eval(const Lit &lit) const {
 }
 
 Const Model::eval(const Expr &e) const {
-    return std::visit(
-        Overload {
-            [&](const auto &e) {
-                using T = decltype(theory::theory(e));
-                return Const{eval<T>(e)};
-            }
-        }, e);
+    return theory::apply(e, [&](const auto &e) {
+        using T = decltype(theory::theory(e));
+        return Const{eval<T>(e)};
+    });
 }
 
 Const Model::get(const Var &var) const {
-    return theory::apply(
-        var,
-        [&](const auto& x) {
-            using T = decltype(theory::theory(x));
-            return Const{std::get<typename T::Model>(m).at(x)};
-        });
+    return theory::apply(var, [&](const auto &x) {
+        using T = decltype(theory::theory(x));
+        return Const{std::get<typename T::Model>(m).at(x)};
+    });
 }
 bool Model::contains(const Var &var) const {
-    return theory::apply(
-        var,
-        [&](const auto& x) {
-            using T = decltype(theory::theory(x));
-            return contains<T>(std::get<typename T::Var>(var));
-        });
+    return theory::apply(var, [&](const auto &x) {
+        using T = decltype(theory::theory(x));
+        return contains<T>(std::get<typename T::Var>(var));
+    });
 }
 
 bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
@@ -77,35 +70,34 @@ bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
         return false;
     } else {
         if (const auto lit = e->getTheoryLit()) {
-            return std::visit(
-                Overload{
-                    [&](const Arith::Lit &l) {
-                        if (l->isNeq()) {
-                            const auto lt{arith::mkLt(l->lhs(), arith::mkConst(0))};
-                            if (m.eval(lt)) {
-                                res.insert(bools::mkLit(lt));
+            return theory::apply(
+                *lit,
+                [&](const Arith::Lit &l) {
+                    if (l->isNeq()) {
+                        const auto lt{arith::mkLt(l->lhs(), arith::mkConst(0))};
+                        if (m.eval(lt)) {
+                            res.insert(bools::mkLit(lt));
+                            return true;
+                        } else {
+                            const auto gt{arith::mkGt(l->lhs(), arith::mkConst(0))};
+                            if (m.eval(gt)) {
+                                res.insert(bools::mkLit(gt));
                                 return true;
-                            } else {
-                                const auto gt{arith::mkGt(l->lhs(), arith::mkConst(0))};
-                                if (m.eval(gt)) {
-                                    res.insert(bools::mkLit(gt));
-                                    return true;
-                                }
                             }
-                        } else if (m.eval(l)) {
-                            res.insert(e);
-                            return true;
                         }
-                        return false;
-                    },
-                    [&](const auto &l) {
-                        if (m.eval(l)) {
-                            res.insert(e);
-                            return true;
-                        }
-                        return false;
-                    }},
-                *lit);
+                    } else if (m.eval(l)) {
+                        res.insert(e);
+                        return true;
+                    }
+                    return false;
+                },
+                [&](const auto &l) {
+                    if (m.eval(l)) {
+                        res.insert(e);
+                        return true;
+                    }
+                    return false;
+                });
         } else {
             throw std::invalid_argument("unknown kind of BoolExpr");
         }

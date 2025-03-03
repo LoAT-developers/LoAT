@@ -1,5 +1,7 @@
 #include "arraytype.hpp"
 
+#include <boost/functional/hash.hpp>
+
 theory::Type ArrayType::get_type() const {
     return t;
 }
@@ -17,4 +19,11 @@ std::ostream& operator<<(std::ostream &s, const ArrayType &a) {
         s << "[]";
     }
     return s;
+}
+
+std::size_t std::hash<ArrayType>::operator()(const ArrayType &x) const noexcept {
+    size_t seed{23};
+    boost::hash_combine(seed, x.get_dimension());
+    boost::hash_combine(seed, x.get_type());
+    return seed;
 }

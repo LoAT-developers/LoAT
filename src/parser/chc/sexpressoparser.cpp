@@ -34,7 +34,7 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, const std::unordered_map<std::s
             const auto r{parseBoolExpr(exp[1], vars, refinement, bindings)};
             const auto then_case{parseArithExpr(exp[2], vars, refinement, bindings)};
             const auto else_case{parseArithExpr(exp[3], vars, refinement, bindings)};
-            const auto var {ArithVar::next()};
+            const auto var {ArithVar::next(0)};
             refinement.emplace_back((r && bools::mkLit(arith::mkEq(var, then_case))) || ((!r) && bools::mkLit(arith::mkEq(var, else_case))));
             return var;
         } else if (name == "let") {
@@ -76,8 +76,8 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, const std::unordered_map<std::s
         } else if (name == "mod" || name == "div") {
             const auto fst {parseArithExpr(exp[1], vars, refinement, bindings)};
             const auto snd {parseArithExpr(exp[2], vars, refinement, bindings)};
-            const auto div {ArithVar::next()};
-            const auto mod {ArithVar::next()};
+            const auto div {ArithVar::next(0)};
+            const auto mod {ArithVar::next(0)};
             std::vector<Bools::Expr> constr;
             constr.push_back(theory::mkEq(fst, snd * div + mod));
             constr.push_back(theory::mkNeq(snd, arith::mkConst(0)));
@@ -126,29 +126,26 @@ std::string getType(sexpresso::Sexp &exp, const std::unordered_map<std::string, 
         } else {
             if (vars.find(name) != vars.end()) {
                 const Var var{vars.at(name)};
-                return std::visit(
-                    Overload{
-                        [](const Arith::Var &) {
-                            return "Int";
-                        },
-                        [&](const Bools::Var &) {
-                            return "Bool";
-                        }},
-                    var);
+                return theory::apply(
+                    var,
+                    [](const Arith::Var &) {
+                        return "Int";
+                    },
+                    [&](const Bools::Var &) {
+                        return "Bool";
+                    });
             }
             for (int i = bindings.size() - 1; i >= 0; i--) {
                 const auto it {bindings[i].find(name)};
                 if (it != bindings[i].end()) {
-                    return std::visit(
-                        Overload{
-                            [](const Arith::Expr&) {
-                                return "Int";
-                            },
-                            [](const Bools::Expr&) {
-                                return "Bool";
-                            }
-                        }, it->second
-                    );
+                    return theory::apply(
+                        it->second,
+                        [](const Arith::Expr &) {
+                            return "Int";
+                        },
+                        [](const Bools::Expr &) {
+                            return "Bool";
+                        });
                 }
             }
             throw std::invalid_argument("unknown symbol " + name);
@@ -325,9 +322,9 @@ void SexpressoParser::run(const std::string &filename) {
                     const auto name {vars[i][0].str()};
                     const auto type {vars[i][1].str()};
                     if (type == "Int") {
-                        var_map.emplace(name, ArithVar::next());
+                        var_map.emplace(name, ArithVar::next(0));
                     } else if (type == "Bool") {
-                        var_map.emplace(name, Bools::next());
+                        var_map.emplace(name, Bools::next(0));
                     } else {
                         throw std::invalid_argument("unknown type " + type);
                     }

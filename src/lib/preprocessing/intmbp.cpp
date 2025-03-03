@@ -60,19 +60,18 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
         // be satisfied by choosing a sufficiently small (large) value for x
         return t->map(
             [&](const auto &lit) {
-                return std::visit(
-                    Overload{
-                        [&](const Arith::Lit &l) {
-                            if (l->has((x))) {
-                                return top();
-                            } else {
-                                return bools::mkLit(lit);
-                            }
-                        },
-                        [&](const Bools::Lit &) {
+                return theory::apply(
+                    lit,
+                    [&](const Arith::Lit &l) {
+                        if (l->has((x))) {
+                            return top();
+                        } else {
                             return bools::mkLit(lit);
-                        }},
-                    lit);
+                        }
+                    },
+                    [&](const Bools::Lit &) {
+                        return bools::mkLit(lit);
+                    });
             });
     }
     // In Cooper's QE procedure, we'd now sacale all literals so that the coefficient of x is flcm.
@@ -166,17 +165,16 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
 }
 
 Bools::Expr do_mbp(const Bools::Expr &t, const Model &model, const Var &x, const Config::TRPConfig::MbpKind mode) {
-    return std::visit(
-        Overload{
-            [&](const Bools::Var x) {
-                return mbp::bool_mbp(t, model, x);
-            },
-            [&](const Arith::Var x) {
-                const auto res{int_mbp(t, model, x, mode)};
-                assert(res != bot());
-                return res;
-            }},
-        x);
+    return theory::apply(
+        x,
+        [&](const Bools::Var x) {
+            return mbp::bool_mbp(t, model, x);
+        },
+        [&](const Arith::Var x) {
+            const auto res{int_mbp(t, model, x, mode)};
+            assert(res != bot());
+            return res;
+        });
 }
 
 Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const Model &model, const Config::TRPConfig::MbpKind mode, const std::function<bool(const Var &)> &eliminate) {

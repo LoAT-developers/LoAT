@@ -36,30 +36,29 @@ Model Swine::model(const std::optional<const VarSet> &vars) {
     const z3::model &m = solver.get_model();
     Model res;
     const auto add = [&](const Var &x) {
-        std::visit(
-            Overload{
-                [&](const Arith::Var var) {
-                    const auto y {ctx.getArithSymbolMap().get(var)};
-                    if (y) {
-                        const auto val{getRealFromModel(m, *y)};
-                        assert(mp::denominator(val) == 1);
-                        res.template put<Arith>(var, mp::numerator(val));
-                    }
-                },
-                [&](const Bools::Var var) {
-                    const auto y{ctx.getBoolSymbolMap().get(var)};
-                    if (y) {
-                        switch (m.eval(*y).bool_value()) {
+        theory::apply(
+            x,
+            [&](const Arith::Var var) {
+                const auto y{ctx.getArithSymbolMap().get(var)};
+                if (y) {
+                    const auto val{getRealFromModel(m, *y)};
+                    assert(mp::denominator(val) == 1);
+                    res.template put<Arith>(var, mp::numerator(val));
+                }
+            },
+            [&](const Bools::Var var) {
+                const auto y{ctx.getBoolSymbolMap().get(var)};
+                if (y) {
+                    switch (m.eval(*y).bool_value()) {
                         case Z3_L_FALSE:
                             res.template put<Bools>(var, false);
                             break;
                         default:
                             res.template put<Bools>(var, true);
                             break;
-                        }
                     }
-                }},
-            x);
+                }
+            });
     };
     if (vars) {
         for (const auto &x: *vars) {

@@ -315,15 +315,14 @@ Bools::Expr Subs::operator()(const Bools::Expr e) const {
 }
 
 Expr Subs::operator()(const Expr &expr) const {
-    return std::visit(
-        Overload{
-            [&](const Arith::Expr expr) {
-                return Expr{get<Arith>()(expr)};
-            },
-            [&](const Bools::Expr expr) {
-                return Expr{(*this)(expr)};
-            }
-        }, expr);
+    return theory::apply(
+        expr,
+        [&](const Arith::Expr expr) {
+            return Expr{get<Arith>()(expr)};
+        },
+        [&](const Bools::Expr expr) {
+            return Expr{(*this)(expr)};
+        });
 }
 
 /**

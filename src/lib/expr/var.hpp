@@ -98,12 +98,12 @@ public:
         return theory::mkVar<T, S>(last_prog_idx, dimension);
     }
 
-    static ptr postVar(const ptr &var) {
-        return theory::mkVar<T, S>(var->getIdx() + 1, var->dimension);
+    ptr postVar() const {
+        return theory::mkVar<T, S>(idx + 1, dimension);
     }
 
-    static ptr progVar(const ptr &var) {
-        return theory::mkVar<T, S>(var->getIdx() - 1, var->dimension);
+    ptr progVar() const {
+        return theory::mkVar<T, S>(idx - 1, dimension);
     }
 
     bool isTempVar() const {

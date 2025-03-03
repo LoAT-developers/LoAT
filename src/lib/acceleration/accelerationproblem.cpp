@@ -20,7 +20,8 @@ AccelerationProblem::AccelerationProblem(
     config(config),
     samplePoint(samplePoint) {
     for (const auto &l: guard->lits()) {
-        std::visit(Overload {
+        theory::apply(
+            l,
             // TODO think about a better handling of equalities
             [&](const Arith::Lit &l) {
                 if (l->isNeq()) {
@@ -34,8 +35,7 @@ AccelerationProblem::AccelerationProblem(
             },
             [&](const auto &l) {
                 todo.insert(l);
-            }
-        }, l);
+            });
     }
     const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
     const auto logic {Smt::chooseLogic<LitSet, Subs>({todo}, subs)};

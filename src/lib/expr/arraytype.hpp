@@ -11,6 +11,9 @@ class ArrayType {
     theory::Type t;
     unsigned dimension;
 
+    friend auto operator <=>(const ArrayType&, const ArrayType&) = default;
+    friend bool operator ==(const ArrayType&, const ArrayType&) = default;
+
 public:
     ArrayType(const theory::Type t, const unsigned dimension);
     theory::Type get_type() const;

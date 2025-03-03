@@ -268,15 +268,14 @@ Lit Renaming::operator()(const Lit &lit) const {
 }
 
 Expr Renaming::operator()(const Expr &expr) const {
-    return std::visit(
-        Overload{
-            [&](const Arith::Expr expr) {
-                return Expr(expr->renameVars(get<Arith>()));
-            },
-            [&](const Bools::Expr expr) {
-                return Expr{(*this)(expr)};
-            }
-        }, expr);
+    return theory::apply(
+        expr,
+        [&](const Arith::Expr expr) {
+            return Expr(expr->renameVars(get<Arith>()));
+        },
+        [&](const Bools::Expr expr) {
+            return Expr{(*this)(expr)};
+        });
 }
 
 Bools::Expr Renaming::operator()(const Bools::Expr e) const {

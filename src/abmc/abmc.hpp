@@ -34,7 +34,7 @@ private:
     std::vector<Implicant> trace {};
     std::vector<Bools::Expr> transitions {};
     VarSet vars {};
-    Arith::Var n {ArithVar::next()};
+    Arith::Var n {ArithVar::next(0)};
     Renaming pre_to_post {};
     std::unordered_map<Implicant, int> lang_map {};
     std::unordered_map<std::vector<int>, std::unordered_map<Bools::Expr, std::optional<Loop>>> cache {};

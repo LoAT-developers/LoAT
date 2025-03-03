@@ -35,23 +35,22 @@ SmtResult CVC5::check() {
 Model CVC5::model(const std::optional<const VarSet> &vars) {
     Model res;
     const auto add = [&](const Var &x) {
-        std::visit(
-            Overload{
-                [&](const Arith::Var var) {
-                    const auto y{ctx.getArithSymbolMap().get(var)};
-                    if (y) {
-                        const auto val{getRealFromModel(*y)};
-                        assert(mp::denominator(val) == 1);
-                        res.template put<Arith>(var, mp::numerator(val));
-                    }
-                },
-                [&](const Bools::Var var) {
-                    const auto y{ctx.getBoolSymbolMap().get(var)};
-                    if (y) {
-                        res.template put<Bools>(var, this->solver.getValue(*y).getBooleanValue());
-                    }
-                }},
-            x);
+        theory::apply(
+            x,
+            [&](const Arith::Var var) {
+                const auto y{ctx.getArithSymbolMap().get(var)};
+                if (y) {
+                    const auto val{getRealFromModel(*y)};
+                    assert(mp::denominator(val) == 1);
+                    res.template put<Arith>(var, mp::numerator(val));
+                }
+            },
+            [&](const Bools::Var var) {
+                const auto y{ctx.getBoolSymbolMap().get(var)};
+                if (y) {
+                    res.template put<Bools>(var, this->solver.getValue(*y).getBooleanValue());
+                }
+            });
     };
     if (vars) {
         for (const auto &x : *vars) {

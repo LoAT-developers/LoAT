@@ -17,12 +17,12 @@ namespace util {
             while (!todo.empty()) {
                 VarSet next;
                 for (const auto &x : todo) {
-                    std::visit([&up, &next](const auto &x) {
-                        const auto val {up.get(x)};
+                    theory::apply(x, [&](const auto &x) {
+                        const auto val{up.get(x)};
                         if (val != theory::toExpr(x)) {
                             theory::collectVars(val, next);
                         }
-                    }, x);
+                    });
                 }
                 todo.clear();
                 for (const auto &var : next) {

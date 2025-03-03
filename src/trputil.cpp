@@ -81,19 +81,20 @@ TRPUtil::TRPUtil(
     solver->enableModels();
     if (Config::Analysis::termination()) {
         const auto linearize{
-            [&](const auto &lit) { return std::visit(
-                                       Overload{
-                                           [](const Arith::Lit &l) {
-                                               if (!l->isLinear()) {
-                                                   return top();
-                                               } else {
-                                                   return bools::mkLit(l);
-                                               }
-                                           },
-                                           [](const auto &l) {
-                                               return bools::mkLit(l);
-                                           }},
-                                       lit); }};
+            [&](const auto &lit) {
+                return theory::apply(
+                    lit,
+                    [](const Arith::Lit &l) {
+                        if (!l->isLinear()) {
+                            return top();
+                        } else {
+                            return bools::mkLit(l);
+                        }
+                    },
+                    [](const auto &l) {
+                        return bools::mkLit(l);
+                    });
+            }};
         for (const auto &trans : t.trans()) {
             const auto lin{trans->map(linearize)};
             if (rule_map.emplace(next_id, lin).second) {
@@ -118,13 +119,16 @@ const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
     while (subs.size() < start + steps) {
         Renaming s;
         for (const auto &var : vars) {
-            if (theory::isProgVar(var)) {
-                const auto post_var{theory::postVar(var)};
-                s.insert(var, subs.back()[0].get(post_var));
-                s.insert(post_var, theory::next(post_var));
-            } else {
-                s.insert(var, theory::next(var));
-            }
+            theory::apply(var, [&](const auto &var) {
+                using T = decltype(theory::theory(var));
+                if (var->isProgVar()) {
+                    const auto post_var{var->postVar()};
+                    s.insert(var, subs.back()[0].get(post_var));
+                    s.insert(post_var, T::next(var->getDimension()));
+                } else {
+                    s.insert(var, T::next(var->getDimension()));
+                }
+            });
         }
         subs.push_back({s});
     }
@@ -267,7 +271,7 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr loop, const Mod
         if (pre == its->getLocVar() || !m.contains(pre) || !m.contains(post)) {
             continue;
         }
-        const auto coeff {ArithVar::next()};
+        const auto coeff {ArithVar::next(0)};
         coeffs.emplace(pre, coeff);
         const auto pre_val {arith::mkConst(m.at(pre))};
         const auto post_val {arith::mkConst(m.at(post))};
@@ -307,9 +311,12 @@ bool TRPUtil::build_cex() {
     Subs up;
     Renaming post_to_tmp;
     for (const auto &[pre, post]: t.pre_to_post()) {
-        const auto tmp {theory::next(post)};
-        up.put(pre, theory::toExpr(tmp));
-        post_to_tmp.insert(post, tmp);
+        theory::apply(pre, [&](const auto pre) {
+            using T = decltype(theory::theory(pre));
+            const auto tmp{T::next(pre->getDimension())};
+            up.put(pre, T::varToExpr(tmp));
+            post_to_tmp.insert(post, tmp);
+        });
     }
     Renaming tmp_to_post {post_to_tmp.invert()};
     while (!todo.empty()) {
@@ -345,7 +352,7 @@ bool TRPUtil::build_cex() {
         const auto accel_res {LoopAcceleration::accelerate(rule, AccelConfig{
             .tryNonterm=false,
             .tryAccel=true,
-            .n=ArithVar::next()
+            .n=ArithVar::next(0)
         })};
         if (accel_res.accel) {
             if (Config::Analysis::log) {

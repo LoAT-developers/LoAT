@@ -45,7 +45,7 @@ protected:
     ITSToSafety its2safety;
     SafetyProblem t;
     Model model;
-    const Arith::Var trace_var {ArithVar::next()};
+    const Arith::Var trace_var {ArithVar::next(0)};
     linked_hash_map<Int, std::vector<std::pair<Int, Bools::Expr>>> learned_to_loop;
     Int next_id {0};
     rule_map_t rule_map {};
@@ -53,7 +53,7 @@ protected:
     TRP trp;
     Renaming post_to_pre;
     Int last_orig_clause;
-    const Arith::Var safety_var {ArithVar::next()};
+    const Arith::Var safety_var {ArithVar::next(0)};
     DependencyGraph<Bools::Expr> dependency_graph {};
     std::vector<std::pair<Int, Bools::Expr>> projections {};
     linked_hash_map<Int, Bools::Expr> accel;

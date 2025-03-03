@@ -87,6 +87,16 @@ auto apply(const Var &x, Ts... f) {
     return std::visit(Overload{f...}, x);
 }
 
+template <class ... Ts>
+auto apply(const Expr &x, Ts... f) {
+    return std::visit(Overload{f...}, x);
+}
+
+template <class ... Ts>
+auto apply(const Lit &x, Ts... f) {
+    return std::visit(Overload{f...}, x);
+}
+
 template <size_t I, ITheory T>
 constexpr bool is() {
     return std::same_as<std::tuple_element_t<I, Theories>, T>;

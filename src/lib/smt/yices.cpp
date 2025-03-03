@@ -75,7 +75,8 @@ Model Yices::model(const std::optional<const VarSet> &vars) {
     model_t *m = yices_get_model(solver, true);
     Model res;
     const auto add = [&](const Var &x) {
-        std::visit(Overload{
+        theory::apply(
+            x,
             [&](const Arith::Var x) {
                 const auto y{ctx.getArithSymbolMap().get(x)};
                 if (y) {
@@ -93,7 +94,7 @@ Model Yices::model(const std::optional<const VarSet> &vars) {
                     }
                     res.template put<Bools>(x, val);
                 }
-            }}, x);
+            });
     };
     if (vars) {
         for (const auto &x: *vars) {

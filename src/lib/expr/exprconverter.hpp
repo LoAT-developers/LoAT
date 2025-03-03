@@ -26,15 +26,14 @@ protected:
 
     Formula convertBoolEx(const Bools::Expr e) {
         if (e->getTheoryLit()) {
-            return std::visit(
-                Overload {
-                    [&](const Arith::Lit &lit) {
-                        return convertRelational(lit);
-                    },
-                    [&](const Bools::Lit &lit) {
-                        return convertLit(lit);
-                    }
-                }, *e->getTheoryLit());
+            return theory::apply(
+                *e->getTheoryLit(),
+                [&](const Arith::Lit &lit) {
+                    return convertRelational(lit);
+                },
+                [&](const Bools::Lit &lit) {
+                    return convertLit(lit);
+                });
         }
         auto vec {context.formulaVec()};
         for (const auto &c: e->getChildren()) {

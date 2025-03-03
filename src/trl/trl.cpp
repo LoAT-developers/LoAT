@@ -245,10 +245,13 @@ ITSModel TRL::get_model() {
         last = last && s1(step);
         Renaming s2;
         for (const auto &x : vars) {
-            if (theory::isProgVar(x)) {
-                s2.insert(s1.get(theory::postVar(x)), x);
-                s2.insert(x, theory::next(x));
-            }
+            theory::apply(x, [&](const auto &x) {
+                using T = decltype(theory::theory(x));
+                if (x->isProgVar()) {
+                    s2.insert(s1.get(x->postVar()), x);
+                    s2.insert(x, T::next(x->getDimension()));
+                }
+            });
         }
         res.push_back(s2(last));
     }

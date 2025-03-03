@@ -55,13 +55,19 @@ SmtResult BMC::analyze() {
         solver->pop();
         Renaming s;
         for (const auto &[pre,post]: pre_to_post) {
-            s.insert(pre, last_s.get(post));
-            s.insert(post, theory::next(post));
+            theory::apply(pre, [&](const auto &pre) {
+                using T = decltype(theory::theory(pre));
+                s.insert(pre, last_s.get(post));
+                s.insert(post, T::next(pre->getDimension()));
+            });
         }
         for (const auto &var: vars) {
-            if (theory::isTempVar(var)) {
-                s.insert(var, theory::next(var));
-            }
+            theory::apply(var, [&](const auto &var) {
+                using T = decltype(theory::theory(var));
+                if (var->isTempVar()) {
+                    s.insert(var, T::next(var->getDimension()));
+                }
+            });
         }
         ++depth;
         if (!approx && do_kind) {
@@ -113,10 +119,13 @@ ITSModel BMC::get_model() const {
                 last = last && s1(step);
                 Renaming s2;
                 for (const auto &[pre,post]: pre_to_post) {
-                    if (theory::isProgVar(pre)) {
-                        s2.insert(s1.get(post), pre);
-                        s2.insert(pre, theory::next(pre));
-                    }
+                    theory::apply(pre, [&](const auto &pre) {
+                        using T = decltype(theory::theory(pre));
+                        if (pre->isProgVar()) {
+                            s2.insert(s1.get(post), pre);
+                            s2.insert(pre, T::next(pre->getDimension()));
+                        }
+                    });
                 }
                 res.push_back(s2(last));
             }

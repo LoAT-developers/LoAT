@@ -10,15 +10,11 @@ TRP::TRP(const Renaming &pre_to_post, const Config::TRPConfig &config):
     post_to_pre(pre_to_post.invert()),
     config(config) {
         for (const auto &[pre,post]: pre_to_post) {
-            std::visit(
-                Overload{
-                    [&](const auto pre) {
-                        const auto i {pre->next(pre->getDimension())};
-                        pre_to_intermediate.insert(pre, i);
-                        post_to_intermediate.insert(post, i);
-                    }
-                }, pre
-            );
+            theory::apply(pre, [&](const auto pre) {
+                const auto i{pre->next(pre->getDimension())};
+                pre_to_intermediate.insert(pre, i);
+                post_to_intermediate.insert(post, i);
+            });
         }
     }
 
@@ -70,7 +66,7 @@ void TRP::recurrent_exps(const Bools::Expr loop, const Model &model) {
                     pre = post;
                     post = tmp;
                 }
-                if (pre->isProgVar() && post == ArithVar::postVar(pre)) {
+                if (pre->isProgVar() && post == pre->postVar()) {
                     auto pre_coeff{***(*lhs->coeff(pre))->isRational()};
                     auto post_coeff{***(*lhs->coeff(post))->isRational()};
                     if (post_coeff < 0) {
@@ -125,7 +121,7 @@ void TRP::recurrent_cycles(const Bools::Expr loop, const Model &model) {
             if (vars.size() != 1) {
                 continue;
             }
-            const auto post{ArithVar::postVar(pre)};
+            const auto post{pre->postVar()};
             auto eq{*orig_eq};
             auto other{*vars.begin()};
             auto other_coeff{*eq->coeff(other)};
@@ -144,7 +140,7 @@ void TRP::recurrent_cycles(const Bools::Expr loop, const Model &model) {
                     break;
                 } else {
                     seen.emplace(other, other_sign);
-                    const auto other_eq{loop->getEquality(ArithVar::progVar(other))};
+                    const auto other_eq{loop->getEquality(other->progVar())};
                     if (!other_eq) {
                         break;
                     }
@@ -172,7 +168,7 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
     Arith::Subs subs;
     Arith::Subs zeros;
     for (const auto &[pre,_] : pre_to_post.get<Arith>()) {
-        const auto post{ArithVar::postVar(pre)};
+        const auto post{pre->postVar()};
         const auto d{Arith::next(0)};
         const auto diff{Arith::varToExpr(post) - Arith::varToExpr(pre)};
         delta_eqs.insert(bools::mkLit(arith::mkEq(d, diff)));
@@ -230,7 +226,7 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
                         }) &&
                         std::all_of(vars.begin(), vars.end(), [&](const auto x) {
                             const auto it{deltas.find(x)};
-                            return it == deltas.end() || (!vars.contains(it->second) && !vars.contains(ArithVar::postVar(it->second)));
+                            return it == deltas.end() || (!vars.contains(it->second) && !vars.contains(it->second->postVar()));
                         })) {
                         auto non_recurrent{zeros(l->lhs())};
                         auto recurrent{subs(l->lhs() - non_recurrent)};

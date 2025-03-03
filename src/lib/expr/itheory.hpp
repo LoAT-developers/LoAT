@@ -36,7 +36,7 @@ concept IVar = requires(T x, unsigned idx, unsigned dimension) {
         requires IComparable<T>;
         {x->next(dimension)} -> std::same_as<T>;
         {x->nextProgVar(dimension)} -> std::same_as<T>;
-        {x->postVar(x)} -> std::same_as<T>;
+        {x->postVar()} -> std::same_as<T>;
 };
 
 template <typename T>

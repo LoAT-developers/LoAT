@@ -20,17 +20,16 @@ Bools::Expr real_mbp(const Bools::Expr &t, const Model &model, const Arith::Var 
 }
 
 Bools::Expr real_mbp(const Bools::Expr &t, const Model &model, const Var &x) {
-    return std::visit(
-        Overload{
-            [&](const Bools::Var x) {
-                return mbp::bool_mbp(t, model, x);
-            },
-            [&](const Arith::Var x) {
-                const auto res {real_mbp(t, model, x)};
-                assert(res != bot());
-                return res;
-            }
-        }, x);
+    return theory::apply(
+        x,
+        [&](const Bools::Var x) {
+            return mbp::bool_mbp(t, model, x);
+        },
+        [&](const Arith::Var x) {
+            const auto res{real_mbp(t, model, x)};
+            assert(res != bot());
+            return res;
+        });
 }
 
 Bools::Expr mbp::real_mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var&)> &eliminate) {

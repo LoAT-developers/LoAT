@@ -44,21 +44,19 @@ using Poly = Arith::Expr;
 
 
 Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>& vars) {
-    if (const auto lit {f->getTheoryLit()}) {
-        return std::visit(Overload{
+    if (const auto lit{f->getTheoryLit()}) {
+        return theory::apply(
+            *lit,
             [&](const Arith::Lit &lit) {
                 auto f_vars = lit->vars();
-                if (std::any_of(
-                    vars.begin(), vars.end(), [&f_vars](const auto& v){ return f_vars.contains(v); }
-                )) {
+                if (std::any_of(vars.begin(), vars.end(), [&](const auto &v) { return f_vars.contains(v); })) {
                     return top();
                 }
                 return f;
             },
             [&](const auto &) {
                 return f;
-            }
-        }, *lit);
+            });
     }
     assert(f->isConjunction());
 

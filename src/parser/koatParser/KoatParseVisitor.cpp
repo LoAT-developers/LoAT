@@ -49,7 +49,7 @@ antlrcpp::Any KoatParseVisitor::visitVar(KoatParser::VarContext *ctx) {
     if (res) {
         return *res;
     } else {
-        const auto var {ArithVar::next()};
+        const auto var {ArithVar::next(0)};
         vars.emplace(name, var);
         return var;
     }
@@ -81,7 +81,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     for (const auto &x: vars) {
         const auto var {std::get<Arith::Var>(x)};
         if (var->isTempVar()) {
-            varRenaming.put<Arith>(var, ArithVar::next());
+            varRenaming.put<Arith>(var, ArithVar::next(0));
         }
     }
     rule = rule->subs(varRenaming);
@@ -93,7 +93,7 @@ antlrcpp::Any KoatParseVisitor::visitLhs(KoatParser::LhsContext *ctx) {
     static bool initVars = true;
     if (initVars) {
         for (const auto& c: ctx->var()) {
-            const auto var {ArithVar::nextProgVar()};
+            const auto var {ArithVar::nextProgVar(0)};
             programVars.push_back(var);
             vars.emplace(c->getText(), var);
         }

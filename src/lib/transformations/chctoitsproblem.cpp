@@ -42,7 +42,7 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr rule, const ClausePtr prototype
             const auto type {theory::to_type(x)};
             auto vec {vars.at(type)};
             auto &next {next_by_type.emplace(type, 0).first->second};
-            args.emplace_back(vec.at(next));
+            args.emplace_back(theory::toExpr(vec.at(next)));
             ++next;
         }
         premise = FunApp::mk((*prem)->get_pred(), args);

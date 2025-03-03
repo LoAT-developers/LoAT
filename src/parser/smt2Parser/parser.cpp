@@ -30,7 +30,7 @@ namespace sexpressionparser {
                     sexpresso::Sexp &scope = ex[2];
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
-                            vars.emplace(e[0].str(), ArithVar::nextProgVar());
+                            vars.emplace(e[0].str(), ArithVar::nextProgVar(0));
                             preVars.push_back(e[0].str());
                         }
                     }
@@ -43,7 +43,7 @@ namespace sexpressionparser {
                     for (sexpresso::Sexp &e: scope.arguments()) {
                         if (e[1].str() == "Int") {
                             if (std::find(preVars.begin(), preVars.end(), e[0].str()) == preVars.end()) {
-                                vars.emplace(e[0].str(), ArithVar::next());
+                                vars.emplace(e[0].str(), ArithVar::next(0));
                                 postVars.push_back(e[0].str());
                             }
                         }
@@ -98,7 +98,7 @@ namespace sexpressionparser {
             sexpresso::Sexp scope = sexp[1];
             for (sexpresso::Sexp &var: scope.arguments()) {
                 const std::string &varName = var[0].str();
-                vars.emplace(varName, ArithVar::next());
+                vars.emplace(varName, ArithVar::next(0));
             }
             parseCond(sexp[2], guard);
         } else {
@@ -141,7 +141,7 @@ namespace sexpressionparser {
                 return arith::mkConst(Rational(str));
             } else {
                 if (vars.find(str) == vars.end()) {
-                    vars.emplace(str, ArithVar::next());
+                    vars.emplace(str, ArithVar::next(0));
                 }
                 return vars.at(str);
             }

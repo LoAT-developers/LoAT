@@ -12,14 +12,17 @@ using namespace Config::ABMC;
 
 ABMC::ABMC(ITSPtr its):
     its(its),
-    trace_var(ArithVar::next()),
+    trace_var(ArithVar::next(0)),
     cex(its) {
     vars.insert(trace_var);
     vars.insert(n);
     solver->enableModels();
     vars.insertAll(its->getVars());
-    for (const auto &var: vars) {
-        pre_to_post.insert(var, theory::next(var));
+    for (const auto &var : vars) {
+        theory::apply(var, [&](const auto &var) {
+            using T = decltype(theory::theory(var));
+            pre_to_post.insert(var, T::next(var->getDimension()));
+        });
     }
     last_orig_clause = 0;
     for (const auto &r : its->getAllTransitions()) {
@@ -181,11 +184,14 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         subs_at(depth + 1);
         const auto new_vars {loop->vars()};
         for (const auto &x: new_vars) {
-            if (theory::isTempVar(x) && !vars.contains(x)) {
-                const auto next {theory::next(x)};
-                subs[depth + 1].insert(x, next);
-                subsTmp[depth + 1].insert(x, next);
-            }
+            theory::apply(x, [&](const auto &x) {
+                    using T = decltype(theory::theory(x));
+                    if (x->isTempVar() && !vars.contains(x)) {
+                        const auto next{T::next(x->getDimension())};
+                        subs[depth + 1].insert(x, next);
+                        subsTmp[depth + 1].insert(x, next);
+                    }
+                });
         }
     };
     auto [loop, sample_point] {build_loop(backlink)};
@@ -341,18 +347,21 @@ const Renaming &ABMC::subs_at(const unsigned i) {
     while (subs.size() <= i) {
         Renaming s, sTmp, sProg;
         for (const auto &var : vars) {
-            const auto &post_var{pre_to_post.get(var)};
-            const auto current {subs.back().get(post_var)};
-            const auto next {theory::next(post_var)};
-            s.insert(var, current);
-            s.insert(post_var, next);
-            if (theory::isTempVar(var)) {
-                sTmp.insert(var, current);
-                sTmp.insert(post_var, next);
-            } else {
-                sProg.insert(var, current);
-                sProg.insert(post_var, next);
-            }
+            theory::apply(var, [&](const auto &var) {
+                using T = decltype(theory::theory(var));
+                const auto &post_var{pre_to_post.get(var)};
+                const auto current{subs.back().get(post_var)};
+                const auto next{T::next(var->getDimension())};
+                s.insert(var, current);
+                s.insert(post_var, next);
+                if (var->isTempVar()) {
+                    sTmp.insert(var, current);
+                    sTmp.insert(post_var, next);
+                } else {
+                    sProg.insert(var, current);
+                    sProg.insert(post_var, next);
+                }
+            });
         }
         subs.push_back(s);
         subsTmp.push_back(sTmp);
@@ -434,9 +443,12 @@ ITSModel ABMC::get_model() {
     Renaming post_to_pre;
     Renaming init_renaming;
     for (const auto &x: its->getVars()) {
-        if (theory::isProgVar(x)) {
-            init_renaming.insert(x, theory::next(x));
-        }
+        theory::apply(x, [&](const auto &x) {
+            using T = decltype(theory::theory(x));
+            if (x->isProgVar()) {
+                init_renaming.insert(x, T::next(x->getDimension()));
+            }
+        });
     }
     for (const auto &t: its->getInitialTransitions()) {
         std::vector<Bools::Expr> conjuncts {init_renaming(t->getGuard())};
@@ -454,10 +466,13 @@ ITSModel ABMC::get_model() {
         last = last && s1(transitions.at(i));
         Renaming s2;
         for (const auto &[pre,post]: pre_to_post) {
-            if (theory::isProgVar(pre)) {
-                s2.insert(s1.get(post), pre);
-                s2.insert(pre, theory::next(pre));
-            }
+            theory::apply(pre, [&](const auto &pre) {
+                using T = decltype(theory::theory(pre));
+                if (pre->isProgVar()) {
+                    s2.insert(s1.get(post), pre);
+                    s2.insert(pre, T::next(pre->getDimension()));
+                }
+            });
         }
         res.push_back(s2(last));
     }

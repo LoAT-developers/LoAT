@@ -23,19 +23,19 @@ Bools::Expr mkAndFromLits(const std::initializer_list<Lit> &lits) {
 namespace theory {
 
 std::string getName(const Var &var) {
-    return std::visit([](const auto &var){return var->getName();}, var);
+    return theory::apply(var, [](const auto &var){return var->getName();});
 }
 
 bool isTempVar(const Var &var) {
-    return std::visit([](const auto &var){return var->isTempVar();}, var);
+    return theory::apply(var, [](const auto &var){return var->isTempVar();});
 }
 
 bool isProgVar(const Var &var) {
-    return std::visit([](const auto &var){return var->isProgVar();}, var);
+    return theory::apply(var, [](const auto &var){return var->isProgVar();});
 }
 
 bool isPostVar(const Var &var) {
-    return std::visit([](const auto &var){return var->isPostVar();}, var);
+    return theory::apply(var, [](const auto &var){return var->isPostVar();});
 }
 
 Var next(const Type t, const unsigned dimension) {
@@ -46,11 +46,11 @@ Var next(const Type t, const unsigned dimension) {
 }
 
 Var postVar(const Var &var) {
-    return std::visit([](const auto x) {return Var(decltype(x)::element_type::postVar(x));}, var);
+    return theory::apply(var, [](const auto x) {return Var(x->postVar());});
 }
 
 Var progVar(const Var &var) {
-    return std::visit([](const auto x) {return Var(decltype(x)::element_type::progVar(x));}, var);
+    return theory::apply(var, [](const auto x) {return Var(x->progVar());});
 }
 
 Expr toExpr(const Var &var) {
@@ -62,57 +62,50 @@ Expr toExpr(const Const &c) {
 }
 
 ArrayType to_type(const Expr &x) {
-    return std::visit(
-        Overload{
-            [](const Arith::Expr &) {
-                return ArrayType(Type::Int, 0);
-            },
-            [](const Bools::Expr &) {
-                return ArrayType(Type::Bool, 0);
-            }},
-        x);
+    return theory::apply(
+        x,
+        [](const Arith::Expr &) {
+            return ArrayType(Type::Int, 0);
+        },
+        [](const Bools::Expr &) {
+            return ArrayType(Type::Bool, 0);
+        });
 }
 
 ArrayType to_type(const Var &x) {
-    return std::visit(
-        Overload{
-            [](const auto &x) {
-                return x->get_type();
-            }},
-        x);
+    return theory::apply(x, [](const auto &x) {
+        return x->get_type();
+    });
 }
 
 std::optional<Var> is_var(const Expr &x) {
     using opt = std::optional<Var>;
-    return std::visit(
-        Overload{
-            [&](const auto &e) {
-                if (const auto &x {e->isVar()}) {
-                    return opt{*x};
-                } else {
-                    return opt{};
-                }
-            }},
-        x);
+    return theory::apply(x, [&](const auto &e) {
+        if (const auto &x{e->isVar()}) {
+            return opt{*x};
+        } else {
+            return opt{};
+        }
+    });
 }
 
 sexpresso::Sexp to_smtlib(const Lit &l) {
-    return std::visit([&](const auto x) {return x->to_smtlib();}, l);
+    return theory::apply(l, [&](const auto x) {return x->to_smtlib();});
 }
 
 sexpresso::Sexp to_smtlib(const Expr &e) {
-    return std::visit([&](const auto x) {return x->to_smtlib();}, e);
+    return theory::apply(e, [&](const auto x) {return x->to_smtlib();});
 }
 
 void collectVars(const Expr &expr, VarSet &vars) {
-    std::visit(Overload{
-                   [&vars](const Arith::Expr expr) {
-                       expr->collectVars(vars.get<Arith::Var>());
-                   },
-                   [&vars](const Bools::Expr expr) {
-                       expr->collectVars(vars);
-                   }
-               }, expr);
+    theory::apply(
+        expr,
+        [&](const Arith::Expr expr) {
+            expr->collectVars(vars.get<Arith::Var>());
+        },
+        [&](const Bools::Expr expr) {
+            expr->collectVars(vars);
+        });
 }
 
 VarSet vars(const Expr &e) {
@@ -122,29 +115,27 @@ VarSet vars(const Expr &e) {
 }
 
 Bools::Expr mkEq(const Expr &e1, const Expr &e2) {
-    return std::visit(
-        Overload {
-            [&e2](const Arith::Expr &e1) {
-                return bools::mkLit(arith::mkEq(e1, std::get<Arith::Expr>(e2)));
-            },
-            [&e2](const Bools::Expr lhs) {
-                const auto rhs = std::get<Bools::Expr>(e2);
-                return (lhs && rhs) || ((!lhs) && (!rhs));
-            }
-        }, e1);
+    return theory::apply(
+        e1,
+        [&e2](const Arith::Expr &e1) {
+            return bools::mkLit(arith::mkEq(e1, std::get<Arith::Expr>(e2)));
+        },
+        [&e2](const Bools::Expr lhs) {
+            const auto rhs = std::get<Bools::Expr>(e2);
+            return (lhs && rhs) || ((!lhs) && (!rhs));
+        });
 }
 
 Bools::Expr mkNeq(const Expr &e1, const Expr &e2) {
-    return std::visit(
-        Overload {
-            [&e2](const Arith::Expr &e1) {
-                return bools::mkLit(arith::mkNeq(e1, std::get<Arith::Expr>(e2)));
-            },
-            [&e2](const Bools::Expr lhs) {
-                const auto rhs = std::get<Bools::Expr>(e2);
-                return (lhs && (!rhs)) || ((!lhs) && rhs);
-            }
-        }, e1);
+    return theory::apply(
+        e1,
+        [&](const Arith::Expr &e1) {
+            return bools::mkLit(arith::mkNeq(e1, std::get<Arith::Expr>(e2)));
+        },
+        [&](const Bools::Expr lhs) {
+            const auto rhs = std::get<Bools::Expr>(e2);
+            return (lhs && (!rhs)) || ((!lhs) && rhs);
+        });
 }
 
 Arith theory(const Arith::Var) {
@@ -268,12 +259,9 @@ Lit negate(const Lit &lit) {
 }
 
 size_t hash(const Lit &lit) {
-    return std::visit(
-        Overload {
-            [](const auto &lit) {
-                return lit->hash();
-            }
-        }, lit);
+    return theory::apply(lit, [](const auto &lit) {
+        return lit->hash();
+    });
 }
 
 template <size_t I = 0>
@@ -297,17 +285,17 @@ void simplifyAnd(LitSet &lits) {
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e) {
-    std::visit([&s](const auto &e){s << theory::getName(e);}, e);
+    theory::apply(e, [&s](const auto &e){s << theory::getName(e);});
     return s;
 }
 
 std::ostream& operator<<(std::ostream &s, const Expr &e) {
-    std::visit([&s](const auto &e){s << e;}, e);
+    theory::apply(e, [&s](const auto &e){s << e;});
     return s;
 }
 
 std::ostream& operator<<(std::ostream &s, const Lit &e) {
-    std::visit([&s](const auto &e){s << e;}, e);
+    theory::apply(e, [&s](const auto &e){s << e;});
     return s;
 }
 

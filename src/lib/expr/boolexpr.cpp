@@ -147,15 +147,14 @@ BoolExprSet BoolExpr::get_disjuncts() const {
 std::optional<Bools::Var> BoolExpr::isVar() const {
     using opt = std::optional<Bools::Var>;
     if (const auto lit{getTheoryLit()}) {
-        return std::visit(
-            Overload{
-                [&](const Bools::Lit &l) {
-                    return l->isNegated() ? opt{} : opt{l->getBoolVar()};
-                },
-                [&](const auto &) {
-                    return opt{};
-                }},
-            *lit);
+        return theory::apply(
+            *lit,
+            [&](const Bools::Lit &l) {
+                return l->isNegated() ? opt{} : opt{l->getBoolVar()};
+            },
+            [&](const auto &) {
+                return opt{};
+            });
     } else {
         return opt{};
     }
@@ -279,55 +278,53 @@ Arith::Subs BoolExpr::propagateEqualities(const std::function<bool(const Var &)>
 }
 
 Bools::Expr BoolExpr::toInfinity(const Arith::Var n) const {
-    return map([&n](const Lit &lit){
-        return std::visit(
-            Overload{
-                [&n](const Arith::Lit &rel) {
-                    // TODO handle Eq / Neq
-                    assert(rel->isLinear({{n}}));
-                    if (!rel->has(n)) {
-                        return mkLit(rel);
-                    }
-                    const auto ex {rel->lhs()};
-                    if (***(*ex->coeff(n))->isRational() > 0) {
-                        return top();
-                    } else {
-                        return bot();
-                    }
-                },
-                [](const auto &lit) {
-                    return mkLit(lit);
+    return map([&](const Lit &lit) {
+        return theory::apply(
+            lit,
+            [&](const Arith::Lit &rel) {
+                // TODO handle Eq / Neq
+                assert(rel->isLinear({{n}}));
+                if (!rel->has(n)) {
+                    return mkLit(rel);
                 }
-            }, lit);
+                const auto ex{rel->lhs()};
+                if (***(*ex->coeff(n))->isRational() > 0) {
+                    return top();
+                } else {
+                    return bot();
+                }
+            },
+            [](const auto &lit) {
+                return mkLit(lit);
+            });
     });
 }
 
 Bools::Expr BoolExpr::toMinusInfinity(const Arith::Var n) const {
-    return map([&n](const Lit &lit){
-        return std::visit(
-            Overload{
-                [&n](const Arith::Lit &rel) {
-                    assert(rel->isLinear({{n}}));
-                    if (!rel->has(n)) {
-                        return mkLit(rel);
-                    }
-                    if (rel->isEq()) {
-                        return bot();
-                    }
-                    if (rel->isNeq()) {
-                        return top();
-                    }
-                    const auto ex {rel->lhs()};
-                    if (***(*ex->coeff(n))->isRational() < 0) {
-                        return top();
-                    } else {
-                        return bot();
-                    }
-                },
-                [](const auto &lit) {
-                    return mkLit(lit);
+    return map([&n](const Lit &lit) {
+        return theory::apply(
+            lit,
+            [&](const Arith::Lit &rel) {
+                assert(rel->isLinear({{n}}));
+                if (!rel->has(n)) {
+                    return mkLit(rel);
                 }
-            }, lit);
+                if (rel->isEq()) {
+                    return bot();
+                }
+                if (rel->isNeq()) {
+                    return top();
+                }
+                const auto ex{rel->lhs()};
+                if (***(*ex->coeff(n))->isRational() < 0) {
+                    return top();
+                } else {
+                    return bot();
+                }
+            },
+            [](const auto &lit) {
+                return mkLit(lit);
+            });
     });
 }
 
@@ -443,29 +440,27 @@ BoolExpr::LitSet BoolExpr::lits() const {
 
 bool BoolExpr::isLinear() const {
     return forall([](const auto &lit) {
-        return std::visit(
-            Overload {
-                [](const Arith::Lit &lit) {
-                    return lit->isLinear();
-                },
-                [](const Bools::Lit&) {
-                    return true;
-                }
-            }, lit);
+        return theory::apply(
+            lit,
+            [](const Arith::Lit &lit) {
+                return lit->isLinear();
+            },
+            [](const Bools::Lit &) {
+                return true;
+            });
     });
 }
 
 bool BoolExpr::isPoly() const {
     return forall([](const auto &lit) {
-        return std::visit(
-            Overload {
-                [](const Arith::Lit &lit) {
-                    return lit->isPoly();
-                },
-                [](const Bools::Lit&) {
-                    return true;
-                }
-            }, lit);
+        return theory::apply(
+            lit,
+            [](const Arith::Lit &lit) {
+                return lit->isPoly();
+            },
+            [](const Bools::Lit &) {
+                return true;
+            });
     });
 }
 
@@ -485,7 +480,7 @@ const Bools::Expr operator!(const Bools::Expr a) {
 
 std::ostream& operator<<(std::ostream &s, const Bools::Expr e) {
     if (e->isTheoryLit()) {
-        std::visit([&s](const auto lit){s << lit;}, *e->getTheoryLit());
+        theory::apply(*e->getTheoryLit(), [&](const auto lit){s << lit;});
     } else if (e->getChildren().empty()) {
         if (e->isAnd()) {
             s << "T";
