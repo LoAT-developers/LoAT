@@ -13,7 +13,7 @@ bool ArithConst::CacheEqual::operator()(const std::tuple<Rational> &args1, const
 }
 
 size_t ArithConst::CacheHash::operator()(const std::tuple<Rational> &args) const noexcept {
-    return std::hash<Rational>{}(std::get<0>(args));
+    return hasher(std::get<0>(args));
 }
 
 ArithExprPtr arith::mkConst(const Rational &r) {

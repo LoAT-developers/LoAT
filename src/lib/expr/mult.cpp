@@ -15,10 +15,8 @@ bool ArithMult::CacheEqual::operator()(const std::tuple<ArithExprSet> &args1, co
 }
 
 size_t ArithMult::CacheHash::operator()(const std::tuple<ArithExprSet> &args) const noexcept {
-    size_t hash {23};
     const auto &children {std::get<0>(args)};
-    boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
-    return hash;
+    return boost::hash_unordered_range(children.begin(), children.end());
 }
 
 ArithExprPtr arith::mkTimesImpl(std::vector<ArithExprPtr> &&args) {

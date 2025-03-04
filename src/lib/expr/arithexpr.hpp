@@ -234,6 +234,7 @@ private:
         bool operator()(const std::tuple<Rational> &args1, const std::tuple<Rational> &args2) const noexcept;
     };
     struct CacheHash {
+        std::hash<Rational> hasher{};
         size_t operator()(const std::tuple<Rational> &args) const noexcept;
     };
     static ConsHash<ArithExpr, ArithConst, CacheHash, CacheEqual, Rational> cache;

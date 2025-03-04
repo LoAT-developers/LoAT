@@ -14,10 +14,8 @@ bool ArithMod::CacheEqual::operator()(const std::tuple<ArithExprPtr, ArithExprPt
 
 size_t ArithMod::CacheHash::operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args) const noexcept {
     size_t hash {23};
-    const auto lhs {std::get<0>(args)};
-    const auto rhs {std::get<1>(args)};
-    boost::hash_combine(hash, lhs);
-    boost::hash_combine(hash, rhs);
+    boost::hash_combine(hash, std::get<0>(args));
+    boost::hash_combine(hash, std::get<1>(args));
     return hash;
 }
 
