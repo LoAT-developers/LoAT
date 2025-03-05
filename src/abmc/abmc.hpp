@@ -56,13 +56,14 @@ private:
     void add_learned_clause(const RulePtr accel, const unsigned backlink);
     std::pair<RulePtr, Model> build_loop(const int backlink);
     Bools::Expr build_blocking_clause(const int backlink, const Loop &loop);
-    std::optional<Loop> handle_loop(int backlink, const std::vector<int> &lang);
+    std::optional<Loop> handle_loop(const unsigned backlink, const std::vector<int> &lang);
     void build_trace();
     bool is_redundant(const std::vector<int> &w) const;
     const Renaming& subs_at(const unsigned i);
 
 public:
 
+    virtual ~ABMC();
     explicit ABMC(ITSPtr its);
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;

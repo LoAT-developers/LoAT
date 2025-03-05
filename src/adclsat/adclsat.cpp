@@ -15,6 +15,8 @@
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
 
+ADCLSat::~ADCLSat(){}
+
 ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its, config) {
     linked_hash_map<Bools::Expr, Bools::Expr> map;
     for (const auto &[id,trans]: rule_map) {
@@ -220,4 +222,5 @@ std::optional<SmtResult> ADCLSat::do_step() {
 
 ITSModel ADCLSat::get_model() {
     // TODO
+    throw std::logic_error("not yet implemented");
 }

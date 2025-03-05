@@ -10,6 +10,8 @@
 
 using namespace Config::ABMC;
 
+ABMC::~ABMC(){}
+
 ABMC::ABMC(ITSPtr its):
     its(its),
     trace_var(ArithVar::next()),
@@ -176,7 +178,7 @@ void ABMC::add_learned_clause(const RulePtr accel, const unsigned backlink) {
     rule_map.emplace(accel->getId(), accel);
 }
 
-std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int> &lang) {
+std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::vector<int> &lang) {
     const auto update_subs = [&](const RulePtr loop) {
         subs_at(depth + 1);
         const auto new_vars {loop->vars()};

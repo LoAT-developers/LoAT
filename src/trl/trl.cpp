@@ -15,6 +15,8 @@
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
 
+TRL::~TRL(){}
+
 TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
     std::vector<Bools::Expr> steps;
     for (const auto &[id,t]: rule_map) {

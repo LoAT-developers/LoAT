@@ -37,6 +37,7 @@ private:
 
 public:
 
+    virtual ~TRL();
     explicit TRL(const ITSPtr its, const Config::TRPConfig &config);
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;

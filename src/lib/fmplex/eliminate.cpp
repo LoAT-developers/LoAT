@@ -198,14 +198,14 @@ std::pair<EigenMat, EigenVec> eliminate_cols(const EigenMat& constraints,
     Matrix m(constraints.rows(), constraints.cols() + 2 + constraints.rows());
     std::size_t quantified_cols = cols.size();
     VariableIndex<std::size_t> var_idx(cols);
-    for (std::size_t i = 0, q = 0; i < constraints.rows(); ++i) {
-        if (q < cols.size() && i == cols[q]) ++q;
+    for (long i = 0, q = 0; i < constraints.rows(); ++i) {
+        if (static_cast<unsigned long>(q) < cols.size() && static_cast<unsigned long>(i) == cols[q]) ++q;
         else var_idx.add_variable(i);
     }
 
-    for (std::size_t i = 0; i < constraints.rows(); ++i) {
+    for (long i = 0; i < constraints.rows(); ++i) {
         std::vector<Matrix::RowEntry> row;
-        for (std::size_t j = 0; j < constraints.cols(); ++j) {
+        for (long j = 0; j < constraints.cols(); ++j) {
             if (constraints(i,var_idx.var(j)) != 0) {
                 row.emplace_back(j, constraints(i,var_idx.var(j)));
             }
@@ -222,11 +222,11 @@ std::pair<EigenMat, EigenVec> eliminate_cols(const EigenMat& constraints,
     // convert back to original format
     for (std::size_t i = 0; i < res.n_rows(); ++i) {
         for (const auto& e : res.row_entries(i)) {
-            if (e.col_index == constraints.cols()) {
+            if (e.col_index == static_cast<unsigned long>(constraints.cols())) {
                 res_const(i) = -e.value;
                 break;
             }
-            if (e.col_index > constraints.cols()) break;
+            if (e.col_index > static_cast<unsigned long>(constraints.cols())) break;
             res_mat(i, var_idx.var(e.col_index)) = e.value;
         }
     }
