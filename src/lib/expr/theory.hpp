@@ -50,8 +50,6 @@ Bools::Expr mkLit(const Lit &lit);
 
 namespace theory {
 
-enum class Types {Int, Bool};
-
 std::string getName(const Var &var);
 bool isTempVar(const Var &var);
 bool isProgVar(const Var &var);
@@ -81,9 +79,8 @@ size_t hash(const Lit &lit);
 sexpresso::Sexp to_smtlib(const Lit &l);
 sexpresso::Sexp to_smtlib(const Expr &e);
 void simplifyAnd(LitSet&);
-void simplifyOr(LitSet&);
-Types to_type(const Expr &x);
-Types to_type(const Var &x);
+Type to_type(const Expr &x);
+Type to_type(const Var &x);
 std::optional<Var> is_var(const Expr &x);
 
 template <class ... Ts>
@@ -96,7 +93,7 @@ constexpr bool is() {
     return std::same_as<std::tuple_element_t<I, Theories>, T>;
 }
 
-std::ostream& operator<<(std::ostream &s, const theory::Types &e);
+std::ostream& operator<<(std::ostream &s, const theory::Type &e);
 
 }
 

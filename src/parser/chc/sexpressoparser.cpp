@@ -327,7 +327,7 @@ void SexpressoParser::run(const std::string &filename) {
                     if (type == "Int") {
                         var_map.emplace(name, ArithVar::next());
                     } else if (type == "Bool") {
-                        var_map.emplace(name, BoolVar::next());
+                        var_map.emplace(name, Bools::next());
                     } else {
                         throw std::invalid_argument("unknown type " + type);
                     }

@@ -1,19 +1,19 @@
 #include "bools.hpp"
 #include "theory.hpp"
 
-BoolsBase::Expr BoolsBase::constToExpr(const Const val) {
+Bools::Expr Bools::constToExpr(const Const val) {
     return val ? top() : bot();
 }
 
-BoolsBase::Expr BoolsBase::varToExpr(const Var var) {
+Bools::Expr Bools::varToExpr(const Var var) {
     return bools::mkLit(bools::mk(var));
 }
 
-BoolsBase::Expr BoolsBase::anyValue() {
+Bools::Expr Bools::anyValue() {
     return bot();
 }
 
-BoolsBase::Var BoolsBase::next() {
+Bools::Var Bools::next() {
     return BoolVar::next();
 }
 

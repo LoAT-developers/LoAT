@@ -160,7 +160,7 @@ antlrcpp::Any KoatParseVisitor::visitExpr(KoatParser::ExprContext *ctx) {
         return arith::mkConst(Int(ctx->INT()->getText()));
     } else if (ctx->var()) {
         const auto var = any_cast<var_type>(visit(ctx->var()));
-        return var->toExpr();
+        return arith::toExpr(var);
     } else if (ctx->LPAR()) {
         return visit(ctx->expr(0));
     } else if (ctx->MINUS()) {
