@@ -8,6 +8,7 @@ add_subdirectory(abmc)
 add_subdirectory(trl)
 add_subdirectory(adclsat)
 add_subdirectory(bmc)
+add_subdirectory(api)
 
 
 target_sources(${Loat_API} PRIVATE trputil.cpp)
