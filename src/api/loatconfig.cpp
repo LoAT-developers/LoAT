@@ -1,6 +1,12 @@
 #include "loatconfig.hpp"
 #include "config.hpp"
 
+LoatConfig::LoatConfig(InitialConfig init)
+    : LoatConfig(std::move(init), DynamicConfig{}) {}
+
+LoatConfig::LoatConfig(InitialConfig init, DynamicConfig dyn)
+    : initial(std::move(init)), dynamic(std::move(dyn)) {}
+
 // Write the solvers individual (local) config to the global config
 void LoatConfig::applyToGlobalConfig() const
 {

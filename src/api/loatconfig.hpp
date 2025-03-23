@@ -121,8 +121,8 @@ private:
     DynamicConfig dynamic;
 
 public:
-    LoatConfig(InitialConfig init, DynamicConfig dyn)
-        : initial(std::move(init)), dynamic(std::move(dyn)) {}
+    LoatConfig(InitialConfig init);
+    LoatConfig(InitialConfig init, DynamicConfig dyn);
 
     const InitialConfig &getInitial() const { return initial; }
     const DynamicConfig &getDynamic() const { return dynamic; }
