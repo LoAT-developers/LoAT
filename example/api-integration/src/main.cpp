@@ -21,9 +21,14 @@ int main()
 
     LoatConfig config1(initialConfig1, dynamicConfig1);
     LoatConfig config2(initialConfig1);
+    LoatConfig config3(LoatConfig::InitialConfig(LoatConfig::InitialConfig::Format::Koat,
+                                                 LoatConfig::InitialConfig::Engine::ADCL,
+                                                 LoatConfig::InitialConfig::Mode::Complexity,
+                                                 LoatConfig::InitialConfig::SmtSolver::Z3));
 
     LoatSolver solver1(config1);
     LoatSolver solver2(config2);
+    LoatSolver solver3(config3);
 
     solver1.setParameter(DynamicParameterKey::Log, true);
     solver1.refreshConfig();
