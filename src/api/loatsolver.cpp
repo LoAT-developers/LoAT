@@ -10,9 +10,6 @@ void LoatSolver::setParameter(DynamicParameterKey key, const std::any &value)
     {
         switch (key)
         {
-        case DynamicParameterKey::Direction:
-            dyn.direction = std::any_cast<LoatConfig::DynamicConfig::Direction>(value);
-            break;
         case DynamicParameterKey::Log:
             dyn.log = std::any_cast<bool>(value);
             break;
@@ -22,9 +19,6 @@ void LoatSolver::setParameter(DynamicParameterKey key, const std::any &value)
         case DynamicParameterKey::LogPreproc:
             dyn.logPreproc = std::any_cast<bool>(value);
             break;
-        case DynamicParameterKey::Model:
-            dyn.model = std::any_cast<bool>(value);
-            break;
         case DynamicParameterKey::PrintDependencyGraph:
             dyn.printDependencyGraph = std::any_cast<bool>(value);
             break;
@@ -33,9 +27,6 @@ void LoatSolver::setParameter(DynamicParameterKey key, const std::any &value)
             break;
 
         // TRP Subfields
-        case DynamicParameterKey::TRP_MbpKind:
-            dyn.trp.mbpKind = std::any_cast<LoatConfig::DynamicConfig::TRPConfig::MbpKind>(value);
-            break;
         case DynamicParameterKey::TRP_RecurrentCycles:
             dyn.trp.recurrent_cycles = std::any_cast<bool>(value);
             break;

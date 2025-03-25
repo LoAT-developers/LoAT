@@ -51,36 +51,47 @@ public:
             Heuristic
         };
 
-        // Variables to store the choosen preferences
-        Format format;
-        Engine engine;
-        Mode mode;
-        SmtSolver solver;
-
-        // Constructor
-        InitialConfig(Format f, Engine e, Mode m, SmtSolver s)
-            : format(f), engine(e), mode(m), solver(s) {}
-    };
-
-    struct DynamicConfig
-    {
         // Direction of analysis (forward, backward, interleaved)
-        // @FROHN is this actually changable after the solvers instanciation?
         enum Direction
         {
             Forward,
             Backward,
             Interleaved
         };
-        Direction direction = Forward;
+
+        // Solver-level tuning parameter.
+        enum MbpKind
+        {
+            LowerIntMbp,
+            UpperIntMbp,
+            IntMbp,
+            RealMbp,
+            RealQe
+        };
+
+        // Variables to store the choosen preferences
+        Format format;
+        Engine engine;
+        Mode mode;
+        SmtSolver solver;
+        Direction direction;
+        MbpKind mbpKind;
+
+        // Calculate model or ctx
+        bool model;
+
+        // Constructor
+        InitialConfig(Format f, Engine e, Mode m, SmtSolver s, Direction d, MbpKind mbp, bool mo)
+            : format(f), engine(e), mode(m), solver(s), direction(d), mbpKind(mbp), model(mo) {}
+    };
+
+    struct DynamicConfig
+    {
 
         // Logging options. Can be toggled. Default value is false
         bool log = false;
         bool logAccel = false;
         bool logPreproc = false;
-
-        // @FROHN What exactly does this? It is a boolean in the original config.
-        bool model = false;
 
         // Should the dependency graph be printed to output? Default value is false.
         bool printDependencyGraph = false;
@@ -88,17 +99,6 @@ public:
         // Configuration for Transition Relation Partitioning (TRP)
         struct TRPConfig
         {
-            // Solver-level tuning parameter.
-            enum MbpKind
-            {
-                LowerIntMbp,
-                UpperIntMbp,
-                IntMbp,
-                RealMbp,
-                RealQe
-            };
-            MbpKind mbpKind = IntMbp;
-
             // Options controlling which recurrence patterns to use.
             // Can be enabled/disabled dynamically during analysis.
             bool recurrent_cycles = false;

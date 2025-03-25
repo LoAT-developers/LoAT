@@ -17,17 +17,17 @@ void LoatConfig::applyToGlobalConfig() const
     Analysis::engine = static_cast<Analysis::Engine>(initial.engine);
     Analysis::mode = static_cast<Analysis::Mode>(initial.mode);
     Analysis::smtSolver = static_cast<Analysis::SmtSolver>(initial.solver);
+    Analysis::dir = static_cast<Analysis::Direction>(initial.direction);
+    Analysis::model = initial.model;
+    trp.mbpKind = static_cast<TRPConfig::MbpKind>(initial.mbpKind);
 
     // Dynamic Config
-    Analysis::dir = static_cast<Analysis::Direction>(dynamic.direction);
     Analysis::log = dynamic.log;
     Analysis::logAccel = dynamic.logAccel;
     Analysis::logPreproc = dynamic.logPreproc;
-    Analysis::model = dynamic.model;
 
     Output::PrintDependencyGraph = dynamic.printDependencyGraph;
 
-    trp.mbpKind = static_cast<TRPConfig::MbpKind>(dynamic.trp.mbpKind);
     trp.recurrent_cycles = dynamic.trp.recurrent_cycles;
     trp.recurrent_exps = dynamic.trp.recurrent_exps;
     trp.recurrent_pseudo_divs = dynamic.trp.recurrent_pseudo_divs;
