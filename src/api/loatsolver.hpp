@@ -1,23 +1,22 @@
 #pragma once
 
 #include "loatconfig.hpp"
-#include "dynamicparameters.hpp"
 #include <any>
 
 class LoatSolver
 {
 private:
-    LoatConfig config;
+    LoatConfig m_config;
 
 public:
     // Constructor for LoatSolver
     // Takes a LoatConfig object as parameter.
     // Stores it internally (copied/moved into the solver).
     // Immediately applies the configuration to the global Config namespace,
-    LoatSolver(LoatConfig cfg)
-        : config(std::move(cfg))
+    LoatSolver(const LoatConfig &config)
+        : m_config(config)
     {
-        config.applyToGlobalConfig();
+        m_config.applyToGlobalConfig();
     }
 
     // Modify runtime parameter (DynamicConfig) by enum key and value

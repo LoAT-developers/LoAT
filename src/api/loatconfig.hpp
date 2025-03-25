@@ -2,6 +2,22 @@
 
 #include <vector>
 #include <string>
+#include <any>
+
+// List of tunable runtime parameters (only from DynamicConfig)
+enum class DynamicParameterKey
+{
+    Log,
+    LogAccel,
+    LogPreproc,
+    PrintDependencyGraph,
+    BlockingClauses,
+    TRP_RecurrentCycles,
+    TRP_RecurrentExps,
+    TRP_RecurrentPseudoDivs,
+    TRP_RecurrentPseudoBounds,
+    TRP_RecurrentBounds
+};
 
 // LoatConfig encapsulates configuration in two parts:
 // 1. InitialConfig: fixed at construction, cannot change after the solver was instanciated
@@ -9,8 +25,10 @@
 class LoatConfig
 {
 public:
-    struct InitialConfig
+    // Immutable configuration defined at solver construction time
+    class InitialConfig
     {
+    public:
         // Input format must be fixed when parsing starts,
         // and cannot change mid-execution (e.g. Koat, ITS, Horn)
         enum Format
@@ -69,65 +87,89 @@ public:
             RealQe
         };
 
-        // Variables to store the choosen preferences
-        Format format;
-        Engine engine;
-        Mode mode;
-        SmtSolver solver;
-        Direction direction;
-        MbpKind mbpKind;
-
-        // Calculate model or ctx
-        bool model;
-
         // Constructor
-        InitialConfig(Format f, Engine e, Mode m, SmtSolver s, Direction d, MbpKind mbp, bool mo)
-            : format(f), engine(e), mode(m), solver(s), direction(d), mbpKind(mbp), model(mo) {}
+        InitialConfig(Format format, Engine engine, Mode mode,
+                      SmtSolver solver, Direction direction,
+                      MbpKind mbp, bool model)
+            : m_format(format), m_engine(engine), m_mode(mode),
+              m_solver(solver), m_direction(direction),
+              m_mbpKind(mbp), m_model(model) {}
+
+        // Getter
+        Format getFormat() const { return m_format; }
+        Engine getEngine() const { return m_engine; }
+        Mode getMode() const { return m_mode; }
+        SmtSolver getSolver() const { return m_solver; }
+        Direction getDirection() const { return m_direction; }
+        MbpKind getMbpKind() const { return m_mbpKind; }
+        bool getModel() const { return m_model; }
+
+    private:
+        Format m_format;
+        Engine m_engine;
+        Mode m_mode;
+        SmtSolver m_solver;
+        Direction m_direction;
+        MbpKind m_mbpKind;
+        bool m_model;
     };
 
-    struct DynamicConfig
+    // Mutable configuration that has default values
+    class DynamicConfig
     {
+    public:
+        // Constructor
+        DynamicConfig() = default;
 
+        // Getter for dynamic parameter
+        std::any get(DynamicParameterKey key) const;
+
+        // Setter for dynamic parameter
+        void set(DynamicParameterKey key, const std::any &value);
+
+    private:
         // Logging options. Can be toggled. Default value is false
-        bool log = false;
-        bool logAccel = false;
-        bool logPreproc = false;
+        bool m_log = false;
+        bool m_logAccel = false;
+        bool m_logPreproc = false;
 
         // Should the dependency graph be printed to output? Default value is false.
-        bool printDependencyGraph = false;
+        bool m_printDependencyGraph = false;
 
         // Configuration for Transition Relation Partitioning (TRP)
         struct TRPConfig
         {
             // Options controlling which recurrence patterns to use.
             // Can be enabled/disabled dynamically during analysis.
-            bool recurrent_cycles = false;
-            bool recurrent_exps = true;
-            bool recurrent_pseudo_divs = true;
-            bool recurrent_pseudo_bounds = true;
-            bool recurrent_bounds = true;
-        } trp;
+            bool m_recurrent_cycles = false;
+            bool m_recurrent_exps = true;
+            bool m_recurrent_pseudo_divs = true;
+            bool m_recurrent_pseudo_bounds = true;
+            bool m_recurrent_bounds = true;
+        } m_trp;
 
         // ABMC-specific option – whether to use blocking clauses.
-        // @FROHN Can this be changed dynamicly? Im not sure about this.
-        bool blocking_clauses = false;
+        bool m_blocking_clauses = false;
     };
 
 private:
     // Initial config is fixed (immutable) once constructed
-    const InitialConfig initial;
+    const InitialConfig m_initial;
 
     // Dynamic config can be modified
-    DynamicConfig dynamic;
+    DynamicConfig m_dynamic;
 
 public:
-    LoatConfig(InitialConfig init);
-    LoatConfig(InitialConfig init, DynamicConfig dyn);
+    // Constructors
+    LoatConfig(const InitialConfig &init);
+    LoatConfig(const InitialConfig &init, const DynamicConfig &dyn);
 
-    const InitialConfig &getInitial() const { return initial; }
-    const DynamicConfig &getDynamic() const { return dynamic; }
+    // Read only access to configuration
+    const InitialConfig &getInitial() const;
+    const DynamicConfig &getDynamic() const;
 
-    DynamicConfig &getDynamic() { return dynamic; }
+    // Write access to configuration
+    DynamicConfig &getDynamic();
 
     // Apply this configuration to the global Config:: namespace
     void applyToGlobalConfig() const;
