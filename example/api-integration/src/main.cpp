@@ -8,23 +8,32 @@ int main()
         LoatConfig::InitialConfig::Format::Koat,
         LoatConfig::InitialConfig::Engine::ADCL,
         LoatConfig::InitialConfig::Mode::Complexity,
-        LoatConfig::InitialConfig::SmtSolver::Z3);
+        LoatConfig::InitialConfig::SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false);
 
     LoatConfig::InitialConfig initialConfig2(
         LoatConfig::InitialConfig::Format::Horn,
         LoatConfig::InitialConfig::Engine::ADCL,
         LoatConfig::InitialConfig::Mode::Complexity,
-        LoatConfig::InitialConfig::SmtSolver::Z3);
+        LoatConfig::InitialConfig::SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false);
 
     LoatConfig::DynamicConfig dynamicConfig1;
-    dynamicConfig1.direction = LoatConfig::DynamicConfig::Direction::Forward;
+    dynamicConfig1.log = false;
 
     LoatConfig config1(initialConfig1, dynamicConfig1);
     LoatConfig config2(initialConfig1);
     LoatConfig config3(LoatConfig::InitialConfig(LoatConfig::InitialConfig::Format::Koat,
                                                  LoatConfig::InitialConfig::Engine::ADCL,
                                                  LoatConfig::InitialConfig::Mode::Complexity,
-                                                 LoatConfig::InitialConfig::SmtSolver::Z3));
+                                                 LoatConfig::InitialConfig::SmtSolver::Z3,
+                                                 LoatConfig::InitialConfig::Direction::Forward,
+                                                 LoatConfig::InitialConfig::MbpKind::IntMbp,
+                                                 false));
 
     LoatSolver solver1(config1);
     LoatSolver solver2(config2);
