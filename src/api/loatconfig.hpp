@@ -4,6 +4,18 @@
 #include <string>
 #include <any>
 
+// List of immutable initial configuration options
+enum class InitialParameterKey
+{
+    Format,
+    Engine,
+    Mode,
+    SmtSolver,
+    Direction,
+    MbpKind,
+    Model
+};
+
 // List of tunable runtime parameters (only from DynamicConfig)
 enum class DynamicParameterKey
 {
@@ -96,13 +108,7 @@ public:
               m_mbpKind(mbp), m_model(model) {}
 
         // Getter
-        Format getFormat() const { return m_format; }
-        Engine getEngine() const { return m_engine; }
-        Mode getMode() const { return m_mode; }
-        SmtSolver getSolver() const { return m_solver; }
-        Direction getDirection() const { return m_direction; }
-        MbpKind getMbpKind() const { return m_mbpKind; }
-        bool getModel() const { return m_model; }
+        std::any get(InitialParameterKey key) const;
 
     private:
         Format m_format;
