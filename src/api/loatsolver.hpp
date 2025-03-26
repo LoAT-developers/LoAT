@@ -19,6 +19,9 @@ public:
         m_config.applyToGlobalConfig();
     }
 
+    // Getter for internal config (read-only)
+    const LoatConfig &getConfig() const { return m_config; }
+
     // Modify runtime parameter (DynamicConfig) by enum key and value
     void setParameter(DynamicParameterKey key, const std::any &value);
 

@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD 20)
 # non-static build by default
 option(STATIC "static" ON)
 option(SANITIZE "sanitize" OFF)
+option(BUILD_TESTS "tests" ON)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
 set(CMAKE_LIBRARY_PATH $ENV{LD_LIBRARY_PATH})
@@ -44,8 +45,6 @@ if(${SANITIZE})
 endif()
 
 add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter) # for GCC: -fconcepts-diagnostics-depth=100
-
-
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
@@ -136,7 +135,19 @@ git_local_changes(DIRTY)
 # generate version.cc
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp" @ONLY)
 
+# ===============================
+# Executable
+# ===============================
 add_executable(${EXECUTABLE} "")
+
+# ===============================
+# Test Executable
+# ===============================
+if(${BUILD_TESTS})
+  enable_testing()
+  set(Loat_API_Tests "LoATAPITests")
+  add_executable(${Loat_API_Tests} "")
+endif()
 
 set(Loat_API LoATAPI)
 
@@ -150,6 +161,48 @@ if(NOT TARGET Boost::boost)
     INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
   )
 endif()
+
+if(${BUILD_TESTS})
+  target_include_directories(${Loat_API_Tests} PRIVATE
+  $<BUILD_INTERFACE:
+    ${Boost_INCLUDE_DIRS}
+    ${sexpresso_INCLUDE_DIRS}
+    ${loat_util_INCLUDE_DIRS}
+    ${loat_container_INCLUDE_DIRS}
+    ${loat_expr_INCLUDE_DIRS}
+    ${loat_fmplex_INCLUDE_DIRS}
+    ${loat_preprocessing_INCLUDE_DIRS}
+    ${loat_smt_INCLUDE_DIRS}
+    ${loat_recurrence_INCLUDE_DIRS}
+    ${loat_acceleration_INCLUDE_DIRS}
+    ${loat_trp_INCLUDE_DIRS}
+    ${loat_itsproblem_INCLUDE_DIRS}
+    ${loat_chcproblem_INCLUDE_DIRS}
+    ${loat_safetyproblem_INCLUDE_DIRS}
+    ${loat_transformations_INCLUDE_DIRS}
+  >
+)
+endif()
+
+target_include_directories(${EXECUTABLE} PRIVATE
+  $<BUILD_INTERFACE:
+    ${Boost_INCLUDE_DIRS}
+    ${sexpresso_INCLUDE_DIRS}
+    ${loat_util_INCLUDE_DIRS}
+    ${loat_container_INCLUDE_DIRS}
+    ${loat_expr_INCLUDE_DIRS}
+    ${loat_fmplex_INCLUDE_DIRS}
+    ${loat_preprocessing_INCLUDE_DIRS}
+    ${loat_smt_INCLUDE_DIRS}
+    ${loat_recurrence_INCLUDE_DIRS}
+    ${loat_acceleration_INCLUDE_DIRS}
+    ${loat_trp_INCLUDE_DIRS}
+    ${loat_itsproblem_INCLUDE_DIRS}
+    ${loat_chcproblem_INCLUDE_DIRS}
+    ${loat_safetyproblem_INCLUDE_DIRS}
+    ${loat_transformations_INCLUDE_DIRS}
+  >
+)
 
 target_include_directories(${EXECUTABLE} PRIVATE
   $<BUILD_INTERFACE:
@@ -256,4 +309,34 @@ install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/${Loat_API}Config.cmake"
   DESTINATION lib/cmake/${Loat_API}
 )
+
+if(${BUILD_TESTS})
+  # ===============================
+  # GoogleTest via FetchContent
+  # ===============================
+  include(FetchContent)
+
+  FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  )
+
+  FetchContent_MakeAvailable(googletest)
+
+  add_subdirectory(src/api/tests)
+
+  # Link against LoATAPI and GTest
+  target_link_libraries(${Loat_API_Tests} PRIVATE
+    LoATAPI
+    gtest
+    gtest_main
+  )
+
+  # Include GoogleTest functions
+  include(GoogleTest)
+
+  # Automatically register tests with CTest
+  gtest_discover_tests(${Loat_API_Tests})
+endif()
 
