@@ -37,13 +37,13 @@ TEST(LoatExpressionTest, ReusesCachedExpressions)
     EXPECT_EQ(plus1.get(), plus2.get()); // same instance via ConsHash
 }
 
-// === Test: Nested Expression ===
+// === Test: To string ===
 TEST(LoatExpressionTest, NestedExpressionToString)
 {
-    auto x = makeConst(1);
-    auto y = makeConst(2);
-    auto inner = makePlus(x, y);    // (1 + 2)
-    auto expr = makePlus(inner, x); // ((1 + 2) + 1)
+    auto a = makeConst(1);
+    auto b = makeConst(2);
+    auto sum = makePlus(a, b);    // (1 + 2)
+    auto expr = makePlus(sum, a); // ((1 + 2) + 1)
 
     EXPECT_EQ(expr->toString(), "((1 + 2) + 1)");
 }

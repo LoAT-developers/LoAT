@@ -3,6 +3,7 @@
 #include "loatconfig.hpp"
 #include "config.hpp"
 #include "test_util.hpp"
+#include "loatexpression.hpp"
 
 // === Tests ===
 
@@ -58,4 +59,37 @@ TEST(LoatSolverTest, RefreshConfigUpdatesGlobalConfig)
     solver.refreshConfig();
 
     EXPECT_TRUE(Config::Analysis::logAccel);
+}
+
+TEST(LoatSolverTest, AddExpressionStoresCorrectly)
+{
+    LoatConfig config(createSampleInitialConfig());
+    LoatSolver solver(config);
+
+    auto five = makeConst(5);
+    auto ten = makeConst(10);
+    auto sum = makePlus(five, ten);
+
+    solver.add(sum);
+
+    const auto &exprs = solver.getExpressions();
+    ASSERT_EQ(exprs.size(), 1);
+    EXPECT_EQ(exprs[0]->toString(), "(5 + 10)");
+}
+
+TEST(LoatSolverTest, AddMultipleExpressions)
+{
+    LoatSolver solver(createSampleInitialConfig());
+
+    auto a = makeConst(1);
+    auto b = makeConst(2);
+    auto c = makeConst(3);
+
+    solver.add(a);
+    solver.add(makePlus(b, c));
+
+    const auto &exprs = solver.getExpressions();
+    ASSERT_EQ(exprs.size(), 2);
+    EXPECT_EQ(exprs[0]->toString(), "1");
+    EXPECT_EQ(exprs[1]->toString(), "(2 + 3)");
 }
