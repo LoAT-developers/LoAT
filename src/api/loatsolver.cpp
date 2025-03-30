@@ -1,4 +1,5 @@
 #include "loatsolver.hpp"
+#include "loatexpression.hpp"
 #include <stdexcept>
 #include <any>
 
@@ -17,4 +18,15 @@ void LoatSolver::setParameter(DynamicParameterKey key, const std::any &value)
 void LoatSolver::refreshConfig()
 {
     m_config.applyToGlobalConfig();
+}
+
+void LoatSolver::add(const LoatExprPtr &expr)
+{
+    // Save for later
+    m_expressions.push_back(expr);
+}
+
+const std::vector<LoatExprPtr> &LoatSolver::getExpressions() const
+{
+    return m_expressions;
 }
