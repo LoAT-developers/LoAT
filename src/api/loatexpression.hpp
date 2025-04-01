@@ -1,135 +1,166 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-#include <tuple>
-#include <iostream>
+#include <optional>
+#include <boost/multiprecision/cpp_int.hpp>
 #include <functional>
-#include <stdexcept>
-#include <boost/functional/hash.hpp>
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
+
+#include "linkedhashset.hpp"
+#include "linkedhashmap.hpp"
+#include "string.hpp"
 #include "conshash.hpp"
+#include "notnull.hpp"
+#include "var.hpp"
 
-// ============================================
-// Forward declarations for class dependencies
-// ============================================
-class LoatExpression;
-class LoatConstant;
-class LoatPlus;
+class LoatExpr;
+using LoatVar = TVar<theory::Type::Int, LoatExpr>;
 
-// ============================================
-// Smart pointer aliases for convenience
-// ============================================
-using LoatExprPtr = std::shared_ptr<const LoatExpression>;
+class LoatConst;
+class LoatExp;
+class LoatAdd;
+class LoatMult;
+class LoatMod;
+
+using LoatExprPtr = cpp::not_null<std::shared_ptr<const LoatExpr>>;
+using LoatVarPtr = cpp::not_null<std::shared_ptr<const LoatVar>>;
+using LoatConstPtr = cpp::not_null<std::shared_ptr<const LoatConst>>;
+using LoatAddPtr = cpp::not_null<std::shared_ptr<const LoatAdd>>;
+using LoatMultPtr = cpp::not_null<std::shared_ptr<const LoatMult>>;
+using LoatModPtr = cpp::not_null<std::shared_ptr<const LoatMod>>;
+using LoatExpPtr = cpp::not_null<std::shared_ptr<const LoatExp>>;
+using LoatExprSet = linked_hash_set<LoatExprPtr>;
 using LoatExprVec = std::vector<LoatExprPtr>;
 
-// ============================================
-// Enum for expression types (for runtime type-checking)
-// ============================================
-enum class LoatKind
-{
-    Constant,
-    Plus
-    // More kinds (e.g., Mult, Mod, Var, ...) can be added later
-};
+using Int = boost::multiprecision::cpp_int;
+using Rational = boost::multiprecision::cpp_rational;
 
-// ============================================
-// Abstract Base Class for all expressions
-// ============================================
-class LoatExpression : public std::enable_shared_from_this<LoatExpression>
-{
-    LoatKind kind;
+using loat_var_map = boost::bimap<boost::bimaps::unordered_set_of<LoatVarPtr>, boost::bimaps::unordered_set_of<LoatVarPtr>>;
 
+namespace LoatExpression
+{
+    enum class Kind
+    {
+        Plus,
+        Times,
+        Mod,
+        Exp,
+        Constant,
+        Variable
+    };
+
+    // Factory methods to create expressions
+    LoatExprPtr mkPlusImpl(LoatExprVec &&args);
+    LoatExprPtr mkPlus(LoatExprVec &&args);
+    LoatExprPtr mkPlus(LoatExprPtr, LoatExprPtr);
+    // LoatExprPtr mkTimesImpl(LoatExprVec &&args);
+    // LoatExprPtr mkTimes(LoatExprVec &&args);
+    // LoatExprPtr mkTimes(const LoatExprPtr, const LoatExprPtr);
+    // LoatExprPtr mkMod(LoatExprPtr x, LoatExprPtr y);
+    LoatExprPtr mkConst(const Rational &r);
+    LoatExprPtr mkConst(const Rational &&r);
+    // LoatExprPtr mkExp(const LoatExprPtr base, const LoatExprPtr exponent);
+    // LoatExprPtr mkVar(const int idx);
+
+    LoatExprPtr toExpr(const LoatVarPtr &);
+}
+
+/**
+ * Base class for all expression types.
+ */
+class LoatExpr : public std::enable_shared_from_this<LoatExpr>
+{
 protected:
-    // Protected constructor: only derived classes can call it
-    LoatExpression(LoatKind kind) : kind(kind) {}
+    // Constructs an expression with a specific kind.
+    explicit LoatExpr(LoatExpression::Kind kind);
+    LoatExpr();
+
+private:
+    LoatExpression::Kind m_kind;
 
 public:
-    virtual ~LoatExpression() = default;
+    // Returns the kind of the expression (Plus, Times, etc.)
+    LoatExpression::Kind getKind() const;
 
-    // Kind getter: allows dynamic checks of expression type
-    LoatKind getKind() const { return kind; }
+    // Returns this expression as a pointer
+    LoatExprPtr toPtr() const;
 
-    // Readable string
-    virtual std::string toString() const = 0;
+    // Divides this expression by a rational constant
+    // ADD WHEN WE HAVE TIMES
+    // LoatExprPtr divide(const Rational &d) const;
 
-    // Safely returns a shared_ptr to this
-    LoatExprPtr toPtr() const { return shared_from_this(); }
+    // Operator overloads for symbolic math
+    friend LoatExprPtr operator^(const LoatExprPtr x, const LoatExprPtr y);
+    friend LoatExprPtr operator-(const LoatExprPtr x);
+    friend LoatExprPtr operator-(const LoatExprPtr x, const LoatExprPtr y);
+    friend LoatExprPtr operator+(const LoatExprPtr x, const LoatExprPtr y);
+    friend LoatExprPtr operator*(const LoatExprPtr x, const LoatExprPtr y);
 };
 
-// ============================================
-// LoatConstant — represents a numeric constant
-// ============================================
-class LoatConstant : public LoatExpression
+/**
+ * Represents a constant rational expression.
+ */
+class LoatConst : public LoatExpr
 {
-    int value;
+    friend LoatExprPtr LoatExpression::mkConst(const Rational &r);
+    friend LoatExprPtr LoatExpression::mkConst(const Rational &&r);
+    friend class LoatExpr;
 
 public:
-    LoatConstant(int v);
-    ~LoatConstant();
+    LoatConst(const Rational &t);
+    ~LoatConst();
+    const Rational &operator*() const;
+    const Rational &getValue() const;
 
-    int getValue() const;
-    std::string toString() const override;
-
-    // === Caching Support using ConsHash ===
+private:
+    Rational m_value;
 
     struct CacheEqual
     {
-        bool operator()(const std::tuple<int> &a, const std::tuple<int> &b) const noexcept;
+        bool operator()(const std::tuple<Rational> &args1, const std::tuple<Rational> &args2) const noexcept;
     };
-
     struct CacheHash
     {
-        size_t operator()(const std::tuple<int> &a) const noexcept;
+        size_t operator()(const std::tuple<Rational> &args) const noexcept;
     };
-
-    static ConsHash<LoatExpression, LoatConstant, CacheHash, CacheEqual, int> cache;
+    static ConsHash<LoatExpr, LoatConst, CacheHash, CacheEqual, Rational> cache;
 };
 
-// ============================================
-// LoatPlus — represents a sum of expressions
-// ============================================
-class LoatPlus : public LoatExpression
+/**
+ * Represents an addition expression.
+ */
+class LoatAdd : public LoatExpr
 {
-    LoatExprVec args;
+    friend LoatExprPtr LoatExpression::mkPlusImpl(LoatExprVec &&args);
+    friend LoatExprPtr LoatExpression::mkPlus(LoatExprPtr, LoatExprPtr);
+    friend LoatExprPtr mkPlus(LoatExprVec &&args);
+    friend class LoatExpr;
 
 public:
-    LoatPlus(const LoatExprVec &arguments);
-    ~LoatPlus();
+    const LoatExprSet &getArgs() const;
 
-    const LoatExprVec &getArgs() const;
-    std::string toString() const override;
-
-    // === Caching Support using ConsHash ===
+private:
+    LoatExprSet m_args;
 
     struct CacheEqual
     {
-        bool operator()(const std::tuple<LoatExprVec> &a, const std::tuple<LoatExprVec> &b) const noexcept;
+        bool operator()(const std::tuple<LoatExprSet> &args1, const std::tuple<LoatExprSet> &args2) const noexcept;
     };
-
     struct CacheHash
     {
-        size_t operator()(const std::tuple<LoatExprVec> &a) const noexcept;
+        size_t operator()(const std::tuple<LoatExprSet> &args) const noexcept;
     };
+    static ConsHash<LoatExpr, LoatAdd, CacheHash, CacheEqual, LoatExprSet> cache;
 
-    static ConsHash<LoatExpression, LoatPlus, CacheHash, CacheEqual, LoatExprVec> cache;
+public:
+    LoatAdd(const LoatExprSet &args);
+    ~LoatAdd();
 };
 
-// ============================================
-// Factory Functions
-// ============================================
+// Hash functions for expression pointers
+std::size_t hash_value(const LoatExprPtr &);
+std::size_t hash_value(const LoatVarPtr &);
 
-/**
- * Creates (or reuses) a constant expression using `ConsHash`.
- * Guarantees that each constant value exists only once.
- */
-LoatExprPtr makeConst(int value);
-
-/**
- * Creates (or reuses) a sum of two expressions using `ConsHash`.
- */
-LoatExprPtr makePlus(const LoatExprPtr &a, const LoatExprPtr &b);
-
-/**
- * Creates (or reuses) a sum of a vector of expressions.
- */
-LoatExprPtr makePlus(const LoatExprVec &args);
+// Stream output
+std::ostream &operator<<(std::ostream &s, const LoatVarPtr x);
+std::ostream &operator<<(std::ostream &s, const LoatExprPtr e);

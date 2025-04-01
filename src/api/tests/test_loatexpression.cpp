@@ -1,49 +1,63 @@
 #include <gtest/gtest.h>
+#include <sstream>
 #include "loatexpression.hpp"
 
-// === Test: makeConst ===
-TEST(LoatExpressionTest, CreateConstant)
+using namespace LoatExpression;
+
+TEST(LoatConstTest, CreateAndCompare)
 {
-    auto five = makeConst(5);
-    EXPECT_EQ(five->getKind(), LoatKind::Constant);
-    EXPECT_EQ(five->toString(), "5");
+    auto c1 = mkConst(5);
+    auto c2 = mkConst(Rational(5));
+    auto c3 = mkConst(Rational(3));
+
+    EXPECT_EQ(c1, c2);
+    EXPECT_NE(c1, c3);
+    EXPECT_EQ(c1->getKind(), Kind::Constant);
 }
 
-// === Test: makePlus ===
-TEST(LoatExpressionTest, CreatePlus)
+TEST(LoatConstTest, PrintConst)
 {
-    auto a = makeConst(2);
-    auto b = makeConst(3);
-    auto sum = makePlus(a, b);
-
-    EXPECT_EQ(sum->getKind(), LoatKind::Plus);
-    EXPECT_EQ(sum->toString(), "(2 + 3)");
+    auto c = mkConst(42);
+    std::stringstream ss;
+    ss << c;
+    EXPECT_EQ(ss.str(), "42");
 }
 
-// === Test: Caching (Structural Sharing) ===
-TEST(LoatExpressionTest, ReusesCachedExpressions)
+TEST(LoatAddTest, CreateSimpleAddition)
 {
-    auto c1 = makeConst(42);
-    auto c2 = makeConst(42);
+    auto a = mkConst(1);
+    auto b = mkConst(2);
+    auto sum = mkPlus(a, b);
 
-    // Expect same pointer (ConsHash used)
-    EXPECT_EQ(c1.get(), c2.get());
+    EXPECT_EQ(sum->getKind(), Kind::Plus);
 
-    auto a = makeConst(1);
-    auto b = makeConst(2);
-    auto plus1 = makePlus(a, b);
-    auto plus2 = makePlus(a, b);
-
-    EXPECT_EQ(plus1.get(), plus2.get()); // same instance via ConsHash
+    std::stringstream ss;
+    ss << sum;
+    EXPECT_EQ(ss.str(), "(1 + 2)");
 }
 
-// === Test: To string ===
-TEST(LoatExpressionTest, NestedExpressionToString)
+TEST(LoatAddTest, NestedAddition)
 {
-    auto a = makeConst(1);
-    auto b = makeConst(2);
-    auto sum = makePlus(a, b);    // (1 + 2)
-    auto expr = makePlus(sum, a); // ((1 + 2) + 1)
+    auto a = mkConst(1);
+    auto b = mkConst(2);
+    auto inner = mkPlus(a, b);
+    auto c = mkConst(3);
+    auto outer = mkPlus(inner, c);
 
-    EXPECT_EQ(expr->toString(), "((1 + 2) + 1)");
+    std::stringstream ss;
+    ss << outer;
+    EXPECT_EQ(ss.str(), "((1 + 2) + 3)");
+}
+
+TEST(LoatAddTest, AddMultiple)
+{
+    auto x = mkConst(1);
+    auto y = mkConst(2);
+    auto z = mkConst(3);
+
+    auto sum = mkPlus({x, y, z});
+
+    std::stringstream ss;
+    ss << sum;
+    EXPECT_EQ(ss.str(), "(1 + 2 + 3)");
 }

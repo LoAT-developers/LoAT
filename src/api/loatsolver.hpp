@@ -35,7 +35,4 @@ public:
 
     // Adds an expression to the solver.
     void add(const LoatExprPtr &expr);
-
-    // Returns the internal list of added expressions.
-    const std::vector<LoatExprPtr> &getExpressions() const;
 };

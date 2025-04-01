@@ -1,101 +1,114 @@
 #include "loatexpression.hpp"
+#include "optional.hpp"
+#include "linkedhashmap.hpp"
 
+#include <numeric>
 #include <sstream>
-#include <boost/functional/hash.hpp>
 
-// ==============================
-// LoatConstant Implementation
-// ==============================
-
-LoatConstant::LoatConstant(int v)
-    : LoatExpression(LoatKind::Constant), value(v) {}
-
-LoatConstant::~LoatConstant() = default;
-
-int LoatConstant::getValue() const
+// Hash function for expression pointers
+std::size_t hash_value(const LoatExprPtr &x)
 {
-    return value;
+    return std::hash<std::shared_ptr<const LoatExpr>>{}(x.as_nullable());
+}
+std::size_t hash_value(const LoatVarPtr &x)
+{
+    return std::hash<std::shared_ptr<const LoatVar>>{}(x.as_nullable());
 }
 
-std::string LoatConstant::toString() const
+// Constructor for base expression with specific kind
+LoatExpr::LoatExpr(const LoatExpression::Kind kind) : m_kind(kind) {}
+
+// Default constructor assumes variable
+LoatExpr::LoatExpr() : m_kind(LoatExpression::Kind::Variable) {}
+
+// Return kind of the expression
+LoatExpression::Kind LoatExpr::getKind() const
 {
-    return std::to_string(value);
+    return m_kind;
 }
 
-bool LoatConstant::CacheEqual::operator()(const std::tuple<int> &a, const std::tuple<int> &b) const noexcept
+// Convert this expression to shared pointer
+LoatExprPtr LoatExpr::toPtr() const
 {
-    return std::get<0>(a) == std::get<0>(b);
+    return cpp::assume_not_null(shared_from_this());
 }
 
-size_t LoatConstant::CacheHash::operator()(const std::tuple<int> &a) const noexcept
+// Divide the expression by a rational number
+// ADD WHEN WE HAVE TIMES
+// LoatExprPtr LoatExpr::divide(const Rational &y) const
+// {
+//     return LoatExpression::mkTimes(LoatExpression::mkConst(Rational(
+//                                        boost::multiprecision::denominator(y),
+//                                        boost::multiprecision::numerator(y))),
+//                                    toPtr());
+// }
+
+// Convert variable pointer to expression pointer
+LoatExprPtr LoatExpression::toExpr(const LoatVarPtr &x)
 {
-    return std::hash<int>{}(std::get<0>(a));
+    return cpp::assume_not_null(x->shared_from_this());
 }
 
-ConsHash<LoatExpression, LoatConstant, LoatConstant::CacheHash, LoatConstant::CacheEqual, int>
-    LoatConstant::cache;
-
-// ==============================
-// LoatPlus Implementation
-// ==============================
-
-LoatPlus::LoatPlus(const LoatExprVec &arguments)
-    : LoatExpression(LoatKind::Plus), args(arguments) {}
-
-LoatPlus::~LoatPlus() = default;
-
-const LoatExprVec &LoatPlus::getArgs() const
+// Stream output for variable
+std::ostream &operator<<(std::ostream &s, const LoatVarPtr e)
 {
-    return args;
+    return s << e->getName();
 }
 
-std::string LoatPlus::toString() const
+// Stream output for expressions
+std::ostream &operator<<(std::ostream &s, const LoatExprPtr e)
 {
-    std::ostringstream out;
-    out << "(";
-    for (size_t i = 0; i < args.size(); ++i)
+    switch (e->getKind())
     {
-        out << args[i]->toString();
-        if (i != args.size() - 1)
+    case LoatExpression::Kind::Plus:
+    {
+        s << "(";
+        const auto add = std::static_pointer_cast<const LoatAdd>(e.as_nullable());
+        bool first = true;
+        for (const auto &arg : add->getArgs())
         {
-            out << " + ";
+            if (!first)
+                s << " + ";
+            s << arg;
+            first = false;
         }
+        return s << ")";
     }
-    out << ")";
-    return out.str();
-}
-
-bool LoatPlus::CacheEqual::operator()(const std::tuple<LoatExprVec> &a, const std::tuple<LoatExprVec> &b) const noexcept
-{
-    return std::get<0>(a) == std::get<0>(b);
-}
-
-size_t LoatPlus::CacheHash::operator()(const std::tuple<LoatExprVec> &a) const noexcept
-{
-    size_t hash = 0;
-    const auto &vec = std::get<0>(a);
-    boost::hash_range(hash, vec.begin(), vec.end());
-    return hash;
-}
-
-ConsHash<LoatExpression, LoatPlus, LoatPlus::CacheHash, LoatPlus::CacheEqual, LoatExprVec>
-    LoatPlus::cache;
-
-// ==============================
-// Factory Functions
-// ==============================
-
-LoatExprPtr makeConst(int value)
-{
-    return LoatConstant::cache.from_cache(value)->toPtr();
-}
-
-LoatExprPtr makePlus(const LoatExprPtr &a, const LoatExprPtr &b)
-{
-    return makePlus(LoatExprVec{a, b});
-}
-
-LoatExprPtr makePlus(const LoatExprVec &args)
-{
-    return LoatPlus::cache.from_cache(args)->toPtr();
+    // case LoatExpression::Kind::Times:
+    // {
+    //     s << "(";
+    //     const auto mult = std::static_pointer_cast<const LoatMult>(e.as_nullable());
+    //     bool first = true;
+    //     for (const auto &arg : mult->getArgs())
+    //     {
+    //         if (!first)
+    //             s << " * ";
+    //         s << arg;
+    //         first = false;
+    //     }
+    //     return s << ")";
+    // }
+    // case LoatExpression::Kind::Mod:
+    // {
+    //     const auto mod = std::static_pointer_cast<const LoatMod>(e.as_nullable());
+    //     return s << "(" << mod->getLhs() << " % " << mod->getRhs() << ")";
+    // }
+    // case LoatExpression::Kind::Exp:
+    // {
+    //     const auto exp = std::static_pointer_cast<const LoatExp>(e.as_nullable());
+    //     return s << "(" << exp->getBase() << " ^ " << exp->getExponent() << ")";
+    // }
+    case LoatExpression::Kind::Constant:
+    {
+        const auto c = std::static_pointer_cast<const LoatConst>(e.as_nullable());
+        return s << c->getValue();
+    }
+    // case LoatExpression::Kind::Variable:
+    // {
+    //     const auto v = std::static_pointer_cast<const LoatVar>(e.as_nullable());
+    //     return s << v->getName();
+    // }
+    default:
+        return s << "<unknown expr>";
+    }
 }
