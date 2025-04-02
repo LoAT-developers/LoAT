@@ -90,7 +90,7 @@ void parseFlags(int argc, char *argv[]) {
             Config::Output::PrintDependencyGraph = true;
         } else if (strcmp("--log", argv[arg]) == 0) {
             Config::Analysis::log = true;
-        } else if (strcmp("--model", argv[arg]) == 0) {
+        } else if (strcmp("--proof", argv[arg]) == 0) {
             Config::Analysis::model = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
             std::string str = getNext();
