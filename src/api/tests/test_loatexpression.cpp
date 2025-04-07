@@ -61,3 +61,94 @@ TEST(LoatAddTest, AddMultiple)
     ss << sum;
     EXPECT_EQ(ss.str(), "(1 + 2 + 3)");
 }
+
+TEST(LoatMultTest, CreateSimpleMultiplication)
+{
+    auto a = mkConst(4);
+    auto b = mkConst(5);
+    auto product = mkTimes(a, b);
+
+    EXPECT_EQ(product->getKind(), Kind::Times);
+
+    std::stringstream ss;
+    ss << product;
+    EXPECT_EQ(ss.str(), "(4 * 5)");
+}
+
+TEST(LoatMultTest, MultiplyMultiple)
+{
+    auto x = mkConst(2);
+    auto y = mkConst(3);
+    auto z = mkConst(4);
+
+    auto prod = mkTimes({x, y, z});
+
+    std::stringstream ss;
+    ss << prod;
+    EXPECT_EQ(ss.str(), "(2 * 3 * 4)");
+}
+
+TEST(LoatOperatorTest, PlusOperator)
+{
+    auto x = mkConst(3);
+    auto y = mkConst(4);
+    auto result = x + y;
+
+    EXPECT_EQ(result->getKind(), Kind::Plus);
+}
+
+TEST(LoatOperatorTest, MinusOperator)
+{
+    auto x = mkConst(10);
+    auto y = mkConst(3);
+    auto result = x - y;
+
+    std::stringstream ss;
+    ss << result;
+    EXPECT_EQ(ss.str(), "(10 + (-1 * 3))");
+}
+
+TEST(LoatOperatorTest, UnaryMinusOperator)
+{
+    auto x = mkConst(7);
+    auto neg = -x;
+
+    std::stringstream ss;
+    ss << neg;
+    EXPECT_EQ(ss.str(), "(-1 * 7)");
+}
+
+TEST(LoatOperatorTest, TimesOperator)
+{
+    auto x = mkConst(2);
+    auto y = mkConst(3);
+    auto result = x * y;
+
+    std::stringstream ss;
+    ss << result;
+    EXPECT_EQ(ss.str(), "(2 * 3)");
+}
+
+// TEST(LoatOperatorTest, PowerOperator)
+// {
+//     auto base = mkConst(2);
+//     auto exp = mkConst(5);
+//     auto result = base ^ exp;
+
+//     EXPECT_EQ(result->getKind(), Kind::Exp);
+
+//     std::stringstream ss;
+//     ss << result;
+//     EXPECT_EQ(ss.str(), "(2 ^ 5)");
+// }
+
+TEST(LoatOperatorTest, DivideMethod)
+{
+    auto expr = mkConst(10);
+    Rational r(5);
+    auto div = expr->divide(r);
+
+    std::stringstream ss;
+    ss << div;
+    EXPECT_EQ(ss.str(), "(1/5 * 10)");
+}

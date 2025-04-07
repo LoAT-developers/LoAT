@@ -33,15 +33,40 @@ LoatExprPtr LoatExpr::toPtr() const
     return cpp::assume_not_null(shared_from_this());
 }
 
+LoatExprPtr operator-(const LoatExprPtr x)
+{
+    return LoatExpression::mkTimes(LoatExpression::mkConst(Rational(-1)), x);
+}
+
+LoatExprPtr operator-(const LoatExprPtr x, const LoatExprPtr y)
+{
+    return LoatExpression::mkPlus(x, -y);
+}
+
+LoatExprPtr operator+(const LoatExprPtr x, const LoatExprPtr y)
+{
+    return LoatExpression::mkPlus(x, y);
+}
+
+LoatExprPtr operator*(const LoatExprPtr x, const LoatExprPtr y)
+{
+    return LoatExpression::mkTimes(x, y);
+}
+
+// ADD WHEN WE HAVE EXP
+//  LoatExprPtr operator^(const LoatExprPtr x, const LoatExprPtr y)
+//  {
+//      return LoatExpression::mkExp(x, y);
+//  }
+
 // Divide the expression by a rational number
-// ADD WHEN WE HAVE TIMES
-// LoatExprPtr LoatExpr::divide(const Rational &y) const
-// {
-//     return LoatExpression::mkTimes(LoatExpression::mkConst(Rational(
-//                                        boost::multiprecision::denominator(y),
-//                                        boost::multiprecision::numerator(y))),
-//                                    toPtr());
-// }
+LoatExprPtr LoatExpr::divide(const Rational &y) const
+{
+    return LoatExpression::mkTimes(LoatExpression::mkConst(Rational(
+                                       boost::multiprecision::denominator(y),
+                                       boost::multiprecision::numerator(y))),
+                                   toPtr());
+}
 
 // Convert variable pointer to expression pointer
 LoatExprPtr LoatExpression::toExpr(const LoatVarPtr &x)
@@ -74,20 +99,20 @@ std::ostream &operator<<(std::ostream &s, const LoatExprPtr e)
         }
         return s << ")";
     }
-    // case LoatExpression::Kind::Times:
-    // {
-    //     s << "(";
-    //     const auto mult = std::static_pointer_cast<const LoatMult>(e.as_nullable());
-    //     bool first = true;
-    //     for (const auto &arg : mult->getArgs())
-    //     {
-    //         if (!first)
-    //             s << " * ";
-    //         s << arg;
-    //         first = false;
-    //     }
-    //     return s << ")";
-    // }
+    case LoatExpression::Kind::Times:
+    {
+        s << "(";
+        const auto mult = std::static_pointer_cast<const LoatMult>(e.as_nullable());
+        bool first = true;
+        for (const auto &arg : mult->getArgs())
+        {
+            if (!first)
+                s << " * ";
+            s << arg;
+            first = false;
+        }
+        return s << ")";
+    }
     // case LoatExpression::Kind::Mod:
     // {
     //     const auto mod = std::static_pointer_cast<const LoatMod>(e.as_nullable());

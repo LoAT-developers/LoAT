@@ -50,12 +50,10 @@ namespace LoatExpression
     };
 
     // Factory methods to create expressions
-    LoatExprPtr mkPlusImpl(LoatExprVec &&args);
     LoatExprPtr mkPlus(LoatExprVec &&args);
     LoatExprPtr mkPlus(LoatExprPtr, LoatExprPtr);
-    // LoatExprPtr mkTimesImpl(LoatExprVec &&args);
-    // LoatExprPtr mkTimes(LoatExprVec &&args);
-    // LoatExprPtr mkTimes(const LoatExprPtr, const LoatExprPtr);
+    LoatExprPtr mkTimes(LoatExprVec &&args);
+    LoatExprPtr mkTimes(const LoatExprPtr, const LoatExprPtr);
     // LoatExprPtr mkMod(LoatExprPtr x, LoatExprPtr y);
     LoatExprPtr mkConst(const Rational &r);
     LoatExprPtr mkConst(const Rational &&r);
@@ -86,8 +84,7 @@ public:
     LoatExprPtr toPtr() const;
 
     // Divides this expression by a rational constant
-    // ADD WHEN WE HAVE TIMES
-    // LoatExprPtr divide(const Rational &d) const;
+    LoatExprPtr divide(const Rational &d) const;
 
     // Operator overloads for symbolic math
     friend LoatExprPtr operator^(const LoatExprPtr x, const LoatExprPtr y);
@@ -131,9 +128,8 @@ private:
  */
 class LoatAdd : public LoatExpr
 {
-    friend LoatExprPtr LoatExpression::mkPlusImpl(LoatExprVec &&args);
     friend LoatExprPtr LoatExpression::mkPlus(LoatExprPtr, LoatExprPtr);
-    friend LoatExprPtr mkPlus(LoatExprVec &&args);
+    friend LoatExprPtr LoatExpression::mkPlus(LoatExprVec &&args);
     friend class LoatExpr;
 
 public:
@@ -155,6 +151,38 @@ private:
 public:
     LoatAdd(const LoatExprSet &args);
     ~LoatAdd();
+};
+
+/**
+ * Represents a multiplication expression.
+ */
+class LoatMult : public LoatExpr
+{
+    friend LoatExprPtr LoatExpression::mkTimes(LoatExprPtr, LoatExprPtr);
+    friend LoatExprPtr LoatExpression::mkTimes(LoatExprVec &&args);
+    friend class LoatExpr;
+
+public:
+    const LoatExprSet &getArgs() const;
+
+private:
+    LoatExprSet m_args;
+
+    struct CacheEqual
+    {
+        bool operator()(const std::tuple<LoatExprSet> &args1, const std::tuple<LoatExprSet> &args2) const noexcept;
+    };
+
+    struct CacheHash
+    {
+        size_t operator()(const std::tuple<LoatExprSet> &args) const noexcept;
+    };
+
+    static ConsHash<LoatExpr, LoatMult, CacheHash, CacheEqual, LoatExprSet> cache;
+
+public:
+    LoatMult(const LoatExprSet &args);
+    ~LoatMult();
 };
 
 // Hash functions for expression pointers
