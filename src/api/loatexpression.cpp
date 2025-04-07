@@ -5,6 +5,17 @@
 #include <numeric>
 #include <sstream>
 
+// Factory Method to create Variable
+LoatExprPtr LoatExpression::mkVar(const int idx)
+{
+    if (idx < 0)
+    {
+        throw std::invalid_argument("Temporary variables (negative indices) are not allowed in LoatExpression API.");
+    }
+
+    return theory::mkVar<theory::Type::Int, LoatExpr>(idx);
+}
+
 // Hash function for expression pointers
 std::size_t hash_value(const LoatExprPtr &x)
 {
@@ -128,11 +139,11 @@ std::ostream &operator<<(std::ostream &s, const LoatExprPtr e)
         const auto c = std::static_pointer_cast<const LoatConst>(e.as_nullable());
         return s << c->getValue();
     }
-    // case LoatExpression::Kind::Variable:
-    // {
-    //     const auto v = std::static_pointer_cast<const LoatVar>(e.as_nullable());
-    //     return s << v->getName();
-    // }
+    case LoatExpression::Kind::Variable:
+    {
+        const auto v = std::static_pointer_cast<const LoatVar>(e.as_nullable());
+        return s << v->getName();
+    }
     default:
         return s << "<unknown expr>";
     }

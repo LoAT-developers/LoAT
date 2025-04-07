@@ -4,6 +4,7 @@
 
 using namespace LoatExpression;
 
+// CONST
 TEST(LoatConstTest, CreateAndCompare)
 {
     auto c1 = mkConst(5);
@@ -23,6 +24,7 @@ TEST(LoatConstTest, PrintConst)
     EXPECT_EQ(ss.str(), "42");
 }
 
+// ADD
 TEST(LoatAddTest, CreateSimpleAddition)
 {
     auto a = mkConst(1);
@@ -75,6 +77,7 @@ TEST(LoatMultTest, CreateSimpleMultiplication)
     EXPECT_EQ(ss.str(), "(4 * 5)");
 }
 
+// MULT
 TEST(LoatMultTest, MultiplyMultiple)
 {
     auto x = mkConst(2);
@@ -88,6 +91,7 @@ TEST(LoatMultTest, MultiplyMultiple)
     EXPECT_EQ(ss.str(), "(2 * 3 * 4)");
 }
 
+// MOD
 TEST(LoatModTest, SimpleMod)
 {
     auto x = mkConst(10);
@@ -101,6 +105,47 @@ TEST(LoatModTest, SimpleMod)
     EXPECT_EQ(ss.str(), "(10 % 3)");
 }
 
+// VAR
+TEST(LoatVarTest, MkVarCreatesValidVariable)
+{
+    auto v = mkVar(5);
+    EXPECT_EQ(v->getKind(), Kind::Variable);
+}
+
+TEST(LoatVarTest, MkVarThrowsOnNegativeIndex)
+{
+    EXPECT_THROW({ mkVar(-3); }, std::invalid_argument);
+}
+
+TEST(LoatVarTest, VarOutputsCorrectly)
+{
+    auto v = mkVar(2);
+
+    EXPECT_EQ(v->getKind(), Kind::Variable);
+
+    std::stringstream ss;
+    ss << v;
+    EXPECT_EQ(ss.str(), "b2");
+}
+
+TEST(LoatExpressionTest, BuildExpressionWithConstAndVar)
+{
+    auto x = mkVar(1);
+    auto c1 = mkConst(3);
+    auto c2 = mkConst(7);
+
+    auto mul = mkTimes(c1, x);
+    auto sum = mkPlus(mul, c2);
+
+    EXPECT_EQ(sum->getKind(), Kind::Plus);
+
+    std::stringstream ss;
+    ss << sum;
+
+    EXPECT_EQ(ss.str(), "((3 * b1) + 7)");
+}
+
+// OPERATOR
 TEST(LoatOperatorTest, PlusOperator)
 {
     auto x = mkConst(3);

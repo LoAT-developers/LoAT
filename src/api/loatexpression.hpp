@@ -58,7 +58,7 @@ namespace LoatExpression
     LoatExprPtr mkConst(const Rational &r);
     LoatExprPtr mkConst(const Rational &&r);
     // LoatExprPtr mkExp(const LoatExprPtr base, const LoatExprPtr exponent);
-    // LoatExprPtr mkVar(const int idx);
+    LoatExprPtr mkVar(const int idx);
 
     LoatExprPtr toExpr(const LoatVarPtr &);
 }
