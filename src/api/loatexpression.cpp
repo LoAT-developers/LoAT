@@ -44,6 +44,7 @@ LoatExprPtr LoatExpr::toPtr() const
     return cpp::assume_not_null(shared_from_this());
 }
 
+// Overload operators +,-,*,^
 LoatExprPtr operator-(const LoatExprPtr x)
 {
     return LoatExpression::mkTimes(LoatExpression::mkConst(Rational(-1)), x);
@@ -64,11 +65,10 @@ LoatExprPtr operator*(const LoatExprPtr x, const LoatExprPtr y)
     return LoatExpression::mkTimes(x, y);
 }
 
-// ADD WHEN WE HAVE EXP
-//  LoatExprPtr operator^(const LoatExprPtr x, const LoatExprPtr y)
-//  {
-//      return LoatExpression::mkExp(x, y);
-//  }
+LoatExprPtr operator^(const LoatExprPtr x, const LoatExprPtr y)
+{
+    return LoatExpression::mkExp(x, y);
+}
 
 // Divide the expression by a rational number
 LoatExprPtr LoatExpr::divide(const Rational &y) const
@@ -129,11 +129,11 @@ std::ostream &operator<<(std::ostream &s, const LoatExprPtr e)
         const auto mod = std::static_pointer_cast<const LoatMod>(e.as_nullable());
         return s << "(" << mod->getLhs() << " % " << mod->getRhs() << ")";
     }
-    // case LoatExpression::Kind::Exp:
-    // {
-    //     const auto exp = std::static_pointer_cast<const LoatExp>(e.as_nullable());
-    //     return s << "(" << exp->getBase() << " ^ " << exp->getExponent() << ")";
-    // }
+    case LoatExpression::Kind::Exp:
+    {
+        const auto exp = std::static_pointer_cast<const LoatExp>(e.as_nullable());
+        return s << "(" << exp->getBase() << " ^ " << exp->getExponent() << ")";
+    }
     case LoatExpression::Kind::Constant:
     {
         const auto c = std::static_pointer_cast<const LoatConst>(e.as_nullable());

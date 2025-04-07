@@ -105,6 +105,18 @@ TEST(LoatModTest, SimpleMod)
     EXPECT_EQ(ss.str(), "(10 % 3)");
 }
 
+// EXP
+TEST(LoatExpTest, PowerExpression)
+{
+    auto base = mkConst(2);
+    auto exp = mkConst(3);
+    auto result = mkExp(base, exp);
+
+    std::stringstream ss;
+    ss << result;
+    EXPECT_EQ(ss.str(), "(2 ^ 3)");
+}
+
 // VAR
 TEST(LoatVarTest, MkVarCreatesValidVariable)
 {
@@ -187,18 +199,18 @@ TEST(LoatOperatorTest, TimesOperator)
     EXPECT_EQ(ss.str(), "(2 * 3)");
 }
 
-// TEST(LoatOperatorTest, PowerOperator)
-// {
-//     auto base = mkConst(2);
-//     auto exp = mkConst(5);
-//     auto result = base ^ exp;
+TEST(LoatOperatorTest, PowerOperator)
+{
+    auto base = mkConst(2);
+    auto exp = mkConst(5);
+    auto result = base ^ exp;
 
-//     EXPECT_EQ(result->getKind(), Kind::Exp);
+    EXPECT_EQ(result->getKind(), Kind::Exp);
 
-//     std::stringstream ss;
-//     ss << result;
-//     EXPECT_EQ(ss.str(), "(2 ^ 5)");
-// }
+    std::stringstream ss;
+    ss << result;
+    EXPECT_EQ(ss.str(), "(2 ^ 5)");
+}
 
 TEST(LoatOperatorTest, DivideMethod)
 {

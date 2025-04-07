@@ -39,6 +39,7 @@ using loat_var_map = boost::bimap<boost::bimaps::unordered_set_of<LoatVarPtr>, b
 
 namespace LoatExpression
 {
+    // Type of expression
     enum class Kind
     {
         Plus,
@@ -57,7 +58,7 @@ namespace LoatExpression
     LoatExprPtr mkMod(LoatExprPtr x, LoatExprPtr y);
     LoatExprPtr mkConst(const Rational &r);
     LoatExprPtr mkConst(const Rational &&r);
-    // LoatExprPtr mkExp(const LoatExprPtr base, const LoatExprPtr exponent);
+    LoatExprPtr mkExp(const LoatExprPtr base, const LoatExprPtr exponent);
     LoatExprPtr mkVar(const int idx);
 
     LoatExprPtr toExpr(const LoatVarPtr &);
@@ -217,6 +218,39 @@ private:
 public:
     LoatMod(const LoatExprPtr lhs, const LoatExprPtr rhs);
     ~LoatMod();
+};
+
+/**
+ * Represents an exponential expression: (a ^ b)
+ */
+class LoatExp : public LoatExpr
+{
+    friend LoatExprPtr LoatExpression::mkExp(const LoatExprPtr base, const LoatExprPtr exponent);
+    friend class LoatExpr;
+
+private:
+    LoatExprPtr m_base;
+    LoatExprPtr m_exponent;
+
+    struct CacheEqual
+    {
+        bool operator()(const std::tuple<LoatExprPtr, LoatExprPtr> &a,
+                        const std::tuple<LoatExprPtr, LoatExprPtr> &b) const noexcept;
+    };
+
+    struct CacheHash
+    {
+        size_t operator()(const std::tuple<LoatExprPtr, LoatExprPtr> &a) const noexcept;
+    };
+
+    static ConsHash<LoatExpr, LoatExp, CacheHash, CacheEqual, LoatExprPtr, LoatExprPtr> cache;
+
+public:
+    LoatExp(const LoatExprPtr base, const LoatExprPtr exponent);
+    ~LoatExp();
+
+    LoatExprPtr getBase() const;
+    LoatExprPtr getExponent() const;
 };
 
 // Hash functions for expression pointers
