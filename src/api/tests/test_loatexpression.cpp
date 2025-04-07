@@ -88,6 +88,19 @@ TEST(LoatMultTest, MultiplyMultiple)
     EXPECT_EQ(ss.str(), "(2 * 3 * 4)");
 }
 
+TEST(LoatModTest, SimpleMod)
+{
+    auto x = mkConst(10);
+    auto y = mkConst(3);
+    auto mod = mkMod(x, y);
+
+    EXPECT_EQ(mod->getKind(), Kind::Mod);
+
+    std::stringstream ss;
+    ss << mod;
+    EXPECT_EQ(ss.str(), "(10 % 3)");
+}
+
 TEST(LoatOperatorTest, PlusOperator)
 {
     auto x = mkConst(3);

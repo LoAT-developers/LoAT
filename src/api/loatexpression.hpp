@@ -54,7 +54,7 @@ namespace LoatExpression
     LoatExprPtr mkPlus(LoatExprPtr, LoatExprPtr);
     LoatExprPtr mkTimes(LoatExprVec &&args);
     LoatExprPtr mkTimes(const LoatExprPtr, const LoatExprPtr);
-    // LoatExprPtr mkMod(LoatExprPtr x, LoatExprPtr y);
+    LoatExprPtr mkMod(LoatExprPtr x, LoatExprPtr y);
     LoatExprPtr mkConst(const Rational &r);
     LoatExprPtr mkConst(const Rational &&r);
     // LoatExprPtr mkExp(const LoatExprPtr base, const LoatExprPtr exponent);
@@ -183,6 +183,40 @@ private:
 public:
     LoatMult(const LoatExprSet &args);
     ~LoatMult();
+};
+
+/**
+ * Represents a modulo expression: (a mod b)
+ */
+class LoatMod : public LoatExpr
+{
+    friend LoatExprPtr LoatExpression::mkMod(LoatExprPtr x, LoatExprPtr y);
+    friend class LoatExpr;
+
+public:
+    const LoatExprPtr getLhs() const;
+    const LoatExprPtr getRhs() const;
+
+private:
+    LoatExprPtr m_lhs;
+    LoatExprPtr m_rhs;
+
+    struct CacheEqual
+    {
+        bool operator()(const std::tuple<LoatExprPtr, LoatExprPtr> &a,
+                        const std::tuple<LoatExprPtr, LoatExprPtr> &b) const noexcept;
+    };
+
+    struct CacheHash
+    {
+        size_t operator()(const std::tuple<LoatExprPtr, LoatExprPtr> &a) const noexcept;
+    };
+
+    static ConsHash<LoatExpr, LoatMod, CacheHash, CacheEqual, LoatExprPtr, LoatExprPtr> cache;
+
+public:
+    LoatMod(const LoatExprPtr lhs, const LoatExprPtr rhs);
+    ~LoatMod();
 };
 
 // Hash functions for expression pointers

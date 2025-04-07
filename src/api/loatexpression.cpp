@@ -113,11 +113,11 @@ std::ostream &operator<<(std::ostream &s, const LoatExprPtr e)
         }
         return s << ")";
     }
-    // case LoatExpression::Kind::Mod:
-    // {
-    //     const auto mod = std::static_pointer_cast<const LoatMod>(e.as_nullable());
-    //     return s << "(" << mod->getLhs() << " % " << mod->getRhs() << ")";
-    // }
+    case LoatExpression::Kind::Mod:
+    {
+        const auto mod = std::static_pointer_cast<const LoatMod>(e.as_nullable());
+        return s << "(" << mod->getLhs() << " % " << mod->getRhs() << ")";
+    }
     // case LoatExpression::Kind::Exp:
     // {
     //     const auto exp = std::static_pointer_cast<const LoatExp>(e.as_nullable());
