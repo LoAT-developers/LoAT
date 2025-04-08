@@ -1,47 +1,32 @@
 #include "loatexpression.hpp"
+#include <string>
 
-ConsHash<LoatExpr, LoatVar, LoatVar::CacheHash, LoatVar::CacheEqual, int> LoatVar::cache;
+ConsHash<LoatExpr, LoatVar, LoatVar::CacheHash, LoatVar::CacheEqual, std::string> LoatVar::cache;
 
-LoatVar::LoatVar(int idx) : LoatExpr(LoatExpression::Kind::Variable), m_idx(idx) {}
+LoatVar::LoatVar(const std::string &name) : LoatExpr(LoatExpression::Kind::Variable), m_name(name) {}
 
 LoatVar::~LoatVar()
 {
-    cache.erase(m_idx);
-}
-
-int LoatVar::getIdx() const
-{
-    return m_idx;
+    cache.erase(m_name);
 }
 
 std::string LoatVar::getName() const
 {
-    if (m_idx > 0)
-    {
-        return "x" + std::to_string(m_idx);
-    }
-    else
-    {
-        return "t" + std::to_string(-m_idx);
-    }
+    return m_name;
 }
 
-bool LoatVar::CacheEqual::operator()(const std::tuple<int> &a, const std::tuple<int> &b) const noexcept
+bool LoatVar::CacheEqual::operator()(const std::tuple<std::string> &a, const std::tuple<std::string> &b) const noexcept
 {
     return a == b;
 }
 
-size_t LoatVar::CacheHash::operator()(const std::tuple<int> &a) const noexcept
+size_t LoatVar::CacheHash::operator()(const std::tuple<std::string> &a) const noexcept
 {
-    return std::hash<int>{}(std::get<0>(a));
+    return std::hash<std::string>{}(std::get<0>(a));
 }
 
 // Factory Method to create Variable
-LoatExprPtr LoatExpression::mkVar(const int idx)
+LoatExprPtr LoatExpression::mkVar(const std::string &name)
 {
-    if (idx < 0)
-    {
-        throw std::invalid_argument("Negative variable indices are not allowed.");
-    }
-    return LoatVar::cache.from_cache(idx)->toPtr();
+    return LoatVar::cache.from_cache(name)->toPtr();
 }

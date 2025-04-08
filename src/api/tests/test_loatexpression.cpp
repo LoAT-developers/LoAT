@@ -120,28 +120,23 @@ TEST(LoatExpTest, PowerExpression)
 // VAR
 TEST(LoatVarTest, MkVarCreatesValidVariable)
 {
-    auto v = mkVar(5);
+    auto v = mkVar("x");
     EXPECT_EQ(v->getKind(), Kind::Variable);
-}
-
-TEST(LoatVarTest, MkVarThrowsOnNegativeIndex)
-{
-    EXPECT_THROW({ mkVar(-3); }, std::invalid_argument);
 }
 
 TEST(LoatVarTest, VarOutputsCorrectly)
 {
-    auto v = mkVar(2);
+    auto v = mkVar("foo");
     EXPECT_EQ(v->getKind(), Kind::Variable);
 
     std::stringstream ss;
     ss << v;
-    EXPECT_EQ(ss.str(), "x2");
+    EXPECT_EQ(ss.str(), "foo");
 }
 
 TEST(LoatExpressionTest, BuildExpressionWithConstAndVar)
 {
-    auto x = mkVar(1);
+    auto x = mkVar("counter");
     auto c1 = mkConst(3);
     auto c2 = mkConst(7);
 
@@ -153,13 +148,13 @@ TEST(LoatExpressionTest, BuildExpressionWithConstAndVar)
     std::stringstream ss;
     ss << sum;
 
-    EXPECT_EQ(ss.str(), "((3 * x1) + 7)");
+    EXPECT_EQ(ss.str(), "((3 * counter) + 7)");
 }
 
-TEST(LoatVarTest, SameIndexReturnsSamePointer)
+TEST(LoatVarTest, SameNameReturnsSamePointer)
 {
-    auto v1 = mkVar(42);
-    auto v2 = mkVar(42);
+    auto v1 = mkVar("i");
+    auto v2 = mkVar("i");
 
     EXPECT_EQ(v1, v2);
 }

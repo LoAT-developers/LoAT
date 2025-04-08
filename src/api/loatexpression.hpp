@@ -5,6 +5,7 @@
 #include <functional>
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
+#include <string>
 
 #include "linkedhashset.hpp"
 #include "linkedhashmap.hpp"
@@ -59,7 +60,7 @@ namespace LoatExpression
     LoatExprPtr mkConst(const Rational &r);
     LoatExprPtr mkConst(const Rational &&r);
     LoatExprPtr mkExp(const LoatExprPtr base, const LoatExprPtr exponent);
-    LoatExprPtr mkVar(const int idx);
+    LoatExprPtr mkVar(const std::string &name);
 }
 
 /**
@@ -256,29 +257,28 @@ public:
  */
 class LoatVar : public LoatExpr
 {
-    friend LoatExprPtr LoatExpression::mkVar(int);
+    friend LoatExprPtr LoatExpression::mkVar(const std::string &name);
     friend class LoatExpr;
 
 private:
-    int m_idx;
+    std::string m_name;
 
     struct CacheEqual
     {
-        bool operator()(const std::tuple<int> &a, const std::tuple<int> &b) const noexcept;
+        bool operator()(const std::tuple<std::string> &a, const std::tuple<std::string> &b) const noexcept;
     };
 
     struct CacheHash
     {
-        size_t operator()(const std::tuple<int> &a) const noexcept;
+        size_t operator()(const std::tuple<std::string> &a) const noexcept;
     };
 
-    static ConsHash<LoatExpr, LoatVar, CacheHash, CacheEqual, int> cache;
+    static ConsHash<LoatExpr, LoatVar, CacheHash, CacheEqual, std::string> cache;
 
 public:
-    explicit LoatVar(int idx);
+    explicit LoatVar(const std::string &name);
     ~LoatVar();
 
-    int getIdx() const;
     std::string getName() const;
 };
 
