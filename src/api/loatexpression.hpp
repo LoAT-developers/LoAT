@@ -14,13 +14,13 @@
 #include "var.hpp"
 
 class LoatExpr;
-using LoatVar = TVar<theory::Type::Int, LoatExpr>;
 
 class LoatConst;
 class LoatExp;
 class LoatAdd;
 class LoatMult;
 class LoatMod;
+class LoatVar;
 
 using LoatExprPtr = cpp::not_null<std::shared_ptr<const LoatExpr>>;
 using LoatVarPtr = cpp::not_null<std::shared_ptr<const LoatVar>>;
@@ -251,6 +251,37 @@ public:
 
     LoatExprPtr getBase() const;
     LoatExprPtr getExponent() const;
+};
+
+/**
+ * Represents an Variable
+ */
+class LoatVar : public LoatExpr
+{
+    friend LoatExprPtr LoatExpression::mkVar(int);
+    friend class LoatExpr;
+
+private:
+    int m_idx;
+
+    struct CacheEqual
+    {
+        bool operator()(const std::tuple<int> &a, const std::tuple<int> &b) const noexcept;
+    };
+
+    struct CacheHash
+    {
+        size_t operator()(const std::tuple<int> &a) const noexcept;
+    };
+
+    static ConsHash<LoatExpr, LoatVar, CacheHash, CacheEqual, int> cache;
+
+public:
+    explicit LoatVar(int idx);
+    ~LoatVar();
+
+    int getIdx() const;
+    std::string getName() const;
 };
 
 // Hash functions for expression pointers

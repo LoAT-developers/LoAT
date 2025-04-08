@@ -132,12 +132,11 @@ TEST(LoatVarTest, MkVarThrowsOnNegativeIndex)
 TEST(LoatVarTest, VarOutputsCorrectly)
 {
     auto v = mkVar(2);
-
     EXPECT_EQ(v->getKind(), Kind::Variable);
 
     std::stringstream ss;
     ss << v;
-    EXPECT_EQ(ss.str(), "b2");
+    EXPECT_EQ(ss.str(), "x2");
 }
 
 TEST(LoatExpressionTest, BuildExpressionWithConstAndVar)
@@ -154,7 +153,15 @@ TEST(LoatExpressionTest, BuildExpressionWithConstAndVar)
     std::stringstream ss;
     ss << sum;
 
-    EXPECT_EQ(ss.str(), "((3 * b1) + 7)");
+    EXPECT_EQ(ss.str(), "((3 * x1) + 7)");
+}
+
+TEST(LoatVarTest, SameIndexReturnsSamePointer)
+{
+    auto v1 = mkVar(42);
+    auto v2 = mkVar(42);
+
+    EXPECT_EQ(v1, v2);
 }
 
 // OPERATOR
