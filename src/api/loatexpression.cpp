@@ -68,12 +68,6 @@ LoatExprPtr LoatExpr::divide(const Rational &y) const
                                    toPtr());
 }
 
-// Convert variable pointer to expression pointer
-LoatExprPtr LoatExpression::toExpr(const LoatVarPtr &x)
-{
-    return cpp::assume_not_null(x->shared_from_this());
-}
-
 // Stream output for variable
 std::ostream &operator<<(std::ostream &s, const LoatVarPtr e)
 {
