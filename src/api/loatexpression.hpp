@@ -253,7 +253,7 @@ public:
 };
 
 /**
- * Represents an Variable
+ * Represents a Variable
  */
 class LoatVar : public LoatExpr
 {
