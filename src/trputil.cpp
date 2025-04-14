@@ -343,9 +343,10 @@ bool TRPUtil::build_cex() {
             std::cout << "accelerating " << *rule << std::endl;
         }
         const auto accel_res {LoopAcceleration::accelerate(rule, AccelConfig{
-            .tryNonterm=false,
-            .tryAccel=true,
-            .n=ArithVar::next()
+            false,
+            true,
+            ArithVar::next(),
+            arith::mkConst(0)
         })};
         if (accel_res.accel) {
             if (Config::Analysis::log) {

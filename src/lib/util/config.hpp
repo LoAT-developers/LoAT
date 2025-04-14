@@ -24,7 +24,7 @@ namespace Config {
     // Main algorithm
     namespace Analysis {
 
-        enum Mode { Complexity, Termination, Safety };
+        enum Mode { Complexity, Termination, RelativeTermination, Safety };
         enum Engine { ADCL, BMC, ABMC, TRL, KIND, ADCLSAT };
         enum SmtSolver { Z3, CVC5, Swine, Yices, Heuristic };
         enum Direction {Forward, Backward, Interleaved};
@@ -40,6 +40,7 @@ namespace Config {
 
         std::string modeName(const Mode mode);
 
+        bool relative_termination();
         bool termination();
         bool tryNonterm();
         bool safety();

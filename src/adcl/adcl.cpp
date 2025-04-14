@@ -515,8 +515,10 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr rule, const Mode
     }
     const auto n {ArithVar::next()};
     const AccelConfig config {
-        .tryNonterm = Config::Analysis::tryNonterm(),
-        .n = n};
+        Config::Analysis::tryNonterm(),
+        true,
+        n,
+        chcs->getCost(simp)};
     const auto accel_res {LoopAcceleration::accelerate(simp, config)};
     if (accel_res.status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
