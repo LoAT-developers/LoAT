@@ -107,22 +107,22 @@ class LoatBoolOr : public LoatBoolExpr
     friend LoatBoolExprPtr LoatBoolExpression::mkOr(const LoatBoolExprVec &&args);
 
 private:
-    LoatBoolExprSet m_args;
+    LoatBoolExprVec m_args;
 
     struct CacheEqual
     {
-        bool operator()(const std::tuple<LoatBoolExprSet> &a, const std::tuple<LoatBoolExprSet> &b) const noexcept;
+        bool operator()(const std::tuple<LoatBoolExprVec> &a, const std::tuple<LoatBoolExprVec> &b) const noexcept;
     };
     struct CacheHash
     {
-        size_t operator()(const std::tuple<LoatBoolExprSet> &a) const noexcept;
+        size_t operator()(const std::tuple<LoatBoolExprVec> &a) const noexcept;
     };
-    static ConsHash<LoatBoolExpr, LoatBoolOr, CacheHash, CacheEqual, LoatBoolExprSet> cache;
+    static ConsHash<LoatBoolExpr, LoatBoolOr, CacheHash, CacheEqual, LoatBoolExprVec> cache;
 
 public:
-    explicit LoatBoolOr(const LoatBoolExprSet &args);
+    explicit LoatBoolOr(const LoatBoolExprVec &args);
     ~LoatBoolOr();
-    const LoatBoolExprSet &getArgs() const;
+    const LoatBoolExprVec &getArgs() const;
 };
 
 /**
@@ -133,24 +133,24 @@ class LoatBoolAnd : public LoatBoolExpr
     friend LoatBoolExprPtr LoatBoolExpression::mkAnd(const LoatBoolExprVec &&args);
 
 private:
-    LoatBoolExprSet m_args;
+    LoatBoolExprVec m_args;
 
     struct CacheEqual
     {
-        bool operator()(const std::tuple<LoatBoolExprSet> &a, const std::tuple<LoatBoolExprSet> &b) const noexcept;
+        bool operator()(const std::tuple<LoatBoolExprVec> &a, const std::tuple<LoatBoolExprVec> &b) const noexcept;
     };
 
     struct CacheHash
     {
-        size_t operator()(const std::tuple<LoatBoolExprSet> &a) const noexcept;
+        size_t operator()(const std::tuple<LoatBoolExprVec> &a) const noexcept;
     };
 
-    static ConsHash<LoatBoolExpr, LoatBoolAnd, CacheHash, CacheEqual, LoatBoolExprSet> cache;
+    static ConsHash<LoatBoolExpr, LoatBoolAnd, CacheHash, CacheEqual, LoatBoolExprVec> cache;
 
 public:
-    explicit LoatBoolAnd(const LoatBoolExprSet &args);
+    explicit LoatBoolAnd(const LoatBoolExprVec &args);
     ~LoatBoolAnd();
-    const LoatBoolExprSet &getArgs() const;
+    const LoatBoolExprVec &getArgs() const;
 };
 
 /**

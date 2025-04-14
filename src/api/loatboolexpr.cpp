@@ -48,9 +48,9 @@ LoatBoolExprPtr LoatBoolExpression::mkVar(const std::string &name)
 // LoatBoolAnd
 // ==============================
 
-ConsHash<LoatBoolExpr, LoatBoolAnd, LoatBoolAnd::CacheHash, LoatBoolAnd::CacheEqual, LoatBoolExprSet> LoatBoolAnd::cache;
+ConsHash<LoatBoolExpr, LoatBoolAnd, LoatBoolAnd::CacheHash, LoatBoolAnd::CacheEqual, LoatBoolExprVec> LoatBoolAnd::cache;
 
-LoatBoolAnd::LoatBoolAnd(const LoatBoolExprSet &args)
+LoatBoolAnd::LoatBoolAnd(const LoatBoolExprVec &args)
     : LoatBoolExpr(LoatBoolExpression::Kind::And), m_args(args) {}
 
 LoatBoolAnd::~LoatBoolAnd()
@@ -58,14 +58,14 @@ LoatBoolAnd::~LoatBoolAnd()
     cache.erase(m_args);
 }
 
-const LoatBoolExprSet &LoatBoolAnd::getArgs() const { return m_args; }
+const LoatBoolExprVec &LoatBoolAnd::getArgs() const { return m_args; }
 
-bool LoatBoolAnd::CacheEqual::operator()(const std::tuple<LoatBoolExprSet> &a, const std::tuple<LoatBoolExprSet> &b) const noexcept
+bool LoatBoolAnd::CacheEqual::operator()(const std::tuple<LoatBoolExprVec> &a, const std::tuple<LoatBoolExprVec> &b) const noexcept
 {
-    return std::get<0>(a) == std::get<0>(b);
+    return a == b;
 }
 
-size_t LoatBoolAnd::CacheHash::operator()(const std::tuple<LoatBoolExprSet> &a) const noexcept
+size_t LoatBoolAnd::CacheHash::operator()(const std::tuple<LoatBoolExprVec> &a) const noexcept
 {
     const auto &[children]{a};
     size_t hash{0};
@@ -75,17 +75,16 @@ size_t LoatBoolAnd::CacheHash::operator()(const std::tuple<LoatBoolExprSet> &a) 
 
 LoatBoolExprPtr LoatBoolExpression::mkAnd(const LoatBoolExprVec &&args)
 {
-    LoatBoolExprSet s(args.begin(), args.end());
-    return LoatBoolAnd::cache.from_cache(s)->toPtr();
+    return LoatBoolAnd::cache.from_cache(args)->toPtr();
 }
 
 // ==============================
 // LoatBoolOr
 // ==============================
 
-ConsHash<LoatBoolExpr, LoatBoolOr, LoatBoolOr::CacheHash, LoatBoolOr::CacheEqual, LoatBoolExprSet> LoatBoolOr::cache;
+ConsHash<LoatBoolExpr, LoatBoolOr, LoatBoolOr::CacheHash, LoatBoolOr::CacheEqual, LoatBoolExprVec> LoatBoolOr::cache;
 
-LoatBoolOr::LoatBoolOr(const LoatBoolExprSet &args)
+LoatBoolOr::LoatBoolOr(const LoatBoolExprVec &args)
     : LoatBoolExpr(LoatBoolExpression::Kind::Or), m_args(args) {}
 
 LoatBoolOr::~LoatBoolOr()
@@ -93,14 +92,14 @@ LoatBoolOr::~LoatBoolOr()
     cache.erase(m_args);
 }
 
-const LoatBoolExprSet &LoatBoolOr::getArgs() const { return m_args; }
+const LoatBoolExprVec &LoatBoolOr::getArgs() const { return m_args; }
 
-bool LoatBoolOr::CacheEqual::operator()(const std::tuple<LoatBoolExprSet> &a, const std::tuple<LoatBoolExprSet> &b) const noexcept
+bool LoatBoolOr::CacheEqual::operator()(const std::tuple<LoatBoolExprVec> &a, const std::tuple<LoatBoolExprVec> &b) const noexcept
 {
-    return std::get<0>(a) == std::get<0>(b);
+    return a == b;
 }
 
-size_t LoatBoolOr::CacheHash::operator()(const std::tuple<LoatBoolExprSet> &a) const noexcept
+size_t LoatBoolOr::CacheHash::operator()(const std::tuple<LoatBoolExprVec> &a) const noexcept
 {
     const auto &[children]{a};
     size_t hash{0};
@@ -110,8 +109,7 @@ size_t LoatBoolOr::CacheHash::operator()(const std::tuple<LoatBoolExprSet> &a) c
 
 LoatBoolExprPtr LoatBoolExpression::mkOr(const LoatBoolExprVec &&args)
 {
-    LoatBoolExprSet s(args.begin(), args.end());
-    return LoatBoolOr::cache.from_cache(s)->toPtr();
+    return LoatBoolOr::cache.from_cache(args)->toPtr();
 }
 
 // ==============================

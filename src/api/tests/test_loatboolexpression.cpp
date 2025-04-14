@@ -76,3 +76,72 @@ TEST(LoatBoolExprTest, CachingAndEquality)
 
     EXPECT_EQ(expr1, expr2);
 }
+
+TEST(LoatBoolExprTest, SimpleJuction)
+{
+    auto x = mkVar("x");
+    auto y = mkVar("y");
+
+    // AND
+    auto expr1 = x && x;
+    auto expr2 = x && y;
+
+    std::cout << expr1 << std::endl;
+    std::cout << expr2 << std::endl;
+
+    std::stringstream s1;
+    s1 << expr1;
+    EXPECT_EQ(s1.str(), "(x && x)");
+
+    std::stringstream s2;
+    s2 << expr2;
+    EXPECT_EQ(s2.str(), "(x && y)");
+
+    // OR
+    auto expr3 = x || x;
+    auto expr4 = x || y;
+
+    std::cout << expr3 << std::endl;
+    std::cout << expr4 << std::endl;
+
+    std::stringstream s3;
+    s3 << expr3;
+    EXPECT_EQ(s3.str(), "(x || x)");
+
+    std::stringstream s4;
+    s4 << expr4;
+    EXPECT_EQ(s4.str(), "(x || y)");
+}
+
+TEST(LoatBoolExprTest, ChainJunctions)
+{
+    auto x = mkVar("x");
+    auto y = mkVar("y");
+    auto z = mkVar("z");
+
+    // AND
+    auto andExpr = x && y && z;
+
+    std::stringstream s1;
+    s1 << andExpr;
+    EXPECT_EQ(s1.str(), "((x && y) && z)");
+
+    // OR
+    auto orExpr = x || y || z;
+
+    std::stringstream s2;
+    s2 << orExpr;
+    EXPECT_EQ(s2.str(), "((x || y) || z)");
+
+    // MIXED
+    auto mixedExpr1 = (x && y) || z;
+    auto mixedExpr2 = x && (y || z);
+
+    std::stringstream s3;
+    s3 << mixedExpr1;
+    EXPECT_EQ(s3.str(), "((x && y) || z)");
+
+    std::stringstream s4;
+    s4 << mixedExpr2;
+    EXPECT_EQ(s4.str(), "(x && (y || z))");
+}
