@@ -154,10 +154,10 @@ ITSSafetyCex ITSSafetyCex::replace_rules(const linked_hash_map<RulePtr, RulePtr>
     for (const auto &[x, y] : recurrent_set) {
         res.add_recurrent_set(map.get(y).value_or(y), map.get(x).value_or(x));
     }
-    res.set_initial_state(states.front());
+    res.set_initial_state(states.front().project(theory::isProgVar));
     for (size_t i = 1; i < num_states(); ++i) {
         auto trans{transitions.at(i - 1)};
-        auto state{states.at(i).project(trans->vars())};
+        auto state{states.at(i).project(theory::isProgVar)};
         if (!res.try_step(map.get(trans).value_or(trans), state)) {
             throw std::logic_error("replace_rules failed");
         }
