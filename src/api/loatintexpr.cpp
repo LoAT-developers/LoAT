@@ -10,9 +10,9 @@ std::size_t hash_value(const LoatIntExprPtr &x)
 {
     return std::hash<std::shared_ptr<const LoatIntExpr>>{}(x.as_nullable());
 }
-std::size_t hash_value(const LoatVarPtr &x)
+std::size_t hash_value(const LoatIntVarPtr &x)
 {
-    return std::hash<std::shared_ptr<const LoatVar>>{}(x.as_nullable());
+    return std::hash<std::shared_ptr<const LoatIntVar>>{}(x.as_nullable());
 }
 
 // Constructor for base expression with specificInt kind
@@ -69,7 +69,7 @@ LoatIntExprPtr LoatIntExpr::divide(const Rational &y) const
 }
 
 // Stream output for variable
-std::ostream &operator<<(std::ostream &s, const LoatVarPtr e)
+std::ostream &operator<<(std::ostream &s, const LoatIntVarPtr e)
 {
     return s << e->getName();
 }
@@ -82,7 +82,7 @@ std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr e)
     case LoatIntExpression::Kind::Plus:
     {
         s << "(";
-        const auto add = std::static_pointer_cast<const LoatAdd>(e.as_nullable());
+        const auto add = std::static_pointer_cast<const LoatIntAdd>(e.as_nullable());
         bool first = true;
         for (const auto &arg : add->getArgs())
         {
@@ -96,7 +96,7 @@ std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr e)
     case LoatIntExpression::Kind::Times:
     {
         s << "(";
-        const auto mult = std::static_pointer_cast<const LoatMult>(e.as_nullable());
+        const auto mult = std::static_pointer_cast<const LoatIntMult>(e.as_nullable());
         bool first = true;
         for (const auto &arg : mult->getArgs())
         {
@@ -109,22 +109,22 @@ std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr e)
     }
     case LoatIntExpression::Kind::Mod:
     {
-        const auto mod = std::static_pointer_cast<const LoatMod>(e.as_nullable());
+        const auto mod = std::static_pointer_cast<const LoatIntMod>(e.as_nullable());
         return s << "(" << mod->getLhs() << " % " << mod->getRhs() << ")";
     }
     case LoatIntExpression::Kind::Exp:
     {
-        const auto exp = std::static_pointer_cast<const LoatExp>(e.as_nullable());
+        const auto exp = std::static_pointer_cast<const LoatIntExp>(e.as_nullable());
         return s << "(" << exp->getBase() << " ^ " << exp->getExponent() << ")";
     }
     case LoatIntExpression::Kind::Constant:
     {
-        const auto c = std::static_pointer_cast<const LoatConst>(e.as_nullable());
+        const auto c = std::static_pointer_cast<const LoatIntConst>(e.as_nullable());
         return s << c->getValue();
     }
     case LoatIntExpression::Kind::Variable:
     {
-        const auto v = std::static_pointer_cast<const LoatVar>(e.as_nullable());
+        const auto v = std::static_pointer_cast<const LoatIntVar>(e.as_nullable());
         return s << v->getName();
     }
     default:

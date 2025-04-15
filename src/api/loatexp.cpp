@@ -1,33 +1,33 @@
 #include "loatintexpr.hpp"
 #include <boost/functional/hash.hpp>
 
-ConsHash<LoatIntExpr, LoatExp, LoatExp::CacheHash, LoatExp::CacheEqual, LoatIntExprPtr, LoatIntExprPtr> LoatExp::cache;
+ConsHash<LoatIntExpr, LoatIntExp, LoatIntExp::CacheHash, LoatIntExp::CacheEqual, LoatIntExprPtr, LoatIntExprPtr> LoatIntExp::cache;
 
-LoatExp::LoatExp(const LoatIntExprPtr base, const LoatIntExprPtr exponent)
+LoatIntExp::LoatIntExp(const LoatIntExprPtr base, const LoatIntExprPtr exponent)
     : LoatIntExpr(LoatIntExpression::Kind::Exp), m_base(base), m_exponent(exponent) {}
 
-LoatExp::~LoatExp()
+LoatIntExp::~LoatIntExp()
 {
     cache.erase(m_base, m_exponent);
 }
 
-LoatIntExprPtr LoatExp::getBase() const
+LoatIntExprPtr LoatIntExp::getBase() const
 {
     return m_base;
 }
 
-LoatIntExprPtr LoatExp::getExponent() const
+LoatIntExprPtr LoatIntExp::getExponent() const
 {
     return m_exponent;
 }
 
-bool LoatExp::CacheEqual::operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &a,
-                                     const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &b) const noexcept
+bool LoatIntExp::CacheEqual::operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &a,
+                                        const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &b) const noexcept
 {
     return a == b;
 }
 
-size_t LoatExp::CacheHash::operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &a) const noexcept
+size_t LoatIntExp::CacheHash::operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &a) const noexcept
 {
     size_t hash = {0};
     boost::hash_combine(hash, std::get<0>(a));
@@ -37,5 +37,5 @@ size_t LoatExp::CacheHash::operator()(const std::tuple<LoatIntExprPtr, LoatIntEx
 
 LoatIntExprPtr LoatIntExpression::mkExp(const LoatIntExprPtr base, const LoatIntExprPtr exponent)
 {
-    return LoatExp::cache.from_cache(base, exponent)->toPtr();
+    return LoatIntExp::cache.from_cache(base, exponent)->toPtr();
 }

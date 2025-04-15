@@ -1,26 +1,26 @@
 #include "loatintexpr.hpp"
 #include <string>
 
-ConsHash<LoatIntExpr, LoatVar, LoatVar::CacheHash, LoatVar::CacheEqual, std::string> LoatVar::cache;
+ConsHash<LoatIntExpr, LoatIntVar, LoatIntVar::CacheHash, LoatIntVar::CacheEqual, std::string> LoatIntVar::cache;
 
-LoatVar::LoatVar(const std::string &name) : LoatIntExpr(LoatIntExpression::Kind::Variable), m_name(name) {}
+LoatIntVar::LoatIntVar(const std::string &name) : LoatIntExpr(LoatIntExpression::Kind::Variable), m_name(name) {}
 
-LoatVar::~LoatVar()
+LoatIntVar::~LoatIntVar()
 {
     cache.erase(m_name);
 }
 
-std::string LoatVar::getName() const
+std::string LoatIntVar::getName() const
 {
     return m_name;
 }
 
-bool LoatVar::CacheEqual::operator()(const std::tuple<std::string> &a, const std::tuple<std::string> &b) const noexcept
+bool LoatIntVar::CacheEqual::operator()(const std::tuple<std::string> &a, const std::tuple<std::string> &b) const noexcept
 {
     return a == b;
 }
 
-size_t LoatVar::CacheHash::operator()(const std::tuple<std::string> &a) const noexcept
+size_t LoatIntVar::CacheHash::operator()(const std::tuple<std::string> &a) const noexcept
 {
     return std::hash<std::string>{}(std::get<0>(a));
 }
@@ -28,5 +28,5 @@ size_t LoatVar::CacheHash::operator()(const std::tuple<std::string> &a) const no
 // Factory Method to create Variable
 LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name)
 {
-    return LoatVar::cache.from_cache(name)->toPtr();
+    return LoatIntVar::cache.from_cache(name)->toPtr();
 }

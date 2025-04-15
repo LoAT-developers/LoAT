@@ -16,27 +16,27 @@
 
 class LoatIntExpr;
 
-class LoatConst;
-class LoatExp;
-class LoatAdd;
-class LoatMult;
-class LoatMod;
-class LoatVar;
+class LoatIntConst;
+class LoatIntExp;
+class LoatIntAdd;
+class LoatIntMult;
+class LoatIntMod;
+class LoatIntVar;
 
 using LoatIntExprPtr = cpp::not_null<std::shared_ptr<const LoatIntExpr>>;
-using LoatVarPtr = cpp::not_null<std::shared_ptr<const LoatVar>>;
-using LoatConstPtr = cpp::not_null<std::shared_ptr<const LoatConst>>;
-using LoatAddPtr = cpp::not_null<std::shared_ptr<const LoatAdd>>;
-using LoatMultPtr = cpp::not_null<std::shared_ptr<const LoatMult>>;
-using LoatModPtr = cpp::not_null<std::shared_ptr<const LoatMod>>;
-using LoatExpPtr = cpp::not_null<std::shared_ptr<const LoatExp>>;
+using LoatIntVarPtr = cpp::not_null<std::shared_ptr<const LoatIntVar>>;
+using LoatIntConstPtr = cpp::not_null<std::shared_ptr<const LoatIntConst>>;
+using LoatIntAddPtr = cpp::not_null<std::shared_ptr<const LoatIntAdd>>;
+using LoatIntMultPtr = cpp::not_null<std::shared_ptr<const LoatIntMult>>;
+using LoatIntModPtr = cpp::not_null<std::shared_ptr<const LoatIntMod>>;
+using LoatIntExpPtr = cpp::not_null<std::shared_ptr<const LoatIntExp>>;
 using LoatIntExprSet = linked_hash_set<LoatIntExprPtr>;
 using LoatIntExprVec = std::vector<LoatIntExprPtr>;
 
 using Int = boost::multiprecision::cpp_int;
 using Rational = boost::multiprecision::cpp_rational;
 
-using loat_var_map = boost::bimap<boost::bimaps::unordered_set_of<LoatVarPtr>, boost::bimaps::unordered_set_of<LoatVarPtr>>;
+using loat_var_map = boost::bimap<boost::bimaps::unordered_set_of<LoatIntVarPtr>, boost::bimaps::unordered_set_of<LoatIntVarPtr>>;
 
 namespace LoatIntExpression
 {
@@ -97,15 +97,15 @@ public:
 /**
  * Represents a constant rational expression.
  */
-class LoatConst : public LoatIntExpr
+class LoatIntConst : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkConst(const Rational &r);
     friend LoatIntExprPtr LoatIntExpression::mkConst(const Rational &&r);
     friend class LoatIntExpr;
 
 public:
-    LoatConst(const Rational &t);
-    ~LoatConst();
+    LoatIntConst(const Rational &t);
+    ~LoatIntConst();
     const Rational &operator*() const;
     const Rational &getValue() const;
 
@@ -120,13 +120,13 @@ private:
     {
         size_t operator()(const std::tuple<Rational> &args) const noexcept;
     };
-    static ConsHash<LoatIntExpr, LoatConst, CacheHash, CacheEqual, Rational> cache;
+    static ConsHash<LoatIntExpr, LoatIntConst, CacheHash, CacheEqual, Rational> cache;
 };
 
 /**
  * Represents an addition expression.
  */
-class LoatAdd : public LoatIntExpr
+class LoatIntAdd : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkPlus(LoatIntExprPtr, LoatIntExprPtr);
     friend LoatIntExprPtr LoatIntExpression::mkPlus(LoatIntExprVec &&args);
@@ -146,17 +146,17 @@ private:
     {
         size_t operator()(const std::tuple<LoatIntExprSet> &args) const noexcept;
     };
-    static ConsHash<LoatIntExpr, LoatAdd, CacheHash, CacheEqual, LoatIntExprSet> cache;
+    static ConsHash<LoatIntExpr, LoatIntAdd, CacheHash, CacheEqual, LoatIntExprSet> cache;
 
 public:
-    LoatAdd(const LoatIntExprSet &args);
-    ~LoatAdd();
+    LoatIntAdd(const LoatIntExprSet &args);
+    ~LoatIntAdd();
 };
 
 /**
  * Represents a multiplication expression.
  */
-class LoatMult : public LoatIntExpr
+class LoatIntMult : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkTimes(LoatIntExprPtr, LoatIntExprPtr);
     friend LoatIntExprPtr LoatIntExpression::mkTimes(LoatIntExprVec &&args);
@@ -178,17 +178,17 @@ private:
         size_t operator()(const std::tuple<LoatIntExprSet> &args) const noexcept;
     };
 
-    static ConsHash<LoatIntExpr, LoatMult, CacheHash, CacheEqual, LoatIntExprSet> cache;
+    static ConsHash<LoatIntExpr, LoatIntMult, CacheHash, CacheEqual, LoatIntExprSet> cache;
 
 public:
-    LoatMult(const LoatIntExprSet &args);
-    ~LoatMult();
+    LoatIntMult(const LoatIntExprSet &args);
+    ~LoatIntMult();
 };
 
 /**
  * Represents a modulo expression: (a mod b)
  */
-class LoatMod : public LoatIntExpr
+class LoatIntMod : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkMod(LoatIntExprPtr x, LoatIntExprPtr y);
     friend class LoatIntExpr;
@@ -212,17 +212,17 @@ private:
         size_t operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &a) const noexcept;
     };
 
-    static ConsHash<LoatIntExpr, LoatMod, CacheHash, CacheEqual, LoatIntExprPtr, LoatIntExprPtr> cache;
+    static ConsHash<LoatIntExpr, LoatIntMod, CacheHash, CacheEqual, LoatIntExprPtr, LoatIntExprPtr> cache;
 
 public:
-    LoatMod(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
-    ~LoatMod();
+    LoatIntMod(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
+    ~LoatIntMod();
 };
 
 /**
  * Represents an exponential expression: (a ^ b)
  */
-class LoatExp : public LoatIntExpr
+class LoatIntExp : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkExp(const LoatIntExprPtr base, const LoatIntExprPtr exponent);
     friend class LoatIntExpr;
@@ -242,11 +242,11 @@ private:
         size_t operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &a) const noexcept;
     };
 
-    static ConsHash<LoatIntExpr, LoatExp, CacheHash, CacheEqual, LoatIntExprPtr, LoatIntExprPtr> cache;
+    static ConsHash<LoatIntExpr, LoatIntExp, CacheHash, CacheEqual, LoatIntExprPtr, LoatIntExprPtr> cache;
 
 public:
-    LoatExp(const LoatIntExprPtr base, const LoatIntExprPtr exponent);
-    ~LoatExp();
+    LoatIntExp(const LoatIntExprPtr base, const LoatIntExprPtr exponent);
+    ~LoatIntExp();
 
     LoatIntExprPtr getBase() const;
     LoatIntExprPtr getExponent() const;
@@ -255,7 +255,7 @@ public:
 /**
  * Represents a Variable
  */
-class LoatVar : public LoatIntExpr
+class LoatIntVar : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name);
     friend class LoatIntExpr;
@@ -273,19 +273,19 @@ private:
         size_t operator()(const std::tuple<std::string> &a) const noexcept;
     };
 
-    static ConsHash<LoatIntExpr, LoatVar, CacheHash, CacheEqual, std::string> cache;
+    static ConsHash<LoatIntExpr, LoatIntVar, CacheHash, CacheEqual, std::string> cache;
 
 public:
-    explicit LoatVar(const std::string &name);
-    ~LoatVar();
+    explicit LoatIntVar(const std::string &name);
+    ~LoatIntVar();
 
     std::string getName() const;
 };
 
 // Hash functions for expression pointers
 std::size_t hash_value(const LoatIntExprPtr &);
-std::size_t hash_value(const LoatVarPtr &);
+std::size_t hash_value(const LoatIntVarPtr &);
 
 // Stream output
-std::ostream &operator<<(std::ostream &s, const LoatVarPtr x);
+std::ostream &operator<<(std::ostream &s, const LoatIntVarPtr x);
 std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr e);
