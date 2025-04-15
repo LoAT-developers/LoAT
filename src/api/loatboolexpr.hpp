@@ -5,7 +5,7 @@
 #include <vector>
 #include <ostream>
 #include "notnull.hpp"
-#include "loatexpression.hpp"
+#include "loatintexpression.hpp"
 #include "linkedhashset.hpp"
 #include "conshash.hpp"
 
@@ -45,7 +45,7 @@ namespace LoatBoolExpression
     LoatBoolExprPtr mkNot(const LoatBoolExprPtr arg);
 
     // Factory methods to create Literals
-    LoatBoolExprPtr mkCmp(const LoatExprPtr lhs, const LoatExprPtr rhs, CmpOp op);
+    LoatBoolExprPtr mkCmp(const LoatExprPtr lhs, CmpOp op, const LoatExprPtr rhs);
     LoatBoolExprPtr mkEq(const LoatExprPtr lhs, const LoatExprPtr rhs);
     LoatBoolExprPtr mkNeq(const LoatExprPtr lhs, const LoatExprPtr rhs);
     LoatBoolExprPtr mkLt(const LoatExprPtr lhs, const LoatExprPtr rhs);
@@ -186,7 +186,7 @@ public:
  */
 class LoatBoolCmp : public LoatBoolExpr
 {
-    friend LoatBoolExprPtr LoatBoolExpression::mkCmp(const LoatExprPtr lhs, const LoatExprPtr rhs, LoatBoolExpression::CmpOp op);
+    friend LoatBoolExprPtr LoatBoolExpression::mkCmp(const LoatExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatExprPtr rhs);
 
 private:
     LoatExprPtr m_lhs;
@@ -195,19 +195,19 @@ private:
 
     struct CacheEqual
     {
-        bool operator()(const std::tuple<LoatExprPtr, LoatExprPtr, LoatBoolExpression::CmpOp> &a,
-                        const std::tuple<LoatExprPtr, LoatExprPtr, LoatBoolExpression::CmpOp> &b) const noexcept;
+        bool operator()(const std::tuple<LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> &a,
+                        const std::tuple<LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> &b) const noexcept;
     };
 
     struct CacheHash
     {
-        size_t operator()(const std::tuple<LoatExprPtr, LoatExprPtr, LoatBoolExpression::CmpOp> &a) const noexcept;
+        size_t operator()(const std::tuple<LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> &a) const noexcept;
     };
 
-    static ConsHash<LoatBoolExpr, LoatBoolCmp, CacheHash, CacheEqual, LoatExprPtr, LoatExprPtr, LoatBoolExpression::CmpOp> cache;
+    static ConsHash<LoatBoolExpr, LoatBoolCmp, CacheHash, CacheEqual, LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> cache;
 
 public:
-    LoatBoolCmp(const LoatExprPtr lhs, const LoatExprPtr rhs, LoatBoolExpression::CmpOp op);
+    LoatBoolCmp(const LoatExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatExprPtr rhs);
     ~LoatBoolCmp();
 
     const LoatExprPtr &getLhs() const;
