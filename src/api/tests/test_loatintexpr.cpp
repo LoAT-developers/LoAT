@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include <sstream>
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 
-using namespace LoatExpression;
+using namespace LoatIntExpression;
 
 // CONST
 TEST(LoatConstTest, CreateAndCompare)
@@ -134,7 +134,7 @@ TEST(LoatVarTest, VarOutputsCorrectly)
     EXPECT_EQ(ss.str(), "foo");
 }
 
-TEST(LoatExpressionTest, BuildExpressionWithConstAndVar)
+TEST(LoatIntExpressionTest, BuildExpressionWithConstAndVar)
 {
     auto x = mkVar("counter");
     auto c1 = mkConst(3);

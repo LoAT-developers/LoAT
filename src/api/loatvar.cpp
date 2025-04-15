@@ -1,9 +1,9 @@
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 #include <string>
 
-ConsHash<LoatExpr, LoatVar, LoatVar::CacheHash, LoatVar::CacheEqual, std::string> LoatVar::cache;
+ConsHash<LoatIntExpr, LoatVar, LoatVar::CacheHash, LoatVar::CacheEqual, std::string> LoatVar::cache;
 
-LoatVar::LoatVar(const std::string &name) : LoatExpr(LoatExpression::Kind::Variable), m_name(name) {}
+LoatVar::LoatVar(const std::string &name) : LoatIntExpr(LoatIntExpression::Kind::Variable), m_name(name) {}
 
 LoatVar::~LoatVar()
 {
@@ -26,7 +26,7 @@ size_t LoatVar::CacheHash::operator()(const std::tuple<std::string> &a) const no
 }
 
 // Factory Method to create Variable
-LoatExprPtr LoatExpression::mkVar(const std::string &name)
+LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name)
 {
     return LoatVar::cache.from_cache(name)->toPtr();
 }

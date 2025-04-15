@@ -5,7 +5,7 @@
 #include <vector>
 #include <ostream>
 #include "notnull.hpp"
-#include "loatintexpression.hpp"
+#include "loatintexpr.hpp"
 #include "linkedhashset.hpp"
 #include "conshash.hpp"
 
@@ -45,13 +45,13 @@ namespace LoatBoolExpression
     LoatBoolExprPtr mkNot(const LoatBoolExprPtr arg);
 
     // Factory methods to create Literals
-    LoatBoolExprPtr mkCmp(const LoatExprPtr lhs, CmpOp op, const LoatExprPtr rhs);
-    LoatBoolExprPtr mkEq(const LoatExprPtr lhs, const LoatExprPtr rhs);
-    LoatBoolExprPtr mkNeq(const LoatExprPtr lhs, const LoatExprPtr rhs);
-    LoatBoolExprPtr mkLt(const LoatExprPtr lhs, const LoatExprPtr rhs);
-    LoatBoolExprPtr mkLe(const LoatExprPtr lhs, const LoatExprPtr rhs);
-    LoatBoolExprPtr mkGt(const LoatExprPtr lhs, const LoatExprPtr rhs);
-    LoatBoolExprPtr mkGe(const LoatExprPtr lhs, const LoatExprPtr rhs);
+    LoatBoolExprPtr mkCmp(const LoatIntExprPtr lhs, CmpOp op, const LoatIntExprPtr rhs);
+    LoatBoolExprPtr mkEq(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
+    LoatBoolExprPtr mkNeq(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
+    LoatBoolExprPtr mkLt(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
+    LoatBoolExprPtr mkLe(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
+    LoatBoolExprPtr mkGt(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
+    LoatBoolExprPtr mkGe(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
 }
 
 /**
@@ -186,32 +186,32 @@ public:
  */
 class LoatBoolCmp : public LoatBoolExpr
 {
-    friend LoatBoolExprPtr LoatBoolExpression::mkCmp(const LoatExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatExprPtr rhs);
+    friend LoatBoolExprPtr LoatBoolExpression::mkCmp(const LoatIntExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatIntExprPtr rhs);
 
 private:
-    LoatExprPtr m_lhs;
-    LoatExprPtr m_rhs;
+    LoatIntExprPtr m_lhs;
+    LoatIntExprPtr m_rhs;
     LoatBoolExpression::CmpOp m_op;
 
     struct CacheEqual
     {
-        bool operator()(const std::tuple<LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> &a,
-                        const std::tuple<LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> &b) const noexcept;
+        bool operator()(const std::tuple<LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> &a,
+                        const std::tuple<LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> &b) const noexcept;
     };
 
     struct CacheHash
     {
-        size_t operator()(const std::tuple<LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> &a) const noexcept;
+        size_t operator()(const std::tuple<LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> &a) const noexcept;
     };
 
-    static ConsHash<LoatBoolExpr, LoatBoolCmp, CacheHash, CacheEqual, LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> cache;
+    static ConsHash<LoatBoolExpr, LoatBoolCmp, CacheHash, CacheEqual, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> cache;
 
 public:
-    LoatBoolCmp(const LoatExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatExprPtr rhs);
+    LoatBoolCmp(const LoatIntExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatIntExprPtr rhs);
     ~LoatBoolCmp();
 
-    const LoatExprPtr &getLhs() const;
-    const LoatExprPtr &getRhs() const;
+    const LoatIntExprPtr &getLhs() const;
+    const LoatIntExprPtr &getRhs() const;
     LoatBoolExpression::CmpOp getOp() const;
 };
 
@@ -226,9 +226,9 @@ LoatBoolExprPtr operator||(const LoatBoolExprPtr a, const LoatBoolExprPtr b);
 LoatBoolExprPtr operator!(const LoatBoolExprPtr a);
 
 // Operator Overloads for comparisons / literals
-LoatBoolExprPtr operator==(const LoatExprPtr &lhs, const LoatExprPtr &rhs);
-LoatBoolExprPtr operator!=(const LoatExprPtr &lhs, const LoatExprPtr &rhs);
-LoatBoolExprPtr operator<(const LoatExprPtr &lhs, const LoatExprPtr &rhs);
-LoatBoolExprPtr operator<=(const LoatExprPtr &lhs, const LoatExprPtr &rhs);
-LoatBoolExprPtr operator>(const LoatExprPtr &lhs, const LoatExprPtr &rhs);
-LoatBoolExprPtr operator>=(const LoatExprPtr &lhs, const LoatExprPtr &rhs);
+LoatBoolExprPtr operator==(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
+LoatBoolExprPtr operator!=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
+LoatBoolExprPtr operator<(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
+LoatBoolExprPtr operator<=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
+LoatBoolExprPtr operator>(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
+LoatBoolExprPtr operator>=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);

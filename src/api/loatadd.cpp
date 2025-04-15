@@ -1,22 +1,22 @@
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 #include "linkedhashmap.hpp"
 #include "vector.hpp"
 
-ConsHash<LoatExpr, LoatAdd, LoatAdd::CacheHash, LoatAdd::CacheEqual, LoatExprSet> LoatAdd::cache;
+ConsHash<LoatIntExpr, LoatAdd, LoatAdd::CacheHash, LoatAdd::CacheEqual, LoatIntExprSet> LoatAdd::cache;
 
-LoatAdd::LoatAdd(const LoatExprSet &args) : LoatExpr(LoatExpression::Kind::Plus), m_args(args) {}
+LoatAdd::LoatAdd(const LoatIntExprSet &args) : LoatIntExpr(LoatIntExpression::Kind::Plus), m_args(args) {}
 
 LoatAdd::~LoatAdd()
 {
     cache.erase(m_args);
 }
 
-bool LoatAdd::CacheEqual::operator()(const std::tuple<LoatExprSet> &args1, const std::tuple<LoatExprSet> &args2) const noexcept
+bool LoatAdd::CacheEqual::operator()(const std::tuple<LoatIntExprSet> &args1, const std::tuple<LoatIntExprSet> &args2) const noexcept
 {
     return args1 == args2;
 }
 
-size_t LoatAdd::CacheHash::operator()(const std::tuple<LoatExprSet> &args) const noexcept
+size_t LoatAdd::CacheHash::operator()(const std::tuple<LoatIntExprSet> &args) const noexcept
 {
     size_t hash{42};
     const auto &children{std::get<0>(args)};
@@ -24,12 +24,12 @@ size_t LoatAdd::CacheHash::operator()(const std::tuple<LoatExprSet> &args) const
     return hash;
 }
 
-LoatExprPtr LoatExpression::mkPlus(LoatExprPtr fst, LoatExprPtr snd)
+LoatIntExprPtr LoatIntExpression::mkPlus(LoatIntExprPtr fst, LoatIntExprPtr snd)
 {
     return mkPlus({fst, snd});
 }
 
-LoatExprPtr LoatExpression::mkPlus(std::vector<LoatExprPtr> &&args)
+LoatIntExprPtr LoatIntExpression::mkPlus(std::vector<LoatIntExprPtr> &&args)
 {
     if (args.empty())
     {
@@ -39,11 +39,11 @@ LoatExprPtr LoatExpression::mkPlus(std::vector<LoatExprPtr> &&args)
     {
         return args[0];
     }
-    const LoatExprSet arg_set{args.begin(), args.end()};
+    const LoatIntExprSet arg_set{args.begin(), args.end()};
     return LoatAdd::cache.from_cache(std::move(arg_set));
 }
 
-const LoatExprSet &LoatAdd::getArgs() const
+const LoatIntExprSet &LoatAdd::getArgs() const
 {
     return m_args;
 }

@@ -1,9 +1,9 @@
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 #include <boost/multiprecision/cpp_int.hpp>
 
-ConsHash<LoatExpr, LoatConst, LoatConst::CacheHash, LoatConst::CacheEqual, Rational> LoatConst::cache;
+ConsHash<LoatIntExpr, LoatConst, LoatConst::CacheHash, LoatConst::CacheEqual, Rational> LoatConst::cache;
 
-LoatConst::LoatConst(const Rational &t) : LoatExpr(LoatExpression::Kind::Constant), m_value(t) {}
+LoatConst::LoatConst(const Rational &t) : LoatIntExpr(LoatIntExpression::Kind::Constant), m_value(t) {}
 
 LoatConst::~LoatConst()
 {
@@ -30,12 +30,12 @@ size_t LoatConst::CacheHash::operator()(const std::tuple<Rational> &args) const 
     return std::hash<Rational>{}(std::get<0>(args));
 }
 
-LoatExprPtr LoatExpression::mkConst(const Rational &r)
+LoatIntExprPtr LoatIntExpression::mkConst(const Rational &r)
 {
     return LoatConst::cache.from_cache(r);
 }
 
-LoatExprPtr LoatExpression::mkConst(const Rational &&r)
+LoatIntExprPtr LoatIntExpression::mkConst(const Rational &&r)
 {
     return mkConst(r);
 }

@@ -147,9 +147,9 @@ LoatBoolExprPtr LoatBoolExpression::mkNot(const LoatBoolExprPtr arg)
 // LoatBoolCmp
 // ==============================
 
-ConsHash<LoatBoolExpr, LoatBoolCmp, LoatBoolCmp::CacheHash, LoatBoolCmp::CacheEqual, LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> LoatBoolCmp::cache;
+ConsHash<LoatBoolExpr, LoatBoolCmp, LoatBoolCmp::CacheHash, LoatBoolCmp::CacheEqual, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> LoatBoolCmp::cache;
 
-LoatBoolCmp::LoatBoolCmp(const LoatExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatExprPtr rhs)
+LoatBoolCmp::LoatBoolCmp(const LoatIntExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatIntExprPtr rhs)
     : LoatBoolExpr(LoatBoolExpression::Kind::Compare), m_lhs(lhs), m_op(op), m_rhs(rhs) {}
 
 LoatBoolCmp::~LoatBoolCmp()
@@ -157,19 +157,19 @@ LoatBoolCmp::~LoatBoolCmp()
     cache.erase(m_lhs, m_op, m_rhs);
 }
 
-const LoatExprPtr &LoatBoolCmp::getLhs() const { return m_lhs; }
-const LoatExprPtr &LoatBoolCmp::getRhs() const { return m_rhs; }
+const LoatIntExprPtr &LoatBoolCmp::getLhs() const { return m_lhs; }
+const LoatIntExprPtr &LoatBoolCmp::getRhs() const { return m_rhs; }
 LoatBoolExpression::CmpOp LoatBoolCmp::getOp() const { return m_op; }
 
-bool LoatBoolCmp::CacheEqual::operator()(const std::tuple<LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> &a,
-                                         const std::tuple<LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> &b) const noexcept
+bool LoatBoolCmp::CacheEqual::operator()(const std::tuple<LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> &a,
+                                         const std::tuple<LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> &b) const noexcept
 {
     return std::get<0>(a).get() == std::get<0>(b).get() &&
            std::get<1>(a) == std::get<1>(b) &&
            std::get<2>(a).get() == std::get<2>(b).get();
 }
 
-size_t LoatBoolCmp::CacheHash::operator()(const std::tuple<LoatExprPtr, LoatBoolExpression::CmpOp, LoatExprPtr> &a) const noexcept
+size_t LoatBoolCmp::CacheHash::operator()(const std::tuple<LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> &a) const noexcept
 {
     size_t hash = 0;
     boost::hash_combine(hash, std::get<0>(a));
@@ -178,32 +178,32 @@ size_t LoatBoolCmp::CacheHash::operator()(const std::tuple<LoatExprPtr, LoatBool
     return hash;
 }
 
-LoatBoolExprPtr LoatBoolExpression::mkCmp(const LoatExprPtr lhs, CmpOp op, const LoatExprPtr rhs)
+LoatBoolExprPtr LoatBoolExpression::mkCmp(const LoatIntExprPtr lhs, CmpOp op, const LoatIntExprPtr rhs)
 {
     return LoatBoolCmp::cache.from_cache(lhs, op, rhs)->toPtr();
 }
 
-LoatBoolExprPtr LoatBoolExpression::mkEq(const LoatExprPtr lhs, const LoatExprPtr rhs)
+LoatBoolExprPtr LoatBoolExpression::mkEq(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs)
 {
     return mkCmp(lhs, CmpOp::Eq, rhs);
 }
-LoatBoolExprPtr LoatBoolExpression::mkNeq(const LoatExprPtr lhs, const LoatExprPtr rhs)
+LoatBoolExprPtr LoatBoolExpression::mkNeq(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs)
 {
     return mkCmp(lhs, CmpOp::Neq, rhs);
 }
-LoatBoolExprPtr LoatBoolExpression::mkLt(const LoatExprPtr lhs, const LoatExprPtr rhs)
+LoatBoolExprPtr LoatBoolExpression::mkLt(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs)
 {
     return mkCmp(lhs, CmpOp::Lt, rhs);
 }
-LoatBoolExprPtr LoatBoolExpression::mkLe(const LoatExprPtr lhs, const LoatExprPtr rhs)
+LoatBoolExprPtr LoatBoolExpression::mkLe(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs)
 {
     return mkCmp(lhs, CmpOp::Le, rhs);
 }
-LoatBoolExprPtr LoatBoolExpression::mkGt(const LoatExprPtr lhs, const LoatExprPtr rhs)
+LoatBoolExprPtr LoatBoolExpression::mkGt(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs)
 {
     return mkCmp(lhs, CmpOp::Gt, rhs);
 }
-LoatBoolExprPtr LoatBoolExpression::mkGe(const LoatExprPtr lhs, const LoatExprPtr rhs)
+LoatBoolExprPtr LoatBoolExpression::mkGe(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs)
 {
     return mkCmp(lhs, CmpOp::Ge, rhs);
 }
@@ -301,32 +301,32 @@ LoatBoolExprPtr operator!(const LoatBoolExprPtr a)
     return LoatBoolExpression::mkNot(a);
 }
 
-LoatBoolExprPtr operator==(const LoatExprPtr &lhs, const LoatExprPtr &rhs)
+LoatBoolExprPtr operator==(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs)
 {
     return LoatBoolExpression::mkEq(lhs, rhs);
 }
 
-LoatBoolExprPtr operator!=(const LoatExprPtr &lhs, const LoatExprPtr &rhs)
+LoatBoolExprPtr operator!=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs)
 {
     return LoatBoolExpression::mkNeq(lhs, rhs);
 }
 
-LoatBoolExprPtr operator<(const LoatExprPtr &lhs, const LoatExprPtr &rhs)
+LoatBoolExprPtr operator<(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs)
 {
     return LoatBoolExpression::mkLt(lhs, rhs);
 }
 
-LoatBoolExprPtr operator<=(const LoatExprPtr &lhs, const LoatExprPtr &rhs)
+LoatBoolExprPtr operator<=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs)
 {
     return LoatBoolExpression::mkLe(lhs, rhs);
 }
 
-LoatBoolExprPtr operator>(const LoatExprPtr &lhs, const LoatExprPtr &rhs)
+LoatBoolExprPtr operator>(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs)
 {
     return LoatBoolExpression::mkGt(lhs, rhs);
 }
 
-LoatBoolExprPtr operator>=(const LoatExprPtr &lhs, const LoatExprPtr &rhs)
+LoatBoolExprPtr operator>=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs)
 {
     return LoatBoolExpression::mkGe(lhs, rhs);
 }

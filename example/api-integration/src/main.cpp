@@ -1,7 +1,7 @@
 #include <iostream>
 #include "loatconfig.hpp"
 #include "loatsolver.hpp"
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 #include <any>
 #include <stdexcept>
 
@@ -23,12 +23,12 @@ int main()
     solver1.setParameter(DynamicParameterKey::Log, true);
     solver1.refreshConfig();
 
-    LoatExprPtr five = LoatExpression::mkConst(Rational(5));
-    LoatExprPtr x = LoatExpression::mkVar(1);
-    LoatExprPtr ten = LoatExpression::mkConst(Rational(10));
+    LoatIntExprPtr five = LoatIntExpression::mkConst(Rational(5));
+    LoatIntExprPtr x = LoatIntExpression::mkVar("x");
+    LoatIntExprPtr ten = LoatIntExpression::mkConst(Rational(10));
 
-    LoatExprPtr fivex = LoatExpression::mkTimes({five, x});
-    LoatExprPtr fivexplusten = LoatExpression::mkPlus(fivex, ten);
+    LoatIntExprPtr fivex = LoatIntExpression::mkTimes({five, x});
+    LoatIntExprPtr fivexplusten = LoatIntExpression::mkPlus(fivex, ten);
 
     std::cout << fivexplusten << std::endl;
 

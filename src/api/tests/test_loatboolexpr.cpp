@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <sstream>
 #include "loatboolexpr.hpp"
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 
 using namespace LoatBoolExpression;
 
@@ -17,10 +17,10 @@ TEST(LoatBoolExprTest, CreateVariableAndOutput)
 
 TEST(LoatBoolExprTest, CreateComparisonExpressions)
 {
-    auto x = LoatExpression::mkVar("x");
-    auto y = LoatExpression::mkVar("y");
-    auto three = LoatExpression::mkConst(3);
-    auto five = LoatExpression::mkConst(5);
+    auto x = LoatIntExpression::mkVar("x");
+    auto y = LoatIntExpression::mkVar("y");
+    auto three = LoatIntExpression::mkConst(3);
+    auto five = LoatIntExpression::mkConst(5);
 
     auto cmp1 = x < y;
     auto cmp2 = three >= five;
@@ -35,9 +35,9 @@ TEST(LoatBoolExprTest, CreateComparisonExpressions)
 
 TEST(LoatBoolExprTest, BuildAndOrNotExpressions)
 {
-    auto x = LoatExpression::mkVar("x");
-    auto y = LoatExpression::mkVar("y");
-    auto z = LoatExpression::mkVar("z");
+    auto x = LoatIntExpression::mkVar("x");
+    auto y = LoatIntExpression::mkVar("y");
+    auto z = LoatIntExpression::mkVar("z");
 
     auto c1 = x == y;
     auto c2 = y <= z;
@@ -55,9 +55,9 @@ TEST(LoatBoolExprTest, BuildAndOrNotExpressions)
 
 TEST(LoatBoolExprTest, OperatorOverloadsWork)
 {
-    auto a = LoatExpression::mkVar("a");
-    auto b = LoatExpression::mkVar("b");
-    auto c = LoatExpression::mkVar("c");
+    auto a = LoatIntExpression::mkVar("a");
+    auto b = LoatIntExpression::mkVar("b");
+    auto c = LoatIntExpression::mkVar("c");
 
     auto expr = (a < b) && (b != c) || !(a >= c);
 
@@ -68,8 +68,8 @@ TEST(LoatBoolExprTest, OperatorOverloadsWork)
 
 TEST(LoatBoolExprTest, CachingAndEquality)
 {
-    auto x = LoatExpression::mkVar("x");
-    auto y = LoatExpression::mkVar("y");
+    auto x = LoatIntExpression::mkVar("x");
+    auto y = LoatIntExpression::mkVar("y");
 
     auto expr1 = x < y;
     auto expr2 = mkLt(x, y);

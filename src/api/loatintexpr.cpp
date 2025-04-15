@@ -1,4 +1,4 @@
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 #include "optional.hpp"
 #include "linkedhashmap.hpp"
 
@@ -6,66 +6,66 @@
 #include <sstream>
 
 // Hash function for expression pointers
-std::size_t hash_value(const LoatExprPtr &x)
+std::size_t hash_value(const LoatIntExprPtr &x)
 {
-    return std::hash<std::shared_ptr<const LoatExpr>>{}(x.as_nullable());
+    return std::hash<std::shared_ptr<const LoatIntExpr>>{}(x.as_nullable());
 }
 std::size_t hash_value(const LoatVarPtr &x)
 {
     return std::hash<std::shared_ptr<const LoatVar>>{}(x.as_nullable());
 }
 
-// Constructor for base expression with specific kind
-LoatExpr::LoatExpr(const LoatExpression::Kind kind) : m_kind(kind) {}
+// Constructor for base expression with specificInt kind
+LoatIntExpr::LoatIntExpr(const LoatIntExpression::Kind kind) : m_kind(kind) {}
 
-// Default constructor assumes variable
-LoatExpr::LoatExpr() : m_kind(LoatExpression::Kind::Variable) {}
+// Default constructor assumes varIntiable
+LoatIntExpr::LoatIntExpr() : m_kind(LoatIntExpression::Kind::Variable) {}
 
 // Return kind of the expression
-LoatExpression::Kind LoatExpr::getKind() const
+LoatIntExpression::Kind LoatIntExpr::getKind() const
 {
     return m_kind;
 }
 
 // Convert this expression to shared pointer
-LoatExprPtr LoatExpr::toPtr() const
+LoatIntExprPtr LoatIntExpr::toPtr() const
 {
     return cpp::assume_not_null(shared_from_this());
 }
 
 // Overload operators +,-,*,^
-LoatExprPtr operator-(const LoatExprPtr x)
+LoatIntExprPtr operator-(const LoatIntExprPtr x)
 {
-    return LoatExpression::mkTimes(LoatExpression::mkConst(Rational(-1)), x);
+    return LoatIntExpression::mkTimes(LoatIntExpression::mkConst(Rational(-1)), x);
 }
 
-LoatExprPtr operator-(const LoatExprPtr x, const LoatExprPtr y)
+LoatIntExprPtr operator-(const LoatIntExprPtr x, const LoatIntExprPtr y)
 {
-    return LoatExpression::mkPlus(x, -y);
+    return LoatIntExpression::mkPlus(x, -y);
 }
 
-LoatExprPtr operator+(const LoatExprPtr x, const LoatExprPtr y)
+LoatIntExprPtr operator+(const LoatIntExprPtr x, const LoatIntExprPtr y)
 {
-    return LoatExpression::mkPlus(x, y);
+    return LoatIntExpression::mkPlus(x, y);
 }
 
-LoatExprPtr operator*(const LoatExprPtr x, const LoatExprPtr y)
+LoatIntExprPtr operator*(const LoatIntExprPtr x, const LoatIntExprPtr y)
 {
-    return LoatExpression::mkTimes(x, y);
+    return LoatIntExpression::mkTimes(x, y);
 }
 
-LoatExprPtr operator^(const LoatExprPtr x, const LoatExprPtr y)
+LoatIntExprPtr operator^(const LoatIntExprPtr x, const LoatIntExprPtr y)
 {
-    return LoatExpression::mkExp(x, y);
+    return LoatIntExpression::mkExp(x, y);
 }
 
 // Divide the expression by a rational number
-LoatExprPtr LoatExpr::divide(const Rational &y) const
+LoatIntExprPtr LoatIntExpr::divide(const Rational &y) const
 {
-    return LoatExpression::mkTimes(LoatExpression::mkConst(Rational(
-                                       boost::multiprecision::denominator(y),
-                                       boost::multiprecision::numerator(y))),
-                                   toPtr());
+    return LoatIntExpression::mkTimes(LoatIntExpression::mkConst(Rational(
+                                          boost::multiprecision::denominator(y),
+                                          boost::multiprecision::numerator(y))),
+                                      toPtr());
 }
 
 // Stream output for variable
@@ -75,11 +75,11 @@ std::ostream &operator<<(std::ostream &s, const LoatVarPtr e)
 }
 
 // Stream output for expressions
-std::ostream &operator<<(std::ostream &s, const LoatExprPtr e)
+std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr e)
 {
     switch (e->getKind())
     {
-    case LoatExpression::Kind::Plus:
+    case LoatIntExpression::Kind::Plus:
     {
         s << "(";
         const auto add = std::static_pointer_cast<const LoatAdd>(e.as_nullable());
@@ -93,7 +93,7 @@ std::ostream &operator<<(std::ostream &s, const LoatExprPtr e)
         }
         return s << ")";
     }
-    case LoatExpression::Kind::Times:
+    case LoatIntExpression::Kind::Times:
     {
         s << "(";
         const auto mult = std::static_pointer_cast<const LoatMult>(e.as_nullable());
@@ -107,22 +107,22 @@ std::ostream &operator<<(std::ostream &s, const LoatExprPtr e)
         }
         return s << ")";
     }
-    case LoatExpression::Kind::Mod:
+    case LoatIntExpression::Kind::Mod:
     {
         const auto mod = std::static_pointer_cast<const LoatMod>(e.as_nullable());
         return s << "(" << mod->getLhs() << " % " << mod->getRhs() << ")";
     }
-    case LoatExpression::Kind::Exp:
+    case LoatIntExpression::Kind::Exp:
     {
         const auto exp = std::static_pointer_cast<const LoatExp>(e.as_nullable());
         return s << "(" << exp->getBase() << " ^ " << exp->getExponent() << ")";
     }
-    case LoatExpression::Kind::Constant:
+    case LoatIntExpression::Kind::Constant:
     {
         const auto c = std::static_pointer_cast<const LoatConst>(e.as_nullable());
         return s << c->getValue();
     }
-    case LoatExpression::Kind::Variable:
+    case LoatIntExpression::Kind::Variable:
     {
         const auto v = std::static_pointer_cast<const LoatVar>(e.as_nullable());
         return s << v->getName();

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 #include "loatconfig.hpp"
 #include <any>
 #include <vector>
@@ -9,7 +9,7 @@ class LoatSolver
 {
 private:
     LoatConfig m_config;
-    std::vector<LoatExprPtr> m_expressions;
+    std::vector<LoatIntExprPtr> m_expressions;
 
     // TODO Add convertion and internal expressions
 
@@ -34,5 +34,5 @@ public:
     void refreshConfig();
 
     // Adds an expression to the solver.
-    void add(const LoatExprPtr &expr);
+    void add(const LoatIntExprPtr &expr);
 };

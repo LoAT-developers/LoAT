@@ -1,5 +1,5 @@
 #include "loatsolver.hpp"
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 #include <stdexcept>
 #include <any>
 
@@ -20,7 +20,7 @@ void LoatSolver::refreshConfig()
     m_config.applyToGlobalConfig();
 }
 
-void LoatSolver::add(const LoatExprPtr &expr)
+void LoatSolver::add(const LoatIntExprPtr &expr)
 {
     // Save for later
     m_expressions.push_back(expr);

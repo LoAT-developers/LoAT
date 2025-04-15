@@ -3,7 +3,7 @@
 #include "loatconfig.hpp"
 #include "config.hpp"
 #include "test_util.hpp"
-#include "loatexpression.hpp"
+#include "loatintexpr.hpp"
 
 // === Tests ===
 
