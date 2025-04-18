@@ -14,10 +14,6 @@ std::size_t hash_value(const LoatIntExprPtr &x)
 {
     return std::hash<std::shared_ptr<const LoatIntExpr>>{}(x.as_nullable());
 }
-std::size_t hash_value(const LoatIntVarPtr &x)
-{
-    return std::hash<std::shared_ptr<const LoatIntVar>>{}(x.as_nullable());
-}
 
 // Constructor for base expression with specificInt kind
 LoatIntExpr::LoatIntExpr(const LoatIntExpression::Kind kind) : m_kind(kind) {}
@@ -70,12 +66,6 @@ LoatIntExprPtr LoatIntExpr::divide(const Rational &y) const
                                           boost::multiprecision::denominator(y),
                                           boost::multiprecision::numerator(y))),
                                       toPtr());
-}
-
-// Stream output for variable
-std::ostream &operator<<(std::ostream &s, const LoatIntVarPtr e)
-{
-    return s << e->getName();
 }
 
 // Stream output for expressions
