@@ -13,7 +13,7 @@ TEST(LoatIntSubsTest, PutAndGet)
 
     auto map = subs.getSubsMap();
     ASSERT_EQ(map.size(), 1);
-    ASSERT_EQ(map.at(x), expr);
+    ASSERT_EQ(map.at(x).get(), expr.get());
 }
 
 TEST(LoatIntSubsTest, StreamOutput)
@@ -46,8 +46,8 @@ TEST(LoatIntSubsTest, MultipleSubstitutions)
 
     auto map = subs.getSubsMap();
     ASSERT_EQ(map.size(), 2);
-    ASSERT_EQ(map.at(x), expr1);
-    ASSERT_EQ(map.at(y), expr2);
+    ASSERT_EQ(map.at(x).get(), expr1.get());
+    ASSERT_EQ(map.at(y).get(), expr2.get());
 
     std::stringstream ss;
     ss << subs;

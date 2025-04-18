@@ -12,7 +12,7 @@ TEST(LoatBoolSubsTest, PutAndGet)
 
     auto map = subs.getSubsMap();
     ASSERT_EQ(map.size(), 1);
-    ASSERT_EQ(map.at(a), notA);
+    ASSERT_EQ(map.at(a).get(), notA.get());
 }
 
 TEST(LoatBoolSubsTest, StreamOutput)
