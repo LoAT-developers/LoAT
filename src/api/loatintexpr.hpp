@@ -12,7 +12,7 @@
 #include "string.hpp"
 #include "conshash.hpp"
 #include "notnull.hpp"
-#include "var.hpp"
+#include "notnull_hash.hpp"
 
 class LoatIntExpr;
 

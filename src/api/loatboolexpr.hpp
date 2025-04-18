@@ -5,6 +5,7 @@
 #include <vector>
 #include <ostream>
 #include "notnull.hpp"
+#include "notnull_hash.hpp"
 #include "loatintexpr.hpp"
 #include "linkedhashset.hpp"
 #include "conshash.hpp"
