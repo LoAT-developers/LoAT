@@ -70,6 +70,8 @@ SmtResult BMC::analyze() {
             kind->push();
             kind->add(s(err));
             if (kind->check() == SmtResult::Unsat) {
+                std::cout << "sat (" << depth << ")" << std::endl;
+                exit(0);
                 if (Config::Analysis::log) {
                     std::cout << "forward k-induction" << std::endl;
                 }
@@ -80,6 +82,8 @@ SmtResult BMC::analyze() {
             bkind->add(s(!init));
             bkind->add(last_s(step));
             if (bkind->check() == SmtResult::Unsat) {
+                std::cout << "sat (" << depth << ")" << std::endl;
+                exit(0);
                 if (Config::Analysis::log) {
                     std::cout << "backward k-induction" << std::endl;
                 }
