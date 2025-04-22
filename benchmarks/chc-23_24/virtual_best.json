@@ -1672,7 +1672,7 @@
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-comp24-LIA-Lin-203.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_013.smt2"
   },
   {
