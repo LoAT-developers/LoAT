@@ -32,7 +32,5 @@ int main()
 
     std::cout << fivexplusten << std::endl;
 
-    solver1.add(fivexplusten);
-
     return 0;
 }
