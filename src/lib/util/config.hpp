@@ -52,7 +52,7 @@ namespace Config {
 
     struct TRPConfig {
         enum MbpKind {LowerIntMbp, UpperIntMbp, IntMbp, RealMbp, RealQe};
-        MbpKind mbpKind {IntMbp};
+        MbpKind mbpKind {LowerIntMbp};
         bool recurrent_cycles {false};
         bool recurrent_exps {true};
         bool recurrent_pseudo_divs {true};
