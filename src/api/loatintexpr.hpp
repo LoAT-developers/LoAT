@@ -12,7 +12,7 @@
 #include "string.hpp"
 #include "conshash.hpp"
 #include "notnull.hpp"
-#include "var.hpp"
+#include "notnull_hash.hpp"
 
 class LoatIntExpr;
 
@@ -24,7 +24,6 @@ class LoatIntMod;
 class LoatIntVar;
 
 using LoatIntExprPtr = cpp::not_null<std::shared_ptr<const LoatIntExpr>>;
-using LoatIntVarPtr = cpp::not_null<std::shared_ptr<const LoatIntVar>>;
 using LoatIntConstPtr = cpp::not_null<std::shared_ptr<const LoatIntConst>>;
 using LoatIntAddPtr = cpp::not_null<std::shared_ptr<const LoatIntAdd>>;
 using LoatIntMultPtr = cpp::not_null<std::shared_ptr<const LoatIntMult>>;
@@ -35,8 +34,6 @@ using LoatIntExprVec = std::vector<LoatIntExprPtr>;
 
 using Int = boost::multiprecision::cpp_int;
 using Rational = boost::multiprecision::cpp_rational;
-
-using loat_var_map = boost::bimap<boost::bimaps::unordered_set_of<LoatIntVarPtr>, boost::bimaps::unordered_set_of<LoatIntVarPtr>>;
 
 namespace LoatIntExpression
 {
@@ -284,8 +281,6 @@ public:
 
 // Hash functions for expression pointers
 std::size_t hash_value(const LoatIntExprPtr &);
-std::size_t hash_value(const LoatIntVarPtr &);
 
 // Stream output
-std::ostream &operator<<(std::ostream &s, const LoatIntVarPtr x);
 std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr e);
