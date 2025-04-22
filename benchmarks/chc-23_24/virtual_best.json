@@ -28,7 +28,7 @@
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_285.smt2"
   },
   {
-    "result": "unknown",
+    "result": "unsat",
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_365.smt2"
   },
   {
@@ -1908,7 +1908,7 @@
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_179.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_259.smt2"
   },
   {
