@@ -345,6 +345,7 @@ bool TRPUtil::build_cex() {
         const auto accel_res {LoopAcceleration::accelerate(rule, AccelConfig{
             false,
             true,
+            Config::Accel::non_linear,
             ArithVar::next(),
             arith::mkConst(0)
         })};

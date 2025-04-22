@@ -517,6 +517,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr rule, const Mode
     const AccelConfig config {
         Config::Analysis::tryNonterm(),
         true,
+        Config::Accel::non_linear,
         n,
         chcs->getCost(simp)};
     const auto accel_res {LoopAcceleration::accelerate(simp, config)};

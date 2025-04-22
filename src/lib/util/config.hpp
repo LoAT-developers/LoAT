@@ -66,4 +66,8 @@ namespace Config {
         extern bool blocking_clauses;
     }
 
+    namespace Accel {
+        extern bool non_linear;
+    }
+
 }

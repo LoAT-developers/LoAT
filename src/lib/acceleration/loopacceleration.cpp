@@ -205,27 +205,35 @@ void LoopAcceleration::run() {
     res.status = acceleration::AccelerationFailed;
     if (!rule->getGuard()->isConjunction()) {
         res.status = acceleration::Disjunctive;
+    } else if (!config.tryNonlinear && (!rule->getGuard()->isLinear() || !rule->getUpdate().isLinear())) {
+        res.status = acceleration::Nonlinear;
     } else {
         chain();
         switch (SmtFactory::check(Preprocess::chain({rule, rule->renameTmpVars()})->getGuard())) {
-        case SmtResult::Unsat: res.status = acceleration::PseudoLoop;
-            return;
-        case SmtResult::Unknown: res.status = acceleration::NotSat;
-            return;
-        case SmtResult::Sat: {
-            removeTrivialUpdates();
-            compute_closed_form();
-            accelerate();
-            if (config.tryNonterm && res.nonterm == bot()) {
-                try_nonterm();
+            case SmtResult::Unsat:
+                res.status = acceleration::PseudoLoop;
+                return;
+            case SmtResult::Unknown:
+                res.status = acceleration::NotSat;
+                return;
+            case SmtResult::Sat: {
+                removeTrivialUpdates();
+                compute_closed_form();
+                if (rec && !config.tryNonlinear && !rec->closed_form.isLinear()) {
+                    res.status = acceleration::Nonlinear;
+                } else {
+                    accelerate();
+                    if (config.tryNonterm && res.nonterm == bot()) {
+                        try_nonterm();
+                    }
+                    prepend_prefix();
+                    if (res.accel) {
+                        res.status = acceleration::Success;
+                    } else if (res.nonterm != bot()) {
+                        res.status = acceleration::Nonterminating;
+                    }
+                }
             }
-            prepend_prefix();
-            if (res.accel) {
-                res.status = acceleration::Success;
-            } else if (res.nonterm != bot()) {
-                res.status = acceleration::Nonterminating;
-            }
-        }
         }
     }
 }

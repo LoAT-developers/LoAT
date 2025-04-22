@@ -36,6 +36,7 @@ void printHelp(char *arg0) {
     std::cout << "  --log                                                           Enable logging" << std::endl;
     std::cout << "  --proof                                                         Print model/counterexample/recurrent set/..." << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>                           ABMC: En- or disable blocking clauses" << std::endl;
+    std::cout << "  --accel::non_linear <true|false>                                Also use acceleration if the result is non-linear" << std::endl;
     std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>                           Choose the SMT solver" << std::endl;
     std::cout << "  --direction <forward|backward|interleaved>                      run the analysis forward, backward, or both directions interleaved (if supported)" << std::endl;
     std::cout << "  --trl::recurrent_exps <true|false>                              TRL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
@@ -165,6 +166,8 @@ void parseFlags(int argc, char *argv[]) {
             }
         } else if (strcmp("--abmc::blocking_clauses", argv[arg]) == 0) {
             setBool(getNext(), Config::ABMC::blocking_clauses);
+        } else if (strcmp("--accel::non_linear", argv[arg]) == 0) {
+            setBool(getNext(), Config::Accel::non_linear);
         } else if (strcmp("--direction", argv[arg]) == 0) {
             has_direction = true;
             const auto str{getNext()};

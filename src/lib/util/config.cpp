@@ -76,4 +76,8 @@ namespace Config {
         bool blocking_clauses {true};
     }
 
+    namespace Accel {
+        bool non_linear {true};
+    }
+
 }
