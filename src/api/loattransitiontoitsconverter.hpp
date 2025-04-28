@@ -15,6 +15,9 @@
 class LoatTransitionToITSConverter
 {
 private:
+    // Cache (api transitions to internal rules)
+    std::unordered_map<const LoatTransition *, RulePtr> m_transitionCache;
+
     // Cache (api bool expr to internal bool Expr)
     std::unordered_map<LoatBoolExprPtr, Bools::Expr> m_boolExprCache;
 

@@ -37,19 +37,18 @@ TEST(LoatTransitionToITSConverterTest, FullConversionTest)
     EXPECT_EQ(subs1.size(), 2);
 
     const auto &domain = subs1.domain();
-    EXPECT_TRUE(domain.contains(converter.getArithVar("x'")));
-    EXPECT_TRUE(domain.contains(converter.getArithVar("y'")));
-
     auto lhs_x_post = converter.getArithVar("x'");
-    auto expected_x_expr = arith::toExpr(converter.getArithVar("x"));
+    auto lhs_y_post = converter.getArithVar("y'");
 
+    EXPECT_TRUE(domain.contains(lhs_x_post));
+    EXPECT_TRUE(domain.contains(lhs_y_post));
+
+    auto expected_x_expr = arith::toExpr(converter.getArithVar("x"));
     auto variant_expr_x = subs1.get(lhs_x_post);
     ASSERT_TRUE(std::holds_alternative<ArithExprPtr>(variant_expr_x));
     EXPECT_EQ(std::get<ArithExprPtr>(variant_expr_x), expected_x_expr);
 
-    auto lhs_y_post = converter.getArithVar("y'");
     auto expected_y_expr = arith::toExpr(converter.getArithVar("y"));
-
     auto variant_expr_y = subs1.get(lhs_y_post);
     ASSERT_TRUE(std::holds_alternative<ArithExprPtr>(variant_expr_y));
     EXPECT_EQ(std::get<ArithExprPtr>(variant_expr_y), expected_y_expr);
@@ -57,7 +56,6 @@ TEST(LoatTransitionToITSConverterTest, FullConversionTest)
     auto rule2 = converter.convert(transition);
 
     EXPECT_EQ(rule->getGuard(), rule2->getGuard());
-
     EXPECT_EQ(rule->getUpdate(), rule2->getUpdate());
 }
 
@@ -336,4 +334,52 @@ TEST(LoatTransitionToITSConverterTest, RedundantIdentityUpdate)
 
     auto expected_expr = arith::toExpr(converter.getArithVar("x"));
     EXPECT_EQ(std::get<ArithExprPtr>(variant), expected_expr);
+}
+
+TEST(LoatTransitionToITSConverterTest, MultipleTransitionsWithSameConverter)
+{
+    LoatTransitionToITSConverter converter;
+
+    auto x = LoatIntExpression::mkVar("x");
+    auto y = LoatIntExpression::mkVar("y");
+
+    auto x_post = LoatIntExpression::mkVar("x'");
+    auto y_post = LoatIntExpression::mkVar("y'");
+
+    auto guard1 = LoatBoolExpression::mkLt(x, LoatIntExpression::mkConst(5));
+    auto update1 = LoatBoolExpression::mkEq(x_post, LoatIntExpression::mkPlus({x, LoatIntExpression::mkConst(1)}));
+    auto formula1 = LoatBoolExpression::mkAnd({guard1, update1});
+    LoatTransition transition1(LoatLocation("q0"), LoatLocation("q1"), formula1);
+
+    auto guard2 = LoatBoolExpression::mkGe(y, LoatIntExpression::mkConst(2));
+    auto update2 = LoatBoolExpression::mkEq(y_post, LoatIntExpression::mkTimes({y, LoatIntExpression::mkConst(2)}));
+    auto formula2 = LoatBoolExpression::mkAnd({guard2, update2});
+    LoatTransition transition2(LoatLocation("q1"), LoatLocation("q2"), formula2);
+
+    auto rule1 = converter.convert(transition1);
+    auto rule2 = converter.convert(transition2);
+
+    ASSERT_FALSE(rule1->getGuard() == BoolExpr::top());
+    ASSERT_FALSE(rule1->getGuard() == BoolExpr::bot());
+
+    auto subs1 = rule1->getUpdate();
+    EXPECT_EQ(subs1.size(), 1);
+
+    auto lhs1 = converter.getArithVar("x'");
+    auto variant1 = subs1.get(lhs1);
+    ASSERT_TRUE(std::holds_alternative<ArithExprPtr>(variant1));
+    auto expected1 = arith::mkPlus({arith::toExpr(converter.getArithVar("x")), arith::mkConst(1)});
+    EXPECT_EQ(std::get<ArithExprPtr>(variant1), expected1);
+
+    ASSERT_FALSE(rule2->getGuard() == BoolExpr::top());
+    ASSERT_FALSE(rule2->getGuard() == BoolExpr::bot());
+
+    auto subs2 = rule2->getUpdate();
+    EXPECT_EQ(subs2.size(), 1);
+
+    auto lhs2 = converter.getArithVar("y'");
+    auto variant2 = subs2.get(lhs2);
+    ASSERT_TRUE(std::holds_alternative<ArithExprPtr>(variant2));
+    auto expected2 = arith::mkTimes({arith::toExpr(converter.getArithVar("y")), arith::mkConst(2)});
+    EXPECT_EQ(std::get<ArithExprPtr>(variant2), expected2);
 }

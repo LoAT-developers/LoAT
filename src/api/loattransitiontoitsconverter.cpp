@@ -2,8 +2,17 @@
 
 RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
 {
+    // Search for transition in cache and use it if possible
+    auto it = m_transitionCache.find(&transition);
+    if (it != m_transitionCache.end())
+    {
+        return it->second;
+    }
+
     // Save refrence to formula
     const LoatBoolExprPtr &formula = transition.getFormula();
+
+    m_extractedSubstitutions.clear();
 
     // Extract guard statement of the transition
     const Bools::Expr guard = convertBool(formula);
@@ -17,26 +26,14 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
         substitution.put(var, expr);
     }
 
-    // Loop through remaining post Vars
-    for (const auto &[name, postVar] : m_postVarMap)
-    {
-        // Check if already substituted
-        if (!substitution.domain().contains(postVar))
-        {
-            auto it = m_preVarMap.find(name);
-            if (it != m_preVarMap.end())
-            {
-                const ArithVarPtr &preVar = it->second;
-                substitution.put(postVar, arith::toExpr(preVar));
-            }
-        }
-    }
-
-    // Clear extracted substitutions
     m_extractedSubstitutions.clear();
 
     // Create the internal its transition/rule
-    return Rule::mk(guard, Subs::build<Arith>(substitution));
+    RulePtr rule = Rule::mk(guard, Subs::build<Arith>(substitution));
+
+    // Cache it and return it
+    m_transitionCache.emplace(&transition, rule);
+    return rule;
 }
 
 ArithExprPtr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &expr)
