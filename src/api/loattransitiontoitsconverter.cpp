@@ -274,7 +274,6 @@ ArithVarPtr LoatTransitionToITSConverter::getArithVar(const std::string &name)
 
     // Create next Prog Var
     // @FROHN - Is it correct, that all vars that the user creates are prog vars?
-    // ArithVarPtr var = ArithVar::nextProgVar();
     ArithVarPtr var = ArithVar::nextProgVar();
 
     // Add variable base name (without ') to the correct map and return the pointer
