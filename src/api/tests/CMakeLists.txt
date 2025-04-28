@@ -6,4 +6,5 @@ target_sources(${Loat_API_Tests} PRIVATE
   test_loatboolexpr.cpp
   test_loattransition.cpp
   test_loatlocation.cpp
+  test_loattransitiontoitsconverter.cpp
 )
