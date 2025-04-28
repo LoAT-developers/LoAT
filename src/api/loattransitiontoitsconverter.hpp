@@ -36,8 +36,6 @@ public:
     // Converts a LoatTransition to internal Rule
     RulePtr convert(const LoatTransition &transition);
 
-    Bools::Expr extractGuardAndSubstitution(const LoatBoolExprPtr &expr, Arith::Subs &substitution);
-
     ArithExprPtr convertArith(const LoatIntExprPtr &expr);
     Bools::Expr convertBool(const LoatBoolExprPtr &expr);
 
