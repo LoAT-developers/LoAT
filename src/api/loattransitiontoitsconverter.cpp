@@ -5,38 +5,96 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
     // Save refrence to formula
     const LoatBoolExprPtr &formula = transition.getFormula();
 
-    // Extract guard statement of the transition
-    const Bools::Expr guard = convertBool(formula);
-
-    // Variable to save the substitution
-    Arith::Subs substitution;
-
-    // Handle extracted substitutions
-    for (const auto &[var, expr] : m_extractedSubstitutions)
-    {
-        substitution.put(var, expr);
-    }
-
-    // Loop through remaining post Vars
-    for (const auto &[name, postVar] : m_postVarMap)
-    {
-        // Check if already substituted
-        if (!substitution.domain().contains(postVar))
-        {
-            auto it = m_preVarMap.find(name);
-            if (it != m_preVarMap.end())
-            {
-                const ArithVarPtr &preVar = it->second;
-                substitution.put(postVar, arith::toExpr(preVar));
-            }
-        }
-    }
-
-    // Clear extracted substitutions
-    m_extractedSubstitutions.clear();
+    // Extract guard and substitution of the transition
+    auto [guard, substitution] = extractGuardAndSubstitutions(formula);
 
     // Create the internal its transition/rule
     return Rule::mk(guard, Subs::build<Arith>(substitution));
+}
+
+std::pair<Bools::Expr, Arith::Subs> LoatTransitionToITSConverter::extractGuardAndSubstitutions(const LoatBoolExprPtr &formula)
+{
+    using Kind = LoatBoolExpression::Kind;
+
+    // Check if we have an and statment (potentially holding guards and subs)
+    if (formula->getKind() == Kind::And)
+    {
+        // Cast to subclass
+        const auto *andExpr = static_cast<const LoatBoolAnd *>(formula.get());
+
+        // Create variables for guards and subs
+        BoolExprSet guards;
+        Arith::Subs substitutions;
+
+        // Loop through components of and statment
+        for (const auto &arg : andExpr->getArgs())
+        {
+            // Rekursive call
+            auto [subGuard, subSubs] = extractGuardAndSubstitutions(arg);
+
+            // Insert if not true
+            if (subGuard != top())
+            {
+                guards.insert(subGuard);
+            }
+
+            // Insert subs correctly
+            for (const auto &[var, expr] : subSubs)
+            {
+                substitutions.put(var, expr);
+            }
+        }
+
+        // Return pair
+        return {BoolJunction::from_cache(guards, ConcatAnd), substitutions};
+    }
+    // Check if we have a compare statement
+    else if (formula->getKind() == Kind::Compare)
+    {
+        // Cast to subclass
+        const auto *cmp = static_cast<const LoatBoolCmp *>(formula.get());
+
+        // Check if we have an assignment
+        if (cmp->getOp() == LoatBoolExpression::CmpOp::Eq)
+        {
+            // Get left and right side
+            const auto lhs = cmp->getLhs();
+            const auto rhs = cmp->getRhs();
+
+            // Check if left side is a variable (nesecary for an assignment)
+            if (lhs->getKind() == LoatIntExpression::Kind::Variable)
+            {
+                // Cast to subclass and get name
+                const auto *lhsVar = static_cast<const LoatIntVar *>(lhs.get());
+                const auto &name = lhsVar->getName();
+
+                // Check if we have a post var
+                if (!name.empty() && name.back() == '\'')
+                {
+                    // Get components of substitution
+                    ArithVarPtr postVar = getArithVar(name);
+                    ArithExprPtr rhsExpr = convertArith(rhs);
+
+                    // Add substitution
+                    Arith::Subs s;
+                    s.put(postVar, rhsExpr);
+
+                    // Return pair
+                    return {top(), s};
+                }
+            }
+        }
+
+        // Return pair (only guard)
+        Bools::Expr guard = convertBool(formula);
+        return {guard, Arith::Subs{}};
+    }
+    else
+    {
+        // Return pair (only guard)
+        Bools::Expr guard = convertBool(formula);
+        return {guard, Arith::Subs{}};
+    }
 }
 
 ArithExprPtr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &expr)
@@ -177,7 +235,6 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
                 args.insert(converted);
             }
         }
-
         // Set result as internal and junction
         result = BoolJunction::from_cache(args, ConcatAnd);
         break;
@@ -190,8 +247,14 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
         BoolExprSet args;
         // Iterate over all args
         for (const auto &arg : o->getArgs())
+        {
             // Use caching for all sub expressions directly
-            args.insert(convertBool(arg));
+            auto converted = convertBool(arg);
+            if (converted != bot())
+            {
+                args.insert(converted);
+            }
+        }
         // Set result as internal or junction
         result = BoolJunction::from_cache(args, ConcatOr);
         break;
@@ -202,35 +265,8 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
         const auto *cmp = static_cast<const LoatBoolCmp *>(expr.get());
 
         // Get both sides of expression
-        const auto lhsExpr = cmp->getLhs();
-        const auto rhsExpr = cmp->getRhs();
-
-        // Update case
-        if (cmp->getOp() == LoatBoolExpression::CmpOp::Eq)
-        {
-            // Check if lhs is a post var
-            if (lhsExpr->getKind() == LoatIntExpression::Kind::Variable)
-            {
-                // Get Variable name
-                const auto *lhsVar = static_cast<const LoatIntVar *>(lhsExpr.get());
-                const std::string &name = lhsVar->getName();
-
-                // Check if it ends with ' (-> post var)
-                if (!name.empty() && name.back() == '\'')
-                {
-                    auto postVar = getArithVar(name);
-                    auto rhs = convertArith(rhsExpr);
-                    m_extractedSubstitutions.emplace_back(postVar, rhs);
-
-                    result = top();
-                    m_boolExprCache.emplace(expr, result);
-                    return result;
-                }
-            }
-        }
-        // Convert lhs and rhs (not an update)
-        const auto lhs = convertArith(lhsExpr);
-        const auto rhs = convertArith(rhsExpr);
+        const auto lhs = convertArith(cmp->getLhs());
+        const auto rhs = convertArith(cmp->getRhs());
 
         // Switch over compare operator ==, !=, >, >=, <, <=
         using Op = LoatBoolExpression::CmpOp;

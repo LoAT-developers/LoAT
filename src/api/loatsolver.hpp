@@ -1,6 +1,7 @@
 #pragma once
 
 #include "loattransition.hpp"
+#include "loattransitiontoitsconverter.hpp"
 #include "loatconfig.hpp"
 #include <any>
 #include <vector>
@@ -10,8 +11,7 @@ class LoatSolver
 private:
     LoatConfig m_config;
     std::vector<LoatTransition> m_transitions;
-
-    // TODO Add convertion and internal expressions
+    LoatTransitionToITSConverter converter;
 
 public:
     // Constructor for LoatSolver
