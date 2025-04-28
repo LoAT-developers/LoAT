@@ -230,3 +230,110 @@ TEST(LoatTransitionToITSConverterTest, ComplexUpdateWithGuard)
         EXPECT_EQ(expr, expected);
     }
 }
+
+TEST(LoatTransitionToITSConverterTest, ComplexGuardWithOrAnd)
+{
+    LoatTransitionToITSConverter converter;
+
+    auto x = LoatIntExpression::mkVar("x");
+    auto y = LoatIntExpression::mkVar("y");
+    auto z = LoatIntExpression::mkVar("z");
+
+    auto cmp1 = LoatBoolExpression::mkLt(x, LoatIntExpression::mkConst(5));
+    auto cmp2 = LoatBoolExpression::mkGt(y, LoatIntExpression::mkConst(2));
+    auto cmp3 = LoatBoolExpression::mkEq(z, LoatIntExpression::mkConst(0));
+
+    auto and_part = LoatBoolExpression::mkAnd({cmp1, cmp2});
+    auto or_guard = LoatBoolExpression::mkOr({and_part, cmp3});
+
+    LoatLocation source("q0");
+    LoatLocation target("q1");
+
+    LoatTransition transition(source, target, or_guard);
+
+    auto rule = converter.convert(transition);
+
+    ASSERT_FALSE(rule->getGuard() == BoolExpr::top());
+    ASSERT_FALSE(rule->getGuard() == BoolExpr::bot());
+
+    const auto &subs = rule->getUpdate();
+    EXPECT_EQ(subs.size(), 0);
+    EXPECT_TRUE(subs.domain().empty());
+}
+
+TEST(LoatTransitionToITSConverterTest, MultiplePostUpdatesWithGuard)
+{
+    LoatTransitionToITSConverter converter;
+
+    auto x = LoatIntExpression::mkVar("x");
+    auto y = LoatIntExpression::mkVar("y");
+    auto z = LoatIntExpression::mkVar("z");
+
+    auto x_post = LoatIntExpression::mkVar("x'");
+    auto y_post = LoatIntExpression::mkVar("y'");
+
+    auto update_x = LoatBoolExpression::mkEq(x_post, LoatIntExpression::mkPlus({x, LoatIntExpression::mkConst(1)}));
+    auto update_y = LoatBoolExpression::mkEq(y_post, LoatIntExpression::mkTimes({y, LoatIntExpression::mkConst(2)}));
+
+    auto guard_cmp = LoatBoolExpression::mkLt(z, LoatIntExpression::mkConst(10));
+
+    auto formula = LoatBoolExpression::mkAnd({update_x, update_y, guard_cmp});
+
+    LoatLocation source("q0");
+    LoatLocation target("q1");
+    LoatTransition transition(source, target, formula);
+
+    auto rule = converter.convert(transition);
+
+    ASSERT_FALSE(rule->getGuard() == BoolExpr::top());
+    ASSERT_FALSE(rule->getGuard() == BoolExpr::bot());
+
+    auto subs = rule->getUpdate();
+    EXPECT_EQ(subs.size(), 2);
+
+    auto lhs_x = converter.getArithVar("x'");
+    auto lhs_y = converter.getArithVar("y'");
+
+    auto variant_x = subs.get(lhs_x);
+    auto variant_y = subs.get(lhs_y);
+
+    ASSERT_TRUE(std::holds_alternative<ArithExprPtr>(variant_x));
+    ASSERT_TRUE(std::holds_alternative<ArithExprPtr>(variant_y));
+
+    auto expected_x = arith::mkPlus({arith::toExpr(converter.getArithVar("x")),
+                                     arith::mkConst(1)});
+    auto expected_y = arith::mkTimes({arith::toExpr(converter.getArithVar("y")),
+                                      arith::mkConst(2)});
+
+    EXPECT_EQ(std::get<ArithExprPtr>(variant_x), expected_x);
+    EXPECT_EQ(std::get<ArithExprPtr>(variant_y), expected_y);
+}
+
+TEST(LoatTransitionToITSConverterTest, RedundantIdentityUpdate)
+{
+    LoatTransitionToITSConverter converter;
+
+    auto x = LoatIntExpression::mkVar("x");
+    auto x_post = LoatIntExpression::mkVar("x'");
+
+    auto identity_update = LoatBoolExpression::mkEq(x_post, x);
+
+    LoatLocation source("q0");
+    LoatLocation target("q1");
+    LoatTransition transition(source, target, identity_update);
+
+    auto rule = converter.convert(transition);
+
+    EXPECT_EQ(rule->getGuard(), BoolExpr::top());
+
+    auto subs = rule->getUpdate();
+    EXPECT_EQ(subs.size(), 1);
+
+    auto lhs = converter.getArithVar("x'");
+    auto variant = subs.get(lhs);
+
+    ASSERT_TRUE(std::holds_alternative<ArithExprPtr>(variant));
+
+    auto expected_expr = arith::toExpr(converter.getArithVar("x"));
+    EXPECT_EQ(std::get<ArithExprPtr>(variant), expected_expr);
+}
