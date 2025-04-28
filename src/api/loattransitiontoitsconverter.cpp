@@ -169,8 +169,15 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
         BoolExprSet args;
         // Iterate over all args
         for (const auto &arg : a->getArgs())
+        {
             // Use caching for all sub expressions directly
-            args.insert(convertBool(arg));
+            auto converted = convertBool(arg);
+            if (converted != top())
+            {
+                args.insert(converted);
+            }
+        }
+
         // Set result as internal and junction
         result = BoolJunction::from_cache(args, ConcatAnd);
         break;
@@ -214,6 +221,10 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
                     auto postVar = getArithVar(name);
                     auto rhs = convertArith(rhsExpr);
                     m_extractedSubstitutions.emplace_back(postVar, rhs);
+
+                    result = top();
+                    m_boolExprCache.emplace(expr, result);
+                    return result;
                 }
             }
         }
