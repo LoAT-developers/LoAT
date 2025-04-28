@@ -2,10 +2,6 @@
 
 RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
 {
-    // Clear variable caches
-    m_preVarMap.clear();
-    m_postVarMap.clear();
-
     // Save refrence to formula
     const LoatBoolExprPtr &formula = transition.getFormula();
 
@@ -15,16 +11,29 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
     // Variable to save the substitution
     Arith::Subs substitution;
 
-    // Loop through post Vars
+    // Handle extracted substitutions
+    for (const auto &[var, expr] : m_extractedSubstitutions)
+    {
+        substitution.put(var, expr);
+    }
+
+    // Loop through remaining post Vars
     for (const auto &[name, postVar] : m_postVarMap)
     {
-        auto it = m_preVarMap.find(name);
-        if (it != m_preVarMap.end())
+        // Check if already substituted
+        if (!substitution.domain().contains(postVar))
         {
-            const ArithVarPtr &preVar = it->second;
-            substitution.put(postVar, arith::toExpr(preVar));
+            auto it = m_preVarMap.find(name);
+            if (it != m_preVarMap.end())
+            {
+                const ArithVarPtr &preVar = it->second;
+                substitution.put(postVar, arith::toExpr(preVar));
+            }
         }
     }
+
+    // Clear extracted substitutions
+    m_extractedSubstitutions.clear();
 
     // Create the internal its transition/rule
     return Rule::mk(guard, Subs::build<Arith>(substitution));
@@ -185,9 +194,32 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
         // Cast to subclass
         const auto *cmp = static_cast<const LoatBoolCmp *>(expr.get());
 
-        // Convert lhs and rhs
-        const auto lhs = convertArith(cmp->getLhs());
-        const auto rhs = convertArith(cmp->getRhs());
+        // Get both sides of expression
+        const auto lhsExpr = cmp->getLhs();
+        const auto rhsExpr = cmp->getRhs();
+
+        // Update case
+        if (cmp->getOp() == LoatBoolExpression::CmpOp::Eq)
+        {
+            // Check if lhs is a post var
+            if (lhsExpr->getKind() == LoatIntExpression::Kind::Variable)
+            {
+                // Get Variable name
+                const auto *lhsVar = static_cast<const LoatIntVar *>(lhsExpr.get());
+                const std::string &name = lhsVar->getName();
+
+                // Check if it ends with ' (-> post var)
+                if (!name.empty() && name.back() == '\'')
+                {
+                    auto postVar = getArithVar(name);
+                    auto rhs = convertArith(rhsExpr);
+                    m_extractedSubstitutions.emplace_back(postVar, rhs);
+                }
+            }
+        }
+        // Convert lhs and rhs (not an update)
+        const auto lhs = convertArith(lhsExpr);
+        const auto rhs = convertArith(rhsExpr);
 
         // Switch over compare operator ==, !=, >, >=, <, <=
         using Op = LoatBoolExpression::CmpOp;

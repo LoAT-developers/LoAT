@@ -28,14 +28,16 @@ private:
     // Cache LoAT -> ITS (Bool vars)
     std::unordered_map<std::string, BoolVarPtr> m_boolVarMap;
 
+    std::vector<std::pair<ArithVarPtr, ArithExprPtr>> m_extractedSubstitutions;
+
 public:
     LoatTransitionToITSConverter() = default;
 
     // Converts a LoatTransition to internal Rule
     RulePtr convert(const LoatTransition &transition);
 
-private:
-    // Helper to convert expressions
+    Bools::Expr extractGuardAndSubstitution(const LoatBoolExprPtr &expr, Arith::Subs &substitution);
+
     ArithExprPtr convertArith(const LoatIntExprPtr &expr);
     Bools::Expr convertBool(const LoatBoolExprPtr &expr);
 
