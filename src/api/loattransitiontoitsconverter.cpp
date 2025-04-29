@@ -328,7 +328,7 @@ Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name)
     // Add to other map if not present
     if (otherMap.find(base) == otherMap.end())
     {
-        otherMap.emplace(base, ArithVar::nextProgVar());
+        otherMap.emplace(base, BoolVar::nextProgVar());
     }
 
     return var;
