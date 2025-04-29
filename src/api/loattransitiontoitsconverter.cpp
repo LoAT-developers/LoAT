@@ -312,7 +312,7 @@ Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name)
 
     // Get the correct map refrences
     auto &map = isPost ? m_boolPostVarMap : m_boolPreVarMap;
-    auto &otherMap = isPost ? m_preVarMap : m_postVarMap;
+    auto &otherMap = isPost ? m_boolPreVarMap : m_boolPostVarMap;
 
     // Search for the variable in the map and return it if found
     auto it = map.find(base);
