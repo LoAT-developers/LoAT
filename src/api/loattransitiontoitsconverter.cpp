@@ -5,99 +5,37 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
     // Save refrence to formula
     const LoatBoolExprPtr &formula = transition.getFormula();
 
-    // Extract guard and substitution of the transition
-    auto [guard, substitution] = extractGuardAndSubstitutions(formula);
+    // Convert Formula
+    Bools::Expr guard = convertBool(formula);
+
+    // Create arith subs (x = x' etc.)
+    Arith::Subs arithSubs;
+    for (const auto &[name, preVar] : m_preVarMap)
+    {
+
+        auto it = m_postVarMap.find(name);
+        if (it != m_postVarMap.end())
+        {
+            arithSubs.put(it->second, Arith::varToExpr(preVar));
+        }
+    }
+
+    // Create bool subs (x = x' etc.)
+    Bools::Subs boolSubs;
+    for (const auto &[name, preVar] : m_boolPreVarMap)
+    {
+        auto it = m_boolPostVarMap.find(name);
+        if (it != m_boolPostVarMap.end())
+        {
+            boolSubs.put(it->second, Bools::varToExpr(preVar));
+        }
+    }
 
     // Create the internal its transition/rule
-    return Rule::mk(guard, Subs::build<Arith>(substitution));
+    return Rule::mk(guard, Subs::build<Arith>(arithSubs).unite(Subs::build<Bools>(boolSubs)));
 }
 
-std::pair<Bools::Expr, Arith::Subs> LoatTransitionToITSConverter::extractGuardAndSubstitutions(const LoatBoolExprPtr &formula)
-{
-    using Kind = LoatBoolExpression::Kind;
-
-    // Check if we have an and statment (potentially holding guards and subs)
-    if (formula->getKind() == Kind::And)
-    {
-        // Cast to subclass
-        const auto *andExpr = static_cast<const LoatBoolAnd *>(formula.get());
-
-        // Create variables for guards and subs
-        BoolExprSet guards;
-        Arith::Subs substitutions;
-
-        // Loop through components of and statment
-        for (const auto &arg : andExpr->getArgs())
-        {
-            // Rekursive call
-            auto [subGuard, subSubs] = extractGuardAndSubstitutions(arg);
-
-            // Insert if not true
-            if (subGuard != top())
-            {
-                guards.insert(subGuard);
-            }
-
-            // Insert subs correctly
-            for (const auto &[var, expr] : subSubs)
-            {
-                substitutions.put(var, expr);
-            }
-        }
-
-        // Return pair
-        return {BoolJunction::from_cache(guards, ConcatAnd), substitutions};
-    }
-    // Check if we have a compare statement
-    else if (formula->getKind() == Kind::Compare)
-    {
-        // Cast to subclass
-        const auto *cmp = static_cast<const LoatBoolCmp *>(formula.get());
-
-        // Check if we have an assignment
-        if (cmp->getOp() == LoatBoolExpression::CmpOp::Eq)
-        {
-            // Get left and right side
-            const auto lhs = cmp->getLhs();
-            const auto rhs = cmp->getRhs();
-
-            // Check if left side is a variable (nesecary for an assignment)
-            if (lhs->getKind() == LoatIntExpression::Kind::Variable)
-            {
-                // Cast to subclass and get name
-                const auto *lhsVar = static_cast<const LoatIntVar *>(lhs.get());
-                const auto &name = lhsVar->getName();
-
-                // Check if we have a post var
-                if (!name.empty() && name.back() == '\'')
-                {
-                    // Get components of substitution
-                    ArithVarPtr postVar = getArithVar(name);
-                    ArithExprPtr rhsExpr = convertArith(rhs);
-
-                    // Add substitution
-                    Arith::Subs s;
-                    s.put(postVar, rhsExpr);
-
-                    // Return pair
-                    return {top(), s};
-                }
-            }
-        }
-
-        // Return pair (only guard)
-        Bools::Expr guard = convertBool(formula);
-        return {guard, Arith::Subs{}};
-    }
-    else
-    {
-        // Return pair (only guard)
-        Bools::Expr guard = convertBool(formula);
-        return {guard, Arith::Subs{}};
-    }
-}
-
-ArithExprPtr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &expr)
+Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &expr)
 {
     // Search for expression in cache and use it if possible
     auto it = m_arithExprCache.find(expr);
@@ -108,7 +46,7 @@ ArithExprPtr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &ex
 
     // Declare result and use it as return variable
     using Kind = LoatIntExpression::Kind;
-    ArithExprPtr result = arith::mkConst(0);
+    Arith::Expr result = arith::mkConst(0);
 
     // Switch over expr kind
     switch (expr->getKind())
@@ -198,7 +136,7 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
 
     // Declare result and use it as return variable
     using Kind = LoatBoolExpression::Kind;
-    Bools::Expr result = top();
+    Bools::Expr result = Bools::anyValue();
 
     // Switch over expr kind
     switch (expr->getKind())
@@ -229,14 +167,10 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
         for (const auto &arg : a->getArgs())
         {
             // Use caching for all sub expressions directly
-            auto converted = convertBool(arg);
-            if (converted != top())
-            {
-                args.insert(converted);
-            }
+            args.insert(convertBool(arg));
         }
         // Set result as internal and junction
-        result = BoolJunction::from_cache(args, ConcatAnd);
+        result = bools::mkAnd(args);
         break;
     }
     case Kind::Or:
@@ -249,14 +183,10 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
         for (const auto &arg : o->getArgs())
         {
             // Use caching for all sub expressions directly
-            auto converted = convertBool(arg);
-            if (converted != bot())
-            {
-                args.insert(converted);
-            }
+            args.insert(convertBool(arg));
         }
         // Set result as internal or junction
-        result = BoolJunction::from_cache(args, ConcatOr);
+        result = bools::mkOr(args);
         break;
     }
     case Kind::Compare:
@@ -329,7 +259,7 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
     return result;
 }
 
-ArithVarPtr LoatTransitionToITSConverter::getArithVar(const std::string &name)
+Arith::Var LoatTransitionToITSConverter::getArithVar(const std::string &name)
 {
 
     // Store name of var
@@ -343,34 +273,63 @@ ArithVarPtr LoatTransitionToITSConverter::getArithVar(const std::string &name)
         isPost = true;
     }
 
-    // Get the correct map refrence
+    // Get the correct map refrences
     auto &map = isPost ? m_postVarMap : m_preVarMap;
+    auto &otherMap = isPost ? m_preVarMap : m_postVarMap;
 
     // Search for the variable in the map and return it if found
     auto it = map.find(base);
     if (it != map.end())
+    {
         return it->second;
+    }
 
-    // Create next Prog Var
-    // @FROHN - Is it correct, that all vars that the user creates are prog vars?
-    ArithVarPtr var = ArithVar::nextProgVar();
-
-    // Add variable base name (without ') to the correct map and return the pointer
+    // Create next Prog Var and add variable base name (without ') to the correct map
+    Arith::Var var = ArithVar::nextProgVar();
     map.emplace(base, var);
+
+    // Add to other map if not present
+    if (otherMap.find(base) == otherMap.end())
+    {
+        otherMap.emplace(base, ArithVar::nextProgVar());
+    }
+
     return var;
 }
 
-BoolVarPtr LoatTransitionToITSConverter::getBoolVar(const std::string &name)
+Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name)
 {
+    // Store name of var
+    std::string base = name;
+
+    // Check if variable is a post var
+    bool isPost = false;
+    if (!name.empty() && name.back() == '\'')
+    {
+        base.pop_back();
+        isPost = true;
+    }
+
+    // Get the correct map refrences
+    auto &map = isPost ? m_boolPostVarMap : m_boolPreVarMap;
+    auto &otherMap = isPost ? m_preVarMap : m_postVarMap;
+
     // Search for the variable in the map and return it if found
-    auto it = m_boolVarMap.find(name);
-    if (it != m_boolVarMap.end())
+    auto it = map.find(base);
+    if (it != map.end())
+    {
         return it->second;
+    }
 
-    // Create new internal bool var
-    BoolVarPtr var = Bools::next();
+    // Create next Prog Var and add variable base name (without ') to the correct map
+    Bools::Var var = BoolVar::nextProgVar();
+    map.emplace(base, var);
 
-    // // Add variable to the map and return the pointer
-    m_boolVarMap.emplace(name, var);
+    // Add to other map if not present
+    if (otherMap.find(base) == otherMap.end())
+    {
+        otherMap.emplace(base, ArithVar::nextProgVar());
+    }
+
     return var;
 }

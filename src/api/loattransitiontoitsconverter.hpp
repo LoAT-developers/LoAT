@@ -19,14 +19,15 @@ private:
     std::unordered_map<LoatBoolExprPtr, Bools::Expr> m_boolExprCache;
 
     // Cache (api int expr to internal int Expr)
-    std::unordered_map<LoatIntExprPtr, ArithExprPtr> m_arithExprCache;
+    std::unordered_map<LoatIntExprPtr, Arith::Expr> m_arithExprCache;
 
     // Cache LoAT -> ITS (Pre- and Post-Vars)
-    std::unordered_map<std::string, ArithVarPtr> m_preVarMap;
-    std::unordered_map<std::string, ArithVarPtr> m_postVarMap;
+    std::unordered_map<std::string, Arith::Var> m_preVarMap;
+    std::unordered_map<std::string, Arith::Var> m_postVarMap;
 
-    // Cache LoAT -> ITS (Bool vars)
-    std::unordered_map<std::string, BoolVarPtr> m_boolVarMap;
+    // Cache LoAT -> ITS (Bool Pre- and Post-Vars)
+    std::unordered_map<std::string, Bools::Var> m_boolPreVarMap;
+    std::unordered_map<std::string, Bools::Var> m_boolPostVarMap;
 
 public:
     LoatTransitionToITSConverter() = default;
@@ -34,12 +35,10 @@ public:
     // Converts a LoatTransition to internal Rule
     RulePtr convert(const LoatTransition &transition);
 
-    ArithExprPtr convertArith(const LoatIntExprPtr &expr);
+    // Converts a LoatExpression into internal Expression
+    Arith::Expr convertArith(const LoatIntExprPtr &expr);
     Bools::Expr convertBool(const LoatBoolExprPtr &expr);
 
-    ArithVarPtr getArithVar(const std::string &name);
-    BoolVarPtr getBoolVar(const std::string &name);
-
-private:
-    std::pair<Bools::Expr, Arith::Subs> extractGuardAndSubstitutions(const LoatBoolExprPtr &formula);
+    Arith::Var getArithVar(const std::string &name);
+    Bools::Var getBoolVar(const std::string &name);
 };
