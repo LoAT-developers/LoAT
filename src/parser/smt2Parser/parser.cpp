@@ -50,10 +50,6 @@ namespace sexpressionparser {
                     }
                     assert(preVars.size() == postVars.size());
                     sexpresso::Sexp ruleExps = ex[4];
-                    linked_hash_set<Arith::Var> tmpVars;
-                    for (const std::string &str: postVars) {
-                        tmpVars.insert(vars.at(str));
-                    }
                     const auto cost_var = res->getCostVar();
                     for (auto &ruleExp: ruleExps.arguments()) {
                         if (ruleExp[0].str() == "cfg_trans2") {
