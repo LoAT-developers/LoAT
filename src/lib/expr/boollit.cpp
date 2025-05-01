@@ -103,7 +103,3 @@ BoolLitPtr BoolLit::renameVars(const bool_var_map &map) const {
         return bools::mk(it->second, negated);
     }
 }
-
-BoolVarPtr bools::mkVar(const int idx) {
-    return theory::mkVar<theory::Type::Bool, Empty>(idx);
-}

@@ -1,6 +1,5 @@
 #include "arithsubs.hpp"
 #include "arithexpr.hpp"
-#include "var.hpp"
 
 ArithSubs::ArithSubs() {}
 
@@ -8,7 +7,7 @@ ArithSubs::ArithSubs(std::initializer_list<std::pair<const ArithVarPtr, ArithExp
 
 ArithExprPtr ArithSubs::get(const ArithVarPtr key) const {
     const auto res {map.get(key)};
-    return res ? *res : arith::toExpr(key);
+    return res ? *res : key->toExpr();
 }
 
 void ArithSubs::put(const ArithVarPtr key, const ArithExprPtr val) {

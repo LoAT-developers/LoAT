@@ -318,7 +318,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
         const auto c{ArithVar::next()};
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
-        templateSubs.put(var, c0 + (arith::toExpr(n) * c));
+        templateSubs.put(var, c0 + (n->toExpr() * c));
     }
     const auto buildRes = [&](const Complexity &cpx) {
         const auto subs = Config::Analysis::model && cpx != Complexity::Unknown ? templateSubs.compose(solver->model().toSubs().get<Arith>()) : ArithSubs();

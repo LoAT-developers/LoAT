@@ -41,7 +41,7 @@ AccelerationProblem::AccelerationProblem(
     const auto logic {Smt::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
-        const auto bound {bools::mkLit(arith::mkGt(arith::toExpr(config.n), arith::mkConst(0)))};
+        const auto bound {bools::mkLit(arith::mkGt(config.n->toExpr(), arith::mkConst(0)))};
         this->solver->add(bound);
         this->res.formula.push_back(bound);
     }
@@ -81,7 +81,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         return false;
     }
     const auto &up {update.get<Arith>()};
-    const ArithSubs but_last {closed->closed_form.get<Arith>().compose({{config.n, arith::toExpr(config.n) - arith::mkConst(1)}})};
+    const ArithSubs but_last {closed->closed_form.get<Arith>().compose({{config.n, config.n->toExpr() - arith::mkConst(1)}})};
     bool low_degree {false};
     ArithLitSet guard;
     ArithLitSet covered;
@@ -193,7 +193,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         solver->add(bools::mkLit(theory::negate(lit)));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            auto g {Subs::build<Arith>(config.n, arith::toExpr(config.n) - arith::mkConst(1))(closed->closed_form(lit))};
+            auto g {Subs::build<Arith>(config.n, config.n->toExpr() - arith::mkConst(1))(closed->closed_form(lit))};
             if (closed->prefix > 0) {
                 g = g && bools::mkLit(lit);
             }
@@ -240,7 +240,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
         solver->add(bools::mkLit(inc));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            const auto g {bools::mkAndFromLits({rel, rel->subs(closed->closed_form.get<Arith>())->subs({{config.n, arith::toExpr(config.n) - arith::mkConst(1)}})})};
+            const auto g {bools::mkAndFromLits({rel, rel->subs(closed->closed_form.get<Arith>())->subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})})};
             res.formula.push_back(g);
             if (Config::Analysis::doLogAccel()) {
                 std::cout << rel << ": eventual decrease yields " << g << std::endl;
@@ -281,7 +281,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
                     solver->pop();
                     return false;
                 }
-                const auto s {closed->closed_form.get<Arith>().compose(ArithSubs({{config.n, arith::toExpr(config.n) - arith::mkConst(1)}}))};
+                const auto s {closed->closed_form.get<Arith>().compose(ArithSubs({{config.n, config.n->toExpr() - arith::mkConst(1)}}))};
                 g = bools::mkAndFromLits({(!i)->subs(s), rel->subs(s)});
                 c = bools::mkLit((!i));
                 res.nonterm = false;

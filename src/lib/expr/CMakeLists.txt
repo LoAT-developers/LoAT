@@ -8,8 +8,11 @@ add_library(${PROJECT_NAME} OBJECT
   itheory.hpp
   subs.hpp
   subs.cpp
+  boolvar.hpp
+  boolvar.cpp
   boollit.hpp
   boollit.cpp
+  arithvar.cpp
   arithexpr.cpp
   arithexpr.hpp
   arithlit.cpp
@@ -41,7 +44,6 @@ add_library(${PROJECT_NAME} OBJECT
   exprconversioncontext.hpp
   renaming.hpp
   renaming.cpp
-  var.hpp
   exprfwd.hpp
 )
 

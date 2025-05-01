@@ -62,26 +62,26 @@ Expr toExpr(const Const &c) {
     return TheTheory::constToExpr(c);
 }
 
-theory::Type to_type(const Expr &x) {
+theory::Types to_type(const Expr &x) {
     return std::visit(
         Overload{
             [&](const Arith::Expr &) {
-                return Type::Int;
+                return Types::Int;
             },
             [&](const Bools::Expr &) {
-                return Type::Bool;
+                return Types::Bool;
             }},
         x);
 }
 
-theory::Type to_type(const Var &x) {
+theory::Types to_type(const Var &x) {
     return std::visit(
         Overload{
             [&](const Arith::Var &) {
-                return Type::Int;
+                return Types::Int;
             },
             [&](const Bools::Var &) {
-                return Type::Bool;
+                return Types::Bool;
             }},
         x);
 }
@@ -315,12 +315,12 @@ std::ostream& operator<<(std::ostream &s, const Lit &e) {
     return s;
 }
 
-std::ostream& theory::operator<<(std::ostream &s, const theory::Type &e) {
+std::ostream& theory::operator<<(std::ostream &s, const theory::Types &e) {
     switch (e) {
-        case theory::Type::Int:
+        case theory::Types::Int:
             s << "Int";
             break;
-        case theory::Type::Bool:
+        case theory::Types::Bool:
             s << "Bool";
             break;
     }

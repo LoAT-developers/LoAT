@@ -118,7 +118,7 @@ public:
     const linked_hash_set<ClausePtr> &get_clauses() const;
     sexpresso::Sexp to_smtlib() const;
     CHCProblem reverse() const;
-    linked_hash_map<std::string, std::vector<theory::Type>> get_signature() const;
+    linked_hash_map<std::string, std::vector<theory::Types>> get_signature() const;
 
     template <ITheory T>
     unsigned max_arity() const {

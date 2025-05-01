@@ -40,13 +40,11 @@ namespace theory {
     };
 }
 
-template<theory::Type T, class S> class TVar;
-
 class ArithLit;
 class ArithExpr;
 class ArithSubs;
+class ArithVar;
 
-using ArithVar = TVar<theory::Type::Int, ArithExpr>;
 using ArithLitPtr = ptr<ArithLit>;
 using ArithExprPtr = ptr<ArithExpr>;
 using ArithVarPtr = ptr<ArithVar>;

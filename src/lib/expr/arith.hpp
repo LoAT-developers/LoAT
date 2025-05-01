@@ -3,7 +3,6 @@
 #include "itheory.hpp"
 #include "arithlit.hpp"
 #include "exprfwd.hpp"
-#include "var.hpp"
 
 struct Arith {
 

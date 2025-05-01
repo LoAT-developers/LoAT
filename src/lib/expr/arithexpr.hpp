@@ -52,7 +52,6 @@ class ArithExpr: public std::enable_shared_from_this<ArithExpr> {
 protected:
 
     ArithExpr(const arith::Kind kind);
-    ArithExpr();
 
 private:
 
@@ -249,6 +248,51 @@ public:
 
 };
 
+
+class ArithVar: public ArithExpr {
+
+    friend ArithExprPtr arith::mkVar(const int idx);
+    friend class ArithExpr;
+
+private:
+
+    static int last_tmp_idx;
+    static int last_prog_idx;
+
+    int idx;
+
+public:
+    explicit ArithVar(const int idx);
+    ~ArithVar();
+
+private:
+    struct CacheEqual {
+        bool operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept;
+    };
+    struct CacheHash {
+        size_t operator()(const std::tuple<int> &args) const noexcept;
+    };
+    static ConsHash<ArithExpr, ArithVar, CacheHash, CacheEqual, int> cache;
+
+    ArithVarPtr toVarPtr() const;
+
+public:
+
+    static ArithVarPtr next();
+    static ArithVarPtr nextProgVar();
+    static ArithVarPtr postVar(const ArithVarPtr&);
+    static ArithVarPtr progVar(const ArithVarPtr&);
+
+    ArithExprPtr toExpr() const;
+    int getIdx() const;
+    std::string getName() const;
+    bool isTempVar() const;
+    bool isProgVar() const;
+    bool isPostVar() const;
+    sexpresso::Sexp to_smtlib() const;
+
+};
+
 std::ostream& operator<<(std::ostream &s, const ArithVarPtr x);
 
 
@@ -369,10 +413,6 @@ public:
     ArithExprPtr getExponent() const;
 
 };
-
-namespace arith {
-ArithExprPtr toExpr(const ArithVarPtr&);
-}
 
 std::ostream& operator<<(std::ostream &s, const ArithExprPtr e);
 std::ostream& operator<<(std::ostream &s, const ArithVarPtr e);

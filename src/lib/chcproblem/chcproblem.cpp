@@ -254,18 +254,18 @@ sexpresso::Sexp CHCProblem::to_smtlib() const {
     return res;
 }
 
-linked_hash_map<std::string, std::vector<theory::Type>> CHCProblem::get_signature() const {
-    linked_hash_map<std::string, std::vector<theory::Type>> preds;
+linked_hash_map<std::string, std::vector<theory::Types>> CHCProblem::get_signature() const {
+    linked_hash_map<std::string, std::vector<theory::Types>> preds;
     for (const auto &c: clauses) {
         if (const auto prem {c->get_premise()}) {
-            std::vector<theory::Type> types;
+            std::vector<theory::Types> types;
             for (const auto &x: (*prem)->get_args()) {
                 types.emplace_back(theory::to_type(x));
             }
             preds.put((*prem)->get_pred(), types);
         }
         if (const auto conc {c->get_conclusion()}) {
-            std::vector<theory::Type> types;
+            std::vector<theory::Types> types;
             for (const auto &x: (*conc)->get_args()) {
                 types.emplace_back(theory::to_type(x));
             }

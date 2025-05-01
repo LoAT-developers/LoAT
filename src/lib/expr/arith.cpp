@@ -6,7 +6,7 @@ Arith::Expr Arith::constToExpr(const Const &val) {
 }
 
 Arith::Expr Arith::varToExpr(const Var &var) {
-    return arith::toExpr(var);
+    return var;
 }
 
 Arith::Expr Arith::anyValue() {
