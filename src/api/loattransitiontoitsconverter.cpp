@@ -10,24 +10,27 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
 
     // Create arith subs (x = x' etc.)
     Arith::Subs arithSubs;
-    for (const auto &[name, preVar] : m_preVarMap)
+    for (const auto &[name, var] : m_arithVarMap)
     {
-
-        auto it = m_postVarMap.find(name);
-        if (it != m_postVarMap.end())
+        // Check if we have a pre Var
+        if (!name.empty() && name.back() != '\'')
         {
-            arithSubs.put(it->second, Arith::varToExpr(preVar));
+            // Get corrosponding post var
+            Arith::Var tempVar = getArithVar(name + "\'");
+            arithSubs.put(tempVar, Arith::varToExpr(var));
         }
     }
 
     // Create bool subs (x = x' etc.)
     Bools::Subs boolSubs;
-    for (const auto &[name, preVar] : m_boolPreVarMap)
+    for (const auto &[name, var] : m_boolVarMap)
     {
-        auto it = m_boolPostVarMap.find(name);
-        if (it != m_boolPostVarMap.end())
+        // Check if we have a pre Var
+        if (!name.empty() && name.back() != '\'')
         {
-            boolSubs.put(it->second, Bools::varToExpr(preVar));
+            // Get corrosponding post var
+            Bools::Var tempVar = getBoolVar(name + "\'");
+            boolSubs.put(tempVar, Bools::varToExpr(var));
         }
     }
 
@@ -262,74 +265,52 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
 Arith::Var LoatTransitionToITSConverter::getArithVar(const std::string &name)
 {
 
-    // Store name of var
-    std::string base = name;
-
-    // Check if variable is a post var
-    bool isPost = false;
-    if (!name.empty() && name.back() == '\'')
-    {
-        base.pop_back();
-        isPost = true;
-    }
-
-    // Get the correct map refrences
-    auto &map = isPost ? m_postVarMap : m_preVarMap;
-    auto &otherMap = isPost ? m_preVarMap : m_postVarMap;
-
     // Search for the variable in the map and return it if found
-    auto it = map.find(base);
-    if (it != map.end())
+    auto it = m_arithVarMap.find(name);
+    if (it != m_arithVarMap.end())
     {
         return it->second;
     }
 
-    // Create next Prog Var and add variable base name (without ') to the correct map
-    Arith::Var var = ArithVar::nextProgVar();
-    map.emplace(base, var);
-
-    // Add to other map if not present
-    if (otherMap.find(base) == otherMap.end())
+    // If not found create Prog var or temp var depending on if we have a pre or post var
+    if (!name.empty() && name.back() == '\'')
     {
-        otherMap.emplace(base, ArithVar::nextProgVar());
+        // Post var -> Temp Var
+        Arith::Var var = ArithVar::next();
+        m_arithVarMap.emplace(name, var);
+        return var;
     }
-
-    return var;
+    else
+    {
+        // Pre var -> Prog Var
+        Arith::Var var = ArithVar::nextProgVar();
+        m_arithVarMap.emplace(name, var);
+        return var;
+    }
 }
 
 Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name)
 {
-    // Store name of var
-    std::string base = name;
-
-    // Check if variable is a post var
-    bool isPost = false;
-    if (!name.empty() && name.back() == '\'')
-    {
-        base.pop_back();
-        isPost = true;
-    }
-
-    // Get the correct map refrences
-    auto &map = isPost ? m_boolPostVarMap : m_boolPreVarMap;
-    auto &otherMap = isPost ? m_boolPreVarMap : m_boolPostVarMap;
-
     // Search for the variable in the map and return it if found
-    auto it = map.find(base);
-    if (it != map.end())
+    auto it = m_boolVarMap.find(name);
+    if (it != m_boolVarMap.end())
     {
         return it->second;
     }
 
-    // Create next Prog Var and add variable base name (without ') to the correct map
-    Bools::Var var = BoolVar::nextProgVar();
-    map.emplace(base, var);
-
-    // Add to other map if not present
-    if (otherMap.find(base) == otherMap.end())
+    // If not found create Prog var or temp var depending on if we have a pre or post var
+    if (!name.empty() && name.back() == '\'')
     {
-        otherMap.emplace(base, BoolVar::nextProgVar());
+        // Post var -> Temp Var
+        Bools::Var var = BoolVar::next();
+        m_boolVarMap.emplace(name, var);
+        return var;
     }
-
-    return var;
+    else
+    {
+        // Pre var -> Prog Var
+        Bools::Var var = BoolVar::nextProgVar();
+        m_boolVarMap.emplace(name, var);
+        return var;
+    }
 }

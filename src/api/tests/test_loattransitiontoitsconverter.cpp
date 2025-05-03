@@ -122,3 +122,26 @@ TEST(LoatTransitionToITSConverterTest, MultipleTransitionsTest)
     EXPECT_TRUE(subs1.domain().contains(converter.getArithVar("x'")));
     EXPECT_TRUE(subs2.domain().contains(converter.getArithVar("y'")));
 }
+
+TEST(LoatTransitionToITSConverterTest, BoolVarConversionTest)
+{
+    LoatTransitionToITSConverter converter;
+
+    auto x = LoatBoolExpression::mkVar("x");
+    auto y = LoatBoolExpression::mkVar("y");
+
+    auto formula = LoatBoolExpression::mkAnd({x, LoatBoolExpression::mkNot(y)});
+    LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), formula);
+
+    auto rule = converter.convert(transition);
+
+    const auto &subs = rule->getUpdate();
+
+    auto x_pre = converter.getBoolVar("x");
+    auto x_post = converter.getBoolVar("x'");
+    auto y_pre = converter.getBoolVar("y");
+    auto y_post = converter.getBoolVar("y'");
+
+    EXPECT_EQ(std::get<Bools::Expr>(subs.get(x_post)), Bools::varToExpr(x_pre));
+    EXPECT_EQ(std::get<Bools::Expr>(subs.get(y_post)), Bools::varToExpr(y_pre));
+}
