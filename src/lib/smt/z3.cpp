@@ -23,6 +23,7 @@ SmtResult Z3::check() {
 }
 
 Model Z3::model(const std::optional<const VarSet> &vars) {
+    std::cout << solver.get_smt2();
     const z3::model &m = solver.get_model();
     Model res;
     const auto add = [&](const Var &x) {
