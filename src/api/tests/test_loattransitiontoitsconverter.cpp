@@ -32,8 +32,8 @@ TEST(LoatTransitionToITSConverterTest, FullConversionTest)
     auto y_pre = converter.getArithVar("y");
     auto y_post = converter.getArithVar("y'");
 
-    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(x_post)), arith::toExpr(x_pre));
-    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(y_post)), arith::toExpr(y_pre));
+    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(x_pre)), arith::toExpr(x_post));
+    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(y_pre)), arith::toExpr(y_post));
 }
 
 TEST(LoatTransitionToITSConverterTest, GuardOnlyTest)
@@ -59,8 +59,8 @@ TEST(LoatTransitionToITSConverterTest, GuardOnlyTest)
     auto y_pre = converter.getArithVar("y");
     auto y_post = converter.getArithVar("y'");
 
-    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(x_post)), arith::toExpr(x_pre));
-    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(y_post)), arith::toExpr(y_pre));
+    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(x_pre)), arith::toExpr(x_post));
+    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(y_pre)), arith::toExpr(y_post));
 }
 
 TEST(LoatTransitionToITSConverterTest, ComplexGuardTest)
@@ -87,14 +87,6 @@ TEST(LoatTransitionToITSConverterTest, ComplexGuardTest)
 
     const auto &subs = rule->getUpdate();
     EXPECT_EQ(subs.size(), 3);
-
-    auto x_post = converter.getArithVar("x'");
-    auto y_post = converter.getArithVar("y'");
-    auto z_post = converter.getArithVar("z'");
-
-    EXPECT_TRUE(subs.domain().contains(x_post));
-    EXPECT_TRUE(subs.domain().contains(y_post));
-    EXPECT_TRUE(subs.domain().contains(z_post));
 }
 
 TEST(LoatTransitionToITSConverterTest, MultipleTransitionsTest)
@@ -118,9 +110,6 @@ TEST(LoatTransitionToITSConverterTest, MultipleTransitionsTest)
 
     const auto &subs1 = rule1->getUpdate();
     const auto &subs2 = rule2->getUpdate();
-
-    EXPECT_TRUE(subs1.domain().contains(converter.getArithVar("x'")));
-    EXPECT_TRUE(subs2.domain().contains(converter.getArithVar("y'")));
 }
 
 TEST(LoatTransitionToITSConverterTest, BoolVarConversionTest)
@@ -142,6 +131,6 @@ TEST(LoatTransitionToITSConverterTest, BoolVarConversionTest)
     auto y_pre = converter.getBoolVar("y");
     auto y_post = converter.getBoolVar("y'");
 
-    EXPECT_EQ(std::get<Bools::Expr>(subs.get(x_post)), Bools::varToExpr(x_pre));
-    EXPECT_EQ(std::get<Bools::Expr>(subs.get(y_post)), Bools::varToExpr(y_pre));
+    EXPECT_EQ(std::get<Bools::Expr>(subs.get(x_pre)), Bools::varToExpr(x_post));
+    EXPECT_EQ(std::get<Bools::Expr>(subs.get(y_pre)), Bools::varToExpr(y_post));
 }

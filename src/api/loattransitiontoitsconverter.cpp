@@ -8,8 +8,8 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
     // Convert Formula
     Bools::Expr guard = convertBool(formula);
 
-    // Create arith subs (x = x' etc.)
-    Arith::Subs arithSubs;
+    // Create subs (x = x' etc.)
+    Subs subs;
     for (const auto &[name, var] : m_arithVarMap)
     {
         // Check if we have a pre Var
@@ -17,12 +17,9 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
         {
             // Get corrosponding post var
             Arith::Var tempVar = getArithVar(name + "\'");
-            arithSubs.put(tempVar, Arith::varToExpr(var));
+            subs.put<Arith>(var, Arith::varToExpr(tempVar));
         }
     }
-
-    // Create bool subs (x = x' etc.)
-    Bools::Subs boolSubs;
     for (const auto &[name, var] : m_boolVarMap)
     {
         // Check if we have a pre Var
@@ -30,12 +27,12 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
         {
             // Get corrosponding post var
             Bools::Var tempVar = getBoolVar(name + "\'");
-            boolSubs.put(tempVar, Bools::varToExpr(var));
+            subs.put<Bools>(var, Bools::varToExpr(tempVar));
         }
     }
 
     // Create the internal its transition/rule
-    return Rule::mk(guard, Subs::build<Arith>(arithSubs).unite(Subs::build<Bools>(boolSubs)));
+    return Rule::mk(guard, subs);
 }
 
 Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &expr)
