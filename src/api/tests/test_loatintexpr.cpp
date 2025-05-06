@@ -224,3 +224,13 @@ TEST(LoatOperatorTest, DivideMethod)
     ss << div;
     EXPECT_EQ(ss.str(), "(1/5 * 10)");
 }
+
+TEST(LoatVarTest, IntVarEqualityCheck)
+{
+    auto pre_x1 = LoatIntExpression::mkPreVar("x");
+    auto pre_x2 = LoatIntExpression::mkPreVar("x");
+    auto post_x = LoatIntExpression::mkPostVar("x");
+
+    EXPECT_EQ(pre_x1, pre_x2);
+    EXPECT_NE(pre_x1, post_x);
+}

@@ -132,3 +132,13 @@ TEST(LoatBoolExprTest, ChainJunctions)
     s4 << mixedExpr2;
     EXPECT_EQ(s4.str(), "(x && (y || z))");
 }
+
+TEST(LoatVarTest, BoolVarEqualityCheck)
+{
+    auto pre_x1 = LoatBoolExpression::mkPreVar("x");
+    auto pre_x2 = LoatBoolExpression::mkPreVar("x");
+    auto post_x = LoatBoolExpression::mkPostVar("x");
+
+    EXPECT_EQ(pre_x1, pre_x2);
+    EXPECT_NE(pre_x1, post_x);
+}
