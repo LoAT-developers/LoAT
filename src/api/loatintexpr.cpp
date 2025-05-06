@@ -364,7 +364,10 @@ bool LoatIntVar::CacheEqual::operator()(const std::tuple<std::string, bool> &a, 
 
 size_t LoatIntVar::CacheHash::operator()(const std::tuple<std::string, bool> &a) const noexcept
 {
-    return std::hash<std::string>{}(std::get<0>(a));
+    size_t hash = 0;
+    boost::hash_combine(hash, std::get<0>(a));
+    boost::hash_combine(hash, std::get<1>(a));
+    return hash;
 }
 
 LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name, bool isPost)
@@ -374,10 +377,10 @@ LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name, bool isPost)
 
 LoatIntExprPtr LoatIntExpression::mkPreVar(const std::string &name)
 {
-    return mkVar(name, false);
+    return LoatIntExpression::mkVar(name, false);
 }
 
 LoatIntExprPtr LoatIntExpression::mkPostVar(const std::string &name)
 {
-    return mkVar(name, true);
+    return LoatIntExpression::mkVar(name, true);
 }

@@ -22,26 +22,46 @@ LoatBoolExprPtr LoatBoolExpr::toPtr() const
 // LoatBoolVar
 // ==============================
 
-ConsHash<LoatBoolExpr, LoatBoolVar, LoatBoolVar::CacheHash, LoatBoolVar::CacheEqual, std::string> LoatBoolVar::cache;
+ConsHash<LoatBoolExpr, LoatBoolVar, LoatBoolVar::CacheHash, LoatBoolVar::CacheEqual, std::string, bool> LoatBoolVar::cache;
 
-LoatBoolVar::LoatBoolVar(const std::string &name)
-    : LoatBoolExpr(LoatBoolExpression::Kind::Variable), m_name(name) {}
+LoatBoolVar::LoatBoolVar(const std::string &name, bool isPost)
+    : LoatBoolExpr(LoatBoolExpression::Kind::Variable), m_name(name), m_isPost(isPost) {}
+
+LoatBoolVar::~LoatBoolVar()
+{
+    cache.erase(m_name, m_isPost);
+}
 
 std::string LoatBoolVar::getName() const { return m_name; }
 
-bool LoatBoolVar::CacheEqual::operator()(const std::tuple<std::string> &a, const std::tuple<std::string> &b) const noexcept
+bool LoatBoolVar::isPost() const { return m_isPost; }
+
+bool LoatBoolVar::CacheEqual::operator()(const std::tuple<std::string, bool> &a, const std::tuple<std::string, bool> &b) const noexcept
 {
     return std::get<0>(a) == std::get<0>(b);
 }
 
-size_t LoatBoolVar::CacheHash::operator()(const std::tuple<std::string> &a) const noexcept
+size_t LoatBoolVar::CacheHash::operator()(const std::tuple<std::string, bool> &a) const noexcept
 {
-    return std::hash<std::string>{}(std::get<0>(a));
+    size_t hash = 0;
+    boost::hash_combine(hash, std::get<0>(a));
+    boost::hash_combine(hash, std::get<1>(a));
+    return hash;
 }
 
-LoatBoolExprPtr LoatBoolExpression::mkVar(const std::string &name)
+LoatBoolExprPtr LoatBoolExpression::mkVar(const std::string &name, bool isPost)
 {
-    return LoatBoolVar::cache.from_cache(name)->toPtr();
+    return LoatBoolVar::cache.from_cache(name, isPost)->toPtr();
+}
+
+LoatBoolExprPtr LoatBoolExpression::mkPreVar(const std::string &name)
+{
+    return LoatBoolExpression::mkVar(name, false);
+}
+
+LoatBoolExprPtr LoatBoolExpression::mkPostVar(const std::string &name)
+{
+    return LoatBoolExpression::mkVar(name, true);
 }
 
 // ==============================

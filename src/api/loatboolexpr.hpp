@@ -40,7 +40,9 @@ namespace LoatBoolExpression
     };
 
     // Factory methods to create expressions
-    LoatBoolExprPtr mkVar(const std::string &name);
+    LoatBoolExprPtr mkVar(const std::string &name, bool isPost);
+    LoatBoolExprPtr mkPreVar(const std::string &name);
+    LoatBoolExprPtr mkPostVar(const std::string &name);
     LoatBoolExprPtr mkAnd(const LoatBoolExprVec &&args);
     LoatBoolExprPtr mkOr(const LoatBoolExprVec &&args);
     LoatBoolExprPtr mkNot(const LoatBoolExprPtr arg);
@@ -80,24 +82,29 @@ public:
  */
 class LoatBoolVar : public LoatBoolExpr
 {
-    friend LoatBoolExprPtr LoatBoolExpression::mkVar(const std::string &name);
+    friend LoatBoolExprPtr LoatBoolExpression::mkVar(const std::string &name, bool isPost);
+    friend LoatBoolExprPtr LoatBoolExpression::mkPreVar(const std::string &name);
+    friend LoatBoolExprPtr LoatBoolExpression::mkPostVar(const std::string &name);
 
 private:
     std::string m_name;
+    bool m_isPost;
 
     struct CacheEqual
     {
-        bool operator()(const std::tuple<std::string> &a, const std::tuple<std::string> &b) const noexcept;
+        bool operator()(const std::tuple<std::string, bool> &a, const std::tuple<std::string, bool> &b) const noexcept;
     };
     struct CacheHash
     {
-        size_t operator()(const std::tuple<std::string> &a) const noexcept;
+        size_t operator()(const std::tuple<std::string, bool> &a) const noexcept;
     };
-    static ConsHash<LoatBoolExpr, LoatBoolVar, CacheHash, CacheEqual, std::string> cache;
+    static ConsHash<LoatBoolExpr, LoatBoolVar, CacheHash, CacheEqual, std::string, bool> cache;
 
 public:
-    explicit LoatBoolVar(const std::string &name);
+    explicit LoatBoolVar(const std::string &name, bool isPost);
+    ~LoatBoolVar();
     std::string getName() const;
+    bool isPost() const;
 };
 
 /**

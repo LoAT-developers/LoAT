@@ -7,7 +7,7 @@ using namespace LoatBoolExpression;
 
 TEST(LoatBoolExprTest, CreateVariableAndOutput)
 {
-    auto x = mkVar("flag");
+    auto x = mkPreVar("flag");
     EXPECT_EQ(x->getKind(), Kind::Variable);
 
     std::stringstream ss;
@@ -79,8 +79,8 @@ TEST(LoatBoolExprTest, CachingAndEquality)
 
 TEST(LoatBoolExprTest, SimpleJuction)
 {
-    auto x = mkVar("x");
-    auto y = mkVar("y");
+    auto x = mkPreVar("x");
+    auto y = mkPreVar("y");
 
     auto expr1 = x && x;
     auto expr2 = x && y;
@@ -107,9 +107,9 @@ TEST(LoatBoolExprTest, SimpleJuction)
 
 TEST(LoatBoolExprTest, ChainJunctions)
 {
-    auto x = mkVar("x");
-    auto y = mkVar("y");
-    auto z = mkVar("z");
+    auto x = mkPreVar("x");
+    auto y = mkPreVar("y");
+    auto z = mkPreVar("z");
 
     auto andExpr = x && y && z;
     std::stringstream s1;

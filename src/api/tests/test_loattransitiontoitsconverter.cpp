@@ -1,5 +1,4 @@
-#include "gtest/gtest.h"
-
+#include <gtest/gtest.h>
 #include "loattransitiontoitsconverter.hpp"
 #include "loatboolexpr.hpp"
 #include "loatintexpr.hpp"
@@ -10,8 +9,8 @@ TEST(LoatTransitionToITSConverterTest, FullConversionTest)
 {
     LoatTransitionToITSConverter converter;
 
-    auto x = LoatIntExpression::mkVar("x");
-    auto y = LoatIntExpression::mkVar("y");
+    auto x = LoatIntExpression::mkPreVar("x");
+    auto y = LoatIntExpression::mkPreVar("y");
 
     auto cmp1 = LoatBoolExpression::mkLt(x, LoatIntExpression::mkConst(5));
     auto cmp2 = LoatBoolExpression::mkGe(y, x);
@@ -40,8 +39,8 @@ TEST(LoatTransitionToITSConverterTest, GuardOnlyTest)
 {
     LoatTransitionToITSConverter converter;
 
-    auto x = LoatIntExpression::mkVar("x");
-    auto y = LoatIntExpression::mkVar("y");
+    auto x = LoatIntExpression::mkPreVar("x");
+    auto y = LoatIntExpression::mkPreVar("y");
 
     auto cmp = LoatBoolExpression::mkLt(x, y);
     LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), cmp);
@@ -67,9 +66,9 @@ TEST(LoatTransitionToITSConverterTest, ComplexGuardTest)
 {
     LoatTransitionToITSConverter converter;
 
-    auto x = LoatIntExpression::mkVar("x");
-    auto y = LoatIntExpression::mkVar("y");
-    auto z = LoatIntExpression::mkVar("z");
+    auto x = LoatIntExpression::mkPreVar("x");
+    auto y = LoatIntExpression::mkPreVar("y");
+    auto z = LoatIntExpression::mkPreVar("z");
 
     auto cmp1 = LoatBoolExpression::mkLt(x, LoatIntExpression::mkConst(5));
     auto cmp2 = LoatBoolExpression::mkGt(y, LoatIntExpression::mkConst(3));
@@ -93,8 +92,8 @@ TEST(LoatTransitionToITSConverterTest, MultipleTransitionsTest)
 {
     LoatTransitionToITSConverter converter;
 
-    auto x = LoatIntExpression::mkVar("x");
-    auto y = LoatIntExpression::mkVar("y");
+    auto x = LoatIntExpression::mkPreVar("x");
+    auto y = LoatIntExpression::mkPreVar("y");
 
     auto guard1 = LoatBoolExpression::mkLt(x, LoatIntExpression::mkConst(5));
     LoatTransition transition1(LoatLocation("q0"), LoatLocation("q1"), guard1);
@@ -116,14 +115,13 @@ TEST(LoatTransitionToITSConverterTest, BoolVarConversionTest)
 {
     LoatTransitionToITSConverter converter;
 
-    auto x = LoatBoolExpression::mkVar("x");
-    auto y = LoatBoolExpression::mkVar("y");
+    auto x = LoatBoolExpression::mkPreVar("x");
+    auto y = LoatBoolExpression::mkPreVar("y");
 
     auto formula = LoatBoolExpression::mkAnd({x, LoatBoolExpression::mkNot(y)});
     LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), formula);
 
     auto rule = converter.convert(transition);
-
     const auto &subs = rule->getUpdate();
 
     auto x_pre = converter.getBoolVar("x");

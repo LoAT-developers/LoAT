@@ -6,10 +6,10 @@
 
 TEST(LoatTransitionTest, ValidTransitionWithPreAndPostVars)
 {
-    auto x = LoatIntExpression::mkVar("x");
-    auto y = LoatIntExpression::mkVar("y");
-    auto x_post = LoatIntExpression::mkVar("x'");
-    auto y_post = LoatIntExpression::mkVar("y'");
+    auto x = LoatIntExpression::mkPreVar("x");
+    auto y = LoatIntExpression::mkPreVar("y");
+    auto x_post = LoatIntExpression::mkPostVar("x'");
+    auto y_post = LoatIntExpression::mkPostVar("y'");
 
     auto formula = (x_post == x + LoatIntExpression::mkConst(1)) &&
                    (y_post == y - LoatIntExpression::mkConst(1));
