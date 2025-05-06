@@ -120,13 +120,13 @@ TEST(LoatExpTest, PowerExpression)
 // VAR
 TEST(LoatVarTest, MkVarCreatesValidVariable)
 {
-    auto v = mkVar("x");
+    auto v = mkPreVar("x");
     EXPECT_EQ(v->getKind(), Kind::Variable);
 }
 
 TEST(LoatVarTest, VarOutputsCorrectly)
 {
-    auto v = mkVar("foo");
+    auto v = mkPreVar("foo");
     EXPECT_EQ(v->getKind(), Kind::Variable);
 
     std::stringstream ss;
@@ -136,7 +136,7 @@ TEST(LoatVarTest, VarOutputsCorrectly)
 
 TEST(LoatIntExpressionTest, BuildExpressionWithConstAndVar)
 {
-    auto x = mkVar("counter");
+    auto x = mkPreVar("counter");
     auto c1 = mkConst(3);
     auto c2 = mkConst(7);
 
@@ -153,8 +153,8 @@ TEST(LoatIntExpressionTest, BuildExpressionWithConstAndVar)
 
 TEST(LoatVarTest, SameNameReturnsSamePointer)
 {
-    auto v1 = mkVar("i");
-    auto v2 = mkVar("i");
+    auto v1 = mkPreVar("i");
+    auto v2 = mkPreVar("i");
 
     EXPECT_EQ(v1, v2);
 }

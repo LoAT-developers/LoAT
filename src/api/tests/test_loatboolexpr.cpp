@@ -17,8 +17,8 @@ TEST(LoatBoolExprTest, CreateVariableAndOutput)
 
 TEST(LoatBoolExprTest, CreateComparisonExpressions)
 {
-    auto x = LoatIntExpression::mkVar("x");
-    auto y = LoatIntExpression::mkVar("y");
+    auto x = LoatIntExpression::mkPreVar("x");
+    auto y = LoatIntExpression::mkPreVar("y");
     auto three = LoatIntExpression::mkConst(3);
     auto five = LoatIntExpression::mkConst(5);
 
@@ -35,9 +35,9 @@ TEST(LoatBoolExprTest, CreateComparisonExpressions)
 
 TEST(LoatBoolExprTest, BuildAndOrNotExpressions)
 {
-    auto x = LoatIntExpression::mkVar("x");
-    auto y = LoatIntExpression::mkVar("y");
-    auto z = LoatIntExpression::mkVar("z");
+    auto x = LoatIntExpression::mkPreVar("x");
+    auto y = LoatIntExpression::mkPreVar("y");
+    auto z = LoatIntExpression::mkPreVar("z");
 
     auto c1 = x == y;
     auto c2 = y <= z;
@@ -55,9 +55,9 @@ TEST(LoatBoolExprTest, BuildAndOrNotExpressions)
 
 TEST(LoatBoolExprTest, OperatorOverloadsWork)
 {
-    auto a = LoatIntExpression::mkVar("a");
-    auto b = LoatIntExpression::mkVar("b");
-    auto c = LoatIntExpression::mkVar("c");
+    auto a = LoatIntExpression::mkPreVar("a");
+    auto b = LoatIntExpression::mkPreVar("b");
+    auto c = LoatIntExpression::mkPreVar("c");
 
     auto expr = (a < b) && (b != c) || !(a >= c);
 
@@ -68,8 +68,8 @@ TEST(LoatBoolExprTest, OperatorOverloadsWork)
 
 TEST(LoatBoolExprTest, CachingAndEquality)
 {
-    auto x = LoatIntExpression::mkVar("x");
-    auto y = LoatIntExpression::mkVar("y");
+    auto x = LoatIntExpression::mkPreVar("x");
+    auto y = LoatIntExpression::mkPreVar("y");
 
     auto expr1 = x < y;
     auto expr2 = mkLt(x, y);
@@ -82,12 +82,8 @@ TEST(LoatBoolExprTest, SimpleJuction)
     auto x = mkVar("x");
     auto y = mkVar("y");
 
-    // AND
     auto expr1 = x && x;
     auto expr2 = x && y;
-
-    std::cout << expr1 << std::endl;
-    std::cout << expr2 << std::endl;
 
     std::stringstream s1;
     s1 << expr1;
@@ -97,12 +93,8 @@ TEST(LoatBoolExprTest, SimpleJuction)
     s2 << expr2;
     EXPECT_EQ(s2.str(), "(x && y)");
 
-    // OR
     auto expr3 = x || x;
     auto expr4 = x || y;
-
-    std::cout << expr3 << std::endl;
-    std::cout << expr4 << std::endl;
 
     std::stringstream s3;
     s3 << expr3;
@@ -119,21 +111,16 @@ TEST(LoatBoolExprTest, ChainJunctions)
     auto y = mkVar("y");
     auto z = mkVar("z");
 
-    // AND
     auto andExpr = x && y && z;
-
     std::stringstream s1;
     s1 << andExpr;
     EXPECT_EQ(s1.str(), "((x && y) && z)");
 
-    // OR
     auto orExpr = x || y || z;
-
     std::stringstream s2;
     s2 << orExpr;
     EXPECT_EQ(s2.str(), "((x || y) || z)");
 
-    // MIXED
     auto mixedExpr1 = (x && y) || z;
     auto mixedExpr2 = x && (y || z);
 

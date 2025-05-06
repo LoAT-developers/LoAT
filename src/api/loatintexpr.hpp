@@ -57,7 +57,9 @@ namespace LoatIntExpression
     LoatIntExprPtr mkConst(const Rational &r);
     LoatIntExprPtr mkConst(const Rational &&r);
     LoatIntExprPtr mkExp(const LoatIntExprPtr base, const LoatIntExprPtr exponent);
-    LoatIntExprPtr mkVar(const std::string &name);
+    LoatIntExprPtr mkVar(const std::string &name, bool isPost);
+    LoatIntExprPtr mkPreVar(const std::string &name);
+    LoatIntExprPtr mkPostVar(const std::string &name);
 }
 
 /**
@@ -254,29 +256,33 @@ public:
  */
 class LoatIntVar : public LoatIntExpr
 {
-    friend LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name);
+    friend LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name, bool isPost);
+    friend LoatIntExprPtr LoatIntExpression::mkPreVar(const std::string &name);
+    friend LoatIntExprPtr LoatIntExpression::mkPostVar(const std::string &name);
     friend class LoatIntExpr;
 
 private:
     std::string m_name;
+    bool m_isPost;
 
     struct CacheEqual
     {
-        bool operator()(const std::tuple<std::string> &a, const std::tuple<std::string> &b) const noexcept;
+        bool operator()(const std::tuple<std::string, bool> &a, const std::tuple<std::string, bool> &b) const noexcept;
     };
 
     struct CacheHash
     {
-        size_t operator()(const std::tuple<std::string> &a) const noexcept;
+        size_t operator()(const std::tuple<std::string, bool> &a) const noexcept;
     };
 
-    static ConsHash<LoatIntExpr, LoatIntVar, CacheHash, CacheEqual, std::string> cache;
+    static ConsHash<LoatIntExpr, LoatIntVar, CacheHash, CacheEqual, std::string, bool> cache;
 
 public:
-    explicit LoatIntVar(const std::string &name);
+    explicit LoatIntVar(const std::string &name, bool isPost);
     ~LoatIntVar();
 
     std::string getName() const;
+    bool isPost() const;
 };
 
 // Hash functions for expression pointers

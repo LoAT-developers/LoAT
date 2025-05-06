@@ -338,13 +338,13 @@ LoatIntExprPtr LoatIntExpression::mkTimes(const LoatIntExprPtr a, const LoatIntE
 }
 
 // Var
-ConsHash<LoatIntExpr, LoatIntVar, LoatIntVar::CacheHash, LoatIntVar::CacheEqual, std::string> LoatIntVar::cache;
+ConsHash<LoatIntExpr, LoatIntVar, LoatIntVar::CacheHash, LoatIntVar::CacheEqual, std::string, bool> LoatIntVar::cache;
 
-LoatIntVar::LoatIntVar(const std::string &name) : LoatIntExpr(LoatIntExpression::Kind::Variable), m_name(name) {}
+LoatIntVar::LoatIntVar(const std::string &name, bool isPost) : LoatIntExpr(LoatIntExpression::Kind::Variable), m_name(name), m_isPost(isPost) {}
 
 LoatIntVar::~LoatIntVar()
 {
-    cache.erase(m_name);
+    cache.erase(m_name, m_isPost);
 }
 
 std::string LoatIntVar::getName() const
@@ -352,17 +352,32 @@ std::string LoatIntVar::getName() const
     return m_name;
 }
 
-bool LoatIntVar::CacheEqual::operator()(const std::tuple<std::string> &a, const std::tuple<std::string> &b) const noexcept
+bool LoatIntVar::isPost() const
+{
+    return m_isPost;
+}
+
+bool LoatIntVar::CacheEqual::operator()(const std::tuple<std::string, bool> &a, const std::tuple<std::string, bool> &b) const noexcept
 {
     return a == b;
 }
 
-size_t LoatIntVar::CacheHash::operator()(const std::tuple<std::string> &a) const noexcept
+size_t LoatIntVar::CacheHash::operator()(const std::tuple<std::string, bool> &a) const noexcept
 {
     return std::hash<std::string>{}(std::get<0>(a));
 }
 
-LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name)
+LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name, bool isPost)
 {
-    return LoatIntVar::cache.from_cache(name)->toPtr();
+    return LoatIntVar::cache.from_cache(name, isPost)->toPtr();
+}
+
+LoatIntExprPtr LoatIntExpression::mkPreVar(const std::string &name)
+{
+    return mkVar(name, false);
+}
+
+LoatIntExprPtr LoatIntExpression::mkPostVar(const std::string &name)
+{
+    return mkVar(name, true);
 }
