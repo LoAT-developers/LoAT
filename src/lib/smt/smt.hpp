@@ -35,16 +35,17 @@ public:
 
     virtual void add(const Bools::Expr e) = 0;
 
-    virtual void add_soft(const Bools::Expr e) {
-        throw std::invalid_argument("add_soft not supported");
-    }
-
-    virtual void add_objective(const Arith::Expr e) {
-        throw std::invalid_argument("add_objective not supported");
-    }
-
     void add(const Lit &e) {
         return this->add(bools::mkLit(e));
+    }
+
+    void add(const Model &m) {
+        theory::for_each([&](auto t) {
+            using T = decltype(t);
+            for (const auto &[k,v]: m.get<T>()) {
+                add(T::mkEq(k, v));
+            }
+        });
     }
 
     virtual void push() = 0;

@@ -145,7 +145,7 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
         const auto projection{cex.states.at(i).project([&](const auto &x) {
             return theory::isProgVar(x) || vars.contains(x);
         })};
-        s << "\t" << clause->subs(projection.toSubs()) << " by " << indices.at(clause) << "\n";
+        s << "\t" << clause << projection << " by " << indices.at(clause) << "\n";
     }
     return s;
 }

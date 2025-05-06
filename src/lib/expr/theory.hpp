@@ -90,6 +90,12 @@ auto apply(const Var &x, Ts... f) {
     return std::visit(Overload{f...}, x);
 }
 
+template <class ... Ts>
+auto for_each(Ts... f) {
+    return Overload{f...}(arith::t);
+    return Overload{f...}(bools::t);
+}
+
 template <size_t I, ITheory T>
 constexpr bool is() {
     return std::same_as<std::tuple_element_t<I, Theories>, T>;

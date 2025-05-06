@@ -5,26 +5,37 @@
 
 class Model {
 
+    friend std::ostream& operator<<(std::ostream &s, const Model &e);
+
+private:
+
+    void print(std::ostream &s) const;
+
+    template <std::size_t I = 0>
+    static inline void uniteImpl(Model &res, const Model &that);
+
+    template <size_t I = 0>
+    inline void composeBackwardsImpl(const Subs &subs, Model &res) const;
+
+    template <size_t I = 0>
+    inline void composeBackwardsImpl(const Renaming &subs, Model &res) const;
+
+    template <size_t I = 0>
+    inline bool evalImpl(const Lit &lit) const;
+
+    template <size_t I = 0>
+    void projectImpl(Model &model, const VarSet &vars) const;
+
+    template <size_t I = 0>
+    void projectImpl(Model &model, const std::function<bool(const Var)> &p) const;
+
+    template <std::size_t I = 0>
+    inline void printImpl(const Model &subs, std::ostream &s, bool first = true) const;
+
 public:
 
     Model();
     Model(const typename TheTheory::Model &m);
-
-private:
-
-    template<std::size_t I = 0>
-    static inline void uniteImpl(Model &res, const Model &that) {
-        if constexpr (I < num_theories) {
-            auto &r {std::get<I>(res.m)};
-            for (const auto &[x,c]: std::get<I>(that.m)) {
-                r.put(x,c);
-            }
-            uniteImpl<I+1>(res, that);
-        }
-    }
-
-public:
-
     Model unite(const Model &m) const;
 
     template <ITheory T>
@@ -58,43 +69,6 @@ public:
         return std::get<typename T::Model>(m);
     }
 
-private:
-
-    template<std::size_t I = 0>
-    inline void toSubsImpl(Subs &subs) const {
-        if constexpr (I < num_theories) {
-            using T = std::tuple_element_t<I, Theories>;
-            auto &substitution {subs.get<T>()};
-            const auto &model {std::get<I>(m)};
-            for (const auto &[x,_]: model) {
-                substitution.put(x, T::constToExpr(model[x]));
-            }
-            toSubsImpl<I+1>(subs);
-        }
-    }
-
-public:
-
-    Subs toSubs() const;
-
-private:
-
-    template <size_t I = 0>
-    inline bool evalImpl(const Lit &lit) const {
-        if constexpr (I < num_theories) {
-            if (lit.index() == I) {
-                const auto &literal {std::get<I>(lit)};
-                const auto &model {std::get<I>(m)};
-                return literal->eval(model);
-            }
-            return evalImpl<I+1>(lit);
-        } else {
-            throw std::logic_error("unknown theory");
-        }
-    }
-
-public:
-
     bool eval(const Lit &lit) const;
 
     template <ITheory T>
@@ -120,89 +94,11 @@ public:
 
     Const eval(const Expr &e) const;
 
-private:
-
-    template <size_t I = 0>
-    inline void composeBackwardsImpl(const Subs &subs, Model &res) const {
-        if constexpr (I < num_theories) {
-            using Th = std::tuple_element_t<I, Theories>;
-            const auto &substitution {subs.get<Th>()};
-            const auto &model {std::get<I>(m)};
-            auto &result {res.get<Th>()};
-            for (const auto &[key, v]: substitution) {
-                result.put(key, eval<Th>(v));
-            }
-            for (const auto &[key, value]: model) {
-                if (!result.contains(key)) {
-                    result.put(key, value);
-                }
-            }
-            composeBackwardsImpl<I+1>(subs, res);
-        }
-    }
-
-    template <size_t I = 0>
-    inline void composeBackwardsImpl(const Renaming &subs, Model &res) const {
-        if constexpr (I < num_theories) {
-            using Th = std::tuple_element_t<I, Theories>;
-            const auto &substitution {subs.get<Th>()};
-            const auto &model {std::get<I>(m)};
-            auto &result {res.get<Th>()};
-            for (const auto &[key, v]: substitution) {
-                result.put(key, eval<Th>(Th::varToExpr(v)));
-            }
-            for (const auto &[key, value]: model) {
-                if (!result.contains(key)) {
-                    result.put(key, value);
-                }
-            }
-            composeBackwardsImpl<I+1>(subs, res);
-        }
-    }
-
-public:
-
     Model composeBackwards(const Subs &subs) const;
     Model composeBackwards(const Renaming &subs) const;
     Bools::Expr syntacticImplicant(const Bools::Expr e) const;
-
-private:
-
-    template <size_t I = 0>
-    void projectImpl(Model &model, const VarSet &vars) const {
-        if constexpr (I < num_theories) {
-            using Th = std::tuple_element_t<I, Theories>;
-            model.get<Th>().project(vars.get<I>());
-            projectImpl<I+1>(model, vars);
-        }
-    }
-
-public:
-
-    Model project(const VarSet &vars) const {
-        Model res {*this};
-        projectImpl(res, vars);
-        return res;
-    }
-
-private:
-
-    template <size_t I = 0>
-    void projectImpl(Model &model, const std::function<bool(const Var)> &p) const {
-        if constexpr (I < num_theories) {
-            using Th = std::tuple_element_t<I, Theories>;
-            model.get<Th>().project(p);
-            projectImpl<I+1>(model, p);
-        }
-    }
-
-public:
-
-    Model project(const std::function<bool(const Var)> &p) const {
-        Model res {*this};
-        projectImpl(res, p);
-        return res;
-    }
+    Model project(const VarSet &vars) const;
+    Model project(const std::function<bool(const Var)> &p) const;
 
 private:
 

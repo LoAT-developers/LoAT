@@ -54,3 +54,6 @@ using arith_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArithVarPtr>,
 namespace mp = boost::multiprecision;
 using Int = mp::cpp_int;
 using Rational = mp::cpp_rational;
+
+class BoolExpr;
+using BoolExprPtr = ptr<BoolExpr>;

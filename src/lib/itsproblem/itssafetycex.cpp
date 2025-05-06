@@ -10,12 +10,12 @@ ITSSafetyCex::ITSSafetyCex(ITSPtr its): ITSCex(its) {}
 bool ITSSafetyCex::try_step(const RulePtr trans, const Model &next) {
     const auto last {states.back()};
     auto solver {SmtFactory::modelBuildingSolver(Logic::QF_NAT)};
-    const auto last_subs {last.toSubs()};
-    solver->add(last_subs(trans->getGuard()));
+    solver->add(trans->getGuard());
+    solver->add(last);
     const auto &up{trans->getUpdate()};
     for (const auto &x : its->getVars()) {
         if (theory::isProgVar(x) && next.contains(x)) {
-            solver->add(theory::mkEq(theory::toExpr(next.get(x)), last_subs(up.get(x))));
+            solver->add(theory::mkEq(theory::toExpr(next.get(x)), up.get(x)));
         }
     }
     if (solver->check() == SmtResult::Sat) {
@@ -51,7 +51,8 @@ bool ITSSafetyCex::try_final_transition(const RulePtr trans) {
     assert(trans->getUpdate().get<Arith>(its->getLocVar()) == arith::mkConst(its->getSink()));
     auto solver {SmtFactory::modelBuildingSolver(Logic::QF_NAT)};
     auto &last {states.back()};
-    solver->add(last.toSubs()(trans->getGuard()));
+    solver->add(trans->getGuard());
+    solver->add(last);
     if (solver->check() == SmtResult::Sat) {
         last = last.unite(solver->model());
         transitions.push_back(trans);

@@ -1,5 +1,6 @@
 #include "arith.hpp"
 #include "arithexpr.hpp"
+#include "theory.hpp"
 
 Arith::Expr Arith::constToExpr(const Const &val) {
     return arith::mkConst(val);
@@ -15,6 +16,10 @@ Arith::Expr Arith::anyValue() {
 
 Arith::Var Arith::next() {
     return ArithVar::next();
+}
+
+BoolExprPtr Arith::mkEq(const Var x, const Const& y) {
+    return bools::mkLit(arith::mkEq(x, arith::mkConst(y)));
 }
 
 namespace arith {

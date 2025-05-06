@@ -18,6 +18,7 @@ struct Arith {
     static Expr varToExpr(const Var &var);
     static Expr anyValue();
     static Var next();
+    static BoolExprPtr mkEq(const Var, const Const&);
 
 };
 
