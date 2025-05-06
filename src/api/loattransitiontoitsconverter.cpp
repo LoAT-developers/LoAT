@@ -10,23 +10,23 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
 
     // Create subs (x = x' etc.)
     Subs subs;
-    for (const auto &[name, var] : m_arithVarMap)
+    for (const auto &[key, var] : m_arithVarMap)
     {
         // Check if we have a pre Var
-        if (!name.empty() && name.back() != '\'')
+        if (!key.second)
         {
             // Get corrosponding post var
-            Arith::Var tempVar = getArithVar(name + "\'");
+            Arith::Var tempVar = getArithVar(key.first, true);
             subs.put<Arith>(var, Arith::varToExpr(tempVar));
         }
     }
-    for (const auto &[name, var] : m_boolVarMap)
+    for (const auto &[key, var] : m_boolVarMap)
     {
         // Check if we have a pre Var
-        if (!name.empty() && name.back() != '\'')
+        if (!key.second)
         {
             // Get corrosponding post var
-            Bools::Var tempVar = getBoolVar(name + "\'");
+            Bools::Var tempVar = getBoolVar(key.first, true);
             subs.put<Bools>(var, Bools::varToExpr(tempVar));
         }
     }
@@ -64,7 +64,7 @@ Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &exp
         // Cast to subclass
         const auto *v = static_cast<const LoatIntVar *>(expr.get());
         // Set result as internal var expr
-        result = arith::toExpr(getArithVar(v->getName()));
+        result = arith::toExpr(getArithVar(v->getName(), v->isPost()));
         break;
     }
     case Kind::Plus:
@@ -146,7 +146,7 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
         // Cast to subclass
         const auto *v = static_cast<const LoatBoolVar *>(expr.get());
         // Set result as internal var expr
-        result = Bools::varToExpr(getBoolVar(v->getName()));
+        result = Bools::varToExpr(getBoolVar(v->getName(), v->isPost()));
         break;
     }
     case Kind::Not:
@@ -259,55 +259,32 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
     return result;
 }
 
-Arith::Var LoatTransitionToITSConverter::getArithVar(const std::string &name)
+Arith::Var LoatTransitionToITSConverter::getArithVar(const std::string &name, bool isTemp)
 {
-
     // Search for the variable in the map and return it if found
-    auto it = m_arithVarMap.find(name);
+    std::pair<std::string, bool> key = std::make_pair(name, isTemp);
+    auto it = m_arithVarMap.find(key);
     if (it != m_arithVarMap.end())
     {
         return it->second;
     }
 
-    // If not found create Prog var or temp var depending on if we have a pre or post var
-    if (!name.empty() && name.back() == '\'')
-    {
-        // Post var -> Temp Var
-        Arith::Var var = ArithVar::next();
-        m_arithVarMap.emplace(name, var);
-        return var;
-    }
-    else
-    {
-        // Pre var -> Prog Var
-        Arith::Var var = ArithVar::nextProgVar();
-        m_arithVarMap.emplace(name, var);
-        return var;
-    }
+    Arith::Var var = isTemp ? ArithVar::next() : ArithVar::nextProgVar();
+    m_arithVarMap.emplace(key, var);
+    return var;
 }
 
-Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name)
+Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name, bool isTemp)
 {
     // Search for the variable in the map and return it if found
-    auto it = m_boolVarMap.find(name);
+    std::pair<std::string, bool> key = std::make_pair(name, isTemp);
+    auto it = m_boolVarMap.find(key);
     if (it != m_boolVarMap.end())
     {
         return it->second;
     }
 
-    // If not found create Prog var or temp var depending on if we have a pre or post var
-    if (!name.empty() && name.back() == '\'')
-    {
-        // Post var -> Temp Var
-        Bools::Var var = BoolVar::next();
-        m_boolVarMap.emplace(name, var);
-        return var;
-    }
-    else
-    {
-        // Pre var -> Prog Var
-        Bools::Var var = BoolVar::nextProgVar();
-        m_boolVarMap.emplace(name, var);
-        return var;
-    }
+    Bools::Var var = isTemp ? BoolVar::next() : BoolVar::nextProgVar();
+    m_boolVarMap.emplace(key, var);
+    return var;
 }

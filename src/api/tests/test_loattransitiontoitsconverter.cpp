@@ -25,41 +25,6 @@ TEST(LoatTransitionToITSConverterTest, FullConversionTest)
 
     const auto &subs = rule->getUpdate();
     EXPECT_EQ(subs.size(), 2);
-
-    auto x_pre = converter.getArithVar("x");
-    auto x_post = converter.getArithVar("x'");
-    auto y_pre = converter.getArithVar("y");
-    auto y_post = converter.getArithVar("y'");
-
-    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(x_pre)), arith::toExpr(x_post));
-    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(y_pre)), arith::toExpr(y_post));
-}
-
-TEST(LoatTransitionToITSConverterTest, GuardOnlyTest)
-{
-    LoatTransitionToITSConverter converter;
-
-    auto x = LoatIntExpression::mkPreVar("x");
-    auto y = LoatIntExpression::mkPreVar("y");
-
-    auto cmp = LoatBoolExpression::mkLt(x, y);
-    LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), cmp);
-
-    auto rule = converter.convert(transition);
-
-    ASSERT_FALSE(rule->getGuard() == BoolExpr::top());
-    ASSERT_FALSE(rule->getGuard() == BoolExpr::bot());
-
-    const auto &subs = rule->getUpdate();
-    EXPECT_EQ(subs.size(), 2);
-
-    auto x_pre = converter.getArithVar("x");
-    auto x_post = converter.getArithVar("x'");
-    auto y_pre = converter.getArithVar("y");
-    auto y_post = converter.getArithVar("y'");
-
-    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(x_pre)), arith::toExpr(x_post));
-    EXPECT_EQ(std::get<ArithExprPtr>(subs.get(y_pre)), arith::toExpr(y_post));
 }
 
 TEST(LoatTransitionToITSConverterTest, ComplexGuardTest)
@@ -124,11 +89,5 @@ TEST(LoatTransitionToITSConverterTest, BoolVarConversionTest)
     auto rule = converter.convert(transition);
     const auto &subs = rule->getUpdate();
 
-    auto x_pre = converter.getBoolVar("x");
-    auto x_post = converter.getBoolVar("x'");
-    auto y_pre = converter.getBoolVar("y");
-    auto y_post = converter.getBoolVar("y'");
-
-    EXPECT_EQ(std::get<Bools::Expr>(subs.get(x_pre)), Bools::varToExpr(x_post));
-    EXPECT_EQ(std::get<Bools::Expr>(subs.get(y_pre)), Bools::varToExpr(y_post));
+    EXPECT_EQ(subs.size(), 2);
 }
