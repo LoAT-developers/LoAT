@@ -51,6 +51,7 @@ public:
     Arith::Expr convertArith(const LoatIntExprPtr &expr);
     Bools::Expr convertBool(const LoatBoolExprPtr &expr);
 
+private:
     Arith::Var getArithVar(const std::string &name, bool isTemp);
     Bools::Var getBoolVar(const std::string &name, bool isTemp);
 };
