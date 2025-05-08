@@ -71,9 +71,6 @@ TEST(LoatTransitionToITSConverterTest, MultipleTransitionsTest)
 
     ASSERT_FALSE(rule1->getGuard() == BoolExpr::top());
     ASSERT_FALSE(rule2->getGuard() == BoolExpr::top());
-
-    const auto &subs1 = rule1->getUpdate();
-    const auto &subs2 = rule2->getUpdate();
 }
 
 TEST(LoatTransitionToITSConverterTest, BoolVarConversionTest)
@@ -90,4 +87,46 @@ TEST(LoatTransitionToITSConverterTest, BoolVarConversionTest)
     const auto &subs = rule->getUpdate();
 
     EXPECT_EQ(subs.size(), 2);
+}
+
+TEST(LoatTransitionToITSConverterTest, SingleTransitionToITS)
+{
+    // Construct a transition q0(x) -> q1(x')[x < 5]
+    LoatLocation q0("q0"), q1("q1");
+    auto x = LoatIntExpression::mkPreVar("x");
+    auto five = LoatIntExpression::mkConst(5);
+    auto guard = LoatBoolExpression::mkLt(x, five);
+    LoatTransition transition(q0, q1, guard);
+
+    // Convert the transition into an ITS with start = q0, sink = q1
+    LoatTransitionToITSConverter converter;
+    ITSPtr its = converter.convertTransitionsToITS({transition}, q0, q1);
+
+    // Verify that initial location and sink are set correctly
+    auto initialIdx = its->getLocationIdx("q0");
+    auto sinkIdx = its->getLocationIdx("q1");
+    ASSERT_TRUE(initialIdx.has_value());
+    ASSERT_TRUE(sinkIdx.has_value());
+    EXPECT_EQ(its->getInitialLocation(), initialIdx.value());
+    EXPECT_EQ(its->getSink(), sinkIdx.value());
+
+    // There is exactly one Rule in the ITS
+    const auto &all = its->getAllTransitions();
+    ASSERT_EQ(all.size(), 1u);
+
+    // Get iterator and extract first element of it as my rule ptr
+    RulePtr rule = *all.begin();
+
+    // Guard is not bot or top
+    Bools::Expr g = rule->getGuard();
+    EXPECT_FALSE(g == BoolExpr::top());
+    EXPECT_FALSE(g == BoolExpr::bot());
+
+    // Update must contain two substitutions: x := x' and locVar := startIdx
+    const auto &update = rule->getUpdate();
+    EXPECT_EQ(update.size(), 2u);
+
+    // Check that the location variable appears in the update
+    Arith::Var locVar = its->getLocVar();
+    EXPECT_TRUE(update.contains(locVar));
 }

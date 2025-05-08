@@ -26,9 +26,11 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
     its->setInitialLocation(startIdx);
 
     // Transfer sink location
-    // @FROHN: Woher weiß der nacher bei addRule, welche transition in diese senke geht, wenn ich den namen bzw index garnicht bei addRule mit gebe.
     LocationIdx sinkIdx = its->getOrAddLocation(sink.getName());
-    its->setInitialLocation(sinkIdx);
+    its->setSinkLocation(sinkIdx);
+
+    // Get location var
+    Arith::Var locVar = its->getLocVar();
 
     // Loop through all transitions
     for (const LoatTransition &transition : transitions)
@@ -36,18 +38,29 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
         // Extract start, target and the formula
         const LoatLocation &source = transition.getSourceLocation();
         const LoatLocation &target = transition.getTargetLocation();
+
+        // Convert Rule
         RulePtr rule = convert(transition);
 
-        // Get the related index values
+        // Get the index values to the source and target locations
         LocationIdx sourceIdx = its->getOrAddLocation(source.getName());
-
-        // @FROHN: Das ist dann doch komlett umsonst oder?
-        // Kann ich das einfach weglassen und der kümmert sich dann intern darum?
-        // Falls ja, dann verstehe ich das prinzip noch nicht ganz. Wofür brauche ich in der API das Target dann überhaupt.
         LocationIdx targetIdx = its->getOrAddLocation(target.getName());
 
-        // Add rule without sourceIdx
-        its->addRule(rule, sourceIdx);
+        // New Guard: locVar == srcIdx && old Guard
+        Arith::Expr curLoc = arith::toExpr(locVar);
+        Bools::Expr locGuard = bools::mkLit(arith::mkEq(curLoc, arith::mkConst(sourceIdx)));
+        BoolExprSet conjuncts;
+        conjuncts.insert(rule->getGuard());
+        conjuncts.insert(locGuard);
+        Bools::Expr combinedGuard = bools::mkAnd(conjuncts);
+
+        // Update loc var after transition
+        Subs update = rule->getUpdate();
+        update.put<Arith>(locVar, arith::mkConst(targetIdx));
+
+        // Create new rule and insert this into the its
+        RulePtr ruleWithLoc = Rule::mk(combinedGuard, update);
+        its->addRule(ruleWithLoc, sourceIdx);
     }
 
     return its;
