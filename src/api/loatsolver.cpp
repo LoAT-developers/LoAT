@@ -41,5 +41,5 @@ void LoatSolver::addSinkLocation(const LoatLocation &location)
 
 bool LoatSolver::isSinkLocation(const LoatLocation &location) const
 {
-    return m_sinks.count(location.getName()) > 0;
+    return m_sinks.contains(location.getName());
 }
