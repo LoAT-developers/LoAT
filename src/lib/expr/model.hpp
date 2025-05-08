@@ -99,6 +99,7 @@ public:
     Bools::Expr syntacticImplicant(const Bools::Expr e) const;
     Model project(const VarSet &vars) const;
     Model project(const std::function<bool(const Var)> &p) const;
+    Model erase(const Var&) const;
 
 private:
 

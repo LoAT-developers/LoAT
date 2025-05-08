@@ -10,15 +10,12 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
 
-using TheTheory = Theory<Arith, Bools>;
 using BoolExprSet = BoolExprSet;
 using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;
 using Expr = TheTheory::Expr;
 using Const = TheTheory::Const;
 using Theories = TheTheory::Theories;
-using VarSet = VariantSet<Arith::Var, Bools::Var>;
-using LitSet = VariantSet<Arith::Lit, Bools::Lit>;
 
 constexpr size_t num_theories {std::tuple_size_v<Theories>};
 
@@ -85,19 +82,22 @@ Types to_type(const Expr &x);
 Types to_type(const Var &x);
 std::optional<Var> is_var(const Expr &x);
 
-template <class Int, class Bool, class ... Ts>
-inline auto apply(const std::variant<Int, Bool> &x, Ts... f) noexcept {
+template <class Int, class Bool, class IntArray, class ... Ts>
+inline auto apply(const std::variant<Int, Bool, IntArray> &x, Ts... f) noexcept {
     if (std::holds_alternative<Int>(x)) {
         return Overload{f...}(*std::get_if<Int>(&x));
-    } else {
+    } else if (std::holds_alternative<Bool>(x)) {
         return Overload{f...}(*std::get_if<Bool>(&x));
+    } else {
+        return Overload{f...}(*std::get_if<IntArray>(&x));
     }
 }
 
 template <class ... Ts>
 auto for_each(Ts... f) {
-    return Overload{f...}(arith::t);
-    return Overload{f...}(bools::t);
+    Overload{f...}(arith::t);
+    Overload{f...}(bools::t);
+    Overload{f...}(arrays::arith);
 }
 
 template <size_t I, ITheory T>

@@ -40,7 +40,19 @@ public:
     }
 
     void add(const Model &m) {
-        theory::for_each([&](auto t) {
+        theory::for_each(
+            [&](Arrays<Arith>&) {
+                for (const auto &[k,v]: m.get<Arrays<Arith>>()) {
+                    std::vector<Arith::Expr> indices;
+                    for (const auto &i: v.get_indices()) {
+                        indices.emplace_back(i);
+                    }
+                    for (const auto &[cond,val]: v.get_cases()) {
+                        add(!cond || bools::mkLit(arrays::mkElemEq<Arith>(arrays::mkArrayRead<Arith>(k, indices), val)));
+                    }
+                }
+            },
+            [&](auto t) {
             using T = decltype(t);
             for (const auto &[k,v]: m.get<T>()) {
                 add(T::mkEq(k, v));

@@ -6,6 +6,7 @@
 #include "exprfwd.hpp"
 #include "bools.hpp"
 #include "arraysubs.hpp"
+#include "arrayconst.hpp"
 
 template <ITheory T>
 using array_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArrayVarPtr<T>>, boost::bimaps::unordered_set_of<ArrayVarPtr<T>>>;
@@ -17,7 +18,7 @@ struct Arrays {
     using Var = ArrayVarPtr<T>;
     using Subs = ArraySubs<T>;
     using Expr = ArrayPtr<T>;
-    using Const = linked_hash_map<Bools::Expr, T::Expr>;
+    using Const = ArrayConst<T>;
     using Model = linked_hash_map<Var, Const>;
     using Renaming = array_var_map<T>;
 

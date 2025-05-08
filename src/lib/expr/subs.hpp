@@ -9,7 +9,7 @@
 
 class Subs {
 
-    using It = std::variant<Arith::Subs::const_iterator, Bools::Subs::const_iterator>;
+    using It = std::variant<Arith::Subs::const_iterator, Bools::Subs::const_iterator, Arrays<Arith>::Subs::const_iterator>;
 
     typename TheTheory::Subs t {};
 

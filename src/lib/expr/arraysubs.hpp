@@ -4,71 +4,76 @@
 #include "linkedhashmap.hpp"
 
 template <ITheory T>
+using array_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArrayVarPtr<T>>, boost::bimaps::unordered_set_of<ArrayVarPtr<T>>>;
+
+template <ITheory T>
 class ArraySubs {
 
     using Self = ArraySubs<T>;
+    using Expr = ArrayPtr<T>;
+    using Var = ArrayVarPtr<T>;
 
     friend bool operator==(const Self &m1, const Self &m2);
 
 public:
 
-    typedef typename linked_hash_map<ArrayVarPtr, ArrayExprPtr>::const_iterator const_iterator;
+    typedef typename linked_hash_map<Var, Expr>::const_iterator const_iterator;
 
     ArraySubs();
 
-    ArraySubs(std::initializer_list<std::pair<const ArrayVarPtr, ArrayExprPtr>> init);
+    ArraySubs(std::initializer_list<std::pair<const Var, Expr>> init);
 
-    ArrayExprPtr get(const ArrayVarPtr key) const;
+    Expr get(const Var key) const;
 
-    void put(const ArrayVarPtr key, const ArrayExprPtr val);
+    void put(const Var key, const Expr val);
 
     const_iterator begin() const;
 
     const_iterator end() const;
 
-    bool contains(const ArrayVarPtr e) const;
+    bool contains(const Var e) const;
 
     bool empty() const;
 
     unsigned int size() const;
 
-    size_t erase(const ArrayVarPtr key);
+    size_t erase(const Var key);
 
     Self compose(const Self &that) const;
 
     Self concat(const Self &that) const;
 
-    Self concat(const array_var_map &that) const;
+    Self concat(const array_var_map<T> &that) const;
 
     Self unite(const Self &that) const;
 
-    Self project(const linked_hash_set<ArrayVarPtr> &vars) const;
+    Self project(const linked_hash_set<Var> &vars) const;
 
-    Self project(const std::function<bool(ArrayVarPtr)> &keep) const;
+    Self project(const std::function<bool(Var)> &keep) const;
 
-    bool changes(const ArrayVarPtr key) const;
+    bool changes(const Var key) const;
 
     bool isLinear() const;
 
     bool isPoly() const;
 
-    linked_hash_set<ArrayVarPtr> domain() const;
+    linked_hash_set<Var> domain() const;
 
-    linked_hash_set<ArrayVarPtr> coDomainVars() const;
+    linked_hash_set<Var> coDomainVars() const;
 
-    void collectDomain(linked_hash_set<ArrayVarPtr> &vars) const;
+    void collectDomain(linked_hash_set<Var> &vars) const;
 
-    void collectCoDomainVars(linked_hash_set<ArrayVarPtr> &vars) const;
+    void collectCoDomainVars(linked_hash_set<Var> &vars) const;
 
-    void collectVars(linked_hash_set<ArrayVarPtr> &vars) const;
+    void collectVars(linked_hash_set<Var> &vars) const;
 
     size_t hash() const;
 
-    ArrayExprPtr operator()(const ArrayExprPtr t) const;
+    Expr operator()(const Expr t) const;
 
 private:
 
-    linked_hash_map<ArrayVarPtr, ArrayExprPtr> map{};
+    linked_hash_map<Var, Expr> map{};
 
 };
 

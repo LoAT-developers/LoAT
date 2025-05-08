@@ -320,7 +320,7 @@ Expr Subs::operator()(const Expr &expr) const {
             [&](const Arith::Expr expr) {
                 return Expr{get<Arith>()(expr)};
             },
-            [&](const Bools::Expr expr) {
+            [&](const auto expr) {
                 return Expr{(*this)(expr)};
             }
         }, expr);

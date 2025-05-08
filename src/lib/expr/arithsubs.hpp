@@ -33,6 +33,8 @@ public:
 
     ArithSubs compose(const ArithSubs &that) const;
 
+    ArithSubs compose(const linked_hash_map<ArithVarPtr, Int> &that) const;
+
     ArithSubs concat(const ArithSubs &that) const;
 
     ArithSubs concat(const arith_var_map &that) const;

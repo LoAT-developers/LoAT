@@ -7,6 +7,7 @@
 #include "linkedhashset.hpp"
 #include "bools.hpp"
 #include "arith.hpp"
+#include "arrays.hpp"
 
 #include <type_traits>
 #include <memory>
@@ -17,6 +18,12 @@ class BoolTheoryLit;
 class BoolJunction;
 class BoolExpr;
 class Renaming;
+
+using TheTheory = Theory<Arith, Bools, Arrays<Arith>>;
+using Var = typename TheTheory::Var;
+using Lit = typename TheTheory::Lit;
+using VarSet = VariantSet<Arith::Var, Bools::Var, Arrays<Arith>::Var>;
+using LitSet = VariantSet<Arith::Lit, Bools::Lit, Arrays<Arith>::Lit>;
 
 using BoolExprSet = linked_hash_set<Bools::Expr>;
 
@@ -30,12 +37,7 @@ class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
 
 protected:
 
-    using TheTheory = Theory<Arith, Bools>;
-    using Var = typename TheTheory::Var;
-    using Lit = typename TheTheory::Lit;
     using Model = typename TheTheory::Model;
-    using VarSet = VariantSet<Arith::Var, Bools::Var>;
-    using LitSet = VariantSet<Arith::Lit, Bools::Lit>;
 
 private:
 

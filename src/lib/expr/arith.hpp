@@ -14,11 +14,11 @@ struct Arith {
     using Model = linked_hash_map<Var, Const>;
     using Renaming = arith_var_map;
 
-    static Expr constToExpr(const Const &val);
     static Expr varToExpr(const Var &var);
     static Expr anyValue();
     static Var next();
     static BoolExprPtr mkEq(const Var, const Const&);
+    static Subs modelToSubs(const Model&);
 
 };
 

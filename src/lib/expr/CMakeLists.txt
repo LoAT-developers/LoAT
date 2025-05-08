@@ -49,6 +49,7 @@ add_library(${PROJECT_NAME} OBJECT
   arraylit.hpp
   arraysubs.hpp
   arrays.hpp
+  arrayconst.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

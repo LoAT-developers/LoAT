@@ -47,10 +47,8 @@ concept ITheory = requires(T t, typename T::Const val, typename T::Var var, type
         typename T::Expr;
         typename T::Renaming;
         typename T::Subs;
-        {T::constToExpr(val)} -> std::same_as<typename T::Expr>;
         {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
         {T::anyValue()} -> std::same_as<typename T::Expr>;
-        {lit->eval(m)} -> std::same_as<bool>;
 };
 
 template<ITheory... Th>
@@ -89,27 +87,6 @@ public:
 
     static Expr varToExpr(const Var &var) {
         return varToExprImpl<0>(var);
-    }
-
-private:
-
-    template <size_t I = 0>
-    inline static Expr constToExprImpl(const Const &c) {
-        if constexpr (I < sizeof...(Th)) {
-            if (c.index() == I) {
-                return std::tuple_element_t<I, Theories>::constToExpr(std::get<I>(c));
-            } else {
-                return constToExprImpl<I+1>(c);
-            }
-        } else {
-            throw std::logic_error("I too large");
-        }
-    }
-
-public:
-
-    static Expr constToExpr(const Const &c) {
-        return constToExprImpl<0>(c);
     }
 
 private:

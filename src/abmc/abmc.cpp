@@ -309,7 +309,7 @@ Bools::Expr ABMC::encode_transition(const RulePtr idx, const bool with_id) {
 
 void ABMC::build_trace() {
     trace.clear();
-    std::vector<Subs> run;
+    std::vector<Model> run;
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
         const auto s {subs.at(d)};
@@ -321,7 +321,7 @@ void ABMC::build_trace() {
             auto run_vars {rule->getUpdate().domain()};
             run_vars.insert(n);
             run_vars.insert(trace_var);
-            run.push_back(m.project(run_vars).toSubs());
+            run.push_back(m.project(run_vars));
         }
         const Implicant i {rule, imp};
         if (prev) {

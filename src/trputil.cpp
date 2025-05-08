@@ -379,10 +379,10 @@ bool TRPUtil::build_cex() {
 }
 
 bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
-    Subs m{model.toSubs()};
-    m.erase(trp.get_n());
-    auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
     const auto n {trp.get_n()};
+    model = model.erase(n);
+    auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
+    solver->add(model);
     for (const auto &[id, b] : rule_map) {
         const auto is_orig_clause {id <= last_orig_clause};
         if (Config::Analysis::termination() && is_orig_clause) {
@@ -397,7 +397,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
         }
         if (vars.contains(n)) {
             solver->push();
-            solver->add(m(b));
+            solver->add(b);
             if (solver->check() == SmtResult::Sat) {
                 const auto n_val{solver->model({{n}}).get<Arith>(n)};
                 model.put<Arith>(n, n_val);

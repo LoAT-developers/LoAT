@@ -657,7 +657,7 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
         if (!done && store_step(idx, idx)) {
             if (chcs->isSinkTransition(idx)) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
-                    set_cpx_witness(trace.back().resolvent, solver->model().toSubs().get<Arith>(), Arith::next());
+                    set_cpx_witness(trace.back().resolvent, Arith::modelToSubs(solver->model().get<Arith>()), Arith::next());
                 }
                 return std::make_unique<ProvedUnsat>();
             } else {
@@ -687,7 +687,7 @@ bool ADCL::try_to_finish() {
             if (implicant) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
                     const auto resolvent {compute_resolvent(q, (*implicant)->getGuard())};
-                    set_cpx_witness(resolvent, solver->model().toSubs().get<Arith>(), Arith::next());
+                    set_cpx_witness(resolvent, Arith::modelToSubs(solver->model().get<Arith>()), Arith::next());
                 }
                 add_to_trace(Step(q, (*implicant)->getGuard(), Renaming(), Renaming(), Rule::mk(top(), Subs())));
                 print_state();

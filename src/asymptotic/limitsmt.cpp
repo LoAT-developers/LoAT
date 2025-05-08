@@ -321,7 +321,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
         templateSubs.put(var, c0 + (n->toExpr() * c));
     }
     const auto buildRes = [&](const Complexity &cpx) {
-        const auto subs = Config::Analysis::model && cpx != Complexity::Unknown ? templateSubs.compose(solver->model().toSubs().get<Arith>()) : ArithSubs();
+        const auto subs = Config::Analysis::model && cpx != Complexity::Unknown ? templateSubs.compose(Arith::modelToSubs(solver->model().get<Arith>())) : ArithSubs();
         return ComplexityWitness{.cpx = cpx, .subs = subs, .param = n};
     };
     // replace variables in the cost function with their linear templates

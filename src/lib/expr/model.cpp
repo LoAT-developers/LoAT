@@ -128,6 +128,18 @@ Model Model::project(const std::function<bool(const Var)> &p) const {
     return res;
 }
 
+Model Model::erase(const Var &x) const {
+    Model res {*this};
+    theory::apply(
+        x,
+        [&](const auto &x) {
+            using T = decltype(theory::theory(x));
+            std::get<typename T::Model>(res.m).erase(x);
+        }
+    );
+    return res;
+}
+
 Const Model::get(const Var &var) const {
     return theory::apply(
         var,
