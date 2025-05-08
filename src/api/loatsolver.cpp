@@ -1,4 +1,10 @@
 #include "loatsolver.hpp"
+#include "config.hpp"
+
+#include "abmc.hpp"
+#include "bmc.hpp"
+#include "adcl.hpp"
+
 #include <stdexcept>
 #include <any>
 
@@ -29,22 +35,27 @@ void LoatSolver::setStartLocation(const LoatLocation &location)
     m_start = location;
 }
 
-bool LoatSolver::isStartLocation(const LoatLocation &location) const
-{
-    return m_start == location;
-}
-
 void LoatSolver::addSinkLocation(const LoatLocation &location)
 {
     m_sink = location;
 }
 
-bool LoatSolver::isSinkLocation(const LoatLocation &location) const
-{
-    return m_sink == location;
-}
-
 void LoatSolver::produceITS()
 {
     m_its = m_converter.convertTransitionsToITS(m_transitions, m_start, m_sink);
+}
+
+bool LoatSolver::check()
+{
+    // Refresh the config to be up to date
+    refreshConfig();
+
+    // Produce the required its
+    produceITS();
+
+    // Dispatch selected function
+    SmtResult res = SmtResult::Unknown;
+
+    // LoatConfig::InitialConfig::Engine engine = m_config.getInitial().get(InitialParameterKey::Engine);
+    return true;
 }

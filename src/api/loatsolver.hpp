@@ -41,11 +41,11 @@ public:
 
     void setStartLocation(const LoatLocation &location);
 
-    bool isStartLocation(const LoatLocation &location) const;
-
     void addSinkLocation(const LoatLocation &location);
 
-    bool isSinkLocation(const LoatLocation &location) const;
+    // Applies the Loop Acceleration Tool to find the desired output (model/ctx/..).
+    // Returns true if found the desired output successfully
+    bool check();
 
 private:
     // Re-applys dynamic config after updates (if needed)
