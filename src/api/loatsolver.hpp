@@ -1,10 +1,13 @@
 #pragma once
 
 #include "loattransition.hpp"
+#include "loatlocation.hpp"
 #include "loattransitiontoitsconverter.hpp"
 #include "loatconfig.hpp"
 #include <any>
 #include <vector>
+#include <string>
+#include <unordered_set>
 
 class LoatSolver
 {
@@ -12,6 +15,9 @@ private:
     LoatConfig m_config;
     std::vector<LoatTransition> m_transitions;
     LoatTransitionToITSConverter converter;
+
+    std::string m_start;
+    std::unordered_set<std::string> m_sinks;
 
 public:
     // Constructor for LoatSolver
@@ -35,4 +41,12 @@ public:
 
     // Adds a transition to the solver.
     void add(const LoatTransition &transition);
+
+    void setStartLocation(const LoatLocation &location);
+
+    bool isStartLocation(const LoatLocation &location) const;
+
+    void addSinkLocation(const LoatLocation &location);
+
+    bool isSinkLocation(const LoatLocation &location) const;
 };
