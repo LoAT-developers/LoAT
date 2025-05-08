@@ -43,3 +43,8 @@ bool LoatSolver::isSinkLocation(const LoatLocation &location) const
 {
     return m_sink == location;
 }
+
+void LoatSolver::produceITS()
+{
+    m_its = m_converter.convertTransitionsToITS(m_transitions, m_start, m_sink);
+}

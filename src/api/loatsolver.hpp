@@ -36,9 +36,6 @@ public:
     // Modify runtime parameter (DynamicConfig) by enum key and value
     void setParameter(DynamicParameterKey key, const std::any &value);
 
-    // Optional: Re-apply dynamic config after updates (if needed)
-    void refreshConfig();
-
     // Adds a transition to the solver.
     void add(const LoatTransition &transition);
 
@@ -49,4 +46,11 @@ public:
     void addSinkLocation(const LoatLocation &location);
 
     bool isSinkLocation(const LoatLocation &location) const;
+
+private:
+    // Re-applys dynamic config after updates (if needed)
+    void refreshConfig();
+
+    // Creates an its with the given members of the class
+    void produceITS();
 };

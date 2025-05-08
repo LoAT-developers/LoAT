@@ -48,15 +48,3 @@ TEST(LoatSolverTest, SetParameterThrowsOnTypeMismatch)
         solver.setParameter(DynamicParameterKey::Log, 42), // wrong type
         std::invalid_argument);
 }
-
-TEST(LoatSolverTest, RefreshConfigUpdatesGlobalConfig)
-{
-    LoatConfig initial = createSampleInitialConfig();
-    LoatConfig config(initial);
-    LoatSolver solver(config);
-
-    solver.setParameter(DynamicParameterKey::LogAccel, true);
-    solver.refreshConfig();
-
-    EXPECT_TRUE(Config::Analysis::logAccel);
-}
