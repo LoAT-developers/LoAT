@@ -46,6 +46,7 @@ private:
 public:
     LoatTransitionToITSConverter() = default;
 
+    // Convert transitions to its
     ITSPtr convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const LoatLocation &sink);
 
     // Converts a LoatTransition to internal Rule
