@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <stdexcept>
 #include <utility>
@@ -10,6 +11,7 @@
 #include "loatboolexpr.hpp"
 #include "loatintexpr.hpp"
 
+#include "itsproblem.hpp"
 #include "rule.hpp"
 #include "arith.hpp"
 #include "bools.hpp"
@@ -43,6 +45,8 @@ private:
 
 public:
     LoatTransitionToITSConverter() = default;
+
+    ITSPtr convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const LoatLocation &sink);
 
     // Converts a LoatTransition to internal Rule
     RulePtr convert(const LoatTransition &transition);

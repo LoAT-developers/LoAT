@@ -10,6 +10,8 @@ private:
 public:
     explicit LoatLocation(const std::string &name) : m_name(name) {}
 
+    LoatLocation() = default;
+
     const std::string &getName() const { return m_name; }
 
     bool operator==(const LoatLocation &other) const

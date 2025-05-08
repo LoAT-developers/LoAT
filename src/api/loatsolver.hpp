@@ -2,22 +2,22 @@
 
 #include "loattransition.hpp"
 #include "loatlocation.hpp"
+#include "itsproblem.hpp"
 #include "loattransitiontoitsconverter.hpp"
 #include "loatconfig.hpp"
 #include <any>
 #include <vector>
-#include <string>
-#include <unordered_set>
 
 class LoatSolver
 {
 private:
     LoatConfig m_config;
     std::vector<LoatTransition> m_transitions;
-    LoatTransitionToITSConverter converter;
+    LoatTransitionToITSConverter m_converter;
+    ITSPtr m_its;
 
-    std::string m_start;
-    std::unordered_set<std::string> m_sinks;
+    LoatLocation m_start;
+    LoatLocation m_sink;
 
 public:
     // Constructor for LoatSolver

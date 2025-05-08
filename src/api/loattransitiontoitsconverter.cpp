@@ -1,5 +1,58 @@
 #include "loattransitiontoitsconverter.hpp"
 
+ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const LoatLocation &sink)
+{
+    // Check if we got at least one transition, a start location and at least one sink location
+    if (transitions.empty())
+    {
+        throw std::invalid_argument("No transitions provided.");
+    }
+
+    if (start.getName().empty())
+    {
+        throw std::invalid_argument("Start location is not set.");
+    }
+
+    if (sink.getName().empty())
+    {
+        throw std::invalid_argument("No sink locations provided.");
+    }
+
+    // Create empty ITS
+    ITSPtr its = std::make_shared<ITSProblem>();
+
+    // Transfer start location
+    LocationIdx startIdx = its->getOrAddLocation(start.getName());
+    its->setInitialLocation(startIdx);
+
+    // Transfer sink location
+    // @FROHN: Woher weiß der nacher bei addRule, welche transition in diese senke geht, wenn ich den namen bzw index garnicht bei addRule mit gebe.
+    LocationIdx sinkIdx = its->getOrAddLocation(sink.getName());
+    its->setInitialLocation(sinkIdx);
+
+    // Loop through all transitions
+    for (const LoatTransition &transition : transitions)
+    {
+        // Extract start, target and the formula
+        const LoatLocation &source = transition.getSourceLocation();
+        const LoatLocation &target = transition.getTargetLocation();
+        RulePtr rule = convert(transition);
+
+        // Get the related index values
+        LocationIdx sourceIdx = its->getOrAddLocation(source.getName());
+
+        // @FROHN: Das ist dann doch komlett umsonst oder?
+        // Kann ich das einfach weglassen und der kümmert sich dann intern darum?
+        // Falls ja, dann verstehe ich das prinzip noch nicht ganz. Wofür brauche ich in der API das Target dann überhaupt.
+        LocationIdx targetIdx = its->getOrAddLocation(target.getName());
+
+        // Add rule without sourceIdx
+        its->addRule(rule, sourceIdx);
+    }
+
+    return its;
+}
+
 RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
 {
     // Save refrence to formula

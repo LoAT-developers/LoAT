@@ -26,20 +26,20 @@ void LoatSolver::add(const LoatTransition &transition)
 
 void LoatSolver::setStartLocation(const LoatLocation &location)
 {
-    m_start = location.getName();
+    m_start = location;
 }
 
 bool LoatSolver::isStartLocation(const LoatLocation &location) const
 {
-    return m_start == location.getName();
+    return m_start == location;
 }
 
 void LoatSolver::addSinkLocation(const LoatLocation &location)
 {
-    m_sinks.insert(location.getName());
+    m_sink = location;
 }
 
 bool LoatSolver::isSinkLocation(const LoatLocation &location) const
 {
-    return m_sinks.contains(location.getName());
+    return m_sink == location;
 }
