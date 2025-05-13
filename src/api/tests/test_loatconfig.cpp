@@ -10,11 +10,6 @@ TEST(InitialConfigTest, CanRetrieveValuesViaGet)
     auto init = createSampleInitialConfig();
 
     EXPECT_EQ(
-        std::any_cast<LoatConfig::InitialConfig::Format>(
-            init.get(InitialParameterKey::Format)),
-        LoatConfig::InitialConfig::Format::Koat);
-
-    EXPECT_EQ(
         std::any_cast<LoatConfig::InitialConfig::Engine>(
             init.get(InitialParameterKey::Engine)),
         LoatConfig::InitialConfig::Engine::ADCL);
@@ -134,7 +129,6 @@ TEST(LoatConfigTest, ApplyToGlobalConfigSetsGlobalsCorrectly)
     config.applyToGlobalConfig();
 
     // Assert - verify the global Config:: namespace was set properly
-    EXPECT_EQ(Config::Input::format, Config::Input::Format::Koat);
     EXPECT_EQ(Config::Analysis::engine, Config::Analysis::Engine::ADCL);
     EXPECT_EQ(Config::Analysis::mode, Config::Analysis::Mode::Termination);
     EXPECT_EQ(Config::Analysis::smtSolver, Config::Analysis::SmtSolver::Z3);

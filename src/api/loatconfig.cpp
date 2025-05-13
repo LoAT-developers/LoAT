@@ -6,23 +6,6 @@
 // Helper functions to Map API-Enums to Config Enums
 namespace
 {
-
-    // Format
-    Config::Input::Format mapFormat(LoatConfig::InitialConfig::Format in)
-    {
-        switch (in)
-        {
-        case LoatConfig::InitialConfig::Format::Horn:
-            return Config::Input::Format::Horn;
-        case LoatConfig::InitialConfig::Format::Koat:
-            return Config::Input::Format::Koat;
-        case LoatConfig::InitialConfig::Format::Its:
-            return Config::Input::Format::Its;
-        default:
-            throw std::invalid_argument("Invalid Format");
-        }
-    }
-
     // Engine
     Config::Analysis::Engine mapEngine(LoatConfig::InitialConfig::Engine in)
     {
@@ -88,10 +71,6 @@ namespace
         {
         case LoatConfig::InitialConfig::Direction::Forward:
             return Config::Analysis::Direction::Forward;
-        case LoatConfig::InitialConfig::Direction::Backward:
-            return Config::Analysis::Direction::Backward;
-        case LoatConfig::InitialConfig::Direction::Interleaved:
-            return Config::Analysis::Direction::Interleaved;
         default:
             throw std::invalid_argument("Invalid Direction");
         }
@@ -148,7 +127,6 @@ void LoatConfig::applyToGlobalConfig() const
     using namespace Config;
 
     // Initial config
-    Input::format = mapFormat(std::any_cast<LoatConfig::InitialConfig::Format>(m_initial.get(InitialParameterKey::Format)));
     Analysis::engine = mapEngine(std::any_cast<LoatConfig::InitialConfig::Engine>(m_initial.get(InitialParameterKey::Engine)));
     Analysis::mode = mapMode(std::any_cast<LoatConfig::InitialConfig::Mode>(m_initial.get(InitialParameterKey::Mode)));
     Analysis::smtSolver = mapSolver(std::any_cast<LoatConfig::InitialConfig::SmtSolver>(m_initial.get(InitialParameterKey::SmtSolver)));
@@ -175,8 +153,6 @@ std::any LoatConfig::InitialConfig::get(InitialParameterKey key) const
 {
     switch (key)
     {
-    case InitialParameterKey::Format:
-        return m_format;
     case InitialParameterKey::Engine:
         return m_engine;
     case InitialParameterKey::Mode:

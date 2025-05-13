@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <stdexcept>
 
 class LoatLocation
 {
@@ -8,7 +9,15 @@ private:
     std::string m_name;
 
 public:
-    explicit LoatLocation(const std::string &name) : m_name(name) {}
+    explicit LoatLocation(const std::string &name)
+    {
+        if (name.empty())
+        {
+            throw std::invalid_argument("Location name is required");
+        }
+
+        m_name = name;
+    }
 
     LoatLocation() = default;
 

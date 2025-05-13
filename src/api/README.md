@@ -21,13 +21,12 @@ You begin by defining an `InitialConfig`:
 #include "loatconfig.hpp"
 
 LoatConfig::InitialConfig init(
-    LoatConfig::InitialConfig::Format::Koat,
     LoatConfig::InitialConfig::Engine::ADCL,
     LoatConfig::InitialConfig::Mode::Complexity,
     LoatConfig::InitialConfig::SmtSolver::Z3,
     LoatConfig::InitialConfig::Direction::Forward,
     LoatConfig::InitialConfig::MbpKind::IntMbp,
-    false // model enabled?
+    false // proof enabled?
 );
 ```
 

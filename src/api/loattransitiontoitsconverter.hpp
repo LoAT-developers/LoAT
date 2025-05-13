@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
-#include <stdexcept>
 #include <utility>
 #include <functional>
 
@@ -42,9 +41,6 @@ private:
 
     // Cache LoAT -> ITS (Bool Pre- and Post-Vars)
     std::unordered_map<std::pair<std::string, bool>, Bools::Var> m_boolVarMap;
-
-    // ITS Problem pointer
-    ITSProblem *m_its = nullptr;
 
 public:
     LoatTransitionToITSConverter() = default;

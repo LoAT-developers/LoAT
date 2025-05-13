@@ -2,22 +2,6 @@
 
 ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const LoatLocation &sink)
 {
-    // Check if we got at least one transition, a start location and at least one sink location
-    if (transitions.empty())
-    {
-        throw std::invalid_argument("No transitions provided.");
-    }
-
-    if (start.getName().empty())
-    {
-        throw std::invalid_argument("Start location is not set.");
-    }
-
-    if (sink.getName().empty())
-    {
-        throw std::invalid_argument("No sink locations provided.");
-    }
-
     // Create empty ITS
     ITSPtr its = std::make_shared<ITSProblem>();
 

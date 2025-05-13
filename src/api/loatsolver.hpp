@@ -5,6 +5,7 @@
 #include "itsproblem.hpp"
 #include "loattransitiontoitsconverter.hpp"
 #include "loatconfig.hpp"
+#include "loatresult.hpp"
 #include <any>
 #include <vector>
 
@@ -39,13 +40,15 @@ public:
     // Adds a transition to the solver.
     void add(const LoatTransition &transition);
 
+    // Sets the start location of the Transition System
     void setStartLocation(const LoatLocation &location);
 
+    // Sets the end location of the Transition System
     void addSinkLocation(const LoatLocation &location);
 
     // Applies the Loop Acceleration Tool to find the desired output (model/ctx/..).
     // Returns true if found the desired output successfully
-    bool check();
+    const LoatResult check();
 
 private:
     // Re-applys dynamic config after updates (if needed)

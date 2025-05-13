@@ -5,7 +5,6 @@
 inline LoatConfig::InitialConfig createSampleInitialConfig()
 {
     return LoatConfig::InitialConfig(
-        LoatConfig::InitialConfig::Format::Koat,
         LoatConfig::InitialConfig::Engine::ADCL,
         LoatConfig::InitialConfig::Mode::Termination,
         LoatConfig::InitialConfig::SmtSolver::Z3,

@@ -7,7 +7,6 @@
 // List of immutable initial configuration options
 enum class InitialParameterKey
 {
-    Format,
     Engine,
     Mode,
     SmtSolver,
@@ -41,15 +40,6 @@ public:
     class InitialConfig
     {
     public:
-        // Input format must be fixed when parsing starts,
-        // and cannot change mid-execution (e.g. Koat, ITS, Horn)
-        enum Format
-        {
-            Koat,
-            Its,
-            Horn
-        };
-
         // The core engine used for solving – tightly coupled with internal setup.
         // Cannot be switched on the fly without reinitializing solver components.
         enum Engine
@@ -81,12 +71,10 @@ public:
             Heuristic
         };
 
-        // Direction of analysis (forward, backward, interleaved)
+        // Direction of analysis (at the moment only forward available)
         enum Direction
         {
-            Forward,
-            Backward,
-            Interleaved
+            Forward
         };
 
         // Solver-level tuning parameter.
@@ -100,10 +88,10 @@ public:
         };
 
         // Constructor
-        InitialConfig(Format format, Engine engine, Mode mode,
+        InitialConfig(Engine engine, Mode mode,
                       SmtSolver solver, Direction direction,
                       MbpKind mbp, bool model)
-            : m_format(format), m_engine(engine), m_mode(mode),
+            : m_engine(engine), m_mode(mode),
               m_solver(solver), m_direction(direction),
               m_mbpKind(mbp), m_model(model) {}
 
@@ -111,7 +99,6 @@ public:
         std::any get(InitialParameterKey key) const;
 
     private:
-        Format m_format;
         Engine m_engine;
         Mode m_mode;
         SmtSolver m_solver;
