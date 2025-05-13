@@ -48,7 +48,7 @@ public:
 
     // Applies the Loop Acceleration Tool to find the desired output (model/ctx/..).
     // Returns true if found the desired output successfully
-    const LoatResult check();
+    LoatResult check();
 
 private:
     // Re-applys dynamic config after updates (if needed)

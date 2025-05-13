@@ -48,7 +48,7 @@ void LoatSolver::produceITS()
     m_its = m_converter.convertTransitionsToITS(m_transitions, m_start, m_sink);
 }
 
-const LoatResult LoatSolver::check()
+LoatResult LoatSolver::check()
 {
     // Refresh the config to be up to date
     refreshConfig();
