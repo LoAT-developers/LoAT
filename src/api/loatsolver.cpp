@@ -201,5 +201,5 @@ LoatResult LoatSolver::check()
         // TODO
     }
     // yices::exit();
-    return true;
+    return LoatResult::UKNOWN;
 }
