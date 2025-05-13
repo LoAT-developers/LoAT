@@ -56,7 +56,6 @@ public:
         // Cant be changed later, because we might need a different tool then.
         enum Mode
         {
-            Complexity,
             Termination,
             Safety
         };

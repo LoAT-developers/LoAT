@@ -6,6 +6,10 @@
 #include "loattransitiontoitsconverter.hpp"
 #include "loatconfig.hpp"
 #include "loatresult.hpp"
+#include "optional.hpp"
+#include "itsmodel.hpp"
+#include "itssafetycex.hpp"
+
 #include <any>
 #include <vector>
 
@@ -19,6 +23,9 @@ private:
 
     LoatLocation m_start;
     LoatLocation m_sink;
+
+    std::optional<ITSModel> m_its_model;
+    std::optional<ITSSafetyCex> m_its_cex;
 
 public:
     // Constructor for LoatSolver

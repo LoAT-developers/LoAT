@@ -4,5 +4,5 @@ enum class LoatResult
 {
     SAT,
     UNSAT,
-    UKNOWN
+    UNKNOWN
 };

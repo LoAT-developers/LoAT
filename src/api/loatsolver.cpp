@@ -6,8 +6,7 @@
 #include "adclsat.hpp"
 #include "config.hpp"
 #include "preprocessing.hpp"
-#include "optional.hpp"
-#include "itsproblem.hpp"
+#include "yices.hpp"
 
 #include <stdexcept>
 
@@ -56,7 +55,14 @@ LoatResult LoatSolver::check()
     // Produce the required its
     produceITS();
 
+    if (Config::Analysis::log)
+    {
+        std::cout << "Initial ITS\n"
+                  << m_its << std::endl;
+    }
+
     // Dispatch selected function
+    yices::init();
     std::optional<ITSModel> its_model;
     std::optional<ITSSafetyCex> its_cex;
     auto preprocessor{std::make_shared<Preprocessor>(m_its)};
@@ -86,11 +92,6 @@ LoatResult LoatSolver::check()
             std::cout << "Simplified ITS\n"
                       << m_its << std::endl;
         }
-        // if (Config::Analysis::dir == Config::Analysis::Direction::Interleaved)
-        // {
-        //     // We dont have chc so no reverse???
-        //     reverse = Reverse(*chcs);
-        // }
         else
         {
             switch (Config::Analysis::engine)
@@ -101,10 +102,7 @@ LoatResult LoatSolver::check()
                     m_its,
                     [&](const ITSCpxCex &cex)
                     {
-                        if (Config::Analysis::complexity())
-                        {
-                            std::cout << preprocessor->transform_cex(cex);
-                        }
+                        // TODO if you want to add complexity
                     }};
                 res = r.analyze();
                 if (Config::Analysis::model && !Config::Analysis::complexity() && res == SmtResult::Unsat)
@@ -173,7 +171,7 @@ LoatResult LoatSolver::check()
                 {
                     if (res == SmtResult::Sat)
                     {
-                        its_model = adcl.get_model();
+                        throw std::logic_error("Model is not supported for ADCLSAT");
                     }
                     else if (res == SmtResult::Unsat)
                     {
@@ -185,21 +183,27 @@ LoatResult LoatSolver::check()
             }
         }
     }
-    // unsat means nonterm, so we also print it in complexity mode
-    if (!Config::Analysis::complexity())
-    {
-        // What should we do here?
-        // print_result(res);
-    }
 
     if (its_model)
     {
-        // TODO
+        m_its_model = preprocessor->transform_model(*its_model);
     }
     else if (its_cex)
     {
-        // TODO
+        m_its_cex = preprocessor->transform_cex(*its_cex);
     }
-    // yices::exit();
-    return LoatResult::UKNOWN;
+    yices::exit();
+
+    switch (res)
+    {
+    case SmtResult::Sat:
+        return LoatResult::SAT;
+    case SmtResult::Unsat:
+        return LoatResult::UNSAT;
+    case SmtResult::Unknown:
+        return LoatResult::UNKNOWN;
+    // Just in case that we add new types in the inner layer, we should get an error here
+    default:
+        throw std::invalid_argument("Unexpected type of the result");
+    }
 }

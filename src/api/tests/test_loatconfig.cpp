@@ -3,8 +3,6 @@
 #include "config.hpp"
 #include "test_util.hpp"
 
-// === InitialConfig Tests ===
-
 TEST(InitialConfigTest, CanRetrieveValuesViaGet)
 {
     auto init = createSampleInitialConfig();
@@ -22,7 +20,7 @@ TEST(InitialConfigTest, CanRetrieveValuesViaGet)
     EXPECT_EQ(
         std::any_cast<LoatConfig::InitialConfig::SmtSolver>(
             init.get(InitialParameterKey::SmtSolver)),
-        LoatConfig::InitialConfig::SmtSolver::Z3);
+        LoatConfig::InitialConfig::SmtSolver::Yices);
 
     EXPECT_EQ(
         std::any_cast<LoatConfig::InitialConfig::Direction>(
@@ -45,8 +43,6 @@ TEST(InitialConfigTest, ThrowsOnInvalidKey)
         init.get(static_cast<InitialParameterKey>(999)),
         std::invalid_argument);
 }
-
-// === DynamicConfig Tests ===
 
 TEST(DynamicConfigTest, SetAndRetrieveViaGet)
 {
@@ -84,8 +80,6 @@ TEST(DynamicConfigTest, ThrowsOnBadAnyCast)
         dyn.set(DynamicParameterKey::BlockingClauses, std::string("true")),
         std::invalid_argument);
 }
-
-// === LoatConfig API Tests ===
 
 TEST(LoatConfigTest, CanConstructAndAccessInitial)
 {
@@ -128,10 +122,10 @@ TEST(LoatConfigTest, ApplyToGlobalConfigSetsGlobalsCorrectly)
     // Act
     config.applyToGlobalConfig();
 
-    // Assert - verify the global Config:: namespace was set properly
+    // Assert
     EXPECT_EQ(Config::Analysis::engine, Config::Analysis::Engine::ADCL);
     EXPECT_EQ(Config::Analysis::mode, Config::Analysis::Mode::Termination);
-    EXPECT_EQ(Config::Analysis::smtSolver, Config::Analysis::SmtSolver::Z3);
+    EXPECT_EQ(Config::Analysis::smtSolver, Config::Analysis::SmtSolver::Yices);
     EXPECT_EQ(Config::Analysis::dir, Config::Analysis::Direction::Forward);
     EXPECT_EQ(Config::Analysis::model, true);
 

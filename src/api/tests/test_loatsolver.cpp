@@ -5,8 +5,6 @@
 #include "test_util.hpp"
 #include "loatintexpr.hpp"
 
-// === Tests ===
-
 TEST(LoatSolverTest, AppliesConfigOnConstruction)
 {
     LoatConfig::DynamicConfig dyn;
@@ -47,4 +45,63 @@ TEST(LoatSolverTest, SetParameterThrowsOnTypeMismatch)
     EXPECT_THROW(
         solver.setParameter(DynamicParameterKey::Log, 42), // wrong type
         std::invalid_argument);
+}
+
+TEST(LoatSolverTest, DetectsTerminationInOneStep)
+{
+    // Create solver
+    LoatConfig config(LoatConfig::InitialConfig(
+        LoatConfig::InitialConfig::Engine::BMC,
+        LoatConfig::InitialConfig::Mode::Termination,
+        LoatConfig::InitialConfig::SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        true));
+    LoatSolver solver(config);
+
+    // start at q0, sink is q1
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("q1"));
+
+    // a expression that is true (1==1)
+    auto trueExpression = LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1);
+    solver.add(LoatTransition(LoatLocation("q0"),
+                              LoatLocation("q1"),
+                              trueExpression));
+
+    // Apply solving
+    LoatResult result = solver.check();
+
+    // In termination mode, this should return sat
+    EXPECT_EQ(result, LoatResult::SAT);
+}
+
+TEST(LoatSolverTest, DetectsNonTerminationInSimpleLoop)
+{
+    // Create solver
+    LoatConfig::DynamicConfig dyn;
+    LoatConfig config(LoatConfig::InitialConfig(
+        LoatConfig::InitialConfig::Engine::BMC,
+        LoatConfig::InitialConfig::Mode::Termination,
+        LoatConfig::InitialConfig::SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        true));
+    LoatSolver solver(config);
+
+    // start at q0, sink is q_sink (unreachable)
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("q_sink"));
+
+    // Infinite Self Loop
+    auto trueExpression = LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1);
+    solver.add(LoatTransition(LoatLocation("q0"),
+                              LoatLocation("q0"),
+                              trueExpression));
+
+    // Apply solving
+    LoatResult result = solver.check();
+
+    // In termination mode, this should return unsat
+    EXPECT_EQ(result, LoatResult::UNSAT);
 }

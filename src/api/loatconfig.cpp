@@ -33,8 +33,6 @@ namespace
     {
         switch (in)
         {
-        case LoatConfig::InitialConfig::Mode::Complexity:
-            return Config::Analysis::Mode::Complexity;
         case LoatConfig::InitialConfig::Mode::Termination:
             return Config::Analysis::Mode::Termination;
         case LoatConfig::InitialConfig::Mode::Safety:
