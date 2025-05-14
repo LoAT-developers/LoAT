@@ -51,9 +51,6 @@ TEST(LoatSolverTest, SetParameterThrowsOnTypeMismatch)
 using Engine = LoatConfig::InitialConfig::Engine;
 
 // TRL
-// @FROHN
-// Terminierung ✅
-// Nicht-Terminierung SAT statt UNSAT ❌
 TEST(TerminationEngineTest, TRL_DetectsTerminationCorrectly)
 {
     // Create solver
@@ -216,4 +213,57 @@ TEST(TerminationEngineTest, ABMC_DetectsNonTerminationCorrectly)
     // Get Result and check it
     LoatResult result = solver.check();
     EXPECT_EQ(result, LoatResult::UNSAT);
+}
+
+// Different SMT Solver
+using SmtSolver = LoatConfig::InitialConfig::SmtSolver;
+
+// Helper function for a non-terminating loop test
+void RunAdclNonTerminationWithSolver(SmtSolver solver, const std::string &solverName)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ADCL,
+        LoatConfig::InitialConfig::Mode::Termination,
+        solver,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+
+    LoatSolver loat(config);
+    loat.setParameter(DynamicParameterKey::Log, true);
+
+    LoatLocation q0("q0");
+    LoatLocation q_start("q_start");
+
+    loat.setStartLocation(q_start);
+    loat.add(LoatTransition(q_start, q0, LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+    loat.add(LoatTransition(q0, q0, LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+
+    LoatResult result = loat.check();
+    EXPECT_EQ(result, LoatResult::UNSAT);
+}
+
+TEST(AdclNonTerminationTest, WithZ3)
+{
+    RunAdclNonTerminationWithSolver(SmtSolver::Z3, "Z3");
+}
+
+TEST(AdclNonTerminationTest, WithCvc5)
+{
+    RunAdclNonTerminationWithSolver(SmtSolver::CVC5, "CVC5");
+}
+
+TEST(AdclNonTerminationTest, WithYices)
+{
+    RunAdclNonTerminationWithSolver(SmtSolver::Yices, "Yices");
+}
+
+TEST(AdclNonTerminationTest, WithSwine)
+{
+    RunAdclNonTerminationWithSolver(SmtSolver::Swine, "SwInE");
+}
+
+TEST(AdclNonTerminationTest, WithHeuristic)
+{
+    RunAdclNonTerminationWithSolver(SmtSolver::Heuristic, "Heuristic");
 }
