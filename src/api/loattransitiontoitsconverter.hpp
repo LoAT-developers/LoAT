@@ -14,6 +14,7 @@
 #include "rule.hpp"
 #include "arith.hpp"
 #include "bools.hpp"
+#include "optional.hpp"
 
 namespace std
 {
@@ -46,7 +47,7 @@ public:
     LoatTransitionToITSConverter() = default;
 
     // Convert transitions to its
-    ITSPtr convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const LoatLocation &sink);
+    ITSPtr convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const std::optional<LoatLocation> &sink);
 
     // Converts a LoatTransition to internal Rule
     RulePtr convert(const LoatTransition &transition);

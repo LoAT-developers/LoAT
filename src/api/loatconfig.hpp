@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <any>
+#include <stdexcept>
 
 // List of immutable initial configuration options
 enum class InitialParameterKey
@@ -92,7 +93,34 @@ public:
                       MbpKind mbp, bool model)
             : m_engine(engine), m_mode(mode),
               m_solver(solver), m_direction(direction),
-              m_mbpKind(mbp), m_model(model) {}
+              m_mbpKind(mbp), m_model(model)
+        {
+            // Validate (engine, mode) combinations
+            const bool terminationSupported = engine == ADCL || engine == ABMC || engine == TRL;
+
+            const bool safetySupported = true;
+
+            switch (mode)
+            {
+            case Termination:
+                if (!terminationSupported)
+                {
+                    throw std::invalid_argument(
+                        "Invalid configuration: Termination is only supported with engines: ADCL, ABMC, TRL.");
+                }
+                break;
+            case Safety:
+                if (!safetySupported)
+                {
+                    throw std::invalid_argument(
+                        "Invalid configuration: Saftey is only supported with engines: ADCL, ABMC, ADCLSAT, BMC, TRL, KIND.");
+                }
+                break;
+
+            default:
+                throw std::invalid_argument("Unknown analysis mode.");
+            }
+        }
 
         // Getter
         std::any get(InitialParameterKey key) const;

@@ -19,8 +19,6 @@ public:
         m_name = name;
     }
 
-    LoatLocation() = default;
-
     const std::string &getName() const { return m_name; }
 
     bool operator==(const LoatLocation &other) const

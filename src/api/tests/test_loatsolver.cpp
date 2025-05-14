@@ -51,22 +51,25 @@ TEST(LoatSolverTest, DetectsTerminationInOneStep)
 {
     // Create solver
     LoatConfig config(LoatConfig::InitialConfig(
-        LoatConfig::InitialConfig::Engine::BMC,
+        LoatConfig::InitialConfig::Engine::TRL,
         LoatConfig::InitialConfig::Mode::Termination,
         LoatConfig::InitialConfig::SmtSolver::Z3,
         LoatConfig::InitialConfig::Direction::Forward,
         LoatConfig::InitialConfig::MbpKind::IntMbp,
-        true));
+        false));
     LoatSolver solver(config);
+    solver.setParameter(DynamicParameterKey::Log, true);
+
+    LoatLocation q0 = (LoatLocation("q0"));
+    LoatLocation q1 = (LoatLocation("q1"));
 
     // start at q0, sink is q1
-    solver.setStartLocation(LoatLocation("q0"));
-    solver.addSinkLocation(LoatLocation("q1"));
+    solver.setStartLocation(q0);
 
     // a expression that is true (1==1)
     auto trueExpression = LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1);
-    solver.add(LoatTransition(LoatLocation("q0"),
-                              LoatLocation("q1"),
+    solver.add(LoatTransition(q0,
+                              q1,
                               trueExpression));
 
     // Apply solving
@@ -79,24 +82,25 @@ TEST(LoatSolverTest, DetectsTerminationInOneStep)
 TEST(LoatSolverTest, DetectsNonTerminationInSimpleLoop)
 {
     // Create solver
-    LoatConfig::DynamicConfig dyn;
     LoatConfig config(LoatConfig::InitialConfig(
-        LoatConfig::InitialConfig::Engine::BMC,
+        LoatConfig::InitialConfig::Engine::ADCL,
         LoatConfig::InitialConfig::Mode::Termination,
         LoatConfig::InitialConfig::SmtSolver::Z3,
         LoatConfig::InitialConfig::Direction::Forward,
         LoatConfig::InitialConfig::MbpKind::IntMbp,
-        true));
+        false));
     LoatSolver solver(config);
+    solver.setParameter(DynamicParameterKey::Log, true);
+
+    LoatLocation q0 = (LoatLocation("q0"));
 
     // start at q0, sink is q_sink (unreachable)
-    solver.setStartLocation(LoatLocation("q0"));
-    solver.addSinkLocation(LoatLocation("q_sink"));
+    solver.setStartLocation(q0);
 
     // Infinite Self Loop
     auto trueExpression = LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1);
-    solver.add(LoatTransition(LoatLocation("q0"),
-                              LoatLocation("q0"),
+    solver.add(LoatTransition(q0,
+                              q0,
                               trueExpression));
 
     // Apply solving

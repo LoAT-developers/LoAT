@@ -21,8 +21,8 @@ private:
     LoatTransitionToITSConverter m_converter;
     ITSPtr m_its;
 
-    LoatLocation m_start;
-    LoatLocation m_sink;
+    std::optional<LoatLocation> m_start;
+    std::optional<LoatLocation> m_sink;
 
     std::optional<ITSModel> m_its_model;
     std::optional<ITSSafetyCex> m_its_cex;

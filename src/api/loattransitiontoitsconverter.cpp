@@ -1,6 +1,6 @@
 #include "loattransitiontoitsconverter.hpp"
 
-ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const LoatLocation &sink)
+ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const std::optional<LoatLocation> &sink)
 {
     // Create empty ITS
     ITSPtr its = std::make_shared<ITSProblem>();
@@ -10,8 +10,11 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
     its->setInitialLocation(startIdx);
 
     // Transfer sink location
-    LocationIdx sinkIdx = its->getOrAddLocation(sink.getName());
-    its->setSinkLocation(sinkIdx);
+    if (sink)
+    {
+        LocationIdx sinkIdx = its->getOrAddLocation(sink.value().getName());
+        its->setSinkLocation(sinkIdx);
+    }
 
     // Get location var
     Arith::Var locVar = its->getLocVar();
