@@ -44,6 +44,20 @@ TEST(InitialConfigTest, ThrowsOnInvalidKey)
         std::invalid_argument);
 }
 
+TEST(InitialConfigTest, ThrowsOnInvalidConfig)
+{
+
+    EXPECT_THROW(
+        LoatConfig::InitialConfig(
+            LoatConfig::InitialConfig::Engine::BMC,
+            LoatConfig::InitialConfig::Mode::Termination,
+            LoatConfig::InitialConfig::SmtSolver::Yices,
+            LoatConfig::InitialConfig::Direction::Forward,
+            LoatConfig::InitialConfig::MbpKind::IntMbp,
+            true),
+        std::invalid_argument);
+}
+
 TEST(DynamicConfigTest, SetAndRetrieveViaGet)
 {
     LoatConfig::DynamicConfig dyn;
