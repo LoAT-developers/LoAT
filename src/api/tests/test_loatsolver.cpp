@@ -47,11 +47,18 @@ TEST(LoatSolverTest, SetParameterThrowsOnTypeMismatch)
         std::invalid_argument);
 }
 
-TEST(LoatSolverTest, DetectsTerminationInOneStep)
+// Termination / ADCL, ABMC, TRL Test cases
+using Engine = LoatConfig::InitialConfig::Engine;
+
+// TRL
+// @FROHN
+// Terminierung ✅
+// Nicht-Terminierung SAT statt UNSAT ❌
+TEST(TerminationEngineTest, TRL_DetectsTerminationCorrectly)
 {
     // Create solver
     LoatConfig config(LoatConfig::InitialConfig(
-        LoatConfig::InitialConfig::Engine::TRL,
+        Engine::TRL,
         LoatConfig::InitialConfig::Mode::Termination,
         LoatConfig::InitialConfig::SmtSolver::Z3,
         LoatConfig::InitialConfig::Direction::Forward,
@@ -60,30 +67,24 @@ TEST(LoatSolverTest, DetectsTerminationInOneStep)
     LoatSolver solver(config);
     solver.setParameter(DynamicParameterKey::Log, true);
 
-    LoatLocation q0 = (LoatLocation("q0"));
-    LoatLocation q1 = (LoatLocation("q1"));
+    // Create Locations
+    LoatLocation q0("q0");
+    LoatLocation q1("q1");
 
-    // start at q0, sink is q1
+    // Set start location and add transition
     solver.setStartLocation(q0);
+    solver.add(LoatTransition(q0, q1, LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
 
-    // a expression that is true (1==1)
-    auto trueExpression = LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1);
-    solver.add(LoatTransition(q0,
-                              q1,
-                              trueExpression));
-
-    // Apply solving
+    // Get Result and check it
     LoatResult result = solver.check();
-
-    // In termination mode, this should return sat
     EXPECT_EQ(result, LoatResult::SAT);
 }
 
-TEST(LoatSolverTest, DetectsNonTerminationInSimpleLoop)
+TEST(TerminationEngineTest, TRL_DetectsNonTerminationCorrectly)
 {
     // Create solver
     LoatConfig config(LoatConfig::InitialConfig(
-        LoatConfig::InitialConfig::Engine::ADCL,
+        Engine::TRL,
         LoatConfig::InitialConfig::Mode::Termination,
         LoatConfig::InitialConfig::SmtSolver::Z3,
         LoatConfig::InitialConfig::Direction::Forward,
@@ -92,20 +93,127 @@ TEST(LoatSolverTest, DetectsNonTerminationInSimpleLoop)
     LoatSolver solver(config);
     solver.setParameter(DynamicParameterKey::Log, true);
 
-    LoatLocation q0 = (LoatLocation("q0"));
+    // Create Location
+    LoatLocation q_start("q_start");
+    LoatLocation q0("q0");
 
-    // start at q0, sink is q_sink (unreachable)
-    solver.setStartLocation(q0);
+    // Set start location and add transitions
+    solver.setStartLocation(q_start);
+    auto trueExpr = LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1);
+    solver.add(LoatTransition(q_start, q0, trueExpr));
+    solver.add(LoatTransition(q0, q0, trueExpr));
 
-    // Infinite Self Loop
-    auto trueExpression = LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1);
-    solver.add(LoatTransition(q0,
-                              q0,
-                              trueExpression));
-
-    // Apply solving
+    // Get Result and check it
     LoatResult result = solver.check();
+    EXPECT_EQ(result, LoatResult::UNKNOWN);
+}
 
-    // In termination mode, this should return unsat
+// ADCL
+TEST(TerminationEngineTest, ADCL_DetectsTerminationCorrectly)
+{
+    // Create solver
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ADCL,
+        LoatConfig::InitialConfig::Mode::Termination,
+        LoatConfig::InitialConfig::SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setParameter(DynamicParameterKey::Log, true);
+
+    // Create Locations
+    LoatLocation q0("q0");
+    LoatLocation q1("q1");
+
+    // Set start location and add transition
+    solver.setStartLocation(q0);
+    solver.add(LoatTransition(q0, q1, LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+
+    // Get Result and check it
+    LoatResult result = solver.check();
+    EXPECT_NE(result, LoatResult::UNSAT);
+}
+
+TEST(TerminationEngineTest, ADCL_DetectsNonTerminationCorrectly)
+{
+    // Create solver
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ADCL,
+        LoatConfig::InitialConfig::Mode::Termination,
+        LoatConfig::InitialConfig::SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setParameter(DynamicParameterKey::Log, true);
+
+    // Create Location
+    LoatLocation q_start("q_start");
+    LoatLocation q0("q0");
+
+    // Set start location and add transitions
+    solver.setStartLocation(q_start);
+    auto trueExpr = LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1);
+    solver.add(LoatTransition(q_start, q0, trueExpr));
+    solver.add(LoatTransition(q0, q0, trueExpr));
+
+    // Get Result and check it
+    LoatResult result = solver.check();
+    EXPECT_EQ(result, LoatResult::UNSAT);
+}
+
+// ABMC
+TEST(TerminationEngineTest, ABMC_DetectsTerminationCorrectly)
+{
+    // Create solver
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ABMC,
+        LoatConfig::InitialConfig::Mode::Termination,
+        LoatConfig::InitialConfig::SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setParameter(DynamicParameterKey::Log, true);
+
+    // Create Locations
+    LoatLocation q0("q0");
+    LoatLocation q1("q1");
+
+    // Set start location and add transition
+    solver.setStartLocation(q0);
+    solver.add(LoatTransition(q0, q1, LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+
+    // Get Result and check it
+    LoatResult result = solver.check();
+    EXPECT_NE(result, LoatResult::UNSAT);
+}
+
+TEST(TerminationEngineTest, ABMC_DetectsNonTerminationCorrectly)
+{
+    // Create solver
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ABMC,
+        LoatConfig::InitialConfig::Mode::Termination,
+        LoatConfig::InitialConfig::SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setParameter(DynamicParameterKey::Log, true);
+
+    // Create Location
+    LoatLocation q_start("q_start");
+    LoatLocation q0("q0");
+
+    // Set start location and add transitions
+    solver.setStartLocation(q_start);
+    auto trueExpr = LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1);
+    solver.add(LoatTransition(q_start, q0, trueExpr));
+    solver.add(LoatTransition(q0, q0, trueExpr));
+
+    // Get Result and check it
+    LoatResult result = solver.check();
     EXPECT_EQ(result, LoatResult::UNSAT);
 }
