@@ -57,6 +57,12 @@ public:
     // Returns true if found the desired output successfully
     LoatResult check();
 
+    // Returns the Model, if proof is activated in the initial config and the selected engine supports a model
+    ITSModel getModel();
+
+    // Returns the Cex, if proof is activated in the initial config and the selected engine supports a cex
+    ITSSafetyCex getCex();
+
 private:
     // Re-applys dynamic config after updates (if needed)
     void refreshConfig();

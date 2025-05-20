@@ -311,3 +311,35 @@ LoatResult LoatSolver::check()
         throw std::invalid_argument("[LoAT] Unexpected type of the result");
     }
 }
+
+#include <stdexcept>
+
+ITSModel LoatSolver::getModel()
+{
+    if (!std::any_cast<bool>(m_config.getInitial().get(InitialParameterKey::Model)))
+    {
+        throw std::logic_error("Model requested, but proof generation is not enabled in the config.");
+    }
+
+    if (!m_its_model.has_value())
+    {
+        throw std::logic_error("No model available. Make sure check() has been called and the selected engine supports model generation.");
+    }
+
+    return m_its_model.value();
+}
+
+ITSSafetyCex LoatSolver::getCex()
+{
+    if (!!std::any_cast<bool>(m_config.getInitial().get(InitialParameterKey::Model)))
+    {
+        throw std::logic_error("Counterexample requested, but proof generation is not enabled in the config.");
+    }
+
+    if (!m_its_cex.has_value())
+    {
+        throw std::logic_error("No counterexample available. Make sure check() has been called and the selected engine supports counterexamples.");
+    }
+
+    return m_its_cex.value();
+}
