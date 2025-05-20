@@ -267,3 +267,210 @@ TEST(AdclNonTerminationTest, WithHeuristic)
 {
     RunAdclNonTerminationWithSolver(SmtSolver::Heuristic, "Heuristic");
 }
+
+// Safety Test cases
+
+TEST(SafetyEngineTest, TRL_DetectsSafetyCorrectly)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::TRL,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(0) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_EQ(solver.check(), LoatResult::SAT);
+}
+
+TEST(SafetyEngineTest, TRL_DetectsUnsafetyCorrectly)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::TRL,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_EQ(solver.check(), LoatResult::UNSAT);
+}
+
+TEST(SafetyEngineTest, ABMC_DetectsSafetyCorrectly)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ABMC,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(0) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_EQ(solver.check(), LoatResult::SAT);
+}
+
+TEST(SafetyEngineTest, ABMC_DetectsUnsafetyCorrectly)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ABMC,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_EQ(solver.check(), LoatResult::UNSAT);
+}
+
+TEST(SafetyEngineTest, KIND_DetectsSafetyCorrectly)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::KIND,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(0) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_EQ(solver.check(), LoatResult::SAT);
+}
+
+TEST(SafetyEngineTest, KIND_DetectsUnsafetyCorrectly)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::KIND,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_EQ(solver.check(), LoatResult::UNSAT);
+}
+
+TEST(SafetyEngineTest, ADCLSAT_DetectsSafetyCorrectly)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ADCLSAT,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(0) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_EQ(solver.check(), LoatResult::SAT);
+}
+
+TEST(SafetyEngineTest, ADCLSAT_UnsafetyNotSupported)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ADCLSAT,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_NE(solver.check(), LoatResult::SAT);
+}
+
+TEST(SafetyEngineTest, ADCL_SafetyNotSupported)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ADCL,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(0) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_NE(solver.check(), LoatResult::UNSAT);
+}
+
+TEST(SafetyEngineTest, ADCL_DetectsUnsafetyCorrectly)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ADCL,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_EQ(solver.check(), LoatResult::UNSAT);
+}
+
+TEST(SafetyEngineTest, BMC_SafetyNotSupported)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::BMC,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(0) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_NE(solver.check(), LoatResult::UNSAT);
+}
+
+TEST(SafetyEngineTest, BMC_DetectsUnsafetyCorrectly)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::BMC,
+        LoatConfig::InitialConfig::Mode::Safety,
+        SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.addSinkLocation(LoatLocation("sink"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("sink"), LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+
+    EXPECT_EQ(solver.check(), LoatResult::UNSAT);
+}
