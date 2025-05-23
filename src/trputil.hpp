@@ -7,6 +7,7 @@
 #include "trp.hpp"
 #include "itstosafetyproblem.hpp"
 #include "smtfactory.hpp"
+#include "renamingcentral.hpp"
 
 class Range {
     unsigned s;
@@ -39,8 +40,7 @@ protected:
 
     SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<TraceElem> trace {};
-    std::vector<std::vector<Renaming>> subs {};
-    VarSet vars {};
+    std::optional<RenamingCentral> renaming_central;
     const Config::TRPConfig::MbpKind mbp_kind;
     ITSToSafety its2safety;
     SafetyProblem t;
@@ -51,7 +51,6 @@ protected:
     rule_map_t rule_map {};
     ITSPtr its;
     TRP trp;
-    Renaming post_to_pre;
     Int last_orig_clause;
     const Arith::Var safety_var {ArithVar::next()};
     DependencyGraph<Bools::Expr> dependency_graph {};
@@ -62,7 +61,6 @@ protected:
     TRPUtil(const ITSPtr its, const Config::TRPConfig &config);
 
     std::pair<Bools::Expr, Model> compress(const Range &range);
-    const Renaming& get_subs(const unsigned start, const unsigned steps);
     Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
     Int add_learned_clause(const Range &range, const Bools::Expr &accel);
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);

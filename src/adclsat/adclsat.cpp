@@ -48,7 +48,7 @@ std::optional<unsigned> ADCLSat::has_looping_suffix() {
         if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || trace[start].id <= last_orig_clause)) {
             if (start == last) {
                 const auto loop{trace[start].implicant};
-                if (SmtFactory::check(get_subs(0, 1)(loop) && get_subs(1, 1)(loop)) == SmtResult::Unsat) {
+                if (SmtFactory::check(renaming_central->get_subs(0, 1)(loop) && renaming_central->get_subs(1, 1)(loop)) == SmtResult::Unsat) {
                     continue;
                 }
             }
@@ -59,7 +59,7 @@ std::optional<unsigned> ADCLSat::has_looping_suffix() {
 }
 
 void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
-    const auto s{get_subs(range.start(), range.length())};
+    const auto s{renaming_central->get_subs(range.start(), range.length())};
     if (range.length() == 1) {
         solver->add(s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id)))));
     } else {
@@ -136,7 +136,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
             : std::optional{encode_transition(rule_map.at(trace.back().id), trace.back().id)};
     if (!backtracking && (!last || dg_over_approx.getSinks().contains(*last))) {
         solver->push();
-        solver->add(get_subs(trace.size(), 1)(t.err()));
+        solver->add(renaming_central->get_subs(trace.size(), 1)(t.err()));
         switch (solver->check()) {
             case SmtResult::Sat:
             case SmtResult::Unknown:
@@ -163,7 +163,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
             return {};
         }
     }
-    const auto subs{get_subs(trace.size(), 1)};
+    const auto subs{renaming_central->get_subs(trace.size(), 1)};
     solver->push();
     const auto steps = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
     const auto step {bools::mkOr(steps)};
@@ -186,7 +186,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
             solver->pop(); // current step
             solver->pop(); // backtracking
             trace.pop_back();
-            const auto b {!get_subs(trace.size(), 1)(projection)};
+            const auto b {!renaming_central->get_subs(trace.size(), 1)(projection)};
             if (Config::Analysis::log) {
                 std::cout << "***** Backtrack *****" << std::endl;
             }

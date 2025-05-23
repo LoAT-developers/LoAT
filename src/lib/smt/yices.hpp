@@ -39,6 +39,8 @@ public:
     ~Yices() override;
     std::ostream& print(std::ostream& os) const override;
 
+    std::optional<Bools::Expr> interpolate(const Bools::Expr e);
+
 private:
     YicesContext ctx;
     ctx_config_t *config;

@@ -8,6 +8,7 @@ add_subdirectory(abmc)
 add_subdirectory(trl)
 add_subdirectory(adclsat)
 add_subdirectory(bmc)
+add_subdirectory(imc)
 
 target_sources(${EXECUTABLE}
     PRIVATE
@@ -17,6 +18,8 @@ target_sources(${EXECUTABLE}
         version.hpp
         trputil.cpp
         trputil.hpp
+        renamingcentral.hpp
+        renamingcentral.cpp
 )
 
 target_include_directories(${EXECUTABLE} PRIVATE ".")

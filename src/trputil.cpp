@@ -59,25 +59,18 @@ TRPUtil::TRPUtil(
       t(its2safety.transform()),
       its(its),
       trp(t.pre_to_post(), config),
-      post_to_pre(t.pre_to_post().invert()),
       last_orig_clause(t.trans().size() - 1) {
     if (Config::Analysis::log) {
         std::cout << "safetyproblem:\n"
                   << t << std::endl;
     }
+    auto vars {t.vars()};
     vars.insert(trace_var);
     vars.insert(trp.get_n());
     if (Config::Analysis::termination()) {
         vars.insert(safety_var);
     }
-    for (const auto &x : t.vars()) {
-        if (theory::isPostVar(x)) {
-            const auto pre{theory::progVar(x)};
-            vars.insert(pre);
-        } else {
-            vars.insert(x);
-        }
-    }
+    renaming_central = RenamingCentral(vars);
     solver->enableModels();
     if (Config::Analysis::termination()) {
         const auto linearize{
@@ -111,45 +104,12 @@ TRPUtil::TRPUtil(
     }
 }
 
-const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
-    if (subs.empty()) {
-        subs.push_back({Renaming()});
-    }
-    while (subs.size() < start + steps) {
-        Renaming s;
-        for (const auto &var : vars) {
-            if (theory::isProgVar(var)) {
-                const auto post_var{theory::postVar(var)};
-                s.insert(var, subs.back()[0].get(post_var));
-                s.insert(post_var, theory::next(post_var));
-            } else {
-                s.insert(var, theory::next(var));
-            }
-        }
-        subs.push_back({s});
-    }
-    auto &pre_vec{subs.at(start)};
-    while (pre_vec.size() < steps) {
-        auto &post{subs.at(start + pre_vec.size()).front()};
-        Renaming s;
-        for (const auto &var : vars) {
-            s.insert(var, pre_vec.front().get(var));
-            if (theory::isProgVar(var)) {
-                const auto post_var{theory::postVar(var)};
-                s.insert(post_var, post.get(post_var));
-            }
-        }
-        pre_vec.push_back(s);
-    }
-    return pre_vec.at(steps - 1);
-}
-
 std::pair<Bools::Expr, Model> TRPUtil::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Renaming var_renaming;
     for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
         const auto rule{trace[i].implicant};
-        const auto s{get_subs(i, 1)};
+        const auto s{renaming_central->get_subs(i, 1)};
         if (loop) {
             // sigma1 maps vars from chained to the corresponding vars from rule
             // sigma2 maps vars from chained to the corresponding vars from loop
@@ -251,7 +211,7 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr loop, const Mod
                     std::cout << "found ranking function " << lhs << std::endl;
                 }
                 return lhs;
-            } else if (std::all_of(vars.begin(), vars.end(), theory::isPostVar) && lhs->renameVars(post_to_pre.get<Arith>())->eval(m) > lhs->eval(m)) {
+            } else if (std::all_of(vars.begin(), vars.end(), theory::isPostVar) && lhs->renameVars(renaming_central->post_to_pre().get<Arith>())->eval(m) > lhs->eval(m)) {
                 if (Config::Analysis::log) {
                     std::cout << "found ranking function " << lhs << std::endl;
                 }
@@ -421,7 +381,7 @@ ITSSafetyCex TRPUtil::get_cex() {
     const auto &trans {t.trans()};
     const auto depth {trace.size()};
     for (size_t i = 0; i < depth; ++i) {
-        auto m{model.composeBackwards(get_subs(i, 1))};
+        auto m{model.composeBackwards(renaming_central->get_subs(i, 1))};
         const auto it{std::find_if(trans.begin(), trans.end(), [&](const auto &c) {
             return res.try_step(m, c);
         })};
@@ -429,6 +389,6 @@ ITSSafetyCex TRPUtil::get_cex() {
             throw std::logic_error("get_cex failed");
         }
     }
-    res.set_final_state(model.composeBackwards(get_subs(depth, 1)));
+    res.set_final_state(model.composeBackwards(renaming_central->get_subs(depth, 1)));
     return its2safety.transform_cex(res);
 }

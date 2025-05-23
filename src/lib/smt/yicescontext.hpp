@@ -36,6 +36,13 @@ public:
 
     void printStderr(const term_t &e) const override;
 
+    Int numerator(const mpq_t e) const;
+    Int denominator(const mpq_t e) const;
+    Rational getRational(const mpq_t e) const;
+
+    Arith::Var getArithVar(const term_t) const;
+    Bools::Var getBoolVar(const term_t) const;
+
 protected:
     term_t buildVar(const Arith::Var &var) override;
     term_t buildVar(const Bools::Var &var) override;
@@ -44,5 +51,8 @@ private:
 
     Int numerator(const term_t &e) const;
     Int denominator(const term_t &e) const;
+
+    std::unordered_map<term_t, Arith::Var> reverseArithVarMap;
+    std::unordered_map<term_t, Bools::Var> reverseBoolVarMap;
 
 };

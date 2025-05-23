@@ -12,12 +12,14 @@ YicesContext::~YicesContext() { }
 term_t YicesContext::buildVar(const Arith::Var &var) {
     term_t res = yices_new_uninterpreted_term(yices_int_type());
     yices_set_term_name(res, var->getName().c_str());
+    reverseArithVarMap.emplace(res, var);
     return res;
 }
 
 term_t YicesContext::buildVar(const Bools::Var &var) {
     term_t res = yices_new_uninterpreted_term(yices_bool_type());
     yices_set_term_name(res, var->getName().c_str());
+    reverseBoolVarMap.emplace(res, var);
     return res;
 }
 
@@ -113,32 +115,54 @@ Int mpz_to_int(const mpz_t &m) {
     return ret;
 }
 
+Int YicesContext::numerator(const mpq_t frac) const {
+    mpz_t res;
+    mpz_init(res);
+    mpq_get_num(res, frac);
+    const auto ret{mpz_to_int(res)};
+    mpz_clear(res);
+    return ret;
+}
+
 Int YicesContext::numerator(const term_t &e) const {
     mpq_t frac;
-    mpz_t res;
     mpq_init(frac);
+    yices_rational_const_value(e, frac);
+    const auto ret{numerator(frac)};
+    mpq_clear(frac);
+    return ret;
+}
+
+Int YicesContext::denominator(const mpq_t frac) const {
+    mpz_t res;
     mpz_init(res);
-    if (yices_rational_const_value(e, frac) == 0) {
-        mpq_get_num(res, frac);
-        return mpz_to_int(res);
-    } else {
-        throw YicesError();
-    }
+    mpq_get_den(res, frac);
+    const auto ret{mpz_to_int(res)};
+    mpz_clear(res);
+    return ret;
+}
+
+Rational YicesContext::getRational(const mpq_t frac) const {
+    return Rational(numerator(frac), denominator(frac));
 }
 
 Int YicesContext::denominator(const term_t &e) const {
     mpq_t frac;
-    mpz_t res;
     mpq_init(frac);
-    mpz_init(res);
-    if (yices_rational_const_value(e, frac) == 0) {
-        mpq_get_den(res, frac);
-        return mpz_to_int(res);
-    } else {
-        throw YicesError();
-    }
+    yices_rational_const_value(e, frac);
+    const auto ret{denominator(frac)};
+    mpq_clear(frac);
+    return ret;
 }
 
 void YicesContext::printStderr(const term_t &e) const {
     yices_pp_term(stderr, e, 80, 20, 0);
+}
+
+Arith::Var YicesContext::getArithVar(const term_t t) const {
+    return reverseArithVarMap.at(t);
+}
+
+Bools::Var YicesContext::getBoolVar(const term_t t) const {
+    return reverseBoolVarMap.at(t);
 }

@@ -232,3 +232,12 @@ Rational CVC5::getRealFromModel(const cvc5::Term &symbol) {
         throw std::logic_error((std::stringstream() << "CVC5::getRealFromModel: tried to convert " << val << " to real").str());
     }
 }
+
+std::optional<Bools::Expr> CVC5::interpolate(const Bools::Expr e) {
+    const auto itp {solver.getInterpolant(ExprConverter<cvc5::Term, cvc5::Term, std::vector<cvc5::Term>, std::vector<cvc5::Term>>::convert(!e, ctx))};
+    if (itp.isNull()) {
+        return std::nullopt;
+    } else {
+        return !convertFormula(itp, ctx);
+    }
+}
