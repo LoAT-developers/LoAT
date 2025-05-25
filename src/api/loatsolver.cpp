@@ -276,7 +276,7 @@ LoatResult LoatSolver::check()
             std::cout << "[LoAT] Transforming ITS model" << std::endl;
         }
 
-        m_its_model = preprocessor->transform_model(*its_model);
+        m_its_model = LoatModel(preprocessor->transform_model(*its_model));
     }
     // Check if we have a cex
     else if (its_cex.has_value())
@@ -285,7 +285,7 @@ LoatResult LoatSolver::check()
         {
             std::cout << "[LoAT] Transforming ITS cex" << std::endl;
         }
-        m_its_cex = preprocessor->transform_cex(*its_cex);
+        m_its_cex = LoatCex(preprocessor->transform_cex(*its_cex));
     }
 
     // Exit yices
@@ -314,7 +314,7 @@ LoatResult LoatSolver::check()
 
 #include <stdexcept>
 
-ITSModel LoatSolver::getModel()
+LoatModel LoatSolver::getModel()
 {
     if (!std::any_cast<bool>(m_config.getInitial().get(InitialParameterKey::Model)))
     {
@@ -329,9 +329,9 @@ ITSModel LoatSolver::getModel()
     return m_its_model.value();
 }
 
-ITSSafetyCex LoatSolver::getCex()
+LoatCex LoatSolver::getCex()
 {
-    if (!!std::any_cast<bool>(m_config.getInitial().get(InitialParameterKey::Model)))
+    if (!std::any_cast<bool>(m_config.getInitial().get(InitialParameterKey::Model)))
     {
         throw std::logic_error("Counterexample requested, but proof generation is not enabled in the config.");
     }

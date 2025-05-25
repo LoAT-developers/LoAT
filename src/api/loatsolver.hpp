@@ -7,8 +7,8 @@
 #include "loatconfig.hpp"
 #include "loatresult.hpp"
 #include "optional.hpp"
-#include "itsmodel.hpp"
-#include "itssafetycex.hpp"
+#include "loatmodel.hpp"
+#include "loatcex.hpp"
 
 #include <any>
 #include <vector>
@@ -24,8 +24,8 @@ private:
     std::optional<LoatLocation> m_start;
     std::optional<LoatLocation> m_sink;
 
-    std::optional<ITSModel> m_its_model;
-    std::optional<ITSSafetyCex> m_its_cex;
+    std::optional<LoatModel> m_its_model;
+    std::optional<LoatCex> m_its_cex;
 
 public:
     // Constructor for LoatSolver
@@ -58,10 +58,63 @@ public:
     LoatResult check();
 
     // Returns the Model, if proof is activated in the initial config and the selected engine supports a model
-    ITSModel getModel();
+    LoatModel getModel();
 
     // Returns the Cex, if proof is activated in the initial config and the selected engine supports a cex
-    ITSSafetyCex getCex();
+    LoatCex getCex();
+
+    // Returns a solver to proof termination
+    static LoatSolver forTermination()
+    {
+        LoatConfig::InitialConfig init(
+            LoatConfig::InitialConfig::Engine::TRL,
+            LoatConfig::InitialConfig::Mode::Termination,
+            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::Direction::Forward,
+            LoatConfig::InitialConfig::MbpKind::IntMbp,
+            false // proof
+        );
+        return LoatSolver(LoatConfig(init));
+    }
+
+    // Returns a solver to proof non termination
+    static LoatSolver forNonTermination()
+    {
+        LoatConfig::InitialConfig init(
+            LoatConfig::InitialConfig::Engine::ADCL,
+            LoatConfig::InitialConfig::Mode::Termination,
+            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::Direction::Forward,
+            LoatConfig::InitialConfig::MbpKind::IntMbp,
+            false);
+        return LoatSolver(LoatConfig(init));
+    }
+
+    // Returns a solver to proof safety
+    static LoatSolver forSafety()
+    {
+        LoatConfig::InitialConfig init(
+            LoatConfig::InitialConfig::Engine::ABMC,
+            LoatConfig::InitialConfig::Mode::Safety,
+            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::Direction::Forward,
+            LoatConfig::InitialConfig::MbpKind::IntMbp,
+            false);
+        return LoatSolver(LoatConfig(init));
+    }
+
+    // Returns a solver to proof unsafety
+    static LoatSolver forUnsafety()
+    {
+        LoatConfig::InitialConfig init(
+            LoatConfig::InitialConfig::Engine::BMC,
+            LoatConfig::InitialConfig::Mode::Safety,
+            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::Direction::Forward,
+            LoatConfig::InitialConfig::MbpKind::IntMbp,
+            false);
+        return LoatSolver(LoatConfig(init));
+    }
 
 private:
     // Re-applys dynamic config after updates (if needed)
