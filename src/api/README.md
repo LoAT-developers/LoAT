@@ -19,9 +19,22 @@ This is a C++ interface for configuring and using LoAT (Loop Acceleration Tool) 
 * [CLN – Class Library for Numbers](https://www.ginac.de/CLN/)  
 * [GMP – GNU Multiple Precision Arithmetic Library](https://gmplib.org/)
 
-## 🚀 Quickstart
 
-TODO: Add Template Repo Mention
+---
+
+## 🧪 Template Repository
+
+You can use our ready-to-go [LoAT API Template Repository](https://github.com/ths-rwth/loat-api-template) which includes:
+
+- A complete **example project**
+- The correct **Docker image** with all dependencies preinstalled
+- A minimal `main.cpp` with a working LoAT analysis setup
+
+This is the fastest way to get started and ensures all dependencies are resolved.
+
+---
+
+## 🚀 Quickstart
 
 ### ✅ Create a Configuration
 
@@ -169,3 +182,14 @@ You can use the following overloaded operators:
 - `&&` – Logical AND  
 - `||` – Logical OR  
 - `!` – Logical NOT
+
+## 🧩 Solver Presets
+
+You can directly create solvers for common use-cases without manual config:
+
+```cpp
+LoatSolver solver1 = LoatSolver::forTermination();
+LoatSolver solver2 = LoatSolver::forNonTermination();
+LoatSolver solver3 = LoatSolver::forSafety();
+LoatSolver solver4 = LoatSolver::forUnsafety();
+```
