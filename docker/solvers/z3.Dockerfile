@@ -1,3 +1,4 @@
+ARG PLATFORM=linux/arm64
 FROM ubuntu:latest
 
 RUN apt-get -y update
