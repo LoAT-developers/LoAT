@@ -24,7 +24,7 @@ This is a C++ interface for configuring and using LoAT (Loop Acceleration Tool) 
 
 ## 🧪 Template Repository
 
-You can use our ready-to-go [LoAT API Template Repository](https://github.com/ths-rwth/loat-api-template) which includes:
+You can use our ready-to-go [LoAT API Template Repository](https://github.com/LoAT-developers/LoAT-API-Example) which includes:
 
 - A complete **example project**
 - The correct **Docker image** with all dependencies preinstalled
