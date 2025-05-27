@@ -13,12 +13,11 @@ public:
     void pop() override;
     SmtResult check() override;
     Model model(const std::optional<const VarSet> &vars = std::nullopt) override;
-    void enableModels() override;
     void resetSolver() override;
     ~Z3() override;
     std::ostream& print(std::ostream& os) const override;
     void randomize(unsigned seed) override;
-    Z3();
+    Z3(const bool models);
 
 private:
     z3::context z3Ctx{};

@@ -3,6 +3,7 @@
 #include "smtfactory.hpp"
 #include "cvc5.hpp"
 #include "yices.hpp"
+#include "opensmt.hpp"
 
 #include <stdexcept>
 
@@ -13,7 +14,7 @@ std::optional<SmtResult> IMC::do_step() {
     if (Config::Analysis::log > 0) {
         std::cout << "[IMC] Checking with lookahead length " << lookahead << '\n';
     }
-    Yices solver{QF_LA};
+    OpenSmt solver(true);
     const auto suffix = [&]() {
         std::vector<Bools::Expr> suffixTransitions;
         for (unsigned i = 1; i < lookahead; ++i) {
@@ -23,17 +24,20 @@ std::optional<SmtResult> IMC::do_step() {
         return bools::mkAnd(std::move(suffixTransitions));
     }();
     solver.add(suffix);
-    std::cout << "suffix: " << std::endl << suffix << std::endl;
-    auto movingInit{t.init() && step};
+    solver.add(step);
+    auto movingInit{t.init()};
     auto reachedStates{t.init()};
-    auto approx {false};
+    unsigned iter {0};
     while (true) {
-        std::cout << "moving init: " << std::endl << movingInit << std::endl;
-        const auto opt{solver.interpolate(movingInit)};
-        if (opt) {
-            auto itp{*opt};
+        solver.push();
+        solver.add(movingInit);
+        const auto res{solver.check()};
+        if (res == SmtResult::Unsat) {
+            opensmt::ipartitions_t mask {0};
+            opensmt::setbit(mask, 1);
+            opensmt::setbit(mask, iter + 2);
+            auto itp {solver.interpolate(mask)};
             itp = renaming_central.post_to_pre()(itp);
-            std::cout << "interpolant: " << itp << std::endl;
             // if R' => R return False(if R' /\ not R returns True)
             if (SmtFactory::check(itp && !reachedStates) == SmtResult::Unsat) {
                 return SmtResult::Sat;
@@ -42,25 +46,21 @@ std::optional<SmtResult> IMC::do_step() {
                 // PTRef finalInductiveInvariant = computeFinalInductiveInvariant(inductiveInvariant, k, ts);
                 // return {VerificationAnswer::SAFE, finalInductiveInvariant};
             }
-            movingInit = itp && step;
+            movingInit = itp;
             reachedStates = reachedStates || itp;
-            approx = true;
-        } else {
-            solver.add(movingInit);
-            const auto res {solver.check()};
-            assert(res != SmtResult::Unsat);
-            if (res == SmtResult::Sat) {
-                if (approx) {
-                    // Possibly spurious counterexample => Abort and continue with larger k
-                    return std::nullopt;
-                } else {
-                    // Real counterexample
-                    return SmtResult::Unsat;
-                }
+        } else if (res == SmtResult::Sat) {
+            if (iter > 0) {
+                // Possibly spurious counterexample => Abort and continue with larger k
+                return std::nullopt;
             } else {
-                return SmtResult::Unknown;
+                // Real counterexample
+                return SmtResult::Unsat;
             }
+        } else {
+            return SmtResult::Unknown;
         }
+        solver.pop();
+        ++iter;
     }
 }
 

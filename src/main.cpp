@@ -38,7 +38,7 @@ void printHelp(char *arg0) {
     std::cout << "  --proof                                                         Print model/counterexample/recurrent set/..." << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>                           ABMC: En- or disable blocking clauses" << std::endl;
     std::cout << "  --accel::non_linear <true|false>                                Also use acceleration if the result is non-linear" << std::endl;
-    std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>                           Choose the SMT solver" << std::endl;
+    std::cout << "  --smt <z3|cvc5|swine|yices|opensmt|heuristic>                   Choose the SMT solver" << std::endl;
     std::cout << "  --direction <forward|backward|interleaved>                      run the analysis forward, backward, or both directions interleaved (if supported)" << std::endl;
     std::cout << "  --trl::recurrent_exps <true|false>                              TRL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
     std::cout << "  --trl::recurrent_cycles <true|false>                            TRL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
@@ -137,6 +137,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::smtSolver = Config::Analysis::Swine;
             } else if (boost::iequals("yices", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Yices;
+            } else if (boost::iequals("opensmt", str)) {
+                Config::Analysis::smtSolver = Config::Analysis::OpenSmt;
             } else if (boost::iequals("heuristic", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Heuristic;
             } else {

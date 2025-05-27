@@ -100,9 +100,7 @@ ADCL::ADCL(ITSPtr chcs, const std::function<void(const ITSCpxCex&)> &print_cpx_c
     drop(true),
     cex(chcs),
     cpx_cex(chcs),
-    print_cpx_cex(print_cpx_cex) {
-    solver->enableModels();
-}
+    print_cpx_cex(print_cpx_cex) {}
 
 Step::Step(const RulePtr transition, const Bools::Expr sat, const Renaming &var_renaming, const Renaming &tmp_var_renaming, const RulePtr resolvent):
     clause_idx(transition),

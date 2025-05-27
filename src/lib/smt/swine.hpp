@@ -14,7 +14,6 @@ public:
     void pop() override;
     SmtResult check() override;
     Model model(const std::optional<const VarSet> &vars = std::nullopt) override;
-    void enableModels() override;
     void resetSolver() override;
     ~Swine() override;
     std::ostream& print(std::ostream& os) const override;

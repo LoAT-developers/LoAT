@@ -2,10 +2,12 @@
 #include "exprconverter.hpp"
 #include "config.hpp"
 
-CVC5::CVC5(): solver(), ctx(solver) {
+CVC5::CVC5(const bool model): solver(), ctx(solver) {
     solver.setOption("seed", std::to_string(seed));
     solver.setLogic("QF_NIRA");
-    solver.setOption("produce-interpolants", "true");
+    if (model) {
+        solver.setOption("produce-models", "true");
+    }
 }
 
 void CVC5::add(const Bools::Expr e) {
@@ -199,10 +201,6 @@ Arith::Expr convertArith(const cvc5::Term &t, const CVC5Context &ctx) {
         }
         default: throw std::invalid_argument("unsupported operator " + toString(t.getOp()));
     }
-}
-
-void CVC5::enableModels() {
-    solver.setOption("produce-models", "true");
 }
 
 void CVC5::resetSolver() {

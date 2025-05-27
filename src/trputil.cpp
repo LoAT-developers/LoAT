@@ -71,7 +71,6 @@ TRPUtil::TRPUtil(
         vars.insert(safety_var);
     }
     renaming_central = RenamingCentral(vars);
-    solver->enableModels();
     if (Config::Analysis::termination()) {
         const auto linearize{
             [&](const auto &lit) { return std::visit(

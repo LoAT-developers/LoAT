@@ -66,10 +66,6 @@ Model Z3::model(const std::optional<const VarSet> &vars) {
     return res;
 }
 
-void Z3::enableModels() {
-    solver.set("model", true);
-}
-
 void Z3::resetSolver() {
     solver.reset();
 }
@@ -84,9 +80,10 @@ void Z3::randomize(unsigned seed) {
     solver.set("random_seed", seed);
 }
 
-Z3::Z3(): ctx(z3Ctx), solver(z3Ctx) {
+Z3::Z3(const bool model): ctx(z3Ctx), solver(z3Ctx) {
     solver.set("random_seed", 42u);
     // solver.set("rlimit", 10000000u);
+    solver.set("model", model);
 }
 
 Rational Z3::getRealFromModel(const z3::model &model, const z3::expr &symbol) {

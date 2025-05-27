@@ -76,8 +76,6 @@ Model Swine::model(const std::optional<const VarSet> &vars) {
     return res;
 }
 
-void Swine::enableModels() {}
-
 void Swine::resetSolver() {
     solver.reset();
 }

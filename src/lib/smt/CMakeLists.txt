@@ -25,15 +25,20 @@ add_library(${PROJECT_NAME} OBJECT
   swinecontext.cpp
   smtfactory.hpp
   smtfactory.cpp
+  opensmt.hpp
+  opensmt.cpp
+  opensmtcontext.hpp
+  opensmtcontext.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${loat_expr_INCLUDE_DIRS}
   ${loat_container_INCLUDE_DIRS}
   ${loat_util_INCLUDE_DIRS}
+  /usr/local/include/opensmt/
 )
 
 # Expose public includes to other
 # subprojects through cache variable.
-set(${PROJECT_NAME}_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}
+set(${PROJECT_NAME}_INCLUDE_DIRS ${PROJECT_SOURCE_DIR} /usr/local/include/opensmt/
     CACHE INTERNAL "${PROJECT_NAME}: Include Directories" FORCE)

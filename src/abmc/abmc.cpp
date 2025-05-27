@@ -16,7 +16,6 @@ ABMC::ABMC(ITSPtr its):
     cex(its) {
     vars.insert(trace_var);
     vars.insert(n);
-    solver->enableModels();
     vars.insertAll(its->getVars());
     for (const auto &var: vars) {
         pre_to_post.insert(var, theory::next(var));

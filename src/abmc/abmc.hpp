@@ -24,7 +24,7 @@ private:
     };
 
     ITSPtr its;
-    SmtPtr solver {SmtFactory::solver()};
+    SmtPtr solver {SmtFactory::modelBuildingSolver()};
     bool approx {false};
     unsigned last_orig_clause {};
     Bools::Expr query {bot()};

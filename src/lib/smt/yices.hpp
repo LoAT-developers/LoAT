@@ -34,7 +34,6 @@ public:
     SmtResult check() override;
     Model model(const std::optional<const VarSet> &vars = std::nullopt) override;
     void randomize(unsigned seed) override;
-    void enableModels() override;
     void resetSolver() override;
     ~Yices() override;
     std::ostream& print(std::ostream& os) const override;

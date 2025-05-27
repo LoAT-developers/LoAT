@@ -13,16 +13,24 @@ void exit() {
 
 }
 
-Yices::Yices(Logic logic): ctx(YicesContext()), config(yices_new_config()) {
-    assert(yices_has_mcsat());
-    if (yices_set_config(config, "model-interpolation", "true") < 0) {
-        throw std::invalid_argument("enabling model-interpolation failed");
+Yices::Yices(Logic logic) : ctx(YicesContext()), config(yices_new_config()) {
+    std::string l;
+    switch (logic) {
+        case QF_LA:
+            l = "QF_LIA";
+            break;
+        case QF_NA:
+            if (!yices_has_mcsat()) {
+                throw std::runtime_error("mcsat missing");
+            }
+            l = "QF_NIA";
+            break;
+        default:
+            throw std::invalid_argument("unsupported logic");
     }
-    if (yices_set_config(config, "solver-type", "mcsat") < 0) {
-        throw std::invalid_argument("settings mcsat failed");
-    }
-    if (yices_set_config(config, "mode", "push-pop") < 0) {
-        throw std::invalid_argument("enabling incremental solving failed");
+    if (yices_default_config_for_logic(config, l.c_str()) == -1) {
+        std::cout << yices_error_string() << std::endl;
+        throw std::logic_error("error from yices");
     }
     solver = yices_new_context(config);
 }
@@ -106,8 +114,6 @@ Model Yices::model(const std::optional<const VarSet> &vars) {
 void Yices::randomize(unsigned seed) {
     // TODO
 }
-
-void Yices::enableModels() {}
 
 void Yices::resetSolver() {
     yices_reset_context(solver);

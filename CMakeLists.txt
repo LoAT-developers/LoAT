@@ -112,6 +112,10 @@ find_library(CLN cln)
 message(STATUS "cln: ${CLN}")
 find_library(GMP gmp)
 message(STATUS "gmp: ${GMP}")
+find_library(GMPXX gmpxx)
+message(STATUS "gmpxx: ${GMPXX}")
+find_library(OPENSMT opensmt)
+message(STATUS "opensmt: ${OPENSMT}")
 
 target_link_libraries(${EXECUTABLE}
   $<TARGET_OBJECTS:sexpresso>
@@ -133,11 +137,13 @@ target_link_libraries(${EXECUTABLE}
   ${Z3}
   ${CVC5}
   ${CADICAL}
+  ${OPENSMT}
   ${YICES}
   ${POLYXX}
   ${POLY}
   ${CUDD}
   ${CLN}
+  ${GMPXX}
   ${GMP}
   ${LINKER_OPTIONS}
 )

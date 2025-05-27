@@ -38,7 +38,7 @@ protected:
 
     using rule_map_t = linked_hash_map<Int, Bools::Expr>;
 
-    SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
+    SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     std::vector<TraceElem> trace {};
     std::optional<RenamingCentral> renaming_central;
     const Config::TRPConfig::MbpKind mbp_kind;

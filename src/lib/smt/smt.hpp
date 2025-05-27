@@ -53,7 +53,6 @@ public:
 
     virtual SmtResult check() = 0;
     virtual Model model(const std::optional<const VarSet> &vars = std::nullopt) = 0;
-    virtual void enableModels() = 0;
     virtual void resetSolver() = 0;
 
     virtual void randomize(unsigned seed) = 0;
