@@ -20,7 +20,7 @@ namespace Config {
 
     namespace Analysis {
 
-        std::vector<Mode> modes { Complexity, Termination, Safety };
+        std::vector<Mode> modes { Complexity, Termination, RelativeTermination, Safety };
 
         Mode mode;
         Engine engine;
@@ -35,8 +35,13 @@ namespace Config {
             switch (mode) {
             case Complexity: return "complexity";
             case Termination: return "termination";
+            case RelativeTermination: return "relative_termination";
             case Safety: return "safety";
             }
+        }
+
+        bool relative_termination() {
+            return mode == RelativeTermination;
         }
 
         bool termination() {
@@ -52,7 +57,7 @@ namespace Config {
         }
 
         bool tryNonterm() {
-            return termination() || complexity();
+            return termination() || relative_termination() || complexity();
         }
 
         bool doLogAccel() {
@@ -69,6 +74,10 @@ namespace Config {
 
     namespace ABMC {
         bool blocking_clauses {true};
+    }
+
+    namespace Accel {
+        bool non_linear {true};
     }
 
 }

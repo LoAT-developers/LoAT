@@ -72,7 +72,7 @@ antlrcpp::Any KoatParseVisitor::visitTrans(KoatParser::TransContext *ctx) {
     }
     cond = cond && theory::mkEq(its->getLocVar(), arith::mkConst(lhsLoc));
     auto up = rhss.at(0);
-    if (Config::Analysis::complexity()) {
+    if (Config::Analysis::complexity() || Config::Analysis::relative_termination()) {
         up.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
     }
     auto rule{Rule::mk(cond, up)};

@@ -396,6 +396,27 @@ std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes(
         }
     }
     if (progress) {
+        if (res.nonterm && Config::Analysis::relative_termination()) {
+            // if we analyze relative termination, ensure that the costs diverge
+            const Lit lit{arith::mkGt(config.cost, arith::mkConst(0))};
+            solver->add(bools::mkLit(lit));
+            if (solver->check() != SmtResult::Sat) {
+                res.nonterm = false;
+            } else {
+                // guard /\ cost > 0 is satisfiable, accelerate cost > 0
+                // try complete techniques in any case
+                if (!trivial(lit) && !unchanged(lit) && !polynomial(lit) && !recurrence(lit)) {
+                    // complete techniques failed
+                    if (config.tryAccel) {
+                        // if we want to accelerate (and not just prove nonterm), give up...
+                        res.nonterm = false;
+                    } else if (!eventualIncrease(lit, false) && !eventualIncrease(lit, true) && !fixpoint(lit)) {
+                        // ...otherwise, also try incomplete techniques
+                        res.nonterm = false;
+                    }
+                }
+            }
+        }
         return res;
     } else {
         return {};

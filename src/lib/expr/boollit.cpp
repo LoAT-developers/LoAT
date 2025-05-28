@@ -1,5 +1,6 @@
 #include "boollit.hpp"
 #include "optional.hpp"
+#include "conshash.hpp"
 
 #include <stdexcept>
 #include <ostream>

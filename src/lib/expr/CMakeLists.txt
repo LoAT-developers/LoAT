@@ -42,6 +42,7 @@ add_library(${PROJECT_NAME} OBJECT
   renaming.hpp
   renaming.cpp
   var.hpp
+  exprfwd.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

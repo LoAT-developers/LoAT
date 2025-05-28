@@ -572,7 +572,7 @@
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_301.smt2"
   },
   {
-    "result": "unsat",
+    "result": "unknown",
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_381.smt2"
   },
   {
@@ -1940,7 +1940,7 @@
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_180.smt2"
   },
   {
-    "result": "sat",
+    "result": "unknown",
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_260.smt2"
   },
   {
@@ -2092,7 +2092,7 @@
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_281.smt2"
   },
   {
-    "result": "unsat",
+    "result": "unknown",
     "name": "/work/ff862203/benchmarks/chc-comp-23_24-benchmarks/chc-LIA-Lin_361.smt2"
   },
   {

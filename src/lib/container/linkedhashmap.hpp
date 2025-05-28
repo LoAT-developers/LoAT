@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iostream>
 #include <ostream>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/hashed_index.hpp>

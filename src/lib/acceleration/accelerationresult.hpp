@@ -7,7 +7,7 @@
 namespace acceleration {
 
 enum Status {
-    NotSat, PseudoLoop, Disjunctive, AccelerationFailed, ClosedFormFailed, Success, Nonterminating
+    NotSat, PseudoLoop, Disjunctive, AccelerationFailed, ClosedFormFailed, Success, Nonterminating, Nonlinear
 };
 
 std::ostream& operator<<(std::ostream &s, const Status x);

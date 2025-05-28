@@ -1,5 +1,6 @@
 #include "arithsubs.hpp"
 #include "arithexpr.hpp"
+#include "var.hpp"
 
 ArithSubs::ArithSubs() {}
 

@@ -4,65 +4,30 @@
 #include <vector>
 #include <ostream>
 
-namespace Config
-{
+namespace Config {
 
-    namespace Output
-    {
+    namespace Output {
         extern bool PrintDependencyGraph;
     }
 
-    namespace Input
-    {
-        enum Format
-        {
-            Koat,
-            Its,
-            Horn
-        };
+    namespace Input {
+        enum Format {Koat, Its, Horn};
         extern Format format;
     }
 
     // Asymptotic complexity computation using limit problems
-    namespace Limit
-    {
+    namespace Limit {
         extern const unsigned int ProblemDiscardSize;
         extern const unsigned Timeout;
     }
 
     // Main algorithm
-    namespace Analysis
-    {
+    namespace Analysis {
 
-        enum Mode
-        {
-            Complexity,
-            Termination,
-            Safety
-        };
-        enum Engine
-        {
-            ADCL,
-            BMC,
-            ABMC,
-            TRL,
-            KIND,
-            ADCLSAT
-        };
-        enum SmtSolver
-        {
-            Z3,
-            CVC5,
-            Swine,
-            Yices,
-            Heuristic
-        };
-        enum Direction
-        {
-            Forward,
-            Backward,
-            Interleaved
-        };
+        enum Mode { Complexity, Termination, RelativeTermination, Safety };
+        enum Engine { ADCL, BMC, ABMC, TRL, KIND, ADCLSAT };
+        enum SmtSolver { Z3, CVC5, Swine, Yices, Heuristic };
+        enum Direction {Forward, Backward, Interleaved};
         extern Mode mode;
         extern std::vector<Mode> modes;
         extern Direction dir;
@@ -75,6 +40,7 @@ namespace Config
 
         std::string modeName(const Mode mode);
 
+        bool relative_termination();
         bool termination();
         bool tryNonterm();
         bool safety();
@@ -84,29 +50,24 @@ namespace Config
 
     }
 
-    struct TRPConfig
-    {
-        enum MbpKind
-        {
-            LowerIntMbp,
-            UpperIntMbp,
-            IntMbp,
-            RealMbp,
-            RealQe
-        };
-        MbpKind mbpKind{IntMbp};
-        bool recurrent_cycles{false};
-        bool recurrent_exps{true};
-        bool recurrent_pseudo_divs{true};
-        bool recurrent_pseudo_bounds{true};
-        bool recurrent_bounds{true};
+    struct TRPConfig {
+        enum MbpKind {LowerIntMbp, UpperIntMbp, IntMbp, RealMbp, RealQe};
+        MbpKind mbpKind {LowerIntMbp};
+        bool recurrent_cycles {false};
+        bool recurrent_exps {true};
+        bool recurrent_pseudo_divs {true};
+        bool recurrent_pseudo_bounds {true};
+        bool recurrent_bounds {true};
     };
 
     extern TRPConfig trp;
 
-    namespace ABMC
-    {
+    namespace ABMC {
         extern bool blocking_clauses;
+    }
+
+    namespace Accel {
+        extern bool non_linear;
     }
 
 }

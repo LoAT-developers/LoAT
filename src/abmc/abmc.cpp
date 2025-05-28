@@ -219,7 +219,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         }
     };
     if (Config::Analysis::tryNonterm() && !nonterm_cache.contains(lang)) {
-        const AccelConfig config {.tryNonterm = true, .tryAccel = false, .n = n};
+        const AccelConfig config {true, false, Config::Accel::non_linear, n, its->getCost(simp)};
         const auto accel_res {LoopAcceleration::accelerate(simp, config)};
         nonterm_to_query(simp, accel_res);
         nonterm_cache.emplace(lang);
@@ -237,7 +237,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         if (Config::Analysis::log && simp->getId() != loop->getId()) {
             std::cout << "simplified loop:\n" << simp << std::endl;
         }
-        const AccelConfig config {.tryNonterm = Config::Analysis::tryNonterm(), .n = n};
+        const AccelConfig config {Config::Analysis::tryNonterm(), true, Config::Accel::non_linear, n, its->getCost(simp)};
         const auto accel_res {LoopAcceleration::accelerate(simp, config)};
         nonterm_to_query(simp, accel_res);
         if (accel_res.accel) {
