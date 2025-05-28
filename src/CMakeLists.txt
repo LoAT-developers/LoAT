@@ -8,15 +8,17 @@ add_subdirectory(abmc)
 add_subdirectory(trl)
 add_subdirectory(adclsat)
 add_subdirectory(bmc)
+add_subdirectory(api)
+
+
+target_sources(${Loat_API} PRIVATE trputil.cpp)
+target_include_directories(${Loat_API} PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 
 target_sources(${EXECUTABLE}
     PRIVATE
         main.cpp
-        main.hpp
         version.cpp
-        version.hpp
-        trputil.cpp
-        trputil.hpp
 )
 
-target_include_directories(${EXECUTABLE} PRIVATE ".")
+target_include_directories(${EXECUTABLE} PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+

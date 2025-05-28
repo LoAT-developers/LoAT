@@ -28,10 +28,11 @@ koat-examples
 
 # hidden files
 .*
-!.vscode
+.vscode/
 !.devcontainer
 !.github/
 !.gitattributes
+.DS_Store
 
 # build stuff
 cmake-build-debug

@@ -1,9 +1,1 @@
-target_sources(${EXECUTABLE}
-    PRIVATE
-        limitsmt.cpp
-        limitsmt.hpp
-        complexity.cpp
-        complexity.hpp
-)
-
-target_include_directories(${EXECUTABLE} PRIVATE ".")
+include("${CMAKE_SOURCE_DIR}/cmake/AddSourcesToLoATAPI.cmake")

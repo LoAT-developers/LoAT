@@ -1,0 +1,43 @@
+# ---------------------------------------------------------------------------
+# This placeholder is replaced by the configure_package_config_file()
+# ---------------------------------------------------------------------------
+@PACKAGE_INIT@
+
+# ---------------------------------------------------------------------------
+# Include the CMake module for dependency resolution.
+# ---------------------------------------------------------------------------
+include(CMakeFindDependencyMacro)
+
+# ---------------------------------------------------------------------------
+# Ensure that Boost is available on the client side.
+# ---------------------------------------------------------------------------
+find_dependency(Boost REQUIRED)
+
+# ---------------------------------------------------------------------------
+# Create an imported interface target for Boost if it does not already exist.
+# ---------------------------------------------------------------------------
+if(NOT TARGET Boost::boost)
+
+  # Create an INTERFACE IMPORTED target for Boost.
+  add_library(Boost::boost INTERFACE IMPORTED)
+
+  # Set the INTERFACE_INCLUDE_DIRECTORIES property for Boost::boost to the Boost include paths.
+  # This property ensures that any target linking to Boost::boost automatically receives the Boost include directories.
+  set_target_properties(Boost::boost PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
+  )
+
+endif()
+
+# ---------------------------------------------------------------------------
+# Include the exported targets file for this API.
+# ---------------------------------------------------------------------------
+include("${CMAKE_CURRENT_LIST_DIR}/@Loat_API@Targets.cmake")
+
+# ---------------------------------------------------------------------------
+# Set additional variables for static include directories and libraries.
+# These variables (LoAT_API_Static_INCLUDE_DIRS and LoAT_API_Static_LIBRARIES) provide
+# the installation paths for headers and libraries, and may be used by clients for further configuration.
+# ---------------------------------------------------------------------------
+set(LoAT_API_Static_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/include")
+set(LoAT_API_Static_LIBRARIES "${PACKAGE_PREFIX_DIR}/lib")
