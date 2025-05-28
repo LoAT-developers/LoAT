@@ -149,7 +149,17 @@ std::pair<Bools::Expr, Model> TRPUtil::compress(const Range &range) {
 }
 
 Bools::Expr TRPUtil::encode_transition(const Bools::Expr &t, const Int &id) {
-    return t && theory::mkEq(trace_var, arith::mkConst(id));
+    return (t && theory::mkEq(trace_var, arith::mkConst(id)))->map([](const auto &lit) {
+        return std::visit(
+            Overload{
+                [](const Bools::Lit &) {
+                    return top();
+                },
+                [](const Arith::Lit &x) {
+                    return bools::mkLit(x);
+                }},
+            lit);
+    });
 }
 
 Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {

@@ -1,6 +1,7 @@
 #include "realqe.hpp"
 #include "eliminate.h"
 #include "mbputil.hpp"
+#include "smtfactory.hpp"
 
 Bools::Expr qe::real_qe(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
     Bools::Expr res{trans};

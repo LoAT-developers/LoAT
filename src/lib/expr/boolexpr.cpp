@@ -353,7 +353,7 @@ Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::
         BoolExprSet newChildren;
         for (const auto &c: getChildren()) {
             const auto simp = c->map(f, cache);
-            changed |= simp.get() != c.get();
+            changed |= simp != c;
             if (simp == bot()) {
                 cache.emplace(self, bot());
                 return bot();

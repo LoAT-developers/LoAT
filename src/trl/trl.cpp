@@ -14,6 +14,7 @@
 #include "realqe.hpp"
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
+#include "imcsafety.hpp"
 
 TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
     std::vector<Bools::Expr> steps;
@@ -69,9 +70,7 @@ bool TRL::handle_loop(const Range &range) {
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
-        projected = qe::real_qe(ti, model, [&](const auto &x) {
-            return x == Var(n);
-        });
+        projected = qe::real_qe(ti, model, theory::isTempVar);
         projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
         ti = projected;
         id = add_learned_clause(range, ti);
@@ -136,14 +135,13 @@ void TRL::add_blocking_clauses() {
 
 void TRL::build_trace() {
     trace.clear();
-    model = solver->model();
     std::optional<std::pair<Bools::Expr, Int>> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{renaming_central->get_subs(d, 1)};
         const auto id{model.eval<Arith>(s.get<Arith>(trace_var))};
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{model.composeBackwards(s)};
-        const auto imp{comp.syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
+        const auto imp{comp.syntacticImplicant(rule)};
         auto relevant_vars{renaming_central->pre_vars()};
         for (const auto &x : renaming_central->pre_vars()) {
             relevant_vars.insert(theory::postVar(x));
@@ -177,6 +175,70 @@ void TRL::pop() {
     --depth;
 }
 
+std::pair<SmtResult, Bools::Expr> TRL::refine() {
+    model = solver->model();
+    while (true) {
+        build_trace();
+        // if (build_cex()) {
+        //     return {SmtResult::Unsat, bot()};
+        // }
+        SafetyProblem sub;
+        for (const auto &x: t.pre_vars()) {
+            sub.add_pre_var(x);
+            sub.add_post_var(theory::postVar(x));
+        }
+        Renaming ren{renaming_central->get_subs(depth, 1)};
+        BoolExprSet init;
+        init.insert(trp.mbp(model.syntacticImplicant(t.init()), model, theory::isTempVar));
+        const auto pre_vars {t.pre_vars().get<Arith::Var>()};
+        for (const auto &x: pre_vars) {
+            if (model.contains<Arith>(x)) {
+                init.insert(bools::mkLit(arith::mkEq(x, arith::mkConst(model.get<Arith>(x)))));
+            }
+        }
+        sub.set_init(bools::mkAnd(init));
+        const auto composed_model {model.composeBackwards(ren)};
+        BoolExprSet err;
+        err.insert(trp.mbp(composed_model.syntacticImplicant(t.err()), composed_model, theory::isTempVar));
+        for (const auto &x: pre_vars) {
+            if (composed_model.contains<Arith>(x)) {
+                err.insert(bools::mkLit(arith::mkEq(ArithVar::postVar(x), arith::mkConst(composed_model.get<Arith>(x)))));
+            }
+        }
+        sub.set_err(bools::mkAnd(err));
+        auto has_learned_transitions{false};
+        for (const auto &e : trace) {
+            if (e.id > last_orig_clause) {
+                const auto loop{learned_to_loop.at(e.id)};
+                for (const auto &[id, _] : loop) {
+                    if (id > last_orig_clause) {
+                        has_learned_transitions = true;
+                    }
+                    sub.add_transition(rule_map.at(id));
+                }
+            } else {
+                sub.add_transition(rule_map.at(e.id));
+            }
+        }
+        std::cout << sub << std::endl;
+        IMCSafety imc(sub);
+        const auto res{imc.analyze()};
+        switch (res) {
+            case SmtResult::Unknown:
+                return {SmtResult::Unknown, bot()};
+            case SmtResult::Sat:
+                return {SmtResult::Sat, imc.get_itp()};
+            case SmtResult::Unsat: {
+                if (!has_learned_transitions) {
+                    return {SmtResult::Unsat, bot()};
+                }
+                model = imc.get_model();
+                break;
+            }
+        }
+    }
+}
+
 std::optional<SmtResult> TRL::do_step() {
     auto s{renaming_central->get_subs(depth, 1)};
     // push error states
@@ -184,12 +246,23 @@ std::optional<SmtResult> TRL::do_step() {
     solver->add(s(t.err()));
     switch (solver->check()) {
         case SmtResult::Sat:
-        case SmtResult::Unknown:
+        case SmtResult::Unknown: {
             if (Config::Analysis::log) {
                 std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
             }
-            build_trace();
-            return build_cex() ? SmtResult::Unsat : SmtResult::Unknown;
+            const auto [res, refinement] {refine()};
+            switch (res) {
+                case SmtResult::Sat:
+                    std::cout << "refinement succeeded" << std::endl;
+                    std::cout << refinement << std::endl;
+                    return SmtResult::Unknown;
+                case SmtResult::Unknown:
+                    std::cout << "refinement failed" << std::endl;
+                    return SmtResult::Unknown;
+                case SmtResult::Unsat:
+                    return SmtResult::Unsat;
+            }
+        }
         case SmtResult::Unsat: {
             // pop error states
             solver->pop();
@@ -207,6 +280,7 @@ std::optional<SmtResult> TRL::do_step() {
                     return SmtResult::Unknown;
                 case SmtResult::Sat: {
                     ++depth;
+                    model = solver->model();
                     build_trace();
                     if (Config::Analysis::log) {
                         std::cout << "starting loop handling" << std::endl;

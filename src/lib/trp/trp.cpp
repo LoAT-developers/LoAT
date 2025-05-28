@@ -277,9 +277,10 @@ Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
     if (SmtFactory::check(post_to_intermediate(loop) && pre_to_intermediate(loop) && !loop) == SmtResult::Unsat) {
         return loop;
     }
-    const auto pre{mbp(loop, model, [](const auto &x) {
+    auto pre{mbp(loop, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
+    pre = bools::mkAndFromLits(pre->lits().get<Arith::Lit>());
     if (Config::Analysis::log) {
         std::cout << "pre: " << pre << std::endl;
     }
@@ -287,9 +288,10 @@ Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
     if (Config::Analysis::log) {
         std::cout << "recurrence analysis: " << step << std::endl;
     }
-    const auto post{mbp(loop, model, [](const auto &x) {
+    auto post{mbp(loop, model, [](const auto &x) {
         return !theory::isPostVar(x);
     })};
+    post = bools::mkAndFromLits(post->lits().get<Arith::Lit>());
     if (Config::Analysis::log) {
         std::cout << "post: " << post << std::endl;
     }
