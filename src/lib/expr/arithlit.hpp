@@ -5,6 +5,7 @@
 
 #include "arithexpr.hpp"
 #include "arithsubs.hpp"
+#include "tvl.hpp"
 
 enum class BoundKind {
     Lower, Upper, Equality
@@ -103,6 +104,7 @@ public:
 
     std::size_t hash() const;
     bool eval(const linked_hash_map<ArithVarPtr, Int>&) const;
+    TVL partial_eval(const linked_hash_map<ArithVarPtr, Int>&) const;
     sexpresso::Sexp to_smtlib() const;
 
     static bool simplifyAnd(linked_hash_set<ArithLitPtr> &lits);

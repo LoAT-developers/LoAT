@@ -139,16 +139,20 @@ std::optional<SmtResult> ADCLSat::do_step() {
         solver->add(renaming_central->get_subs(trace.size(), 1)(t.err()));
         switch (solver->check()) {
             case SmtResult::Sat:
-            case SmtResult::Unknown:
+            case SmtResult::Unknown: {
                 if (Config::Analysis::log) {
                     std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
                 }
-                if (build_cex()) {
+                const auto opt {build_trace_for_refinement(solver->model(), trace.size())};
+                const auto trace {std::get<std::vector<std::pair<Int, Bools::Expr>>>(*opt)};
+                if (build_cex(trace)) {
                     return SmtResult::Unsat;
                 }
                 break;
-            case SmtResult::Unsat:
+            }
+            case SmtResult::Unsat: {
                 break;
+            }
         }
         solver->pop();
     }

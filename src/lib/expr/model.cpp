@@ -31,6 +31,10 @@ bool Model::eval(const Lit &lit) const {
     return evalImpl<0>(lit);
 }
 
+TVL Model::partialEval(const Lit &lit) const {
+    return partialEvalImpl<0>(lit);
+}
+
 Const Model::eval(const Expr &e) const {
     return std::visit(
         Overload {
@@ -49,6 +53,7 @@ Const Model::get(const Var &var) const {
             return Const{std::get<typename T::Model>(m).at(x)};
         });
 }
+
 bool Model::contains(const Var &var) const {
     return theory::apply(
         var,
@@ -61,7 +66,7 @@ bool Model::contains(const Var &var) const {
 bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
     if (e->isAnd()) {
         BoolExprSet sub;
-        for (const auto &c: e->getChildren()) {
+        for (const auto &c : e->getChildren()) {
             if (!syntacticImplicant(c, m, sub)) {
                 return false;
             }
@@ -69,9 +74,9 @@ bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
         res.insert(sub.begin(), sub.end());
         return true;
     } else if (e->isOr()) {
-        for (const auto &c: e->getChildren()) {
+        for (const auto &c : e->getChildren()) {
             if (syntacticImplicant(c, m, res)) {
-                    return true;
+                return true;
             }
         }
         return false;
@@ -117,6 +122,16 @@ Bools::Expr Model::syntacticImplicant(const Bools::Expr e) const {
     BoolExprSet res;
     ::syntacticImplicant(e, *this, res);
     return bools::mkAnd(res);
+}
+
+Bools::Expr Model::specialize(const Bools::Expr e) const {
+    return e->map([&](const auto &lit) {
+        if (partialEval(lit) == TVL::FALSE) {
+            return bot();
+        } else {
+            return bools::mkLit(lit);
+        }
+    });
 }
 
 std::ostream& operator<<(std::ostream &s, const Model &e) {

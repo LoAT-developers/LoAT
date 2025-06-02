@@ -626,25 +626,42 @@ bool ArithExpr::isIntegral() const {
         });
 }
 
-Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
-    return apply<Rational>(
+std::optional<Rational> ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valuation, const std::optional<Int> &default_value) const {
+    using opt = std::optional<Rational>;
+    return apply<opt>(
         [](const ArithConstPtr t) {
-            return **t;
+            return opt{**t};
         },
         [&](const ArithVarPtr x) {
-            return valuation.get(x).value_or(0);
+            auto res {valuation.get(x)};
+            if (!res) {
+                res = default_value;
+            }
+            return res ? opt{*res} : opt{};
         },
         [&](const ArithAddPtr a) {
             const auto &args {a->getArgs()};
-            return std::accumulate(args.begin(), args.end(), Rational{0}, [&](const auto &x, const auto y) {
-                return x + y->evalToRational(valuation);
-            });
+            Rational res {0};
+            for (const auto &x: args) {
+                if (const auto o {x->evalToRational(valuation, default_value)}) {
+                    res += *o;
+                } else {
+                    return opt{};
+                }
+            }
+            return opt{res};
         },
         [&](const ArithMultPtr m) {
             const auto &args {m->getArgs()};
-            return std::accumulate(args.begin(), args.end(), Rational{1}, [&](const auto &x, const auto y) {
-                return x * y->evalToRational(valuation);
-            });
+            Rational res {1};
+            for (const auto &x: args) {
+                if (const auto o {x->evalToRational(valuation, default_value)}) {
+                    res *= *o;
+                } else {
+                    return opt{};
+                }
+            }
+            return opt{res};
         },
         [&](const ArithModPtr m) {
             const Int x {m->getLhs()->eval(valuation)};
@@ -653,14 +670,26 @@ Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valu
             const Int y_abs {mp::abs(y)};
             const Rational mod {x_abs % y_abs};
             if (mod == 0 || x >= 0) {
-                return mod;
+                return opt{mod};
             } else {
-                return Rational(y_abs) - mod;
+                return opt{Rational(y_abs) - mod};
             }
         },
         [&](const ArithExpPtr e) {
-            return mp::pow(mp::numerator(e->getBase()->evalToRational(valuation)), e->getExponent()->evalToRational(valuation).convert_to<long>());
+            const auto num {e->getBase()->evalToRational(valuation, default_value)};
+            if (!num) {
+                return opt{};
+            }
+            const auto den {e->getExponent()->evalToRational(valuation, default_value)};
+            if (!den) {
+                return opt{};
+            }
+            return opt{mp::pow(mp::numerator(*num), den->convert_to<long>())};
         });
+}
+
+Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
+    return *evalToRational(valuation, 0);
 }
 
 Int ArithExpr::eval(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
@@ -672,6 +701,21 @@ Int ArithExpr::eval(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
         throw std::invalid_argument(toString(toPtr()) + " is not integral");
     }
     return mp::numerator(res);
+}
+
+std::optional<Int> ArithExpr::partialEval(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
+    #if DEBUG
+    assert(isIntegral());
+    #endif
+    const auto res {evalToRational(valuation, std::nullopt)};
+    if (res) {
+        if (mp::denominator(*res) != 1) {
+            throw std::invalid_argument(toString(toPtr()) + " is not integral");
+        }
+        return mp::numerator(*res);
+    } else {
+        return std::nullopt;
+    }
 }
 
 std::optional<ArithExprPtr> ArithExpr::solve(const ArithVarPtr var) const {

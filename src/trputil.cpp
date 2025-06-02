@@ -6,6 +6,7 @@
 #include "intmbp.hpp"
 #include "realqe.hpp"
 #include "safetycex.hpp"
+#include "opensmt.hpp"
 
 #include <stack>
 
@@ -172,7 +173,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     std::vector<std::pair<Int, Bools::Expr>> loop;
     for (size_t i = range.start(); i <= range.end(); ++i) {
         const auto &e {trace.at(i)};
-        loop.emplace_back(e.id, e.implicant);
+        loop.emplace_back(e.id, e.model.specialize(rule_map.at(e.id)));
     }
     learned_to_loop.emplace(id, loop);
     return id;
@@ -262,15 +263,50 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr loop, const Mod
     return {};
 }
 
-bool TRPUtil::build_cex() {
+std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::pair<Int, Bools::Expr>>> TRPUtil::build_trace_for_refinement(const Model &m, const size_t depth) {
+    std::vector<std::pair<Int, Bools::Expr>> trace;
+    for (unsigned d = 0; d < depth; ++d) {
+        const auto s{renaming_central->get_subs(d, 1)};
+        const auto id{m.eval<Arith>(s.get<Arith>(trace_var))};
+        const auto rule{rule_map.at(id) && theory::mkEq(trace_var, arith::mkConst(id))};
+        const auto comp{m.composeBackwards(s)};
+        const auto imp{comp.specialize(rule)};
+        switch (SmtFactory::check(imp)) {
+            case SmtResult::Unknown: {
+                return std::nullopt;
+            }
+            case SmtResult::Unsat: {
+                OpenSmt solver {false};
+                solver.add(rule);
+                for (const auto &lit: rule->lits()) {
+                    if (comp.partialEval(lit) == TVL::FALSE) {
+                        solver.add(!bools::mkLit(lit));
+                    }
+                }
+                const auto res {solver.check()};
+                assert(res == SmtResult::Unsat);
+                auto core {solver.unsatCore()};
+                core.erase(rule);
+                return {{std::pair{id, !bools::mkAnd(core)}}};
+            }
+            case SmtResult::Sat: {
+                trace.emplace_back(id, imp);
+                break;
+            }
+        }
+    }
+    return trace;
+}
+
+bool TRPUtil::build_cex(const std::vector<std::pair<Int, Bools::Expr>> &trace) {
     safe = false;
     if (trace.empty()) {
         return SmtFactory::check(t.init() && t.err()) == SmtResult::Sat;
     }
     std::stack<Int> todo;
-    for (const auto &e: trace) {
-        if (e.id > last_orig_clause && !accel.contains(e.id)) {
-            todo.push(e.id);
+    for (const auto &[id,_]: trace) {
+        if (id > last_orig_clause && !accel.contains(id)) {
+            todo.push(id);
         }
     }
     Subs up;
@@ -340,8 +376,8 @@ bool TRPUtil::build_cex() {
         }
     }
     std::optional<Bools::Expr> trans;
-    for (const auto &e: trace) {
-        const auto next = e.id > last_orig_clause ? accel.at(e.id) : e.implicant;
+    for (const auto &[id,implicant]: trace) {
+        const auto next = id > last_orig_clause ? accel.at(id) : implicant;
         trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
     }
     return SmtFactory::check(t.init() && *trans && t.pre_to_post()(t.err())) == SmtResult::Sat;

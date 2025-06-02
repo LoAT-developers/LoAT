@@ -9,11 +9,12 @@ OpenSmt::OpenSmt(const bool model) {
     auto str {"ok"};
     conf.setOption(opensmt::SMTConfig::o_produce_inter, opensmt::SMTOption(true), str);
     conf.setSimplifyInterpolant(4);
+    conf.setOption(opensmt::SMTConfig::o_produce_unsat_cores, opensmt::SMTOption(true), str);
     solver = std::make_unique<opensmt::MainSolver>(logic, conf, "opensmt");
 }
 
 void OpenSmt::add(const Bools::Expr e) {
-    solver->addAssertion(ExprConverter<opensmt::PTRef, opensmt::PTRef, std::vector<opensmt::PTRef>, std::vector<opensmt::PTRef>>::convert(e, *ctx));
+    solver->tryAddNamedAssertion(ExprConverter<opensmt::PTRef, opensmt::PTRef, std::vector<opensmt::PTRef>, std::vector<opensmt::PTRef>>::convert(e, *ctx), std::to_string(solver->getAssertionsCount()));
 }
 
 void OpenSmt::push() {
@@ -203,6 +204,15 @@ Bools::Expr OpenSmt::interpolate(opensmt::ipartitions_t mask) {
     itpContext->getSingleInterpolant(itps, mask);
     assert(itps.size() == 1);
     return convertFormula(itps[0]);
+}
+
+BoolExprSet OpenSmt::unsatCore() {
+    const auto core {solver->getUnsatCore()};
+    BoolExprSet res;
+    for (const auto &x: core->getTerms()) {
+        res.insert(convertFormula(x));
+    }
+    return res;
 }
 
 Rational OpenSmt::getRealFromModel(opensmt::Model &model, opensmt::PTRef x) {

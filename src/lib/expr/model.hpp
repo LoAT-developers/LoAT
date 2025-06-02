@@ -93,9 +93,24 @@ private:
         }
     }
 
+    template <size_t I = 0>
+    inline TVL partialEvalImpl(const Lit &lit) const {
+        if constexpr (I < num_theories) {
+            if (lit.index() == I) {
+                const auto &literal {std::get<I>(lit)};
+                const auto &model {std::get<I>(m)};
+                return literal->partial_eval(model);
+            }
+            return partialEvalImpl<I+1>(lit);
+        } else {
+            throw std::logic_error("unknown theory");
+        }
+    }
+
 public:
 
     bool eval(const Lit &lit) const;
+    TVL partialEval(const Lit &lit) const;
 
     template <ITheory T>
     typename T::Const eval(const typename T::Expr &e) const {
@@ -149,7 +164,9 @@ private:
             const auto &model {std::get<I>(m)};
             auto &result {res.get<Th>()};
             for (const auto &[key, v]: substitution) {
-                result.put(key, eval<Th>(Th::varToExpr(v)));
+                if (contains(v)) {
+                    result.put(key, get<Th>(v));
+                }
             }
             for (const auto &[key, value]: model) {
                 if (!result.contains(key)) {
@@ -165,6 +182,7 @@ public:
     Model composeBackwards(const Subs &subs) const;
     Model composeBackwards(const Renaming &subs) const;
     Bools::Expr syntacticImplicant(const Bools::Expr e) const;
+    Bools::Expr specialize(const Bools::Expr e) const;
 
 private:
 

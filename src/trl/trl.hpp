@@ -34,7 +34,7 @@ private:
     bool handle_loop(const Range &range);
     void build_trace();
     void pop();
-    std::pair<SmtResult, Bools::Expr> refine();
+    std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> refine();
 
 public:
 

@@ -193,8 +193,10 @@ public:
     bool isIntegral() const;
 
     Rational evalToRational(const linked_hash_map<ArithVarPtr, Int> &valuation) const;
+    std::optional<Rational> evalToRational(const linked_hash_map<ArithVarPtr, Int> &valuation, const std::optional<Int> &default_value) const;
 
     Int eval(const linked_hash_map<ArithVarPtr, Int> &valuation) const;
+    std::optional<Int> partialEval(const linked_hash_map<ArithVarPtr, Int> &valuation) const;
 
     std::optional<ArithExprPtr> solve(const ArithVarPtr var) const;
 

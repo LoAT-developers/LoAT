@@ -30,6 +30,7 @@ public:
     std::ostream& print(std::ostream& os) const override;
 
     Bools::Expr interpolate(opensmt::ipartitions_t mask);
+    BoolExprSet unsatCore();
 
 private:
 

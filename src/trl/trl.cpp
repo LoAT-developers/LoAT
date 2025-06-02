@@ -175,62 +175,68 @@ void TRL::pop() {
     --depth;
 }
 
-std::pair<SmtResult, Bools::Expr> TRL::refine() {
-    model = solver->model();
+std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
+    Model model;
+    model.get<Arith>() = solver->model().get<Arith>();
+    std::unordered_map<Int, Bools::Expr> refinement;
     while (true) {
-        build_trace();
-        // if (build_cex()) {
-        //     return {SmtResult::Unsat, bot()};
-        // }
+        const auto opt {build_trace_for_refinement(model, depth)};
+        if (!opt) {
+            return {SmtResult::Unknown, refinement};
+        }
+        const auto var {*opt};
+        if (std::holds_alternative<std::pair<Int, Bools::Expr>>(var)) {
+            const auto &[id,ref] {std::get<std::pair<Int, Bools::Expr>>(var)};
+            refinement.emplace(id, ref);
+            return {SmtResult::Sat, refinement};
+        }
+        const auto trace {std::get<std::vector<std::pair<Int, Bools::Expr>>>(var)};
+        if (build_cex(trace)) {
+            return {SmtResult::Unsat, refinement};
+        }
         SafetyProblem sub;
         for (const auto &x: t.pre_vars()) {
             sub.add_pre_var(x);
             sub.add_post_var(theory::postVar(x));
         }
         Renaming ren{renaming_central->get_subs(depth, 1)};
-        BoolExprSet init;
-        init.insert(trp.mbp(model.syntacticImplicant(t.init()), model, theory::isTempVar));
-        const auto pre_vars {t.pre_vars().get<Arith::Var>()};
-        for (const auto &x: pre_vars) {
-            if (model.contains<Arith>(x)) {
-                init.insert(bools::mkLit(arith::mkEq(x, arith::mkConst(model.get<Arith>(x)))));
-            }
-        }
-        sub.set_init(bools::mkAnd(init));
-        const auto composed_model {model.composeBackwards(ren)};
-        BoolExprSet err;
-        err.insert(trp.mbp(composed_model.syntacticImplicant(t.err()), composed_model, theory::isTempVar));
-        for (const auto &x: pre_vars) {
-            if (composed_model.contains<Arith>(x)) {
-                err.insert(bools::mkLit(arith::mkEq(ArithVar::postVar(x), arith::mkConst(composed_model.get<Arith>(x)))));
-            }
-        }
-        sub.set_err(bools::mkAnd(err));
+        sub.set_init(model.specialize(t.init()));
+        Model composed_model {model.composeBackwards(ren)};
+        sub.set_err(composed_model.specialize(t.err()));
         auto has_learned_transitions{false};
-        for (const auto &e : trace) {
-            if (e.id > last_orig_clause) {
-                const auto loop{learned_to_loop.at(e.id)};
-                for (const auto &[id, _] : loop) {
+        std::vector<Int> ids;
+        for (const auto &[id,t] : trace) {
+            if (id > last_orig_clause) {
+                const auto loop{learned_to_loop.at(id)};
+                for (const auto &[id, t] : loop) {
                     if (id > last_orig_clause) {
                         has_learned_transitions = true;
                     }
-                    sub.add_transition(rule_map.at(id));
+                    ids.emplace_back(id);
+                    sub.add_transition(t);
                 }
             } else {
-                sub.add_transition(rule_map.at(e.id));
+                ids.emplace_back(id);
+                sub.add_transition(t);
             }
         }
         std::cout << sub << std::endl;
         IMCSafety imc(sub);
         const auto res{imc.analyze()};
         switch (res) {
-            case SmtResult::Unknown:
-                return {SmtResult::Unknown, bot()};
-            case SmtResult::Sat:
-                return {SmtResult::Sat, imc.get_itp()};
+            case SmtResult::Unknown: {
+                return {SmtResult::Unknown, refinement};
+            }
+            case SmtResult::Sat: {
+                const auto itp {imc.get_itp()};
+                for (const auto &id: ids) {
+                    refinement.emplace(id, itp);
+                }
+                return {SmtResult::Sat, refinement};
+            }
             case SmtResult::Unsat: {
                 if (!has_learned_transitions) {
-                    return {SmtResult::Unsat, bot()};
+                    return {SmtResult::Unsat, refinement};
                 }
                 model = imc.get_model();
                 break;
@@ -254,7 +260,9 @@ std::optional<SmtResult> TRL::do_step() {
             switch (res) {
                 case SmtResult::Sat:
                     std::cout << "refinement succeeded" << std::endl;
-                    std::cout << refinement << std::endl;
+                    for (const auto &[id,ref]: refinement) {
+                        std::cout << id << " --> " << ref << std::endl;
+                    }
                     return SmtResult::Unknown;
                 case SmtResult::Unknown:
                     std::cout << "refinement failed" << std::endl;

@@ -66,7 +66,16 @@ protected:
     Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
     std::optional<Arith::Expr> prove_term(const Bools::Expr loop, const Model &model);
-    bool build_cex();
+    /*
+     * Needed if the trace contains abstractions of original transitions.
+     * Returns
+     * - either a variant of the trace whose elements are specializations of original transitions (induced by the provided model), or
+     * - a pair (id,refinement) if the given model falsifies the corresponding sequence of original transitions.
+     * In the latter case, the meaning is that the transition with the given id should be refined with the given refinement.
+     * May fail if the underlying SMT solver returns unknown.
+     */
+    std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::pair<Int, Bools::Expr>>> build_trace_for_refinement(const Model&, const size_t depth);
+    bool build_cex(const std::vector<std::pair<Int, Bools::Expr>> &trace);
     virtual void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) = 0;
     bool add_blocking_clauses(const Range &range, Model model);
 

@@ -14,6 +14,7 @@ add_library(${PROJECT_NAME} OBJECT
     notnull.hpp
     proof.hpp
     dependencygraph.hpp
+    tvl.hpp
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")

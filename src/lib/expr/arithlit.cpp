@@ -349,6 +349,19 @@ bool ArithLit::eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
     }
 }
 
+TVL ArithLit::partial_eval(const linked_hash_map<ArithVarPtr, Int> &m) const {
+    const auto val {l->partialEval(m)};
+    if (!val) {
+        return TVL::UNKNOWN;
+    }
+    switch (kind) {
+        case Kind::Gt: return *val > 0 ? TVL::TRUE : TVL::FALSE;
+        case Kind::Eq: return *val == 0 ? TVL::TRUE : TVL::FALSE;
+        case Kind::Neq: return *val != 0 ? TVL::TRUE : TVL::FALSE;
+        default: throw std::invalid_argument("unexpected relation");
+    }
+}
+
 sexpresso::Sexp ArithLit::to_smtlib() const {
     std::string op;
     switch (kind) {

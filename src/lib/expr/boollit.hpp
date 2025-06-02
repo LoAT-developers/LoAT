@@ -4,6 +4,7 @@
 #include "linkedhashset.hpp"
 #include "linkedhashmap.hpp"
 #include "notnull.hpp"
+#include "tvl.hpp"
 
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
@@ -50,6 +51,7 @@ public:
     bool isTriviallyFalse() const;
     std::size_t hash() const;
     bool eval(const linked_hash_map<BoolVarPtr, bool> &model) const;
+    TVL partial_eval(const linked_hash_map<BoolVarPtr, bool> &model) const;
     sexpresso::Sexp to_smtlib() const;
     BoolLitPtr renameVars(const bool_var_map &map) const;
 

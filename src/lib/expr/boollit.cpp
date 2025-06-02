@@ -86,6 +86,14 @@ bool BoolLit::eval(const linked_hash_map<BoolVarPtr, bool> &model) const {
     }).value_or(false);
 }
 
+TVL BoolLit::partial_eval(const linked_hash_map<BoolVarPtr, bool> &model) const {
+    const auto v {model.get(var)};
+    if (!v) {
+        return TVL::UNKNOWN;
+    }
+    return *v == negated ? TVL::FALSE : TVL::TRUE;
+}
+
 sexpresso::Sexp BoolLit::to_smtlib() const {
     sexpresso::Sexp res;
     if (negated) {
