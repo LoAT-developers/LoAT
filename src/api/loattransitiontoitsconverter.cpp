@@ -312,32 +312,54 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
     return result;
 }
 
-Arith::Var LoatTransitionToITSConverter::getArithVar(const std::string &name, bool isTemp)
+Arith::Var LoatTransitionToITSConverter::getArithVar(const std::string &name, bool isPost)
 {
-    // Search for the variable in the map and return it if found
-    std::pair<std::string, bool> key = std::make_pair(name, isTemp);
+    auto key = std::make_pair(name, isPost);
     auto it = m_arithVarMap.find(key);
     if (it != m_arithVarMap.end())
     {
         return it->second;
     }
 
-    Arith::Var var = isTemp ? ArithVar::next() : ArithVar::nextProgVar();
-    m_arithVarMap.emplace(key, var);
-    return var;
+    auto preKey = std::make_pair(name, false);
+    if (m_arithVarMap.find(preKey) == m_arithVarMap.end())
+    {
+        Arith::Var preVar = ArithVar::nextProgVar();
+        m_arithVarMap.emplace(preKey, preVar);
+    }
+
+    auto postKey = std::make_pair(name, true);
+    if (m_arithVarMap.find(postKey) == m_arithVarMap.end())
+    {
+        Arith::Var postVar = ArithVar::next();
+        m_arithVarMap.emplace(postKey, postVar);
+    }
+
+    return m_arithVarMap.at(key);
 }
 
-Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name, bool isTemp)
+Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name, bool isPost)
 {
-    // Search for the variable in the map and return it if found
-    std::pair<std::string, bool> key = std::make_pair(name, isTemp);
+    auto key = std::make_pair(name, isPost);
     auto it = m_boolVarMap.find(key);
     if (it != m_boolVarMap.end())
     {
         return it->second;
     }
 
-    Bools::Var var = isTemp ? BoolVar::next() : BoolVar::nextProgVar();
-    m_boolVarMap.emplace(key, var);
-    return var;
+    auto preKey = std::make_pair(name, false);
+    if (m_boolVarMap.find(preKey) == m_boolVarMap.end())
+    {
+        Bools::Var preVar = BoolVar::nextProgVar();
+        m_boolVarMap.emplace(preKey, preVar);
+    }
+
+    auto postKey = std::make_pair(name, true);
+    if (m_boolVarMap.find(postKey) == m_boolVarMap.end())
+    {
+        Bools::Var postVar = BoolVar::next();
+        m_boolVarMap.emplace(postKey, postVar);
+    }
+
+    return m_boolVarMap.at(key);
 }
