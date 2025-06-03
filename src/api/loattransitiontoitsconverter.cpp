@@ -59,9 +59,6 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
     m_arithVarsUsed.clear();
     m_boolVarsUsed.clear();
 
-    m_arithExprCache.clear();
-    m_boolExprCache.clear();
-
     // Save refrence to formula
     const LoatBoolExprPtr &formula = transition.getFormula();
 
