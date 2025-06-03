@@ -38,10 +38,14 @@ private:
     std::unordered_map<LoatIntExprPtr, Arith::Expr> m_arithExprCache;
 
     // Cache LoAT -> ITS (Pre- and Post-Vars)
-    std::unordered_map<std::pair<std::string, bool>, Arith::Var> m_arithVarMap;
+    std::unordered_map<std::string, Arith::Var> m_arithVarPreMap;
+    std::unordered_map<std::string, Arith::Var> m_arithVarPostMap;
+    std::unordered_set<std::string> m_arithVarsUsed;
 
     // Cache LoAT -> ITS (Bool Pre- and Post-Vars)
-    std::unordered_map<std::pair<std::string, bool>, Bools::Var> m_boolVarMap;
+    std::unordered_map<std::string, Bools::Var> m_boolVarPreMap;
+    std::unordered_map<std::string, Bools::Var> m_boolVarPostMap;
+    std::unordered_set<std::string> m_boolVarsUsed;
 
 public:
     LoatTransitionToITSConverter() = default;
