@@ -82,6 +82,7 @@ void simplifyAnd(LitSet&);
 Type to_type(const Expr &x);
 Type to_type(const Var &x);
 std::optional<Var> is_var(const Expr &x);
+std::string abbrev(const Type t);
 
 template <class ... Ts>
 auto apply(const Var &x, Ts... f) {

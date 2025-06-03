@@ -6,9 +6,6 @@
 #include "exprfwd.hpp"
 #include "sexpresso.hpp"
 
-namespace theory {
-}
-
 template <theory::Type T, class S>
 class TVar;
 
@@ -65,10 +62,11 @@ public:
     }
 
     std::string getName() const {
+        auto name {theory::abbrev(T)};
         if (idx > 0) {
-            return "b" + std::to_string(idx);
+            return name + std::to_string(idx);
         } else {
-            return "bt" + std::to_string(-idx);
+            return name + "t" + std::to_string(-idx);
         }
     }
 
