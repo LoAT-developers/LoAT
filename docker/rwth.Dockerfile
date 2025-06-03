@@ -1,4 +1,3 @@
-ARG PLATFORM=linux/arm64
 FROM loat/loat-base:b37623ce
 
 RUN git clone https://github.com/LoAT-developers/LoAT.git
