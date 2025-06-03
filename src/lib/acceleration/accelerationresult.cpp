@@ -11,6 +11,7 @@ std::ostream& operator<<(std::ostream &s, const Status x) {
     case ClosedFormFailed: return s << "closed form failed";
     case Success: return s << "success";
     case Nonterminating: return s << "nonterminating";
+    case Nonlinear: return s << "nonlinear";
     }
     return s;
 }

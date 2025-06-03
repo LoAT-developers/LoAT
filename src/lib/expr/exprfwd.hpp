@@ -38,6 +38,7 @@ namespace theory {
         Int,
         Bool
     };
+    std::string abbrev(const Type t);
 }
 
 template<theory::Type T, class S> class TVar;

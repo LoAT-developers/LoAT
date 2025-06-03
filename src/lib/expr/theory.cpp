@@ -100,6 +100,14 @@ std::optional<Var> is_var(const Expr &x) {
         x);
 }
 
+std::string abbrev(const Type t) {
+    switch (t) {
+        case Type::Bool: return "b";
+        case Type::Int: return "i";
+        default: throw std::invalid_argument("unknown type");
+    }
+}
+
 sexpresso::Sexp to_smtlib(const Lit &l) {
     return std::visit([&](const auto x) {return x->to_smtlib();}, l);
 }
