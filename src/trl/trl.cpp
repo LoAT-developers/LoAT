@@ -19,7 +19,7 @@
 TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
     std::vector<Bools::Expr> steps;
     for (const auto &[id,t]: rule_map) {
-        steps.emplace_back(encode_transition(t, id));
+        steps.emplace_back(t.abstraction);
     }
     step = bools::mkOr(steps);
 }
@@ -139,7 +139,7 @@ void TRL::build_trace() {
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{renaming_central->get_subs(d, 1)};
         const auto id{model.eval<Arith>(s.get<Arith>(trace_var))};
-        const auto rule{encode_transition(rule_map.at(id), id)};
+        const auto rule{rule_map.at(id).abstraction};
         const auto comp{model.composeBackwards(s)};
         const auto imp{comp.syntacticImplicant(rule)};
         auto relevant_vars{renaming_central->pre_vars()};
@@ -179,6 +179,7 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
     Model model;
     model.get<Arith>() = solver->model().get<Arith>();
     std::unordered_map<Int, Bools::Expr> refinement;
+    std::unordered_set<Int> to_refine{};
     while (true) {
         const auto opt {build_trace_for_refinement(model, depth)};
         if (!opt) {
@@ -204,19 +205,17 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
         Model composed_model {model.composeBackwards(ren)};
         sub.set_err(composed_model.specialize(t.err()));
         auto has_learned_transitions{false};
-        std::vector<Int> ids;
         for (const auto &[id,t] : trace) {
             if (id > last_orig_clause) {
-                const auto loop{learned_to_loop.at(id)};
+                const auto loop{rule_map.at(id).loop};
                 for (const auto &[id, t] : loop) {
                     if (id > last_orig_clause) {
                         has_learned_transitions = true;
                     }
-                    ids.emplace_back(id);
+                    to_refine.insert(id);
                     sub.add_transition(t);
                 }
             } else {
-                ids.emplace_back(id);
                 sub.add_transition(t);
             }
         }
@@ -229,8 +228,8 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
             }
             case SmtResult::Sat: {
                 const auto itp {imc.get_itp()};
-                for (const auto &id: ids) {
-                    refinement.emplace(id, itp);
+                for (const auto &id: to_refine) {
+                    refinement.emplace(id, Subs::build<Arith>(trace_var, arith::mkConst(id))(itp));
                 }
                 return {SmtResult::Sat, refinement};
             }

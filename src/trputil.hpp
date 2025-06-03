@@ -36,7 +36,20 @@ protected:
         Model model;
     };
 
-    using rule_map_t = linked_hash_map<Int, Bools::Expr>;
+    struct TransInfo {
+
+        const Int id;
+        const Bools::Expr t;
+        const Bools::Expr abstraction;
+        const Int level;
+        const Int refinement_level;
+        const std::vector<std::pair<Int, Bools::Expr>> loop;
+
+        TransInfo(const Int &id, const Bools::Expr t, const Bools::Expr abstraction, const Int &level, const Int &refinement_level, const std::vector<std::pair<Int, Bools::Expr>> &loop);
+
+    };
+
+    using rule_map_t = linked_hash_map<Int, TransInfo>;
 
     SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     std::vector<TraceElem> trace {};
@@ -46,7 +59,6 @@ protected:
     SafetyProblem t;
     Model model;
     const Arith::Var trace_var {ArithVar::next()};
-    linked_hash_map<Int, std::vector<std::pair<Int, Bools::Expr>>> learned_to_loop;
     Int next_id {0};
     rule_map_t rule_map {};
     ITSPtr its;

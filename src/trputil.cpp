@@ -52,6 +52,20 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
     return Range(start, end);
 }
 
+TRPUtil::TransInfo::TransInfo(
+    const Int &id,
+    const Bools::Expr t,
+    const Bools::Expr abstraction,
+    const Int &level,
+    const Int &refinement_level,
+    const std::vector<std::pair<Int, Bools::Expr>> &loop):
+    id(id),
+    t(t),
+    abstraction(abstraction),
+    level(level),
+    refinement_level(refinement_level),
+    loop(loop) {}
+
 TRPUtil::TRPUtil(
     const ITSPtr its,
     const Config::TRPConfig &config)
@@ -65,43 +79,42 @@ TRPUtil::TRPUtil(
         std::cout << "safetyproblem:\n"
                   << t << std::endl;
     }
-    auto vars {t.vars()};
+    auto vars{t.vars()};
     vars.insert(trace_var);
     vars.insert(trp.get_n());
     if (Config::Analysis::termination()) {
         vars.insert(safety_var);
     }
     renaming_central = RenamingCentral(vars);
-    if (Config::Analysis::termination()) {
-        const auto linearize{
-            [&](const auto &lit) { return std::visit(
-                                       Overload{
-                                           [](const Arith::Lit &l) {
-                                               if (!l->isLinear()) {
-                                                   return top();
-                                               } else {
-                                                   return bools::mkLit(l);
-                                               }
-                                           },
-                                           [](const auto &l) {
-                                               return bools::mkLit(l);
-                                           }},
-                                       lit); }};
-        for (const auto &trans : t.trans()) {
-            const auto lin{trans->map(linearize)};
-            if (rule_map.emplace(next_id, lin).second) {
-                ++next_id;
+    const auto linearize_if_term =
+        [&](const auto trans) {
+            if (Config::Analysis::termination()) {
+                return trans->map([&](const auto &lit) {
+                    return std::visit(
+                        Overload{
+                            [](const Arith::Lit &l) {
+                                if (!l->isLinear()) {
+                                    return top();
+                                } else {
+                                    return bools::mkLit(l);
+                                }
+                            },
+                            [](const auto &l) {
+                                return bools::mkLit(l);
+                            }},
+                        lit);
+                });
+            } else {
+                return trans;
             }
-        }
-        solver->add(t.init()->map(linearize));
-    } else {
-        for (const auto &trans : t.trans()) {
-            if (rule_map.emplace(next_id, trans).second) {
-                ++next_id;
-            }
-        }
-        solver->add(t.init());
+        };
+    for (const auto &trans : t.trans()) {
+        const auto lin {linearize_if_term(trans)};
+        const TransInfo info {next_id, lin, encode_transition(lin, next_id), 0, 0, {}};
+        rule_map.emplace(next_id, info);
+        ++next_id;
     }
+    solver->add(linearize_if_term(t.init()));
 }
 
 std::pair<Bools::Expr, Model> TRPUtil::compress(const Range &range) {
@@ -169,13 +182,13 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     }
     const auto id = next_id;
     ++next_id;
-    rule_map.emplace(id, accel);
     std::vector<std::pair<Int, Bools::Expr>> loop;
     for (size_t i = range.start(); i <= range.end(); ++i) {
         const auto &e {trace.at(i)};
-        loop.emplace_back(e.id, e.model.specialize(rule_map.at(e.id)));
+        loop.emplace_back(e.id, e.model.specialize(rule_map.at(e.id).t));
     }
-    learned_to_loop.emplace(id, loop);
+    TransInfo info{id, accel, encode_transition(accel, id), range.start(), 0, loop};
+    rule_map.emplace(id, info);
     return id;
 }
 
@@ -268,7 +281,7 @@ std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::pair<I
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{renaming_central->get_subs(d, 1)};
         const auto id{m.eval<Arith>(s.get<Arith>(trace_var))};
-        const auto rule{rule_map.at(id) && theory::mkEq(trace_var, arith::mkConst(id))};
+        const auto rule{rule_map.at(id).t && theory::mkEq(trace_var, arith::mkConst(id))};
         const auto comp{m.composeBackwards(s)};
         const auto imp{comp.specialize(rule)};
         switch (SmtFactory::check(imp)) {
@@ -319,7 +332,7 @@ bool TRPUtil::build_cex(const std::vector<std::pair<Int, Bools::Expr>> &trace) {
     Renaming tmp_to_post {post_to_tmp.invert()};
     while (!todo.empty()) {
         const auto current {todo.top()};
-        const auto &loop {learned_to_loop.at(current)};
+        const auto &loop {rule_map.at(current).loop};
         auto ready {true};
         for (const auto &[id,t]: loop) {
             if (id > last_orig_clause && !accel.contains(id)) {
@@ -388,7 +401,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
     m.erase(trp.get_n());
     auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
     const auto n {trp.get_n()};
-    for (const auto &[id, b] : rule_map) {
+    for (const auto &[id, info] : rule_map) {
         const auto is_orig_clause {id <= last_orig_clause};
         if (Config::Analysis::termination() && is_orig_clause) {
             continue;
@@ -396,25 +409,26 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
         if (range.length() == 1 && is_orig_clause) {
             continue;
         }
-        const auto vars {b->vars()};
+        const auto abstr {info.abstraction};
+        const auto vars {abstr->vars()};
         if (is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
             continue;
         }
         if (vars.contains(n)) {
             solver->push();
-            solver->add(m(b));
+            solver->add(m(abstr));
             if (solver->check() == SmtResult::Sat) {
                 const auto n_val{solver->model({{n}}).get<Arith>(n)};
                 model.put<Arith>(n, n_val);
-                Bools::Expr projected{mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
+                Bools::Expr projected{mbp::int_mbp(abstr, model, mbp_kind, [&](const auto &x) {
                     return x == Var(n);
                 })};
                 add_blocking_clause(range, id, projected);
                 return true;
             }
             solver->pop();
-        } else if (model.eval<Bools>(b)) {
-            add_blocking_clause(range, id, b);
+        } else if (model.eval<Bools>(abstr)) {
+            add_blocking_clause(range, id, abstr);
             return true;
         }
     }

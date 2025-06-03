@@ -18,10 +18,10 @@
 ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its, config) {
     linked_hash_map<Bools::Expr, Bools::Expr> map;
     for (const auto &[id,trans]: rule_map) {
-        const auto encoded {encode_transition(trans, id)};
-        map.emplace(trans, encoded);
-        const auto preds {t.get_dg().getPredecessors(trans)};
-        const auto succs {t.get_dg().getSuccessors(trans)};
+        const auto encoded {encode_transition(trans.t, id)};
+        map.emplace(trans.t, encoded);
+        const auto preds {t.get_dg().getPredecessors(trans.t)};
+        const auto succs {t.get_dg().getSuccessors(trans.t)};
         for (const auto &p: preds) {
             if (map.contains(p)) {
                 dg_over_approx.addEdge(map.at(p), encoded);
@@ -32,11 +32,11 @@ ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its
                 dg_over_approx.addEdge(encoded, map.at(s));
             }
         }
-        if (t.get_dg().getRoots().contains(trans)) {
+        if (t.get_dg().getRoots().contains(trans.t)) {
             std::cout << "found root" << std::endl;
             dg_over_approx.markRoot(encoded);
         }
-        if (t.get_dg().getSinks().contains(trans)) {
+        if (t.get_dg().getSinks().contains(trans.t)) {
             dg_over_approx.markSink(encoded);
         }
     }
@@ -102,8 +102,8 @@ bool ADCLSat::handle_loop(const unsigned start) {
     }
     const auto fst_elem {trace.at(start)};
     const auto last_elem {trace.back()};
-    const auto fst {encode_transition(rule_map.at(fst_elem.id), fst_elem.id)};
-    const auto last {encode_transition(rule_map.at(last_elem.id), last_elem.id)};
+    const auto fst {encode_transition(rule_map.at(fst_elem.id).t, fst_elem.id)};
+    const auto last {encode_transition(rule_map.at(last_elem.id).t, last_elem.id)};
     const auto preds {dg_over_approx.getPredecessors(fst)};
     const auto succs {dg_over_approx.getSuccessors(last)};
     const auto node {encode_transition(ti, id)};
@@ -133,7 +133,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     std::optional<Bools::Expr> last =
         trace.empty()
             ? std::optional<Bools::Expr>{}
-            : std::optional{encode_transition(rule_map.at(trace.back().id), trace.back().id)};
+            : std::optional{encode_transition(rule_map.at(trace.back().id).t, trace.back().id)};
     if (!backtracking && (!last || dg_over_approx.getSinks().contains(*last))) {
         solver->push();
         solver->add(renaming_central->get_subs(trace.size(), 1)(t.err()));
@@ -208,7 +208,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
         std::cout << "***** Step *****" << std::endl;
         std::cout << "with " << id << std::endl;
     }
-    const auto trans{rule_map.at(id)};
+    const auto trans{rule_map.at(id).t};
     const auto m{model.composeBackwards(subs)};
     const auto imp{m.syntacticImplicant(trans)};
     solver->push();
