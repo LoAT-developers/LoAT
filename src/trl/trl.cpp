@@ -193,9 +193,9 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
             return {SmtResult::Sat, std::get<std::unordered_map<Int, Bools::Expr>>(var)};
         }
         const auto trace {std::get<std::vector<std::pair<Int, Bools::Expr>>>(var)};
-        // if (build_cex(trace)) {
-        //     return {SmtResult::Unsat, refinement};
-        // }
+        if (build_cex(trace)) {
+            return {SmtResult::Unsat, refinement};
+        }
         SafetyProblem sub;
         for (const auto &x: t.pre_vars()) {
             sub.add_pre_var(x);
@@ -265,16 +265,17 @@ std::optional<SmtResult> TRL::do_step() {
                     for (const auto &[id,ref]: refinement) {
                         std::cout << id << " --> " << ref << std::endl;
                         auto &info {rule_map.at(id)};
-                        info.abstraction = info.abstraction && ref;
-                        invalidated.insert(info.offsprings.begin(), info.offsprings.end());
-                        info.offsprings.clear();
-                        if (learned_rule_map.contains(id)) {
+                        auto it {learned_rule_map.find(id)};
+                        if (it != learned_rule_map.end()) {
                             info.t = info.t && ref;
-                        } else {
-                            info.abstraction = info.abstraction && ref;
+                            it->second.projection = std::nullopt;
+                        } else if (SmtFactory::check(info.t && !ref) != SmtResult::Unsat) {
                             rule_map.emplace(-Int(next_orig_id), TransInfo(info.t, info.abstraction && !ref));
                             ++next_orig_id;
                         }
+                        info.abstraction = info.abstraction && ref;
+                        invalidated.insert(info.offsprings.begin(), info.offsprings.end());
+                        info.offsprings.clear();
                     }
                     size_t size {0};
                     do {
