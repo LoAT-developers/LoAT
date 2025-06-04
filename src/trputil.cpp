@@ -276,36 +276,104 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr loop, const Mod
     return {};
 }
 
-std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::pair<Int, Bools::Expr>>> TRPUtil::build_trace_for_refinement(const Model &m, const size_t depth) {
+std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::unordered_map<Int, Bools::Expr>>> TRPUtil::build_trace_for_refinement(const Model &m, const size_t depth) {
     std::vector<std::pair<Int, Bools::Expr>> trace;
+    std::vector<opensmt::ipartitions_t> partitions;
+    OpenSmt solver {true};
+    solver.add(m.specialize(t.init()));
+    opensmt::ipartitions_t mask {0};
+    opensmt::setbit(mask, 0);
+    partitions.emplace_back(mask);
+    const auto interpolate = [&] (const auto &d) {
+        opensmt::ipartitions_t mask {0};
+        // 2 * d as popped assertions count as well
+        opensmt::setbit(mask, 2 * d + 1);
+        partitions.emplace_back(mask);
+        const auto itps {solver.interpolate_path(partitions)};
+        std::cout << "INTERPOLANTS:" << std::endl;
+        for (const auto &i: itps) {
+            std::cout << i << std::endl;
+        }
+        std::unordered_map<Int, Bools::Expr> res;
+        for (size_t i = 0; i < d; ++i) {
+            const auto id {trace.at(i).first};
+            auto itp {itps.at(i)};
+            if (i + 1 < itps.size()) {
+                itp = itp && itps.at(i+1);
+            }
+            itp = renaming_central->get_subs(i, 1).invert()(itp);
+            auto [it,changed] {res.emplace(id, itp)};
+            if (!changed) {
+                it->second = it->second || itp;
+            }
+        }
+        return res;
+    };
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{renaming_central->get_subs(d, 1)};
         const auto id{m.eval<Arith>(s.get<Arith>(trace_var))};
         const auto rule{rule_map.at(id).t && theory::mkEq(trace_var, arith::mkConst(id))};
-        const auto comp{m.composeBackwards(s)};
-        const auto imp{comp.specialize(rule)};
-        switch (SmtFactory::check(imp)) {
+        const auto comp {m.composeBackwards(s)};
+        const auto spec {comp.specialize(rule)};
+        switch (SmtFactory::check(spec)) {
             case SmtResult::Unknown: {
                 return std::nullopt;
             }
             case SmtResult::Unsat: {
-                OpenSmt solver {false};
+                std::cout << "CONCRETIZATION OF TRANSITION FAILED, COMPUTING UNSAT CORE" << std::endl;
+                OpenSmt solver{false};
                 solver.add(rule);
-                for (const auto &lit: rule->lits()) {
+                for (const auto &lit : rule->lits()) {
                     if (comp.partialEval(lit) == TVL::FALSE) {
                         solver.add(!bools::mkLit(lit));
                     }
                 }
-                const auto res {solver.check()};
+                const auto res{solver.check()};
                 assert(res == SmtResult::Unsat);
-                auto core {solver.unsatCore()};
+                auto core{solver.unsatCore()};
                 core.erase(rule);
-                return {{std::pair{id, !bools::mkAnd(core)}}};
+                return {{std::unordered_map{std::pair{id, !bools::mkAnd(core)}}}};
             }
             case SmtResult::Sat: {
-                trace.emplace_back(id, imp);
                 break;
             }
+        }
+        solver.push();
+        solver.add(s(spec));
+        switch (solver.check()) {
+            case SmtResult::Unknown: {
+                return std::nullopt;
+            }
+            case SmtResult::Unsat: {
+                std::cout << "CONCRETIZATION OF TRACE FAILED, COMPUTING PATH INTERPOLANT" << std::endl;
+                return interpolate(d);
+            }
+            case SmtResult::Sat: {
+                const auto model {solver.model().composeBackwards(s)};
+                const auto imp {trp.mbp(model.syntacticImplicant(spec), model, theory::isTempVar)};
+                trace.emplace_back(id, imp);
+                solver.pop();
+                solver.add(s(imp));
+                opensmt::ipartitions_t mask {0};
+                // 2 * d as popped assertions count as well
+                opensmt::setbit(mask, 2 * d + 2);
+                partitions.emplace_back(mask);
+                break;
+            }
+        }
+    }
+    const auto s {renaming_central->get_subs(depth, 1)};
+    solver.add(m.specialize(s(t.err())));
+    switch (solver.check()) {
+        case SmtResult::Unknown: {
+            return std::nullopt;
+        }
+        case SmtResult::Unsat: {
+            std::cout << "CONCRETIZATION OF ERROR TRACE FAILED, COMPUTING PATH INTERPOLANT" << std::endl;
+            return interpolate(depth);
+        }
+        case SmtResult::Sat: {
+            break;
         }
     }
     return trace;
@@ -334,7 +402,7 @@ bool TRPUtil::build_cex(const std::vector<std::pair<Int, Bools::Expr>> &trace) {
         const auto current {todo.top()};
         const auto &loop {rule_map.at(current).loop};
         auto ready {true};
-        for (const auto &[id,t]: loop) {
+        for (const auto &[id,_]: loop) {
             if (id > last_orig_clause && !accel.contains(id)) {
                 todo.push(id);
                 ready = false;

@@ -206,6 +206,17 @@ Bools::Expr OpenSmt::interpolate(opensmt::ipartitions_t mask) {
     return convertFormula(itps[0]);
 }
 
+std::vector<Bools::Expr> OpenSmt::interpolate_path(const std::vector<opensmt::ipartitions_t> &masks) {
+    auto itpContext {solver->getInterpolationContext()};
+    opensmt::vec<opensmt::PTRef> itps;
+    itpContext->getPathInterpolants(itps, masks);
+    std::vector<Bools::Expr> res;
+    for (const auto &i: itps) {
+        res.emplace_back(convertFormula(i));
+    }
+    return res;
+}
+
 BoolExprSet OpenSmt::unsatCore() {
     const auto core {solver->getUnsatCore()};
     BoolExprSet res;

@@ -186,10 +186,8 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
             return {SmtResult::Unknown, refinement};
         }
         const auto var {*opt};
-        if (std::holds_alternative<std::pair<Int, Bools::Expr>>(var)) {
-            const auto &[id,ref] {std::get<std::pair<Int, Bools::Expr>>(var)};
-            refinement.emplace(id, ref);
-            return {SmtResult::Sat, refinement};
+        if (std::holds_alternative<std::unordered_map<Int, Bools::Expr>>(var)) {
+            return {SmtResult::Sat, std::get<std::unordered_map<Int, Bools::Expr>>(var)};
         }
         const auto trace {std::get<std::vector<std::pair<Int, Bools::Expr>>>(var)};
         if (build_cex(trace)) {

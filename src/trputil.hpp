@@ -86,7 +86,7 @@ protected:
      * In the latter case, the meaning is that the transition with the given id should be refined with the given refinement.
      * May fail if the underlying SMT solver returns unknown.
      */
-    std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::pair<Int, Bools::Expr>>> build_trace_for_refinement(const Model&, const size_t depth);
+    std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::unordered_map<Int, Bools::Expr>>> build_trace_for_refinement(const Model&, const size_t depth);
     bool build_cex(const std::vector<std::pair<Int, Bools::Expr>> &trace);
     virtual void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) = 0;
     bool add_blocking_clauses(const Range &range, Model model);

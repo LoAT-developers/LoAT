@@ -1,33 +1,33 @@
 #include "adclsat.hpp"
 
 #include "dependencygraph.hpp"
+#include "eliminate.h"
 #include "formulapreprocessing.hpp"
 #include "intmbp.hpp"
 #include "itstosafetyproblem.hpp"
 #include "linkedhashmap.hpp"
+#include "loopacceleration.hpp"
 #include "optional.hpp"
 #include "pair.hpp"
 #include "realmbp.hpp"
-#include "theory.hpp"
-#include "safetycex.hpp"
-#include "eliminate.h"
 #include "realqe.hpp"
-#include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
+#include "safetycex.hpp"
+#include "theory.hpp"
 
-ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its, config) {
+ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
     linked_hash_map<Bools::Expr, Bools::Expr> map;
-    for (const auto &[id,trans]: rule_map) {
-        const auto encoded {encode_transition(trans.t, id)};
+    for (const auto &[id, trans] : rule_map) {
+        const auto encoded{encode_transition(trans.t, id)};
         map.emplace(trans.t, encoded);
-        const auto preds {t.get_dg().getPredecessors(trans.t)};
-        const auto succs {t.get_dg().getSuccessors(trans.t)};
-        for (const auto &p: preds) {
+        const auto preds{t.get_dg().getPredecessors(trans.t)};
+        const auto succs{t.get_dg().getSuccessors(trans.t)};
+        for (const auto &p : preds) {
             if (map.contains(p)) {
                 dg_over_approx.addEdge(map.at(p), encoded);
             }
         }
-        for (const auto &s: succs) {
+        for (const auto &s : succs) {
             if (map.contains(s)) {
                 dg_over_approx.addEdge(encoded, map.at(s));
             }
@@ -43,7 +43,7 @@ ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its
 }
 
 std::optional<unsigned> ADCLSat::has_looping_suffix() {
-    const auto last {trace.size() - 1};
+    const auto last{trace.size() - 1};
     for (unsigned start = last; start + 1 > 0; --start) {
         if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || trace[start].id <= last_orig_clause)) {
             if (start == last) {
@@ -68,7 +68,7 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 }
 
 bool ADCLSat::handle_loop(const unsigned start) {
-    const auto range {Range::from_interval(start, trace.size() - 1)};
+    const auto range{Range::from_interval(start, trace.size() - 1)};
     auto [loop, model]{specialize(range, theory::isTempVar)};
     solver->pop();
     if (TRPUtil::add_blocking_clauses(range, model)) {
@@ -84,7 +84,7 @@ bool ADCLSat::handle_loop(const unsigned start) {
     auto ti{trp.compute(loop, model)};
     Int id;
     Bools::Expr projected{top()};
-    const auto n {trp.get_n()};
+    const auto n{trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
         projected = qe::real_qe(ti, model, [&](const auto &x) {
             return x == Var(n);
@@ -100,13 +100,13 @@ bool ADCLSat::handle_loop(const unsigned start) {
             return x == Var(n);
         });
     }
-    const auto fst_elem {trace.at(start)};
-    const auto last_elem {trace.back()};
-    const auto fst {encode_transition(rule_map.at(fst_elem.id).t, fst_elem.id)};
-    const auto last {encode_transition(rule_map.at(last_elem.id).t, last_elem.id)};
-    const auto preds {dg_over_approx.getPredecessors(fst)};
-    const auto succs {dg_over_approx.getSuccessors(last)};
-    const auto node {encode_transition(ti, id)};
+    const auto fst_elem{trace.at(start)};
+    const auto last_elem{trace.back()};
+    const auto fst{encode_transition(rule_map.at(fst_elem.id).t, fst_elem.id)};
+    const auto last{encode_transition(rule_map.at(last_elem.id).t, last_elem.id)};
+    const auto preds{dg_over_approx.getPredecessors(fst)};
+    const auto succs{dg_over_approx.getSuccessors(last)};
+    const auto node{encode_transition(ti, id)};
     dg_over_approx.addNode(node, preds, succs, true);
     if (dg_over_approx.getRoots().contains(fst)) {
         dg_over_approx.markRoot(node);
@@ -126,7 +126,7 @@ bool ADCLSat::handle_loop(const unsigned start) {
 std::optional<SmtResult> ADCLSat::do_step() {
     if (Config::Analysis::log) {
         std::cout << "Trace:" << std::endl;
-        for (const auto &e: trace) {
+        for (const auto &e : trace) {
             std::cout << e.implicant << std::endl;
         }
     }
@@ -143,8 +143,8 @@ std::optional<SmtResult> ADCLSat::do_step() {
                 if (Config::Analysis::log) {
                     std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
                 }
-                const auto opt {build_trace_for_refinement(solver->model(), trace.size())};
-                const auto trace {std::get<std::vector<std::pair<Int, Bools::Expr>>>(*opt)};
+                const auto opt{build_trace_for_refinement(solver->model(), trace.size())};
+                const auto trace{std::get<std::vector<std::pair<Int, Bools::Expr>>>(*opt)};
                 if (build_cex(trace)) {
                     return SmtResult::Unsat;
                 }
@@ -170,7 +170,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto subs{renaming_central->get_subs(trace.size(), 1)};
     solver->push();
     const auto steps = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
-    const auto step {bools::mkOr(steps)};
+    const auto step{bools::mkOr(steps)};
     solver->add(subs(step));
     if (!trace.empty() && trace.back().id > last_orig_clause) {
         solver->add(subs(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))));
@@ -190,7 +190,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
             solver->pop(); // current step
             solver->pop(); // backtracking
             trace.pop_back();
-            const auto b {!renaming_central->get_subs(trace.size(), 1)(projection)};
+            const auto b{!renaming_central->get_subs(trace.size(), 1)(projection)};
             if (Config::Analysis::log) {
                 std::cout << "***** Backtrack *****" << std::endl;
             }
