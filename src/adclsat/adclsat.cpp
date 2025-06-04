@@ -45,7 +45,7 @@ ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(it
 std::optional<unsigned> ADCLSat::has_looping_suffix() {
     const auto last{trace.size() - 1};
     for (unsigned start = last; start + 1 > 0; --start) {
-        if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || trace[start].id <= last_orig_clause)) {
+        if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || !learned_rule_map.contains(trace[start].id))) {
             if (start == last) {
                 const auto loop{trace[start].implicant};
                 if (SmtFactory::check(renaming_central->get_subs(0, 1)(loop) && renaming_central->get_subs(1, 1)(loop)) == SmtResult::Unsat) {
@@ -115,7 +115,7 @@ bool ADCLSat::handle_loop(const unsigned start) {
         dg_over_approx.markSink(node);
     }
     if (range.length() == 1) {
-        projections.emplace_back(id, projected);
+        learned_rule_map.at(id).projection = projected;
     } else {
         add_blocking_clause(range, id, projected);
     }
@@ -172,11 +172,13 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto steps = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
     const auto step{bools::mkOr(steps)};
     solver->add(subs(step));
-    if (!trace.empty() && trace.back().id > last_orig_clause) {
+    if (!trace.empty() && learned_rule_map.contains(trace.back().id)) {
         solver->add(subs(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))));
     }
-    for (const auto &[id, b] : projections) {
-        solver->add(subs(!b) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
+    for (const auto &[id, info] : learned_rule_map) {
+        if (info.projection) {
+            solver->add(subs(!(*info.projection)) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
+        }
     }
     switch (solver->check()) {
         case SmtResult::Unknown:

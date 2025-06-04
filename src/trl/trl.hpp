@@ -26,6 +26,7 @@ private:
     // step -> ID of corresponding transition formula -> blocked transition
     std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
     unsigned depth {0};
+    unsigned next_orig_id {1};
 
     void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) override;
     void add_blocking_clauses();

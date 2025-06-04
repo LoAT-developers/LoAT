@@ -36,20 +36,25 @@ protected:
         Model model;
     };
 
-    struct TransInfo {
+    struct LearnedTransInfo {
 
-        const Int id;
-        const Bools::Expr t;
-        const Bools::Expr abstraction;
-        const Int level;
-        const Int refinement_level;
         const std::vector<std::pair<Int, Bools::Expr>> loop;
+        std::optional<Bools::Expr> accel {};
+        std::optional<Bools::Expr> projection {};
 
-        TransInfo(const Int &id, const Bools::Expr t, const Bools::Expr abstraction, const Int &level, const Int &refinement_level, const std::vector<std::pair<Int, Bools::Expr>> &loop);
+        LearnedTransInfo(const std::vector<std::pair<Int, Bools::Expr>> &loop);
 
     };
 
-    using rule_map_t = linked_hash_map<Int, TransInfo>;
+    struct TransInfo {
+
+        Bools::Expr t;
+        Bools::Expr abstraction;
+        std::unordered_set<Int> offsprings;
+
+        TransInfo(const Bools::Expr t, const Bools::Expr abstraction);
+
+    };
 
     SmtPtr solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     std::vector<TraceElem> trace {};
@@ -60,14 +65,12 @@ protected:
     Model model;
     const Arith::Var trace_var {ArithVar::next()};
     Int next_id {0};
-    rule_map_t rule_map {};
+    std::unordered_map<Int, TransInfo> rule_map {};
+    std::unordered_map<Int, LearnedTransInfo> learned_rule_map {};
     ITSPtr its;
     TRP trp;
-    Int last_orig_clause;
     const Arith::Var safety_var {ArithVar::next()};
     DependencyGraph<Bools::Expr> dependency_graph {};
-    std::vector<std::pair<Int, Bools::Expr>> projections {};
-    linked_hash_map<Int, Bools::Expr> accel;
     bool safe {true};
 
     TRPUtil(const ITSPtr its, const Config::TRPConfig &config);

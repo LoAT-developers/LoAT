@@ -17,9 +17,9 @@
 #include "imcsafety.hpp"
 
 TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
-    std::vector<Bools::Expr> steps;
-    for (const auto &[id,t]: rule_map) {
-        steps.emplace_back(t.abstraction);
+    BoolExprSet steps;
+    for (const auto &[id, t]: rule_map) {
+        steps.insert(encode_transition(t.abstraction, id));
     }
     step = bools::mkOr(steps);
 }
@@ -33,7 +33,7 @@ std::optional<Range> TRL::has_looping_infix() {
                 model.get<Arith>(renaming_central->get_subs(start + i, 1).get<Arith>(safety_var)) < 0) {
                 continue;
             }
-            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
+            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || !learned_rule_map.contains(trace[start].id))) {
                 if (i == 0) {
                     const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempVar)};
                     if (SmtFactory::check(renaming_central->get_subs(0,1)(loop) && renaming_central->get_subs(1,1)(loop)) == SmtResult::Unsat) {
@@ -76,15 +76,16 @@ bool TRL::handle_loop(const Range &range) {
         id = add_learned_clause(range, ti);
     } else {
         ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
-        id = add_learned_clause(range, ti);
         model.put<Arith>(n, 1);
+        assert(model.eval<Bools>(ti));
+        id = add_learned_clause(range, ti);
         projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
             return x == Var(n);
         });
     }
     step = step || encode_transition(ti, id);
     if (range.length() == 1) {
-        projections.emplace_back(id, projected);
+        learned_rule_map.at(id).projection = projected;
     } else {
         add_blocking_clause(range, id, projected);
     }
@@ -122,8 +123,10 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
 void TRL::add_blocking_clauses() {
     const auto s1{renaming_central->get_subs(depth, 1)};
     const auto s2{renaming_central->get_subs(depth + 1, 1)};
-    for (const auto &[id, b] : projections) {
-        solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
+    for (const auto &[id, info] : learned_rule_map) {
+        if (info.projection) {
+            solver->add(s1(!(*info.projection)) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
+        }
     }
     const auto it{blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
@@ -139,7 +142,7 @@ void TRL::build_trace() {
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{renaming_central->get_subs(d, 1)};
         const auto id{model.eval<Arith>(s.get<Arith>(trace_var))};
-        const auto rule{rule_map.at(id).abstraction};
+        const auto rule{encode_transition(rule_map.at(id).abstraction, id)};
         const auto comp{model.composeBackwards(s)};
         const auto imp{comp.syntacticImplicant(rule)};
         auto relevant_vars{renaming_central->pre_vars()};
@@ -190,9 +193,9 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
             return {SmtResult::Sat, std::get<std::unordered_map<Int, Bools::Expr>>(var)};
         }
         const auto trace {std::get<std::vector<std::pair<Int, Bools::Expr>>>(var)};
-        if (build_cex(trace)) {
-            return {SmtResult::Unsat, refinement};
-        }
+        // if (build_cex(trace)) {
+        //     return {SmtResult::Unsat, refinement};
+        // }
         SafetyProblem sub;
         for (const auto &x: t.pre_vars()) {
             sub.add_pre_var(x);
@@ -204,13 +207,13 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
         sub.set_err(composed_model.specialize(t.err()));
         auto has_learned_transitions{false};
         for (const auto &[id,t] : trace) {
-            if (id > last_orig_clause) {
-                const auto loop{rule_map.at(id).loop};
-                for (const auto &[id, t] : loop) {
-                    if (id > last_orig_clause) {
+            const auto it {learned_rule_map.find(id)};
+            if (it != learned_rule_map.end()) {
+                to_refine.insert(id);
+                for (const auto &[id, t] : it->second.loop) {
+                    if (learned_rule_map.contains(id)) {
                         has_learned_transitions = true;
                     }
-                    to_refine.insert(id);
                     sub.add_transition(t);
                 }
             } else {
@@ -227,7 +230,7 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
             case SmtResult::Sat: {
                 const auto itp {imc.get_itp()};
                 for (const auto &id: to_refine) {
-                    refinement.emplace(id, Subs::build<Arith>(trace_var, arith::mkConst(id))(itp));
+                    refinement.emplace(id, itp && t.pre_to_post()(itp));
                 }
                 return {SmtResult::Sat, refinement};
             }
@@ -248,24 +251,65 @@ std::optional<SmtResult> TRL::do_step() {
     solver->push();
     solver->add(s(t.err()));
     switch (solver->check()) {
-        case SmtResult::Sat:
         case SmtResult::Unknown: {
-            if (Config::Analysis::log) {
-                std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
-            }
+            return SmtResult::Unknown;
+        }
+        case SmtResult::Sat: {
+            std::cout << "STARTING REFINEMENT" << std::endl;
             const auto [res, refinement] {refine()};
+            solver->pop();
             switch (res) {
-                case SmtResult::Sat:
+                case SmtResult::Sat: {
                     std::cout << "refinement succeeded" << std::endl;
+                    std::unordered_set<Int> invalidated {};
                     for (const auto &[id,ref]: refinement) {
                         std::cout << id << " --> " << ref << std::endl;
+                        auto &info {rule_map.at(id)};
+                        info.abstraction = info.abstraction && ref;
+                        invalidated.insert(info.offsprings.begin(), info.offsprings.end());
+                        info.offsprings.clear();
+                        if (learned_rule_map.contains(id)) {
+                            info.t = info.t && ref;
+                        } else {
+                            info.abstraction = info.abstraction && ref;
+                            rule_map.emplace(-Int(next_orig_id), TransInfo(info.t, info.abstraction && !ref));
+                            ++next_orig_id;
+                        }
                     }
-                    return SmtResult::Unknown;
-                case SmtResult::Unknown:
+                    size_t size {0};
+                    do {
+                        size = invalidated.size();
+                        std::unordered_set<Int> invalidate {};
+                        for (const auto &i: invalidated) {
+                            const auto it {rule_map.find(i)};
+                            if (it != rule_map.end()) {
+                                invalidate.insert(it->second.offsprings.begin(), it->second.offsprings.end());
+                            }
+                        }
+                        invalidated.insert(invalidate.begin(), invalidate.end());
+                    } while (invalidated.size() > size);
+                    for (const auto &i: invalidated) {
+                        rule_map.erase(i);
+                        learned_rule_map.erase(i);
+                    }
+                    while (depth > 0) {
+                        pop();
+                    }
+                    blocked_per_step.clear();
+                    BoolExprSet steps;
+                    for (const auto &[id, t] : rule_map) {
+                        steps.insert(encode_transition(t.abstraction, id));
+                    }
+                    step = bools::mkOr(steps);
+                    return std::nullopt;
+                }
+                case SmtResult::Unknown: {
                     std::cout << "refinement failed" << std::endl;
                     return SmtResult::Unknown;
-                case SmtResult::Unsat:
+                }
+                case SmtResult::Unsat: {
                     return SmtResult::Unsat;
+                }
             }
         }
         case SmtResult::Unsat: {
@@ -313,7 +357,7 @@ std::optional<SmtResult> TRL::do_step() {
     if (Config::Analysis::log) {
         std::cout << "depth: " << depth << std::endl;
     }
-    return {};
+    return std::nullopt;
 }
 
 ITSModel TRL::get_model() {
