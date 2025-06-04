@@ -119,7 +119,7 @@ std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr e)
     case LoatIntExpression::Kind::Variable:
     {
         const auto v = std::static_pointer_cast<const LoatIntVar>(e.as_nullable());
-        return s << v->getName();
+        return s << v->getName() << (v->isPost() ? "'" : "");
     }
     default:
         return s << "<unknown expr>";

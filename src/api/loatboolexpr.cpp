@@ -236,7 +236,7 @@ std::ostream &operator<<(std::ostream &os, const LoatBoolExprPtr &expr)
     case Kind::Variable:
     {
         auto v = std::static_pointer_cast<const LoatBoolVar>(expr.as_nullable());
-        return os << v->getName();
+        return os << v->getName() << (v->isPost() ? "'" : "");
     }
     case Kind::And:
     {

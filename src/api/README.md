@@ -144,6 +144,7 @@ auto expExpr = x ^ y;          // x^y
 ### 🔁 Variable Naming
 
 Use `mkPreVar("x")` for pre-state variables and `mkPostVar("x")` for post-state.
+Variable Pairs must have the same name. The programm will print them automatically with as `x` or `x'`, depending on their type 
 
 ---
 
