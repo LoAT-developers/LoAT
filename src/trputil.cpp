@@ -278,17 +278,18 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr loop, const Mod
 }
 
 std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::unordered_map<Int, Bools::Expr>>> TRPUtil::build_trace_for_refinement(const Model &m, const size_t depth) {
+    std::vector<Int> ids;
     std::vector<std::pair<Int, Bools::Expr>> trace;
     std::vector<opensmt::ipartitions_t> partitions;
+    unsigned assertion_counter {0};
     OpenSmt solver {true};
     solver.add(m.specialize(t.init()));
     opensmt::ipartitions_t mask {0};
-    opensmt::setbit(mask, 0);
+    opensmt::setbit(mask, assertion_counter);
     partitions.emplace_back(mask);
     const auto interpolate = [&] (const auto &d) {
         opensmt::ipartitions_t mask {0};
-        // 2 * d as popped assertions count as well
-        opensmt::setbit(mask, 2 * d + 1);
+        opensmt::setbit(mask, assertion_counter);
         partitions.emplace_back(mask);
         const auto itps {solver.interpolate_path(partitions)};
         std::cout << "INTERPOLANTS:" << std::endl;
@@ -297,12 +298,8 @@ std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::unorde
         }
         std::unordered_map<Int, Bools::Expr> res;
         for (size_t i = 0; i < d; ++i) {
-            const auto id {trace.at(i).first};
-            auto itp {itps.at(i)};
-            if (i + 1 < itps.size()) {
-                itp = itp && itps.at(i+1);
-            }
-            itp = renaming_central->get_subs(i, 1).invert()(itp);
+            const auto id {ids.at(i)};
+            auto itp {renaming_central->get_subs(i, 1).invert()(itps.at(i + 1))};
             auto [it,changed] {res.emplace(id, itp)};
             if (!changed) {
                 it->second = it->second || itp;
@@ -313,41 +310,44 @@ std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::unorde
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{renaming_central->get_subs(d, 1)};
         const auto id{m.eval<Arith>(s.get<Arith>(trace_var))};
+        ids.emplace_back(id);
         const auto rule{rule_map.at(id).t && theory::mkEq(trace_var, arith::mkConst(id))};
-        const auto comp {m.composeBackwards(s)};
-        const auto spec {comp.specialize(rule)};
-        switch (SmtFactory::check(spec)) {
-            case SmtResult::Unknown: {
-                return std::nullopt;
-            }
-            case SmtResult::Unsat: {
-                std::cout << "CONCRETIZATION OF TRANSITION FAILED, COMPUTING UNSAT CORE" << std::endl;
-                OpenSmt solver{false};
-                solver.add(rule);
-                for (const auto &lit : rule->lits()) {
-                    if (comp.partialEval(lit) == TVL::FALSE) {
-                        solver.add(!bools::mkLit(lit));
-                    }
-                }
-                const auto res{solver.check()};
-                assert(res == SmtResult::Unsat);
-                auto core{solver.unsatCore()};
-                core.erase(rule);
-                return {{std::unordered_map{std::pair{id, !bools::mkAnd(core)}}}};
-            }
-            case SmtResult::Sat: {
-                break;
-            }
-        }
+        const auto spec {rule};
+        // const auto comp {m.composeBackwards(s)};
+        // const auto spec {comp.specialize(rule)};
+        // switch (SmtFactory::check(spec)) {
+        //     case SmtResult::Unknown: {
+        //         return std::nullopt;
+        //     }
+        //     case SmtResult::Unsat: {
+        //         std::cout << "CONCRETIZATION OF TRANSITION FAILED, COMPUTING UNSAT CORE" << std::endl;
+        //         OpenSmt solver{false};
+        //         solver.add(rule);
+        //         for (const auto &lit : rule->lits()) {
+        //             if (comp.partialEval(lit) == TVL::FALSE) {
+        //                 solver.add(!bools::mkLit(lit));
+        //             }
+        //         }
+        //         const auto res{solver.check()};
+        //         assert(res == SmtResult::Unsat);
+        //         auto core{solver.unsatCore()};
+        //         core.erase(rule);
+        //         return {{std::unordered_map{std::pair{id, !bools::mkAnd(core)}}}};
+        //     }
+        //     case SmtResult::Sat: {
+        //         break;
+        //     }
+        // }
         solver.push();
         solver.add(s(spec));
+        ++assertion_counter;
         switch (solver.check()) {
             case SmtResult::Unknown: {
                 return std::nullopt;
             }
             case SmtResult::Unsat: {
                 std::cout << "CONCRETIZATION OF TRACE FAILED, COMPUTING PATH INTERPOLANT" << std::endl;
-                return interpolate(d);
+                return interpolate(d + 1);
             }
             case SmtResult::Sat: {
                 const auto model {solver.model().composeBackwards(s)};
@@ -355,9 +355,9 @@ std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::unorde
                 trace.emplace_back(id, imp);
                 solver.pop();
                 solver.add(s(imp));
+                ++assertion_counter;
                 opensmt::ipartitions_t mask {0};
-                // 2 * d as popped assertions count as well
-                opensmt::setbit(mask, 2 * d + 2);
+                opensmt::setbit(mask, assertion_counter);
                 partitions.emplace_back(mask);
                 break;
             }
@@ -482,7 +482,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
         if (range.length() == 1 && is_orig_clause) {
             continue;
         }
-        const auto abstr {encode_transition(info.abstraction, id)};
+        const auto abstr {info.abstraction};
         const auto vars {abstr->vars()};
         if (is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
             continue;
@@ -493,7 +493,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
             if (solver->check() == SmtResult::Sat) {
                 const auto n_val{solver->model({{n}}).get<Arith>(n)};
                 model.put<Arith>(n, n_val);
-                Bools::Expr projected{mbp::int_mbp(abstr, model, mbp_kind, [&](const auto &x) {
+                Bools::Expr projected{mbp::int_mbp(model.syntacticImplicant(abstr), model, mbp_kind, [&](const auto &x) {
                     return x == Var(n);
                 })};
                 add_blocking_clause(range, id, projected);

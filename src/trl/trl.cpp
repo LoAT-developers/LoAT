@@ -193,9 +193,9 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
             return {SmtResult::Sat, std::get<std::unordered_map<Int, Bools::Expr>>(var)};
         }
         const auto trace {std::get<std::vector<std::pair<Int, Bools::Expr>>>(var)};
-        if (build_cex(trace)) {
-            return {SmtResult::Unsat, refinement};
-        }
+        // if (build_cex(trace)) {
+        //     return {SmtResult::Unsat, refinement};
+        // }
         SafetyProblem sub;
         for (const auto &x: t.pre_vars()) {
             sub.add_pre_var(x);
@@ -214,6 +214,7 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
                     if (learned_rule_map.contains(id)) {
                         has_learned_transitions = true;
                     }
+                    assert(t != bot());
                     sub.add_transition(t);
                 }
             } else {
@@ -267,13 +268,25 @@ std::optional<SmtResult> TRL::do_step() {
                         auto &info {rule_map.at(id)};
                         auto it {learned_rule_map.find(id)};
                         if (it != learned_rule_map.end()) {
-                            info.t = info.t && ref;
                             it->second.projection = std::nullopt;
-                        } else if (SmtFactory::check(info.t && !ref) != SmtResult::Unsat) {
-                            rule_map.emplace(-Int(next_orig_id), TransInfo(info.t, info.abstraction && !ref));
-                            ++next_orig_id;
+                            info.t = info.t && ref;
+                            info.abstraction = info.abstraction && ref;
+                        } else {
+                            const auto pos_sat {SmtFactory::check(info.t && ref) != SmtResult::Unsat};
+                            const auto neg_sat {SmtFactory::check(info.t && !ref) != SmtResult::Unsat};
+                            if (pos_sat) {
+                                if (neg_sat) {
+                                    rule_map.emplace(-Int(next_orig_id), TransInfo(info.t && !ref, info.abstraction && !ref));
+                                    ++next_orig_id;
+                                }
+                                info.t = info.t && ref;
+                                info.abstraction = info.abstraction && ref;
+                            } else {
+                                assert(neg_sat);
+                                info.t = info.t && !ref;
+                                info.abstraction = info.abstraction && !ref;
+                            }
                         }
-                        info.abstraction = info.abstraction && ref;
                         invalidated.insert(info.offsprings.begin(), info.offsprings.end());
                         info.offsprings.clear();
                     }
