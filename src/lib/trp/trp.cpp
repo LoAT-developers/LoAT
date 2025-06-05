@@ -301,12 +301,6 @@ Arith::Var TRP::get_n() const {
 }
 
 Bools::Expr TRP::mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) const {
-    if (!model.eval<Bools>(trans)) {
-        std::cout << "mbp: not a model" << std::endl;
-        std::cout << "trans: " << trans << std::endl;
-        std::cout << "model: " << model << std::endl;
-        assert(false);
-    }
     Bools::Expr res {top()};
     switch (config.mbpKind) {
     case Config::TRPConfig::RealMbp:

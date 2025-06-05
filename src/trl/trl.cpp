@@ -19,9 +19,94 @@
 TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
     BoolExprSet steps;
     for (const auto &[id, t]: rule_map) {
-        steps.insert(encode_transition(t.abstraction, id));
+        steps.insert(encode_transition(t, id));
     }
     step = bools::mkOr(steps);
+}
+
+TVL TRL::concretize(const Bools::Expr init, const std::vector<std::pair<Int, Bools::Expr>>& trace, const Bools::Expr err) {
+    OpenSmt solver {true};
+    solver.add_named(init);
+    std::unordered_map<Bools::Expr, std::pair<Int, Lit>> back_map;
+    unsigned i {0};
+    const auto check = [&]() {
+        switch (solver.check()) {
+            case SmtResult::Unknown: {
+                return TVL::UNKNOWN;
+            }
+            case SmtResult::Sat: {
+                return TVL::TRUE;
+            }
+            case SmtResult::Unsat: {
+                std::cout << "concretization failed" << std::endl;
+                const auto core {solver.unsatCore()};
+                std::cout << "core: " << core << std::endl;
+                std::unordered_map<Int, LitSet> refinement;
+                for (const auto &c: core) {
+                    const auto it {back_map.find(c)};
+                    if (it != back_map.end()) {
+                        const auto &[id, lit] {it->second};
+                        auto [it, changed]{refinement.emplace(id, LitSet{lit})};
+                        if (!changed) {
+                            it->second.insert(lit);
+                        }
+                    }
+                }
+                for (const auto &[id, lits]: refinement) {
+                    auto &t {rule_map.at(id)};
+                    std::cout << "refining " << t << " with " << bools::mkAndFromLits(lits) << std::endl;
+                    t = t && bools::mkAndFromLits(lits);
+                    for (auto &[_,b]: blocked_per_step) {
+                        b.erase(id);
+                    }
+                }
+                while (depth > 0) {
+                    pop();
+                }
+                BoolExprSet steps;
+                for (const auto &[id, t] : rule_map) {
+                    steps.insert(encode_transition(t, id));
+                }
+                step = bools::mkOr(steps);
+                return TVL::FALSE;
+            }
+        }
+    };
+    for (const auto &[id,imp]: trace) {
+        const auto &ren {renaming_central->get_subs(i, 1)};
+        {
+            const auto it{learned_rule_map.find(id)};
+            if (it != learned_rule_map.end()) {
+                for (const auto &lit : it->second.lits) {
+                    const auto expr{ren(bools::mkLit(lit))};
+                    solver.add_named(expr);
+                    back_map.emplace(expr, std::pair{id, lit});
+                }
+            } else {
+                solver.add_named(ren(imp));
+            }
+        }
+        {
+            const auto it{blocked_per_step.find(i)};
+            if (it != blocked_per_step.end()) {
+                for (const auto &[_, b] : it->second) {
+                    solver.add_named(b);
+                }
+            }
+        }
+        ++i;
+        const auto res {check()};
+        if (res != TVL::TRUE) {
+            return res;
+        }
+    }
+    const auto &ren{renaming_central->get_subs(i, 1)};
+    solver.add_named(ren(err));
+    if (const auto res{check()}; res != TVL::TRUE) {
+        return res;
+    }
+    model = solver.model();
+    return TVL::TRUE;
 }
 
 std::optional<Range> TRL::has_looping_infix() {
@@ -67,10 +152,9 @@ bool TRL::handle_loop(const Range &range) {
     }
 
     Int id;
-    Bools::Expr projected{top()};
     const auto n {trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
-        projected = qe::real_qe(ti, model, theory::isTempVar);
+        Bools::Expr projected {qe::real_qe(ti, model, theory::isTempVar)};
         projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
         ti = projected;
         id = add_learned_clause(range, ti);
@@ -79,16 +163,13 @@ bool TRL::handle_loop(const Range &range) {
         model.put<Arith>(n, 1);
         assert(model.eval<Bools>(ti));
         id = add_learned_clause(range, ti);
-        projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
-            return x == Var(n);
-        });
     }
-    step = step || encode_transition(ti, id);
-    if (range.length() == 1) {
-        learned_rule_map.at(id).projection = projected;
-    } else {
-        add_blocking_clause(range, id, projected);
-    }
+    step = step || encode_transition(top(), id);
+    // if (range.length() == 1) {
+    //     learned_rule_map.at(id).projection = projected;
+    // } else {
+        add_blocking_clause(range, id, top());
+    // }
     return true;
 }
 
@@ -116,6 +197,7 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
     } else if (range.length() == 1) {
         it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
     } else {
+        std::cout << "blocking " << loop << std::endl;
         it->second = it->second && s(!loop);
     }
 }
@@ -123,11 +205,11 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
 void TRL::add_blocking_clauses() {
     const auto s1{renaming_central->get_subs(depth, 1)};
     const auto s2{renaming_central->get_subs(depth + 1, 1)};
-    for (const auto &[id, info] : learned_rule_map) {
-        if (info.projection) {
-            solver->add(s1(!(*info.projection)) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
-        }
-    }
+    // for (const auto &[id, info] : learned_rule_map) {
+    //     if (info.projection) {
+    //         solver->add(s1(!(*info.projection)) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
+    //     }
+    // }
     const auto it{blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
         for (const auto &[_, b] : it->second) {
@@ -142,7 +224,7 @@ void TRL::build_trace() {
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{renaming_central->get_subs(d, 1)};
         const auto id{model.eval<Arith>(s.get<Arith>(trace_var))};
-        const auto rule{encode_transition(rule_map.at(id).abstraction, id)};
+        const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{model.composeBackwards(s)};
         const auto imp{comp.syntacticImplicant(rule)};
         auto relevant_vars{renaming_central->pre_vars()};
@@ -184,16 +266,7 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
     std::unordered_map<Int, Bools::Expr> refinement;
     std::unordered_set<Int> to_refine{};
     while (true) {
-        const auto opt {build_trace_for_refinement(model, depth)};
-        if (!opt) {
-            return {SmtResult::Unknown, refinement};
-        }
-        const auto var {*opt};
-        if (std::holds_alternative<std::unordered_map<Int, Bools::Expr>>(var)) {
-            return {SmtResult::Sat, std::get<std::unordered_map<Int, Bools::Expr>>(var)};
-        }
-        const auto trace {std::get<std::vector<std::pair<Int, Bools::Expr>>>(var)};
-        // if (build_cex(trace)) {
+        // if (build_cex()) {
         //     return {SmtResult::Unsat, refinement};
         // }
         SafetyProblem sub;
@@ -206,10 +279,10 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
         Model composed_model {model.composeBackwards(ren)};
         sub.set_err(composed_model.specialize(t.err()));
         auto has_learned_transitions{false};
-        for (const auto &[id,t] : trace) {
-            const auto it {learned_rule_map.find(id)};
+        for (const auto &t : trace) {
+            const auto it {learned_rule_map.find(t.id)};
             if (it != learned_rule_map.end()) {
-                to_refine.insert(id);
+                to_refine.insert(t.id);
                 for (const auto &[id, t] : it->second.loop) {
                     if (learned_rule_map.contains(id)) {
                         has_learned_transitions = true;
@@ -218,7 +291,7 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
                     sub.add_transition(t);
                 }
             } else {
-                sub.add_transition(t);
+                sub.add_transition(t.implicant);
             }
         }
         std::cout << sub << std::endl;
@@ -256,75 +329,57 @@ std::optional<SmtResult> TRL::do_step() {
             return SmtResult::Unknown;
         }
         case SmtResult::Sat: {
-            std::cout << "STARTING REFINEMENT" << std::endl;
-            const auto [res, refinement] {refine()};
+            std::cout << "STARTING CONCRETIZATION" << std::endl;
+            model = solver->model();
             solver->pop();
-            switch (res) {
-                case SmtResult::Sat: {
-                    std::cout << "refinement succeeded" << std::endl;
-                    std::unordered_set<Int> invalidated {};
-                    for (const auto &[id,ref]: refinement) {
-                        std::cout << id << " --> " << ref << std::endl;
-                        auto &info {rule_map.at(id)};
-                        auto it {learned_rule_map.find(id)};
-                        if (it != learned_rule_map.end()) {
-                            it->second.projection = std::nullopt;
-                            info.t = info.t && ref;
-                            info.abstraction = info.abstraction && ref;
-                        } else {
-                            const auto pos_sat {SmtFactory::check(info.t && ref) != SmtResult::Unsat};
-                            const auto neg_sat {SmtFactory::check(info.t && !ref) != SmtResult::Unsat};
-                            if (pos_sat) {
-                                if (neg_sat) {
-                                    rule_map.emplace(-Int(next_orig_id), TransInfo(info.t && !ref, info.abstraction && !ref));
-                                    ++next_orig_id;
-                                }
-                                info.t = info.t && ref;
-                                info.abstraction = info.abstraction && ref;
-                            } else {
-                                assert(neg_sat);
-                                info.t = info.t && !ref;
-                                info.abstraction = info.abstraction && !ref;
-                            }
-                        }
-                        invalidated.insert(info.offsprings.begin(), info.offsprings.end());
-                        info.offsprings.clear();
-                    }
-                    size_t size {0};
-                    do {
-                        size = invalidated.size();
-                        std::unordered_set<Int> invalidate {};
-                        for (const auto &i: invalidated) {
-                            const auto it {rule_map.find(i)};
-                            if (it != rule_map.end()) {
-                                invalidate.insert(it->second.offsprings.begin(), it->second.offsprings.end());
-                            }
-                        }
-                        invalidated.insert(invalidate.begin(), invalidate.end());
-                    } while (invalidated.size() > size);
-                    for (const auto &i: invalidated) {
-                        rule_map.erase(i);
-                        learned_rule_map.erase(i);
-                    }
-                    while (depth > 0) {
-                        pop();
-                    }
-                    blocked_per_step.clear();
-                    BoolExprSet steps;
-                    for (const auto &[id, t] : rule_map) {
-                        steps.insert(encode_transition(t.abstraction, id));
-                    }
-                    step = bools::mkOr(steps);
-                    return std::nullopt;
-                }
-                case SmtResult::Unknown: {
-                    std::cout << "refinement failed" << std::endl;
+            build_trace();
+            std::vector<std::pair<Int, Bools::Expr>> trace_for_concretization;
+            for (const auto &t: trace) {
+                trace_for_concretization.emplace_back(t.id, t.implicant);
+            }
+            switch (concretize(t.init(), trace_for_concretization, t.err())) {
+                case TVL::UNKNOWN: {
                     return SmtResult::Unknown;
                 }
-                case SmtResult::Unsat: {
-                    return SmtResult::Unsat;
+                case TVL::FALSE: {
+                    break;
+                }
+                case TVL::TRUE: {
+                    std::cout << "STARTING REFINEMENT" << std::endl;
+                    const auto [res, refinement] {refine()};
+                    switch (res) {
+                        case SmtResult::Sat: {
+                            std::cout << "refinement succeeded" << std::endl;
+                            for (const auto &[id, ref] : refinement) {
+                                std::cout << id << " --> " << ref << std::endl;
+                                if (learned_rule_map.contains(id)) {
+                                    auto &t{rule_map.at(id)};
+                                    t = t && ref;
+                                }
+                            }
+                            while (depth > 0) {
+                                pop();
+                            }
+                            blocked_per_step.clear();
+                            BoolExprSet steps;
+                            for (const auto &[id, t] : rule_map) {
+                                steps.insert(encode_transition(t, id));
+                            }
+                            step = bools::mkOr(steps);
+                            return std::nullopt;
+                        }
+                        case SmtResult::Unknown: {
+                            std::cout << "refinement failed" << std::endl;
+                            return SmtResult::Unknown;
+                        }
+                        case SmtResult::Unsat: {
+                            return SmtResult::Unsat;
+                        }
+                    }
+                    break;
                 }
             }
+            break;
         }
         case SmtResult::Unsat: {
             // pop error states

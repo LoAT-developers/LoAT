@@ -53,28 +53,10 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 }
 
 TRPUtil::LearnedTransInfo::LearnedTransInfo(
-    const std::vector<std::pair<Int, Bools::Expr>> &loop):
-    loop(loop) {}
-
-TRPUtil::TransInfo::TransInfo(
-    const Bools::Expr t,
-    const Bools::Expr abstraction):
-    t(t),
-    abstraction(abstraction)  {}
-
-Bools::Expr abstract(const Bools::Expr &t) {
-    return t->map([](const auto &lit) {
-        return std::visit(
-            Overload{
-                [](const Bools::Lit &) {
-                    return top();
-                },
-                [](const Arith::Lit &x) {
-                    return bools::mkLit(x);
-                }},
-            lit);
-    });
-}
+    const std::vector<std::pair<Int, Bools::Expr>> &loop,
+    const LitSet &lits):
+    loop(loop),
+    lits(lits) {}
 
 TRPUtil::TRPUtil(
     const ITSPtr its,
@@ -119,8 +101,7 @@ TRPUtil::TRPUtil(
         };
     for (const auto &trans : t.trans()) {
         const auto lin {linearize_if_term(trans)};
-        const TransInfo info {lin, abstract(lin)};
-        rule_map.emplace(next_id, info);
+        rule_map.emplace(next_id, lin);
         ++next_id;
     }
     solver->add(linearize_if_term(t.init()));
@@ -176,6 +157,7 @@ Bools::Expr TRPUtil::encode_transition(const Bools::Expr &t, const Int &id) {
 }
 
 Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
+    assert(accel->isConjunction());
     if (Config::Analysis::log) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     }
@@ -184,12 +166,10 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     std::vector<std::pair<Int, Bools::Expr>> loop;
     for (size_t i = range.start(); i <= range.end(); ++i) {
         const auto &e {trace.at(i)};
-        loop.emplace_back(e.id, e.model.specialize(rule_map.at(e.id).t));
-        rule_map.at(e.id).offsprings.insert(id);
+        loop.emplace_back(e.id, e.model.specialize(rule_map.at(e.id)));
     }
-    TransInfo info{accel, accel};
-    rule_map.emplace(id, info);
-    learned_rule_map.emplace(id, LearnedTransInfo(loop));
+    rule_map.emplace(id, top());
+    learned_rule_map.emplace(id, LearnedTransInfo(loop, accel->lits()));
     return id;
 }
 
@@ -277,119 +257,16 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr loop, const Mod
     return {};
 }
 
-std::optional<std::variant<std::vector<std::pair<Int, Bools::Expr>>, std::unordered_map<Int, Bools::Expr>>> TRPUtil::build_trace_for_refinement(const Model &m, const size_t depth) {
-    std::vector<Int> ids;
-    std::vector<std::pair<Int, Bools::Expr>> trace;
-    std::vector<opensmt::ipartitions_t> partitions;
-    unsigned assertion_counter {0};
-    OpenSmt solver {true};
-    solver.add(m.specialize(t.init()));
-    opensmt::ipartitions_t mask {0};
-    opensmt::setbit(mask, assertion_counter);
-    partitions.emplace_back(mask);
-    const auto interpolate = [&] (const auto &d) {
-        opensmt::ipartitions_t mask {0};
-        opensmt::setbit(mask, assertion_counter);
-        partitions.emplace_back(mask);
-        const auto itps {solver.interpolate_path(partitions)};
-        std::cout << "INTERPOLANTS:" << std::endl;
-        for (const auto &i: itps) {
-            std::cout << i << std::endl;
-        }
-        std::unordered_map<Int, Bools::Expr> res;
-        for (size_t i = 0; i < d; ++i) {
-            const auto id {ids.at(i)};
-            auto itp {renaming_central->get_subs(i, 1).invert()(itps.at(i + 1))};
-            auto [it,changed] {res.emplace(id, itp)};
-            if (!changed) {
-                it->second = it->second || itp;
-            }
-        }
-        return res;
-    };
-    for (unsigned d = 0; d < depth; ++d) {
-        const auto s{renaming_central->get_subs(d, 1)};
-        const auto id{m.eval<Arith>(s.get<Arith>(trace_var))};
-        ids.emplace_back(id);
-        const auto rule{rule_map.at(id).t && theory::mkEq(trace_var, arith::mkConst(id))};
-        const auto spec {rule};
-        // const auto comp {m.composeBackwards(s)};
-        // const auto spec {comp.specialize(rule)};
-        // switch (SmtFactory::check(spec)) {
-        //     case SmtResult::Unknown: {
-        //         return std::nullopt;
-        //     }
-        //     case SmtResult::Unsat: {
-        //         std::cout << "CONCRETIZATION OF TRANSITION FAILED, COMPUTING UNSAT CORE" << std::endl;
-        //         OpenSmt solver{false};
-        //         solver.add(rule);
-        //         for (const auto &lit : rule->lits()) {
-        //             if (comp.partialEval(lit) == TVL::FALSE) {
-        //                 solver.add(!bools::mkLit(lit));
-        //             }
-        //         }
-        //         const auto res{solver.check()};
-        //         assert(res == SmtResult::Unsat);
-        //         auto core{solver.unsatCore()};
-        //         core.erase(rule);
-        //         return {{std::unordered_map{std::pair{id, !bools::mkAnd(core)}}}};
-        //     }
-        //     case SmtResult::Sat: {
-        //         break;
-        //     }
-        // }
-        solver.push();
-        solver.add(s(spec));
-        ++assertion_counter;
-        switch (solver.check()) {
-            case SmtResult::Unknown: {
-                return std::nullopt;
-            }
-            case SmtResult::Unsat: {
-                std::cout << "CONCRETIZATION OF TRACE FAILED, COMPUTING PATH INTERPOLANT" << std::endl;
-                return interpolate(d + 1);
-            }
-            case SmtResult::Sat: {
-                const auto model {solver.model().composeBackwards(s)};
-                const auto imp {trp.mbp(model.syntacticImplicant(spec), model, theory::isTempVar)};
-                trace.emplace_back(id, imp);
-                solver.pop();
-                solver.add(s(imp));
-                ++assertion_counter;
-                opensmt::ipartitions_t mask {0};
-                opensmt::setbit(mask, assertion_counter);
-                partitions.emplace_back(mask);
-                break;
-            }
-        }
-    }
-    const auto s {renaming_central->get_subs(depth, 1)};
-    solver.add(m.specialize(s(t.err())));
-    switch (solver.check()) {
-        case SmtResult::Unknown: {
-            return std::nullopt;
-        }
-        case SmtResult::Unsat: {
-            std::cout << "CONCRETIZATION OF ERROR TRACE FAILED, COMPUTING PATH INTERPOLANT" << std::endl;
-            return interpolate(depth);
-        }
-        case SmtResult::Sat: {
-            break;
-        }
-    }
-    return trace;
-}
-
-bool TRPUtil::build_cex(const std::vector<std::pair<Int, Bools::Expr>> &trace) {
+bool TRPUtil::build_cex() {
     safe = false;
     if (trace.empty()) {
         return SmtFactory::check(t.init() && t.err()) == SmtResult::Sat;
     }
     std::stack<Int> todo;
-    for (const auto &[id,_]: trace) {
-        const auto it {learned_rule_map.find(id)};
+    for (const auto &t: trace) {
+        const auto it {learned_rule_map.find(t.id)};
         if (it != learned_rule_map.end() && !it->second.accel) {
-            todo.push(id);
+            todo.push(t.id);
         }
     }
     Subs up;
@@ -461,9 +338,9 @@ bool TRPUtil::build_cex(const std::vector<std::pair<Int, Bools::Expr>> &trace) {
         }
     }
     std::optional<Bools::Expr> trans;
-    for (const auto &[id,implicant]: trace) {
-        const auto it {learned_rule_map.find(id)};
-        const auto next = it == learned_rule_map.end() ? implicant : *it->second.accel;
+    for (const auto &t: trace) {
+        const auto it {learned_rule_map.find(t.id)};
+        const auto next = it == learned_rule_map.end() ? t.implicant : *it->second.accel;
         trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
     }
     return SmtFactory::check(t.init() && *trans && t.pre_to_post()(t.err())) == SmtResult::Sat;
@@ -474,7 +351,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
     m.erase(trp.get_n());
     auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
     const auto n {trp.get_n()};
-    for (const auto &[id, info] : rule_map) {
+    for (const auto &[id, t] : rule_map) {
         const auto is_orig_clause {!learned_rule_map.contains(id)};
         if (Config::Analysis::termination() && is_orig_clause) {
             continue;
@@ -482,26 +359,25 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
         if (range.length() == 1 && is_orig_clause) {
             continue;
         }
-        const auto abstr {info.abstraction};
-        const auto vars {abstr->vars()};
+        const auto vars {t->vars()};
         if (is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
             continue;
         }
         if (vars.contains(n)) {
             solver->push();
-            solver->add(m(abstr));
+            solver->add(m(t));
             if (solver->check() == SmtResult::Sat) {
                 const auto n_val{solver->model({{n}}).get<Arith>(n)};
                 model.put<Arith>(n, n_val);
-                Bools::Expr projected{mbp::int_mbp(model.syntacticImplicant(abstr), model, mbp_kind, [&](const auto &x) {
+                Bools::Expr projected{mbp::int_mbp(model.syntacticImplicant(t), model, mbp_kind, [&](const auto &x) {
                     return x == Var(n);
                 })};
                 add_blocking_clause(range, id, projected);
                 return true;
             }
             solver->pop();
-        } else if (model.eval<Bools>(abstr)) {
-            add_blocking_clause(range, id, abstr);
+        } else if (model.eval<Bools>(t)) {
+            add_blocking_clause(range, id, t);
             return true;
         }
     }

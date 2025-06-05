@@ -20,6 +20,7 @@ public:
 
     OpenSmt(const bool model);
     void add(const Bools::Expr e) override;
+    void add_named(const Bools::Expr e);
     void push() override;
     void pop() override;
     SmtResult check() override;

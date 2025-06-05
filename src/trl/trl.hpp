@@ -33,6 +33,7 @@ private:
     std::optional<Range> has_looping_infix();
 
     bool handle_loop(const Range &range);
+    TVL concretize(const Bools::Expr init, const std::vector<std::pair<Int, Bools::Expr>>& trace, const Bools::Expr err);
     void build_trace();
     void pop();
     std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> refine();

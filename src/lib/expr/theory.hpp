@@ -1,14 +1,14 @@
 #pragma once
 
-#include "itheory.hpp"
 #include "arith.hpp"
-#include "bools.hpp"
 #include "boolexpr.hpp"
+#include "bools.hpp"
+#include "itheory.hpp"
 
-#include <variant>
-#include <tuple>
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
+#include <tuple>
+#include <variant>
 
 using TheTheory = Theory<Arith, Bools>;
 using BoolExprSet = BoolExprSet;
@@ -20,7 +20,7 @@ using Theories = TheTheory::Theories;
 using VarSet = VariantSet<Arith::Var, Bools::Var>;
 using LitSet = VariantSet<Arith::Lit, Bools::Lit>;
 
-constexpr size_t num_theories {std::tuple_size_v<Theories>};
+constexpr size_t num_theories{std::tuple_size_v<Theories>};
 
 const Bools::Expr top();
 const Bools::Expr bot();
@@ -46,7 +46,7 @@ Bools::Expr mkOr(const Children &lits) {
 
 Bools::Expr mkLit(const Lit &lit);
 
-}
+} // namespace bools
 
 namespace theory {
 
@@ -78,13 +78,13 @@ Lit negate(const Lit &lit);
 size_t hash(const Lit &lit);
 sexpresso::Sexp to_smtlib(const Lit &l);
 sexpresso::Sexp to_smtlib(const Expr &e);
-void simplifyAnd(LitSet&);
+void simplifyAnd(LitSet &);
 Type to_type(const Expr &x);
 Type to_type(const Var &x);
 std::optional<Var> is_var(const Expr &x);
 std::string abbrev(const Type t);
 
-template <class ... Ts>
+template <class... Ts>
 auto apply(const Var &x, Ts... f) {
     return std::visit(Overload{f...}, x);
 }
@@ -94,12 +94,12 @@ constexpr bool is() {
     return std::same_as<std::tuple_element_t<I, Theories>, T>;
 }
 
-std::ostream& operator<<(std::ostream &s, const theory::Type &e);
+std::ostream &operator<<(std::ostream &s, const theory::Type &e);
 
-}
+} // namespace theory
 
-std::ostream& operator<<(std::ostream &s, const Var &e);
+std::ostream &operator<<(std::ostream &s, const Var &e);
 
-std::ostream& operator<<(std::ostream &s, const Expr &e);
+std::ostream &operator<<(std::ostream &s, const Expr &e);
 
-std::ostream& operator<<(std::ostream &s, const Lit &e);
+std::ostream &operator<<(std::ostream &s, const Lit &e);

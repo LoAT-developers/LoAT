@@ -14,6 +14,10 @@ OpenSmt::OpenSmt(const bool model) {
 }
 
 void OpenSmt::add(const Bools::Expr e) {
+    solver->addAssertion(ExprConverter<opensmt::PTRef, opensmt::PTRef, std::vector<opensmt::PTRef>, std::vector<opensmt::PTRef>>::convert(e, *ctx));
+}
+
+void OpenSmt::add_named(const Bools::Expr e) {
     solver->tryAddNamedAssertion(ExprConverter<opensmt::PTRef, opensmt::PTRef, std::vector<opensmt::PTRef>, std::vector<opensmt::PTRef>>::convert(e, *ctx), std::to_string(solver->getAssertionsCount()));
 }
 
