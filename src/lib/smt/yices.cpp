@@ -68,6 +68,15 @@ SmtResult Yices::check() {
     return processResult(yices_check_context(solver, nullptr));
 }
 
+SmtResult Yices::checkWithAssumptions(const BoolExprSet &assumptions) {
+    term_t as[assumptions.size()];
+    unsigned i {0};
+    for (const auto &a: assumptions) {
+        as[i] = ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>::convert(a, ctx);
+    }
+    return processResult(yices_check_context_with_assumptions(solver, nullptr, assumptions.size(), as));
+}
+
 Model Yices::model(const std::optional<const VarSet> &vars) {
     if (ctx.getArithSymbolMap().empty() && ctx.getBoolSymbolMap().empty()) {
         return Model();
@@ -279,5 +288,18 @@ std::optional<Bools::Expr> Yices::interpolate(const Bools::Expr e) {
             throw std::logic_error("error from yices");
         default: break;
     }
+    return res;
+}
+
+BoolExprSet Yices::unsatCore() {
+    term_vector_t core;
+    yices_init_term_vector(&core);
+    yices_get_unsat_core(solver, &core);
+    BoolExprSet res;
+    const auto size {core.size};
+    for (size_t i = 0; i < size; ++i) {
+        res.insert(convertFormula(core.data[i], ctx));
+    }
+    yices_delete_term_vector(&core);
     return res;
 }

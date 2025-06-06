@@ -24,17 +24,20 @@ TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, confi
     step = bools::mkOr(steps);
 }
 
-TVL TRL::concretize(const Bools::Expr init, const std::vector<std::pair<Int, Bools::Expr>>& trace, const Bools::Expr err) {
+std::pair<TVL, Model> TRL::concretize(const Bools::Expr side_condition, const std::vector<std::pair<Int, Bools::Expr>>& trace) {
     OpenSmt solver {true};
-    solver.add_named(init);
+    const auto &ren{renaming_central->get_subs(0, trace.size())};
+    solver.add_named(ren(side_condition));
     std::unordered_map<Bools::Expr, std::pair<Int, Lit>> back_map;
     unsigned i {0};
-    const auto check = [&]() {
+    const auto check = [&]() -> TVL {
         switch (solver.check()) {
             case SmtResult::Unknown: {
+                std::cout << "concretization unknown" << std::endl;
                 return TVL::UNKNOWN;
             }
             case SmtResult::Sat: {
+                std::cout << "concretization succeeded" << std::endl;
                 return TVL::TRUE;
             }
             case SmtResult::Unsat: {
@@ -53,21 +56,15 @@ TVL TRL::concretize(const Bools::Expr init, const std::vector<std::pair<Int, Boo
                     }
                 }
                 for (const auto &[id, lits]: refinement) {
+                    concretize(!bools::mkAndFromLits(lits), learned_rule_map.at(id).loop);
+                }
+                for (const auto &[id, lits]: refinement) {
                     auto &t {rule_map.at(id)};
-                    std::cout << "refining " << t << " with " << bools::mkAndFromLits(lits) << std::endl;
                     t = t && bools::mkAndFromLits(lits);
                     for (auto &[_,b]: blocked_per_step) {
                         b.erase(id);
                     }
                 }
-                while (depth > 0) {
-                    pop();
-                }
-                BoolExprSet steps;
-                for (const auto &[id, t] : rule_map) {
-                    steps.insert(encode_transition(t, id));
-                }
-                step = bools::mkOr(steps);
                 return TVL::FALSE;
             }
         }
@@ -97,16 +94,35 @@ TVL TRL::concretize(const Bools::Expr init, const std::vector<std::pair<Int, Boo
         ++i;
         const auto res {check()};
         if (res != TVL::TRUE) {
-            return res;
+            return {res, Model{}};
         }
     }
-    const auto &ren{renaming_central->get_subs(i, 1)};
-    solver.add_named(ren(err));
-    if (const auto res{check()}; res != TVL::TRUE) {
-        return res;
+    return {TVL::TRUE, solver.model()};
+}
+
+TVL TRL::concretize_and_adjust_state(const Bools::Expr side_condition, const std::vector<std::pair<Int, Bools::Expr>>& trace) {
+    const auto &[res,model] {concretize(side_condition, trace)};
+    switch (res) {
+        case TVL::UNKNOWN: {
+            break;
+        }
+        case TVL::TRUE: {
+            this->model = model;
+            break;
+        }
+        case TVL::FALSE: {
+            while (depth > 0) {
+                pop();
+            }
+            BoolExprSet steps;
+            for (const auto &[id, t] : rule_map) {
+                steps.insert(encode_transition(t, id));
+            }
+            step = bools::mkOr(steps);
+            break;
+        }
     }
-    model = solver.model();
-    return TVL::TRUE;
+    return res;
 }
 
 std::optional<Range> TRL::has_looping_infix() {
@@ -134,6 +150,15 @@ std::optional<Range> TRL::has_looping_infix() {
 
 bool TRL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
+    if (SmtFactory::check(loop) != SmtResult::Sat) {
+        std::vector<std::pair<Int, Bools::Expr>> trace_for_concretization;
+        for (auto i = range.start(); i <= range.end(); ++i) {
+            trace_for_concretization.emplace_back(trace[i].id, trace[i].implicant);
+        }
+        const auto res {concretize_and_adjust_state(top(), trace_for_concretization)};
+        assert(res == TVL::FALSE);
+        return true;
+    }
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
         if (const auto rf {prove_term(loop, model)}) {
@@ -154,21 +179,15 @@ bool TRL::handle_loop(const Range &range) {
     Int id;
     const auto n {trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
-        Bools::Expr projected {qe::real_qe(ti, model, theory::isTempVar)};
-        projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
-        ti = projected;
-        id = add_learned_clause(range, ti);
-    } else {
-        ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
-        model.put<Arith>(n, 1);
-        assert(model.eval<Bools>(ti));
-        id = add_learned_clause(range, ti);
+        ti = qe::real_qe(ti, model, theory::isTempVar);
     }
+    ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
+    id = add_learned_clause(range, ti);
     step = step || encode_transition(top(), id);
     // if (range.length() == 1) {
     //     learned_rule_map.at(id).projection = projected;
     // } else {
-        add_blocking_clause(range, id, top());
+    add_blocking_clause(range, id, top());
     // }
     return true;
 }
@@ -337,7 +356,7 @@ std::optional<SmtResult> TRL::do_step() {
             for (const auto &t: trace) {
                 trace_for_concretization.emplace_back(t.id, t.implicant);
             }
-            switch (concretize(t.init(), trace_for_concretization, t.err())) {
+            switch (concretize_and_adjust_state(t.init() && t.pre_to_post()(t.err()), trace_for_concretization)) {
                 case TVL::UNKNOWN: {
                     return SmtResult::Unknown;
                 }

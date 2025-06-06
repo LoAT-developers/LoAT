@@ -69,7 +69,13 @@ ArithLitPtr ArithLit::mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
                 return cache.from_cache(-lhs_integral, kind);
             }
         }
-        return cache.from_cache(lhs_integral, kind);
+        if (cache.contains(lhs_integral, kind)) {
+            return cache.from_cache(lhs_integral, kind);
+        } else if (cache.contains(-lhs_integral, kind)) {
+            return cache.from_cache(-lhs_integral, kind);
+        } else {
+            return cache.from_cache(lhs_integral, kind);
+        }
     }
     return cache.from_cache(lhs_integral, kind);
 }

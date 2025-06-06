@@ -32,6 +32,7 @@ public:
     void pop() override;
     SmtResult processResult(smt_status status);
     SmtResult check() override;
+    SmtResult checkWithAssumptions(const BoolExprSet&);
     Model model(const std::optional<const VarSet> &vars = std::nullopt) override;
     void randomize(unsigned seed) override;
     void resetSolver() override;
@@ -39,6 +40,7 @@ public:
     std::ostream& print(std::ostream& os) const override;
 
     std::optional<Bools::Expr> interpolate(const Bools::Expr e);
+    BoolExprSet unsatCore();
 
 private:
     YicesContext ctx;

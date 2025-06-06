@@ -111,7 +111,13 @@ std::pair<Bools::Expr, Model> TRPUtil::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Renaming var_renaming;
     for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
-        const auto rule{trace[i].implicant};
+        Bools::Expr rule {top()};
+        const auto it {learned_rule_map.find(trace[i].id)};
+        if (it != learned_rule_map.end()) {
+            rule = bools::mkAndFromLits(it->second.lits);
+        } else {
+            rule = trace[i].implicant;
+        }
         const auto s{renaming_central->get_subs(i, 1)};
         if (loop) {
             // sigma1 maps vars from chained to the corresponding vars from rule
@@ -166,7 +172,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     std::vector<std::pair<Int, Bools::Expr>> loop;
     for (size_t i = range.start(); i <= range.end(); ++i) {
         const auto &e {trace.at(i)};
-        loop.emplace_back(e.id, e.model.specialize(rule_map.at(e.id)));
+        loop.emplace_back(e.id, rule_map.at(e.id));
     }
     rule_map.emplace(id, top());
     learned_rule_map.emplace(id, LearnedTransInfo(loop, accel->lits()));
@@ -174,15 +180,17 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
 }
 
 Bools::Expr TRPUtil::specialize(const Bools::Expr e, const Model &model, const std::function<bool(const Var &)> &eliminate) {
-    const auto sip{model.syntacticImplicant(e)};
-    if (Config::Analysis::log) {
-        std::cout << "sip: " << sip << std::endl;
-    }
-    auto simp{Preprocess::preprocessFormula(sip)};
-    if (Config::Analysis::log && simp != sip) {
+    // const auto sip{model.syntacticImplicant(e)};
+    // if (Config::Analysis::log) {
+    //     std::cout << "sip: " << sip << std::endl;
+    // }
+    assert(e->isConjunction());
+    auto simp{Preprocess::preprocessFormula(e)};
+    if (Config::Analysis::log && simp != e) {
         std::cout << "simp: " << simp << std::endl;
     }
-    const auto mbp_res{trp.mbp(simp, model, eliminate)};
+    // const auto mbp_res{trp.mbp(simp, model, eliminate)};
+    const auto mbp_res{qe::real_qe(simp, model, eliminate)};
     if (Config::Analysis::log && mbp_res != simp) {
         std::cout << "mbp: " << mbp_res << std::endl;
     }

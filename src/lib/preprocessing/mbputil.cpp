@@ -18,7 +18,12 @@ std::optional<Arith::Expr> mbp::closest_lower_bound(const linked_hash_set<Bound>
 }
 
 Bools::Expr mbp::bool_mbp(const Bools::Expr &t, const Model &model, const Bools::Var x) {
-    return Subs::build<Bools>(x, Bools::constToExpr(model.get<Bools>(x)))(t);
+    assert(t->isConjunction());
+    const Lit neg {bools::mk(x, true)};
+    const auto neg_not_found {t->forall([&](const auto lit) {
+        return lit != neg;
+    })};
+    return Subs::build<Bools>(x, Bools::constToExpr(neg_not_found))(t);
 }
 
 Bools::Expr mbp::bool_qe(const Bools::Expr &t, const Bools::Var x) {
