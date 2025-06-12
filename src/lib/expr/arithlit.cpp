@@ -52,6 +52,9 @@ ArithLit::ArithLit(const ArithExprPtr l, const Kind kind): l(l), kind(kind) { }
 
 ArithLit::~ArithLit() {
     cache.erase(l, kind);
+    if (kind == Kind::Eq || kind == Kind::Neq) {
+        cache.erase(-l, kind);
+    }
 }
 
 ArithLitPtr ArithLit::mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
