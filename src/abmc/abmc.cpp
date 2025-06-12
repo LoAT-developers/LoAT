@@ -132,7 +132,7 @@ std::pair<RulePtr, Model> ABMC::build_loop(const int backlink) {
     s.collectCoDomainVars(vars);
     auto model {solver->model(vars).composeBackwards(s)};
     const auto imp {model.syntacticImplicant(loop->getGuard())};
-    const auto implicant {loop->withGuard(imp)};
+    const auto implicant {loop->withGuard(bools::mkAndFromLits(imp))};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << implicant << std::endl;
     }
@@ -313,7 +313,7 @@ void ABMC::build_trace() {
         const auto vars = d == 0 ? this->vars : s.coDomainVars();
         const auto m {solver->model(vars).composeBackwards(s)};
         const auto rule {rule_map.at(m.get<Arith>(trace_var))};
-        const auto imp {m.syntacticImplicant(rule->getGuard())};
+        const auto imp {bools::mkAndFromLits(m.syntacticImplicant(rule->getGuard()))};
         if (Config::Analysis::log) {
             auto run_vars {rule->getUpdate().domain()};
             run_vars.insert(n);

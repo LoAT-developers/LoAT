@@ -2,7 +2,8 @@
 
 #include "theory.hpp"
 #include "model.hpp"
+#include "conjunction.hpp"
 
 namespace qe {
-    Bools::Expr real_qe(const Bools::Expr &trans, const Model &, const std::function<bool(const Var&)> &eliminate);
+    Conjunction real_qe(const Conjunction &trans, const Model &, const std::function<bool(const Var&)> &eliminate);
 }

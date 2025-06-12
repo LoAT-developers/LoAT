@@ -61,21 +61,10 @@ ArithLitPtr ArithLit::mk(const ArithExprPtr lhs, const ArithLit::Kind kind) {
     if (factor > 1) {
         lhs_integral = lhs_integral->divide(factor);
     }
-    if ((kind == Kind::Eq || kind == Kind::Neq)) {
-        if (lhs_integral->isNegated()) {
-            return cache.from_cache(-lhs_integral, kind);
-        } else if (const auto add {lhs_integral->isAdd()}) {
-            if ((*(*add)->getArgs().begin())->isNegated()) {
-                return cache.from_cache(-lhs_integral, kind);
-            }
-        }
-        if (cache.contains(lhs_integral, kind)) {
-            return cache.from_cache(lhs_integral, kind);
-        } else if (cache.contains(-lhs_integral, kind)) {
-            return cache.from_cache(-lhs_integral, kind);
-        } else {
-            return cache.from_cache(lhs_integral, kind);
-        }
+    if ((kind == Kind::Eq || kind == Kind::Neq) && !cache.contains(lhs_integral, kind)) {
+        const auto res {cache.from_cache(lhs_integral, kind)};
+        cache.add_alias(res, -lhs_integral, kind);
+        return res;
     }
     return cache.from_cache(lhs_integral, kind);
 }

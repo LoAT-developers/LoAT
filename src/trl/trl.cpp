@@ -15,6 +15,7 @@
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
 #include "imcsafety.hpp"
+#include "yices.hpp"
 
 TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
     BoolExprSet steps;
@@ -24,14 +25,15 @@ TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, confi
     step = bools::mkOr(steps);
 }
 
-std::pair<TVL, Model> TRL::concretize(const Bools::Expr side_condition, const std::vector<std::pair<Int, Bools::Expr>>& trace) {
-    OpenSmt solver {true};
+std::pair<TVL, Model> TRL::concretize(const Bools::Expr side_condition, const std::vector<std::pair<Int, Conjunction>>& trace) {
+    Yices solver {QF_LA};
     const auto &ren{renaming_central->get_subs(0, trace.size())};
-    solver.add_named(ren(side_condition));
+    solver.add(ren(side_condition));
     std::unordered_map<Bools::Expr, std::pair<Int, Lit>> back_map;
+    BoolExprSet assumptions;
     unsigned i {0};
     const auto check = [&]() -> TVL {
-        switch (solver.check()) {
+        switch (solver.checkWithAssumptions(assumptions)) {
             case SmtResult::Unknown: {
                 std::cout << "concretization unknown" << std::endl;
                 return TVL::UNKNOWN;
@@ -53,6 +55,9 @@ std::pair<TVL, Model> TRL::concretize(const Bools::Expr side_condition, const st
                         if (!changed) {
                             it->second.insert(lit);
                         }
+                    } else {
+                        std::cout << c << " not found" << std::endl;
+                        assert(false);
                     }
                 }
                 for (const auto &[id, lits]: refinement) {
@@ -76,18 +81,19 @@ std::pair<TVL, Model> TRL::concretize(const Bools::Expr side_condition, const st
             if (it != learned_rule_map.end()) {
                 for (const auto &lit : it->second.lits) {
                     const auto expr{ren(bools::mkLit(lit))};
-                    solver.add_named(expr);
+                    assumptions.insert(expr);
                     back_map.emplace(expr, std::pair{id, lit});
+                    std::cout << "added " << expr << " to map" << std::endl;
                 }
             } else {
-                solver.add_named(ren(imp));
+                solver.add(ren(bools::mkAndFromLits(imp)));
             }
         }
         {
             const auto it{blocked_per_step.find(i)};
             if (it != blocked_per_step.end()) {
                 for (const auto &[_, b] : it->second) {
-                    solver.add_named(b);
+                    solver.add(b);
                 }
             }
         }
@@ -100,7 +106,7 @@ std::pair<TVL, Model> TRL::concretize(const Bools::Expr side_condition, const st
     return {TVL::TRUE, solver.model()};
 }
 
-TVL TRL::concretize_and_adjust_state(const Bools::Expr side_condition, const std::vector<std::pair<Int, Bools::Expr>>& trace) {
+TVL TRL::concretize_and_adjust_state(const Bools::Expr side_condition, const std::vector<std::pair<Int, Conjunction>>& trace) {
     const auto &[res,model] {concretize(side_condition, trace)};
     switch (res) {
         case TVL::UNKNOWN: {
@@ -134,10 +140,14 @@ std::optional<Range> TRL::has_looping_infix() {
                 model.get<Arith>(renaming_central->get_subs(start + i, 1).get<Arith>(safety_var)) < 0) {
                 continue;
             }
-            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || !learned_rule_map.contains(trace[start].id))) {
+            const auto first {bools::mkAndFromLits(trace[start].implicant)};
+            const auto last {bools::mkAndFromLits(trace[start + i].implicant)};
+            if (dependency_graph.hasEdge(last, first) && (i > 0 || !learned_rule_map.contains(trace[start].id))) {
                 if (i == 0) {
                     const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempVar)};
-                    if (SmtFactory::check(renaming_central->get_subs(0,1)(loop) && renaming_central->get_subs(1,1)(loop)) == SmtResult::Unsat) {
+                    const auto fst_unrolling {renaming_central->get_subs(0,1)(loop)};
+                    const auto snd_unrolling {renaming_central->get_subs(1,1)(loop)};
+                    if (SmtFactory::check(fst_unrolling && snd_unrolling) == SmtResult::Unsat) {
                         continue;
                     }
                 }
@@ -151,7 +161,7 @@ std::optional<Range> TRL::has_looping_infix() {
 bool TRL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
     if (SmtFactory::check(loop) != SmtResult::Sat) {
-        std::vector<std::pair<Int, Bools::Expr>> trace_for_concretization;
+        std::vector<std::pair<Int, Conjunction>> trace_for_concretization;
         for (auto i = range.start(); i <= range.end(); ++i) {
             trace_for_concretization.emplace_back(trace[i].id, trace[i].implicant);
         }
@@ -160,10 +170,13 @@ bool TRL::handle_loop(const Range &range) {
         return true;
     }
     Bools::Expr termination_argument {top()};
+    std::optional<Arith::Expr> rf;
     if (Config::Analysis::termination()) {
-        if (const auto rf {prove_term(loop, model)}) {
-            termination_argument = bools::mkAndFromLits({arith::mkGt(*rf, arith::mkConst(0)), arith::mkGt((*rf)->renameVars(renaming_central->post_to_pre().get<Arith>()), (*rf)->renameVars(t.pre_to_post().get<Arith>()))});
-            loop = loop && termination_argument;
+        if ((rf = prove_term(loop, model))) {
+            // boundedness: rf > 0
+            loop.insert(arith::mkGt(*rf, arith::mkConst(0)));
+            // decrease: rf > rf'
+            loop.insert(arith::mkGt((*rf)->renameVars(renaming_central->post_to_pre().get<Arith>()), (*rf)->renameVars(t.pre_to_post().get<Arith>())));
         } else {
             return false;
         }
@@ -173,7 +186,10 @@ bool TRL::handle_loop(const Range &range) {
     }
     auto ti{trp.compute(loop, model)};
     if (Config::Analysis::termination()) {
-        ti = ti && termination_argument;
+        // boundedness: rf > 0
+        ti.insert(arith::mkGt(*rf, arith::mkConst(0)));
+        // decrease: rf > rf'
+        ti.insert(arith::mkGt((*rf)->renameVars(renaming_central->post_to_pre().get<Arith>()), (*rf)->renameVars(t.pre_to_post().get<Arith>())));
     }
 
     Int id;
@@ -246,16 +262,17 @@ void TRL::build_trace() {
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{model.composeBackwards(s)};
         const auto imp{comp.syntacticImplicant(rule)};
+        const auto imp_be{bools::mkAndFromLits(imp)};
         auto relevant_vars{renaming_central->pre_vars()};
         for (const auto &x : renaming_central->pre_vars()) {
             relevant_vars.insert(theory::postVar(x));
         }
-        imp->collectVars(relevant_vars);
+        imp.collectVars(relevant_vars);
         const auto projected_model{comp.project(relevant_vars)};
         if (prev) {
-            dependency_graph.addEdge(prev->first, imp);
+            dependency_graph.addEdge(prev->first, imp_be);
         }
-        prev = {imp, id};
+        prev = {imp_be, id};
         trace.emplace_back(TraceElem{.id = id, .implicant = imp, .model = projected_model});
     }
     if (Config::Analysis::log) {
@@ -306,11 +323,11 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
                     if (learned_rule_map.contains(id)) {
                         has_learned_transitions = true;
                     }
-                    assert(t != bot());
-                    sub.add_transition(t);
+                    // TODO this may now yield false
+                    sub.add_transition(bools::mkAndFromLits(t));
                 }
             } else {
-                sub.add_transition(t.implicant);
+                sub.add_transition(bools::mkAndFromLits(t.implicant));
             }
         }
         std::cout << sub << std::endl;
@@ -352,7 +369,7 @@ std::optional<SmtResult> TRL::do_step() {
             model = solver->model();
             solver->pop();
             build_trace();
-            std::vector<std::pair<Int, Bools::Expr>> trace_for_concretization;
+            std::vector<std::pair<Int, Conjunction>> trace_for_concretization;
             for (const auto &t: trace) {
                 trace_for_concretization.emplace_back(t.id, t.implicant);
             }

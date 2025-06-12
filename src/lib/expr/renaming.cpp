@@ -291,6 +291,14 @@ Bools::Expr Renaming::operator()(const Bools::Expr e) const {
     return BoolExpr::from_cache(children, op);
 }
 
+Conjunction Renaming::operator()(const Conjunction &e) const {
+    Conjunction res;
+    for (const auto &x: e) {
+        res.insert((*this)(x));
+    }
+    return res;
+}
+
 template<std::size_t I = 0>
 inline void collectCoDomainVarsImpl(const Renaming &subs, VarSet &res) {
     if constexpr (I < num_theories) {

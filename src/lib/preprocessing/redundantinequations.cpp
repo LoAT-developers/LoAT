@@ -1,13 +1,10 @@
 #include "redundantinequations.hpp"
 #include "smtfactory.hpp"
 
-Bools::Expr removeRedundantInequations(const Bools::Expr e) {
-    if (!e->isConjunction()) {
-        return e;
-    }
+void removeRedundantInequations(Conjunction &lits) {
     // collect linear bounds of the form b >= 0
-    auto lits {e->lits()};
     auto &arith_lits {lits.get<Arith::Lit>()};
+    const auto arith_vars {lits.vars().get<Arith::Var>()};
     ArithExprVec bounded;
     for (auto it = arith_lits.begin(); it != arith_lits.end();) {
         const auto lit {*it};
@@ -35,7 +32,6 @@ Bools::Expr removeRedundantInequations(const Bools::Expr e) {
         factors.push_back(f);
         solver->add(arith::mkGeq(f, arith::mkConst(0)));
     }
-    const auto arith_vars {e->vars().get<Arith::Var>()};
     for (auto it = bounded.begin(); it != bounded.end();) {
         solver->push();
         // set up one equation for each variable
@@ -64,5 +60,4 @@ Bools::Expr removeRedundantInequations(const Bools::Expr e) {
         }
         solver->pop();
     }
-    return bools::mkAndFromLits(lits);
 }

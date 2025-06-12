@@ -43,30 +43,13 @@ struct VariableIndex {
 using Poly = Arith::Expr;
 
 
-Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>& vars) {
-    if (const auto lit {f->getTheoryLit()}) {
-        return std::visit(Overload{
-            [&](const Arith::Lit &lit) {
-                auto f_vars = lit->vars();
-                if (std::any_of(
-                    vars.begin(), vars.end(), [&f_vars](const auto& v){ return f_vars.contains(v); }
-                )) {
-                    return top();
-                }
-                return f;
-            },
-            [&](const auto &) {
-                return f;
-            }
-        }, *lit);
-    }
-    assert(f->isConjunction());
-
+void eliminate_variables(Formula& constraints, const linked_hash_set<Arith::Var>& vars) {
     // transform formula to matrix
-    auto lits = f->lits();
-    const auto constraints = lits.get<Arith::Lit>();
     // TODO: equality substitution, filtering
-    const auto vs = f->vars().get<Arith::Var>();
+    linked_hash_set<Arith::Var> vs;
+    for (const auto &c: constraints) {
+        c->collectVars(vs);
+    }
     std::vector<Arith::Var> var_idx {vars.begin(), vars.end()};
     for (const auto &x: vs) {
         if (!vars.contains(x)) {
@@ -164,8 +147,7 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
     Matrix res = FMplexElimination(m, vars.size(), var_idx.size() - vars.size()).apply();
 
     // transform Matrix back to formula
-    if (res.n_rows() == 0) return top();
-    linked_hash_set<Arith::Lit> conjuncts;
+    constraints.clear();
     for (std::size_t i = 0; i < res.n_rows(); ++i) {
         auto it = res.row_begin(i);
         auto row_end = res.row_end(i);
@@ -182,11 +164,9 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
         // This method is only applied to pos.lin. combinations, so the delta coeff will be >=0
         // if (it != row_end && it->col_index == delta_col) conjuncts.emplace(arith::mkLt(lhs, arith::mkConst(0)));
         // else conjuncts.emplace(arith::mkLeq(lhs, arith::mkConst(0)));
-        conjuncts.emplace(arith::mkLeq(lhs, arith::mkConst(0)));
+        constraints.emplace(arith::mkLeq(lhs, arith::mkConst(0)));
     }
 
-    lits.get<Arith::Lit>() = conjuncts;
-    return bools::mkAndFromLits(lits);
 }
 
 

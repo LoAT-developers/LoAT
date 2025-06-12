@@ -45,3 +45,16 @@ Conjunction Conjunction::fromBoolExpr(const Bools::Expr &e) {
 size_t hash_value(const Conjunction &c) {
     return boost::hash_unordered_range(c.begin(), c.end());
 }
+
+std::optional<Arith::Expr> Conjunction::getEquality(const Arith::Var x) const {
+    for (const auto &lit: get<Arith::Lit>()) {
+        if (const auto eq {lit->getEquality(x)}) {
+            return eq;
+        }
+    }
+    return std::nullopt;
+}
+
+Bools::Expr operator!(const Conjunction &c) {
+    return !bools::mkAndFromLits(c);
+}

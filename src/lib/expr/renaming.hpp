@@ -1,6 +1,7 @@
 #pragma once
 
 #include "theory.hpp"
+#include "conjunction.hpp"
 
 #include <boost/functional/hash.hpp>
 #include <utility>
@@ -177,6 +178,7 @@ public:
     Lit operator()(const Lit &lit) const;
     Expr operator()(const Expr &expr) const;
     Bools::Expr operator()(const Bools::Expr e) const;
+    Conjunction operator()(const Conjunction &e) const;
 
     VarSet coDomainVars() const;
     void collectCoDomainVars(VarSet &res) const;

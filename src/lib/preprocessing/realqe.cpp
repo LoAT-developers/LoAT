@@ -3,28 +3,17 @@
 #include "mbputil.hpp"
 #include "smtfactory.hpp"
 
-Bools::Expr qe::real_qe(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
-    Bools::Expr res{trans};
-    linked_hash_set<Arith::Var> arith_vars;
-    for (const auto &x : trans->vars()) {
+Conjunction qe::real_qe(const Conjunction &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
+    auto res {trans};
+    const auto bool_vars {res.vars().get<Bools::Var>()};
+    for (const auto &x : bool_vars) {
         if (eliminate(x)) {
-            std::visit(
-                Overload{
-                    [&](const Bools::Var x) {
-                        res = mbp::bool_mbp(res, model, x);
-                    },
-                    [&](const Arith::Var x) {
-                        arith_vars.emplace(x);
-                    }},
-                x);
+            mbp::bool_mbp(res, model, x);
         }
     }
+    const auto arith_vars {res.vars().get<Arith::Var>()};
     if (!arith_vars.empty()) {
-        res = fmplex::eliminate_variables(res, arith_vars);
-        const auto vars {res->vars()};
-        for (const auto &x: arith_vars) {
-            assert(!vars.contains(x));
-        }
+        fmplex::eliminate_variables(res.get<Arith::Lit>(), arith_vars);
+        assert(res.vars().get<Arith::Var>().empty());
     }
-    return res;
 }

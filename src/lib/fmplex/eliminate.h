@@ -17,11 +17,11 @@
 
 namespace fmplex {
 
-using Formula  = Bools::Expr;
+using Formula  = ArithLitSet;
 using EigenMat = Eigen::Matrix<Rational, Eigen::Dynamic, Eigen::Dynamic>;
 using EigenVec = Eigen::Matrix<Rational, Eigen::Dynamic, 1>;
 
-Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>& vars);
+void eliminate_variables(Formula& f, const linked_hash_set<Arith::Var>& vars);
 
 std::pair<EigenMat, EigenVec> eliminate_cols(const EigenMat& constraints,
                                              const EigenVec& constants,

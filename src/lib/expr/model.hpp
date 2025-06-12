@@ -2,6 +2,7 @@
 
 #include "theory.hpp"
 #include "subs.hpp"
+#include "conjunction.hpp"
 
 class Model {
 
@@ -181,7 +182,7 @@ public:
 
     Model composeBackwards(const Subs &subs) const;
     Model composeBackwards(const Renaming &subs) const;
-    Bools::Expr syntacticImplicant(const Bools::Expr e) const;
+    Conjunction syntacticImplicant(const Bools::Expr e) const;
     Bools::Expr specialize(const Bools::Expr e) const;
 
 private:

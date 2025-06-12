@@ -2,8 +2,7 @@
 #include "mbputil.hpp"
 #include "smtfactory.hpp"
 
-Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x, const Config::TRPConfig::MbpKind mode) {
-    assert(t->isConjunction());
+void int_mbp(Conjunction &t, const Model &model, const Arith::Var x, const Config::TRPConfig::MbpKind mode) {
     // divisibility constraints for x
     linked_hash_set<Divisibility> divs;
     // lower bounds for x
@@ -14,8 +13,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     Int flcm{1};
     // least common multiple of all divisors (or modulus) in divisibility constraints for x
     Int mlcm{1};
-    auto lits{t->lits()};
-    auto &arith_lits{lits.get<Arith::Lit>()};
+    auto &arith_lits{t.get<Arith::Lit>()};
     // Iterate over all arithmetic literals to populate the sets above.
     // Erases literals that contain x as side-effect.
     for (auto it = arith_lits.begin(); it != arith_lits.end();) {
@@ -58,22 +56,14 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     if (lb.empty() || ub.empty()) {
         // easy case: no lower (or upper) bound, so all constraints involving x can
         // be satisfied by choosing a sufficiently small (large) value for x
-        return t->map(
-            [&](const auto &lit) {
-                return std::visit(
-                    Overload{
-                        [&](const Arith::Lit &l) {
-                            if (l->has((x))) {
-                                return top();
-                            } else {
-                                return bools::mkLit(lit);
-                            }
-                        },
-                        [&](const Bools::Lit &) {
-                            return bools::mkLit(lit);
-                        }},
-                    lit);
-            });
+        for (auto it = arith_lits.begin(); it != arith_lits.end();) {
+            if ((*it)->has(x)) {
+                it = arith_lits.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        return;
     }
     // In Cooper's QE procedure, we'd now sacale all literals so that the coefficient of x is flcm.
     // We can't do that explicitly, as our expressions are normalized automatically.
@@ -162,43 +152,38 @@ Bools::Expr int_mbp(const Bools::Expr &t, const Model &model, const Arith::Var x
     for (const auto &d : scaled_divs) {
         arith_lits.insert(arith::mkEq(arith::mkMod(substitute + d.res, arith::mkConst(d.modulo)), arith::mkConst(0)));
     }
-    return bools::mkAndFromLits(lits);
 }
 
-Bools::Expr do_mbp(const Bools::Expr &t, const Model &model, const Var &x, const Config::TRPConfig::MbpKind mode) {
-    return std::visit(
-        Overload{
-            [&](const Bools::Var x) {
-                return mbp::bool_mbp(t, model, x);
-            },
-            [&](const Arith::Var x) {
-                const auto res{int_mbp(t, model, x, mode)};
-                assert(res != bot());
-                return res;
-            }},
-        x);
-}
-
-Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const Model &model, const Config::TRPConfig::MbpKind mode, const std::function<bool(const Var &)> &eliminate) {
-    Bools::Expr res{trans};
-    for (const auto &x : trans->vars()) {
+Conjunction mbp::int_mbp(const Conjunction &trans, const Model &model, const Config::TRPConfig::MbpKind mode, const std::function<bool(const Var &)> &eliminate) {
+    Conjunction res{trans};
+    for (const auto &x : trans.vars()) {
         if (eliminate(x)) {
-            res = do_mbp(res, model, x, mode);
+            std::visit(
+                Overload{
+                    [&](const Bools::Var x) {
+                        mbp::bool_mbp(res, model, x);
+                    },
+                    [&](const Arith::Var x) {
+                        int_mbp(res, model, x, mode);
+                    }},
+                x);
         }
     }
     return res;
 }
 
-Bools::Expr mbp::int_qe(const Bools::Expr &t, const std::function<bool(const Var &)> &eliminate) {
+Bools::Expr mbp::int_qe(const Bools::Expr t, const std::function<bool(const Var &)> &eliminate) {
     auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     solver->add(t);
     std::vector<Bools::Expr> disjuncts;
     SmtResult smt_res;
     while ((smt_res = solver->check()) == SmtResult::Sat) {
         const auto model {solver->model()};
-        const auto next {int_mbp(solver->model().syntacticImplicant(t), model, Config::TRPConfig::IntMbp, eliminate)};
-        disjuncts.push_back(next);
-        solver->add(!next);
+        const auto imp {solver->model().syntacticImplicant(t)};
+        const auto next {int_mbp(imp, model, Config::TRPConfig::IntMbp, eliminate)};
+        const auto conj {bools::mkAndFromLits(next)}
+        disjuncts.push_back(conj);
+        solver->add(!conj);
     }
     assert(smt_res == SmtResult::Unsat);
     return bools::mkOr(disjuncts);

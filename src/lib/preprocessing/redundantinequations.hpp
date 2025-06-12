@@ -1,5 +1,6 @@
 #pragma once
 
 #include "theory.hpp"
+#include "conjunction.hpp"
 
-Bools::Expr removeRedundantInequations(const Bools::Expr e);
+void removeRedundantInequations(Conjunction&);

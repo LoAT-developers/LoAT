@@ -69,10 +69,11 @@ SmtResult Yices::check() {
 }
 
 SmtResult Yices::checkWithAssumptions(const BoolExprSet &assumptions) {
-    term_t as[assumptions.size()];
+    term_t *as {(term_t*)(alloca(assumptions.size() * sizeof(term_t)))};
     unsigned i {0};
     for (const auto &a: assumptions) {
         as[i] = ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>::convert(a, ctx);
+        ++i;
     }
     return processResult(yices_check_context_with_assumptions(solver, nullptr, assumptions.size(), as));
 }
@@ -186,7 +187,7 @@ Bools::Expr convertFormula(const term_t t, const YicesContext &ctx) {
         }
         case YICES_ARITH_GE_ATOM: {
             assert(num_children == 2);
-            return bools::mkLit(arith::mkLeq(convertArith(yices_term_child(t, 0), ctx), convertArith(yices_term_child(t, 1), ctx)));
+            return bools::mkLit(arith::mkGeq(convertArith(yices_term_child(t, 0), ctx), convertArith(yices_term_child(t, 1), ctx)));
         }
         case YICES_DISTINCT_TERM: {
             assert(num_children == 2);

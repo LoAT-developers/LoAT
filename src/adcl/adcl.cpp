@@ -411,7 +411,7 @@ std::optional<RulePtr> ADCL::resolve(const RulePtr idx) {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
         const auto model {solver->model(guard->vars()).composeBackwards(projected_var_renaming)};
         const auto implicant {model.syntacticImplicant(idx->getGuard())};
-        return {idx->withGuard(implicant)};
+        return {idx->withGuard(bools::mkAndFromLits(implicant))};
     }
     case SmtResult::Unknown: {}
     [[fallthrough]];

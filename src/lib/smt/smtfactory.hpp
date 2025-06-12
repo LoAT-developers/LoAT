@@ -14,4 +14,6 @@ namespace SmtFactory {
 
     SmtResult check(const Bools::Expr e);
 
+    SmtResult check(const Conjunction&);
+
 }

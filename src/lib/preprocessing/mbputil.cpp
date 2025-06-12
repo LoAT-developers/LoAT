@@ -17,13 +17,15 @@ std::optional<Arith::Expr> mbp::closest_lower_bound(const linked_hash_set<Bound>
     return closest;
 }
 
-Bools::Expr mbp::bool_mbp(const Bools::Expr &t, const Model &model, const Bools::Var x) {
-    assert(t->isConjunction());
-    const Lit neg {bools::mk(x, true)};
-    const auto neg_not_found {t->forall([&](const auto lit) {
-        return lit != neg;
-    })};
-    return Subs::build<Bools>(x, Bools::constToExpr(neg_not_found))(t);
+void mbp::bool_mbp(Conjunction &t, const Model &model, const Bools::Var x) {
+    auto &bool_lits {t.get<Bools::Lit>()};
+    for (auto it = bool_lits.begin(); it != bool_lits.end();) {
+        if ((*it)->getBoolVar() == x) {
+            it = bool_lits.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 Bools::Expr mbp::bool_qe(const Bools::Expr &t, const Bools::Var x) {

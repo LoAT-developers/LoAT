@@ -53,8 +53,8 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 }
 
 TRPUtil::LearnedTransInfo::LearnedTransInfo(
-    const std::vector<std::pair<Int, Bools::Expr>> &loop,
-    const LitSet &lits):
+    const std::vector<std::pair<Int, Conjunction>> &loop,
+    const Conjunction &lits):
     loop(loop),
     lits(lits) {}
 
@@ -107,14 +107,14 @@ TRPUtil::TRPUtil(
     solver->add(linearize_if_term(t.init()));
 }
 
-std::pair<Bools::Expr, Model> TRPUtil::compress(const Range &range) {
-    std::optional<Bools::Expr> loop;
+std::pair<Conjunction, Model> TRPUtil::compress(const Range &range) {
+    std::optional<Conjunction> loop;
     Renaming var_renaming;
     for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
-        Bools::Expr rule {top()};
+        Conjunction rule;
         const auto it {learned_rule_map.find(trace[i].id)};
         if (it != learned_rule_map.end()) {
-            rule = bools::mkAndFromLits(it->second.lits);
+            rule = it->second.lits;
         } else {
             rule = trace[i].implicant;
         }
@@ -127,7 +127,7 @@ std::pair<Bools::Expr, Model> TRPUtil::compress(const Range &range) {
             const auto [chained, sigma1, sigma2]{Preprocess::chain(rule, *loop)};
             // all pre-vars and temp vars that already occured in rule correspond to vars from rule
             auto fst_vars{t.pre_vars()};
-            rule->collectVars(fst_vars);
+            rule.collectVars(fst_vars);
             for (const auto &x : t.post_vars()) {
                 fst_vars.erase(x);
             }
@@ -137,7 +137,7 @@ std::pair<Bools::Expr, Model> TRPUtil::compress(const Range &range) {
             // all post-vars and all other variables that occur in chained, but not in rule, correspond
             // to variables from loop
             auto snd_vars{t.post_vars()};
-            chained->collectVars(snd_vars);
+            chained.collectVars(snd_vars);
             for (const auto &x : fst_vars) {
                 snd_vars.erase(x);
             }
@@ -152,54 +152,51 @@ std::pair<Bools::Expr, Model> TRPUtil::compress(const Range &range) {
             var_renaming = s;
         }
     }
-    auto vars{(*loop)->vars()};
+    auto vars{(*loop).vars()};
     var_renaming.collectCoDomainVars(vars);
     const auto m{model.composeBackwards(var_renaming)};
     return {*loop, m};
 }
 
-Bools::Expr TRPUtil::encode_transition(const Bools::Expr &t, const Int &id) {
+Bools::Expr TRPUtil::encode_transition(const Bools::Expr t, const Int &id) {
     return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
-Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
-    assert(accel->isConjunction());
+Int TRPUtil::add_learned_clause(const Range &range, const Conjunction &accel) {
     if (Config::Analysis::log) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     }
     const auto id = next_id;
     ++next_id;
-    std::vector<std::pair<Int, Bools::Expr>> loop;
+    std::vector<std::pair<Int, Conjunction>> loop;
     for (size_t i = range.start(); i <= range.end(); ++i) {
         const auto &e {trace.at(i)};
-        loop.emplace_back(e.id, rule_map.at(e.id));
+        loop.emplace_back(e.id, e.implicant);
     }
     rule_map.emplace(id, top());
-    learned_rule_map.emplace(id, LearnedTransInfo(loop, accel->lits()));
+    learned_rule_map.emplace(id, LearnedTransInfo(loop, accel));
     return id;
 }
 
-Bools::Expr TRPUtil::specialize(const Bools::Expr e, const Model &model, const std::function<bool(const Var &)> &eliminate) {
+Conjunction TRPUtil::specialize(const Conjunction &e, const Model &model, const std::function<bool(const Var &)> &eliminate) {
     // const auto sip{model.syntacticImplicant(e)};
     // if (Config::Analysis::log) {
     //     std::cout << "sip: " << sip << std::endl;
     // }
-    assert(e->isConjunction());
-    auto simp{Preprocess::preprocessFormula(e)};
+    const auto simp {Preprocess::preprocessFormula(e)};
     if (Config::Analysis::log && simp != e) {
         std::cout << "simp: " << simp << std::endl;
     }
-    // const auto mbp_res{trp.mbp(simp, model, eliminate)};
-    const auto mbp_res{qe::real_qe(simp, model, eliminate)};
+    const auto mbp_res{trp.mbp(simp, model, eliminate)};
     if (Config::Analysis::log && mbp_res != simp) {
         std::cout << "mbp: " << mbp_res << std::endl;
     }
     return mbp_res;
 }
 
-std::pair<Bools::Expr, Model> TRPUtil::specialize(const Range &range, const std::function<bool(const Var &)> &eliminate) {
+std::pair<Conjunction, Model> TRPUtil::specialize(const Range &range, const std::function<bool(const Var &)> &eliminate) {
     if (range.empty()) {
-        return {top(), Model()};
+        return {Conjunction{}, Model()};
     }
     const auto [transition, model]{compress(range)};
     if (Config::Analysis::log) {
@@ -210,10 +207,10 @@ std::pair<Bools::Expr, Model> TRPUtil::specialize(const Range &range, const std:
     return {specialize(transition, model, eliminate), model};
 }
 
-std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr loop, const Model &model) {
+std::optional<Arith::Expr> TRPUtil::prove_term(const Conjunction &loop, const Model &model) {
     const auto &m {model.get<Arith>()};
     const auto &ptp {t.pre_to_post().get<Arith>()};
-    const auto lits {loop->lits().get<Arith::Lit>()};
+    const auto lits {loop.get<Arith::Lit>()};
     for (const auto &l: lits) {
         if (l->isGt()) {
             const auto lhs {l->lhs()};
@@ -303,7 +300,7 @@ bool TRPUtil::build_cex() {
         std::optional<Bools::Expr> trans;
         for (const auto &[next_id, next_t]: info.loop) {
             const auto next_it {learned_rule_map.find(next_id)};
-            const auto next = next_it == learned_rule_map.end() ? next_t : *next_it->second.accel;
+            const auto next = next_it == learned_rule_map.end() ? bools::mkAndFromLits(next_t) : *next_it->second.accel;
             trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
         }
         if (SmtFactory::check(*trans) != SmtResult::Sat) {
@@ -348,7 +345,7 @@ bool TRPUtil::build_cex() {
     std::optional<Bools::Expr> trans;
     for (const auto &t: trace) {
         const auto it {learned_rule_map.find(t.id)};
-        const auto next = it == learned_rule_map.end() ? t.implicant : *it->second.accel;
+        const auto next = it == learned_rule_map.end() ? bools::mkAndFromLits(t.implicant) : *it->second.accel;
         trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
     }
     return SmtFactory::check(t.init() && *trans && t.pre_to_post()(t.err())) == SmtResult::Sat;
@@ -377,10 +374,10 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
             if (solver->check() == SmtResult::Sat) {
                 const auto n_val{solver->model({{n}}).get<Arith>(n)};
                 model.put<Arith>(n, n_val);
-                Bools::Expr projected{mbp::int_mbp(model.syntacticImplicant(t), model, mbp_kind, [&](const auto &x) {
+                auto projected{mbp::int_mbp(model.syntacticImplicant(t), model, mbp_kind, [&](const auto &x) {
                     return x == Var(n);
                 })};
-                add_blocking_clause(range, id, projected);
+                add_blocking_clause(range, id, bools::mkAndFromLits(projected));
                 return true;
             }
             solver->pop();

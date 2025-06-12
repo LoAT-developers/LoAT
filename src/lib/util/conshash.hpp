@@ -26,6 +26,10 @@ public:
         return cache.contains(std::make_tuple(args...));
     }
 
+    void add_alias(cpp::not_null<std::shared_ptr<const Abstract>> p, const Args&... args) {
+        cache.emplace(std::make_tuple(args...), p.as_nullable());
+    }
+
     const cpp::not_null<std::shared_ptr<const Abstract>> from_cache(const Args&&... args) {
         const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const Abstract>())};
         if (b) {

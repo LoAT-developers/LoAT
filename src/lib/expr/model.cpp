@@ -63,15 +63,15 @@ bool Model::contains(const Var &var) const {
         });
 }
 
-bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
+bool syntacticImplicant(const Bools::Expr e, const Model &m, Conjunction &res) {
     if (e->isAnd()) {
-        BoolExprSet sub;
+        Conjunction sub;
         for (const auto &c : e->getChildren()) {
             if (!syntacticImplicant(c, m, sub)) {
                 return false;
             }
         }
-        res.insert(sub.begin(), sub.end());
+        res.insertAll(sub);
         return true;
     } else if (e->isOr()) {
         for (const auto &c : e->getChildren()) {
@@ -88,24 +88,24 @@ bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
                         if (l->isNeq()) {
                             const auto lt{arith::mkLt(l->lhs(), arith::mkConst(0))};
                             if (m.eval(lt)) {
-                                res.insert(bools::mkLit(lt));
+                                res.insert(lt);
                                 return true;
                             } else {
                                 const auto gt{arith::mkGt(l->lhs(), arith::mkConst(0))};
                                 if (m.eval(gt)) {
-                                    res.insert(bools::mkLit(gt));
+                                    res.insert(gt);
                                     return true;
                                 }
                             }
                         } else if (m.eval(l)) {
-                            res.insert(e);
+                            res.insert(l);
                             return true;
                         }
                         return false;
                     },
                     [&](const auto &l) {
                         if (m.eval(l)) {
-                            res.insert(e);
+                            res.insert(l);
                             return true;
                         }
                         return false;
@@ -117,11 +117,11 @@ bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
     }
 }
 
-Bools::Expr Model::syntacticImplicant(const Bools::Expr e) const {
+Conjunction Model::syntacticImplicant(const Bools::Expr e) const {
     assert(eval<Bools>(e));
-    BoolExprSet res;
+    Conjunction res;
     ::syntacticImplicant(e, *this, res);
-    return bools::mkAnd(res);
+    return res;
 }
 
 Bools::Expr Model::specialize(const Bools::Expr e) const {

@@ -45,10 +45,14 @@ ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(it
 std::optional<unsigned> ADCLSat::has_looping_suffix() {
     const auto last{trace.size() - 1};
     for (unsigned start = last; start + 1 > 0; --start) {
-        if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || !learned_rule_map.contains(trace[start].id))) {
+        const auto beginning {bools::mkAndFromLits(trace[start].implicant)};
+        const auto end {bools::mkAndFromLits(trace.back().implicant)};
+        if (dependency_graph.hasEdge(end, beginning) && (start < last || !learned_rule_map.contains(trace[start].id))) {
             if (start == last) {
                 const auto loop{trace[start].implicant};
-                if (SmtFactory::check(renaming_central->get_subs(0, 1)(loop) && renaming_central->get_subs(1, 1)(loop)) == SmtResult::Unsat) {
+                if (SmtFactory::check(
+                        renaming_central->get_subs(0, 1)(loop) &&
+                        renaming_central->get_subs(1, 1)(loop)) == SmtResult::Unsat) {
                     continue;
                 }
             }
@@ -83,7 +87,7 @@ bool ADCLSat::handle_loop(const unsigned start) {
     }
     auto ti{trp.compute(loop, model)};
     Int id;
-    Bools::Expr projected{top()};
+    Conjunction projected;
     const auto n{trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
         projected = qe::real_qe(ti, model, [&](const auto &x) {
@@ -106,7 +110,7 @@ bool ADCLSat::handle_loop(const unsigned start) {
     const auto last{encode_transition(rule_map.at(last_elem.id), last_elem.id)};
     const auto preds{dg_over_approx.getPredecessors(fst)};
     const auto succs{dg_over_approx.getSuccessors(last)};
-    const auto node{encode_transition(ti, id)};
+    const auto node{encode_transition(bools::mkAndFromLits(ti), id)};
     dg_over_approx.addNode(node, preds, succs, true);
     if (dg_over_approx.getRoots().contains(fst)) {
         dg_over_approx.markRoot(node);
@@ -117,7 +121,7 @@ bool ADCLSat::handle_loop(const unsigned start) {
     // if (range.length() == 1) {
     //     learned_rule_map.at(id).projection = projected;
     // } else {
-        add_blocking_clause(range, id, projected);
+        add_blocking_clause(range, id, bools::mkAndFromLits(projected));
     // }
     trace.pop_back();
     return true;
@@ -217,7 +221,9 @@ std::optional<SmtResult> ADCLSat::do_step() {
     assert(smt_res == SmtResult::Sat);
     trace.emplace_back(id, imp, m);
     if (trace.size() > 1) {
-        dependency_graph.addEdge(trace.at(trace.size() - 2).implicant, imp);
+        const auto but_last {bools::mkAndFromLits(trace.at(trace.size() - 2).implicant)};
+        const auto last {bools::mkAndFromLits(imp)};
+        dependency_graph.addEdge(but_last, last);
     }
     return {};
 }

@@ -75,4 +75,8 @@ SmtResult check(const Bools::Expr e) {
     return s->check();
 }
 
+SmtResult check(const Conjunction &e) {
+    return check(bools::mkAndFromLits(e));
+}
+
 }

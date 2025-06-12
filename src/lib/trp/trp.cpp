@@ -16,12 +16,11 @@ TRP::TRP(const Renaming &pre_to_post, const Config::TRPConfig &config):
         }
     }
 
-void TRP::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model) {
+void TRP::recurrent_pseudo_divisibility(const Conjunction &loop, const Model &model) {
     if (!config.recurrent_pseudo_divs) {
         return;
     }
-    assert(loop->isConjunction());
-    const auto lits{loop->lits().get<Arith::Lit>()};
+    const auto lits{loop.get<Arith::Lit>()};
     for (const auto &l : lits) {
         if (const auto div{l->isDivisibility()}) {
             const auto &[t, mod]{*div};
@@ -46,12 +45,11 @@ void TRP::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &mod
 /**
  * handles constraints like x' = 2x
  */
-void TRP::recurrent_exps(const Bools::Expr loop, const Model &model) {
+void TRP::recurrent_exps(const Conjunction &loop, const Model &model) {
     if (!config.recurrent_exps) {
         return;
     }
-    assert(loop->isConjunction());
-    const auto lits{loop->lits().get<Arith::Lit>()};
+    const auto lits{loop.get<Arith::Lit>()};
     for (const auto &l : lits) {
         if (l->lhs()->isLinear()) {
             auto lhs{l->lhs()};
@@ -108,12 +106,12 @@ void TRP::recurrent_exps(const Bools::Expr loop, const Model &model) {
 /**
  * handles constraints like x' = -x or x' = y /\ y' = x
  */
-void TRP::recurrent_cycles(const Bools::Expr loop, const Model &model) {
+void TRP::recurrent_cycles(const Conjunction &loop, const Model &model) {
     if (!config.recurrent_cycles) {
         return;
     }
     for (const auto &[pre,_] : pre_to_post.get<Arith>()) {
-        if (const auto orig_eq{loop->getEquality(pre)}) {
+        if (const auto orig_eq{loop.getEquality(pre)}) {
             auto vars{(*orig_eq)->vars()};
             vars.erase(pre);
             if (vars.size() != 1) {
@@ -138,7 +136,7 @@ void TRP::recurrent_cycles(const Bools::Expr loop, const Model &model) {
                     break;
                 } else {
                     seen.emplace(other, other_sign);
-                    const auto other_eq{loop->getEquality(ArithVar::progVar(other))};
+                    const auto other_eq{loop.getEquality(ArithVar::progVar(other))};
                     if (!other_eq) {
                         break;
                     }
@@ -156,12 +154,11 @@ void TRP::recurrent_cycles(const Bools::Expr loop, const Model &model) {
     }
 }
 
-void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
+void TRP::recurrent_bounds(const Conjunction &loop, Model model) {
     if (!config.recurrent_bounds) {
         return;
     }
-    assert(loop->isConjunction());
-    BoolExprSet delta_eqs{loop};
+    Conjunction with_deltas{loop};
     std::unordered_map<Var, Arith::Var> deltas;
     Arith::Subs subs;
     Arith::Subs zeros;
@@ -169,18 +166,17 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
         const auto post{ArithVar::postVar(pre)};
         const auto d{Arith::next()};
         const auto diff{Arith::varToExpr(post) - Arith::varToExpr(pre)};
-        delta_eqs.insert(bools::mkLit(arith::mkEq(d, diff)));
+        with_deltas.insert(arith::mkEq(d, diff));
         model.put<Arith>(d, model.eval<Arith>(post - pre));
         subs.put(d, diff);
         deltas.emplace(d, pre);
         zeros.put(d, arith::mkConst(0));
     }
-    const auto with_deltas{bools::mkAnd(delta_eqs)};
     const auto recurrent{mbp(with_deltas, model, [&](const auto &x) {
         return !deltas.contains(x);
     })};
     {
-        const auto lits{recurrent->lits().get<Arith::Lit>()};
+        const auto lits{recurrent.get<Arith::Lit>()};
         for (const auto &l : lits) {
             const auto lit{l->subs(subs)};
             if (const auto div{lit->isDivisibility()}) {
@@ -212,7 +208,7 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
             return !theory::isPostVar(x) && !deltas.contains(x);
         })};
         for (const auto &pseudo : std::vector{pseudo_pre, pseudo_post}) {
-            const auto lits{pseudo->lits().get<Arith::Lit>()};
+            const auto lits{pseudo.get<Arith::Lit>()};
             for (const auto &l : lits) {
                 if (l->isLinear() && (l->isEq() || l->isGt())) {
                     const auto vars{l->vars()};
@@ -258,30 +254,29 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
     }
 }
 
-Bools::Expr TRP::recurrent(const Bools::Expr loop, const Model &model) {
-    assert(loop->isConjunction());
+Conjunction TRP::recurrent(const Conjunction &loop, const Model &model) {
     recurrent_pseudo_divisibility(loop, model);
     recurrent_exps(loop, model);
     recurrent_cycles(loop, model);
     recurrent_bounds(loop, model);
-    const auto res {bools::mkAndFromLits(res_lits)};
+    auto res {res_lits};
     res_lits.clear();
-    if (res->vars().contains(n)) {
-        return res && bools::mkLit(arith::mkGt(n, arith::mkConst(0)));
-    } else {
-        return res;
+    if (res.vars().contains(n)) {
+        res.insert(arith::mkGt(n, arith::mkConst(0)));
     }
+    return res;
 }
 
-Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
-    if (SmtFactory::check(post_to_intermediate(loop) && pre_to_intermediate(loop) && !loop) == SmtResult::Unsat) {
+Conjunction TRP::compute(const Conjunction &loop, const Model &model) {
+    const auto be {bools::mkAndFromLits(loop)};
+    if (SmtFactory::check(post_to_intermediate(be) && pre_to_intermediate(be) && !be) == SmtResult::Unsat) {
         return loop;
     }
-    const auto pre{mbp(loop, model, [](const auto &x) {
+    auto res{mbp(loop, model, [](const auto &x) {
         return !theory::isProgVar(x);
     })};
     if (Config::Analysis::log) {
-        std::cout << "pre: " << pre << std::endl;
+        std::cout << "pre: " << res << std::endl;
     }
     auto step{recurrent(loop, model)};
     if (Config::Analysis::log) {
@@ -293,29 +288,30 @@ Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
     if (Config::Analysis::log) {
         std::cout << "post: " << post << std::endl;
     }
-    return removeRedundantInequations(pre && step && post);
+    res.insertAll(step);
+    res.insertAll(post);
+    removeRedundantInequations(res);
+    return res;
 }
 
 Arith::Var TRP::get_n() const {
     return n;
 }
 
-Bools::Expr TRP::mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) const {
-    Bools::Expr res {top()};
+Conjunction TRP::mbp(const Conjunction &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) const {
     switch (config.mbpKind) {
     case Config::TRPConfig::RealMbp:
-        res = mbp::real_mbp(trans, model, eliminate);
+        return mbp::real_mbp(trans, model, eliminate);
         break;
     case Config::TRPConfig::IntMbp:
     case Config::TRPConfig::LowerIntMbp:
     case Config::TRPConfig::UpperIntMbp:
-        res = mbp::int_mbp(trans, model, config.mbpKind, eliminate);
+        return mbp::int_mbp(trans, model, config.mbpKind, eliminate);
         break;
     case Config::TRPConfig::RealQe:
-        res = qe::real_qe(trans, model, eliminate);
+        return qe::real_qe(trans, model, eliminate);
         break;
     default:
         throw std::invalid_argument("unknown mbp kind");
     }
-    return res;
 }

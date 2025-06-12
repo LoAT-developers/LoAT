@@ -32,17 +32,17 @@ protected:
 
     struct TraceElem {
         Int id;
-        Bools::Expr implicant;
+        Conjunction implicant;
         Model model;
     };
 
     struct LearnedTransInfo {
 
-        const std::vector<std::pair<Int, Bools::Expr>> loop;
-        const LitSet lits;
+        const std::vector<std::pair<Int, Conjunction>> loop;
+        const Conjunction lits;
         std::optional<Bools::Expr> accel {};
 
-        LearnedTransInfo(const std::vector<std::pair<Int, Bools::Expr>> &loop, const LitSet &lits);
+        LearnedTransInfo(const std::vector<std::pair<Int, Conjunction>> &loop, const Conjunction &lits);
 
     };
 
@@ -65,12 +65,12 @@ protected:
 
     TRPUtil(const ITSPtr its, const Config::TRPConfig &config);
 
-    std::pair<Bools::Expr, Model> compress(const Range &range);
-    Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
-    Int add_learned_clause(const Range &range, const Bools::Expr &accel);
-    Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
-    std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
-    std::optional<Arith::Expr> prove_term(const Bools::Expr loop, const Model &model);
+    std::pair<Conjunction, Model> compress(const Range &range);
+    Bools::Expr encode_transition(const Bools::Expr idx, const Int &id);
+    Int add_learned_clause(const Range &range, const Conjunction &accel);
+    Conjunction specialize(const Conjunction &e, const Model &m, const std::function<bool(const Var&)> &eliminate);
+    std::pair<Conjunction, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
+    std::optional<Arith::Expr> prove_term(const Conjunction &loop, const Model &model);
     bool build_cex();
     virtual void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) = 0;
     bool add_blocking_clauses(const Range &range, Model model);

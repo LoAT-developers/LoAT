@@ -4,6 +4,7 @@
 #include "boolexpr.hpp"
 #include "model.hpp"
 #include "theory.hpp"
+#include "conjunction.hpp"
 
 namespace smt {
 
@@ -44,7 +45,13 @@ public:
     }
 
     void add(const Lit &e) {
-        return this->add(bools::mkLit(e));
+        this->add(bools::mkLit(e));
+    }
+
+    void add(const Conjunction &e) {
+        for (const auto &lit: e) {
+            add(bools::mkLit(lit));
+        }
     }
 
     virtual void push() = 0;

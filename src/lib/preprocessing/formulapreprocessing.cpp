@@ -50,6 +50,10 @@ Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<boo
     return e;
 }
 
+Conjunction Preprocess::preprocessFormula(const Conjunction &e, const std::function<bool(const Var &)> &allow) {
+    return Conjunction::fromBoolExpr(preprocessFormula(bools::mkAndFromLits(e)));
+}
+
 std::tuple<Bools::Expr, Renaming, Renaming> Preprocess::chain(const Bools::Expr &fst, const Bools::Expr &snd) {
     Renaming sigma1;
     Renaming sigma2;
@@ -76,4 +80,9 @@ std::tuple<Bools::Expr, Renaming, Renaming> Preprocess::chain(const Bools::Expr 
         }
     }
     return {sigma1(fst) && sigma2(snd), sigma1.invert(), sigma2.invert()};
+}
+
+std::tuple<Conjunction, Renaming, Renaming> Preprocess::chain(const Conjunction &fst, const Conjunction &snd) {
+    const auto [c,r1,r2] {chain(bools::mkAndFromLits(fst), bools::mkAndFromLits(snd))};
+    return {Conjunction::fromBoolExpr(c), r1, r2};
 }
