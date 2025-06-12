@@ -83,7 +83,6 @@ std::pair<TVL, Model> TRL::concretize(const Bools::Expr side_condition, const st
                     const auto expr{ren(bools::mkLit(lit))};
                     assumptions.insert(expr);
                     back_map.emplace(expr, std::pair{id, lit});
-                    std::cout << "added " << expr << " to map" << std::endl;
                 }
             } else {
                 solver.add(ren(bools::mkAndFromLits(imp)));
@@ -160,14 +159,22 @@ std::optional<Range> TRL::has_looping_infix() {
 
 bool TRL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
-    if (SmtFactory::check(loop) != SmtResult::Sat) {
-        std::vector<std::pair<Int, Conjunction>> trace_for_concretization;
-        for (auto i = range.start(); i <= range.end(); ++i) {
-            trace_for_concretization.emplace_back(trace[i].id, trace[i].implicant);
+    switch (SmtFactory::check(loop)) {
+        case SmtResult::Unsat: {
+            std::vector<std::pair<Int, Conjunction>> trace_for_concretization;
+            for (auto i = range.start(); i <= range.end(); ++i) {
+                trace_for_concretization.emplace_back(trace[i].id, trace[i].implicant);
+            }
+            const auto res {concretize_and_adjust_state(top(), trace_for_concretization)};
+            assert(res == TVL::FALSE);
+            return true;
         }
-        const auto res {concretize_and_adjust_state(top(), trace_for_concretization)};
-        assert(res == TVL::FALSE);
-        return true;
+        case SmtResult::Unknown: {
+            return false;
+        }
+        case SmtResult::Sat: {
+            break;
+        }
     }
     Bools::Expr termination_argument {top()};
     std::optional<Arith::Expr> rf;
@@ -232,7 +239,6 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
     } else if (range.length() == 1) {
         it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
     } else {
-        std::cout << "blocking " << loop << std::endl;
         it->second = it->second && s(!loop);
     }
 }
