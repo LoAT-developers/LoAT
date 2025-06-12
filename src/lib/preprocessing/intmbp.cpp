@@ -155,13 +155,14 @@ void int_mbp(Conjunction &t, const Model &model, const Arith::Var x, const Confi
 }
 
 Conjunction mbp::int_mbp(const Conjunction &trans, const Model &model, const Config::TRPConfig::MbpKind mode, const std::function<bool(const Var &)> &eliminate) {
+    assert(model.eval<Bools>(bools::mkAndFromLits(trans)));
     Conjunction res{trans};
     for (const auto &x : trans.vars()) {
         if (eliminate(x)) {
             std::visit(
                 Overload{
                     [&](const Bools::Var x) {
-                        mbp::bool_mbp(res, model, x);
+                        mbp::bool_mbp(res, x);
                     },
                     [&](const Arith::Var x) {
                         int_mbp(res, model, x, mode);
@@ -181,7 +182,7 @@ Bools::Expr mbp::int_qe(const Bools::Expr t, const std::function<bool(const Var 
         const auto model {solver->model()};
         const auto imp {solver->model().syntacticImplicant(t)};
         const auto next {int_mbp(imp, model, Config::TRPConfig::IntMbp, eliminate)};
-        const auto conj {bools::mkAndFromLits(next)}
+        const auto conj {bools::mkAndFromLits(next)};
         disjuncts.push_back(conj);
         solver->add(!conj);
     }

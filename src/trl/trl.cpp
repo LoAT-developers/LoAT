@@ -35,29 +35,19 @@ std::pair<TVL, Model> TRL::concretize(const Bools::Expr side_condition, const st
     const auto check = [&]() -> TVL {
         switch (solver.checkWithAssumptions(assumptions)) {
             case SmtResult::Unknown: {
-                std::cout << "concretization unknown" << std::endl;
                 return TVL::UNKNOWN;
             }
             case SmtResult::Sat: {
-                std::cout << "concretization succeeded" << std::endl;
                 return TVL::TRUE;
             }
             case SmtResult::Unsat: {
-                std::cout << "concretization failed" << std::endl;
                 const auto core {solver.unsatCore()};
-                std::cout << "core: " << core << std::endl;
                 std::unordered_map<Int, LitSet> refinement;
                 for (const auto &c: core) {
-                    const auto it {back_map.find(c)};
-                    if (it != back_map.end()) {
-                        const auto &[id, lit] {it->second};
-                        auto [it, changed]{refinement.emplace(id, LitSet{lit})};
-                        if (!changed) {
-                            it->second.insert(lit);
-                        }
-                    } else {
-                        std::cout << c << " not found" << std::endl;
-                        assert(false);
+                    const auto &[id, lit]{back_map.at(c)};
+                    auto [it, changed]{refinement.emplace(id, LitSet{lit})};
+                    if (!changed) {
+                        it->second.insert(lit);
                     }
                 }
                 for (const auto &[id, lits]: refinement) {
@@ -159,23 +149,6 @@ std::optional<Range> TRL::has_looping_infix() {
 
 bool TRL::handle_loop(const Range &range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
-    switch (SmtFactory::check(loop)) {
-        case SmtResult::Unsat: {
-            std::vector<std::pair<Int, Conjunction>> trace_for_concretization;
-            for (auto i = range.start(); i <= range.end(); ++i) {
-                trace_for_concretization.emplace_back(trace[i].id, trace[i].implicant);
-            }
-            const auto res {concretize_and_adjust_state(top(), trace_for_concretization)};
-            assert(res == TVL::FALSE);
-            return true;
-        }
-        case SmtResult::Unknown: {
-            return false;
-        }
-        case SmtResult::Sat: {
-            break;
-        }
-    }
     Bools::Expr termination_argument {top()};
     std::optional<Arith::Expr> rf;
     if (Config::Analysis::termination()) {
@@ -303,14 +276,12 @@ void TRL::pop() {
 }
 
 std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
-    Model model;
-    model.get<Arith>() = solver->model().get<Arith>();
     std::unordered_map<Int, Bools::Expr> refinement;
     std::unordered_set<Int> to_refine{};
     while (true) {
-        // if (build_cex()) {
-        //     return {SmtResult::Unsat, refinement};
-        // }
+        if (build_cex()) {
+            return {SmtResult::Unsat, refinement};
+        }
         SafetyProblem sub;
         for (const auto &x: t.pre_vars()) {
             sub.add_pre_var(x);
@@ -329,7 +300,6 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
                     if (learned_rule_map.contains(id)) {
                         has_learned_transitions = true;
                     }
-                    // TODO this may now yield false
                     sub.add_transition(bools::mkAndFromLits(t));
                 }
             } else {
@@ -344,6 +314,7 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
                 return {SmtResult::Unknown, refinement};
             }
             case SmtResult::Sat: {
+                std::cout << "IMC: SAT" << std::endl;
                 const auto itp {imc.get_itp()};
                 for (const auto &id: to_refine) {
                     refinement.emplace(id, itp && t.pre_to_post()(itp));
@@ -351,10 +322,12 @@ std::pair<SmtResult, std::unordered_map<Int, Bools::Expr>> TRL::refine() {
                 return {SmtResult::Sat, refinement};
             }
             case SmtResult::Unsat: {
+                std::cout << "IMC: UNSAT" << std::endl;
                 if (!has_learned_transitions) {
                     return {SmtResult::Unsat, refinement};
                 }
                 model = imc.get_model();
+                // TODO get cex from IMC and replace trace by it
                 break;
             }
         }
@@ -371,7 +344,12 @@ std::optional<SmtResult> TRL::do_step() {
             return SmtResult::Unknown;
         }
         case SmtResult::Sat: {
-            std::cout << "STARTING CONCRETIZATION" << std::endl;
+            if (depth == 0) {
+                return SmtResult::Unsat;
+            }
+            if (Config::Analysis::log) {
+                std::cout << "STARTING CONCRETIZATION" << std::endl;
+            }
             model = solver->model();
             solver->pop();
             build_trace();
@@ -387,38 +365,39 @@ std::optional<SmtResult> TRL::do_step() {
                     break;
                 }
                 case TVL::TRUE: {
-                    std::cout << "STARTING REFINEMENT" << std::endl;
-                    const auto [res, refinement] {refine()};
-                    switch (res) {
-                        case SmtResult::Sat: {
-                            std::cout << "refinement succeeded" << std::endl;
-                            for (const auto &[id, ref] : refinement) {
-                                std::cout << id << " --> " << ref << std::endl;
-                                if (learned_rule_map.contains(id)) {
-                                    auto &t{rule_map.at(id)};
-                                    t = t && ref;
-                                }
-                            }
-                            while (depth > 0) {
-                                pop();
-                            }
-                            blocked_per_step.clear();
-                            BoolExprSet steps;
-                            for (const auto &[id, t] : rule_map) {
-                                steps.insert(encode_transition(t, id));
-                            }
-                            step = bools::mkOr(steps);
-                            return std::nullopt;
-                        }
-                        case SmtResult::Unknown: {
-                            std::cout << "refinement failed" << std::endl;
-                            return SmtResult::Unknown;
-                        }
-                        case SmtResult::Unsat: {
-                            return SmtResult::Unsat;
-                        }
-                    }
-                    break;
+                    return SmtResult::Unknown;
+                    // std::cout << "STARTING REFINEMENT" << std::endl;
+                    // const auto [res, refinement] {refine()};
+                    // switch (res) {
+                    //     case SmtResult::Sat: {
+                    //         std::cout << "refinement succeeded" << std::endl;
+                    //         for (const auto &[id, ref] : refinement) {
+                    //             std::cout << id << " --> " << ref << std::endl;
+                    //             if (learned_rule_map.contains(id)) {
+                    //                 auto &t{rule_map.at(id)};
+                    //                 t = t && ref;
+                    //             }
+                    //         }
+                    //         while (depth > 0) {
+                    //             pop();
+                    //         }
+                    //         blocked_per_step.clear();
+                    //         BoolExprSet steps;
+                    //         for (const auto &[id, t] : rule_map) {
+                    //             steps.insert(encode_transition(t, id));
+                    //         }
+                    //         step = bools::mkOr(steps);
+                    //         return std::nullopt;
+                    //     }
+                    //     case SmtResult::Unknown: {
+                    //         std::cout << "refinement failed" << std::endl;
+                    //         return SmtResult::Unknown;
+                    //     }
+                    //     case SmtResult::Unsat: {
+                    //         return SmtResult::Unsat;
+                    //     }
+                    // }
+                    // break;
                 }
             }
             break;
@@ -450,11 +429,25 @@ std::optional<SmtResult> TRL::do_step() {
                         if (Config::Analysis::log) {
                             std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                         }
-                        if (!handle_loop(*range)) {
-                            return SmtResult::Unknown;
+                        std::vector<std::pair<Int, Conjunction>> trace_for_concretization;
+                        for (unsigned i = 0; i <= range->end(); ++i) {
+                            trace_for_concretization.emplace_back(trace[i].id, trace[i].implicant);
                         }
-                        while (depth > range->start()) {
-                            pop();
+                        switch (concretize_and_adjust_state(top(), trace_for_concretization)) {
+                            case TVL::UNKNOWN: {
+                                return SmtResult::Unknown;
+                            }
+                            case TVL::FALSE: {
+                                break;
+                            }
+                            case TVL::TRUE: {
+                                if (!handle_loop(*range)) {
+                                    return SmtResult::Unknown;
+                                }
+                                while (depth > range->start()) {
+                                    pop();
+                                }
+                            }
                         }
                     }
                     if (Config::Analysis::log) {

@@ -17,7 +17,7 @@ std::optional<Arith::Expr> mbp::closest_lower_bound(const linked_hash_set<Bound>
     return closest;
 }
 
-void mbp::bool_mbp(Conjunction &t, const Model &model, const Bools::Var x) {
+void mbp::bool_mbp(Conjunction &t, const Bools::Var x) {
     auto &bool_lits {t.get<Bools::Lit>()};
     for (auto it = bool_lits.begin(); it != bool_lits.end();) {
         if ((*it)->getBoolVar() == x) {

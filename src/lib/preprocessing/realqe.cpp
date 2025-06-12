@@ -8,7 +8,7 @@ Conjunction qe::real_qe(const Conjunction &trans, const Model &model, const std:
     const auto bool_vars {res.vars().get<Bools::Var>()};
     for (const auto &x : bool_vars) {
         if (eliminate(x)) {
-            mbp::bool_mbp(res, model, x);
+            mbp::bool_mbp(res, x);
         }
     }
     const auto arith_vars {res.vars().get<Arith::Var>()};
@@ -16,4 +16,5 @@ Conjunction qe::real_qe(const Conjunction &trans, const Model &model, const std:
         fmplex::eliminate_variables(res.get<Arith::Lit>(), arith_vars);
         assert(res.vars().get<Arith::Var>().empty());
     }
+    return res;
 }

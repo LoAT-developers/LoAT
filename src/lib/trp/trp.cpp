@@ -269,6 +269,7 @@ Conjunction TRP::recurrent(const Conjunction &loop, const Model &model) {
 
 Conjunction TRP::compute(const Conjunction &loop, const Model &model) {
     const auto be {bools::mkAndFromLits(loop)};
+    assert(model.eval<Bools>(be));
     if (SmtFactory::check(post_to_intermediate(be) && pre_to_intermediate(be) && !be) == SmtResult::Unsat) {
         return loop;
     }
@@ -299,6 +300,7 @@ Arith::Var TRP::get_n() const {
 }
 
 Conjunction TRP::mbp(const Conjunction &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) const {
+    assert(model.eval<Bools>(bools::mkAndFromLits(trans)));
     switch (config.mbpKind) {
     case Config::TRPConfig::RealMbp:
         return mbp::real_mbp(trans, model, eliminate);

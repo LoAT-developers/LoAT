@@ -20,7 +20,11 @@ void real_mbp(Conjunction &t, const Model &model, const Arith::Var x) {
     }
     if (subs.empty()) {
         if (const auto closest {mbp::closest_lower_bound(bounds, model.get<Arith>(), x)}) {
-            subs.put(x, *closest);
+            if (std::any_of(bounds.begin(), bounds.end(), [](const auto &b) {
+                return b.kind == BoundKind::Upper;
+            })) {
+                subs.put(x, *closest);
+            }
         }
     }
     std::vector<Arith::Lit> to_add;
@@ -41,13 +45,14 @@ void real_mbp(Conjunction &t, const Model &model, const Arith::Var x) {
 }
 
 Conjunction mbp::real_mbp(const Conjunction &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) {
+    assert(model.eval<Bools>(bools::mkAndFromLits(trans)));
     Conjunction res{trans};
     for (const auto &x : trans.vars()) {
         if (eliminate(x)) {
             std::visit(
                 Overload{
                     [&](const Bools::Var x) {
-                        mbp::bool_mbp(res, model, x);
+                        mbp::bool_mbp(res, x);
                     },
                     [&](const Arith::Var x) {
                         real_mbp(res, model, x);

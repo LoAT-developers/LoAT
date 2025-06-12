@@ -183,15 +183,18 @@ Conjunction TRPUtil::specialize(const Conjunction &e, const Model &model, const 
     // if (Config::Analysis::log) {
     //     std::cout << "sip: " << sip << std::endl;
     // }
-    const auto simp {Preprocess::preprocessFormula(e).value_or(simp)};
+    const auto simp {*Preprocess::preprocessFormula(e)};
     if (Config::Analysis::log && simp != e) {
         std::cout << "simp: " << simp << std::endl;
     }
-    const auto mbp_res{trp.mbp(simp, model, eliminate)};
-    if (Config::Analysis::log && mbp_res != simp) {
-        std::cout << "mbp: " << mbp_res << std::endl;
+    auto res{trp.mbp(simp, model, eliminate)};
+    if (res != simp) {
+        ArithLit::simplifyAnd(res.get<Arith::Lit>());
+        if (Config::Analysis::log) {
+            std::cout << "mbp: " << res << std::endl;
+        }
     }
-    return mbp_res;
+    return res;
 }
 
 std::pair<Conjunction, Model> TRPUtil::specialize(const Range &range, const std::function<bool(const Var &)> &eliminate) {

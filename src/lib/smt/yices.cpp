@@ -216,9 +216,6 @@ Bools::Expr convertFormula(const term_t t, const YicesContext &ctx) {
 }
 
 Arith::Expr convertArith(const term_t t, const YicesContext &ctx) {
-    std::cout << "converting ";
-    yices_pp_term(stdout, t, 80, 20, 0);
-    std::cout << std::endl;
     assert(yices_term_is_int(t));
     const auto num_children{yices_term_num_children(t)};
     switch (yices_term_constructor(t)) {
@@ -242,7 +239,6 @@ Arith::Expr convertArith(const term_t t, const YicesContext &ctx) {
             }
         }
         case YICES_ARITH_SUM: {
-            const auto num_children{yices_term_num_children(t)};
             std::vector<Arith::Expr> addends;
             for (auto i = 0; i < num_children; ++i) {
                 term_t term;
@@ -259,6 +255,12 @@ Arith::Expr convertArith(const term_t t, const YicesContext &ctx) {
                 }
             }
             return arith::mkPlus(std::move(addends));
+        }
+        case YICES_IMOD: {
+            assert(num_children == 2);
+            const auto lhs {convertArith(yices_term_child(t, 0), ctx)};
+            const auto rhs {convertArith(yices_term_child(t, 1), ctx)};
+            return arith::mkMod(lhs, rhs);
         }
         default: {
             throw std::logic_error("not yet implemented");
