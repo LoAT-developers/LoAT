@@ -204,7 +204,7 @@ bool TRL::handle_loop(const Range &range) {
     if (mbp_kind == Config::TRPConfig::RealQe) {
         ti = qe::real_qe(ti, model, theory::isTempVar);
     }
-    ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
+    ti = Preprocess::preprocessFormula(ti, theory::isTempVar).value_or(ti);
     id = add_learned_clause(range, ti);
     step = step || encode_transition(top(), id);
     // if (range.length() == 1) {

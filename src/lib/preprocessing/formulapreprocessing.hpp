@@ -10,7 +10,7 @@ namespace Preprocess {
 
     Bools::Expr preprocessFormula(Bools::Expr, const std::function<bool(const Var &)> &allow = theory::isTempVar);
 
-    Conjunction preprocessFormula(const Conjunction&, const std::function<bool(const Var &)> &allow = theory::isTempVar);
+    std::optional<Conjunction> preprocessFormula(const Conjunction&, const std::function<bool(const Var &)> &allow = theory::isTempVar);
 
     Bools::Expr simplifyAnd(const Bools::Expr e);
 

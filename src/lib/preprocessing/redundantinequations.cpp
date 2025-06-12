@@ -42,7 +42,10 @@ void removeRedundantInequations(Conjunction &lits) {
                     addends.push_back(*bounded[idx]->coeff(x) * factors[idx]);
                 }
             }
-            solver->add(arith::mkEq(*(*it)->coeff(x), arith::mkPlus(std::move(addends))));
+            const auto coeff {*(*it)->coeff(x)};
+            const auto sum {arith::mkPlus(std::move(addends))};
+            const auto eq {arith::mkEq(coeff, sum)};
+            solver->add(eq);
         }
         // and one equation for the constant part
         ArithExprVec addends;

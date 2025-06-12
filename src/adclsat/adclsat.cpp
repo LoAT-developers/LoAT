@@ -93,11 +93,11 @@ bool ADCLSat::handle_loop(const unsigned start) {
         projected = qe::real_qe(ti, model, [&](const auto &x) {
             return x == Var(n);
         });
-        projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
+        projected = *Preprocess::preprocessFormula(projected, theory::isTempVar);
         ti = projected;
         id = add_learned_clause(range, ti);
     } else {
-        ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
+        ti = *Preprocess::preprocessFormula(ti, theory::isTempVar);
         id = add_learned_clause(range, ti);
         model.put<Arith>(n, 1);
         projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {

@@ -183,7 +183,7 @@ Conjunction TRPUtil::specialize(const Conjunction &e, const Model &model, const 
     // if (Config::Analysis::log) {
     //     std::cout << "sip: " << sip << std::endl;
     // }
-    const auto simp {Preprocess::preprocessFormula(e)};
+    const auto simp {Preprocess::preprocessFormula(e).value_or(simp)};
     if (Config::Analysis::log && simp != e) {
         std::cout << "simp: " << simp << std::endl;
     }
