@@ -54,9 +54,9 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 
 TRPUtil::LearnedTransInfo::LearnedTransInfo(
     const std::vector<std::pair<Int, Conjunction>> &loop,
-    const Conjunction &lits):
+    const Conjunction &projection):
     loop(loop),
-    lits(lits) {}
+    projection(projection) {}
 
 TRPUtil::TRPUtil(
     const ITSPtr its,
@@ -111,13 +111,7 @@ std::pair<Conjunction, Model> TRPUtil::compress(const Range &range) {
     std::optional<Conjunction> loop;
     Renaming var_renaming;
     for (long i = static_cast<long>(range.end()); i >= 0 && i >= static_cast<long>(range.start()); --i) {
-        Conjunction rule;
-        const auto it {learned_rule_map.find(trace[i].id)};
-        if (it != learned_rule_map.end()) {
-            rule = it->second.lits;
-        } else {
-            rule = trace[i].implicant;
-        }
+        Conjunction rule = trace[i].implicant;
         const auto s{renaming_central->get_subs(i, 1)};
         if (loop) {
             // sigma1 maps vars from chained to the corresponding vars from rule
@@ -162,7 +156,7 @@ Bools::Expr TRPUtil::encode_transition(const Bools::Expr t, const Int &id) {
     return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
-Int TRPUtil::add_learned_clause(const Range &range, const Conjunction &accel) {
+Int TRPUtil::add_learned_clause(const Range &range, const Conjunction &projection, const Conjunction &accel) {
     if (Config::Analysis::log) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     }
@@ -174,7 +168,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Conjunction &accel) {
         loop.emplace_back(e.id, e.implicant);
     }
     rule_map.emplace(id, bools::mkAndFromLits(accel));
-    learned_rule_map.emplace(id, LearnedTransInfo(loop, accel));
+    learned_rule_map.emplace(id, LearnedTransInfo(loop, projection));
     return id;
 }
 

@@ -95,10 +95,10 @@ bool ADCLSat::handle_loop(const unsigned start) {
         });
         projected = *Preprocess::preprocessFormula(projected, theory::isTempVar);
         ti = projected;
-        id = add_learned_clause(range, ti);
+        id = add_learned_clause(range, loop, ti);
     } else {
         ti = *Preprocess::preprocessFormula(ti, theory::isTempVar);
-        id = add_learned_clause(range, ti);
+        id = add_learned_clause(range, loop, ti);
         model.put<Arith>(n, 1);
         projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
             return x == Var(n);
@@ -118,11 +118,11 @@ bool ADCLSat::handle_loop(const unsigned start) {
     if (dg_over_approx.getSinks().contains(last)) {
         dg_over_approx.markSink(node);
     }
-    // if (range.length() == 1) {
-    //     learned_rule_map.at(id).projection = projected;
-    // } else {
+    if (range.length() == 1) {
+        learned_rule_map.at(id).one_step_blocker = projected;
+    } else {
         add_blocking_clause(range, id, bools::mkAndFromLits(projected));
-    // }
+    }
     trace.pop_back();
     return true;
 }
@@ -177,11 +177,11 @@ std::optional<SmtResult> ADCLSat::do_step() {
     if (!trace.empty() && learned_rule_map.contains(trace.back().id)) {
         solver->add(subs(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))));
     }
-    // for (const auto &[id, info] : learned_rule_map) {
-    //     if (info.projection) {
-    //         solver->add(subs(!(*info.projection)) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
-    //     }
-    // }
+    for (const auto &[id, info] : learned_rule_map) {
+        if (info.one_step_blocker) {
+            solver->add(subs(!(*info.one_step_blocker)) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
+        }
+    }
     switch (solver->check()) {
         case SmtResult::Unknown:
             return SmtResult::Unknown;

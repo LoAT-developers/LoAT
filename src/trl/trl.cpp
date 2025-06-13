@@ -86,21 +86,21 @@ bool TRL::handle_loop(const Range &range) {
         });
         projected = *Preprocess::preprocessFormula(projected, theory::isTempVar);
         ti = projected;
-        id = add_learned_clause(range, ti);
+        id = add_learned_clause(range, loop, ti);
     } else {
         ti = *Preprocess::preprocessFormula(ti, theory::isTempVar);
-        id = add_learned_clause(range, ti);
+        id = add_learned_clause(range, loop, ti);
         model.put<Arith>(n, 1);
         projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
             return x == Var(n);
         });
     }
     step = step || encode_transition(bools::mkAndFromLits(ti), id);
-    // if (range.length() == 1) {
-    //     projections.emplace_back(id, projected);
-    // } else {
+    if (range.length() == 1) {
+        learned_rule_map.at(id).one_step_blocker = projected;
+    } else {
         add_blocking_clause(range, id, bools::mkAndFromLits(projected));
-    // }
+    }
     return true;
 }
 
@@ -135,11 +135,11 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
 void TRL::add_blocking_clauses() {
     const auto s1{renaming_central->get_subs(depth, 1)};
     const auto s2{renaming_central->get_subs(depth + 1, 1)};
-    // for (const auto &[id, info] : learned_rule_map) {
-    //     if (info.projection) {
-    //         solver->add(s1(!(*info.projection)) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
-    //     }
-    // }
+    for (const auto &[id, info] : learned_rule_map) {
+        if (info.one_step_blocker) {
+            solver->add(s1(!(*info.one_step_blocker)) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
+        }
+    }
     const auto it{blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
         for (const auto &[_, b] : it->second) {

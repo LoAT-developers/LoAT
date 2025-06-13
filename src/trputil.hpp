@@ -39,10 +39,11 @@ protected:
     struct LearnedTransInfo {
 
         const std::vector<std::pair<Int, Conjunction>> loop;
-        const Conjunction lits;
+        const Conjunction projection;
+        std::optional<Conjunction> one_step_blocker;
         std::optional<Bools::Expr> accel {};
 
-        LearnedTransInfo(const std::vector<std::pair<Int, Conjunction>> &loop, const Conjunction &lits);
+        LearnedTransInfo(const std::vector<std::pair<Int, Conjunction>> &loop, const Conjunction &projection);
 
     };
 
@@ -67,7 +68,7 @@ protected:
 
     std::pair<Conjunction, Model> compress(const Range &range);
     Bools::Expr encode_transition(const Bools::Expr idx, const Int &id);
-    Int add_learned_clause(const Range &range, const Conjunction &accel);
+    Int add_learned_clause(const Range &range, const Conjunction& projection, const Conjunction &accel);
     Conjunction specialize(const Conjunction &e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Conjunction, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
     std::optional<Arith::Expr> prove_term(const Conjunction &loop, const Model &model);
