@@ -183,7 +183,6 @@ public:
     Model composeBackwards(const Subs &subs) const;
     Model composeBackwards(const Renaming &subs) const;
     Conjunction syntacticImplicant(const Bools::Expr e) const;
-    Bools::Expr specialize(const Bools::Expr e) const;
 
 private:
 

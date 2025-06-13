@@ -54,9 +54,11 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 
 TRPUtil::LearnedTransInfo::LearnedTransInfo(
     const std::vector<std::pair<Int, Conjunction>> &loop,
-    const Conjunction &projection):
+    const Conjunction &projection,
+    const Model &model):
     loop(loop),
-    projection(projection) {}
+    projection(projection),
+    model(model) {}
 
 TRPUtil::TRPUtil(
     const ITSPtr its,
@@ -156,7 +158,7 @@ Bools::Expr TRPUtil::encode_transition(const Bools::Expr t, const Int &id) {
     return t && theory::mkEq(trace_var, arith::mkConst(id));
 }
 
-Int TRPUtil::add_learned_clause(const Range &range, const Conjunction &projection, const Conjunction &accel) {
+Int TRPUtil::add_learned_clause(const Range &range, const Conjunction &projection, const Model &model, const Conjunction &accel) {
     if (Config::Analysis::log) {
         std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
     }
@@ -168,7 +170,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Conjunction &projectio
         loop.emplace_back(e.id, e.implicant);
     }
     rule_map.emplace(id, bools::mkAndFromLits(accel));
-    learned_rule_map.emplace(id, LearnedTransInfo(loop, projection));
+    learned_rule_map.emplace(id, LearnedTransInfo(loop, projection, model));
     return id;
 }
 

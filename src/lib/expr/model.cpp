@@ -124,16 +124,6 @@ Conjunction Model::syntacticImplicant(const Bools::Expr e) const {
     return res;
 }
 
-Bools::Expr Model::specialize(const Bools::Expr e) const {
-    return e->map([&](const auto &lit) {
-        if (partialEval(lit) == TVL::FALSE) {
-            return bot();
-        } else {
-            return bools::mkLit(lit);
-        }
-    });
-}
-
 std::ostream& operator<<(std::ostream &s, const Model &e) {
     return s << e.toSubs();
 }

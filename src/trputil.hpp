@@ -38,12 +38,18 @@ protected:
 
     struct LearnedTransInfo {
 
+        // The loop that was used to learn this transition. Needed to construct counterexamples.
         const std::vector<std::pair<Int, Conjunction>> loop;
+        // The projection of the loop above that was used to learn this transition.
         const Conjunction projection;
+        const Model model;
+        // If the loop above had length 1, then this is the projection of the learned transition for the case n=1.
+        // Used as blocking clause in every step.
         std::optional<Conjunction> one_step_blocker;
+        // The result of accelerating the loop above. Needed to construct counterexamples.
         std::optional<Bools::Expr> accel {};
 
-        LearnedTransInfo(const std::vector<std::pair<Int, Conjunction>> &loop, const Conjunction &projection);
+        LearnedTransInfo(const std::vector<std::pair<Int, Conjunction>> &loop, const Conjunction &projection, const Model &model);
 
     };
 
@@ -68,7 +74,7 @@ protected:
 
     std::pair<Conjunction, Model> compress(const Range &range);
     Bools::Expr encode_transition(const Bools::Expr idx, const Int &id);
-    Int add_learned_clause(const Range &range, const Conjunction& projection, const Conjunction &accel);
+    Int add_learned_clause(const Range &range, const Conjunction& projection, const Model &model, const Conjunction &accel);
     Conjunction specialize(const Conjunction &e, const Model &m, const std::function<bool(const Var&)> &eliminate);
     std::pair<Conjunction, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
     std::optional<Arith::Expr> prove_term(const Conjunction &loop, const Model &model);

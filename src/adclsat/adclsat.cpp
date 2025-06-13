@@ -95,10 +95,10 @@ bool ADCLSat::handle_loop(const unsigned start) {
         });
         projected = *Preprocess::preprocessFormula(projected, theory::isTempVar);
         ti = projected;
-        id = add_learned_clause(range, loop, ti);
+        id = add_learned_clause(range, loop, model, ti);
     } else {
         ti = *Preprocess::preprocessFormula(ti, theory::isTempVar);
-        id = add_learned_clause(range, loop, ti);
+        id = add_learned_clause(range, loop, model, ti);
         model.put<Arith>(n, 1);
         projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
             return x == Var(n);
