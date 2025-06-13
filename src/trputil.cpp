@@ -173,7 +173,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Conjunction &accel) {
         const auto &e {trace.at(i)};
         loop.emplace_back(e.id, e.implicant);
     }
-    rule_map.emplace(id, top());
+    rule_map.emplace(id, bools::mkAndFromLits(accel));
     learned_rule_map.emplace(id, LearnedTransInfo(loop, accel));
     return id;
 }

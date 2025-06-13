@@ -25,101 +25,6 @@ TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, confi
     step = bools::mkOr(steps);
 }
 
-std::pair<TVL, Model> TRL::concretize(const Bools::Expr side_condition, const std::vector<std::pair<Int, Conjunction>>& trace) {
-    Yices solver {QF_LA};
-    const auto &ren{renaming_central->get_subs(0, trace.size())};
-    solver.add(ren(side_condition));
-    std::unordered_map<Bools::Expr, std::pair<Int, Lit>> back_map;
-    BoolExprSet assumptions;
-    unsigned i {0};
-    const auto check = [&]() -> TVL {
-        switch (solver.checkWithAssumptions(assumptions)) {
-            case SmtResult::Unknown: {
-                return TVL::UNKNOWN;
-            }
-            case SmtResult::Sat: {
-                return TVL::TRUE;
-            }
-            case SmtResult::Unsat: {
-                const auto core {solver.unsatCore()};
-                std::unordered_map<Int, LitSet> refinement;
-                for (const auto &c: core) {
-                    const auto &[id, lit]{back_map.at(c)};
-                    auto [it, changed]{refinement.emplace(id, LitSet{lit})};
-                    if (!changed) {
-                        it->second.insert(lit);
-                    }
-                }
-                for (const auto &[id, lits]: refinement) {
-                    concretize(!bools::mkAndFromLits(lits), learned_rule_map.at(id).loop);
-                }
-                for (const auto &[id, lits]: refinement) {
-                    auto &t {rule_map.at(id)};
-                    t = t && bools::mkAndFromLits(lits);
-                    for (auto &[_,b]: blocked_per_step) {
-                        b.erase(id);
-                    }
-                }
-                return TVL::FALSE;
-            }
-        }
-    };
-    for (const auto &[id,imp]: trace) {
-        const auto &ren {renaming_central->get_subs(i, 1)};
-        {
-            const auto it{learned_rule_map.find(id)};
-            if (it != learned_rule_map.end()) {
-                for (const auto &lit : it->second.lits) {
-                    const auto expr{ren(bools::mkLit(lit))};
-                    assumptions.insert(expr);
-                    back_map.emplace(expr, std::pair{id, lit});
-                }
-            } else {
-                solver.add(ren(bools::mkAndFromLits(imp)));
-            }
-        }
-        {
-            const auto it{blocked_per_step.find(i)};
-            if (it != blocked_per_step.end()) {
-                for (const auto &[_, b] : it->second) {
-                    solver.add(b);
-                }
-            }
-        }
-        ++i;
-        const auto res {check()};
-        if (res != TVL::TRUE) {
-            return {res, Model{}};
-        }
-    }
-    return {TVL::TRUE, solver.model()};
-}
-
-TVL TRL::concretize_and_adjust_state(const Bools::Expr side_condition, const std::vector<std::pair<Int, Conjunction>>& trace) {
-    const auto &[res,model] {concretize(side_condition, trace)};
-    switch (res) {
-        case TVL::UNKNOWN: {
-            break;
-        }
-        case TVL::TRUE: {
-            this->model = model;
-            break;
-        }
-        case TVL::FALSE: {
-            while (depth > 0) {
-                pop();
-            }
-            BoolExprSet steps;
-            for (const auto &[id, t] : rule_map) {
-                steps.insert(encode_transition(t, id));
-            }
-            step = bools::mkOr(steps);
-            break;
-        }
-    }
-    return res;
-}
-
 std::optional<Range> TRL::has_looping_infix() {
     for (unsigned i = 0; i < trace.size(); ++i) {
         for (unsigned start = 0; start + i < trace.size(); ++start) {
@@ -173,17 +78,28 @@ bool TRL::handle_loop(const Range &range) {
     }
 
     Int id;
+    Conjunction projected;
     const auto n {trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
-        ti = qe::real_qe(ti, model, theory::isTempVar);
+        projected = qe::real_qe(ti, model, [&](const auto &x) {
+            return x == Var(n);
+        });
+        projected = *Preprocess::preprocessFormula(projected, theory::isTempVar);
+        ti = projected;
+        id = add_learned_clause(range, ti);
+    } else {
+        ti = *Preprocess::preprocessFormula(ti, theory::isTempVar);
+        id = add_learned_clause(range, ti);
+        model.put<Arith>(n, 1);
+        projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
+            return x == Var(n);
+        });
     }
-    ti = Preprocess::preprocessFormula(ti, theory::isTempVar).value_or(ti);
-    id = add_learned_clause(range, ti);
-    step = step || encode_transition(top(), id);
+    step = step || encode_transition(bools::mkAndFromLits(ti), id);
     // if (range.length() == 1) {
-    //     learned_rule_map.at(id).projection = projected;
+    //     projections.emplace_back(id, projected);
     // } else {
-    add_blocking_clause(range, id, top());
+        add_blocking_clause(range, id, bools::mkAndFromLits(projected));
     // }
     return true;
 }
@@ -347,25 +263,10 @@ std::optional<SmtResult> TRL::do_step() {
             if (depth == 0) {
                 return SmtResult::Unsat;
             }
-            if (Config::Analysis::log) {
-                std::cout << "STARTING CONCRETIZATION" << std::endl;
-            }
-            model = solver->model();
-            solver->pop();
-            build_trace();
-            std::vector<std::pair<Int, Conjunction>> trace_for_concretization;
-            for (const auto &t: trace) {
-                trace_for_concretization.emplace_back(t.id, t.implicant);
-            }
-            switch (concretize_and_adjust_state(t.init() && t.pre_to_post()(t.err()), trace_for_concretization)) {
-                case TVL::UNKNOWN: {
-                    return SmtResult::Unknown;
-                }
-                case TVL::FALSE: {
-                    break;
-                }
-                case TVL::TRUE: {
-                    return SmtResult::Unknown;
+            return SmtResult::Unknown;
+            // model = solver->model();
+            // solver->pop();
+            // build_trace();
                     // std::cout << "STARTING REFINEMENT" << std::endl;
                     // const auto [res, refinement] {refine()};
                     // switch (res) {
@@ -397,10 +298,7 @@ std::optional<SmtResult> TRL::do_step() {
                     //         return SmtResult::Unsat;
                     //     }
                     // }
-                    // break;
-                }
-            }
-            break;
+            // break;
         }
         case SmtResult::Unsat: {
             // pop error states
@@ -429,25 +327,11 @@ std::optional<SmtResult> TRL::do_step() {
                         if (Config::Analysis::log) {
                             std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                         }
-                        std::vector<std::pair<Int, Conjunction>> trace_for_concretization;
-                        for (unsigned i = 0; i <= range->end(); ++i) {
-                            trace_for_concretization.emplace_back(trace[i].id, trace[i].implicant);
+                        if (!handle_loop(*range)) {
+                            return SmtResult::Unknown;
                         }
-                        switch (concretize_and_adjust_state(top(), trace_for_concretization)) {
-                            case TVL::UNKNOWN: {
-                                return SmtResult::Unknown;
-                            }
-                            case TVL::FALSE: {
-                                break;
-                            }
-                            case TVL::TRUE: {
-                                if (!handle_loop(*range)) {
-                                    return SmtResult::Unknown;
-                                }
-                                while (depth > range->start()) {
-                                    pop();
-                                }
-                            }
+                        while (depth > range->start()) {
+                            pop();
                         }
                     }
                     if (Config::Analysis::log) {
