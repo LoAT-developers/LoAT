@@ -48,16 +48,18 @@ void ITSProblem::removeRule(RulePtr transition) {
 }
 
 RulePtr ITSProblem::addRule(const RulePtr rule, const LocationIdx start, const LocationIdx target, const linked_hash_set<RulePtr> &preds, const linked_hash_set<RulePtr> &succs) {
-    const auto idx {*rules.emplace(rule).first};
-    startAndTargetLocations.emplace(idx, std::pair<LocationIdx, LocationIdx>(start, target));
-    graph.addNode(idx, preds, succs, start == target);
-    if (start == initialLocation) {
-        graph.markRoot(idx);
+    const auto [idx, changed] {rules.emplace(rule)};
+    if (changed) {
+        startAndTargetLocations.emplace(*idx, std::pair<LocationIdx, LocationIdx>(start, target));
+        graph.addNode(*idx, preds, succs, start == target);
+        if (start == initialLocation) {
+            graph.markRoot(*idx);
+        }
+        if (target == sink) {
+            graph.markSink(*idx);
+        }
     }
-    if (target == sink) {
-        graph.markSink(idx);
-    }
-    return idx;
+    return *idx;
 }
 
 void ITSProblem::addRule(const RulePtr rule, const RulePtr same_preds, const RulePtr same_succs) {
