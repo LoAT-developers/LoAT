@@ -147,7 +147,7 @@ std::string getType(sexpresso::Sexp &exp, SMTLibParsingState &state) {
             }
             throw std::invalid_argument("unknown symbol " + name);
         }
-    } else if (const auto name = child[0].str(); name == "and" || name == "or" || name == "not" || name == "<" || name == "<=" || name == ">" || name == ">=" || name == "=" || name == "distinct") {
+    } else if (const auto name = child[0].str(); name == "and" || name == "or" || name == "not" || name == "<" || name == "<=" || name == ">" || name == ">=" || name == "=" || name == "distinct" || name == "exists") {
         return "Bool";
     } else {
         return "Int";
@@ -203,11 +203,26 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         state.bindings.pop_back();
         return res;
     } else if (f == "exists") {
-        const auto res {parseBoolExpr(exp[2], state)};
         const auto num_vars {exp[1].childCount()};
+        std::optional<Var> old_binding;
         for (unsigned i = 0; i < num_vars; ++i) {
             const auto var_name {exp[1][i][0].str()};
-            assert(state.vars.find(var_name) != state.vars.end());
+            const auto var_type {exp[1][i][1].str()};
+            const auto it {state.vars.find(var_name)};
+            if (it != state.vars.end()) {
+                old_binding = it->second;
+                state.vars.erase(var_name);
+            }
+            if (var_type == "Int") {
+                state.vars.emplace(var_name, ArithVar::next());
+            } else {
+                assert(var_type == "Bool");
+                state.vars.emplace(var_name, BoolVar::next());
+            }
+        }
+        const auto res {parseBoolExpr(exp[2], state)};
+        for (unsigned i = 0; i < num_vars; ++i) {
+            const auto var_name {exp[1][i][0].str()};
             state.vars.erase(var_name);
         }
         return res;
