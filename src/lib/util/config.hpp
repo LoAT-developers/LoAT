@@ -70,4 +70,6 @@ namespace Config {
         extern bool non_linear;
     }
 
+    bool validate();
+
 }

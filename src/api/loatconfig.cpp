@@ -144,6 +144,10 @@ void LoatConfig::applyToGlobalConfig() const
     trp.recurrent_pseudo_divs = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::TRP_RecurrentPseudoDivs));
     trp.recurrent_pseudo_bounds = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::TRP_RecurrentPseudoBounds));
     trp.recurrent_bounds = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::TRP_RecurrentBounds));
+
+    if (!Config::validate()) {
+        throw std::invalid_argument("Invalid configuration");
+    }
 }
 
 // Getter for initial config

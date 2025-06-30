@@ -80,4 +80,55 @@ namespace Config {
         bool non_linear {true};
     }
 
+    bool validate() {
+        switch (Analysis::mode) {
+            case Analysis::Mode::Complexity: {
+                if (Analysis::engine != Analysis::ADCL) {
+                    std::cerr << "complexity analysis is only supported by the engine adcl" << std::endl;
+                    return false;
+                }
+                switch (Analysis::dir) {
+                    case Analysis::Interleaved: {
+                        std::cerr << "interleaved complexity analysis does not make sense" << std::endl;
+                        return false;
+                    }
+                    case Analysis::Backward: {
+                        std::cerr << "warning: analyzing the backward-complexity -- is this intended?" << std::endl;
+                    }
+                    default: break;
+                }
+                if (Input::format == Input::Horn) {
+                    std::cerr << "warning: analyzing the complexity of CHCs -- is this intended?" << std::endl;
+                }
+                return true;
+            }
+            case Analysis::Mode::Termination: {
+                switch (Analysis::engine) {
+                    case Analysis::BMC:
+                    case Analysis::KIND:
+                    case Analysis::ADCLSAT: {
+                        std::cerr << "termination analysis is not supported by the given engine" << std::endl;
+                        return false;
+                    }
+                    default: break;
+                }
+                switch (Analysis::dir) {
+                    case Analysis::Interleaved: {
+                        std::cerr << "interleaved termination analysis does not make sense" << std::endl;
+                        return false;
+                    }
+                    case Analysis::Backward: {
+                        std::cerr << "warning: analyzing backward-termination -- is this intended?" << std::endl;
+                    }
+                    default: break;
+                }
+                if (Input::format == Input::Horn) {
+                    std::cerr << "warning: analyzing termination of CHCs -- is this intended?" << std::endl;
+                }
+                return true;
+            }
+            default: return true;
+        }
+    }
+
 }

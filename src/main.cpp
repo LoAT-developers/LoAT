@@ -261,10 +261,13 @@ int main(int argc, char *argv[]) {
     // Parse and interpret command line flags
     parseFlags(argc, argv);
 
-    // Start parsing
     if (filename.empty()) {
         std::cerr << "Error: missing filename" << std::endl;
         return 1;
+    }
+
+    if (!Config::validate()) {
+        return -1;
     }
 
     std::optional<ITSPtr> its{};
