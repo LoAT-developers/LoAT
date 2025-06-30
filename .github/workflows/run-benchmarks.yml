@@ -262,7 +262,7 @@ jobs:
           bench=()
           if [ ${{ inputs.benchmarks }} = "tpdb-complexity" ]; then
             readarray -d '' bench < <(find * -name "*.koat" -print0)
-          elif [[ ${{ inputs.benchmarks }} =~ "tpdb-ari-*" ]]; then
+          elif [[ ${{ inputs.benchmarks }} =~ tpdb-ari-* ]]; then
             readarray -d '' bench < <(find * -name "*.ari" -print0)
           else
             readarray -d '' bench < <(find * -name "*.smt2" -print0)
