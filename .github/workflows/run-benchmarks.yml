@@ -55,6 +55,8 @@ on:
         - chc22-lia-lin
         - chc23-lia-lin
         - chc24-lia-lin
+        - tpdb-ari-termination
+        - tpdb-ari-complexity
         - tpdb-termination
         - tpdb-complexity
       build:
@@ -99,6 +101,12 @@ jobs:
 
       - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
         uses: ./actions/.github/actions/chc22-lia-lin
+
+      - if: ${{ inputs.benchmarks == 'tpdb-ari-termination' }}
+        uses: ./actions/.github/actions/tpdb-ari-termination
+
+      - if: ${{ inputs.benchmarks == 'tpdb-ari-complexity' }}
+        uses: ./actions/.github/actions/tpdb-ari-complexity
 
       - if: ${{ inputs.benchmarks == 'tpdb-termination' }}
         uses: ./actions/.github/actions/tpdb-termination
@@ -248,6 +256,8 @@ jobs:
           bench=()
           if [ ${{ inputs.benchmarks }} = "tpdb-complexity" ]; then
             readarray -d '' bench < <(find * -name "*.koat" -print0)
+          else if [[  ${{ inputs.benchmarks }} =~ "tpdb-ari-*"  ]]
+            readarray -d '' bench < <(find * -name "*.ari" -print0)
           else
             readarray -d '' bench < <(find * -name "*.smt2" -print0)
           fi
