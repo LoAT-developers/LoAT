@@ -35,7 +35,7 @@ ABMC::ABMC(ITSPtr its):
 
     std::vector<Bools::Expr> steps;
     for (const auto &r: its->getAllTransitions()) {
-        if (its->isInitialTransition(r) || its->isSinkTransition(r)) {
+        if ((its->isInitialTransition(r) && !its->isSimpleLoop(r)) || its->isSinkTransition(r)) {
             continue;
         }
         steps.push_back(encode_transition(r));
