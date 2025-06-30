@@ -23,7 +23,7 @@ LoopComplexity LoopComplexity::compute(const RulePtr rule) {
             if (coeff) {
                 const auto c{(*coeff)->isRational()};
                 if (c && ***c < 0) {
-                    ++res.negated;
+                    ++res.negated_int;
                 }
             }
         }
@@ -32,14 +32,18 @@ LoopComplexity LoopComplexity::compute(const RulePtr rule) {
         const auto lits{v->lits()};
         const auto lit{bools::mk(x)};
         if (lits.contains(!lit) && !lits.contains(lit)) {
-            ++res.negated;
+            ++res.negated_bool;
         }
     }
     return res;
 }
 
 std::strong_ordering operator<=>(const LoopComplexity &c1, const LoopComplexity &c2) {
-    auto cmp{c1.non_recursive <=> c2.non_recursive};
+    auto cmp{c1.negated_int <=> c2.negated_int};
+    if (cmp != std::strong_ordering::equal) {
+        return cmp;
+    }
+    cmp = c1.non_recursive <=> c2.non_recursive;
     if (cmp != std::strong_ordering::equal) {
         return cmp;
     }
@@ -51,7 +55,7 @@ std::strong_ordering operator<=>(const LoopComplexity &c1, const LoopComplexity 
     if (cmp != std::strong_ordering::equal) {
         return cmp;
     }
-    return c1.negated <=> c2.negated;
+    return c1.negated_bool <=> c2.negated_bool;
 }
 
 std::strong_ordering LoopComplexity::compare(const RulePtr r1, const RulePtr r2) {
@@ -61,7 +65,8 @@ std::strong_ordering LoopComplexity::compare(const RulePtr r1, const RulePtr r2)
 std::ostream &operator<<(std::ostream &s, const LoopComplexity &c) {
     return std::cout
            << "{"
-           << "negated: " << c.negated
+           << "negated int: " << c.negated_int
+           << ", negated bool: " << c.negated_bool
            << ", non-recursive: " << c.non_recursive
            << ", foreign vars: " << c.foreign_vars
            << ", tmp vars: " << c.tmp_vars
