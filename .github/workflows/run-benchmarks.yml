@@ -17,12 +17,14 @@ on:
         - loat_adcl_sat
         - loat_unsat
         - loat_abmc_interleaved
+        - loat_ari_nonterm
         - loat_nonterm
         - loat_nonterm_abmc
         - loat_term_int_mbp
         - loat_term_real_mbp
         - loat_term_real_qe
         - loat_term_adcl_sat
+        - loat_ari_lb
         - loat_lb
         - loat_lb_z3
         - loat_bmc
@@ -172,6 +174,8 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc --direction interleaved "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
+            elif [ ${{ inputs.config }} = "loat_ari_nonterm" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format ari --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_nonterm_abmc" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
             elif [ ${{ inputs.config }} = "loat_term_real_qe" ]; then
@@ -184,6 +188,8 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine trl --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::mbp_kind real --trl::recurrent_pseudo_bounds false "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
+            elif [ ${{ inputs.config }} = "loat_ari_lb" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format ari --engine adcl "${filename}")
             elif [ ${{ inputs.config }} = "loat_lb_z3" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl --smt z3 "${filename}")
             elif [ ${{ inputs.config }} = "loat_bmc" ]; then
