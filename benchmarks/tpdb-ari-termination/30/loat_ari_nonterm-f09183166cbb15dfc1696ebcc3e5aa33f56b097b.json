@@ -1,9 +1,0 @@
-{
-	"benchmarks": "tpdb-ari-termination",
-	"config": "loat_ari_nonterm",
-	"branch": "master",
-	"version": "f09183166cbb15dfc1696ebcc3e5aa33f56b097b",
-	"timeout": "30",
-	"results": [
-	]
-}
