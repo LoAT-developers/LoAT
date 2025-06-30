@@ -1,0 +1,15 @@
+name: 'TPDB ARI Termination'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/checkout@v4
+      with:
+        repository: TermCOMP/TPDB-ARI
+        sparse-checkout: Integer_Transition_Systems
+        path: tpdb-ari
+
+    - run: |
+        mv tpdb-ari/Integer_Transition_Systems benchmarks
+      shell: bash
+
