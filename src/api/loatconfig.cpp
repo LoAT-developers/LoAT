@@ -69,6 +69,10 @@ namespace
         {
         case LoatConfig::InitialConfig::Direction::Forward:
             return Config::Analysis::Direction::Forward;
+        case LoatConfig::InitialConfig::Direction::Backward:
+            return Config::Analysis::Direction::Backward;
+        case LoatConfig::InitialConfig::Direction::Interleaved:
+            return Config::Analysis::Direction::Interleaved;
         default:
             throw std::invalid_argument("Invalid Direction");
         }

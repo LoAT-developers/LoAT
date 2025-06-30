@@ -58,6 +58,35 @@ TEST(InitialConfigTest, ThrowsOnInvalidConfig)
         std::invalid_argument);
 }
 
+// regression test for Github issue #10 -- the combination of Termination and Interleaved is invalid
+TEST(InitialConfigTest, ThrowsOnInvalidConfig2)
+{
+
+    EXPECT_THROW(
+        LoatConfig(LoatConfig::InitialConfig(
+            LoatConfig::InitialConfig::Engine::ADCL,
+            LoatConfig::InitialConfig::Mode::Termination,
+            LoatConfig::InitialConfig::SmtSolver::Yices,
+            LoatConfig::InitialConfig::Direction::Interleaved,
+            LoatConfig::InitialConfig::MbpKind::IntMbp,
+            true)).applyToGlobalConfig(),
+        std::invalid_argument);
+}
+
+// make sure that the test before throws for the right reasons
+TEST(InitialConfigTest, DoesNotThrowOnValidConfig)
+{
+
+    EXPECT_NO_THROW(
+        LoatConfig(LoatConfig::InitialConfig(
+            LoatConfig::InitialConfig::Engine::ADCL,
+            LoatConfig::InitialConfig::Mode::Safety,
+            LoatConfig::InitialConfig::SmtSolver::Yices,
+            LoatConfig::InitialConfig::Direction::Interleaved,
+            LoatConfig::InitialConfig::MbpKind::IntMbp,
+            true)).applyToGlobalConfig());
+}
+
 TEST(DynamicConfigTest, SetAndRetrieveViaGet)
 {
     LoatConfig::DynamicConfig dyn;

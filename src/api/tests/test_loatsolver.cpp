@@ -215,6 +215,22 @@ TEST(TerminationEngineTest, ABMC_DetectsNonTerminationCorrectly)
     EXPECT_EQ(result, LoatResult::UNSAT);
 }
 
+// regression test for Github issue #9
+TEST(TerminationEngineTest, ABMC_TerminationInitialLocationWithLoop)
+{
+    LoatConfig config(LoatConfig::InitialConfig(
+        Engine::ABMC,
+        LoatConfig::InitialConfig::Mode::Termination,
+        LoatConfig::InitialConfig::SmtSolver::Z3,
+        LoatConfig::InitialConfig::Direction::Forward,
+        LoatConfig::InitialConfig::MbpKind::IntMbp,
+        false));
+    LoatSolver solver(config);
+    solver.setStartLocation(LoatLocation("q0"));
+    solver.add(LoatTransition(LoatLocation("q0"), LoatLocation("q0"), LoatIntExpression::mkConst(1) == LoatIntExpression::mkConst(1)));
+    EXPECT_EQ(solver.check(), LoatResult::UNSAT);
+}
+
 // Different SMT Solver
 using SmtSolver = LoatConfig::InitialConfig::SmtSolver;
 

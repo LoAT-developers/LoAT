@@ -74,7 +74,9 @@ public:
         // Direction of analysis (at the moment only forward available)
         enum Direction
         {
-            Forward
+            Forward,
+            Backward,
+            Interleaved
         };
 
         // Solver-level tuning parameter.
