@@ -11,6 +11,7 @@ void ARIParser::run(const std::string &filename) {
     sexpresso::Sexp sexp = sexpresso::parse(content);
     unsigned max_int_arity {0};
     unsigned max_bool_arity {0};
+    SMTLibParsingState state;
     for (auto &ex: sexp.arguments()) {
         if (ex[0].isString("entrypoint")) {
             const auto entry {its->getOrAddLocation(ex[1].str())};
@@ -36,19 +37,17 @@ void ARIParser::run(const std::string &filename) {
             max_int_arity = std::max(max_int_arity, int_arity);
             max_bool_arity = std::max(max_bool_arity, bool_arity);
         } else if (ex[0].isString("rule")) {
-            if (max_int_arity != arith_vars.size()) {
+            if (max_int_arity != state.arith_vars.size()) {
                 for (unsigned i = 0; i < max_int_arity; ++i) {
-                    arith_vars.emplace_back(ArithVar::nextProgVar());
+                    state.arith_vars.emplace_back(ArithVar::nextProgVar());
                 }
             }
-            if (max_bool_arity != bool_vars.size()) {
+            if (max_bool_arity != state.bool_vars.size()) {
                 for (unsigned i = 0; i < max_bool_arity; ++i) {
-                    bool_vars.emplace_back(BoolVar::nextProgVar());
+                    state.bool_vars.emplace_back(BoolVar::nextProgVar());
                 }
             }
-            unsigned next_int_arg {0};
-            unsigned next_bool_arg {0};
-            SMTLibParsingState state;
+
             auto lhs {ex[1]};
             auto rhs {ex[2]};
             const auto lhs_loc {lhs[0].str()};
@@ -59,17 +58,17 @@ void ARIParser::run(const std::string &filename) {
             for (unsigned i = 1; i < child_count; ++i) {
                 switch (type.at(i-1)) {
                     case theory::Type::Int: {
-                        const auto arg {arith_vars[next_int_arg]};
+                        const auto arg {state.arith_vars[state.next_arith_var]};
                         state.vars.emplace(lhs[i].str(), arg);
                         update.put<Arith>(arg, parseArithExpr(rhs[i], state));
-                        ++next_int_arg;
+                        ++state.next_arith_var;
                         break;
                     }
                     case theory::Type::Bool: {
-                        const auto arg {bool_vars[next_bool_arg]};
+                        const auto arg {state.bool_vars[state.next_bool_var]};
                         state.vars.emplace(lhs[i].str(), arg);
                         update.put<Bools>(arg, parseBoolExpr(rhs[i], state));
-                        ++next_bool_arg;
+                        ++state.next_bool_var;
                         break;
                     }
                 }
@@ -83,6 +82,7 @@ void ARIParser::run(const std::string &filename) {
             guard.emplace_back(bools::mkLit(arith::mkEq(its->getLocVar(), arith::mkConst(lhs_idx))));
             update.put<Arith>(its->getLocVar(), arith::mkConst(rhs_idx));
             its->addRule(Rule::mk(bools::mkAnd(guard), update), lhs_idx);
+            state.clear();
         }
     }
 }

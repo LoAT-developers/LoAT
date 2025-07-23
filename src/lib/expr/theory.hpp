@@ -81,6 +81,7 @@ sexpresso::Sexp to_smtlib(const Expr &e);
 void simplifyAnd(LitSet&);
 Type to_type(const Expr &x);
 Type to_type(const Var &x);
+Type to_type(const std::string &x);
 std::optional<Var> is_var(const Expr &x);
 std::string abbrev(const Type t);
 

@@ -1,5 +1,7 @@
 #include "theory.hpp"
 
+#include <boost/algorithm/string.hpp>
+
 const Bools::Expr top() {
     return BoolExpr::top();
 }
@@ -60,8 +62,8 @@ Expr toExpr(const Var &var) {
 
 Expr toExpr(const Const &c) {
     return TheTheory::constToExpr(c);
-}
 
+}
 theory::Type to_type(const Expr &x) {
     return std::visit(
         Overload{
@@ -84,6 +86,16 @@ theory::Type to_type(const Var &x) {
                 return Type::Bool;
             }},
         x);
+}
+
+theory::Type to_type(const std::string &x) {
+    if (boost::iequals(x, "int")) {
+        return theory::Type::Int;
+    } else if (boost::iequals(x, "bool")) {
+        return theory::Type::Bool;
+    } else {
+        throw std::invalid_argument("unknown type");
+    }
 }
 
 std::optional<Var> is_var(const Expr &x) {
