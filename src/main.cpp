@@ -214,7 +214,7 @@ void parseFlags(int argc, char *argv[]) {
             print_version();
             exit(0);
         } else if (strcmp("--name", argv[arg]) == 0) {
-            std::cout << "LoAT  " << Version::GIT_SHA;
+            std::cout << "LoAT  " << Version::GIT_SHA.substr(0, 6);
             exit(0);
         } else if (std::string(argv[arg]).find("--timeout", 0) == 0) {
             // ignore --timeout at TermComp
