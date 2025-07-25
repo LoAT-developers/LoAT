@@ -26,10 +26,20 @@ template <ITheory T>
 using ArrayVarPtr = ptr<ArrayVar<T>>;
 
 template <ITheory T>
-class Array {};
+class Array {
+
+    public:
+
+    virtual std::optional<ArrayVarPtr<T>> isVar() const {
+        return std::nullopt;
+    }
+
+    sexpresso::Sexp to_smtlib() const;
+
+};
 
 template <ITheory T>
-class ArrayVar: public Array<T> {
+class ArrayVar: public Array<T>, std::enable_shared_from_this<ArrayVar<T>> {
 
     using Self = ArrayVarPtr<T>;
 
@@ -41,13 +51,21 @@ public:
     static Self next();
     static Self nextProgVar();
     static Self postVar(const Self);
-    std::string get_name() const;
+    std::string getName() const;
+    bool isTempVar() const;
+    bool isProgVar() const;
+    bool isPostVar() const;
+    static ArrayVarPtr<T> progVar(const ArrayVarPtr<T>);
+
+    std::optional<ArrayVarPtr<T>> isVar() const override {
+        return cpp::assume_not_null(this->shared_from_this());
+    }
 
 };
 
 template <ITheory T>
 std::ostream& operator<<(std::ostream &s, const ArrayVarPtr<T> a) {
-    return s << a->get_name();
+    return s << a->getName();
 }
 
 template <ITheory T>

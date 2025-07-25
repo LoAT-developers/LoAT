@@ -28,6 +28,8 @@ public:
     virtual bool isTriviallyTrue() const = 0;
     virtual bool isPoly() const = 0;
     virtual bool isLinear() const = 0;
+    virtual sexpresso::Sexp to_smtlib() const = 0;
+    virtual std::size_t hash() const = 0;
 
 };
 

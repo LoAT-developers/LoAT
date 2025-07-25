@@ -19,7 +19,13 @@ class BoolJunction;
 class BoolExpr;
 class Renaming;
 
-using TheTheory = Theory<Arith, Bools, Arrays<Arith>>;
+using TheTheory = Theory<Arith, Arrays<Arith>, Bools>;
+
+template <ITheory T1, ITheory T2>
+struct depends_on {
+    static constexpr value = std::same_as<T1, T2> || std::same_as<Arrays<T1>, T2> || std::same_as<T1, Bools>;
+};
+
 using Var = typename TheTheory::Var;
 using Lit = typename TheTheory::Lit;
 using VarSet = VariantSet<Arith::Var, Bools::Var, Arrays<Arith>::Var>;

@@ -60,30 +60,40 @@ Expr toExpr(const Var &var) {
     return TheTheory::varToExpr(var);
 }
 
-Expr toExpr(const Const &c) {
-    return TheTheory::constToExpr(c);
+std::ostream& operator<<(std::ostream &s, const theory::Type e) {
+    switch (e) {
+        case theory::Type::Bool: {
+            return s << "Bool";
+        }
+        case theory::Type::Int: {
+            return s << "Int";
+        }
+    }
 }
 
 theory::Type to_type(const Expr &x) {
     return std::visit(
         Overload{
-            [&](const Arith::Expr &) {
-                return Types::Int;
+            [](const Arith::Expr &) {
+                return Type::Int;
             },
-            [&](const Bools::Expr &) {
-                return Types::Bool;
+            [](const Bools::Expr &) {
+                return Type::Bool;
+            },
+            [](const Arrays<Arith>::Expr &) {
+                return Type::Int;
             }},
         x);
 }
 
-theory::Types to_type(const Var &x) {
+theory::Type to_type(const Var &x) {
     return std::visit(
         Overload{
             [&](const Arith::Var &) {
-                return Types::Int;
+                return Type::Int;
             },
             [&](const Bools::Var &) {
-                return Types::Bool;
+                return Type::Bool;
             }},
         x);
 }
@@ -179,12 +189,20 @@ Bools theory(const Bools::Var) {
     return bools::t;
 }
 
+Arrays<Arith> theory(const Arrays<Arith>::Var) {
+    return arrays::arith;
+}
+
 Arith theory(const Arith::Expr) {
     return arith::t;
 }
 
 Bools theory(const Bools::Expr) {
     return bools::t;
+}
+
+Arrays<Arith> theory(const Arrays<Arith>::Expr) {
+    return arrays::arith;
 }
 
 template <size_t I = 0>
@@ -335,12 +353,12 @@ std::ostream& operator<<(std::ostream &s, const Lit &e) {
     return s;
 }
 
-std::ostream& theory::operator<<(std::ostream &s, const theory::Types &e) {
+std::ostream& theory::operator<<(std::ostream &s, const theory::Type &e) {
     switch (e) {
-        case theory::Types::Int:
+        case theory::Type::Int:
             s << "Int";
             break;
-        case theory::Types::Bool:
+        case theory::Type::Bool:
             s << "Bool";
             break;
     }

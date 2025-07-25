@@ -47,8 +47,6 @@ Bools::Expr mkLit(const Lit &lit);
 
 namespace theory {
 
-enum class Types {Int, Bool};
-
 std::string getName(const Var &var);
 bool isTempVar(const Var &var);
 bool isProgVar(const Var &var);
@@ -58,15 +56,16 @@ Var next(const Var &var);
 Var postVar(const Var &var);
 Var progVar(const Var &var);
 Expr toExpr(const Var &var);
-Expr toExpr(const Const &var);
 void collectVars(const Expr &expr, VarSet &vars);
 VarSet vars(const Expr &e);
 Bools::Expr mkEq(const Expr &e1, const Expr &e2);
 Bools::Expr mkNeq(const Expr &e1, const Expr &e2);
 Arith theory(const Arith::Var);
 Bools theory(const Bools::Var);
+Arrays<Arith> theory(const Arrays<Arith>::Var);
 Arith theory(const Arith::Expr);
 Bools theory(const Bools::Expr);
+Arrays<Arith> theory(const Arrays<Arith>::Expr);
 bool isLinear(const Lit &lit);
 bool isPoly(const Lit &lit);
 void collectVars(const Lit &lit, VarSet &s);
@@ -107,7 +106,7 @@ constexpr bool is() {
     return std::same_as<std::tuple_element_t<I, Theories>, T>;
 }
 
-std::ostream& operator<<(std::ostream &s, const theory::Types &e);
+std::ostream& operator<<(std::ostream &s, const theory::Type &e);
 
 }
 

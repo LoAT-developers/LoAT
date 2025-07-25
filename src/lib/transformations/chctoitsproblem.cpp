@@ -18,11 +18,11 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
         std::vector<Var> args;
         for (const auto &x : sig) {
             switch (x) {
-                case theory::Types::Int:
+                case theory::Type::Int:
                     args.emplace_back(vars.at(next_int_var));
                     ++next_int_var;
                     break;
-                case theory::Types::Bool:
+                case theory::Type::Bool:
                     args.emplace_back(bvars.at(next_bool_var));
                     ++next_bool_var;
                     break;

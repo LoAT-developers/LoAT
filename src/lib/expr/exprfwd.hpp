@@ -34,6 +34,7 @@ template <class T>
 using ptr = cpp::not_null<std::shared_ptr<const T>>;
 
 namespace theory {
+
     enum class Type {
         Int,
         Bool
