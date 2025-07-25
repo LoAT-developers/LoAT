@@ -11,7 +11,7 @@ namespace Config {
     }
 
     namespace Input {
-        enum Format {Koat, Its, Horn};
+        enum Format {Koat, Its, Horn, Ari};
         extern Format format;
     }
 
@@ -69,5 +69,7 @@ namespace Config {
     namespace Accel {
         extern bool non_linear;
     }
+
+    bool validate();
 
 }

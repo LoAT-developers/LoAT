@@ -3,7 +3,8 @@
 #include "rule.hpp"
 
 struct LoopComplexity {
-    unsigned negated {0};
+    unsigned negated_int {0};
+    unsigned negated_bool {0};
     unsigned non_recursive {0};
     unsigned foreign_vars {0};
     unsigned tmp_vars {0};

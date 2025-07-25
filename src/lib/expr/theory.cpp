@@ -1,5 +1,7 @@
 #include "theory.hpp"
 
+#include <boost/algorithm/string.hpp>
+
 const Bools::Expr top() {
     return BoolExpr::top();
 }
@@ -62,7 +64,7 @@ Expr toExpr(const Const &c) {
     return TheTheory::constToExpr(c);
 }
 
-theory::Types to_type(const Expr &x) {
+theory::Type to_type(const Expr &x) {
     return std::visit(
         Overload{
             [&](const Arith::Expr &) {
@@ -86,6 +88,16 @@ theory::Types to_type(const Var &x) {
         x);
 }
 
+theory::Type to_type(const std::string &x) {
+    if (boost::iequals(x, "int")) {
+        return theory::Type::Int;
+    } else if (boost::iequals(x, "bool")) {
+        return theory::Type::Bool;
+    } else {
+        throw std::invalid_argument("unknown type");
+    }
+}
+
 std::optional<Var> is_var(const Expr &x) {
     using opt = std::optional<Var>;
     return std::visit(
@@ -98,6 +110,14 @@ std::optional<Var> is_var(const Expr &x) {
                 }
             }},
         x);
+}
+
+std::string abbrev(const Type t) {
+    switch (t) {
+        case Type::Bool: return "b";
+        case Type::Int: return "i";
+        default: throw std::invalid_argument("unknown type");
+    }
 }
 
 sexpresso::Sexp to_smtlib(const Lit &l) {

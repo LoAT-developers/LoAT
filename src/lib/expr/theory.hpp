@@ -78,9 +78,11 @@ size_t hash(const Lit &lit);
 sexpresso::Sexp to_smtlib(const Lit &l);
 sexpresso::Sexp to_smtlib(const Expr &e);
 void simplifyAnd(LitSet&);
-Types to_type(const Expr &x);
-Types to_type(const Var &x);
+Type to_type(const Expr &x);
+Type to_type(const Var &x);
+Type to_type(const std::string &x);
 std::optional<Var> is_var(const Expr &x);
+std::string abbrev(const Type t);
 
 template <class Int, class Bool, class IntArray, class ... Ts>
 inline auto apply(const std::variant<Int, Bool, IntArray> &x, Ts... f) noexcept {
