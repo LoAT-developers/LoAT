@@ -71,26 +71,9 @@ public:
 
     bool eval(const Lit &lit) const;
 
-    template <ITheory T>
-    typename T::Const eval(const typename T::Expr &e) const {
-        if constexpr (std::is_same_v<T, Bools>) {
-            if (e->isAnd()) {
-                const auto children {e->getChildren()};
-                return std::all_of(children.begin(), children.end(), [&](const auto &c) {
-                    return eval<Bools>(c);
-                });
-            } else if (e->isOr()) {
-                const auto children {e->getChildren()};
-                return std::any_of(children.begin(), children.end(), [&](const auto &c) {
-                    return eval<Bools>(c);
-                });
-            } else {
-                return eval(*e->getTheoryLit());
-            }
-        } else {
-            return e->eval(std::get<typename T::Model>(m));
-        }
-    }
+    Bools::Const eval(const Bools::Expr &e) const;
+    Arith::Const eval(const Arith::Expr &e) const;
+    Arrays<Arith>::Const eval(const Arrays<Arith>::Expr &e) const;
 
     Const eval(const Expr &e) const;
 

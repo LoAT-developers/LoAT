@@ -3,12 +3,10 @@
 #include "exprfwd.hpp"
 #include "arith.hpp"
 #include "itheory.hpp"
+#include "arrayconst.hpp"
 
 template <ITheory T>
 class Array;
-
-template <ITheory T>
-class ArrayVar;
 
 template <ITheory T>
 class ArrayWrite;
@@ -23,9 +21,6 @@ template <ITheory T>
 using ArrayPtr = ptr<Array<T>>;
 
 template <ITheory T>
-using ArrayVarPtr = ptr<ArrayVar<T>>;
-
-template <ITheory T>
 class Array {
 
     public:
@@ -35,6 +30,10 @@ class Array {
     }
 
     sexpresso::Sexp to_smtlib() const;
+
+    virtual ArrayPtr<T> renameVars(const array_var_map<T>&, const typename T::Renaming&) const = 0;
+    virtual void collectVars(const linked_hash_set<ArrayVarPtr<T>>&, const linked_hash_set<typename T::Var>&) const = 0;
+    virtual ArrayConst<T> eval(const linked_hash_map<ArrayVarPtr<T>, ArrayConst<T>>&, const T::Model&) const = 0;
 
 };
 

@@ -7,7 +7,7 @@ bool SafetyCex::is_valid_step(const Model &m) const {
         return false;
     }
     if (transitions.empty()) {
-        return m.eval<Bools>(sp.init());
+        return m.eval(sp.init());
     } else {
         const auto &last {states.back()};
         for (const auto &x: sp.pre_vars()) {
@@ -20,7 +20,7 @@ bool SafetyCex::is_valid_step(const Model &m) const {
 }
 
 bool SafetyCex::try_step(const Model &m, const Bools::Expr trans) {
-    if (!m.eval<Bools>(trans) || !is_valid_step(m)) {
+    if (!m.eval(trans) || !is_valid_step(m)) {
         return false;
     }
     states.push_back(m);
@@ -33,7 +33,7 @@ void SafetyCex::set_final_state(const Model &m) {
     assert(std::all_of(vars.begin(), vars.end(), [&](const auto &x) {
         return vars.contains(x);
     }));
-    assert(m.eval<Bools>(sp.err()));
+    assert(m.eval(sp.err()));
     states.push_back(m);
 }
 

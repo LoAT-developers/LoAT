@@ -68,6 +68,9 @@ std::ostream& operator<<(std::ostream &s, const theory::Type e) {
         case theory::Type::Int: {
             return s << "Int";
         }
+        case theory::Type::IntArray: {
+            return s << "Int[]";
+        }
     }
 }
 
@@ -94,6 +97,9 @@ theory::Type to_type(const Var &x) {
             },
             [&](const Bools::Var &) {
                 return Type::Bool;
+            },
+            [&](const Arrays<Arith>::Var &) {
+                return Type::IntArray;
             }},
         x);
 }
@@ -140,10 +146,13 @@ sexpresso::Sexp to_smtlib(const Expr &e) {
 
 void collectVars(const Expr &expr, VarSet &vars) {
     std::visit(Overload{
-                   [&vars](const Arith::Expr expr) {
+                   [&](const Arith::Expr expr) {
                        expr->collectVars(vars.get<Arith::Var>());
                    },
-                   [&vars](const Bools::Expr expr) {
+                   [&](const Arrays<Arith>::Expr expr) {
+                    expr->collectVars(vars.get<Arrays<Arith>::Var>(), vars.get<Arith::Var>());
+                   },
+                   [&](const Bools::Expr expr) {
                        expr->collectVars(vars);
                    }
                }, expr);
@@ -158,12 +167,15 @@ VarSet vars(const Expr &e) {
 Bools::Expr mkEq(const Expr &e1, const Expr &e2) {
     return std::visit(
         Overload {
-            [&e2](const Arith::Expr &e1) {
+            [&](const Arith::Expr &e1) {
                 return bools::mkLit(arith::mkEq(e1, std::get<Arith::Expr>(e2)));
             },
-            [&e2](const Bools::Expr lhs) {
+            [&](const Bools::Expr lhs) {
                 const auto rhs = std::get<Bools::Expr>(e2);
                 return (lhs && rhs) || ((!lhs) && (!rhs));
+            },
+            [&](const Arrays<Arith>::Expr e1) {
+                return bools::mkLit(arrays::mkEq<Arith>(e1, std::get<Arrays<Arith>::Expr>(e2)));
             }
         }, e1);
 }
@@ -171,12 +183,15 @@ Bools::Expr mkEq(const Expr &e1, const Expr &e2) {
 Bools::Expr mkNeq(const Expr &e1, const Expr &e2) {
     return std::visit(
         Overload {
-            [&e2](const Arith::Expr &e1) {
+            [&](const Arith::Expr &e1) {
                 return bools::mkLit(arith::mkNeq(e1, std::get<Arith::Expr>(e2)));
             },
-            [&e2](const Bools::Expr lhs) {
+            [&](const Bools::Expr lhs) {
                 const auto rhs = std::get<Bools::Expr>(e2);
                 return (lhs && (!rhs)) || ((!lhs) && rhs);
+            },
+            [&](const Arrays<Arith>::Expr e1) {
+                return bools::mkLit(arrays::mkNeq<Arith>(e1, std::get<Arrays<Arith>::Expr>(e2)));
             }
         }, e1);
 }
@@ -237,22 +252,18 @@ bool isPoly(const Lit &lit) {
     return isPolyImpl<0>(lit);
 }
 
-template<std::size_t I = 0>
-inline void collectVarsImpl(const Lit &lit, VarSet &s) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            return std::get<I>(lit)->collectVars(s.template get<I>());
-        } else {
-            return collectVarsImpl<I+1>(lit, s);
-        }
-    } else {
-        throw std::logic_error("unknown theory");
-    }
-}
-
-
 void collectVars(const Lit &lit, VarSet &s) {
-    collectVarsImpl<0>(lit, s);
+    std::visit(Overload{
+        [&](const Arith::Lit &lit) {
+            return lit->collectVars(s.get<Arith::Var>());
+        },
+        [&](const Arrays<Arith>::Lit &lit) {
+            return lit->collectVars(s.get<Arrays<Arith>::Var>(), s.get<Arith::Var>());
+        },
+        [&](const Bools::Lit &lit) {
+            return lit->collectVars(s.get<Bools::Var>());
+        }
+    }, lit);
 }
 
 VarSet vars(const Lit &lit) {
@@ -350,17 +361,5 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 
 std::ostream& operator<<(std::ostream &s, const Lit &e) {
     std::visit([&s](const auto &e){s << e;}, e);
-    return s;
-}
-
-std::ostream& theory::operator<<(std::ostream &s, const theory::Type &e) {
-    switch (e) {
-        case theory::Type::Int:
-            s << "Int";
-            break;
-        case theory::Type::Bool:
-            s << "Bool";
-            break;
-    }
     return s;
 }

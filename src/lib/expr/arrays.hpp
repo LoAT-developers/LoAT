@@ -9,9 +9,6 @@
 #include "arrayconst.hpp"
 
 template <ITheory T>
-using array_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArrayVarPtr<T>>, boost::bimaps::unordered_set_of<ArrayVarPtr<T>>>;
-
-template <ITheory T>
 struct Arrays {
 
     using Lit = ArrayLitPtr<T>;

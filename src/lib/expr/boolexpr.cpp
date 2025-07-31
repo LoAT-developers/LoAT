@@ -427,7 +427,7 @@ void BoolExpr::collectVars(VarSet &vars) const {
     });
 }
 
-BoolExpr::VarSet BoolExpr::vars() const {
+VarSet BoolExpr::vars() const {
     VarSet res;
     collectVars(res);
     return res;
@@ -435,7 +435,7 @@ BoolExpr::VarSet BoolExpr::vars() const {
 
 BoolExpr::~BoolExpr() {};
 
-BoolExpr::LitSet BoolExpr::lits() const {
+LitSet BoolExpr::lits() const {
     LitSet res;
     collectLits(res);
     return res;
@@ -445,11 +445,11 @@ bool BoolExpr::isLinear() const {
     return forall([](const auto &lit) {
         return std::visit(
             Overload {
-                [](const Arith::Lit &lit) {
-                    return lit->isLinear();
-                },
                 [](const Bools::Lit&) {
                     return true;
+                },
+                [](const auto &lit) {
+                    return lit->isLinear();
                 }
             }, lit);
     });
@@ -459,11 +459,11 @@ bool BoolExpr::isPoly() const {
     return forall([](const auto &lit) {
         return std::visit(
             Overload {
-                [](const Arith::Lit &lit) {
-                    return lit->isPoly();
-                },
                 [](const Bools::Lit&) {
                     return true;
+                },
+                [](const auto &lit) {
+                    return lit->isPoly();
                 }
             }, lit);
     });

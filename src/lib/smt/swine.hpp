@@ -27,5 +27,6 @@ private:
     SwineContext ctx;
 
     Rational getRealFromModel(const z3::model &model, const z3::expr &symbol);
+    Arrays<Arith>::Const getIntArrayFromModel(const z3::model &model, const z3::expr &symbol);
 
 };

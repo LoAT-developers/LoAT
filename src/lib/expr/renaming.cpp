@@ -250,21 +250,19 @@ bool Renaming::empty() const {
     return std::apply([](const auto&... x){return (true && ... && x.empty());}, t);
 }
 
-template<std::size_t I = 0>
-inline Lit renameVarsImpl(const Renaming &s, const Lit &lit) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            return Lit(std::get<I>(lit)->renameVars(s.template get<I>()));
-        } else {
-            return renameVarsImpl<I+1>(s, lit);
-        }
-    } else {
-        throw std::logic_error("unknown theory");
-    }
-}
-
 Lit Renaming::operator()(const Lit &lit) const {
-    return renameVarsImpl<0>(*this, lit);
+    return std::visit(
+        Overload{
+            [&](const Arith::Lit lit) {
+                return Lit(lit->renameVars(get<Arith>()));
+            },
+            [&](const Arrays<Arith>::Lit lit) {
+                return Lit(lit->renameVars(get<Arith>())->renameVars(get<Arrays<Arith>>()));
+            },
+            [&](const Bools::Lit lit) {
+                return Lit{(*this)(lit)};
+            }
+        }, lit);
 }
 
 Expr Renaming::operator()(const Expr &expr) const {
@@ -272,6 +270,9 @@ Expr Renaming::operator()(const Expr &expr) const {
         Overload{
             [&](const Arith::Expr expr) {
                 return Expr(expr->renameVars(get<Arith>()));
+            },
+            [&](const Arrays<Arith>::Expr expr) {
+                return Expr(expr->renameVars(get<Arrays<Arith>>(), get<Arith>()));
             },
             [&](const Bools::Expr expr) {
                 return Expr{(*this)(expr)};

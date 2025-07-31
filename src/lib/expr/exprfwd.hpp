@@ -8,6 +8,8 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
 
+#include "itheory.hpp"
+
 namespace sexpresso {
 struct Sexp;
 }
@@ -37,7 +39,8 @@ namespace theory {
 
     enum class Type {
         Int,
-        Bool
+        Bool,
+        IntArray,
     };
     std::string abbrev(const Type t);
 }
@@ -59,3 +62,12 @@ using Rational = mp::cpp_rational;
 
 class BoolExpr;
 using BoolExprPtr = ptr<BoolExpr>;
+
+template <ITheory T>
+class ArrayVar;
+
+template <ITheory T>
+using ArrayVarPtr = ptr<ArrayVar<T>>;
+
+template <ITheory T>
+using array_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArrayVarPtr<T>>, boost::bimaps::unordered_set_of<ArrayVarPtr<T>>>;

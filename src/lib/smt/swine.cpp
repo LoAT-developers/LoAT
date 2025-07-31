@@ -58,6 +58,13 @@ Model Swine::model(const std::optional<const VarSet> &vars) {
                             break;
                         }
                     }
+                },
+                [&](const Arrays<Arith>::Var var) {
+                    const auto y {ctx.getIntArraySymbolMap().get(var)};
+                    if (y) {
+                        const auto val{getIntArrayFromModel(m, *y)};
+                        res.template put<Arrays<Arith>>(var, val);
+                    }
                 }},
             x);
     };
@@ -91,6 +98,10 @@ std::ostream& Swine::print(std::ostream& os) const {
 void Swine::randomize(unsigned seed) {
     auto &s {solver.get_solver()};
     s.set("random_seed", seed);
+}
+
+Arrays<Arith>::Const Swine::getIntArrayFromModel(const z3::model &model, const z3::expr &symbol) {
+
 }
 
 Rational Swine::getRealFromModel(const z3::model &model, const z3::expr &symbol) {

@@ -286,18 +286,25 @@ bool Subs::isPoly() const {
     return std::apply([](const auto&... x){return (true && ... && x.isPoly());}, t);
 }
 
-template<std::size_t I = 0>
-inline Bools::Expr subsImpl(const Subs &s, const Lit &lit) {
-    if constexpr (I < num_theories) {
+template<std::size_t I = 0, std::size_t J = 0>
+inline Lit subsImpl(const Subs &s, const Lit &lit) {
+    if constexpr (I < num_theories - 1) {
         if (lit.index() == I) {
-            using T = typename std::tuple_element_t<I, Theories>;
-            if constexpr (std::same_as<T, Bools>) {
-                return s.template get<T>().subs(std::get<I>(lit));
+            if constexpr (J <= I) {
+                // theory of the literal
+                using T1 = typename std::tuple_element_t<I, Theories>;
+                // some other theory
+                using T2 = typename std::tuple_element_t<J, Theories>;
+                if constexpr (depends_on<T1, T2>::value) {
+                    return subsImpl<I, J + 1>(s, Lit(std::get<I>(lit)->subs(s.template get<T2>())));
+                } else {
+                    return subsImpl<I, J + 1>(s, lit);
+                }
             } else {
-                return bools::mkLit(std::get<I>(lit)->subs(s.template get<T>()));
+                return lit;
             }
         } else {
-            return subsImpl<I+1>(s, lit);
+            return subsImpl<I + 1, J>(s, lit);
         }
     } else {
         throw std::logic_error("unknown theory");
@@ -305,7 +312,10 @@ inline Bools::Expr subsImpl(const Subs &s, const Lit &lit) {
 }
 
 Bools::Expr Subs::operator()(const Lit &lit) const {
-    return subsImpl<0>(*this, lit);
+    if (std::holds_alternative<Bools::Lit>(lit)) {
+        return this->template get<Bools>().subs(std::get<Bools::Lit>(lit));
+    }
+    return bools::mkLit(subsImpl<0, 0>(*this, lit));
 }
 
 Bools::Expr Subs::operator()(const Bools::Expr e) const {

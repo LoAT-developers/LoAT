@@ -23,13 +23,13 @@ using TheTheory = Theory<Arith, Arrays<Arith>, Bools>;
 
 template <ITheory T1, ITheory T2>
 struct depends_on {
-    static constexpr value = std::same_as<T1, T2> || std::same_as<Arrays<T1>, T2> || std::same_as<T1, Bools>;
+    static constexpr bool value = std::same_as<T1, T2> || std::same_as<Arrays<T1>, T2> || std::same_as<T1, Bools>;
 };
 
 using Var = typename TheTheory::Var;
 using Lit = typename TheTheory::Lit;
-using VarSet = VariantSet<Arith::Var, Bools::Var, Arrays<Arith>::Var>;
-using LitSet = VariantSet<Arith::Lit, Bools::Lit, Arrays<Arith>::Lit>;
+using VarSet = VariantSet<Arith::Var, Arrays<Arith>::Var, Bools::Var>;
+using LitSet = VariantSet<Arith::Lit, Arrays<Arith>::Lit, Bools::Lit>;
 
 using BoolExprSet = linked_hash_set<Bools::Expr>;
 

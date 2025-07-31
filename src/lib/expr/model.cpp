@@ -28,7 +28,7 @@ inline void Model::composeBackwardsImpl(const Subs &subs, Model &res) const {
         const auto &model{std::get<I>(m)};
         auto &result{res.get<Th>()};
         for (const auto &[key, v] : substitution) {
-            result.put(key, eval<Th>(v));
+            result.put(key, eval(v));
         }
         for (const auto &[key, value] : model) {
             if (!result.contains(key)) {
@@ -53,7 +53,7 @@ inline void Model::composeBackwardsImpl(const Renaming &subs, Model &res) const 
         const auto &model{std::get<I>(m)};
         auto &result{res.get<Th>()};
         for (const auto &[key, v] : substitution) {
-            result.put(key, eval<Th>(Th::varToExpr(v)));
+            result.put(key, eval(Th::varToExpr(v)));
         }
         for (const auto &[key, value] : model) {
             if (!result.contains(key)) {
@@ -72,28 +72,52 @@ Model Model::composeBackwards(const Subs &subs) const {
 
 template <size_t I>
 inline bool Model::evalImpl(const Lit &lit) const {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            const auto &literal{std::get<I>(lit)};
-            const auto &model{std::get<I>(m)};
-            return literal->eval(model);
+    return std::visit(Overload{
+        [&](const Bools::Lit &lit) {
+            return lit->eval(std::get<Bools::Model>(m));
+        },
+        [&](const Arith::Lit &lit) {
+            return lit->eval(std::get<Arith::Model>(m));
+        },
+        [&](const Arrays<Arith>::Lit &lit) {
+            return lit->eval(std::get<Arrays<Arith>::Model>(m), std::get<Arith::Model>(m));
         }
-        return evalImpl<I + 1>(lit);
-    } else {
-        throw std::logic_error("unknown theory");
-    }
+    }, lit);
 }
 
 bool Model::eval(const Lit &lit) const {
     return evalImpl<0>(lit);
 }
 
+Bools::Const Model::eval(const Bools::Expr &e) const {
+    if (e->isAnd()) {
+        const auto children{e->getChildren()};
+        return std::all_of(children.begin(), children.end(), [&](const auto &c) {
+            return eval(c);
+        });
+    } else if (e->isOr()) {
+        const auto children{e->getChildren()};
+        return std::any_of(children.begin(), children.end(), [&](const auto &c) {
+            return eval(c);
+        });
+    } else {
+        return eval(*e->getTheoryLit());
+    }
+}
+
+Arith::Const Model::eval(const Arith::Expr &e) const {
+    return e->eval(get<Arith>());
+}
+
+Arrays<Arith>::Const Model::eval(const Arrays<Arith>::Expr &e) const {
+    return e->eval(get<Arrays<Arith>>(), get<Arith>());
+}
+
 Const Model::eval(const Expr &e) const {
     return std::visit(
         Overload{
             [&](const auto &e) {
-                using T = decltype(theory::theory(e));
-                return Const{eval<T>(e)};
+                return Const{eval(e)};
             }},
         e);
 }
@@ -212,7 +236,7 @@ bool syntacticImplicant(const Bools::Expr e, const Model &m, BoolExprSet &res) {
 }
 
 Bools::Expr Model::syntacticImplicant(const Bools::Expr e) const {
-    assert(eval<Bools>(e));
+    assert(eval(e));
     BoolExprSet res;
     ::syntacticImplicant(e, *this, res);
     return bools::mkAnd(res);

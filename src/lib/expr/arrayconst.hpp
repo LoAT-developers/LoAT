@@ -16,3 +16,9 @@ public:
     const std::vector<Arith::Var>& get_indices() const;
 
 };
+
+template <ITheory T>
+std::ostream& operator<<(std::ostream &s, const ArrayConst<T> e);
+
+template <ITheory T>
+bool operator==(const ArrayConst<T>, const ArrayConst<T> e);

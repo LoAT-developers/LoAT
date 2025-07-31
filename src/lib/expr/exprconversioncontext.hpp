@@ -52,12 +52,26 @@ public:
         }
     }
 
+    Expr getVariable(const Arrays<Arith>::Var &symbol) {
+        const auto res {intArrayVarMap.get(symbol)};
+        if (res) {
+            return *res;
+        } else {
+            const auto it {intArrayVarMap.emplace(symbol, buildVar(symbol)).first};
+            return it->second;
+        }
+    }
+
     const linked_hash_map<Arith::Var, Expr> &getArithSymbolMap() const {
         return arithVarMap;
     }
 
     const linked_hash_map<Bools::Var, Formula> &getBoolSymbolMap() const {
         return boolVarMap;
+    }
+
+    const linked_hash_map<Array<Arith>::Var, Expr> &getIntArraySymbolMap() const {
+        return intArrayVarMap;
     }
 
     virtual ~ExprConversionContext() {}
@@ -71,9 +85,11 @@ protected:
 
     virtual Expr buildVar(const Arith::Var &var) = 0;
     virtual Formula buildVar(const Bools::Var &var) = 0;
+    virtual Expr buildVar(const Arrays<Arith>::Var &var) = 0;
 
 protected:
     linked_hash_map<Arith::Var, Expr> arithVarMap{};
     linked_hash_map<Bools::Var, Formula> boolVarMap{};
+    linked_hash_map<Arrays<Arith>::Var, Expr> intArrayVarMap{};
     VarSet vars;
 };

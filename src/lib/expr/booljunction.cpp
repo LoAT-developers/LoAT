@@ -32,7 +32,7 @@ bool BoolJunction::isTheoryLit() const {
     return false;
 }
 
-const BoolJunction::Lit* BoolJunction::getTheoryLit() const {
+const Lit* BoolJunction::getTheoryLit() const {
     return nullptr;
 }
 
@@ -71,7 +71,7 @@ bool BoolJunction::isConjunction() const {
            });
 }
 
-BoolJunction::LitSet BoolJunction::universallyValidLits() const {
+LitSet BoolJunction::universallyValidLits() const {
     LitSet res;
     if (isAnd()) {
         for (const auto &c: children) {
