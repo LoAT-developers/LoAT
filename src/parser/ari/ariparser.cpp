@@ -51,8 +51,8 @@ void ARIParser::run(const std::string &filename) {
 
             auto lhs {ex[1]};
             auto rhs {ex[2]};
-            const auto lhs_loc {lhs[0].str()};
-            const auto rhs_loc {rhs[0].str()};
+            const auto lhs_loc = lhs.isString() ? lhs.str() : lhs[0].str();
+            const auto rhs_loc = rhs.isString() ? rhs.str() : rhs[0].str();
             const auto type {types.at(lhs_loc)};
             const auto child_count {lhs.childCount()};
             Subs update;
