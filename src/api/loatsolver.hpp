@@ -83,7 +83,7 @@ public:
         LoatConfig::InitialConfig init(
             LoatConfig::InitialConfig::Engine::ADCL,
             LoatConfig::InitialConfig::Mode::Termination,
-            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::SmtSolver::Swine,
             LoatConfig::InitialConfig::Direction::Forward,
             LoatConfig::InitialConfig::MbpKind::IntMbp,
             false);
@@ -94,9 +94,9 @@ public:
     static LoatSolver forSafety()
     {
         LoatConfig::InitialConfig init(
-            LoatConfig::InitialConfig::Engine::ABMC,
+            LoatConfig::InitialConfig::Engine::TRL,
             LoatConfig::InitialConfig::Mode::Safety,
-            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::SmtSolver::Yices,
             LoatConfig::InitialConfig::Direction::Forward,
             LoatConfig::InitialConfig::MbpKind::IntMbp,
             false);
@@ -107,9 +107,9 @@ public:
     static LoatSolver forUnsafety()
     {
         LoatConfig::InitialConfig init(
-            LoatConfig::InitialConfig::Engine::BMC,
+            LoatConfig::InitialConfig::Engine::ABMC,
             LoatConfig::InitialConfig::Mode::Safety,
-            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::SmtSolver::Swine,
             LoatConfig::InitialConfig::Direction::Forward,
             LoatConfig::InitialConfig::MbpKind::IntMbp,
             false);
