@@ -82,7 +82,6 @@ function(find_required_package pkg_name displayname)
   endif()
 endfunction()
 
-find_required_library(ANTLR4 antlr4-runtime "ANTLR4 runtime")
 find_required_library(FAUDES faudes "Faudes")
 find_required_library(Z3 z3 "Z3")
 find_required_library(YICES yices "Yices")
@@ -98,7 +97,6 @@ find_required_library(GMP gmp "GMP")
 find_required_package(Boost "Boost")
 
 
-# find_library(ANTLR4 antlr4-runtime)
 # find_library(FAUDES faudes)
 # find_library(Z3 z3)
 # find_library(YICES yices)
@@ -114,7 +112,6 @@ find_required_package(Boost "Boost")
 # ------------------------------------------------------------------------------
 # Output the found paths to the libraries for debugging purposes.
 # ------------------------------------------------------------------------------
-# message(STATUS "antlr4: ${ANTLR4}")
 # message(STATUS "faudes: ${FAUDES}")
 # message(STATUS "z3: ${Z3}")
 # message(STATUS "yices: ${YICES}")
@@ -267,7 +264,6 @@ target_include_directories(${Loat_API} PRIVATE
 )
 
 target_link_libraries(${Loat_API} PUBLIC Boost::boost
-  ${ANTLR4}
   ${FAUDES}
   ${SWINE}
   ${Z3}
