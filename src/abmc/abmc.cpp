@@ -189,6 +189,12 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
         }
     };
     auto [loop, sample_point] {build_loop(backlink)};
+    auto loop_for_proof {loop};
+    // if it's a loop of length 1, then undo the reanming of temporary variables that's performed by
+    // build_loop to get a cleaner proof
+    if (Config::Analysis::model && backlink + 1 == trace.size()) {
+        loop_for_proof = loop->renameVars(subsTmp.at(backlink).invert());
+    }
     auto &map {cache.emplace(lang, std::unordered_map<Bools::Expr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
         if (sample_point.eval<Bools>(imp)) {
@@ -209,7 +215,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
             const auto q {its->addQuery(accel_res.nonterm, trace.at(backlink).first)};
             rule_map.emplace(q->getId(), q);
             if (Config::Analysis::model) {
-                cex.add_recurrent_set(loop, q);
+                cex.add_recurrent_set(loop_for_proof, q);
             }
             success = true;
             query = query || encode_transition(q);
@@ -246,7 +252,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
                 success = true;
                 add_learned_clause(simplified, backlink);
                 if (Config::Analysis::model) {
-                    cex.add_accel(loop, simplified);
+                    cex.add_accel(loop_for_proof, simplified);
                 }
                 shortcut = simplified;
                 history.emplace(next, lang);
@@ -269,8 +275,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(int backlink, const std::vector<int>
     if (success && Config::Analysis::model) {
         if (backlink + 1 == trace.size()) {
             const auto rule {trace.back().first};
-            if (rule != loop) {
-                cex.add_implicant(rule, loop);
+            if (rule != loop_for_proof) {
+                cex.add_implicant(rule, loop_for_proof);
             }
         } else {
             std::vector<RulePtr> rules;
