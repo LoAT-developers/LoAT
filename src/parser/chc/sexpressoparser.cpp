@@ -62,6 +62,18 @@ void SexpressoParser::run(const std::string &filename) {
         if (ex[0].isString("assert")) {
             sexpresso::Sexp imp;
             if (ex[1].childCount() > 0 && ex[1][0].isString("forall")) {
+                auto vars {ex[1][1]};
+                for (unsigned i = 0; i < vars.childCount(); ++i) {
+                    const auto name{vars[i][0].str()};
+                    const auto type{vars[i][1].str()};
+                    if (type == "Int") {
+                        state.vars.emplace(name, ArithVar::next());
+                    } else if (type == "Bool") {
+                        state.vars.emplace(name, Bools::next());
+                    } else {
+                        throw std::invalid_argument("unknown type " + type);
+                    }
+                }
                 imp = ex[1][2];
             } else {
                 imp = ex[1];
