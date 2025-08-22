@@ -84,6 +84,7 @@ endfunction()
 
 find_required_library(FAUDES faudes "Faudes")
 find_required_library(Z3 z3 "Z3")
+find_required_library(OPENSMT opensmt "OpenSMT")
 find_required_library(YICES yices "Yices")
 find_required_library(POLY poly "Poly")
 find_required_library(POLYXX polyxx "PolyXX")
@@ -93,6 +94,7 @@ find_required_library(CADICAL cadical "Cadical")
 find_required_library(SWINE swine-z3 "Swine Z3")
 find_required_library(CLN cln "CLN")
 find_required_library(GMP gmp "GMP")
+find_required_library(GMPXX gmpxx "GMPXX")
 
 find_required_package(Boost "Boost")
 
@@ -221,7 +223,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   >
 )
 
-set(OBJECT_LIBRARIES 
+set(OBJECT_LIBRARIES
   sexpresso
   loat_util
   loat_expr
@@ -269,11 +271,13 @@ target_link_libraries(${Loat_API} PUBLIC Boost::boost
   ${Z3}
   ${CVC5}
   ${CADICAL}
+  ${OPENSMT}
   ${YICES}
   ${POLYXX}
   ${POLY}
   ${CUDD}
   ${CLN}
+  ${GMPXX}
   ${GMP}
   ${LINKER_OPTIONS}
 )
@@ -288,7 +292,7 @@ install(TARGETS ${Loat_API}
 install(EXPORT ${Loat_API}Targets
   FILE ${Loat_API}Targets.cmake
   DESTINATION lib/cmake/${Loat_API}
-)    
+)
 
 file(GLOB_RECURSE ALL_HEADERS "${CMAKE_SOURCE_DIR}/src/*.hpp" "${CMAKE_SOURCE_DIR}/src/*.h")
 install(FILES ${ALL_HEADERS} DESTINATION include/LoAT)
