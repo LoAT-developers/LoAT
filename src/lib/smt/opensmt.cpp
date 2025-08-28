@@ -87,6 +87,8 @@ void OpenSmt::resetSolver() {
     solver = std::make_unique<opensmt::MainSolver>(solver->getLogic(), solver->getConfig(), "opensmt");
 }
 
+void OpenSmt::enableModels() {}
+
 OpenSmt::~OpenSmt() {}
 
 std::ostream &OpenSmt::print(std::ostream &os) const {

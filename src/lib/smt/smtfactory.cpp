@@ -3,6 +3,7 @@
 #include "z3.hpp"
 #include "swine.hpp"
 #include "cvc5.hpp"
+#include "opensmt.hpp"
 #include "config.hpp"
 
 namespace SmtFactory {
@@ -47,6 +48,9 @@ SmtPtr solver() {
         break;
     case Config::Analysis::Yices:
         solver = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
+        break;
+    case Config::Analysis::OpenSmt:
+        solver = std::unique_ptr<Smt>(new OpenSmt(true));
         break;
     case Config::Analysis::Swine:
         [[fallthrough]];

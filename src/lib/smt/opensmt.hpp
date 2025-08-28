@@ -27,6 +27,7 @@ public:
     Model model(const std::optional<const VarSet> &vars = std::nullopt) override;
     void randomize(unsigned seed) override;
     void resetSolver() override;
+    void enableModels() override;
     ~OpenSmt() override;
     std::ostream& print(std::ostream& os) const override;
 

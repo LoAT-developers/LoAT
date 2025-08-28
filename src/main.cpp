@@ -16,6 +16,7 @@
 #include "yices.hpp"
 #include "adclsat.hpp"
 #include "ariparser.hpp"
+#include "imc.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <chrono>
@@ -119,6 +120,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::engine = Config::Analysis::TRL;
             } else if (boost::iequals("adcl_sat", str)) {
                 Config::Analysis::engine = Config::Analysis::ADCLSAT;
+            } else if (boost::iequals("imc", str)) {
+                Config::Analysis::engine = Config::Analysis::IMC;
             } else {
                 std::cout << "Error: unknown engine " << str << std::endl;
                 exit(1);
@@ -133,6 +136,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::smtSolver = Config::Analysis::Swine;
             } else if (boost::iequals("yices", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Yices;
+            } else if (boost::iequals("opensmt", str)) {
+                Config::Analysis::smtSolver = Config::Analysis::OpenSmt;
             } else if (boost::iequals("heuristic", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Heuristic;
             } else {
@@ -422,6 +427,18 @@ int main(int argc, char *argv[]) {
                             its_model = bmc.get_model();
                         } else if (res == SmtResult::Unsat) {
                             its_cex = bmc.get_cex();
+                        }
+                    }
+                    break;
+                }
+                case Config::Analysis::IMC: {
+                    IMC imc{*its, Config::trp};
+                    res = imc.analyze();
+                    if (Config::Analysis::model) {
+                        if (res == SmtResult::Sat) {
+                            its_model = imc.get_model();
+                        } else if (res == SmtResult::Unsat) {
+                            its_cex = imc.get_cex();
                         }
                     }
                     break;
