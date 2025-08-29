@@ -30,7 +30,7 @@ on:
         - loat_bmc
         - loat_kind
         - loat_imc
-        - loat_imc
+        - loat_aimc
         - loat_release_chc_comp_2024_bmc
         - loat_release_chc_comp_2024_abmc
         - loat_release_termcomp_2023_nonterm
