@@ -30,6 +30,7 @@ on:
         - loat_bmc
         - loat_kind
         - loat_imc
+        - loat_imc
         - loat_release_chc_comp_2024_bmc
         - loat_release_chc_comp_2024_abmc
         - loat_release_termcomp_2023_nonterm
@@ -199,6 +200,8 @@ jobs:
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine kind "${filename}")
             elif [ ${{ inputs.config }} = "loat_imc" ]; then
               output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine imc "${filename}")
+            elif [ ${{ inputs.config }} = "loat_aimc" ]; then
+              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine aimc "${filename})"
             elif [[ ${{ inputs.config }} == loat_release_chc_comp_2024_* ]]; then
               config=${{ inputs.config }}
               engine=${config:27:100}
