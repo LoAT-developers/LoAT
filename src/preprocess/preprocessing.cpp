@@ -164,6 +164,19 @@ std::optional<SmtResult> check_bot(ITSPtr its) {
     }
 }
 
+std::optional<SmtResult> check_trivial(ITSPtr its) {
+    for (const auto &i: its->getInitialTransitions()) {
+        for (const auto &s: its->getSinkTransitions()) {
+            switch (SmtFactory::check(Preprocess::chain({i, s})->getGuard())) {
+                case SmtResult::Sat: return SmtResult::Unsat;
+                case SmtResult::Unknown: return SmtResult::Unknown;
+                default: break;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
 SmtResult Preprocessor::preprocess() {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "starting preprocesing..." << std::endl;
@@ -226,5 +239,9 @@ SmtResult Preprocessor::preprocess() {
             }
         }
     }
-    return SmtResult::Unknown;
+    sat_res = check_trivial(its);
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "finished checking for trivial result" << std::endl;
+    }
+    return sat_res.value_or(SmtResult::Unknown);
 }
