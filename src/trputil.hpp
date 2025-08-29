@@ -37,7 +37,7 @@ protected:
 
     using rule_map_t = linked_hash_map<Int, Bools::Expr>;
 
-    SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
+    SmtPtr solver;
     std::vector<TraceElem> trace {};
     std::vector<std::vector<Renaming>> subs {};
     VarSet vars {};
@@ -57,9 +57,10 @@ protected:
     DependencyGraph<Bools::Expr> dependency_graph {};
     std::vector<std::pair<Int, Bools::Expr>> projections {};
     linked_hash_map<Int, Bools::Expr> accel;
+    std::unordered_map<Int, Int> level;
     bool safe {true};
 
-    TRPUtil(const ITSPtr its, const Config::TRPConfig &config);
+    TRPUtil(const ITSPtr its, SmtPtr smt, const Config::TRPConfig &config);
 
     std::pair<Bools::Expr, Model> compress(const Range &range);
     const Renaming& get_subs(const unsigned start, const unsigned steps);

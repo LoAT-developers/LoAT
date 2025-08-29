@@ -13,13 +13,13 @@ private:
     unsigned depth {0};
     Bools::Expr step {bot()};
     Bools::Expr itp {bot()};
-    OpenSmt solver {true};
     std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
-    unsigned assertions {0};
+    std::vector<Subs> forgotten;
+    bool aimc;
 
 public:
 
-    IMC(const ITSPtr, const Config::TRPConfig&);
+    IMC(const ITSPtr, const bool aimc, const Config::TRPConfig&);
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;
     ITSSafetyCex get_cex() override;
@@ -30,10 +30,11 @@ protected:
 
 private:
 
-    void add(const Bools::Expr);
-    void build_trace();
-    std::optional<Range> has_looping_infix();
+    void build_trace(unsigned depth);
+    bool has_looping_infix(unsigned start, unsigned length);
     bool handle_loop(const Range&);
     void add_blocking_clauses();
+    void forget(const Subs subs, const Int id);
+    std::pair<Bools::Expr, Model> get_implicant(const Model model, const unsigned depth);
 
 };

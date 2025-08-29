@@ -53,8 +53,10 @@ Range Range::from_interval(const unsigned start, const unsigned end) {
 
 TRPUtil::TRPUtil(
     const ITSPtr its,
+    SmtPtr smt,
     const Config::TRPConfig &config)
-    : mbp_kind(config.mbpKind),
+    : solver(smt),
+      mbp_kind(config.mbpKind),
       its2safety(its),
       t(its2safety.transform()),
       its(its),
@@ -206,6 +208,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
         loop.emplace_back(e.id, e.implicant);
     }
     learned_to_loop.emplace(id, loop);
+    level.emplace(id, range.start());
     return id;
 }
 

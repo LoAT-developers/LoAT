@@ -13,24 +13,37 @@ void exit() {
 
 }
 
-Yices::Yices(Logic logic): ctx(YicesContext()), config(yices_new_config()) {
-    std::string l;
-    switch (logic) {
-    case QF_LA:
-        l = "QF_LIA";
-        break;
-    case QF_NA:
-        if (!yices_has_mcsat()) {
-            throw std::runtime_error("mcsat missing");
+Yices::Yices(Logic logic, const bool interpolation) : ctx(YicesContext()), config(yices_new_config()) {
+    if (interpolation) {
+        assert(yices_has_mcsat());
+        if (yices_set_config(config, "model-interpolation", "true") < 0) {
+            throw std::invalid_argument("enabling model-interpolation failed");
         }
-        l = "QF_NIA";
-        break;
-    default:
-        throw std::invalid_argument("unsupported logic");
-    }
-    if (yices_default_config_for_logic(config, l.c_str()) == -1) {
-        std::cout << yices_error_string() << std::endl;
-        throw std::logic_error("error from yices");
+        if (yices_set_config(config, "solver-type", "mcsat") < 0) {
+            throw std::invalid_argument("settings mcsat failed");
+        }
+        if (yices_set_config(config, "mode", "push-pop") < 0) {
+            throw std::invalid_argument("enabling incremental solving failed");
+        }
+    } else {
+        std::string l;
+        switch (logic) {
+            case QF_LA:
+                l = "QF_LIA";
+                break;
+            case QF_NA:
+                if (!yices_has_mcsat()) {
+                    throw std::runtime_error("mcsat missing");
+                }
+                l = "QF_NIA";
+                break;
+            default:
+                throw std::invalid_argument("unsupported logic");
+        }
+        if (yices_default_config_for_logic(config, l.c_str()) == -1) {
+            std::cout << yices_error_string() << std::endl;
+            throw std::logic_error("error from yices");
+        }
     }
     solver = yices_new_context(config);
 }
@@ -66,6 +79,16 @@ SmtResult Yices::processResult(smt_status status) {
 
 SmtResult Yices::check() {
     return processResult(yices_check_context(solver, nullptr));
+}
+
+SmtResult Yices::checkWithAssumptions(const BoolExprSet &assumptions) {
+    term_t *as {(term_t*)(alloca(assumptions.size() * sizeof(term_t)))};
+    unsigned i {0};
+    for (const auto &a: assumptions) {
+        as[i] = ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>::convert(a, ctx);
+        ++i;
+    }
+    return processResult(yices_check_context_with_assumptions(solver, nullptr, assumptions.size(), as));
 }
 
 Model Yices::model(const std::optional<const VarSet> &vars) {
@@ -115,8 +138,6 @@ void Yices::randomize(unsigned seed) {
     // TODO
 }
 
-void Yices::enableModels() {}
-
 void Yices::resetSolver() {
     yices_reset_context(solver);
 }
@@ -140,5 +161,163 @@ Rational Yices::getRealFromModel(model_t *model, type_t symbol) {
     assert(denom != 0);
     Rational res {num};
     res = res / denom;
+    return res;
+}
+
+Arith::Expr convertArith(const term_t t, const YicesContext &ctx);
+
+Bools::Expr convertFormula(const term_t t, const YicesContext &ctx) {
+    assert(yices_term_is_bool(t));
+    const auto num_children {yices_term_num_children(t)};
+    switch (yices_term_constructor(t)) {
+        case YICES_BOOL_CONSTANT: {
+            assert(num_children == 0);
+            int32_t val;
+            if (yices_bool_const_value(t, &val) != 0) {
+                std::cout << yices_error_string() << std::endl;
+                ctx.printStderr(t);
+                throw std::logic_error("error from yices");
+            }
+            return val ? top() : bot();
+        }
+        case YICES_UNINTERPRETED_TERM: {
+            if (num_children == 0) {
+                return bools::mkLit(bools::mk(ctx.getBoolVar(t)));
+            } else {
+                throw std::logic_error("not yet implemented");
+            }
+        }
+        case YICES_OR_TERM: {
+            std::vector<Bools::Expr> children;
+            for (auto i = 0; i < num_children; ++i) {
+                children.emplace_back(convertFormula(yices_term_child(t, i), ctx));
+            }
+            return bools::mkOr(children);
+        }
+        case YICES_NOT_TERM: {
+            assert(num_children == 1);
+            return !convertFormula(yices_term_child(t, 0), ctx);
+        }
+        case YICES_ARITH_GE_ATOM: {
+            assert(num_children == 2);
+            return bools::mkLit(arith::mkGeq(convertArith(yices_term_child(t, 0), ctx), convertArith(yices_term_child(t, 1), ctx)));
+        }
+        case YICES_DISTINCT_TERM: {
+            assert(num_children == 2);
+            const auto fst {yices_term_child(t, 0)};
+            const auto snd {yices_term_child(t, 1)};
+            if (yices_term_is_int(fst)) {
+                return bools::mkLit(arith::mkNeq(convertArith(fst, ctx), convertArith(snd, ctx)));
+            } else {
+                return theory::mkNeq(convertFormula(fst, ctx), convertFormula(snd, ctx));
+            }
+        }
+        case YICES_EQ_TERM: {
+            assert(num_children == 2);
+            const auto fst {yices_term_child(t, 0)};
+            const auto snd {yices_term_child(t, 1)};
+            if (yices_term_is_int(fst)) {
+                return bools::mkLit(arith::mkEq(convertArith(fst, ctx), convertArith(snd, ctx)));
+            } else {
+                return theory::mkEq(convertFormula(fst, ctx), convertFormula(snd, ctx));
+            }
+        }
+        default: {
+            throw std::logic_error("not yet implemented");
+        }
+    }
+}
+
+Arith::Expr convertArith(const term_t t, const YicesContext &ctx) {
+    assert(yices_term_is_int(t));
+    const auto num_children{yices_term_num_children(t)};
+    switch (yices_term_constructor(t)) {
+        case YICES_ARITH_CONSTANT: {
+            assert(num_children == 0);
+            mpq_t val;
+            mpq_init(val);
+            if (yices_rational_const_value(t, val) != 0) {
+                std::cout << yices_error_string() << std::endl;
+                throw std::logic_error("error from yices");
+            }
+            const auto res {arith::mkConst(ctx.getRational(val))};
+            mpq_clear(val);
+            return res;
+        }
+        case YICES_UNINTERPRETED_TERM: {
+            if (num_children == 0) {
+                return ctx.getArithVar(t);
+            } else {
+                throw std::logic_error("not yet implemented");
+            }
+        }
+        case YICES_ARITH_SUM: {
+            std::vector<Arith::Expr> addends;
+            for (auto i = 0; i < num_children; ++i) {
+                term_t term;
+                mpq_t coeff;
+                mpq_init(coeff);
+                yices_sum_component(t, i, coeff, &term);
+                const auto converted_coeff{arith::mkConst(ctx.getRational(coeff))};
+                mpq_clear(coeff);
+                if (term == NULL_TERM) {
+                    addends.emplace_back(converted_coeff);
+                } else {
+                    const auto converted{convertArith(term, ctx)};
+                    addends.emplace_back(converted_coeff * converted);
+                }
+            }
+            return arith::mkPlus(std::move(addends));
+        }
+        case YICES_IMOD: {
+            assert(num_children == 2);
+            const auto lhs {convertArith(yices_term_child(t, 0), ctx)};
+            const auto rhs {convertArith(yices_term_child(t, 1), ctx)};
+            return arith::mkMod(lhs, rhs);
+        }
+        default: {
+            throw std::logic_error("not yet implemented");
+        }
+    }
+}
+
+void Yices::enableModels() {}
+
+std::optional<Bools::Expr> Yices::interpolate(const BoolExprSet &conclusion) {
+    Yices other {QF_LA, true};
+    other.ctx = ctx;
+    for (const auto &e: conclusion) {
+        other.add(e);
+    }
+    interpolation_context_t ictx;
+    ictx.ctx_A = solver;
+    ictx.ctx_B = other.solver;
+    const auto status {yices_check_context_with_interpolation(&ictx, NULL, 1)};
+    std::optional<Bools::Expr> res;
+    switch (status) {
+        case STATUS_SAT:
+            return std::nullopt;
+        case STATUS_UNSAT:
+            yices_pp_term(stderr, ictx.interpolant, 80, 20, 0);
+            res = convertFormula(ictx.interpolant, ctx);
+            break;
+        case STATUS_ERROR:
+            std::cerr << yices_error_string() << std::endl;
+            throw std::logic_error("error from yices");
+        default: break;
+    }
+    return res;
+}
+
+BoolExprSet Yices::unsatCore() {
+    term_vector_t core;
+    yices_init_term_vector(&core);
+    yices_get_unsat_core(solver, &core);
+    BoolExprSet res;
+    const auto size {core.size};
+    for (size_t i = 0; i < size; ++i) {
+        res.insert(convertFormula(core.data[i], ctx));
+    }
+    yices_delete_term_vector(&core);
     return res;
 }

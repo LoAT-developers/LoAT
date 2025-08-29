@@ -15,7 +15,7 @@
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
 
-TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
+TRL::TRL(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, SmtFactory::solver(QF_LA), config) {
     std::vector<Bools::Expr> steps;
     for (const auto &[id,t]: rule_map) {
         steps.emplace_back(encode_transition(t, id));
@@ -126,7 +126,7 @@ void TRL::add_blocking_clauses() {
     for (const auto &[id, b] : projections) {
         solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
     }
-    const auto it{blocked_per_step.find(depth)};
+    const auto it{blocked_per_step.find(depth + 1)};
     if (it != blocked_per_step.end()) {
         for (const auto &[_, b] : it->second) {
             solver->add(b);

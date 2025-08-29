@@ -20,7 +20,6 @@ public:
 
     OpenSmt(const bool model);
     void add(const Bools::Expr e) override;
-    void add_named(const Bools::Expr e);
     void push() override;
     void pop() override;
     SmtResult check() override;
@@ -31,9 +30,9 @@ public:
     ~OpenSmt() override;
     std::ostream& print(std::ostream& os) const override;
 
-    Bools::Expr interpolate(opensmt::ipartitions_t mask);
-    std::vector<Bools::Expr> interpolate_path(const std::vector<opensmt::ipartitions_t>&);
-    BoolExprSet unsatCore();
+    std::optional<Bools::Expr> interpolate(const BoolExprSet &conclusion) override;
+    // std::vector<Bools::Expr> interpolate_path(const std::vector<opensmt::ipartitions_t>&);
+    // BoolExprSet unsatCore();
 
 private:
 

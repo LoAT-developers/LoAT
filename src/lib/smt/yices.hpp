@@ -26,18 +26,22 @@ public:
     Yices& operator=(const Yices &that) = delete;
     Yices& operator=(Yices &&that) = delete;
 
-    Yices(Logic logic);
+    Yices(Logic logic, const bool interpolation);
     void add(const Bools::Expr e) override;
     void push() override;
     void pop() override;
     SmtResult processResult(smt_status status);
     SmtResult check() override;
+    SmtResult checkWithAssumptions(const BoolExprSet&);
     Model model(const std::optional<const VarSet> &vars = std::nullopt) override;
     void randomize(unsigned seed) override;
-    void enableModels() override;
     void resetSolver() override;
     ~Yices() override;
     std::ostream& print(std::ostream& os) const override;
+    void enableModels() override;
+
+    std::optional<Bools::Expr> interpolate(const BoolExprSet&) override;
+    BoolExprSet unsatCore();
 
 private:
     YicesContext ctx;

@@ -7,23 +7,17 @@
 
 #include <stdexcept>
 
-void IMC::add(const Bools::Expr e) {
-    solver.add(e);
-    ++assertions;
-}
-
-IMC::IMC(const ITSPtr its, const Config::TRPConfig &config) : TRPUtil(its, config) {
+IMC::IMC(const ITSPtr its, const bool aimc, const Config::TRPConfig &config) : TRPUtil(its, SmtFactory::interpolatingSolver(), config), aimc(aimc) {
     std::vector<Bools::Expr> steps;
     for (const auto &[id,r]: rule_map) {
-        steps.emplace_back(encode_transition(r, id));
+        steps.emplace_back(aimc ? encode_transition(r, id) : r);
     }
     step = bools::mkOr(steps);
-    add(t.init());
 }
 
-void IMC::build_trace() {
+void IMC::build_trace(unsigned depth) {
     trace.clear();
-    model = solver.model();
+    model = solver->model();
     std::optional<std::pair<Bools::Expr, Int>> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{get_subs(d, 1)};
@@ -56,27 +50,18 @@ void IMC::build_trace() {
     }
 }
 
-std::optional<Range> IMC::has_looping_infix() {
-    for (unsigned i = 0; i < trace.size(); ++i) {
-        for (unsigned start = 0; start + i < trace.size(); ++start) {
-            if (Config::Analysis::termination() &&
-                i > 0 &&
-                model.get<Arith>(get_subs(start, 1).get<Arith>(safety_var)) >= 0 &&
-                model.get<Arith>(get_subs(start + i, 1).get<Arith>(safety_var)) < 0) {
-                continue;
-            }
-            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
-                if (i == 0) {
-                    const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempVar)};
-                    if (SmtFactory::check(get_subs(0,1)(loop) && get_subs(1,1)(loop)) == SmtResult::Unsat) {
-                        continue;
-                    }
-                }
-                return {Range::from_interval(start, start + i)};
+bool IMC::has_looping_infix(unsigned start, unsigned length) {
+    const auto i {length - 1};
+    if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
+        if (i == 0) {
+            const auto loop{trp.mbp(trace[start].implicant, trace[start].model, theory::isTempVar)};
+            if (SmtFactory::check(get_subs(0, 1)(loop) && get_subs(1, 1)(loop)) == SmtResult::Unsat) {
+                return false;
             }
         }
+        return true;
     }
-    return {};
+    return false;
 }
 
 bool IMC::handle_loop(const Range &range) {
@@ -85,7 +70,11 @@ bool IMC::handle_loop(const Range &range) {
         return true;
     }
     auto ti{trp.compute(loop, model)};
-
+    for (const auto &s: forgotten) {
+        if (SmtFactory::check(s(ti)) != SmtResult::Unsat) {
+            return false;
+        }
+    }
     Int id;
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};
@@ -117,12 +106,12 @@ void IMC::add_blocking_clauses() {
     const auto s1{get_subs(depth - 1, 1)};
     const auto s2{get_subs(depth, 1)};
     for (const auto &[id, b] : projections) {
-        add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
+        solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
     }
     const auto it{blocked_per_step.find(depth)};
     if (it != blocked_per_step.end()) {
         for (const auto &[_, b] : it->second) {
-            add(b);
+            solver->add(b);
         }
     }
 }
@@ -138,62 +127,95 @@ void IMC::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
     }
 }
 
+void IMC::forget(const Subs subs, const Int id) {
+    forgotten.emplace_back(subs);
+    rule_map.erase(id);
+    for (auto &[_, m] : blocked_per_step) {
+        m.erase(id);
+    }
+    for (auto it = projections.begin(); it != projections.end();) {
+        if (it->first == id) {
+            it = projections.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    const auto l{level.at(id)};
+    level.erase(id);
+    accel.erase(id);
+    learned_to_loop.erase(id);
+    while (depth > l) {
+        solver->pop();
+        --depth;
+    }
+    std::vector<Bools::Expr> steps;
+    for (const auto &[id, r] : rule_map) {
+        steps.emplace_back(encode_transition(r, id));
+    }
+    step = bools::mkOr(steps);
+    if (Config::Analysis::log) {
+        std::cout << "forgetting " << id << std::endl;
+        std::cout << "backtracking to level " << l << std::endl;
+    }
+}
+
 std::optional<SmtResult> IMC::do_step() {
-    if (depth > 0) {
+    if (aimc && depth > 0) {
         add_blocking_clauses();
-        auto res{solver.check()};
+        auto res{solver->check()};
         if (res == SmtResult::Unsat) {
             if (Config::Analysis::log) {
                 std::cout << "SAT BY TRL" << std::endl;
             }
             return SmtResult::Sat;
         } else if (res == SmtResult::Sat) {
-            build_trace();
-            const auto range{has_looping_infix()};
-            if (range) {
-                if (Config::Analysis::log) {
-                    std::cout << "starting loop handling" << std::endl;
+            build_trace(depth);
+            for (unsigned length = 1; length <= trace.size(); ++length) {
+                for (unsigned start = 0; start + length < trace.size(); ++start) {
+                    if (has_looping_infix(start, length)) {
+                        Range range{Range::from_length(start, length)};
+                        if (Config::Analysis::log) {
+                            std::cout << "starting loop handling" << std::endl;
+                        }
+                        if (Config::Analysis::log) {
+                            std::cout << "found loop: " << range.start() << " to " << range.end() << std::endl;
+                        }
+                        if (handle_loop(range)) {
+                            while (depth > range.start()) {
+                                solver->pop();
+                                --depth;
+                            }
+                            if (Config::Analysis::log) {
+                                std::cout << "done with loop handling" << std::endl;
+                            }
+                            return std::nullopt;
+                        }
+                    }
                 }
-                if (Config::Analysis::log) {
-                    std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
-                }
-                if (!handle_loop(*range)) {
-                    return SmtResult::Unknown;
-                }
-                while (depth > range->start()) {
-                    solver.pop();
-                    --depth;
-                }
-                if (Config::Analysis::log) {
-                    std::cout << "done with loop handling" << std::endl;
-                }
-                return std::nullopt;
             }
         }
     }
-    ++depth;
     if (Config::Analysis::log > 0) {
         std::cout << "[IMC] Checking with lookahead length " << depth << '\n';
     }
-    const auto pre_subs {get_subs(depth - 1, 1)};
+    const auto pre_subs {get_subs(depth, 1)};
     const auto pre_subs_inverted {pre_subs.invert()};
-    const auto post_subs {get_subs(depth, 1)};
+    const auto post_subs {get_subs(depth + 1, 1)};
     const auto post_subs_inverted {post_subs.invert()};
-    solver.push();
-    add(pre_subs(step));
-    opensmt::ipartitions_t mask {0};
-    opensmt::setbit(mask, assertions - 1);
+    const auto s {pre_subs(step)};
+    BoolExprSet concl{s};
     auto movingErr{post_subs(t.err())};
-    auto reached_states {movingErr};
-    unsigned iter {0};
+    auto reached_states{movingErr};
+    unsigned iter{0};
     while (iter < depth) {
-        solver.push();
-        add(movingErr);
-        const auto res {solver.check()};
-        if (res == SmtResult::Unsat) {
-            opensmt::setbit(mask, assertions - 1);
-            itp = solver.interpolate(mask);
-            opensmt::clrbit(mask, assertions - 1);
+        if (Config::Analysis::log > 0) {
+            std::cout << "[IMC] iter " << iter << '\n';
+        }
+        concl.emplace(movingErr);
+        const auto res{solver->interpolate(concl)};
+        concl.erase(movingErr);
+        if (res) {
+            itp = *res;
             itp = pre_subs_inverted(itp);
             itp = post_subs(itp);
             if (Config::Analysis::log) {
@@ -208,20 +230,33 @@ std::optional<SmtResult> IMC::do_step() {
             }
             movingErr = itp;
             reached_states = reached_states || itp;
-            solver.pop(); // moving err
             ++iter;
-        } else if (res == SmtResult::Sat) {
-            if (iter > 0) {
-                solver.pop(); // moving err
-                return std::nullopt;
-            } else {
-                // Real counterexample
-                return SmtResult::Unknown;
-            }
         } else {
-            return SmtResult::Unknown;
+            if (iter > 0) {
+                break;
+            }
+            if (aimc) {
+                // Real counterexample?
+                build_trace(depth + 1);
+                if (!build_cex()) {
+                    for (const auto &e : trace) {
+                        if (e.id > last_orig_clause) {
+                            const auto acc{accel.at(e.id)};
+                            const auto subs{e.model.toSubs()};
+                            if (SmtFactory::check(subs(acc)) != SmtResult::Sat) {
+                                forget(subs, e.id);
+                                return std::nullopt;
+                            }
+                        }
+                    }
+                }
+            }
+            return SmtResult::Unsat;
         }
     }
+    ++depth;
+    solver->push();
+    solver->add(s);
     return std::nullopt;
 }
 

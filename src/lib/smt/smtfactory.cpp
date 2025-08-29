@@ -9,36 +9,40 @@
 namespace SmtFactory {
 
 SmtPtr solver(Logic logic) {
-    std::unique_ptr<Smt> res;
+    SmtPtr res;
+    if (Config::Analysis::smtSolver == Config::Analysis::OpenSmt && logic == QF_LA) {
+        return std::unique_ptr<Smt>(new OpenSmt(true));
+    }
     switch (Config::Analysis::smtSolver) {
-    case Config::Analysis::Heuristic: {
-        switch (logic) {
-        case QF_LA:
-            res = std::unique_ptr<Smt>(new Yices(logic));
-            break;
-        case QF_NA:
-            res = std::unique_ptr<Smt>(new Z3());
-            break;
-        case QF_NAT:
-            res = std::unique_ptr<Smt>(new Swine());
+        case Config::Analysis::OpenSmt:
+        case Config::Analysis::Heuristic: {
+            switch (logic) {
+                case QF_LA:
+                    res = std::unique_ptr<Smt>(new Yices(logic, false));
+                    break;
+                case QF_NA:
+                    res = std::unique_ptr<Smt>(new Z3());
+                    break;
+                case QF_NAT:
+                    res = std::unique_ptr<Smt>(new Swine());
+                    break;
+            }
             break;
         }
-        break;
-    }
-    case Config::Analysis::Yices: {
-        res = std::unique_ptr<Smt>(new Yices(logic));
-        break;
-    }
-    default: {
-        res = solver();
-        break;
-    }
+        case Config::Analysis::Yices: {
+            res = std::unique_ptr<Smt>(new Yices(logic, false));
+            break;
+        }
+        default: {
+            res = solver();
+            break;
+        }
     }
     return res;
 }
 
 SmtPtr solver() {
-    std::unique_ptr<Smt> solver;
+    SmtPtr solver;
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Z3:
         solver = std::unique_ptr<Smt>(new Z3());
@@ -47,7 +51,7 @@ SmtPtr solver() {
         solver = std::unique_ptr<Smt>(new CVC5());
         break;
     case Config::Analysis::Yices:
-        solver = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
+        solver = std::unique_ptr<Smt>(new Yices(Logic::QF_NA, false));
         break;
     case Config::Analysis::OpenSmt:
         solver = std::unique_ptr<Smt>(new OpenSmt(true));
@@ -57,6 +61,22 @@ SmtPtr solver() {
     case Config::Analysis::Heuristic:
         solver = std::unique_ptr<Smt>(new Swine());
         break;
+    }
+    return solver;
+}
+
+SmtPtr interpolatingSolver() {
+    SmtPtr solver;
+    switch (Config::Analysis::smtSolver) {
+        case Config::Analysis::Yices:
+            solver = std::unique_ptr<Smt>(new Yices(Logic::QF_LA, true));
+            break;
+        case Config::Analysis::CVC5:
+            solver = std::unique_ptr<Smt>(new CVC5());
+            break;
+        default:
+            solver = std::unique_ptr<Smt>(new OpenSmt(true));
+            break;
     }
     return solver;
 }

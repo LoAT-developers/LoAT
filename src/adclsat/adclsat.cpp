@@ -15,7 +15,7 @@
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
 
-ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its, config) {
+ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its, SmtFactory::solver(QF_LA), config) {
     linked_hash_map<Bools::Expr, Bools::Expr> map;
     for (const auto &[id,trans]: rule_map) {
         const auto encoded {encode_transition(trans, id)};

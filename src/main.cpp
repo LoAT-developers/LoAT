@@ -122,6 +122,8 @@ void parseFlags(int argc, char *argv[]) {
                 Config::Analysis::engine = Config::Analysis::ADCLSAT;
             } else if (boost::iequals("imc", str)) {
                 Config::Analysis::engine = Config::Analysis::IMC;
+            } else if (boost::iequals("aimc", str)) {
+                Config::Analysis::engine = Config::Analysis::AIMC;
             } else {
                 std::cout << "Error: unknown engine " << str << std::endl;
                 exit(1);
@@ -431,8 +433,9 @@ int main(int argc, char *argv[]) {
                     }
                     break;
                 }
-                case Config::Analysis::IMC: {
-                    IMC imc{*its, Config::trp};
+                case Config::Analysis::IMC:
+                case Config::Analysis::AIMC: {
+                    IMC imc{*its, Config::Analysis::engine == Config::Analysis::AIMC, Config::trp};
                     res = imc.analyze();
                     if (Config::Analysis::model) {
                         if (res == SmtResult::Sat) {

@@ -58,6 +58,8 @@ public:
 
     virtual void randomize(unsigned seed) = 0;
 
+    virtual std::optional<Bools::Expr> interpolate(const BoolExprSet&);
+
     virtual ~Smt() {}
 
     static Logic chooseLogic(const std::vector<Bools::Expr> &xs, const std::vector<Subs> &up = {}) {
@@ -122,4 +124,4 @@ public:
 
 };
 
-using SmtPtr = std::unique_ptr<Smt>;
+using SmtPtr = std::shared_ptr<Smt>;

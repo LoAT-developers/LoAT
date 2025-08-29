@@ -21,6 +21,7 @@ public:
     ~CVC5() override;
     std::ostream& print(std::ostream& os) const override;
     void randomize(unsigned seed) override;
+    std::optional<Bools::Expr> interpolate(const BoolExprSet& conclusion) override;
 
 private:
     cvc5::Solver solver;

@@ -9,16 +9,12 @@ OpenSmt::OpenSmt(const bool model) {
     auto str {"ok"};
     conf.setOption(opensmt::SMTConfig::o_produce_inter, opensmt::SMTOption(true), str);
     conf.setSimplifyInterpolant(4);
-    conf.setOption(opensmt::SMTConfig::o_produce_unsat_cores, opensmt::SMTOption(true), str);
+    // conf.setOption(opensmt::SMTConfig::o_produce_unsat_cores, opensmt::SMTOption(true), str);
     solver = std::make_unique<opensmt::MainSolver>(logic, conf, "opensmt");
 }
 
 void OpenSmt::add(const Bools::Expr e) {
     solver->addAssertion(ExprConverter<opensmt::PTRef, opensmt::PTRef, std::vector<opensmt::PTRef>, std::vector<opensmt::PTRef>>::convert(e, *ctx));
-}
-
-void OpenSmt::add_named(const Bools::Expr e) {
-    solver->tryAddNamedAssertion(ExprConverter<opensmt::PTRef, opensmt::PTRef, std::vector<opensmt::PTRef>, std::vector<opensmt::PTRef>>::convert(e, *ctx), std::to_string(solver->getAssertionsCount()));
 }
 
 void OpenSmt::push() {
@@ -204,33 +200,47 @@ Bools::Expr OpenSmt::convertFormula(const opensmt::PTRef &t) {
     throw std::invalid_argument("unknown operator: " + logic.printTerm(t));
 }
 
-Bools::Expr OpenSmt::interpolate(opensmt::ipartitions_t mask) {
-    auto itpContext {solver->getInterpolationContext()};
-    std::vector<opensmt::PTRef> itps;
-    itpContext->getSingleInterpolant(itps, mask);
-    assert(itps.size() == 1);
-    return convertFormula(itps[0]);
+std::optional<Bools::Expr> OpenSmt::interpolate(const BoolExprSet &conclusion) {
+    solver->push();
+    for (const auto &c: conclusion) {
+        add(c);
+    }
+    if (check() == SmtResult::Unsat) {
+        opensmt::ipartitions_t mask {0};
+        for (unsigned i = 1; i <= conclusion.size(); ++i) {
+            opensmt::setbit(mask, solver->getAssertionsCount() - i);
+        }
+        auto itpContext{solver->getInterpolationContext()};
+        std::vector<opensmt::PTRef> itps;
+        itpContext->getSingleInterpolant(itps, mask);
+        assert(itps.size() == 1);
+        solver->pop();
+        return convertFormula(itps[0]);
+    } else {
+        solver->pop();
+        return {};
+    }
 }
 
-std::vector<Bools::Expr> OpenSmt::interpolate_path(const std::vector<opensmt::ipartitions_t> &masks) {
-    auto itpContext {solver->getInterpolationContext()};
-    opensmt::vec<opensmt::PTRef> itps;
-    itpContext->getPathInterpolants(itps, masks);
-    std::vector<Bools::Expr> res;
-    for (const auto &i: itps) {
-        res.emplace_back(convertFormula(i));
-    }
-    return res;
-}
+// std::vector<Bools::Expr> OpenSmt::interpolate_path(const std::vector<opensmt::ipartitions_t> &masks) {
+//     auto itpContext {solver->getInterpolationContext()};
+//     opensmt::vec<opensmt::PTRef> itps;
+//     itpContext->getPathInterpolants(itps, masks);
+//     std::vector<Bools::Expr> res;
+//     for (const auto &i: itps) {
+//         res.emplace_back(convertFormula(i));
+//     }
+//     return res;
+// }
 
-BoolExprSet OpenSmt::unsatCore() {
-    const auto core {solver->getUnsatCore()};
-    BoolExprSet res;
-    for (const auto &x: core->getTerms()) {
-        res.insert(convertFormula(x));
-    }
-    return res;
-}
+// BoolExprSet OpenSmt::unsatCore() {
+//     const auto core {solver->getUnsatCore()};
+//     BoolExprSet res;
+//     for (const auto &x: core->getTerms()) {
+//         res.insert(convertFormula(x));
+//     }
+//     return res;
+// }
 
 Rational OpenSmt::getRealFromModel(opensmt::Model &model, opensmt::PTRef x) {
     auto val {logic.getNumConst(model.evaluate(x))};
