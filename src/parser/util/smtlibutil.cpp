@@ -50,6 +50,12 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         if (const auto name {exp.str()}; isInt(name)) {
             return arith::mkConst(Int(name));
         } else {
+            for (int i = state.bindings.size() - 1; i >= 0; i--) {
+                const auto it{state.bindings[i].find(name)};
+                if (it != state.bindings[i].end()) {
+                    return std::get<Arith::Expr>(it->second);
+                }
+            }
             return std::get<Arith::Var>(state.get_var(name, theory::Type::Int));
         }
     }
