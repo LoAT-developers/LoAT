@@ -207,7 +207,7 @@ std::optional<SmtResult> IMC::do_step() {
     auto movingErr{post_subs(t.err())};
     auto reached_states{movingErr};
     unsigned iter{0};
-    while (iter < depth) {
+    while (!aimc || iter < depth) {
         if (Config::Analysis::log > 0) {
             std::cout << "[IMC] iter " << iter << '\n';
         }
