@@ -26,7 +26,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           # Build LoAT binary inside the latest pushed base image:
-          image: ${{ vars.DOCKERHUB_USERNAME }}/loat-base:b37623ce
+          image: ${{ vars.DOCKERHUB_USERNAME }}/loat-base:e39c3e3e
           options: -v ${{ github.workspace }}:/LoAT
           shell: bash
           run: |
