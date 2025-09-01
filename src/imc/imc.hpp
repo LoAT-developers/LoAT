@@ -26,7 +26,7 @@ public:
 
 protected:
 
-    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) override;
+    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop);
 
 private:
 

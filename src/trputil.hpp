@@ -8,6 +8,8 @@
 #include "itstosafetyproblem.hpp"
 #include "smtfactory.hpp"
 
+#include <map>
+
 class Range {
     unsigned s;
     unsigned e;
@@ -33,6 +35,7 @@ protected:
         Int id;
         Bools::Expr implicant;
         Model model;
+        Bools::Expr projection;
     };
 
     using rule_map_t = linked_hash_map<Int, Bools::Expr>;
@@ -59,9 +62,13 @@ protected:
     linked_hash_map<Int, Bools::Expr> accel;
     std::unordered_map<Int, Int> level;
     bool safe {true};
+    // step -> ID of corresponding transition formula -> blocked transition
+    std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
+    unsigned depth {0};
 
     TRPUtil(const ITSPtr its, SmtPtr smt, const Config::TRPConfig &config);
 
+    std::optional<Range> has_looping_infix();
     std::pair<Bools::Expr, Model> compress(const Range &range);
     const Renaming& get_subs(const unsigned start, const unsigned steps);
     Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
@@ -70,7 +77,8 @@ protected:
     std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
     std::optional<Arith::Expr> prove_term(const Bools::Expr loop, const Model &model);
     bool build_cex();
-    virtual void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) = 0;
+    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop);
+    void add_blocking_clauses();
     bool add_blocking_clauses(const Range &range, Model model);
 
 public:

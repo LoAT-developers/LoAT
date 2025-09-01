@@ -15,9 +15,15 @@
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
 
-ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its, SmtFactory::solver(QF_LA), config) {
+ADCLSat::ADCLSat(
+    const ITSPtr its,
+    const Config::TRPConfig &config) : TRPUtil(its, SmtFactory::solver(QF_LA), config),
+                                       pre_to_post(t.pre_to_post()),
+                                       post_to_pre(pre_to_post.invert()) {
     linked_hash_map<Bools::Expr, Bools::Expr> map;
-    for (const auto &[id,trans]: rule_map) {
+    std::vector<Bools::Expr> steps;
+    for (const auto &[id, trans] : rule_map) {
+        steps.emplace_back(trans);
         const auto encoded {encode_transition(trans, id)};
         map.emplace(trans, encoded);
         const auto preds {t.get_dg().getPredecessors(trans)};
@@ -33,49 +39,26 @@ ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its
             }
         }
         if (t.get_dg().getRoots().contains(trans)) {
-            std::cout << "found root" << std::endl;
             dg_over_approx.markRoot(encoded);
         }
         if (t.get_dg().getSinks().contains(trans)) {
             dg_over_approx.markSink(encoded);
         }
     }
+    step = bools::mkOr(steps);
 }
 
-std::optional<unsigned> ADCLSat::has_looping_suffix() {
-    const auto last {trace.size() - 1};
-    for (unsigned start = last; start + 1 > 0; --start) {
-        if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || trace[start].id <= last_orig_clause)) {
-            if (start == last) {
-                const auto loop{trace[start].implicant};
-                if (SmtFactory::check(get_subs(0, 1)(loop) && get_subs(1, 1)(loop)) == SmtResult::Unsat) {
-                    continue;
-                }
-            }
-            return start;
-        }
-    }
-    return {};
-}
-
-void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
-    const auto s{get_subs(range.start(), range.length())};
-    if (range.length() == 1) {
-        solver->add(s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id)))));
-    } else {
-        solver->add(s(!loop));
-    }
-}
-
-bool ADCLSat::handle_loop(const unsigned start) {
-    const auto range {Range::from_interval(start, trace.size() - 1)};
+bool ADCLSat::handle_loop(const Range range) {
     auto [loop, model]{specialize(range, theory::isTempVar)};
-    solver->pop();
     if (TRPUtil::add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
         }
-        trace.pop_back();
+        while (depth > range.end()) {
+            --depth;
+            trace.pop_back();
+            solver->pop();
+        }
         return true;
     }
     if (Config::Analysis::log) {
@@ -100,8 +83,8 @@ bool ADCLSat::handle_loop(const unsigned start) {
             return x == Var(n);
         });
     }
-    const auto fst_elem {trace.at(start)};
-    const auto last_elem {trace.back()};
+    const auto fst_elem {trace.at(range.start())};
+    const auto last_elem {trace.at(range.end())};
     const auto fst {encode_transition(rule_map.at(fst_elem.id), fst_elem.id)};
     const auto last {encode_transition(rule_map.at(last_elem.id), last_elem.id)};
     const auto preds {dg_over_approx.getPredecessors(fst)};
@@ -119,7 +102,11 @@ bool ADCLSat::handle_loop(const unsigned start) {
     } else {
         add_blocking_clause(range, id, projected);
     }
-    trace.pop_back();
+    while (depth > range.end()) {
+        --depth;
+        trace.pop_back();
+        solver->pop();
+    }
     return true;
 }
 
@@ -152,28 +139,85 @@ std::optional<SmtResult> ADCLSat::do_step() {
         }
         solver->pop();
     }
-    if (const auto start{has_looping_suffix()}) {
+    if (const auto range{has_looping_infix()}) {
         if (Config::Analysis::log) {
-            std::cout << "found loop starting at " << start << std::endl;
+            std::cout << "found loop: [" << range->start() << "," << range->end() << "]" << std::endl;
         }
         backtracking = true;
-        if (!handle_loop(*start)) {
+        if (!handle_loop(*range)) {
             return SmtResult::Unknown;
         } else {
             return {};
         }
     }
     const auto subs{get_subs(trace.size(), 1)};
+    // if (!trace.empty()) {
+        // const auto projection = trace.back().projection;
+        // auto isolver{SmtFactory::interpolatingSolver()};
+        // isolver->add(projection);
+        // auto reached{pre_to_post(t.err())};
+        // auto err{step && reached};
+        // for (unsigned i = 0; i < trace.size(); ++i) {
+        //     const auto opt{isolver->interpolate({err})};
+        //     if (!opt) {
+        //         break;
+        //     }
+        //     const auto itp {pre_to_post(*opt)};
+        //     std::cout << "interpolant: " << itp << std::endl;
+        //     std::cout << "err: " << err << std::endl;
+        //     std::cout << "reached: " << reached << std::endl;
+        //     if (SmtFactory::check(itp && !reached) == SmtResult::Unsat) {
+        //         std::cout << "interpolant is inductive!" << std::endl;
+        //         backtracking = true;
+        //         solver->pop(); // backtracking
+        //         trace.pop_back();
+        //         const auto b{!subs(projection)};
+        //         if (Config::Analysis::log) {
+        //             std::cout << "***** Interpolation *****" << std::endl;
+        //         }
+        //         std::cout << "blocking clause: " << b << std::endl;
+        //         solver->add(b);
+        //         return {};
+        //     }
+        //     err = step && itp;
+        //     reached = reached || itp;
+        // }
+        // const auto projection = trace.back().projection;
+        // auto ksolver {SmtFactory::solver(QF_LA)};
+        // for (unsigned i = 0; i < trace.size(); ++i) {
+        //     ksolver->add(get_subs(i,1)(step));
+        //     ksolver->add(!get_subs(i+1,1)(projection));
+        //     ksolver->push();
+        //     ksolver->add(t.err());
+        //     if (ksolver->check() != SmtResult::Unsat) {
+        //         return SmtResult::Unknown;
+        //     }
+        //     ksolver->pop();
+        //     ksolver->push();
+        //     ksolver->add(projection);
+        //     if (ksolver->check() == SmtResult::Unsat) {
+        //         backtracking = true;
+        //         solver->pop(); // backtracking
+        //         trace.pop_back();
+        //         const auto b{!subs(projection)};
+        //         if (Config::Analysis::log) {
+        //             std::cout << "***** k-induction *****" << std::endl;
+        //         }
+        //         std::cout << "blocking clause: " << b << std::endl;
+        //         solver->add(b);
+        //         return {};
+        //     }
+        // }
+    // }
     solver->push();
     const auto steps = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
     const auto step {bools::mkOr(steps)};
     solver->add(subs(step));
+    solver->add(get_subs(trace.size() + 1, 1)(unreached));
     if (!trace.empty() && trace.back().id > last_orig_clause) {
         solver->add(subs(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))));
     }
-    for (const auto &[id, b] : projections) {
-        solver->add(subs(!b) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
-    }
+    add_blocking_clauses();
     switch (solver->check()) {
         case SmtResult::Unknown:
             return SmtResult::Unknown;
@@ -182,11 +226,12 @@ std::optional<SmtResult> ADCLSat::do_step() {
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;
-            const auto projection{trp.mbp(trace.back().implicant, trace.back().model, theory::isTempVar)};
+            const auto projection{trace.back().projection};
             solver->pop(); // current step
             solver->pop(); // backtracking
             trace.pop_back();
-            const auto b {!get_subs(trace.size(), 1)(projection)};
+            --depth;
+            const auto b {!subs(projection)};
             if (Config::Analysis::log) {
                 std::cout << "***** Backtrack *****" << std::endl;
             }
@@ -207,11 +252,23 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto trans{rule_map.at(id)};
     const auto m{model.composeBackwards(subs)};
     const auto imp{m.syntacticImplicant(trans)};
+    auto projection {imp};
+    if (trace.empty()) {
+        projection = projection && m.syntacticImplicant(t.init());
+    } else {
+        projection = projection && trace.back().projection;
+    }
+    projection = mbp::int_mbp(projection, m, mbp_kind, [](const auto x){
+        return !theory::isPostVar(x);
+    });
     solver->push();
-    solver->add(subs(imp));
+    solver->add(subs(imp && projection));
+    projection = post_to_pre(projection);
+    unreached = unreached && !projection;
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
-    trace.emplace_back(id, imp, m);
+    ++depth;
+    trace.emplace_back(id, imp, m, projection);
     if (trace.size() > 1) {
         dependency_graph.addEdge(trace.at(trace.size() - 2).implicant, imp);
     }

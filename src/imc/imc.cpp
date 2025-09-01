@@ -35,7 +35,7 @@ void IMC::build_trace(unsigned depth) {
             dependency_graph.addEdge(prev->first, imp);
         }
         prev = {imp, id};
-        trace.emplace_back(TraceElem{.id = id, .implicant = imp, .model = projected_model});
+        trace.emplace_back(TraceElem{.id = id, .implicant = imp, .model = projected_model, .projection=top()});
     }
     if (Config::Analysis::log) {
         std::cout << "trace:" << std::endl;

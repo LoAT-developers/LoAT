@@ -8,10 +8,12 @@ private:
 
     bool backtracking {false};
     DependencyGraph<Bools::Expr> dg_over_approx;
+    Renaming pre_to_post;
+    Renaming post_to_pre;
+    Bools::Expr step {top()};
+    Bools::Expr unreached {top()};
 
-    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) override;
-    std::optional<unsigned> has_looping_suffix();
-    bool handle_loop(const unsigned start);
+    bool handle_loop(const Range range);
 
 public:
 
