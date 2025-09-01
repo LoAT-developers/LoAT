@@ -231,11 +231,10 @@ std::optional<SmtResult> ADCLSat::do_step() {
             solver->pop(); // backtracking
             trace.pop_back();
             --depth;
-            const auto b {!subs(projection)};
+            unreached = unreached && !projection;
             if (Config::Analysis::log) {
                 std::cout << "***** Backtrack *****" << std::endl;
             }
-            solver->add(b);
             return {};
         }
         case SmtResult::Sat:
@@ -264,7 +263,6 @@ std::optional<SmtResult> ADCLSat::do_step() {
     solver->push();
     solver->add(subs(imp && projection));
     projection = post_to_pre(projection);
-    unreached = unreached && !projection;
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
     ++depth;
