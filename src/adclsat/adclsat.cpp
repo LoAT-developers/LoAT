@@ -54,7 +54,7 @@ bool ADCLSat::handle_loop(const Range range) {
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
         }
-        while (depth > range.end()) {
+        while (depth > range.start()) {
             --depth;
             trace.pop_back();
             solver->pop();
@@ -102,7 +102,7 @@ bool ADCLSat::handle_loop(const Range range) {
     } else {
         add_blocking_clause(range, id, projected);
     }
-    while (depth > range.end()) {
+    while (depth > range.start()) {
         --depth;
         trace.pop_back();
         solver->pop();
@@ -210,14 +210,15 @@ std::optional<SmtResult> ADCLSat::do_step() {
         // }
     // }
     solver->push();
+    add_blocking_clauses();
+    solver->add(get_subs(trace.size() + 1, 1)(unreached));
+    solver->push();
     const auto steps = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
     const auto step {bools::mkOr(steps)};
     solver->add(subs(step));
-    solver->add(get_subs(trace.size() + 1, 1)(unreached));
     if (!trace.empty() && trace.back().id > last_orig_clause) {
         solver->add(subs(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))));
     }
-    add_blocking_clauses();
     switch (solver->check()) {
         case SmtResult::Unknown:
             return SmtResult::Unknown;
@@ -228,6 +229,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
             backtracking = true;
             const auto projection{trace.back().projection};
             solver->pop(); // current step
+            solver->pop(); // blocking clauses
             solver->pop(); // backtracking
             trace.pop_back();
             --depth;
@@ -260,7 +262,6 @@ std::optional<SmtResult> ADCLSat::do_step() {
     projection = mbp::int_mbp(projection, m, mbp_kind, [](const auto x){
         return !theory::isPostVar(x);
     });
-    solver->push();
     solver->add(subs(imp && projection));
     projection = post_to_pre(projection);
     const auto smt_res{solver->check()};

@@ -407,7 +407,6 @@ bool TRPUtil::build_cex() {
 void TRPUtil::add_blocking_clauses() {
     const auto s1{get_subs(depth, 1)};
     for (const auto &[id, b] : projections) {
-        std::cout << "blocking clause " << (s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id)))) << std::endl;
         solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
     }
     const auto it{blocked_per_step.find(depth + 1)};
