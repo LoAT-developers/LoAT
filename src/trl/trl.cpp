@@ -154,7 +154,7 @@ std::optional<SmtResult> TRL::do_step() {
                         if (!handle_loop(*range)) {
                             return SmtResult::Unknown;
                         }
-                        while (depth > range->start()) {
+                        while (depth > range->end()) {
                             pop();
                         }
                     }
