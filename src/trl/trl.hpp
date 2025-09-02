@@ -30,12 +30,12 @@ private:
     void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) override;
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
-    std::vector<Bools::Expr> current_projection;
 
     bool handle_loop(const Range &range);
     void build_trace();
     void pop();
     std::optional<Bools::Expr> inductive_subset();
+    BoolExprSet checked;
     Bools::Expr unsafe {top()};
 
 public:

@@ -139,7 +139,13 @@ std::optional<Bools::Expr> TRL::inductive_subset() {
     auto solver {SmtFactory::solver(QF_LA)};
     solver->add(step);
     bool changed;
-    const auto lits {post_to_pre(current_projection.back())->lits()};
+    const auto to_check {post_to_pre(mbp::int_mbp(trace.back().implicant, trace.back().model, mbp_kind, [](const auto x) {
+        return !theory::isPostVar(x);
+    }))};
+    if (!checked.emplace(to_check).second) {
+        return std::nullopt;
+    }
+    const auto lits {to_check->lits()};
     do {
         changed = false;
         for (const auto &l : lits) {
@@ -203,18 +209,6 @@ void TRL::build_trace() {
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{model.composeBackwards(s)};
         auto imp{comp.syntacticImplicant(rule)};
-        if (current_projection.size() == d) {
-            Bools::Expr proj {top()};
-            if (d == 0) {
-                proj = model.syntacticImplicant(t.init()) && imp;
-            } else {
-                proj = current_projection.back() && imp;
-            }
-            proj = post_to_pre(mbp::int_mbp(proj, comp, mbp_kind, [](const auto x) {
-                return !theory::isPostVar(x);
-            }));
-            current_projection.push_back(proj);
-        }
         imp = imp && theory::mkEq(trace_var, arith::mkConst(id));
         auto relevant_vars{vars};
         for (const auto &x : vars) {
@@ -233,10 +227,6 @@ void TRL::build_trace() {
         for (const auto &t : trace) {
             std::cout << t.implicant << std::endl;
         }
-        std::cout << "projections:" << std::endl;
-        for (const auto &t : current_projection) {
-            std::cout << t << std::endl;
-        }
         std::cout << "trace var: " << trace_var << std::endl;
         if (Config::Analysis::termination()) {
             std::cout << "safety var: " << safety_var << std::endl;
@@ -251,7 +241,6 @@ void TRL::build_trace() {
 void TRL::pop() {
     solver->pop();
     --depth;
-    current_projection.pop_back();
 }
 
 std::optional<SmtResult> TRL::do_step() {
@@ -264,7 +253,6 @@ std::optional<SmtResult> TRL::do_step() {
             return SmtResult::Unknown;
         case SmtResult::Sat:
             model = solver->model();
-            current_projection.clear();
             if (Config::Analysis::log) {
                 std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
             }
@@ -280,18 +268,6 @@ std::optional<SmtResult> TRL::do_step() {
             }
             add_blocking_clauses();
             SmtResult smt_res {SmtResult::Unknown};
-            while (!current_projection.empty()) {
-                solver->push();
-                solver->add(get_subs(current_projection.size(), 1)(current_projection.back()));
-                smt_res = solver->check();
-                if (smt_res == SmtResult::Sat) {
-                    model = solver->model();
-                    solver->pop();
-                    break;
-                }
-                solver->pop();
-                current_projection.pop_back();
-            }
             if (smt_res != SmtResult::Sat) {
                 smt_res = solver->check();
                 if (smt_res == SmtResult::Sat) {
@@ -307,7 +283,7 @@ std::optional<SmtResult> TRL::do_step() {
                 case SmtResult::Sat: {
                     ++depth;
                     build_trace();
-                    if (const auto inductive {inductive_subset()}) {
+                    if (const auto inductive{inductive_subset()}) {
                         unsafe = unsafe && !*inductive;
                         pop();
                         return std::nullopt;
