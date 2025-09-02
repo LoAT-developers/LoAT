@@ -162,16 +162,21 @@ Bools::Expr TRL::inductive_subset() {
 void TRL::build_trace() {
     std::optional<std::pair<Bools::Expr, Int>> prev;
     trace.clear();
-    current_projection = model.syntacticImplicant(mbp::int_mbp(t.init(), model, mbp_kind, theory::isTempVar));
+    const auto mk_projection {!current_projection};
+    if (mk_projection) {
+        current_projection = model.syntacticImplicant(mbp::int_mbp(t.init(), model, mbp_kind, theory::isTempVar));
+    }
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{get_subs(d, 1)};
         const auto id{model.eval<Arith>(s.get<Arith>(trace_var))};
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{model.composeBackwards(s)};
         auto imp{comp.syntacticImplicant(rule)};
-        current_projection = post_to_pre(mbp::int_mbp(imp && *current_projection && imp, comp, mbp_kind, [](const auto x) {
-            return !theory::isPostVar(x);
-        }));
+        if (mk_projection || d == depth - 1) {
+            current_projection = post_to_pre(mbp::int_mbp(imp && *current_projection && imp, comp, mbp_kind, [](const auto x) {
+                return !theory::isPostVar(x);
+            }));
+        }
         imp = imp && theory::mkEq(trace_var, arith::mkConst(id));
         auto relevant_vars{vars};
         for (const auto &x : vars) {
@@ -257,8 +262,9 @@ std::optional<SmtResult> TRL::do_step() {
                     build_trace();
                     const auto inductive {inductive_subset()};
                     if (SmtFactory::check(inductive && t.err()) == SmtResult::Unsat) {
-                        std::cout << "INDUCTION" << std::endl;
                         safe = safe || inductive;
+                        pop();
+                        return std::nullopt;
                     }
                     if (Config::Analysis::log) {
                         std::cout << "starting loop handling" << std::endl;
