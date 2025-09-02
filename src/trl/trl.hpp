@@ -35,6 +35,8 @@ private:
     bool handle_loop(const Range &range);
     void build_trace();
     void pop();
+    Bools::Expr inductive_subset();
+    Bools::Expr safe {bot()};
 
 public:
 

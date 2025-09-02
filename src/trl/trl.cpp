@@ -134,6 +134,31 @@ void TRL::add_blocking_clauses() {
     }
 }
 
+Bools::Expr TRL::inductive_subset() {
+    LitSet res;
+    auto solver {SmtFactory::solver(QF_LA)};
+    solver->add(step);
+    bool changed;
+    do {
+        changed = false;
+        for (const auto &l : (*current_projection)->lits()) {
+            if (res.contains(l)) continue;
+            solver->push();
+            solver->add(bools::mkLit(l));
+            solver->push();
+            solver->add(!t.pre_to_post()(bools::mkLit(l)));
+            if (solver->check() == SmtResult::Unsat) {
+                res.insert(l);
+                changed = true;
+            } else {
+                solver->pop();
+            }
+            solver->pop();
+        }
+    } while (changed);
+    return bools::mkAndFromLits(res);
+}
+
 void TRL::build_trace() {
     std::optional<std::pair<Bools::Expr, Int>> prev;
     trace.clear();
@@ -199,7 +224,7 @@ std::optional<SmtResult> TRL::do_step() {
             // pop error states
             solver->pop();
             solver->push();
-            solver->add(s(step));
+            solver->add(s(step) && !get_subs(depth + 1, 1)(safe));
             if (Config::Analysis::termination() && depth > 0) {
                 solver->add(bools::mkLit(arith::mkGeq(get_subs(depth - 1, 1).get<Arith>(safety_var), s.get<Arith>(safety_var))));
             }
@@ -230,6 +255,11 @@ std::optional<SmtResult> TRL::do_step() {
                 case SmtResult::Sat: {
                     ++depth;
                     build_trace();
+                    const auto inductive {inductive_subset()};
+                    if (SmtFactory::check(inductive && t.err()) == SmtResult::Unsat) {
+                        std::cout << "INDUCTION" << std::endl;
+                        safe = safe || inductive;
+                    }
                     if (Config::Analysis::log) {
                         std::cout << "starting loop handling" << std::endl;
                     }
