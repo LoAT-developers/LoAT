@@ -135,7 +135,7 @@ void TRL::add_blocking_clauses() {
 }
 
 std::optional<Bools::Expr> TRL::inductive_subset() {
-    LitSet res;
+    LitSet max_ind;
     auto solver {SmtFactory::solver(QF_LA)};
     solver->add(step);
     bool changed;
@@ -143,13 +143,13 @@ std::optional<Bools::Expr> TRL::inductive_subset() {
     do {
         changed = false;
         for (const auto &l : lits) {
-            if (res.contains(l)) continue;
+            if (max_ind.contains(l)) continue;
             solver->push();
             solver->add(bools::mkLit(l));
             solver->push();
             solver->add(!t.pre_to_post()(bools::mkLit(l)));
             if (solver->check() == SmtResult::Unsat) {
-                res.insert(l);
+                max_ind.insert(l);
                 changed = true;
             } else {
                 solver->pop();
@@ -160,27 +160,36 @@ std::optional<Bools::Expr> TRL::inductive_subset() {
     solver = SmtFactory::solver(QF_LA);
     solver->add(t.err());
     solver->push();
-    solver->add(bools::mkAndFromLits(res));
+    solver->add(bools::mkAndFromLits(max_ind));
     if (solver->check() == SmtResult::Unsat) {
         solver->pop();
-        LitSet min;
-        do {
-            min = res;
-            changed = false;
-            for (const auto &lit: res) {
-                min.erase(lit);
-                solver->push();
-                solver->add(bools::mkAndFromLits(min));
-                if (solver->check() != SmtResult::Unsat) {
-                    min.insert(lit);
-                } else {
-                    changed = true;
-                }
-                solver->pop();
+        LitSet min_safe {max_ind};
+        LitSet removed;
+        for (const auto &lit : max_ind) {
+            min_safe.erase(lit);
+            solver->push();
+            solver->add(bools::mkAndFromLits(min_safe));
+            if (solver->check() != SmtResult::Unsat) {
+                min_safe.insert(lit);
+            } else {
+                removed.insert(lit);
             }
-            res = min;
-        } while (changed);
-        return bools::mkAndFromLits(res);
+            solver->pop();
+        }
+        LitSet safe_ind {max_ind};
+        auto solver {SmtFactory::solver(QF_LA)};
+        solver->add(step);
+        for (const auto &l: removed) {
+            safe_ind.erase(l);
+            solver->push();
+            solver->add(bools::mkAndFromLits(safe_ind));
+            solver->add(t.pre_to_post()(!bools::mkAndFromLits(safe_ind)));
+            if (solver->check() != SmtResult::Unsat) {
+                safe_ind.insert(l);
+            }
+            solver->pop();
+        }
+        return bools::mkAndFromLits(safe_ind);
     }
     return std::nullopt;
 }
