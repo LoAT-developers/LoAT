@@ -30,6 +30,7 @@ private:
     void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) override;
     void add_blocking_clauses();
     std::optional<Range> has_looping_infix();
+    std::optional<Bools::Expr> current_projection;
 
     bool handle_loop(const Range &range);
     void build_trace();

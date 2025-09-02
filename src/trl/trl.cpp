@@ -135,15 +135,19 @@ void TRL::add_blocking_clauses() {
 }
 
 void TRL::build_trace() {
-    trace.clear();
-    model = solver->model();
     std::optional<std::pair<Bools::Expr, Int>> prev;
+    trace.clear();
+    current_projection = model.syntacticImplicant(mbp::int_mbp(t.init(), model, mbp_kind, theory::isTempVar));
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{get_subs(d, 1)};
         const auto id{model.eval<Arith>(s.get<Arith>(trace_var))};
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{model.composeBackwards(s)};
-        const auto imp{comp.syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
+        auto imp{comp.syntacticImplicant(rule)};
+        current_projection = post_to_pre(mbp::int_mbp(imp && *current_projection && imp, comp, mbp_kind, [](const auto x) {
+            return !theory::isPostVar(x);
+        }));
+        imp = imp && theory::mkEq(trace_var, arith::mkConst(id));
         auto relevant_vars{vars};
         for (const auto &x : vars) {
             relevant_vars.insert(theory::postVar(x));
@@ -175,6 +179,7 @@ void TRL::build_trace() {
 void TRL::pop() {
     solver->pop();
     --depth;
+    current_projection = std::nullopt;
 }
 
 std::optional<SmtResult> TRL::do_step() {
@@ -199,7 +204,24 @@ std::optional<SmtResult> TRL::do_step() {
                 solver->add(bools::mkLit(arith::mkGeq(get_subs(depth - 1, 1).get<Arith>(safety_var), s.get<Arith>(safety_var))));
             }
             add_blocking_clauses();
-            switch (solver->check()) {
+            SmtResult smt_res {SmtResult::Unknown};
+            if (current_projection) {
+                solver->push();
+                solver->add(s(*current_projection));
+                smt_res = solver->check();
+                if (smt_res == SmtResult::Sat) {
+                    model = solver->model();
+                }
+                solver->pop();
+            }
+            if (smt_res != SmtResult::Sat) {
+                smt_res = solver->check();
+                if (smt_res == SmtResult::Sat) {
+                    model = solver->model();
+                }
+                current_projection.reset();
+            }
+            switch (smt_res) {
                 case SmtResult::Unsat:
                     return SmtResult::Sat;
                 case SmtResult::Unknown:
