@@ -134,14 +134,14 @@ void TRL::add_blocking_clauses() {
     }
 }
 
-Bools::Expr TRL::inductive_subset() {
+std::optional<Bools::Expr> TRL::inductive_subset() {
     LitSet res;
     auto solver {SmtFactory::solver(QF_LA)};
     solver->add(step);
     bool changed;
     do {
         changed = false;
-        for (const auto &l : (*current_projection)->lits()) {
+        for (const auto &l : current_projection.back()->lits()) {
             if (res.contains(l)) continue;
             solver->push();
             solver->add(bools::mkLit(l));
@@ -156,26 +156,54 @@ Bools::Expr TRL::inductive_subset() {
             solver->pop();
         }
     } while (changed);
-    return bools::mkAndFromLits(res);
+    solver = SmtFactory::solver(QF_LA);
+    solver->add(t.err());
+    solver->push();
+    solver->add(bools::mkAndFromLits(res));
+    if (solver->check() == SmtResult::Unsat) {
+        solver->pop();
+        LitSet min;
+        do {
+            min = res;
+            changed = false;
+            for (const auto &lit: res) {
+                min.erase(lit);
+                solver->push();
+                solver->add(bools::mkAndFromLits(min));
+                if (solver->check() != SmtResult::Unsat) {
+                    min.insert(lit);
+                } else {
+                    changed = true;
+                }
+                solver->pop();
+            }
+            res = min;
+        } while (changed);
+        return bools::mkAndFromLits(res);
+    }
+    return std::nullopt;
 }
 
 void TRL::build_trace() {
     std::optional<std::pair<Bools::Expr, Int>> prev;
     trace.clear();
-    const auto mk_projection {!current_projection};
-    if (mk_projection) {
-        current_projection = model.syntacticImplicant(mbp::int_mbp(t.init(), model, mbp_kind, theory::isTempVar));
-    }
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{get_subs(d, 1)};
         const auto id{model.eval<Arith>(s.get<Arith>(trace_var))};
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{model.composeBackwards(s)};
         auto imp{comp.syntacticImplicant(rule)};
-        if (mk_projection || d == depth - 1) {
-            current_projection = post_to_pre(mbp::int_mbp(imp && *current_projection && imp, comp, mbp_kind, [](const auto x) {
+        if (current_projection.size() == d) {
+            Bools::Expr proj {top()};
+            if (d == 0) {
+                proj = model.syntacticImplicant(t.init()) && imp;
+            } else {
+                proj = current_projection.back() && imp;
+            }
+            proj = post_to_pre(mbp::int_mbp(proj, comp, mbp_kind, [](const auto x) {
                 return !theory::isPostVar(x);
             }));
+            current_projection.push_back(proj);
         }
         imp = imp && theory::mkEq(trace_var, arith::mkConst(id));
         auto relevant_vars{vars};
@@ -195,6 +223,10 @@ void TRL::build_trace() {
         for (const auto &t : trace) {
             std::cout << t.implicant << std::endl;
         }
+        std::cout << "projections:" << std::endl;
+        for (const auto &t : current_projection) {
+            std::cout << t << std::endl;
+        }
         std::cout << "trace var: " << trace_var << std::endl;
         if (Config::Analysis::termination()) {
             std::cout << "safety var: " << safety_var << std::endl;
@@ -209,7 +241,7 @@ void TRL::build_trace() {
 void TRL::pop() {
     solver->pop();
     --depth;
-    current_projection = std::nullopt;
+    current_projection.pop_back();
 }
 
 std::optional<SmtResult> TRL::do_step() {
@@ -218,8 +250,11 @@ std::optional<SmtResult> TRL::do_step() {
     solver->push();
     solver->add(s(t.err()));
     switch (solver->check()) {
-        case SmtResult::Sat:
         case SmtResult::Unknown:
+            return SmtResult::Unknown;
+        case SmtResult::Sat:
+            model = solver->model();
+            current_projection.clear();
             if (Config::Analysis::log) {
                 std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
             }
@@ -229,27 +264,29 @@ std::optional<SmtResult> TRL::do_step() {
             // pop error states
             solver->pop();
             solver->push();
-            solver->add(s(step) && !get_subs(depth + 1, 1)(safe));
+            solver->add(s(step) && get_subs(depth + 1, 1)(unsafe));
             if (Config::Analysis::termination() && depth > 0) {
                 solver->add(bools::mkLit(arith::mkGeq(get_subs(depth - 1, 1).get<Arith>(safety_var), s.get<Arith>(safety_var))));
             }
             add_blocking_clauses();
             SmtResult smt_res {SmtResult::Unknown};
-            if (current_projection) {
+            while (!current_projection.empty()) {
                 solver->push();
-                solver->add(s(*current_projection));
+                solver->add(get_subs(current_projection.size(), 1)(current_projection.back()));
                 smt_res = solver->check();
                 if (smt_res == SmtResult::Sat) {
                     model = solver->model();
+                    solver->pop();
+                    break;
                 }
                 solver->pop();
+                current_projection.pop_back();
             }
             if (smt_res != SmtResult::Sat) {
                 smt_res = solver->check();
                 if (smt_res == SmtResult::Sat) {
                     model = solver->model();
                 }
-                current_projection.reset();
             }
             switch (smt_res) {
                 case SmtResult::Unsat:
@@ -260,9 +297,8 @@ std::optional<SmtResult> TRL::do_step() {
                 case SmtResult::Sat: {
                     ++depth;
                     build_trace();
-                    const auto inductive {inductive_subset()};
-                    if (SmtFactory::check(inductive && t.err()) == SmtResult::Unsat) {
-                        safe = safe || inductive;
+                    if (const auto inductive {inductive_subset()}) {
+                        unsafe = unsafe && !*inductive;
                         pop();
                         return std::nullopt;
                     }
