@@ -139,9 +139,10 @@ std::optional<Bools::Expr> TRL::inductive_subset() {
     auto solver {SmtFactory::solver(QF_LA)};
     solver->add(step);
     bool changed;
+    const auto lits {post_to_pre(current_projection.back())->lits()};
     do {
         changed = false;
-        for (const auto &l : current_projection.back()->lits()) {
+        for (const auto &l : lits) {
             if (res.contains(l)) continue;
             solver->push();
             solver->add(bools::mkLit(l));
