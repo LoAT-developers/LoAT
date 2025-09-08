@@ -380,9 +380,9 @@ bool TRPUtil::build_cex() {
 
 bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
     Subs m{model.toSubs()};
-    m.erase(trp.get_n());
-    auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
     const auto n {trp.get_n()};
+    m.erase(n);
+    m.put<Arith>(n, arith::mkConst(1));
     for (const auto &[id, b] : rule_map) {
         const auto is_orig_clause {id <= last_orig_clause};
         if (Config::Analysis::termination() && is_orig_clause) {
@@ -395,20 +395,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
         if (is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
             continue;
         }
-        if (vars.contains(n)) {
-            solver->push();
-            solver->add(m(b));
-            if (solver->check() == SmtResult::Sat) {
-                const auto n_val{solver->model({{n}}).get<Arith>(n)};
-                model.put<Arith>(n, n_val);
-                Bools::Expr projected{mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
-                    return x == Var(n);
-                })};
-                add_blocking_clause(range, id, projected);
-                return true;
-            }
-            solver->pop();
-        } else if (model.eval<Bools>(b)) {
+        if (model.eval<Bools>(b)) {
             add_blocking_clause(range, id, b);
             return true;
         }
