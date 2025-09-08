@@ -47,10 +47,6 @@ namespace
     {
         switch (in)
         {
-        case LoatConfig::InitialConfig::SmtSolver::Z3:
-            return Config::Analysis::SmtSolver::Z3;
-        case LoatConfig::InitialConfig::SmtSolver::CVC5:
-            return Config::Analysis::SmtSolver::CVC5;
         case LoatConfig::InitialConfig::SmtSolver::Swine:
             return Config::Analysis::SmtSolver::Swine;
         case LoatConfig::InitialConfig::SmtSolver::Yices:

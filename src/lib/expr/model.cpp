@@ -242,6 +242,43 @@ Bools::Expr Model::syntacticImplicant(const Bools::Expr e) const {
     return bools::mkAnd(res);
 }
 
+Rational Model::evalToRational(const Arith::Expr& t) const {
+    return t->apply<Rational>(
+        [](const ArithConstPtr& c) {
+            return **c;
+        },
+        [&](const ArithVarPtr& x) {
+            return get(x);
+        },
+        [&](const ArithAddPtr& a) {
+            const auto &args {a->getArgs()};
+            return std::accumulate(args.begin(), args.end(), Rational{0}, [&](const auto &x, const auto y) {
+                return x + evalToRational(y);
+            });
+        },
+        [&](const ArithMultPtr& mul) {
+            const auto &args {mul->getArgs()};
+            return std::accumulate(args.begin(), args.end(), Rational{1}, [&](const auto &x, const auto y) {
+                return x * evalToRational(y);
+            });
+        },
+        [&](const ArithModPtr& mod) {
+            const Int x {eval(mod->getLhs())};
+            const Int y {eval(mod->getRhs())};
+            const Int x_abs {mp::abs(x)};
+            const Int y_abs {mp::abs(y)};
+            const Rational mod_res {x_abs % y_abs};
+            if (mod_res == 0 || x >= 0) {
+                return mod_res;
+            } else {
+                return Rational(y_abs) - mod_res;
+            }
+        },
+        [&](const ArithExpPtr& e) {
+            return mp::pow(mp::numerator(evalToRational(e->getBase())), evalToRational(e->getExponent()).convert_to<long>());
+        });
+}
+
 template <std::size_t I>
 inline void Model::printImpl(const Model &subs, std::ostream &s, bool first) const {
     if constexpr (I < num_theories) {

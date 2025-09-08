@@ -161,6 +161,23 @@ std::optional<Bools::Var> BoolExpr::isVar() const {
     }
 }
 
+linked_hash_set<Arrays<Arith>::Expr> BoolExpr::relevantArrayExpressions() const {
+    linked_hash_set<Arrays<Arith>::Expr> res;
+    linked_hash_set<std::pair<Arrays<Arith>::Expr, Arrays<Arith>::Expr>> eqs;
+    iter([&](const auto &lit) {
+       std::visit(Overload{
+           [&](const Arrays<Arith>::Lit &l){
+               if (const auto eq {l->isArrayEq()}) {
+                   eqs.emplace((*eq)->lhs(), (*eq)->lhs());
+               } else if (const auto neq {l->isArrayNeq()}) {
+                   eqs.emplace((*neq)->lhs(), (*neq)->lhs());
+               } else if (const auto )
+           },
+           [](const auto&){}
+       }, lit);
+    });
+}
+
 linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var n) const {
     linked_hash_set<Bound> bounds;
     getBounds(n, bounds);

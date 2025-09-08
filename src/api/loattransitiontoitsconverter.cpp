@@ -34,7 +34,7 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
         LocationIdx targetIdx = its->getOrAddLocation(target.getName());
 
         // New Guard: locVar == srcIdx && old Guard
-        Arith::Expr curLoc = arith::toExpr(locVar);
+        Arith::Expr curLoc = Arith::varToExpr(locVar);
         Bools::Expr locGuard = bools::mkLit(arith::mkEq(curLoc, arith::mkConst(sourceIdx)));
         BoolExprSet conjuncts;
         conjuncts.insert(rule->getGuard());
@@ -120,7 +120,7 @@ Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &exp
         m_arithVarsUsed.emplace(v->getName());
 
         // Set result as internal var expr
-        result = arith::toExpr(var);
+        result = Arith::varToExpr(var);
         break;
     }
     case Kind::Plus:

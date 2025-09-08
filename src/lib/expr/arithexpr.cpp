@@ -624,43 +624,6 @@ bool ArithExpr::isIntegral() const {
         });
 }
 
-Rational ArithExpr::evalToRational(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
-    return apply<Rational>(
-        [](const ArithConstPtr t) {
-            return **t;
-        },
-        [&](const ArithVarPtr x) {
-            return valuation.get(x).value_or(0);
-        },
-        [&](const ArithAddPtr a) {
-            const auto &args {a->getArgs()};
-            return std::accumulate(args.begin(), args.end(), Rational{0}, [&](const auto &x, const auto y) {
-                return x + y->evalToRational(valuation);
-            });
-        },
-        [&](const ArithMultPtr m) {
-            const auto &args {m->getArgs()};
-            return std::accumulate(args.begin(), args.end(), Rational{1}, [&](const auto &x, const auto y) {
-                return x * y->evalToRational(valuation);
-            });
-        },
-        [&](const ArithModPtr m) {
-            const Int x {m->getLhs()->eval(valuation)};
-            const Int y {m->getRhs()->eval(valuation)};
-            const Int x_abs {mp::abs(x)};
-            const Int y_abs {mp::abs(y)};
-            const Rational mod {x_abs % y_abs};
-            if (mod == 0 || x >= 0) {
-                return mod;
-            } else {
-                return Rational(y_abs) - mod;
-            }
-        },
-        [&](const ArithExpPtr e) {
-            return mp::pow(mp::numerator(e->getBase()->evalToRational(valuation)), e->getExponent()->evalToRational(valuation).convert_to<long>());
-        });
-}
-
 Int ArithExpr::eval(const linked_hash_map<ArithVarPtr, Int> &valuation) const {
     #if DEBUG
     assert(isIntegral());

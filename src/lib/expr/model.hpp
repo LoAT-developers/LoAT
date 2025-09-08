@@ -3,86 +3,50 @@
 #include "theory.hpp"
 #include "subs.hpp"
 
+class Model;
+
+using ModelPtr = std::shared_ptr<Model>;
+
 class Model {
 
-    friend std::ostream& operator<<(std::ostream &s, const Model &e);
+public:
+    virtual ~Model() = default;
 
 private:
 
-    void print(std::ostream &s) const;
-
-    template <std::size_t I = 0>
-    static inline void uniteImpl(Model &res, const Model &that);
-
-    template <size_t I = 0>
-    inline void composeBackwardsImpl(const Subs &subs, Model &res) const;
-
-    template <size_t I = 0>
-    inline void composeBackwardsImpl(const Renaming &subs, Model &res) const;
-
-    template <size_t I = 0>
-    inline bool evalImpl(const Lit &lit) const;
-
-    template <size_t I = 0>
-    void projectImpl(Model &model, const VarSet &vars) const;
-
-    template <size_t I = 0>
-    void projectImpl(Model &model, const std::function<bool(const Var)> &p) const;
-
-    template <std::size_t I = 0>
-    inline void printImpl(const Model &subs, std::ostream &s, bool first = true) const;
+    friend std::ostream& operator<<(std::ostream &s, ModelPtr e);
+    virtual void print(std::ostream &s) const = 0;
 
 public:
 
     Model();
-    Model(const typename TheTheory::Model &m);
-    Model unite(const Model &m) const;
+    explicit Model(const TheTheory::Model &m);
+    ModelPtr unite(ModelPtr m) const;
 
-    template <ITheory T>
-    typename T::Const get(const typename T::Var &var) const {
-        const auto map {std::get<linked_hash_map<typename T::Var, typename T::Const>>(m)};
-        assert(map.contains(var));
-        return map[var];
-    }
+    virtual Arith::Const get(const Arith::Var &var) const = 0;
+    virtual Bools::Const get(const Bools::Var &var) const = 0;
+    virtual Arith::Const get(const Arrays<Arith>::Var &var, const std::vector<Int> &indices) const = 0;
 
-    Const get(const Var &var) const;
+    virtual void put(const Arith::Var &var, Arith::Const) const = 0;
 
-    template <ITheory T>
-    void put(const typename T::Var &var, const typename T::Const &val) {
-        std::get<linked_hash_map<typename T::Var, typename T::Const>>(m).put(var, val);
-    }
-
-    template <ITheory T>
-    bool contains(const typename T::Var &var) const {
-        return std::get<linked_hash_map<typename T::Var, typename T::Const>>(m).contains(var);
-    }
+    virtual bool contains(const Arith::Var &var) const = 0;
+    virtual bool contains(const Bools::Var &var) const = 0;
+    virtual bool contains(const Arrays<Arith>::Var &var) const = 0;
 
     bool contains(const Var &var) const;
 
-    template <ITheory T>
-    typename T::Model& get() {
-        return std::get<typename T::Model>(m);
-    }
+    virtual bool eval(const Lit &lit) const = 0;
 
-    template <ITheory T>
-    const typename T::Model& get() const {
-        return std::get<typename T::Model>(m);
-    }
+    virtual Bools::Const eval(const Bools::Expr &e) const = 0;
+    virtual Bools::Expr evalPartially(const Bools::Expr &e) const = 0;
+    virtual Arith::Const eval(const Arith::Expr &e) const = 0;
+    virtual Arith::Expr evalPartially(const Arith::Expr &e) const = 0;
+    Rational evalToRational(const Arith::Expr& t) const;
 
-    bool eval(const Lit &lit) const;
-
-    Bools::Const eval(const Bools::Expr &e) const;
-    Arith::Const eval(const Arith::Expr &e) const;
-    Arrays<Arith>::Const eval(const Arrays<Arith>::Expr &e) const;
-
-    Const eval(const Expr &e) const;
-
-    Model composeBackwards(const Subs &subs) const;
-    Model composeBackwards(const Renaming &subs) const;
-    Bools::Expr syntacticImplicant(const Bools::Expr e) const;
-    Model project(const VarSet &vars) const;
-    Model project(const std::function<bool(const Var)> &p) const;
-    Model erase(const Var&) const;
+    Bools::Expr syntacticImplicant(Bools::Expr e) const;
+    virtual ModelPtr project(const VarSet &vars) const = 0;
+    virtual ModelPtr project(const std::function<bool(const Var)> &p) const = 0;
+    virtual ModelPtr erase(const Var&) const = 0;
 
 private:
 

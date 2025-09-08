@@ -259,16 +259,6 @@ void RunAdclNonTerminationWithSolver(SmtSolver solver, const std::string &solver
     EXPECT_EQ(result, LoatResult::UNSAT);
 }
 
-TEST(AdclNonTerminationTest, WithZ3)
-{
-    RunAdclNonTerminationWithSolver(SmtSolver::Z3, "Z3");
-}
-
-TEST(AdclNonTerminationTest, WithCvc5)
-{
-    RunAdclNonTerminationWithSolver(SmtSolver::CVC5, "CVC5");
-}
-
 TEST(AdclNonTerminationTest, WithYices)
 {
     RunAdclNonTerminationWithSolver(SmtSolver::Yices, "Yices");

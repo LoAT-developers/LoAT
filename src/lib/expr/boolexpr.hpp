@@ -9,15 +9,10 @@
 #include "arith.hpp"
 #include "arrays.hpp"
 
-#include <type_traits>
 #include <memory>
 #include <boost/functional/hash.hpp>
 
-
-class BoolTheoryLit;
-class BoolJunction;
 class BoolExpr;
-class Renaming;
 
 using TheTheory = Theory<Arith, Arrays<Arith>, Bools>;
 
@@ -26,8 +21,8 @@ struct depends_on {
     static constexpr bool value = std::same_as<T1, T2> || std::same_as<Arrays<T1>, T2> || std::same_as<T1, Bools>;
 };
 
-using Var = typename TheTheory::Var;
-using Lit = typename TheTheory::Lit;
+using Var = TheTheory::Var;
+using Lit = TheTheory::Lit;
 using VarSet = VariantSet<Arith::Var, Arrays<Arith>::Var, Bools::Var>;
 using LitSet = VariantSet<Arith::Lit, Arrays<Arith>::Lit, Bools::Lit>;
 
@@ -43,7 +38,7 @@ class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
 
 protected:
 
-    using Model = typename TheTheory::Model;
+    using Model = TheTheory::Model;
 
 private:
 
@@ -76,35 +71,36 @@ public:
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
     virtual BoolExprSet getChildren() const = 0;
-    virtual const Bools::Expr negation() const = 0;
+    virtual Bools::Expr negation() const = 0;
     virtual bool forall(const std::function<bool(const Lit&)> &pred) const = 0;
     virtual LitSet universallyValidLits() const = 0;
     virtual bool isConjunction() const = 0;
     virtual void collectLits(LitSet &res) const = 0;
     virtual size_t size() const = 0;
 
-    void getBounds(const Arith::Var n, linked_hash_set<Bound> &res) const;
-    linked_hash_set<Bound> getBounds(const Arith::Var n) const;
-    void getDivisibility(const Arith::Var n, linked_hash_set<Divisibility> &res) const;
-    linked_hash_set<Divisibility> getDivisibility(const Arith::Var n) const;
-    std::optional<Arith::Expr> getEquality(const Arith::Var n) const;
+    void getBounds(Arith::Var n, linked_hash_set<Bound> &res) const;
+    linked_hash_set<Bound> getBounds(Arith::Var n) const;
+    void getDivisibility(Arith::Var n, linked_hash_set<Divisibility> &res) const;
+    linked_hash_set<Divisibility> getDivisibility(Arith::Var n) const;
+    std::optional<Arith::Expr> getEquality(Arith::Var n) const;
     void propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow, std::unordered_set<Arith::Var> &blocked) const;
     Arith::Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;
-    Bools::Expr toInfinity(const Arith::Var n) const;
-    Bools::Expr toMinusInfinity(const Arith::Var n) const;
+    Bools::Expr toInfinity(Arith::Var n) const;
+    Bools::Expr toMinusInfinity(Arith::Var n) const;
     void iter(const std::function<void(const Lit&)> &f) const;
     Bools::Expr map(const std::function<Bools::Expr(const Lit&)> &f, std::unordered_map<Bools::Expr, Bools::Expr> &cache) const;
     Bools::Expr map(const std::function<Bools::Expr(const Lit&)> &f) const;
     sexpresso::Sexp to_smtlib() const;
     BoolExprSet get_disjuncts() const;
     std::optional<Bools::Var> isVar() const;
+    linked_hash_set<Arrays<Arith>::Expr> relevantArrayExpressions() const;
 
     void collectVars(VarSet &vars) const;
 
     template <ITheory T>
     void collectVars(linked_hash_set<typename T::Var> &vars) const {
         VarSet res;
-        res.template get<typename T::Var>() = vars;
+        res.get<typename T::Var>() = vars;
         collectVars(res);
     }
 
@@ -117,7 +113,7 @@ public:
 };
 
 
-class BoolTheoryLit: public BoolExpr {
+class BoolTheoryLit final : public BoolExpr {
 
     const Lit lit;
 
@@ -132,8 +128,7 @@ class BoolTheoryLit: public BoolExpr {
     static ConsHash<BoolExpr, BoolTheoryLit, CacheHash, CacheEqual, Lit> cache;
 
 public:
-
-    BoolTheoryLit(const Lit &lit);
+    explicit BoolTheoryLit(const Lit &lit);
     static Bools::Expr from_cache(const Lit &lit);
     bool isAnd() const override;
     bool isOr() const override;
@@ -150,7 +145,7 @@ public:
 
 };
 
-class BoolJunction: public BoolExpr {
+class BoolJunction final : public BoolExpr {
 
     const BoolExprSet children;
     const ConcatOperator op;
@@ -184,10 +179,10 @@ public:
 
 };
 
-const Bools::Expr operator&&(const Bools::Expr a, const Bools::Expr b);
+const Bools::Expr operator&&(Bools::Expr a, Bools::Expr b);
 
-const Bools::Expr operator||(const Bools::Expr a, const Bools::Expr b);
+const Bools::Expr operator||(Bools::Expr a, Bools::Expr b);
 
-const Bools::Expr operator!(const Bools::Expr a);
+const Bools::Expr operator!(Bools::Expr a);
 
-std::ostream& operator<<(std::ostream &s, const Bools::Expr e);
+std::ostream& operator<<(std::ostream &s, Bools::Expr e);

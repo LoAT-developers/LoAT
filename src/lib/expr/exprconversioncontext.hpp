@@ -70,7 +70,7 @@ public:
         return boolVarMap;
     }
 
-    const linked_hash_map<Array<Arith>::Var, Expr> &getIntArraySymbolMap() const {
+    const linked_hash_map<Arrays<Arith>::Var, Expr> &getIntArraySymbolMap() const {
         return intArrayVarMap;
     }
 

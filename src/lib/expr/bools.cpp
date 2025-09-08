@@ -17,6 +17,10 @@ Bools::Var Bools::next() {
     return BoolVar::next();
 }
 
+Bools::Expr bools::mkEq(const Bools::Expr &lhs, const Bools::Expr &rhs) {
+    return (lhs && rhs) || ((!lhs) && (!rhs));
+}
+
 std::size_t hash_value(const Bools::Expr &x) {
     return std::hash<std::shared_ptr<const BoolExpr>>{}(x.as_nullable());
 }

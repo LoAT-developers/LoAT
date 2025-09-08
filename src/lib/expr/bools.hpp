@@ -20,13 +20,13 @@ struct Bools {
     static Expr varToExpr(const Var var);
     static Expr anyValue();
     static Var next();
-    static BoolExprPtr mkEq(const Var, const Const);
+    static Expr mkEq(const Var, const Const);
+
 };
 
 namespace bools {
-
-extern Bools t;
-
+    extern Bools t;
+    Bools::Expr mkEq(const Bools::Expr&, const Bools::Expr&);
 }
 
 std::size_t hash_value(const Bools::Expr &x);

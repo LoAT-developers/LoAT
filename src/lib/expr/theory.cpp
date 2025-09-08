@@ -172,7 +172,7 @@ Bools::Expr mkEq(const Expr &e1, const Expr &e2) {
             },
             [&](const Bools::Expr lhs) {
                 const auto rhs = std::get<Bools::Expr>(e2);
-                return (lhs && rhs) || ((!lhs) && (!rhs));
+                return Bools::mkEq(lhs, rhs);
             },
             [&](const Arrays<Arith>::Expr e1) {
                 return bools::mkLit(arrays::mkEq<Arith>(e1, std::get<Arrays<Arith>::Expr>(e2)));

@@ -23,9 +23,22 @@ template <ITheory T>
 using ArrayLitPtr = ptr<ArrayLit<T>>;
 
 template <ITheory T>
+using ArrayEqPtr = ptr<ArrayEq<T>>;
+
+template <ITheory T>
+using ArrayNeqPtr = ptr<ArrayNeq<T>>;
+
+template <ITheory T>
+using ArrayElemEqPtr = ptr<ArrayElemEq<T>>;
+
+template <ITheory T>
+using ArrayElemNeqPtr = ptr<ArrayElemNeq<T>>;
+
+template <ITheory T>
 class ArrayLit {
 
 public:
+    virtual ~ArrayLit() = default;
 
     virtual bool isTriviallyTrue() const = 0;
     virtual bool isPoly() const = 0;
@@ -39,6 +52,10 @@ public:
     virtual bool eval(const linked_hash_map<ArrayVarPtr<T>, ArrayConst<T>>&, const T::Model&) const = 0;
     virtual void collectVars(const linked_hash_set<ArrayVarPtr<T>>&, const linked_hash_set<typename T::Var>&) const = 0;
     virtual bool isTriviallyFalse() const = 0;
+    virtual std::optional<ArrayEqPtr<T>> isArrayEq() const = 0;
+    virtual std::optional<ArrayNeqPtr<T>> isArrayNeq() const = 0;
+    virtual std::optional<ArrayElemEqPtr<T>> isArrayElemEq() const = 0;
+    virtual std::optional<ArrayElemNeqPtr<T>> isArrayElemNeq() const = 0;
 
     static bool simplifyAnd(linked_hash_set<ArrayLitPtr<T>> &lits);
 
@@ -47,44 +64,84 @@ public:
 template <ITheory T>
 class ArrayEq: public ArrayLit<T> {
 
-    ArrayPtr<T> lhs;
-    ArrayPtr<T> rhs;
+    ArrayPtr<T> m_lhs;
+    ArrayPtr<T> m_rhs;
+
+public:
+
+    ArrayPtr<T> lhs() const {
+        return m_lhs;
+    }
+
+    ArrayPtr<T> rhs() const {
+        return m_rhs;
+    }
 
 };
 
 template <ITheory T>
 class ArrayNeq: public ArrayLit<T> {
 
-    ArrayPtr<T> lhs;
-    ArrayPtr<T> rhs;
+    ArrayPtr<T> m_lhs;
+    ArrayPtr<T> m_rhs;
+
+public:
+
+    ArrayPtr<T> lhs() const {
+        return m_lhs;
+    }
+
+    ArrayPtr<T> rhs() const {
+        return m_rhs;
+    }
 
 };
 
 template <ITheory T>
 class ArrayElemEq: public ArrayLit<T> {
 
-    ArrayReadPtr<T> lhs;
-    T::Expr rhs;
+    ArrayReadPtr<T> m_lhs;
+    T::Expr m_rhs;
+
+public:
+
+    ArrayReadPtr<T> lhs() const {
+        return m_lhs;
+    }
+
+    T::Expr rhs() const {
+        return m_rhs;
+    }
 
 };
 
 template <ITheory T>
 class ArrayElemNeq: public ArrayLit<T> {
 
-    ArrayReadPtr<T> lhs;
-    T::Expr rhs;
+    ArrayReadPtr<T> m_lhs;
+    T::Expr m_rhs;
+
+public:
+
+    ArrayReadPtr<T> lhs() const {
+        return m_lhs;
+    }
+
+    T::Expr rhs() const {
+        return m_rhs;
+    }
 
 };
 
 namespace arrays {
 
     template <ITheory T>
-    ArrayLitPtr<T> mkElemEq(const ArrayReadPtr<T>, const typename T::Expr);
+    ArrayLitPtr<T> mkElemEq(ArrayReadPtr<T>, typename T::Expr);
     template <ITheory T>
-    ArrayLitPtr<T> mkEq(const ArrayPtr<T>, const ArrayPtr<T>);
+    ArrayLitPtr<T> mkEq(ArrayPtr<T>, ArrayPtr<T>);
     template <ITheory T>
-    ArrayLitPtr<T> mkNeq(const ArrayPtr<T>, const ArrayPtr<T>);
+    ArrayLitPtr<T> mkNeq(ArrayPtr<T>, ArrayPtr<T>);
 }
 
 template<ITheory T>
-ArrayLitPtr<T> operator!(const ArrayLitPtr<T>);
+ArrayLitPtr<T> operator!(ArrayLitPtr<T>);

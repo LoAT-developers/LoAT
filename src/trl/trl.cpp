@@ -142,7 +142,7 @@ void TRL::build_trace() {
     std::optional<std::pair<Bools::Expr, Int>> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{get_subs(d, 1)};
-        const auto id{model.eval<Arith>(s.get<Arith>(trace_var))};
+        const auto id{model.get<Arith>(s.get<Arith>(trace_var))};
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{model.composeBackwards(s)};
         const auto imp{comp.syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};

@@ -29,6 +29,9 @@ Bools::Expr real_mbp(const Bools::Expr &t, const Model &model, const Var &x) {
                 const auto res {real_mbp(t, model, x)};
                 assert(res != bot());
                 return res;
+            },
+            [](const Arrays<Arith>::Var) {
+                throw std::invalid_argument("real mbp does not support arrays");
             }
         }, x);
 }

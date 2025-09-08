@@ -84,48 +84,15 @@ endfunction()
 
 find_required_library(ANTLR4 antlr4-runtime "ANTLR4 runtime")
 find_required_library(FAUDES faudes "Faudes")
-find_required_library(Z3 z3 "Z3")
 find_required_library(YICES yices "Yices")
 find_required_library(POLY poly "Poly")
 find_required_library(POLYXX polyxx "PolyXX")
 find_required_library(CUDD cudd "CUDD")
-find_required_library(CVC5 cvc5 "CVC5")
-find_required_library(CADICAL cadical "Cadical")
 find_required_library(SWINE swine-z3 "Swine Z3")
 find_required_library(CLN cln "CLN")
 find_required_library(GMP gmp "GMP")
 
 find_required_package(Boost "Boost")
-
-
-# find_library(ANTLR4 antlr4-runtime)
-# find_library(FAUDES faudes)
-# find_library(Z3 z3)
-# find_library(YICES yices)
-# find_library(POLY poly)
-# find_library(POLYXX polyxx)
-# find_library(CUDD cudd)
-# find_library(CVC5 cvc5)
-# find_library(CADICAL cadical)
-# find_library(SWINE swine-z3)
-# find_library(CLN cln)
-# find_library(GMP gmp)
-
-# ------------------------------------------------------------------------------
-# Output the found paths to the libraries for debugging purposes.
-# ------------------------------------------------------------------------------
-# message(STATUS "antlr4: ${ANTLR4}")
-# message(STATUS "faudes: ${FAUDES}")
-# message(STATUS "z3: ${Z3}")
-# message(STATUS "yices: ${YICES}")
-# message(STATUS "poly: ${POLY}")
-# message(STATUS "polyxx: ${POLYXX}")
-# message(STATUS "cudd: ${CUDD}")
-# message(STATUS "cvc5: ${CVC5}")
-# message(STATUS "cadical: ${CADICAL}")
-# message(STATUS "swine: ${SWINE}")
-# message(STATUS "cln: ${CLN}")
-# message(STATUS "gmp: ${GMP}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 include(GetGitRevisionDescription)
@@ -270,9 +237,6 @@ target_link_libraries(${Loat_API} PUBLIC Boost::boost
   ${ANTLR4}
   ${FAUDES}
   ${SWINE}
-  ${Z3}
-  ${CVC5}
-  ${CADICAL}
   ${YICES}
   ${POLYXX}
   ${POLY}

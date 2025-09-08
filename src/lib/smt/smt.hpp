@@ -39,33 +39,12 @@ public:
         return this->add(bools::mkLit(e));
     }
 
-    void add(const Model &m) {
-        theory::for_each(
-            [&](Arrays<Arith>&) {
-                for (const auto &[k,v]: m.get<Arrays<Arith>>()) {
-                    std::vector<Arith::Expr> indices;
-                    for (const auto &i: v.get_indices()) {
-                        indices.emplace_back(i);
-                    }
-                    for (const auto &[cond,val]: v.get_cases()) {
-                        add(!cond || bools::mkLit(arrays::mkElemEq<Arith>(arrays::mkArrayRead<Arith>(k, indices), val)));
-                    }
-                }
-            },
-            [&](auto t) {
-            using T = decltype(t);
-            for (const auto &[k,v]: m.get<T>()) {
-                add(T::mkEq(k, v));
-            }
-        });
-    }
-
     virtual void push() = 0;
 
     virtual void pop() = 0;
 
     virtual SmtResult check() = 0;
-    virtual Model model(const std::optional<const VarSet> &vars = std::nullopt) = 0;
+    virtual ModelPtr model(const std::optional<const VarSet> &vars = std::nullopt) = 0;
     virtual void enableModels() = 0;
     virtual void resetSolver() = 0;
 

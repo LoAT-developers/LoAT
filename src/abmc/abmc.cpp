@@ -193,7 +193,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
     auto [loop, sample_point] {build_loop(backlink)};
     auto &map {cache.emplace(lang, std::unordered_map<Bools::Expr, std::optional<Loop>>()).first->second};
     for (const auto &[imp, loop]: map) {
-        if (sample_point.eval<Bools>(imp)) {
+        if (sample_point.eval(imp)) {
             if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
             if (loop) {
                 shortcut = loop->idx;

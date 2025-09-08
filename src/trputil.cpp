@@ -378,11 +378,9 @@ bool TRPUtil::build_cex() {
     return SmtFactory::check(t.init() && *trans && t.pre_to_post()(t.err())) == SmtResult::Sat;
 }
 
-bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
+bool TRPUtil::add_blocking_clauses(const Range &range, ModelPtr model) {
     const auto n {trp.get_n()};
-    model = model.erase(n);
-    auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
-    solver->add(model);
+    model = model->erase(n);
     for (const auto &[id, b] : rule_map) {
         const auto is_orig_clause {id <= last_orig_clause};
         if (Config::Analysis::termination() && is_orig_clause) {
@@ -396,11 +394,12 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
             continue;
         }
         if (vars.contains(n)) {
+            auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
             solver->push();
-            solver->add(b);
+            solver->add(model->evalPartially(b));
             if (solver->check() == SmtResult::Sat) {
-                const auto n_val{solver->model({{n}}).get<Arith>(n)};
-                model.put<Arith>(n, n_val);
+                const auto n_val{solver->model({{n}})->get(n)};
+                model->put(n, n_val);
                 Bools::Expr projected{mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
                     return x == Var(n);
                 })};
@@ -408,7 +407,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, Model model) {
                 return true;
             }
             solver->pop();
-        } else if (model.eval<Bools>(b)) {
+        } else if (model.eval(b)) {
             add_blocking_clause(range, id, b);
             return true;
         }

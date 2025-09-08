@@ -4,7 +4,8 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/src/lib/container"
+                "${workspaceFolder}/src/lib/container",
+                "${workspaceFolder}/docker/loat-base-image/usr/include",
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
