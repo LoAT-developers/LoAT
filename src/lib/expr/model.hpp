@@ -1,6 +1,5 @@
 #pragma once
 
-#include "theory.hpp"
 #include "subs.hpp"
 
 class Model;
@@ -9,49 +8,44 @@ using ModelPtr = std::shared_ptr<Model>;
 
 class Model {
 
+    friend std::ostream& operator<<(std::ostream&, const ModelPtr&);
+
 public:
     virtual ~Model() = default;
 
-private:
+    Model() = default;
 
-    friend std::ostream& operator<<(std::ostream &s, ModelPtr e);
-    virtual void print(std::ostream &s) const = 0;
+    Arith::Const get(const Arith::Var&);
+    Bools::Const get(const Bools::Var&);
+    Arith::Const get(const Arrays<Arith>::Lval&);
 
-public:
+    virtual void put(const Arith::Var&, const Arith::Const&) = 0;
 
-    Model();
-    explicit Model(const TheTheory::Model &m);
-    ModelPtr unite(ModelPtr m) const;
+    virtual bool contains(const Arith::Var&) const = 0;
+    virtual bool contains(const Bools::Var&) const = 0;
+    virtual bool contains(const Arrays<Arith>::Var&) const = 0;
 
-    virtual Arith::Const get(const Arith::Var &var) const = 0;
-    virtual Bools::Const get(const Bools::Var &var) const = 0;
-    virtual Arith::Const get(const Arrays<Arith>::Var &var, const std::vector<Int> &indices) const = 0;
+    bool contains(const Var&) const;
 
-    virtual void put(const Arith::Var &var, Arith::Const) const = 0;
+    virtual bool eval(const Lit&) = 0;
 
-    virtual bool contains(const Arith::Var &var) const = 0;
-    virtual bool contains(const Bools::Var &var) const = 0;
-    virtual bool contains(const Arrays<Arith>::Var &var) const = 0;
+    virtual Bools::Const eval(const Bools::Expr&) = 0;
+    Arith::Const eval(const Arith::Expr&);
+    virtual Rational evalToRational(const Arith::Expr&) = 0;
 
-    bool contains(const Var &var) const;
+    Bools::Expr syntacticImplicant(const Bools::Expr&);
 
-    virtual bool eval(const Lit &lit) const = 0;
+    void composeBackwards(const Renaming&);
 
-    virtual Bools::Const eval(const Bools::Expr &e) const = 0;
-    virtual Bools::Expr evalPartially(const Bools::Expr &e) const = 0;
-    virtual Arith::Const eval(const Arith::Expr &e) const = 0;
-    virtual Arith::Expr evalPartially(const Arith::Expr &e) const = 0;
-    Rational evalToRational(const Arith::Expr& t) const;
+protected:
 
-    Bools::Expr syntacticImplicant(Bools::Expr e) const;
-    virtual ModelPtr project(const VarSet &vars) const = 0;
-    virtual ModelPtr project(const std::function<bool(const Var)> &p) const = 0;
-    virtual ModelPtr erase(const Var&) const = 0;
+    virtual Arith::Const getImpl(const Arith::Var&) = 0;
+    virtual Bools::Const getImpl(const Bools::Var&) = 0;
+    virtual Arith::Const getImpl(const ArrayReadPtr<Arith>&) = 0;
+    virtual void print(std::ostream&) const = 0;
 
-private:
-
-    typename TheTheory::Model m{};
+    Renaming renaming;
 
 };
 
-std::ostream& operator<<(std::ostream &s, const Model &e);
+std::ostream& operator<<(std::ostream &s, const ModelPtr &e);

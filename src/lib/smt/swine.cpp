@@ -1,7 +1,8 @@
 #include "swine.hpp"
 #include "exprconverter.hpp"
+#include "swinemodel.hpp"
 
-Swine::Swine(swine::Config config): solver(config, z3ctx), ctx(solver) {
+Swine::Swine(const swine::Config& config): solver(config, z3ctx), ctx(solver) {
     auto &s {solver.get_solver()};
     s.set("random_seed", 42u);
     // s.set("rlimit", 10000000u);
@@ -32,55 +33,8 @@ SmtResult Swine::check() {
     throw std::logic_error("unknown result from SMT solver");
 }
 
-Model Swine::model(const std::optional<const VarSet> &vars) {
-    const z3::model &m = solver.get_model();
-    Model res;
-    const auto add = [&](const Var &x) {
-        std::visit(
-            Overload{
-                [&](const Arith::Var var) {
-                    const auto y {ctx.getArithSymbolMap().get(var)};
-                    if (y) {
-                        const auto val{getRealFromModel(m, *y)};
-                        assert(mp::denominator(val) == 1);
-                        res.template put<Arith>(var, mp::numerator(val));
-                    }
-                },
-                [&](const Bools::Var var) {
-                    const auto y{ctx.getBoolSymbolMap().get(var)};
-                    if (y) {
-                        switch (m.eval(*y).bool_value()) {
-                        case Z3_L_FALSE:
-                            res.template put<Bools>(var, false);
-                            break;
-                        default:
-                            res.template put<Bools>(var, true);
-                            break;
-                        }
-                    }
-                },
-                [&](const Arrays<Arith>::Var var) {
-                    const auto y {ctx.getIntArraySymbolMap().get(var)};
-                    if (y) {
-                        const auto val{getIntArrayFromModel(m, *y)};
-                        res.template put<Arrays<Arith>>(var, val);
-                    }
-                }},
-            x);
-    };
-    if (vars) {
-        for (const auto &x: *vars) {
-            add(x);
-        }
-    } else {
-        for (const auto &[x, _] : ctx.getArithSymbolMap()) {
-            add(x);
-        }
-        for (const auto &[x, _] : ctx.getBoolSymbolMap()) {
-            add(x);
-        }
-    }
-    return res;
+ModelPtr Swine::model(const std::optional<const VarSet> &vars) {
+    return std::make_shared<SwineModel>(ctx, solver.get_model());
 }
 
 void Swine::enableModels() {}
@@ -89,28 +43,22 @@ void Swine::resetSolver() {
     solver.reset();
 }
 
-Swine::~Swine() {}
-
 std::ostream& Swine::print(std::ostream& os) const {
     return os << solver;
 }
 
-void Swine::randomize(unsigned seed) {
+void Swine::randomize(const unsigned seed) {
     auto &s {solver.get_solver()};
     s.set("random_seed", seed);
 }
 
-Arrays<Arith>::Const Swine::getIntArrayFromModel(const z3::model &model, const z3::expr &symbol) {
-
-}
-
 Rational Swine::getRealFromModel(const z3::model &model, const z3::expr &symbol) {
-    Rational numerator {Z3_get_numeral_string(
+    const Rational numerator {Z3_get_numeral_string(
         model.ctx(),
         Z3_get_numerator(
             model.ctx(),
             model.eval(symbol, true)))};
-    Rational denominator {Z3_get_numeral_string(
+    const Rational denominator {Z3_get_numeral_string(
         model.ctx(),
         Z3_get_denominator(
             model.ctx(),

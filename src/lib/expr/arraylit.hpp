@@ -2,7 +2,6 @@
 
 #include "arrayexpr.hpp"
 #include "arraysubs.hpp"
-#include "arrayconst.hpp"
 
 template <ITheory T>
 class ArrayLit;
@@ -45,11 +44,10 @@ public:
     virtual bool isLinear() const = 0;
     virtual sexpresso::Sexp to_smtlib() const = 0;
     virtual std::size_t hash() const = 0;
-    virtual ArrayLitPtr<T> subs(const typename T::Subs&) const = 0;
+    virtual ArrayLitPtr<T> subs(const T::Subs&) const = 0;
     virtual ArrayLitPtr<T> subs(const ArraySubs<T>&) const = 0;
     virtual ArrayLitPtr<T> renameVars(const array_var_map<T> &map) const = 0;
-    virtual ArrayLitPtr<T> renameVars(const typename T::Renaming &map) const = 0;
-    virtual bool eval(const linked_hash_map<ArrayVarPtr<T>, ArrayConst<T>>&, const T::Model&) const = 0;
+    virtual ArrayLitPtr<T> renameVars(const T::Renaming &map) const = 0;
     virtual void collectVars(const linked_hash_set<ArrayVarPtr<T>>&, const linked_hash_set<typename T::Var>&) const = 0;
     virtual bool isTriviallyFalse() const = 0;
     virtual std::optional<ArrayEqPtr<T>> isArrayEq() const = 0;
@@ -57,7 +55,10 @@ public:
     virtual std::optional<ArrayElemEqPtr<T>> isArrayElemEq() const = 0;
     virtual std::optional<ArrayElemNeqPtr<T>> isArrayElemNeq() const = 0;
 
-    static bool simplifyAnd(linked_hash_set<ArrayLitPtr<T>> &lits);
+    static bool simplifyAnd(linked_hash_set<ArrayLitPtr<T>>&) {
+        // TODO
+        return false;
+    }
 
 };
 
@@ -137,8 +138,10 @@ namespace arrays {
 
     template <ITheory T>
     ArrayLitPtr<T> mkElemEq(ArrayReadPtr<T>, typename T::Expr);
+
     template <ITheory T>
     ArrayLitPtr<T> mkEq(ArrayPtr<T>, ArrayPtr<T>);
+
     template <ITheory T>
     ArrayLitPtr<T> mkNeq(ArrayPtr<T>, ArrayPtr<T>);
 }

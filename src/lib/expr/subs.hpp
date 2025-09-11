@@ -4,29 +4,27 @@
 #include "boolsubs.hpp"
 #include "renaming.hpp"
 
-#include <boost/functional/hash.hpp>
 #include <utility>
 
 class Subs {
 
     using It = std::variant<Arith::Subs::const_iterator, Bools::Subs::const_iterator, Arrays<Arith>::Subs::const_iterator>;
 
-    typename TheTheory::Subs t {};
+    TheTheory::Subs t {};
 
 public:
 
-    using Pair = typename TheTheory::Pair;
+    using Pair = TheTheory::Pair;
 
     class Iterator {
 
         template <size_t I = 0>
-        inline It beginImpl(size_t i) const {
+        It beginImpl(const size_t i) const {
             if constexpr (I < num_theories) {
                 if (I == i) {
                     return It{std::get<I>(subs.t).begin()};
-                } else {
-                    return beginImpl<I + 1>(i);
                 }
+                return beginImpl<I + 1>(i);
             } else {
                 throw std::invalid_argument("i too large");
             }
@@ -35,13 +33,12 @@ public:
         It begin(size_t i) const;
 
         template <size_t I = 0>
-        inline It endImpl(size_t i) const {
+        It endImpl(const size_t i) const {
             if constexpr (I < num_theories) {
                 if (I == i) {
                     return It(std::get<I>(subs.t).end());
-                } else {
-                    return endImpl<I + 1>(i);
                 }
+                return endImpl<I + 1>(i);
             } else {
                 throw std::invalid_argument("i too large");
             }
@@ -50,7 +47,7 @@ public:
         It end(size_t i) const;
 
         template <size_t I = 0>
-        inline Pair getCurrentImpl() const {
+        Pair getCurrentImpl() const {
             if constexpr (I < num_theories) {
                 if (ptr.index() == I) {
                     return Pair(*std::get<I>(ptr));
@@ -75,10 +72,10 @@ public:
         pointer operator->();
 
         template <size_t I = 0>
-        inline void incrementImpl() {
+        void incrementImpl() {
             if constexpr (I < num_theories) {
                 if (ptr.index() == I) {
-                    std::get<I>(ptr)++;
+                    ++std::get<I>(ptr);
                 } else {
                     incrementImpl<I+1>();
                 }
@@ -110,22 +107,22 @@ public:
     void put(const Var &x, const Expr &y);
 
     template <ITheory T>
-    void put(const typename T::Var &var, const typename T::Expr &expr) {
+    void put(const T::Var &var, const T::Expr &expr) {
         std::get<typename T::Subs>(t).put(var, expr);
     }
 
     Subs();
-    Subs(Pair &p);
+    explicit Subs(const Pair &p);
 
     template<ITheory T>
-    static Subs build(const typename T::Var var, const typename T::Expr expr) {
+    static Subs build(const T::Var var, const T::Expr expr) {
         Subs subs;
         subs.put<T>(var, expr);
         return subs;
     }
 
     template <ITheory T>
-    static Subs build(typename T::Subs subs) {
+    static Subs build(T::Subs subs) {
         Subs res;
         res.get<T>() = subs;
         return res;
@@ -135,7 +132,7 @@ public:
     Expr get(const Var &var) const;
 
     template <ITheory T>
-    typename T::Expr get(const typename T::Var &var) const {
+    T::Expr get(const T::Var &var) const {
         return std::get<typename T::Subs>(t).get(var);
     }
 
@@ -153,17 +150,17 @@ public:
     bool operator==(const Subs &that) const = default;
 
     template <size_t I>
-    typename std::tuple_element_t<I, decltype(t)>::Subs& get() {
+    std::tuple_element_t<I, decltype(t)>::Subs& get() {
         return std::get<I>(t);
     }
 
     template <ITheory T>
-    typename T::Subs& get() {
+    T::Subs& get() {
         return std::get<typename T::Subs>(t);
     }
 
     template <ITheory T>
-    const typename T::Subs& get() const {
+    const T::Subs& get() const {
         return std::get<typename T::Subs>(t);
     }
 
@@ -178,7 +175,7 @@ public:
     }
 
     Bools::Expr operator()(const Lit &lit) const;
-    Bools::Expr operator()(const Bools::Expr e) const;
+    Bools::Expr operator()(const Bools::Expr& e) const;
     Expr operator()(const Expr &expr) const;
     /**
      * that.concat(this)
@@ -229,6 +226,7 @@ std::tuple_element_t<Index, Subs::Pair> get(const Subs::Pair& p) {
     if constexpr (Index == 1) {
         return Subs::second(p);
     }
+    throw std::invalid_argument("invalid index");
 }
 
 }

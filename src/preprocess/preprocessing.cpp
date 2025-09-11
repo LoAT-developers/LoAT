@@ -2,17 +2,15 @@
 #include "dependencygraph.hpp"
 #include "preprocessing.hpp"
 #include "config.hpp"
-#include "formulapreprocessing.hpp"
 #include "loopacceleration.hpp"
 #include "rulepreprocessing.hpp"
 #include "smtfactory.hpp"
 #include "theory.hpp"
 
-#include <numeric>
 #include <unordered_set>
 #include <stack>
 
-Preprocessor::Preprocessor(ITSPtr its): its(its), chain(its), rule_preproc(its), cex(its) {}
+Preprocessor::Preprocessor(const ITSPtr& its): its(its), chain(its), rule_preproc(its), cex(its) {}
 
 bool Preprocessor::successful() const {
     return success;
@@ -32,7 +30,7 @@ const ITSSafetyCex& Preprocessor::get_cex() const {
     return cex;
 }
 
-bool remove_irrelevant_clauses(ITSPtr its, bool forward) {
+bool remove_irrelevant_clauses(const ITSPtr& its, const bool forward) {
     std::unordered_set<RulePtr> keep;
     std::stack<RulePtr> todo;
     for (const auto &x : forward ? its->getInitialTransitions() : its->getSinkTransitions()) {
@@ -43,14 +41,14 @@ bool remove_irrelevant_clauses(ITSPtr its, bool forward) {
         todo.pop();
         keep.insert(current);
         for (const auto &p : forward ? its->getSuccessors(current) : its->getPredecessors(current)) {
-            if (keep.find(p) == keep.end()) {
+            if (!keep.contains(p)) {
                 todo.push(p);
             }
         }
     } while (!todo.empty());
     std::vector<RulePtr> to_delete;
     for (const auto &r : its->getAllTransitions()) {
-        if (keep.find(r) == keep.end()) {
+        if (!keep.contains(r)) {
             to_delete.push_back(r);
         }
     }
@@ -61,15 +59,14 @@ bool remove_irrelevant_clauses(ITSPtr its, bool forward) {
     }
     if (deleted.empty()) {
         return false;
-    } else {
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "removed the following irrelevant transitions: " << deleted << std::endl;
-        }
-        return true;
     }
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "removed the following irrelevant transitions: " << deleted << std::endl;
+    }
+    return true;
 }
 
-bool remove_irrelevant_clauses(ITSPtr its) {
+bool remove_irrelevant_clauses(const ITSPtr& its) {
     return remove_irrelevant_clauses(its, true) || remove_irrelevant_clauses(its, false);
 }
 
@@ -77,12 +74,11 @@ bool remove_irrelevant_clauses(ITSPtr its) {
  * Motivating example: f(x,y) -> f(-x,z) :|: (y=0 /\ z=1) \/ (y=1 /\ z=0)
  * In contrast to its implicants, it can be unrolled to obtain simpler closed forms.
  */
-bool unroll(ITSPtr its) {
+bool unroll(const ITSPtr& its) {
     auto success{false};
     for (const auto &r : its->getAllTransitions()) {
         if (its->isSimpleLoop(r) && !r->getGuard()->isConjunction()) {
-            const auto [res, period] = LoopAcceleration::chain(r);
-            if (period > 1) {
+            if (const auto [res, period] = LoopAcceleration::chain(r); period > 1) {
                 success = true;
                 if (Config::Analysis::doLogPreproc()) {
                     std::cout
@@ -98,12 +94,11 @@ bool unroll(ITSPtr its) {
     return success;
 }
 
-bool refine_dependency_graph(ITSPtr its) {
-    const auto is_edge = [](const RulePtr fst, const RulePtr snd) {
+bool refine_dependency_graph(const ITSPtr& its) {
+    const auto is_edge = [](const RulePtr& fst, const RulePtr& snd) {
         return SmtFactory::check(Preprocess::chain({fst, snd->renameTmpVars()})->getGuard()) == SmtResult::Sat;
     };
-    const auto removed{its->refineDependencyGraph(is_edge)};
-    if (removed.empty()) {
+    if (const auto removed{its->refineDependencyGraph(is_edge)}; removed.empty()) {
         return false;
     } else {
         if (Config::Analysis::doLogPreproc()) {
@@ -113,16 +108,26 @@ bool refine_dependency_graph(ITSPtr its) {
     }
 }
 
-std::optional<SmtResult> Preprocessor::check_empty_clauses(ITSPtr its) {
+std::optional<SmtResult> Preprocessor::check_empty_clauses(const ITSPtr& its) {
     std::vector<RulePtr> remove;
     for (const auto &r: its->getInitialTransitions()) {
         if (its->isSinkTransition(r)) {
-            const auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
+            const auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
             solver->add(r->getGuard());
-            const auto smt_res {solver->check()};
-            if (smt_res == SmtResult::Sat) {
+            if (const auto smt_res {solver->check()}; smt_res == SmtResult::Sat) {
                 if (Config::Analysis::model) {
-                cex.set_initial_state(solver->model());
+                    const auto lvals {r->getGuard()->lvals()};
+                    Valuation valuation;
+                    const auto model {solver->model()};
+                    for (const auto &lval: lvals) {
+                        theory::apply(
+                            lval,
+                            [&](const auto& lval) {
+                                valuation.put(lval, model->get(lval));
+                            }
+                        );
+                    }
+                    cex.set_initial_state(valuation);
                     if (!cex.try_final_transition(r)) {
                         throw std::logic_error("constructing cex failed");
                     }
@@ -138,14 +143,14 @@ std::optional<SmtResult> Preprocessor::check_empty_clauses(ITSPtr its) {
     }
     if (its->isEmpty()) {
         return SmtResult::Sat;
-    } else if (remove.empty()) {
-        return std::optional<SmtResult>{};
-    } else {
-        return SmtResult::Unknown;
     }
+    if (remove.empty()) {
+        return std::optional<SmtResult>{};
+    }
+    return SmtResult::Unknown;
 }
 
-std::optional<SmtResult> check_bot(ITSPtr its) {
+std::optional<SmtResult> check_bot(const ITSPtr& its) {
     std::vector<RulePtr> remove;
     for (const auto &r: its->getAllTransitions()) {
         if (r->getGuard() == bot()) {
@@ -157,11 +162,11 @@ std::optional<SmtResult> check_bot(ITSPtr its) {
     }
     if (its->isEmpty()) {
         return SmtResult::Sat;
-    } else if (remove.empty()) {
-        return std::optional<SmtResult>{};
-    } else {
-        return SmtResult::Unknown;
     }
+    if (remove.empty()) {
+        return std::optional<SmtResult>{};
+    }
+    return SmtResult::Unknown;
 }
 
 SmtResult Preprocessor::preprocess() {
@@ -195,7 +200,7 @@ SmtResult Preprocessor::preprocess() {
         success = true;
         return *sat_res;
     }
-    success |= bool(sat_res);
+    success |= static_cast<bool>(sat_res);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing rules..." << std::endl;
     }
@@ -204,7 +209,7 @@ SmtResult Preprocessor::preprocess() {
         success = true;
         return *sat_res;
     }
-    success |= bool(sat_res);
+    success |= static_cast<bool>(sat_res);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished preprocessing rules" << std::endl;
     }

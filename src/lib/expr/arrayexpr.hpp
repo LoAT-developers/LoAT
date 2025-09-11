@@ -3,7 +3,6 @@
 #include "exprfwd.hpp"
 #include "arith.hpp"
 #include "itheory.hpp"
-#include "arrayconst.hpp"
 
 template <ITheory T>
 class Array;
@@ -18,22 +17,25 @@ template <ITheory T>
 using ArrayReadPtr = ptr<ArrayRead<T>>;
 
 template <ITheory T>
+using ArrayWritePtr = ptr<ArrayWrite<T>>;
+
+template <ITheory T>
 using ArrayPtr = ptr<Array<T>>;
 
 template <ITheory T>
 class Array {
 
     public:
+    virtual ~Array() = default;
 
-    virtual std::optional<ArrayVarPtr<T>> isVar() const {
-        return std::nullopt;
-    }
+    virtual std::optional<ArrayVarPtr<T>> isVar() const = 0;
+
+    virtual std::optional<ArrayWritePtr<T>> isArrayWrite() const = 0;
 
     sexpresso::Sexp to_smtlib() const;
 
-    virtual ArrayPtr<T> renameVars(const array_var_map<T>&, const typename T::Renaming&) const = 0;
+    virtual ArrayPtr<T> renameVars(const array_var_map<T>&, const T::Renaming&) const = 0;
     virtual void collectVars(const linked_hash_set<ArrayVarPtr<T>>&, const linked_hash_set<typename T::Var>&) const = 0;
-    virtual ArrayConst<T> eval(const linked_hash_map<ArrayVarPtr<T>, ArrayConst<T>>&, const T::Model&) const = 0;
 
 };
 
@@ -43,18 +45,22 @@ class ArrayVar: public Array<T>, std::enable_shared_from_this<ArrayVar<T>> {
     using Self = ArrayVarPtr<T>;
 
     int idx;
-    unsigned dim;
+    unsigned m_dim;
 
 public:
 
     static Self next();
     static Self nextProgVar();
-    static Self postVar(const Self);
+    static Self postVar(const Self&);
     std::string getName() const;
     bool isTempVar() const;
     bool isProgVar() const;
     bool isPostVar() const;
-    static ArrayVarPtr<T> progVar(const ArrayVarPtr<T>);
+    static ArrayVarPtr<T> progVar(const ArrayVarPtr<T>&);
+
+    unsigned dim() const {
+        return m_dim;
+    }
 
     std::optional<ArrayVarPtr<T>> isVar() const override {
         return cpp::assume_not_null(this->shared_from_this());
@@ -70,23 +76,56 @@ std::ostream& operator<<(std::ostream &s, const ArrayVarPtr<T> a) {
 template <ITheory T>
 class ArrayWrite: public Array<T> {
 
-    ArrayPtr<T> arr;
-    std::vector<Arith::Expr> indices;
-    ArrayPtr<T> value;
+    ArrayVarPtr<T> m_arr;
+    std::vector<Arith::Expr> m_indices;
+    T::Expr m_value;
+
+public:
+
+    ArrayVarPtr<T> arr() const {
+        return m_arr;
+    }
+
+    std::vector<Arith::Expr> indices() const {
+        return m_indices;
+    }
+
+    T::Expr value() const {
+        return m_value;
+    }
 
 };
 
 template <ITheory T>
 class ArrayRead: public Array<T> {
 
-    ArrayPtr<T> arr;
-    std::vector<Arith::Expr> indices;
+    ArrayVarPtr<T> m_arr;
+    std::vector<Arith::Expr> m_indices;
+
+public:
+
+    ArrayVarPtr<T> arr() const {
+        return m_arr;
+    }
+
+    std::vector<Arith::Expr> indices() const {
+        return m_indices;
+    }
 
 };
+
+template <ITheory T>
+std::ostream& operator<<(std::ostream& s, const ArrayReadPtr<T>& read) {
+    s << read->arr();
+    for (const auto &i: read->indices()) {
+        s << "[" << i << "]";
+    }
+    return s;
+}
 
 namespace arrays {
 
     template <ITheory T>
-    ArrayReadPtr<T> mkArrayRead(const ArrayPtr<T>, const std::vector<Arith::Expr> &indices);
+    ArrayReadPtr<T> mkArrayRead(const ArrayPtr<T>&, const std::vector<Arith::Expr>&);
 
 }

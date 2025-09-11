@@ -9,7 +9,7 @@ using array_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArrayVarPtr<T
 template <ITheory T>
 class ArraySubs {
 
-    using Self = ArraySubs<T>;
+    using Self = ArraySubs;
     using Expr = ArrayPtr<T>;
     using Var = ArrayVarPtr<T>;
 
@@ -17,27 +17,27 @@ class ArraySubs {
 
 public:
 
-    typedef typename linked_hash_map<Var, Expr>::const_iterator const_iterator;
+    typedef linked_hash_map<Var, Expr>::const_iterator const_iterator;
 
     ArraySubs();
 
     ArraySubs(std::initializer_list<std::pair<const Var, Expr>> init);
 
-    Expr get(const Var key) const;
+    Expr get(const Var&) const;
 
-    void put(const Var key, const Expr val);
+    void put(const Var&, const Expr&);
 
     const_iterator begin() const;
 
     const_iterator end() const;
 
-    bool contains(const Var e) const;
+    bool contains(const Var&) const;
 
     bool empty() const;
 
     unsigned int size() const;
 
-    size_t erase(const Var key);
+    size_t erase(const Var&);
 
     Self compose(const Self &that) const;
 
@@ -51,7 +51,7 @@ public:
 
     Self project(const std::function<bool(Var)> &keep) const;
 
-    bool changes(const Var key) const;
+    bool changes(const Var&) const;
 
     bool isLinear() const;
 
@@ -69,7 +69,7 @@ public:
 
     size_t hash() const;
 
-    Expr operator()(const Expr t) const;
+    Expr operator()(const Expr&) const;
 
 private:
 

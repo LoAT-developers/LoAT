@@ -12,7 +12,7 @@ class Range {
     unsigned s;
     unsigned e;
 
-    Range(const unsigned s, const unsigned e);
+    Range(unsigned s, unsigned e);
 
 public:
     unsigned start() const;
@@ -20,8 +20,8 @@ public:
     unsigned length() const;
     bool empty() const;
 
-    static Range from_length(const unsigned start, const unsigned length);
-    static Range from_interval(const unsigned start, const unsigned end);
+    static Range from_length(unsigned start, unsigned length);
+    static Range from_interval(unsigned start, unsigned end);
 
 };
 
@@ -32,19 +32,19 @@ protected:
     struct TraceElem {
         Int id;
         Bools::Expr implicant;
-        Model model;
+        ModelPtr model;
     };
 
     using rule_map_t = linked_hash_map<Int, Bools::Expr>;
 
-    SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
+    SmtPtr solver {SmtFactory::solver(QF_LA)};
     std::vector<TraceElem> trace {};
     std::vector<std::vector<Renaming>> subs {};
     VarSet vars {};
     const Config::TRPConfig::MbpKind mbp_kind;
     ITSToSafety its2safety;
     SafetyProblem t;
-    Model model;
+    ModelPtr model;
     const Arith::Var trace_var {ArithVar::next()};
     linked_hash_map<Int, std::vector<std::pair<Int, Bools::Expr>>> learned_to_loop;
     Int next_id {0};
@@ -59,17 +59,17 @@ protected:
     linked_hash_map<Int, Bools::Expr> accel;
     bool safe {true};
 
-    TRPUtil(const ITSPtr its, const Config::TRPConfig &config);
+    TRPUtil(const ITSPtr &its, const Config::TRPConfig &config);
 
-    std::pair<Bools::Expr, Model> compress(const Range &range);
-    const Renaming& get_subs(const unsigned start, const unsigned steps);
-    Bools::Expr encode_transition(const Bools::Expr &idx, const Int &id);
+    std::pair<Bools::Expr, ModelPtr> compress(const Range &range);
+    const Renaming& get_subs(unsigned start, unsigned steps);
+    Bools::Expr encode_transition(const Bools::Expr &t, const Int &id) const;
     Int add_learned_clause(const Range &range, const Bools::Expr &accel);
-    Bools::Expr specialize(const Bools::Expr e, const Model &m, const std::function<bool(const Var&)> &eliminate);
-    std::pair<Bools::Expr, Model> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
-    std::optional<Arith::Expr> prove_term(const Bools::Expr loop, const Model &model);
+    Bools::Expr specialize(const Bools::Expr& e, const ModelPtr &model, const std::function<bool(const Var&)> &eliminate) const;
+    std::pair<Bools::Expr, ModelPtr> specialize(const Range &range, const std::function<bool(const Var&)> &eliminate);
+    std::optional<Arith::Expr> prove_term(const Bools::Expr& loop, const ModelPtr &model);
     bool build_cex();
-    virtual void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) = 0;
+    virtual void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) = 0;
     bool add_blocking_clauses(const Range &range, ModelPtr model);
 
 public:

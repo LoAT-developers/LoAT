@@ -2,21 +2,19 @@
 
 #include "smt.hpp"
 #include "swinecontext.hpp"
-#include "theory.hpp"
 
-class Swine: public Smt {
+class Swine final : public Smt {
 
 public:
-
-    Swine(swine::Config config = swine::Config());
-    void add(const Bools::Expr e) override;
+    explicit Swine(const swine::Config& config = swine::Config());
+    void add(Bools::Expr e) override;
     void push() override;
     void pop() override;
     SmtResult check() override;
-    Model model(const std::optional<const VarSet> &vars = std::nullopt) override;
+    ModelPtr model(const std::optional<const VarSet> &vars) override;
     void enableModels() override;
     void resetSolver() override;
-    ~Swine() override;
+    ~Swine() override = default;
     std::ostream& print(std::ostream& os) const override;
     void randomize(unsigned seed) override;
 
@@ -26,7 +24,6 @@ private:
     swine::Swine solver;
     SwineContext ctx;
 
-    Rational getRealFromModel(const z3::model &model, const z3::expr &symbol);
-    Arrays<Arith>::Const getIntArrayFromModel(const z3::model &model, const z3::expr &symbol);
+    static Rational getRealFromModel(const z3::model &model, const z3::expr &symbol);
 
 };

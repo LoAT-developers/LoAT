@@ -3,7 +3,6 @@
 #include "theory.hpp"
 #include "boolexpr.hpp"
 #include "model.hpp"
-#include "theory.hpp"
 
 namespace smt {
 
@@ -33,7 +32,7 @@ class Smt {
 
 public:
 
-    virtual void add(const Bools::Expr e) = 0;
+    virtual void add(Bools::Expr e) = 0;
 
     void add(const Lit &e) {
         return this->add(bools::mkLit(e));
@@ -44,19 +43,19 @@ public:
     virtual void pop() = 0;
 
     virtual SmtResult check() = 0;
-    virtual ModelPtr model(const std::optional<const VarSet> &vars = std::nullopt) = 0;
+    virtual ModelPtr model() = 0;
     virtual void enableModels() = 0;
     virtual void resetSolver() = 0;
 
     virtual void randomize(unsigned seed) = 0;
 
-    virtual ~Smt() {}
+    virtual ~Smt() = default;
 
     static Logic chooseLogic(const std::vector<Bools::Expr> &xs, const std::vector<Subs> &up = {}) {
         Logic res = QF_LA;
         for (const auto &x: xs) {
-            if (!(x->isLinear())) {
-                if (!(x->isPoly())) {
+            if (!x->isLinear()) {
+                if (!x->isPoly()) {
                     return QF_NAT;
                 }
                 res = QF_NA;
@@ -76,8 +75,8 @@ public:
     static Logic chooseLogic(const BoolExprSet &xs) {
         Logic res = QF_LA;
         for (const auto &x: xs) {
-            if (!(x->isLinear())) {
-                if (!(x->isPoly())) {
+            if (!x->isLinear()) {
+                if (!x->isPoly()) {
                     return QF_NAT;
                 }
                 res = QF_NA;

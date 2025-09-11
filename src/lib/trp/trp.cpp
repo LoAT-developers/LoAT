@@ -5,37 +5,33 @@
 #include "redundantinequations.hpp"
 #include "smtfactory.hpp"
 
-TRP::TRP(const Renaming &pre_to_post, const Config::TRPConfig &config):
+TRP::TRP(const Renaming& pre_to_post, const Config::TRPConfig& config) :
     pre_to_post(pre_to_post),
     post_to_pre(pre_to_post.invert()),
     config(config) {
-        for (const auto &[pre,post]: pre_to_post) {
-            const auto i {theory::next(pre)};
-            pre_to_intermediate.insert(pre, i);
-            post_to_intermediate.insert(post, i);
-        }
+    for (const auto& [pre,post] : pre_to_post) {
+        const auto i{theory::next(pre)};
+        pre_to_intermediate.insert(pre, i);
+        post_to_intermediate.insert(post, i);
     }
+}
 
-void TRP::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model) {
+void TRP::recurrent_pseudo_divisibility(const Bools::Expr& loop, const ModelPtr &model) {
     if (!config.recurrent_pseudo_divs) {
         return;
     }
     assert(loop->isConjunction());
-    const auto lits{loop->lits().get<Arith::Lit>()};
-    for (const auto &l : lits) {
+    for (const auto lits{loop->lits().get<Arith::Lit>()}; const auto &l : lits) {
         if (const auto div{l->isDivisibility()}) {
             const auto &[t, mod]{*div};
-            const auto vars{t->vars()};
-            if (std::all_of(vars.begin(), vars.end(), theory::isProgVar)) {
+            if (const auto vars{t->vars()}; std::ranges::all_of(vars, theory::isProgVar)) {
                 const auto post{t->renameVars(pre_to_post.get<Arith>())};
-                auto diff{model.eval<Arith>(t) - model.eval<Arith>(post)};
-                if (diff % mod == 0) {
+                if (auto diff{model->eval(t) - model->eval(post)}; diff % mod == 0) {
                     res_lits.insert(arith::mkEq(arith::mkMod(post, arith::mkConst(mod)), arith::mkConst(0)));
                 }
-            } else if (std::all_of(vars.begin(), vars.end(), theory::isPostVar)) {
+            } else if (std::ranges::all_of(vars, theory::isPostVar)) {
                 const auto pre{t->renameVars(post_to_pre.get<Arith>())};
-                auto diff{model.eval<Arith>(t) - model.eval<Arith>(pre)};
-                if (diff % mod == 0) {
+                if (auto diff{model->eval(t) - model->eval(pre)}; diff % mod == 0) {
                     res_lits.insert(arith::mkEq(arith::mkMod(pre, arith::mkConst(mod)), arith::mkConst(0)));
                 }
             }
@@ -46,13 +42,12 @@ void TRP::recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &mod
 /**
  * handles constraints like x' = 2x
  */
-void TRP::recurrent_exps(const Bools::Expr loop, const Model &model) {
+void TRP::recurrent_exps(const Bools::Expr& loop, const ModelPtr &model) {
     if (!config.recurrent_exps) {
         return;
     }
     assert(loop->isConjunction());
-    const auto lits{loop->lits().get<Arith::Lit>()};
-    for (const auto &l : lits) {
+    for (const auto lits{loop->lits().get<Arith::Lit>()}; const auto &l : lits) {
         if (l->lhs()->isLinear()) {
             auto lhs{l->lhs()};
             const auto vars{lhs->vars()};
@@ -76,7 +71,7 @@ void TRP::recurrent_exps(const Bools::Expr loop, const Model &model) {
                         continue;
                     }
                     if (pre_coeff < 0) {
-                        const auto val{model.get<Arith>(pre)};
+                        const auto val{model->get(pre)};
                         if (post_coeff < -pre_coeff) {
                             if (val >= 0) {
                                 // x' = 2x ~> x' >= 2x for non-negative x
@@ -108,7 +103,7 @@ void TRP::recurrent_exps(const Bools::Expr loop, const Model &model) {
 /**
  * handles constraints like x' = -x or x' = y /\ y' = x
  */
-void TRP::recurrent_cycles(const Bools::Expr loop, const Model &model) {
+void TRP::recurrent_cycles(const Bools::Expr& loop) {
     if (!config.recurrent_cycles) {
         return;
     }
@@ -136,27 +131,26 @@ void TRP::recurrent_cycles(const Bools::Expr loop, const Model &model) {
                     const auto rhs_cycle_plus_one_steps{(*orig_eq + constant * n)->renameVars(post_to_pre)};
                     res_lits.insert(arith::mkEq(post, rhs_cycle_plus_one_steps));
                     break;
-                } else {
-                    seen.emplace(other, other_sign);
-                    const auto other_eq{loop->getEquality(ArithVar::progVar(other))};
-                    if (!other_eq) {
-                        break;
-                    }
-                    eq = ArithSubs({{other, *other_eq}})(eq);
-                    vars = (*other_eq)->vars();
-                    if (vars.size() != 1) {
-                        break;
-                    }
-                    other = *vars.begin();
-                    other_coeff = *eq->coeff(other);
-                    other_sign = ***other_coeff->isRational() > 0;
                 }
+                seen.emplace(other, other_sign);
+                const auto other_eq{loop->getEquality(ArithVar::progVar(other))};
+                if (!other_eq) {
+                    break;
+                }
+                eq = ArithSubs({{other, *other_eq}})(eq);
+                vars = (*other_eq)->vars();
+                if (vars.size() != 1) {
+                    break;
+                }
+                other = *vars.begin();
+                other_coeff = *eq->coeff(other);
+                other_sign = ***other_coeff->isRational() > 0;
             }
         }
     }
 }
 
-void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
+void TRP::recurrent_bounds(const Bools::Expr& loop, const ModelPtr& model) {
     if (!config.recurrent_bounds) {
         return;
     }
@@ -170,18 +164,17 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
         const auto d{Arith::next()};
         const auto diff{Arith::varToExpr(post) - Arith::varToExpr(pre)};
         delta_eqs.insert(bools::mkLit(arith::mkEq(d, diff)));
-        model.put<Arith>(d, model.eval<Arith>(post - pre));
+        model->put(d, model->eval(post - pre));
         subs.put(d, diff);
         deltas.emplace(d, pre);
         zeros.put(d, arith::mkConst(0));
     }
     const auto with_deltas{bools::mkAnd(delta_eqs)};
-    const auto recurrent{mbp(with_deltas, model, [&](const auto &x) {
-        return !deltas.contains(x);
-    })};
     {
-        const auto lits{recurrent->lits().get<Arith::Lit>()};
-        for (const auto &l : lits) {
+        const auto recurrent{mbp(with_deltas, model, [&](const auto &x) {
+            return !deltas.contains(x);
+        })};
+        for (const auto lits{recurrent->lits().get<Arith::Lit>()}; const auto &l : lits) {
             const auto lit{l->subs(subs)};
             if (const auto div{lit->isDivisibility()}) {
                 const auto numerator{div->first};
@@ -212,23 +205,21 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
             return !theory::isPostVar(x) && !deltas.contains(x);
         })};
         for (const auto &pseudo : std::vector{pseudo_pre, pseudo_post}) {
-            const auto lits{pseudo->lits().get<Arith::Lit>()};
-            for (const auto &l : lits) {
+            for (const auto lits{pseudo->lits().get<Arith::Lit>()}; const auto &l : lits) {
                 if (l->isLinear() && (l->isEq() || l->isGt())) {
-                    const auto vars{l->vars()};
-                    if (std::any_of(vars.begin(), vars.end(), [&](const auto x) {
+                    if (const auto vars{l->vars()}; std::ranges::any_of(vars, [&](const auto& x) {
                             return !deltas.contains(x);
                         }) &&
-                        std::any_of(vars.begin(), vars.end(), [&](const auto x) {
+                        std::ranges::any_of(vars, [&](const auto& x) {
                             return deltas.contains(x);
                         }) &&
-                        std::all_of(vars.begin(), vars.end(), [&](const auto x) {
+                        std::ranges::all_of(vars, [&](const auto& x) {
                             const auto it{deltas.find(x)};
                             return it == deltas.end() || (!vars.contains(it->second) && !vars.contains(ArithVar::postVar(it->second)));
                         })) {
                         auto non_recurrent{zeros(l->lhs())};
                         auto recurrent{subs(l->lhs() - non_recurrent)};
-                        auto val{model.eval<Arith>(non_recurrent)};
+                        auto val{model->eval(non_recurrent)};
                         if (l->isGt()) {
                             non_recurrent = non_recurrent - arith::mkConst(1);
                             val = val - 1;
@@ -258,22 +249,21 @@ void TRP::recurrent_bounds(const Bools::Expr loop, Model model) {
     }
 }
 
-Bools::Expr TRP::recurrent(const Bools::Expr loop, const Model &model) {
+Bools::Expr TRP::recurrent(const Bools::Expr& loop, const ModelPtr &model) {
     assert(loop->isConjunction());
     recurrent_pseudo_divisibility(loop, model);
     recurrent_exps(loop, model);
-    recurrent_cycles(loop, model);
+    recurrent_cycles(loop);
     recurrent_bounds(loop, model);
-    const auto res {bools::mkAndFromLits(res_lits)};
+    auto res {bools::mkAndFromLits(res_lits)};
     res_lits.clear();
     if (res->vars().contains(n)) {
         return res && bools::mkLit(arith::mkGt(n, arith::mkConst(0)));
-    } else {
-        return res;
     }
+    return res;
 }
 
-Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
+Bools::Expr TRP::compute(const Bools::Expr& loop, const ModelPtr &model) {
     if (SmtFactory::check(post_to_intermediate(loop) && pre_to_intermediate(loop) && !loop) == SmtResult::Unsat) {
         return loop;
     }
@@ -283,7 +273,7 @@ Bools::Expr TRP::compute(const Bools::Expr loop, const Model &model) {
     if (Config::Analysis::log) {
         std::cout << "pre: " << pre << std::endl;
     }
-    auto step{recurrent(loop, model)};
+    const auto step{recurrent(loop, model)};
     if (Config::Analysis::log) {
         std::cout << "recurrence analysis: " << step << std::endl;
     }
@@ -300,8 +290,8 @@ Arith::Var TRP::get_n() const {
     return n;
 }
 
-Bools::Expr TRP::mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) const {
-    if (!model.eval<Bools>(trans)) {
+Bools::Expr TRP::mbp(const Bools::Expr &trans, const ModelPtr &model, const std::function<bool(const Var &)> &eliminate) const {
+    if (!model->eval(trans)) {
         std::cout << "mbp: not a model" << std::endl;
         std::cout << "trans: " << trans << std::endl;
         std::cout << "model: " << model << std::endl;

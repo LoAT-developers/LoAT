@@ -6,22 +6,28 @@
 #include "exprfwd.hpp"
 #include "bools.hpp"
 #include "arraysubs.hpp"
-#include "arrayconst.hpp"
 
 template <ITheory T>
 struct Arrays {
 
     using Lit = ArrayLitPtr<T>;
     using Var = ArrayVarPtr<T>;
+    using Lval = ArrayReadPtr<T>;
     using Subs = ArraySubs<T>;
     using Expr = ArrayPtr<T>;
-    using Const = ArrayConst<T>;
-    using Model = linked_hash_map<Var, Const>;
     using Renaming = array_var_map<T>;
 
-    static Expr varToExpr(const Var &var);
-    static Expr anyValue();
-    static Var next();
+    static Expr varToExpr(const Var &var) {
+        return var;
+    }
+
+    static Expr lvalToExpr(const Lval &lval) {
+        return lval;
+    }
+
+    static Var next() {
+        return ArrayVar<T>::next();
+    }
 
 };
 

@@ -14,17 +14,17 @@ class TRP {
     LitSet res_lits;
     const Arith::Var n {ArithVar::next()};
 
-    void recurrent_exps(const Bools::Expr loop, const Model &model);
-    void recurrent_pseudo_divisibility(const Bools::Expr loop, const Model &model);
-    void recurrent_cycles(const Bools::Expr loop, const Model &model);
-    void recurrent_bounds(const Bools::Expr loop, Model model);
-    Bools::Expr recurrent(const Bools::Expr loop, const Model &model);
+    void recurrent_exps(const Bools::Expr& loop, const ModelPtr &model);
+    void recurrent_pseudo_divisibility(const Bools::Expr& loop, const ModelPtr &model);
+    void recurrent_cycles(const Bools::Expr& loop);
+    void recurrent_bounds(const Bools::Expr& loop, const ModelPtr& model);
+    Bools::Expr recurrent(const Bools::Expr& loop, const ModelPtr &model);
 
 public:
 
     TRP(const Renaming &pre_to_post, const Config::TRPConfig &config);
-    Bools::Expr compute(const Bools::Expr loop, const Model &model);
+    Bools::Expr compute(const Bools::Expr& loop, const ModelPtr &model);
     Arith::Var get_n() const;
-    Bools::Expr mbp(const Bools::Expr &trans, const Model &model, const std::function<bool(const Var &)> &eliminate) const;
+    Bools::Expr mbp(const Bools::Expr &trans, const ModelPtr &model, const std::function<bool(const Var &)> &eliminate) const;
 
 };

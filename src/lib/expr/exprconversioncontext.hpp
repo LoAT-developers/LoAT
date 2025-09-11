@@ -1,7 +1,7 @@
 #pragma once
 
 #include <optional>
-#include <assert.h>
+#include <cassert>
 
 #include "theory.hpp"
 
@@ -29,6 +29,8 @@ public:
     virtual Formula negate(const Formula &x) = 0;
     virtual ExprVec exprVec() = 0;
     virtual FormulaVec formulaVec() = 0;
+    virtual Expr arrayRead(const Expr& arr, const ExprVec& indices) = 0;
+    virtual Expr arrayWrite(const Expr& arr, const ExprVec& indices, const Expr &value) = 0;
 
     virtual void printStderr(const Expr &e) const = 0;
 
@@ -36,30 +38,27 @@ public:
         const auto res {arithVarMap.get(symbol)};
         if (res) {
             return *res;
-        } else {
-            const auto it {arithVarMap.emplace(symbol, buildVar(symbol)).first};
-            return it->second;
         }
+        const auto it {arithVarMap.emplace(symbol, buildVar(symbol)).first};
+        return it->second;
     }
 
     Formula getVariable(const Bools::Var &symbol) {
         const auto res {boolVarMap.get(symbol)};
         if (res) {
             return *res;
-        } else {
-            const auto it {boolVarMap.emplace(symbol, buildVar(symbol)).first};
-            return it->second;
         }
+        const auto it {boolVarMap.emplace(symbol, buildVar(symbol)).first};
+        return it->second;
     }
 
     Expr getVariable(const Arrays<Arith>::Var &symbol) {
         const auto res {intArrayVarMap.get(symbol)};
         if (res) {
             return *res;
-        } else {
-            const auto it {intArrayVarMap.emplace(symbol, buildVar(symbol)).first};
-            return it->second;
         }
+        const auto it {intArrayVarMap.emplace(symbol, buildVar(symbol)).first};
+        return it->second;
     }
 
     const linked_hash_map<Arith::Var, Expr> &getArithSymbolMap() const {
@@ -74,11 +73,12 @@ public:
         return intArrayVarMap;
     }
 
-    virtual ~ExprConversionContext() {}
+    virtual ~ExprConversionContext() = default;
 
     void reset() {
         arithVarMap.clear();
         boolVarMap.clear();
+        intArrayVarMap.clear();
     }
 
 protected:
@@ -87,7 +87,6 @@ protected:
     virtual Formula buildVar(const Bools::Var &var) = 0;
     virtual Expr buildVar(const Arrays<Arith>::Var &var) = 0;
 
-protected:
     linked_hash_map<Arith::Var, Expr> arithVarMap{};
     linked_hash_map<Bools::Var, Formula> boolVarMap{};
     linked_hash_map<Arrays<Arith>::Var, Expr> intArrayVarMap{};

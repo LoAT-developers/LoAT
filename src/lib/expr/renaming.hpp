@@ -2,29 +2,27 @@
 
 #include "theory.hpp"
 
-#include <boost/functional/hash.hpp>
 #include <utility>
 
 class Renaming {
 
     using It = std::variant<Arith::Renaming::left_const_iterator, Bools::Renaming::left_const_iterator, Arrays<Arith>::Renaming::left_const_iterator>;
 
-    typename TheTheory::Renaming t {};
+    TheTheory::Renaming t {};
 
 public:
 
-    using Pair = typename TheTheory::VarPair;
+    using Pair = TheTheory::VarPair;
 
     class Iterator {
 
         template <size_t I = 0>
-        inline It beginImpl(size_t i) const {
+        It beginImpl(const size_t i) const {
             if constexpr (I < num_theories) {
                 if (I == i) {
                     return It{std::get<I>(subs.t).left.begin()};
-                } else {
-                    return beginImpl<I + 1>(i);
                 }
+                return beginImpl<I + 1>(i);
             } else {
                 throw std::invalid_argument("i too large");
             }
@@ -33,13 +31,12 @@ public:
         It begin(size_t i) const;
 
         template <size_t I = 0>
-        inline It endImpl(size_t i) const {
+        It endImpl(const size_t i) const {
             if constexpr (I < num_theories) {
                 if (I == i) {
                     return It(std::get<I>(subs.t).left.end());
-                } else {
-                    return endImpl<I + 1>(i);
                 }
+                return endImpl<I + 1>(i);
             } else {
                 throw std::invalid_argument("i too large");
             }
@@ -48,7 +45,7 @@ public:
         It end(size_t i) const;
 
         template <size_t I = 0>
-        inline Pair getCurrentImpl() const {
+        Pair getCurrentImpl() const {
             if constexpr (I < num_theories) {
                 if (ptr.index() == I) {
                     const auto p {std::get<I>(ptr)};
@@ -74,10 +71,10 @@ public:
         pointer operator->();
 
         template <size_t I = 0>
-        inline void incrementImpl() {
+        void incrementImpl() {
             if constexpr (I < num_theories) {
                 if (ptr.index() == I) {
-                    std::get<I>(ptr)++;
+                    ++std::get<I>(ptr);
                 } else {
                     incrementImpl<I+1>();
                 }
@@ -107,23 +104,23 @@ public:
     void insert(const Var &x, const Var &y);
 
     template <ITheory T>
-    void insert(const typename T::Var &var, const typename T::Var &expr) {
-        using R = typename T::Renaming;
+    void insert(const T::Var &var, const T::Var &expr) {
+        using R = T::Renaming;
         std::get<R>(t).insert(typename R::value_type(var, expr));
     }
 
-    Renaming();
-    Renaming(Pair &p);
+    Renaming() = default;
+    explicit Renaming(const Pair &p);
 
     template<ITheory T>
-    static Renaming build(const typename T::Var var, const typename T::Var expr) {
+    static Renaming build(const T::Var var, const T::Var expr) {
         Renaming subs;
         subs.insert<T>(var, expr);
         return subs;
     }
 
     template <ITheory T>
-    static Renaming build(typename T::Renaming subs) {
+    static Renaming build(T::Renaming subs) {
         Renaming res;
         res.get<T>() = subs;
         return res;
@@ -132,7 +129,7 @@ public:
     Var get(const Var &var) const;
 
     template <ITheory T>
-    typename T::Var get(const typename T::Var &var) const {
+    T::Var get(const T::Var &var) const {
         const auto &m {std::get<typename T::Renaming>(t).left};
         const auto it {m.find(var)};
         return it == m.end() ? var : it->second;
@@ -150,17 +147,17 @@ public:
     bool operator==(const Renaming &that) const = default;
 
     template <size_t I>
-    typename std::tuple_element_t<I, decltype(t)>::Renaming& get() {
+    std::tuple_element_t<I, decltype(t)>::Renaming& get() {
         return std::get<I>(t);
     }
 
     template <ITheory T>
-    typename T::Renaming& get() {
+    T::Renaming& get() {
         return std::get<typename T::Renaming>(t);
     }
 
     template <ITheory T>
-    const typename T::Renaming& get() const {
+    const T::Renaming& get() const {
         return std::get<typename T::Renaming>(t);
     }
 
@@ -176,7 +173,9 @@ public:
 
     Lit operator()(const Lit &lit) const;
     Expr operator()(const Expr &expr) const;
-    Bools::Expr operator()(const Bools::Expr e) const;
+    Bools::Expr operator()(const Bools::Expr& e) const;
+    Arith::Expr operator()(const Arith::Expr &e) const;
+    ArrayReadPtr<Arith> operator()(const ArrayReadPtr<Arith> &e) const;
 
     VarSet coDomainVars() const;
     void collectCoDomainVars(VarSet &res) const;

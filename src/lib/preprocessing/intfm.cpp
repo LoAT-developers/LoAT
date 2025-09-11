@@ -4,7 +4,7 @@
 
 #include <unordered_set>
 
-Bools::Expr integerFourierMotzkin(const Bools::Expr e, const std::function<bool(const Var &)> &allow) {
+Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool(const Var &)> &allow) {
     if (!e->isConjunction()) {
         return e;
     }
@@ -14,8 +14,7 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr e, const std::function<bool(
     linked_hash_set<Arith::Var> candidates;
     for (const auto &lit : lits) {
         if (std::holds_alternative<Arith::Lit>(lit)) {
-            const auto &rel = std::get<Arith::Lit>(lit);
-            if (rel->isGt()) {
+            if (const auto &rel = std::get<Arith::Lit>(lit); rel->isGt()) {
                 rel->collectVars(candidates);
             }
         }
@@ -53,8 +52,7 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr e, const std::function<bool(
                         goto abort;
                     }
                     const auto term {rel->lhs()};
-                    const auto coeff {*term->coeff(var)};
-                    if (coeff->is(1) == 1) {
+                    if (const auto coeff {*term->coeff(var)}; coeff->is(1) == 1) {
                         // we have var + p > 0, i.e., var >= -p+1
                         lower_bounds.push_back(arith::mkPlus({-term, var, arith::mkConst(1)}));
                         lower_bounded = true;
@@ -69,8 +67,7 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr e, const std::function<bool(
                             ++explosive_lower;
                         }
                     } else {
-                        const auto int_coeff {coeff->isInt()};
-                        if (int_coeff) {
+                        if (const auto int_coeff {coeff->isInt()}) {
                             // the coefficient is constant, but neither 1 nor -1
                             // if the variable bounded from both sides, then we need divisibility constraints to eliminate it
                             may_be_dually_bounded = false;
@@ -116,7 +113,6 @@ abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (eliminated.empty()) {
         return e;
-    } else {
-        return bools::mkAndFromLits(lits);
     }
+    return bools::mkAndFromLits(lits);
 }

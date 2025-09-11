@@ -5,7 +5,11 @@ Bools::Expr Bools::constToExpr(const Const val) {
     return val ? top() : bot();
 }
 
-Bools::Expr Bools::varToExpr(const Var var) {
+Bools::Expr Bools::varToExpr(const Var& var) {
+    return bools::mkLit(bools::mk(var));
+}
+
+Bools::Expr Bools::lvalToExpr(const Lval& var) {
     return bools::mkLit(bools::mk(var));
 }
 
@@ -17,8 +21,8 @@ Bools::Var Bools::next() {
     return BoolVar::next();
 }
 
-Bools::Expr bools::mkEq(const Bools::Expr &lhs, const Bools::Expr &rhs) {
-    return (lhs && rhs) || ((!lhs) && (!rhs));
+Bools::Expr Bools::mkEq(const Expr &lhs, const Expr &rhs) {
+    return (lhs && rhs) || (!lhs && !rhs);
 }
 
 std::size_t hash_value(const Bools::Expr &x) {

@@ -1,17 +1,12 @@
 #include "rulepreprocessing.hpp"
 #include "theory.hpp"
 #include "formulapreprocessing.hpp"
-#include "theory.hpp"
 #include "intfm.hpp"
 #include "config.hpp"
 #include "impliedequivalences.hpp"
 
-#include <unordered_set>
-#include <numeric>
-
 RulePtr propagateEquivalences(const RulePtr &rule) {
-    const auto subs{impliedEquivalences(rule->getGuard())};
-    if (subs.empty()) {
+    if (const auto subs{impliedEquivalences(rule->getGuard())}; subs.empty()) {
         return rule;
     } else {
         if (Config::Analysis::doLogPreproc()) {
@@ -22,28 +17,29 @@ RulePtr propagateEquivalences(const RulePtr &rule) {
 }
 
 std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
-    VarSet remove;
-    for (const auto &[x, v] : rule->getUpdate()) {
-        if (TheTheory::varToExpr(x) == v) {
-            remove.insert(x);
+    LvalSet remove;
+    rule->getUpdate().for_each(Overload{
+        [](const std::pair<Arrays<Arith>::Lval, Arith::Expr>&) {},
+        [&](const auto& p) {
+            if (theory::theory(p.first).varToExpr(p.first) == p.second) {
+                remove.insert(p.first);
+            }
         }
-    }
+    });
     if (remove.empty()) {
         return {};
-    } else {
-        auto new_update{rule->getUpdate()};
-        new_update.erase(remove);
-        const auto res{rule->withUpdate(new_update)};
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "removed identity updates: " << res << std::endl;
-        }
-        return res;
     }
+    auto new_update{rule->getUpdate()};
+    new_update.erase(remove);
+    auto res{rule->withUpdate(new_update)};
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "removed identity updates: " << res << std::endl;
+    }
+    return res;
 }
 
 RulePtr propagateEqualities(const RulePtr &rule) {
-    const auto subs{rule->getGuard()->propagateEqualities(theory::isTempVar)};
-    if (subs.empty()) {
+    if (const auto subs{rule->getGuard()->propagateEqualities(theory::isTempVar)}; subs.empty()) {
         return rule;
     } else {
         if (Config::Analysis::doLogPreproc()) {
@@ -54,7 +50,7 @@ RulePtr propagateEqualities(const RulePtr &rule) {
 }
 
 RulePtr integerFourierMotzkin(const RulePtr &rule) {
-    auto varsInUpdate{rule->getUpdate().coDomainVars()};
+    const auto varsInUpdate{rule->getUpdate().coDomainVars()};
     auto isTempOnlyInGuard = [&](const Var &sym) {
         return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
     };
@@ -77,7 +73,7 @@ RulePtr Preprocess::preprocessRule(const RulePtr &rule) {
         std::cout << "preprocessing " << rule << std::endl;
     }
     auto current {rule};
-    if (const auto g{Preprocess::simplifyAnd(current->getGuard())}; g != current->getGuard()) {
+    if (const auto g{simplifyAnd(current->getGuard())}; g != current->getGuard()) {
         current = current->withGuard(g);
     }
     auto changed{false};
@@ -87,7 +83,7 @@ RulePtr Preprocess::preprocessRule(const RulePtr &rule) {
         current = eliminateArithVars(prop);
         if (current != prop) {
             changed = true;
-            current = current->withGuard(Preprocess::simplifyAnd(current->getGuard()));
+            current = current->withGuard(simplifyAnd(current->getGuard()));
         }
     } while (changed);
     if (const auto res {eliminateIdentities(current)}) {
@@ -101,7 +97,7 @@ RulePtr Preprocess::preprocessRule(const RulePtr &rule) {
 
 RulePtr Preprocess::chain(const std::vector<RulePtr> &rules) {
     std::vector<Bools::Expr> guards;
-    Subs up;
+    LValueSubs up;
     for (const auto &r: rules) {
         guards.push_back(up(r->getGuard()));
         up = r->getUpdate().compose(up);

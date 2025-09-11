@@ -2,12 +2,12 @@
 #include "theory.hpp"
 #include "conjunction.hpp"
 
-const Bools::Expr BoolExpr::from_cache(const BoolExprSet &children, ConcatOperator op) {
+const Bools::Expr BoolExpr::from_cache(const BoolExprSet &children, const ConcatOperator op) {
     return BoolJunction::from_cache(children, op);
 }
 
 template <class Lits>
-const Bools::Expr BoolExpr::buildFromLits(const Lits &lits, ConcatOperator op) {
+Bools::Expr BoolExpr::buildFromLits(const Lits& lits, const ConcatOperator op) {
     BoolExprSet children;
     for (const auto &lit : lits) {
         children.insert(mkLit(lit));
@@ -16,10 +16,11 @@ const Bools::Expr BoolExpr::buildFromLits(const Lits &lits, ConcatOperator op) {
 }
 
 template <class Children>
-const Bools::Expr BoolExpr::build(const Children &lits, ConcatOperator op) {
+Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
     if (op == ConcatAnd && std::find(lits.begin(), lits.end(), bot()) != lits.end()) {
         return bot();
-    } else if (op == ConcatOr && std::find(lits.begin(), lits.end(), top()) != lits.end()) {
+    }
+    if (op == ConcatOr && std::find(lits.begin(), lits.end(), top()) != lits.end()) {
         return top();
     }
     BoolExprSet children;
@@ -41,51 +42,51 @@ const Bools::Expr BoolExpr::build(const Children &lits, ConcatOperator op) {
     }
 }
 
-const Bools::Expr BoolExpr::top() {
+Bools::Expr BoolExpr::top() {
     const static auto res {from_cache(BoolExprSet{}, ConcatAnd)};
     return res;
 }
 
-const Bools::Expr BoolExpr::bot() {
+Bools::Expr BoolExpr::bot() {
     const static auto res {from_cache(BoolExprSet{}, ConcatOr)};
     return res;
 }
 
 template <class Lits>
-const Bools::Expr BoolExpr::mkAndFromLits(const Lits &lits) {
+Bools::Expr BoolExpr::mkAndFromLits(const Lits& lits) {
     return buildFromLits(lits, ConcatAnd);
 }
 
-template const Bools::Expr BoolExpr::mkAndFromLits<std::vector<Arith::Lit>>(const std::vector<Arith::Lit> &lits);
-template const Bools::Expr BoolExpr::mkAndFromLits<linked_hash_set<Arith::Lit>>(const linked_hash_set<Arith::Lit> &lits);
-template const Bools::Expr BoolExpr::mkAndFromLits<Conjunction>(const Conjunction &lits);
-template const Bools::Expr BoolExpr::mkAndFromLits<LitSet>(const LitSet &lits);
-template const Bools::Expr BoolExpr::mkAndFromLits<std::initializer_list<Lit>>(const std::initializer_list<Lit> &lits);
+template Bools::Expr BoolExpr::mkAndFromLits<std::vector<Arith::Lit>>(const std::vector<Arith::Lit> &lits);
+template Bools::Expr BoolExpr::mkAndFromLits<linked_hash_set<Arith::Lit>>(const linked_hash_set<Arith::Lit> &lits);
+template Bools::Expr BoolExpr::mkAndFromLits<Conjunction>(const Conjunction &lits);
+template Bools::Expr BoolExpr::mkAndFromLits<LitSet>(const LitSet &lits);
+template Bools::Expr BoolExpr::mkAndFromLits<std::initializer_list<Lit>>(const std::initializer_list<Lit> &lits);
 
 template <class Children>
-const Bools::Expr BoolExpr::mkAnd(const Children &lits) {
+Bools::Expr BoolExpr::mkAnd(const Children& lits) {
     return build(lits, ConcatAnd);
 }
 
-template const Bools::Expr BoolExpr::mkAnd<std::vector<Bools::Expr>>(const std::vector<Bools::Expr> &lits);
-template const Bools::Expr BoolExpr::mkAnd<linked_hash_set<Bools::Expr>>(const linked_hash_set<Bools::Expr> &lits);
+template Bools::Expr BoolExpr::mkAnd<std::vector<Bools::Expr>>(const std::vector<Bools::Expr> &lits);
+template Bools::Expr BoolExpr::mkAnd<linked_hash_set<Bools::Expr>>(const linked_hash_set<Bools::Expr> &lits);
 
 template <class Children>
-const Bools::Expr BoolExpr::mkOr(const Children &lits) {
+Bools::Expr BoolExpr::mkOr(const Children& lits) {
     return build(lits, ConcatOr);
 }
 
-template const Bools::Expr BoolExpr::mkOr<std::vector<Bools::Expr>>(const std::vector<Bools::Expr> &lits);
-template const Bools::Expr BoolExpr::mkOr<linked_hash_set<Bools::Expr>>(const linked_hash_set<Bools::Expr> &lits);
+template Bools::Expr BoolExpr::mkOr<std::vector<Bools::Expr>>(const std::vector<Bools::Expr> &lits);
+template Bools::Expr BoolExpr::mkOr<linked_hash_set<Bools::Expr>>(const linked_hash_set<Bools::Expr> &lits);
 
-const Bools::Expr BoolExpr::mkLit(const Lit &lit) {
+Bools::Expr BoolExpr::mkLit(const Lit& lit) {
     if (theory::isTriviallyTrue(lit)) {
         return top();
-    } else if (theory::isTriviallyFalse(lit)) {
-        return bot();
-    } else {
-        return BoolTheoryLit::from_cache(lit);
     }
+    if (theory::isTriviallyFalse(lit)) {
+        return bot();
+    }
+    return BoolTheoryLit::from_cache(lit);
 }
 
 sexpresso::Sexp BoolExpr::to_smtlib() const {
@@ -115,7 +116,8 @@ sexpresso::Sexp BoolExpr::to_smtlib() const {
 BoolExprSet BoolExpr::get_disjuncts() const {
     if (isOr()) {
         return getChildren();
-    } else if (isAnd()) {
+    }
+    if (isAnd()) {
         const auto children {getChildren()};
         std::optional<Bools::Expr> disj;
         BoolExprSet lits;
@@ -124,9 +126,8 @@ BoolExprSet BoolExpr::get_disjuncts() const {
                 if (disj) {
                     disj.reset();
                     break;
-                } else {
-                    disj = x;
                 }
+                disj = x;
             } else {
                 assert(x->isTheoryLit());
                 lits.insert(x);
@@ -156,53 +157,34 @@ std::optional<Bools::Var> BoolExpr::isVar() const {
                     return opt{};
                 }},
             *lit);
-    } else {
-        return opt{};
     }
+    return opt{};
 }
 
-linked_hash_set<Arrays<Arith>::Expr> BoolExpr::relevantArrayExpressions() const {
-    linked_hash_set<Arrays<Arith>::Expr> res;
-    linked_hash_set<std::pair<Arrays<Arith>::Expr, Arrays<Arith>::Expr>> eqs;
-    iter([&](const auto &lit) {
-       std::visit(Overload{
-           [&](const Arrays<Arith>::Lit &l){
-               if (const auto eq {l->isArrayEq()}) {
-                   eqs.emplace((*eq)->lhs(), (*eq)->lhs());
-               } else if (const auto neq {l->isArrayNeq()}) {
-                   eqs.emplace((*neq)->lhs(), (*neq)->lhs());
-               } else if (const auto )
-           },
-           [](const auto&){}
-       }, lit);
-    });
-}
-
-linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var n) const {
+linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var& n) const {
     linked_hash_set<Bound> bounds;
     getBounds(n, bounds);
     return bounds;
 }
 
-void BoolExpr::getBounds(const Arith::Var var, linked_hash_set<Bound> &res) const {
-    const auto lit {getTheoryLit()};
-    if (lit) {
+void BoolExpr::getBounds(const Arith::Var& n, linked_hash_set<Bound> &res) const {
+    if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
-            std::get<Arith::Lit>(*lit)->getBounds(var, res);
+            std::get<Arith::Lit>(*lit)->getBounds(n, res);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
-            c->getBounds(var, res);
+            c->getBounds(n, res);
         }
     } else if (isOr()) {
         bool first = true;
         linked_hash_set<Bound> intersection;
         for (const auto &c: getChildren()) {
             if (first) {
-                c->getBounds(var, intersection);
+                c->getBounds(n, intersection);
                 first = false;
             } else {
-                const auto other {c->getBounds(var)};
+                const auto other {c->getBounds(n)};
                 for (auto it = intersection.begin(); it != intersection.end(); ++it) {
                     if (other.contains(*it)) {
                         ++it;
@@ -219,31 +201,30 @@ void BoolExpr::getBounds(const Arith::Var var, linked_hash_set<Bound> &res) cons
     }
 }
 
-linked_hash_set<Divisibility> BoolExpr::getDivisibility(const Arith::Var n) const {
+linked_hash_set<Divisibility> BoolExpr::getDivisibility(const Arith::Var& n) const {
     linked_hash_set<Divisibility> res;
     getDivisibility(n, res);
     return res;
 }
 
-void BoolExpr::getDivisibility(const Arith::Var var, linked_hash_set<Divisibility> &res) const {
-    const auto lit {getTheoryLit()};
-    if (lit) {
+void BoolExpr::getDivisibility(const Arith::Var& n, linked_hash_set<Divisibility> &res) const {
+    if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
-            std::get<Arith::Lit>(*lit)->getDivisibility(var, res);
+            std::get<Arith::Lit>(*lit)->getDivisibility(n, res);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
-            c->getDivisibility(var, res);
+            c->getDivisibility(n, res);
         }
     } else if (isOr()) {
         bool first = true;
         linked_hash_set<Divisibility> intersection;
         for (const auto &c: getChildren()) {
             if (first) {
-                c->getDivisibility(var, intersection);
+                c->getDivisibility(n, intersection);
                 first = false;
             } else {
-                const auto other {c->getDivisibility(var)};
+                const auto other {c->getDivisibility(n)};
                 for (auto it = intersection.begin(); it != intersection.end(); ++it) {
                     if (other.contains(*it)) {
                         ++it;
@@ -260,14 +241,14 @@ void BoolExpr::getDivisibility(const Arith::Var var, linked_hash_set<Divisibilit
     }
 }
 
-std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var var) const {
+std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var& n) const {
     if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
-            return std::get<Arith::Lit>(*lit)->getEquality(var);
+            return std::get<Arith::Lit>(*lit)->getEquality(n);
         }
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
-            if (const auto eq {c->getEquality(var)}) {
+            if (const auto eq {c->getEquality(n)}) {
                 return eq;
             }
         }
@@ -276,8 +257,7 @@ std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var var) const {
 }
 
 void BoolExpr::propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow, std::unordered_set<Arith::Var> &blocked) const {
-    const auto lit {getTheoryLit()};
-    if (lit) {
+    if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
             std::get<Arith::Lit>(*lit)->subs(subs)->propagateEquality(subs, allow, blocked);
         }
@@ -295,7 +275,7 @@ Arith::Subs BoolExpr::propagateEqualities(const std::function<bool(const Var &)>
     return subs;
 }
 
-Bools::Expr BoolExpr::toInfinity(const Arith::Var n) const {
+Bools::Expr BoolExpr::toInfinity(const Arith::Var& n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -305,12 +285,10 @@ Bools::Expr BoolExpr::toInfinity(const Arith::Var n) const {
                     if (!rel->has(n)) {
                         return mkLit(rel);
                     }
-                    const auto ex {rel->lhs()};
-                    if (***(*ex->coeff(n))->isRational() > 0) {
+                    if (const auto ex {rel->lhs()}; ***(*ex->coeff(n))->isRational() > 0) {
                         return top();
-                    } else {
-                        return bot();
                     }
+                    return bot();
                 },
                 [](const auto &lit) {
                     return mkLit(lit);
@@ -319,7 +297,7 @@ Bools::Expr BoolExpr::toInfinity(const Arith::Var n) const {
     });
 }
 
-Bools::Expr BoolExpr::toMinusInfinity(const Arith::Var n) const {
+Bools::Expr BoolExpr::toMinusInfinity(const Arith::Var& n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -334,12 +312,10 @@ Bools::Expr BoolExpr::toMinusInfinity(const Arith::Var n) const {
                     if (rel->isNeq()) {
                         return top();
                     }
-                    const auto ex {rel->lhs()};
-                    if (***(*ex->coeff(n))->isRational() < 0) {
+                    if (const auto ex {rel->lhs()}; ***(*ex->coeff(n))->isRational() < 0) {
                         return top();
-                    } else {
-                        return bot();
                     }
+                    return bot();
                 },
                 [](const auto &lit) {
                     return mkLit(lit);
@@ -360,8 +336,7 @@ void BoolExpr::iter(const std::function<void(const Lit&)> &f) const {
 
 Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::unordered_map<Bools::Expr, Bools::Expr> &cache) const {
     const auto self {cpp::assume_not_null(shared_from_this())};
-    const auto it {cache.find(self)};
-    if (it != cache.end()) {
+    if (const auto it {cache.find(self)}; it != cache.end()) {
         return it->second;
     }
     std::optional<Bools::Expr> res;
@@ -374,14 +349,13 @@ Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::
             if (simp == bot()) {
                 cache.emplace(self, bot());
                 return bot();
-            } else {
-                if (simp != top()) {
-                    if (simp->isAnd()) {
-                        const auto children = simp->getChildren();
-                        newChildren.insert(children.begin(), children.end());
-                    } else {
-                        newChildren.insert(simp);
-                    }
+            }
+            if (simp != top()) {
+                if (simp->isAnd()) {
+                    const auto children = simp->getChildren();
+                    newChildren.insert(children.begin(), children.end());
+                } else {
+                    newChildren.insert(simp);
                 }
             }
         }
@@ -401,14 +375,13 @@ Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::
             if (simp == top()) {
                 cache.emplace(self, top());
                 return top();
-            } else {
-                if (simp != bot()) {
-                    if (simp->isOr()) {
-                        const auto children = simp->getChildren();
-                        newChildren.insert(children.begin(), children.end());
-                    } else {
-                        newChildren.insert(simp);
-                    }
+            }
+            if (simp != bot()) {
+                if (simp->isOr()) {
+                    const auto children = simp->getChildren();
+                    newChildren.insert(children.begin(), children.end());
+                } else {
+                    newChildren.insert(simp);
                 }
             }
         }
@@ -422,8 +395,7 @@ Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::
     } else if (isTheoryLit()) {
         const auto lit = *getTheoryLit();
         const auto mapped = f(lit);
-        const auto mappedLit = mapped->getTheoryLit();
-        if (mappedLit && *mappedLit == lit) {
+        if (const auto mappedLit = mapped->getTheoryLit(); mappedLit && *mappedLit == lit) {
             res = self;
         } else {
             res = mapped;
@@ -450,7 +422,7 @@ VarSet BoolExpr::vars() const {
     return res;
 }
 
-BoolExpr::~BoolExpr() {};
+BoolExpr::~BoolExpr() {}
 
 LitSet BoolExpr::lits() const {
     LitSet res;
@@ -486,21 +458,21 @@ bool BoolExpr::isPoly() const {
     });
 }
 
-const Bools::Expr operator&&(const Bools::Expr a, const Bools::Expr b) {
+Bools::Expr operator&&(const Bools::Expr& a, const Bools::Expr& b) {
     const BoolExprSet children{a, b};
     return BoolExpr::mkAnd(children);
 }
 
-const Bools::Expr operator||(const Bools::Expr a, const Bools::Expr b) {
+Bools::Expr operator||(const Bools::Expr& a, const Bools::Expr& b) {
     const BoolExprSet children{a, b};
     return BoolExpr::mkOr(children);
 }
 
-const Bools::Expr operator!(const Bools::Expr a) {
+Bools::Expr operator!(const Bools::Expr& a) {
     return a->negation();
 }
 
-std::ostream& operator<<(std::ostream &s, const Bools::Expr e) {
+std::ostream& operator<<(std::ostream &s, const Bools::Expr &e) {
     if (e->isTheoryLit()) {
         std::visit([&s](const auto lit){s << lit;}, *e->getTheoryLit());
     } else if (e->getChildren().empty()) {

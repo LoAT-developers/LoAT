@@ -23,7 +23,7 @@ private:
     ITSSafetyCex cex;
 
 public:
-    Preprocessor(ITSPtr its);
+    Preprocessor(const ITSPtr& its);
 
     ITSModel transform_model(const ITSModel &) const;
 
@@ -42,6 +42,6 @@ public:
 
     const ITSSafetyCex& get_cex() const;
 
-    std::optional<SmtResult> check_empty_clauses(ITSPtr its);
+    std::optional<SmtResult> check_empty_clauses(const ITSPtr& its);
 
 };

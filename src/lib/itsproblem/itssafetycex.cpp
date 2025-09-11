@@ -7,13 +7,14 @@
 
 ITSSafetyCex::ITSSafetyCex(const ITSPtr& its): ITSCex(its) {}
 
-bool ITSSafetyCex::try_step(const RulePtr& trans, const ModelPtr &next) {
+bool ITSSafetyCex::try_step(const RulePtr& trans, const Valuation &next) {
     const auto last {states.back()};
     const auto solver {SmtFactory::modelBuildingSolver(QF_NAT)};
-    solver->add(last->evalPartially(trans->getGuard()));
+    solver->add(trans->getGuard());
+    solver->add(bools::mkAndFromLits(last.lits()));
     const auto &up{trans->getUpdate()};
     for (const auto &x : its->getVars()) {
-        if (theory::isProgVar(x) && next->contains(x)) {
+        if (theory::isProgVar(x) && next.contains(x)) {
             theory::apply(x, Overload{
                 [&](const Arith::Var &y) {
                     solver->add(arith::mkEq(arith::mkConst(next->get(y)), last->evalPartially(up.get<Arith>(y))));
@@ -47,7 +48,7 @@ bool ITSSafetyCex::try_step(const RulePtr& trans, const ModelPtr &next) {
     return false;
 }
 
-void ITSSafetyCex::set_initial_state(const ModelPtr &m) {
+void ITSSafetyCex::set_initial_state(const Valuation &m) {
     assert(transitions.empty());
     states.clear();
     states.push_back(m);
@@ -125,7 +126,7 @@ size_t ITSSafetyCex::num_states() const {
     return states.size();
 }
 
-ModelPtr ITSSafetyCex::get_state(const size_t i) const {
+Valuation ITSSafetyCex::get_state(const size_t i) const {
     return states.at(i);
 }
 

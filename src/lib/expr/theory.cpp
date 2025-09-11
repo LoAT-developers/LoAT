@@ -2,11 +2,11 @@
 
 #include <boost/algorithm/string.hpp>
 
-const Bools::Expr top() {
+Bools::Expr top() {
     return BoolExpr::top();
 }
 
-const Bools::Expr bot() {
+Bools::Expr bot() {
     return BoolExpr::bot();
 }
 
@@ -41,40 +41,39 @@ bool isPostVar(const Var &var) {
 }
 
 Var next(const Var &var) {
-    return std::visit([](const auto x) {return Var(theory(x).next());}, var);
+    return std::visit([](const auto& x) {return Var(theory(x).next());}, var);
 }
 
-Var next(const Expr &x) {
-    return std::visit([](const auto x) {return Var(theory(x).next());}, x);
+Var next(const Expr &var) {
+    return std::visit([](const auto& x) {return Var(theory(x).next());}, var);
 }
 
 Var postVar(const Var &var) {
-    return std::visit([](const auto x) {return Var(decltype(x)::element_type::postVar(x));}, var);
+    return std::visit([]<typename X>(const X& x) {return Var(X::element_type::postVar(x));}, var);
 }
 
 Var progVar(const Var &var) {
-    return std::visit([](const auto x) {return Var(decltype(x)::element_type::progVar(x));}, var);
+    return std::visit([]<typename X>(const X& x) {return Var(X::element_type::progVar(x));}, var);
 }
 
-Expr toExpr(const Var &var) {
-    return TheTheory::varToExpr(var);
-}
-
-std::ostream& operator<<(std::ostream &s, const theory::Type e) {
+std::ostream& operator<<(std::ostream &s, const Type e) {
     switch (e) {
-        case theory::Type::Bool: {
+        case Type::Bool: {
             return s << "Bool";
         }
-        case theory::Type::Int: {
+        case Type::Int: {
             return s << "Int";
         }
-        case theory::Type::IntArray: {
+        case Type::IntArray: {
             return s << "Int[]";
+        }
+        default: {
+            throw std::invalid_argument("unknown type");
         }
     }
 }
 
-theory::Type to_type(const Expr &x) {
+Type to_type(const Expr &x) {
     return std::visit(
         Overload{
             [](const Arith::Expr &) {
@@ -89,7 +88,7 @@ theory::Type to_type(const Expr &x) {
         x);
 }
 
-theory::Type to_type(const Var &x) {
+Type to_type(const Var &x) {
     return std::visit(
         Overload{
             [&](const Arith::Var &) {
@@ -104,14 +103,14 @@ theory::Type to_type(const Var &x) {
         x);
 }
 
-theory::Type to_type(const std::string &x) {
+Type to_type(const std::string &x) {
     if (boost::iequals(x, "int")) {
-        return theory::Type::Int;
-    } else if (boost::iequals(x, "bool")) {
-        return theory::Type::Bool;
-    } else {
-        throw std::invalid_argument("unknown type");
+        return Type::Int;
     }
+    if (boost::iequals(x, "bool")) {
+        return Type::Bool;
+    }
+    throw std::invalid_argument("unknown type");
 }
 
 std::optional<Var> is_var(const Expr &x) {
@@ -121,9 +120,8 @@ std::optional<Var> is_var(const Expr &x) {
             [&](const auto &e) {
                 if (const auto &x {e->isVar()}) {
                     return opt{*x};
-                } else {
-                    return opt{};
                 }
+                return opt{};
             }},
         x);
 }
@@ -137,22 +135,22 @@ std::string abbrev(const Type t) {
 }
 
 sexpresso::Sexp to_smtlib(const Lit &l) {
-    return std::visit([&](const auto x) {return x->to_smtlib();}, l);
+    return std::visit([&](const auto& x) {return x->to_smtlib();}, l);
 }
 
 sexpresso::Sexp to_smtlib(const Expr &e) {
-    return std::visit([&](const auto x) {return x->to_smtlib();}, e);
+    return std::visit([&](const auto& x) {return x->to_smtlib();}, e);
 }
 
 void collectVars(const Expr &expr, VarSet &vars) {
     std::visit(Overload{
-                   [&](const Arith::Expr expr) {
+                   [&](const Arith::Expr& expr) {
                        expr->collectVars(vars.get<Arith::Var>());
                    },
-                   [&](const Arrays<Arith>::Expr expr) {
+                   [&](const Arrays<Arith>::Expr& expr) {
                     expr->collectVars(vars.get<Arrays<Arith>::Var>(), vars.get<Arith::Var>());
                    },
-                   [&](const Bools::Expr expr) {
+                   [&](const Bools::Expr& expr) {
                        expr->collectVars(vars);
                    }
                }, expr);
@@ -167,14 +165,14 @@ VarSet vars(const Expr &e) {
 Bools::Expr mkEq(const Expr &e1, const Expr &e2) {
     return std::visit(
         Overload {
-            [&](const Arith::Expr &e1) {
+            [&](const Arith::Expr& e1) {
                 return bools::mkLit(arith::mkEq(e1, std::get<Arith::Expr>(e2)));
             },
-            [&](const Bools::Expr lhs) {
+            [&](const Bools::Expr& lhs) {
                 const auto rhs = std::get<Bools::Expr>(e2);
                 return Bools::mkEq(lhs, rhs);
             },
-            [&](const Arrays<Arith>::Expr e1) {
+            [&](const Arrays<Arith>::Expr& e1) {
                 return bools::mkLit(arrays::mkEq<Arith>(e1, std::get<Arrays<Arith>::Expr>(e2)));
             }
         }, e1);
@@ -183,45 +181,49 @@ Bools::Expr mkEq(const Expr &e1, const Expr &e2) {
 Bools::Expr mkNeq(const Expr &e1, const Expr &e2) {
     return std::visit(
         Overload {
-            [&](const Arith::Expr &e1) {
+            [&](const Arith::Expr& e1) {
                 return bools::mkLit(arith::mkNeq(e1, std::get<Arith::Expr>(e2)));
             },
-            [&](const Bools::Expr lhs) {
+            [&](const Bools::Expr& lhs) {
                 const auto rhs = std::get<Bools::Expr>(e2);
-                return (lhs && (!rhs)) || ((!lhs) && rhs);
+                return !Bools::mkEq(lhs, rhs);
             },
-            [&](const Arrays<Arith>::Expr e1) {
+            [&](const Arrays<Arith>::Expr& e1) {
                 return bools::mkLit(arrays::mkNeq<Arith>(e1, std::get<Arrays<Arith>::Expr>(e2)));
             }
         }, e1);
 }
 
-Arith theory(const Arith::Var) {
+Arith theory(const Arith::Var&) {
     return arith::t;
 }
 
-Bools theory(const Bools::Var) {
+Bools theory(const Bools::Var&) {
     return bools::t;
 }
 
-Arrays<Arith> theory(const Arrays<Arith>::Var) {
+Arrays<Arith> theory(const Arrays<Arith>::Var&) {
     return arrays::arith;
 }
 
-Arith theory(const Arith::Expr) {
+Arrays<Arith> theory(const Arrays<Arith>::Lval&) {
+    return arrays::arith;
+}
+
+Arith theory(const Arith::Expr&) {
     return arith::t;
 }
 
-Bools theory(const Bools::Expr) {
+Bools theory(const Bools::Expr&) {
     return bools::t;
 }
 
-Arrays<Arith> theory(const Arrays<Arith>::Expr) {
+Arrays<Arith> theory(const Arrays<Arith>::Expr&) {
     return arrays::arith;
 }
 
 template <size_t I = 0>
-inline bool isLinearImpl(const Lit &lit) {
+bool isLinearImpl(const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
             return std::get<I>(lit)->isLinear();
@@ -237,7 +239,7 @@ bool isLinear(const Lit &lit) {
 }
 
 template <size_t I = 0>
-inline bool isPolyImpl(const Lit &lit) {
+bool isPolyImpl(const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
             return std::get<I>(lit)->isPoly();
@@ -273,7 +275,7 @@ VarSet vars(const Lit &lit) {
 }
 
 template <size_t I = 0>
-inline bool isTriviallyTrueImpl(const Lit &lit) {
+bool isTriviallyTrueImpl(const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
             return std::get<I>(lit)->isTriviallyTrue();
@@ -289,7 +291,7 @@ bool isTriviallyTrue(const Lit &lit) {
 }
 
 template <size_t I = 0>
-inline bool isTriviallyFalseImpl(const Lit &lit) {
+bool isTriviallyFalseImpl(const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
             return std::get<I>(lit)->isTriviallyFalse();
@@ -305,7 +307,7 @@ bool isTriviallyFalse(const Lit &lit) {
 }
 
 template <size_t I = 0>
-inline Lit negateImpl(const Lit &lit) {
+Lit negateImpl(const Lit &lit) {
     if constexpr (I < num_theories) {
         if (lit.index() == I) {
             return !std::get<I>(lit);
@@ -330,12 +332,11 @@ size_t hash(const Lit &lit) {
 }
 
 template <size_t I = 0>
-inline void simplifyAndImpl(LitSet &lits) {
+void simplifyAndImpl(LitSet &lits) {
     if constexpr (I < num_theories) {
         using Th = std::tuple_element_t<I, Theories>;
         if constexpr (!std::is_same_v<Th, Bools>) {
-            auto &ls {lits.get<typename Th::Lit>()};
-            if (!ls.empty()) {
+            if (auto &ls {lits.get<typename Th::Lit>()}; !ls.empty()) {
                 (*ls.begin())->simplifyAnd(ls);
             }
         }

@@ -25,9 +25,8 @@ int ArithVar::getIdx() const {
 std::string ArithVar::getName() const {
     if (idx > 0) {
         return "i" + std::to_string(idx);
-    } else {
-        return "it" + std::to_string(-idx);
     }
+    return "it" + std::to_string(-idx);
 }
 
 std::ostream& operator<<(std::ostream &s, const ArithVar &x) {

@@ -338,7 +338,7 @@ public:
         }
     }
 
-    VariantSet() {}
+    VariantSet() = default;
 
 };
 

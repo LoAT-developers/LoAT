@@ -1,6 +1,5 @@
 #pragma once
 
-#include "theory.hpp"
 #include "model.hpp"
 
 namespace mbp {

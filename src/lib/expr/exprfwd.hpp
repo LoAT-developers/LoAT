@@ -42,7 +42,7 @@ namespace theory {
         Bool,
         IntArray,
     };
-    std::string abbrev(const Type t);
+    std::string abbrev(Type t);
 }
 
 class ArithLit;

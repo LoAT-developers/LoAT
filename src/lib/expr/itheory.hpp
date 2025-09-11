@@ -1,7 +1,6 @@
 #pragma once
 
 #include <concepts>
-#include <stdexcept>
 #include <variant>
 #include <tuple>
 
@@ -40,15 +39,14 @@ concept IVar = requires(T x, unsigned idx) {
 };
 
 template <typename T>
-concept ITheory = requires(T t, typename T::Const val, typename T::Var var, typename T::Lit lit, typename T::Model m) {
+concept ITheory = requires(T t, typename T::Var var, typename T::Lval lval, typename T::Lit lit) {
         requires IVar<typename T::Var>;
         requires ILit<typename T::Lit>;
-        typename T::Const;
         typename T::Expr;
         typename T::Renaming;
         typename T::Subs;
         {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
-        {T::anyValue()} -> std::same_as<typename T::Expr>;
+        {T::lvalToExpr(lval)} -> std::same_as<typename T::Expr>;
 };
 
 template<ITheory... Th>
@@ -60,54 +58,10 @@ public:
     static const Theories theories;
     using Lit = std::variant<typename Th::Lit...>;
     using Var = std::variant<typename Th::Var...>;
-    using Const = std::variant<typename Th::Const...>;
-    using Model = std::tuple<typename Th::Model...>;
     using Expr = std::variant<typename Th::Expr...>;
     using Renaming = std::tuple<typename Th::Renaming...>;
     using Pair = std::variant<std::pair<typename Th::Var, typename Th::Expr>...>;
     using VarPair = std::variant<std::pair<typename Th::Var, typename Th::Var>...>;
     using Subs = std::tuple<typename Th::Subs...>;
-
-private:
-
-    template <size_t I = 0>
-    inline static Expr varToExprImpl(const Var &var) {
-        if constexpr (I < sizeof...(Th)) {
-            if (var.index() == I) {
-                return std::tuple_element_t<I, Theories>::varToExpr(std::get<I>(var));
-            } else {
-                return varToExprImpl<I+1>(var);
-            }
-        } else {
-            throw std::logic_error("I too large");
-        }
-    }
-
-public:
-
-    static Expr varToExpr(const Var &var) {
-        return varToExprImpl<0>(var);
-    }
-
-private:
-
-    template <size_t I = 0>
-    inline static Expr anyValueImpl(const size_t i) {
-        if constexpr (I < sizeof...(Th)) {
-            if (i == I) {
-                return std::tuple_element_t<I, Theories>::anyValue();
-            } else {
-                return anyValueImpl<I+1>(i);
-            }
-        } else {
-            throw std::logic_error("I too large");
-        }
-    }
-
-public:
-
-    static Expr anyValue(const size_t i) {
-        return anyValueImpl<0>(i);
-    }
 
 };

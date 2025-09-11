@@ -5,7 +5,7 @@
 #include <z3++.h>
 #include <swine/swine.h>
 
-class SwineContext: public ExprConversionContext<z3::expr, z3::expr, z3::expr_vector, z3::expr_vector> {
+class SwineContext final : public ExprConversionContext<z3::expr, z3::expr, z3::expr_vector, z3::expr_vector> {
 
 public:
 
@@ -31,6 +31,8 @@ public:
     z3::expr negate(const z3::expr &x) override;
     z3::expr_vector exprVec() override;
     z3::expr_vector formulaVec() override;
+    z3::expr arrayRead(const z3::expr& arr, const z3::expr_vector& indices) override;
+    z3::expr arrayWrite(const z3::expr& arr, const z3::expr_vector& indices, const z3::expr &value) override;
 
     void printStderr(const z3::expr &e) const override;
 

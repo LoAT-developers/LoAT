@@ -6,14 +6,11 @@
 
 class RulePreprocessor {
 
-private:
-
     ITSPtr its;
     linked_hash_map<RulePtr, RulePtr> replacements;
 
 public:
-
-    RulePreprocessor(const ITSPtr its);
+    explicit RulePreprocessor(const ITSPtr& its);
     std::optional<SmtResult> run();
 
     template <class CEX>

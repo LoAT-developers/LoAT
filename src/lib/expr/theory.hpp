@@ -7,20 +7,17 @@
 
 #include <variant>
 #include <tuple>
-#include <boost/bimap.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
 
 using BoolExprSet = BoolExprSet;
 using Lit = TheTheory::Lit;
 using Var = TheTheory::Var;
 using Expr = TheTheory::Expr;
-using Const = TheTheory::Const;
 using Theories = TheTheory::Theories;
 
 constexpr size_t num_theories {std::tuple_size_v<Theories>};
 
-const Bools::Expr top();
-const Bools::Expr bot();
+Bools::Expr top();
+Bools::Expr bot();
 
 namespace bools {
 
@@ -60,12 +57,13 @@ void collectVars(const Expr &expr, VarSet &vars);
 VarSet vars(const Expr &e);
 Bools::Expr mkEq(const Expr &e1, const Expr &e2);
 Bools::Expr mkNeq(const Expr &e1, const Expr &e2);
-Arith theory(const Arith::Var);
-Bools theory(const Bools::Var);
-Arrays<Arith> theory(const Arrays<Arith>::Var);
-Arith theory(const Arith::Expr);
-Bools theory(const Bools::Expr);
-Arrays<Arith> theory(const Arrays<Arith>::Expr);
+Arith theory(const Arith::Var&);
+Bools theory(const Bools::Var&);
+Arrays<Arith> theory(const Arrays<Arith>::Lval&);
+Arrays<Arith> theory(const Arrays<Arith>::Var&);
+Arith theory(const Arith::Expr&);
+Bools theory(const Bools::Expr&);
+Arrays<Arith> theory(const Arrays<Arith>::Expr&);
 bool isLinear(const Lit &lit);
 bool isPoly(const Lit &lit);
 void collectVars(const Lit &lit, VarSet &s);
@@ -81,24 +79,16 @@ Type to_type(const Expr &x);
 Type to_type(const Var &x);
 Type to_type(const std::string &x);
 std::optional<Var> is_var(const Expr &x);
-std::string abbrev(const Type t);
 
 template <class Int, class Bool, class IntArray, class ... Ts>
-inline auto apply(const std::variant<Int, Bool, IntArray> &x, Ts... f) noexcept {
+auto apply(const std::variant<Int, Bool, IntArray> &x, Ts... f) noexcept {
     if (std::holds_alternative<Int>(x)) {
         return Overload{f...}(*std::get_if<Int>(&x));
-    } else if (std::holds_alternative<Bool>(x)) {
-        return Overload{f...}(*std::get_if<Bool>(&x));
-    } else {
-        return Overload{f...}(*std::get_if<IntArray>(&x));
     }
-}
-
-template <class ... Ts>
-auto for_each(Ts... f) {
-    Overload{f...}(arith::t);
-    Overload{f...}(bools::t);
-    Overload{f...}(arrays::arith);
+    if (std::holds_alternative<Bool>(x)) {
+        return Overload{f...}(*std::get_if<Bool>(&x));
+    }
+    return Overload{f...}(*std::get_if<IntArray>(&x));
 }
 
 template <size_t I, ITheory T>
@@ -106,7 +96,7 @@ constexpr bool is() {
     return std::same_as<std::tuple_element_t<I, Theories>, T>;
 }
 
-std::ostream& operator<<(std::ostream &s, const theory::Type &e);
+std::ostream& operator<<(std::ostream &s, const Type &e);
 
 }
 

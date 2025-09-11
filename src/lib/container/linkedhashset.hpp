@@ -8,8 +8,6 @@
 template <class T>
 class linked_hash_set {
 
-private:
-
     struct hash {};
     struct list {};
 
@@ -29,7 +27,7 @@ private:
 
 public:
 
-    typedef typename container::template index<list>::type::const_iterator const_iterator;
+    typedef container::template index<list>::type::const_iterator const_iterator;
 
     linked_hash_set() {}
 

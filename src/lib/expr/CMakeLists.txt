@@ -49,7 +49,11 @@ add_library(${PROJECT_NAME} OBJECT
   arraylit.hpp
   arraysubs.hpp
   arrays.hpp
-  arrayconst.hpp
+  valuation.hpp
+  valuation.cpp
+  exprmap.hpp
+  lvaluesubs.hpp
+  lvaluesubs.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

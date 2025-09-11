@@ -14,6 +14,16 @@ z3::expr SwineContext::buildVar(const Bools::Var &var) {
     return ctx.bool_const(var->getName().c_str());
 }
 
+z3::expr SwineContext::buildVar(const Arrays<Arith>::Var &var) {
+    const auto ints {ctx.int_sort()};
+    auto sort {ctx.array_sort(ints, ints)};
+    const auto dim {var->dim()};
+    for (unsigned i = 1; i < dim; ++i) {
+        sort = ctx.array_sort(ints, sort);
+    }
+    return ctx.constant(var->getName().c_str(), sort);
+}
+
 z3::expr SwineContext::getInt(const Int &val) {
     return ctx.int_val(val.str().c_str());
 }
@@ -89,6 +99,14 @@ z3::expr_vector SwineContext::exprVec() {
 
 z3::expr_vector SwineContext::formulaVec() {
     return {ctx};
+}
+
+z3::expr SwineContext::arrayRead(const z3::expr& arr, const z3::expr_vector& indices) {
+    return z3::select(arr, indices);
+}
+
+z3::expr SwineContext::arrayWrite(const z3::expr& arr, const z3::expr_vector& indices, const z3::expr &value) {
+    return z3::store(arr, indices, value);
 }
 
 void SwineContext::printStderr(const z3::expr &e) const {
