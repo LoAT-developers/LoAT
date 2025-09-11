@@ -6,8 +6,8 @@ This is a C++ interface for configuring and using LoAT (Loop Acceleration Tool) 
 
 * C++17 or higher
 * [Boost](https://www.boost.org/)
-* [ANTLR4 runtime](https://github.com/antlr/antlr4)  
-* [Faudes](https://sourceforge.net/projects/faudes/)
+* [Faudes](https://sourceforge.net/projects/faudes/)  
+* [Z3 SMT solver](https://github.com/Z3Prover/z3)  
 * [Yices SMT solver](https://yices.csl.sri.com/)  
 * [Poly](https://github.com/ths-poly/poly)  
 * [PolyXX](https://github.com/ths-poly/polyxx)  

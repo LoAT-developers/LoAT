@@ -82,7 +82,6 @@ function(find_required_package pkg_name displayname)
   endif()
 endfunction()
 
-find_required_library(ANTLR4 antlr4-runtime "ANTLR4 runtime")
 find_required_library(FAUDES faudes "Faudes")
 find_required_library(YICES yices "Yices")
 find_required_library(POLY poly "Poly")
@@ -234,7 +233,6 @@ target_include_directories(${Loat_API} PRIVATE
 )
 
 target_link_libraries(${Loat_API} PUBLIC Boost::boost
-  ${ANTLR4}
   ${FAUDES}
   ${SWINE}
   ${YICES}

@@ -6,8 +6,6 @@
 #include "chctoitsproblem.hpp"
 #include "config.hpp"
 #include "interleaved.hpp"
-#include "itsparser.hpp"
-#include "parser.hpp"
 #include "preprocessing.hpp"
 #include "adcl.hpp"
 #include "reverse.hpp"
@@ -32,7 +30,7 @@ void printHelp(char *arg0) {
     std::cout << "Options:" << std::endl;
     std::cout << "  --print_dep_graph                                               Print the dependency graph in the proof output (can be very verbose)" << std::endl;
     std::cout << "  --mode <complexity|termination|relative_termination|safety>     Analysis mode" << std::endl;
-    std::cout << "  --format <koat|its|horn|ari>                                    Input format" << std::endl;
+    std::cout << "  --format <horn|ari>                                             Input format" << std::endl;
     std::cout << "  --engine <adcl|bmc|abmc|trl|kind>                               Analysis engine" << std::endl;
     std::cout << "  --log                                                           Enable logging" << std::endl;
     std::cout << "  --proof                                                         Print model/counterexample/recurrent set/..." << std::endl;
@@ -149,11 +147,7 @@ void parseFlags(int argc, char *argv[]) {
             }
         } else if (strcmp("--format", argv[arg]) == 0) {
             std::string str = getNext();
-            if (boost::iequals("koat", str)) {
-                Config::Input::format = Config::Input::Koat;
-            } else if (boost::iequals("its", str)) {
-                Config::Input::format = Config::Input::Its;
-            } else if (boost::iequals("horn", str)) {
+            if (boost::iequals("horn", str)) {
                 Config::Input::format = Config::Input::Horn;
             } else if (boost::iequals("ari", str)) {
                 Config::Input::format = Config::Input::Ari;
@@ -271,14 +265,8 @@ int main(int argc, char *argv[]) {
     std::optional<Reverse> reverse{};
     const auto start{std::chrono::steady_clock::now()};
     switch (Config::Input::format) {
-        case Config::Input::Koat:
-            its = parser::ITSParser::loadFromFile(filename);
-            break;
         case Config::Input::Ari:
             its = ARIParser::loadFromFile(filename);
-            break;
-        case Config::Input::Its:
-            its = sexpressionparser::Parser::loadFromFile(filename);
             break;
         case Config::Input::Horn: {
             chcs = SexpressoParser::loadFromFile(filename);
