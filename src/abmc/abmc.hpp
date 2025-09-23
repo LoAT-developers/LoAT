@@ -1,7 +1,5 @@
 #pragma once
 
-#include <limits>
-
 #include "itsproblem.hpp"
 #include "smt.hpp"
 #include "smtfactory.hpp"
@@ -34,6 +32,7 @@ private:
     std::vector<Implicant> trace {};
     std::vector<Bools::Expr> transitions {};
     VarSet vars {};
+    LvalSet lvals {};
     Arith::Var n {ArithVar::next()};
     Renaming pre_to_post {};
     std::unordered_map<Implicant, int> lang_map {};
@@ -50,11 +49,11 @@ private:
     Bools::Expr step {top()};
 
     int get_language(unsigned i);
-    Bools::Expr encode_transition(const RulePtr idx, const bool with_id = true);
-    bool is_orig_clause(const RulePtr idx) const;
+    Bools::Expr encode_transition(const RulePtr& idx, const bool with_id = true);
+    bool is_orig_clause(const RulePtr& idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
-    void add_learned_clause(const RulePtr accel, const unsigned backlink);
-    std::pair<RulePtr, Model> build_loop(const int backlink);
+    void add_learned_clause(const RulePtr& accel, const unsigned backlink);
+    std::pair<RulePtr, ModelPtr> build_loop(const int backlink) const;
     Bools::Expr build_blocking_clause(const int backlink, const Loop &loop);
     std::optional<Loop> handle_loop(const unsigned backlink, const std::vector<int> &lang);
     void build_trace();
@@ -63,8 +62,8 @@ private:
 
 public:
 
-    virtual ~ABMC();
-    explicit ABMC(ITSPtr its);
+    ~ABMC() override = default;
+    explicit ABMC(const ITSPtr& its);
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;
     ITSSafetyCex get_cex() override;

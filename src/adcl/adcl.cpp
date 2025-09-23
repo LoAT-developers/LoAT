@@ -411,7 +411,7 @@ std::optional<RulePtr> ADCL::resolve(const RulePtr idx) {
     switch (solver->check()) {
     case SmtResult::Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
-        const auto model {solver->model(guard->vars()).composeBackwards(projected_var_renaming)};
+        const auto model {solver->model(guard->vars())->composeBackwards(projected_var_renaming)};
         const auto implicant {model.syntacticImplicant(idx->getGuard())};
         return {idx->withGuard(implicant)};
     }
@@ -454,7 +454,7 @@ std::pair<RulePtr, Model> ADCL::build_loop(const int backlink) {
     const auto s {trace[backlink].var_renaming};
     auto vars {loop->vars()};
     s.collectCoDomainVars(vars);
-    auto model {solver->model(vars).composeBackwards(s)};
+    auto model {solver->model(vars)->composeBackwards(s)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << loop << std::endl;
     }
@@ -705,7 +705,7 @@ ITSSafetyCex ADCL::get_cex() {
     cex.set_initial_state(model);
     for (size_t i = 0; i + 1 < trace.size(); ++i) {
         const auto &t {trace.at(i)};
-        if (!cex.try_step(t.clause_idx->withGuard(t.implicant), model.composeBackwards(t.var_renaming))) {
+        if (!cex.try_step(t.clause_idx->withGuard(t.implicant), model->composeBackwards(t.var_renaming))) {
             throw std::logic_error("get_cex failed");
         }
     }

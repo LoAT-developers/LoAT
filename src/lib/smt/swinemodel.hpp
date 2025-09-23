@@ -24,6 +24,10 @@ public:
     Bools::Const eval(const Bools::Expr&) override;
     Rational evalToRational(const Arith::Expr&) override;
 
+    ModelPtr clone() const override {
+        return std::make_shared<SwineModel>(*this);
+    }
+
 protected:
 
     Arith::Const getImpl(const Arith::Var&) override;

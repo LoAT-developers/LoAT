@@ -1,6 +1,6 @@
 #include "boolexpr.hpp"
 
-ConsHash<BoolExpr, BoolJunction, typename BoolJunction::CacheHash, typename BoolJunction::CacheEqual, BoolExprSet, ConcatOperator> BoolJunction::cache{};
+ConsHash<BoolExpr, BoolJunction, BoolJunction::CacheHash, BoolJunction::CacheEqual, BoolExprSet, ConcatOperator> BoolJunction::cache{};
 
 bool BoolJunction::CacheEqual::operator()(const std::tuple<BoolExprSet, ConcatOperator> &args1, const std::tuple<BoolExprSet, ConcatOperator> &args2) const noexcept {
     return args1 == args2;
@@ -14,11 +14,11 @@ size_t BoolJunction::CacheHash::operator()(const std::tuple<BoolExprSet, ConcatO
     return hash;
 }
 
-Bools::Expr BoolJunction::from_cache(const BoolExprSet &children, ConcatOperator op) {
+Bools::Expr BoolJunction::from_cache(const BoolExprSet &children, const ConcatOperator op) {
     return cache.from_cache(children, op);
 }
 
-BoolJunction::BoolJunction(const BoolExprSet &children, ConcatOperator op): children(children), op(op) { }
+BoolJunction::BoolJunction(const BoolExprSet &children, const ConcatOperator op): children(children), op(op) { }
 
 bool BoolJunction::isAnd() const {
     return op == ConcatAnd;
@@ -40,14 +40,14 @@ BoolExprSet BoolJunction::getChildren() const {
     return children;
 }
 
-const Bools::Expr BoolJunction::negation() const {
+Bools::Expr BoolJunction::negation() const {
     BoolExprSet newChildren;
     for (const auto &c: children) {
         newChildren.insert(c->negation());
     }
     switch (op) {
-    case ConcatOr: return BoolExpr::mkAnd(newChildren);
-    case ConcatAnd: return BoolExpr::mkOr(newChildren);
+    case ConcatOr: return mkAnd(newChildren);
+    case ConcatAnd: return mkOr(newChildren);
     }
     throw std::invalid_argument("unknown junction");
 }
@@ -66,7 +66,7 @@ BoolJunction::~BoolJunction() {
 }
 
 bool BoolJunction::isConjunction() const {
-    return isAnd() && std::all_of(children.begin(), children.end(), [](const auto c){
+    return isAnd() && std::ranges::all_of(children, [](const auto c){
                return c->isConjunction();
            });
 }

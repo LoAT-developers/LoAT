@@ -1,7 +1,9 @@
 #include "model.hpp"
 
-void Model::composeBackwards(const Renaming &subs) {
-    this->renaming = renaming.compose(subs);
+ModelPtr Model::composeBackwards(const Renaming &subs) const {
+    auto res {clone()};
+    res->renaming = renaming.compose(subs);
+    return res;
 }
 
 Arith::Const Model::get(const Arith::Var &var) {

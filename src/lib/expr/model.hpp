@@ -1,6 +1,7 @@
 #pragma once
 
 #include "subs.hpp"
+#include "valuation.hpp"
 
 class Model;
 
@@ -32,10 +33,12 @@ public:
     virtual Bools::Const eval(const Bools::Expr&) = 0;
     Arith::Const eval(const Arith::Expr&);
     virtual Rational evalToRational(const Arith::Expr&) = 0;
+    virtual ModelPtr clone() const = 0;
 
     Bools::Expr syntacticImplicant(const Bools::Expr&);
 
-    void composeBackwards(const Renaming&);
+    ModelPtr composeBackwards(const Renaming&) const;
+    Valuation toValuation(const VarSet&) const;
 
 protected:
 

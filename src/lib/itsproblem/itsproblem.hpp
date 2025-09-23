@@ -58,6 +58,7 @@ public:
     std::string getPrintableLocationName(LocationIdx idx) const; // returns "[idx]" if there is no name
 
     VarSet getVars() const;
+    LvalSet getLvals() const;
 
     Arith::Expr getCost(const RulePtr& rule) const;
 

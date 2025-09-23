@@ -5,7 +5,7 @@
 #include "renaming.hpp"
 #include "intmbp.hpp"
 
-BMC::BMC(ITSPtr its, const bool do_kind): to_safety(its), do_kind(do_kind) {
+BMC::BMC(const ITSPtr& its, const bool do_kind): to_safety(its), do_kind(do_kind) {
     sp = to_safety.transform();
 }
 
@@ -91,9 +91,8 @@ SmtResult BMC::analyze() {
         if (solver->check() == SmtResult::Unsat) {
             if (approx) {
                 return SmtResult::Unknown;
-            } else {
-                return SmtResult::Sat;
             }
+            return SmtResult::Sat;
         }
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
@@ -106,7 +105,7 @@ ITSModel BMC::get_model() const {
     const auto step {bools::mkOr(sp.trans())};
     switch (winner) {
         case Winner::BMC: {
-            std::vector<Bools::Expr> res{sp.init()};
+            std::vector res{sp.init()};
             Bools::Expr last{sp.init()};
             for (unsigned i = 0; i + 1 < depth; ++i) {
                 const auto &s1{renamings.at(i)};
@@ -127,24 +126,22 @@ ITSModel BMC::get_model() const {
             throw std::invalid_argument("models for k-induction are not yet supported");
         }
     }
+    throw std::logic_error("model requested, but SAT was neither proved by BMC nor by k-induction");
 }
-
 
 ITSSafetyCex BMC::get_cex() const {
     SafetyCex res {sp};
     const auto candidates = sp.trans();
     const auto model {solver->model()};
-    std::optional<Bools::Expr> last;
     for (size_t i = 0; i < depth; ++i) {
-        const auto current {model.composeBackwards(renamings.at(i))};
-        const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
+        auto current {model->composeBackwards(renamings.at(i))};
+        const auto it{std::ranges::find_if(candidates, [&](const auto &c) {
             return res.try_step(current, c);
         })};
         if (it == candidates.end()) {
             throw std::logic_error("get_cex failed");
         }
-        last = *it;
     }
-    res.set_final_state(model.composeBackwards(renamings.at(depth)));
+    res.set_final_state(model->composeBackwards(renamings.at(depth)));
     return to_safety.transform_cex(res);
 }

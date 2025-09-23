@@ -14,7 +14,9 @@ public:
     LValueSubs concat(const Subs&) const;
     LValueSubs concat(const Renaming&) const;
     LValueSubs compose(const LValueSubs&) const;
-    Bools::Expr operator()(const Bools::Expr&) const;
+    Bools::Lval at(const Bools::Lval&) const;
+    Arith::Lval at(const Arith::Lval&) const;
+    Arrays<Arith>::Lval at(const Arrays<Arith>::Lval&) const;
     bool isPoly() const;
     VarSet coDomainVars() const;
 

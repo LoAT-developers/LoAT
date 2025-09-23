@@ -8,5 +8,6 @@ class Valuation: public ExprMap<Arith::Var, Arith::Const, Bools::Var, Bools::Con
 public:
 
     LitSet lits() const;
+    Valuation composeBackwards(const Renaming&) const;
 
 };

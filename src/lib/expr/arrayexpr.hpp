@@ -112,6 +112,18 @@ public:
         return m_indices;
     }
 
+    bool isTempVar() const {
+        return m_arr->isTempVar();
+    }
+
+    bool isProgVar() const {
+        return m_arr->isProgVar();
+    }
+
+    bool isPostVar() const {
+        return m_arr->isPostVar();
+    }
+
 };
 
 template <ITheory T>

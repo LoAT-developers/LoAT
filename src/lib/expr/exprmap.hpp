@@ -79,6 +79,14 @@ public:
         return m_arith.empty() && m_bool.empty() && m_arr.empty();
     }
 
+    VariantSet<IK, AK, BK> domain() const {
+        VariantSet<IK, AK, BK> res;
+        for_each([&](const auto &p) {
+            res.insert(p.first);
+        });
+        return res;
+    }
+
 };
 
 template <class IK, class IV, class BK, class BV, class AK, class AV>

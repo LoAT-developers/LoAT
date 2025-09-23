@@ -37,7 +37,7 @@ BoolExprSet BoolTheoryLit::getChildren() const {
     return {};
 }
 
-const Bools::Expr BoolTheoryLit::negation() const {
+Bools::Expr BoolTheoryLit::negation() const {
     return BoolExpr::mkLit(theory::negate(lit));
 }
 

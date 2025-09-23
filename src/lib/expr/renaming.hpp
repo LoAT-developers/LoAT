@@ -175,10 +175,13 @@ public:
     Expr operator()(const Expr &expr) const;
     Bools::Expr operator()(const Bools::Expr& e) const;
     Arith::Expr operator()(const Arith::Expr &e) const;
-    ArrayReadPtr<Arith> operator()(const ArrayReadPtr<Arith> &e) const;
+    Arrays<Arith>::Lval operator()(const Arrays<Arith>::Lval&) const;
+    Bools::Var operator()(const Bools::Var&) const;
+    Arith::Var operator()(const Arith::Var&) const;
 
     VarSet coDomainVars() const;
     void collectCoDomainVars(VarSet &res) const;
+    VarSet domain() const;
     Renaming compose(const Renaming &that) const;
     Renaming project(const VarSet &vars) const;
     Renaming invert() const;
