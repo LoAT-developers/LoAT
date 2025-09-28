@@ -9,7 +9,6 @@
 
 class Preprocessor {
 
-private:
     bool success{false};
 
     SmtResult status{SmtResult::Unknown};
@@ -23,7 +22,7 @@ private:
     ITSSafetyCex cex;
 
 public:
-    Preprocessor(const ITSPtr& its);
+    explicit Preprocessor(const ITSPtr& its);
 
     ITSModel transform_model(const ITSModel &) const;
 

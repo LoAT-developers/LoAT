@@ -15,12 +15,12 @@ ABMC::ABMC(const ITSPtr& its):
     trace_var(ArithVar::next()),
     cex(its) {
     vars.insert(trace_var);
-    lvals.insert(trace_var);
+    cells.insert(trace_var);
     vars.insert(n);
-    lvals.insert(n);
+    cells.insert(n);
     solver->enableModels();
     vars.insertAll(its->getVars());
-    lvals.insertAll(its->getLvals());
+    cells.insertAll(its->getCells());
     for (const auto &var: vars) {
         pre_to_post.insert(var, theory::next(var));
     }
@@ -288,15 +288,22 @@ Bools::Expr ABMC::encode_transition(const RulePtr& idx, const bool with_id) {
     if (with_id) {
         res.emplace_back(theory::mkEq(trace_var, arith::mkConst(idx->getId())));
     }
-    for (const auto &x: lvals) {
-        theory::apply(x, Overload{
-            [&](const auto &x) {
+    for (const auto& x : cells) {
+        theory::apply(
+            x,
+            [&](const Arrays<Arith>::Cell& x) {
+                const auto tmp{Arith::next()};
+                if (x->isProgVar()) {
+                    res.push_back(bools::mkLit(arrays::mkElemEq(pre_to_post(x), tmp)));
+                    res.push_back(bools::mkLit(arrays::mkElemEq(up.get(x), tmp)));
+                }
+            },
+            [&](const auto& x) {
                 using T = decltype(theory::theory(x));
                 if (x->isProgVar()) {
-                    res.push_back(theory::mkEq(T::lvalToExpr(pre_to_post(x)), T::lvalToExpr(up.at(x))));
+                    res.push_back(theory::mkEq(T::cellToExpr(pre_to_post(x)), up.get(x)));
                 }
-            }
-        });
+            });
     }
     return bools::mkAnd(res);
 }
@@ -312,18 +319,16 @@ void ABMC::build_trace() {
         const auto rule {rule_map.at(m->get(trace_var))};
         const auto imp {m->syntacticImplicant(rule->getGuard())};
         if (Config::Analysis::log) {
-            auto run_vars {rule->getUpdate().domain()};
-            run_vars.insert(n);
-            run_vars.insert(trace_var);
+            auto run_cells {rule->cells()};
+            run_cells.insert(n);
+            run_cells.insert(trace_var);
             Valuation val;
-            for (const auto &lval: run_vars) {
-                theory::apply(
-                    lval,
-                    [&](const auto &lval) {
-                        val.put(lval, m->get(lval));
+            for (const auto& cell : run_cells) {
+                theory::apply(cell, [&](const auto& cell) {
+                    val.put(cell, m->get(cell));
                 });
             }
-            run.push_back(val);
+            RUN.push_back(val);
         }
         const Implicant i {rule, imp};
         if (prev) {
@@ -443,12 +448,10 @@ ITSModel ABMC::get_model() {
     for (const auto &t: its->getInitialTransitions()) {
         std::vector conjuncts {init_renaming(t->getGuard())};
         const auto &up {t->getUpdate()};
-        for (const auto &[x,_]: init_renaming) {
-            theory::apply(x, Overload{
-                [&](const auto &x) {
-                    using T = decltype(theory::theory(x));
-                    conjuncts.emplace_back(theory::mkEq(theory::toExpr(x), T::varToExpr(init_renaming(up.at(x)))));
-                }
+        for (const auto& [x,_] : init_renaming) {
+            theory::apply(x, [&](const auto& x) {
+                using T = decltype(theory::theory(x));
+                conjuncts.emplace_back(theory::mkEq(theory::toExpr(x), init_renaming(up.get<T>(x))));
             });
         }
         inits.emplace_back(bools::mkAnd(conjuncts));
@@ -479,14 +482,19 @@ ITSModel ABMC::get_model() {
 
 ITSSafetyCex ABMC::get_cex() {
     const auto model {solver->model()};
-    auto valuation {model->toValuation(subs.front().domain())};
+    auto valuation {model->toValuation(cells)};
     cex.set_initial_state(valuation.composeBackwards(subs.front()));
     for (size_t i = 0; i < depth; ++i) {
         const auto r {subs.at(i + 1)};
-        valuation = model->toValuation(r.domain());
+        CellSet renamed_cells;
+        for (const auto& c : cells) {
+            theory::apply(c, [&](const auto& c) {
+                renamed_cells.insert(r(c));
+            });
+        }
+        valuation = model->toValuation(renamed_cells);
         const auto current {valuation.composeBackwards(r)};
-        const auto trans {trace.at(i).first};
-        if (!cex.try_step(trans, current)) {
+        if (const auto trans {trace.at(i).first}; !cex.try_step(trans, current)) {
             throw std::logic_error("get_cex failed");
         }
     }

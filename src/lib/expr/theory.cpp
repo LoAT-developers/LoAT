@@ -206,7 +206,7 @@ Arrays<Arith> theory(const Arrays<Arith>::Var&) {
     return arrays::arith;
 }
 
-Arrays<Arith> theory(const Arrays<Arith>::Lval&) {
+Arrays<Arith> theory(const Arrays<Arith>::Cell&) {
     return arrays::arith;
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ranges>
+
 #include "theory.hpp"
 #include "boolsubs.hpp"
 #include "renaming.hpp"
@@ -134,6 +136,42 @@ public:
     template <ITheory T>
     T::Expr get(const T::Var &var) const {
         return std::get<typename T::Subs>(t).get(var);
+    }
+
+    Arith::Expr get(const Arith::Var &var) const {
+        return std::get<Arith::Subs>(t).get(var);
+    }
+
+    Bools::Expr get(const Bools::Var &var) const {
+        return std::get<Bools::Subs>(t).get(var);
+    }
+
+    Arrays<Arith>::Expr get(const Arrays<Arith>::Var &var) const {
+        return std::get<Arrays<Arith>::Subs>(t).get(var);
+    }
+
+    Arrays<Arith>::Expr operator()(const Arrays<Arith>::Expr &e) const {
+        auto var {get(e->var())};
+        if (e->isVar()) {
+            return var;
+        }
+        const auto write {*e->isArrayWrite()};
+        const auto transformed_indices{
+            write->indices() | std::views::transform([&](const auto& i) {
+                return get<Arith>()(i);
+            })
+        };
+        return arrays::mkArrayWrite(var, {transformed_indices.begin(), transformed_indices.end()}, get<Arith>()(write->val()));
+    }
+
+    Arrays<Arith>::Cell get(const Arrays<Arith>::Cell &cell) const {
+        const auto arr{(*this)(cell->arr())};
+        const auto transformed_indices {
+            cell->indices() | std::views::transform([&](const auto &i) {
+                return get<Arith>()(i);
+            })
+        };
+        return arrays::mkArrayRead(arr, {transformed_indices.begin(), transformed_indices.end()});
     }
 
     Subs unite(const Subs &that) const;

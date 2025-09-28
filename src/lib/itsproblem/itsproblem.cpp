@@ -78,13 +78,13 @@ void ITSProblem::addLearnedRule(const RulePtr& rule, const RulePtr& same_preds, 
 RulePtr ITSProblem::addQuery(const Bools::Expr& guard, const RulePtr& same_preds) {
     const auto start = getLhsLoc(same_preds);
     const auto preds = graph.getPredecessors(same_preds);
-    const auto res {Rule::mk(guard, LValueSubs::build(loc_var, arith::mkConst(sink)))};
+    const auto res {Rule::mk(guard, Subs::build<Arith>(loc_var, arith::mkConst(sink)))};
     addRule(res, start, sink, preds, {});
     return res;
 }
 
 void ITSProblem::addRule(const RulePtr& rule, const LocationIdx start) {
-    const auto target {rule->getUpdate().get(loc_var).value_or(loc_var)->isInt().value_or(start).convert_to<LocationIdx>()};
+    const auto target {rule->getUpdate().get(loc_var)->isInt().value_or(start).convert_to<LocationIdx>()};
     linked_hash_set<RulePtr> preds, succs;
     for (const auto & [s, t]: startAndTargetLocations) {
         if (t.first == target) {
@@ -153,7 +153,7 @@ VarSet ITSProblem::getVars() const {
 }
 
 Arith::Expr ITSProblem::getCost(const RulePtr& rule) const {
-    return *rule->getUpdate().get(cost_var) - cost_var;
+    return rule->getUpdate().get(cost_var) - cost_var;
 }
 
 Arith::Var ITSProblem::getCostVar() const {

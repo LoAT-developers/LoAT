@@ -8,8 +8,6 @@
 #include "itssafetycex.hpp"
 #include "itscpxcex.hpp"
 
-#include <limits>
-#include <list>
 #include <optional>
 
 /**
@@ -39,7 +37,7 @@ struct Step {
 
     const RulePtr resolvent;
 
-    Step(const RulePtr transition, const Bools::Expr sat, const Renaming &var_renaming, const Renaming &tmp_var_renaming, const RulePtr resolvent);
+    Step(const RulePtr& transition, const Bools::Expr& sat, const Renaming &var_renaming, const Renaming &tmp_var_renaming, const RulePtr& resolvent);
 
     Step(const Step &that);
 
@@ -132,9 +130,9 @@ public:
 
     Unroll(unsigned max, bool accel_failed = false);
 
-    std::optional<unsigned> get_max();
+    std::optional<unsigned> get_max() const;
 
-    bool acceleration_failed();
+    bool acceleration_failed() const;
 
     std::optional<Unroll> unroll() override;
 };
@@ -200,11 +198,11 @@ class ADCL {
 
     const std::function<void(const ITSCpxCex&)> &print_cpx_cex;
 
-    bool is_learned_clause(const RulePtr idx) const;
+    bool is_learned_clause(const RulePtr& idx) const;
 
-    bool is_orig_clause(const RulePtr idx) const;
+    bool is_orig_clause(const RulePtr& idx) const;
 
-    void set_cpx_witness(const RulePtr witness, const ArithSubs &subs, const Arith::Var &param);
+    void set_cpx_witness(const RulePtr& witness, const ArithSubs &subs, const Arith::Var &param);
 
     void update_cpx();
 
@@ -218,7 +216,7 @@ class ADCL {
     /**
      * finishes the analysis when we were able to prove unsat
      */
-    void unsat();
+    void unsat() const;
 
     unsigned get_penalty(const RulePtr idx) const;
 
@@ -227,37 +225,37 @@ class ADCL {
     /**
      * tries to resolve the trace with the given clause
      */
-    std::optional<RulePtr> resolve(const RulePtr idx);
+    std::optional<RulePtr> resolve(const RulePtr& idx);
 
     /**
      * computes (an approximation of) the language associated with the clause used for the given step
      */
-    Automaton get_language(const Step &step);
+    Automaton get_language(const Step &step) const;
 
     /**
      * computes (an approximation of) the language associated with the clause that can be learned
      * from the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    Automaton build_language(const int backlink);
+    Automaton build_language(const int backlink) const;
 
     /**
      * computes a clause that is equivalent to the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    std::pair<RulePtr, Model> build_loop(const int backlink);
+    std::pair<RulePtr, ModelPtr> build_loop(const int backlink);
 
     /**
      * adds a learned clause to all relevant data structures
      * @param lang (an approximation of) the language associated with the learned clause
      */
-    void add_learned_clause(const RulePtr accel, const unsigned backlink);
+    void add_learned_clause(const RulePtr& accel, const unsigned backlink);
 
     /**
      * tries to accelerate the given clause
      * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const RulePtr rule, const Model &model, const unsigned backlink);
+    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, const ModelPtr &model, const unsigned backlink);
 
     bool check_consistency();
 
@@ -271,14 +269,14 @@ class ADCL {
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
      */
-    std::optional<unsigned> has_looping_suffix(int start);
+    std::optional<unsigned> has_looping_suffix(int start) const;
 
     /**
      * Generates a fresh copy of the program variables and fixes their value according to the update of the
      * given clause by adding corresponding constraints to the SMT solver.
      * @return a variable renaming from the program variables to the fresh copy
      */
-    std::pair<Renaming, Renaming> handle_update(const RulePtr idx);
+    std::pair<Renaming, Renaming> handle_update(const RulePtr& idx);
 
     /**
      * blocks the given step
@@ -295,17 +293,17 @@ class ADCL {
 
     void add_to_trace(const Step &step);
 
-    RulePtr compute_resolvent(const RulePtr idx, const Bools::Expr implicant) const;
+    RulePtr compute_resolvent(const RulePtr& idx, const Bools::Expr& implicant) const;
 
     /**
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const RulePtr idx, const RulePtr resolvent);
+    bool store_step(const RulePtr& idx, const RulePtr& implicant);
 
-    void print_trace(std::ostream &s);
+    void print_trace(std::ostream &s) const;
 
-    void print_state();
+    void print_state() const;
 
     bool try_to_finish();
 
@@ -313,7 +311,7 @@ class ADCL {
 
 public:
 
-    ADCL(ITSPtr its, const std::function<void(const ITSCpxCex&)> &print_cpx_cex);
+    ADCL(const ITSPtr&, const std::function<void(const ITSCpxCex&)> &print_cpx_cex);
 
     SmtResult analyze();
 

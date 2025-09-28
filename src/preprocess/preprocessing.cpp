@@ -116,16 +116,13 @@ std::optional<SmtResult> Preprocessor::check_empty_clauses(const ITSPtr& its) {
             solver->add(r->getGuard());
             if (const auto smt_res {solver->check()}; smt_res == SmtResult::Sat) {
                 if (Config::Analysis::model) {
-                    const auto lvals {r->getGuard()->lvals()};
+                    const auto cells {r->getGuard()->cells()};
                     Valuation valuation;
                     const auto model {solver->model()};
-                    for (const auto &lval: lvals) {
-                        theory::apply(
-                            lval,
-                            [&](const auto& lval) {
-                                valuation.put(lval, model->get(lval));
-                            }
-                        );
+                    for (const auto& cell : cells) {
+                        theory::apply(cell, [&](const auto& cell) {
+                            valuation.put(cell, model->get(cell));
+                        });
                     }
                     cex.set_initial_state(valuation);
                     if (!cex.try_final_transition(r)) {

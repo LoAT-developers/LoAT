@@ -11,7 +11,7 @@ class VariantSet {
     using VS = std::tuple<linked_hash_set<S>...>;
     using VSI = std::variant<typename linked_hash_set<S>::const_iterator...>;
     using Var = std::variant<S...>;
-    using Self = VariantSet<S...>;
+    using Self = VariantSet;
 
     VS t{};
     static const size_t variant_size = std::variant_size_v<VSI>;
@@ -20,43 +20,41 @@ public:
 
     class Iterator {
 
-        friend class VariantSet<S...>;
+        friend class VariantSet;
 
         template <size_t I = 0>
-        inline VSI beginImpl(size_t i) const {
+        VSI beginImpl(const size_t i) const {
             if constexpr (I < variant_size) {
                 if (I == i) {
                     return VSI(std::get<I>(set->t).begin());
-                } else {
-                    return beginImpl<I + 1>(i);
                 }
+                return beginImpl<I + 1>(i);
             } else {
                 throw std::invalid_argument("i too large");
             }
         }
 
-        VSI begin(size_t i) const {
+        VSI begin(const size_t i) const {
             return beginImpl(i);
         }
 
         template <size_t I = 0>
-        inline VSI endImpl(size_t i) const {
+        VSI endImpl(const size_t i) const {
             if constexpr (I < variant_size) {
                 if (I == i) {
                     return VSI(std::get<I>(set->t).end());
-                } else {
-                    return endImpl<I + 1>(i);
                 }
+                return endImpl<I + 1>(i);
             }
             throw std::invalid_argument("i too large");
         }
 
-        VSI end(size_t i) const {
+        VSI end(const size_t i) const {
             return endImpl(i);
         }
 
         template <size_t I = 0>
-        inline Var getCurrentImpl() const {
+        Var getCurrentImpl() const {
             if constexpr (I < variant_size) {
                 if (ptr.index() == I) {
                     return Var(*std::get<I>(ptr));
@@ -83,8 +81,10 @@ public:
         Iterator(const Iterator &that): set(that.set), ptr(that.ptr) {}
 
         Iterator& operator=(const Iterator &that) {
-            this->set = that.set;
-            this->ptr = that.ptr;
+            if (this != &that) {
+                this->set = that.set;
+                this->ptr = that.ptr;
+            }
             return *this;
         }
 
@@ -95,14 +95,14 @@ public:
 
         pointer operator->() {
             current = getCurrent();
-            return &(*current);
+            return &*current;
         }
 
         template <size_t I = 0>
-        inline void incrementImpl() {
+        void incrementImpl() {
             if constexpr (I < variant_size) {
                 if (ptr.index() == I) {
-                    std::get<I>(ptr)++;
+                    ++std::get<I>(ptr);
                 } else {
                     incrementImpl<I+1>();
                 }
@@ -127,7 +127,7 @@ public:
         // Postfix increment
         Iterator operator++(int) {
             Iterator tmp = *this;
-            ++(*this);
+            ++*this;
             return tmp;
         }
 
@@ -146,7 +146,7 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void eraseImpl(const Var &var) {
+    void eraseImpl(const Var &var) {
         if constexpr (I < variant_size) {
             if (var.index() == I) {
                 std::get<I>(t).erase(std::get<I>(var));
@@ -165,18 +165,16 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline Iterator eraseImpl(const Iterator &it) {
+    Iterator eraseImpl(const Iterator &it) {
         if constexpr (I < variant_size) {
             if (it.ptr.index() == I) {
                 const auto res = std::get<I>(t).erase(std::get<I>(it.ptr));
                 if (res == std::get<I>(t).end()) {
                     return beginImpl<I+1>();
-                } else {
-                    return Iterator(this, res);
                 }
-            } else {
-                return eraseImpl<I+1>(it);
+                return Iterator(this, res);
             }
+            return eraseImpl<I+1>(it);
         }
         throw std::invalid_argument("unknown index");
     }
@@ -190,13 +188,12 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline bool insertImpl(const Var &var) {
+    bool insertImpl(const Var &var) {
         if constexpr (I < variant_size) {
             if (var.index() == I) {
                 return std::get<I>(t).insert(std::get<I>(var)).second;
-            } else {
-                return insertImpl<I+1>(var);
             }
+            return insertImpl<I+1>(var);
         } else {
             return false;
         }
@@ -211,7 +208,7 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline void insertAllImpl(const Self &that) {
+    void insertAllImpl(const Self &that) {
         if constexpr (I < variant_size) {
             const auto &s = std::get<I>(that.t);
             std::get<I>(t).insert(s.begin(), s.end());
@@ -233,14 +230,13 @@ public:
 private:
 
     template<std::size_t I = 0>
-    inline bool containsImpl(const Var &var) const {
+    bool containsImpl(const Var &var) const {
         if constexpr (I < variant_size) {
             if (var.index() == I) {
                 const auto &set = std::get<I>(t);
                 return set.contains(std::get<I>(var));
-            } else {
-                return containsImpl<I+1>(var);
             }
+            return containsImpl<I+1>(var);
         } else {
             return false;
         }
@@ -267,14 +263,13 @@ public:
 private:
 
     template <size_t I = 0>
-    inline Iterator beginImpl() const {
+    Iterator beginImpl() const {
         if constexpr (I < variant_size) {
             const auto& x = std::get<I>(t);
             if (x.empty()) {
                 return beginImpl<I+1>();
-            } else {
-                return Iterator(this, x.begin());
             }
+            return Iterator(this, x.begin());
         } else {
             return end();
         }
@@ -289,7 +284,7 @@ public:
 private:
 
     template <size_t I = 0>
-    inline std::ostream& printImpl(std::ostream &s) const {
+    std::ostream& printImpl(std::ostream &s) const {
         if constexpr (I < variant_size) {
             if (I > 0) {
                 s << " u ";

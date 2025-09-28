@@ -127,7 +127,7 @@ protected:
     Expr convertArrayWrite(const ArrayWritePtr<Arith> &write) {
         const auto arr {write->arr()};
         const auto indices {write->indices()};
-        const auto value {write->value()};
+        const auto value {write->val()};
         const auto converted_arr {context.getIntArraySymbolMap().at(arr)};
         auto converted_indices {context.exprVec()};
         for (const auto &i: indices) {

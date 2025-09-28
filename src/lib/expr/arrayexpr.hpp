@@ -26,10 +26,11 @@ template <ITheory T>
 class Array {
 
     public:
+
     virtual ~Array() = default;
 
+    virtual ArrayVarPtr<T> var() const = 0;
     virtual std::optional<ArrayVarPtr<T>> isVar() const = 0;
-
     virtual std::optional<ArrayWritePtr<T>> isArrayWrite() const = 0;
 
     sexpresso::Sexp to_smtlib() const;
@@ -51,7 +52,7 @@ public:
 
     static Self next();
     static Self nextProgVar();
-    static Self postVar(const Self&);
+    static ArrayVarPtr<T> postVar(const ArrayVarPtr<T>&);
     std::string getName() const;
     bool isTempVar() const;
     bool isProgVar() const;
@@ -78,7 +79,7 @@ class ArrayWrite: public Array<T> {
 
     ArrayVarPtr<T> m_arr;
     std::vector<Arith::Expr> m_indices;
-    T::Expr m_value;
+    T::Expr m_val;
 
 public:
 
@@ -90,21 +91,21 @@ public:
         return m_indices;
     }
 
-    T::Expr value() const {
-        return m_value;
+    T::Expr val() const {
+        return m_val;
     }
 
 };
 
 template <ITheory T>
-class ArrayRead: public Array<T> {
+class ArrayRead {
 
-    ArrayVarPtr<T> m_arr;
+    ArrayPtr<T> m_arr;
     std::vector<Arith::Expr> m_indices;
 
 public:
 
-    ArrayVarPtr<T> arr() const {
+    ArrayPtr<T> arr() const {
         return m_arr;
     }
 
@@ -113,16 +114,19 @@ public:
     }
 
     bool isTempVar() const {
-        return m_arr->isTempVar();
+        return m_arr->var()->isTempVar();
     }
 
     bool isProgVar() const {
-        return m_arr->isProgVar();
+        return m_arr->var()->isProgVar();
     }
 
     bool isPostVar() const {
-        return m_arr->isPostVar();
+        return m_arr->var()->isPostVar();
     }
+
+    static ArrayReadPtr<T> postVar(const ArrayReadPtr<T>&);
+    static ArrayReadPtr<T> progVar(const ArrayReadPtr<T>&);
 
 };
 
@@ -139,5 +143,7 @@ namespace arrays {
 
     template <ITheory T>
     ArrayReadPtr<T> mkArrayRead(const ArrayPtr<T>&, const std::vector<Arith::Expr>&);
+    template <ITheory T>
+    ArrayPtr<T> mkArrayWrite(const ArrayPtr<T>&, const std::vector<Arith::Expr>&, const typename T::Expr&);
 
 }

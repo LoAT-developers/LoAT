@@ -18,7 +18,7 @@ public:
 
     Arith::Const get(const Arith::Var&);
     Bools::Const get(const Bools::Var&);
-    Arith::Const get(const Arrays<Arith>::Lval&);
+    Arith::Const get(const Arrays<Arith>::Cell&);
 
     virtual void put(const Arith::Var&, const Arith::Const&) = 0;
 
@@ -38,14 +38,15 @@ public:
     Bools::Expr syntacticImplicant(const Bools::Expr&);
 
     ModelPtr composeBackwards(const Renaming&) const;
-    Valuation toValuation(const VarSet&) const;
+    Valuation toValuation(const CellSet&) const;
+
+    virtual void print(std::ostream&, const VarSet& = {}) const = 0;
 
 protected:
 
     virtual Arith::Const getImpl(const Arith::Var&) = 0;
     virtual Bools::Const getImpl(const Bools::Var&) = 0;
     virtual Arith::Const getImpl(const ArrayReadPtr<Arith>&) = 0;
-    virtual void print(std::ostream&) const = 0;
 
     Renaming renaming;
 

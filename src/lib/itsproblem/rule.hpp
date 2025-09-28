@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "theory.hpp"
-#include "lvaluesubs.hpp"
 #include "subs.hpp"
 
 class Rule;
@@ -13,32 +12,32 @@ using RulePtr = cpp::not_null<std::shared_ptr<const Rule>>;
 class Rule {
 
     Bools::Expr guard;
-    LValueSubs update;
+    Subs update;
     unsigned id;
 
     static unsigned next_id;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<Bools::Expr, LValueSubs> &args1, const std::tuple<Bools::Expr, LValueSubs> &args2) const noexcept;
+        bool operator()(const std::tuple<Bools::Expr, Subs> &args1, const std::tuple<Bools::Expr, Subs> &args2) const noexcept;
     };
 
     struct CacheHash {
-        size_t operator()(const std::tuple<Bools::Expr, LValueSubs> &args) const noexcept;
+        size_t operator()(const std::tuple<Bools::Expr, Subs> &args) const noexcept;
     };
 
-    static ConsHash<Rule, Rule, CacheHash, CacheEqual, Bools::Expr, LValueSubs> cache;
+    static ConsHash<Rule, Rule, CacheHash, CacheEqual, Bools::Expr, Subs> cache;
 
 public:
 
-    Rule(Bools::Expr  guard, LValueSubs update);
+    Rule(Bools::Expr  guard, Subs update);
 
     ~Rule();
 
-    static RulePtr mk(const Bools::Expr& guard, const LValueSubs& up);
+    static RulePtr mk(const Bools::Expr& guard, const Subs& up);
 
     Bools::Expr getGuard() const;
 
-    const LValueSubs& getUpdate() const;
+    const Subs& getUpdate() const;
 
     RulePtr subs(const Subs &subs) const;
 
@@ -46,11 +45,13 @@ public:
 
     RulePtr withGuard(const Bools::Expr& guard) const;
 
-    RulePtr withUpdate(const LValueSubs &up) const;
+    RulePtr withUpdate(const Subs &up) const;
 
     VarSet vars() const;
 
     void collectVars(VarSet &vars) const;
+
+    CellSet cells() const;
 
     RulePtr chain(const RulePtr &that) const;
 

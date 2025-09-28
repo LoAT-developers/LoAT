@@ -15,14 +15,14 @@ bool ITSSafetyCex::try_step(const RulePtr& trans, const Valuation &next) {
     const auto &up{trans->getUpdate()};
     for (const auto &x : its->getVars()) {
         if (theory::isProgVar(x) && next.contains(x)) {
-            theory::apply(x, Overload{
-                [&](const Arith::Var &y) {
+            theory::apply(
+                x,
+                [&](const Arith::Var& y) {
                     solver->add(arith::mkEq(arith::mkConst(next->get(y)), last->evalPartially(up.get<Arith>(y))));
                 },
-            [&](const Bools::Var &y){
-                solver->add(bools::mkEq(next->get(y) ? top() : bot(), last->evalPartially(up.get<Bools>(y))));
-            }});
-
+                [&](const Bools::Var& y) {
+                    solver->add(bools::mkEq(next->get(y) ? top() : bot(), last->evalPartially(up.get<Bools>(y))));
+                });
         }
     }
     if (solver->check() == SmtResult::Sat) {

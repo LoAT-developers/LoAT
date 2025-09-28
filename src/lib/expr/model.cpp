@@ -92,11 +92,7 @@ Arith::Const Model::eval(const Arith::Expr &e) {
 }
 
 bool Model::contains(const Var& var) const {
-    return theory::apply(
-        var,
-        Overload{
-            [&](const auto& var) {
-                return this->contains(var);
-            }
-        });
+    return theory::apply(var, [&](const auto& var) {
+        return this->contains(var);
+    });
 }

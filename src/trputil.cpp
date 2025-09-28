@@ -73,28 +73,29 @@ TRPUtil::TRPUtil(
         vars.insert(safety_var);
     }
     for (const auto &x : t.vars()) {
-        if (theory::isPostVar(x)) {
-            const auto pre{theory::progVar(x)};
-            vars.insert(pre);
-        } else {
-            vars.insert(x);
-        }
+        theory::apply(x, [&](const auto &x) {
+            vars.insert(x->isPostVar() ? x->progVar(x) : x);
+        });
     }
     solver->enableModels();
     if (Config::Analysis::termination()) {
         const auto linearize{
-            [&](const auto &lit) { return std::visit(
-                                       Overload{
-                                           [](const Arith::Lit &l) {
-                                               if (!l->isLinear()) {
-                                                   return top();
-                                               }
-                                               return bools::mkLit(l);
-                                           },
-                                           [](const auto &l) {
-                                               return bools::mkLit(l);
-                                           }},
-                                       lit); }};
+            [&](const auto& lit) {
+                return std::visit(
+                    Overload{
+                        [](const Arith::Lit& l) {
+                            if (!l->isLinear()) {
+                                return top();
+                            }
+                            return bools::mkLit(l);
+                        },
+                        [](const auto& l) {
+                            return bools::mkLit(l);
+                        }
+                    },
+                    lit);
+            }
+        };
         for (const auto &trans : t.trans()) {
             if (const auto lin{trans->map(linearize)}; rule_map.emplace(next_id, lin).second) {
                 ++next_id;
@@ -371,9 +372,8 @@ bool TRPUtil::build_cex() {
     return SmtFactory::check(t.init() && *trans && t.pre_to_post()(t.err())) == SmtResult::Sat;
 }
 
-bool TRPUtil::add_blocking_clauses(const Range &range, ModelPtr model) {
+bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
     const auto n {trp.get_n()};
-    model = model->erase(n);
     model->put(n, 1);
     for (const auto &[id, b] : rule_map) {
         const auto is_orig_clause {id <= last_orig_clause};

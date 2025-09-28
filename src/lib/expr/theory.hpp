@@ -59,7 +59,7 @@ Bools::Expr mkEq(const Expr &e1, const Expr &e2);
 Bools::Expr mkNeq(const Expr &e1, const Expr &e2);
 Arith theory(const Arith::Var&);
 Bools theory(const Bools::Var&);
-Arrays<Arith> theory(const Arrays<Arith>::Lval&);
+Arrays<Arith> theory(const Arrays<Arith>::Cell&);
 Arrays<Arith> theory(const Arrays<Arith>::Var&);
 Arith theory(const Arith::Expr&);
 Bools theory(const Bools::Expr&);

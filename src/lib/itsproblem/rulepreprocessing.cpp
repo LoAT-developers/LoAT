@@ -17,15 +17,12 @@ RulePtr propagateEquivalences(const RulePtr &rule) {
 }
 
 std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
-    LvalSet remove;
-    rule->getUpdate().for_each(Overload{
-        [](const std::pair<Arrays<Arith>::Lval, Arith::Expr>&) {},
-        [&](const auto& p) {
-            if (theory::theory(p.first).varToExpr(p.first) == p.second) {
-                remove.insert(p.first);
-            }
+    VarSet remove;
+    for (const auto& p : rule->getUpdate()) {
+        if (theory::toExpr(Subs::first(p)) == Subs::second(p)) {
+            remove.insert(Subs::first(p));
         }
-    });
+    }
     if (remove.empty()) {
         return {};
     }
@@ -97,7 +94,7 @@ RulePtr Preprocess::preprocessRule(const RulePtr &rule) {
 
 RulePtr Preprocess::chain(const std::vector<RulePtr> &rules) {
     std::vector<Bools::Expr> guards;
-    LValueSubs up;
+    Subs up;
     for (const auto &r: rules) {
         guards.push_back(up(r->getGuard()));
         up = r->getUpdate().compose(up);

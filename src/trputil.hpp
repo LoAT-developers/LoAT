@@ -70,7 +70,7 @@ protected:
     std::optional<Arith::Expr> prove_term(const Bools::Expr& loop, const ModelPtr &model);
     bool build_cex();
     virtual void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) = 0;
-    bool add_blocking_clauses(const Range &range, ModelPtr model);
+    bool add_blocking_clauses(const Range &range, const ModelPtr& model);
 
 public:
 

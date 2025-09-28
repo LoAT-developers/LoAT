@@ -24,6 +24,7 @@ public:
     const VarSet& post_vars() const;
     const Renaming& pre_to_post() const;
     VarSet vars() const;
+    CellSet cells() const;
     Bools::Expr init() const;
     Bools::Expr err() const;
     void add_transition(const Bools::Expr e);

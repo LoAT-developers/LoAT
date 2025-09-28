@@ -9,7 +9,6 @@
 #include "config.hpp"
 #include "variant.hpp"
 
-#include <numeric>
 #include <random>
 #include <unordered_set>
 
@@ -75,9 +74,9 @@ std::optional<Restart> Restart::restart() {
 
 Unroll::Unroll() {}
 
-Unroll::Unroll(unsigned max, bool accel_failed): max(max), accel_failed(accel_failed) {}
+Unroll::Unroll(unsigned max, const bool accel_failed): max(max), accel_failed(accel_failed) {}
 
-std::optional<unsigned> Unroll::get_max() {
+std::optional<unsigned> Unroll::get_max() const {
     return max;
 }
 
@@ -85,7 +84,7 @@ std::optional<Unroll> Unroll::unroll() {
     return *this;
 }
 
-bool Unroll::acceleration_failed() {
+bool Unroll::acceleration_failed() const {
     return accel_failed;
 }
 
@@ -95,7 +94,7 @@ std::optional<ProvedUnsat> ProvedUnsat::unsat() {
 
 ProvedUnsat::ProvedUnsat() {}
 
-ADCL::ADCL(ITSPtr chcs, const std::function<void(const ITSCpxCex&)> &print_cpx_cex):
+ADCL::ADCL(const ITSPtr& chcs, const std::function<void(const ITSCpxCex&)> &print_cpx_cex):
     chcs(chcs),
     drop(true),
     cex(chcs),
@@ -104,7 +103,8 @@ ADCL::ADCL(ITSPtr chcs, const std::function<void(const ITSCpxCex&)> &print_cpx_c
     solver->enableModels();
 }
 
-Step::Step(const RulePtr transition, const Bools::Expr sat, const Renaming &var_renaming, const Renaming &tmp_var_renaming, const RulePtr resolvent):
+Step::Step(const RulePtr& transition, const Bools::Expr& sat, const Renaming& var_renaming,
+           const Renaming& tmp_var_renaming, const RulePtr& resolvent) :
     clause_idx(transition),
     implicant(sat),
     var_renaming(var_renaming),
@@ -122,18 +122,15 @@ std::ostream& operator<<(std::ostream &s, const Step &step) {
     return s << step.clause_idx << "[" << step.implicant << "]";
 }
 
-std::optional<unsigned> ADCL::has_looping_suffix(int start) {
+std::optional<unsigned> ADCL::has_looping_suffix(const int start) const {
     if (trace.empty()) {
         return {};
     }
     const auto last_clause = trace.back().clause_idx;
     std::vector<long> sequence;
     for (int pos = start; pos >= 0; --pos) {
-        const Step &step = trace[pos];
-        if (chcs->areAdjacent(last_clause, step.clause_idx)) {
-            auto upos = static_cast<unsigned>(pos);
-            bool looping = upos < trace.size() - 1 || is_orig_clause(step.clause_idx);
-            if (looping) {
+        if (const Step &step = trace[pos]; chcs->areAdjacent(last_clause, step.clause_idx)) {
+            if (auto upos = static_cast<unsigned>(pos); upos < trace.size() - 1 || is_orig_clause(step.clause_idx)) {
                 return upos;
             }
         }
@@ -141,7 +138,7 @@ std::optional<unsigned> ADCL::has_looping_suffix(int start) {
     return {};
 }
 
-std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr idx) {
+std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr& idx) {
     const auto &last_var_renaming = trace.empty() ? Renaming::Empty : trace.back().var_renaming;
     const auto &last_tmp_var_renaming = trace.empty() ? Renaming::Empty : trace.back().tmp_var_renaming;
     Renaming new_var_renaming;
@@ -188,8 +185,7 @@ void ADCL::block(const Step &step) {
     if (step.clause_idx->getGuard()->isConjunction()) {
         blocked_clauses.back()[step.clause_idx] = {};
     } else {
-        auto block = blocked_clauses.back().find(step.clause_idx);
-        if (block == blocked_clauses.back().end()) {
+        if (const auto block = blocked_clauses.back().find(step.clause_idx); block == blocked_clauses.back().end()) {
             blocked_clauses.back()[step.clause_idx] = {step.implicant};
         } else {
             block->second.insert(step.implicant);
@@ -217,7 +213,7 @@ void ADCL::add_to_trace(const Step &step) {
     blocked_clauses.emplace_back();
 }
 
-void ADCL::set_cpx_witness(const RulePtr witness, const ArithSubs &subs, const Arith::Var &param) {
+void ADCL::set_cpx_witness(const RulePtr& witness, const ArithSubs &subs, const Arith::Var &param) {
     if (trace.size() > 1) {
         std::vector<RulePtr> rules;
         for (const auto &t: trace) {
@@ -225,8 +221,7 @@ void ADCL::set_cpx_witness(const RulePtr witness, const ArithSubs &subs, const A
         }
         cpx_cex.add_resolvent(rules, witness);
     } else {
-        const auto &t {trace.back()};
-        if (t.implicant != t.clause_idx->getGuard()) {
+        if (const auto &t {trace.back()}; t.implicant != t.clause_idx->getGuard()) {
             cpx_cex.add_implicant(t.clause_idx, t.clause_idx->withGuard(t.implicant));
         }
     }
@@ -242,24 +237,22 @@ void ADCL::update_cpx() {
     }
     const auto resolvent = trace.back().resolvent;
     const auto &cost = chcs->getCost(resolvent);
-    const auto max_cpx = toComplexity(cost);
-    if (max_cpx <= cpx && !cost->hasVarWith([](const auto &x){return theory::isTempVar(x);})) {
+    if (toComplexity(cost) <= cpx && !cost->hasVarWith([](const auto &x){return theory::isTempVar(x);})) {
         return;
     }
-    const auto witness {LimitSmtEncoding::applyEncoding(resolvent->getGuard(), cost, cpx)};
-    if (witness.cpx > cpx) {
-        cpx = witness.cpx;
-        std::cout << cpx.toWstString() << std::endl;
+    if (const auto [cpx, subs, param] {LimitSmtEncoding::applyEncoding(resolvent->getGuard(), cost, this->cpx)}; cpx > this->cpx) {
+        this->cpx = cpx;
+        std::cout << this->cpx.toWstString() << std::endl;
         if (Config::Analysis::model) {
-            set_cpx_witness(resolvent, witness.subs, witness.param);
+            set_cpx_witness(resolvent, subs, param);
         }
         if (Config::Analysis::log) {
-            std::cout << cpx.toString() << std::endl;
+            std::cout << this->cpx.toString() << std::endl;
         }
     }
 }
 
-RulePtr ADCL::compute_resolvent(const RulePtr idx, const Bools::Expr implicant) const {
+RulePtr ADCL::compute_resolvent(const RulePtr& idx, const Bools::Expr& implicant) const {
     static auto dummy {Rule::mk(top(), Subs())};
     if (!Config::Analysis::complexity()) {
         return dummy;
@@ -272,7 +265,7 @@ RulePtr ADCL::compute_resolvent(const RulePtr idx, const Bools::Expr implicant) 
     return Preprocess::preprocessRule(resolvent);
 }
 
-bool ADCL::store_step(const RulePtr idx, const RulePtr implicant) {
+bool ADCL::store_step(const RulePtr& idx, const RulePtr& implicant) {
     solver->push();
     const auto imp {trace.empty() ? implicant : implicant->renameVars(trace.back().var_renaming)};
     solver->add(imp->getGuard());
@@ -285,47 +278,26 @@ bool ADCL::store_step(const RulePtr idx, const RulePtr implicant) {
             block(step);
         }
         return true;
-    } else {
-        solver->pop();
-        return false;
     }
+    solver->pop();
+    return false;
 }
 
-void ADCL::print_trace(std::ostream &s) {
+void ADCL::print_trace(std::ostream &s) const {
     const auto model {solver->model()};
-    s << "(";
-    bool first {true};
-    for (const auto &x: prog_vars) {
-        if (!model.contains(x)) continue;
-        const auto &y {model.get(x)};
-        if (first) {
-            first = false;
-        } else {
-            s << ", ";
-        }
-        s << x << "=" << y;
-    }
-    s << ")" << std::endl;
+    model->print(s, prog_vars);
+    s << std::endl;
     for (const auto &step: trace) {
-        s << "-" << step.clause_idx << "-> " << "(";
-        first = true;
+        s << " -" << step.clause_idx << "-> ";
         if (!chcs->isSinkTransition(step.clause_idx)) {
-            for (const auto &x: prog_vars) {
-                const auto y {model.eval(theory::toExpr(step.var_renaming.get(x)))};
-                if (first) {
-                    first = false;
-                } else {
-                    s << ", ";
-                }
-                s << x << "=" << y;
-            }
+            model->composeBackwards(step.var_renaming)->print(s, prog_vars);
         }
-        s << ")" << std::endl;
+        s << std::endl;
     }
     s << std::endl;
 }
 
-void ADCL::print_state() {
+void ADCL::print_state() const {
     if (Config::Analysis::log) {
         std::cout << "trace";
         for (const auto &x: trace) {
@@ -375,7 +347,7 @@ void ADCL::luby_next() {
     luby_count = 0;
 }
 
-void ADCL::unsat() {
+void ADCL::unsat() const {
     if (Config::Analysis::complexity()) {
         std::cout << "NO" << std::endl;
     }
@@ -390,7 +362,7 @@ void ADCL::unsat() {
     }
 }
 
-std::optional<RulePtr> ADCL::resolve(const RulePtr idx) {
+std::optional<RulePtr> ADCL::resolve(const RulePtr& idx) {
     const auto &var_renaming = trace.empty() ? Renaming::Empty : trace.back().var_renaming;
     const auto block = blocked_clauses.back().find(idx);
     if (block != blocked_clauses.back().end()) {
@@ -411,8 +383,8 @@ std::optional<RulePtr> ADCL::resolve(const RulePtr idx) {
     switch (solver->check()) {
     case SmtResult::Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
-        const auto model {solver->model(guard->vars())->composeBackwards(projected_var_renaming)};
-        const auto implicant {model.syntacticImplicant(idx->getGuard())};
+        const auto model {solver->model()->composeBackwards(projected_var_renaming)};
+        const auto implicant {model->syntacticImplicant(idx->getGuard())};
         return {idx->withGuard(implicant)};
     }
     case SmtResult::Unknown: {}
@@ -429,15 +401,14 @@ std::optional<RulePtr> ADCL::resolve(const RulePtr idx) {
     return {};
 }
 
-Automaton ADCL::get_language(const Step &step) {
+Automaton ADCL::get_language(const Step &step) const {
     if (is_orig_clause(step.clause_idx)) {
         return redundancy->get_singleton_language(step.clause_idx, Conjunction::fromBoolExpr(step.implicant));
-    } else {
-        return *redundancy->get_language(step.clause_idx);
     }
+    return *redundancy->get_language(step.clause_idx);
 }
 
-Automaton ADCL::build_language(const int backlink) {
+Automaton ADCL::build_language(const int backlink) const {
     auto lang = get_language(trace[backlink]);
     for (size_t i = backlink + 1; i < trace.size(); ++i) {
         redundancy->concat(lang, get_language(trace[i]));
@@ -445,7 +416,7 @@ Automaton ADCL::build_language(const int backlink) {
     return lang;
 }
 
-std::pair<RulePtr, Model> ADCL::build_loop(const int backlink) {
+std::pair<RulePtr, ModelPtr> ADCL::build_loop(const int backlink) {
     std::vector<RulePtr> rules;
     for (size_t i = backlink; i < trace.size(); ++i) {
         rules.emplace_back(trace[i].clause_idx->withGuard(trace[i].implicant)->renameVars(trace[i].tmp_var_renaming));
@@ -454,24 +425,24 @@ std::pair<RulePtr, Model> ADCL::build_loop(const int backlink) {
     const auto s {trace[backlink].var_renaming};
     auto vars {loop->vars()};
     s.collectCoDomainVars(vars);
-    auto model {solver->model(vars)->composeBackwards(s)};
+    auto model {solver->model()->composeBackwards(s)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << loop << std::endl;
     }
     return {loop, model};
 }
 
-void ADCL::add_learned_clause(const RulePtr accel, const unsigned backlink) {
+void ADCL::add_learned_clause(const RulePtr& accel, const unsigned backlink) {
     const auto fst = trace.at(backlink).clause_idx;
     const auto last = trace.back().clause_idx;
     chcs->addLearnedRule(accel, fst, last);
 }
 
-bool ADCL::is_learned_clause(const RulePtr idx) const {
+bool ADCL::is_learned_clause(const RulePtr& idx) const {
     return idx->getId() > last_orig_clause;
 }
 
-bool ADCL::is_orig_clause(const RulePtr idx) const {
+bool ADCL::is_orig_clause(const RulePtr& idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
@@ -496,7 +467,7 @@ ITSCex* ADCL::the_cex() {
     }
 }
 
-std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr rule, const Model &model, const unsigned backlink) {
+std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const ModelPtr &model, const unsigned backlink) {
     const auto simp {Preprocess::preprocessRule(rule)};
     if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).

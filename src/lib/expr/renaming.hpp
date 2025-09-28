@@ -175,7 +175,7 @@ public:
     Expr operator()(const Expr &expr) const;
     Bools::Expr operator()(const Bools::Expr& e) const;
     Arith::Expr operator()(const Arith::Expr &e) const;
-    Arrays<Arith>::Lval operator()(const Arrays<Arith>::Lval&) const;
+    Arrays<Arith>::Cell operator()(const Arrays<Arith>::Cell&) const;
     Bools::Var operator()(const Bools::Var&) const;
     Arith::Var operator()(const Arith::Var&) const;
 

@@ -141,17 +141,11 @@ void TRL::build_trace() {
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{model->composeBackwards(s)};
         const auto imp{comp->syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
-        auto relevant_vars{vars};
-        for (const auto &x : vars) {
-            relevant_vars.insert(theory::postVar(x));
-        }
-        imp->collectVars(relevant_vars);
-        const auto projected_model{comp->project(relevant_vars)};
         if (prev) {
             dependency_graph.addEdge(prev->first, imp);
         }
         prev = {imp, id};
-        trace.emplace_back(TraceElem{.id = id, .implicant = imp, .model = projected_model});
+        trace.emplace_back(TraceElem{.id = id, .implicant = imp, .model = comp});
     }
     if (Config::Analysis::log) {
         std::cout << "trace:" << std::endl;
@@ -164,6 +158,7 @@ void TRL::build_trace() {
         }
         std::cout << "run:" << std::endl;
         for (const auto &t : trace) {
+            t.model->print(std::cout, vars);
             std::cout << t.model << std::endl;
         }
     }

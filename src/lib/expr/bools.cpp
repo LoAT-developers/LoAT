@@ -9,8 +9,8 @@ Bools::Expr Bools::varToExpr(const Var& var) {
     return bools::mkLit(bools::mk(var));
 }
 
-Bools::Expr Bools::lvalToExpr(const Lval& var) {
-    return bools::mkLit(bools::mk(var));
+Bools::Expr Bools::cellToExpr(const Cell& cell) {
+    return bools::mkLit(bools::mk(cell));
 }
 
 Bools::Expr Bools::anyValue() {

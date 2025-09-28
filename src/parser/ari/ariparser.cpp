@@ -55,7 +55,7 @@ void ARIParser::run(const std::string &filename) {
             const auto rhs_loc {rhs[0].str()};
             const auto type {types.at(lhs_loc)};
             const auto child_count {lhs.childCount()};
-            LValueSubs update;
+            Subs update;
             for (unsigned i = 1; i < child_count; ++i) {
                 switch (type.at(i-1)) {
                     case theory::Type::Int: {
