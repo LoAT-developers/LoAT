@@ -49,8 +49,6 @@ add_library(${PROJECT_NAME} OBJECT
   arraylit.hpp
   arraysubs.hpp
   arrays.hpp
-  valuation.hpp
-  valuation.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

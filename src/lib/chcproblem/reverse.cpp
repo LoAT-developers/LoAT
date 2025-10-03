@@ -1,9 +1,12 @@
 #include "reverse.hpp"
+
+#include <ranges>
+#include <utility>
 #include "config.hpp"
 
-Reverse::Reverse(const CHCPtr orig): orig(orig) {}
+Reverse::Reverse(CHCPtr orig): orig(std::move(orig)) {}
 
-ClausePtr rev(const ClausePtr c) {
+ClausePtr rev(const ClausePtr& c) {
     return Clause::mk(c->get_conclusion(), c->get_constraint(), c->get_premise());
 }
 
@@ -19,7 +22,7 @@ CHCPtr Reverse::reverse() {
     return res;
 }
 
-CHCModel Reverse::transform_model(const CHCModel &model) const {
+CHCModel Reverse::transform_model(const CHCModel &model) {
     CHCModel res;
     for (const auto &[f,p]: model.get_interpretations()) {
         const auto &[args, i] {p};
@@ -31,7 +34,7 @@ CHCModel Reverse::transform_model(const CHCModel &model) const {
 CHCCex Reverse::transform_cex(const CHCCex &cex) {
     CHCCex res {orig};
     std::unordered_map<ClausePtr, ClausePtr> learned_rev_map;
-    const auto lookup = [&](const ClausePtr x) {
+    const auto lookup = [&](const ClausePtr& x) {
         auto it {rev_map.find(x)};
         if (it == rev_map.end()) {
             it = rev_map.emplace(x, rev(x)).first;
@@ -46,8 +49,8 @@ CHCCex Reverse::transform_cex(const CHCCex &cex) {
     }
     for (const auto &[x,ys]: cex.get_resolvents()) {
         std::vector<ClausePtr> rev;
-        for (auto it = ys.rbegin(); it != ys.rend(); ++it) {
-            rev.push_back(lookup(*it));
+        for (const auto & it : std::ranges::reverse_view(ys)) {
+            rev.push_back(lookup(it));
         }
         res.add_resolvent(rev, lookup(x));
     }
@@ -57,9 +60,7 @@ CHCCex Reverse::transform_cex(const CHCCex &cex) {
     for (int i = states.size() - 1; i >= 0; --i) {
         const auto &s {states.at(i)};
         const auto &t {transitions.at(i)};
-        if (!res.try_step(s, rev_map.at(t))) {
-            throw std::logic_error("transform_cex failed");
-        }
+        res.do_step(s, rev_map.at(t));
     }
     return res;
 }

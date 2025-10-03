@@ -1,23 +1,21 @@
 #pragma once
 
 #include "itscex.hpp"
+#include "model.hpp"
 
 class ITSCpxCex: public ITSCex {
 
 friend std::ostream& operator<<(std::ostream &s, const ITSCpxCex &);
 
-private:
-
     std::optional<RulePtr> witness;
-    std::optional<ArithSubs> valuation;
+    std::optional<ModelPtr> valuation;
     std::optional<ArithVarPtr> param;
 
 public:
-
-    ITSCpxCex(ITSPtr its);
+    explicit ITSCpxCex(const ITSPtr& its);
 
     ITSCpxCex replace_rules(const linked_hash_map<RulePtr, RulePtr>&) const;
 
-    void set_witness(const RulePtr withness, const ArithSubs &valuation, const ArithVarPtr &param);
+    void set_witness(const RulePtr& witness, const ModelPtr &valuation, const ArithVarPtr &param);
 
 };

@@ -15,12 +15,12 @@ class BoolLit;
 using BoolLitPtr = cpp::not_null<std::shared_ptr<const BoolLit>>;
 
 namespace bools {
-    BoolLitPtr mk(const BoolVarPtr var, bool negated = false);
+    BoolLitPtr mk(const BoolVarPtr& var, bool negated = false);
 }
 
 class BoolLit: public std::enable_shared_from_this<BoolLit> {
 
-    friend BoolLitPtr bools::mk(const BoolVarPtr var, bool negated);
+    friend BoolLitPtr bools::mk(const BoolVarPtr& var, bool negated);
 
     BoolVarPtr var;
     bool negated;
@@ -35,15 +35,15 @@ class BoolLit: public std::enable_shared_from_this<BoolLit> {
 
 public:
 
-    BoolLit(const BoolVarPtr var, bool negated);
+    BoolLit(const BoolVarPtr& var, bool negated);
     ~BoolLit();
     bool isNegated() const;
-    bool isPoly() const;
-    bool isLinear() const;
+    static bool isPoly();
+    static bool isLinear();
     BoolVarPtr getBoolVar() const;
     void collectVars(linked_hash_set<BoolVarPtr> &res) const;
-    bool isTriviallyTrue() const;
-    bool isTriviallyFalse() const;
+    static bool isTriviallyTrue();
+    static bool isTriviallyFalse();
     std::size_t hash() const;
     bool eval(const linked_hash_map<BoolVarPtr, bool> &model) const;
     sexpresso::Sexp to_smtlib() const;
@@ -53,7 +53,7 @@ public:
 
 BoolLitPtr operator!(const BoolLitPtr &l);
 
-std::ostream& operator<<(std::ostream &s, const BoolLitPtr &e);
+std::ostream& operator<<(std::ostream &s, const BoolLitPtr &l);
 
 template<>
 struct std::hash<BoolLit> {

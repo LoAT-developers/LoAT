@@ -3,7 +3,7 @@
 
 #include <map>
 
-std::ostream& operator<<(std::ostream &s, const ClausePtr c) {
+std::ostream& operator<<(std::ostream &s, const ClausePtr& c) {
     if (c->premise) {
         s << (*c->premise)->get_pred() << "(";
         auto first {true};
@@ -77,7 +77,7 @@ FunAppPtr FunApp::subs(const Subs &subs) const {
     for (const auto &arg: args) {
         new_args.push_back(subs(arg));
     }
-    return FunApp::mk(pred, new_args);
+    return mk(pred, new_args);
 }
 
 FunAppPtr FunApp::rename_vars(const Renaming &subs) const {
@@ -85,10 +85,10 @@ FunAppPtr FunApp::rename_vars(const Renaming &subs) const {
     for (const auto &arg: args) {
         new_args.push_back(subs(arg));
     }
-    return FunApp::mk(pred, new_args);
+    return mk(pred, new_args);
 }
 
-std::ostream& operator<<(std::ostream &s, const FunAppPtr f) {
+std::ostream& operator<<(std::ostream &s, const FunAppPtr& f) {
     s << f->pred << " ::";
     for (const auto &x: f->args) {
         s << " " << theory::to_type(x);
@@ -104,11 +104,11 @@ const std::vector<Expr>& FunApp::get_args() const {
     return args;
 }
 
-bool Clause::CacheEqual::operator()(const Clause::Args &args1, const Clause::Args &args2) const noexcept {
+bool Clause::CacheEqual::operator()(const Args &args1, const Args &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t Clause::CacheHash::operator()(const Clause::Args &args) const noexcept {
+size_t Clause::CacheHash::operator()(const Args &args) const noexcept {
     size_t seed {0};
     boost::hash_combine(seed, std::get<0>(args));
     boost::hash_combine(seed, std::get<1>(args));
@@ -118,13 +118,13 @@ size_t Clause::CacheHash::operator()(const Clause::Args &args) const noexcept {
 
 ConsHash<Clause, Clause, Clause::CacheHash, Clause::CacheEqual, std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> Clause::cache;
 
-Clause::Clause(const std::optional<FunAppPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion): premise(premise), constraint(constraint), conclusion(conclusion) {}
+Clause::Clause(const std::optional<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion): premise(premise), constraint(constraint), conclusion(conclusion) {}
 
 Clause::~Clause() {
     cache.erase(premise, constraint, conclusion);
 }
 
-ClausePtr Clause::mk(const std::optional<FunAppPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion) {
+ClausePtr Clause::mk(const std::optional<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion) {
     return cache.from_cache(premise, constraint, conclusion);
 }
 
@@ -155,7 +155,7 @@ ClausePtr Clause::subs(const Subs &subs) const {
     const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto c) {
         return c->subs(subs);
     })};
-    return Clause::mk(prem, subs(constraint), concl);
+    return mk(prem, subs(constraint), concl);
 }
 
 ClausePtr Clause::rename_vars(const Renaming &subs) const {
@@ -165,7 +165,7 @@ ClausePtr Clause::rename_vars(const Renaming &subs) const {
     const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto c) {
         return c->rename_vars(subs);
     })};
-    return Clause::mk(prem, subs(constraint), concl);
+    return mk(prem, subs(constraint), concl);
 }
 
 VarSet Clause::vars() const {
@@ -184,11 +184,11 @@ VarSet Clause::vars() const {
     return res;
 }
 
-void CHCProblem::add_clause(const ClausePtr c) {
+void CHCProblem::add_clause(const ClausePtr& c) {
     clauses.insert(c);
 }
 
-void CHCProblem::remove_clause(const ClausePtr c) {
+void CHCProblem::remove_clause(const ClausePtr& c) {
     clauses.erase(c);
 }
 
@@ -275,7 +275,7 @@ linked_hash_map<std::string, std::vector<theory::Type>> CHCProblem::get_signatur
     return preds;
 }
 
-std::ostream& operator<<(std::ostream &s, const CHCPtr t) {
+std::ostream& operator<<(std::ostream &s, const CHCPtr& t) {
     for (const auto &c: t->get_clauses()) {
         s << c << std::endl;
     }

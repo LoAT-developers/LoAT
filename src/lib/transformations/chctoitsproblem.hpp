@@ -9,21 +9,20 @@
 
 class CHCToITS {
 
-private:
-
     CHCPtr chcs;
     ITSPtr its {std::make_shared<ITSProblem>()};
     std::vector<Arith::Var> vars;
+    std::vector<Arrays<Arith>::Var> avars;
     std::vector<Bools::Var> bvars;
     std::unordered_map<RulePtr, ClausePtr> clause_map;
     std::unordered_map<RulePtr, Renaming> renamings;
 
 public:
-    CHCToITS(CHCPtr chcs);
+    CHCToITS(const CHCPtr& chcs);
 
     CHCModel transform_model(const ITSModel &) const;
 
-    ClausePtr rule_to_clause(const RulePtr rule, const ClausePtr prototype) const;
+    ClausePtr rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const;
 
     CHCCex transform_cex(const ITSSafetyCex &);
 

@@ -331,14 +331,9 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
         templateSubs.put(var, c0 + n->toExpr() * c);
     }
     const auto buildRes = [&](const Complexity &cpx) {
-        ArithSubs subs;
+        std::optional<ModelPtr> subs;
         if (Config::Analysis::model && cpx != Complexity::Unknown) {
-            ArithSubs resSubs;
-            const auto model {solver->model()};
-            for (const auto &x: templateSubs.coDomainVars()) {
-                resSubs.put(x, arith::mkConst(model->get(x)));
-            }
-            subs = templateSubs.compose(resSubs);
+            subs = solver->model()->composeBackwards(Subs::build<Arith>(templateSubs));
         }
         return ComplexityWitness{.cpx = cpx, .subs = subs, .param = n};
     };

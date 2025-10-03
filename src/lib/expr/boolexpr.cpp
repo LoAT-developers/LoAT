@@ -2,7 +2,7 @@
 #include "theory.hpp"
 #include "conjunction.hpp"
 
-const Bools::Expr BoolExpr::from_cache(const BoolExprSet &children, const ConcatOperator op) {
+Bools::Expr BoolExpr::from_cache(const BoolExprSet &children, const ConcatOperator op) {
     return BoolJunction::from_cache(children, op);
 }
 
@@ -422,8 +422,6 @@ VarSet BoolExpr::vars() const {
     return res;
 }
 
-BoolExpr::~BoolExpr() {}
-
 LitSet BoolExpr::lits() const {
     LitSet res;
     collectLits(res);
@@ -474,7 +472,7 @@ Bools::Expr operator!(const Bools::Expr& a) {
 
 std::ostream& operator<<(std::ostream &s, const Bools::Expr &e) {
     if (e->isTheoryLit()) {
-        std::visit([&s](const auto lit){s << lit;}, *e->getTheoryLit());
+        std::visit([&s](const auto& lit){s << lit;}, *e->getTheoryLit());
     } else if (e->getChildren().empty()) {
         if (e->isAnd()) {
             s << "T";

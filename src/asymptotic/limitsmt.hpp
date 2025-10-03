@@ -3,12 +3,13 @@
 #include "arith.hpp"
 #include "boolexpr.hpp"
 #include "complexity.hpp"
+#include "model.hpp"
 
 namespace LimitSmtEncoding {
 
 struct ComplexityWitness {
     Complexity cpx;
-    ArithSubs subs;
+    std::optional<ModelPtr> subs;
     Arith::Var param;
 };
 

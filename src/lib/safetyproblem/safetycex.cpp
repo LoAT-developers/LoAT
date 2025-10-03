@@ -4,26 +4,8 @@
 
 SafetyCex::SafetyCex(SafetyProblem sp): sp(std::move(sp)) {}
 
-bool SafetyCex::is_valid_step(const ModelPtr &m) const {
-    if (states.size() != transitions.size()) {
-        return false;
-    }
-    if (transitions.empty()) {
-        return m->eval(sp.init());
-    }
-    const auto &last {states.back()};
-    for (const auto &x: sp.pre_vars()) {
-        if (!theory::apply(x, [&](const auto &x) {
-            return m->contains(x) && last->get(x->postVar(x)) == m->get(x);
-        })) {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool SafetyCex::try_step(const ModelPtr &m, const Bools::Expr& trans) {
-    if (!m->eval(trans) || !is_valid_step(m)) {
+    if (!m->eval(trans)) {
         return false;
     }
     states.push_back(m);
@@ -48,6 +30,14 @@ std::ostream& operator<<(std::ostream &s, const SafetyCex &cex) {
             ++id;
         }
     }
+    VarSet prog_vars;
+    for (const auto& b: {cex.sp.init(), cex.sp.err()}) {
+        for (const auto& x: b->vars()) {
+            if (theory::isProgVar(x)) {
+                prog_vars.insert(x);
+            }
+        }
+    }
     s << "init: " << cex.sp.init();
     s << "\n\nerr: " << cex.sp.err();
     s << "\n\nunsat core:" << std::endl;
@@ -57,12 +47,16 @@ std::ostream& operator<<(std::ostream &s, const SafetyCex &cex) {
     s << "\ncounterexample:" << std::endl;
     for (size_t i = 0; i < cex.transitions.size(); ++i) {
         const auto &trans {cex.transitions.at(i)};
-        const auto vars {trans->vars()};
-        const auto projection {cex.states.at(i)->project([&](const auto &x) {
-                return theory::isProgVar(x) || vars.contains(x);
-            })
-        };
-        s << "\t" << projection << "\n\t-" << transitions.at(trans) << "->\n";
+        auto vars {trans->vars()};
+        for (const auto& x: vars) {
+            if (theory::isProgVar(x)) {
+                prog_vars.insert(x);
+            }
+        }
+        vars.insertAll(prog_vars);
+        s << "\t";
+        cex.states.at(i)->print(s, vars);
+        s << "\n\t-" << transitions.at(trans) << "->\n";
     }
     return s << "\terr";
 }

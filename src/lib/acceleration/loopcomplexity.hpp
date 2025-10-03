@@ -9,9 +9,9 @@ struct LoopComplexity {
     unsigned foreign_vars {0};
     unsigned tmp_vars {0};
 
-    static LoopComplexity compute(const RulePtr rule);
+    static LoopComplexity compute(const RulePtr& rule);
 
-    static std::strong_ordering compare(const RulePtr r1, const RulePtr r2);
+    static std::strong_ordering compare(const RulePtr& r1, const RulePtr& r2);
 
 };
 

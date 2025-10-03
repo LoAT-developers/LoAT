@@ -113,8 +113,9 @@ public:
         std::get<typename T::Subs>(t).put(var, expr);
     }
 
-    Subs();
+    Subs() = default;
     explicit Subs(const Pair &p);
+    explicit Subs(const Renaming&);
 
     template<ITheory T>
     static Subs build(const T::Var var, const T::Expr expr) {
@@ -193,12 +194,12 @@ public:
     }
 
     template <ITheory T>
-    T::Subs& get() {
+    const T::Subs& get() const {
         return std::get<typename T::Subs>(t);
     }
 
     template <ITheory T>
-    const T::Subs& get() const {
+    T::Subs& get() {
         return std::get<typename T::Subs>(t);
     }
 
@@ -222,7 +223,6 @@ public:
     Subs concat(const Subs &that) const;
     Subs concat(const Renaming &that) const;
     Subs compose(const Subs &that) const;
-    void collectDomain(VarSet &res) const;
     void collectCoDomainVars(VarSet &res) const;
     void collectVars(VarSet &vars) const;
     VarSet vars() const;

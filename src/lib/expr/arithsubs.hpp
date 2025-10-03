@@ -9,31 +9,29 @@ class ArithSubs {
 
 public:
 
-    typedef typename linked_hash_map<ArithVarPtr, ArithExprPtr>::const_iterator const_iterator;
+    typedef linked_hash_map<ArithVarPtr, ArithExprPtr>::const_iterator const_iterator;
 
-    ArithSubs();
+    ArithSubs() = default;
 
     ArithSubs(std::initializer_list<std::pair<const ArithVarPtr, ArithExprPtr>> init);
 
-    ArithExprPtr get(const ArithVarPtr key) const;
+    ArithExprPtr get(const ArithVarPtr& key) const;
 
-    void put(const ArithVarPtr key, const ArithExprPtr val);
+    void put(const ArithVarPtr& key, const ArithExprPtr& val);
 
     const_iterator begin() const;
 
     const_iterator end() const;
 
-    bool contains(const ArithVarPtr e) const;
+    bool contains(const ArithVarPtr& e) const;
 
     bool empty() const;
 
     unsigned int size() const;
 
-    size_t erase(const ArithVarPtr key);
+    size_t erase(const ArithVarPtr& key);
 
     ArithSubs compose(const ArithSubs &that) const;
-
-    ArithSubs compose(const linked_hash_map<ArithVarPtr, Int> &that) const;
 
     ArithSubs concat(const ArithSubs &that) const;
 
@@ -45,7 +43,7 @@ public:
 
     ArithSubs project(const std::function<bool(ArithVarPtr)> &keep) const;
 
-    bool changes(const ArithVarPtr key) const;
+    bool changes(const ArithVarPtr& key) const;
 
     bool isLinear() const;
 
@@ -55,15 +53,13 @@ public:
 
     linked_hash_set<ArithVarPtr> coDomainVars() const;
 
-    void collectDomain(linked_hash_set<ArithVarPtr> &vars) const;
-
     void collectCoDomainVars(linked_hash_set<ArithVarPtr> &vars) const;
 
     void collectVars(linked_hash_set<ArithVarPtr> &vars) const;
 
     size_t hash() const;
 
-    ArithExprPtr operator()(const ArithExprPtr t) const;
+    ArithExprPtr operator()(const ArithExprPtr& t) const;
 
 private:
 

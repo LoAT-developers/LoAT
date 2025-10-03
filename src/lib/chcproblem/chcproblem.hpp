@@ -35,7 +35,7 @@ public:
     const std::string& get_pred() const;
     const std::vector<Expr>& get_args() const;
 
-    friend std::ostream& operator<<(std::ostream &s, const FunAppPtr);
+    friend std::ostream& operator<<(std::ostream &s, const FunAppPtr&);
     FunAppPtr subs(const Subs &subs) const;
     FunAppPtr rename_vars(const Renaming &) const;
 
@@ -57,13 +57,11 @@ using ClausePtr = cpp::not_null<std::shared_ptr<const Clause>>;
 
 class Clause {
 
-private:
-
     std::optional<FunAppPtr> premise {};
     Bools::Expr constraint;
     std::optional<FunAppPtr> conclusion {};
 
-    friend std::ostream& operator<<(std::ostream &s, const ClausePtr f);
+    friend std::ostream& operator<<(std::ostream &s, const ClausePtr& c);
 
     using Args = std::tuple<std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
 
@@ -77,14 +75,13 @@ private:
 
 public:
 
-    Clause(const std::optional<FunAppPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion);
+    Clause(const std::optional<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion);
     ~Clause();
 
-    static ClausePtr mk(const std::optional<FunAppPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion);
+    static ClausePtr mk(const std::optional<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion);
 
     bool is_fact() const;
     bool is_query() const;
-    bool is_left_linear() const;
     std::optional<FunAppPtr> get_premise() const;
     std::optional<FunAppPtr> get_conclusion() const;
     Bools::Expr get_constraint() const;
@@ -113,11 +110,10 @@ public:
 
     CHCProblem() = default;
 
-    void add_clause(const ClausePtr c);
-    void remove_clause(const ClausePtr c);
+    void add_clause(const ClausePtr& c);
+    void remove_clause(const ClausePtr& c);
     const linked_hash_set<ClausePtr> &get_clauses() const;
     sexpresso::Sexp to_smtlib() const;
-    CHCProblem reverse() const;
     linked_hash_map<std::string, std::vector<theory::Type>> get_signature() const;
 
     template <ITheory T>

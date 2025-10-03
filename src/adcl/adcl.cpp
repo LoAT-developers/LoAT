@@ -11,12 +11,11 @@
 
 #include <random>
 #include <unordered_set>
+#include <utility>
 
 namespace adcl {
 
 using ::operator<<;
-
-LearningState::LearningState() {}
 
 std::optional<Succeeded> LearningState::succeeded() {
     return {};
@@ -29,8 +28,6 @@ std::optional<Covered> LearningState::covered() {
 std::optional<Dropped> LearningState::dropped() {
     return {};
 }
-
-Dropped::Dropped() {}
 
 std::optional<Dropped> Dropped::dropped() {
     return *this;
@@ -48,9 +45,7 @@ std::optional<ProvedUnsat> LearningState::unsat() {
     return {};
 }
 
-LearningState::~LearningState() {}
-
-Succeeded::Succeeded(const LearnedClauses &learned): learned(learned) {}
+Succeeded::Succeeded(LearnedClauses learned): learned(std::move(learned)) {}
 
 std::optional<Succeeded> Succeeded::succeeded() {
     return *this;
@@ -72,8 +67,6 @@ std::optional<Restart> Restart::restart() {
     return *this;
 }
 
-Unroll::Unroll() {}
-
 Unroll::Unroll(unsigned max, const bool accel_failed): max(max), accel_failed(accel_failed) {}
 
 std::optional<unsigned> Unroll::get_max() const {
@@ -92,8 +85,6 @@ std::optional<ProvedUnsat> ProvedUnsat::unsat() {
     return *this;
 }
 
-ProvedUnsat::ProvedUnsat() {}
-
 ADCL::ADCL(const ITSPtr& chcs, const std::function<void(const ITSCpxCex&)> &print_cpx_cex):
     chcs(chcs),
     drop(true),
@@ -103,20 +94,13 @@ ADCL::ADCL(const ITSPtr& chcs, const std::function<void(const ITSCpxCex&)> &prin
     solver->enableModels();
 }
 
-Step::Step(const RulePtr& transition, const Bools::Expr& sat, const Renaming& var_renaming,
-           const Renaming& tmp_var_renaming, const RulePtr& resolvent) :
-    clause_idx(transition),
-    implicant(sat),
-    var_renaming(var_renaming),
-    tmp_var_renaming(tmp_var_renaming),
-    resolvent(resolvent) {}
-
-Step::Step(const Step &that):
-    clause_idx(that.clause_idx),
-    implicant(that.implicant),
-    var_renaming(that.var_renaming),
-    tmp_var_renaming(that.tmp_var_renaming),
-    resolvent(that.resolvent) {}
+Step::Step(RulePtr transition, Bools::Expr sat, Renaming var_renaming,
+           Renaming tmp_var_renaming, RulePtr resolvent) :
+    clause_idx(std::move(transition)),
+    implicant(std::move(sat)),
+    var_renaming(std::move(var_renaming)),
+    tmp_var_renaming(std::move(tmp_var_renaming)),
+    resolvent(std::move(resolvent)) {}
 
 std::ostream& operator<<(std::ostream &s, const Step &step) {
     return s << step.clause_idx << "[" << step.implicant << "]";
@@ -213,7 +197,7 @@ void ADCL::add_to_trace(const Step &step) {
     blocked_clauses.emplace_back();
 }
 
-void ADCL::set_cpx_witness(const RulePtr& witness, const ArithSubs &subs, const Arith::Var &param) {
+void ADCL::set_cpx_witness(const RulePtr& witness, const ModelPtr &subs, const Arith::Var &param) {
     if (trace.size() > 1) {
         std::vector<RulePtr> rules;
         for (const auto &t: trace) {
@@ -244,7 +228,7 @@ void ADCL::update_cpx() {
         this->cpx = cpx;
         std::cout << this->cpx.toWstString() << std::endl;
         if (Config::Analysis::model) {
-            set_cpx_witness(resolvent, subs, param);
+            set_cpx_witness(resolvent, *subs, param);
         }
         if (Config::Analysis::log) {
             std::cout << this->cpx.toString() << std::endl;
@@ -416,7 +400,7 @@ Automaton ADCL::build_language(const int backlink) const {
     return lang;
 }
 
-std::pair<RulePtr, ModelPtr> ADCL::build_loop(const int backlink) {
+std::pair<RulePtr, ModelPtr> ADCL::build_loop(const int backlink) const {
     std::vector<RulePtr> rules;
     for (size_t i = backlink; i < trace.size(); ++i) {
         rules.emplace_back(trace[i].clause_idx->withGuard(trace[i].implicant)->renameVars(trace[i].tmp_var_renaming));
@@ -432,7 +416,7 @@ std::pair<RulePtr, ModelPtr> ADCL::build_loop(const int backlink) {
     return {loop, model};
 }
 
-void ADCL::add_learned_clause(const RulePtr& accel, const unsigned backlink) {
+void ADCL::add_learned_clause(const RulePtr& accel, const unsigned backlink) const {
     const auto fst = trace.at(backlink).clause_idx;
     const auto last = trace.back().clause_idx;
     chcs->addLearnedRule(accel, fst, last);
@@ -446,10 +430,9 @@ bool ADCL::is_orig_clause(const RulePtr& idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-std::optional<RulePtr> ADCL::instantiate(const Arith::Var n, const RulePtr rule) const {
+std::optional<RulePtr> ADCL::instantiate(const Arith::Var& n, const RulePtr& rule) {
     std::optional<RulePtr> res{};
-    VarEliminator ve(rule->getGuard(), n, theory::isProgVar);
-    for (const auto &s : ve.getRes()) {
+    for (const auto &s : VarEliminator(rule->getGuard(), n, theory::isProgVar).getRes()) {
         if (s.get(n)->isRational()) continue;
         if (res) {
             return {};
@@ -462,12 +445,11 @@ std::optional<RulePtr> ADCL::instantiate(const Arith::Var n, const RulePtr rule)
 ITSCex* ADCL::the_cex() {
     if (Config::Analysis::mode == Config::Analysis::Complexity) {
         return &cpx_cex;
-    } else {
-        return &cex;
     }
+    return &cex;
 }
 
-std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const ModelPtr &model, const unsigned backlink) {
+std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const unsigned backlink) {
     const auto simp {Preprocess::preprocessRule(rule)};
     if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -491,13 +473,13 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
         Config::Accel::non_linear,
         n,
         chcs->getCost(simp)};
-    const auto accel_res {LoopAcceleration::accelerate(simp, config)};
-    if (accel_res.status == acceleration::PseudoLoop) {
+    const auto [status, accel, nonterm, prefix, period] {LoopAcceleration::accelerate(simp, config)};
+    if (status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
-    LearnedClauses res{.res = {}, .prefix = accel_res.prefix, .period = accel_res.period};
-    if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
-        const auto query {chcs->addQuery(accel_res.nonterm, trace.at(backlink).clause_idx)};
+    LearnedClauses res{.res = {}, .prefix = prefix, .period = period};
+    if (Config::Analysis::tryNonterm() && nonterm != bot()) {
+        const auto query {chcs->addQuery(nonterm, trace.at(backlink).clause_idx)};
         res.res.emplace_back(query);
         if (Config::Analysis::model) {
             the_cex()->add_recurrent_set(rule, query);
@@ -506,10 +488,9 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
             std::cout << "found certificate of non-termination: " << query << std::endl;
         }
     }
-    if (accel_res.accel) {
+    if (accel) {
         // acceleration succeeded, simplify the result
-        auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)};
-        if (simplified->getUpdate() != simp->getUpdate()) {
+        if (auto simplified {Preprocess::preprocessRule(accel->rule)}; simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
                 if (const auto inst {instantiate(n, simplified)}) {
@@ -528,31 +509,29 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
     }
     if (res.res.empty()) {
         if (Config::Analysis::log) {
-            std::cout << "acceleration failed, status: " << accel_res.status << std::endl;
+            std::cout << "acceleration failed, status: " << status << std::endl;
         }
         return std::make_unique<Unroll>(1, true);
-    } else {
-        if (Config::Analysis::model) {
-            std::vector<RulePtr> rules;
-            for (unsigned i = backlink; i < trace.size(); ++i) {
-                const auto e{trace.at(i)};
-                if (is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx->getGuard()) {
-                    const auto imp{e.clause_idx->withGuard(e.implicant)->renameVars(e.tmp_var_renaming)};
-                    the_cex()->add_implicant(e.clause_idx, imp);
-                    rules.emplace_back(imp);
-                } else {
-                    rules.emplace_back(e.clause_idx);
-                }
-            }
-            if (rules.size() > 1) {
-                the_cex()->add_resolvent(rules, rule);
+    }
+    if (Config::Analysis::model) {
+        std::vector<RulePtr> rules;
+        for (unsigned i = backlink; i < trace.size(); ++i) {
+            if (const auto e{trace.at(i)}; is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx->getGuard()) {
+                const auto imp{e.clause_idx->withGuard(e.implicant)->renameVars(e.tmp_var_renaming)};
+                the_cex()->add_implicant(e.clause_idx, imp);
+                rules.emplace_back(imp);
+            } else {
+                rules.emplace_back(e.clause_idx);
             }
         }
-        return std::make_unique<Succeeded>(res);
+        if (rules.size() > 1) {
+            the_cex()->add_resolvent(rules, rule);
+        }
     }
+    return std::make_unique<Succeeded>(res);
 }
 
-bool ADCL::check_consistency() {
+bool ADCL::check_consistency() const {
     // make sure that a model is available
     bool res {true};
     switch (solver->check()) {
@@ -595,7 +574,7 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
         std::cout << closure << std::endl;
     }
     const auto [loop, model] {build_loop(backlink)};
-    auto state {learn_clause(loop, model, backlink)};
+    auto state {learn_clause(loop, backlink)};
     redundancy->mark_as_accelerated(closure);
     if (!state->succeeded()) {
         if (state->unroll()) {
@@ -614,51 +593,51 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
         return state;
     }
     const auto accel_state {*state->succeeded()};
-    const auto learned_clauses {*accel_state};
-    bool do_drop {drop || (backlink == trace.size() - 1  && learned_clauses.prefix <= 1 && learned_clauses.period == 1)};
+    const auto& [res, prefix, period] {*accel_state};
+    const bool do_drop {drop || (backlink == trace.size() - 1  && prefix <= 1 && period == 1)};
     if (do_drop) {
         drop_until(backlink);
     }
     bool done {!do_drop};
     if (Config::Analysis::log) {
-        std::cout << "prefix: " << learned_clauses.prefix << ", period: " << learned_clauses.period << std::endl;
+        std::cout << "prefix: " << prefix << ", period: " << period << std::endl;
     }
-    for (const auto &idx: learned_clauses.res) {
+    for (const auto &idx: res) {
         redundancy->set_language(idx, closure);
         if (!done && store_step(idx, idx)) {
             if (chcs->isSinkTransition(idx)) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
-                    set_cpx_witness(trace.back().resolvent, Arith::modelToSubs(solver->model().get<Arith>()), Arith::next());
+                    set_cpx_witness(trace.back().resolvent, solver->model(), Arith::next());
                 }
                 return std::make_unique<ProvedUnsat>();
-            } else {
-                update_cpx();
-                done = true;
             }
+            update_cpx();
+            done = true;
         }
     }
     if (done) {
         redundancy->mark_as_redundant(closure);
         return state;
-    } else {
-        // unroll once if we dropped the loop
-        redundancy->concat(closure, closure);
-        redundancy->mark_as_redundant(closure);
-        if (Config::Analysis::log) std::cout << "applying accelerated rule failed" << std::endl;
-        return std::make_unique<Dropped>();
     }
+    // unroll once if we dropped the loop
+    redundancy->concat(closure, closure);
+    redundancy->mark_as_redundant(closure);
+    if (Config::Analysis::log) std::cout << "applying accelerated rule failed" << std::endl;
+    return std::make_unique<Dropped>();
 }
 
 bool ADCL::try_to_finish() {
-    const auto clauses = trace.empty() ? chcs->getInitialTransitions() : chcs->getSuccessors(trace.back().clause_idx);
-    for (const auto &q: clauses) {
+    for (const auto clauses =
+             trace.empty()
+                 ? chcs->getInitialTransitions()
+                 : chcs->getSuccessors(trace.back().clause_idx);
+         const auto& q : clauses) {
         if (chcs->isSinkTransition(q)) {
             solver->push();
-            const auto implicant {resolve(q)};
-            if (implicant) {
+            if (const auto implicant {resolve(q)}) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
                     const auto resolvent {compute_resolvent(q, (*implicant)->getGuard())};
-                    set_cpx_witness(resolvent, Arith::modelToSubs(solver->model().get<Arith>()), Arith::next());
+                    set_cpx_witness(resolvent, solver->model(), Arith::next());
                 }
                 add_to_trace(Step(q, (*implicant)->getGuard(), Renaming(), Renaming(), Rule::mk(top(), Subs())));
                 print_state();
@@ -676,27 +655,21 @@ ITSSafetyCex ADCL::get_cex() {
     cex.set_initial_state(model);
     for (size_t i = 0; i + 1 < trace.size(); ++i) {
         const auto &t {trace.at(i)};
-        if (!cex.try_step(t.clause_idx->withGuard(t.implicant), model->composeBackwards(t.var_renaming))) {
-            throw std::logic_error("get_cex failed");
-        }
+        cex.do_step(t.clause_idx->withGuard(t.implicant), model->composeBackwards(t.var_renaming));
     }
     const auto &last {trace.back()};
-    if (!cex.try_final_transition(last.clause_idx->withGuard(last.implicant))) {
-        throw std::logic_error("get_cex failed");
-    }
+    cex.add_final_transition(last.clause_idx->withGuard(last.implicant));
     return cex;
 }
 
-unsigned ADCL::get_penalty(const RulePtr idx) const {
-    const auto it {penalty.find(idx)};
-    if (it != penalty.end()) {
+unsigned ADCL::get_penalty(const RulePtr& idx) const {
+    if (const auto it {penalty.find(idx)}; it != penalty.end()) {
         return it->second;
-    } else {
-        return 0;
     }
+    return 0;
 }
 
-void ADCL::bump_penalty(const RulePtr idx) {
+void ADCL::bump_penalty(const RulePtr& idx) {
     penalty.emplace(idx, 0).first->second++;
 }
 
@@ -708,22 +681,24 @@ SmtResult ADCL::analyze() {
     blocked_clauses[0].clear();
     do {
         ++luby_count;
-        size_t next_restart = luby_unit * luby.second;
+        const size_t next_restart = luby_unit * luby.second;
         std::unique_ptr<LearningState> state;
         if (!trace.empty()) {
             for (auto backlink = has_looping_suffix(trace.size() - 1);
                  backlink;
                  backlink = has_looping_suffix(*backlink - 1)) {
                 auto step {trace[*backlink]};
-                auto simple_loop {*backlink == trace.size() - 1};
+                const auto simple_loop {*backlink == trace.size() - 1};
                 state = handle_loop(*backlink);
                 if (state->restart()) {
                     break;
-                } else if (state->covered()) {
+                }
+                if (state->covered()) {
                     backtrack();
                     print_state();
                     break;
-                } else if (state->succeeded()) {
+                }
+                if (state->succeeded()) {
                     if (simple_loop) {
                         block(step);
                     }
@@ -731,17 +706,21 @@ SmtResult ADCL::analyze() {
                     if ((drop || simple_loop) && try_to_finish()) {
                         return SmtResult::Unsat;
                     }
-                } else if (state->dropped()) {
+                    continue;
+                }
+                if (state->dropped()) {
                     if (simple_loop) {
                         block(step);
                     }
                     print_state();
                     break;
-                } else if (state->unsat()) {
+                }
+                if (state->unsat()) {
                     print_state();
                     unsat();
                     return SmtResult::Unsat;
-                } else if (state->unroll() && state->unroll()->acceleration_failed()) {
+                }
+                if (state->unroll() && state->unroll()->acceleration_failed()) {
                     // stop searching for longer loops if the current one was already too complicated
                     break;
                 }
@@ -763,15 +742,12 @@ SmtResult ADCL::analyze() {
                 ++it;
             }
         }
-        std::vector<RulePtr> to_try(try_set.begin(), try_set.end());
-        std::sort(to_try.begin(), to_try.end(), [this](const RulePtr x, const RulePtr y){
-            const auto p1 {get_penalty(x)};
-            const auto p2 {get_penalty(y)};
-            if (p1 != p2) {
+        std::vector to_try(try_set.begin(), try_set.end());
+        std::ranges::sort(to_try, [this](const RulePtr& x, const RulePtr& y){
+            if (const auto p1 {get_penalty(x)}, p2 {get_penalty(y)}; p1 != p2) {
                 return p1 < p2;
-            } else {
-                return x->getId() < y->getId();
             }
+            return x->getId() < y->getId();
         });
         bool all_failed {true};
         for (const auto &idx: to_try) {
@@ -783,16 +759,18 @@ SmtResult ADCL::analyze() {
                 update_cpx();
                 all_failed = false;
                 break;
-            } else {
-                bump_penalty(idx);
             }
+            bump_penalty(idx);
         }
         if (trace.empty()) {
             break;
-        } else if (all_failed) {
+        }
+        if (all_failed) {
             backtrack();
             print_state();
-        } else if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
+            continue;
+        }
+        if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
             return SmtResult::Unsat;
         }
     } while (true);

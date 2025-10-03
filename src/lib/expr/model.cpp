@@ -1,21 +1,39 @@
 #include "model.hpp"
 
+#include <utility>
+
+Model::Model(Subs p_subs): subs(std::move(p_subs)) {}
+
 ModelPtr Model::composeBackwards(const Renaming &subs) const {
-    auto res {clone()};
-    res->renaming = renaming.compose(subs);
-    return res;
+    return composeBackwards(Subs(subs));
+}
+
+ModelPtr Model::composeBackwards(const Subs &subs) const {
+    return withSubs(subs.compose(this->subs));
 }
 
 Arith::Const Model::get(const Arith::Var &var) {
-    return getImpl(renaming.get<Arith>(var));
+    return eval(subs.get<Arith>(var));
 }
 
 Bools::Const Model::get(const Bools::Var &var) {
-    return getImpl(renaming.get<Bools>(var));
+    return eval(subs.get<Bools>(var));
 }
 
 Arith::Const Model::get(const ArrayReadPtr<Arith> &read) {
-    return getImpl(renaming(read));
+    return getImpl(subs.get(read));
+}
+
+bool Model::eval(const Lit& lit) {
+    return evalImpl(subs(lit));
+}
+
+Bools::Const Model::eval(const Bools::Expr& e) {
+    return evalImpl(subs(e));
+}
+
+Arith::Const Model::eval(const Arith::Expr& e) {
+    return evalImpl(subs.get<Arith>()(e));
 }
 
 bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
@@ -75,12 +93,7 @@ Bools::Expr Model::syntacticImplicant(const Bools::Expr& e) {
     return bools::mkAnd(res);
 }
 
-std::ostream &operator<<(std::ostream &s, const ModelPtr &e) {
-    e->print(s);
-    return s;
-}
-
-Arith::Const Model::eval(const Arith::Expr &e) {
+Arith::Const Model::evalImpl(const Arith::Expr &e) {
 #if DEBUG
     assert(e->isIntegral());
 #endif
@@ -95,4 +108,18 @@ bool Model::contains(const Var& var) const {
     return theory::apply(var, [&](const auto& var) {
         return this->contains(var);
     });
+}
+
+void Model::print(std::ostream& s, const VarSet& xs) {
+    s << "[";
+    auto first {true};
+    for (const auto &x: xs) {
+        if (first) {
+            first = false;
+        } else {
+            s << ", ";
+        }
+        print(s, subs.get(x));
+    }
+    s << "]";
 }

@@ -6,18 +6,12 @@
 #include "itstosafetyproblem.hpp"
 #include "linkedhashmap.hpp"
 #include "optional.hpp"
-#include "pair.hpp"
-#include "realmbp.hpp"
 #include "theory.hpp"
-#include "safetycex.hpp"
 #include "eliminate.h"
 #include "realqe.hpp"
 #include "loopacceleration.hpp"
-#include "rulepreprocessing.hpp"
 
-ADCLSat::~ADCLSat(){}
-
-ADCLSat::ADCLSat(const ITSPtr its, const Config::TRPConfig &config): TRPUtil(its, config) {
+ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(its, config) {
     linked_hash_map<Bools::Expr, Bools::Expr> map;
     for (const auto &[id,trans]: rule_map) {
         const auto encoded {encode_transition(trans, id)};
@@ -49,8 +43,8 @@ std::optional<unsigned> ADCLSat::has_looping_suffix() {
     for (unsigned start = last; start + 1 > 0; --start) {
         if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || trace[start].id <= last_orig_clause)) {
             if (start == last) {
-                const auto loop{trace[start].implicant};
-                if (SmtFactory::check(get_subs(0, 1)(loop) && get_subs(1, 1)(loop)) == SmtResult::Unsat) {
+                if (const auto loop{trace[start].implicant};
+                    SmtFactory::check(get_subs(0, 1)(loop) && get_subs(1, 1)(loop)) == SmtResult::Unsat) {
                     continue;
                 }
             }
@@ -69,16 +63,16 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
     }
 }
 
-bool ADCLSat::handle_loop(const unsigned start) {
+void ADCLSat::handle_loop(const unsigned start) {
     const auto range {Range::from_interval(start, trace.size() - 1)};
     auto [loop, model]{specialize(range, theory::isTempVar)};
     solver->pop();
-    if (TRPUtil::add_blocking_clauses(range, model)) {
+    if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
         }
         trace.pop_back();
-        return true;
+        return;
     }
     if (Config::Analysis::log) {
         std::cout << "***** Accelerate *****" << std::endl;
@@ -97,7 +91,7 @@ bool ADCLSat::handle_loop(const unsigned start) {
     } else {
         ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
         id = add_learned_clause(range, ti);
-        model.put<Arith>(n, 1);
+        model->put(n, 1);
         projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
             return x == Var(n);
         });
@@ -122,7 +116,6 @@ bool ADCLSat::handle_loop(const unsigned start) {
         add_blocking_clause(range, id, projected);
     }
     trace.pop_back();
-    return true;
 }
 
 std::optional<SmtResult> ADCLSat::do_step() {
@@ -132,7 +125,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
             std::cout << e.implicant << std::endl;
         }
     }
-    std::optional<Bools::Expr> last =
+    const std::optional<Bools::Expr> last =
         trace.empty()
             ? std::optional<Bools::Expr>{}
             : std::optional{encode_transition(rule_map.at(trace.back().id), trace.back().id)};
@@ -159,11 +152,8 @@ std::optional<SmtResult> ADCLSat::do_step() {
             std::cout << "found loop starting at " << start << std::endl;
         }
         backtracking = true;
-        if (!handle_loop(*start)) {
-            return SmtResult::Unknown;
-        } else {
-            return {};
-        }
+        handle_loop(*start);
+        return {};
     }
     const auto subs{get_subs(trace.size(), 1)};
     solver->push();
@@ -201,14 +191,14 @@ std::optional<SmtResult> ADCLSat::do_step() {
     backtracking = false;
     model = solver->model();
     solver->pop();
-    const auto id{model.get<Arith>(subs.get<Arith>(trace_var))};
+    const auto id{(*model)->get(subs.get<Arith>(trace_var))};
     if (Config::Analysis::log) {
         std::cout << "***** Step *****" << std::endl;
         std::cout << "with " << id << std::endl;
     }
     const auto trans{rule_map.at(id)};
-    const auto m{model.composeBackwards(subs)};
-    const auto imp{m.syntacticImplicant(trans)};
+    const auto m{(*model)->composeBackwards(subs)};
+    const auto imp{m->syntacticImplicant(trans)};
     solver->push();
     solver->add(subs(imp));
     const auto smt_res{solver->check()};

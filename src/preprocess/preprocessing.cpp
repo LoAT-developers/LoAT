@@ -117,17 +117,8 @@ std::optional<SmtResult> Preprocessor::check_empty_clauses(const ITSPtr& its) {
             if (const auto smt_res {solver->check()}; smt_res == SmtResult::Sat) {
                 if (Config::Analysis::model) {
                     const auto cells {r->getGuard()->cells()};
-                    Valuation valuation;
-                    const auto model {solver->model()};
-                    for (const auto& cell : cells) {
-                        theory::apply(cell, [&](const auto& cell) {
-                            valuation.put(cell, model->get(cell));
-                        });
-                    }
-                    cex.set_initial_state(valuation);
-                    if (!cex.try_final_transition(r)) {
-                        throw std::logic_error("constructing cex failed");
-                    }
+                    cex.set_initial_state(solver->model());
+                    cex.add_final_transition(r);
                 }
                 return SmtResult::Unsat;
             } else if (smt_res == SmtResult::Unsat) {

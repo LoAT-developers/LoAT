@@ -6,7 +6,6 @@
 #include "loattransitiontoitsconverter.hpp"
 #include "loatconfig.hpp"
 #include "loatresult.hpp"
-#include "optional.hpp"
 #include "loatmodel.hpp"
 #include "loatcex.hpp"
 
@@ -15,7 +14,6 @@
 
 class LoatSolver
 {
-private:
     LoatConfig m_config;
     std::vector<LoatTransition> m_transitions;
     LoatTransitionToITSConverter m_converter;
@@ -32,7 +30,7 @@ public:
     // Takes a LoatConfig object as parameter.
     // Stores it internally (copied/moved into the solver).
     // Immediately applies the configuration to the global Config namespace,
-    LoatSolver(const LoatConfig &config)
+    explicit LoatSolver(const LoatConfig &config)
         : m_config(config)
     {
         m_config.applyToGlobalConfig();
@@ -66,10 +64,10 @@ public:
     // Returns a solver to proof termination
     static LoatSolver forTermination()
     {
-        LoatConfig::InitialConfig init(
+        const LoatConfig::InitialConfig init(
             LoatConfig::InitialConfig::Engine::TRL,
             LoatConfig::InitialConfig::Mode::Termination,
-            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::SmtSolver::Swine,
             LoatConfig::InitialConfig::Direction::Forward,
             LoatConfig::InitialConfig::MbpKind::IntMbp,
             false // proof
@@ -77,13 +75,13 @@ public:
         return LoatSolver(LoatConfig(init));
     }
 
-    // Returns a solver to proof non termination
+    // Returns a solver to proof non-termination
     static LoatSolver forNonTermination()
     {
-        LoatConfig::InitialConfig init(
+        const LoatConfig::InitialConfig init(
             LoatConfig::InitialConfig::Engine::ADCL,
             LoatConfig::InitialConfig::Mode::Termination,
-            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::SmtSolver::Swine,
             LoatConfig::InitialConfig::Direction::Forward,
             LoatConfig::InitialConfig::MbpKind::IntMbp,
             false);
@@ -93,10 +91,10 @@ public:
     // Returns a solver to proof safety
     static LoatSolver forSafety()
     {
-        LoatConfig::InitialConfig init(
+        const LoatConfig::InitialConfig init(
             LoatConfig::InitialConfig::Engine::ABMC,
             LoatConfig::InitialConfig::Mode::Safety,
-            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::SmtSolver::Swine,
             LoatConfig::InitialConfig::Direction::Forward,
             LoatConfig::InitialConfig::MbpKind::IntMbp,
             false);
@@ -106,10 +104,10 @@ public:
     // Returns a solver to proof unsafety
     static LoatSolver forUnsafety()
     {
-        LoatConfig::InitialConfig init(
+        const LoatConfig::InitialConfig init(
             LoatConfig::InitialConfig::Engine::BMC,
             LoatConfig::InitialConfig::Mode::Safety,
-            LoatConfig::InitialConfig::SmtSolver::Z3,
+            LoatConfig::InitialConfig::SmtSolver::Swine,
             LoatConfig::InitialConfig::Direction::Forward,
             LoatConfig::InitialConfig::MbpKind::IntMbp,
             false);
@@ -118,7 +116,7 @@ public:
 
 private:
     // Re-applys dynamic config after updates (if needed)
-    void refreshConfig();
+    void refreshConfig() const;
 
     // Creates an its with the given members of the class
     void produceITS();

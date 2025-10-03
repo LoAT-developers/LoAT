@@ -52,27 +52,27 @@ void SafetyProblem::replace_transition(const Bools::Expr &old_trans, const Bools
     transitions.insert(new_trans);
 }
 
-void SafetyProblem::add_transition(const Bools::Expr e) {
+void SafetyProblem::add_transition(const Bools::Expr& e) {
     transitions.insert(e);
 }
 
-void SafetyProblem::set_init(const Bools::Expr e) {
+void SafetyProblem::set_init(const Bools::Expr& e) {
     initial_states = e;
 }
 
-void SafetyProblem::set_err(const Bools::Expr e) {
+void SafetyProblem::set_err(const Bools::Expr& e) {
     error_states = e;
 }
 
-void SafetyProblem::add_edge(const Bools::Expr from, const Bools::Expr to) {
+void SafetyProblem::add_edge(const Bools::Expr& from, const Bools::Expr& to) {
     graph.addEdge(from, to);
 }
 
-void SafetyProblem::mark_initial_transition(const Bools::Expr t) {
+void SafetyProblem::mark_initial_transition(const Bools::Expr& t) {
     graph.markRoot(t);
 }
 
-void SafetyProblem::mark_sink_transition(const Bools::Expr t) {
+void SafetyProblem::mark_sink_transition(const Bools::Expr& t) {
     graph.markSink(t);
 }
 

@@ -36,6 +36,17 @@ bool isProgVar(const Var &var) {
     return std::visit([](const auto &var){return var->isProgVar();}, var);
 }
 
+Expr toExpr(const Var& var) {
+    return theory::apply(
+        var,
+        [](const Bools::Var& var) {
+            return Expr(bools::mkLit(bools::mk(var)));
+        },
+        [](const auto& var) {
+            return Expr(var);
+        });
+}
+
 bool isPostVar(const Var &var) {
     return std::visit([](const auto &var){return var->isPostVar();}, var);
 }

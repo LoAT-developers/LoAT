@@ -6,7 +6,7 @@
 
 class SafetyProblem {
 
-    linked_hash_set<Bools::Expr> transitions;
+    BoolExprSet transitions;
     VarSet pre_variables;
     VarSet post_variables;
     Renaming m_pre_to_post;
@@ -18,7 +18,7 @@ public:
 
     SafetyProblem();
 
-    const linked_hash_set<Bools::Expr> &trans() const;
+    const BoolExprSet &trans() const;
     void replace_transition(const Bools::Expr &old_trans, const Bools::Expr &new_trans);
     const VarSet& pre_vars() const;
     const VarSet& post_vars() const;
@@ -27,13 +27,13 @@ public:
     CellSet cells() const;
     Bools::Expr init() const;
     Bools::Expr err() const;
-    void add_transition(const Bools::Expr e);
-    void add_edge(const Bools::Expr from, const Bools::Expr to);
-    void mark_initial_transition(const Bools::Expr t);
-    void mark_sink_transition(const Bools::Expr t);
+    void add_transition(const Bools::Expr& e);
+    void add_edge(const Bools::Expr& from, const Bools::Expr& to);
+    void mark_initial_transition(const Bools::Expr& t);
+    void mark_sink_transition(const Bools::Expr& t);
     const DependencyGraph<Bools::Expr> &get_dg() const;
-    void set_init(const Bools::Expr e);
-    void set_err(const Bools::Expr e);
+    void set_init(const Bools::Expr& e);
+    void set_err(const Bools::Expr& e);
     void add_pre_var(const Var &x);
     void add_post_var(const Var &x);
 

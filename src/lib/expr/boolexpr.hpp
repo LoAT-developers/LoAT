@@ -36,7 +36,7 @@ class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
     friend class BoolJunction;
     friend class Renaming;
 
-    static const Bools::Expr from_cache(const BoolExprSet &children, ConcatOperator op);
+    static Bools::Expr from_cache(const BoolExprSet &children, ConcatOperator op);
 
     template <class Lits>
     static Bools::Expr buildFromLits(const Lits& lits, ConcatOperator op);
@@ -101,7 +101,7 @@ public:
 
     VarSet vars() const;
     CellSet cells() const;
-    virtual ~BoolExpr();
+    virtual ~BoolExpr() = default;
     LitSet lits() const;
     bool isLinear() const;
     bool isPoly() const;

@@ -87,6 +87,7 @@ find_required_library(YICES yices "Yices")
 find_required_library(POLY poly "Poly")
 find_required_library(POLYXX polyxx "PolyXX")
 find_required_library(CUDD cudd "CUDD")
+find_required_library(Z3 z3 "Z3")
 find_required_library(SWINE swine-z3 "Swine Z3")
 find_required_library(CLN cln "CLN")
 find_required_library(GMP gmp "GMP")
@@ -235,6 +236,7 @@ target_include_directories(${Loat_API} PRIVATE
 target_link_libraries(${Loat_API} PUBLIC Boost::boost
   ${FAUDES}
   ${SWINE}
+  ${Z3}
   ${YICES}
   ${POLYXX}
   ${POLY}

@@ -11,7 +11,7 @@ public:
     void push() override;
     void pop() override;
     SmtResult check() override;
-    ModelPtr model(const std::optional<const VarSet> &vars) override;
+    ModelPtr model() override;
     void enableModels() override;
     void resetSolver() override;
     ~Swine() override = default;

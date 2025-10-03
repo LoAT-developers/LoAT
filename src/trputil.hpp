@@ -44,7 +44,7 @@ protected:
     const Config::TRPConfig::MbpKind mbp_kind;
     ITSToSafety its2safety;
     SafetyProblem t;
-    ModelPtr model;
+    std::optional<ModelPtr> model;
     const Arith::Var trace_var {ArithVar::next()};
     linked_hash_map<Int, std::vector<std::pair<Int, Bools::Expr>>> learned_to_loop;
     Int next_id {0};

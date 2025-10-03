@@ -310,7 +310,7 @@ Bools::Expr ABMC::encode_transition(const RulePtr& idx, const bool with_id) {
 
 void ABMC::build_trace() {
     trace.clear();
-    std::vector<Valuation> run;
+    std::vector<ModelPtr> run;
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
         const auto s {subs.at(d)};
@@ -319,16 +319,7 @@ void ABMC::build_trace() {
         const auto rule {rule_map.at(m->get(trace_var))};
         const auto imp {m->syntacticImplicant(rule->getGuard())};
         if (Config::Analysis::log) {
-            auto run_cells {rule->cells()};
-            run_cells.insert(n);
-            run_cells.insert(trace_var);
-            Valuation val;
-            for (const auto& cell : run_cells) {
-                theory::apply(cell, [&](const auto& cell) {
-                    val.put(cell, m->get(cell));
-                });
-            }
-            RUN.push_back(val);
+            run.push_back(m);
         }
         const Implicant i {rule, imp};
         if (prev) {
@@ -481,26 +472,21 @@ ITSModel ABMC::get_model() {
 }
 
 ITSSafetyCex ABMC::get_cex() {
-    const auto model {solver->model()};
-    auto valuation {model->toValuation(cells)};
-    cex.set_initial_state(valuation.composeBackwards(subs.front()));
+    const auto model{solver->model()};
+    cex.set_initial_state(model->composeBackwards(subs.front()));
     for (size_t i = 0; i < depth; ++i) {
-        const auto r {subs.at(i + 1)};
+        const auto r{subs.at(i + 1)};
         CellSet renamed_cells;
         for (const auto& c : cells) {
             theory::apply(c, [&](const auto& c) {
                 renamed_cells.insert(r(c));
             });
         }
-        valuation = model->toValuation(renamed_cells);
-        const auto current {valuation.composeBackwards(r)};
-        if (const auto trans {trace.at(i).first}; !cex.try_step(trans, current)) {
-            throw std::logic_error("get_cex failed");
-        }
+        const auto current{model->composeBackwards(r)};
+        const auto trans{trace.at(i).first};
+        cex.do_step(trans, current);
     }
-    if (!cex.try_final_transition(trace.back().first)) {
-        throw std::logic_error("get_cex failed");
-    }
+    cex.add_final_transition(trace.back().first);
     return cex;
 }
 

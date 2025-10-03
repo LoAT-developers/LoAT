@@ -540,6 +540,45 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr& var) const {
         });
 }
 
+Rational ArithExpr::eval(const std::unordered_map<ArithVarPtr, Int>& map) const {
+    return apply<Rational>(
+        [](const ArithConstPtr& c) {
+            return **c;
+        },
+        [&](const ArithVarPtr& v) {
+            return Rational(map.at(v));
+        },
+        [&](const ArithAddPtr& a) {
+            Rational res{0};
+            for (const auto& x : a->getArgs()) {
+                res += x->eval(map);
+            }
+            return res;
+        },
+        [&](const ArithMultPtr& m) {
+            Rational res{1};
+            for (const auto& x : m->getArgs()) {
+                res *= x->eval(map);
+            }
+            return res;
+        },
+        [&](const ArithModPtr& m) {
+            const auto lhs{m->getLhs()->eval(map)};
+            const auto rhs{m->getRhs()->eval(map)};
+            assert(mp::denominator(lhs) == 1);
+            assert(mp::denominator(rhs) == 1);
+            return Rational(mp::numerator(lhs) % mp::numerator(rhs));
+        },
+        [&](const ArithExpPtr& e) {
+            const auto base{e->getBase()->eval(map)};
+            const auto exp{e->getExponent()->eval(map)};
+            assert(mp::denominator(base) == 1);
+            assert(mp::denominator(exp) == 1);
+            return Rational(mp::pow(mp::numerator(base), mp::numerator(exp).convert_to<long long>()));
+        }
+    );
+}
+
 bool ArithExpr::isIntegral() const {
     return apply<bool>(
         [](const ArithConstPtr& x) {
@@ -559,18 +598,18 @@ bool ArithExpr::isIntegral() const {
                 }
             }
             const auto e {arith::mkPlus(std::move(nonInt))};
-            const ModelPtr valuation; // TODO
+            std::unordered_map<ArithVarPtr, Int> valuation;
             // degrees, subs share indices with vars
             std::vector<Int> degrees;
             std::vector<ArithVarPtr> vars;
             for (const auto &x: e->vars()) {
                 vars.emplace_back(x);
                 degrees.emplace_back(*e->isPoly(x));
-                valuation->put(x, 0);
+                valuation.emplace(x, 0);
             }
             while (true) {
                 // substitute every variable x_i by the integer subs[i] and check if the result is an integer
-                if (const auto res {valuation->evalToRational(e)}; mp::denominator(res) != 1) {
+                if (const auto res {e->eval(valuation)}; mp::denominator(res) != 1) {
                     return false;
                 }
                 // increase subs (lexicographically) if possible
@@ -578,10 +617,12 @@ bool ArithExpr::isIntegral() const {
                 bool foundNext = false;
                 for (unsigned int i = 0; i < degrees.size(); i++) {
                     const auto& x {vars[i]};
-                    if (const auto val {valuation->get(x)}; val >= degrees[i]+1) {
-                        valuation->put(x, 0);
+                    if (const auto val {valuation.at(x)}; val >= degrees[i]+1) {
+                        valuation.erase(x);
+                        valuation.emplace(x, 0);
                     } else {
-                        valuation->put(x, val + 1);
+                        valuation.erase(x);
+                        valuation.emplace(x, val + 1);
                         foundNext = true;
                         break;
                     }

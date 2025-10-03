@@ -186,7 +186,7 @@ std::pair<Bools::Expr, ModelPtr> TRPUtil::compress(const Range &range) {
     }
     auto vars{(*loop)->vars()};
     var_renaming.collectCoDomainVars(vars);
-    const auto m{model->composeBackwards(var_renaming)};
+    const auto m{(*model)->composeBackwards(var_renaming)};
     return {*loop, m};
 }
 
@@ -399,7 +399,7 @@ ITSSafetyCex TRPUtil::get_cex() {
     const auto &trans {t.trans()};
     const auto depth {trace.size()};
     for (size_t i = 0; i < depth; ++i) {
-        auto m{model->composeBackwards(get_subs(i, 1))};
+        auto m{(*model)->composeBackwards(get_subs(i, 1))};
         const auto it{std::ranges::find_if(trans, [&](const auto &c) {
             return res.try_step(m, c);
         })};
@@ -407,6 +407,6 @@ ITSSafetyCex TRPUtil::get_cex() {
             throw std::logic_error("get_cex failed");
         }
     }
-    res.set_final_state(model->composeBackwards(get_subs(depth, 1)));
+    res.set_final_state((*model)->composeBackwards(get_subs(depth, 1)));
     return its2safety.transform_cex(res);
 }

@@ -1,58 +1,55 @@
 #include "boolsubs.hpp"
+
+#include <ranges>
+
 #include "theory.hpp"
 
-BoolSubs::BoolSubs() {}
+BoolSubs::BoolSubs(const BoolVarPtr& key, const Bools::Expr& val): map({{key, val}}) {}
 
-BoolSubs::BoolSubs(const BoolVarPtr key, const Bools::Expr val): map({{key, val}}) {}
-
-void BoolSubs::put(const BoolVarPtr key, const Bools::Expr val) {
+void BoolSubs::put(const BoolVarPtr& key, const Bools::Expr& val) {
     map.put(key, val);
 }
 
-Bools::Expr BoolSubs::get(const BoolVarPtr var) const {
+Bools::Expr BoolSubs::get(const BoolVarPtr& var) const {
     const auto res {map.get(var)};
     return res ? *res : bools::mkLit(bools::mk(var));
 }
 
-Bools::Expr BoolSubs::subs(const Bools::Lit lit) const {
+Bools::Expr BoolSubs::subs(const Bools::Lit& lit) const {
     return lit->isNegated() ? !get(lit->getBoolVar()) : get(lit->getBoolVar());
 }
 
-Bools::Expr BoolSubs::operator()(const Bools::Expr e) const {
-    const auto lit = e->getTheoryLit();
-    if (lit) {
+Bools::Expr BoolSubs::operator()(const Bools::Expr& e) const {
+    if (const auto lit = e->getTheoryLit()) {
         if (std::holds_alternative<Bools::Lit>(*lit)) {
             const auto &blit {std::get<Bools::Lit>(*lit)};
             const auto var {blit->getBoolVar()};
-            const auto res {map.get(var)};
-            if (res) {
+            if (const auto res {map.get(var)}) {
                 return blit->isNegated() ? !*res : *res;
-            } else {
-                return e;
             }
-        } else {
             return e;
         }
-    } else if (e->isAnd() || e->isOr()) {
+        return e;
+    }
+    if (e->isAnd() || e->isOr()) {
         std::vector<Bools::Expr> children;
         for (const auto &c: e->getChildren()) {
             children.push_back((*this)(c));
         }
         return e->isAnd() ? bools::mkAnd(children) : bools::mkOr(children);
-    } else {
-        return e;
     }
+    return e;
 }
 
-bool BoolSubs::contains(const BoolVarPtr var) const {
+bool BoolSubs::contains(const BoolVarPtr& var) const {
     return map.contains(var);
 }
 
 BoolSubs BoolSubs::unite(const BoolSubs &t) const {
     BoolSubs res = *this;
-    for (const auto &p: t) {
-        if (!res.contains(p.first)) {
-            res.put(p.first, p.second);
+    for (const auto & [fst, snd]: t) {
+        if (!res.contains(fst)) {
+            res.put(fst, snd);
         }
     }
     return res;
@@ -61,15 +58,14 @@ BoolSubs BoolSubs::unite(const BoolSubs &t) const {
 BoolSubs BoolSubs::project(const linked_hash_set<BoolVarPtr> &vars) const {
     BoolSubs res;
     if (size() < vars.size()) {
-        for (const auto &p: *this) {
-            if (vars.contains(p.first)) {
-                res.put(p.first, p.second);
+        for (const auto & [fst, snd]: *this) {
+            if (vars.contains(fst)) {
+                res.put(fst, snd);
             }
         }
     } else {
         for (const auto &x: vars) {
-            const auto val {map.get(x)};
-            if (val) {
+            if (const auto val {map.get(x)}) {
                 res.put(x, *val);
             }
         }
@@ -79,15 +75,15 @@ BoolSubs BoolSubs::project(const linked_hash_set<BoolVarPtr> &vars) const {
 
 BoolSubs BoolSubs::project(const std::function<bool(BoolVarPtr)> &keep) const {
     BoolSubs res;
-    for (const auto &p : *this) {
-        if (keep(p.first)) {
-            res.put(p.first, p.second);
+    for (const auto & [fst, snd] : *this) {
+        if (keep(fst)) {
+            res.put(fst, snd);
         }
     }
     return res;
 }
 
-bool BoolSubs::changes(const BoolVarPtr key) const {
+bool BoolSubs::changes(const BoolVarPtr& key) const {
     if (!contains(key)) {
         return false;
     }
@@ -96,26 +92,22 @@ bool BoolSubs::changes(const BoolVarPtr key) const {
 
 linked_hash_set<BoolVarPtr> BoolSubs::domain() const {
     linked_hash_set<BoolVarPtr> res;
-    collectDomain(res);
+    for (const auto& key : map | std::views::keys) {
+        res.insert(key);
+    }
     return res;
 }
 
-void BoolSubs::collectDomain(linked_hash_set<BoolVarPtr> &vars) const {
-    for (const auto &p: map) {
-        vars.insert(p.first);
-    }
-}
-
 void BoolSubs::collectCoDomainVars(VarSet &vars) const {
-    for (const auto &p: map) {
-        p.second->collectVars(vars);
+    for (const auto& val : map | std::views::values) {
+        val->collectVars(vars);
     }
 }
 
 void BoolSubs::collectVars(VarSet &vars) const {
-    for (const auto &p: map) {
-        vars.insert(p.first);
-        p.second->collectVars(vars);
+    for (const auto & [fst, snd]: map) {
+        vars.insert(fst);
+        snd->collectVars(vars);
     }
 }
 
@@ -135,16 +127,16 @@ size_t BoolSubs::size() const {
     return map.size();
 }
 
-void BoolSubs::erase(const BoolVarPtr var) {
+void BoolSubs::erase(const BoolVarPtr& var) {
     map.erase(var);
 }
 
 bool BoolSubs::isLinear() const {
-    return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isLinear();});
+    return std::ranges::all_of(map, [](const auto &p){return p.second->isLinear();});
 }
 
 bool BoolSubs::isPoly() const {
-    return std::all_of(map.begin(), map.end(), [](const auto &p){return p.second->isPoly();});
+    return std::ranges::all_of(map, [](const auto &p){return p.second->isPoly();});
 }
 
 size_t BoolSubs::hash() const {
@@ -162,17 +154,16 @@ size_t hash_value(const BoolSubs &x) {
 std::ostream& operator<<(std::ostream &s, const BoolSubs &e) {
     if (e.empty()) {
         return s << "{}";
-    } else {
-        bool first = true;
-        s << "{";
-        for (const auto &p: e) {
-            if (first) {
-                first = false;
-            } else {
-                s << ", ";
-            }
-            s << p.first << " <- " << p.second;
-        }
-        return s << "}";
     }
+    bool first = true;
+    s << "{";
+    for (const auto & [k, v]: e) {
+        if (first) {
+            first = false;
+        } else {
+            s << ", ";
+        }
+        s << k << " <- " << v;
+    }
+    return s << "}";
 }

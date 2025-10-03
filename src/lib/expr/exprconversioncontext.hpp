@@ -1,8 +1,5 @@
 #pragma once
 
-#include <optional>
-#include <cassert>
-
 #include "theory.hpp"
 
 template<class Expr, class Formula, class ExprVec, class FormulaVec>

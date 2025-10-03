@@ -37,11 +37,9 @@ struct Step {
 
     const RulePtr resolvent;
 
-    Step(const RulePtr& transition, const Bools::Expr& sat, const Renaming &var_renaming, const Renaming &tmp_var_renaming, const RulePtr& resolvent);
+    Step(RulePtr  transition, Bools::Expr  sat, Renaming var_renaming, Renaming tmp_var_renaming, RulePtr  resolvent);
 
-    Step(const Step &that);
-
-    Step& operator=(const Step &that);
+    Step(const Step &that) = default;
 
 };
 
@@ -63,7 +61,7 @@ class ProvedUnsat;
 class LearningState {
 
 protected:
-    LearningState();
+    LearningState() = default;
 
 public:
     /**
@@ -83,7 +81,7 @@ public:
 
     virtual std::optional<Restart> restart();
 
-    virtual ~LearningState();
+    virtual ~LearningState() = default;
 
 };
 
@@ -100,7 +98,7 @@ class Succeeded final: public LearningState {
     LearnedClauses learned;
 
 public:
-    Succeeded(const LearnedClauses &learned);
+    explicit Succeeded(LearnedClauses learned);
     std::optional<Succeeded> succeeded() override;
     const LearnedClauses& operator*() const;
     const LearnedClauses* operator->() const;
@@ -113,22 +111,20 @@ class Covered final: public LearningState {
 class Dropped final: public LearningState {
 
 public:
-    Dropped();
+    Dropped() = default;
     std::optional<Dropped> dropped() override;
 };
 
 class Unroll final: public LearningState {
-
-private:
 
     std::optional<unsigned> max {};
     bool accel_failed {false};
 
 public:
 
-    Unroll();
+    Unroll() = default;
 
-    Unroll(unsigned max, bool accel_failed = false);
+    explicit Unroll(unsigned max, bool accel_failed = false);
 
     std::optional<unsigned> get_max() const;
 
@@ -140,7 +136,7 @@ public:
 class ProvedUnsat final: public LearningState {
 
 public:
-    ProvedUnsat();
+    ProvedUnsat() = default;
     std::optional<ProvedUnsat> unsat() override;
 };
 
@@ -202,11 +198,11 @@ class ADCL {
 
     bool is_orig_clause(const RulePtr& idx) const;
 
-    void set_cpx_witness(const RulePtr& witness, const ArithSubs &subs, const Arith::Var &param);
+    void set_cpx_witness(const RulePtr&, const ModelPtr&, const Arith::Var&);
 
     void update_cpx();
 
-    std::optional<RulePtr> instantiate(const Arith::Var n, const RulePtr rule) const;
+    static std::optional<RulePtr> instantiate(const Arith::Var& n, const RulePtr& rule);
 
     /**
      * initializes all data structures after preprocessing
@@ -218,9 +214,9 @@ class ADCL {
      */
     void unsat() const;
 
-    unsigned get_penalty(const RulePtr idx) const;
+    unsigned get_penalty(const RulePtr& idx) const;
 
-    void bump_penalty(const RulePtr idx);
+    void bump_penalty(const RulePtr& idx);
 
     /**
      * tries to resolve the trace with the given clause
@@ -237,34 +233,32 @@ class ADCL {
      * from the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    Automaton build_language(const int backlink) const;
+    Automaton build_language(int backlink) const;
 
     /**
      * computes a clause that is equivalent to the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    std::pair<RulePtr, ModelPtr> build_loop(const int backlink);
+    std::pair<RulePtr, ModelPtr> build_loop(int backlink) const;
 
     /**
      * adds a learned clause to all relevant data structures
-     * @param lang (an approximation of) the language associated with the learned clause
      */
-    void add_learned_clause(const RulePtr& accel, const unsigned backlink);
+    void add_learned_clause(const RulePtr& accel, unsigned backlink) const;
 
     /**
      * tries to accelerate the given clause
-     * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, const ModelPtr &model, const unsigned backlink);
+    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, unsigned backlink);
 
-    bool check_consistency();
+    bool check_consistency() const;
 
-    void drop_until(const int new_size);
+    void drop_until(int new_size);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix
      */
-    std::unique_ptr<LearningState> handle_loop(const unsigned backlink);
+    std::unique_ptr<LearningState> handle_loop(unsigned backlink);
 
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1

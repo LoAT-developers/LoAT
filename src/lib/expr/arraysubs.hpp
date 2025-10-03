@@ -15,29 +15,47 @@ class ArraySubs {
 
     friend bool operator==(const Self &m1, const Self &m2);
 
+    explicit ArraySubs(const linked_hash_map<Var, Expr>& map): map(map) {}
+
 public:
 
     typedef linked_hash_map<Var, Expr>::const_iterator const_iterator;
 
-    ArraySubs();
+    ArraySubs() = default;
 
-    ArraySubs(std::initializer_list<std::pair<const Var, Expr>> init);
+    ArraySubs(std::initializer_list<std::pair<const Var, Expr>> init): map(init) {}
 
-    Expr get(const Var&) const;
+    Expr get(const Var& x) const {
+        return map.get(x).value_or(x);
+    }
 
-    void put(const Var&, const Expr&);
+    void put(const Var& x, const Expr& e) {
+        map.put(x, e);
+    }
 
-    const_iterator begin() const;
+    const_iterator begin() const {
+        return map.begin();
+    }
 
-    const_iterator end() const;
+    const_iterator end() const {
+        return map.end();
+    }
 
-    bool contains(const Var&) const;
+    bool contains(const Var& x) const {
+        return map.contains(x);
+    }
 
-    bool empty() const;
+    bool empty() const {
+        return map.empty();
+    }
 
-    unsigned int size() const;
+    unsigned int size() const {
+        return map.size();
+    }
 
-    size_t erase(const Var&);
+    size_t erase(const Var& x) {
+        return map.erase(x);
+    }
 
     Self compose(const Self &that) const;
 
@@ -47,29 +65,64 @@ public:
 
     Self unite(const Self &that) const;
 
-    Self project(const linked_hash_set<Var> &vars) const;
+    Self project(const linked_hash_set<Var> &vars) const {
+        auto m {map};
+        m.project(vars);
+        return ArraySubs(m);
+    }
 
-    Self project(const std::function<bool(Var)> &keep) const;
+    Self project(const std::function<bool(Var)> &keep) const {
+        auto m {map};
+        m.project(keep);
+        return ArraySubs(m);
+    }
 
-    bool changes(const Var&) const;
+    bool changes(const Var& x) const {
+        const auto opt {map.get(x)};
+        return opt && x != *opt;
+    }
 
-    bool isLinear() const;
+    static bool isLinear() {
+        return false;
+    }
 
-    bool isPoly() const;
+    static bool isPoly() {
+        return false;
+    }
 
-    linked_hash_set<Var> domain() const;
+    void collectCoDomainVars(linked_hash_set<Var> &vars, linked_hash_set<typename T::Var> &tvars) const {
+        for (const auto &[_,v]: map) {
+            v->collectVars(vars, tvars);
+        }
+    }
 
-    linked_hash_set<Var> coDomainVars() const;
+    void collectVars(linked_hash_set<Var> &vars, linked_hash_set<typename T::Var> &tvars) const {
+        for (const auto &[k,v]: map) {
+            vars.insert(k);
+            v->collectVars(vars, tvars);
+        }
+    }
 
-    void collectDomain(linked_hash_set<Var> &vars) const;
+    linked_hash_set<Var> domain() const {
+        linked_hash_set<Var> res;
+        for (const auto &[k,v]: map) {
+            res.insert(k);
+        }
+        return res;
+    }
 
-    void collectCoDomainVars(linked_hash_set<Var> &vars) const;
+    std::pair<linked_hash_set<Var>, linked_hash_set<typename T::Var>> coDomainVars() const {
+        linked_hash_set<Var> vars;
+        linked_hash_set<typename T::Var> tvars;
+        collectCoDomainVars(vars, tvars);
+        return {vars, tvars};
+    }
 
-    void collectVars(linked_hash_set<Var> &vars) const;
+    size_t hash() const {
+        return boost::hash_unordered_range(map.begin(), map.end());
+    }
 
-    size_t hash() const;
-
-    Expr operator()(const Expr&) const;
+    Expr operator()(const Expr& e) const;
 
 private:
 

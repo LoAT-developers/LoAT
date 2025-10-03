@@ -19,6 +19,8 @@ add_library(${PROJECT_NAME} OBJECT
   smtfactory.cpp
   swinemodel.hpp
   swinemodel.cpp
+  yicesmodel.hpp
+  yicesmodel.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

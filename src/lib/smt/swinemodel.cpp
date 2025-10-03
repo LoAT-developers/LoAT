@@ -1,7 +1,10 @@
 #include "swinemodel.hpp"
 #include "exprconverter.hpp"
 
-SwineModel::SwineModel(const SwineContext& p_ctx, const z3::model& p_model): m_ctx(p_ctx), m_model(p_model) {}
+SwineModel::SwineModel(const SwineContext& p_ctx, const z3::model& p_model, const Subs& subs) :
+    Model(subs),
+    m_ctx(p_ctx),
+    m_model(p_model) {}
 
 void SwineModel::put(const Arith::Var &var, const Arith::Const& value) {
     const auto converted_var {m_ctx.getArithSymbolMap().at(var)};
@@ -10,30 +13,30 @@ void SwineModel::put(const Arith::Var &var, const Arith::Const& value) {
     m_model.add_const_interp(decl, converted_value);
 }
 
-bool SwineModel::contains(const Arith::Var &var) const {
-    const auto converted_var {m_ctx.getArithSymbolMap().at(var)};
-    const auto decl {converted_var.decl()};
-    return m_model.has_interp(decl);
+// bool SwineModel::contains(const Arith::Var &var) const {
+//     const auto converted_var {m_ctx.getArithSymbolMap().at(var)};
+//     const auto decl {converted_var.decl()};
+//     return m_model.has_interp(decl);
+// }
+//
+// bool SwineModel::contains(const Bools::Var &var) const {
+//     const auto converted_var {m_ctx.getBoolSymbolMap().at(var)};
+//     const auto decl {converted_var.decl()};
+//     return m_model.has_interp(decl);
+// }
+//
+// bool SwineModel::contains(const Arrays<Arith>::Var &var) const {
+//     const auto converted_var {m_ctx.getIntArraySymbolMap().at(var)};
+//     const auto decl {converted_var.decl()};
+//     return m_model.has_interp(decl);
+// }
+
+
+bool SwineModel::evalImpl(const Lit &lit) {
+    return evalImpl(bools::mkLit(lit));
 }
 
-bool SwineModel::contains(const Bools::Var &var) const {
-    const auto converted_var {m_ctx.getBoolSymbolMap().at(var)};
-    const auto decl {converted_var.decl()};
-    return m_model.has_interp(decl);
-}
-
-bool SwineModel::contains(const Arrays<Arith>::Var &var) const {
-    const auto converted_var {m_ctx.getIntArraySymbolMap().at(var)};
-    const auto decl {converted_var.decl()};
-    return m_model.has_interp(decl);
-}
-
-
-bool SwineModel::eval(const Lit &lit) {
-    return eval(bools::mkLit(lit));
-}
-
-Bools::Const SwineModel::eval(const Bools::Expr &e) {
+Bools::Const SwineModel::evalImpl(const Bools::Expr &e) {
     const auto converted {Converter::convert(e, m_ctx)};
     const auto res {m_model.eval(converted)};
     assert(res.is_bool());
@@ -68,6 +71,13 @@ Arith::Const SwineModel::getImpl(const ArrayReadPtr<Arith> &read) {
     return Int(res.to_string());
 }
 
-void SwineModel::print(std::ostream &s) const {
-    s << m_model.to_string();
+void SwineModel::print(std::ostream &s, const Expr& e) {
+    theory::apply(e, [&](const auto &e) {
+        const auto converted {Converter::convert(e, m_ctx)};
+        s << m_model.eval(converted);
+    });
+}
+
+ModelPtr SwineModel::withSubs(const Subs& subs) const {
+    return cpp::assume_not_null(std::make_shared<SwineModel>(m_ctx, m_model, subs));
 }

@@ -4,19 +4,18 @@
 #include "theory.hpp"
 #include "boolexpr.hpp"
 #include "relevantvariables.hpp"
-#include "theory.hpp"
 #include "config.hpp"
 
 AccelerationProblem::PolyAccelMode AccelerationProblem::polyaccel {PolyAccelMode::LowDegree};
 
 AccelerationProblem::AccelerationProblem(
-        const RulePtr r,
+        const RulePtr& rule,
         const std::optional<Recurrence::Result> &closed,
         const std::optional<Subs> &samplePoint,
         const AccelConfig &config):
     closed(closed),
-    update(r->getUpdate()),
-    guard(r->getGuard()),
+    update(rule->getUpdate()),
+    guard(rule->getGuard()),
     config(config),
     samplePoint(samplePoint) {
     for (const auto &l: guard->lits()) {
@@ -37,7 +36,7 @@ AccelerationProblem::AccelerationProblem(
             }
         }, l);
     }
-    const auto subs {closed ? std::vector<Subs>{update, closed->closed_form} : std::vector<Subs>{update}};
+    const auto subs {closed ? std::vector{update, closed->closed_form} : std::vector{update}};
     const auto logic {Smt::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
@@ -89,8 +88,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         return false;
     } else if (d == 1) {
         const auto coeff {*nfold->coeff(config.n, 1)};
-        const auto c {coeff->isRational()};
-        if (c) {
+        if (const auto c {coeff->isRational()}) {
             if (***c > 0) {
                 guard.insert(rel);
             } else {
@@ -105,8 +103,7 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         low_degree = true;
     } else if (d == 2) {
         const auto coeff {*nfold->coeff(config.n, 2)};
-        const auto c {coeff->isRational()};
-        if (c) {
+        if (const auto c {coeff->isRational()}) {
             if (***c < 0) {
                 guard.insert(rel);
                 guard.insert(rel->subs(but_last));
@@ -118,53 +115,52 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
     if (!low_degree) {
         if (!samplePoint || polyaccel != PolyAccelMode::Full) {
             return false;
+        }
+        auto sample_point {samplePoint->get<Arith>()};
+        std::vector derivatives {rel->lhs()};
+        std::vector signs {(*sample_point(rel->lhs())->isRational())->getValue()};
+        Arith::Expr diff {arith::mkConst(0)};
+        do {
+            const auto &last {derivatives.back()};
+            diff = up(last) - last;
+            derivatives.push_back(diff);
+            signs.push_back((*sample_point(diff)->isRational())->getValue());
+        } while (!diff->isRational());
+        for (unsigned i = 1; i < signs.size() - 1; ++i) {
+            if (signs.at(i).is_zero()) {
+                for (unsigned j = i + 1; j < signs.size(); ++j) {
+                    if (!signs.at(j).is_zero()) {
+                        signs[i] = signs[j];
+                        break;
+                    }
+                }
+            }
+        }
+        if (signs.at(1) > 0) {
+            guard.insert(rel);
         } else {
-            auto sample_point {samplePoint->get<Arith>()};
-            std::vector<Arith::Expr> derivatives {rel->lhs()};
-            std::vector<Rational> signs {(*sample_point(rel->lhs())->isRational())->getValue()};
-            Arith::Expr diff {arith::mkConst(0)};
-            do {
-                const auto &last {derivatives.back()};
-                diff = up(last) - last;
-                derivatives.push_back(diff);
-                signs.push_back((*sample_point(diff)->isRational())->getValue());
-            } while (!diff->isRational());
-            for (unsigned i = 1; i < signs.size() - 1; ++i) {
-                if (signs.at(i).is_zero()) {
-                    for (unsigned j = i + 1; j < signs.size(); ++j) {
-                        if (!signs.at(j).is_zero()) {
-                            signs[i] = signs[j];
-                            break;
-                        }
-                    }
-                }
-            }
-            if (signs.at(1) > 0) {
-                guard.insert(rel);
+            guard.insert(rel->subs(but_last));
+            res.nonterm = false;
+        }
+        for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
+            if (signs.at(i) > 0) {
+                covered.insert(arith::mkGeq(derivatives.at(i), arith::mkConst(0)));
             } else {
-                guard.insert(rel->subs(but_last));
-                res.nonterm = false;
+                covered.insert(arith::mkLeq(derivatives.at(i), arith::mkConst(0)));
             }
-            for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
+            if (signs.at(i+1) > 0) {
+                // the i-th derivative is monotonically increasing at the sampling point
                 if (signs.at(i) > 0) {
-                    covered.insert(arith::mkGeq(derivatives.at(i), arith::mkConst(0)));
+                    guard.insert(arith::mkGeq(derivatives.at(i), arith::mkConst(0)));
                 } else {
-                    covered.insert(arith::mkLeq(derivatives.at(i), arith::mkConst(0)));
+                    guard.insert(arith::mkLeq(but_last(derivatives.at(i)), arith::mkConst(0)));
                 }
-                if (signs.at(i+1) > 0) {
-                    // the i-th derivative is monotonically increasing at the sampling point
-                    if (signs.at(i) > 0) {
-                        guard.insert(arith::mkGeq(derivatives.at(i), arith::mkConst(0)));
-                    } else {
-                        guard.insert(arith::mkLeq(but_last(derivatives.at(i)), arith::mkConst(0)));
-                    }
+            } else {
+                res.nonterm = false;
+                if (signs.at(i) > 0) {
+                    guard.insert(arith::mkGeq(but_last(derivatives.at(i)), arith::mkConst(0)));
                 } else {
-                    res.nonterm = false;
-                    if (signs.at(i) > 0) {
-                        guard.insert(arith::mkGeq(but_last(derivatives.at(i)), arith::mkConst(0)));
-                    } else {
-                        guard.insert(arith::mkLeq(derivatives.at(i), arith::mkConst(0)));
-                    }
+                    guard.insert(arith::mkLeq(derivatives.at(i), arith::mkConst(0)));
                 }
             }
         }
@@ -283,7 +279,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
                 }
                 const auto s {closed->closed_form.get<Arith>().compose(ArithSubs({{config.n, config.n->toExpr() - arith::mkConst(1)}}))};
                 g = bools::mkAndFromLits({(!i)->subs(s), rel->subs(s)});
-                c = bools::mkLit((!i));
+                c = bools::mkLit(!i);
                 res.nonterm = false;
             } else {
                 g = inc && bools::mkLit(rel);
@@ -307,16 +303,16 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         return false;
     }
     std::vector<Bools::Expr> eqs;
-    const auto vars {util::RelevantVariables::find(theory::vars(lit), update)};
-    for (const auto& v: vars) {
+    for (const auto vars{util::RelevantVariables::find(theory::vars(lit), update)};
+         const auto& v : vars) {
         if (std::holds_alternative<Bools::Var>(v)) {
             // encoding equality for booleans introduces a disjunction
             return false;
         }
-        eqs.push_back(theory::mkEq(TheTheory::varToExpr(v), update.get(v)));
+        eqs.push_back(theory::mkEq(theory::toExpr(v), update.get(v)));
     }
     const auto c {bools::mkAnd(eqs)};
-    if (c == bot() || (samplePoint && (!(*samplePoint)(c)) == top())) {
+    if (c == bot() || (samplePoint && !(*samplePoint)(c) == top())) {
         return false;
     }
     const auto g {c && bools::mkLit(lit)};
@@ -418,7 +414,6 @@ std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes(
             }
         }
         return res;
-    } else {
-        return {};
     }
+    return {};
 }

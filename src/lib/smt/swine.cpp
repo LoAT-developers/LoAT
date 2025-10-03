@@ -33,8 +33,8 @@ SmtResult Swine::check() {
     throw std::logic_error("unknown result from SMT solver");
 }
 
-ModelPtr Swine::model(const std::optional<const VarSet> &vars) {
-    return std::make_shared<SwineModel>(ctx, solver.get_model());
+ModelPtr Swine::model() {
+    return cpp::assume_not_null(std::make_shared<SwineModel>(ctx, solver.get_model(), Subs()));
 }
 
 void Swine::enableModels() {}

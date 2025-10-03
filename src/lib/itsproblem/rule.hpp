@@ -39,6 +39,11 @@ public:
 
     const Subs& getUpdate() const;
 
+    template <ITheory Th>
+    const Th::Subs& getUpdate() const {
+        return update.get<Th>();
+    }
+
     RulePtr subs(const Subs &subs) const;
 
     RulePtr renameVars(const Renaming &subs) const;

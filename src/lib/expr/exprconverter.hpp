@@ -23,6 +23,11 @@ public:
         return converter.convertArrayRead(e);
     }
 
+    static Expr convert(const Arrays<Arith>::Expr& e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
+        ExprConverter converter(ctx);
+        return converter.convertArray(e);
+    }
+
 protected:
 
     explicit ExprConverter(ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &context): context(context) {}
@@ -115,7 +120,7 @@ protected:
 
     Expr convertArrayRead(const ArrayReadPtr<Arith> &read) {
         const auto arr {read->arr()};
-        const auto converted_arr {context.getIntArraySymbolMap().at(arr)};
+        const auto converted_arr {convertArray(arr)};
         const auto indices {read->indices()};
         auto converted_indices {context.exprVec()};
         for (const auto &i: indices) {

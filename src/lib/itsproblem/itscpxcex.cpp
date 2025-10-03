@@ -4,9 +4,9 @@
 #include "smtfactory.hpp"
 
 #include <boost/algorithm/string.hpp>
-#include <assert.h>
+#include <cassert>
 
-ITSCpxCex::ITSCpxCex(ITSPtr its): ITSCex(its) {}
+ITSCpxCex::ITSCpxCex(const ITSPtr& its): ITSCex(its) {}
 
 std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
     if (cex.witness) {
@@ -56,12 +56,7 @@ std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
         auto valuation_str {toString(*cex.valuation)};
         boost::replace_all(valuation_str, (*cex.param)->getName(), "n");
         s << "\nwitness: " << *cex.witness << std::endl;
-        if (cex.valuation->coDomainVars().empty()) {
-            s << "\nvaluation: ";
-        } else {
-            s << "\nparametric valuation: ";
-        }
-        s << valuation_str << std::endl;
+        s << "\nvaluation: " << valuation_str << std::endl;
     }
     return s;
 }
@@ -93,13 +88,8 @@ ITSCpxCex ITSCpxCex::replace_rules(const linked_hash_map<RulePtr, RulePtr> &map)
     return res;
 }
 
-void ITSCpxCex::set_witness(const RulePtr witness, const ArithSubs &valuation, const ArithVarPtr &param) {
+void ITSCpxCex::set_witness(const RulePtr& witness, const ModelPtr &valuation, const ArithVarPtr &param) {
     this->witness = witness;
     this->valuation = valuation;
     this->param = param;
-    const auto subs {Subs::build<Arith>(valuation)};
-    VarSet vars;
-    subs(witness->getGuard())->collectVars(vars);
-    subs.get<Arith>()(its->getCost(witness))->collectVars(vars.get<Arith::Var>());
-    assert(vars.empty() || (vars.size() == 1 && vars.contains(param)));
 }

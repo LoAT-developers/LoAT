@@ -192,6 +192,7 @@ public:
     sexpresso::Sexp to_smtlib() const;
 
     ArithExprPtr renameVars(const arith_var_map &map) const;
+    Rational eval(const std::unordered_map<ArithVarPtr, Int>&) const;
 
     /**
      * @brief exponentiation

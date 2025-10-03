@@ -1,42 +1,14 @@
 #include "chccex.hpp"
 
+#include <ranges>
 #include <stack>
+#include <utility>
 
-CHCCex::CHCCex(CHCPtr chcs): chcs(chcs) {}
+CHCCex::CHCCex(CHCPtr chcs): chcs(std::move(chcs)) {}
 
-bool CHCCex::is_valid_step(const Model &m, const ClausePtr &c) const {
-    if (!m.eval<Bools>(c->get_constraint())) {
-        return false;
-    }
-    if (states.empty()) {
-        return true;
-    }
-    const auto last_c {transitions.back()};
-    assert(last_c->get_conclusion());
-    assert(c->get_premise());
-    const auto new_pred {*c->get_premise()};
-    const auto last_pred {*last_c->get_conclusion()};
-    if (new_pred->get_pred() != last_pred->get_pred()) {
-        return false;
-    }
-    const auto &new_args {new_pred->get_args()};
-    const auto &last_args {last_pred->get_args()};
-    const auto &last_state {states.back()};
-    for (size_t i = 0; i < last_args.size(); ++i) {
-        if (last_state.eval(last_args.at(i)) != m.eval(new_args.at(i))) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool CHCCex::try_step(const Model &m, const ClausePtr &c) {
-    if (!is_valid_step(m, c)) {
-        return false;
-    }
+void CHCCex::do_step(const ModelPtr &m, const ClausePtr &c) {
     states.emplace_back(m);
     transitions.emplace_back(c);
-    return true;
 }
 
 void CHCCex::add_accel(const ClausePtr &loop, const ClausePtr &res) {
@@ -56,8 +28,8 @@ std::vector<std::pair<ClausePtr, ProofStepKind>> CHCCex::get_used_clauses() cons
     linked_hash_set<ClausePtr> done;
     std::stack<ClausePtr> todo;
     std::vector<std::pair<ClausePtr, ProofStepKind>> derived;
-    for (auto it = transitions.rbegin(); it != transitions.rend(); ++it) {
-        todo.push(*it);
+    for (const auto & transition : std::ranges::reverse_view(transitions)) {
+        todo.push(transition);
     }
     while (!todo.empty()) {
         const auto t{todo.top()};
@@ -139,13 +111,19 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
         ++next;
     }
     s << "\nproof:" << std::endl;
+    VarSet prog_vars;
     for (size_t i = 0; i < cex.transitions.size(); ++i) {
         const auto &clause{cex.transitions.at(i)};
-        const auto vars{clause->vars()};
-        const auto projection{cex.states.at(i).project([&](const auto &x) {
-            return theory::isProgVar(x) || vars.contains(x);
-        })};
-        s << "\t" << clause << projection << " by " << indices.at(clause) << "\n";
+        auto vars{clause->vars()};
+        for (const auto& x: vars) {
+            if (theory::isProgVar(x)) {
+                prog_vars.insert(x);
+            }
+        }
+        vars.insertAll(prog_vars);
+        s << "\t" << clause;
+        cex.states.at(i)->print(s, vars);
+        s << " by " << indices.at(clause) << "\n";
     }
     return s;
 }
@@ -166,6 +144,6 @@ const std::vector<ClausePtr>& CHCCex::get_transitions() const {
     return transitions;
 }
 
-const std::vector<Model>& CHCCex::get_states() const {
+const std::vector<ModelPtr>& CHCCex::get_states() const {
     return states;
 }

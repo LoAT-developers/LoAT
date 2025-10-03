@@ -13,8 +13,6 @@
 #include "realqe.hpp"
 #include "loopacceleration.hpp"
 
-TRL::~TRL(){}
-
 TRL::TRL(const ITSPtr& its, const Config::TRPConfig &config) : TRPUtil(its, config) {
     std::vector<Bools::Expr> steps;
     for (const auto &[id,t]: rule_map) {
@@ -28,8 +26,8 @@ std::optional<Range> TRL::has_looping_infix() {
         for (unsigned start = 0; start + i < trace.size(); ++start) {
             if (Config::Analysis::termination() &&
                 i > 0 &&
-                model->get(get_subs(start, 1).get<Arith>(safety_var)) >= 0 &&
-                model->get(get_subs(start + i, 1).get<Arith>(safety_var)) < 0) {
+                (*model)->get(get_subs(start, 1).get<Arith>(safety_var)) >= 0 &&
+                (*model)->get(get_subs(start + i, 1).get<Arith>(safety_var)) < 0) {
                 continue;
             }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
@@ -101,7 +99,7 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
         if (range.length() == 1) {
             disjuncts.emplace_back(bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id))));
         }
-        if (this->model->get(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0) {
+        if ((*model)->get(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0) {
             const auto last_s {get_subs(range.end(), 1)};
             const auto no_safety_loop{bools::mkLit(arith::mkLt(last_s.get<Arith>(safety_var), arith::mkConst(0)))};
             disjuncts.emplace_back(no_safety_loop);
@@ -137,9 +135,9 @@ void TRL::build_trace() {
     std::optional<std::pair<Bools::Expr, Int>> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{get_subs(d, 1)};
-        const auto id{model->get(s.get<Arith>(trace_var))};
+        const auto id{(*model)->get(s.get<Arith>(trace_var))};
         const auto rule{encode_transition(rule_map.at(id), id)};
-        const auto comp{model->composeBackwards(s)};
+        const auto comp{(*model)->composeBackwards(s)};
         const auto imp{comp->syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
         if (prev) {
             dependency_graph.addEdge(prev->first, imp);
@@ -159,7 +157,7 @@ void TRL::build_trace() {
         std::cout << "run:" << std::endl;
         for (const auto &t : trace) {
             t.model->print(std::cout, vars);
-            std::cout << t.model << std::endl;
+            std::cout << std::endl;
         }
     }
 }

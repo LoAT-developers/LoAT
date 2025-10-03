@@ -1,11 +1,10 @@
 #pragma once
 
 #include "subs.hpp"
-#include "valuation.hpp"
 
 class Model;
 
-using ModelPtr = std::shared_ptr<Model>;
+using ModelPtr = cpp::not_null<std::shared_ptr<Model>>;
 
 class Model {
 
@@ -14,7 +13,7 @@ class Model {
 public:
     virtual ~Model() = default;
 
-    Model() = default;
+    explicit Model(Subs);
 
     Arith::Const get(const Arith::Var&);
     Bools::Const get(const Bools::Var&);
@@ -22,34 +21,35 @@ public:
 
     virtual void put(const Arith::Var&, const Arith::Const&) = 0;
 
-    virtual bool contains(const Arith::Var&) const = 0;
-    virtual bool contains(const Bools::Var&) const = 0;
-    virtual bool contains(const Arrays<Arith>::Var&) const = 0;
+    // virtual bool contains(const Arith::Var&) const = 0;
+    // virtual bool contains(const Bools::Var&) const = 0;
+    // virtual bool contains(const Arrays<Arith>::Var&) const = 0;
 
     bool contains(const Var&) const;
 
-    virtual bool eval(const Lit&) = 0;
-
-    virtual Bools::Const eval(const Bools::Expr&) = 0;
+    bool eval(const Lit&);
+    Bools::Const eval(const Bools::Expr&);
     Arith::Const eval(const Arith::Expr&);
     virtual Rational evalToRational(const Arith::Expr&) = 0;
-    virtual ModelPtr clone() const = 0;
+    virtual ModelPtr withSubs(const Subs&) const = 0;
 
     Bools::Expr syntacticImplicant(const Bools::Expr&);
 
     ModelPtr composeBackwards(const Renaming&) const;
-    Valuation toValuation(const CellSet&) const;
+    ModelPtr composeBackwards(const Subs&) const;
 
-    virtual void print(std::ostream&, const VarSet& = {}) const = 0;
+    void print(std::ostream&, const VarSet&);
 
 protected:
 
+    virtual bool evalImpl(const Lit&) = 0;
+    virtual Bools::Const evalImpl(const Bools::Expr&) = 0;
+    Arith::Const evalImpl(const Arith::Expr&);
     virtual Arith::Const getImpl(const Arith::Var&) = 0;
     virtual Bools::Const getImpl(const Bools::Var&) = 0;
     virtual Arith::Const getImpl(const ArrayReadPtr<Arith>&) = 0;
+    virtual void print(std::ostream&, const Expr&) = 0;
 
-    Renaming renaming;
+    Subs subs;
 
 };
-
-std::ostream& operator<<(std::ostream &s, const ModelPtr &e);

@@ -7,6 +7,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
+#include <memory>
 
 #include "itheory.hpp"
 
@@ -17,16 +18,10 @@ struct Sexp;
 template <class Abstract, class Concrete, class Hash, class Eq, class... Args>
 class ConsHash;
 
-namespace cpp {
-inline namespace bitwizeshift {
+
+namespace cpp::inline bitwizeshift {
 template <typename T>
 class not_null;
-}
-} // namespace cpp
-
-namespace std {
-template <class T>
-class shared_ptr;
 }
 
 template <class T> class linked_hash_set;

@@ -3,20 +3,29 @@
 
 #include <assert.h>
 
-YicesError::YicesError() : std::exception() {
+YicesError::YicesError() {
     yices_print_error(stderr);
 }
 
 YicesContext::~YicesContext() { }
 
 term_t YicesContext::buildVar(const Arith::Var &var) {
-    term_t res = yices_new_uninterpreted_term(yices_int_type());
+    const auto res = yices_new_uninterpreted_term(yices_int_type());
     yices_set_term_name(res, var->getName().c_str());
     return res;
 }
 
 term_t YicesContext::buildVar(const Bools::Var &var) {
-    term_t res = yices_new_uninterpreted_term(yices_bool_type());
+    const auto res = yices_new_uninterpreted_term(yices_bool_type());
+    yices_set_term_name(res, var->getName().c_str());
+    return res;
+}
+
+term_t YicesContext::buildVar(const Arrays<Arith>::Var &var) {
+    const int dim {static_cast<int>(var->dim())};
+    const std::vector arg_types {dim, yices_int_type()};
+    const auto type {yices_function_type(dim, arg_types.data(), yices_int_type())};
+    const auto res {yices_new_uninterpreted_term(type)};
     yices_set_term_name(res, var->getName().c_str());
     return res;
 }
@@ -113,7 +122,7 @@ Int mpz_to_int(const mpz_t &m) {
     return ret;
 }
 
-Int YicesContext::numerator(const term_t &e) const {
+Int YicesContext::numerator(const term_t &e) {
     mpq_t frac;
     mpz_t res;
     mpq_init(frac);
@@ -121,12 +130,11 @@ Int YicesContext::numerator(const term_t &e) const {
     if (yices_rational_const_value(e, frac) == 0) {
         mpq_get_num(res, frac);
         return mpz_to_int(res);
-    } else {
-        throw YicesError();
     }
+    throw YicesError();
 }
 
-Int YicesContext::denominator(const term_t &e) const {
+Int YicesContext::denominator(const term_t &e) {
     mpq_t frac;
     mpz_t res;
     mpq_init(frac);
@@ -134,11 +142,18 @@ Int YicesContext::denominator(const term_t &e) const {
     if (yices_rational_const_value(e, frac) == 0) {
         mpq_get_den(res, frac);
         return mpz_to_int(res);
-    } else {
-        throw YicesError();
     }
+    throw YicesError();
 }
 
 void YicesContext::printStderr(const term_t &e) const {
     yices_pp_term(stderr, e, 80, 20, 0);
+}
+
+term_t YicesContext::arrayRead(const term_t& arr, const std::vector<term_t>& indices) {
+    return yices_application(arr, indices.size(), indices.data());
+}
+
+term_t YicesContext::arrayWrite(const term_t& arr, const std::vector<term_t>& indices, const term_t &value) {
+    return yices_update(arr, indices.size(), indices.data(), value);
 }

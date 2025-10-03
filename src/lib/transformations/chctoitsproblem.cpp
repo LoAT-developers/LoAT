@@ -1,7 +1,7 @@
 #include "chctoitsproblem.hpp"
 #include "config.hpp"
 
-CHCToITS::CHCToITS(CHCPtr chcs): chcs(chcs) {}
+CHCToITS::CHCToITS(const CHCPtr& chcs): chcs(chcs) {}
 
 CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
     CHCModel chc_m;
@@ -14,18 +14,23 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
         const auto pred{its->getPrintableLocationName(loc)};
         const auto sig{signature.at(pred)};
         unsigned next_int_var{0};
+        unsigned next_arr_var{0};
         unsigned next_bool_var{0};
         std::vector<Var> args;
-        for (const auto &x : sig) {
+        for (const auto& x : sig) {
             switch (x) {
-                case theory::Type::Int:
-                    args.emplace_back(vars.at(next_int_var));
-                    ++next_int_var;
-                    break;
-                case theory::Type::Bool:
-                    args.emplace_back(bvars.at(next_bool_var));
-                    ++next_bool_var;
-                    break;
+            case theory::Type::Int:
+                args.emplace_back(vars.at(next_int_var));
+                ++next_int_var;
+                break;
+            case theory::Type::IntArray:
+                args.emplace_back(avars.at(next_arr_var));
+                ++next_arr_var;
+                break;
+            case theory::Type::Bool:
+                args.emplace_back(bvars.at(next_bool_var));
+                ++next_bool_var;
+                break;
             }
         }
         chc_m.set_interpretation(pred, args, inv);
@@ -33,27 +38,32 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
     return chc_m;
 }
 
-ClausePtr CHCToITS::rule_to_clause(const RulePtr rule, const ClausePtr prototype) const {
+ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const {
     std::optional<FunAppPtr> premise;
     std::optional<FunAppPtr> conclusion;
     if (const auto prem {prototype->get_premise()}) {
         std::vector<Expr> args;
         size_t next_int_var {0};
+        size_t next_arr_var {0};
         size_t next_bool_var {0};
-        for (const auto &x: (*prem)->get_args()) {
-            std::visit(
-                Overload{
-                    [&](const Arith::Expr&) {
-                        const auto y {vars.at(next_int_var)};
-                        args.emplace_back(theory::toExpr(y));
-                        ++next_int_var;
-                    },
-                    [&](const Bools::Expr&) {
-                        const auto y {bvars.at(next_bool_var)};
-                        args.emplace_back(theory::toExpr(y));
-                        ++next_bool_var;
-                    }
-                }, x
+        for (const auto& x : (*prem)->get_args()) {
+            theory::apply(
+                x,
+                [&](const Arith::Expr&) {
+                    const auto y{vars.at(next_int_var)};
+                    args.emplace_back(theory::toExpr(y));
+                    ++next_int_var;
+                },
+                [&](const Arrays<Arith>::Expr&) {
+                    const auto y{avars.at(next_int_var)};
+                    args.emplace_back(theory::toExpr(y));
+                    ++next_arr_var;
+                },
+                [&](const Bools::Expr&) {
+                    const auto y{bvars.at(next_bool_var)};
+                    args.emplace_back(theory::toExpr(y));
+                    ++next_bool_var;
+                }
             );
         }
         premise = FunApp::mk((*prem)->get_pred(), args);
@@ -61,20 +71,24 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr rule, const ClausePtr prototype
     if (const auto conc {prototype->get_conclusion()}) {
         std::vector<Expr> args;
         size_t next_int_var {0};
+        size_t next_arr_var {0};
         size_t next_bool_var {0};
-        const auto &up {rule->getUpdate()};
-        for (const auto &x: (*conc)->get_args()) {
-            std::visit(
-                Overload{
-                    [&](const Arith::Expr&) {
-                        args.emplace_back(up(vars.at(next_int_var)));
-                        ++next_int_var;
-                    },
-                    [&](const Bools::Expr&) {
-                        args.emplace_back(up(vars.at(next_bool_var)));
-                        ++next_bool_var;
-                    }
-                }, x
+        const auto& up {rule->getUpdate()};
+        for (const auto& x : (*conc)->get_args()) {
+            theory::apply(
+                x,
+                [&](const Arith::Expr&) {
+                    args.emplace_back(up(vars.at(next_int_var)));
+                    ++next_int_var;
+                },
+                [&](const Arrays<Arith>::Expr&) {
+                    args.emplace_back(up.get(avars.at(next_arr_var)));
+                    ++next_arr_var;
+                },
+                [&](const Bools::Expr&) {
+                    args.emplace_back(up(vars.at(next_bool_var)));
+                    ++next_bool_var;
+                }
             );
         }
         conclusion = FunApp::mk((*conc)->get_pred(), args);
@@ -130,12 +144,10 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
         const auto trans {cex.get_transition(i)};
         auto state {cex.get_state(i)};
         if (const auto it {renamings.find(trans)}; it != renamings.end()) {
-            state = state.composeBackwards(it->second);
+            state = state->composeBackwards(it->second);
         }
         const auto clause {clause_map.at(trans)};
-        if (!res.try_step(state, clause)) {
-            throw std::logic_error("transform_cex failed");
-        }
+        res.do_step(state, clause);
     }
     return res;
 }
@@ -151,51 +163,66 @@ ITSPtr CHCToITS::transform() {
     }
     for (const auto &c: chcs->get_clauses()) {
         Renaming renaming;
-        std::vector<Bools::Expr> constraints{c->get_constraint()};
+        std::vector constraints{c->get_constraint()};
         const auto lhs_loc = c->get_premise() ? its->getOrAddLocation((*c->get_premise())->get_pred()) : its->getInitialLocation();
         constraints.emplace_back(theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
         // replace the arguments of the body predicate with the corresponding program variables
         unsigned bool_arg{0};
+        unsigned arr_arg{0};
         unsigned int_arg{0};
         if (const auto prem{c->get_premise()}) {
-            for (const auto &ex : (*prem)->get_args()) {
-                std::visit(
-                    Overload{
-                        [&](const Arith::Expr x) {
-                            if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
-                                renaming.insert<Arith>(*var, vars[int_arg]);
-                            } else {
-                                constraints.emplace_back(theory::mkEq(x, vars[int_arg]));
-                            }
-                            ++int_arg;
-                        },
-                        [&](const Bools::Expr x) {
-                            if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
-                                renaming.insert<Bools>(*var, bvars[bool_arg]);
-                            } else {
-                                constraints.emplace_back(theory::mkEq(x, theory::toExpr(bvars[bool_arg])));
-                            }
-                            ++bool_arg;
-                        }},
-                    ex);
+            for (const auto& ex : (*prem)->get_args()) {
+                theory::apply(
+                    ex,
+                    [&](const Arith::Expr& x) {
+                        if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
+                            renaming.insert<Arith>(*var, vars[int_arg]);
+                        }
+                        else {
+                            constraints.emplace_back(theory::mkEq(x, vars[int_arg]));
+                        }
+                        ++int_arg;
+                    },
+                    [&](const Arrays<Arith>::Expr& x) {
+                        if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
+                            renaming.insert<Arrays<Arith>>(*var, avars[arr_arg]);
+                        }
+                        else {
+                            constraints.emplace_back(theory::mkEq(x, avars[arr_arg]));
+                        }
+                        ++arr_arg;
+                    },
+                    [&](const Bools::Expr& x) {
+                        if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
+                            renaming.insert<Bools>(*var, bvars[bool_arg]);
+                        }
+                        else {
+                            constraints.emplace_back(theory::mkEq(x, theory::toExpr(bvars[bool_arg])));
+                        }
+                        ++bool_arg;
+                    });
             }
         }
         bool_arg = 0;
+        arr_arg = 0;
         int_arg = 0;
         Subs up;
         if (const auto conc{c->get_conclusion()}) {
             for (const auto &arg : (*conc)->get_args()) {
-                std::visit(
-                    Overload{
-                        [&](const Arith::Expr var) {
-                            up.put<Arith>(vars[int_arg], var);
-                            ++int_arg;
-                        },
-                        [&](const Bools::Expr var) {
-                            up.put<Bools>(bvars[bool_arg], var);
-                            ++bool_arg;
-                        }},
-                    arg);
+                theory::apply(
+                    arg,
+                    [&](const Arith::Expr& var) {
+                        up.put<Arith>(vars[int_arg], var);
+                        ++int_arg;
+                    },
+                    [&](const Arrays<Arith>::Expr& var) {
+                        up.put<Arrays<Arith>>(avars[int_arg], var);
+                        ++arr_arg;
+                    },
+                    [&](const Bools::Expr& var) {
+                        up.put<Bools>(bvars[bool_arg], var);
+                        ++bool_arg;
+                    });
             }
             for (unsigned i = int_arg; i < max_int_arity; ++i) {
                 up.put<Arith>(vars[i], ArithVar::next()->toExpr());

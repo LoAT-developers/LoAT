@@ -6,7 +6,6 @@
 #include "subs.hpp"
 
 class Recurrence {
-private:
 
 public:
 
@@ -15,23 +14,23 @@ public:
         unsigned int prefix {0};
     };
 
-    static std::optional<Result> solve(const Subs &equations, const Arith::Var n);
-
-    static void solve(const std::string &eq);
+    static std::optional<Result> solve(const Subs &equations, const Arith::Var& n);
 
 private:
 
-    Recurrence(const Subs &subs, const Arith::Var n);
+    Recurrence(const Subs &equations, const Arith::Var& n);
 
-    std::optional<std::tuple<Int, Int, Arith::Expr>> handle_exp(const ArithExpPtr &pow);
+    std::optional<std::tuple<Int, Int, Arith::Expr>> handle_exp(const ArithExpPtr &pow) const;
 
-    Arith::Expr compute_r(const Arith::Expr cs, const Rational &c);
+    Arith::Expr compute_r(const Arith::Expr& q, const Rational &c);
 
     bool solve();
 
-    bool solve(const Arith::Var lhs, const Arith::Expr rhs);
+    bool solve(const Arith::Var& x, const Arith::Expr& rhs);
 
-    bool solve(const Bools::Var &lhs, const Bools::Expr rhs);
+    bool solve(const Bools::Var &lhs, const Bools::Expr& rhs);
+
+    bool solve(const Arrays<Arith>::Var &lhs, const Arrays<Arith>::Expr& rhs);
 
     Subs equations;
 

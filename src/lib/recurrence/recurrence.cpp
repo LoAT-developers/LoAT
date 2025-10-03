@@ -6,9 +6,9 @@
 
 #include <map>
 
-Recurrence::Recurrence(const Subs &equations, const Arith::Var n) : equations(equations), n(n) {}
+Recurrence::Recurrence(const Subs &equations, const Arith::Var& n) : equations(equations), n(n) {}
 
-std::optional<std::tuple<Int, Int, Arith::Expr>> Recurrence::handle_exp(const ArithExpPtr &pow) {
+std::optional<std::tuple<Int, Int, Arith::Expr>> Recurrence::handle_exp(const ArithExpPtr &pow) const {
     Int degree{0};
     Int base{1};
     Arith::Expr coeff{arith::mkConst(1)};
@@ -21,8 +21,7 @@ std::optional<std::tuple<Int, Int, Arith::Expr>> Recurrence::handle_exp(const Ar
         degree = *d;
     } else if (const auto b{pbase->isInt()}) {
         if (pexp->isLinear({{n}})) {
-            const auto ncoeff{*pexp->coeff(n)};
-            if (ncoeff->is(1)) {
+            if (const auto ncoeff{*pexp->coeff(n)}; ncoeff->is(1)) {
                 base = *b;
                 coeff = arith::mkExp(pbase, pexp - n);
             } else {
@@ -47,21 +46,20 @@ std::optional<std::tuple<Int, Int, Arith::Expr>> Recurrence::handle_exp(const Ar
 }
 
 // compute_r from [CAV19]
-Arith::Expr Recurrence::compute_r(const Arith::Expr q, const Rational &c) {
+Arith::Expr Recurrence::compute_r(const Arith::Expr& q, const Rational &c) {
     assert(q->vars().size() <= 1);
     if (const auto c0 {q->isRational()}) {
         return c == 1 ? *c0 * n : arith::mkConst(***c0 / (1 - c));
-    } else {
-        assert(q->has(n));
-        const auto d {*q->maxDegree()};
-        const auto cd {*q->coeff(n, d)};
-        Arith::Expr s =
-            c == 1
-                ? (cd * arith::mkExp(n, arith::mkConst(d + 1)))->divide(d + 1)
-                : (cd * arith::mkExp(n, arith::mkConst(d)))->divide(1 - c);
-        const ArithSubs subs {{n, n-arith::mkConst(1)}};
-        return s + compute_r(q - s + arith::mkConst(c) * subs(s), c);
     }
+    assert(q->has(n));
+    const auto d {*q->maxDegree()};
+    const auto cd {*q->coeff(n, d)};
+    const Arith::Expr s =
+        c == 1
+            ? (cd * arith::mkExp(n, arith::mkConst(d + 1)))->divide(d + 1)
+            : (cd * arith::mkExp(n, arith::mkConst(d)))->divide(1 - c);
+    const ArithSubs subs {{n, n-arith::mkConst(1)}};
+    return s + compute_r(q - s + arith::mkConst(c) * subs(s), c);
 }
 
 // Compute closed form for x as described in [CAV19]:
@@ -69,7 +67,7 @@ Arith::Expr Recurrence::compute_r(const Arith::Expr q, const Rational &c) {
 // F. Frohn and J. Giesl
 // CAV 2019
 // This implements Alg. 3 (closed_form) for one variable.
-bool Recurrence::solve(const Arith::Var x, const Arith::Expr rhs) {
+bool Recurrence::solve(const Arith::Var& x, const Arith::Expr& rhs) {
     if (!rhs->isLinear({{x}})) {
         return false;
     }
@@ -78,8 +76,7 @@ bool Recurrence::solve(const Arith::Var x, const Arith::Expr rhs) {
     auto prefix{0u};
     auto closed_form{m_x_plus_q};
     for (const auto &x : vars) {
-        const auto it{prefixes.find(x)};
-        if (it != prefixes.end()) {
+        if (const auto it{prefixes.find(x)}; it != prefixes.end()) {
             prefix = std::max(it->second, prefix);
         }
     }
@@ -110,17 +107,17 @@ bool Recurrence::solve(const Arith::Var x, const Arith::Expr rhs) {
             if (a->has(n)) {
                 const auto success{
                     a->apply<bool>(
-                        [](const ArithConstPtr) -> bool {
+                        [](const ArithConstPtr&) -> bool {
                             throw std::logic_error("an expression that contains n cannot be a constant");
                         },
-                        [&](const ArithVarPtr) {
+                        [&](const ArithVarPtr&) {
                             degree_and_base_to_coeff.emplace(Key{1, 1}, Val{}).first->second.push_back(arith::mkConst(1));
                             return true;
                         },
-                        [](const ArithAddPtr) -> bool {
+                        [](const ArithAddPtr&) -> bool {
                             throw std::logic_error("nested addition in arithmetic expresssion");
                         },
-                        [&](const ArithMultPtr mul) {
+                        [&](const ArithMultPtr& mul) {
                             Int degree{0};
                             Int base{1};
                             std::vector<Arith::Expr> coeff;
@@ -158,20 +155,19 @@ bool Recurrence::solve(const Arith::Var x, const Arith::Expr rhs) {
                             degree_and_base_to_coeff.emplace(Key{degree, base}, Val{}).first->second.push_back(arith::mkTimes(std::move(coeff)));
                             return true;
                         },
-                        [](const ArithModPtr) {
+                        [](const ArithModPtr&) {
                             if (Config::Analysis::log) {
                                 std::cout << "mod-subterm with n" << std::endl;
                             }
                             return false;
                         },
-                        [&](const ArithExpPtr pow) {
+                        [&](const ArithExpPtr& pow) {
                             if (const auto t{handle_exp(pow)}) {
                                 const auto &[degree, base, coeff]{*t};
                                 degree_and_base_to_coeff.emplace(Key{degree, base}, Val{}).first->second.push_back(coeff);
                                 return true;
-                            } else {
-                                return false;
                             }
+                            return false;
                         })};
                 if (!success) {
                     return false;
@@ -208,7 +204,7 @@ bool Recurrence::solve(const Arith::Var x, const Arith::Expr rhs) {
     return true;
 }
 
-bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr rhs) {
+bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr& rhs) {
     const auto updated{closed_form_n_minus_one(rhs)};
     if (updated->lits().contains(bools::mk(lhs, true))) {
         return false;
@@ -219,8 +215,7 @@ bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr rhs) {
     }
     unsigned prefix{1};
     for (const auto &x : vars) {
-        const auto it{prefixes.find(x)};
-        if (it != prefixes.end() && it->second >= prefix) {
+        if (const auto it{prefixes.find(x)}; it != prefixes.end() && it->second >= prefix) {
             prefix = it->second + 1;
         }
     }
@@ -239,8 +234,8 @@ bool Recurrence::solve() {
     for (const auto &lhs : *order) {
         const auto success{std::visit(
             [&](const auto lhs) {
-                const auto th{theory::theory(lhs)};
-                const auto rhs {equations.get<decltype(th)>(lhs)};
+                using Th = decltype(theory::theory(lhs));
+                const auto rhs {equations.get<Th>(lhs)};
                 if (Config::Analysis::log) {
                     std::cout << "solving recurrence " << lhs << " = " << rhs << std::endl;
                 }
@@ -264,11 +259,9 @@ bool Recurrence::solve() {
     return true;
 }
 
-std::optional<Recurrence::Result> Recurrence::solve(const Subs &update, const Arith::Var n) {
-    Recurrence rec{update, n};
-    if (rec.solve()) {
+std::optional<Recurrence::Result> Recurrence::solve(const Subs &equations, const Arith::Var& n) {
+    if (Recurrence rec{equations, n}; rec.solve()) {
         return rec.result;
-    } else {
-        return {};
     }
+    return {};
 }

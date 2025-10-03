@@ -2,7 +2,6 @@
 #include "optional.hpp"
 #include "conshash.hpp"
 
-#include <stdexcept>
 #include <ostream>
 #include <boost/functional/hash.hpp>
 #include <functional>
@@ -20,11 +19,11 @@ size_t BoolLit::CacheHash::operator()(const std::tuple<BoolVarPtr, bool> &args) 
     return seed;
 }
 
-BoolLitPtr bools::mk(const BoolVarPtr var, bool negated) {
+BoolLitPtr bools::mk(const BoolVarPtr& var, const bool negated) {
     return BoolLit::cache.from_cache(var, negated);
 }
 
-BoolLit::BoolLit(const BoolVarPtr var, bool negated): var(var), negated(negated) {}
+BoolLit::BoolLit(const BoolVarPtr& var, const bool negated): var(var), negated(negated) {}
 
 BoolLit::~BoolLit() {
     cache.erase(var, negated);
@@ -34,11 +33,11 @@ bool BoolLit::isNegated() const {
     return negated;
 }
 
-bool BoolLit::isPoly() const {
+bool BoolLit::isPoly() {
     return true;
 }
 
-bool BoolLit::isLinear() const {
+bool BoolLit::isLinear() {
     return true;
 }
 
@@ -46,11 +45,11 @@ BoolVarPtr BoolLit::getBoolVar() const {
     return var;
 }
 
-bool BoolLit::isTriviallyTrue() const {
+bool BoolLit::isTriviallyTrue() {
     return false;
 }
 
-bool BoolLit::isTriviallyFalse() const {
+bool BoolLit::isTriviallyFalse() {
     return false;
 }
 
@@ -96,8 +95,7 @@ sexpresso::Sexp BoolLit::to_smtlib() const {
 }
 
 BoolLitPtr BoolLit::renameVars(const bool_var_map &map) const {
-    const auto it {map.left.find(var)};
-    if (it == map.left.end()) {
+    if (const auto it {map.left.find(var)}; it == map.left.end()) {
         return cpp::assume_not_null(shared_from_this());
     } else {
         return bools::mk(it->second, negated);

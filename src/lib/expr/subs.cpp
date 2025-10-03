@@ -49,7 +49,7 @@ bool operator==(const Subs::Iterator& a, const Subs::Iterator& b) {
 }
 
 Subs::Iterator Subs::end() const {
-    return Iterator(*this, std::get<num_theories - 1>(t).end());
+    return {*this, std::get<num_theories - 1>(t).end()};
 }
 
 template <size_t I = 0>
@@ -96,7 +96,7 @@ void projectImpl(const Subs &s, Subs& res, const std::function<bool(Var)> &keep)
 Subs Subs::project(const std::function<bool(Var)> &keep) const {
     Subs res;
     projectImpl(*this, res, keep);
-    return Subs(res);
+    return {res};
 }
 
 template<std::size_t I = 0>
@@ -129,10 +129,17 @@ void Subs::put(const Var &x, const Expr &y) {
     putImpl(*this, x, y);
 }
 
-Subs::Subs(){}
-
 Subs::Subs(const Pair &p) {
     put(p);
+}
+
+Subs::Subs(const Renaming& r) {
+    for (const auto &p: r) {
+        theory::apply(p, [&](const auto &p) {
+            using Th = decltype(theory::theory(p.first));
+            put(p.first, Th::varToExpr(p.second));
+        });
+    }
 }
 
 template<std::size_t I = 0>
@@ -406,21 +413,11 @@ Subs Subs::compose(const Subs &that) const {
 }
 
 template<std::size_t I = 0>
-void collectDomainImpl(const Subs &subs, VarSet &res) {
-    if constexpr (I < num_theories) {
-        subs.get<I>().collectDomain(res.get<I>());
-        collectDomainImpl<I+1>(subs, res);
-    }
-}
-
-void Subs::collectDomain(VarSet &res) const {
-    collectDomainImpl<0>(*this, res);
-}
-
-template<std::size_t I = 0>
 void collectCoDomainVarsImpl(const Subs &subs, VarSet &res) {
     if constexpr (I < num_theories) {
-        if constexpr (theory::is<I, Bools>()) {
+        if constexpr (theory::is<I, Arrays<Arith>>()) {
+            subs.get<I>().collectCoDomainVars(res.get<I>(), res.get<Arith::Var>());
+        } else if constexpr (theory::is<I, Bools>()) {
             subs.get<I>().collectCoDomainVars(res);
         } else {
             subs.get<I>().collectCoDomainVars(res.get<I>());

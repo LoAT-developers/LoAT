@@ -10,30 +10,27 @@ class SwineModel final : public Model {
 
 public:
 
-    SwineModel(const SwineContext&, const z3::model&);
+    SwineModel(const SwineContext&, const z3::model&, const Subs&);
 
     void put(const Arith::Var&, const Arith::Const&) override;
 
-    bool contains(const Arith::Var&) const override;
-    bool contains(const Bools::Var&) const override;
-    bool contains(const Arrays<Arith>::Var&) const override;
+    // bool contains(const Arith::Var&) const override;
+    // bool contains(const Bools::Var&) const override;
+    // bool contains(const Arrays<Arith>::Var&) const override;
 
+    bool evalImpl(const Lit&) override;
 
-    bool eval(const Lit&) override;
-
-    Bools::Const eval(const Bools::Expr&) override;
+    Bools::Const evalImpl(const Bools::Expr&) override;
     Rational evalToRational(const Arith::Expr&) override;
 
-    ModelPtr clone() const override {
-        return std::make_shared<SwineModel>(*this);
-    }
+    ModelPtr withSubs(const Subs&) const override;
 
 protected:
 
     Arith::Const getImpl(const Arith::Var&) override;
     Bools::Const getImpl(const Bools::Var&) override;
-    Arith::Const getImpl(const ArrayReadPtr<Arith>&)override;
-    void print(std::ostream&) const override;
+    Arith::Const getImpl(const ArrayReadPtr<Arith>&) override;
+    void print(std::ostream&, const Expr&) override;
 
 private:
     SwineContext m_ctx;
