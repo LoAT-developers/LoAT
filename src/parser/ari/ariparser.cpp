@@ -75,6 +75,7 @@ void ARIParser::run(const std::string &filename) {
                 }
             }
             std::vector<Bools::Expr> guard;
+            Arith::Expr cost {arith::mkConst(1)};
             for (unsigned idx = 3; idx + 1 < ex.childCount(); idx += 2) {
                 const auto key {ex[idx].str()};
                 auto val {ex[idx + 1]};
@@ -83,17 +84,17 @@ void ARIParser::run(const std::string &filename) {
                 } else if (key == ":guard") {
                     guard.emplace_back(parseBoolExpr(val, state));
                 } else if (key == ":cost") {
-                    const auto cost {parseArithExpr(val, state)};
-                    if (Config::Analysis::complexity()) {
-                        update.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
-                    } else if (Config::Analysis::relative_termination()) {
-                        assert(cost->isInt());
-                        assert(*cost->isInt() >= 0);
-                        update.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
-                    }
+                    cost = parseArithExpr(val, state);
                 } else {
                     throw std::invalid_argument("failed to parse " + ex.toString());
                 }
+            }
+            if (Config::Analysis::complexity()) {
+                update.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
+            } else if (Config::Analysis::relative_termination()) {
+                assert(cost->isInt());
+                assert(*cost->isInt() >= 0);
+                update.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
             }
             const auto lhs_idx {its->getOrAddLocation(lhs_loc)};
             const auto rhs_idx {its->getOrAddLocation(rhs_loc)};
