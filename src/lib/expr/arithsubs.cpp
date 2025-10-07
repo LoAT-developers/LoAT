@@ -68,20 +68,6 @@ ArithSubs ArithSubs::concat(const arith_var_map &that) const {
     return res;
 }
 
-ArithSubs ArithSubs::unite(const ArithSubs &that) const {
-    ArithSubs res;
-    for (const auto & [fst, snd]: *this) {
-        res.put(fst, snd);
-    }
-    for (const auto & [fst, snd]: that) {
-        if (res.contains(fst)) {
-            throw std::invalid_argument("union of substitutions is only defined if their domain is disjoint");
-        }
-        res.put(fst, snd);
-    }
-    return res;
-}
-
 ArithSubs ArithSubs::project(const linked_hash_set<ArithVarPtr> &vars) const {
     ArithSubs res;
     if (size() < vars.size()) {

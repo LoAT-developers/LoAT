@@ -63,8 +63,6 @@ public:
 
     Self concat(const array_var_map<T> &that) const;
 
-    Self unite(const Self &that) const;
-
     Self project(const linked_hash_set<Var> &vars) const {
         auto m {map};
         m.project(vars);

@@ -37,8 +37,6 @@ public:
 
     ArithSubs concat(const arith_var_map &that) const;
 
-    ArithSubs unite(const ArithSubs &that) const;
-
     ArithSubs project(const linked_hash_set<ArithVarPtr> &vars) const;
 
     ArithSubs project(const std::function<bool(ArithVarPtr)> &keep) const;

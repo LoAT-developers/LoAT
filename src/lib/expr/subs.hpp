@@ -175,7 +175,6 @@ public:
         return arrays::mkArrayRead(arr, {transformed_indices.begin(), transformed_indices.end()});
     }
 
-    Subs unite(const Subs &that) const;
     bool changes(const Var &x) const;
     void erase(const Var &x);
     void erase(const VarSet &xs);

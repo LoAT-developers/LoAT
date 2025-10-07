@@ -172,20 +172,6 @@ Expr Subs::get(const Var &var) const {
 }
 
 template<std::size_t I = 0>
-void uniteImpl(const Subs &fst, const Subs &snd, Subs &res) {
-    if constexpr (I < num_theories) {
-        res.get<I>() = fst.get<I>().unite(snd.get<I>());
-        uniteImpl<I+1>(fst, snd, res);
-    }
-}
-
-Subs Subs::unite(const Subs &that) const {
-    Subs res;
-    uniteImpl(*this, that, res);
-    return res;
-}
-
-template<std::size_t I = 0>
 bool changesImpl(const Subs &s, const Var &x) {
     if constexpr (I < num_theories) {
         if (x.index() == I) {
