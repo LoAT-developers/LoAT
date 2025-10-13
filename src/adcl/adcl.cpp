@@ -135,14 +135,14 @@ std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr& idx) {
     for (const auto &x: prog_vars) {
         theory::apply(x, [&](const auto &x) {
             const auto th {theory::theory(x)};
-            new_var_renaming.insert<decltype(th)>(x, th.next());
+            new_var_renaming.insert<decltype(th)>(x, th.next(x->dim()));
         });
     }
     for (const auto &var: idx->vars()) {
         if (theory::isTempVar(var)) {
             theory::apply(var, [&](const auto &x) {
                 const auto th {theory::theory(x)};
-                const auto next {th.next()};
+                const auto next {th.next(x->dim())};
                 new_var_renaming.insert<decltype(th)>(x, next);
                 new_tmp_var_renaming.insert<decltype(th)>(x, next);
             });
@@ -152,7 +152,7 @@ std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr& idx) {
         if (!new_tmp_var_renaming.contains(var)) {
             theory::apply(var, [&](const auto &x) {
                 const auto th {theory::theory(x)};
-                const auto next {th.next()};
+                const auto next {th.next(x->dim())};
                 new_var_renaming.insert<decltype(th)>(x, next);
                 new_tmp_var_renaming.insert<decltype(th)>(x, next);
             });
@@ -269,12 +269,11 @@ bool ADCL::store_step(const RulePtr& idx, const RulePtr& implicant) {
 
 void ADCL::print_trace(std::ostream &s) const {
     const auto model {solver->model()};
-    model->print(s, prog_vars);
-    s << std::endl;
+    s << model->toString(prog_vars) << std::endl;
     for (const auto &step: trace) {
         s << " -" << step.clause_idx << "-> ";
         if (!chcs->isSinkTransition(step.clause_idx)) {
-            model->composeBackwards(step.var_renaming)->print(s, prog_vars);
+            s << model->composeBackwards(step.var_renaming)->toString(prog_vars);
         }
         s << std::endl;
     }
@@ -437,7 +436,7 @@ std::optional<RulePtr> ADCL::instantiate(const Arith::Var& n, const RulePtr& rul
         if (res) {
             return {};
         }
-        res = rule->subs(Subs::build<Arith>(s));
+        res = rule->subs(s);
     }
     return res;
 }
@@ -451,7 +450,7 @@ ITSCex* ADCL::the_cex() {
 
 std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const unsigned backlink) {
     const auto simp {Preprocess::preprocessRule(rule)};
-    if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().concat(simp->getUpdate())) {
+    if (Config::Analysis::safety() && simp->getUpdate().isIdempotent()) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
@@ -607,7 +606,7 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
         if (!done && store_step(idx, idx)) {
             if (chcs->isSinkTransition(idx)) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
-                    set_cpx_witness(trace.back().resolvent, solver->model(), Arith::next());
+                    set_cpx_witness(trace.back().resolvent, solver->model(), ArithVar::next());
                 }
                 return std::make_unique<ProvedUnsat>();
             }
@@ -637,7 +636,7 @@ bool ADCL::try_to_finish() {
             if (const auto implicant {resolve(q)}) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
                     const auto resolvent {compute_resolvent(q, (*implicant)->getGuard())};
-                    set_cpx_witness(resolvent, solver->model(), Arith::next());
+                    set_cpx_witness(resolvent, solver->model(), ArithVar::next());
                 }
                 add_to_trace(Step(q, (*implicant)->getGuard(), Renaming(), Renaming(), Rule::mk(top(), Subs())));
                 print_state();

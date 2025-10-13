@@ -15,12 +15,9 @@ ABMC::ABMC(const ITSPtr& its):
     trace_var(ArithVar::next()),
     cex(its) {
     vars.insert(trace_var);
-    cells.insert(trace_var);
     vars.insert(n);
-    cells.insert(n);
     solver->enableModels();
     vars.insertAll(its->getVars());
-    cells.insertAll(its->getCells());
     for (const auto &var: vars) {
         pre_to_post.insert(var, theory::next(var));
     }
@@ -141,7 +138,7 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
         return top();
     }
-    const auto orig {loop.idx->subs(Subs::build<Arith>(n, arith::mkConst(1)))};
+    const auto orig {loop.idx->subs(ArithSubs{{n, arith::mkConst(1)}})};
     const auto length{depth - backlink + 1};
     // we must not start another iteration of the loop in the next step,
     // so we require that we either use the learned transition,
@@ -288,20 +285,13 @@ Bools::Expr ABMC::encode_transition(const RulePtr& idx, const bool with_id) {
     if (with_id) {
         res.emplace_back(theory::mkEq(trace_var, arith::mkConst(idx->getId())));
     }
-    for (const auto& x : cells) {
+    for (const auto& x : vars) {
         theory::apply(
             x,
-            [&](const Arrays<Arith>::Cell& x) {
-                const auto tmp{Arith::next()};
-                if (x->isProgVar()) {
-                    res.push_back(bools::mkLit(arrays::mkElemEq(pre_to_post(x), tmp)));
-                    res.push_back(bools::mkLit(arrays::mkElemEq(up.get(x), tmp)));
-                }
-            },
             [&](const auto& x) {
                 using T = decltype(theory::theory(x));
                 if (x->isProgVar()) {
-                    res.push_back(theory::mkEq(T::cellToExpr(pre_to_post(x)), up.get(x)));
+                    res.push_back(theory::mkEq(T::varToExpr(pre_to_post(x)), up.get(x)));
                 }
             });
     }
@@ -332,7 +322,7 @@ void ABMC::build_trace() {
         std::cout << "trace:" << std::endl << trace;
         std::cout << "run:" << std::endl;
         for (const auto &s : run) {
-            std::cout << s << std::endl;
+            std::cout << s->toString(vars) << std::endl;
         }
     }
 }
@@ -476,12 +466,6 @@ ITSSafetyCex ABMC::get_cex() {
     cex.set_initial_state(model->composeBackwards(subs.front()));
     for (size_t i = 0; i < depth; ++i) {
         const auto r{subs.at(i + 1)};
-        CellSet renamed_cells;
-        for (const auto& c : cells) {
-            theory::apply(c, [&](const auto& c) {
-                renamed_cells.insert(r(c));
-            });
-        }
         const auto current{model->composeBackwards(r)};
         const auto trans{trace.at(i).first};
         cex.do_step(trans, current);

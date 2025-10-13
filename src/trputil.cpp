@@ -232,7 +232,7 @@ std::pair<Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const s
     if (Config::Analysis::log) {
         std::cout << "compressed:" << std::endl;
         std::cout << transition << std::endl;
-        std::cout << "model: " << model << std::endl;
+        std::cout << "model: " << model->toString(vars) << std::endl;
     }
     return {specialize(transition, model, eliminate), model};
 }

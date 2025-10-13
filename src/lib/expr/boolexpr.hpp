@@ -87,6 +87,7 @@ public:
     sexpresso::Sexp to_smtlib() const;
     BoolExprSet get_disjuncts() const;
     std::optional<Bools::Var> isVar() const;
+    Bools::Expr subs(const Arith::Subs&) const;
 
     void collectVars(VarSet&) const;
 
@@ -181,4 +182,4 @@ Bools::Expr operator||(const Bools::Expr& a, const Bools::Expr& b);
 
 Bools::Expr operator!(const Bools::Expr& a);
 
-std::ostream& operator<<(std::ostream &s, Bools::Expr &e);
+std::ostream& operator<<(std::ostream &s, const Bools::Expr &e);

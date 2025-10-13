@@ -14,7 +14,8 @@ Arith::Expr Arith::anyValue() {
     return arith::mkConst(0);
 }
 
-Arith::Var Arith::next() {
+Arith::Var Arith::next(const unsigned p_dim) {
+    assert (p_dim == 0);
     return ArithVar::next();
 }
 

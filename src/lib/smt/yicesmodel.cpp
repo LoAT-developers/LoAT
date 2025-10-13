@@ -80,11 +80,12 @@ Arith::Const YicesModel::getImpl(const ArrayReadPtr<Arith>& cell) {
     return toInt(Converter::convert(cell, m_ctx));
 }
 
-void YicesModel::print(std::ostream& s, const Expr& e) {
-    theory::apply(e, [&](const auto& e) {
+std::string YicesModel::toString(const Expr& e) {
+    return theory::apply(e, [&](const auto& e) {
         const auto t{Converter::convert(e, m_ctx)};
         char* str{yices_term_to_string(t, 120, 40, 0)};
-        s << str;
+        std::string res {str};
         yices_free_string(str);
+        return res;
     });
 }

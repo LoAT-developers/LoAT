@@ -25,8 +25,8 @@ struct Arrays {
         return cell;
     }
 
-    static Var next() {
-        return ArrayVar<T>::next();
+    static Var next(const unsigned p_dim) {
+        return ArrayVar<T>::next(p_dim);
     }
 
 };
@@ -39,4 +39,3 @@ extern Arrays<Bools> bools;
 }
 
 static_assert(ITheory<Arrays<Arith>>);
-static_assert(ITheory<Arrays<Bools>>);

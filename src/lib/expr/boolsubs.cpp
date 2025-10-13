@@ -3,6 +3,7 @@
 #include <ranges>
 
 #include "theory.hpp"
+#include "subs.hpp"
 
 BoolSubs::BoolSubs(const BoolVarPtr& key, const Bools::Expr& val): map({{key, val}}) {}
 
@@ -79,6 +80,30 @@ BoolSubs BoolSubs::project(const std::function<bool(BoolVarPtr)> &keep) const {
         if (keep(fst)) {
             res.put(fst, snd);
         }
+    }
+    return res;
+}
+
+BoolSubs BoolSubs::concat(const ArithSubs& that) const {
+    BoolSubs res;
+    for (auto &[fst,snd]: *this) {
+        res.put(fst, snd->subs(that));
+    }
+    return res;
+}
+
+BoolSubs BoolSubs::concat(const BoolSubs& that) const {
+    BoolSubs res;
+    for (auto &[fst,snd]: *this) {
+        res.put(fst, that(snd));
+    }
+    return res;
+}
+
+BoolSubs BoolSubs::concat(const Subs& that) const {
+    BoolSubs res;
+    for (const auto & [key, val]: map) {
+        res.put(key, that(val));
     }
     return res;
 }

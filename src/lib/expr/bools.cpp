@@ -17,7 +17,8 @@ Bools::Expr Bools::anyValue() {
     return bot();
 }
 
-Bools::Var Bools::next() {
+Bools::Var Bools::next(const unsigned p_dim) {
+    assert(p_dim == 0);
     return BoolVar::next();
 }
 

@@ -59,7 +59,7 @@ Arith::Expr Recurrence::compute_r(const Arith::Expr& q, const Rational &c) {
             ? (cd * arith::mkExp(n, arith::mkConst(d + 1)))->divide(d + 1)
             : (cd * arith::mkExp(n, arith::mkConst(d)))->divide(1 - c);
     const ArithSubs subs {{n, n-arith::mkConst(1)}};
-    return s + compute_r(q - s + arith::mkConst(c) * subs(s), c);
+    return s + compute_r(q - s + arith::mkConst(c) * s->subs(subs), c);
 }
 
 // Compute closed form for x as described in [CAV19]:
@@ -71,7 +71,7 @@ bool Recurrence::solve(const Arith::Var& x, const Arith::Expr& rhs) {
     if (!rhs->isLinear({{x}})) {
         return false;
     }
-    auto m_x_plus_q{closed_form_n_minus_one.get<Arith>()(rhs)};
+    auto m_x_plus_q{rhs->subs(closed_form_n_minus_one.get<Arith>())};
     const auto vars{m_x_plus_q->vars()};
     auto prefix{0u};
     auto closed_form{m_x_plus_q};
@@ -189,7 +189,7 @@ bool Recurrence::solve(const Arith::Var& x, const Arith::Expr& rhs) {
             const auto fst {alpha_divided * r * arith::mkExp(arith::mkConst(b), n)};
             const Arith::Subs subs {{n, arith::mkConst(0)}};
             // negated second addend of the last line from (10), which is simples, as c=-1
-            const auto snd {subs(r) * alpha_divided * arith::mkExp(arith::mkConst(m), n)};
+            const auto snd {r->subs(subs) * alpha_divided * arith::mkExp(arith::mkConst(m), n)};
             res.push_back(fst);
             res.push_back(-snd);
         }
@@ -199,7 +199,7 @@ bool Recurrence::solve(const Arith::Var& x, const Arith::Expr& rhs) {
     prefixes.emplace(x, prefix);
     result.prefix = std::max(result.prefix, prefix);
     const ArithSubs subs {{n, n - arith::mkConst(1)}};
-    closed_form_n_minus_one.put<Arith>(x, subs(closed_form));
+    closed_form_n_minus_one.put<Arith>(x, closed_form->subs(subs));
     result.closed_form.put<Arith>(x, closed_form);
     return true;
 }
@@ -224,6 +224,11 @@ bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr& rhs) {
     closed_form_n_minus_one.put<Bools>(lhs, updated);
     result.closed_form.put<Bools>(lhs, updated);
     return true;
+}
+
+bool Recurrence::solve(const Arrays<Arith>::Var& lhs, const Arrays<Arith>::Expr& rhs) {
+    // TODO
+    throw std::logic_error("not implemented");
 }
 
 bool Recurrence::solve() {

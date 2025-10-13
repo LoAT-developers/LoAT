@@ -38,7 +38,7 @@ public:
     ModelPtr composeBackwards(const Renaming&) const;
     ModelPtr composeBackwards(const Subs&) const;
 
-    void print(std::ostream&, const VarSet&);
+    std::string toString(const VarSet&);
 
 protected:
 
@@ -48,7 +48,7 @@ protected:
     virtual Arith::Const getImpl(const Arith::Var&) = 0;
     virtual Bools::Const getImpl(const Bools::Var&) = 0;
     virtual Arith::Const getImpl(const ArrayReadPtr<Arith>&) = 0;
-    virtual void print(std::ostream&, const Expr&) = 0;
+    virtual std::string toString(const Expr&) = 0;
 
     Subs subs;
 

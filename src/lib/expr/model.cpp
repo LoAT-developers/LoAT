@@ -33,7 +33,7 @@ Bools::Const Model::eval(const Bools::Expr& e) {
 }
 
 Arith::Const Model::eval(const Arith::Expr& e) {
-    return evalImpl(subs.get<Arith>()(e));
+    return evalImpl(e->subs(subs.get<Arith>()));
 }
 
 bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
@@ -110,7 +110,8 @@ bool Model::contains(const Var& var) const {
     });
 }
 
-void Model::print(std::ostream& s, const VarSet& xs) {
+std::string Model::toString(const VarSet& xs) {
+    std::stringstream s;
     s << "[";
     auto first {true};
     for (const auto &x: xs) {
@@ -119,7 +120,8 @@ void Model::print(std::ostream& s, const VarSet& xs) {
         } else {
             s << ", ";
         }
-        print(s, subs.get(x));
+        s << toString(subs.get(x));
     }
     s << "]";
+    return s.str();
 }

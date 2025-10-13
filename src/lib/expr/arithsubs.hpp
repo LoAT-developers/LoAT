@@ -57,8 +57,6 @@ public:
 
     size_t hash() const;
 
-    ArithExprPtr operator()(const ArithExprPtr& t) const;
-
 private:
 
     linked_hash_map<ArithVarPtr, ArithExprPtr> map{};

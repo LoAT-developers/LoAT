@@ -178,6 +178,7 @@ public:
     Arrays<Arith>::Cell operator()(const Arrays<Arith>::Cell&) const;
     Bools::Var operator()(const Bools::Var&) const;
     Arith::Var operator()(const Arith::Var&) const;
+    Arrays<Arith>::Var operator()(const Arrays<Arith>::Var&) const;
 
     VarSet coDomainVars() const;
     void collectCoDomainVars(VarSet &res) const;

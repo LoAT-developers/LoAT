@@ -21,7 +21,7 @@ struct Bools {
     static Expr varToExpr(const Var& var);
     static Expr cellToExpr(const Cell&);
     static Expr anyValue();
-    static Var next();
+    static Var next(unsigned);
     static Expr mkEq(const Expr&, const Expr&);
 
 };

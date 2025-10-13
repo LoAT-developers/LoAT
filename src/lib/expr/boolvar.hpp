@@ -64,6 +64,8 @@ public:
 
     sexpresso::Sexp to_smtlib() const;
 
+    unsigned dim() const;
+
 };
 
 std::ostream& operator<<(std::ostream &s, const BoolVarPtr e);

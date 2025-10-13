@@ -243,7 +243,7 @@ bool ArithLit::has(const ArithVarPtr& x) const {
 }
 
 ArithLitPtr ArithLit::subs(const ArithSubs &map) const {
-    return mk(map(l), kind);
+    return mk(l->subs(map), kind);
 }
 
 ArithLitPtr ArithLit::renameVars(const arith_var_map &map) const {

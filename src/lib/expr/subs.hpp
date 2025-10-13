@@ -159,17 +159,17 @@ public:
         const auto write {*e->isArrayWrite()};
         const auto transformed_indices{
             write->indices() | std::views::transform([&](const auto& i) {
-                return get<Arith>()(i);
+                return i->subs(get<Arith>());
             })
         };
-        return arrays::mkArrayWrite(var, {transformed_indices.begin(), transformed_indices.end()}, get<Arith>()(write->val()));
+        return arrays::mkArrayWrite(var, {transformed_indices.begin(), transformed_indices.end()}, write->val()->subs(get<Arith>()));
     }
 
     Arrays<Arith>::Cell get(const Arrays<Arith>::Cell &cell) const {
         const auto arr{(*this)(cell->arr())};
         const auto transformed_indices {
             cell->indices() | std::views::transform([&](const auto &i) {
-                return get<Arith>()(i);
+                return i->subs(get<Arith>());
             })
         };
         return arrays::mkArrayRead(arr, {transformed_indices.begin(), transformed_indices.end()});
@@ -185,6 +185,7 @@ public:
     bool empty() const;
     bool isLinear() const;
     bool isPoly() const;
+    bool isIdempotent() const;
     bool operator==(const Subs &that) const = default;
 
     template <size_t I>
@@ -215,11 +216,8 @@ public:
     Bools::Expr operator()(const Lit &lit) const;
     Bools::Expr operator()(const Bools::Expr& e) const;
     Expr operator()(const Expr &expr) const;
-    /**
-     * that.concat(this)
-     */
-    BoolSubs tac(const BoolSubs &that) const;
-    Subs concat(const Subs &that) const;
+    Subs concat(const ArithSubs &that) const;
+    Subs concat(const BoolSubs &that) const;
     Subs concat(const Renaming &that) const;
     Subs compose(const Subs &that) const;
     void collectCoDomainVars(VarSet &res) const;

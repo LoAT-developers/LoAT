@@ -18,7 +18,7 @@ class CHCToITS {
     std::unordered_map<RulePtr, Renaming> renamings;
 
 public:
-    CHCToITS(const CHCPtr& chcs);
+    explicit CHCToITS(CHCPtr  chcs);
 
     CHCModel transform_model(const ITSModel &) const;
 

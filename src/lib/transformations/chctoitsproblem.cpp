@@ -1,7 +1,9 @@
 #include "chctoitsproblem.hpp"
+
+#include <utility>
 #include "config.hpp"
 
-CHCToITS::CHCToITS(const CHCPtr& chcs): chcs(chcs) {}
+CHCToITS::CHCToITS(CHCPtr  chcs): chcs(std::move(chcs)) {}
 
 CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
     CHCModel chc_m;
@@ -12,7 +14,7 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
         }
         const auto inv{its_m.get_invariant(loc)};
         const auto pred{its->getPrintableLocationName(loc)};
-        const auto sig{signature.at(pred)};
+        const auto& sig{signature.at(pred)};
         unsigned next_int_var{0};
         unsigned next_arr_var{0};
         unsigned next_bool_var{0};

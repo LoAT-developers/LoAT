@@ -1,5 +1,6 @@
 #include "chcproblem.hpp"
 #include "optional.hpp"
+#include "theory.hpp"
 
 #include <map>
 

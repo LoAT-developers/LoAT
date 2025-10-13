@@ -3,6 +3,7 @@
 #include "boolvar.hpp"
 #include "boolexpr.hpp"
 #include "linkedhashmap.hpp"
+#include "exprfwd.hpp"
 
 template<class... T> class VariantSet;
 class ArithVar;
@@ -26,6 +27,9 @@ public:
     BoolSubs unite(const BoolSubs &t) const;
     BoolSubs project(const linked_hash_set<BoolVarPtr> &vars) const;
     BoolSubs project(const std::function<bool(BoolVarPtr)> &keep) const;
+    BoolSubs concat(const ArithSubs&) const;
+    BoolSubs concat(const BoolSubs&) const;
+    BoolSubs concat(const Subs&) const;
     bool changes(const BoolVarPtr& key) const;
     linked_hash_set<BoolVarPtr> domain() const;
     void collectCoDomainVars(VarSet &vars) const;

@@ -133,13 +133,18 @@ protected:
         const auto arr {write->arr()};
         const auto indices {write->indices()};
         const auto value {write->val()};
-        const auto converted_arr {context.getIntArraySymbolMap().at(arr)};
+        std::optional<Expr> converted_arr;
+        if (const auto x {arr->isVar()}) {
+            converted_arr = context.getIntArraySymbolMap().at(*x);
+        } else {
+            converted_arr = convertArrayWrite(*arr->isArrayWrite());
+        }
         auto converted_indices {context.exprVec()};
         for (const auto &i: indices) {
             converted_indices.push_back(convertEx(i));
         }
         const auto converted_value {convertEx(value)};
-        return context.arrayWrite(converted_arr, converted_indices, converted_value);
+        return context.arrayWrite(*converted_arr, converted_indices, converted_value);
     }
 
     Expr convertArray(const ArrayPtr<Arith> &arr) {

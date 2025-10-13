@@ -83,3 +83,7 @@ bool BoolVar::CacheEqual::operator()(const std::tuple<int> &args1, const std::tu
 size_t BoolVar::CacheHash::operator()(const std::tuple<int> &args) const noexcept {
     return std::hash<int>{}(std::get<0>(args));
 }
+
+unsigned BoolVar::dim() const {
+    return 0;
+}

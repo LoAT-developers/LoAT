@@ -46,8 +46,11 @@ add_library(${PROJECT_NAME} OBJECT
   renaming.cpp
   exprfwd.hpp
   arrayexpr.hpp
+  arrayexpr.cpp
   arraylit.hpp
+  arraylit.cpp
   arraysubs.hpp
+  arraysubs.cpp
   arrays.hpp
 )
 

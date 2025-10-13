@@ -38,7 +38,11 @@ VarSet Rule::vars() const {
     return res;
 }
 
-RulePtr Rule::subs(const Subs &subs) const {
+RulePtr Rule::subs(const ArithSubs& subs) const {
+    return mk(guard->subs(subs), update.concat(subs));
+}
+
+RulePtr Rule::subs(const BoolSubs& subs) const {
     return mk(subs(guard), update.concat(subs));
 }
 

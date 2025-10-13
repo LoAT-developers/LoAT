@@ -1,4 +1,5 @@
 #include "chcmodel.hpp"
+#include "theory.hpp"
 
 sexpresso::Sexp CHCModel::to_smtlib() const {
     sexpresso::Sexp res;
@@ -21,7 +22,7 @@ sexpresso::Sexp CHCModel::to_smtlib() const {
         { // free variables
             sexpresso::Sexp decls;
             for (const auto &x: interp->vars()) {
-                if (std::find(args.begin(), args.end(), x) == args.end()) {
+                if (std::ranges::find(args, x) == args.end()) {
                     sexpresso::Sexp decl;
                     decl.addChild(theory::getName(x));
                     decl.addChild(toString(theory::to_type(x)));
@@ -53,10 +54,10 @@ std::ostream& operator<<(std::ostream &s, const CHCModel &m) {
     return s;
 }
 
-void CHCModel::set_interpretation(const std::string &f, const std::vector<Var> &args, const Bools::Expr interp) {
+void CHCModel::set_interpretation(const std::string &f, const std::vector<Var> &args, const Bools::Expr& interp) {
     interpretations.emplace(f, std::pair(args, interp));
 }
 
-const linked_hash_map<std::string, std::pair<std::vector<Var>, Bools::Expr>> CHCModel::get_interpretations() const {
+linked_hash_map<std::string, std::pair<std::vector<Var>, Bools::Expr>> CHCModel::get_interpretations() const {
     return interpretations;
 }

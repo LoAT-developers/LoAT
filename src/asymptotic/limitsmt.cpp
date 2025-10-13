@@ -294,7 +294,7 @@ Bools::Expr encodeBoolExpr(const Bools::Expr& expr, const ArithSubs &templateSub
     }
     const auto lit{std::get<Arith::Lit>(*expr->getTheoryLit())};
     const auto lhs{lit->lhs()};
-    const auto ex{templateSubs(lhs)};
+    const auto ex{lhs->subs(templateSubs)};
     if (lit->isGt()) {
         return posConstraint(ex, n) || posInfConstraint(ex, n);
     }
@@ -338,7 +338,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
         return ComplexityWitness{.cpx = cpx, .subs = subs, .param = n};
     };
     // replace variables in the cost function with their linear templates
-    const auto templateCost{templateSubs(cost)};
+    const auto templateCost{cost->subs(templateSubs)};
     solver->add(encodeBoolExpr(expr, templateSubs, n));
     if (hasTmpVars) {
         solver->push();

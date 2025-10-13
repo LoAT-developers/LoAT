@@ -71,10 +71,10 @@ Arith::Const SwineModel::getImpl(const ArrayReadPtr<Arith> &read) {
     return Int(res.to_string());
 }
 
-void SwineModel::print(std::ostream &s, const Expr& e) {
-    theory::apply(e, [&](const auto &e) {
+std::string SwineModel::toString(const Expr& e) {
+    return theory::apply(e, [&](const auto &e) {
         const auto converted {Converter::convert(e, m_ctx)};
-        s << m_model.eval(converted);
+        return ::toString(m_model.eval(converted));
     });
 }
 

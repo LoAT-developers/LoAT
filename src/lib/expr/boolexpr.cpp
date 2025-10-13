@@ -161,6 +161,19 @@ std::optional<Bools::Var> BoolExpr::isVar() const {
     return opt{};
 }
 
+Bools::Expr BoolExpr::subs(const Arith::Subs& subs) const {
+    return map([&](const auto& lit) {
+        return bools::mkLit(theory::apply(
+            lit,
+            [&](const Bools::Lit&) {
+                return lit;
+            },
+            [&](const auto& lit) {
+                return Lit(lit->subs(subs));
+            }));
+    });
+}
+
 linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var& n) const {
     linked_hash_set<Bound> bounds;
     getBounds(n, bounds);

@@ -116,7 +116,6 @@ std::optional<SmtResult> Preprocessor::check_empty_clauses(const ITSPtr& its) {
             solver->add(r->getGuard());
             if (const auto smt_res {solver->check()}; smt_res == SmtResult::Sat) {
                 if (Config::Analysis::model) {
-                    const auto cells {r->getGuard()->cells()};
                     cex.set_initial_state(solver->model());
                     cex.add_final_transition(r);
                 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "theory.hpp"
 #include "itsproblem.hpp"
 
 class ITSModel {
@@ -11,8 +10,8 @@ class ITSModel {
 
 public:
 
-    Bools::Expr get_invariant(const LocationIdx) const;
+    Bools::Expr get_invariant(LocationIdx) const;
 
-    void  set_invariant(const LocationIdx loc, const Bools::Expr inv);
+    void  set_invariant(LocationIdx loc, const Bools::Expr& inv);
 
 };

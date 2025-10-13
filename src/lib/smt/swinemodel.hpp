@@ -30,7 +30,7 @@ protected:
     Arith::Const getImpl(const Arith::Var&) override;
     Bools::Const getImpl(const Bools::Var&) override;
     Arith::Const getImpl(const ArrayReadPtr<Arith>&) override;
-    void print(std::ostream&, const Expr&) override;
+    std::string toString(const Expr&) override;
 
 private:
     SwineContext m_ctx;

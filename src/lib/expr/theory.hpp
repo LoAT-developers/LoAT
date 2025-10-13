@@ -48,7 +48,6 @@ std::string getName(const Var &var);
 bool isTempVar(const Var &var);
 bool isProgVar(const Var &var);
 bool isPostVar(const Var &var);
-Var next(const Expr &var);
 Var next(const Var &var);
 Var postVar(const Var &var);
 Var progVar(const Var &var);
@@ -91,12 +90,30 @@ auto apply(const std::variant<Int, Bool, IntArray> &x, Ts... f) noexcept {
     return Overload{f...}(*std::get_if<IntArray>(&x));
 }
 
+template <class Int, class Bool, class IntArray, class... Ts>
+void iter(const std::tuple<Int, Bool, IntArray>& x, Ts... f) noexcept {
+    Overload{f...}(std::get<Int>(x));
+    Overload{f...}(std::get<Bool>(x));
+    Overload{f...}(std::get<IntArray>(x));
+}
+
+template <class Int, class Bool, class IntArray, class... Ts>
+bool all_of(const std::tuple<Int, Bool, IntArray>& x, Ts... f) noexcept {
+    if (!Overload{f...}(std::get<Int>(x))) {
+        return false;
+    }
+    if (!Overload{f...}(std::get<Bool>(x))) {
+        return false;
+    }
+    return Overload{f...}(std::get<IntArray>(x));
+}
+
 template <size_t I, ITheory T>
 constexpr bool is() {
     return std::same_as<std::tuple_element_t<I, Theories>, T>;
 }
 
-std::ostream& operator<<(std::ostream &s, const Type &e);
+std::ostream& operator<<(std::ostream& s, const Type& e);
 
 }
 

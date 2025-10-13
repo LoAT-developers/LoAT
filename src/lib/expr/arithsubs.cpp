@@ -42,7 +42,7 @@ size_t ArithSubs::erase(const ArithVarPtr& key) {
 ArithSubs ArithSubs::compose(const ArithSubs &that) const {
     ArithSubs res;
     for (const auto & [fst, snd]: *this) {
-        res.put(fst, that(snd));
+        res.put(fst, snd->subs(that));
     }
     for (const auto & [fst, snd]: that) {
         if (!res.contains(fst)) {
@@ -55,7 +55,7 @@ ArithSubs ArithSubs::compose(const ArithSubs &that) const {
 ArithSubs ArithSubs::concat(const ArithSubs &that) const {
     ArithSubs res;
     for (const auto & [fst, snd]: *this) {
-        res.put(fst, that(snd));
+        res.put(fst, snd->subs(that));
     }
     return res;
 }
@@ -166,36 +166,4 @@ std::ostream& operator<<(std::ostream &s, const ArithSubs &map) {
         s << k << " <- " << v;
     }
     return s << "}";
-}
-
-ArithExprPtr ArithSubs::operator()(const ArithExprPtr& t) const {
-    return t->apply<ArithExprPtr>(
-        [&](const ArithConstPtr&) {
-            return t;
-        },
-        [&](const ArithVarPtr& x) {
-            return get(x);
-        },
-        [&](const ArithAddPtr& a) {
-            const auto &args {a->getArgs()};
-            std::vector<ArithExprPtr> new_args;
-            std::ranges::transform(args, std::back_inserter(new_args), [&](const auto& arg) {
-                return (*this)(arg);
-            });
-            return arith::mkPlus(std::move(new_args));
-        },
-        [&](const ArithMultPtr& m) {
-            const auto &args {m->getArgs()};
-            std::vector<ArithExprPtr> new_args;
-            std::ranges::transform(args, std::back_inserter(new_args), [&](const auto& arg) {
-                return (*this)(arg);
-            });
-            return arith::mkTimes(std::move(new_args));
-        },
-        [&](const ArithModPtr& m) {
-            return arith::mkMod((*this)(m->getLhs()), (*this)(m->getRhs()));
-        },
-        [&](const ArithExpPtr& e) {
-            return arith::mkExp((*this)(e->getBase()), (*this)(e->getExponent()));
-        });
 }

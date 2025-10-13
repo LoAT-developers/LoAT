@@ -12,7 +12,7 @@ RulePtr propagateEquivalences(const RulePtr &rule) {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "propagated equivalences: " << subs << std::endl;
         }
-        return rule->subs(Subs::build<Bools>(subs));
+        return rule->subs(subs);
     }
 }
 
@@ -42,7 +42,7 @@ RulePtr propagateEqualities(const RulePtr &rule) {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "extracted implied equalities: " << subs << std::endl;
         }
-        return rule->subs(Subs::build<Arith>(subs));
+        return rule->subs(subs);
     }
 }
 

@@ -156,8 +156,7 @@ void TRL::build_trace() {
         }
         std::cout << "run:" << std::endl;
         for (const auto &t : trace) {
-            t.model->print(std::cout, vars);
-            std::cout << std::endl;
+            std::cout <<t.model->toString(vars) << std::endl;
         }
     }
 }

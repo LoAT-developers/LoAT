@@ -1,0 +1,174 @@
+#include "arraysubs.hpp"
+
+template <ITheory T>
+ArraySubs<T>::ArraySubs(const linked_hash_map<Var, Expr>& map) : map(map) {}
+
+template <ITheory T>
+ArraySubs<T>::ArraySubs(std::initializer_list<std::pair<const Var, Expr>> init) : map(init) {}
+
+template <ITheory T>
+ArraySubs<T>::Expr ArraySubs<T>::get(const Var& x) const {
+    return map.get(x).value_or(x);
+}
+
+template <ITheory T>
+void ArraySubs<T>::put(const Var& x, const Expr& e) {
+    map.put(x, e);
+}
+
+template <ITheory T>
+ArraySubs<T>::const_iterator ArraySubs<T>::begin() const {
+    return map.begin();
+}
+
+template <ITheory T>
+ArraySubs<T>::const_iterator ArraySubs<T>::end() const {
+    return map.end();
+}
+
+template <ITheory T>
+bool ArraySubs<T>::contains(const Var& x) const {
+    return map.contains(x);
+}
+
+template <ITheory T>
+bool ArraySubs<T>::empty() const {
+    return map.empty();
+}
+
+template <ITheory T>
+unsigned int ArraySubs<T>::size() const {
+    return map.size();
+}
+
+template <ITheory T>
+size_t ArraySubs<T>::erase(const Var& x) {
+    return map.erase(x);
+}
+
+template <ITheory T>
+ArraySubs<T> ArraySubs<T>::compose(const Self& that) const {
+    Self res;
+    for (const auto& [key,val] : map) {
+        res.put(key, val->subs(that));
+    }
+    for (const auto& [key,val] : that) {
+        if (!contains(key)) {
+            res.put(key, val);
+        }
+    }
+    return res;
+}
+
+template <ITheory T>
+ArraySubs<T> ArraySubs<T>::concat(const ArithSubs& that) const {
+    Self res;
+    for (const auto& [key,val] : map) {
+        res.put(key, val->subs(that));
+    }
+    return res;
+}
+
+template <ITheory T>
+ArraySubs<T> ArraySubs<T>::concat(const Self& that) const {
+    Self res;
+    for (const auto& [key,val] : map) {
+        res.put(key, val->subs(that));
+    }
+    return res;
+}
+
+template <ITheory T>
+ArraySubs<T> ArraySubs<T>::concat(const array_var_map<T>& that) const {
+    Self res;
+    for (const auto& [key,val] : map) {
+        res.put(key, val->renameVars(that));
+    }
+    return res;
+}
+
+template <ITheory T>
+ArraySubs<T> ArraySubs<T>::concat(const arith_var_map& that) const {
+    Self res;
+    for (const auto& [key,val] : map) {
+        res.put(key, val->renameVars(that));
+    }
+    return res;
+}
+
+template <ITheory T>
+ArraySubs<T> ArraySubs<T>::project(const linked_hash_set<Var>& vars) const {
+    auto m{map};
+    m.project(vars);
+    return ArraySubs(m);
+}
+
+template <ITheory T>
+ArraySubs<T> ArraySubs<T>::project(const std::function<bool(Var)>& keep) const {
+    auto m{map};
+    m.project(keep);
+    return ArraySubs(m);
+}
+
+template <ITheory T>
+bool ArraySubs<T>::changes(const Var& x) const {
+    const auto opt{map.get(x)};
+    return opt && x != *opt;
+}
+
+template <ITheory T>
+bool ArraySubs<T>::isLinear() {
+    return false;
+}
+
+template <ITheory T>
+bool ArraySubs<T>::isPoly() {
+    return false;
+}
+
+template <ITheory T>
+void ArraySubs<T>::collectCoDomainVars(linked_hash_set<Var>& vars, linked_hash_set<Arith::Var>& arith,
+                         linked_hash_set<typename T::Var>& tvars) const {
+    for (const auto& [_,v] : map) {
+        v->collectVars(vars, arith, tvars);
+    }
+}
+
+template <ITheory T>
+void ArraySubs<T>::collectVars(linked_hash_set<Var>& vars, linked_hash_set<Arith::Var>& arith, linked_hash_set<typename T::Var>& tvars) const {
+    for (const auto& [k,v] : map) {
+        vars.insert(k);
+        v->collectVars(vars, arith, tvars);
+    }
+}
+
+template <ITheory T>
+linked_hash_set<typename ArraySubs<T>::Var> ArraySubs<T>::domain() const {
+    linked_hash_set<Var> res;
+    for (const auto& [k,v] : map) {
+        res.insert(k);
+    }
+    return res;
+}
+
+template <ITheory T>
+std::tuple<linked_hash_set<typename ArraySubs<T>::Var>, linked_hash_set<Arith::Var>, linked_hash_set<typename T::Var>> ArraySubs<T>::coDomainVars() const {
+    linked_hash_set<Var> vars;
+    linked_hash_set<Arith::Var> arith;
+    linked_hash_set<typename T::Var> tvars;
+    collectCoDomainVars(vars, arith, tvars);
+    return {vars, arith, tvars};
+}
+
+template <ITheory T>
+size_t ArraySubs<T>::hash() const {
+    return boost::hash_unordered_range(map.begin(), map.end());
+}
+
+template <ITheory T>
+bool operator==(const ArraySubs<T>& m1, const ArraySubs<T>& m2) {
+    return m1.map == m2.map;
+}
+
+template class ArraySubs<Arith>;
+template bool operator==(const ArraySubs<Arith>&, const ArraySubs<Arith>&);

@@ -276,6 +276,14 @@ bool Subs::isPoly() const {
     return std::apply([](const auto&... x){return (true && ... && x.isPoly());}, t);
 }
 
+bool Subs::isIdempotent() const {
+    return theory::all_of(t, [&](const auto& subs) {
+        return std::ranges::all_of(subs, [&](const auto& p) {
+            return Expr(p.second) == Expr((*this)(p.second));
+        });
+    });
+}
+
 template<std::size_t I = 0, std::size_t J = 0>
 Lit subsImpl(const Subs &s, const Lit &lit) {
     if constexpr (I < num_theories - 1) {
@@ -317,7 +325,7 @@ Expr Subs::operator()(const Expr &expr) const {
     return std::visit(
         Overload{
             [&](const Arith::Expr& expr) {
-                return Expr{get<Arith>()(expr)};
+                return Expr{expr->subs(get<Arith>())};
             },
             [&](const auto& expr) {
                 return Expr{(*this)(expr)};
@@ -325,32 +333,18 @@ Expr Subs::operator()(const Expr &expr) const {
         }, expr);
 }
 
-/**
- * that.concat(this)
- */
-BoolSubs Subs::tac(const BoolSubs &that) const {
-    BoolSubs res;
-    for (const auto & [key, val]: that) {
-        res.put(key, (*this)(val));
-    }
+Subs Subs::concat(const ArithSubs &that) const {
+    Subs res;
+    theory::iter(t, [&]<typename T>(const T& t) {
+        std::get<T>(res.t) = t.concat(that);
+    });
     return res;
 }
 
-template<std::size_t I = 0>
-void concatImpl(const Subs &fst, const Subs &snd, Subs &res) {
-    if constexpr (I < num_theories) {
-        if constexpr (std::same_as<std::tuple_element_t<I, Theories>, Bools>) {
-            res.get<I>() = snd.tac(fst.get<I>());
-        } else {
-            res.get<I>() = fst.get<I>().concat(snd.get<I>());
-        }
-        concatImpl<I+1>(fst, snd, res);
-    }
-}
-
-Subs Subs::concat(const Subs &that) const {
-    Subs res;
-    concatImpl(*this, that, res);
+Subs Subs::concat(const BoolSubs &that) const {
+    Subs res {*this};
+    auto& b {std::get<Bools::Subs>(res.t)};
+    b = b.concat(that);
     return res;
 }
 
@@ -362,58 +356,52 @@ BoolSubs concat(const BoolSubs &fst, const Renaming &snd) {
     return res;
 }
 
-template<std::size_t I = 0>
-void concatImpl(const Subs &fst, const Renaming &snd, Subs &res) {
-    if constexpr (I < num_theories) {
-        if constexpr (std::same_as<std::tuple_element_t<I, Theories>, Bools>) {
-            res.get<I>() = concat(fst.get<I>(), snd);
-        } else {
-            res.get<I>() = fst.get<I>().concat(snd.get<I>());
-        }
-        concatImpl<I+1>(fst, snd, res);
-    }
-}
-
 Subs Subs::concat(const Renaming &that) const {
     Subs res;
-    concatImpl(*this, that, res);
+    theory::iter(
+        t,
+        [&](const ArithSubs& t) {
+            std::get<ArithSubs>(res.t) = t.concat(that.get<Arith>());
+        },
+        [&](const ArraySubs<Arith>& t) {
+            std::get<ArraySubs<Arith>>(res.t) = t.concat(that.get<Arrays<Arith>>()).concat(that.get<Arith>());
+        },
+        [&](const BoolSubs& t) {
+            std::get<BoolSubs>(res.t) = ::concat(t, that);
+        });
     return res;
-}
-
-template<std::size_t I = 0>
-void composeImpl(const Subs &fst, const Subs &snd, Subs &res) {
-    if constexpr (I < num_theories) {
-        if constexpr (std::same_as<std::tuple_element_t<I, Theories>, Bools>) {
-            res.get<I>() = snd.tac(fst.get<I>()).unite(snd.get<I>());
-        } else {
-            res.get<I>() = fst.get<I>().compose(snd.get<I>());
-        }
-        composeImpl<I+1>(fst, snd, res);
-    }
 }
 
 Subs Subs::compose(const Subs &that) const {
     Subs res;
-    composeImpl(*this, that, res);
+    theory::iter(
+        t,
+        [&](const ArithSubs& t) {
+            std::get<ArithSubs>(res.t) = t.compose(that.get<Arith>());
+        },
+        [&](const ArraySubs<Arith>& t) {
+            std::get<ArraySubs<Arith>>(res.t) = t.concat(that.get<Arith>()).compose(that.get<Arrays<Arith>>());
+        },
+        [&](const BoolSubs& t) {
+            std::get<BoolSubs>(res.t) = t.concat(that).unite(that.get<Bools>());
+        });
     return res;
 }
 
-template<std::size_t I = 0>
-void collectCoDomainVarsImpl(const Subs &subs, VarSet &res) {
-    if constexpr (I < num_theories) {
-        if constexpr (theory::is<I, Arrays<Arith>>()) {
-            subs.get<I>().collectCoDomainVars(res.get<I>(), res.get<Arith::Var>());
-        } else if constexpr (theory::is<I, Bools>()) {
-            subs.get<I>().collectCoDomainVars(res);
-        } else {
-            subs.get<I>().collectCoDomainVars(res.get<I>());
+void Subs::collectCoDomainVars(VarSet& res) const {
+    theory::iter(
+        t,
+        [&](const ArithSubs& t) {
+            t.collectCoDomainVars(res.get<Arith::Var>());
+        },
+        [&](const Arrays<Arith>::Subs& t) {
+            auto& arith{res.get<Arith::Var>()};
+            t.collectCoDomainVars(res.get<Arrays<Arith>::Var>(), arith, arith);
+        },
+        [&](const BoolSubs& t) {
+            t.collectCoDomainVars(res);
         }
-        collectCoDomainVarsImpl<I+1>(subs, res);
-    }
-}
-
-void Subs::collectCoDomainVars(VarSet &res) const {
-    collectCoDomainVarsImpl<0>(*this, res);
+    );
 }
 
 VarSet Subs::coDomainVars() const {

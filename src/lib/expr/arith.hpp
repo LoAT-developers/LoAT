@@ -18,7 +18,7 @@ struct Arith {
     static Expr varToExpr(const Var &var);
     static Expr cellToExpr(const Cell&);
     static Expr anyValue();
-    static Var next();
+    static Var next(unsigned);
     static BoolExprPtr mkEq(const Var&, const Const&);
     static Subs modelToSubs(const Model&);
 

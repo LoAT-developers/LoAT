@@ -121,9 +121,7 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
             }
         }
         vars.insertAll(prog_vars);
-        s << "\t" << clause;
-        cex.states.at(i)->print(s, vars);
-        s << " by " << indices.at(clause) << "\n";
+        s << "\t" << clause << cex.states.at(i)->toString(vars) << " by " << indices.at(clause) << "\n";
     }
     return s;
 }

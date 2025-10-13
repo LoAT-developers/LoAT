@@ -75,9 +75,7 @@ std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
                 }
             }
             vars.insertAll(prog_vars);
-            s << "\t";
-            cex.states.at(i)->print(s, vars);
-            s << "\n\t-" << trans->getId() << "->\n";
+            s << "\t" << cex.states.at(i)->toString(vars) << "\n\t-" << trans->getId() << "->\n";
         }
         s << "\terr";
     }

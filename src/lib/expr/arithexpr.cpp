@@ -911,3 +911,39 @@ std::ostream& operator<<(std::ostream &s, const ArithExprPtr& e) {
 std::ostream& operator<<(std::ostream &s, const ArithVarPtr& x) {
     return s << x->getName();
 }
+
+ArithExprPtr ArithExpr::subs(const ArithSubs& subs) const {
+    return apply<ArithExprPtr>(
+        [&](const ArithConstPtr&) {
+            return this->toPtr();
+        },
+        [&](const ArithVarPtr& x) {
+            return subs.get(x);
+        },
+        [&](const ArithAddPtr& a) {
+            const auto &args {a->getArgs()};
+            std::vector<ArithExprPtr> new_args;
+            std::ranges::transform(args, std::back_inserter(new_args), [&](const auto& arg) {
+                return arg->subs(subs);
+            });
+            return arith::mkPlus(std::move(new_args));
+        },
+        [&](const ArithMultPtr& m) {
+            const auto &args {m->getArgs()};
+            std::vector<ArithExprPtr> new_args;
+            std::ranges::transform(args, std::back_inserter(new_args), [&](const auto& arg) {
+                return arg->subs(subs);
+            });
+            return arith::mkTimes(std::move(new_args));
+        },
+        [&](const ArithModPtr& m) {
+            return arith::mkMod(m->getLhs()->subs(subs), m->getRhs()->subs(subs));
+        },
+        [&](const ArithExpPtr& e) {
+            return arith::mkExp(e->getBase()->subs(subs), e->getExponent()->subs(subs));
+        });
+}
+
+unsigned ArithVar::dim() const {
+    return 0;
+}

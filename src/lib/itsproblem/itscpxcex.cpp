@@ -53,7 +53,7 @@ std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
                 }
             }
         }
-        auto valuation_str {toString(*cex.valuation)};
+        auto valuation_str {(*cex.valuation)->toString(cex.vars())};
         boost::replace_all(valuation_str, (*cex.param)->getName(), "n");
         s << "\nwitness: " << *cex.witness << std::endl;
         s << "\nvaluation: " << valuation_str << std::endl;
@@ -92,4 +92,15 @@ void ITSCpxCex::set_witness(const RulePtr& witness, const ModelPtr &valuation, c
     this->witness = witness;
     this->valuation = valuation;
     this->param = param;
+}
+
+VarSet ITSCpxCex::vars() const {
+    VarSet res;
+    if (witness) {
+        (*witness)->collectVars(res);
+    }
+    if (param) {
+        res.insert(*param);
+    }
+    return res;
 }

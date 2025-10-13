@@ -266,7 +266,7 @@ Expr Renaming::operator()(const Expr &expr) const {
                 return Expr(expr->renameVars(get<Arith>()));
             },
             [&](const Arrays<Arith>::Expr& expr) {
-                return Expr(expr->renameVars(get<Arrays<Arith>>(), get<Arith>()));
+                return Expr(expr->renameVars(get<Arrays<Arith>>())->renameVars(get<Arith>()));
             },
             [&](const Bools::Expr& expr) {
                 return Expr{(*this)(expr)};
@@ -396,8 +396,24 @@ std::ostream& operator<<(std::ostream &s, const Renaming &subs) {
 Var Renaming::renameVar(const Var &x, Renaming &sigma) {
     return theory::apply(x, [&](const auto &x) {
         const auto th {theory::theory(x)};
-        const auto next {th.next()};
+        const auto next {th.next(x->dim())};
         sigma.insert<decltype(th)>(x, next);
         return Var(next);
     });
+}
+
+Arith::Var Renaming::operator()(const Arith::Var& x) const {
+    return get<Arith>(x);
+}
+
+Bools::Var Renaming::operator()(const Bools::Var& x) const {
+    return get<Bools>(x);
+}
+
+Arrays<Arith>::Var Renaming::operator()(const Arrays<Arith>::Var& x) const {
+    return get<Arrays<Arith>>(x);
+}
+
+Arith::Expr Renaming::operator()(const Arith::Expr &e) const {
+    return e->renameVars(std::get<arith_var_map>(t));
 }

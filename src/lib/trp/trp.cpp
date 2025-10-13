@@ -50,8 +50,7 @@ void TRP::recurrent_exps(const Bools::Expr& loop, const ModelPtr &model) {
     for (const auto lits{loop->lits().get<Arith::Lit>()}; const auto &l : lits) {
         if (l->lhs()->isLinear()) {
             auto lhs{l->lhs()};
-            const auto vars{lhs->vars()};
-            if (l->isEq() && vars.size() == 2) {
+            if (const auto vars{lhs->vars()}; l->isEq() && vars.size() == 2) {
                 auto pre{*vars.begin()};
                 auto post{*std::next(vars.begin())};
                 if (!pre->isProgVar()) {
@@ -137,7 +136,7 @@ void TRP::recurrent_cycles(const Bools::Expr& loop) {
                 if (!other_eq) {
                     break;
                 }
-                eq = ArithSubs({{other, *other_eq}})(eq);
+                eq = eq->subs(ArithSubs({{other, *other_eq}}));
                 vars = (*other_eq)->vars();
                 if (vars.size() != 1) {
                     break;
@@ -161,7 +160,7 @@ void TRP::recurrent_bounds(const Bools::Expr& loop, const ModelPtr& model) {
     Arith::Subs zeros;
     for (const auto &[pre,_] : pre_to_post.get<Arith>()) {
         const auto post{ArithVar::postVar(pre)};
-        const auto d{Arith::next()};
+        const auto d{ArithVar::next()};
         const auto diff{Arith::varToExpr(post) - Arith::varToExpr(pre)};
         delta_eqs.insert(bools::mkLit(arith::mkEq(d, diff)));
         model->put(d, model->eval(post - pre));
@@ -217,8 +216,8 @@ void TRP::recurrent_bounds(const Bools::Expr& loop, const ModelPtr& model) {
                             const auto it{deltas.find(x)};
                             return it == deltas.end() || (!vars.contains(it->second) && !vars.contains(ArithVar::postVar(it->second)));
                         })) {
-                        auto non_recurrent{zeros(l->lhs())};
-                        auto recurrent{subs(l->lhs() - non_recurrent)};
+                        auto non_recurrent{l->lhs()->subs(zeros)};
+                        auto recurrent{(l->lhs() - non_recurrent)->subs(subs)};
                         auto val{model->eval(non_recurrent)};
                         if (l->isGt()) {
                             non_recurrent = non_recurrent - arith::mkConst(1);
@@ -294,7 +293,7 @@ Bools::Expr TRP::mbp(const Bools::Expr &trans, const ModelPtr &model, const std:
     if (!model->eval(trans)) {
         std::cout << "mbp: not a model" << std::endl;
         std::cout << "trans: " << trans << std::endl;
-        std::cout << "model: " << model << std::endl;
+        std::cout << "model: " << model->toString(trans->vars()) << std::endl;
         assert(false);
     }
     Bools::Expr res {top()};

@@ -18,4 +18,6 @@ public:
 
     void set_witness(const RulePtr& witness, const ModelPtr &valuation, const ArithVarPtr &param);
 
+    VarSet vars() const;
+
 };
