@@ -23,7 +23,6 @@ struct depends_on {
 using Var = TheTheory::Var;
 using Lit = TheTheory::Lit;
 using VarSet = VariantSet<Arith::Var, Arrays<Arith>::Var, Bools::Var>;
-using CellSet = VariantSet<Arith::Cell, Arrays<Arith>::Cell, Bools::Cell>;
 using LitSet = VariantSet<Arith::Lit, Arrays<Arith>::Lit, Bools::Lit>;
 
 using BoolExprSet = linked_hash_set<Bools::Expr>;
@@ -91,8 +90,6 @@ public:
 
     void collectVars(VarSet&) const;
 
-    void collectCells(CellSet&) const;
-
     template <ITheory T>
     void collectVars(linked_hash_set<typename T::Var> &vars) const {
         VarSet res;
@@ -101,7 +98,6 @@ public:
     }
 
     VarSet vars() const;
-    CellSet cells() const;
     virtual ~BoolExpr() = default;
     LitSet lits() const;
     bool isLinear() const;

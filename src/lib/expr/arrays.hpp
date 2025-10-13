@@ -12,17 +12,12 @@ struct Arrays {
 
     using Lit = ArrayLitPtr<T>;
     using Var = ArrayVarPtr<T>;
-    using Cell = ArrayReadPtr<T>;
     using Subs = ArraySubs<T>;
     using Expr = ArrayPtr<T>;
     using Renaming = array_var_map<T>;
 
     static Expr varToExpr(const Var &var) {
         return var;
-    }
-
-    static Expr cellToExpr(const Cell &cell) {
-        return cell;
     }
 
     static Var next(const unsigned p_dim) {

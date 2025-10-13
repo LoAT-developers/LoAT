@@ -37,14 +37,13 @@ concept IVar = requires(T x, unsigned idx) {
 };
 
 template <typename T>
-concept ITheory = requires(T t, typename T::Var var, typename T::Cell cell, typename T::Lit lit) {
+concept ITheory = requires(T t, typename T::Var var, typename T::Lit lit) {
         requires IVar<typename T::Var>;
         requires ILit<typename T::Lit>;
         typename T::Expr;
         typename T::Renaming;
         typename T::Subs;
         {T::varToExpr(var)} -> std::same_as<typename T::Expr>;
-        {T::cellToExpr(cell)} -> std::same_as<typename T::Expr>;
 };
 
 template<ITheory... Th>

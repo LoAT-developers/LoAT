@@ -281,11 +281,11 @@ bool ArrayRead<T>::isPostVar() const {
 template <ITheory T>
 sexpresso::Sexp ArrayRead<T>::to_smtlib() const {
     sexpresso::Sexp res {m_arr->to_smtlib()};
-    for (ulong i = 0; i < m_indices.size(); ++i) {
+    for (const auto & i : m_indices) {
         sexpresso::Sexp outer;
         outer.addChild("select");
         outer.addChild(res);
-        outer.addChild(m_indices.at(i)->to_smtlib());
+        outer.addChild(i->to_smtlib());
         res = outer;
     }
     return res;

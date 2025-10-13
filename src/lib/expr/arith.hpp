@@ -8,7 +8,6 @@ struct Arith {
 
     using Lit = ArithLitPtr;
     using Var = ArithVarPtr;
-    using Cell = ArithVarPtr;
     using Subs = ArithSubs;
     using Expr = ArithExprPtr;
     using Const = Int;
@@ -16,7 +15,6 @@ struct Arith {
     using Renaming = arith_var_map;
 
     static Expr varToExpr(const Var &var);
-    static Expr cellToExpr(const Cell&);
     static Expr anyValue();
     static Var next(unsigned);
     static BoolExprPtr mkEq(const Var&, const Const&);

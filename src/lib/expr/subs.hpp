@@ -165,16 +165,6 @@ public:
         return arrays::mkArrayWrite(var, {transformed_indices.begin(), transformed_indices.end()}, write->val()->subs(get<Arith>()));
     }
 
-    Arrays<Arith>::Cell get(const Arrays<Arith>::Cell &cell) const {
-        const auto arr{(*this)(cell->arr())};
-        const auto transformed_indices {
-            cell->indices() | std::views::transform([&](const auto &i) {
-                return i->subs(get<Arith>());
-            })
-        };
-        return arrays::mkArrayRead(arr, {transformed_indices.begin(), transformed_indices.end()});
-    }
-
     bool changes(const Var &x) const;
     void erase(const Var &x);
     void erase(const VarSet &xs);

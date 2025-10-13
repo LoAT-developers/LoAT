@@ -17,7 +17,6 @@ public:
 
     Arith::Const get(const Arith::Var&);
     Bools::Const get(const Bools::Var&);
-    Arith::Const get(const Arrays<Arith>::Cell&);
 
     virtual void put(const Arith::Var&, const Arith::Const&) = 0;
 

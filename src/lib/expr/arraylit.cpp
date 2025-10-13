@@ -342,7 +342,7 @@ ArrayReadPtr<T> ArrayElemNeq<T>::lhs() const {
 }
 
 template <ITheory T>
-typename T::Expr ArrayElemNeq<T>::rhs() const {
+T::Expr ArrayElemNeq<T>::rhs() const {
     return m_rhs;
 }
 

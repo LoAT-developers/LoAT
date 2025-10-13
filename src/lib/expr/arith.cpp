@@ -6,10 +6,6 @@ Arith::Expr Arith::varToExpr(const Var &var) {
     return var;
 }
 
-Arith::Expr Arith::cellToExpr(const Cell &cell) {
-    return cell;
-}
-
 Arith::Expr Arith::anyValue() {
     return arith::mkConst(0);
 }

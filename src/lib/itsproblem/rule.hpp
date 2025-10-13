@@ -58,8 +58,6 @@ public:
 
     void collectVars(VarSet &vars) const;
 
-    CellSet cells() const;
-
     RulePtr chain(const RulePtr &that) const;
 
     bool isPoly() const;

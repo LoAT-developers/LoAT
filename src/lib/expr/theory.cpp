@@ -196,10 +196,6 @@ namespace theory {
         return arrays::arith;
     }
 
-    Arrays<Arith> theory(const Arrays<Arith>::Cell&) {
-        return arrays::arith;
-    }
-
     Arith theory(const Arith::Expr&) {
         return arith::t;
     }

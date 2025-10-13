@@ -20,10 +20,6 @@ Bools::Const Model::get(const Bools::Var &var) {
     return eval(subs.get<Bools>(var));
 }
 
-Arith::Const Model::get(const ArrayReadPtr<Arith> &read) {
-    return getImpl(subs.get(read));
-}
-
 bool Model::eval(const Lit& lit) {
     return evalImpl(subs(lit));
 }
