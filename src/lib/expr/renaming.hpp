@@ -6,7 +6,7 @@
 
 class Renaming {
 
-    using It = std::variant<Arith::Renaming::left_const_iterator, Bools::Renaming::left_const_iterator, Arrays<Arith>::Renaming::left_const_iterator>;
+    using It = std::variant<Arith::Renaming::left_const_iterator, Arrays<Arith>::Renaming::left_const_iterator, Bools::Renaming::left_const_iterator>;
 
     TheTheory::Renaming t {};
 

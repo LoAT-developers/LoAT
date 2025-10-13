@@ -69,7 +69,7 @@ void SexpressoParser::run(const std::string &filename) {
                     if (type == "Int") {
                         state.vars.emplace(name, ArithVar::next());
                     } else if (type == "Bool") {
-                        state.vars.emplace(name, Bools::next());
+                        state.vars.emplace(name, BoolVar::next());
                     } else {
                         throw std::invalid_argument("unknown type " + type);
                     }
