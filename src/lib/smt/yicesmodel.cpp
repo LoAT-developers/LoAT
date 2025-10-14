@@ -9,7 +9,7 @@ void YicesModel::put(const Arith::Var& x, const Arith::Const& y) {
     mpz_t val;
     mpz_init(val);
     const auto str {y.str()};
-    mpz_set_str(val, str.c_str(), str.size());
+    mpz_set_str(val, str.c_str(), 10);
     yices_model_set_mpz(m_model.get(), m_ctx.getVariable(x), val);
     mpz_clear(val);
 }
@@ -17,22 +17,21 @@ void YicesModel::put(const Arith::Var& x, const Arith::Const& y) {
 Rational YicesModel::toRational(const term_t t) const {
     mpq_t val;
     mpz_t num;
-    mpz_t denom;
     mpq_init(val);
     mpz_init(num);
+    mpz_t denom;
     mpz_init(denom);
     yices_get_mpq_value(m_model.get(), t, val);
     mpq_get_num(num, val);
     mpq_get_den(denom, val);
     char num_str[32];
     char denom_str[32];
-    mpz_get_str(num_str, 32, num);
-    mpz_get_str(denom_str, 32, denom);
-    Rational res{num_str, denom_str};
+    mpz_get_str(num_str, 10, num);
+    mpz_get_str(denom_str, 10, denom);
     mpq_clear(val);
     mpz_clear(num);
     mpz_clear(denom);
-    return res;
+    return Rational(num_str, denom_str);
 }
 
 Int YicesModel::toInt(const term_t t) const {
@@ -40,7 +39,7 @@ Int YicesModel::toInt(const term_t t) const {
     mpz_init(val);
     yices_get_mpz_value(m_model.get(), t, val);
     char val_str[32];
-    mpz_get_str(val_str, 32, val);
+    mpz_get_str(val_str, 10, val);
     Int res{val_str};
     mpz_clear(val);
     return res;
@@ -83,7 +82,8 @@ Arith::Const YicesModel::getImpl(const ArrayReadPtr<Arith>& cell) {
 std::string YicesModel::toString(const Expr& e) {
     return theory::apply(e, [&](const auto& e) {
         const auto t{Converter::convert(e, m_ctx)};
-        char* str{yices_term_to_string(t, 120, 40, 0)};
+        const auto val {yices_get_value_as_term(m_model.get(), t)};
+        char* str{yices_term_to_string(val, 120, 40, 0)};
         std::string res {str};
         yices_free_string(str);
         return res;

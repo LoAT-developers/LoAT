@@ -8,8 +8,6 @@ using ModelPtr = cpp::not_null<std::shared_ptr<Model>>;
 
 class Model {
 
-    friend std::ostream& operator<<(std::ostream&, const ModelPtr&);
-
 public:
     virtual ~Model() = default;
 
@@ -19,12 +17,6 @@ public:
     Bools::Const get(const Bools::Var&);
 
     virtual void put(const Arith::Var&, const Arith::Const&) = 0;
-
-    // virtual bool contains(const Arith::Var&) const = 0;
-    // virtual bool contains(const Bools::Var&) const = 0;
-    // virtual bool contains(const Arrays<Arith>::Var&) const = 0;
-
-    bool contains(const Var&) const;
 
     bool eval(const Lit&);
     Bools::Const eval(const Bools::Expr&);

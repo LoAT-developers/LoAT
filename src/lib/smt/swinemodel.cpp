@@ -13,60 +13,41 @@ void SwineModel::put(const Arith::Var &var, const Arith::Const& value) {
     m_model.add_const_interp(decl, converted_value);
 }
 
-// bool SwineModel::contains(const Arith::Var &var) const {
-//     const auto converted_var {m_ctx.getArithSymbolMap().at(var)};
-//     const auto decl {converted_var.decl()};
-//     return m_model.has_interp(decl);
-// }
-//
-// bool SwineModel::contains(const Bools::Var &var) const {
-//     const auto converted_var {m_ctx.getBoolSymbolMap().at(var)};
-//     const auto decl {converted_var.decl()};
-//     return m_model.has_interp(decl);
-// }
-//
-// bool SwineModel::contains(const Arrays<Arith>::Var &var) const {
-//     const auto converted_var {m_ctx.getIntArraySymbolMap().at(var)};
-//     const auto decl {converted_var.decl()};
-//     return m_model.has_interp(decl);
-// }
-
-
 bool SwineModel::evalImpl(const Lit &lit) {
     return evalImpl(bools::mkLit(lit));
 }
 
 Bools::Const SwineModel::evalImpl(const Bools::Expr &e) {
     const auto converted {Converter::convert(e, m_ctx)};
-    const auto res {m_model.eval(converted)};
+    const auto res {m_model.eval(converted, true)};
     assert(res.is_bool());
     return res.is_true();
 }
 
 Rational SwineModel::evalToRational(const Arith::Expr &e) {
     const auto converted {Converter::convert(e, m_ctx)};
-    const auto res {m_model.eval(converted)};
-    assert(res.is_real());
+    const auto res {m_model.eval(converted, true)};
+    assert(res.is_numeral());
     return Rational(res.numerator().to_string(), res.denominator().to_string());
 }
 
 Arith::Const SwineModel::getImpl(const Arith::Var &var) {
     const auto converted_var {m_ctx.getArithSymbolMap().at(var)};
-    const auto res {m_model.eval(converted_var)};
+    const auto res {m_model.eval(converted_var, true)};
     assert(res.is_int());
     return Int(res.to_string());
 }
 
 Bools::Const SwineModel::getImpl(const Bools::Var &var) {
     const auto converted_var {m_ctx.getBoolSymbolMap().at(var)};
-    const auto res {m_model.eval(converted_var)};
+    const auto res {m_model.eval(converted_var, true)};
     assert(res.is_bool());
     return res.is_true();
 }
 
 Arith::Const SwineModel::getImpl(const ArrayReadPtr<Arith> &read) {
     const auto converted {Converter::convert(read, m_ctx)};
-    const auto res {m_model.eval(converted)};
+    const auto res {m_model.eval(converted, true)};
     assert(res.is_int());
     return Int(res.to_string());
 }
@@ -74,7 +55,7 @@ Arith::Const SwineModel::getImpl(const ArrayReadPtr<Arith> &read) {
 std::string SwineModel::toString(const Expr& e) {
     return theory::apply(e, [&](const auto &e) {
         const auto converted {Converter::convert(e, m_ctx)};
-        return ::toString(m_model.eval(converted));
+        return ::toString(m_model.eval(converted, true));
     });
 }
 

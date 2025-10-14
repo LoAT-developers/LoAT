@@ -310,7 +310,6 @@ void ABMC::build_trace() {
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
         const auto s {subs.at(d)};
-        const auto vars = d == 0 ? this->vars : s.coDomainVars();
         auto m {solver->model()->composeBackwards(s)};
         const auto rule {rule_map.at(m->get(trace_var))};
         const auto imp {m->syntacticImplicant(rule->getGuard())};

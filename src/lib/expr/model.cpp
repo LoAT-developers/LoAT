@@ -13,15 +13,15 @@ ModelPtr Model::composeBackwards(const Subs &subs) const {
 }
 
 Arith::Const Model::get(const Arith::Var &var) {
-    return eval(subs.get<Arith>(var));
+    return eval(var);
 }
 
 Bools::Const Model::get(const Bools::Var &var) {
-    return eval(subs.get<Bools>(var));
+    return eval(bools::mk(var));
 }
 
 bool Model::eval(const Lit& lit) {
-    return evalImpl(subs(lit));
+    return eval(bools::mkLit(lit));
 }
 
 Bools::Const Model::eval(const Bools::Expr& e) {
@@ -100,12 +100,6 @@ Arith::Const Model::evalImpl(const Arith::Expr &e) {
     return mp::numerator(res);
 }
 
-bool Model::contains(const Var& var) const {
-    return theory::apply(var, [&](const auto& var) {
-        return this->contains(var);
-    });
-}
-
 std::string Model::toString(const VarSet& xs) {
     std::stringstream s;
     s << "[";
@@ -116,7 +110,7 @@ std::string Model::toString(const VarSet& xs) {
         } else {
             s << ", ";
         }
-        s << toString(subs.get(x));
+        s << x << "=" << toString(subs.get(x));
     }
     s << "]";
     return s.str();

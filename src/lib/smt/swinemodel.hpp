@@ -14,10 +14,6 @@ public:
 
     void put(const Arith::Var&, const Arith::Const&) override;
 
-    // bool contains(const Arith::Var&) const override;
-    // bool contains(const Bools::Var&) const override;
-    // bool contains(const Arrays<Arith>::Var&) const override;
-
     bool evalImpl(const Lit&) override;
 
     Bools::Const evalImpl(const Bools::Expr&) override;

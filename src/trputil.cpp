@@ -258,7 +258,7 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const Mo
     std::vector<Arith::Expr> decreasing;
     std::unordered_map<Arith::Var, Arith::Var> coeffs;
     for (const auto &[pre,post]: ptp) {
-        if (pre == its->getLocVar() || !model->contains(pre) || !model->contains(post)) {
+        if (pre == its->getLocVar()) {
             continue;
         }
         const auto coeff {ArithVar::next()};
@@ -274,9 +274,7 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const Mo
         const auto rf_model {solver->model()};
         std::vector<Arith::Expr> addends;
         for (const auto &[x,coeff]: coeffs) {
-            if (rf_model->contains(coeff)) {
-                addends.emplace_back(arith::mkConst(rf_model->get(coeff)) * x->toExpr());
-            }
+            addends.emplace_back(arith::mkConst(rf_model->get(coeff)) * x->toExpr());
         }
         auto rf {arith::mkPlus(std::move(addends))};
         if (Config::Analysis::log) {
