@@ -1,4 +1,7 @@
 #include "swinemodel.hpp"
+
+#include <boost/algorithm/string/predicate.hpp>
+
 #include "exprconverter.hpp"
 
 SwineModel::SwineModel(const SwineContext& p_ctx, const z3::model& p_model, const Subs& subs) :
@@ -28,7 +31,19 @@ Rational SwineModel::evalToRational(const Arith::Expr &e) {
     const auto converted {Converter::convert(e, m_ctx)};
     const auto res {m_model.eval(converted, true)};
     assert(res.is_numeral());
-    return Rational(res.numerator().to_string(), res.denominator().to_string());
+    auto num_str {res.numerator().to_string()};
+    auto den_str {res.denominator().to_string()};
+    auto negative {false};
+    if (boost::starts_with(num_str, "(-")) {
+        negative = true;
+        num_str = ((-res.numerator()).simplify()).to_string();
+    }
+    if (boost::starts_with(den_str, "(-")) {
+        negative = !negative;
+        den_str = ((-res.denominator()).simplify()).to_string();
+    }
+    Rational ret {num_str, den_str};
+    return negative ? -ret : ret;
 }
 
 Arith::Const SwineModel::getImpl(const Arith::Var &var) {

@@ -5,7 +5,7 @@
 
 namespace SmtFactory {
 
-SmtPtr solver(Logic logic) {
+SmtPtr solver(const Logic logic) {
     std::unique_ptr<Smt> res;
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Heuristic: {
@@ -13,19 +13,25 @@ SmtPtr solver(Logic logic) {
         case QF_LA:
             res = std::unique_ptr<Smt>(new Yices(logic));
             break;
-        case QF_NA:
-        case QF_NAT:
+        default:
             res = std::unique_ptr<Smt>(new Swine());
             break;
         }
         break;
     }
     case Config::Analysis::Yices: {
-        res = std::unique_ptr<Smt>(new Yices(logic));
+        switch (logic) {
+        case QF_NAT:
+            res = std::unique_ptr<Smt>(new Swine());
+            break;
+        default:
+            res = std::unique_ptr<Smt>(new Yices(logic));
+            break;
+        }
         break;
     }
-    default: {
-        res = solver();
+    case Config::Analysis::Swine: {
+        res = std::unique_ptr<Smt>(new Swine());
         break;
     }
     }
@@ -36,25 +42,23 @@ SmtPtr solver() {
     std::unique_ptr<Smt> solver;
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Yices:
-        solver = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
+        solver = std::unique_ptr<Smt>(new Yices(QF_NA));
         break;
-    case Config::Analysis::Swine:
-        [[fallthrough]];
-    case Config::Analysis::Heuristic:
+    default:
         solver = std::unique_ptr<Smt>(new Swine());
         break;
     }
     return solver;
 }
 
-SmtPtr modelBuildingSolver(Logic logic) {
+SmtPtr modelBuildingSolver(const Logic logic) {
     auto res {solver(logic)};
     res->enableModels();
     return res;
 }
 
-SmtResult check(const Bools::Expr e) {
-    auto s {solver(Smt::chooseLogic(BoolExprSet{e}))};
+SmtResult check(const Bools::Expr& e) {
+    const auto s {solver(Smt::chooseLogic(BoolExprSet{e}))};
     s->add(e);
     return s->check();
 }

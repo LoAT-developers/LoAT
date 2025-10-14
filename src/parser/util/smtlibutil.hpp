@@ -15,7 +15,7 @@ struct SMTLibParsingState {
     std::vector<Bools::Expr> refinement;
     std::vector<std::unordered_map<std::string, Expr>> bindings;
 
-    Var get_var(const std::string &name, const theory::Type type);
+    Var get_var(const std::string &name, theory::Type type);
     void clear();
 
 };

@@ -16,21 +16,14 @@
 #include "bools.hpp"
 #include "optional.hpp"
 
-namespace std
-{
-    template <>
-    struct hash<std::pair<std::string, bool>>
-    {
-        std::size_t operator()(const std::pair<std::string, bool> &p) const
-        {
-            return std::hash<std::string>{}(p.first) ^ (std::hash<bool>{}(p.second) << 1);
-        }
-    };
-}
+template <>
+struct std::hash<std::pair<std::string, bool>> {
+    std::size_t operator()(const std::pair<std::string, bool> &p) const noexcept {
+        return std::hash<std::string>{}(p.first) ^ (std::hash<bool>{}(p.second) << 1);
+    }
+};
 
-class LoatTransitionToITSConverter
-{
-private:
+class LoatTransitionToITSConverter {
     // Cache (api bool expr to internal bool Expr)
     std::unordered_map<LoatBoolExprPtr, Bools::Expr> m_boolExprCache;
 
