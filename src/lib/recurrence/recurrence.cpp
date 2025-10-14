@@ -143,8 +143,6 @@ bool Recurrence::solve(const Arith::Var& x, const Arith::Expr& rhs) {
                                     } else {
                                         coeff.push_back(arg);
                                     }
-                                } else if (arg->isRational()) {
-                                    coeff.push_back(arg);
                                 } else {
                                     if (Config::Analysis::log) {
                                         std::cout << "subterm with n which is neither a polynomial nor an exponential: " << arg << std::endl;
@@ -238,7 +236,7 @@ bool Recurrence::solve() {
     }
     for (const auto &lhs : *order) {
         const auto success{std::visit(
-            [&](const auto lhs) {
+            [&](const auto& lhs) {
                 using Th = decltype(theory::theory(lhs));
                 const auto rhs {equations.get<Th>(lhs)};
                 if (Config::Analysis::log) {

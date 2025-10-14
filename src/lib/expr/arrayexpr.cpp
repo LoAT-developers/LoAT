@@ -213,7 +213,7 @@ sexpresso::Sexp ArrayWrite<T>::to_smtlib() const {
     res.addChild(outer_arr);
     res.addChild(m_indices.front()->to_smtlib());
     sexpresso::Sexp val{m_val->to_smtlib()};
-    for (ulong i = 1; i < m_indices.size(); ++i) {
+    for (unsigned long i = 1; i < m_indices.size(); ++i) {
         sexpresso::Sexp inner_arr;
         inner_arr.addChild("select");
         inner_arr.addChild(outer_arr);
