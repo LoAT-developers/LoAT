@@ -1,7 +1,6 @@
 #pragma once
 
 #include "arrayexpr.hpp"
-#include "arraysubs.hpp"
 
 template <ITheory T>
 class ArrayLit;
