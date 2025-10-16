@@ -71,3 +71,4 @@ template <ITheory T>
 class ArraySubs;
 
 class Subs;
+class Renaming;

@@ -86,6 +86,11 @@ ArrayLitPtr<T> ArrayEq<T>::renameVars(const typename T::Renaming& map) const {
 }
 
 template <ITheory T>
+ArrayLitPtr<T> ArrayEq<T>::renameVars(const Renaming& map) const {
+    return arrays::mkEq(m_lhs->renameVars(map), m_rhs->renameVars(map));
+}
+
+template <ITheory T>
 void ArrayEq<T>::collectVars(linked_hash_set<ArrayVarPtr<T>>& arr, linked_hash_set<Arith::Var>& arith,
                              linked_hash_set<typename T::Var>& t) const {
     m_lhs->collectVars(arr, arith, t);
@@ -182,6 +187,11 @@ ArrayLitPtr<T> ArrayNeq<T>::renameVars(const array_var_map<T>& map) const {
 
 template <ITheory T>
 ArrayLitPtr<T> ArrayNeq<T>::renameVars(const typename T::Renaming& map) const {
+    return arrays::mkNeq(m_lhs->renameVars(map), m_rhs->renameVars(map));
+}
+
+template <ITheory T>
+ArrayLitPtr<T> ArrayNeq<T>::renameVars(const Renaming& map) const {
     return arrays::mkNeq(m_lhs->renameVars(map), m_rhs->renameVars(map));
 }
 
@@ -286,6 +296,11 @@ ArrayLitPtr<T> ArrayElemEq<T>::renameVars(const typename T::Renaming& map) const
 }
 
 template <ITheory T>
+ArrayLitPtr<T> ArrayElemEq<T>::renameVars(const Renaming& map) const {
+    return arrays::mkElemEq<T>(m_lhs->renameVars(map), m_rhs->renameVars(map));
+}
+
+template <ITheory T>
 void ArrayElemEq<T>::collectVars(linked_hash_set<ArrayVarPtr<T>>& arr, linked_hash_set<Arith::Var>& arith,
                                  linked_hash_set<typename T::Var>& t) const {
     m_lhs->collectVars(arr, arith, t);
@@ -384,6 +399,11 @@ ArrayLitPtr<T> ArrayElemNeq<T>::renameVars(const array_var_map<T>& map) const {
 
 template <ITheory T>
 ArrayLitPtr<T> ArrayElemNeq<T>::renameVars(const typename T::Renaming& map) const {
+    return arrays::mkElemNeq(m_lhs->renameVars(map), m_rhs->renameVars(map));
+}
+
+template <ITheory T>
+ArrayLitPtr<T> ArrayElemNeq<T>::renameVars(const Renaming& map) const {
     return arrays::mkElemNeq(m_lhs->renameVars(map), m_rhs->renameVars(map));
 }
 

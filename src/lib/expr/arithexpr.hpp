@@ -191,7 +191,8 @@ public:
 
     sexpresso::Sexp to_smtlib() const;
 
-    ArithExprPtr renameVars(const arith_var_map &map) const;
+    ArithExprPtr renameVars(const arith_var_map&) const;
+    ArithExprPtr renameVars(const Renaming&) const;
     Rational eval(const std::unordered_map<ArithVarPtr, Int>&) const;
 
     ArithExprPtr subs(const ArithSubs&) const;

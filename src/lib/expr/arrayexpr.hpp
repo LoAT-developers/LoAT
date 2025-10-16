@@ -50,6 +50,7 @@ class Array {
     virtual ArrayPtr<T> subs(const ArithSubs&) const = 0;
     virtual ArrayPtr<T> renameVars(const array_var_map<T>&) const = 0;
     virtual ArrayPtr<T> renameVars(const arith_var_map&) const = 0;
+    virtual ArrayPtr<T> renameVars(const Renaming&) const = 0;
     virtual ArrayPtr<T> subs(const ArraySubs<T>&) const = 0;
 
     virtual sexpresso::Sexp to_smtlib() const = 0;
@@ -111,8 +112,8 @@ public:
     std::optional<ArrayWritePtr<T>> isArrayWrite() const override;
 
     ArrayPtr<T> renameVars(const arith_var_map&) const override;
-
     ArrayPtr<T> renameVars(const array_var_map<T>& map) const override;
+    ArrayPtr<T> renameVars(const Renaming&) const override;
 
     void collectVars(linked_hash_set<Self>& xs, linked_hash_set<Arith::Var>&, linked_hash_set<typename T::Var>&) const override;
 
@@ -174,8 +175,8 @@ public:
     std::optional<ArrayWritePtr<T>> isArrayWrite() const override;
 
     ArrayPtr<T> renameVars(const array_var_map<T>& map) const override;
-
     ArrayPtr<T> renameVars(const arith_var_map& map) const override;
+    ArrayPtr<T> renameVars(const Renaming&) const override;
 
     void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr, linked_hash_set<Arith::Var>& arith, linked_hash_set<typename T::Var>& t) const override;
 
@@ -225,6 +226,7 @@ public:
 
     ArrayReadPtr<T> renameVars(const array_var_map<T>& map) const;
     ArrayReadPtr<T> renameVars(const T::Renaming& map) const;
+    ArrayReadPtr<T> renameVars(const Renaming&) const;
 
     void collectVars(linked_hash_set<ArrayVarPtr<T>>&, linked_hash_set<Arith::Var>&, linked_hash_set<typename T::Var>&) const;
 

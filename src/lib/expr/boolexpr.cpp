@@ -1,6 +1,7 @@
 #include "boolexpr.hpp"
 #include "theory.hpp"
 #include "conjunction.hpp"
+#include "renaming.hpp"
 
 Bools::Expr BoolExpr::from_cache(const BoolExprSet &children, const ConcatOperator op) {
     return BoolJunction::from_cache(children, op);
@@ -170,6 +171,22 @@ Bools::Expr BoolExpr::subs(const Arith::Subs& subs) const {
             },
             [&](const auto& lit) {
                 return Lit(lit->subs(subs));
+            }));
+    });
+}
+
+Bools::Expr BoolExpr::renameVars(const Renaming& subs) const {
+    return map([&](const auto& lit) {
+        return bools::mkLit(theory::apply(
+            lit,
+            [&](const Arith::Lit& lit) -> Lit {
+                return lit->renameVars(subs.get<Arith>());
+            },
+            [&](const Bools::Lit& lit) -> Lit {
+                return lit->renameVars(subs.get<Bools>());
+            },
+            [&](const Arrays<Arith>::Lit& lit) -> Lit {
+                return lit->renameVars(subs);
             }));
     });
 }

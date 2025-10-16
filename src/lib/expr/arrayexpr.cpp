@@ -1,6 +1,7 @@
 #include "arrayexpr.hpp"
 #include "sexpresso.hpp"
 #include "arraysubs.hpp"
+#include "renaming.hpp"
 
 template <ITheory T>
 bool ArrayVar<T>::CacheEqual::operator()(const std::tuple<int, unsigned>& args1,
@@ -101,6 +102,11 @@ ArrayPtr<T> ArrayVar<T>::renameVars(const array_var_map<T>& map) const {
 }
 
 template <ITheory T>
+ArrayPtr<T> ArrayVar<T>::renameVars(const Renaming& map) const {
+    return map.get<Arrays<T>>(var());
+}
+
+template <ITheory T>
 void ArrayVar<T>::collectVars(linked_hash_set<Self>& xs, linked_hash_set<Arith::Var>&,
                               linked_hash_set<typename T::Var>&) const {
     xs.insert(var());
@@ -187,6 +193,16 @@ ArrayPtr<T> ArrayWrite<T>::renameVars(const array_var_map<T>& map) const {
 
 template <ITheory T>
 ArrayPtr<T> ArrayWrite<T>::renameVars(const arith_var_map& map) const {
+    const auto indices{
+        m_indices | std::views::transform([&](const auto& i) {
+            return i->renameVars(map);
+        })
+    };
+    return arrays::mkArrayWrite(m_arr->renameVars(map), {indices.begin(), indices.end()}, m_val->renameVars(map));
+}
+
+template <ITheory T>
+ArrayPtr<T> ArrayWrite<T>::renameVars(const Renaming& map) const {
     const auto indices{
         m_indices | std::views::transform([&](const auto& i) {
             return i->renameVars(map);
@@ -312,6 +328,19 @@ ArrayReadPtr<T> ArrayRead<T>::renameVars(const array_var_map<T>& map) const {
 
 template <ITheory T>
 ArrayReadPtr<T> ArrayRead<T>::renameVars(const typename T::Renaming& map) const {
+    std::vector<Arith::Expr> indices;
+    if constexpr (std::is_same_v<T, Arith>) {
+        for (const auto &i: m_indices) {
+            indices.emplace_back(i->renameVars(map));
+        }
+    } else {
+        indices = m_indices;
+    }
+    return arrays::mkArrayRead(m_arr->renameVars(map), indices);
+}
+
+template <ITheory T>
+ArrayReadPtr<T> ArrayRead<T>::renameVars(const Renaming& map) const {
     std::vector<Arith::Expr> indices;
     if constexpr (std::is_same_v<T, Arith>) {
         for (const auto &i: m_indices) {

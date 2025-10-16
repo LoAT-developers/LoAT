@@ -1,6 +1,7 @@
 #pragma once
 
 #include "arrayexpr.hpp"
+#include "exprfwd.hpp"
 
 template <ITheory T>
 class ArrayLit;
@@ -65,8 +66,9 @@ public:
     virtual std::size_t hash() const = 0;
     virtual ArrayLitPtr<T> subs(const T::Subs&) const = 0;
     virtual ArrayLitPtr<T> subs(const ArraySubs<T>&) const = 0;
-    virtual ArrayLitPtr<T> renameVars(const array_var_map<T> &map) const = 0;
-    virtual ArrayLitPtr<T> renameVars(const T::Renaming &map) const = 0;
+    virtual ArrayLitPtr<T> renameVars(const array_var_map<T>&) const = 0;
+    virtual ArrayLitPtr<T> renameVars(const T::Renaming&) const = 0;
+    virtual ArrayLitPtr<T> renameVars(const Renaming&) const = 0;
     virtual void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr, linked_hash_set<Arith::Var>& arith, linked_hash_set<typename T::Var>& t) const = 0;
     virtual bool isTriviallyFalse() const = 0;
     virtual std::optional<ArrayEqPtr<T>> isArrayEq() const = 0;
@@ -114,9 +116,9 @@ public:
 
     ArrayLitPtr<T> subs(const ArraySubs<T>& subs) const override;
 
-    ArrayLitPtr<T> renameVars(const array_var_map<T>& map) const override;
-
-    ArrayLitPtr<T> renameVars(const T::Renaming& map) const override;
+    ArrayLitPtr<T> renameVars(const array_var_map<T>&) const override;
+    ArrayLitPtr<T> renameVars(const T::Renaming&) const override;
+    ArrayLitPtr<T> renameVars(const Renaming&) const override;
 
     void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr, linked_hash_set<Arith::Var>& arith, linked_hash_set<typename T::Var>& t) const override;
 
@@ -170,9 +172,9 @@ public:
 
     ArrayLitPtr<T> subs(const ArraySubs<T>& subs) const override;
 
-    ArrayLitPtr<T> renameVars(const array_var_map<T>& map) const override;
-
-    ArrayLitPtr<T> renameVars(const T::Renaming& map) const override;
+    ArrayLitPtr<T> renameVars(const array_var_map<T>&) const override;
+    ArrayLitPtr<T> renameVars(const T::Renaming&) const override;
+    ArrayLitPtr<T> renameVars(const Renaming&) const override;
 
     void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr, linked_hash_set<Arith::Var>& arith, linked_hash_set<typename T::Var>& t) const override;
 
@@ -226,9 +228,9 @@ public:
 
     ArrayLitPtr<T> subs(const ArraySubs<T>& subs) const override;
 
-    ArrayLitPtr<T> renameVars(const array_var_map<T>& map) const override;
-
-    ArrayLitPtr<T> renameVars(const T::Renaming& map) const override;
+    ArrayLitPtr<T> renameVars(const array_var_map<T>&) const override;
+    ArrayLitPtr<T> renameVars(const T::Renaming&) const override;
+    ArrayLitPtr<T> renameVars(const Renaming&) const override;
 
     void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr, linked_hash_set<Arith::Var>& arith, linked_hash_set<typename T::Var>& t) const override;
 
@@ -278,6 +280,7 @@ public:
     ArrayLitPtr<T> subs(const ArraySubs<T>&) const override;
     ArrayLitPtr<T> renameVars(const array_var_map<T>& map) const override;
     ArrayLitPtr<T> renameVars(const T::Renaming& map) const override;
+    ArrayLitPtr<T> renameVars(const Renaming&) const override;
     void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr, linked_hash_set<Arith::Var>& arith,
         linked_hash_set<typename T::Var>& t) const override;
     bool isTriviallyFalse() const override;

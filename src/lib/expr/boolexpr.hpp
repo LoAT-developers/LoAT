@@ -87,6 +87,7 @@ public:
     BoolExprSet get_disjuncts() const;
     std::optional<Bools::Var> isVar() const;
     Bools::Expr subs(const Arith::Subs&) const;
+    Bools::Expr renameVars(const Renaming&) const;
 
     void collectVars(VarSet&) const;
 

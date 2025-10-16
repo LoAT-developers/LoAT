@@ -759,6 +759,10 @@ ArithExprPtr ArithExpr::renameVars(const arith_var_map &map) const {
     );
 }
 
+ArithExprPtr ArithExpr::renameVars(const Renaming &map) const {
+    return renameVars(map.get<Arith>());
+}
+
 std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
     using pair = std::pair<Rational, std::optional<ArithExprPtr>>;
     return apply<pair>(
