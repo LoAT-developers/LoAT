@@ -44,7 +44,7 @@ if(${SANITIZE})
     # add_compile_options(-fPIE -pie -fno-omit-frame-pointer)
 endif()
 
-add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter -Wfatal-errors) # for GCC: -fconcepts-diagnostics-depth=100
+add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter -Wfatal-errors -Wno-invalid-utf8) # for GCC: -fconcepts-diagnostics-depth=100
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
