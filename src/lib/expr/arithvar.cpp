@@ -1,10 +1,6 @@
 #include "arithexpr.hpp"
+#include "arrayexpr.hpp"
 #include "sexpresso.hpp"
-
-#include <assert.h>
-
-int ArithVar::last_tmp_idx {0};
-int ArithVar::last_prog_idx {1};
 
 ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {};
 
@@ -12,21 +8,18 @@ ArithExprPtr arith::mkVar(const int idx) {
     return ArithVar::cache.from_cache(idx);
 }
 
-ArithVar::ArithVar(const int idx): ArithExpr(arith::Kind::Variable), idx(idx) {}
+ArithVar::ArithVar(const int idx): ArithExpr(arith::Kind::Variable), arr(arrays::mkArrayRead(arrays::mkVar<Arith>(idx, 0), {})) {}
 
 ArithVar::~ArithVar() {
-    cache.erase(idx);
+    cache.erase(getIdx());
 }
 
 int ArithVar::getIdx() const {
-    return idx;
+    return arr->arr()->var()->idx();
 }
 
 std::string ArithVar::getName() const {
-    if (idx > 0) {
-        return "i" + std::to_string(idx);
-    }
-    return "it" + std::to_string(-idx);
+    return arr->arr()->var()->getName();
 }
 
 std::ostream& operator<<(std::ostream &s, const ArithVar &x) {
@@ -34,13 +27,13 @@ std::ostream& operator<<(std::ostream &s, const ArithVar &x) {
 }
 
 ArithVarPtr ArithVar::next() {
-    --last_tmp_idx;
-    return (*arith::mkVar(last_tmp_idx)->someVar())->toVarPtr();
+    --ArrayVar<Arith>::last_tmp_idx;
+    return (*arith::mkVar(ArrayVar<Arith>::last_tmp_idx)->someVar())->toVarPtr();
 }
 
 ArithVarPtr ArithVar::nextProgVar() {
-    last_prog_idx += 2;
-    return (*arith::mkVar(last_prog_idx)->someVar())->toVarPtr();
+    ArrayVar<Arith>::last_prog_idx += 2;
+    return (*arith::mkVar(ArrayVar<Arith>::last_prog_idx)->someVar())->toVarPtr();
 }
 
 ArithVarPtr ArithVar::postVar(const ArithVarPtr &x) {
@@ -52,15 +45,15 @@ ArithVarPtr ArithVar::progVar(const ArithVarPtr &x) {
 }
 
 bool ArithVar::isTempVar() const {
-    return idx < 0;
+    return getIdx() < 0;
 }
 
 bool ArithVar::isProgVar() const {
-    return idx > 0 && idx % 2 == 1;
+    return getIdx() > 0 && getIdx() % 2 == 1;
 }
 
 bool ArithVar::isPostVar() const {
-    return idx > 0 && idx % 2 == 0;
+    return getIdx() > 0 && getIdx() % 2 == 0;
 }
 
 std::size_t hash_value(const ArithVar &x) {

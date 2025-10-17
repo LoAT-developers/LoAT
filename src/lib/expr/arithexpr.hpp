@@ -250,10 +250,7 @@ class ArithVar: public ArithExpr {
     friend ArithExprPtr arith::mkVar(int idx);
     friend class ArithExpr;
 
-    static int last_tmp_idx;
-    static int last_prog_idx;
-
-    int idx;
+    ArrayReadPtr<Arith> arr;
 
 public:
     explicit ArithVar(int idx);

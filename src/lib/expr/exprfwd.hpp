@@ -59,10 +59,10 @@ class BoolExpr;
 class BoolSubs;
 using BoolExprPtr = ptr<BoolExpr>;
 
-template <ITheory T>
+template <class T>
 class ArrayVar;
 
-template <ITheory T>
+template <class T>
 using ArrayVarPtr = ptr<ArrayVar<T>>;
 
 template <ITheory T>
@@ -76,3 +76,11 @@ class Renaming;
 
 class Model;
 using ModelPtr = cpp::not_null<std::shared_ptr<Model>>;
+
+struct Arith;
+
+template <class>
+class ArrayRead;
+
+template <class T>
+using ArrayReadPtr = ptr<ArrayRead<T>>;

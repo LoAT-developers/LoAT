@@ -7,22 +7,22 @@
 
 #include <ranges>
 
-template <ITheory T>
+template <class T>
 class Array;
 
-template <ITheory T>
+template <class T>
 class ArrayWrite;
 
-template <ITheory T>
+template <class T>
 class ArrayRead;
 
-template <ITheory T>
+template <class T>
 using ArrayReadPtr = ptr<ArrayRead<T>>;
 
-template <ITheory T>
+template <class T>
 using ArrayWritePtr = ptr<ArrayWrite<T>>;
 
-template <ITheory T>
+template <class T>
 using ArrayPtr = ptr<Array<T>>;
 
 namespace arrays {
@@ -36,7 +36,7 @@ namespace arrays {
 
 }
 
-template <ITheory T>
+template <class T>
 class Array {
 
     public:
@@ -59,10 +59,11 @@ class Array {
 
 };
 
-template <ITheory T>
+template <class T>
 class ArrayVar final: public Array<T>, std::enable_shared_from_this<ArrayVar<T>> {
 
     friend ArrayPtr<T> arrays::mkVar(int p_idx, unsigned p_dim);
+    friend class ArithVar;
 
     struct CacheEqual {
         bool operator()(const std::tuple<int, unsigned> &args1, const std::tuple<int, unsigned> &args2) const noexcept;
@@ -78,7 +79,7 @@ class ArrayVar final: public Array<T>, std::enable_shared_from_this<ArrayVar<T>>
 
     static int last_tmp_idx;
     static int last_prog_idx;
-    int idx;
+    int m_idx;
     unsigned m_dim;
 
 public:
@@ -92,6 +93,8 @@ public:
     static Self postVar(const Self& arr);
 
     std::string getName() const;
+
+    unsigned idx() const;
 
     bool isTempVar() const;
 
@@ -123,21 +126,21 @@ public:
     ArrayPtr<T> subs(const ArraySubs<T>&) const override;
 };
 
-template<ITheory T>
+template<class T>
 ConsHash<Array<T>, ArrayVar<T>, typename ArrayVar<T>::CacheHash, typename ArrayVar<T>::CacheEqual, int, unsigned> ArrayVar<T>::cache{};
 
-template<ITheory T>
+template<class T>
 int ArrayVar<T>::last_tmp_idx;
 
-template<ITheory T>
+template<class T>
 int ArrayVar<T>::last_prog_idx;
 
-template <ITheory T>
+template <class T>
 std::ostream& operator<<(std::ostream &s, const ArrayVarPtr<T> a) {
     return s << a->getName();
 }
 
-template <ITheory T>
+template <class T>
 class ArrayWrite final: public Array<T>, std::enable_shared_from_this<ArrayWrite<T>> {
 
     friend ArrayPtr<T> arrays::mkArrayWrite(const ArrayPtr<T>& arr, const std::vector<Arith::Expr>& indices, const T::Expr& val);
@@ -184,10 +187,10 @@ public:
     ArrayPtr<T> subs(const ArraySubs<T>&) const override;
 };
 
-template <ITheory T>
+template <class T>
 ConsHash<Array<T>, ArrayWrite<T>, typename ArrayWrite<T>::CacheHash, typename ArrayWrite<T>::CacheEqual, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> ArrayWrite<T>::cache{};
 
-template <ITheory T>
+template <class T>
 class ArrayRead final {
 
     friend ArrayReadPtr<T> arrays::mkArrayRead(const ArrayPtr<T>& arr, const std::vector<Arith::Expr>& indices);
@@ -230,15 +233,12 @@ public:
 
     void collectVars(linked_hash_set<ArrayVarPtr<T>>&, linked_hash_set<Arith::Var>&, linked_hash_set<typename T::Var>&) const;
 
-    static ArrayReadPtr<T> postVar(const ArrayReadPtr<T>&);
-    static ArrayReadPtr<T> progVar(const ArrayReadPtr<T>&);
-
 };
 
-template <ITheory T>
+template <class T>
 ConsHash<ArrayRead<T>, ArrayRead<T>, typename ArrayRead<T>::CacheHash, typename ArrayRead<T>::CacheEqual, ArrayPtr<T>, std::vector<Arith::Expr>> ArrayRead<T>::cache;
 
-template <ITheory T>
+template <class T>
 std::ostream& operator<<(std::ostream& s, const ArrayReadPtr<T>& read) {
     s << read->arr();
     for (const auto &i: read->indices()) {
@@ -247,7 +247,7 @@ std::ostream& operator<<(std::ostream& s, const ArrayReadPtr<T>& read) {
     return s;
 }
 
-template <ITheory T>
+template <class T>
 std::ostream& operator<<(std::ostream& s, const ArrayPtr<T>& a) {
     if (const auto var {a->isVar()}) {
         return s << (*var)->getName();

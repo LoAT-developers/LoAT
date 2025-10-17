@@ -6,8 +6,6 @@
 #include "exprfwd.hpp"
 
 template<class... T> class VariantSet;
-class ArithVar;
-using ArithVarPtr = cpp::not_null<std::shared_ptr<const ArithVar>>;
 
 class BoolSubs {
 
