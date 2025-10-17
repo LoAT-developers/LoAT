@@ -123,8 +123,8 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         if (!explicit_encoding) {
             constr.push_back(bools::mkLit(arith::mkGeq(mod, arith::mkConst(0)))); // x mod y is non-negative
             constr.push_back( // |y| > x mod y
-                bools::mkAndFromLits({arith::mkGt(snd, arith::mkConst(0)), arith::mkGt(snd, mod)})
-                || bools::mkAndFromLits({arith::mkLt(snd, arith::mkConst(0)), arith::mkGt(-snd, mod)}));
+                bools::mkAnd(std::vector{arith::mkGt(snd, arith::mkConst(0)), arith::mkGt(snd, mod)})
+                || bools::mkAnd(std::vector{arith::mkLt(snd, arith::mkConst(0)), arith::mkGt(-snd, mod)}));
         }
         state.refinement.emplace_back(bools::mkAnd(constr));
         if (name == "div") {
@@ -265,7 +265,7 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
                 lits.insert(arith::mkGeq(args[i-1], args[i]));
             }
         }
-        return bools::mkAndFromLits(lits);
+        return bools::mkAnd(lits);
     }
     if (f == "=" || f == "distinct") {
         auto type {getType(exp[1], state)};

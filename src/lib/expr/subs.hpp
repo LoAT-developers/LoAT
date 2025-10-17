@@ -151,20 +151,6 @@ public:
         return std::get<Arrays<Arith>::Subs>(t).get(var);
     }
 
-    Arrays<Arith>::Expr operator()(const Arrays<Arith>::Expr &e) const {
-        auto var {get(e->var())};
-        if (e->isVar()) {
-            return var;
-        }
-        const auto write {*e->isArrayWrite()};
-        const auto transformed_indices{
-            write->indices() | std::views::transform([&](const auto& i) {
-                return i->subs(get<Arith>());
-            })
-        };
-        return arrays::mkArrayWrite(var, {transformed_indices.begin(), transformed_indices.end()}, write->val()->subs(get<Arith>()));
-    }
-
     bool changes(const Var &x) const;
     void erase(const Var &x);
     void erase(const VarSet &xs);
@@ -204,7 +190,6 @@ public:
     }
 
     Bools::Expr operator()(const Lit &lit) const;
-    Bools::Expr operator()(const Bools::Expr& e) const;
     Expr operator()(const Expr &expr) const;
     Subs concat(const ArithSubs &that) const;
     Subs concat(const BoolSubs &that) const;

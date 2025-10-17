@@ -10,7 +10,7 @@ class YicesModel final: public Model {
 
     void put(const Arith::Var&, const Arith::Const&) override;
 
-    Rational evalToRational(const Arith::Expr&) override;
+    Rational evalToRationalImpl(const Arith::Expr&) override;
     ModelPtr withSubs(const Subs&) const override;
 
 public:

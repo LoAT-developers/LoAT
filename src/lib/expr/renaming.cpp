@@ -254,7 +254,7 @@ Lit Renaming::operator()(const Lit &lit) const {
                 return Lit(lit->renameVars(get<Arith>())->renameVars(get<Arrays<Arith>>()));
             },
             [&](const Bools::Lit& lit) {
-                return Lit{(*this)(lit)};
+                return Lit{lit->renameVars(get<Bools>())};
             }
         }, lit);
 }
@@ -269,21 +269,9 @@ Expr Renaming::operator()(const Expr &expr) const {
                 return Expr(expr->renameVars(get<Arrays<Arith>>())->renameVars(get<Arith>()));
             },
             [&](const Bools::Expr& expr) {
-                return Expr{(*this)(expr)};
+                return Expr{expr->renameVars(*this)};
             }
         }, expr);
-}
-
-Bools::Expr Renaming::operator()(const Bools::Expr& e) const {
-    if (const auto lit {e->getTheoryLit()}) {
-        return bools::mkLit((*this)(*lit));
-    }
-    BoolExprSet children;
-    for (const auto &c: e->getChildren()) {
-        children.insert((*this)(c));
-    }
-    const auto op = e->isAnd() ? ConcatAnd : ConcatOr;
-    return BoolExpr::from_cache(children, op);
 }
 
 template<std::size_t I = 0>
@@ -400,20 +388,4 @@ Var Renaming::renameVar(const Var &x, Renaming &sigma) {
         sigma.insert<decltype(th)>(x, next);
         return Var(next);
     });
-}
-
-Arith::Var Renaming::operator()(const Arith::Var& x) const {
-    return get<Arith>(x);
-}
-
-Bools::Var Renaming::operator()(const Bools::Var& x) const {
-    return get<Bools>(x);
-}
-
-Arrays<Arith>::Var Renaming::operator()(const Arrays<Arith>::Var& x) const {
-    return get<Arrays<Arith>>(x);
-}
-
-Arith::Expr Renaming::operator()(const Arith::Expr &e) const {
-    return e->renameVars(std::get<arith_var_map>(t));
 }

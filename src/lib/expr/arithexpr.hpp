@@ -283,7 +283,7 @@ public:
     bool isProgVar() const;
     bool isPostVar() const;
     sexpresso::Sexp to_smtlib() const;
-    unsigned dim() const;
+    static unsigned dim();
 
 };
 

@@ -44,7 +44,7 @@ std::optional<unsigned> ADCLSat::has_looping_suffix() {
         if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || trace[start].id <= last_orig_clause)) {
             if (start == last) {
                 if (const auto loop{trace[start].implicant};
-                    SmtFactory::check(get_subs(0, 1)(loop) && get_subs(1, 1)(loop)) == SmtResult::Unsat) {
+                    SmtFactory::check(loop->renameVars(get_subs(0, 1)) && loop->renameVars(get_subs(1, 1))) == SmtResult::Unsat) {
                     continue;
                 }
             }
@@ -57,9 +57,9 @@ std::optional<unsigned> ADCLSat::has_looping_suffix() {
 void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
     if (range.length() == 1) {
-        solver->add(s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id)))));
+        solver->add((!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s));
     } else {
-        solver->add(s(!loop));
+        solver->add(!loop->renameVars(s));
     }
 }
 
@@ -131,7 +131,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
             : std::optional{encode_transition(rule_map.at(trace.back().id), trace.back().id)};
     if (!backtracking && (!last || dg_over_approx.getSinks().contains(*last))) {
         solver->push();
-        solver->add(get_subs(trace.size(), 1)(t.err()));
+        solver->add(t.err()->renameVars(get_subs(trace.size(), 1)));
         switch (solver->check()) {
             case SmtResult::Sat:
             case SmtResult::Unknown:
@@ -159,12 +159,12 @@ std::optional<SmtResult> ADCLSat::do_step() {
     solver->push();
     const auto steps = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
     const auto step {bools::mkOr(steps)};
-    solver->add(subs(step));
+    solver->add(step->renameVars(subs));
     if (!trace.empty() && trace.back().id > last_orig_clause) {
-        solver->add(subs(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))));
+        solver->add(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))->renameVars(subs));
     }
     for (const auto &[id, b] : projections) {
-        solver->add(subs(!b) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
+        solver->add(!b->renameVars(subs) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
     }
     switch (solver->check()) {
         case SmtResult::Unknown:
@@ -178,7 +178,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
             solver->pop(); // current step
             solver->pop(); // backtracking
             trace.pop_back();
-            const auto b {!get_subs(trace.size(), 1)(projection)};
+            const auto b {!projection->renameVars(get_subs(trace.size(), 1))};
             if (Config::Analysis::log) {
                 std::cout << "***** Backtrack *****" << std::endl;
             }
@@ -200,7 +200,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto m{(*model)->composeBackwards(subs)};
     const auto imp{m->syntacticImplicant(trans)};
     solver->push();
-    solver->add(subs(imp));
+    solver->add(imp->renameVars(subs));
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
     trace.emplace_back(id, imp, m);

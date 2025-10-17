@@ -13,9 +13,9 @@ class VarEliminator
 
 public:
 
-    VarEliminator(const Bools::Expr guard, const Arith::Var N, const std::function<bool(Arith::Var)> &keep);
+    VarEliminator(const Bools::Expr& guard, const Arith::Var& N, const std::function<bool(Arith::Var)> &keep);
 
-    const linked_hash_set<ArithSubs> getRes() const;
+    linked_hash_set<ArithSubs> getRes() const;
 
 private:
 
@@ -24,13 +24,14 @@ private:
      * For example, if we have N * M <= X, then we cannot instantiate N with X/M, as the bound must always evaluate to an integer.
      * Thus, in this case M is a dependency of N.
      */
-    void findDependencies(const Bools::Expr guard);
+    void findDependencies(const Bools::Expr& guard);
 
     /**
      * Tries to eliminate a single dependency by instantiating it with a constant bound.
      * Creates a new branch (i.e., a new entry in todoDeps) for every possible instantiation.
      */
-    const std::vector<std::pair<ArithSubs, Bools::Expr>> eliminateDependency(const ArithSubs &subs, const Bools::Expr guard) const;
+    std::vector<std::pair<ArithSubs, Bools::Expr>> eliminateDependency(const ArithSubs& subs,
+                                                                       const Bools::Expr& guard) const;
 
     /**
      * Eliminates as many dependencies as possible by instantiating them with constant bounds.

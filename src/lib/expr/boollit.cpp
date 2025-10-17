@@ -1,6 +1,7 @@
 #include "boollit.hpp"
 #include "optional.hpp"
 #include "conshash.hpp"
+#include "boolsubs.hpp"
 
 #include <ostream>
 #include <boost/functional/hash.hpp>
@@ -100,4 +101,9 @@ BoolLitPtr BoolLit::renameVars(const bool_var_map &map) const {
     } else {
         return bools::mk(it->second, negated);
     }
+}
+
+BoolExprPtr BoolLit::subs(const BoolSubs& subs) const {
+    const auto res {subs.get(var)};
+    return negated ? !res : res;
 }

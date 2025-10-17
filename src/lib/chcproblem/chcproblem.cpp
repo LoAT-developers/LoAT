@@ -156,7 +156,7 @@ ClausePtr Clause::subs(const Subs &subs) const {
     const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto c) {
         return c->subs(subs);
     })};
-    return mk(prem, subs(constraint), concl);
+    return mk(prem, constraint->subs(subs), concl);
 }
 
 ClausePtr Clause::rename_vars(const Renaming &subs) const {
@@ -166,7 +166,7 @@ ClausePtr Clause::rename_vars(const Renaming &subs) const {
     const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto c) {
         return c->rename_vars(subs);
     })};
-    return mk(prem, subs(constraint), concl);
+    return mk(prem, constraint->renameVars(subs), concl);
 }
 
 VarSet Clause::vars() const {

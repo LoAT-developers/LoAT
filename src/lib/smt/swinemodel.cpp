@@ -27,7 +27,7 @@ Bools::Const SwineModel::evalImpl(const Bools::Expr &e) {
     return res.is_true();
 }
 
-Rational SwineModel::evalToRational(const Arith::Expr &e) {
+Rational SwineModel::evalToRationalImpl(const Arith::Expr &e) {
     const auto converted {Converter::convert(e, m_ctx)};
     const auto res {m_model.eval(converted, true)};
     assert(res.is_numeral());

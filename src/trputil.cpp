@@ -329,7 +329,7 @@ bool TRPUtil::build_cex() {
             }
             return false;
         }
-        const auto guard {post_to_tmp(*trans)};
+        const auto guard {(*trans)->renameVars(post_to_tmp)};
         const auto rule {Preprocess::preprocessRule(Rule::mk(guard, up))};
         if (Config::Analysis::log) {
             std::cout << "accelerating " << *rule << std::endl;
@@ -354,7 +354,7 @@ bool TRPUtil::build_cex() {
                     conjuncts.push_back(theory::mkEq(theory::toExpr(post), theory::toExpr(pre)));
                 }
             }
-            accel.put(current, tmp_to_post(bools::mkAnd(conjuncts)));
+            accel.put(current, bools::mkAnd(conjuncts)->renameVars(tmp_to_post));
         } else {
             if (Config::Analysis::log) {
                 std::cout << "acceleration failed" << std::endl;
@@ -367,7 +367,7 @@ bool TRPUtil::build_cex() {
         const auto next = e.id > last_orig_clause ? accel.at(e.id) : e.implicant;
         trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
     }
-    return SmtFactory::check(t.init() && *trans && t.pre_to_post()(t.err())) == SmtResult::Sat;
+    return SmtFactory::check(t.init() && *trans && t.err()->renameVars(t.pre_to_post())) == SmtResult::Sat;
 }
 
 bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {

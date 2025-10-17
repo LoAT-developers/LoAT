@@ -37,9 +37,6 @@ class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
 
     static Bools::Expr from_cache(const BoolExprSet &children, ConcatOperator op);
 
-    template <class Lits>
-    static Bools::Expr buildFromLits(const Lits& lits, ConcatOperator op);
-
     template <class Children>
     static Bools::Expr build(const Children& lits, ConcatOperator op);
 
@@ -47,9 +44,6 @@ public:
 
     static Bools::Expr top();
     static Bools::Expr bot();
-
-    template <class Lits>
-    static Bools::Expr mkAndFromLits(const Lits& lits);
 
     template <class Children>
     static Bools::Expr mkAnd(const Children& lits);
@@ -86,7 +80,9 @@ public:
     sexpresso::Sexp to_smtlib() const;
     BoolExprSet get_disjuncts() const;
     std::optional<Bools::Var> isVar() const;
+    Bools::Expr subs(const BoolSubs&) const;
     Bools::Expr subs(const Arith::Subs&) const;
+    Bools::Expr subs(const Subs&) const;
     Bools::Expr renameVars(const Renaming&) const;
 
     void collectVars(VarSet&) const;

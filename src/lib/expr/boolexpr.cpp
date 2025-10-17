@@ -2,44 +2,45 @@
 #include "theory.hpp"
 #include "conjunction.hpp"
 #include "renaming.hpp"
+#include "subs.hpp"
 
 Bools::Expr BoolExpr::from_cache(const BoolExprSet &children, const ConcatOperator op) {
     return BoolJunction::from_cache(children, op);
 }
 
-template <class Lits>
-Bools::Expr BoolExpr::buildFromLits(const Lits& lits, const ConcatOperator op) {
-    BoolExprSet children;
-    for (const auto &lit : lits) {
-        children.insert(mkLit(lit));
-    }
-    return build(children, op);
-}
-
 template <class Children>
 Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
-    if (op == ConcatAnd && std::find(lits.begin(), lits.end(), bot()) != lits.end()) {
-        return bot();
-    }
-    if (op == ConcatOr && std::find(lits.begin(), lits.end(), top()) != lits.end()) {
-        return top();
-    }
+    using Elem = std::remove_cvref_t<decltype(*lits.begin())>;
+    static_assert(std::is_same_v<Elem, Bools::Expr> || std::is_constructible_v<Lit, Elem>);
     BoolExprSet children;
-    for (const auto &x: lits) {
-        if (op == ConcatAnd && x->isAnd() || op == ConcatOr && x->isOr()) {
-            const auto cs {x->getChildren()};
-            children.insert(cs.begin(), cs.end());
-        } else {
-            children.insert(x);
+    if constexpr (std::is_same_v<Elem, Bools::Expr>) {
+        if (op == ConcatAnd && std::find(lits.begin(), lits.end(), bot()) != lits.end()) {
+            return bot();
         }
-    }
-    switch (children.size()) {
-    case 0:
-        return op == ConcatAnd ? top() : bot();
-    case 1:
-        return *children.begin();
-    default:
-        return from_cache(children, op);
+        if (op == ConcatOr && std::find(lits.begin(), lits.end(), top()) != lits.end()) {
+            return top();
+        }
+        for (const auto &x: lits) {
+            if (op == ConcatAnd && x->isAnd() || op == ConcatOr && x->isOr()) {
+                const auto cs {x->getChildren()};
+                children.insert(cs.begin(), cs.end());
+            } else {
+                children.insert(x);
+            }
+        }
+        switch (children.size()) {
+        case 0:
+            return op == ConcatAnd ? top() : bot();
+        case 1:
+            return *children.begin();
+        default:
+            return from_cache(children, op);
+        }
+    } else {
+        for (const auto &lit : lits) {
+            children.insert(mkLit(lit));
+        }
+        return build(children, op);
     }
 }
 
@@ -53,17 +54,6 @@ Bools::Expr BoolExpr::bot() {
     return res;
 }
 
-template <class Lits>
-Bools::Expr BoolExpr::mkAndFromLits(const Lits& lits) {
-    return buildFromLits(lits, ConcatAnd);
-}
-
-template Bools::Expr BoolExpr::mkAndFromLits<std::vector<Arith::Lit>>(const std::vector<Arith::Lit> &lits);
-template Bools::Expr BoolExpr::mkAndFromLits<linked_hash_set<Arith::Lit>>(const linked_hash_set<Arith::Lit> &lits);
-template Bools::Expr BoolExpr::mkAndFromLits<Conjunction>(const Conjunction &lits);
-template Bools::Expr BoolExpr::mkAndFromLits<LitSet>(const LitSet &lits);
-template Bools::Expr BoolExpr::mkAndFromLits<std::initializer_list<Lit>>(const std::initializer_list<Lit> &lits);
-
 template <class Children>
 Bools::Expr BoolExpr::mkAnd(const Children& lits) {
     return build(lits, ConcatAnd);
@@ -71,6 +61,10 @@ Bools::Expr BoolExpr::mkAnd(const Children& lits) {
 
 template Bools::Expr BoolExpr::mkAnd<std::vector<Bools::Expr>>(const std::vector<Bools::Expr> &lits);
 template Bools::Expr BoolExpr::mkAnd<linked_hash_set<Bools::Expr>>(const linked_hash_set<Bools::Expr> &lits);
+template Bools::Expr BoolExpr::mkAnd<std::vector<Arith::Lit>>(const std::vector<Arith::Lit> &lits);
+template Bools::Expr BoolExpr::mkAnd<linked_hash_set<Arith::Lit>>(const linked_hash_set<Arith::Lit> &lits);
+template Bools::Expr BoolExpr::mkAnd<Conjunction>(const Conjunction &lits);
+template Bools::Expr BoolExpr::mkAnd<LitSet>(const LitSet &lits);
 
 template <class Children>
 Bools::Expr BoolExpr::mkOr(const Children& lits) {
@@ -172,6 +166,25 @@ Bools::Expr BoolExpr::subs(const Arith::Subs& subs) const {
             [&](const auto& lit) {
                 return Lit(lit->subs(subs));
             }));
+    });
+}
+
+Bools::Expr BoolExpr::subs(const Bools::Subs& subs) const {
+    return map([&](const auto& lit) {
+        return theory::apply(
+            lit,
+            [&](const Bools::Lit& lit) {
+                return lit->subs(subs);
+            },
+            [&](const auto&) {
+                return bools::mkLit(lit);
+            });
+    });
+}
+
+Bools::Expr BoolExpr::subs(const Subs& subs) const {
+    return map([&](const auto& lit) {
+        return subs(lit);
     });
 }
 

@@ -154,14 +154,14 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     const auto s_next {subs_at(depth + 1).project(pre_v).compose(
             subs_at(depth + length).project(post_v))};
     pre.push_back(theory::mkEq(theory::toExpr(s_next.get(trace_var)), arith::mkConst((*shortcut)->getId())));
-    pre.push_back(s_next(not_trans));
+    pre.push_back(not_trans->renameVars(s_next));
     // we must not start another iteration of the loop after using the learned transition in the next step
     std::vector<Bools::Expr> post;
     post.push_back(theory::mkNeq(theory::toExpr(s_next.get(trace_var)), arith::mkConst((*shortcut)->getId())));
     const auto s_next_next {subs_at(depth + 2).project(pre_v).compose(
             subs_at(depth + length + 1).project(post_v))};
-    post.push_back(s_next_next(not_trans));
-    const auto not_covered{s_next(!loop.covered)};
+    post.push_back(not_trans->renameVars(s_next_next));
+    const auto not_covered{!loop.covered->renameVars(s_next)};
     return not_covered || (bools::mkOr(pre) && bools::mkOr(post));
 }
 
@@ -297,7 +297,7 @@ Bools::Expr ABMC::encode_transition(const RulePtr& idx, const bool with_id) {
             [&](const auto& x) {
                 using T = decltype(theory::theory(x));
                 if (x->isProgVar()) {
-                    res.push_back(theory::mkEq(T::varToExpr(pre_to_post(x)), up.get(x)));
+                    res.push_back(theory::mkEq(T::varToExpr(pre_to_post.get<T>(x)), up.get(x)));
                 }
             });
     }
@@ -360,7 +360,7 @@ std::optional<SmtResult> ABMC::do_step() {
     ++depth;
     const auto &s{subs_at(depth)};
     solver->push();
-    solver->add(s(query));
+    solver->add(query->renameVars(s));
     switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
@@ -379,12 +379,12 @@ std::optional<SmtResult> ABMC::do_step() {
         if (Config::Analysis::model) {
             transitions.emplace_back(step);
         }
-        solver->add(s(step));
+        solver->add(step->renameVars(s));
     } else {
         if (Config::Analysis::model) {
             transitions.emplace_back(encode_transition(*shortcut, false) || step);
         }
-        solver->add(s(encode_transition(*shortcut) || step));
+        solver->add((encode_transition(*shortcut) || step)->renameVars(s));
     }
     Bools::Expr blocking_clause{top()};
     switch (solver->check()) {
@@ -432,7 +432,7 @@ ITSModel ABMC::get_model() {
         }
     }
     for (const auto &t: its->getInitialTransitions()) {
-        std::vector conjuncts {init_renaming(t->getGuard())};
+        std::vector conjuncts {t->getGuard()->renameVars(init_renaming)};
         const auto &up {t->getUpdate()};
         for (const auto& [x,_] : init_renaming) {
             theory::apply(x, [&](const auto& x) {
@@ -447,7 +447,7 @@ ITSModel ABMC::get_model() {
     Bools::Expr last{init};
     for (unsigned i = 0; i + 1 < depth; ++i) {
         const auto s1{subs.at(i)};
-        last = last && s1(transitions.at(i));
+        last = last && transitions.at(i)->renameVars(s1);
         Renaming s2;
         for (const auto &[pre,post]: pre_to_post) {
             if (theory::isProgVar(pre)) {
@@ -455,12 +455,12 @@ ITSModel ABMC::get_model() {
                 s2.insert(pre, theory::next(pre));
             }
         }
-        res.push_back(s2(last));
+        res.push_back(last->renameVars(s2));
     }
     ITSModel model;
     const auto m {bools::mkOr(res)};
     for (const auto &l: its->getLocations()) {
-        model.set_invariant(l, Subs::build<Arith>(its->getLocVar(), arith::mkConst(l))(m));
+        model.set_invariant(l, m->subs(ArithSubs{{its->getLocVar(), arith::mkConst(l)}}));
     }
     model.set_invariant(its->getInitialLocation(), top());
     return model;

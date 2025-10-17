@@ -21,7 +21,7 @@ public:
     bool eval(const Lit&);
     Bools::Const eval(const Bools::Expr&);
     Arith::Const eval(const Arith::Expr&);
-    virtual Rational evalToRational(const Arith::Expr&) = 0;
+    Rational evalToRational(const Arith::Expr&);
     virtual ModelPtr withSubs(const Subs&) const = 0;
 
     Bools::Expr syntacticImplicant(const Bools::Expr&);
@@ -36,6 +36,7 @@ protected:
     virtual bool evalImpl(const Lit&) = 0;
     virtual Bools::Const evalImpl(const Bools::Expr&) = 0;
     Arith::Const evalImpl(const Arith::Expr&);
+    virtual Rational evalToRationalImpl(const Arith::Expr&) = 0;
     virtual Arith::Const getImpl(const Arith::Var&) = 0;
     virtual Bools::Const getImpl(const Bools::Var&) = 0;
     virtual Arith::Const getImpl(const ArrayReadPtr<Arith>&) = 0;

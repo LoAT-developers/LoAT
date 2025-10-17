@@ -186,7 +186,7 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
     }
 
     lits.get<Arith::Lit>() = conjuncts;
-    return bools::mkAndFromLits(lits);
+    return bools::mkAnd(lits);
 }
 
 

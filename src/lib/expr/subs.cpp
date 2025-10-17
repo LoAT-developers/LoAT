@@ -315,12 +315,6 @@ Bools::Expr Subs::operator()(const Lit &lit) const {
     return bools::mkLit(subsImpl<0, 0>(*this, lit));
 }
 
-Bools::Expr Subs::operator()(const Bools::Expr& e) const {
-    return e->map([&](const auto &lit) {
-        return (*this)(lit);
-    });
-}
-
 Expr Subs::operator()(const Expr &expr) const {
     return std::visit(
         Overload{
@@ -351,7 +345,7 @@ Subs Subs::concat(const BoolSubs &that) const {
 BoolSubs concat(const BoolSubs &fst, const Renaming &snd) {
     BoolSubs res;
     for (const auto &[k,v]: fst) {
-        res.put(k, snd(v));
+        res.put(k, v->renameVars(snd));
     }
     return res;
 }

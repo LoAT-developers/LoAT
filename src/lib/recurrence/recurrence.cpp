@@ -5,8 +5,9 @@
 #include "config.hpp"
 
 #include <map>
+#include <utility>
 
-Recurrence::Recurrence(const Subs &equations, const Arith::Var& n) : equations(equations), n(n) {}
+Recurrence::Recurrence(Subs equations, Arith::Var n) : equations(std::move(equations)), n(std::move(n)) {}
 
 std::optional<std::tuple<Int, Int, Arith::Expr>> Recurrence::handle_exp(const ArithExpPtr &pow) const {
     Int degree{0};
@@ -203,7 +204,7 @@ bool Recurrence::solve(const Arith::Var& x, const Arith::Expr& rhs) {
 }
 
 bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr& rhs) {
-    const auto updated{closed_form_n_minus_one(rhs)};
+    const auto updated{rhs->subs(closed_form_n_minus_one)};
     if (updated->lits().contains(bools::mk(lhs, true))) {
         return false;
     }

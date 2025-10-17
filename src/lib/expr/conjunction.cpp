@@ -22,7 +22,7 @@ VarSet Conjunction::vars() const {
 }
 
 std::ostream& operator<<(std::ostream &s, const Conjunction &l) {
-    return s << bools::mkAndFromLits(l);
+    return s << bools::mkAnd(l);
 }
 
 Conjunction operator&&(const Conjunction &fst, const Conjunction &snd) {

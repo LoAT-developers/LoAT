@@ -31,7 +31,8 @@ Rational YicesModel::toRational(const term_t t) const {
     mpq_clear(val);
     mpz_clear(num);
     mpz_clear(denom);
-    return Rational(num_str, denom_str);
+    const auto ret {Rational(num_str, denom_str)};
+    return ret;
 }
 
 Int YicesModel::toInt(const term_t t) const {
@@ -45,7 +46,7 @@ Int YicesModel::toInt(const term_t t) const {
     return res;
 }
 
-Rational YicesModel::evalToRational(const Arith::Expr& e) {
+Rational YicesModel::evalToRationalImpl(const Arith::Expr& e) {
     return toRational(Converter::convert(e, m_ctx));
 }
 

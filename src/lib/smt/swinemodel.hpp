@@ -17,7 +17,7 @@ public:
     bool evalImpl(const Lit&) override;
 
     Bools::Const evalImpl(const Bools::Expr&) override;
-    Rational evalToRational(const Arith::Expr&) override;
+    Rational evalToRationalImpl(const Arith::Expr&) override;
 
     ModelPtr withSubs(const Subs&) const override;
 

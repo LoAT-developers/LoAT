@@ -114,5 +114,5 @@ abort:  ; //this symbol could not be eliminated, try the next one
     if (eliminated.empty()) {
         return e;
     }
-    return bools::mkAndFromLits(lits);
+    return bools::mkAnd(lits);
 }

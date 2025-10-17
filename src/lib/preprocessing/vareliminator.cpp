@@ -1,16 +1,16 @@
 #include "vareliminator.hpp"
 #include "subs.hpp"
 
-#include <assert.h>
+#include <cassert>
 
-VarEliminator::VarEliminator(const Bools::Expr guard, const Arith::Var N, const std::function<bool(Arith::Var)> &keep): N(N), keep(keep) {
+VarEliminator::VarEliminator(const Bools::Expr& guard, const Arith::Var& N, const std::function<bool(Arith::Var)> &keep): N(N), keep(keep) {
     assert(!keep(N));
     todoDeps.push({{}, guard});
     findDependencies(guard);
     eliminate();
 }
 
-void VarEliminator::findDependencies(const Bools::Expr guard) {
+void VarEliminator::findDependencies(const Bools::Expr& guard) {
     dependencies.insert(N);
     bool changed;
     do {
@@ -21,11 +21,9 @@ void VarEliminator::findDependencies(const Bools::Expr guard) {
             for (const auto &lit: guard->lits()) {
                 if (std::holds_alternative<Arith::Lit>(lit)) {
                     const auto &rel {std::get<Arith::Lit>(lit)};
-                    const auto ex {rel->lhs()};
-                    if (ex->isPoly(var) == 1) {
+                    if (const auto ex {rel->lhs()}; ex->isPoly(var) == 1) {
                         // we found a constraint which is linear in var, check all variables in var's coefficient
-                        const auto coeff {*ex->coeff(var)};
-                        for (const auto &x: coeff->vars()) {
+                        for (const auto coeff {*ex->coeff(var)}; const auto &x: coeff->vars()) {
                             if (!keep(x)) {
                                 if (!dependencies.contains(x)) {
                                     // we found a tmp variable in coeff which has not yet been marked as dependency
@@ -49,18 +47,19 @@ void VarEliminator::findDependencies(const Bools::Expr guard) {
     dependencies.erase(N);
 }
 
-const std::vector<std::pair<ArithSubs, Bools::Expr>> VarEliminator::eliminateDependency(const ArithSubs &subs, const Bools::Expr guard) const {
+std::vector<std::pair<ArithSubs, Bools::Expr>> VarEliminator::eliminateDependency(
+    const ArithSubs& subs, const Bools::Expr& guard) const {
     VarSet vars = guard->vars();
-    for (auto it = dependencies.begin(); it != dependencies.end(); ++it) {
-        if (!vars.contains(*it)) {
+    for (const auto & dependencie : dependencies) {
+        if (!vars.contains(dependencie)) {
             continue;
         }
-        const auto bounds {guard->getBounds(*it)};
+        const auto bounds {guard->getBounds(dependencie)};
         std::vector<std::pair<ArithSubs, Bools::Expr>> res;
-        for (const auto &b : bounds) {
-            if (b.bound->isInt()) {
-                const auto newSubs{Subs::build<Arith>(*it, b.bound)};
-                res.push_back({subs.compose(newSubs.get<Arith>()), newSubs(guard)});
+        for (const auto & [bound, kind] : bounds) {
+            if (bound->isInt()) {
+                const auto newSubs{Subs::build<Arith>(dependencie, bound)};
+                res.emplace_back(subs.compose(newSubs.get<Arith>()), guard->subs(newSubs));
             }
         }
         if (!res.empty()) {
@@ -86,20 +85,18 @@ void VarEliminator::eliminateDependencies() {
 
 void VarEliminator::eliminate() {
     eliminateDependencies();
-    for (const auto &p: todoN) {
-        const auto &subs {p.first};
-        const auto guard {p.second};
+    for (const auto & [subs, guard]: todoN) {
         auto bounds {guard->getBounds(N)};
         // if there's an equality, use it for instantiation
-        const auto it {std::find_if(bounds.begin(), bounds.end(), [](const auto &b) {
+        const auto it {std::ranges::find_if(bounds, [](const auto &b) {
             return b.kind == BoundKind::Equality && b.bound->isIntegral();
         })};
         if (it != bounds.end()) {
             res.insert(subs.compose(ArithSubs{{N, it->bound}}));
         } else {
-            for (const auto &b : bounds) {
-                if (b.kind == BoundKind::Upper && b.bound->isIntegral()) {
-                    ArithSubs p{{N, b.bound}};
+            for (const auto & [bound, kind] : bounds) {
+                if (kind == BoundKind::Upper && bound->isIntegral()) {
+                    ArithSubs p{{N, bound}};
                     res.insert(subs.compose(p));
                 }
             }
@@ -107,6 +104,6 @@ void VarEliminator::eliminate() {
     }
 }
 
-const linked_hash_set<ArithSubs> VarEliminator::getRes() const {
+linked_hash_set<ArithSubs> VarEliminator::getRes() const {
     return res;
 }

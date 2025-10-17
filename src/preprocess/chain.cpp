@@ -1,14 +1,16 @@
 #include "chain.hpp"
+
+#include <utility>
 #include "rulepreprocessing.hpp"
 #include "config.hpp"
 
-Chain::Chain(ITSPtr its): its(its) {}
+Chain::Chain(ITSPtr its): its(std::move(its)) {}
 
 ITSModel Chain::transform_model(const ITSModel &m) const {
     ITSModel res {m};
     for (const auto &[from,rule,to]: removed) {
         const auto r {rule->renameTmpVars()};
-        res.set_invariant(to, res.get_invariant(to) || (r->getGuard() && r->getUpdate()(res.get_invariant(from))));
+        res.set_invariant(to, res.get_invariant(to) || (r->getGuard() && res.get_invariant(from)->subs(r->getUpdate())));
     }
     return res;
 }
@@ -19,10 +21,8 @@ bool Chain::chainLinearPaths() {
     do {
         changed = false;
         for (const auto &first : its->getAllTransitions()) {
-            const auto succ{its->getSuccessors(first)};
-            if (succ.size() == 1 && !succ.contains(first)) {
-                const auto second_idx{*succ.begin()};
-                if (!its->isSimpleLoop(second_idx)) {
+            if (const auto succ{its->getSuccessors(first)}; succ.size() == 1 && !succ.contains(first)) {
+                if (const auto second_idx{*succ.begin()}; !its->isSimpleLoop(second_idx)) {
                     const auto c{Preprocess::chain({first, second_idx->renameTmpVars()})};
                     if (Config::Analysis::doLogPreproc()) {
                         std::cout << "chaining\n\trule 1: " << first << "\n\trule 2: " << second_idx << "\n\tresult: " << c << std::endl;

@@ -21,15 +21,10 @@ Bools::Expr bot();
 
 namespace bools {
 
-template <class Lits>
-Bools::Expr mkAndFromLits(const Lits &lits) {
-    return BoolExpr::mkAndFromLits(lits);
-}
-
-Bools::Expr mkAndFromLits(const std::initializer_list<Lit> &lits);
-
 template <class Children>
 Bools::Expr mkAnd(const Children &lits) {
+    using Elem = std::remove_cvref_t<decltype(*lits.begin())>;
+    static_assert(std::is_same_v<Elem, Bools::Expr> || std::is_constructible_v<Lit, Elem>);
     return BoolExpr::mkAnd(lits);
 }
 

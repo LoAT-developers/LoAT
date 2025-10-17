@@ -21,7 +21,7 @@ static Bools::Expr posConstraint(const std::map<Int, Arith::Expr> &coefficients)
             conjunction.push_back(arith::mkGt(c, arith::mkConst(0)));
         }
     }
-    return bools::mkAndFromLits(conjunction);
+    return bools::mkAnd(conjunction);
 }
 
 static Bools::Expr constConstraint(const std::map<Int, Arith::Expr> &coefficients) {
@@ -31,7 +31,7 @@ static Bools::Expr constConstraint(const std::map<Int, Arith::Expr> &coefficient
             conjunction.push_back(arith::mkEq(c, arith::mkConst(0)));
         }
     }
-    return bools::mkAndFromLits(conjunction);
+    return bools::mkAnd(conjunction);
 }
 
 static Bools::Expr zeroConstraint(const std::map<Int, Arith::Expr> &coefficients) {
@@ -39,7 +39,7 @@ static Bools::Expr zeroConstraint(const std::map<Int, Arith::Expr> &coefficients
     for (const auto& c : coefficients | std::views::values) {
         conjunction.push_back(arith::mkEq(c, arith::mkConst(0)));
     }
-    return bools::mkAndFromLits(conjunction);
+    return bools::mkAnd(conjunction);
 }
 
 /**
@@ -62,7 +62,7 @@ static Bools::Expr posInfConstraint(const std::map<Int, Arith::Expr> &coefficien
                 conjunction.push_back(arith::mkGt(c, arith::mkConst(0)));
             }
         }
-        disjunction.push_back(bools::mkAndFromLits(conjunction));
+        disjunction.push_back(bools::mkAnd(conjunction));
     }
     return bools::mkOr(disjunction);
 }

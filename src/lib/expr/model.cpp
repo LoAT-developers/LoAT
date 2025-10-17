@@ -25,7 +25,7 @@ bool Model::eval(const Lit& lit) {
 }
 
 Bools::Const Model::eval(const Bools::Expr& e) {
-    return evalImpl(subs(e));
+    return evalImpl(e->subs(subs));
 }
 
 Arith::Const Model::eval(const Arith::Expr& e) {
@@ -89,11 +89,15 @@ Bools::Expr Model::syntacticImplicant(const Bools::Expr& e) {
     return bools::mkAnd(res);
 }
 
+Rational Model::evalToRational(const Arith::Expr& e) {
+    return evalToRationalImpl(e->subs(subs.get<Arith>()));
+}
+
 Arith::Const Model::evalImpl(const Arith::Expr &e) {
 #if DEBUG
     assert(e->isIntegral());
 #endif
-    const auto res {evalToRational(e)};
+    const auto res {evalToRationalImpl(e)};
     if (mp::denominator(res) != 1) {
         throw std::invalid_argument(toString(e) + " is not integral");
     }

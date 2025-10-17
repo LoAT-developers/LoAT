@@ -173,11 +173,6 @@ public:
 
     Lit operator()(const Lit &lit) const;
     Expr operator()(const Expr &expr) const;
-    Bools::Expr operator()(const Bools::Expr& e) const;
-    Arith::Expr operator()(const Arith::Expr &e) const;
-    Bools::Var operator()(const Bools::Var&) const;
-    Arith::Var operator()(const Arith::Var&) const;
-    Arrays<Arith>::Var operator()(const Arrays<Arith>::Var&) const;
 
     VarSet coDomainVars() const;
     void collectCoDomainVars(VarSet &res) const;

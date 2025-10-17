@@ -18,7 +18,7 @@ public:
 
 private:
 
-    Recurrence(const Subs &equations, const Arith::Var& n);
+    Recurrence(Subs equations, Arith::Var  n);
 
     std::optional<std::tuple<Int, Int, Arith::Expr>> handle_exp(const ArithExpPtr &pow) const;
 

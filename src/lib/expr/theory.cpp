@@ -16,10 +16,6 @@ Bools::Expr mkLit(const Lit &lit) {
     return BoolExpr::mkLit(lit);
 }
 
-Bools::Expr mkAndFromLits(const std::initializer_list<Lit> &lits) {
-    return BoolExpr::mkAndFromLits(lits);
-}
-
 }
 
 namespace theory {

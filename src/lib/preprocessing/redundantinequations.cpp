@@ -64,5 +64,5 @@ Bools::Expr removeRedundantInequations(const Bools::Expr e) {
         }
         solver->pop();
     }
-    return bools::mkAndFromLits(lits);
+    return bools::mkAnd(lits);
 }

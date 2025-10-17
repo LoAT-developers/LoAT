@@ -356,12 +356,12 @@ std::optional<RulePtr> ADCL::resolve(const RulePtr& idx) {
         // a non-conjunctive clause where some variants are blocked
         // --> make sure that we use a non-blocked variant, if any
         for (const auto &b: block->second) {
-            solver->add(var_renaming(!b));
+            solver->add(!b->renameVars(var_renaming));
         }
     }
     const auto vars {idx->getGuard()->vars()};
     const auto projected_var_renaming {var_renaming.project(vars)};
-    const auto guard {projected_var_renaming(idx->getGuard())};
+    const auto guard {idx->getGuard()->renameVars(projected_var_renaming)};
     solver->add(guard);
     switch (solver->check()) {
     case SmtResult::Sat: {

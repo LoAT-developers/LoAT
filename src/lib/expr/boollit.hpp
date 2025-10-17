@@ -8,6 +8,8 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
 
+#include "exprfwd.hpp"
+
 using bool_var_map = boost::bimap<boost::bimaps::unordered_set_of<BoolVarPtr>, boost::bimaps::unordered_set_of<BoolVarPtr>>;
 
 class BoolLit;
@@ -48,6 +50,7 @@ public:
     bool eval(const linked_hash_map<BoolVarPtr, bool> &model) const;
     sexpresso::Sexp to_smtlib() const;
     BoolLitPtr renameVars(const bool_var_map &map) const;
+    BoolExprPtr subs(const BoolSubs &subs) const;
 
 };
 

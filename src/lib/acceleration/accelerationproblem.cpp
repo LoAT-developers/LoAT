@@ -165,8 +165,8 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             }
         }
     }
-    const auto g {bools::mkAndFromLits(guard)};
-    const auto c {bools::mkAndFromLits(covered)};
+    const auto g {bools::mkAnd(guard)};
+    const auto c {bools::mkAnd(covered)};
     res.formula.push_back(g);
     res.covered.push_back(c);
     if (Config::Analysis::doLogAccel()) {
@@ -189,7 +189,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         solver->add(bools::mkLit(theory::negate(lit)));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            auto g {Subs::build<Arith>(config.n, config.n->toExpr() - arith::mkConst(1))(closed->closed_form(lit))};
+            auto g {closed->closed_form(lit)->subs(ArithSubs{{config.n, config.n->toExpr() - arith::mkConst(1)}})};
             if (closed->prefix > 0) {
                 g = g && bools::mkLit(lit);
             }
@@ -236,7 +236,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
         solver->add(bools::mkLit(inc));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            const auto g {bools::mkAndFromLits({rel, rel->subs(closed->closed_form.get<Arith>())->subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})})};
+            const auto g {bools::mkAnd(std::vector{rel, rel->subs(closed->closed_form.get<Arith>())->subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})})};
             res.formula.push_back(g);
             if (Config::Analysis::doLogAccel()) {
                 std::cout << rel << ": eventual decrease yields " << g << std::endl;
@@ -278,7 +278,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
                     return false;
                 }
                 const auto s {closed->closed_form.get<Arith>().compose(ArithSubs({{config.n, config.n->toExpr() - arith::mkConst(1)}}))};
-                g = bools::mkAndFromLits({(!i)->subs(s), rel->subs(s)});
+                g = bools::mkAnd(std::vector{(!i)->subs(s), rel->subs(s)});
                 c = bools::mkLit(!i);
                 res.nonterm = false;
             } else {
@@ -312,7 +312,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         eqs.push_back(theory::mkEq(theory::toExpr(v), update.get(v)));
     }
     const auto c {bools::mkAnd(eqs)};
-    if (c == bot() || (samplePoint && !(*samplePoint)(c) == top())) {
+    if (c == bot() || (samplePoint && !c->subs(*samplePoint) == top())) {
         return false;
     }
     const auto g {c && bools::mkLit(lit)};

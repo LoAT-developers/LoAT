@@ -96,7 +96,7 @@ RulePtr Preprocess::chain(const std::vector<RulePtr> &rules) {
     std::vector<Bools::Expr> guards;
     Subs up;
     for (const auto &r: rules) {
-        guards.push_back(up(r->getGuard()));
+        guards.push_back(r->getGuard()->subs(up));
         up = r->getUpdate().compose(up);
     }
     return Rule::mk(bools::mkAnd(guards), up);

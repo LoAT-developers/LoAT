@@ -56,6 +56,7 @@ using Int = mp::cpp_int;
 using Rational = mp::cpp_rational;
 
 class BoolExpr;
+class BoolSubs;
 using BoolExprPtr = ptr<BoolExpr>;
 
 template <ITheory T>

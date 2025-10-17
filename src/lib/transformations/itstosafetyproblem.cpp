@@ -10,7 +10,7 @@ ITSModel ITSToSafety::transform_model(const Bools::Expr &e) const {
     const auto loc_var {its->getLocVar()};
     for (const auto &x : its->getLocations()) {
         Subs s{Subs::build<Arith>(loc_var, arith::mkConst(x))};
-        res.set_invariant(x, s(e));
+        res.set_invariant(x, e->subs(s));
     }
     res.set_invariant(its->getInitialLocation(), top());
     return res;
@@ -29,7 +29,7 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_va
         }
         conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), r->getUpdate().get(x)));
     }
-    const auto res {subs(bools::mkAnd(conjuncts))};
+    const auto res {bools::mkAnd(conjuncts)->subs(subs)};
     return res;
 }
 
@@ -54,7 +54,7 @@ SafetyProblem ITSToSafety::transform() {
     linked_hash_map<RulePtr, Bools::Expr> map;
     for (const auto &r: its->getAllTransitions()) {
         if (its->isInitialTransition(r)) {
-            const auto b {Preprocess::preprocessFormula(post_to_pre(rule_to_formula(r, sp.pre_vars())))};
+            const auto b {Preprocess::preprocessFormula(rule_to_formula(r, sp.pre_vars())->renameVars(post_to_pre))};
             init.emplace_back(b);
             if (Config::Analysis::model) {
                 rev_init_map.emplace(b, r);

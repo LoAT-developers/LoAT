@@ -40,7 +40,7 @@ SmtResult BMC::analyze() {
             renamings.emplace_back(last_s);
         }
         solver->push();
-        solver->add(last_s(err));
+        solver->add(err->renameVars(last_s));
         switch (solver->check()) {
         case SmtResult::Sat:
             return SmtResult::Unsat;
@@ -65,10 +65,10 @@ SmtResult BMC::analyze() {
         }
         ++depth;
         if (!approx && do_kind) {
-            kind->add(last_s(!err));
-            kind->add(last_s(step));
+            kind->add(!err->renameVars(last_s));
+            kind->add(step->renameVars(last_s));
             kind->push();
-            kind->add(s(err));
+            kind->add(err->renameVars(s));
             if (kind->check() == SmtResult::Unsat) {
                 if (Config::Analysis::log) {
                     std::cout << "forward k-induction" << std::endl;
@@ -77,8 +77,8 @@ SmtResult BMC::analyze() {
                 return SmtResult::Sat;
             }
             kind->pop();
-            bkind->add(s(!init));
-            bkind->add(last_s(step));
+            bkind->add(!init->renameVars(s));
+            bkind->add(step->renameVars(last_s));
             if (bkind->check() == SmtResult::Unsat) {
                 if (Config::Analysis::log) {
                     std::cout << "backward k-induction" << std::endl;
@@ -87,7 +87,7 @@ SmtResult BMC::analyze() {
                 return SmtResult::Sat;
             }
         }
-        solver->add(last_s(step));
+        solver->add(step->renameVars(last_s));
         if (solver->check() == SmtResult::Unsat) {
             if (approx) {
                 return SmtResult::Unknown;
@@ -109,7 +109,7 @@ ITSModel BMC::get_model() const {
             Bools::Expr last{sp.init()};
             for (unsigned i = 0; i + 1 < depth; ++i) {
                 const auto &s1{renamings.at(i)};
-                last = last && s1(step);
+                last = last && step->renameVars(s1);
                 Renaming s2;
                 for (const auto &[pre,post]: pre_to_post) {
                     if (theory::isProgVar(pre)) {
@@ -117,7 +117,7 @@ ITSModel BMC::get_model() const {
                         s2.insert(pre, theory::next(pre));
                     }
                 }
-                res.push_back(s2(last));
+                res.push_back(last->renameVars(s2));
             }
             return to_safety.transform_model(bools::mkOr(res));
         }

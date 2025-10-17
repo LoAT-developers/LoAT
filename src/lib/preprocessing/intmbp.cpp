@@ -162,7 +162,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const Arith::Va
     for (const auto &d : scaled_divs) {
         arith_lits.insert(arith::mkEq(arith::mkMod(substitute + d.res, arith::mkConst(d.modulo)), arith::mkConst(0)));
     }
-    return bools::mkAndFromLits(lits);
+    return bools::mkAnd(lits);
 }
 
 Bools::Expr do_mbp(const Bools::Expr &t, const ModelPtr& model, const Var &x, const Config::TRPConfig::MbpKind mode) {

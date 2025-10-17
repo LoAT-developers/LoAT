@@ -103,7 +103,7 @@ BoolSubs BoolSubs::concat(const BoolSubs& that) const {
 BoolSubs BoolSubs::concat(const Subs& that) const {
     BoolSubs res;
     for (const auto & [key, val]: map) {
-        res.put(key, that(val));
+        res.put(key, val->subs(that));
     }
     return res;
 }

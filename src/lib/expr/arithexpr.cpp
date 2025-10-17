@@ -948,6 +948,6 @@ ArithExprPtr ArithExpr::subs(const ArithSubs& subs) const {
         });
 }
 
-unsigned ArithVar::dim() const {
+unsigned ArithVar::dim() {
     return 0;
 }

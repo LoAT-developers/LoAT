@@ -1,13 +1,10 @@
 #pragma once
 
 #include "itsmodel.hpp"
-#include "itssafetycex.hpp"
 #include "itscpxcex.hpp"
 #include "itsproblem.hpp"
 
 class Chain {
-
-private:
 
     ITSPtr its;
 
@@ -16,8 +13,7 @@ private:
     linked_hash_map<RulePtr, std::pair<RulePtr, RulePtr>> chained;
 
 public:
-
-    Chain(ITSPtr its);
+    explicit Chain(ITSPtr  its);
 
     ITSModel transform_model(const ITSModel &) const;
 

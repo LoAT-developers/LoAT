@@ -254,7 +254,7 @@ Bools::Expr TRP::recurrent(const Bools::Expr& loop, const ModelPtr &model) {
     recurrent_exps(loop, model);
     recurrent_cycles(loop);
     recurrent_bounds(loop, model);
-    auto res {bools::mkAndFromLits(res_lits)};
+    auto res {bools::mkAnd(res_lits)};
     res_lits.clear();
     if (res->vars().contains(n)) {
         return res && bools::mkLit(arith::mkGt(n, arith::mkConst(0)));
@@ -263,7 +263,7 @@ Bools::Expr TRP::recurrent(const Bools::Expr& loop, const ModelPtr &model) {
 }
 
 Bools::Expr TRP::compute(const Bools::Expr& loop, const ModelPtr &model) {
-    if (SmtFactory::check(post_to_intermediate(loop) && pre_to_intermediate(loop) && !loop) == SmtResult::Unsat) {
+    if (SmtFactory::check(loop->renameVars(post_to_intermediate) && loop->renameVars(pre_to_intermediate) && !loop) == SmtResult::Unsat) {
         return loop;
     }
     const auto pre{mbp(loop, model, [](const auto &x) {

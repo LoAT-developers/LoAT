@@ -32,7 +32,7 @@ std::optional<Range> TRL::has_looping_infix() {
             }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 if (i == 0) {
-                    if (const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempVar)}; SmtFactory::check(get_subs(0,1)(loop) && get_subs(1,1)(loop)) == SmtResult::Unsat) {
+                    if (const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempVar)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
                         continue;
                     }
                 }
@@ -48,7 +48,7 @@ bool TRL::handle_loop(const Range &range) {
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
         if (const auto rf {prove_term(loop, model)}) {
-            termination_argument = bools::mkAndFromLits({arith::mkGt(*rf, arith::mkConst(0)), arith::mkGt((*rf)->renameVars(post_to_pre.get<Arith>()), (*rf)->renameVars(t.pre_to_post().get<Arith>()))});
+            termination_argument = bools::mkAnd(std::vector{arith::mkGt(*rf, arith::mkConst(0)), arith::mkGt((*rf)->renameVars(post_to_pre.get<Arith>()), (*rf)->renameVars(t.pre_to_post().get<Arith>()))});
             loop = loop && termination_argument;
         } else {
             return false;
@@ -95,7 +95,7 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
     auto it{map.emplace(id, top()).first};
     if (Config::Analysis::termination()) {
         std::vector<Bools::Expr> disjuncts;
-        disjuncts.emplace_back(s(!loop));
+        disjuncts.emplace_back(!loop->renameVars(s));
         if (range.length() == 1) {
             disjuncts.emplace_back(bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id))));
         }
@@ -110,9 +110,9 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
         }
         it->second = it->second && bools::mkOr(disjuncts);
     } else if (range.length() == 1) {
-        it->second = it->second && s(!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
+        it->second = it->second && (!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s);
     } else {
-        it->second = it->second && s(!loop);
+        it->second = it->second && !loop->renameVars(s);
     }
 }
 
@@ -120,7 +120,7 @@ void TRL::add_blocking_clauses() {
     const auto s1{get_subs(depth, 1)};
     const auto s2{get_subs(depth + 1, 1)};
     for (const auto &[id, b] : projections) {
-        solver->add(s1(!b) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
+        solver->add(!b->renameVars(s1) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
     }
     if (const auto it{blocked_per_step.find(depth)}; it != blocked_per_step.end()) {
         for (const auto& b : it->second | std::views::values) {
@@ -170,7 +170,7 @@ std::optional<SmtResult> TRL::do_step() {
     const auto s{get_subs(depth, 1)};
     // push error states
     solver->push();
-    solver->add(s(t.err()));
+    solver->add(t.err()->renameVars(s));
     switch (solver->check()) {
         case SmtResult::Sat:
         case SmtResult::Unknown:
@@ -183,7 +183,7 @@ std::optional<SmtResult> TRL::do_step() {
             // pop error states
             solver->pop();
             solver->push();
-            solver->add(s(step));
+            solver->add(step->renameVars(s));
             if (Config::Analysis::termination() && depth > 0) {
                 solver->add(bools::mkLit(arith::mkGeq(get_subs(depth - 1, 1).get<Arith>(safety_var), s.get<Arith>(safety_var))));
             }
@@ -230,7 +230,7 @@ ITSModel TRL::get_model() {
     Bools::Expr last{t.init()};
     for (unsigned i = 0; i < trace.size(); ++i) {
         const auto s1{get_subs(i, 1)};
-        last = last && s1(step);
+        last = last && step->renameVars(s1);
         Renaming s2;
         for (const auto &x : vars) {
             if (theory::isProgVar(x)) {
@@ -238,7 +238,7 @@ ITSModel TRL::get_model() {
                 s2.insert(x, theory::next(x));
             }
         }
-        res.push_back(s2(last));
+        res.push_back(last->renameVars(s2));
     }
     const auto sp_model{bools::mkOr(res)};
     return its2safety.transform_model(sp_model);

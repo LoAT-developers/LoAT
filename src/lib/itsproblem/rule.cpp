@@ -47,7 +47,7 @@ RulePtr Rule::subs(const BoolSubs& subs) const {
 }
 
 RulePtr Rule::renameVars(const Renaming &subs) const {
-    return mk(subs(guard), update.concat(subs));
+    return mk(guard->renameVars(subs), update.concat(subs));
 }
 
 RulePtr Rule::withGuard(const Bools::Expr& guard) const {
@@ -59,7 +59,7 @@ RulePtr Rule::withUpdate(const Subs &up) const {
 }
 
 RulePtr Rule::chain(const RulePtr &that) const {
-    return mk(guard && update(that->getGuard()), that->getUpdate().compose(update));
+    return mk(guard && that->getGuard()->subs(update), that->getUpdate().compose(update));
 }
 
 Bools::Expr Rule::getGuard() const {
