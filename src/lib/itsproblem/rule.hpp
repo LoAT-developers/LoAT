@@ -62,6 +62,8 @@ public:
 
     bool isPoly() const;
 
+    bool isLinear() const;
+
     unsigned getId() const;
 
     bool isDeterministic() const;

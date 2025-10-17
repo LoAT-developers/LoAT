@@ -88,6 +88,10 @@ bool Rule::isPoly() const {
     return guard->isPoly() && update.isPoly();
 }
 
+bool Rule::isLinear() const {
+    return guard->isLinear() && update.isLinear();
+}
+
 std::ostream& operator<<(std::ostream &s, const RulePtr &idx) {
     return s << idx->getId();
 }

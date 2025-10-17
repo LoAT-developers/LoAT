@@ -746,6 +746,12 @@ SmtResult ADCL::analyze() {
             if (const auto p1 {get_penalty(x)}, p2 {get_penalty(y)}; p1 != p2) {
                 return p1 < p2;
             }
+            if (const auto xdet {x->isDeterministic()}; xdet != y->isDeterministic()) {
+                return xdet;
+            }
+            if (const auto xlin {x->isLinear()}; xlin != y->isLinear()) {
+                return xlin;
+            }
             return x->getId() > y->getId();
         });
         bool all_failed {true};
