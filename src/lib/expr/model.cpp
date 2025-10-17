@@ -20,6 +20,10 @@ Bools::Const Model::get(const Bools::Var &var) {
     return eval(bools::mk(var));
 }
 
+void Model::put(const Arith::Var& x, const Arith::Const& c) {
+    subs.put<Arith>(x, arith::mkConst(c));
+}
+
 bool Model::eval(const Lit& lit) {
     return eval(bools::mkLit(lit));
 }

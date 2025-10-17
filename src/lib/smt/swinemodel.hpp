@@ -12,13 +12,8 @@ public:
 
     SwineModel(const SwineContext&, const z3::model&, const Subs&);
 
-    void put(const Arith::Var&, const Arith::Const&) override;
-
     bool evalImpl(const Lit&) override;
-
     Bools::Const evalImpl(const Bools::Expr&) override;
-    Rational evalToRationalImpl(const Arith::Expr&) override;
-
     ModelPtr withSubs(const Subs&) const override;
 
 protected:
@@ -26,6 +21,7 @@ protected:
     Arith::Const getImpl(const Arith::Var&) override;
     Bools::Const getImpl(const Bools::Var&) override;
     Arith::Const getImpl(const ArrayReadPtr<Arith>&) override;
+    Rational evalToRationalImpl(const Arith::Expr&) override;
     std::string toString(const Expr&) override;
 
 private:

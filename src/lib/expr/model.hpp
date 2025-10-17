@@ -16,7 +16,7 @@ public:
     Arith::Const get(const Arith::Var&);
     Bools::Const get(const Bools::Var&);
 
-    virtual void put(const Arith::Var&, const Arith::Const&) = 0;
+    void put(const Arith::Var&, const Arith::Const&);
 
     bool eval(const Lit&);
     Bools::Const eval(const Bools::Expr&);

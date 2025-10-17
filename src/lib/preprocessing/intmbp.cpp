@@ -183,6 +183,14 @@ Bools::Expr do_mbp(const Bools::Expr &t, const ModelPtr& model, const Var &x, co
 }
 
 Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const ModelPtr& model, const Config::TRPConfig::MbpKind mode, const std::function<bool(const Var &)> &eliminate) {
+#if DEBUG
+    if (!model->eval(trans)) {
+        std::cout << "mbp::int_mbp: not a model" << std::endl;
+        std::cout << "term: " << trans << std::endl;
+        std::cout << "model: " << model->toString(trans->vars()) << std::endl;
+        throw std::logic_error("mbp::int_mbp: not a model");
+    }
+#endif
     Bools::Expr res{trans};
     for (const auto &x : trans->vars()) {
         if (eliminate(x)) {

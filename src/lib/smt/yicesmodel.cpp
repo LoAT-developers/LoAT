@@ -5,21 +5,12 @@ YicesModel::YicesModel(const YicesContext& p_ctx, const std::shared_ptr<model_t>
     m_ctx(p_ctx),
     m_model(p_model) {}
 
-void YicesModel::put(const Arith::Var& x, const Arith::Const& y) {
-    mpz_t val;
-    mpz_init(val);
-    const auto str {y.str()};
-    mpz_set_str(val, str.c_str(), 10);
-    yices_model_set_mpz(m_model.get(), m_ctx.getVariable(x), val);
-    mpz_clear(val);
-}
-
 Rational YicesModel::toRational(const term_t t) const {
     mpq_t val;
     mpz_t num;
+    mpz_t denom;
     mpq_init(val);
     mpz_init(num);
-    mpz_t denom;
     mpz_init(denom);
     yices_get_mpq_value(m_model.get(), t, val);
     mpq_get_num(num, val);
@@ -28,9 +19,9 @@ Rational YicesModel::toRational(const term_t t) const {
     char denom_str[32];
     mpz_get_str(num_str, 10, num);
     mpz_get_str(denom_str, 10, denom);
-    mpq_clear(val);
-    mpz_clear(num);
     mpz_clear(denom);
+    mpz_clear(num);
+    mpq_clear(val);
     const auto ret {Rational(num_str, denom_str)};
     return ret;
 }

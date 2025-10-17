@@ -8,8 +8,6 @@ class YicesModel final: public Model {
 
     using Converter = ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>;
 
-    void put(const Arith::Var&, const Arith::Const&) override;
-
     Rational evalToRationalImpl(const Arith::Expr&) override;
     ModelPtr withSubs(const Subs&) const override;
 

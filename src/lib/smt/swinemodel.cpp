@@ -9,13 +9,6 @@ SwineModel::SwineModel(const SwineContext& p_ctx, const z3::model& p_model, cons
     m_ctx(p_ctx),
     m_model(p_model) {}
 
-void SwineModel::put(const Arith::Var &var, const Arith::Const& value) {
-    const auto converted_var {m_ctx.getArithSymbolMap().at(var)};
-    auto decl {converted_var.decl()};
-    auto converted_value {m_ctx.getInt(value)};
-    m_model.add_const_interp(decl, converted_value);
-}
-
 bool SwineModel::evalImpl(const Lit &lit) {
     return evalImpl(bools::mkLit(lit));
 }
