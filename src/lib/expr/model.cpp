@@ -87,7 +87,9 @@ bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
 }
 
 Bools::Expr Model::syntacticImplicant(const Bools::Expr& e) {
+#if DEBUG
     assert(eval(e));
+#endif
     BoolExprSet res;
     ::syntacticImplicant(e, this, res);
     return bools::mkAnd(res);

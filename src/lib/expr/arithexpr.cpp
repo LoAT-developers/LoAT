@@ -579,6 +579,41 @@ Rational ArithExpr::eval(const std::unordered_map<ArithVarPtr, Int>& map) const 
     );
 }
 
+ArithExprPtr ArithExpr::eval(const ModelPtr& map, const ArithVarPtr &keep) const {
+    return apply<ArithExprPtr>(
+        [](const ArithConstPtr& c) -> ArithExprPtr {
+            return c;
+        },
+        [&](const ArithVarPtr& v) -> ArithExprPtr {
+            return keep == v ? v : arith::mkConst(map->get(v));
+        },
+        [&](const ArithAddPtr& a) {
+            std::vector<ArithExprPtr> args;
+            for (const auto& x : a->getArgs()) {
+                args.emplace_back(x->eval(map, keep));
+            }
+            return arith::mkPlus(std::move(args));
+        },
+        [&](const ArithMultPtr& m) {
+            std::vector<ArithExprPtr> args;
+            for (const auto& x : m->getArgs()) {
+                args.emplace_back(x->eval(map, keep));
+            }
+            return arith::mkTimes(std::move(args));
+        },
+        [&](const ArithModPtr& m) {
+            const auto lhs{m->getLhs()->eval(map, keep)};
+            const auto rhs{m->getRhs()->eval(map, keep)};
+            return arith::mkMod(lhs, rhs);
+        },
+        [&](const ArithExpPtr& e) {
+            const auto base{e->getBase()->eval(map, keep)};
+            const auto exp{e->getExponent()->eval(map, keep)};
+            return arith::mkExp(base, exp);
+        }
+    );
+}
+
 bool ArithExpr::isIntegral() const {
     return apply<bool>(
         [](const ArithConstPtr& x) {

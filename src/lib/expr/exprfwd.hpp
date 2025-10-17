@@ -73,3 +73,6 @@ class ArraySubs;
 
 class Subs;
 class Renaming;
+
+class Model;
+using ModelPtr = cpp::not_null<std::shared_ptr<Model>>;

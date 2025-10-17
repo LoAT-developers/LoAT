@@ -201,6 +201,10 @@ void ArithLit::propagateEquality(ArithSubs &subs, const std::function<bool(const
     }
 }
 
+ArithLitPtr ArithLit::eval(const ModelPtr& model, const ArithVarPtr& keep) const {
+    return mk(l->eval(model, keep), kind);
+}
+
 bool ArithLit::isTriviallyTrue() const {
     const auto optTrivial {checkTrivial()};
     return optTrivial && *optTrivial;

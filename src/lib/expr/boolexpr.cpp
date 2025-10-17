@@ -3,6 +3,7 @@
 #include "conjunction.hpp"
 #include "renaming.hpp"
 #include "subs.hpp"
+#include "model.hpp"
 
 Bools::Expr BoolExpr::from_cache(const BoolExprSet &children, const ConcatOperator op) {
     return BoolJunction::from_cache(children, op);
@@ -201,6 +202,22 @@ Bools::Expr BoolExpr::renameVars(const Renaming& subs) const {
             [&](const Arrays<Arith>::Lit& lit) -> Lit {
                 return lit->renameVars(subs);
             }));
+    });
+}
+
+Bools::Expr BoolExpr::eval(const ModelPtr& model, const Arith::Var &keep) const {
+    return map([&](const auto& lit) {
+        return theory::apply(
+            lit,
+            [&](const Arith::Lit& lit) -> Bools::Expr {
+                return bools::mkLit(lit->eval(model, keep));
+            },
+            [&](const Bools::Lit& lit) -> Bools::Expr {
+                return model->eval(lit) ? top() : bot();
+            },
+            [&](const Arrays<Arith>::Lit&) -> Bools::Expr {
+                throw std::invalid_argument("partial evaluation does not work as intended for arrays");
+            });
     });
 }
 

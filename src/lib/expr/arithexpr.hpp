@@ -194,6 +194,7 @@ public:
     ArithExprPtr renameVars(const arith_var_map&) const;
     ArithExprPtr renameVars(const Renaming&) const;
     Rational eval(const std::unordered_map<ArithVarPtr, Int>&) const;
+    ArithExprPtr eval(const ModelPtr& model, const ArithVarPtr& keep) const;
 
     ArithExprPtr subs(const ArithSubs&) const;
 

@@ -8,6 +8,7 @@
 #include "bools.hpp"
 #include "arith.hpp"
 #include "arrays.hpp"
+#include "exprfwd.hpp"
 
 #include <memory>
 
@@ -84,6 +85,7 @@ public:
     Bools::Expr subs(const Arith::Subs&) const;
     Bools::Expr subs(const Subs&) const;
     Bools::Expr renameVars(const Renaming&) const;
+    Bools::Expr eval(const ModelPtr&, const Arith::Var &keep) const;
 
     void collectVars(VarSet&) const;
 

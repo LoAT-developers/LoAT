@@ -43,7 +43,7 @@ ArithLitPtr mkLt(const ArithExprPtr& x, const ArithExprPtr& y);
 
 }
 
-class ArithLit: public std::enable_shared_from_this<ArithLit> {
+class ArithLit final: public std::enable_shared_from_this<ArithLit> {
 
     friend ArithLitPtr operator!(const ArithLitPtr& x);
     friend std::ostream& operator<<(std::ostream &s, const ArithLitPtr& rel);
@@ -82,6 +82,7 @@ public:
     std::optional<Divisibility> isDivisibility(const ArithVarPtr& n) const;
     std::optional<ArithExprPtr> getEquality(const ArithVarPtr& n) const;
     void propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const;
+    ArithLitPtr eval(const ModelPtr&, const ArithVarPtr &keep) const;
 
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;

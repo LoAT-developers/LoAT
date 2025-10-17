@@ -384,7 +384,23 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
         if (const auto vars {b->vars()}; is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
             continue;
         }
-        if (model->eval(b)) {
+        if (vars.contains(n)) {
+            const auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
+            solver->push();
+            solver->add(b->eval(model, n));
+            if (solver->check() == SmtResult::Sat) {
+                const auto n_val{solver->model()->get(n)};
+                model->put(n, n_val);
+                const Bools::Expr projected{
+                    mbp::int_mbp(b, model, mbp_kind, [&](const auto& x) {
+                        return x == Var(n);
+                    })
+                };
+                add_blocking_clause(range, id, projected);
+                return true;
+            }
+            solver->pop();
+        } else if (model->eval(b)) {
             add_blocking_clause(range, id, b);
             return true;
         }
