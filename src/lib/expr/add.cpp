@@ -52,9 +52,9 @@ ArithExprPtr arith::mkPlusImpl(std::vector<ArithExprPtr> &&args) {
             args.clear();
             for (const auto &[x,y]: map) {
                 if (x) {
-                    args.emplace_back(*x * arith::mkConst(y));
+                    args.emplace_back(*x * mkConst(y));
                 } else {
-                    args.emplace_back(arith::mkConst(y));
+                    args.emplace_back(mkConst(y));
                 }
             }
         }
@@ -75,11 +75,11 @@ ArithExprPtr arith::mkPlusImpl(std::vector<ArithExprPtr> &&args) {
             }
         }
         if (constant && *constant != 0) {
-            args.push_back(arith::mkConst(*constant));
+            args.push_back(mkConst(*constant));
         }
     }
     if (args.empty()) {
-        return arith::mkConst(0);
+        return mkConst(0);
     }
     if (args.size() == 1) {
         return args[0];
@@ -92,7 +92,7 @@ ArithExprPtr arith::mkPlusImpl(std::vector<ArithExprPtr> &&args) {
 ArithExprPtr arith::mkPlus(ArithExprPtr fst, ArithExprPtr snd) {
     if (const auto f {fst->isRational()}) {
         if (const auto s {snd->isRational()}) {
-            return arith::mkConst(***f + ***s);
+            return mkConst(***f + ***s);
         }
         std::swap(fst, snd);
     }
@@ -110,7 +110,7 @@ ArithExprPtr arith::mkPlus(ArithExprPtr fst, ArithExprPtr snd) {
 
                 args.insert(snd);
             } else {
-                const auto new_c {arith::mkConst(c + ***(*it)->isRational())};
+                const auto new_c {mkConst(c + ***(*it)->isRational())};
                 args.erase(it);
                 if (new_c->is(0)) {
                     if (args.size() == 1) {
@@ -121,20 +121,17 @@ ArithExprPtr arith::mkPlus(ArithExprPtr fst, ArithExprPtr snd) {
                 }
             }
             return ArithAdd::cache.from_cache(args);
-        } else {
-            return ArithAdd::cache.from_cache(ArithExprSet{fst, snd});
         }
-    } else {
-        return mkPlusImpl({fst, snd});
+        return ArithAdd::cache.from_cache(ArithExprSet{fst, snd});
     }
+    return mkPlusImpl({fst, snd});
 }
 
 ArithExprPtr arith::mkPlus(std::vector<ArithExprPtr> &&args) {
     if (args.size() == 2) {
         return mkPlus(args.front(), args.back());
-    } else {
-        return mkPlusImpl(std::move(args));
     }
+    return mkPlusImpl(std::move(args));
 }
 
 const ArithExprSet& ArithAdd::getArgs() const {

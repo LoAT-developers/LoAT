@@ -29,11 +29,11 @@ Rational SwineModel::evalToRationalImpl(const Arith::Expr &e) {
     auto negative {false};
     if (boost::starts_with(num_str, "(-")) {
         negative = true;
-        num_str = ((-res.numerator()).simplify()).to_string();
+        num_str = (-res.numerator()).simplify().to_string();
     }
     if (boost::starts_with(den_str, "(-")) {
         negative = !negative;
-        den_str = ((-res.denominator()).simplify()).to_string();
+        den_str = (-res.denominator()).simplify().to_string();
     }
     Rational ret {num_str, den_str};
     return negative ? -ret : ret;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "theory.hpp"
-#include "model.hpp"
 #include "safetyproblem.hpp"
 #include "stepwise.hpp"
 #include "trp.hpp"

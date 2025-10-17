@@ -6,7 +6,7 @@ class SexpressoParser {
 
     CHCPtr chcs {std::make_shared<CHCProblem>()};
 
-    void run(const std::string &filename);
+    void run(const std::string &filename) const;
 
 public:
 

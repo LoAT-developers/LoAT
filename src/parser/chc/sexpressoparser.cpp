@@ -22,39 +22,36 @@ FunAppPtr parsePred(sexpresso::Sexp &exp, SMTLibParsingState &state) {
 
 std::optional<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
-        const auto name {exp.str()};
-        if (name == "true" || name == "false" || state.vars.find(name) != state.vars.end() || std::any_of(state.bindings.rbegin(), state.bindings.rend(), [&](const auto &b) {
+        if (const auto name {exp.str()}; name == "true" || name == "false" || state.vars.contains(name) || std::any_of(state.bindings.rbegin(), state.bindings.rend(), [&](const auto &b) {
             return b.contains(name);
         })) {
             state.refinement.emplace_back(parseBoolExpr(exp, state));
             return {};
-        } else {
-            return parsePred(exp, state);
         }
+        return parsePred(exp, state);
     }
-    const auto f {exp[0].str()};
-    if (f == "and") {
+    if (const auto f {exp[0].str()}; f == "and") {
         std::optional<FunAppPtr> lhs;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
-            const auto l {parseTopLevelBoolExpr(exp[i], state)};
-            if (l) {
+            if (const auto l {parseTopLevelBoolExpr(exp[i], state)}) {
                 assert(!lhs);
                 lhs = l;
             }
         }
         return lhs;
-    } else if (f == "ite" || f == "let" || f == "or" || f == "not" || f == "<" || f == "<=" || f == ">" || f == ">=" || f == "=" || f == "distinct") {
-        state.refinement.emplace_back(parseBoolExpr(exp, state));
-        return {};
     } else {
+        if (f == "ite" || f == "let" || f == "or" || f == "not" || f == "<" || f == "<=" || f == ">" || f == ">=" || f == "=" || f == "distinct") {
+            state.refinement.emplace_back(parseBoolExpr(exp, state));
+            return {};
+        }
         return parsePred(exp, state);
     }
 }
 
-void SexpressoParser::run(const std::string &filename) {
+void SexpressoParser::run(const std::string &filename) const {
     std::ifstream ifs(filename);
     std::string content(
-        (std::istreambuf_iterator<char>(ifs)),
+        (std::istreambuf_iterator(ifs)),
         (std::istreambuf_iterator<char>()));
     sexpresso::Sexp sexp = sexpresso::parse(content);
     SMTLibParsingState state;
@@ -65,8 +62,7 @@ void SexpressoParser::run(const std::string &filename) {
                 auto vars {ex[1][1]};
                 for (unsigned i = 0; i < vars.childCount(); ++i) {
                     const auto name{vars[i][0].str()};
-                    const auto type{vars[i][1].str()};
-                    if (type == "Int") {
+                    if (const auto type{vars[i][1].str()}; type == "Int") {
                         state.vars.emplace(name, ArithVar::next());
                     } else if (type == "Bool") {
                         state.vars.emplace(name, BoolVar::next());

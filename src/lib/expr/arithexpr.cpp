@@ -1,6 +1,5 @@
 #include "arithexpr.hpp"
 #include "optional.hpp"
-#include "linkedhashmap.hpp"
 #include "sexpresso.hpp"
 
 #include <sstream>
@@ -579,36 +578,36 @@ Rational ArithExpr::eval(const std::unordered_map<ArithVarPtr, Int>& map) const 
     );
 }
 
-ArithExprPtr ArithExpr::eval(const ModelPtr& map, const ArithVarPtr &keep) const {
+ArithExprPtr ArithExpr::eval(const ModelPtr& model, const ArithVarPtr &keep) const {
     return apply<ArithExprPtr>(
         [](const ArithConstPtr& c) -> ArithExprPtr {
             return c;
         },
         [&](const ArithVarPtr& v) -> ArithExprPtr {
-            return keep == v ? v : arith::mkConst(map->get(v));
+            return keep == v ? v : arith::mkConst(model->get(v));
         },
         [&](const ArithAddPtr& a) {
             std::vector<ArithExprPtr> args;
             for (const auto& x : a->getArgs()) {
-                args.emplace_back(x->eval(map, keep));
+                args.emplace_back(x->eval(model, keep));
             }
             return arith::mkPlus(std::move(args));
         },
         [&](const ArithMultPtr& m) {
             std::vector<ArithExprPtr> args;
             for (const auto& x : m->getArgs()) {
-                args.emplace_back(x->eval(map, keep));
+                args.emplace_back(x->eval(model, keep));
             }
             return arith::mkTimes(std::move(args));
         },
         [&](const ArithModPtr& m) {
-            const auto lhs{m->getLhs()->eval(map, keep)};
-            const auto rhs{m->getRhs()->eval(map, keep)};
+            const auto lhs{m->getLhs()->eval(model, keep)};
+            const auto rhs{m->getRhs()->eval(model, keep)};
             return arith::mkMod(lhs, rhs);
         },
         [&](const ArithExpPtr& e) {
-            const auto base{e->getBase()->eval(map, keep)};
-            const auto exp{e->getExponent()->eval(map, keep)};
+            const auto base{e->getBase()->eval(model, keep)};
+            const auto exp{e->getExponent()->eval(model, keep)};
             return arith::mkExp(base, exp);
         }
     );
