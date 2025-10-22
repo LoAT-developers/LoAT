@@ -63,6 +63,7 @@ template <ITheory T>
 class ArrayEq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayEq<T>> {
 
     friend ArrayLitPtr<T> arrays::mkEq(const ArrayPtr<T>& lhs, const ArrayPtr<T>& rhs);
+    friend class ConsHash<ArrayEq, ArrayPtr<T>, ArrayPtr<T>>;
 
     ArrayPtr<T> m_lhs;
     ArrayPtr<T> m_rhs;
@@ -75,7 +76,7 @@ class ArrayEq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayEq<T>
         size_t operator()(const std::tuple<ArrayPtr<T>, ArrayPtr<T>> &args) const noexcept;
     };
 
-    static ConsHash<ArrayLit<T>, ArrayEq, CacheHash, CacheEqual, ArrayPtr<T>, ArrayPtr<T>> cache;
+    static ConsHash<ArrayEq, ArrayPtr<T>, ArrayPtr<T>> cache;
 
 public:
 
@@ -107,12 +108,13 @@ public:
 };
 
 template <ITheory T>
-ConsHash<ArrayLit<T>, ArrayEq<T>, typename ArrayEq<T>::CacheHash, typename ArrayEq<T>::CacheEqual, ArrayPtr<T>, ArrayPtr<T>> ArrayEq<T>::cache {};
+ConsHash<ArrayEq<T>, ArrayPtr<T>, ArrayPtr<T>> ArrayEq<T>::cache {};
 
 template <ITheory T>
 class ArrayNeq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayNeq<T>> {
 
     friend ArrayLitPtr<T> arrays::mkNeq(const ArrayPtr<T>& lhs, const ArrayPtr<T>& rhs);
+    friend class ConsHash<ArrayNeq, ArrayPtr<T>, ArrayPtr<T>>;
 
     ArrayPtr<T> m_lhs;
     ArrayPtr<T> m_rhs;
@@ -125,7 +127,7 @@ class ArrayNeq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayNeq<
         size_t operator()(const std::tuple<ArrayPtr<T>, ArrayPtr<T>> &args) const noexcept;
     };
 
-    static ConsHash<ArrayLit<T>, ArrayNeq, CacheHash, CacheEqual, ArrayPtr<T>, ArrayPtr<T>> cache;
+    static ConsHash<ArrayNeq, ArrayPtr<T>, ArrayPtr<T>> cache;
 
 public:
 
@@ -157,7 +159,7 @@ public:
 };
 
 template <ITheory T>
-ConsHash<ArrayLit<T>, ArrayNeq<T>, typename ArrayNeq<T>::CacheHash, typename ArrayNeq<T>::CacheEqual, ArrayPtr<T>, ArrayPtr<T>> ArrayNeq<T>::cache {};
+ConsHash<ArrayNeq<T>, ArrayPtr<T>, ArrayPtr<T>> ArrayNeq<T>::cache {};
 
 namespace arrays {
 

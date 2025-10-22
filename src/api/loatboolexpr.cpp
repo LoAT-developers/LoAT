@@ -1,5 +1,6 @@
 #include "loatboolexpr.hpp"
 #include <boost/functional/hash.hpp>
+#include <utility>
 
 // ==============================
 // LoatBoolExpr base class
@@ -21,10 +22,10 @@ LoatBoolExprPtr LoatBoolExpr::toPtr() const
 // LoatBoolVar
 // ==============================
 
-ConsHash<LoatBoolExpr, LoatBoolVar, LoatBoolVar::CacheHash, LoatBoolVar::CacheEqual, std::string, bool> LoatBoolVar::cache;
+ConsHash<LoatBoolVar, std::string, bool> LoatBoolVar::cache;
 
-LoatBoolVar::LoatBoolVar(const std::string &name, const bool isPost)
-    : LoatBoolExpr(LoatBoolExpression::Kind::Variable), m_name(name), m_isPost(isPost) {}
+LoatBoolVar::LoatBoolVar(std::string name, const bool isPost)
+    : LoatBoolExpr(LoatBoolExpression::Kind::Variable), m_name(std::move(name)), m_isPost(isPost) {}
 
 LoatBoolVar::~LoatBoolVar()
 {
@@ -67,10 +68,10 @@ LoatBoolExprPtr LoatBoolExpression::mkPostVar(const std::string &name)
 // LoatBoolAnd
 // ==============================
 
-ConsHash<LoatBoolExpr, LoatBoolAnd, LoatBoolAnd::CacheHash, LoatBoolAnd::CacheEqual, LoatBoolExprVec> LoatBoolAnd::cache;
+ConsHash<LoatBoolAnd, LoatBoolExprVec> LoatBoolAnd::cache;
 
-LoatBoolAnd::LoatBoolAnd(const LoatBoolExprVec &args)
-    : LoatBoolExpr(LoatBoolExpression::Kind::And), m_args(args) {}
+LoatBoolAnd::LoatBoolAnd(LoatBoolExprVec args)
+    : LoatBoolExpr(LoatBoolExpression::Kind::And), m_args(std::move(args)) {}
 
 LoatBoolAnd::~LoatBoolAnd()
 {
@@ -101,10 +102,10 @@ LoatBoolExprPtr LoatBoolExpression::mkAnd(const LoatBoolExprVec &&args)
 // LoatBoolOr
 // ==============================
 
-ConsHash<LoatBoolExpr, LoatBoolOr, LoatBoolOr::CacheHash, LoatBoolOr::CacheEqual, LoatBoolExprVec> LoatBoolOr::cache;
+ConsHash<LoatBoolOr, LoatBoolExprVec> LoatBoolOr::cache;
 
-LoatBoolOr::LoatBoolOr(const LoatBoolExprVec &args)
-    : LoatBoolExpr(LoatBoolExpression::Kind::Or), m_args(args) {}
+LoatBoolOr::LoatBoolOr(LoatBoolExprVec args)
+    : LoatBoolExpr(LoatBoolExpression::Kind::Or), m_args(std::move(args)) {}
 
 LoatBoolOr::~LoatBoolOr()
 {
@@ -135,10 +136,10 @@ LoatBoolExprPtr LoatBoolExpression::mkOr(const LoatBoolExprVec &&args)
 // LoatBoolNot
 // ==============================
 
-ConsHash<LoatBoolExpr, LoatBoolNot, LoatBoolNot::CacheHash, LoatBoolNot::CacheEqual, LoatBoolExprPtr> LoatBoolNot::cache;
+ConsHash<LoatBoolNot, LoatBoolExprPtr> LoatBoolNot::cache;
 
-LoatBoolNot::LoatBoolNot(const LoatBoolExprPtr &arg)
-    : LoatBoolExpr(LoatBoolExpression::Kind::Not), m_arg(arg) {}
+LoatBoolNot::LoatBoolNot(LoatBoolExprPtr arg)
+    : LoatBoolExpr(LoatBoolExpression::Kind::Not), m_arg(std::move(arg)) {}
 
 LoatBoolNot::~LoatBoolNot()
 {
@@ -216,9 +217,9 @@ size_t LoatBoolCmp::CacheHash::operator()(const std::tuple<LoatIntExprPtr, LoatB
     return hash;
 }
 
-ConsHash<LoatBoolExpr, LoatBoolCmp, LoatBoolCmp::CacheHash, LoatBoolCmp::CacheEqual, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> LoatBoolCmp::cache;
-LoatBoolCmp::LoatBoolCmp(const LoatIntExprPtr& lhs, const LoatBoolExpression::CmpOp op, const LoatIntExprPtr& rhs)
-    : LoatBoolExpr(LoatBoolExpression::Kind::Compare), m_lhs(lhs), m_rhs(rhs), m_op(op) {}
+ConsHash<LoatBoolCmp, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> LoatBoolCmp::cache;
+LoatBoolCmp::LoatBoolCmp(LoatIntExprPtr lhs, const LoatBoolExpression::CmpOp op, LoatIntExprPtr  rhs)
+    : LoatBoolExpr(LoatBoolExpression::Kind::Compare), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)), m_op(op) {}
 LoatBoolCmp::~LoatBoolCmp()
 {
     cache.erase(m_lhs, m_op, m_rhs);
@@ -318,11 +319,6 @@ LoatBoolExprPtr operator||(const LoatBoolExprPtr& a, const LoatBoolExprPtr& b)
 LoatBoolExprPtr operator!(const LoatBoolExprPtr& a)
 {
     return LoatBoolExpression::mkNot(a);
-}
-
-LoatBoolExprPtr operator==(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs)
-{
-    return LoatBoolExpression::mkEq(lhs, rhs);
 }
 
 LoatBoolExprPtr operator!=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs)

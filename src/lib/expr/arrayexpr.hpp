@@ -75,6 +75,7 @@ template <class T>
 class ArrayVar final: public Array<T>, std::enable_shared_from_this<ArrayVar<T>> {
 
     friend ArrayPtr<T> arrays::mkVar(int p_idx, unsigned p_dim);
+    friend class ConsHash<ArrayVar, int, unsigned>;
 
     struct CacheEqual {
         bool operator()(const std::tuple<int, unsigned> &args1, const std::tuple<int, unsigned> &args2) const noexcept;
@@ -84,7 +85,7 @@ class ArrayVar final: public Array<T>, std::enable_shared_from_this<ArrayVar<T>>
         size_t operator()(const std::tuple<int, unsigned> &args) const noexcept;
     };
 
-    static ConsHash<Array<T>, ArrayVar, CacheHash, CacheEqual, int, unsigned> cache;
+    static ConsHash<ArrayVar, int, unsigned> cache;
 
     using Self = ArrayVarPtr<T>;
 
@@ -96,6 +97,7 @@ class ArrayVar final: public Array<T>, std::enable_shared_from_this<ArrayVar<T>>
 public:
 
     explicit ArrayVar(int p_idx, unsigned p_dim);
+    ~ArrayVar() override;
 
     static Self next(unsigned p_dim);
 
@@ -138,7 +140,7 @@ public:
 };
 
 template<class T>
-ConsHash<Array<T>, ArrayVar<T>, typename ArrayVar<T>::CacheHash, typename ArrayVar<T>::CacheEqual, int, unsigned> ArrayVar<T>::cache{};
+ConsHash<ArrayVar<T>, int, unsigned> ArrayVar<T>::cache{};
 
 template<class T>
 int ArrayVar<T>::last_tmp_idx;
@@ -155,6 +157,7 @@ template <class T>
 class ArrayWrite final: public Array<T>, std::enable_shared_from_this<ArrayWrite<T>> {
 
     friend ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices, const Arith::Expr& val);
+    friend class ConsHash<ArrayWrite, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr>;
 
     ArrayPtr<T> m_arr;
     std::vector<Arith::Expr> m_indices;
@@ -168,11 +171,12 @@ class ArrayWrite final: public Array<T>, std::enable_shared_from_this<ArrayWrite
         size_t operator()(const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> &args) const noexcept;
     };
 
-    static ConsHash<Array<T>, ArrayWrite, CacheHash, CacheEqual, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> cache;
+    static ConsHash<ArrayWrite, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> cache;
 
 public:
 
     ArrayWrite(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices, const T::Expr &p_val);
+    ~ArrayWrite() override;
 
     ArrayPtr<T> arr() const;
 
@@ -201,7 +205,7 @@ public:
 };
 
 template <class T>
-ConsHash<Array<T>, ArrayWrite<T>, typename ArrayWrite<T>::CacheHash, typename ArrayWrite<T>::CacheEqual, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> ArrayWrite<T>::cache{};
+ConsHash<ArrayWrite<T>, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> ArrayWrite<T>::cache{};
 
 template <class T>
 class ArrayRead final: public T::Expr::element_type {
@@ -210,6 +214,7 @@ class ArrayRead final: public T::Expr::element_type {
     friend ArrayReadPtr<T> arrays::nextConst();
     friend ArrayReadPtr<Arith> arrays::readConst(const ArrayPtr<Arith>& arr);
     friend ArrayReadPtr<T> arrays::nextProgConst();
+    friend class ConsHash<ArrayRead, ArrayPtr<T>, std::vector<Arith::Expr>>;
 
     ArrayPtr<T> m_arr;
     std::vector<Arith::Expr> m_indices;
@@ -222,11 +227,12 @@ class ArrayRead final: public T::Expr::element_type {
         size_t operator()(const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>> &args) const noexcept;
     };
 
-    static ConsHash<ArrayRead, ArrayRead, CacheHash, CacheEqual, ArrayPtr<T>, std::vector<Arith::Expr>> cache;
+    static ConsHash<ArrayRead, ArrayPtr<T>, std::vector<Arith::Expr>> cache;
 
 public:
 
     ArrayRead(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices);
+    ~ArrayRead();
 
     // getter
     ArrayPtr<T> arr() const;
@@ -260,7 +266,7 @@ public:
 };
 
 template <class T>
-ConsHash<ArrayRead<T>, ArrayRead<T>, typename ArrayRead<T>::CacheHash, typename ArrayRead<T>::CacheEqual, ArrayPtr<T>, std::vector<Arith::Expr>> ArrayRead<T>::cache;
+ConsHash<ArrayRead<T>, ArrayPtr<T>, std::vector<Arith::Expr>> ArrayRead<T>::cache;
 
 template <class T>
 std::ostream& operator<<(std::ostream& s, const ArrayReadPtr<T>& read) {

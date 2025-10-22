@@ -1,7 +1,6 @@
 #pragma once
 
 #include "boolvar.hpp"
-#include "linkedhashset.hpp"
 #include "linkedhashmap.hpp"
 #include "notnull.hpp"
 
@@ -23,6 +22,7 @@ namespace bools {
 class BoolLit: public std::enable_shared_from_this<BoolLit> {
 
     friend BoolLitPtr bools::mk(const BoolVarPtr& var, bool negated);
+    friend class ConsHash<BoolLit, BoolVarPtr, bool>;
 
     BoolVarPtr var;
     bool negated;
@@ -33,11 +33,11 @@ class BoolLit: public std::enable_shared_from_this<BoolLit> {
     struct CacheHash {
         size_t operator()(const std::tuple<BoolVarPtr, bool> &args) const noexcept;
     };
-    static ConsHash<BoolLit, BoolLit, CacheHash, CacheEqual, BoolVarPtr, bool> cache;
+    static ConsHash<BoolLit, BoolVarPtr, bool> cache;
 
 public:
 
-    BoolLit(const BoolVarPtr& var, bool negated);
+    BoolLit(BoolVarPtr  var, bool negated);
     ~BoolLit();
     bool isNegated() const;
     static bool isPoly();

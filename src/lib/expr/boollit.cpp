@@ -6,8 +6,9 @@
 #include <ostream>
 #include <boost/functional/hash.hpp>
 #include <functional>
+#include <utility>
 
-ConsHash<BoolLit, BoolLit, BoolLit::CacheHash, BoolLit::CacheEqual, BoolVarPtr, bool> BoolLit::cache {};
+ConsHash<BoolLit, BoolVarPtr, bool> BoolLit::cache {};
 
 bool BoolLit::CacheEqual::operator()(const std::tuple<BoolVarPtr, bool> &args1, const std::tuple<BoolVarPtr, bool> &args2) const noexcept {
     return args1 == args2;
@@ -24,7 +25,7 @@ BoolLitPtr bools::mk(const BoolVarPtr& var, const bool negated) {
     return BoolLit::cache.from_cache(var, negated);
 }
 
-BoolLit::BoolLit(const BoolVarPtr& var, const bool negated): var(var), negated(negated) {}
+BoolLit::BoolLit(BoolVarPtr var, const bool negated): var(std::move(var)), negated(negated) {}
 
 BoolLit::~BoolLit() {
     cache.erase(var, negated);

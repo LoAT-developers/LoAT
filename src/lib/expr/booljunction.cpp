@@ -1,6 +1,8 @@
+#include <utility>
+
 #include "boolexpr.hpp"
 
-ConsHash<BoolExpr, BoolJunction, BoolJunction::CacheHash, BoolJunction::CacheEqual, BoolExprSet, ConcatOperator> BoolJunction::cache{};
+ConsHash<BoolJunction, BoolExprSet, ConcatOperator> BoolJunction::cache{};
 
 bool BoolJunction::CacheEqual::operator()(const std::tuple<BoolExprSet, ConcatOperator> &args1, const std::tuple<BoolExprSet, ConcatOperator> &args2) const noexcept {
     return args1 == args2;
@@ -18,7 +20,7 @@ Bools::Expr BoolJunction::from_cache(const BoolExprSet &children, const ConcatOp
     return cache.from_cache(children, op);
 }
 
-BoolJunction::BoolJunction(const BoolExprSet &children, const ConcatOperator op): children(children), op(op) { }
+BoolJunction::BoolJunction(BoolExprSet children, const ConcatOperator op): children(std::move(children)), op(op) { }
 
 bool BoolJunction::isAnd() const {
     return op == ConcatAnd;
@@ -53,12 +55,9 @@ Bools::Expr BoolJunction::negation() const {
 }
 
 bool BoolJunction::forall(const std::function<bool(const Lit&)> &pred) const {
-    for (const auto &e: children) {
-        if (!e->forall(pred)) {
-            return false;
-        }
-    }
-    return true;
+    return std::ranges::all_of(children, [&](const auto &e) {
+        return e->forall(pred);
+    });
 }
 
 BoolJunction::~BoolJunction() {
@@ -66,7 +65,7 @@ BoolJunction::~BoolJunction() {
 }
 
 bool BoolJunction::isConjunction() const {
-    return isAnd() && std::ranges::all_of(children, [](const auto c){
+    return isAnd() && std::ranges::all_of(children, [](const auto& c){
                return c->isConjunction();
            });
 }

@@ -1,8 +1,10 @@
+#include <utility>
+
 #include "arithexpr.hpp"
 
-ConsHash<ArithExpr, ArithConst, ArithConst::CacheHash, ArithConst::CacheEqual, Rational> ArithConst::cache;
+ConsHash<ArithConst, Rational> ArithConst::cache;
 
-ArithConst::ArithConst(const Rational &t): ArithExpr(arith::Kind::Constant), t(t) {}
+ArithConst::ArithConst(Rational t): ArithExpr(arith::Kind::Constant), t(std::move(t)) {}
 
 ArithConst::~ArithConst() {
     cache.erase(t);
@@ -31,22 +33,22 @@ const Rational& ArithConst::getValue() const {
 std::optional<Int> ArithConst::intValue() const {
     if (mp::denominator(t) == 1) {
         return mp::numerator(t);
-    } else if (mp::denominator(t) == -1) {
-        return -mp::numerator(t);
-    } else {
-        return {};
     }
+    if (mp::denominator(t) == -1) {
+        return -mp::numerator(t);
+    }
+    return {};
 }
 
 const Rational& ArithConst::operator*() const {
     return t;
 }
 
-const ArithConstPtr ArithConst::denominator() const {
+ArithConstPtr ArithConst::denominator() const {
     const auto denom {arith::mkConst(mp::denominator(t))};
     return *denom->isRational();
 }
 
-const ArithConstPtr ArithConst::numerator() const {
+ArithConstPtr ArithConst::numerator() const {
     return *arith::mkConst(mp::numerator(t))->isRational();
 }

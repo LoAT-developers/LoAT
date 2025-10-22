@@ -54,7 +54,7 @@ size_t FunApp::CacheHash::operator()(const std::tuple<std::string, std::vector<E
     return seed;
 }
 
-ConsHash<FunApp, FunApp, FunApp::CacheHash, FunApp::CacheEqual, std::string, std::vector<Expr>> FunApp::cache;
+ConsHash<FunApp, std::string, std::vector<Expr>> FunApp::cache;
 
 FunApp::FunApp(std::string pred, const std::vector<Expr> &args): pred(std::move(pred)), args(args) {}
 
@@ -118,7 +118,7 @@ size_t Clause::CacheHash::operator()(const Args &args) const noexcept {
     return seed;
 }
 
-ConsHash<Clause, Clause, Clause::CacheHash, Clause::CacheEqual, std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> Clause::cache;
+ConsHash<Clause, std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> Clause::cache;
 
 Clause::Clause(const std::optional<FunAppPtr>& premise, Bools::Expr  constraint, const std::optional<FunAppPtr>& conclusion): premise(premise), constraint(std::move(constraint)), conclusion(conclusion) {}
 

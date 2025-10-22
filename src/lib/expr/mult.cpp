@@ -4,7 +4,7 @@
 #include "linkedhashmap.hpp"
 #include "vector.hpp"
 
-ConsHash<ArithExpr, ArithMult, ArithMult::CacheHash, ArithMult::CacheEqual, ArithExprSet> ArithMult::cache;
+ConsHash<ArithMult, ArithExprSet> ArithMult::cache;
 
 ArithMult::ArithMult(ArithExprSet args): ArithExpr(arith::Kind::Times), args(std::move(args)) {}
 

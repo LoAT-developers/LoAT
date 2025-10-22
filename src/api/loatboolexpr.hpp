@@ -3,9 +3,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <ostream>
 #include "notnull.hpp"
-#include "notnull_hash.hpp"
 #include "loatintexpr.hpp"
 #include "linkedhashset.hpp"
 #include "conshash.hpp"
@@ -62,7 +60,6 @@ namespace LoatBoolExpression
  */
 class LoatBoolExpr : public std::enable_shared_from_this<LoatBoolExpr>
 {
-private:
     LoatBoolExpression::Kind m_kind;
 
 protected:
@@ -80,13 +77,13 @@ public:
 /**
  * Represents a Variable
  */
-class LoatBoolVar : public LoatBoolExpr
+class LoatBoolVar final : public LoatBoolExpr
 {
     friend LoatBoolExprPtr LoatBoolExpression::mkVar(const std::string &name, bool isPost);
     friend LoatBoolExprPtr LoatBoolExpression::mkPreVar(const std::string &name);
     friend LoatBoolExprPtr LoatBoolExpression::mkPostVar(const std::string &name);
+    friend class ConsHash<LoatBoolVar, std::string, bool>;
 
-private:
     std::string m_name;
     bool m_isPost;
 
@@ -98,11 +95,11 @@ private:
     {
         size_t operator()(const std::tuple<std::string, bool> &a) const noexcept;
     };
-    static ConsHash<LoatBoolExpr, LoatBoolVar, CacheHash, CacheEqual, std::string, bool> cache;
+    static ConsHash<LoatBoolVar, std::string, bool> cache;
 
 public:
-    explicit LoatBoolVar(const std::string &name, bool isPost);
-    ~LoatBoolVar();
+    explicit LoatBoolVar(std::string name, bool isPost);
+    ~LoatBoolVar() override;
     std::string getName() const;
     bool isPost() const;
 };
@@ -110,11 +107,11 @@ public:
 /**
  * Represents a disconjunction (OR)
  */
-class LoatBoolOr : public LoatBoolExpr
+class LoatBoolOr final : public LoatBoolExpr
 {
     friend LoatBoolExprPtr LoatBoolExpression::mkOr(const LoatBoolExprVec &&args);
+    friend class ConsHash<LoatBoolOr, LoatBoolExprVec>;
 
-private:
     LoatBoolExprVec m_args;
 
     struct CacheEqual
@@ -125,22 +122,22 @@ private:
     {
         size_t operator()(const std::tuple<LoatBoolExprVec> &a) const noexcept;
     };
-    static ConsHash<LoatBoolExpr, LoatBoolOr, CacheHash, CacheEqual, LoatBoolExprVec> cache;
+    static ConsHash<LoatBoolOr, LoatBoolExprVec> cache;
 
 public:
-    explicit LoatBoolOr(const LoatBoolExprVec &args);
-    ~LoatBoolOr();
+    explicit LoatBoolOr(LoatBoolExprVec args);
+    ~LoatBoolOr() override;
     const LoatBoolExprVec &getArgs() const;
 };
 
 /**
  * Represents a conjunction (AND)
  */
-class LoatBoolAnd : public LoatBoolExpr
+class LoatBoolAnd final : public LoatBoolExpr
 {
     friend LoatBoolExprPtr LoatBoolExpression::mkAnd(const LoatBoolExprVec &&args);
+    friend class ConsHash<LoatBoolAnd, LoatBoolExprVec>;
 
-private:
     LoatBoolExprVec m_args;
 
     struct CacheEqual
@@ -153,22 +150,22 @@ private:
         size_t operator()(const std::tuple<LoatBoolExprVec> &a) const noexcept;
     };
 
-    static ConsHash<LoatBoolExpr, LoatBoolAnd, CacheHash, CacheEqual, LoatBoolExprVec> cache;
+    static ConsHash<LoatBoolAnd, LoatBoolExprVec> cache;
 
 public:
-    explicit LoatBoolAnd(const LoatBoolExprVec &args);
-    ~LoatBoolAnd();
+    explicit LoatBoolAnd(LoatBoolExprVec args);
+    ~LoatBoolAnd() override;
     const LoatBoolExprVec &getArgs() const;
 };
 
 /**
  * Represents a negation (NOT)
  */
-class LoatBoolNot : public LoatBoolExpr
+class LoatBoolNot final : public LoatBoolExpr
 {
     friend LoatBoolExprPtr LoatBoolExpression::mkNot(const LoatBoolExprPtr& arg);
+    friend class ConsHash<LoatBoolNot, LoatBoolExprPtr>;
 
-private:
     LoatBoolExprPtr m_arg;
 
     struct CacheEqual
@@ -181,22 +178,22 @@ private:
         size_t operator()(const std::tuple<LoatBoolExprPtr> &a) const noexcept;
     };
 
-    static ConsHash<LoatBoolExpr, LoatBoolNot, CacheHash, CacheEqual, LoatBoolExprPtr> cache;
+    static ConsHash<LoatBoolNot, LoatBoolExprPtr> cache;
 
 public:
-    explicit LoatBoolNot(const LoatBoolExprPtr &arg);
-    ~LoatBoolNot();
+    explicit LoatBoolNot(LoatBoolExprPtr arg);
+    ~LoatBoolNot() override;
     const LoatBoolExprPtr &getArg() const;
 };
 
 /**
  * Represents a comparison literal (e.g. x < y)
  */
-class LoatBoolCmp : public LoatBoolExpr
+class LoatBoolCmp final : public LoatBoolExpr
 {
     friend LoatBoolExprPtr LoatBoolExpression::mkCmp(const LoatIntExprPtr& lhs, LoatBoolExpression::CmpOp op, const LoatIntExprPtr& rhs);
+    friend class ConsHash<LoatBoolCmp, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr>;
 
-private:
     LoatIntExprPtr m_lhs;
     LoatIntExprPtr m_rhs;
     LoatBoolExpression::CmpOp m_op;
@@ -212,11 +209,11 @@ private:
         size_t operator()(const std::tuple<LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> &a) const noexcept;
     };
 
-    static ConsHash<LoatBoolExpr, LoatBoolCmp, CacheHash, CacheEqual, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> cache;
+    static ConsHash<LoatBoolCmp, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> cache;
 
 public:
-    LoatBoolCmp(const LoatIntExprPtr& lhs, LoatBoolExpression::CmpOp op, const LoatIntExprPtr& rhs);
-    ~LoatBoolCmp();
+    LoatBoolCmp(LoatIntExprPtr  lhs, LoatBoolExpression::CmpOp op, LoatIntExprPtr  rhs);
+    ~LoatBoolCmp() override;
 
     const LoatIntExprPtr &getLhs() const;
     const LoatIntExprPtr &getRhs() const;
@@ -234,7 +231,6 @@ LoatBoolExprPtr operator||(const LoatBoolExprPtr& a, const LoatBoolExprPtr& b);
 LoatBoolExprPtr operator!(const LoatBoolExprPtr& a);
 
 // Operator Overloads for comparisons / literals
-LoatBoolExprPtr operator==(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
 LoatBoolExprPtr operator!=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
 LoatBoolExprPtr operator<(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
 LoatBoolExprPtr operator<=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);

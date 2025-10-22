@@ -32,6 +32,11 @@ template <class T>
 ArrayVar<T>::ArrayVar(const int p_idx, const unsigned p_dim) : m_idx(p_idx), m_dim(p_dim) {}
 
 template <class T>
+ArrayVar<T>::~ArrayVar() {
+    cache.erase(m_idx, m_dim);
+}
+
+template <class T>
 ArrayVar<T>::Self ArrayVar<T>::next(const unsigned p_dim) {
     --last_tmp_idx;
     return arrays::mkVar<T>(last_tmp_idx, p_dim)->var();
@@ -170,6 +175,11 @@ size_t ArrayWrite<T>::CacheHash::operator()(
 template <class T>
 ArrayWrite<T>::ArrayWrite(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices,
                           const typename T::Expr& p_val) : m_arr(p_arr), m_indices(p_indices), m_val(p_val) {}
+
+template <class T>
+ArrayWrite<T>::~ArrayWrite() {
+    cache.erase(m_arr, m_indices, m_val);
+}
 
 template <class T>
 ArrayPtr<T> ArrayWrite<T>::arr() const {
@@ -327,6 +337,11 @@ size_t ArrayRead<T>::CacheHash::operator(
 
 template <class T>
 ArrayRead<T>::ArrayRead(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices): m_arr(p_arr), m_indices(p_indices) {}
+
+template <class T>
+ArrayRead<T>::~ArrayRead() {
+    cache.erase(m_arr, m_indices);
+}
 
 template <class T>
 ArrayPtr<T> ArrayRead<T>::arr() const {

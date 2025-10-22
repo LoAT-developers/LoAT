@@ -11,6 +11,8 @@ using RulePtr = cpp::not_null<std::shared_ptr<const Rule>>;
 
 class Rule {
 
+    friend class ConsHash<Rule, Bools::Expr, Subs>;
+
     Bools::Expr guard;
     Subs update;
     unsigned id;
@@ -25,7 +27,7 @@ class Rule {
         size_t operator()(const std::tuple<Bools::Expr, Subs> &args) const noexcept;
     };
 
-    static ConsHash<Rule, Rule, CacheHash, CacheEqual, Bools::Expr, Subs> cache;
+    static ConsHash<Rule, Bools::Expr, Subs> cache;
 
 public:
 

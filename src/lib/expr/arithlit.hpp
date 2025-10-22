@@ -44,6 +44,8 @@ ArithLitPtr mkLt(const ArithExprPtr& x, const ArithExprPtr& y);
 
 class ArithLit final: public std::enable_shared_from_this<ArithLit> {
 
+    enum class Kind {Gt, Eq, Neq};
+
     friend ArithLitPtr operator!(const ArithLitPtr& x);
     friend std::ostream& operator<<(std::ostream &s, const ArithLitPtr& rel);
     friend ArithLitPtr arith::mkEq(const ArithExprPtr& x, const ArithExprPtr& y);
@@ -52,8 +54,7 @@ class ArithLit final: public std::enable_shared_from_this<ArithLit> {
     friend ArithLitPtr arith::mkLeq(const ArithExprPtr& x, const ArithExprPtr& y);
     friend ArithLitPtr arith::mkGt(const ArithExprPtr& x, const ArithExprPtr& y);
     friend ArithLitPtr arith::mkLt(const ArithExprPtr& x, const ArithExprPtr& y);
-
-    enum class Kind {Gt, Eq, Neq};
+    friend class ConsHash<ArithLit, ArithExprPtr, Kind>;
 
     class InvalidRelationalExpression final : std::exception { };
 
@@ -63,7 +64,7 @@ class ArithLit final: public std::enable_shared_from_this<ArithLit> {
     struct CacheHash {
         size_t operator()(const std::tuple<ArithExprPtr, Kind> &args) const noexcept;
     };
-    static ConsHash<ArithLit, ArithLit, CacheHash, CacheEqual, ArithExprPtr, Kind> cache;
+    static ConsHash<ArithLit, ArithExprPtr, Kind> cache;
 
     static ArithLitPtr mk(const ArithExprPtr& lhs, Kind kind);
 

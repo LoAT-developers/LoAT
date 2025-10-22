@@ -18,8 +18,9 @@ bool ArrayLit<T>::simplifyAnd(linked_hash_set<ArrayLitPtr<T>>&) {
 }
 
 template <ITheory T>
-bool ArrayEq<T>::CacheEqual::operator()(const std::tuple<ArrayPtr<T>, ArrayPtr<T>>& args1,
-                                        const std::tuple<ArrayPtr<T>, ArrayPtr<T>>& args2) const noexcept {
+bool ArrayEq<T>::CacheEqual::operator()(
+    const std::tuple<ArrayPtr<T>, ArrayPtr<T>>& args1,
+    const std::tuple<ArrayPtr<T>, ArrayPtr<T>>& args2) const noexcept {
     return args1 == args2;
 }
 
@@ -108,8 +109,9 @@ void ArrayEq<T>::collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<cons
 }
 
 template <ITheory T>
-bool ArrayNeq<T>::CacheEqual::operator()(const std::tuple<ArrayPtr<T>, ArrayPtr<T>>& args1,
-                                         const std::tuple<ArrayPtr<T>, ArrayPtr<T>>& args2) const noexcept {
+bool ArrayNeq<T>::CacheEqual::operator()(
+    const std::tuple<ArrayPtr<T>, ArrayPtr<T>>& args1,
+    const std::tuple<ArrayPtr<T>, ArrayPtr<T>>& args2) const noexcept {
     return args1 == args2;
 }
 

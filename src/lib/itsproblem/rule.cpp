@@ -2,7 +2,7 @@
 
 #include <utility>
 
-ConsHash<Rule, Rule, Rule::CacheHash, Rule::CacheEqual, Bools::Expr, Subs> Rule::cache;
+ConsHash<Rule, Bools::Expr, Subs> Rule::cache;
 
 unsigned Rule::next_id {0};
 

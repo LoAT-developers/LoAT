@@ -18,7 +18,8 @@ namespace bools {
 
 class BoolVar: std::enable_shared_from_this<BoolVar> {
 
-friend BoolVarPtr bools::mkVar(int idx);
+    friend BoolVarPtr bools::mkVar(int idx);
+    friend class ConsHash<BoolVar, int>;
 
     static int last_prog_idx;
     static int last_tmp_idx;
@@ -31,7 +32,7 @@ friend BoolVarPtr bools::mkVar(int idx);
     struct CacheHash {
         size_t operator()(const std::tuple<int> &args) const noexcept;
     };
-    static ConsHash<BoolVar, BoolVar, CacheHash, CacheEqual, int> cache;
+    static ConsHash<BoolVar, int> cache;
 
 public:
 

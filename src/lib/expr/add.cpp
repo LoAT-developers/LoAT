@@ -1,10 +1,12 @@
+#include <utility>
+
 #include "arithexpr.hpp"
 #include "linkedhashmap.hpp"
 #include "vector.hpp"
 
-ConsHash<ArithExpr, ArithAdd, ArithAdd::CacheHash, ArithAdd::CacheEqual, ArithExprSet> ArithAdd::cache;
+ConsHash<ArithAdd, ArithExprSet> ArithAdd::cache;
 
-ArithAdd::ArithAdd(const ArithExprSet &args): ArithExpr(arith::Kind::Plus), args(args) {}
+ArithAdd::ArithAdd(ArithExprSet args): ArithExpr(arith::Kind::Plus), args(std::move(args)) {}
 
 ArithAdd::~ArithAdd() {
     cache.erase(args);
@@ -84,7 +86,7 @@ ArithExprPtr arith::mkPlusImpl(std::vector<ArithExprPtr> &&args) {
     if (args.size() == 1) {
         return args[0];
     }
-    const ArithExprSet arg_set {args.begin(), args.end()};
+    ArithExprSet arg_set {args.begin(), args.end()};
     // std::cout << "+ " << args << " --> + " << arg_set << std::endl;
     return ArithAdd::cache.from_cache(std::move(arg_set));
 }

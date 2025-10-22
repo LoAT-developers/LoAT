@@ -2,7 +2,7 @@
 
 #include "arithexpr.hpp"
 
-ConsHash<ArithExpr, ArithMod, ArithMod::CacheHash, ArithMod::CacheEqual, ArithExprPtr, ArithExprPtr> ArithMod::cache;
+ConsHash<ArithMod, ArithExprPtr, ArithExprPtr> ArithMod::cache;
 
 ArithMod::ArithMod(ArithExprPtr lhs, ArithExprPtr rhs): ArithExpr(arith::Kind::Mod), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
@@ -33,7 +33,7 @@ ArithExprPtr arith::mkMod(ArithExprPtr x, ArithExprPtr y) {
     }
     if (const auto c2 {y->isInt()}) {
         const auto eval = [](const Int &c1, const Int &c2) -> Int {
-            if (const Int mod {mp::abs(c1) % c2}; mod == 0 || c1 >= 0) {
+            if (auto mod {mp::abs(c1) % c2}; mod == 0 || c1 >= 0) {
                 return mod;
             } else {
                 return c2 - mod;

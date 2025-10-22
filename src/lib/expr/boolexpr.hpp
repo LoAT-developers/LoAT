@@ -125,6 +125,8 @@ public:
 
 class BoolTheoryLit final : public BoolExpr {
 
+    friend class ConsHash<BoolTheoryLit, Lit>;
+
     const Lit lit;
 
     struct CacheEqual {
@@ -135,10 +137,10 @@ class BoolTheoryLit final : public BoolExpr {
         size_t operator()(const std::tuple<Lit> &args) const noexcept;
     };
 
-    static ConsHash<BoolExpr, BoolTheoryLit, CacheHash, CacheEqual, Lit> cache;
+    static ConsHash<BoolTheoryLit, Lit> cache;
 
 public:
-    explicit BoolTheoryLit(const Lit &lit);
+    explicit BoolTheoryLit(Lit lit);
     static Bools::Expr from_cache(const Lit &lit);
     bool isAnd() const override;
     bool isOr() const override;
@@ -157,6 +159,8 @@ public:
 
 class BoolJunction final : public BoolExpr {
 
+    friend class ConsHash<BoolJunction, BoolExprSet, ConcatOperator>;
+
     const BoolExprSet children;
     const ConcatOperator op;
 
@@ -168,12 +172,12 @@ class BoolJunction final : public BoolExpr {
         size_t operator()(const std::tuple<BoolExprSet, ConcatOperator> &args) const noexcept;
     };
 
-    static ConsHash<BoolExpr, BoolJunction, CacheHash, CacheEqual, BoolExprSet, ConcatOperator> cache;
+    static ConsHash<BoolJunction, BoolExprSet, ConcatOperator> cache;
 
 public:
 
     static Bools::Expr from_cache(const BoolExprSet &children, ConcatOperator op);
-    BoolJunction(const BoolExprSet &children, ConcatOperator op);
+    BoolJunction(BoolExprSet children, ConcatOperator op);
     bool isAnd() const override;
     bool isOr() const override;
     bool isTheoryLit() const override;
