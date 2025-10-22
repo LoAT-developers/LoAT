@@ -1,7 +1,7 @@
 #include "redundantinequations.hpp"
 #include "smtfactory.hpp"
 
-Bools::Expr removeRedundantInequations(const Bools::Expr e) {
+Bools::Expr removeRedundantInequations(const Bools::Expr& e) {
     if (!e->isConjunction()) {
         return e;
     }
@@ -11,10 +11,9 @@ Bools::Expr removeRedundantInequations(const Bools::Expr e) {
     ArithExprVec bounded;
     for (auto it = arith_lits.begin(); it != arith_lits.end();) {
         const auto lit {*it};
-        const auto lhs {lit->lhs()};
-        if (lhs->isLinear()) {
+        if (const auto lhs {lit->lhs()}; lhs->isLinear()) {
             if (lit->isGt()) {
-                bounded.push_back(lhs - arith::mkConst(1));
+                bounded.push_back(lhs - arith::one);
                 it = arith_lits.erase(it);
             } else if (lit->isEq()) {
                 bounded.push_back(lhs);
@@ -29,13 +28,13 @@ Bools::Expr removeRedundantInequations(const Bools::Expr e) {
     }
     // set up one non-negative multiplier for each bound
     auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
-    std::vector<Arith::Var> factors;
+    std::vector<ArithVarPtr> factors;
     for (size_t i = 0; i < bounded.size(); ++i) {
-        const auto f {ArithVar::next()};
+        const auto f {arrays::nextConst<Arith>()};
         factors.push_back(f);
-        solver->add(arith::mkGeq(f, arith::mkConst(0)));
+        solver->add(arith::mkGeq(f, arith::zero));
     }
-    const auto arith_vars {e->vars().get<Arith::Var>()};
+    const auto arith_vars {e->cells().get<ArithVarPtr>()};
     for (auto it = bounded.begin(); it != bounded.end();) {
         solver->push();
         // set up one equation for each variable
@@ -59,7 +58,7 @@ Bools::Expr removeRedundantInequations(const Bools::Expr e) {
         if (solver->check() == SmtResult::Sat) {
             it = bounded.erase(it);
         } else {
-            arith_lits.insert(arith::mkGeq(*it, arith::mkConst(0)));
+            arith_lits.insert(arith::mkGeq(*it, arith::zero));
             ++it;
         }
         solver->pop();

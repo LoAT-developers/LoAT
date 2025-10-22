@@ -3,21 +3,29 @@
 
 LoopComplexity LoopComplexity::compute(const RulePtr& rule) {
     LoopComplexity res;
-    for (const auto &[x, v] : rule->getUpdate()) {
-        const auto vars{theory::vars(v)};
-        ++res.non_recursive;
-        for (const auto &y : vars) {
-            if (x == y) {
-                --res.non_recursive;
-            } else if (theory::isTempVar(y)) {
-                ++res.tmp_vars;
-            } else {
-                ++res.foreign_vars;
-            }
-        }
+    for (const auto &p : rule->getUpdate()) {
+        theory::apply(
+            p,
+            [&](const auto& p) {
+                const auto& [x, v]{p};
+                const auto vars{v->vars()};
+                ++res.non_recursive;
+                for (const auto& y : vars) {
+                    if (Var(x) == Var(y)) {
+                        --res.non_recursive;
+                    } else if (theory::isTempVar(y)) {
+                        ++res.tmp_vars;
+                    } else {
+                        ++res.foreign_vars;
+                    }
+                }
+            });
     }
-    for (const auto &[x, v] : rule->getUpdate<Arith>()) {
-        if (v->vars().contains(x) && v->isPoly(x) == 1) {
+    for (const auto &[x_arr, v_arr] : rule->getUpdate<Arrays<Arith>>()) {
+        assert(x_arr->dim() == 0);
+        assert(v_arr->isArrayWrite());
+        const ArithVarPtr x {arrays::readConst(x_arr)};
+        if (const Arith::Expr v {(*v_arr->isArrayWrite())->val()}; v->has(x) && v->isPoly(x) == 1) {
             if (const auto coeff{v->coeff(x)}) {
                 if (const auto c{(*coeff)->isRational()}; c && ***c < 0) {
                     ++res.negated_int;

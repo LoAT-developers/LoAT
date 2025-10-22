@@ -12,12 +12,12 @@ struct Bools {
     using Var = BoolVarPtr;
     using Const = bool;
     using Expr = cpp::not_null<std::shared_ptr<const BoolExpr>>;
-    using Model = linked_hash_map<Var, Const>;
     using Renaming = boost::bimap<boost::bimaps::unordered_set_of<Var>, boost::bimaps::unordered_set_of<Var>>;
     using Subs = BoolSubs;
 
     static Expr constToExpr(Const val);
     static Expr varToExpr(const Var& var);
+    static Expr cellToExpr(const Var& var);
     static Expr anyValue();
     static Var next(unsigned);
     static Expr mkEq(const Expr&, const Expr&);

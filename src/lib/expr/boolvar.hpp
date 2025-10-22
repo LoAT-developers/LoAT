@@ -6,20 +6,19 @@
 #include "notnull.hpp"
 #include "conshash.hpp"
 #include "sexpresso.hpp"
+#include "exprfwd.hpp"
 
 class BoolVar;
 
 using BoolVarPtr = cpp::not_null<std::shared_ptr<const BoolVar>>;
 
 namespace bools {
-    BoolVarPtr mkVar(const int idx);
+    BoolVarPtr mkVar(int idx);
 }
 
-class BoolVar {
+class BoolVar: std::enable_shared_from_this<BoolVar> {
 
-friend BoolVarPtr bools::mkVar(const int idx);
-
-private:
+friend BoolVarPtr bools::mkVar(int idx);
 
     static int last_prog_idx;
     static int last_tmp_idx;
@@ -36,10 +35,7 @@ private:
 
 public:
 
-    friend auto operator<=>(const BoolVar &x, const BoolVar &y) = default;
-    friend bool operator==(const BoolVar &x, const BoolVar &y) = default;
-
-    BoolVar(const int idx);
+    explicit BoolVar(int idx);
     ~BoolVar();
 
     std::string getName() const;
@@ -50,9 +46,9 @@ public:
 
     static BoolVarPtr nextProgVar();
 
-    static BoolVarPtr postVar(const BoolVarPtr&);
+    BoolVarPtr postVar() const;
 
-    static BoolVarPtr progVar(const BoolVarPtr&);
+    BoolVarPtr progVar() const;
 
     bool isTempVar() const;
 
@@ -64,11 +60,13 @@ public:
 
     sexpresso::Sexp to_smtlib() const;
 
-    unsigned dim() const;
+    static unsigned dim();
+
+    BoolExprPtr subs(const Subs&) const;
 
 };
 
-std::ostream& operator<<(std::ostream &s, const BoolVarPtr e);
+std::ostream& operator<<(std::ostream &s, const BoolVarPtr& e);
 
 template<>
 struct std::hash<BoolVar> {

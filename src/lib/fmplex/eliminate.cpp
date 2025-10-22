@@ -4,9 +4,12 @@
  */
 
 #include "eliminate.h"
-#include <iostream>
 #include <fstream>
 
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/StdVector>
+
+#include "fmplex.h"
 
 namespace fmplex {
 
@@ -14,7 +17,7 @@ template<typename Var>
 struct VariableIndex {
     std::vector<Var> m_vars;
 
-    VariableIndex() {}
+    VariableIndex() = default;
 
     explicit VariableIndex(const std::vector<Var>& vs) : m_vars(vs) {}
 
@@ -43,13 +46,16 @@ struct VariableIndex {
 using Poly = Arith::Expr;
 
 
-Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>& vars) {
+Formula eliminate_variables(const Formula& f, const linked_hash_set<ArithVarPtr>& vars) {
     if (const auto lit {f->getTheoryLit()}) {
         return std::visit(Overload{
             [&](const Arith::Lit &lit) {
-                auto f_vars = lit->vars();
-                if (std::any_of(
-                    vars.begin(), vars.end(), [&f_vars](const auto& v){ return f_vars.contains(v); }
+                const auto f_vars = lit->vars();
+                if (std::ranges::any_of(
+                    vars,
+                    [&](const auto& v) {
+                        return f_vars.contains(v->var());
+                    }
                 )) {
                     return top();
                 }
@@ -66,14 +72,14 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
     auto lits = f->lits();
     const auto constraints = lits.get<Arith::Lit>();
     // TODO: equality substitution, filtering
-    const auto vs = f->vars().get<Arith::Var>();
-    std::vector<Arith::Var> var_idx {vars.begin(), vars.end()};
+    const auto vs = f->vars().get<Arrays<Arith>::Var>();
+    std::vector<ArithVarPtr> var_idx {vars.begin(), vars.end()};
     for (const auto &x: vs) {
-        if (!vars.contains(x)) {
-            var_idx.emplace_back(x);
+        if (const auto cell {arrays::readConst(x)}; !vars.contains(cell)) {
+            var_idx.emplace_back(cell);
         }
     }
-    std::unordered_map<Arith::Var, size_t> var_pos;
+    std::unordered_map<ArithVarPtr, size_t> var_pos;
     size_t i = 0;
     for (const auto &x: var_idx) {
         var_pos.emplace(x, i);
@@ -97,11 +103,11 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
     // transform each constraint into a row
     auto it = constraints.begin();
     for (std::size_t r = 0; it != constraints.end(); ++r, ++it) {
-        auto rel = *it;
+        const auto& rel = *it;
 
         assert(!rel->isNeq());
         // TODO adjiust to support weak relations
-        std::vector<Arith::Expr> lhss = rel->isEq() ? std::vector{rel->lhs(), -rel->lhs()} : std::vector{-rel->lhs() + arith::mkConst(1)};
+        std::vector<Arith::Expr> lhss = rel->isEq() ? std::vector{rel->lhs(), -rel->lhs()} : std::vector{-rel->lhs() + arith::one};
         // smtrat automatically converts constraints to < or <=
         for (auto &lhs: lhss) {
             std::vector<Matrix::RowEntry> entries; // TODO: make it so that the contents of the row are actually already in the matrix data
@@ -127,7 +133,7 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
                 for (const auto &mul : muls) {
                     const auto &args{mul->getArgs()};
                     assert(args.size() == 2);
-                    std::optional<Arith::Var> x;
+                    std::optional<ArithVarPtr> x;
                     std::optional<Rational> coeff;
                     for (const auto &arg : args) {
                         if (const auto y{arg->isVar()}) {
@@ -143,12 +149,14 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
                 }
             }
             // the order in the polynomial may be different from the order in the var index
-            std::sort(entries.begin(), entries.end(),
-                      [](const auto &lhs, const auto &rhs) { return lhs.col_index < rhs.col_index; });
+            std::ranges::sort(
+                entries,
+                [](const auto& lhs, const auto& rhs) {
+                    return lhs.col_index < rhs.col_index;
+                });
 
-            const auto constant_part = lhs->getConstantAddend();
             // constant part, delta, and origin
-            if (constant_part != 0) {
+            if (const auto constant_part = lhs->getConstantAddend(); constant_part != 0) {
                 entries.emplace_back(constant_col, constant_part);
             }
             // TODO adjust to support weak relations
@@ -180,9 +188,9 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<Arith::Var>&
         const auto lhs = arith::mkPlus(std::move(addends));
         // TODO adjust to support weak relations
         // This method is only applied to pos.lin. combinations, so the delta coeff will be >=0
-        // if (it != row_end && it->col_index == delta_col) conjuncts.emplace(arith::mkLt(lhs, arith::mkConst(0)));
-        // else conjuncts.emplace(arith::mkLeq(lhs, arith::mkConst(0)));
-        conjuncts.emplace(arith::mkLeq(lhs, arith::mkConst(0)));
+        // if (it != row_end && it->col_index == delta_col) conjuncts.emplace(arith::mkLt(lhs, arith::zero));
+        // else conjuncts.emplace(arith::mkLeq(lhs, arith::zero));
+        conjuncts.emplace(arith::mkLeq(lhs, arith::zero));
     }
 
     lits.get<Arith::Lit>() = conjuncts;
@@ -196,8 +204,8 @@ std::pair<EigenMat, EigenVec> eliminate_cols(const EigenMat& constraints,
                                              const std::vector<std::size_t>& cols) {
     // convert to internal matrix type
     Matrix m(constraints.rows(), constraints.cols() + 2 + constraints.rows());
-    std::size_t quantified_cols = cols.size();
-    VariableIndex<std::size_t> var_idx(cols);
+    const std::size_t quantified_cols = cols.size();
+    VariableIndex var_idx(cols);
     for (long i = 0, q = 0; i < constraints.rows(); ++i) {
         if (static_cast<unsigned long>(q) < cols.size() && static_cast<unsigned long>(i) == cols[q]) ++q;
         else var_idx.add_variable(i);
@@ -215,7 +223,7 @@ std::pair<EigenMat, EigenVec> eliminate_cols(const EigenMat& constraints,
         m.append_row(row.begin(), row.end());
     }
 
-    Matrix res = FMplexElimination(m, quantified_cols, constraints.cols() - quantified_cols).apply();
+    const Matrix res = FMplexElimination(m, quantified_cols, constraints.cols() - quantified_cols).apply();
 
     EigenMat res_mat = EigenMat::Zero(res.n_rows(), constraints.cols());
     EigenVec res_const = EigenVec::Zero(res.n_rows());

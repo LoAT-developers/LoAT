@@ -67,14 +67,14 @@ TRPUtil::TRPUtil(
         std::cout << "safetyproblem:\n"
                   << t << std::endl;
     }
-    vars.insert(trace_var);
-    vars.insert(trp.get_n());
+    vars.insert(trace_var->var());
+    vars.insert(trp.get_n()->var());
     if (Config::Analysis::termination()) {
-        vars.insert(safety_var);
+        vars.insert(safety_var->var());
     }
     for (const auto &x : t.vars()) {
         theory::apply(x, [&](const auto &x) {
-            vars.insert(x->isPostVar() ? x->progVar(x) : x);
+            vars.insert(x->isPostVar() ? x->progVar() : x);
         });
     }
     solver->enableModels();
@@ -118,14 +118,19 @@ const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
     }
     while (subs.size() < start + steps) {
         Renaming s;
-        for (const auto &var : vars) {
-            if (theory::isProgVar(var)) {
-                const auto post_var{theory::postVar(var)};
-                s.insert(var, subs.back()[0].get(post_var));
-                s.insert(post_var, theory::next(post_var));
-            } else {
-                s.insert(var, theory::next(var));
-            }
+        for (const auto& var : vars) {
+            theory::apply(
+                var,
+                [&](const auto& var) {
+                    using T = decltype(theory::theory(var));
+                    if (var->isProgVar()) {
+                        const auto post_var{var->postVar()};
+                        s.insert(var, subs.back()[0].get(post_var));
+                        s.insert(post_var, T::next(post_var->dim()));
+                    } else {
+                        s.insert(var, T::next(var->dim()));
+                    }
+                });
         }
         subs.push_back({s});
     }
@@ -133,12 +138,16 @@ const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
     while (pre_vec.size() < steps) {
         auto &post{subs.at(start + pre_vec.size()).front()};
         Renaming s;
-        for (const auto &var : vars) {
-            s.insert(var, pre_vec.front().get(var));
-            if (theory::isProgVar(var)) {
-                const auto post_var{theory::postVar(var)};
-                s.insert(post_var, post.get(post_var));
-            }
+        for (const auto& var : vars) {
+            theory::apply(
+                var,
+                [&](const auto& var) {
+                    s.insert(var, pre_vec.front().get(var));
+                    if (var->isProgVar()) {
+                        const auto post_var{var->postVar()};
+                        s.insert(post_var, post.get(post_var));
+                    }
+                });
         }
         pre_vec.push_back(s);
     }
@@ -210,7 +219,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     return id;
 }
 
-Bools::Expr TRPUtil::specialize(const Bools::Expr& e, const ModelPtr &model, const std::function<bool(const Var &)> &eliminate) const {
+Bools::Expr TRPUtil::specialize(const Bools::Expr& e, const ModelPtr &model, const std::function<bool(const Cell &)> &eliminate) const {
     const auto sip{model->syntacticImplicant(e)};
     if (Config::Analysis::log) {
         std::cout << "sip: " << sip << std::endl;
@@ -226,7 +235,7 @@ Bools::Expr TRPUtil::specialize(const Bools::Expr& e, const ModelPtr &model, con
     return mbp_res;
 }
 
-std::pair<Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const std::function<bool(const Var &)> &eliminate) {
+std::pair<Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const std::function<bool(const Cell &)> &eliminate) {
     assert (!range.empty());
     const auto [transition, model]{compress(range)};
     if (Config::Analysis::log) {
@@ -238,14 +247,14 @@ std::pair<Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const s
 }
 
 std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const ModelPtr &model) {
-    const auto &ptp {t.pre_to_post().get<Arith>()};
+    const auto &ptp {t.pre_to_post().get<Arrays<Arith>>()};
     for (const auto lits {loop->lits().get<Arith::Lit>()}; const auto &l: lits) {
         if (l->isGt()) {
             auto lhs{l->lhs()};
             if (const auto vars{lhs->vars()};
                 (std::ranges::all_of(vars, theory::isProgVar) && model->eval(lhs) > model->eval(lhs->renameVars(ptp)))
                 || (std::ranges::all_of(vars, theory::isPostVar) && model->eval(
-                    lhs->renameVars(post_to_pre.get<Arith>())) > model->eval(lhs))) {
+                    lhs->renameVars(post_to_pre.get<Arrays<Arith>>())) > model->eval(lhs))) {
                 if (Config::Analysis::log) {
                     std::cout << "found ranking function " << lhs << std::endl;
                 }
@@ -256,20 +265,22 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const Mo
     const auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
     std::vector<Arith::Expr> bounded;
     std::vector<Arith::Expr> decreasing;
-    std::unordered_map<Arith::Var, Arith::Var> coeffs;
+    std::unordered_map<ArithVarPtr, ArithVarPtr> coeffs;
     for (const auto &[pre,post]: ptp) {
-        if (pre == its->getLocVar()) {
+        if (pre == its->getLocVar()->var()) {
             continue;
         }
-        const auto coeff {ArithVar::next()};
-        coeffs.emplace(pre, coeff);
-        const auto pre_val {arith::mkConst(model->get(pre))};
-        const auto post_val {arith::mkConst(model->get(post))};
+        const auto pre_cell {arrays::readConst(pre)};
+        const auto post_cell {arrays::readConst(post)};
+        const auto coeff {arrays::nextConst<Arith>()};
+        coeffs.emplace(arrays::readConst(pre), coeff);
+        const auto pre_val {arith::mkConst(model->get(pre_cell))};
+        const auto post_val {arith::mkConst(model->get(post_cell))};
         bounded.emplace_back(coeff->toExpr() * pre_val);
         decreasing.emplace_back(coeff->toExpr() * pre_val - coeff->toExpr() * post_val);
     }
-    solver->add(arith::mkGt(arith::mkPlus(std::move(bounded)), arith::mkConst(0)));
-    solver->add(arith::mkGt(arith::mkPlus(std::move(decreasing)), arith::mkConst(0)));
+    solver->add(arith::mkGt(arith::mkPlus(std::move(bounded)), arith::zero));
+    solver->add(arith::mkGt(arith::mkPlus(std::move(decreasing)), arith::zero));
     if (solver->check() == SmtResult::Sat) {
         const auto rf_model {solver->model()};
         std::vector<Arith::Expr> addends;
@@ -298,10 +309,16 @@ bool TRPUtil::build_cex() {
     }
     Subs up;
     Renaming post_to_tmp;
-    for (const auto &[pre, post]: t.pre_to_post()) {
-        const auto tmp {theory::next(post)};
-        up.put(pre, theory::toExpr(tmp));
-        post_to_tmp.insert(post, tmp);
+    for (const auto &p: t.pre_to_post()) {
+        theory::apply(
+            p,
+            [&](const auto& p) {
+                const auto& [pre, post] {p};
+                using T = decltype(theory::theory(pre));
+                const auto tmp {T::next(post->dim())};
+                up.put(pre, T::varToExpr(tmp));
+                post_to_tmp.insert(post, tmp);
+            });
     }
     Renaming tmp_to_post {post_to_tmp.invert()};
     while (!todo.empty()) {
@@ -338,8 +355,8 @@ bool TRPUtil::build_cex() {
             false,
             true,
             Config::Accel::non_linear,
-            ArithVar::next(),
-            arith::mkConst(0)
+            arrays::nextConst<Arith>(),
+            arith::zero
         })};
         if (accel_res.accel) {
             if (Config::Analysis::log) {
@@ -347,12 +364,16 @@ bool TRPUtil::build_cex() {
             }
             std::vector conjuncts {accel_res.accel->rule->getGuard()};
             const auto &accel_up {accel_res.accel->rule->getUpdate()};
-            for (const auto &[pre,post]: t.pre_to_post()) {
-                if (accel_up.contains(pre)) {
-                    conjuncts.push_back(theory::mkEq(theory::toExpr(post), accel_up.get(pre)));
-                } else {
-                    conjuncts.push_back(theory::mkEq(theory::toExpr(post), theory::toExpr(pre)));
-                }
+            for (const auto &p: t.pre_to_post()) {
+                theory::apply(
+                    p,
+                    [&](const auto& p) {
+                        if (const auto& [pre, post]{p}; accel_up.contains(pre)) {
+                            conjuncts.push_back(theory::mkEq(theory::toExpr(post), accel_up.get(pre)));
+                        } else {
+                            conjuncts.push_back(theory::mkEq(theory::toExpr(post), theory::toExpr(pre)));
+                        }
+                    });
             }
             accel.put(current, bools::mkAnd(conjuncts)->renameVars(tmp_to_post));
         } else {
@@ -384,7 +405,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
         if (const auto vars {b->vars()}; is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
             continue;
         }
-        if (vars.contains(n)) {
+        if (vars.contains(n->var())) {
             const auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
             solver->push();
             solver->add(b->eval(model, n));
@@ -393,7 +414,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
                 model->put(n, n_val);
                 const Bools::Expr projected{
                     mbp::int_mbp(b, model, mbp_kind, [&](const auto& x) {
-                        return x == Var(n);
+                        return x == Cell(n);
                     })
                 };
                 add_blocking_clause(range, id, projected);

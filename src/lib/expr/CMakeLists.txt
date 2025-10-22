@@ -12,7 +12,6 @@ add_library(${PROJECT_NAME} OBJECT
   boolvar.cpp
   boollit.hpp
   boollit.cpp
-  arithvar.cpp
   arithexpr.cpp
   arithexpr.hpp
   arithlit.cpp
@@ -31,8 +30,6 @@ add_library(${PROJECT_NAME} OBJECT
   boolsubs.cpp
   theory.hpp
   theory.cpp
-  arithsubs.hpp
-  arithsubs.cpp
   arithconstant.cpp
   exp.cpp
   mult.cpp

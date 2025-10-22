@@ -9,16 +9,16 @@ TEST(LoatTransitionToITSConverterTest, FullConversionTest)
 {
     LoatTransitionToITSConverter converter;
 
-    auto x = LoatIntExpression::mkPreVar("x");
-    auto y = LoatIntExpression::mkPreVar("y");
+    const auto x = LoatIntExpression::mkPreVar("x");
+    const auto y = LoatIntExpression::mkPreVar("y");
 
     auto cmp1 = LoatBoolExpression::mkLt(x, LoatIntExpression::mkConst(5));
     auto cmp2 = LoatBoolExpression::mkGe(y, x);
 
-    auto formula = LoatBoolExpression::mkAnd({cmp1, cmp2});
-    LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), formula);
+    const auto formula = LoatBoolExpression::mkAnd({cmp1, cmp2});
+    const LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), formula);
 
-    auto rule = converter.convert(transition);
+    const auto rule = converter.convert(transition);
 
     ASSERT_FALSE(rule->getGuard() == BoolExpr::top());
     ASSERT_FALSE(rule->getGuard() == BoolExpr::bot());
@@ -31,20 +31,20 @@ TEST(LoatTransitionToITSConverterTest, ComplexGuardTest)
 {
     LoatTransitionToITSConverter converter;
 
-    auto x = LoatIntExpression::mkPreVar("x");
-    auto y = LoatIntExpression::mkPreVar("y");
-    auto z = LoatIntExpression::mkPreVar("z");
+    const auto x = LoatIntExpression::mkPreVar("x");
+    const auto y = LoatIntExpression::mkPreVar("y");
+    const auto z = LoatIntExpression::mkPreVar("z");
 
     auto cmp1 = LoatBoolExpression::mkLt(x, LoatIntExpression::mkConst(5));
     auto cmp2 = LoatBoolExpression::mkGt(y, LoatIntExpression::mkConst(3));
     auto cmp3 = LoatBoolExpression::mkEq(z, LoatIntExpression::mkConst(0));
 
     auto and_part = LoatBoolExpression::mkAnd({cmp1, cmp2});
-    auto or_guard = LoatBoolExpression::mkOr({and_part, cmp3});
+    const auto or_guard = LoatBoolExpression::mkOr({and_part, cmp3});
 
-    LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), or_guard);
+    const LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), or_guard);
 
-    auto rule = converter.convert(transition);
+    const auto rule = converter.convert(transition);
 
     ASSERT_FALSE(rule->getGuard() == BoolExpr::top());
     ASSERT_FALSE(rule->getGuard() == BoolExpr::bot());
@@ -57,17 +57,17 @@ TEST(LoatTransitionToITSConverterTest, MultipleTransitionsTest)
 {
     LoatTransitionToITSConverter converter;
 
-    auto x = LoatIntExpression::mkPreVar("x");
-    auto y = LoatIntExpression::mkPreVar("y");
+    const auto x = LoatIntExpression::mkPreVar("x");
+    const auto y = LoatIntExpression::mkPreVar("y");
 
-    auto guard1 = LoatBoolExpression::mkLt(x, LoatIntExpression::mkConst(5));
-    LoatTransition transition1(LoatLocation("q0"), LoatLocation("q1"), guard1);
+    const auto guard1 = LoatBoolExpression::mkLt(x, LoatIntExpression::mkConst(5));
+    const LoatTransition transition1(LoatLocation("q0"), LoatLocation("q1"), guard1);
 
-    auto guard2 = LoatBoolExpression::mkGe(y, LoatIntExpression::mkConst(2));
-    LoatTransition transition2(LoatLocation("q1"), LoatLocation("q2"), guard2);
+    const auto guard2 = LoatBoolExpression::mkGe(y, LoatIntExpression::mkConst(2));
+    const LoatTransition transition2(LoatLocation("q1"), LoatLocation("q2"), guard2);
 
-    auto rule1 = converter.convert(transition1);
-    auto rule2 = converter.convert(transition2);
+    const auto rule1 = converter.convert(transition1);
+    const auto rule2 = converter.convert(transition2);
 
     ASSERT_FALSE(rule1->getGuard() == BoolExpr::top());
     ASSERT_FALSE(rule2->getGuard() == BoolExpr::top());
@@ -78,12 +78,12 @@ TEST(LoatTransitionToITSConverterTest, BoolVarConversionTest)
     LoatTransitionToITSConverter converter;
 
     auto x = LoatBoolExpression::mkPreVar("x");
-    auto y = LoatBoolExpression::mkPreVar("y");
+    const auto y = LoatBoolExpression::mkPreVar("y");
 
-    auto formula = LoatBoolExpression::mkAnd({x, LoatBoolExpression::mkNot(y)});
-    LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), formula);
+    const auto formula = LoatBoolExpression::mkAnd({x, LoatBoolExpression::mkNot(y)});
+    const LoatTransition transition(LoatLocation("q0"), LoatLocation("q1"), formula);
 
-    auto rule = converter.convert(transition);
+    const auto rule = converter.convert(transition);
     const auto &subs = rule->getUpdate();
 
     EXPECT_EQ(subs.size(), 2);
@@ -127,6 +127,6 @@ TEST(LoatTransitionToITSConverterTest, SingleTransitionToITS)
     EXPECT_EQ(update.size(), 2u);
 
     // Check that the location variable appears in the update
-    Arith::Var locVar = its->getLocVar();
+    const auto locVar = its->getLocVar()->var();
     EXPECT_TRUE(update.contains(locVar));
 }

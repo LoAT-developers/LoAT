@@ -3,7 +3,6 @@
 #include <ranges>
 
 #include "theory.hpp"
-#include "subs.hpp"
 
 BoolSubs::BoolSubs(const BoolVarPtr& key, const Bools::Expr& val): map({{key, val}}) {}
 
@@ -84,7 +83,7 @@ BoolSubs BoolSubs::project(const std::function<bool(BoolVarPtr)> &keep) const {
     return res;
 }
 
-BoolSubs BoolSubs::concat(const ArithSubs& that) const {
+BoolSubs BoolSubs::concat(const ArraySubs<Arith>& that) const {
     BoolSubs res;
     for (auto &[fst,snd]: *this) {
         res.put(fst, snd->subs(that));
@@ -126,6 +125,12 @@ linked_hash_set<BoolVarPtr> BoolSubs::domain() const {
 void BoolSubs::collectCoDomainVars(VarSet &vars) const {
     for (const auto& val : map | std::views::values) {
         val->collectVars(vars);
+    }
+}
+
+void BoolSubs::collectCoDomainCells(CellSet& res) const {
+    for (const auto& val : map | std::views::values) {
+        val->collectCells(res);
     }
 }
 

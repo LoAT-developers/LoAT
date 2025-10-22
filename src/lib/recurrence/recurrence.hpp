@@ -14,11 +14,11 @@ public:
         unsigned int prefix {0};
     };
 
-    static std::optional<Result> solve(const Subs &equations, const Arith::Var& n);
+    static std::optional<Result> solve(const Subs &equations, const ArithVarPtr& n);
 
 private:
 
-    Recurrence(Subs equations, Arith::Var  n);
+    Recurrence(Subs equations, ArithVarPtr  n);
 
     std::optional<std::tuple<Int, Int, Arith::Expr>> handle_exp(const ArithExpPtr &pow) const;
 
@@ -26,7 +26,7 @@ private:
 
     bool solve();
 
-    bool solve(const Arith::Var& x, const Arith::Expr& rhs);
+    bool solve(const ArithVarPtr& x, const Arith::Expr& rhs);
 
     bool solve(const Bools::Var &lhs, const Bools::Expr& rhs);
 
@@ -34,7 +34,7 @@ private:
 
     Subs equations;
 
-    const Arith::Var n;
+    const ArithVarPtr n;
 
     /**
      * Substitution map, mapping variables to their recurrence equations

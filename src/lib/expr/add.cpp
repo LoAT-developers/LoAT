@@ -79,7 +79,7 @@ ArithExprPtr arith::mkPlusImpl(std::vector<ArithExprPtr> &&args) {
         }
     }
     if (args.empty()) {
-        return mkConst(0);
+        return zero;
     }
     if (args.size() == 1) {
         return args[0];

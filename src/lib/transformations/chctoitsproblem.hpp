@@ -11,7 +11,7 @@ class CHCToITS {
 
     CHCPtr chcs;
     ITSPtr its {std::make_shared<ITSProblem>()};
-    std::vector<Arith::Var> vars;
+    std::vector<ArithVarPtr> vars;
     std::vector<Arrays<Arith>::Var> avars;
     std::vector<Bools::Var> bvars;
     std::unordered_map<RulePtr, ClausePtr> clause_map;

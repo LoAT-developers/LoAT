@@ -4,7 +4,6 @@
 #include <unordered_set>
 
 #include "arithexpr.hpp"
-#include "arithsubs.hpp"
 
 enum class BoundKind {
     Lower, Upper, Equality
@@ -70,7 +69,7 @@ class ArithLit final: public std::enable_shared_from_this<ArithLit> {
 
 public:
 
-    ArithLit(const ArithExprPtr& lhs, Kind kind);
+    ArithLit(ArithExprPtr  lhs, Kind kind);
     ~ArithLit();
 
     ArithExprPtr lhs() const;
@@ -81,19 +80,20 @@ public:
     std::optional<std::pair<ArithExprPtr, Int>> isDivisibility() const;
     std::optional<Divisibility> isDivisibility(const ArithVarPtr& n) const;
     std::optional<ArithExprPtr> getEquality(const ArithVarPtr& n) const;
-    void propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const;
+    void propagateEquality(ArraySubs<Arith> &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const;
     ArithLitPtr eval(const ModelPtr&, const ArithVarPtr &keep) const;
 
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
-    void collectVars(linked_hash_set<ArithVarPtr> &res) const;
+    void collectVars(linked_hash_set<ArrayVarPtr<Arith>> &res) const;
     bool has(const ArithVarPtr&) const;
     bool isGt() const;
     bool isEq() const;
     bool isNeq() const;
-    ArithLitPtr subs(const ArithSubs &map) const;
-    ArithLitPtr renameVars(const arith_var_map &map) const;
-    linked_hash_set<ArithVarPtr> vars() const;
+    ArithLitPtr subs(const ArraySubs<Arith> &map) const;
+    ArithLitPtr subs(const Subs &map) const;
+    ArithLitPtr renameVars(const array_var_map<Arith> &map) const;
+    linked_hash_set<ArrayVarPtr<Arith>> vars() const;
 
     template <typename P>
     bool hasVarWith(P predicate) const {
@@ -102,6 +102,8 @@ public:
 
     std::size_t hash() const;
     sexpresso::Sexp to_smtlib() const;
+    void collectCells(linked_hash_set<ArrayReadPtr<Arith>>&) const;
+    linked_hash_set<ArrayReadPtr<Arith>> cells() const;
 
     static bool simplifyAnd(linked_hash_set<ArithLitPtr> &lits);
     static bool simplifyOr(linked_hash_set<ArithLitPtr> &lits);

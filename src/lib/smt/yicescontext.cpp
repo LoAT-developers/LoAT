@@ -9,12 +9,6 @@ YicesError::YicesError() {
 
 YicesContext::~YicesContext() { }
 
-term_t YicesContext::buildVar(const Arith::Var &var) {
-    const auto res = yices_new_uninterpreted_term(yices_int_type());
-    yices_set_term_name(res, var->getName().c_str());
-    return res;
-}
-
 term_t YicesContext::buildVar(const Bools::Var &var) {
     const auto res = yices_new_uninterpreted_term(yices_bool_type());
     yices_set_term_name(res, var->getName().c_str());

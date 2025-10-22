@@ -38,7 +38,6 @@ public:
 
 private:
 
-    z3::expr buildVar(const Arith::Var &var) override;
     z3::expr buildVar(const Bools::Var &var) override;
     z3::expr buildVar(const Arrays<Arith>::Var &var) override;
 

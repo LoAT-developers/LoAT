@@ -1,16 +1,17 @@
 #include "mbputil.hpp"
 
-std::optional<Arith::Expr> mbp::closest_lower_bound(const linked_hash_set<Bound> &bounds, const ModelPtr& model, const Arith::Var &x) {
+std::optional<Arith::Expr> mbp::closest_lower_bound(const linked_hash_set<Bound> &bounds, const ModelPtr& model, const ArithVarPtr &x) {
     std::optional<Arith::Expr> closest;
     Rational dist;
     const auto val {model->eval(x)};
     for (const auto & [bound, kind]: bounds) {
         if (kind == BoundKind::Lower) {
-            VarSet vars;
-            vars.get<Arith::Var>() = bound->vars();
             const auto b_val{model->evalToRational(bound)};
-            const auto d{mp::abs(val - b_val)};
-            if (!closest || d < dist || (d == dist && (*closest)->isRational() && !bound->isRational()) || (d == dist && bound < *closest)) {
+            if (const auto d{mp::abs(val - b_val)};
+                !closest
+                || d < dist
+                || (d == dist && (*closest)->isRational() && !bound->isRational())
+                || (d == dist && bound < *closest)) {
                 dist = d;
                 closest = bound;
             }

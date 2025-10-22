@@ -6,21 +6,22 @@
 #include "rulepreprocessing.hpp"
 
 #include <numeric>
+#include <utility>
 
 LoopAcceleration::LoopAcceleration(
-    const RulePtr rule,
+    RulePtr rule,
     const std::optional<Subs> &sample_point,
-    const AccelConfig &config)
-    : rule(rule), sample_point(sample_point), config(config) {}
+    AccelConfig config)
+    : rule(std::move(rule)), sample_point(sample_point), config(std::move(config)) {}
 
-std::pair<RulePtr, unsigned> LoopAcceleration::chain(const RulePtr rule) {
+std::pair<RulePtr, unsigned> LoopAcceleration::chain(const RulePtr& rule) {
     auto changed {false};
     auto res {rule};
     unsigned period {1};
     do {
         changed = false;
-        const auto chained {Preprocess::chain({res, res->renameTmpVars()})};
-        if (LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
+        if (const auto chained{Preprocess::chain({res, res->renameTmpVars()})};
+            LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
             res = chained;
             period *= 2;
             changed = true;
@@ -35,9 +36,9 @@ void LoopAcceleration::chain() {
     res.period = period;
 }
 
-void LoopAcceleration::store_nonterm(const AccelerationProblem::Accelerator &accelerator) {
-    if (accelerator.nonterm) {
-        res.nonterm = bools::mkAnd(accelerator.formula);
+void LoopAcceleration::store_nonterm(const AccelerationProblem::Accelerator &accel) {
+    if (accel.nonterm) {
+        res.nonterm = bools::mkAnd(accel.formula);
     }
 }
 
@@ -45,31 +46,33 @@ void LoopAcceleration::try_nonterm() {
     if (config.tryNonterm) {
         AccelConfig c {config};
         c.tryAccel = false;
-        const auto accelerator {AccelerationProblem(rule, rec, sample_point, c).computeRes()};
-        if (accelerator) {
+        if (const auto accelerator {AccelerationProblem(rule, rec, sample_point, c).computeRes()}) {
             store_nonterm(*accelerator);
         }
     }
 }
 
 void LoopAcceleration::compute_closed_form() {
-    const auto fail = [&]() {
+    const auto fail = [&] {
         res.prefix = 0;
         rec = {};
         res.status = acceleration::ClosedFormFailed;
     };
-    const auto is_temp_var = [](const auto z) {
+    const auto is_temp_var = [](const auto& z) {
         return z->isTempVar();
     };
     // Heuristic: Search for updates x = x + p where p contains temporary variables without lower bounds
     // and temporary variables without upper bounds. Such updates are pretty much equivalent to x = *,
     // but accelerating them sometimes yields quite complex expressions. Hence, we do not accelerate them.
-    for (const auto &[x, y] : rule->getUpdate().get<Arith>()) {
-        if (y->has(x) && y->hasVarWith(is_temp_var)) {
-            const auto vars{y->vars()};
+    for (const auto &[x_arr, y_arr] : rule->getUpdate().get<Arrays<Arith>>()) {
+        assert(x_arr->dim() == 0);
+        assert(y_arr->isArrayWrite());
+        const auto x {arrays::readConst(x_arr)};
+        if (const auto y {(*y_arr->isArrayWrite())->val()}; y->has(x) && y->hasVarWith(is_temp_var)) {
+            const auto cells{y->cells()};
             auto all_lower_bounded{true};
             auto all_upper_bounded{true};
-            for (const auto &z : vars) {
+            for (const auto &z : cells) {
                 // check all temporary variables
                 if (z->isTempVar()) {
                     // we can only check boundedness for linear expressions
@@ -88,14 +91,14 @@ void LoopAcceleration::compute_closed_form() {
                     auto lower_bounded{false};
                     auto upper_bounded{false};
                     // check if z is bounded
-                    for (const auto &b : bounds) {
+                    for (const auto & [bound, kind] : bounds) {
                         // early exit
                         if (lower_bounded && upper_bounded) {
                             break;
                         }
                         // only consider bounds without temporary variables to keep things simple
-                        if (!b.bound->hasVarWith(is_temp_var)) {
-                            switch (b.kind) {
+                        if (!bound->hasVarWith(is_temp_var)) {
+                            switch (kind) {
                             case BoundKind::Equality:
                                 lower_bounded = true;
                                 upper_bounded = true;
@@ -139,8 +142,7 @@ void LoopAcceleration::compute_closed_form() {
 
 void LoopAcceleration::accelerate() {
     if (rec && config.tryAccel) {
-        const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()};
-        if (accelerator) {
+        if (const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()}) {
             res.accel = acceleration::Accel(Rule::mk(bools::mkAnd(accelerator->formula), rec->closed_form));
             res.accel->covered = bools::mkAnd(accelerator->covered);
             store_nonterm(*accelerator);
@@ -190,9 +192,18 @@ void LoopAcceleration::prepend_prefix() {
 void LoopAcceleration::removeTrivialUpdates() {
     Subs update = rule->getUpdate();
     VarSet remove;
-    for (const auto &[x, v] : update.get<Arith>()) {
-        if (!remove.contains(x) && rule->getGuard()->getEquality(x) == std::optional{v}) {
-            remove.insert(x);
+    for (const auto &[x_arr, v_arr] : update.get<Arrays<Arith>>()) {
+        assert(x_arr->dim() == 0);
+        Arith::Expr v {arith::zero};
+        if (const auto write {v_arr->isArrayWrite()}) {
+            v = (*write)->val();
+        } else {
+            assert(v_arr->isVar());
+            v = arrays::readConst(v_arr);
+        }
+        if (const auto x{arrays::readConst(x_arr)};
+            rule->getGuard()->getEquality(x) == std::optional{v}) {
+            remove.insert(x->var());
         }
     }
     if (!remove.empty()) {
@@ -239,7 +250,7 @@ void LoopAcceleration::run() {
 }
 
 acceleration::Result LoopAcceleration::accelerate(
-    const RulePtr rule,
+    const RulePtr& rule,
     const Subs &sample_point,
     const AccelConfig &config) {
     LoopAcceleration accel{rule, sample_point, config};
@@ -248,7 +259,7 @@ acceleration::Result LoopAcceleration::accelerate(
 }
 
 acceleration::Result LoopAcceleration::accelerate(
-    const RulePtr rule,
+    const RulePtr& rule,
     const AccelConfig &config) {
     LoopAcceleration accel{rule, std::optional<Subs>(), config};
     accel.run();

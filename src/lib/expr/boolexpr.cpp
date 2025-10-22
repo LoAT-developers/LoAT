@@ -157,7 +157,7 @@ std::optional<Bools::Var> BoolExpr::isVar() const {
     return opt{};
 }
 
-Bools::Expr BoolExpr::subs(const Arith::Subs& subs) const {
+Bools::Expr BoolExpr::subs(const Arrays<Arith>::Subs& subs) const {
     return map([&](const auto& lit) {
         return bools::mkLit(theory::apply(
             lit,
@@ -193,19 +193,16 @@ Bools::Expr BoolExpr::renameVars(const Renaming& subs) const {
     return map([&](const auto& lit) {
         return bools::mkLit(theory::apply(
             lit,
-            [&](const Arith::Lit& lit) -> Lit {
-                return lit->renameVars(subs.get<Arith>());
-            },
             [&](const Bools::Lit& lit) -> Lit {
                 return lit->renameVars(subs.get<Bools>());
             },
-            [&](const Arrays<Arith>::Lit& lit) -> Lit {
-                return lit->renameVars(subs);
+            [&](const auto& lit) -> Lit {
+                return lit->renameVars(subs.get<Arrays<Arith>>());
             }));
     });
 }
 
-Bools::Expr BoolExpr::eval(const ModelPtr& model, const Arith::Var &keep) const {
+Bools::Expr BoolExpr::eval(const ModelPtr& model, const ArithVarPtr &keep) const {
     return map([&](const auto& lit) {
         return theory::apply(
             lit,
@@ -221,13 +218,13 @@ Bools::Expr BoolExpr::eval(const ModelPtr& model, const Arith::Var &keep) const 
     });
 }
 
-linked_hash_set<Bound> BoolExpr::getBounds(const Arith::Var& n) const {
+linked_hash_set<Bound> BoolExpr::getBounds(const ArithVarPtr& n) const {
     linked_hash_set<Bound> bounds;
     getBounds(n, bounds);
     return bounds;
 }
 
-void BoolExpr::getBounds(const Arith::Var& n, linked_hash_set<Bound> &res) const {
+void BoolExpr::getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const {
     if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
             std::get<Arith::Lit>(*lit)->getBounds(n, res);
@@ -261,13 +258,13 @@ void BoolExpr::getBounds(const Arith::Var& n, linked_hash_set<Bound> &res) const
     }
 }
 
-linked_hash_set<Divisibility> BoolExpr::getDivisibility(const Arith::Var& n) const {
+linked_hash_set<Divisibility> BoolExpr::getDivisibility(const ArithVarPtr& n) const {
     linked_hash_set<Divisibility> res;
     getDivisibility(n, res);
     return res;
 }
 
-void BoolExpr::getDivisibility(const Arith::Var& n, linked_hash_set<Divisibility> &res) const {
+void BoolExpr::getDivisibility(const ArithVarPtr& n, linked_hash_set<Divisibility> &res) const {
     if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
             std::get<Arith::Lit>(*lit)->getDivisibility(n, res);
@@ -301,7 +298,7 @@ void BoolExpr::getDivisibility(const Arith::Var& n, linked_hash_set<Divisibility
     }
 }
 
-std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var& n) const {
+std::optional<Arith::Expr> BoolExpr::getEquality(const ArithVarPtr& n) const {
     if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
             return std::get<Arith::Lit>(*lit)->getEquality(n);
@@ -316,7 +313,7 @@ std::optional<Arith::Expr> BoolExpr::getEquality(const Arith::Var& n) const {
     return {};
 }
 
-void BoolExpr::propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow, std::unordered_set<Arith::Var> &blocked) const {
+void BoolExpr::propagateEqualities(ArraySubs<Arith> &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const {
     if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
             std::get<Arith::Lit>(*lit)->subs(subs)->propagateEquality(subs, allow, blocked);
@@ -328,14 +325,14 @@ void BoolExpr::propagateEqualities(Arith::Subs &subs, const std::function<bool(c
     }
 }
 
-Arith::Subs BoolExpr::propagateEqualities(const std::function<bool(const Var &)> &allow) const {
-    Arith::Subs subs;
-    std::unordered_set<Arith::Var> blocked;
+ArraySubs<Arith> BoolExpr::propagateEqualities(const std::function<bool(const ArithVarPtr &)> &allow) const {
+    ArraySubs<Arith> subs;
+    std::unordered_set<ArithVarPtr> blocked;
     propagateEqualities(subs, allow, blocked);
     return subs;
 }
 
-Bools::Expr BoolExpr::toInfinity(const Arith::Var& n) const {
+Bools::Expr BoolExpr::toInfinity(const ArithVarPtr& n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -357,7 +354,7 @@ Bools::Expr BoolExpr::toInfinity(const Arith::Var& n) const {
     });
 }
 
-Bools::Expr BoolExpr::toMinusInfinity(const Arith::Var& n) const {
+Bools::Expr BoolExpr::toMinusInfinity(const ArithVarPtr& n) const {
     return map([&n](const Lit &lit){
         return std::visit(
             Overload{
@@ -480,6 +477,18 @@ VarSet BoolExpr::vars() const {
     VarSet res;
     collectVars(res);
     return res;
+}
+
+CellSet BoolExpr::cells() const {
+    CellSet res;
+    collectCells(res);
+    return res;
+}
+
+void BoolExpr::collectCells(CellSet& cells) const {
+    iter([&](const auto& lit) {
+        theory::collectCells(lit, cells);
+    });
 }
 
 LitSet BoolExpr::lits() const {

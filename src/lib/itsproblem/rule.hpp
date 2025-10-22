@@ -44,7 +44,7 @@ public:
         return update.get<Th>();
     }
 
-    RulePtr subs(const ArithSubs&) const;
+    RulePtr subs(const ArraySubs<Arith>&) const;
 
     RulePtr subs(const BoolSubs&) const;
 

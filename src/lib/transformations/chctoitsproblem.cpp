@@ -22,7 +22,7 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
         for (const auto& x : sig) {
             switch (x) {
             case theory::Type::Int:
-                args.emplace_back(vars.at(next_int_var));
+                args.emplace_back(vars.at(next_int_var)->var());
                 ++next_int_var;
                 break;
             case theory::Type::IntArray:
@@ -53,11 +53,11 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
                 x,
                 [&](const Arith::Expr&) {
                     const auto y{vars.at(next_int_var)};
-                    args.emplace_back(theory::toExpr(y));
+                    args.emplace_back(y);
                     ++next_int_var;
                 },
                 [&](const Arrays<Arith>::Expr&) {
-                    const auto y{avars.at(next_int_var)};
+                    const auto y{avars.at(next_arr_var)};
                     args.emplace_back(theory::toExpr(y));
                     ++next_arr_var;
                 },
@@ -158,7 +158,7 @@ ITSPtr CHCToITS::transform() {
     unsigned max_int_arity {chcs->max_arity<Arith>()};
     unsigned max_bool_arity {chcs->max_arity<Bools>()};
     for (unsigned i = 0; i < max_int_arity; ++i) {
-        vars.emplace_back(ArithVar::nextProgVar());
+        vars.emplace_back(arrays::nextProgConst<Arith>());
     }
     for (unsigned i = 0; i < max_bool_arity; ++i) {
         bvars.emplace_back(BoolVar::nextProgVar());
@@ -177,17 +177,16 @@ ITSPtr CHCToITS::transform() {
                 theory::apply(
                     ex,
                     [&](const Arith::Expr& x) {
-                        if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
-                            renaming.insert<Arith>(*var, vars[int_arg]);
-                        }
-                        else {
+                        if (const auto var{x->isVar()}; var && !renaming.contains((*var)->var())) {
+                            renaming.insert((*var)->var(), vars[int_arg]->var());
+                        } else {
                             constraints.emplace_back(theory::mkEq(x, vars[int_arg]));
                         }
                         ++int_arg;
                     },
                     [&](const Arrays<Arith>::Expr& x) {
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
-                            renaming.insert<Arrays<Arith>>(*var, avars[arr_arg]);
+                            renaming.insert(*var, avars[arr_arg]);
                         }
                         else {
                             constraints.emplace_back(theory::mkEq(x, avars[arr_arg]));
@@ -196,7 +195,7 @@ ITSPtr CHCToITS::transform() {
                     },
                     [&](const Bools::Expr& x) {
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
-                            renaming.insert<Bools>(*var, bvars[bool_arg]);
+                            renaming.insert(*var, bvars[bool_arg]);
                         }
                         else {
                             constraints.emplace_back(theory::mkEq(x, theory::toExpr(bvars[bool_arg])));
@@ -213,28 +212,30 @@ ITSPtr CHCToITS::transform() {
             for (const auto &arg : (*conc)->get_args()) {
                 theory::apply(
                     arg,
-                    [&](const Arith::Expr& var) {
-                        up.put<Arith>(vars[int_arg], var);
+                    [&](const Arith::Expr& arg) {
+                        const auto var {vars[int_arg]};
+                        up.update(var, arg);
                         ++int_arg;
                     },
                     [&](const Arrays<Arith>::Expr& var) {
-                        up.put<Arrays<Arith>>(avars[int_arg], var);
+                        up.put(avars[int_arg], var);
                         ++arr_arg;
                     },
                     [&](const Bools::Expr& var) {
-                        up.put<Bools>(bvars[bool_arg], var);
+                        up.put(bvars[bool_arg], var);
                         ++bool_arg;
                     });
             }
             for (unsigned i = int_arg; i < max_int_arity; ++i) {
-                up.put<Arith>(vars[i], ArithVar::next()->toExpr());
+                up.update(vars[i], arrays::nextConst<Arith>());
             }
             for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
-                up.put<Bools>(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
+                up.put(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
             }
         }
         const auto rhs_loc = c->get_conclusion() ? its->getOrAddLocation((*c->get_conclusion())->get_pred()) : its->getSink();
-        up.put<Arith>(its->getLocVar(), arith::mkConst(rhs_loc));
+        const auto loc_var {its->getLocVar()->var()};
+        up.writeConst(loc_var, arith::mkConst(rhs_loc));
         const auto rule{Rule::mk(bools::mkAnd(constraints), up)->renameVars(renaming)};
         if (Config::Analysis::model) {
             clause_map.emplace(rule, c);

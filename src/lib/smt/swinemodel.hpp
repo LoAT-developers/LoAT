@@ -18,9 +18,7 @@ public:
 
 protected:
 
-    Arith::Const getImpl(const Arith::Var&) override;
     Bools::Const getImpl(const Bools::Var&) override;
-    Arith::Const getImpl(const ArrayReadPtr<Arith>&) override;
     Rational evalToRationalImpl(const Arith::Expr&) override;
     std::string toString(const Expr&) override;
 

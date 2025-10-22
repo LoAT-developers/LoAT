@@ -19,7 +19,7 @@ SmtResult BMC::analyze() {
         bkind->add(init);
     }
 
-    auto step {bools::mkOr(sp.trans())};
+    const auto step {bools::mkOr(sp.trans())};
 
     const auto err = do_kind ? mbp::int_qe(sp.err()) : sp.err();
 
@@ -27,11 +27,15 @@ SmtResult BMC::analyze() {
     step->collectVars(vars);
     err->collectVars(vars);
     for (const auto &var: vars) {
-        if (theory::isProgVar(var)) {
-            pre_to_post.insert(var, theory::postVar(var));
-        } else if (theory::isPostVar(var)) {
-            pre_to_post.insert(theory::progVar(var), var);
-        }
+        theory::apply(
+            var,
+            [&](const auto& var) {
+                if (var->isProgVar()) {
+                    pre_to_post.insert(var, var->postVar());
+                } else if (var->isPostVar()) {
+                    pre_to_post.insert(var->progVar(), var);
+                }
+            });
     }
 
     Renaming last_s;
@@ -54,14 +58,25 @@ SmtResult BMC::analyze() {
         }
         solver->pop();
         Renaming s;
-        for (const auto &[pre,post]: pre_to_post) {
-            s.insert(pre, last_s.get(post));
-            s.insert(post, theory::next(post));
+        for (const auto &p: pre_to_post) {
+            theory::apply(
+                p,
+                [&](const auto& p) {
+                    const auto& [pre, post] {p};
+                    using T = decltype(theory::theory(pre));
+                    s.insert(pre, last_s.get(post));
+                    s.insert(post, T::next(post->dim()));
+                });
         }
-        for (const auto &var: vars) {
-            if (theory::isTempVar(var)) {
-                s.insert(var, theory::next(var));
-            }
+        for (const auto& var : vars) {
+            theory::apply(
+                var,
+                [&](const auto& var) {
+                    using T = decltype(theory::theory(var));
+                    if (var->isTempVar()) {
+                        s.insert(var, T::next(var->dim()));
+                    }
+                });
         }
         ++depth;
         if (!approx && do_kind) {
@@ -111,11 +126,17 @@ ITSModel BMC::get_model() const {
                 const auto &s1{renamings.at(i)};
                 last = last && step->renameVars(s1);
                 Renaming s2;
-                for (const auto &[pre,post]: pre_to_post) {
-                    if (theory::isProgVar(pre)) {
-                        s2.insert(s1.get(post), pre);
-                        s2.insert(pre, theory::next(pre));
-                    }
+                for (const auto &p: pre_to_post) {
+                    theory::apply(
+                        p,
+                        [&](const auto& p) {
+                            const auto& [pre, post] {p};
+                            using T = decltype(theory::theory(pre));
+                            if (pre->isProgVar()) {
+                                s2.insert(s1.get(post), pre);
+                                s2.insert(pre, T::next(pre->dim()));
+                            }
+                        });
                 }
                 res.push_back(last->renameVars(s2));
             }

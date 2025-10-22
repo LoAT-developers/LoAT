@@ -19,9 +19,7 @@ protected:
 
     bool evalImpl(const Lit&) override;
     Bools::Const evalImpl(const Bools::Expr&) override;
-    Arith::Const getImpl(const Arith::Var&) override;
     Bools::Const getImpl(const Bools::Var&) override;
-    Arith::Const getImpl(const ArrayReadPtr<Arith>&) override;
     std::string toString(const Expr&) override;
 
 private:
@@ -29,6 +27,7 @@ private:
     Rational toRational(term_t t) const;
     Int toInt(term_t t) const;
 
+private:
     YicesContext m_ctx;
     std::shared_ptr<model_t> m_model;
 

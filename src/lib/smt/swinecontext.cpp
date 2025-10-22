@@ -6,10 +6,6 @@ z3::expr SwineContext::pow(const z3::expr &base, const z3::expr &exp) {
     return solver.get_exp()(base, exp);
 }
 
-z3::expr SwineContext::buildVar(const Arith::Var &var) {
-    return ctx.int_const(var->getName().c_str());
-}
-
 z3::expr SwineContext::buildVar(const Bools::Var &var) {
     return ctx.bool_const(var->getName().c_str());
 }

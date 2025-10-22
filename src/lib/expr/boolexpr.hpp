@@ -14,7 +14,21 @@
 
 class BoolExpr;
 
-using TheTheory = Theory<Arith, Arrays<Arith>, Bools>;
+class TheTheory {
+
+public:
+
+    using Theories = std::tuple<Arith, Arrays<Arith>, Bools>;
+    static const Theories theories;
+    using Lit = std::variant<Arith::Lit, Arrays<Arith>::Lit, Bools::Lit>;
+    using Var = std::variant<Arrays<Arith>::Var, Bools::Var>;
+    using Expr = std::variant<Arith::Expr, Arrays<Arith>::Expr, Bools::Expr>;
+    using Renaming = std::tuple<Arrays<Arith>::Renaming, Bools::Renaming>;
+    using Pair = std::variant<std::pair<Arrays<Arith>::Var, Arrays<Arith>::Expr>, std::pair<Bools::Var, Bools::Expr>>;
+    using VarPair = std::variant<std::pair<Arrays<Arith>::Var, Arrays<Arith>::Var>, std::pair<Bools::Var, Bools::Var>>;
+    using Subs = std::tuple<Arrays<Arith>::Subs, Bools::Subs>;
+
+};
 
 template <ITheory T1, ITheory T2>
 struct depends_on {
@@ -23,7 +37,9 @@ struct depends_on {
 
 using Var = TheTheory::Var;
 using Lit = TheTheory::Lit;
-using VarSet = VariantSet<Arith::Var, Arrays<Arith>::Var, Bools::Var>;
+using VarSet = VariantSet<Arrays<Arith>::Var, Bools::Var>;
+using Cell = std::variant<ArrayReadPtr<Arith>, Bools::Var>;
+using CellSet = VariantSet<ArrayReadPtr<Arith>, Bools::Var>;
 using LitSet = VariantSet<Arith::Lit, Arrays<Arith>::Lit, Bools::Lit>;
 
 using BoolExprSet = linked_hash_set<Bools::Expr>;
@@ -66,15 +82,15 @@ public:
     virtual void collectLits(LitSet &res) const = 0;
     virtual size_t size() const = 0;
 
-    void getBounds(const Arith::Var& n, linked_hash_set<Bound> &res) const;
-    linked_hash_set<Bound> getBounds(const Arith::Var& n) const;
-    void getDivisibility(const Arith::Var& n, linked_hash_set<Divisibility> &res) const;
-    linked_hash_set<Divisibility> getDivisibility(const Arith::Var& n) const;
-    std::optional<Arith::Expr> getEquality(const Arith::Var& n) const;
-    void propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow, std::unordered_set<Arith::Var> &blocked) const;
-    Arith::Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;
-    Bools::Expr toInfinity(const Arith::Var& n) const;
-    Bools::Expr toMinusInfinity(const Arith::Var& n) const;
+    void getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const;
+    linked_hash_set<Bound> getBounds(const ArithVarPtr& n) const;
+    void getDivisibility(const ArithVarPtr& n, linked_hash_set<Divisibility> &res) const;
+    linked_hash_set<Divisibility> getDivisibility(const ArithVarPtr& n) const;
+    std::optional<Arith::Expr> getEquality(const ArithVarPtr& n) const;
+    void propagateEqualities(Arrays<Arith>::Subs &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const;
+    Arrays<Arith>::Subs propagateEqualities(const std::function<bool(const ArithVarPtr &)> &allow) const;
+    Bools::Expr toInfinity(const ArithVarPtr& n) const;
+    Bools::Expr toMinusInfinity(const ArithVarPtr& n) const;
     void iter(const std::function<void(const Lit&)> &f) const;
     Bools::Expr map(const std::function<Bools::Expr(const Lit&)> &f, std::unordered_map<Bools::Expr, Bools::Expr> &cache) const;
     Bools::Expr map(const std::function<Bools::Expr(const Lit&)> &f) const;
@@ -82,10 +98,10 @@ public:
     BoolExprSet get_disjuncts() const;
     std::optional<Bools::Var> isVar() const;
     Bools::Expr subs(const BoolSubs&) const;
-    Bools::Expr subs(const Arith::Subs&) const;
+    Bools::Expr subs(const Arrays<Arith>::Subs&) const;
     Bools::Expr subs(const Subs&) const;
     Bools::Expr renameVars(const Renaming&) const;
-    Bools::Expr eval(const ModelPtr&, const Arith::Var &keep) const;
+    Bools::Expr eval(const ModelPtr&, const ArithVarPtr &keep) const;
 
     void collectVars(VarSet&) const;
 
@@ -97,6 +113,8 @@ public:
     }
 
     VarSet vars() const;
+    CellSet cells() const;
+    void collectCells(CellSet&) const;
     virtual ~BoolExpr() = default;
     LitSet lits() const;
     bool isLinear() const;

@@ -6,11 +6,13 @@
 
 class Renaming {
 
-    using It = std::variant<Arith::Renaming::left_const_iterator, Arrays<Arith>::Renaming::left_const_iterator, Bools::Renaming::left_const_iterator>;
+    using It = std::variant<Arrays<Arith>::Renaming::left_const_iterator, Bools::Renaming::left_const_iterator>;
 
     TheTheory::Renaming t {};
 
 public:
+
+    static constexpr size_t variants {std::variant_size_v<It>};
 
     using Pair = TheTheory::VarPair;
 
@@ -18,7 +20,7 @@ public:
 
         template <size_t I = 0>
         It beginImpl(const size_t i) const {
-            if constexpr (I < num_theories) {
+            if constexpr (I < variants) {
                 if (I == i) {
                     return It{std::get<I>(subs.t).left.begin()};
                 }
@@ -32,7 +34,7 @@ public:
 
         template <size_t I = 0>
         It endImpl(const size_t i) const {
-            if constexpr (I < num_theories) {
+            if constexpr (I < variants) {
                 if (I == i) {
                     return It(std::get<I>(subs.t).left.end());
                 }
@@ -46,7 +48,7 @@ public:
 
         template <size_t I = 0>
         Pair getCurrentImpl() const {
-            if constexpr (I < num_theories) {
+            if constexpr (I < variants) {
                 if (ptr.index() == I) {
                     const auto p {std::get<I>(ptr)};
                     return Pair(std::pair{p->first, p->second});
@@ -72,7 +74,7 @@ public:
 
         template <size_t I = 0>
         void incrementImpl() {
-            if constexpr (I < num_theories) {
+            if constexpr (I < variants) {
                 if (ptr.index() == I) {
                     ++std::get<I>(ptr);
                 } else {
@@ -101,13 +103,9 @@ public:
     Iterator end() const;
     Iterator begin() const;
     void insert(const Pair &p);
-    void insert(const Var &x, const Var &y);
 
-    template <ITheory T>
-    void insert(const T::Var &var, const T::Var &expr) {
-        using R = T::Renaming;
-        std::get<R>(t).insert(typename R::value_type(var, expr));
-    }
+    void insert(const Bools::Var&, const Bools::Var&);
+    void insert(const Arrays<Arith>::Var&, const Arrays<Arith>::Var&);
 
     Renaming() = default;
     explicit Renaming(const Pair &p);
@@ -115,7 +113,7 @@ public:
     template<ITheory T>
     static Renaming build(const T::Var var, const T::Var expr) {
         Renaming subs;
-        subs.insert<T>(var, expr);
+        subs.insert(var, expr);
         return subs;
     }
 
@@ -126,14 +124,8 @@ public:
         return res;
     }
 
-    Var get(const Var &var) const;
-
-    template <ITheory T>
-    T::Var get(const T::Var &var) const {
-        const auto &m {std::get<typename T::Renaming>(t).left};
-        const auto it {m.find(var)};
-        return it == m.end() ? var : it->second;
-    }
+    Bools::Var get(const Bools::Var&) const;
+    Arrays<Arith>::Var get(const Arrays<Arith>::Var&) const;
 
     Renaming unite(const Renaming &that) const;
     bool changes(const Var &x) const;
@@ -185,7 +177,8 @@ public:
 
     static Renaming Empty;
 
-    static Var renameVar(const Var &x, Renaming &sigma);
+    static Bools::Var renameVar(const Bools::Var &x, Renaming &sigma);
+    static Arrays<Arith>::Var renameVar(const Arrays<Arith>::Var &x, Renaming &sigma);
 
 };
 

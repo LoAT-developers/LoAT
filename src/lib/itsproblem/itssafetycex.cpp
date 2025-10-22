@@ -19,7 +19,7 @@ void ITSSafetyCex::set_initial_state(const ModelPtr &m) {
 }
 
 void ITSSafetyCex::add_final_transition(const RulePtr& trans) {
-    assert(trans->getUpdate().get<Arith>(its->getLocVar()) == arith::mkConst(its->getSink()));
+    assert(trans->getUpdate().getConst(its->getLocVar()) == arith::mkConst(its->getSink()));
     transitions.push_back(trans);
 }
 

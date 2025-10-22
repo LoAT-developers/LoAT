@@ -1,8 +1,10 @@
+#include <utility>
+
 #include "arithexpr.hpp"
 
 ConsHash<ArithExpr, ArithMod, ArithMod::CacheHash, ArithMod::CacheEqual, ArithExprPtr, ArithExprPtr> ArithMod::cache;
 
-ArithMod::ArithMod(const ArithExprPtr lhs, ArithExprPtr rhs): ArithExpr(arith::Kind::Mod), lhs(lhs), rhs(rhs) {}
+ArithMod::ArithMod(ArithExprPtr lhs, ArithExprPtr rhs): ArithExpr(arith::Kind::Mod), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
 ArithMod::~ArithMod() {
     cache.erase(lhs, rhs);
@@ -19,60 +21,57 @@ size_t ArithMod::CacheHash::operator()(const std::tuple<ArithExprPtr, ArithExprP
     return hash;
 }
 
-ArithExprPtr arith::mkMod(ArithExprPtr lhs, ArithExprPtr rhs) {
-    if (rhs->is(0)) {
+ArithExprPtr arith::mkMod(ArithExprPtr x, ArithExprPtr y) {
+    if (y->is(0)) {
         throw std::invalid_argument("mod 0");
     }
-    if (rhs->isInt() && rhs->isNegated()) {
-        rhs = -rhs;
+    if (y->isInt() && y->isNegated()) {
+        y = -y;
     }
-    if (lhs->is(0) || rhs->is(1)) {
-        return arith::mkConst(0);
+    if (x->is(0) || y->is(1)) {
+        return zero;
     }
-    if (const auto c2 {rhs->isInt()}) {
+    if (const auto c2 {y->isInt()}) {
         const auto eval = [](const Int &c1, const Int &c2) -> Int {
-            const Int mod {mp::abs(c1) % c2};
-            if (mod == 0 || c1 >= 0) {
+            if (const Int mod {mp::abs(c1) % c2}; mod == 0 || c1 >= 0) {
                 return mod;
             } else {
                 return c2 - mod;
             }
         };
-        if (const auto c1 {lhs->isInt()}) {
+        if (const auto c1 {x->isInt()}) {
             // both arguments are integers --> evaluate
-            return arith::mkConst(eval(*c1, *c2));
-        } else if (lhs->isMult()) {
-            const auto c1 {lhs->getConstantFactor()};
-            const auto mod {eval(mp::numerator(c1), *c2)};
-            if (mp::denominator(c1) == 1 && mod != c1) {
-                lhs = lhs->divide(c1) * arith::mkConst(mod);
-                return mkMod(lhs, rhs);
+            return mkConst(eval(*c1, *c2));
+        } else if (x->isMult()) {
+            const auto c1 {x->getConstantFactor()};
+            if (const auto mod {eval(mp::numerator(c1), *c2)}; mp::denominator(c1) == 1 && mod != c1) {
+                x = x->divide(c1) * mkConst(mod);
+                return mkMod(x, y);
             }
-        } else if (const auto add {lhs->isAdd()}) {
+        } else if (const auto add {x->isAdd()}) {
             std::vector<ArithExprPtr> addends;
             auto changed {false};
             for (const auto &a: (*add)->getArgs()) {
                 const auto c1 {a->getConstantFactor()};
-                const auto mod {eval(mp::numerator(c1), *c2)};
-                if (mp::denominator(c1) == 1 && mod != c1) {
-                    addends.push_back(a->divide(c1) * arith::mkConst(mod));
+                if (const auto mod {eval(mp::numerator(c1), *c2)}; mp::denominator(c1) == 1 && mod != c1) {
+                    addends.push_back(a->divide(c1) * mkConst(mod));
                     changed = true;
                 } else {
                     addends.push_back(a);
                 }
             }
             if (changed) {
-                return mkMod(arith::mkPlus(std::move(addends)), rhs);
+                return mkMod(mkPlus(std::move(addends)), y);
             }
         }
     }
-    return ArithMod::cache.from_cache(lhs, rhs);
+    return ArithMod::cache.from_cache(x, y);
 }
 
-const ArithExprPtr ArithMod::getLhs() const {
+ArithExprPtr ArithMod::getLhs() const {
     return lhs;
 }
 
-const ArithExprPtr ArithMod::getRhs() const {
+ArithExprPtr ArithMod::getRhs() const {
     return rhs;
 }

@@ -25,12 +25,13 @@ public:
     BoolSubs unite(const BoolSubs &t) const;
     BoolSubs project(const linked_hash_set<BoolVarPtr> &vars) const;
     BoolSubs project(const std::function<bool(BoolVarPtr)> &keep) const;
-    BoolSubs concat(const ArithSubs&) const;
+    BoolSubs concat(const ArraySubs<Arith>&) const;
     BoolSubs concat(const BoolSubs&) const;
     BoolSubs concat(const Subs&) const;
     bool changes(const BoolVarPtr& key) const;
     linked_hash_set<BoolVarPtr> domain() const;
     void collectCoDomainVars(VarSet &vars) const;
+    void collectCoDomainCells(CellSet& res) const;
     void collectVars(VarSet &vars) const;
     bool empty() const;
     const_iterator begin() const;
@@ -43,7 +44,6 @@ public:
     bool isLinear() const;
     bool isPoly() const;
     size_t hash() const;
-
 };
 
 size_t hash_value(const BoolSubs&);

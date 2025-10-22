@@ -17,7 +17,7 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
     }
 
     // Get location var
-    Arith::Var locVar = its->getLocVar();
+    ArithVarPtr locVar = its->getLocVar();
 
     // Loop through all transitions
     for (const LoatTransition &transition : transitions)
@@ -34,7 +34,7 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
         LocationIdx targetIdx = its->getOrAddLocation(target.getName());
 
         // New Guard: locVar == srcIdx && old Guard
-        Arith::Expr curLoc = Arith::varToExpr(locVar);
+        Arith::Expr curLoc = locVar;
         Bools::Expr locGuard = bools::mkLit(arith::mkEq(curLoc, arith::mkConst(sourceIdx)));
         BoolExprSet conjuncts;
         conjuncts.insert(rule->getGuard());
@@ -43,7 +43,7 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
 
         // Update loc var after transition
         Subs update = rule->getUpdate();
-        update.put<Arith>(locVar, arith::mkConst(targetIdx));
+        update.update(locVar, arith::mkConst(targetIdx));
 
         // Create new rule and insert this into the ITS
         RulePtr ruleWithLoc = Rule::mk(combinedGuard, update);
@@ -69,15 +69,15 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
     Subs subs;
     for (const auto& name : m_arithVarsUsed)
     {
-        Arith::Var pre = getArithVar(name, false);
-        Arith::Var post = getArithVar(name, true);
-        subs.put<Arith>(pre, Arith::varToExpr(post));
+        const ArithVarPtr pre = getArithVar(name, false);
+        const ArithVarPtr post = getArithVar(name, true);
+        subs.update(pre, post);
     }
     for (const auto& name : m_boolVarsUsed)
     {
         Bools::Var pre = getBoolVar(name, false);
         Bools::Var post = getBoolVar(name, true);
-        subs.put<Bools>(pre, Bools::varToExpr(post));
+        subs.put(pre, Bools::varToExpr(post));
     }
 
     // Create the internal its transition/rule
@@ -93,7 +93,7 @@ Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &exp
 
     // Declare result and use it as return variable
     using Kind = LoatIntExpression::Kind;
-    Arith::Expr result = arith::mkConst(0);
+    Arith::Expr result = arith::zero;
 
     // Switch over expr kind
     switch (expr->getKind())
@@ -112,13 +112,13 @@ Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &exp
         const auto *v = static_cast<const LoatIntVar *>(expr.get());
 
         // Get Var
-        const Arith::Var var = getArithVar(v->getName(), v->isPost());
+        const ArithVarPtr var = getArithVar(v->getName(), v->isPost());
 
         // Add Var to used map
         m_arithVarsUsed.emplace(v->getName());
 
         // Set result as internal var expr
-        result = Arith::varToExpr(var);
+        result = var;
         break;
     }
     case Kind::Plus:
@@ -318,20 +318,20 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
     return result;
 }
 
-Arith::Var LoatTransitionToITSConverter::getArithVar(const std::string &name, const bool isPost)
+ArithVarPtr LoatTransitionToITSConverter::getArithVar(const std::string &name, const bool isPost)
 {
     if (isPost) {
         if (const auto it = m_arithVarPostMap.find(name); it != m_arithVarPostMap.end()) {
             return it->second;
         }
-        Arith::Var postVar = ArithVar::next();
+        ArithVarPtr postVar = arrays::nextConst<Arith>();
         m_arithVarPostMap.emplace(name, postVar);
         return postVar;
     }
     if (const auto it = m_arithVarPreMap.find(name); it != m_arithVarPreMap.end()) {
         return it->second;
     }
-    Arith::Var preVar = ArithVar::nextProgVar();
+    ArithVarPtr preVar = arrays::nextProgConst<Arith>();
     m_arithVarPreMap.emplace(name, preVar);
     return preVar;
 }

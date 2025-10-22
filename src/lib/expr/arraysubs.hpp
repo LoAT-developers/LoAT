@@ -3,13 +3,10 @@
 #include "arrayexpr.hpp"
 #include "linkedhashmap.hpp"
 
-template <ITheory T>
-using array_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArrayVarPtr<T>>, boost::bimaps::unordered_set_of<ArrayVarPtr<T>>>;
-
-template <ITheory T>
+template <class T>
 bool operator==(const ArraySubs<T> &m1, const ArraySubs<T> &m2);
 
-template <ITheory T>
+template <class T>
 class ArraySubs {
 
     using Self = ArraySubs;
@@ -46,13 +43,9 @@ public:
 
     Self compose(const Self &that) const;
 
-    Self concat(const ArithSubs &that) const;
-
     Self concat(const Self &that) const;
 
     Self concat(const array_var_map<T> &that) const;
-
-    Self concat(const arith_var_map &that) const;
 
     Self project(const linked_hash_set<Var> &vars) const;
 
@@ -60,17 +53,19 @@ public:
 
     bool changes(const Var& x) const;
 
+    void collectCoDomainCells(linked_hash_set<ArrayReadPtr<T>>&) const;
+
     static bool isLinear();
 
     static bool isPoly();
 
-    void collectCoDomainVars(linked_hash_set<Var> &vars, linked_hash_set<Arith::Var>& arith, linked_hash_set<typename T::Var> &tvars) const;
+    void collectCoDomainVars(linked_hash_set<Var> &vars) const;
 
-    void collectVars(linked_hash_set<Var> &vars, linked_hash_set<Arith::Var>& arith, linked_hash_set<typename T::Var> &tvars) const;
+    void collectVars(linked_hash_set<Var> &vars) const;
 
     linked_hash_set<Var> domain() const;
 
-    std::tuple<linked_hash_set<Var>, linked_hash_set<Arith::Var>, linked_hash_set<typename T::Var>> coDomainVars() const;
+    linked_hash_set<Var> coDomainVars() const;
 
     size_t hash() const;
 
@@ -80,7 +75,7 @@ private:
 
 };
 
-template <ITheory T>
+template <class T>
 std::ostream& operator<<(std::ostream &s, const ArraySubs<T> &map) {
     if (map.empty()) {
         return s << "{}";

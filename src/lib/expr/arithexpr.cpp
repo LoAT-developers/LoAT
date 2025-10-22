@@ -12,14 +12,52 @@ std::size_t hash_value(const ArithExprPtr &x) {
 }
 
 std::size_t hash_value(const ArithVarPtr &x) {
-    return std::hash<std::shared_ptr<const ArithVar>>{}(x.as_nullable());
+    return std::hash<std::shared_ptr<const ArrayRead<Arith>>>{}(x.as_nullable());
 }
+
+ArithExpr::ArithExpr(): kind(arith::Kind::Variable) {}
 
 ArithExpr::ArithExpr(const arith::Kind kind): kind(kind) {}
 
-linked_hash_set<ArithVarPtr> ArithExpr::vars() const {
-    linked_hash_set<ArithVarPtr> res;
+linked_hash_set<ArrayVarPtr<Arith>> ArithExpr::vars() const {
+    linked_hash_set<ArrayVarPtr<Arith>> res;
     collectVars(res);
+    return res;
+}
+
+void ArithExpr::collectCells(CellSet& res) const {
+    collectCells(res.get<ArithVarPtr>());
+}
+
+void ArithExpr::collectCells(linked_hash_set<ArithVarPtr>& res) const {
+    apply<void>(
+        [](const ArithConstPtr&) {},
+        [&](const ArithVarPtr& x) {
+            res.emplace(x);
+        },
+        [&](const ArithAddPtr& a) {
+            for (const auto &arg: a->getArgs()) {
+                arg->collectCells(res);
+            }
+        },
+        [&](const ArithMultPtr& m) {
+            for (const auto &arg: m->getArgs()) {
+                arg->collectCells(res);
+            }
+        },
+        [&](const ArithModPtr& m) {
+            m->getLhs()->collectCells(res);
+            m->getRhs()->collectCells(res);
+        },
+        [&](const ArithExpPtr& e) {
+            e->getBase()->collectCells(res);
+            e->getExponent()->collectCells(res);
+        });
+}
+
+linked_hash_set<ArithVarPtr> ArithExpr::cells() const {
+    linked_hash_set<ArithVarPtr> res;
+    collectCells(res);
     return res;
 }
 
@@ -30,7 +68,7 @@ bool ArithExpr::is(const Rational &val) const {
 
 std::optional<Int> ArithExpr::maxDegree() const {
     Int max {0};
-    for (const auto &x: vars()) {
+    for (const auto &x: cells()) {
         if (const auto deg {isPoly(x)}) {
             max = mp::max(max, *deg);
         } else {
@@ -41,7 +79,7 @@ std::optional<Int> ArithExpr::maxDegree() const {
 }
 
 bool ArithExpr::has(const ArithVarPtr& x) const {
-    return hasVarWith([&](const auto &y) {
+    return hasCellWith([&](const auto &y) {
         return x == y;
     });
 }
@@ -85,7 +123,7 @@ std::optional<Int> ArithExpr::isInt() const {
 
 std::optional<ArithVarPtr> ArithExpr::isVar() const {
     if (kind == arith::Kind::Variable) {
-        return cpp::assume_not_null(static_pointer_cast<const ArithVar>(shared_from_this()));
+        return cpp::assume_not_null(static_pointer_cast<const ArrayRead<Arith>>(shared_from_this()));
     }
     return {};
 }
@@ -123,7 +161,7 @@ bool ArithExpr::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars
         return arg->isLinear(vars);
     }};
     const auto is_constant {[&](const auto &arg) -> bool {
-        return !arg->hasVarWith([&](const auto &x) {
+        return !arg->hasCellWith([&](const auto &x) {
             return vars ? vars->contains(x) : true;
         });
     }};
@@ -131,8 +169,8 @@ bool ArithExpr::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars
         [](const ArithConstPtr&) {
             return true;
         },
-        [](const ArithVarPtr&) {
-            return true;
+        [](const ArithVarPtr& x) {
+            return x->arr()->isLinear();
         },
         [&](const ArithAddPtr& a) {
             const auto &args {a->getArgs()};
@@ -168,8 +206,8 @@ std::optional<Int> ArithExpr::isPoly() const {
         [](const ArithConstPtr&) {
             return opt{0};
         },
-        [](const ArithVarPtr&) {
-            return opt{1};
+        [](const ArithVarPtr& x) {
+            return x->isPoly();
         },
         [](const ArithAddPtr& a) {
             Int res {0};
@@ -206,11 +244,11 @@ std::optional<Int> ArithExpr::isPoly() const {
         });
 }
 
-void ArithExpr::collectVars(linked_hash_set<ArithVarPtr> &res) const {
+void ArithExpr::collectVars(linked_hash_set<ArrayVarPtr<Arith>> &res) const {
     apply<void>(
         [](const ArithConstPtr&) {},
         [&](const ArithVarPtr& x) {
-            res.emplace(x);
+            x->collectVars(res);
         },
         [&](const ArithAddPtr& a) {
             for (const auto &arg: a->getArgs()) {
@@ -232,13 +270,43 @@ void ArithExpr::collectVars(linked_hash_set<ArithVarPtr> &res) const {
         });
 }
 
-bool ArithExpr::hasVarWith(const std::function<bool(ArithVarPtr)>& predicate) const {
+bool ArithExpr::hasCellWith(const std::function<bool(ArithVarPtr)>& predicate) const {
     return apply<bool>(
         [](const ArithConstPtr&) {
             return false;
         },
         [&](const ArithVarPtr& x) {
             return predicate(x);
+        },
+        [&](const ArithAddPtr& a) {
+            const auto &args {a->getArgs()};
+            return std::ranges::any_of(args, [&](const auto &arg) -> bool {
+                return arg->hasCellWith(predicate);
+            });
+        },
+        [&](const ArithMultPtr& m) {
+            const auto &args {m->getArgs()};
+            return std::ranges::any_of(args, [&](const auto &arg) -> bool {
+                return arg->hasCellWith(predicate);
+            });
+        },
+        [&](const ArithModPtr& m) {
+            return m->getLhs()->hasCellWith(predicate) || m->getRhs()->hasCellWith(predicate);
+        },
+        [&](const ArithExpPtr& e) {
+            return e->getBase()->hasCellWith(predicate) || e->getExponent()->hasCellWith(predicate);
+        });
+}
+
+bool ArithExpr::hasVarWith(const std::function<bool(ArrayVarPtr<Arith>)>& predicate) const {
+    return apply<bool>(
+        [](const ArithConstPtr&) {
+            return false;
+        },
+        [&](const ArithVarPtr& x) {
+            return predicate(x->var()) || std::ranges::any_of(x->indices(), [&](const auto& i) {
+                return i->hasVarWith(predicate);
+            });
         },
         [&](const ArithAddPtr& a) {
             const auto &args {a->getArgs()};
@@ -435,16 +503,16 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr& var, const Int &
     using opt = std::optional<ArithExprPtr>;
     return apply<opt>(
         [&](const ArithConstPtr& c) {
-            return opt{degree == 0 ? c : arith::mkConst(0)};
+            return opt{degree == 0 ? c : arith::zero};
         },
         [&](const ArithVarPtr& x) {
             if (var == x && degree == 1) {
-                return opt{arith::mkConst(1)};
+                return opt{arith::one};
             }
             if (var != x && degree == 0) {
                 return opt{x};
             }
-            return opt{arith::mkConst(0)};
+            return opt{arith::zero};
         },
         [&](const ArithAddPtr& a) {
             ArithExprVec args;
@@ -457,27 +525,27 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr& var, const Int &
         },
         [&](const ArithMultPtr& m) {
             if (degree == 0) {
-                return opt{m->has(var) ? arith::mkConst(0) : toPtr()};
+                return opt{m->has(var) ? arith::zero : toPtr()};
             }
             const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
             if (auto args {m->getArgs()}; args.erase(e) > 0) {
                 ArithExprVec arg_vec {args.begin(), args.end()};
                 return opt{arith::mkTimes(std::move(arg_vec))};
             }
-            return opt{arith::mkConst(0)};
+            return opt{arith::zero};
         },
         [&](const ArithModPtr&) {
             if (has(var)) {
                 return opt{};
             }
-            return opt{arith::mkConst(0)};
+            return opt{arith::zero};
         },
         [&](const ArithExpPtr& e) {
             if (e->getBase()->isVar() == std::optional{var} && e->getExponent()->isInt() == std::optional{degree}) {
-                return opt{arith::mkConst(1)};
+                return opt{arith::one};
             }
             if (e->isPoly(var)) {
-                return opt{arith::mkConst(0)};
+                return opt{arith::zero};
             }
             return opt{};
         });
@@ -487,7 +555,7 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr& var) const {
     using opt = std::optional<ArithExprPtr>;
     return apply<opt>(
         [](const ArithConstPtr&) {
-            return opt{arith::mkConst(0)};
+            return opt{arith::zero};
         },
         [&](const ArithVarPtr& x) {
             return x->coeff(var);
@@ -529,11 +597,11 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr& var) const {
             if (has(var)) {
                 return opt{};
             }
-            return opt{arith::mkConst(0)};
+            return opt{arith::zero};
         },
         [&](const ArithExpPtr& e) {
             if (e->isPoly(var)) {
-                return opt{arith::mkConst(1)};
+                return opt{arith::one};
             }
             return opt{};
         });
@@ -584,7 +652,7 @@ ArithExprPtr ArithExpr::eval(const ModelPtr& model, const ArithVarPtr &keep) con
             return c;
         },
         [&](const ArithVarPtr& v) -> ArithExprPtr {
-            return keep == v ? v : arith::mkConst(model->get(v));
+            return keep == v ? v : arith::mkConst(model->eval(v));
         },
         [&](const ArithAddPtr& a) {
             std::vector<ArithExprPtr> args;
@@ -636,13 +704,13 @@ bool ArithExpr::isIntegral() const {
             // degrees, subs share indices with vars
             std::vector<Int> degrees;
             std::vector<ArithVarPtr> vars;
-            for (const auto &x: e->vars()) {
+            for (const auto &x: e->cells()) {
                 vars.emplace_back(x);
                 degrees.emplace_back(*e->isPoly(x));
                 valuation.emplace(x, 0);
             }
             while (true) {
-                // substitute every variable x_i by the integer subs[i] and check if the result is an integer
+                // substitute every variable 'x_i' by the integer subs[i] and check if the result is an integer
                 if (const auto res {e->eval(valuation)}; mp::denominator(res) != 1) {
                     return false;
                 }
@@ -727,7 +795,7 @@ sexpresso::Sexp ArithExpr::to_smtlib() const {
             return res;
         },
         [&](const ArithVarPtr& x) {
-            return sexpresso::Sexp(x->getName());
+            return x->to_smtlib();
         },
         [&](const ArithAddPtr& a) {
             sexpresso::Sexp res{"+"};
@@ -758,17 +826,13 @@ sexpresso::Sexp ArithExpr::to_smtlib() const {
     );
 }
 
-ArithExprPtr ArithExpr::renameVars(const arith_var_map &map) const {
+ArithExprPtr ArithExpr::renameVars(const array_var_map<Arith>& map) const {
     return apply<ArithExprPtr>(
         [&](const ArithConstPtr&) {
             return toPtr();
         },
         [&](const ArithVarPtr& x) {
-            const auto it {map.left.find(x)};
-            if (it == map.left.end()) {
-                return toPtr();
-            }
-            return it->second->toPtr();
+            return x->renameVars(map);
         },
         [&](const ArithAddPtr& a) {
             ArithExprSet args;
@@ -794,7 +858,7 @@ ArithExprPtr ArithExpr::renameVars(const arith_var_map &map) const {
 }
 
 ArithExprPtr ArithExpr::renameVars(const Renaming &map) const {
-    return renameVars(map.get<Arith>());
+    return renameVars(map.get<Arrays<Arith>>());
 }
 
 std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
@@ -857,7 +921,7 @@ std::ostream& operator<<(std::ostream &s, const ArithExprPtr& e) {
             s << c->getValue();
         },
         [&](const ArithVarPtr& x) {
-            s << x->getName();
+            s << x->arr();
         },
         [&](const ArithAddPtr& a) {
             auto fst {true};
@@ -947,16 +1011,16 @@ std::ostream& operator<<(std::ostream &s, const ArithExprPtr& e) {
 }
 
 std::ostream& operator<<(std::ostream &s, const ArithVarPtr& x) {
-    return s << x->getName();
+    return s << x->arr();
 }
 
-ArithExprPtr ArithExpr::subs(const ArithSubs& subs) const {
+ArithExprPtr ArithExpr::subs(const ArraySubs<Arith>& subs) const {
     return apply<ArithExprPtr>(
         [&](const ArithConstPtr&) {
             return this->toPtr();
         },
         [&](const ArithVarPtr& x) {
-            return subs.get(x);
+            return x->subs(subs);
         },
         [&](const ArithAddPtr& a) {
             const auto &args {a->getArgs()};
@@ -982,6 +1046,6 @@ ArithExprPtr ArithExpr::subs(const ArithSubs& subs) const {
         });
 }
 
-unsigned ArithVar::dim() {
-    return 0;
+ArithExprPtr ArithExpr::subs(const Subs& subs) const {
+    return this->subs(subs.get<Arrays<Arith>>());
 }

@@ -31,8 +31,8 @@ class LoatTransitionToITSConverter {
     std::unordered_map<LoatIntExprPtr, Arith::Expr> m_arithExprCache;
 
     // Cache LoAT -> ITS (Pre- and Post-Vars)
-    std::unordered_map<std::string, Arith::Var> m_arithVarPreMap;
-    std::unordered_map<std::string, Arith::Var> m_arithVarPostMap;
+    std::unordered_map<std::string, ArithVarPtr> m_arithVarPreMap;
+    std::unordered_map<std::string, ArithVarPtr> m_arithVarPostMap;
     std::unordered_set<std::string> m_arithVarsUsed;
 
     // Cache LoAT -> ITS (Bool Pre- and Post-Vars)
@@ -54,6 +54,6 @@ public:
     Bools::Expr convertBool(const LoatBoolExprPtr &expr);
 
 private:
-    Arith::Var getArithVar(const std::string &name, bool isPost);
+    ArithVarPtr getArithVar(const std::string &name, bool isPost);
     Bools::Var getBoolVar(const std::string &name, bool isPost);
 };

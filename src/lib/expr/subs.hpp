@@ -10,11 +10,13 @@
 
 class Subs {
 
-    using It = std::variant<Arith::Subs::const_iterator, Arrays<Arith>::Subs::const_iterator, Bools::Subs::const_iterator>;
+    using It = std::variant<Arrays<Arith>::Subs::const_iterator, Bools::Subs::const_iterator>;
 
     TheTheory::Subs t {};
 
 public:
+
+    static constexpr size_t variants {std::variant_size_v<It>};
 
     using Pair = TheTheory::Pair;
 
@@ -22,7 +24,7 @@ public:
 
         template <size_t I = 0>
         It beginImpl(const size_t i) const {
-            if constexpr (I < num_theories) {
+            if constexpr (I < variants) {
                 if (I == i) {
                     return It{std::get<I>(subs.t).begin()};
                 }
@@ -36,7 +38,7 @@ public:
 
         template <size_t I = 0>
         It endImpl(const size_t i) const {
-            if constexpr (I < num_theories) {
+            if constexpr (I < variants) {
                 if (I == i) {
                     return It(std::get<I>(subs.t).end());
                 }
@@ -50,7 +52,7 @@ public:
 
         template <size_t I = 0>
         Pair getCurrentImpl() const {
-            if constexpr (I < num_theories) {
+            if constexpr (I < variants) {
                 if (ptr.index() == I) {
                     return Pair(*std::get<I>(ptr));
                 }
@@ -75,7 +77,7 @@ public:
 
         template <size_t I = 0>
         void incrementImpl() {
-            if constexpr (I < num_theories) {
+            if constexpr (I < variants) {
                 if (ptr.index() == I) {
                     ++std::get<I>(ptr);
                 } else {
@@ -106,23 +108,20 @@ public:
     Subs project(const VarSet &vars) const;
     Subs project(const std::function<bool(Var)> &keep) const;
     void put(const Pair &p);
-    void put(const Var &x, const Expr &y);
 
-    template <ITheory T>
-    void put(const T::Var &var, const T::Expr &expr) {
-        std::get<typename T::Subs>(t).put(var, expr);
-    }
+    void put(const Bools::Var&, const Bools::Expr&);
+    void put(const Arrays<Arith>::Var&, const Arrays<Arith>::Expr&);
+
+    void writeConst(const Arrays<Arith>::Var&, const Arith::Expr&);
+    void update(const ArrayReadPtr<Arith>&, const Arith::Expr&);
 
     Subs() = default;
     explicit Subs(const Pair &p);
     explicit Subs(const Renaming&);
 
-    template<ITheory T>
-    static Subs build(const T::Var var, const T::Expr expr) {
-        Subs subs;
-        subs.put<T>(var, expr);
-        return subs;
-    }
+    static Subs build(const Bools::Var&, const Bools::Expr&);
+    static Subs build(const Arrays<Arith>::Var&, const Arrays<Arith>::Expr&);
+    static Subs build(const ArrayReadPtr<Arith>&, const Arith::Expr&);
 
     template <ITheory T>
     static Subs build(T::Subs subs) {
@@ -132,24 +131,10 @@ public:
     }
 
     VarSet domain() const;
-    Expr get(const Var &var) const;
 
-    template <ITheory T>
-    T::Expr get(const T::Var &var) const {
-        return std::get<typename T::Subs>(t).get(var);
-    }
-
-    Arith::Expr get(const Arith::Var &var) const {
-        return std::get<Arith::Subs>(t).get(var);
-    }
-
-    Bools::Expr get(const Bools::Var &var) const {
-        return std::get<Bools::Subs>(t).get(var);
-    }
-
-    Arrays<Arith>::Expr get(const Arrays<Arith>::Var &var) const {
-        return std::get<Arrays<Arith>::Subs>(t).get(var);
-    }
+    Bools::Expr get(const Bools::Var &var) const;
+    Arrays<Arith>::Expr get(const Arrays<Arith>::Var &var) const;
+    Arith::Expr getConst(const ArithVarPtr&) const;
 
     bool changes(const Var &x) const;
     void erase(const Var &x);
@@ -191,7 +176,7 @@ public:
 
     Bools::Expr operator()(const Lit &lit) const;
     Expr operator()(const Expr &expr) const;
-    Subs concat(const ArithSubs &that) const;
+    Subs concat(const ArraySubs<Arith> &that) const;
     Subs concat(const BoolSubs &that) const;
     Subs concat(const Renaming &that) const;
     Subs compose(const Subs &that) const;
@@ -199,9 +184,11 @@ public:
     void collectVars(VarSet &vars) const;
     VarSet vars() const;
     VarSet coDomainVars() const;
+    void collectCoDomainCells(CellSet &res) const;
+    CellSet coDomainCells() const;
 
     static Var first(const Pair &p);
-    static Expr second(const Pair &p);
+    static std::variant<Arrays<Arith>::Expr, Bools::Expr> second(const Pair &p);
 
     static Subs Empty;
 
@@ -225,7 +212,7 @@ struct tuple_element<0, Subs::Pair> {
 
 template<>
 struct tuple_element<1, Subs::Pair> {
-    using type = Expr;
+    using type = std::variant<Arrays<Arith>::Expr, Bools::Expr>;
 };
 
 template<std::size_t Index>

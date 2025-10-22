@@ -12,14 +12,18 @@ using namespace Config::ABMC;
 
 ABMC::ABMC(const ITSPtr& its):
     its(its),
-    trace_var(ArithVar::next()),
     cex(its) {
-    vars.insert(trace_var);
-    vars.insert(n);
+    vars.insert(trace_var->var());
+    vars.insert(n->var());
     solver->enableModels();
     vars.insertAll(its->getVars());
-    for (const auto &var: vars) {
-        pre_to_post.insert(var, theory::next(var));
+    for (const auto& var : vars) {
+        theory::apply(
+            var,
+            [&](const auto& var) {
+                using T = decltype(theory::theory(var));
+                pre_to_post.insert(var, T::next(0));
+            });
     }
     last_orig_clause = 0;
     for (const auto &r : its->getAllTransitions()) {
@@ -138,7 +142,7 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
         return top();
     }
-    const auto orig {loop.idx->subs(ArithSubs{{n, arith::mkConst(1)}})};
+    const auto orig {loop.idx->subs(ArraySubs<Arith>{{n->var(), arrays::update(n, arith::one)}})};
     const auto length{depth - backlink + 1};
     // we must not start another iteration of the loop in the next step,
     // so we require that we either use the learned transition,
@@ -153,11 +157,15 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     std::vector<Bools::Expr> pre;
     const auto s_next {subs_at(depth + 1).project(pre_v).compose(
             subs_at(depth + length).project(post_v))};
-    pre.push_back(theory::mkEq(theory::toExpr(s_next.get(trace_var)), arith::mkConst((*shortcut)->getId())));
+    pre.push_back(
+        bools::mkLit(
+            arith::mkEq(
+                trace_var->renameVars(s_next),
+                arith::mkConst((*shortcut)->getId()))));
     pre.push_back(not_trans->renameVars(s_next));
     // we must not start another iteration of the loop after using the learned transition in the next step
     std::vector<Bools::Expr> post;
-    post.push_back(theory::mkNeq(theory::toExpr(s_next.get(trace_var)), arith::mkConst((*shortcut)->getId())));
+    post.push_back(theory::mkNeq(theory::toExpr(s_next.get(trace_var->var())), arith::mkConst((*shortcut)->getId())));
     const auto s_next_next {subs_at(depth + 2).project(pre_v).compose(
             subs_at(depth + length + 1).project(post_v))};
     post.push_back(not_trans->renameVars(s_next_next));
@@ -173,12 +181,17 @@ void ABMC::add_learned_clause(const RulePtr& accel, const unsigned backlink) {
 std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::vector<int> &lang) {
     const auto update_subs = [&](const RulePtr& loop) {
         subs_at(depth + 1);
-        for (const auto new_vars {loop->vars()}; const auto &x: new_vars) {
-            if (theory::isTempVar(x) && !vars.contains(x)) {
-                const auto next {theory::next(x)};
-                subs[depth + 1].insert(x, next);
-                subsTmp[depth + 1].insert(x, next);
-            }
+        for (const auto new_vars{loop->vars()}; const auto& x : new_vars) {
+            theory::apply(
+                x,
+                [&](const auto& x) {
+                    using T = decltype(theory::theory(x));
+                    if (x->isTempVar() && !vars.contains(x)) {
+                        const auto next{T::next(0)};
+                        subs[depth + 1].insert(x, next);
+                        subsTmp[depth + 1].insert(x, next);
+                    }
+                });
         }
     };
     auto [loop, sample_point] {build_loop(backlink)};
@@ -297,7 +310,7 @@ Bools::Expr ABMC::encode_transition(const RulePtr& idx, const bool with_id) {
             [&](const auto& x) {
                 using T = decltype(theory::theory(x));
                 if (x->isProgVar()) {
-                    res.push_back(theory::mkEq(T::varToExpr(pre_to_post.get<T>(x)), up.get(x)));
+                    res.push_back(theory::mkEq(T::varToExpr(pre_to_post.get(x)), up.get(x)));
                 }
             });
     }
@@ -336,18 +349,24 @@ const Renaming &ABMC::subs_at(const unsigned i) {
     while (subs.size() <= i) {
         Renaming s, sTmp, sProg;
         for (const auto &var : vars) {
-            const auto &post_var{pre_to_post.get(var)};
-            const auto current {subs.back().get(post_var)};
-            const auto next {theory::next(post_var)};
-            s.insert(var, current);
-            s.insert(post_var, next);
-            if (theory::isTempVar(var)) {
-                sTmp.insert(var, current);
-                sTmp.insert(post_var, next);
-            } else {
-                sProg.insert(var, current);
-                sProg.insert(post_var, next);
-            }
+            theory::apply(
+                var,
+                [&](const auto& var) {
+                    using T = decltype(theory::theory(var));
+                    const auto& post_var{pre_to_post.get(var)};
+                    const auto current{subs.back().get(post_var)};
+                    const auto next{T::next(0)};
+                    s.insert(var, current);
+                    s.insert(post_var, next);
+                    if (var->isTempVar()) {
+                        sTmp.insert(var, current);
+                        sTmp.insert(post_var, next);
+                    }
+                    else {
+                        sProg.insert(var, current);
+                        sProg.insert(post_var, next);
+                    }
+                });
         }
         subs.push_back(s);
         subsTmp.push_back(sTmp);
@@ -426,18 +445,22 @@ ITSModel ABMC::get_model() {
     std::vector<Bools::Expr> inits;
     Renaming post_to_pre;
     Renaming init_renaming;
-    for (const auto &x: its->getVars()) {
-        if (theory::isProgVar(x)) {
-            init_renaming.insert(x, theory::next(x));
-        }
+    for (const auto& x : its->getVars()) {
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                using T = decltype(theory::theory(x));
+                if (x->isProgVar()) {
+                    init_renaming.insert(x, T::next(0));
+                }
+            });
     }
     for (const auto &t: its->getInitialTransitions()) {
         std::vector conjuncts {t->getGuard()->renameVars(init_renaming)};
         const auto &up {t->getUpdate()};
         for (const auto& [x,_] : init_renaming) {
             theory::apply(x, [&](const auto& x) {
-                using T = decltype(theory::theory(x));
-                conjuncts.emplace_back(theory::mkEq(theory::toExpr(x), init_renaming(up.get<T>(x))));
+                conjuncts.emplace_back(theory::mkEq(theory::toExpr(x), init_renaming(up.get(x))));
             });
         }
         inits.emplace_back(bools::mkAnd(conjuncts));
@@ -449,18 +472,27 @@ ITSModel ABMC::get_model() {
         const auto s1{subs.at(i)};
         last = last && transitions.at(i)->renameVars(s1);
         Renaming s2;
-        for (const auto &[pre,post]: pre_to_post) {
-            if (theory::isProgVar(pre)) {
-                s2.insert(s1.get(post), pre);
-                s2.insert(pre, theory::next(pre));
-            }
+        for (const auto& p : pre_to_post) {
+            theory::apply(
+                p,
+                [&](const auto& p) {
+                    const auto& [pre, post]{p};
+                    using T = decltype(theory::theory(pre));
+                    if (pre->isProgVar()) {
+                        s2.insert(s1.get(post), pre);
+                        s2.insert(pre, T::next(0));
+                    }
+                });
         }
         res.push_back(last->renameVars(s2));
     }
     ITSModel model;
     const auto m {bools::mkOr(res)};
     for (const auto &l: its->getLocations()) {
-        model.set_invariant(l, m->subs(ArithSubs{{its->getLocVar(), arith::mkConst(l)}}));
+        model.set_invariant(
+            l,
+            m->subs(
+                ArraySubs<Arith>{{its->getLocVar()->var(), arrays::update(its->getLocVar(), arith::mkConst(l))}}));
     }
     model.set_invariant(its->getInitialLocation(), top());
     return model;

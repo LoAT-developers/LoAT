@@ -25,8 +25,8 @@ AccelerationProblem::AccelerationProblem(
                 if (l->isNeq()) {
                     throw std::invalid_argument("neq in acceleration problem");
                 } else if (l->isEq()) {
-                    todo.insert(arith::mkGeq(l->lhs(), arith::mkConst(0)));
-                    todo.insert(arith::mkLeq(l->lhs(), arith::mkConst(0)));
+                    todo.insert(arith::mkGeq(l->lhs(), arith::zero));
+                    todo.insert(arith::mkLeq(l->lhs(), arith::zero));
                 } else {
                     todo.insert(l);
                 }
@@ -40,7 +40,7 @@ AccelerationProblem::AccelerationProblem(
     const auto logic {Smt::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
-        const auto bound {bools::mkLit(arith::mkGt(config.n->toExpr(), arith::mkConst(0)))};
+        const auto bound {bools::mkLit(arith::mkGt(config.n, arith::zero))};
         this->solver->add(bound);
         this->res.formula.push_back(bound);
     }
@@ -74,13 +74,12 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         return false;
     }
     const auto &rel {std::get<Arith::Lit>(lit)};
-    const auto nfold {rel->lhs()->subs(closed->closed_form.get<Arith>())};
+    const auto nfold {rel->lhs()->subs(closed->closed_form)};
     const auto d {nfold->isPoly(config.n)};
     if (!d || d == 0) {
         return false;
     }
-    const auto &up {update.get<Arith>()};
-    const ArithSubs but_last {closed->closed_form.get<Arith>().compose({{config.n, config.n->toExpr() - arith::mkConst(1)}})};
+    const auto but_last {closed->closed_form.compose(Subs::build(config.n, config.n - arith::one))};
     bool low_degree {false};
     ArithLitSet guard;
     ArithLitSet covered;
@@ -116,15 +115,14 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         if (!samplePoint || polyaccel != PolyAccelMode::Full) {
             return false;
         }
-        auto sample_point {samplePoint->get<Arith>()};
         std::vector derivatives {rel->lhs()};
-        std::vector signs {(*rel->lhs()->subs(sample_point)->isRational())->getValue()};
-        Arith::Expr diff {arith::mkConst(0)};
+        std::vector signs {(*rel->lhs()->subs(*samplePoint)->isRational())->getValue()};
+        Arith::Expr diff {arith::zero};
         do {
             const auto &last {derivatives.back()};
-            diff = last->subs(up) - last;
+            diff = last->subs(update) - last;
             derivatives.push_back(diff);
-            signs.push_back((*diff->subs(sample_point)->isRational())->getValue());
+            signs.push_back((*diff->subs(*samplePoint)->isRational())->getValue());
         } while (!diff->isRational());
         for (unsigned i = 1; i < signs.size() - 1; ++i) {
             if (signs.at(i).is_zero()) {
@@ -144,23 +142,23 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         }
         for (unsigned i = 1; i < derivatives.size() - 1; ++i) {
             if (signs.at(i) > 0) {
-                covered.insert(arith::mkGeq(derivatives.at(i), arith::mkConst(0)));
+                covered.insert(arith::mkGeq(derivatives.at(i), arith::zero));
             } else {
-                covered.insert(arith::mkLeq(derivatives.at(i), arith::mkConst(0)));
+                covered.insert(arith::mkLeq(derivatives.at(i), arith::zero));
             }
             if (signs.at(i+1) > 0) {
                 // the i-th derivative is monotonically increasing at the sampling point
                 if (signs.at(i) > 0) {
-                    guard.insert(arith::mkGeq(derivatives.at(i), arith::mkConst(0)));
+                    guard.insert(arith::mkGeq(derivatives.at(i), arith::zero));
                 } else {
-                    guard.insert(arith::mkLeq(derivatives.at(i)->subs(but_last), arith::mkConst(0)));
+                    guard.insert(arith::mkLeq(derivatives.at(i)->subs(but_last), arith::zero));
                 }
             } else {
                 res.nonterm = false;
                 if (signs.at(i) > 0) {
-                    guard.insert(arith::mkGeq(derivatives.at(i)->subs(but_last), arith::mkConst(0)));
+                    guard.insert(arith::mkGeq(derivatives.at(i)->subs(but_last), arith::zero));
                 } else {
-                    guard.insert(arith::mkLeq(derivatives.at(i), arith::mkConst(0)));
+                    guard.insert(arith::mkLeq(derivatives.at(i), arith::zero));
                 }
             }
         }
@@ -189,7 +187,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         solver->add(bools::mkLit(theory::negate(lit)));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            auto g {closed->closed_form(lit)->subs(ArithSubs{{config.n, config.n->toExpr() - arith::mkConst(1)}})};
+            auto g {closed->closed_form(lit)->subs({{config.n->var(), arrays::update(config.n, config.n - arith::one)}})};
             if (closed->prefix > 0) {
                 g = g && bools::mkLit(lit);
             }
@@ -227,16 +225,16 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     }
     auto success {false};
     const auto &rel {std::get<Arith::Lit>(lit)};
-    const auto updated {rel->lhs()->subs(update.get<Arith>())};
+    const auto updated {rel->lhs()->subs(update)};
     const auto dec {arith::mkGeq(rel->lhs(), updated)};
     solver->push();
     solver->add(bools::mkLit(dec));
     if (solver->check() == SmtResult::Sat) {
-        const auto inc {arith::mkLt(updated, updated->subs(update.get<Arith>()))};
+        const auto inc {arith::mkLt(updated, updated->subs(update))};
         solver->add(bools::mkLit(inc));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            const auto g {bools::mkAnd(std::vector{rel, rel->subs(closed->closed_form.get<Arith>())->subs({{config.n, config.n->toExpr() - arith::mkConst(1)}})})};
+            const auto g {bools::mkAnd(std::vector{rel, rel->subs(closed->closed_form)->subs({{config.n->var(), arrays::update(config.n, config.n - arith::one)}})})};
             res.formula.push_back(g);
             if (Config::Analysis::doLogAccel()) {
                 std::cout << rel << ": eventual decrease yields " << g << std::endl;
@@ -255,7 +253,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     // t > 0
     const auto &rel {std::get<Arith::Lit>(lit)};
     // up(t)
-    const auto updated {rel->lhs()->subs(update.get<Arith>())};
+    const auto updated {rel->lhs()->subs(update)};
     // t <(=) up(t)
     const auto i = strict ? arith::mkLt(rel->lhs(), updated) : arith::mkLeq(rel->lhs(), updated);
     const auto inc {bools::mkLit(i)};
@@ -263,7 +261,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     solver->add(inc);
     if (solver->check() == SmtResult::Sat) {
         // up(t) >(=) up^2(t)
-        const auto d {strict ? arith::mkGeq(updated, updated->subs(update.get<Arith>())) : arith::mkGt(updated, updated->subs(update.get<Arith>()))};
+        const auto d {strict ? arith::mkGeq(updated, updated->subs(update)) : arith::mkGt(updated, updated->subs(update))};
         const auto dec {bools::mkLit(d)};
         solver->push();
         solver->add(dec);
@@ -272,12 +270,12 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         if (success) {
             Bools::Expr g {bot()};
             Bools::Expr c {bot()};
-            if (samplePoint && i->subs(samplePoint->get<Arith>())->isTriviallyFalse()) {
+            if (samplePoint && i->subs(*samplePoint)->isTriviallyFalse()) {
                 if (!closed) {
                     solver->pop();
                     return false;
                 }
-                const auto s {closed->closed_form.get<Arith>().compose(ArithSubs({{config.n, config.n->toExpr() - arith::mkConst(1)}}))};
+                const auto s {closed->closed_form.compose(Subs::build(config.n, config.n->toExpr() - arith::one))};
                 g = bools::mkAnd(std::vector{(!i)->subs(s), rel->subs(s)});
                 c = bools::mkLit(!i);
                 res.nonterm = false;
@@ -303,13 +301,20 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         return false;
     }
     std::vector<Bools::Expr> eqs;
-    for (const auto vars{util::RelevantVariables::find(theory::vars(lit), update)};
+    for (const auto vars{util::RelevantVariables::find(theory::cells(lit), update)};
          const auto& v : vars) {
-        if (std::holds_alternative<Bools::Var>(v)) {
-            // encoding equality for booleans introduces a disjunction
+        if (!theory::apply(
+            v,
+            [&](const Bools::Var&) {
+                // encoding equality for booleans introduces a disjunction
+                return false;
+            },
+            [&](const ArithVarPtr& v) {
+                eqs.push_back(bools::mkLit(arith::mkEq(v, v->subs(update))));
+                return true;
+            })) {
             return false;
         }
-        eqs.push_back(theory::mkEq(theory::toExpr(v), update.get(v)));
     }
     const auto c {bools::mkAnd(eqs)};
     if (c == bot() || (samplePoint && !c->subs(*samplePoint) == top())) {
@@ -394,7 +399,7 @@ std::optional<AccelerationProblem::Accelerator> AccelerationProblem::computeRes(
     if (progress) {
         if (res.nonterm && Config::Analysis::relative_termination()) {
             // if we analyze relative termination, ensure that the costs diverge
-            const Lit lit{arith::mkGt(config.cost, arith::mkConst(0))};
+            const Lit lit{arith::mkGt(config.cost, arith::zero)};
             solver->add(bools::mkLit(lit));
             if (solver->check() != SmtResult::Sat) {
                 res.nonterm = false;

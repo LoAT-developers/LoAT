@@ -1,11 +1,16 @@
 #include "arithlit.hpp"
-#include "arithsubs.hpp"
 #include "sexpresso.hpp"
 
-#include <assert.h>
+#include <cassert>
 #include <boost/functional/hash.hpp>
 #include <algorithm>
 #include <unordered_set>
+#include <utility>
+
+#include "arrayexpr.hpp"
+#include "arrays.hpp"
+#include "arraysubs.hpp"
+#include "subs.hpp"
 
 std::size_t hash_value(const Bound &bound) {
     std::size_t hash {42};
@@ -47,7 +52,7 @@ size_t ArithLit::CacheHash::operator()(const std::tuple<ArithExprPtr, Kind> &arg
     return seed;
 }
 
-ArithLit::ArithLit(const ArithExprPtr& lhs, const Kind kind): l(lhs), kind(kind) { }
+ArithLit::ArithLit(ArithExprPtr lhs, const Kind kind): l(std::move(lhs)), kind(kind) { }
 
 ArithLit::~ArithLit() {
     cache.erase(l, kind);
@@ -87,7 +92,7 @@ bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars)
 
 void ArithLit::getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const {
     if (l->isPoly(n) == 1 && kind != Kind::Neq) {
-        const auto t = kind == Kind::Eq ? l : l - arith::mkConst(1);
+        const auto t = kind == Kind::Eq ? l : l - arith::one;
         const auto coeff{*t->coeff(n)};
         if (const auto optSolved{t->solve(n)}) {
             switch (kind) {
@@ -135,7 +140,7 @@ void ArithLit::getDivisibility(const ArithVarPtr& n, linked_hash_set<Divisibilit
             if (const auto modulo{(*mod)->getRhs()->isInt()}) {
                 if ((*mod)->getLhs() == n) {
                     // modulo | n
-                    res.emplace(1, *modulo, arith::mkConst(0));
+                    res.emplace(1, *modulo, arith::zero);
                 } else if (const auto sum{(*mod)->getLhs()->isAdd()}) {
                     auto args{(*sum)->getArgs()};
                     std::optional<Int> factor;
@@ -170,7 +175,7 @@ void ArithLit::getDivisibility(const ArithVarPtr& n, linked_hash_set<Divisibilit
                         mul_args.erase(n);
                         if (const auto factor{(*mul_args.begin())->isInt()}) {
                             // modulo | factor * n
-                            res.emplace(*factor, *modulo, arith::mkConst(0));
+                            res.emplace(*factor, *modulo, arith::zero);
                         }
                     }
                 }
@@ -186,13 +191,13 @@ std::optional<ArithExprPtr> ArithLit::getEquality(const ArithVarPtr& n) const {
     return {};
 }
 
-void ArithLit::propagateEquality(ArithSubs &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const {
+void ArithLit::propagateEquality(ArraySubs<Arith> &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const {
     if (isEq()) {
-        for (const auto vs {vars()}; const auto &x: vs) {
+        for (const auto vs {l->cells()}; const auto &x: vs) {
             if (!blocked.contains(x) && allow(x) && l->isLinear({{x}})) {
                 if (const auto coeff {l->coeff(x)}; (*coeff)->is(1) || (*coeff)->is(-1)) {
                     const auto t {*l->solve(x)};
-                    subs.put(x, t);
+                    subs.put(x->var(), arrays::update(x, t));
                     blocked.insert(vs.begin(), vs.end());
                     return;
                 }
@@ -238,7 +243,7 @@ std::optional<bool> ArithLit::checkTrivial() const {
     return {};
 }
 
-void ArithLit::collectVars(linked_hash_set<ArithVarPtr> &res) const {
+void ArithLit::collectVars(linked_hash_set<ArrayVarPtr<Arith>> &res) const {
     l->collectVars(res);
 }
 
@@ -246,15 +251,19 @@ bool ArithLit::has(const ArithVarPtr& x) const {
     return l->has(x);
 }
 
-ArithLitPtr ArithLit::subs(const ArithSubs &map) const {
+ArithLitPtr ArithLit::subs(const ArraySubs<Arith> &map) const {
     return mk(l->subs(map), kind);
 }
 
-ArithLitPtr ArithLit::renameVars(const arith_var_map &map) const {
+ArithLitPtr ArithLit::subs(const Subs& map) const {
+    return subs(map.get<Arrays<Arith>>());
+}
+
+ArithLitPtr ArithLit::renameVars(const array_var_map<Arith> &map) const {
     return mk(l->renameVars(map), kind);
 }
 
-linked_hash_set<ArithVarPtr> ArithLit::vars() const {
+linked_hash_set<ArrayVarPtr<Arith>> ArithLit::vars() const {
     return l->vars();
 }
 
@@ -275,7 +284,7 @@ ArithLitPtr arith::mkGeq(const ArithExprPtr& x, const ArithExprPtr& y) {
     if (const auto factor {lhs_integral->getConstantFactor()}; factor > 1) {
         lhs_integral = lhs_integral->divide(factor);
     }
-    return ArithLit::cache.from_cache(lhs_integral + mkConst(1), ArithLit::Kind::Gt);
+    return ArithLit::cache.from_cache(lhs_integral + one, ArithLit::Kind::Gt);
 }
 
 ArithLitPtr arith::mkLeq(const ArithExprPtr& x, const ArithExprPtr& y) {
@@ -300,7 +309,7 @@ ArithLitPtr arith::mkLt(const ArithExprPtr& x, const ArithExprPtr& y) {
 
 ArithLitPtr operator!(const ArithLitPtr& x) {
     switch (x->kind) {
-        case ArithLit::Kind::Gt: return ArithLit::mk(arith::mkConst(1) - x->lhs(), ArithLit::Kind::Gt);
+        case ArithLit::Kind::Gt: return ArithLit::mk(arith::one - x->lhs(), ArithLit::Kind::Gt);
         case ArithLit::Kind::Eq: return ArithLit::mk(x->lhs(), ArithLit::Kind::Neq);
         case ArithLit::Kind::Neq: return ArithLit::mk(x->lhs(), ArithLit::Kind::Eq);
         default: throw std::invalid_argument("unexpected relation");
@@ -353,15 +362,25 @@ sexpresso::Sexp ArithLit::to_smtlib() const {
     return res;
 }
 
+void ArithLit::collectCells(linked_hash_set<ArrayReadPtr<Arith>>& res) const {
+    l->collectCells(res);
+}
+
+linked_hash_set<ArrayReadPtr<Arith>> ArithLit::cells() const {
+    linked_hash_set<ArrayReadPtr<Arith>> res;
+    l->collectCells(res);
+    return res;
+}
+
 bool ArithLit::simplifyAnd(linked_hash_set<ArithLitPtr> &lits) {
     std::unordered_set<ArithLitPtr> remove;
     linked_hash_set<ArithLitPtr> add;
     for (const auto &rel: lits) {
         if (rel->isGt() && !remove.contains(rel)) {
-            if (const auto converse {arith::mkLeq(rel->lhs(), arith::mkConst(1))}; lits.contains(converse)) {
+            if (const auto converse {arith::mkLeq(rel->lhs(), arith::one)}; lits.contains(converse)) {
                 remove.insert(rel);
                 remove.insert(converse);
-                add.insert(arith::mkEq(rel->lhs(), arith::mkConst(1)));
+                add.insert(arith::mkEq(rel->lhs(), arith::one));
             }
         }
     }
@@ -379,10 +398,10 @@ bool ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
     std::unordered_set<ArithLitPtr> add;
     for (const auto &rel: lits) {
         if (rel->isGt() && !remove.contains(rel)) {
-            if (const auto converse {arith::mkLt(rel->lhs(), arith::mkConst(0))}; lits.contains(converse)) {
+            if (const auto converse {arith::mkLt(rel->lhs(), arith::zero)}; lits.contains(converse)) {
                 remove.insert(rel);
                 remove.insert(converse);
-                add.insert(arith::mkNeq(rel->lhs(), arith::mkConst(0)));
+                add.insert(arith::mkNeq(rel->lhs(), arith::zero));
             }
         }
     }

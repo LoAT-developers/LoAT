@@ -2,7 +2,7 @@
 #include "mbputil.hpp"
 #include "smtfactory.hpp"
 
-Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const Arith::Var x, const Config::TRPConfig::MbpKind mode) {
+Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarPtr& x, const Config::TRPConfig::MbpKind mode) {
     assert(t->isConjunction());
     // divisibility constraints for x
     linked_hash_set<Divisibility> divs;
@@ -28,7 +28,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const Arith::Va
                     std::cerr << l << " is neither linear nor a divisibility constraint for " << x << std::endl;
                     assert(false);
                 }
-                const auto handle_gt = [&](const auto lhs) {
+                const auto handle_gt = [&](const auto& lhs) {
                     const auto coeff{*lhs->coeff(x)};
                     if (const auto coeff_val{coeff->isInt()}) {
                         flcm = mp::lcm(flcm, mp::abs(*coeff_val));
@@ -45,8 +45,8 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const Arith::Va
                     handle_gt(l->lhs());
                 } else if (l->isEq()) {
                     // split equalities into two inequations
-                    handle_gt(l->lhs() + arith::mkConst(1));
-                    handle_gt(-l->lhs() + arith::mkConst(1));
+                    handle_gt(l->lhs() + arith::one);
+                    handle_gt(-l->lhs() + arith::one);
                 }
             }
             it = arith_lits.erase(it);
@@ -101,7 +101,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const Arith::Va
         scaled_divs.insert(Divisibility{.factor = 1, .modulo = mod * factor, .res = res * arith::mkConst(factor)});
     }
     // in addition to the constraints above, we have flcm|x'
-    scaled_divs.insert(Divisibility{.factor = 1, .modulo = flcm, .res = arith::mkConst(0)});
+    scaled_divs.insert(Divisibility{.factor = 1, .modulo = flcm, .res = arith::zero});
     // compute the least common multiple of all divisors
     for (const auto &d : scaled_divs) {
         mlcm = mp::lcm(mlcm, d.modulo);
@@ -110,7 +110,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const Arith::Va
     // Here, we can either start from the closest upper bound, or from the closest lower bound.
     // The decision depends on the given mode.
     // If the mode is IntMbp, then we prefer upper to lower bounds iff there are fewer upper than lower bounds.
-    Arith::Expr substitute {arith::mkConst(0)};
+    Arith::Expr substitute {arith::zero};
     if (mode == Config::TRPConfig::UpperIntMbp || (mode == Config::TRPConfig::IntMbp && scaled_ub.size() < scaled_lb.size())) {
         // start from the closest upper bound
         auto closest_upper{*scaled_ub.begin()};
@@ -129,7 +129,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const Arith::Va
             }
         }
         // compute i_l as in [Spacer], but negated (as we decided to pick an upper instead of a lower bound)
-        const auto i_l{arith::mkMod(closest_upper - arith::mkConst(1) - arith::mkConst(flcm) * x, arith::mkConst(mlcm))};
+        const auto i_l{arith::mkMod(closest_upper - arith::one - arith::mkConst(flcm) * x, arith::mkConst(mlcm))};
         // evaluate i_l in the current model
         const auto i_l_val{model->eval(i_l)};
         substitute = closest_upper - arith::mkConst(1 + i_l_val);
@@ -148,7 +148,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const Arith::Va
                 max_val = val;
             }
         }
-        const auto i_l{arith::mkMod(arith::mkConst(flcm) * x - (closest_lower + arith::mkConst(1)), arith::mkConst(mlcm))};
+        const auto i_l{arith::mkMod(arith::mkConst(flcm) * x - (closest_lower + arith::one), arith::mkConst(mlcm))};
         const auto i_l_val{model->eval(i_l)};
         substitute = closest_lower + arith::mkConst(1 + i_l_val);
     }
@@ -160,29 +160,25 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const Arith::Va
         arith_lits.insert(arith::mkLt(substitute, u));
     }
     for (const auto &d : scaled_divs) {
-        arith_lits.insert(arith::mkEq(arith::mkMod(substitute + d.res, arith::mkConst(d.modulo)), arith::mkConst(0)));
+        arith_lits.insert(arith::mkEq(arith::mkMod(substitute + d.res, arith::mkConst(d.modulo)), arith::zero));
     }
     return bools::mkAnd(lits);
 }
 
-Bools::Expr do_mbp(const Bools::Expr &t, const ModelPtr& model, const Var &x, const Config::TRPConfig::MbpKind mode) {
-    return std::visit(
-        Overload{
-            [&](const Bools::Var &y) {
-                return mbp::bool_mbp(t, model, y);
-            },
-            [&](const Arith::Var &y) {
-                const auto res{int_mbp(t, model, y, mode)};
-                assert(res != bot());
-                return res;
-            },
-        [](const Arrays<Arith>::Var &) -> Bools::Expr {
-            throw std::invalid_argument("mbp does not support arrays");
-        }},
-        x);
+Bools::Expr do_mbp(const Bools::Expr& t, const ModelPtr& model, const Cell& x, const Config::TRPConfig::MbpKind mode) {
+    return theory::apply(
+        x,
+        [&](const Bools::Var& y) {
+            return mbp::bool_mbp(t, model, y);
+        },
+        [&](const ArithVarPtr& y) {
+            const auto res{int_mbp(t, model, y, mode)};
+            assert(res != bot());
+            return res;
+        });
 }
 
-Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const ModelPtr& model, const Config::TRPConfig::MbpKind mode, const std::function<bool(const Var &)> &eliminate) {
+Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const ModelPtr& model, const Config::TRPConfig::MbpKind mode, const std::function<bool(const Cell &)> &eliminate) {
 #if DEBUG
     if (!model->eval(trans)) {
         std::cout << "mbp::int_mbp: not a model" << std::endl;
@@ -192,7 +188,7 @@ Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const ModelPtr& model, const 
     }
 #endif
     Bools::Expr res{trans};
-    for (const auto &x : trans->vars()) {
+    for (const auto &x : trans->cells()) {
         if (eliminate(x)) {
             res = do_mbp(res, model, x, mode);
         }
@@ -200,7 +196,7 @@ Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const ModelPtr& model, const 
     return res;
 }
 
-Bools::Expr mbp::int_qe(const Bools::Expr &trans, const std::function<bool(const Var &)> &eliminate) {
+Bools::Expr mbp::int_qe(const Bools::Expr &trans, const std::function<bool(const Cell &)> &eliminate) {
     const auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
     solver->add(trans);
     std::vector<Bools::Expr> disjuncts;

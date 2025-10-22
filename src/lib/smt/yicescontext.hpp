@@ -39,7 +39,6 @@ public:
     void printStderr(const term_t &e) const override;
 
 protected:
-    term_t buildVar(const Arith::Var &var) override;
     term_t buildVar(const Bools::Var &var) override;
     term_t buildVar(const Arrays<Arith>::Var &var) override;
 

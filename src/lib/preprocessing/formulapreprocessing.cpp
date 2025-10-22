@@ -11,7 +11,7 @@ Bools::Expr propagateEquivalences(const Bools::Expr& e) {
     }
 }
 
-Bools::Expr propagateEqualities(const Bools::Expr& e, const std::function<bool(const Var &)> &allow) {
+Bools::Expr propagateEqualities(const Bools::Expr& e, const std::function<bool(const ArithVarPtr&)> &allow) {
     if (const auto subs {e->propagateEqualities(allow)}; subs.empty()) {
         return e;
     } else {
@@ -28,7 +28,7 @@ Bools::Expr Preprocess::simplifyAnd(const Bools::Expr& e) {
     return e;
 }
 
-Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<bool(const Var &)> &allow) {
+Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<bool(const ArithVarPtr &)> &allow) {
     for (const auto prop = propagateEquivalences(e); prop != e;) {
         e = prop;
     }
@@ -63,15 +63,23 @@ std::tuple<Bools::Expr, Renaming, Renaming> Preprocess::chain(const Bools::Expr 
             }
         }
     }
-    for (const auto &post: post_vars) {
-        const auto pre {theory::progVar(post)};
-        const auto x {Renaming::renameVar(post, sigma1)};
-        sigma2.insert(pre, x);
+    for (const auto& post : post_vars) {
+        theory::apply(
+            post,
+            [&](const auto& post) {
+                const auto pre{post->progVar()};
+                const auto x{Renaming::renameVar(post, sigma1)};
+                sigma2.insert(pre, x);
+            });
     }
-    for (const auto &x: second_vars) {
-        if (theory::isTempVar(x) && first_vars.contains(x)) {
-            Renaming::renameVar(x, sigma2);
-        }
+    for (const auto& x : second_vars) {
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                if (x->isTempVar() && first_vars.contains(x)) {
+                    Renaming::renameVar(x, sigma2);
+                }
+            });
     }
     return {fst->renameVars(sigma1) && snd->renameVars(sigma2), sigma1.invert(), sigma2.invert()};
 }

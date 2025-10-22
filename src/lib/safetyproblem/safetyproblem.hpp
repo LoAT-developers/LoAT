@@ -16,7 +16,7 @@ class SafetyProblem {
 
 public:
 
-    SafetyProblem();
+    SafetyProblem() = default;
 
     const BoolExprSet &trans() const;
     void replace_transition(const Bools::Expr &old_trans, const Bools::Expr &new_trans);

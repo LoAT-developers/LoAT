@@ -9,15 +9,15 @@
 class LoopAcceleration {
 public:
 
-    static acceleration::Result accelerate(const RulePtr rule, const Subs &sample_point, const AccelConfig &config);
+    static acceleration::Result accelerate(const RulePtr& rule, const Subs &sample_point, const AccelConfig &config);
 
-    static acceleration::Result accelerate(const RulePtr rule, const AccelConfig &config);
+    static acceleration::Result accelerate(const RulePtr& rule, const AccelConfig &config);
 
-    static std::pair<RulePtr, unsigned> chain(const RulePtr rule);
+    static std::pair<RulePtr, unsigned> chain(const RulePtr& rule);
 
 private:
 
-    LoopAcceleration(const RulePtr rule, const std::optional<Subs> &sample_point, const AccelConfig &config);
+    LoopAcceleration(RulePtr  rule, const std::optional<Subs> &sample_point, AccelConfig config);
 
     void chain();
     void removeTrivialUpdates();

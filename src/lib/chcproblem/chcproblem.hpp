@@ -26,7 +26,7 @@ class FunApp {
 
 public:
 
-    FunApp(const std::string &pred, const std::vector<Expr> &args);
+    FunApp(std::string pred, const std::vector<Expr> &args);
     ~FunApp();
 
     static FunAppPtr mk(const std::string &pred, const std::vector<Expr> &args);
@@ -75,7 +75,7 @@ class Clause {
 
 public:
 
-    Clause(const std::optional<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion);
+    Clause(const std::optional<FunAppPtr>& premise, Bools::Expr  constraint, const std::optional<FunAppPtr>& conclusion);
     ~Clause();
 
     static ClausePtr mk(const std::optional<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion);
@@ -103,10 +103,10 @@ class CHCProblem {
     linked_hash_set<ClausePtr> clauses;
     friend std::ostream& operator<<(std::ostream &s, const CHCProblem&);
 
+public:
+
     CHCProblem(const CHCProblem&) = delete;
     CHCProblem& operator=(const CHCProblem&) = delete;
-
-public:
 
     CHCProblem() = default;
 

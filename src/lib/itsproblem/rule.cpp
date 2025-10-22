@@ -38,7 +38,7 @@ VarSet Rule::vars() const {
     return res;
 }
 
-RulePtr Rule::subs(const ArithSubs& subs) const {
+RulePtr Rule::subs(const ArraySubs<Arith>& subs) const {
     return mk(guard->subs(subs), update.concat(subs));
 }
 
@@ -131,9 +131,14 @@ size_t hash_value(const Rule &r) {
 RulePtr Rule::renameTmpVars() const {
     Renaming s;
     for (const auto &x: vars()) {
-        if (theory::isTempVar(x)) {
-            s.insert(x, theory::next(x));
-        }
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                using T = decltype(theory::theory(x));
+                if (x->isTempVar()) {
+                    s.insert(x, T::next(x->dim()));
+                }
+            });
     }
     return renameVars(s);
 }

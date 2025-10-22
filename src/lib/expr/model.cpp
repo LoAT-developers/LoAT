@@ -12,7 +12,7 @@ ModelPtr Model::composeBackwards(const Subs &subs) const {
     return withSubs(subs.compose(this->subs));
 }
 
-Arith::Const Model::get(const Arith::Var &var) {
+Arith::Const Model::get(const ArithVarPtr &var) {
     return eval(var);
 }
 
@@ -20,8 +20,10 @@ Bools::Const Model::get(const Bools::Var &var) {
     return eval(bools::mk(var));
 }
 
-void Model::put(const Arith::Var& x, const Arith::Const& c) {
-    subs.put<Arith>(x, arith::mkConst(c));
+void Model::put(const ArithVarPtr& x, const Arith::Const& c) {
+    const auto var {x->var()};
+    const auto old {subs.get(var)};
+    subs.put(var, arrays::mkArrayWrite(old, x->indices(), arith::mkConst(c)));
 }
 
 bool Model::eval(const Lit& lit) {
@@ -33,7 +35,11 @@ Bools::Const Model::eval(const Bools::Expr& e) {
 }
 
 Arith::Const Model::eval(const Arith::Expr& e) {
-    return evalImpl(e->subs(subs.get<Arith>()));
+    return evalImpl(e->subs(subs.get<Arrays<Arith>>()));
+}
+
+Arith::Const Model::eval(const ArrayReadPtr<Arith>& e) {
+    return evalImpl(e->subs(subs.get<Arrays<Arith>>()));
 }
 
 bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
@@ -60,11 +66,11 @@ bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
             Overload{
                 [&](const Arith::Lit &l) {
                     if (l->isNeq()) {
-                        if (const auto lt{arith::mkLt(l->lhs(), arith::mkConst(0))}; m->eval(lt)) {
+                        if (const auto lt{arith::mkLt(l->lhs(), arith::zero)}; m->eval(lt)) {
                             res.insert(bools::mkLit(lt));
                             return true;
                         }
-                        if (const auto gt{arith::mkGt(l->lhs(), arith::mkConst(0))}; m->eval(gt)) {
+                        if (const auto gt{arith::mkGt(l->lhs(), arith::zero)}; m->eval(gt)) {
                             res.insert(bools::mkLit(gt));
                             return true;
                         }
@@ -87,22 +93,18 @@ bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
 }
 
 Bools::Expr Model::syntacticImplicant(const Bools::Expr& e) {
-#if DEBUG
     assert(eval(e));
-#endif
     BoolExprSet res;
     ::syntacticImplicant(e, this, res);
     return bools::mkAnd(res);
 }
 
 Rational Model::evalToRational(const Arith::Expr& e) {
-    return evalToRationalImpl(e->subs(subs.get<Arith>()));
+    return evalToRationalImpl(e->subs(subs.get<Arrays<Arith>>()));
 }
 
 Arith::Const Model::evalImpl(const Arith::Expr &e) {
-#if DEBUG
     assert(e->isIntegral());
-#endif
     const auto res {evalToRationalImpl(e)};
     if (mp::denominator(res) != 1) {
         throw std::invalid_argument(toString(e) + " is not integral");
@@ -114,13 +116,17 @@ std::string Model::toString(const VarSet& xs) {
     std::stringstream s;
     s << "[";
     auto first {true};
-    for (const auto &x: xs) {
-        if (first) {
-            first = false;
-        } else {
-            s << ", ";
-        }
-        s << x << "=" << toString(subs.get(x));
+    for (const auto& x : xs) {
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                if (first) {
+                    first = false;
+                } else {
+                    s << ", ";
+                }
+                s << x << "=" << toString(subs.get(x));
+            });
     }
     s << "]";
     return s.str();

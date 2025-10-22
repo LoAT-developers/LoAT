@@ -39,25 +39,11 @@ Rational SwineModel::evalToRationalImpl(const Arith::Expr &e) {
     return negative ? -ret : ret;
 }
 
-Arith::Const SwineModel::getImpl(const Arith::Var &var) {
-    const auto converted_var {m_ctx.getArithSymbolMap().at(var)};
-    const auto res {m_model.eval(converted_var, true)};
-    assert(res.is_int());
-    return Int(res.to_string());
-}
-
 Bools::Const SwineModel::getImpl(const Bools::Var &var) {
     const auto converted_var {m_ctx.getBoolSymbolMap().at(var)};
     const auto res {m_model.eval(converted_var, true)};
     assert(res.is_bool());
     return res.is_true();
-}
-
-Arith::Const SwineModel::getImpl(const ArrayReadPtr<Arith> &read) {
-    const auto converted {Converter::convert(read, m_ctx)};
-    const auto res {m_model.eval(converted, true)};
-    assert(res.is_int());
-    return Int(res.to_string());
 }
 
 std::string SwineModel::toString(const Expr& e) {

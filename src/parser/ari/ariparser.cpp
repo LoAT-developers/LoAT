@@ -40,7 +40,7 @@ void ARIParser::run(const std::string &filename) {
         } else if (ex[0].isString("rule")) {
             if (max_int_arity != state.arith_vars.size()) {
                 for (unsigned i = 0; i < max_int_arity; ++i) {
-                    state.arith_vars.emplace_back(ArithVar::nextProgVar());
+                    state.arith_vars.emplace_back(ArrayVar<Arith>::nextProgVar(0));
                 }
             }
             if (max_bool_arity != state.bool_vars.size()) {
@@ -61,7 +61,7 @@ void ARIParser::run(const std::string &filename) {
                     case theory::Type::Int: {
                         const auto arg {state.arith_vars[state.next_arith_var]};
                         state.vars.emplace(lhs[i].str(), arg);
-                        update.put(arg, parseArithExpr(rhs[i], state));
+                        update.writeConst(arg, parseArithExpr(rhs[i], state));
                         ++state.next_arith_var;
                         break;
                     }
@@ -78,7 +78,7 @@ void ARIParser::run(const std::string &filename) {
                 }
             }
             std::vector<Bools::Expr> guard;
-            Arith::Expr cost {arith::mkConst(1)};
+            Arith::Expr cost {arith::one};
             for (unsigned idx = 3; idx + 1 < ex.childCount(); idx += 2) {
                 const auto key {ex[idx].str()};
                 auto val {ex[idx + 1]};
@@ -87,29 +87,24 @@ void ARIParser::run(const std::string &filename) {
                 } else if (key == ":guard") {
                     guard.emplace_back(parseBoolExpr(val, state));
                 } else if (key == ":cost") {
-                    const auto cost {parseArithExpr(val, state)};
-                    if (Config::Analysis::complexity()) {
-                        update.put(its->getCostVar(), its->getCostVar() + cost);
-                    } else if (Config::Analysis::relative_termination()) {
-                        assert(cost->isInt());
-                        assert(*cost->isInt() >= 0);
-                        update.put(its->getCostVar(), its->getCostVar() + cost);
-                    }
+                    cost = parseArithExpr(val, state);
                 } else {
                     throw std::invalid_argument("failed to parse " + ex.toString());
                 }
             }
+            const auto cost_var {its->getCostVar()};
             if (Config::Analysis::complexity()) {
-                update.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
+                update.update(cost_var, cost_var + cost);
             } else if (Config::Analysis::relative_termination()) {
                 assert(cost->isInt());
                 assert(*cost->isInt() >= 0);
-                update.put<Arith>(its->getCostVar(), its->getCostVar() + cost);
+                update.update(cost_var, cost_var + cost);
             }
             const auto lhs_idx {its->getOrAddLocation(lhs_loc)};
             const auto rhs_idx {its->getOrAddLocation(rhs_loc)};
             guard.emplace_back(bools::mkLit(arith::mkEq(its->getLocVar(), arith::mkConst(lhs_idx))));
-            update.put(its->getLocVar(), arith::mkConst(rhs_idx));
+            const auto loc_var {its->getLocVar()};
+            update.update(loc_var, arith::mkConst(rhs_idx));
             its->addRule(Rule::mk(bools::mkAnd(guard), update), lhs_idx);
             state.clear();
         }

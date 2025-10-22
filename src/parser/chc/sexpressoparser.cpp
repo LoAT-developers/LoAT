@@ -63,7 +63,7 @@ void SexpressoParser::run(const std::string &filename) const {
                 for (unsigned i = 0; i < vars.childCount(); ++i) {
                     const auto name{vars[i][0].str()};
                     if (const auto type{vars[i][1].str()}; type == "Int") {
-                        state.vars.emplace(name, ArithVar::next());
+                        state.vars.emplace(name, ArrayVar<Arith>::next(0));
                     } else if (type == "Bool") {
                         state.vars.emplace(name, BoolVar::next());
                     } else {

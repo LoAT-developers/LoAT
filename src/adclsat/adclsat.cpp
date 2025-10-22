@@ -65,7 +65,7 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 
 void ADCLSat::handle_loop(const unsigned start) {
     const auto range {Range::from_interval(start, trace.size() - 1)};
-    auto [loop, model]{specialize(range, theory::isTempVar)};
+    auto [loop, model]{specialize(range, theory::isTempCell)};
     solver->pop();
     if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
@@ -83,17 +83,17 @@ void ADCLSat::handle_loop(const unsigned start) {
     const auto n {trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
         projected = qe::real_qe(ti, model, [&](const auto &x) {
-            return x == Var(n);
+            return x == Cell(n);
         });
-        projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
+        projected = Preprocess::preprocessFormula(projected);
         ti = projected;
         id = add_learned_clause(range, ti);
     } else {
-        ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
+        ti = Preprocess::preprocessFormula(ti);
         id = add_learned_clause(range, ti);
         model->put(n, 1);
         projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
-            return x == Var(n);
+            return x == Cell(n);
         });
     }
     const auto fst_elem {trace.at(start)};
@@ -161,10 +161,10 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto step {bools::mkOr(steps)};
     solver->add(step->renameVars(subs));
     if (!trace.empty() && trace.back().id > last_orig_clause) {
-        solver->add(theory::mkNeq(theory::toExpr(trace_var), arith::mkConst(trace.back().id))->renameVars(subs));
+        solver->add(theory::mkNeq(trace_var, arith::mkConst(trace.back().id))->renameVars(subs));
     }
     for (const auto &[id, b] : projections) {
-        solver->add(!b->renameVars(subs) || bools::mkLit(arith::mkGeq(subs.get<Arith>(trace_var), arith::mkConst(id))));
+        solver->add(!b->renameVars(subs) || bools::mkLit(arith::mkGeq(trace_var->renameVars(subs), arith::mkConst(id))));
     }
     switch (solver->check()) {
         case SmtResult::Unknown:
@@ -174,7 +174,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;
-            const auto projection{trp.mbp(trace.back().implicant, trace.back().model, theory::isTempVar)};
+            const auto projection{trp.mbp(trace.back().implicant, trace.back().model, theory::isTempCell)};
             solver->pop(); // current step
             solver->pop(); // backtracking
             trace.pop_back();
@@ -191,7 +191,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     backtracking = false;
     model = solver->model();
     solver->pop();
-    const auto id{(*model)->get(subs.get<Arith>(trace_var))};
+    const auto id{(*model)->get(trace_var->renameVars(subs))};
     if (Config::Analysis::log) {
         std::cout << "***** Step *****" << std::endl;
         std::cout << "with " << id << std::endl;

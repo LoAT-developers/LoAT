@@ -135,7 +135,7 @@ std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr& idx) {
     for (const auto &x: prog_vars) {
         theory::apply(x, [&](const auto &x) {
             const auto th {theory::theory(x)};
-            new_var_renaming.insert<decltype(th)>(x, th.next(x->dim()));
+            new_var_renaming.insert(x, th.next(x->dim()));
         });
     }
     for (const auto &var: idx->vars()) {
@@ -143,8 +143,8 @@ std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr& idx) {
             theory::apply(var, [&](const auto &x) {
                 const auto th {theory::theory(x)};
                 const auto next {th.next(x->dim())};
-                new_var_renaming.insert<decltype(th)>(x, next);
-                new_tmp_var_renaming.insert<decltype(th)>(x, next);
+                new_var_renaming.insert(x, next);
+                new_tmp_var_renaming.insert(x, next);
             });
         }
     }
@@ -153,13 +153,17 @@ std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr& idx) {
             theory::apply(var, [&](const auto &x) {
                 const auto th {theory::theory(x)};
                 const auto next {th.next(x->dim())};
-                new_var_renaming.insert<decltype(th)>(x, next);
-                new_tmp_var_renaming.insert<decltype(th)>(x, next);
+                new_var_renaming.insert(x, next);
+                new_tmp_var_renaming.insert(x, next);
             });
         }
     }
     for (const auto &x: prog_vars) {
-        solver->add(theory::mkEq(theory::toExpr(new_var_renaming.get(x)), last_var_renaming(up.get(x))));
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                solver->add(theory::mkEq(theory::toExpr(new_var_renaming.get(x)), last_var_renaming(up.get(x))));
+            });
     }
     return {new_var_renaming, new_tmp_var_renaming};
 }
@@ -197,7 +201,7 @@ void ADCL::add_to_trace(const Step &step) {
     blocked_clauses.emplace_back();
 }
 
-void ADCL::set_cpx_witness(const RulePtr& witness, const ModelPtr &subs, const Arith::Var &param) {
+void ADCL::set_cpx_witness(const RulePtr& witness, const ModelPtr &subs, const ArithVarPtr &param) {
     if (trace.size() > 1) {
         std::vector<RulePtr> rules;
         for (const auto &t: trace) {
@@ -221,7 +225,7 @@ void ADCL::update_cpx() {
     }
     const auto resolvent = trace.back().resolvent;
     const auto &cost = chcs->getCost(resolvent);
-    if (toComplexity(cost) <= cpx && !cost->hasVarWith([](const auto &x){return theory::isTempVar(x);})) {
+    if (toComplexity(cost) <= cpx && !cost->hasVarWith([](const auto &x){return x->isTempVar();})) {
         return;
     }
     if (const auto [cpx, subs, param] {LimitSmtEncoding::applyEncoding(resolvent->getGuard(), cost, this->cpx)}; cpx > this->cpx) {
@@ -429,10 +433,10 @@ bool ADCL::is_orig_clause(const RulePtr& idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-std::optional<RulePtr> ADCL::instantiate(const Arith::Var& n, const RulePtr& rule) {
+std::optional<RulePtr> ADCL::instantiate(const ArithVarPtr& n, const RulePtr& rule) {
     std::optional<RulePtr> res{};
-    for (const auto &s : VarEliminator(rule->getGuard(), n, theory::isProgVar).getRes()) {
-        if (s.get(n)->isRational()) continue;
+    for (const auto &s : VarEliminator(rule->getGuard(), n, [](const auto &x) {return x->isProgVar();}).getRes()) {
+        if (n->subs(s)->isRational()) continue;
         if (res) {
             return {};
         }
@@ -465,7 +469,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const uns
             return std::make_unique<Covered>();
         }
     }
-    const auto n {ArithVar::next()};
+    const auto n {arrays::nextConst<Arith>()};
     const AccelConfig config {
         Config::Analysis::tryNonterm(),
         true,
@@ -606,7 +610,7 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
         if (!done && store_step(idx, idx)) {
             if (chcs->isSinkTransition(idx)) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
-                    set_cpx_witness(trace.back().resolvent, solver->model(), ArithVar::next());
+                    set_cpx_witness(trace.back().resolvent, solver->model(), arrays::nextConst<Arith>());
                 }
                 return std::make_unique<ProvedUnsat>();
             }
@@ -636,7 +640,7 @@ bool ADCL::try_to_finish() {
             if (const auto implicant {resolve(q)}) {
                 if (Config::Analysis::complexity() && Config::Analysis::model) {
                     const auto resolvent {compute_resolvent(q, (*implicant)->getGuard())};
-                    set_cpx_witness(resolvent, solver->model(), ArithVar::next());
+                    set_cpx_witness(resolvent, solver->model(), arrays::nextConst<Arith>());
                 }
                 add_to_trace(Step(q, (*implicant)->getGuard(), Renaming(), Renaming(), Rule::mk(top(), Subs())));
                 print_state();

@@ -26,13 +26,13 @@ std::optional<Range> TRL::has_looping_infix() {
         for (unsigned start = 0; start + i < trace.size(); ++start) {
             if (Config::Analysis::termination() &&
                 i > 0 &&
-                (*model)->get(get_subs(start, 1).get<Arith>(safety_var)) >= 0 &&
-                (*model)->get(get_subs(start + i, 1).get<Arith>(safety_var)) < 0) {
+                (*model)->get(safety_var->renameVars(get_subs(start, 1))) >= 0 &&
+                (*model)->get(safety_var->renameVars(get_subs(start + i, 1))) < 0) {
                 continue;
             }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 if (i == 0) {
-                    if (const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempVar)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
+                    if (const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempCell)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
                         continue;
                     }
                 }
@@ -44,11 +44,18 @@ std::optional<Range> TRL::has_looping_infix() {
 }
 
 bool TRL::handle_loop(const Range &range) {
-    auto [loop, model]{specialize(range, theory::isTempVar)};
+    auto [loop, model]{specialize(range, theory::isTempCell)};
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
         if (const auto rf {prove_term(loop, model)}) {
-            termination_argument = bools::mkAnd(std::vector{arith::mkGt(*rf, arith::mkConst(0)), arith::mkGt((*rf)->renameVars(post_to_pre.get<Arith>()), (*rf)->renameVars(t.pre_to_post().get<Arith>()))});
+            termination_argument =
+                bools::mkAnd(
+                    std::vector{
+                        arith::mkGt(*rf, arith::zero),
+                        arith::mkGt(
+                            (*rf)->renameVars(post_to_pre.get<Arrays<Arith>>()),
+                            (*rf)->renameVars(t.pre_to_post().get<Arrays<Arith>>()))
+                    });
             loop = loop && termination_argument;
         } else {
             return false;
@@ -67,17 +74,17 @@ bool TRL::handle_loop(const Range &range) {
     const auto n {trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
         projected = qe::real_qe(ti, model, [&](const auto &x) {
-            return x == Var(n);
+            return x == Cell(n);
         });
-        projected = Preprocess::preprocessFormula(projected, theory::isTempVar);
+        projected = Preprocess::preprocessFormula(projected);
         ti = projected;
         id = add_learned_clause(range, ti);
     } else {
-        ti = Preprocess::preprocessFormula(ti, theory::isTempVar);
+        ti = Preprocess::preprocessFormula(ti);
         id = add_learned_clause(range, ti);
         model->put(n, 1);
-        projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
-            return x == Var(n);
+        projected = mbp::int_mbp(ti, model, mbp_kind, [&](const Cell &x) {
+            return x == Cell(n);
         });
     }
     step = step || encode_transition(ti, id);
@@ -97,15 +104,19 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
         std::vector<Bools::Expr> disjuncts;
         disjuncts.emplace_back(!loop->renameVars(s));
         if (range.length() == 1) {
-            disjuncts.emplace_back(bools::mkLit(arith::mkGeq(s.get<Arith>(trace_var), arith::mkConst(id))));
+            disjuncts.emplace_back(
+                bools::mkLit(
+                    arith::mkGeq(
+                        trace_var->renameVars(s),
+                        arith::mkConst(id))));
         }
-        if ((*model)->get(get_subs(range.start(), 1).get<Arith>(safety_var)) >= 0) {
+        if ((*model)->get(safety_var->renameVars(get_subs(range.start(), 1))) >= 0) {
             const auto last_s {get_subs(range.end(), 1)};
-            const auto no_safety_loop{bools::mkLit(arith::mkLt(last_s.get<Arith>(safety_var), arith::mkConst(0)))};
+            const auto no_safety_loop{bools::mkLit(arith::mkLt(safety_var->renameVars(last_s), arith::zero))};
             disjuncts.emplace_back(no_safety_loop);
         } else {
             const auto first_s {get_subs(range.start(), 1)};
-            const auto no_term_loop{bools::mkLit(arith::mkGeq(first_s.get<Arith>(safety_var), arith::mkConst(0)))};
+            const auto no_term_loop{bools::mkLit(arith::mkGeq(safety_var->renameVars(first_s), arith::zero))};
             disjuncts.emplace_back(no_term_loop);
         }
         it->second = it->second && bools::mkOr(disjuncts);
@@ -120,7 +131,7 @@ void TRL::add_blocking_clauses() {
     const auto s1{get_subs(depth, 1)};
     const auto s2{get_subs(depth + 1, 1)};
     for (const auto &[id, b] : projections) {
-        solver->add(!b->renameVars(s1) || bools::mkLit(arith::mkGeq(s1.get<Arith>(trace_var), arith::mkConst(id))));
+        solver->add(!b->renameVars(s1) || bools::mkLit(arith::mkGeq(trace_var->renameVars(s1), arith::mkConst(id))));
     }
     if (const auto it{blocked_per_step.find(depth)}; it != blocked_per_step.end()) {
         for (const auto& b : it->second | std::views::values) {
@@ -135,7 +146,7 @@ void TRL::build_trace() {
     std::optional<std::pair<Bools::Expr, Int>> prev;
     for (unsigned d = 0; d < depth; ++d) {
         const auto s{get_subs(d, 1)};
-        const auto id{(*model)->get(s.get<Arith>(trace_var))};
+        const auto id{(*model)->get(trace_var->renameVars(s))};
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{(*model)->composeBackwards(s)};
         const auto imp{comp->syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
@@ -185,7 +196,7 @@ std::optional<SmtResult> TRL::do_step() {
             solver->push();
             solver->add(step->renameVars(s));
             if (Config::Analysis::termination() && depth > 0) {
-                solver->add(bools::mkLit(arith::mkGeq(get_subs(depth - 1, 1).get<Arith>(safety_var), s.get<Arith>(safety_var))));
+                solver->add(bools::mkLit(arith::mkGeq(safety_var->renameVars(get_subs(depth - 1, 1)), safety_var->renameVars(s))));
             }
             add_blocking_clauses();
             switch (solver->check()) {
@@ -232,11 +243,16 @@ ITSModel TRL::get_model() {
         const auto s1{get_subs(i, 1)};
         last = last && step->renameVars(s1);
         Renaming s2;
-        for (const auto &x : vars) {
-            if (theory::isProgVar(x)) {
-                s2.insert(s1.get(theory::postVar(x)), x);
-                s2.insert(x, theory::next(x));
-            }
+        for (const auto& x : vars) {
+            theory::apply(
+                x,
+                [&](const auto& x) {
+                    using T = decltype(theory::theory(x));
+                    if (x->isProgVar()) {
+                        s2.insert(s1.get(x->postVar()), x);
+                        s2.insert(x, T::next(x->dim()));
+                    }
+                });
         }
         res.push_back(last->renameVars(s2));
     }

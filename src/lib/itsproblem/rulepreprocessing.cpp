@@ -19,9 +19,15 @@ RulePtr propagateEquivalences(const RulePtr &rule) {
 std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
     VarSet remove;
     for (const auto& p : rule->getUpdate()) {
-        if (theory::toExpr(Subs::first(p)) == Subs::second(p)) {
-            remove.insert(Subs::first(p));
-        }
+        theory::apply(
+            p,
+            [&](const auto& p) {
+                const auto& [fst, snd]{p};
+                using T = decltype(theory::theory(fst));
+                if (T::varToExpr(fst) == snd) {
+                    remove.insert(fst);
+                }
+            });
     }
     if (remove.empty()) {
         return {};
@@ -36,7 +42,11 @@ std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
 }
 
 RulePtr propagateEqualities(const RulePtr &rule) {
-    if (const auto subs{rule->getGuard()->propagateEqualities(theory::isTempVar)}; subs.empty()) {
+    if (const auto subs{
+        rule->getGuard()->propagateEqualities([](const auto& x) {
+            return x->isTempVar();
+        })
+    }; subs.empty()) {
         return rule;
     } else {
         if (Config::Analysis::doLogPreproc()) {
@@ -47,9 +57,9 @@ RulePtr propagateEqualities(const RulePtr &rule) {
 }
 
 RulePtr integerFourierMotzkin(const RulePtr &rule) {
-    const auto varsInUpdate{rule->getUpdate().coDomainVars()};
-    auto isTempOnlyInGuard = [&](const Var &sym) {
-        return theory::isTempVar(sym) && !varsInUpdate.contains(sym);
+    const auto varsInUpdate{rule->getUpdate().coDomainCells()};
+    auto isTempOnlyInGuard = [&](const ArithVarPtr &sym) {
+        return sym->isTempVar() && !varsInUpdate.contains(sym);
     };
     if (const auto new_guard {integerFourierMotzkin(rule->getGuard(), isTempOnlyInGuard)}; new_guard == rule->getGuard()) {
         return rule;

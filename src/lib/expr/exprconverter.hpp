@@ -60,8 +60,8 @@ protected:
                 }
                 return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
             },
-            [&](const Arith::Var& x) {
-                return context.getVariable(x);
+            [&](const ArrayReadPtr<Arith>& x) {
+                return convertArrayRead(x);
             },
             [&](const ArithAddPtr& a) {
                 auto vec {context.exprVec()};
@@ -158,20 +158,6 @@ protected:
     }
 
     Formula convertLit(const Arrays<Arith>::Lit &lit) {
-        if (const auto eq {lit->isArrayElemEq()}) {
-            const auto lhs {(*eq)->lhs()};
-            const auto converted_lhs {convertArrayRead(lhs)};
-            const auto rhs {(*eq)->rhs()};
-            const auto converted_rhs {convertEx(rhs)};
-            return context.eq(converted_lhs, converted_rhs);
-        }
-        if (const auto neq {lit->isArrayElemNeq()}) {
-            const auto lhs {(*neq)->lhs()};
-            const auto converted_lhs {convertArrayRead(lhs)};
-            const auto rhs {(*neq)->rhs()};
-            const auto converted_rhs {convertEx(rhs)};
-            return context.neq(converted_lhs, converted_rhs);
-        }
         if (const auto eq {lit->isArrayEq()}) {
             const auto lhs {(*eq)->lhs()};
             const auto converted_lhs {convertArray(lhs)};

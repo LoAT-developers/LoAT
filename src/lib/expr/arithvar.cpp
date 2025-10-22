@@ -2,62 +2,44 @@
 #include "arrayexpr.hpp"
 #include "sexpresso.hpp"
 
-ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, int> ArithVar::cache {};
+ConsHash<ArithExpr, ArithVar, ArithVar::CacheHash, ArithVar::CacheEqual, ArrayReadPtr<Arith>> ArithVar::cache {};
 
-ArithExprPtr arith::mkVar(const int idx) {
-    return ArithVar::cache.from_cache(idx);
+ArithExprPtr arith::mkVar(const ArrayReadPtr<Arith>& p_arr) {
+    return ArithVar::cache.from_cache(p_arr);
 }
 
-ArithVar::ArithVar(const int idx): ArithExpr(arith::Kind::Variable), arr(arrays::mkArrayRead(arrays::mkVar<Arith>(idx, 0), {})) {}
+ArithVar::ArithVar(const ArrayReadPtr<Arith>& p_arr): ArithExpr(arith::Kind::Variable), m_arr(p_arr) {}
 
 ArithVar::~ArithVar() {
-    cache.erase(getIdx());
-}
-
-int ArithVar::getIdx() const {
-    return arr->arr()->var()->idx();
-}
-
-std::string ArithVar::getName() const {
-    return arr->arr()->var()->getName();
-}
-
-std::ostream& operator<<(std::ostream &s, const ArithVar &x) {
-    return s << x.getName();
+    cache.erase(m_arr);
 }
 
 ArithVarPtr ArithVar::next() {
-    --ArrayVar<Arith>::last_tmp_idx;
-    return (*arith::mkVar(ArrayVar<Arith>::last_tmp_idx)->someVar())->toVarPtr();
+    return *arith::mkVar(arrays::mkArrayRead<Arith>(ArrayVar<Arith>::next(0), {}))->someVar();
 }
 
 ArithVarPtr ArithVar::nextProgVar() {
-    ArrayVar<Arith>::last_prog_idx += 2;
-    return (*arith::mkVar(ArrayVar<Arith>::last_prog_idx)->someVar())->toVarPtr();
+    return *arith::mkVar(arrays::mkArrayRead<Arith>(ArrayVar<Arith>::nextProgVar(0), {}))->someVar();
 }
 
-ArithVarPtr ArithVar::postVar(const ArithVarPtr &x) {
-    return (*arith::mkVar(x->getIdx() + 1)->someVar())->toVarPtr();
+ArithVarPtr ArithVar::postVar() const {
+    return *arith::mkVar(m_arr->withVar(m_arr->arr()->var()->postVar()))->someVar();
 }
 
-ArithVarPtr ArithVar::progVar(const ArithVarPtr &x) {
-    return (*arith::mkVar(x->getIdx() - 1)->someVar())->toVarPtr();
+ArithVarPtr ArithVar::progVar() const {
+    return *arith::mkVar(m_arr->withVar(m_arr->arr()->var()->progVar()))->someVar();
 }
 
 bool ArithVar::isTempVar() const {
-    return getIdx() < 0;
+    return m_arr->arr()->var()->isTempVar();
 }
 
 bool ArithVar::isProgVar() const {
-    return getIdx() > 0 && getIdx() % 2 == 1;
+    return m_arr->arr()->var()->isProgVar();
 }
 
 bool ArithVar::isPostVar() const {
-    return getIdx() > 0 && getIdx() % 2 == 0;
-}
-
-std::size_t hash_value(const ArithVar &x) {
-    return std::hash<int>{}(x.getIdx());
+    return m_arr->arr()->var()->isPostVar();
 }
 
 ArithVarPtr ArithVar::toVarPtr() const {
@@ -69,14 +51,25 @@ ArithExprPtr ArithVar::toExpr() const {
 }
 
 sexpresso::Sexp ArithVar::to_smtlib() const {
-    return sexpresso::Sexp(getName());
+    return m_arr->to_smtlib();
 }
 
-bool ArithVar::CacheEqual::operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept {
+unsigned ArithVar::dim() const {
+    return m_arr->arr()->var()->dim();
+}
+
+ArrayReadPtr<Arith> ArithVar::arr() const {
+    return m_arr;
+}
+
+std::string ArithVar::getName() const {
+    return m_arr->arr()->var()->getName();
+}
+
+bool ArithVar::CacheEqual::operator()(const std::tuple<ArrayReadPtr<Arith>> &args1, const std::tuple<ArrayReadPtr<Arith>> &args2) const noexcept {
     return args1 == args2;
 }
 
-size_t ArithVar::CacheHash::operator()(const std::tuple<int> &args) const noexcept {
-    return std::hash<int>{}(std::get<0>(args));
+size_t ArithVar::CacheHash::operator()(const std::tuple<ArrayReadPtr<Arith>> &args) const noexcept {
+    return std::hash<ArrayReadPtr<Arith>>{}(std::get<0>(args));
 }
-

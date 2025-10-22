@@ -61,9 +61,9 @@ public:
 
     Arith::Expr getCost(const RulePtr& rule) const;
 
-    Arith::Var getCostVar() const;
+    ArithVarPtr getCostVar() const;
 
-    Arith::Var getLocVar() const;
+    ArithVarPtr getLocVar() const;
 
     LocationIdx getLhsLoc(const RulePtr& idx) const;
 
@@ -95,8 +95,8 @@ protected:
     LocationIdx nextUnusedLocation {1};
     LocationIdx initialLocation {0};
     LocationIdx sink {addNamedLocation("LoAT_sink")};
-    Arith::Var loc_var {ArithVar::nextProgVar()};
-    Arith::Var cost_var {ArithVar::nextProgVar()};
+    ArithVarPtr loc_var {arrays::nextProgConst<Arith>()};
+    ArithVarPtr cost_var {arrays::nextProgConst<Arith>()};
 
 };
 

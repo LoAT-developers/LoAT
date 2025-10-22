@@ -9,8 +9,6 @@
 #include <boost/bimap/unordered_set_of.hpp>
 #include <memory>
 
-#include "itheory.hpp"
-
 namespace sexpresso {
 struct Sexp;
 }
@@ -42,22 +40,19 @@ namespace theory {
 
 class ArithLit;
 class ArithExpr;
-class ArithSubs;
-class ArithVar;
 
 using ArithLitPtr = ptr<ArithLit>;
 using ArithExprPtr = ptr<ArithExpr>;
-using ArithVarPtr = ptr<ArithVar>;
-
-using arith_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArithVarPtr>, boost::bimaps::unordered_set_of<ArithVarPtr>>;
 
 namespace mp = boost::multiprecision;
 using Int = mp::cpp_int;
 using Rational = mp::cpp_rational;
 
+class BoolVar;
 class BoolExpr;
 class BoolSubs;
 using BoolExprPtr = ptr<BoolExpr>;
+using BoolVarPtr = ptr<BoolVar>;
 
 template <class T>
 class ArrayVar;
@@ -65,10 +60,10 @@ class ArrayVar;
 template <class T>
 using ArrayVarPtr = ptr<ArrayVar<T>>;
 
-template <ITheory T>
+template <class T>
 using array_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArrayVarPtr<T>>, boost::bimaps::unordered_set_of<ArrayVarPtr<T>>>;
 
-template <ITheory T>
+template <class T>
 class ArraySubs;
 
 class Subs;
@@ -84,3 +79,11 @@ class ArrayRead;
 
 template <class T>
 using ArrayReadPtr = ptr<ArrayRead<T>>;
+
+using ArithVarPtr = ArrayReadPtr<Arith>;
+
+template <class... T>
+class VariantSet;
+using VarSet = VariantSet<ArrayVarPtr<Arith>, BoolVarPtr>;
+
+using CellSet = VariantSet<ArrayReadPtr<Arith>, BoolVarPtr>;

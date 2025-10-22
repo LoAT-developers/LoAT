@@ -14,7 +14,6 @@ class ArithMult;
 class ArithMod;
 
 using ArithExprPtr = cpp::not_null<std::shared_ptr<const ArithExpr>>;
-using ArithVarPtr = cpp::not_null<std::shared_ptr<const ArithVar>>;
 using ArithConstPtr = cpp::not_null<std::shared_ptr<const ArithConst>>;
 using ArithAddPtr = cpp::not_null<std::shared_ptr<const ArithAdd>>;
 using ArithMultPtr = cpp::not_null<std::shared_ptr<const ArithMult>>;
@@ -34,8 +33,11 @@ ArithExprPtr mkTimes(ArithExprPtr, ArithExprPtr);
 ArithExprPtr mkMod(ArithExprPtr x, ArithExprPtr y);
 ArithExprPtr mkConst(const Rational &r);
 ArithExprPtr mkConst(const Rational &&r);
-ArithExprPtr mkExp(ArithExprPtr base, ArithExprPtr exponent);
-ArithExprPtr mkVar(int idx);
+ArithExprPtr mkExp(const ArithExprPtr& base, const ArithExprPtr& exponent);
+ArithExprPtr mkVar(const ArrayReadPtr<Arith>&);
+
+const static ArithExprPtr zero {mkConst(0)};
+const static ArithExprPtr one {mkConst(1)};
 
 enum class Kind {
     Plus, Times, Mod, Exp, Constant, Variable
@@ -51,6 +53,7 @@ class ArithExpr: public std::enable_shared_from_this<ArithExpr> {
 
 protected:
 
+    ArithExpr();
     explicit ArithExpr(arith::Kind kind);
 
 private:
@@ -117,7 +120,11 @@ public:
     /**
      * @return The set of all variables that occur in this expression.
      */
-    linked_hash_set<ArithVarPtr> vars() const;
+    linked_hash_set<ArrayVarPtr<Arith>> vars() const;
+
+    void collectCells(CellSet&) const;
+    void collectCells(linked_hash_set<ArithVarPtr>&) const;
+    linked_hash_set<ArithVarPtr> cells() const;
 
     bool isNegated() const;
 
@@ -145,13 +152,15 @@ public:
     /**
      * @brief Collects all variables that occur in this expression.
      */
-    void collectVars(linked_hash_set<ArithVarPtr> &res) const;
+    void collectVars(linked_hash_set<ArrayVarPtr<Arith>> &res) const;
 
     /**
      * @return True iff this expression contains a variable that satisfies the given predicate.
      * @param predicate A function of type `const Var & => bool`.
      */
-    bool hasVarWith(const std::function<bool(ArithVarPtr)>& predicate) const;
+    bool hasCellWith(const std::function<bool(ArithVarPtr)>& predicate) const;
+
+    bool hasVarWith(const std::function<bool(ArrayVarPtr<Arith>)>& predicate) const;
 
     std::optional<ArithConstPtr> isRational() const;
 
@@ -191,12 +200,13 @@ public:
 
     sexpresso::Sexp to_smtlib() const;
 
-    ArithExprPtr renameVars(const arith_var_map&) const;
+    ArithExprPtr renameVars(const array_var_map<Arith>& map) const;
     ArithExprPtr renameVars(const Renaming&) const;
     Rational eval(const std::unordered_map<ArithVarPtr, Int>&) const;
     ArithExprPtr eval(const ModelPtr& model, const ArithVarPtr& keep) const;
 
-    ArithExprPtr subs(const ArithSubs&) const;
+    ArithExprPtr subs(const ArraySubs<Arith>&) const;
+    ArithExprPtr subs(const Subs&) const;
 
     /**
      * @brief exponentiation
@@ -243,50 +253,6 @@ public:
     std::optional<Int> intValue() const;
 
 };
-
-
-class ArithVar: public ArithExpr {
-
-    friend ArithExprPtr arith::mkVar(int idx);
-    friend class ArithExpr;
-
-    ArrayReadPtr<Arith> arr;
-
-public:
-    explicit ArithVar(int idx);
-    ~ArithVar();
-
-private:
-    struct CacheEqual {
-        bool operator()(const std::tuple<int> &args1, const std::tuple<int> &args2) const noexcept;
-    };
-    struct CacheHash {
-        size_t operator()(const std::tuple<int> &args) const noexcept;
-    };
-    static ConsHash<ArithExpr, ArithVar, CacheHash, CacheEqual, int> cache;
-
-    ArithVarPtr toVarPtr() const;
-
-public:
-
-    static ArithVarPtr next();
-    static ArithVarPtr nextProgVar();
-    static ArithVarPtr postVar(const ArithVarPtr&);
-    static ArithVarPtr progVar(const ArithVarPtr&);
-
-    ArithExprPtr toExpr() const;
-    int getIdx() const;
-    std::string getName() const;
-    bool isTempVar() const;
-    bool isProgVar() const;
-    bool isPostVar() const;
-    sexpresso::Sexp to_smtlib() const;
-    static unsigned dim();
-
-};
-
-std::ostream& operator<<(std::ostream &s, const ArithVarPtr& x);
-
 
 class ArithAdd: public ArithExpr {
 
@@ -341,7 +307,7 @@ private:
     static ConsHash<ArithExpr, ArithMult, CacheHash, CacheEqual, ArithExprSet> cache;
 
 public:
-    explicit ArithMult(const ArithExprSet &args);
+    explicit ArithMult(ArithExprSet args);
     ~ArithMult();
 
 };
@@ -352,9 +318,8 @@ class ArithMod: public ArithExpr {
     friend class ArithExpr;
 
 public:
-
-    const ArithExprPtr getLhs() const;
-    const ArithExprPtr getRhs() const;
+    ArithExprPtr getLhs() const;
+    ArithExprPtr getRhs() const;
 
 private:
 
@@ -378,14 +343,14 @@ public:
 
 class ArithExp: public ArithExpr {
 
-    friend ArithExprPtr arith::mkExp(ArithExprPtr base, ArithExprPtr exponent);
+    friend ArithExprPtr arith::mkExp(const ArithExprPtr& base, const ArithExprPtr& exponent);
     friend class ArithExpr;
 
     ArithExprPtr base;
     ArithExprPtr exponent;
 
 public:
-    ArithExp(ArithExprPtr base, ArithExprPtr exponent);
+    ArithExp(const ArithExprPtr& base, const ArithExprPtr& exponent);
     ~ArithExp();
 
 private:

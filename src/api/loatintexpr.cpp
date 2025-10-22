@@ -1,6 +1,5 @@
 #include "loatintexpr.hpp"
 #include "optional.hpp"
-#include "linkedhashmap.hpp"
 #include "vector.hpp"
 
 #include <boost/multiprecision/cpp_int.hpp>
@@ -8,6 +7,7 @@
 #include <numeric>
 #include <sstream>
 #include <string>
+#include <utility>
 
 // Hash function for expression pointers
 std::size_t hash_value(const LoatIntExprPtr &x)
@@ -34,42 +34,42 @@ LoatIntExprPtr LoatIntExpr::toPtr() const
 }
 
 // Overload operators +,-,*,^
-LoatIntExprPtr operator-(const LoatIntExprPtr x)
+LoatIntExprPtr operator-(const LoatIntExprPtr& x)
 {
     return LoatIntExpression::mkTimes(LoatIntExpression::mkConst(Rational(-1)), x);
 }
 
-LoatIntExprPtr operator-(const LoatIntExprPtr x, const LoatIntExprPtr y)
+LoatIntExprPtr operator-(const LoatIntExprPtr& x, const LoatIntExprPtr& y)
 {
     return LoatIntExpression::mkPlus(x, -y);
 }
 
-LoatIntExprPtr operator+(const LoatIntExprPtr x, const LoatIntExprPtr y)
+LoatIntExprPtr operator+(const LoatIntExprPtr& x, const LoatIntExprPtr& y)
 {
     return LoatIntExpression::mkPlus(x, y);
 }
 
-LoatIntExprPtr operator*(const LoatIntExprPtr x, const LoatIntExprPtr y)
+LoatIntExprPtr operator*(const LoatIntExprPtr& x, const LoatIntExprPtr& y)
 {
     return LoatIntExpression::mkTimes(x, y);
 }
 
-LoatIntExprPtr operator^(const LoatIntExprPtr x, const LoatIntExprPtr y)
+LoatIntExprPtr operator^(const LoatIntExprPtr& x, const LoatIntExprPtr& y)
 {
     return LoatIntExpression::mkExp(x, y);
 }
 
 // Divide the expression by a rational number
-LoatIntExprPtr LoatIntExpr::divide(const Rational &y) const
+LoatIntExprPtr LoatIntExpr::divide(const Rational &d) const
 {
     return LoatIntExpression::mkTimes(LoatIntExpression::mkConst(Rational(
-                                          boost::multiprecision::denominator(y),
-                                          boost::multiprecision::numerator(y))),
+                                          boost::multiprecision::denominator(d),
+                                          boost::multiprecision::numerator(d))),
                                       toPtr());
 }
 
 // Stream output for expressions
-std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr e)
+std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr& e)
 {
     switch (e->getKind())
     {
@@ -129,7 +129,7 @@ std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr e)
 // Add
 ConsHash<LoatIntExpr, LoatIntAdd, LoatIntAdd::CacheHash, LoatIntAdd::CacheEqual, LoatIntExprSet> LoatIntAdd::cache;
 
-LoatIntAdd::LoatIntAdd(const LoatIntExprSet &args) : LoatIntExpr(LoatIntExpression::Kind::Plus), m_args(args) {}
+LoatIntAdd::LoatIntAdd(LoatIntExprSet args) : LoatIntExpr(LoatIntExpression::Kind::Plus), m_args(std::move(args)) {}
 
 LoatIntAdd::~LoatIntAdd()
 {
@@ -151,7 +151,7 @@ size_t LoatIntAdd::CacheHash::operator()(const std::tuple<LoatIntExprSet> &args)
 
 LoatIntExprPtr LoatIntExpression::mkPlus(LoatIntExprPtr fst, LoatIntExprPtr snd)
 {
-    return mkPlus({fst, snd});
+    return mkPlus({std::move(fst), std::move(snd)});
 }
 
 LoatIntExprPtr LoatIntExpression::mkPlus(std::vector<LoatIntExprPtr> &&args)
@@ -165,7 +165,7 @@ LoatIntExprPtr LoatIntExpression::mkPlus(std::vector<LoatIntExprPtr> &&args)
         return args[0];
     }
     const LoatIntExprSet arg_set{args.begin(), args.end()};
-    return LoatIntAdd::cache.from_cache(std::move(arg_set));
+    return LoatIntAdd::cache.from_cache(arg_set);
 }
 
 const LoatIntExprSet &LoatIntAdd::getArgs() const
@@ -176,7 +176,7 @@ const LoatIntExprSet &LoatIntAdd::getArgs() const
 // Const
 ConsHash<LoatIntExpr, LoatIntConst, LoatIntConst::CacheHash, LoatIntConst::CacheEqual, Rational> LoatIntConst::cache;
 
-LoatIntConst::LoatIntConst(const Rational &t) : LoatIntExpr(LoatIntExpression::Kind::Constant), m_value(t) {}
+LoatIntConst::LoatIntConst(Rational t) : LoatIntExpr(LoatIntExpression::Kind::Constant), m_value(std::move(t)) {}
 
 LoatIntConst::~LoatIntConst()
 {
@@ -216,8 +216,8 @@ LoatIntExprPtr LoatIntExpression::mkConst(const Rational &&r)
 // Exp
 ConsHash<LoatIntExpr, LoatIntExp, LoatIntExp::CacheHash, LoatIntExp::CacheEqual, LoatIntExprPtr, LoatIntExprPtr> LoatIntExp::cache;
 
-LoatIntExp::LoatIntExp(const LoatIntExprPtr base, const LoatIntExprPtr exponent)
-    : LoatIntExpr(LoatIntExpression::Kind::Exp), m_base(base), m_exponent(exponent) {}
+LoatIntExp::LoatIntExp(LoatIntExprPtr base, LoatIntExprPtr exponent)
+    : LoatIntExpr(LoatIntExpression::Kind::Exp), m_base(std::move(base)), m_exponent(std::move(exponent)) {}
 
 LoatIntExp::~LoatIntExp()
 {
@@ -248,7 +248,7 @@ size_t LoatIntExp::CacheHash::operator()(const std::tuple<LoatIntExprPtr, LoatIn
     return hash;
 }
 
-LoatIntExprPtr LoatIntExpression::mkExp(const LoatIntExprPtr base, const LoatIntExprPtr exponent)
+LoatIntExprPtr LoatIntExpression::mkExp(const LoatIntExprPtr& base, const LoatIntExprPtr& exponent)
 {
     return LoatIntExp::cache.from_cache(base, exponent)->toPtr();
 }
@@ -256,21 +256,19 @@ LoatIntExprPtr LoatIntExpression::mkExp(const LoatIntExprPtr base, const LoatInt
 // Mod
 ConsHash<LoatIntExpr, LoatIntMod, LoatIntMod::CacheHash, LoatIntMod::CacheEqual, LoatIntExprPtr, LoatIntExprPtr> LoatIntMod::cache;
 
-LoatIntMod::LoatIntMod(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs)
-    : LoatIntExpr(LoatIntExpression::Kind::Mod), m_lhs(lhs), m_rhs(rhs) {}
+LoatIntMod::LoatIntMod(LoatIntExprPtr lhs, LoatIntExprPtr rhs)
+    : LoatIntExpr(LoatIntExpression::Kind::Mod), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)) {}
 
 LoatIntMod::~LoatIntMod()
 {
     cache.erase(m_lhs, m_rhs);
 }
 
-const LoatIntExprPtr LoatIntMod::getLhs() const
-{
+LoatIntExprPtr LoatIntMod::getLhs() const {
     return m_lhs;
 }
 
-const LoatIntExprPtr LoatIntMod::getRhs() const
-{
+LoatIntExprPtr LoatIntMod::getRhs() const {
     return m_rhs;
 }
 
@@ -290,15 +288,15 @@ size_t LoatIntMod::CacheHash::operator()(const std::tuple<LoatIntExprPtr, LoatIn
     return hash;
 }
 
-LoatIntExprPtr LoatIntExpression::mkMod(LoatIntExprPtr lhs, LoatIntExprPtr rhs)
+LoatIntExprPtr LoatIntExpression::mkMod(const LoatIntExprPtr& x, const LoatIntExprPtr& y)
 {
-    return LoatIntMod::cache.from_cache(lhs, rhs)->toPtr();
+    return LoatIntMod::cache.from_cache(x, y)->toPtr();
 }
 
 // Mult
 ConsHash<LoatIntExpr, LoatIntMult, LoatIntMult::CacheHash, LoatIntMult::CacheEqual, LoatIntExprSet> LoatIntMult::cache;
 
-LoatIntMult::LoatIntMult(const LoatIntExprSet &args) : LoatIntExpr(LoatIntExpression::Kind::Times), m_args(args) {}
+LoatIntMult::LoatIntMult(LoatIntExprSet args) : LoatIntExpr(LoatIntExpression::Kind::Times), m_args(std::move(args)) {}
 
 LoatIntMult::~LoatIntMult()
 {
@@ -310,15 +308,15 @@ const LoatIntExprSet &LoatIntMult::getArgs() const
     return m_args;
 }
 
-bool LoatIntMult::CacheEqual::operator()(const std::tuple<LoatIntExprSet> &a, const std::tuple<LoatIntExprSet> &b) const noexcept
+bool LoatIntMult::CacheEqual::operator()(const std::tuple<LoatIntExprSet> &args1, const std::tuple<LoatIntExprSet> &args2) const noexcept
 {
-    return a == b;
+    return args1 == args2;
 }
 
-size_t LoatIntMult::CacheHash::operator()(const std::tuple<LoatIntExprSet> &a) const noexcept
+size_t LoatIntMult::CacheHash::operator()(const std::tuple<LoatIntExprSet> &args) const noexcept
 {
     size_t hash = {23};
-    const auto &children{std::get<0>(a)};
+    const auto &children{std::get<0>(args)};
     boost::hash_combine(hash, boost::hash_unordered_range(children.begin(), children.end()));
     return hash;
 }
@@ -332,7 +330,7 @@ LoatIntExprPtr LoatIntExpression::mkTimes(LoatIntExprVec &&args)
     return LoatIntMult::cache.from_cache(LoatIntExprSet(args.begin(), args.end()))->toPtr();
 }
 
-LoatIntExprPtr LoatIntExpression::mkTimes(const LoatIntExprPtr a, const LoatIntExprPtr b)
+LoatIntExprPtr LoatIntExpression::mkTimes(const LoatIntExprPtr& a, const LoatIntExprPtr& b)
 {
     return mkTimes(LoatIntExprVec{a, b});
 }
@@ -340,7 +338,7 @@ LoatIntExprPtr LoatIntExpression::mkTimes(const LoatIntExprPtr a, const LoatIntE
 // Var
 ConsHash<LoatIntExpr, LoatIntVar, LoatIntVar::CacheHash, LoatIntVar::CacheEqual, std::string, bool> LoatIntVar::cache;
 
-LoatIntVar::LoatIntVar(const std::string &name, bool isPost) : LoatIntExpr(LoatIntExpression::Kind::Variable), m_name(name), m_isPost(isPost) {}
+LoatIntVar::LoatIntVar(std::string name, const bool isPost) : LoatIntExpr(LoatIntExpression::Kind::Variable), m_name(std::move(name)), m_isPost(isPost) {}
 
 LoatIntVar::~LoatIntVar()
 {
@@ -370,17 +368,17 @@ size_t LoatIntVar::CacheHash::operator()(const std::tuple<std::string, bool> &a)
     return hash;
 }
 
-LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name, bool isPost)
+LoatIntExprPtr LoatIntExpression::mkVar(const std::string &name, const bool isPost)
 {
     return LoatIntVar::cache.from_cache(name, isPost)->toPtr();
 }
 
 LoatIntExprPtr LoatIntExpression::mkPreVar(const std::string &name)
 {
-    return LoatIntExpression::mkVar(name, false);
+    return mkVar(name, false);
 }
 
 LoatIntExprPtr LoatIntExpression::mkPostVar(const std::string &name)
 {
-    return LoatIntExpression::mkVar(name, true);
+    return mkVar(name, true);
 }

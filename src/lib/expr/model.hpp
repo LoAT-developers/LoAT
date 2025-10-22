@@ -13,14 +13,15 @@ public:
 
     explicit Model(Subs);
 
-    Arith::Const get(const Arith::Var&);
+    Arith::Const get(const ArithVarPtr&);
     Bools::Const get(const Bools::Var&);
 
-    void put(const Arith::Var&, const Arith::Const&);
+    void put(const ArithVarPtr&, const Arith::Const&);
 
     bool eval(const Lit&);
     Bools::Const eval(const Bools::Expr&);
     Arith::Const eval(const Arith::Expr&);
+    Arith::Const eval(const ArrayReadPtr<Arith>&);
     Rational evalToRational(const Arith::Expr&);
     virtual ModelPtr withSubs(const Subs&) const = 0;
 
@@ -37,9 +38,7 @@ protected:
     virtual Bools::Const evalImpl(const Bools::Expr&) = 0;
     Arith::Const evalImpl(const Arith::Expr&);
     virtual Rational evalToRationalImpl(const Arith::Expr&) = 0;
-    virtual Arith::Const getImpl(const Arith::Var&) = 0;
     virtual Bools::Const getImpl(const Bools::Var&) = 0;
-    virtual Arith::Const getImpl(const ArrayReadPtr<Arith>&) = 0;
     virtual std::string toString(const Expr&) = 0;
 
     Subs subs;

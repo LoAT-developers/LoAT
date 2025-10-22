@@ -1,15 +1,17 @@
 #include "itstosafetyproblem.hpp"
+
+#include <utility>
 #include "formulapreprocessing.hpp"
 #include "config.hpp"
 
-ITSToSafety::ITSToSafety(const ITSPtr& its)
-    : its(its) {}
+ITSToSafety::ITSToSafety(ITSPtr  its)
+    : its(std::move(its)) {}
 
 ITSModel ITSToSafety::transform_model(const Bools::Expr &e) const {
     ITSModel res;
     const auto loc_var {its->getLocVar()};
     for (const auto &x : its->getLocations()) {
-        Subs s{Subs::build<Arith>(loc_var, arith::mkConst(x))};
+        Subs s{Subs::build(loc_var, arith::mkConst(x))};
         res.set_invariant(x, e->subs(s));
     }
     res.set_invariant(its->getInitialLocation(), top());
@@ -20,14 +22,18 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_va
     Subs subs;
     std::vector<Bools::Expr> conjuncts;
     conjuncts.push_back(r->getGuard());
-    for (const auto &x : prog_vars) {
-        if (const auto y {theory::is_var(r->getUpdate().get(x))}) {
-            if (theory::isTempVar(*y) && !subs.contains(*y)) {
-                subs.put(*y, theory::toExpr(theory::postVar(x)));
-                continue;
-            }
-        }
-        conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), r->getUpdate().get(x)));
+    for (const auto& x : prog_vars) {
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                const auto up{r->getUpdate().get(x)};
+                if (const auto y{up->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
+                    using T = decltype(theory::theory(*y));
+                    subs.put(*y, T::varToExpr(x->postVar()));
+                } else {
+                    conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), up));
+                }
+            });
     }
     const auto res {bools::mkAnd(conjuncts)->subs(subs)};
     return res;
@@ -44,10 +50,15 @@ SafetyProblem ITSToSafety::transform() {
             sp.add_post_var(x);
         }
     }
-    for (const auto &y: sp.post_vars()) {
-        const auto x {theory::progVar(y)};
-        post_to_pre.insert(y, x);
-        post_to_pre.insert(x, theory::next(x));
+    for (const auto& y : sp.post_vars()) {
+        theory::apply(
+            y,
+            [&](const auto& y) {
+                using T = decltype(theory::theory(y));
+                const auto x{y->progVar()};
+                post_to_pre.insert(y, x);
+                post_to_pre.insert(x, T::next(x->dim()));
+            });
     }
     std::vector<Bools::Expr> init;
     std::vector<Bools::Expr> err;
@@ -97,7 +108,7 @@ ITSSafetyCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
     ITSSafetyCex res{its};
     const auto init_model{cex.get_state(0)->composeBackwards(post_to_pre)};
     res.set_initial_state(init_model);
-    const auto fst {cex.get_state(0)};
+    const auto& fst {cex.get_state(0)};
     for (const auto &[b,t]: rev_init_map) {
         if (fst->eval(b)) {
             res.do_step(t, fst);
@@ -107,10 +118,14 @@ ITSSafetyCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
     assert(res.num_transitions() == 1);
     const auto steps{cex.num_transitions()};
     Renaming pre_to_post;
-    for (const auto &x: its->getVars()) {
-        if (theory::isProgVar(x)) {
-            pre_to_post.insert(x, theory::postVar(x));
-        }
+    for (const auto& x : its->getVars()) {
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                if (x->isProgVar()) {
+                    pre_to_post.insert(x, x->postVar());
+                }
+            });
     }
     for (size_t i = 0; i < steps; ++i) {
         const auto& [model, transition]{cex.get_step(i)};

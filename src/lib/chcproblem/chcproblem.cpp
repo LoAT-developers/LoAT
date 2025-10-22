@@ -3,6 +3,7 @@
 #include "theory.hpp"
 
 #include <map>
+#include <utility>
 
 std::ostream& operator<<(std::ostream &s, const ClausePtr& c) {
     if (c->premise) {
@@ -55,7 +56,7 @@ size_t FunApp::CacheHash::operator()(const std::tuple<std::string, std::vector<E
 
 ConsHash<FunApp, FunApp, FunApp::CacheHash, FunApp::CacheEqual, std::string, std::vector<Expr>> FunApp::cache;
 
-FunApp::FunApp(const std::string &pred, const std::vector<Expr> &args): pred(pred), args(args) {}
+FunApp::FunApp(std::string pred, const std::vector<Expr> &args): pred(std::move(pred)), args(args) {}
 
 FunApp::~FunApp() {
     cache.erase(pred, args);
@@ -119,7 +120,7 @@ size_t Clause::CacheHash::operator()(const Args &args) const noexcept {
 
 ConsHash<Clause, Clause, Clause::CacheHash, Clause::CacheEqual, std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> Clause::cache;
 
-Clause::Clause(const std::optional<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion): premise(premise), constraint(constraint), conclusion(conclusion) {}
+Clause::Clause(const std::optional<FunAppPtr>& premise, Bools::Expr  constraint, const std::optional<FunAppPtr>& conclusion): premise(premise), constraint(std::move(constraint)), conclusion(conclusion) {}
 
 Clause::~Clause() {
     cache.erase(premise, constraint, conclusion);
@@ -150,20 +151,20 @@ Bools::Expr Clause::get_constraint() const {
 }
 
 ClausePtr Clause::subs(const Subs &subs) const {
-    const auto prem {map<FunAppPtr, FunAppPtr>(premise, [&](const auto p) {
+    const auto prem {map<FunAppPtr, FunAppPtr>(premise, [&](const auto& p) {
         return p->subs(subs);
     })};
-    const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto c) {
+    const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto& c) {
         return c->subs(subs);
     })};
     return mk(prem, constraint->subs(subs), concl);
 }
 
 ClausePtr Clause::rename_vars(const Renaming &subs) const {
-    const auto prem {map<FunAppPtr, FunAppPtr>(premise, [&](const auto p) {
+    const auto prem {map<FunAppPtr, FunAppPtr>(premise, [&](const auto& p) {
         return p->rename_vars(subs);
     })};
-    const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto c) {
+    const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto& c) {
         return c->rename_vars(subs);
     })};
     return mk(prem, constraint->renameVars(subs), concl);

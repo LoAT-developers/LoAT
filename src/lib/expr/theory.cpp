@@ -27,7 +27,15 @@ namespace theory {
         return std::visit([](const auto &var){return var->isTempVar();}, var);
     }
 
+    bool isTempCell(const Cell &var) {
+        return std::visit([](const auto &var){return var->isTempVar();}, var);
+    }
+
     bool isProgVar(const Var &var) {
+        return std::visit([](const auto &var){return var->isProgVar();}, var);
+    }
+
+    bool isProgCell(const Cell &var) {
         return std::visit([](const auto &var){return var->isProgVar();}, var);
     }
 
@@ -46,16 +54,20 @@ namespace theory {
         return std::visit([](const auto &var){return var->isPostVar();}, var);
     }
 
+    bool isPostCell(const Cell &var) {
+        return std::visit([](const auto &var){return var->isPostVar();}, var);
+    }
+
     Var next(const Var &var) {
         return std::visit([](const auto& x) {return Var(theory(x).next(x->dim()));}, var);
     }
 
     Var postVar(const Var &var) {
-        return std::visit([]<typename X>(const X& x) {return Var(X::element_type::postVar(x));}, var);
+        return std::visit([]<typename X>(const X& x) {return Var(x->postVar());}, var);
     }
 
     Var progVar(const Var &var) {
-        return std::visit([]<typename X>(const X& x) {return Var(X::element_type::progVar(x));}, var);
+        return std::visit([]<typename X>(const X& x) {return Var(x->progVar());}, var);
     }
 
     Type to_type(const Expr &x) {
@@ -76,9 +88,6 @@ namespace theory {
     Type to_type(const Var &x) {
         return std::visit(
             Overload{
-                [&](const Arith::Var &) {
-                    return Type::Int;
-                },
                 [&](const Bools::Var &) {
                     return Type::Bool;
                 },
@@ -96,19 +105,6 @@ namespace theory {
             return Type::Bool;
         }
         throw std::invalid_argument("unknown type");
-    }
-
-    std::optional<Var> is_var(const Expr &x) {
-        using opt = std::optional<Var>;
-        return std::visit(
-            Overload{
-                [&](const auto &e) {
-                    if (const auto &x {e->isVar()}) {
-                        return opt{*x};
-                    }
-                    return opt{};
-                }},
-            x);
     }
 
     std::string abbrev(const Type t) {
@@ -130,15 +126,11 @@ namespace theory {
     void collectVars(const Expr& expr, VarSet& vars) {
         theory::apply(
             expr,
-            [&](const Arith::Expr& expr) {
-                expr->collectVars(vars.get<Arith::Var>());
-            },
-            [&](const Arrays<Arith>::Expr& expr) {
-                auto &arith {vars.get<Arith::Var>()};
-                expr->collectVars(vars.get<Arrays<Arith>::Var>(), arith, arith);
-            },
             [&](const Bools::Expr& expr) {
                 expr->collectVars(vars);
+            },
+            [&](const auto& expr) {
+                expr->collectVars(vars.get<Arrays<Arith>::Var>());
             });
     }
 
@@ -178,10 +170,6 @@ namespace theory {
                     return bools::mkLit(arrays::mkNeq<Arith>(e1, std::get<Arrays<Arith>::Expr>(e2)));
                 }
             }, e1);
-    }
-
-    Arith theory(const Arith::Var&) {
-        return arith::t;
     }
 
     Bools theory(const Bools::Var&) {
@@ -236,24 +224,37 @@ namespace theory {
         return isPolyImpl<0>(lit);
     }
 
-    void collectVars(const Lit &lit, VarSet &s) {
-        std::visit(Overload{
-            [&](const Arith::Lit &lit) {
-                return lit->collectVars(s.get<Arith::Var>());
-            },
-            [&](const Arrays<Arith>::Lit &lit) {
-                auto& arith {s.get<Arith::Var>()};
-                return lit->collectVars(s.get<Arrays<Arith>::Var>(), arith, arith);
-            },
-            [&](const Bools::Lit &lit) {
+    void collectVars(const Lit& lit, VarSet& s) {
+        theory::apply(
+            lit,
+            [&](const Bools::Lit& lit) {
                 return lit->collectVars(s.get<Bools::Var>());
-            }
-        }, lit);
+            },
+            [&](const auto& lit) {
+                return lit->collectVars(s.get<Arrays<Arith>::Var>());
+            });
     }
 
     VarSet vars(const Lit &lit) {
         VarSet res;
         collectVars(lit, res);
+        return res;
+    }
+
+    void collectCells(const Lit& lit, CellSet& s) {
+        theory::apply(
+            lit,
+            [&](const Bools::Lit& lit) {
+                return lit->collectVars(s.get<Bools::Var>());
+            },
+            [&](const auto& lit) {
+                return lit->collectCells(s.get<ArithVarPtr>());
+            });
+    }
+
+    CellSet cells(const Lit& lit) {
+        CellSet res;
+        collectCells(lit, res);
         return res;
     }
 

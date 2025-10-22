@@ -20,23 +20,26 @@ static void findOrderUntilConflicting(const Subs &update, PartialResult &res) {
     while (changed && res.ordering.size() < update.size()) {
         changed = false;
 
-        for (const auto &[var, ex] : update) {
-            if (res.ordered.contains(var)) continue;
-
-            //check if all variables on update rhs are already processed
-            bool ready = true;
-            for (const auto &x : theory::vars(ex)) {
-                if (x != var && update.contains(x) && !res.ordered.contains(x)) {
-                    ready = false;
-                    break;
-                }
-            }
-
-            if (ready) {
-                res.ordered.insert(var);
-                res.ordering.push_back(var);
-                changed = true;
-            }
+        for (const auto &p : update) {
+            theory::apply(
+                p,
+                [&](const auto& p) {
+                    if (const auto& [var, ex]{p}; !res.ordered.contains(var)) {
+                        //check if all variables on update rhs are already processed
+                        bool ready = true;
+                        for (const auto& x : ex->vars()) {
+                            if (Var(x) != Var(var) && update.contains(x) && !res.ordered.contains(x)) {
+                                ready = false;
+                                break;
+                            }
+                        }
+                        if (ready) {
+                            res.ordered.insert(var);
+                            res.ordering.push_back(var);
+                            changed = true;
+                        }
+                    }
+                });
         }
     }
 }

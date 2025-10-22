@@ -2,6 +2,7 @@
 #include "formulapreprocessing.hpp"
 #include "vector.hpp"
 #include "smtfactory.hpp"
+#include "theory.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <cassert>
@@ -54,7 +55,7 @@ std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
             }
         }
         auto valuation_str {(*cex.valuation)->toString(cex.vars())};
-        boost::replace_all(valuation_str, (*cex.param)->getName(), "n");
+        boost::replace_all(valuation_str, (*cex.param)->var()->getName(), "n");
         s << "\nwitness: " << *cex.witness << std::endl;
         s << "\nvaluation: " << valuation_str << std::endl;
     }
@@ -100,7 +101,7 @@ VarSet ITSCpxCex::vars() const {
         (*witness)->collectVars(res);
     }
     if (param) {
-        res.insert(*param);
+        (*param)->collectVars(res);
     }
     return res;
 }

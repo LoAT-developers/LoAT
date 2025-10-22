@@ -56,19 +56,11 @@ Bools::Const YicesModel::evalImpl(const Bools::Expr& e) {
     return res;
 }
 
-Arith::Const YicesModel::getImpl(const Arith::Var& e) {
-    return toInt(Converter::convert(e, m_ctx));
-}
-
 Bools::Const YicesModel::getImpl(const Bools::Var& e) {
     int32_t res;
     const auto t {m_ctx.getVariable(e)};
     yices_get_bool_value(m_model.get(), t, &res);
     return res;
-}
-
-Arith::Const YicesModel::getImpl(const ArrayReadPtr<Arith>& cell) {
-    return toInt(Converter::convert(cell, m_ctx));
 }
 
 std::string YicesModel::toString(const Expr& e) {

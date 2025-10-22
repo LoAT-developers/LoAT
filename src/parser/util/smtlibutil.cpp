@@ -8,7 +8,7 @@ Var SMTLibParsingState::get_var(const std::string &name, const theory::Type type
     switch (type) {
         case theory::Type::Int: {
             if (next_tmp_arith_var == tmp_arith_vars.size()) {
-                tmp_arith_vars.emplace_back(ArithVar::next());
+                tmp_arith_vars.emplace_back(ArrayVar<Arith>::next(0));
             }
             var = tmp_arith_vars.at(next_tmp_arith_var);
             ++next_tmp_arith_var;
@@ -51,12 +51,11 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
             return arith::mkConst(Int(name));
         } else {
             for (int i = state.bindings.size() - 1; i >= 0; i--) {
-                const auto it{state.bindings[i].find(name)};
-                if (it != state.bindings[i].end()) {
+                if (const auto it{state.bindings[i].find(name)}; it != state.bindings[i].end()) {
                     return std::get<Arith::Expr>(it->second);
                 }
             }
-            return std::get<Arith::Var>(state.get_var(name, theory::Type::Int));
+            return arrays::readConst(std::get<Arrays<Arith>::Var>(state.get_var(name, theory::Type::Int)));
         }
     }
     const auto name {exp[0].str()};
@@ -64,7 +63,7 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         const auto r{parseBoolExpr(exp[1], state)};
         const auto then_case{parseArithExpr(exp[2], state)};
         const auto else_case{parseArithExpr(exp[3], state)};
-        const auto var {ArithVar::next()};
+        const auto var {arrays::nextConst<Arith>()};
         state.refinement.emplace_back((r && bools::mkLit(arith::mkEq(var, then_case))) || (!r && bools::mkLit(arith::mkEq(var, else_case))));
         return var;
     }
@@ -110,11 +109,11 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (name == "mod" || name == "div") {
         const auto fst {parseArithExpr(exp[1], state)};
         const auto snd {parseArithExpr(exp[2], state)};
-        const auto div {ArithVar::next()};
-        const auto mod {ArithVar::next()};
+        const auto div {arrays::nextConst<Arith>()};
+        const auto mod {arrays::nextConst<Arith>()};
         std::vector<Bools::Expr> constr;
         constr.push_back(theory::mkEq(fst, snd * div + mod));
-        constr.push_back(theory::mkNeq(snd, arith::mkConst(0)));
+        constr.push_back(theory::mkNeq(snd, arith::zero));
         bool explicit_encoding = false;
         if (const auto y {snd->isInt()}) {
             if (*y > 0 && *y <= 10) {
@@ -127,16 +126,16 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
             }
         }
         if (!explicit_encoding) {
-            constr.push_back(bools::mkLit(arith::mkGeq(mod, arith::mkConst(0)))); // x mod y is non-negative
+            constr.push_back(bools::mkLit(arith::mkGeq(mod, arith::zero))); // x mod y is non-negative
             constr.push_back( // |y| > x mod y
-                bools::mkAnd(std::vector{arith::mkGt(snd, arith::mkConst(0)), arith::mkGt(snd, mod)})
-                || bools::mkAnd(std::vector{arith::mkLt(snd, arith::mkConst(0)), arith::mkGt(-snd, mod)}));
+                bools::mkAnd(std::vector{arith::mkGt(snd, arith::zero), arith::mkGt(snd, mod)})
+                || bools::mkAnd(std::vector{arith::mkLt(snd, arith::zero), arith::mkGt(-snd, mod)}));
         }
         state.refinement.emplace_back(bools::mkAnd(constr));
         if (name == "div") {
-            return Arith::varToExpr(div);
+            return div;
         }
-        return Arith::varToExpr(mod);
+        return mod;
     }
     throw std::invalid_argument("unknown operator " + name);
 }
@@ -278,9 +277,9 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         std::vector<Expr> args;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
             if (type == theory::Type::Int) {
-                args.push_back(parseArithExpr(exp[i], state));
+                args.emplace_back(parseArithExpr(exp[i], state));
             } else {
-                args.push_back(parseBoolExpr(exp[i], state));
+                args.emplace_back(parseBoolExpr(exp[i], state));
             }
         }
         std::vector<Bools::Expr> lits;

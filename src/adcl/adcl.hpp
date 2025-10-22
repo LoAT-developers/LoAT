@@ -198,11 +198,11 @@ class ADCL {
 
     bool is_orig_clause(const RulePtr& idx) const;
 
-    void set_cpx_witness(const RulePtr&, const ModelPtr&, const Arith::Var&);
+    void set_cpx_witness(const RulePtr&, const ModelPtr&, const ArithVarPtr&);
 
     void update_cpx();
 
-    static std::optional<RulePtr> instantiate(const Arith::Var& n, const RulePtr& rule);
+    static std::optional<RulePtr> instantiate(const ArithVarPtr& n, const RulePtr& rule);
 
     /**
      * initializes all data structures after preprocessing

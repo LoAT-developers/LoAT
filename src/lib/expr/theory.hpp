@@ -41,8 +41,11 @@ namespace theory {
 
 std::string getName(const Var &var);
 bool isTempVar(const Var &var);
+bool isTempCell(const Cell &var);
 bool isProgVar(const Var &var);
+bool isProgCell(const Cell &var);
 bool isPostVar(const Var &var);
+bool isPostCell(const Cell &var);
 Var next(const Var &var);
 Var postVar(const Var &var);
 Var progVar(const Var &var);
@@ -51,7 +54,6 @@ void collectVars(const Expr &expr, VarSet &vars);
 VarSet vars(const Expr &e);
 Bools::Expr mkEq(const Expr &e1, const Expr &e2);
 Bools::Expr mkNeq(const Expr &e1, const Expr &e2);
-Arith theory(const Arith::Var&);
 Bools theory(const Bools::Var&);
 Arrays<Arith> theory(const Arrays<Arith>::Var&);
 Arith theory(const Arith::Expr&);
@@ -61,6 +63,8 @@ bool isLinear(const Lit &lit);
 bool isPoly(const Lit &lit);
 void collectVars(const Lit &lit, VarSet &s);
 VarSet vars(const Lit &lit);
+void collectCells(const Lit &lit, CellSet &s);
+CellSet cells(const Lit &lit);
 bool isTriviallyTrue(const Lit &lit);
 bool isTriviallyFalse(const Lit &lit);
 Lit negate(const Lit &lit);
@@ -71,7 +75,14 @@ void simplifyAnd(LitSet&);
 Type to_type(const Expr &x);
 Type to_type(const Var &x);
 Type to_type(const std::string &x);
-std::optional<Var> is_var(const Expr &x);
+
+template <class Bool, class IntArray, class... Ts>
+auto apply(const std::variant<Bool, IntArray>& x, Ts... f) noexcept {
+    if (std::holds_alternative<Bool>(x)) {
+        return Overload{f...}(*std::get_if<Bool>(&x));
+    }
+    return Overload{f...}(*std::get_if<IntArray>(&x));
+}
 
 template <class Int, class Bool, class IntArray, class ... Ts>
 auto apply(const std::variant<Int, Bool, IntArray> &x, Ts... f) noexcept {
@@ -84,11 +95,25 @@ auto apply(const std::variant<Int, Bool, IntArray> &x, Ts... f) noexcept {
     return Overload{f...}(*std::get_if<IntArray>(&x));
 }
 
+template <class Bool, class IntArray, class... Ts>
+void iter(const std::tuple<Bool, IntArray>& x, Ts... f) noexcept {
+    Overload{f...}(std::get<Bool>(x));
+    Overload{f...}(std::get<IntArray>(x));
+}
+
 template <class Int, class Bool, class IntArray, class... Ts>
 void iter(const std::tuple<Int, Bool, IntArray>& x, Ts... f) noexcept {
     Overload{f...}(std::get<Int>(x));
     Overload{f...}(std::get<Bool>(x));
     Overload{f...}(std::get<IntArray>(x));
+}
+
+template <class Bool, class IntArray, class... Ts>
+bool all_of(const std::tuple<Bool, IntArray>& x, Ts... f) noexcept {
+    if (!Overload{f...}(std::get<Bool>(x))) {
+        return false;
+    }
+    return Overload{f...}(std::get<IntArray>(x));
 }
 
 template <class Int, class Bool, class IntArray, class... Ts>

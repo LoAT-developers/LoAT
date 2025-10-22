@@ -45,16 +45,16 @@ namespace LoatBoolExpression
     LoatBoolExprPtr mkPostVar(const std::string &name);
     LoatBoolExprPtr mkAnd(const LoatBoolExprVec &&args);
     LoatBoolExprPtr mkOr(const LoatBoolExprVec &&args);
-    LoatBoolExprPtr mkNot(const LoatBoolExprPtr arg);
+    LoatBoolExprPtr mkNot(const LoatBoolExprPtr& arg);
 
     // Factory methods to create Literals
-    LoatBoolExprPtr mkCmp(const LoatIntExprPtr lhs, CmpOp op, const LoatIntExprPtr rhs);
-    LoatBoolExprPtr mkEq(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
-    LoatBoolExprPtr mkNeq(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
-    LoatBoolExprPtr mkLt(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
-    LoatBoolExprPtr mkLe(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
-    LoatBoolExprPtr mkGt(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
-    LoatBoolExprPtr mkGe(const LoatIntExprPtr lhs, const LoatIntExprPtr rhs);
+    LoatBoolExprPtr mkCmp(const LoatIntExprPtr& lhs, CmpOp op, const LoatIntExprPtr& rhs);
+    LoatBoolExprPtr mkEq(const LoatIntExprPtr& lhs, const LoatIntExprPtr& rhs);
+    LoatBoolExprPtr mkNeq(const LoatIntExprPtr& lhs, const LoatIntExprPtr& rhs);
+    LoatBoolExprPtr mkLt(const LoatIntExprPtr& lhs, const LoatIntExprPtr& rhs);
+    LoatBoolExprPtr mkLe(const LoatIntExprPtr& lhs, const LoatIntExprPtr& rhs);
+    LoatBoolExprPtr mkGt(const LoatIntExprPtr& lhs, const LoatIntExprPtr& rhs);
+    LoatBoolExprPtr mkGe(const LoatIntExprPtr& lhs, const LoatIntExprPtr& rhs);
 }
 
 /**
@@ -166,7 +166,7 @@ public:
  */
 class LoatBoolNot : public LoatBoolExpr
 {
-    friend LoatBoolExprPtr LoatBoolExpression::mkNot(const LoatBoolExprPtr arg);
+    friend LoatBoolExprPtr LoatBoolExpression::mkNot(const LoatBoolExprPtr& arg);
 
 private:
     LoatBoolExprPtr m_arg;
@@ -194,7 +194,7 @@ public:
  */
 class LoatBoolCmp : public LoatBoolExpr
 {
-    friend LoatBoolExprPtr LoatBoolExpression::mkCmp(const LoatIntExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatIntExprPtr rhs);
+    friend LoatBoolExprPtr LoatBoolExpression::mkCmp(const LoatIntExprPtr& lhs, LoatBoolExpression::CmpOp op, const LoatIntExprPtr& rhs);
 
 private:
     LoatIntExprPtr m_lhs;
@@ -215,7 +215,7 @@ private:
     static ConsHash<LoatBoolExpr, LoatBoolCmp, CacheHash, CacheEqual, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> cache;
 
 public:
-    LoatBoolCmp(const LoatIntExprPtr lhs, LoatBoolExpression::CmpOp op, const LoatIntExprPtr rhs);
+    LoatBoolCmp(const LoatIntExprPtr& lhs, LoatBoolExpression::CmpOp op, const LoatIntExprPtr& rhs);
     ~LoatBoolCmp();
 
     const LoatIntExprPtr &getLhs() const;
@@ -227,11 +227,11 @@ public:
 std::ostream &operator<<(std::ostream &os, const LoatBoolExprPtr &expr);
 
 // Operator Overloads for comparisons / literals
-LoatBoolExprPtr operator&&(const LoatBoolExprPtr a, const LoatBoolExprPtr b);
+LoatBoolExprPtr operator&&(const LoatBoolExprPtr& a, const LoatBoolExprPtr& b);
 
-LoatBoolExprPtr operator||(const LoatBoolExprPtr a, const LoatBoolExprPtr b);
+LoatBoolExprPtr operator||(const LoatBoolExprPtr& a, const LoatBoolExprPtr& b);
 
-LoatBoolExprPtr operator!(const LoatBoolExprPtr a);
+LoatBoolExprPtr operator!(const LoatBoolExprPtr& a);
 
 // Operator Overloads for comparisons / literals
 LoatBoolExprPtr operator==(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);

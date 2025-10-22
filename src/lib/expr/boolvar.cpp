@@ -1,5 +1,7 @@
 #include "boolvar.hpp"
 
+#include "subs.hpp"
+
 #include <string>
 #include <functional>
 
@@ -17,16 +19,15 @@ BoolVar::~BoolVar() {
 std::string BoolVar::getName() const {
     if (idx > 0) {
         return "b" + std::to_string(idx);
-    } else {
-        return "bt" + std::to_string(-idx);
     }
+    return "bt" + std::to_string(-idx);
 }
 
 int BoolVar::getIdx() const {
     return idx;
 }
 
-std::ostream& operator<<(std::ostream &s, const BoolVarPtr e) {
+std::ostream& operator<<(std::ostream &s, const BoolVarPtr& e) {
     return s << e->getName();
 }
 
@@ -40,12 +41,12 @@ BoolVarPtr BoolVar::nextProgVar() {
     return bools::mkVar(last_prog_idx);
 }
 
-BoolVarPtr BoolVar::postVar(const BoolVarPtr &var) {
-    return bools::mkVar(var->getIdx() + 1);
+BoolVarPtr BoolVar::postVar() const {
+    return bools::mkVar(idx + 1);
 }
 
-BoolVarPtr BoolVar::progVar(const BoolVarPtr &var) {
-    return bools::mkVar(var->getIdx() - 1);
+BoolVarPtr BoolVar::progVar() const {
+    return bools::mkVar(idx - 1);
 }
 
 bool BoolVar::isTempVar() const {
@@ -84,6 +85,10 @@ size_t BoolVar::CacheHash::operator()(const std::tuple<int> &args) const noexcep
     return std::hash<int>{}(std::get<0>(args));
 }
 
-unsigned BoolVar::dim() const {
+unsigned BoolVar::dim() {
     return 0;
+}
+
+BoolExprPtr BoolVar::subs(const Subs& subs) const {
+    return subs.get(cpp::assume_not_null(this->shared_from_this()));
 }
