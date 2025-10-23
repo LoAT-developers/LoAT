@@ -392,11 +392,6 @@ sexpresso::Sexp ArrayRead<T>::to_smtlib() const {
 }
 
 template <class T>
-T::Expr ArrayRead<T>::toExpr() const {
-    return cpp::assume_not_null(this->shared_from_this());
-}
-
-template <class T>
 ArrayReadPtr<T> ArrayRead<T>::renameVars(const array_var_map<T>& map) const {
     return cache.from_cache(m_arr->renameVars(map), m_indices);
 }
@@ -496,9 +491,13 @@ ArrayPtr<Arith> arrays::writeConst(const ArrayPtr<Arith>& arr, const Arith::Expr
     return mkArrayWrite(arr, {}, val);
 }
 
-ArrayReadPtr<Arith> arrays::readConst(const ArrayPtr<Arith>& arr) {
+Arith::Expr arrays::readConst(const ArrayPtr<Arith>& arr) {
     assert(arr->dim() == 0);
-    return ArrayRead<Arith>::cache.from_cache(arr, {});
+    return mkArrayRead(arr, {});
+}
+
+ArrayReadPtr<Arith> arrays::readConst(const ArrayVarPtr<Arith>& arr) {
+    ArrayRead<Arith>::cache.from_cache(arr, {});
 }
 
 template class Array<Arith>;

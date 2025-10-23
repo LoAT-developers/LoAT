@@ -3,35 +3,26 @@
 #include "arrayexpr.hpp"
 #include "exprfwd.hpp"
 
-template <ITheory T>
-class ArrayLit;
-
-template <ITheory T>
+template <class T>
 class ArrayEq;
 
-template <ITheory T>
+template <class T>
 class ArrayNeq;
 
-template <ITheory T>
-using ArrayLitPtr = ptr<ArrayLit<T>>;
-
-template <ITheory T>
+template <class T>
 using ArrayEqPtr = ptr<ArrayEq<T>>;
 
-template <ITheory T>
+template <class T>
 using ArrayNeqPtr = ptr<ArrayNeq<T>>;
 
 namespace arrays {
 
-    template <ITheory T>
-    ArrayLitPtr<T> mkEq(const ArrayPtr<T>& lhs, const ArrayPtr<T>& rhs);
-
-    template <ITheory T>
-    ArrayLitPtr<T> mkNeq(const ArrayPtr<T>& lhs, const ArrayPtr<T>& rhs);
+    Lit mkEq(const ArrayPtr<Arith>& lhs, const ArrayPtr<Arith>& rhs);
+    Lit mkNeq(const ArrayPtr<Arith>& lhs, const ArrayPtr<Arith>& rhs);
 
 }
 
-template <ITheory T>
+template <class T>
 class ArrayLit {
 
 public:
@@ -59,11 +50,12 @@ public:
 
 };
 
-template <ITheory T>
+template <class T>
 class ArrayEq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayEq<T>> {
 
-    friend ArrayLitPtr<T> arrays::mkEq(const ArrayPtr<T>& lhs, const ArrayPtr<T>& rhs);
+    friend Lit arrays::mkEq(const ArrayPtr<Arith>& lhs, const ArrayPtr<Arith>& rhs);
     friend class ConsHash<ArrayEq, ArrayPtr<T>, ArrayPtr<T>>;
+    template <class S> friend ArrayLitPtr<S> operator!(const ArrayLitPtr<S>& lit);
 
     ArrayPtr<T> m_lhs;
     ArrayPtr<T> m_rhs;
@@ -107,14 +99,15 @@ public:
     void collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>&) const override;
 };
 
-template <ITheory T>
+template <class T>
 ConsHash<ArrayEq<T>, ArrayPtr<T>, ArrayPtr<T>> ArrayEq<T>::cache {};
 
-template <ITheory T>
+template <class T>
 class ArrayNeq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayNeq<T>> {
 
-    friend ArrayLitPtr<T> arrays::mkNeq(const ArrayPtr<T>& lhs, const ArrayPtr<T>& rhs);
+    friend Lit arrays::mkNeq(const ArrayPtr<Arith>& lhs, const ArrayPtr<Arith>& rhs);
     friend class ConsHash<ArrayNeq, ArrayPtr<T>, ArrayPtr<T>>;
+    template <class S> friend ArrayLitPtr<S> operator!(const ArrayLitPtr<S>& lit);
 
     ArrayPtr<T> m_lhs;
     ArrayPtr<T> m_rhs;
@@ -158,29 +151,16 @@ public:
     void collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>&) const override;
 };
 
-template <ITheory T>
+template <class T>
 ConsHash<ArrayNeq<T>, ArrayPtr<T>, ArrayPtr<T>> ArrayNeq<T>::cache {};
 
-namespace arrays {
-
-    template <ITheory T>
-    ArrayLitPtr<T> mkEq(const ArrayPtr<T>& lhs, const ArrayPtr<T>& rhs) {
-        return ArrayEq<T>::cache.from_cache(lhs, rhs);
-    }
-
-    template <ITheory T>
-    ArrayLitPtr<T> mkNeq(const ArrayPtr<T>& lhs, const ArrayPtr<T>& rhs) {
-        return ArrayNeq<T>::cache.from_cache(lhs, rhs);
-    }
-}
-
-template<ITheory T>
+template<class T>
 ArrayLitPtr<T> operator!(const ArrayLitPtr<T>& lit) {
     if (const auto eq {lit->isArrayEq()}) {
-        return arrays::mkNeq((*eq)->lhs(), (*eq)->rhs());
+        return ArrayNeq<T>::cache.from_cache((*eq)->lhs(), (*eq)->rhs());
     }
     if (const auto neq {lit->isArrayNeq()}) {
-        return arrays::mkEq((*neq)->lhs(), (*neq)->rhs());
+        return ArrayEq<T>::cache.from_cache((*neq)->lhs(), (*neq)->rhs());
     }
     throw std::logic_error("unknown array literal");
 }

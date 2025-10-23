@@ -185,11 +185,7 @@ Arrays<Arith>::Expr Subs::get(const Arrays<Arith>::Var& var) const {
 
 Arith::Expr Subs::getConst(const ArithVarPtr& var) const {
     assert(var->dim() == 0);
-    const auto val {std::get<Arrays<Arith>::Subs>(t).get(var->var())};
-    if (const auto write {val->isArrayWrite()}) {
-        return (*write)->val();
-    }
-    return var;
+    return arrays::readConst(std::get<Arrays<Arith>::Subs>(t).get(var->var()));
 }
 
 template<std::size_t I = 0>

@@ -66,9 +66,8 @@ void LoopAcceleration::compute_closed_form() {
     // but accelerating them sometimes yields quite complex expressions. Hence, we do not accelerate them.
     for (const auto &[x_arr, y_arr] : rule->getUpdate().get<Arrays<Arith>>()) {
         assert(x_arr->dim() == 0);
-        assert(y_arr->isArrayWrite());
-        const auto x {arrays::readConst(x_arr)};
-        if (const auto y {(*y_arr->isArrayWrite())->val()}; y->has(x) && y->hasVarWith(is_temp_var)) {
+        const auto x {*arrays::readConst(x_arr)->someVar()};
+        if (const auto y {arrays::readConst(y_arr)}; y->has(x) && y->hasVarWith(is_temp_var)) {
             const auto cells{y->cells()};
             auto all_lower_bounded{true};
             auto all_upper_bounded{true};
@@ -194,15 +193,9 @@ void LoopAcceleration::removeTrivialUpdates() {
     VarSet remove;
     for (const auto &[x_arr, v_arr] : update.get<Arrays<Arith>>()) {
         assert(x_arr->dim() == 0);
-        Arith::Expr v {arith::zero};
-        if (const auto write {v_arr->isArrayWrite()}) {
-            v = (*write)->val();
-        } else {
-            assert(v_arr->isVar());
-            v = arrays::readConst(v_arr);
-        }
-        if (const auto x{arrays::readConst(x_arr)};
-            rule->getGuard()->getEquality(x) == std::optional{v}) {
+        const auto x{*arrays::readConst(x_arr)->someVar()};
+        const auto v {arrays::readConst(v_arr)};
+        if (rule->getGuard()->getEquality(x) == std::optional{v}) {
             remove.insert(x->var());
         }
     }

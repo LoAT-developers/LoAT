@@ -527,7 +527,7 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr& var, const Int &
             if (degree == 0) {
                 return opt{m->has(var) ? arith::zero : toPtr()};
             }
-            const auto e {arith::mkExp(var->toExpr(), arith::mkConst(degree))};
+            const auto e {arith::mkExp(var, arith::mkConst(degree))};
             if (auto args {m->getArgs()}; args.erase(e) > 0) {
                 ArithExprVec arg_vec {args.begin(), args.end()};
                 return opt{arith::mkTimes(std::move(arg_vec))};
@@ -761,7 +761,7 @@ std::optional<ArithExprPtr> ArithExpr::solve(const ArithVarPtr& var) const {
     if (!r) {
         return {};
     }
-    const auto monomial {*c * var->toExpr()};
+    const auto monomial {*c * var};
     const auto not_normalized {toPtr() - monomial};
     return not_normalized->divide(-***r);
 }
@@ -868,7 +868,7 @@ std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
             return pair{**t, {}};
         },
         [](const ArithVarPtr& x) {
-            return pair{1, {x->toExpr()}};
+            return pair{1, {x}};
         },
         [](const ArithAddPtr& a) {
             return pair{1, {a}};
@@ -1049,3 +1049,6 @@ ArithExprPtr ArithExpr::subs(const ArraySubs<Arith>& subs) const {
 ArithExprPtr ArithExpr::subs(const Subs& subs) const {
     return this->subs(subs.get<Arrays<Arith>>());
 }
+
+const ArithExprPtr arith::zero {mkConst(0)};
+const ArithExprPtr arith::one {mkConst(1)};

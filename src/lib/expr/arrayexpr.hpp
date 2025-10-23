@@ -13,12 +13,6 @@ template <class T>
 class ArrayWrite;
 
 template <class T>
-class ArrayRead;
-
-template <class T>
-using ArrayReadPtr = ptr<ArrayRead<T>>;
-
-template <class T>
 using ArrayWritePtr = ptr<ArrayWrite<T>>;
 
 template <class T>
@@ -31,7 +25,8 @@ namespace arrays {
 
     Arith::Expr mkArrayRead(const ArrayPtr<Arith>&, const std::vector<Arith::Expr>&);
     ArrayPtr<Arith> mkArrayWrite(const ArrayPtr<Arith>&, const std::vector<Arith::Expr>&, const Arith::Expr&);
-    ArrayReadPtr<Arith> readConst(const ArrayPtr<Arith>& arr);
+    Arith::Expr readConst(const ArrayPtr<Arith>& arr);
+    ArrayReadPtr<Arith> readConst(const ArrayVarPtr<Arith>&);
     ArrayPtr<Arith> update(const ArrayReadPtr<Arith>& read, const Arith::Expr& val);
     ArrayPtr<Arith> writeConst(const ArrayPtr<Arith>& arr, const Arith::Expr& val);
 
@@ -212,7 +207,7 @@ class ArrayRead final: public T::Expr::element_type {
 
     friend Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices);
     friend ArrayReadPtr<T> arrays::nextConst();
-    friend ArrayReadPtr<Arith> arrays::readConst(const ArrayPtr<Arith>& arr);
+    friend ArrayReadPtr<Arith> arrays::readConst(const ArrayVarPtr<Arith>&);
     friend ArrayReadPtr<T> arrays::nextProgConst();
     friend class ConsHash<ArrayRead, ArrayPtr<T>, std::vector<Arith::Expr>>;
 
@@ -255,7 +250,6 @@ public:
     ArrayReadPtr<T> withVar(const ArrayVarPtr<T>&) const;
 
     // utility
-    T::Expr toExpr() const;
     sexpresso::Sexp to_smtlib() const;
 
     // retrieval

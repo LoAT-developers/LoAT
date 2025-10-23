@@ -86,3 +86,14 @@ class VariantSet;
 using VarSet = VariantSet<ArrayVarPtr<Arith>, BoolVarPtr>;
 
 using CellSet = VariantSet<ArrayReadPtr<Arith>, BoolVarPtr>;
+
+class BoolLit;
+using BoolLitPtr = ptr<BoolLit>;
+
+template <class T>
+class ArrayLit;
+
+template <class T>
+using ArrayLitPtr = ptr<ArrayLit<T>>;
+
+using Lit = std::variant<ArithLitPtr, ArrayLitPtr<Arith>, BoolLitPtr>;

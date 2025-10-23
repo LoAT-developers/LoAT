@@ -151,7 +151,7 @@ namespace theory {
                     return Bools::mkEq(lhs, rhs);
                 },
                 [&](const Arrays<Arith>::Expr& e1) {
-                    return bools::mkLit(arrays::mkEq<Arith>(e1, std::get<Arrays<Arith>::Expr>(e2)));
+                    return bools::mkLit(arrays::mkEq(e1, std::get<Arrays<Arith>::Expr>(e2)));
                 }
             }, e1);
     }
@@ -167,7 +167,7 @@ namespace theory {
                     return !Bools::mkEq(lhs, rhs);
                 },
                 [&](const Arrays<Arith>::Expr& e1) {
-                    return bools::mkLit(arrays::mkNeq<Arith>(e1, std::get<Arrays<Arith>::Expr>(e2)));
+                    return bools::mkLit(arrays::mkNeq(e1, std::get<Arrays<Arith>::Expr>(e2)));
                 }
             }, e1);
     }

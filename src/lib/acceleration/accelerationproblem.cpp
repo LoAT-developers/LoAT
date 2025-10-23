@@ -275,7 +275,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
                     solver->pop();
                     return false;
                 }
-                const auto s {closed->closed_form.compose(Subs::build(config.n, config.n->toExpr() - arith::one))};
+                const auto s {closed->closed_form.compose(Subs::build(config.n, config.n - arith::one))};
                 g = bools::mkAnd(std::vector{(!i)->subs(s), rel->subs(s)});
                 c = bools::mkLit(!i);
                 res.nonterm = false;

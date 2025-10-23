@@ -276,8 +276,8 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const Mo
         coeffs.emplace(arrays::readConst(pre), coeff);
         const auto pre_val {arith::mkConst(model->get(pre_cell))};
         const auto post_val {arith::mkConst(model->get(post_cell))};
-        bounded.emplace_back(coeff->toExpr() * pre_val);
-        decreasing.emplace_back(coeff->toExpr() * pre_val - coeff->toExpr() * post_val);
+        bounded.emplace_back(coeff * pre_val);
+        decreasing.emplace_back(coeff * pre_val - coeff * post_val);
     }
     solver->add(arith::mkGt(arith::mkPlus(std::move(bounded)), arith::zero));
     solver->add(arith::mkGt(arith::mkPlus(std::move(decreasing)), arith::zero));
@@ -285,7 +285,7 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const Mo
         const auto rf_model {solver->model()};
         std::vector<Arith::Expr> addends;
         for (const auto &[x,coeff]: coeffs) {
-            addends.emplace_back(arith::mkConst(rf_model->get(coeff)) * x->toExpr());
+            addends.emplace_back(arith::mkConst(rf_model->get(coeff)) * x);
         }
         auto rf {arith::mkPlus(std::move(addends))};
         if (Config::Analysis::log) {
