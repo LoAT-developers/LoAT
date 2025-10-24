@@ -8,7 +8,8 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool
     if (!e->isConjunction()) {
         return e;
     }
-    auto lits {e->lits().get<Arith::Lit>()};
+    auto all_lits {e->lits()};
+    auto& lits {all_lits.get<Arith::Lit>()};
 
     // get all variables that appear in an inequality
     linked_hash_set<ArithVarPtr> candidates;
@@ -106,5 +107,5 @@ abort:  ; //this symbol could not be eliminated, try the next one
     if (eliminated.empty()) {
         return e;
     }
-    return bools::mkAnd(lits);
+    return bools::mkAnd(all_lits);
 }
