@@ -25,14 +25,35 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_va
     for (const auto& x : prog_vars) {
         theory::apply(
             x,
-            [&](const auto& x) {
+            [&](const Bools::Var& x) {
                 const auto up{r->getUpdate().get(x)};
                 if (const auto y{up->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
-                    using T = decltype(theory::theory(*y));
-                    subs.put(*y, T::varToExpr(x->postVar()));
+                    subs.put(*y, Bools::varToExpr(x->postVar()));
                 } else {
                     conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), up));
                 }
+            },
+            [&](const Arrays<Arith>::Var& x) {
+                const auto up{r->getUpdate().get(x)};
+                if (x->dim() == 0) {
+                    // we write to a scalar
+                    if (const auto &y{up->isArrayWrite()}) {
+                        // we write the array-write y to x
+                        const auto val {(*y)->val()};
+                        // the value that is being written to y
+                        if (const auto var{val->isVar()}; var && (*var)->dim() == 0 && (*var)->isTempVar()) {
+                            // the value that is being written to y is a temporary scalar
+                            if (!subs.contains((*var)->var())) {
+                                subs.put((*var)->var(), Arrays<Arith>::varToExpr(x->postVar()));
+                                return;
+                            }
+                        }
+                    }
+                }
+                if (const auto y{up->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
+                    subs.put(*y, Arrays<Arith>::varToExpr(x->postVar()));
+                }
+                conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), up));
             });
     }
     const auto res {bools::mkAnd(conjuncts)->subs(subs)};
