@@ -56,7 +56,7 @@ ArithExprPtr arith::mkTimesImpl(std::vector<ArithExprPtr> &&args) {
         }
         if (constant) {
             if ((*constant)->is(0)) {
-                return zero;
+                return zero();
             }
             if (!(*constant)->is(1)) {
                 args.emplace_back(*constant);
@@ -66,7 +66,7 @@ ArithExprPtr arith::mkTimesImpl(std::vector<ArithExprPtr> &&args) {
     {
         // emtpy product
         if (args.empty()) {
-            return one;
+            return one();
         }
     }
     {
@@ -120,10 +120,10 @@ ArithExprPtr arith::mkTimesImpl(std::vector<ArithExprPtr> &&args) {
         for (const auto &arg : args) {
             const auto exp {arg->isPow()};
             const auto base {exp ? (*exp)->getBase() : arg};
-            const auto exponent {exp ? (*exp)->getExponent() : one};
+            const auto exponent {exp ? (*exp)->getExponent() : one()};
             const auto val {map.get(base)};
             changed = changed || val;
-            map.put(base, val.value_or(zero) + exponent);
+            map.put(base, val.value_or(zero()) + exponent);
         }
         if (changed) {
             args.clear();

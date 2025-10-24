@@ -13,7 +13,7 @@ public:
 class YicesContext final : public ExprConversionContext<term_t, term_t, std::vector<term_t>, std::vector<term_t>> {
 
 public:
-    ~YicesContext() override;
+    ~YicesContext() override= default;
     term_t getInt(const Int &val) override;
     term_t getReal(const Int &num, const Int &denom) override;
     term_t pow(const term_t &base, const term_t &exp) override;

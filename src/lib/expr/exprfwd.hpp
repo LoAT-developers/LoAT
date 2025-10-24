@@ -32,7 +32,6 @@ namespace theory {
     enum class Type {
         Int,
         Bool,
-        IntArray,
     };
     std::string abbrev(Type t);
 }

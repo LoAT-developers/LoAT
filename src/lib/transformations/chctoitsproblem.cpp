@@ -16,7 +16,6 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
         const auto pred{its->getPrintableLocationName(loc)};
         const auto& sig{signature.at(pred)};
         unsigned next_int_var{0};
-        unsigned next_arr_var{0};
         unsigned next_bool_var{0};
         std::vector<Var> args;
         for (const auto& x : sig) {
@@ -24,10 +23,6 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
             case theory::Type::Int:
                 args.emplace_back(vars.at(next_int_var)->var());
                 ++next_int_var;
-                break;
-            case theory::Type::IntArray:
-                args.emplace_back(avars.at(next_arr_var));
-                ++next_arr_var;
                 break;
             case theory::Type::Bool:
                 args.emplace_back(bvars.at(next_bool_var));
@@ -156,6 +151,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
 
 ITSPtr CHCToITS::transform() {
     unsigned max_int_arity {chcs->max_arity<Arith>()};
+    unsigned max_arr_arity {chcs->max_arity<Arrays<Arith>>()};
     unsigned max_bool_arity {chcs->max_arity<Bools>()};
     for (unsigned i = 0; i < max_int_arity; ++i) {
         vars.emplace_back(arrays::nextProgConst<Arith>());
@@ -187,8 +183,7 @@ ITSPtr CHCToITS::transform() {
                     [&](const Arrays<Arith>::Expr& x) {
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
                             renaming.insert(*var, avars[arr_arg]);
-                        }
-                        else {
+                        } else {
                             constraints.emplace_back(theory::mkEq(x, avars[arr_arg]));
                         }
                         ++arr_arg;
@@ -196,8 +191,7 @@ ITSPtr CHCToITS::transform() {
                     [&](const Bools::Expr& x) {
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
                             renaming.insert(*var, bvars[bool_arg]);
-                        }
-                        else {
+                        } else {
                             constraints.emplace_back(theory::mkEq(x, theory::toExpr(bvars[bool_arg])));
                         }
                         ++bool_arg;
@@ -218,7 +212,7 @@ ITSPtr CHCToITS::transform() {
                         ++int_arg;
                     },
                     [&](const Arrays<Arith>::Expr& var) {
-                        up.put(avars[int_arg], var);
+                        up.put(avars[arr_arg], var);
                         ++arr_arg;
                     },
                     [&](const Bools::Expr& var) {
@@ -227,6 +221,9 @@ ITSPtr CHCToITS::transform() {
                     });
             }
             for (unsigned i = int_arg; i < max_int_arity; ++i) {
+                up.update(vars[i], arrays::nextConst<Arith>());
+            }
+            for (unsigned i = arr_arg; i < max_arr_arity; ++i) {
                 up.update(vars[i], arrays::nextConst<Arith>());
             }
             for (unsigned i = bool_arg; i < max_bool_arity; ++i) {

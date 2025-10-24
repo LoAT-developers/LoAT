@@ -21,7 +21,7 @@ using ArrayPtr = ptr<Array<T>>;
 namespace arrays {
 
     template <class T>
-    ArrayPtr<T> mkVar(int p_idx, unsigned p_dim);
+    ArrayVarPtr<T> mkVar(int p_idx, unsigned p_dim);
 
     Arith::Expr mkArrayRead(const ArrayPtr<Arith>&, const std::vector<Arith::Expr>&);
     ArrayPtr<Arith> mkArrayWrite(const ArrayPtr<Arith>&, const std::vector<Arith::Expr>&, const Arith::Expr&);
@@ -39,7 +39,7 @@ namespace arrays {
 }
 
 template <class T>
-class Array {
+class Array: public std::enable_shared_from_this<Array<T>> {
 
     public:
 
@@ -67,9 +67,9 @@ class Array {
 };
 
 template <class T>
-class ArrayVar final: public Array<T>, std::enable_shared_from_this<ArrayVar<T>> {
+class ArrayVar final: public Array<T> {
 
-    friend ArrayPtr<T> arrays::mkVar(int p_idx, unsigned p_dim);
+    friend ArrayVarPtr<T> arrays::mkVar(int p_idx, unsigned p_dim);
     friend class ConsHash<ArrayVar, int, unsigned>;
 
     struct CacheEqual {
@@ -131,17 +131,17 @@ public:
     bool isLinear() const override;
     std::optional<Int> isPoly() const override;
     unsigned dim() const override;
-    void collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>&) const override;
+    void collectCells(linked_hash_set<ArrayReadPtr<T>>&) const override;
 };
 
 template<class T>
 ConsHash<ArrayVar<T>, int, unsigned> ArrayVar<T>::cache{};
 
 template<class T>
-int ArrayVar<T>::last_tmp_idx;
+int ArrayVar<T>::last_tmp_idx {0};
 
 template<class T>
-int ArrayVar<T>::last_prog_idx;
+int ArrayVar<T>::last_prog_idx {1};
 
 template <class T>
 std::ostream& operator<<(std::ostream &s, const ArrayVarPtr<T> a) {
@@ -149,7 +149,7 @@ std::ostream& operator<<(std::ostream &s, const ArrayVarPtr<T> a) {
 }
 
 template <class T>
-class ArrayWrite final: public Array<T>, std::enable_shared_from_this<ArrayWrite<T>> {
+class ArrayWrite final: public Array<T> {
 
     friend ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices, const Arith::Expr& val);
     friend class ConsHash<ArrayWrite, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr>;
@@ -196,7 +196,7 @@ public:
     bool isLinear() const override;
     std::optional<Int> isPoly() const override;
     unsigned dim() const override;
-    void collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>&) const override;
+    void collectCells(linked_hash_set<ArrayReadPtr<T>>&) const override;
 };
 
 template <class T>
@@ -277,18 +277,22 @@ std::ostream& operator<<(std::ostream& s, const ArrayPtr<T>& a) {
         return s << (*var)->getName();
     }
     const auto write{a->isArrayWrite()};
-    s << (*write)->arr();
-    for (const auto& i : (*write)->indices()) {
-        s << "[" << i << "]";
+    if (a->dim() == 0) {
+        s << (*write)->val();
+    } else {
+        s << (*write)->arr();
+        for (const auto& i : (*write)->indices()) {
+            s << "[" << i << "]";
+        }
+        s << ":=" << (*write)->val();
     }
-    s << ":=" << (*write)->val();
     return s;
 }
 
 namespace arrays {
 
     template <class T>
-    ArrayPtr<T> mkVar(int p_idx, unsigned p_dim) {
+    ArrayVarPtr<T> mkVar(int p_idx, unsigned p_dim) {
         return ArrayVar<T>::cache.from_cache(p_idx, p_dim);
     }
 

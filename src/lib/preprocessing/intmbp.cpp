@@ -45,8 +45,8 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
                     handle_gt(l->lhs());
                 } else if (l->isEq()) {
                     // split equalities into two inequations
-                    handle_gt(l->lhs() + arith::one);
-                    handle_gt(-l->lhs() + arith::one);
+                    handle_gt(l->lhs() + arith::one());
+                    handle_gt(-l->lhs() + arith::one());
                 }
             }
             it = arith_lits.erase(it);
@@ -101,7 +101,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
         scaled_divs.insert(Divisibility{.factor = 1, .modulo = mod * factor, .res = res * arith::mkConst(factor)});
     }
     // in addition to the constraints above, we have flcm|x'
-    scaled_divs.insert(Divisibility{.factor = 1, .modulo = flcm, .res = arith::zero});
+    scaled_divs.insert(Divisibility{.factor = 1, .modulo = flcm, .res = arith::zero()});
     // compute the least common multiple of all divisors
     for (const auto &d : scaled_divs) {
         mlcm = mp::lcm(mlcm, d.modulo);
@@ -110,7 +110,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
     // Here, we can either start from the closest upper bound, or from the closest lower bound.
     // The decision depends on the given mode.
     // If the mode is IntMbp, then we prefer upper to lower bounds iff there are fewer upper than lower bounds.
-    Arith::Expr substitute {arith::zero};
+    Arith::Expr substitute {arith::zero()};
     if (mode == Config::TRPConfig::UpperIntMbp || (mode == Config::TRPConfig::IntMbp && scaled_ub.size() < scaled_lb.size())) {
         // start from the closest upper bound
         auto closest_upper{*scaled_ub.begin()};
@@ -129,7 +129,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
             }
         }
         // compute i_l as in [Spacer], but negated (as we decided to pick an upper instead of a lower bound)
-        const auto i_l{arith::mkMod(closest_upper - arith::one - arith::mkConst(flcm) * x, arith::mkConst(mlcm))};
+        const auto i_l{arith::mkMod(closest_upper - arith::one() - arith::mkConst(flcm) * x, arith::mkConst(mlcm))};
         // evaluate i_l in the current model
         const auto i_l_val{model->eval(i_l)};
         substitute = closest_upper - arith::mkConst(1 + i_l_val);
@@ -148,7 +148,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
                 max_val = val;
             }
         }
-        const auto i_l{arith::mkMod(arith::mkConst(flcm) * x - (closest_lower + arith::one), arith::mkConst(mlcm))};
+        const auto i_l{arith::mkMod(arith::mkConst(flcm) * x - (closest_lower + arith::one()), arith::mkConst(mlcm))};
         const auto i_l_val{model->eval(i_l)};
         substitute = closest_lower + arith::mkConst(1 + i_l_val);
     }
@@ -160,7 +160,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
         arith_lits.insert(arith::mkLt(substitute, u));
     }
     for (const auto &d : scaled_divs) {
-        arith_lits.insert(arith::mkEq(arith::mkMod(substitute + d.res, arith::mkConst(d.modulo)), arith::zero));
+        arith_lits.insert(arith::mkEq(arith::mkMod(substitute + d.res, arith::mkConst(d.modulo)), arith::zero()));
     }
     return bools::mkAnd(lits);
 }

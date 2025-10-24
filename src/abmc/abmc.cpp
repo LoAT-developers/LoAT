@@ -142,7 +142,7 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
         return top();
     }
-    const auto orig {loop.idx->subs(ArraySubs<Arith>{{n->var(), arrays::update(n, arith::one)}})};
+    const auto orig {loop.idx->subs(ArraySubs<Arith>{{n->var(), arrays::update(n, arith::one())}})};
     const auto length{depth - backlink + 1};
     // we must not start another iteration of the loop in the next step,
     // so we require that we either use the learned transition,

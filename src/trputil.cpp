@@ -279,8 +279,8 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const Mo
         bounded.emplace_back(coeff * pre_val);
         decreasing.emplace_back(coeff * pre_val - coeff * post_val);
     }
-    solver->add(arith::mkGt(arith::mkPlus(std::move(bounded)), arith::zero));
-    solver->add(arith::mkGt(arith::mkPlus(std::move(decreasing)), arith::zero));
+    solver->add(arith::mkGt(arith::mkPlus(std::move(bounded)), arith::zero()));
+    solver->add(arith::mkGt(arith::mkPlus(std::move(decreasing)), arith::zero()));
     if (solver->check() == SmtResult::Sat) {
         const auto rf_model {solver->model()};
         std::vector<Arith::Expr> addends;
@@ -356,7 +356,7 @@ bool TRPUtil::build_cex() {
             true,
             Config::Accel::non_linear,
             arrays::nextConst<Arith>(),
-            arith::zero
+            arith::zero()
         })};
         if (accel_res.accel) {
             if (Config::Analysis::log) {

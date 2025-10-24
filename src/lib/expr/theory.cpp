@@ -92,7 +92,7 @@ namespace theory {
                     return Type::Bool;
                 },
                 [&](const Arrays<Arith>::Var &) {
-                    return Type::IntArray;
+                    return Type::Int;
                 }},
             x);
     }
@@ -339,9 +339,6 @@ namespace theory {
         }
         case Type::Int: {
             return s << "Int";
-        }
-        case Type::IntArray: {
-            return s << "Int[]";
         }
         default: {
             throw std::invalid_argument("unknown type");

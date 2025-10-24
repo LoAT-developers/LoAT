@@ -12,9 +12,9 @@ z3::expr SwineContext::buildVar(const Bools::Var &var) {
 
 z3::expr SwineContext::buildVar(const Arrays<Arith>::Var &var) {
     const auto ints {ctx.int_sort()};
-    auto sort {ctx.array_sort(ints, ints)};
+    auto sort {ints};
     const auto dim {var->dim()};
-    for (unsigned i = 1; i < dim; ++i) {
+    for (unsigned i = 0; i < dim; ++i) {
         sort = ctx.array_sort(ints, sort);
     }
     return ctx.constant(var->getName().c_str(), sort);

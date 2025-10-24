@@ -503,16 +503,16 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr& var, const Int &
     using opt = std::optional<ArithExprPtr>;
     return apply<opt>(
         [&](const ArithConstPtr& c) {
-            return opt{degree == 0 ? c : arith::zero};
+            return opt{degree == 0 ? c : arith::zero()};
         },
         [&](const ArithVarPtr& x) {
             if (var == x && degree == 1) {
-                return opt{arith::one};
+                return opt{arith::one()};
             }
             if (var != x && degree == 0) {
                 return opt{x};
             }
-            return opt{arith::zero};
+            return opt{arith::zero()};
         },
         [&](const ArithAddPtr& a) {
             ArithExprVec args;
@@ -525,27 +525,27 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr& var, const Int &
         },
         [&](const ArithMultPtr& m) {
             if (degree == 0) {
-                return opt{m->has(var) ? arith::zero : toPtr()};
+                return opt{m->has(var) ? arith::zero() : toPtr()};
             }
             const auto e {arith::mkExp(var, arith::mkConst(degree))};
             if (auto args {m->getArgs()}; args.erase(e) > 0) {
                 ArithExprVec arg_vec {args.begin(), args.end()};
                 return opt{arith::mkTimes(std::move(arg_vec))};
             }
-            return opt{arith::zero};
+            return opt{arith::zero()};
         },
         [&](const ArithModPtr&) {
             if (has(var)) {
                 return opt{};
             }
-            return opt{arith::zero};
+            return opt{arith::zero()};
         },
         [&](const ArithExpPtr& e) {
             if (e->getBase()->isVar() == std::optional{var} && e->getExponent()->isInt() == std::optional{degree}) {
-                return opt{arith::one};
+                return opt{arith::one()};
             }
             if (e->isPoly(var)) {
-                return opt{arith::zero};
+                return opt{arith::zero()};
             }
             return opt{};
         });
@@ -555,7 +555,7 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr& var) const {
     using opt = std::optional<ArithExprPtr>;
     return apply<opt>(
         [](const ArithConstPtr&) {
-            return opt{arith::zero};
+            return opt{arith::zero()};
         },
         [&](const ArithVarPtr& x) {
             return x->coeff(var);
@@ -597,11 +597,11 @@ std::optional<ArithExprPtr> ArithExpr::lcoeff(const ArithVarPtr& var) const {
             if (has(var)) {
                 return opt{};
             }
-            return opt{arith::zero};
+            return opt{arith::zero()};
         },
         [&](const ArithExpPtr& e) {
             if (e->isPoly(var)) {
-                return opt{arith::one};
+                return opt{arith::one()};
             }
             return opt{};
         });
@@ -921,7 +921,7 @@ std::ostream& operator<<(std::ostream &s, const ArithExprPtr& e) {
             s << c->getValue();
         },
         [&](const ArithVarPtr& x) {
-            s << x->arr();
+            s << x;
         },
         [&](const ArithAddPtr& a) {
             auto fst {true};
@@ -1020,7 +1020,12 @@ ArithExprPtr ArithExpr::subs(const ArraySubs<Arith>& subs) const {
             return this->toPtr();
         },
         [&](const ArithVarPtr& x) {
-            return x->subs(subs);
+            const auto arr {x->arr()->subs(subs)};
+            std::vector<ArithExprPtr> indices;
+            for (const auto& i: x->indices()) {
+                indices.emplace_back(i->subs(subs));
+            }
+            return arrays::mkArrayRead(arr, indices);
         },
         [&](const ArithAddPtr& a) {
             const auto &args {a->getArgs()};
@@ -1050,5 +1055,12 @@ ArithExprPtr ArithExpr::subs(const Subs& subs) const {
     return this->subs(subs.get<Arrays<Arith>>());
 }
 
-const ArithExprPtr arith::zero {mkConst(0)};
-const ArithExprPtr arith::one {mkConst(1)};
+ArithExprPtr arith::zero() {
+    static const auto zero {mkConst(0)};
+    return zero;
+}
+
+ArithExprPtr arith::one() {
+    static const auto one {mkConst(1)};
+    return one;
+}

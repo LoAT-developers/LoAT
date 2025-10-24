@@ -93,7 +93,7 @@ Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &exp
 
     // Declare result and use it as return variable
     using Kind = LoatIntExpression::Kind;
-    Arith::Expr result = arith::zero;
+    Arith::Expr result = arith::zero();
 
     // Switch over expr kind
     switch (expr->getKind())

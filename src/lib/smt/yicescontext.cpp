@@ -7,8 +7,6 @@ YicesError::YicesError() {
     yices_print_error(stderr);
 }
 
-YicesContext::~YicesContext() { }
-
 term_t YicesContext::buildVar(const Bools::Var &var) {
     const auto res = yices_new_uninterpreted_term(yices_bool_type());
     yices_set_term_name(res, var->getName().c_str());
@@ -17,8 +15,10 @@ term_t YicesContext::buildVar(const Bools::Var &var) {
 
 term_t YicesContext::buildVar(const Arrays<Arith>::Var &var) {
     const int dim {static_cast<int>(var->dim())};
-    const std::vector arg_types {dim, yices_int_type()};
-    const auto type {yices_function_type(dim, arg_types.data(), yices_int_type())};
+    const auto type =
+        dim == 0
+            ? yices_int_type()
+            : yices_function_type(dim, std::vector{dim, yices_int_type()}.data(), yices_int_type());
     const auto res {yices_new_uninterpreted_term(type)};
     yices_set_term_name(res, var->getName().c_str());
     return res;

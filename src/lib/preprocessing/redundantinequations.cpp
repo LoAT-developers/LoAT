@@ -13,7 +13,7 @@ Bools::Expr removeRedundantInequations(const Bools::Expr& e) {
         const auto lit {*it};
         if (const auto lhs {lit->lhs()}; lhs->isLinear()) {
             if (lit->isGt()) {
-                bounded.push_back(lhs - arith::one);
+                bounded.push_back(lhs - arith::one());
                 it = arith_lits.erase(it);
             } else if (lit->isEq()) {
                 bounded.push_back(lhs);
@@ -32,7 +32,7 @@ Bools::Expr removeRedundantInequations(const Bools::Expr& e) {
     for (size_t i = 0; i < bounded.size(); ++i) {
         const auto f {arrays::nextConst<Arith>()};
         factors.push_back(f);
-        solver->add(arith::mkGeq(f, arith::zero));
+        solver->add(arith::mkGeq(f, arith::zero()));
     }
     const auto arith_vars {e->cells().get<ArithVarPtr>()};
     for (auto it = bounded.begin(); it != bounded.end();) {
@@ -58,7 +58,7 @@ Bools::Expr removeRedundantInequations(const Bools::Expr& e) {
         if (solver->check() == SmtResult::Sat) {
             it = bounded.erase(it);
         } else {
-            arith_lits.insert(arith::mkGeq(*it, arith::zero));
+            arith_lits.insert(arith::mkGeq(*it, arith::zero()));
             ++it;
         }
         solver->pop();

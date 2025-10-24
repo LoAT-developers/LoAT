@@ -39,26 +39,30 @@ ArrayVar<T>::~ArrayVar() {
 template <class T>
 ArrayVar<T>::Self ArrayVar<T>::next(const unsigned p_dim) {
     --last_tmp_idx;
-    return arrays::mkVar<T>(last_tmp_idx, p_dim)->var();
+    return arrays::mkVar<T>(last_tmp_idx, p_dim);
 }
 
 template <class T>
 ArrayVar<T>::Self ArrayVar<T>::nextProgVar(const unsigned p_dim) {
-    ++last_prog_idx;
-    return arrays::mkVar<T>(last_prog_idx, p_dim)->var();
+    last_prog_idx += 2;
+    return arrays::mkVar<T>(last_prog_idx, p_dim);
 }
 
 template <class T>
 ArrayVar<T>::Self ArrayVar<T>::postVar() const {
-    return arrays::mkVar<T>(m_idx + 1, m_dim)->var();
+    return arrays::mkVar<T>(m_idx + 1, m_dim);
 }
 
 template <class T>
 std::string ArrayVar<T>::getName() const {
-    if (m_idx > 0) {
-        return "a" + std::to_string(m_idx);
+    auto prefix {theory::abbrev(theory::type<T>())};
+    if (m_dim > 0) {
+        prefix += "a";
     }
-    return "at" + std::to_string(-m_idx);
+    if (m_idx > 0) {
+        return prefix + std::to_string(m_idx);
+    }
+    return prefix + "t" + std::to_string(-m_idx);
 }
 
 template <class T>
@@ -83,17 +87,17 @@ bool ArrayVar<T>::isPostVar() const {
 
 template <class T>
 ArrayVar<T>::Self ArrayVar<T>::progVar() const {
-    return arrays::mkVar<T>(m_idx - 1, m_dim)->var();
+    return arrays::mkVar<T>(m_idx - 1, m_dim);
 }
 
 template <class T>
 std::optional<typename ArrayVar<T>::Self> ArrayVar<T>::isVar() const {
-    return cpp::assume_not_null(this->shared_from_this());
+    return var();
 }
 
 template <class T>
 ArrayVar<T>::Self ArrayVar<T>::var() const {
-    return cpp::assume_not_null(this->shared_from_this());
+    return cpp::assume_not_null(std::static_pointer_cast<const ArrayVar>(static_cast<const Array<T>*>(this)->shared_from_this()));
 }
 
 template <class T>
@@ -208,12 +212,12 @@ std::optional<ArrayVarPtr<T>> ArrayWrite<T>::isVar() const {
 
 template <class T>
 std::optional<ArrayWritePtr<T>> ArrayWrite<T>::isArrayWrite() const {
-    return cpp::assume_not_null(this->shared_from_this());
+    return cpp::assume_not_null(std::static_pointer_cast<const ArrayWrite>(static_cast<const Array<T>*>(this)->shared_from_this()));
 }
 
 template <class T>
 ArrayPtr<T> ArrayWrite<T>::renameVars(const array_var_map<T>& map) const {
-    return arrays::mkArrayWrite(m_arr->renameVars(map), m_indices, m_val);
+    return renameVars(Renaming::build<Arrays<T>>(map));
 }
 
 template <class T>
@@ -467,7 +471,9 @@ bool ArrayRead<T>::isPostCell() const {
 }
 
 template <class T>
-bool ArrayRead<T>::isProgCell() const {return std::ranges::all_of(vars(), [](const auto& x) {
+bool ArrayRead<T>::isProgCell() const {
+    const auto xs {vars()};
+    return std::ranges::all_of(xs, [](const auto& x) {
         return x->isProgVar();
     });}
 
@@ -497,7 +503,7 @@ Arith::Expr arrays::readConst(const ArrayPtr<Arith>& arr) {
 }
 
 ArrayReadPtr<Arith> arrays::readConst(const ArrayVarPtr<Arith>& arr) {
-    ArrayRead<Arith>::cache.from_cache(arr, {});
+    return ArrayRead<Arith>::cache.from_cache(arr, {});
 }
 
 template class Array<Arith>;

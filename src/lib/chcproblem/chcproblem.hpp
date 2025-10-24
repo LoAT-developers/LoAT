@@ -103,10 +103,14 @@ public:
     }
 };
 
+class CHCProblem;
+
+using CHCPtr = std::shared_ptr<CHCProblem>;
+
 class CHCProblem {
 
     linked_hash_set<ClausePtr> clauses;
-    friend std::ostream& operator<<(std::ostream &s, const CHCProblem&);
+    friend std::ostream& operator<<(std::ostream &s, const CHCPtr&);
 
 public:
 
@@ -130,5 +134,3 @@ public:
         return res;
     }
 };
-
-using CHCPtr = std::shared_ptr<CHCProblem>;

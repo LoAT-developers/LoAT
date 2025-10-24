@@ -22,10 +22,6 @@ Var SMTLibParsingState::get_var(const std::string &name, const theory::Type type
             ++next_tmp_bool_var;
             break;
         }
-        case theory::Type::IntArray: {
-            // TODO
-            throw std::logic_error("not yet implemented");
-        }
     }
     vars.emplace(name, *var);
     return *var;
@@ -113,7 +109,7 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         const auto mod {arrays::nextConst<Arith>()};
         std::vector<Bools::Expr> constr;
         constr.push_back(theory::mkEq(fst, snd * div + mod));
-        constr.push_back(theory::mkNeq(snd, arith::zero));
+        constr.push_back(theory::mkNeq(snd, arith::zero()));
         bool explicit_encoding = false;
         if (const auto y {snd->isInt()}) {
             if (*y > 0 && *y <= 10) {
@@ -126,10 +122,10 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
             }
         }
         if (!explicit_encoding) {
-            constr.push_back(bools::mkLit(arith::mkGeq(mod, arith::zero))); // x mod y is non-negative
+            constr.push_back(bools::mkLit(arith::mkGeq(mod, arith::zero()))); // x mod y is non-negative
             constr.push_back( // |y| > x mod y
-                bools::mkAnd(std::vector{arith::mkGt(snd, arith::zero), arith::mkGt(snd, mod)})
-                || bools::mkAnd(std::vector{arith::mkLt(snd, arith::zero), arith::mkGt(-snd, mod)}));
+                bools::mkAnd(std::vector{arith::mkGt(snd, arith::zero()), arith::mkGt(snd, mod)})
+                || bools::mkAnd(std::vector{arith::mkLt(snd, arith::zero()), arith::mkGt(-snd, mod)}));
         }
         state.refinement.emplace_back(bools::mkAnd(constr));
         if (name == "div") {

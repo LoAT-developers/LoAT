@@ -33,12 +33,12 @@ void TRP::recurrent_pseudo_divisibility(const Bools::Expr& loop, const ModelPtr 
             if (const auto vars{t->vars()}; std::ranges::all_of(vars, theory::isProgVar)) {
                 const auto post{t->renameVars(pre_to_post.get<Arrays<Arith>>())};
                 if (auto diff{model->eval(t) - model->eval(post)}; diff % mod == 0) {
-                    res_lits.insert(arith::mkEq(arith::mkMod(post, arith::mkConst(mod)), arith::zero));
+                    res_lits.insert(arith::mkEq(arith::mkMod(post, arith::mkConst(mod)), arith::zero()));
                 }
             } else if (std::ranges::all_of(vars, theory::isPostVar)) {
                 const auto pre{t->renameVars(post_to_pre.get<Arrays<Arith>>())};
                 if (auto diff{model->eval(t) - model->eval(pre)}; diff % mod == 0) {
-                    res_lits.insert(arith::mkEq(arith::mkMod(pre, arith::mkConst(mod)), arith::zero));
+                    res_lits.insert(arith::mkEq(arith::mkMod(pre, arith::mkConst(mod)), arith::zero()));
                 }
             }
         }
@@ -82,22 +82,22 @@ void TRP::recurrent_exps(const Bools::Expr& loop, const ModelPtr &model) {
                         if (post_coeff < -pre_coeff) {
                             if (val >= 0) {
                                 // x' = 2x ~> x' >= 2x for non-negative x
-                                res_lits.insert(arith::mkGeq(pre_cell, arith::zero));
-                                res_lits.insert(arith::mkGeq(lhs, arith::zero));
+                                res_lits.insert(arith::mkGeq(pre_cell, arith::zero()));
+                                res_lits.insert(arith::mkGeq(lhs, arith::zero()));
                             } else {
                                 // x' = 2x ~> x' <= 2x for negative x
-                                res_lits.insert(arith::mkLt(pre_cell, arith::zero));
-                                res_lits.insert(arith::mkLeq(lhs, arith::zero));
+                                res_lits.insert(arith::mkLt(pre_cell, arith::zero()));
+                                res_lits.insert(arith::mkLeq(lhs, arith::zero()));
                             }
                         } else {
                             if (val >= 0) {
                                 // 2x' = x ~> 2x' <= x for non-negative x
-                                res_lits.insert(arith::mkGeq(pre_cell, arith::zero));
-                                res_lits.insert(arith::mkLeq(lhs, arith::zero));
+                                res_lits.insert(arith::mkGeq(pre_cell, arith::zero()));
+                                res_lits.insert(arith::mkLeq(lhs, arith::zero()));
                             } else {
                                 // 2x' = x ~> 2x' >= x for negative x
-                                res_lits.insert(arith::mkLt(pre_cell, arith::zero));
-                                res_lits.insert(arith::mkGeq(lhs, arith::zero));
+                                res_lits.insert(arith::mkLt(pre_cell, arith::zero()));
+                                res_lits.insert(arith::mkGeq(lhs, arith::zero()));
                             }
                         }
                     }
@@ -173,7 +173,7 @@ void TRP::recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithV
         model->put(d, model->eval(post - pre));
         subs.put(d->var(), arrays::update(d, diff));
         deltas.emplace(d, pre);
-        zeros.put(d->var(), arrays::update(d, arith::zero));
+        zeros.put(d->var(), arrays::update(d, arith::zero()));
     }
     const auto with_deltas{bools::mkAnd(delta_eqs)};
     {
@@ -186,15 +186,15 @@ void TRP::recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithV
                 const auto numerator{div->first};
                 const auto denominator{div->second};
                 const auto constant{arith::mkConst(numerator->getConstantAddend())};
-                res_lits.insert(arith::mkEq(arith::mkMod(numerator - constant + n * constant, arith::mkConst(denominator)), arith::zero));
+                res_lits.insert(arith::mkEq(arith::mkMod(numerator - constant + n * constant, arith::mkConst(denominator)), arith::zero()));
             } else if (l->isLinear() && (l->isEq() || l->isGt())) {
                 auto old_lhs{lit->lhs()};
                 if (lit->isGt()) {
-                    old_lhs = old_lhs - arith::one;
+                    old_lhs = old_lhs - arith::one();
                 }
                 const auto constant{arith::mkConst(old_lhs->getConstantAddend())};
                 const auto new_lhs{old_lhs - constant + n * constant};
-                const auto rhs{arith::zero};
+                const auto rhs{arith::zero()};
                 if (lit->isGt()) {
                     res_lits.insert(arith::mkGeq(new_lhs, rhs));
                 } else if (lit->isEq()) {
@@ -229,14 +229,14 @@ void TRP::recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithV
                         auto recurrent{(l->lhs() - non_recurrent)->subs(subs)};
                         auto val{model->eval(non_recurrent)};
                         if (l->isGt()) {
-                            non_recurrent = non_recurrent - arith::one;
+                            non_recurrent = non_recurrent - arith::one();
                             val = val - 1;
                         } else if (val > 0) {
                             recurrent = -recurrent;
                             non_recurrent = -non_recurrent;
                             val = -val;
                         }
-                        const auto rhs{arith::zero};
+                        const auto rhs{arith::zero()};
                         if (val == 0) {
                             if (l->isEq()) {
                                 res_lits.insert(arith::mkEq(recurrent, rhs));
@@ -260,7 +260,8 @@ void TRP::recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithV
 Bools::Expr TRP::recurrent(const Bools::Expr& loop, const ModelPtr &model) {
     assert(loop->isConjunction());
     linked_hash_set<ArithVarPtr> pre_cells;
-    for (const auto& c: loop->cells().get<ArithVarPtr>()) {
+    const auto cells {loop->cells().get<ArithVarPtr>()};
+    for (const auto& c: cells) {
         if (c->isProgCell()) {
             pre_cells.insert(c);
         } else if (c->isPostCell()) {
@@ -274,7 +275,7 @@ Bools::Expr TRP::recurrent(const Bools::Expr& loop, const ModelPtr &model) {
     auto res {bools::mkAnd(res_lits)};
     res_lits.clear();
     if (res->vars().contains(n->var())) {
-        return res && bools::mkLit(arith::mkGt(n, arith::zero));
+        return res && bools::mkLit(arith::mkGt(n, arith::zero()));
     }
     return res;
 }

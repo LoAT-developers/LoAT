@@ -72,13 +72,10 @@ void ARIParser::run(const std::string &filename) {
                         ++state.next_bool_var;
                         break;
                     }
-                    case theory::Type::IntArray: {
-                        throw std::invalid_argument("arrays are not supported in ARI");
-                    }
                 }
             }
             std::vector<Bools::Expr> guard;
-            Arith::Expr cost {arith::one};
+            Arith::Expr cost {arith::one()};
             for (unsigned idx = 3; idx + 1 < ex.childCount(); idx += 2) {
                 const auto key {ex[idx].str()};
                 auto val {ex[idx + 1]};

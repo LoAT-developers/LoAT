@@ -51,7 +51,7 @@ bool TRL::handle_loop(const Range &range) {
             termination_argument =
                 bools::mkAnd(
                     std::vector{
-                        arith::mkGt(*rf, arith::zero),
+                        arith::mkGt(*rf, arith::zero()),
                         arith::mkGt(
                             (*rf)->renameVars(post_to_pre.get<Arrays<Arith>>()),
                             (*rf)->renameVars(t.pre_to_post().get<Arrays<Arith>>()))
@@ -112,11 +112,11 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
         }
         if ((*model)->get(safety_var->renameVars(get_subs(range.start(), 1))) >= 0) {
             const auto last_s {get_subs(range.end(), 1)};
-            const auto no_safety_loop{bools::mkLit(arith::mkLt(safety_var->renameVars(last_s), arith::zero))};
+            const auto no_safety_loop{bools::mkLit(arith::mkLt(safety_var->renameVars(last_s), arith::zero()))};
             disjuncts.emplace_back(no_safety_loop);
         } else {
             const auto first_s {get_subs(range.start(), 1)};
-            const auto no_term_loop{bools::mkLit(arith::mkGeq(safety_var->renameVars(first_s), arith::zero))};
+            const auto no_term_loop{bools::mkLit(arith::mkGeq(safety_var->renameVars(first_s), arith::zero()))};
             disjuncts.emplace_back(no_term_loop);
         }
         it->second = it->second && bools::mkOr(disjuncts);

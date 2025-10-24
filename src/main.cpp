@@ -270,6 +270,10 @@ int main(int argc, char *argv[]) {
             break;
         case Config::Input::Horn: {
             chcs = SexpressoParser::loadFromFile(filename);
+            if (Config::Analysis::log) {
+                std::cout << "CHCs:" << std::endl;
+                std::cout << *chcs << std::endl;
+            }
             if (Config::Analysis::dir == Config::Analysis::Direction::Backward) {
                 reverse = Reverse(*chcs);
                 chcs = reverse->reverse();

@@ -32,7 +32,7 @@ ArithExprPtr arith::mkExp(const ArithExprPtr& base, const ArithExprPtr& exponent
         return mkConst(mp::pow(*b_val, std::stoi(e_val->str())));
     }
     if (exponent->is(0) || base->is(1)) {
-        return one;
+        return one();
     }
     if (exponent->is(1)) {
         return base;

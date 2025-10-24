@@ -29,7 +29,7 @@ ArithExprPtr arith::mkMod(ArithExprPtr x, ArithExprPtr y) {
         y = -y;
     }
     if (x->is(0) || y->is(1)) {
-        return zero;
+        return zero();
     }
     if (const auto c2 {y->isInt()}) {
         const auto eval = [](const Int &c1, const Int &c2) -> Int {

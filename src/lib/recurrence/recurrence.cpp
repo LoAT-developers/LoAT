@@ -12,7 +12,7 @@ Recurrence::Recurrence(Subs equations, ArithVarPtr n) : equations(std::move(equa
 std::optional<std::tuple<Int, Int, Arith::Expr>> Recurrence::handle_exp(const ArithExpPtr &pow) const {
     Int degree{0};
     Int base{1};
-    Arith::Expr coeff{arith::one};
+    Arith::Expr coeff{arith::one()};
     const auto pbase{pow->getBase()};
     const auto pexp{pow->getExponent()};
     if (const auto d{pexp->isInt()}) {
@@ -59,7 +59,7 @@ Arith::Expr Recurrence::compute_r(const Arith::Expr& q, const Rational &c) {
         c == 1
             ? (cd * arith::mkExp(n, arith::mkConst(d + 1)))->divide(d + 1)
             : (cd * arith::mkExp(n, arith::mkConst(d)))->divide(1 - c);
-    const ArraySubs<Arith> subs {{n->var(), arrays::update(n, n-arith::one)}};
+    const ArraySubs<Arith> subs {{n->var(), arrays::update(n, n-arith::one())}};
     return s + compute_r(q - s + arith::mkConst(c) * s->subs(subs), c);
 }
 
@@ -112,7 +112,7 @@ bool Recurrence::solve(const ArithVarPtr& x, const Arith::Expr& rhs) {
                             throw std::logic_error("an expression that contains n cannot be a constant");
                         },
                         [&](const ArithVarPtr&) {
-                            degree_and_base_to_coeff.emplace(Key{1, 1}, Val{}).first->second.push_back(arith::one);
+                            degree_and_base_to_coeff.emplace(Key{1, 1}, Val{}).first->second.push_back(arith::one());
                             return true;
                         },
                         [](const ArithAddPtr&) -> bool {
@@ -186,7 +186,7 @@ bool Recurrence::solve(const ArithVarPtr& x, const Arith::Expr& rhs) {
             const auto alpha_divided {alpha->divide(b)};
             // first addend of the last line from (10)
             const auto fst {alpha_divided * r * arith::mkExp(arith::mkConst(b), n)};
-            const ArraySubs<Arith> subs {{n->var(), arrays::update(n, arith::zero)}};
+            const ArraySubs<Arith> subs {{n->var(), arrays::update(n, arith::zero())}};
             // negated second addend of the last line from (10), which is simples, as c=-1
             const auto snd {r->subs(subs) * alpha_divided * arith::mkExp(arith::mkConst(m), n)};
             res.push_back(fst);
@@ -197,7 +197,7 @@ bool Recurrence::solve(const ArithVarPtr& x, const Arith::Expr& rhs) {
     }
     prefixes.emplace(x->var(), prefix);
     result.prefix = std::max(result.prefix, prefix);
-    const ArraySubs<Arith> subs {{n->var(), arrays::update(n, n - arith::one)}};
+    const ArraySubs<Arith> subs {{n->var(), arrays::update(n, n - arith::one())}};
     closed_form_n_minus_one.put(x->var(), arrays::update(x, closed_form->subs(subs)));
     result.closed_form.put(x->var(), arrays::update(x, closed_form));
     return true;
@@ -227,7 +227,10 @@ bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr& rhs) {
 
 bool Recurrence::solve(const Arrays<Arith>::Var& lhs, const Arrays<Arith>::Expr& rhs) {
     // TODO
-    throw std::logic_error("not implemented");
+    if (const auto write {rhs->isArrayWrite()}; write && lhs->dim() == 0) {
+        return solve(arrays::readConst(lhs), (*write)->val());
+    }
+    throw std::invalid_argument("not yet implemented");
 }
 
 bool Recurrence::solve() {
@@ -246,8 +249,7 @@ bool Recurrence::solve() {
                     }
                     if (solve(lhs, rhs)) {
                         if (Config::Analysis::log) {
-                            std::cout << "got " << lhs << "(" << n << ") = " << result.closed_form.get(lhs) <<
-                                std::endl;
+                            std::cout << "got " << lhs << "(" << n << ") = " << result.closed_form.get(lhs) << std::endl;
                         }
                     } else {
                         if (Config::Analysis::log) {

@@ -10,22 +10,26 @@ public:
 
     static Formula convert(const Bools::Expr& e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
         ExprConverter converter(ctx);
-        return converter.convertBoolEx(e);
+        const auto res {converter.convertBoolEx(e)};
+        return res;
     }
 
     static Expr convert(const Arith::Expr& e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
         ExprConverter converter(ctx);
-        return converter.convertEx(e);
+        const auto res {converter.convertEx(e)};
+        return res;
     }
 
     static Expr convert(const ArrayReadPtr<Arith>& e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
         ExprConverter converter(ctx);
-        return converter.convertArrayRead(e);
+        const auto res {converter.convertArrayRead(e)};
+        return res;
     }
 
     static Expr convert(const Arrays<Arith>::Expr& e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
         ExprConverter converter(ctx);
-        return converter.convertArray(e);
+        const auto res {converter.convertArray(e)};
+        return res;
     }
 
 protected:
@@ -122,6 +126,9 @@ protected:
         const auto arr {read->arr()};
         const auto converted_arr {convertArray(arr)};
         const auto indices {read->indices()};
+        if (indices.empty()) {
+            return converted_arr;
+        }
         auto converted_indices {context.exprVec()};
         for (const auto &i: indices) {
             converted_indices.push_back(convertEx(i));
@@ -132,6 +139,7 @@ protected:
     Expr convertArrayWrite(const ArrayWritePtr<Arith> &write) {
         const auto arr {write->arr()};
         const auto indices {write->indices()};
+        assert(!indices.empty());
         const auto value {write->val()};
         const auto converted_arr {convertArray(arr)};
         auto converted_indices {context.exprVec()};
@@ -144,7 +152,7 @@ protected:
 
     Expr convertArray(const ArrayPtr<Arith> &arr) {
         if (const auto var {arr->isVar()}) {
-            return context.getIntArraySymbolMap().at(*var);
+            return context.getVariable(*var);
         }
         if (const auto write {arr->isArrayWrite()}) {
             return convertArrayWrite(*write);

@@ -66,11 +66,11 @@ bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
             Overload{
                 [&](const Arith::Lit &l) {
                     if (l->isNeq()) {
-                        if (const auto lt{arith::mkLt(l->lhs(), arith::zero)}; m->eval(lt)) {
+                        if (const auto lt{arith::mkLt(l->lhs(), arith::zero())}; m->eval(lt)) {
                             res.insert(bools::mkLit(lt));
                             return true;
                         }
-                        if (const auto gt{arith::mkGt(l->lhs(), arith::zero)}; m->eval(gt)) {
+                        if (const auto gt{arith::mkGt(l->lhs(), arith::zero())}; m->eval(gt)) {
                             res.insert(bools::mkLit(gt));
                             return true;
                         }

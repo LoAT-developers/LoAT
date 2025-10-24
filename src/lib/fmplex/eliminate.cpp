@@ -107,7 +107,7 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<ArithVarPtr>
 
         assert(!rel->isNeq());
         // TODO adjiust to support weak relations
-        std::vector<Arith::Expr> lhss = rel->isEq() ? std::vector{rel->lhs(), -rel->lhs()} : std::vector{-rel->lhs() + arith::one};
+        std::vector<Arith::Expr> lhss = rel->isEq() ? std::vector{rel->lhs(), -rel->lhs()} : std::vector{-rel->lhs() + arith::one()};
         // smtrat automatically converts constraints to < or <=
         for (auto &lhs: lhss) {
             std::vector<Matrix::RowEntry> entries; // TODO: make it so that the contents of the row are actually already in the matrix data
@@ -188,9 +188,9 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<ArithVarPtr>
         const auto lhs = arith::mkPlus(std::move(addends));
         // TODO adjust to support weak relations
         // This method is only applied to pos.lin. combinations, so the delta coeff will be >=0
-        // if (it != row_end && it->col_index == delta_col) conjuncts.emplace(arith::mkLt(lhs, arith::zero));
-        // else conjuncts.emplace(arith::mkLeq(lhs, arith::zero));
-        conjuncts.emplace(arith::mkLeq(lhs, arith::zero));
+        // if (it != row_end && it->col_index == delta_col) conjuncts.emplace(arith::mkLt(lhs, arith::zero()));
+        // else conjuncts.emplace(arith::mkLeq(lhs, arith::zero()));
+        conjuncts.emplace(arith::mkLeq(lhs, arith::zero()));
     }
 
     lits.get<Arith::Lit>() = conjuncts;

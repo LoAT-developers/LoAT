@@ -16,9 +16,9 @@ static Bools::Expr posConstraint(const std::map<Int, Arith::Expr> &coefficients)
     std::vector<Arith::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         if (degree > 0) {
-            conjunction.push_back(arith::mkEq(c, arith::zero));
+            conjunction.push_back(arith::mkEq(c, arith::zero()));
         } else {
-            conjunction.push_back(arith::mkGt(c, arith::zero));
+            conjunction.push_back(arith::mkGt(c, arith::zero()));
         }
     }
     return bools::mkAnd(conjunction);
@@ -28,7 +28,7 @@ static Bools::Expr constConstraint(const std::map<Int, Arith::Expr> &coefficient
     std::vector<Arith::Lit> conjunction;
     for (auto &[degree, c] : coefficients) {
         if (degree > 0) {
-            conjunction.push_back(arith::mkEq(c, arith::zero));
+            conjunction.push_back(arith::mkEq(c, arith::zero()));
         }
     }
     return bools::mkAnd(conjunction);
@@ -37,7 +37,7 @@ static Bools::Expr constConstraint(const std::map<Int, Arith::Expr> &coefficient
 static Bools::Expr zeroConstraint(const std::map<Int, Arith::Expr> &coefficients) {
     std::vector<Arith::Lit> conjunction;
     for (const auto& c : coefficients | std::views::values) {
-        conjunction.push_back(arith::mkEq(c, arith::zero));
+        conjunction.push_back(arith::mkEq(c, arith::zero()));
     }
     return bools::mkAnd(conjunction);
 }
@@ -57,9 +57,9 @@ static Bools::Expr posInfConstraint(const std::map<Int, Arith::Expr> &coefficien
         std::vector<Arith::Lit> conjunction;
         for (const auto &[degree, c] : coefficients) {
             if (degree > i) {
-                conjunction.push_back(arith::mkEq(c, arith::zero));
+                conjunction.push_back(arith::mkEq(c, arith::zero()));
             } else if (degree == i) {
-                conjunction.push_back(arith::mkGt(c, arith::zero));
+                conjunction.push_back(arith::mkGt(c, arith::zero()));
             }
         }
         disjunction.push_back(bools::mkAnd(conjunction));
@@ -180,7 +180,7 @@ static Bools::Expr posInfConstraint(const Arith::Expr& e, const ArithVarPtr& n) 
     }
     if (const auto exp {e->isPow()}) {
         // b^e: require that b-1 and e are positive and one of them is increasing
-        const auto b {(*exp)->getBase() - arith::one};
+        const auto b {(*exp)->getBase() - arith::one()};
         const auto base_pos {posConstraint(b, n)};
         const auto base_pos_inf {posInfConstraint(b, n)};
         const auto exponent_pos {posConstraint((*exp)->getExponent(), n)};
@@ -237,7 +237,7 @@ static Bools::Expr posInfConstraint(const Arith::Expr& e, const ArithVarPtr& n) 
 static Bools::Expr expConstraint(const Arith::Expr& e, const ArithVarPtr& n) {
     if (const auto exp {e->isPow()}) {
         // b^e: require that b-1 and e are positive and e is increasing
-        const auto b {(*exp)->getBase() - arith::one};
+        const auto b {(*exp)->getBase() - arith::one()};
         const auto base_pos {posConstraint(b, n)};
         const auto base_pos_inf {posInfConstraint(b, n)};
         const auto exponent_pos_inf {posInfConstraint((*exp)->getExponent(), n)};
@@ -312,7 +312,7 @@ Bools::Expr encodeBoolExpr(const Bools::Expr& expr, const ArraySubs<Arith> &temp
 
 LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools::Expr& expr, const Arith::Expr& cost, const Complexity& currentRes) {
     // initialize z3
-    auto solver{SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, arith::zero))}))};
+    auto solver{SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, arith::zero()))}))};
     // the parameter of the desired family of solutions
     const auto n{arrays::nextConst<Arith>()};
     // get all relevant variables
@@ -347,7 +347,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
         // a model witnesses unbounded complexity
         for (const auto &var : vars) {
             if (!var->isTempVar()) {
-                solver->add(arith::mkEq(varCoeff.at(var), arith::zero));
+                solver->add(arith::mkEq(varCoeff.at(var), arith::zero()));
             }
         }
         if (solver->check() == SmtResult::Sat) {
@@ -360,7 +360,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
     }
     const auto is_poly {templateCost->isPoly(n)};
     auto degree {is_poly.value_or(0)};
-    Arith::Expr polyCost {arith::zero};
+    Arith::Expr polyCost {arith::zero()};
     if (is_poly) {
         polyCost = templateCost;
     } else {
@@ -397,7 +397,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
     for (auto i = degree; i > 0 && Complexity::Poly(i) > currentRes; --i) {
         const auto& c {coefficients.at(i)};
         solver->push();
-        solver->add(arith::mkGt(c, arith::zero));
+        solver->add(arith::mkGt(c, arith::zero()));
         if (solver->check() == SmtResult::Sat) {
             return buildRes(Complexity::Poly(i));
         }

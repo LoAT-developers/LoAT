@@ -76,6 +76,17 @@ Type to_type(const Expr &x);
 Type to_type(const Var &x);
 Type to_type(const std::string &x);
 
+template <ITheory T>
+Type type() {
+    if constexpr (std::is_same_v<T, Arith> || std::is_same_v<T, Arrays<Arith>>) {
+        return Type::Int;
+    } else if constexpr (std::is_same_v<T, Bools>) {
+        return Type::Bool;
+    } else {
+        throw std::invalid_argument("unknown theory");
+    }
+}
+
 template <class Bool, class IntArray, class... Ts>
 auto apply(const std::variant<Bool, IntArray>& x, Ts... f) noexcept {
     if (std::holds_alternative<Bool>(x)) {

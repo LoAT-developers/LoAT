@@ -50,7 +50,7 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool
                 const auto term{rel->lhs()};
                 if (const auto coeff{*term->coeff(var)}; coeff->is(1) == 1) {
                     // we have var + p > 0, i.e., var >= -p+1
-                    lower_bounds.push_back(arith::mkPlus({-term, var, arith::one}));
+                    lower_bounds.push_back(arith::mkPlus({-term, var, arith::one()}));
                     lower_bounded = true;
                     if (is_explosive(var, term)) {
                         ++explosive_upper;
