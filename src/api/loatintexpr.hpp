@@ -6,6 +6,7 @@
 #include "linkedhashset.hpp"
 #include "conshash.hpp"
 #include "notnull.hpp"
+#include "notnull_hash.hpp"
 
 class LoatIntExpr;
 

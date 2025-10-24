@@ -321,6 +321,11 @@ LoatBoolExprPtr operator!(const LoatBoolExprPtr& a)
     return LoatBoolExpression::mkNot(a);
 }
 
+LoatBoolExprPtr operator==(const LoatIntExprPtr& lhs, const LoatIntExprPtr& rhs)
+{
+    return LoatBoolExpression::mkEq(lhs, rhs);
+}
+
 LoatBoolExprPtr operator!=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs)
 {
     return LoatBoolExpression::mkNeq(lhs, rhs);

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "notnull.hpp"
+#include "notnull_hash.hpp"
 #include "loatintexpr.hpp"
 #include "linkedhashset.hpp"
 #include "conshash.hpp"
@@ -231,6 +232,7 @@ LoatBoolExprPtr operator||(const LoatBoolExprPtr& a, const LoatBoolExprPtr& b);
 LoatBoolExprPtr operator!(const LoatBoolExprPtr& a);
 
 // Operator Overloads for comparisons / literals
+LoatBoolExprPtr operator==(const LoatIntExprPtr& lhs, const LoatIntExprPtr& rhs);
 LoatBoolExprPtr operator!=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
 LoatBoolExprPtr operator<(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
 LoatBoolExprPtr operator<=(const LoatIntExprPtr &lhs, const LoatIntExprPtr &rhs);
