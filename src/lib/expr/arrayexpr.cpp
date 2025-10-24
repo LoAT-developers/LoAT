@@ -232,10 +232,13 @@ ArrayPtr<T> ArrayWrite<T>::renameVars(const Renaming& map) const {
 
 template <class T>
 void ArrayWrite<T>::collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const {
-    m_arr->collectVars(arr);
-    for (const auto& i : m_indices) {
-        i->collectVars(arr);
+    if (dim() > 0) {
+        m_arr->collectVars(arr);
+        for (const auto& i : m_indices) {
+            i->collectVars(arr);
+        }
     }
+    m_val->collectVars(arr);
 }
 
 template <class T>
