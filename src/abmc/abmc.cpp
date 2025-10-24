@@ -165,9 +165,8 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     pre.push_back(not_trans->renameVars(s_next));
     // we must not start another iteration of the loop after using the learned transition in the next step
     std::vector<Bools::Expr> post;
-    post.push_back(theory::mkNeq(theory::toExpr(s_next.get(trace_var->var())), arith::mkConst((*shortcut)->getId())));
-    const auto s_next_next {subs_at(depth + 2).project(pre_v).compose(
-            subs_at(depth + length + 1).project(post_v))};
+    post.push_back(bools::mkLit(arith::mkNeq(arrays::readConst(s_next.get(trace_var->var())), arith::mkConst((*shortcut)->getId()))));
+    const auto s_next_next {subs_at(depth + 2).project(pre_v).compose(subs_at(depth + length + 1).project(post_v))};
     post.push_back(not_trans->renameVars(s_next_next));
     const auto not_covered{!loop.covered->renameVars(s_next)};
     return not_covered || (bools::mkOr(pre) && bools::mkOr(post));
