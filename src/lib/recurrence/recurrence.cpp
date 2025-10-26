@@ -227,8 +227,13 @@ bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr& rhs) {
 
 bool Recurrence::solve(const Arrays<Arith>::Var& lhs, const Arrays<Arith>::Expr& rhs) {
     // TODO
-    if (const auto write {rhs->isArrayWrite()}; write && lhs->dim() == 0) {
-        return solve(arrays::readConst(lhs), (*write)->val());
+    if (rhs->dim() == 0) {
+        if (const auto write {rhs->isArrayWrite()}) {
+            return solve(arrays::readConst(lhs), (*write)->val());
+        }
+        if (const auto var {rhs->isVar()}) {
+            return solve(arrays::readConst(lhs), arrays::readConst(rhs));
+        }
     }
     throw std::invalid_argument("not yet implemented");
 }
