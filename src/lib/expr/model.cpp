@@ -27,18 +27,108 @@ void Model::put(const ArithVarPtr& x, const Arith::Const& c) {
 }
 
 bool Model::eval(const Lit& lit) {
-    return eval(bools::mkLit(lit));
+    return eval(lit, subs);
+}
+
+bool Model::eval(const Lit& lit, const Subs& subs) {
+    return theory::apply(
+        lit,
+        [&](const Bools::Lit& lit) {
+            const auto var {lit->getBoolVar()};
+            const auto substituted {subs.get(var)};
+            const auto res = substituted->isTheoryLit() ? evalImpl(substituted) : eval(substituted, Subs());
+            return lit->isNegated() ? !res : res;
+        },
+        [&](const Arith::Lit& lit) {
+            const auto lhs {eval(lit->lhs(), subs)};
+            if (lit->isGt()) {
+                return lhs > 0;
+            }
+            if (lit->isEq()) {
+                return lhs == 0;
+            }
+            assert(lit->isNeq());
+            return lhs != 0;
+        },
+        [&](const Arrays<Arith>::Lit& lit) {
+            // TODO fix
+            return evalImpl(lit->subs(subs.get<Arrays<Arith>>()));
+        });
 }
 
 Bools::Const Model::eval(const Bools::Expr& e) {
-    return evalImpl(e->subs(subs));
+    return eval(e, subs);
+}
+
+Bools::Const Model::eval(const Bools::Expr& e, const Subs& subs) {
+    if (e->isAnd()) {
+        for (const auto &c: e->getChildren()) {
+            if (!eval(c, subs)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (e->isOr()) {
+        for (const auto& c : e->getChildren()) {
+            if (eval(c, subs)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    return eval(*e->getTheoryLit(), subs);
+}
+
+Arith::Const Model::eval(const Arith::Expr& e, const Subs& subs) {
+    const auto res {evalToRational(e, subs)};
+    assert(mp::denominator(res) == 1);
+    return mp::numerator(res);
 }
 
 Arith::Const Model::eval(const Arith::Expr& e) {
-    return evalImpl(e->subs(subs.get<Arrays<Arith>>()));
+    return eval(e, subs);
+}
+
+Rational Model::evalToRational(const Arith::Expr& e, const Subs& subs) {
+    return e->apply<Rational>(
+        [&](const ArithConstPtr& c) -> Rational {
+            return c->getValue();
+        }, [&](const ArithVarPtr& x) -> Rational {
+            const auto substituted{x->subs(subs)};
+            return substituted->isVar() ? evalToRationalImpl(substituted) : evalToRational(substituted, Subs());
+        }, [&](const ArithAddPtr& add) -> Rational {
+            Rational res{0};
+            for (const auto& arg : add->getArgs()) {
+                res += evalToRational(arg, subs);
+            }
+            return res;
+        }, [&](const ArithMultPtr& mul) -> Rational {
+            Rational res{1};
+            for (const auto& arg : mul->getArgs()) {
+                res *= evalToRational(arg, subs);
+            }
+            return res;
+        }, [&](const ArithModPtr& mod) -> Rational {
+            const auto lhs {evalToRational(mod->getLhs(), subs)};
+            const auto rhs {evalToRational(mod->getRhs(), subs)};
+            assert(mp::denominator(lhs) == 1);
+            assert(mp::denominator(rhs) == 1);
+            return mp::numerator(lhs) % mp::numerator(rhs);
+        }, [&](const ArithExpPtr& exp) -> Rational {
+            const auto base {evalToRational(exp->getBase(), subs)};
+            const auto e {evalToRational(exp->getExponent(), subs)};
+            assert(mp::denominator(base) == 1);
+            assert(mp::denominator(e) == 1);
+            return mp::pow(mp::numerator(base), mp::numerator(e).convert_to<long long>());
+        });
 }
 
 Arith::Const Model::eval(const ArrayReadPtr<Arith>& e) {
+    return eval(e, subs);
+}
+
+Arith::Const Model::eval(const ArrayReadPtr<Arith>& e, const Subs& subs) {
     return evalImpl(e->subs(subs.get<Arrays<Arith>>()));
 }
 
@@ -100,7 +190,7 @@ Bools::Expr Model::syntacticImplicant(const Bools::Expr& e) {
 }
 
 Rational Model::evalToRational(const Arith::Expr& e) {
-    return evalToRationalImpl(e->subs(subs.get<Arrays<Arith>>()));
+    return evalToRational(e, subs);
 }
 
 Arith::Const Model::evalImpl(const Arith::Expr &e) {

@@ -32,6 +32,14 @@ public:
 
     std::string toString(const VarSet&);
 
+private:
+
+    bool eval(const Lit&, const Subs&);
+    Bools::Const eval(const Bools::Expr&, const Subs&);
+    Arith::Const eval(const Arith::Expr&, const Subs&);
+    Rational evalToRational(const Arith::Expr&, const Subs&);
+    Arith::Const eval(const ArrayReadPtr<Arith>&, const Subs&);
+
 protected:
 
     virtual bool evalImpl(const Lit&) = 0;
