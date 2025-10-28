@@ -114,7 +114,15 @@ Rational Model::evalToRational(const Arith::Expr& e, const Subs& subs) {
             const auto rhs {evalToRational(mod->getRhs(), subs)};
             assert(mp::denominator(lhs) == 1);
             assert(mp::denominator(rhs) == 1);
-            return mp::numerator(lhs) % mp::numerator(rhs);
+            const Int x {mp::numerator(lhs)};
+            const Int y {mp::numerator(rhs)};
+            const Int x_abs {mp::abs(x)};
+            const Int y_abs {mp::abs(y)};
+            Rational mod_res {x_abs % y_abs};
+            if (mod_res == 0 || x >= 0) {
+                return mod_res;
+            }
+            return Rational(y_abs) - mod_res;
         }, [&](const ArithExpPtr& exp) -> Rational {
             const auto base {evalToRational(exp->getBase(), subs)};
             const auto e {evalToRational(exp->getExponent(), subs)};
