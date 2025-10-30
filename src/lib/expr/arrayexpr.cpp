@@ -161,6 +161,11 @@ template <class T>
 void ArrayVar<T>::collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>& res) const {}
 
 template <class T>
+ArrayVarPtr<T> ArrayVar<T>::dummyConst() {
+    return cache.from_cache(0, 0);
+}
+
+template <class T>
 bool ArrayWrite<T>::CacheEqual::operator()(
     const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr>& args1,
     const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr>& args2) const noexcept {
@@ -488,6 +493,12 @@ Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Ar
 }
 
 ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices, const Arith::Expr& val) {
+    if (arr->dim() == 0) {
+        return ArrayWrite<Arith>::cache.from_cache(ArrayVar<Arith>::dummyConst(), indices, val);
+    }
+    if (const auto write {arr->isArrayWrite()}; write && indices == (*write)->indices()) {
+        return mkArrayWrite((*write)->arr(), indices, val);
+    }
     return ArrayWrite<Arith>::cache.from_cache(arr, indices, val);
 }
 

@@ -132,6 +132,8 @@ public:
     std::optional<Int> isPoly() const override;
     unsigned dim() const override;
     void collectCells(linked_hash_set<ArrayReadPtr<T>>&) const override;
+
+    static ArrayVarPtr<T> dummyConst();
 };
 
 template<class T>
@@ -141,7 +143,7 @@ template<class T>
 int ArrayVar<T>::last_tmp_idx {0};
 
 template<class T>
-int ArrayVar<T>::last_prog_idx {1};
+int ArrayVar<T>::last_prog_idx {-1};
 
 template <class T>
 std::ostream& operator<<(std::ostream &s, const ArrayVarPtr<T> a) {

@@ -6,7 +6,7 @@
 #include <functional>
 
 int BoolVar::last_tmp_idx {0};
-int BoolVar::last_prog_idx {1};
+int BoolVar::last_prog_idx {-1};
 
 ConsHash<BoolVar, int> BoolVar::cache {};
 
