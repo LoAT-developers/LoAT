@@ -6,6 +6,7 @@ project(loat_container CXX)
 
 add_library(${PROJECT_NAME} INTERFACE
   variantset.hpp
+  variantmap.hpp
   linkedhashset.hpp
   linkedhashmap.hpp
 )

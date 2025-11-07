@@ -255,6 +255,10 @@ ArithLitPtr ArithLit::subs(const ArraySubs<Arith> &map) const {
     return mk(l->subs(map), kind);
 }
 
+ArithLitPtr ArithLit::subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>& map) const {
+    return mk(l->subs(map), kind);
+}
+
 ArithLitPtr ArithLit::subs(const Subs& map) const {
     return subs(map.get<Arrays<Arith>>());
 }

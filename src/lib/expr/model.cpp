@@ -61,23 +61,19 @@ Bools::Const Model::eval(const Bools::Expr& e) {
 }
 
 Bools::Const Model::eval(const Bools::Expr& e, const Subs& subs) {
-    if (e->isAnd()) {
-        for (const auto &c: e->getChildren()) {
-            if (!eval(c, subs)) {
-                return false;
-            }
+    return e->apply<Bools::Const>(
+        [&] {
+            return std::ranges::all_of(e->getChildren(), [&](const auto& c) {
+                return eval(c, subs);
+            });
+        }, [&] {
+            return std::ranges::any_of(e->getChildren(), [&](const auto& c) {
+                return eval(c, subs);
+            });
+        }, [&](const Lit& lit) {
+            return eval(lit, subs);
         }
-        return true;
-    }
-    if (e->isOr()) {
-        for (const auto& c : e->getChildren()) {
-            if (eval(c, subs)) {
-                return true;
-            }
-        }
-        return false;
-    }
-    return eval(*e->getTheoryLit(), subs);
+    );
 }
 
 Arith::Const Model::eval(const Arith::Expr& e, const Subs& subs) {

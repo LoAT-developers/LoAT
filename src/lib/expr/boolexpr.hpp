@@ -9,6 +9,7 @@
 #include "arith.hpp"
 #include "arrays.hpp"
 #include "exprfwd.hpp"
+#include "variantmap.hpp"
 
 #include <memory>
 
@@ -45,6 +46,9 @@ using LitSet = VariantSet<Arith::Lit, Arrays<Arith>::Lit, Bools::Lit>;
 using BoolExprSet = linked_hash_set<Bools::Expr>;
 
 enum ConcatOperator { ConcatAnd, ConcatOr };
+
+class BoolTheoryLit;
+class BoolJunction;
 
 class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
 
@@ -99,6 +103,7 @@ public:
     std::optional<Bools::Var> isVar() const;
     Bools::Expr subs(const BoolSubs&) const;
     Bools::Expr subs(const Arrays<Arith>::Subs&) const;
+    Bools::Expr subs(const Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr>&) const;
     Bools::Expr subs(const Subs&) const;
     Bools::Expr renameVars(const Renaming&) const;
     Bools::Expr eval(const ModelPtr&, const ArithVarPtr &keep) const;
@@ -119,6 +124,23 @@ public:
     LitSet lits() const;
     bool isLinear() const;
     bool isPoly() const;
+
+    template <class T>
+    T apply(
+        const std::function<T()> &conjunction,
+        const std::function<T()> &disjunction,
+        const std::function<T(Lit)> &lit) const {
+        if (isAnd()) {
+            return conjunction();
+        }
+        if (isOr()) {
+            return disjunction();
+        }
+        if (const auto& l{getTheoryLit()}) {
+            return lit(*l);
+        }
+        throw std::invalid_argument("unknown expression" + toString(this->shared_from_this()));
+    }
 
 };
 

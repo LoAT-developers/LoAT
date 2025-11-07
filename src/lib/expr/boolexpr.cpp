@@ -170,6 +170,25 @@ Bools::Expr BoolExpr::subs(const Arrays<Arith>::Subs& subs) const {
     });
 }
 
+Bools::Expr BoolExpr::subs(const Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr>& subs) const {
+    return map([&](const auto& lit) {
+        return theory::apply(
+            lit,
+            [&](const Bools::Lit& lit) {
+                const auto x {lit->getBoolVar()};
+                const auto& map {subs.get<Bools::Var, Bools::Expr>()};
+                if (map.contains(x)) {
+                    const auto res {map.at(x)};
+                    return lit->isNegated() ? !res : res;
+                }
+                return bools::mkLit(lit);
+            },
+            [&](const auto& lit) {
+                return bools::mkLit(lit->subs(subs.get<ArithVarPtr, Arith::Expr>()));
+            });
+    });
+}
+
 Bools::Expr BoolExpr::subs(const Bools::Subs& subs) const {
     return map([&](const auto& lit) {
         return theory::apply(

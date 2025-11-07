@@ -68,12 +68,13 @@ Arith::Expr Recurrence::compute_r(const Arith::Expr& q, const Rational &c) {
 // F. Frohn and J. Giesl
 // CAV 2019
 // This implements Alg. 3 (closed_form) for one variable.
-bool Recurrence::solve(const ArithVarPtr& x, const Arith::Expr& rhs) {
-    if (!rhs->isLinear({{x}})) {
+bool Recurrence::solve(const Lval& x, const Arith::Expr& rhs) {
+    const auto cell {*arrays::mkArrayRead(x.first, x.second)->isVar()};
+    if (!rhs->isLinear({{cell}})) {
         return false;
     }
-    auto m_x_plus_q{rhs->subs(closed_form_n_minus_one.get<Arrays<Arith>>())};
-    const auto vars{m_x_plus_q->vars()};
+    auto m_x_plus_q{rhs->subs(closed_form_n_minus_one.get<ArithVarPtr, Arith::Expr>())};
+    const auto vars{m_x_plus_q->cells()};
     auto prefix{0u};
     auto closed_form{m_x_plus_q};
     for (const auto &x : vars) {
@@ -81,19 +82,19 @@ bool Recurrence::solve(const ArithVarPtr& x, const Arith::Expr& rhs) {
             prefix = std::max(it->second, prefix);
         }
     }
-    if (!vars.contains(x->var())) {
+    if (!vars.contains(cell)) {
         ++prefix;
     } else {
         if (prefix > 0) {
             ++prefix;
         }
-        const auto coeff_x {*m_x_plus_q->coeff(x)};
+        const auto coeff_x {*m_x_plus_q->coeff(cell)};
         if (!coeff_x->isInt()) {
             return false;
         }
         auto m{*coeff_x->isInt()};
         assert(m >= 1);
-        const auto q {(m_x_plus_q - arith::mkConst(m) * x)};
+        const auto q {(m_x_plus_q - arith::mkConst(m) * cell)};
         ArithExprSet q_addends;
         if (const auto add{q->isAdd()}) {
             q_addends = (*add)->getArgs();
@@ -192,14 +193,14 @@ bool Recurrence::solve(const ArithVarPtr& x, const Arith::Expr& rhs) {
             res.push_back(fst);
             res.push_back(-snd);
         }
-        res.push_back(arith::mkExp(arith::mkConst(m), n) * x);
+        res.push_back(arith::mkExp(arith::mkConst(m), n) * cell);
         closed_form = arith::mkPlus(std::move(res));
     }
-    prefixes.emplace(x->var(), prefix);
+    prefixes.emplace(cell, prefix);
     result.prefix = std::max(result.prefix, prefix);
     const ArraySubs<Arith> subs {{n->var(), arrays::update(n, n - arith::one())}};
-    closed_form_n_minus_one.put(x->var(), arrays::update(x, closed_form->subs(subs)));
-    result.closed_form.put(x->var(), arrays::update(x, closed_form));
+    closed_form_n_minus_one.put(std::pair{cell, closed_form->subs(subs)});
+    result.closed_form.put(std::pair{cell, closed_form});
     return true;
 }
 
@@ -208,7 +209,7 @@ bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr& rhs) {
     if (updated->lits().contains(bools::mk(lhs, true))) {
         return false;
     }
-    const auto &vars{updated->vars()};
+    const auto &vars{updated->cells()};
     if (vars.contains(lhs) && vars.size() != vars.get<Bools::Var>().size()) {
         return false;
     }
@@ -220,56 +221,148 @@ bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr& rhs) {
     }
     prefixes.emplace(lhs, prefix);
     result.prefix = std::max(result.prefix, prefix);
-    closed_form_n_minus_one.put(lhs, updated);
-    result.closed_form.put(lhs, updated);
+    closed_form_n_minus_one.put(std::pair{lhs, updated});
+    result.closed_form.put(std::pair{lhs, updated});
     return true;
-}
-
-bool Recurrence::solve(const Arrays<Arith>::Var& lhs, const Arrays<Arith>::Expr& rhs) {
-    // TODO
-    if (rhs->dim() == 0) {
-        if (const auto write {rhs->isArrayWrite()}) {
-            return solve(arrays::readConst(lhs), (*write)->val());
-        }
-        if (const auto var {rhs->isVar()}) {
-            return solve(arrays::readConst(lhs), arrays::readConst(rhs));
-        }
-    }
-    throw std::invalid_argument("not yet implemented");
 }
 
 bool Recurrence::solve() {
-    const auto order{DependencyOrder::findOrder(equations)};
-    if (!order) {
-        return false;
-    }
-    for (const auto &lhs : *order) {
-        const auto success{
-            theory::apply(
-                lhs,
-                [&](const auto& lhs) {
-                    const auto rhs{equations.get(lhs)};
-                    if (Config::Analysis::log) {
-                        std::cout << "solving recurrence " << lhs << " = " << rhs << std::endl;
+    linked_hash_set<Lval> inductive;
+    linked_hash_set<Lval> displacing;
+    std::vector<Lval> atodo;
+    linked_hash_map<Lval, Arith::Expr> written;
+    const auto update_idx = [&](const Idx& idx) {
+        Idx res;
+        for (const auto& i : idx) {
+            res.emplace_back(i->subs(equations));
+        }
+        return res;
+    };
+    for (auto t : equations.get<Arrays<Arith>>() | std::views::values) {
+        // we do not support a := b yet
+        if (t->isVar()) {
+            if (t->dim() == 0) {
+                // workaround to handle a := b in the case that of scalars
+                t = arrays::writeConst(t->var(), arrays::readConst(t->var()));
+            } else {
+                return false;
+            }
+        }
+        auto write{t};
+        // collect all index / value pairs that are written to a
+        while (const auto w{write->isArrayWrite()}) {
+            // we do not support array writes on right-hand sides yet
+            if (std::ranges::any_of((*w)->val()->cells(), [](const auto& c) {
+                return c->arr()->isArrayWrite().has_value();
+            })) {
+                return false;
+            }
+            const Lval key {(*w)->var(), (*w)->indices()};
+            atodo.emplace_back(key);
+            written.emplace(key, (*w)->val());
+            write = (*w)->arr();
+        }
+        // collect inductive writes
+        for (const auto& [a,idx] : written | std::views::keys) {
+            for (const auto& i : idx) {
+                for (const auto& c : i->cells()) {
+                    if (a == c->var() && !written.contains({c->var(), update_idx(c->indices())})) {
+                        goto NEXT_INDUCTIVE;
                     }
-                    if (solve(lhs, rhs)) {
-                        if (Config::Analysis::log) {
-                            std::cout << "got " << lhs << "(" << n << ") = " << result.closed_form.get(lhs) << std::endl;
+                }
+                inductive.emplace(idx);
+            }
+        NEXT_INDUCTIVE:;
+        }
+        // collect displacing lvalues
+        for (const auto& [a,a_idx] : written | std::views::keys) {
+            for (const auto& i : a_idx) {
+                for (const auto& c : i->cells()) {
+                    const auto updated_read_idx{update_idx(c->indices())};
+                    for (const auto& [b,b_idx] : written | std::views::keys) {
+                        if (a != b) {
+                            continue;
                         }
-                    } else {
-                        if (Config::Analysis::log) {
-                            std::cout << "solving recurrence failed" << std::endl;
+                        if (a_idx == b_idx) {
+                            continue;
                         }
-                        return false;
+                        // compare indices lexicographically
+                        for (size_t i = 0; i < a_idx.size(); ++i) {
+                            const auto diff{updated_read_idx.at(i) - b_idx.at(i)};
+                            if (const auto d{diff->isRational()}) {
+                                const auto d_val{***d};
+                                if (d_val < 0) {
+                                    goto NEXT_DISPLACING;
+                                }
+                                if (d_val > 0) {
+                                    break;
+                                }
+                            } else {
+                                goto NEXT_DISPLACING;
+                            }
+                        }
                     }
-                    return true;
-                })
-        };
-        if (!success) {
+                }
+                displacing.emplace(a_idx);
+            }
+        NEXT_DISPLACING:;
+        }
+        if (displacing.size() + inductive.size() != written.size()) {
             return false;
         }
     }
-    return true;
+    bool changed {true};
+    while (changed) {
+        changed = false;
+        for (auto it = atodo.begin(); it != atodo.end();) {
+            const auto x {*it};
+            const auto& t {written.at(x)};
+            for (const auto& c: t->cells()) {
+                const Lval updated_lval{c->var(), update_idx(c->indices())};
+                const auto updated_cell{*arrays::mkArrayRead(c->var(), c->indices())->isVar()};
+                if (x != updated_lval && !result.closed_form.contains(updated_cell)) {
+                    ++it;
+                    goto NEXT_ARR;
+                }
+            }
+            if (solve(x, t)) {
+                changed = true;
+                it = atodo.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        NEXT_ARR:;
+    }
+    if (!atodo.empty()) {
+        return false;
+    }
+    std::vector<Bools::Var> btodo;
+    for (const auto& x : equations.get<Bools>() | std::views::keys) {
+        btodo.emplace_back(x);
+    }
+    changed = true;
+    while (changed) {
+        changed = false;
+        for (auto it = btodo.begin(); it != btodo.end();) {
+            const auto x {*it};
+            const auto t {equations.get(x)};
+            for (const auto& c : t->cells()) {
+                if (Cell(x) != c && !result.closed_form.contains(c)) {
+                    ++it;
+                    goto NEXT_BOOL;
+                }
+            }
+            if (solve(x, t)) {
+                changed = true;
+                it = btodo.erase(it);
+            } else {
+                ++it;
+            }
+            NEXT_BOOL:;
+        }
+    }
+    return !btodo.empty();
 }
 
 std::optional<Recurrence::Result> Recurrence::solve(const Subs &equations, const ArithVarPtr& n) {

@@ -208,6 +208,8 @@ public:
     ArithExprPtr subs(const ArraySubs<Arith>&) const;
     ArithExprPtr subs(const Subs&) const;
 
+    ArithExprPtr subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>&) const;
+
     /**
      * @brief exponentiation
      */

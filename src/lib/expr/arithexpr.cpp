@@ -1055,6 +1055,38 @@ ArithExprPtr ArithExpr::subs(const Subs& subs) const {
     return this->subs(subs.get<Arrays<Arith>>());
 }
 
+ArithExprPtr ArithExpr::subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>& subs) const {
+    return apply<ArithExprPtr>(
+        [&](const ArithConstPtr&) {
+            return this->toPtr();
+        },
+        [&](const ArithVarPtr& x) {
+            return subs.get(x).value_or(x);
+        },
+        [&](const ArithAddPtr& a) {
+            const auto &args {a->getArgs()};
+            std::vector<ArithExprPtr> new_args;
+            std::ranges::transform(args, std::back_inserter(new_args), [&](const auto& arg) {
+                return arg->subs(subs);
+            });
+            return arith::mkPlus(std::move(new_args));
+        },
+        [&](const ArithMultPtr& m) {
+            const auto &args {m->getArgs()};
+            std::vector<ArithExprPtr> new_args;
+            std::ranges::transform(args, std::back_inserter(new_args), [&](const auto& arg) {
+                return arg->subs(subs);
+            });
+            return arith::mkTimes(std::move(new_args));
+        },
+        [&](const ArithModPtr& m) {
+            return arith::mkMod(m->getLhs()->subs(subs), m->getRhs()->subs(subs));
+        },
+        [&](const ArithExpPtr& e) {
+            return arith::mkExp(e->getBase()->subs(subs), e->getExponent()->subs(subs));
+        });
+}
+
 ArithExprPtr arith::zero() {
     static const auto zero {mkConst(0)};
     return zero;

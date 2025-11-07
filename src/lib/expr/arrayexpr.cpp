@@ -15,6 +15,13 @@ linked_hash_set<ArrayVarPtr<T>> Array<T>::vars() const {
 }
 
 template <class T>
+linked_hash_set<ArrayReadPtr<T>> Array<T>::cells() const {
+    linked_hash_set<ArrayReadPtr<T>> res;
+    collectCells(res);
+    return res;
+}
+
+template <class T>
 bool ArrayVar<T>::CacheEqual::operator()(
     const std::tuple<int, unsigned>& args1,
     const std::tuple<int, unsigned>& args2) const noexcept {

@@ -92,6 +92,7 @@ public:
     bool isEq() const;
     bool isNeq() const;
     ArithLitPtr subs(const ArraySubs<Arith> &map) const;
+    ArithLitPtr subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>&) const;
     ArithLitPtr subs(const Subs &map) const;
     ArithLitPtr renameVars(const array_var_map<Arith> &map) const;
     linked_hash_set<ArrayVarPtr<Arith>> vars() const;

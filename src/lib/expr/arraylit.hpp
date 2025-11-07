@@ -38,6 +38,7 @@ public:
     virtual sexpresso::Sexp to_smtlib() const = 0;
     virtual std::size_t hash() const = 0;
     virtual ArrayLitPtr<T> subs(const ArraySubs<T>&) const = 0;
+    virtual ArrayLitPtr<T> subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>&) const;
     virtual ArrayLitPtr<T> renameVars(const array_var_map<T>&) const = 0;
     virtual ArrayLitPtr<T> renameVars(const Renaming&) const = 0;
     virtual void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const = 0;

@@ -63,6 +63,7 @@ class Array: public std::enable_shared_from_this<Array<T>> {
     void collectVars(VarSet&) const;
     linked_hash_set<ArrayVarPtr<T>> vars() const;
     virtual void collectCells(linked_hash_set<ArrayReadPtr<T>>&) const = 0;
+    linked_hash_set<ArrayReadPtr<T>> cells() const;
 
 };
 

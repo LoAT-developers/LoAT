@@ -4,13 +4,17 @@
 
 #include "theory.hpp"
 #include "subs.hpp"
+#include "variantmap.hpp"
 
 class Recurrence {
+
+    using Idx = std::vector<Arith::Expr>;
+    using Lval = std::pair<Arrays<Arith>::Var, Idx>;
 
 public:
 
     struct Result {
-        Subs closed_form {};
+        Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr> closed_form {};
         unsigned int prefix {0};
     };
 
@@ -26,11 +30,9 @@ private:
 
     bool solve();
 
-    bool solve(const ArithVarPtr& x, const Arith::Expr& rhs);
+    bool solve(const Lval& x, const Arith::Expr& rhs);
 
     bool solve(const Bools::Var &lhs, const Bools::Expr& rhs);
-
-    bool solve(const Arrays<Arith>::Var &lhs, const Arrays<Arith>::Expr& rhs);
 
     Subs equations;
 
@@ -41,10 +43,10 @@ private:
      * @note the recurrence equations are valid *before* the transition is taken,
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
-    Subs closed_form_n_minus_one {};
+    Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr> closed_form_n_minus_one {};
 
     Result result {};
 
-    std::unordered_map<Var, unsigned> prefixes {};
+    std::unordered_map<Cell, unsigned> prefixes {};
 
 };
