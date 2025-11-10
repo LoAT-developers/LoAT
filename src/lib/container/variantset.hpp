@@ -76,9 +76,11 @@ public:
         using pointer           = const value_type*;
         using reference         = const value_type&;
 
-        Iterator(const Self *set, const VSI &ptr) : set(set), ptr(ptr) {}
+        Iterator(const Self *set, const VSI &ptr) : set(set), ptr(ptr), current(getCurrent()) {}
 
-        Iterator(const Iterator &that): set(that.set), ptr(that.ptr) {}
+        Iterator(const Iterator &that): set(that.set), ptr(that.ptr), current(that.current) {}
+
+        Iterator() = default;
 
         Iterator& operator=(const Iterator &that) {
             if (this != &that) {
@@ -88,13 +90,11 @@ public:
             return *this;
         }
 
-        reference operator*() {
-            current = getCurrent();
+        reference operator*() const {
             return *current;
         }
 
-        pointer operator->() {
-            current = getCurrent();
+        pointer operator->() const {
             return &*current;
         }
 
@@ -121,6 +121,7 @@ public:
             while (ptr.index() + 1 < variant_size && ptr == end(ptr.index())) {
                 ptr = begin(ptr.index() + 1);
             }
+            current = getCurrent();
             return *this;
         }
 
@@ -128,6 +129,7 @@ public:
         Iterator operator++(int) {
             Iterator tmp = *this;
             ++*this;
+            current = getCurrent();
             return tmp;
         }
 

@@ -28,8 +28,9 @@ class linked_hash_set {
 public:
 
     typedef container::template index<list>::type::const_iterator const_iterator;
+    typedef container::template index<list>::type::iterator iterator;
 
-    linked_hash_set() {}
+    linked_hash_set() = default;
 
     linked_hash_set(std::initializer_list<T> init) {
         boost::multi_index::get<hash>(c).insert(init.begin(), init.end());
@@ -70,8 +71,16 @@ public:
         return boost::multi_index::get<hash>(c).contains(t);
     }
 
+    iterator begin() {
+        return boost::multi_index::get<list>(c).begin();
+    }
+
     const_iterator begin() const {
         return boost::multi_index::get<list>(c).begin();
+    }
+
+    iterator end() {
+        return boost::multi_index::get<list>(c).end();
     }
 
     const_iterator end() const {

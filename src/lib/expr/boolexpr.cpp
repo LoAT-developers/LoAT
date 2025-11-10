@@ -176,15 +176,17 @@ Bools::Expr BoolExpr::subs(const Variant<ArithVarPtr, Bools::Var>::Map<Arith::Ex
             lit,
             [&](const Bools::Lit& lit) {
                 const auto x {lit->getBoolVar()};
-                const auto& map {subs.get<Bools::Var, Bools::Expr>()};
-                if (map.contains(x)) {
+                if (const auto& map {subs.get<Bools::Var, Bools::Expr>()}; map.contains(x)) {
                     const auto res {map.at(x)};
                     return lit->isNegated() ? !res : res;
                 }
                 return bools::mkLit(lit);
             },
-            [&](const auto& lit) {
+            [&](const Arith::Lit& lit) {
                 return bools::mkLit(lit->subs(subs.get<ArithVarPtr, Arith::Expr>()));
+            },
+            [&](const Arrays<Arith>::Lit&) {
+                return cpp::assume_not_null(shared_from_this());
             });
     });
 }

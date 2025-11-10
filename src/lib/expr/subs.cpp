@@ -123,7 +123,7 @@ void Subs::put(const Arrays<Arith>::Var& var, const Arrays<Arith>::Expr& expr) {
 }
 
 void Subs::writeConst(const Arrays<Arith>::Var& var, const Arith::Expr& expr) {
-    put(var, arrays::writeConst(var, expr));
+    put(var, arrays::writeConst(expr));
 }
 
 void Subs::update(const ArrayReadPtr<Arith>& read, const Arith::Expr& expr) {

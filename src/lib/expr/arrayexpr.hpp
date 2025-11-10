@@ -23,12 +23,13 @@ namespace arrays {
     template <class T>
     ArrayVarPtr<T> mkVar(int p_idx, unsigned p_dim);
 
+    ArrayReadPtr<Arith> mkArrayRead(const ArrayVarPtr<Arith>&, const std::vector<Arith::Expr>&);
     Arith::Expr mkArrayRead(const ArrayPtr<Arith>&, const std::vector<Arith::Expr>&);
     ArrayPtr<Arith> mkArrayWrite(const ArrayPtr<Arith>&, const std::vector<Arith::Expr>&, const Arith::Expr&);
     Arith::Expr readConst(const ArrayPtr<Arith>& arr);
     ArrayReadPtr<Arith> readConst(const ArrayVarPtr<Arith>&);
     ArrayPtr<Arith> update(const ArrayReadPtr<Arith>& read, const Arith::Expr& val);
-    ArrayPtr<Arith> writeConst(const ArrayPtr<Arith>& arr, const Arith::Expr& val);
+    ArrayPtr<Arith> writeConst(const Arith::Expr& val);
 
     template <class T>
     ArrayReadPtr<T> nextProgConst();
@@ -208,6 +209,7 @@ ConsHash<ArrayWrite<T>, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr>
 template <class T>
 class ArrayRead final: public T::Expr::element_type {
 
+    friend ArrayReadPtr<T> arrays::mkArrayRead(const ArrayVarPtr<Arith>& arr, const std::vector<Arith::Expr>& indices);
     friend Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices);
     friend ArrayReadPtr<T> arrays::nextConst();
     friend ArrayReadPtr<Arith> arrays::readConst(const ArrayVarPtr<Arith>&);

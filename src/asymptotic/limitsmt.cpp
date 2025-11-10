@@ -328,7 +328,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
         const auto c{arrays::nextConst<Arith>()};
         varCoeff.emplace(var, c);
         varCoeff0.emplace(var, c0);
-        templateSubs.put(var, arrays::writeConst(var, c0 + n * c));
+        templateSubs.put(var, arrays::writeConst(c0 + n * c));
     }
     const auto buildRes = [&](const Complexity &cpx) {
         std::optional<ModelPtr> subs;

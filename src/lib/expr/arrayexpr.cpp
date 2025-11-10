@@ -492,6 +492,10 @@ bool ArrayRead<T>::isProgCell() const {
         return x->isProgVar();
     });}
 
+ArrayReadPtr<Arith> arrays::mkArrayRead(const ArrayVarPtr<Arith>& arr, const std::vector<Arith::Expr>& indices) {
+    return ArrayRead<Arith>::cache.from_cache(arr, indices);
+}
+
 Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices) {
     if (const auto write {arr->isArrayWrite()}; write && indices == (*write)->indices()) {
         return (*write)->val();
@@ -513,9 +517,8 @@ ArrayPtr<Arith> arrays::update(const ArrayReadPtr<Arith>& read, const Arith::Exp
     return mkArrayWrite(read->arr(), read->indices(), val);
 }
 
-ArrayPtr<Arith> arrays::writeConst(const ArrayPtr<Arith>& arr, const Arith::Expr& val) {
-    assert(arr->dim() == 0);
-    return mkArrayWrite(arr, {}, val);
+ArrayPtr<Arith> arrays::writeConst(const Arith::Expr& val) {
+    return mkArrayWrite(ArrayVar<Arith>::dummyConst(), {}, val);
 }
 
 Arith::Expr arrays::readConst(const ArrayPtr<Arith>& arr) {

@@ -142,7 +142,7 @@ void LoopAcceleration::compute_closed_form() {
 void LoopAcceleration::accelerate() {
     if (rec && config.tryAccel) {
         if (const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()}) {
-            res.accel = acceleration::Accel(Rule::mk(bools::mkAnd(accelerator->formula), rec->closed_form));
+            res.accel = acceleration::Accel(Rule::mk(bools::mkAnd(accelerator->formula), rec->closed_form_subs));
             res.accel->covered = bools::mkAnd(accelerator->covered);
             store_nonterm(*accelerator);
         }
@@ -194,8 +194,7 @@ void LoopAcceleration::removeTrivialUpdates() {
     for (const auto &[x_arr, v_arr] : update.get<Arrays<Arith>>()) {
         assert(x_arr->dim() == 0);
         const auto x{*arrays::readConst(x_arr)->someVar()};
-        const auto v {arrays::readConst(v_arr)};
-        if (rule->getGuard()->getEquality(x) == std::optional{v}) {
+        if (rule->getGuard()->getEquality(x) == std::optional{arrays::readConst(v_arr)}) {
             remove.insert(x->var());
         }
     }
@@ -223,7 +222,7 @@ void LoopAcceleration::run() {
             case SmtResult::Sat: {
                 removeTrivialUpdates();
                 compute_closed_form();
-                if (rec && !config.tryNonlinear && !rec->closed_form.isLinear()) {
+                if (rec && !config.tryNonlinear && !rec->closed_form_subs.isLinear()) {
                     res.status = acceleration::Nonlinear;
                 } else {
                     accelerate();

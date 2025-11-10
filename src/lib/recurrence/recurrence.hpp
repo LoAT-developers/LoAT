@@ -8,13 +8,13 @@
 
 class Recurrence {
 
-    using Idx = std::vector<Arith::Expr>;
-    using Lval = std::pair<Arrays<Arith>::Var, Idx>;
-
 public:
+
+    using Idx = std::vector<Arith::Expr>;
 
     struct Result {
         Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr> closed_form {};
+        Subs closed_form_subs;
         unsigned int prefix {0};
     };
 
@@ -30,7 +30,7 @@ private:
 
     bool solve();
 
-    bool solve(const Lval& x, const Arith::Expr& rhs);
+    bool solve(const ArithVarPtr& x, const Arith::Expr& rhs);
 
     bool solve(const Bools::Var &lhs, const Bools::Expr& rhs);
 
