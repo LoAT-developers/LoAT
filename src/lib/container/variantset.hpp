@@ -54,17 +54,18 @@ public:
         }
 
         template <size_t I = 0>
-        Var getCurrentImpl() const {
+        std::optional<Var> getCurrentImpl() const {
             if constexpr (I < variant_size) {
                 if (ptr.index() == I) {
-                    return Var(*std::get<I>(ptr));
+                    const auto it {std::get<I>(ptr)};
+                    return it == std::get<I>(set->t).end() ? std::nullopt : std::optional<Var>(*it);
                 }
                 return getCurrentImpl<I+1>();
             }
             throw std::invalid_argument("unknown index");
         }
 
-        Var getCurrent() const {
+        std::optional<Var> getCurrent() const {
             return getCurrentImpl<0>();
         }
 
