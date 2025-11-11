@@ -281,7 +281,7 @@ bool Recurrence::solve() {
     // collect lvalues that are written by the loop and initialize worklist
     std::vector<ArithVarPtr> a_work_list;
     linked_hash_map<ArithVarPtr, Arith::Expr> written;
-    for (auto t : equations.get<Arrays<Arith>>() | std::views::values) {
+    for (auto [x,t] : equations.get<Arrays<Arith>>()) {
         // we do not support a := b yet
         if (t->isVar()) {
             if (t->dim() == 0) {
@@ -293,6 +293,7 @@ bool Recurrence::solve() {
         }
         auto write{t};
         // collect all index / value pairs that are written to a
+        const auto var = t->dim() == 0 ? x : t->var();
         while (const auto w{write->isArrayWrite()}) {
             // we do not support array writes on right-hand sides yet
             if (std::ranges::any_of((*w)->val()->cells(), [](const auto& c) {
@@ -300,7 +301,7 @@ bool Recurrence::solve() {
             })) {
                 return false;
             }
-            const auto key {arrays::mkArrayRead((*w)->var(), (*w)->indices())};
+            const auto key {arrays::mkArrayRead(var, (*w)->indices())};
             a_work_list.emplace_back(key);
             written.emplace(key, (*w)->val());
             write = (*w)->arr();
@@ -342,9 +343,9 @@ bool Recurrence::solve() {
     // checks if an arithmetic recurrence is ready for solving
     const auto a_is_ready = [&](const ArithVarPtr& lval, const Arith::Expr& val) {
         return std::ranges::all_of(val->cells(), [&](const auto& c) {
-            const auto other{arrays::mkArrayRead(c->var(), c->indices())};
-            const auto updated{arrays::mkArrayRead(c->var(), update_idx(c->indices()))};
-            return lval == updated || result.closed_form.contains(other);
+            const auto lval = arrays::mkArrayRead(c->var(), c->indices());
+            const auto updated = arrays::mkArrayRead(c->var(), update_idx(c->indices()));
+            return lval == updated || result.closed_form.contains(lval);
         });
     };
     bool changed {true};
@@ -403,7 +404,7 @@ bool Recurrence::solve() {
             }
         }
     }
-    return !b_work_list.empty();
+    return b_work_list.empty();
 }
 
 std::optional<Recurrence::Result> Recurrence::solve(const Subs &equations, const ArithVarPtr& n) {

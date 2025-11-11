@@ -86,6 +86,7 @@ public:
             if (this != &that) {
                 this->set = that.set;
                 this->ptr = that.ptr;
+                this->current = that.current;
             }
             return *this;
         }
