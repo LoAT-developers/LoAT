@@ -35,6 +35,8 @@ public:
     std::vector<term_t> formulaVec() override;
     term_t arrayRead(const term_t& arr, const std::vector<term_t>& indices) override;
     term_t arrayWrite(const term_t& arr, const std::vector<term_t>& indices, const term_t &value) override;
+    term_t ite(const term_t& cond, const term_t& then_case, const term_t& else_case) override;
+    term_t lambda(const std::vector<term_t>& args, const term_t& body) override;
 
     void printStderr(const term_t &e) const override;
 

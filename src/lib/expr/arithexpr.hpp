@@ -120,7 +120,7 @@ public:
     /**
      * @return The set of all variables that occur in this expression.
      */
-    linked_hash_set<ArrayVarPtr<Arith>> vars() const;
+    VarSet vars() const;
 
     void collectCells(CellSet&) const;
     void collectCells(linked_hash_set<ArithVarPtr>&) const;
@@ -152,7 +152,7 @@ public:
     /**
      * @brief Collects all variables that occur in this expression.
      */
-    void collectVars(linked_hash_set<ArrayVarPtr<Arith>> &res) const;
+    void collectVars(VarSet&) const;
 
     /**
      * @return True iff this expression contains a variable that satisfies the given predicate.

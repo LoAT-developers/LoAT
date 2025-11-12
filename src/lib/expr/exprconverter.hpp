@@ -138,16 +138,26 @@ protected:
 
     Expr convertArrayWrite(const ArrayWritePtr<Arith> &write) {
         const auto arr {write->arr()};
-        const auto indices {write->indices()};
-        assert(!indices.empty());
-        const auto value {write->val()};
         const auto converted_arr {convertArray(arr)};
+        const auto converted_value {convertEx(write->val())};
         auto converted_indices {context.exprVec()};
-        for (const auto &i: indices) {
-            converted_indices.push_back(convertEx(i));
+        if (const auto indices {write->indices()}) {
+            assert(!indices->empty());
+            for (const auto &i: *indices) {
+                converted_indices.push_back(convertEx(i));
+            }
+            return context.arrayWrite(converted_arr, converted_indices, converted_value);
         }
-        const auto converted_value {convertEx(value)};
-        return context.arrayWrite(converted_arr, converted_indices, converted_value);
+        std::vector<Arith::Expr> indices;
+        for (size_t i = 0; i < arr->dim(); ++i) {
+            const auto idx = arrays::array_idx(i);
+            indices.emplace_back(idx);
+            converted_indices.push_back(convertArray(idx->var()));
+        }
+        const auto converted_cond = convertBoolEx(write->cond());
+        const auto else_case = convertEx(arrays::mkArrayRead(arr, indices));
+        const auto body = context.ite(converted_cond, converted_value, else_case);
+        return context.lambda(converted_indices, body);
     }
 
     Expr convertArray(const ArrayPtr<Arith> &arr) {

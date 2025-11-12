@@ -28,6 +28,8 @@ public:
     virtual FormulaVec formulaVec() = 0;
     virtual Expr arrayRead(const Expr& arr, const ExprVec& indices) = 0;
     virtual Expr arrayWrite(const Expr& arr, const ExprVec& indices, const Expr &value) = 0;
+    virtual Expr ite(const Expr& cond, const Expr& then_case, const Expr& else_case) = 0;
+    virtual Expr lambda(const ExprVec& args, const Expr& body) = 0;
 
     virtual void printStderr(const Expr &e) const = 0;
 

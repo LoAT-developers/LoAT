@@ -243,7 +243,7 @@ std::optional<bool> ArithLit::checkTrivial() const {
     return {};
 }
 
-void ArithLit::collectVars(linked_hash_set<ArrayVarPtr<Arith>> &res) const {
+void ArithLit::collectVars(VarSet &res) const {
     l->collectVars(res);
 }
 
@@ -267,7 +267,7 @@ ArithLitPtr ArithLit::renameVars(const array_var_map<Arith> &map) const {
     return mk(l->renameVars(map), kind);
 }
 
-linked_hash_set<ArrayVarPtr<Arith>> ArithLit::vars() const {
+VarSet ArithLit::vars() const {
     return l->vars();
 }
 

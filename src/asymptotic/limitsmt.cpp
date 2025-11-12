@@ -316,8 +316,10 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
     // the parameter of the desired family of solutions
     const auto n{arrays::nextConst<Arith>()};
     // get all relevant variables
-    auto vars{expr->vars().get<Arrays<Arith>::Var>()};
-    cost->collectVars(vars);
+    auto all_vars{expr->vars()};
+    cost->collectVars(all_vars);
+    const auto vars = all_vars.get<Arrays<Arith>::Var>();
+    assert(vars.size() == all_vars.size());
     auto hasTmpVars{false};
     // create linear templates for all variables
     ArraySubs<Arith> templateSubs;

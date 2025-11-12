@@ -86,7 +86,7 @@ public:
 
     bool isTriviallyTrue() const;
     bool isTriviallyFalse() const;
-    void collectVars(linked_hash_set<ArrayVarPtr<Arith>> &res) const;
+    void collectVars(VarSet&) const;
     bool has(const ArithVarPtr&) const;
     bool isGt() const;
     bool isEq() const;
@@ -95,7 +95,7 @@ public:
     ArithLitPtr subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>&) const;
     ArithLitPtr subs(const Subs &map) const;
     ArithLitPtr renameVars(const array_var_map<Arith> &map) const;
-    linked_hash_set<ArrayVarPtr<Arith>> vars() const;
+    VarSet vars() const;
 
     template <typename P>
     bool hasVarWith(P predicate) const {

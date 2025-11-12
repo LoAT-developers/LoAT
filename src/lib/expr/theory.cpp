@@ -130,7 +130,7 @@ namespace theory {
                 expr->collectVars(vars);
             },
             [&](const auto& expr) {
-                expr->collectVars(vars.get<Arrays<Arith>::Var>());
+                expr->collectVars(vars);
             });
     }
 
@@ -231,7 +231,7 @@ namespace theory {
                 return lit->collectVars(s.get<Bools::Var>());
             },
             [&](const auto& lit) {
-                return lit->collectVars(s.get<Arrays<Arith>::Var>());
+                return lit->collectVars(s);
             });
     }
 
@@ -247,8 +247,11 @@ namespace theory {
             [&](const Bools::Lit& lit) {
                 return lit->collectVars(s.get<Bools::Var>());
             },
-            [&](const auto& lit) {
+            [&](const Arith::Lit& lit) {
                 return lit->collectCells(s.get<ArithVarPtr>());
+            },
+            [&](const auto& lit) {
+                return lit->collectCells(s);
             });
     }
 

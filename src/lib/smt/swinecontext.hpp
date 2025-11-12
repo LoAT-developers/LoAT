@@ -33,6 +33,8 @@ public:
     z3::expr_vector formulaVec() override;
     z3::expr arrayRead(const z3::expr& arr, const z3::expr_vector& indices) override;
     z3::expr arrayWrite(const z3::expr& arr, const z3::expr_vector& indices, const z3::expr &value) override;
+    z3::expr ite(const z3::expr& cond, const z3::expr& then_case, const z3::expr& else_case) override;
+    z3::expr lambda(const z3::expr_vector& args, const z3::expr& body) override;
 
     void printStderr(const z3::expr &e) const override;
 

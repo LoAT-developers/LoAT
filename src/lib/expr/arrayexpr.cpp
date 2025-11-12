@@ -127,11 +127,6 @@ void ArrayVar<T>::collectVars(VarSet& xs) const {
 }
 
 template <class T>
-std::vector<Arith::Expr> ArrayVar<T>::indices() const {
-    return {};
-}
-
-template <class T>
 sexpresso::Sexp ArrayVar<T>::to_smtlib() const {
     return sexpresso::Sexp(getName());
 }
@@ -152,8 +147,8 @@ bool ArrayVar<T>::isLinear() const {
 }
 
 template <class T>
-std::optional<Int> ArrayVar<T>::isPoly() const {
-    return 1;
+bool ArrayVar<T>::isPoly() const {
+    return true;
 }
 
 template <class T>
@@ -238,31 +233,52 @@ template <class T>
 void ArrayWrite<T>::collectVars(VarSet& xs) const {
     m_arr->collectVars(xs);
     m_cond->collectVars(xs);
-    m_val->collectVars(xs.get<ArrayVarPtr<T>>());
+    m_val->collectVars(xs);
 }
 
 template <class T>
 sexpresso::Sexp ArrayWrite<T>::to_smtlib() const {
     sexpresso::Sexp res;
-    res.addChild("store");
-    auto outer_arr{m_arr->var()->to_smtlib()};
-    res.addChild(outer_arr);
-    res.addChild(m_indices.front()->to_smtlib());
-    sexpresso::Sexp val{m_val->to_smtlib()};
-    for (unsigned long i = 1; i < m_indices.size(); ++i) {
-        sexpresso::Sexp inner_arr;
-        inner_arr.addChild("select");
-        inner_arr.addChild(outer_arr);
-        inner_arr.addChild(m_indices.at(i - 1)->to_smtlib());
-        sexpresso::Sexp new_val;
-        new_val.addChild("store");
-        new_val.addChild(inner_arr);
-        new_val.addChild(m_indices.at(i)->to_smtlib());
+    if (const auto idx{indices()}) {
+        res.addChild("store");
+        auto outer_arr{m_arr->var()->to_smtlib()};
+        res.addChild(outer_arr);
+        res.addChild(idx->front()->to_smtlib());
+        sexpresso::Sexp val{m_val->to_smtlib()};
+        for (unsigned long i = 1; i < idx->size(); ++i) {
+            sexpresso::Sexp inner_arr;
+            inner_arr.addChild("select");
+            inner_arr.addChild(outer_arr);
+            inner_arr.addChild(idx->at(i - 1)->to_smtlib());
+            sexpresso::Sexp new_val;
+            new_val.addChild("store");
+            new_val.addChild(inner_arr);
+            new_val.addChild(idx->at(i)->to_smtlib());
+            res.addChild(val);
+            outer_arr = inner_arr;
+            val = new_val;
+        }
         res.addChild(val);
-        outer_arr = inner_arr;
-        val = new_val;
+    } else {
+        res.addChild("lambda");
+        std::vector<Arith::Expr> indices;
+        sexpresso::Sexp decls;
+        for (size_t i = 0; i < dim(); ++i) {
+            sexpresso::Sexp decl;
+            const auto idx = arrays::array_idx(i);
+            indices.emplace_back(idx);
+            decl.addChild(idx->var()->getName());
+            decl.addChild("Int");
+            decls.addChild(decl);
+        }
+        res.addChild(decls);
+        sexpresso::Sexp body;
+        body.addChild("ite");
+        body.addChild(m_cond->to_smtlib());
+        body.addChild(m_val->to_smtlib());
+        body.addChild(arrays::mkArrayRead(m_arr, indices)->to_smtlib());
+        res.addChild(body);
     }
-    res.addChild(val);
     return res;
 }
 
@@ -282,24 +298,8 @@ bool ArrayWrite<T>::isLinear() const {
 }
 
 template <class T>
-std::optional<Int> ArrayWrite<T>::isPoly() const {
-    Int d {0};
-    if (const auto da {m_arr->isPoly()}; !da) {
-        return {};
-    } else {
-        d = std::max(d, *da);
-    }
-    if (const auto di{m_cond->isPoly()}; !di) {
-        return {};
-    } else {
-        d = std::max(d, *di);
-    }
-    if (const auto dv {m_val->isPoly()}; !dv) {
-        return {};
-    } else {
-        d = std::max(d, *dv);
-    }
-    return d;
+bool ArrayWrite<T>::isPoly() const {
+    return m_arr->isPoly() && m_cond->isPoly() && m_val->isPoly();
 }
 
 template <class T>
@@ -312,6 +312,45 @@ void ArrayWrite<T>::collectCells(CellSet& res) const {
     m_arr->collectCells(res);
     m_cond->collectCells(res);
     m_val->collectCells(res);
+}
+
+template <class T>
+std::optional<std::vector<Arith::Expr>> ArrayWrite<T>::indices() const {
+    if (!m_cond->isConjunction()) {
+        return std::nullopt;
+    }
+    const auto lits = m_cond->lits();
+    if (lits.size() != dim()) {
+        return std::nullopt;
+    }
+    const auto arith_lits = lits.get<Arith::Lit>();
+    if (arith_lits.size() != dim()) {
+        return std::nullopt;
+    }
+    linked_hash_set<ArithVarPtr> indices;
+    for (size_t i = 0; i < dim(); ++i) {
+        indices.insert(arrays::array_idx(i));
+    }
+    std::vector<Arith::Expr> res;
+    for (const auto& idx: indices) {
+        auto success = false;
+        for (const auto& lit : arith_lits) {
+            if (const auto eq = lit->getEquality(idx)) {
+                if ((*eq)->hasCellWith([&](const auto& x) {
+                    return indices.contains(x);
+                })) {
+                    return std::nullopt;
+                }
+                res.emplace_back(*eq);
+                success = true;
+                break;
+            }
+        }
+        if (!success) {
+            return std::nullopt;
+        }
+    }
+    return res;
 }
 
 template <class T>
@@ -413,7 +452,7 @@ template <class T>
 void ArrayRead<T>::collectVars(VarSet& vars) const {
     m_arr->collectVars(vars);
     for (const auto& i: m_indices) {
-        i->collectVars(vars.get<ArrayVarPtr<T>>());
+        i->collectVars(vars);
     }
 }
 
@@ -432,21 +471,8 @@ bool ArrayRead<T>::isLinear() const {
 }
 
 template <class T>
-std::optional<Int> ArrayRead<T>::isPoly() const {
-    Int d {0};
-    if (const auto da {m_arr->isPoly()}; !da) {
-        return {};
-    } else {
-        d = std::max(d, *da);
-    }
-    for (const auto &i: m_indices) {
-        if (const auto di {i->isPoly()}; !di) {
-            return {};
-        } else {
-            d = std::max(d, *di);
-        }
-    }
-    return d;
+bool ArrayRead<T>::isPoly() const {
+    return m_arr->isPoly() && std::ranges::all_of(m_indices, [](const auto& i) {return i->isPoly().has_value();});
 }
 
 template <class T>
@@ -469,13 +495,20 @@ Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Ar
     return ArrayRead<Arith>::cache.from_cache(arr, indices);
 }
 
-ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices, const Arith::Expr& val) {
+ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const Bools::Expr& cond, const Arith::Expr& val) {
     if (arr->dim() == 0) {
+        if (cond != top()) {
+            throw std::invalid_argument("conditional array write to scalar");
+        }
         return ArrayWrite<Arith>::cache.from_cache(ArrayVar<Arith>::dummyConst(), top(), val);
     }
-    if (const auto write {arr->isArrayWrite()}; write && indices == (*write)->indices()) {
-        return mkArrayWrite((*write)->arr(), indices, val);
+    if (const auto write {arr->isArrayWrite()}; write && cond == (*write)->cond()) {
+        return mkArrayWrite((*write)->arr(), cond, val);
     }
+    return ArrayWrite<Arith>::cache.from_cache(arr, cond, val);
+}
+
+ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices, const Arith::Expr& val) {
     std::vector<Arith::Lit> lits;
     for (size_t i = 0; i < indices.size(); ++i) {
         lits.emplace_back(arith::mkEq(array_idx(i), indices.at(i)));
@@ -500,7 +533,47 @@ ArrayReadPtr<Arith> arrays::readConst(const ArrayVarPtr<Arith>& arr) {
     return ArrayRead<Arith>::cache.from_cache(arr, {});
 }
 
+template <class T>
+std::ostream& operator<<(std::ostream& s, const ArrayReadPtr<T>& read) {
+    s << read->arr();
+    for (const auto &i: read->indices()) {
+        s << "[" << i << "]";
+    }
+    return s;
+}
+
+template <class T>
+std::ostream& operator<<(std::ostream& s, const ArrayPtr<T>& a) {
+    if (const auto var {a->isVar()}) {
+        return s << (*var)->getName();
+    }
+    const auto write{*a->isArrayWrite()};
+    if (const auto idx = write->indices()) {
+        if (a->dim() == 0) {
+            s << write->val();
+        } else {
+            s << write->arr();
+            for (const auto& i : *idx) {
+                s << "[" << i << "]";
+            }
+            s << ":=" << write->val();
+        }
+    } else {
+        s << "lambda";
+        std::vector<Arith::Expr> indices;
+        for (size_t i = 0; i < a->dim(); ++i) {
+            const auto idx = arrays::array_idx(i);
+            indices.emplace_back(idx);
+            s << " " << idx->var()->getName();
+        }
+        s << ". if " << write->cond() << " then " << write->val() << " else " << arrays::mkArrayRead(write->arr(), indices);
+    }
+    return s;
+}
+
 template class Array<Arith>;
 template class ArrayVar<Arith>;
 template class ArrayWrite<Arith>;
 template class ArrayRead<Arith>;
+template std::ostream& operator<<(std::ostream&, const ArrayPtr<Arith>&);
+template std::ostream& operator<<(std::ostream& s, const ArrayReadPtr<Arith>&);

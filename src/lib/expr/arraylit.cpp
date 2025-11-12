@@ -82,7 +82,7 @@ ArrayLitPtr<T> ArrayEq<T>::renameVars(const Renaming& map) const {
 }
 
 template <class T>
-void ArrayEq<T>::collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const {
+void ArrayEq<T>::collectVars(VarSet& arr) const {
     m_lhs->collectVars(arr);
     m_rhs->collectVars(arr);
 }
@@ -103,7 +103,7 @@ std::optional<ArrayNeqPtr<T>> ArrayEq<T>::isArrayNeq() const {
 }
 
 template <class T>
-void ArrayEq<T>::collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>& cells) const {
+void ArrayEq<T>::collectCells(CellSet& cells) const {
     m_lhs->collectCells(cells);
     m_rhs->collectCells(cells);
 }
@@ -173,7 +173,7 @@ ArrayLitPtr<T> ArrayNeq<T>::renameVars(const Renaming& map) const {
 }
 
 template <class T>
-void ArrayNeq<T>::collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const {
+void ArrayNeq<T>::collectVars(VarSet& arr) const {
     m_lhs->collectVars(arr);
     m_rhs->collectVars(arr);
 }
@@ -194,7 +194,7 @@ std::optional<ArrayNeqPtr<T>> ArrayNeq<T>::isArrayNeq() const {
 }
 
 template <class T>
-void ArrayNeq<T>::collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>& res) const {
+void ArrayNeq<T>::collectCells(CellSet& res) const {
     m_lhs->collectCells(res);
     m_rhs->collectCells(res);
 }

@@ -51,7 +51,6 @@ class Array: public std::enable_shared_from_this<Array<T>> {
 
     virtual ArrayVarPtr<T> var() const = 0;
     virtual unsigned dim() const = 0;
-    virtual std::vector<Arith::Expr> indices() const = 0;
     virtual std::optional<ArrayVarPtr<T>> isVar() const = 0;
     virtual std::optional<ArrayWritePtr<T>> isArrayWrite() const = 0;
     virtual ArrayPtr<T> renameVars(const array_var_map<T>&) const = 0;
@@ -59,7 +58,7 @@ class Array: public std::enable_shared_from_this<Array<T>> {
     virtual ArrayPtr<T> subs(const ArraySubs<T>&) const = 0;
     virtual ArrayPtr<T> withVar(const ArrayVarPtr<T>&) const = 0;
     virtual bool isLinear() const = 0;
-    virtual std::optional<Int> isPoly() const = 0;
+    virtual bool isPoly() const = 0;
 
     virtual sexpresso::Sexp to_smtlib() const = 0;
 
@@ -127,13 +126,11 @@ public:
 
     void collectVars(VarSet& xs) const override;
 
-    std::vector<Arith::Expr> indices() const override;
-
     sexpresso::Sexp to_smtlib() const override;
     ArrayPtr<T> subs(const ArraySubs<T>&) const override;
     ArrayPtr<T> withVar(const ArrayVarPtr<T>&) const override;
     bool isLinear() const override;
-    std::optional<Int> isPoly() const override;
+    bool isPoly() const override;
     unsigned dim() const override;
     void collectCells(CellSet&) const override;
 
@@ -201,9 +198,10 @@ public:
     ArrayPtr<T> subs(const ArraySubs<T>&) const override;
     ArrayPtr<T> withVar(const ArrayVarPtr<T>&) const override;
     bool isLinear() const override;
-    std::optional<Int> isPoly() const override;
+    bool isPoly() const override;
     unsigned dim() const override;
     void collectCells(CellSet&) const override;
+    std::optional<std::vector<Arith::Expr>> indices() const;
 };
 
 template <class T>
@@ -248,7 +246,7 @@ public:
     bool isProgVar() const;
     bool isPostVar() const;
     bool isLinear() const;
-    std::optional<Int> isPoly() const;
+    bool isPoly() const;
     bool isPostCell() const;
     bool isProgCell() const;
 
@@ -270,31 +268,10 @@ template <class T>
 ConsHash<ArrayRead<T>, ArrayPtr<T>, std::vector<Arith::Expr>> ArrayRead<T>::cache;
 
 template <class T>
-std::ostream& operator<<(std::ostream& s, const ArrayReadPtr<T>& read) {
-    s << read->arr();
-    for (const auto &i: read->indices()) {
-        s << "[" << i << "]";
-    }
-    return s;
-}
+std::ostream& operator<<(std::ostream& s, const ArrayReadPtr<T>& read);
 
 template <class T>
-std::ostream& operator<<(std::ostream& s, const ArrayPtr<T>& a) {
-    if (const auto var {a->isVar()}) {
-        return s << (*var)->getName();
-    }
-    const auto write{a->isArrayWrite()};
-    if (a->dim() == 0) {
-        s << (*write)->val();
-    } else {
-        s << (*write)->arr();
-        for (const auto& i : (*write)->indices()) {
-            s << "[" << i << "]";
-        }
-        s << ":=" << (*write)->val();
-    }
-    return s;
-}
+std::ostream& operator<<(std::ostream&, const ArrayPtr<T>&);
 
 namespace arrays {
 

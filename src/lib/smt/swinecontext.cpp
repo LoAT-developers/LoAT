@@ -105,6 +105,14 @@ z3::expr SwineContext::arrayWrite(const z3::expr& arr, const z3::expr_vector& in
     return z3::store(arr, indices, value);
 }
 
+z3::expr SwineContext::ite(const z3::expr& cond, const z3::expr& then_case, const z3::expr& else_case) {
+    return z3::ite(cond, then_case, else_case);
+}
+
+z3::expr SwineContext::lambda(const z3::expr_vector& args, const z3::expr& body) {
+    return z3::lambda(args, body);
+}
+
 void SwineContext::printStderr(const z3::expr &e) const {
     std::cerr << e << std::endl;
 }

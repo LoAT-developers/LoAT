@@ -151,3 +151,11 @@ term_t YicesContext::arrayRead(const term_t& arr, const std::vector<term_t>& ind
 term_t YicesContext::arrayWrite(const term_t& arr, const std::vector<term_t>& indices, const term_t &value) {
     return yices_update(arr, indices.size(), indices.data(), value);
 }
+
+term_t YicesContext::ite(const term_t& cond, const term_t& then_case, const term_t& else_case) {
+    return yices_ite(cond, then_case, else_case);
+}
+
+term_t YicesContext::lambda(const std::vector<term_t>& args, const term_t& body) {
+    return yices_lambda(args.size(), args.data(), body);
+}

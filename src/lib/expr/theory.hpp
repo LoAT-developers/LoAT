@@ -4,6 +4,7 @@
 #include "arith.hpp"
 #include "bools.hpp"
 #include "boolexpr.hpp"
+#include "arraylit.hpp"
 
 #include <variant>
 #include <tuple>

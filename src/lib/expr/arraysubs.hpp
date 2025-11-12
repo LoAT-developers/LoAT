@@ -53,19 +53,19 @@ public:
 
     bool changes(const Var& x) const;
 
-    void collectCoDomainCells(linked_hash_set<ArrayReadPtr<T>>&) const;
+    void collectCoDomainCells(CellSet&) const;
 
     static bool isLinear();
 
     static bool isPoly();
 
-    void collectCoDomainVars(linked_hash_set<Var> &vars) const;
+    void collectCoDomainVars(VarSet&) const;
 
-    void collectVars(linked_hash_set<Var> &vars) const;
+    void collectVars(VarSet&) const;
 
     linked_hash_set<Var> domain() const;
 
-    linked_hash_set<Var> coDomainVars() const;
+    VarSet coDomainVars() const;
 
     size_t hash() const;
 

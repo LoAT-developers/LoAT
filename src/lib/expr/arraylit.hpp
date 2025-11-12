@@ -40,8 +40,8 @@ public:
     virtual ArrayLitPtr<T> subs(const ArraySubs<T>&) const = 0;
     virtual ArrayLitPtr<T> renameVars(const array_var_map<T>&) const = 0;
     virtual ArrayLitPtr<T> renameVars(const Renaming&) const = 0;
-    virtual void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const = 0;
-    virtual void collectCells(linked_hash_set<ArrayReadPtr<T>>&) const = 0;
+    virtual void collectVars(VarSet&) const = 0;
+    virtual void collectCells(CellSet&) const = 0;
     virtual bool isTriviallyFalse() const = 0;
     virtual std::optional<ArrayEqPtr<T>> isArrayEq() const = 0;
     virtual std::optional<ArrayNeqPtr<T>> isArrayNeq() const = 0;
@@ -89,14 +89,14 @@ public:
     ArrayLitPtr<T> renameVars(const array_var_map<T>&) const override;
     ArrayLitPtr<T> renameVars(const Renaming&) const override;
 
-    void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const override;
+    void collectVars(VarSet&) const override;
 
     bool isTriviallyFalse() const override;
 
     std::optional<ArrayEqPtr<T>> isArrayEq() const override;
 
     std::optional<ArrayNeqPtr<T>> isArrayNeq() const override;
-    void collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>&) const override;
+    void collectCells(CellSet&) const override;
 };
 
 template <class T>
@@ -141,14 +141,14 @@ public:
     ArrayLitPtr<T> renameVars(const array_var_map<T>&) const override;
     ArrayLitPtr<T> renameVars(const Renaming&) const override;
 
-    void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const override;
+    void collectVars(VarSet&) const override;
 
     bool isTriviallyFalse() const override;
 
     std::optional<ArrayEqPtr<T>> isArrayEq() const override;
 
     std::optional<ArrayNeqPtr<T>> isArrayNeq() const override;
-    void collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>&) const override;
+    void collectCells(CellSet&) const override;
 };
 
 template <class T>

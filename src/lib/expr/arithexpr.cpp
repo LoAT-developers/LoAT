@@ -19,8 +19,8 @@ ArithExpr::ArithExpr(): kind(arith::Kind::Variable) {}
 
 ArithExpr::ArithExpr(const arith::Kind kind): kind(kind) {}
 
-linked_hash_set<ArrayVarPtr<Arith>> ArithExpr::vars() const {
-    linked_hash_set<ArrayVarPtr<Arith>> res;
+VarSet ArithExpr::vars() const {
+    VarSet res;
     collectVars(res);
     return res;
 }
@@ -244,7 +244,7 @@ std::optional<Int> ArithExpr::isPoly() const {
         });
 }
 
-void ArithExpr::collectVars(linked_hash_set<ArrayVarPtr<Arith>> &res) const {
+void ArithExpr::collectVars(VarSet &res) const {
     apply<void>(
         [](const ArithConstPtr&) {},
         [&](const ArithVarPtr& x) {

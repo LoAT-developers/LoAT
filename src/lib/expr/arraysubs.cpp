@@ -1,5 +1,7 @@
 #include "arraysubs.hpp"
 
+#include "variantset.hpp"
+
 template <class T>
 ArraySubs<T>::ArraySubs(const linked_hash_map<Var, Expr>& map) : map(map) {}
 
@@ -99,7 +101,7 @@ bool ArraySubs<T>::changes(const Var& x) const {
 }
 
 template <class T>
-void ArraySubs<T>::collectCoDomainCells(linked_hash_set<ArrayReadPtr<T>>& res) const {
+void ArraySubs<T>::collectCoDomainCells(CellSet& res) const {
     for (const auto& [_,v] : map) {
         v->collectCells(res);
     }
@@ -116,14 +118,14 @@ bool ArraySubs<T>::isPoly() {
 }
 
 template <class T>
-void ArraySubs<T>::collectCoDomainVars(linked_hash_set<Var>& vars) const {
+void ArraySubs<T>::collectCoDomainVars(VarSet& vars) const {
     for (const auto& [_,v] : map) {
         v->collectVars(vars);
     }
 }
 
 template <class T>
-void ArraySubs<T>::collectVars(linked_hash_set<Var>& vars) const {
+void ArraySubs<T>::collectVars(VarSet& vars) const {
     for (const auto& [k,v] : map) {
         vars.insert(k);
         v->collectVars(vars);
@@ -140,8 +142,8 @@ linked_hash_set<typename ArraySubs<T>::Var> ArraySubs<T>::domain() const {
 }
 
 template <class T>
-linked_hash_set<typename ArraySubs<T>::Var> ArraySubs<T>::coDomainVars() const {
-    linked_hash_set<Var> vars;
+VarSet ArraySubs<T>::coDomainVars() const {
+    VarSet vars;
     collectCoDomainVars(vars);
     return vars;
 }

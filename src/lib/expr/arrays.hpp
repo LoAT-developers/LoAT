@@ -2,7 +2,6 @@
 
 #include "itheory.hpp"
 #include "arrayexpr.hpp"
-#include "arraylit.hpp"
 #include "exprfwd.hpp"
 #include "bools.hpp"
 #include "arraysubs.hpp"

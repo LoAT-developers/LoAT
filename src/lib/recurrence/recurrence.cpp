@@ -301,10 +301,14 @@ bool Recurrence::solve() {
             })) {
                 return false;
             }
-            const auto key {arrays::mkArrayRead(var, (*w)->indices())};
-            a_work_list.emplace_back(key);
-            written.emplace(key, (*w)->val());
-            write = (*w)->arr();
+            if (const auto idx = (*w)->indices()) {
+                const auto key {arrays::mkArrayRead(var, *idx)};
+                a_work_list.emplace_back(key);
+                written.emplace(key, (*w)->val());
+                write = (*w)->arr();
+            } else {
+                return false;
+            }
         }
     }
     // group written lvalues into inducive, increasing, and decreasing ones

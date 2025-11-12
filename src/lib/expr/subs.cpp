@@ -377,7 +377,7 @@ void Subs::collectCoDomainVars(VarSet& res) const {
     theory::iter(
         t,
         [&](const Arrays<Arith>::Subs& t) {
-            t.collectCoDomainVars(res.get<Arrays<Arith>::Var>());
+            t.collectCoDomainVars(res);
         },
         [&](const BoolSubs& t) {
             t.collectCoDomainVars(res);
@@ -395,7 +395,7 @@ void Subs::collectCoDomainCells(CellSet& res) const {
     theory::iter(
         t,
         [&](const Arrays<Arith>::Subs& t) {
-            t.collectCoDomainCells(res.get<ArithVarPtr>());
+            t.collectCoDomainCells(res);
         },
         [&](const BoolSubs& t) {
             t.collectCoDomainCells(res);

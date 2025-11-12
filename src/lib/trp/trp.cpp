@@ -56,19 +56,17 @@ void TRP::recurrent_exps(const Bools::Expr& loop, const ModelPtr &model) {
     for (const auto lits{loop->lits().get<Arith::Lit>()}; const auto &l : lits) {
         if (l->lhs()->isLinear()) {
             auto lhs{l->lhs()};
-            if (const auto vars{lhs->vars()}; l->isEq() && vars.size() == 2) {
-                auto pre{*vars.begin()};
-                auto post{*std::next(vars.begin())};
+            if (const auto cells{lhs->cells()}; l->isEq() && cells.size() == 2) {
+                auto pre{*cells.begin()};
+                auto post{*std::next(cells.begin())};
                 if (!pre->isProgVar()) {
                     const auto tmp{pre};
                     pre = post;
                     post = tmp;
                 }
-                if (pre->isProgVar() && post == pre->postVar()) {
-                    auto pre_cell {arrays::readConst(pre)};
-                    auto post_cell {arrays::readConst(post)};
-                    auto pre_coeff{***(*lhs->coeff(pre_cell))->isRational()};
-                    auto post_coeff{***(*lhs->coeff(post_cell))->isRational()};
+                if (pre->isProgVar() && post == pre->withVar(pre->var()->postVar())) {
+                    auto pre_coeff{***(*lhs->coeff(pre))->isRational()};
+                    auto post_coeff{***(*lhs->coeff(post))->isRational()};
                     if (post_coeff < 0) {
                         lhs = -lhs;
                         pre_coeff = -pre_coeff;
@@ -78,25 +76,25 @@ void TRP::recurrent_exps(const Bools::Expr& loop, const ModelPtr &model) {
                         continue;
                     }
                     if (pre_coeff < 0) {
-                        const auto val{model->get(pre_cell)};
+                        const auto val{model->get(pre)};
                         if (post_coeff < -pre_coeff) {
                             if (val >= 0) {
                                 // x' = 2x ~> x' >= 2x for non-negative x
-                                res_lits.insert(arith::mkGeq(pre_cell, arith::zero()));
+                                res_lits.insert(arith::mkGeq(pre, arith::zero()));
                                 res_lits.insert(arith::mkGeq(lhs, arith::zero()));
                             } else {
                                 // x' = 2x ~> x' <= 2x for negative x
-                                res_lits.insert(arith::mkLt(pre_cell, arith::zero()));
+                                res_lits.insert(arith::mkLt(pre, arith::zero()));
                                 res_lits.insert(arith::mkLeq(lhs, arith::zero()));
                             }
                         } else {
                             if (val >= 0) {
                                 // 2x' = x ~> 2x' <= x for non-negative x
-                                res_lits.insert(arith::mkGeq(pre_cell, arith::zero()));
+                                res_lits.insert(arith::mkGeq(pre, arith::zero()));
                                 res_lits.insert(arith::mkLeq(lhs, arith::zero()));
                             } else {
                                 // 2x' = x ~> 2x' >= x for negative x
-                                res_lits.insert(arith::mkLt(pre_cell, arith::zero()));
+                                res_lits.insert(arith::mkLt(pre, arith::zero()));
                                 res_lits.insert(arith::mkGeq(lhs, arith::zero()));
                             }
                         }
