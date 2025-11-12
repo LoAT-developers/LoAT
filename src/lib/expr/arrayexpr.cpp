@@ -1,22 +1,19 @@
 #include "arrayexpr.hpp"
+
+#include <utility>
 #include "sexpresso.hpp"
 #include "renaming.hpp"
 
 template <class T>
-void Array<T>::collectVars(VarSet& res) const {
-    collectVars(res.get<ArrayVarPtr<T>>());
-}
-
-template <class T>
-linked_hash_set<ArrayVarPtr<T>> Array<T>::vars() const {
-    linked_hash_set<ArrayVarPtr<T>> res;
+VarSet Array<T>::vars() const {
+    VarSet res;
     collectVars(res);
     return res;
 }
 
 template <class T>
-linked_hash_set<ArrayReadPtr<T>> Array<T>::cells() const {
-    linked_hash_set<ArrayReadPtr<T>> res;
+CellSet Array<T>::cells() const {
+    CellSet res;
     collectCells(res);
     return res;
 }
@@ -125,7 +122,7 @@ ArrayPtr<T> ArrayVar<T>::renameVars(const Renaming& map) const {
 }
 
 template <class T>
-void ArrayVar<T>::collectVars(linked_hash_set<Self>& xs) const {
+void ArrayVar<T>::collectVars(VarSet& xs) const {
     xs.insert(var());
 }
 
@@ -165,7 +162,7 @@ unsigned ArrayVar<T>::dim() const {
 }
 
 template <class T>
-void ArrayVar<T>::collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>& res) const {}
+void ArrayVar<T>::collectCells(CellSet&) const {}
 
 template <class T>
 ArrayVarPtr<T> ArrayVar<T>::dummyConst() {
@@ -174,14 +171,14 @@ ArrayVarPtr<T> ArrayVar<T>::dummyConst() {
 
 template <class T>
 bool ArrayWrite<T>::CacheEqual::operator()(
-    const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr>& args1,
-    const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr>& args2) const noexcept {
+    const std::tuple<ArrayPtr<T>, Bools::Expr, typename T::Expr>& args1,
+    const std::tuple<ArrayPtr<T>, Bools::Expr, typename T::Expr>& args2) const noexcept {
     return args1 == args2;
 }
 
 template <class T>
 size_t ArrayWrite<T>::CacheHash::operator()(
-    const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr>& args) const noexcept {
+    const std::tuple<ArrayPtr<T>, Bools::Expr, typename T::Expr>& args) const noexcept {
     auto seed{hash_value(std::get<0>(args))};
     boost::hash_combine(seed, std::get<1>(args));
     boost::hash_combine(seed, std::get<2>(args));
@@ -189,12 +186,12 @@ size_t ArrayWrite<T>::CacheHash::operator()(
 }
 
 template <class T>
-ArrayWrite<T>::ArrayWrite(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices,
-                          const typename T::Expr& p_val) : m_arr(p_arr), m_indices(p_indices), m_val(p_val) {}
+ArrayWrite<T>::ArrayWrite(const ArrayPtr<T>& p_arr, Bools::Expr p_cond,
+                          const typename T::Expr& p_val) : m_arr(p_arr), m_cond(std::move(p_cond)), m_val(p_val) {}
 
 template <class T>
 ArrayWrite<T>::~ArrayWrite() {
-    cache.erase(m_arr, m_indices, m_val);
+    cache.erase(m_arr, m_cond, m_val);
 }
 
 template <class T>
@@ -203,8 +200,8 @@ ArrayPtr<T> ArrayWrite<T>::arr() const {
 }
 
 template <class T>
-std::vector<Arith::Expr> ArrayWrite<T>::indices() const {
-    return m_indices;
+Bools::Expr ArrayWrite<T>::cond() const {
+    return m_cond;
 }
 
 template <class T>
@@ -234,23 +231,14 @@ ArrayPtr<T> ArrayWrite<T>::renameVars(const array_var_map<T>& map) const {
 
 template <class T>
 ArrayPtr<T> ArrayWrite<T>::renameVars(const Renaming& map) const {
-    const auto indices{
-        m_indices | std::views::transform([&](const auto& i) {
-            return i->renameVars(map);
-        })
-    };
-    return arrays::mkArrayWrite(m_arr, {indices.begin(), indices.end()}, m_val->renameVars(map));
+    return arrays::mkArrayWrite(m_arr, m_cond->renameVars(map), m_val->renameVars(map));
 }
 
 template <class T>
-void ArrayWrite<T>::collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const {
-    if (dim() > 0) {
-        m_arr->collectVars(arr);
-        for (const auto& i : m_indices) {
-            i->collectVars(arr);
-        }
-    }
-    m_val->collectVars(arr);
+void ArrayWrite<T>::collectVars(VarSet& xs) const {
+    m_arr->collectVars(xs);
+    m_cond->collectVars(xs);
+    m_val->collectVars(xs.get<ArrayVarPtr<T>>());
 }
 
 template <class T>
@@ -280,25 +268,17 @@ sexpresso::Sexp ArrayWrite<T>::to_smtlib() const {
 
 template <class T>
 ArrayPtr<T> ArrayWrite<T>::subs(const ArraySubs<T>& subs) const {
-    std::vector<Arith::Expr> indices;
-    for (const auto& i : m_indices) {
-        indices.emplace_back(i->subs(subs));
-    }
-    return arrays::mkArrayWrite(m_arr->subs(subs), indices, m_val->subs(subs));
+    return arrays::mkArrayWrite(m_arr->subs(subs), m_cond->subs(subs), m_val->subs(subs));
 }
 
 template <class T>
 ArrayPtr<T> ArrayWrite<T>::withVar(const ArrayVarPtr<T>& var) const {
-    return arrays::mkArrayWrite(m_arr->withVar(var), m_indices, m_val);
+    return arrays::mkArrayWrite(m_arr->withVar(var), m_cond, m_val);
 }
 
 template <class T>
 bool ArrayWrite<T>::isLinear() const {
-    return m_arr->isLinear() &&
-        std::ranges::all_of(m_indices, [&](const auto& i) {
-            return i->isLinear();
-        }) &&
-        m_val->isLinear();
+    return m_arr->isLinear() && m_cond->isLinear() && m_val->isLinear();
 }
 
 template <class T>
@@ -309,12 +289,10 @@ std::optional<Int> ArrayWrite<T>::isPoly() const {
     } else {
         d = std::max(d, *da);
     }
-    for (const auto &i: m_indices) {
-        if (const auto di {i->isPoly()}; !di) {
-            return {};
-        } else {
-            d = std::max(d, *di);
-        }
+    if (const auto di{m_cond->isPoly()}; !di) {
+        return {};
+    } else {
+        d = std::max(d, *di);
     }
     if (const auto dv {m_val->isPoly()}; !dv) {
         return {};
@@ -330,11 +308,9 @@ unsigned ArrayWrite<T>::dim() const {
 }
 
 template <class T>
-void ArrayWrite<T>::collectCells(linked_hash_set<cpp::not_null<std::shared_ptr<const ArrayRead<T>>>>& res) const {
+void ArrayWrite<T>::collectCells(CellSet& res) const {
     m_arr->collectCells(res);
-    for (const auto& i : m_indices) {
-        i->collectCells(res);
-    }
+    m_cond->collectCells(res);
     m_val->collectCells(res);
 }
 
@@ -434,21 +410,16 @@ ArrayReadPtr<T> ArrayRead<T>::withVar(const ArrayVarPtr<T>& var) const {
 }
 
 template <class T>
-void ArrayRead<T>::collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const {
-    m_arr->collectVars(arr);
+void ArrayRead<T>::collectVars(VarSet& vars) const {
+    m_arr->collectVars(vars);
     for (const auto& i: m_indices) {
-        i->collectVars(arr);
+        i->collectVars(vars.get<ArrayVarPtr<T>>());
     }
 }
 
 template <class T>
-void ArrayRead<T>::collectVars(VarSet& vars) const {
-    return collectVars(vars.get<Arrays<Arith>::Var>());
-}
-
-template <class T>
-linked_hash_set<ArrayVarPtr<T>> ArrayRead<T>::vars() const {
-    linked_hash_set<ArrayVarPtr<T>> res;
+VarSet ArrayRead<T>::vars() const {
+    VarSet res;
     collectVars(res);
     return res;
 }
@@ -480,17 +451,12 @@ std::optional<Int> ArrayRead<T>::isPoly() const {
 
 template <class T>
 bool ArrayRead<T>::isPostCell() const {
-    return std::ranges::all_of(vars(), [](const auto& x) {
-        return x->isPostVar();
-    });
+    return std::ranges::all_of(vars(), theory::isPostVar);
 }
 
 template <class T>
 bool ArrayRead<T>::isProgCell() const {
-    const auto xs {vars()};
-    return std::ranges::all_of(xs, [](const auto& x) {
-        return x->isProgVar();
-    });}
+    return std::ranges::all_of(vars(), theory::isProgVar);}
 
 ArrayReadPtr<Arith> arrays::mkArrayRead(const ArrayVarPtr<Arith>& arr, const std::vector<Arith::Expr>& indices) {
     return ArrayRead<Arith>::cache.from_cache(arr, indices);
@@ -505,12 +471,16 @@ Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Ar
 
 ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices, const Arith::Expr& val) {
     if (arr->dim() == 0) {
-        return ArrayWrite<Arith>::cache.from_cache(ArrayVar<Arith>::dummyConst(), indices, val);
+        return ArrayWrite<Arith>::cache.from_cache(ArrayVar<Arith>::dummyConst(), top(), val);
     }
     if (const auto write {arr->isArrayWrite()}; write && indices == (*write)->indices()) {
         return mkArrayWrite((*write)->arr(), indices, val);
     }
-    return ArrayWrite<Arith>::cache.from_cache(arr, indices, val);
+    std::vector<Arith::Lit> lits;
+    for (size_t i = 0; i < indices.size(); ++i) {
+        lits.emplace_back(arith::mkEq(array_idx(i), indices.at(i)));
+    }
+    return ArrayWrite<Arith>::cache.from_cache(arr, bools::mkAnd(lits), val);
 }
 
 ArrayPtr<Arith> arrays::update(const ArrayReadPtr<Arith>& read, const Arith::Expr& val) {
@@ -518,7 +488,7 @@ ArrayPtr<Arith> arrays::update(const ArrayReadPtr<Arith>& read, const Arith::Exp
 }
 
 ArrayPtr<Arith> arrays::writeConst(const Arith::Expr& val) {
-    return mkArrayWrite(ArrayVar<Arith>::dummyConst(), {}, val);
+    return mkArrayWrite(ArrayVar<Arith>::dummyConst(), top(), val);
 }
 
 Arith::Expr arrays::readConst(const ArrayPtr<Arith>& arr) {

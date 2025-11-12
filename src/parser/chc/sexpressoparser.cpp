@@ -2,6 +2,10 @@
 #include "smtlibutil.hpp"
 
 #include <fstream>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/trim.hpp>
 
 CHCPtr SexpressoParser::loadFromFile(const std::string &filename) {
     SexpressoParser parser;
@@ -64,6 +68,8 @@ void SexpressoParser::run(const std::string &filename) const {
                     const auto name{vars[i][0].str()};
                     if (const auto type{vars[i][1].str()}; type == "Int") {
                         state.vars.emplace(name, ArrayVar<Arith>::next(0));
+                    } else if (type == "(Array Int Int)") {
+                        state.vars.emplace(name, ArrayVar<Arith>::next(1));
                     } else if (type == "Bool") {
                         state.vars.emplace(name, BoolVar::next());
                     } else {

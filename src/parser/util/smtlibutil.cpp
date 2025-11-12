@@ -41,6 +41,28 @@ bool isInt(const std::string &s) {
     return !s.empty() && (s[0] == '-' || std::isdigit(s[0])) && std::all_of(std::next(s.begin()), s.end(), isdigit);
 }
 
+Arrays<Arith>::Var getArrayVar(const std::string &name, SMTLibParsingState &state) {
+    return std::get<Arrays<Arith>::Var>(state.get_var(name, theory::Type::Int));
+}
+
+Arrays<Arith>::Expr parseArray(sexpresso::Sexp &exp, SMTLibParsingState &state) {
+    if (exp.isString()) {
+        const auto name{exp.str()};
+        for (int i = state.bindings.size() - 1; i >= 0; i--) {
+            if (const auto it{state.bindings[i].find(name)}; it != state.bindings[i].end()) {
+                return getArrayVar(name, state);
+            }
+        }
+    }
+    if (exp[0].str() == "store") {
+        const auto arr = parseArray(exp[1], state);
+        const auto idx = parseArithExpr(exp[2], state);
+        const auto val = parseArithExpr(exp[3], state);
+        return arrays::mkArrayWrite(arr, std::vector{idx}, val);
+    }
+    throw std::invalid_argument("unknown array");
+}
+
 Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
         if (const auto name {exp.str()}; isInt(name)) {
@@ -51,7 +73,7 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
                     return std::get<Arith::Expr>(it->second);
                 }
             }
-            return arrays::readConst(std::get<Arrays<Arith>::Var>(state.get_var(name, theory::Type::Int)));
+            return arrays::readConst(getArrayVar(name, state));
         }
     }
     const auto name {exp[0].str()};
@@ -132,6 +154,11 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
             return div;
         }
         return mod;
+    }
+    if (name == "select") {
+        const auto arr = parseArray(exp[1], state);
+        const auto idx = parseArithExpr(exp[2], state);
+        return arrays::mkArrayRead(arr, std::vector{idx});
     }
     throw std::invalid_argument("unknown operator " + name);
 }

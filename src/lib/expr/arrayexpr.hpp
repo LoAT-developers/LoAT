@@ -6,6 +6,8 @@
 
 #include <ranges>
 
+#include "bools.hpp"
+
 template <class T>
 class Array;
 
@@ -26,6 +28,7 @@ namespace arrays {
     ArrayReadPtr<Arith> mkArrayRead(const ArrayVarPtr<Arith>&, const std::vector<Arith::Expr>&);
     Arith::Expr mkArrayRead(const ArrayPtr<Arith>&, const std::vector<Arith::Expr>&);
     ArrayPtr<Arith> mkArrayWrite(const ArrayPtr<Arith>&, const std::vector<Arith::Expr>&, const Arith::Expr&);
+    ArrayPtr<Arith> mkArrayWrite(const ArrayPtr<Arith>&, const Bools::Expr&, const Arith::Expr&);
     Arith::Expr readConst(const ArrayPtr<Arith>& arr);
     ArrayReadPtr<Arith> readConst(const ArrayVarPtr<Arith>&);
     ArrayPtr<Arith> update(const ArrayReadPtr<Arith>& read, const Arith::Expr& val);
@@ -60,11 +63,10 @@ class Array: public std::enable_shared_from_this<Array<T>> {
 
     virtual sexpresso::Sexp to_smtlib() const = 0;
 
-    virtual void collectVars(linked_hash_set<ArrayVarPtr<T>>&) const = 0;
-    void collectVars(VarSet&) const;
-    linked_hash_set<ArrayVarPtr<T>> vars() const;
-    virtual void collectCells(linked_hash_set<ArrayReadPtr<T>>&) const = 0;
-    linked_hash_set<ArrayReadPtr<T>> cells() const;
+    virtual void collectVars(VarSet&) const = 0;
+    VarSet vars() const;
+    virtual void collectCells(CellSet&) const = 0;
+    CellSet cells() const;
 
 };
 
@@ -123,7 +125,7 @@ public:
     ArrayPtr<T> renameVars(const array_var_map<T>& map) const override;
     ArrayPtr<T> renameVars(const Renaming&) const override;
 
-    void collectVars(linked_hash_set<Self>& xs) const override;
+    void collectVars(VarSet& xs) const override;
 
     std::vector<Arith::Expr> indices() const override;
 
@@ -133,7 +135,7 @@ public:
     bool isLinear() const override;
     std::optional<Int> isPoly() const override;
     unsigned dim() const override;
-    void collectCells(linked_hash_set<ArrayReadPtr<T>>&) const override;
+    void collectCells(CellSet&) const override;
 
     static ArrayVarPtr<T> dummyConst();
 };
@@ -156,30 +158,31 @@ template <class T>
 class ArrayWrite final: public Array<T> {
 
     friend ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices, const Arith::Expr& val);
-    friend class ConsHash<ArrayWrite, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr>;
+    friend ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const Bools::Expr& cond, const Arith::Expr& val);
+    friend class ConsHash<ArrayWrite, ArrayPtr<T>, Bools::Expr, typename T::Expr>;
 
     ArrayPtr<T> m_arr;
-    std::vector<Arith::Expr> m_indices;
+    Bools::Expr m_cond;
     T::Expr m_val;
 
     struct CacheEqual {
-        bool operator()(const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> &args1, const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> &args2) const noexcept;
+        bool operator()(const std::tuple<ArrayPtr<T>, Bools::Expr, typename T::Expr> &args1, const std::tuple<ArrayPtr<T>, Bools::Expr, typename T::Expr> &args2) const noexcept;
     };
 
     struct CacheHash {
-        size_t operator()(const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> &args) const noexcept;
+        size_t operator()(const std::tuple<ArrayPtr<T>, Bools::Expr, typename T::Expr> &args) const noexcept;
     };
 
-    static ConsHash<ArrayWrite, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> cache;
+    static ConsHash<ArrayWrite, ArrayPtr<T>, Bools::Expr, typename T::Expr> cache;
 
 public:
 
-    ArrayWrite(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices, const T::Expr &p_val);
+    ArrayWrite(const ArrayPtr<T>& p_arr, Bools::Expr  p_cond, const T::Expr &p_val);
     ~ArrayWrite() override;
 
     ArrayPtr<T> arr() const;
 
-    std::vector<Arith::Expr> indices() const override;
+    Bools::Expr cond() const;
 
     T::Expr val() const;
 
@@ -192,7 +195,7 @@ public:
     ArrayPtr<T> renameVars(const array_var_map<T>& map) const override;
     ArrayPtr<T> renameVars(const Renaming&) const override;
 
-    void collectVars(linked_hash_set<ArrayVarPtr<T>>& arr) const override;
+    void collectVars(VarSet& xs) const override;
 
     sexpresso::Sexp to_smtlib() const override;
     ArrayPtr<T> subs(const ArraySubs<T>&) const override;
@@ -200,11 +203,11 @@ public:
     bool isLinear() const override;
     std::optional<Int> isPoly() const override;
     unsigned dim() const override;
-    void collectCells(linked_hash_set<ArrayReadPtr<T>>&) const override;
+    void collectCells(CellSet&) const override;
 };
 
 template <class T>
-ConsHash<ArrayWrite<T>, ArrayPtr<T>, std::vector<Arith::Expr>, typename T::Expr> ArrayWrite<T>::cache{};
+ConsHash<ArrayWrite<T>, ArrayPtr<T>, Bools::Expr, typename T::Expr> ArrayWrite<T>::cache{};
 
 template <class T>
 class ArrayRead final: public T::Expr::element_type {
@@ -258,9 +261,8 @@ public:
     sexpresso::Sexp to_smtlib() const;
 
     // retrieval
-    void collectVars(linked_hash_set<ArrayVarPtr<T>>&) const;
     void collectVars(VarSet&) const;
-    linked_hash_set<ArrayVarPtr<T>> vars() const;
+    VarSet vars() const;
 
 };
 

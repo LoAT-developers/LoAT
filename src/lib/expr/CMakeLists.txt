@@ -49,6 +49,7 @@ add_library(${PROJECT_NAME} OBJECT
   arraysubs.hpp
   arraysubs.cpp
   arrays.hpp
+  arrays.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

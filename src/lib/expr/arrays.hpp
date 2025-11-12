@@ -31,6 +31,8 @@ namespace arrays {
 extern Arrays<Arith> arith;
 extern Arrays<Bools> bools;
 
+ArithVarPtr array_idx(size_t);
+
 }
 
 static_assert(ITheory<Arrays<Arith>>);
