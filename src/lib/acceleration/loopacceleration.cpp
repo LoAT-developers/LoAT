@@ -142,7 +142,7 @@ void LoopAcceleration::compute_closed_form() {
 void LoopAcceleration::accelerate() {
     if (rec && config.tryAccel) {
         if (const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()}) {
-            res.accel = acceleration::Accel(Rule::mk(bools::mkAnd(accelerator->formula), rec->closed_form_subs));
+            res.accel = acceleration::Accel(Rule::mk(bools::mkAnd(accelerator->formula), rec->closed_form));
             res.accel->covered = bools::mkAnd(accelerator->covered);
             store_nonterm(*accelerator);
         }
@@ -222,7 +222,7 @@ void LoopAcceleration::run() {
             case SmtResult::Sat: {
                 removeTrivialUpdates();
                 compute_closed_form();
-                if (rec && !config.tryNonlinear && !rec->closed_form_subs.isLinear()) {
+                if (rec && !config.tryNonlinear && !rec->closed_form.isLinear()) {
                     res.status = acceleration::Nonlinear;
                 } else {
                     accelerate();

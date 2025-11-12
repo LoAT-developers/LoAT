@@ -13,8 +13,7 @@ public:
     using Idx = std::vector<Arith::Expr>;
 
     struct Result {
-        Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr> closed_form {};
-        Subs closed_form_subs;
+        Subs closed_form;
         unsigned int prefix {0};
     };
 
@@ -34,10 +33,15 @@ private:
 
     bool solve(const Bools::Var &lhs, const Bools::Expr& rhs);
 
+    std::optional<std::vector<ArithConstPtr>> compute_shift(const Idx& idx) const;
+
     Subs equations;
 
     const ArithVarPtr n;
 
+    const ArraySubs<Arith> n_to_n_minus_one;
+
+    linked_hash_map<ArithVarPtr, Arith::Expr> closed_form {};
     /**
      * Substitution map, mapping variables to their recurrence equations
      * @note the recurrence equations are valid *before* the transition is taken,

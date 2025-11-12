@@ -36,7 +36,7 @@ AccelerationProblem::AccelerationProblem(
             }
         }, l);
     }
-    const auto subs {closed ? std::vector{update, closed->closed_form_subs} : std::vector{update}};
+    const auto subs {closed ? std::vector{update, closed->closed_form} : std::vector{update}};
     const auto logic {Smt::chooseLogic<LitSet, Subs>({todo}, subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
@@ -74,12 +74,12 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
         return false;
     }
     const auto &rel {std::get<Arith::Lit>(lit)};
-    const auto nfold {rel->lhs()->subs(closed->closed_form_subs)};
+    const auto nfold {rel->lhs()->subs(closed->closed_form)};
     const auto d {nfold->isPoly(config.n)};
     if (!d || d == 0) {
         return false;
     }
-    const auto but_last {closed->closed_form_subs.compose(Subs::build(config.n, config.n - arith::one()))};
+    const auto but_last {closed->closed_form.compose(Subs::build(config.n, config.n - arith::one()))};
     bool low_degree {false};
     ArithLitSet guard;
     ArithLitSet covered;
@@ -187,7 +187,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         solver->add(bools::mkLit(theory::negate(lit)));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            auto g {closed->closed_form_subs(lit)->subs({{config.n->var(), arrays::update(config.n, config.n - arith::one())}})};
+            auto g {closed->closed_form(lit)->subs({{config.n->var(), arrays::update(config.n, config.n - arith::one())}})};
             if (closed->prefix > 0) {
                 g = g && bools::mkLit(lit);
             }
@@ -234,7 +234,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
         solver->add(bools::mkLit(inc));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            const auto g {bools::mkAnd(std::vector{rel, rel->subs(closed->closed_form_subs)->subs({{config.n->var(), arrays::update(config.n, config.n - arith::one())}})})};
+            const auto g {bools::mkAnd(std::vector{rel, rel->subs(closed->closed_form)->subs({{config.n->var(), arrays::update(config.n, config.n - arith::one())}})})};
             res.formula.push_back(g);
             if (Config::Analysis::doLogAccel()) {
                 std::cout << rel << ": eventual decrease yields " << g << std::endl;
@@ -275,7 +275,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
                     solver->pop();
                     return false;
                 }
-                const auto s {closed->closed_form_subs.compose(Subs::build(config.n, config.n - arith::one()))};
+                const auto s {closed->closed_form.compose(Subs::build(config.n, config.n - arith::one()))};
                 g = bools::mkAnd(std::vector{(!i)->subs(s), rel->subs(s)});
                 c = bools::mkLit(!i);
                 res.nonterm = false;

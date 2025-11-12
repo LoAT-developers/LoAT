@@ -74,6 +74,7 @@ Bools::Expr BoolExpr::mkOr(const Children& lits) {
 
 template Bools::Expr BoolExpr::mkOr<std::vector<Bools::Expr>>(const std::vector<Bools::Expr> &lits);
 template Bools::Expr BoolExpr::mkOr<linked_hash_set<Bools::Expr>>(const linked_hash_set<Bools::Expr> &lits);
+template Bools::Expr BoolExpr::mkOr<LitSet>(const LitSet &lits);
 
 Bools::Expr BoolExpr::mkLit(const Lit& lit) {
     if (theory::isTriviallyTrue(lit)) {
