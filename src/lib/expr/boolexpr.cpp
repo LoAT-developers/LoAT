@@ -1,6 +1,5 @@
 #include "boolexpr.hpp"
 #include "theory.hpp"
-#include "conjunction.hpp"
 #include "renaming.hpp"
 #include "subs.hpp"
 #include "model.hpp"
@@ -64,7 +63,6 @@ template Bools::Expr BoolExpr::mkAnd<std::vector<Bools::Expr>>(const std::vector
 template Bools::Expr BoolExpr::mkAnd<linked_hash_set<Bools::Expr>>(const linked_hash_set<Bools::Expr> &lits);
 template Bools::Expr BoolExpr::mkAnd<std::vector<Arith::Lit>>(const std::vector<Arith::Lit> &lits);
 template Bools::Expr BoolExpr::mkAnd<linked_hash_set<Arith::Lit>>(const linked_hash_set<Arith::Lit> &lits);
-template Bools::Expr BoolExpr::mkAnd<Conjunction>(const Conjunction &lits);
 template Bools::Expr BoolExpr::mkAnd<LitSet>(const LitSet &lits);
 
 template <class Children>

@@ -16,8 +16,6 @@ add_library(${PROJECT_NAME} OBJECT
   arithexpr.hpp
   arithlit.cpp
   arithlit.hpp
-  conjunction.hpp
-  conjunction.cpp
   boolexpr.hpp
   boolexpr.cpp
   booltheorylit.cpp

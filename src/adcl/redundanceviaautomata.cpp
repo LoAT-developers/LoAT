@@ -54,7 +54,7 @@ void Automaton::kleene_plus() {
     if (this->empty()) {
         return;
     }
-    faudes::Generator one_step = t;
+    const faudes::Generator one_step = t;
     faudes::KleeneClosure(t, t);
     faudes::LanguageConcatenate(t, one_step, t);
     faudes::StateMin(t, t);
@@ -87,35 +87,34 @@ bool operator==(const Automaton &x, const Automaton &y) {
     return x.to_string() == y.to_string();
 }
 
-Automaton RedundanceViaAutomata::get_singleton_language(const RulePtr idx, const Conjunction &g) {
-    const auto it = alphabet.find({idx, g});
-    if (it == alphabet.end()) {
+Automaton RedundanceViaAutomata::get_singleton_language(const RulePtr& idx, const Bools::Expr &g) {
+    if (const auto it = alphabet.find({idx, g}); it == alphabet.end()) {
         const auto res = Automaton::singleton();
-        alphabet.emplace(std::pair<RulePtr, Conjunction>(idx, g), res);
+        alphabet.emplace(std::pair(idx, g), res);
         return res;
     } else {
         return it->second;
     }
 }
 
-std::optional<Automaton> RedundanceViaAutomata::get_language(const RulePtr idx) {
+std::optional<Automaton> RedundanceViaAutomata::get_language(const RulePtr& idx) {
     const auto it {regexes.find(idx)};
     return it == regexes.end() ? std::optional<Automaton>() : it->second;
 }
 
-void RedundanceViaAutomata::set_language(const RulePtr idx, const Automaton &t) {
+void RedundanceViaAutomata::set_language(const RulePtr& idx, const Automaton &t) {
     regexes.emplace(idx, t);
 }
 
-void RedundanceViaAutomata::delete_language(const RulePtr idx) {
+void RedundanceViaAutomata::delete_language(const RulePtr& idx) {
     regexes.erase(idx);
 }
 
-bool RedundanceViaAutomata::is_redundant(const Automaton &t) const {
+bool RedundanceViaAutomata::is_redundant(const Automaton &t) {
     return t.subset(Automaton::covered);
 }
 
-bool RedundanceViaAutomata::is_accelerated(const Automaton &t) const {
+bool RedundanceViaAutomata::is_accelerated(const Automaton &t) {
     return t.subset(Automaton::accelerated);
 }
 
@@ -127,14 +126,14 @@ void RedundanceViaAutomata::mark_as_accelerated(const Automaton &t) {
     Automaton::accelerated.unite(t);
 }
 
-void RedundanceViaAutomata::concat(Automaton &t1, const Automaton &t2) const {
+void RedundanceViaAutomata::concat(Automaton &t1, const Automaton &t2) {
     t1.concat(t2);
 }
 
-void RedundanceViaAutomata::prepend(const Automaton &t1, Automaton &t2) const {
+void RedundanceViaAutomata::prepend(const Automaton &t1, Automaton &t2) {
     t2.prepend(t1);
 }
 
-void RedundanceViaAutomata::transitive_closure(Automaton &t) const {
+void RedundanceViaAutomata::transitive_closure(Automaton &t) {
     t.kleene_plus();
 }

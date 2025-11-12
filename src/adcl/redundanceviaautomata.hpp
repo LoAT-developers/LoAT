@@ -1,7 +1,6 @@
 #pragma once
 
 #include "theory.hpp"
-#include "conjunction.hpp"
 #include "rule.hpp"
 
 #include <faudes/libfaudes.h>
@@ -36,35 +35,25 @@ public:
 
 };
 
-template<>
-struct std::hash<std::pair<RulePtr, Conjunction>> {
-    std::size_t operator()(const std::pair<RulePtr, Conjunction>& x) const noexcept {
-        std::size_t seed {0};
-        boost::hash_combine(seed, x.first);
-        boost::hash_combine(seed, x.second);
-        return seed;
-    }
-};
-
 class RedundanceViaAutomata {
 
 public:
 
-    Automaton get_singleton_language(const RulePtr idx, const Conjunction &guard);
-    std::optional<Automaton> get_language(const RulePtr idx);
-    void set_language(const RulePtr idx, const Automaton &t);
-    void delete_language(const RulePtr idx);
-    bool is_redundant(const Automaton &t) const;
-    bool is_accelerated(const Automaton &t) const;
-    void mark_as_redundant(const Automaton &t);
-    void mark_as_accelerated(const Automaton &t);
-    void concat(Automaton &t1, const Automaton &t2) const;
-    void prepend(const Automaton &t1, Automaton &t2) const;
-    void transitive_closure(Automaton &t) const;
+    Automaton get_singleton_language(const RulePtr& idx, const Bools::Expr &guard);
+    std::optional<Automaton> get_language(const RulePtr& idx);
+    void set_language(const RulePtr& idx, const Automaton &t);
+    void delete_language(const RulePtr& idx);
+    static bool is_redundant(const Automaton &t);
+    static bool is_accelerated(const Automaton &t);
+    static void mark_as_redundant(const Automaton &t);
+    static void mark_as_accelerated(const Automaton &t);
+    static void concat(Automaton &t1, const Automaton &t2);
+    static void prepend(const Automaton &t1, Automaton &t2);
+    static void transitive_closure(Automaton &t);
 
 private:
 
-    std::unordered_map<std::pair<RulePtr, Conjunction>, Automaton> alphabet {};
+    std::unordered_map<std::pair<RulePtr, Bools::Expr>, Automaton> alphabet {};
     std::unordered_map<RulePtr, Automaton> regexes {};
 
 };

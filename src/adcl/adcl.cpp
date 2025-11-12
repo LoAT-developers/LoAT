@@ -390,7 +390,7 @@ std::optional<RulePtr> ADCL::resolve(const RulePtr& idx) {
 
 Automaton ADCL::get_language(const Step &step) const {
     if (is_orig_clause(step.clause_idx)) {
-        return redundancy->get_singleton_language(step.clause_idx, Conjunction::fromBoolExpr(step.implicant));
+        return redundancy->get_singleton_language(step.clause_idx, step.implicant);
     }
     return *redundancy->get_language(step.clause_idx);
 }
