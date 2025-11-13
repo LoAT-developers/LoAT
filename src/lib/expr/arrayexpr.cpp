@@ -323,7 +323,7 @@ std::optional<std::vector<Arith::Expr>> ArrayWrite<T>::indices() const {
     if (lits.size() != dim()) {
         return std::nullopt;
     }
-    const auto arith_lits = lits.get<Arith::Lit>();
+    const auto& arith_lits = lits.get<Arith::Lit>();
     if (arith_lits.size() != dim()) {
         return std::nullopt;
     }
@@ -535,11 +535,14 @@ ArrayReadPtr<Arith> arrays::readConst(const ArrayVarPtr<Arith>& arr) {
 
 template <class T>
 std::ostream& operator<<(std::ostream& s, const ArrayReadPtr<T>& read) {
-    s << read->arr();
+    if (read->dim() == 0) {
+        return s << read->arr();
+    }
+    s << "(select " << read->arr() << " ";
     for (const auto &i: read->indices()) {
         s << "[" << i << "]";
     }
-    return s;
+    return s << ")";
 }
 
 template <class T>
@@ -552,11 +555,12 @@ std::ostream& operator<<(std::ostream& s, const ArrayPtr<T>& a) {
         if (a->dim() == 0) {
             s << write->val();
         } else {
-            s << write->arr();
+            s << "(store ";
+            s << write->arr() << " ";
             for (const auto& i : *idx) {
                 s << "[" << i << "]";
             }
-            s << ":=" << write->val();
+            s << " " << write->val() << ")";
         }
     } else {
         s << "lambda";
