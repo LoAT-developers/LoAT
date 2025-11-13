@@ -191,14 +191,18 @@ std::optional<ArithExprPtr> ArithLit::getEquality(const ArithVarPtr& n) const {
     return {};
 }
 
-void ArithLit::propagateEquality(ArraySubs<Arith> &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const {
+void ArithLit::propagateEquality(Subs &subs, const std::function<bool(const Var &)> &allow, VarSet &blocked) const {
     if (isEq()) {
-        for (const auto vs {l->cells()}; const auto &x: vs) {
-            if (!blocked.contains(x) && allow(x) && l->isLinear({{x}})) {
+        for (const auto vs{l->cells()}; const auto& x : vs) {
+            if (std::ranges::all_of(x->vars(), [&](const auto& y) {
+                    return !blocked.contains(y);
+                })
+                && allow(x->var())
+                && l->isLinear({{x}})) {
                 if (const auto coeff {l->coeff(x)}; (*coeff)->is(1) || (*coeff)->is(-1)) {
                     const auto t {*l->solve(x)};
                     subs.put(x->var(), arrays::update(x, t));
-                    blocked.insert(vs.begin(), vs.end());
+                    blocked.insertAll(l->vars());
                     return;
                 }
             }

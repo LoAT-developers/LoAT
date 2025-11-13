@@ -38,6 +38,7 @@ public:
     virtual sexpresso::Sexp to_smtlib() const = 0;
     virtual std::size_t hash() const = 0;
     virtual ArrayLitPtr<T> subs(const ArraySubs<T>&) const = 0;
+    virtual ArrayLitPtr<T> subs(const Subs&) const = 0;
     virtual ArrayLitPtr<T> renameVars(const array_var_map<T>&) const = 0;
     virtual ArrayLitPtr<T> renameVars(const Renaming&) const = 0;
     virtual void collectVars(VarSet&) const = 0;
@@ -45,6 +46,7 @@ public:
     virtual bool isTriviallyFalse() const = 0;
     virtual std::optional<ArrayEqPtr<T>> isArrayEq() const = 0;
     virtual std::optional<ArrayNeqPtr<T>> isArrayNeq() const = 0;
+    virtual void propagateEquality(Subs &subs, const std::function<bool(const Var &)> &allow, VarSet &blocked) const = 0;
 
     static bool simplifyAnd(linked_hash_set<ArrayLitPtr<T>>&);
 
@@ -99,6 +101,8 @@ public:
 
     std::optional<ArrayNeqPtr<T>> isArrayNeq() const override;
     void collectCells(CellSet&) const override;
+    void propagateEquality(Subs& subs, const std::function<bool(const Var&)>& allow, VarSet& blocked) const override;
+    ArrayLitPtr<T> subs(const Subs&) const override;
 };
 
 template <class T>

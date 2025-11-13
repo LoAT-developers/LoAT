@@ -333,11 +333,13 @@ std::optional<Arith::Expr> BoolExpr::getEquality(const ArithVarPtr& n) const {
     return {};
 }
 
-void BoolExpr::propagateEqualities(ArraySubs<Arith> &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const {
+void BoolExpr::propagateEqualities(Subs &subs, const std::function<bool(const Var &)> &allow, VarSet &blocked) const {
     if (const auto lit {getTheoryLit()}) {
-        if (std::holds_alternative<Arith::Lit>(*lit)) {
-            std::get<Arith::Lit>(*lit)->subs(subs)->propagateEquality(subs, allow, blocked);
-        }
+        theory::apply(
+            *lit,
+            [&](const auto& lit) {
+                lit->subs(subs)->propagateEqualitiy(subs, allow, blocked);
+            });
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {
             c->propagateEqualities(subs, allow, blocked);
@@ -345,9 +347,9 @@ void BoolExpr::propagateEqualities(ArraySubs<Arith> &subs, const std::function<b
     }
 }
 
-ArraySubs<Arith> BoolExpr::propagateEqualities(const std::function<bool(const ArithVarPtr &)> &allow) const {
-    ArraySubs<Arith> subs;
-    std::unordered_set<ArithVarPtr> blocked;
+Subs BoolExpr::propagateEqualities(const std::function<bool(const Var &)> &allow) const {
+    Subs subs;
+    VarSet blocked;
     propagateEqualities(subs, allow, blocked);
     return subs;
 }

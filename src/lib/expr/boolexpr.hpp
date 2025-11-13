@@ -22,7 +22,6 @@ public:
     using Theories = std::tuple<Arith, Arrays<Arith>, Bools>;
     static const Theories theories;
     using Lit = std::variant<Arith::Lit, Arrays<Arith>::Lit, Bools::Lit>;
-    using Var = std::variant<Arrays<Arith>::Var, Bools::Var>;
     using Expr = std::variant<Arith::Expr, Arrays<Arith>::Expr, Bools::Expr>;
     using Renaming = std::tuple<Arrays<Arith>::Renaming, Bools::Renaming>;
     using Pair = std::variant<std::pair<Arrays<Arith>::Var, Arrays<Arith>::Expr>, std::pair<Bools::Var, Bools::Expr>>;
@@ -36,7 +35,6 @@ struct depends_on {
     static constexpr bool value = std::same_as<T1, T2> || std::same_as<Arrays<T1>, T2> || std::same_as<T1, Bools>;
 };
 
-using Var = TheTheory::Var;
 using Lit = TheTheory::Lit;
 using VarSet = VariantSet<Arrays<Arith>::Var, Bools::Var>;
 using Cell = std::variant<ArrayReadPtr<Arith>, Bools::Var>;
@@ -91,8 +89,8 @@ public:
     void getDivisibility(const ArithVarPtr& n, linked_hash_set<Divisibility> &res) const;
     linked_hash_set<Divisibility> getDivisibility(const ArithVarPtr& n) const;
     std::optional<Arith::Expr> getEquality(const ArithVarPtr& n) const;
-    void propagateEqualities(Arrays<Arith>::Subs &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const;
-    Arrays<Arith>::Subs propagateEqualities(const std::function<bool(const ArithVarPtr &)> &allow) const;
+    void propagateEqualities(Subs &subs, const std::function<bool(const Var &)> &allow, VarSet &blocked) const;
+    Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;
     Bools::Expr toInfinity(const ArithVarPtr& n) const;
     Bools::Expr toMinusInfinity(const ArithVarPtr& n) const;
     void iter(const std::function<void(const Lit&)> &f) const;

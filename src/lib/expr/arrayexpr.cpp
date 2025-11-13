@@ -226,7 +226,7 @@ ArrayPtr<T> ArrayWrite<T>::renameVars(const array_var_map<T>& map) const {
 
 template <class T>
 ArrayPtr<T> ArrayWrite<T>::renameVars(const Renaming& map) const {
-    return arrays::mkArrayWrite(m_arr, m_cond->renameVars(map), m_val->renameVars(map));
+    return arrays::mkArrayWrite(m_arr->renameVars(map), m_cond->renameVars(map), m_val->renameVars(map));
 }
 
 template <class T>
@@ -234,6 +234,10 @@ void ArrayWrite<T>::collectVars(VarSet& xs) const {
     m_arr->collectVars(xs);
     m_cond->collectVars(xs);
     m_val->collectVars(xs);
+    // remove bound variables
+    for (size_t i = 0; i < dim(); ++i) {
+        xs.erase(arrays::array_idx(i)->var());
+    }
 }
 
 template <class T>
@@ -284,7 +288,12 @@ sexpresso::Sexp ArrayWrite<T>::to_smtlib() const {
 
 template <class T>
 ArrayPtr<T> ArrayWrite<T>::subs(const ArraySubs<T>& subs) const {
-    return arrays::mkArrayWrite(m_arr->subs(subs), m_cond->subs(subs), m_val->subs(subs));
+    auto restricted = subs;
+    // remove bound variables
+    for (size_t i = 0; i < dim(); ++i) {
+        restricted.erase(arrays::array_idx(i)->var());
+    }
+    return arrays::mkArrayWrite(m_arr->subs(restricted), m_cond->subs(restricted), m_val->subs(restricted));
 }
 
 template <class T>
@@ -312,6 +321,10 @@ void ArrayWrite<T>::collectCells(CellSet& res) const {
     m_arr->collectCells(res);
     m_cond->collectCells(res);
     m_val->collectCells(res);
+    // remove bound variables
+    for (size_t i = 0; i < dim(); ++i) {
+        res.erase(arrays::array_idx(i));
+    }
 }
 
 template <class T>
@@ -427,20 +440,17 @@ sexpresso::Sexp ArrayRead<T>::to_smtlib() const {
 
 template <class T>
 ArrayReadPtr<T> ArrayRead<T>::renameVars(const array_var_map<T>& map) const {
-    return cache.from_cache(m_arr->renameVars(map), m_indices);
+    return renameVars(Renaming::build<Arrays<Arith>>(map));
 }
 
 template <class T>
 ArrayReadPtr<T> ArrayRead<T>::renameVars(const Renaming& map) const {
+    const auto arr = m_arr->renameVars(map);
     std::vector<Arith::Expr> indices;
-    if constexpr (std::is_same_v<T, Arith>) {
-        for (const auto &i: m_indices) {
-            indices.emplace_back(i->renameVars(map));
-        }
-    } else {
-        indices = m_indices;
+    for (const auto& i : m_indices) {
+        indices.emplace_back(i->renameVars(map));
     }
-    return cache.from_cache(m_arr->renameVars(map), indices);
+    return cache.from_cache(arr, indices);
 }
 
 template <class T>
@@ -485,12 +495,24 @@ bool ArrayRead<T>::isProgCell() const {
     return std::ranges::all_of(vars(), theory::isProgVar);}
 
 ArrayReadPtr<Arith> arrays::mkArrayRead(const ArrayVarPtr<Arith>& arr, const std::vector<Arith::Expr>& indices) {
+    assert(arr->dim() == indices.size());
     return ArrayRead<Arith>::cache.from_cache(arr, indices);
 }
 
 Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices) {
-    if (const auto write {arr->isArrayWrite()}; write && indices == (*write)->indices()) {
-        return (*write)->val();
+    assert(arr->dim() == indices.size());
+    if (const auto write {arr->isArrayWrite()}; write) {
+        ArraySubs<Arith> subs;
+        for (size_t i = 0; i < indices.size(); ++i) {
+            subs.put(array_idx(i)->var(), writeConst(indices.at(i)));
+        }
+        const auto cond = (*write)->cond()->subs(subs);
+        if (cond == top()) {
+            return (*write)->val();
+        }
+        if (cond == bot()) {
+            return mkArrayRead((*write)->arr(), indices);
+        }
     }
     return ArrayRead<Arith>::cache.from_cache(arr, indices);
 }
@@ -509,6 +531,7 @@ ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const Bools::Ex
 }
 
 ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices, const Arith::Expr& val) {
+    assert(arr->dim() == indices.size());
     std::vector<Arith::Lit> lits;
     for (size_t i = 0; i < indices.size(); ++i) {
         lits.emplace_back(arith::mkEq(array_idx(i), indices.at(i)));
@@ -525,12 +548,11 @@ ArrayPtr<Arith> arrays::writeConst(const Arith::Expr& val) {
 }
 
 Arith::Expr arrays::readConst(const ArrayPtr<Arith>& arr) {
-    assert(arr->dim() == 0);
     return mkArrayRead(arr, {});
 }
 
 ArrayReadPtr<Arith> arrays::readConst(const ArrayVarPtr<Arith>& arr) {
-    return ArrayRead<Arith>::cache.from_cache(arr, {});
+    return mkArrayRead(arr, {});
 }
 
 template <class T>

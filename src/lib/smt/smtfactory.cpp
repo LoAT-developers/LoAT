@@ -10,7 +10,8 @@ SmtPtr solver(const Logic logic) {
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Heuristic: {
         switch (logic) {
-        case QF_LA:
+        case Logic::QF_LA:
+        case Logic::QF_ALA:
             res = std::unique_ptr<Smt>(new Yices(logic));
             break;
         default:
@@ -21,7 +22,8 @@ SmtPtr solver(const Logic logic) {
     }
     case Config::Analysis::Yices: {
         switch (logic) {
-        case QF_NAT:
+        case Logic::QF_EA:
+        case Logic::QF_AEA:
             res = std::unique_ptr<Smt>(new Swine());
             break;
         default:
@@ -42,7 +44,7 @@ SmtPtr solver() {
     std::unique_ptr<Smt> solver;
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Yices:
-        solver = std::unique_ptr<Smt>(new Yices(QF_NA));
+        solver = std::unique_ptr<Smt>(new Yices(Logic::QF_ANA));
         break;
     default:
         solver = std::unique_ptr<Smt>(new Swine());
@@ -58,7 +60,7 @@ SmtPtr modelBuildingSolver(const Logic logic) {
 }
 
 SmtResult check(const Bools::Expr& e) {
-    const auto s {solver(Smt::chooseLogic(BoolExprSet{e}))};
+    const auto s {solver(Smt::chooseLogic(e))};
     s->add(e);
     return s->check();
 }

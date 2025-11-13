@@ -11,7 +11,6 @@
 
 using BoolExprSet = BoolExprSet;
 using Lit = TheTheory::Lit;
-using Var = TheTheory::Var;
 using Expr = TheTheory::Expr;
 using Theories = TheTheory::Theories;
 

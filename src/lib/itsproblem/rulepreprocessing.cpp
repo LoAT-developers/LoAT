@@ -57,8 +57,8 @@ RulePtr propagateEqualities(const RulePtr &rule) {
 }
 
 RulePtr integerFourierMotzkin(const RulePtr &rule) {
-    const auto varsInUpdate{rule->getUpdate().coDomainCells()};
-    auto isTempOnlyInGuard = [&](const ArithVarPtr &sym) {
+    const auto varsInUpdate{rule->getUpdate().coDomainVars()};
+    auto isTempOnlyInGuard = [&](const ArrayVarPtr<Arith> &sym) {
         return sym->isTempVar() && !varsInUpdate.contains(sym);
     };
     if (const auto new_guard {integerFourierMotzkin(rule->getGuard(), isTempOnlyInGuard)}; new_guard == rule->getGuard()) {

@@ -165,7 +165,7 @@ ITSPtr CHCToITS::transform() {
         bvars.emplace_back(BoolVar::nextProgVar());
     }
     for (unsigned i = 0; i < max_arr_arity; ++i) {
-        avars.emplace_back(ArrayVar<Arith>::next(1));
+        avars.emplace_back(ArrayVar<Arith>::nextProgVar(1));
     }
     for (const auto &c: chcs->get_clauses()) {
         Renaming renaming;

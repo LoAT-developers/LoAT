@@ -5,8 +5,15 @@
 #include "renaming.hpp"
 #include "intmbp.hpp"
 
-BMC::BMC(const ITSPtr& its, const bool do_kind): to_safety(its), do_kind(do_kind) {
-    sp = to_safety.transform();
+BMC::BMC(const ITSPtr& its, const bool do_kind) :
+    to_safety(its),
+    sp(to_safety.transform()),
+    step(bools::mkOr(sp.trans())),
+    do_kind(do_kind) {
+    const auto logic = max({Smt::chooseLogic(sp.init()), Smt::chooseLogic(step), Smt::chooseLogic(sp.err())});
+    solver = SmtFactory::modelBuildingSolver(logic);
+    kind = SmtFactory::modelBuildingSolver(logic);
+    bkind = SmtFactory::modelBuildingSolver(logic);
 }
 
 SmtResult BMC::analyze() {

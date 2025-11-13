@@ -312,7 +312,7 @@ Bools::Expr encodeBoolExpr(const Bools::Expr& expr, const ArraySubs<Arith> &temp
 
 LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools::Expr& expr, const Arith::Expr& cost, const Complexity& currentRes) {
     // initialize z3
-    auto solver{SmtFactory::modelBuildingSolver(Smt::chooseLogic(BoolExprSet{expr, bools::mkLit(arith::mkGt(cost, arith::zero()))}))};
+    auto solver{SmtFactory::modelBuildingSolver(max({Smt::chooseLogic(expr), Smt::chooseLogic(bools::mkLit(arith::mkGt(cost, arith::zero())))}))};
     // the parameter of the desired family of solutions
     const auto n{arrays::nextConst<Arith>()};
     // get all relevant variables

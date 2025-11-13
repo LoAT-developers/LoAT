@@ -40,7 +40,7 @@ Bools::Expr mbp::real_mbp(const Bools::Expr &trans, const ModelPtr &model, const
 }
 
 Bools::Expr mbp::real_qe(const Bools::Expr &t, const std::function<bool(const Cell &)> &eliminate) {
-    const auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
+    const auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     solver->add(t);
     std::vector<Bools::Expr> disjuncts;
     SmtResult smt_res;

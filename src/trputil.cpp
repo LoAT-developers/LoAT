@@ -262,7 +262,7 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const Mo
             }
         }
     }
-    const auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
+    const auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     std::vector<Arith::Expr> bounded;
     std::vector<Arith::Expr> decreasing;
     std::unordered_map<ArithVarPtr, ArithVarPtr> coeffs;
@@ -406,7 +406,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
             continue;
         }
         if (vars.contains(n->var())) {
-            const auto solver{SmtFactory::modelBuildingSolver(QF_LA)};
+            const auto solver{SmtFactory::modelBuildingSolver(Logic::QF_LA)};
             solver->push();
             solver->add(b->eval(model, n));
             if (solver->check() == SmtResult::Sat) {

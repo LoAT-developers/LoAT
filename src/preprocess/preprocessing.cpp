@@ -112,7 +112,7 @@ std::optional<SmtResult> Preprocessor::check_empty_clauses(const ITSPtr& its) {
     std::vector<RulePtr> remove;
     for (const auto &r: its->getInitialTransitions()) {
         if (its->isSinkTransition(r)) {
-            const auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
+            const auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
             solver->add(r->getGuard());
             if (const auto smt_res {solver->check()}; smt_res == SmtResult::Sat) {
                 if (Config::Analysis::model) {

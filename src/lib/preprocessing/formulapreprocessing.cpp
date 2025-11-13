@@ -11,7 +11,7 @@ Bools::Expr propagateEquivalences(const Bools::Expr& e) {
     }
 }
 
-Bools::Expr propagateEqualities(const Bools::Expr& e, const std::function<bool(const ArithVarPtr&)> &allow) {
+Bools::Expr propagateEqualities(const Bools::Expr& e, const std::function<bool(const ArrayVarPtr<Arith>&)> &allow) {
     if (const auto subs {e->propagateEqualities(allow)}; subs.empty()) {
         return e;
     } else {
@@ -28,7 +28,7 @@ Bools::Expr Preprocess::simplifyAnd(const Bools::Expr& e) {
     return e;
 }
 
-Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<bool(const ArithVarPtr &)> &allow) {
+Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<bool(const ArrayVarPtr<Arith> &)> &allow) {
     for (const auto prop = propagateEquivalences(e); prop != e;) {
         e = prop;
     }

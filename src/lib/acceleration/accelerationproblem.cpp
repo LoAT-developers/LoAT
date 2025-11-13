@@ -36,8 +36,8 @@ AccelerationProblem::AccelerationProblem(
             }
         }, l);
     }
-    const auto subs {closed ? std::vector{update, closed->closed_form} : std::vector{update}};
-    const auto logic {Smt::chooseLogic<LitSet, Subs>({todo}, subs)};
+    const auto subs {closed ? closed->closed_form : update};
+    const auto logic {Smt::chooseLogic(bools::mkOr(todo), subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
     if (closed) {
         const auto bound {bools::mkLit(arith::mkGt(config.n, arith::zero()))};

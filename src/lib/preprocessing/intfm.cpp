@@ -4,7 +4,7 @@
 
 #include <unordered_set>
 
-Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool(const ArithVarPtr &)> &allow) {
+Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool(const ArrayVarPtr<Arith> &)> &allow) {
     if (!e->isConjunction()) {
         return e;
     }
@@ -27,7 +27,7 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool
     };
 
     for (const auto &var: candidates) {
-        if (!allow(var)) continue;
+        if (!allow(var->var())) continue;
         std::vector<Arith::Expr> upper_bounds;
         std::vector<Arith::Expr> lower_bounds;
         std::vector<Arith::Lit> eliminated_lits;

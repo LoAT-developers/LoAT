@@ -22,7 +22,7 @@ ABMC::ABMC(const ITSPtr& its):
             var,
             [&](const auto& var) {
                 using T = decltype(theory::theory(var));
-                pre_to_post.insert(var, T::next(0));
+                pre_to_post.insert(var, T::next(var->dim()));
             });
     }
     last_orig_clause = 0;
@@ -186,7 +186,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
                 [&](const auto& x) {
                     using T = decltype(theory::theory(x));
                     if (x->isTempVar() && !vars.contains(x)) {
-                        const auto next{T::next(0)};
+                        const auto next{T::next(x->dim())};
                         subs[depth + 1].insert(x, next);
                         subsTmp[depth + 1].insert(x, next);
                     }
@@ -236,6 +236,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
     }
     std::optional<Loop> res {};
     auto covered {top()};
+    std::cout << *loop << std::endl;
+    std::cout << *simp << std::endl;
     if (const auto deterministic{simp->isDeterministic()}; Config::Analysis::safety() && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
     } else if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().compose(simp->getUpdate())) {
@@ -354,7 +356,7 @@ const Renaming &ABMC::subs_at(const unsigned i) {
                     using T = decltype(theory::theory(var));
                     const auto& post_var{pre_to_post.get(var)};
                     const auto current{subs.back().get(post_var)};
-                    const auto next{T::next(0)};
+                    const auto next{T::next(var->dim())};
                     s.insert(var, current);
                     s.insert(post_var, next);
                     if (var->isTempVar()) {
@@ -450,7 +452,7 @@ ITSModel ABMC::get_model() {
             [&](const auto& x) {
                 using T = decltype(theory::theory(x));
                 if (x->isProgVar()) {
-                    init_renaming.insert(x, T::next(0));
+                    init_renaming.insert(x, T::next(x->dim()));
                 }
             });
     }
@@ -479,7 +481,7 @@ ITSModel ABMC::get_model() {
                     using T = decltype(theory::theory(pre));
                     if (pre->isProgVar()) {
                         s2.insert(s1.get(post), pre);
-                        s2.insert(pre, T::next(0));
+                        s2.insert(pre, T::next(pre->dim()));
                     }
                 });
         }

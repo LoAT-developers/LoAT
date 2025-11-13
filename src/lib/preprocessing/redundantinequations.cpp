@@ -27,7 +27,7 @@ Bools::Expr removeRedundantInequations(const Bools::Expr& e) {
         }
     }
     // set up one non-negative multiplier for each bound
-    auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
+    auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     std::vector<ArithVarPtr> factors;
     for (size_t i = 0; i < bounded.size(); ++i) {
         const auto f {arrays::nextConst<Arith>()};

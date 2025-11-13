@@ -36,7 +36,7 @@ protected:
 
     using rule_map_t = linked_hash_map<Int, Bools::Expr>;
 
-    SmtPtr solver {SmtFactory::solver(QF_LA)};
+    SmtPtr solver {SmtFactory::solver(Logic::QF_LA)};
     std::vector<TraceElem> trace {};
     std::vector<std::vector<Renaming>> subs {};
     VarSet vars {};

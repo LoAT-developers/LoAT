@@ -14,9 +14,10 @@ class BMC {
 
     ITSToSafety to_safety;
     SafetyProblem sp;
-    SmtPtr solver {SmtFactory::modelBuildingSolver(QF_LA)};
-    SmtPtr kind {SmtFactory::modelBuildingSolver(QF_LA)};
-    SmtPtr bkind {SmtFactory::modelBuildingSolver(QF_LA)};
+    Bools::Expr step;
+    SmtPtr solver;
+    SmtPtr kind;
+    SmtPtr bkind;
     bool approx {false};
     VarSet vars;
     Renaming pre_to_post {};

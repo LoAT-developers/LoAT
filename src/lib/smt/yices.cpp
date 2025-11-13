@@ -16,15 +16,25 @@ void exit() {
 
 Yices::Yices(const Logic logic): ctx(YicesContext()), config(yices_new_config()) {
     std::string l;
-    switch (logic) {
-    case QF_LA:
-        l = "QF_LIA";
-        break;
-    case QF_NA:
+    const auto check_mcsat = []() {
         if (!yices_has_mcsat()) {
             throw std::runtime_error("mcsat missing");
         }
+    };
+    switch (logic) {
+    case Logic::QF_LA:
+        l = "QF_LIA";
+        break;
+    case Logic::QF_ALA:
+        l = "QF_ALIA";
+        break;
+    case Logic::QF_NA:
+        check_mcsat();
         l = "QF_NIA";
+        break;
+    case Logic::QF_ANA:
+        check_mcsat();
+        l = "QF_ANIA";
         break;
     default:
         throw std::invalid_argument("unsupported logic");
@@ -37,6 +47,7 @@ Yices::Yices(const Logic logic): ctx(YicesContext()), config(yices_new_config())
 }
 
 void Yices::add(const Bools::Expr e) {
+    std::cout << e << std::endl;
     if (yices_assert_formula(solver, ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>::convert(e, ctx)) < 0) {
         throw YicesError();
     }

@@ -14,19 +14,37 @@ enum class SmtResult {Sat, Unknown, Unsat};
 
 std::ostream& operator<<(std::ostream &s, const SmtResult&);
 
-enum Logic {
+enum class Logic {
     /**
      * linear arithmetic
      */
     QF_LA,
     /**
+     * arrays & linear arithmetic
+     */
+    QF_ALA,
+    /**
      * polynomial arithmetic
      */
     QF_NA,
+    QF_ANA,
     /**
-     * polynomial arithmetic + transcendentals (currently just exponentiation)
+     * polynomial arithmetic + exponentials
      */
-    QF_NAT};
+    QF_EA,
+    QF_AEA};
+
+struct LogicProperties {
+    bool is_linear = true;
+    bool is_poly = true;
+    bool no_arrays = true;
+};
+
+LogicProperties get_properties(Logic);
+
+Logic from_properties(const LogicProperties&);
+
+Logic max(const std::initializer_list<Logic>&);
 
 class Smt {
 
@@ -51,62 +69,23 @@ public:
 
     virtual ~Smt() = default;
 
-    static Logic chooseLogic(const std::vector<Bools::Expr> &xs, const std::vector<Subs> &up = {}) {
-        Logic res = QF_LA;
-        for (const auto &x: xs) {
-            if (!x->isLinear()) {
-                if (!x->isPoly()) {
-                    return QF_NAT;
-                }
-                res = QF_NA;
-            }
+    static Logic chooseLogic(const Bools::Expr &x, const std::optional<Subs> &up = std::nullopt) {
+        const auto no_arrays = [](const VarSet& xs) {
+            return std::ranges::all_of(xs.get<Arrays<Arith>::Var>(), [](const auto& x) {
+                return x->dim() == 0;
+            });
+        };
+        LogicProperties props {
+            .is_linear = x->isLinear(),
+            .is_poly = x->isPoly(),
+            .no_arrays = no_arrays(x->vars())
+        };
+        if (up) {
+            props.is_linear &= up->isLinear();
+            props.is_poly &= up->isPoly();
+            props.no_arrays &= no_arrays(up->vars());
         }
-        for (const Subs &u: up) {
-            if (!u.isLinear()) {
-                if (!u.isPoly()) {
-                    return QF_NAT;
-                }
-                res = QF_NA;
-            }
-        }
-        return res;
-    }
-
-    static Logic chooseLogic(const BoolExprSet &xs) {
-        Logic res = QF_LA;
-        for (const auto &x: xs) {
-            if (!x->isLinear()) {
-                if (!x->isPoly()) {
-                    return QF_NAT;
-                }
-                res = QF_NA;
-            }
-        }
-        return res;
-    }
-
-    template<class RELS, class UP>
-    static Logic chooseLogic(const std::vector<RELS> &g, const std::vector<UP> &up) {
-        Logic res = QF_LA;
-        for (const RELS &rels: g) {
-            for (const auto &lit: rels) {
-                if (!theory::isLinear(lit)) {
-                    if (!theory::isPoly(lit)) {
-                        return QF_NAT;
-                    }
-                    res = QF_NA;
-                }
-            }
-        }
-        for (const UP &t: up) {
-            if (!t.isLinear()) {
-                if (!t.isPoly()) {
-                    return QF_NAT;
-                }
-                res = QF_NA;
-            }
-        }
-        return res;
+        return from_properties(props);
     }
 
     virtual std::ostream& print(std::ostream& os) const = 0;

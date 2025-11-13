@@ -1,5 +1,7 @@
 #include "arraylit.hpp"
 #include "sexpresso.hpp"
+#include "subs.hpp"
+#include "variantset.hpp"
 
 template <class T>
 bool ArrayLit<T>::isPoly() {
@@ -77,6 +79,11 @@ ArrayLitPtr<T> ArrayEq<T>::subs(const ArraySubs<T>& subs) const {
 }
 
 template <class T>
+ArrayLitPtr<T> ArrayEq<T>::subs(const Subs& subs) const {
+    return cache.from_cache(m_lhs->subs(subs), m_rhs->subs(subs));
+}
+
+template <class T>
 ArrayLitPtr<T> ArrayEq<T>::renameVars(const array_var_map<T>& map) const {
     return cache.from_cache(m_lhs->renameVars(map), m_rhs->renameVars(map));
 }
@@ -111,6 +118,21 @@ template <class T>
 void ArrayEq<T>::collectCells(CellSet& cells) const {
     m_lhs->collectCells(cells);
     m_rhs->collectCells(cells);
+}
+
+template <class T>
+void ArrayEq<T>::propagateEquality(Subs& subs, const std::function<bool(const Var&)>& allow, VarSet& blocked) const {
+    const auto elim = [&](const auto &l, const auto& r) {
+        if (const auto var = l->isVar(); var && allow(*var) && !blocked.contains(*var)) {
+            subs.put(*var, r);
+            blocked.insertAll(r->vars());
+            return true;
+        }
+        return false;
+    };
+    if (!elim(m_lhs, m_rhs)) {
+        elim(m_rhs, m_lhs);
+    }
 }
 
 template <class T>

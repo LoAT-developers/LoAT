@@ -81,7 +81,7 @@ public:
     std::optional<std::pair<ArithExprPtr, Int>> isDivisibility() const;
     std::optional<Divisibility> isDivisibility(const ArithVarPtr& n) const;
     std::optional<ArithExprPtr> getEquality(const ArithVarPtr& n) const;
-    void propagateEquality(ArraySubs<Arith> &subs, const std::function<bool(const ArithVarPtr &)> &allow, std::unordered_set<ArithVarPtr> &blocked) const;
+    void propagateEquality(Subs &subs, const std::function<bool(const Var &)> &allow, VarSet &blocked) const;
     ArithLitPtr eval(const ModelPtr&, const ArithVarPtr &keep) const;
 
     bool isTriviallyTrue() const;

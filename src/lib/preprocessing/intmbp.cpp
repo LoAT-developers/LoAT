@@ -197,7 +197,7 @@ Bools::Expr mbp::int_mbp(const Bools::Expr &trans, const ModelPtr& model, const 
 }
 
 Bools::Expr mbp::int_qe(const Bools::Expr &trans, const std::function<bool(const Cell &)> &eliminate) {
-    const auto solver {SmtFactory::modelBuildingSolver(QF_LA)};
+    const auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     solver->add(trans);
     std::vector<Bools::Expr> disjuncts;
     SmtResult smt_res;
