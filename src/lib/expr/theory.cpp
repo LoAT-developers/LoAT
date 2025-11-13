@@ -80,7 +80,7 @@ namespace theory {
                     return Type::Bool;
                 },
                 [](const Arrays<Arith>::Expr &) {
-                    return Type::Int;
+                    return Type::IntArray;
                 }},
             x);
     }
@@ -91,8 +91,8 @@ namespace theory {
                 [&](const Bools::Var &) {
                     return Type::Bool;
                 },
-                [&](const Arrays<Arith>::Var &) {
-                    return Type::Int;
+                [&](const Arrays<Arith>::Var& x) {
+                    return x->dim() == 0 ? Type::Int : Type::IntArray;
                 }},
             x);
     }

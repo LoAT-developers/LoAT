@@ -65,16 +65,27 @@ void SexpressoParser::run(const std::string &filename) const {
             if (ex[1].childCount() > 0 && ex[1][0].isString("forall")) {
                 auto vars {ex[1][1]};
                 for (unsigned i = 0; i < vars.childCount(); ++i) {
-                    const auto name{vars[i][0].str()};
-                    if (const auto type{vars[i][1].str()}; type == "Int") {
-                        state.vars.emplace(name, ArrayVar<Arith>::next(0));
-                    } else if (type == "(Array Int Int)") {
+                    const auto name = vars[i][0].str();
+                    auto type = vars[i][1];
+                    if (type.isString()) {
+                        if (type.str() == "Int") {
+                            state.vars.emplace(name, ArrayVar<Arith>::next(0));
+                            continue;
+                        }
+                        if (type.str() == "Bool") {
+                            state.vars.emplace(name, BoolVar::next());
+                            continue;
+                        }
+                    } else if (type[0].isString()
+                        && type[0].str() == "Array"
+                        && type[1].isString()
+                        && type[1].str() == "Int"
+                        && type[2].isString()
+                        && type[2].str() == "Int") {
                         state.vars.emplace(name, ArrayVar<Arith>::next(1));
-                    } else if (type == "Bool") {
-                        state.vars.emplace(name, BoolVar::next());
-                    } else {
-                        throw std::invalid_argument("unknown type " + type);
+                        continue;
                     }
+                    throw std::invalid_argument("unknown type " + type.toString());
                 }
                 imp = ex[1][2];
             } else {

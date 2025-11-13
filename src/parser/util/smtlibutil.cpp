@@ -22,6 +22,14 @@ Var SMTLibParsingState::get_var(const std::string &name, const theory::Type type
             ++next_tmp_bool_var;
             break;
         }
+    case theory::Type::IntArray:
+        if (next_tmp_arr_var == tmp_arr_vars.size()) {
+            tmp_arr_vars.emplace_back(ArrayVar<Arith>::next(1));
+        }
+        var = tmp_arr_vars.at(next_tmp_arr_var);
+        ++next_tmp_arr_var;
+        break;
+        break;
     }
     vars.emplace(name, *var);
     return *var;
@@ -50,9 +58,10 @@ Arrays<Arith>::Expr parseArray(sexpresso::Sexp &exp, SMTLibParsingState &state) 
         const auto name{exp.str()};
         for (int i = state.bindings.size() - 1; i >= 0; i--) {
             if (const auto it{state.bindings[i].find(name)}; it != state.bindings[i].end()) {
-                return getArrayVar(name, state);
+                return std::get<Arrays<Arith>::Expr>(it->second);
             }
         }
+        return getArrayVar(name, state);
     }
     if (exp[0].str() == "store") {
         const auto arr = parseArray(exp[1], state);
@@ -190,14 +199,19 @@ theory::Type getType(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (const auto name = child[0].str(); name == "and" || name == "or" || name == "not" || name == "<" || name == "<=" || name == ">" || name == ">=" || name == "=" || name == "distinct" || name == "exists") {
         return theory::Type::Bool;
     }
+    if (child[0].str() == "store") {
+        return theory::Type::IntArray;
+    }
     return theory::Type::Int;
 }
 
 Expr parseExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
-    if (const auto type{getType(exp, state)}; type == theory::Type::Int) {
-        return parseArithExpr(exp, state);
+    switch (getType(exp, state)) {
+    case theory::Type::Bool: return parseBoolExpr(exp, state);
+    case theory::Type::Int: return parseArithExpr(exp, state);
+    case theory::Type::IntArray: return parseArray(exp, state);
     }
-    return parseBoolExpr(exp, state);
+    assert(false);
 }
 
 Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
@@ -299,10 +313,19 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         auto type {getType(exp[1], state)};
         std::vector<Expr> args;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
-            if (type == theory::Type::Int) {
+            switch (type) {
+            case theory::Type::Int: {
                 args.emplace_back(parseArithExpr(exp[i], state));
-            } else {
+                break;
+            }
+            case theory::Type::Bool: {
                 args.emplace_back(parseBoolExpr(exp[i], state));
+                break;
+            }
+            case theory::Type::IntArray: {
+                args.emplace_back(parseArray(exp[i], state));
+                break;
+            }
             }
         }
         std::vector<Bools::Expr> lits;

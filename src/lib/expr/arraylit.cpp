@@ -32,6 +32,11 @@ size_t ArrayEq<T>::CacheHash::operator()(const std::tuple<ArrayPtr<T>, ArrayPtr<
 }
 
 template <class T>
+ArrayEq<T>::~ArrayEq() {
+    cache.erase(m_lhs, m_rhs);
+}
+
+template <class T>
 ArrayEq<T>::ArrayEq(const ArrayPtr<T>& p_lhs, const ArrayPtr<T>& p_rhs) : m_lhs(p_lhs), m_rhs(p_rhs) {}
 
 template <class T>
@@ -94,7 +99,7 @@ bool ArrayEq<T>::isTriviallyFalse() const {
 
 template <class T>
 std::optional<ArrayEqPtr<T>> ArrayEq<T>::isArrayEq() const {
-    return cpp::assume_not_null(this->shared_from_this());
+    return cpp::assume_not_null(std::static_pointer_cast<const ArrayEq>(static_cast<const ArrayLit<T>*>(this)->shared_from_this()));
 }
 
 template <class T>
@@ -120,6 +125,11 @@ size_t ArrayNeq<T>::CacheHash::operator()(const std::tuple<ArrayPtr<T>, ArrayPtr
     auto seed{hash_value(std::get<0>(args))};
     boost::hash_combine(seed, std::get<1>(args));
     return seed;
+}
+
+template <class T>
+ArrayNeq<T>::~ArrayNeq() {
+    cache.erase(m_lhs, m_rhs);
 }
 
 template <class T>
@@ -190,13 +200,24 @@ std::optional<ArrayEqPtr<T>> ArrayNeq<T>::isArrayEq() const {
 
 template <class T>
 std::optional<ArrayNeqPtr<T>> ArrayNeq<T>::isArrayNeq() const {
-    return cpp::assume_not_null(this->shared_from_this());
+    return cpp::assume_not_null(std::static_pointer_cast<const ArrayNeq>(static_cast<const ArrayLit<T>*>(this)->shared_from_this()));
 }
 
 template <class T>
 void ArrayNeq<T>::collectCells(CellSet& res) const {
     m_lhs->collectCells(res);
     m_rhs->collectCells(res);
+}
+
+template <class T>
+std::ostream& operator<<(std::ostream& s, const ArrayLitPtr<T>& e) {
+    if (const auto eq = e->isArrayEq()) {
+        return s << (*eq)->lhs() << " = " << (*eq)->rhs();
+    }
+    if (const auto neq = e->isArrayNeq()) {
+        return s << (*neq)->lhs() << " != " << (*neq)->rhs();
+    }
+    throw std::invalid_argument("unknown array literal");
 }
 
 Lit arrays::mkEq(const ArrayPtr<Arith>& lhs, const ArrayPtr<Arith>& rhs) {
@@ -216,3 +237,5 @@ Lit arrays::mkNeq(const ArrayPtr<Arith>& lhs, const ArrayPtr<Arith>& rhs) {
 template class ArrayLit<Arith>;
 template class ArrayEq<Arith>;
 template class ArrayNeq<Arith>;
+
+template std::ostream& operator<<(std::ostream&, const ArrayLitPtr<Arith>&);

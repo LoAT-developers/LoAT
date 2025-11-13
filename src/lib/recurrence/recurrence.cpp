@@ -10,7 +10,7 @@
 Recurrence::Recurrence(Subs equations, ArithVarPtr n) :
     equations(std::move(equations)),
     n(std::move(n)),
-    n_to_n_minus_one{{n->var(), arrays::writeConst(n - arith::one())}} {}
+    n_to_n_minus_one{{this->n->var(), arrays::writeConst(this->n - arith::one())}} {}
 
 std::optional<std::tuple<Int, Int, Arith::Expr>> Recurrence::handle_exp(const ArithExpPtr &pow) const {
     Int degree{0};
@@ -455,6 +455,9 @@ bool Recurrence::solve() {
         return bools::mkAnd(conjuncts);
     };
     const auto mk_last_write = [&](const ArithVarPtr& lval) {
+        if (lval->dim() == 0) {
+            return top();
+        }
         size_t i = 0;
         const auto& s = shift.at(lval);
         LitSet lits;

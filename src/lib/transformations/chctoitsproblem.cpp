@@ -16,6 +16,7 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
         const auto pred{its->getPrintableLocationName(loc)};
         const auto& sig{signature.at(pred)};
         unsigned next_int_var{0};
+        unsigned next_arr_var{0};
         unsigned next_bool_var{0};
         std::vector<Var> args;
         for (const auto& x : sig) {
@@ -27,6 +28,10 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
             case theory::Type::Bool:
                 args.emplace_back(bvars.at(next_bool_var));
                 ++next_bool_var;
+                break;
+            case theory::Type::IntArray:
+                args.emplace_back(avars.at(next_arr_var)->var());
+                ++next_arr_var;
                 break;
             }
         }
@@ -158,6 +163,9 @@ ITSPtr CHCToITS::transform() {
     }
     for (unsigned i = 0; i < max_bool_arity; ++i) {
         bvars.emplace_back(BoolVar::nextProgVar());
+    }
+    for (unsigned i = 0; i < max_arr_arity; ++i) {
+        avars.emplace_back(ArrayVar<Arith>::next(1));
     }
     for (const auto &c: chcs->get_clauses()) {
         Renaming renaming;

@@ -23,7 +23,7 @@ namespace arrays {
 }
 
 template <class T>
-class ArrayLit {
+class ArrayLit: public std::enable_shared_from_this<ArrayLit<T>> {
 
 public:
 
@@ -51,7 +51,7 @@ public:
 };
 
 template <class T>
-class ArrayEq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayEq<T>> {
+class ArrayEq final: public ArrayLit<T> {
 
     friend Lit arrays::mkEq(const ArrayPtr<Arith>& lhs, const ArrayPtr<Arith>& rhs);
     friend class ConsHash<ArrayEq, ArrayPtr<T>, ArrayPtr<T>>;
@@ -71,6 +71,8 @@ class ArrayEq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayEq<T>
     static ConsHash<ArrayEq, ArrayPtr<T>, ArrayPtr<T>> cache;
 
 public:
+
+    ~ArrayEq() override;
 
     ArrayEq(const ArrayPtr<T>& p_lhs, const ArrayPtr<T>& p_rhs);
 
@@ -103,7 +105,7 @@ template <class T>
 ConsHash<ArrayEq<T>, ArrayPtr<T>, ArrayPtr<T>> ArrayEq<T>::cache {};
 
 template <class T>
-class ArrayNeq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayNeq<T>> {
+class ArrayNeq final: public ArrayLit<T> {
 
     friend Lit arrays::mkNeq(const ArrayPtr<Arith>& lhs, const ArrayPtr<Arith>& rhs);
     friend class ConsHash<ArrayNeq, ArrayPtr<T>, ArrayPtr<T>>;
@@ -123,6 +125,8 @@ class ArrayNeq final: public ArrayLit<T>, std::enable_shared_from_this<ArrayNeq<
     static ConsHash<ArrayNeq, ArrayPtr<T>, ArrayPtr<T>> cache;
 
 public:
+
+    ~ArrayNeq() override;
 
     ArrayNeq(const ArrayPtr<T>& p_lhs, const ArrayPtr<T>& p_rhs);
 
@@ -164,3 +168,6 @@ ArrayLitPtr<T> operator!(const ArrayLitPtr<T>& lit) {
     }
     throw std::logic_error("unknown array literal");
 }
+
+template<class T>
+std::ostream& operator<<(std::ostream&, const ArrayLitPtr<T>&);
