@@ -52,7 +52,7 @@ bool Model::eval(const Lit& lit, const Subs& subs) {
         },
         [&](const Arrays<Arith>::Lit& lit) {
             // TODO fix
-            return evalImpl(lit->subs(subs.get<Arrays<Arith>>()));
+            return evalImpl(lit->subs(subs));
         });
 }
 
@@ -133,7 +133,7 @@ Arith::Const Model::eval(const ArrayReadPtr<Arith>& e) {
 }
 
 Arith::Const Model::eval(const ArrayReadPtr<Arith>& e, const Subs& subs) {
-    return evalImpl(e->subs(subs.get<Arrays<Arith>>()));
+    return evalImpl(e->subs(subs));
 }
 
 bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {

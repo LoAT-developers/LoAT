@@ -281,7 +281,7 @@ static Bools::Expr expConstraint(const Arith::Expr& e, const ArithVarPtr& n) {
     return bot();
 }
 
-Bools::Expr encodeBoolExpr(const Bools::Expr& expr, const ArraySubs<Arith> &templateSubs, const ArithVarPtr& n) {
+Bools::Expr encodeBoolExpr(const Bools::Expr& expr, const Subs &templateSubs, const ArithVarPtr& n) {
     BoolExprSet newChildren;
     for (const auto &c : expr->getChildren()) {
         newChildren.insert(encodeBoolExpr(c, templateSubs, n));
@@ -322,7 +322,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
     assert(vars.size() == all_vars.size());
     auto hasTmpVars{false};
     // create linear templates for all variables
-    ArraySubs<Arith> templateSubs;
+    Subs templateSubs;
     std::map<Arrays<Arith>::Var, ArithVarPtr> varCoeff, varCoeff0;
     for (const auto &var : vars) {
         hasTmpVars |= var->isTempVar();
@@ -335,7 +335,7 @@ LimitSmtEncoding::ComplexityWitness LimitSmtEncoding::applyEncoding(const Bools:
     const auto buildRes = [&](const Complexity &cpx) {
         std::optional<ModelPtr> subs;
         if (Config::Analysis::model && cpx != Complexity::Unknown) {
-            subs = solver->model()->composeBackwards(Subs::build<Arrays<Arith>>(templateSubs));
+            subs = solver->model()->composeBackwards(templateSubs);
         }
         return ComplexityWitness{.cpx = cpx, .subs = subs, .param = n};
     };

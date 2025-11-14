@@ -228,22 +228,16 @@ bool Renaming::empty() const {
 Lit Renaming::operator()(const Lit& lit) const {
     return theory::apply(
         lit,
-        [&](const Bools::Lit& lit) -> Lit {
-            return lit->renameVars(get<Bools>());
-        },
         [&](const auto& lit) -> Lit {
-            return lit->renameVars(get<Arrays<Arith>>());
+            return lit->renameVars(*this);
         });
 }
 
 Expr Renaming::operator()(const Expr& expr) const {
     return theory::apply(
         expr,
-        [&](const Bools::Expr& expr) -> Expr {
-            return expr->renameVars(*this);
-        },
         [&](const auto& expr) -> Expr {
-            return expr->renameVars(get<Arrays<Arith>>());
+            return expr->renameVars(*this);
         });
 }
 

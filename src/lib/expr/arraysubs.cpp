@@ -1,5 +1,6 @@
 #include "arraysubs.hpp"
 
+#include "subs.hpp"
 #include "variantset.hpp"
 
 template <class T>
@@ -52,7 +53,7 @@ template <class T>
 ArraySubs<T> ArraySubs<T>::compose(const Self& that) const {
     Self res;
     for (const auto& [key,val] : map) {
-        res.put(key, val->subs(that));
+        res.put(key, val->subs(Subs::build<Arrays<T>>(that)));
     }
     for (const auto& [key,val] : that) {
         if (!contains(key)) {
@@ -63,7 +64,7 @@ ArraySubs<T> ArraySubs<T>::compose(const Self& that) const {
 }
 
 template <class T>
-ArraySubs<T> ArraySubs<T>::concat(const Self& that) const {
+ArraySubs<T> ArraySubs<T>::concat(const Subs& that) const {
     Self res;
     for (const auto& [key,val] : map) {
         res.put(key, val->subs(that));
@@ -72,7 +73,7 @@ ArraySubs<T> ArraySubs<T>::concat(const Self& that) const {
 }
 
 template <class T>
-ArraySubs<T> ArraySubs<T>::concat(const array_var_map<T>& that) const {
+ArraySubs<T> ArraySubs<T>::concat(const Renaming& that) const {
     Self res;
     for (const auto& [key,val] : map) {
         res.put(key, val->renameVars(that));

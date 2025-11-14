@@ -156,19 +156,6 @@ std::optional<Bools::Var> BoolExpr::isVar() const {
     return opt{};
 }
 
-Bools::Expr BoolExpr::subs(const Arrays<Arith>::Subs& subs) const {
-    return map([&](const auto& lit) {
-        return bools::mkLit(theory::apply(
-            lit,
-            [&](const Bools::Lit&) {
-                return lit;
-            },
-            [&](const auto& lit) {
-                return Lit(lit->subs(subs));
-            }));
-    });
-}
-
 Bools::Expr BoolExpr::subs(const Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr>& subs) const {
     return map([&](const auto& lit) {
         return theory::apply(
@@ -190,19 +177,6 @@ Bools::Expr BoolExpr::subs(const Variant<ArithVarPtr, Bools::Var>::Map<Arith::Ex
     });
 }
 
-Bools::Expr BoolExpr::subs(const Bools::Subs& subs) const {
-    return map([&](const auto& lit) {
-        return theory::apply(
-            lit,
-            [&](const Bools::Lit& lit) {
-                return lit->subs(subs);
-            },
-            [&](const auto&) {
-                return bools::mkLit(lit);
-            });
-    });
-}
-
 Bools::Expr BoolExpr::subs(const Subs& subs) const {
     return map([&](const auto& lit) {
         return subs(lit);
@@ -213,11 +187,8 @@ Bools::Expr BoolExpr::renameVars(const Renaming& subs) const {
     return map([&](const auto& lit) {
         return bools::mkLit(theory::apply(
             lit,
-            [&](const Bools::Lit& lit) -> Lit {
-                return lit->renameVars(subs.get<Bools>());
-            },
             [&](const auto& lit) -> Lit {
-                return lit->renameVars(subs.get<Arrays<Arith>>());
+                return lit->renameVars(subs);
             }));
     });
 }
@@ -337,8 +308,11 @@ void BoolExpr::propagateEqualities(Subs &subs, const std::function<bool(const Va
     if (const auto lit {getTheoryLit()}) {
         theory::apply(
             *lit,
+            [&](const Bools::Lit&) {
+                // do nothing
+            },
             [&](const auto& lit) {
-                lit->subs(subs)->propagateEqualitiy(subs, allow, blocked);
+                lit->subs(subs)->propagateEquality(subs, allow, blocked);
             });
     } else if (isAnd()) {
         for (const auto &c: getChildren()) {

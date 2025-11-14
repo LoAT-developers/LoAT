@@ -187,7 +187,7 @@ bool AccelerationProblem::monotonicity(const Lit &lit) {
         solver->add(bools::mkLit(theory::negate(lit)));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            auto g {closed->closed_form(lit)->subs({{config.n->var(), arrays::update(config.n, config.n - arith::one())}})};
+            auto g {closed->closed_form(lit)->subs(Subs::build(config.n->var(), arrays::update(config.n, config.n - arith::one())))};
             if (closed->prefix > 0) {
                 g = g && bools::mkLit(lit);
             }
@@ -234,7 +234,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
         solver->add(bools::mkLit(inc));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
-            const auto g {bools::mkAnd(std::vector{rel, rel->subs(closed->closed_form)->subs({{config.n->var(), arrays::update(config.n, config.n - arith::one())}})})};
+            const auto g {bools::mkAnd(std::vector{rel, rel->subs(closed->closed_form)->subs(Subs::build(config.n->var(), arrays::update(config.n, config.n - arith::one())))})};
             res.formula.push_back(g);
             if (Config::Analysis::doLogAccel()) {
                 std::cout << rel << ": eventual decrease yields " << g << std::endl;

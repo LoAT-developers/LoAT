@@ -1,11 +1,10 @@
 #include "vareliminator.hpp"
-#include "subs.hpp"
 
 #include <cassert>
 
 VarEliminator::VarEliminator(const Bools::Expr& guard, const ArithVarPtr& N, const std::function<bool(ArithVarPtr)> &keep): N(N), keep(keep) {
     assert(!keep(N));
-    todoDeps.push({{}, guard});
+    todoDeps.emplace(Subs(), guard);
     findDependencies(guard);
     eliminate();
 }
@@ -47,19 +46,19 @@ void VarEliminator::findDependencies(const Bools::Expr& guard) {
     dependencies.erase(N);
 }
 
-std::vector<std::pair<ArraySubs<Arith>, Bools::Expr>> VarEliminator::eliminateDependency(
-    const ArraySubs<Arith>& subs, const Bools::Expr& guard) const {
+std::vector<std::pair<Subs, Bools::Expr>> VarEliminator::eliminateDependency(
+    const Subs& subs, const Bools::Expr& guard) const {
     const auto cells = guard->cells();
     for (const auto & dependency : dependencies) {
         if (!cells.contains(dependency)) {
             continue;
         }
         const auto bounds {guard->getBounds(dependency)};
-        std::vector<std::pair<ArraySubs<Arith>, Bools::Expr>> res;
+        std::vector<std::pair<Subs, Bools::Expr>> res;
         for (const auto & [bound, kind] : bounds) {
             if (bound->isInt()) {
                 const auto newSubs{Subs::build(dependency, bound)};
-                res.emplace_back(subs.compose(newSubs.get<Arrays<Arith>>()), guard->subs(newSubs));
+                res.emplace_back(subs.compose(newSubs), guard->subs(newSubs));
             }
         }
         if (!res.empty()) {
@@ -71,8 +70,8 @@ std::vector<std::pair<ArraySubs<Arith>, Bools::Expr>> VarEliminator::eliminateDe
 
 void VarEliminator::eliminateDependencies() {
     while (!todoDeps.empty()) {
-        const std::pair<ArraySubs<Arith>, Bools::Expr> current = todoDeps.top();
-        const std::vector<std::pair<ArraySubs<Arith>, Bools::Expr>> &res = eliminateDependency(current.first, current.second);
+        const std::pair<Subs, Bools::Expr> current = todoDeps.top();
+        const std::vector<std::pair<Subs, Bools::Expr>> &res = eliminateDependency(current.first, current.second);
         if (res.empty()) {
             todoN.push_back(current);
         }
@@ -92,11 +91,11 @@ void VarEliminator::eliminate() {
             return b.kind == BoundKind::Equality && b.bound->isIntegral();
         })};
         if (it != bounds.end()) {
-            res.insert(subs.compose(ArraySubs<Arith>{{N->var(), arrays::update(N, it->bound)}}));
+            res.insert(subs.compose(Subs::build(N->var(), arrays::update(N, it->bound))));
         } else {
             for (const auto & [bound, kind] : bounds) {
                 if (kind == BoundKind::Upper && bound->isIntegral()) {
-                    ArraySubs<Arith> p{{N->var(), arrays::update(N, bound)}};
+                    Subs p = Subs::build(N->var(), arrays::update(N, bound));
                     res.insert(subs.compose(p));
                 }
             }
@@ -104,6 +103,6 @@ void VarEliminator::eliminate() {
     }
 }
 
-linked_hash_set<ArraySubs<Arith>> VarEliminator::getRes() const {
+linked_hash_set<Subs> VarEliminator::getRes() const {
     return res;
 }

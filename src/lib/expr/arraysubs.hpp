@@ -43,9 +43,9 @@ public:
 
     Self compose(const Self &that) const;
 
-    Self concat(const Self &that) const;
+    Self concat(const Subs&) const;
 
-    Self concat(const array_var_map<T> &that) const;
+    Self concat(const Renaming&) const;
 
     Self project(const linked_hash_set<Var> &vars) const;
 

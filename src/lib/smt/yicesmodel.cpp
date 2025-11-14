@@ -64,10 +64,18 @@ Bools::Const YicesModel::getImpl(const Bools::Var& e) {
 }
 
 std::string YicesModel::toString(const Expr& e) {
-    return theory::apply(e, [&](const auto& e) {
+    return theory::apply(e, [&](const auto& e) -> std::string {
         const auto t{Converter::convert(e, m_ctx)};
         const auto val {yices_get_value_as_term(m_model.get(), t)};
+        if (yices_error_code()) {
+            yices_clear_error();
+            std::cerr << "error when getting model for " << e << " from yices" << std::endl;
+            return "";
+        }
         char* str{yices_term_to_string(val, 120, 40, 0)};
+        if (yices_error_code()) {
+            throw YicesError();
+        }
         std::string res {str};
         yices_free_string(str);
         return res;

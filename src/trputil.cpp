@@ -247,14 +247,14 @@ std::pair<Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const s
 }
 
 std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const ModelPtr &model) {
-    const auto &ptp {t.pre_to_post().get<Arrays<Arith>>()};
+    const auto &ptp {t.pre_to_post()};
     for (const auto lits {loop->lits().get<Arith::Lit>()}; const auto &l: lits) {
         if (l->isGt()) {
             auto lhs{l->lhs()};
             if (const auto vars{lhs->vars()};
                 (std::ranges::all_of(vars, theory::isProgVar) && model->eval(lhs) > model->eval(lhs->renameVars(ptp)))
                 || (std::ranges::all_of(vars, theory::isPostVar) && model->eval(
-                    lhs->renameVars(post_to_pre.get<Arrays<Arith>>())) > model->eval(lhs))) {
+                    lhs->renameVars(post_to_pre)) > model->eval(lhs))) {
                 if (Config::Analysis::log) {
                     std::cout << "found ranking function " << lhs << std::endl;
                 }
@@ -266,7 +266,7 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const Mo
     std::vector<Arith::Expr> bounded;
     std::vector<Arith::Expr> decreasing;
     std::unordered_map<ArithVarPtr, ArithVarPtr> coeffs;
-    for (const auto &[pre,post]: ptp) {
+    for (const auto &[pre,post]: ptp.get<Arrays<Arith>>()) {
         if (pre == its->getLocVar()->var()) {
             continue;
         }

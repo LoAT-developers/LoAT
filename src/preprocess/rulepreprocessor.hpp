@@ -10,7 +10,7 @@ class RulePreprocessor {
     linked_hash_map<RulePtr, RulePtr> replacements;
 
 public:
-    explicit RulePreprocessor(const ITSPtr& its);
+    explicit RulePreprocessor(ITSPtr its);
     std::optional<SmtResult> run();
 
     template <class CEX>

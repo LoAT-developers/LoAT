@@ -53,8 +53,8 @@ bool TRL::handle_loop(const Range &range) {
                     std::vector{
                         arith::mkGt(*rf, arith::zero()),
                         arith::mkGt(
-                            (*rf)->renameVars(post_to_pre.get<Arrays<Arith>>()),
-                            (*rf)->renameVars(t.pre_to_post().get<Arrays<Arith>>()))
+                            (*rf)->renameVars(post_to_pre),
+                            (*rf)->renameVars(t.pre_to_post()))
                     });
             loop = loop && termination_argument;
         } else {

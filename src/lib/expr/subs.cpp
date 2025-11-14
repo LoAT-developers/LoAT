@@ -305,10 +305,10 @@ Bools::Expr Subs::operator()(const Lit& lit) const {
     return theory::apply(
         lit,
         [&](const Bools::Lit& lit) {
-            return lit->subs(get<Bools>());
+            return lit->subs(*this);
         },
         [&](const auto& lit) -> Bools::Expr {
-            return bools::mkLit(lit->subs(get<Arrays<Arith>>()));
+            return bools::mkLit(lit->subs(*this));
         });
 }
 
@@ -319,23 +319,16 @@ Expr Subs::operator()(const Expr& expr) const {
             return expr->subs(*this);
         },
         [&](const auto& expr) -> Expr {
-            return expr->subs(get<Arrays<Arith>>());
+            return expr->subs(*this);
         }
     );
 }
 
-Subs Subs::concat(const ArraySubs<Arith> &that) const {
+Subs Subs::concat(const Subs &that) const {
     Subs res;
     theory::iter(t, [&]<typename T>(const T& t) {
         std::get<T>(res.t) = t.concat(that);
     });
-    return res;
-}
-
-Subs Subs::concat(const BoolSubs &that) const {
-    Subs res {*this};
-    auto& b {std::get<Bools::Subs>(res.t)};
-    b = b.concat(that);
     return res;
 }
 
@@ -352,7 +345,7 @@ Subs Subs::concat(const Renaming &that) const {
     theory::iter(
         t,
         [&](const ArraySubs<Arith>& t) {
-            std::get<ArraySubs<Arith>>(res.t) = t.concat(that.get<Arrays<Arith>>());
+            std::get<ArraySubs<Arith>>(res.t) = t.concat(that);
         },
         [&](const BoolSubs& t) {
             std::get<BoolSubs>(res.t) = ::concat(t, that);

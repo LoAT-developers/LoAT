@@ -31,12 +31,12 @@ void TRP::recurrent_pseudo_divisibility(const Bools::Expr& loop, const ModelPtr 
         if (const auto div{l->isDivisibility()}) {
             const auto &[t, mod]{*div};
             if (const auto vars{t->vars()}; std::ranges::all_of(vars, theory::isProgVar)) {
-                const auto post{t->renameVars(pre_to_post.get<Arrays<Arith>>())};
+                const auto post{t->renameVars(pre_to_post)};
                 if (auto diff{model->eval(t) - model->eval(post)}; diff % mod == 0) {
                     res_lits.insert(arith::mkEq(arith::mkMod(post, arith::mkConst(mod)), arith::zero()));
                 }
             } else if (std::ranges::all_of(vars, theory::isPostVar)) {
-                const auto pre{t->renameVars(post_to_pre.get<Arrays<Arith>>())};
+                const auto pre{t->renameVars(post_to_pre)};
                 if (auto diff{model->eval(t) - model->eval(pre)}; diff % mod == 0) {
                     res_lits.insert(arith::mkEq(arith::mkMod(pre, arith::mkConst(mod)), arith::zero()));
                 }
@@ -140,7 +140,7 @@ void TRP::recurrent_cycles(const Bools::Expr& loop, const linked_hash_set<ArithV
                 if (!other_eq) {
                     break;
                 }
-                eq = eq->subs(ArraySubs<Arith>({{other->var(), arrays::update(other, *other_eq)}}));
+                eq = eq->subs(Subs::build(other->var(), arrays::update(other, *other_eq)));
                 cells = (*other_eq)->cells();
                 if (cells.size() != 1) {
                     break;
@@ -160,8 +160,8 @@ void TRP::recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithV
     assert(loop->isConjunction());
     BoolExprSet delta_eqs{loop};
     std::unordered_map<Cell, ArithVarPtr> deltas;
-    Arrays<Arith>::Subs subs;
-    Arrays<Arith>::Subs zeros;
+    Subs subs;
+    Subs zeros;
     const auto cells {loop->cells().get<ArithVarPtr>()};
     for (const auto &pre : pre_cells) {
         const auto post{pre->renameVars(pre_to_post.get<Arrays<Arith>>())};
@@ -258,8 +258,7 @@ void TRP::recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithV
 Bools::Expr TRP::recurrent(const Bools::Expr& loop, const ModelPtr &model) {
     assert(loop->isConjunction());
     linked_hash_set<ArithVarPtr> pre_cells;
-    const auto cells {loop->cells().get<ArithVarPtr>()};
-    for (const auto& c: cells) {
+    for (const auto cells {loop->cells().get<ArithVarPtr>()}; const auto& c: cells) {
         if (c->isProgCell()) {
             pre_cells.insert(c);
         } else if (c->isPostCell()) {

@@ -65,67 +65,68 @@ void LoopAcceleration::compute_closed_form() {
     // and temporary variables without upper bounds. Such updates are pretty much equivalent to x = *,
     // but accelerating them sometimes yields quite complex expressions. Hence, we do not accelerate them.
     for (const auto &[x_arr, y_arr] : rule->getUpdate().get<Arrays<Arith>>()) {
-        assert(x_arr->dim() == 0);
-        const auto x {*arrays::readConst(x_arr)->someVar()};
-        if (const auto y {arrays::readConst(y_arr)}; y->has(x) && y->hasVarWith(is_temp_var)) {
-            const auto cells{y->cells()};
-            auto all_lower_bounded{true};
-            auto all_upper_bounded{true};
-            for (const auto &z : cells) {
-                // check all temporary variables
-                if (z->isTempVar()) {
-                    // we can only check boundedness for linear expressions
-                    if (!y->isLinear({{z}})) {
-                        fail();
-                        return;
-                    }
-                    // we can only check boundedness if z's coefficient is a constant
-                    const auto c {(*y->coeff(z))->isRational()};
-                    if (!c) {
-                        fail();
-                        return;
-                    }
-                    const auto coeff{***c};
-                    const auto bounds{rule->getGuard()->getBounds(z)};
-                    auto lower_bounded{false};
-                    auto upper_bounded{false};
-                    // check if z is bounded
-                    for (const auto & [bound, kind] : bounds) {
-                        // early exit
-                        if (lower_bounded && upper_bounded) {
-                            break;
+        if (x_arr->dim() == 0) {
+            const auto x {*arrays::readConst(x_arr)->someVar()};
+            if (const auto y {arrays::readConst(y_arr)}; y->has(x) && y->hasVarWith(is_temp_var)) {
+                const auto cells{y->cells()};
+                auto all_lower_bounded{true};
+                auto all_upper_bounded{true};
+                for (const auto &z : cells) {
+                    // check all temporary variables
+                    if (z->isTempVar()) {
+                        // we can only check boundedness for linear expressions
+                        if (!y->isLinear({{z}})) {
+                            fail();
+                            return;
                         }
-                        // only consider bounds without temporary variables to keep things simple
-                        if (!bound->hasVarWith(is_temp_var)) {
-                            switch (kind) {
-                            case BoundKind::Equality:
-                                lower_bounded = true;
-                                upper_bounded = true;
-                                break;
-                            case BoundKind::Lower:
-                                if (coeff > 0) {
-                                    lower_bounded = true;
-                                } else {
-                                    upper_bounded = true;
-                                }
-                                break;
-                            case BoundKind::Upper:
-                                if (coeff > 0) {
-                                    upper_bounded = true;
-                                } else {
-                                    lower_bounded = true;
-                                }
+                        // we can only check boundedness if z's coefficient is a constant
+                        const auto c {(*y->coeff(z))->isRational()};
+                        if (!c) {
+                            fail();
+                            return;
+                        }
+                        const auto coeff{***c};
+                        const auto bounds{rule->getGuard()->getBounds(z)};
+                        auto lower_bounded{false};
+                        auto upper_bounded{false};
+                        // check if z is bounded
+                        for (const auto & [bound, kind] : bounds) {
+                            // early exit
+                            if (lower_bounded && upper_bounded) {
                                 break;
                             }
+                            // only consider bounds without temporary variables to keep things simple
+                            if (!bound->hasVarWith(is_temp_var)) {
+                                switch (kind) {
+                                case BoundKind::Equality:
+                                    lower_bounded = true;
+                                    upper_bounded = true;
+                                    break;
+                                case BoundKind::Lower:
+                                    if (coeff > 0) {
+                                        lower_bounded = true;
+                                    } else {
+                                        upper_bounded = true;
+                                    }
+                                    break;
+                                case BoundKind::Upper:
+                                    if (coeff > 0) {
+                                        upper_bounded = true;
+                                    } else {
+                                        lower_bounded = true;
+                                    }
+                                    break;
+                                }
+                            }
                         }
-                    }
-                    all_lower_bounded &= lower_bounded;
-                    all_upper_bounded &= upper_bounded;
-                    // fail if at least one temporary variable has no lower bound,
-                    // and at least one temporary variable has no upper bound
-                    if (!all_lower_bounded && !all_upper_bounded) {
-                        fail();
-                        return;
+                        all_lower_bounded &= lower_bounded;
+                        all_upper_bounded &= upper_bounded;
+                        // fail if at least one temporary variable has no lower bound,
+                        // and at least one temporary variable has no upper bound
+                        if (!all_lower_bounded && !all_upper_bounded) {
+                            fail();
+                            return;
+                        }
                     }
                 }
             }
@@ -192,10 +193,12 @@ void LoopAcceleration::removeTrivialUpdates() {
     Subs update = rule->getUpdate();
     VarSet remove;
     for (const auto &[x_arr, v_arr] : update.get<Arrays<Arith>>()) {
-        assert(x_arr->dim() == 0);
-        const auto x{*arrays::readConst(x_arr)->someVar()};
-        if (rule->getGuard()->getEquality(x) == std::optional{arrays::readConst(v_arr)}) {
-            remove.insert(x->var());
+        // TODO do the same for arrays
+        if (x_arr->dim() == 0) {
+            const auto x{*arrays::readConst(x_arr)->someVar()};
+            if (rule->getGuard()->getEquality(x) == std::optional{arrays::readConst(v_arr)}) {
+                remove.insert(x->var());
+            }
         }
     }
     if (!remove.empty()) {

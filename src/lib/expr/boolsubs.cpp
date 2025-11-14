@@ -83,22 +83,6 @@ BoolSubs BoolSubs::project(const std::function<bool(BoolVarPtr)> &keep) const {
     return res;
 }
 
-BoolSubs BoolSubs::concat(const ArraySubs<Arith>& that) const {
-    BoolSubs res;
-    for (auto &[fst,snd]: *this) {
-        res.put(fst, snd->subs(that));
-    }
-    return res;
-}
-
-BoolSubs BoolSubs::concat(const BoolSubs& that) const {
-    BoolSubs res;
-    for (auto &[fst,snd]: *this) {
-        res.put(fst, that(snd));
-    }
-    return res;
-}
-
 BoolSubs BoolSubs::concat(const Subs& that) const {
     BoolSubs res;
     for (const auto & [key, val]: map) {

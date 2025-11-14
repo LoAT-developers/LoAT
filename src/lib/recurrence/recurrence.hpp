@@ -39,7 +39,7 @@ private:
 
     const ArithVarPtr n;
 
-    const ArraySubs<Arith> n_to_n_minus_one;
+    const Subs n_to_n_minus_one;
 
     linked_hash_map<ArithVarPtr, Arith::Expr> closed_form {};
     /**

@@ -21,9 +21,9 @@ std::optional<Arith::Expr> mbp::closest_lower_bound(const linked_hash_set<Bound>
 }
 
 Bools::Expr mbp::bool_mbp(const Bools::Expr &t, const ModelPtr& model, const Bools::Var& x) {
-    return t->subs(BoolSubs(x, Bools::constToExpr(model->get(x))));
+    return t->subs(Subs::build(x, Bools::constToExpr(model->get(x))));
 }
 
 Bools::Expr mbp::bool_qe(const Bools::Expr &t, const Bools::Var& x) {
-    return t->subs(BoolSubs(x, top())) || t->subs(BoolSubs(x, bot()));
+    return t->subs(Subs::build(x, top())) || t->subs(Subs::build(x, bot()));
 }

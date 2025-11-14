@@ -97,23 +97,11 @@ sexpresso::Sexp BoolLit::to_smtlib() const {
     return res;
 }
 
-BoolLitPtr BoolLit::renameVars(const bool_var_map &map) const {
-    if (const auto it {map.left.find(var)}; it == map.left.end()) {
-        return cpp::assume_not_null(shared_from_this());
-    } else {
-        return bools::mk(it->second, negated);
-    }
-}
-
-BoolExprPtr BoolLit::subs(const BoolSubs& subs) const {
-    const auto res {subs.get(var)};
-    return negated ? !res : res;
+BoolLitPtr BoolLit::renameVars(const Renaming &map) const {
+    return bools::mk(map.get(var), negated);
 }
 
 BoolExprPtr BoolLit::subs(const Subs& subs) const {
-    return this->subs(subs.get<Bools>());
-}
-
-void BoolLit::propagateEquality(Subs&, const std::function<bool(const Var&)>&, VarSet&) {
-    // do nothing
+    const auto res {subs.get(var)};
+    return negated ? !res : res;
 }

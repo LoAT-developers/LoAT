@@ -826,7 +826,7 @@ sexpresso::Sexp ArithExpr::to_smtlib() const {
     );
 }
 
-ArithExprPtr ArithExpr::renameVars(const array_var_map<Arith>& map) const {
+ArithExprPtr ArithExpr::renameVars(const Renaming &map) const {
     return apply<ArithExprPtr>(
         [&](const ArithConstPtr&) {
             return toPtr();
@@ -855,10 +855,6 @@ ArithExprPtr ArithExpr::renameVars(const array_var_map<Arith>& map) const {
             return ArithExp::cache.from_cache(e->getBase()->renameVars(map), e->getExponent()->renameVars(map));
         }
     );
-}
-
-ArithExprPtr ArithExpr::renameVars(const Renaming &map) const {
-    return renameVars(map.get<Arrays<Arith>>());
 }
 
 std::pair<Rational, std::optional<ArithExprPtr>> ArithExpr::decompose() const {
@@ -1014,7 +1010,7 @@ std::ostream& operator<<(std::ostream &s, const ArithVarPtr& x) {
     return s << x->arr();
 }
 
-ArithExprPtr ArithExpr::subs(const ArraySubs<Arith>& subs) const {
+ArithExprPtr ArithExpr::subs(const Subs& subs) const {
     return apply<ArithExprPtr>(
         [&](const ArithConstPtr&) {
             return this->toPtr();
@@ -1049,10 +1045,6 @@ ArithExprPtr ArithExpr::subs(const ArraySubs<Arith>& subs) const {
         [&](const ArithExpPtr& e) {
             return arith::mkExp(e->getBase()->subs(subs), e->getExponent()->subs(subs));
         });
-}
-
-ArithExprPtr ArithExpr::subs(const Subs& subs) const {
-    return this->subs(subs.get<Arrays<Arith>>());
 }
 
 ArithExprPtr ArithExpr::subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>& subs) const {

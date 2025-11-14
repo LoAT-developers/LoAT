@@ -176,8 +176,7 @@ public:
 
     Bools::Expr operator()(const Lit &lit) const;
     Expr operator()(const Expr &expr) const;
-    Subs concat(const ArraySubs<Arith> &that) const;
-    Subs concat(const BoolSubs &that) const;
+    Subs concat(const Subs &that) const;
     Subs concat(const Renaming &that) const;
     Subs compose(const Subs &that) const;
     void collectCoDomainVars(VarSet &res) const;

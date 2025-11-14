@@ -74,18 +74,8 @@ std::size_t ArrayEq<T>::hash() const {
 }
 
 template <class T>
-ArrayLitPtr<T> ArrayEq<T>::subs(const ArraySubs<T>& subs) const {
-    return cache.from_cache(m_lhs->subs(subs), m_rhs->subs(subs));
-}
-
-template <class T>
 ArrayLitPtr<T> ArrayEq<T>::subs(const Subs& subs) const {
     return cache.from_cache(m_lhs->subs(subs), m_rhs->subs(subs));
-}
-
-template <class T>
-ArrayLitPtr<T> ArrayEq<T>::renameVars(const array_var_map<T>& map) const {
-    return cache.from_cache(m_lhs->renameVars(map), m_rhs->renameVars(map));
 }
 
 template <class T>
@@ -190,13 +180,13 @@ std::size_t ArrayNeq<T>::hash() const {
 }
 
 template <class T>
-ArrayLitPtr<T> ArrayNeq<T>::subs(const ArraySubs<T>& subs) const {
+ArrayLitPtr<T> ArrayNeq<T>::subs(const Subs& subs) const {
     return cache.from_cache(m_lhs->subs(subs), m_rhs->subs(subs));
 }
 
 template <class T>
-ArrayLitPtr<T> ArrayNeq<T>::renameVars(const array_var_map<T>& map) const {
-    return cache.from_cache(m_lhs->renameVars(map), m_rhs->renameVars(map));
+void ArrayNeq<T>::propagateEquality(Subs& subs, const std::function<bool(const Var&)>& allow, VarSet& blocked) const {
+    // do nothing
 }
 
 template <class T>

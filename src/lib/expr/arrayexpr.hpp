@@ -53,9 +53,8 @@ class Array: public std::enable_shared_from_this<Array<T>> {
     virtual unsigned dim() const = 0;
     virtual std::optional<ArrayVarPtr<T>> isVar() const = 0;
     virtual std::optional<ArrayWritePtr<T>> isArrayWrite() const = 0;
-    virtual ArrayPtr<T> renameVars(const array_var_map<T>&) const = 0;
     virtual ArrayPtr<T> renameVars(const Renaming&) const = 0;
-    virtual ArrayPtr<T> subs(const ArraySubs<T>&) const = 0;
+    virtual ArrayPtr<T> subs(const Subs&) const = 0;
     virtual ArrayPtr<T> withVar(const ArrayVarPtr<T>&) const = 0;
     virtual bool isLinear() const = 0;
     virtual bool isPoly() const = 0;
@@ -121,13 +120,12 @@ public:
 
     std::optional<ArrayWritePtr<T>> isArrayWrite() const override;
 
-    ArrayPtr<T> renameVars(const array_var_map<T>& map) const override;
     ArrayPtr<T> renameVars(const Renaming&) const override;
 
     void collectVars(VarSet& xs) const override;
 
     sexpresso::Sexp to_smtlib() const override;
-    ArrayPtr<T> subs(const ArraySubs<T>&) const override;
+    ArrayPtr<T> subs(const Subs&) const override;
     ArrayPtr<T> withVar(const ArrayVarPtr<T>&) const override;
     bool isLinear() const override;
     bool isPoly() const override;
@@ -149,6 +147,10 @@ int ArrayVar<T>::last_prog_idx {-1};
 template <class T>
 std::ostream& operator<<(std::ostream &s, const ArrayVarPtr<T> a) {
     return s << a->getName();
+}
+
+namespace arrays {
+    std::optional<std::vector<Arith::Expr>> indices(size_t, const Bools::Expr&);
 }
 
 template <class T>
@@ -189,13 +191,12 @@ public:
 
     std::optional<ArrayWritePtr<T>> isArrayWrite() const override;
 
-    ArrayPtr<T> renameVars(const array_var_map<T>& map) const override;
     ArrayPtr<T> renameVars(const Renaming&) const override;
 
     void collectVars(VarSet& xs) const override;
 
     sexpresso::Sexp to_smtlib() const override;
-    ArrayPtr<T> subs(const ArraySubs<T>&) const override;
+    ArrayPtr<T> subs(const Subs&) const override;
     ArrayPtr<T> withVar(const ArrayVarPtr<T>&) const override;
     bool isLinear() const override;
     bool isPoly() const override;

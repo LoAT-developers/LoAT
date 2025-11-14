@@ -1,7 +1,10 @@
 #include "rulepreprocessor.hpp"
+
 #include "rulepreprocessing.hpp"
 
-RulePreprocessor::RulePreprocessor(const ITSPtr& its): its(its) {}
+#include <utility>
+
+RulePreprocessor::RulePreprocessor(ITSPtr its): its(std::move(its)) {}
 
 std::optional<SmtResult> RulePreprocessor::run() {
     std::vector<RulePtr> remove;

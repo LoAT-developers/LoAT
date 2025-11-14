@@ -3,6 +3,7 @@
 #include <utility>
 #include "sexpresso.hpp"
 #include "renaming.hpp"
+#include "subs.hpp"
 
 template <class T>
 VarSet Array<T>::vars() const {
@@ -110,13 +111,6 @@ std::optional<ArrayWritePtr<T>> ArrayVar<T>::isArrayWrite() const {
 }
 
 template <class T>
-ArrayPtr<T> ArrayVar<T>::renameVars(const array_var_map<T>& map) const {
-    const auto x{var()};
-    const auto it{map.left.find(x)};
-    return it == map.left.end() ? x : it->second;
-}
-
-template <class T>
 ArrayPtr<T> ArrayVar<T>::renameVars(const Renaming& map) const {
     return map.get(var());
 }
@@ -132,7 +126,7 @@ sexpresso::Sexp ArrayVar<T>::to_smtlib() const {
 }
 
 template <class T>
-ArrayPtr<T> ArrayVar<T>::subs(const ArraySubs<T>& subs) const {
+ArrayPtr<T> ArrayVar<T>::subs(const Subs& subs) const {
     return subs.get(var());
 }
 
@@ -220,11 +214,6 @@ std::optional<ArrayWritePtr<T>> ArrayWrite<T>::isArrayWrite() const {
 }
 
 template <class T>
-ArrayPtr<T> ArrayWrite<T>::renameVars(const array_var_map<T>& map) const {
-    return renameVars(Renaming::build<Arrays<T>>(map));
-}
-
-template <class T>
 ArrayPtr<T> ArrayWrite<T>::renameVars(const Renaming& map) const {
     return arrays::mkArrayWrite(m_arr->renameVars(map), m_cond->renameVars(map), m_val->renameVars(map));
 }
@@ -287,7 +276,7 @@ sexpresso::Sexp ArrayWrite<T>::to_smtlib() const {
 }
 
 template <class T>
-ArrayPtr<T> ArrayWrite<T>::subs(const ArraySubs<T>& subs) const {
+ArrayPtr<T> ArrayWrite<T>::subs(const Subs& subs) const {
     auto restricted = subs;
     // remove bound variables
     for (size_t i = 0; i < dim(); ++i) {
@@ -327,22 +316,21 @@ void ArrayWrite<T>::collectCells(CellSet& res) const {
     }
 }
 
-template <class T>
-std::optional<std::vector<Arith::Expr>> ArrayWrite<T>::indices() const {
-    if (!m_cond->isConjunction()) {
+std::optional<std::vector<Arith::Expr>> arrays::indices(const size_t dim, const Bools::Expr& cond) {
+    if (!cond->isConjunction()) {
         return std::nullopt;
     }
-    const auto lits = m_cond->lits();
-    if (lits.size() != dim()) {
+    const auto lits = cond->lits();
+    if (lits.size() != dim) {
         return std::nullopt;
     }
     const auto& arith_lits = lits.get<Arith::Lit>();
-    if (arith_lits.size() != dim()) {
+    if (arith_lits.size() != dim) {
         return std::nullopt;
     }
     linked_hash_set<ArithVarPtr> indices;
-    for (size_t i = 0; i < dim(); ++i) {
-        indices.insert(arrays::array_idx(i));
+    for (size_t i = 0; i < dim; ++i) {
+        indices.insert(array_idx(i));
     }
     std::vector<Arith::Expr> res;
     for (const auto& idx: indices) {
@@ -364,6 +352,11 @@ std::optional<std::vector<Arith::Expr>> ArrayWrite<T>::indices() const {
         }
     }
     return res;
+}
+
+template <class T>
+std::optional<std::vector<Arith::Expr>> ArrayWrite<T>::indices() const {
+    return arrays::indices(dim(), m_cond);
 }
 
 template <class T>
@@ -502,7 +495,7 @@ ArrayReadPtr<Arith> arrays::mkArrayRead(const ArrayVarPtr<Arith>& arr, const std
 Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices) {
     assert(arr->dim() == indices.size());
     if (const auto write {arr->isArrayWrite()}; write) {
-        ArraySubs<Arith> subs;
+        Subs subs;
         for (size_t i = 0; i < indices.size(); ++i) {
             subs.put(array_idx(i)->var(), writeConst(indices.at(i)));
         }
@@ -518,14 +511,29 @@ Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Ar
 }
 
 ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const Bools::Expr& cond, const Arith::Expr& val) {
+    if (const auto write {arr->isArrayWrite()}) {
+        if (cond == (*write)->cond()) {
+            return mkArrayWrite((*write)->arr(), cond, val);
+        }
+    }
+    if (const auto read = val->isVar()) {
+        // a[...] := b[j]
+        if ((*read)->var() == arr) {
+            // a[...] := a[j]
+            if (const auto w_indices = indices(arr->dim(), cond)) {
+                // a[i] := a[j]
+                if (w_indices == (*read)->indices()) {
+                    // a[i] := a[i]
+                    return arr;
+                }
+            }
+        }
+    }
     if (arr->dim() == 0) {
         if (cond != top()) {
             throw std::invalid_argument("conditional array write to scalar");
         }
         return ArrayWrite<Arith>::cache.from_cache(ArrayVar<Arith>::dummyConst(), top(), val);
-    }
-    if (const auto write {arr->isArrayWrite()}; write && cond == (*write)->cond()) {
-        return mkArrayWrite((*write)->arr(), cond, val);
     }
     return ArrayWrite<Arith>::cache.from_cache(arr, cond, val);
 }
@@ -585,14 +593,14 @@ std::ostream& operator<<(std::ostream& s, const ArrayPtr<T>& a) {
             s << " " << write->val() << ")";
         }
     } else {
-        s << "lambda";
+        s << "(lambda ";
         std::vector<Arith::Expr> indices;
         for (size_t i = 0; i < a->dim(); ++i) {
             const auto idx = arrays::array_idx(i);
             indices.emplace_back(idx);
-            s << " " << idx->var()->getName();
+            s << "[" << idx->var()->getName() << "]";
         }
-        s << ". if " << write->cond() << " then " << write->val() << " else " << arrays::mkArrayRead(write->arr(), indices);
+        s << " (ite (" << write->cond() << ") (" << write->val() << ") " << arrays::mkArrayRead(write->arr(), indices) << ")";
     }
     return s;
 }

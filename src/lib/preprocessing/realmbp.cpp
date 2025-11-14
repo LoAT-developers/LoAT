@@ -8,10 +8,10 @@ Bools::Expr real_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVar
         return b.kind == BoundKind::Equality;
     })};
     if (it != bounds.end()) {
-        return t->subs(ArraySubs<Arith>{{x->var(), arrays::update(x, it->bound)}});
+        return t->subs(Subs::build(x->var(), arrays::update(x, it->bound)));
     }
     if (const auto closest {mbp::closest_lower_bound(bounds, model, x)}) {
-        return t->subs(ArraySubs<Arith>{{x->var(), arrays::update(x, *closest)}});
+        return t->subs(Subs::build(x->var(), arrays::update(x, *closest)));
     }
     return t->toMinusInfinity(x);
 }

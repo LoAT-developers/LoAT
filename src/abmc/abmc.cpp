@@ -142,7 +142,7 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
     if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
         return top();
     }
-    const auto orig {loop.idx->subs(ArraySubs<Arith>{{n->var(), arrays::update(n, arith::one())}})};
+    const auto orig {loop.idx->subs(Subs::build(n->var(), arrays::update(n, arith::one())))};
     const auto length{depth - backlink + 1};
     // we must not start another iteration of the loop in the next step,
     // so we require that we either use the learned transition,
@@ -236,8 +236,6 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
     }
     std::optional<Loop> res {};
     auto covered {top()};
-    std::cout << *loop << std::endl;
-    std::cout << *simp << std::endl;
     if (const auto deterministic{simp->isDeterministic()}; Config::Analysis::safety() && !deterministic) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
     } else if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().compose(simp->getUpdate())) {
@@ -493,7 +491,7 @@ ITSModel ABMC::get_model() {
         model.set_invariant(
             l,
             m->subs(
-                ArraySubs<Arith>{{its->getLocVar()->var(), arrays::update(its->getLocVar(), arith::mkConst(l))}}));
+                Subs::build(its->getLocVar()->var(), arrays::update(its->getLocVar(), arith::mkConst(l)))));
     }
     model.set_invariant(its->getInitialLocation(), top());
     return model;

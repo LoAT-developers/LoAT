@@ -46,9 +46,7 @@ public:
         return update.get<Th>();
     }
 
-    RulePtr subs(const ArraySubs<Arith>&) const;
-
-    RulePtr subs(const BoolSubs&) const;
+    RulePtr subs(const Subs&) const;
 
     RulePtr renameVars(const Renaming &subs) const;
 

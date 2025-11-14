@@ -37,9 +37,7 @@ public:
 
     virtual sexpresso::Sexp to_smtlib() const = 0;
     virtual std::size_t hash() const = 0;
-    virtual ArrayLitPtr<T> subs(const ArraySubs<T>&) const = 0;
     virtual ArrayLitPtr<T> subs(const Subs&) const = 0;
-    virtual ArrayLitPtr<T> renameVars(const array_var_map<T>&) const = 0;
     virtual ArrayLitPtr<T> renameVars(const Renaming&) const = 0;
     virtual void collectVars(VarSet&) const = 0;
     virtual void collectCells(CellSet&) const = 0;
@@ -88,9 +86,6 @@ public:
 
     std::size_t hash() const override;
 
-    ArrayLitPtr<T> subs(const ArraySubs<T>& subs) const override;
-
-    ArrayLitPtr<T> renameVars(const array_var_map<T>&) const override;
     ArrayLitPtr<T> renameVars(const Renaming&) const override;
 
     void collectVars(VarSet&) const override;
@@ -144,9 +139,6 @@ public:
 
     std::size_t hash() const override;
 
-    ArrayLitPtr<T> subs(const ArraySubs<T>& subs) const override;
-
-    ArrayLitPtr<T> renameVars(const array_var_map<T>&) const override;
     ArrayLitPtr<T> renameVars(const Renaming&) const override;
 
     void collectVars(VarSet&) const override;
@@ -157,6 +149,8 @@ public:
 
     std::optional<ArrayNeqPtr<T>> isArrayNeq() const override;
     void collectCells(CellSet&) const override;
+    ArrayLitPtr<T> subs(const Subs&) const override;
+    void propagateEquality(Subs& subs, const std::function<bool(const Var&)>& allow, VarSet& blocked) const override;
 };
 
 template <class T>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "theory.hpp"
+#include "subs.hpp"
 
 #include <functional>
 #include <stack>
@@ -14,7 +15,7 @@ public:
 
     VarEliminator(const Bools::Expr& guard, const ArithVarPtr& N, const std::function<bool(ArithVarPtr)> &keep);
 
-    linked_hash_set<ArraySubs<Arith>> getRes() const;
+    linked_hash_set<Subs> getRes() const;
 
 private:
 
@@ -29,8 +30,8 @@ private:
      * Tries to eliminate a single dependency by instantiating it with a constant bound.
      * Creates a new branch (i.e., a new entry in todoDeps) for every possible instantiation.
      */
-    std::vector<std::pair<ArraySubs<Arith>, Bools::Expr>> eliminateDependency(
-        const ArraySubs<Arith>& subs,
+    std::vector<std::pair<Subs, Bools::Expr>> eliminateDependency(
+        const Subs& subs,
         const Bools::Expr& guard) const;
 
     /**
@@ -49,18 +50,18 @@ private:
      * Each entry represents one branch in the search for suitable instantiations of dependencies.
      * Entries that do not allow for further instantiation are moved to todoN.
      */
-    std::stack<std::pair<ArraySubs<Arith>, Bools::Expr>> todoDeps {};
+    std::stack<std::pair<Subs, Bools::Expr>> todoDeps {};
 
     /**
      * Each entry represents one possibility to instantiate dependencies exhaustively.
      * N still needs to be eliminated.
      */
-    std::vector<std::pair<ArraySubs<Arith>, Bools::Expr>> todoN {};
+    std::vector<std::pair<Subs, Bools::Expr>> todoN {};
 
     /**
      * Substitutions that are suitable to eliminate N.
      */
-    linked_hash_set<ArraySubs<Arith>> res {};
+    linked_hash_set<Subs> res {};
 
     linked_hash_set<ArithVarPtr> dependencies {};
 

@@ -27,7 +27,6 @@ private:
     Rational toRational(term_t t) const;
     Int toInt(term_t t) const;
 
-private:
     YicesContext m_ctx;
     std::shared_ptr<model_t> m_model;
 

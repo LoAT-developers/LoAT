@@ -6,9 +6,7 @@
 namespace Preprocess {
     Bools::Expr preprocessFormula(
         Bools::Expr,
-        const std::function<bool(const ArrayVarPtr<Arith>&)>& allow = [](const auto& x) {
-            return x->isTempVar();
-        });
+        const std::function<bool(const Var&)>& allow = theory::isTempVar);
 
     Bools::Expr simplifyAnd(const Bools::Expr& e);
 

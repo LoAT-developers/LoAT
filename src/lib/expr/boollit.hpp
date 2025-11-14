@@ -49,10 +49,8 @@ public:
     std::size_t hash() const;
     bool eval(const linked_hash_map<BoolVarPtr, bool> &model) const;
     sexpresso::Sexp to_smtlib() const;
-    BoolLitPtr renameVars(const bool_var_map &map) const;
-    BoolExprPtr subs(const BoolSubs &subs) const;
+    BoolLitPtr renameVars(const Renaming &map) const;
     BoolExprPtr subs(const Subs &subs) const;
-    static void propagateEquality(Subs &subs, const std::function<bool(const Var&)> &allow, VarSet &blocked);
 
 };
 

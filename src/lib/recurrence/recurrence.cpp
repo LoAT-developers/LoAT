@@ -10,7 +10,7 @@
 Recurrence::Recurrence(Subs equations, ArithVarPtr n) :
     equations(std::move(equations)),
     n(std::move(n)),
-    n_to_n_minus_one{{this->n->var(), arrays::writeConst(this->n - arith::one())}} {}
+    n_to_n_minus_one(Subs::build(this->n->var(), arrays::writeConst(this->n - arith::one()))) {}
 
 std::optional<std::tuple<Int, Int, Arith::Expr>> Recurrence::handle_exp(const ArithExpPtr &pow) const {
     Int degree{0};
@@ -62,7 +62,7 @@ Arith::Expr Recurrence::compute_r(const Arith::Expr& q, const Rational &c) {
         c == 1
             ? (cd * arith::mkExp(n, arith::mkConst(d + 1)))->divide(d + 1)
             : (cd * arith::mkExp(n, arith::mkConst(d)))->divide(1 - c);
-    const ArraySubs<Arith> subs {{n->var(), arrays::update(n, n-arith::one())}};
+    const Subs subs = Subs::build(n->var(), arrays::update(n, n-arith::one()));
     return s + compute_r(q - s + arith::mkConst(c) * s->subs(subs), c);
 }
 
@@ -189,7 +189,7 @@ bool Recurrence::solve(const ArithVarPtr& x, const Arith::Expr& rhs) {
             const auto alpha_divided {alpha->divide(b)};
             // first addend of the last line from (10)
             const auto fst {alpha_divided * r * arith::mkExp(arith::mkConst(b), n)};
-            const ArraySubs<Arith> subs {{n->var(), arrays::update(n, arith::zero())}};
+            const auto subs = Subs::build(n->var(), arrays::update(n, arith::zero()));
             // negated second addend of the last line from (10), which is simples, as c=-1
             const auto snd {r->subs(subs) * alpha_divided * arith::mkExp(arith::mkConst(m), n)};
             res.push_back(fst);
@@ -250,7 +250,7 @@ signed char compare_lexicographically(const Recurrence::Idx& a_idx, const Recurr
 std::optional<std::vector<ArithConstPtr>> Recurrence::compute_shift(const Idx& idx) const {
     std::vector<ArithConstPtr> shift;
     for (const auto & i : idx) {
-        const auto diff{i - i->subs(equations)};
+        const auto diff{i->subs(equations) - i};
         if (const auto d{diff->isRational()}) {
             shift.emplace_back(*d);
         } else {
@@ -343,10 +343,10 @@ bool Recurrence::solve() {
         });
     };
     for (const auto& [lval, val] : written) {
-        if (is_inductive(lval, val)) {
-            inductive.emplace(lval);
-        } else if (is_displacing(lval, val)) {
+        if (is_displacing(lval, val)) {
             displacing.emplace(lval);
+        } else if (is_inductive(lval, val)) {
+            inductive.emplace(lval);
         } else {
             return false;
         }
@@ -368,7 +368,6 @@ bool Recurrence::solve() {
                 if (inductive.contains(lval)) {
                     if (solve(lval, val)) {
                         changed = true;
-                        it = a_work_list.erase(it);
                     } else {
                         // failed to compute closed form for this lval
                         return false;
@@ -382,6 +381,7 @@ bool Recurrence::solve() {
                     closed_form.put(lval, updated);
                     closed_form_n_minus_one.put(std::pair(lval, updated->subs(n_to_n_minus_one)));
                 }
+                it = a_work_list.erase(it);
             } else {
                 // this lval is not yet ready
                 ++it;
@@ -481,15 +481,19 @@ bool Recurrence::solve() {
         return bools::mkAnd(lits) && mk_arr_not_written(lval->var(), *m + arith::one());
     };
     for (const auto& [lval,r]: written) {
-        const auto var = lval->var();
-        const auto old_val = result.closed_form.get(var);
-        const auto cond = mk_last_write(lval);
-        if (inductive.contains(lval)) {
-            const auto new_val = closed_form.at(lval);
-            result.closed_form.put(var, arrays::mkArrayWrite(old_val, cond, new_val));
+        if (lval->dim() == 0) {
+            result.closed_form.update(lval, closed_form.at(lval));
         } else {
-            const auto new_val = r->subs(closed_form_n_minus_one.get<ArithVarPtr, Arith::Expr>());
-            result.closed_form.put(var, arrays::mkArrayWrite(old_val, cond, new_val));
+            const auto var = lval->var();
+            const auto old_val = result.closed_form.get(var);
+            const auto cond = mk_last_write(lval);
+            if (inductive.contains(lval)) {
+                const auto new_val = closed_form.at(lval);
+                result.closed_form.put(var, arrays::mkArrayWrite(old_val, cond, new_val));
+            } else {
+                const auto new_val = r->subs(closed_form_n_minus_one.get<ArithVarPtr, Arith::Expr>());
+                result.closed_form.put(var, arrays::mkArrayWrite(old_val, cond, new_val));
+            }
         }
     }
     return true;

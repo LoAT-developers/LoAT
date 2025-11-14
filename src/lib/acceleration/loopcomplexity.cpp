@@ -22,12 +22,13 @@ LoopComplexity LoopComplexity::compute(const RulePtr& rule) {
             });
     }
     for (const auto &[x_arr, v_arr] : rule->getUpdate<Arrays<Arith>>()) {
-        assert(x_arr->dim() == 0);
-        const auto x {*arrays::readConst(x_arr)->someVar()};
-        if (const auto v {arrays::readConst(v_arr)}; v->has(x) && v->isPoly(x) == 1) {
-            if (const auto coeff{v->coeff(x)}) {
-                if (const auto c{(*coeff)->isRational()}; c && ***c < 0) {
-                    ++res.negated_int;
+        if (x_arr->dim() == 0) {
+            const auto x {*arrays::readConst(x_arr)->someVar()};
+            if (const auto v {arrays::readConst(v_arr)}; v->has(x) && v->isPoly(x) == 1) {
+                if (const auto coeff{v->coeff(x)}) {
+                    if (const auto c{(*coeff)->isRational()}; c && ***c < 0) {
+                        ++res.negated_int;
+                    }
                 }
             }
         }

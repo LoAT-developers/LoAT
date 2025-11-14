@@ -255,19 +255,15 @@ bool ArithLit::has(const ArithVarPtr& x) const {
     return l->has(x);
 }
 
-ArithLitPtr ArithLit::subs(const ArraySubs<Arith> &map) const {
-    return mk(l->subs(map), kind);
-}
-
 ArithLitPtr ArithLit::subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>& map) const {
     return mk(l->subs(map), kind);
 }
 
 ArithLitPtr ArithLit::subs(const Subs& map) const {
-    return subs(map.get<Arrays<Arith>>());
+    return mk(l->subs(map), kind);
 }
 
-ArithLitPtr ArithLit::renameVars(const array_var_map<Arith> &map) const {
+ArithLitPtr ArithLit::renameVars(const Renaming &map) const {
     return mk(l->renameVars(map), kind);
 }
 

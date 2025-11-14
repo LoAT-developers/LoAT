@@ -99,8 +99,6 @@ public:
     sexpresso::Sexp to_smtlib() const;
     BoolExprSet get_disjuncts() const;
     std::optional<Bools::Var> isVar() const;
-    Bools::Expr subs(const BoolSubs&) const;
-    Bools::Expr subs(const Arrays<Arith>::Subs&) const;
     Bools::Expr subs(const Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr>&) const;
     Bools::Expr subs(const Subs&) const;
     Bools::Expr renameVars(const Renaming&) const;

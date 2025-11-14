@@ -21,11 +21,14 @@ std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
     for (const auto& p : rule->getUpdate()) {
         theory::apply(
             p,
-            [&](const auto& p) {
-                const auto& [fst, snd]{p};
-                using T = decltype(theory::theory(fst));
-                if (T::varToExpr(fst) == snd) {
-                    remove.insert(fst);
+            [&](const std::pair<Bools::Var, Bools::Expr>& p) {
+                if (bools::mkLit(bools::mk(p.first)) == p.second) {
+                    remove.insert(p.first);
+                }
+            },
+            [&](const std::pair<Arrays<Arith>::Var, Arrays<Arith>::Expr>& p) {
+                if (p.first == p.second) {
+                    remove.insert(p.first);
                 }
             });
     }
@@ -43,9 +46,7 @@ std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
 
 RulePtr propagateEqualities(const RulePtr &rule) {
     if (const auto subs{
-        rule->getGuard()->propagateEqualities([](const auto& x) {
-            return x->isTempVar();
-        })
+        rule->getGuard()->propagateEqualities(theory::isTempVar)
     }; subs.empty()) {
         return rule;
     } else {
