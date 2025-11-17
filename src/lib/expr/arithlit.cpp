@@ -198,6 +198,7 @@ void ArithLit::propagateEquality(Subs &subs, const std::function<bool(const Var 
                     return !blocked.contains(y);
                 })
                 && allow(x->var())
+                && x->dim() == 0
                 && l->isLinear({{x}})) {
                 if (const auto coeff {l->coeff(x)}; (*coeff)->is(1) || (*coeff)->is(-1)) {
                     const auto t {*l->solve(x)};

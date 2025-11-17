@@ -8,7 +8,7 @@ project(LoAT)
 set(CMAKE_CXX_STANDARD 20)
 
 # non-static build by default
-option(STATIC "static" ON)
+option(STATIC "static" OFF)
 option(SANITIZE "sanitize" OFF)
 option(BUILD_TESTS "tests" ON)
 

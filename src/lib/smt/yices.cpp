@@ -47,7 +47,6 @@ Yices::Yices(const Logic logic): ctx(YicesContext()), config(yices_new_config())
 }
 
 void Yices::add(const Bools::Expr e) {
-    std::cout << e << std::endl;
     if (yices_assert_formula(solver, ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>::convert(e, ctx)) < 0) {
         throw YicesError();
     }
