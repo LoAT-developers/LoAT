@@ -232,7 +232,7 @@ ITSPtr CHCToITS::transform() {
                 up.update(vars[i], arrays::nextConst<Arith>());
             }
             for (unsigned i = arr_arg; i < max_arr_arity; ++i) {
-                up.update(vars[i], arrays::nextConst<Arith>());
+                up.put(avars[i], ArrayVar<Arith>::next(avars[i]->dim()));
             }
             for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
                 up.put(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
