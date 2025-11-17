@@ -123,7 +123,7 @@ jobs:
             start=`date +%s.%N`
 
             set +e
-            output=$(timeout ${{ inputs.timeout }} solver --mode ${{ inputs.mode }} --format horn --engine ${{ inputs.engine }} --direction ${{ inputs.direction }} "${filename}")
+            output=$(timeout ${{ inputs.timeout }} solver --mode ${{ inputs.mode }} --engine ${{ inputs.engine }} --direction ${{ inputs.direction }} "${filename}")
 
             exit_status=$?
             set -e
