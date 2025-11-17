@@ -64,9 +64,6 @@ jobs:
     if: ${{ startsWith(inputs.release, 'HEAD') }}
     uses: ./.github/workflows/build-loat.yml
 
-    if: ${{ startsWith(inputs.release, 'HEAD') }}
-    uses: ./actions/.github/actions/get-loat-build
-
   chc-comp-benchmark:
     runs-on: ubuntu-latest
     needs: [build]
@@ -83,6 +80,9 @@ jobs:
         with:
           sparse-checkout: .github/actions
           path: actions
+
+      - if: ${{ startsWith(inputs.release, 'HEAD') }}
+        uses: ./actions/.github/actions/get-loat-build
 
       - if: ${{ inputs.benchmarks == 'chc25-lia-lin-arrays' }}
         uses: ./actions/.github/actions/chc25-lia-lin-arrays
