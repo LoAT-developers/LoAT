@@ -1,0 +1,177 @@
+name: Run Benchmarks
+
+# Run this action when triggered manually through GitHub UI.
+on:
+  workflow_dispatch:
+    inputs:
+      timeout:
+        required: true
+        type: number
+        default: 30
+      benchmarks:
+        required: true
+        type: choice
+        default: chc23-lia-lin
+        options:
+        - chc22-lia-lin
+        - chc23-lia-lin
+        - chc24-lia-lin
+
+permissions:
+  # deployments permission to deploy GitHub pages website
+  deployments: write
+  # contents permission to update benchmark contents in gh-pages branch
+  contents: write
+
+jobs:
+
+  chc-comp-benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ci_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+        ci_total: [20]
+
+    steps:
+
+      - name: Checkout LoAT Repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+          path: actions
+
+      - if: ${{ inputs.benchmarks == 'chc24-lia-lin' }}
+        uses: ./actions/.github/actions/chc24-lia-lin
+
+      - if: ${{ inputs.benchmarks == 'chc23-lia-lin' }}
+        uses: ./actions/.github/actions/chc23-lia-lin
+
+      - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
+        uses: ./actions/.github/actions/chc22-lia-lin
+
+      - uses: ./actions/.github/actions/get-eld
+
+      - name: Run Benchmark
+        run: |
+          # function to run a single benchmark
+          function benchmark() {
+            filename=$1
+            printf "running ${filename} ... "
+            start=`date +%s.%N`
+
+            set +e
+
+            output=$(timeout ${{ inputs.timeout }} solver "${filename}")
+
+            exit_status=$?
+            set -e
+
+            end=`date +%s.%N`
+            runtime=$( echo "1000 * ($end - $start)" | bc -l )
+            runtime=$( printf %.0f $runtime )
+
+            if [[ $exit_status -eq 0 || $exit_status -eq 124 ]]; then
+              if [[ $exit_status -eq 0 ]]; then
+                result="unknown"
+              else
+                result="timeout"
+              fi
+              for res in $output; do
+                if [[ $res == *sat || $res == YES || $res == NO || $res == WORST_CASE* ]]; then
+                  result=$res
+                fi
+              done
+            else
+              result="error"
+            fi
+
+            printf "${result} after ${runtime}ms\n"
+
+            echo -e "{\"name\": \"$filename\", \"result\": \"$result\", \"runtime\": \"$runtime\"}" >> ${filename}.json
+          }
+
+          # make 'benchmark' available for 'parallel'
+          export -f benchmark
+
+          # permissions are not preserved for artifacts:
+          chmod +x /usr/local/bin/solver
+
+          cd benchmarks
+          bench=()
+          readarray -d '' bench < <(find * -name "*.smt2" -print0)
+
+          # sort the array of benchmarks
+          IFS=$'\n' sorted=($(sort <<<"${bench[*]}"))
+          unset IFS
+
+          my_bench=()
+          i=$CI_INDEX
+          while [[ $i -lt ${#sorted[@]} ]]; do
+            my_bench+=(${sorted[i]})
+            i=$(( i+CI_TOTAL ))
+          done
+
+          if [[ 0 -eq $CI_INDEX ]]; then
+             echo $VERSION > solver.version
+          fi
+
+          # execute benchmarks in parallel
+          parallel benchmark ::: ${my_bench[@]}
+
+        env:
+          CI_TOTAL: ${{ matrix.ci_total }}
+          CI_INDEX: ${{ matrix.ci_index }}
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@master
+        with:
+          name: ${{ inputs.benchmarks }}-${{ matrix.ci_index }}
+          path: |
+            benchmarks/**/*.json
+            benchmarks/*.version
+
+  finalize-benchmark-results:
+    needs: [chc-comp-benchmark]
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout LoAT Repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: benchmarks
+
+      - run: mkdir -p benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.benchmarks }}*
+
+      - name: Merge Benchmark Results
+        run: |
+          declare -A results
+          VERSION=$(cat ${{ inputs.benchmarks }}-0/solver.version)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/eld-$VERSION.json"
+          echo -e "{" > $results
+          echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
+          echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
+          echo -e "\t\"version\": \"$VERSION\"," >> $results
+          echo -e "\t\"timeout\": \"${{ inputs.timeout }}\"," >> $results
+          echo -e "\t\"results\": [" >> $results
+          filenames=$(find ${{ inputs.benchmarks }}* -name *.json)
+          for filename in $filenames; do
+            json=$(cat $filename)
+            echo -e "\t\t$json," >> $results
+          done
+          echo -e "\t]" >> $results
+          echo -e "}" >> $results
+
+      -  uses: EndBug/add-and-commit@v9
+         with:
+           add: 'benchmarks'
+           author_name: Florian Frohn
+           author_email: florian.frohn@cs.rwth-aachen.de
+           fetch: false
+           pull: '--rebase --autostash'
+           message: 'benchmark results; eld; benchmarks: ${{ inputs.benchmarks }}'
