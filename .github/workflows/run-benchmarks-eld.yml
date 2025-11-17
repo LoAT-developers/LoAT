@@ -8,38 +8,6 @@ on:
         required: true
         type: number
         default: 30
-      mode:
-        required: true
-        type: choice
-        options:
-        - safety
-        - termination
-        - complexity
-      engine:
-        required: true
-        type: choice
-        options:
-        - trl
-        - abmc
-        - adcl
-        - adcl_sat
-        - bmc
-        - kind
-      direction:
-        required: true
-        type: choice
-        options:
-        - forward
-        - interleaved
-        - backward
-      release:
-        required: true
-        type: choice
-        options:
-        - HEAD
-      args:
-        required: false
-        type: string
       benchmarks:
         required: true
         type: choice
@@ -48,9 +16,6 @@ on:
         - chc22-lia-lin
         - chc23-lia-lin
         - chc24-lia-lin
-        - chc25-lia-lin-arrays
-        - tpdb-ari-termination
-        - tpdb-ari-complexity
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -59,10 +24,6 @@ permissions:
   contents: write
 
 jobs:
-
-  build:
-    if: ${{ startsWith(inputs.release, 'HEAD') }}
-    uses: ./.github/workflows/build-loat.yml
 
   chc-comp-benchmark:
     runs-on: ubuntu-latest
@@ -81,12 +42,6 @@ jobs:
           sparse-checkout: .github/actions
           path: actions
 
-      - if: ${{ startsWith(inputs.release, 'HEAD') }}
-        uses: ./actions/.github/actions/get-loat-build
-
-      - if: ${{ inputs.benchmarks == 'chc25-lia-lin-arrays' }}
-        uses: ./actions/.github/actions/chc25-lia-lin-arrays
-
       - if: ${{ inputs.benchmarks == 'chc24-lia-lin' }}
         uses: ./actions/.github/actions/chc24-lia-lin
 
@@ -96,23 +51,7 @@ jobs:
       - if: ${{ inputs.benchmarks == 'chc22-lia-lin' }}
         uses: ./actions/.github/actions/chc22-lia-lin
 
-      - if: ${{ inputs.benchmarks == 'tpdb-ari-termination' }}
-        uses: ./actions/.github/actions/tpdb-ari-termination
-
-      - if: ${{ inputs.benchmarks == 'tpdb-ari-complexity' }}
-        uses: ./actions/.github/actions/tpdb-ari-complexity
-
-      - if: ${{ inputs.benchmarks == 'tpdb-termination' }}
-        uses: ./actions/.github/actions/tpdb-termination
-
-      - if: ${{ inputs.benchmarks == 'tpdb-complexity' }}
-        uses: ./actions/.github/actions/tpdb-complexity
-
-      - if: ${{ startsWith(inputs.release, 'chc-comp-2024') }}
-        uses: ./actions/.github/actions/get-loat-chc-comp-2024
-
-      - if: ${{ startsWith(inputs.release, 'loat-termcomp-2023') }}
-        uses: ./actions/.github/actions/get-loat-termcomp-2023
+      - uses: ./actions/.github/actions/get-eld
 
       - name: Run Benchmark
         run: |
@@ -123,7 +62,8 @@ jobs:
             start=`date +%s.%N`
 
             set +e
-            output=$(timeout ${{ inputs.timeout }} solver --mode ${{ inputs.mode }} --engine ${{ inputs.engine }} --direction ${{ inputs.direction }} "${filename}")
+
+            output=$(timeout ${{ inputs.timeout }} solver "${filename}")
 
             exit_status=$?
             set -e
@@ -160,11 +100,7 @@ jobs:
 
           cd benchmarks
           bench=()
-          if [[ ${{ inputs.benchmarks }} =~ tpdb-ari-* ]]; then
-            readarray -d '' bench < <(find * -name "*.ari" -print0)
-          else
-            readarray -d '' bench < <(find * -name "*.smt2" -print0)
-          fi
+          readarray -d '' bench < <(find * -name "*.smt2" -print0)
 
           # sort the array of benchmarks
           IFS=$'\n' sorted=($(sort <<<"${bench[*]}"))
@@ -218,13 +154,9 @@ jobs:
           declare -A results
           VERSION=$(cat ${{ inputs.benchmarks }}-0/solver.version)
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/${{ inputs.engine }}-$VERSION.json"
+          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/eld-$VERSION.json"
           echo -e "{" > $results
           echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
-          echo -e "\t\"goal\": \"${{ inputs.goal }}\"," >> $results
-          echo -e "\t\"engine\": \"${{ inputs.engine }}\"," >> $results
-          echo -e "\t\"direction\": \"${{ inputs.direction }}\"," >> $results
-          echo -e "\t\"args\": \"${{ inputs.args }}\"," >> $results
           echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
           echo -e "\t\"version\": \"$VERSION\"," >> $results
           echo -e "\t\"timeout\": \"${{ inputs.timeout }}\"," >> $results
@@ -244,4 +176,4 @@ jobs:
            author_email: florian.frohn@cs.rwth-aachen.de
            fetch: false
            pull: '--rebase --autostash'
-           message: 'benchmark results; engine ${{ inputs.engine }}; benchmarks: ${{ inputs.benchmarks }}'
+           message: 'benchmark results; eld; benchmarks: ${{ inputs.benchmarks }}'
