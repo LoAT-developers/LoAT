@@ -61,7 +61,7 @@ permissions:
 jobs:
 
   build:
-    if: ${{ !startsWith(inputs.release, 'HEAD') }}
+    if: ${{ startsWith(inputs.release, 'HEAD') }}
     uses: ./.github/workflows/build-loat.yml
 
   chc-comp-benchmark:
