@@ -8,7 +8,7 @@ on:
         required: true
         type: number
         default: 30
-      goal:
+      mode:
         required: true
         type: choice
         options:
