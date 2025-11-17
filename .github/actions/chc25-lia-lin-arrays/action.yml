@@ -1,0 +1,19 @@
+name: 'CHC 24 LIA Lin'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/checkout@v4
+      with:
+        repository: chc-comp/chc-comp25-benchmarks
+        path: chc-comp25-benchmarks
+
+    - run: |
+        mkdir benchmarks
+        cd chc-comp25-benchmarks
+        while read p; do
+          filename="${p%.*}.smt2"
+          filename=`echo ${filename} | sed 's/000_000/000/'`
+          mv $filename ../benchmarks
+        done < LIA-Lin-Arrays.set
+      shell: bash
