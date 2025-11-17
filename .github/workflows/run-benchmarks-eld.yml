@@ -27,7 +27,6 @@ jobs:
 
   chc-comp-benchmark:
     runs-on: ubuntu-latest
-    needs: [build]
     if: ${{ !failure() && !cancelled() }}
     strategy:
       matrix:
