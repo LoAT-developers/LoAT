@@ -16,7 +16,7 @@ on:
         - chc22-lia-lin
         - chc23-lia-lin
         - chc24-lia-lin
-        - chc25-lia-lin-array
+        - chc25-lia-lin-arrays
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -41,8 +41,8 @@ jobs:
           sparse-checkout: .github/actions
           path: actions
 
-      - if: ${{ inputs.benchmarks == 'chc25-lia-lin-array' }}
-        uses: ./actions/.github/actions/chc25-lia-lin-array
+      - if: ${{ inputs.benchmarks == 'chc25-lia-lin-arrays' }}
+        uses: ./actions/.github/actions/chc25-lia-lin-arrays
 
       - if: ${{ inputs.benchmarks == 'chc24-lia-lin' }}
         uses: ./actions/.github/actions/chc24-lia-lin
