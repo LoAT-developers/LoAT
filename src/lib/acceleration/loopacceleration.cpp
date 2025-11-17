@@ -195,8 +195,8 @@ void LoopAcceleration::removeTrivialUpdates() {
     for (const auto &[x_arr, v_arr] : update.get<Arrays<Arith>>()) {
         // TODO do the same for arrays
         if (x_arr->dim() == 0) {
-            const auto x{*arrays::readConst(x_arr)->someVar()};
-            if (rule->getGuard()->getEquality(x) == std::optional{arrays::readConst(v_arr)}) {
+            if (const auto x{arrays::readConst(x_arr)};
+                rule->getGuard()->getEquality(x) == std::optional{arrays::readConst(v_arr)}) {
                 remove.insert(x->var());
             }
         }
