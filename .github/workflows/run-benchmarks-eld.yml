@@ -1,4 +1,4 @@
-name: Run Benchmarks
+name: Run Eldarica
 
 # Run this action when triggered manually through GitHub UI.
 on:
@@ -16,6 +16,7 @@ on:
         - chc22-lia-lin
         - chc23-lia-lin
         - chc24-lia-lin
+        - chc25-lia-lin-array
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -39,6 +40,9 @@ jobs:
         with:
           sparse-checkout: .github/actions
           path: actions
+
+      - if: ${{ inputs.benchmarks == 'chc25-lia-lin-array' }}
+        uses: ./actions/.github/actions/chc25-lia-lin-array
 
       - if: ${{ inputs.benchmarks == 'chc24-lia-lin' }}
         uses: ./actions/.github/actions/chc24-lia-lin
