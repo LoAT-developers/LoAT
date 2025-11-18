@@ -71,7 +71,6 @@ jobs:
           else
             args="fp.engine=${{ inputs.engine }}"
           fi
-          printf "invoking run_benchmarks ... with args ${args}"
           ./actions/scripts/run_benchmarks.sh $args
         env:
           CI_TOTAL: ${{ matrix.ci_total }}

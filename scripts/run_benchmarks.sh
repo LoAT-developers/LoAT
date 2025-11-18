@@ -6,7 +6,7 @@ export args=$1
 # function to run a single benchmark
 function benchmark() {
     filename=$1
-    printf "running ${filename} ... with args ${args}"
+    printf "running ${filename} ..."
     start=`date +%s.%N`
 
     set +e
