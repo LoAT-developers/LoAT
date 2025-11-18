@@ -232,7 +232,7 @@
     "name": "libc__strncmp_3.array_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "heap__fib.array_000.smt2"
   },
   {
@@ -268,7 +268,7 @@
     "name": "O3_vogal_true-unreach-call_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "heap__fib_000.smt2"
   },
   {
@@ -396,7 +396,7 @@
     "name": "O3_nec40_true-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "O0_n.c40_true-unreach-call_true-termination_000.smt2"
   },
   {
