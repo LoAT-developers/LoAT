@@ -45,7 +45,9 @@ jobs:
       - name: Checkout LoAT Repository
         uses: actions/checkout@v4
         with:
-          sparse-checkout: .github/actions
+          sparse-checkout: |
+            .github/actions
+            scripts
           path: actions
 
       - if: ${{ inputs.benchmarks == 'chc25-lia-lin-arrays' }}
@@ -69,7 +71,7 @@ jobs:
           else
             args="fp.engine=${{ inputs.engine }}"
           fi
-          scripts/run_benchmarks.sh $args
+          ./actions/scripts/run_benchmarks.sh $args
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
           CI_INDEX: ${{ matrix.ci_index }}
