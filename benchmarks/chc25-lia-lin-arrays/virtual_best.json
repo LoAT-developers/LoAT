@@ -536,7 +536,7 @@
     "name": "standard_copy1_true-unreach-call_ground_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "O0_vogal_true-unreach-call_000.smt2"
   },
   {
