@@ -137,6 +137,9 @@ protected:
     }
 
     Expr convertArrayWrite(const ArrayWritePtr<Arith> &write) {
+        if (write->dim() == 0) {
+            return convertEx(write->val());
+        }
         const auto arr {write->arr()};
         const auto converted_arr {convertArray(arr)};
         const auto converted_value {convertEx(write->val())};
