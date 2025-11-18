@@ -26,7 +26,7 @@ public:
         It beginImpl(const size_t i) const {
             if constexpr (I < variants) {
                 if (I == i) {
-                    return It{std::get<I>(subs.t).begin()};
+                    return It{std::get<I>(subs->t).begin()};
                 }
                 return beginImpl<I + 1>(i);
             } else {
@@ -40,7 +40,7 @@ public:
         It endImpl(const size_t i) const {
             if constexpr (I < variants) {
                 if (I == i) {
-                    return It(std::get<I>(subs.t).end());
+                    return It(std::get<I>(subs->t).end());
                 }
                 return endImpl<I + 1>(i);
             } else {
@@ -51,17 +51,18 @@ public:
         It end(size_t i) const;
 
         template <size_t I = 0>
-        Pair getCurrentImpl() const {
+        std::optional<Pair> getCurrentImpl() const {
             if constexpr (I < variants) {
                 if (ptr.index() == I) {
-                    return Pair(*std::get<I>(ptr));
+                    const auto it {std::get<I>(ptr)};
+                    return it == std::get<I>(subs->t).end() ? std::nullopt : std::optional(*it);
                 }
                 return getCurrentImpl<I+1>();
             }
             throw std::invalid_argument("unknown index");
         }
 
-        Pair getCurrent() const;
+        std::optional<Pair> getCurrent() const;
 
     public:
 
@@ -72,8 +73,9 @@ public:
         using reference         = const value_type&;
 
         Iterator(const Subs &subs, const It &ptr);
-        reference operator*();
-        pointer operator->();
+        Iterator() = default;
+        reference operator*() const;
+        pointer operator->() const;
 
         template <size_t I = 0>
         void incrementImpl() {
@@ -97,7 +99,7 @@ public:
 
     private:
 
-        const Subs &subs;
+        const Subs* subs;
         It ptr;
         std::optional<Pair> current{};
 

@@ -156,6 +156,51 @@ std::optional<SmtResult> check_bot(const ITSPtr& its) {
     return SmtResult::Unknown;
 }
 
+bool remove_irrelevant_vars(const ITSPtr& its) {
+    const auto vars{its->getVars()};
+    const auto trans{its->getAllTransitions()};
+    std::unordered_map<RulePtr, VarSet> guard_vars;
+    for (const auto& t : trans) {
+        guard_vars.emplace(t, t->getGuard()->vars());
+    }
+    Subs remove;
+    for (const auto& x : vars) {
+        theory::apply(x, [&](const auto& x) {
+            if (!x->isProgVar()) return;
+            if (std::ranges::any_of(trans, [&](const auto& t) {
+                return !t->isHavoced(x);
+            })) {
+                for (const auto& t : trans) {
+                    if (guard_vars.at(t).contains(x) || std::ranges::any_of(t->getUpdate(), [&](const auto& p) {
+                        return Subs::first(p) != Var(x) && theory::apply(Subs::second(p), [&](const auto& e) {
+                            return e->vars().contains(x);
+                        });
+                    })) {
+                        return;
+                    }
+                }
+            }
+            using T = decltype(theory::theory(x));
+            remove.put(x, T::varToExpr(T::next(x->dim())));
+            remove.put(x->postVar(), T::varToExpr(T::next(x->dim())));
+        });
+    }
+    if (remove.empty()) {
+        return false;
+    }
+    if (Config::Analysis::logPreproc) {
+        std::cout << "removed the following irelevant variables: ";
+        for (const auto& [x,_]: remove) {
+            std::cout << " " << x;
+        }
+        std::cout << std::endl;
+    }
+    for (const auto& t: trans) {
+        its->replaceRule(t, t->subs(remove));
+    }
+    return true;
+}
+
 SmtResult Preprocessor::preprocess() {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "starting preprocesing..." << std::endl;
@@ -191,12 +236,22 @@ SmtResult Preprocessor::preprocess() {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing rules..." << std::endl;
     }
-    sat_res = rule_preproc.run();
-    if (sat_res && sat_res != SmtResult::Unknown) {
-        success = true;
-        return *sat_res;
-    }
-    success |= static_cast<bool>(sat_res);
+    bool changed;
+    do {
+        changed = false;
+        sat_res = rule_preproc.run();
+        if (sat_res) {
+            if (sat_res != SmtResult::Unknown) {
+                return *sat_res;
+            }
+            changed = true;
+            success = true;
+        }
+        if (remove_irrelevant_vars(its)) {
+            changed = true;
+            success = true;
+        }
+    } while (changed);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished preprocessing rules" << std::endl;
     }

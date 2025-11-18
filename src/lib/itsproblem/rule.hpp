@@ -70,6 +70,8 @@ public:
 
     RulePtr renameTmpVars() const;
 
+    bool isHavoced(const Var&) const;
+
     size_t hash() const;
 
 };

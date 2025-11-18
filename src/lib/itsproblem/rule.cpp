@@ -138,3 +138,21 @@ RulePtr Rule::renameTmpVars() const {
     }
     return renameVars(s);
 }
+
+bool Rule::isHavoced(const Var& x) const {
+    return theory::apply(
+        x,
+        [&](const auto& x) {
+            const auto updated = update.get(x);
+            if (const auto y = updated->isVar()) {
+                return (*y)->isTempVar() && !guard->vars().contains(*y) && std::ranges::all_of(
+                    update, [&](const auto& p) {
+                        return Subs::first(p) == Var(x) || theory::apply(Subs::second(p), [&](const auto& p) {
+                            return !p->vars().contains(*y);
+                        });
+                    });
+            }
+            return false;
+        }
+    );
+}

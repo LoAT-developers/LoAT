@@ -8,19 +8,17 @@ Subs::It Subs::Iterator::end(const size_t i) const {
     return endImpl(i);
 }
 
-Subs::Pair Subs::Iterator::getCurrent() const {
+std::optional<Subs::Pair> Subs::Iterator::getCurrent() const {
     return getCurrentImpl<0>();
 }
 
-Subs::Iterator::Iterator(const Subs &subs, const It &ptr) : subs(subs), ptr(ptr) {}
+Subs::Iterator::Iterator(const Subs &subs, const It &ptr) : subs(&subs), ptr(ptr), current(getCurrent()) {}
 
-Subs::Iterator::reference Subs::Iterator::operator*() {
-    current = getCurrent();
+Subs::Iterator::reference Subs::Iterator::operator*() const {
     return *current;
 }
 
-Subs::Iterator::pointer Subs::Iterator::operator->() {
-    current = getCurrent();
+Subs::Iterator::pointer Subs::Iterator::operator->() const {
     return &*current;
 }
 
@@ -34,6 +32,7 @@ Subs::Iterator& Subs::Iterator::operator++() {
     while (ptr.index() + 1 < variants && ptr == end(ptr.index())) {
         ptr = begin(ptr.index() + 1);
     }
+    current = getCurrent();
     return *this;
 }
 
@@ -41,6 +40,7 @@ Subs::Iterator& Subs::Iterator::operator++() {
 Subs::Iterator Subs::Iterator::operator++(int) {
     Iterator tmp = *this;
     ++*this;
+    current = getCurrent();
     return tmp;
 }
 

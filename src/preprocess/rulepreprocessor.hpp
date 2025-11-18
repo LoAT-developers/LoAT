@@ -7,7 +7,7 @@
 class RulePreprocessor {
 
     ITSPtr its;
-    linked_hash_map<RulePtr, RulePtr> replacements;
+    std::vector<linked_hash_map<RulePtr, RulePtr>> replacements;
 
 public:
     explicit RulePreprocessor(ITSPtr its);
@@ -15,7 +15,11 @@ public:
 
     template <class CEX>
     CEX transform_cex(const CEX &cex) const {
-        return cex.replace_rules(replacements);
+        auto res = cex;
+        for (auto it = replacements.rbegin(); it != replacements.rend(); ++it) {
+            res = cex.replace_rules(*it);
+        }
+        return res;
     }
 
 };
