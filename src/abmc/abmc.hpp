@@ -44,6 +44,8 @@ class ABMC final : public StepwiseAnalysis {
     unsigned depth {0};
     ITSSafetyCex cex;
     Bools::Expr step {top()};
+    VarSet declared_vars {};
+    std::vector<Subs> elim {Subs()};
 
     int get_language(unsigned i);
     Bools::Expr encode_transition(const RulePtr& idx, bool with_id = true);
@@ -56,6 +58,8 @@ class ABMC final : public StepwiseAnalysis {
     void build_trace();
     bool is_redundant(const std::vector<int> &w) const;
     const Renaming& subs_at(unsigned i);
+    void add(const Bools::Expr&);
+    void pop();
 
 public:
 
