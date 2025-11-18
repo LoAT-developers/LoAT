@@ -7,8 +7,6 @@ project(loat_recurrence CXX)
 add_library(${PROJECT_NAME} OBJECT
   recurrence.hpp
   recurrence.cpp
-  dependencyorder.hpp
-  dependencyorder.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
