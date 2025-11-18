@@ -377,11 +377,16 @@ const Renaming &ABMC::subs_at(const unsigned i) {
 
 void ABMC::add(const Bools::Expr& e) {
     auto simp = e->subs(elim.back());
-    const auto subs = simp->propagateEqualities([&](const auto& x) {
-        return !declared_vars.contains(x);
-    });
+    Subs subs;
+    Subs new_subs;
+    do {
+        new_subs = simp->propagateEqualities([&](const auto& x) {
+            return !declared_vars.contains(x);
+        });
+        simp = simp->subs(new_subs);
+        subs = subs.compose(new_subs);
+    } while (!new_subs.empty());
     elim.emplace_back(elim.back().unite(subs));
-    simp = simp->subs(subs);
     solver->add(simp);
     declared_vars.insertAll(simp->vars());
 }
