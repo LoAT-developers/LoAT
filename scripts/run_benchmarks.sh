@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # first and only argument: args for the solver
-args=$1
-
+export args=$1
 
 # function to run a single benchmark
 function benchmark() {
