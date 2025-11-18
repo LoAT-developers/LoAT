@@ -31,7 +31,7 @@ private:
     const AccelConfig config;
     LitSet todo {};
     Accelerator res {};
-    const std::optional<Subs> &samplePoint;
+    const std::optional<ModelPtr> samplePoint;
     SmtPtr solver {};
 
     bool trivial(const Lit &lit);
@@ -48,7 +48,7 @@ public:
     AccelerationProblem(
             const RulePtr& rule,
             const std::optional<Recurrence::Result> &closed,
-            const std::optional<Subs> &samplePoint,
+            const std::optional<ModelPtr> &samplePoint,
             const AccelConfig &config);
 
     std::optional<Accelerator> computeRes();

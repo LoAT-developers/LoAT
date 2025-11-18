@@ -452,7 +452,7 @@ ITSCex* ADCL::the_cex() {
     return &cex;
 }
 
-std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const unsigned backlink) {
+std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const ModelPtr &model, const unsigned backlink) {
     const auto simp {Preprocess::preprocessRule(rule)};
     if (Config::Analysis::safety() && simp->getUpdate().isIdempotent()) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -476,7 +476,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const uns
         Config::Accel::non_linear,
         n,
         chcs->getCost(simp)};
-    const auto [status, accel, nonterm, prefix, period] {LoopAcceleration::accelerate(simp, config)};
+    const auto [status, accel, nonterm, prefix, period] {LoopAcceleration::accelerate(simp, model, config)};
     if (status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
@@ -577,7 +577,7 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
         std::cout << closure << std::endl;
     }
     const auto [loop, model] {build_loop(backlink)};
-    auto state {learn_clause(loop, backlink)};
+    auto state {learn_clause(loop, model, backlink)};
     redundancy->mark_as_accelerated(closure);
     if (!state->succeeded()) {
         if (state->unroll()) {

@@ -14,6 +14,7 @@ public:
 
     struct Result {
         Subs closed_form;
+        Bools::Expr refinement {top()};
         unsigned int prefix {0};
     };
 
@@ -48,6 +49,8 @@ private:
      * i.e. these are the terms for r(n-1) and _not_ for r(n) where r is the recurrence equation.
      */
     Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr> closed_form_n_minus_one {};
+
+    std::vector<Bools::Expr> refinement {};
 
     Result result {};
 

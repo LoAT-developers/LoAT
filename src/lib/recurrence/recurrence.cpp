@@ -306,6 +306,7 @@ bool Recurrence::solve() {
         auto write{t};
         // collect all index / value pairs that are written to a
         const auto var = t->dim() == 0 ? x : t->var();
+        std::vector<ArithVarPtr> keys;
         while (const auto w{write->isArrayWrite()}) {
             // we do not support array writes on right-hand sides yet
             if (std::ranges::any_of((*w)->val()->cells(), [](const auto& c) {
@@ -319,6 +320,14 @@ bool Recurrence::solve() {
                     return false;
                 }
                 const auto key {arrays::mkArrayRead(var, *idx)};
+                for (const auto& k: keys) {
+                    LitSet disjuncts;
+                    for (size_t i = 0; i < key->dim(); ++i) {
+                        disjuncts.insert(arith::mkNeq(key->indices().at(i), k->indices().at(i)));
+                    }
+                    refinement.emplace_back(bools::mkOr(disjuncts));
+                }
+                keys.emplace_back(key);
                 shift.emplace(key, *s);
                 a_work_list.emplace_back(key);
                 written.emplace(key, (*w)->val());
@@ -328,6 +337,8 @@ bool Recurrence::solve() {
             }
         }
     }
+    // make sure that written indices are pairwise different
+    result.refinement = bools::mkAnd(refinement);
     // group written lvalues into inducive, increasing, and decreasing ones
     linked_hash_set<ArithVarPtr> inductive;
     linked_hash_set<ArithVarPtr> displacing;

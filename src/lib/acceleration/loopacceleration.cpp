@@ -10,7 +10,7 @@
 
 LoopAcceleration::LoopAcceleration(
     RulePtr rule,
-    const std::optional<Subs> &sample_point,
+    const std::optional<ModelPtr> &sample_point,
     AccelConfig config)
     : rule(std::move(rule)), sample_point(sample_point), config(std::move(config)) {}
 
@@ -134,7 +134,14 @@ void LoopAcceleration::compute_closed_form() {
     }
     rec = Recurrence::solve(rule->getUpdate(), config.n);
     if (rec) {
-        res.prefix = rec->prefix;
+        if (!sample_point && rec->refinement != top()) {
+            // if we need to refine the rule before acceleration, we need to project it to a conjunction beforehand
+            fail();
+        } else {
+            res.prefix = rec->prefix;
+            refinement = (*sample_point)->syntacticImplicant(rec->refinement);
+            rule = rule->withGuard(rule->getGuard() && refinement);
+        }
     } else {
         fail();
     }
@@ -144,7 +151,7 @@ void LoopAcceleration::accelerate() {
     if (rec && config.tryAccel) {
         if (const auto accelerator {AccelerationProblem(rule, rec, sample_point, config).computeRes()}) {
             res.accel = acceleration::Accel(Rule::mk(bools::mkAnd(accelerator->formula), rec->closed_form));
-            res.accel->covered = bools::mkAnd(accelerator->covered);
+            res.accel->covered = bools::mkAnd(accelerator->covered) && refinement;
             store_nonterm(*accelerator);
         }
     }
@@ -246,17 +253,15 @@ void LoopAcceleration::run() {
 
 acceleration::Result LoopAcceleration::accelerate(
     const RulePtr& rule,
-    const Subs &sample_point,
+    const ModelPtr &sample_point,
     const AccelConfig &config) {
     LoopAcceleration accel{rule, sample_point, config};
     accel.run();
     return accel.res;
 }
 
-acceleration::Result LoopAcceleration::accelerate(
-    const RulePtr& rule,
-    const AccelConfig &config) {
-    LoopAcceleration accel{rule, std::optional<Subs>(), config};
+acceleration::Result LoopAcceleration::accelerate(const RulePtr& rule, const AccelConfig& config) {
+    LoopAcceleration accel{rule, std::nullopt, config};
     accel.run();
     return accel.res;
 }

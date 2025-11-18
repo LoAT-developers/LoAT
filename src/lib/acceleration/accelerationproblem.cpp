@@ -11,7 +11,7 @@ AccelerationProblem::PolyAccelMode AccelerationProblem::polyaccel {PolyAccelMode
 AccelerationProblem::AccelerationProblem(
         const RulePtr& rule,
         const std::optional<Recurrence::Result> &closed,
-        const std::optional<Subs> &samplePoint,
+        const std::optional<ModelPtr> &samplePoint,
         const AccelConfig &config):
     closed(closed),
     update(rule->getUpdate()),
@@ -116,13 +116,13 @@ bool AccelerationProblem::polynomial(const Lit &lit) {
             return false;
         }
         std::vector derivatives {rel->lhs()};
-        std::vector signs {(*rel->lhs()->subs(*samplePoint)->isRational())->getValue()};
+        std::vector signs {(*samplePoint)->eval(rel->lhs())};
         Arith::Expr diff {arith::zero()};
         do {
             const auto &last {derivatives.back()};
             diff = last->subs(update) - last;
             derivatives.push_back(diff);
-            signs.push_back((*diff->subs(*samplePoint)->isRational())->getValue());
+            signs.push_back((*samplePoint)->eval(diff));
         } while (!diff->isRational());
         for (unsigned i = 1; i < signs.size() - 1; ++i) {
             if (signs.at(i).is_zero()) {
@@ -270,7 +270,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
         if (success) {
             Bools::Expr g {bot()};
             Bools::Expr c {bot()};
-            if (samplePoint && i->subs(*samplePoint)->isTriviallyFalse()) {
+            if (samplePoint && !(*samplePoint)->eval(i)) {
                 if (!closed) {
                     solver->pop();
                     return false;
@@ -317,7 +317,7 @@ bool AccelerationProblem::fixpoint(const Lit &lit) {
         }
     }
     const auto c {bools::mkAnd(eqs)};
-    if (c == bot() || (samplePoint && !c->subs(*samplePoint) == top())) {
+    if (c == bot() || (samplePoint && !(*samplePoint)->eval(c))) {
         return false;
     }
     const auto g {c && bools::mkLit(lit)};
