@@ -1,4 +1,4 @@
-name: Run Benchmarks
+name: Run Z3
 
 # Run this action when triggered manually through GitHub UI.
 on:
