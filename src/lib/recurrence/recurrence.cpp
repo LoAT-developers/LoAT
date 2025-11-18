@@ -1,6 +1,5 @@
 #include "recurrence.hpp"
 #include "arith.hpp"
-#include "dependencyorder.hpp"
 #include "theory.hpp"
 #include "config.hpp"
 
