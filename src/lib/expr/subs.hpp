@@ -181,6 +181,7 @@ public:
     Subs concat(const Subs &that) const;
     Subs concat(const Renaming &that) const;
     Subs compose(const Subs &that) const;
+    Subs unite(const Subs &that) const;
     void collectCoDomainVars(VarSet &res) const;
     void collectVars(VarSet &vars) const;
     VarSet vars() const;

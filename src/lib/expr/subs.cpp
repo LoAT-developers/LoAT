@@ -366,6 +366,18 @@ Subs Subs::compose(const Subs &that) const {
     return res;
 }
 
+Subs Subs::unite(const Subs& that) const {
+    Subs res = *this;
+    for (const auto& p : that) {
+        theory::apply(
+            p,
+            [&](const auto& p) {
+                res.put(p.first, p.second);
+            });
+    }
+    return res;
+}
+
 void Subs::collectCoDomainVars(VarSet& res) const {
     theory::iter(
         t,
