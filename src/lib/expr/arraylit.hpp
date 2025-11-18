@@ -31,10 +31,8 @@ public:
 
     virtual bool isTriviallyTrue() const = 0;
 
-    static bool isPoly();
-
-    static bool isLinear();
-
+    virtual bool isPoly() const = 0;
+    virtual bool isLinear() const = 0;
     virtual sexpresso::Sexp to_smtlib() const = 0;
     virtual std::size_t hash() const = 0;
     virtual ArrayLitPtr<T> subs(const Subs&) const = 0;
@@ -98,6 +96,8 @@ public:
     void collectCells(CellSet&) const override;
     void propagateEquality(Subs& subs, const std::function<bool(const Var&)>& allow, VarSet& blocked) const override;
     ArrayLitPtr<T> subs(const Subs&) const override;
+    bool isPoly() const override;
+    bool isLinear() const override;
 };
 
 template <class T>
@@ -151,6 +151,8 @@ public:
     void collectCells(CellSet&) const override;
     ArrayLitPtr<T> subs(const Subs&) const override;
     void propagateEquality(Subs& subs, const std::function<bool(const Var&)>& allow, VarSet& blocked) const override;
+    bool isPoly() const override;
+    bool isLinear() const override;
 };
 
 template <class T>

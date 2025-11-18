@@ -4,16 +4,6 @@
 #include "variantset.hpp"
 
 template <class T>
-bool ArrayLit<T>::isPoly() {
-    return false;
-}
-
-template <class T>
-bool ArrayLit<T>::isLinear() {
-    return false;
-}
-
-template <class T>
 bool ArrayLit<T>::simplifyAnd(linked_hash_set<ArrayLitPtr<T>>&) {
     // TODO
     return false;
@@ -76,6 +66,16 @@ std::size_t ArrayEq<T>::hash() const {
 template <class T>
 ArrayLitPtr<T> ArrayEq<T>::subs(const Subs& subs) const {
     return cache.from_cache(m_lhs->subs(subs), m_rhs->subs(subs));
+}
+
+template <class T>
+bool ArrayEq<T>::isPoly() const {
+    return m_lhs->isPoly() && m_rhs->isPoly();
+}
+
+template <class T>
+bool ArrayEq<T>::isLinear() const {
+    return m_lhs->isLinear() && m_rhs->isLinear();
 }
 
 template <class T>
@@ -187,6 +187,16 @@ ArrayLitPtr<T> ArrayNeq<T>::subs(const Subs& subs) const {
 template <class T>
 void ArrayNeq<T>::propagateEquality(Subs& subs, const std::function<bool(const Var&)>& allow, VarSet& blocked) const {
     // do nothing
+}
+
+template <class T>
+bool ArrayNeq<T>::isPoly() const {
+    return m_lhs->isPoly() && m_rhs->isPoly();
+}
+
+template <class T>
+bool ArrayNeq<T>::isLinear() const {
+    return m_lhs->isLinear() && m_rhs->isLinear();
 }
 
 template <class T>
