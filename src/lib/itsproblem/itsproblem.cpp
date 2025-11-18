@@ -98,6 +98,9 @@ void ITSProblem::addRule(const RulePtr& rule, const LocationIdx start) {
 }
 
 void ITSProblem::replaceRule(const RulePtr& toReplace, const RulePtr& replacement) {
+    if (toReplace == replacement) {
+        return;
+    }
     rules.emplace(replacement);
     startAndTargetLocations.emplace(replacement, startAndTargetLocations[toReplace]);
     startAndTargetLocations.erase(toReplace);
