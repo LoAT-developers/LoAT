@@ -7,7 +7,7 @@ args=$1
 # function to run a single benchmark
 function benchmark() {
     filename=$1
-    printf "running ${filename} ... "
+    printf "running ${filename} ... with args ${args}"
     start=`date +%s.%N`
 
     set +e
@@ -46,7 +46,7 @@ export -f benchmark
 # permissions are not preserved for artifacts:
 chmod +x /usr/local/bin/solver
 
-cd ../benchmarks
+cd benchmarks
 bench=()
 if [[ ${BENCHMARKS} =~ tpdb-ari-* ]]; then
     readarray -d '' bench < <(find * -name "*.ari" -print0)
