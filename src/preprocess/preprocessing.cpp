@@ -196,7 +196,9 @@ bool remove_irrelevant_vars(const ITSPtr& its) {
         std::cout << std::endl;
     }
     for (const auto& t: trans) {
-        its->replaceRule(t, t->subs(remove));
+        its->replaceRule(t, Rule::mk(t->getGuard()->subs(remove), t->getUpdate().project([&](const auto& x) {
+            return !remove.contains(x);
+        })));
     }
     return true;
 }
