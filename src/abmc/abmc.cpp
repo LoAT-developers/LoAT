@@ -134,7 +134,7 @@ std::pair<RulePtr, ModelPtr> ABMC::build_loop(const int backlink) const {
     const auto imp {model->syntacticImplicant(loop->getGuard())};
     const auto implicant {loop->withGuard(imp)};
     if (Config::Analysis::log) {
-        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << implicant << std::endl;
+        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << *implicant << std::endl;
     }
     return {implicant, model};
 }
@@ -269,7 +269,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
                     .deterministic = deterministic};
                 covered = accel_res.accel->covered;
                 if (Config::Analysis::log) {
-                    std::cout << "accelerated rule, idx " << simplified->getId() << "\n" << simplified << std::endl;
+                    std::cout << "accelerated rule, idx " << simplified->getId() << "\n" << *simplified << std::endl;
                 }
                 update_subs(simplified);
             }
@@ -444,9 +444,20 @@ std::optional<SmtResult> ABMC::do_step() {
                 std::cout << "done with loop handling" << std::endl;
             break;
         }
-        case SmtResult::Unknown:
+    case SmtResult::Unknown: {
+            if (Config::Analysis::log) {
+                solver->print(std::cout);
+                std::cout << "got unknown from SMT solver -- ";
+                if (depth == 1) {
+                    std::cout << "giving up" << std::endl;;
+                    return SmtResult::Unknown;
+                }
+                std::cout << "restarting" << std::endl;
+            }
             shortcut.reset();
             trace.clear();
+            depth = 0;
+        }
     }
     if (Config::Analysis::log) {
         std::cout << "depth: " << depth << std::endl;

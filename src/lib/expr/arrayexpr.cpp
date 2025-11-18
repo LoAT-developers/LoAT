@@ -600,7 +600,7 @@ std::ostream& operator<<(std::ostream& s, const ArrayPtr<T>& a) {
             indices.emplace_back(idx);
             s << "[" << idx->var()->getName() << "]";
         }
-        s << " (ite (" << write->cond() << ") (" << write->val() << ") " << arrays::mkArrayRead(write->arr(), indices) << ")";
+        s << " (ite (" << write->cond() << ") (" << write->val() << ") " << arrays::mkArrayRead(write->arr(), indices) << "))";
     }
     return s;
 }
