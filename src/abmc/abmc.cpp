@@ -36,7 +36,7 @@ ABMC::ABMC(const ITSPtr& its):
         assert(!its->isSinkTransition(idx));
         inits.push_back(encode_transition(idx));
     }
-    add(bools::mkOr(inits));
+    solver->add(bools::mkOr(inits));
 
     std::vector<Bools::Expr> steps;
     for (const auto &r: its->getAllTransitions()) {
@@ -130,7 +130,7 @@ std::pair<RulePtr, ModelPtr> ABMC::build_loop(const int backlink) const {
     }
     const auto loop {Preprocess::chain(rules)};
     const auto s {subsProg.at(backlink)};
-    auto model {solver->model()->composeBackwards(elim.back())->composeBackwards(s)};
+    auto model {solver->model()->composeBackwards(s)};
     const auto imp {model->syntacticImplicant(loop->getGuard())};
     const auto implicant {loop->withGuard(imp)};
     if (Config::Analysis::log) {
@@ -323,7 +323,7 @@ void ABMC::build_trace() {
     std::optional<Implicant> prev;
     for (unsigned d = 0; d <= depth; ++d) {
         const auto s {subs.at(d)};
-        auto m {solver->model()->composeBackwards(elim.back())->composeBackwards(s)};
+        auto m {solver->model()->composeBackwards(s)};
         const auto rule {rule_map.at(m->get(trace_var))};
         const auto imp {m->syntacticImplicant(rule->getGuard())};
         if (Config::Analysis::log) {
@@ -375,32 +375,11 @@ const Renaming &ABMC::subs_at(const unsigned i) {
     return subs.at(i);
 }
 
-void ABMC::add(const Bools::Expr& e) {
-    auto simp = e->subs(elim.back());
-    Subs subs;
-    Subs new_subs;
-    do {
-        new_subs = simp->propagateEqualities([&](const auto& x) {
-            return !declared_vars.contains(x);
-        });
-        simp = simp->subs(new_subs);
-        subs = subs.compose(new_subs);
-    } while (!new_subs.empty());
-    elim.emplace_back(elim.back().unite(subs));
-    solver->add(simp);
-    declared_vars.insertAll(simp->vars());
-}
-
-void ABMC::pop() {
-    solver->pop();
-    elim.pop_back();
-}
-
 std::optional<SmtResult> ABMC::do_step() {
     ++depth;
     const auto &s{subs_at(depth)};
     solver->push();
-    add(query->renameVars(s));
+    solver->add(query->renameVars(s));
     switch (solver->check()) {
         case SmtResult::Sat:
             build_trace();
@@ -414,17 +393,17 @@ std::optional<SmtResult> ABMC::do_step() {
         case SmtResult::Unsat:
             break;
     }
-    pop();
+    solver->pop();
     if (!shortcut) {
         if (Config::Analysis::model) {
             transitions.emplace_back(step);
         }
-        add(step->renameVars(s));
+        solver->add(step->renameVars(s));
     } else {
         if (Config::Analysis::model) {
             transitions.emplace_back(encode_transition(*shortcut, false) || step);
         }
-        add((encode_transition(*shortcut) || step)->renameVars(s));
+        solver->add((encode_transition(*shortcut) || step)->renameVars(s));
     }
     Bools::Expr blocking_clause{top()};
     switch (solver->check()) {
@@ -468,7 +447,7 @@ std::optional<SmtResult> ABMC::do_step() {
         std::cout << "depth: " << depth << std::endl;
     }
     if (blocking_clause != top()) {
-        add(blocking_clause);
+        solver->add(blocking_clause);
     }
     return {};
 }
