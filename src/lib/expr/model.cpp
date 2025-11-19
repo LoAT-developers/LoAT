@@ -187,7 +187,18 @@ bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
 }
 
 Bools::Expr Model::syntacticImplicant(const Bools::Expr& e) {
-    assert(eval(e));
+    if (!eval(e)) {
+        std::cerr << "syntactic implicant failed; model:" << std::endl;
+        std::cerr << this->toString(e->vars()) << std::endl;
+        std::cerr << "formula: " << e << std::endl;
+        std::cerr << "violated literals:" << std::endl;
+        for (const auto& l: e->lits()) {
+            if (!eval(l)) {
+                std::cerr << l << std::endl;
+            }
+        }
+        throw std::invalid_argument("syntacitc implicant failed");
+    }
     BoolExprSet res;
     ::syntacticImplicant(e, this, res);
     return bools::mkAnd(res);
