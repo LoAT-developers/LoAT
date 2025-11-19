@@ -249,7 +249,7 @@ class ADCL {
     /**
      * tries to accelerate the given clause
      */
-    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, unsigned backlink);
+    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, const ModelPtr& model, unsigned backlink);
 
     bool check_consistency() const;
 
