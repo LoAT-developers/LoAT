@@ -19,6 +19,16 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool
         }
     }
 
+    VarSet in_indices;
+    for (const auto& l: all_lits) {
+        const auto cells = theory::cells(l).get<ArithVarPtr>();
+        for (const auto& c: cells) {
+            for (const auto& i: c->indices()) {
+                i->collectVars(in_indices);
+            }
+        }
+    }
+
     std::unordered_set<ArithVarPtr> eliminated;
     const auto is_explosive = [&](const ArithVarPtr &var, const Arith::Expr &term){
         return term->hasCellWith([&](const ArithVarPtr& x) -> bool {
@@ -27,7 +37,7 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool
     };
 
     for (const auto &var: candidates) {
-        if (!allow(var->var())) continue;
+        if (!allow(var->var()) || in_indices.contains(var->var())) continue;
         std::vector<Arith::Expr> upper_bounds;
         std::vector<Arith::Expr> lower_bounds;
         std::vector<Arith::Lit> eliminated_lits;
