@@ -42,30 +42,41 @@ SmtResult Swine::check() {
         case z3::sat:
             m = cpp::assume_not_null(std::make_shared<SwineModel>(ctx, solver.get_model(), Subs()));
             BoolExprSet concrete_conjuncts;
-            BoolExprSet abstract_disjuncts;
+            BoolExprSet abstract_conjuncts;
             for (const auto& f : frames) {
                 for (const auto& abstraction : f.assertions) {
                     const auto a = (*m)->syntacticImplicant(abstraction);
-                    abstract_disjuncts.insert(std::get<Bools::Expr>(abstract(!a)));
+                    abstract_conjuncts.insert(a);
                     concrete_conjuncts.insert(a->subs(frames.back().concretization));
                 }
             }
-            auto formula = bools::mkAnd(concrete_conjuncts);
+            auto concrete_formula = bools::mkAnd(concrete_conjuncts);
+            auto abstract_formula = bools::mkAnd(abstract_conjuncts);
             Subs subs;
+            Subs prop;
             do {
-                subs = formula->propagateEqualities([](const auto&) {
+                subs = concrete_formula->propagateEqualities([](const auto&) {
                     return true;
                 });
                 if (subs.empty()) break;
-                formula = formula->subs(subs);
-                m = (*m)->composeBackwards(subs);
+                concrete_formula = concrete_formula->subs(subs);
+                prop = prop.compose(subs);
             } while (true);
-            if (formula == bot()) {
-                solver.add(Converter::convert(bools::mkOr(abstract_disjuncts), ctx));
+            m = (*m)->composeBackwards(prop);
+            do {
+                subs = abstract_formula->propagateEqualities([](const auto&) {
+                    return true;
+                });
+                if (subs.empty()) break;
+                abstract_formula = abstract_formula->subs(subs);
+            } while (true);
+            const auto neg_premise = std::get<Bools::Expr>(abstract(!abstract_formula));
+            if (concrete_formula == bot()) {
+                solver.add(Converter::convert(neg_premise, ctx));
                 continue;
             }
             auto sat = true;
-            const auto lits = formula->lits();
+            const auto lits = concrete_formula->lits();
             for (const auto& c : lits) {
                 if (!(*m)->eval(c)) {
                     sat = false;
@@ -82,7 +93,7 @@ SmtResult Swine::check() {
                                             const auto rhs = arrays::mkArrayRead((*eq)->rhs(), i);
                                             if (const auto eq = arith::mkEq(lhs, rhs); !(*m)->eval(eq)) {
                                                 solver.add(Converter::convert(
-                                                        bools::mkOr(abstract_disjuncts) || bools::mkLit(eq), ctx)
+                                                        neg_premise || bools::mkLit(eq), ctx)
                                                 );
                                                 refined = true;
                                             }
@@ -92,12 +103,12 @@ SmtResult Swine::check() {
                                 return refined;
                             }
                             solver.add(Converter::convert(
-                                    bools::mkOr(abstract_disjuncts) || bools::mkLit(abstract(c)), ctx)
+                                    neg_premise || bools::mkLit(abstract(c)), ctx)
                             );
                             return true;
                         },
                         [&](const auto&) {
-                            solver.add(Converter::convert(bools::mkOr(abstract_disjuncts) || bools::mkLit(c), ctx));
+                            solver.add(Converter::convert(neg_premise || bools::mkLit(c), ctx));
                             return true;
                         });
                     if (!refined) {
