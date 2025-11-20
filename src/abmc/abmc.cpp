@@ -237,7 +237,12 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
     }
     std::optional<Loop> res {};
     auto covered {top()};
-    if (const auto deterministic{simp->isDeterministic()}; Config::Analysis::safety() && !deterministic) {
+    const auto deterministic{simp->isDeterministic()};
+    if (Config::Analysis::safety() && !deterministic && std::ranges::all_of(simp->vars(), [](const auto& x) {
+        return theory::apply(x, [](const auto& x) {
+            return x->dim() == 0;
+        });
+    })) {
         if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
     } else if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().compose(simp->getUpdate())) {
         if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
