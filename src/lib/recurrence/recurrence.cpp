@@ -574,15 +574,22 @@ bool Recurrence::solve() {
             const auto var = lval->var();
             // the array expression that has been constructed so far
             const auto old_val = result.closed_form.get(var);
-            const auto [cond,instantiation_of_n] = mk_last_write(lval);
-            const auto instantiate_n = Subs::build(n, instantiation_of_n);
+            const auto s = shift.at(lval);
             Arith::Expr new_val = arith::zero();
             if (const auto opt = inductive.get(lval)) {
                 new_val = closed_form.at(*opt);
             } else {
                 new_val = r->subs(closed_form);
             }
-            result.closed_form.put(var, arrays::mkArrayWrite(old_val, cond, new_val->subs(instantiate_n)));
+            if (std::ranges::all_of(s, [](const auto& i) {
+                return i->is(0);
+            })) {
+                result.closed_form.put(var, arrays::mkArrayWrite(old_val, lval->indices(), new_val));
+            } else {
+                const auto [cond,instantiation_of_n] = mk_last_write(lval);
+                const auto instantiate_n = Subs::build(n, instantiation_of_n);
+                result.closed_form.put(var, arrays::mkArrayWrite(old_val, cond, new_val->subs(instantiate_n)));
+            }
         }
     }
     return true;
