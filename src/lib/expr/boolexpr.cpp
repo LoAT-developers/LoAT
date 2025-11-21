@@ -1,6 +1,5 @@
 #include "boolexpr.hpp"
 #include "theory.hpp"
-#include "renaming.hpp"
 #include "subs.hpp"
 #include "model.hpp"
 
@@ -137,7 +136,7 @@ BoolExprSet BoolExpr::get_disjuncts() const {
             return res;
         }
     }
-    return BoolExprSet({cpp::assume_not_null(shared_from_this())});
+    return BoolExprSet({toPtr()});
 }
 
 std::optional<Bools::Var> BoolExpr::isVar() const {
@@ -172,7 +171,7 @@ Bools::Expr BoolExpr::subs(const Variant<ArithVarPtr, Bools::Var>::Map<Arith::Ex
                 return bools::mkLit(lit->subs(subs.get<ArithVarPtr, Arith::Expr>()));
             },
             [&](const Arrays<Arith>::Lit&) {
-                return cpp::assume_not_null(shared_from_this());
+                return toPtr();
             });
     });
 }
@@ -207,6 +206,10 @@ Bools::Expr BoolExpr::eval(const ModelPtr& model, const ArithVarPtr &keep) const
                 throw std::invalid_argument("partial evaluation does not work as intended for arrays");
             });
     });
+}
+
+Bools::Expr BoolExpr::toPtr() const {
+    return cpp::assume_not_null(shared_from_this());
 }
 
 linked_hash_set<Bound> BoolExpr::getBounds(const ArithVarPtr& n) const {
@@ -388,7 +391,7 @@ void BoolExpr::iter(const std::function<void(const Lit&)> &f) const {
 }
 
 Bools::Expr BoolExpr::map(const std::function<Bools::Expr(const Lit&)> &f, std::unordered_map<Bools::Expr, Bools::Expr> &cache) const {
-    const auto self {cpp::assume_not_null(shared_from_this())};
+    const auto self {toPtr()};
     if (const auto it {cache.find(self)}; it != cache.end()) {
         return it->second;
     }

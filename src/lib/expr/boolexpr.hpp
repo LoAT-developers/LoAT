@@ -103,6 +103,7 @@ public:
     Bools::Expr subs(const Subs&) const;
     Bools::Expr renameVars(const Renaming&) const;
     Bools::Expr eval(const ModelPtr&, const ArithVarPtr &keep) const;
+    Bools::Expr toPtr() const;
 
     void collectVars(VarSet&) const;
 
@@ -135,7 +136,7 @@ public:
         if (const auto& l{getTheoryLit()}) {
             return lit(*l);
         }
-        throw std::invalid_argument("unknown expression" + toString(this->shared_from_this()));
+        throw std::invalid_argument("unknown expression " + toString(toPtr()));
     }
 
 };

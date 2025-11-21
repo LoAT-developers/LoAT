@@ -13,7 +13,7 @@ public:
     using Idx = std::vector<Arith::Expr>;
 
     struct Result {
-        Subs closed_form;
+        Subs closed_form {};
         Bools::Expr refinement {top()};
         unsigned int prefix {0};
     };

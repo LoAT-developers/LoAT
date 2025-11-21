@@ -303,11 +303,23 @@ bool Recurrence::solve() {
         const auto var = t->dim() == 0 ? x : t->var();
         // needed to populate disjoint_indices
         std::vector<ArithVarPtr> lvalues;
+        const auto store_shift = [&](const auto& c) {
+            const auto s = compute_shift(c->indices());
+            // TODO just increasing loops for now
+            if (!s || std::ranges::any_of(*s, [](const auto& i) {return i->getValue() < 0;})) {
+                return false;
+            }
+            shift.emplace(c, *s);
+            return true;
+        };
         // collect all index / value pairs that are written to a
         while (const auto w{write->isArrayWrite()}) {
             if (const auto idx = (*w)->indices()) {
                 const auto lval = arrays::mkArrayRead(var, *idx);
                 written.emplace(lval, (*w)->val());
+                if (!store_shift(lval)) {
+                    return false;
+                }
                 // for each previously written lval, at least one index must be different
                 for (const auto& other_lval: lvalues) {
                     LitSet disjuncts;
@@ -322,12 +334,9 @@ bool Recurrence::solve() {
                     if (c->arr()->isArrayWrite()) {
                         return false;
                     }
-                    const auto s = compute_shift(c->indices());
-                    // TODO just increasing loops for now
-                    if (!s || std::ranges::any_of(*s, [](const auto& i) {return i->getValue() < 0;})) {
+                    if (!store_shift(c)) {
                         return false;
                     }
-                    shift.emplace(c, *s);
                 }
                 write = (*w)->arr();
             } else {
@@ -369,7 +378,6 @@ bool Recurrence::solve() {
         return std::ranges::all_of(cells, [&](const ArithVarPtr& c) {
             const auto updated_indices = update_idx(c->indices());
             for (const auto &lval: written | std::views::keys) {
-                // TODO what about cells that refer to other arrays?
                 if (lval->var() == c->var() && compare_lexicographically(lval->indices(), updated_indices) >= 0) {
                     return false;
                 }
@@ -378,14 +386,26 @@ bool Recurrence::solve() {
             return true;
         });
     };
-    for (const auto& val : written | std::views::values) {
-        if (are_displacing(val->cells())) {
-            if (Config::Analysis::logAccel) {
-                std::cerr << val << " is displacing" << std::endl;
+    for (const auto& [lval,val] : written) {
+        if (auto cells = val->cells(); are_inductive(cells)) {
+            if (!inductive.contains(lval)) {
+                // happens for assignments like a[x] = 0; in this case, we must
+                // ensure that 'inductive' and the work list have entries for a[x]
+                Idx indices;
+                const auto& s = shift.at(lval);
+                for (size_t i = 0; i < lval->dim(); ++i) {
+                    indices.emplace_back(lval->indices().at(i) - s.at(i));
+                }
+                const auto pre = arrays::mkArrayRead(lval->var(), indices);
+                inductive.put(lval, pre);
+                a_work_list.emplace_back(lval);
             }
-        } else if (are_inductive(val->cells())) {
             if (Config::Analysis::logAccel) {
-                std::cerr << val << " is inductive" << std::endl;
+                std::cerr << lval << " = " << val << " is inductive" << std::endl;
+            }
+        } else if (are_displacing(cells)) {
+            if (Config::Analysis::logAccel) {
+                std::cerr << lval << " = " << val << " is displacing" << std::endl;
             }
         } else {
             return false;
@@ -545,7 +565,11 @@ bool Recurrence::solve() {
     // build closed-form array expressions by considering the closed forms for the written lvalues one at a time
     for (const auto& [lval,r]: written) {
         if (lval->dim() == 0) {
-            result.closed_form.update(lval, closed_form.at(lval));
+            if (inductive.contains(lval)) {
+                result.closed_form.update(lval, closed_form.at(lval));
+            } else {
+                result.closed_form.update(lval, r->subs(closed_form));
+            }
         } else {
             const auto var = lval->var();
             // the array expression that has been constructed so far

@@ -92,7 +92,7 @@ public:
         if (const auto e {isPow()}; e) {
             return exp(*e);
         }
-        throw std::invalid_argument("unknown expression" + toString(this->shared_from_this()));
+        throw std::invalid_argument("unknown expression " + toString(this->toPtr()));
     }
 
     /**
