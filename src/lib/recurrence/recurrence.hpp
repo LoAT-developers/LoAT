@@ -50,8 +50,6 @@ private:
      */
     Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr> closed_form_n_minus_one {};
 
-    std::vector<Bools::Expr> refinement {};
-
     Result result {};
 
     std::unordered_map<Cell, unsigned> prefixes {};
