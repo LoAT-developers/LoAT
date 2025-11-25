@@ -149,7 +149,7 @@ void TRL::build_trace() {
         const auto id{(*model)->get(trace_var->renameVars(s))};
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{(*model)->composeBackwards(s)};
-        const auto imp{comp->syntacticImplicant(rule) && theory::mkEq(trace_var, arith::mkConst(id))};
+        const auto imp{comp->syntacticImplicant(rule) && Arith::mkEq(trace_var, arith::mkConst(id))};
         if (prev) {
             dependency_graph.addEdge(prev->first, imp);
         }

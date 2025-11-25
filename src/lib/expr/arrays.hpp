@@ -23,6 +23,8 @@ struct Arrays {
         return ArrayVar<T>::next(p_dim);
     }
 
+    static BoolExprPtr mkEq(const Expr &lhs, const Expr &rhs);
+
 };
 
 namespace arrays {

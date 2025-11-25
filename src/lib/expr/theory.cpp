@@ -39,17 +39,6 @@ namespace theory {
         return std::visit([](const auto &var){return var->isProgVar();}, var);
     }
 
-    Expr toExpr(const Var& var) {
-        return theory::apply(
-            var,
-            [](const Bools::Var& var) {
-                return Expr(bools::mkLit(bools::mk(var)));
-            },
-            [](const auto& var) {
-                return Expr(var);
-            });
-    }
-
     bool isPostVar(const Var &var) {
         return std::visit([](const auto &var){return var->isPostVar();}, var);
     }
@@ -138,38 +127,6 @@ namespace theory {
         VarSet res;
         collectVars(e, res);
         return res;
-    }
-
-    Bools::Expr mkEq(const Expr &e1, const Expr &e2) {
-        return std::visit(
-            Overload {
-                [&](const Arith::Expr& e1) {
-                    return bools::mkLit(arith::mkEq(e1, std::get<Arith::Expr>(e2)));
-                },
-                [&](const Bools::Expr& lhs) {
-                    const auto rhs = std::get<Bools::Expr>(e2);
-                    return Bools::mkEq(lhs, rhs);
-                },
-                [&](const Arrays<Arith>::Expr& e1) {
-                    return bools::mkLit(arrays::mkEq(e1, std::get<Arrays<Arith>::Expr>(e2)));
-                }
-            }, e1);
-    }
-
-    Bools::Expr mkNeq(const Expr &e1, const Expr &e2) {
-        return std::visit(
-            Overload {
-                [&](const Arith::Expr& e1) {
-                    return bools::mkLit(arith::mkNeq(e1, std::get<Arith::Expr>(e2)));
-                },
-                [&](const Bools::Expr& lhs) {
-                    const auto rhs = std::get<Bools::Expr>(e2);
-                    return !Bools::mkEq(lhs, rhs);
-                },
-                [&](const Arrays<Arith>::Expr& e1) {
-                    return bools::mkLit(arrays::mkNeq(e1, std::get<Arrays<Arith>::Expr>(e2)));
-                }
-            }, e1);
     }
 
     Bools theory(const Bools::Var&) {
@@ -342,6 +299,9 @@ namespace theory {
         }
         case Type::Int: {
             return s << "Int";
+        }
+        case Type::IntArray: {
+            return s << "Int[]";
         }
         default: {
             throw std::invalid_argument("unknown type");

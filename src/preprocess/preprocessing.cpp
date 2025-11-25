@@ -249,6 +249,9 @@ SmtResult Preprocessor::preprocess() {
             changed = true;
             success = true;
         }
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "removing irrelevant variables" << std::endl;
+        }
         if (remove_irrelevant_vars(its)) {
             changed = true;
             success = true;

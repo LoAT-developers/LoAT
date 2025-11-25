@@ -302,7 +302,7 @@ Bools::Expr ABMC::encode_transition(const RulePtr& idx, const bool with_id) {
     const auto up {idx->getUpdate()};
     std::vector res {idx->getGuard()};
     if (with_id) {
-        res.emplace_back(theory::mkEq(trace_var, arith::mkConst(idx->getId())));
+        res.emplace_back(Arith::mkEq(trace_var, arith::mkConst(idx->getId())));
     }
     for (const auto& x : vars) {
         theory::apply(
@@ -310,7 +310,7 @@ Bools::Expr ABMC::encode_transition(const RulePtr& idx, const bool with_id) {
             [&](const auto& x) {
                 using T = decltype(theory::theory(x));
                 if (x->isProgVar()) {
-                    res.push_back(theory::mkEq(T::varToExpr(pre_to_post.get(x)), up.get(x)));
+                    res.push_back(T::mkEq(T::varToExpr(pre_to_post.get(x)), up.get(x)));
                 }
             });
     }
@@ -471,7 +471,8 @@ ITSModel ABMC::get_model() {
         const auto &up {t->getUpdate()};
         for (const auto& [x,_] : init_renaming) {
             theory::apply(x, [&](const auto& x) {
-                conjuncts.emplace_back(theory::mkEq(theory::toExpr(x), init_renaming(up.get(x))));
+                using Th = decltype(theory::theory(x));
+                conjuncts.emplace_back(Th::mkEq(Th::varToExpr(x), up.get(x)->renameVars(init_renaming)));
             });
         }
         inits.emplace_back(bools::mkAnd(conjuncts));

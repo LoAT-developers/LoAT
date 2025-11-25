@@ -38,17 +38,7 @@ void ARIParser::run(const std::string &filename) {
             max_int_arity = std::max(max_int_arity, int_arity);
             max_bool_arity = std::max(max_bool_arity, bool_arity);
         } else if (ex[0].isString("rule")) {
-            if (max_int_arity != state.arith_vars.size()) {
-                for (unsigned i = 0; i < max_int_arity; ++i) {
-                    state.arith_vars.emplace_back(ArrayVar<Arith>::nextProgVar(0));
-                }
-            }
-            if (max_bool_arity != state.bool_vars.size()) {
-                for (unsigned i = 0; i < max_bool_arity; ++i) {
-                    state.bool_vars.emplace_back(BoolVar::nextProgVar());
-                }
-            }
-
+            state.push();
             auto lhs {ex[1]};
             auto rhs {ex[2]};
             const auto lhs_loc = lhs.isString() ? lhs.str() : lhs[0].str();
@@ -59,17 +49,13 @@ void ARIParser::run(const std::string &filename) {
             for (unsigned i = 1; i < child_count; ++i) {
                 switch (type.at(i-1)) {
                     case theory::Type::Int: {
-                        const auto arg {state.arith_vars[state.next_arith_var]};
-                        state.vars.emplace(lhs[i].str(), arg);
-                        update.writeConst(arg, parseArithExpr(rhs[i], state));
-                        ++state.next_arith_var;
+                        const auto var = state.get_or_create_arith_var(lhs[i].str());
+                        update.writeConst(var, parseArithExpr(rhs[i], state));
                         break;
                     }
                     case theory::Type::Bool: {
-                        const auto arg {state.bool_vars[state.next_bool_var]};
-                        state.vars.emplace(lhs[i].str(), arg);
-                        update.put(arg, parseBoolExpr(rhs[i], state));
-                        ++state.next_bool_var;
+                        const auto var = state.get_or_create_bool_var(lhs[i].str());
+                        update.put(var, parseBoolExpr(rhs[i], state));
                         break;
                     }
                 }
@@ -103,7 +89,7 @@ void ARIParser::run(const std::string &filename) {
             const auto loc_var {its->getLocVar()};
             update.update(loc_var, arith::mkConst(rhs_idx));
             its->addRule(Rule::mk(bools::mkAnd(guard), update), lhs_idx);
-            state.clear();
+            state.pop();
         }
     }
 }

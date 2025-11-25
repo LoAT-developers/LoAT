@@ -11,6 +11,7 @@ struct Arith {
     using Const = Int;
 
     static Expr cellToExpr(const ArrayReadPtr<Arith> &var);
+    static BoolExprPtr mkEq(const Expr &lhs, const Expr &rhs);
 
 };
 

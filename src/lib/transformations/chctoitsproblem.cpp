@@ -58,12 +58,12 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
                 },
                 [&](const Arrays<Arith>::Expr&) {
                     const auto y{avars.at(next_arr_var)};
-                    args.emplace_back(theory::toExpr(y));
+                    args.emplace_back(y);
                     ++next_arr_var;
                 },
                 [&](const Bools::Expr&) {
                     const auto y{bvars.at(next_bool_var)};
-                    args.emplace_back(theory::toExpr(y));
+                    args.emplace_back(bools::mkLit(bools::mk(y)));
                     ++next_bool_var;
                 }
             );
@@ -171,7 +171,7 @@ ITSPtr CHCToITS::transform() {
         Renaming renaming;
         std::vector constraints{c->get_constraint()};
         const auto lhs_loc = c->get_premise() ? its->getOrAddLocation((*c->get_premise())->get_pred()) : its->getInitialLocation();
-        constraints.emplace_back(theory::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
+        constraints.emplace_back(Arith::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
         // replace the arguments of the body predicate with the corresponding program variables
         unsigned bool_arg{0};
         unsigned arr_arg{0};
@@ -184,7 +184,7 @@ ITSPtr CHCToITS::transform() {
                         if (const auto var{x->isVar()}; var && !renaming.contains((*var)->var())) {
                             renaming.insert((*var)->var(), vars[int_arg]->var());
                         } else {
-                            constraints.emplace_back(theory::mkEq(x, vars[int_arg]));
+                            constraints.emplace_back(Arith::mkEq(x, vars[int_arg]));
                         }
                         ++int_arg;
                     },
@@ -192,7 +192,7 @@ ITSPtr CHCToITS::transform() {
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
                             renaming.insert(*var, avars[arr_arg]);
                         } else {
-                            constraints.emplace_back(theory::mkEq(x, avars[arr_arg]));
+                            constraints.emplace_back(Arrays<Arith>::mkEq(x, avars[arr_arg]));
                         }
                         ++arr_arg;
                     },
@@ -200,7 +200,7 @@ ITSPtr CHCToITS::transform() {
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
                             renaming.insert(*var, bvars[bool_arg]);
                         } else {
-                            constraints.emplace_back(theory::mkEq(x, theory::toExpr(bvars[bool_arg])));
+                            constraints.emplace_back(Bools::mkEq(x, bools::mkLit(bools::mk(bvars[bool_arg]))));
                         }
                         ++bool_arg;
                     });

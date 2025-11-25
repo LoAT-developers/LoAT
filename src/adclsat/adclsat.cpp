@@ -161,7 +161,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto step {bools::mkOr(steps)};
     solver->add(step->renameVars(subs));
     if (!trace.empty() && trace.back().id > last_orig_clause) {
-        solver->add(theory::mkNeq(trace_var, arith::mkConst(trace.back().id))->renameVars(subs));
+        solver->add(arith::mkNeq(trace_var, arith::mkConst(trace.back().id))->renameVars(subs));
     }
     for (const auto &[id, b] : projections) {
         solver->add(!b->renameVars(subs) || bools::mkLit(arith::mkGeq(trace_var->renameVars(subs), arith::mkConst(id))));

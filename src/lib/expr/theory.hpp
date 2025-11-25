@@ -9,7 +9,6 @@
 #include <variant>
 #include <tuple>
 
-using BoolExprSet = BoolExprSet;
 using Lit = TheTheory::Lit;
 using Expr = TheTheory::Expr;
 using Theories = TheTheory::Theories;
@@ -49,11 +48,8 @@ bool isPostCell(const Cell &var);
 Var next(const Var &var);
 Var postVar(const Var &var);
 Var progVar(const Var &var);
-Expr toExpr(const Var &var);
 void collectVars(const Expr &expr, VarSet &vars);
 VarSet vars(const Expr &e);
-Bools::Expr mkEq(const Expr &e1, const Expr &e2);
-Bools::Expr mkNeq(const Expr &e1, const Expr &e2);
 Bools theory(const Bools::Var&);
 Arrays<Arith> theory(const Arrays<Arith>::Var&);
 Arith theory(const Arith::Expr&);

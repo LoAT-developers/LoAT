@@ -162,7 +162,8 @@ std::pair<Renaming, Renaming> ADCL::handle_update(const RulePtr& idx) {
         theory::apply(
             x,
             [&](const auto& x) {
-                solver->add(theory::mkEq(theory::toExpr(new_var_renaming.get(x)), last_var_renaming(up.get(x))));
+                using Th = decltype(theory::theory(x));
+                solver->add(Th::mkEq(Th::varToExpr(new_var_renaming.get(x)), up.get(x)->renameVars(last_var_renaming)));
             });
     }
     return {new_var_renaming, new_tmp_var_renaming};

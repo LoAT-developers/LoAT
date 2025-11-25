@@ -30,7 +30,7 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_va
                 if (const auto y{up->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
                     subs.put(*y, Bools::varToExpr(x->postVar()));
                 } else {
-                    conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), up));
+                    conjuncts.push_back(Bools::mkEq(bools::mkLit(bools::mk(x->postVar())), up));
                 }
             },
             [&](const Arrays<Arith>::Var& x) {
@@ -53,7 +53,7 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_va
                 if (const auto y{up->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
                     subs.put(*y, Arrays<Arith>::varToExpr(x->postVar()));
                 }
-                conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), up));
+                conjuncts.push_back(bools::mkLit(arrays::mkEq(x->postVar(), up)));
             });
     }
     const auto res {bools::mkAnd(conjuncts)->subs(subs)};

@@ -2,25 +2,60 @@
 
 #include "theory.hpp"
 
-struct SMTLibParsingState {
-    std::vector<Arrays<Arith>::Var> arith_vars;
-    std::vector<Bools::Var> bool_vars;
-    std::vector<Arrays<Arith>::Var> arr_vars;
-    size_t next_arith_var {0};
-    size_t next_bool_var {0};
-    size_t next_arr_var {0};
-    std::vector<Arrays<Arith>::Var> tmp_arith_vars;
-    std::vector<Bools::Var> tmp_bool_vars;
-    std::vector<Arrays<Arith>::Var> tmp_arr_vars;
-    size_t next_tmp_arith_var {0};
-    size_t next_tmp_bool_var {0};
-    size_t next_tmp_arr_var {0};
-    std::unordered_map<std::string, Var> vars;
-    std::vector<Bools::Expr> refinement;
-    std::vector<std::unordered_map<std::string, Expr>> bindings;
+class SMTLibParsingState {
 
-    Var get_var(const std::string &name, theory::Type type);
-    void clear();
+    std::vector<Arrays<Arith>::Var> arith_vars;
+    std::vector<Arrays<Arith>::Var> array_vars;
+    std::vector<Bools::Var> bool_vars;
+
+    template <class Var, class Expr>
+    struct Decls {
+        size_t next = 0;
+        std::unordered_map<std::string, Expr> bindings;
+        std::unordered_map<std::string, ptr<Var>> decls;
+
+        std::optional<ptr<Var>> get_var(const std::string&) const;
+        bool declares(const std::string&) const;
+
+        explicit Decls(size_t next);
+
+    };
+
+    struct Frame {
+        Decls<ArrayVar<Arith>, Arith::Expr> arith_vars;
+        Decls<BoolVar, Bools::Expr> bool_vars;
+        Decls<ArrayVar<Arith>, Arrays<Arith>::Expr> array_vars;
+        std::vector<Bools::Expr> m_refinement;
+
+        explicit Frame(std::vector<Bools::Expr> refinement, size_t next_arith, size_t next_bool, size_t next_array);
+
+    };
+
+    std::vector<Frame> frames {Frame({}, 0, 0, 0)};
+    linked_hash_set<Expr> constants;
+
+public:
+
+    Arrays<Arith>::Var get_or_create_array_var(const std::string&);
+    Arrays<Arith>::Var get_or_create_arith_var(const std::string&);
+    Bools::Var get_or_create_bool_var(const std::string&);
+    Arrays<Arith>::Var create_arith_var(const std::string&);
+    Arrays<Arith>::Var create_array_var(const std::string&);
+    Bools::Var create_bool_var(const std::string&);
+    Var create_var(const std::string&, theory::Type);
+    Var create_constant(const std::string&, theory::Type);
+    const linked_hash_set<Expr>& get_constants() const;
+    void push();
+    void pop();
+
+    std::optional<Arith::Expr> get_arith_binding(const std::string&);
+    std::optional<Bools::Expr> get_bool_binding(const std::string&);
+    std::optional<Arrays<Arith>::Expr> get_array_binding(const std::string&);
+    void add_refinement(const Bools::Expr&);
+    Bools::Expr refinement() const;
+
+    std::optional<theory::Type> get_type(const std::string&) const;
+    void add_binding(const std::string&, const Expr&);
 
 };
 

@@ -376,7 +376,9 @@ size_t ArrayRead<T>::CacheHash::operator(
 }
 
 template <class T>
-ArrayRead<T>::ArrayRead(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices): m_arr(p_arr), m_indices(p_indices) {}
+ArrayRead<T>::ArrayRead(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices): m_arr(p_arr), m_indices(p_indices) {
+    assert(m_arr->dim() == m_indices.size());
+}
 
 template <class T>
 ArrayRead<T>::~ArrayRead() {
@@ -488,12 +490,10 @@ bool ArrayRead<T>::isProgCell() const {
     return std::ranges::all_of(vars(), theory::isProgVar);}
 
 ArrayReadPtr<Arith> arrays::mkArrayRead(const ArrayVarPtr<Arith>& arr, const std::vector<Arith::Expr>& indices) {
-    assert(arr->dim() == indices.size());
     return ArrayRead<Arith>::cache.from_cache(arr, indices);
 }
 
 Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices) {
-    assert(arr->dim() == indices.size());
     if (const auto write {arr->isArrayWrite()}; write) {
         Subs subs;
         for (size_t i = 0; i < indices.size(); ++i) {

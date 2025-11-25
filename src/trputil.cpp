@@ -200,7 +200,7 @@ std::pair<Bools::Expr, ModelPtr> TRPUtil::compress(const Range &range) {
 }
 
 Bools::Expr TRPUtil::encode_transition(const Bools::Expr &t, const Int &id) const {
-    return t && theory::mkEq(trace_var, arith::mkConst(id));
+    return t && Arith::mkEq(trace_var, arith::mkConst(id));
 }
 
 Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
@@ -368,10 +368,12 @@ bool TRPUtil::build_cex() {
                 theory::apply(
                     p,
                     [&](const auto& p) {
-                        if (const auto& [pre, post]{p}; accel_up.contains(pre)) {
-                            conjuncts.push_back(theory::mkEq(theory::toExpr(post), accel_up.get(pre)));
+                        const auto& [pre, post] = p;
+                        using Th = decltype(theory::theory(pre));
+                        if (accel_up.contains(pre)) {
+                            conjuncts.push_back(Th::mkEq(Th::varToExpr(post), accel_up.get(pre)));
                         } else {
-                            conjuncts.push_back(theory::mkEq(theory::toExpr(post), theory::toExpr(pre)));
+                            conjuncts.push_back(Th::mkEq(Th::varToExpr(post), Th::varToExpr(pre)));
                         }
                     });
             }

@@ -1,12 +1,15 @@
 #pragma once
 
 #include "chcproblem.hpp"
+#include "smtlibutil.hpp"
 
 class SexpressoParser {
 
     CHCPtr chcs {std::make_shared<CHCProblem>()};
 
-    void run(const std::string &filename) const;
+    SMTLibParsingState state;
+
+    void run(const std::string &filename);
 
 public:
 
