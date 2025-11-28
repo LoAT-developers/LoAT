@@ -30,9 +30,10 @@ class ABMC final : public StepwiseAnalysis {
     std::vector<Implicant> trace {};
     std::vector<Bools::Expr> transitions {};
     VarSet vars {};
+    CellSet cells {};
     ArithVarPtr n {arrays::nextConst<Arith>()};
     Renaming pre_to_post {};
-    std::unordered_map<Implicant, int> lang_map {};
+    std::unordered_map<RulePtr, int> lang_map {};
     std::unordered_map<std::vector<int>, std::unordered_map<Bools::Expr, std::optional<Loop>>> cache {};
     std::unordered_set<std::vector<int>> nonterm_cache {};
     std::unordered_map<int, std::vector<int>> history {};

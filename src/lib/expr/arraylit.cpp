@@ -1,7 +1,21 @@
 #include "arraylit.hpp"
+
+#include "model.hpp"
 #include "sexpresso.hpp"
 #include "subs.hpp"
 #include "variantset.hpp"
+
+template <class T>
+void ArrayEq<T>::syntacticImplicant(const ModelPtr& m, LitSet& res) const {
+    if (const auto self = cpp::assume_not_null(this->shared_from_this()); m->eval(self)) {
+        res.insert(arrays::mkEq(m_lhs->syntacticImplicant(m, res), m_rhs->syntacticImplicant(m, res)));
+    }
+}
+
+template <class T>
+void ArrayNeq<T>::syntacticImplicant(const ModelPtr& m, LitSet& res) const {
+    res.insert(arrays::mkNeq(m_lhs->syntacticImplicant(m, res), m_rhs->syntacticImplicant(m, res)));
+}
 
 template <class T>
 bool ArrayLit<T>::simplifyAnd(linked_hash_set<ArrayLitPtr<T>>&) {

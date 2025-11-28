@@ -39,7 +39,7 @@ class RedundanceViaAutomata {
 
 public:
 
-    Automaton get_singleton_language(const RulePtr& idx, const Bools::Expr &guard);
+    Automaton get_singleton_language(const RulePtr&, const RulePtr&);
     std::optional<Automaton> get_language(const RulePtr& idx);
     void set_language(const RulePtr& idx, const Automaton &t);
     void delete_language(const RulePtr& idx);
@@ -53,7 +53,7 @@ public:
 
 private:
 
-    std::unordered_map<std::pair<RulePtr, Bools::Expr>, Automaton> alphabet {};
+    std::unordered_map<std::pair<RulePtr, RulePtr>, Automaton> alphabet {};
     std::unordered_map<RulePtr, Automaton> regexes {};
 
 };

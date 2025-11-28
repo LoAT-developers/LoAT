@@ -35,6 +35,8 @@ public:
 
     ~Rule();
 
+    CellSet cells() const;
+
     static RulePtr mk(const Bools::Expr& guard, const Subs& up);
 
     Bools::Expr getGuard() const;
@@ -57,6 +59,7 @@ public:
     VarSet vars() const;
 
     void collectVars(VarSet &vars) const;
+    void collectCells(CellSet &cells) const;
 
     RulePtr chain(const RulePtr &that) const;
 
@@ -74,11 +77,13 @@ public:
 
     size_t hash() const;
 
+    RulePtr syntacticImplicant(ModelPtr) const;
+
 };
 
 std::ostream& operator<<(std::ostream &s, const Rule &rule);
 
-using Implicant = std::pair<RulePtr, Bools::Expr>;
+using Implicant = std::pair<RulePtr, RulePtr>;
 
 std::ostream& operator<<(std::ostream &s, const RulePtr &idx);
 std::ostream& operator<<(std::ostream &s, const Implicant &imp);

@@ -27,7 +27,7 @@ struct Step {
     /**
      * a conjunction that implies the condition of the clause
      */
-    const Bools::Expr implicant;
+    const RulePtr implicant;
 
     /**
      * renames the program variables to fresh variables that serve as input for the next step
@@ -37,7 +37,7 @@ struct Step {
 
     const RulePtr resolvent;
 
-    Step(RulePtr  transition, Bools::Expr  sat, Renaming var_renaming, Renaming tmp_var_renaming, RulePtr  resolvent);
+    Step(RulePtr transition, RulePtr sat, Renaming var_renaming, Renaming tmp_var_renaming, RulePtr resolvent);
 
     Step(const Step &that) = default;
 

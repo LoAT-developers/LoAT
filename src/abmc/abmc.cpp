@@ -15,9 +15,12 @@ ABMC::ABMC(const ITSPtr& its):
     its(its),
     cex(its) {
     vars.insert(trace_var->var());
+    cells.insert(trace_var);
     vars.insert(n->var());
+    cells.insert(n);
     solver->enableModels();
     vars.insertAll(its->getVars());
+    cells.insertAll(its->getCells());
     for (const auto& var : vars) {
         theory::apply(
             var,
@@ -112,27 +115,46 @@ std::optional<unsigned> ABMC::has_looping_suffix(const unsigned start, std::vect
 }
 
 int ABMC::get_language(const unsigned i) {
-    if (const auto imp{trace[i]}; is_orig_clause(imp.first)) {
+    const auto [rule, imp] = trace[i];
+    if (is_orig_clause(rule)) {
         const auto [it, changed]{lang_map.emplace(imp, next)};
         if (changed) {
             ++next;
         }
         return it->second;
-    } else {
-        return lang_map.at(imp);
     }
+    return lang_map.at(rule);
 }
 
 std::pair<RulePtr, ModelPtr> ABMC::build_loop(const int backlink) const {
-    std::vector<RulePtr> rules;
-    for (size_t i = backlink; i < trace.size(); ++i) {
-        rules.emplace_back(trace[i].first->withGuard(trace[i].second)->renameVars(subsTmp.at(i)));
+    std::vector<RulePtr> prefix_rules, loop_rules;
+    for (int i = 0; i < backlink; ++i) {
+        prefix_rules.emplace_back(trace[i].second->renameVars(subsTmp.at(i)));
     }
-    const auto loop {Preprocess::chain(rules)};
+    for (size_t i = backlink; i < trace.size(); ++i) {
+        loop_rules.emplace_back(trace[i].second->renameVars(subsTmp.at(i)));
+    }
+    auto loop = Preprocess::chain(loop_rules);
+    linked_hash_set<Arrays<Arith>::Var> read;
+    for (const auto cells = loop->cells().get<ArithVarPtr>(); const auto& c: cells) {
+        if (c->dim() > 0) {
+            read.insert(c->var());
+        }
+    }
+    auto prefix = Preprocess::preprocessRule(Preprocess::chain(prefix_rules));
+    const auto up = prefix->getUpdate().get<Arrays<Arith>>();
+    Subs subs;
+    for (const auto &[k,v]: up) {
+        if (v->isArrayWrite()) {
+            if (read.contains(k)) {
+                subs.put(k, v);
+            }
+        }
+    }
+    loop = loop->subs(subs);
     const auto s {subsProg.at(backlink)};
     auto model {solver->model()->composeBackwards(s)};
-    const auto imp {model->syntacticImplicant(loop->getGuard())};
-    const auto implicant {loop->withGuard(imp)};
+    const auto implicant {loop->syntacticImplicant(model)};
     if (Config::Analysis::log) {
         std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << *implicant << std::endl;
     }
@@ -140,7 +162,7 @@ std::pair<RulePtr, ModelPtr> ABMC::build_loop(const int backlink) const {
 }
 
 Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
-    if (!blocking_clauses || loop.prefix > 1 || loop.period > 1 || !loop.deterministic) {
+    if (!blocking_clauses || loop.prefix > 1 || loop.period > 1) {
         return top();
     }
     const auto orig {loop.idx->subs(Subs::build(n->var(), arrays::update(n, arith::one())))};
@@ -259,7 +281,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
                 }
                 shortcut = simplified;
                 history.emplace(next, lang);
-                lang_map.emplace(Implicant(simplified, simplified->getGuard()), next);
+                lang_map.emplace(simplified, next);
                 ++next;
                 res = {
                     .idx = simplified,
@@ -283,10 +305,9 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
         } else {
             std::vector<RulePtr> rules;
             for (size_t i = backlink; i < trace.size(); ++i) {
-                if (const auto &[rule, guard]{trace.at(i)}; rule->getGuard() == guard) {
+                if (const auto &[rule, imp]{trace.at(i)}; rule == imp) {
                     rules.emplace_back(rule);
                 } else {
-                    const auto imp{rule->withGuard(guard)};
                     cex.add_implicant(rule, imp);
                     rules.emplace_back(imp);
                 }
@@ -325,7 +346,7 @@ void ABMC::build_trace() {
         const auto s {subs.at(d)};
         auto m {solver->model()->composeBackwards(s)};
         const auto rule {rule_map.at(m->get(trace_var))};
-        const auto imp {m->syntacticImplicant(rule->getGuard())};
+        const auto imp {rule->syntacticImplicant(m)};
         if (Config::Analysis::log) {
             run.push_back(m);
         }
@@ -433,7 +454,7 @@ std::optional<SmtResult> ABMC::do_step() {
                 solver->print(std::cout);
                 std::cout << "got unknown from SMT solver -- ";
                 if (depth == 1) {
-                    std::cout << "giving up" << std::endl;;
+                    std::cout << "giving up" << std::endl;
                     return SmtResult::Unknown;
                 }
                 std::cout << "restarting" << std::endl;

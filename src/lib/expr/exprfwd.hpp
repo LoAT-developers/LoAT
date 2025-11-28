@@ -98,3 +98,5 @@ using ArrayLitPtr = ptr<ArrayLit<T>>;
 
 using Lit = std::variant<ArithLitPtr, ArrayLitPtr<Arith>, BoolLitPtr>;
 using Var = std::variant<ArrayVarPtr<Arith>, BoolVarPtr>;
+
+using LitSet = VariantSet<ArithLitPtr, ArrayLitPtr<Arith>, BoolLitPtr>;

@@ -136,52 +136,36 @@ Arith::Const Model::eval(const ArrayReadPtr<Arith>& e, const Subs& subs) {
     return evalImpl(e->subs(subs));
 }
 
-bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
+bool Model::syntacticImplicant(const Bools::Expr& e, LitSet &res) {
     if (e->isAnd()) {
-        BoolExprSet sub;
+        LitSet sub;
         for (const auto &c : e->getChildren()) {
-            if (!syntacticImplicant(c, m, sub)) {
+            if (!syntacticImplicant(c, sub)) {
                 return false;
             }
         }
-        res.insert(sub.begin(), sub.end());
+        res.insertAll(sub);
         return true;
     }
     if (e->isOr()) {
         for (const auto &c : e->getChildren()) {
-            if (syntacticImplicant(c, m, res)) {
+            if (syntacticImplicant(c, res)) {
                 return true;
             }
         }
         return false;
     }
     if (const auto lit = e->getTheoryLit()) {
-        return std::visit(
-            Overload{
-                [&](const Arith::Lit &l) {
-                    if (l->isNeq()) {
-                        if (const auto lt{arith::mkLt(l->lhs(), arith::zero())}; m->eval(lt)) {
-                            res.insert(bools::mkLit(lt));
-                            return true;
-                        }
-                        if (const auto gt{arith::mkGt(l->lhs(), arith::zero())}; m->eval(gt)) {
-                            res.insert(bools::mkLit(gt));
-                            return true;
-                        }
-                    } else if (m->eval(l)) {
-                        res.insert(e);
-                        return true;
-                    }
-                    return false;
-                },
-                [&](const auto &l) {
-                    if (m->eval(l)) {
-                        res.insert(e);
-                        return true;
-                    }
-                    return false;
-                }},
-            *lit);
+        const auto self = cpp::assume_not_null(this->shared_from_this());
+        return theory::apply(
+            *lit,
+            [&](const auto& l) {
+                if (eval(l)) {
+                    l->syntacticImplicant(self, res);
+                    return true;
+                }
+                return false;
+            });
     }
     throw std::invalid_argument("unknown kind of BoolExpr");
 }
@@ -189,7 +173,7 @@ bool syntacticImplicant(const Bools::Expr& e, Model* m, BoolExprSet &res) {
 Bools::Expr Model::syntacticImplicant(const Bools::Expr& e) {
     if (!eval(e)) {
         std::cerr << "syntactic implicant failed; model:" << std::endl;
-        std::cerr << this->toString(e->vars()) << std::endl;
+        std::cerr << this->toString(e->cells()) << std::endl;
         std::cerr << "formula: " << e << std::endl;
         std::cerr << "violated literals:" << std::endl;
         for (const auto& l: e->lits()) {
@@ -199,8 +183,8 @@ Bools::Expr Model::syntacticImplicant(const Bools::Expr& e) {
         }
         throw std::invalid_argument("syntacitc implicant failed");
     }
-    BoolExprSet res;
-    ::syntacticImplicant(e, this, res);
+    LitSet res;
+    syntacticImplicant(e, res);
     return bools::mkAnd(res);
 }
 
@@ -230,7 +214,27 @@ std::string Model::toString(const VarSet& xs) {
                 } else {
                     s << ", ";
                 }
-                s << x << "=" << toString(subs.get(x));
+                s << x << "=" << toString(x->subs(subs));
+            });
+    }
+    s << "]";
+    return s.str();
+}
+
+std::string Model::toString(const CellSet& xs) {
+    std::stringstream s;
+    s << "[";
+    auto first {true};
+    for (const auto& x : xs) {
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                if (first) {
+                    first = false;
+                } else {
+                    s << ", ";
+                }
+                s << x << "=" << toString(x->subs(subs));
             });
     }
     s << "]";

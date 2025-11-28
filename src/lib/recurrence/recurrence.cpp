@@ -283,6 +283,8 @@ bool Recurrence::solve() {
     }
     // lvalues that are written by the loop
     linked_hash_map<ArithVarPtr, Arith::Expr> written;
+    linked_hash_set<Arrays<Arith>::Var> increasing;
+    linked_hash_set<Arrays<Arith>::Var> decreasing;
     // vectors describing how the indices change
     linked_hash_map<ArithVarPtr, std::vector<ArithConstPtr>> shift;
     // constraints that enforce that the written indices are disjoint
@@ -305,9 +307,19 @@ bool Recurrence::solve() {
         std::vector<ArithVarPtr> lvalues;
         const auto store_shift = [&](const auto& c) {
             const auto s = compute_shift(c->indices());
-            // TODO just increasing loops for now
-            if (!s || std::ranges::any_of(*s, [](const auto& i) {return i->getValue() < 0;})) {
+            if (!s) {
                 return false;
+            }
+            if (std::ranges::any_of(*s, [](const auto& i) {return i->getValue() < 0;})) {
+                if (increasing.contains(c->var())) {
+                    return false;
+                }
+                decreasing.insert(c->var());
+            } else {
+                if (decreasing.contains(c->var())) {
+                    return false;
+                }
+                increasing.insert(c->var());
             }
             shift.emplace(c, *s);
             return true;
@@ -361,25 +373,39 @@ bool Recurrence::solve() {
     std::vector<ArithVarPtr> a_work_list;
     // checks whether the given cells are inductive, and populates 'inductive' on the way
     const auto are_inductive = [&](const auto& cells) {
-        return std::ranges::all_of(cells, [&](const ArithVarPtr& c) {
+        for (const auto& c: cells) {
+            if (closed_form.contains(c)) {
+                continue;
+            }
+            auto found = false;
             const auto updated_indices = update_idx(c->indices());
             for (const auto &lval: written | std::views::keys) {
                 if (lval->var() == c->var() && lval->indices() == updated_indices) {
-                    inductive.put(lval, c);
-                    a_work_list.emplace_back(lval);
-                    return true;
+                    if (!inductive.contains(lval)) {
+                        inductive.put(lval, c);
+                        a_work_list.emplace_back(lval);
+                    }
+                    found = true;
+                    break;
                 }
             }
-            return false;
-        });
+            if (!found) {
+                return false;
+            }
+        }
+        return true;
     };
     // checks whether the given cells are displacing, and populates 'displacing' on the way
     const auto are_displacing = [&](const auto& cells) {
         return std::ranges::all_of(cells, [&](const ArithVarPtr& c) {
             const auto updated_indices = update_idx(c->indices());
-            for (const auto &lval: written | std::views::keys) {
-                if (lval->var() == c->var() && compare_lexicographically(lval->indices(), updated_indices) >= 0) {
-                    return false;
+            for (const auto& lval : written | std::views::keys) {
+                if (lval->var() == c->var()) {
+                    const auto comp = compare_lexicographically(lval->indices(), updated_indices);
+                    if ((increasing.contains(lval->var()) && comp >= 0)
+                        || (decreasing.contains(lval->var()) && comp <= 0)) {
+                        return false;
+                    }
                 }
             }
             displacing.insert(c);
@@ -388,24 +414,12 @@ bool Recurrence::solve() {
     };
     for (const auto& [lval,val] : written) {
         if (auto cells = val->cells(); are_inductive(cells)) {
-            if (!inductive.contains(lval)) {
-                // happens for assignments like a[x] = 0; in this case, we must
-                // ensure that 'inductive' and the work list have entries for a[x]
-                Idx indices;
-                const auto& s = shift.at(lval);
-                for (size_t i = 0; i < lval->dim(); ++i) {
-                    indices.emplace_back(lval->indices().at(i) - s.at(i));
-                }
-                const auto pre = arrays::mkArrayRead(lval->var(), indices);
-                inductive.put(lval, pre);
-                a_work_list.emplace_back(lval);
-            }
             if (Config::Analysis::logAccel) {
-                std::cerr << lval << " = " << val << " is inductive" << std::endl;
+                std::cout << lval << " = " << val << " is inductive" << std::endl;
             }
         } else if (are_displacing(cells)) {
             if (Config::Analysis::logAccel) {
-                std::cerr << lval << " = " << val << " is displacing" << std::endl;
+                std::cout << lval << " = " << val << " is displacing" << std::endl;
             }
         } else {
             return false;
@@ -439,7 +453,7 @@ bool Recurrence::solve() {
                 }
                 changed = true;
                 if (Config::Analysis::logAccel) {
-                    std::cerr << "closed form for " << pre << ": " << closed_form.at(pre) << std::endl;
+                    std::cout << "closed form for " << pre << ": " << closed_form.at(pre) << std::endl;
                 }
                 it = a_work_list.erase(it);
             } else {
@@ -465,7 +479,7 @@ bool Recurrence::solve() {
         closed_form.put(lval, updated);
         closed_form_n_minus_one.put(std::pair(lval, updated->subs(n_to_n_minus_one)));
         if (Config::Analysis::logAccel) {
-            std::cerr << "closed form for " << lval << ": " << closed_form.at(lval) << std::endl;
+            std::cout << "closed form for " << lval << ": " << closed_form.at(lval) << std::endl;
         }
     }
     // take care of booleans
@@ -513,8 +527,13 @@ bool Recurrence::solve() {
         for (const auto& e: lval->indices()) {
             if (const auto& d = s.at(i); d->getValue() != 0) {
                 const auto c = arrays::array_idx(i);
-                lits.insert(arith::mkLt(c, e + d * m));
-                lits.insert(arith::mkLeq(e + d * n, c));
+                if (increasing.contains(lval->var())) {
+                    lits.insert(arith::mkLt(c, e + d * m));
+                    lits.insert(arith::mkLeq(e + d * n, c));
+                } else {
+                    lits.insert(arith::mkLeq(c, e + d * n));
+                    lits.insert(arith::mkLt(e + d * m, c));
+                }
                 if (d->getValue() != 1) {
                     lits.insert(arith::mkNeq(arith::mkMod(c - e, d), arith::zero()));
                 }
@@ -547,8 +566,9 @@ bool Recurrence::solve() {
         for (const auto& e: lval->indices()) {
             if (const auto& d = s.at(i); d->getValue() != 0) {
                 const auto c = arrays::array_idx(i);
-                lits.insert(arith::mkLeq(arith::zero(), c - e));
-                lits.insert(arith::mkLt(c - e, n * d));
+                const auto frac = (c - e)->divide(d->getValue());
+                lits.insert(arith::mkLeq(arith::zero(), frac));
+                lits.insert(arith::mkLt(frac, n));
                 if (d->getValue() != 1) {
                     lits.insert(arith::mkEq(arith::mkMod(c - e, d), arith::zero()));
                 }
@@ -574,7 +594,7 @@ bool Recurrence::solve() {
             const auto var = lval->var();
             // the array expression that has been constructed so far
             const auto old_val = result.closed_form.get(var);
-            const auto s = shift.at(lval);
+            const auto& s = shift.at(lval);
             Arith::Expr new_val = arith::zero();
             if (const auto opt = inductive.get(lval)) {
                 new_val = closed_form.at(*opt);

@@ -10,6 +10,7 @@
 #include "arrayexpr.hpp"
 #include "arrays.hpp"
 #include "arraysubs.hpp"
+#include "model.hpp"
 #include "subs.hpp"
 
 std::size_t hash_value(const Bound &bound) {
@@ -417,4 +418,17 @@ bool ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
         lits.insert(a);
     }
     return !add.empty();
+}
+
+void ArithLit::syntacticImplicant(ModelPtr m, LitSet& res) const {
+    const auto lhs = l->syntacticImplicant(m, res);
+    if (kind == Kind::Neq) {
+        if (m->eval(lhs) > 0) {
+            res.insert(arith::mkGt(lhs, arith::zero()));
+        } else {
+            res.insert(arith::mkLt(lhs, arith::zero()));
+        }
+    } else {
+        res.insert(mk(lhs, kind));
+    }
 }

@@ -9,6 +9,8 @@
 #include <functional>
 #include <utility>
 
+#include "model.hpp"
+
 ConsHash<BoolLit, BoolVarPtr, bool> BoolLit::cache {};
 
 bool BoolLit::CacheEqual::operator()(const std::tuple<BoolVarPtr, bool> &args1, const std::tuple<BoolVarPtr, bool> &args2) const noexcept {
@@ -104,4 +106,8 @@ BoolLitPtr BoolLit::renameVars(const Renaming &map) const {
 BoolExprPtr BoolLit::subs(const Subs& subs) const {
     const auto res {subs.get(var)};
     return negated ? !res : res;
+}
+
+void BoolLit::syntacticImplicant(ModelPtr m, LitSet& res) const {
+    res.insert(cpp::assume_not_null(shared_from_this()));
 }

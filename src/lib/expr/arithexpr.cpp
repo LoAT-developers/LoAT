@@ -1079,6 +1079,40 @@ ArithExprPtr ArithExpr::subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>& s
         });
 }
 
+ArithExprPtr ArithExpr::syntacticImplicant(ModelPtr model, LitSet& res) const {
+    return apply<ArithExprPtr>(
+        [&](const ArithConstPtr& x) {
+            return x;
+        },
+        [&](const ArithVarPtr& x) {
+            return x->syntacticImplicant(model, res);
+        },
+        [&](const ArithAddPtr& a) {
+            std::vector<ArithExprPtr> new_args;
+            for (const auto& arg: a->getArgs()) {
+                new_args.emplace_back(arg->syntacticImplicant(model, res));
+            }
+            return arith::mkPlus(std::move(new_args));
+        },
+        [&](const ArithMultPtr& m) {
+            std::vector<ArithExprPtr> new_args;
+            for (const auto& arg: m->getArgs()) {
+                new_args.emplace_back(arg->syntacticImplicant(model, res));
+            }
+            return arith::mkTimes(std::move(new_args));
+        },
+        [&](const ArithModPtr& m) {
+            const auto lhs = m->getLhs()->syntacticImplicant(model, res);
+            const auto rhs = m->getRhs()->syntacticImplicant(model, res);
+            return arith::mkMod(lhs, rhs);
+        },
+        [&](const ArithExpPtr& e) {
+            const auto b = e->getBase()->syntacticImplicant(model, res);
+            const auto exp = e->getExponent()->syntacticImplicant(model, res);
+            return arith::mkExp(b, exp);
+        });
+}
+
 ArithExprPtr arith::zero() {
     static const auto zero {mkConst(0)};
     return zero;

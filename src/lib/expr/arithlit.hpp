@@ -109,6 +109,8 @@ public:
     static bool simplifyAnd(linked_hash_set<ArithLitPtr> &lits);
     static bool simplifyOr(linked_hash_set<ArithLitPtr> &lits);
 
+    void syntacticImplicant(ModelPtr m, LitSet& res) const;
+
 private:
 
     /**

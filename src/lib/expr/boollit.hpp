@@ -51,6 +51,7 @@ public:
     sexpresso::Sexp to_smtlib() const;
     BoolLitPtr renameVars(const Renaming &map) const;
     BoolExprPtr subs(const Subs &subs) const;
+    void syntacticImplicant(ModelPtr, LitSet&) const;
 
 };
 

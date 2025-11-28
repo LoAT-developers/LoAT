@@ -2,6 +2,8 @@
 
 #include <utility>
 
+#include "model.hpp"
+
 ConsHash<Rule, Bools::Expr, Subs> Rule::cache;
 
 unsigned Rule::next_id {0};
@@ -23,6 +25,13 @@ Rule::~Rule() {
     cache.erase(guard, update);
 }
 
+CellSet Rule::cells() const {
+    CellSet res;
+    guard->collectCells(res);
+    update.collectCoDomainCells(res);
+    return res;
+}
+
 RulePtr Rule::mk(const Bools::Expr& guard, const Subs& up) {
     return cache.from_cache(guard, up);
 }
@@ -30,6 +39,17 @@ RulePtr Rule::mk(const Bools::Expr& guard, const Subs& up) {
 void Rule::collectVars(VarSet &vars) const {
     guard->collectVars(vars);
     update.collectVars(vars);
+}
+
+void Rule::collectCells(CellSet& cells) const {
+    guard->collectCells(cells);
+    for (const auto& [k,v]: update) {
+        theory::apply(
+            v,
+            [&](const auto& v) {
+                v->collectCells(cells);
+            });
+    }
 }
 
 VarSet Rule::vars() const {
@@ -94,9 +114,9 @@ std::ostream& operator<<(std::ostream &s, const RulePtr &idx) {
 
 std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
     s << imp.first->getId() << ": ";
-    const auto &up {imp.first->getUpdate()};
-    if (imp.second != top()) {
-        s << imp.second;
+    const auto &up {imp.second->getUpdate()};
+    if (imp.second->getGuard() != top()) {
+        s << imp.second->getGuard();
         if (!up.empty()) {
             s << " /\\ " << up;
         }
@@ -109,8 +129,7 @@ std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
 }
 
 bool Rule::isDeterministic() const {
-    const auto vs {vars()};
-    return !std::any_of(vs.begin(), vs.end(), theory::isTempVar);
+    return !std::ranges::any_of(vars(), theory::isTempVar);
 }
 
 size_t Rule::hash() const {
@@ -118,6 +137,25 @@ size_t Rule::hash() const {
     boost::hash_combine(hash, std::hash<Bools::Expr>{}(guard));
     boost::hash_combine(hash, update.hash());
     return hash;
+}
+
+RulePtr Rule::syntacticImplicant(ModelPtr m) const {
+    LitSet lits;
+    const auto sat = m->syntacticImplicant(guard, lits);
+    assert(sat);
+    Subs u;
+    for (const auto& p: update) {
+        theory::apply(
+            p,
+            [&](const std::pair<Bools::Var, Bools::Expr>& p) {
+                u.put(p);
+            },
+            [&](const auto& p) {
+                const auto& [k,v] = p;
+                u.put(k, v->syntacticImplicant(m, lits));
+            });
+    }
+    return mk(bools::mkAnd(lits), u);
 }
 
 size_t hash_value(const Rule &r) {

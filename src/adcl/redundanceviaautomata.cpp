@@ -87,10 +87,11 @@ bool operator==(const Automaton &x, const Automaton &y) {
     return x.to_string() == y.to_string();
 }
 
-Automaton RedundanceViaAutomata::get_singleton_language(const RulePtr& idx, const Bools::Expr &g) {
-    if (const auto it = alphabet.find({idx, g}); it == alphabet.end()) {
+Automaton RedundanceViaAutomata::get_singleton_language(const RulePtr& idx, const RulePtr &imp) {
+    const auto key = std::pair(idx, imp);
+    if (const auto it = alphabet.find(key); it == alphabet.end()) {
         const auto res = Automaton::singleton();
-        alphabet.emplace(std::pair(idx, g), res);
+        alphabet.emplace(key, res);
         return res;
     } else {
         return it->second;

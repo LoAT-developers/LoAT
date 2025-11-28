@@ -66,6 +66,8 @@ class Array: public std::enable_shared_from_this<Array<T>> {
     virtual void collectCells(CellSet&) const = 0;
     CellSet cells() const;
 
+    virtual ArrayPtr<T> syntacticImplicant(ModelPtr, LitSet&) const = 0;
+
 };
 
 template <class T>
@@ -133,6 +135,7 @@ public:
     void collectCells(CellSet&) const override;
 
     static ArrayVarPtr<T> dummyConst();
+    ArrayPtr<T> syntacticImplicant(ModelPtr, LitSet&) const override;
 };
 
 template<class T>
@@ -203,6 +206,7 @@ public:
     unsigned dim() const override;
     void collectCells(CellSet&) const override;
     std::optional<std::vector<Arith::Expr>> indices() const;
+    ArrayPtr<T> syntacticImplicant(ModelPtr, LitSet&) const override;
 };
 
 template <class T>
@@ -262,6 +266,8 @@ public:
     // retrieval
     void collectVars(VarSet&) const;
     VarSet vars() const;
+
+    T::Expr syntacticImplicant(ModelPtr, LitSet&) const;
 
 };
 

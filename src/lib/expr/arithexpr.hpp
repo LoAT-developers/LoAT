@@ -208,6 +208,8 @@ public:
 
     ArithExprPtr subs(const linked_hash_map<ArithVarPtr, ArithExprPtr>&) const;
 
+    ArithExprPtr syntacticImplicant(ModelPtr model, LitSet& res) const;
+
     /**
      * @brief exponentiation
      */
@@ -216,7 +218,6 @@ public:
     friend ArithExprPtr operator-(const ArithExprPtr& x, const ArithExprPtr& y);
     friend ArithExprPtr operator+(const ArithExprPtr& x, const ArithExprPtr& y);
     friend ArithExprPtr operator*(const ArithExprPtr& x, const ArithExprPtr& y);
-
 };
 
 std::size_t hash_value(const ArithExprPtr&);

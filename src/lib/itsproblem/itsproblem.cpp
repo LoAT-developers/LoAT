@@ -155,6 +155,14 @@ VarSet ITSProblem::getVars() const {
     return res;
 }
 
+CellSet ITSProblem::getCells() const {
+    CellSet res;
+    for (const auto &r: rules) {
+        r->collectCells(res);
+    }
+    return res;
+}
+
 Arith::Expr ITSProblem::getCost(const RulePtr& rule) const {
     return rule->getUpdate().getConst(cost_var) - cost_var;
 }

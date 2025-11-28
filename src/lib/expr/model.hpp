@@ -6,7 +6,7 @@ class Model;
 
 using ModelPtr = cpp::not_null<std::shared_ptr<Model>>;
 
-class Model {
+class Model: public std::enable_shared_from_this<Model> {
 
 public:
     virtual ~Model() = default;
@@ -26,10 +26,12 @@ public:
     virtual ModelPtr withSubs(const Subs&) const = 0;
 
     Bools::Expr syntacticImplicant(const Bools::Expr&);
+    bool syntacticImplicant(const Bools::Expr& e, LitSet& res);
 
     ModelPtr composeBackwards(const Renaming&) const;
     ModelPtr composeBackwards(const Subs&) const;
 
+    std::string toString(const CellSet&);
     std::string toString(const VarSet&);
 
 private:

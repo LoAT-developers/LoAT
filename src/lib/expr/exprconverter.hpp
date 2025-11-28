@@ -142,13 +142,17 @@ protected:
         }
         const auto arr {write->arr()};
         const auto converted_arr {convertArray(arr)};
-        const auto converted_value {convertEx(write->val())};
         auto converted_indices {context.exprVec()};
         if (const auto indices {write->indices()}) {
-            assert(!indices->empty());
-            for (const auto &i: *indices) {
-                converted_indices.push_back(convertEx(i));
+            linked_hash_map<ArithVarPtr, Arith::Expr> subs;
+            const auto dim = indices->size();
+            assert(dim > 0);
+            for (size_t i = 0; i < dim; ++i) {
+                const auto idx = indices->at(i);
+                subs.put(arrays::array_idx(i), idx);
+                converted_indices.push_back(convertEx(idx));
             }
+            const auto converted_value {convertEx(write->val()->subs(subs))};
             return context.arrayWrite(converted_arr, converted_indices, converted_value);
         }
         std::vector<Arith::Expr> indices;
@@ -158,6 +162,7 @@ protected:
             converted_indices.push_back(convertArray(idx->var()));
         }
         const auto converted_cond = convertBoolEx(write->cond());
+        const auto converted_value {convertEx(write->val())};
         const auto else_case = convertEx(arrays::mkArrayRead(arr, indices));
         const auto body = context.ite(converted_cond, converted_value, else_case);
         return context.lambda(converted_indices, body);

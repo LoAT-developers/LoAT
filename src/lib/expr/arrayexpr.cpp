@@ -1,6 +1,8 @@
 #include "arrayexpr.hpp"
 
 #include <utility>
+
+#include "model.hpp"
 #include "sexpresso.hpp"
 #include "renaming.hpp"
 #include "subs.hpp"
@@ -156,6 +158,11 @@ void ArrayVar<T>::collectCells(CellSet&) const {}
 template <class T>
 ArrayVarPtr<T> ArrayVar<T>::dummyConst() {
     return cache.from_cache(0, 0);
+}
+
+template <class T>
+ArrayPtr<T> ArrayVar<T>::syntacticImplicant(ModelPtr, LitSet&) const {
+    return cpp::assume_not_null(this->shared_from_this());
 }
 
 template <class T>
@@ -360,6 +367,11 @@ std::optional<std::vector<Arith::Expr>> ArrayWrite<T>::indices() const {
 }
 
 template <class T>
+ArrayPtr<T> ArrayWrite<T>::syntacticImplicant(ModelPtr m, LitSet& res) const {
+    return arrays::mkArrayWrite(m_arr->syntacticImplicant(m, res), m_cond, m_val->syntacticImplicant(m, res));
+}
+
+template <class T>
 bool ArrayRead<T>::CacheEqual::operator()(
     const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>>& args1,
     const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>>& args2) const
@@ -469,6 +481,26 @@ VarSet ArrayRead<T>::vars() const {
 }
 
 template <class T>
+T::Expr ArrayRead<T>::syntacticImplicant(ModelPtr m, LitSet& res) const {
+    const auto arr = m_arr->syntacticImplicant(m, res);
+    std::vector<Arith::Expr> indices;
+    for (const auto& i: m_indices) {
+        indices.emplace_back(i->syntacticImplicant(m, res));
+    }
+    if (const auto write = arr->isArrayWrite()) {
+        if (m->eval((*write)->cond())) {
+            linked_hash_map<ArithVarPtr, Arith::Expr> subs;
+            for (size_t i = 0; i < m_indices.size(); ++i) {
+                subs.put(arrays::array_idx(i), indices.at(i));
+            }
+            return (*write)->val()->subs(subs);
+        }
+        return arrays::mkArrayRead((*write)->arr(), indices)->syntacticImplicant(m, res);
+    }
+    return arrays::mkArrayRead(arr, indices);
+}
+
+template <class T>
 bool ArrayRead<T>::isLinear() const {
     return m_arr->isLinear() && std::ranges::all_of(m_indices, [&](const Arith::Expr& i) {
         return i->isLinear();
@@ -501,7 +533,7 @@ Arith::Expr arrays::mkArrayRead(const ArrayPtr<Arith>& arr, const std::vector<Ar
         }
         const auto cond = (*write)->cond()->subs(subs);
         if (cond == top()) {
-            return (*write)->val();
+            return (*write)->val()->subs(subs);
         }
         if (cond == bot()) {
             return mkArrayRead((*write)->arr(), indices);
@@ -527,6 +559,31 @@ ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const Bools::Ex
                     return arr;
                 }
             }
+        }
+    }
+    if (const auto write = arr->isArrayWrite()) {
+        auto same_vals = val == (*write)->val();
+        if (!same_vals) {
+            if (const auto idx = (*write)->indices()) {
+                linked_hash_map<ArithVarPtr, Arith::Expr> subs;
+                for (size_t i = 0; i < (*idx).size(); ++i) {
+                    subs.put(array_idx(i), idx->at(i));
+                }
+                same_vals |= val->subs(subs) == (*write)->val();
+            }
+        }
+        if (!same_vals) {
+            if (const auto idx = indices(arr->dim(), cond)) {
+                linked_hash_map<ArithVarPtr, Arith::Expr> subs;
+                for (size_t i = 0; i < (*idx).size(); ++i) {
+                    subs.put(array_idx(i), idx->at(i));
+                }
+                same_vals |= val == (*write)->val()->subs(subs);
+            }
+        }
+        if (same_vals) {
+            const auto new_cond = cond || (*write)->cond();
+            return mkArrayWrite((*write)->arr(), new_cond, val);
         }
     }
     if (arr->dim() == 0) {

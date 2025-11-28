@@ -44,6 +44,8 @@ public:
     virtual std::optional<ArrayNeqPtr<T>> isArrayNeq() const = 0;
     virtual void propagateEquality(Subs &subs, const std::function<bool(const Var &)> &allow, VarSet &blocked) const = 0;
 
+    virtual void syntacticImplicant(const ModelPtr&, LitSet&) const = 0;
+
     static bool simplifyAnd(linked_hash_set<ArrayLitPtr<T>>&);
 
 };
@@ -98,6 +100,7 @@ public:
     ArrayLitPtr<T> subs(const Subs&) const override;
     bool isPoly() const override;
     bool isLinear() const override;
+    void syntacticImplicant(const ModelPtr&, LitSet&) const override;
 };
 
 template <class T>
@@ -153,6 +156,7 @@ public:
     void propagateEquality(Subs& subs, const std::function<bool(const Var&)>& allow, VarSet& blocked) const override;
     bool isPoly() const override;
     bool isLinear() const override;
+    void syntacticImplicant(const ModelPtr&, LitSet&) const override;
 };
 
 template <class T>

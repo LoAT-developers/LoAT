@@ -94,7 +94,7 @@ ADCL::ADCL(const ITSPtr& chcs, const std::function<void(const ITSCpxCex&)> &prin
     solver->enableModels();
 }
 
-Step::Step(RulePtr transition, Bools::Expr sat, Renaming var_renaming,
+Step::Step(RulePtr transition, RulePtr sat, Renaming var_renaming,
            Renaming tmp_var_renaming, RulePtr resolvent) :
     clause_idx(std::move(transition)),
     implicant(std::move(sat)),
@@ -175,9 +175,9 @@ void ADCL::block(const Step &step) {
         blocked_clauses.back()[step.clause_idx] = {};
     } else {
         if (const auto block = blocked_clauses.back().find(step.clause_idx); block == blocked_clauses.back().end()) {
-            blocked_clauses.back()[step.clause_idx] = {step.implicant};
+            blocked_clauses.back()[step.clause_idx] = {step.implicant->getGuard()};
         } else {
-            block->second.insert(step.implicant);
+            block->second.insert(step.implicant->getGuard());
         }
     }
 }
@@ -206,12 +206,12 @@ void ADCL::set_cpx_witness(const RulePtr& witness, const ModelPtr &subs, const A
     if (trace.size() > 1) {
         std::vector<RulePtr> rules;
         for (const auto &t: trace) {
-            rules.emplace_back(t.clause_idx->withGuard(t.implicant));
+            rules.emplace_back(t.implicant);
         }
         cpx_cex.add_resolvent(rules, witness);
     } else {
-        if (const auto &t {trace.back()}; t.implicant != t.clause_idx->getGuard()) {
-            cpx_cex.add_implicant(t.clause_idx, t.clause_idx->withGuard(t.implicant));
+        if (const auto &t {trace.back()}; t.implicant != t.clause_idx) {
+            cpx_cex.add_implicant(t.clause_idx, t.implicant);
         }
     }
     cpx_cex.set_witness(witness, subs, param);
@@ -260,7 +260,7 @@ bool ADCL::store_step(const RulePtr& idx, const RulePtr& implicant) {
     solver->add(imp->getGuard());
     if (solver->check() == SmtResult::Sat) {
         const auto [new_var_renaming, new_tmp_var_renaming] {handle_update(idx)};
-        const Step step(idx, implicant->getGuard(), new_var_renaming, new_tmp_var_renaming, compute_resolvent(idx, implicant->getGuard()));
+        const Step step(idx, implicant, new_var_renaming, new_tmp_var_renaming, compute_resolvent(idx, implicant->getGuard()));
         add_to_trace(step);
         // block learned clauses after adding them to the trace
         if (is_learned_clause(idx)) {
@@ -372,8 +372,7 @@ std::optional<RulePtr> ADCL::resolve(const RulePtr& idx) {
     case SmtResult::Sat: {
         if (Config::Analysis::log) std::cout << "found model for " << idx << std::endl;
         const auto model {solver->model()->composeBackwards(projected_var_renaming)};
-        const auto implicant {model->syntacticImplicant(idx->getGuard())};
-        return {idx->withGuard(implicant)};
+        return {idx->syntacticImplicant(model)};
     }
     case SmtResult::Unknown: {}
     [[fallthrough]];
@@ -407,7 +406,7 @@ Automaton ADCL::build_language(const int backlink) const {
 std::pair<RulePtr, ModelPtr> ADCL::build_loop(const int backlink) const {
     std::vector<RulePtr> rules;
     for (size_t i = backlink; i < trace.size(); ++i) {
-        rules.emplace_back(trace[i].clause_idx->withGuard(trace[i].implicant)->renameVars(trace[i].tmp_var_renaming));
+        rules.emplace_back(trace[i].implicant->renameVars(trace[i].tmp_var_renaming));
     }
     const auto loop {Preprocess::chain(rules)};
     const auto s {trace[backlink].var_renaming};
@@ -520,8 +519,8 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
     if (Config::Analysis::model) {
         std::vector<RulePtr> rules;
         for (unsigned i = backlink; i < trace.size(); ++i) {
-            if (const auto e{trace.at(i)}; is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx->getGuard()) {
-                const auto imp{e.clause_idx->withGuard(e.implicant)->renameVars(e.tmp_var_renaming)};
+            if (const auto e{trace.at(i)}; is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx) {
+                const auto imp{e.implicant->renameVars(e.tmp_var_renaming)};
                 the_cex()->add_implicant(e.clause_idx, imp);
                 rules.emplace_back(imp);
             } else {
@@ -643,7 +642,7 @@ bool ADCL::try_to_finish() {
                     const auto resolvent {compute_resolvent(q, (*implicant)->getGuard())};
                     set_cpx_witness(resolvent, solver->model(), arrays::nextConst<Arith>());
                 }
-                add_to_trace(Step(q, (*implicant)->getGuard(), Renaming(), Renaming(), Rule::mk(top(), Subs())));
+                add_to_trace(Step(q, *implicant, Renaming(), Renaming(), Rule::mk(top(), Subs())));
                 print_state();
                 unsat();
                 return true;
@@ -659,10 +658,10 @@ ITSSafetyCex ADCL::get_cex() {
     cex.set_initial_state(model);
     for (size_t i = 0; i + 1 < trace.size(); ++i) {
         const auto &t {trace.at(i)};
-        cex.do_step(t.clause_idx->withGuard(t.implicant), model->composeBackwards(t.var_renaming));
+        cex.do_step(t.implicant, model->composeBackwards(t.var_renaming));
     }
     const auto &last {trace.back()};
-    cex.add_final_transition(last.clause_idx->withGuard(last.implicant));
+    cex.add_final_transition(last.implicant);
     return cex;
 }
 
