@@ -43,7 +43,7 @@ std::pair<std::optional<FunAppPtr>, Bools::Expr> parseTopLevelBoolExpr(sexpresso
             const auto [l,cond] {parseTopLevelBoolExpr(exp[i], state, predicate_bindings)};
             if (l) {
                 if (lhs) {
-                    throw std::invalid_argument("non-linear clause");
+                    throw std::invalid_argument("non-linear clause:\n" + exp.toString());
                 }
                 lhs = l;
             }
