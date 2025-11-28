@@ -126,7 +126,7 @@ int ABMC::get_language(const unsigned i) {
     return lang_map.at(rule);
 }
 
-std::pair<RulePtr, ModelPtr> ABMC::build_loop(const int backlink) const {
+std::pair<std::vector<RulePtr>, ModelPtr> ABMC::build_loop(const int backlink) const {
     std::vector<RulePtr> prefix_rules, loop_rules;
     for (int i = 0; i < backlink; ++i) {
         prefix_rules.emplace_back(trace[i].second->renameVars(subsTmp.at(i)));
@@ -135,8 +135,10 @@ std::pair<RulePtr, ModelPtr> ABMC::build_loop(const int backlink) const {
         loop_rules.emplace_back(trace[i].second->renameVars(subsTmp.at(i)));
     }
     auto loop = Preprocess::chain(loop_rules);
+    std::vector<RulePtr> res;
+    res.emplace_back(loop);
     linked_hash_set<Arrays<Arith>::Var> read;
-    for (const auto cells = loop->cells().get<ArithVarPtr>(); const auto& c: cells) {
+    for (const auto cells = loop->cells().get<ArithVarPtr>(); const auto& c : cells) {
         if (c->dim() > 0) {
             read.insert(c->var());
         }
@@ -144,7 +146,7 @@ std::pair<RulePtr, ModelPtr> ABMC::build_loop(const int backlink) const {
     auto prefix = Preprocess::preprocessRule(Preprocess::chain(prefix_rules));
     const auto up = prefix->getUpdate().get<Arrays<Arith>>();
     Subs subs;
-    for (const auto &[k,v]: up) {
+    for (const auto& [k,v] : up) {
         if (v->isArrayWrite()) {
             if (read.contains(k)) {
                 subs.put(k, v);
@@ -152,13 +154,20 @@ std::pair<RulePtr, ModelPtr> ABMC::build_loop(const int backlink) const {
         }
     }
     loop = loop->subs(subs);
+    res.emplace_back(loop);
     const auto s {subsProg.at(backlink)};
     auto model {solver->model()->composeBackwards(s)};
     const auto implicant {loop->syntacticImplicant(model)};
-    if (Config::Analysis::log) {
-        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << *implicant << std::endl;
+    for (auto& loop: res) {
+        loop = loop->syntacticImplicant(model);
     }
-    return {implicant, model};
+    if (Config::Analysis::log) {
+        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n";
+        for (const auto& loop: res) {
+            std::cout << *loop << std::endl;
+        }
+    }
+    return {res, model};
 }
 
 Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
@@ -216,107 +225,112 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
                 });
         }
     };
-    auto [loop, sample_point] {build_loop(backlink)};
-    auto loop_for_proof {loop};
-    // if it's a loop of length 1, then undo the reanming of temporary variables that's performed by
-    // build_loop to get a cleaner proof
-    if (Config::Analysis::model && backlink + 1 == trace.size()) {
-        loop_for_proof = loop->renameVars(subsTmp.at(backlink).invert());
-    }
-    auto &map {cache.emplace(lang, std::unordered_map<Bools::Expr, std::optional<Loop>>()).first->second};
-    for (const auto &[imp, loop]: map) {
-        if (sample_point->eval(imp)) {
-            if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
-            if (loop) {
-                shortcut = loop->idx;
-                update_subs(loop->idx);
-                return loop;
-            }
-            return {};
+    auto [loops, sample_point] {build_loop(backlink)};
+    for (const auto& loop: loops) {
+        auto loop_for_proof {loop};
+        // if it's a loop of length 1, then undo the reanming of temporary variables that's performed by
+        // build_loop to get a cleaner proof
+        if (Config::Analysis::model && backlink + 1 == trace.size()) {
+            loop_for_proof = loop->renameVars(subsTmp.at(backlink).invert());
         }
-    }
-    auto simp {Preprocess::preprocessRule(loop)};
-    auto success {false};
-    const auto nonterm_to_query = [&](const acceleration::Result &accel_res) {
-        if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
-            const auto q {its->addQuery(accel_res.nonterm, trace.at(backlink).first)};
-            rule_map.emplace(q->getId(), q);
-            if (Config::Analysis::model) {
-                cex.add_recurrent_set(loop_for_proof, q);
-            }
-            success = true;
-            query = query || encode_transition(q);
-            if (Config::Analysis::log) {
-                std::cout << "found certificate of non-termination\n" << accel_res.nonterm << std::endl;
+        auto &map {cache.emplace(lang, std::unordered_map<Bools::Expr, std::optional<Loop>>()).first->second};
+        for (const auto &[imp, loop]: map) {
+            if (sample_point->eval(imp)) {
+                if (Config::Analysis::log) std::cout << "cache hit" << std::endl;
+                if (loop) {
+                    shortcut = loop->idx;
+                    update_subs(loop->idx);
+                    return loop;
+                }
+                return {};
             }
         }
-    };
-    if (Config::Analysis::tryNonterm() && !nonterm_cache.contains(lang)) {
-        const AccelConfig config {true, false, Config::Accel::non_linear, n, its->getCost(simp)};
-        const auto accel_res {LoopAcceleration::accelerate(simp, sample_point, config)};
-        nonterm_to_query(accel_res);
-        nonterm_cache.emplace(lang);
-    }
-    std::optional<Loop> res {};
-    auto covered {top()};
-    if (const auto deterministic{simp->isDeterministic()}; Config::Analysis::safety() && !deterministic) {
-        if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
-    } else if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().compose(simp->getUpdate())) {
-        if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
-    } else if (Config::Analysis::safety() && simp->getUpdate().empty()) {
-        if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
-    } else {
-        if (Config::Analysis::log && simp->getId() != loop->getId()) {
-            std::cout << "simplified loop:\n" << simp << std::endl;
-        }
-        const AccelConfig config {Config::Analysis::tryNonterm(), true, Config::Accel::non_linear, n, its->getCost(simp)};
-        const auto accel_res {LoopAcceleration::accelerate(simp, sample_point, config)};
-        nonterm_to_query(accel_res);
-        if (accel_res.accel) {
-            if (auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)}; simplified->getUpdate() != simp->getUpdate()) {
-                success = true;
-                add_learned_clause(simplified, backlink);
+        auto simp {Preprocess::preprocessRule(loop)};
+        auto success {false};
+        const auto nonterm_to_query = [&](const acceleration::Result &accel_res) {
+            if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
+                const auto q {its->addQuery(accel_res.nonterm, trace.at(backlink).first)};
+                rule_map.emplace(q->getId(), q);
                 if (Config::Analysis::model) {
-                    cex.add_accel(loop_for_proof, simplified);
+                    cex.add_recurrent_set(loop_for_proof, q);
                 }
-                shortcut = simplified;
-                history.emplace(next, lang);
-                lang_map.emplace(simplified, next);
-                ++next;
-                res = {
-                    .idx = simplified,
-                    .prefix = accel_res.prefix,
-                    .period = accel_res.period,
-                    .covered = accel_res.accel->covered,
-                    .deterministic = deterministic};
-                covered = accel_res.accel->covered;
+                success = true;
+                query = query || encode_transition(q);
                 if (Config::Analysis::log) {
-                    std::cout << "accelerated rule, idx " << simplified->getId() << "\n" << *simplified << std::endl;
+                    std::cout << "found certificate of non-termination\n" << accel_res.nonterm << std::endl;
                 }
-                update_subs(simplified);
             }
+        };
+        if (Config::Analysis::tryNonterm() && !nonterm_cache.contains(lang)) {
+            const AccelConfig config {true, false, Config::Accel::non_linear, n, its->getCost(simp)};
+            const auto accel_res {LoopAcceleration::accelerate(simp, sample_point, config)};
+            nonterm_to_query(accel_res);
+            nonterm_cache.emplace(lang);
         }
-    }
-    if (success && Config::Analysis::model) {
-        if (backlink + 1 == trace.size()) {
-            if (const auto rule {trace.back().first}; rule != loop_for_proof) {
-                cex.add_implicant(rule, loop_for_proof);
-            }
+        std::optional<Loop> res {};
+        auto covered {top()};
+        if (const auto deterministic{simp->isDeterministic()}; Config::Analysis::safety() && !deterministic) {
+            if (Config::Analysis::log) std::cout << "not accelerating non-deterministic loop" << std::endl;
+        } else if (Config::Analysis::safety() && simp->getUpdate() == simp->getUpdate().compose(simp->getUpdate())) {
+            if (Config::Analysis::log) std::cout << "acceleration would yield equivalent rule" << std::endl;
+        } else if (Config::Analysis::safety() && simp->getUpdate().empty()) {
+            if (Config::Analysis::log) std::cout << "trivial looping suffix" << std::endl;
         } else {
-            std::vector<RulePtr> rules;
-            for (size_t i = backlink; i < trace.size(); ++i) {
-                if (const auto &[rule, imp]{trace.at(i)}; rule == imp) {
-                    rules.emplace_back(rule);
-                } else {
-                    cex.add_implicant(rule, imp);
-                    rules.emplace_back(imp);
+            if (Config::Analysis::log && simp->getId() != loop->getId()) {
+                std::cout << "simplified loop:\n" << simp << std::endl;
+            }
+            const AccelConfig config {Config::Analysis::tryNonterm(), true, Config::Accel::non_linear, n, its->getCost(simp)};
+            const auto accel_res {LoopAcceleration::accelerate(simp, sample_point, config)};
+            nonterm_to_query(accel_res);
+            if (accel_res.accel) {
+                if (auto simplified {Preprocess::preprocessRule(accel_res.accel->rule)}; simplified->getUpdate() != simp->getUpdate()) {
+                    success = true;
+                    add_learned_clause(simplified, backlink);
+                    if (Config::Analysis::model) {
+                        cex.add_accel(loop_for_proof, simplified);
+                    }
+                    shortcut = simplified;
+                    history.emplace(next, lang);
+                    lang_map.emplace(simplified, next);
+                    ++next;
+                    res = {
+                        .idx = simplified,
+                        .prefix = accel_res.prefix,
+                        .period = accel_res.period,
+                        .covered = accel_res.accel->covered,
+                        .deterministic = deterministic};
+                    covered = accel_res.accel->covered;
+                    if (Config::Analysis::log) {
+                        std::cout << "accelerated rule, idx " << simplified->getId() << "\n" << *simplified << std::endl;
+                    }
+                    update_subs(simplified);
                 }
             }
-            cex.add_resolvent(rules, loop);
+        }
+        if (success) {
+            if (Config::Analysis::model) {
+                if (backlink + 1 == trace.size()) {
+                    if (const auto rule{trace.back().first}; rule != loop_for_proof) {
+                        cex.add_implicant(rule, loop_for_proof);
+                    }
+                } else {
+                    std::vector<RulePtr> rules;
+                    for (size_t i = backlink; i < trace.size(); ++i) {
+                        if (const auto& [rule, imp]{trace.at(i)}; rule == imp) {
+                            rules.emplace_back(rule);
+                        } else {
+                            cex.add_implicant(rule, imp);
+                            rules.emplace_back(imp);
+                        }
+                    }
+                    cex.add_resolvent(rules, loop);
+                }
+            }
+            map.emplace(covered, res);
+            return res;
         }
     }
-    map.emplace(covered, res);
-    return res;
+    return std::nullopt;
 }
 
 Bools::Expr ABMC::encode_transition(const RulePtr& idx, const bool with_id) {
