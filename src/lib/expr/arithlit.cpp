@@ -369,13 +369,11 @@ sexpresso::Sexp ArithLit::to_smtlib() const {
 }
 
 void ArithLit::collectCells(linked_hash_set<ArrayReadPtr<Arith>>& res) const {
-    l->collectCells(res);
+    l->collectCells(res, false);
 }
 
 linked_hash_set<ArrayReadPtr<Arith>> ArithLit::cells() const {
-    linked_hash_set<ArrayReadPtr<Arith>> res;
-    l->collectCells(res);
-    return res;
+    return l->cells();
 }
 
 bool ArithLit::simplifyAnd(linked_hash_set<ArithLitPtr> &lits) {
@@ -420,7 +418,7 @@ bool ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
     return !add.empty();
 }
 
-void ArithLit::syntacticImplicant(ModelPtr m, LitSet& res) const {
+void ArithLit::syntacticImplicant(const ModelPtr& m, LitSet& res) const {
     const auto lhs = l->syntacticImplicant(m, res);
     if (kind == Kind::Neq) {
         if (m->eval(lhs) > 0) {

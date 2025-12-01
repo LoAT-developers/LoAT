@@ -123,8 +123,8 @@ public:
     VarSet vars() const;
 
     void collectCells(CellSet&) const;
-    void collectCells(linked_hash_set<ArithVarPtr>&) const;
-    linked_hash_set<ArithVarPtr> cells() const;
+    void collectCells(linked_hash_set<ArithVarPtr>&, bool recurse) const;
+    linked_hash_set<ArithVarPtr> cells(bool recurse = false) const;
 
     bool isNegated() const;
 

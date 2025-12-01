@@ -46,16 +46,12 @@ bool remove_irrelevant_clauses(const ITSPtr& its, const bool forward) {
             }
         }
     } while (!todo.empty());
-    std::vector<RulePtr> to_delete;
+    linked_hash_set<RulePtr> deleted;
     for (const auto &r : its->getAllTransitions()) {
         if (!keep.contains(r)) {
-            to_delete.push_back(r);
+            deleted.insert(r);
+            its->removeRule(r);
         }
-    }
-    linked_hash_set<RulePtr> deleted;
-    for (const auto &idx : to_delete) {
-        its->removeRule(idx);
-        deleted.insert(idx);
     }
     if (deleted.empty()) {
         return false;

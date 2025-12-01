@@ -26,38 +26,43 @@ VarSet ArithExpr::vars() const {
 }
 
 void ArithExpr::collectCells(CellSet& res) const {
-    collectCells(res.get<ArithVarPtr>());
+    collectCells(res.get<ArithVarPtr>(), false);
 }
 
-void ArithExpr::collectCells(linked_hash_set<ArithVarPtr>& res) const {
+void ArithExpr::collectCells(linked_hash_set<ArithVarPtr>& res, const bool recurse) const {
     apply<void>(
         [](const ArithConstPtr&) {},
         [&](const ArithVarPtr& x) {
             res.emplace(x);
+            if (recurse) {
+                for (const auto& i: x->indices()) {
+                    i->collectCells(res, recurse);
+                }
+            }
         },
         [&](const ArithAddPtr& a) {
             for (const auto &arg: a->getArgs()) {
-                arg->collectCells(res);
+                arg->collectCells(res, recurse);
             }
         },
         [&](const ArithMultPtr& m) {
             for (const auto &arg: m->getArgs()) {
-                arg->collectCells(res);
+                arg->collectCells(res, recurse);
             }
         },
         [&](const ArithModPtr& m) {
-            m->getLhs()->collectCells(res);
-            m->getRhs()->collectCells(res);
+            m->getLhs()->collectCells(res, recurse);
+            m->getRhs()->collectCells(res, recurse);
         },
         [&](const ArithExpPtr& e) {
-            e->getBase()->collectCells(res);
-            e->getExponent()->collectCells(res);
+            e->getBase()->collectCells(res, recurse);
+            e->getExponent()->collectCells(res, recurse);
         });
 }
 
-linked_hash_set<ArithVarPtr> ArithExpr::cells() const {
+linked_hash_set<ArithVarPtr> ArithExpr::cells(const bool recurse) const {
     linked_hash_set<ArithVarPtr> res;
-    collectCells(res);
+    collectCells(res, recurse);
     return res;
 }
 

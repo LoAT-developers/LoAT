@@ -1,4 +1,4 @@
-#include "Inline.hpp"
+#include "inline.hpp"
 #include "theory.hpp"
 
 #include <stack>

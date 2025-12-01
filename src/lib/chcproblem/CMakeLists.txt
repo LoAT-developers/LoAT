@@ -13,8 +13,8 @@ add_library(${PROJECT_NAME} OBJECT
     reverse.cpp
     chccex.hpp
     chccex.cpp
-    Inline.hpp
-    Inline.cpp
+    inline.hpp
+    inline.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

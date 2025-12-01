@@ -16,6 +16,7 @@
 #include "yices.hpp"
 #include "adclsat.hpp"
 #include "ariparser.hpp"
+#include "inline.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <chrono>

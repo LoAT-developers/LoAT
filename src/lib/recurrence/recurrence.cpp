@@ -261,26 +261,6 @@ std::optional<std::vector<ArithConstPtr>> Recurrence::compute_shift(const Idx& i
 }
 
 bool Recurrence::solve() {
-    // add solutions for cells where it is trivial as nothing changes
-    for (const auto& c : equations.coDomainCells()) {
-        theory::apply(
-            c,
-            [&](const ArithVarPtr& c) {
-                if (!equations.contains(c->var()) &&
-                    std::ranges::all_of(c->indices(), [&](const auto& i) {
-                        return std::ranges::all_of(i->vars(), [&](const auto& x) {
-                            return !equations.contains(x);
-                        });
-                })) {
-                    closed_form.put(c, c);
-                }
-            },
-            [&](const Bools::Var& c) {
-                if (!equations.contains(c)) {
-                    result.closed_form.put(c, bools::mkLit(bools::mk(c)));
-                }
-            });
-    }
     // lvalues that are written by the loop
     linked_hash_map<ArithVarPtr, Arith::Expr> written;
     linked_hash_set<Arrays<Arith>::Var> increasing;
@@ -368,30 +348,30 @@ bool Recurrence::solve() {
     // make sure that written indices are pairwise different
     result.refinement = bools::mkAnd(different_indices);
     // map a[s] -> a[t] where a[s] is the lhs of an inductive equation and up(t) = s
+    linked_hash_set<ArithVarPtr> unchanged;
     linked_hash_map<ArithVarPtr, ArithVarPtr> inductive;
     linked_hash_set<ArithVarPtr> displacing;
     std::vector<ArithVarPtr> a_work_list;
     // checks whether the given cells are inductive, and populates 'inductive' on the way
     const auto are_inductive = [&](const auto& cells) {
-        for (const auto& c: cells) {
-            if (closed_form.contains(c)) {
+        for (const auto& c : cells) {
+            if (!equations.contains(c->var())) {
+                if (!unchanged.contains(c)) {
+                    unchanged.emplace(c);
+                    a_work_list.emplace_back(c);
+                }
                 continue;
             }
-            auto found = false;
             const auto updated_indices = update_idx(c->indices());
-            for (const auto &lval: written | std::views::keys) {
-                if (lval->var() == c->var() && lval->indices() == updated_indices) {
-                    if (!inductive.contains(lval)) {
-                        inductive.put(lval, c);
-                        a_work_list.emplace_back(lval);
-                    }
-                    found = true;
-                    break;
+            const auto updated_lval = arrays::mkArrayRead(c->var(), updated_indices);
+            if (written.contains(updated_lval)) {
+                if (!inductive.contains(c)) {
+                    inductive.put(c, updated_lval);
+                    a_work_list.emplace_back(c);
                 }
+                continue;
             }
-            if (!found) {
-                return false;
-            }
+            return false;
         }
         return true;
     };
@@ -413,7 +393,7 @@ bool Recurrence::solve() {
         });
     };
     for (const auto& [lval,val] : written) {
-        if (auto cells = val->cells(); are_inductive(cells)) {
+        if (auto cells = val->cells(true); are_inductive(cells)) {
             if (Config::Analysis::logAccel) {
                 std::cout << lval << " = " << val << " is inductive" << std::endl;
             }
@@ -422,44 +402,68 @@ bool Recurrence::solve() {
                 std::cout << lval << " = " << val << " is displacing" << std::endl;
             }
         } else {
+            if (Config::Analysis::logAccel) {
+                std::cout << lval << " = " << val << " is not solvable" << std::endl;
+            }
             return false;
         }
     }
     // checks if an arithmetic recurrence is ready for solving
     // we need closed forms for all cells occurring in indices, and for all cells occurring in the written value,
     // except for the inductive lvalue itself
-    const auto a_is_ready = [&](const ArithVarPtr& lval, const Arith::Expr& val) {
+    const auto arith_lval_is_ready = [&](const ArithVarPtr& lval) {
         return std::ranges::all_of(lval->indices(), [&](const auto& i) {
-                return std::ranges::all_of(i->cells(), [&](const auto& c) {
-                    return closed_form.contains(c);
-                });
-            }) &&
+            return std::ranges::all_of(i->cells(), [&](const auto& c) {
+                return closed_form.contains(c);
+            });
+        });
+    };
+    const auto arith_eq_is_ready = [&](const ArithVarPtr& lval, const Arith::Expr& val) {
+        return arith_lval_is_ready(lval) &&
             std::ranges::all_of(val->cells(), [&](const auto& c) {
                 return lval == c || closed_form.contains(c);
             });
+    };
+    const auto handle_unchanged_lval = [&](const auto& lval) {
+        std::vector<Arith::Expr> indices;
+        for (const auto& i : lval->indices()) {
+            indices.emplace_back(i->subs(closed_form));
+        }
+        const auto updated{arrays::mkArrayRead(lval->var(), indices)};
+        closed_form.put(lval, updated);
+        closed_form_n_minus_one.put(std::pair(lval, updated->subs(n_to_n_minus_one)));
+        if (Config::Analysis::logAccel) {
+            std::cout << "closed form for " << lval << ": " << closed_form.at(lval) << std::endl;
+        }
     };
     // solve equations for inductive lvalues
     bool changed {true};
     while (changed) {
         changed = false;
         for (auto it = a_work_list.begin(); it != a_work_list.end();) {
-            const auto lval{*it};
-            const auto& pre = inductive.at(lval);
-            if (const auto& val{written.at(lval)}; a_is_ready(pre, val)) {
-                if (!solve(pre, val)) {
-                    std::cout << "failed to solve " << pre << " = " << val << std::endl;
-                    // failed to compute closed form for this lval
-                    return false;
+            const auto pre{*it};
+            if (const auto post = inductive.get(pre)) {
+                if (const auto& val{written.at(*post)}; arith_eq_is_ready(pre, val)) {
+                    if (!solve(pre, val)) {
+                        std::cout << "failed to solve " << pre << " = " << val << std::endl;
+                        // failed to compute closed form for this lval
+                        return false;
+                    }
+                    changed = true;
+                    if (Config::Analysis::logAccel) {
+                        std::cout << "closed form for " << pre << ": " << closed_form.at(pre) << std::endl;
+                    }
+                    it = a_work_list.erase(it);
+                    continue;
                 }
-                changed = true;
-                if (Config::Analysis::logAccel) {
-                    std::cout << "closed form for " << pre << ": " << closed_form.at(pre) << std::endl;
-                }
+            } else if (arith_lval_is_ready(pre)) {
+                handle_unchanged_lval(pre);
                 it = a_work_list.erase(it);
-            } else {
-                // this lval is not yet ready
-                ++it;
+                changed = true;
+                continue;
             }
+            // this lval is not yet ready
+            ++it;
         }
     }
     // some lvalues did not become ready for solving, i.e., there is a cyclic dependency
@@ -471,16 +475,7 @@ bool Recurrence::solve() {
     }
     // compute closed forms for displacing lvalues
     for (const auto& lval: displacing) {
-        std::vector<Arith::Expr> indices;
-        for (const auto& i : lval->indices()) {
-            indices.emplace_back(i->subs(closed_form));
-        }
-        const auto updated{arrays::mkArrayRead(lval->var(), indices)};
-        closed_form.put(lval, updated);
-        closed_form_n_minus_one.put(std::pair(lval, updated->subs(n_to_n_minus_one)));
-        if (Config::Analysis::logAccel) {
-            std::cout << "closed form for " << lval << ": " << closed_form.at(lval) << std::endl;
-        }
+        handle_unchanged_lval(lval);
     }
     // take care of booleans
     std::vector<Bools::Var> b_work_list;
