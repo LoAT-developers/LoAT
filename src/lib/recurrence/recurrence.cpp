@@ -393,11 +393,11 @@ bool Recurrence::solve() {
         });
     };
     for (const auto& [lval,val] : written) {
-        if (auto cells = val->cells(true); are_inductive(cells)) {
+        if (const auto rec_cells = val->cells(true); are_inductive(rec_cells)) {
             if (Config::Analysis::logAccel) {
                 std::cout << lval << " = " << val << " is inductive" << std::endl;
             }
-        } else if (are_displacing(cells)) {
+        } else if (const auto cells = val->cells(); are_displacing(cells)) {
             if (Config::Analysis::logAccel) {
                 std::cout << lval << " = " << val << " is displacing" << std::endl;
             }
