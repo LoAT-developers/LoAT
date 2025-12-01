@@ -12,8 +12,6 @@ CHCPtr SexpressoParser::loadFromFile(const std::string &filename) {
 
 std::pair<std::vector<FunAppPtr>, Bools::Expr> parsePred(sexpresso::Sexp &exp, SMTLibParsingState &state, const std::unordered_map<std::string, std::pair<std::vector<FunAppPtr>, Bools::Expr>>& predicate_bindings) {
     std::vector<Expr> args;
-    const auto& constants = state.get_constants();
-    args.insert(args.end(), constants.begin(), constants.end());
     if (exp.isString()) {
         const auto it = predicate_bindings.find(exp.str());
         if (it == predicate_bindings.end()) {
@@ -90,12 +88,7 @@ void SexpressoParser::run(const std::string &filename) {
         (std::istreambuf_iterator(ifs)),
         (std::istreambuf_iterator<char>()));
     for (sexpresso::Sexp sexp = sexpresso::parse(content); auto &ex: sexp.arguments()) {
-        if (ex[0].isString("declare-fun")) {
-            if (ex[2].isNil()) {
-                // a declaration of a constant
-                state.create_constant(ex[1].str(), parse_type(ex[3]));
-            }
-        } else if (ex[0].isString("assert")) {
+        if (ex[0].isString("assert")) {
             state.push();
             std::unordered_map<std::string, std::pair<std::vector<FunAppPtr>, Bools::Expr>> predicate_bindings;
             auto clause = ex[1];

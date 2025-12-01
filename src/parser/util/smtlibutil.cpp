@@ -87,31 +87,6 @@ Var SMTLibParsingState::create_var(const std::string& name, const theory::Type t
     throw std::invalid_argument("unknown type");
 }
 
-Var SMTLibParsingState::create_constant(const std::string& name, const theory::Type type) {
-    switch (type) {
-    case theory::Type::Bool: {
-        auto var = create_bool_var(name);
-        constants.insert(bools::mkLit(bools::mk(var)));
-        return var;
-    }
-    case theory::Type::Int: {
-        auto var = create_arith_var(name);
-        constants.insert(arrays::readConst(var));
-        return var;
-    }
-    case theory::Type::IntArray: {
-        auto var = create_array_var(name);
-        constants.insert(var);
-        return var;
-    }
-    }
-    throw std::invalid_argument("unknown type");
-}
-
-const linked_hash_set<Expr>& SMTLibParsingState::get_constants() const {
-    return constants;
-}
-
 SMTLibParsingState::Frame::Frame(
     std::vector<Bools::Expr> refinement,
     const size_t next_arith,
