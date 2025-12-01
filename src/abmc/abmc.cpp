@@ -375,7 +375,7 @@ void ABMC::build_trace() {
         std::cout << "trace:" << std::endl << trace;
         std::cout << "run:" << std::endl;
         for (const auto &s : run) {
-            std::cout << s->toString(vars) << std::endl;
+            std::cout << s->toString(cells) << std::endl;
         }
     }
 }
