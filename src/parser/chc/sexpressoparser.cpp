@@ -81,12 +81,9 @@ theory::Type parse_type(sexpresso::Sexp& type) {
         }
         throw std::invalid_argument("unknown type");
     }
-    if (type[0].isString()
-        && type[0].str() == "Array"
-        && type[1].isString()
-        && type[1].str() == "Int"
-        && type[2].isString()
-        && type[2].str() == "Int") {
+    if (type[0].isString("Array")
+        && type[1].isString("Int")
+        && type[2].isString("Int")) {
         return theory::Type::IntArray;
     }
     throw std::invalid_argument("unknown type " + type.toString());
