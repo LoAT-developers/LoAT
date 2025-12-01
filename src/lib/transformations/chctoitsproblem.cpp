@@ -41,14 +41,14 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
 }
 
 ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const {
-    std::optional<FunAppPtr> premise;
+    std::vector<FunAppPtr> premise;
     std::optional<FunAppPtr> conclusion;
-    if (const auto prem {prototype->get_premise()}) {
+    for (const auto& prem: prototype->get_premise()) {
         std::vector<Expr> args;
         size_t next_int_var {0};
         size_t next_arr_var {0};
         size_t next_bool_var {0};
-        for (const auto& x : (*prem)->get_args()) {
+        for (const auto& x : prem->get_args()) {
             theory::apply(
                 x,
                 [&](const Arith::Expr&) {
@@ -68,7 +68,7 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
                 }
             );
         }
-        premise = FunApp::mk((*prem)->get_pred(), args);
+        premise.emplace_back(FunApp::mk(prem->get_pred(), args));
     }
     if (const auto conc {prototype->get_conclusion()}) {
         std::vector<Expr> args;
@@ -168,16 +168,20 @@ ITSPtr CHCToITS::transform() {
         avars.emplace_back(ArrayVar<Arith>::nextProgVar(1));
     }
     for (const auto &c: chcs->get_clauses()) {
+        if (!c->is_linear()) {
+            throw std::invalid_argument("non-linear clauses cannot be transformed to transition systems");
+        }
         Renaming renaming;
+        const auto premise = c->get_premise();
         std::vector constraints{c->get_constraint()};
-        const auto lhs_loc = c->get_premise() ? its->getOrAddLocation((*c->get_premise())->get_pred()) : its->getInitialLocation();
+        const auto lhs_loc = premise.empty() ? its->getInitialLocation() : its->getOrAddLocation(premise.front()->get_pred());
         constraints.emplace_back(Arith::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
         // replace the arguments of the body predicate with the corresponding program variables
         unsigned bool_arg{0};
         unsigned arr_arg{0};
         unsigned int_arg{0};
-        if (const auto prem{c->get_premise()}) {
-            for (const auto& ex : (*prem)->get_args()) {
+        for (const auto& prem: premise) {
+            for (const auto& ex : prem->get_args()) {
                 theory::apply(
                     ex,
                     [&](const Arith::Expr& x) {

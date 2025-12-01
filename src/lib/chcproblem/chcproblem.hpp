@@ -60,15 +60,15 @@ using ClausePtr = cpp::not_null<std::shared_ptr<const Clause>>;
 
 class Clause {
 
-    friend class ConsHash<Clause, std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
+    friend class ConsHash<Clause, std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
 
-    std::optional<FunAppPtr> premise {};
+    std::vector<FunAppPtr> premise {};
     Bools::Expr constraint;
     std::optional<FunAppPtr> conclusion {};
 
     friend std::ostream& operator<<(std::ostream &s, const ClausePtr& c);
 
-    using Args = std::tuple<std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
+    using Args = std::tuple<std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
 
     struct CacheEqual {
         bool operator()(const Args &args1, const Args &args2) const noexcept;
@@ -76,18 +76,19 @@ class Clause {
     struct CacheHash {
         size_t operator()(const Args &args) const noexcept;
     };
-    static ConsHash<Clause, std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> cache;
+    static ConsHash<Clause, std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> cache;
 
 public:
 
-    Clause(const std::optional<FunAppPtr>& premise, Bools::Expr  constraint, const std::optional<FunAppPtr>& conclusion);
+    Clause(const std::vector<FunAppPtr>& premise, Bools::Expr  constraint, const std::optional<FunAppPtr>& conclusion);
     ~Clause();
 
-    static ClausePtr mk(const std::optional<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion);
+    static ClausePtr mk(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion);
 
     bool is_fact() const;
     bool is_query() const;
-    std::optional<FunAppPtr> get_premise() const;
+    bool is_linear() const;
+    std::vector<FunAppPtr> get_premise() const;
     std::optional<FunAppPtr> get_conclusion() const;
     Bools::Expr get_constraint() const;
     VarSet vars() const;
@@ -97,7 +98,10 @@ public:
 
     template <ITheory T>
     unsigned max_arity() const {
-        const auto p_arity = premise ? (*premise)->max_arity<T>() : 0;
+        unsigned p_arity = 0;
+        for (const auto& p: premise) {
+            p_arity = std::max(p_arity, p->max_arity<T>());
+        }
         const auto c_arity = conclusion ? (*conclusion)->max_arity<T>() : 0;
         return std::max(p_arity, c_arity);
     }
@@ -124,6 +128,7 @@ public:
     const linked_hash_set<ClausePtr> &get_clauses() const;
     sexpresso::Sexp to_smtlib() const;
     linked_hash_map<std::string, std::vector<theory::Type>> get_signature() const;
+    bool is_linear() const;
 
     template <ITheory T>
     unsigned max_arity() const {

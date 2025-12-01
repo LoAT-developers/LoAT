@@ -2,7 +2,6 @@
 
 
 #include <vector>
-#include <unordered_set>
 #include <functional>
 #include <ostream>
 
@@ -10,12 +9,11 @@
 
 template <class Node>
 class DependencyGraph {
-
 public:
 
     using Edge = std::pair<Node, Node>;
 
-    DependencyGraph() {}
+    DependencyGraph() = default;
 
     bool addEdge(const Node &fst, const Node &snd) {
         const auto loop {fst == snd};
@@ -46,7 +44,7 @@ public:
         return changed;
     }
 
-    void addNode(const Node node, linked_hash_set<Node> preds, linked_hash_set<Node> succs, bool self_loop) {
+    void addNode(const Node node, linked_hash_set<Node> preds, linked_hash_set<Node> succs, const bool self_loop) {
         if (self_loop) {
             preds.insert(node);
             succs.insert(node);
@@ -182,18 +180,16 @@ public:
         const auto it = successors.find(node);
         if (it == successors.end()) {
             return {};
-        } else {
-            return it->second;
         }
+        return it->second;
     }
 
     linked_hash_set<Node> getPredecessors(Node node) const {
         const auto it = predecessors.find(node);
         if (it == predecessors.end()) {
             return {};
-        } else {
-            return it->second;
         }
+        return it->second;
     }
 
     void removeNode(Node node) {
@@ -214,6 +210,23 @@ public:
 
     size_t size() const {
         return edgecount;
+    }
+
+    bool has_cycle(const Node& node) {
+        auto succ = successors.at(node);
+        auto changed = true;
+        while (changed && !succ.contains(node)) {
+            changed = false;
+            const auto size = succ.size();
+            linked_hash_set<std::string> insert;
+            for (const auto& s: succ) {
+                const auto new_succ = successors.at(s);
+                insert.insert(new_succ.begin(), new_succ.end());
+            }
+            succ.insert(insert.begin(), insert.end());
+            changed = size != succ.size();
+        }
+        return succ.contains(node);
     }
 
 private:

@@ -266,6 +266,17 @@ int main(int argc, char *argv[]) {
                 std::cout << "CHCs:" << std::endl;
                 std::cout << *chcs << std::endl;
             }
+            if (!(*chcs)->is_linear()) {
+                Inline lin{*chcs};
+                chcs = lin.run();
+                if (!(*chcs)->is_linear()) {
+                    if (Config::Analysis::log) {
+                        std::cout << "failed to linearize CHCs" << std::endl;
+                    }
+                    print_result(SmtResult::Unknown);
+                    exit(0);
+                }
+            }
             if (Config::Analysis::dir == Config::Analysis::Direction::Backward) {
                 reverse = Reverse(*chcs);
                 chcs = reverse->reverse();

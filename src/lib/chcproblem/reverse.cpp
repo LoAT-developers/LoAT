@@ -7,7 +7,17 @@
 Reverse::Reverse(CHCPtr orig): orig(std::move(orig)) {}
 
 ClausePtr rev(const ClausePtr& c) {
-    return Clause::mk(c->get_conclusion(), c->get_constraint(), c->get_premise());
+    if (!c->is_linear()) {
+        throw std::invalid_argument("cannot reverse non-linear CHCs");
+    }
+    const auto old_premise = c->get_premise();
+    const auto old_conclusion = c->get_conclusion();
+    const auto conclusion = old_premise.empty() ? std::nullopt : std::optional{old_premise.front()};
+    std::vector<FunAppPtr> premise;
+    if (old_conclusion) {
+        premise.emplace_back(*old_conclusion);
+    }
+    return Clause::mk(premise, c->get_constraint(), conclusion);
 }
 
 CHCPtr Reverse::reverse() {
